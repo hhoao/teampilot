@@ -368,7 +368,21 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
 
     // Trailing: coarse relative time + pin mark (idle), or delete + overflow (hover).
     final int activityMs = rowContent.timestampMsForPaint;
-    final Widget? trailing = _showSessionActions
+    final Widget? idleTrailing = (!_showSessionActions &&
+            (activityMs > 0 || session.pinned))
+        ? Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (activityMs > 0)
+                _SessionCoarseRelativeTime(
+                  timestampMs: activityMs,
+                  selected: selected,
+                ),
+              if (session.pinned) const _SessionPinnedMark(),
+            ],
+          )
+        : null;
+    final Widget? actionTrailing = _showSessionActions
         ? Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -423,38 +437,71 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
               ),
             ],
           )
-        : (activityMs > 0 || session.pinned)
-        ? Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (activityMs > 0)
-                _SessionCoarseRelativeTime(
-                  timestampMs: activityMs,
-                  selected: selected,
-                ),
-              if (session.pinned) const _SessionPinnedMark(),
-            ],
-          )
         : null;
 
-    final Widget tile = MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: _SidebarTile(
-        title: paintedTitle,
-        selected: selected,
-        rowHovered: _hovered || _menuOpen,
-        contentLeftInset: widget.contentLeftInset,
-        leading: leadingWidget,
+    final idleFill = selected ? _selectedFillColor(cs) : Colors.transparent;
+    final hoverFill = selected
+        ? Color.alphaBlend(
+            cs.onSurface.withValues(alpha: kWorkspaceSidebarRowHoverTintAlpha),
+            idleFill,
+          )
+        : workspaceSidebarRowHoverFill(cs);
+
+    final Widget tile = Padding(
+      padding: const EdgeInsets.only(bottom: 2),
+      child: TpHoverRow(
+        forceShowTrailing: _menuOpen || _deleteArmed,
+        forceHover: _menuOpen,
+        showTrailingOnMobile: true,
+        padding: EdgeInsets.fromLTRB(
+          8 + widget.contentLeftInset,
+          6,
+          8,
+          6,
+        ),
+        backgroundColor: idleFill,
+        hoverColor: hoverFill,
+        onHoverChanged: (hovered) => setState(() => _hovered = hovered),
         onTap: throttledAsync(
           '${widget.tapThrottleKeyPrefix}_${session.sessionId}',
           _onSessionTap,
         ),
         onSecondaryTapDown: _showSessionContextMenuFromTap,
-        onLongPress: Platform.isAndroid
-            ? _showSessionContextMenuAtCenter
-            : null,
-        trailing: trailing,
+        onLongPress: Platform.isAndroid ? _showSessionContextMenuAtCenter : null,
+        trailing: actionTrailing,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: selected
+                ? Border.all(color: cs.primary.withValues(alpha: 0.28))
+                : null,
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              leadingWidget,
+              const SizedBox(width: 8),
+              Expanded(
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(minHeight: 32),
+                    child: TpTooltip(
+                      message: paintedTitle,
+                      child: Text(
+                        paintedTitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TpTextStyles.of(context).mdColored(cs.onSurface),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              if (idleTrailing != null) idleTrailing,
+            ],
+          ),
+        ),
       ),
     );
 
@@ -572,128 +619,11 @@ class _SessionDeleteAction extends StatelessWidget {
   }
 }
 
-class _SidebarTile extends StatelessWidget {
-  // ignore: unused_element_parameter
-  const _SidebarTile({
-    required this.title,
-    required this.selected,
-    // ignore: unused_element_parameter
-    this.subtitle = '',
-    this.rowHovered = false,
-    this.onTap,
-    this.onSecondaryTapDown,
-    this.onLongPress,
-    this.leading,
-    this.trailing,
-    this.contentLeftInset = 0,
-  });
+const _selectedFillAlpha = 0.10;
 
-  final String title;
-  final String subtitle;
-  final bool selected;
-  final bool rowHovered;
-  final VoidCallback? onTap;
-  final GestureTapDownCallback? onSecondaryTapDown;
-  final VoidCallback? onLongPress;
-  final Widget? leading;
-  final Widget? trailing;
-  final double contentLeftInset;
-
-  static const _selectedFillAlpha = 0.10;
-
-  Color _selectedFillColor(ColorScheme cs) {
-    return Color.alphaBlend(
-      cs.primary.withValues(alpha: _selectedFillAlpha),
-      cs.surfaceContainer,
-    );
-  }
-
-  Color _materialFillColor(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    if (selected) {
-      final base = _selectedFillColor(cs);
-      return rowHovered
-          ? Color.alphaBlend(
-              cs.onSurface.withValues(
-                alpha: kWorkspaceSidebarRowHoverTintAlpha,
-              ),
-              base,
-            )
-          : base;
-    }
-    if (rowHovered) {
-      return workspaceSidebarRowHoverFill(cs);
-    }
-    return Colors.transparent;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final textBase = cs.onSurface;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 2),
-      child: Material(
-        color: _materialFillColor(context),
-        borderRadius: BorderRadius.circular(8),
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: onTap,
-          onSecondaryTapDown: onSecondaryTapDown,
-          onLongPress: onLongPress,
-          child: Container(
-            padding: EdgeInsets.fromLTRB(8 + contentLeftInset, 6, 8, 6),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              border: selected
-                  ? Border.all(color: cs.primary.withValues(alpha: 0.28))
-                  : null,
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                if (leading != null) leading!,
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(minHeight: 32),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          TpTooltip(
-                            message: title,
-                            child: Text(
-                              title,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TpTextStyles.of(context).mdColored(textBase,),
-                            ),
-                          ),
-                          if (subtitle.isNotEmpty) ...[
-                            const SizedBox(height: 4),
-                            Text(
-                              subtitle,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TpTextStyles.of(context).xsColored(textBase.withValues(alpha: 0.52),
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                if (trailing != null) trailing!,
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+Color _selectedFillColor(ColorScheme cs) {
+  return Color.alphaBlend(
+    cs.primary.withValues(alpha: _selectedFillAlpha),
+    cs.surfaceContainer,
+  );
 }

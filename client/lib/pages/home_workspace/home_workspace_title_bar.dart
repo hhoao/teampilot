@@ -630,97 +630,90 @@ class _WorkspaceTabState extends State<_WorkspaceTab> {
     return Tooltip(
       message: widget.tooltip,
       waitDuration: const Duration(milliseconds: 500),
-      child: MouseRegion(
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: widget.onTap,
-          onSecondaryTapDown: widget.closable && widget.onClose != null
-              ? _showTabContextMenuFromTap
-              : null,
-          onLongPress:
-              widget.closable && widget.onClose != null && Platform.isAndroid
-              ? _showTabContextMenuAtChipCenter
-              : null,
-          // Material owns fill/border/clip so close-button hover cannot paint
-          // past the rounded outer chrome.
-          child: Material(
-            color: active
-                ? cs.surfaceContainerHigh
-                : _hovered
-                ? cs.onSurface.withValues(alpha: 0.05)
-                : Colors.transparent,
-            shape: RoundedRectangleBorder(
+      child: TpHover(
+        onTap: widget.onTap,
+        onSecondaryTapDown: widget.closable && widget.onClose != null
+            ? _showTabContextMenuFromTap
+            : null,
+        onLongPress:
+            widget.closable && widget.onClose != null && Platform.isAndroid
+            ? _showTabContextMenuAtChipCenter
+            : null,
+        onHoverChanged: (hovered) => setState(() => _hovered = hovered),
+        borderRadius: BorderRadius.circular(8),
+        backgroundColor: active ? cs.surfaceContainerHigh : null,
+        hoverColor: active
+            ? cs.surfaceContainerHigh
+            : cs.onSurface.withValues(alpha: 0.05),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(8),
-              side: BorderSide(
+              border: Border.all(
                 color: active
                     ? cs.outlineVariant.withValues(alpha: 0.7)
                     : Colors.transparent,
               ),
             ),
-            clipBehavior: Clip.antiAlias,
-            child: InkWell(
-              onTap: widget.onTap,
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 200),
-                child: Padding(
-                  padding: const EdgeInsets.only(
-                    left: 10,
-                    right: 6,
-                    top: 6,
-                    bottom: 6,
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      // Fixed height: CrossAxisAlignment.stretch would expand
-                      // the row to the ListView viewport height (~full title bar).
-                      SizedBox(
-                        width: 3,
-                        height: context.tpIconSizes.md,
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            color: barColor,
-                            borderRadius: BorderRadius.circular(1.5),
-                          ),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 200),
+              child: Padding(
+                padding: const EdgeInsets.only(
+                  left: 10,
+                  right: 6,
+                  top: 6,
+                  bottom: 6,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    // Fixed height: CrossAxisAlignment.stretch would expand
+                    // the row to the ListView viewport height (~full title bar).
+                    SizedBox(
+                      width: 3,
+                      height: context.tpIconSizes.md,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: barColor,
+                          borderRadius: BorderRadius.circular(1.5),
                         ),
                       ),
+                    ),
+                    const SizedBox(width: 8),
+                    _TabChromeSlot(
+                      visible: _showChrome,
+                      child: WorkspaceTabTopologyIcon(
+                        topology: widget.topology,
+                        colorScheme: cs,
+                        brightness: brightness,
+                        size: context.tpIconSizes.md,
+                        active: active,
+                        hovered: _hovered,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Flexible(
+                      child: Text(
+                        widget.label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: styles.smColored(fg),
+                      ),
+                    ),
+                    if (widget.closable) ...[
                       const SizedBox(width: 8),
                       _TabChromeSlot(
                         visible: _showChrome,
-                        child: WorkspaceTabTopologyIcon(
-                          topology: widget.topology,
-                          colorScheme: cs,
-                          brightness: brightness,
-                          size: context.tpIconSizes.md,
+                        child: TabCloseButton(
                           active: active,
-                          hovered: _hovered,
+                          onTap: widget.onClose,
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Flexible(
-                        child: Text(
-                          widget.label,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: styles.smColored(fg),
-                        ),
-                      ),
-                      if (widget.closable) ...[
-                        const SizedBox(width: 8),
-                        _TabChromeSlot(
-                          visible: _showChrome,
-                          child: TabCloseButton(
-                            active: active,
-                            onTap: widget.onClose,
-                          ),
-                        ),
-                      ] else
-                        const SizedBox(width: 6),
-                    ],
-                  ),
+                    ] else
+                      const SizedBox(width: 6),
+                  ],
                 ),
               ),
             ),

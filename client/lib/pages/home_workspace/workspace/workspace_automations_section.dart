@@ -110,8 +110,6 @@ class _SectionHeader extends StatefulWidget {
 }
 
 class _SectionHeaderState extends State<_SectionHeader> {
-  var _hovered = false;
-
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
@@ -119,62 +117,55 @@ class _SectionHeaderState extends State<_SectionHeader> {
     final styles = TpTextStyles.of(context);
     final subtitle = _subtitle(l10n);
     final hoverTint = cs.onSurface.withValues(alpha: 0.05);
-    final background = _hovered ? hoverTint : Colors.transparent;
 
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      cursor: SystemMouseCursors.click,
-      child: InkWell(
-        onTap: widget.onOpenPanel,
-        borderRadius: BorderRadius.circular(8),
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(8, 8, 4, 8),
-          decoration: BoxDecoration(
-            color: background,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: cs.outlineVariant.withValues(alpha: 0.5),
+    return TpHover(
+      onTap: widget.onOpenPanel,
+      hoverColor: hoverTint,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(8, 8, 4, 8),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: cs.outlineVariant.withValues(alpha: 0.5),
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.bolt_rounded,
+              size: context.tpIconSizes.md,
+              color: cs.primary,
             ),
-          ),
-          child: Row(
-            children: [
-              Icon(
-                Icons.bolt_rounded,
-                size: context.tpIconSizes.md,
-                color: cs.primary,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text.rich(
-                  TextSpan(
-                    style: styles.lg,
-                    children: [
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text.rich(
+                TextSpan(
+                  style: styles.lg,
+                  children: [
+                    TextSpan(
+                      text: widget.enabledCount > 0
+                          ? l10n.automationsHeaderCount(widget.enabledCount)
+                          : l10n.automationsSidebarTitle,
+                    ),
+                    if (subtitle != null)
                       TextSpan(
-                        text: widget.enabledCount > 0
-                            ? l10n.automationsHeaderCount(widget.enabledCount)
-                            : l10n.automationsSidebarTitle,
+                        text: ' · $subtitle',
+                        style: styles.lgColored(cs.onSurfaceVariant,),
                       ),
-                      if (subtitle != null)
-                        TextSpan(
-                          text: ' · $subtitle',
-                          style: styles.lgColored(cs.onSurfaceVariant,),
-                        ),
-                    ],
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                  ],
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-              TpIconButton(
-                icon: Icons.add_rounded,
-                compact: true,
-                size: TpIconButton.kCompactSize,
-                tooltip: l10n.automationsNew,
-                onTap: widget.onAdd,
-              ),
-            ],
-          ),
+            ),
+            TpIconButton(
+              icon: Icons.add_rounded,
+              compact: true,
+              size: TpIconButton.kCompactSize,
+              tooltip: l10n.automationsNew,
+              onTap: widget.onAdd,
+            ),
+          ],
         ),
       ),
     );

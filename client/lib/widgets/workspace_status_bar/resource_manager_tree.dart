@@ -206,8 +206,9 @@ class _LeafRow extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final dimmed = !leaf.connected;
 
-    return _ResourceManagerHoverRow(
+    return TpHover(
       onTap: onActivate == null ? null : () => onActivate!(leaf),
+      hoverColor: cs.onSurface.withValues(alpha: 0.06),
       padding: const EdgeInsets.fromLTRB(28, 3, 8, 3),
       child: Opacity(
         opacity: dimmed ? 0.55 : 1,
@@ -292,7 +293,7 @@ class _MetricText extends StatelessWidget {
 }
 
 /// Orca-like row hover: muted surface highlight under the pointer.
-class _ResourceManagerHoverRow extends StatefulWidget {
+class _ResourceManagerHoverRow extends StatelessWidget {
   const _ResourceManagerHoverRow({
     required this.child,
     required this.padding,
@@ -304,37 +305,13 @@ class _ResourceManagerHoverRow extends StatefulWidget {
   final VoidCallback? onTap;
 
   @override
-  State<_ResourceManagerHoverRow> createState() =>
-      _ResourceManagerHoverRowState();
-}
-
-class _ResourceManagerHoverRowState extends State<_ResourceManagerHoverRow> {
-  var _hovered = false;
-
-  @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return MouseRegion(
-      opaque: true,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      cursor: widget.onTap == null
-          ? SystemMouseCursors.basic
-          : SystemMouseCursors.click,
-      child: Material(
-        color: _hovered
-            ? cs.onSurface.withValues(alpha: 0.06)
-            : Colors.transparent,
-        child: InkWell(
-          onTap: widget.onTap,
-          mouseCursor: widget.onTap == null
-              ? SystemMouseCursors.basic
-              : SystemMouseCursors.click,
-          hoverColor: Colors.transparent,
-          splashColor: cs.onSurface.withValues(alpha: 0.06),
-          child: Padding(padding: widget.padding, child: widget.child),
-        ),
-      ),
+    return TpHover(
+      onTap: onTap,
+      hoverColor: cs.onSurface.withValues(alpha: 0.06),
+      padding: padding,
+      child: child,
     );
   }
 }

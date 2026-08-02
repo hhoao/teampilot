@@ -129,50 +129,44 @@ class _ThemeColorPresetChipState extends State<ThemeColorPresetChip> {
         : _hovered
         ? cs.primary.withValues(alpha: 0.55)
         : cs.outlineVariant;
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(999),
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
-          decoration: BoxDecoration(
-            color: cs.workspaceInset,
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(
-              color: borderColor,
-              width: widget.selected ? 2 : 1,
-            ),
+    return TpHover(
+      onTap: widget.onTap,
+      onHoverChanged: (hovered) => setState(() => _hovered = hovered),
+      borderRadius: BorderRadius.circular(999),
+      backgroundColor: cs.workspaceInset,
+      hoverColor: cs.workspaceInset,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: borderColor,
+            width: widget.selected ? 2 : 1,
           ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 10,
-                  height: 10,
-                  decoration: BoxDecoration(
-                    color: primary,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 4),
-                Container(
-                  width: 10,
-                  height: 10,
-                  decoration: BoxDecoration(
-                    color: secondary,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(widget.label),
-              ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 10,
+              height: 10,
+              decoration: BoxDecoration(
+                color: primary,
+                shape: BoxShape.circle,
+              ),
             ),
-          ),
+            const SizedBox(width: 4),
+            Container(
+              width: 10,
+              height: 10,
+              decoration: BoxDecoration(
+                color: secondary,
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(widget.label),
+          ],
         ),
       ),
     );

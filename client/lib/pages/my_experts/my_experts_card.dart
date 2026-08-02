@@ -47,25 +47,25 @@ class _MyExpertsCardState extends State<MyExpertsCard> {
         ? accent.withValues(alpha: 0.55)
         : cs.outlineVariant;
 
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
-          decoration: BoxDecoration(
-            color: widget.selected
-                ? cs.primary.withValues(alpha: 0.06)
-                : cs.workspaceCard,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: borderColor,
-              width: widget.selected ? 2 : 1,
-            ),
+    return TpHover(
+      onTap: widget.onTap,
+      backgroundColor: Colors.transparent,
+      hoverColor: Colors.transparent,
+      borderRadius: BorderRadius.circular(14),
+      onHoverChanged: (hovered) => setState(() => _hovered = hovered),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        decoration: BoxDecoration(
+          color: widget.selected
+              ? cs.primary.withValues(alpha: 0.06)
+              : cs.workspaceCard,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: borderColor,
+            width: widget.selected ? 2 : 1,
           ),
-          child: TeamHubWorkspaceCard(
+        ),
+        child: TeamHubWorkspaceCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -140,7 +140,6 @@ class _MyExpertsCardState extends State<MyExpertsCard> {
             ),
           ),
         ),
-      ),
     );
   }
 }

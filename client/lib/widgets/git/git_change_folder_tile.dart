@@ -42,11 +42,6 @@ class _GitChangeFolderTileState extends State<GitChangeFolderTile> {
     }
   }
 
-  void _setHovered(bool value) {
-    if (!widget.hoverEnabled || _hovered == value) return;
-    setState(() => _hovered = value);
-  }
-
   List<Widget> _actions(BuildContext context) {
     final l10n = context.l10n;
     final actions = <Widget>[];
@@ -81,75 +76,65 @@ class _GitChangeFolderTileState extends State<GitChangeFolderTile> {
     final isExpanded = context.select<GitCubit, bool>(
       (c) => c.state.expandedFolderPaths.contains(widget.folderPath),
     );
-    final rowColor = _hovered ? TpHover.defaultHoverColor(context) : null;
     final showActions =
         _hovered && (widget.onStage != null || widget.onUnstage != null);
 
     return RepaintBoundary(
-      child: MouseRegion(
-        onEnter: (_) => _setHovered(true),
-        onExit: (_) => _setHovered(false),
-        cursor: SystemMouseCursors.click,
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: () => widget.cubit.toggleFolderExpanded(widget.folderPath),
-          child: Container(
-            width: double.infinity,
-            height: double.infinity,
-            clipBehavior: Clip.none,
-            decoration: rowColor != null
-                ? BoxDecoration(
-                    color: rowColor,
-                    borderRadius: BorderRadius.circular(6),
-                  )
-                : null,
-            padding: EdgeInsets.fromLTRB(
-              widget.depth * kGitChangesIndentWidth +
-                  kGitChangesNodePaddingLeft +
-                  kGitChangesRowHorizontalPadding,
-              kGitChangesRowVerticalPadding,
-              kGitChangesNodePaddingRight + kGitChangesRowHorizontalPadding,
-              kGitChangesRowVerticalPadding,
-            ),
-            child: OverflowBox(
-              maxWidth: double.infinity,
-              alignment: Alignment.centerLeft,
-              child: SizedBox(
-                height: kGitChangesNodeHeight,
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: AnimatedRotation(
-                        turns: isExpanded ? 0.25 : 0.0,
-                        duration: const Duration(milliseconds: 150),
-                        child: Icon(
-                          Icons.chevron_right,
-                          size: 16,
-                          color: cs.onSurfaceVariant,
-                        ),
-                      ),
-                    ),
-                    Icon(
-                      isExpanded ? Icons.folder_open : Icons.folder_outlined,
+      child: TpHover(
+        onTap: () => widget.cubit.toggleFolderExpanded(widget.folderPath),
+        hoverColor: widget.hoverEnabled ? null : Colors.transparent,
+        onHoverChanged: (hovered) {
+          if (!widget.hoverEnabled) return;
+          setState(() => _hovered = hovered);
+        },
+        borderRadius: BorderRadius.circular(6),
+        width: double.infinity,
+        height: double.infinity,
+        padding: EdgeInsets.fromLTRB(
+          widget.depth * kGitChangesIndentWidth +
+              kGitChangesNodePaddingLeft +
+              kGitChangesRowHorizontalPadding,
+          kGitChangesRowVerticalPadding,
+          kGitChangesNodePaddingRight + kGitChangesRowHorizontalPadding,
+          kGitChangesRowVerticalPadding,
+        ),
+        child: OverflowBox(
+          maxWidth: double.infinity,
+          alignment: Alignment.centerLeft,
+          child: SizedBox(
+            height: kGitChangesNodeHeight,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: AnimatedRotation(
+                    turns: isExpanded ? 0.25 : 0.0,
+                    duration: const Duration(milliseconds: 150),
+                    child: Icon(
+                      Icons.chevron_right,
+                      size: 16,
                       color: cs.onSurfaceVariant,
                     ),
-                    const SizedBox(width: 6),
-                    Text(
-                      widget.name,
-                      maxLines: 1,
-                      style: TpTextStyles.of(context).md,
-                    ),
-                    if (showActions) ...[
-                      const SizedBox(width: 8),
-                      ..._actions(context),
-                    ],
-                  ],
+                  ),
                 ),
-              ),
+                Icon(
+                  isExpanded ? Icons.folder_open : Icons.folder_outlined,
+                  color: cs.onSurfaceVariant,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  widget.name,
+                  maxLines: 1,
+                  style: TpTextStyles.of(context).md,
+                ),
+                if (showActions) ...[
+                  const SizedBox(width: 8),
+                  ..._actions(context),
+                ],
+              ],
             ),
           ),
         ),

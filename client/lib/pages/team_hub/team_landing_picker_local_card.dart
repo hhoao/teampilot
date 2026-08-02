@@ -42,10 +42,12 @@ class _TeamLandingPickerLocalCardState
         ? accent.withValues(alpha: 0.55)
         : cs.outlineVariant;
 
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
+    return TpHover(
+      onTap: widget.onTap,
+      backgroundColor: Colors.transparent,
+      hoverColor: Colors.transparent,
+      borderRadius: BorderRadius.circular(14),
+      onHoverChanged: (hovered) => setState(() => _hovered = hovered),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 120),
         decoration: BoxDecoration(
@@ -59,11 +61,9 @@ class _TeamLandingPickerLocalCardState
           ),
         ),
         clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: widget.onTap,
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
@@ -97,7 +97,6 @@ class _TeamLandingPickerLocalCardState
             ),
           ),
         ),
-      ),
     );
   }
 }

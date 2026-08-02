@@ -47,11 +47,6 @@ class _GitChangeTileState extends State<GitChangeTile> {
     }
   }
 
-  void _setHovered(bool value) {
-    if (!widget.hoverEnabled || _hovered == value) return;
-    setState(() => _hovered = value);
-  }
-
   Color _badgeColor(ColorScheme cs) => switch (widget.change.kind) {
     GitChangeKind.added => const Color(0xFF2EA043),
     GitChangeKind.untracked => const Color(0xFF2EA043),
@@ -66,56 +61,46 @@ class _GitChangeTileState extends State<GitChangeTile> {
     final cs = Theme.of(context).colorScheme;
     final change = widget.change;
     final name = p.basename(change.path);
-    final rowColor = _hovered ? TpHover.defaultHoverColor(context) : null;
 
     return RepaintBoundary(
-      child: MouseRegion(
-        onEnter: (_) => _setHovered(true),
-        onExit: (_) => _setHovered(false),
-        cursor: SystemMouseCursors.click,
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: widget.onOpenDiff,
-          child: Container(
-            width: double.infinity,
-            height: double.infinity,
-            clipBehavior: Clip.none,
-            decoration: rowColor != null
-                ? BoxDecoration(
-                    color: rowColor,
-                    borderRadius: BorderRadius.circular(6),
-                  )
-                : null,
-            padding: EdgeInsets.fromLTRB(
-              widget.depth * kGitChangesIndentWidth +
-                  kGitChangesNodePaddingLeft +
-                  kGitChangesRowHorizontalPadding,
-              kGitChangesRowVerticalPadding,
-              kGitChangesNodePaddingRight + kGitChangesRowHorizontalPadding,
-              kGitChangesRowVerticalPadding,
-            ),
-            child: OverflowBox(
-              maxWidth: double.infinity,
-              alignment: Alignment.centerLeft,
-              child: SizedBox(
-                height: kGitChangesNodeHeight,
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const SizedBox(width: 16),
-                    FileIconWidget(fileName: name),
-                    const SizedBox(width: 6),
-                    Text(
-                      name,
-                      maxLines: 1,
-                      style: TpTextStyles.of(context).md,
-                    ),
-                    const SizedBox(width: 8),
-                    if (_hovered) ..._actions(context) else _badge(cs),
-                  ],
+      child: TpHover(
+        onTap: widget.onOpenDiff,
+        hoverColor: widget.hoverEnabled ? null : Colors.transparent,
+        onHoverChanged: (hovered) {
+          if (!widget.hoverEnabled) return;
+          setState(() => _hovered = hovered);
+        },
+        borderRadius: BorderRadius.circular(6),
+        width: double.infinity,
+        height: double.infinity,
+        padding: EdgeInsets.fromLTRB(
+          widget.depth * kGitChangesIndentWidth +
+              kGitChangesNodePaddingLeft +
+              kGitChangesRowHorizontalPadding,
+          kGitChangesRowVerticalPadding,
+          kGitChangesNodePaddingRight + kGitChangesRowHorizontalPadding,
+          kGitChangesRowVerticalPadding,
+        ),
+        child: OverflowBox(
+          maxWidth: double.infinity,
+          alignment: Alignment.centerLeft,
+          child: SizedBox(
+            height: kGitChangesNodeHeight,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(width: 16),
+                FileIconWidget(fileName: name),
+                const SizedBox(width: 6),
+                Text(
+                  name,
+                  maxLines: 1,
+                  style: TpTextStyles.of(context).md,
                 ),
-              ),
+                const SizedBox(width: 8),
+                if (_hovered) ..._actions(context) else _badge(cs),
+              ],
             ),
           ),
         ),

@@ -134,55 +134,49 @@ class _FollowUpQueueStripState extends State<FollowUpQueueStrip>
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
-            MouseRegion(
-              cursor: SystemMouseCursors.click,
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: _toggleExpanded,
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    spacing.sm,
-                    spacing.sm,
-                    spacing.xs,
-                    spacing.sm,
-                  ),
-                  child: Row(
-                    children: [
-                      RotationTransition(
-                        turns: Tween<double>(begin: -0.25, end: 0).animate(
-                          CurvedAnimation(
-                            parent: _chevron,
-                            curve: Curves.easeOutCubic,
-                          ),
-                        ),
-                        child: Icon(
-                          Icons.expand_more,
-                          size: icons.sm,
-                          color: cs.onSurfaceVariant,
-                        ),
+            TpHover(
+              onTap: _toggleExpanded,
+              padding: EdgeInsets.fromLTRB(
+                spacing.sm,
+                spacing.sm,
+                spacing.xs,
+                spacing.sm,
+              ),
+              child: Row(
+                children: [
+                  RotationTransition(
+                    turns: Tween<double>(begin: -0.25, end: 0).animate(
+                      CurvedAnimation(
+                        parent: _chevron,
+                        curve: Curves.easeOutCubic,
                       ),
-                      SizedBox(width: spacing.xs),
-                      Expanded(
-                        child: Text(
-                          l10n.sessionFollowUpQueued(items.length),
-                          style: styles.smColored(cs.onSurfaceVariant),
-                        ),
-                      ),
-                      if (_showResume)
-                        IconButton(
-                          icon: const Icon(Icons.play_arrow, size: 18),
-                          tooltip: l10n.sessionFollowUpResume,
-                          color: cs.primary,
-                          visualDensity: VisualDensity.compact,
-                          constraints: const BoxConstraints(
-                            minWidth: 32,
-                            minHeight: 32,
-                          ),
-                          onPressed: widget.onResume,
-                        ),
-                    ],
+                    ),
+                    child: Icon(
+                      Icons.expand_more,
+                      size: icons.sm,
+                      color: cs.onSurfaceVariant,
+                    ),
                   ),
-                ),
+                  SizedBox(width: spacing.xs),
+                  Expanded(
+                    child: Text(
+                      l10n.sessionFollowUpQueued(items.length),
+                      style: styles.smColored(cs.onSurfaceVariant),
+                    ),
+                  ),
+                  if (_showResume)
+                    IconButton(
+                      icon: const Icon(Icons.play_arrow, size: 18),
+                      tooltip: l10n.sessionFollowUpResume,
+                      color: cs.primary,
+                      visualDensity: VisualDensity.compact,
+                      constraints: const BoxConstraints(
+                        minWidth: 32,
+                        minHeight: 32,
+                      ),
+                      onPressed: widget.onResume,
+                    ),
+                ],
               ),
             ),
             AnimatedSize(

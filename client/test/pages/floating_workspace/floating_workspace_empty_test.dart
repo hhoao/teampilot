@@ -2,6 +2,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/pages/floating_workspace/floating_workspace_empty.dart';
 
 void main() {
@@ -142,11 +143,16 @@ void main() {
     await gesture.moveTo(tester.getCenter(find.text('打开文件')));
     await tester.pumpAndSettle();
 
-    Color fillOf(String id) => tester
-        .widget<ColoredBox>(
-          find.byKey(ValueKey('floating_empty_row_fill_$id')),
-        )
-        .color;
+    Color fillOf(String id) {
+      final box = tester.widget<AnimatedContainer>(
+        find.descendant(
+          of: find.byKey(ValueKey('floating_empty_row_fill_$id')),
+          matching: find.byType(AnimatedContainer),
+        ),
+      );
+      final deco = box.decoration! as BoxDecoration;
+      return deco.color!;
+    }
 
     expect(fillOf('newTerminal'), Colors.transparent);
     expect(fillOf('openFile'), isNot(Colors.transparent));

@@ -271,9 +271,6 @@ class _MemberChipState extends State<_MemberChip> {
         ? cs.primary.withValues(alpha: 0.14)
         : cs.surfaceContainer;
     final hoverTint = cs.onSurface.withValues(alpha: 0.06);
-    final background = _hovered
-        ? Color.alphaBlend(hoverTint, restingBg)
-        : restingBg;
     final borderColor = selected
         ? cs.primary.withValues(alpha: 0.4)
         : _hovered
@@ -282,39 +279,36 @@ class _MemberChipState extends State<_MemberChip> {
 
     return Padding(
       padding: const EdgeInsets.only(right: 8),
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
-        child: GestureDetector(
-          onTap: widget.onTap,
-          behavior: HitTestBehavior.opaque,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: background,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: borderColor),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  widget.member.isTeamLead
-                      ? Icons.star_rounded
-                      : Icons.person_outline,
-                  size: context.tpIconSizes.md,
-                  color: selected ? cs.primary : cs.onSurfaceVariant,
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  widget.member.displayName,
-                  style: selected
-                      ? styles.smSemiboldColored(cs.primary)
-                      : styles.smColored(cs.onSurface),
-                ),
-              ],
-            ),
+      child: TpHover(
+        onTap: widget.onTap,
+        onHoverChanged: (hovered) => setState(() => _hovered = hovered),
+        borderRadius: BorderRadius.circular(8),
+        backgroundColor: restingBg,
+        hoverColor: Color.alphaBlend(hoverTint, restingBg),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: borderColor),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                widget.member.isTeamLead
+                    ? Icons.star_rounded
+                    : Icons.person_outline,
+                size: context.tpIconSizes.md,
+                color: selected ? cs.primary : cs.onSurfaceVariant,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                widget.member.displayName,
+                style: selected
+                    ? styles.smSemiboldColored(cs.primary)
+                    : styles.smColored(cs.onSurface),
+              ),
+            ],
           ),
         ),
       ),
@@ -338,32 +332,27 @@ class _AddMemberChipState extends State<_AddMemberChip> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final hoverTint = cs.onSurface.withValues(alpha: 0.06);
-    final background = _hovered
-        ? Color.alphaBlend(hoverTint, cs.surfaceContainer)
-        : cs.surfaceContainer;
+    final restingBg = cs.surfaceContainer;
     final borderColor = _hovered
         ? cs.primary.withValues(alpha: 0.35)
         : cs.outlineVariant.withValues(alpha: 0.7);
 
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        behavior: HitTestBehavior.opaque,
-        child: Container(
-          padding: const EdgeInsets.all(9),
-          decoration: BoxDecoration(
-            color: background,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: borderColor),
-          ),
-          child: Icon(
-            Icons.person_add_alt_1_outlined,
-            size: context.tpIconSizes.md,
-            color: cs.onSurfaceVariant,
-          ),
+    return TpHover(
+      onTap: widget.onTap,
+      onHoverChanged: (hovered) => setState(() => _hovered = hovered),
+      borderRadius: BorderRadius.circular(8),
+      backgroundColor: restingBg,
+      hoverColor: Color.alphaBlend(hoverTint, restingBg),
+      padding: const EdgeInsets.all(9),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: borderColor),
+        ),
+        child: Icon(
+          Icons.person_add_alt_1_outlined,
+          size: context.tpIconSizes.md,
+          color: cs.onSurfaceVariant,
         ),
       ),
     );

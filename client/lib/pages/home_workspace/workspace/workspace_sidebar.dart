@@ -624,47 +624,31 @@ class _SidebarActionTile extends StatefulWidget {
 }
 
 class _SidebarActionTileState extends State<_SidebarActionTile> {
-  bool _hovered = false;
-
   bool get _enabled => widget.enabled;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final styles = TpTextStyles.of(context);
-    final background = !_enabled
-        ? Colors.transparent
-        : _hovered
-        ? cs.onSurface.withValues(alpha: 0.05)
-        : Colors.transparent;
     final foreground = _enabled
         ? cs.onSurface
         : cs.onSurface.withValues(alpha: 0.38);
 
-    final tile = MouseRegion(
-      onEnter: _enabled ? (_) => setState(() => _hovered = true) : null,
-      onExit: _enabled ? (_) => setState(() => _hovered = false) : null,
-      child: Material(
-        color: background,
-        borderRadius: BorderRadius.circular(8),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(8),
-          onTap: _enabled ? widget.onTap : null,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-            child: Row(
-              children: [
-                Icon(
-                  widget.icon,
-                  size: context.tpIconSizes.md,
-                  color: foreground,
-                ),
-                const SizedBox(width: 10),
-                Expanded(child: Text(widget.label, style: styles.lg)),
-              ],
-            ),
+    final tile = TpHover(
+      enabled: _enabled,
+      onTap: widget.onTap,
+      hoverColor: cs.onSurface.withValues(alpha: 0.05),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      child: Row(
+        children: [
+          Icon(
+            widget.icon,
+            size: context.tpIconSizes.md,
+            color: foreground,
           ),
-        ),
+          const SizedBox(width: 10),
+          Expanded(child: Text(widget.label, style: styles.lg)),
+        ],
       ),
     );
 

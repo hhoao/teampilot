@@ -527,58 +527,53 @@ class _ModeCardState extends State<_ModeCard> {
         : _hovered
         ? cs.primary.withValues(alpha: 0.45)
         : cs.outlineVariant.withValues(alpha: 0.6);
-    final Color background = selected
-        ? cs.primary.withValues(alpha: 0.07)
-        : _hovered
-        ? Color.alphaBlend(hoverTint, restingBg)
-        : restingBg;
 
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      hitTestBehavior: HitTestBehavior.opaque,
-      onEnter: (_) => _setHovered(true),
-      onExit: (_) => _setHovered(false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        behavior: HitTestBehavior.opaque,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          width: double.infinity,
-          padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
-          decoration: BoxDecoration(
-            color: background,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: borderColor, width: selected ? 2 : 1),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(
-                    widget.icon,
-                    size: context.tpIconSizes.lg,
-                    color: selected ? cs.primary : cs.onSurfaceVariant,
+    return TpHover(
+      onTap: widget.onTap,
+      onHoverChanged: _setHovered,
+      borderRadius: BorderRadius.circular(12),
+      duration: const Duration(milliseconds: 150),
+      width: double.infinity,
+      backgroundColor: selected
+          ? cs.primary.withValues(alpha: 0.07)
+          : restingBg,
+      hoverColor: selected
+          ? cs.primary.withValues(alpha: 0.07)
+          : Color.alphaBlend(hoverTint, restingBg),
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: borderColor, width: selected ? 2 : 1),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  widget.icon,
+                  size: context.tpIconSizes.lg,
+                  color: selected ? cs.primary : cs.onSurfaceVariant,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    widget.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: styles.lgBoldSnugColored(cs.onSurface),
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      widget.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: styles.lgBoldSnugColored(cs.onSurface),
-                    ),
-                  ),
-                  _Badge(label: widget.badge, primary: widget.badgeIsPrimary),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Text(
-                widget.description,
-                style: styles.smColored(cs.onSurfaceVariant),
-              ),
-            ],
-          ),
+                ),
+                _Badge(label: widget.badge, primary: widget.badgeIsPrimary),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              widget.description,
+              style: styles.smColored(cs.onSurfaceVariant),
+            ),
+          ],
         ),
       ),
     );
