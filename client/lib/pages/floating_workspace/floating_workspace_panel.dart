@@ -168,7 +168,8 @@ class _FloatingWorkspacePanelBodyState
           builder: (context, constraints) {
             final hostSize = Size(constraints.maxWidth, constraints.maxHeight);
             _lastHostSize = hostSize;
-            final safe = insets ??
+            final safe =
+                insets ??
                 FloatingMaximizeInsets.cardSafeArea(
                   isMobile: TpSidebarScope.maybeOf(context)?.isMobile ?? false,
                 );
@@ -216,7 +217,8 @@ class _FloatingWorkspacePanelBodyState
                       panelBounds: positioned,
                       allowTitleDrag:
                           state.visibility == FloatingPanelVisibility.open,
-                      allowEdgeResize: !state.isMaximized &&
+                      allowEdgeResize:
+                          !state.isMaximized &&
                           state.visibility == FloatingPanelVisibility.open,
                       onGestureBegin: _beginGesture,
                       onGestureUpdate: _updateGesture,
@@ -267,11 +269,7 @@ Rect defaultFloatingPanelBounds(
     toggleOffset: toggleOffset,
     preferredWidth: preferredWidth,
     preferredHeight: preferredHeight,
-  ).resolve(
-    host,
-    minWidth: _kMinPanelWidth,
-    minHeight: _kMinPanelHeight,
-  );
+  ).resolve(host, minWidth: _kMinPanelWidth, minHeight: _kMinPanelHeight);
 }
 
 /// Clamps [bounds] inside [host] with minimum panel size.
@@ -369,8 +367,9 @@ class _PanelChromeFrameState extends State<_PanelChromeFrame> {
     final activeId = bucket.activeTabId;
     final activeTab =
         tabs.firstWhereOrNull((t) => t.id == activeId) ?? tabs.firstOrNull;
-    final surface =
-        activeTab == null ? null : widget.registry[activeTab.surfaceId];
+    final surface = activeTab == null
+        ? null
+        : widget.registry[activeTab.surfaceId];
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -538,10 +537,7 @@ class _PanelChromeFrameState extends State<_PanelChromeFrame> {
           ? box.localToGlobal(box.size.center(Offset.zero))
           : Offset.zero;
       unawaited(
-        showFloatingNewTerminalMenu(
-          context: context,
-          globalPosition: origin,
-        ),
+        showFloatingNewTerminalMenu(context: context, globalPosition: origin),
       );
       return;
     }
@@ -619,8 +615,9 @@ class _PanelChromeFrameState extends State<_PanelChromeFrame> {
           },
           onUpdate: (details) => _applyResize(edge, details.globalPosition),
           onEnd: (_) {
-            FloatingTerminalPtyHoldScope.maybeOf(context)
-                ?.endPtyHold(flush: true);
+            FloatingTerminalPtyHoldScope.maybeOf(
+              context,
+            )?.endPtyHold(flush: true);
             widget.onGestureEnd(widget.panelBounds);
             _activeResizeEdge = null;
             _resizeStartPointer = null;
@@ -699,9 +696,7 @@ class _TitleBar extends StatelessWidget {
       decoration: BoxDecoration(
         color: cs.surface,
         border: Border(
-          bottom: BorderSide(
-            color: cs.outlineVariant.withValues(alpha: 0.5),
-          ),
+          bottom: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5)),
         ),
       ),
       child: SizedBox(
@@ -737,7 +732,7 @@ class _TitleBar extends StatelessWidget {
                           alignment: Alignment.centerLeft,
                           widthFactor: 1,
                           child: Padding(
-                            padding: const EdgeInsets.only(left: 6),
+                            padding: const EdgeInsets.only(left: 0),
                             child: tabBar,
                           ),
                         ),
