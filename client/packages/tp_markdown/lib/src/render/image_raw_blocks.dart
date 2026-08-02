@@ -40,7 +40,19 @@ Widget buildMarkdownImage({
       final height = (tokens.body.fontSize ?? 14) * (tokens.body.height ?? 1.4);
       return Image(image: provider, height: height, fit: BoxFit.contain);
     }
-    return Image(image: provider, fit: BoxFit.contain);
+    // Block images: cap to available width (README screenshots), keep intrinsic
+    // size when smaller so tiny assets are not upscaled.
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxW = constraints.maxWidth;
+        return ConstrainedBox(
+          constraints: BoxConstraints(
+            maxWidth: maxW.isFinite ? maxW : double.infinity,
+          ),
+          child: Image(image: provider, fit: BoxFit.contain),
+        );
+      },
+    );
   }
   return _imagePlaceholder(alt ?? src, tokens);
 }

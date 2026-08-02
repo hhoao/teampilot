@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import '../ir/markdown_block_kind.dart';
@@ -81,21 +82,20 @@ InlineSpan inlineSpan(
           letterSpacing: base.letterSpacing,
         ),
       ),
-    // WidgetSpan + GestureDetector so link taps win under parent SelectionArea.
-    LinkRun(:final url, :final title, :final children) => WidgetSpan(
-        alignment: PlaceholderAlignment.baseline,
-        baseline: TextBaseline.alphabetic,
-        child: GestureDetector(
-          onTap: resolvers.onLinkTap == null
-              ? null
-              : () => resolvers.onLinkTap!(url),
-          child: Text.rich(
-            TextSpan(
-              style: tokens.link,
-              children: inlineSpans(children, tokens, tokens.link, resolvers),
-            ),
-            strutStyle: forcedStrut(tokens.link),
-          ),
+    // TextSpan (not WidgetSpan) so SelectionArea keeps a continuous highlight.
+    // mouseCursor + TapGestureRecognizer provide click affordance. Recognizer
+    // must sit on spans that own text ranges — a children-only parent is not
+    // hit-tested for gestures under RenderParagraph.
+    LinkRun(:final url, :final title, :final children) => TextSpan(
+        style: tokens.link,
+        mouseCursor: resolvers.onLinkTap == null
+            ? MouseCursor.defer
+            : SystemMouseCursors.click,
+        children: _linkChildren(
+          children,
+          tokens,
+          resolvers,
+          resolvers.createLinkRecognizer?.call(url),
         ),
       ),
     ImageRun(:final src, :final alt) => WidgetSpan(
@@ -110,6 +110,39 @@ InlineSpan inlineSpan(
         ),
       ),
   };
+}
+
+List<InlineSpan> _linkChildren(
+  List<InlineRun> children,
+  MarkdownTokens tokens,
+  MarkdownResolvers resolvers,
+  GestureRecognizer? recognizer,
+) {
+  final cursor = resolvers.onLinkTap == null
+      ? MouseCursor.defer
+      : SystemMouseCursors.click;
+  return [
+    for (final span in inlineSpans(children, tokens, tokens.link, resolvers))
+      _withLinkGesture(span, recognizer, cursor),
+  ];
+}
+
+InlineSpan _withLinkGesture(
+  InlineSpan span,
+  GestureRecognizer? recognizer,
+  MouseCursor cursor,
+) {
+  if (span is! TextSpan) return span;
+  return TextSpan(
+    text: span.text,
+    style: span.style,
+    mouseCursor: cursor,
+    recognizer: recognizer ?? span.recognizer,
+    children: [
+      for (final child in span.children ?? const <InlineSpan>[])
+        _withLinkGesture(child, recognizer, cursor),
+    ],
+  );
 }
 
 /// One [Text.rich] for a run of adjacent [ParagraphBlock]s; internal gaps use

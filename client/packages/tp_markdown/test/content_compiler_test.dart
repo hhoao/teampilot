@@ -140,6 +140,19 @@ void main() {
     expect((doc.blocks.single as ImageBlock).alt, 'alt');
   });
 
+  test('adjacent image lines without blank line compile to ImageBlocks', () {
+    // GFM merges these into one <p> with two <img>s; they must stay block
+    // images (README hero screenshots), not tiny inline ImageRuns.
+    final doc = compileMarkdown(
+      '![a](assets/image.png)\n![b](assets/image1.png)\n',
+    );
+    expect(doc.blocks, hasLength(2));
+    expect(doc.blocks[0], isA<ImageBlock>());
+    expect(doc.blocks[1], isA<ImageBlock>());
+    expect((doc.blocks[0] as ImageBlock).src, 'assets/image.png');
+    expect((doc.blocks[1] as ImageBlock).src, 'assets/image1.png');
+  });
+
   test('inline image in paragraph compiles to ImageRun', () {
     final doc = compileMarkdown('hi ![a](b.png) there');
     final p = doc.blocks.single as ParagraphBlock;

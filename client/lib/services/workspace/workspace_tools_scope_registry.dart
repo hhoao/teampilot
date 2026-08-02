@@ -24,6 +24,15 @@ class WorkspaceToolsScopeRegistry {
     return cubit;
   }
 
+  /// Returns an already-created cubit without allocating a new one.
+  WorkspaceToolsScopeCubit? peek(String tabScopeId) {
+    final key = tabScopeId.trim();
+    if (key.isEmpty) return null;
+    final existing = _cubits[key];
+    if (existing == null || existing.isClosed) return null;
+    return existing;
+  }
+
   void removeScope(String tabScopeId) {
     final key = tabScopeId.trim();
     if (key.isEmpty) return;

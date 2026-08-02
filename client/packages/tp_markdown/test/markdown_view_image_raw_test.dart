@@ -32,6 +32,38 @@ void main() {
     expect(tester.widget<Image>(find.byType(Image)).image, testImage);
   });
 
+  testWidgets('ImageBlock caps to available width without forcing upscale', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 400,
+            child: MarkdownView(
+              document: const MarkdownDocument(
+                blocks: [ImageBlock(src: 'test.png', alt: 'Test')],
+              ),
+              tokens: MarkdownTokens.test(),
+              resolvers: MarkdownResolvers(
+                resolveImage: (src) => src == 'test.png' ? testImage : null,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final box = tester.widget<ConstrainedBox>(
+      find.descendant(
+        of: find.byType(MarkdownView),
+        matching: find.byType(ConstrainedBox),
+      ),
+    );
+    expect(box.constraints.maxWidth, 400);
+    expect(tester.getSize(find.byType(Image)).width, lessThanOrEqualTo(400));
+  });
+
   testWidgets('ImageBlock without resolver shows icon and alt placeholder',
       (tester) async {
     await tester.pumpWidget(

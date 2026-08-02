@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import '../ir/markdown_document.dart';
@@ -8,7 +9,7 @@ import '../tokens/markdown_tokens.dart';
 import 'inline_spans.dart';
 
 /// Semantic markdown renderer: Column layout with kind-based inter-block gaps.
-class MarkdownView extends StatelessWidget {
+class MarkdownView extends StatefulWidget {
   const MarkdownView({
     super.key,
     required this.document,
@@ -25,11 +26,59 @@ class MarkdownView extends StatelessWidget {
   final BlockWidgetRegistry? registry;
 
   @override
+  State<MarkdownView> createState() => _MarkdownViewState();
+}
+
+class _MarkdownViewState extends State<MarkdownView> {
+  final List<TapGestureRecognizer> _linkRecognizers = [];
+
+  @override
+  void dispose() {
+    _disposeRecognizers(_linkRecognizers);
+    super.dispose();
+  }
+
+  void _disposeRecognizers(List<TapGestureRecognizer> recognizers) {
+    for (final recognizer in recognizers) {
+      recognizer.dispose();
+    }
+    recognizers.clear();
+  }
+
+  MarkdownResolvers _resolversForBuild() {
+    // Retire last frame's recognizers after this build commits so in-flight
+    // pointer routes are not disposed mid-gesture.
+    if (_linkRecognizers.isNotEmpty) {
+      final retiring = List<TapGestureRecognizer>.of(_linkRecognizers);
+      _linkRecognizers.clear();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _disposeRecognizers(retiring);
+      });
+    }
+
+    final onLinkTap = widget.resolvers.onLinkTap;
+    if (onLinkTap == null) return widget.resolvers;
+
+    return MarkdownResolvers(
+      onLinkTap: onLinkTap,
+      resolveImage: widget.resolvers.resolveImage,
+      createLinkRecognizer: (href) {
+        final recognizer = TapGestureRecognizer()..onTap = () => onLinkTap(href);
+        _linkRecognizers.add(recognizer);
+        return recognizer;
+      },
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final blocks = document.blocks;
+    final blocks = widget.document.blocks;
     if (blocks.isEmpty) return const SizedBox.shrink();
 
-    final reg = registry ?? BlockWidgetRegistry.builtIn();
+    final resolvers = _resolversForBuild();
+    final tokens = widget.tokens;
+    final strings = widget.strings;
+    final reg = widget.registry ?? BlockWidgetRegistry.builtIn();
     final children = <Widget>[];
     MarkdownBlock? previous;
     var i = 0;

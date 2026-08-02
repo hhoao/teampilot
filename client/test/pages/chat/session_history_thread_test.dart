@@ -6,6 +6,7 @@ import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/pages/chat/history_scroll_cursor_lock.dart';
 import 'package:teampilot/pages/chat/session_history_live_chrome.dart';
 import 'package:teampilot/pages/chat/session_history_thread.dart';
+import 'package:teampilot/widgets/scroll_cursor_lock.dart';
 
 List<AiMessage> _soloUserMessages(int count) {
   return List.generate(
@@ -242,8 +243,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(
-        tester.widget<HistoryScrollCursorLock>(
-          find.byType(HistoryScrollCursorLock),
+        tester.widget<ScrollCursorLock>(
+          find.byType(ScrollCursorLock),
         ).active,
         isFalse,
       );
@@ -252,8 +253,8 @@ void main() {
       await tester.pump();
 
       expect(
-        tester.widget<HistoryScrollCursorLock>(
-          find.byType(HistoryScrollCursorLock),
+        tester.widget<ScrollCursorLock>(
+          find.byType(ScrollCursorLock),
         ).active,
         isTrue,
       );
@@ -262,8 +263,8 @@ void main() {
       await tester.pump();
 
       expect(
-        tester.widget<HistoryScrollCursorLock>(
-          find.byType(HistoryScrollCursorLock),
+        tester.widget<ScrollCursorLock>(
+          find.byType(ScrollCursorLock),
         ).active,
         isFalse,
       );

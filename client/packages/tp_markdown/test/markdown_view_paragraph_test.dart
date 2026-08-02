@@ -1,6 +1,6 @@
-import 'package:tp_markdown/tp_markdown.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tp_markdown/tp_markdown.dart';
 
 String _textSpanPlainText(InlineSpan span) {
   if (span is TextSpan) {
@@ -183,12 +183,10 @@ void main() {
               blocks: [
                 ParagraphBlock(
                   runs: [
-                    TextRun('See '),
                     LinkRun(
                       url: 'https://example.com',
                       children: [TextRun('docs')],
                     ),
-                    TextRun('.'),
                   ],
                 ),
               ],
@@ -202,8 +200,113 @@ void main() {
       ),
     );
 
-    await tester.tap(find.textContaining('docs'));
+    // Paragraph is link-only so the RichText center hits the recognizer.
+    await tester.tap(find.byType(RichText));
     await tester.pump();
     expect(tappedHref, 'https://example.com');
+  });
+
+  testWidgets('links stay TextSpan so SelectionArea selection stays continuous', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SelectionArea(
+            child: MarkdownView(
+              document: const MarkdownDocument(
+                blocks: [
+                  ParagraphBlock(
+                    runs: [
+                      TextRun('before '),
+                      LinkRun(
+                        url: 'https://example.com',
+                        children: [TextRun('link')],
+                      ),
+                      TextRun(' after'),
+                    ],
+                  ),
+                ],
+              ),
+              tokens: MarkdownTokens.test(),
+              resolvers: MarkdownResolvers(onLinkTap: (_) {}),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    // WidgetSpan links punch holes in SelectionArea; TextSpan keeps one geometry.
+    final rich = tester.widget<RichText>(find.byType(RichText).first);
+    var sawWidgetSpan = false;
+    var sawLinkSpan = false;
+    void walk(InlineSpan span) {
+      if (span is WidgetSpan) {
+        sawWidgetSpan = true;
+        return;
+      }
+      if (span is TextSpan) {
+        if (span.mouseCursor == SystemMouseCursors.click &&
+            span.recognizer != null) {
+          sawLinkSpan = true;
+        }
+        for (final child in span.children ?? const <InlineSpan>[]) {
+          walk(child);
+        }
+      }
+    }
+
+    walk(rich.text);
+    expect(sawWidgetSpan, isFalse);
+    expect(sawLinkSpan, isTrue);
+  });
+
+  testWidgets('tappable link uses click mouse cursor under SelectionArea', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SelectionArea(
+            child: MarkdownView(
+              document: const MarkdownDocument(
+                blocks: [
+                  ParagraphBlock(
+                    runs: [
+                      LinkRun(
+                        url: 'https://example.com',
+                        children: [TextRun('docs')],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              tokens: MarkdownTokens.test(),
+              resolvers: MarkdownResolvers(onLinkTap: (_) {}),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+
+    // Assert the span declares click cursor (SelectionArea may still show an
+    // I-beam at runtime; continuous selection requires TextSpan links).
+    final rich = tester.widget<RichText>(find.byType(RichText).first);
+    var sawClickCursor = false;
+    void walk(InlineSpan span) {
+      if (span is TextSpan) {
+        if (span.mouseCursor == SystemMouseCursors.click) {
+          sawClickCursor = true;
+        }
+        for (final child in span.children ?? const <InlineSpan>[]) {
+          walk(child);
+        }
+      }
+    }
+
+    walk(rich.text);
+    expect(sawClickCursor, isTrue);
   });
 }

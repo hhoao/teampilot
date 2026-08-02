@@ -24,9 +24,9 @@ import '../../services/editor_platform/editor_viewport_token_binder.dart';
 import '../../services/selection_ai/selection_ask_ai.dart';
 import '../../services/selection_ai/selection_ask_ai_fab_host.dart';
 import '../../services/workbench/workbench_editor_opener.dart';
-import '../../services/workspace/workspace_tools_scope.dart';
 import '../../theme/app_markdown_style_sheet.dart' show buildAppMarkdownTokens;
 import '../../widgets/app_toast/app_toast.dart';
+import '../../widgets/scroll_cursor_lock.dart';
 import '../../widgets/workbench/file_diff_surface_toggle.dart';
 import '../../widgets/workbench/markdown_view_mode_toggle.dart';
 import 'file_editor_image_preview.dart';
@@ -64,8 +64,8 @@ class _FileEditorInsets {
   );
 
   static const _toolbarPadding = TpScaledEdgeInsets(
-    sm: EdgeInsets.fromLTRB(8, 0, 8, 0),
-    xxl: EdgeInsets.fromLTRB(28, 0, 28, 0),
+    sm: EdgeInsets.fromLTRB(8, 2, 8, 2),
+    xxl: EdgeInsets.fromLTRB(28, 8, 28, 8),
   );
 
   static const _lineNumberPadding = TpScaledEdgeInsets(
@@ -161,10 +161,7 @@ class FileEditorSurface extends StatelessWidget {
                 _FileEditorToolbar(workspaceId: workspaceId, path: path),
                 const Divider(height: 1),
                 Expanded(
-                  child: _FileEditorBody(
-                    workspaceId: workspaceId,
-                    path: path,
-                  ),
+                  child: _FileEditorBody(workspaceId: workspaceId, path: path),
                 ),
               ],
             ),
@@ -249,72 +246,78 @@ class _FileEditorToolbar extends StatelessWidget {
     final isMarkdown = isMarkdownEditorPath(path);
     final opener = context.read<WorkbenchEditorOpener>();
     final insets = TpWidthValueScope.of<_FileEditorInsets>(context);
-    return SizedBox(
-      height: 36,
-      child: Padding(
-        padding: insets.toolbarPadding,
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                dirty ? '$name •' : name,
-                style: TpTextStyles.of(context).mdSemibold,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
+    final iconColor = Theme.of(context).colorScheme.tpIconMuted;
+    // Height follows content + scaled padding; Row centers title vs actions.
+    return Padding(
+      padding: insets.toolbarPadding,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            child: Text(
+              dirty ? '$name •' : name,
+              style: TpTextStyles.of(context).mdSemibold,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
-            if (!readOnly) ...[
-              IconButton(
-                tooltip: context.l10n.editorSave,
-                icon: const Icon(Icons.save_outlined, size: 18),
-                onPressed: () => unawaited(
-                  _saveFileWithDiffGate(context, workspaceId, path),
-                ),
-              ),
-              IconButton(
-                tooltip: context.l10n.editorRevertChanges,
-                icon: const Icon(Icons.undo, size: 18),
-                onPressed: dirty
-                    ? () => context.read<EditorCubit>().revertFile(
-                        workspaceId,
-                        path,
-                      )
-                    : null,
-              ),
-            ],
-            if (isMarkdown) ...[
-              const SizedBox(width: 4),
-              ListenableBuilder(
-                listenable: opener.markdownViewModes,
-                builder: (context, _) {
-                  return MarkdownViewModeToggle(
-                    mode: opener.markdownViewModes.modeFor(path),
-                    onModeChanged: (mode) =>
-                        opener.markdownViewModes.setMode(path, mode),
-                  );
-                },
-              ),
-            ],
-            if (canToggleDiff) ...[
-              const SizedBox(width: 4),
-              FileDiffSurfaceToggle(
-                mode: FileDiffSurfaceMode.file,
-                onModeChanged: (mode) {
-                  if (mode == FileDiffSurfaceMode.diff) {
-                    unawaited(
-                      switchFileDiffSurface(
-                        context: context,
-                        workspaceId: workspaceId,
-                        absolutePath: path,
-                        target: mode,
-                      ),
-                    );
-                  }
-                },
-              ),
-            ],
+          ),
+          if (!readOnly) ...[
+            TpIconButton(
+              tooltip: context.l10n.editorSave,
+              icon: Icons.save_outlined,
+              size: TpIconButton.kCompactSize,
+              compact: true,
+              color: iconColor,
+              onTap: () =>
+                  unawaited(_saveFileWithDiffGate(context, workspaceId, path)),
+            ),
+            TpIconButton(
+              tooltip: context.l10n.editorRevertChanges,
+              icon: Icons.undo,
+              size: TpIconButton.kCompactSize,
+              compact: true,
+              color: iconColor,
+              enabled: dirty,
+              onTap: dirty
+                  ? () => context.read<EditorCubit>().revertFile(
+                      workspaceId,
+                      path,
+                    )
+                  : null,
+            ),
           ],
-        ),
+          if (isMarkdown) ...[
+            const SizedBox(width: 4),
+            ListenableBuilder(
+              listenable: opener.markdownViewModes,
+              builder: (context, _) {
+                return MarkdownViewModeToggle(
+                  mode: opener.markdownViewModes.modeFor(path),
+                  onModeChanged: (mode) =>
+                      opener.markdownViewModes.setMode(path, mode),
+                );
+              },
+            ),
+          ],
+          if (canToggleDiff) ...[
+            const SizedBox(width: 4),
+            FileDiffSurfaceToggle(
+              mode: FileDiffSurfaceMode.file,
+              onModeChanged: (mode) {
+                if (mode == FileDiffSurfaceMode.diff) {
+                  unawaited(
+                    switchFileDiffSurface(
+                      context: context,
+                      workspaceId: workspaceId,
+                      absolutePath: path,
+                      target: mode,
+                    ),
+                  );
+                }
+              },
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -517,7 +520,14 @@ class _MarkdownPreviewPane extends StatefulWidget {
 }
 
 class _MarkdownPreviewPaneState extends State<_MarkdownPreviewPane> {
+  static const _hoverResumeIdle = Duration(milliseconds: 160);
+
   late String _data = widget.controller.text;
+
+  /// While false, force [SystemMouseCursors.basic] so text/link cursors do not
+  /// flicker as markdown scrolls under a stationary pointer.
+  final ValueNotifier<bool> _hoverEffectsEnabled = ValueNotifier(true);
+  Timer? _hoverResumeTimer;
 
   @override
   void initState() {
@@ -537,6 +547,8 @@ class _MarkdownPreviewPaneState extends State<_MarkdownPreviewPane> {
 
   @override
   void dispose() {
+    _hoverResumeTimer?.cancel();
+    _hoverEffectsEnabled.dispose();
     widget.controller.removeListener(_onControllerChanged);
     super.dispose();
   }
@@ -549,12 +561,53 @@ class _MarkdownPreviewPaneState extends State<_MarkdownPreviewPane> {
     setState(() => _data = next);
   }
 
+  void _setHoverEnabled(bool enabled) {
+    if (_hoverEffectsEnabled.value == enabled) return;
+    _hoverEffectsEnabled.value = enabled;
+  }
+
+  void _suppressHoverForScroll() {
+    _hoverResumeTimer?.cancel();
+    _setHoverEnabled(false);
+  }
+
+  void _scheduleHoverResume() {
+    _hoverResumeTimer?.cancel();
+    _hoverResumeTimer = Timer(_hoverResumeIdle, () {
+      if (!mounted) return;
+      _setHoverEnabled(true);
+    });
+  }
+
+  bool _onScrollNotification(ScrollNotification notification) {
+    if (notification is ScrollEndNotification) {
+      _scheduleHoverResume();
+      return false;
+    }
+    if (notification is ScrollStartNotification) {
+      _suppressHoverForScroll();
+      return false;
+    }
+    if (notification is ScrollUpdateNotification) {
+      final delta = notification.scrollDelta;
+      if (delta != null && delta != 0) {
+        _suppressHoverForScroll();
+      }
+    }
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final shell = _fileEditorShellColor(theme.colorScheme);
     final opener = context.read<WorkbenchEditorOpener>();
-    final roots = WorkspaceToolsScope.maybeOf(context)?.roots ?? const [];
+    // Floating file preview is a Stack sibling of WorkspaceToolsScope — resolve
+    // roots via inherited scope, registry peek, then workspace folderPaths.
+    final roots = markdownPreviewWorkspaceRoots(
+      context,
+      workspaceId: widget.workspaceId,
+    );
     final insets = TpWidthValueScope.of<_FileEditorInsets>(context);
     final resolvers = MarkdownResolvers(
       onLinkTap: (href) {
@@ -579,14 +632,26 @@ class _MarkdownPreviewPaneState extends State<_MarkdownPreviewPane> {
     // the top (flutter/flutter#110917).
     return ColoredBox(
       color: shell,
-      child: SingleChildScrollView(
-        padding: insets.markdownPadding,
-        child: AiLineSpacedSelectionStyle(
-          child: SelectionArea(
-            child: MarkdownView(
-              document: compileMarkdown(_data),
-              tokens: buildAppMarkdownTokens(theme, MarkdownProfile.document),
-              resolvers: resolvers,
+      child: NotificationListener<ScrollNotification>(
+        onNotification: _onScrollNotification,
+        child: ValueListenableBuilder<bool>(
+          valueListenable: _hoverEffectsEnabled,
+          builder: (context, hoverEnabled, child) {
+            return ScrollCursorLock(active: !hoverEnabled, child: child!);
+          },
+          child: SingleChildScrollView(
+            padding: insets.markdownPadding,
+            child: AiLineSpacedSelectionStyle(
+              child: SelectionArea(
+                child: MarkdownView(
+                  document: compileMarkdown(_data),
+                  tokens: buildAppMarkdownTokens(
+                    theme,
+                    MarkdownProfile.document,
+                  ),
+                  resolvers: resolvers,
+                ),
+              ),
             ),
           ),
         ),

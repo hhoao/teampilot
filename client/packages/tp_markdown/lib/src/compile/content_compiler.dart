@@ -44,7 +44,9 @@ MarkdownDocument compileMarkdown(String markdown) {
   );
   final nodes = document.parse(prepared);
   final compiled = MarkdownDocument(
-    blocks: [for (final node in nodes) _compileTopLevel(node)],
+    blocks: [
+      for (final node in nodes) ..._compileTopLevelBlocks(node),
+    ],
   );
   if (_messageContentCache.length >= _kMessageContentCacheMax) {
     _messageContentCache.remove(_messageContentCache.keys.first);
@@ -53,7 +55,16 @@ MarkdownDocument compileMarkdown(String markdown) {
   return compiled;
 }
 
-MarkdownBlock _compileTopLevel(md.Node node) {
+/// Expands image-only paragraphs (one or more `<img>`s) into [ImageBlock]s.
+List<MarkdownBlock> _compileTopLevelBlocks(md.Node node) {
+  if (node is md.Element && node.tag == 'p') {
+    final images = _tryCompileStandaloneImages(node);
+    if (images != null) return images;
+  }
+  return [_compileTopLevelNode(node)];
+}
+
+MarkdownBlock _compileTopLevelNode(md.Node node) {
   if (node is md.Text) {
     final text = node.textContent;
     if (_looksLikeHtml(text)) {
@@ -87,8 +98,7 @@ MarkdownBlock _compileElement(md.Element element) {
         runs: _compileInlines(element.children),
       );
     case 'p':
-      final standaloneImage = _tryCompileStandaloneImage(element);
-      if (standaloneImage != null) return standaloneImage;
+      // Image-only paragraphs are expanded in [_compileTopLevelBlocks].
       if (_hasUnsupportedInline(element.children)) {
         return RawLiteralBlock(rawMarkdown: _reconstructUnsupported(element));
       }
@@ -99,7 +109,7 @@ MarkdownBlock _compileElement(md.Element element) {
       return BlockquoteBlock(
         blocks: [
           for (final child in element.children ?? const <md.Node>[])
-            _compileTopLevel(child),
+            ..._compileTopLevelBlocks(child),
         ],
       );
     case 'hr':
@@ -165,7 +175,7 @@ ContentListItem _compileListItem(md.Element li) {
         }
         continue;
       }
-      children.add(_compileTopLevel(child));
+      children.addAll(_compileTopLevelBlocks(child));
       continue;
     }
     if (_hasUnsupportedInline([child])) {
@@ -344,17 +354,25 @@ bool _isSupportedInlineTag(String tag) {
   }
 }
 
-ImageBlock? _tryCompileStandaloneImage(md.Element paragraph) {
+/// Image-only `<p>` (one or more `<img>`, ignoring whitespace/`<br>`) → blocks.
+///
+/// GFM merges adjacent image lines without a blank line into one paragraph;
+/// those must stay [ImageBlock]s so preview does not shrink them to inline
+/// line-height thumbnails.
+List<ImageBlock>? _tryCompileStandaloneImages(md.Element paragraph) {
   if (paragraph.tag != 'p') return null;
-  final significant = <md.Node>[];
+  final images = <md.Element>[];
   for (final child in paragraph.children ?? const <md.Node>[]) {
     if (child is md.Text && child.textContent.trim().isEmpty) continue;
-    significant.add(child);
+    if (child is md.Element && child.tag == 'br') continue;
+    if (child is md.Element && child.tag == 'img') {
+      images.add(child);
+      continue;
+    }
+    return null;
   }
-  if (significant.length != 1) return null;
-  final only = significant.single;
-  if (only is! md.Element || only.tag != 'img') return null;
-  return _imageBlockFromElement(only);
+  if (images.isEmpty) return null;
+  return [for (final img in images) _imageBlockFromElement(img)];
 }
 
 ImageBlock _imageBlockFromElement(md.Element img) {

@@ -8,6 +8,7 @@ import 'package:teampilot/theme/app_font_resolver.dart';
 import 'package:teampilot/theme/app_markdown_style_sheet.dart';
 import 'package:teampilot/theme/app_theme.dart';
 import 'package:teampilot/theme/app_typography_scale.dart';
+import 'package:teampilot/widgets/scroll_cursor_lock.dart';
 import 'package:tp_markdown/tp_markdown.dart';
 
 const _readmeFixture = '''
@@ -30,15 +31,22 @@ ThemeData _themeForTest() {
 }
 
 /// Mirrors [_MarkdownPreviewPane] layout without [EditorCubit] tree-sitter open.
-Widget _previewPaneFixture(ThemeData theme, String markdown) {
-  return SingleChildScrollView(
-    padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-    child: AiLineSpacedSelectionStyle(
-      child: SelectionArea(
-        child: MarkdownView(
-          document: compileMarkdown(markdown),
-          tokens: buildAppMarkdownTokens(theme, MarkdownProfile.document),
-          resolvers: const MarkdownResolvers(),
+Widget _previewPaneFixture(
+  ThemeData theme,
+  String markdown, {
+  bool scrollCursorLockActive = false,
+}) {
+  return ScrollCursorLock(
+    active: scrollCursorLockActive,
+    child: SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+      child: AiLineSpacedSelectionStyle(
+        child: SelectionArea(
+          child: MarkdownView(
+            document: compileMarkdown(markdown),
+            tokens: buildAppMarkdownTokens(theme, MarkdownProfile.document),
+            resolvers: const MarkdownResolvers(),
+          ),
         ),
       ),
     ),
@@ -69,6 +77,38 @@ void main() {
     expect(find.byType(MarkdownView), findsOneWidget);
     expect(find.byType(SelectionArea), findsOneWidget);
     expect(find.byType(SingleChildScrollView), findsOneWidget);
+    expect(find.byType(ScrollCursorLock), findsOneWidget);
+    expect(
+      tester.widget<ScrollCursorLock>(find.byType(ScrollCursorLock)).active,
+      isFalse,
+    );
+  });
+
+  testWidgets('markdown preview scroll cursor lock can force basic cursor', (
+    tester,
+  ) async {
+    final theme = _themeForTest();
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: theme,
+        home: TpTheme(
+          data: TpThemeData.fromColorScheme(theme.colorScheme, scale: 1.0),
+          child: Scaffold(
+            body: _previewPaneFixture(
+              theme,
+              _readmeFixture,
+              scrollCursorLockActive: true,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(
+      tester.widget<ScrollCursorLock>(find.byType(ScrollCursorLock)).active,
+      isTrue,
+    );
   });
 
   testWidgets('document vs compact profiles change headingTop SizedBox heights', (
