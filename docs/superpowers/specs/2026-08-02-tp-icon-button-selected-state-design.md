@@ -31,10 +31,12 @@
 |-------|----------|
 | Visual when `selected` | Background `primary` @ **0.16**; border `primary` @ **0.28**; icon `primary` — same alphas as `_HomePill` |
 | Border radius | Keep `TpIconButton` default (`kDefaultBorderRadius` = 6); do not force pill’s 8 |
-| Override precedence | Explicit `color` / `backgroundColor` still win over `selected` defaults |
+| Override precedence | **Per property:** if `color != null`, use it; else if `selected`, use `primary`; else default `onSurface`. If `backgroundColor != null`, use it as fill; else if `selected`, use `primary@0.16`; else transparent. Selected **border** applies whenever `selected` is true (not gated on `backgroundColor`). |
 | Hamburger closed icon | `Icons.menu` |
 | Hamburger open icon | `Icons.menu_open` |
-| Desktop sidebar toggle icon | Stay `Icons.view_sidebar_outlined`; only set `selected: effectiveOpen` |
+| Desktop sidebar toggle icon | Stay `Icons.view_sidebar_outlined`; only set `selected: effectiveOpen`; remove hand-set `color` / `backgroundColor` |
+| Desktop toggle idle color | Accept `TpIconButton` default `onSurface` when closed (may differ from today’s `onSurfaceVariant`) |
+| Icon coloring path | Call sites that need `selected` icon tint must pass `icon:` (`IconData`), not a precolored `iconWidget`, so `effectiveColor` applies |
 | Home open signal | `TpSidebarScope.openMobile` |
 | Workspace open signal | `mobileWorkspaceDrawerOpen(layoutState:, composeLanding:)` |
 | Approach | Extend `TpIconButton` in place (no new widget) |
@@ -76,4 +78,4 @@ Tap behavior unchanged: toggle open/close as today.
 
 - `TpIconButton` `BoxDecoration` must paint `border` when selected (today only `color: backgroundColor`).
 - `_HomeTitleBarMobileDrawerTrigger` workspace path needs rebuild on layout/chat changes (`BlocBuilder` on `LayoutCubit` + compose-landing from `ChatCubit`) so `selected`/icon stay in sync.
-- `TpSidebarTrigger` should accept optional `selected` and optional icon override (or choose icon from `selected`) so home path stays one widget.
+- `TpSidebarTrigger`: add `selected`; choose `icon: selected ? Icons.menu_open : Icons.menu` via `IconData` (stop wrapping a fixed `Icon(Icons.menu)` in `iconWidget` for the default case) so selected tint applies.
