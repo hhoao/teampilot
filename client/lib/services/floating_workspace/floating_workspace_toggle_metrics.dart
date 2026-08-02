@@ -8,6 +8,12 @@ const double kFloatingWorkspaceToggleIconSize = 16;
 const double kFloatingWorkspaceToggleDefaultRight = 24;
 const double kFloatingWorkspaceToggleDefaultBottom = 72;
 
+/// Orca `hover:-translate-y-0.5` (~2px) + default `transition-all` (~150ms).
+const double kFloatingWorkspaceToggleHoverLiftPx = 2;
+const Duration kFloatingWorkspaceToggleHoverDuration = Duration(
+  milliseconds: 150,
+);
+
 /// Stored as negative bottom-right insets (same convention as cubit state).
 const Offset kFloatingWorkspaceToggleDefaultOffset = Offset(
   -kFloatingWorkspaceToggleDefaultRight,
