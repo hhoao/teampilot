@@ -377,7 +377,7 @@ testWidgets('Locate failure leaves path empty and keeps Install', (tester) async
 });
 ```
 
-`_wrapRow` must provide the same `ConnectionModeService` / cubit providers as `_wrap`, plus any toast host if required (if `AppToast` needs overlay, wrap with `Scaffold` + material — match existing toast tests if any; otherwise assert prefs only).
+`_wrapRow` must provide the same `ConnectionModeService` / cubit providers as `_wrap`, pass `installKey: AppKeys.claudeCliInstallButton` (Install visibility requires a non-null key), plus any toast host if required (if `AppToast` needs overlay, wrap with `Scaffold` + material — match existing toast tests if any; otherwise assert prefs only).
 
 - [ ] **Step 2: Run tests to verify they fail**
 
