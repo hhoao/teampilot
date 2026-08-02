@@ -35,7 +35,8 @@ Inter-block rhythm today is a handful of **scalar** gaps (`h*TopSpacing`, `headi
 | Topic | Decision |
 |-------|----------|
 | Margin model | Per-kind `EdgeInsets` via `MarkdownTokens.marginOf(kind)` |
-| Vertical join | CSS-like collapse: `max(prev.bottom, next.top)` |
+| Vertical join | CSS-like collapse: `max(prev.bottom, next.top)`; **accept** deltas vs old priority `gapBetween` |
+| Public gap helper | Keep name `gapBetween`; implement as collapse over `marginOf` |
 | First / last block | No leading/trailing `SizedBox` for document edges; outer inset stays host chrome |
 | Horizontal | `Padding(left/right)` only when non-zero; default L/R `0` for most kinds |
 | Breakpoints | Sparse `TpScaledEdgeInsets` / `TpScaledDouble` in **app** builder; optional anchors |
@@ -67,19 +68,42 @@ Keep:
 
 `MarkdownTokens.test` accepts optional per-kind (or shared) margin overrides with sensible defaults for package tests.
 
-### Suggested default migration (document-equivalent)
+### Relationship to old `gapBetween` (locked)
 
-Map today’s scalars into margins so visual rhythm stays close on first land:
+Pure per-kind margins + collapse **cannot** reproduce the old priority matrix whenever
+`paragraphGap ≠ blockGap` or `headingBottom ≠ ruleGap` (document profile today:
+16 vs 28, and 8 vs 28). Example: `heading→list` used `headingBottom` (8) while
+`paragraph→list` used `blockGap` (28) — one static `list.top` cannot satisfy both.
+
+**v1 accepts that visual delta.** Collapse is the source of truth. Do **not** keep
+priority branches or pair-specific exceptions. Update tests to assert collapse, not
+legacy priority. Document profile anchors should be chosen for reading rhythm under
+collapse (often unify “after heading” and “after paragraph” bottoms so neighbors feel
+even), not for bit-exact match to the old matrix.
+
+Keep the public helper name `gapBetween` as a thin wrapper over
+`max(marginOf(prev).bottom, marginOf(next).top)` so call sites (`MarkdownView`,
+merged-paragraph strut) stay stable; behavior change is intentional.
+
+### Suggested default migration (document profile)
+
+Prefer **bottom-owned** vertical margins (top often 0) so collapse is easy to reason
+about; tune bottoms so typical pairs read well under `max`:
 
 | Kind | top | bottom | left/right |
 |------|-----|--------|------------|
-| `headingN` | former `hNTopSpacing` | former `headingBottom` (8) | 0 |
-| `paragraph` | 0 | former `paragraphGap` (or split so `max(p.bottom, p.top)` equals old gap) | 0 |
-| `horizontalRule` | contribute so `max` with neighbors ≈ former `ruleGap` | same | 0 |
-| `code` / `table` / `list` / `blockquote` / `image` / `rawLiteral` | 0 | former `blockGap` (or symmetric split) | 0 |
+| `headingN` | 0 (first heading after chrome); or a small shared top if preferred | per-level former `hNTopSpacing` used as **incoming** space via **previous** block’s bottom when possible; else put former top on heading.top | 0 |
+| `paragraph` | 0 | former `paragraphGap` | 0 |
+| `list` / `blockquote` / `code` / `table` / `image` / `rawLiteral` | 0 | former `blockGap` (document) / compact equivalent | 0 |
+| `horizontalRule` | 0 | former `ruleGap` | 0 |
 
-Exact split (bottom-only vs half/half) is an implementation detail as long as **collapse results** match the old matrix for the common pairs covered by existing tests. Compact profile uses smaller anchors.
+Practical heading recipe under collapse: put former `hNTopSpacing` on `headingN.top`
+and former `headingBottom` on `headingN.bottom`. Then `paragraph→heading` gap ≈
+`max(paragraph.bottom, heading.top)` which may be larger than today’s heading-only
+top — **accepted**. If product later wants tighter heading stacks, lower
+`paragraph.bottom` or `heading.top` in anchors; do not reintroduce priority rules.
 
+Compact profile: smaller bottoms / tops via its own `TpScaledEdgeInsets` anchors.
 ## Collapse + layout
 
 ```text
@@ -121,14 +145,15 @@ Call sites (chat `AiMessageTheme`, file `MarkdownView`) pass `MediaQuery.sizeOf(
 
 **Package**
 
-- Unit: collapse matrix (heading→paragraph, paragraph→heading, paragraph→paragraph, hr, code); first block gap 0.
+- Unit: collapse matrix (heading→paragraph, paragraph→heading, paragraph→paragraph, hr, code); first block gap 0. **Do not** assert old priority values (`headingBottom` vs `blockGap` asymmetries).
 - Widget: `SizedBox` heights; merged-paragraph blank-line height; non-zero L/R → `Padding`.
 
 **App**
 
 - Same profile, `width` at `TpBreakpoints.sm` vs `xxl` changes resolved heading/paragraph margins per anchors (and mid-band lerp when two stops set).
-- Warmup / typography tests unchanged in intent.
-
+- Update every `buildAppMarkdownTokens(theme, profile)` call site (style sheet tests, warmup coverage, preview pane tests, chat theme) to pass `width` (tests may use a fixed width such as `TpBreakpoints.md`).
+- Warmup / typography tests unchanged in intent. Rebuild tokens on resize when the host `build` sees a new `MediaQuery` width (normal Flutter rebuild; no separate cache keyed only by profile).
+- Comment at call sites: markdown v1 margins resolve against **window** width by design (unlike some `TpWidthScale` pane-width hosts).
 ## Migration
 
 1. Land `marginOf` + new `gapBetween` (or rename to `collapsedMarginGap`) in `tp_markdown` with updated tests.
