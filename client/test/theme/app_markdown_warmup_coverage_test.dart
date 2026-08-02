@@ -117,7 +117,11 @@ void main() {
       platform: TargetPlatform.linux,
     );
     final theme = bootstrapThemeForTextWarmup(fonts);
-    final tokens = buildAppMarkdownTokens(theme, MarkdownProfile.document);
+    final tokens = buildAppMarkdownTokens(
+      theme,
+      MarkdownProfile.document,
+      width: TpBreakpoints.md,
+    );
     final outers = markdownMixedCodeOuterStyles(tokens);
     final bold = tokens.strongStyle(tokens.body);
 
