@@ -92,18 +92,15 @@ about; tune bottoms so typical pairs read well under `max`:
 
 | Kind | top | bottom | left/right |
 |------|-----|--------|------------|
-| `headingN` | 0 (first heading after chrome); or a small shared top if preferred | per-level former `hNTopSpacing` used as **incoming** space via **previous** block’s bottom when possible; else put former top on heading.top | 0 |
+| `headingN` | former `hNTopSpacing` | former `headingBottom` | 0 |
 | `paragraph` | 0 | former `paragraphGap` | 0 |
 | `list` / `blockquote` / `code` / `table` / `image` / `rawLiteral` | 0 | former `blockGap` (document) / compact equivalent | 0 |
 | `horizontalRule` | 0 | former `ruleGap` | 0 |
 
-Practical heading recipe under collapse: put former `hNTopSpacing` on `headingN.top`
-and former `headingBottom` on `headingN.bottom`. Then `paragraph→heading` gap ≈
-`max(paragraph.bottom, heading.top)` which may be larger than today’s heading-only
-top — **accepted**. If product later wants tighter heading stacks, lower
-`paragraph.bottom` or `heading.top` in anchors; do not reintroduce priority rules.
+**Practical heading recipe (canonical):** put former `hNTopSpacing` on `headingN.top` and former `headingBottom` on `headingN.bottom`. Then `paragraph→heading` gap ≈ `max(paragraph.bottom, heading.top)`, which may be larger than today’s heading-only top — **accepted**. If product later wants tighter heading stacks, lower `paragraph.bottom` or `heading.top` in anchors; do not reintroduce priority rules.
 
 Compact profile: smaller bottoms / tops via its own `TpScaledEdgeInsets` anchors.
+
 ## Collapse + layout
 
 ```text
@@ -156,7 +153,7 @@ Call sites (chat `AiMessageTheme`, file `MarkdownView`) pass `MediaQuery.sizeOf(
 - Comment at call sites: markdown v1 margins resolve against **window** width by design (unlike some `TpWidthScale` pane-width hosts).
 ## Migration
 
-1. Land `marginOf` + new `gapBetween` (or rename to `collapsedMarginGap`) in `tp_markdown` with updated tests.
+1. Land `marginOf` + `gapBetween` as collapse over margins in `tp_markdown` with updated tests.
 2. Update `buildAppMarkdownTokens` + call sites to pass `width`.
 3. Update semantic-renderer / package design docs that still describe the scalar gap matrix.
 4. Delete obsolete scalar fields once call sites compile.
