@@ -13,6 +13,7 @@ import '../services/conversation_timeline/conversation_timeline.dart';
 import '../services/conversation_timeline/mailbox_user_source.dart';
 import '../services/session/ai_history_loader.dart';
 import '../services/session/ai_history_pending_text.dart';
+import '../services/session/history_awaiting_working_sync.dart';
 import '../services/session/session_history_pagination.dart';
 import '../services/team_bus/persistence/bus_message_log.dart';
 import '../utils/logging/logger.dart';
@@ -151,6 +152,10 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
   int _committedLength = 0;
   final List<_PendingUser> _pendingQueue = [];
   Timer? _tipHoldTimer;
+
+  /// Survives History remount / softReload — widget State must not own this.
+  /// Latched true once we observe [workingSessionIds] while awaiting.
+  var _sawWorkingWhileAwaiting = false;
 
   AppSession? _lastSession;
   String? _lastMemberId;
@@ -389,8 +394,51 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
     );
   }
 
+  /// Unmatched optimistic user bubbles still overlaid on the transcript.
+  bool get hasOptimisticPending => _pendingQueue.isNotEmpty;
+
+  /// Rising-edge latch for sidebar working while a History turn is awaiting.
+  bool get sawWorkingWhileAwaiting => _sawWorkingWhileAwaiting;
+
+  /// Apply working/connect edges to awaiting + latch.
+  ///
+  /// Returns the action so the host can schedule/cancel idle grace (Timer is
+  /// owned by the Chat view lifecycle). Latch lives here so remount keeps it.
+  HistoryAwaitingWorkingAction applyWorkingSessionSync({
+    required bool sessionWorking,
+    bool sessionConnecting = false,
+    bool memberRunning = true,
+  }) {
+    if (isClosed) return HistoryAwaitingWorkingAction.none;
+    final action = resolveHistoryAwaitingWorkingAction(
+      awaitingAssistant: state.awaitingAssistant,
+      sessionWorking: sessionWorking,
+      sawWorkingWhileAwaiting: _sawWorkingWhileAwaiting,
+      sessionConnecting: sessionConnecting,
+      memberRunning: memberRunning,
+    );
+    switch (action) {
+      case HistoryAwaitingWorkingAction.none:
+      case HistoryAwaitingWorkingAction.scheduleGraceClear:
+      case HistoryAwaitingWorkingAction.deferWhileStarting:
+        break;
+      case HistoryAwaitingWorkingAction.resetLatch:
+        _sawWorkingWhileAwaiting = false;
+        break;
+      case HistoryAwaitingWorkingAction.latchWorking:
+        _sawWorkingWhileAwaiting = true;
+        break;
+      case HistoryAwaitingWorkingAction.clearAwaiting:
+        flushHeldTip(endAwaiting: true);
+        break;
+    }
+    return action;
+  }
+
   void enqueuePendingUser(String text) {
     if (isClosed) return;
+    // New user turn — need a fresh rising edge of working.
+    _sawWorkingWhileAwaiting = false;
     final pending = _PendingUser(id: 'pending:${_uuid.v4()}', text: text);
     _pendingQueue.add(pending);
     _remergePendingsOntoRuntime();
@@ -423,6 +471,7 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
     _cancelTipHoldTimer();
     _commitAll();
     _remergePendingsOntoRuntime();
+    _sawWorkingWhileAwaiting = false;
     emit(state.copyWith(awaitingAssistant: false));
   }
 
@@ -430,6 +479,7 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
     if (isClosed) return;
     if (!value) {
       _cancelTipHoldTimer();
+      _sawWorkingWhileAwaiting = false;
       if (hasHeldAssistantTip) {
         _commitAll();
         _remergePendingsOntoRuntime();
@@ -462,6 +512,7 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
           state.status == AiHistoryViewStatus.empty) {
         _remergePendingsOntoRuntime();
       }
+      _sawWorkingWhileAwaiting = false;
       emit(
         state.copyWith(
           awaitingAssistant: false,
@@ -483,7 +534,8 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
     _cancelTipHoldTimer();
     if (_pendingQueue.isEmpty &&
         !state.awaitingAssistant &&
-        !hasHeldAssistantTip) {
+        !hasHeldAssistantTip &&
+        !_sawWorkingWhileAwaiting) {
       return;
     }
     _pendingQueue.clear();
@@ -492,6 +544,7 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
         state.status == AiHistoryViewStatus.empty) {
       _remergePendingsOntoRuntime();
     }
+    _sawWorkingWhileAwaiting = false;
     if (state.awaitingAssistant) {
       emit(state.copyWith(awaitingAssistant: false));
     }

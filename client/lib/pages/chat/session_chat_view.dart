@@ -47,6 +47,7 @@ import '../../services/expert_hub/expert_member_resolver.dart';
 import '../../services/follow_up/follow_up_queue.dart';
 import '../../services/session/ai_history_live_refresh_controller.dart';
 import '../../services/session/history_seat_key.dart';
+import '../../services/session/history_awaiting_working_sync.dart';
 import '../../services/session/session_continue_overrides_apply.dart';
 import '../../services/session/session_history_pagination.dart';
 import '../../services/storage/app_storage.dart';
@@ -68,7 +69,6 @@ import '../home_workspace/workspace/workspace_landing_team_settings_dialog.dart'
 import 'agent_permission_attention_banner.dart';
 import 'compose_stop_visibility.dart';
 import 'session_follow_up_compose_submit.dart';
-import 'history_awaiting_working_sync.dart';
 import 'history_continue_delivery.dart';
 import 'history_mailbox_queued_strip.dart';
 import 'session_history_live_chrome.dart';
@@ -148,10 +148,12 @@ class _SessionChatViewState extends State<SessionChatView> {
   var _workspaceProjectBundle = const ConfigBundle();
   var _workspaceBundleGeneration = 0;
 
-  /// Latched once this continue turn appears in [ChatState.workingSessionIds]
-  /// (or was already working at submit); falling edge clears awaiting.
-  var _sawSessionWorkingWhileAwaiting = false;
+  /// Host-owned Timer for [historyAwaitingIdleGrace]; latch lives on the seat.
   Timer? _awaitingIdleGraceTimer;
+
+  /// Compose Stop cleared Running chrome; ignore residual sessionWorking until
+  /// the next user turn latches awaiting again.
+  var _userStoppedTurn = false;
 
   @override
   void initState() {
@@ -342,12 +344,9 @@ class _SessionChatViewState extends State<SessionChatView> {
             .then((_) {
               if (!mounted) return;
               _maybeStartLiveRefreshForRunningPty();
-              if (seat.state.awaitingAssistant) {
-                // Remount latch was reset — clear Running if already idle.
-                _reconcileAwaitingAfterHistoryLoad(
-                  context.read<ChatCubit>().state,
-                );
-              }
+              // Seat owns the working latch across remount — sync (do not
+              // force-clear) so landing Starting survives long connects.
+              _syncAwaitingFromWorkingSessions(context.read<ChatCubit>().state);
               if (seat.state.awaitingAssistant) {
                 unawaited(_startLiveRefresh(skipInitialRefresh: true));
               }
@@ -369,12 +368,7 @@ class _SessionChatViewState extends State<SessionChatView> {
             if (!mounted) return;
             _maybeStartLiveRefreshForRunningPty();
             // Landing seed / continue awaiting: refresh while PTY runs offstage.
-            // Remount latch was reset — clear Running if already idle.
-            if (seat.state.awaitingAssistant) {
-              _reconcileAwaitingAfterHistoryLoad(
-                context.read<ChatCubit>().state,
-              );
-            }
+            _syncAwaitingFromWorkingSessions(context.read<ChatCubit>().state);
             if (seat.state.awaitingAssistant) {
               unawaited(_startLiveRefresh(skipInitialRefresh: true));
             }
@@ -951,6 +945,14 @@ class _SessionChatViewState extends State<SessionChatView> {
       memberId: _shellMemberId,
     );
     chat.pauseFollowUpQueue(widget.session.sessionId, _shellMemberId);
+    // Clear History "运行中…" immediately — do not wait for PTY idleAfter.
+    final seat = _seat;
+    if (seat != null && seat.state.awaitingAssistant) {
+      seat.flushHeldTip(endAwaiting: true);
+    }
+    _cancelAwaitingIdleGrace();
+    _userStoppedTurn = true;
+    if (mounted) setState(() {});
   }
 
   Future<void> _handleSubmit() async {
@@ -1023,6 +1025,7 @@ class _SessionChatViewState extends State<SessionChatView> {
     final optimisticPty = peek == HistoryContinueChannel.pty;
     if (optimisticPty) {
       seat.enqueuePendingUser(text);
+      _userStoppedTurn = false;
       _syncAwaitingFromWorkingSessions(context.read<ChatCubit>().state);
     }
     _controller.clear();
@@ -1058,6 +1061,7 @@ class _SessionChatViewState extends State<SessionChatView> {
     if (!optimisticPty) {
       // Peek said mailbox but post-connect path was PTY — show the bubble now.
       seat.enqueuePendingUser(text);
+      _userStoppedTurn = false;
       _syncAwaitingFromWorkingSessions(context.read<ChatCubit>().state);
     }
     unawaited(_startLiveRefresh());
@@ -1075,70 +1079,55 @@ class _SessionChatViewState extends State<SessionChatView> {
       if (!mounted) return;
       final seat = _seat;
       if (seat == null || !seat.state.awaitingAssistant) return;
-      final working = context
-          .read<ChatCubit>()
-          .state
-          .workingSessionIds
-          .contains(widget.session.sessionId);
+      final chat = context.read<ChatCubit>().state;
+      final sid = widget.session.sessionId;
+      final connectingId = chat.sessionConnectingId;
+      final working = chat.workingSessionIds.contains(sid);
       if (working) {
-        _sawSessionWorkingWhileAwaiting = true;
+        // Working rose during grace — latch via normal sync.
+        seat.applyWorkingSessionSync(
+          sessionWorking: true,
+          sessionConnecting: connectingId == sid || connectingId == 'pending',
+          memberRunning: context.read<ChatCubit>().isMemberRunning(
+            sessionId: sid,
+            memberId: _shellMemberId,
+          ),
+        );
         return;
       }
+      // Still idle after grace — settle Starting/Running.
       seat.flushHeldTip(endAwaiting: true);
-      _sawSessionWorkingWhileAwaiting = false;
     });
   }
 
   void _syncAwaitingFromWorkingSessions(ChatState chat) {
     final seat = _seat;
     if (seat == null) return;
-    final working = chat.workingSessionIds.contains(widget.session.sessionId);
-    final action = resolveHistoryAwaitingWorkingAction(
-      awaitingAssistant: seat.state.awaitingAssistant,
-      sessionWorking: working,
-      sawWorkingWhileAwaiting: _sawSessionWorkingWhileAwaiting,
+    final sid = widget.session.sessionId;
+    final connectingId = chat.sessionConnectingId;
+    final action = seat.applyWorkingSessionSync(
+      sessionWorking: chat.workingSessionIds.contains(sid),
+      sessionConnecting: connectingId == sid || connectingId == 'pending',
+      memberRunning: context.read<ChatCubit>().isMemberRunning(
+        sessionId: sid,
+        memberId: _shellMemberId,
+      ),
     );
     switch (action) {
       case HistoryAwaitingWorkingAction.none:
-        return;
       case HistoryAwaitingWorkingAction.resetLatch:
-        _sawSessionWorkingWhileAwaiting = false;
-        _cancelAwaitingIdleGrace();
-        return;
       case HistoryAwaitingWorkingAction.latchWorking:
-        _sawSessionWorkingWhileAwaiting = true;
+      case HistoryAwaitingWorkingAction.clearAwaiting:
         _cancelAwaitingIdleGrace();
         return;
-      case HistoryAwaitingWorkingAction.clearAwaiting:
-        seat.flushHeldTip(endAwaiting: true);
-        _sawSessionWorkingWhileAwaiting = false;
+      case HistoryAwaitingWorkingAction.deferWhileStarting:
+        // Keep Starting; cancel any grace started before connect began.
         _cancelAwaitingIdleGrace();
         return;
       case HistoryAwaitingWorkingAction.scheduleGraceClear:
         _scheduleAwaitingIdleGrace();
         return;
     }
-  }
-
-  /// Post-load remount path: [_sawSessionWorkingWhileAwaiting] was reset with
-  /// the State, so edge-based sync alone may leave Running for a grace window.
-  void _reconcileAwaitingAfterHistoryLoad(ChatState chat) {
-    final seat = _seat;
-    if (seat == null) return;
-    final working = chat.workingSessionIds.contains(widget.session.sessionId);
-    if (!shouldClearAwaitingOnHistoryRemount(
-      awaitingAssistant: seat.state.awaitingAssistant,
-      sessionWorking: working,
-    )) {
-      if (working && seat.state.awaitingAssistant) {
-        _sawSessionWorkingWhileAwaiting = true;
-        _cancelAwaitingIdleGrace();
-      }
-      return;
-    }
-    seat.flushHeldTip(endAwaiting: true);
-    _sawSessionWorkingWhileAwaiting = false;
-    _cancelAwaitingIdleGrace();
   }
 
   @override
@@ -1235,7 +1224,9 @@ class _SessionChatViewState extends State<SessionChatView> {
       listeners: [
         BlocListener<ChatCubit, ChatState>(
           listenWhen: (previous, current) =>
-              previous.workingSessionIds != current.workingSessionIds,
+              previous.workingSessionIds != current.workingSessionIds ||
+              previous.sessionConnectingId != current.sessionConnectingId ||
+              previous.stateVersion != current.stateVersion,
           listener: (context, state) {
             _syncAwaitingFromWorkingSessions(state);
             _maybeStartLiveRefreshForRunningPty();
@@ -1462,9 +1453,17 @@ class _SessionChatViewState extends State<SessionChatView> {
                                           final liveChrome =
                                               SessionHistoryLiveChromeX.resolve(
                                                 turnInFlight:
-                                                    _isSubmitting ||
-                                                    state.awaitingAssistant ||
-                                                    seat.sessionWorking,
+                                                    historyTurnInFlight(
+                                                      isSubmitting:
+                                                          _isSubmitting,
+                                                      awaitingAssistant:
+                                                          state
+                                                              .awaitingAssistant,
+                                                      sessionWorking:
+                                                          seat.sessionWorking,
+                                                      userStoppedTurn:
+                                                          _userStoppedTurn,
+                                                    ),
                                                 memberRunning:
                                                     seat.memberRunning,
                                                 sessionWorking:
