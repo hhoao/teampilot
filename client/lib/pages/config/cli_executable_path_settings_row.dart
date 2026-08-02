@@ -173,6 +173,13 @@ class CliExecutablePathSettingsRowState
         ),
         variant: TpToastVariant.success,
       );
+    } catch (_) {
+      if (!mounted) return;
+      AppToast.show(
+        context,
+        message: context.l10n.cliExecutablePathLocateFailed(widget.title),
+        variant: TpToastVariant.error,
+      );
     } finally {
       if (mounted) setState(() => _isLocating = false);
     }
@@ -181,19 +188,19 @@ class CliExecutablePathSettingsRowState
   Future<String?> _resolveLocatePath() async {
     if (widget.locateOverride != null) return widget.locateOverride!();
     final connectionMode = context.read<ConnectionModeService>();
-    final discovery = CliExecutableDiscovery();
     if (connectionMode.isRemoteWorkPlane) {
       final profile = _remoteSshProfile(context, connectionMode);
+      // No SSH/Termux profile selected — fail without probing PATH.
       if (profile == null) return null;
       final client = await context.read<SshClientFactory>().clientForStorage(
         profile,
       );
-      return discovery.locateRemoteCli(
+      return CliExecutableDiscovery().locateRemoteCli(
         cli: widget.cli,
         run: RemoteCliLocator.runnerForClient(client),
       );
     }
-    return discovery.locateLocalCli(widget.cli);
+    return CliExecutableDiscovery().locateLocalCli(widget.cli);
   }
 
   Future<void> _installCli() async {
@@ -342,7 +349,9 @@ class CliExecutablePathSettingsRowState
               ],
               OutlinedButton.icon(
                 key: widget.browseKey,
-                onPressed: isRemoteWorkPlane ? null : _pickFile,
+                onPressed: (isRemoteWorkPlane || locatingOrInstalling)
+                    ? null
+                    : _pickFile,
                 icon: Icon(
                   Icons.folder_open_outlined,
                   size: context.tpIconSizes.md,
