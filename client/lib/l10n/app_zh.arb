@@ -790,6 +790,19 @@
   "cliExecutablePathBrowse": "浏览…",
   "cliExecutablePathApply": "更新",
   "cliExecutablePathReset": "重置",
+  "cliExecutablePathLocate": "定位",
+  "cliExecutablePathLocateFailed": "未能在 PATH 上找到 {name}。",
+  "@cliExecutablePathLocateFailed": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "cliExecutablePathLocateSuccess": "已定位 {name}：{path}。",
+  "@cliExecutablePathLocateSuccess": {
+    "placeholders": {
+      "name": { "type": "String" },
+      "path": { "type": "String" }
+    }
+  },
+  "cliExecutablePathLocateRemoteUnsupported": "远程工作面不支持定位此工具。",
   "cliExecutablePathUsing": "当前生效：",
   "cliExecutablePathUsingFallback": "使用 PATH 中查找的版本",
   "cliInstallButton": "安装",
