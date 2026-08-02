@@ -79,7 +79,7 @@ class LlmProviderModelsView extends StatelessWidget {
               children: [
                 TpIconButton(
                   icon: Icons.arrow_back,
-                  size: 40,
+                  size: TpIconButton.chromeAlignedSize(context),
                   tooltip: l10n.back,
                   onTap: onBack,
                 ),

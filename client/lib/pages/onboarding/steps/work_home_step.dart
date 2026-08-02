@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../../cubits/session_preferences_cubit.dart';
 import '../../../cubits/ssh_profile_cubit.dart';
@@ -62,11 +63,12 @@ class _OnboardingWorkHomeStepState extends State<OnboardingWorkHomeStep> {
           if (_subpage != _WorkHomeSubpage.chooser)
             Align(
               alignment: Alignment.centerLeft,
-              child: IconButton(
+              child: TpIconButton(
                 key: const Key('work_home_back'),
                 tooltip: MaterialLocalizations.of(context).backButtonTooltip,
-                icon: const Icon(Icons.arrow_back),
-                onPressed: _goChooser,
+                icon: Icons.arrow_back,
+                size: TpIconButton.chromeAlignedSize(context),
+                onTap: _goChooser,
               ),
             ),
           Expanded(child: _buildSubpage()),

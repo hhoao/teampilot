@@ -241,6 +241,8 @@ void main() {
 
 Adjust imports if `lookupAppLocalizations` / `TpTheme` wrapping differs in this repo — follow patterns from `home_workspace_title_bar_test.dart` and `shared_ui` action-menu tests. Prefer reading l10n via `AppLocalizations.of(context)!` inside a builder if `lookupAppLocalizations` is unavailable.
 
+**Note:** Desktop hover-open is Manual QA only (Task 5) — no automated hover test required.
+
 - [ ] **Step 2: Run tests — expect FAIL**
 
 ```bash
@@ -250,6 +252,8 @@ cd client && flutter test test/pages/home_workspace/home_workspace_switcher_menu
 Expected: FAIL (missing library / undefined symbols / unimplemented menu).
 
 - [ ] **Step 3: Commit failing tests**
+
+If intermediate commits must stay green for CI, skip this step and commit tests together with Task 3.
 
 ```bash
 git add client/test/pages/home_workspace/home_workspace_switcher_menu_test.dart

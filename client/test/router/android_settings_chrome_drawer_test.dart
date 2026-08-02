@@ -84,11 +84,19 @@ void main() {
     await pumpNarrowHubRoute(tester, route: '/config/layout', width: 800);
 
     expect(find.byType(TpSidebarTrigger), findsNothing);
-    expect(find.byType(BackButton), findsOneWidget);
+    expect(find.byIcon(Icons.arrow_back), findsOneWidget);
     expect(find.byType(TpMobileLeading), findsOneWidget);
 
-    final backRect = tester.getRect(find.byType(BackButton));
+    final backIcon = find.byIcon(Icons.arrow_back);
+    final backRect = tester.getRect(backIcon);
     expect(backRect.left, greaterThanOrEqualTo(TpMobileChrome.leadingInset));
+    final button = find.ancestor(
+      of: backIcon,
+      matching: find.byType(TpIconButton),
+    );
+    final ink = find.descendant(of: button, matching: find.byType(Ink));
+    final expected = TpIconButton.chromeAlignedSize(tester.element(button));
+    expect(tester.getSize(ink), Size.square(expected));
     expect(find.text('Automations'), findsNothing);
 
     final gesture = await tester.startGesture(const Offset(2, 400));

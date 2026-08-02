@@ -479,12 +479,20 @@ Widget _settingsChromeShell(
         appBar: AppBar(
           title: Text(AndroidShellChrome.title(context, path)),
           leadingWidth: hideDrawer
-              ? kToolbarHeight + TpMobileChrome.leadingInset
+              ? TpIconButton.chromeAlignedSize(context) +
+                    TpMobileChrome.leadingInset
               : null,
           leading: hideDrawer
               ? TpMobileLeading(
-                  child: BackButton(
-                    onPressed: () => AndroidShellChrome.pop(context, path),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: TpIconButton(
+                      icon: Icons.arrow_back,
+                      size: TpIconButton.chromeAlignedSize(context),
+                      tooltip:
+                          MaterialLocalizations.of(context).backButtonTooltip,
+                      onTap: () => AndroidShellChrome.pop(context, path),
+                    ),
                   ),
                 )
               : const TpSidebarTrigger(),

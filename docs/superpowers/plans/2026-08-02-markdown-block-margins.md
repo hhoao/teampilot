@@ -410,6 +410,7 @@ tokens: buildAppMarkdownTokens(
 Chat theme override: same with `MarkdownProfile.compact`.
 
 Tests without real MediaQuery: `width: TpBreakpoints.md` (or pump a sized `MediaQuery`).
+In `markdown_preview_pane_test.dart`, replace `h2TopSpacing` (and any other scalar rhythm asserts) with `marginOf(MarkdownBlockKind.heading2).top` using the same `width` passed to the builder.
 
 - [ ] **Step 3: Analyze + targeted tests**
 

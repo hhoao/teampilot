@@ -41,14 +41,15 @@ bool homeSidebarTriggerVisible({
 const double kHomeTitleBarHeight = 58;
 
 /// Vertical padding inside home / workspace tab chips.
-const double kHomeTitleBarChipVerticalPadding = 6;
+const double kHomeTitleBarChipVerticalPadding =
+    TpIconButton.kChromeChipVerticalPadding;
 
 /// Hit-target size for title-bar icon controls (⋯ / menu / bell / settings).
 ///
-/// Matches [_HomePill] / [_WorkspaceTab] outer chrome: md icon + vertical chip
-/// padding + 1px border on each side.
+/// Matches [_HomePill] / [_WorkspaceTab] outer chrome via
+/// [TpIconButton.chromeAlignedSize].
 double homeTitleBarControlSize(BuildContext context) =>
-    context.tpIconSizes.md + 2 * kHomeTitleBarChipVerticalPadding + 2;
+    TpIconButton.chromeAlignedSize(context);
 
 @visibleForTesting
 double homeWorkspaceTabBarAlpha({required bool active, required bool hovered}) {

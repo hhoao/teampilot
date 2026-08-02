@@ -511,6 +511,12 @@ expect(button.selected, isFalse);
 // after tap clears suppression (effective open):
 expect(buttonAfterClear.selected, isTrue);
 
+// after second tap closes sidebar:
+expect(
+  tester.widget<TpIconButton>(find.byKey(AppKeys.sidebarVisibilityButton)).selected,
+  isFalse,
+);
+
 // remove expects on button.color / buttonAfterClear.color
 ```
 
@@ -588,6 +594,14 @@ cd /home/hhoa/git/hhoa/teampilot/client && flutter test \
 ```
 
 Expected: all PASS
+
+- [ ] **Step 1b: Analyze touched packages**
+
+```bash
+cd /home/hhoa/git/hhoa/teampilot/client && flutter analyze --no-fatal-infos --no-fatal-warnings
+```
+
+Expected: no new errors in touched files.
 
 - [ ] **Step 2: Manual smoke (optional)**
 

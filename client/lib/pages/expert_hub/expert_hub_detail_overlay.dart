@@ -45,8 +45,6 @@ class ExpertHubDetailOverlay extends StatelessWidget {
   /// Horizontal page inset (tighter on Android).
   final double inset;
 
-  static const _touchTarget = 44.0;
-
   @override
   Widget build(BuildContext context) {
     final styles = TpTextStyles.of(context);
@@ -69,13 +67,10 @@ class ExpertHubDetailOverlay extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(10, 10, 18, 0),
               child: ExpertHubCardHeader(
                 title: member.name,
-                leading: IconButton(
-                  constraints: const BoxConstraints(
-                    minWidth: _touchTarget,
-                    minHeight: _touchTarget,
-                  ),
-                  icon: const Icon(Icons.arrow_back_rounded),
-                  onPressed: onBack,
+                leading: TpIconButton(
+                  icon: Icons.arrow_back_rounded,
+                  size: TpIconButton.chromeAlignedSize(context),
+                  onTap: onBack,
                 ),
                 trailing: IconButton(
                   tooltip: l10n.expertHubFavorites,

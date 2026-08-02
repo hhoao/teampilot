@@ -56,13 +56,11 @@ class WorkspacePaneHeader extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        IconButton(
+        TpIconButton(
           tooltip: context.l10n.back,
-          icon: const Icon(Icons.arrow_back_rounded),
-          onPressed: back,
-          visualDensity: VisualDensity.compact,
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+          icon: Icons.arrow_back_rounded,
+          size: TpIconButton.chromeAlignedSize(context),
+          onTap: back,
         ),
         const SizedBox(width: 8),
         Expanded(child: titleBlock),
