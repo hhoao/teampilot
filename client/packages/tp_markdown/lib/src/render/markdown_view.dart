@@ -1,6 +1,7 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
+import '../ir/markdown_block_kind.dart';
 import '../ir/markdown_document.dart';
 import '../registry/block_widget_registry.dart';
 import '../registry/markdown_resolvers.dart';
@@ -83,6 +84,15 @@ class _MarkdownViewState extends State<MarkdownView> {
     MarkdownBlock? previous;
     var i = 0;
 
+    Widget wrapHorizontal(MarkdownBlockKind kind, Widget child) {
+      final m = tokens.marginOf(kind);
+      if (m.left == 0 && m.right == 0) return child;
+      return Padding(
+        padding: EdgeInsets.only(left: m.left, right: m.right),
+        child: child,
+      );
+    }
+
     while (i < blocks.length) {
       final block = blocks[i];
 
@@ -95,9 +105,12 @@ class _MarkdownViewState extends State<MarkdownView> {
 
         _addGapIfNeeded(children, previous, block, tokens);
         children.add(
-          run.length == 1
-              ? buildParagraph(run.first, tokens, resolvers)
-              : buildMergedParagraphs(run, tokens, resolvers),
+          wrapHorizontal(
+            MarkdownBlockKind.paragraph,
+            run.length == 1
+                ? buildParagraph(run.first, tokens, resolvers)
+                : buildMergedParagraphs(run, tokens, resolvers),
+          ),
         );
         previous = run.last;
         i = end;
@@ -105,7 +118,12 @@ class _MarkdownViewState extends State<MarkdownView> {
       }
 
       _addGapIfNeeded(children, previous, block, tokens);
-      children.add(reg.build(block, tokens, resolvers, strings));
+      children.add(
+        wrapHorizontal(
+          block.kind,
+          reg.build(block, tokens, resolvers, strings),
+        ),
+      );
       previous = block;
       i++;
     }

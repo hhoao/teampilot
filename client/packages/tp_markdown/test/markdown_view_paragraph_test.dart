@@ -270,6 +270,36 @@ void main() {
     expect(sawLinkSpan, isTrue);
   });
 
+  testWidgets('block with horizontal margin is padded', (tester) async {
+    final tokens = MarkdownTokens.test(
+      paragraphMargin: const EdgeInsets.only(left: 12, right: 8, bottom: 16),
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: MarkdownView(
+            document: const MarkdownDocument(
+              blocks: [
+                ParagraphBlock(runs: [TextRun('Hello')]),
+              ],
+            ),
+            tokens: tokens,
+          ),
+        ),
+      ),
+    );
+
+    final padding = tester
+        .widgetList<Padding>(find.byType(Padding))
+        .map((p) => p.padding)
+        .whereType<EdgeInsets>()
+        .where(
+          (e) =>
+              e.left == 12 && e.right == 8 && e.top == 0 && e.bottom == 0,
+        );
+    expect(padding, isNotEmpty);
+  });
+
   testWidgets('tappable link uses click mouse cursor under SelectionArea', (
     tester,
   ) async {
