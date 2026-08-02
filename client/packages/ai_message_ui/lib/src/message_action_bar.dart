@@ -4,6 +4,7 @@ import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import 'strings.dart';
 import 'theme.dart';
@@ -281,22 +282,19 @@ class _LiteIconAction extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final enabled = onPressed != null;
+    final iconColor = enabled ? color : color.withValues(alpha: 0.38);
     return Semantics(
       button: true,
       label: label,
       enabled: enabled,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
+      child: TpHover(
+        enabled: enabled,
         onTap: onPressed,
-        child: SizedBox(
-          width: 36,
-          height: 36,
-          child: Icon(
-            icon,
-            size: 16,
-            color: enabled ? color : color.withValues(alpha: 0.38),
-          ),
-        ),
+        width: 36,
+        height: 36,
+        borderRadius: BorderRadius.circular(8),
+        hoverColor: color.withValues(alpha: 0.08),
+        child: Icon(icon, size: 16, color: iconColor),
       ),
     );
   }

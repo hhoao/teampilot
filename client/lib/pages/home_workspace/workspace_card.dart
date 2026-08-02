@@ -62,7 +62,7 @@ class _WorkspaceCardState extends State<WorkspaceCard> {
     return _WorkspaceCardHoverShell(
       menuOpen: _menuOpen,
       onTap: widget.onTap,
-      onSecondaryTapUp: (details) => unawaited(_showContextMenu(details)),
+      onSecondaryTapDown: (details) => unawaited(_showContextMenu(details)),
       showFavoriteBadge: widget.favorited,
       actions: Row(
         mainAxisSize: MainAxisSize.min,
@@ -148,11 +148,11 @@ class _WorkspaceCardState extends State<WorkspaceCard> {
     );
   }
 
-  Future<void> _showContextMenu(TapUpDetails details) async {
+  Future<void> _showContextMenu(TapDownDetails details) async {
     final l10n = context.l10n;
     final selected = await showTpActionMenuFromSpecsAtTap<String>(
       context: context,
-      tapDetails: TapDownDetails(globalPosition: details.globalPosition),
+      tapDetails: details,
       specs: [
         TpActionMenuSpec.item(
           value: 'newTab',
@@ -171,7 +171,7 @@ class _WorkspaceCardHoverShell extends StatefulWidget {
     required this.child,
     required this.actions,
     required this.onTap,
-    required this.onSecondaryTapUp,
+    required this.onSecondaryTapDown,
     required this.menuOpen,
     required this.showFavoriteBadge,
   });
@@ -179,7 +179,7 @@ class _WorkspaceCardHoverShell extends StatefulWidget {
   final Widget child;
   final Widget actions;
   final VoidCallback? onTap;
-  final void Function(TapUpDetails details) onSecondaryTapUp;
+  final void Function(TapDownDetails details) onSecondaryTapDown;
   final bool menuOpen;
   final bool showFavoriteBadge;
 
@@ -197,48 +197,47 @@ class _WorkspaceCardHoverShellState extends State<_WorkspaceCardHoverShell> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
 
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: widget.onTap,
-        onSecondaryTapUp: widget.onSecondaryTapUp,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
-          curve: Curves.easeOut,
-          padding: const EdgeInsets.all(26),
-          decoration:
-              workspaceCardDecoration(
-                cs,
-                radius: 14,
-                borderAlpha: _hovered ? 1 : 0.7,
-              ).copyWith(
-                color: cs.workspaceInset,
-                border: Border.all(
-                  color: _hovered
-                      ? cs.primary.withValues(alpha: 0.5)
-                      : cs.outlineVariant.withValues(alpha: 0.7),
+    return TpHover(
+      onTap: widget.onTap,
+      onSecondaryTapDown: widget.onSecondaryTapDown,
+      backgroundColor: Colors.transparent,
+      hoverColor: Colors.transparent,
+      borderRadius: BorderRadius.circular(14),
+      duration: const Duration(milliseconds: 160),
+      onHoverChanged: (hovered) => setState(() => _hovered = hovered),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        curve: Curves.easeOut,
+        padding: const EdgeInsets.all(26),
+        decoration:
+            workspaceCardDecoration(
+              cs,
+              radius: 14,
+              borderAlpha: _hovered ? 1 : 0.7,
+            ).copyWith(
+              color: cs.workspaceInset,
+              border: Border.all(
+                color: _hovered
+                    ? cs.primary.withValues(alpha: 0.5)
+                    : cs.outlineVariant.withValues(alpha: 0.7),
+              ),
+            ),
+        child: Stack(
+          children: [
+            widget.child,
+            if (_showActions)
+              Positioned(top: 0, right: 0, child: widget.actions),
+            if (widget.showFavoriteBadge && !_showActions)
+              Positioned(
+                top: 0,
+                right: 0,
+                child: Icon(
+                  Icons.star_rounded,
+                  size: context.tpIconSizes.sm,
+                  color: cs.primary.withValues(alpha: 0.85),
                 ),
               ),
-          child: Stack(
-            children: [
-              widget.child,
-              if (_showActions)
-                Positioned(top: 0, right: 0, child: widget.actions),
-              if (widget.showFavoriteBadge && !_showActions)
-                Positioned(
-                  top: 0,
-                  right: 0,
-                  child: Icon(
-                    Icons.star_rounded,
-                    size: context.tpIconSizes.sm,
-                    color: cs.primary.withValues(alpha: 0.85),
-                  ),
-                ),
-            ],
-          ),
+          ],
         ),
       ),
     );

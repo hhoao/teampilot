@@ -78,10 +78,14 @@ class _ExpertHubCardState extends State<ExpertHubCard> {
         ? accent.withValues(alpha: 0.55)
         : cs.outlineVariant;
 
-    return MouseRegion(
-      cursor: widget.busy ? SystemMouseCursors.basic : SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
+    return TpHover(
+      onTap: widget.busy ? null : widget.onTap,
+      enabled: !widget.busy,
+      cursor: widget.busy ? SystemMouseCursors.basic : null,
+      backgroundColor: Colors.transparent,
+      hoverColor: Colors.transparent,
+      borderRadius: BorderRadius.circular(14),
+      onHoverChanged: (hovered) => setState(() => _hovered = hovered),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 120),
         decoration: BoxDecoration(
@@ -99,11 +103,9 @@ class _ExpertHubCardState extends State<ExpertHubCard> {
               : null,
         ),
         clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: widget.busy ? null : widget.onTap,
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
@@ -189,7 +191,6 @@ class _ExpertHubCardState extends State<ExpertHubCard> {
             ),
           ),
         ),
-      ),
     );
   }
 }

@@ -92,7 +92,7 @@ class _SshHostsStatusSegmentState extends State<_SshHostsStatusSegment> {
   }
 }
 
-class _PillButton extends StatefulWidget {
+class _PillButton extends StatelessWidget {
   const _PillButton({
     super.key,
     required this.compact,
@@ -106,15 +106,8 @@ class _PillButton extends StatefulWidget {
   final SshHostsOverallStatus overallStatus;
   final VoidCallback onTap;
 
-  @override
-  State<_PillButton> createState() => _PillButtonState();
-}
-
-class _PillButtonState extends State<_PillButton> {
-  var _hovered = false;
-
   Color _dotColor(ColorScheme cs) {
-    switch (widget.overallStatus) {
+    switch (overallStatus) {
       case SshHostsOverallStatus.connected:
       case SshHostsOverallStatus.partial:
         return const Color(0xFF10B981);
@@ -126,8 +119,7 @@ class _PillButtonState extends State<_PillButton> {
   }
 
   Widget _leadingIcon(ColorScheme cs) {
-    final connecting =
-        widget.overallStatus == SshHostsOverallStatus.connecting;
+    final connecting = overallStatus == SshHostsOverallStatus.connecting;
     if (connecting) {
       return SizedBox(
         width: 12,
@@ -139,12 +131,11 @@ class _PillButtonState extends State<_PillButton> {
       );
     }
 
-    final allDisconnected =
-        widget.overallStatus == SshHostsOverallStatus.disconnected;
+    final allDisconnected = overallStatus == SshHostsOverallStatus.disconnected;
     final icon = allDisconnected
         ? Icons.cloud_off_outlined
         : Icons.dns_outlined;
-    final color = widget.overallStatus == SshHostsOverallStatus.connected
+    final color = overallStatus == SshHostsOverallStatus.connected
         ? const Color(0xFF10B981)
         : cs.onSurfaceVariant;
     return Icon(icon, size: 13, color: color);
@@ -154,53 +145,40 @@ class _PillButtonState extends State<_PillButton> {
   Widget build(BuildContext context) {
     final styles = TpTextStyles.of(context);
     final cs = Theme.of(context).colorScheme;
-    final compact = widget.compact;
+    final compact = this.compact;
     final muted = cs.onSurfaceVariant;
 
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
-          alignment: Alignment.center,
-          padding: EdgeInsets.symmetric(horizontal: compact ? 6 : 8),
-          decoration: BoxDecoration(
-            color: _hovered
-                ? cs.onSurface.withValues(alpha: 0.07)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              _leadingIcon(cs),
-              if (!compact) ...[
-                const SizedBox(width: 6),
-                Text(
-                  widget.label,
-                  style: styles.xs.copyWith(
-                    color: muted,
-                    height: 1.0,
-                    fontFeatures: const [FontFeature.tabularFigures()],
-                  ),
-                ),
-              ],
-              const SizedBox(width: 6),
-              Container(
-                width: 6,
-                height: 6,
-                decoration: BoxDecoration(
-                  color: _dotColor(cs),
-                  shape: BoxShape.circle,
-                ),
+    return TpHover(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(6),
+      hoverColor: cs.onSurface.withValues(alpha: 0.07),
+      padding: EdgeInsets.symmetric(horizontal: compact ? 6 : 8),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          _leadingIcon(cs),
+          if (!compact) ...[
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: styles.xs.copyWith(
+                color: muted,
+                height: 1.0,
+                fontFeatures: const [FontFeature.tabularFigures()],
               ),
-            ],
+            ),
+          ],
+          const SizedBox(width: 6),
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(
+              color: _dotColor(cs),
+              shape: BoxShape.circle,
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

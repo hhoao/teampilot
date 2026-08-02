@@ -158,15 +158,10 @@ class _ManageTile extends StatefulWidget {
 }
 
 class _ManageTileState extends State<_ManageTile> {
-  bool _hovered = false;
-
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final styles = TpTextStyles.of(context);
-    final background = _hovered
-        ? cs.onSurface.withValues(alpha: 0.05)
-        : Colors.transparent;
 
     final labelStyle = styles.lg;
     final iconSize = context.tpIconSizeForText(
@@ -174,32 +169,25 @@ class _ManageTileState extends State<_ManageTile> {
       textBaseAtScale1: AppTypographyScale.bodyLargeBase,
     );
 
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: Material(
-        color: background,
-        borderRadius: BorderRadius.circular(8),
-        child: InkWell(
-          key: AppKeys.homeWorkspaceWorkspaceManagementTile,
-          borderRadius: BorderRadius.circular(8),
-          onTap: widget.onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.tune_outlined,
-                  size: iconSize,
-                  color: cs.onSurface,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(widget.label, style: labelStyle),
-                ),
-              ],
+    return TpHover(
+      key: AppKeys.homeWorkspaceWorkspaceManagementTile,
+      onTap: widget.onTap,
+      borderRadius: BorderRadius.circular(8),
+      hoverColor: cs.onSurface.withValues(alpha: 0.05),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        child: Row(
+          children: [
+            Icon(
+              Icons.tune_outlined,
+              size: iconSize,
+              color: cs.onSurface,
             ),
-          ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(widget.label, style: labelStyle),
+            ),
+          ],
         ),
       ),
     );

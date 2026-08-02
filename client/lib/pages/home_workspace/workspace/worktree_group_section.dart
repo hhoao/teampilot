@@ -288,65 +288,56 @@ class _WorktreeGroupHeaderState extends State<_WorktreeGroupHeader> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final rowFill = _rowHovered || _menuOpen
-        ? workspaceSidebarRowHoverFill(cs)
-        : Colors.transparent;
 
     return SidebarRebuildProbe(
       key: ValueKey('worktree-group-header-probe-${widget.collapseKey}'),
       child: Padding(
         padding: const EdgeInsets.only(bottom: 2),
-        child: MouseRegion(
-          onEnter: (_) => setState(() => _rowHovered = true),
-          onExit: (_) => setState(() => _rowHovered = false),
-          child: Material(
-            color: rowFill,
-            borderRadius: BorderRadius.circular(8),
-            child: GestureDetector(
-              onSecondaryTapDown: (details) =>
-                  unawaited(_showContextMenu(details)),
-              onTap: widget.onToggleCollapse,
-              behavior: HitTestBehavior.opaque,
-              child: Padding(
-                padding: kWorkspaceSidebarRowPadding,
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    _GroupCollapseLeading(
-                      collapsed: widget.collapsed,
-                      showChevron: _showRowActions,
+        child: TpHoverRow(
+          forceShowTrailing: _menuOpen,
+          forceHover: _menuOpen,
+          padding: kWorkspaceSidebarRowPadding,
+          hoverColor: workspaceSidebarRowHoverFill(cs),
+          onHoverChanged: (hovered) => setState(() => _rowHovered = hovered),
+          onTap: widget.onToggleCollapse,
+          onSecondaryTapDown: (details) =>
+              unawaited(_showContextMenu(details)),
+          trailing: widget.onNewConversation != null
+              ? TpIconButton(
+                  icon: Icons.add_rounded,
+                  compact: true,
+                  size: TpIconButton.kCompactSize,
+                  tooltip: null,
+                  onTap: widget.onNewConversation,
+                )
+              : null,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              _GroupCollapseLeading(
+                collapsed: widget.collapsed,
+                showChevron: _showRowActions,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      minHeight: kWorkspaceSidebarRowMinHeight,
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(
-                            minHeight: kWorkspaceSidebarRowMinHeight,
-                          ),
-                          child: Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              widget.label,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        widget.label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    if (widget.onNewConversation != null && _showRowActions)
-                      TpIconButton(
-                        icon: Icons.add_rounded,
-                        compact: true,
-                        size: TpIconButton.kCompactSize,
-                        tooltip: null,
-                        onTap: widget.onNewConversation,
-                      ),
-                  ],
+                  ),
                 ),
               ),
-            ),
+            ],
           ),
         ),
       ),
@@ -503,46 +494,34 @@ class _GroupShowMoreRow extends StatefulWidget {
 }
 
 class _GroupShowMoreRowState extends State<_GroupShowMoreRow> {
-  var _hovered = false;
-
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 2),
-      child: MouseRegion(
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
-        child: Material(
-          color: _hovered ? workspaceSidebarRowHoverFill(cs) : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: widget.onTap,
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(
-                kWorkspaceSidebarGroupTextInset,
-                kWorkspaceSidebarRowPadding.top,
-                kWorkspaceSidebarRowPadding.right,
-                kWorkspaceSidebarRowPadding.bottom,
-              ),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(
-                    minHeight: kWorkspaceSidebarRowMinHeight,
-                  ),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      widget.label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TpTextStyles.of(context).mdColored(cs.onSurface.withValues(alpha: 0.55),
-                      ),
-                    ),
-                  ),
+      child: TpHover(
+        onTap: widget.onTap,
+        hoverColor: workspaceSidebarRowHoverFill(cs),
+        padding: EdgeInsets.fromLTRB(
+          kWorkspaceSidebarGroupTextInset,
+          kWorkspaceSidebarRowPadding.top,
+          kWorkspaceSidebarRowPadding.right,
+          kWorkspaceSidebarRowPadding.bottom,
+        ),
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(
+              minHeight: kWorkspaceSidebarRowMinHeight,
+            ),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                widget.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TpTextStyles.of(context).mdColored(cs.onSurface.withValues(alpha: 0.55),
                 ),
               ),
             ),

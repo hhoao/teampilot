@@ -23,10 +23,13 @@ class AiExpandableToolCard extends StatelessWidget {
     return Semantics(
       button: true,
       expanded: open,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onToggle,
-        child: child,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: onToggle,
+          child: child,
+        ),
       ),
     );
   }

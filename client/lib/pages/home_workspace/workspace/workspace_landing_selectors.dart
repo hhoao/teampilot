@@ -343,74 +343,32 @@ class WorkspaceLandingSelectorBar extends StatelessWidget {
             children: [labelWidget, expandIcon],
           );
 
-    final menu = MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: TpActionMenuIconAnchor(
-        minWidth: 240,
-        triggerBuilder: (context, controller) => _LandingSelectorMenuTrigger(
-          onTap: () {
-            if (controller.isOpen) {
-              controller.close();
-            } else {
-              controller.open();
-            }
-          },
-          child: menuRow,
-        ),
-        buildMenuChildren: (context, controller) =>
-            buildTpActionMenuChildren(
-              context: context,
-              specs: menuSpecs,
-              menuController: controller,
-              onSelect: onSelected!,
-            ),
+    final menu = TpActionMenuIconAnchor(
+      minWidth: 240,
+      triggerBuilder: (context, controller) => TpHover(
+        onTap: () {
+          if (controller.isOpen) {
+            controller.close();
+          } else {
+            controller.open();
+          }
+        },
+        hoverColor: cs.onSurface.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(6),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+        child: menuRow,
       ),
+      buildMenuChildren: (context, controller) =>
+          buildTpActionMenuChildren(
+            context: context,
+            specs: menuSpecs,
+            menuController: controller,
+            onSelect: onSelected!,
+          ),
     );
 
     if (compact) return menu;
     return Align(alignment: Alignment.centerLeft, child: menu);
-  }
-}
-
-class _LandingSelectorMenuTrigger extends StatefulWidget {
-  const _LandingSelectorMenuTrigger({required this.onTap, required this.child});
-
-  final VoidCallback onTap;
-  final Widget child;
-
-  @override
-  State<_LandingSelectorMenuTrigger> createState() =>
-      _LandingSelectorMenuTriggerState();
-}
-
-class _LandingSelectorMenuTriggerState
-    extends State<_LandingSelectorMenuTrigger> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final hoverColor = cs.onSurface.withValues(alpha: 0.05);
-
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        behavior: HitTestBehavior.opaque,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: _hovered ? hoverColor : Colors.transparent,
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-            child: widget.child,
-          ),
-        ),
-      ),
-    );
   }
 }
 

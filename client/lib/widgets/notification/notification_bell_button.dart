@@ -56,7 +56,7 @@ class _NotificationBellButtonState extends State<NotificationBellButton> {
   }
 }
 
-class _BellGlyph extends StatefulWidget {
+class _BellGlyph extends StatelessWidget {
   const _BellGlyph({
     required this.unread,
     required this.onTap,
@@ -68,78 +68,62 @@ class _BellGlyph extends StatefulWidget {
   final String tooltip;
 
   @override
-  State<_BellGlyph> createState() => _BellGlyphState();
-}
-
-class _BellGlyphState extends State<_BellGlyph> {
-  var _hovered = false;
-
-  @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final styles = TpTextStyles.of(context);
-    final hasUnread = widget.unread > 0;
-    final badgeLabel = widget.unread > 9 ? '9+' : '${widget.unread}';
+    final hasUnread = unread > 0;
+    final badgeLabel = unread > 9 ? '9+' : '$unread';
 
-    Widget glyph = MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: Container(
-          width: 32,
-          height: 32,
-          margin: const EdgeInsets.symmetric(horizontal: 1),
-          decoration: BoxDecoration(
-            color: _hovered
-                ? cs.onSurface.withValues(alpha: 0.07)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Stack(
-            clipBehavior: Clip.none,
-            alignment: Alignment.center,
-            children: [
-              Icon(
-                Icons.notifications_outlined,
-                size: context.tpIconSizes.md,
-                color: hasUnread ? cs.primary : cs.onSurfaceVariant,
-              ),
-              if (hasUnread)
-                Positioned(
-                  top: 1,
-                  right: 1,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 3),
-                    constraints: const BoxConstraints(
-                      minWidth: 12,
-                      minHeight: 12,
-                    ),
-                    decoration: BoxDecoration(
-                      color: cs.error,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    alignment: Alignment.center,
-                    // Pastel error seeds often resolve onError to black in both
-                    // modes; ink opposite the theme brightness reads clearly.
-                    child: Text(
-                      badgeLabel,
-                      textAlign: TextAlign.center,
-                      textScaler: const TextScaler.linear(0.78),
-                      style: styles.xsSemiboldSnugColored(
-                        cs.brightness == Brightness.dark
-                            ? Colors.white
-                            : Colors.black,
-                      ).copyWith(height: 1.0),
-                    ),
+    final glyph = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 1),
+      child: TpHover(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        hoverColor: cs.onSurface.withValues(alpha: 0.07),
+        width: 32,
+        height: 32,
+        child: Stack(
+          clipBehavior: Clip.none,
+          alignment: Alignment.center,
+          children: [
+            Icon(
+              Icons.notifications_outlined,
+              size: context.tpIconSizes.md,
+              color: hasUnread ? cs.primary : cs.onSurfaceVariant,
+            ),
+            if (hasUnread)
+              Positioned(
+                top: 1,
+                right: 1,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 3),
+                  constraints: const BoxConstraints(
+                    minWidth: 12,
+                    minHeight: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: cs.error,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  alignment: Alignment.center,
+                  // Pastel error seeds often resolve onError to black in both
+                  // modes; ink opposite the theme brightness reads clearly.
+                  child: Text(
+                    badgeLabel,
+                    textAlign: TextAlign.center,
+                    textScaler: const TextScaler.linear(0.78),
+                    style: styles.xsSemiboldSnugColored(
+                      cs.brightness == Brightness.dark
+                          ? Colors.white
+                          : Colors.black,
+                    ).copyWith(height: 1.0),
                   ),
                 ),
-            ],
-          ),
+              ),
+          ],
         ),
       ),
     );
-    return Tooltip(message: widget.tooltip, child: glyph);
+    return Tooltip(message: tooltip, child: glyph);
   }
 }

@@ -284,8 +284,6 @@ class WorkspacesToggleCell extends StatefulWidget {
 }
 
 class _WorkspacesToggleCellState extends State<WorkspacesToggleCell> {
-  bool _hovered = false;
-
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -294,31 +292,19 @@ class _WorkspacesToggleCellState extends State<WorkspacesToggleCell> {
         ? cs.primary.withValues(alpha: 0.16)
         : Colors.transparent;
     final hoverTint = cs.onSurface.withValues(alpha: 0.06);
-    final background = _hovered
-        ? (active
-              ? Color.alphaBlend(hoverTint, restingBg)
-              : cs.onSurface.withValues(alpha: 0.05))
-        : restingBg;
 
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        behavior: HitTestBehavior.opaque,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-          decoration: BoxDecoration(
-            color: background,
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Icon(
-            widget.icon,
-            size: context.tpIconSizes.md,
-            color: active ? cs.primary : cs.onSurfaceVariant,
-          ),
-        ),
+    return TpHover(
+      onTap: widget.onTap,
+      borderRadius: BorderRadius.circular(6),
+      backgroundColor: restingBg,
+      hoverColor: active
+          ? Color.alphaBlend(hoverTint, restingBg)
+          : cs.onSurface.withValues(alpha: 0.05),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      child: Icon(
+        widget.icon,
+        size: context.tpIconSizes.md,
+        color: active ? cs.primary : cs.onSurfaceVariant,
       ),
     );
   }
@@ -341,38 +327,33 @@ class WorkspacesIconChip extends StatefulWidget {
 }
 
 class _WorkspacesIconChipState extends State<WorkspacesIconChip> {
-  bool _hovered = false;
+  var _hovered = false;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final hoverTint = cs.onSurface.withValues(alpha: 0.06);
-    final background = _hovered
-        ? Color.alphaBlend(hoverTint, cs.surfaceContainer)
-        : cs.surfaceContainer;
+    final restingBg = cs.surfaceContainer;
     final borderColor = _hovered
         ? cs.primary.withValues(alpha: 0.35)
         : cs.outlineVariant.withValues(alpha: 0.7);
 
-    final chip = MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        behavior: HitTestBehavior.opaque,
-        child: Container(
-          padding: const EdgeInsets.all(7),
-          decoration: BoxDecoration(
-            color: background,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: borderColor),
-          ),
-          child: Icon(
-            widget.icon,
-            size: context.tpIconSizes.md,
-            color: cs.onSurfaceVariant,
-          ),
+    final chip = TpHover(
+      onTap: widget.onTap,
+      onHoverChanged: (hovered) => setState(() => _hovered = hovered),
+      borderRadius: BorderRadius.circular(8),
+      backgroundColor: restingBg,
+      hoverColor: Color.alphaBlend(hoverTint, restingBg),
+      padding: const EdgeInsets.all(7),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: borderColor),
+        ),
+        child: Icon(
+          widget.icon,
+          size: context.tpIconSizes.md,
+          color: cs.onSurfaceVariant,
         ),
       ),
     );
@@ -400,46 +381,32 @@ class WorkspacesPrimaryAction extends StatefulWidget {
 }
 
 class _WorkspacesPrimaryActionState extends State<WorkspacesPrimaryAction> {
-  bool _hovered = false;
-
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final styles = TpTextStyles.of(context);
     final hoverTint = cs.onPrimary.withValues(alpha: 0.12);
-    final background = _hovered
-        ? Color.alphaBlend(hoverTint, cs.primary)
-        : cs.primary;
 
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        behavior: HitTestBehavior.opaque,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
-          decoration: BoxDecoration(
-            color: background,
-            borderRadius: BorderRadius.circular(8),
+    return TpHover(
+      onTap: widget.onTap,
+      borderRadius: BorderRadius.circular(8),
+      backgroundColor: cs.primary,
+      hoverColor: Color.alphaBlend(hoverTint, cs.primary),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            widget.icon,
+            size: context.tpIconSizes.md,
+            color: cs.onPrimary,
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                widget.icon,
-                size: context.tpIconSizes.md,
-                color: cs.onPrimary,
-              ),
-              const SizedBox(width: 7),
-              Text(
-                widget.label,
-                style: styles.mdColored(cs.onPrimary),
-              ),
-            ],
+          const SizedBox(width: 7),
+          Text(
+            widget.label,
+            style: styles.mdColored(cs.onPrimary),
           ),
-        ),
+        ],
       ),
     );
   }

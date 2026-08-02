@@ -243,7 +243,7 @@ class AutomationsFilterPanel extends StatelessWidget {
   };
 }
 
-class _FilterPill extends StatefulWidget {
+class _FilterPill extends StatelessWidget {
   const _FilterPill({
     required this.label,
     required this.selected,
@@ -255,49 +255,35 @@ class _FilterPill extends StatefulWidget {
   final VoidCallback onTap;
 
   @override
-  State<_FilterPill> createState() => _FilterPillState();
-}
-
-class _FilterPillState extends State<_FilterPill> {
-  bool _hovered = false;
-
-  @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final styles = TpTextStyles.of(context);
-    final selected = widget.selected;
+    final selected = this.selected;
     final restingBg = selected
         ? cs.primary.withValues(alpha: 0.14)
         : cs.surfaceContainer;
     final hoverTint = cs.onSurface.withValues(alpha: 0.06);
-    final background = _hovered
-        ? Color.alphaBlend(hoverTint, restingBg)
-        : restingBg;
     final borderColor = selected
         ? cs.primary.withValues(alpha: 0.45)
         : cs.outlineVariant.withValues(alpha: 0.65);
     final foreground = selected ? cs.primary : cs.onSurfaceVariant;
 
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        behavior: HitTestBehavior.opaque,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-          decoration: BoxDecoration(
-            color: background,
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: borderColor),
-          ),
-          child: Text(
-            widget.label,
-            style: selected
-                ? styles.smSemiboldColored(foreground)
-                : styles.smMediumColored(foreground),
-          ),
+    return TpHover(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(999),
+      backgroundColor: restingBg,
+      hoverColor: Color.alphaBlend(hoverTint, restingBg),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: borderColor),
+        ),
+        child: Text(
+          label,
+          style: selected
+              ? styles.smSemiboldColored(foreground)
+              : styles.smMediumColored(foreground),
         ),
       ),
     );

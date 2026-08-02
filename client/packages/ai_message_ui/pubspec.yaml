@@ -12,6 +12,8 @@ dependencies:
     sdk: flutter
   ai_message_core:
     path: ../ai_message_core
+  shared_ui:
+    path: ../shared_ui
   tp_markdown:
     path: ../tp_markdown
 

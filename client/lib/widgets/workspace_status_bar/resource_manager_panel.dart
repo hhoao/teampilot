@@ -260,7 +260,6 @@ class _AppRow extends StatefulWidget {
 
 class _AppRowState extends State<_AppRow> {
   var _expanded = false;
-  var _hovered = false;
 
   @override
   Widget build(BuildContext context) {
@@ -271,70 +270,56 @@ class _AppRowState extends State<_AppRow> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        MouseRegion(
-          opaque: true,
-          onEnter: (_) => setState(() => _hovered = true),
-          onExit: (_) => setState(() => _hovered = false),
-          cursor: SystemMouseCursors.click,
-          child: Material(
-            color: _hovered
-                ? cs.onSurface.withValues(alpha: 0.06)
-                : Colors.transparent,
-            child: InkWell(
-              onTap: () => setState(() => _expanded = !_expanded),
-              mouseCursor: SystemMouseCursors.click,
-              hoverColor: Colors.transparent,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                child: Row(
-                  children: [
-                    Icon(
-                      _expanded ? Icons.expand_more : Icons.chevron_right,
-                      size: 16,
-                      color: cs.onSurfaceVariant,
-                    ),
-                    const SizedBox(width: 2),
-                    Expanded(
-                      child: Text(
-                        l10n.resourceManagerAppProcess,
-                        style: styles.xs.copyWith(fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                    if (widget.history.length >= 2) ...[
-                      ResourceMemorySparkline(samples: widget.history),
-                      const SizedBox(width: 6),
-                    ],
-                    SizedBox(
-                      width: kResourceManagerCpuColumnWidth,
-                      child: Text(
-                        formatResourceCpu(widget.appCpu),
-                        textAlign: TextAlign.right,
-                        softWrap: false,
-                        maxLines: 1,
-                        style: styles.xs.copyWith(
-                          color: cs.onSurfaceVariant,
-                          fontFeatures: const [FontFeature.tabularFigures()],
-                        ),
-                      ),
-                    ),
-                    SizedBox(
-                      width: kResourceManagerMemoryColumnWidth,
-                      child: Text(
-                        formatResourceMemory(widget.appMemory),
-                        textAlign: TextAlign.right,
-                        softWrap: false,
-                        maxLines: 1,
-                        style: styles.xs.copyWith(
-                          color: cs.onSurfaceVariant,
-                          fontFeatures: const [FontFeature.tabularFigures()],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: kResourceManagerTrailingGutterWidth),
-                  ],
+        TpHover(
+          onTap: () => setState(() => _expanded = !_expanded),
+          hoverColor: cs.onSurface.withValues(alpha: 0.06),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          child: Row(
+            children: [
+              Icon(
+                _expanded ? Icons.expand_more : Icons.chevron_right,
+                size: 16,
+                color: cs.onSurfaceVariant,
+              ),
+              const SizedBox(width: 2),
+              Expanded(
+                child: Text(
+                  l10n.resourceManagerAppProcess,
+                  style: styles.xs.copyWith(fontWeight: FontWeight.w600),
                 ),
               ),
-            ),
+              if (widget.history.length >= 2) ...[
+                ResourceMemorySparkline(samples: widget.history),
+                const SizedBox(width: 6),
+              ],
+              SizedBox(
+                width: kResourceManagerCpuColumnWidth,
+                child: Text(
+                  formatResourceCpu(widget.appCpu),
+                  textAlign: TextAlign.right,
+                  softWrap: false,
+                  maxLines: 1,
+                  style: styles.xs.copyWith(
+                    color: cs.onSurfaceVariant,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                ),
+              ),
+              SizedBox(
+                width: kResourceManagerMemoryColumnWidth,
+                child: Text(
+                  formatResourceMemory(widget.appMemory),
+                  textAlign: TextAlign.right,
+                  softWrap: false,
+                  maxLines: 1,
+                  style: styles.xs.copyWith(
+                    color: cs.onSurfaceVariant,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                ),
+              ),
+              const SizedBox(width: kResourceManagerTrailingGutterWidth),
+            ],
           ),
         ),
         if (_expanded)

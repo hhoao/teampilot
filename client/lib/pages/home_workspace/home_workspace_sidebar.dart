@@ -244,19 +244,16 @@ class _ShortcutRow extends StatefulWidget {
 }
 
 class _ShortcutRowState extends State<_ShortcutRow> {
-  bool _hovered = false;
-
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final styles = TpTextStyles.of(context);
     final active = widget.active;
     final Color fg = active ? cs.primary : cs.onSurface;
-    final Color background = active
+    final idleFill = active ? cs.primary.withValues(alpha: 0.14) : null;
+    final hoverFill = active
         ? cs.primary.withValues(alpha: 0.14)
-        : _hovered
-        ? cs.onSurface.withValues(alpha: 0.05)
-        : Colors.transparent;
+        : cs.onSurface.withValues(alpha: 0.05);
 
     final labelStyle = active
         ? styles.lgSemiboldColored(fg)
@@ -266,40 +263,32 @@ class _ShortcutRowState extends State<_ShortcutRow> {
       textBaseAtScale1: AppTypographyScale.bodyLargeBase,
     );
 
-    return RepaintBoundary(
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
-        child: GestureDetector(
-          onTap: widget.onTap,
-          behavior: HitTestBehavior.opaque,
-          child: Container(
-            margin: const EdgeInsets.symmetric(vertical: 1),
-            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 10),
-            decoration: BoxDecoration(
-              color: background,
-              borderRadius: BorderRadius.circular(8),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 1),
+      child: RepaintBoundary(
+        child: TpHover(
+        onTap: widget.onTap,
+        backgroundColor: idleFill,
+        hoverColor: hoverFill,
+        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 10),
+        child: Row(
+          children: [
+            Icon(
+              widget.icon,
+              size: iconSize,
+              color: active ? cs.primary : cs.onSurfaceVariant,
             ),
-            child: Row(
-              children: [
-                Icon(
-                  widget.icon,
-                  size: iconSize,
-                  color: active ? cs.primary : cs.onSurfaceVariant,
-                ),
-                const SizedBox(width: 8),
-                Flexible(
-                  child: Text(
-                    widget.label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: labelStyle,
-                  ),
-                ),
-              ],
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                widget.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: labelStyle,
+              ),
             ),
-          ),
+          ],
+        ),
         ),
       ),
     );
@@ -323,7 +312,7 @@ class _ProvidersButton extends StatefulWidget {
 }
 
 class _ProvidersButtonState extends State<_ProvidersButton> {
-  bool _hovered = false;
+  var _hovered = false;
 
   @override
   Widget build(BuildContext context) {
@@ -335,9 +324,6 @@ class _ProvidersButtonState extends State<_ProvidersButton> {
         ? cs.primary.withValues(alpha: 0.14)
         : cs.surfaceContainer;
     final hoverTint = cs.onSurface.withValues(alpha: 0.06);
-    final Color background = _hovered
-        ? Color.alphaBlend(hoverTint, restingBg)
-        : restingBg;
     final Color borderColor = active
         ? cs.primary.withValues(alpha: 0.45)
         : _hovered
@@ -352,35 +338,31 @@ class _ProvidersButtonState extends State<_ProvidersButton> {
       textBaseAtScale1: AppTypographyScale.bodyMediumBase,
     );
 
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        behavior: HitTestBehavior.opaque,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-          decoration: BoxDecoration(
-            color: background,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: borderColor),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.memory_outlined,
-                size: iconSize,
-                color: active ? cs.primary : cs.onSurfaceVariant,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                widget.label,
-                style: labelStyle,
-              ),
-            ],
-          ),
+    return TpHover(
+      onTap: widget.onTap,
+      backgroundColor: restingBg,
+      hoverColor: Color.alphaBlend(hoverTint, restingBg),
+      onHoverChanged: (hovered) => setState(() => _hovered = hovered),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: borderColor),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.memory_outlined,
+              size: iconSize,
+              color: active ? cs.primary : cs.onSurfaceVariant,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              widget.label,
+              style: labelStyle,
+            ),
+          ],
         ),
       ),
     );

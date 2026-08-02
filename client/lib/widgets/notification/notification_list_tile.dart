@@ -105,112 +105,105 @@ class _NotificationListTileState extends State<NotificationListTile> {
       );
     }
 
-    return Material(
-      color: notification.isRead
+    return TpHover(
+      onTap: widget.onOpen,
+      backgroundColor: notification.isRead
           ? Colors.transparent
           : cs.primaryContainer.withValues(alpha: 0.22),
-      child: InkWell(
-        onTap: widget.onOpen,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(
-                  notificationVariantIcon(notification.variant),
-                  size: 20,
-                  color: accent,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (hasTitle) ...[
-                        Text(
-                          notification.title,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: titleStyle,
-                        ),
-                        const SizedBox(height: 4),
-                      ],
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(child: messageBody),
-                          if (expandable)
-                            GestureDetector(
-                              onTap: _toggleExpanded,
-                              behavior: HitTestBehavior.opaque,
-                              child: Padding(
-                                padding: const EdgeInsets.only(left: 4, top: 2),
-                                child: Icon(
-                                  _expanded
-                                      ? Icons.expand_less
-                                      : Icons.expand_more,
-                                  size: 18,
-                                  color: cs.onSurfaceVariant,
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        formatNotificationTime(context, notification.createdAt),
-                        style: styles.mutedXs,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              if (!notification.isRead)
-                Container(
-                  width: 8,
-                  height: 8,
-                  margin: const EdgeInsets.only(top: 6, right: 4),
-                  decoration: BoxDecoration(
-                    color: cs.primary,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              IconButton(
-                tooltip: l10n.copy,
-                onPressed: _copyMessage,
-                icon: const Icon(Icons.copy_outlined, size: 18),
-                visualDensity: VisualDensity.compact,
-                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-              ),
-              IconButton(
-                tooltip: l10n.notificationMarkRead,
-                onPressed: widget.notification.isRead
-                    ? null
-                    : widget.onMarkRead,
-                icon: const Icon(Icons.check_circle_outline, size: 18),
-                visualDensity: VisualDensity.compact,
-                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-              ),
-              IconButton(
-                tooltip: l10n.notificationDelete,
-                onPressed: widget.onDelete,
-                icon: Icon(Icons.close, size: 18, color: cs.error),
-                visualDensity: VisualDensity.compact,
-                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-              ),
-            ],
+      hoverColor: TpHover.defaultHoverColor(context),
+      borderRadius: BorderRadius.zero,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: accent.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              notificationVariantIcon(notification.variant),
+              size: 20,
+              color: accent,
+            ),
           ),
-        ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (hasTitle) ...[
+                  Text(
+                    notification.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: titleStyle,
+                  ),
+                  const SizedBox(height: 4),
+                ],
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: messageBody),
+                    if (expandable)
+                      TpHover(
+                        onTap: _toggleExpanded,
+                        borderRadius: BorderRadius.circular(4),
+                        padding: const EdgeInsets.only(left: 4, top: 2),
+                        child: Icon(
+                          _expanded
+                              ? Icons.expand_less
+                              : Icons.expand_more,
+                          size: 18,
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  formatNotificationTime(context, notification.createdAt),
+                  style: styles.mutedXs,
+                ),
+              ],
+            ),
+          ),
+          if (!notification.isRead)
+            Container(
+              width: 8,
+              height: 8,
+              margin: const EdgeInsets.only(top: 6, right: 4),
+              decoration: BoxDecoration(
+                color: cs.primary,
+                shape: BoxShape.circle,
+              ),
+            ),
+          IconButton(
+            tooltip: l10n.copy,
+            onPressed: _copyMessage,
+            icon: const Icon(Icons.copy_outlined, size: 18),
+            visualDensity: VisualDensity.compact,
+            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+          ),
+          IconButton(
+            tooltip: l10n.notificationMarkRead,
+            onPressed: widget.notification.isRead
+                ? null
+                : widget.onMarkRead,
+            icon: const Icon(Icons.check_circle_outline, size: 18),
+            visualDensity: VisualDensity.compact,
+            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+          ),
+          IconButton(
+            tooltip: l10n.notificationDelete,
+            onPressed: widget.onDelete,
+            icon: Icon(Icons.close, size: 18, color: cs.error),
+            visualDensity: VisualDensity.compact,
+            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+          ),
+        ],
       ),
     );
   }

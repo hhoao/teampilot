@@ -184,62 +184,50 @@ class _EmptyRowTile extends StatefulWidget {
 }
 
 class _EmptyRowTileState extends State<_EmptyRowTile> {
-  var _hovering = false;
-
-  bool get _highlighted => _hovering || widget.keyboardHighlighted;
-
   @override
   Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) {
-        if (!_hovering) setState(() => _hovering = true);
-        widget.onHoverEnter();
+    return TpHover(
+      key: ValueKey('floating_empty_row_fill_${widget.row.id}'),
+      onTap: widget.onTap,
+      borderRadius: BorderRadius.circular(8),
+      forceHover: widget.keyboardHighlighted,
+      hoverColor: widget.highlight,
+      onHoverChanged: (hovered) {
+        if (hovered) {
+          widget.onHoverEnter();
+        } else {
+          widget.onHoverExit();
+        }
       },
-      onExit: (_) {
-        if (_hovering) setState(() => _hovering = false);
-        widget.onHoverExit();
-      },
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: widget.onTap,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: ColoredBox(
-            key: ValueKey('floating_empty_row_fill_${widget.row.id}'),
-            color: _highlighted ? widget.highlight : Colors.transparent,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              child: Row(
-                children: [
-                  Icon(widget.row.icon, size: 20, color: widget.foreground),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      widget.row.label,
-                      style: widget.styles.mdColored(widget.foreground),
-                    ),
-                  ),
-                  if (widget.row.shortcutLabels.isNotEmpty) ...[
-                    const SizedBox(width: 8),
-                    Wrap(
-                      spacing: 4,
-                      children: [
-                        for (final label in widget.row.shortcutLabels)
-                          _KeycapChip(
-                            label: label,
-                            fill: widget.chipFill,
-                            outline: widget.outline,
-                            styles: widget.styles,
-                            foreground: widget.foreground,
-                          ),
-                      ],
-                    ),
-                  ],
-                ],
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Row(
+          children: [
+            Icon(widget.row.icon, size: 20, color: widget.foreground),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                widget.row.label,
+                style: widget.styles.mdColored(widget.foreground),
               ),
             ),
-          ),
+            if (widget.row.shortcutLabels.isNotEmpty) ...[
+              const SizedBox(width: 8),
+              Wrap(
+                spacing: 4,
+                children: [
+                  for (final label in widget.row.shortcutLabels)
+                    _KeycapChip(
+                      label: label,
+                      fill: widget.chipFill,
+                      outline: widget.outline,
+                      styles: widget.styles,
+                      foreground: widget.foreground,
+                    ),
+                ],
+              ),
+            ],
+          ],
         ),
       ),
     );

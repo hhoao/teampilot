@@ -199,7 +199,7 @@ class _ProgressActivitiesPanel extends StatelessWidget {
   }
 }
 
-class _PillButton extends StatefulWidget {
+class _PillButton extends StatelessWidget {
   const _PillButton({
     super.key,
     required this.compact,
@@ -218,30 +218,23 @@ class _PillButton extends StatefulWidget {
   final VoidCallback onTap;
 
   @override
-  State<_PillButton> createState() => _PillButtonState();
-}
-
-class _PillButtonState extends State<_PillButton> {
-  var _hovered = false;
-
-  @override
   Widget build(BuildContext context) {
     final styles = TpTextStyles.of(context);
     final cs = Theme.of(context).colorScheme;
     final muted = cs.onSurfaceVariant;
-    final compact = widget.compact;
+    final compact = this.compact;
 
     Widget trailing;
-    if (widget.percent != null) {
+    if (percent != null) {
       trailing = Text(
-        widget.percent!,
+        percent!,
         style: styles.xs.copyWith(
           color: muted,
           height: 1.0,
           fontFeatures: const [FontFeature.tabularFigures()],
         ),
       );
-    } else if (widget.indeterminate) {
+    } else if (indeterminate) {
       trailing = SizedBox(
         width: 12,
         height: 12,
@@ -254,47 +247,34 @@ class _PillButtonState extends State<_PillButton> {
       trailing = const SizedBox.shrink();
     }
 
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
-          alignment: Alignment.center,
-          padding: EdgeInsets.symmetric(horizontal: compact ? 6 : 8),
-          decoration: BoxDecoration(
-            color: _hovered
-                ? cs.onSurface.withValues(alpha: 0.07)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Icon(widget.icon, size: 13, color: muted),
-              if (!compact) ...[
-                const SizedBox(width: 6),
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 160),
-                  child: Text(
-                    widget.label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: styles.xs.copyWith(
-                      color: muted,
-                      height: 1.0,
-                    ),
-                  ),
+    return TpHover(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(6),
+      hoverColor: cs.onSurface.withValues(alpha: 0.07),
+      padding: EdgeInsets.symmetric(horizontal: compact ? 6 : 8),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Icon(icon, size: 13, color: muted),
+          if (!compact) ...[
+            const SizedBox(width: 6),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 160),
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: styles.xs.copyWith(
+                  color: muted,
+                  height: 1.0,
                 ),
-              ],
-              const SizedBox(width: 6),
-              trailing,
-            ],
-          ),
-        ),
+              ),
+            ),
+          ],
+          const SizedBox(width: 6),
+          trailing,
+        ],
       ),
     );
   }

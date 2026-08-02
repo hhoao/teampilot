@@ -138,12 +138,15 @@ class EditToolCard extends StatelessWidget {
                 Expanded(child: title),
                 ...badges,
                 const SizedBox(width: 4),
-                GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: onToggle,
-                  child: _EditExpandChevron(
-                    open: open,
-                    color: triggerColor,
+                MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: onToggle,
+                    child: _EditExpandChevron(
+                      open: open,
+                      color: triggerColor,
+                    ),
                   ),
                 ),
               ],

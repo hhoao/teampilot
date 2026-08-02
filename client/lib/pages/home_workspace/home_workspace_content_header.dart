@@ -111,43 +111,34 @@ class HomeContentTabItemState extends State<HomeContentTabItem> {
     final cs = Theme.of(context).colorScheme;
     final styles = TpTextStyles.of(context);
     final selected = widget.selected;
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        behavior: HitTestBehavior.opaque,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(
-                color: selected ? cs.primary : Colors.transparent,
-                width: 2.5,
-              ),
+    return TpHover(
+      onTap: widget.onTap,
+      onHoverChanged: (hovered) => setState(() => _hovered = hovered),
+      borderRadius: BorderRadius.circular(6),
+      hoverColor: selected
+          ? Colors.transparent
+          : cs.onSurface.withValues(alpha: 0.05),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              color: selected ? cs.primary : Colors.transparent,
+              width: 2.5,
             ),
           ),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-              color: selected
-                  ? Colors.transparent
-                  : _hovered
-                  ? cs.onSurface.withValues(alpha: 0.05)
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Text(
-              widget.label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: selected
-                  ? styles.lgSemiboldColored(cs.primary)
-                  : styles.lgMediumColored(
-                      _hovered ? cs.onSurface : cs.onSurfaceVariant,
-                    ),
-            ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          child: Text(
+            widget.label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: selected
+                ? styles.lgSemiboldColored(cs.primary)
+                : styles.lgMediumColored(
+                    _hovered ? cs.onSurface : cs.onSurfaceVariant,
+                  ),
           ),
         ),
       ),

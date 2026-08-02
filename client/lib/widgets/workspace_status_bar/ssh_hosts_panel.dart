@@ -181,7 +181,7 @@ class _HostRow extends StatelessWidget {
   }
 }
 
-class _ActionChip extends StatefulWidget {
+class _ActionChip extends StatelessWidget {
   const _ActionChip({
     required this.label,
     required this.onTap,
@@ -193,13 +193,6 @@ class _ActionChip extends StatefulWidget {
   final bool muted;
 
   @override
-  State<_ActionChip> createState() => _ActionChipState();
-}
-
-class _ActionChipState extends State<_ActionChip> {
-  var _hovered = false;
-
-  @override
   Widget build(BuildContext context) {
     final styles = TpTextStyles.of(context);
     final cs = Theme.of(context).colorScheme;
@@ -208,43 +201,27 @@ class _ActionChipState extends State<_ActionChip> {
         ? Colors.white.withValues(alpha: 0.08)
         : Colors.black.withValues(alpha: 0.05);
 
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-          decoration: BoxDecoration(
-            color: _hovered ? hoverFill : Colors.transparent,
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: Text(
-            widget.label,
-            style: styles.xs.copyWith(
-              fontWeight: FontWeight.w500,
-              color: widget.muted ? cs.onSurfaceVariant : cs.onSurface,
-              height: 1.2,
-            ),
-          ),
+    return TpHover(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(4),
+      hoverColor: hoverFill,
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      child: Text(
+        label,
+        style: styles.xs.copyWith(
+          fontWeight: FontWeight.w500,
+          color: muted ? cs.onSurfaceVariant : cs.onSurface,
+          height: 1.2,
         ),
       ),
     );
   }
 }
 
-class _ManageRow extends StatefulWidget {
+class _ManageRow extends StatelessWidget {
   const _ManageRow({this.onTap});
 
   final VoidCallback? onTap;
-
-  @override
-  State<_ManageRow> createState() => _ManageRowState();
-}
-
-class _ManageRowState extends State<_ManageRow> {
-  var _hovered = false;
 
   @override
   Widget build(BuildContext context) {
@@ -258,29 +235,18 @@ class _ManageRowState extends State<_ManageRow> {
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(2, 0, 2, 0),
-      child: MouseRegion(
-        cursor: widget.onTap == null
-            ? SystemMouseCursors.basic
-            : SystemMouseCursors.click,
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: widget.onTap,
-          child: Container(
-            constraints: const BoxConstraints(minHeight: 34),
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            decoration: BoxDecoration(
-              color: _hovered && widget.onTap != null
-                  ? hoverFill
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(6),
-            ),
-            alignment: Alignment.centerLeft,
-            child: Text(
-              l10n.sshHostsManage,
-              style: styles.sm.copyWith(color: cs.onSurface, height: 1.2),
-            ),
+      child: TpHover(
+        onTap: onTap,
+        enabled: onTap != null,
+        borderRadius: BorderRadius.circular(6),
+        hoverColor: hoverFill,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        height: 34,
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            l10n.sshHostsManage,
+            style: styles.sm.copyWith(color: cs.onSurface, height: 1.2),
           ),
         ),
       ),

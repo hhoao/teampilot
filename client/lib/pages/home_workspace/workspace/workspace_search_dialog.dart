@@ -302,68 +302,52 @@ class _StatusRow extends StatelessWidget {
   }
 }
 
-class _FileResultTile extends StatefulWidget {
+class _FileResultTile extends StatelessWidget {
   const _FileResultTile({required this.match, required this.onTap});
 
   final WorkspaceFileMatch match;
   final VoidCallback onTap;
 
   @override
-  State<_FileResultTile> createState() => _FileResultTileState();
-}
-
-class _FileResultTileState extends State<_FileResultTile> {
-  var _hovered = false;
-
-  @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final styles = TpTextStyles.of(context);
-    final background = _hovered
-        ? cs.onSurface.withValues(alpha: 0.05)
-        : Colors.transparent;
 
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: Material(
-        color: background,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
+      child: TpHover(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(8),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(8),
-          onTap: widget.onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.insert_drive_file_outlined,
-                  size: context.tpIconSizes.md,
-                  color: cs.onSurfaceVariant,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        widget.match.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: styles.mdMediumColored(cs.onSurface),
-                      ),
-                      Text(
-                        widget.match.relativePath,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: styles.smColored(cs.onSurfaceVariant,),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+        hoverColor: cs.onSurface.withValues(alpha: 0.05),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        child: Row(
+          children: [
+            Icon(
+              Icons.insert_drive_file_outlined,
+              size: context.tpIconSizes.md,
+              color: cs.onSurfaceVariant,
             ),
-          ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    match.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: styles.mdMediumColored(cs.onSurface),
+                  ),
+                  Text(
+                    match.relativePath,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: styles.smColored(cs.onSurfaceVariant,),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );

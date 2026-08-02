@@ -126,7 +126,7 @@ class _ResourceUsageStatusSegmentState
   }
 }
 
-class _PillButton extends StatefulWidget {
+class _PillButton extends StatelessWidget {
   const _PillButton({
     required this.compact,
     required this.memoryLabel,
@@ -144,74 +144,56 @@ class _PillButton extends StatefulWidget {
   final VoidCallback onTap;
 
   @override
-  State<_PillButton> createState() => _PillButtonState();
-}
-
-class _PillButtonState extends State<_PillButton> {
-  var _hovered = false;
-
-  @override
   Widget build(BuildContext context) {
     final styles = TpTextStyles.of(context);
     final cs = Theme.of(context).colorScheme;
-    final compact = widget.compact;
-    final shortMemory = widget.memoryLabel == kResourceMetricEmDash
+    final compact = this.compact;
+    final shortMemory = memoryLabel == kResourceMetricEmDash
         ? kResourceMetricEmDash
-        : widget.memoryLabel.replaceAll(' MB', '');
+        : memoryLabel.replaceAll(' MB', '');
+    final fill = cs.onSurface.withValues(alpha: 0.07);
 
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
-          alignment: Alignment.center,
-          padding: EdgeInsets.symmetric(horizontal: compact ? 6 : 8),
-          decoration: BoxDecoration(
-            color: widget.selected || _hovered
-                ? cs.onSurface.withValues(alpha: 0.07)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(6),
+    return TpHover(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(6),
+      backgroundColor: selected ? fill : null,
+      hoverColor: fill,
+      padding: EdgeInsets.symmetric(horizontal: compact ? 6 : 8),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Icon(Icons.memory, size: 13, color: color),
+          const SizedBox(width: 4),
+          Text(
+            compact ? shortMemory : memoryLabel,
+            style: styles.xs.copyWith(
+              color: color,
+              height: 1.0,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Icon(Icons.memory, size: 13, color: widget.color),
-              const SizedBox(width: 4),
-              Text(
-                compact ? shortMemory : widget.memoryLabel,
-                style: styles.xs.copyWith(
-                  color: widget.color,
-                  height: 1.0,
-                  fontFeatures: const [FontFeature.tabularFigures()],
-                ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 5),
+            child: Text(
+              '·',
+              style: styles.xs.copyWith(
+                color: color.withValues(alpha: 0.5),
+                height: 1.0,
               ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 5),
-                child: Text(
-                  '·',
-                  style: styles.xs.copyWith(
-                    color: widget.color.withValues(alpha: 0.5),
-                    height: 1.0,
-                  ),
-                ),
-              ),
-              Icon(Icons.terminal, size: 12, color: widget.color),
-              const SizedBox(width: 4),
-              Text(
-                '${widget.terminalCount}',
-                style: styles.xs.copyWith(
-                  color: widget.color,
-                  height: 1.0,
-                  fontFeatures: const [FontFeature.tabularFigures()],
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
+          Icon(Icons.terminal, size: 12, color: color),
+          const SizedBox(width: 4),
+          Text(
+            '$terminalCount',
+            style: styles.xs.copyWith(
+              color: color,
+              height: 1.0,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
+          ),
+        ],
       ),
     );
   }
