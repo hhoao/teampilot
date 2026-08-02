@@ -176,55 +176,60 @@ class _HomeWorkspaceSwitcherMenuState extends State<HomeWorkspaceSwitcherMenu> {
               menuController: _menuController,
               onTap: _onCreateTap,
             ),
-            if (showOpen) ...[
-              const SizedBox(height: TpActionMenuMetrics.itemGap),
-              _sectionHeader(l10n.homeWorkspaceOpenTabs, cs, styles),
-              for (var i = 0; i < widget.openTabs.length; i++) ...[
-                if (i > 0)
-                  const SizedBox(height: TpActionMenuMetrics.itemGap),
-                _openTabItem(
-                  tab: widget.openTabs[i],
-                  colorScheme: cs,
-                  brightness: brightness,
-                  iconSize: iconSize,
-                ),
-              ],
-            ],
-            const SizedBox(height: TpActionMenuMetrics.itemGap),
-            _sectionHeader(l10n.homeWorkspaceRecentlyClosed, cs, styles),
-            if (closedEntries.isEmpty)
-              TpActionMenuItem(
-                icon: Icons.inbox_outlined,
-                label: l10n.homeWorkspaceRecentlyClosedEmpty,
-                enabled: false,
-                menuController: _menuController,
-              )
-            else
-              ConstrainedBox(
-                constraints: const BoxConstraints(
-                  maxHeight: HomeWorkspaceSwitcherMenu._menuMaxHeight,
-                ),
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
+            ConstrainedBox(
+              constraints: const BoxConstraints(
+                maxHeight: HomeWorkspaceSwitcherMenu._menuMaxHeight,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (showOpen) ...[
+                      const SizedBox(height: TpActionMenuMetrics.itemGap),
+                      _sectionHeader(l10n.homeWorkspaceOpenTabs, cs, styles),
+                      for (var i = 0; i < widget.openTabs.length; i++) ...[
+                        if (i > 0)
+                          const SizedBox(height: TpActionMenuMetrics.itemGap),
+                        _openTabItem(
+                          tab: widget.openTabs[i],
+                          colorScheme: cs,
+                          brightness: brightness,
+                          iconSize: iconSize,
+                        ),
+                      ],
+                    ],
+                    const SizedBox(height: TpActionMenuMetrics.itemGap),
+                    _sectionHeader(
+                      l10n.homeWorkspaceRecentlyClosed,
+                      cs,
+                      styles,
+                    ),
+                    if (closedEntries.isEmpty)
+                      TpActionMenuItem(
+                        icon: Icons.inbox_outlined,
+                        label: l10n.homeWorkspaceRecentlyClosedEmpty,
+                        enabled: false,
+                        menuController: _menuController,
+                      )
+                    else
                       for (var i = 0; i < closedEntries.length; i++) ...[
                         if (i > 0)
                           const SizedBox(height: TpActionMenuMetrics.itemGap),
                         _ClosedWorkspaceMenuItem(
                           entry: closedEntries[i],
                           entries: closedEntries,
-                          workspace: workspaceById[closedEntries[i].workspaceId],
+                          workspace:
+                              workspaceById[closedEntries[i].workspaceId],
                           identities: identities,
                           menuController: _menuController,
                           onReopen: widget.onReopenClosed,
                         ),
                       ],
-                    ],
-                  ),
+                  ],
                 ),
               ),
+            ),
           ],
         ),
       ),

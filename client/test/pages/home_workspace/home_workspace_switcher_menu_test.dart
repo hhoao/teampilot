@@ -135,7 +135,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Closed One'));
     await tester.pumpAndSettle();
-    expect(reopened, isNotNull);
+    expect(reopened, 'closed-1');
   });
 
   testWidgets('omits open section when no open tabs', (tester) async {
