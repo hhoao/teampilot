@@ -120,6 +120,10 @@ MarkdownTokens buildAppMarkdownTokens(
     h4TopSpacing: h4Top,
     h5TopSpacing: h5Top,
     h6TopSpacing: h6Top,
+    // Mark policy from TpTextStyles scale (not raw FontWeight literals).
+    strongWeight: styles.mdBold.fontWeight!,
+    emphasisFontStyle: FontStyle.italic,
+    strikeDecoration: TextDecoration.lineThrough,
   );
 }
 
@@ -130,34 +134,49 @@ AiMessageTheme buildAppAiMessageTheme(ThemeData theme) {
   );
 }
 
+/// Outer styles mixed with mono [CodeRun] during boot glyph warmup.
+///
+/// Each entry is laid out once with inline code in the same [TextPainter] —
+/// single-style [TpGlyphWarmup.shape] does not cover that nest. Table cells
+/// use [MarkdownTokens.tableHead] / body as the outer (not strong).
+List<TextStyle> markdownMixedCodeOuterStyles(MarkdownTokens tokens) {
+  final body = tokens.body;
+  final bold = tokens.strongStyle(body);
+  final italic = tokens.emphasisStyle(body);
+  final boldItalic = tokens.emphasisStyle(bold);
+  return [
+    body,
+    bold,
+    italic,
+    boldItalic,
+    tokens.h1,
+    tokens.h2,
+    tokens.tableHead,
+  ];
+}
+
 /// Boot layout paths for markdown preview that single-style warmup cannot
 /// cover (nested inline styles in one [TextPainter]). Uses
 /// [TpGlyphWarmup.styleProbe] only — finite style mixes, not document text.
 ///
-/// Primes common IR nests: body/strong/emphasis × mono code, and strong ×
-/// emphasis. Link [WidgetSpan]s are a separate mount cost (not shaped here).
+/// Primes common IR nests: body/strong/emphasis/tableHead × mono code, and
+/// strong × emphasis. Link [WidgetSpan]s are a separate mount cost (not shaped
+/// here).
 void warmMarkdownMixedInlineLayout(ThemeData theme) {
   final tokens = buildAppMarkdownTokens(theme, MarkdownProfile.document);
   final body = tokens.body;
-  final bold = body.copyWith(fontWeight: FontWeight.w700);
-  final italic = body.copyWith(fontStyle: FontStyle.italic);
-  final boldItalic = bold.copyWith(fontStyle: FontStyle.italic);
-  final code = tokens.inlineCode;
+  final bold = tokens.strongStyle(body);
+  final boldItalic = tokens.emphasisStyle(bold);
   final strut = forcedStrut(body);
   const probe = TpGlyphWarmup.styleProbe;
 
   void mix(TextStyle outer) {
-    final codeAtSize = code.copyWith(
-      fontSize: outer.fontSize,
-      height: outer.height,
-      letterSpacing: outer.letterSpacing,
-    );
     TpGlyphWarmup.shapeRich(
       text: TextSpan(
         style: outer,
         children: [
           TextSpan(text: probe, style: outer),
-          TextSpan(text: 'x', style: codeAtSize),
+          TextSpan(text: 'x', style: tokens.inlineCodeAt(outer)),
           TextSpan(text: probe, style: outer),
         ],
       ),
@@ -165,13 +184,9 @@ void warmMarkdownMixedInlineLayout(ThemeData theme) {
     );
   }
 
-  // CodeRun merges mono chrome with surrounding size (see inline_spans).
-  mix(body);
-  mix(bold);
-  mix(italic);
-  mix(boldItalic);
-  mix(tokens.h1);
-  mix(tokens.h2);
+  for (final outer in markdownMixedCodeOuterStyles(tokens)) {
+    mix(outer);
+  }
 
   // StrongRun + EmphasisRun (no family switch).
   TpGlyphWarmup.shapeRich(

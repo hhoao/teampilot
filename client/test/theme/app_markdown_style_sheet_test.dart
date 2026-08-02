@@ -66,6 +66,10 @@ void main() {
       theme.colorScheme.onSurface.withValues(alpha: 0.04),
     );
     expect(tokens.link.color, theme.colorScheme.primary);
+    final styles = TpTextStyles(theme);
+    expect(tokens.strongWeight, styles.mdBold.fontWeight);
+    expect(tokens.emphasisFontStyle, FontStyle.italic);
+    expect(tokens.strikeDecoration, TextDecoration.lineThrough);
   });
 
   test('compact profile is tighter than document headings', () {

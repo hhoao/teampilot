@@ -16,14 +16,7 @@ import 'image_raw_blocks.dart';
 StrutStyle? forcedStrut(TextStyle style) => null;
 
 TextStyle headingStyleForLevel(MarkdownTokens tokens, int level) {
-  return switch (level) {
-    1 => tokens.h1,
-    2 => tokens.h2,
-    3 => tokens.h3,
-    4 => tokens.h4,
-    5 => tokens.h5,
-    _ => tokens.h6,
-  };
+  return tokens.headingStyle(level);
 }
 
 List<InlineSpan> inlineSpans(
@@ -46,41 +39,35 @@ InlineSpan inlineSpan(
   return switch (run) {
     TextRun(:final text) => TextSpan(text: text, style: base),
     StrongRun(:final children) => TextSpan(
-        style: base.copyWith(fontWeight: FontWeight.w700),
+        style: tokens.strongStyle(base),
         children: inlineSpans(
           children,
           tokens,
-          base.copyWith(fontWeight: FontWeight.w700),
+          tokens.strongStyle(base),
           resolvers,
         ),
       ),
     EmphasisRun(:final children) => TextSpan(
-        style: base.copyWith(fontStyle: FontStyle.italic),
+        style: tokens.emphasisStyle(base),
         children: inlineSpans(
           children,
           tokens,
-          base.copyWith(fontStyle: FontStyle.italic),
+          tokens.emphasisStyle(base),
           resolvers,
         ),
       ),
     StrikeRun(:final children) => TextSpan(
-        style: base.copyWith(decoration: TextDecoration.lineThrough),
+        style: tokens.strikeStyle(base),
         children: inlineSpans(
           children,
           tokens,
-          base.copyWith(decoration: TextDecoration.lineThrough),
+          tokens.strikeStyle(base),
           resolvers,
         ),
       ),
     CodeRun(:final text) => TextSpan(
         text: text,
-        // Keep mono/chrome from [tokens.inlineCode], but match surrounding
-        // size (headings, etc.) — otherwise `# Title `code`` renders body-sized.
-        style: tokens.inlineCode.copyWith(
-          fontSize: base.fontSize,
-          height: base.height,
-          letterSpacing: base.letterSpacing,
-        ),
+        style: tokens.inlineCodeAt(base),
       ),
     // TextSpan (not WidgetSpan) so SelectionArea keeps a continuous highlight.
     // mouseCursor + TapGestureRecognizer provide click affordance. Recognizer

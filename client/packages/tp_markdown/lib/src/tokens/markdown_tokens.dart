@@ -39,6 +39,9 @@ class MarkdownTokens {
     required this.h4TopSpacing,
     required this.h5TopSpacing,
     required this.h6TopSpacing,
+    this.strongWeight = FontWeight.w700,
+    this.emphasisFontStyle = FontStyle.italic,
+    this.strikeDecoration = TextDecoration.lineThrough,
   });
 
   /// Minimal tokens for package widget tests (not for product UI).
@@ -60,6 +63,9 @@ class MarkdownTokens {
     double h4TopSpacing = 8,
     double h5TopSpacing = 8,
     double h6TopSpacing = 8,
+    FontWeight strongWeight = FontWeight.w700,
+    FontStyle emphasisFontStyle = FontStyle.italic,
+    TextDecoration strikeDecoration = TextDecoration.lineThrough,
   }) {
     final colors = scheme ?? const ColorScheme.light();
     const body = TextStyle(fontSize: 14, height: 1.4);
@@ -107,6 +113,9 @@ class MarkdownTokens {
       h4TopSpacing: h4TopSpacing,
       h5TopSpacing: h5TopSpacing,
       h6TopSpacing: h6TopSpacing,
+      strongWeight: strongWeight,
+      emphasisFontStyle: emphasisFontStyle,
+      strikeDecoration: strikeDecoration,
     );
   }
 
@@ -144,6 +153,15 @@ class MarkdownTokens {
   final double h5TopSpacing;
   final double h6TopSpacing;
 
+  /// [StrongRun] weight applied onto the surrounding base.
+  final FontWeight strongWeight;
+
+  /// [EmphasisRun] style applied onto the surrounding base.
+  final FontStyle emphasisFontStyle;
+
+  /// [StrikeRun] decoration applied onto the surrounding base.
+  final TextDecoration strikeDecoration;
+
   double headingTop(int level) {
     return switch (level) {
       1 => h1TopSpacing,
@@ -166,6 +184,28 @@ class MarkdownTokens {
     };
   }
 
+  /// [StrongRun] mark — host glyph warmup must use the same helper.
+  TextStyle strongStyle(TextStyle base) =>
+      base.copyWith(fontWeight: strongWeight);
+
+  /// [EmphasisRun] mark — host glyph warmup must use the same helper.
+  TextStyle emphasisStyle(TextStyle base) =>
+      base.copyWith(fontStyle: emphasisFontStyle);
+
+  /// [StrikeRun] mark — host glyph warmup must use the same helper.
+  TextStyle strikeStyle(TextStyle base) =>
+      base.copyWith(decoration: strikeDecoration);
+
+  /// [CodeRun] paint style: mono/chrome from [inlineCode], metrics from [base].
+  ///
+  /// Headings and other outer roles keep their size/height so
+  /// `# Title \`code\`` does not fall back to body-sized mono.
+  TextStyle inlineCodeAt(TextStyle base) => inlineCode.copyWith(
+        fontSize: base.fontSize,
+        height: base.height,
+        letterSpacing: base.letterSpacing,
+      );
+
   /// Text styles that should participate in host glyph warmup.
   List<TextStyle> get textStylesForWarmup => [
         body,
@@ -183,6 +223,10 @@ class MarkdownTokens {
         blockquote,
         tableHead,
         tableBody,
+        // Mark-derived fingerprints track [strongWeight] / emphasis changes.
+        strongStyle(body),
+        emphasisStyle(body),
+        emphasisStyle(strongStyle(body)),
       ];
 }
 

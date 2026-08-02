@@ -101,4 +101,29 @@ void main() {
     final theme = bootstrapThemeForTextWarmup(fonts);
     warmMarkdownMixedInlineLayout(theme);
   });
+
+  test('mixed inline warmup includes tableHead × mono', () {
+    final fonts = AppFontResolver.resolve(
+      uiFontId: 'system',
+      monoFontId: 'jetbrainsMono',
+      platform: TargetPlatform.linux,
+    );
+    final theme = bootstrapThemeForTextWarmup(fonts);
+    final tokens = buildAppMarkdownTokens(theme, MarkdownProfile.document);
+    final outers = markdownMixedCodeOuterStyles(tokens);
+    final bold = tokens.strongStyle(tokens.body);
+
+    // tableHead is mdSemibold (w600); StrongRun bold is w700 — distinct keys.
+    expect(
+      TpGlyphWarmup.shapeKey(tokens.tableHead),
+      isNot(TpGlyphWarmup.shapeKey(bold)),
+    );
+    expect(
+      outers.map(TpGlyphWarmup.shapeKey),
+      contains(TpGlyphWarmup.shapeKey(tokens.tableHead)),
+      reason:
+          'table header cells with `code` use tableHead as outer; '
+          'mix(bold) does not cover w600',
+    );
+  });
 }

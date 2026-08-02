@@ -72,7 +72,7 @@ Widget _imagePlaceholder(String label, MarkdownTokens tokens) {
       Flexible(
         child: Text(
           label,
-          style: tokens.body.copyWith(fontStyle: FontStyle.italic),
+          style: tokens.emphasisStyle(tokens.body),
           strutStyle: forcedStrut(tokens.body),
         ),
       ),
