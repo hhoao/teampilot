@@ -74,7 +74,6 @@ class WorkspaceShellSidebarVisibilityToggle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final cs = Theme.of(context).colorScheme;
     return BlocBuilder<LayoutCubit, LayoutState>(
       buildWhen: (a, b) =>
           a.preferences.sidebarVisible != b.preferences.sidebarVisible ||
@@ -88,8 +87,7 @@ class WorkspaceShellSidebarVisibilityToggle extends StatelessWidget {
           tooltip: effectiveOpen
               ? l10n.sidebarPanelHidden
               : l10n.sidebarPanelVisible,
-          color: effectiveOpen ? cs.primary : cs.onSurfaceVariant,
-          backgroundColor: Colors.transparent,
+          selected: effectiveOpen,
           onTap: () {
             final layout = context.read<LayoutCubit>();
             if (effectiveOpen) {

@@ -212,6 +212,106 @@ void main() {
 
     expect(find.byType(WorkspaceShellPaneVisibilityToggles), findsNothing);
     expect(find.byType(NotificationBellButton), findsNothing);
-    expect(find.byIcon(Icons.menu), findsOneWidget);
+    expect(find.byIcon(Icons.menu_open), findsOneWidget);
+  });
+
+  testWidgets('mobile workspace hamburger shows selected menu_open when drawer open', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(400, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final theme = ThemeData(useMaterial3: true);
+    late LayoutCubit layout;
+    await tester.pumpWidget(
+      TpTheme(
+        data: TpThemeData.fromColorScheme(theme.colorScheme, scale: 1.0),
+        child: _wrapTitleBar(
+          chatCubit: chatCubit,
+          child: Builder(
+            builder: (context) {
+              layout = context.read<LayoutCubit>();
+              return TpSidebarProvider(
+                mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
+                child: MaterialApp(
+                  localizationsDelegates:
+                      AppLocalizations.localizationsDelegates,
+                  supportedLocales: AppLocalizations.supportedLocales,
+                  theme: theme,
+                  home: const Scaffold(
+                    body: HomeTitleBar(
+                      tabs: [HomeWorkspaceTab(id: 'ws-a', name: 'Solo')],
+                      activeTabKey: 'ws-a',
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    layout.openMobileWorkspaceDrawer();
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.menu_open), findsOneWidget);
+    final button = tester.widget<TpIconButton>(
+      find.ancestor(
+        of: find.byIcon(Icons.menu_open),
+        matching: find.byType(TpIconButton),
+      ),
+    );
+    expect(button.selected, isTrue);
+  });
+
+  testWidgets('mobile home hamburger shows selected menu_open when sidebar open', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(400, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final theme = ThemeData(useMaterial3: true);
+    await tester.pumpWidget(
+      TpTheme(
+        data: TpThemeData.fromColorScheme(theme.colorScheme, scale: 1.0),
+        child: _wrapTitleBar(
+          chatCubit: chatCubit,
+          child: TpSidebarProvider(
+            mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
+            child: MaterialApp(
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              theme: theme,
+              home: const Scaffold(
+                body: HomeTitleBar(
+                  tabs: [HomeWorkspaceTab(id: 'ws-a', name: 'Solo')],
+                  activeTabKey: null,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final scopeContext = tester.element(find.byType(HomeTitleBar));
+    TpSidebarScope.of(scopeContext).setOpenMobile(true);
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.menu_open), findsOneWidget);
+    final button = tester.widget<TpIconButton>(
+      find.ancestor(
+        of: find.byIcon(Icons.menu_open),
+        matching: find.byType(TpIconButton),
+      ),
+    );
+    expect(button.selected, isTrue);
   });
 }

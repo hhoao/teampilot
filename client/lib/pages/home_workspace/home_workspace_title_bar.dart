@@ -479,22 +479,40 @@ class _HomeTitleBarMobileDrawerTrigger extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (activeTabKey == null) {
-      return const TpSidebarTrigger();
+      final openMobile = TpSidebarScope.of(context).openMobile;
+      return TpSidebarTrigger(
+        size: TpIconButton.kMobileTapSize,
+        selected: openMobile,
+      );
     }
-    return TpIconButton(
-      icon: Icons.menu,
-      onTap: () {
-        final composeLanding = context.read<ChatCubit>().state.newChatActive;
-        final layout = context.read<LayoutCubit>();
+
+    final composeLanding = context.select<ChatCubit, bool>(
+      (c) => c.state.newChatActive,
+    );
+    return BlocBuilder<LayoutCubit, LayoutState>(
+      buildWhen: (a, b) =>
+          a.preferences.sidebarVisible != b.preferences.sidebarVisible ||
+          a.narrowLeftSuppressed != b.narrowLeftSuppressed ||
+          a.preferences.rightToolsVisible != b.preferences.rightToolsVisible ||
+          a.landingRightToolsOverride != b.landingRightToolsOverride,
+      builder: (context, layoutState) {
         final open = mobileWorkspaceDrawerOpen(
-          layoutState: layout.state,
+          layoutState: layoutState,
           composeLanding: composeLanding,
         );
-        if (open) {
-          layout.closeMobileWorkspaceDrawer(composeLanding: composeLanding);
-        } else {
-          layout.openMobileWorkspaceDrawer(composeLanding: composeLanding);
-        }
+        return TpIconButton(
+          icon: open ? Icons.menu_open : Icons.menu,
+          size: TpIconButton.kMobileTapSize,
+          selected: open,
+          onTap: () {
+            final layout = context.read<LayoutCubit>();
+            if (open) {
+              layout.closeMobileWorkspaceDrawer(composeLanding: composeLanding);
+            } else {
+              layout.openMobileWorkspaceDrawer(composeLanding: composeLanding);
+            }
+          },
+        );
       },
     );
   }
