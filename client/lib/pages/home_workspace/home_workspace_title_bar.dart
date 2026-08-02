@@ -90,13 +90,11 @@ Color workspaceTabTopologyIconColor({
   return base.withValues(alpha: alpha);
 }
 
-@visibleForTesting
 String recentlyClosedEntryLabel(HomeClosedWorkspaceEntry entry) {
   final name = entry.displayName.trim();
   return name.isNotEmpty ? name : entry.workspaceId;
 }
 
-@visibleForTesting
 String? recentlyClosedSubtitleLine({
   required AppLocalizations l10n,
   required HomeClosedWorkspaceEntry entry,
@@ -107,7 +105,6 @@ String? recentlyClosedSubtitleLine({
   return path.isNotEmpty ? path : null;
 }
 
-@visibleForTesting
 WorkspaceTopology? recentlyClosedTopology({
   required HomeClosedWorkspaceEntry entry,
   Workspace? workspace,
