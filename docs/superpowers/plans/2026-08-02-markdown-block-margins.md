@@ -134,7 +134,7 @@ double gapBetween(
 }
 ```
 
-Remove `_isHeading` / `_headingLevel` if unused afterward (keep `headingStyle` / level helpers used by render).
+Remove `_isHeading` / `_headingLevel` / `headingTop(int level)` if unused afterward (keep `headingStyle` / level helpers used by render).
 
 - [ ] **Step 4: Run unit test — pass**
 
