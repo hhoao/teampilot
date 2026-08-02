@@ -469,38 +469,30 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
         onSecondaryTapDown: _showSessionContextMenuFromTap,
         onLongPress: Platform.isAndroid ? _showSessionContextMenuAtCenter : null,
         trailing: actionTrailing,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
-            border: selected
-                ? Border.all(color: cs.primary.withValues(alpha: 0.28))
-                : null,
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              leadingWidget,
-              const SizedBox(width: 8),
-              Expanded(
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(minHeight: 32),
-                    child: TpTooltip(
-                      message: paintedTitle,
-                      child: Text(
-                        paintedTitle,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TpTextStyles.of(context).mdColored(cs.onSurface),
-                      ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            leadingWidget,
+            const SizedBox(width: 8),
+            Expanded(
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(minHeight: 32),
+                  child: TpTooltip(
+                    message: paintedTitle,
+                    child: Text(
+                      paintedTitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TpTextStyles.of(context).mdColored(cs.onSurface),
                     ),
                   ),
                 ),
               ),
-              if (idleTrailing != null) idleTrailing,
-            ],
-          ),
+            ),
+            if (idleTrailing != null) idleTrailing,
+          ],
         ),
       ),
     );
