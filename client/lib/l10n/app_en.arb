@@ -279,6 +279,7 @@
   "homeWorkspacePersonalSubtitle": "Skip the team setup — just launch a single CLI and start chatting.",
   "homeWorkspaceNoData": "No data yet",
   "homeWorkspaceRecentlyClosed": "Recently closed",
+  "homeWorkspaceOpenTabs": "Open",
   "homeWorkspaceRecentlyClosedEmpty": "No recently closed workspaces",
   "homeWorkspaceNewTeam": "New Team",
   "homeWorkspaceProviders": "Providers",

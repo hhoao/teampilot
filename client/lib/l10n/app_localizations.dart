@@ -1316,6 +1316,12 @@ abstract class AppLocalizations {
   /// **'Recently closed'**
   String get homeWorkspaceRecentlyClosed;
 
+  /// No description provided for @homeWorkspaceOpenTabs.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get homeWorkspaceOpenTabs;
+
   /// No description provided for @homeWorkspaceRecentlyClosedEmpty.
   ///
   /// In en, this message translates to:
