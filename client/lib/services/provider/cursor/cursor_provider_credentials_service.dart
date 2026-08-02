@@ -4,18 +4,15 @@ import 'dart:io';
 import '../../../models/claude_credential_link_result.dart';
 import '../../../models/credential_action_result.dart';
 import '../../cli/cli_invocation.dart';
+import '../../host/host_one_shot_runner.dart';
 import '../../io/filesystem.dart';
+import '../../storage/app_storage.dart';
+import '../../storage/runtime_context.dart';
 import '../credential_process_result.dart';
+import '../provider_credential_host_runner.dart';
 import 'cursor_auth_artifacts.dart';
 import 'cursor_home_layout.dart';
 import 'cursor_launch_environment.dart';
-
-typedef CursorCredentialProcessRunner =
-    Future<ProcessResult> Function(
-      String executable,
-      List<String> arguments, {
-      Map<String, String>? environment,
-    });
 
 class CursorProviderCredentialsService {
   CursorProviderCredentialsService({
@@ -23,28 +20,20 @@ class CursorProviderCredentialsService {
     required String basePath,
     this.cursorExecutable = 'cursor-agent',
     String? Function()? resolveCursorExecutable,
-    CursorCredentialProcessRunner? processRunner,
+    ProviderCredentialHostRunner? hostRunner,
   }) : _fs = fs,
        _basePath = basePath.trim(),
        _resolveCursorExecutable = resolveCursorExecutable,
-       _processRunner = processRunner ?? _defaultProcessRunner;
+       _hostRunner = hostRunner;
 
   final Filesystem _fs;
   final String _basePath;
   final String cursorExecutable;
   final String? Function()? _resolveCursorExecutable;
-  final CursorCredentialProcessRunner _processRunner;
+  final ProviderCredentialHostRunner? _hostRunner;
 
   CursorHomeLayout get _layout =>
       CursorHomeLayout(pathContext: _fs.pathContext);
-
-  static Future<ProcessResult> _defaultProcessRunner(
-    String executable,
-    List<String> arguments, {
-    Map<String, String>? environment,
-  }) {
-    return Process.run(executable, arguments, environment: environment);
-  }
 
   String providerHome(String providerId) => _fs.pathContext.join(
     _basePath,
@@ -343,27 +332,83 @@ class CursorProviderCredentialsService {
     return cursorExecutable;
   }
 
-  Future<ProcessResult> _runCursor(
-    List<String> subcommand, {
+  bool _usePosixCliPaths(String preferencePath) {
+    if (AppStorage.isInstalled) {
+      final mode = AppStorage.context.mode;
+      if (mode == StorageBackendMode.wsl || mode == StorageBackendMode.ssh) {
+        return true;
+      }
+    }
+    return CliInvocation.fromExecutable(preferencePath).usesWsl;
+  }
+
+  String _hostExecutable(String preferencePath) {
+    final invocation = CliInvocation.fromExecutable(preferencePath);
+    if (!invocation.usesWsl) return invocation.executable;
+    final linuxExecutable = _wslLinuxExecutable(invocation.prefixArgs);
+    return linuxExecutable ?? preferencePath;
+  }
+
+  List<String> _hostArguments(
+    String preferencePath,
+    List<String> subcommand,
+  ) {
+    final invocation = CliInvocation.fromExecutable(preferencePath);
+    if (!invocation.usesWsl) {
+      return [...invocation.prefixArgs, ...subcommand];
+    }
+    final linuxExecutable = _wslLinuxExecutable(invocation.prefixArgs);
+    if (linuxExecutable == null) return subcommand;
+    final index = invocation.prefixArgs.indexOf(linuxExecutable);
+    final trailing =
+        index < 0 ? const <String>[] : invocation.prefixArgs.sublist(index + 1);
+    return [...trailing, ...subcommand];
+  }
+
+  String? _wslLinuxExecutable(List<String> prefixArgs) {
+    for (final arg in prefixArgs.reversed) {
+      if (arg.startsWith('/')) return arg;
+    }
+    return prefixArgs.isEmpty ? null : prefixArgs.last;
+  }
+
+  HostRunRequest _buildHostRunRequest({
+    required String preferencePath,
+    required List<String> subcommand,
     required String providerId,
     Map<String, String> platformEnv = const {},
+  }) {
+    return HostRunRequest(
+      executable: _hostExecutable(preferencePath),
+      arguments: _hostArguments(preferencePath, subcommand),
+      environment: {
+        ...platformEnv,
+        ...loginEnvironment(
+          providerId,
+          useWslPaths: _usePosixCliPaths(preferencePath),
+        ),
+      },
+    );
+  }
+
+  ProviderCredentialHostRunner get _runner =>
+      _hostRunner ?? ProviderCredentialHostRunner.forAppStorage();
+
+  Future<HostRunResult> _runCursor(
+    List<String> subcommand, {
+    required String providerId,
+    required bool login,
+    Map<String, String> platformEnv = const {},
   }) async {
-    final executable = _resolvedCursorExecutable();
-    final invocation = CliInvocation.fromExecutable(executable);
-    final env = {
-      ...platformEnv,
-      ...loginEnvironment(providerId, useWslPaths: invocation.usesWsl),
-    };
-    final launch = CliInvocation.resolveProcessLaunch(
-      executable: executable,
+    final preferencePath = _resolvedCursorExecutable();
+    final request = _buildHostRunRequest(
+      preferencePath: preferencePath,
       subcommand: subcommand,
-      environment: env,
+      providerId: providerId,
+      platformEnv: platformEnv,
     );
-    return _processRunner(
-      launch.executable,
-      launch.arguments,
-      environment: launch.environment,
-    );
+    final runner = _runner;
+    return login ? runner.runLogin(request) : runner.run(request);
   }
 
   Future<CredentialActionResult> runAuthLogin(
@@ -381,9 +426,10 @@ class CursorProviderCredentialsService {
         const ['login'],
         providerId: providerId,
         platformEnv: platformEnv,
+        login: true,
       );
       return loginCommandResult(
-        result: result,
+        hostResult: result,
         ready: (await probe(providerId)).isReady,
         executable: executable,
         clearIncompleteCredentials: () => _removeAuthArtifacts(providerId),
@@ -415,6 +461,7 @@ class CursorProviderCredentialsService {
         const ['logout'],
         providerId: providerId,
         platformEnv: platformEnv,
+        login: false,
       );
     } on ProcessException {
       // Optional logout; continue deleting local auth artifacts.
