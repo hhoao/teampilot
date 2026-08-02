@@ -8,6 +8,7 @@ import 'package:teampilot/services/host/host_process_starter.dart';
 import 'package:teampilot/services/host/process_run_handle.dart';
 import 'package:teampilot/services/provider/claude/claude_provider_credentials_service.dart';
 import 'package:teampilot/services/provider/credential_binding.dart';
+import 'package:teampilot/services/provider/credential_host_request.dart';
 import 'package:teampilot/services/provider/provider_credential_host_runner.dart';
 
 import '../../../support/in_memory_filesystem.dart';
@@ -363,7 +364,6 @@ void main() {
   test('runAuthLogin uses global config dir when linked', () async {
     HostRunRequest? capturedRequest;
     const preferencePath = 'wsl.exe /home/user/.local/bin/claude';
-    final invocation = CliInvocation.fromExecutable(preferencePath);
 
     final wslService = ClaudeProviderCredentialsService(
       fs: fs,
@@ -386,12 +386,15 @@ void main() {
     expect(loginResult.ok, isFalse);
     expect(capturedRequest, isNotNull);
     expect(capturedRequest!.arguments, containsAll(const ['auth', 'login']));
-    if (invocation.usesWsl) {
-      expect(capturedRequest!.executable, '/home/user/.local/bin/claude');
-    } else {
-      expect(capturedRequest!.executable, 'wsl.exe');
-      expect(capturedRequest!.arguments, contains('/home/user/.local/bin/claude'));
-    }
+    // Native Windows keeps wsl.exe; WSL/SSH home unwraps to the Linux binary.
+    expect(
+      capturedRequest!.executable,
+      CredentialHostRequest.hostExecutable(preferencePath),
+    );
+    expect(
+      capturedRequest!.arguments,
+      contains('/home/user/.local/bin/claude'),
+    );
     expect(capturedRequest!.environment!['CLAUDE_CONFIG_DIR'], '$home/.claude');
     expect(capturedRequest!.environment!['CCGUI_CLI_LOGIN_AUTHORIZED'], '1');
   });

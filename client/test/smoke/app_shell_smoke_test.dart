@@ -146,13 +146,13 @@ void main() {
     final teamCubit = await createTeamCubitInTest(tester);
     await pumpDesktopApp(tester, teamCubit);
 
+    // Desktop /config redirects into the first section (layout). Subtitle is
+    // suppressed on the adaptive section page; assert chrome + nav instead.
     appRouter.go('/config');
     await pumpPhaseTransitions(tester);
 
-    expect(
-      find.text('Manage FlashskyAI team and model settings.'),
-      findsOneWidget,
-    );
+    expect(find.byKey(AppKeys.configWorkspace), findsOneWidget);
+    expect(find.text('Layout'), findsWidgets);
     expect(find.byIcon(Icons.dashboard_customize_outlined), findsWidgets);
     expect(find.byIcon(Icons.memory_outlined), findsNothing);
   });

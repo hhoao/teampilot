@@ -264,44 +264,57 @@ class _ProviderListControls extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 10, 8, 0),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(
-                child: Text(
-                  l10n.providerList,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: styles.mdSemiboldTightSnug,
-                ),
-              ),
-              TpActionMenuButton(
-                tooltip: l10n.add,
-                icon: Icon(Icons.add),
-                size: 32,
-                specs: [
-                  TpActionMenuSpec.item(
-                    value: 'add',
-                    icon: Icons.add,
-                    label: l10n.addProvider,
-                  ),
-                  TpActionMenuSpec.item(
-                    value: 'import',
-                    icon: Icons.upload_file_outlined,
-                    label: l10n.appProviderImport,
-                    enabled: !isLoading,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              // Narrow split panes can shrink below the add control; avoid
+              // RenderFlex overflow instead of forcing a 32px button into ~7px.
+              if (constraints.maxWidth < 36) {
+                return const SizedBox(height: 32);
+              }
+              final showTitle = constraints.maxWidth >= 72;
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  if (showTitle)
+                    Expanded(
+                      child: Text(
+                        l10n.providerList,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: styles.mdSemiboldTightSnug,
+                      ),
+                    )
+                  else
+                    const Spacer(),
+                  TpActionMenuButton(
+                    tooltip: l10n.add,
+                    icon: Icon(Icons.add),
+                    size: 32,
+                    specs: [
+                      TpActionMenuSpec.item(
+                        value: 'add',
+                        icon: Icons.add,
+                        label: l10n.addProvider,
+                      ),
+                      TpActionMenuSpec.item(
+                        value: 'import',
+                        icon: Icons.upload_file_outlined,
+                        label: l10n.appProviderImport,
+                        enabled: !isLoading,
+                      ),
+                    ],
+                    onSelected: (action) {
+                      switch (action) {
+                        case 'add':
+                          onAdd();
+                        case 'import':
+                          onImport();
+                      }
+                    },
                   ),
                 ],
-                onSelected: (action) {
-                  switch (action) {
-                    case 'add':
-                      onAdd();
-                    case 'import':
-                      onImport();
-                  }
-                },
-              ),
-            ],
+              );
+            },
           ),
         ),
         Padding(

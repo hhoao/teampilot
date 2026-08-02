@@ -134,11 +134,12 @@ void main() {
   test('relative image under workspaceRoots returns FileImage when present', () {
     final dir = Directory.systemTemp.createTempSync('md-preview-img');
     addTearDown(() => dir.deleteSync(recursive: true));
-    final png = File('${dir.path}/shot.png')
+    final pngPath = [dir.path, 'shot.png'].join(Platform.pathSeparator);
+    final png = File(pngPath)
       ..writeAsBytesSync(const [
         0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, // PNG magic
       ]);
-    final md = '${dir.path}/a.md';
+    final md = [dir.path, 'a.md'].join(Platform.pathSeparator);
 
     final provider = resolveMarkdownPreviewImage(
       src: './shot.png',

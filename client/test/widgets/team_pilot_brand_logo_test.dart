@@ -7,7 +7,7 @@ import 'package:teampilot/widgets/team_pilot_brand_logo.dart';
 
 void main() {
   testWidgets(
-    'default logo size follows icon theme (ignores text-size preset)',
+    'default logo size follows icon theme (tracks text-size preset)',
     (tester) async {
       Future<double> defaultLogoWidth(ThemeData theme) async {
         await tester.pumpWidget(
@@ -28,10 +28,9 @@ void main() {
       final comfyWidth = await defaultLogoWidth(comfy);
 
       expect(stdWidth, std.iconTheme.size);
-      // IconTheme tracks OS text baseline only; in-app text-size presets
-      // do not change toolbar / brand icon sizes at the same baseline.
-      expect(comfyWidth, stdWidth);
       expect(comfyWidth, comfy.iconTheme.size);
+      // In-app text-size presets scale IconTheme via TpIconSizes.
+      expect(comfyWidth, greaterThan(stdWidth));
     },
   );
 }
