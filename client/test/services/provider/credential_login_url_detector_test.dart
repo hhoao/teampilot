@@ -8,7 +8,10 @@ void main() {
     final uris = detector.extractAll(
       'Visit https://authenticator.cursor.sh/login?code=abc).',
     );
-    expect(uris.single.toString(), 'https://authenticator.cursor.sh/login?code=abc');
+    expect(
+      uris.single.toString(),
+      'https://authenticator.cursor.sh/login?code=abc',
+    );
   });
 
   test('prefers auth-like host when multiple https URLs present', () {
@@ -20,5 +23,13 @@ void main() {
 
   test('returns empty when no https URL', () {
     expect(detector.extractAll('no link http://insecure.example'), isEmpty);
+  });
+
+  test('strips ANSI before extracting URL and device code', () {
+    final text =
+        'Open \x1b[94mhttps://auth.openai.com/codex/device\x1b[0m\n'
+        'code \x1b[94m5HB1-3GASL\x1b[0m\n';
+    expect(detector.extractAll(text).single.host, 'auth.openai.com');
+    expect(detector.extractDeviceCodes(text), ['5HB1-3GASL']);
   });
 }

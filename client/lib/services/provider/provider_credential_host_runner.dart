@@ -7,10 +7,12 @@ import '../host/host_one_shot_runner.dart';
 import '../host/host_one_shot_runner_for_context.dart';
 import '../host/host_process_starter.dart';
 import '../host/host_process_starter_for_context.dart';
+import '../host/process_run_handle.dart';
 import '../storage/app_storage.dart';
 import 'credential_login_url_detector.dart';
 
 typedef CredentialOpenUrl = Future<void> Function(Uri uri);
+typedef CredentialLoginHint = void Function(String message);
 
 /// Runs provider credential login/logout CLIs on the home runtime plane.
 class ProviderCredentialHostRunner {
@@ -18,10 +20,12 @@ class ProviderCredentialHostRunner {
     required HostOneShotRunner Function() oneShot,
     required HostProcessStarter Function() streaming,
     CredentialOpenUrl? openUrl,
+    CredentialLoginHint? onLoginHint,
     CredentialLoginUrlDetector urlDetector = const CredentialLoginUrlDetector(),
   }) : _oneShot = oneShot,
        _streaming = streaming,
        _openUrl = openUrl,
+       _onLoginHint = onLoginHint,
        _urlDetector = urlDetector;
 
   static const _maxTailBytes = 2048;
@@ -29,6 +33,7 @@ class ProviderCredentialHostRunner {
   final HostOneShotRunner Function() _oneShot;
   final HostProcessStarter Function() _streaming;
   final CredentialOpenUrl? _openUrl;
+  final CredentialLoginHint? _onLoginHint;
   final CredentialLoginUrlDetector _urlDetector;
 
   /// Logout / revoke: one-shot on home host.
@@ -54,6 +59,7 @@ class ProviderCredentialHostRunner {
     final stderrBuffer = StringBuffer();
     var tail = '';
     final openedUris = <String>{};
+    final announcedDeviceCodes = <String>{};
     var chain = Future<void>.value();
 
     void scheduleChunk(List<int> bytes, {required bool isStderr}) {
@@ -64,7 +70,11 @@ class ProviderCredentialHostRunner {
         } else {
           stdoutBuffer.write(chunk);
         }
-        await _scanAndOpenUrls(tail + chunk, openedUris);
+        await _scanAndOpenUrls(
+          tail + chunk,
+          openedUris,
+          announcedDeviceCodes: announcedDeviceCodes,
+        );
         tail = _rollingTail(tail + chunk);
       });
     }
@@ -79,9 +89,10 @@ class ProviderCredentialHostRunner {
     await Future.wait<void>([stdoutDone, stderrDone]);
     await chain;
     await _scanAndOpenUrls(
-      '${stdoutBuffer}${stderrBuffer}',
+      '$stdoutBuffer$stderrBuffer',
       openedUris,
       allowTrailing: true,
+      announcedDeviceCodes: announcedDeviceCodes,
     );
 
     final exitCode = await handle.exitCode;
@@ -93,15 +104,19 @@ class ProviderCredentialHostRunner {
   }
 
   /// Production/service default — lazy [AppStorage.context] binding.
-  static ProviderCredentialHostRunner forAppStorage({CredentialOpenUrl? openUrl}) {
+  static ProviderCredentialHostRunner forAppStorage({
+    CredentialOpenUrl? openUrl,
+    CredentialLoginHint? onLoginHint,
+  }) {
     return ProviderCredentialHostRunner(
       oneShot: () => hostOneShotRunnerForContext(AppStorage.context),
       streaming: () => hostProcessStarterForContext(AppStorage.context),
       openUrl: openUrl,
+      onLoginHint: onLoginHint,
     );
   }
 
-  Future<dynamic> _startStreaming(HostRunRequest request) async {
+  Future<ProcessRunHandle> _startStreaming(HostRunRequest request) async {
     try {
       return await _streaming().start(request);
     } on ProcessException {
@@ -119,7 +134,16 @@ class ProviderCredentialHostRunner {
     String text,
     Set<String> openedUris, {
     bool allowTrailing = false,
+    Set<String>? announcedDeviceCodes,
   }) async {
+    final codes = announcedDeviceCodes;
+    if (codes != null) {
+      for (final code in _urlDetector.extractDeviceCodes(text)) {
+        if (!codes.add(code)) continue;
+        _announceDeviceCode(code);
+      }
+    }
+
     final openUrl = _openUrl;
     if (openUrl == null) return;
 
@@ -127,8 +151,11 @@ class ProviderCredentialHostRunner {
       final key = uri.toString();
       if (openedUris.contains(key)) continue;
 
-      final index = text.lastIndexOf(key);
-      if (!allowTrailing && index >= 0 && _mightBeIncomplete(text, index, key)) {
+      final cleaned = CredentialLoginUrlDetector.stripAnsi(text);
+      final index = cleaned.lastIndexOf(key);
+      if (!allowTrailing &&
+          index >= 0 &&
+          _mightBeIncomplete(cleaned, index, key)) {
         continue;
       }
 
@@ -145,10 +172,25 @@ class ProviderCredentialHostRunner {
     }
   }
 
+  void _announceDeviceCode(String code) {
+    final message = 'Device code: $code';
+    AppLogger.instance.i('Credential login device code: $code');
+    _onLoginHint?.call(message);
+  }
+
   static bool _mightBeIncomplete(String text, int index, String key) {
     final remainder = text.substring(index + key.length);
-    if (remainder.isEmpty) return true;
-    return RegExp(r'^[)\],.;:]+$').hasMatch(remainder);
+    if (RegExp(r'^[)\],.;:]+$').hasMatch(remainder)) return true;
+    if (remainder.isNotEmpty) return false;
+
+    // Empty remainder while the process is still running (common for OAuth):
+    // open if the URI already looks finished; keep waiting only for truncated
+    // hosts like `https://auth` mid-chunk.
+    final uri = Uri.tryParse(key);
+    if (uri == null) return true;
+    if (!uri.host.contains('.')) return true;
+    if (uri.hasQuery || uri.hasFragment) return false;
+    return uri.path.isEmpty || uri.path == '/';
   }
 
   static List<Uri> _withoutUriPrefixes(List<Uri> uris) {

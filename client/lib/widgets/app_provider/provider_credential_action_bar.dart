@@ -104,12 +104,33 @@ class _ProviderCredentialActionBarState
           );
 
     if (spec.primary) {
-      return FilledButton.tonal(onPressed: onPressed, child: Text(label));
+      return FilledButton.tonal(
+        onPressed: onPressed,
+        child: _running
+            ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : Text(label),
+      );
     }
     if (spec.kind == ProviderCredentialActionKind.revoke) {
-      return TextButton(onPressed: onPressed, child: Text(label));
+      return TextButton(
+        onPressed: onPressed,
+        child: _running ? const SizedBox.shrink() : Text(label),
+      );
     }
-    return OutlinedButton(onPressed: onPressed, child: Text(label));
+    return OutlinedButton(
+      onPressed: onPressed,
+      child: _running
+          ? const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : Text(label),
+    );
   }
 
   Future<void> _runAction(

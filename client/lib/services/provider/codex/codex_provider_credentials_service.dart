@@ -184,7 +184,7 @@ class CodexProviderCredentialsService {
     final executable = _resolvedCodexExecutable();
     try {
       final result = await _runCodex(
-        const ['login'],
+        const ['login', '--device-auth'],
         providerId: providerId,
         platformEnv: platformEnv,
         login: true,

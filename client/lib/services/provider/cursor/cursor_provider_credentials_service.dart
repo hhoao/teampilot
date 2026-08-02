@@ -349,6 +349,8 @@ class CursorProviderCredentialsService {
           providerId,
           useWslPaths: CredentialHostRequest.usePosixCliPaths(preferencePath),
         ),
+        // Print login URL instead of opening a browser on the remote/WSL host.
+        if (login) 'NO_OPEN_BROWSER': '1',
       },
     );
     final runner = _runner;

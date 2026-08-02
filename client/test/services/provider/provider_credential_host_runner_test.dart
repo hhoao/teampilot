@@ -209,5 +209,73 @@ void main() {
         ),
       );
     });
+
+    test('opens complete URL at end of chunk before process exits', () async {
+      final opened = <Uri>[];
+      final handle = _LiveStdoutHandle();
+      final runner = ProviderCredentialHostRunner(
+        oneShot: () => _FailOneShotRunner(),
+        streaming: () => _FixedHandleStarter(handle),
+        openUrl: (uri) async => opened.add(uri),
+      );
+
+      final login = runner.runLogin(
+        const HostRunRequest(executable: 'cursor-agent', arguments: ['login']),
+      );
+
+      handle.emit(
+        utf8.encode(
+          'Open a browser and navigate to this link: '
+          'https://cursor.com/loginDeepControl?challenge=abc&uuid=1',
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+      expect(
+        opened,
+        isNotEmpty,
+        reason: 'URL must open while login process is still waiting',
+      );
+      expect(opened.single.host, 'cursor.com');
+
+      await handle.finish(exitCode: 0);
+      final result = await login;
+      expect(result.exitCode, 0);
+    });
   });
+}
+
+class _FixedHandleStarter implements HostProcessStarter {
+  _FixedHandleStarter(this.handle);
+
+  final ProcessRunHandle handle;
+
+  @override
+  Future<ProcessRunHandle> start(HostRunRequest request) async => handle;
+}
+
+class _LiveStdoutHandle implements ProcessRunHandle {
+  final _stdout = StreamController<List<int>>();
+  final _exit = Completer<int>();
+
+  void emit(List<int> chunk) => _stdout.add(chunk);
+
+  Future<void> finish({required int exitCode}) async {
+    await _stdout.close();
+    if (!_exit.isCompleted) _exit.complete(exitCode);
+  }
+
+  @override
+  Future<int> get exitCode => _exit.future;
+
+  @override
+  Stream<List<int>> get stdout => _stdout.stream;
+
+  @override
+  Stream<List<int>> get stderr => const Stream.empty();
+
+  @override
+  void kill() {
+    if (!_exit.isCompleted) _exit.complete(1);
+  }
 }

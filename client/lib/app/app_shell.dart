@@ -20,6 +20,7 @@ import '../services/team_bus/mcp/teammate_bus_mcp_gateway.dart';
 import '../services/team_bus/remote/remote_bus_binding_resolver.dart';
 import '../services/remote/local_credential_exporter.dart';
 import '../services/remote/remote_cli_readiness.dart';
+import '../widgets/app_toast/app_toast.dart';
 import '../services/editor_platform/editor_platform.dart';
 import '../services/launch/launch_factory.dart';
 import '../cubits/board_cubit.dart';
@@ -672,10 +673,15 @@ Future<AppShell> buildAppShell({
     await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
+  void onCredentialLoginHint(String message) {
+    AppToast.showGlobal(message: message);
+  }
+
   final credentialHostRunner = ProviderCredentialHostRunner(
     oneShot: () => hostOneShotRunnerForContext(AppStorage.context),
     streaming: () => hostProcessStarterForContext(AppStorage.context),
     openUrl: openCredentialLoginUrl,
+    onLoginHint: onCredentialLoginHint,
   );
 
   final claudeCredentialsService = ClaudeProviderCredentialsService(

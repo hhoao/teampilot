@@ -236,6 +236,22 @@ void main() {
     );
   });
 
+  test('runAuthLogin sets NO_OPEN_BROWSER for headless SSH login', () async {
+    HostRunRequest? captured;
+    final loginService = CursorProviderCredentialsService(
+      fs: fs,
+      basePath: base,
+      hostRunner: _loginHostRunner(
+        fs: fs,
+        layout: layout,
+        onStart: (request) => captured = request,
+      ),
+    );
+
+    await loginService.runAuthLogin('work');
+    expect(captured?.environment?['NO_OPEN_BROWSER'], '1');
+  });
+
   test(
     'runAuthLogin with mock runner writes auth.json and returns ready',
     () async {
