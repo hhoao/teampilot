@@ -4,8 +4,10 @@ import 'package:go_router/go_router.dart';
 
 import '../cubits/launch_profile_cubit.dart';
 import '../l10n/l10n_extensions.dart';
+import '../pages/extensions/extension_section.dart';
 import '../pages/mcp/mcp_routes.dart';
 import '../pages/mcp/mcp_management_page.dart';
+import '../pages/plugins/plugin_section.dart';
 import '../pages/skills/skill_management_page.dart';
 
 /// Resolves Android [Scaffold] title, back affordance, and drawer visibility
@@ -18,8 +20,23 @@ class AndroidShellChrome {
     if (_isLlmProviderDetail(path)) return true;
     if (_isTeamConfigDetail(path)) return true;
     if (_isSkillsDetail(path)) return true;
+    if (_isPluginsDetail(path)) return true;
+    if (_isExtensionsDetail(path)) return true;
     if (_isMcpDetail(path)) return true;
     return false;
+  }
+
+  @visibleForTesting
+  static bool isLibrarySectionPath(String path) {
+    if (mcpPathIsForm(path)) return false;
+    return path == '/skills' ||
+        _isSkillsDetail(path) ||
+        path == '/plugins' ||
+        _isPluginsDetail(path) ||
+        path == '/extensions' ||
+        _isExtensionsDetail(path) ||
+        path == '/mcp' ||
+        _isMcpDetail(path);
   }
 
   static bool shouldHideDrawer(String path) => isHubDetailPath(path);
@@ -75,6 +92,26 @@ class AndroidShellChrome {
       }
     }
 
+    if (path == '/plugins') return l10n.pluginsTitle;
+    if (path.startsWith('/plugins/')) {
+      final segment = path.replaceFirst('/plugins/', '').split('/').first;
+      for (final section in PluginSection.values) {
+        if (section.routeSegment == segment) {
+          return section.title(l10n);
+        }
+      }
+    }
+
+    if (path == '/extensions') return l10n.extensionsSettingsTitle;
+    if (path.startsWith('/extensions/')) {
+      final segment = path.replaceFirst('/extensions/', '').split('/').first;
+      for (final section in ExtensionSection.values) {
+        if (section.routeSegment == segment) {
+          return section.title(l10n);
+        }
+      }
+    }
+
     return 'FlashSkyAI';
   }
 
@@ -99,16 +136,21 @@ class AndroidShellChrome {
       context.go('/team-config');
       return;
     }
-    if (_isSkillsDetail(path) || path == '/skills') {
-      context.go('/skills');
-      return;
-    }
     if (mcpPathIsForm(path)) {
       context.go(mcpInstalledRoute);
       return;
     }
-    if (_isMcpDetail(path) || path == '/mcp') {
-      context.go('/mcp');
+    if (isLibrarySectionPath(path)) {
+      _leaveLibrary(context);
+      return;
+    }
+  }
+
+  static void _leaveLibrary(BuildContext context) {
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go('/home-v2');
     }
   }
 
@@ -152,6 +194,12 @@ class AndroidShellChrome {
 
   static bool _isSkillsDetail(String path) =>
       path.startsWith('/skills/') && path.length > '/skills/'.length;
+
+  static bool _isPluginsDetail(String path) =>
+      path.startsWith('/plugins/') && path.length > '/plugins/'.length;
+
+  static bool _isExtensionsDetail(String path) =>
+      path.startsWith('/extensions/') && path.length > '/extensions/'.length;
 
   static bool _isMcpDetail(String path) =>
       path.startsWith('/mcp/') && path.length > '/mcp/'.length;

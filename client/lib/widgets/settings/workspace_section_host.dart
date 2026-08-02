@@ -4,9 +4,12 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../cubits/layout_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../services/app/platform_utils.dart';
+import '../../services/workspace/workspace_pane_policy.dart';
 import 'workspace_hub_shell.dart';
 import 'workspace_pane_header.dart';
 import 'workspace_pane_insets.dart';
+import 'workspace_section_compact_shell.dart';
+import 'workspace_section_nav_item.dart';
 import 'workspace_section_navigation.dart';
 
 class WorkspaceHubDesktopShell extends StatelessWidget {
@@ -67,48 +70,118 @@ class WorkspaceHubDesktopShell extends StatelessWidget {
   }
 }
 
+enum WorkspaceAdaptiveSectionLayout {
+  androidBodyOnly,
+  compactTabs,
+  desktopSplit,
+}
+
+WorkspaceAdaptiveSectionLayout workspaceAdaptiveSectionLayout({
+  required bool compactSectionTabs,
+  required bool androidHubNavigation,
+  required double viewportWidth,
+}) {
+  if (!compactSectionTabs && androidHubNavigation) {
+    return WorkspaceAdaptiveSectionLayout.androidBodyOnly;
+  }
+  if (compactSectionTabs &&
+      viewportWidth < WorkspacePanePolicy.narrowBreakpointWidth) {
+    return WorkspaceAdaptiveSectionLayout.compactTabs;
+  }
+  return WorkspaceAdaptiveSectionLayout.desktopSplit;
+}
+
 class WorkspaceAdaptiveSectionPage extends StatelessWidget {
-  const WorkspaceAdaptiveSectionPage({
+  WorkspaceAdaptiveSectionPage({
     required this.pageKey,
     required this.title,
+    required this.body,
+    this.nav,
+    this.items,
+    this.compactSectionTabs = false,
     this.subtitle,
     this.showSubtitle = false,
-    required this.nav,
-    required this.body,
     this.onBack,
     this.embedded = false,
     super.key,
-  });
+  }) {
+    final sectionItems = items;
+    if (compactSectionTabs && (sectionItems == null || sectionItems.isEmpty)) {
+      throw ArgumentError(
+        'compactSectionTabs requires non-empty items',
+        'items',
+      );
+    }
+    if (!compactSectionTabs && nav == null) {
+      throw ArgumentError('legacy mode requires nav', 'nav');
+    }
+  }
 
   final Key pageKey;
   final String title;
   final String? subtitle;
   final bool showSubtitle;
-  final Widget nav;
+  final Widget? nav;
+  final List<WorkspaceSectionNavItem>? items;
+  final bool compactSectionTabs;
   final Widget body;
   final VoidCallback? onBack;
   final bool embedded;
 
   @override
   Widget build(BuildContext context) {
-    if (useAndroidHubNavigation(context)) {
-      return WorkspaceSectionPage(
-        pageKey: pageKey,
-        embedded: embedded,
-        child: body,
-      );
-    }
-    return WorkspaceHubDesktopShell(
-      pageKey: pageKey,
-      title: title,
-      subtitle: subtitle,
-      showSubtitle: showSubtitle,
-      nav: nav,
-      body: body,
-      onBack: onBack,
-      embedded: embedded,
+    final layout = workspaceAdaptiveSectionLayout(
+      compactSectionTabs: compactSectionTabs,
+      androidHubNavigation: useAndroidHubNavigation(context),
+      viewportWidth: MediaQuery.sizeOf(context).width,
     );
+
+    switch (layout) {
+      case WorkspaceAdaptiveSectionLayout.androidBodyOnly:
+        return WorkspaceSectionPage(
+          pageKey: pageKey,
+          embedded: embedded,
+          child: body,
+        );
+      case WorkspaceAdaptiveSectionLayout.compactTabs:
+        return WorkspaceSectionCompactShell(
+          pageKey: pageKey,
+          title: title,
+          subtitle: subtitle,
+          showSubtitle: showSubtitle,
+          items: items!,
+          body: body,
+          onBack: onBack,
+          embedded: embedded,
+        );
+      case WorkspaceAdaptiveSectionLayout.desktopSplit:
+        return WorkspaceHubDesktopShell(
+          pageKey: pageKey,
+          title: title,
+          subtitle: subtitle,
+          showSubtitle: showSubtitle,
+          nav: nav ?? _navFromItems(items!),
+          body: body,
+          onBack: onBack,
+          embedded: embedded,
+        );
+    }
   }
+}
+
+Widget _navFromItems(List<WorkspaceSectionNavItem> items) {
+  return WorkspaceHubNavList(
+    sidebarStyle: true,
+    entries: [
+      for (final item in items)
+        WorkspaceHubEntry(
+          title: item.label,
+          icon: item.icon ?? Icons.circle_outlined,
+          selected: item.selected,
+          onTap: item.onSelect,
+        ),
+    ],
+  );
 }
 
 class WorkspaceEnumNavPanel<S extends Enum> extends StatelessWidget {

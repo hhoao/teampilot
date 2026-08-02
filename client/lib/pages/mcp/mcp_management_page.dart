@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
@@ -12,9 +11,8 @@ import '../../models/mcp_server.dart';
 import '../../services/app/platform_utils.dart';
 import '../../services/mcp/mcp_listing_install_service.dart';
 import '../../utils/ui/app_keys.dart';
-import '../../utils/debounce/debounce.dart';
-import '../../widgets/settings/workspace_hub_shell.dart';
 import '../../widgets/settings/workspace_section_host.dart';
+import '../../widgets/settings/workspace_section_nav_item.dart';
 import '../../widgets/settings/workspace_section_navigation.dart';
 import 'mcp_discovery_section.dart';
 import 'mcp_installed_section.dart';
@@ -63,31 +61,6 @@ void navigateMcpEdit(BuildContext context, McpServer server) {
 
 void navigateMcpSection(BuildContext context, McpSection target) {
   navigateWorkspaceRoute(context, McpSectionRoute(target).routePath());
-}
-
-class McpManagementHubPage extends StatelessWidget {
-  const McpManagementHubPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    return WorkspaceHubPage(
-      pageKey: AppKeys.mcpHub,
-      title: l10n.mcpNavTitle,
-      subtitle: l10n.mcpSubtitle,
-      entries: [
-        for (final section in McpSection.values)
-          WorkspaceHubEntry(
-            title: section.title(l10n),
-            icon: mcpSectionIcon(section),
-            onTap: throttledTap(
-              'mcp_hub_${section.name}',
-              () => context.push(McpSectionRoute(section).routePath()),
-            ),
-          ),
-      ],
-    );
-  }
 }
 
 class McpManagementPage extends StatefulWidget {
@@ -302,13 +275,16 @@ class _McpManagementPageState extends State<McpManagementPage> {
           subtitle: context.l10n.mcpSubtitle,
           showSubtitle: false,
           embedded: widget.embedded,
-          nav: WorkspaceEnumNavPanel<McpSection>(
-            sections: McpSection.values,
-            current: widget.section,
-            basePath: '/mcp',
-            descriptor: (s) => s,
-            onSelect: select,
-          ),
+          compactSectionTabs: true,
+          items: [
+            for (final s in McpSection.values)
+              WorkspaceSectionNavItem(
+                label: s.title(context.l10n),
+                icon: mcpSectionIcon(s),
+                selected: s == widget.section,
+                onSelect: () => select(s),
+              ),
+          ],
           body: sectionBody,
         );
       },

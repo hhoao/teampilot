@@ -55,6 +55,17 @@ void applyWorkspaceEntryMode(
 }
 
 /// Re-apply [lastWorkspace] after workspace index loads so missing ids fall back.
+@visibleForTesting
+String? libraryRootRedirect(String path) {
+  return switch (path) {
+    '/skills' => '/skills/installed',
+    '/plugins' => '/plugins/installed',
+    '/mcp' => '/mcp/installed',
+    '/extensions' => '/extensions/installed',
+    _ => null,
+  };
+}
+
 void reapplyWorkspaceEntryFromPreferences(
   LayoutPreferences preferences, {
   Set<String>? knownWorkspaceIds,
@@ -340,12 +351,8 @@ final appRouter = GoRouter(
             ),
             GoRoute(
               path: '/skills',
-              redirect: (context, state) {
-                if (Platform.isAndroid) return null;
-                return '/skills/installed';
-              },
-              pageBuilder: (context, state) =>
-                  const NoTransitionPage(child: SkillManagementHubPage()),
+              redirect: (context, state) =>
+                  libraryRootRedirect(state.uri.path),
             ),
             GoRoute(
               path: '/skills/installed',
@@ -367,12 +374,8 @@ final appRouter = GoRouter(
             ),
             GoRoute(
               path: '/extensions',
-              redirect: (context, state) {
-                if (Platform.isAndroid) return null;
-                return '/extensions/installed';
-              },
-              pageBuilder: (context, state) =>
-                  const NoTransitionPage(child: ExtensionManagementHubPage()),
+              redirect: (context, state) =>
+                  libraryRootRedirect(state.uri.path),
             ),
             GoRoute(
               path: '/extensions/installed',
@@ -384,12 +387,8 @@ final appRouter = GoRouter(
             ),
             GoRoute(
               path: '/plugins',
-              redirect: (context, state) {
-                if (Platform.isAndroid) return null;
-                return '/plugins/installed';
-              },
-              pageBuilder: (context, state) =>
-                  const NoTransitionPage(child: PluginManagementHubPage()),
+              redirect: (context, state) =>
+                  libraryRootRedirect(state.uri.path),
             ),
             GoRoute(
               path: '/plugins/installed',
@@ -413,12 +412,8 @@ final appRouter = GoRouter(
             ),
             GoRoute(
               path: '/mcp',
-              redirect: (context, state) {
-                if (Platform.isAndroid) return null;
-                return '/mcp/installed';
-              },
-              pageBuilder: (context, state) =>
-                  const NoTransitionPage(child: McpManagementHubPage()),
+              redirect: (context, state) =>
+                  libraryRootRedirect(state.uri.path),
             ),
             GoRoute(
               path: '/mcp/installed',

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/team/launch_profile_selectors.dart';
+import '../../widgets/settings/workspace_section_tab_bar.dart';
 import '../../models/team_config.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../utils/team/launch_profile_display_name.dart';
@@ -71,77 +72,10 @@ class HomeContentTabBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          for (var i = 0; i < tabs.length; i++)
-            HomeContentTabItem(
-              label: tabs[i],
-              selected: i == selectedIndex,
-              onTap: () => onSelect(i),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class HomeContentTabItem extends StatefulWidget {
-  const HomeContentTabItem({
-    super.key,
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  State<HomeContentTabItem> createState() => HomeContentTabItemState();
-}
-
-class HomeContentTabItemState extends State<HomeContentTabItem> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final styles = TpTextStyles.of(context);
-    final selected = widget.selected;
-    return TpHover(
-      onTap: widget.onTap,
-      onHoverChanged: (hovered) => setState(() => _hovered = hovered),
-      borderRadius: BorderRadius.circular(6),
-      hoverColor: selected
-          ? Colors.transparent
-          : cs.onSurface.withValues(alpha: 0.05),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        decoration: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(
-              color: selected ? cs.primary : Colors.transparent,
-              width: 2.5,
-            ),
-          ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          child: Text(
-            widget.label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: selected
-                ? styles.lgSemiboldColored(cs.primary)
-                : styles.lgMediumColored(
-                    _hovered ? cs.onSurface : cs.onSurfaceVariant,
-                  ),
-          ),
-        ),
-      ),
+    return WorkspaceSectionTabBar(
+      tabs: tabs,
+      selectedIndex: selectedIndex,
+      onSelect: onSelect,
     );
   }
 }
