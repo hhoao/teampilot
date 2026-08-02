@@ -1,13 +1,81 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/claude_credential_link_result.dart';
+import 'package:teampilot/services/host/host_one_shot_runner.dart';
+import 'package:teampilot/services/host/host_process_starter.dart';
+import 'package:teampilot/services/host/process_run_handle.dart';
 import 'package:teampilot/services/provider/cursor/cursor_home_layout.dart';
 import 'package:teampilot/services/provider/cursor/cursor_provider_credentials_service.dart';
+import 'package:teampilot/services/provider/provider_credential_host_runner.dart';
 
 import '../../../support/in_memory_filesystem.dart';
+
+class _ExitZeroHandle implements ProcessRunHandle {
+  @override
+  Future<int> get exitCode => Future.value(0);
+
+  @override
+  Stream<List<int>> get stdout => const Stream.empty();
+
+  @override
+  Stream<List<int>> get stderr => const Stream.empty();
+
+  @override
+  void kill() {}
+}
+
+class _AuthWritingStreamingStarter implements HostProcessStarter {
+  _AuthWritingStreamingStarter({
+    required this.fs,
+    required this.layout,
+    this.writeAuthJson = true,
+    this.onStart,
+  });
+
+  final InMemoryFilesystem fs;
+  final CursorHomeLayout layout;
+  final bool writeAuthJson;
+  final void Function(HostRunRequest request)? onStart;
+
+  @override
+  Future<ProcessRunHandle> start(HostRunRequest request) async {
+    onStart?.call(request);
+    final home = request.environment?['HOME'];
+    expect(home, isNotNull);
+    await fs.writeString(
+      layout.cliConfig(home!),
+      jsonEncode({
+        'authInfo': {'userId': 'u1', 'authId': 'a1'},
+      }),
+    );
+    if (writeAuthJson) {
+      await fs.writeString(
+        layout.authJson(home),
+        jsonEncode({'accessToken': 'at1', 'refreshToken': 'rt1'}),
+      );
+    }
+    return _ExitZeroHandle();
+  }
+}
+
+ProviderCredentialHostRunner _loginHostRunner({
+  required InMemoryFilesystem fs,
+  required CursorHomeLayout layout,
+  bool writeAuthJson = true,
+  void Function(HostRunRequest request)? onStart,
+}) {
+  return ProviderCredentialHostRunner(
+    oneShot: () => throw StateError('one-shot should not be called for login'),
+    streaming: () => _AuthWritingStreamingStarter(
+      fs: fs,
+      layout: layout,
+      writeAuthJson: writeAuthJson,
+      onStart: onStart,
+    ),
+  );
+}
 
 void main() {
   late InMemoryFilesystem fs;
@@ -174,22 +242,13 @@ void main() {
       final loginService = CursorProviderCredentialsService(
         fs: fs,
         basePath: base,
-        processRunner: (executable, arguments, {environment}) async {
-          expect(arguments, contains('login'));
-          final home = environment?['HOME'];
-          expect(home, isNotNull);
-          await fs.writeString(
-            layout.cliConfig(home!),
-            jsonEncode({
-              'authInfo': {'userId': 'u1', 'authId': 'a1'},
-            }),
-          );
-          await fs.writeString(
-            layout.authJson(home),
-            jsonEncode({'accessToken': 'at1', 'refreshToken': 'rt1'}),
-          );
-          return ProcessResult(0, 0, '', '');
-        },
+        hostRunner: _loginHostRunner(
+          fs: fs,
+          layout: layout,
+          onStart: (request) {
+            expect(request.arguments, contains('login'));
+          },
+        ),
       );
 
       final loginResult = await loginService.runAuthLogin('work');
@@ -204,12 +263,11 @@ void main() {
       final loginService = CursorProviderCredentialsService(
         fs: fs,
         basePath: base,
-        processRunner: (executable, arguments, {environment}) async {
-          final home = environment?['HOME'];
-          expect(home, isNotNull);
-          await fs.writeString(layout.cliConfig(home!), loggedInCliConfig);
-          return ProcessResult(0, 0, '', '');
-        },
+        hostRunner: _loginHostRunner(
+          fs: fs,
+          layout: layout,
+          writeAuthJson: false,
+        ),
       );
 
       final loginResult = await loginService.runAuthLogin('work');
@@ -274,4 +332,38 @@ void main() {
     expect((await fs.stat(layout.cliConfig(providerHome))).isFile, isFalse);
     expect((await service.probe('work')).isReady, isFalse);
   });
+
+  test('revokeCredentials runs logout via host runner when ready', () async {
+    await writeLoggedInProvider('work');
+    HostRunRequest? logoutRequest;
+    final revokeService = CursorProviderCredentialsService(
+      fs: fs,
+      basePath: base,
+      hostRunner: ProviderCredentialHostRunner(
+        oneShot: () => _LogoutCapturingOneShot((request) {
+          logoutRequest = request;
+        }),
+        streaming: () => throw StateError('streaming should not be called'),
+      ),
+    );
+
+    final result = await revokeService.revokeCredentials('work');
+
+    expect(result.ok, isTrue);
+    expect(logoutRequest, isNotNull);
+    expect(logoutRequest!.arguments, contains('logout'));
+    expect((await revokeService.probe('work')).isReady, isFalse);
+  });
+}
+
+class _LogoutCapturingOneShot implements HostOneShotRunner {
+  _LogoutCapturingOneShot(this.onRun);
+
+  final void Function(HostRunRequest request) onRun;
+
+  @override
+  Future<HostRunResult> run(HostRunRequest request) async {
+    onRun(request);
+    return const HostRunResult(exitCode: 0, stdout: '', stderr: '');
+  }
 }

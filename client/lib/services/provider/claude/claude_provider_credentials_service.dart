@@ -3,18 +3,13 @@ import 'dart:io';
 
 import '../../../models/claude_credential_link_result.dart';
 import '../../../models/credential_action_result.dart';
-import '../../cli/cli_invocation.dart';
+import '../../host/host_one_shot_runner.dart';
 import '../../io/filesystem.dart';
 import '../../session/launch_command_builder.dart';
 import '../credential_binding.dart';
+import '../credential_host_request.dart';
 import '../credential_process_result.dart';
-
-typedef ClaudeCredentialProcessRunner =
-    Future<ProcessResult> Function(
-      String executable,
-      List<String> arguments, {
-      Map<String, String>? environment,
-    });
+import '../provider_credential_host_runner.dart';
 
 class ClaudeProviderCredentialsService {
   ClaudeProviderCredentialsService({
@@ -23,12 +18,12 @@ class ClaudeProviderCredentialsService {
     this.claudeExecutable = 'claude',
     String? Function()? resolveClaudeExecutable,
     String? Function()? resolveHomeDirectory,
-    ClaudeCredentialProcessRunner? processRunner,
+    ProviderCredentialHostRunner? hostRunner,
   }) : _fs = fs,
        _basePath = basePath.trim(),
        _resolveClaudeExecutable = resolveClaudeExecutable,
        _resolveHomeDirectory = resolveHomeDirectory,
-       _processRunner = processRunner ?? _defaultProcessRunner;
+       _hostRunner = hostRunner;
 
   static const credentialsFileName = '.credentials.json';
 
@@ -37,15 +32,7 @@ class ClaudeProviderCredentialsService {
   final String claudeExecutable;
   final String? Function()? _resolveClaudeExecutable;
   final String? Function()? _resolveHomeDirectory;
-  final ClaudeCredentialProcessRunner _processRunner;
-
-  static Future<ProcessResult> _defaultProcessRunner(
-    String executable,
-    List<String> arguments, {
-    Map<String, String>? environment,
-  }) {
-    return Process.run(executable, arguments, environment: environment);
-  }
+  final ProviderCredentialHostRunner? _hostRunner;
 
   String providerDir(String providerId) =>
       _fs.pathContext.join(_basePath, 'providers', 'claude', providerId.trim());
@@ -370,34 +357,33 @@ class ClaudeProviderCredentialsService {
     return claudeExecutable;
   }
 
-  Future<ProcessResult> _runClaude(
+  ProviderCredentialHostRunner get _runner =>
+      _hostRunner ?? ProviderCredentialHostRunner.forAppStorage();
+
+  Future<HostRunResult> _runClaude(
     List<String> subcommand, {
     required String providerId,
+    required bool login,
     Map<String, String> platformEnv = const {},
     CredentialBindingKind binding = CredentialBindingKind.linked,
     String? homeDirectory,
   }) async {
-    final executable = _resolvedClaudeExecutable();
-    final invocation = CliInvocation.fromExecutable(executable);
-    final env = {
-      ...platformEnv,
-      ...loginEnvironment(
-        providerId,
-        useWslPaths: invocation.usesWsl,
-        binding: binding,
-        homeDirectory: homeDirectory,
-      ),
-    };
-    final launch = CliInvocation.resolveProcessLaunch(
-      executable: executable,
+    final preferencePath = _resolvedClaudeExecutable();
+    final request = CredentialHostRequest.build(
+      preferencePath: preferencePath,
       subcommand: subcommand,
-      environment: env,
+      environment: {
+        ...platformEnv,
+        ...loginEnvironment(
+          providerId,
+          useWslPaths: CredentialHostRequest.usePosixCliPaths(preferencePath),
+          binding: binding,
+          homeDirectory: homeDirectory,
+        ),
+      },
     );
-    return _processRunner(
-      launch.executable,
-      launch.arguments,
-      environment: launch.environment,
-    );
+    final runner = _runner;
+    return login ? runner.runLogin(request) : runner.run(request);
   }
 
   Future<CredentialActionResult> runAuthLogin(
@@ -415,6 +401,7 @@ class ClaudeProviderCredentialsService {
         platformEnv: platformEnv,
         binding: binding,
         homeDirectory: homeDirectory,
+        login: true,
       );
       if (binding == CredentialBindingKind.linked) {
         final home = _resolvedHome(homeDirectory);
@@ -427,7 +414,7 @@ class ClaudeProviderCredentialsService {
         }
       }
       return loginCommandResult(
-        result: result,
+        hostResult: result,
         ready: (await probe(
           providerId,
           binding: binding,
@@ -465,6 +452,7 @@ class ClaudeProviderCredentialsService {
         platformEnv: platformEnv,
         binding: binding,
         homeDirectory: homeDirectory,
+        login: false,
       );
       if (result.exitCode != 0) {
         return CredentialActionResult.failure(

@@ -3,18 +3,13 @@ import 'dart:io';
 
 import '../../../models/claude_credential_link_result.dart';
 import '../../../models/credential_action_result.dart';
-import '../../cli/cli_invocation.dart';
+import '../../host/host_one_shot_runner.dart';
 import '../../io/filesystem.dart';
 import '../../session/launch_command_builder.dart';
-import 'codex_auth_artifacts.dart';
+import '../credential_host_request.dart';
 import '../credential_process_result.dart';
-
-typedef CodexCredentialProcessRunner =
-    Future<ProcessResult> Function(
-      String executable,
-      List<String> arguments, {
-      Map<String, String>? environment,
-    });
+import '../provider_credential_host_runner.dart';
+import 'codex_auth_artifacts.dart';
 
 class CodexProviderCredentialsService {
   CodexProviderCredentialsService({
@@ -22,25 +17,17 @@ class CodexProviderCredentialsService {
     required String basePath,
     this.codexExecutable = 'codex',
     String? Function()? resolveCodexExecutable,
-    CodexCredentialProcessRunner? processRunner,
+    ProviderCredentialHostRunner? hostRunner,
   }) : _fs = fs,
        _basePath = basePath.trim(),
        _resolveCodexExecutable = resolveCodexExecutable,
-       _processRunner = processRunner ?? _defaultProcessRunner;
+       _hostRunner = hostRunner;
 
   final Filesystem _fs;
   final String _basePath;
   final String codexExecutable;
   final String? Function()? _resolveCodexExecutable;
-  final CodexCredentialProcessRunner _processRunner;
-
-  static Future<ProcessResult> _defaultProcessRunner(
-    String executable,
-    List<String> arguments, {
-    Map<String, String>? environment,
-  }) {
-    return Process.run(executable, arguments, environment: environment);
-  }
+  final ProviderCredentialHostRunner? _hostRunner;
 
   String providerDir(String providerId) =>
       _fs.pathContext.join(_basePath, 'providers', 'codex', providerId.trim());
@@ -161,27 +148,29 @@ class CodexProviderCredentialsService {
     return codexExecutable;
   }
 
-  Future<ProcessResult> _runCodex(
+  ProviderCredentialHostRunner get _runner =>
+      _hostRunner ?? ProviderCredentialHostRunner.forAppStorage();
+
+  Future<HostRunResult> _runCodex(
     List<String> subcommand, {
     required String providerId,
+    required bool login,
     Map<String, String> platformEnv = const {},
   }) async {
-    final executable = _resolvedCodexExecutable();
-    final invocation = CliInvocation.fromExecutable(executable);
-    final env = {
-      ...platformEnv,
-      ...loginEnvironment(providerId, useWslPaths: invocation.usesWsl),
-    };
-    final launch = CliInvocation.resolveProcessLaunch(
-      executable: executable,
+    final preferencePath = _resolvedCodexExecutable();
+    final request = CredentialHostRequest.build(
+      preferencePath: preferencePath,
       subcommand: subcommand,
-      environment: env,
+      environment: {
+        ...platformEnv,
+        ...loginEnvironment(
+          providerId,
+          useWslPaths: CredentialHostRequest.usePosixCliPaths(preferencePath),
+        ),
+      },
     );
-    return _processRunner(
-      launch.executable,
-      launch.arguments,
-      environment: launch.environment,
-    );
+    final runner = _runner;
+    return login ? runner.runLogin(request) : runner.run(request);
   }
 
   Future<CredentialActionResult> runAuthLogin(
@@ -198,9 +187,10 @@ class CodexProviderCredentialsService {
         const ['login'],
         providerId: providerId,
         platformEnv: platformEnv,
+        login: true,
       );
       return loginCommandResult(
-        result: result,
+        hostResult: result,
         ready: (await probe(providerId)).isReady,
         executable: executable,
         clearIncompleteCredentials: () =>
@@ -235,6 +225,7 @@ class CodexProviderCredentialsService {
         const ['logout'],
         providerId: providerId,
         platformEnv: platformEnv,
+        login: false,
       );
       if (result.exitCode != 0) {
         return CredentialActionResult.failure(

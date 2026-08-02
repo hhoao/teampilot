@@ -135,11 +135,14 @@ import '../services/floating_workspace/surfaces/terminal_floating_surface.dart';
 import '../pages/home_workspace/workspace_chrome_commands.dart';
 import '../services/cli/registry/cli_bootstrap.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
+import '../services/host/host_one_shot_runner_for_context.dart';
+import '../services/host/host_process_starter_for_context.dart';
 import '../services/provider/claude/claude_provider_credentials_service.dart';
 import '../services/provider/codex/codex_provider_credentials_service.dart';
 import '../services/provider/opencode/opencode_provider_credentials_service.dart';
 import '../services/provider/cursor/cursor_agent_models_service.dart';
 import '../services/provider/cursor/cursor_provider_credentials_service.dart';
+import '../services/provider/provider_credential_host_runner.dart';
 import '../services/app/connection_mode_service.dart';
 import '../services/cli/remote_cli_locator.dart';
 import '../services/storage/runtime_context_resolver.dart';
@@ -665,33 +668,52 @@ Future<AppShell> buildAppShell({
     await persistSshHomePathCacheIfLive();
   };
 
+  Future<void> openCredentialLoginUrl(Uri uri) async {
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  final credentialHostRunner = ProviderCredentialHostRunner(
+    oneShot: () => hostOneShotRunnerForContext(AppStorage.context),
+    streaming: () => hostProcessStarterForContext(AppStorage.context),
+    openUrl: openCredentialLoginUrl,
+  );
+
+  final claudeCredentialsService = ClaudeProviderCredentialsService(
+    fs: AppStorage.fs,
+    basePath: AppStorage.paths.basePath,
+    resolveClaudeExecutable: () =>
+        sessionPreferencesCubit.resolveExecutable(CliTool.claude),
+    hostRunner: credentialHostRunner,
+  );
+  final cursorCredentialsService = CursorProviderCredentialsService(
+    fs: AppStorage.fs,
+    basePath: AppStorage.paths.basePath,
+    resolveCursorExecutable: () =>
+        sessionPreferencesCubit.resolveExecutable(CliTool.cursor),
+    hostRunner: credentialHostRunner,
+  );
+  final codexCredentialsService = CodexProviderCredentialsService(
+    fs: AppStorage.fs,
+    basePath: AppStorage.paths.basePath,
+    resolveCodexExecutable: () =>
+        sessionPreferencesCubit.resolveExecutable(CliTool.codex),
+    hostRunner: credentialHostRunner,
+  );
+  final opencodeCredentialsService = OpencodeProviderCredentialsService(
+    fs: AppStorage.fs,
+    basePath: AppStorage.paths.basePath,
+    resolveOpencodeExecutable: () =>
+        sessionPreferencesCubit.resolveExecutable(CliTool.opencode),
+    hostRunner: credentialHostRunner,
+  );
+
   cliToolRegistry.configure(
     CliBootstrap(
       cursorAgentModelsService: CursorAgentModelsService(),
-      claudeCredentialsService: ClaudeProviderCredentialsService(
-        fs: AppStorage.fs,
-        basePath: AppStorage.paths.basePath,
-        resolveClaudeExecutable: () =>
-            sessionPreferencesCubit.resolveExecutable(CliTool.claude),
-      ),
-      cursorCredentialsService: CursorProviderCredentialsService(
-        fs: AppStorage.fs,
-        basePath: AppStorage.paths.basePath,
-        resolveCursorExecutable: () =>
-            sessionPreferencesCubit.resolveExecutable(CliTool.cursor),
-      ),
-      codexCredentialsService: CodexProviderCredentialsService(
-        fs: AppStorage.fs,
-        basePath: AppStorage.paths.basePath,
-        resolveCodexExecutable: () =>
-            sessionPreferencesCubit.resolveExecutable(CliTool.codex),
-      ),
-      opencodeCredentialsService: OpencodeProviderCredentialsService(
-        fs: AppStorage.fs,
-        basePath: AppStorage.paths.basePath,
-        resolveOpencodeExecutable: () =>
-            sessionPreferencesCubit.resolveExecutable(CliTool.opencode),
-      ),
+      claudeCredentialsService: claudeCredentialsService,
+      cursorCredentialsService: cursorCredentialsService,
+      codexCredentialsService: codexCredentialsService,
+      opencodeCredentialsService: opencodeCredentialsService,
     ),
   );
 
@@ -734,6 +756,8 @@ Future<AppShell> buildAppShell({
         sessionPreferencesCubit.resolveExecutable(CliTool.claude),
     cursorExecutablePath: () =>
         sessionPreferencesCubit.resolveExecutable(CliTool.cursor),
+    claudeCredentialsService: claudeCredentialsService,
+    cursorCredentialsService: cursorCredentialsService,
   );
 
   llmConfigCubit = LlmConfigCubit(
