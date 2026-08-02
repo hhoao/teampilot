@@ -15,7 +15,6 @@ class AppKeys {
 
   static const sectionBarChatChip = Key('section-bar-chat-chip');
   static const sectionBarRunsChip = Key('section-bar-runs-chip');
-  static const sidebarSettingsButton = Key('sidebar-settings-button');
   static const contextSidebar = Key('context-sidebar');
   static const workspaceTopbar = Key('workspace-topbar');
   static const chatWorkspace = Key('chat-workspace');

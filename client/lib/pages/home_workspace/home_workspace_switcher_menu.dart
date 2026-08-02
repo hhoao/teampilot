@@ -244,6 +244,7 @@ class _HomeWorkspaceSwitcherMenuState extends State<HomeWorkspaceSwitcherMenu> {
         },
         child: TpIconButton(
           icon: Icons.more_horiz,
+          size: homeTitleBarControlSize(context),
           tooltip: l10n.homeWorkspaceRecentlyClosed,
           color: cs.onSurfaceVariant,
           backgroundColor: Colors.transparent,

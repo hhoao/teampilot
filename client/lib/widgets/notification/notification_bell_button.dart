@@ -7,11 +7,16 @@ import '../../cubits/progress_activity_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import 'notification_center_panel.dart';
 
-const _bellWidth = 34.0;
-
 /// Title-bar bell with unread badge and notification dropdown.
 class NotificationBellButton extends StatefulWidget {
-  const NotificationBellButton({super.key});
+  const NotificationBellButton({
+    this.size = TpIconButton.kDefaultSize,
+    super.key,
+  });
+
+  /// Square hit target; keep in sync with title-bar tab chip height when used
+  /// in [HomeTitleBar].
+  final double size;
 
   @override
   State<NotificationBellButton> createState() => _NotificationBellButtonState();
@@ -36,19 +41,22 @@ class _NotificationBellButtonState extends State<NotificationBellButton> {
     );
     final badgeCount = unread + ongoingCount;
     final l10n = context.l10n;
+    // Horizontal pad (1+1) around the square glyph for popover alignment math.
+    final anchorWidth = widget.size + 2;
 
     return TpActionMenuAnchor(
       controller: _popoverController,
       fixedPanelWidth: notificationCenterPanelWidth,
-      anchor: const TpAnchor(
+      anchor: TpAnchor(
         childAlignment: Alignment.topLeft,
         overlayAlignment: Alignment.bottomLeft,
-        offset: Offset(-(notificationCenterPanelWidth - _bellWidth), 8),
+        offset: Offset(-(notificationCenterPanelWidth - anchorWidth), 8),
       ),
       popoverBuilder: (context, controller) =>
           NotificationCenterPanel(onClose: controller.close),
       child: _BellGlyph(
         unread: badgeCount,
+        size: widget.size,
         tooltip: l10n.notificationCenterTitle,
         onTap: _popoverController.toggle,
       ),
@@ -59,11 +67,13 @@ class _NotificationBellButtonState extends State<NotificationBellButton> {
 class _BellGlyph extends StatelessWidget {
   const _BellGlyph({
     required this.unread,
+    required this.size,
     required this.onTap,
     required this.tooltip,
   });
 
   final int unread;
+  final double size;
   final VoidCallback onTap;
   final String tooltip;
 
@@ -80,8 +90,8 @@ class _BellGlyph extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(8),
         hoverColor: cs.onSurface.withValues(alpha: 0.07),
-        width: 32,
-        height: 32,
+        width: size,
+        height: size,
         child: Stack(
           clipBehavior: Clip.none,
           alignment: Alignment.center,

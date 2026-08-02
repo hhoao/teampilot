@@ -1,19 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/layout_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
-import '../../pages/config/config_workspace.dart';
 import '../../theme/app_typography_scale.dart';
 import '../../utils/ui/app_keys.dart';
-import '../../widgets/notification/notification_bell_button.dart';
 import 'mobile_slide_panel_host.dart';
 
 /// Single left-side mobile workspace drawer overlay for narrow IDE layouts.
 ///
-/// The shell owns the shared footer (manage + notifications + settings) and the
-/// chat/tools mode switch; [chatBody] / [toolsBody] are supplied by the parent.
+/// The shell owns the shared manage footer and the chat/tools mode switch;
+/// bell + settings stay pinned on the mobile title bar. [chatBody] / [toolsBody]
+/// are supplied by the parent.
 class MobileWorkspaceDrawerHost extends StatelessWidget {
   const MobileWorkspaceDrawerHost({
     required this.child,
@@ -113,30 +111,9 @@ class _DrawerShell extends StatelessWidget {
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
-          child: Row(
-            children: [
-              Expanded(
-                child: _ManageTile(
-                  label: l10n.homeWorkspaceWorkspaceManagement,
-                  onTap: onOpenWorkspaceManagement,
-                ),
-              ),
-              const NotificationBellButton(),
-              TpIconButton(
-                key: AppKeys.sidebarSettingsButton,
-                iconWidget: SvgPicture.asset(
-                  'assets/icons/settings_gear.svg',
-                  width: context.tpIconSizes.md,
-                  height: context.tpIconSizes.md,
-                  theme: SvgTheme(
-                    currentColor: cs.onSurfaceVariant,
-                  ),
-                ),
-                tooltip: l10n.settings,
-                backgroundColor: Colors.transparent,
-                onTap: () => showWorkspaceSettingsDialog(context),
-              ),
-            ],
+          child: _ManageTile(
+            label: l10n.homeWorkspaceWorkspaceManagement,
+            onTap: onOpenWorkspaceManagement,
           ),
         ),
       ],

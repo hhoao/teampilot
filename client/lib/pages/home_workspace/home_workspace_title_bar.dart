@@ -40,6 +40,16 @@ bool homeSidebarTriggerVisible({
 /// Height of the Apifox-style workspace title bar.
 const double kHomeTitleBarHeight = 58;
 
+/// Vertical padding inside home / workspace tab chips.
+const double kHomeTitleBarChipVerticalPadding = 6;
+
+/// Hit-target size for title-bar icon controls (⋯ / menu / bell / settings).
+///
+/// Matches [_HomePill] / [_WorkspaceTab] outer chrome: md icon + vertical chip
+/// padding + 1px border on each side.
+double homeTitleBarControlSize(BuildContext context) =>
+    context.tpIconSizes.md + 2 * kHomeTitleBarChipVerticalPadding + 2;
+
 @visibleForTesting
 double homeWorkspaceTabBarAlpha({required bool active, required bool hovered}) {
   if (active) return 1.0;
@@ -417,9 +427,28 @@ class _HomeTitleBarState extends State<HomeTitleBar> with WindowListener {
                     },
                   ),
                 ),
-              // Cap + scale-down so Run/panes/bell/settings never blow the Row
-              // on phone widths (tabs stay the sole Expanded flex child).
-              if (!compactChrome)
+              // Mobile: pin bell + settings flush right (panes stay in drawers).
+              // Desktop: cap + scale-down so Run/panes/chrome never blow the Row.
+              if (compactChrome) ...[
+                const SizedBox(width: 8),
+                NotificationBellButton(size: homeTitleBarControlSize(context)),
+                const SizedBox(width: 4),
+                TpIconButton(
+                  size: homeTitleBarControlSize(context),
+                  iconWidget: SvgPicture.asset(
+                    'assets/icons/settings_gear.svg',
+                    width: context.tpIconSizes.md,
+                    height: context.tpIconSizes.md,
+                    theme: SvgTheme(
+                      currentColor: cs.onSurfaceVariant,
+                    ),
+                  ),
+                  tooltip: l10n.settings,
+                  backgroundColor: Colors.transparent,
+                  onTap: () => showWorkspaceSettingsDialog(context),
+                ),
+                const SizedBox(width: 16),
+              ] else
                 ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: double.infinity),
                   child: FittedBox(
@@ -441,8 +470,11 @@ class _HomeTitleBarState extends State<HomeTitleBar> with WindowListener {
                           const SizedBox(width: 4),
                         ],
                         const SizedBox(width: 8),
-                        const NotificationBellButton(),
+                        NotificationBellButton(
+                          size: homeTitleBarControlSize(context),
+                        ),
                         TpIconButton(
+                          size: homeTitleBarControlSize(context),
                           iconWidget: SvgPicture.asset(
                             'assets/icons/settings_gear.svg',
                             width: context.tpIconSizes.md,
@@ -478,10 +510,11 @@ class _HomeTitleBarMobileDrawerTrigger extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final controlSize = homeTitleBarControlSize(context);
     if (activeTabKey == null) {
       final openMobile = TpSidebarScope.of(context).openMobile;
       return TpSidebarTrigger(
-        size: TpIconButton.kMobileTapSize,
+        size: controlSize,
         selected: openMobile,
       );
     }
@@ -502,7 +535,7 @@ class _HomeTitleBarMobileDrawerTrigger extends StatelessWidget {
         );
         return TpIconButton(
           icon: open ? Icons.menu_open : Icons.menu,
-          size: TpIconButton.kMobileTapSize,
+          size: controlSize,
           selected: open,
           onTap: () {
             final layout = context.read<LayoutCubit>();
@@ -556,7 +589,10 @@ class _HomePill extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          padding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: kHomeTitleBarChipVerticalPadding,
+          ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -688,8 +724,8 @@ class _WorkspaceTabState extends State<_WorkspaceTab> {
                 padding: const EdgeInsets.only(
                   left: 10,
                   right: 6,
-                  top: 6,
-                  bottom: 6,
+                  top: kHomeTitleBarChipVerticalPadding,
+                  bottom: kHomeTitleBarChipVerticalPadding,
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,

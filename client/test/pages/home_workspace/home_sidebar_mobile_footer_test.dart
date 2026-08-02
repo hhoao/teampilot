@@ -1,10 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ui/shared_ui.dart';
-import 'package:teampilot/cubits/notification_cubit.dart';
-import 'package:teampilot/cubits/progress_activity_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/pages/home_workspace/home_workspace_sidebar.dart';
 import 'package:teampilot/services/workspace/workspace_pane_policy.dart';
@@ -30,28 +26,18 @@ void main() {
           theme.colorScheme,
           scale: 1.0,
         ),
-        child: MultiBlocProvider(
-          providers: [
-            BlocProvider(create: (_) => NotificationCubit()),
-            BlocProvider(
-              create: (context) => ProgressActivityCubit(
-                historyRecorder: context.read<NotificationCubit>(),
-              ),
-            ),
-          ],
-          child: TpSidebarProvider(
-            mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
-            openMobile: true,
-            child: MaterialApp(
-              locale: const Locale('en'),
-              localizationsDelegates: AppLocalizations.localizationsDelegates,
-              supportedLocales: AppLocalizations.supportedLocales,
-              theme: theme,
-              home: Scaffold(
-                body: TpSidebar(
-                  collapsible: TpSidebarCollapsible.offcanvas,
-                  child: const HomeSidebar(),
-                ),
+        child: TpSidebarProvider(
+          mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
+          openMobile: true,
+          child: MaterialApp(
+            locale: const Locale('en'),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            theme: theme,
+            home: Scaffold(
+              body: TpSidebar(
+                collapsible: TpSidebarCollapsible.offcanvas,
+                child: const HomeSidebar(),
               ),
             ),
           ),
@@ -61,21 +47,13 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('mobile home sidebar footer shows providers bell and settings', (
+  testWidgets('mobile home sidebar footer shows providers only', (
     tester,
   ) async {
     await pumpMobileHomeSidebar(tester);
 
     expect(find.byKey(AppKeys.homeWorkspaceProvidersButton), findsOneWidget);
-    expect(find.byType(NotificationBellButton), findsOneWidget);
-    expect(find.byTooltip('Settings'), findsOneWidget);
-    expect(
-      find.byWidgetPredicate(
-        (widget) =>
-            widget is SvgPicture &&
-            widget.bytesLoader.toString().contains('settings_gear.svg'),
-      ),
-      findsOneWidget,
-    );
+    expect(find.byType(NotificationBellButton), findsNothing);
+    expect(find.byTooltip('Settings'), findsNothing);
   });
 }

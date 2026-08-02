@@ -3,8 +3,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/cubits/layout_cubit.dart';
-import 'package:teampilot/cubits/notification_cubit.dart';
-import 'package:teampilot/cubits/progress_activity_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/pages/workspace_ide/mobile_workspace_drawer_host.dart';
 import 'package:teampilot/widgets/notification/notification_bell_button.dart';
@@ -81,12 +79,6 @@ void main() {
         child: MultiBlocProvider(
           providers: [
             BlocProvider(create: (_) => LayoutCubit()),
-            BlocProvider(create: (_) => NotificationCubit()),
-            BlocProvider(
-              create: (context) => ProgressActivityCubit(
-                historyRecorder: context.read<NotificationCubit>(),
-              ),
-            ),
           ],
           child: MaterialApp(
             locale: const Locale('en'),
@@ -108,7 +100,7 @@ void main() {
     return harnessKey.currentState!;
   }
 
-  testWidgets('open chat mode shows chat body and shared footer', (
+  testWidgets('open chat mode shows chat body and manage footer', (
     tester,
   ) async {
     await pumpHarness(tester);
@@ -116,8 +108,8 @@ void main() {
     expect(find.text('CHAT_BODY'), findsOneWidget);
     expect(find.text('TOOLS_BODY'), findsNothing);
     expect(find.text('Workspace management'), findsOneWidget);
-    expect(find.byType(NotificationBellButton), findsOneWidget);
-    expect(find.byTooltip('Settings'), findsOneWidget);
+    expect(find.byType(NotificationBellButton), findsNothing);
+    expect(find.byTooltip('Settings'), findsNothing);
   });
 
   testWidgets('tools segment swaps body while footer stays visible', (
@@ -132,7 +124,6 @@ void main() {
     expect(find.text('TOOLS_BODY'), findsOneWidget);
     expect(find.text('CHAT_BODY'), findsNothing);
     expect(find.text('Workspace management'), findsOneWidget);
-    expect(find.byType(NotificationBellButton), findsOneWidget);
   });
 
   testWidgets('scrim tap dismisses drawer', (tester) async {

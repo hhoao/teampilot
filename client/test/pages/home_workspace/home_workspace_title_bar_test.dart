@@ -177,7 +177,7 @@ void main() {
     expect(find.byType(HomeTitleBar), findsOneWidget);
   });
 
-  testWidgets('mobile title bar hides trailing tools with workspace active', (
+  testWidgets('mobile title bar pins bell and settings on the right', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(400, 800);
@@ -211,7 +211,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(WorkspaceShellPaneVisibilityToggles), findsNothing);
-    expect(find.byType(NotificationBellButton), findsNothing);
+    expect(find.byType(NotificationBellButton), findsOneWidget);
+    expect(find.byTooltip('Settings'), findsOneWidget);
     expect(find.byIcon(Icons.menu_open), findsOneWidget);
   });
 
@@ -313,5 +314,90 @@ void main() {
       ),
     );
     expect(button.selected, isTrue);
+  });
+
+  testWidgets('mobile drawer trigger matches title-bar tab chip height', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(400, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final theme = ThemeData(useMaterial3: true);
+    await tester.pumpWidget(
+      TpTheme(
+        data: TpThemeData.fromColorScheme(theme.colorScheme, scale: 1.0),
+        child: _wrapTitleBar(
+          chatCubit: chatCubit,
+          child: TpSidebarProvider(
+            mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
+            child: MaterialApp(
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              theme: theme,
+              home: const Scaffold(
+                body: HomeTitleBar(
+                  tabs: [HomeWorkspaceTab(id: 'ws-a', name: 'Solo')],
+                  activeTabKey: 'ws-a',
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Default prefs treat the workspace drawer as open → menu_open.
+    final menuButton = find.ancestor(
+      of: find.byIcon(Icons.menu_open),
+      matching: find.byType(TpIconButton),
+    );
+    expect(menuButton, findsOneWidget);
+    final expected = homeTitleBarControlSize(tester.element(menuButton));
+    expect(tester.getSize(menuButton), Size(expected, expected));
+  });
+
+  testWidgets('mobile home drawer trigger matches title-bar tab chip height', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(400, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final theme = ThemeData(useMaterial3: true);
+    await tester.pumpWidget(
+      TpTheme(
+        data: TpThemeData.fromColorScheme(theme.colorScheme, scale: 1.0),
+        child: _wrapTitleBar(
+          chatCubit: chatCubit,
+          child: TpSidebarProvider(
+            mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
+            child: MaterialApp(
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              theme: theme,
+              home: const Scaffold(
+                body: HomeTitleBar(
+                  tabs: [HomeWorkspaceTab(id: 'ws-a', name: 'Solo')],
+                  activeTabKey: null,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final menuButton = find.ancestor(
+      of: find.byIcon(Icons.menu),
+      matching: find.byType(TpIconButton),
+    );
+    expect(menuButton, findsOneWidget);
+    final expected = homeTitleBarControlSize(tester.element(menuButton));
+    expect(tester.getSize(menuButton), Size(expected, expected));
   });
 }
