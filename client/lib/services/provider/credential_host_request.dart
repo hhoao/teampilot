@@ -7,29 +7,43 @@ import '../storage/runtime_context.dart';
 class CredentialHostRequest {
   const CredentialHostRequest._();
 
-  static bool usePosixCliPaths(String preferencePath) {
-    if (AppStorage.isInstalled) {
-      final mode = AppStorage.context.mode;
-      if (mode == StorageBackendMode.wsl || mode == StorageBackendMode.ssh) {
-        return true;
-      }
+  /// True when login env should normalize paths for a POSIX/WSL CLI.
+  ///
+  /// WSL/SSH home contexts always use POSIX paths. On native Windows, a
+  /// `wsl.exe …` preference path still runs inside WSL and needs WSL path
+  /// normalization in login environment variables.
+  static bool usePosixCliPaths(
+    String preferencePath, {
+    StorageBackendMode? modeOverride,
+  }) {
+    final mode = _resolvedMode(modeOverride);
+    if (mode == StorageBackendMode.wsl || mode == StorageBackendMode.ssh) {
+      return true;
     }
     return CliInvocation.fromExecutable(preferencePath).usesWsl;
   }
 
-  static String hostExecutable(String preferencePath) {
+  static String hostExecutable(
+    String preferencePath, {
+    StorageBackendMode? modeOverride,
+  }) {
     final invocation = CliInvocation.fromExecutable(preferencePath);
     if (!invocation.usesWsl) return invocation.executable;
+    if (!_shouldUnwrapWsl(modeOverride)) return invocation.executable;
     final linuxExecutable = _wslLinuxExecutable(invocation.prefixArgs);
     return linuxExecutable ?? preferencePath;
   }
 
   static List<String> hostArguments(
     String preferencePath,
-    List<String> subcommand,
-  ) {
+    List<String> subcommand, {
+    StorageBackendMode? modeOverride,
+  }) {
     final invocation = CliInvocation.fromExecutable(preferencePath);
     if (!invocation.usesWsl) {
+      return [...invocation.prefixArgs, ...subcommand];
+    }
+    if (!_shouldUnwrapWsl(modeOverride)) {
       return [...invocation.prefixArgs, ...subcommand];
     }
     final linuxExecutable = _wslLinuxExecutable(invocation.prefixArgs);
@@ -44,12 +58,31 @@ class CredentialHostRequest {
     required String preferencePath,
     required List<String> subcommand,
     required Map<String, String> environment,
+    StorageBackendMode? modeOverride,
   }) {
     return HostRunRequest(
-      executable: hostExecutable(preferencePath),
-      arguments: hostArguments(preferencePath, subcommand),
+      executable: hostExecutable(preferencePath, modeOverride: modeOverride),
+      arguments: hostArguments(
+        preferencePath,
+        subcommand,
+        modeOverride: modeOverride,
+      ),
       environment: environment,
     );
+  }
+
+  static StorageBackendMode? _resolvedMode(StorageBackendMode? modeOverride) {
+    if (modeOverride != null) return modeOverride;
+    if (!AppStorage.isInstalled) return null;
+    return AppStorage.context.mode;
+  }
+
+  /// Unwrap `wsl.exe … /linux/bin` only when the home starter is already WSL
+  /// or SSH (POSIX host). On native Windows, keep `wsl.exe` so
+  /// [LocalHostProcessStarter] launches WSL correctly.
+  static bool _shouldUnwrapWsl(StorageBackendMode? modeOverride) {
+    final mode = _resolvedMode(modeOverride);
+    return mode == StorageBackendMode.wsl || mode == StorageBackendMode.ssh;
   }
 
   static String? _wslLinuxExecutable(List<String> prefixArgs) {
