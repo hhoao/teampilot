@@ -41,7 +41,7 @@ void main() {
       cubit.ensureTab(ws, run);
       expect(cubit.activeTabId(ws), run);
 
-      cubit.reorderTabs(ws, 0, 3);
+      cubit.reorderTabs(ws, 0, 2);
       expect(cubit.tabOrder(ws), [file, run, session]);
       expect(cubit.activeTabId(ws), run);
     });

@@ -35,7 +35,7 @@ Horizontal tab chrome is duplicated and inconsistently wired:
 | Package | `shared_ui`: `TpTabChip`, `TpTabStrip`, `TpTabStripMetrics`, `reorderListItems` |
 | Compat | **None** |
 | Domain in chip | **Forbidden** — host passes `title`, `leading`, `working`, `preview`, etc. |
-| Reorder API | `void Function(int oldIndex, int newIndex)? onReorder` — Material `ReorderableListView.onReorder` index semantics |
+| Reorder API | `void Function(int oldIndex, int newIndex)? onReorder` — Material `onReorderItem` index semantics (post-removal insert index) |
 | In-strip actions | `Widget? inStripTrailing` — after tabs, **inside** horizontal scroll viewport, **excluded** from reorder indices (shell / floating `+`) |
 | Outer trailing | `Widget? trailing` — outside scroll/reorder (pane actions, run clear button) |
 | Leading | `Widget? leading` before scroll region |

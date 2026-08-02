@@ -49,7 +49,7 @@ class WorkspaceShell extends StatelessWidget {
   final ValueChanged<int>? onTabCloseRight;
   final ValueChanged<int>? onTabPin;
 
-  /// Material [ReorderableListView.onReorder] for the center strip.
+  /// Material [ReorderableListView.onReorderItem] for the center strip.
   final ReorderCallback? onTabsReorder;
 
   /// "+" action at the end of the session tab row — New conversation / terminal.

@@ -7,6 +7,7 @@ import 'package:teampilot/cubits/floating_workspace/floating_panel_visibility.da
 import 'package:teampilot/cubits/floating_workspace/floating_workspace_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/floating_workspace_tab.dart';
+import 'package:teampilot/pages/floating_workspace/floating_workspace_chrome.dart';
 import 'package:teampilot/pages/floating_workspace/floating_workspace_panel.dart';
 import 'package:teampilot/services/commands/command_bus.dart';
 import 'package:teampilot/services/floating_workspace/floating_maximize_insets.dart';
@@ -202,6 +203,175 @@ void main() {
         )
         .toList();
     expect(titleDecoration, isNotEmpty);
+  });
+
+  testWidgets('overflow keeps + after strip and chrome flush-right', (
+    tester,
+  ) async {
+    final cubit = FloatingWorkspaceCubit();
+    addTearDown(cubit.close);
+    final registry = FloatingSurfaceRegistry([_FakeSurface()]);
+    final insets = FloatingMaximizeInsets();
+    addTearDown(insets.dispose);
+
+    await tester.pumpWidget(
+      wrap(cubit: cubit, registry: registry, insets: insets),
+    );
+    cubit.ensureOpen();
+    cubit.setPanelPlacement(
+      const FloatingPanelPlacement(
+        width: 360,
+        height: 300,
+        rightInset: 40,
+        bottomInset: 80,
+      ),
+    );
+    cubit.setActiveWorkspace('ws');
+    for (var i = 0; i < 6; i++) {
+      cubit.ensureTab(
+        FloatingTab(
+          id: 't$i',
+          surfaceId: 'terminal',
+          title: 'Session tab number $i',
+          payload: 'p$i',
+        ),
+      );
+    }
+    await tester.pumpAndSettle();
+
+    final add = find.byKey(const Key('floating_workspace_add_button'));
+    final chrome = find.byType(FloatingWorkspaceChrome);
+    expect(add, findsOneWidget);
+    expect(chrome, findsOneWidget);
+    expect(tester.getTopRight(add).dx, lessThan(tester.getTopLeft(chrome).dx));
+
+    // Fixed gap between + and chrome receives double-tap.
+    final title = find.byKey(const Key('floating_workspace_title_drag'));
+    final gapPoint = Offset(
+      tester.getTopRight(add).dx + 14,
+      tester.getCenter(title).dy,
+    );
+    await tester.tapAt(gapPoint);
+    await tester.pump(kDoubleTapMinTime);
+    await tester.tapAt(gapPoint);
+    await tester.pump();
+    await tester.pump(kDoubleTapTimeout);
+    expect(cubit.state.isMaximized, isTrue);
+  });
+
+  testWidgets('+ follows last tab when strip fits', (tester) async {
+    final cubit = FloatingWorkspaceCubit();
+    addTearDown(cubit.close);
+    final registry = FloatingSurfaceRegistry([_FakeSurface()]);
+    final insets = FloatingMaximizeInsets();
+    addTearDown(insets.dispose);
+
+    await tester.pumpWidget(
+      wrap(cubit: cubit, registry: registry, insets: insets),
+    );
+    cubit.ensureOpen();
+    cubit.setPanelPlacement(placement);
+    cubit.setActiveWorkspace('ws');
+    cubit.ensureTab(
+      FloatingTab(
+        id: 'only',
+        surfaceId: 'terminal',
+        title: 'One',
+        payload: 'p',
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final tabRight = tester.getTopRight(find.text('One')).dx;
+    final addLeft = tester
+        .getTopLeft(find.byKey(const Key('floating_workspace_add_button')))
+        .dx;
+    // "+" sits just after the tab, not parked at the chrome.
+    expect(addLeft - tabRight, lessThan(48));
+    expect(
+      tester.getTopLeft(find.byType(FloatingWorkspaceChrome)).dx - addLeft,
+      greaterThan(80),
+    );
+  });
+
+  testWidgets('+ does not jump across frames when tabs overflow', (
+    tester,
+  ) async {
+    final cubit = FloatingWorkspaceCubit();
+    addTearDown(cubit.close);
+    final registry = FloatingSurfaceRegistry([_FakeSurface()]);
+    final insets = FloatingMaximizeInsets();
+    addTearDown(insets.dispose);
+
+    await tester.pumpWidget(
+      wrap(cubit: cubit, registry: registry, insets: insets),
+    );
+    cubit.ensureOpen();
+    cubit.setPanelPlacement(
+      const FloatingPanelPlacement(
+        width: 420,
+        height: 300,
+        rightInset: 40,
+        bottomInset: 80,
+      ),
+    );
+    cubit.setActiveWorkspace('ws');
+    for (var i = 0; i < 5; i++) {
+      cubit.ensureTab(
+        FloatingTab(
+          id: 't$i',
+          surfaceId: 'terminal',
+          title: 'Session tab number $i',
+          payload: 'p$i',
+        ),
+      );
+    }
+    await tester.pumpAndSettle();
+
+    final addFinder = find.byKey(const Key('floating_workspace_add_button'));
+    final positions = <double>[];
+    for (var i = 0; i < 12; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+      positions.add(tester.getTopLeft(addFinder).dx);
+    }
+    expect(positions.toSet().length, 1);
+  });
+
+  testWidgets('chrome stays flush-right when tabs do not overflow', (
+    tester,
+  ) async {
+    final cubit = FloatingWorkspaceCubit();
+    addTearDown(cubit.close);
+    final registry = FloatingSurfaceRegistry([_FakeSurface()]);
+    final insets = FloatingMaximizeInsets();
+    addTearDown(insets.dispose);
+
+    await tester.pumpWidget(
+      wrap(cubit: cubit, registry: registry, insets: insets),
+    );
+    cubit.ensureOpen();
+    cubit.setPanelPlacement(placement);
+    cubit.setActiveWorkspace('ws');
+    cubit.ensureTab(
+      FloatingTab(
+        id: 'only',
+        surfaceId: 'terminal',
+        title: 'One',
+        payload: 'p',
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final chrome = find.byType(FloatingWorkspaceChrome);
+    expect(chrome, findsOneWidget);
+    final title = find.byKey(const Key('floating_workspace_title_drag'));
+    final chromeRight = tester.getTopRight(chrome).dx;
+    final titleRight = tester.getTopRight(title).dx;
+    expect(titleRight - chromeRight, lessThan(12));
+    expect(
+      chromeRight - tester.getTopRight(find.text('One')).dx,
+      greaterThan(80),
+    );
   });
 }
 

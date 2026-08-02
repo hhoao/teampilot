@@ -83,7 +83,7 @@ void main() {
     cubit.selectTab('b');
     expect(cubit.state.activeBucket.activeTabId, 'b');
 
-    cubit.reorderTabs(0, 2);
+    cubit.reorderTabs(0, 1);
     expect(
       cubit.state.activeBucket.tabs.map((t) => t.id).toList(),
       ['b', 'a', 'c'],

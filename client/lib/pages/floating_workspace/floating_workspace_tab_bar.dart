@@ -10,7 +10,11 @@ import '../../models/floating_workspace_tab.dart';
 import '../workspace_shell/workspace_shell_tabs.dart';
 import 'floating_workspace_new_terminal_menu.dart';
 
-/// Horizontal tab strip: [TpTabStrip] + close menus + "+" open menu.
+/// Tabs-only strip for the floating title bar.
+///
+/// The "+" control is a sibling outside this scroll viewport (Orca-style): the
+/// strip shrink-wraps when tabs fit so "+" sits after the last tab; when the
+/// strip hits its max width it scrolls and "+" stays just after the strip.
 class FloatingWorkspaceTabBar extends StatelessWidget {
   const FloatingWorkspaceTabBar({
     required this.tabs,
@@ -19,7 +23,6 @@ class FloatingWorkspaceTabBar extends StatelessWidget {
     required this.onClose,
     required this.onCloseOthers,
     required this.onCloseRight,
-    required this.onOpenFile,
     super.key,
   });
 
@@ -29,7 +32,6 @@ class FloatingWorkspaceTabBar extends StatelessWidget {
   final ValueChanged<FloatingTab> onClose;
   final ValueChanged<FloatingTab> onCloseOthers;
   final ValueChanged<FloatingTab> onCloseRight;
-  final VoidCallback onOpenFile;
 
   @override
   Widget build(BuildContext context) {
@@ -43,7 +45,6 @@ class FloatingWorkspaceTabBar extends StatelessWidget {
                 .read<FloatingWorkspaceCubit>()
                 .reorderTabs(oldIndex, newIndex)
           : null,
-      inStripTrailing: _FloatingWorkspaceAddButton(onOpenFile: onOpenFile),
       itemBuilder: (context, index) {
         final tab = tabs[index];
         return WorkbenchStripTabChip(
@@ -69,18 +70,19 @@ class FloatingWorkspaceTabBar extends StatelessWidget {
   }
 }
 
-class _FloatingWorkspaceAddButton extends StatefulWidget {
-  const _FloatingWorkspaceAddButton({required this.onOpenFile});
+/// "+" open menu — sibling of [FloatingWorkspaceTabBar], not inside the scroll.
+class FloatingWorkspaceAddButton extends StatefulWidget {
+  const FloatingWorkspaceAddButton({required this.onOpenFile, super.key});
 
   final VoidCallback onOpenFile;
 
   @override
-  State<_FloatingWorkspaceAddButton> createState() =>
+  State<FloatingWorkspaceAddButton> createState() =>
       _FloatingWorkspaceAddButtonState();
 }
 
 class _FloatingWorkspaceAddButtonState
-    extends State<_FloatingWorkspaceAddButton> {
+    extends State<FloatingWorkspaceAddButton> {
   final _anchorKey = GlobalKey();
 
   Future<void> _showMenu() async {

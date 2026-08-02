@@ -412,6 +412,11 @@ class _PanelChromeFrameState extends State<_PanelChromeFrame> {
                           );
                         }
                       : null,
+                  onOpenFile: () {
+                    context.read<CommandBus>().invoke(
+                      CommandIds.floatingOpenFile,
+                    );
+                  },
                   tabBar: FloatingWorkspaceTabBar(
                     tabs: tabs,
                     activeTabId: activeId,
@@ -450,11 +455,6 @@ class _PanelChromeFrameState extends State<_PanelChromeFrame> {
                           fromTabId: tab.id,
                           context: context,
                         ),
-                      );
-                    },
-                    onOpenFile: () {
-                      context.read<CommandBus>().invoke(
-                        CommandIds.floatingOpenFile,
                       );
                     },
                   ),
@@ -678,6 +678,7 @@ class _PanelChromeFrameState extends State<_PanelChromeFrame> {
 class _TitleBar extends StatelessWidget {
   const _TitleBar({
     required this.tabBar,
+    required this.onOpenFile,
     this.onPanStart,
     this.onPanUpdate,
     this.onPanEnd,
@@ -685,6 +686,7 @@ class _TitleBar extends StatelessWidget {
   });
 
   final Widget tabBar;
+  final VoidCallback onOpenFile;
   final GestureDragStartCallback? onPanStart;
   final GestureDragUpdateCallback? onPanUpdate;
   final GestureDragEndCallback? onPanEnd;
@@ -721,23 +723,33 @@ class _TitleBar extends StatelessWidget {
                 ),
               ),
             ),
+            // Orca-style: [shrink-wrap tabs | + | empty drag | chrome].
+            // "+" is outside the scroll viewport; when tabs fit it follows the
+            // last tab, when they overflow the strip hits max width and scrolls.
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Flexible(
-                  fit: FlexFit.loose,
-                  child: Padding(
-                    padding: const EdgeInsets.only(left: 6),
-                    child: tabBar,
+                Expanded(
+                  child: Row(
+                    children: [
+                      Flexible(
+                        fit: FlexFit.loose,
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          widthFactor: 1,
+                          child: Padding(
+                            padding: const EdgeInsets.only(left: 6),
+                            child: tabBar,
+                          ),
+                        ),
+                      ),
+                      FloatingWorkspaceAddButton(onOpenFile: onOpenFile),
+                    ],
                   ),
                 ),
-                const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    FloatingWorkspaceChrome(),
-                    SizedBox(width: 4),
-                  ],
-                ),
+                // Keep a drag affordance between "+" and window chrome.
+                const IgnorePointer(child: SizedBox(width: 28)),
+                const FloatingWorkspaceChrome(),
+                const SizedBox(width: 4),
               ],
             ),
           ],
