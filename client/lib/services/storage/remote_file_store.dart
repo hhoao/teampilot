@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 
 import '../io/filesystem.dart';
 import '../host/host_one_shot_runner.dart';
+import '../host/process_run_handle.dart';
 import '../ssh/ssh_client_factory.dart';
 import '../ssh/ssh_transport_close.dart';
 import '../ssh/ssh_run_result.dart';
@@ -459,6 +460,14 @@ class RemoteFileStore {
   /// Runs [command] in the remote login shell and returns the full exit status.
   Future<SSHRunResult> execShell(String command) async {
     return _clientFactory.runOnStorage(_profile, command);
+  }
+
+  /// Opens a streaming SSH exec session (no short I/O timeout — caller waits on
+  /// [ProcessRunHandle.exitCode]).
+  Future<ProcessRunHandle> startShell(String command) async {
+    final client = await _clientFactory.clientForStorage(_profile);
+    final session = await client.execute(command);
+    return SshProcessRunHandle(session);
   }
 
   /// Opens [absolutePath] in the remote OS file manager (best-effort).
