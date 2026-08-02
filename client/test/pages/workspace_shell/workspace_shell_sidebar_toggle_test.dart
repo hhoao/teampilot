@@ -26,7 +26,6 @@ void main() {
       layout.setNarrowLeftSuppressed(true);
 
       final theme = ThemeData(useMaterial3: true);
-      final cs = theme.colorScheme;
 
       await tester.pumpWidget(
         TpTheme(
@@ -49,7 +48,7 @@ void main() {
       final button = tester.widget<TpIconButton>(
         find.byKey(AppKeys.sidebarVisibilityButton),
       );
-      expect(button.color, cs.onSurfaceVariant);
+      expect(button.selected, isFalse);
 
       await tester.tap(find.byKey(AppKeys.sidebarVisibilityButton));
       await tester.pumpAndSettle();
@@ -60,13 +59,17 @@ void main() {
       final buttonAfterClear = tester.widget<TpIconButton>(
         find.byKey(AppKeys.sidebarVisibilityButton),
       );
-      expect(buttonAfterClear.color, cs.primary);
+      expect(buttonAfterClear.selected, isTrue);
 
       await tester.tap(find.byKey(AppKeys.sidebarVisibilityButton));
       await tester.pumpAndSettle();
 
       expect(layout.state.preferences.sidebarVisible, isFalse);
       expect(layout.state.narrowLeftSuppressed, isFalse);
+      expect(
+        tester.widget<TpIconButton>(find.byKey(AppKeys.sidebarVisibilityButton)).selected,
+        isFalse,
+      );
     },
   );
 }
