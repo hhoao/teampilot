@@ -15,7 +15,7 @@ Token tuning alone cannot fix a dual layout engine.
 
 1. **One compile → one semantic document → one renderer** for chat and file markdown preview.
 2. **Structure never inferred from TextStyle** — only from block / inline kinds produced by the compiler.
-3. **Spacing is a pure function of `(prevKind, nextKind, profile)`** — no padding+blockSpacing double-counting, no merge-time special cases that disagree with Column gaps.
+3. **Spacing is a pure function of `(prevKind, nextKind, profile)`** via `marginOf` + collapse — no padding+blockSpacing double-counting, no merge-time special cases that disagree with Column gaps.
 4. **Extensible** via registries (compile transforms, block widgets, link/image resolvers) without forking the builder.
 5. **Two presentation profiles** (`document`, `compact`) sharing IR + token schema (Orca preview vs comment pattern).
 6. **No backward compatibility** with `MarkdownStyleSheet` layout APIs, `_spanLooksLikeHeading`, or product use of `MarkdownBody` for GFM document bodies.
@@ -34,7 +34,7 @@ Token tuning alone cannot fix a dual layout engine.
 | Approach | Semantic IR path (initially in `ai_message_ui`; **extracted** to `tp_markdown` — see `2026-08-02-tp-markdown-package-design.md`) |
 | Surfaces | Chat + file preview both call the same renderer |
 | Profiles | `MarkdownProfile.document` (preview / README) and `.compact` (chat) |
-| Spacing | Inter-block **gap matrix** by `MarkdownBlockKind`; block widgets do not add competing outer margins |
+| Spacing | Per-kind `marginOf` + CSS-like collapse via `gapBetween` (see `2026-08-02-markdown-block-margins-design.md`); block widgets do not add competing outer margins |
 | Selection | Keep `SelectionArea` + strut / line-spaced selection style; merge only adjacent **paragraph** runs when safe for selection continuity, using the **same** gap matrix for blank-line advance |
 | Preview chrome | Code copy button, tables, images, task lists live in IR widgets (parity with document profile needs) |
 | Unknown HTML / exotic nodes | `RawLiteralBlock` showing source (or sanitized subset via plugin) — never silent drop |
@@ -105,6 +105,8 @@ Compiler maps `package:markdown` GFM AST tags → these kinds. No widget constru
 
 ## Spacing model
 
+See **`2026-08-02-markdown-block-margins-design.md`** for the locked margin-collapse spec.
+
 ### Kind enum
 
 ```dart
@@ -126,27 +128,21 @@ Each `MarkdownBlock` exposes `.kind`. Nested containers (`blockquote`, `list` it
 ### Gap function
 
 ```dart
+EdgeInsets marginOf(MarkdownBlockKind kind);
 double gapBetween(MarkdownBlockKind? previous, MarkdownBlockKind next, MarkdownTokens t);
 ```
 
-**Priority (first match wins):**
-
-1. `previous == null` → `0` (first child in a container / document).
-2. `next` is heading N → `t.headingTop[N]` (incoming heading owns top gap; matches today’s IR `_blockGap`).
-3. `previous` is heading → `t.headingBottom` (do **not** also add `paragraphGap` / `blockGap`).
-4. both are `paragraph` → `t.paragraphGap`.
-5. either side is `horizontalRule` → `t.ruleGap` (or max with other rule if needed).
-6. else → `t.blockGap`.
+`gapBetween` = CSS-like vertical collapse: `max(prev.bottom, next.top)` over `marginOf` (no scalar priority matrix). First block in a document/container has no leading `SizedBox`; host chrome owns outer inset.
 
 List **items** use `t.listItemGap` inside the list widget (not `gapBetween` between top-level blocks).
 
-Document profile mirrors Orca `markdown-preview.css` intent (heading ~1.5em/0.5em, paragraph ~0.75em, list/code/table ~0.75–1em). The implementation plan must publish the full numeric matrix for both profiles from that CSS + current host targets.
+Document profile mirrors Orca `markdown-preview.css` intent (heading ~1.5em/0.5em, paragraph ~0.75em, list/code/table ~0.75–1em). Per-kind margin anchors for both profiles live in the margins spec + host `buildAppMarkdownTokens`.
 
 **Invariant:** block widgets paint **internal** chrome only (code padding, table cell padding, blockquote bar). They must not add outer top/bottom margins that duplicate `gapBetween`.
 
 **Selection merge:** only adjacent `Paragraph` blocks may merge into one `Text.rich`. Blank-line advance uses `gapBetween(paragraph, paragraph)` encoded as `\n\n` height — **same number** as `SizedBox` path. Headings never merge (kind-based, not style-based).
 
-Compact profile uses the same function with smaller token values (chat density).
+Compact profile uses the same collapse function with smaller per-kind margins (chat density).
 
 ### Token fields (host-filled)
 
@@ -154,7 +150,7 @@ Typography: body, h1–h6, link, inlineCode, codeBlock, listBullet, blockquote, 
 
 Chrome: `borderColor`, `mutedSurface`, `codeBlockRadius`, `tableCellsPadding`, `tableHeadBackground`, `tableBodyBackground`.
 
-Rhythm: `headingTop[1..6]`, `headingBottom`, `paragraphGap`, `blockGap`, `listItemGap`, `listIndent`, `ruleGap`, body/blockquote `height` 1.7 (document).
+Rhythm: per-kind `marginOf` (four-sided `EdgeInsets`), `listItemGap`, `listIndent`, body/blockquote `height` 1.7 (document). Host resolves sparse `TpScaledEdgeInsets` to plain `EdgeInsets` before constructing tokens.
 
 Visual numbers start from the approved Orca-like targets (body 1.7, heading tops ~40/36/32/…, heading bottom ~8, table 14×8, border alpha 0.45) and are adjusted per profile — not re-debated here. Do **not** separately execute the old dual-path token plan in `2026-08-01-orca-like-markdown-style` implementation plan; fold remaining visual targets into `MarkdownTokens` here.
 
@@ -179,7 +175,7 @@ Future WYSIWYG should consume the same `MarkdownBlockKind` + `MarkdownTokens`, n
 
 ## Testing
 
-- **Unit:** `gapBetween` matrix table (first block, heading→list, paragraph→paragraph, heading false-positive regression with h6==body tokens).
+- **Unit:** `gapBetween` collapse table (first block, heading→list, paragraph→paragraph, heading false-positive regression with h6==body tokens).
 - **Compile corpus:** existing gate ≥95% without RawLiteral for must-compile fixtures; add README-like fixture used in preview.
 - **Widget:** preview and chat both render the same fixture IR with different profiles; assert no `MarkdownBody` in the subtree for must-compile docs.
 - **Selection:** list gap probes + paragraph merge still pass under strut / line-spaced selection.
@@ -198,5 +194,5 @@ Future WYSIWYG should consume the same `MarkdownBlockKind` + `MarkdownTokens`, n
 
 - One renderer path for chat + markdown file preview.
 - Zero style-fingerprint heading detection in production code.
-- Paragraph / heading / list spacing matches the gap matrix; no “paragraph gaps vanished” class of bugs.
+- Paragraph / heading / list spacing matches margin collapse; no “paragraph gaps vanished” class of bugs.
 - Adding a new block type = compile mapping + widget builder + gap row — not a fork of `builder.dart`.

@@ -14,7 +14,7 @@ markdown string
   → prepareStreamingMarkdown (optional)
   → package:markdown (GFM AST)
   → compileMarkdown → MarkdownDocument (LRU-cached)
-  → MarkdownView + gapBetween(prevKind, nextKind, tokens)
+  → MarkdownView + gapBetween(prevKind, nextKind, tokens)  # collapse over marginOf; see 2026-08-02-markdown-block-margins-design.md
 ```
 
 ## Usage
