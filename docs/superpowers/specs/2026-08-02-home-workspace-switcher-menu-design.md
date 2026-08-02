@@ -44,11 +44,16 @@ Reuse `TpActionMenuAnchor` + `TpPopoverController`. Anchor is `TpIconButton` (`I
 | `recentlyClosed` | `List<HomeClosedWorkspaceEntry>` |
 | `workspaces` | Live `Workspace` list for topology / path subtitle on closed entries |
 | `launchProfiles` | Passed through for any existing subtitle helpers that need identities |
-| `onCreate` | `VoidCallback` — host closes menu then calls `showHomeNewWorkspaceDialog` |
+| `onCreate` | `VoidCallback` — host only shows `showHomeNewWorkspaceDialog` (menu already closed) |
 | `onSelectOpen` | `ValueChanged<String>` — tab key; same as title-bar tab select |
 | `onReopenClosed` | `ValueChanged<String>` — tab key; existing reopen |
 
 The menu must **not** read Cubits directly; create/select/reopen stay injected.
+
+### Row chrome
+
+- **Open tabs:** topology icon + display name + active check/highlight; no path subtitle required (tabs already identify open workspaces).
+- **Recently closed:** keep existing topology icon + name + path subtitle helpers.
 
 ### Empty sections
 
@@ -58,8 +63,8 @@ The menu must **not** read Cubits directly; create/select/reopen stay injected.
 
 ### Close / create timing
 
-- Choosing any menu item closes the popover.
-- Create: hide menu first, then invoke `onCreate`, so the dialog is not stacked under an open popover. Existing dialog already navigates to the new workspace on success.
+- Choosing any menu item: the **menu** hides the popover, then invokes the callback.
+- Create: menu hides first, then `onCreate`; host only opens the dialog. Existing dialog already navigates to the new workspace on success.
 
 ### l10n
 
