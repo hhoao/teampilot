@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
@@ -34,6 +36,12 @@ class WorkspaceChatLanding extends StatelessWidget {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
     final spacing = context.tpSpacing;
+    final isMobile =
+        TpSidebarScope.maybeOf(context)?.isMobile ??
+        MediaQuery.sizeOf(context).width < TpMobileChrome.narrowBreakpointWidth;
+    final backLeft = isMobile
+        ? math.max(spacing.md, TpMobileChrome.leadingInset)
+        : spacing.md;
 
     return Stack(
       children: [
@@ -64,7 +72,7 @@ class WorkspaceChatLanding extends StatelessWidget {
         ),
         Positioned(
           top: spacing.md,
-          left: spacing.md,
+          left: backLeft,
           child: TpIconButton(
             key: AppKeys.workspaceChatLandingBackButton,
             icon: Icons.arrow_back,

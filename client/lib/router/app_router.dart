@@ -483,9 +483,14 @@ Widget _settingsChromeShell(
       child: Scaffold(
         appBar: AppBar(
           title: Text(AndroidShellChrome.title(context, path)),
+          leadingWidth: hideDrawer
+              ? kToolbarHeight + TpMobileChrome.leadingInset
+              : null,
           leading: hideDrawer
-              ? BackButton(
-                  onPressed: () => AndroidShellChrome.pop(context, path),
+              ? TpMobileLeading(
+                  child: BackButton(
+                    onPressed: () => AndroidShellChrome.pop(context, path),
+                  ),
                 )
               : const TpSidebarTrigger(),
           actions: const [AndroidWorkEnvironmentSelector()],

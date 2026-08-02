@@ -301,7 +301,7 @@ class _HomeTitleBarState extends State<HomeTitleBar> with WindowListener {
           height: kHomeTitleBarHeight,
           child: Row(
             children: [
-              SizedBox(width: 8),
+              SizedBox(width: compactChrome ? TpMobileChrome.leadingInset : 8),
               if (showWindowControls && useMacWindowChromeStyle)
                 _buildWindowControls(),
               if (!compactChrome)
