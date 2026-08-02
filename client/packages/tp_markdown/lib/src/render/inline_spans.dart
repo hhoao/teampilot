@@ -6,18 +6,13 @@ import '../registry/markdown_resolvers.dart';
 import '../tokens/markdown_tokens.dart';
 import 'image_raw_blocks.dart';
 
-/// Force a uniform line box so mixed CJK / Latin / mono weights cannot open
-/// selection seams between wraps.
-StrutStyle forcedStrut(TextStyle style) {
-  return StrutStyle(
-    fontFamily: style.fontFamily,
-    fontFamilyFallback: style.fontFamilyFallback,
-    fontSize: style.fontSize,
-    height: style.height,
-    leading: 0,
-    forceStrutHeight: true,
-  );
-}
+/// Optional strut for markdown [Text.rich].
+///
+/// Disabled: A/B showed no reading difference and forced strut amplified
+/// first-open cost for mixed UI/mono spans. Line height still comes from
+/// [TextStyle.height]. Re-enable only if SelectionArea wrap seams return
+/// and are worth the layout cost.
+StrutStyle? forcedStrut(TextStyle style) => null;
 
 TextStyle headingStyleForLevel(MarkdownTokens tokens, int level) {
   return switch (level) {
@@ -76,7 +71,16 @@ InlineSpan inlineSpan(
           resolvers,
         ),
       ),
-    CodeRun(:final text) => TextSpan(text: text, style: tokens.inlineCode),
+    CodeRun(:final text) => TextSpan(
+        text: text,
+        // Keep mono/chrome from [tokens.inlineCode], but match surrounding
+        // size (headings, etc.) — otherwise `# Title `code`` renders body-sized.
+        style: tokens.inlineCode.copyWith(
+          fontSize: base.fontSize,
+          height: base.height,
+          letterSpacing: base.letterSpacing,
+        ),
+      ),
     // WidgetSpan + GestureDetector so link taps win under parent SelectionArea.
     LinkRun(:final url, :final title, :final children) => WidgetSpan(
         alignment: PlaceholderAlignment.baseline,

@@ -68,30 +68,54 @@ Expected open sequence after that work:
 | `Offstage` keep-alive tabs | Still layouts inactive children | Use `TpKeepAliveLayer` instead |
 | `workingSessionIds` / session title fan-out | First message / agent turns used to rebuild whole sidebar + `ChatPageShell` → bulk `RenderParagraph` | Leaf-only selects: structure snapshots for list shells, `SessionRowContent` for row/tab text, Running host for membership; never put `workingSessionIds` or full title-bearing `sessions`/`tabs` in page-shell `buildWhen` |
 | **Cold `TextStyle` / font family** | First paint shapes glyphs for a new family+size+weight tuple; **monospace on form fields** can cost seconds and rarely shows as a named hotspot in DevTools | Use `TpTextStyles` / warmed host styles only; never hardcode `'monospace'` or ad-hoc `TextStyle` on hot paths — see [Typography and glyph warmup](#typography-and-glyph-warmup) |
+| **`RenderParagraph` ≫ 200ms** | Flame/summary hot path on first open — treat as **cold text layout**, not “widget count”. Often mixed spans in one `Text.rich` (e.g. bold UI + mono `` `code` ``), not missing BUILD | Isolate the span mix; extend finite boot warmup (`shapeRich`) — see below. Do not dump unbounded charsets |
 
 ## Typography and glyph warmup
 
-**Cold font shaping** can freeze a dialog for seconds while DevTools only shows
-generic `Layout` / `Build` — easy to blame field count when the real issue is
-`TextStyle`. Example: launch-config path fields on **monospace** felt broken;
-same fields on boot-warmed `TpTextStyles.of(context).md` opened instantly.
+**Cold font shaping** can freeze UI for hundreds of ms–seconds while DevTools only
+shows `Layout` / `RenderParagraph` / `Build`. Example: launch-config fields on
+**monospace** felt broken; same fields on boot-warmed `TpTextStyles.of(context).md`
+opened instantly.
 
-At boot, [`UiInteractiveWarmup`](../client/lib/services/app/ui_interactive_warmup.dart)
-pre-shapes every style from `textStylesForThemeWarmup` (`TpTextStyles` + inputs +
-[`appMarkdownTextStyles`](../client/lib/theme/app_markdown_style_sheet.dart)).
-Hot-path paint must hit an already-warmed `(family, size, weight)` tuple;
-`copyWith(color: …)` is fine, changing family/size/weight is not.
+**Signal:** first-open timeline with **`RenderParagraph` self-time ≳ 200ms** →
+stop chasing defer layers until typography / rich-text mix is ruled out.
+
+### What boot warms
+
+[`UiInteractiveWarmup`](../client/lib/services/app/ui_interactive_warmup.dart):
+
+1. **Style fingerprints** — every style from `textStylesForThemeWarmup`
+   (`TpTextStyles` + inputs +
+   [`appMarkdownTextStyles`](../client/lib/theme/app_markdown_style_sheet.dart)),
+   each laid out once with short [`TpGlyphWarmup.styleProbe`](../client/packages/shared_ui/lib/src/theme/tp_glyph_warmup.dart)
+   (`Ag中.`). Key = `(family, size, weight, style)`. **No l10n charset dump** —
+   document text is unbounded.
+2. **Mixed markdown spans** —
+   [`warmMarkdownMixedInlineLayout`](../client/lib/theme/app_markdown_style_sheet.dart)
+   via `TpGlyphWarmup.shapeRich`: finite nests (body/bold/italic/h1/h2 × mono
+   code, bold × italic). Warming bold **and** mono separately does **not** cover
+   both in one `Text.rich`.
+
+Hot-path paint must hit warmed fingerprints; `copyWith(color: …)` is fine,
+changing family/size/weight is not. Markdown `forcedStrut` is **off** (A/B: no
+reading difference; it amplified mixed-span first-open cost). Line height stays
+on `TextStyle.height`.
 
 | Do | Don't |
 |----|-------|
-| `TpTextStyles` / `CompiledMarkdownStyle` for forms, chrome, chat | `textTheme.bodyMedium ?? const TextStyle()`, `fontFamily: 'monospace'` on many fields |
-| Add new sizes to warmup + keep [`app_markdown_warmup_coverage_test.dart`](../client/test/theme/app_markdown_warmup_coverage_test.dart) green | Ad-hoc `TextStyle(fontSize: …)` in product UI |
+| `TpTextStyles` / markdown tokens from warmed sizes | Ad-hoc `TextStyle(fontSize: …)` / `'monospace'` on hot paths |
+| Add new size/weight to warmup + keep [`app_markdown_warmup_coverage_test.dart`](../client/test/theme/app_markdown_warmup_coverage_test.dart) green | Expand probe strings to match specific README sentences |
+| `shapeRich` for a new **finite** span mix that shows `RenderParagraph` ≫ 200ms | Assume single-style `shapeAll` covers nested bold+code |
 
-**Diagnose:** A/B mono → `.md` on suspect fields; if that fixes it, typography
-was the cause — not deferral. Probe: `flutter test test/widgets/run/text_field_mount_cost_probe_test.dart --name cold_six_text_fields` (one case per process).
+**Diagnose:** A/B mono → `.md` on suspect fields; for markdown preview, bisect to
+one line (often `` **…`code`…** ``). Probe:
+`flutter test test/widgets/run/text_field_mount_cost_probe_test.dart --name cold_six_text_fields`
+(one case per process).
 
 **Exceptions:** diff line-height `TextPainter` (must match `CodeEditorStyle`),
-proportional monogram glyphs, editor/terminal (warmed separately).
+proportional monogram glyphs, editor/terminal (warmed separately). Link
+`WidgetSpan` cost is mount/layout of nested paragraphs — fix rendering, not
+charset warmup.
 
 ## Checklist for a new heavy surface
 
@@ -103,6 +127,7 @@ proportional monogram glyphs, editor/terminal (warmed separately).
 - [ ] DevTools export + `analyze_performance_json.dart --format summary` shows the expensive work off Frame 0.
 - [ ] High-frequency session presence (`workingSessionIds`, attention waiting) is selected only in leaf widgets that render that presence. List shells select structure snapshots only; row/tab text selects row-content snapshots. Do not add `workingSessionIds` or full `sessions` / title-bearing tab snapshots to page-shell `buildWhen`.
 - [ ] Form/dialog text uses warmed `TpTextStyles` (see above); defer only after typography is clean.
+- [ ] If first-open summary shows `RenderParagraph` ≳ 200ms, check cold / mixed rich text before more deferral.
 
 ## Measuring
 

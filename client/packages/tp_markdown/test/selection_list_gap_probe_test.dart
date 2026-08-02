@@ -69,9 +69,8 @@ void main() {
     await tester.pumpAndSettle();
 
     final text = tester.widget<Text>(find.byType(Text).first);
-    expect(text.strutStyle, isNotNull);
-    expect(text.strutStyle!.forceStrutHeight, isTrue);
-    expect(text.strutStyle!.height, 1.65);
+    // forcedStrut disabled — rely on TextStyle.height for line box.
+    expect(text.strutStyle, isNull);
   });
 
   testWidgets('list bullet is selection-disabled; body keeps hanging indent', (

@@ -1,7 +1,8 @@
 import 'package:ai_message_ui/ai_message_ui.dart';
-import 'package:tp_markdown/tp_markdown.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
+import 'package:tp_markdown/tp_markdown.dart';
+
 
 /// Text styles [buildAppMarkdownTokens] paints — boot glyph warmup.
 List<TextStyle> appMarkdownTextStyles(ThemeData theme) {
@@ -128,3 +129,61 @@ AiMessageTheme buildAppAiMessageTheme(ThemeData theme) {
     markdown: buildAppMarkdownTokens(theme, MarkdownProfile.compact),
   );
 }
+
+/// Boot layout paths for markdown preview that single-style warmup cannot
+/// cover (nested inline styles in one [TextPainter]). Uses
+/// [TpGlyphWarmup.styleProbe] only — finite style mixes, not document text.
+///
+/// Primes common IR nests: body/strong/emphasis × mono code, and strong ×
+/// emphasis. Link [WidgetSpan]s are a separate mount cost (not shaped here).
+void warmMarkdownMixedInlineLayout(ThemeData theme) {
+  final tokens = buildAppMarkdownTokens(theme, MarkdownProfile.document);
+  final body = tokens.body;
+  final bold = body.copyWith(fontWeight: FontWeight.w700);
+  final italic = body.copyWith(fontStyle: FontStyle.italic);
+  final boldItalic = bold.copyWith(fontStyle: FontStyle.italic);
+  final code = tokens.inlineCode;
+  final strut = forcedStrut(body);
+  const probe = TpGlyphWarmup.styleProbe;
+
+  void mix(TextStyle outer) {
+    final codeAtSize = code.copyWith(
+      fontSize: outer.fontSize,
+      height: outer.height,
+      letterSpacing: outer.letterSpacing,
+    );
+    TpGlyphWarmup.shapeRich(
+      text: TextSpan(
+        style: outer,
+        children: [
+          TextSpan(text: probe, style: outer),
+          TextSpan(text: 'x', style: codeAtSize),
+          TextSpan(text: probe, style: outer),
+        ],
+      ),
+      strutStyle: strut,
+    );
+  }
+
+  // CodeRun merges mono chrome with surrounding size (see inline_spans).
+  mix(body);
+  mix(bold);
+  mix(italic);
+  mix(boldItalic);
+  mix(tokens.h1);
+  mix(tokens.h2);
+
+  // StrongRun + EmphasisRun (no family switch).
+  TpGlyphWarmup.shapeRich(
+    text: TextSpan(
+      style: bold,
+      children: [
+        TextSpan(text: probe, style: bold),
+        TextSpan(text: probe, style: boldItalic),
+        TextSpan(text: probe, style: bold),
+      ],
+    ),
+    strutStyle: strut,
+  );
+}
+

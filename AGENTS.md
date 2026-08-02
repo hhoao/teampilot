@@ -214,7 +214,7 @@ Full guidelines: **[docs/CODE_QUALITY.md](docs/CODE_QUALITY.md)**. Summary:
 - Paths: `AppStorage` / `RuntimeContextRegistry` — never `Directory.current` for default workspace directory.
 - **CLIs:** add/extend a `CliToolDefinition` + capabilities under `services/cli/registry/`; avoid scattering `if (cli == …)` checks across features.
 - **Tests:** mock subprocess/filesystem via constructor injection; cubit tests that touch `AppStorage` use `setUpTestAppStorage()` / `tearDownTestAppStorage()` in `client/test/support/post_frame_test_harness.dart`.
-- l10n: edit `client/lib/l10n/app_en.arb` and `app_zh.arb` only; after ARB changes, re-run `dart run tool/gen_warmup_glyphs.dart` for `warmup_glyphs.g.dart`.
+- l10n: edit `client/lib/l10n/app_en.arb` and `app_zh.arb` only.
 - Terminal input hooks: filter ANSI CSI sequences (`FirstUserLineCapture`, `BusUserLineCapture`).
 - Do not commit `client/google_fonts/` (gitignored); run `dart run tool/sync_bundled_google_fonts.dart` when touching zh UI fonts.
 - New integration tests: `@Tags(['integration'])` from `package:test` (see DEVELOPMENT.md).

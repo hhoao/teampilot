@@ -91,4 +91,14 @@ void main() {
     expect(tokens.inlineCode.fontSize, bodySize);
     expect(tokens.inlineCode.fontSize, isNot(bodySize! * 0.85));
   });
+
+  test('warmMarkdownMixedInlineLayout primes nested inline paths', () {
+    final fonts = AppFontResolver.resolve(
+      uiFontId: 'system',
+      monoFontId: 'jetbrainsMono',
+      platform: TargetPlatform.linux,
+    );
+    final theme = bootstrapThemeForTextWarmup(fonts);
+    warmMarkdownMixedInlineLayout(theme);
+  });
 }
