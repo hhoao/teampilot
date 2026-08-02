@@ -12,6 +12,7 @@ import 'package:teampilot/services/ssh/ssh_client_factory.dart';
 import 'package:teampilot/services/ssh/ssh_connection_events.dart';
 import 'package:teampilot/services/ssh/ssh_profile_connection_coordinator.dart';
 import 'package:teampilot/services/ssh/ssh_profile_reconnect_policy.dart';
+import 'package:teampilot/services/ssh/ssh_transport_close.dart';
 
 void main() {
   group('SshConnectionCubit', () {
@@ -161,13 +162,14 @@ void main() {
         await connectP2;
         expect(cubit.state.overallStatus, SshHostsOverallStatus.connected);
 
+        // Storage still live: monitor reconnecting must not override durable home.
         harness.coordinator.monitorFor(_p2.id).reconnectStarted();
         await Future<void>.delayed(Duration.zero);
         expect(
           cubit.state.hostsById[_p2.id]!.status,
-          SshHostUiStatus.reconnecting,
+          SshHostUiStatus.connected,
         );
-        expect(cubit.state.overallStatus, SshHostsOverallStatus.connecting);
+        expect(cubit.state.overallStatus, SshHostsOverallStatus.connected);
         expect(connectCalls, greaterThanOrEqualTo(2));
 
         await cubit.close();
@@ -200,16 +202,23 @@ void main() {
       harness.dispose();
     });
 
-    test('monitor reconnecting → UI reconnecting', () async {
+    test('monitor reconnecting → UI reconnecting when storage is cold', () async {
       final harness = _Harness();
       const profile = _p1;
       final cubit = harness.createCubit();
       cubit.syncProfiles(const [profile]);
 
       await cubit.connect(profile.id);
+      harness.factory.disconnectProfile(
+        profile.id,
+        reason: SshTransportCloseReason.remotePeerClosed,
+      );
+      // Allow async client.done → transport-closed markDown to settle first.
+      await Future<void>.delayed(const Duration(milliseconds: 200));
       harness.coordinator.monitorFor(profile.id).reconnectStarted();
       await Future<void>.delayed(Duration.zero);
 
+      expect(harness.factory.hasLiveStorageClient(profile.id), isFalse);
       expect(
         cubit.state.hostsById[profile.id]!.status,
         SshHostUiStatus.reconnecting,
@@ -218,6 +227,34 @@ void main() {
       await cubit.close();
       harness.dispose();
     });
+
+    test(
+      'storage live stays connected after intentional memberSessionClosed',
+      () async {
+        final harness = _Harness();
+        const profile = _p1;
+        final cubit = harness.createCubit();
+        cubit.syncProfiles(const [profile]);
+        await cubit.connect(profile.id);
+
+        final member = await harness.factory.createMemberClient(profile);
+        harness.factory.prepareClientClose(
+          member,
+          reason: SshTransportCloseReason.memberSessionClosed,
+        );
+        member.close();
+        await Future<void>.delayed(const Duration(milliseconds: 80));
+
+        expect(harness.factory.hasLiveStorageClient(profile.id), isTrue);
+        expect(
+          cubit.state.hostsById[profile.id]!.status,
+          SshHostUiStatus.connected,
+        );
+
+        await cubit.close();
+        harness.dispose();
+      },
+    );
 
     test('profile deleted → pruned; last deleted → empty', () async {
       final harness = _Harness();

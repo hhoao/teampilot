@@ -33,7 +33,16 @@ class SshHomeDisconnectedBanner extends StatelessWidget {
       builder: (context, state) {
         final status =
             state.hostsById[profileId]?.status ?? SshHostUiStatus.disconnected;
-        if (status == SshHostUiStatus.connected) {
+        // Durable home banner tracks storage-pool presence via cubit status
+        // (connected iff hasLiveStorageClient). Never treat member PTY churn
+        // as work-home disconnect.
+        final showBanner =
+            status == SshHostUiStatus.disconnected ||
+            status == SshHostUiStatus.error ||
+            status == SshHostUiStatus.authFailed ||
+            status == SshHostUiStatus.connecting ||
+            status == SshHostUiStatus.reconnecting;
+        if (!showBanner) {
           return const SizedBox.shrink();
         }
 

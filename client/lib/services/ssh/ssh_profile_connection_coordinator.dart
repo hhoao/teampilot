@@ -9,6 +9,7 @@ import 'ssh_client_factory.dart';
 import 'ssh_connection_events.dart';
 import 'ssh_profile_reconnect_policy.dart';
 import 'ssh_transport_close.dart';
+import 'ssh_transport_close_policy.dart';
 
 typedef SshProfileResolver = SshProfile? Function(String profileId);
 
@@ -52,6 +53,8 @@ class SshProfileConnectionCoordinator {
   final Map<String, Timer> _disconnectCoalesceTimers = {};
   final Map<String, Object> _pendingDisconnectErrors = {};
   final Map<String, StackTrace> _pendingDisconnectStacks = {};
+  final Map<String, bool> _pendingScheduleStorageReconnect = {};
+  final Map<String, bool> _pendingEmitDisconnectNotification = {};
   final Map<String, int> _reconnectAttempts = {};
   final Map<String, Timer> _reconnectTimers = {};
   final Map<String, bool> _reconnectInFlight = {};
@@ -95,6 +98,8 @@ class SshProfileConnectionCoordinator {
     _reconnectTimers.remove(profileId);
     _pendingDisconnectErrors.remove(profileId);
     _pendingDisconnectStacks.remove(profileId);
+    _pendingScheduleStorageReconnect.remove(profileId);
+    _pendingEmitDisconnectNotification.remove(profileId);
     _factory.disconnectProfile(
       profileId,
       reason: SshTransportCloseReason.userDisconnect,
@@ -117,7 +122,21 @@ class SshProfileConnectionCoordinator {
     Object error,
     StackTrace stackTrace,
   ) {
-    _enqueueDisconnect(profileId, error, stackTrace, markDown: true);
+    final decision = SshTransportClosePolicy.evaluateError(error);
+    if (!decision.affectsDurableHome) {
+      appLogger.d(
+        '[ssh] profile $profileId ignoring non-durable transport close: $error',
+      );
+      return;
+    }
+    _enqueueDisconnect(
+      profileId,
+      error,
+      stackTrace,
+      markDown: true,
+      scheduleStorageReconnect: decision.scheduleStorageReconnect,
+      emitDisconnectNotification: decision.emitDisconnectNotification,
+    );
   }
 
   void _onKeepAliveFailed(
@@ -131,7 +150,14 @@ class SshProfileConnectionCoordinator {
     final after = monitor.state;
     if (after.status == RemoteConnectionStatus.down &&
         before.status != RemoteConnectionStatus.down) {
-      _enqueueDisconnect(profileId, error, stackTrace, markDown: false);
+      _enqueueDisconnect(
+        profileId,
+        error,
+        stackTrace,
+        markDown: false,
+        scheduleStorageReconnect: true,
+        emitDisconnectNotification: true,
+      );
       return;
     }
     if (after.status == RemoteConnectionStatus.down) {
@@ -144,6 +170,8 @@ class SshProfileConnectionCoordinator {
     Object error,
     StackTrace stackTrace, {
     required bool markDown,
+    required bool scheduleStorageReconnect,
+    required bool emitDisconnectNotification,
   }) {
     if (_disposed) return;
     final previous = _pendingDisconnectErrors[profileId];
@@ -151,6 +179,13 @@ class SshProfileConnectionCoordinator {
       _pendingDisconnectErrors[profileId] = error;
       _pendingDisconnectStacks[profileId] = stackTrace;
     }
+    // Once any wave asks for reconnect, keep that intent for the coalesce flush.
+    _pendingScheduleStorageReconnect[profileId] =
+        (_pendingScheduleStorageReconnect[profileId] ?? false) ||
+        scheduleStorageReconnect;
+    _pendingEmitDisconnectNotification[profileId] =
+        (_pendingEmitDisconnectNotification[profileId] ?? false) ||
+        emitDisconnectNotification;
     if (markDown) {
       monitorFor(profileId).markDown();
     }
@@ -167,13 +202,21 @@ class SshProfileConnectionCoordinator {
     final error = _pendingDisconnectErrors.remove(profileId);
     final stackTrace =
         _pendingDisconnectStacks.remove(profileId) ?? StackTrace.empty;
+    final scheduleReconnect =
+        _pendingScheduleStorageReconnect.remove(profileId) ?? true;
+    final emitNotification =
+        _pendingEmitDisconnectNotification.remove(profileId) ?? true;
     if (error == null) return;
 
-    onDisconnect?.call(profileId, error, stackTrace);
-    if (_shouldSkipReconnect(error)) {
-      appLogger.w(
-        '[ssh] profile $profileId disconnect is not retryable: $error',
-      );
+    if (emitNotification) {
+      onDisconnect?.call(profileId, error, stackTrace);
+    }
+    if (!scheduleReconnect || _shouldSkipReconnect(error)) {
+      if (_shouldSkipReconnect(error)) {
+        appLogger.w(
+          '[ssh] profile $profileId disconnect is not retryable: $error',
+        );
+      }
       return;
     }
     _scheduleReconnect(profileId);
@@ -321,6 +364,8 @@ class SshProfileConnectionCoordinator {
     _reconnectTimers.clear();
     _pendingDisconnectErrors.clear();
     _pendingDisconnectStacks.clear();
+    _pendingScheduleStorageReconnect.clear();
+    _pendingEmitDisconnectNotification.clear();
     _storageReconnects.clear();
     if (!_sessionReconnectSignals.isClosed) {
       await _sessionReconnectSignals.close();

@@ -60,6 +60,107 @@ void main() {
     await coordinator.dispose();
   });
 
+  test('intentional memberSessionClosed does not mark durable home down', () async {
+    var createCount = 0;
+    const profile = SshProfile(
+      id: 'p1',
+      name: 'dev',
+      host: 'example.com',
+      username: 'alice',
+    );
+
+    final notifications = <String>[];
+    final events = SshConnectionEvents();
+    final factory = SshClientFactory(
+      credentialStore: InMemorySshCredentialStore(),
+      knownHostRepository: InMemorySshKnownHostRepository(),
+      events: events,
+      connector: (profile, {timeout = const Duration(seconds: 10)}) async {
+        createCount += 1;
+        return _ClosableClient();
+      },
+    );
+    final coordinator = SshProfileConnectionCoordinator(
+      factory: factory,
+      events: events,
+      profileResolver: (_) => profile,
+      policy: const SshProfileReconnectPolicy(
+        disconnectCoalesce: Duration(milliseconds: 50),
+        initialDelay: Duration(milliseconds: 20),
+        maxAttempts: 3,
+      ),
+      onDisconnect: (profileId, error, _) => notifications.add(profileId),
+    );
+
+    await coordinator.userConnect(profile);
+    expect(createCount, 1);
+    expect(factory.hasLiveStorageClient(profile.id), isTrue);
+
+    final member = await factory.createMemberClient(profile);
+    expect(createCount, 2);
+    factory.prepareClientClose(
+      member,
+      reason: SshTransportCloseReason.memberSessionClosed,
+    );
+    member.close();
+
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+    expect(notifications, isEmpty);
+    expect(factory.hasLiveStorageClient(profile.id), isTrue);
+    expect(
+      coordinator.monitorFor(profile.id).state.status,
+      isNot(RemoteConnectionStatus.down),
+    );
+    expect(
+      coordinator.monitorFor(profile.id).state.status,
+      isNot(RemoteConnectionStatus.reconnecting),
+    );
+    expect(createCount, 2);
+    await coordinator.dispose();
+  });
+
+  test('unexpected member close still downs durable home', () async {
+    const profile = SshProfile(
+      id: 'p1',
+      name: 'dev',
+      host: 'example.com',
+      username: 'alice',
+    );
+
+    final notifications = <String>[];
+    final events = SshConnectionEvents();
+    final factory = SshClientFactory(
+      credentialStore: InMemorySshCredentialStore(),
+      knownHostRepository: InMemorySshKnownHostRepository(),
+      events: events,
+      connector: (profile, {timeout = const Duration(seconds: 10)}) async {
+        return _ClosableClient();
+      },
+    );
+    final coordinator = SshProfileConnectionCoordinator(
+      factory: factory,
+      events: events,
+      profileResolver: (_) => profile,
+      policy: const SshProfileReconnectPolicy(
+        disconnectCoalesce: Duration(milliseconds: 50),
+        maxAttempts: 0,
+      ),
+      onDisconnect: (profileId, error, _) => notifications.add(profileId),
+    );
+
+    await coordinator.userConnect(profile);
+    final member = await factory.createMemberClient(profile);
+    member.close(); // no prepareClientClose → remotePeerClosed
+
+    await Future<void>.delayed(const Duration(milliseconds: 80));
+    expect(notifications, ['p1']);
+    expect(
+      coordinator.monitorFor(profile.id).state.status,
+      RemoteConnectionStatus.down,
+    );
+    await coordinator.dispose();
+  });
+
   test('reconnectStorage serializes concurrent attempts', () async {
     var createCount = 0;
     const profile = SshProfile(

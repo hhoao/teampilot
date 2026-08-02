@@ -18,6 +18,7 @@ import 'package:teampilot/services/ssh/ssh_client_factory.dart';
 import 'package:teampilot/services/ssh/ssh_connection_events.dart';
 import 'package:teampilot/services/ssh/ssh_profile_connection_coordinator.dart';
 import 'package:teampilot/services/ssh/ssh_profile_reconnect_policy.dart';
+import 'package:teampilot/services/ssh/ssh_transport_close.dart';
 import 'package:teampilot/services/storage/home_target_controller.dart';
 import 'package:teampilot/services/storage/runtime_target_registry.dart';
 import 'package:teampilot/services/storage/targets_repository.dart';
@@ -210,6 +211,44 @@ void main() {
       findsNothing,
     );
   });
+
+  testWidgets(
+    'hidden after intentional member close while storage stays live',
+    (tester) async {
+      final harness = _Harness();
+      final cubit = harness.createCubit();
+      addTearDown(() async {
+        await cubit.close();
+        await harness.dispose();
+      });
+      await cubit.syncProfiles(const [_profile]);
+      await cubit.connect(_profile.id);
+
+      final member = await harness.factory.createMemberClient(_profile);
+      harness.factory.prepareClientClose(
+        member,
+        reason: SshTransportCloseReason.memberSessionClosed,
+      );
+      member.close();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      await tester.pumpWidget(
+        _host(
+          home: RuntimeTarget.ssh(_profile.id, label: _profile.name),
+          sshCubit: cubit,
+          child: const SshHomeDisconnectedBanner(),
+        ),
+      );
+      await tester.pump();
+
+      expect(harness.factory.hasLiveStorageClient(_profile.id), isTrue);
+      expect(find.text('Reconnect'), findsNothing);
+      expect(
+        find.textContaining('Remote SSH work home is disconnected'),
+        findsNothing,
+      );
+    },
+  );
 
   testWidgets('hidden when not SSH home', (tester) async {
     final harness = _Harness();

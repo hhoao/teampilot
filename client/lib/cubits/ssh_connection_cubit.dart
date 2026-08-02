@@ -256,11 +256,9 @@ class SshConnectionCubit extends Cubit<SshConnectionState> {
     final live = _factory.hasLiveStorageClient(profileId);
     final monitorStatus = _coordinator.monitorFor(profileId).state.status;
 
+    // Durable work-home truth is the storage pool. Member-plane reconnect
+    // noise must not flip the host away from connected while SFTP is live.
     if (live) {
-      if (monitorStatus == RemoteConnectionStatus.reconnecting) {
-        return SshHostUiStatus.reconnecting;
-      }
-      // degraded (and connected) both surface as connected.
       return SshHostUiStatus.connected;
     }
 
