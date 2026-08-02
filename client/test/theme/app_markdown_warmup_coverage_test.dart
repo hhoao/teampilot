@@ -18,7 +18,11 @@ void main() {
       platform: TargetPlatform.linux,
     );
     final theme = bootstrapThemeForTextWarmup(fonts);
-    final tokens = buildAppMarkdownTokens(theme, MarkdownProfile.document);
+    final tokens = buildAppMarkdownTokens(
+      theme,
+      MarkdownProfile.document,
+      width: TpBreakpoints.md,
+    );
     final warmupKeys = TpGlyphWarmup.dedupeByShapeKey(
       textStylesForThemeWarmup(theme),
     ).map(TpGlyphWarmup.shapeKey).toSet();
@@ -83,7 +87,11 @@ void main() {
       null,
       fonts,
     );
-    final tokens = buildAppMarkdownTokens(theme, MarkdownProfile.document);
+    final tokens = buildAppMarkdownTokens(
+      theme,
+      MarkdownProfile.document,
+      width: TpBreakpoints.md,
+    );
     final mono = theme.extension<TpFontTheme>()!;
     final bodySize = theme.textTheme.bodyMedium!.fontSize;
 

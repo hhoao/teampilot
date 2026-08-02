@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:tp_markdown/tp_markdown.dart';
 
-
 /// Text styles [buildAppMarkdownTokens] paints — boot glyph warmup.
 List<TextStyle> appMarkdownTextStyles(ThemeData theme) {
-  return buildAppMarkdownTokens(theme, MarkdownProfile.document)
-      .textStylesForWarmup;
+  return buildAppMarkdownTokens(
+    theme,
+    MarkdownProfile.document,
+    width: TpBreakpoints.md, // warmup ignores margins
+  ).textStylesForWarmup;
 }
 
 /// Host [MarkdownTokens] bound to [TpTextStyles] + [TpFontTheme].
@@ -17,6 +19,7 @@ List<TextStyle> appMarkdownTextStyles(ThemeData theme) {
 MarkdownTokens buildAppMarkdownTokens(
   ThemeData theme,
   MarkdownProfile profile, {
+  required double width,
   Color? mutedSurface,
   double codeBlockRadius = 12,
 }) {
@@ -39,37 +42,91 @@ MarkdownTokens buildAppMarkdownTokens(
   final codeBlock = styles.mono.copyWith(color: scheme.onSurface);
 
   final (
-    h1Top,
-    h2Top,
-    h3Top,
-    h4Top,
-    h5Top,
-    h6Top,
-    paragraphGap,
-    blockGap,
-    ruleGap,
+    h1Margin,
+    h2Margin,
+    h3Margin,
+    h4Margin,
+    h5Margin,
+    h6Margin,
+    paragraphMargin,
+    blockMargin,
+    ruleMargin,
   ) = switch (profile) {
     MarkdownProfile.document => (
-        40.0,
-        36.0,
-        32.0,
-        28.0,
-        28.0,
-        28.0,
-        16.0,
-        28.0,
-        28.0,
+        const TpScaledEdgeInsets(
+          sm: EdgeInsets.only(top: 24, bottom: 8),
+          xxl: EdgeInsets.only(top: 40, bottom: 8),
+        ).forWidth(width),
+        const TpScaledEdgeInsets(
+          sm: EdgeInsets.only(top: 22, bottom: 8),
+          xxl: EdgeInsets.only(top: 36, bottom: 8),
+        ).forWidth(width),
+        const TpScaledEdgeInsets(
+          sm: EdgeInsets.only(top: 20, bottom: 8),
+          xxl: EdgeInsets.only(top: 32, bottom: 8),
+        ).forWidth(width),
+        const TpScaledEdgeInsets(
+          sm: EdgeInsets.only(top: 18, bottom: 8),
+          xxl: EdgeInsets.only(top: 28, bottom: 8),
+        ).forWidth(width),
+        const TpScaledEdgeInsets(
+          sm: EdgeInsets.only(top: 18, bottom: 8),
+          xxl: EdgeInsets.only(top: 28, bottom: 8),
+        ).forWidth(width),
+        const TpScaledEdgeInsets(
+          sm: EdgeInsets.only(top: 18, bottom: 8),
+          xxl: EdgeInsets.only(top: 28, bottom: 8),
+        ).forWidth(width),
+        const TpScaledEdgeInsets(
+          sm: EdgeInsets.only(bottom: 12),
+          xxl: EdgeInsets.only(bottom: 16),
+        ).forWidth(width),
+        const TpScaledEdgeInsets(
+          sm: EdgeInsets.only(bottom: 16),
+          xxl: EdgeInsets.only(bottom: 28),
+        ).forWidth(width),
+        const TpScaledEdgeInsets(
+          sm: EdgeInsets.only(bottom: 16),
+          xxl: EdgeInsets.only(bottom: 28),
+        ).forWidth(width),
       ),
     MarkdownProfile.compact => (
-        16.0,
-        12.0,
-        8.0,
-        8.0,
-        8.0,
-        8.0,
-        12.0,
-        12.0,
-        12.0,
+        const TpScaledEdgeInsets(
+          sm: EdgeInsets.only(top: 12, bottom: 8),
+          xxl: EdgeInsets.only(top: 16, bottom: 8),
+        ).forWidth(width),
+        const TpScaledEdgeInsets(
+          sm: EdgeInsets.only(top: 10, bottom: 8),
+          xxl: EdgeInsets.only(top: 12, bottom: 8),
+        ).forWidth(width),
+        const TpScaledEdgeInsets(
+          sm: EdgeInsets.only(top: 6, bottom: 8),
+          xxl: EdgeInsets.only(top: 8, bottom: 8),
+        ).forWidth(width),
+        const TpScaledEdgeInsets(
+          sm: EdgeInsets.only(top: 6, bottom: 8),
+          xxl: EdgeInsets.only(top: 8, bottom: 8),
+        ).forWidth(width),
+        const TpScaledEdgeInsets(
+          sm: EdgeInsets.only(top: 6, bottom: 8),
+          xxl: EdgeInsets.only(top: 8, bottom: 8),
+        ).forWidth(width),
+        const TpScaledEdgeInsets(
+          sm: EdgeInsets.only(top: 6, bottom: 8),
+          xxl: EdgeInsets.only(top: 8, bottom: 8),
+        ).forWidth(width),
+        const TpScaledEdgeInsets(
+          sm: EdgeInsets.only(bottom: 8),
+          xxl: EdgeInsets.only(bottom: 12),
+        ).forWidth(width),
+        const TpScaledEdgeInsets(
+          sm: EdgeInsets.only(bottom: 8),
+          xxl: EdgeInsets.only(bottom: 12),
+        ).forWidth(width),
+        const TpScaledEdgeInsets(
+          sm: EdgeInsets.only(bottom: 8),
+          xxl: EdgeInsets.only(bottom: 12),
+        ).forWidth(width),
       ),
   };
 
@@ -108,25 +165,33 @@ MarkdownTokens buildAppMarkdownTokens(
     tableCellsPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
     tableHeadBackground: scheme.onSurface.withValues(alpha: 0.04),
     tableBodyBackground: Colors.transparent,
-    headingBottom: 8,
-    paragraphGap: paragraphGap,
-    blockGap: blockGap,
+    paragraphMargin: paragraphMargin,
+    h1Margin: h1Margin,
+    h2Margin: h2Margin,
+    h3Margin: h3Margin,
+    h4Margin: h4Margin,
+    h5Margin: h5Margin,
+    h6Margin: h6Margin,
+    listMargin: blockMargin,
+    blockquoteMargin: blockMargin,
+    codeMargin: blockMargin,
+    tableMargin: blockMargin,
+    horizontalRuleMargin: ruleMargin,
+    imageMargin: blockMargin,
+    rawLiteralMargin: blockMargin,
     listItemGap: 8,
     listIndent: 24,
-    ruleGap: ruleGap,
-    h1TopSpacing: h1Top,
-    h2TopSpacing: h2Top,
-    h3TopSpacing: h3Top,
-    h4TopSpacing: h4Top,
-    h5TopSpacing: h5Top,
-    h6TopSpacing: h6Top,
   );
 }
 
 /// Default [AiMessageTheme] for the app shell; chat routes override layout tokens.
 AiMessageTheme buildAppAiMessageTheme(ThemeData theme) {
   return AiMessageTheme(
-    markdown: buildAppMarkdownTokens(theme, MarkdownProfile.compact),
+    markdown: buildAppMarkdownTokens(
+      theme,
+      MarkdownProfile.compact,
+      width: TpBreakpoints.md, // warmup ignores margins
+    ),
   );
 }
 
@@ -137,7 +202,11 @@ AiMessageTheme buildAppAiMessageTheme(ThemeData theme) {
 /// Primes common IR nests: body/strong/emphasis × mono code, and strong ×
 /// emphasis. Link [WidgetSpan]s are a separate mount cost (not shaped here).
 void warmMarkdownMixedInlineLayout(ThemeData theme) {
-  final tokens = buildAppMarkdownTokens(theme, MarkdownProfile.document);
+  final tokens = buildAppMarkdownTokens(
+    theme,
+    MarkdownProfile.document,
+    width: TpBreakpoints.md, // warmup ignores margins
+  );
   final body = tokens.body;
   final bold = body.copyWith(fontWeight: FontWeight.w700);
   final italic = body.copyWith(fontStyle: FontStyle.italic);
@@ -186,4 +255,3 @@ void warmMarkdownMixedInlineLayout(ThemeData theme) {
     strutStyle: strut,
   );
 }
-
