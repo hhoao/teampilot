@@ -48,7 +48,18 @@ abstract final class FontCatalog {
       id: 'notoSansSc',
       role: FontRole.ui,
       source: FontSourceKind.bundled,
+      // Must match [FontLoader] family exactly. GoogleFonts registers
+      // `Noto Sans SC_regular` instead; using that mismatch on Android
+      // makes U+0020 resolve to a ~1em-wide face and blows out English
+      // word gaps.
       bundledFamily: 'Noto Sans SC',
+      assetPaths: [
+        'google_fonts/NotoSansSC-Regular.ttf',
+        'google_fonts/NotoSansSC-Medium.ttf',
+        'google_fonts/NotoSansSC-SemiBold.ttf',
+        'google_fonts/NotoSansSC-Bold.ttf',
+        'google_fonts/NotoSansSC-ExtraBold.ttf',
+      ],
     ),
     FontCatalogEntry(id: systemId, role: FontRole.mono, source: FontSourceKind.system),
     FontCatalogEntry(

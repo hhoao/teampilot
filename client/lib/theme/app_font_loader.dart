@@ -16,8 +16,8 @@ final Set<String> _loadedFamilies = <String>{};
 /// - Silent Ubuntu warm: when `Ubuntu Sans Mono` appears in the mono chain
 ///   (typical for `system` mono fallbacks), load those assets without treating
 ///   the preference as a bundled primary.
-/// - Bundled UI (`uiNeedsBundledLoad`): Noto Sans SC via GoogleFonts local
-///   pipeline.
+/// - Bundled UI (`uiNeedsBundledLoad`): Noto Sans SC assets via [FontLoader]
+///   under the catalog family name (not GoogleFonts' `*_regular` key).
 /// - Installed faces (`*NeedsInstalledLoad`): [SystemFonts.loadFont] for the
 ///   resolved family key.
 ///
@@ -37,7 +37,7 @@ Future<void> loadFontsFor(ResolvedFonts fonts) async {
   }
 
   for (final entry in monoEntries) {
-    await _loadMonoCatalogEntry(entry);
+    await _loadBundledCatalogEntry(entry);
   }
 
   if (fonts.uiNeedsBundledLoad) {
@@ -101,18 +101,13 @@ Future<void> _loadColorEmoji(ResolvedFonts fonts) async {
 }
 
 Future<void> _loadBundledUi() async {
-  const family = 'Noto Sans SC';
-  if (_loadedFamilies.contains(family)) return;
-  try {
-    await GoogleFonts.pendingFonts([GoogleFonts.notoSansSc()]);
-    _loadedFamilies.add(family);
-  } on Object catch (error, stackTrace) {
-    appLogger.w(
-      'Failed to load bundled UI font (Noto Sans SC)',
-      error: error,
-      stackTrace: stackTrace,
-    );
-  }
+  // Register under catalog `bundledFamily` (`Noto Sans SC`). Do not use
+  // GoogleFonts.pendingFonts here — that FontLoader key is
+  // `Noto Sans SC_regular`, while [buildAppUiTextTheme] applies
+  // `fontFamily: Noto Sans SC`, so Android never hits the bundled face.
+  await _loadBundledCatalogEntry(
+    FontCatalog.entry(FontRole.ui, 'notoSansSc'),
+  );
 }
 
 Future<void> _loadInstalledFamily(String family) async {
@@ -133,7 +128,7 @@ Future<void> _loadInstalledFamily(String family) async {
   }
 }
 
-Future<void> _loadMonoCatalogEntry(FontCatalogEntry entry) async {
+Future<void> _loadBundledCatalogEntry(FontCatalogEntry entry) async {
   final family = entry.bundledFamily;
   final paths = entry.assetPaths;
   if (family == null || paths.isEmpty) return;
