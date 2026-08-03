@@ -3,8 +3,11 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../../services/team/member_turn_idle_sync.dart';
+import '../../models/team_config.dart';
+import '../../services/team/claude_native_inbox_doorbell.dart';
 import '../../utils/logging/logger.dart';
 import 'chat_tab_store.dart';
+import 'model/chat_tab.dart';
 import 'tab_member_coordination_factory.dart';
 import 'tab_member_pty_delivery.dart';
 
@@ -15,17 +18,23 @@ final class TabSessionIdleWatch {
     required TabMemberCoordinationFactory coordinationFactory,
     required TabMemberPtyDelivery delivery,
     required bool Function() isClosed,
+    TeamProfile? Function()? activeTeam,
+    ClaudeNativeInboxDoorbell? nativeInboxDoorbell,
     VoidCallback? onAfterTick,
   }) : _tabStore = tabStore,
        _coordinationFactory = coordinationFactory,
        _delivery = delivery,
        _isClosed = isClosed,
+       _activeTeam = activeTeam,
+       _nativeInboxDoorbell = nativeInboxDoorbell ?? ClaudeNativeInboxDoorbell(),
        _onAfterTick = onAfterTick;
 
   final ChatTabStore _tabStore;
   final TabMemberCoordinationFactory _coordinationFactory;
   final TabMemberPtyDelivery _delivery;
   final bool Function() _isClosed;
+  final TeamProfile? Function()? _activeTeam;
+  final ClaudeNativeInboxDoorbell _nativeInboxDoorbell;
   final VoidCallback? _onAfterTick;
 
   Timer? _timer;
@@ -91,6 +100,7 @@ final class TabSessionIdleWatch {
         if (bus.hasTaskQueue) bus.reclaimExpiredTasks();
         bus.reengageIdleWorkers();
       }
+      _reengageNativeInboxWorkers(tab);
       final isPersonal = _coordinationFactory.sessionWorking.isPersonalTab(tab);
       tab.memberShells.forEach((memberId, shell) {
         final key = '${tab.info.id}:$memberId';
@@ -122,5 +132,43 @@ final class TabSessionIdleWatch {
       });
     }
     _onAfterTick?.call();
+  }
+
+  void _reengageNativeInboxWorkers(ChatTab tab) {
+    if (tab.teamBus != null) return;
+    if (ClaudeNativeInboxDoorbell.doorbellDisabledForTests) return;
+    final team = _activeTeam?.call();
+    final session = tab.persistedSession;
+    if (team == null ||
+        team.teamMode != TeamMode.native ||
+        session == null) {
+      return;
+    }
+    final claudeDir = tab.memberToolConfigDir?.trim() ?? '';
+    if (claudeDir.isEmpty) return;
+    unawaited(
+      _nativeInboxDoorbell.reengageIdleWorkers(
+        session: session,
+        team: team,
+        claudeConfigDir: claudeDir,
+        cliTeamName: tab.effectiveCliTeamName,
+        memberShells: tab.memberShells,
+        wakeMember: (memberId, notice) {
+          unawaited(
+            _delivery.deliverMemberStdin(
+              tab.info.id,
+              memberId,
+              notice,
+              automation: true,
+              latchUserTurn: false,
+            ),
+          );
+        },
+        isIdleAtPrompt: (shell) =>
+            shell.isConnected &&
+            !shell.activityTracker.isWorking &&
+            !shell.userTurnActive,
+      ),
+    );
   }
 }

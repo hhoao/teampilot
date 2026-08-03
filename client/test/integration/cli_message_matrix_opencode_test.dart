@@ -182,7 +182,7 @@ void main() {
           teampilotRoot: root,
           workspaceId: s.workspaceId,
           sessionId: s.sessionId,
-          memberId: kMatrixWorkerMemberId,
+          memberId: kMatrixWorkerTypeId,
         );
         expect(
           workerMail.any(
@@ -201,7 +201,7 @@ void main() {
         expect(
           leadMail.any(
             (row) =>
-                row['from'] == kMatrixWorkerMemberId &&
+                row['from'] == kMatrixWorkerTypeId &&
                 row['content'] == 'pong',
           ),
           isTrue,

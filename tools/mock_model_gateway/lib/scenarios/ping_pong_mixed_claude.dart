@@ -16,7 +16,7 @@ Map<String, MockScenario> pingPongMixedClaudeScenarios() => {
           ToolUseTurn(
             id: 'tu_send',
             toolRef: 'teambus.send_message',
-            input: {'to': 'worker-1', 'content': 'ping'},
+            input: {'to': 'developer', 'content': 'ping'},
           ),
           TextTurn('done'),
         ],

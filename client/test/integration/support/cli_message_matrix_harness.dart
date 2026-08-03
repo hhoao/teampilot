@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mock_model_gateway/core/turns.dart';
 import 'package:mock_model_gateway/scenarios/mixed_collab_3plus.dart';
 import 'package:mock_model_gateway/scenarios/native_collab_3plus.dart';
+import 'package:mock_model_gateway/scenarios/native_collab_replica_2plus.dart';
 import 'package:mock_model_gateway/scenarios/simple_3turn.dart';
 import 'package:mock_model_gateway/server.dart';
 import 'package:teampilot/cubits/ai_history_cubit.dart';
@@ -14,6 +15,7 @@ import 'package:teampilot/cubits/chat/model/session_connect_request.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/models/app_session.dart';
+import 'package:teampilot/models/member_instance.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
@@ -35,7 +37,6 @@ import 'package:teampilot/services/team_bus/team_message.dart';
 import 'package:teampilot/services/terminal/pending_user_message.dart';
 import 'package:teampilot/services/terminal/terminal_export.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
-import 'package:teampilot/utils/team/team_member_naming.dart';
 
 import '../../support/post_frame_test_harness.dart';
 import 'bus_mail_assertions.dart';
@@ -43,9 +44,19 @@ import 'bus_roster_assertions.dart';
 import 'chat_thread_assertions.dart';
 import 'cli_test_profile.dart';
 import 'integration_prerequisites.dart';
+import 'roster_shape.dart';
 
-const kMatrixLeaderProviderId = 'mock-leader';
-const kMatrixWorkerProviderId = 'mock-worker';
+export 'roster_shape.dart'
+    show
+        buildMatrixTeam,
+        kMatrixLeadMemberId,
+        kMatrixLeaderProviderId,
+        kMatrixWorkerProviderId,
+        kMatrixWorkerTypeId,
+        matrixMockModelIdFor,
+        matrixPrimaryWorkerPodId,
+        RosterShape;
+
 const kMatrixSimpleProviderId = 'mock-simple';
 
 /// Model id written into mock provider catalogs / session launch argv.
@@ -55,11 +66,6 @@ const kMatrixSimpleProviderId = 'mock-simple';
 /// `--provider A --model` owned by B.
 const kMatrixMockModelId = 'mock-model';
 
-String matrixMockModelIdFor(String providerId) => '$providerId-model';
-
-const kMatrixLeadMemberId = 'team-lead';
-const kMatrixWorkerMemberId = 'worker-1';
-
 /// Default last-N lines kept from PTY dumps in [diagnosticsBundle].
 const kMatrixPtyDumpMaxLines = 40;
 
@@ -67,7 +73,13 @@ const kMatrixPtyDumpMaxLines = 40;
 enum CliMatrixMode { simple, native, mixed }
 
 /// Shared gateway recipe for a matrix cell.
-enum CliMatrixRecipe { simple3Turn, nativeCollab3Plus, mixedCollab3Plus }
+enum CliMatrixRecipe {
+  simple3Turn,
+  nativeCollab3Plus,
+  /// Replicated native roster (developer-0/1); scenarios wired in Task 4.
+  nativeCollabReplica2Plus,
+  mixedCollab3Plus,
+}
 
 /// Redacts common secret shapes from failure dumps (sk-* / Bearer tokens).
 String redactMatrixSecrets(String text) {
@@ -115,33 +127,45 @@ final class CliMessageMatrixHarness {
   CliMessageMatrixHarness({
     required this.profile,
     required this.mode,
+    this.shape = RosterShape.singleton,
     CliMatrixRecipe? recipe,
     String? cliPath,
-  }) : recipe = recipe ?? defaultRecipeFor(mode),
+  }) : recipe = recipe ?? defaultRecipeFor(mode, shape: shape),
        cliPath = cliPath ?? profile.resolveBinary() ?? profile.binaryName;
 
   factory CliMessageMatrixHarness.forCli(
     CliTool tool, {
     required CliMatrixMode mode,
+    RosterShape shape = RosterShape.singleton,
     CliMatrixRecipe? recipe,
     String? cliPath,
   }) {
     return CliMessageMatrixHarness(
       profile: CliTestProfiles.forTool(tool),
       mode: mode,
+      shape: shape,
       recipe: recipe,
       cliPath: cliPath,
     );
   }
 
-  static CliMatrixRecipe defaultRecipeFor(CliMatrixMode mode) => switch (mode) {
-    CliMatrixMode.simple => CliMatrixRecipe.simple3Turn,
-    CliMatrixMode.native => CliMatrixRecipe.nativeCollab3Plus,
-    CliMatrixMode.mixed => CliMatrixRecipe.mixedCollab3Plus,
-  };
+  static CliMatrixRecipe defaultRecipeFor(
+    CliMatrixMode mode, {
+    RosterShape shape = RosterShape.singleton,
+  }) =>
+      switch (mode) {
+        CliMatrixMode.simple => CliMatrixRecipe.simple3Turn,
+        CliMatrixMode.native => switch (shape) {
+          RosterShape.replicated => CliMatrixRecipe.nativeCollabReplica2Plus,
+          RosterShape.singleton || RosterShape.placementFiltered =>
+            CliMatrixRecipe.nativeCollab3Plus,
+        },
+        CliMatrixMode.mixed => CliMatrixRecipe.mixedCollab3Plus,
+      };
 
   final CliTestProfile profile;
   final CliMatrixMode mode;
+  final RosterShape shape;
   final CliMatrixRecipe recipe;
   final String cliPath;
 
@@ -293,6 +317,7 @@ final class CliMessageMatrixHarness {
   ChatCubit createCubit({
     required PostFrameTestHarness postFrame,
     bool createHistory = true,
+    bool autoLaunchAllMembersOnConnect = true,
   }) {
     this.postFrame = postFrame;
     final life = SessionLifecycleService(
@@ -304,7 +329,7 @@ final class CliMessageMatrixHarness {
       automationRepository: testAutomationRepository(),
       cliExecutableResolver: (_) => cliPath,
       postFrameScheduler: postFrame.scheduler,
-      autoLaunchAllMembersOnConnect: () => true,
+      autoLaunchAllMembersOnConnect: () => autoLaunchAllMembersOnConnect,
       sessionRepository: SessionRepository(),
       lifecycleService: life,
     );
@@ -334,6 +359,22 @@ final class CliMessageMatrixHarness {
     return created;
   }
 
+  /// Pod ids to boot — session pods when [session] is set, else expand [team].
+  List<String> bootMemberIdsFor({
+    TeamProfile? team,
+    AppSession? session,
+  }) {
+    final t = team ?? this.team;
+    if (t == null) {
+      throw StateError('bootMemberIdsFor requires team or open session');
+    }
+    final s = session ?? this.session;
+    if (s != null) {
+      return sessionRosterMembers(s, t).map((m) => m.id).toList();
+    }
+    return expandTeamRoster(t.members).map((i) => i.instanceId).toList();
+  }
+
   /// Homogeneous team profile for [mode] (cli == [profile.tool] for every seat).
   TeamProfile buildHomogeneousTeam() {
     if (mode == CliMatrixMode.simple) {
@@ -347,30 +388,10 @@ final class CliMessageMatrixHarness {
     }
     final teamMode =
         mode == CliMatrixMode.native ? TeamMode.native : TeamMode.mixed;
-    return TeamProfile(
-      id: 'it-matrix-${profile.tool.value}-${mode.name}',
-      name: 'IT Matrix ${profile.tool.value} ${mode.name}',
-      cli: profile.tool,
-      teamMode: teamMode,
-      members: [
-        TeamMemberConfig(
-          id: kMatrixLeadMemberId,
-          name: TeamMemberNaming.teamLeadName,
-          provider: kMatrixLeaderProviderId,
-          model: matrixMockModelIdFor(kMatrixLeaderProviderId),
-          cli: profile.tool,
-          // High effort can issue multiple Anthropic calls per user message.
-          effort: 'low',
-        ),
-        TeamMemberConfig(
-          id: kMatrixWorkerMemberId,
-          name: 'developer',
-          provider: kMatrixWorkerProviderId,
-          model: matrixMockModelIdFor(kMatrixWorkerProviderId),
-          cli: profile.tool,
-          effort: 'low',
-        ),
-      ],
+    return buildMatrixTeam(
+      tool: profile.tool,
+      mode: teamMode,
+      shape: shape,
     );
   }
 
@@ -505,6 +526,91 @@ final class CliMessageMatrixHarness {
     }
   }
 
+  /// Schedules PTY connect for one roster member (native lead-only launch).
+  Future<void> connectMember(String memberId) async {
+    final chat = cubit;
+    final s = session;
+    final builtTeam = team;
+    if (chat == null || s == null || builtTeam == null) {
+      throw StateError('openSession before connectMember');
+    }
+    final member = sessionRosterMembers(s, builtTeam).firstWhere(
+      (m) => m.id == memberId,
+      orElse: () => throw StateError('session roster has no member $memberId'),
+    );
+    await chat.connectWorkspaceSession(
+      ExistingSessionConnect(
+        session: s,
+        team: builtTeam,
+        member: member,
+        workspace: workspace,
+        preserveWorkbenchView: true,
+      ),
+    );
+    final deadline = DateTime.now().add(const Duration(seconds: 90));
+    while (DateTime.now().isBefore(deadline)) {
+      await drainPendingAsyncWork();
+      await postFrame?.flush();
+      final shell = chat.activeTab?.memberShells[memberId];
+      if (shell != null && (shell.isRunning || shell.isConnecting)) {
+        return;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+    }
+    throw StateError(
+      'connectMember timed out waiting for shell member=$memberId '
+      'shellKeys=${chat.activeTab?.memberShells.keys.toList()}\n'
+      '${diagnosticsBundle(memberId: memberId)}',
+    );
+  }
+
+  /// Waits for [TabSessionIdleWatch] → [ClaudeNativeInboxDoorbell] to wake an
+  /// idle native worker with unread pod inbox mail, then for gateway + PTY proof.
+  Future<void> waitForNativeInboxDoorbellConsume({
+    required String workerMemberId,
+    required String workerApiKey,
+    required List<String> markers,
+    int minGatewayTurns = 1,
+    int? gatewayBaseline,
+    Duration timeout = const Duration(seconds: 120),
+  }) async {
+    final chat = cubit;
+    final server = gateway;
+    if (chat == null || server == null) {
+      throw StateError(
+        'createCubit + startGateway before waitForNativeInboxDoorbellConsume',
+      );
+    }
+    final baseline = gatewayBaseline ?? server.requestCountFor(workerApiKey);
+    final deadline = DateTime.now().add(timeout);
+    while (DateTime.now().isBefore(deadline)) {
+      final turns = server.requestCountFor(workerApiKey) - baseline;
+      if (turns >= minGatewayTurns) {
+        try {
+          await waitForPtyMarkers(
+            markers,
+            memberId: workerMemberId,
+            timeout: const Duration(seconds: 15),
+          );
+          return;
+        } on StateError {
+          // Gateway advanced — keep ticking idle-watch until PTY catches up.
+        }
+      }
+      chat.debugTickIdleWatch();
+      await drainPendingAsyncWork();
+      await postFrame?.flush();
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+    }
+    throw StateError(
+      'Timed out waiting for native inbox doorbell consume '
+      'worker=$workerMemberId markers=$markers '
+      'gatewayTurns=${server.requestCountFor(workerApiKey) - baseline} '
+      '(need ≥$minGatewayTurns)\n'
+      '${diagnosticsBundle(memberId: workerMemberId)}',
+    );
+  }
+
   /// Boots every roster seat (lead + workers) for mixed/native cells.
   Future<void> bootAllMembersToPrompt({
     Duration timeout = const Duration(seconds: 90),
@@ -514,8 +620,8 @@ final class CliMessageMatrixHarness {
       await bootComposeSeatToPrompt(timeout: timeout);
       return;
     }
-    for (final m in built.members) {
-      await bootMemberToPrompt(m.id, timeout: timeout);
+    for (final id in bootMemberIdsFor(team: built, session: session)) {
+      await bootMemberToPrompt(id, timeout: timeout);
     }
   }
 
@@ -625,16 +731,16 @@ final class CliMessageMatrixHarness {
       bus: bus,
       gateway: mcpGateway,
       sessionId: s.sessionId,
-      memberId: kMatrixWorkerMemberId,
+      memberId: kMatrixWorkerTypeId,
       timeout: timeout,
     );
 
-    chat.selectMember(kMatrixWorkerMemberId);
+    chat.selectMember(kMatrixWorkerTypeId);
     // Prefer the automation grid-ACK path (same as History compose delivery).
     // Raw submitFullScreenInput can miss Enter on flashskyai's Ink composer.
     await chat.sessionRuntime.deliverMemberStdin(
       s.sessionId,
-      kMatrixWorkerMemberId,
+      kMatrixWorkerTypeId,
       kickoff,
       automation: true,
     );
@@ -655,7 +761,7 @@ final class CliMessageMatrixHarness {
       throw StateError(
         'Worker never hit mock API after kickoff '
         '(expected $workerScriptApiKey request)\n'
-        '${diagnosticsBundle(memberId: kMatrixWorkerMemberId)}',
+        '${diagnosticsBundle(memberId: kMatrixWorkerTypeId)}',
       );
     }
     await parked;
@@ -676,7 +782,7 @@ final class CliMessageMatrixHarness {
       teampilotRoot: root,
       workspaceId: s.workspaceId,
       sessionId: s.sessionId,
-      memberId: kMatrixWorkerMemberId,
+      memberId: kMatrixWorkerTypeId,
       timeout: timeout,
       where: (row) =>
           row['from'] == kMatrixLeadMemberId && row['content'] == 'ping',
@@ -686,7 +792,7 @@ final class CliMessageMatrixHarness {
         teampilotRoot: root,
         workspaceId: s.workspaceId,
         sessionId: s.sessionId,
-        memberIds: const [kMatrixLeadMemberId, kMatrixWorkerMemberId],
+        memberIds: const [kMatrixLeadMemberId, kMatrixWorkerTypeId],
       );
       throw StateError(
         'Timed out waiting for worker mail: ping from $kMatrixLeadMemberId\n'
@@ -701,17 +807,17 @@ final class CliMessageMatrixHarness {
       memberId: kMatrixLeadMemberId,
       timeout: timeout,
       where: (row) =>
-          row['from'] == kMatrixWorkerMemberId && row['content'] == 'pong',
+          row['from'] == kMatrixWorkerTypeId && row['content'] == 'pong',
     );
     if (!leaderPong) {
       await dumpBusMailDiagnostics(
         teampilotRoot: root,
         workspaceId: s.workspaceId,
         sessionId: s.sessionId,
-        memberIds: const [kMatrixLeadMemberId, kMatrixWorkerMemberId],
+        memberIds: const [kMatrixLeadMemberId, kMatrixWorkerTypeId],
       );
       throw StateError(
-        'Timed out waiting for lead mail: pong from $kMatrixWorkerMemberId\n'
+        'Timed out waiting for lead mail: pong from $kMatrixWorkerTypeId\n'
         '${diagnosticsBundle()}',
       );
     }
@@ -1216,5 +1322,7 @@ Map<String, MockScenario> scenariosForRecipe(CliMatrixRecipe recipe) =>
     switch (recipe) {
       CliMatrixRecipe.simple3Turn => simple3TurnScenarios(),
       CliMatrixRecipe.nativeCollab3Plus => nativeCollab3PlusScenarios(),
+      CliMatrixRecipe.nativeCollabReplica2Plus =>
+        nativeCollabReplica2PlusScenarios(),
       CliMatrixRecipe.mixedCollab3Plus => mixedCollab3PlusScenarios(),
     };

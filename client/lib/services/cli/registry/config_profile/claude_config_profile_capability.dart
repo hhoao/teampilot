@@ -240,12 +240,17 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       model: ctx.member?.model ?? '',
       profileEffort: ctx.member?.effort ?? '',
     );
+    final teammateMode = resolveTeammateMode(
+      team,
+      mixed: mixed,
+      simple: simple,
+    );
     await _writeSettings(
       delegate,
       scope,
       claude.settings,
       effortLevel: effortLevel,
-      teammateMode: team?.claudeTeammateMode ?? 'in-process',
+      teammateMode: teammateMode,
       mixed: mixed,
       simple: simple,
     );
@@ -260,7 +265,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
         workingDirectory: workingDirectory,
         description: team?.description ?? '',
         leadSessionId: ctx.leadSessionId,
-        teammateMode: team?.claudeTeammateMode ?? 'in-process',
+        teammateMode: teammateMode,
       );
     }
     await _writeMemberProfiles(
@@ -728,6 +733,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       providerSettings,
       member,
       effortLevel: effortLevel,
+      team: team,
       mixed: mixed,
       simple: simple,
     );
@@ -847,17 +853,37 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     );
   }
 
+  /// TeamPilot launches one Claude PTY per roster pod. `in-process` tells the
+  /// lead to spawn teammates inside its own process instead of inbox dispatch
+  /// to the external `developer-0` shells.
+  static String resolveTeammateMode(
+    TeamProfile? team, {
+    required bool mixed,
+    required bool simple,
+  }) {
+    if (mixed || simple) {
+      return team?.claudeTeammateMode ?? 'in-process';
+    }
+    final configured = team?.claudeTeammateMode ?? 'in-process';
+    // TeamPilot launches one external PTY per pod. `in-process` / `tmux` route
+    // SendMessage through pane backends that do not exist here; `auto` falls
+    // back to TeammateMailbox (`inboxes/<pod>.json`) for external teammates.
+    if (configured == 'in-process') return 'auto';
+    return configured;
+  }
+
   static Map<String, Object?> _memberSettings(
     Map<String, Object?>? providerSettings,
     TeamMemberConfig member, {
     required String effortLevel,
+    TeamProfile? team,
     required bool mixed,
     bool simple = false,
   }) {
     final settings = _teamSettings(
       providerSettings,
       effortLevel: effortLevel,
-      teammateMode: 'in-process',
+      teammateMode: resolveTeammateMode(team, mixed: mixed, simple: simple),
       mixed: mixed,
       simple: simple,
     );

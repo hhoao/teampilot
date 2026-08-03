@@ -52,7 +52,7 @@ const kLeadMember = TeamMemberConfig(
 );
 
 const kWorkerMember = TeamMemberConfig(
-  id: 'worker-1',
+  id: 'developer',
   name: 'developer',
   provider: kMockWorkerProviderId,
 );
@@ -606,7 +606,7 @@ class MixedTeamIntegrationHarness {
     required String workspaceId,
     required String sessionId,
     required String title,
-    String assignee = 'worker-1',
+    String assignee = 'developer',
     Duration timeout = const Duration(seconds: 90),
   }) async {
     final claimed = await waitForTaskClaimedByTitle(

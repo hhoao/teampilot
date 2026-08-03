@@ -96,6 +96,10 @@ class MockModelGatewayServer {
   /// Rewinds one actor's scenario index (see [ScenarioEngine.resetActor]).
   void resetScenario(String apiKey) => _engine.resetActor(apiKey);
 
+  /// Sets the next scripted turn index for [apiKey] without resetting others.
+  void seekScenario(String apiKey, int turnIndex) =>
+      _engine.seekActor(apiKey, turnIndex);
+
   /// Number of scripted turns already consumed for [apiKey] (survives resets
   /// of other actors; resets of this actor rewind the index to 0).
   int turnIndexFor(String apiKey) => _engine.peekTurnIndex(apiKey);

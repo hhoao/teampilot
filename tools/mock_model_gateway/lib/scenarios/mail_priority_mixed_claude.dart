@@ -17,7 +17,7 @@ Map<String, MockScenario> mailPriorityMixedClaudeScenarios() => {
           ToolUseTurn(
             id: 'tu_send',
             toolRef: 'teambus.send_message',
-            input: {'to': 'worker-1', 'content': 'urgent: pause work'},
+            input: {'to': 'developer', 'content': 'urgent: pause work'},
           ),
           ToolUseTurn(
             id: 'tu_add',

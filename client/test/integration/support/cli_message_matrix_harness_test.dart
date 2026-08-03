@@ -1,4 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mock_model_gateway/core/turns.dart';
+import 'package:mock_model_gateway/scenarios/mixed_collab_3plus.dart';
 import 'package:mock_model_gateway/scenarios/simple_3turn.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/team_config.dart';
@@ -77,9 +79,62 @@ void main() {
       CliMatrixRecipe.nativeCollab3Plus,
     );
     expect(
+      CliMessageMatrixHarness.defaultRecipeFor(
+        CliMatrixMode.native,
+        shape: RosterShape.replicated,
+      ),
+      CliMatrixRecipe.nativeCollabReplica2Plus,
+    );
+    expect(
       CliMessageMatrixHarness.defaultRecipeFor(CliMatrixMode.mixed),
       CliMatrixRecipe.mixedCollab3Plus,
     );
+  });
+
+  test('nativeCollabReplica2Plus scenarios wire lead and worker scripts', () {
+    final scenarios =
+        scenariosForRecipe(CliMatrixRecipe.nativeCollabReplica2Plus);
+    expect(scenarios.keys, containsAll([leadScriptApiKey, workerScriptApiKey]));
+
+    final leadTurns = scenarios[leadScriptApiKey]!.turns;
+    final sendToDev0 = leadTurns.whereType<ToolUseTurn>().any(
+      (t) =>
+          t.toolRef == 'native.SendMessage' &&
+          t.input['to'] == 'developer-0',
+    );
+    expect(sendToDev0, isTrue, reason: 'lead must dispatch to developer-0 pod');
+    expect(leadTurns.whereType<TextTurn>(), hasLength(2));
+  });
+
+  test('shape defaults to singleton on harness', () {
+    final harness = CliMessageMatrixHarness.forCli(
+      CliTool.claude,
+      mode: CliMatrixMode.native,
+    );
+    expect(harness.shape, RosterShape.singleton);
+  });
+
+  test('bootMemberIds uses pods for replicated shape', () {
+    final h = CliMessageMatrixHarness.forCli(
+      CliTool.claude,
+      mode: CliMatrixMode.native,
+      shape: RosterShape.replicated,
+    );
+    final team = h.buildHomogeneousTeam();
+    expect(h.bootMemberIdsFor(team: team), [
+      'team-lead',
+      'developer-0',
+      'developer-1',
+    ]);
+  });
+
+  test('bootMemberIds uses singleton pods', () {
+    final h = CliMessageMatrixHarness.forCli(
+      CliTool.claude,
+      mode: CliMatrixMode.native,
+    );
+    final team = h.buildHomogeneousTeam();
+    expect(h.bootMemberIdsFor(team: team), ['team-lead', 'developer']);
   });
 
   test('composeSeatAssistantMarkers are mode-aware', () {

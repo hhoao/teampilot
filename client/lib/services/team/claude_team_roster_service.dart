@@ -106,9 +106,7 @@ class ClaudeTeamRosterService {
       ),
     };
 
-    if (!inProcess && rosterName != TeamMemberNaming.teamLeadName) {
-      entry['backendType'] = teammateMode;
-    } else if (rosterName != TeamMemberNaming.teamLeadName) {
+    if (inProcess && rosterName != TeamMemberNaming.teamLeadName) {
       entry['backendType'] = 'in-process';
     }
 

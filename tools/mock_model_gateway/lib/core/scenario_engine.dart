@@ -90,4 +90,19 @@ class ScenarioEngine {
     }
     _indices[actorId] = 0;
   }
+
+  /// Sets the next [nextTurn] index for one actor (matrix rewind mid-scenario).
+  void seekActor(String actorId, int turnIndex) {
+    final scenario = _scenarios[actorId];
+    if (scenario == null) {
+      throw StateError('unknown actor: $actorId');
+    }
+    if (turnIndex < 0 || turnIndex > scenario.turns.length) {
+      throw StateError(
+        'turnIndex $turnIndex out of range for $actorId '
+        '(turns=${scenario.turns.length})',
+      );
+    }
+    _indices[actorId] = turnIndex;
+  }
 }
