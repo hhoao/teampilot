@@ -29,7 +29,6 @@ import '../../utils/debounce/debounce.dart';
 import '../../utils/workspace/workspace_active_context.dart';
 import '../../cubits/workspace_landing_context_cubit.dart';
 import '../../widgets/workbench/workbench_session_sync.dart';
-import '../../widgets/workbench/workbench_shell_run_sync.dart';
 import '../../widgets/workspace_terminal/workspace_terminal_new_session_menu.dart';
 import '../../widgets/workspace_terminal_panel.dart';
 import '../workbench/workbench_body.dart';
@@ -209,11 +208,7 @@ class _ChatWorkspaceShell extends StatelessWidget {
           sessionIds: sessionIds,
           activeSessionId: view.workbenchSlice.activeSessionId,
           newChatActive: view.newChatActive,
-          child: WorkbenchShellRunSync(
-            workspaceId: workspaceId,
-            tabScopeId: tabScopeId,
-            holdHandle: holdHandle,
-            child: BlocBuilder<WorkbenchCubit, WorkbenchState>(
+          child: BlocBuilder<WorkbenchCubit, WorkbenchState>(
               buildWhen: (prev, next) =>
                   prev.bucket(workspaceId) != next.bucket(workspaceId),
               builder: (context, workbenchState) {
@@ -431,7 +426,6 @@ class _ChatWorkspaceShell extends StatelessWidget {
                 );
               },
             ),
-          ),
         );
       },
     );
