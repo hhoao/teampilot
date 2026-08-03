@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/cubits/workbench/workbench_tab.dart';
 import 'package:teampilot/models/floating_workspace_tab.dart';
 import 'package:teampilot/models/run/run_ui_intent.dart';
 import 'package:teampilot/services/workbench/workbench_run_intent.dart';
@@ -32,7 +31,7 @@ void main() {
       );
     });
 
-    test('run surface + activate → WorkbenchTabId.run(latest)', () {
+    test('run surface + activate → null (floating surface owns run)', () {
       expect(
         resolveWorkbenchTabForRunIntent(
           const RunUiIntent(
@@ -42,7 +41,7 @@ void main() {
           ),
           latestRunSessionId: 'r9',
         ),
-        WorkbenchTabId.run('r9'),
+        isNull,
       );
     });
 
@@ -135,7 +134,7 @@ void main() {
       );
     });
 
-    test('trims latestRunSessionId', () {
+    test('trims latestRunSessionId → still null (floating owns run)', () {
       expect(
         resolveWorkbenchTabForRunIntent(
           const RunUiIntent(
@@ -145,7 +144,139 @@ void main() {
           ),
           latestRunSessionId: '  r9  ',
         ),
-        WorkbenchTabId.run('r9'),
+        isNull,
+      );
+    });
+  });
+
+  group('resolveFloatingTabForRunIntent', () {
+    test('run surface + activate → FloatingTab run surface', () {
+      expect(
+        resolveFloatingTabForRunIntent(
+          const RunUiIntent(
+            surface: RunToolSurface.run,
+            activateToolWindow: true,
+            focusToolWindow: false,
+          ),
+          runSessionId: 'r9',
+          title: 'Build',
+        ),
+        const FloatingTab(
+          id: 'run:r9',
+          surfaceId: 'run',
+          title: 'Build',
+          payload: 'r9',
+        ),
+      );
+    });
+
+    test('activateToolWindow false → null', () {
+      expect(
+        resolveFloatingTabForRunIntent(
+          const RunUiIntent(
+            surface: RunToolSurface.run,
+            activateToolWindow: false,
+            focusToolWindow: true,
+          ),
+          runSessionId: 'r9',
+          title: 'Build',
+        ),
+        isNull,
+      );
+    });
+
+    test('empty runSessionId → null', () {
+      expect(
+        resolveFloatingTabForRunIntent(
+          const RunUiIntent(
+            surface: RunToolSurface.run,
+            activateToolWindow: true,
+            focusToolWindow: false,
+          ),
+          runSessionId: null,
+          title: 'Build',
+        ),
+        isNull,
+      );
+      expect(
+        resolveFloatingTabForRunIntent(
+          const RunUiIntent(
+            surface: RunToolSurface.run,
+            activateToolWindow: true,
+            focusToolWindow: false,
+          ),
+          runSessionId: '',
+          title: 'Build',
+        ),
+        isNull,
+      );
+      expect(
+        resolveFloatingTabForRunIntent(
+          const RunUiIntent(
+            surface: RunToolSurface.run,
+            activateToolWindow: true,
+            focusToolWindow: false,
+          ),
+          runSessionId: '   ',
+          title: 'Build',
+        ),
+        isNull,
+      );
+    });
+
+    test('terminal surface → null (use terminal resolver)', () {
+      expect(
+        resolveFloatingTabForRunIntent(
+          const RunUiIntent(
+            surface: RunToolSurface.terminal,
+            activateToolWindow: true,
+            focusToolWindow: true,
+            terminalEntryId: 'e1',
+          ),
+          runSessionId: 'r9',
+          title: 'Build',
+        ),
+        isNull,
+      );
+    });
+
+    test('empty title falls back to runSessionId', () {
+      expect(
+        resolveFloatingTabForRunIntent(
+          const RunUiIntent(
+            surface: RunToolSurface.run,
+            activateToolWindow: true,
+            focusToolWindow: false,
+          ),
+          runSessionId: 'r9',
+          title: '',
+        ),
+        const FloatingTab(
+          id: 'run:r9',
+          surfaceId: 'run',
+          title: 'r9',
+          payload: 'r9',
+        ),
+      );
+    });
+
+    test('trims runSessionId and title', () {
+      expect(
+        resolveFloatingTabForRunIntent(
+          const RunUiIntent(
+            surface: RunToolSurface.run,
+            activateToolWindow: true,
+            focusToolWindow: false,
+          ),
+          runSessionId: '  r9  ',
+          title: '  Build  ',
+        ),
+        const FloatingTab(
+          id: 'run:r9',
+          surfaceId: 'run',
+          title: 'Build',
+          payload: 'r9',
+        ),
       );
     });
   });
