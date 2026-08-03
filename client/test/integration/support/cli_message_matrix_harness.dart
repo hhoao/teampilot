@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mock_model_gateway/core/turns.dart';
 import 'package:mock_model_gateway/scenarios/mixed_collab_3plus.dart';
 import 'package:mock_model_gateway/scenarios/native_collab_3plus.dart';
+import 'package:mock_model_gateway/scenarios/native_collab_replica_2plus.dart';
 import 'package:mock_model_gateway/scenarios/simple_3turn.dart';
 import 'package:mock_model_gateway/server.dart';
 import 'package:teampilot/cubits/ai_history_cubit.dart';
@@ -1235,9 +1236,6 @@ Map<String, MockScenario> scenariosForRecipe(CliMatrixRecipe recipe) =>
       CliMatrixRecipe.simple3Turn => simple3TurnScenarios(),
       CliMatrixRecipe.nativeCollab3Plus => nativeCollab3PlusScenarios(),
       CliMatrixRecipe.nativeCollabReplica2Plus =>
-        // Task 4: native_collab_replica_2plus.dart
-        throw UnimplementedError(
-          'nativeCollabReplica2Plus scenarios — wire in Task 4',
-        ),
+        nativeCollabReplica2PlusScenarios(),
       CliMatrixRecipe.mixedCollab3Plus => mixedCollab3PlusScenarios(),
     };

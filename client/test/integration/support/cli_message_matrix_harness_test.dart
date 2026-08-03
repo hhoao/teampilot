@@ -1,4 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mock_model_gateway/core/turns.dart';
+import 'package:mock_model_gateway/scenarios/mixed_collab_3plus.dart';
 import 'package:mock_model_gateway/scenarios/simple_3turn.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/team_config.dart';
@@ -87,6 +89,21 @@ void main() {
       CliMessageMatrixHarness.defaultRecipeFor(CliMatrixMode.mixed),
       CliMatrixRecipe.mixedCollab3Plus,
     );
+  });
+
+  test('nativeCollabReplica2Plus scenarios wire lead and worker scripts', () {
+    final scenarios =
+        scenariosForRecipe(CliMatrixRecipe.nativeCollabReplica2Plus);
+    expect(scenarios.keys, containsAll([leadScriptApiKey, workerScriptApiKey]));
+
+    final leadTurns = scenarios[leadScriptApiKey]!.turns;
+    final sendToDev0 = leadTurns.whereType<ToolUseTurn>().any(
+      (t) =>
+          t.toolRef == 'native.SendMessage' &&
+          t.input['to'] == 'developer-0',
+    );
+    expect(sendToDev0, isTrue, reason: 'lead must dispatch to developer-0 pod');
+    expect(leadTurns.whereType<TextTurn>(), hasLength(2));
   });
 
   test('shape defaults to singleton on harness', () {
