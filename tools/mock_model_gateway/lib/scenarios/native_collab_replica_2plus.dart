@@ -22,8 +22,11 @@ const markReplicaLead2 = 'MARK_REPLICA_LEAD_2';
 /// L2 History compose targets the **lead** seat (`lead-script`). Each lead
 /// [TextTurn] is `end_turn` (native has no mixed Stop-hook chain), so the
 /// Claude native cell advances one tool→text segment per History compose:
-/// TeamCreate/TaskCreate/SendMessage→MARK_REPLICA_LEAD_1,
-/// TaskList→MARK_REPLICA_LEAD_2.
+/// TaskCreate/SendMessage→MARK_REPLICA_LEAD_1, TaskList→MARK_REPLICA_LEAD_2.
+///
+/// Do **not** call TeamCreate here — TeamPilot already materializes the session
+/// roster under [AppSession.cliTeamName]; a synthetic team_name would route
+/// SendMessage to the wrong `teams/<name>/inboxes/` tree.
 ///
 /// Pod addressing uses `developer-0` (not bare `developer`). Worker script
 /// (`worker-script`) is consumed by pod `developer-0` via the shared
@@ -32,16 +35,11 @@ Map<String, MockScenario> nativeCollabReplica2PlusScenarios() => {
       leadScriptApiKey: MockScenario(
         turns: [
           ToolUseTurn(
-            id: 'tu_team_create',
-            toolRef: 'native.TeamCreate',
-            input: {'team_name': 'native-replica-collab'},
-          ),
-          ToolUseTurn(
             id: 'tu_task_create',
             toolRef: 'native.TaskCreate',
             input: {
-              'subject': 'developer-0',
-              'description': 'Handle dispatched pod work.',
+              'subject': 'Handle dispatched pod work.',
+              'description': 'Assigned to developer-0 pod.',
             },
           ),
           ToolUseTurn(
@@ -49,7 +47,8 @@ Map<String, MockScenario> nativeCollabReplica2PlusScenarios() => {
             toolRef: 'native.SendMessage',
             input: {
               'to': 'developer-0',
-              'content': 'Please handle the assigned task.',
+              'message': 'Please handle the assigned task.',
+              'summary': 'Handle assigned pod work',
             },
           ),
           TextTurn(markReplicaLead1),
@@ -72,7 +71,11 @@ Map<String, MockScenario> nativeCollabReplica2PlusScenarios() => {
           ToolUseTurn(
             id: 'tu_reply',
             toolRef: 'native.SendMessage',
-            input: {'to': 'team-lead', 'content': 'reply'},
+            input: {
+              'to': 'team-lead',
+              'message': 'reply',
+              'summary': 'Worker reply',
+            },
           ),
         ],
       ),
