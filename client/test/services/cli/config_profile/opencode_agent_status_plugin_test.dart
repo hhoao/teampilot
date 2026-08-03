@@ -11,6 +11,23 @@ import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 
 void main() {
+  test('opencodeAgentStatusPluginSource polls Bus and replies via SDK', () {
+    final source = opencodeAgentStatusPluginSource;
+    // question.asked payload fields for Dart normalizer / chat card.
+    expect(source, contains('request_id'));
+    expect(source, contains('session_id'));
+    // Poll gateway for user answer (Task 6).
+    expect(source, contains('/ask-user-answer?request_id='));
+    // OpenCode SDK reply / reject (flat requestID API; see plugin comment).
+    expect(source, contains('client.question.reply'));
+    expect(source, contains('client.question.reject'));
+    // SDK error AND poll timeout both POST reply_failed.
+    expect(source, contains('question.reply_failed'));
+    expect(source, contains('ask-user-answer poll timed out'));
+    // Poll loop bound to attention TTL (30 minutes).
+    expect(source, contains('30 * 60 * 1000'));
+  });
+
   test('mergeOpencodeAgentStatusPlugin adds plugin entry with url', () {
     final merged = mergeOpencodeAgentStatusPlugin(
       const {},
@@ -110,6 +127,15 @@ void main() {
       expect(source, contains('event.properties ?? event.data'));
       expect(source, contains('Array.isArray(props.questions)'));
       expect(source, contains('request_id'));
+      expect(source, contains('session_id'));
+      // Poll Bus for answers, then reply/reject via OpenCode SDK.
+      expect(source, contains('/ask-user-answer?request_id='));
+      expect(source, contains('client.question.reply'));
+      expect(source, contains('client.question.reject'));
+      expect(source, contains('question.reply_failed'));
+      // Poll deadline matches attention TTL (30 minutes).
+      expect(source, contains('30 * 60 * 1000'));
+      expect(source, contains('ask-user-answer poll timed out'));
 
       final configPath =
           '$opencodeDir/${OpencodeConfigProfileCapability.opencodeConfigFileName}';
