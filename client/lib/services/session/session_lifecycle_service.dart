@@ -8,6 +8,7 @@ import '../../models/cli_preset.dart';
 import '../../models/session_member_binding.dart';
 import '../../models/skill.dart';
 import '../../models/team_config.dart';
+import '../../models/member_instance.dart';
 import '../../models/launch_profile.dart';
 import '../../repositories/cli_presets_repository.dart';
 import '../../repositories/launch_profile_repository.dart';
@@ -413,7 +414,7 @@ class SessionLifecycleService {
               globalPresets: _loadPresets?.call() ?? const [],
             )
           : team.cli,
-      members: team.members,
+      members: runtimeRosterMembers(team),
       member: launchMember.isValid ? launchMember : null,
       workingDirectory: workingDirectory.isNotEmpty
           ? workingDirectory
@@ -841,7 +842,7 @@ class SessionLifecycleService {
       teamId: teamId,
       cliTeamName: runtimeTeamId,
       cli: launchCli,
-      members: team.members,
+      members: cliTeamRosterMembers(session, team),
       member: member,
       workingDirectory: memberDirs.workingDirectory.isNotEmpty
           ? memberDirs.workingDirectory

@@ -59,7 +59,7 @@ void main() {
     expect(insts.single.instanceId, 'team-lead');
   });
 
-  test('workspaceion seeds agentType from type id when empty', () {
+  test('projection seeds agentType from type id when empty', () {
     final cfg = expandTeamRoster(const [
       TeamMemberConfig(id: 'developer', name: 'Developer', replicas: 2),
     ]).first.toMemberConfig();
@@ -67,7 +67,7 @@ void main() {
     expect(cfg.agentType, 'developer');
   });
 
-  test('workspaceion preserves explicit type.agentType', () {
+  test('projection preserves explicit type.agentType', () {
     final cfg = expandTeamRoster(const [
       TeamMemberConfig(
         id: 'developer',
@@ -79,7 +79,7 @@ void main() {
     expect(cfg.agentType, 'implementer');
   });
 
-  test('workspaceion seeds agentType from type.agent when agentType empty', () {
+  test('projection seeds agentType from type.agent when agentType empty', () {
     final cfg = expandTeamRoster(const [
       TeamMemberConfig(
         id: 'developer',
@@ -91,7 +91,7 @@ void main() {
     expect(cfg.agentType, 'coder');
   });
 
-  test('workspaceion seeds the type id as a capability', () {
+  test('projection seeds the type id as a capability', () {
     final inst = expandTeamRoster(const [
       TeamMemberConfig(
         id: 'builder',
@@ -103,11 +103,11 @@ void main() {
     final cfg = inst.toMemberConfig();
     expect(cfg.id, 'builder-0');
     expect(cfg.capabilities, {'builder', 'rust'});
-    // a workspaceion is a single concrete pod, not itself re-expandable
+    // a projection is a single concrete pod, not itself re-expandable
     expect(cfg.replicas, 1);
   });
 
-  test('runtimeRosterMembers workspaces every instance', () {
+  test('runtimeRosterMembers projects every instance', () {
     final members = runtimeRosterMembers(
       team(const [
         TeamMemberConfig(id: 'team-lead', name: 'team-lead'),

@@ -130,7 +130,7 @@ Both registries support a subdirectory via `rootPath` / `catalogPrefix` / `repoP
 
 ### Member placement (Machines)
 
-Workspace + landing **Machine assignment** pins each roster replica to `local` or an SSH profile. Placement writes `roster.overrides.replicas` and host targets; mixed session create omits unpinned instances from `AppSession.members` and TeamBus. Prefer **`sessionRosterMembers(session, team)`** (in `app_session.dart`) for UI / presence / materialize — do **not** re-expand stale `TeamMemberConfig.replicas` from an in-memory team after placement saves.
+Workspace + landing **Machine assignment** pins each roster replica to `local` or an SSH profile. Placement writes `roster.overrides.replicas` and host targets; mixed session create omits unpinned instances from `AppSession.members` and TeamBus. Prefer **`sessionRosterMembers(session, team)`** (in `app_session.dart`) for UI / presence / materialize — do **not** re-expand stale `TeamMemberConfig.replicas` from an in-memory team after placement saves. Native Claude roster writers (`teams/.../config.json`, inboxes) must use `cliTeamRosterMembers(session, team)` when a session exists, or `runtimeRosterMembers(team)` for preview — never raw `team.members`.
 
 ### Team session CLI identity
 
