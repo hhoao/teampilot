@@ -43,7 +43,7 @@ void main() {
     );
     bus.declareMember(
       AgentNode.test(
-        memberId: 'worker-1',
+        memberId: 'developer',
         lifecycle: MemberLifecycle.running,
         activity: MemberActivity.active,
       ),
@@ -56,7 +56,7 @@ void main() {
     );
     workerClient = TeammateBusHttpClient(
       endpoint: gateway.mcpEndpoint,
-      memberId: 'worker-1',
+      memberId: 'developer',
       sessionId: _sessionId,
     );
     await leaderClient.initialize();
@@ -69,11 +69,11 @@ void main() {
     await gateway.unregister(_sessionId);
   });
 
-  test('team-lead and worker-1 exchange ping/pong over HTTP MCP', () async {
+  test('team-lead and developer exchange ping/pong over HTTP MCP', () async {
     final workerWait = workerClient.waitForMessage();
     await Future<void>.delayed(const Duration(milliseconds: 50));
 
-    await leaderClient.sendMessage(to: 'worker-1', content: 'ping');
+    await leaderClient.sendMessage(to: 'developer', content: 'ping');
 
     final workerRes = await workerWait;
     expect(TeammateBusHttpClient.toolResultText(workerRes), contains('ping'));
@@ -83,7 +83,7 @@ void main() {
     final leaderRes = await leaderClient.waitForMessage();
     expect(TeammateBusHttpClient.toolResultText(leaderRes), contains('pong'));
 
-    final workerMail = await messageLog.load('worker-1');
+    final workerMail = await messageLog.load('developer');
     expect(
       workerMail.any(
         (r) => r.message.from == 'team-lead' && r.message.content == 'ping',
@@ -93,7 +93,7 @@ void main() {
     final leaderMail = await messageLog.load('team-lead');
     expect(
       leaderMail.any(
-        (r) => r.message.from == 'worker-1' && r.message.content == 'pong',
+        (r) => r.message.from == 'developer' && r.message.content == 'pong',
       ),
       isTrue,
     );

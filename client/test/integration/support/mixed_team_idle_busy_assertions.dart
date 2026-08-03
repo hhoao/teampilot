@@ -130,7 +130,7 @@ Future<void> waitUntilWorkerIdleOnBus({
   required TeamBus? bus,
   required String workspaceId,
   required String sessionId,
-  String memberId = 'worker-1',
+  String memberId = 'developer',
   Duration timeout = const Duration(seconds: 90),
 }) async {
   final deadline = DateTime.now().add(timeout);

@@ -37,7 +37,7 @@ Map<String, MockScenario> nativeCollab3PlusScenarios() => {
             id: 'tu_task_create',
             toolRef: 'native.TaskCreate',
             input: {
-              'subject': 'worker-1',
+              'subject': 'developer',
               'description': 'Handle dispatched work.',
             },
           ),

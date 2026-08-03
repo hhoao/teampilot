@@ -31,7 +31,7 @@ Map<String, MockScenario> mixedCollab3PlusScenarios() => {
           ToolUseTurn(
             id: 'tu_send',
             toolRef: 'teambus.send_message',
-            input: {'to': 'worker-1', 'content': 'ping'},
+            input: {'to': 'developer', 'content': 'ping'},
           ),
           TextTurn(markLead1),
           // Wait for worker pong (second wait semantics match ping_pong_mixed).

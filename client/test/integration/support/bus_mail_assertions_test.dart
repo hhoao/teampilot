@@ -24,7 +24,7 @@ void main() {
     final slug = ClaudeTeamRosterService.safeClaudePathSegment(memberId);
     final mailFile = File(p.join(mailRoot, '$slug.jsonl'));
     await mailFile.writeAsString(
-      '${jsonEncode({'t': 'msg', 'seq': 1, 'id': 'm1', 'from': 'worker-1', 'to': memberId, 'content': 'pong', 'hop': 0, 'createdAt': 1})}\n',
+      '${jsonEncode({'t': 'msg', 'seq': 1, 'id': 'm1', 'from': 'developer', 'to': memberId, 'content': 'pong', 'hop': 0, 'createdAt': 1})}\n',
     );
 
     final matched = await waitForBusMail(
@@ -32,7 +32,7 @@ void main() {
       workspaceId: workspaceId,
       sessionId: sessionId,
       memberId: memberId,
-      where: (row) => row['from'] == 'worker-1' && row['content'] == 'pong',
+      where: (row) => row['from'] == 'developer' && row['content'] == 'pong',
     );
 
     expect(matched, isTrue);

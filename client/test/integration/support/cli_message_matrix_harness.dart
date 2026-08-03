@@ -43,6 +43,9 @@ import 'bus_roster_assertions.dart';
 import 'chat_thread_assertions.dart';
 import 'cli_test_profile.dart';
 import 'integration_prerequisites.dart';
+import 'roster_shape.dart';
+
+export 'roster_shape.dart' show kMatrixWorkerTypeId;
 
 const kMatrixLeaderProviderId = 'mock-leader';
 const kMatrixWorkerProviderId = 'mock-worker';
@@ -58,7 +61,6 @@ const kMatrixMockModelId = 'mock-model';
 String matrixMockModelIdFor(String providerId) => '$providerId-model';
 
 const kMatrixLeadMemberId = 'team-lead';
-const kMatrixWorkerMemberId = 'worker-1';
 
 /// Default last-N lines kept from PTY dumps in [diagnosticsBundle].
 const kMatrixPtyDumpMaxLines = 40;
@@ -363,8 +365,8 @@ final class CliMessageMatrixHarness {
           effort: 'low',
         ),
         TeamMemberConfig(
-          id: kMatrixWorkerMemberId,
-          name: 'developer',
+          id: kMatrixWorkerTypeId,
+          name: kMatrixWorkerTypeId,
           provider: kMatrixWorkerProviderId,
           model: matrixMockModelIdFor(kMatrixWorkerProviderId),
           cli: profile.tool,
@@ -625,16 +627,16 @@ final class CliMessageMatrixHarness {
       bus: bus,
       gateway: mcpGateway,
       sessionId: s.sessionId,
-      memberId: kMatrixWorkerMemberId,
+      memberId: kMatrixWorkerTypeId,
       timeout: timeout,
     );
 
-    chat.selectMember(kMatrixWorkerMemberId);
+    chat.selectMember(kMatrixWorkerTypeId);
     // Prefer the automation grid-ACK path (same as History compose delivery).
     // Raw submitFullScreenInput can miss Enter on flashskyai's Ink composer.
     await chat.sessionRuntime.deliverMemberStdin(
       s.sessionId,
-      kMatrixWorkerMemberId,
+      kMatrixWorkerTypeId,
       kickoff,
       automation: true,
     );
@@ -655,7 +657,7 @@ final class CliMessageMatrixHarness {
       throw StateError(
         'Worker never hit mock API after kickoff '
         '(expected $workerScriptApiKey request)\n'
-        '${diagnosticsBundle(memberId: kMatrixWorkerMemberId)}',
+        '${diagnosticsBundle(memberId: kMatrixWorkerTypeId)}',
       );
     }
     await parked;
@@ -676,7 +678,7 @@ final class CliMessageMatrixHarness {
       teampilotRoot: root,
       workspaceId: s.workspaceId,
       sessionId: s.sessionId,
-      memberId: kMatrixWorkerMemberId,
+      memberId: kMatrixWorkerTypeId,
       timeout: timeout,
       where: (row) =>
           row['from'] == kMatrixLeadMemberId && row['content'] == 'ping',
@@ -686,7 +688,7 @@ final class CliMessageMatrixHarness {
         teampilotRoot: root,
         workspaceId: s.workspaceId,
         sessionId: s.sessionId,
-        memberIds: const [kMatrixLeadMemberId, kMatrixWorkerMemberId],
+        memberIds: const [kMatrixLeadMemberId, kMatrixWorkerTypeId],
       );
       throw StateError(
         'Timed out waiting for worker mail: ping from $kMatrixLeadMemberId\n'
@@ -701,17 +703,17 @@ final class CliMessageMatrixHarness {
       memberId: kMatrixLeadMemberId,
       timeout: timeout,
       where: (row) =>
-          row['from'] == kMatrixWorkerMemberId && row['content'] == 'pong',
+          row['from'] == kMatrixWorkerTypeId && row['content'] == 'pong',
     );
     if (!leaderPong) {
       await dumpBusMailDiagnostics(
         teampilotRoot: root,
         workspaceId: s.workspaceId,
         sessionId: s.sessionId,
-        memberIds: const [kMatrixLeadMemberId, kMatrixWorkerMemberId],
+        memberIds: const [kMatrixLeadMemberId, kMatrixWorkerTypeId],
       );
       throw StateError(
-        'Timed out waiting for lead mail: pong from $kMatrixWorkerMemberId\n'
+        'Timed out waiting for lead mail: pong from $kMatrixWorkerTypeId\n'
         '${diagnosticsBundle()}',
       );
     }
