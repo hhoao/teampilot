@@ -59,6 +59,38 @@ void main() {
     expect(insts.single.instanceId, 'team-lead');
   });
 
+  test('workspaceion seeds agentType from type id when empty', () {
+    final cfg = expandTeamRoster(const [
+      TeamMemberConfig(id: 'developer', name: 'Developer', replicas: 2),
+    ]).first.toMemberConfig();
+    expect(cfg.id, 'developer-0');
+    expect(cfg.agentType, 'developer');
+  });
+
+  test('workspaceion preserves explicit type.agentType', () {
+    final cfg = expandTeamRoster(const [
+      TeamMemberConfig(
+        id: 'developer',
+        name: 'Developer',
+        replicas: 2,
+        agentType: 'implementer',
+      ),
+    ]).first.toMemberConfig();
+    expect(cfg.agentType, 'implementer');
+  });
+
+  test('workspaceion seeds agentType from type.agent when agentType empty', () {
+    final cfg = expandTeamRoster(const [
+      TeamMemberConfig(
+        id: 'developer',
+        name: 'Developer',
+        replicas: 2,
+        agent: 'coder',
+      ),
+    ]).first.toMemberConfig();
+    expect(cfg.agentType, 'coder');
+  });
+
   test('workspaceion seeds the type id as a capability', () {
     final inst = expandTeamRoster(const [
       TeamMemberConfig(

@@ -30,13 +30,23 @@ class MemberInstance {
   /// Runtime workspaceion: a [TeamMemberConfig] with `id = instanceId` and the
   /// type id seeded as a capability so [TaskRouter] routes the pool by type
   /// (and the pod by its own id, via the id-as-capability rule).
-  TeamMemberConfig toMemberConfig() => type.copyWith(
-    id: instanceId,
-    name: displayName,
-    capabilities: {type.id, ...type.capabilities},
-    // A workspaceion is a single concrete pod — never itself re-expandable.
-    replicas: 1,
-  );
+  TeamMemberConfig toMemberConfig() {
+    final seededAgentType = () {
+      final explicit = type.agentType.trim();
+      if (explicit.isNotEmpty) return explicit;
+      final fromAgent = type.agent.trim();
+      if (fromAgent.isNotEmpty) return fromAgent;
+      return type.id;
+    }();
+    return type.copyWith(
+      id: instanceId,
+      name: displayName,
+      agentType: seededAgentType,
+      capabilities: {type.id, ...type.capabilities},
+      // A workspaceion is a single concrete pod — never itself re-expandable.
+      replicas: 1,
+    );
+  }
 }
 
 /// The single Deployment→Pod fan-out. The team-lead is always a singleton; any
