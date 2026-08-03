@@ -1,5 +1,9 @@
 display_name: TeamPilot
+generic_name: TeamPilot Client
 icon: assets/icons/icon_bg.png
+startup_notify: true
+# Matches GTK application-id / g_set_prgname (linux/runner).
+startup_wm_class: com.hhoa.teampilot
 categories:
   - Utility
   - Network

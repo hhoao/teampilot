@@ -205,7 +205,9 @@ Layering, soft file-size limits, Extension rules, and pre-release checklists: **
 
 ## Packaging & releases
 
-CI uses [fastforge](https://pub.dev/packages/fastforge) to produce artifacts under `client/dist/`:
+CI uses the [fastforge](https://github.com/hhoao/fastforge) submodule at
+`third_party/fastforge` (AppImage `StartupWMClass` support; upstream
+[PR #360](https://github.com/fastforgedev/fastforge/pull/360)) to produce artifacts under `client/dist/`:
 
 | Platform | Outputs |
 |----------|---------|
@@ -226,7 +228,10 @@ Changes under `client/` trigger [Client Build Verify](../.github/workflows/clien
 ### Local packaging examples
 
 ```bash
-dart pub global activate fastforge
+git submodule update --init third_party/fastforge
+bash tool/activate_fastforge.sh
+# After upstream https://github.com/fastforgedev/fastforge/pull/360 is on pub.dev:
+# dart pub global activate fastforge
 cd client
 flutter pub get
 dart run tool/sync_bundled_google_fonts.dart

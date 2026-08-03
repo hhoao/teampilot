@@ -55,7 +55,11 @@ jobs:
       - uses: ./.github/actions/apply-flutter-patches
 
       - name: Activate fastforge
-        run: dart pub global activate fastforge
+        working-directory: .
+        run: |
+          # After upstream https://github.com/fastforgedev/fastforge/pull/360 is on pub.dev:
+          # dart pub global activate fastforge
+          bash tool/activate_fastforge.sh
 
       - name: Resolve Flutter packages
         run: flutter pub get
@@ -101,8 +105,11 @@ jobs:
       - uses: ./.github/actions/apply-flutter-patches
 
       - name: Install fastforge + appdmg
+        working-directory: .
         run: |
-          dart pub global activate fastforge
+          # After upstream https://github.com/fastforgedev/fastforge/pull/360 is on pub.dev:
+          # dart pub global activate fastforge
+          bash tool/activate_fastforge.sh
           npm install -g appdmg
 
       - name: Resolve Flutter packages
@@ -149,7 +156,12 @@ jobs:
       - uses: ./.github/actions/apply-flutter-patches
 
       - name: Activate fastforge
-        run: dart pub global activate fastforge
+        shell: bash
+        working-directory: .
+        run: |
+          # After upstream https://github.com/fastforgedev/fastforge/pull/360 is on pub.dev:
+          # dart pub global activate fastforge
+          bash tool/activate_fastforge.sh
 
       - name: Install Inno Setup
         shell: pwsh

@@ -96,7 +96,11 @@ jobs:
 
       - name: Activate fastforge
         if: matrix.package_deb
-        run: dart pub global activate fastforge
+        working-directory: .
+        run: |
+          # After upstream https://github.com/fastforgedev/fastforge/pull/360 is on pub.dev:
+          # dart pub global activate fastforge
+          bash tool/activate_fastforge.sh
 
       - name: Add pub-cache to PATH
         if: matrix.package_deb
