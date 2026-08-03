@@ -22,7 +22,7 @@ That creates three failures:
    - OpenCode → Bus pending answer + agent-status plugin poll + `client.question.reply` / `reject` (no dependency on `opencode serve`).
    - Cursor → no in-chat card (`supportsInChatAnswer = false`).
 3. **Card gating** via a pure policy function (capability + question shape), not ad-hoc branches in the banner widget.
-4. **Optimistic clear** of seat waiting after a successful local answer handoff; reconcile late hooks / reply failures.
+4. **Optimistic dismiss** after a successful local answer handoff: set attention to `working` while retaining ask payload for reconciliation; ignore same-`askRequestId` late waiting; restore on `reply_failed`.
 5. **Generic l10n** for the ask title and answer failure strings (no Claude brand lock-in).
 6. **OpenCode multi-select / multi-question** interactive card when capability allows (label-array reply). PTY-family multi-select remains banner → terminal.
 
@@ -94,6 +94,7 @@ Normalizer:
 
 - Claude-family AskUserQuestion `PreToolUse`: parse questions; set `askRequestId` from tool use id if available.
 - OpenCode `question.asked`: parse top-level `questions`; set `askRequestId` from `request_id` / `id`; set `nativeSessionId` from payload `session_id` / `sessionID` when present.
+- OpenCode `question.reply_failed`: map to a dedicated attention signal (not a generic working pulse). Payload must include `request_id` (required). Normalizer emits an event the cubit recognizes as “restore ask waiting for this requestId” (see reconciliation). Optional `message` string for UI error copy.
 
 ### Card policy
 
@@ -106,6 +107,8 @@ Normalizer:
 - Missing `askRequestId` when `answerKind == pluginSdkReply`: false → banner (cannot reply safely).
 
 Banner widget only calls this policy; no CLI switches in UI.
+
+**OpenCode multi UI (locked):** one card listing all questions on a single page. Each question is radio (single) or checkbox group (multi). One primary **Submit** sends `answers: List<List<String>>` in question order (selected labels per question; empty array only if the CLI schema allows skipping — otherwise require ≥1 selection per question). No per-question wizard.
 
 ### OpenCode pending reply protocol
 
@@ -127,16 +130,16 @@ Entry shape:
 - No pending → `204`.
 - Pending → `200` JSON body of the entry, then delete.
 
-Optional query `?request_id=` to bind a specific poll; if omitted, return the sole pending entry for that seat (or 204 if none / ambiguous).
+**Query:** plugin **must** poll with `?request_id=<id>`. Gateway returns that entry or 204. Omitting `request_id` is unsupported for production pollers (tests may cover 204 for empty seat).
 
 **Plugin** (`opencode_agent_status_plugin.dart`):
 
 On `question.asked`:
 
 1. POST status payload including `questions`, `request_id`, `session_id`.
-2. Start short-interval poll of `GET /ask-user-answer` until answer, reject, or timeout (align with attention TTL, default 30m, or a shorter dedicated poll deadline documented in code).
+2. Start short-interval poll of `GET /ask-user-answer?request_id=…` until answer, reject, or timeout (align with attention TTL, default 30m, or a shorter dedicated poll deadline documented in code).
 3. Call `client.question.reply` with `{ path: { sessionID, requestID }, body: { answers } }` or `client.question.reject` when available.
-4. On SDK failure: POST `question.reply_failed` with `request_id` so Dart can restore waiting.
+4. On SDK failure: POST `question.reply_failed` with `request_id` (and optional `message`) so Dart can restore waiting.
 5. On success: rely on existing idle / done signals for reconciliation; Dart already cleared optimistically.
 
 **Cancel from Chat (OpenCode):** put `{ reject: true }` — do **not** send Esc to the PTY.
@@ -148,9 +151,9 @@ On `question.asked`:
 - **Success definition:**
   - `ptyPicker`: PTY write path completed (shell connected; keystrokes sent).
   - `pluginSdkReply`: pending entry successfully stored.
-- On success: `AgentAttentionCubit.clearWaiting` (or apply `working`/`done`) for that seat immediately.
+- On success (locked): set seat attention to **`working`**, and **retain** `lastEvent` (questions + `askRequestId`) so compose unlocks but `reply_failed` can restore. Also record the dismissed `askRequestId` on the seat entry (or a small side map) until a non-matching ask arrives or the seat is cleared.
 - If a later waiting event arrives with the **same** `askRequestId`, ignore.
-- If `question.reply_failed` arrives for that `askRequestId`, restore waiting with the prior question payload when still available; show error UI.
+- If `question.reply_failed` arrives for that `askRequestId`, set attention back to **`waiting`** using the retained `lastEvent` payload; show error UI from optional `message`.
 - Card `_answering` remains a local double-submit guard; it does not replace attention state.
 
 ### UX copy and errors
@@ -215,6 +218,8 @@ Required coverage:
 
 1. Approach A: registry capability + answer ports (not cli switches in the answer service core).
 2. OpenCode uses plugin SDK reply via Bus pending store — not Dart→serve HTTP.
-3. Optimistic dismiss on local handoff success; reconcile failures.
+3. Optimistic dismiss on local handoff success → attention `working` while retaining `lastEvent` + dismissed requestId; reconcile `reply_failed` back to `waiting`.
 4. Generic ask title copy.
-5. OpenCode multi-select/multi-question in chat; PTY-family multi → banner.
+5. OpenCode multi-select/multi-question in chat (single-page card + one Submit); PTY-family multi → banner.
+6. Plugin always polls `/ask-user-answer?request_id=…`.
+7. `question.reply_failed` is a first-class normalizer event with required `request_id`.
