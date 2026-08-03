@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/cubits/agent_attention_cubit.dart';
 import 'package:teampilot/cubits/chat/model/chat_tab.dart';
 import 'package:teampilot/cubits/chat/model/chat_tab_info.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
@@ -212,6 +213,9 @@ void main() {
                 BlocProvider.value(value: pluginCubit),
                 BlocProvider.value(value: worktreeCubit),
                 BlocProvider.value(value: presenceCubit),
+                BlocProvider(
+                  create: (_) => AgentAttentionCubit(pruneInterval: null),
+                ),
                 BlocProvider.value(value: WorkspaceToolsCubit()),
                 BlocProvider.value(value: cliPresetsCubit),
                 BlocProvider.value(value: sessionPreferencesCubit),
@@ -376,6 +380,9 @@ void main() {
                 BlocProvider.value(value: pluginCubit),
                 BlocProvider.value(value: worktreeCubit),
                 BlocProvider.value(value: presenceCubit),
+                BlocProvider(
+                  create: (_) => AgentAttentionCubit(pruneInterval: null),
+                ),
                 BlocProvider.value(value: WorkspaceToolsCubit()),
                 BlocProvider.value(value: cliPresetsCubit),
                 BlocProvider.value(value: sessionPreferencesCubit),
@@ -545,6 +552,9 @@ void main() {
               BlocProvider.value(value: pluginCubit),
               BlocProvider.value(value: worktreeCubit),
               BlocProvider.value(value: presenceCubit),
+              BlocProvider(
+                create: (_) => AgentAttentionCubit(pruneInterval: null),
+              ),
               BlocProvider.value(value: WorkspaceToolsCubit()),
               BlocProvider.value(value: cliPresetsCubit),
               BlocProvider.value(value: sessionPreferencesCubit),
@@ -709,6 +719,9 @@ void main() {
                 BlocProvider.value(value: pluginCubit),
                 BlocProvider.value(value: worktreeCubit),
                 BlocProvider.value(value: presenceCubit),
+                BlocProvider(
+                  create: (_) => AgentAttentionCubit(pruneInterval: null),
+                ),
                 BlocProvider.value(value: WorkspaceToolsCubit()),
                 BlocProvider.value(value: cliPresetsCubit),
                 BlocProvider.value(value: sessionPreferencesCubit),
