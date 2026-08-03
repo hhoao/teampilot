@@ -5,6 +5,7 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/agent_status/agent_attention_state.dart';
 import 'package:teampilot/services/agent_status/agent_status_event.dart';
 import 'package:teampilot/services/agent_status/agent_status_seat_lookup.dart';
+import 'package:teampilot/services/agent_status/ask_user_answer_pending_store.dart';
 
 void main() {
   // SessionLaunchPipeline._restartTeamSession needs a full host fake; the
@@ -14,6 +15,7 @@ void main() {
       final attention = AgentAttentionCubit(pruneInterval: null);
       addTearDown(attention.close);
       final seats = AgentStatusSeatLookup();
+      final pending = AskUserAnswerPendingStore();
 
       attention.applyEvent(
         sessionId: 's1',
@@ -39,10 +41,21 @@ void main() {
         cli: CliTool.codex,
         skipPermissions: false,
       );
+      pending.put(
+        sessionId: 's1',
+        memberId: 'm1',
+        entry: const AskUserAnswerPendingEntry(requestId: 'req-1'),
+      );
+      pending.put(
+        sessionId: 's2',
+        memberId: 'm1',
+        entry: const AskUserAnswerPendingEntry(requestId: 'req-2'),
+      );
 
       clearAgentStatusSessionSeats(
         attention: attention,
         seatLookup: seats,
+        askUserAnswerPendingStore: pending,
         sessionId: 's1',
       );
 
@@ -53,6 +66,22 @@ void main() {
       );
       expect(seats.resolveCli('s1', 'm1'), isNull);
       expect(seats.resolveCli('s2', 'm1'), CliTool.codex);
+      expect(
+        pending.take(
+          sessionId: 's1',
+          memberId: 'm1',
+          requestId: 'req-1',
+        ),
+        isNull,
+      );
+      expect(
+        pending.take(
+          sessionId: 's2',
+          memberId: 'm1',
+          requestId: 'req-2',
+        ),
+        isNotNull,
+      );
     });
   });
 }

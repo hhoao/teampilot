@@ -11,6 +11,7 @@ import '../../services/launch/workspace_provision_coordinator.dart';
 import '../../services/progress_activity/cli_provision_activity_adapter.dart';
 import '../../services/session/session_lifecycle_service.dart';
 import '../../services/agent_status/agent_status_seat_lookup.dart';
+import '../../services/agent_status/ask_user_answer_pending_store.dart';
 import '../../cubits/agent_attention_cubit.dart';
 import '../../services/team_bus/mcp/teammate_bus_mcp_gateway.dart';
 import '../../services/team_bus/remote/remote_bus_binding_resolver.dart';
@@ -106,6 +107,9 @@ abstract interface class SessionLaunchHost
   /// Permission-attention state; cleared on seat/tab dispose (null in tests).
   AgentAttentionCubit? get agentAttentionCubit;
 
+  /// Shared OpenCode ask-answer pending map; cleared with attention on dispose.
+  AskUserAnswerPendingStore? get askUserAnswerPendingStore;
+
   /// Exposes workspace Phase A for team / mixed off-home paths.
   WorkspaceProvisionCoordinator get workspaceProvision;
 
@@ -125,17 +129,20 @@ abstract interface class SessionLaunchHost
   TerminalTheme? resolveTerminalThemeForLaunch();
 }
 
-/// Drop attention + seat lookup for every seat in [sessionId].
+/// Drop attention + seat lookup (+ pending ask answers) for every seat in
+/// [sessionId].
 ///
 /// Used on team-session restart (shells disconnect without [onProcessExited]).
 /// Does not unregister the gateway status session — reconnect re-registers seats.
 void clearAgentStatusSessionSeats({
   AgentAttentionCubit? attention,
   AgentStatusSeatLookup? seatLookup,
+  AskUserAnswerPendingStore? askUserAnswerPendingStore,
   required String sessionId,
 }) {
   attention?.clearSession(sessionId);
   seatLookup?.clearSession(sessionId);
+  askUserAnswerPendingStore?.clearSession(sessionId);
 }
 
 /// Drop attention + seat lookup for one seat (PTY exit, disconnect, reconnect).
@@ -152,12 +159,17 @@ extension SessionLaunchHostAgentStatus on SessionLaunchHost {
       sessionId: sessionId,
       memberId: memberId,
     );
+    askUserAnswerPendingStore?.clearSeat(
+      sessionId: sessionId,
+      memberId: memberId,
+    );
   }
 
   void clearAgentStatusSession(String sessionId) {
     clearAgentStatusSessionSeats(
       attention: agentAttentionCubit,
       seatLookup: agentStatusSeatLookup,
+      askUserAnswerPendingStore: askUserAnswerPendingStore,
       sessionId: sessionId,
     );
   }

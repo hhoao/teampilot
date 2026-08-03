@@ -37,6 +37,12 @@ final class AskUserAnswerPendingStore {
     _entries.removeWhere((key, _) => key.startsWith(prefix));
   }
 
+  /// Drop all pending answers for [sessionId] (tab close / session restart).
+  void clearSession(String sessionId) {
+    final prefix = '${sessionId.trim()}/';
+    _entries.removeWhere((key, _) => key.startsWith(prefix));
+  }
+
   String _seatKey(String sessionId, String memberId) => '$sessionId/$memberId';
 
   String _key(String sessionId, String memberId, String requestId) =>

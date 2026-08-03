@@ -32,6 +32,7 @@ import '../services/team_bus/remote/remote_bus_binding_resolver.dart';
 import '../services/agent_status/agent_attention_state.dart';
 import '../services/agent_status/agent_status_event.dart';
 import '../services/agent_status/agent_status_seat_lookup.dart';
+import '../services/agent_status/ask_user_answer_pending_store.dart';
 import 'agent_attention_cubit.dart';
 import '../services/launch/launch_factory.dart';
 import '../services/launch/session_connect_orchestrator.dart';
@@ -106,6 +107,7 @@ class ChatCubit extends Cubit<ChatState>
     TeammateBusMcpGateway? teammateBusMcpGateway,
     AgentStatusSeatLookup? agentStatusSeatLookup,
     AgentAttentionCubit? agentAttentionCubit,
+    AskUserAnswerPendingStore? askUserAnswerPendingStore,
     AskUserQuestionAnswerService? askUserQuestionAnswerService,
     InMemoryFollowUpQueueStore? followUpQueueStore,
     FollowUpQueueDrainer? followUpQueueDrainer,
@@ -126,6 +128,7 @@ class ChatCubit extends Cubit<ChatState>
            teammateBusMcpGateway ?? TeammateBusMcpGateway(),
        _agentStatusSeatLookup = agentStatusSeatLookup,
        _agentAttentionCubit = agentAttentionCubit,
+       _askUserAnswerPendingStore = askUserAnswerPendingStore,
        _automationRepository = automationRepository,
        _layoutCubit = layoutCubit,
        _shellFactory = ChatSessionShellFactory(
@@ -150,7 +153,9 @@ class ChatCubit extends Cubit<ChatState>
            termuxDisconnectedWorkOpsMessageResolver,
        _termuxGateHomeResolver = termuxGateHomeResolver,
        super(const ChatState()) {
-    _askUserAnswer = askUserQuestionAnswerService ?? AskUserQuestionAnswerService();
+    _askUserAnswer =
+        askUserQuestionAnswerService ??
+        AskUserQuestionAnswerService(store: askUserAnswerPendingStore);
     _followUpDrainer =
         followUpQueueDrainer ??
         FollowUpQueueDrainer(
@@ -185,6 +190,7 @@ class ChatCubit extends Cubit<ChatState>
   final TeammateBusMcpGateway _teammateBusMcpGateway;
   final AgentStatusSeatLookup? _agentStatusSeatLookup;
   final AgentAttentionCubit? _agentAttentionCubit;
+  final AskUserAnswerPendingStore? _askUserAnswerPendingStore;
   StreamSubscription<AgentAttentionState>? _agentAttentionSub;
   final AutomationRepository _automationRepository;
   final LayoutCubit? _layoutCubit;
@@ -444,6 +450,10 @@ class ChatCubit extends Cubit<ChatState>
 
   @override
   AgentAttentionCubit? get agentAttentionCubit => _agentAttentionCubit;
+
+  @override
+  AskUserAnswerPendingStore? get askUserAnswerPendingStore =>
+      _askUserAnswerPendingStore;
 
   @override
   SessionLifecycleService get lifecycle => _lifecycle;
@@ -772,8 +782,8 @@ class ChatCubit extends Cubit<ChatState>
   /// or pending store). [memberId] is the shell key (`sessionId` for simple,
   /// member id for team) — same as seat attention.
   ///
-  /// Full optimistic dismiss + OpenCode `askRequestId`/`answers` wiring lands
-  /// in a follow-up task; this keeps the card compiling against the facade.
+  /// On [AskUserAnswerOk], optimistically dismisses the waiting card via
+  /// [AgentAttentionCubit.markAskAnswered]. Failures leave attention unchanged.
   Future<AskUserAnswerResult> answerAskUserQuestion({
     required String sessionId,
     required String memberId,
@@ -796,18 +806,32 @@ class ChatCubit extends Cubit<ChatState>
       cliForMember: _shellFactory.cliForMember,
       globalPresets: _lifecycle.globalPresets,
     );
-    return _askUserAnswer.answer(
+    final resolvedAskRequestId = _resolveAskRequestId(
+      sessionId: sessionId,
+      memberId: mid,
+      askRequestId: askRequestId,
+    );
+    final result = await _askUserAnswer.answer(
       cli: cli,
       sessionId: sessionId,
       memberId: mid,
       shell: tab.memberShells[mid],
-      askRequestId: askRequestId,
+      askRequestId: resolvedAskRequestId,
       optionIndex: optionIndex,
       answers: answers,
     );
+    if (result is AskUserAnswerOk) {
+      _agentAttentionCubit?.markAskAnswered(
+        sessionId: sessionId,
+        memberId: mid,
+      );
+    }
+    return result;
   }
 
   /// Cancels a pending AskUserQuestion (PTY Esc or pending reject).
+  ///
+  /// Successful cancel also optimistically dismisses waiting attention.
   Future<AskUserAnswerResult> cancelAskUserQuestion({
     required String sessionId,
     required String memberId,
@@ -828,13 +852,46 @@ class ChatCubit extends Cubit<ChatState>
       cliForMember: _shellFactory.cliForMember,
       globalPresets: _lifecycle.globalPresets,
     );
-    return _askUserAnswer.cancel(
+    final resolvedAskRequestId = _resolveAskRequestId(
+      sessionId: sessionId,
+      memberId: mid,
+      askRequestId: askRequestId,
+    );
+    final result = await _askUserAnswer.cancel(
       cli: cli,
       sessionId: sessionId,
       memberId: mid,
       shell: tab.memberShells[mid],
-      askRequestId: askRequestId,
+      askRequestId: resolvedAskRequestId,
     );
+    if (result is AskUserAnswerOk) {
+      _agentAttentionCubit?.markAskAnswered(
+        sessionId: sessionId,
+        memberId: mid,
+      );
+    }
+    return result;
+  }
+
+  /// Prefer an explicit id; otherwise read OpenCode/Claude ask id from the
+  /// seat's last attention event when available.
+  String? _resolveAskRequestId({
+    required String sessionId,
+    required String memberId,
+    required String? askRequestId,
+  }) {
+    final explicit = askRequestId?.trim();
+    if (explicit != null && explicit.isNotEmpty) return explicit;
+    final fromAttention = _agentAttentionCubit
+        ?.state
+        .entryFor(sessionId: sessionId, memberId: memberId)
+        ?.lastEvent
+        ?.askRequestId
+        ?.trim();
+    if (fromAttention != null && fromAttention.isNotEmpty) {
+      return fromAttention;
+    }
+    return askRequestId;
   }
 
   TeamProfile? _teamForSessionTab(ChatTab tab) {
@@ -1360,6 +1417,7 @@ class ChatCubit extends Cubit<ChatState>
     }
     _agentAttentionCubit?.clearSession(sessionId);
     _followUpQueue.clearSession(sessionId);
+    _askUserAnswerPendingStore?.clearSession(sessionId);
     _agentStatusSeatLookup?.clearSession(sessionId);
     _teammateBusMcpGateway.unregisterAgentStatusSession(sessionId);
     await _teamBus.disposeSessionBus(sessionId);

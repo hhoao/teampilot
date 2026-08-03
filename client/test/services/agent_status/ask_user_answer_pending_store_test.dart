@@ -118,6 +118,51 @@ void main() {
     );
   });
 
+  test('clearSession drops all for session', () {
+    store.put(
+      sessionId: 'sess-a',
+      memberId: 'member-1',
+      entry: const AskUserAnswerPendingEntry(requestId: 'req-1'),
+    );
+    store.put(
+      sessionId: 'sess-a',
+      memberId: 'member-2',
+      entry: const AskUserAnswerPendingEntry(requestId: 'req-2'),
+    );
+    store.put(
+      sessionId: 'sess-b',
+      memberId: 'member-1',
+      entry: const AskUserAnswerPendingEntry(requestId: 'req-3'),
+    );
+
+    store.clearSession('sess-a');
+
+    expect(
+      store.take(
+        sessionId: 'sess-a',
+        memberId: 'member-1',
+        requestId: 'req-1',
+      ),
+      isNull,
+    );
+    expect(
+      store.take(
+        sessionId: 'sess-a',
+        memberId: 'member-2',
+        requestId: 'req-2',
+      ),
+      isNull,
+    );
+    expect(
+      store.take(
+        sessionId: 'sess-b',
+        memberId: 'member-1',
+        requestId: 'req-3',
+      ),
+      isNotNull,
+    );
+  });
+
   test('overwrite same requestId', () {
     store.put(
       sessionId: 'sess-a',
