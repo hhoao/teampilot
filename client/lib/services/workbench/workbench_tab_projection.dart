@@ -35,18 +35,23 @@ List<TabInfo> projectWorkbenchTabs({
           preview: previewTabIds.contains(tab),
           pinnable: true,
           pinned: sessionPinned[tab.id] ?? false,
+          kind: WorkbenchTabKind.session,
         ),
         WorkbenchTabKind.file => TabInfo(
           id: tab.id,
           title: p.basename(tab.id),
           icon: Icons.description_outlined,
           preview: previewTabIds.contains(tab),
+          kind: WorkbenchTabKind.file,
+          filePath: tab.id,
         ),
         WorkbenchTabKind.diff => TabInfo(
           id: tab.id,
           title: _diffTitle(tab, editorBucket),
           icon: Icons.difference_outlined,
           preview: previewTabIds.contains(tab),
+          kind: WorkbenchTabKind.diff,
+          filePath: tab.diffAbsolutePath,
         ),
         WorkbenchTabKind.run => TabInfo(
           id: tab.id,
@@ -54,6 +59,7 @@ List<TabInfo> projectWorkbenchTabs({
           icon: Icons.play_arrow_rounded,
           working: runWorking[tab.id] ?? false,
           pinnable: false,
+          kind: WorkbenchTabKind.run,
         ),
         WorkbenchTabKind.shell => throw StateError(
           'shell tabs are filtered before center-strip projection',

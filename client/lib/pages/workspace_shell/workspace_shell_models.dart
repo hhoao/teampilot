@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../cubits/workbench/workbench_tab.dart';
 import '../../models/team_config.dart';
 
 enum AppSection { chat, runs, config }
@@ -16,10 +17,18 @@ class TabInfo {
     this.preview = false,
     this.pinnable = false,
     this.pinned = false,
+    this.kind,
+    this.filePath,
   });
 
   final String id;
   final String title;
+
+  /// Center-strip tab kind for context menu composition.
+  final WorkbenchTabKind? kind;
+
+  /// Absolute file path for file/diff tabs.
+  final String? filePath;
 
   /// When set, tab chip live-selects working + title from [ChatCubit].
   final String? sessionId;
