@@ -59,6 +59,11 @@ class AppKeys {
   static const agentPermissionOpenTerminalButton = Key(
     'agent-permission-open-terminal-button',
   );
+  static const askUserQuestionCard = Key('ask-user-question-card');
+
+  /// Option row key for an AskUserQuestion card (`{index}`).
+  static Key askUserQuestionOption(int index) =>
+      Key('ask-user-question-option-$index');
   static const sidebarSessionWaitingMarker = Key(
     'sidebar-session-waiting-marker',
   );

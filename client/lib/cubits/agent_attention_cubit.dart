@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../services/agent_status/agent_attention_state.dart';
 import '../services/agent_status/agent_status_event.dart';
+import '../services/agent_status/agent_status_normalizer.dart';
 import '../services/agent_status/claude_permission_sticky.dart';
 
 /// Orca-aligned TTL: drop seat attention with no refresh after this duration.
@@ -44,16 +45,22 @@ class AgentAttentionState extends Equatable {
 
   DateTime get _now => (_clock ?? DateTime.now)();
 
-  /// Attention for a seat, or null when absent / stale.
-  AgentSeatAttention? attentionFor({
+  /// Fresh seat entry, or null when absent / stale.
+  AgentSeatAttentionEntry? entryFor({
     required String sessionId,
     required String memberId,
   }) {
     final key = agentSeatKey(sessionId: sessionId, memberId: memberId);
     final entry = seats[key];
     if (entry == null || _isStale(entry, _now)) return null;
-    return entry.attention;
+    return entry;
   }
+
+  /// Attention for a seat, or null when absent / stale.
+  AgentSeatAttention? attentionFor({
+    required String sessionId,
+    required String memberId,
+  }) => entryFor(sessionId: sessionId, memberId: memberId)?.attention;
 
   /// True when any fresh seat in [sessionId] is [AgentSeatAttention.waiting].
   bool sessionHasWaiting(String sessionId) =>
@@ -158,7 +165,17 @@ class AgentAttentionCubit extends Cubit<AgentAttentionState> {
     required AgentStatusEvent event,
     required bool skipPermissions,
   }) {
-    if (skipPermissions && event.state == AgentSeatAttention.waiting) {
+    // Claude Code's --dangerously-skip-permissions does not skip
+    // AskUserQuestion, and opencode's question tool always needs an answer —
+    // both still block on an interactive prompt the operator must answer.
+    // Keep the seat waiting for them so the chat card stays available.
+    final isAskUserQuestionWaiting =
+        event.state == AgentSeatAttention.waiting &&
+        (isAskUserQuestionTool(event.toolName) ||
+            event.hookEventName == 'question.asked');
+    if (skipPermissions &&
+        event.state == AgentSeatAttention.waiting &&
+        !isAskUserQuestionWaiting) {
       pruneStale();
       return;
     }

@@ -2,6 +2,7 @@ import '../../models/team_config.dart';
 import 'agent_attention_state.dart';
 import 'agent_status_event.dart';
 import 'agent_status_tool_input.dart';
+import 'ask_user_question.dart';
 
 /// Maps raw CLI hook / plugin JSON to a normalized [AgentStatusEvent].
 ///
@@ -25,7 +26,36 @@ class AgentStatusNormalizer {
       CliTool.claude || CliTool.flashskyai || CliTool.codex =>
         _normalizeClaudeFamily(body),
       CliTool.opencode => _normalizeOpenCode(body),
-      CliTool.cursor => null,
+      CliTool.cursor => _normalizeCursor(body),
+    };
+  }
+
+  /// Cursor hook payloads mirror Claude Code's keys (`hook_event_name`,
+  /// `tool_name`, `tool_use_id`); the event names differ (camelCase), so map
+  /// them to tool-lifecycle attention. Waiting stays on the OSC-title path
+  /// (`detectCursorTitleAttention`) — cursor asks questions as plain text, not
+  /// a structured tool.
+  static AgentStatusEvent? _normalizeCursor(Map<String, Object?> body) {
+    final eventName = body['hook_event_name']?.toString();
+    if (eventName == null || eventName.isEmpty) return null;
+    final toolName = _readString(body, const ['tool_name', 'toolName']);
+    final toolUseId = _readString(body, const ['tool_use_id', 'toolUseId']);
+    AgentStatusEvent build(AgentSeatAttention state) => AgentStatusEvent(
+      state: state,
+      toolName: toolName,
+      hookEventName: eventName,
+      toolUseId: toolUseId,
+    );
+    return switch (eventName) {
+      'preToolUse' ||
+      'postToolUse' ||
+      'postToolUseFailure' ||
+      'beforeSubmitPrompt' ||
+      'afterAgentResponse' ||
+      'beforeShellExecution' ||
+      'beforeMCPExecution' => build(AgentSeatAttention.working),
+      'stop' => build(AgentSeatAttention.done),
+      _ => null,
     };
   }
 
@@ -40,13 +70,16 @@ class AgentStatusNormalizer {
 
     final toolName = _readString(body, const ['tool_name', 'toolName']);
     final askUser = isAskUserQuestionTool(toolName);
-    final toolInput = deriveToolInputPreview(
-      toolName,
-      body['tool_input'] ?? body['input'] ?? body['arguments'],
-    );
+    final rawToolInput = body['tool_input'] ?? body['input'] ?? body['arguments'];
+    final toolInput = deriveToolInputPreview(toolName, rawToolInput);
     final toolUseId = _readString(body, const ['tool_use_id', 'toolUseId']);
     final toolAgentId = _readString(body, const ['agent_id', 'agentId']);
     final toolAgentType = _readString(body, const ['agent_type', 'agentType']);
+
+    // Only the AskUserQuestion PreToolUse event carries the structured payload
+    // the chat needs to render and answer the question.
+    final askUserQuestions =
+        askUser ? parseAskUserQuestions(rawToolInput) : null;
 
     AgentStatusEvent build(AgentSeatAttention state, {bool explicit = false}) =>
         AgentStatusEvent(
@@ -58,6 +91,7 @@ class AgentStatusNormalizer {
           toolAgentId: toolAgentId,
           toolAgentType: toolAgentType,
           hasExplicitPrompt: explicit,
+          askUserQuestions: askUserQuestions,
         );
 
     return switch (eventName) {
@@ -80,9 +114,14 @@ class AgentStatusNormalizer {
     if (eventName == null || eventName.isEmpty) return null;
 
     return switch (eventName) {
-      'permission.asked' || 'question.asked' => AgentStatusEvent(
+      'permission.asked' => AgentStatusEvent(
         state: AgentSeatAttention.waiting,
         hookEventName: eventName,
+      ),
+      'question.asked' => AgentStatusEvent(
+        state: AgentSeatAttention.waiting,
+        hookEventName: eventName,
+        askUserQuestions: parseQuestionsList(body['questions']),
       ),
       'session.idle' => AgentStatusEvent(
         state: AgentSeatAttention.done,

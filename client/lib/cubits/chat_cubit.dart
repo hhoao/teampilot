@@ -39,6 +39,7 @@ import '../services/launch/workspace_provision_coordinator.dart';
 import '../services/progress_activity/cli_provision_activity_adapter.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
 import '../services/terminal/terminal_session.dart';
+import '../services/terminal/ask_user_question_answer_service.dart';
 import '../services/terminal/member_turn_interrupt_service.dart';
 import '../services/terminal/session_member_cli_resolver.dart';
 import '../services/termux/termux_connection_gate.dart';
@@ -105,6 +106,7 @@ class ChatCubit extends Cubit<ChatState>
     TeammateBusMcpGateway? teammateBusMcpGateway,
     AgentStatusSeatLookup? agentStatusSeatLookup,
     AgentAttentionCubit? agentAttentionCubit,
+    AskUserQuestionAnswerService? askUserQuestionAnswerService,
     InMemoryFollowUpQueueStore? followUpQueueStore,
     FollowUpQueueDrainer? followUpQueueDrainer,
     Future<TeamProfile?> Function(String teamId)? teamById,
@@ -148,6 +150,7 @@ class ChatCubit extends Cubit<ChatState>
            termuxDisconnectedWorkOpsMessageResolver,
        _termuxGateHomeResolver = termuxGateHomeResolver,
        super(const ChatState()) {
+    _askUserAnswer = askUserQuestionAnswerService ?? AskUserQuestionAnswerService();
     _followUpDrainer =
         followUpQueueDrainer ??
         FollowUpQueueDrainer(
@@ -251,6 +254,7 @@ class ChatCubit extends Cubit<ChatState>
         cliToolRegistry: CliToolRegistry.builtIn(),
         abortMemberInject: _sessionRuntime.abortMemberInject,
       );
+  late final AskUserQuestionAnswerService _askUserAnswer;
   late final TabMemberMaterializer _memberMaterializer = TabMemberMaterializer(
     runtime: _sessionRuntime,
     tabStore: _tabStore,
@@ -762,6 +766,35 @@ class ChatCubit extends Cubit<ChatState>
       shell: tab.memberShells[mid],
       cli: cli,
     );
+  }
+
+  /// Answers a Claude-family AskUserQuestion from chat by injecting the picker
+  /// selection keystrokes into the seat's PTY. [memberId] is the shell key
+  /// (`sessionId` for simple, member id for team) — same as seat attention.
+  Future<void> answerAskUserQuestion({
+    required String sessionId,
+    required String memberId,
+    required int optionIndex,
+  }) async {
+    final shell = _shellForMember(sessionId, memberId);
+    await _askUserAnswer.answer(shell: shell, optionIndex: optionIndex);
+  }
+
+  /// Cancels a pending AskUserQuestion picker (Esc → declined).
+  Future<void> cancelAskUserQuestion({
+    required String sessionId,
+    required String memberId,
+  }) async {
+    final shell = _shellForMember(sessionId, memberId);
+    await _askUserAnswer.cancel(shell: shell);
+  }
+
+  TerminalSession? _shellForMember(String sessionId, String memberId) {
+    final tab = _tabStore.openTabBySessionId(sessionId);
+    if (tab == null) return null;
+    final mid = memberId.trim();
+    if (mid.isEmpty) return null;
+    return tab.memberShells[mid];
   }
 
   TeamProfile? _teamForSessionTab(ChatTab tab) {

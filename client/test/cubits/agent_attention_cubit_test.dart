@@ -38,6 +38,60 @@ void main() {
       expect(c.state.sessionHasWaiting('s1'), isFalse);
     });
 
+    test('skipPermissions suppresses PermissionRequest waiting', () {
+      final c = _cubit();
+      c.applyEvent(
+        sessionId: 's1',
+        memberId: 'm1',
+        event: const AgentStatusEvent(
+          state: AgentSeatAttention.waiting,
+          hookEventName: 'PermissionRequest',
+          toolName: 'Bash',
+        ),
+        skipPermissions: true,
+      );
+      expect(c.state.attentionFor(sessionId: 's1', memberId: 'm1'), isNull);
+      expect(c.state.sessionHasWaiting('s1'), isFalse);
+    });
+
+    test('skipPermissions keeps AskUserQuestion waiting (not skipped by CLI)',
+        () {
+      final c = _cubit();
+      c.applyEvent(
+        sessionId: 's1',
+        memberId: 'm1',
+        event: const AgentStatusEvent(
+          state: AgentSeatAttention.waiting,
+          hookEventName: 'PreToolUse',
+          toolName: 'AskUserQuestion',
+        ),
+        skipPermissions: true,
+      );
+      expect(
+        c.state.attentionFor(sessionId: 's1', memberId: 'm1'),
+        AgentSeatAttention.waiting,
+      );
+      expect(c.state.sessionHasWaiting('s1'), isTrue);
+    });
+
+    test('skipPermissions keeps opencode question.asked waiting', () {
+      final c = _cubit();
+      c.applyEvent(
+        sessionId: 's1',
+        memberId: 'm1',
+        event: const AgentStatusEvent(
+          state: AgentSeatAttention.waiting,
+          hookEventName: 'question.asked',
+        ),
+        skipPermissions: true,
+      );
+      expect(
+        c.state.attentionFor(sessionId: 's1', memberId: 'm1'),
+        AgentSeatAttention.waiting,
+      );
+      expect(c.state.sessionHasWaiting('s1'), isTrue);
+    });
+
     test('skipPermissions keeps prior non-waiting state', () {
       final c = _cubit();
       c.applyEvent(

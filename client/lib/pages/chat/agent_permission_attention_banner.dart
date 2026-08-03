@@ -8,6 +8,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/app_session.dart';
 import '../../services/agent_status/agent_attention_state.dart';
 import '../../utils/ui/app_keys.dart';
+import 'ask_user_question_card.dart';
 
 /// Compact card shown just above Chat compose when the seat needs Terminal
 /// confirmation. Does not auto-switch; CTA jumps to Terminal.
@@ -65,11 +66,31 @@ class AgentPermissionAttentionBanner extends StatelessWidget {
       session: session,
       selectedMemberId: selectedMemberId,
     );
-    final waiting = context.select<AgentAttentionCubit, bool>((c) {
-      return c.state.attentionFor(sessionId: sessionId, memberId: seatId) ==
-          AgentSeatAttention.waiting;
-    });
-    if (!waiting) return const SizedBox.shrink();
+    final entry = context.select<AgentAttentionCubit, AgentSeatAttentionEntry?>(
+      (c) => c.state.entryFor(sessionId: sessionId, memberId: seatId),
+    );
+    if (entry == null || entry.attention != AgentSeatAttention.waiting) {
+      return const SizedBox.shrink();
+    }
+
+    // Single, single-select AskUserQuestion → interactive card (answer in chat).
+    final questions = entry.lastEvent?.askUserQuestions;
+    if (questions != null &&
+        questions.length == 1 &&
+        !questions.single.multiSelect &&
+        questions.single.options.isNotEmpty) {
+      return AskUserQuestionCard(
+        session: session,
+        seatId: seatId,
+        question: questions.single,
+        onAnswerInTerminal: () => _openTerminal(
+          context,
+          sessionId: sessionId,
+          seatId: seatId,
+          selectedMemberId: selectedMemberId,
+        ),
+      );
+    }
 
     final cs = Theme.of(context).colorScheme;
     final spacing = context.tpSpacing;

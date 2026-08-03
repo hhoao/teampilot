@@ -106,6 +106,10 @@ void main() {
       expect(source, contains('question.asked'));
       expect(source, contains('session.idle'));
       expect(source, contains('/agent-status'));
+      // question.asked forwards the structured payload for the chat card.
+      expect(source, contains('event.properties ?? event.data'));
+      expect(source, contains('Array.isArray(props.questions)'));
+      expect(source, contains('request_id'));
 
       final configPath =
           '$opencodeDir/${OpencodeConfigProfileCapability.opencodeConfigFileName}';

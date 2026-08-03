@@ -1181,6 +1181,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get agentPermissionOpenTerminal => '打开终端';
 
   @override
+  String get agentAskUserQuestionTitle => 'Claude 正在向你提问';
+
+  @override
+  String get agentAskAnswerInTerminal => '在终端回答';
+
+  @override
+  String get agentAskCancelQuestion => '取消提问';
+
+  @override
   String get sessionHistoryRetry => '重试';
 
   @override

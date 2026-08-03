@@ -43,3 +43,16 @@ HistoryContinueChannel resolveHistoryContinueChannel({
   }
   return HistoryContinueChannel.pty;
 }
+
+/// Whether a successful History continue should attach transcript live refresh.
+///
+/// Mailbox operator text is shown via Queued / sticky merge (not the CLI
+/// transcript), but assistant replies still land only in the CLI transcript —
+/// so both channels start live refresh after deliver.
+bool shouldStartLiveRefreshOnContinueSuccess(HistoryContinueChannel channel) {
+  switch (channel) {
+    case HistoryContinueChannel.pty:
+    case HistoryContinueChannel.mailbox:
+      return true;
+  }
+}

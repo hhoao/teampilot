@@ -113,6 +113,34 @@ void main() {
         body: {'event': 'question.asked'},
       );
       expect(e?.state, AgentSeatAttention.waiting);
+      expect(e?.askUserQuestions, isNull);
+    });
+
+    test('OpenCode question.asked parses questions for chat card', () {
+      final e = AgentStatusNormalizer.normalize(
+        cli: CliTool.opencode,
+        body: {
+          'event': 'question.asked',
+          'request_id': 'req-1',
+          'questions': [
+            {
+              'question': 'Which stack?',
+              'options': [
+                {'label': 'Flutter', 'explanation': 'Cross-platform UI'},
+                {'label': 'React'},
+              ],
+              'multiple': false,
+            },
+          ],
+        },
+      );
+      expect(e?.state, AgentSeatAttention.waiting);
+      expect(e?.askUserQuestions, hasLength(1));
+      expect(e?.askUserQuestions?.single.question, 'Which stack?');
+      expect(e?.askUserQuestions?.single.options, hasLength(2));
+      expect(e?.askUserQuestions?.single.options.first.description,
+          'Cross-platform UI');
+      expect(e?.askUserQuestions?.single.multiSelect, isFalse);
     });
 
     test('OpenCode session.idle → done', () {
@@ -121,6 +149,59 @@ void main() {
         body: {'event': 'session.idle'},
       );
       expect(e?.state, AgentSeatAttention.done);
+    });
+
+    test('Cursor preToolUse → working with tool info', () {
+      final e = AgentStatusNormalizer.normalize(
+        cli: CliTool.cursor,
+        body: {
+          'hook_event_name': 'preToolUse',
+          'tool_name': 'Shell',
+          'tool_use_id': 'toolu-c1',
+        },
+      );
+      expect(e?.state, AgentSeatAttention.working);
+      expect(e?.toolName, 'Shell');
+      expect(e?.toolUseId, 'toolu-c1');
+    });
+
+    test('Cursor postToolUse / beforeSubmitPrompt → working', () {
+      for (final event in [
+        'postToolUse',
+        'postToolUseFailure',
+        'beforeSubmitPrompt',
+        'afterAgentResponse',
+        'beforeShellExecution',
+        'beforeMCPExecution',
+      ]) {
+        final e = AgentStatusNormalizer.normalize(
+          cli: CliTool.cursor,
+          body: {'hook_event_name': event},
+        );
+        expect(e?.state, AgentSeatAttention.working, reason: event);
+      }
+    });
+
+    test('Cursor stop → done', () {
+      final e = AgentStatusNormalizer.normalize(
+        cli: CliTool.cursor,
+        body: {'hook_event_name': 'stop'},
+      );
+      expect(e?.state, AgentSeatAttention.done);
+    });
+
+    test('Cursor unknown / empty → null', () {
+      expect(
+        AgentStatusNormalizer.normalize(
+          cli: CliTool.cursor,
+          body: {'hook_event_name': 'weird'},
+        ),
+        isNull,
+      );
+      expect(
+        AgentStatusNormalizer.normalize(cli: CliTool.cursor, body: {}),
+        isNull,
+      );
     });
 
     test('corrupt / unknown → null', () {

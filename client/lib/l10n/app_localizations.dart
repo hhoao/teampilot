@@ -2324,6 +2324,24 @@ abstract class AppLocalizations {
   /// **'Open Terminal'**
   String get agentPermissionOpenTerminal;
 
+  /// No description provided for @agentAskUserQuestionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Claude is asking you a question'**
+  String get agentAskUserQuestionTitle;
+
+  /// No description provided for @agentAskAnswerInTerminal.
+  ///
+  /// In en, this message translates to:
+  /// **'Answer in terminal'**
+  String get agentAskAnswerInTerminal;
+
+  /// No description provided for @agentAskCancelQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel question'**
+  String get agentAskCancelQuestion;
+
   /// No description provided for @sessionHistoryRetry.
   ///
   /// In en, this message translates to:

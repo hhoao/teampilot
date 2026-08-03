@@ -22,12 +22,12 @@ export const TeampilotAgentStatus = async (input, options) => {
   if (session) headers["X-Session"] = String(session);
   if (token) headers["X-Bus-Token"] = String(token);
 
-  const post = async (eventName) => {
+  const post = async (eventName, payload = {}) => {
     if (!member || !url) return;
     await fetch(url, {
       method: "POST",
       headers,
-      body: JSON.stringify({ event: eventName }),
+      body: JSON.stringify({ event: eventName, ...payload }),
     }).catch(() => {});
   };
 
@@ -39,7 +39,19 @@ export const TeampilotAgentStatus = async (input, options) => {
         return;
       }
       if (event.type === "question.asked") {
-        await post("question.asked");
+        // Forward the question payload so the chat can render/answer it.
+        // Path varies by opencode version: properties (SDK v1) vs data vs
+        // the raw event fields (SDK v2).
+        const props = event.properties ?? event.data ?? {};
+        const questions = Array.isArray(props.questions)
+          ? props.questions
+          : Array.isArray(event.questions)
+            ? event.questions
+            : null;
+        await post("question.asked", {
+          questions: questions,
+          request_id: props.id ?? props.request_id ?? null,
+        });
         return;
       }
       // Clear waiting: idle plugin uses session.next.step.ended for /idle;

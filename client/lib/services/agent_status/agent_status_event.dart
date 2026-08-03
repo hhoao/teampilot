@@ -1,4 +1,5 @@
 import 'agent_attention_state.dart';
+import 'ask_user_question.dart';
 
 /// Normalized agent-status signal from a CLI hook / plugin payload.
 class AgentStatusEvent {
@@ -11,6 +12,7 @@ class AgentStatusEvent {
     this.toolAgentId,
     this.toolAgentType,
     this.hasExplicitPrompt = false,
+    this.askUserQuestions,
   });
 
   final AgentSeatAttention state;
@@ -34,6 +36,10 @@ class AgentStatusEvent {
   /// True for UserPromptSubmit-style events that must clear sticky waiting.
   final bool hasExplicitPrompt;
 
+  /// Structured AskUserQuestion payload for chat rendering / answering, when
+  /// this event is a `PreToolUse` for the AskUserQuestion tool.
+  final List<AgentAskUserQuestion>? askUserQuestions;
+
   AgentStatusEvent copyWith({
     AgentSeatAttention? state,
     String? toolName,
@@ -43,6 +49,7 @@ class AgentStatusEvent {
     String? toolAgentId,
     String? toolAgentType,
     bool? hasExplicitPrompt,
+    List<AgentAskUserQuestion>? askUserQuestions,
   }) => AgentStatusEvent(
     state: state ?? this.state,
     toolName: toolName ?? this.toolName,
@@ -52,6 +59,7 @@ class AgentStatusEvent {
     toolAgentId: toolAgentId ?? this.toolAgentId,
     toolAgentType: toolAgentType ?? this.toolAgentType,
     hasExplicitPrompt: hasExplicitPrompt ?? this.hasExplicitPrompt,
+    askUserQuestions: askUserQuestions ?? this.askUserQuestions,
   );
 
   @override
@@ -65,7 +73,8 @@ class AgentStatusEvent {
           toolUseId == other.toolUseId &&
           toolAgentId == other.toolAgentId &&
           toolAgentType == other.toolAgentType &&
-          hasExplicitPrompt == other.hasExplicitPrompt;
+          hasExplicitPrompt == other.hasExplicitPrompt &&
+          _sameQuestions(askUserQuestions, other.askUserQuestions);
 
   @override
   int get hashCode => Object.hash(
@@ -77,5 +86,18 @@ class AgentStatusEvent {
     toolAgentId,
     toolAgentType,
     hasExplicitPrompt,
+    Object.hashAll(askUserQuestions ?? const []),
   );
+}
+
+bool _sameQuestions(
+  List<AgentAskUserQuestion>? a,
+  List<AgentAskUserQuestion>? b,
+) {
+  if (identical(a, b)) return true;
+  if (a == null || b == null || a.length != b.length) return false;
+  for (var i = 0; i < a.length; i++) {
+    if (a[i] != b[i]) return false;
+  }
+  return true;
 }

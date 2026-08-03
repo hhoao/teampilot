@@ -47,4 +47,25 @@ void main() {
       );
     });
   });
+
+  group('shouldStartLiveRefreshOnContinueSuccess', () {
+    test('pty continue attaches transcript live refresh', () {
+      expect(
+        shouldStartLiveRefreshOnContinueSuccess(HistoryContinueChannel.pty),
+        isTrue,
+      );
+    });
+
+    test(
+      'mailbox continue also attaches live refresh for assistant transcript',
+      () {
+        expect(
+          shouldStartLiveRefreshOnContinueSuccess(
+            HistoryContinueChannel.mailbox,
+          ),
+          isTrue,
+        );
+      },
+    );
+  });
 }
