@@ -105,6 +105,7 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
       busIdle: null,
       forceTeamLeadDelegateMode: false,
       mixed: false,
+      agentStatus: ctx.agentStatus,
       // Always defer real-$HOME passthrough to SessionConnectOrchestrator after
       // manifest flush. Staging via ManifestFilesystem would SFTP-list the work
       // home (slow on Android SSH). Post-flush uses one remote find+ln script
@@ -214,6 +215,20 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
       final busIdle = ctx.busIdle;
       if (member != null && member.isValid && busIdle == null) {
         warnings.add('cursor_bus_idle_missing');
+      }
+
+      final agentStatus = ctx.agentStatus;
+      if (agentStatus != null && member != null && member.isValid) {
+        // Agent-status hooks are written here (config-profile phase, which has
+        // the endpoint) and preserved by the lifecycle bus overlay via merge.
+        await CursorHomeProvisioner(
+          fs: ctx.paths.fs,
+          layout: CursorHomeLayout(pathContext: ctx.paths.fs.pathContext),
+        ).writeAgentStatusHooks(
+          memberHome: agentHome,
+          memberId: memberId,
+          agentStatus: agentStatus,
+        );
       }
 
       return ConfigProfileLaunchContribution(

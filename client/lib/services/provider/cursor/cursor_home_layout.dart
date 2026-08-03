@@ -78,6 +78,10 @@ final class CursorHomeLayout {
   String idleScript(String homeRoot) =>
       _pathContext.join(cursorDir(homeRoot), hooksDirName, idleScriptFileName);
 
+  /// Agent-status forwarding script path under `~/.cursor/hooks/`.
+  String agentStatusScript(String homeRoot, String fileName) =>
+      _pathContext.join(cursorDir(homeRoot), hooksDirName, fileName);
+
   String mcpConfig(String homeRoot) =>
       _pathContext.join(cursorDir(homeRoot), mcpFileName);
 

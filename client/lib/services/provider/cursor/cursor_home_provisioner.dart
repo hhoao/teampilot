@@ -1,10 +1,12 @@
 import 'dart:convert';
 
 import '../../../models/team_config.dart';
+import '../../agent_status/member_agent_status_endpoint.dart';
 import '../../io/filesystem.dart';
 import '../../team_bus/member_bus_idle_endpoint.dart';
 import 'cursor_auth_artifacts.dart';
 import 'cursor_cli_config_policy.dart';
+import 'cursor_home_agent_status_overlay.dart';
 import 'cursor_home_bus_overlay.dart';
 import 'cursor_home_layout.dart';
 import 'cursor_member_home_passthrough.dart';
@@ -33,6 +35,7 @@ final class CursorHomeProvisioner {
     required MemberBusIdleEndpoint? busIdle,
     required bool forceTeamLeadDelegateMode,
     required bool mixed,
+    MemberAgentStatusEndpoint? agentStatus,
     String? realHomeRoot,
   }) async {
     await _ensureCursorDirs(memberHome);
@@ -59,6 +62,13 @@ final class CursorHomeProvisioner {
         mixed: false,
         pushDelivery: false,
       );
+      if (agentStatus != null) {
+        await writeAgentStatusHooks(
+          memberHome: memberHome,
+          memberId: member.id,
+          agentStatus: agentStatus,
+        );
+      }
       return;
     }
 
@@ -216,10 +226,21 @@ final class CursorHomeProvisioner {
       idleScriptPath,
       CursorHomeBusOverlay.idleScript(memberId: member.id, idle: busIdle),
     );
+    final hooksPath = _layout.hooksConfig(memberHome);
+    final raw = await _fs.readString(hooksPath);
+    Map<String, Object?> existing;
+    if (raw != null && raw.trim().isNotEmpty) {
+      existing = (jsonDecode(raw) as Map).cast<String, Object?>();
+    } else {
+      existing = <String, Object?>{};
+    }
     await _fs.atomicWrite(
-      _layout.hooksConfig(memberHome),
+      hooksPath,
       _jsonPretty(
-        CursorHomeBusOverlay.hooksConfig(idleScriptPath: idleScriptPath),
+        CursorHomeBusOverlay.mergeHooksConfig(
+          existing,
+          idleScriptPath: idleScriptPath,
+        ),
       ),
     );
     await _mergeTeamBusMcp(
@@ -227,6 +248,46 @@ final class CursorHomeProvisioner {
       memberId: member.id,
       busIdle: busIdle,
     );
+  }
+
+  /// Writes per-event forwarding scripts and merges agent-status hooks into
+  /// `~/.cursor/hooks.json` (preserving the bus `stop` hook when present).
+  ///
+  /// Public so the config-profile phase can provision hooks into an
+  /// already-resolved mixed-mode member home.
+  Future<void> writeAgentStatusHooks({
+    required String memberHome,
+    required String memberId,
+    required MemberAgentStatusEndpoint agentStatus,
+  }) async {
+    for (final event in CursorHomeAgentStatusOverlay.statusEvents) {
+      final fileName = CursorHomeAgentStatusOverlay.scriptFileName(event);
+      await _fs.atomicWrite(
+        _layout.agentStatusScript(memberHome, fileName),
+        CursorHomeAgentStatusOverlay.scriptFor(
+          endpoint: agentStatus,
+          memberId: memberId,
+          event: event,
+        ),
+      );
+    }
+
+    final hooksPath = _layout.hooksConfig(memberHome);
+    final raw = await _fs.readString(hooksPath);
+    Map<String, Object?> existing;
+    if (raw != null && raw.trim().isNotEmpty) {
+      existing = (jsonDecode(raw) as Map).cast<String, Object?>();
+    } else {
+      existing = <String, Object?>{};
+    }
+    final merged = CursorHomeAgentStatusOverlay.mergeHooksConfig(
+      existing,
+      scriptPathFor: (event) => _layout.agentStatusScript(
+        memberHome,
+        CursorHomeAgentStatusOverlay.scriptFileName(event),
+      ),
+    );
+    await _fs.atomicWrite(hooksPath, _jsonPretty(merged));
   }
 
   Future<void> _seedMemberMcpFromBase({

@@ -1243,6 +1243,26 @@ class AppLocalizationsEn extends AppLocalizations {
   String get agentPermissionOpenTerminal => 'Open Terminal';
 
   @override
+  String get agentAskUserQuestionTitle => 'Agent is asking you a question';
+
+  @override
+  String get agentAskAnswerInTerminal => 'Answer in terminal';
+
+  @override
+  String get agentAskCancelQuestion => 'Cancel question';
+
+  @override
+  String get agentAskAnswerFailed =>
+      'Couldn\'t submit your answer. Try again or answer in the Terminal.';
+
+  @override
+  String get agentAskTerminalDisconnected =>
+      'Terminal is disconnected. Reconnect or answer in the Terminal.';
+
+  @override
+  String get agentAskSubmitAnswers => 'Submit answers';
+
+  @override
   String get sessionHistoryRetry => 'Retry';
 
   @override

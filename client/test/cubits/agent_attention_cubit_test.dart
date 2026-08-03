@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/agent_attention_cubit.dart';
 import 'package:teampilot/services/agent_status/agent_attention_state.dart';
 import 'package:teampilot/services/agent_status/agent_status_event.dart';
+import 'package:teampilot/services/agent_status/ask_user_question.dart';
 
 AgentAttentionCubit _cubit({DateTime Function()? clock}) {
   final c = AgentAttentionCubit(clock: clock, pruneInterval: null);
@@ -36,6 +37,60 @@ void main() {
       );
       expect(c.state.attentionFor(sessionId: 's1', memberId: 'm1'), isNull);
       expect(c.state.sessionHasWaiting('s1'), isFalse);
+    });
+
+    test('skipPermissions suppresses PermissionRequest waiting', () {
+      final c = _cubit();
+      c.applyEvent(
+        sessionId: 's1',
+        memberId: 'm1',
+        event: const AgentStatusEvent(
+          state: AgentSeatAttention.waiting,
+          hookEventName: 'PermissionRequest',
+          toolName: 'Bash',
+        ),
+        skipPermissions: true,
+      );
+      expect(c.state.attentionFor(sessionId: 's1', memberId: 'm1'), isNull);
+      expect(c.state.sessionHasWaiting('s1'), isFalse);
+    });
+
+    test('skipPermissions keeps AskUserQuestion waiting (not skipped by CLI)',
+        () {
+      final c = _cubit();
+      c.applyEvent(
+        sessionId: 's1',
+        memberId: 'm1',
+        event: const AgentStatusEvent(
+          state: AgentSeatAttention.waiting,
+          hookEventName: 'PreToolUse',
+          toolName: 'AskUserQuestion',
+        ),
+        skipPermissions: true,
+      );
+      expect(
+        c.state.attentionFor(sessionId: 's1', memberId: 'm1'),
+        AgentSeatAttention.waiting,
+      );
+      expect(c.state.sessionHasWaiting('s1'), isTrue);
+    });
+
+    test('skipPermissions keeps opencode question.asked waiting', () {
+      final c = _cubit();
+      c.applyEvent(
+        sessionId: 's1',
+        memberId: 'm1',
+        event: const AgentStatusEvent(
+          state: AgentSeatAttention.waiting,
+          hookEventName: 'question.asked',
+        ),
+        skipPermissions: true,
+      );
+      expect(
+        c.state.attentionFor(sessionId: 's1', memberId: 'm1'),
+        AgentSeatAttention.waiting,
+      );
+      expect(c.state.sessionHasWaiting('s1'), isTrue);
     });
 
     test('skipPermissions keeps prior non-waiting state', () {
@@ -369,6 +424,184 @@ void main() {
         ),
         isFalse,
       );
+    });
+
+    group('optimistic ask dismiss + reconciliation', () {
+      const questions = [
+        AgentAskUserQuestion(
+          question: 'Pick one?',
+          options: [
+            AgentAskUserOption(label: 'A'),
+            AgentAskUserOption(label: 'B'),
+          ],
+        ),
+      ];
+
+      const askWaiting = AgentStatusEvent(
+        state: AgentSeatAttention.waiting,
+        hookEventName: 'question.asked',
+        askRequestId: 'ask-1',
+        askUserQuestions: questions,
+      );
+
+      test('markAskAnswered moves to working and retains lastEvent', () {
+        final c = _cubit();
+        c.applyEvent(
+          sessionId: 's1',
+          memberId: 'm1',
+          event: askWaiting,
+          skipPermissions: false,
+        );
+
+        c.markAskAnswered(sessionId: 's1', memberId: 'm1');
+
+        final entry = c.state.entryFor(sessionId: 's1', memberId: 'm1');
+        expect(entry?.attention, AgentSeatAttention.working);
+        expect(entry?.lastEvent, askWaiting);
+        expect(entry?.dismissedAskRequestId, 'ask-1');
+        expect(entry?.askReplyError, isNull);
+      });
+
+      test(
+        'markAskAnswered no-ops when not waiting or missing askRequestId',
+        () {
+          final c = _cubit();
+
+          // Missing entry.
+          c.markAskAnswered(sessionId: 's1', memberId: 'm1');
+          expect(c.state.seats, isEmpty);
+
+          // Working (not waiting).
+          c.applyEvent(
+            sessionId: 's1',
+            memberId: 'm1',
+            event: const AgentStatusEvent(state: AgentSeatAttention.working),
+            skipPermissions: false,
+          );
+          final afterWorking = c.state;
+          c.markAskAnswered(sessionId: 's1', memberId: 'm1');
+          expect(c.state, same(afterWorking));
+
+          // Waiting but no askRequestId (permission-style wait).
+          c.applyEvent(
+            sessionId: 's1',
+            memberId: 'm1',
+            event: const AgentStatusEvent(
+              state: AgentSeatAttention.waiting,
+              hookEventName: 'PermissionRequest',
+              toolName: 'Bash',
+            ),
+            skipPermissions: false,
+          );
+          final afterPermissionWait = c.state;
+          c.markAskAnswered(sessionId: 's1', memberId: 'm1');
+          expect(c.state, same(afterPermissionWait));
+
+          // Waiting with empty askRequestId.
+          c.applyEvent(
+            sessionId: 's1',
+            memberId: 'm1',
+            event: const AgentStatusEvent(
+              state: AgentSeatAttention.waiting,
+              hookEventName: 'question.asked',
+              askRequestId: '',
+              askUserQuestions: questions,
+            ),
+            skipPermissions: false,
+          );
+          final afterEmptyAskId = c.state;
+          c.markAskAnswered(sessionId: 's1', memberId: 'm1');
+          expect(c.state, same(afterEmptyAskId));
+        },
+      );
+
+      test('same askRequestId waiting after dismiss is ignored', () {
+        final c = _cubit();
+        c.applyEvent(
+          sessionId: 's1',
+          memberId: 'm1',
+          event: askWaiting,
+          skipPermissions: false,
+        );
+        c.markAskAnswered(sessionId: 's1', memberId: 'm1');
+
+        c.applyEvent(
+          sessionId: 's1',
+          memberId: 'm1',
+          event: askWaiting,
+          skipPermissions: false,
+        );
+
+        final entry = c.state.entryFor(sessionId: 's1', memberId: 'm1');
+        expect(entry?.attention, AgentSeatAttention.working);
+        expect(entry?.dismissedAskRequestId, 'ask-1');
+        expect(entry?.lastEvent, askWaiting);
+      });
+
+      test('reply_failed restores waiting from retained lastEvent', () {
+        final c = _cubit();
+        c.applyEvent(
+          sessionId: 's1',
+          memberId: 'm1',
+          event: askWaiting,
+          skipPermissions: false,
+        );
+        c.markAskAnswered(sessionId: 's1', memberId: 'm1');
+
+        c.applyEvent(
+          sessionId: 's1',
+          memberId: 'm1',
+          event: const AgentStatusEvent(
+            state: AgentSeatAttention.working,
+            hookEventName: 'question.reply_failed',
+            askRequestId: 'ask-1',
+            message: 'boom',
+            restoreAskWaiting: true,
+          ),
+          skipPermissions: false,
+        );
+
+        final entry = c.state.entryFor(sessionId: 's1', memberId: 'm1');
+        expect(entry?.attention, AgentSeatAttention.waiting);
+        expect(entry?.askReplyError, 'boom');
+        expect(entry?.dismissedAskRequestId, isNull);
+        expect(entry?.lastEvent?.askUserQuestions, questions);
+        expect(entry?.lastEvent?.askRequestId, 'ask-1');
+      });
+
+      test('new different askRequestId waiting replaces dismissed id', () {
+        final c = _cubit();
+        c.applyEvent(
+          sessionId: 's1',
+          memberId: 'm1',
+          event: askWaiting,
+          skipPermissions: false,
+        );
+        c.markAskAnswered(sessionId: 's1', memberId: 'm1');
+
+        const nextAsk = AgentStatusEvent(
+          state: AgentSeatAttention.waiting,
+          hookEventName: 'question.asked',
+          askRequestId: 'ask-2',
+          askUserQuestions: [
+            AgentAskUserQuestion(
+              question: 'Next?',
+              options: [AgentAskUserOption(label: 'Y')],
+            ),
+          ],
+        );
+        c.applyEvent(
+          sessionId: 's1',
+          memberId: 'm1',
+          event: nextAsk,
+          skipPermissions: false,
+        );
+
+        final entry = c.state.entryFor(sessionId: 's1', memberId: 'm1');
+        expect(entry?.attention, AgentSeatAttention.waiting);
+        expect(entry?.dismissedAskRequestId, isNull);
+        expect(entry?.lastEvent, nextAsk);
+      });
     });
   });
 }

@@ -17,6 +17,25 @@ abstract final class CursorHomeBusOverlay {
     },
   };
 
+  /// Merges the bus `stop` hook into an existing hooks.json map, preserving
+  /// entries written earlier (e.g. agent-status hooks from the config-profile
+  /// phase) instead of clobbering the whole file.
+  static Map<String, Object?> mergeHooksConfig(
+    Map<String, Object?> existing, {
+    required String idleScriptPath,
+  }) {
+    final command = "bash '$idleScriptPath'";
+    final hooks = Map<String, Object?>.from(
+      (existing['hooks'] as Map?)?.cast<String, Object?>() ?? const {},
+    );
+    final stopEntries = List<Object?>.from((hooks['stop'] as List?) ?? const []);
+    if (!stopEntries.any((e) => e is Map && e['command'] == command)) {
+      stopEntries.add({'command': command, 'loop_limit': null});
+    }
+    hooks['stop'] = stopEntries;
+    return {...existing, 'version': 1, 'hooks': hooks};
+  }
+
   static String buildMcpJson({
     required String memberId,
     required MemberBusIdleEndpoint idle,

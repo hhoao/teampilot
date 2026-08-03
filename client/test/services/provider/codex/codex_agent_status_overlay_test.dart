@@ -65,7 +65,8 @@ void main() {
         final script = await File(scriptPath).readAsString();
         expect(script, contains('TEAMPILOT_AGENT_STATUS_URL'));
         expect(script, contains('curl -sS'));
-        expect(script, contains('hook_event_name'));
+        // Forwards the real hook payload from stdin (tool / permission info).
+        expect(script, contains('payload="\$(cat)"'));
         expect(script, contains('UserPromptSubmit'));
         if (Platform.isWindows) {
           final winScript = p.join(

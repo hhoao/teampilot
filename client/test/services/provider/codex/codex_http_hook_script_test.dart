@@ -32,5 +32,25 @@ void main() {
       expect(script, contains('curl.exe'));
       expect(script, contains('Write-Output'));
     });
+
+    test('agent-status script forwards the real hook payload from stdin', () {
+      final bash = CodexHttpHookScript.buildAgentStatus(
+        dialect: HostScriptDialect.bash,
+        headers: const {'X-Member': 'worker-1'},
+        event: 'PreToolUse',
+      );
+      expect(bash, contains('payload="\$(cat)"'));
+      expect(bash, contains('if [ -z "\$payload" ]'));
+      expect(bash, contains('-d "\$payload"'));
+      expect(bash, isNot(contains('"hook_event_name"')));
+
+      final powershell = CodexHttpHookScript.buildAgentStatus(
+        dialect: HostScriptDialect.powershell,
+        headers: const {'X-Member': 'worker-1'},
+        event: 'PreToolUse',
+      );
+      expect(powershell, contains('[Console]::In.ReadToEnd()'));
+      expect(powershell, contains('-d \$payload'));
+    });
   });
 }

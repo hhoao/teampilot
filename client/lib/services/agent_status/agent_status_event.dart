@@ -1,4 +1,5 @@
 import 'agent_attention_state.dart';
+import 'ask_user_question.dart';
 
 /// Normalized agent-status signal from a CLI hook / plugin payload.
 class AgentStatusEvent {
@@ -11,6 +12,11 @@ class AgentStatusEvent {
     this.toolAgentId,
     this.toolAgentType,
     this.hasExplicitPrompt = false,
+    this.askUserQuestions,
+    this.askRequestId,
+    this.nativeSessionId,
+    this.message,
+    this.restoreAskWaiting = false,
   });
 
   final AgentSeatAttention state;
@@ -34,6 +40,24 @@ class AgentStatusEvent {
   /// True for UserPromptSubmit-style events that must clear sticky waiting.
   final bool hasExplicitPrompt;
 
+  /// Structured AskUserQuestion payload for chat rendering / answering, when
+  /// this event is a `PreToolUse` for the AskUserQuestion tool.
+  final List<AgentAskUserQuestion>? askUserQuestions;
+
+  /// Correlation id for answering an ask (OpenCode `request_id` / `id`, or
+  /// Claude-family AskUserQuestion `tool_use_id`).
+  final String? askRequestId;
+
+  /// OpenCode native session id (`session_id` / `sessionID`).
+  final String? nativeSessionId;
+
+  /// Optional error / status message (e.g. OpenCode `question.reply_failed`).
+  final String? message;
+
+  /// True only for OpenCode `question.reply_failed` when [askRequestId] is
+  /// present — cubit should restore the waiting ask card (Task 4).
+  final bool restoreAskWaiting;
+
   AgentStatusEvent copyWith({
     AgentSeatAttention? state,
     String? toolName,
@@ -43,6 +67,11 @@ class AgentStatusEvent {
     String? toolAgentId,
     String? toolAgentType,
     bool? hasExplicitPrompt,
+    List<AgentAskUserQuestion>? askUserQuestions,
+    String? askRequestId,
+    String? nativeSessionId,
+    String? message,
+    bool? restoreAskWaiting,
   }) => AgentStatusEvent(
     state: state ?? this.state,
     toolName: toolName ?? this.toolName,
@@ -52,6 +81,11 @@ class AgentStatusEvent {
     toolAgentId: toolAgentId ?? this.toolAgentId,
     toolAgentType: toolAgentType ?? this.toolAgentType,
     hasExplicitPrompt: hasExplicitPrompt ?? this.hasExplicitPrompt,
+    askUserQuestions: askUserQuestions ?? this.askUserQuestions,
+    askRequestId: askRequestId ?? this.askRequestId,
+    nativeSessionId: nativeSessionId ?? this.nativeSessionId,
+    message: message ?? this.message,
+    restoreAskWaiting: restoreAskWaiting ?? this.restoreAskWaiting,
   );
 
   @override
@@ -65,7 +99,12 @@ class AgentStatusEvent {
           toolUseId == other.toolUseId &&
           toolAgentId == other.toolAgentId &&
           toolAgentType == other.toolAgentType &&
-          hasExplicitPrompt == other.hasExplicitPrompt;
+          hasExplicitPrompt == other.hasExplicitPrompt &&
+          _sameQuestions(askUserQuestions, other.askUserQuestions) &&
+          askRequestId == other.askRequestId &&
+          nativeSessionId == other.nativeSessionId &&
+          message == other.message &&
+          restoreAskWaiting == other.restoreAskWaiting;
 
   @override
   int get hashCode => Object.hash(
@@ -77,5 +116,22 @@ class AgentStatusEvent {
     toolAgentId,
     toolAgentType,
     hasExplicitPrompt,
+    Object.hashAll(askUserQuestions ?? const []),
+    askRequestId,
+    nativeSessionId,
+    message,
+    restoreAskWaiting,
   );
+}
+
+bool _sameQuestions(
+  List<AgentAskUserQuestion>? a,
+  List<AgentAskUserQuestion>? b,
+) {
+  if (identical(a, b)) return true;
+  if (a == null || b == null || a.length != b.length) return false;
+  for (var i = 0; i < a.length; i++) {
+    if (a[i] != b[i]) return false;
+  }
+  return true;
 }

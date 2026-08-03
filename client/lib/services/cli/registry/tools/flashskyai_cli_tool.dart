@@ -30,6 +30,7 @@ import '../../../provider/flashskyai/flashskyai_provider_form_capability.dart';
 import '../capabilities/member_config_inspection_capability.dart';
 import '../capabilities/provider_form_capability.dart';
 import '../capabilities/resource_capability.dart';
+import '../capabilities/ask_user_question_capability.dart';
 import '../capabilities/turn_interrupt_capability.dart';
 import '../mcp_writers/claude_mcp_config_writer.dart';
 import '../plugin_provisioners/flashskyai_plugin_provisioner.dart';
@@ -60,6 +61,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     this.resource = const DefaultResourceCapability(),
     this.mcpConfigWriter = const FlashskyaiMcpConfigWriter(),
     this.turnInterrupt = const CtrlCTurnInterrupt(),
+    this.askUserQuestion = const PtyAskUserQuestionCapability(),
     this.aiHistory = const FlashskyaiAiHistoryCapability(),
   });
 
@@ -85,6 +87,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
   final BusTransportCapability busTransport;
   final RemoteCliLocatorCapability remoteCliLocator;
   final TurnInterruptCapability turnInterrupt;
+  final AskUserQuestionCapability askUserQuestion;
   final FlashskyaiAiHistoryCapability aiHistory;
 
   @override
@@ -121,6 +124,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     resource,
     mcpConfigWriter,
     turnInterrupt,
+    askUserQuestion,
     aiHistory,
   ];
 }
