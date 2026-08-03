@@ -15,6 +15,7 @@ RemoteInstallAction buildRemotePreflightCliInstall({
   required CliToolRegistry registry,
   required SshProfile profile,
   required CliTool cli,
+  String? Function()? preferredNodePath,
 }) {
   return ({required run, required onProgress}) async {
     final installer = CliInstallerService(
@@ -25,6 +26,7 @@ RemoteInstallAction buildRemotePreflightCliInstall({
       ),
       sshRunner: preflightSshInstallRunner(profile, run),
       sshClientFactory: null,
+      preferredNodePath: preferredNodePath,
     );
     final result = await installer.install(
       cli: cli,

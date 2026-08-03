@@ -8,6 +8,7 @@ import '../../cubits/session_preferences_cubit.dart';
 import '../../cubits/ssh_profile_cubit.dart';
 import '../../cubits/termux_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../models/session_preferences.dart';
 import '../../models/ssh_profile.dart';
 import '../../models/team_config.dart';
 import '../../services/app/connection_mode_service.dart';
@@ -214,6 +215,8 @@ class CliExecutablePathSettingsRowState
       final connectionMode = context.read<ConnectionModeService>();
       final installer = CliInstallerService(
         sshClientFactory: context.read<SshClientFactory>(),
+        preferredNodePath: () =>
+            widget.cubit.toolchainPath(SessionPreferences.toolchainNode),
       );
       final result = await installer.install(
         cli: widget.cli,

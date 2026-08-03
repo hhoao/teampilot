@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:path/path.dart' as p;
+
 import '../../models/ssh_profile.dart';
 import '../../models/team_config.dart';
 import 'cli_tool_locator.dart';
@@ -11,6 +13,7 @@ import 'registry/cli_tool_registry.dart';
 import 'registry/installer/installer_context.dart';
 import 'registry/installer/teampilot_node_install.dart';
 import 'registry/installer/termux_remote_detect.dart';
+import '../host/host_executable_locator.dart';
 import '../host/host_execution_environment.dart';
 import '../host/host_login_shell_lookup.dart';
 import '../host/host_script_runner.dart';
@@ -28,6 +31,7 @@ class CliInstallerService {
     bool? isWindowsOverride,
     HostExecutionEnvironment? hostEnvironment,
     CliToolRegistry? cliToolRegistry,
+    String? Function()? preferredNodePath,
   }) : _localRunner = localRunner ?? _runLocal,
        _sshRunner = sshRunner ?? _SshCommandRunner(sshClientFactory).run,
        _hostEnvironment =
@@ -37,7 +41,8 @@ class CliInstallerService {
                : HostExecutionEnvironment.resolve(
                    isWindowsHost: isWindowsOverride ?? Platform.isWindows,
                  )),
-       _cliToolRegistry = cliToolRegistry ?? _defaultCliRegistry;
+       _cliToolRegistry = cliToolRegistry ?? _defaultCliRegistry,
+       _preferredNodePath = preferredNodePath;
 
   static final _defaultCliRegistry = () {
     final r = CliToolRegistry.builtIn();
@@ -48,6 +53,7 @@ class CliInstallerService {
   final SshCliInstallRunner _sshRunner;
   final HostExecutionEnvironment _hostEnvironment;
   final CliToolRegistry _cliToolRegistry;
+  final String? Function()? _preferredNodePath;
   CliInstallProgressCallback? _onProgress;
 
   Future<CliInstallResult> install({
@@ -104,6 +110,9 @@ class CliInstallerService {
   }
 
   Future<String?> _locateLocalNpm() async {
+    final fromPreferred = await _locateSiblingNpmLocal();
+    if (fromPreferred != null) return fromPreferred;
+
     return const CliToolLocator('npm')
         .locate(
           runner:
@@ -128,6 +137,9 @@ class CliInstallerService {
   }
 
   Future<String?> _locateRemoteNpm(SshProfile profile) async {
+    final fromPreferred = await _locateSiblingNpmRemote(profile);
+    if (fromPreferred != null) return fromPreferred;
+
     final npmLookup = HostLoginShellLookup.commandForExecutable('npm');
     final direct = await _sshRunner(
       profile,
@@ -159,7 +171,14 @@ class CliInstallerService {
     return firstInstallerOutputLine(prefixAware);
   }
 
-  Future<String?> _locateLocalExecutable(String name) {
+  Future<String?> _locateLocalExecutable(String name) async {
+    if (name == 'node') {
+      final preferred = _preferredNodePath?.call()?.trim() ?? '';
+      if (preferred.isNotEmpty) {
+        final probed = await _probeLocalExecutablePath(preferred);
+        if (probed != null) return probed;
+      }
+    }
     return CliToolLocator(name).locate(
       runner: (executable, arguments, {stdoutEncoding, stderrEncoding}) async {
         final result = await _localRunner(
@@ -170,6 +189,82 @@ class CliInstallerService {
       isWindowsOverride: _hostEnvironment.isWindowsHost,
     );
   }
+
+  String? _configuredNodePath() {
+    final node = _preferredNodePath?.call()?.trim() ?? '';
+    return node.isEmpty ? null : node;
+  }
+
+  Iterable<String> _siblingNpmCandidates(String nodePath) sync* {
+    final dir = p.dirname(nodePath);
+    if (_hostEnvironment.isWindowsHost) {
+      yield p.join(dir, 'npm.cmd');
+      yield p.join(dir, 'npm');
+    } else {
+      yield p.join(dir, 'npm');
+    }
+  }
+
+  Future<String?> _locateSiblingNpmLocal() async {
+    final node = _configuredNodePath();
+    if (node == null) return null;
+    for (final candidate in _siblingNpmCandidates(node)) {
+      final found = await _probeLocalExecutablePath(candidate);
+      if (found != null) return found;
+    }
+    return null;
+  }
+
+  Future<String?> _locateSiblingNpmRemote(SshProfile profile) async {
+    final node = _configuredNodePath();
+    if (node == null) return null;
+    for (final candidate in _siblingNpmCandidates(node)) {
+      final found = await _probeRemoteExecutablePath(profile, candidate);
+      if (found != null) return found;
+    }
+    return null;
+  }
+
+  Future<String?> _probeLocalExecutablePath(String candidate) async {
+    if (_hostEnvironment.isWindowsHost) {
+      final result = await _localRunner(
+        CliInstallerCommand('where', [candidate]),
+      );
+      if (result.exitCode != 0) return null;
+      return HostExecutableLocator.parsePathLookupOutput(
+            result.stdout,
+            isWindows: true,
+          ) ??
+          candidate;
+    }
+
+    final whichResult = await _localRunner(
+      CliInstallerCommand('which', [candidate]),
+    );
+    if (whichResult.exitCode == 0) {
+      return HostExecutableLocator.parseFirstStdoutLine(whichResult.stdout) ??
+          candidate;
+    }
+
+    final testResult = await _localRunner(
+      CliInstallerCommand.unixShellScript('test -x ${_shellQuote(candidate)}'),
+    );
+    return testResult.exitCode == 0 ? candidate : null;
+  }
+
+  Future<String?> _probeRemoteExecutablePath(
+    SshProfile profile,
+    String candidate,
+  ) async {
+    final result = await _sshRunner(
+      profile,
+      CliInstallerCommand.unixShellScript('test -x ${_shellQuote(candidate)}'),
+    );
+    return result.exitCode == 0 ? candidate : null;
+  }
+
+  static String _shellQuote(String value) =>
+      "'${value.replaceAll("'", "'\"'\"'")}'";
 
   static Future<CliInstallerCommandResult> _runLocal(
     CliInstallerCommand command,
