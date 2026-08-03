@@ -128,20 +128,31 @@ class _WorkspaceCreateDirectoryPickerState
                     ),
                   ),
                   const SizedBox(width: 14),
-                  Expanded(
-                    child: Text(
-                      l10n.homeWorkspaceNewWorkspaceDirectoryLabel,
-                      style: styles.mdSemiboldColored(cs.onSurface),
-                    ),
+                  Text(
+                    l10n.homeWorkspaceNewWorkspaceDirectoryLabel,
+                    style: styles.mdSemiboldColored(cs.onSurface),
+                    maxLines: 1,
+                    softWrap: false,
                   ),
                   const SizedBox(width: 8),
-                  TpCompactSelect<String>(
-                    value: widget.targetId,
-                    entries: entries,
-                    onChanged: (id) {
-                      if (id == null || id == widget.targetId) return;
-                      widget.onTargetChanged(id);
-                    },
+                  Expanded(
+                    child: Tooltip(
+                      message: entries
+                          .firstWhere(
+                            (e) => e.$1 == widget.targetId,
+                            orElse: () => (widget.targetId, widget.targetId),
+                          )
+                          .$2,
+                      waitDuration: const Duration(milliseconds: 400),
+                      child: TpCompactSelect<String>(
+                        value: widget.targetId,
+                        entries: entries,
+                        onChanged: (id) {
+                          if (id == null || id == widget.targetId) return;
+                          widget.onTargetChanged(id);
+                        },
+                      ),
+                    ),
                   ),
                   const SizedBox(width: 8),
                   OutlinedButton.icon(

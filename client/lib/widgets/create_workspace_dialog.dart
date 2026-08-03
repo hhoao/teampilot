@@ -78,6 +78,7 @@ class _CreateWorkspaceDialogState extends State<_CreateWorkspaceDialog> {
     final firstPath = hasDirectory ? _folders.first.path : '';
 
     return TpDialog(
+      maxWidth: 780,
       scrollable: true,
       maxHeight: MediaQuery.sizeOf(context).height * 0.85,
       child: Column(

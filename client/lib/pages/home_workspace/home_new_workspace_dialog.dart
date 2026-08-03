@@ -104,6 +104,7 @@ class _HomeNewWorkspaceDialogState extends State<HomeNewWorkspaceDialog> {
     final firstPath = hasDirectory ? _folders.first.path : '';
 
     return TpDialog(
+      maxWidth: 780,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
