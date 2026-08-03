@@ -55,6 +55,7 @@ import '../models/layout_preferences.dart';
 import '../cubits/workspace_tools_cubit.dart';
 import '../cubits/llm_config_cubit.dart';
 import '../cubits/session_preferences_cubit.dart';
+import '../models/session_preferences.dart';
 import '../cubits/extension_cubit.dart';
 import '../cubits/mcp_cubit.dart';
 import '../cubits/plugin_cubit.dart';
@@ -181,6 +182,7 @@ import '../services/ssh/android_ssh_connect_home.dart';
 import '../services/plugin/profile_plugin_linker_service.dart';
 import '../services/terminal/terminal_transport_factory.dart';
 import '../services/file_tree/workspace_file_tree_store.dart';
+import '../services/git/git_command_runner.dart';
 import '../services/git/git_repo_store.dart';
 import '../services/workspace/workspace_tools_scope_registry.dart';
 import '../services/workspace/workspace_run_registry.dart';
@@ -397,6 +399,13 @@ Future<AppShell> buildAppShell({
   ]);
   final defaultWorkspaceDirectory = parallel[1]! as String;
   boot('session preferences and workspace directory ready');
+
+  configuredGitExecutable = () {
+    final path = sessionPreferencesCubit.toolchainPath(
+      SessionPreferences.toolchainGit,
+    );
+    return path.isEmpty ? null : path;
+  };
 
   final sshCredentialStore = const SecureSshCredentialStore(
     FlutterSecureKeyValueStore(),

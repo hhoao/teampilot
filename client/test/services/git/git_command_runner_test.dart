@@ -23,11 +23,29 @@ SSHRunResult _sshOk(String stdout, {int exitCode = 0}) {
 
 void main() {
   setUp(() {
+    configuredGitExecutable = null;
     GitService.debugResetExecutableCache();
     RemoteGitCommandRunner.debugResetAvailabilityCache();
   });
 
   group('RemoteGitCommandRunner', () {
+    test('uses injected gitExecutable in run and probe', () async {
+      final commands = <String>[];
+      final runner = RemoteGitCommandRunner(
+        gitExecutable: '/opt/git',
+        execShell: (cmd) async {
+          commands.add(cmd);
+          return _sshOk('/opt/git\n');
+        },
+      );
+
+      expect(await runner.isAvailable, isTrue);
+      expect(commands.first, contains('/opt/git'));
+
+      await runner.runInDirectory('/repo', ['status']);
+      expect(commands.last, contains("'/opt/git'"));
+    });
+
     test('isAvailable probes remote git on PATH', () async {
       final commands = <String>[];
       final runner = RemoteGitCommandRunner(
@@ -85,6 +103,22 @@ void main() {
   });
 
   group('LocalGitCommandRunner', () {
+    test('uses injected gitExecutable', () async {
+      final capturing = _CapturingHostRunner();
+      final runner = LocalGitCommandRunner(
+        gitExecutable: '/custom/git',
+        runner:
+            (executable, arguments, {stdoutEncoding, stderrEncoding}) async {
+              fail('locate must not run when gitExecutable is set');
+            },
+        hostRunner: capturing,
+      );
+
+      await runner.runInDirectory('/repo', ['status']);
+
+      expect(capturing.seenExe, '/custom/git');
+    });
+
     test('uses injected host runner for git execution', () async {
       var hostInvoked = false;
       final runner = LocalGitCommandRunner(
@@ -117,6 +151,24 @@ void main() {
         isA<LocalGitCommandRunner>(),
       );
     });
+
+    test('picks LocalGitCommandRunner when native', () {
+      configuredGitExecutable = () => '/from/prefs/git';
+      addTearDown(() => configuredGitExecutable = null);
+
+      AppStorage.installForTesting(
+        filesystem: LocalFilesystem(),
+        paths: AppPaths('/tmp/teampilot-test'),
+        home: '/tmp',
+        cwd: '/tmp',
+      );
+      addTearDown(AppStorage.resetForTesting);
+
+      expect(
+        gitCommandRunnerForContext(AppStorage.context),
+        isA<LocalGitCommandRunner>(),
+      );
+    });
   });
 }
 
@@ -128,6 +180,16 @@ class _RecordingHostRunner implements HostOneShotRunner {
   @override
   Future<HostRunResult> run(HostRunRequest request) async {
     _onRun();
+    return const HostRunResult(exitCode: 0, stdout: 'ok\n', stderr: '');
+  }
+}
+
+class _CapturingHostRunner implements HostOneShotRunner {
+  String? seenExe;
+
+  @override
+  Future<HostRunResult> run(HostRunRequest request) async {
+    seenExe = request.executable;
     return const HostRunResult(exitCode: 0, stdout: 'ok\n', stderr: '');
   }
 }

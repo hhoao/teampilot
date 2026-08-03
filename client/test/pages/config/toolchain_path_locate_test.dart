@@ -131,12 +131,9 @@ void main() {
     await tester.pump(const Duration(milliseconds: 250));
   });
 
-  testWidgets('remote Locate skips override and leaves path empty', (
-    tester,
-  ) async {
+  testWidgets('remote Locate uses override and persists path', (tester) async {
     final cubit = await _makeCubit();
     addTearDown(cubit.close);
-    var locateCalled = false;
     await tester.pumpWidget(
       _wrapRow(
         cubit,
@@ -144,19 +141,17 @@ void main() {
           defaultTargetResolver: () => RuntimeTarget.ssh('p1', label: 'box'),
           hasSshProfiles: () => true,
         ),
-        locateOverride: () async {
-          locateCalled = true;
-          throw StateError('locateOverride must not run on remote');
-        },
+        locateOverride: () async => '/usr/local/bin/git',
       ),
     );
     await tester.pump();
     await tester.tap(find.byKey(AppKeys.gitToolchainPathResetButton));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
-    expect(locateCalled, isFalse);
-    expect(cubit.toolchainPath(SessionPreferences.toolchainGit), isEmpty);
-    expect(find.text('Locate'), findsOneWidget);
+    expect(
+      cubit.toolchainPath(SessionPreferences.toolchainGit),
+      '/usr/local/bin/git',
+    );
     AppToast.dismiss();
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 250));

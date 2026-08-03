@@ -31,6 +31,90 @@ CliInstallerCommandResult _termuxProbeNotTermux() =>
     const CliInstallerCommandResult(exitCode: 0, stdout: 'TERMUX=0\n');
 
 void main() {
+  test('preferred node path supplies sibling npm before PATH probe', () async {
+    final commands = <String>[];
+    final installer = CliInstallerService(
+      isWindowsOverride: false,
+      preferredNodePath: () => '/opt/node/bin/node',
+      localRunner: (command) async {
+        commands.add(command.commandLine);
+        if (command.commandLine == 'which /opt/node/bin/npm') {
+          return const CliInstallerCommandResult(
+            exitCode: 0,
+            stdout: '/opt/node/bin/npm\n',
+          );
+        }
+        if (command.commandLine == 'which npm') {
+          return const CliInstallerCommandResult(exitCode: 1);
+        }
+        if (_isClaudeNpmInstall(command.commandLine) &&
+            command.commandLine.contains('/opt/node/bin/npm')) {
+          return const CliInstallerCommandResult(exitCode: 0);
+        }
+        if (command.commandLine == 'which claude') {
+          return const CliInstallerCommandResult(
+            exitCode: 0,
+            stdout: '/usr/local/bin/claude\n',
+          );
+        }
+        return const CliInstallerCommandResult(exitCode: 127);
+      },
+    );
+
+    final result = await installer.install(
+      cli: CliTool.claude,
+      mode: CliInstallMode.local,
+    );
+
+    expect(result.success, isTrue);
+    expect(result.executablePath, '/usr/local/bin/claude');
+    expect(commands.length, 3);
+    expect(commands[0], 'which /opt/node/bin/npm');
+    expect(_isClaudeNpmInstall(commands[1]), isTrue);
+    expect(commands[1], contains('/opt/node/bin/npm'));
+    expect(commands[2], 'which claude');
+    expect(commands.any((line) => line == 'which npm'), isFalse);
+  });
+
+  test('falls back to PATH npm when preferred node unset', () async {
+    final commands = <String>[];
+    final installer = CliInstallerService(
+      isWindowsOverride: false,
+      preferredNodePath: null,
+      localRunner: (command) async {
+        commands.add(command.commandLine);
+        if (command.commandLine == 'which npm') {
+          return const CliInstallerCommandResult(
+            exitCode: 0,
+            stdout: '/usr/bin/npm\n',
+          );
+        }
+        if (_isClaudeNpmInstall(command.commandLine) &&
+            command.commandLine.contains('/usr/bin/npm')) {
+          return const CliInstallerCommandResult(exitCode: 0);
+        }
+        if (command.commandLine == 'which claude') {
+          return const CliInstallerCommandResult(
+            exitCode: 0,
+            stdout: '/usr/local/bin/claude\n',
+          );
+        }
+        return const CliInstallerCommandResult(exitCode: 127);
+      },
+    );
+
+    final result = await installer.install(
+      cli: CliTool.claude,
+      mode: CliInstallMode.local,
+    );
+
+    expect(result.success, isTrue);
+    expect(result.executablePath, '/usr/local/bin/claude');
+    expect(commands[0], 'which npm');
+    expect(_isClaudeNpmInstall(commands[1]), isTrue);
+    expect(commands[2], 'which claude');
+  });
+
   test(
     'installs Claude Code locally with npm and resolves the executable',
     () async {

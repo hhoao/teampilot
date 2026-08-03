@@ -5,12 +5,18 @@ import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../cubits/session_preferences_cubit.dart';
+import '../../cubits/ssh_profile_cubit.dart';
+import '../../cubits/termux_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/session_preferences.dart';
+import '../../models/ssh_profile.dart';
 import '../../services/app/connection_mode_service.dart';
 import '../../services/cli/cli_installer_service.dart';
 import '../../services/cli/git_installer.dart';
+import '../../services/cli/remote_cli_locator.dart';
 import '../../services/cli/toolchain_executable_discovery.dart';
+import '../../services/ssh/ssh_client_factory.dart';
+import '../../services/termux/termux_transport_profile.dart';
 import '../../utils/debounce/debounce.dart';
 import '../../widgets/cli_install_progress_panel.dart';
 import 'session_config_constants.dart';
@@ -60,7 +66,7 @@ class ToolchainPathSettingsRow extends StatefulWidget {
   /// Icon shown in the title leading position.
   final IconData leadingIcon;
 
-  /// Test seam: when non-null, used instead of discovery (local only).
+  /// Test seam: when non-null, used instead of discovery.
   final Future<String?> Function()? locateOverride;
 
   @override
@@ -170,16 +176,6 @@ class _ToolchainPathSettingsRowState extends State<ToolchainPathSettingsRow> {
     if (_isLocating || _isInstalling) return;
     setState(() => _isLocating = true);
     try {
-      final connectionMode = context.read<ConnectionModeService>();
-      if (connectionMode.isRemoteWorkPlane) {
-        if (!mounted) return;
-        AppToast.show(
-          context,
-          message: context.l10n.cliExecutablePathLocateRemoteUnsupported,
-          variant: TpToastVariant.error,
-        );
-        return;
-      }
       final path = (await _resolveLocatePath())?.trim() ?? '';
       if (!mounted) return;
       if (path.isEmpty) {
@@ -216,6 +212,18 @@ class _ToolchainPathSettingsRowState extends State<ToolchainPathSettingsRow> {
 
   Future<String?> _resolveLocatePath() async {
     if (widget.locateOverride != null) return widget.locateOverride!();
+    final connectionMode = context.read<ConnectionModeService>();
+    if (connectionMode.isRemoteWorkPlane) {
+      final profile = _remoteSshProfile(context, connectionMode);
+      if (profile == null) return null;
+      final client = await context.read<SshClientFactory>().clientForStorage(
+        profile,
+      );
+      return ToolchainExecutableDiscovery().locateRemoteTool(
+        toolId: widget.toolId,
+        run: RemoteCliLocator.runnerForClient(client),
+      );
+    }
     return ToolchainExecutableDiscovery().locateLocalTool(widget.toolId);
   }
 
@@ -439,4 +447,16 @@ class _ToolchainPathSettingsRowState extends State<ToolchainPathSettingsRow> {
       showDividerBelow: widget.showDividerBelow,
     );
   }
+}
+
+SshProfile? _remoteSshProfile(
+  BuildContext context,
+  ConnectionModeService mode,
+) {
+  if (!mode.isRemoteWorkPlane) return null;
+  if (mode.isTermuxMode) {
+    final config = context.read<TermuxCubit>().state.config;
+    return config == null ? null : termuxTransportProfile(config);
+  }
+  return context.read<SshProfileCubit>().state.selectedProfile;
 }

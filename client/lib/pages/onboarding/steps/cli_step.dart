@@ -10,6 +10,7 @@ import '../../../cubits/session_preferences_cubit.dart';
 import '../../../cubits/ssh_profile_cubit.dart';
 import '../../../cubits/termux_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
+import '../../../models/session_preferences.dart';
 import '../../../models/ssh_profile.dart';
 import '../../../models/team_config.dart';
 import '../../../services/app/connection_mode_service.dart';
@@ -198,6 +199,9 @@ class _OnboardingCliStepState extends State<OnboardingCliStep> {
       final installer = CliInstallerService(
         sshClientFactory: context.read<SshClientFactory>(),
         cliToolRegistry: _registry,
+        preferredNodePath: () => context
+            .read<SessionPreferencesCubit>()
+            .toolchainPath(SessionPreferences.toolchainNode),
       );
       final def = _registry.tryGet(cli);
       final cliLabel = def != null
