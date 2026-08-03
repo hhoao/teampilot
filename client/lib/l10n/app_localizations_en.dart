@@ -2173,6 +2173,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get fileTreeCopyPath => 'Copy path';
 
   @override
+  String get fileTreeCopyRelativePath => 'Copy relative path';
+
+  @override
   String get fileTreeDeleteItemTitle => 'Delete';
 
   @override

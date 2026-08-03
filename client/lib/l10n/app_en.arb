@@ -938,6 +938,7 @@
   "fileTreeRevealFailed": "Cannot reveal this file in the file tree",
   "fileTreeOpenWithSystemApp": "Open with system app",
   "fileTreeCopyPath": "Copy path",
+  "fileTreeCopyRelativePath": "Copy relative path",
   "fileTreeDeleteItemTitle": "Delete",
   "fileTreeDeleteItemConfirm": "Delete \"{name}\"?",
   "@fileTreeDeleteItemConfirm": {
