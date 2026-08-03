@@ -84,4 +84,76 @@ void main() {
       );
     });
   });
+
+  group('SessionLaunchHost.clearAgentStatusSeat', () {
+    test('clears pending ask answers for the seat only', () {
+      final attention = AgentAttentionCubit(pruneInterval: null);
+      addTearDown(attention.close);
+      final seats = AgentStatusSeatLookup();
+      final pending = AskUserAnswerPendingStore();
+      final host = _HostWithAgentStatus(
+        attention: attention,
+        seats: seats,
+        pending: pending,
+      );
+
+      pending.put(
+        sessionId: 's1',
+        memberId: 'm1',
+        entry: const AskUserAnswerPendingEntry(requestId: 'req-1'),
+      );
+      pending.put(
+        sessionId: 's1',
+        memberId: 'm2',
+        entry: const AskUserAnswerPendingEntry(requestId: 'req-2'),
+      );
+
+      host.clearAgentStatusSeat(sessionId: 's1', memberId: 'm1');
+
+      expect(
+        pending.take(
+          sessionId: 's1',
+          memberId: 'm1',
+          requestId: 'req-1',
+        ),
+        isNull,
+      );
+      expect(
+        pending.take(
+          sessionId: 's1',
+          memberId: 'm2',
+          requestId: 'req-2',
+        ),
+        isNotNull,
+      );
+    });
+  });
+}
+
+class _HostWithAgentStatus implements SessionLaunchHost {
+  _HostWithAgentStatus({
+    required this.attention,
+    required this.seats,
+    required this.pending,
+  });
+
+  final AgentAttentionCubit attention;
+  final AgentStatusSeatLookup seats;
+  final AskUserAnswerPendingStore pending;
+
+  @override
+  AgentAttentionCubit? get agentAttentionCubit => attention;
+
+  @override
+  AgentStatusSeatLookup? get agentStatusSeatLookup => seats;
+
+  @override
+  AskUserAnswerPendingStore? get askUserAnswerPendingStore => pending;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) {
+    if (invocation.isGetter) return null;
+    if (invocation.isSetter) return null;
+    return super.noSuchMethod(invocation);
+  }
 }
