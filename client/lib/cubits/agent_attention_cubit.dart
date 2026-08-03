@@ -21,6 +21,8 @@ class AgentSeatAttentionEntry extends Equatable {
     required this.attention,
     required this.updatedAt,
     this.lastEvent,
+    this.dismissedAskRequestId,
+    this.askReplyError,
   });
 
   final AgentSeatAttention attention;
@@ -29,8 +31,21 @@ class AgentSeatAttentionEntry extends Equatable {
   /// Last applied event (sticky permission context).
   final AgentStatusEvent? lastEvent;
 
+  /// Ask id optimistically dismissed via [AgentAttentionCubit.markAskAnswered].
+  /// Same-id waiting events are ignored until restore or a new ask arrives.
+  final String? dismissedAskRequestId;
+
+  /// Optional error from `question.reply_failed` after optimistic dismiss.
+  final String? askReplyError;
+
   @override
-  List<Object?> get props => [attention, updatedAt, lastEvent];
+  List<Object?> get props => [
+    attention,
+    updatedAt,
+    lastEvent,
+    dismissedAskRequestId,
+    askReplyError,
+  ];
 }
 
 /// Seat-keyed agent attention for History banner / sidebar consumers.
@@ -151,6 +166,31 @@ class AgentAttentionCubit extends Cubit<AgentAttentionState> {
     if (pruned != state) emit(pruned);
   }
 
+  /// Optimistically dismiss a waiting ask: move to [AgentSeatAttention.working]
+  /// while retaining [AgentSeatAttentionEntry.lastEvent] so
+  /// `question.reply_failed` can restore the card.
+  ///
+  /// Reads the dismissed id from [AgentSeatAttentionEntry.lastEvent]'s
+  /// [AgentStatusEvent.askRequestId] — callers do not pass an id.
+  void markAskAnswered({
+    required String sessionId,
+    required String memberId,
+  }) {
+    final key = agentSeatKey(sessionId: sessionId, memberId: memberId);
+    final existing = state.seats[key];
+    if (existing == null) return;
+
+    final seats = Map<String, AgentSeatAttentionEntry>.of(state.seats);
+    seats[key] = AgentSeatAttentionEntry(
+      attention: AgentSeatAttention.working,
+      updatedAt: _clock(),
+      lastEvent: existing.lastEvent,
+      dismissedAskRequestId: existing.lastEvent?.askRequestId,
+      askReplyError: null,
+    );
+    emit(AgentAttentionState(seats: seats, clock: _clock));
+  }
+
   /// Apply a normalized status event for one seat.
   ///
   /// When [skipPermissions] is true and [event] is waiting, the event is
@@ -183,7 +223,43 @@ class AgentAttentionCubit extends Cubit<AgentAttentionState> {
     final now = _clock();
     final key = agentSeatKey(sessionId: sessionId, memberId: memberId);
     final pruned = state.pruned(now);
-    final previous = pruned.seats[key]?.lastEvent;
+    final existingEntry = pruned.seats[key];
+    final previous = existingEntry?.lastEvent;
+
+    // Ignore echoed waiting for an optimistically dismissed ask.
+    final dismissedId = existingEntry?.dismissedAskRequestId;
+    if (event.state == AgentSeatAttention.waiting &&
+        event.askRequestId != null &&
+        dismissedId != null &&
+        event.askRequestId == dismissedId) {
+      if (pruned != state) emit(pruned);
+      return;
+    }
+
+    // Restore waiting ask card after reply_failed (keep prior questions).
+    final isRestore =
+        event.restoreAskWaiting ||
+        event.hookEventName == 'question.reply_failed';
+    if (isRestore && existingEntry != null) {
+      final eventAskId = event.askRequestId;
+      final lastAskId = existingEntry.lastEvent?.askRequestId;
+      final matches =
+          eventAskId != null &&
+          (eventAskId == dismissedId || eventAskId == lastAskId);
+      if (matches) {
+        final seats = Map<String, AgentSeatAttentionEntry>.of(pruned.seats);
+        seats[key] = AgentSeatAttentionEntry(
+          attention: AgentSeatAttention.waiting,
+          updatedAt: now,
+          lastEvent: existingEntry.lastEvent,
+          dismissedAskRequestId: null,
+          askReplyError: event.message,
+        );
+        emit(AgentAttentionState(seats: seats, clock: _clock));
+        return;
+      }
+    }
+
     final effective = attachClaudePermissionToolUseId(previous, event);
 
     if (shouldKeepClaudePermissionVisible(previous, effective)) {
