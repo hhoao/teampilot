@@ -13,6 +13,10 @@ class AgentStatusEvent {
     this.toolAgentType,
     this.hasExplicitPrompt = false,
     this.askUserQuestions,
+    this.askRequestId,
+    this.nativeSessionId,
+    this.message,
+    this.restoreAskWaiting = false,
   });
 
   final AgentSeatAttention state;
@@ -40,6 +44,20 @@ class AgentStatusEvent {
   /// this event is a `PreToolUse` for the AskUserQuestion tool.
   final List<AgentAskUserQuestion>? askUserQuestions;
 
+  /// Correlation id for answering an ask (OpenCode `request_id` / `id`, or
+  /// Claude-family AskUserQuestion `tool_use_id`).
+  final String? askRequestId;
+
+  /// OpenCode native session id (`session_id` / `sessionID`).
+  final String? nativeSessionId;
+
+  /// Optional error / status message (e.g. OpenCode `question.reply_failed`).
+  final String? message;
+
+  /// True only for OpenCode `question.reply_failed` when [askRequestId] is
+  /// present — cubit should restore the waiting ask card (Task 4).
+  final bool restoreAskWaiting;
+
   AgentStatusEvent copyWith({
     AgentSeatAttention? state,
     String? toolName,
@@ -50,6 +68,10 @@ class AgentStatusEvent {
     String? toolAgentType,
     bool? hasExplicitPrompt,
     List<AgentAskUserQuestion>? askUserQuestions,
+    String? askRequestId,
+    String? nativeSessionId,
+    String? message,
+    bool? restoreAskWaiting,
   }) => AgentStatusEvent(
     state: state ?? this.state,
     toolName: toolName ?? this.toolName,
@@ -60,6 +82,10 @@ class AgentStatusEvent {
     toolAgentType: toolAgentType ?? this.toolAgentType,
     hasExplicitPrompt: hasExplicitPrompt ?? this.hasExplicitPrompt,
     askUserQuestions: askUserQuestions ?? this.askUserQuestions,
+    askRequestId: askRequestId ?? this.askRequestId,
+    nativeSessionId: nativeSessionId ?? this.nativeSessionId,
+    message: message ?? this.message,
+    restoreAskWaiting: restoreAskWaiting ?? this.restoreAskWaiting,
   );
 
   @override
@@ -74,7 +100,11 @@ class AgentStatusEvent {
           toolAgentId == other.toolAgentId &&
           toolAgentType == other.toolAgentType &&
           hasExplicitPrompt == other.hasExplicitPrompt &&
-          _sameQuestions(askUserQuestions, other.askUserQuestions);
+          _sameQuestions(askUserQuestions, other.askUserQuestions) &&
+          askRequestId == other.askRequestId &&
+          nativeSessionId == other.nativeSessionId &&
+          message == other.message &&
+          restoreAskWaiting == other.restoreAskWaiting;
 
   @override
   int get hashCode => Object.hash(
@@ -87,6 +117,10 @@ class AgentStatusEvent {
     toolAgentType,
     hasExplicitPrompt,
     Object.hashAll(askUserQuestions ?? const []),
+    askRequestId,
+    nativeSessionId,
+    message,
+    restoreAskWaiting,
   );
 }
 

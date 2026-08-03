@@ -143,6 +143,105 @@ void main() {
       expect(e?.askUserQuestions?.single.multiSelect, isFalse);
     });
 
+    test('opencode question.asked keeps request_id and session_id', () {
+      final e = AgentStatusNormalizer.normalize(
+        cli: CliTool.opencode,
+        body: {
+          'event': 'question.asked',
+          'questions': [
+            {
+              'question': 'Pick one?',
+              'options': [
+                {'label': 'A'},
+                {'label': 'B'},
+              ],
+            },
+          ],
+          'request_id': 'req_1',
+          'session_id': 'ses_abc',
+        },
+      );
+      expect(e?.askRequestId, 'req_1');
+      expect(e?.nativeSessionId, 'ses_abc');
+      expect(e?.askUserQuestions, isNotNull);
+    });
+
+    test('opencode question.asked accepts id / sessionID aliases', () {
+      final e = AgentStatusNormalizer.normalize(
+        cli: CliTool.opencode,
+        body: {
+          'event': 'question.asked',
+          'id': 'req_alias',
+          'sessionID': 'ses_alias',
+          'questions': [
+            {
+              'question': 'Pick one?',
+              'options': [
+                {'label': 'A'},
+              ],
+            },
+          ],
+        },
+      );
+      expect(e?.askRequestId, 'req_alias');
+      expect(e?.nativeSessionId, 'ses_alias');
+    });
+
+    test('opencode question.reply_failed restores signal', () {
+      final e = AgentStatusNormalizer.normalize(
+        cli: CliTool.opencode,
+        body: {
+          'event': 'question.reply_failed',
+          'request_id': 'req_1',
+          'message': 'boom',
+        },
+      );
+      expect(e?.hookEventName, 'question.reply_failed');
+      expect(e?.askRequestId, 'req_1');
+      expect(e?.restoreAskWaiting, isTrue);
+      expect(e?.message, 'boom');
+      expect(e?.state, AgentSeatAttention.waiting);
+    });
+
+    test('opencode question.reply_failed without request_id skips restore', () {
+      final e = AgentStatusNormalizer.normalize(
+        cli: CliTool.opencode,
+        body: {
+          'event': 'question.reply_failed',
+          'message': 'missing id',
+        },
+      );
+      expect(e?.hookEventName, 'question.reply_failed');
+      expect(e?.askRequestId, isNull);
+      expect(e?.restoreAskWaiting, isFalse);
+      expect(e?.message, 'missing id');
+      expect(e?.state, AgentSeatAttention.waiting);
+    });
+
+    test('Claude AskUserQuestion PreToolUse sets askRequestId from tool_use_id',
+        () {
+      final e = AgentStatusNormalizer.normalize(
+        cli: CliTool.claude,
+        body: {
+          'hook_event_name': 'PreToolUse',
+          'tool_name': 'AskUserQuestion',
+          'tool_use_id': 'toolu-q1',
+          'tool_input': {
+            'questions': [
+              {
+                'question': 'OK?',
+                'options': ['Yes', 'No'],
+              },
+            ],
+          },
+        },
+      );
+      expect(e?.state, AgentSeatAttention.waiting);
+      expect(e?.toolUseId, 'toolu-q1');
+      expect(e?.askRequestId, 'toolu-q1');
+      expect(e?.askUserQuestions, isNotNull);
+    });
+
     test('OpenCode session.idle → done', () {
       final e = AgentStatusNormalizer.normalize(
         cli: CliTool.opencode,

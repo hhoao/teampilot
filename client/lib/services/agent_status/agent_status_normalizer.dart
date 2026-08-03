@@ -81,6 +81,10 @@ class AgentStatusNormalizer {
     final askUserQuestions =
         askUser ? parseAskUserQuestions(rawToolInput) : null;
 
+    // AskUserQuestion PreToolUse: askRequestId mirrors tool_use_id so answer
+    // correlation works the same as OpenCode request_id.
+    final askRequestId = askUser ? toolUseId : null;
+
     AgentStatusEvent build(AgentSeatAttention state, {bool explicit = false}) =>
         AgentStatusEvent(
           state: state,
@@ -92,6 +96,7 @@ class AgentStatusNormalizer {
           toolAgentType: toolAgentType,
           hasExplicitPrompt: explicit,
           askUserQuestions: askUserQuestions,
+          askRequestId: askRequestId,
         );
 
     return switch (eventName) {
@@ -113,6 +118,13 @@ class AgentStatusNormalizer {
     final eventName = body['event']?.toString();
     if (eventName == null || eventName.isEmpty) return null;
 
+    final askRequestId = _readString(body, const ['request_id', 'id']);
+    final nativeSessionId = _readString(body, const [
+      'session_id',
+      'sessionID',
+    ]);
+    final message = _readString(body, const ['message']);
+
     return switch (eventName) {
       'permission.asked' => AgentStatusEvent(
         state: AgentSeatAttention.waiting,
@@ -122,6 +134,16 @@ class AgentStatusNormalizer {
         state: AgentSeatAttention.waiting,
         hookEventName: eventName,
         askUserQuestions: parseQuestionsList(body['questions']),
+        askRequestId: askRequestId,
+        nativeSessionId: nativeSessionId,
+      ),
+      'question.reply_failed' => AgentStatusEvent(
+        state: AgentSeatAttention.waiting,
+        hookEventName: eventName,
+        askRequestId: askRequestId,
+        message: message,
+        // Restore only when we can correlate back to the pending ask.
+        restoreAskWaiting: askRequestId != null,
       ),
       'session.idle' => AgentStatusEvent(
         state: AgentSeatAttention.done,
