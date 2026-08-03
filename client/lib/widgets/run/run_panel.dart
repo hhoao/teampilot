@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/run_cubit.dart';
+import '../../cubits/workbench/workbench_tab.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/run/run_session.dart';
 import '../../pages/workspace_shell/workspace_shell_tabs.dart';
@@ -246,6 +247,8 @@ class _RunPanelState extends State<RunPanel> {
                   }
                   final session = orderedSessions[index];
                   return WorkbenchStripTabChip(
+                    kind: WorkbenchTabKind.run,
+                    tabId: session.id,
                     title: session.owned.configuration.name,
                     active: session.id == activeSession?.id,
                     working:

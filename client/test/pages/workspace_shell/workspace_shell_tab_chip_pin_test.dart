@@ -2,6 +2,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ui/shared_ui.dart';
+import 'package:teampilot/cubits/workbench/workbench_tab.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/pages/workspace_shell/workspace_shell_tabs.dart';
 
@@ -33,6 +34,8 @@ void main() {
         WorkbenchStripTabChip(
           title: 'Chat',
           active: true,
+          kind: WorkbenchTabKind.session,
+          tabId: 'chat-1',
           pinnable: true,
           pinned: false,
           onTap: () {},
@@ -56,6 +59,8 @@ void main() {
         WorkbenchStripTabChip(
           title: 'file.dart',
           active: true,
+          kind: WorkbenchTabKind.file,
+          tabId: '/ws/file.dart',
           onTap: () {},
           onClose: () {},
         ),
@@ -75,6 +80,8 @@ void main() {
         WorkbenchStripTabChip(
           title: 'Chat',
           active: true,
+          kind: WorkbenchTabKind.session,
+          tabId: 'chat-1',
           pinnable: true,
           pinned: true,
           onTap: () {},

@@ -14,6 +14,7 @@ import '../services/file_tree/file_tree_visible_rows.dart';
 import '../services/file_tree_import/file_tree_drop_hit_test.dart';
 import '../services/file_tree_import/file_tree_drop_ingestor.dart';
 import '../services/file_tree_import/import_models.dart';
+import '../services/io/file_path_actions.dart';
 import '../services/io/filesystem.dart';
 import '../services/storage/runtime_context.dart';
 import '../services/workbench/workbench_editor_opener.dart';
@@ -198,20 +199,31 @@ class _FileTreeNodeState extends State<FileTreeNode> {
             _handleFileTap(context, widget.path);
           }
         },
-        onSecondaryTapDown: (details) => unawaited(
-          FileTreeContextMenu.show(
-            context: context,
-            tapDetails: details,
-            cubit: widget.cubit,
-            targetPath: widget.path,
-            targetName: widget.entry.name,
-            isDirectory: isDir,
-            desktopShellActions: widget.desktopShellActions,
-            remoteFileManagerActions: widget.remoteFileManagerActions,
-            workContext: widget.workContext,
-            workspaceId: widget.workspaceId,
-          ),
-        ),
+        onSecondaryTapDown: (details) {
+          final folderPaths = [
+            for (final root in widget.cubit.state.roots) root.path,
+          ];
+          final workspaceRoot = resolveContainingWorkspaceRoot(
+            widget.path,
+            folderPaths,
+            pathContext: widget.cubit.fs.pathContext,
+          );
+          unawaited(
+            FileTreeContextMenu.show(
+              context: context,
+              tapDetails: details,
+              cubit: widget.cubit,
+              targetPath: widget.path,
+              targetName: widget.entry.name,
+              isDirectory: isDir,
+              desktopShellActions: widget.desktopShellActions,
+              remoteFileManagerActions: widget.remoteFileManagerActions,
+              workContext: widget.workContext,
+              workspaceId: widget.workspaceId,
+              workspaceRoot: workspaceRoot,
+            ),
+          );
+        },
         backgroundColor: activeFill,
         hoverColor: widget.hoverEnabled
             ? activeFill

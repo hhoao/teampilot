@@ -8,8 +8,16 @@ import 'package:teampilot/models/team_config.dart';
 
 import '../../cubits/chat_cubit.dart';
 import '../../cubits/layout_cubit.dart';
+import '../../cubits/workbench/workbench_tab.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
+import '../../services/io/file_path_actions.dart';
+import '../../services/storage/runtime_context.dart';
+import '../../services/workbench/tab_menu/default_workbench_tab_menu_sources.dart';
+import '../../services/workbench/tab_menu/workbench_tab_menu_composer.dart';
+import '../../services/workbench/tab_menu/workbench_tab_menu_context.dart';
+import '../../services/workbench/tab_menu/workbench_tab_menu_source.dart';
+import '../../services/workspace/workspace_tools_scope.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/session/session_row_content.dart';
 import '../../utils/ui/app_keys.dart';
@@ -104,6 +112,17 @@ class WorkspaceShellSidebarVisibilityToggle extends StatelessWidget {
   }
 }
 
+bool _desktopShellActionsFor(RuntimeContext? workContext) {
+  if (workContext == null || kIsWeb) return false;
+  return workContext.mode == StorageBackendMode.native ||
+      workContext.mode == StorageBackendMode.wsl;
+}
+
+bool _remoteFileManagerActionsFor(RuntimeContext? workContext) {
+  if (workContext == null || kIsWeb) return false;
+  return workContext.mode == StorageBackendMode.ssh;
+}
+
 class WorkspaceShellTabRow extends StatelessWidget {
   const WorkspaceShellTabRow({
     super.key,
@@ -134,6 +153,16 @@ class WorkspaceShellTabRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final toolsScope = WorkspaceToolsScope.maybeOf(context);
+    final workContext = toolsScope?.tools?.context;
+    final folderPaths = <String>[
+      for (final folder in toolsScope?.effectiveFolders ?? const [])
+        folder.path,
+    ];
+    final pathContext = workContext?.fs.pathContext;
+    final desktopShellActions = _desktopShellActionsFor(workContext);
+    final remoteFileManagerActions = _remoteFileManagerActionsFor(workContext);
+
     return TpTabStrip(
       metrics: TpTabStripMetrics.shell,
       showBottomBorder: true,
@@ -145,7 +174,21 @@ class WorkspaceShellTabRow extends StatelessWidget {
       trailing: trailing,
       itemBuilder: (context, i) {
         final tab = tabs[i];
+        final workspaceRoot = tab.filePath == null
+            ? null
+            : resolveContainingWorkspaceRoot(
+                tab.filePath!,
+                folderPaths,
+                pathContext: pathContext,
+              );
         return WorkbenchStripTabChip(
+          kind: tab.kind ?? WorkbenchTabKind.session,
+          tabId: tab.id,
+          filePath: tab.filePath,
+          workspaceRoot: workspaceRoot,
+          desktopShellActions: desktopShellActions,
+          remoteFileManagerActions: remoteFileManagerActions,
+          workContext: workContext,
           sessionId: tab.sessionId,
           title: tab.title,
           working: tab.working,
@@ -250,6 +293,14 @@ class WorkbenchStripTabChip extends StatefulWidget {
     required this.active,
     required this.onTap,
     required this.onClose,
+    this.kind = WorkbenchTabKind.run,
+    this.tabId = '',
+    this.filePath,
+    this.workspaceRoot,
+    this.desktopShellActions = false,
+    this.remoteFileManagerActions = false,
+    this.workContext,
+    this.menuSources,
     this.sessionId,
     this.onCloseOthers,
     this.onCloseRight,
@@ -263,6 +314,14 @@ class WorkbenchStripTabChip extends StatefulWidget {
     this.accentColor,
   });
 
+  final WorkbenchTabKind kind;
+  final String tabId;
+  final String? filePath;
+  final String? workspaceRoot;
+  final bool desktopShellActions;
+  final bool remoteFileManagerActions;
+  final RuntimeContext? workContext;
+  final List<WorkbenchTabMenuSource>? menuSources;
   final String title;
   final String? sessionId;
   final bool working;
@@ -284,65 +343,46 @@ class WorkbenchStripTabChip extends StatefulWidget {
 }
 
 class WorkbenchStripTabChipState extends State<WorkbenchStripTabChip> {
-  void _handleTabMenuSelection(String value) {
-    if (value == 'pin') {
-      widget.onPin?.call();
-    } else if (value == 'close') {
-      widget.onClose();
-    } else if (value == 'closeOthers') {
-      widget.onCloseOthers?.call();
-    } else if (value == 'closeRight') {
-      widget.onCloseRight?.call();
-    }
-  }
-
   List<TpActionMenuSpec> _tabMenuSpecs(BuildContext menuContext) {
-    final l10n = menuContext.l10n;
-    return [
-      if (widget.pinnable && widget.onPin != null)
-        TpActionMenuSpec.item(
-          value: 'pin',
-          icon: widget.pinned ? Icons.push_pin : Icons.push_pin_outlined,
-          label: widget.pinned ? l10n.unpinConversation : l10n.pinConversation,
-        ),
-      TpActionMenuSpec.item(
-        value: 'close',
-        icon: Icons.close,
-        label: l10n.closeTab,
-      ),
-      TpActionMenuSpec.item(
-        value: 'closeOthers',
-        icon: Icons.tab_unselected,
-        label: l10n.closeOtherTabs,
-      ),
-      TpActionMenuSpec.item(
-        value: 'closeRight',
-        icon: Icons.arrow_forward,
-        label: l10n.closeRightTabs,
-      ),
-    ];
+    final ctx = WorkbenchTabMenuContext(
+      l10n: menuContext.l10n,
+      buildContext: menuContext,
+      kind: widget.kind,
+      tabId: widget.tabId,
+      filePath: widget.filePath,
+      workspaceRoot: widget.workspaceRoot,
+      pinnable: widget.pinnable,
+      pinned: widget.pinned,
+      desktopShellActions: widget.desktopShellActions,
+      remoteFileManagerActions: widget.remoteFileManagerActions,
+      workContext: widget.workContext,
+      onClose: widget.onClose,
+      onCloseOthers: widget.onCloseOthers,
+      onCloseRight: widget.onCloseRight,
+      onPin: widget.onPin,
+    );
+    return WorkbenchTabMenuComposer.compose(
+      widget.menuSources ?? defaultWorkbenchTabMenuSources(),
+      ctx,
+    );
   }
 
   Future<void> _showTabContextMenuAtTap(TapDownDetails details) async {
     if (!mounted) return;
-    final selected = await showTpActionMenuFromSpecsAtTap<String>(
+    await showTpActionMenuFromSpecsAtTap<Object>(
       context: context,
       tapDetails: details,
       specs: _tabMenuSpecs(context),
     );
-    if (!mounted || selected == null) return;
-    _handleTabMenuSelection(selected);
   }
 
   Future<void> _showTabContextMenu(Offset globalPosition) async {
     if (!mounted) return;
-    final selected = await showTpActionMenuFromSpecs<String>(
+    await showTpActionMenuFromSpecs<Object>(
       context: context,
       globalPosition: globalPosition,
       specs: _tabMenuSpecs(context),
     );
-    if (!mounted || selected == null) return;
-    _handleTabMenuSelection(selected);
   }
 
   void _showTabContextMenuAtChipCenter() {

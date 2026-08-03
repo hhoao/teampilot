@@ -3968,6 +3968,12 @@ abstract class AppLocalizations {
   /// **'Copy path'**
   String get fileTreeCopyPath;
 
+  /// No description provided for @fileTreeCopyRelativePath.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy relative path'**
+  String get fileTreeCopyRelativePath;
+
   /// No description provided for @fileTreeDeleteItemTitle.
   ///
   /// In en, this message translates to:

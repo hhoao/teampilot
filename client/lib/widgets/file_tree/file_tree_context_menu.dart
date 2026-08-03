@@ -1,8 +1,6 @@
 import 'dart:async';
-import 'dart:io' show Platform, Process;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
@@ -10,9 +8,7 @@ import 'package:teampilot/widgets/app_toast/app_toast.dart';
 import '../../cubits/file_tree_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../services/editor/file_editor_theme.dart';
-import '../../services/io/runtime_folder_opener.dart';
-import '../../services/io/system_folder_opener.dart';
-import '../../services/io/system_terminal_opener.dart';
+import '../../services/io/file_path_actions.dart';
 import '../../services/storage/runtime_context.dart';
 import '../../services/workbench/workbench_editor_opener.dart';
 import '../../utils/debounce/debounce.dart';
@@ -27,6 +23,7 @@ abstract final class FileTreeContextMenu {
     required bool isDirectory,
     required bool desktopShellActions,
     required String workspaceId,
+    String? workspaceRoot,
     bool remoteFileManagerActions = false,
     required RuntimeContext workContext,
   }) async {
@@ -85,6 +82,18 @@ abstract final class FileTreeContextMenu {
         value: 'copy_path',
         icon: Icons.copy,
         label: l10n.fileTreeCopyPath,
+      ),
+      TpActionMenuSpec.item(
+        value: 'copy_relative_path',
+        icon: Icons.copy_outlined,
+        label: l10n.fileTreeCopyRelativePath,
+        enabled:
+            tryRelativeWorkspacePath(
+              absolutePath: targetPath,
+              workspaceRoot: workspaceRoot,
+              pathContext: ctx,
+            ) !=
+            null,
       ),
       if (desktopShellActions) ...[
         TpActionMenuSpec.item(
@@ -154,18 +163,35 @@ abstract final class FileTreeContextMenu {
           targetName: targetName,
         );
       case 'external':
-        if (!isDirectory) _openFileExternally(targetPath);
+        if (!isDirectory) FilePathActions.openWithSystemApp(targetPath);
       case 'copy_path':
-        await Clipboard.setData(ClipboardData(text: targetPath));
+        await FilePathActions.copyAbsolutePath(targetPath);
+      case 'copy_relative_path':
+        await FilePathActions.copyRelativePath(
+          absolutePath: targetPath,
+          workspaceRoot: workspaceRoot,
+          pathContext: cubit.fs.pathContext,
+        );
       case 'file_manager':
-        await _openInFileManager(
-          targetPath,
+        await FilePathActions.revealInFileManager(
+          targetPath: targetPath,
           isDirectory: isDirectory,
           remoteFileManagerActions: remoteFileManagerActions,
           workContext: workContext,
         );
       case 'terminal':
-        await _openInTerminal(context, targetPath, isDirectory: isDirectory);
+        final ok = await FilePathActions.openInTerminal(
+          targetPath: targetPath,
+          isDirectory: isDirectory,
+        );
+        if (!context.mounted) return;
+        if (!ok) {
+          AppToast.show(
+            context,
+            message: l10n.fileTreeOpenInTerminalFailed,
+            variant: TpToastVariant.error,
+          );
+        }
     }
   }
 
@@ -319,50 +345,4 @@ abstract final class FileTreeContextMenu {
     };
   }
 
-  static void _openFileExternally(String filePath) {
-    try {
-      if (Platform.isLinux) {
-        Process.run('xdg-open', [filePath]);
-      } else if (Platform.isMacOS) {
-        Process.run('open', [filePath]);
-      } else if (Platform.isWindows) {
-        Process.run('start', [filePath], runInShell: true);
-      }
-    } catch (_) {}
-  }
-
-  static Future<void> _openInFileManager(
-    String targetPath, {
-    required bool isDirectory,
-    required bool remoteFileManagerActions,
-    required RuntimeContext workContext,
-  }) async {
-    final path = isDirectory
-        ? targetPath
-        : SystemFolderOpener.revealPathForFile(targetPath);
-    if (remoteFileManagerActions) {
-      await RuntimeFolderOpener().reveal(path: path, workContext: workContext);
-      return;
-    }
-    await SystemFolderOpener().reveal(path);
-  }
-
-  static Future<void> _openInTerminal(
-    BuildContext context,
-    String targetPath, {
-    required bool isDirectory,
-  }) async {
-    final dir = isDirectory
-        ? targetPath
-        : SystemFolderOpener.revealPathForFile(targetPath);
-    final ok = await SystemTerminalOpener().openAt(dir);
-    if (!context.mounted) return;
-    if (!ok) {
-      AppToast.show(
-        context,
-        message: context.l10n.fileTreeOpenInTerminalFailed,
-        variant: TpToastVariant.error,
-      );
-    }
-  }
 }

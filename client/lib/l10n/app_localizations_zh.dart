@@ -2074,6 +2074,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get fileTreeCopyPath => '复制路径';
 
   @override
+  String get fileTreeCopyRelativePath => '复制相对路径';
+
+  @override
   String get fileTreeDeleteItemTitle => '删除';
 
   @override
