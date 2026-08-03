@@ -547,8 +547,68 @@ final class CliMessageMatrixHarness {
         preserveWorkbenchView: true,
       ),
     );
-    await drainPendingAsyncWork();
-    await postFrame?.flush();
+    final deadline = DateTime.now().add(const Duration(seconds: 90));
+    while (DateTime.now().isBefore(deadline)) {
+      await drainPendingAsyncWork();
+      await postFrame?.flush();
+      final shell = chat.activeTab?.memberShells[memberId];
+      if (shell != null && (shell.isRunning || shell.isConnecting)) {
+        return;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+    }
+    throw StateError(
+      'connectMember timed out waiting for shell member=$memberId '
+      'shellKeys=${chat.activeTab?.memberShells.keys.toList()}\n'
+      '${diagnosticsBundle(memberId: memberId)}',
+    );
+  }
+
+  /// Waits for [TabSessionIdleWatch] → [ClaudeNativeInboxDoorbell] to wake an
+  /// idle native worker with unread pod inbox mail, then for gateway + PTY proof.
+  Future<void> waitForNativeInboxDoorbellConsume({
+    required String workerMemberId,
+    required String workerApiKey,
+    required List<String> markers,
+    int minGatewayTurns = 1,
+    int? gatewayBaseline,
+    Duration timeout = const Duration(seconds: 120),
+  }) async {
+    final chat = cubit;
+    final server = gateway;
+    if (chat == null || server == null) {
+      throw StateError(
+        'createCubit + startGateway before waitForNativeInboxDoorbellConsume',
+      );
+    }
+    final baseline = gatewayBaseline ?? server.requestCountFor(workerApiKey);
+    final deadline = DateTime.now().add(timeout);
+    while (DateTime.now().isBefore(deadline)) {
+      final turns = server.requestCountFor(workerApiKey) - baseline;
+      if (turns >= minGatewayTurns) {
+        try {
+          await waitForPtyMarkers(
+            markers,
+            memberId: workerMemberId,
+            timeout: const Duration(seconds: 15),
+          );
+          return;
+        } on StateError {
+          // Gateway advanced — keep ticking idle-watch until PTY catches up.
+        }
+      }
+      chat.debugTickIdleWatch();
+      await drainPendingAsyncWork();
+      await postFrame?.flush();
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+    }
+    throw StateError(
+      'Timed out waiting for native inbox doorbell consume '
+      'worker=$workerMemberId markers=$markers '
+      'gatewayTurns=${server.requestCountFor(workerApiKey) - baseline} '
+      '(need ≥$minGatewayTurns)\n'
+      '${diagnosticsBundle(memberId: workerMemberId)}',
+    );
   }
 
   /// Boots every roster seat (lead + workers) for mixed/native cells.

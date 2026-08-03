@@ -332,6 +332,16 @@ void main() {
         );
         await harness.openSession();
         await harness.bootMemberToPrompt(kMatrixLeadMemberId);
+
+        final worker0 = matrixPrimaryWorkerPodId(harness.shape);
+        // Boot idle workers before lead compose so round-1 SendMessage can land
+        // in the pod inbox while pods are materialized, then doorbell reengage can
+        // wake developer-0 at prompt (Acceptance #3 + production doorbell).
+        await harness.connectMember('developer-1');
+        await harness.bootMemberToPrompt('developer-1');
+        await harness.connectMember(worker0);
+        await harness.bootMemberToPrompt(worker0);
+
         await harness.loadHistory();
 
         final cliTeam = harness.session!.cliTeamName.trim().isNotEmpty
@@ -394,26 +404,39 @@ void main() {
           reason: harness.diagnosticsBundle(),
         );
 
+        // Acceptance #3 vs Claude live-agent: connected pods may receive
+        // SendMessage in-process. Workers boot idle above (doorbell disabled) so
+        // compose still writes unread mail to developer-0.json, then production
+        // doorbell reengage wakes developer-0 at prompt.
         ClaudeNativeInboxDoorbell.doorbellDisabledForTests = false;
-        await harness.connectMember(matrixPrimaryWorkerPodId(harness.shape));
-        await harness.bootMemberToPrompt(matrixPrimaryWorkerPodId(harness.shape));
-        final workerShell = harness.memberShell('developer-0');
-        expect(workerShell, isNotNull, reason: harness.diagnosticsBundle());
-        workerShell!.input.writeToPty(
-          '${ClaudeNativeInboxDoorbell.doorbellNotice}\r',
+
+        final workerGatewayBaseline =
+            harness.gateway!.requestCountFor(workerScriptApiKey);
+
+        expect(
+          harness.cubit!.activeTab!.memberShells.keys,
+          containsAll([worker0, 'developer-1']),
+          reason: harness.diagnosticsBundle(),
+        );
+        expect(
+          readClaudeInboxUnreadCount(
+            claudeDir: claudeDir,
+            cliTeamName: cliTeam,
+            memberId: 'developer-1',
+          ),
+          0,
+          reason:
+              'developer-1 should stay idle with no unread after round-1 dispatch '
+              'to developer-0 only',
         );
 
-        await harness.waitForGatewayTurns(
-          apiKey: workerScriptApiKey,
-          minTurns: 1,
+        // Production path: idle-watch → ClaudeNativeInboxDoorbell → PTY deliver.
+        await harness.waitForNativeInboxDoorbellConsume(
+          workerMemberId: worker0,
+          workerApiKey: workerScriptApiKey,
+          markers: [markReplicaW01],
+          gatewayBaseline: workerGatewayBaseline,
         );
-        await harness.waitForPtyMarkers(
-          [markReplicaW01],
-          memberId: 'developer-0',
-        );
-
-        await harness.connectMember('developer-1');
-        await harness.bootMemberToPrompt('developer-1');
 
         harness.gateway!.seekScenario(leadScriptApiKey, 3);
         await harness.bootComposeSeatToPrompt();
