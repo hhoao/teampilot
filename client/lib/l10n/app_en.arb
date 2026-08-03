@@ -2764,6 +2764,7 @@
   "shortcutsStripNextTab": "Next Tab",
   "shortcutsStripPrevTab": "Previous Tab",
   "shortcutsSessionNewTab": "New Session Tab",
+  "shortcutsSessionNewChat": "New Conversation",
   "shortcutsSessionCloseTab": "Close Session Tab",
   "shortcutsStripFocusTab": "Go to Tab {n}",
   "@shortcutsStripFocusTab": {

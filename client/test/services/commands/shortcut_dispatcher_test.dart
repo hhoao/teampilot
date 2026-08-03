@@ -1,15 +1,20 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/commands/command_bus.dart';
+import 'package:teampilot/services/commands/command_catalog.dart';
 import 'package:teampilot/services/commands/command_definition.dart';
+import 'package:teampilot/services/commands/command_ids.dart';
 import 'package:teampilot/services/commands/key_chord.dart';
+import 'package:teampilot/services/commands/keybinding_resolver.dart';
 import 'package:teampilot/services/commands/shortcut_context.dart';
 import 'package:teampilot/services/commands/shortcut_dispatcher.dart';
 
 PhysicalKeyboardKey _physicalFor(LogicalKeyboardKey logicalKey) {
   return switch (logicalKey) {
     LogicalKeyboardKey.keyK => PhysicalKeyboardKey.keyK,
+    LogicalKeyboardKey.keyN => PhysicalKeyboardKey.keyN,
     LogicalKeyboardKey.keyZ => PhysicalKeyboardKey.keyZ,
+    LogicalKeyboardKey.controlLeft => PhysicalKeyboardKey.controlLeft,
     LogicalKeyboardKey.metaLeft => PhysicalKeyboardKey.metaLeft,
     _ => throw UnsupportedError('Add mapping for $logicalKey'),
   };
@@ -132,6 +137,56 @@ void main() {
       final handled = dispatcher.handle(keyUp(LogicalKeyboardKey.keyK));
 
       expect(handled, isFalse);
+    });
+  });
+
+  group('ShortcutDispatcher with real v1 catalog', () {
+    ShortcutDispatcher buildV1Dispatcher(CommandBus bus, ShortcutContext context) {
+      return ShortcutDispatcher(
+        bus: bus,
+        effectiveChords: (commandId) => KeybindingResolver.effectiveBindings(
+          catalog: CommandCatalog.v1,
+          overrides: {},
+        )[commandId]!,
+        context: () => context,
+        isMacOS: () => false,
+        catalog: CommandCatalog.v1,
+      );
+    }
+
+    test('Ctrl+N in a workspace invokes sessionNewChat', () {
+      final bus = CommandBus();
+      String? invoked;
+      bus.register(CommandIds.sessionNewChat, () {
+        invoked = CommandIds.sessionNewChat;
+      });
+      final dispatcher = buildV1Dispatcher(
+        bus,
+        const ShortcutContext(hasWorkspace: true),
+      );
+
+      pressModifier(LogicalKeyboardKey.controlLeft);
+      addTearDown(() => releaseModifier(LogicalKeyboardKey.controlLeft));
+
+      final handled = dispatcher.handle(keyDown(LogicalKeyboardKey.keyN));
+
+      expect(handled, isTrue);
+      expect(invoked, CommandIds.sessionNewChat);
+    });
+
+    test('Ctrl+N is not matched without an open workspace', () {
+      final bus = CommandBus();
+      var called = false;
+      bus.register(CommandIds.sessionNewChat, () => called = true);
+      final dispatcher = buildV1Dispatcher(bus, const ShortcutContext());
+
+      pressModifier(LogicalKeyboardKey.controlLeft);
+      addTearDown(() => releaseModifier(LogicalKeyboardKey.controlLeft));
+
+      final handled = dispatcher.handle(keyDown(LogicalKeyboardKey.keyN));
+
+      expect(handled, isFalse);
+      expect(called, isFalse);
     });
   });
 

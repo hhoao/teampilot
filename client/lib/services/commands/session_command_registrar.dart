@@ -19,6 +19,10 @@ void registerSessionCommands(
     () => chat.enterNewChat(chat.tabStore.activeWorkspaceId),
   );
   bus.register(
+    CommandIds.sessionNewChat,
+    () => chat.enterNewChat(chat.tabStore.activeWorkspaceId),
+  );
+  bus.register(
     CommandIds.sessionCloseTab,
     () => chat.closeTab(chat.state.activeTabIndex),
   );

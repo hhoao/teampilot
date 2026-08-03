@@ -2337,6 +2337,7 @@
   "shortcutsStripNextTab": "下一个标签",
   "shortcutsStripPrevTab": "上一个标签",
   "shortcutsSessionNewTab": "新建会话标签",
+  "shortcutsSessionNewChat": "新建对话",
   "shortcutsSessionCloseTab": "关闭会话标签",
   "shortcutsStripFocusTab": "切换到第 {n} 个标签",
   "@shortcutsStripFocusTab": {

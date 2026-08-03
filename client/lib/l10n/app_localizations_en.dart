@@ -6038,6 +6038,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get shortcutsSessionNewTab => 'New Session Tab';
 
   @override
+  String get shortcutsSessionNewChat => 'New Conversation';
+
+  @override
   String get shortcutsSessionCloseTab => 'Close Session Tab';
 
   @override

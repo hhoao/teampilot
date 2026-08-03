@@ -105,6 +105,16 @@ abstract final class CommandCatalog {
       titleL10nKey: 'shortcutsSessionNewTab',
     ),
     CommandDefinition(
+      id: CommandIds.sessionNewChat,
+      category: CommandCategory.tabs,
+      defaultChords: [
+        KeyChord(key: 'n', mods: [KeyChordMod.mod]),
+      ],
+      when: ShortcutWhen.hasWorkspace,
+      terminalPassthrough: true,
+      titleL10nKey: 'shortcutsSessionNewChat',
+    ),
+    CommandDefinition(
       id: CommandIds.sessionCloseTab,
       category: CommandCategory.tabs,
       defaultChords: [

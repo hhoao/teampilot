@@ -5804,6 +5804,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get shortcutsSessionNewTab => '新建会话标签';
 
   @override
+  String get shortcutsSessionNewChat => '新建对话';
+
+  @override
   String get shortcutsSessionCloseTab => '关闭会话标签';
 
   @override

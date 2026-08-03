@@ -53,6 +53,7 @@ String? _titleForKey(AppLocalizations l10n, String titleL10nKey) {
     'shortcutsStripNextTab' => l10n.shortcutsStripNextTab,
     'shortcutsStripPrevTab' => l10n.shortcutsStripPrevTab,
     'shortcutsSessionNewTab' => l10n.shortcutsSessionNewTab,
+    'shortcutsSessionNewChat' => l10n.shortcutsSessionNewChat,
     'shortcutsSessionCloseTab' => l10n.shortcutsSessionCloseTab,
     'shortcutsToggleSidebar' => l10n.shortcutsToggleSidebar,
     'shortcutsTogglePanel' => l10n.shortcutsTogglePanel,

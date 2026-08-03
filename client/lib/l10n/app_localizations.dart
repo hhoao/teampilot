@@ -10782,6 +10782,12 @@ abstract class AppLocalizations {
   /// **'New Session Tab'**
   String get shortcutsSessionNewTab;
 
+  /// No description provided for @shortcutsSessionNewChat.
+  ///
+  /// In en, this message translates to:
+  /// **'New Conversation'**
+  String get shortcutsSessionNewChat;
+
   /// No description provided for @shortcutsSessionCloseTab.
   ///
   /// In en, this message translates to:

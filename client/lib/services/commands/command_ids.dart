@@ -11,6 +11,7 @@ abstract final class CommandIds {
   static const String stripNextTab = 'workbench.strip.nextTab';
   static const String stripPrevTab = 'workbench.strip.prevTab';
   static const String sessionNewTab = 'workbench.session.newTab';
+  static const String sessionNewChat = 'workbench.session.newChat';
   static const String sessionCloseTab = 'workbench.session.closeTab';
 
   /// 1-based ordinal → `workbench.strip.focusTabN` (N = 1…10).

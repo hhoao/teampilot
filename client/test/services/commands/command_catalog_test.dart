@@ -11,6 +11,7 @@ void main() {
       CommandIds.workspaceNextTab,
       CommandIds.workspaceSearch,
       CommandIds.stripNextTab,
+      CommandIds.sessionNewChat,
       CommandIds.sessionCloseTab,
       CommandIds.zoomIn,
       CommandIds.composeSubmit,
@@ -68,6 +69,17 @@ void main() {
       final def = CommandCatalog.v1.singleWhere((c) => c.id == id);
       expect(def.defaultChords, isEmpty, reason: id);
     }
+  });
+
+  test('session new chat defaults to Mod+N', () {
+    final def = CommandCatalog.v1.singleWhere(
+      (c) => c.id == CommandIds.sessionNewChat,
+    );
+    expect(def.defaultChords, [
+      KeyChord(key: 'n', mods: [KeyChordMod.mod]),
+    ]);
+    expect(def.when, ShortcutWhen.hasWorkspace);
+    expect(def.terminalPassthrough, isTrue);
   });
 
   test('workspace search defaults to Mod+F and double Shift', () {
