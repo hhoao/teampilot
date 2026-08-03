@@ -52,6 +52,17 @@ List<TeamMemberConfig> sessionRosterMembers(
   return out;
 }
 
+/// Pod list for Claude / native CLI roster writers (`config.json`, inboxes).
+///
+/// Same members as [sessionRosterMembers] today. Call sites that stage CLI
+/// team files must use this (or [runtimeRosterMembers] without a session),
+/// never raw [TeamProfile.members].
+List<TeamMemberConfig> cliTeamRosterMembers(
+  AppSession session,
+  TeamProfile team,
+) =>
+    sessionRosterMembers(session, team);
+
 TeamMemberConfig? _sessionBindingMemberType(
   SessionMemberBinding binding,
   Map<String, TeamMemberConfig> typesById,

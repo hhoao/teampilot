@@ -465,6 +465,111 @@ void main() {
     },
   );
 
+  test('prepareLaunch writes Claude roster pods not type names', () async {
+    const team = TeamProfile(
+      id: 'team-a',
+      name: 'Team A',
+      cli: CliTool.claude,
+      members: [
+        TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
+        TeamMemberConfig(id: 'developer', name: 'Developer', replicas: 2),
+        TeamMemberConfig(id: 'reviewer', name: 'Reviewer', replicas: 0),
+      ],
+    );
+    final session = _session(id: 'claude-roster-pods').copyWith(
+      cliTeamName: 'team-a-5',
+      members: const [
+        SessionMemberBinding(rosterMemberId: 'team-lead', taskId: 't0'),
+        SessionMemberBinding(
+          rosterMemberId: 'developer-0',
+          typeId: 'developer',
+          taskId: 't1',
+        ),
+        SessionMemberBinding(
+          rosterMemberId: 'developer-1',
+          typeId: 'developer',
+          taskId: 't2',
+        ),
+      ],
+    );
+
+    final plan = await service().prepareLaunch(
+      session: session,
+      team: team,
+      member: const TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
+      memberBinding: const SessionMemberBinding(
+        rosterMemberId: 'team-lead',
+        taskId: 't0',
+      ),
+    );
+
+    final rosterDir = p.join(
+      plan.memberConfigDir,
+      'teams',
+      ClaudeTeamRosterService.safeClaudePathSegment(plan.cliTeamName),
+    );
+    final configPath = p.join(rosterDir, 'config.json');
+    expect(File(configPath).existsSync(), isTrue);
+    final decoded = jsonDecode(File(configPath).readAsStringSync()) as Map;
+    final names = (decoded['members'] as List)
+        .map((m) => (m as Map)['name'])
+        .toList();
+    expect(names, ['team-lead', 'developer-0', 'developer-1']);
+    expect(
+      File(p.join(rosterDir, 'inboxes', 'developer-0.json')).existsSync(),
+      isTrue,
+    );
+    expect(
+      File(p.join(rosterDir, 'inboxes', 'developer.json')).existsSync(),
+      isFalse,
+    );
+  });
+
+  test(
+    'prepareTeamLaunchEnvironment expands runtimeRosterMembers',
+    () async {
+      const team = TeamProfile(
+        id: 'team-a',
+        name: 'Team A',
+        cli: CliTool.claude,
+        members: [
+          TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
+          TeamMemberConfig(id: 'developer', name: 'Developer', replicas: 2),
+          TeamMemberConfig(id: 'reviewer', name: 'Reviewer', replicas: 0),
+        ],
+      );
+
+      await service().prepareTeamLaunchEnvironment(
+        team: team,
+        member: const TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
+        workspaceId: _workspaceId,
+        sessionId: 'preview-session',
+        workingDirectory: '/work/workspace',
+      );
+
+      final rosterDir = p.join(
+        layout.sessionRuntimeToolDir(_workspaceId, 'preview-session', 'claude'),
+        'teams',
+        ClaudeTeamRosterService.safeClaudePathSegment('team-a'),
+      );
+      final configPath = p.join(rosterDir, 'config.json');
+      expect(File(configPath).existsSync(), isTrue);
+      final decoded = jsonDecode(File(configPath).readAsStringSync()) as Map;
+      final names = (decoded['members'] as List)
+          .map((m) => (m as Map)['name'])
+          .toList();
+      expect(names, ['team-lead', 'developer-0', 'developer-1']);
+      expect(
+        File(p.join(rosterDir, 'inboxes', 'developer-0.json')).existsSync(),
+        isTrue,
+      );
+      expect(
+        File(p.join(rosterDir, 'inboxes', 'developer.json')).existsSync(),
+        isFalse,
+      );
+    },
+  );
+
   test('destroyCliState removes the session runtime tree', () async {
     final sessionRoot = layout.workspace.sessionRuntimeDir(
       _workspaceId,

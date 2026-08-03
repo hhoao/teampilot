@@ -59,7 +59,39 @@ void main() {
     expect(insts.single.instanceId, 'team-lead');
   });
 
-  test('workspaceion seeds the type id as a capability', () {
+  test('projection seeds agentType from type id when empty', () {
+    final cfg = expandTeamRoster(const [
+      TeamMemberConfig(id: 'developer', name: 'Developer', replicas: 2),
+    ]).first.toMemberConfig();
+    expect(cfg.id, 'developer-0');
+    expect(cfg.agentType, 'developer');
+  });
+
+  test('projection preserves explicit type.agentType', () {
+    final cfg = expandTeamRoster(const [
+      TeamMemberConfig(
+        id: 'developer',
+        name: 'Developer',
+        replicas: 2,
+        agentType: 'implementer',
+      ),
+    ]).first.toMemberConfig();
+    expect(cfg.agentType, 'implementer');
+  });
+
+  test('projection seeds agentType from type.agent when agentType empty', () {
+    final cfg = expandTeamRoster(const [
+      TeamMemberConfig(
+        id: 'developer',
+        name: 'Developer',
+        replicas: 2,
+        agent: 'coder',
+      ),
+    ]).first.toMemberConfig();
+    expect(cfg.agentType, 'coder');
+  });
+
+  test('projection seeds the type id as a capability', () {
     final inst = expandTeamRoster(const [
       TeamMemberConfig(
         id: 'builder',
@@ -71,11 +103,11 @@ void main() {
     final cfg = inst.toMemberConfig();
     expect(cfg.id, 'builder-0');
     expect(cfg.capabilities, {'builder', 'rust'});
-    // a workspaceion is a single concrete pod, not itself re-expandable
+    // a projection is a single concrete pod, not itself re-expandable
     expect(cfg.replicas, 1);
   });
 
-  test('runtimeRosterMembers workspaces every instance', () {
+  test('runtimeRosterMembers projects every instance', () {
     final members = runtimeRosterMembers(
       team(const [
         TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
@@ -140,6 +172,57 @@ void main() {
       );
     },
   );
+
+  test('cliTeamRosterMembers matches sessionRosterMembers', () {
+    final profile = team(const [
+      TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
+      TeamMemberConfig(id: 'developer', name: 'Developer', replicas: 2),
+      TeamMemberConfig(id: 'reviewer', name: 'Reviewer', replicas: 0),
+    ]);
+    final session = AppSession(
+      sessionId: 's1',
+      workspaceId: 'w1',
+      createdAt: 1,
+      members: const [
+        SessionMemberBinding(rosterMemberId: 'team-lead', taskId: 't0'),
+        SessionMemberBinding(
+          rosterMemberId: 'developer-0',
+          typeId: 'developer',
+          taskId: 't1',
+        ),
+        SessionMemberBinding(
+          rosterMemberId: 'developer-1',
+          typeId: 'developer',
+          taskId: 't2',
+        ),
+      ],
+    );
+    final cli = cliTeamRosterMembers(session, profile);
+    final ui = sessionRosterMembers(session, profile);
+    expect(cli.map((m) => m.id), ui.map((m) => m.id));
+    expect(cli.map((m) => m.id), ['team-lead', 'developer-0', 'developer-1']);
+    expect(cli.map((m) => m.agentType), ['team-lead', 'developer', 'developer']);
+  });
+
+  test('singleton replica keeps bare type id', () {
+    final profile = team(const [
+      TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
+      TeamMemberConfig(id: 'developer', name: 'Developer', replicas: 1),
+    ]);
+    final session = AppSession(
+      sessionId: 's1',
+      workspaceId: 'w1',
+      createdAt: 1,
+      members: const [
+        SessionMemberBinding(rosterMemberId: 'team-lead', taskId: 't0'),
+        SessionMemberBinding(rosterMemberId: 'developer', taskId: 't1'),
+      ],
+    );
+    expect(
+      cliTeamRosterMembers(session, profile).map((m) => m.id),
+      ['team-lead', 'developer'],
+    );
+  });
 
   test(
     'sessionRosterMembers infers type from numbered instance id without typeId',

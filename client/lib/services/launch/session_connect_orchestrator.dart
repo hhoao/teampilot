@@ -261,7 +261,7 @@ class SessionConnectOrchestrator {
         teamId: teamId,
         cliTeamName: runtimeTeamId,
         cli: cli,
-        members: team.members,
+        members: cliTeamRosterMembers(session, team),
         member: member,
         workingDirectory: workingDirectory,
         additionalDirectories: additionalDirectories,
