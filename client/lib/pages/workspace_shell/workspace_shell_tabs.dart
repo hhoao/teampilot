@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/models/team_config.dart';
 
+import '../../cubits/agent_attention_cubit.dart';
 import '../../cubits/chat_cubit.dart';
 import '../../cubits/layout_cubit.dart';
 import '../../cubits/workbench/workbench_tab.dart';
@@ -22,6 +23,7 @@ import '../../theme/workspace_surface_layers.dart';
 import '../../utils/session/session_row_content.dart';
 import '../../utils/ui/app_keys.dart';
 import '../../widgets/cli/cli_brand_icon.dart';
+import '../../widgets/session_working_spinner.dart';
 import 'workspace_shell_models.dart';
 
 /// Sidebar + right-tools visibility toggles for the workspace IDE shell.
@@ -402,18 +404,36 @@ class WorkbenchStripTabChipState extends State<WorkbenchStripTabChip> {
         : context.select<ChatCubit, bool>(
             (c) => c.state.workingSessionIds.contains(sessionId),
           );
+    final waiting = sessionId == null
+        ? false
+        : context.select<AgentAttentionCubit, bool>(
+            (c) => c.state.sessionHasWaiting(sessionId),
+          );
     final title = sessionId == null
         ? widget.title
         : context.select<ChatCubit, String>(
             (c) =>
                 SessionRowContent.fromChatState(c.state, sessionId).titleForPaint,
           );
+    final cs = Theme.of(context).colorScheme;
+    // Session tabs inject the same indicator as the sidebar list; run/other
+    // tabs keep TpTabChip's default CircularProgressIndicator.
+    final Widget? workingIndicator = sessionId == null
+        ? null
+        : SessionWorkingIndicator(
+            working: working,
+            waiting: waiting,
+            size: 13,
+            color: cs.primary,
+            waitingColor: cs.tertiary,
+          );
 
     return TpTabChip(
       title: title,
       active: widget.active,
       preview: widget.preview,
-      working: working,
+      working: working || waiting,
+      workingIndicator: workingIndicator,
       accentColor: widget.accentColor,
       onTap: widget.onTap,
       onClose: widget.onClose,
