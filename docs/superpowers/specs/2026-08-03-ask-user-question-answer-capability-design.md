@@ -78,9 +78,9 @@ CLI tool / question
        ptyPicker        → write digit/Esc to seat PTY
        pluginSdkReply   → AskUserAnswerPendingStore.put
        none             → no-op / open terminal only
-  → on local success: clearWaiting(seat)  // optimistic
-  → OpenCode plugin: poll GET /ask-user-answer → client.question.reply|reject
-  → on reply_failed: restore waiting + surface error
+  → on local success: set attention working (retain lastEvent + dismissed askRequestId)
+  → OpenCode plugin: poll GET /ask-user-answer?request_id=… → client.question.reply|reject
+  → on reply_failed: restore waiting from retained lastEvent + surface error
 ```
 
 ### Event / attention model
@@ -140,7 +140,8 @@ On `question.asked`:
 2. Start short-interval poll of `GET /ask-user-answer?request_id=…` until answer, reject, or timeout (align with attention TTL, default 30m, or a shorter dedicated poll deadline documented in code).
 3. Call `client.question.reply` with `{ path: { sessionID, requestID }, body: { answers } }` or `client.question.reject` when available.
 4. On SDK failure: POST `question.reply_failed` with `request_id` (and optional `message`) so Dart can restore waiting.
-5. On success: rely on existing idle / done signals for reconciliation; Dart already cleared optimistically.
+5. On success: rely on existing idle / done signals for reconciliation; Dart already moved the seat to `working` optimistically.
+6. On `question.reply_failed` apply: cubit **merges** — restore `waiting` using retained ask payload; do **not** overwrite `lastEvent.askUserQuestions` with an empty/thin failure event.
 
 **Cancel from Chat (OpenCode):** put `{ reject: true }` — do **not** send Esc to the PTY.
 
