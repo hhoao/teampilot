@@ -124,6 +124,7 @@ class _HomeSidebarNavScroll extends StatelessWidget {
     final activeGlobalView = this.activeGlobalView;
 
     return ListView(
+      padding: EdgeInsets.zero,
       children: [
         _ShortcutRow(
           icon: Icons.groups_2_outlined,
