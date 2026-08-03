@@ -533,8 +533,10 @@ EOF
 
 - Resolve seat CLI from tab/session.
 - Call facade.
-- On `AskUserAnswerOk`: `agentAttention.markAskAnswered(...)`.
+- On `AskUserAnswerOk`: `agentAttention.markAskAnswered(...)` — applies to **answer and cancel** handoffs (PTY Esc success and OpenCode pending reject put both count as local success).
 - On failed: do **not** mark answered; return failure to UI (throw or return result — prefer return result so card can show inline error).
+
+`markAskAnswered` reads `dismissedAskRequestId` from `entry.lastEvent.askRequestId` (no caller-passed id).
 
 Add a unit assertion (ChatCubit test or facade+attention integration): `AskUserAnswerFailed` must **not** call `markAskAnswered`.
 
