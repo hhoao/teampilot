@@ -768,33 +768,73 @@ class ChatCubit extends Cubit<ChatState>
     );
   }
 
-  /// Answers a Claude-family AskUserQuestion from chat by injecting the picker
-  /// selection keystrokes into the seat's PTY. [memberId] is the shell key
-  /// (`sessionId` for simple, member id for team) — same as seat attention.
-  Future<void> answerAskUserQuestion({
+  /// Answers AskUserQuestion via the CLI capability facade (PTY digit inject
+  /// or pending store). [memberId] is the shell key (`sessionId` for simple,
+  /// member id for team) — same as seat attention.
+  ///
+  /// Full optimistic dismiss + OpenCode `askRequestId`/`answers` wiring lands
+  /// in a follow-up task; this keeps the card compiling against the facade.
+  Future<AskUserAnswerResult> answerAskUserQuestion({
     required String sessionId,
     required String memberId,
     required int optionIndex,
+    String? askRequestId,
+    List<List<String>>? answers,
   }) async {
-    final shell = _shellForMember(sessionId, memberId);
-    await _askUserAnswer.answer(shell: shell, optionIndex: optionIndex);
+    final tab = _tabStore.openTabBySessionId(sessionId);
+    if (tab == null) {
+      return const AskUserAnswerFailed('session_not_found');
+    }
+    final mid = memberId.trim();
+    if (mid.isEmpty) {
+      return const AskUserAnswerFailed('member_not_found');
+    }
+    final cli = SessionMemberCliResolver.resolve(
+      persistedSession: tab.persistedSession,
+      team: _teamForSessionTab(tab),
+      memberId: mid,
+      cliForMember: _shellFactory.cliForMember,
+      globalPresets: _lifecycle.globalPresets,
+    );
+    return _askUserAnswer.answer(
+      cli: cli,
+      sessionId: sessionId,
+      memberId: mid,
+      shell: tab.memberShells[mid],
+      askRequestId: askRequestId,
+      optionIndex: optionIndex,
+      answers: answers,
+    );
   }
 
-  /// Cancels a pending AskUserQuestion picker (Esc → declined).
-  Future<void> cancelAskUserQuestion({
+  /// Cancels a pending AskUserQuestion (PTY Esc or pending reject).
+  Future<AskUserAnswerResult> cancelAskUserQuestion({
     required String sessionId,
     required String memberId,
+    String? askRequestId,
   }) async {
-    final shell = _shellForMember(sessionId, memberId);
-    await _askUserAnswer.cancel(shell: shell);
-  }
-
-  TerminalSession? _shellForMember(String sessionId, String memberId) {
     final tab = _tabStore.openTabBySessionId(sessionId);
-    if (tab == null) return null;
+    if (tab == null) {
+      return const AskUserAnswerFailed('session_not_found');
+    }
     final mid = memberId.trim();
-    if (mid.isEmpty) return null;
-    return tab.memberShells[mid];
+    if (mid.isEmpty) {
+      return const AskUserAnswerFailed('member_not_found');
+    }
+    final cli = SessionMemberCliResolver.resolve(
+      persistedSession: tab.persistedSession,
+      team: _teamForSessionTab(tab),
+      memberId: mid,
+      cliForMember: _shellFactory.cliForMember,
+      globalPresets: _lifecycle.globalPresets,
+    );
+    return _askUserAnswer.cancel(
+      cli: cli,
+      sessionId: sessionId,
+      memberId: mid,
+      shell: tab.memberShells[mid],
+      askRequestId: askRequestId,
+    );
   }
 
   TeamProfile? _teamForSessionTab(ChatTab tab) {
