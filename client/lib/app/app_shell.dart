@@ -132,6 +132,7 @@ import '../services/floating_workspace/floating_workspace_persistence.dart';
 import '../services/floating_workspace/migrate_legacy_workbench_tabs.dart';
 import '../services/floating_workspace/surfaces/diff_preview_floating_surface.dart';
 import '../services/floating_workspace/surfaces/file_preview_floating_surface.dart';
+import '../services/floating_workspace/surfaces/run_floating_surface.dart';
 import '../services/floating_workspace/surfaces/terminal_floating_surface.dart';
 import '../pages/home_workspace/workspace_chrome_commands.dart';
 import '../services/cli/registry/cli_bootstrap.dart';
@@ -1532,6 +1533,39 @@ Future<AppShell> buildAppShell({
     diff: DiffPreviewFloatingSurface(
       editor: editorCubit,
       floating: floatingWorkspaceCubit,
+    ),
+    run: RunFloatingSurface(
+      floating: floatingWorkspaceCubit,
+      resolveCubit: (tabScopeId) {
+        final workspace = chatCubit.state.workspaces
+            .where((w) => w.workspaceId == tabScopeId)
+            .firstOrNull;
+        if (workspace == null) return null;
+        return workspaceRunRegistry.cubitFor(
+          tabScopeId: tabScopeId,
+          workspaceId: workspace.workspaceId,
+          folders: workspace.folders,
+        );
+      },
+      resolveTitle: (sessionId) {
+        final tabScopeId = floatingWorkspaceCubit.state.activeWorkspaceId;
+        if (tabScopeId.isEmpty) return null;
+        final workspace = chatCubit.state.workspaces
+            .where((w) => w.workspaceId == tabScopeId)
+            .firstOrNull;
+        if (workspace == null) return null;
+        final cubit = workspaceRunRegistry.cubitFor(
+          tabScopeId: tabScopeId,
+          workspaceId: workspace.workspaceId,
+          folders: workspace.folders,
+        );
+        for (final session in cubit.state.sessions) {
+          if (session.id == sessionId) {
+            return session.owned.configuration.name;
+          }
+        }
+        return null;
+      },
     ),
   );
   final floatingMaximizeInsets = FloatingMaximizeInsets();
