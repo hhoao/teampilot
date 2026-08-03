@@ -4,9 +4,19 @@ import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/agent_attention_cubit.dart';
 import '../../cubits/chat_cubit.dart';
+import '../../cubits/cli_presets_cubit.dart';
+import '../../cubits/launch_profile_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_session.dart';
+import '../../models/cli_preset.dart';
+import '../../models/team_config.dart';
 import '../../services/agent_status/agent_attention_state.dart';
+import '../../services/agent_status/ask_user_question_policy.dart';
+import '../../services/cli/preset_resolver.dart';
+import '../../services/cli/registry/capabilities/ask_user_question_capability.dart';
+import '../../services/cli/registry/cli_tool_registry.dart';
+import '../../services/cli/registry/cli_tool_registry_scope.dart';
+import '../../services/terminal/session_member_cli_resolver.dart';
 import '../../utils/ui/app_keys.dart';
 import 'ask_user_question_card.dart';
 
@@ -73,16 +83,25 @@ class AgentPermissionAttentionBanner extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    // Single, single-select AskUserQuestion → interactive card (answer in chat).
     final questions = entry.lastEvent?.askUserQuestions;
-    if (questions != null &&
-        questions.length == 1 &&
-        !questions.single.multiSelect &&
-        questions.single.options.isNotEmpty) {
+    final askRequestId = entry.lastEvent?.askRequestId;
+    final lockedCli = _resolveSeatCli(context, seatId: seatId);
+    final registry =
+        CliToolRegistryScope.maybeOf(context) ?? CliToolRegistry.builtIn();
+    final capability = registry.capability<AskUserQuestionCapability>(lockedCli);
+    final showAskCard = shouldShowAskUserQuestionCard(
+      capability: capability,
+      questions: questions,
+      askRequestId: askRequestId,
+    );
+    if (showAskCard && questions != null) {
       return AskUserQuestionCard(
         session: session,
         seatId: seatId,
-        question: questions.single,
+        questions: questions,
+        askRequestId: askRequestId,
+        supportsMultiSelectInChat:
+            capability?.supportsMultiSelectInChat ?? false,
         onAnswerInTerminal: () => _openTerminal(
           context,
           sessionId: sessionId,
@@ -139,6 +158,52 @@ class AgentPermissionAttentionBanner extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  /// Seat CLI — same lock resolution as compose / turn interrupt.
+  CliTool _resolveSeatCli(BuildContext context, {required String seatId}) {
+    if (session.isSimple || session.sessionTeam.trim().isEmpty) {
+      return session.cli ?? CliTool.claude;
+    }
+
+    TeamProfile? team;
+    List<CliPreset> presets = const [];
+    try {
+      final teamId = session.sessionTeam.trim();
+      final profile = context.read<LaunchProfileCubit>().byId(teamId);
+      if (profile is TeamProfile) team = profile;
+      presets = context.read<CliPresetsCubit>().state.presets;
+    } catch (_) {
+      // Tests / partial trees may omit profile cubits — fall back below.
+    }
+    if (team == null) return CliTool.claude;
+
+    final memberId = selectedMemberId.trim().isNotEmpty
+        ? selectedMemberId.trim()
+        : seatId;
+    return SessionMemberCliResolver.resolve(
+      persistedSession: session,
+      team: team,
+      memberId: memberId,
+      globalPresets: presets,
+      cliForMember: (t, id, {List<CliPreset> globalPresets = const []}) {
+        TeamMemberConfig? member;
+        for (final m in t.members) {
+          if (m.id == id) {
+            member = m;
+            break;
+          }
+        }
+        if (member != null) {
+          return memberLaunchCli(
+            team: t,
+            member: member,
+            globalPresets: globalPresets,
+          );
+        }
+        return t.cli;
+      },
     );
   }
 

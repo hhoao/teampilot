@@ -2327,7 +2327,7 @@ abstract class AppLocalizations {
   /// No description provided for @agentAskUserQuestionTitle.
   ///
   /// In en, this message translates to:
-  /// **'Claude is asking you a question'**
+  /// **'Agent is asking you a question'**
   String get agentAskUserQuestionTitle;
 
   /// No description provided for @agentAskAnswerInTerminal.
@@ -2341,6 +2341,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Cancel question'**
   String get agentAskCancelQuestion;
+
+  /// No description provided for @agentAskAnswerFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn't submit your answer. Try again or answer in the Terminal.'**
+  String get agentAskAnswerFailed;
+
+  /// No description provided for @agentAskTerminalDisconnected.
+  ///
+  /// In en, this message translates to:
+  /// **'Terminal is disconnected. Reconnect or answer in the Terminal.'**
+  String get agentAskTerminalDisconnected;
+
+  /// No description provided for @agentAskSubmitAnswers.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit answers'**
+  String get agentAskSubmitAnswers;
 
   /// No description provided for @sessionHistoryRetry.
   ///
