@@ -128,3 +128,73 @@ void expectClaudeInboxAbsent({
     reason: 'Claude inbox should be absent: $path',
   );
 }
+
+int readClaudeInboxUnreadCount({
+  required String claudeDir,
+  required String cliTeamName,
+  required String memberId,
+}) {
+  final path = claudeInboxPath(
+    claudeDir: claudeDir,
+    cliTeamName: cliTeamName,
+    memberId: memberId,
+  );
+  final file = File(path);
+  if (!file.existsSync()) return 0;
+  final decoded = jsonDecode(file.readAsStringSync());
+  if (decoded is! List) return 0;
+  var unread = 0;
+  for (final item in decoded) {
+    if (item is Map && item['read'] == false) unread++;
+  }
+  return unread;
+}
+
+void expectClaudeInboxUnread({
+  required String claudeDir,
+  required String cliTeamName,
+  required String memberId,
+  int minUnread = 1,
+}) {
+  final unread = readClaudeInboxUnreadCount(
+    claudeDir: claudeDir,
+    cliTeamName: cliTeamName,
+    memberId: memberId,
+  );
+  expect(
+    unread,
+    greaterThanOrEqualTo(minUnread),
+    reason:
+        'Claude inbox for $memberId should have ≥$minUnread unread messages',
+  );
+}
+
+/// Poll until lead SendMessage lands in the pod inbox (before worker consume).
+Future<void> waitForClaudeInboxUnread({
+  required String claudeDir,
+  required String cliTeamName,
+  required String memberId,
+  int minUnread = 1,
+  Duration timeout = const Duration(seconds: 30),
+}) async {
+  final deadline = DateTime.now().add(timeout);
+  while (DateTime.now().isBefore(deadline)) {
+    final unread = readClaudeInboxUnreadCount(
+      claudeDir: claudeDir,
+      cliTeamName: cliTeamName,
+      memberId: memberId,
+    );
+    if (unread >= minUnread) return;
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+  }
+  final path = claudeInboxPath(
+    claudeDir: claudeDir,
+    cliTeamName: cliTeamName,
+    memberId: memberId,
+  );
+  final raw = File(path).existsSync() ? File(path).readAsStringSync() : '';
+  throw TestFailure(
+    'Timed out waiting for ≥$minUnread unread inbox messages for $memberId '
+    '(path=$path raw=$raw)',
+  );
+}

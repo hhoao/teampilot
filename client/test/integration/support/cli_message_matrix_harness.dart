@@ -54,6 +54,7 @@ export 'roster_shape.dart'
         kMatrixWorkerProviderId,
         kMatrixWorkerTypeId,
         matrixMockModelIdFor,
+        matrixPrimaryWorkerPodId,
         RosterShape;
 
 const kMatrixSimpleProviderId = 'mock-simple';
@@ -316,6 +317,7 @@ final class CliMessageMatrixHarness {
   ChatCubit createCubit({
     required PostFrameTestHarness postFrame,
     bool createHistory = true,
+    bool autoLaunchAllMembersOnConnect = true,
   }) {
     this.postFrame = postFrame;
     final life = SessionLifecycleService(
@@ -327,7 +329,7 @@ final class CliMessageMatrixHarness {
       automationRepository: testAutomationRepository(),
       cliExecutableResolver: (_) => cliPath,
       postFrameScheduler: postFrame.scheduler,
-      autoLaunchAllMembersOnConnect: () => true,
+      autoLaunchAllMembersOnConnect: () => autoLaunchAllMembersOnConnect,
       sessionRepository: SessionRepository(),
       lifecycleService: life,
     );
@@ -522,6 +524,31 @@ final class CliMessageMatrixHarness {
         '${diagnosticsBundle(memberId: memberId)}',
       );
     }
+  }
+
+  /// Schedules PTY connect for one roster member (native lead-only launch).
+  Future<void> connectMember(String memberId) async {
+    final chat = cubit;
+    final s = session;
+    final builtTeam = team;
+    if (chat == null || s == null || builtTeam == null) {
+      throw StateError('openSession before connectMember');
+    }
+    final member = sessionRosterMembers(s, builtTeam).firstWhere(
+      (m) => m.id == memberId,
+      orElse: () => throw StateError('session roster has no member $memberId'),
+    );
+    await chat.connectWorkspaceSession(
+      ExistingSessionConnect(
+        session: s,
+        team: builtTeam,
+        member: member,
+        workspace: workspace,
+        preserveWorkbenchView: true,
+      ),
+    );
+    await drainPendingAsyncWork();
+    await postFrame?.flush();
   }
 
   /// Boots every roster seat (lead + workers) for mixed/native cells.
