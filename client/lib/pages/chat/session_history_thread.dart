@@ -33,10 +33,10 @@ const AiMessage kSessionHistoryRunningPlaceholder = AiMessage(
 /// History message list for session review.
 ///
 /// Owns scroll chrome (stick-to-end, load-older anchoring, hover-effects
-/// gate + cursor lock, [SelectionArea], new-messages chip). Mounts the full
-/// pagination data window (retain + chunked fill) so scrolling does not remount
-/// markdown — Claude-like residency within the loaded message set. Older pages
-/// still arrive via [onLoadOlder].
+/// gate + cursor lock, [SelectionArea] inside the scroll content, new-messages
+/// chip). Mounts the full pagination data window (retain + chunked fill) so
+/// scrolling does not remount markdown — Claude-like residency within the
+/// loaded message set. Older pages still arrive via [onLoadOlder].
 class SessionHistoryThread extends StatefulWidget {
   const SessionHistoryThread({
     required this.runtime,
@@ -516,85 +516,90 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
             child: child!,
           );
         },
-        child: AiLineSpacedSelectionStyle(
-          child: SelectionArea(
-          contextMenuBuilder: buildAiThreadSelectionContextMenu,
-          child: SingleChildScrollView(
-            controller: _scrollController,
-            padding: const EdgeInsets.fromLTRB(0, 16, 0, 24),
-            child: VirtualThreadViewport(
-              messages: displayMessages,
-              scrollController: _scrollController,
-              header: header,
-              anchorEnd: true,
-              overscan: 5,
-              // Claude-like: keep the loaded pagination window mounted while
-              // scrolling; fill in chunks after open so the first paint stays light.
-              retainMountedTurns: true,
-              fillDataWindow: true,
-              mountTurns: _mountTurns,
-              suppressMeasureScrollCorrection: _stickToEnd,
-              onMeasureScrollCorrection: (delta) {
-                if (!_scrollController.hasClients || delta.abs() < 0.5) {
-                  return;
-                }
-                final next = (_scrollController.position.pixels + delta).clamp(
-                  0.0,
-                  _scrollController.position.maxScrollExtent,
-                );
-                _jumpTo(next);
-              },
-              messageBuilder: (context, ai) {
-                if (ai.id == kSessionHistoryRunningPlaceholder.id) {
-                  return SelectionContainer.disabled(
-                    child: _buildRunningInMessage(context),
+        // SelectionArea must sit *inside* the scroll content. As an ancestor it
+        // enables edge auto-scroll while selecting, which yanks the thread to
+        // the top (flutter/flutter#110917).
+        child: SingleChildScrollView(
+          controller: _scrollController,
+          padding: const EdgeInsets.fromLTRB(0, 16, 0, 24),
+          child: AiLineSpacedSelectionStyle(
+            child: SelectionArea(
+              contextMenuBuilder: buildAiThreadSelectionContextMenu,
+              child: VirtualThreadViewport(
+                messages: displayMessages,
+                scrollController: _scrollController,
+                header: header,
+                anchorEnd: true,
+                overscan: 5,
+                // Claude-like: keep the loaded pagination window mounted while
+                // scrolling; fill in chunks after open so the first paint stays light.
+                retainMountedTurns: true,
+                fillDataWindow: true,
+                mountTurns: _mountTurns,
+                suppressMeasureScrollCorrection: _stickToEnd,
+                onMeasureScrollCorrection: (delta) {
+                  if (!_scrollController.hasClients || delta.abs() < 0.5) {
+                    return;
+                  }
+                  final next = (_scrollController.position.pixels + delta)
+                      .clamp(
+                        0.0,
+                        _scrollController.position.maxScrollExtent,
+                      );
+                  _jumpTo(next);
+                },
+                messageBuilder: (context, ai) {
+                  if (ai.id == kSessionHistoryRunningPlaceholder.id) {
+                    return SelectionContainer.disabled(
+                      child: _buildRunningInMessage(context),
+                    );
+                  }
+                  // While Running is appended as the tip turn, keep the real tip's
+                  // bottom gap tight so Running sits under it like in-turn chrome.
+                  final tightenForRunning = widget.liveChrome.isActive &&
+                      displayMessages.length >= 2 &&
+                      displayMessages.last.id ==
+                          kSessionHistoryRunningPlaceholder.id &&
+                      ai.id ==
+                          displayMessages[displayMessages.length - 2].id;
+                  final messageChild = AiMessageView(
+                    key: ValueKey(ai.id),
+                    message: ai,
+                    actionBarHoverEnabled: _hoverEffectsEnabled,
+                    actionBarReveal: ai.id == lastId
+                        ? AiActionBarReveal.always
+                        : AiActionBarReveal.hover,
                   );
-                }
-                // While Running is appended as the tip turn, keep the real tip's
-                // bottom gap tight so Running sits under it like in-turn chrome.
-                final tightenForRunning = widget.liveChrome.isActive &&
-                    displayMessages.length >= 2 &&
-                    displayMessages.last.id ==
-                        kSessionHistoryRunningPlaceholder.id &&
-                    ai.id ==
-                        displayMessages[displayMessages.length - 2].id;
-                final messageChild = AiMessageView(
-                  key: ValueKey(ai.id),
-                  message: ai,
-                  actionBarHoverEnabled: _hoverEffectsEnabled,
-                  actionBarReveal: ai.id == lastId
-                      ? AiActionBarReveal.always
-                      : AiActionBarReveal.hover,
-                );
-                return Align(
-                  alignment: Alignment.topCenter,
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: aiTheme.threadHorizontalPadding,
-                    ),
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        maxWidth: aiTheme.threadMaxWidth,
+                  return Align(
+                    alignment: Alignment.topCenter,
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: aiTheme.threadHorizontalPadding,
                       ),
-                      child: tightenForRunning
-                          ? Theme(
-                              data: Theme.of(context).copyWith(
-                                extensions: [
-                                  ...Theme.of(context).extensions.values.where(
-                                    (e) => e is! AiMessageTheme,
-                                  ),
-                                  aiTheme.copyWith(messageSpacing: 8),
-                                ],
-                              ),
-                              child: messageChild,
-                            )
-                          : messageChild,
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxWidth: aiTheme.threadMaxWidth,
+                        ),
+                        child: tightenForRunning
+                            ? Theme(
+                                data: Theme.of(context).copyWith(
+                                  extensions: [
+                                    ...Theme.of(context).extensions.values
+                                        .where(
+                                          (e) => e is! AiMessageTheme,
+                                        ),
+                                    aiTheme.copyWith(messageSpacing: 8),
+                                  ],
+                                ),
+                                child: messageChild,
+                              )
+                            : messageChild,
+                      ),
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
-          ),
           ),
         ),
       ),

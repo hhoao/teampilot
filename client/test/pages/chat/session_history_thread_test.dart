@@ -62,6 +62,36 @@ void main() {
     expect(find.byType(VirtualThreadViewport), findsOneWidget);
   });
 
+  // SelectionArea as a scroll ancestor enables edge auto-scroll and yanks
+  // the thread toward the top while selecting (flutter/flutter#110917).
+  testWidgets(
+    'SelectionArea sits inside SingleChildScrollView, not as scroll ancestor',
+    (tester) async {
+      final store = ExternalStoreAiThreadRuntime()
+        ..setMessages(_soloUserMessages(5));
+
+      await tester.pumpWidget(_harness(runtime: store));
+      await tester.pumpAndSettle();
+
+      final scrollView = find.byType(SingleChildScrollView);
+      expect(scrollView, findsOneWidget);
+      expect(
+        find.descendant(
+          of: scrollView,
+          matching: find.byType(SelectionArea),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.ancestor(
+          of: scrollView,
+          matching: find.byType(SelectionArea),
+        ),
+        findsNothing,
+      );
+    },
+  );
+
   testWidgets(
     'SessionHistoryThread with hasOlder exposes viewport header and load-older',
     (tester) async {
