@@ -83,6 +83,52 @@ void main() {
     });
   });
 
+  group('shouldSyncFloatingRuns', () {
+    test('no mutations → skip even when workspaces match', () {
+      expect(
+        shouldSyncFloatingRuns(
+          bridgeWorkspaceId: 'ws-a',
+          floatingActiveWorkspaceId: 'ws-a',
+          hasFloatingMutations: false,
+        ),
+        isFalse,
+      );
+    });
+
+    test('mutations needed + active workspace matches → sync', () {
+      expect(
+        shouldSyncFloatingRuns(
+          bridgeWorkspaceId: 'ws-a',
+          floatingActiveWorkspaceId: 'ws-a',
+          hasFloatingMutations: true,
+        ),
+        isTrue,
+      );
+    });
+
+    test('mutations needed + active workspace differs → skip (no hijack)', () {
+      expect(
+        shouldSyncFloatingRuns(
+          bridgeWorkspaceId: 'ws-a',
+          floatingActiveWorkspaceId: 'ws-b',
+          hasFloatingMutations: true,
+        ),
+        isFalse,
+      );
+    });
+
+    test('trimmed ids compare equal', () {
+      expect(
+        shouldSyncFloatingRuns(
+          bridgeWorkspaceId: ' ws-a ',
+          floatingActiveWorkspaceId: 'ws-a',
+          hasFloatingMutations: true,
+        ),
+        isTrue,
+      );
+    });
+  });
+
   group('floatingRunIdsToRemove', () {
     test('floating run tab whose session is gone → remove id', () {
       expect(

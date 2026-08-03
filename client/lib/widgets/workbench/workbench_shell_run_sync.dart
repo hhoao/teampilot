@@ -204,24 +204,34 @@ class _WorkbenchShellRunSyncState extends State<WorkbenchShellRunSync> {
     }
 
     final floating = context.read<FloatingWorkspaceCubit>();
-    floating.setActiveWorkspace(widget.workspaceId);
     final bucket =
         floating.state.buckets[widget.workspaceId] ??
         const FloatingWorkspaceBucket();
     final existingFloatingRunIds = _existingFloatingRunSessionIds(bucket.tabs);
-
-    for (final id in floatingRunIdsToRemove(
+    final runIdsToRemove = floatingRunIdsToRemove(
       existingFloatingRunSessionIds: existingFloatingRunIds,
       liveRunPanelSessionIds: runPanelIds,
+    );
+    final runIdsToEnsure = floatingRunIdsToEnsure(
+      existingFloatingRunSessionIds: existingFloatingRunIds,
+      liveRunPanelSessionIds: runPanelIds,
+    );
+
+    if (!shouldSyncFloatingRuns(
+      bridgeWorkspaceId: widget.workspaceId,
+      floatingActiveWorkspaceId: floating.state.activeWorkspaceId,
+      hasFloatingMutations:
+          runIdsToRemove.isNotEmpty || runIdsToEnsure.isNotEmpty,
     )) {
+      return;
+    }
+
+    for (final id in runIdsToRemove) {
       floating.removeTab(floatingRunTabId(id));
     }
 
     final sessionsById = {for (final session in runPanelSessions) session.id: session};
-    for (final id in floatingRunIdsToEnsure(
-      existingFloatingRunSessionIds: existingFloatingRunIds,
-      liveRunPanelSessionIds: runPanelIds,
-    )) {
+    for (final id in runIdsToEnsure) {
       final session = sessionsById[id];
       if (session == null) continue;
       final tab = resolveFloatingTabForRunIntent(

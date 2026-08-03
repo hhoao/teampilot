@@ -59,6 +59,19 @@ List<String> floatingRunIdsToEnsure({
   ];
 }
 
+/// Whether passive reconcile should mutate floating run tabs for [bridgeWorkspaceId].
+///
+/// Returns false when there is nothing to ensure/remove, or when the floating
+/// panel is focused on a different workspace (avoids hijacking active workspace).
+bool shouldSyncFloatingRuns({
+  required String bridgeWorkspaceId,
+  required String floatingActiveWorkspaceId,
+  required bool hasFloatingMutations,
+}) {
+  if (!hasFloatingMutations) return false;
+  return floatingActiveWorkspaceId.trim() == bridgeWorkspaceId.trim();
+}
+
 /// Floating run session ids whose RunPanel session no longer exists.
 List<String> floatingRunIdsToRemove({
   required Iterable<String> existingFloatingRunSessionIds,
