@@ -59,6 +59,10 @@ class WorkbenchTabMenuContext {
 
 Strip builders populate this from workbench / floating tab state. Missing `filePath` simply yields an empty FilePath group.
 
+**`workspaceRoot` resolution (multi-folder workspaces):** Prefer the workspace folder that contains `filePath` (longest matching prefix / existing workspace folder resolver if one exists). If none contains the file, leave `workspaceRoot` null so Copy Relative Path is disabled — do not invent a fallback root that would produce a wrong relative path.
+
+**Floating path mapping:** `filePreview` → payload absolute path string; `diffPreview` → parse via `WorkbenchTabId.parseDiffKey` (or equivalent) and use the absolute path component.
+
 ### 2. Source + item + composer
 
 ```dart
@@ -121,10 +125,8 @@ l10n: reuse existing file-tree strings where labels match; add strings only for 
 ### 5. Chip / strip wiring
 
 - `WorkbenchStripTabChip` stops hard-coding `_tabMenuSpecs` / `_handleTabMenuSelection` for domain items.
-- Chip receives either:
-  - a `List<TpActionMenuSpec> Function(BuildContext)` / prebuilt specs from the parent, **or**
-  - enough data to build `WorkbenchTabMenuContext` plus the shared sources list,
-  and shows the menu via existing `showTpActionMenuFromSpecs*`. Prefer building specs at show-time so pin/close closures stay fresh.
+- **Chip API decision:** build `WorkbenchTabMenuContext` + compose specs **at menu show-time** (secondary tap / long-press), so pin/close closures stay fresh. Prefer passing context fields / a small context factory into the chip over a stale prebuilt `List<TpActionMenuSpec>`.
+- Apply the same wiring to **every** `WorkbenchStripTabChip` call site (center strip, floating strip, and any other hosts such as run panel) so menus stay consistent.
 - `WorkspaceShellTabRow` / floating `FloatingWorkspaceTabBar` construct context (kind, path, flags, callbacks) and use the shared default sources.
 - `TabInfo` (or parallel strip model) must carry `kind` and resolvable `filePath` (today file `TabInfo.id` is already the absolute path; diff needs absolute path from `WorkbenchTabId.diffAbsolutePath` or floating surface metadata).
 
