@@ -25,7 +25,11 @@ Widget _wrap(Widget child) {
   );
 }
 
-Future<void> _pumpRow(WidgetTester tester, Size viewport) async {
+Future<void> _pumpRow(
+  WidgetTester tester,
+  Size viewport, {
+  String? detectedPath,
+}) async {
   tester.view.physicalSize = viewport;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.resetPhysicalSize);
@@ -33,7 +37,9 @@ Future<void> _pumpRow(WidgetTester tester, Size viewport) async {
 
   final registry = CliToolRegistry.builtIn();
   final definition = registry.tryGet(CliTool.claude)!;
-  final controller = TextEditingController();
+  final controller = TextEditingController(
+    text: detectedPath ?? '',
+  );
   final busy = ValueNotifier<bool>(false);
   addTearDown(busy.dispose);
   addTearDown(controller.dispose);
@@ -44,7 +50,7 @@ Future<void> _pumpRow(WidgetTester tester, Size viewport) async {
         definition: definition,
         label: 'Claude Code',
         controller: controller,
-        detectedPath: null,
+        detectedPath: detectedPath,
         supportsInstall: true,
         installing: false,
         busyListenable: busy,
@@ -91,5 +97,25 @@ void main() {
       find.byKey(AppKeys.cliInstallButtonFor(CliTool.claude)),
       findsOneWidget,
     );
+  });
+
+  testWidgets('keeps detected status icon beside label on narrow layout', (
+    tester,
+  ) async {
+    await _pumpRow(
+      tester,
+      const Size(390, 800),
+      detectedPath: '/root/.local/bin/claude',
+    );
+
+    final labelRight = tester.getTopRight(find.text('Claude Code')).dx;
+    final statusLeft = tester
+        .getTopLeft(find.byIcon(Icons.check_circle_outline))
+        .dx;
+    final rowRight = tester.getTopRight(find.byType(OnboardingCliRow)).dx;
+
+    // Status sits immediately after the label, not at the card trailing edge.
+    expect(statusLeft - labelRight, lessThan(20));
+    expect(rowRight - statusLeft, greaterThan(100));
   });
 }

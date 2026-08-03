@@ -51,15 +51,17 @@ class OnboardingCliRow extends StatelessWidget {
       );
     }
 
-    Widget labelText({required bool expanded}) {
+    Widget labelText({required bool compact}) {
       final text = Text(
         label,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: TpTextStyles.of(context).md,
       );
-      if (expanded) {
-        return Expanded(child: text);
+      // Mobile: Flexible (not Expanded) so the status icon sits right after
+      // the label instead of being pushed to the trailing edge.
+      if (compact) {
+        return Flexible(child: text);
       }
       return SizedBox(width: 110, child: text);
     }
@@ -123,7 +125,7 @@ class OnboardingCliRow extends StatelessWidget {
                   children: [
                     brandIcon(),
                     const SizedBox(width: 10),
-                    labelText(expanded: true),
+                    labelText(compact: true),
                     const SizedBox(width: 8),
                     statusIcon(),
                   ],
@@ -147,7 +149,7 @@ class OnboardingCliRow extends StatelessWidget {
             children: [
               brandIcon(),
               const SizedBox(width: 10),
-              labelText(expanded: false),
+              labelText(compact: false),
               const SizedBox(width: 8),
               statusIcon(),
               const SizedBox(width: 8),
