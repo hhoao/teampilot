@@ -35,3 +35,15 @@ String messageContentIdentity(AiMessage m) {
   }
   return buf.toString();
 }
+
+/// True when [a] and [b] have the same length and per-index content identity.
+bool sameMessageListContent(List<AiMessage> a, List<AiMessage> b) {
+  if (identical(a, b)) return true;
+  if (a.length != b.length) return false;
+  for (var i = 0; i < a.length; i++) {
+    if (messageContentIdentity(a[i]) != messageContentIdentity(b[i])) {
+      return false;
+    }
+  }
+  return true;
+}

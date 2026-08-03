@@ -19,19 +19,19 @@ void main() {
     expect(messageContentCacheHits, 0);
   });
 
-  test('evicts oldest when over maxEntries (64)', () {
-    for (var i = 0; i < 64; i++) {
+  test('evicts oldest when over maxEntries (256)', () {
+    for (var i = 0; i < 256; i++) {
       compileMarkdown('slot-$i');
     }
-    expect(messageContentCacheLength, 64);
+    expect(messageContentCacheLength, 256);
 
     compileMarkdown('slot-overflow');
-    expect(messageContentCacheLength, 64);
+    expect(messageContentCacheLength, 256);
 
     // Oldest key 'slot-0' should be gone; compiling it is a miss then insert.
     final beforeHits = messageContentCacheHits;
     compileMarkdown('slot-0');
     expect(messageContentCacheHits, beforeHits);
-    expect(messageContentCacheLength, 64);
+    expect(messageContentCacheLength, 256);
   });
 }

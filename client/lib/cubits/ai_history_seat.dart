@@ -251,6 +251,9 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
   }
 
   /// Live refresh: tip-Δ window, no loading flash when already ready.
+  ///
+  /// Reuses [AiHistoryLoader] token cache (`force: false`) so unchanged
+  /// transcripts skip locate/parse. Mailbox is still refreshed every call.
   Future<void> softReload() async {
     final session = _lastSession;
     final memberId = _lastMemberId;
@@ -261,14 +264,12 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
     final sessionId = session.sessionId;
 
     try {
-      _loader.invalidate(sessionId: sessionId, memberId: memberId);
       final result = await _loader.load(
         session: session,
         memberId: memberId,
         launchContext: launchContext,
         team: _lastTeam,
         workingDirectory: _lastWorkingDirectory,
-        force: true,
       );
       if (gen != _loadGeneration || isClosed) return;
       if (session.sessionId != (_lastSession?.sessionId ?? '') ||
@@ -311,12 +312,18 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
         return;
       }
 
-      _cliMessages = messages;
+      final cliUnchanged = sameMessageListContent(_cliMessages, messages);
+      if (!cliUnchanged) {
+        _cliMessages = messages;
+      }
       _setSubagentAttachments(result.subagentAttachments);
       final merged = buildConversationTimeline(
-        cliMessages: messages,
+        cliMessages: _cliMessages,
         mailboxRecords: mailboxRecords,
       ).messages;
+      if (cliUnchanged && sameMessageListContent(_allMessages, merged)) {
+        return;
+      }
       _applySoftReloadMessages(merged, sessionId, memberId);
     } catch (e, st) {
       appLogger.e(
@@ -640,6 +647,10 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
     String sessionId,
     String memberId,
   ) {
+    if (sameMessageListContent(_allMessages, messages)) {
+      // Tip-identical: runtime already has these identities; skip emit fan-out.
+      return;
+    }
     final oldLength = _allMessages.length;
     final oldVisible = _visibleCount;
     final oldCommitted = _committedLength;
@@ -826,8 +837,31 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
   }
 
   void _setSubagentAttachments(Map<String, AiSubagentAttachment> next) {
+    if (_sameSubagentAttachments(_subagentAttachments, next)) return;
     _subagentAttachments = Map<String, AiSubagentAttachment>.of(next);
     _subagentAttachmentEpoch++;
+  }
+
+  static bool _sameSubagentAttachments(
+    Map<String, AiSubagentAttachment> a,
+    Map<String, AiSubagentAttachment> b,
+  ) {
+    if (identical(a, b)) return true;
+    if (a.length != b.length) return false;
+    for (final entry in a.entries) {
+      final other = b[entry.key];
+      if (other == null) return false;
+      if (entry.value.toolCallId != other.toolCallId ||
+          entry.value.source != other.source ||
+          entry.value.title != other.title ||
+          entry.value.sidePath != other.sidePath) {
+        return false;
+      }
+      if (!sameMessageListContent(entry.value.messages, other.messages)) {
+        return false;
+      }
+    }
+    return true;
   }
 
   void _clearSubagentAttachments() {

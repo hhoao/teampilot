@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:tp_markdown/tp_markdown.dart';
 
 import '../history_render_scope.dart';
+import '../message_streaming_scope.dart';
 import '../strings.dart';
 import '../theme.dart';
 
@@ -19,7 +22,11 @@ typedef MarkdownTapLinkCallback = void Function(
 /// [AiHistoryRenderScope], long content follows Claude Code webview `oYe`
 /// (budgeted IR + Show more / Show less) — widgets beyond the budget are omitted
 /// so Flutter does not layout them.
-class AiTextPartView extends StatelessWidget {
+///
+/// While [AiMessageStreamingScope.streaming] is true, compile is throttled
+/// (~80ms) so tip growth does not re-parse GFM every frame; complete messages
+/// always compile immediately.
+class AiTextPartView extends StatefulWidget {
   const AiTextPartView({
     required this.text,
     this.onTapLink,
@@ -31,19 +38,93 @@ class AiTextPartView extends StatelessWidget {
   /// Optional; package does not launch URLs itself.
   final MarkdownTapLinkCallback? onTapLink;
 
+  /// Tip streaming throttle window.
+  @visibleForTesting
+  static const Duration streamingCompileThrottle = Duration(milliseconds: 80);
+
+  @override
+  State<AiTextPartView> createState() => _AiTextPartViewState();
+}
+
+class _AiTextPartViewState extends State<AiTextPartView> {
+  late String _compiledText;
+  late MarkdownDocument _document;
+  String? _pendingText;
+  Timer? _throttle;
+  bool? _lastStreaming;
+
+  @override
+  void initState() {
+    super.initState();
+    _compiledText = widget.text;
+    _document = compileMarkdown(widget.text);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final streaming = AiMessageStreamingScope.of(context);
+    if (_lastStreaming == streaming) return;
+    _lastStreaming = streaming;
+    _syncDocument(widget.text, streaming: streaming);
+  }
+
+  @override
+  void didUpdateWidget(covariant AiTextPartView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.text != widget.text) {
+      _syncDocument(
+        widget.text,
+        streaming: _lastStreaming ?? AiMessageStreamingScope.of(context),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _throttle?.cancel();
+    super.dispose();
+  }
+
+  void _syncDocument(String text, {required bool streaming}) {
+    if (!streaming) {
+      _throttle?.cancel();
+      _throttle = null;
+      _pendingText = null;
+      _commit(text);
+      return;
+    }
+
+    _pendingText = text;
+    if (_compiledText == text) return;
+    if (_throttle?.isActive ?? false) return;
+    _throttle = Timer(AiTextPartView.streamingCompileThrottle, () {
+      final pending = _pendingText;
+      if (pending == null || !mounted) return;
+      _commit(pending);
+    });
+  }
+
+  void _commit(String text) {
+    if (_compiledText == text) return;
+    final doc = compileMarkdown(text);
+    _compiledText = text;
+    _document = doc;
+    if (mounted) setState(() {});
+  }
+
   @override
   Widget build(BuildContext context) {
-    final document = compileMarkdown(text);
     final scope = AiHistoryRenderScope.maybeOf(context);
     if (scope == null) {
       return _ChatMarkdownView(
-        document: document,
-        onTapLink: onTapLink,
+        document: _document,
+        onTapLink: widget.onTapLink,
       );
     }
     return _ExpandableHistoryMarkdown(
-      document: document,
-      onTapLink: onTapLink,
+      document: _document,
+      onTapLink: widget.onTapLink,
       budget: scope.contentBudget,
     );
   }

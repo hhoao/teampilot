@@ -121,7 +121,19 @@ void main() {
         cli: CliTool.claude,
         adapter: _SessionMapAdapter(() => messagesBySession),
       ),
-      resolveCacheToken: (_) async => 'token',
+      resolveCacheToken: (_) async {
+        final buf = StringBuffer();
+        for (final e in messagesBySession.entries) {
+          buf.write(e.key);
+          buf.write(':');
+          for (final m in e.value) {
+            buf.write(m.id);
+            buf.write('|');
+          }
+          buf.write(';');
+        }
+        return buf.toString();
+      },
     );
     cubit = AiHistoryCubit(loader: loader);
   });
@@ -288,40 +300,39 @@ void main() {
     var softReloadPasses = 0;
     locator.onLocate = () async {
       softReloadPasses++;
-      // First locate after start's refreshNow is immediate; subsequent
-      // softReloads from signal wait on [gate] so we can fire coalesced changes.
-      if (softReloadPasses >= 2) {
-        await gate.future;
-      }
+      // Gate every signal-driven locate so we can fire coalesced changes while
+      // the first post-change softReload is in flight. start()'s initial
+      // refresh hits the token cache and does not locate.
+      await gate.future;
       return _dummyBundle(session.sessionId);
     };
 
     final controller = buildController(seat: seatFor(session));
     await controller.start();
-    // start → refreshNow → softReload (pass 1) + signal attached
-    expect(softReloadPasses, 1);
+    expect(softReloadPasses, 0);
     expect(lastSignal!.started, isTrue);
 
     messagesBySession[session.sessionId] = messages(2);
     lastSignal!.fire();
     await pumpEventQueue();
-    expect(softReloadPasses, 2); // in flight, waiting on gate
+    expect(softReloadPasses, 1); // in flight, waiting on gate
 
     messagesBySession[session.sessionId] = messages(4);
     lastSignal!.fire();
     lastSignal!.fire();
     await pumpEventQueue();
     // Coalesced — still only one in-flight follow-up.
-    expect(softReloadPasses, 2);
+    expect(softReloadPasses, 1);
 
     gate.complete();
     await pumpEventQueue();
     // One coalesced follow-up after the in-flight reload finishes.
-    expect(softReloadPasses, 3);
+    expect(softReloadPasses, 2);
     expect(cubit.state.totalMessageCount, 4);
 
     await controller.stop();
   });
+
 
   test('stop cancels signal and ignores late callbacks', () async {
     final session = simpleSession();

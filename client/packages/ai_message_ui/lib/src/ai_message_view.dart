@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'ai_message_parts.dart';
 import 'markdown/compiled_markdown_chrome.dart';
 import 'message_action_bar.dart';
+import 'message_streaming_scope.dart';
 import 'part_registry.dart';
 import 'parts/fade_expand_body.dart';
 import 'strings.dart';
@@ -72,9 +73,12 @@ class _AiMessageViewState extends State<AiMessageView> {
   Widget build(BuildContext context) {
     final aiTheme = AiMessageTheme.of(context);
     final scheme = Theme.of(context).colorScheme;
-    final parts = AiMessageParts(
-      parts: widget.message.parts,
-      registry: widget.registry,
+    final parts = AiMessageStreamingScope(
+      streaming: widget.message.status == AiMessageStatus.incomplete,
+      child: AiMessageParts(
+        parts: widget.message.parts,
+        registry: widget.registry,
+      ),
     );
     final trackHover = widget.showActionBar &&
         widget.actionBarReveal == AiActionBarReveal.hover;

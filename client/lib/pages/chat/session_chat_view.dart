@@ -1243,83 +1243,93 @@ class _SessionChatViewState extends State<SessionChatView> {
       ],
       child: ColoredBox(
         color: cs.surface,
-        child: BlocBuilder<AiHistorySeat, AiHistoryState>(
-          bloc: _seat,
-          // AiHistoryState.props includes subagentAttachmentEpoch so soft
-          // reload that replaces attachments rebuilds the overlay body.
-          builder: (context, state) {
-            final historySeat = _seat;
-            if (historySeat == null) {
-              return const SizedBox.shrink();
-            }
-            return ListenableBuilder(
-              listenable: _subagentPreview,
-              builder: (context, _) {
-                _subagentPreview.pruneToAvailable(
-                  historySeat.subagentAttachments.keys.toSet(),
-                );
-                final stack = _subagentPreview.stack;
-                final top = stack.isEmpty
-                    ? null
-                    : historySeat.subagentAttachments[stack.last];
-                final topTitle = top?.title?.trim();
-                final previewTitle = l10n.subagentPreviewTitleAgent(
-                  (topTitle != null && topTitle.isNotEmpty)
-                      ? topTitle
-                      : 'Agent',
-                );
+        child: BlocSelector<LayoutCubit, LayoutState, (bool, bool)>(
+          selector: (s) => (
+            s.preferences.cotExpandReasoningOnOpen,
+            s.preferences.cotExpandToolsOnOpen,
+          ),
+          builder: (context, cotExpand) {
+            final (expandReasoning, expandTools) = cotExpand;
+            return Theme(
+              data: Theme.of(context).copyWith(
+                extensions: [
+                  for (final ext in Theme.of(context).extensions.values)
+                    if (ext is! AiMessageTheme) ext,
+                  AiMessageTheme.of(context).copyWith(
+                    markdown: buildAppMarkdownTokens(
+                      Theme.of(context),
+                      MarkdownProfile.compact,
+                      // v1: window width, not chat column width.
+                      width: MediaQuery.sizeOf(context).width,
+                      mutedSurface: cs.surfaceContainerHighest
+                          .withValues(alpha: 0.55),
+                    ),
+                    userBubbleColor: cs.surfaceContainerHighest,
+                    userBubbleForeground: cs.onSurface,
+                    mutedSurface: cs.surfaceContainerHighest
+                        .withValues(alpha: 0.55),
+                    toolTriggerColor: cs.onSurfaceVariant,
+                    messageSpacing: 24,
+                    threadMaxWidth: kSessionHistoryColumnMaxWidth,
+                    threadHorizontalPadding: spacing.md,
+                    cotExpandReasoningOnOpen: expandReasoning,
+                    cotExpandToolsOnOpen: expandTools,
+                  ),
+                ],
+              ),
+              child: BlocBuilder<AiHistorySeat, AiHistoryState>(
+                bloc: _seat,
+                // Skip totalMessageCount-only tip growth — thread listens to
+                // runtime. Rebuild for chrome / overlay / awaiting flips.
+                buildWhen: (previous, current) =>
+                    previous.status != current.status ||
+                    previous.hasOlder != current.hasOlder ||
+                    previous.isLoadingOlder != current.isLoadingOlder ||
+                    previous.softReloadError != current.softReloadError ||
+                    previous.awaitingAssistant != current.awaitingAssistant ||
+                    previous.sessionId != current.sessionId ||
+                    previous.memberId != current.memberId ||
+                    previous.subagentAttachmentEpoch !=
+                        current.subagentAttachmentEpoch ||
+                    previous.errorMessage != current.errorMessage,
+                builder: (context, state) {
+                  final historySeat = _seat;
+                  if (historySeat == null) {
+                    return const SizedBox.shrink();
+                  }
+                  final lifecycle = context.read<ChatCubit>().lifecycle;
+                  final workspaceFolderPaths = sessionMemberFolderPaths(
+                    lifecycle: lifecycle,
+                    launchContext: _launchContext,
+                    memberId: widget.selectedMemberId,
+                  );
+                  final sessionWorkingDirectory = _workspaceRoot.isEmpty
+                      ? null
+                      : _workspaceRoot;
+                  return ListenableBuilder(
+                    listenable: _subagentPreview,
+                    builder: (context, _) {
+                      _subagentPreview.pruneToAvailable(
+                        historySeat.subagentAttachments.keys.toSet(),
+                      );
+                      final stack = _subagentPreview.stack;
+                      final top = stack.isEmpty
+                          ? null
+                          : historySeat.subagentAttachments[stack.last];
+                      final topTitle = top?.title?.trim();
+                      final previewTitle = l10n.subagentPreviewTitleAgent(
+                        (topTitle != null && topTitle.isNotEmpty)
+                            ? topTitle
+                            : 'Agent',
+                      );
 
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Expanded(
-                      // Full-bleed scroll surface: margins beside the text
-                      // column still receive wheel / drag. Message width is
-                      // capped inside SessionHistoryThread.
-                      child: BlocSelector<LayoutCubit, LayoutState, (bool, bool)>(
-                        selector: (s) => (
-                          s.preferences.cotExpandReasoningOnOpen,
-                          s.preferences.cotExpandToolsOnOpen,
-                        ),
-                        builder: (context, cotExpand) {
-                          final (expandReasoning, expandTools) = cotExpand;
-                          final lifecycle = context.read<ChatCubit>().lifecycle;
-                          final workspaceFolderPaths = sessionMemberFolderPaths(
-                            lifecycle: lifecycle,
-                            launchContext: _launchContext,
-                            memberId: widget.selectedMemberId,
-                          );
-                          final sessionWorkingDirectory = _workspaceRoot.isEmpty
-                              ? null
-                              : _workspaceRoot;
-                          return Theme(
-                            data: Theme.of(context).copyWith(
-                              extensions: [
-                                for (final ext
-                                    in Theme.of(context).extensions.values)
-                                  if (ext is! AiMessageTheme) ext,
-                                AiMessageTheme.of(context).copyWith(
-                                  markdown: buildAppMarkdownTokens(
-                                    Theme.of(context),
-                                    MarkdownProfile.compact,
-                                    // v1: window width, not chat column width.
-                                    width: MediaQuery.sizeOf(context).width,
-                                    mutedSurface: cs.surfaceContainerHighest
-                                        .withValues(alpha: 0.55),
-                                  ),
-                                  userBubbleColor: cs.surfaceContainerHighest,
-                                  userBubbleForeground: cs.onSurface,
-                                  mutedSurface: cs.surfaceContainerHighest
-                                      .withValues(alpha: 0.55),
-                                  toolTriggerColor: cs.onSurfaceVariant,
-                                  messageSpacing: 24,
-                                  threadMaxWidth: kSessionHistoryColumnMaxWidth,
-                                  threadHorizontalPadding: spacing.md,
-                                  cotExpandReasoningOnOpen: expandReasoning,
-                                  cotExpandToolsOnOpen: expandTools,
-                                ),
-                              ],
-                            ),
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Expanded(
+                            // Full-bleed scroll surface: margins beside the text
+                            // column still receive wheel / drag. Message width is
+                            // capped inside SessionHistoryThread.
                             child: AiToolFileActionsScope(
                               actions: AiToolFileActions(
                                 onOpenFile: (target) async {
@@ -1503,11 +1513,8 @@ class _SessionChatViewState extends State<SessionChatView> {
                                 ),
                               ),
                             ),
-                          );
-                        },
-                      ),
-                    ),
-                    if (top == null)
+                          ),
+                          if (top == null)
                       Align(
                         alignment: Alignment.topCenter,
                         child: ConstrainedBox(
@@ -1713,9 +1720,12 @@ class _SessionChatViewState extends State<SessionChatView> {
                           ),
                         ),
                       ),
-                  ],
-                );
-              },
+                        ],
+                      );
+                    },
+                  );
+                },
+              ),
             );
           },
         ),

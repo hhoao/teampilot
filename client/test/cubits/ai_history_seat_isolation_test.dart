@@ -82,7 +82,21 @@ void main() {
         cli: CliTool.claude,
         adapter: _SessionMapAdapter(() => messagesBySession),
       ),
-      resolveCacheToken: (_) async => 'token',
+      resolveCacheToken: (_) async {
+        // SoftReload reuses the loader token cache; fingerprint fixture
+        // messages so in-memory transcript edits invalidate like mtime/size.
+        final buf = StringBuffer();
+        for (final e in messagesBySession.entries) {
+          buf.write(e.key);
+          buf.write(':');
+          for (final m in e.value) {
+            buf.write(m.id);
+            buf.write('|');
+          }
+          buf.write(';');
+        }
+        return buf.toString();
+      },
     );
     cubit = AiHistoryCubit(loader: loader);
   });

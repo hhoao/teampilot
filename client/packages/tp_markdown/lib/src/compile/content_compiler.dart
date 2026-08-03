@@ -4,7 +4,7 @@ import 'package:markdown/markdown.dart' as md;
 import '../ir/markdown_document.dart';
 import 'streaming_markdown.dart';
 
-const int _kMessageContentCacheMax = 64;
+const int _kMessageContentCacheMax = 256;
 
 /// LRU cache of compiled docs keyed by [prepareStreamingMarkdown] output.
 final Map<String, MarkdownDocument> _messageContentCache =
@@ -28,7 +28,7 @@ void clearMessageContentCache() {
 /// [RawLiteralBlock]. Task-list checkboxes are recognized and do not count as
 /// unsupported HTML.
 ///
-/// Results are cached (LRU, max 64) by the prepared markdown string. Cache hits
+/// Results are cached (LRU, max 256) by the prepared markdown string. Cache hits
 /// return the identical [MarkdownDocument] instance.
 MarkdownDocument compileMarkdown(String markdown) {
   final prepared = prepareStreamingMarkdown(markdown);

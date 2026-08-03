@@ -27,8 +27,13 @@ import '../support/post_frame_test_harness.dart';
 void main() {
   late _ScriptedLocator locator;
   late List<AiMessage> holderMessages;
+  late String cacheToken;
   late AiHistoryLoader loader;
   late AiHistoryCubit cubit;
+
+  void bumpCacheToken([String? next]) {
+    cacheToken = next ?? 'token-${cacheToken.hashCode.abs()}-${holderMessages.length}';
+  }
 
   ExternalStoreAiThreadRuntime seatRuntime({
     String sessionId = 'sess-a',
@@ -67,6 +72,7 @@ void main() {
   setUp(() {
     setUpTestAppStorage();
     holderMessages = const [];
+    cacheToken = 'token-1';
     locator = _ScriptedLocator();
     final fs = LocalFilesystem();
     loader = AiHistoryLoader(
@@ -84,7 +90,9 @@ void main() {
         cli: CliTool.claude,
         adapter: _HolderAdapter(() => holderMessages),
       ),
-      resolveCacheToken: (_) async => 'token',
+      // SoftReload reuses loader cache when the token is unchanged (mtime/size
+      // in production). Tests bump [cacheToken] when simulating transcript edits.
+      resolveCacheToken: (_) async => cacheToken,
     );
     cubit = AiHistoryCubit(loader: loader);
   });
@@ -188,6 +196,41 @@ void main() {
     expect(seatRuntime().status, AiThreadStatus.error);
   });
 
+  test('softReload with unchanged cache token does not re-locate', () async {
+    var locateCalls = 0;
+    locator.onLocate = () => locateCalls++;
+    holderMessages = messages(2);
+    locator.emitBundle = true;
+
+    await cubit.load(
+      session: simpleSession(),
+      memberId: '',
+      launchContext: launchCtx(simpleSession()),
+    );
+    expect(locateCalls, 1);
+
+    await cubit.softReload();
+    expect(locateCalls, 1);
+    expect(cubit.state.totalMessageCount, 2);
+  });
+
+  test('softReload identical transcript early-exits without stream emit', () async {
+    holderMessages = messages(2);
+    locator.emitBundle = true;
+    await cubit.load(
+      session: simpleSession(),
+      memberId: '',
+      launchContext: launchCtx(simpleSession()),
+    );
+
+    final emissions = <AiHistoryState>[];
+    final sub = cubit.stream.listen(emissions.add);
+    await cubit.softReload();
+    await sub.cancel();
+
+    expect(emissions, isEmpty);
+  });
+
   test('softReload grows visibleCount by tip delta and preserves start', () async {
     holderMessages = messages(40);
     locator.emitBundle = true;
@@ -202,6 +245,7 @@ void main() {
     expect(seatRuntime().messages.first.id, 'm-0');
 
     holderMessages = messages(42);
+    bumpCacheToken();
     await cubit.softReload();
 
     expect(cubit.state.totalMessageCount, 42);
@@ -221,6 +265,7 @@ void main() {
     final sub = cubit.stream.listen((s) => statuses.add(s.status));
 
     holderMessages = messages(3);
+    bumpCacheToken();
     await cubit.softReload();
     await sub.cancel();
 
@@ -237,6 +282,7 @@ void main() {
     expect(seatRuntime().messages, hasLength(40));
 
     holderMessages = messages(25);
+    bumpCacheToken();
     await cubit.softReload();
 
     expect(cubit.state.totalMessageCount, 25);
@@ -267,6 +313,7 @@ void main() {
         parts: [AiTextPart(text: 'hello world')],
       ),
     ];
+    bumpCacheToken();
     await cubit.softReload();
 
     expect(
@@ -285,6 +332,7 @@ void main() {
         parts: [AiTextPart(text: 'hi')],
       ),
     ];
+    bumpCacheToken();
     await cubit.softReload();
     expect(cubit.state.awaitingAssistant, isTrue);
     // Assistant tip is held for idleAfter-aligned window.
@@ -299,6 +347,7 @@ void main() {
         parts: [AiTextPart(text: 'more')],
       ),
     ];
+    bumpCacheToken();
     await cubit.softReload();
     expect(cubit.state.awaitingAssistant, isTrue);
     expect(cubit.hasHeldAssistantTip, isTrue);
@@ -392,6 +441,7 @@ void main() {
         parts: [AiTextPart(text: 'working')],
       ),
     ];
+    bumpCacheToken();
     await cubit.softReload();
 
     expect(seatRuntime().messages.map((m) => m.id).toList(), [
@@ -421,6 +471,7 @@ void main() {
         parts: [AiTextPart(text: 'hi')],
       ),
     ];
+    bumpCacheToken();
     await cubit.softReload();
     expect(cubit.hasHeldAssistantTip, isTrue);
     expect(seatRuntime().messages.last.id, 'u-1');
@@ -450,6 +501,7 @@ void main() {
         parts: [AiTextPart(text: 'a')],
       ),
     ];
+    bumpCacheToken();
     await cubit.softReload();
 
     final pendings = seatRuntime().messages
@@ -593,6 +645,7 @@ void main() {
       expect(cubit.state.awaitingAssistant, isTrue);
 
       // Remount / switch-back path — transcript still not locatable.
+      bumpCacheToken();
       await cubit.softReloadOrLoad(
         session: simpleSession(),
         memberId: '',
@@ -618,6 +671,7 @@ void main() {
     final sub = cubit.stream.listen((s) => statuses.add(s.status));
 
     holderMessages = messages(3);
+    bumpCacheToken();
     await cubit.softReloadOrLoad(
       session: simpleSession(),
       memberId: '',
@@ -640,6 +694,7 @@ void main() {
     final sub = cubit.stream.listen((s) => statuses.add(s.status));
 
     holderMessages = messages(4);
+    bumpCacheToken();
     await cubit.softReloadIfSession('sess-a');
     await sub.cancel();
 
@@ -874,6 +929,7 @@ void main() {
       // while the mailbox now has a NEW read message not yet in the timeline.
       holderMessages = const [];
       locator.emitBundle = false;
+      bumpCacheToken();
       mailboxRecords = [
         LoggedMessage(
           seq: 0,
@@ -1023,6 +1079,7 @@ class _HolderAdapter implements AiTranscriptAdapter {
 class _ScriptedLocator extends AiHistoryLocator {
   bool emitBundle = false;
   Object? error;
+  void Function()? onLocate;
   final queue = <Future<AiTranscriptBundle?>>[];
 
   @override
@@ -1030,6 +1087,7 @@ class _ScriptedLocator extends AiHistoryLocator {
     required SessionHistoryContext ctx,
     required CliTool cli,
   }) async {
+    onLocate?.call();
     if (error != null) throw error!;
     if (queue.isNotEmpty) return queue.removeAt(0);
     if (!emitBundle) return null;
