@@ -5,6 +5,7 @@ import '../../models/team_config.dart';
 import '../../services/cli/registry/capabilities/terminal_behavior_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/team_bus/mailbox_delivery.dart';
+import '../../services/team/claude_native_inbox_doorbell.dart';
 import '../../services/team_bus/team_bus.dart';
 import '../../services/terminal/fullscreen_cr_ack_config.dart';
 import '../../services/terminal/fullscreen_pty_automation.dart';
@@ -439,7 +440,9 @@ final class TabMemberPtyDelivery {
     return '${oneLine.substring(0, 72)}…';
   }
 
-  static bool _isMailDoorbellText(String text) => text == TeamBus.doorbellNotice;
+  static bool _isMailDoorbellText(String text) =>
+      text == TeamBus.doorbellNotice ||
+      text == ClaudeNativeInboxDoorbell.doorbellNotice;
 
   void _reportMailDeliveryOutcome(
     String sessionId,
