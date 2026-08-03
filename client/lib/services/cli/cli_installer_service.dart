@@ -196,12 +196,15 @@ class CliInstallerService {
   }
 
   Iterable<String> _siblingNpmCandidates(String nodePath) sync* {
-    final dir = p.dirname(nodePath);
+    // Match [HostExecutionEnvironment.isWindowsHost], not [p.context], so
+    // Unix-override installs on a Windows CI host still join POSIX siblings.
+    final ctx = _hostEnvironment.isWindowsHost ? p.windows : p.posix;
+    final dir = ctx.dirname(nodePath);
     if (_hostEnvironment.isWindowsHost) {
-      yield p.join(dir, 'npm.cmd');
-      yield p.join(dir, 'npm');
+      yield ctx.join(dir, 'npm.cmd');
+      yield ctx.join(dir, 'npm');
     } else {
-      yield p.join(dir, 'npm');
+      yield ctx.join(dir, 'npm');
     }
   }
 
