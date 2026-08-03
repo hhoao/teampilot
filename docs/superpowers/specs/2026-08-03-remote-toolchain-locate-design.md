@@ -78,17 +78,19 @@ Share or duplicate the small `_remoteSshProfile` helper (prefer extract to a tin
 - `WslGitCommandRunner` — if set, run that path/name inside WSL; else `'git'`.
 - `RemoteGitCommandRunner` — if set, run that path/name over SSH; else `'git'`. Availability probe should prefer the configured path when present (`test -x` / `command -v` on that path) so a bad override fails clearly.
 
-`GitRepoStore` receives a resolver from `app_shell`:
+Prefer threading the override through **`GitService.forContext` / `gitCommandRunnerForContext`** so every caller (source-control `GitRepoStore`, worktree create/remove, etc.) picks it up—not only the panel.
+
+Resolver source (from `app_shell` or a thin shared callback):
 
 ```dart
-String? resolveGitExecutable(RuntimeContext ctx) =>
+String? resolveGitExecutable(/* RuntimeContext optional */) =>
   sessionPreferencesCubit.toolchainPath(SessionPreferences.toolchainGit);
   // empty → null → runner auto-discover
 ```
 
 (Mode-agnostic: the stored path means “path for the current work plane,” matching today’s settings copy.)
 
-`GitService.forContext` / default factory must thread the override through so the source-control panel uses it.
+**Cache note:** `GitRepoStore` LRU-caches `GitCubit`s by `targetId:root`. Preference changes after cubit creation need either (a) accept stale executable until cubit eviction/rebuild (match typical CLI path UX), or (b) invalidate/rebuild on toolchain git path change. Default for this iteration: **(a)** unless a one-line refresh hook is already easy.
 
 ### 4. Node executable wiring
 
@@ -99,7 +101,9 @@ String? resolveGitExecutable(RuntimeContext ctx) =>
    - For **npm**: try `dirname(node)/npm` (and Windows `npm.cmd` if applicable) before existing `command -v npm` / login-shell / Termux probes.
 2. If unset or sibling npm missing → existing locate behavior.
 
-Injection at `app_shell` / installer construction: `() => sessionPreferencesCubit.toolchainPath(SessionPreferences.toolchainNode)`.
+`CliInstallerService` is constructed at multiple call sites (settings row, onboarding `cli_step`, remote preflight install, etc.), not as an `app_shell` singleton. Pass  
+`() => sessionPreferencesCubit.toolchainPath(SessionPreferences.toolchainNode)`  
+(or an equivalent preferred-path getter) into **each** construction site that should honor the preference.
 
 ### 5. Error / empty behavior
 
@@ -145,7 +149,7 @@ Reuse existing fakes (`SshCommandRunner`, process runner injection, `locateOverr
 ## Success criteria
 
 - Remote work plane: Locate fills Git and Node paths when present on the host.
-- Source control uses the configured Git path on local/WSL/SSH.
+- All `GitService.forContext` / runner-backed git ops use the configured Git path on local/WSL/SSH when set.
 - CLI installer prefers configured Node (and sibling npm) when set.
 - Empty preferences preserve previous auto-discovery behavior.
 - Unit/widget tests above pass under `flutter test --exclude-tags integration`.
