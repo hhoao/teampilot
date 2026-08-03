@@ -35,6 +35,7 @@ class GitService {
 
   /// Resets static caches on local/remote runners. Tests call this in setUp.
   static void debugResetExecutableCache() {
+    configuredGitExecutable = null;
     LocalGitCommandRunner.debugResetExecutableCache();
     RemoteGitCommandRunner.debugResetAvailabilityCache();
   }
