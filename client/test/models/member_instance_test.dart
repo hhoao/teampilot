@@ -173,6 +173,57 @@ void main() {
     },
   );
 
+  test('cliTeamRosterMembers matches sessionRosterMembers', () {
+    final profile = team(const [
+      TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
+      TeamMemberConfig(id: 'developer', name: 'Developer', replicas: 2),
+      TeamMemberConfig(id: 'reviewer', name: 'Reviewer', replicas: 0),
+    ]);
+    final session = AppSession(
+      sessionId: 's1',
+      workspaceId: 'w1',
+      createdAt: 1,
+      members: const [
+        SessionMemberBinding(rosterMemberId: 'team-lead', taskId: 't0'),
+        SessionMemberBinding(
+          rosterMemberId: 'developer-0',
+          typeId: 'developer',
+          taskId: 't1',
+        ),
+        SessionMemberBinding(
+          rosterMemberId: 'developer-1',
+          typeId: 'developer',
+          taskId: 't2',
+        ),
+      ],
+    );
+    final cli = cliTeamRosterMembers(session, profile);
+    final ui = sessionRosterMembers(session, profile);
+    expect(cli.map((m) => m.id), ui.map((m) => m.id));
+    expect(cli.map((m) => m.id), ['team-lead', 'developer-0', 'developer-1']);
+    expect(cli.map((m) => m.agentType), ['team-lead', 'developer', 'developer']);
+  });
+
+  test('singleton replica keeps bare type id', () {
+    final profile = team(const [
+      TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
+      TeamMemberConfig(id: 'developer', name: 'Developer', replicas: 1),
+    ]);
+    final session = AppSession(
+      sessionId: 's1',
+      workspaceId: 'w1',
+      createdAt: 1,
+      members: const [
+        SessionMemberBinding(rosterMemberId: 'team-lead', taskId: 't0'),
+        SessionMemberBinding(rosterMemberId: 'developer', taskId: 't1'),
+      ],
+    );
+    expect(
+      cliTeamRosterMembers(session, profile).map((m) => m.id),
+      ['team-lead', 'developer'],
+    );
+  });
+
   test(
     'sessionRosterMembers infers type from numbered instance id without typeId',
     () {
