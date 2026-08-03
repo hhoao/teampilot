@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
@@ -6,6 +7,7 @@ import 'package:meta/meta.dart';
 import '../../agent_status/agent_attention_state.dart';
 import '../../agent_status/agent_status_event.dart';
 import '../../agent_status/agent_status_http_handler.dart';
+import '../../agent_status/ask_user_answer_pending_store.dart';
 import 'teammate_bus_mcp_config.dart';
 import 'teammate_bus_mcp_handler.dart';
 import 'teammate_bus_mcp_http_delegate.dart';
@@ -24,6 +26,7 @@ class TeammateBusMcpGateway {
   final _agentStatusTokenToSession = <String, String>{};
   final _agentStatusSessionToToken = <String, String>{};
   AgentStatusHttpHandler? _agentStatusHandler;
+  AskUserAnswerPendingStore? _askUserAnswerStore;
   HttpServer? _http;
   BusRawSocketServer? _rawSocket;
 
@@ -61,6 +64,9 @@ class TeammateBusMcpGateway {
   Uri get agentStatusEndpoint =>
       Uri.parse('http://127.0.0.1:${_http!.port}/agent-status');
 
+  Uri get askUserAnswerEndpoint =>
+      Uri.parse('http://127.0.0.1:${_http!.port}/ask-user-answer');
+
   int get httpPort => _http!.port;
 
   int get rawSocketPort => _rawSocket!.port;
@@ -75,6 +81,10 @@ class TeammateBusMcpGateway {
 
   void attachAgentStatusHandler(AgentStatusHttpHandler handler) {
     _agentStatusHandler = handler;
+  }
+
+  void attachAskUserAnswerStore(AskUserAnswerPendingStore store) {
+    _askUserAnswerStore = store;
   }
 
   /// Status-only session auth (no TeamBus MCP `_delegates` entry required).
@@ -129,6 +139,14 @@ class TeammateBusMcpGateway {
 
   Future<void> _onRequest(HttpRequest request) async {
     try {
+      // Ask-user-answer poll is best-effort for OpenCode plugins: prefer 204
+      // over 4xx so a missing session/member never breaks the poll loop.
+      if (request.method == 'GET' && request.uri.path == '/ask-user-answer') {
+        final sessionId = _resolveSessionId(request);
+        await _handleAskUserAnswer(request, sessionId: sessionId);
+        return;
+      }
+
       // Agent-status is best-effort seat reporting. Never return 4xx here —
       // Claude / flashskyai Stop hooks re-prompt the model on HTTP errors and
       // burn scripted mock turns (or user-visible loops).
@@ -177,6 +195,56 @@ class TeammateBusMcpGateway {
     }
   }
 
+  Future<void> _handleAskUserAnswer(
+    HttpRequest request, {
+    required String? sessionId,
+  }) async {
+    final store = _askUserAnswerStore;
+    final member = _headerValue(request.headers, teammateBusMcpMemberHeader);
+    final requestId = request.uri.queryParameters['request_id']?.trim() ?? '';
+    final allowed = sessionId != null &&
+        sessionId.isNotEmpty &&
+        (_agentStatusSessions.contains(sessionId) ||
+            _delegates.containsKey(sessionId));
+    if (store == null ||
+        !allowed ||
+        member.isEmpty ||
+        requestId.isEmpty) {
+      await _writeNoContent(request);
+      return;
+    }
+
+    final entry = store.take(
+      sessionId: sessionId,
+      memberId: member,
+      requestId: requestId,
+    );
+    if (entry == null) {
+      await _writeNoContent(request);
+      return;
+    }
+
+    final body = <String, Object?>{
+      'request_id': entry.requestId,
+      'reject': entry.reject,
+      if (!entry.reject) 'answers': entry.answers ?? const <List<String>>[],
+    };
+    request.response
+      ..statusCode = HttpStatus.ok
+      ..headers.contentType = ContentType(
+        'application',
+        'json',
+        charset: 'utf-8',
+      )
+      ..write(jsonEncode(body));
+    await request.response.close();
+  }
+
+  Future<void> _writeNoContent(HttpRequest request) async {
+    request.response.statusCode = HttpStatus.noContent;
+    await request.response.close();
+  }
+
   Future<void> _handleAgentStatus(
     HttpRequest request, {
     required String? sessionId,
@@ -192,7 +260,7 @@ class TeammateBusMcpGateway {
       return;
     }
 
-    await handler.handle(request, sessionId: sessionId!, memberId: member);
+    await handler.handle(request, sessionId: sessionId, memberId: member);
   }
 
   Future<void> _writeAgentStatusOkEmpty(HttpRequest request) async {
