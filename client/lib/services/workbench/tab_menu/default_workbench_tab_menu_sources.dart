@@ -1,4 +1,4 @@
-import '../workbench_tab_menu_source.dart';
+import 'workbench_tab_menu_source.dart';
 import 'sources/builtin_close_tab_menu_source.dart';
 import 'sources/file_path_tab_menu_source.dart';
 import 'sources/run_tab_menu_source.dart';
