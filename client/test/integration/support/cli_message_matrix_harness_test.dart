@@ -77,9 +77,47 @@ void main() {
       CliMatrixRecipe.nativeCollab3Plus,
     );
     expect(
+      CliMessageMatrixHarness.defaultRecipeFor(
+        CliMatrixMode.native,
+        shape: RosterShape.replicated,
+      ),
+      CliMatrixRecipe.nativeCollabReplica2Plus,
+    );
+    expect(
       CliMessageMatrixHarness.defaultRecipeFor(CliMatrixMode.mixed),
       CliMatrixRecipe.mixedCollab3Plus,
     );
+  });
+
+  test('shape defaults to singleton on harness', () {
+    final harness = CliMessageMatrixHarness.forCli(
+      CliTool.claude,
+      mode: CliMatrixMode.native,
+    );
+    expect(harness.shape, RosterShape.singleton);
+  });
+
+  test('bootMemberIds uses pods for replicated shape', () {
+    final h = CliMessageMatrixHarness.forCli(
+      CliTool.claude,
+      mode: CliMatrixMode.native,
+      shape: RosterShape.replicated,
+    );
+    final team = h.buildHomogeneousTeam();
+    expect(h.bootMemberIdsFor(team: team), [
+      'team-lead',
+      'developer-0',
+      'developer-1',
+    ]);
+  });
+
+  test('bootMemberIds uses singleton pods', () {
+    final h = CliMessageMatrixHarness.forCli(
+      CliTool.claude,
+      mode: CliMatrixMode.native,
+    );
+    final team = h.buildHomogeneousTeam();
+    expect(h.bootMemberIdsFor(team: team), ['team-lead', 'developer']);
   });
 
   test('composeSeatAssistantMarkers are mode-aware', () {

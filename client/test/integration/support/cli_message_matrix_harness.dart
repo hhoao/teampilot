@@ -14,6 +14,7 @@ import 'package:teampilot/cubits/chat/model/session_connect_request.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/models/app_session.dart';
+import 'package:teampilot/models/member_instance.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
@@ -35,7 +36,6 @@ import 'package:teampilot/services/team_bus/team_message.dart';
 import 'package:teampilot/services/terminal/pending_user_message.dart';
 import 'package:teampilot/services/terminal/terminal_export.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
-import 'package:teampilot/utils/team/team_member_naming.dart';
 
 import '../../support/post_frame_test_harness.dart';
 import 'bus_mail_assertions.dart';
@@ -45,10 +45,16 @@ import 'cli_test_profile.dart';
 import 'integration_prerequisites.dart';
 import 'roster_shape.dart';
 
-export 'roster_shape.dart' show kMatrixWorkerTypeId;
+export 'roster_shape.dart'
+    show
+        buildMatrixTeam,
+        kMatrixLeadMemberId,
+        kMatrixLeaderProviderId,
+        kMatrixWorkerProviderId,
+        kMatrixWorkerTypeId,
+        matrixMockModelIdFor,
+        RosterShape;
 
-const kMatrixLeaderProviderId = 'mock-leader';
-const kMatrixWorkerProviderId = 'mock-worker';
 const kMatrixSimpleProviderId = 'mock-simple';
 
 /// Model id written into mock provider catalogs / session launch argv.
@@ -58,10 +64,6 @@ const kMatrixSimpleProviderId = 'mock-simple';
 /// `--provider A --model` owned by B.
 const kMatrixMockModelId = 'mock-model';
 
-String matrixMockModelIdFor(String providerId) => '$providerId-model';
-
-const kMatrixLeadMemberId = 'team-lead';
-
 /// Default last-N lines kept from PTY dumps in [diagnosticsBundle].
 const kMatrixPtyDumpMaxLines = 40;
 
@@ -69,7 +71,13 @@ const kMatrixPtyDumpMaxLines = 40;
 enum CliMatrixMode { simple, native, mixed }
 
 /// Shared gateway recipe for a matrix cell.
-enum CliMatrixRecipe { simple3Turn, nativeCollab3Plus, mixedCollab3Plus }
+enum CliMatrixRecipe {
+  simple3Turn,
+  nativeCollab3Plus,
+  /// Replicated native roster (developer-0/1); scenarios wired in Task 4.
+  nativeCollabReplica2Plus,
+  mixedCollab3Plus,
+}
 
 /// Redacts common secret shapes from failure dumps (sk-* / Bearer tokens).
 String redactMatrixSecrets(String text) {
@@ -117,33 +125,45 @@ final class CliMessageMatrixHarness {
   CliMessageMatrixHarness({
     required this.profile,
     required this.mode,
+    this.shape = RosterShape.singleton,
     CliMatrixRecipe? recipe,
     String? cliPath,
-  }) : recipe = recipe ?? defaultRecipeFor(mode),
+  }) : recipe = recipe ?? defaultRecipeFor(mode, shape: shape),
        cliPath = cliPath ?? profile.resolveBinary() ?? profile.binaryName;
 
   factory CliMessageMatrixHarness.forCli(
     CliTool tool, {
     required CliMatrixMode mode,
+    RosterShape shape = RosterShape.singleton,
     CliMatrixRecipe? recipe,
     String? cliPath,
   }) {
     return CliMessageMatrixHarness(
       profile: CliTestProfiles.forTool(tool),
       mode: mode,
+      shape: shape,
       recipe: recipe,
       cliPath: cliPath,
     );
   }
 
-  static CliMatrixRecipe defaultRecipeFor(CliMatrixMode mode) => switch (mode) {
-    CliMatrixMode.simple => CliMatrixRecipe.simple3Turn,
-    CliMatrixMode.native => CliMatrixRecipe.nativeCollab3Plus,
-    CliMatrixMode.mixed => CliMatrixRecipe.mixedCollab3Plus,
-  };
+  static CliMatrixRecipe defaultRecipeFor(
+    CliMatrixMode mode, {
+    RosterShape shape = RosterShape.singleton,
+  }) =>
+      switch (mode) {
+        CliMatrixMode.simple => CliMatrixRecipe.simple3Turn,
+        CliMatrixMode.native => switch (shape) {
+          RosterShape.replicated => CliMatrixRecipe.nativeCollabReplica2Plus,
+          RosterShape.singleton || RosterShape.placementFiltered =>
+            CliMatrixRecipe.nativeCollab3Plus,
+        },
+        CliMatrixMode.mixed => CliMatrixRecipe.mixedCollab3Plus,
+      };
 
   final CliTestProfile profile;
   final CliMatrixMode mode;
+  final RosterShape shape;
   final CliMatrixRecipe recipe;
   final String cliPath;
 
@@ -336,6 +356,22 @@ final class CliMessageMatrixHarness {
     return created;
   }
 
+  /// Pod ids to boot — session pods when [session] is set, else expand [team].
+  List<String> bootMemberIdsFor({
+    TeamProfile? team,
+    AppSession? session,
+  }) {
+    final t = team ?? this.team;
+    if (t == null) {
+      throw StateError('bootMemberIdsFor requires team or open session');
+    }
+    final s = session ?? this.session;
+    if (s != null) {
+      return sessionRosterMembers(s, t).map((m) => m.id).toList();
+    }
+    return expandTeamRoster(t.members).map((i) => i.instanceId).toList();
+  }
+
   /// Homogeneous team profile for [mode] (cli == [profile.tool] for every seat).
   TeamProfile buildHomogeneousTeam() {
     if (mode == CliMatrixMode.simple) {
@@ -349,30 +385,10 @@ final class CliMessageMatrixHarness {
     }
     final teamMode =
         mode == CliMatrixMode.native ? TeamMode.native : TeamMode.mixed;
-    return TeamProfile(
-      id: 'it-matrix-${profile.tool.value}-${mode.name}',
-      name: 'IT Matrix ${profile.tool.value} ${mode.name}',
-      cli: profile.tool,
-      teamMode: teamMode,
-      members: [
-        TeamMemberConfig(
-          id: kMatrixLeadMemberId,
-          name: TeamMemberNaming.teamLeadName,
-          provider: kMatrixLeaderProviderId,
-          model: matrixMockModelIdFor(kMatrixLeaderProviderId),
-          cli: profile.tool,
-          // High effort can issue multiple Anthropic calls per user message.
-          effort: 'low',
-        ),
-        TeamMemberConfig(
-          id: kMatrixWorkerTypeId,
-          name: kMatrixWorkerTypeId,
-          provider: kMatrixWorkerProviderId,
-          model: matrixMockModelIdFor(kMatrixWorkerProviderId),
-          cli: profile.tool,
-          effort: 'low',
-        ),
-      ],
+    return buildMatrixTeam(
+      tool: profile.tool,
+      mode: teamMode,
+      shape: shape,
     );
   }
 
@@ -516,8 +532,8 @@ final class CliMessageMatrixHarness {
       await bootComposeSeatToPrompt(timeout: timeout);
       return;
     }
-    for (final m in built.members) {
-      await bootMemberToPrompt(m.id, timeout: timeout);
+    for (final id in bootMemberIdsFor(team: built, session: session)) {
+      await bootMemberToPrompt(id, timeout: timeout);
     }
   }
 
@@ -1218,5 +1234,10 @@ Map<String, MockScenario> scenariosForRecipe(CliMatrixRecipe recipe) =>
     switch (recipe) {
       CliMatrixRecipe.simple3Turn => simple3TurnScenarios(),
       CliMatrixRecipe.nativeCollab3Plus => nativeCollab3PlusScenarios(),
+      CliMatrixRecipe.nativeCollabReplica2Plus =>
+        // Task 4: native_collab_replica_2plus.dart
+        throw UnimplementedError(
+          'nativeCollabReplica2Plus scenarios — wire in Task 4',
+        ),
       CliMatrixRecipe.mixedCollab3Plus => mixedCollab3PlusScenarios(),
     };
