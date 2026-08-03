@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/cubits/workbench/workbench_tab.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/services/workbench/tab_menu/workbench_tab_menu_composer.dart';
