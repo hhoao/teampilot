@@ -338,18 +338,18 @@ class _WorkspacesIconChipState extends State<WorkspacesIconChip> {
         ? cs.primary.withValues(alpha: 0.35)
         : cs.outlineVariant.withValues(alpha: 0.7);
 
-    final chip = TpHover(
-      onTap: widget.onTap,
-      onHoverChanged: (hovered) => setState(() => _hovered = hovered),
-      borderRadius: BorderRadius.circular(8),
-      backgroundColor: restingBg,
-      hoverColor: Color.alphaBlend(hoverTint, restingBg),
-      padding: const EdgeInsets.all(7),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: borderColor),
-        ),
+    final chip = Container(
+      decoration: BoxDecoration(
+        color: restingBg,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: borderColor),
+      ),
+      child: TpHover(
+        onTap: widget.onTap,
+        onHoverChanged: (hovered) => setState(() => _hovered = hovered),
+        borderRadius: BorderRadius.circular(7),
+        hoverColor: hoverTint,
+        padding: const EdgeInsets.all(7),
         child: Icon(
           widget.icon,
           size: context.tpIconSizes.md,
