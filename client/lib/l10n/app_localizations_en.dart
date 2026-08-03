@@ -1260,7 +1260,28 @@ class AppLocalizationsEn extends AppLocalizations {
       'Terminal is disconnected. Reconnect or answer in the Terminal.';
 
   @override
-  String get agentAskSubmitAnswers => 'Submit answers';
+  String get agentAskSubmitAnswers => 'Submit';
+
+  @override
+  String get agentAskContinue => 'Continue';
+
+  @override
+  String get agentAskIgnore => 'Ignore';
+
+  @override
+  String get agentAskKeyboardHint =>
+      'Use Tab / ↑↓ to select, Enter or Space to confirm';
+
+  @override
+  String get agentAskCustomAnswerHint => 'Enter your answer…';
+
+  @override
+  String get agentAskEscToCancel => 'Esc to cancel';
+
+  @override
+  String agentAskQuestionTabFallback(int index) {
+    return 'Q$index';
+  }
 
   @override
   String get sessionHistoryRetry => 'Retry';

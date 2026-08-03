@@ -63,6 +63,9 @@ class AppKeys {
   static const askUserQuestionSubmitButton = Key(
     'ask-user-question-submit-button',
   );
+  static const askUserQuestionContinueButton = Key(
+    'ask-user-question-continue-button',
+  );
   static const askUserQuestionInlineError = Key(
     'ask-user-question-inline-error',
   );

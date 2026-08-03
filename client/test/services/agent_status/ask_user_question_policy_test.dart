@@ -65,13 +65,13 @@ void main() {
       );
     });
 
-    test('multi-select without supportsMultiSelectInChat returns false', () {
+    test('multi-select with pty returns true (hook updatedInput path)', () {
       expect(
         shouldShowAskUserQuestionCard(
           capability: const PtyAskUserQuestionCapability(),
           questions: const [multiSelectQuestion],
         ),
-        isFalse,
+        isTrue,
       );
     });
 
@@ -107,7 +107,7 @@ void main() {
       );
     });
 
-    test('multiple questions without multi support returns false', () {
+    test('multiple single-select questions with pty returns true', () {
       expect(
         shouldShowAskUserQuestionCard(
           capability: const PtyAskUserQuestionCapability(),
@@ -119,7 +119,21 @@ void main() {
             ),
           ],
         ),
-        isFalse,
+        isTrue,
+      );
+    });
+
+    test('multiple questions with multiSelect still require multiSelect support',
+        () {
+      expect(
+        shouldShowAskUserQuestionCard(
+          capability: const PtyAskUserQuestionCapability(),
+          questions: const [
+            singleSelectQuestion,
+            multiSelectQuestion,
+          ],
+        ),
+        isTrue,
       );
     });
 

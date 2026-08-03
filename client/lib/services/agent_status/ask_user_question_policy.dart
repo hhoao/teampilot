@@ -16,17 +16,17 @@ bool shouldShowAskUserQuestionCard({
     return false;
   }
 
-  final needsMultiSupport =
-      questions.length > 1 || questions.any((q) => q.multiSelect);
+  if (questions.any((q) => q.options.isEmpty)) {
+    return false;
+  }
 
-  if (needsMultiSupport) {
-    if (!capability.supportsMultiSelectInChat) {
-      return false;
-    }
-  } else {
-    if (questions.single.options.isEmpty) {
-      return false;
-    }
+  if (questions.any((q) => q.multiSelect) &&
+      !capability.supportsMultiSelectInChat) {
+    return false;
+  }
+
+  if (questions.length > 1 && !capability.supportsMultiQuestionInChat) {
+    return false;
   }
 
   if (capability.answerKind == AskUserAnswerKind.pluginSdkReply &&

@@ -525,7 +525,18 @@
   "agentAskCancelQuestion": "Cancel question",
   "agentAskAnswerFailed": "Couldn't submit your answer. Try again or answer in the Terminal.",
   "agentAskTerminalDisconnected": "Terminal is disconnected. Reconnect or answer in the Terminal.",
-  "agentAskSubmitAnswers": "Submit answers",
+  "agentAskSubmitAnswers": "Submit",
+  "agentAskContinue": "Continue",
+  "agentAskIgnore": "Ignore",
+  "agentAskKeyboardHint": "Use Tab / ↑↓ to select, Enter or Space to confirm",
+  "agentAskCustomAnswerHint": "Enter your answer…",
+  "agentAskEscToCancel": "Esc to cancel",
+  "agentAskQuestionTabFallback": "Q{index}",
+  "@agentAskQuestionTabFallback": {
+    "placeholders": {
+      "index": { "type": "int" }
+    }
+  },
   "sessionHistoryRetry": "Retry",
   "sessionHistoryToolTurn": "Tool",
   "sessionHistoryRoleUser": "You",

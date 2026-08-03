@@ -37,7 +37,7 @@ void main() {
           'type': 'http',
           'url': agentStatusHookUrl(endpoint.url, name),
           'headers': {'X-Member': memberId},
-          'timeout': 5,
+          'timeout': name == 'PreToolUse' ? 86400 : 5,
         }, reason: name);
         if (name == 'PermissionRequest' ||
             name == 'PreToolUse' ||
@@ -54,6 +54,31 @@ void main() {
       expect(urls, hasLength(eventNames.length));
     },
   );
+
+  test('mergeAgentStatusHooks refreshes PreToolUse timeout on re-merge', () {
+    final stale = <String, Object?>{
+      'hooks': {
+        'PreToolUse': [
+          {
+            'matcher': '*',
+            'hooks': [
+              {
+                'type': 'http',
+                'url': agentStatusHookUrl(endpoint.url, 'PreToolUse'),
+                'headers': {'X-Member': memberId},
+                'timeout': 5,
+              },
+            ],
+          },
+        ],
+      },
+    };
+    final merged = mergeAgentStatusHooks(stale, memberId, endpoint);
+    final hook = ((((merged['hooks'] as Map)['PreToolUse'] as List).first
+            as Map)['hooks']
+        as List).first as Map;
+    expect(hook['timeout'], 86400);
+  });
 
   test('mergeAgentStatusHooks adds X-Bus-Token for remote endpoints', () {
     final merged = mergeAgentStatusHooks(const {}, memberId, remoteEndpoint);

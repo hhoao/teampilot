@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../services/agent_status/agent_attention_state.dart';
 import '../services/agent_status/agent_status_event.dart';
 import '../services/agent_status/agent_status_normalizer.dart';
+import '../services/agent_status/ask_user_question_hook_gate.dart';
 import '../services/agent_status/claude_permission_sticky.dart';
 
 /// Orca-aligned TTL: drop seat attention with no refresh after this duration.
@@ -263,7 +264,10 @@ class AgentAttentionCubit extends Cubit<AgentAttentionState> {
       }
     }
 
-    final effective = attachClaudePermissionToolUseId(previous, event);
+    final effective = preserveAskUserQuestionPayload(
+      previous,
+      attachClaudePermissionToolUseId(previous, event),
+    );
 
     if (shouldKeepClaudePermissionVisible(previous, effective)) {
       // Keep the waiting row; do not let other-subagent activity overwrite it.

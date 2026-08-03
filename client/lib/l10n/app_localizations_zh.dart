@@ -1196,7 +1196,27 @@ class AppLocalizationsZh extends AppLocalizations {
   String get agentAskTerminalDisconnected => '终端已断开。请重新连接或在终端中回答。';
 
   @override
-  String get agentAskSubmitAnswers => '提交回答';
+  String get agentAskSubmitAnswers => '提交';
+
+  @override
+  String get agentAskContinue => '继续';
+
+  @override
+  String get agentAskIgnore => '忽略';
+
+  @override
+  String get agentAskKeyboardHint => '使用 Tab / 上下键选择，回车或空格选中';
+
+  @override
+  String get agentAskCustomAnswerHint => '输入你的回答…';
+
+  @override
+  String get agentAskEscToCancel => 'Esc 取消';
+
+  @override
+  String agentAskQuestionTabFallback(int index) {
+    return '问题$index';
+  }
 
   @override
   String get sessionHistoryRetry => '重试';

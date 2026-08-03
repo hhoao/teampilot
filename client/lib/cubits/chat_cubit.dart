@@ -788,8 +788,11 @@ class ChatCubit extends Cubit<ChatState>
     required String sessionId,
     required String memberId,
     required int optionIndex,
+    List<int>? optionIndices,
     String? askRequestId,
     List<List<String>>? answers,
+    String? freeText,
+    List<String?>? freeTexts,
   }) async {
     final tab = _tabStore.openTabBySessionId(sessionId);
     if (tab == null) {
@@ -818,7 +821,15 @@ class ChatCubit extends Cubit<ChatState>
       shell: tab.memberShells[mid],
       askRequestId: resolvedAskRequestId,
       optionIndex: optionIndex,
+      optionIndices: optionIndices,
       answers: answers,
+      freeText: freeText,
+      freeTexts: freeTexts,
+      questions: _agentAttentionCubit
+          ?.state
+          .entryFor(sessionId: sessionId, memberId: mid)
+          ?.lastEvent
+          ?.askUserQuestions,
     );
     if (result is AskUserAnswerOk) {
       _agentAttentionCubit?.markAskAnswered(

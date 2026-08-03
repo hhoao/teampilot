@@ -28,6 +28,7 @@ void main() {
         'questions': [
           {
             'question': 'How to proceed?',
+            'header': 'Plan',
             'options': [
               {'label': 'Fix', 'description': 'Fix the bug now'},
               {'label': 'Skip'},
@@ -36,7 +37,8 @@ void main() {
         ],
       });
       expect(q, hasLength(1));
-      expect(q!.single.options[0].label, 'Fix');
+      expect(q!.single.header, 'Plan');
+      expect(q.single.options[0].label, 'Fix');
       expect(q.single.options[0].description, 'Fix the bug now');
       expect(q.single.options[1].description, isNull);
     });

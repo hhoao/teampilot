@@ -52,8 +52,9 @@ Map<String, Object?> mergeAgentStatusHooks(
         'type': 'http',
         'url': eventUrl,
         'headers': headers,
-        // Status reporting only — do not sit on Claude's 600s default.
-        'timeout': 5,
+        // AskUserQuestion PreToolUse holds this HTTP call until the chat card
+        // answers (updatedInput.answers). Other events return immediately.
+        'timeout': event == 'PreToolUse' ? 86400 : 5,
       };
       final entry = <String, Object?>{
         'hooks': [hook],
@@ -62,6 +63,19 @@ Map<String, Object?> mergeAgentStatusHooks(
         entry['matcher'] = '*';
       }
       entries.add(entry);
+    } else {
+      // Refresh timeout / headers on existing status hooks (idempotent merge
+      // used to skip updates and leave AskUserQuestion stuck at timeout: 5).
+      for (final e in entries) {
+        if (e is! Map) continue;
+        final eventHooks = e['hooks'];
+        if (eventHooks is! List) continue;
+        for (final h in eventHooks) {
+          if (h is! Map || h['url'] != eventUrl) continue;
+          h['timeout'] = event == 'PreToolUse' ? 86400 : 5;
+          h['headers'] = headers;
+        }
+      }
     }
     hooks[event] = entries;
   }

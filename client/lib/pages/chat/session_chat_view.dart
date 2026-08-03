@@ -1164,6 +1164,15 @@ class _SessionChatViewState extends State<SessionChatView> {
       team: team,
       presets: presets,
     );
+    final askCardVisible = context.select<AgentAttentionCubit, bool>(
+      (c) => AgentPermissionAttentionBanner.isSelectedSeatAskCard(
+        attention: c,
+        session: session,
+        selectedMemberId: selectedMemberId,
+        seatCli: lockedCli,
+        registry: CliToolRegistryScope.maybeOf(context),
+      ),
+    );
     final sameCliPresets = presetsForCli(presets, lockedCli);
     final selectedPresetId = _selectedPresetId(session: session, team: team);
     final selectedPreset = selectedPresetId == null
@@ -1592,6 +1601,7 @@ class _SessionChatViewState extends State<SessionChatView> {
                                       );
                                     },
                                   ),
+                                if (!askCardVisible)
                                 WorkspaceComposeCard(
                                   controller: _controller,
                                   focusNode: _focusNode,

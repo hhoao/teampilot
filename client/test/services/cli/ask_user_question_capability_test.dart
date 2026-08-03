@@ -9,7 +9,8 @@ void main() {
     final cap = reg.capability<AskUserQuestionCapability>(CliTool.claude)!;
     expect(cap.supportsStructuredAsk, isTrue);
     expect(cap.supportsInChatAnswer, isTrue);
-    expect(cap.supportsMultiSelectInChat, isFalse);
+    expect(cap.supportsMultiSelectInChat, isTrue);
+    expect(cap.supportsMultiQuestionInChat, isTrue);
     expect(cap.answerKind, AskUserAnswerKind.ptyPicker);
   });
 
@@ -18,7 +19,8 @@ void main() {
     final cap = reg.capability<AskUserQuestionCapability>(CliTool.flashskyai)!;
     expect(cap.supportsStructuredAsk, isTrue);
     expect(cap.supportsInChatAnswer, isTrue);
-    expect(cap.supportsMultiSelectInChat, isFalse);
+    expect(cap.supportsMultiSelectInChat, isTrue);
+    expect(cap.supportsMultiQuestionInChat, isTrue);
     expect(cap.answerKind, AskUserAnswerKind.ptyPicker);
   });
 
@@ -27,7 +29,8 @@ void main() {
     final cap = reg.capability<AskUserQuestionCapability>(CliTool.codex)!;
     expect(cap.supportsStructuredAsk, isTrue);
     expect(cap.supportsInChatAnswer, isTrue);
-    expect(cap.supportsMultiSelectInChat, isFalse);
+    expect(cap.supportsMultiSelectInChat, isTrue);
+    expect(cap.supportsMultiQuestionInChat, isTrue);
     expect(cap.answerKind, AskUserAnswerKind.ptyPicker);
   });
 
@@ -37,6 +40,7 @@ void main() {
     expect(cap.supportsStructuredAsk, isTrue);
     expect(cap.supportsInChatAnswer, isTrue);
     expect(cap.supportsMultiSelectInChat, isTrue);
+    expect(cap.supportsMultiQuestionInChat, isTrue);
     expect(cap.answerKind, AskUserAnswerKind.pluginSdkReply);
   });
 
@@ -46,6 +50,7 @@ void main() {
     expect(cap.supportsStructuredAsk, isFalse);
     expect(cap.supportsInChatAnswer, isFalse);
     expect(cap.supportsMultiSelectInChat, isFalse);
+    expect(cap.supportsMultiQuestionInChat, isFalse);
     expect(cap.answerKind, AskUserAnswerKind.none);
   });
 }

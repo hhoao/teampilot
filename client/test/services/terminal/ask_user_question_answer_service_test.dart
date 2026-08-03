@@ -79,6 +79,61 @@ void main() {
     expect(gaps, [AskUserQuestionAnswerService.selectionToSubmitGap]);
   });
 
+  test('ptyPicker freeText writes Other digit, text, then Enter', () async {
+    final writes = <String>[];
+    final gaps = <Duration>[];
+    final service = AskUserQuestionAnswerService(
+      writePty: (_, text) => writes.add(text),
+      delay: (d) async => gaps.add(d),
+      registry: _registryWith(const PtyAskUserQuestionCapability()),
+      store: AskUserAnswerPendingStore(),
+    );
+    final result = await service.answer(
+      cli: CliTool.claude,
+      sessionId: 'sess',
+      memberId: 'member',
+      shell: _FakeShell(connected: true),
+      askRequestId: null,
+      optionIndex: 3,
+      freeText: '两杯半',
+    );
+
+    expect(result, isA<AskUserAnswerOk>());
+    expect(writes, ['4', '两杯半', '\r']);
+    expect(gaps, [
+      AskUserQuestionAnswerService.selectionToSubmitGap,
+      AskUserQuestionAnswerService.selectionToSubmitGap,
+    ]);
+  });
+
+  test('ptyPicker multi-question walks Right then digits then Enter', () async {
+    final writes = <String>[];
+    final service = AskUserQuestionAnswerService(
+      writePty: (_, text) => writes.add(text),
+      delay: (d) async {},
+      registry: _registryWith(const PtyAskUserQuestionCapability()),
+      store: AskUserAnswerPendingStore(),
+    );
+    final result = await service.answer(
+      cli: CliTool.claude,
+      sessionId: 'sess',
+      memberId: 'member',
+      shell: _FakeShell(connected: true),
+      askRequestId: null,
+      optionIndices: const [0, 2, 1],
+    );
+
+    expect(result, isA<AskUserAnswerOk>());
+    expect(writes, [
+      '1',
+      AskUserQuestionAnswerService.nextQuestionKey,
+      '3',
+      AskUserQuestionAnswerService.nextQuestionKey,
+      '2',
+      '\r',
+    ]);
+  });
+
   test('ptyPicker disconnected returns failed', () async {
     final writes = <String>[];
     final service = AskUserQuestionAnswerService(

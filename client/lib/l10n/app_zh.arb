@@ -500,7 +500,18 @@
   "agentAskCancelQuestion": "取消提问",
   "agentAskAnswerFailed": "无法提交回答。请重试或在终端中回答。",
   "agentAskTerminalDisconnected": "终端已断开。请重新连接或在终端中回答。",
-  "agentAskSubmitAnswers": "提交回答",
+  "agentAskSubmitAnswers": "提交",
+  "agentAskContinue": "继续",
+  "agentAskIgnore": "忽略",
+  "agentAskKeyboardHint": "使用 Tab / 上下键选择，回车或空格选中",
+  "agentAskCustomAnswerHint": "输入你的回答…",
+  "agentAskEscToCancel": "Esc 取消",
+  "agentAskQuestionTabFallback": "问题{index}",
+  "@agentAskQuestionTabFallback": {
+    "placeholders": {
+      "index": { "type": "int" }
+    }
+  },
   "sessionHistoryRetry": "重试",
   "sessionHistoryToolTurn": "工具",
   "sessionHistoryRoleUser": "你",

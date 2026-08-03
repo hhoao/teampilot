@@ -61,6 +61,36 @@ class AgentPermissionAttentionBanner extends StatelessWidget {
         AgentSeatAttention.waiting;
   }
 
+  /// Whether the interactive [AskUserQuestionCard] is showing for the seat
+  /// (compose should be hidden, not merely disabled).
+  static bool isSelectedSeatAskCard({
+    required AgentAttentionCubit attention,
+    required AppSession session,
+    required String selectedMemberId,
+    required CliTool seatCli,
+    CliToolRegistry? registry,
+  }) {
+    final seatId = attentionMemberId(
+      session: session,
+      selectedMemberId: selectedMemberId,
+    );
+    final entry = attention.state.entryFor(
+      sessionId: session.sessionId,
+      memberId: seatId,
+    );
+    if (entry == null || entry.attention != AgentSeatAttention.waiting) {
+      return false;
+    }
+    final toolRegistry = registry ?? CliToolRegistry.builtIn();
+    final capability =
+        toolRegistry.capability<AskUserQuestionCapability>(seatCli);
+    return shouldShowAskUserQuestionCard(
+      capability: capability,
+      questions: entry.lastEvent?.askUserQuestions,
+      askRequestId: entry.lastEvent?.askRequestId,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final sessionId = session.sessionId;

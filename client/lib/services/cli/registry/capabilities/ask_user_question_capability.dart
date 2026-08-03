@@ -5,7 +5,13 @@ enum AskUserAnswerKind { ptyPicker, pluginSdkReply, none }
 abstract interface class AskUserQuestionCapability implements CliCapability {
   bool get supportsStructuredAsk;
   bool get supportsInChatAnswer;
+
+  /// Checkbox-style multi-select within a single question (OpenCode).
   bool get supportsMultiSelectInChat;
+
+  /// Multiple questions in one AskUserQuestion / question.asked payload.
+  bool get supportsMultiQuestionInChat;
+
   AskUserAnswerKind get answerKind;
 }
 
@@ -19,7 +25,10 @@ final class PtyAskUserQuestionCapability implements AskUserQuestionCapability {
   bool get supportsInChatAnswer => true;
 
   @override
-  bool get supportsMultiSelectInChat => false;
+  bool get supportsMultiSelectInChat => true;
+
+  @override
+  bool get supportsMultiQuestionInChat => true;
 
   @override
   AskUserAnswerKind get answerKind => AskUserAnswerKind.ptyPicker;
@@ -39,6 +48,9 @@ final class OpenCodeAskUserQuestionCapability
   bool get supportsMultiSelectInChat => true;
 
   @override
+  bool get supportsMultiQuestionInChat => true;
+
+  @override
   AskUserAnswerKind get answerKind => AskUserAnswerKind.pluginSdkReply;
 }
 
@@ -53,6 +65,9 @@ final class NoAskUserQuestionCapability implements AskUserQuestionCapability {
 
   @override
   bool get supportsMultiSelectInChat => false;
+
+  @override
+  bool get supportsMultiQuestionInChat => false;
 
   @override
   AskUserAnswerKind get answerKind => AskUserAnswerKind.none;

@@ -23,6 +23,7 @@ class AgentAskUserQuestion {
     required this.question,
     required this.options,
     this.multiSelect = false,
+    this.header,
   });
 
   final String question;
@@ -31,16 +32,21 @@ class AgentAskUserQuestion {
   /// True for checkbox-style selection; single-select (radio) when false.
   final bool multiSelect;
 
+  /// Short tab label when multiple questions are shown (Claude `header`).
+  final String? header;
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is AgentAskUserQuestion &&
           question == other.question &&
           _sameOptions(options, other.options) &&
-          multiSelect == other.multiSelect;
+          multiSelect == other.multiSelect &&
+          header == other.header;
 
   @override
-  int get hashCode => Object.hash(question, Object.hashAll(options), multiSelect);
+  int get hashCode =>
+      Object.hash(question, Object.hashAll(options), multiSelect, header);
 
   static bool _sameOptions(
     List<AgentAskUserOption> a,
@@ -81,6 +87,10 @@ List<AgentAskUserQuestion>? parseQuestionsList(Object? rawQuestions) {
     if (questionText is! String || questionText.trim().isEmpty) continue;
     final options = _parseOptions(raw['options']);
     if (options.isEmpty) continue;
+    final headerRaw = raw['header'];
+    final header = headerRaw is String && headerRaw.trim().isNotEmpty
+        ? headerRaw.trim()
+        : null;
     result.add(
       AgentAskUserQuestion(
         question: questionText.trim(),
@@ -88,6 +98,7 @@ List<AgentAskUserQuestion>? parseQuestionsList(Object? rawQuestions) {
         multiSelect: raw['multiSelect'] == true ||
             raw['multi_select'] == true ||
             raw['multiple'] == true,
+        header: header,
       ),
     );
   }

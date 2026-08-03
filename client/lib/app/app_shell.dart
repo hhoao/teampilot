@@ -17,6 +17,7 @@ import '../cubits/chat_cubit.dart';
 import '../services/agent_status/agent_status_http_handler.dart';
 import '../services/agent_status/agent_status_seat_lookup.dart';
 import '../services/agent_status/ask_user_answer_pending_store.dart';
+import '../services/agent_status/ask_user_question_hook_gate.dart';
 import '../services/terminal/ask_user_question_answer_service.dart';
 import '../services/team_bus/mcp/teammate_bus_mcp_gateway.dart';
 import '../services/team_bus/remote/remote_bus_binding_resolver.dart';
@@ -1111,8 +1112,10 @@ Future<AppShell> buildAppShell({
   // this instance — do not construct a second store.
   final askUserAnswerPendingStore = AskUserAnswerPendingStore();
   teammateBusMcpGateway.attachAskUserAnswerStore(askUserAnswerPendingStore);
+  final askUserQuestionHookGate = AskUserQuestionHookGate();
   final askUserQuestionAnswerService = AskUserQuestionAnswerService(
     store: askUserAnswerPendingStore,
+    hookGate: askUserQuestionHookGate,
   );
 
   final agentAttentionCubit = AgentAttentionCubit();
@@ -1122,6 +1125,7 @@ Future<AppShell> buildAppShell({
       attention: agentAttentionCubit,
       resolveCli: agentStatusSeatLookup.resolveCli,
       resolveSkipPermissions: agentStatusSeatLookup.resolveSkipPermissions,
+      askUserHookGate: askUserQuestionHookGate,
     ),
   );
 

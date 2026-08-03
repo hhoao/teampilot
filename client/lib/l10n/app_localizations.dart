@@ -2345,7 +2345,7 @@ abstract class AppLocalizations {
   /// No description provided for @agentAskAnswerFailed.
   ///
   /// In en, this message translates to:
-  /// **'Couldn't submit your answer. Try again or answer in the Terminal.'**
+  /// **'Couldn\'t submit your answer. Try again or answer in the Terminal.'**
   String get agentAskAnswerFailed;
 
   /// No description provided for @agentAskTerminalDisconnected.
@@ -2357,8 +2357,44 @@ abstract class AppLocalizations {
   /// No description provided for @agentAskSubmitAnswers.
   ///
   /// In en, this message translates to:
-  /// **'Submit answers'**
+  /// **'Submit'**
   String get agentAskSubmitAnswers;
+
+  /// No description provided for @agentAskContinue.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get agentAskContinue;
+
+  /// No description provided for @agentAskIgnore.
+  ///
+  /// In en, this message translates to:
+  /// **'Ignore'**
+  String get agentAskIgnore;
+
+  /// No description provided for @agentAskKeyboardHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Use Tab / ↑↓ to select, Enter or Space to confirm'**
+  String get agentAskKeyboardHint;
+
+  /// No description provided for @agentAskCustomAnswerHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your answer…'**
+  String get agentAskCustomAnswerHint;
+
+  /// No description provided for @agentAskEscToCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Esc to cancel'**
+  String get agentAskEscToCancel;
+
+  /// No description provided for @agentAskQuestionTabFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'Q{index}'**
+  String agentAskQuestionTabFallback(int index);
 
   /// No description provided for @sessionHistoryRetry.
   ///
