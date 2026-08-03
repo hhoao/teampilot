@@ -1,10 +1,11 @@
 import '../../models/session_preferences.dart';
 import 'cli_tool_locator.dart';
 import 'git_installer.dart';
+import 'registry/capabilities/remote_cli_locator_capability.dart';
 
 typedef GitDetect = Future<GitInstallResult> Function();
 
-/// Locates toolchain executables (git, node) on the local host.
+/// Locates toolchain executables (git, node) on the local and remote host.
 class ToolchainExecutableDiscovery {
   ToolchainExecutableDiscovery({
     GitInstaller? gitInstaller,
@@ -54,5 +55,18 @@ class ToolchainExecutableDiscovery {
       return nodePath.isEmpty ? null : nodePath;
     }
     return null;
+  }
+
+  Future<String?> locateRemoteTool({
+    required String toolId,
+    required SshCommandRunner run,
+  }) async {
+    final name = switch (toolId) {
+      SessionPreferences.toolchainGit => 'git',
+      SessionPreferences.toolchainNode => 'node',
+      _ => null,
+    };
+    if (name == null) return null;
+    return DefaultRemoteCliLocator(name).locate(run);
   }
 }
