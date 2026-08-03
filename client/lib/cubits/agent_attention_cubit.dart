@@ -179,13 +179,16 @@ class AgentAttentionCubit extends Cubit<AgentAttentionState> {
     final key = agentSeatKey(sessionId: sessionId, memberId: memberId);
     final existing = state.seats[key];
     if (existing == null) return;
+    if (existing.attention != AgentSeatAttention.waiting) return;
+    final askRequestId = existing.lastEvent?.askRequestId;
+    if (askRequestId == null || askRequestId.isEmpty) return;
 
     final seats = Map<String, AgentSeatAttentionEntry>.of(state.seats);
     seats[key] = AgentSeatAttentionEntry(
       attention: AgentSeatAttention.working,
       updatedAt: _clock(),
       lastEvent: existing.lastEvent,
-      dismissedAskRequestId: existing.lastEvent?.askRequestId,
+      dismissedAskRequestId: askRequestId,
       askReplyError: null,
     );
     emit(AgentAttentionState(seats: seats, clock: _clock));

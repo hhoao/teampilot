@@ -462,6 +462,59 @@ void main() {
         expect(entry?.askReplyError, isNull);
       });
 
+      test(
+        'markAskAnswered no-ops when not waiting or missing askRequestId',
+        () {
+          final c = _cubit();
+
+          // Missing entry.
+          c.markAskAnswered(sessionId: 's1', memberId: 'm1');
+          expect(c.state.seats, isEmpty);
+
+          // Working (not waiting).
+          c.applyEvent(
+            sessionId: 's1',
+            memberId: 'm1',
+            event: const AgentStatusEvent(state: AgentSeatAttention.working),
+            skipPermissions: false,
+          );
+          final afterWorking = c.state;
+          c.markAskAnswered(sessionId: 's1', memberId: 'm1');
+          expect(c.state, same(afterWorking));
+
+          // Waiting but no askRequestId (permission-style wait).
+          c.applyEvent(
+            sessionId: 's1',
+            memberId: 'm1',
+            event: const AgentStatusEvent(
+              state: AgentSeatAttention.waiting,
+              hookEventName: 'PermissionRequest',
+              toolName: 'Bash',
+            ),
+            skipPermissions: false,
+          );
+          final afterPermissionWait = c.state;
+          c.markAskAnswered(sessionId: 's1', memberId: 'm1');
+          expect(c.state, same(afterPermissionWait));
+
+          // Waiting with empty askRequestId.
+          c.applyEvent(
+            sessionId: 's1',
+            memberId: 'm1',
+            event: const AgentStatusEvent(
+              state: AgentSeatAttention.waiting,
+              hookEventName: 'question.asked',
+              askRequestId: '',
+              askUserQuestions: questions,
+            ),
+            skipPermissions: false,
+          );
+          final afterEmptyAskId = c.state;
+          c.markAskAnswered(sessionId: 's1', memberId: 'm1');
+          expect(c.state, same(afterEmptyAskId));
+        },
+      );
+
       test('same askRequestId waiting after dismiss is ignored', () {
         final c = _cubit();
         c.applyEvent(
