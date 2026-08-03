@@ -137,7 +137,7 @@ Entry shape:
 On `question.asked`:
 
 1. POST status payload including `questions`, `request_id`, `session_id`.
-2. Start short-interval poll of `GET /ask-user-answer?request_id=…` until answer, reject, or timeout (align with attention TTL, default 30m, or a shorter dedicated poll deadline documented in code).
+2. Start short-interval poll of `GET /ask-user-answer?request_id=…` until answer, reject, or timeout. **v1 poll deadline = attention TTL (30m)** so a slow human answer is not stranded; do not use a shorter deadline without an explicit recover path.
 3. Call `client.question.reply` with `{ path: { sessionID, requestID }, body: { answers } }` or `client.question.reject` when available.
 4. On SDK failure: POST `question.reply_failed` with `request_id` (and optional `message`) so Dart can restore waiting.
 5. On success: rely on existing idle / done signals for reconciliation; Dart already moved the seat to `working` optimistically.
@@ -160,7 +160,7 @@ On `question.asked`:
 ### UX copy and errors
 
 - Title: generic (e.g. “Agent is asking you a question” / 「正在向你提问」) — not Claude-branded. Optional later interpolation with CLI/display name is allowed but not required for v1 of this design.
-- Failure: snackbar or inline error on the card (“Couldn’t send answer”, terminal disconnected, reply failed). Keep card / restore waiting so the user can retry or “Answer in terminal”.
+- Failure: **inline error on the card** (primary). Keep card / restore waiting so the user can retry or “Answer in terminal”.
 - Compose lock and history-continue block while `permissionWaiting` unchanged.
 
 ### Answer facade

@@ -217,7 +217,13 @@ cd client && flutter test test/services/agent_status/agent_status_normalizer_tes
 
 - [ ] **Step 3: Extend `AgentStatusEvent` + normalizer**
 
-Add `askRequestId`, `nativeSessionId`, and a clear restore signal for reply_failed (prefer `bool restoreAskWaiting` on the event set true only for `question.reply_failed`, keep `state` as `waiting` for restore path — cubit will merge). Update `==` / `hashCode` / `copyWith`.
+Add `askRequestId`, `nativeSessionId`, optional `message`, and `restoreAskWaiting` (true only for `question.reply_failed`). Update `==` / `hashCode` / `copyWith`.
+
+Claude-family AskUserQuestion `PreToolUse`: set `askRequestId` from `tool_use_id` when present (may equal `toolUseId` — both fields set is fine).
+
+OpenCode `question.asked`: parse `request_id` / `id` → `askRequestId`; `session_id` / `sessionID` → `nativeSessionId`.
+
+OpenCode `question.reply_failed`: require `request_id`; set `restoreAskWaiting = true`; pass through optional `message`.
 
 - [ ] **Step 4: Run — expect PASS**
 
@@ -267,7 +273,11 @@ cd client && flutter test test/cubits/agent_attention_cubit_test.dart
 
 - [ ] **Step 3: Implement entry field `dismissedAskRequestId` + logic**
 
+Also store optional `askReplyError` (String?) on the seat entry when applying `reply_failed`, taken from event `message`. Clear it on a fresh successful waiting ask or on `markAskAnswered`. Card reads this (via entry / lastEvent) for inline error after restore.
+
 - [ ] **Step 4: Run — expect PASS**
+
+Also assert: after `reply_failed` with message `"boom"`, entry is `waiting` and `askReplyError == "boom"` (or equivalent field).
 
 - [ ] **Step 5: Commit**
 
@@ -484,11 +494,19 @@ while (Date.now() < deadline) {
   }
   await new Promise((res) => setTimeout(res, 400));
 }
+// Poll deadline exceeded: always signal so Dart can restore waiting if the
+// user already answered (optimistic working) or keep recoverable UI.
+await post("question.reply_failed", {
+  request_id: id,
+  message: "ask-user-answer poll timed out",
+});
 ```
 
 Adapt exact SDK method names to what OpenCode plugin client exposes (match idle plugin’s `client.session.prompt` style). If `reject` API name differs, probe and document in plugin comment.
 
 Also forward `session_id` from the event into the status POST.
+
+Plugin string tests must also assert timeout path posts `question.reply_failed`.
 
 - [ ] **Step 4: Run — expect PASS**
 
@@ -518,11 +536,13 @@ EOF
 - On `AskUserAnswerOk`: `agentAttention.markAskAnswered(...)`.
 - On failed: do **not** mark answered; return failure to UI (throw or return result — prefer return result so card can show inline error).
 
+Add a unit assertion (ChatCubit test or facade+attention integration): `AskUserAnswerFailed` must **not** call `markAskAnswered`.
+
 Change method signatures to return `Future<AskUserAnswerResult>` if needed; update card call sites in Task 10.
 
 - [ ] **Step 2: Wire singleton pending store in app bootstrap**
 
-Same instance: ChatCubit facade + gateway.
+Reuse the **same** `AskUserAnswerPendingStore` instance already injected into the gateway in Task 6 — do not construct a second store. ChatCubit facade + gateway share it.
 
 Clear store on session dispose / seat disconnect where shells are torn down (grep existing dispose paths near attention clear).
 
@@ -574,8 +594,10 @@ Resolve CLI for seat (same way compose / interrupt resolves locked CLI). Call `s
 
 - Single single-select: keep option tap → answer (existing).
 - Multi / multi-question: radio/checkbox groups + Submit; require ≥1 selection per question; submit `List<List<String>>`.
-- On failure: show inline error text; clear `_answering`.
+- On failure: show inline error text (from facade failure reason **or** from attention entry `askReplyError` after `reply_failed` restore); clear `_answering`.
 - Cancel: facade cancel (PTY Esc vs pending reject).
+
+Listen to `AgentAttentionCubit` entry for the seat so when `reply_failed` restores `waiting`, the card reappears with inline error from `askReplyError` (fallback to l10n `agentAskAnswerFailed` when message empty).
 
 - [ ] **Step 4: Manual sanity / widget tests if cheap** — optional small test on policy already covers gating; prefer not heavy widget tests unless existing pattern.
 
