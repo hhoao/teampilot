@@ -1,14 +1,48 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/floating_workspace/floating_workspace_cubit.dart';
+import '../../cubits/workbench/workbench_tab.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/floating_workspace_tab.dart';
+import '../../services/io/file_path_actions.dart';
+import '../../services/storage/runtime_context.dart';
+import '../../services/workspace/workspace_tools_scope.dart';
 import '../workspace_shell/workspace_shell_tabs.dart';
 import 'floating_workspace_new_terminal_menu.dart';
+
+(WorkbenchTabKind kind, String? filePath) floatingTabMenuIdentity(
+  FloatingTab tab,
+) {
+  return switch (tab.surfaceId) {
+    'filePreview' => (
+      WorkbenchTabKind.file,
+      tab.payload is String ? tab.payload as String : null,
+    ),
+    'diffPreview' => () {
+      final key = tab.payload is String ? tab.payload as String : null;
+      final parsed = key == null ? null : WorkbenchTabId.parseDiffKey(key);
+      return (WorkbenchTabKind.diff, parsed?.$1);
+    }(),
+    'terminal' => (WorkbenchTabKind.shell, null),
+    _ => (WorkbenchTabKind.run, null),
+  };
+}
+
+bool _desktopShellActionsFor(RuntimeContext? workContext) {
+  if (workContext == null || kIsWeb) return false;
+  return workContext.mode == StorageBackendMode.native ||
+      workContext.mode == StorageBackendMode.wsl;
+}
+
+bool _remoteFileManagerActionsFor(RuntimeContext? workContext) {
+  if (workContext == null || kIsWeb) return false;
+  return workContext.mode == StorageBackendMode.ssh;
+}
 
 /// Tabs-only strip for the floating title bar.
 ///
@@ -35,6 +69,16 @@ class FloatingWorkspaceTabBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final toolsScope = WorkspaceToolsScope.maybeOf(context);
+    final workContext = toolsScope?.tools?.context;
+    final folderPaths = <String>[
+      for (final folder in toolsScope?.effectiveFolders ?? const [])
+        folder.path,
+    ];
+    final pathContext = workContext?.fs.pathContext;
+    final desktopShellActions = _desktopShellActionsFor(workContext);
+    final remoteFileManagerActions = _remoteFileManagerActionsFor(workContext);
+
     return TpTabStrip(
       metrics: TpTabStripMetrics.compact,
       fillWidth: false,
@@ -47,7 +91,22 @@ class FloatingWorkspaceTabBar extends StatelessWidget {
           : null,
       itemBuilder: (context, index) {
         final tab = tabs[index];
+        final (kind, filePath) = floatingTabMenuIdentity(tab);
+        final workspaceRoot = filePath == null
+            ? null
+            : resolveContainingWorkspaceRoot(
+                filePath,
+                folderPaths,
+                pathContext: pathContext,
+              );
         return WorkbenchStripTabChip(
+          kind: kind,
+          tabId: tab.id,
+          filePath: filePath,
+          workspaceRoot: workspaceRoot,
+          desktopShellActions: desktopShellActions,
+          remoteFileManagerActions: remoteFileManagerActions,
+          workContext: workContext,
           title: tab.title,
           active: tab.id == activeTabId,
           icon: _iconFor(tab.surfaceId),
