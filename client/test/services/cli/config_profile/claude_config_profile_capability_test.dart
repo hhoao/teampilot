@@ -3,14 +3,17 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/models/app_provider_config.dart';
+import 'package:teampilot/models/cli_preset.dart';
+import 'package:teampilot/models/member_instance.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/storage/runtime_layout.dart';
+import 'package:teampilot/repositories/app_provider_repository.dart';
+import 'package:teampilot/services/cli/preset_resolver.dart';
 import 'package:teampilot/services/cli/registry/config_profile/claude_config_profile_capability.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/services/provider/credential_binding.dart';
-import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
+import 'package:teampilot/services/storage/runtime_layout.dart';
 
 void main() {
   test('mergeApprovedCustomApiKeyMetadata stores last-20 suffix', () {
@@ -465,4 +468,202 @@ void main() {
       );
     },
   );
+
+  group('native preset inherit replicas staging', () {
+    const thirdPartyPreset = CliPreset(
+      id: 'preset-deepseek',
+      name: 'DeepSeek',
+      cli: CliTool.claude,
+      provider: 'third-party',
+      model: 'deepseek-chat',
+      createdAt: 0,
+      updatedAt: 0,
+    );
+
+    Future<({
+      Directory base,
+      ConfigProfileService service,
+      TeamProfile team,
+      List<TeamMemberConfig> launchMembers,
+    })> setupFixture() async {
+      final base = await Directory.systemTemp.createTemp('claude_cap_preset_');
+      final fs = LocalFilesystem();
+      final service = ConfigProfileService(
+        basePath: base.path,
+        fs: fs,
+        layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
+        loadGlobalPresets: () async => [thirdPartyPreset],
+      );
+      final repository = AppProviderRepository(basePath: base.path, fs: fs);
+      await repository.saveProviders(CliTool.claude, [
+        const AppProviderConfig(
+          id: 'third-party',
+          cli: CliTool.claude,
+          name: 'Third',
+          category: AppProviderCategory.thirdParty,
+          apiKey: 'fixture-auth-token',
+          baseUrl: 'https://api.third.example/anthropic',
+        ),
+      ]);
+
+      final team = TeamProfile(
+        id: 'team-a',
+        name: 'agent',
+        cli: CliTool.claude,
+        teamMode: TeamMode.native,
+        activePresetId: thirdPartyPreset.id,
+        members: [
+          TeamMemberConfig(
+            id: 'team-lead',
+            name: 'team-lead',
+            activePresetId: TeamProfile.inheritPresetId,
+          ),
+          TeamMemberConfig(
+            id: 'developer',
+            name: 'developer',
+            replicas: 2,
+            activePresetId: TeamProfile.inheritPresetId,
+          ),
+        ],
+      ).normalizedLaunchConfig();
+
+      final roster = runtimeRosterMembers(team);
+      final launchMembers = resolveTeamRosterForLaunch(
+        team: team,
+        members: roster,
+        globalPresets: [thirdPartyPreset],
+      );
+
+      return (base: base, service: service, team: team, launchMembers: launchMembers);
+    }
+
+    String memberSettingsPath(String base, String sessionId, String memberId) =>
+        p.join(
+          base,
+          'workspace',
+          'workspaces',
+          'workspace-1',
+          'sessions',
+          sessionId,
+          'runtime',
+          'claude',
+          'settings',
+          '$memberId.json',
+        );
+
+    void expectProviderEnv(Map settings) {
+      final env = settings['env'] as Map;
+      final token =
+          env['ANTHROPIC_AUTH_TOKEN']?.toString() ??
+          env['ANTHROPIC_API_KEY']?.toString() ??
+          '';
+      expect(token, isNotEmpty);
+      expect(env['ANTHROPIC_BASE_URL'], 'https://api.third.example/anthropic');
+    }
+
+    test(
+      'contributeLaunch stages provider env for all launch-resolved seats',
+      () async {
+        final fixture = await setupFixture();
+        addTearDown(() async {
+          if (await fixture.base.exists()) {
+            await fixture.base.delete(recursive: true);
+          }
+        });
+
+        const capability = ClaudeConfigProfileCapability();
+        const sessionId = 'session-preset-roster';
+        final lead = fixture.launchMembers.firstWhere((m) => m.id == 'team-lead');
+        final scope = resolveLaunchProfileScope(
+          workspaceId: 'workspace-1',
+          teamId: 'team-a',
+          appSessionId: sessionId,
+          cliTeamName: sessionId,
+        );
+
+        await capability.contributeLaunch(
+          ConfigProfileLaunchContext(
+            workspaceId: 'workspace-1',
+            teamId: 'team-a',
+            sessionId: scope.sessionId,
+            scope: scope,
+            team: fixture.team,
+            member: lead,
+            members: fixture.launchMembers,
+            workingDirectory: '/workspace/workspace',
+            paths: fixture.service,
+            catalog: fixture.service,
+          ),
+        );
+
+        for (final memberId in ['team-lead', 'developer-0', 'developer-1']) {
+          final settingsPath = memberSettingsPath(fixture.base.path, sessionId, memberId);
+          expect(await File(settingsPath).exists(), isTrue, reason: memberId);
+          final settings =
+              jsonDecode(await File(settingsPath).readAsString()) as Map;
+          expectProviderEnv(settings);
+        }
+      },
+    );
+
+    test(
+      'sequential contributeLaunch keeps tokens on all seat settings files',
+      () async {
+        final fixture = await setupFixture();
+        addTearDown(() async {
+          if (await fixture.base.exists()) {
+            await fixture.base.delete(recursive: true);
+          }
+        });
+
+        const capability = ClaudeConfigProfileCapability();
+        const sessionId = 'session-preset-seq';
+        final dev0 = fixture.launchMembers.firstWhere((m) => m.id == 'developer-0');
+        final dev1 = fixture.launchMembers.firstWhere((m) => m.id == 'developer-1');
+        final scope = resolveLaunchProfileScope(
+          workspaceId: 'workspace-1',
+          teamId: 'team-a',
+          appSessionId: sessionId,
+          cliTeamName: sessionId,
+        );
+
+        await capability.contributeLaunch(
+          ConfigProfileLaunchContext(
+            workspaceId: 'workspace-1',
+            teamId: 'team-a',
+            sessionId: scope.sessionId,
+            scope: scope,
+            team: fixture.team,
+            member: dev0,
+            members: fixture.launchMembers,
+            workingDirectory: '/workspace/workspace',
+            paths: fixture.service,
+            catalog: fixture.service,
+          ),
+        );
+
+        await capability.contributeLaunch(
+          ConfigProfileLaunchContext(
+            workspaceId: 'workspace-1',
+            teamId: 'team-a',
+            sessionId: scope.sessionId,
+            scope: scope,
+            team: fixture.team,
+            member: dev1,
+            members: fixture.launchMembers,
+            workingDirectory: '/workspace/workspace',
+            paths: fixture.service,
+            catalog: fixture.service,
+          ),
+        );
+
+        for (final memberId in ['team-lead', 'developer-0', 'developer-1']) {
+          final settingsPath = memberSettingsPath(fixture.base.path, sessionId, memberId);
+          final settings =
+              jsonDecode(await File(settingsPath).readAsString()) as Map;
+          expectProviderEnv(settings);
+        }
+      },
+    );
+  });
 }
