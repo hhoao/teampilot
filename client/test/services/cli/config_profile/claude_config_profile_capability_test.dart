@@ -562,6 +562,138 @@ void main() {
     }
 
     test(
+      'member explicit preset stages its provider env, not team preset',
+      () async {
+        const teamPreset = CliPreset(
+          id: 'preset-team',
+          name: 'Team Default',
+          cli: CliTool.claude,
+          provider: 'team-provider',
+          model: 'team-model',
+          createdAt: 0,
+          updatedAt: 0,
+        );
+        const memberPreset = CliPreset(
+          id: 'preset-member',
+          name: 'Member Override',
+          cli: CliTool.claude,
+          provider: 'member-provider',
+          model: 'member-model',
+          createdAt: 0,
+          updatedAt: 0,
+        );
+
+        final base = await Directory.systemTemp.createTemp('claude_cap_member_preset_');
+        addTearDown(() async {
+          if (await base.exists()) await base.delete(recursive: true);
+        });
+
+        final fs = LocalFilesystem();
+        final service = ConfigProfileService(
+          basePath: base.path,
+          fs: fs,
+          layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
+          loadGlobalPresets: () async => [teamPreset, memberPreset],
+        );
+        final repository = AppProviderRepository(basePath: base.path, fs: fs);
+        await repository.saveProviders(CliTool.claude, [
+          const AppProviderConfig(
+            id: 'team-provider',
+            cli: CliTool.claude,
+            name: 'Team',
+            category: AppProviderCategory.thirdParty,
+            apiKey: 'team-token',
+            baseUrl: 'https://api.team.example/anthropic',
+          ),
+          const AppProviderConfig(
+            id: 'member-provider',
+            cli: CliTool.claude,
+            name: 'Member',
+            category: AppProviderCategory.thirdParty,
+            apiKey: 'member-token',
+            baseUrl: 'https://api.member.example/anthropic',
+          ),
+        ]);
+
+        final team = TeamProfile(
+          id: 'team-a',
+          name: 'agent',
+          cli: CliTool.claude,
+          teamMode: TeamMode.native,
+          activePresetId: teamPreset.id,
+          members: [
+            TeamMemberConfig(
+              id: 'inherit',
+              name: 'inherit',
+              activePresetId: TeamProfile.inheritPresetId,
+            ),
+            TeamMemberConfig(
+              id: 'override',
+              name: 'override',
+              activePresetId: memberPreset.id,
+            ),
+          ],
+        ).normalizedLaunchConfig();
+
+        final launchMembers = resolveTeamRosterForLaunch(
+          team: team,
+          members: team.members,
+          globalPresets: [teamPreset, memberPreset],
+        );
+        final override = launchMembers.firstWhere((m) => m.id == 'override');
+
+        const capability = ClaudeConfigProfileCapability();
+        const sessionId = 'session-member-preset';
+        final scope = resolveLaunchProfileScope(
+          workspaceId: 'workspace-1',
+          teamId: 'team-a',
+          appSessionId: sessionId,
+          cliTeamName: sessionId,
+        );
+
+        await capability.contributeLaunch(
+          ConfigProfileLaunchContext(
+            workspaceId: 'workspace-1',
+            teamId: 'team-a',
+            sessionId: scope.sessionId,
+            scope: scope,
+            team: team,
+            member: override,
+            members: launchMembers,
+            workingDirectory: '/workspace/workspace',
+            paths: service,
+            catalog: service,
+          ),
+        );
+
+        final inheritSettings =
+            jsonDecode(
+                  await File(
+                    memberSettingsPath(base.path, sessionId, 'inherit'),
+                  ).readAsString(),
+                )
+                as Map;
+        final overrideSettings =
+            jsonDecode(
+                  await File(
+                    memberSettingsPath(base.path, sessionId, 'override'),
+                  ).readAsString(),
+                )
+                as Map;
+
+        final inheritEnv = inheritSettings['env'] as Map;
+        final overrideEnv = overrideSettings['env'] as Map;
+        expect(inheritEnv['ANTHROPIC_BASE_URL'], 'https://api.team.example/anthropic');
+        expect(overrideEnv['ANTHROPIC_BASE_URL'], 'https://api.member.example/anthropic');
+        expect(
+          overrideEnv['ANTHROPIC_AUTH_TOKEN']?.toString() ??
+              overrideEnv['ANTHROPIC_API_KEY']?.toString(),
+          'member-token',
+        );
+      },
+    );
+
+    test(
       'contributeLaunch stages provider env for all launch-resolved seats',
       () async {
         final fixture = await setupFixture();

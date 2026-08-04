@@ -145,6 +145,62 @@ void main() {
     expect(resolved.model, 'codex-m');
   });
 
+  test('memberForLaunch keeps member preset provider under team preset', () {
+    const teamPreset = CliPreset(
+      id: 'preset-team',
+      name: 'Team Default',
+      cli: CliTool.claude,
+      provider: 'team-provider',
+      model: 'team-model',
+      createdAt: 0,
+      updatedAt: 0,
+    );
+    const memberPreset = CliPreset(
+      id: 'preset-member',
+      name: 'Member Override',
+      cli: CliTool.claude,
+      provider: 'member-provider',
+      model: 'member-model',
+      createdAt: 0,
+      updatedAt: 0,
+    );
+    const team = TeamProfile(
+      id: 'team',
+      name: 'Team',
+      teamMode: TeamMode.native,
+      cli: CliTool.claude,
+      activePresetId: 'preset-team',
+      members: [
+        TeamMemberConfig(
+          id: 'inherit',
+          name: 'inherit',
+          activePresetId: TeamProfile.inheritPresetId,
+        ),
+        TeamMemberConfig(
+          id: 'override',
+          name: 'override',
+          activePresetId: 'preset-member',
+        ),
+      ],
+    );
+
+    final inheritStaged = memberForLaunch(
+      team: team,
+      member: team.members.first,
+      globalPresets: const [teamPreset, memberPreset],
+    );
+    final overrideStaged = memberForLaunch(
+      team: team,
+      member: team.members.last,
+      globalPresets: const [teamPreset, memberPreset],
+    );
+
+    expect(inheritStaged.provider, 'team-provider');
+    expect(inheritStaged.model, 'team-model');
+    expect(overrideStaged.provider, 'member-provider');
+    expect(overrideStaged.model, 'member-model');
+  });
+
   test('member explicit preset overrides team bundle', () {
     const team = TeamProfile(
       id: 'team',

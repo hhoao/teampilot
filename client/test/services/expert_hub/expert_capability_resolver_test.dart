@@ -173,8 +173,8 @@ void main() {
       );
 
       expect(pack.member.id, 'slot-alpha');
-      expect(pack.member.provider, 'anthropic');
-      expect(pack.member.model, 'claude-sonnet-4');
+      expect(pack.member.provider, isEmpty);
+      expect(pack.member.model, isEmpty);
       expect(pack.member.activePresetId, TeamProfile.inheritPresetId);
     },
   );

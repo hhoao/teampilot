@@ -1,7 +1,7 @@
 # Team launch config — single source of truth (design)
 
 **Date:** 2026-08-04  
-**Status:** Approved for planning  
+**Status:** Implemented  
 **Scope:** Eliminate dual team launch defaults (`activePresetId` vs `providerIdsByTool` / `modelsByTool` / `cliEffortLevels`) that cause Claude members to miss API credentials (login screen) while UI shows “inherit team default”. No backward/forward compatibility; no legacy dual-path shims.
 
 **Primary bug scope:** `TeamMode.native` (including replicated pods). Mixed-mode profile writes stay as today except where materialize / team-shape normalize is CLI-agnostic.
@@ -188,11 +188,11 @@ Acceptance splits accordingly (below).
 
 ### No-compat checklist (done when all true)
 
-- [ ] No read path uses `providerIdsByTool` when shape is preset.
-- [ ] No legacy team provider bind API.
-- [ ] `resolveTeamLaunchBundle` does not fall back to custom maps in preset shape.
-- [ ] Inherit roster overrides never persist non-empty `provider`.
-- [ ] Tests asserting dirty dual-state as valid behavior are removed/replaced.
+- [x] No read path uses `providerIdsByTool` when shape is preset.
+- [x] No legacy team provider bind API.
+- [x] `resolveTeamLaunchBundle` does not fall back to custom maps in preset shape.
+- [x] Inherit roster overrides never persist non-empty `provider`.
+- [x] Tests asserting dirty dual-state as valid behavior are removed/replaced.
 
 ## Implementation notes
 

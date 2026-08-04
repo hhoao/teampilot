@@ -130,6 +130,27 @@ void main() {
       },
     );
 
+    test('flags stale team preset id as missing team default and member provider', () async {
+      final team = TeamProfile(
+        id: 'team',
+        name: 'Team',
+        cli: CliTool.claude,
+        teamMode: TeamMode.native,
+        activePresetId: 'missing-preset',
+        members: [inheritMember('alice')],
+      );
+
+      final result = await validator.validate(team);
+
+      expect(
+        result.issues.map((i) => i.kind),
+        containsAll([
+          TeamConfigIssueKind.teamDefaultProviderMissing,
+          TeamConfigIssueKind.memberProviderMissing,
+        ]),
+      );
+    });
+
     test('passes when members inherit team preset via globalPresets', () async {
       const preset = CliPreset(
         id: 'preset-team',
