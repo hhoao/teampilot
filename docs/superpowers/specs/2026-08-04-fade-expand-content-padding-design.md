@@ -57,6 +57,8 @@ Stack
 
 Collapsed overflowing host outer height = `collapsedMaxHeight + contentPadding.vertical` (matches today’s bubble: clip 120 + vertical pad). Do **not** apply the max-height cap to the padded total.
 
+`_BlockBottomHits` must wrap the **padded** body (same relative place as today: around `body` before the `Stack`), so the dead zone aligns with the edge-flush fade strip when `contentPadding.bottom > 0`.
+
 ## Call sites
 
 | Surface | Change |
@@ -70,7 +72,8 @@ Collapsed overflowing host outer height = `collapsedMaxHeight + contentPadding.v
 Extend `fade_expand_body_test.dart`:
 
 1. Non-zero `contentPadding`: fade strip left/right/bottom align with `AiFadeExpandBody` outer box (no inset from host edges).
-2. Existing collapse / expand / selection-dead-zone / hover cases still pass.
+2. Non-zero `contentPadding` + collapsed overflow: host height ≈ `collapsedMaxHeight + contentPadding.vertical`.
+3. Existing collapse / expand / selection-dead-zone / hover cases still pass.
 
 Regression (no new geometry asserts required unless a test breaks):
 
