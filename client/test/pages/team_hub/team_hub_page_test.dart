@@ -12,24 +12,31 @@ import 'package:teampilot/services/team/team_clone_service.dart';
 import 'package:teampilot/services/team_hub/team_hub_source.dart';
 
 class _FakeSource implements TeamHubSource {
+  int fetchCount = 0;
+  bool? lastForceRefresh;
+
   @override
   Future<List<DiscoverableTeam>> fetchTeams({
     bool forceRefresh = false,
-  }) async => const [
-    DiscoverableTeam(
-      key: 'o/r/squad',
-      name: 'Research Squad',
-      description: 'deep research',
-      category: 'AI',
-      updatedAt: 1,
-      roster: const [
-        TeamRosterSlot(
-          id: 'team-lead',
-          expertKey: 'teampilot/builtin/team-lead',
-        ),
-      ],
-    ),
-  ];
+  }) async {
+    fetchCount++;
+    lastForceRefresh = forceRefresh;
+    return const [
+      DiscoverableTeam(
+        key: 'o/r/squad',
+        name: 'Research Squad',
+        description: 'deep research',
+        category: 'AI',
+        updatedAt: 1,
+        roster: [
+          TeamRosterSlot(
+            id: 'team-lead',
+            expertKey: 'teampilot/builtin/team-lead',
+          ),
+        ],
+      ),
+    ];
+  }
 
   @override
   Future<List<String>> categories({bool forceRefresh = false}) async => ['AI'];
@@ -44,8 +51,9 @@ void main() {
       tester.view.resetDevicePixelRatio();
     });
 
+    final source = _FakeSource();
     final cubit = TeamHubCubit(
-      source: _FakeSource(),
+      source: source,
       loadFavorites: () async => <String>{},
       saveFavoriteToggle: (k) async => true,
       cloneTeam: (t) async => const CloneResult(
@@ -78,6 +86,13 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Research Squad'), findsOneWidget);
+    expect(find.byKey(const Key('team-hub-refresh')), findsOneWidget);
+    expect(source.lastForceRefresh, isFalse);
+
+    await tester.tap(find.byKey(const Key('team-hub-refresh')));
+    await tester.pumpAndSettle();
+    expect(source.lastForceRefresh, isTrue);
+    expect(source.fetchCount, greaterThanOrEqualTo(2));
 
     await tester.tap(find.text('Research Squad'));
     await tester.pumpAndSettle();

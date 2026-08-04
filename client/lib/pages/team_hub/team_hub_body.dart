@@ -35,8 +35,8 @@ class TeamHubBody extends StatelessWidget {
           padding: EdgeInsets.fromLTRB(inset, 18, inset, 10),
           child: LayoutBuilder(
             builder: (context, constraints) {
-              // Search + fixed 180 sort exceeds narrow phone widths.
-              final stackControls = constraints.maxWidth < 420;
+              // Search + fixed 180 sort + refresh exceeds narrow phone widths.
+              final stackControls = constraints.maxWidth < 460;
               final searchField = TextField(
                 decoration: InputDecoration(
                   hintText: l10n.teamHubSearchHint,
@@ -57,13 +57,33 @@ class TeamHubBody extends StatelessWidget {
                 },
                 onChanged: (s) => s == null ? null : cubit.setSort(s),
               );
+              final refreshButton = IconButton(
+                key: const Key('team-hub-refresh'),
+                tooltip: l10n.teamHubRefresh,
+                onPressed: state.refreshing
+                    ? null
+                    : () => cubit.load(forceRefresh: true),
+                icon: state.refreshing
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Icon(Icons.refresh, size: context.tpIconSizes.md),
+              );
               if (stackControls) {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     searchField,
                     const SizedBox(height: 8),
-                    sortSelect,
+                    Row(
+                      children: [
+                        Expanded(child: sortSelect),
+                        const SizedBox(width: 4),
+                        refreshButton,
+                      ],
+                    ),
                   ],
                 );
               }
@@ -72,6 +92,8 @@ class TeamHubBody extends StatelessWidget {
                   Expanded(child: searchField),
                   const SizedBox(width: 12),
                   SizedBox(width: 180, child: sortSelect),
+                  const SizedBox(width: 4),
+                  refreshButton,
                 ],
               );
             },
