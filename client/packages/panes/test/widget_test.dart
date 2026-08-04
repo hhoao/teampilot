@@ -76,6 +76,168 @@ void main() {
       },
     );
 
+    testWidgets(
+      'paneBuilder is not invoked again on resize deltas',
+      (tester) async {
+        final controller = PaneController(
+          entries: [
+            PaneEntry(id: 'a', initialSize: PaneSize.pixel(100)),
+            PaneEntry(id: 'b', initialSize: PaneSize.fraction(1.0)),
+            PaneEntry(id: 'c', initialSize: PaneSize.pixel(120)),
+          ],
+        );
+        final builds = <String, int>{'a': 0, 'b': 0, 'c': 0};
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: SizedBox(
+                width: 800,
+                height: 400,
+                child: MultiPane(
+                  direction: Axis.horizontal,
+                  controller: controller,
+                  paneBuilder: (context, id, progress) {
+                    builds[id] = (builds[id] ?? 0) + 1;
+                    return Container(key: Key('pane_$id'));
+                  },
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final afterLayout = Map<String, int>.from(builds);
+        expect(afterLayout['a'], greaterThan(0));
+        expect(afterLayout['b'], greaterThan(0));
+        expect(afterLayout['c'], greaterThan(0));
+
+        controller.beginResize('a', adjacentPaneId: 'b');
+        await tester.pump();
+        for (var i = 0; i < 5; i++) {
+          controller.resize(
+            paneId: 'a',
+            delta: 4,
+            containerSize: 800,
+            resizerThickness: 1,
+            adjacentPaneId: 'b',
+          );
+          await tester.pump();
+        }
+        controller.endResize('a', adjacentPaneId: 'b');
+        await tester.pump();
+
+        expect(
+          builds,
+          afterLayout,
+          reason: 'size-only notifies must reuse pane content',
+        );
+
+        // Right-edge style: resize pixel pane next to fraction.
+        final beforeRight = Map<String, int>.from(builds);
+        controller.beginResize('c', adjacentPaneId: 'b');
+        await tester.pump();
+        controller.resize(
+          paneId: 'c',
+          delta: -8,
+          containerSize: 800,
+          resizerThickness: 1,
+          adjacentPaneId: 'b',
+        );
+        await tester.pump();
+        controller.endResize('c', adjacentPaneId: 'b');
+        await tester.pump();
+        expect(builds, beforeRight);
+      },
+    );
+
+    testWidgets(
+      'paneBuilder runs once on hide, not on size-tween ticks',
+      (tester) async {
+        final controller = PaneController(
+          entries: [
+            PaneEntry(id: 'a', initialSize: PaneSize.pixel(100)),
+            PaneEntry(id: 'b', initialSize: PaneSize.fraction(1.0)),
+          ],
+        );
+        var buildsA = 0;
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: MultiPane(
+                direction: Axis.horizontal,
+                controller: controller,
+                animationDuration: const Duration(milliseconds: 200),
+                paneBuilder: (context, id, progress) {
+                  if (id == 'a') buildsA++;
+                  return Container(key: Key('pane_$id'));
+                },
+              ),
+            ),
+          ),
+        );
+        await tester.pump(); // start; do not settle open animation fully
+
+        final afterFirst = buildsA;
+        expect(afterFirst, greaterThan(0));
+
+        controller.hide('a');
+        await tester.pump(); // apply visibility → progress 0; builder once
+        final afterHide = buildsA;
+        expect(afterHide, greaterThan(afterFirst));
+
+        await tester.pump(const Duration(milliseconds: 50));
+        await tester.pump(const Duration(milliseconds: 50));
+        await tester.pump(const Duration(milliseconds: 50));
+        expect(
+          buildsA,
+          afterHide,
+          reason: 'hide size tween must not re-invoke paneBuilder',
+        );
+      },
+    );
+
+    testWidgets(
+      'maximize then restore re-invokes paneBuilder',
+      (tester) async {
+        final controller = PaneController(
+          entries: [
+            PaneEntry(id: 'a', initialSize: PaneSize.pixel(100)),
+            PaneEntry(id: 'b', initialSize: PaneSize.fraction(1.0)),
+          ],
+        );
+        var buildsB = 0;
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: MultiPane(
+                direction: Axis.horizontal,
+                controller: controller,
+                paneBuilder: (context, id, progress) {
+                  if (id == 'b') buildsB++;
+                  return Container(key: Key('pane_$id'));
+                },
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        final baseline = buildsB;
+
+        controller.maximize('b');
+        await tester.pump();
+        expect(buildsB, greaterThan(baseline));
+
+        final afterMax = buildsB;
+        controller.restore();
+        await tester.pump();
+        expect(buildsB, greaterThan(afterMax));
+      },
+    );
+
     testWidgets('does not nest LayoutBuilder around pane content', (
       tester,
     ) async {
