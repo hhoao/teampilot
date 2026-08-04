@@ -94,4 +94,31 @@ void main() {
     expect(await fs.readString(p.join(to, 'fresh.txt')), 'fresh');
     expect(await File(p.join(to, 'old', 'stale.txt')).exists(), isFalse);
   });
+
+  test(
+    'atomicWrite survives concurrent removeRecursive of its parent dir',
+    () async {
+      // Mirrors session launch: multiple members flush manifests that
+      // removeRecursive(plugins) then write .teampilot-member-plugins-stamp.json.
+      final dir = p.join(root.path, 'plugins');
+      final stamp = p.join(dir, '.teampilot-member-plugins-stamp.json');
+      await fs.ensureDir(dir);
+
+      final ops = <Future<void>>[
+        for (var i = 0; i < 24; i++) ...[
+          () async {
+            await fs.removeRecursive(dir);
+            await fs.ensureDir(dir);
+          }(),
+          fs.atomicWrite(stamp, '{"i":$i}'),
+        ],
+      ];
+      await Future.wait(ops);
+
+      expect((await fs.stat(dir)).isDirectory, isTrue);
+      final text = await fs.readString(stamp);
+      expect(text, isNotNull);
+      expect(text, contains('"i":'));
+    },
+  );
 }

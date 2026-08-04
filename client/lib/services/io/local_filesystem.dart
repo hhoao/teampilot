@@ -12,6 +12,10 @@ class LocalFilesystem implements Filesystem, FsWatcher {
   static int _tmpWriteCounter = 0;
   static final _atomicWriteLocks = LockPool();
 
+  /// Serializes destructive dir ops with writes into that dir (e.g. concurrent
+  /// member connect flushes that `removeRecursive(plugins)` then write a stamp).
+  static final _dirMutationLocks = LockPool();
+
   @override
   final p.Context pathContext;
 
@@ -64,19 +68,21 @@ class LocalFilesystem implements Filesystem, FsWatcher {
 
   @override
   Future<void> removeRecursive(String path) async {
-    final type = FileSystemEntity.typeSync(path, followLinks: false);
-    switch (type) {
-      case FileSystemEntityType.directory:
-        await _deleteDirRecursive(path);
-      case FileSystemEntityType.link:
-        await _deleteIfStillPresent(Link(path));
-      case FileSystemEntityType.file:
-        await _deleteIfStillPresent(File(path));
-      case FileSystemEntityType.notFound:
-        break;
-      default:
-        break;
-    }
+    await _dirMutationLocks.synchronized(path, () async {
+      final type = FileSystemEntity.typeSync(path, followLinks: false);
+      switch (type) {
+        case FileSystemEntityType.directory:
+          await _deleteDirRecursive(path);
+        case FileSystemEntityType.link:
+          await _deleteIfStillPresent(Link(path));
+        case FileSystemEntityType.file:
+          await _deleteIfStillPresent(File(path));
+        case FileSystemEntityType.notFound:
+          break;
+        default:
+          break;
+      }
+    });
   }
 
   /// Recursively deletes a directory, tolerating the `ENOTEMPTY` race where a
@@ -207,27 +213,33 @@ class LocalFilesystem implements Filesystem, FsWatcher {
 
   @override
   Future<void> atomicWrite(String path, String content) async {
-    await _atomicWriteLocks.synchronized(path, () async {
-      final maxAttempts = Platform.isWindows ? 8 : 1;
-      for (var attempt = 1; ; attempt++) {
-        try {
-          await ensureDir(pathContext.dirname(path));
-          final tmp =
-              '$path.tmp.${DateTime.now().microsecondsSinceEpoch}.${_tmpWriteCounter++}';
-          await File(tmp).writeAsString(content, flush: true);
+    final parent = pathContext.dirname(path);
+    await _dirMutationLocks.synchronized(parent, () async {
+      await _atomicWriteLocks.synchronized(path, () async {
+        // Retry PathNotFound on all platforms: concurrent member connects may
+        // removeRecursive(parent) between ensureDir and rename (team session
+        // shares sessionRuntimePluginsDir).
+        const maxAttempts = 8;
+        for (var attempt = 1; ; attempt++) {
           try {
-            await _renameReplacing(tmp, path);
-          } on Object {
-            // The rename never made it; drop the temp file so we don't leak it.
-            await _deleteIfStillPresent(File(tmp));
-            rethrow;
+            await ensureDir(parent);
+            final tmp =
+                '$path.tmp.${DateTime.now().microsecondsSinceEpoch}.${_tmpWriteCounter++}';
+            await File(tmp).writeAsString(content, flush: true);
+            try {
+              await _renameReplacing(tmp, path);
+            } on Object {
+              // The rename never made it; drop the temp file so we don't leak it.
+              await _deleteIfStillPresent(File(tmp));
+              rethrow;
+            }
+            return;
+          } on PathNotFoundException {
+            if (attempt >= maxAttempts) rethrow;
+            await Future<void>.delayed(Duration(milliseconds: 10 * attempt));
           }
-          return;
-        } on PathNotFoundException {
-          if (!Platform.isWindows || attempt >= maxAttempts) rethrow;
-          await Future<void>.delayed(Duration(milliseconds: 10 * attempt));
         }
-      }
+      });
     });
   }
 
