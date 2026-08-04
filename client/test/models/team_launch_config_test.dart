@@ -67,6 +67,19 @@ void main() {
       expect(normalized.cliEffortLevels, custom.cliEffortLevels);
     });
 
+    test('trims whitespace from activePresetId in preset shape', () {
+      const dirty = TeamProfile(
+        id: 'team-1',
+        name: 'Team',
+        activePresetId: ' deepseek ',
+      );
+
+      final normalized = dirty.normalizedLaunchConfig();
+
+      expect(teamLaunchShape(normalized), TeamLaunchShape.preset);
+      expect(normalized.activePresetId, 'deepseek');
+    });
+
     test('blank activePresetId with custom maps → custom shape', () {
       const dirty = TeamProfile(
         id: 'team-1',

@@ -14,6 +14,7 @@ extension TeamLaunchConfig on TeamProfile {
     if (teamLaunchShape(this) == TeamLaunchShape.preset) {
       return copyWith(
         activePresetId: activePresetId!.trim(),
+        updateActivePresetId: true,
         providerIdsByTool: const {},
         modelsByTool: const {},
         cliEffortLevels: const {},
