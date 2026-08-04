@@ -24,6 +24,7 @@ class AiFadeExpandBody extends StatefulWidget {
     /// When true, show fade/chevron even if [child] fits in collapsed max
     /// (e.g. edit card mounts a short preview but more lines exist off-tree).
     this.forceChrome = false,
+    this.contentPadding = EdgeInsets.zero,
     super.key,
   });
 
@@ -34,6 +35,7 @@ class AiFadeExpandBody extends StatefulWidget {
   final double collapsedMaxHeight;
   final double expandedMaxHeight;
   final bool forceChrome;
+  final EdgeInsetsGeometry contentPadding;
 
   @override
   State<AiFadeExpandBody> createState() => _AiFadeExpandBodyState();
@@ -79,7 +81,8 @@ class _AiFadeExpandBodyState extends State<AiFadeExpandBody> {
     if (oldWidget.open != widget.open ||
         oldWidget.forceChrome != widget.forceChrome ||
         oldWidget.collapsedMaxHeight != widget.collapsedMaxHeight ||
-        oldWidget.expandedMaxHeight != widget.expandedMaxHeight) {
+        oldWidget.expandedMaxHeight != widget.expandedMaxHeight ||
+        oldWidget.contentPadding != widget.contentPadding) {
       // Mode change may need scroll↔clip swap; height stays valid.
       setState(() {});
     }
@@ -113,6 +116,8 @@ class _AiFadeExpandBodyState extends State<AiFadeExpandBody> {
         child: child,
       );
     }
+
+    body = Padding(padding: widget.contentPadding, child: body);
 
     // Keep body text under the fade strip out of hit-testing / selection.
     if (overflows) {
