@@ -48,7 +48,7 @@ UI and intended product rule: team preset **is** the team default when set.
 | Materialize vs launch | Materialize must **not** stamp team custom maps onto inherit seats. Launch resolution **may** put concrete provider/model/effort on **in-memory** copies only |
 | Settings keys | Pod / seat id after session roster (or runtime expand when no session) |
 | Stale preset id | Preset shape + missing catalog entry → validation blocks launch; **no** fallback to custom maps |
-| `bindClaudeProviderForTeamsWithoutBinding` | **Remove** API and onboarding call sites (no redefine) |
+| Legacy team provider bind API | **Remove** API and onboarding call sites (no redefine) |
 | Compat | None |
 
 ## Mixed mode
@@ -148,7 +148,7 @@ Acceptance splits accordingly (below).
 |-----|----------|
 | `setTeamActivePreset(id)` | `asPresetLaunch` — clear all custom launch maps |
 | `updateTeamCustomLaunch` | `asCustomLaunch` — clear preset |
-| `bindClaudeProviderForTeamsWithoutBinding` | **Delete** + remove onboarding / app_shell call sites |
+| Legacy team provider bind API | **Delete** + remove onboarding / app_shell call sites |
 
 ## Claude staging
 
@@ -174,7 +174,7 @@ Acceptance splits accordingly (below).
 7. Sequential contributeLaunch for `developer-0` then `developer-1` — all three files still have tokens.
 8. Member explicit `memberPreset` not overwritten by team preset.
 9. Official fixture: native inherit seats get official-shaped settings + credential link for each seat dir (or shared dir assertion).
-10. No remaining call sites for `bindClaudeProviderForTeamsWithoutBinding`.
+10. No remaining call sites for legacy team provider bind API.
 11. Cross-link: matrix `claude × native × replicated` L2 remains green after fix (manual/CI when PTY available); unit chain is the merge gate.
 
 ## Acceptance
@@ -189,7 +189,7 @@ Acceptance splits accordingly (below).
 ### No-compat checklist (done when all true)
 
 - [ ] No read path uses `providerIdsByTool` when shape is preset.
-- [ ] No `bindClaudeProvider*` API.
+- [ ] No legacy team provider bind API.
 - [ ] `resolveTeamLaunchBundle` does not fall back to custom maps in preset shape.
 - [ ] Inherit roster overrides never persist non-empty `provider`.
 - [ ] Tests asserting dirty dual-state as valid behavior are removed/replaced.

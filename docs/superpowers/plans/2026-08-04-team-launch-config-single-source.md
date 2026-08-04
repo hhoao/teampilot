@@ -4,7 +4,7 @@
 
 **Goal:** Make team launch config Preset **xor** Custom; stage Claude (and shared resolvers) from launch-resolved pod seats so inherit + replicas never miss third-party credentials.
 
-**Architecture:** `TeamProfile` normalize helpers; materialize stops stamping custom maps onto inherit seats; `resolveTeamLaunchBundle` / Claude settings load only the active shape; `resolveLaunchExtras` consumes `ctx.members` (already `memberForLaunch`’d pods). Remove `bindClaudeProviderForTeamsWithoutBinding`.
+**Architecture:** `TeamProfile` normalize helpers; materialize stops stamping custom maps onto inherit seats; `resolveTeamLaunchBundle` / Claude settings load only the active shape; `resolveLaunchExtras` consumes `ctx.members` (already `memberForLaunch`’d pods). Remove legacy team provider bind API.
 
 **Tech Stack:** Flutter unit tests (temp dirs for contributeLaunch), existing `ConfigProfileService` / provider fixtures.
 
@@ -20,8 +20,8 @@
 | `client/lib/services/cli/preset_resolver.dart` | Preset shape: no custom-map fallback when preset missing |
 | `client/lib/services/expert_hub/expert_member_materializer.dart` | Inherit: do not stamp provider/model/effort from team custom maps; clear dirty inherit overrides |
 | `client/lib/repositories/launch_profile_repository.dart` / index load | Normalize teams on load |
-| `client/lib/cubits/launch_profile_cubit.dart` | `setTeamActivePreset` → asPresetLaunch; delete bind API; normalize on updateSelected |
-| `client/lib/services/app/onboarding_service.dart` | Remove bind call |
+| `client/lib/cubits/launch_profile_cubit.dart` | `setTeamActivePreset` → asPresetLaunch; delete legacy bind API; normalize on updateSelected |
+| `client/lib/services/app/onboarding_service.dart` | Remove legacy bind call |
 | `client/lib/services/provider/claude/claude_provider_settings_resolver.dart` | Shape-aware resolveProviderId / team / member |
 | `client/lib/services/cli/registry/config_profile/claude_config_profile_capability.dart` | `resolveLaunchExtras(launchResolvedMembers)`; no `team.members` iteration; official link all native seats |
 | Tests | New + rewrite obsolete bind / dual-state tests |
@@ -144,7 +144,7 @@ EOF
 
 **Files:**
 - `launch_profile_repository.dart` / index decode path — normalize `TeamProfile` after fromJson
-- `launch_profile_cubit.dart` — `setTeamActivePreset` uses `asPresetLaunch`; `updateTeamCustomLaunch` already clears preset; remove `bindClaudeProviderForTeamsWithoutBinding`
+- `launch_profile_cubit.dart` — `setTeamActivePreset` uses `asPresetLaunch`; `updateTeamCustomLaunch` already clears preset; remove legacy team provider bind API
 - `onboarding_service.dart` — remove bind call (onboarding should set preset or custom explicitly if needed)
 - Delete/replace tests in `team_cubit_test.dart` that assert bind behavior
 - Add test: `setTeamActivePreset` clears `providerIdsByTool`
@@ -154,7 +154,7 @@ EOF
 
 ```bash
 git commit -m "$(cat <<'EOF'
-refactor(team): exclusive preset vs custom launch; remove bindClaudeProvider
+refactor(team): exclusive preset vs custom launch; remove legacy bind API
 
 EOF
 )"
@@ -270,7 +270,7 @@ EOF
 
 - [ ] Test: team preset + member explicit `memberPreset` → that seat uses member preset provider.
 - [ ] Stale team preset id → launch validator blocks (align `TeamConfigLaunchValidator`).
-- [ ] `rg bindClaudeProvider` → zero hits.
+- [ ] No remaining legacy team provider bind API call sites.
 - [ ] Run:
 
 ```bash

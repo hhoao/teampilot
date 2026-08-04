@@ -38,7 +38,7 @@ class LaunchProfileIndexStore {
   static LaunchProfile decodeProfile(Map<String, Object?> json) {
     switch (LaunchProfileKind.decode(json['kind'])) {
       case LaunchProfileKind.team:
-        return TeamProfile.fromJson(json);
+        return TeamProfile.fromJson(json).normalizedLaunchConfig();
     }
   }
 

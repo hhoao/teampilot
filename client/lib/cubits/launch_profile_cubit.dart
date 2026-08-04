@@ -462,48 +462,16 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
     return true;
   }
 
-  /// Sets [providerIdsByTool]['claude'] on Claude teams that do not already
-  /// have a team-level provider binding.
-  Future<void> bindClaudeProviderForTeamsWithoutBinding(
-    String providerId,
-  ) async {
-    final trimmed = providerId.trim();
-    if (trimmed.isEmpty) return;
-
-    var changed = false;
-    final teams = <TeamProfile>[];
-    for (final team in state.teams) {
-      if (team.cli != CliTool.claude) {
-        teams.add(team);
-        continue;
-      }
-      final existing = team.providerIdsByTool['claude']?.trim() ?? '';
-      if (existing.isNotEmpty) {
-        teams.add(team);
-        continue;
-      }
-      changed = true;
-      teams.add(
-        team.copyWith(
-          providerIdsByTool: {...team.providerIdsByTool, 'claude': trimmed},
-        ),
-      );
-    }
-    if (!changed) return;
-
-    emit(state.copyWith(teams: teams));
-    await saveTeamProfiles(teams);
-  }
-
   Future<void> updateSelected(TeamProfile updated) async {
     final selected = state.selectedTeam;
     if (selected == null) return;
     final pluginsChanged = !listEquals(selected.pluginIds, updated.pluginIds);
     final mcpChanged = !listEquals(selected.mcpServerIds, updated.mcpServerIds);
+    final launchNormalized = updated.normalizedLaunchConfig();
     final normalized = _rosterEditor.normalizeTeam(
-      updated.roster.isEmpty
-          ? updated.copyWith(roster: TeamMemberNaming.defaultRoster())
-          : updated,
+      launchNormalized.roster.isEmpty
+          ? launchNormalized.copyWith(roster: TeamMemberNaming.defaultRoster())
+          : launchNormalized,
     );
     final materialized = await _materializeTeam(normalized);
     final teams = [
@@ -644,12 +612,11 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
     final effectiveId = (presetId == null || presetId.trim().isEmpty)
         ? null
         : presetId.trim();
-    var next = team.copyWith(
-      activePresetId: effectiveId,
-      updateActivePresetId: true,
-    );
-    if (effectiveId != null && syncCli != null) {
-      next = next.copyWith(cli: syncCli);
+    final TeamProfile next;
+    if (effectiveId == null) {
+      next = team.copyWith(activePresetId: null, updateActivePresetId: true);
+    } else {
+      next = team.asPresetLaunch(effectiveId, syncCli: syncCli);
     }
     updateSelected(next);
   }
@@ -664,14 +631,12 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
   }) {
     final team = state.selectedTeam;
     if (team == null) return;
-    var next = team
-        .copyWith(activePresetId: null, updateActivePresetId: true)
-        .withLaunchDefaultsForCli(
-          cli: catalogCli,
-          providerId: providerId,
-          model: model,
-          effort: effort,
-        );
+    var next = team.asCustomLaunch(
+      cli: catalogCli,
+      providerId: providerId,
+      model: model,
+      effort: effort,
+    );
     if (defaultCli != null && team.teamMode == TeamMode.mixed) {
       next = next.copyWith(cli: defaultCli);
     }
@@ -811,9 +776,7 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
         continue;
       }
       teamsChanged = true;
-      teams.add(
-        team.copyWith(activePresetId: trimmed, updateActivePresetId: true),
-      );
+      teams.add(team.asPresetLaunch(trimmed));
     }
     if (teamsChanged) {
       emit(state.copyWith(teams: teams));
