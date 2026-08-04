@@ -23,10 +23,13 @@ In `packages/panes` `MultiPane`, keep a stable content widget per pane and **do 
 | Event | `paneBuilder` |
 |-------|----------------|
 | Pixel / fraction size change (incl. every resize delta) | **No** — reuse cached content |
-| Show / hide (`animationProgress` / visibility) | **Yes** — invalidate that pane |
+| Show / hide (visibility end-state → `animationProgress` 0.0 or 1.0) | **Yes** once when the end-state changes — **not** on every tween tick |
 | Maximize / unmaximize | **Yes** |
 | Entries add / remove / reorder | **Yes** |
 | `paneBuilder` identity change (`didUpdateWidget`) | **Yes** — clear cache |
+| `controller` instance replaced (`didUpdateWidget`) | **Yes** — clear cache |
+
+`animationProgress` today is only the visibility endpoint (0.0 / 1.0) passed into `paneBuilder`; size tweening stays inside `TweenAnimationBuilder` and must not re-invoke the builder per tick (existing test).
 
 No new public API on `PaneController` or `WorkspaceIdeShell`. No drag-time clip / deferred reflow. No file-tree virtualization in this spec.
 
@@ -52,7 +55,8 @@ Automated (`client/packages/panes/test`):
 
 1. After first layout, `beginResize` + several `resize` deltas + pumps: `paneBuilder` invoke count for each pane **unchanged** (cover both a pixel pane and a fraction pane).
 2. Existing test: pixel pane builder not invoked on every **animation** tick — still passes.
-3. Show/hide still animates and still invokes builder when visibility/`animationProgress` changes.
+3. Show/hide: builder runs when visibility end-state flips; not on intermediate size-tween pumps after that flip’s first build.
+4. Maximize then restore (and/or entries change): builder runs again for affected panes (cache invalidated).
 
 Manual / perf (optional regression check):
 
