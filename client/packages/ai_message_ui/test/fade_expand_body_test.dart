@@ -286,6 +286,74 @@ void main() {
     expect(hovered, isNotNull);
     expect(hovered, isNot(idle));
   });
+
+  testWidgets(
+    'contentPadding: fade strip flush to host left/right/bottom',
+    (tester) async {
+      const pad = EdgeInsets.symmetric(horizontal: 16, vertical: 10);
+      await tester.pumpWidget(_wrap(
+        AiFadeExpandBody(
+          open: false,
+          onToggle: () {},
+          fadeColor: Colors.grey,
+          contentPadding: pad,
+          child: const SizedBox(height: 200, child: Text('tall')),
+        ),
+      ));
+      await tester.pump();
+
+      final hostBox =
+          tester.renderObject<RenderBox>(find.byType(AiFadeExpandBody));
+      final hostOrigin = hostBox.localToGlobal(Offset.zero);
+
+      final stripFinder = find.descendant(
+        of: find.byType(AiFadeExpandBody),
+        matching: find.byWidgetPredicate(
+          (w) =>
+              w is SizedBox &&
+              w.height == kAiFadeExpandHitStripHeight &&
+              w.width == double.infinity,
+        ),
+      );
+      expect(stripFinder, findsOneWidget);
+      final stripBox = tester.renderObject<RenderBox>(stripFinder);
+      final stripOrigin = stripBox.localToGlobal(Offset.zero);
+
+      expect(stripOrigin.dx, closeTo(hostOrigin.dx, 0.5));
+      expect(stripBox.size.width, closeTo(hostBox.size.width, 0.5));
+      expect(
+        stripOrigin.dy + stripBox.size.height,
+        closeTo(hostOrigin.dy + hostBox.size.height, 0.5),
+      );
+    },
+  );
+
+  testWidgets(
+    'contentPadding + collapsed overflow: host height includes padding',
+    (tester) async {
+      const pad = EdgeInsets.all(10);
+      await tester.pumpWidget(_wrap(
+        AiFadeExpandBody(
+          open: false,
+          onToggle: () {},
+          fadeColor: Colors.grey,
+          contentPadding: pad,
+          child: const SizedBox(height: 400, child: Text('tall')),
+        ),
+      ));
+      await tester.pump();
+
+      final box =
+          tester.renderObject<RenderBox>(find.byType(AiFadeExpandBody));
+      expect(
+        box.size.height,
+        closeTo(
+          kAiFadeExpandCollapsedMaxHeight + pad.vertical,
+          1,
+        ),
+      );
+    },
+  );
 }
 
 Widget _wrap(Widget child) => MaterialApp(home: Scaffold(body: child));
