@@ -172,6 +172,7 @@ class _ShellTerminalBody extends StatelessWidget {
       open: open,
       onToggle: onToggle,
       fadeColor: panelColor,
+      contentPadding: const EdgeInsets.all(10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -202,13 +203,10 @@ class _ShellTerminalBody extends StatelessWidget {
       ),
     );
 
-    return DecoratedBox(
-      decoration: BoxDecoration(
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(radius),
+      child: ColoredBox(
         color: panelColor,
-        borderRadius: BorderRadius.circular(radius),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(10),
         child: body,
       ),
     );
