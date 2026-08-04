@@ -6,6 +6,7 @@
     "gstack-designer",
     "gstack-reviewer",
     "gstack-debugger",
+    "gstack-developer",
     "gstack-qa",
     "gstack-cso",
     "gstack-release"

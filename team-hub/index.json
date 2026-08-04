@@ -1,1 +1,5 @@
-{"teams":[]}
+{
+  "teams": [
+    { "slug": "gstack-req-dev" }
+  ]
+}
