@@ -62,6 +62,30 @@ void main() {
     expect(bundle.sourcePreset, cursorPreset);
   });
 
+  test(
+    'resolveTeamLaunchBundle preset shape with missing preset returns unconfigured',
+    () {
+      const team = TeamProfile(
+        id: 'team',
+        name: 'Team',
+        cli: CliTool.claude,
+        activePresetId: 'missing-preset',
+        providerIdsByTool: {'claude': 'deepseek'},
+        modelsByTool: {'claude': 'deepseek-v4-pro'},
+        cliEffortLevels: {'claude': 'medium'},
+      );
+
+      final bundle = resolveTeamLaunchBundle(team: team, globalPresets: const []);
+
+      expect(bundle.cli, CliTool.claude);
+      expect(bundle.provider, isEmpty);
+      expect(bundle.model, isEmpty);
+      expect(bundle.effort, isEmpty);
+      expect(bundle.sourcePreset, isNull);
+      expect(bundle.isConfigured, isFalse);
+    },
+  );
+
   test('inherit member uses full team bundle including preset CLI', () {
     const team = TeamProfile(
       id: 'team',

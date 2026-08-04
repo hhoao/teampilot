@@ -59,8 +59,10 @@ TeamLaunchBundle resolveTeamLaunchBundle({
   required TeamProfile team,
   required List<CliPreset> globalPresets,
 }) {
-  final presetId = team.activePresetId?.trim();
-  if (presetId != null && presetId.isNotEmpty) {
+  final normalized = team.normalizedLaunchConfig();
+
+  if (teamLaunchShape(normalized) == TeamLaunchShape.preset) {
+    final presetId = normalized.activePresetId!.trim();
     final preset = _findPreset(presetId, globalPresets);
     if (preset != null) {
       return TeamLaunchBundle(
@@ -71,14 +73,20 @@ TeamLaunchBundle resolveTeamLaunchBundle({
         sourcePreset: preset,
       );
     }
+    return TeamLaunchBundle(
+      cli: normalized.cli,
+      provider: '',
+      model: '',
+      effort: '',
+    );
   }
 
-  final cli = team.cli;
+  final cli = normalized.cli;
   return TeamLaunchBundle(
     cli: cli,
-    provider: team.providerForCli(cli),
-    model: team.modelForCli(cli),
-    effort: team.effortForCli(cli),
+    provider: normalized.providerForCli(cli),
+    model: normalized.modelForCli(cli),
+    effort: normalized.effortForCli(cli),
   );
 }
 
