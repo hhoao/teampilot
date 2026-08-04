@@ -47,6 +47,9 @@ class MultiPane extends StatefulWidget {
 }
 
 class _MultiPaneState extends State<MultiPane> {
+  /// Bumped when content must drop cached pane widgets.
+  int _contentEpoch = 0;
+
   @override
   void initState() {
     super.initState();
@@ -59,6 +62,10 @@ class _MultiPaneState extends State<MultiPane> {
     if (oldWidget.controller != widget.controller) {
       oldWidget.controller.removeListener(_rebuild);
       widget.controller.addListener(_rebuild);
+      _contentEpoch++;
+    }
+    if (oldWidget.paneBuilder != widget.paneBuilder) {
+      _contentEpoch++;
     }
   }
 
@@ -73,6 +80,19 @@ class _MultiPaneState extends State<MultiPane> {
   }
 
   Size _containerSize = Size.zero;
+
+  Widget _paneContent(
+    BuildContext context,
+    String paneId,
+    double animationProgress,
+  ) {
+    return _StablePaneContent(
+      key: ValueKey<String>('stable-$paneId-$_contentEpoch'),
+      paneId: paneId,
+      animationProgress: animationProgress,
+      paneBuilder: widget.paneBuilder,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -89,9 +109,12 @@ class _MultiPaneState extends State<MultiPane> {
     final entries = widget.controller.entries;
 
     // Check for Maximized Pane
+    // Maximize swaps the Flex tree for a single expand child, so a new
+    // [_StablePaneContent] State mounts and re-invokes paneBuilder (intended).
     if (widget.controller.maximizedPaneId case final maxId?) {
-      final childWidget = widget.paneBuilder(context, maxId, 1.0);
-      return SizedBox.expand(child: childWidget);
+      return SizedBox.expand(
+        child: _paneContent(context, maxId, 1.0),
+      );
     }
 
     if (entries.isEmpty) return const SizedBox.shrink();
@@ -133,7 +156,7 @@ class _MultiPaneState extends State<MultiPane> {
             tween: Tween<double>(end: isVisible ? pixels : 0.0),
             duration: isResizing ? Duration.zero : widget.animationDuration,
             curve: widget.animationCurve,
-            child: widget.paneBuilder(
+            child: _paneContent(
               context,
               entry.id,
               isVisible ? 1.0 : 0.0,
@@ -168,7 +191,7 @@ class _MultiPaneState extends State<MultiPane> {
                                 : fraction) *
                             100)
                         .toInt(),
-                child: widget.paneBuilder(context, entry.id, 1.0),
+                child: _paneContent(context, entry.id, 1.0),
               )
             : const SizedBox.shrink(),
       };
@@ -258,6 +281,47 @@ class _MultiPaneState extends State<MultiPane> {
       containerSize: containerSize,
       resizerThickness: resizerLayoutSize,
       adjacentPaneId: adjacentPaneId,
+    );
+  }
+}
+
+/// Caches [paneBuilder] output so size-only [MultiPane] rebuilds do not
+/// reconstruct pane content (resize / animation ticks).
+class _StablePaneContent extends StatefulWidget {
+  const _StablePaneContent({
+    super.key,
+    required this.paneId,
+    required this.animationProgress,
+    required this.paneBuilder,
+  });
+
+  final String paneId;
+  final double animationProgress;
+  final PaneBuilder paneBuilder;
+
+  @override
+  State<_StablePaneContent> createState() => _StablePaneContentState();
+}
+
+class _StablePaneContentState extends State<_StablePaneContent> {
+  Widget? _child;
+
+  @override
+  void didUpdateWidget(covariant _StablePaneContent oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.paneId != widget.paneId ||
+        oldWidget.animationProgress != widget.animationProgress ||
+        oldWidget.paneBuilder != widget.paneBuilder) {
+      _child = null;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _child ??= widget.paneBuilder(
+      context,
+      widget.paneId,
+      widget.animationProgress,
     );
   }
 }
