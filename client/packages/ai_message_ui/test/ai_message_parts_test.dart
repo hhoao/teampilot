@@ -93,7 +93,7 @@ void main() {
       find
           .ancestor(
             of: find.text('hi'),
-            matching: find.byType(DecoratedBox),
+            matching: find.byType(ColoredBox),
           )
           .first,
     );
@@ -101,7 +101,7 @@ void main() {
       find
           .ancestor(
             of: find.textContaining('much longer user message'),
-            matching: find.byType(DecoratedBox),
+            matching: find.byType(ColoredBox),
           )
           .first,
     );
