@@ -10,7 +10,6 @@ import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
-import 'package:teampilot/services/team/claude_native_inbox_doorbell.dart';
 
 import '../support/post_frame_test_harness.dart';
 import 'support/bus_mail_assertions.dart';
@@ -315,7 +314,6 @@ void main() {
       );
       final postFrame = PostFrameTestHarness();
       addTearDown(() async {
-        ClaudeNativeInboxDoorbell.doorbellDisabledForTests = false;
         await harness.dispose();
         await postFrame.flush();
         await drainPendingAsyncWork();
@@ -323,7 +321,6 @@ void main() {
       });
 
       try {
-        ClaudeNativeInboxDoorbell.doorbellDisabledForTests = true;
         await harness.startGateway();
         await harness.writeMockProviders();
         harness.createCubit(
@@ -334,9 +331,8 @@ void main() {
         await harness.bootMemberToPrompt(kMatrixLeadMemberId);
 
         final worker0 = matrixPrimaryWorkerPodId(harness.shape);
-        // Boot idle workers before lead compose so round-1 SendMessage can land
-        // in the pod inbox while pods are materialized, then doorbell reengage can
-        // wake developer-0 at prompt (Acceptance #3 + production doorbell).
+        // Boot idle workers before lead compose. Claude teammates poll their
+        // own pod inbox; TeamPilot does not inject a native-inbox doorbell.
         await harness.connectMember('developer-1');
         await harness.bootMemberToPrompt('developer-1');
         await harness.connectMember(worker0);
@@ -355,6 +351,8 @@ void main() {
             );
 
         final leadBefore1 = harness.gateway!.requestCountFor(leadScriptApiKey);
+        final workerGatewayBaseline =
+            harness.gateway!.requestCountFor(workerScriptApiKey);
         final r1 = await harness.submitCompose(
           'matrix replica turn one coordinate',
         );
@@ -404,15 +402,6 @@ void main() {
           reason: harness.diagnosticsBundle(),
         );
 
-        // Acceptance #3 vs Claude live-agent: connected pods may receive
-        // SendMessage in-process. Workers boot idle above (doorbell disabled) so
-        // compose still writes unread mail to developer-0.json, then production
-        // doorbell reengage wakes developer-0 at prompt.
-        ClaudeNativeInboxDoorbell.doorbellDisabledForTests = false;
-
-        final workerGatewayBaseline =
-            harness.gateway!.requestCountFor(workerScriptApiKey);
-
         expect(
           harness.cubit!.activeTab!.memberShells.keys,
           containsAll([worker0, 'developer-1']),
@@ -430,12 +419,14 @@ void main() {
               'to developer-0 only',
         );
 
-        // Production path: idle-watch → ClaudeNativeInboxDoorbell → PTY deliver.
-        await harness.waitForNativeInboxDoorbellConsume(
-          workerMemberId: worker0,
-          workerApiKey: workerScriptApiKey,
-          markers: [markReplicaW01],
-          gatewayBaseline: workerGatewayBaseline,
+        // Claude worker process polls inboxes/<pod>.json itself.
+        await harness.waitForGatewayTurns(
+          apiKey: workerScriptApiKey,
+          minTurns: workerGatewayBaseline + 1,
+        );
+        await harness.waitForPtyMarkers(
+          [markReplicaW01],
+          memberId: worker0,
         );
 
         harness.gateway!.seekScenario(leadScriptApiKey, 3);
@@ -454,7 +445,6 @@ void main() {
           memberId: kMatrixLeadMemberId,
         );
       } catch (e, st) {
-        ClaudeNativeInboxDoorbell.doorbellDisabledForTests = false;
         // ignore: avoid_print
         print(harness.diagnosticsBundle());
         Error.throwWithStackTrace(e, st);

@@ -63,7 +63,6 @@ class TabSessionRuntimeCoordinator {
           coordinationFactory: coordination,
           delivery: ptyDelivery,
           isClosed: isClosed,
-          activeTeam: activeTeam,
           onAfterTick: onAfterIdleWatchTick,
         );
     final aggregator =

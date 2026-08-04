@@ -68,7 +68,7 @@ Recipe: **`nativeCollabReplica2Plus`** (`tools/mock_model_gateway/lib/scenarios/
 Round shape: **2 lead History composes + 1 worker-0 reply** (not two full bidirectional ping-pongs).
 
 1. Lead compose round 1 → `TaskCreate` / `SendMessage` to **`developer-0`** → `MARK_REPLICA_LEAD_1`; disk roster/inbox identity (`config.json` pods, `inboxes/developer-0.json`, not bare `developer.json`).
-2. Worker-0 doorbell consume → `MARK_REPLICA_W0_1` → reply to lead.
+2. Worker-0 Claude process consumes pod inbox → `MARK_REPLICA_W0_1` → reply to lead.
 3. Lead compose round 2 → `MARK_REPLICA_LEAD_2`. `developer-1` stays idle (pod-specific targeting).
 
 Test: `cli_message_matrix_claude_test.dart` — `claude native replicated: pods inbox + worker-0 + 2 lead composes`.
