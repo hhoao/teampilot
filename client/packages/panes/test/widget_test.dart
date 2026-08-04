@@ -108,13 +108,14 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        final afterLayout = Map<String, int>.from(builds);
-        expect(afterLayout['a'], greaterThan(0));
-        expect(afterLayout['b'], greaterThan(0));
-        expect(afterLayout['c'], greaterThan(0));
+        expect(builds['a'], greaterThan(0));
+        expect(builds['b'], greaterThan(0));
+        expect(builds['c'], greaterThan(0));
 
         controller.beginResize('a', adjacentPaneId: 'b');
         await tester.pump();
+        // First frame of a drag may (re)build once to seed the resize cache.
+        final afterBegin = Map<String, int>.from(builds);
         for (var i = 0; i < 5; i++) {
           controller.resize(
             paneId: 'a',
@@ -125,19 +126,19 @@ void main() {
           );
           await tester.pump();
         }
+        expect(
+          builds,
+          afterBegin,
+          reason: 'resize deltas must reuse pane content',
+        );
+
         controller.endResize('a', adjacentPaneId: 'b');
         await tester.pump();
 
-        expect(
-          builds,
-          afterLayout,
-          reason: 'size-only notifies must reuse pane content',
-        );
-
-        // Right-edge style: resize pixel pane next to fraction.
         final beforeRight = Map<String, int>.from(builds);
         controller.beginResize('c', adjacentPaneId: 'b');
         await tester.pump();
+        final afterRightBegin = Map<String, int>.from(builds);
         controller.resize(
           paneId: 'c',
           delta: -8,
@@ -146,9 +147,33 @@ void main() {
           adjacentPaneId: 'b',
         );
         await tester.pump();
+        expect(builds, afterRightBegin);
         controller.endResize('c', adjacentPaneId: 'b');
         await tester.pump();
-        expect(builds, beforeRight);
+        // endResize may rebuild; must not stay frozen after drag.
+        expect(builds['a']!, greaterThanOrEqualTo(beforeRight['a']!));
+      },
+    );
+
+    testWidgets(
+      'parent rebuild replaces pane content when not resizing',
+      (tester) async {
+        final controller = PaneController(
+          entries: [
+            PaneEntry(id: 'center', initialSize: PaneSize.fraction(1.0)),
+          ],
+        );
+        // Tear-off identity must stay stable (matches WorkspaceIdeShell).
+        final host = _StablePaneBuilderHost(controller: controller);
+
+        await tester.pumpWidget(MaterialApp(home: Scaffold(body: host)));
+        await tester.pumpAndSettle();
+        expect(find.text('landing'), findsOneWidget);
+
+        host.label.value = 'history';
+        await tester.pumpAndSettle();
+        expect(find.text('history'), findsOneWidget);
+        expect(find.text('landing'), findsNothing);
       },
     );
 
@@ -865,4 +890,44 @@ void main() {
       expect(capturedTheme!.tabBackground, Colors.orange);
     });
   });
+}
+
+/// Host with a stable [MultiPane.paneBuilder] tear-off (IDE shell pattern).
+class _StablePaneBuilderHost extends StatefulWidget {
+  _StablePaneBuilderHost({required this.controller});
+
+  final PaneController controller;
+  final ValueNotifier<String> label = ValueNotifier<String>('landing');
+
+  @override
+  State<_StablePaneBuilderHost> createState() => _StablePaneBuilderHostState();
+}
+
+class _StablePaneBuilderHostState extends State<_StablePaneBuilderHost> {
+  @override
+  void initState() {
+    super.initState();
+    widget.label.addListener(_onLabel);
+  }
+
+  @override
+  void dispose() {
+    widget.label.removeListener(_onLabel);
+    super.dispose();
+  }
+
+  void _onLabel() => setState(() {});
+
+  Widget _rowPaneBuilder(BuildContext context, String id, double progress) {
+    return Text(widget.label.value, key: Key('pane_$id'));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MultiPane(
+      direction: Axis.horizontal,
+      controller: widget.controller,
+      paneBuilder: _rowPaneBuilder,
+    );
+  }
 }

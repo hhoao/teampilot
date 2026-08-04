@@ -47,8 +47,10 @@ class MultiPane extends StatefulWidget {
 }
 
 class _MultiPaneState extends State<MultiPane> {
-  /// Bumped when content must drop cached pane widgets.
-  int _contentEpoch = 0;
+  /// Seeded while [PaneController.isResizing]; cleared when the drag ends so
+  /// parent-driven content (e.g. landing ↔ ChatPage) can replace panes again.
+  final Map<String, Widget> _resizeContentCache = {};
+  var _cachingResizeContent = false;
 
   @override
   void initState() {
@@ -62,10 +64,8 @@ class _MultiPaneState extends State<MultiPane> {
     if (oldWidget.controller != widget.controller) {
       oldWidget.controller.removeListener(_rebuild);
       widget.controller.addListener(_rebuild);
-      _contentEpoch++;
-    }
-    if (oldWidget.paneBuilder != widget.paneBuilder) {
-      _contentEpoch++;
+      _resizeContentCache.clear();
+      _cachingResizeContent = false;
     }
   }
 
@@ -76,6 +76,11 @@ class _MultiPaneState extends State<MultiPane> {
   }
 
   void _rebuild() {
+    final resizing = widget.controller.isResizing;
+    if (_cachingResizeContent && !resizing) {
+      _resizeContentCache.clear();
+    }
+    _cachingResizeContent = resizing;
     setState(() {});
   }
 
@@ -86,12 +91,14 @@ class _MultiPaneState extends State<MultiPane> {
     String paneId,
     double animationProgress,
   ) {
-    return _StablePaneContent(
-      key: ValueKey<String>('stable-$paneId-$_contentEpoch'),
-      paneId: paneId,
-      animationProgress: animationProgress,
-      paneBuilder: widget.paneBuilder,
-    );
+    if (widget.controller.isResizing) {
+      final key = '$paneId@$animationProgress';
+      return _resizeContentCache.putIfAbsent(
+        key,
+        () => widget.paneBuilder(context, paneId, animationProgress),
+      );
+    }
+    return widget.paneBuilder(context, paneId, animationProgress);
   }
 
   @override
@@ -109,8 +116,6 @@ class _MultiPaneState extends State<MultiPane> {
     final entries = widget.controller.entries;
 
     // Check for Maximized Pane
-    // Maximize swaps the Flex tree for a single expand child, so a new
-    // [_StablePaneContent] State mounts and re-invokes paneBuilder (intended).
     if (widget.controller.maximizedPaneId case final maxId?) {
       return SizedBox.expand(
         child: _paneContent(context, maxId, 1.0),
@@ -281,47 +286,6 @@ class _MultiPaneState extends State<MultiPane> {
       containerSize: containerSize,
       resizerThickness: resizerLayoutSize,
       adjacentPaneId: adjacentPaneId,
-    );
-  }
-}
-
-/// Caches [paneBuilder] output so size-only [MultiPane] rebuilds do not
-/// reconstruct pane content (resize / animation ticks).
-class _StablePaneContent extends StatefulWidget {
-  const _StablePaneContent({
-    super.key,
-    required this.paneId,
-    required this.animationProgress,
-    required this.paneBuilder,
-  });
-
-  final String paneId;
-  final double animationProgress;
-  final PaneBuilder paneBuilder;
-
-  @override
-  State<_StablePaneContent> createState() => _StablePaneContentState();
-}
-
-class _StablePaneContentState extends State<_StablePaneContent> {
-  Widget? _child;
-
-  @override
-  void didUpdateWidget(covariant _StablePaneContent oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.paneId != widget.paneId ||
-        oldWidget.animationProgress != widget.animationProgress ||
-        oldWidget.paneBuilder != widget.paneBuilder) {
-      _child = null;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return _child ??= widget.paneBuilder(
-      context,
-      widget.paneId,
-      widget.animationProgress,
     );
   }
 }

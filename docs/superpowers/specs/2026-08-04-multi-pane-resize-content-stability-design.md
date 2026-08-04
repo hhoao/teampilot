@@ -18,18 +18,20 @@ Prefs persistence is already correct: `WorkspaceIdeShell` commits widths on drag
 
 Match industry splitter practice (VS Code `SplitView` / sash): **resize updates slot sizes only; pane content instances stay stable.**
 
-In `packages/panes` `MultiPane`, keep a stable content widget per pane and **do not** call `paneBuilder` again when only pixel/fraction sizes change.
+In `packages/panes` `MultiPane`, **while a sash drag is active** (`PaneController.isResizing`), keep a cache of `paneBuilder` output and **do not** call `paneBuilder` again on size deltas. Clear the cache when the drag ends so parent-owned pane bodies (e.g. IDE landing ↔ `ChatPage`) can replace content on the next build.
 
 | Event | `paneBuilder` |
 |-------|----------------|
-| Pixel / fraction size change (incl. every resize delta) | **No** — reuse cached content |
+| Resize deltas during an active drag | **No** — reuse drag cache |
+| Parent rebuild outside a drag (new pane body) | **Yes** — no stale cache |
 | Show / hide (visibility end-state → `animationProgress` 0.0 or 1.0) | **Yes** once when the end-state changes — **not** on every tween tick |
 | Maximize / unmaximize | **Yes** |
-| Entries add / remove / reorder | **Yes** |
-| `paneBuilder` identity change (`didUpdateWidget`) | **Yes** — clear cache |
-| `controller` instance replaced (`didUpdateWidget`) | **Yes** — clear cache |
+| Entries add / remove / reorder | **Yes** (new/missing slots); existing panes rebuild outside drag |
+| `controller` instance replaced | **Yes** — clear drag cache |
 
 `animationProgress` today is only the visibility endpoint (0.0 / 1.0) passed into `paneBuilder`; size tweening stays inside `TweenAnimationBuilder` and must not re-invoke the builder per tick (existing test).
+
+**Do not** permanently cache `paneBuilder` output across non-drag rebuilds when `paneBuilder` is a stable tear-off that closes over parent widgets — that freezes IDE center content (landing stuck after open session).
 
 No new public API on `PaneController` or `WorkspaceIdeShell`. No drag-time clip / deferred reflow. No file-tree virtualization in this spec.
 
@@ -37,17 +39,17 @@ No new public API on `PaneController` or `WorkspaceIdeShell`. No drag-time clip 
 
 Preferred implementation (internal to `MultiPane`):
 
-- Introduce a small private host (e.g. `_StablePaneContent`) keyed by `paneId`, holding the last `paneBuilder` output.
-- Invalidate when `animationProgress` (or equivalent visibility flag passed into the builder) changes, or when the `PaneBuilder` tear-off / callback identity changes.
-- Pixel path: pass the stable widget as `TweenAnimationBuilder.child` (same as today).
+- While `controller.isResizing`, memoize `paneBuilder` results in a map keyed by `paneId` + visibility progress; clear the map when the drag ends.
+- Outside a drag, always call `paneBuilder` so parent-owned children (stable tear-offs that close over `widget.center` / etc.) update.
+- Pixel path: pass content as `TweenAnimationBuilder.child` (same as today).
 - Fraction path: wrap `Expanded`’s child the same way.
-- On controller notify that is size-only, `setState` still runs so slot `SizedBox` / flex updates; content Elements keep the same Widget instance and skip subtree rebuild.
 
 Rejected alternatives:
 
+- **Permanent `_StablePaneContent` cache across all rebuilds** — freezes IDE center when `paneBuilder` is a stable method tear-off (landing stuck; sidebar cannot open Chat). Regression seen 2026-08-04.
 - **Drag-time overflow/clip without reflow** — better right-edge feel, different UX; defer.
-- **App-level `RepaintBoundary` / file-tree only** — does not stop `paneBuilder` fan-out; treat as follow-up if layout remains hot after this.
-- **Granular `PaneController` listeners (size vs structure)** — nicer long-term, larger API surface; stable content host is enough for the measured rebuild storm.
+- **App-level `RepaintBoundary` / file-tree only** — does not stop `paneBuilder` fan-out during drag; treat as follow-up if layout remains hot after this.
+- **Granular `PaneController` listeners (size vs structure)** — nicer long-term, larger API surface; drag-scoped content cache is enough for the measured rebuild storm.
 
 ## Acceptance
 
