@@ -427,49 +427,37 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
 
   Widget _buildRunningInMessage(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final aiTheme = AiMessageTheme.of(context);
     final label = switch (widget.liveChrome) {
       SessionHistoryLiveChrome.starting => context.l10n.sessionHistoryStarting,
       SessionHistoryLiveChrome.running ||
       SessionHistoryLiveChrome.none => context.l10n.sessionHistoryRunning,
     };
-    // Same column chrome as messageBuilder, left-aligned like assistant text.
-    // Tip message already uses a tightened messageSpacing while Running is on.
+    // Column width is applied around [VirtualThreadViewport]; keep left-aligned
+    // like assistant text. Tip message already uses tightened messageSpacing.
     return Align(
-      alignment: Alignment.topCenter,
+      alignment: Alignment.centerLeft,
       child: Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: aiTheme.threadHorizontalPadding,
-        ),
-        child: ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: aiTheme.threadMaxWidth),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: Padding(
-              key: kSessionHistoryRunningFooterKey,
-              padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: scheme.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    label,
-                    style: TpTextStyles.of(
-                      context,
-                    ).smColored(scheme.onSurfaceVariant),
-                  ),
-                ],
+        key: kSessionHistoryRunningFooterKey,
+        padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: scheme.onSurfaceVariant,
               ),
             ),
-          ),
+            const SizedBox(width: 10),
+            Text(
+              label,
+              style: TpTextStyles.of(
+                context,
+              ).smColored(scheme.onSurfaceVariant),
+            ),
+          ],
         ),
       ),
     );
@@ -522,65 +510,65 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
         child: SingleChildScrollView(
           controller: _scrollController,
           padding: const EdgeInsets.fromLTRB(0, 16, 0, 24),
-          child: AiLineSpacedSelectionStyle(
-            child: SelectionArea(
-              contextMenuBuilder: buildAiThreadSelectionContextMenu,
-              child: VirtualThreadViewport(
-                messages: displayMessages,
-                scrollController: _scrollController,
-                header: header,
-                anchorEnd: true,
-                overscan: 5,
-                // Claude-like: keep the loaded pagination window mounted while
-                // scrolling; fill in chunks after open so the first paint stays light.
-                retainMountedTurns: true,
-                fillDataWindow: true,
-                mountTurns: _mountTurns,
-                suppressMeasureScrollCorrection: _stickToEnd,
-                onMeasureScrollCorrection: (delta) {
-                  if (!_scrollController.hasClients || delta.abs() < 0.5) {
-                    return;
-                  }
-                  final next = (_scrollController.position.pixels + delta)
-                      .clamp(
-                        0.0,
-                        _scrollController.position.maxScrollExtent,
-                      );
-                  _jumpTo(next);
-                },
-                messageBuilder: (context, ai) {
-                  if (ai.id == kSessionHistoryRunningPlaceholder.id) {
-                    return SelectionContainer.disabled(
-                      child: _buildRunningInMessage(context),
-                    );
-                  }
-                  // While Running is appended as the tip turn, keep the real tip's
-                  // bottom gap tight so Running sits under it like in-turn chrome.
-                  final tightenForRunning = widget.liveChrome.isActive &&
-                      displayMessages.length >= 2 &&
-                      displayMessages.last.id ==
-                          kSessionHistoryRunningPlaceholder.id &&
-                      ai.id ==
-                          displayMessages[displayMessages.length - 2].id;
-                  final messageChild = AiMessageView(
-                    key: ValueKey(ai.id),
-                    message: ai,
-                    actionBarHoverEnabled: _hoverEffectsEnabled,
-                    actionBarReveal: ai.id == lastId
-                        ? AiActionBarReveal.always
-                        : AiActionBarReveal.hover,
-                  );
-                  return Align(
-                    alignment: Alignment.topCenter,
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: aiTheme.threadHorizontalPadding,
-                      ),
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                          maxWidth: aiTheme.threadMaxWidth,
-                        ),
-                        child: tightenForRunning
+          // Width chrome outside [VirtualThreadViewport]: turn bodies are
+          // cached and would keep a stale per-message ConstrainedBox.
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: aiTheme.threadHorizontalPadding,
+              ),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: aiTheme.threadMaxWidth),
+                child: AiLineSpacedSelectionStyle(
+                  child: SelectionArea(
+                    contextMenuBuilder: buildAiThreadSelectionContextMenu,
+                    child: VirtualThreadViewport(
+                      messages: displayMessages,
+                      scrollController: _scrollController,
+                      header: header,
+                      anchorEnd: true,
+                      overscan: 5,
+                      // Claude-like: keep the loaded pagination window mounted while
+                      // scrolling; fill in chunks after open so the first paint stays light.
+                      retainMountedTurns: true,
+                      fillDataWindow: true,
+                      mountTurns: _mountTurns,
+                      suppressMeasureScrollCorrection: _stickToEnd,
+                      onMeasureScrollCorrection: (delta) {
+                        if (!_scrollController.hasClients || delta.abs() < 0.5) {
+                          return;
+                        }
+                        final next = (_scrollController.position.pixels + delta)
+                            .clamp(
+                              0.0,
+                              _scrollController.position.maxScrollExtent,
+                            );
+                        _jumpTo(next);
+                      },
+                      messageBuilder: (context, ai) {
+                        if (ai.id == kSessionHistoryRunningPlaceholder.id) {
+                          return SelectionContainer.disabled(
+                            child: _buildRunningInMessage(context),
+                          );
+                        }
+                        // While Running is appended as the tip turn, keep the real tip's
+                        // bottom gap tight so Running sits under it like in-turn chrome.
+                        final tightenForRunning = widget.liveChrome.isActive &&
+                            displayMessages.length >= 2 &&
+                            displayMessages.last.id ==
+                                kSessionHistoryRunningPlaceholder.id &&
+                            ai.id ==
+                                displayMessages[displayMessages.length - 2].id;
+                        final messageChild = AiMessageView(
+                          key: ValueKey(ai.id),
+                          message: ai,
+                          actionBarHoverEnabled: _hoverEffectsEnabled,
+                          actionBarReveal: ai.id == lastId
+                              ? AiActionBarReveal.always
+                              : AiActionBarReveal.hover,
+                        );
+                        return tightenForRunning
                             ? Theme(
                                 data: Theme.of(context).copyWith(
                                   extensions: [
@@ -593,11 +581,11 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                                 ),
                                 child: messageChild,
                               )
-                            : messageChild,
-                      ),
+                            : messageChild;
+                      },
                     ),
-                  );
-                },
+                  ),
+                ),
               ),
             ),
           ),

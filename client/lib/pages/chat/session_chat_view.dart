@@ -1259,34 +1259,39 @@ class _SessionChatViewState extends State<SessionChatView> {
           ),
           builder: (context, cotExpand) {
             final (expandReasoning, expandTools) = cotExpand;
-            return Theme(
-              data: Theme.of(context).copyWith(
-                extensions: [
-                  for (final ext in Theme.of(context).extensions.values)
-                    if (ext is! AiMessageTheme) ext,
-                  AiMessageTheme.of(context).copyWith(
-                    markdown: buildAppMarkdownTokens(
-                      Theme.of(context),
-                      MarkdownProfile.compact,
-                      // v1: window width, not chat column width.
-                      width: MediaQuery.sizeOf(context).width,
-                      mutedSurface: cs.surfaceContainerHighest
-                          .withValues(alpha: 0.55),
-                    ),
-                    userBubbleColor: cs.surfaceContainerHighest,
-                    userBubbleForeground: cs.onSurface,
-                    mutedSurface: cs.surfaceContainerHighest
-                        .withValues(alpha: 0.55),
-                    toolTriggerColor: cs.onSurfaceVariant,
-                    messageSpacing: 24,
-                    threadMaxWidth: kSessionHistoryColumnMaxWidth,
-                    threadHorizontalPadding: spacing.md,
-                    cotExpandReasoningOnOpen: expandReasoning,
-                    cotExpandToolsOnOpen: expandTools,
+            return LayoutBuilder(
+              builder: (context, constraints) {
+                final columnWidth = resolveSessionHistoryColumnWidth(
+                  constraints.maxWidth,
+                );
+                return Theme(
+                  data: Theme.of(context).copyWith(
+                    extensions: [
+                      for (final ext in Theme.of(context).extensions.values)
+                        if (ext is! AiMessageTheme) ext,
+                      AiMessageTheme.of(context).copyWith(
+                        markdown: buildAppMarkdownTokens(
+                          Theme.of(context),
+                          MarkdownProfile.compact,
+                          // v1: window width, not chat column width.
+                          width: MediaQuery.sizeOf(context).width,
+                          mutedSurface: cs.surfaceContainerHighest
+                              .withValues(alpha: 0.55),
+                        ),
+                        userBubbleColor: cs.surfaceContainerHighest,
+                        userBubbleForeground: cs.onSurface,
+                        mutedSurface: cs.surfaceContainerHighest
+                            .withValues(alpha: 0.55),
+                        toolTriggerColor: cs.onSurfaceVariant,
+                        messageSpacing: 24,
+                        threadMaxWidth: columnWidth,
+                        threadHorizontalPadding: spacing.md,
+                        cotExpandReasoningOnOpen: expandReasoning,
+                        cotExpandToolsOnOpen: expandTools,
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              child: BlocBuilder<AiHistorySeat, AiHistoryState>(
+                  child: BlocBuilder<AiHistorySeat, AiHistoryState>(
                 bloc: _seat,
                 // Skip totalMessageCount-only tip growth — thread listens to
                 // runtime. Rebuild for chrome / overlay / awaiting flips.
@@ -1527,8 +1532,8 @@ class _SessionChatViewState extends State<SessionChatView> {
                       Align(
                         alignment: Alignment.topCenter,
                         child: ConstrainedBox(
-                          constraints: const BoxConstraints(
-                            maxWidth: kSessionHistoryColumnMaxWidth,
+                          constraints: BoxConstraints(
+                            maxWidth: columnWidth,
                           ),
                           child: Padding(
                             padding: EdgeInsets.fromLTRB(
@@ -1736,6 +1741,8 @@ class _SessionChatViewState extends State<SessionChatView> {
                   );
                 },
               ),
+                );
+              },
             );
           },
         ),
