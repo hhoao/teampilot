@@ -9,9 +9,9 @@ const EdgeInsets kWorkspaceSidebarRowPadding = EdgeInsets.fromLTRB(8, 6, 8, 6);
 
 const double kWorkspaceSidebarRowHoverTintAlpha = 0.07;
 
+/// Translucent row hover tint — composites over the sidebar card (`surface`),
+/// not a pre-blended `surfaceContainer` chip (that mismatched workspace chrome
+/// and flashed when [TpHover] animated from transparent).
 Color workspaceSidebarRowHoverFill(ColorScheme cs) {
-  return Color.alphaBlend(
-    cs.onSurface.withValues(alpha: kWorkspaceSidebarRowHoverTintAlpha),
-    cs.surfaceContainer,
-  );
+  return cs.onSurface.withValues(alpha: kWorkspaceSidebarRowHoverTintAlpha);
 }
