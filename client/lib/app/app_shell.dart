@@ -1006,6 +1006,7 @@ Future<AppShell> buildAppShell({
     registry: GitRegistryExpertHubSource(),
     teamIndex: teamHubSource.fetchTeams,
   );
+  teamCubit.attachExpertHubSource(compositeExpertHubSource);
   final expertCapabilityResolver = ExpertCapabilityResolver(
     installSkill: skillCubit.installTeamDependency,
     installPlugin: pluginCubit.installTeamDependency,

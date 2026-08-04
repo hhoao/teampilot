@@ -104,17 +104,33 @@ abstract final class ExpertMemberMaterializer {
     return next;
   }
 
-  static Future<TeamProfile> attachMaterializedMembers(TeamProfile team) async {
-    final members = await materializeRosterAsync(team: team);
+  static Future<TeamProfile> attachMaterializedMembers(
+    TeamProfile team, {
+    CompositeExpertHubSource? source,
+    LocalMemberTemplateStore? localStore,
+  }) async {
+    final members = await materializeRosterAsync(
+      team: team,
+      source: source,
+      localStore: localStore,
+    );
     return team.copyWith(members: members);
   }
 
   static Future<List<TeamProfile>> attachMaterializedMembersAll(
-    Iterable<TeamProfile> teams,
-  ) async {
+    Iterable<TeamProfile> teams, {
+    CompositeExpertHubSource? source,
+    LocalMemberTemplateStore? localStore,
+  }) async {
     final out = <TeamProfile>[];
     for (final team in teams) {
-      out.add(await attachMaterializedMembers(team));
+      out.add(
+        await attachMaterializedMembers(
+          team,
+          source: source,
+          localStore: localStore,
+        ),
+      );
     }
     return out;
   }
