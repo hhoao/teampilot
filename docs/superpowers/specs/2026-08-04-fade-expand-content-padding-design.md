@@ -42,13 +42,26 @@ Behavior unchanged unless padding is moved in:
 - Selection dead zone + mask pointer recognizer
 - Hover brighten on the fade strip
 
-Collapsed host height continues to include `contentPadding` (visual size matches today’s padded bubbles).
+### Height / clip semantics
+
+`collapsedMaxHeight` / `expandedMaxHeight` apply to the **content box inside** `contentPadding` (same as today’s clip, when padding lived outside the host).
+
+Layout:
+
+```
+Stack
+├─ Padding(contentPadding)
+│  └─ clip/scroll child to collapsedMaxHeight / expandedMaxHeight
+└─ Positioned fade (flush to Stack edges)
+```
+
+Collapsed overflowing host outer height = `collapsedMaxHeight + contentPadding.vertical` (matches today’s bubble: clip 120 + vertical pad). Do **not** apply the max-height cap to the padded total.
 
 ## Call sites
 
 | Surface | Change |
 |---------|--------|
-| User bubble | Remove outer `Padding`. Pass `contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 10)`. Move mailbox icon + text row **into** the fade host child so the mask spans the full bubble width. |
+| User bubble | Remove outer `Padding`. `_UserBubbleFadeHost` passes `contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 10)`. Move `DefaultTextStyle.merge`, mailbox icon, and text row **into** the fade host child so the mask spans the full bubble width. |
 | Shell card | Remove outer `Padding(all: 10)`. Pass `contentPadding: EdgeInsets.all(10)`. |
 | Edit card | Keep edge-flush; use default / zero `contentPadding`. Line-level padding stays as-is. |
 
