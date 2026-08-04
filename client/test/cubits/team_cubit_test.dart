@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/cubits/launch_profile_cubit.dart';
+import 'package:teampilot/models/discoverable_member.dart';
+import 'package:teampilot/models/launch_profile.dart';
 import 'package:teampilot/models/plugin.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/session_repository.dart';
@@ -13,6 +15,9 @@ import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/plugin/profile_plugin_linker_service.dart';
 import 'package:teampilot/services/storage/launch_profile_provisioner.dart';
+import 'package:teampilot/services/expert_hub/builtin_member_templates.dart';
+import 'package:teampilot/services/expert_hub/composite_expert_hub_source.dart';
+import 'package:teampilot/services/expert_hub/expert_hub_source.dart';
 import 'package:teampilot/models/team_roster_slot.dart';
 import 'package:teampilot/utils/team/team_member_naming.dart';
 
@@ -24,6 +29,31 @@ const _soloRoster = [
 
 TeamProfile _teamById(Iterable<TeamProfile> teams, String id) =>
     teams.firstWhere((t) => t.id == id);
+
+class _CountingLaunchProfileRepository extends LaunchProfileRepository {
+  _CountingLaunchProfileRepository({required super.rootDir});
+
+  var saveCount = 0;
+
+  @override
+  Future<void> save(LaunchProfile identity) async {
+    saveCount++;
+    await super.save(identity);
+  }
+}
+
+class _ThrowingExpertHubSource implements ExpertHubSource {
+  @override
+  Future<List<DiscoverableMember>> fetchMembers({
+    bool forceRefresh = false,
+  }) async {
+    fail('launch-config save must not fetch Expert Hub');
+  }
+
+  @override
+  Future<List<String>> categories({bool forceRefresh = false}) async =>
+      const [];
+}
 
 class _RecordingPluginLinker extends ProfilePluginLinkerService {
   _RecordingPluginLinker() : super(appPluginsRoot: '/tmp');
@@ -721,6 +751,68 @@ void main() {
       expect(custom.providerForCli(CliTool.claude), 'deepseek');
       expect(custom.modelForCli(CliTool.claude), 'deepseek-chat');
       expect(custom.effortForCli(CliTool.claude), 'high');
+
+      await _drainAndCloseTeamCubit(cubit);
+      await _deleteTeamTempDir(dir);
+    },
+  );
+
+  test(
+    'setTeamActivePreset skips expert hub fetch and saves only selected team',
+    () async {
+      final dir = await Directory.systemTemp.createTemp('team-preset-fast-');
+      final repo = _CountingLaunchProfileRepository(
+        rootDir: p.join(dir.path, 'launch-profiles'),
+      );
+      final cubit = LaunchProfileCubit(
+        repository: repo,
+        sessionRepository: SessionRepository(),
+        executableResolver: () => 'claude',
+        pluginLinker: _RecordingPluginLinker(),
+      );
+
+      const team = TeamProfile(
+        id: LaunchProfileProvisioner.defaultNativeTeamId,
+        name: 'Default Native Team',
+        cli: CliTool.claude,
+        roster: [
+          TeamRosterSlot(
+            id: 'team-lead',
+            expertKey: 'teampilot/builtin/team-lead',
+          ),
+          TeamRosterSlot(
+            id: 'worker',
+            expertKey: 'hhoao/teampilot/member-hub/remote-worker',
+          ),
+        ],
+        members: [
+          TeamMemberConfig(
+            id: 'team-lead',
+            name: 'Lead',
+            activePresetId: TeamProfile.inheritPresetId,
+          ),
+          TeamMemberConfig(
+            id: 'worker',
+            name: 'Worker',
+            activePresetId: TeamProfile.inheritPresetId,
+          ),
+        ],
+      );
+      await repo.saveTeamProfiles([team]);
+      await cubit.load();
+      await cubit.selectTeam(LaunchProfileProvisioner.defaultNativeTeamId);
+      cubit.attachExpertHubSource(
+        CompositeExpertHubSource(
+          builtIns: builtinExpertMembers(),
+          registry: _ThrowingExpertHubSource(),
+        ),
+      );
+      repo.saveCount = 0;
+
+      await cubit.setTeamActivePreset('preset-fast', syncCli: CliTool.claude);
+
+      expect(cubit.state.selectedTeam?.activePresetId, 'preset-fast');
+      expect(repo.saveCount, 1);
 
       await _drainAndCloseTeamCubit(cubit);
       await _deleteTeamTempDir(dir);

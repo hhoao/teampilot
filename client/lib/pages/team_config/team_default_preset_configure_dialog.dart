@@ -53,6 +53,8 @@ class _TeamDefaultPresetConfigureDialogState
   late String _modelId;
   late String _effortId;
   late TeamLaunchConfigKind _configKind;
+  late String _presetToken;
+  var _saving = false;
 
   @override
   void initState() {
@@ -62,62 +64,56 @@ class _TeamDefaultPresetConfigureDialogState
     _modelId = widget.team.modelForCli(_catalogCli);
     _effortId = widget.team.effortForCli(_catalogCli);
     _configKind = teamLaunchConfigKind(widget.team);
+    _presetToken = teamLaunchPresetToken(widget.team);
   }
 
+  TeamProfile get _baselineTeam => widget.team;
+
   void _applyCatalogCliChange(CliTool cli) {
-    final team = _currentTeam;
     setState(() {
       _catalogCli = cli;
-      _providerId = team.providerForCli(cli);
-      _modelId = team.modelForCli(cli);
-      _effortId = team.effortForCli(cli);
+      _providerId = _baselineTeam.providerForCli(cli);
+      _modelId = _baselineTeam.modelForCli(cli);
+      _effortId = _baselineTeam.effortForCli(cli);
     });
   }
 
-  TeamProfile get _currentTeam {
-    return widget.cubit.state.teams.firstWhere(
-      (t) => t.id == widget.team.id,
-      orElse: () => widget.team,
-    );
+  void _applyConfigKind(TeamLaunchConfigKind kind) {
+    setState(() {
+      _configKind = kind;
+      if (kind == TeamLaunchConfigKind.custom) {
+        _providerId = _baselineTeam.providerForCli(_catalogCli);
+        _modelId = _baselineTeam.modelForCli(_catalogCli);
+        _effortId = _baselineTeam.effortForCli(_catalogCli);
+      } else if (kind == TeamLaunchConfigKind.preset) {
+        _ensurePresetTokenSelected();
+      }
+    });
   }
 
-  Future<void> _applyConfigKind(TeamLaunchConfigKind kind) async {
-    setState(() => _configKind = kind);
-    if (kind == TeamLaunchConfigKind.custom) {
-      await widget.cubit.setTeamActivePreset(null);
-      if (!mounted) return;
-      final team = _currentTeam;
-      setState(() {
-        _providerId = team.providerForCli(_catalogCli);
-        _modelId = team.modelForCli(_catalogCli);
-        _effortId = team.effortForCli(_catalogCli);
-      });
-    } else if (kind == TeamLaunchConfigKind.preset) {
-      await _applyEffectivePresetChoice();
-    }
-  }
-
-  Future<void> _applyEffectivePresetChoice() async {
+  void _ensurePresetTokenSelected() {
     final allPresets = context.read<CliPresetsCubit>().state.presets;
-    final team = _currentTeam;
     final eligiblePresetList = teamPresetPickerItems(
-      team: team,
+      team: _baselineTeam,
       allPresets: allPresets,
     );
     final presetDropdownItems = presetLaunchDropdownItems(
       mode: PresetLaunchPickerMode.presetOnly,
       eligiblePresets: eligiblePresetList,
     );
-    final token = effectivePresetLaunchToken(
-      currentToken: teamLaunchPresetToken(team),
+    _presetToken = effectivePresetLaunchToken(
+      currentToken: _presetToken,
       dropdownItems: presetDropdownItems,
     );
-    if (token.isNotEmpty) {
-      await _applyPresetChoice(token);
+    for (final preset in allPresets) {
+      if (preset.id == _presetToken) {
+        _catalogCli = preset.cli;
+        break;
+      }
     }
   }
 
-  Future<void> _applyPresetChoice(String token) async {
+  void _applyPresetChoice(String token) {
     CliTool? syncCli;
     for (final preset in context.read<CliPresetsCubit>().state.presets) {
       if (preset.id == token) {
@@ -125,30 +121,47 @@ class _TeamDefaultPresetConfigureDialogState
         break;
       }
     }
-    await widget.cubit.setTeamActivePreset(token, syncCli: syncCli);
-    if (!mounted) return;
     setState(() {
       _configKind = TeamLaunchConfigKind.preset;
+      _presetToken = token;
       if (syncCli != null) _catalogCli = syncCli;
     });
   }
 
   Future<void> _save() async {
-    if (_configKind == TeamLaunchConfigKind.custom) {
-      await widget.cubit.updateTeamCustomLaunch(
-        catalogCli: _catalogCli,
-        defaultCli: _currentTeam.teamMode == TeamMode.mixed
-            ? _catalogCli
-            : null,
-        providerId: _providerId,
-        model: _modelId,
-        effort: _effortId,
-      );
-    } else {
-      await _applyEffectivePresetChoice();
+    if (_saving) return;
+    setState(() => _saving = true);
+    try {
+      if (_configKind == TeamLaunchConfigKind.custom) {
+        await widget.cubit.updateTeamCustomLaunch(
+          catalogCli: _catalogCli,
+          defaultCli: _baselineTeam.teamMode == TeamMode.mixed
+              ? _catalogCli
+              : null,
+          providerId: _providerId,
+          model: _modelId,
+          effort: _effortId,
+        );
+      } else {
+        _ensurePresetTokenSelected();
+        if (_presetToken.isEmpty) return;
+        CliTool? syncCli;
+        for (final preset in context.read<CliPresetsCubit>().state.presets) {
+          if (preset.id == _presetToken) {
+            syncCli = preset.cli;
+            break;
+          }
+        }
+        await widget.cubit.setTeamActivePreset(
+          _presetToken,
+          syncCli: syncCli,
+        );
+      }
+      if (!mounted) return;
+      Navigator.of(context).pop();
+    } finally {
+      if (mounted) setState(() => _saving = false);
     }
-    if (!mounted) return;
-    Navigator.of(context).pop();
   }
 
   @override
@@ -156,8 +169,7 @@ class _TeamDefaultPresetConfigureDialogState
     final l10n = context.l10n;
     final registry = CliToolRegistryScope.of(context);
     final dropdownDeco = TpSelectDecorations.themed(context);
-    context.watch<LaunchProfileCubit>();
-    final team = _currentTeam;
+    final team = _baselineTeam;
     final allPresets = context.watch<CliPresetsCubit>().state.presets;
     final eligiblePresetList = teamPresetPickerItems(
       team: team,
@@ -169,7 +181,7 @@ class _TeamDefaultPresetConfigureDialogState
       eligiblePresets: eligiblePresetList,
     );
     final effectivePresetToken = effectivePresetLaunchToken(
-      currentToken: teamLaunchPresetToken(team),
+      currentToken: _presetToken,
       dropdownItems: presetDropdownItems,
     );
     final providers = context
@@ -200,7 +212,7 @@ class _TeamDefaultPresetConfigureDialogState
                   currentKind: _configKind,
                   decoration: dropdownDeco,
                   showDividerBelow: isCustom,
-                  onChanged: (kind) => unawaited(_applyConfigKind(kind)),
+                  onChanged: _applyConfigKind,
                 ),
                 if (_configKind == TeamLaunchConfigKind.preset &&
                     presetDropdownItems.isNotEmpty)
@@ -211,7 +223,7 @@ class _TeamDefaultPresetConfigureDialogState
                     registry: registry,
                     providerState: providerState,
                     decoration: dropdownDeco,
-                    onChanged: (token) => unawaited(_applyPresetChoice(token)),
+                    onChanged: _applyPresetChoice,
                   ),
                 if (isCustom)
                   CliLaunchCustomFields(
@@ -259,32 +271,42 @@ class _TeamDefaultPresetConfigureDialogState
           TpDialogActions(
             children: [
               TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  showDialog<void>(
-                    context: context,
-                    builder: (_) => CliPresetsManageDialog(
-                      lockCli: team.teamMode == TeamMode.native
-                          ? team.cli
-                          : null,
-                    ),
-                  );
-                },
+                onPressed: _saving
+                    ? null
+                    : () {
+                        Navigator.of(context).pop();
+                        showDialog<void>(
+                          context: context,
+                          builder: (_) => CliPresetsManageDialog(
+                            lockCli: team.teamMode == TeamMode.native
+                                ? team.cli
+                                : null,
+                          ),
+                        );
+                      },
                 child: Text(l10n.teamDefaultPresetManage),
               ),
               TextButton(
-                onPressed: () => Navigator.of(context).pop(),
+                onPressed: _saving ? null : () => Navigator.of(context).pop(),
                 child: Text(l10n.cancel),
               ),
               FilledButton(
-                onPressed: isCustom
+                onPressed: _saving
+                    ? null
+                    : isCustom
                     ? (_providerId.trim().isEmpty
                           ? null
                           : () => unawaited(_save()))
                     : (presetDropdownItems.isEmpty
                           ? null
                           : () => unawaited(_save())),
-                child: Text(l10n.save),
+                child: _saving
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Text(l10n.save),
               ),
             ],
           ),

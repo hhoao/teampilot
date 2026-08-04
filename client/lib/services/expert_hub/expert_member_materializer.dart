@@ -104,6 +104,18 @@ abstract final class ExpertMemberMaterializer {
     return next;
   }
 
+  /// Re-applies team launch inheritance on already-materialized members without
+  /// re-fetching Expert Hub (used for launch-config-only profile edits).
+  static TeamProfile reapplyLaunchInheritance(TeamProfile team) {
+    if (team.members.isEmpty) return team;
+    return team.copyWith(
+      members: [
+        for (final member in team.members)
+          _applyTeamInheritance(member, team),
+      ],
+    );
+  }
+
   static Future<TeamProfile> attachMaterializedMembers(
     TeamProfile team, {
     CompositeExpertHubSource? source,

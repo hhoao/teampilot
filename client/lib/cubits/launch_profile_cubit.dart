@@ -503,13 +503,35 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
             : 'Name is required.',
       ),
     );
-    await saveTeamProfiles(teams);
+    await _repository.save(materialized);
     if (pluginsChanged) {
       await _sync.syncPluginsForSelected();
     }
     if (mcpChanged) {
       await _sync.syncMcp();
     }
+  }
+
+  /// Launch-config-only persist: no Expert Hub rematerialize, one profile write.
+  Future<void> _persistSelectedLaunchConfig(TeamProfile updated) async {
+    final selected = state.selectedTeam;
+    if (selected == null) return;
+    final normalized = updated.normalizedLaunchConfig();
+    final next = ExpertMemberMaterializer.reapplyLaunchInheritance(normalized);
+    final teams = [
+      for (final team in state.teams)
+        if (team.id == selected.id) next else team,
+    ];
+    emit(
+      state.copyWith(
+        teams: teams,
+        selectedTeamId: next.id,
+        statusMessage: next.isValid
+            ? 'Saved ${next.name}.'
+            : 'Name is required.',
+      ),
+    );
+    await _repository.save(next);
   }
 
   Future<void> deleteTeam(String id) async {
@@ -622,7 +644,7 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
   ///
   /// [presetId] may be a preset UUID, `null` (clear), or empty (clear).
   /// [syncCli] aligns [TeamProfile.cli] with the preset for mixed/native launch.
-  /// Completes after [updateSelected] persists so callers can refresh UI safely.
+  /// Completes after the selected profile is persisted (no hub rematerialize).
   Future<void> setTeamActivePreset(String? presetId, {CliTool? syncCli}) async {
     final team = state.selectedTeam;
     if (team == null) return;
@@ -635,12 +657,12 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
     } else {
       next = team.asPresetLaunch(effectiveId, syncCli: syncCli);
     }
-    await updateSelected(next);
+    await _persistSelectedLaunchConfig(next);
   }
 
   /// Persists team custom launch defaults for [catalogCli] and clears any preset.
   ///
-  /// Completes after [updateSelected] persists so callers can refresh UI safely.
+  /// Completes after the selected profile is persisted (no hub rematerialize).
   Future<void> updateTeamCustomLaunch({
     required CliTool catalogCli,
     CliTool? defaultCli,
@@ -659,7 +681,7 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
     if (defaultCli != null && team.teamMode == TeamMode.mixed) {
       next = next.copyWith(cli: defaultCli);
     }
-    await updateSelected(next);
+    await _persistSelectedLaunchConfig(next);
   }
 
   /// Sets the active preset for a member of the selected team.
