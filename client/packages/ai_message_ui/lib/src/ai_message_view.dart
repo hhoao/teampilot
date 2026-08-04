@@ -226,55 +226,53 @@ class _UserBubble extends StatelessWidget {
               Flexible(
                 child: ConstrainedBox(
                   constraints: BoxConstraints(maxWidth: bubbleMax),
-                  child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: aiTheme.resolveUserBubble(scheme),
+                  child: ClipRRect(
                     borderRadius:
                         BorderRadius.circular(aiTheme.userBubbleRadius),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 10,
-                    ),
-                    child: DefaultTextStyle.merge(
-                      style: aiTheme.markdown.userBubble(
-                        aiTheme.resolveUserForeground(scheme),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (message.deliveryChannel == 'mailbox')
-                            Padding(
-                              padding: const EdgeInsets.only(right: 6, top: 2),
-                              child: Icon(
-                                Icons.mail_outline,
-                                key: const ValueKey(
-                                  'ai-user-bubble-mailbox-marker',
-                                ),
-                                size: 13,
-                                color: aiTheme.resolveUserForeground(scheme),
-                              ),
-                            ),
-                          Flexible(
-                            child: _UserBubbleFadeHost(
-                              messageId: message.id,
-                              textSignature: message.parts
-                                  .whereType<AiTextPart>()
-                                  .map((p) => p.text)
-                                  .join('\u0000'),
-                              fadeColor: aiTheme.resolveUserBubble(scheme),
-                              child: parts,
-                            ),
+                    child: ColoredBox(
+                      color: aiTheme.resolveUserBubble(scheme),
+                      child: _UserBubbleFadeHost(
+                        messageId: message.id,
+                        textSignature: message.parts
+                            .whereType<AiTextPart>()
+                            .map((p) => p.text)
+                            .join('\u0000'),
+                        fadeColor: aiTheme.resolveUserBubble(scheme),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
+                        child: DefaultTextStyle.merge(
+                          style: aiTheme.markdown.userBubble(
+                            aiTheme.resolveUserForeground(scheme),
                           ),
-                        ],
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (message.deliveryChannel == 'mailbox')
+                                Padding(
+                                  padding:
+                                      const EdgeInsets.only(right: 6, top: 2),
+                                  child: Icon(
+                                    Icons.mail_outline,
+                                    key: const ValueKey(
+                                      'ai-user-bubble-mailbox-marker',
+                                    ),
+                                    size: 13,
+                                    color: aiTheme
+                                        .resolveUserForeground(scheme),
+                                  ),
+                                ),
+                              Flexible(child: parts),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
-            ),
             ],
           );
         },
@@ -288,12 +286,14 @@ class _UserBubbleFadeHost extends StatefulWidget {
     required this.messageId,
     required this.textSignature,
     required this.fadeColor,
+    required this.contentPadding,
     required this.child,
   });
 
   final String messageId;
   final String textSignature;
   final Color fadeColor;
+  final EdgeInsetsGeometry contentPadding;
   final Widget child;
 
   @override
@@ -318,6 +318,7 @@ class _UserBubbleFadeHostState extends State<_UserBubbleFadeHost> {
       open: _open,
       onToggle: () => setState(() => _open = !_open),
       fadeColor: widget.fadeColor,
+      contentPadding: widget.contentPadding,
       child: widget.child,
     );
   }
