@@ -47,11 +47,6 @@ class MultiPane extends StatefulWidget {
 }
 
 class _MultiPaneState extends State<MultiPane> {
-  /// Seeded while [PaneController.isResizing]; cleared when the drag ends so
-  /// parent-driven content (e.g. landing ↔ ChatPage) can replace panes again.
-  final Map<String, Widget> _resizeContentCache = {};
-  var _cachingResizeContent = false;
-
   @override
   void initState() {
     super.initState();
@@ -64,8 +59,6 @@ class _MultiPaneState extends State<MultiPane> {
     if (oldWidget.controller != widget.controller) {
       oldWidget.controller.removeListener(_rebuild);
       widget.controller.addListener(_rebuild);
-      _resizeContentCache.clear();
-      _cachingResizeContent = false;
     }
   }
 
@@ -76,30 +69,10 @@ class _MultiPaneState extends State<MultiPane> {
   }
 
   void _rebuild() {
-    final resizing = widget.controller.isResizing;
-    if (_cachingResizeContent && !resizing) {
-      _resizeContentCache.clear();
-    }
-    _cachingResizeContent = resizing;
     setState(() {});
   }
 
   Size _containerSize = Size.zero;
-
-  Widget _paneContent(
-    BuildContext context,
-    String paneId,
-    double animationProgress,
-  ) {
-    if (widget.controller.isResizing) {
-      final key = '$paneId@$animationProgress';
-      return _resizeContentCache.putIfAbsent(
-        key,
-        () => widget.paneBuilder(context, paneId, animationProgress),
-      );
-    }
-    return widget.paneBuilder(context, paneId, animationProgress);
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -117,9 +90,8 @@ class _MultiPaneState extends State<MultiPane> {
 
     // Check for Maximized Pane
     if (widget.controller.maximizedPaneId case final maxId?) {
-      return SizedBox.expand(
-        child: _paneContent(context, maxId, 1.0),
-      );
+      final childWidget = widget.paneBuilder(context, maxId, 1.0);
+      return SizedBox.expand(child: childWidget);
     }
 
     if (entries.isEmpty) return const SizedBox.shrink();
@@ -161,7 +133,7 @@ class _MultiPaneState extends State<MultiPane> {
             tween: Tween<double>(end: isVisible ? pixels : 0.0),
             duration: isResizing ? Duration.zero : widget.animationDuration,
             curve: widget.animationCurve,
-            child: _paneContent(
+            child: widget.paneBuilder(
               context,
               entry.id,
               isVisible ? 1.0 : 0.0,
@@ -196,7 +168,7 @@ class _MultiPaneState extends State<MultiPane> {
                                 : fraction) *
                             100)
                         .toInt(),
-                child: _paneContent(context, entry.id, 1.0),
+                child: widget.paneBuilder(context, entry.id, 1.0),
               )
             : const SizedBox.shrink(),
       };

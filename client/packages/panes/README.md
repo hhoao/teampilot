@@ -20,7 +20,6 @@ A powerful Flutter package for creating complex, resizable, multi-pane layouts. 
 - 🖱️ **Customizable Resizers**: Control the thickness, color, and hit-test area of split handlers.
 - ⌨️ **Keyboard Accessibility**: Resizers are focusable (Tab) and controllable with Arrow keys.
 - 🔄 **Reset & Maximize**: Double-tap resizers to reset sizes, or maximize any pane to full area.
-- ⚡ **Stable content on resize**: while dragging a sash, `paneBuilder` is not re-invoked on size notifies — only slot sizes update. Outside a drag, parent content (show/hide, maximize, app-owned pane bodies) refreshes normally.
 
 ## Getting started
 
