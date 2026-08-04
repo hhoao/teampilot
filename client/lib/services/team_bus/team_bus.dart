@@ -688,8 +688,8 @@ class TeamBus implements CoordinationView {
     return null;
   }
 
-  /// UI 用户在成员 wait 期间提交的一行 → 信箱（`from: user`）。返回新建消息 id，
-  /// 空行 / 未知成员返回空串。
+  /// UI 用户在成员 wait 期间提交的内容 → 信箱（`from: user`）。返回新建消息 id，
+  /// 空内容 / 未知成员返回空串。多行粘贴经 [BusUserLineCapture] 合并后仍只入队一条。
   String deliverUserCommand(String memberId, String content) {
     final trimmed = content.trim();
     if (trimmed.isEmpty) return '';

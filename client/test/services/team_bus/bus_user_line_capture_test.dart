@@ -131,4 +131,113 @@ void main() {
     capture.filter(Uint8List.fromList(utf8.encode('好\r')));
     expect(submitted, '好');
   });
+
+  test('bracketed multiline paste submits once on Enter after paste', () {
+    final submitted = <String>[];
+    final capture = BusUserLineCapture(
+      BusUserInputRouting(
+        shouldIntercept: () => true,
+        onUserLine: (line) {
+          submitted.add(line);
+          return 'id-${submitted.length}';
+        },
+      ),
+    );
+
+    // Paste arrives as ESC[200~ … ESC[201~ (chunked across writes is fine).
+    final paste = Uint8List.fromList([
+      ...utf8.encode('\x1b[200~'),
+      ...utf8.encode('-H Accept \\\n'),
+      ...utf8.encode('curl https://example \\\n'),
+      ...utf8.encode('-H Origin: x'),
+      ...utf8.encode('\x1b[201~'),
+    ]);
+    final duringPaste = capture.filter(paste);
+    expect(submitted, isEmpty, reason: 'paste inserts; does not submit');
+    // Newlines inside paste pass through (not replaced with Ctrl-U).
+    expect(duringPaste, containsAllInOrder(utf8.encode('-H Accept \\\n')));
+    expect(duringPaste, isNot(contains(0x15)));
+
+    // Enter after paste → one bus mail with embedded newlines.
+    expect(capture.filter(Uint8List.fromList([0x0d])), [0x15]);
+    expect(submitted, [
+      '-H Accept \\\ncurl https://example \\\n-H Origin: x',
+    ]);
+  });
+
+  test('non-bracketed multiline chunk submits once at trailing newline', () {
+    final submitted = <String>[];
+    final capture = BusUserLineCapture(
+      BusUserInputRouting(
+        shouldIntercept: () => true,
+        onUserLine: (line) {
+          submitted.add(line);
+          return 'id';
+        },
+      ),
+    );
+
+    final out = capture.filter(
+      Uint8List.fromList(utf8.encode('line1\\\nline2\\\nline3\n')),
+    );
+    expect(submitted, ['line1\\\nline2\\\nline3']);
+    // One Ctrl-U at the end only (not one per line).
+    expect(out.where((b) => b == 0x15), hasLength(1));
+  });
+
+  test('separate Enter keystrokes still enqueue separate mails', () {
+    final submitted = <String>[];
+    final capture = BusUserLineCapture(
+      BusUserInputRouting(
+        shouldIntercept: () => true,
+        onUserLine: (line) {
+          submitted.add(line);
+          return 'id';
+        },
+      ),
+    );
+
+    capture.filter(Uint8List.fromList(utf8.encode('first\r')));
+    capture.filter(Uint8List.fromList(utf8.encode('second\r')));
+    expect(submitted, ['first', 'second']);
+  });
+
+  test('chunked bracketed paste across filter calls still waits for Enter', () {
+    final submitted = <String>[];
+    final capture = BusUserLineCapture(
+      BusUserInputRouting(
+        shouldIntercept: () => true,
+        onUserLine: (line) {
+          submitted.add(line);
+          return 'id';
+        },
+      ),
+    );
+
+    capture.filter(Uint8List.fromList(utf8.encode('\x1b[200~line1\n')));
+    capture.filter(Uint8List.fromList(utf8.encode('line2\x1b[201~')));
+    expect(submitted, isEmpty);
+
+    capture.filter(Uint8List.fromList([0x0d]));
+    expect(submitted, ['line1\nline2']);
+  });
+
+  test('non-parked bracketed multiline paste fires onTurnStart once on Enter', () {
+    var turnStarts = 0;
+    final capture = BusUserLineCapture(
+      BusUserInputRouting(
+        shouldIntercept: () => false,
+        onUserLine: (_) => '',
+        onTurnStart: () => turnStarts++,
+      ),
+    );
+
+    capture.filter(
+      Uint8List.fromList(utf8.encode('\x1b[200~a\nb\nc\x1b[201~')),
+    );
+    expect(turnStarts, 0);
+
+    capture.filter(Uint8List.fromList(utf8.encode('\r')));
+    expect(turnStarts, 1);
+  });
 }

@@ -12,8 +12,9 @@ class BusUserInputRouting {
 
   final bool Function() shouldIntercept;
 
-  /// Submits a captured line. Returns the delivered message id (empty if none),
-  /// so the terminal session can track it for the parked-send overlay.
+  /// Submits captured input (may contain embedded newlines after a paste).
+  /// Returns the delivered message id (empty if none), so the terminal session
+  /// can track it for the parked-send overlay.
   final String Function(String line) onUserLine;
 
   /// Whether a previously-delivered message id is still unread in the target
@@ -27,11 +28,15 @@ class BusUserInputRouting {
   final void Function()? onTurnStart;
 }
 
-/// 从 engine→PTY 字节流里解析「一行」。
+/// 从 engine→PTY 字节流里解析「提交内容」。
 ///
 /// park 期间**不**吞掉按键：照常透传给 CLI，由 CLI 自己的输入框就地回显；只把
-/// 「回车提交」截下来——把这一行投给 bus（`onUserLine`），并用 `Ctrl-U`（kill-line）
-/// 清掉 CLI 输入框里的同一行，避免 CLI 自己再当成一次提交处理。
+/// 「回车提交」截下来——把缓冲投给 bus（`onUserLine`），并用 `Ctrl-U`（kill-line）
+/// 清掉 CLI 输入框，避免 CLI 自己再当成一次提交处理。
+///
+/// **粘贴语义（与 bracketed paste 一致）：**
+/// - `ESC[200~`…`ESC[201~` 内的换行是内容，不提交、不换 Ctrl-U；结束后按 Enter 才整段入队。
+/// - 无 bracketed 时，单次 [filter] 调用内多行换行会合并成一次提交（兼容未开 paste 模式的 CLI）。
 class BusUserLineCapture {
   BusUserLineCapture(this._routing);
 
@@ -41,24 +46,36 @@ class BusUserLineCapture {
   final BusUserInputRouting _routing;
   final StringBuffer _buffer = StringBuffer();
   final List<int> _pendingUtf8Bytes = [];
+  final StringBuffer _csiParams = StringBuffer();
   _InputMode _mode = _InputMode.normal;
+  var _inBracketedPaste = false;
+
+  /// When >0, this [filter] call is a non-bracketed multi-line chunk: newlines
+  /// are content until the last logical line ending, which submits once.
+  var _coalesceRemaining = 0;
+
+  /// After a CR, the following LF (CRLF) is not a second logical line ending.
+  var _consumeLfAfterCr = false;
 
   /// 返回仍应写入 PTY 的字节。
-  /// - parked(intercept): 原样透传,回车换成 Ctrl-U,行投给 bus(`onUserLine`)。
+  /// - parked(intercept): 原样透传,回车换成 Ctrl-U,内容投给 bus(`onUserLine`)。
   /// - 未 parked: 字节**完全不动**直透 PTY,只在解析出「非空提交」时触发
   ///   `onTurnStart`(回合开始 working 边)。
   Uint8List filter(Uint8List data) {
     final intercept = _routing.shouldIntercept();
     if (!intercept && _routing.onTurnStart == null) {
-      _resetLineBuffer();
-      _mode = _InputMode.normal;
+      _resetAll();
       return data; // 无 overlay 也无 turn-start 钩子:快路径。
     }
+    final lineEnds = _countLogicalLineEnds(data);
+    _coalesceRemaining =
+        (!_inBracketedPaste && lineEnds > 1) ? lineEnds : 0;
     final out = BytesBuilder();
     for (final byte in data) {
       final emit = _feedCodeUnit(byte, intercept);
       if (intercept && emit != null) out.addByte(emit);
     }
+    _coalesceRemaining = 0;
     // 未 parked:原字节一字不改透传,filter 仅作为 onTurnStart 的旁路探测。
     return intercept ? out.toBytes() : data;
   }
@@ -72,7 +89,7 @@ class BusUserLineCapture {
         _feedAfterEsc(codeUnit);
         return codeUnit;
       case _InputMode.csi:
-        if (_isCsiFinal(codeUnit)) _mode = _InputMode.normal;
+        _feedCsi(codeUnit);
         return codeUnit;
       case _InputMode.ss3:
         _mode = _InputMode.normal;
@@ -89,13 +106,13 @@ class BusUserLineCapture {
   int? _feedNormal(int codeUnit, bool intercept) {
     if (codeUnit == 0x1b) {
       _mode = _InputMode.afterEsc;
+      _consumeLfAfterCr = false;
       return codeUnit; // 透传 ESC 序列起始
     }
     if (codeUnit == 0x0d || codeUnit == 0x0a) {
-      _submit(intercept);
-      // intercept:Ctrl-U 清掉 CLI 输入框;未 parked:原回车透传(返回值被忽略)。
-      return intercept ? _killLine : codeUnit;
+      return _feedLineEnding(codeUnit, intercept);
     }
+    _consumeLfAfterCr = false;
     if (codeUnit == 0x7f || codeUnit == 0x08) {
       _backspace();
       return codeUnit; // 让 CLI 自己回退一格回显
@@ -105,6 +122,39 @@ class BusUserLineCapture {
     }
     _appendUtf8Byte(codeUnit);
     return codeUnit; // 可见字符透传 → CLI 就地回显
+  }
+
+  int? _feedLineEnding(int codeUnit, bool intercept) {
+    // CRLF: LF after CR is the same logical line ending.
+    if (codeUnit == 0x0a && _consumeLfAfterCr) {
+      _consumeLfAfterCr = false;
+      if (_inBracketedPaste || _coalesceRemaining > 0) {
+        // CR already wrote '\n' into the buffer (or will submit on final CR).
+        return codeUnit;
+      }
+      // Bare LF after a submitting CR: empty submit, ignore.
+      _submit(intercept);
+      return intercept ? _killLine : codeUnit;
+    }
+    _consumeLfAfterCr = codeUnit == 0x0d;
+
+    if (_inBracketedPaste) {
+      _flushPendingUtf8();
+      _buffer.write('\n');
+      return codeUnit; // paste 内容：透传换行，不入队、不 Ctrl-U
+    }
+
+    if (_coalesceRemaining > 1) {
+      _coalesceRemaining--;
+      _flushPendingUtf8();
+      _buffer.write('\n');
+      return codeUnit; // 同 chunk 中间换行：并入缓冲
+    }
+
+    _coalesceRemaining = 0;
+    _submit(intercept);
+    // intercept:Ctrl-U 清掉 CLI 输入框;未 parked:原回车透传(返回值被忽略)。
+    return intercept ? _killLine : codeUnit;
   }
 
   void _appendUtf8Byte(int byte) {
@@ -121,14 +171,33 @@ class BusUserLineCapture {
     }
   }
 
+  void _flushPendingUtf8() {
+    if (_pendingUtf8Bytes.isEmpty) return;
+    try {
+      _buffer.write(utf8.decode(_pendingUtf8Bytes, allowMalformed: true));
+    } finally {
+      _pendingUtf8Bytes.clear();
+    }
+  }
+
   void _resetLineBuffer() {
     _buffer.clear();
     _pendingUtf8Bytes.clear();
   }
 
+  void _resetAll() {
+    _resetLineBuffer();
+    _mode = _InputMode.normal;
+    _inBracketedPaste = false;
+    _csiParams.clear();
+    _coalesceRemaining = 0;
+    _consumeLfAfterCr = false;
+  }
+
   void _feedAfterEsc(int codeUnit) {
     if (codeUnit == 0x5b) {
       _mode = _InputMode.csi;
+      _csiParams.clear();
       return;
     }
     if (codeUnit == 0x4f) {
@@ -142,6 +211,27 @@ class BusUserLineCapture {
     _mode = _InputMode.normal;
   }
 
+  void _feedCsi(int codeUnit) {
+    if (_isCsiFinal(codeUnit)) {
+      final params = _csiParams.toString();
+      _csiParams.clear();
+      if (codeUnit == 0x7e) {
+        if (params == '200') {
+          _inBracketedPaste = true;
+          _coalesceRemaining = 0;
+        } else if (params == '201') {
+          _inBracketedPaste = false;
+        }
+      }
+      _mode = _InputMode.normal;
+      return;
+    }
+    // CSI parameter / intermediate bytes.
+    if (codeUnit >= 0x30 && codeUnit <= 0x3f) {
+      _csiParams.writeCharCode(codeUnit);
+    }
+  }
+
   void _feedOsc(int codeUnit) {
     if (codeUnit == 0x07) {
       _mode = _InputMode.normal;
@@ -153,6 +243,20 @@ class BusUserLineCapture {
   }
 
   static bool _isCsiFinal(int codeUnit) => codeUnit >= 0x40 && codeUnit <= 0x7e;
+
+  static int _countLogicalLineEnds(Uint8List data) {
+    var count = 0;
+    for (var i = 0; i < data.length; i++) {
+      final b = data[i];
+      if (b == 0x0d) {
+        count++;
+        if (i + 1 < data.length && data[i + 1] == 0x0a) i++;
+      } else if (b == 0x0a) {
+        count++;
+      }
+    }
+    return count;
+  }
 
   void _backspace() {
     if (_pendingUtf8Bytes.isNotEmpty) {
@@ -172,7 +276,7 @@ class BusUserLineCapture {
     _buffer.clear();
     if (line.isEmpty) return;
     if (intercept) {
-      _routing.onUserLine(line); // parked:整行投给 bus 信箱。
+      _routing.onUserLine(line); // parked:整段投给 bus 信箱。
     } else {
       _routing.onTurnStart?.call(); // 未 parked:仅标记回合开始,不取内容。
     }
