@@ -669,8 +669,8 @@ base_url = "https://api.example.com/v1"
     expect(dev['agentId'], 'developer-one@$sessionId');
     expect(dev['name'], 'developer-one');
     expect(dev['agentType'], 'developer-one');
-    expect(dev['backendType'], 'in-process');
-    expect(dev['tmuxPaneId'], 'in-process');
+    expect(dev.containsKey('backendType'), isFalse);
+    expect(dev['tmuxPaneId'], '');
     expect(dev.containsKey('isActive'), isFalse);
     expect(dev['cwd'], '/workspace/workspace');
     expect(decoded.containsKey('env'), isFalse);

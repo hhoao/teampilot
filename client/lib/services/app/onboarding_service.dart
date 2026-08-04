@@ -40,8 +40,7 @@ class OnboardingService {
   }
 
   /// On wizard completion, re-apply the personal default preset to all
-  /// identities when configured; otherwise fall back to legacy team provider
-  /// binding for Claude-only installs.
+  /// identities when configured.
   static Future<void> finalizeOnboardingDefaults({
     required CliPresetsCubit cliPresetsCubit,
     required LaunchProfileCubit launchProfileCubit,
@@ -56,32 +55,6 @@ class OnboardingService {
         launchProfileCubit: launchProfileCubit,
         appProviderCubit: appProviderCubit,
       );
-      return;
     }
-
-    await applyDefaultClaudeProviderBinding(
-      appProviderCubit: appProviderCubit,
-      teamCubit: launchProfileCubit,
-    );
-  }
-
-  /// Binds the onboarding default Claude provider to Claude teams that have no
-  /// team-level provider yet so [SessionLifecycleService] can resolve settings.
-  static Future<void> applyDefaultClaudeProviderBinding({
-    required AppProviderCubit appProviderCubit,
-    required LaunchProfileCubit teamCubit,
-  }) async {
-    final providerId =
-        appProviderCubit.state.selectedProviderIdByCli[CliTool.claude]
-            ?.trim() ??
-        '';
-    if (providerId.isEmpty) return;
-
-    final exists = appProviderCubit.state
-        .providersFor(CliTool.claude)
-        .any((provider) => provider.id == providerId);
-    if (!exists) return;
-
-    await teamCubit.bindClaudeProviderForTeamsWithoutBinding(providerId);
   }
 }

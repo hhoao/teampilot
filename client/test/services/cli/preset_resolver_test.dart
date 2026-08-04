@@ -62,6 +62,30 @@ void main() {
     expect(bundle.sourcePreset, cursorPreset);
   });
 
+  test(
+    'resolveTeamLaunchBundle preset shape with missing preset returns unconfigured',
+    () {
+      const team = TeamProfile(
+        id: 'team',
+        name: 'Team',
+        cli: CliTool.claude,
+        activePresetId: 'missing-preset',
+        providerIdsByTool: {'claude': 'deepseek'},
+        modelsByTool: {'claude': 'deepseek-v4-pro'},
+        cliEffortLevels: {'claude': 'medium'},
+      );
+
+      final bundle = resolveTeamLaunchBundle(team: team, globalPresets: const []);
+
+      expect(bundle.cli, CliTool.claude);
+      expect(bundle.provider, isEmpty);
+      expect(bundle.model, isEmpty);
+      expect(bundle.effort, isEmpty);
+      expect(bundle.sourcePreset, isNull);
+      expect(bundle.isConfigured, isFalse);
+    },
+  );
+
   test('inherit member uses full team bundle including preset CLI', () {
     const team = TeamProfile(
       id: 'team',
@@ -119,6 +143,62 @@ void main() {
     expect(resolved.cli, CliTool.codex);
     expect(resolved.provider, 'codex-p');
     expect(resolved.model, 'codex-m');
+  });
+
+  test('memberForLaunch keeps member preset provider under team preset', () {
+    const teamPreset = CliPreset(
+      id: 'preset-team',
+      name: 'Team Default',
+      cli: CliTool.claude,
+      provider: 'team-provider',
+      model: 'team-model',
+      createdAt: 0,
+      updatedAt: 0,
+    );
+    const memberPreset = CliPreset(
+      id: 'preset-member',
+      name: 'Member Override',
+      cli: CliTool.claude,
+      provider: 'member-provider',
+      model: 'member-model',
+      createdAt: 0,
+      updatedAt: 0,
+    );
+    const team = TeamProfile(
+      id: 'team',
+      name: 'Team',
+      teamMode: TeamMode.native,
+      cli: CliTool.claude,
+      activePresetId: 'preset-team',
+      members: [
+        TeamMemberConfig(
+          id: 'inherit',
+          name: 'inherit',
+          activePresetId: TeamProfile.inheritPresetId,
+        ),
+        TeamMemberConfig(
+          id: 'override',
+          name: 'override',
+          activePresetId: 'preset-member',
+        ),
+      ],
+    );
+
+    final inheritStaged = memberForLaunch(
+      team: team,
+      member: team.members.first,
+      globalPresets: const [teamPreset, memberPreset],
+    );
+    final overrideStaged = memberForLaunch(
+      team: team,
+      member: team.members.last,
+      globalPresets: const [teamPreset, memberPreset],
+    );
+
+    expect(inheritStaged.provider, 'team-provider');
+    expect(inheritStaged.model, 'team-model');
+    expect(overrideStaged.provider, 'member-provider');
+    expect(overrideStaged.model, 'member-model');
   });
 
   test('member explicit preset overrides team bundle', () {

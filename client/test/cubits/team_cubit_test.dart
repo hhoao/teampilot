@@ -554,11 +554,11 @@ void main() {
       ),
     );
     expect(await settingsFile.exists(), isFalse);
-    final dev = cubit.state.selectedTeam!.members.firstWhere(
-      (m) => m.id == 'developer',
+    final devSlot = cubit.state.selectedTeam!.roster.firstWhere(
+      (slot) => slot.id == 'developer',
     );
-    expect(dev.provider, 'moonshot');
-    expect(dev.model, 'kimi-k2');
+    expect(devSlot.overrides.provider, 'moonshot');
+    expect(devSlot.overrides.model, 'kimi-k2');
     expect(
       cubit.state.selectedTeam!.members.any((m) => m.id == 'team-lead'),
       isTrue,
@@ -636,88 +636,77 @@ void main() {
     await _deleteTeamTempDir(base);
   });
 
-  test(
-    'bindClaudeProviderForTeamsWithoutBinding sets claude team provider',
-    () async {
-      final dir = await Directory.systemTemp.createTemp('team-bind-provider-');
-      final repo = _repo(dir);
-      final cubit = LaunchProfileCubit(
-        repository: repo,
-        sessionRepository: SessionRepository(),
-        executableResolver: () => 'claude',
-        pluginLinker: _RecordingPluginLinker(),
-      );
+  test('setTeamActivePreset clears providerIdsByTool', () async {
+    final dir = await Directory.systemTemp.createTemp('team-preset-clear-');
+    final repo = _repo(dir);
+    final cubit = LaunchProfileCubit(
+      repository: repo,
+      sessionRepository: SessionRepository(),
+      executableResolver: () => 'claude',
+      pluginLinker: _RecordingPluginLinker(),
+    );
 
-      const team = TeamProfile(
-        id: LaunchProfileProvisioner.defaultNativeTeamId,
-        name: 'Default Native Team',
-        cli: CliTool.claude,
-        roster: [
-          TeamRosterSlot(
-            id: 'team-lead',
-            expertKey: 'teampilot/builtin/team-lead',
-          ),
-        ],
-      );
-      await repo.saveTeamProfiles([team]);
-      await cubit.load();
+    const team = TeamProfile(
+      id: LaunchProfileProvisioner.defaultNativeTeamId,
+      name: 'Default Native Team',
+      cli: CliTool.claude,
+      roster: [
+        TeamRosterSlot(
+          id: 'team-lead',
+          expertKey: 'teampilot/builtin/team-lead',
+        ),
+      ],
+      providerIdsByTool: {'claude': 'deepseek'},
+      modelsByTool: {'claude': 'deepseek-chat'},
+      cliEffortLevels: {'claude': 'high'},
+    );
+    await repo.saveTeamProfiles([team]);
+    await cubit.load();
+    await cubit.selectTeam(LaunchProfileProvisioner.defaultNativeTeamId);
 
-      await cubit.bindClaudeProviderForTeamsWithoutBinding('deepseek');
+    cubit.setTeamActivePreset('preset-1', syncCli: CliTool.claude);
+    await _drainAndCloseTeamCubit(cubit);
 
-      expect(
-        _teamById(
-          cubit.state.teams,
-          LaunchProfileProvisioner.defaultNativeTeamId,
-        ).providerIdsByTool['claude'],
-        'deepseek',
-      );
-      final reloaded = await repo.loadTeamProfiles();
-      expect(
-        _teamById(
-          reloaded,
-          LaunchProfileProvisioner.defaultNativeTeamId,
-        ).providerIdsByTool['claude'],
-        'deepseek',
-      );
+    final reloaded = await repo.loadTeamProfiles();
+    final saved = _teamById(
+      reloaded,
+      LaunchProfileProvisioner.defaultNativeTeamId,
+    );
+    expect(saved.activePresetId, 'preset-1');
+    expect(saved.providerIdsByTool, isEmpty);
+    expect(saved.modelsByTool, isEmpty);
+    expect(saved.cliEffortLevels, isEmpty);
 
-      await _drainAndCloseTeamCubit(cubit);
-      await _deleteTeamTempDir(dir);
-    },
-  );
+    await _deleteTeamTempDir(dir);
+  });
 
-  test(
-    'bindClaudeProviderForTeamsWithoutBinding keeps existing binding',
-    () async {
-      final dir = await Directory.systemTemp.createTemp('team-bind-existing-');
-      final repo = _repo(dir);
-      final cubit = LaunchProfileCubit(
-        repository: repo,
-        sessionRepository: SessionRepository(),
-        executableResolver: () => 'claude',
-        pluginLinker: _RecordingPluginLinker(),
-      );
+  test('load normalizes dirty preset plus custom maps on disk', () async {
+    final dir = await Directory.systemTemp.createTemp('team-load-normalize-');
+    final repo = _repo(dir);
+    const team = TeamProfile(
+      id: 'dirty-team',
+      name: 'Dirty',
+      cli: CliTool.claude,
+      activePresetId: 'preset-1',
+      providerIdsByTool: {'claude': 'should-clear'},
+      modelsByTool: {'claude': 'x'},
+      cliEffortLevels: {'claude': 'high'},
+      roster: [
+        TeamRosterSlot(
+          id: 'team-lead',
+          expertKey: 'teampilot/builtin/team-lead',
+        ),
+      ],
+    );
+    await repo.saveTeamProfiles([team]);
 
-      const team = TeamProfile(
-        id: LaunchProfileProvisioner.defaultNativeTeamId,
-        name: 'Default Native Team',
-        cli: CliTool.claude,
-        roster: [
-          TeamRosterSlot(
-            id: 'team-lead',
-            expertKey: 'teampilot/builtin/team-lead',
-          ),
-        ],
-        providerIdsByTool: {'claude': 'official'},
-      );
-      await repo.saveTeamProfiles([team]);
-      await cubit.load();
+    final loaded = await repo.loadTeamProfiles();
+    final normalized = _teamById(loaded, 'dirty-team');
+    expect(normalized.activePresetId, 'preset-1');
+    expect(normalized.providerIdsByTool, isEmpty);
+    expect(normalized.modelsByTool, isEmpty);
+    expect(normalized.cliEffortLevels, isEmpty);
 
-      await cubit.bindClaudeProviderForTeamsWithoutBinding('deepseek');
-
-      expect(cubit.state.selectedTeam!.providerIdsByTool['claude'], 'official');
-
-      await _drainAndCloseTeamCubit(cubit);
-      await _deleteTeamTempDir(dir);
-    },
-  );
+    await _deleteTeamTempDir(dir);
+  });
 }

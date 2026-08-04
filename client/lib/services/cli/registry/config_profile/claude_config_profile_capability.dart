@@ -1,7 +1,9 @@
 import 'dart:convert';
 
 import '../../../../models/claude_credential_link_result.dart';
+import '../../../../models/cli_preset.dart';
 import '../../../../models/team_config.dart';
+import '../../../../repositories/cli_presets_repository.dart';
 import '../../../../utils/team/team_member_naming.dart';
 import '../../../provider/claude/claude_effort_capability.dart';
 import '../../../provider/claude/claude_official_provider.dart';
@@ -109,16 +111,26 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
 
   Future<ClaudeLaunchExtras> resolveLaunchExtras({
     required TeamProfile team,
-    required TeamMemberConfig? member,
+    required List<TeamMemberConfig> launchResolvedMembers,
+    required TeamMemberConfig? launchedMember,
     required ClaudeProviderSettingsResolver resolver,
+    List<CliPreset> globalPresets = const [],
   }) async {
-    final settings = await resolver.resolveTeamClaudeSettings(team);
-    final providerId = await resolver.resolveProviderId(team);
+    final normalized = team.normalizedLaunchConfig();
+    final settings = await resolver.resolveTeamClaudeSettings(
+      normalized,
+      globalPresets: globalPresets,
+    );
+    final providerId = await resolver.resolveProviderId(
+      normalized,
+      globalPresets: globalPresets,
+    );
     final settingsByMember = await _loadMemberProviderSettings(
       resolver: resolver,
-      team: team,
+      team: normalized,
+      launchResolvedMembers: launchResolvedMembers,
       teamClaudeSettings: settings,
-      launchedMember: member,
+      globalPresets: globalPresets,
     );
     return ClaudeLaunchExtras(
       settings: settings,
@@ -160,10 +172,13 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     ClaudeLaunchExtras? claude;
     if (team != null) {
       final resolver = _claudeResolver(catalog);
+      final globalPresets = await _loadGlobalPresets(catalog);
       claude = await resolveLaunchExtras(
         team: team,
-        member: ctx.member,
+        launchResolvedMembers: ctx.members,
+        launchedMember: ctx.member,
         resolver: resolver,
+        globalPresets: globalPresets,
       );
       final launched = ctx.member;
       if (launched != null &&
@@ -771,30 +786,32 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
   Future<Map<String, Map<String, Object?>>> _loadMemberProviderSettings({
     required ClaudeProviderSettingsResolver resolver,
     required TeamProfile team,
+    required List<TeamMemberConfig> launchResolvedMembers,
     required Map<String, Object?>? teamClaudeSettings,
-    required TeamMemberConfig? launchedMember,
+    List<CliPreset> globalPresets = const [],
   }) async {
-    final members = <String, TeamMemberConfig>{};
-    for (final member in team.members.where((member) => member.isValid)) {
-      members[member.id] = member;
-    }
-    final selected = launchedMember;
-    if (selected != null && selected.isValid) {
-      members[selected.id] = selected;
-    }
-
     final settingsByMember = <String, Map<String, Object?>>{};
-    for (final member in members.values) {
+    for (final member in launchResolvedMembers) {
+      if (!member.isValid) continue;
       final settings = await resolver.resolveMemberClaudeSettings(
         team: team,
         member: member,
         teamClaudeSettings: teamClaudeSettings,
+        globalPresets: globalPresets,
       );
       if (settings != null) {
         settingsByMember[member.id] = settings;
       }
     }
     return settingsByMember;
+  }
+
+  Future<List<CliPreset>> _loadGlobalPresets(ConfigProfilePaths catalog) async {
+    final presetsPath = catalog.pathContext.join(
+      catalog.basePath,
+      'cli-presets.json',
+    );
+    return CliPresetsRepository(fs: catalog.fs, presetsPath: presetsPath).load();
   }
 
   static Map<String, Object?> _teamSettings(

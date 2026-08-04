@@ -1,6 +1,8 @@
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 
+export 'team_launch_config.dart';
+
 import 'team_roster_slot.dart';
 
 import '../utils/team/team_member_naming.dart';
