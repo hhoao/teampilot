@@ -66,6 +66,27 @@ abstract final class ExpertMemberMaterializer {
     TeamMemberConfig member,
     TeamProfile team,
   ) {
+    final inheritsTeamPreset =
+        member.activePresetId == null ||
+        member.activePresetId!.isEmpty ||
+        member.activePresetId == TeamProfile.inheritPresetId;
+
+    if (inheritsTeamPreset) {
+      var next = member;
+      if (next.provider.trim().isNotEmpty ||
+          next.model.trim().isNotEmpty ||
+          next.effort.trim().isNotEmpty) {
+        next = next.copyWith(provider: '', model: '', effort: '', updateEffort: true);
+      }
+      if (next.activePresetId == null || next.activePresetId!.isEmpty) {
+        next = next.copyWith(
+          activePresetId: TeamProfile.inheritPresetId,
+          updateActivePresetId: true,
+        );
+      }
+      return next;
+    }
+
     final cli = member.cli ?? team.cli;
     var next = member;
     if (next.provider.trim().isEmpty) {
@@ -78,13 +99,7 @@ abstract final class ExpertMemberMaterializer {
     }
     if (next.effort.trim().isEmpty) {
       final e = team.effortForCli(cli);
-      if (e.isNotEmpty) next = next.copyWith(effort: e);
-    }
-    if (next.activePresetId == null || next.activePresetId!.isEmpty) {
-      next = next.copyWith(
-        activePresetId: TeamProfile.inheritPresetId,
-        updateActivePresetId: true,
-      );
+      if (e.isNotEmpty) next = next.copyWith(effort: e, updateEffort: true);
     }
     return next;
   }
