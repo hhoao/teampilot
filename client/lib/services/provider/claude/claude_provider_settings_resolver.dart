@@ -1,6 +1,9 @@
 import '../../../models/app_provider_config.dart';
+import '../../../models/cli_preset.dart';
 import '../../../models/team_config.dart';
+import '../../../models/team_launch_config.dart';
 import '../../../repositories/app_provider_repository.dart';
+import '../../cli/preset_resolver.dart';
 import '../tool_config_generator.dart';
 
 /// Resolves Claude Code settings from the Claude provider catalog.
@@ -24,11 +27,24 @@ class ClaudeProviderSettingsResolver {
     return _generator.buildClaudeSettings(provider);
   }
 
-  Future<String?> resolveProviderId(TeamProfile team) async {
-    final fromTeam = team.providerIdsByTool['claude']?.trim() ?? '';
+  Future<String?> resolveProviderId(
+    TeamProfile team, {
+    List<CliPreset> globalPresets = const [],
+  }) async {
+    final normalized = team.normalizedLaunchConfig();
+    if (teamLaunchShape(normalized) == TeamLaunchShape.preset) {
+      final bundle = resolveTeamLaunchBundle(
+        team: normalized,
+        globalPresets: globalPresets,
+      );
+      final fromPreset = bundle.provider.trim();
+      return fromPreset.isNotEmpty ? fromPreset : null;
+    }
+
+    final fromTeam = normalized.providerIdsByTool['claude']?.trim() ?? '';
     if (fromTeam.isNotEmpty) return fromTeam;
 
-    for (final member in team.members) {
+    for (final member in normalized.members) {
       final fromMember = member.provider.trim();
       if (fromMember.isNotEmpty) {
         final provider = await _repository.findById(CliTool.claude, fromMember);
@@ -41,37 +57,27 @@ class ClaudeProviderSettingsResolver {
     return null;
   }
 
-  /// Team-level Claude settings: team tool binding, then any member id, then sole claude provider.
+  /// Team-level Claude settings from the active launch shape only.
   Future<Map<String, Object?>?> resolveTeamClaudeSettings(
-    TeamProfile team,
-  ) async {
-    final fromTeam = await resolve(team.providerIdsByTool['claude']);
-    if (fromTeam != null) return fromTeam;
-
-    for (final member in team.members) {
-      final fromMember = await resolve(member.provider);
-      if (fromMember != null) return fromMember;
-    }
-
-    final claudeProviders = await _listClaudeProviders();
-    if (claudeProviders.length == 1) {
-      return _generator.buildClaudeSettings(claudeProviders.first);
-    }
-    return null;
+    TeamProfile team, {
+    List<CliPreset> globalPresets = const [],
+  }) async {
+    return resolve(await resolveProviderId(team, globalPresets: globalPresets));
   }
 
-  /// Member settings: member provider, then [teamClaudeSettings], then team-level fallbacks.
+  /// Member settings: launch-resolved [member] provider, then [teamClaudeSettings].
   Future<Map<String, Object?>?> resolveMemberClaudeSettings({
     required TeamProfile team,
     required TeamMemberConfig member,
     Map<String, Object?>? teamClaudeSettings,
+    List<CliPreset> globalPresets = const [],
   }) async {
     final fromMember = await resolve(member.provider);
     if (fromMember != null) return fromMember;
 
     if (teamClaudeSettings != null) return teamClaudeSettings;
 
-    return resolveTeamClaudeSettings(team);
+    return resolveTeamClaudeSettings(team, globalPresets: globalPresets);
   }
 
   Future<List<AppProviderConfig>> _listClaudeProviders() async {
