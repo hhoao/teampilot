@@ -238,8 +238,7 @@ class _LandingTeamSettingsDialogState
       cubit: cubit,
     );
     if (!mounted) return;
-    _cubitDirty = true;
-    _refreshDraftFromCubit(overlayDraftFields: true);
+    _adoptCubitAsBaseline(overlayDraftFields: true);
   }
 
   Future<void> _openMemberConfigure(TeamMemberConfig member) async {
@@ -253,8 +252,18 @@ class _LandingTeamSettingsDialogState
           MemberLaunchConfigureDialog(team: team, member: member, cubit: cubit),
     );
     if (!mounted) return;
-    _cubitDirty = true;
-    _refreshDraftFromCubit(overlayDraftFields: true);
+    _adoptCubitAsBaseline(overlayDraftFields: true);
+  }
+
+  /// Nested configure dialogs persist via [LaunchProfileCubit]; adopt that as the
+  /// Cancel baseline so outer dismiss does not wipe those fields.
+  void _adoptCubitAsBaseline({required bool overlayDraftFields}) {
+    final cubit = context.read<LaunchProfileCubit>();
+    final fromCubit = _teamFromCubit(cubit);
+    if (fromCubit == null) return;
+    _refreshDraftFromCubit(overlayDraftFields: overlayDraftFields);
+    _initialTeam = fromCubit;
+    _cubitDirty = false;
   }
 
   void _updateMember(TeamMemberConfig updated) {

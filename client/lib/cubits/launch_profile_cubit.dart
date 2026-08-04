@@ -622,7 +622,8 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
   ///
   /// [presetId] may be a preset UUID, `null` (clear), or empty (clear).
   /// [syncCli] aligns [TeamProfile.cli] with the preset for mixed/native launch.
-  void setTeamActivePreset(String? presetId, {CliTool? syncCli}) {
+  /// Completes after [updateSelected] persists so callers can refresh UI safely.
+  Future<void> setTeamActivePreset(String? presetId, {CliTool? syncCli}) async {
     final team = state.selectedTeam;
     if (team == null) return;
     final effectiveId = (presetId == null || presetId.trim().isEmpty)
@@ -634,17 +635,19 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
     } else {
       next = team.asPresetLaunch(effectiveId, syncCli: syncCli);
     }
-    updateSelected(next);
+    await updateSelected(next);
   }
 
   /// Persists team custom launch defaults for [catalogCli] and clears any preset.
-  void updateTeamCustomLaunch({
+  ///
+  /// Completes after [updateSelected] persists so callers can refresh UI safely.
+  Future<void> updateTeamCustomLaunch({
     required CliTool catalogCli,
     CliTool? defaultCli,
     required String providerId,
     required String model,
     required String effort,
-  }) {
+  }) async {
     final team = state.selectedTeam;
     if (team == null) return;
     var next = team.asCustomLaunch(
@@ -656,7 +659,7 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
     if (defaultCli != null && team.teamMode == TeamMode.mixed) {
       next = next.copyWith(cli: defaultCli);
     }
-    updateSelected(next);
+    await updateSelected(next);
   }
 
   /// Sets the active preset for a member of the selected team.

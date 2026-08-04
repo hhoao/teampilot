@@ -664,7 +664,7 @@ void main() {
     await cubit.load();
     await cubit.selectTeam(LaunchProfileProvisioner.defaultNativeTeamId);
 
-    cubit.setTeamActivePreset('preset-1', syncCli: CliTool.claude);
+    await cubit.setTeamActivePreset('preset-1', syncCli: CliTool.claude);
     await _drainAndCloseTeamCubit(cubit);
 
     final reloaded = await repo.loadTeamProfiles();
@@ -679,6 +679,53 @@ void main() {
 
     await _deleteTeamTempDir(dir);
   });
+
+  test(
+    'await setTeamActivePreset / updateTeamCustomLaunch sees persisted state',
+    () async {
+      final dir = await Directory.systemTemp.createTemp('team-preset-await-');
+      final repo = _repo(dir);
+      final cubit = LaunchProfileCubit(
+        repository: repo,
+        sessionRepository: SessionRepository(),
+        executableResolver: () => 'claude',
+        pluginLinker: _RecordingPluginLinker(),
+      );
+
+      const team = TeamProfile(
+        id: LaunchProfileProvisioner.defaultNativeTeamId,
+        name: 'Default Native Team',
+        cli: CliTool.claude,
+        roster: [
+          TeamRosterSlot(
+            id: 'team-lead',
+            expertKey: 'teampilot/builtin/team-lead',
+          ),
+        ],
+      );
+      await repo.saveTeamProfiles([team]);
+      await cubit.load();
+      await cubit.selectTeam(LaunchProfileProvisioner.defaultNativeTeamId);
+
+      await cubit.setTeamActivePreset('preset-await', syncCli: CliTool.claude);
+      expect(cubit.state.selectedTeam?.activePresetId, 'preset-await');
+
+      await cubit.updateTeamCustomLaunch(
+        catalogCli: CliTool.claude,
+        providerId: 'deepseek',
+        model: 'deepseek-chat',
+        effort: 'high',
+      );
+      final custom = cubit.state.selectedTeam!;
+      expect(custom.activePresetId, isNull);
+      expect(custom.providerForCli(CliTool.claude), 'deepseek');
+      expect(custom.modelForCli(CliTool.claude), 'deepseek-chat');
+      expect(custom.effortForCli(CliTool.claude), 'high');
+
+      await _drainAndCloseTeamCubit(cubit);
+      await _deleteTeamTempDir(dir);
+    },
+  );
 
   test('load normalizes dirty preset plus custom maps on disk', () async {
     final dir = await Directory.systemTemp.createTemp('team-load-normalize-');

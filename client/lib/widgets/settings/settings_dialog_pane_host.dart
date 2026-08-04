@@ -8,7 +8,8 @@ import '../pane_entry_animation.dart';
 /// The active pane defers its first [builder] call by one frame so the dialog
 /// chrome can paint before a heavy config subtree builds. Section switches
 /// replay [PaneEntryAnimation] via [restartToken] without remounting pane
-/// content, so keep-alive state survives A→B→A.
+/// [State] (IndexedStack + stable keys). [builder] runs on every rebuild so
+/// parent draft/data updates still flow into pane content.
 class SettingsDialogPaneHost extends StatefulWidget {
   const SettingsDialogPaneHost({
     required this.paneCount,
@@ -101,7 +102,6 @@ class _SettingsLazyPaneState extends State<_SettingsLazyPane>
     with AutomaticKeepAliveClientMixin {
   var _contentReady = false;
   var _builtOnce = false;
-  Widget? _cachedContent;
   Object? _playToken;
 
   @override
@@ -156,10 +156,11 @@ class _SettingsLazyPaneState extends State<_SettingsLazyPane>
     if (!widget.mount || !_contentReady) {
       return const SizedBox.expand();
     }
-    final content = _cachedContent ??= widget.builder(context);
+    // Always rebuild from [builder] so parent draft/data updates flow through.
+    // IndexedStack + stable keys keep StatefulElement / local state alive.
     return PaneEntryAnimation(
       restartToken: _playToken,
-      child: content,
+      child: widget.builder(context),
     );
   }
 }

@@ -83,6 +83,32 @@ void main() {
     expect(find.text('A: 1'), findsOneWidget);
   });
 
+  testWidgets(
+    'SettingsDialogPaneHost rebuilds pane content when parent data changes',
+    (tester) async {
+      var label = 'before';
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: _LabelPaneHostHarness(
+            labelBuilder: () => label,
+          ),
+        ),
+      );
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 250));
+      expect(find.text('before'), findsOneWidget);
+
+      label = 'after';
+      await tester.tap(find.text('rebuild'));
+      await tester.pump();
+
+      expect(find.text('after'), findsOneWidget);
+      expect(find.text('before'), findsNothing);
+    },
+  );
+
   testWidgets('SettingsDialogPaneHost replays entry animation on reselect', (
     tester,
   ) async {
@@ -121,6 +147,38 @@ void main() {
 
     expect(tokensAfter.any((t) => !firstToken.contains(t)), isTrue);
   });
+}
+
+class _LabelPaneHostHarness extends StatefulWidget {
+  const _LabelPaneHostHarness({required this.labelBuilder});
+
+  final String Function() labelBuilder;
+
+  @override
+  State<_LabelPaneHostHarness> createState() => _LabelPaneHostHarnessState();
+}
+
+class _LabelPaneHostHarnessState extends State<_LabelPaneHostHarness> {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Column(
+        children: [
+          TextButton(
+            onPressed: () => setState(() {}),
+            child: const Text('rebuild'),
+          ),
+          Expanded(
+            child: SettingsDialogPaneHost(
+              paneCount: 1,
+              selectedIndex: 0,
+              builder: (context, index) => Text(widget.labelBuilder()),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _PaneHostHarness extends StatefulWidget {

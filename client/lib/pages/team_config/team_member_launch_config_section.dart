@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
@@ -296,16 +298,17 @@ class _MemberLaunchConfigureDialogState
     return team.cli;
   }
 
-  void _applyConfigKind(MemberLaunchConfigKind kind) {
+  Future<void> _applyConfigKind(MemberLaunchConfigKind kind) async {
     setState(() => _configKind = kind);
     switch (kind) {
       case MemberLaunchConfigKind.inheritTeam:
-        widget.cubit.setMemberActivePreset(
+        await widget.cubit.setMemberActivePreset(
           widget.member.id,
           TeamProfile.inheritPresetId,
         );
       case MemberLaunchConfigKind.custom:
-        widget.cubit.setMemberActivePreset(widget.member.id, null);
+        await widget.cubit.setMemberActivePreset(widget.member.id, null);
+        if (!mounted) return;
         setState(() {
           _cliToken = widget.member.cli?.value ?? '';
           _providerId = widget.member.provider;
@@ -313,13 +316,13 @@ class _MemberLaunchConfigureDialogState
           _effortId = widget.member.effort;
         });
       case MemberLaunchConfigKind.preset:
-        _applyEffectivePresetChoice(
+        await _applyEffectivePresetChoice(
           context.read<CliPresetsCubit>().state.presets,
         );
     }
   }
 
-  void _applyEffectivePresetChoice(List<CliPreset> allPresets) {
+  Future<void> _applyEffectivePresetChoice(List<CliPreset> allPresets) async {
     final team = context.read<LaunchProfileCubit>().state.teams.firstWhere(
       (t) => t.id == widget.team.id,
       orElse: () => widget.team,
@@ -341,7 +344,7 @@ class _MemberLaunchConfigureDialogState
       dropdownItems: presetDropdownItems,
     );
     if (token.isNotEmpty) {
-      _applyPresetChoice(token, allPresets);
+      await _applyPresetChoice(token, allPresets);
     }
   }
 
@@ -355,7 +358,10 @@ class _MemberLaunchConfigureDialogState
   }
 
   /// Applies a preset choice when configuration type is [MemberLaunchConfigKind.preset].
-  void _applyPresetChoice(String token, List<CliPreset> allPresets) {
+  Future<void> _applyPresetChoice(
+    String token,
+    List<CliPreset> allPresets,
+  ) async {
     CliTool? syncCli;
     for (final preset in allPresets) {
       if (preset.id == token) {
@@ -363,24 +369,25 @@ class _MemberLaunchConfigureDialogState
         break;
       }
     }
-    widget.cubit.setMemberActivePreset(
+    await widget.cubit.setMemberActivePreset(
       widget.member.id,
       token,
       syncCli: syncCli,
     );
+    if (!mounted) return;
     setState(() {
       _configKind = MemberLaunchConfigKind.preset;
       if (syncCli != null) _cliToken = syncCli.value;
     });
   }
 
-  void _save() {
+  Future<void> _save() async {
     if (_configKind == MemberLaunchConfigKind.custom) {
       final mixed = widget.team.teamMode == TeamMode.mixed;
       final nextCli = mixed && _cliToken.isNotEmpty
           ? CliTool.decode(_cliToken)
           : null;
-      widget.cubit.updateMember(
+      await widget.cubit.updateMember(
         widget.member.id,
         widget.member.copyWith(
           cli: nextCli,
@@ -392,10 +399,11 @@ class _MemberLaunchConfigureDialogState
         ),
       );
     } else if (_configKind == MemberLaunchConfigKind.preset) {
-      _applyEffectivePresetChoice(
+      await _applyEffectivePresetChoice(
         context.read<CliPresetsCubit>().state.presets,
       );
     }
+    if (!mounted) return;
     Navigator.of(context).pop();
   }
 
@@ -466,7 +474,7 @@ class _MemberLaunchConfigureDialogState
                   decoration: dropdownDeco,
                   showDividerBelow:
                       _configKind == MemberLaunchConfigKind.custom,
-                  onChanged: _applyConfigKind,
+                  onChanged: (kind) => unawaited(_applyConfigKind(kind)),
                 ),
                 if (_configKind == MemberLaunchConfigKind.inheritTeam)
                   MemberLaunchInheritSummary(
@@ -484,7 +492,8 @@ class _MemberLaunchConfigureDialogState
                     registry: registry,
                     providerState: providerState,
                     decoration: dropdownDeco,
-                    onChanged: (token) => _applyPresetChoice(token, allPresets),
+                    onChanged: (token) =>
+                        unawaited(_applyPresetChoice(token, allPresets)),
                   ),
                 if (isCustom)
                   CliLaunchCustomFields(
@@ -538,8 +547,12 @@ class _MemberLaunchConfigureDialogState
               ),
               FilledButton(
                 onPressed: isCustom
-                    ? (_canSaveCustom(mixed) ? _save : null)
-                    : (presetDropdownItems.isEmpty ? null : _save),
+                    ? (_canSaveCustom(mixed)
+                          ? () => unawaited(_save())
+                          : null)
+                    : (presetDropdownItems.isEmpty
+                          ? null
+                          : () => unawaited(_save())),
                 child: Text(l10n.save),
               ),
             ],
