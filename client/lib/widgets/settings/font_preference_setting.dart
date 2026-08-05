@@ -126,8 +126,6 @@ String _labelForFontId(AppLocalizations l10n, String id) {
       return l10n.fontOptionNotoSansSc;
     case 'jetbrainsMono':
       return l10n.fontOptionJetbrainsMono;
-    case 'ubuntuSansMono':
-      return l10n.fontOptionUbuntuSansMono;
     default:
       return id;
   }

@@ -12,9 +12,9 @@ void main() {
     expect(ids, containsAll(['system', 'notoSansSc']));
   });
 
-  test('monoOptions includes system, jetbrainsMono, ubuntuSansMono', () {
+  test('monoOptions includes system and jetbrainsMono', () {
     final ids = FontCatalog.monoOptions.map((e) => e.id).toList();
-    expect(ids, containsAll(['system', 'jetbrainsMono', 'ubuntuSansMono']));
+    expect(ids, containsAll(['system', 'jetbrainsMono']));
   });
 
   test('entry unknown id returns system for that role', () {

@@ -8,9 +8,6 @@ import 'package:shared_ui/shared_ui.dart';
 /// face — that comes from [TpFontTheme] / [appTerminalTextStyle]).
 const kTerminalFontFamily = AppFonts.monoFamily;
 
-/// Bundled alternate mono catalog family; may appear in mono fallbacks.
-const kUbuntuSansMonoFontFamily = 'Ubuntu Sans Mono';
-
 /// Terminal face + size from [AppTypographyTheme.terminal].
 ///
 /// The terminal renders via [TerminalView] (a [CustomPaint], not a [Text]

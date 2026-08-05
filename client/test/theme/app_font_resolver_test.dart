@@ -14,7 +14,7 @@ void main() {
     expect(r.resolvedMonoId, 'system');
   });
 
-  test('linux system mono is Latin-first with SC before monospace', () {
+  test('linux system mono keeps only registered emoji in fallback', () {
     final r = AppFontResolver.resolve(
       uiFontId: 'system',
       monoFontId: 'system',
@@ -22,12 +22,13 @@ void main() {
     );
     // Latin primary (Orca / VS Code style) — not CJK mono, which sparsifies ASCII.
     expect(r.monoFamily, 'DejaVu Sans Mono');
-    expect(r.monoFallback.contains('monospace'), isTrue);
-    final chain = [r.monoFamily, ...r.monoFallback];
-    final monoIdx = chain.indexOf('monospace');
-    final scIdx = chain.indexOf('Noto Sans Mono CJK SC');
-    expect(scIdx, greaterThanOrEqualTo(0));
-    expect(scIdx, lessThan(monoIdx));
+    // No generic aliases and no fontconfig-resolved families: everything in
+    // the fallback resolves from the FontLoader registry (emoji), so a code
+    // paragraph never triggers a fontconfig scan.
+    expect(r.monoFallback.contains('monospace'), isFalse);
+    expect(r.monoFallback.contains('sans-serif'), isFalse);
+    expect(r.monoFallback.contains('Noto Sans Mono CJK SC'), isFalse);
+    expect(r.monoFallback, contains('NotoColorEmoji'));
   });
 
   test('android system mono is Latin-first with SC before monospace', () {
@@ -95,10 +96,13 @@ void main() {
     // Bundled / FontLoader family (not fontconfig "Noto Color Emoji").
     expect(linux.uiFallback, contains('NotoColorEmoji'));
     expect(linux.monoFallback, contains('NotoColorEmoji'));
-    expect(
-      linux.uiFallback.indexOf('NotoColorEmoji'),
-      lessThan(linux.uiFallback.indexOf('sans-serif')),
-    );
+    // No generic aliases / unregistered faces in the Linux UI chain — only the
+    // FontLoader-registered emoji. Rare CJK glyphs go to the engine's system
+    // fallback (Noto Sans CJK SC) instead of an eager per-paragraph scan.
+    expect(linux.uiFallback, isNot(contains('sans-serif')));
+    expect(linux.uiFallback, isNot(contains('Noto Sans CJK SC')));
+    expect(linux.uiFallback, isNot(contains('WenQuanYi Zen Hei')));
+    expect(linux.uiFallback, contains('NotoColorEmoji'));
 
     final mac = AppFontResolver.resolve(
       uiFontId: 'system',

@@ -71,16 +71,6 @@ abstract final class FontCatalog {
         'assets/fonts/terminal/JetBrainsMonoNerdFontMono-Regular.ttf',
       ],
     ),
-    FontCatalogEntry(
-      id: 'ubuntuSansMono',
-      role: FontRole.mono,
-      source: FontSourceKind.bundled,
-      bundledFamily: 'Ubuntu Sans Mono',
-      assetPaths: [
-        'assets/fonts/terminal/UbuntuSansMono-Regular.ttf',
-        'assets/fonts/terminal/UbuntuSansMono-Bold.ttf',
-      ],
-    ),
   ];
 
   static Iterable<FontCatalogEntry> get uiOptions =>

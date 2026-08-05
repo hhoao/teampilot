@@ -36,9 +36,6 @@ abstract final class AppFontResolver {
   /// Bundled JetBrains mono family (catalog id `jetbrainsMono`).
   static const String bundledMonoFamily = 'JetBrainsMono NFM';
 
-  /// Silent Ubuntu fallback asset family (may appear in mono fallback chains).
-  static const String ubuntuSansMonoFamily = 'Ubuntu Sans Mono';
-
   static ResolvedFonts resolve({
     required String uiFontId,
     required String monoFontId,
@@ -125,14 +122,9 @@ abstract final class AppFontResolver {
 
   static List<String> colorEmojiFallback(TargetPlatform platform) {
     return switch (platform) {
-      TargetPlatform.iOS || TargetPlatform.macOS => const [
-        'Apple Color Emoji',
-      ],
+      TargetPlatform.iOS || TargetPlatform.macOS => const ['Apple Color Emoji'],
       TargetPlatform.windows => const ['Segoe UI Emoji'],
-      _ => const [
-        bundledColorEmojiFamily,
-        bundledColorEmojiGoogleFamily,
-      ],
+      _ => const [bundledColorEmojiFamily, bundledColorEmojiGoogleFamily],
     };
   }
 
@@ -164,19 +156,13 @@ abstract final class AppFontResolver {
         'monospace',
       ],
       TargetPlatform.linux => [
-        'JetBrains Mono',
-        'Cascadia Mono',
-        'Fira Code',
-        'Hack',
-        'Inconsolata',
-        'Iosevka',
-        'Meslo NF',
-        'Ubuntu Mono',
-        'DejaVu Sans Mono',
-        'Liberation Mono',
-        'Noto Sans Mono CJK SC',
+        // Bundled JetBrainsMono NFM covers Latin. Explicit fallbacks are
+        // resolved eagerly via fontconfig on every new paragraph (one ~140ms
+        // scan per family), and none of the system mono faces are
+        // FontLoader-registered — so keep only the registered emoji faces.
+        // Missing CJK glyphs fall through to the engine's system font table
+        // instead of paying a per-family scan.
         ...emoji,
-        'monospace',
       ],
       TargetPlatform.android => [
         'Noto Sans Mono CJK SC',
@@ -237,28 +223,20 @@ abstract final class AppFontResolver {
       ),
       TargetPlatform.windows => (
         family: 'Segoe UI',
-        fallback: [
-          'Microsoft YaHei',
-          ...emoji,
-          'sans-serif',
-        ],
+        fallback: ['Microsoft YaHei', ...emoji, 'sans-serif'],
       ),
       TargetPlatform.android => (
         family: 'sans-serif',
-        fallback: [
-          'Noto Sans CJK SC',
-          'Droid Sans Fallback',
-          ...emoji,
-        ],
+        fallback: ['Noto Sans CJK SC', 'Droid Sans Fallback', ...emoji],
       ),
       _ => (
+        // An explicit family keeps Skia on the named-font path; an empty
+        // family falls to the engine default typeface, which on Linux still
+        // scans fontconfig per paragraph (same stall as the original bug).
+        // Note: only the bundled Noto Sans SC (default preference) avoids the
+        // scan entirely — the System path below always hits fontconfig.
         family: 'Noto Sans',
-        fallback: [
-          'Noto Sans CJK SC',
-          'WenQuanYi Zen Hei',
-          ...emoji,
-          'sans-serif',
-        ],
+        fallback: [...emoji],
       ),
     };
   }
@@ -277,7 +255,6 @@ abstract final class AppFontResolver {
       TargetPlatform.macOS => (
         family: 'Menlo',
         fallback: [
-          ubuntuSansMonoFamily,
           'PingFang SC',
           'Heiti SC',
           'Noto Sans Mono CJK SC',
@@ -288,7 +265,6 @@ abstract final class AppFontResolver {
       TargetPlatform.windows => (
         family: 'Consolas',
         fallback: [
-          ubuntuSansMonoFamily,
           'Cascadia Mono',
           'Microsoft YaHei',
           'Noto Sans Mono CJK SC',
@@ -299,18 +275,21 @@ abstract final class AppFontResolver {
       TargetPlatform.android => (
         family: 'Droid Sans Mono',
         fallback: [
-          ubuntuSansMonoFamily,
           for (final face in monoCjkFallback(platform))
-            if (face != 'Droid Sans Mono' && face != ubuntuSansMonoFamily) face,
+            if (face != 'Droid Sans Mono') face,
         ],
       ),
       _ => (
+        // Mono must stay monospaced — an empty family falls back to the
+        // system's default sans (non-monospace) and breaks terminal alignment.
+        // DejaVu Sans Mono IS the fontconfig `monospace` default, so pinning it
+        // here follows the system's monospace default rather than a made-up
+        // name. Emoji is FontLoader-registered; missing CJK glyphs fall through
+        // to the engine's system fallback.
         family: 'DejaVu Sans Mono',
         fallback: [
-          ubuntuSansMonoFamily,
           for (final face in monoCjkFallback(platform))
-            if (face != 'DejaVu Sans Mono' && face != ubuntuSansMonoFamily)
-              face,
+            if (face != 'DejaVu Sans Mono') face,
         ],
       ),
     };
