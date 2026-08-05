@@ -2,7 +2,6 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/pages/floating_workspace/floating_workspace_empty.dart';
 
 void main() {
@@ -154,12 +153,14 @@ void main() {
       return deco.color!;
     }
 
-    expect(fillOf('newTerminal'), Colors.transparent);
-    expect(fillOf('openFile'), isNot(Colors.transparent));
+    // TpHover keeps hover RGB at alpha 0 when idle so Color.lerp does not
+    // flash through black — do not assert Colors.transparent identity.
+    expect(fillOf('newTerminal').a, 0);
+    expect(fillOf('openFile').a, isNot(0));
 
     await gesture.moveTo(const Offset(10, 10));
     await tester.pumpAndSettle();
-    expect(fillOf('newTerminal'), Colors.transparent);
-    expect(fillOf('openFile'), Colors.transparent);
+    expect(fillOf('newTerminal').a, 0);
+    expect(fillOf('openFile').a, 0);
   });
 }

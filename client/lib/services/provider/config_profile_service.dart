@@ -177,12 +177,23 @@ class ConfigProfileService implements ConfigProfileDelegate {
       members: roster,
       globalPresets: presets,
     );
+    // Ensure the seat being launched is present for per-member settings /
+    // official credential linking (callers may pass only `member`).
+    final launchMembers = <TeamMemberConfig>[...resolvedRoster];
+    if (resolvedMember != null && resolvedMember.isValid) {
+      final index = launchMembers.indexWhere((m) => m.id == resolvedMember.id);
+      if (index >= 0) {
+        launchMembers[index] = resolvedMember;
+      } else {
+        launchMembers.add(resolvedMember);
+      }
+    }
     final effectiveCli = resolvedMember != null && resolvedMember.isValid
         ? (team.teamMode == TeamMode.mixed
               ? resolvedMember.cli ?? team.cli
               : team.cli)
         : cli;
-    return (member: resolvedMember, members: resolvedRoster, cli: effectiveCli);
+    return (member: resolvedMember, members: launchMembers, cli: effectiveCli);
   }
 
   @override

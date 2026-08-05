@@ -129,6 +129,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       resolver: resolver,
       team: normalized,
       launchResolvedMembers: launchResolvedMembers,
+      launchedMember: launchedMember,
       teamClaudeSettings: settings,
       globalPresets: globalPresets,
     );
@@ -787,12 +788,24 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     required ClaudeProviderSettingsResolver resolver,
     required TeamProfile team,
     required List<TeamMemberConfig> launchResolvedMembers,
+    TeamMemberConfig? launchedMember,
     required Map<String, Object?>? teamClaudeSettings,
     List<CliPreset> globalPresets = const [],
   }) async {
-    final settingsByMember = <String, Map<String, Object?>>{};
+    final members = <String, TeamMemberConfig>{};
     for (final member in launchResolvedMembers) {
       if (!member.isValid) continue;
+      members[member.id] = member;
+    }
+    // Mixed callers may pass only the launched seat via `member`; keep it in
+    // the settings map so official OAuth linking does not fall back to the
+    // team-level (possibly third-party) provider settings.
+    if (launchedMember != null && launchedMember.isValid) {
+      members[launchedMember.id] = launchedMember;
+    }
+
+    final settingsByMember = <String, Map<String, Object?>>{};
+    for (final member in members.values) {
       final settings = await resolver.resolveMemberClaudeSettings(
         team: team,
         member: member,
