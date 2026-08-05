@@ -30,7 +30,7 @@ void main() {
     await closeFloatingTab(cubit: cubit, registry: registry, tab: tab);
 
     expect(closed, isTrue);
-    expect(cubit.state.activeBucket.tabs, isEmpty);
+    expect(cubit.activeBucket.tabs, isEmpty);
   });
 
   test('closeFloatingTab aborts when canClose returns false', () async {
@@ -57,7 +57,7 @@ void main() {
     await closeFloatingTab(cubit: cubit, registry: registry, tab: tab);
 
     expect(closed, isFalse);
-    expect(cubit.state.activeBucket.tabs.single.id, tab.id);
+    expect(cubit.activeBucket.tabs.single.id, tab.id);
   });
 
   test('closeFloatingTab removes unknown surface tab without callback', () async {
@@ -75,7 +75,7 @@ void main() {
 
     await closeFloatingTab(cubit: cubit, registry: registry, tab: tab);
 
-    expect(cubit.state.activeBucket.tabs, isEmpty);
+    expect(cubit.activeBucket.tabs, isEmpty);
   });
 
   test('closeOtherFloatingTabs keeps only the requested tab', () async {
@@ -105,7 +105,7 @@ void main() {
       keepTabId: keep.id,
     );
 
-    expect(cubit.state.activeBucket.tabs.single.id, keep.id);
+    expect(cubit.activeBucket.tabs.single.id, keep.id);
   });
 
   test('closeFloatingTabsToTheRight trims after the pivot', () async {
@@ -130,7 +130,7 @@ void main() {
     );
 
     expect(
-      cubit.state.activeBucket.tabs.map((t) => t.id).toList(),
+      cubit.activeBucket.tabs.map((t) => t.id).toList(),
       ['a'],
     );
   });

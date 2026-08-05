@@ -59,7 +59,7 @@ class FloatingWorkspaceCloseShortcut extends StatelessWidget {
 
   void _handleClose(BuildContext context) {
     final cubit = context.read<FloatingWorkspaceCubit>();
-    final bucket = cubit.state.activeBucket;
+    final bucket = cubit.activeBucket;
     final activeId = bucket.activeTabId;
     if (activeId == null || bucket.tabs.isEmpty) {
       cubit.minimize(closeIfEmpty: true);

@@ -56,7 +56,7 @@ void main() {
 
     // Must stay POSIX even on Windows hosts (SSH / in-memory roots).
     expect(
-      floating.state.activeBucket.tabs.any(
+      floating.activeBucket.tabs.any(
         (t) => t.payload == '/repo/docs/b.md',
       ),
       isTrue,
@@ -89,7 +89,7 @@ void main() {
       ),
     );
 
-    expect(floating.state.activeBucket.tabs, isEmpty);
+    expect(floating.activeBucket.tabs, isEmpty);
     expect(editor.state.bucket('ws').openFilePaths, isEmpty);
   });
 

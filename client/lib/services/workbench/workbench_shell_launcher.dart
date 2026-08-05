@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
@@ -132,10 +134,7 @@ class WorkbenchShellLauncher {
        _platformBrightness =
            platformBrightness ??
            (() =>
-               SchedulerBinding
-                   .instance
-                   .platformDispatcher
-                   .platformBrightness),
+               SchedulerBinding.instance.platformDispatcher.platformBrightness),
        _sshConnectFailedMessage =
            sshConnectFailedMessage ?? (() => 'SSH connect failed'),
        _termuxConnected = termuxConnected,
@@ -155,10 +154,10 @@ class WorkbenchShellLauncher {
   final String Function()? _termuxWorkOpsBlockedMessage;
 
   WorkbenchTabId? _resolveMostRecentShell(String workspaceId) {
-    final bucket = _floating.state.buckets[workspaceId];
+    final bucket = _floating.bucketFor(workspaceId);
     return resolveMostRecentFloatingShell(
-      tabs: bucket?.tabs ?? const <FloatingTab>[],
-      activeTabId: bucket?.activeTabId,
+      tabs: bucket.tabs,
+      activeTabId: bucket.activeTabId,
       registryActiveEntryId: _registry.groupFor(workspaceId).activeId,
     );
   }
@@ -203,8 +202,8 @@ class WorkbenchShellLauncher {
     );
   }
 
-  /// Opens [spec] via [WorkspaceTerminalSessionOps.openEntry], then ensures and
-  /// selects the matching floating terminal tab (snappy UX ahead of sync).
+  /// Creates the registry entry, shows the floating tab immediately, then
+  /// connects the transport on the next frame (snappy UX ahead of sync).
   Future<WorkspaceTerminalEntry?> openAndSelect({
     required String workspaceId,
     required String tabScopeId,
@@ -220,33 +219,23 @@ class WorkbenchShellLauncher {
     if (trimmedCwd.isEmpty) return null;
 
     final group = _registry.groupFor(tabScopeId);
-    final entry = await _sessionOps.openEntry(
+    final entry = await _sessionOps.createEntry(
       group: group,
       connector: _connector,
-      connectCoordinator: WorkspaceTerminalConnectCoordinator.termuxAware(
-        connector: _connector,
-        termuxConnected: _termuxConnected,
-        termuxWorkOpsBlockedMessage: _termuxWorkOpsBlockedMessage,
-      ),
       cwd: trimmedCwd,
       spec: spec,
-      theme:
-          theme ??
-          resolveTerminalThemeFromLayout(
-            preferences: _layout.state.preferences,
-            platformBrightness: _platformBrightness(),
-          ),
-      sshConnectFailedMessage:
-          sshConnectFailedMessage ?? _sshConnectFailedMessage(),
       select: true,
       followWorkspace: followWorkspace,
-      onStateChanged: onStateChanged,
-      mounted: mounted,
     );
 
     final title = entry.titleLabel.trim().isNotEmpty
         ? entry.titleLabel
         : entry.id;
+    // Empty→first-tab UI is deferred one frame in FloatingWorkspacePanel so
+    // connect must wait an extra frame on that path. Check the *target*
+    // workspace's bucket (the current active workspace may differ).
+    final deferFirstTabUi =
+        _floating.bucketFor(workspaceId).tabs.isEmpty;
     _floating.ensureOpen();
     _floating.setActiveWorkspace(workspaceId);
     _floating.ensureTab(
@@ -257,6 +246,44 @@ class WorkbenchShellLauncher {
         payload: entry.id,
       ),
     );
+
+    final resolvedTheme =
+        theme ??
+        resolveTerminalThemeFromLayout(
+          preferences: _layout.state.preferences,
+          platformBrightness: _platformBrightness(),
+        );
+    final sshFailed = sshConnectFailedMessage ?? _sshConnectFailedMessage();
+    final coordinator = WorkspaceTerminalConnectCoordinator.termuxAware(
+      connector: _connector,
+      termuxConnected: _termuxConnected,
+      termuxWorkOpsBlockedMessage: _termuxWorkOpsBlockedMessage,
+    );
+
+    void scheduleConnect() {
+      unawaited(
+        _sessionOps.connectEntry(
+          group: group,
+          entry: entry,
+          connectCoordinator: coordinator,
+          theme: resolvedTheme,
+          sshConnectFailedMessage: sshFailed,
+          onStateChanged: onStateChanged,
+          mounted: mounted,
+        ),
+      );
+    }
+
+    // Connect after the floating tab's first painted frame — not before ensureTab.
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      if (deferFirstTabUi) {
+        SchedulerBinding.instance.addPostFrameCallback(
+          (_) => scheduleConnect(),
+        );
+      } else {
+        scheduleConnect();
+      }
+    });
     return entry;
   }
 }

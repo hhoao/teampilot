@@ -22,7 +22,6 @@ import '../../services/floating_workspace/floating_maximize_insets.dart';
 import '../../services/floating_workspace/floating_surface_registry.dart';
 import '../../services/floating_workspace/floating_terminal_pty_hold_scope.dart';
 import '../../services/floating_workspace/floating_workspace_toggle_metrics.dart';
-import '../../theme/workspace_surface_layers.dart';
 import '../../widgets/workspace_terminal_panel.dart';
 import 'floating_workspace_chrome.dart';
 import 'floating_workspace_close_shortcut.dart';
@@ -46,13 +45,26 @@ class FloatingWorkspacePanel extends StatefulWidget {
 class _FloatingWorkspacePanelState extends State<FloatingWorkspacePanel> {
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<FloatingWorkspaceCubit, FloatingWorkspaceState>(
-      builder: (context, state) => _buildForState(context, state),
+    final cubit = context.read<FloatingWorkspaceCubit>();
+    // Tab mutations notify [tabsChanged] only — not BlocProvider dependents.
+    // Chrome emits are low frequency, so rebuild unconditionally (no buildWhen:
+    // legacy-bounds / toggle-offset changes must repaint the open panel too).
+    return ListenableBuilder(
+      listenable: cubit.tabsChanged,
+      builder: (context, _) {
+        return BlocBuilder<FloatingWorkspaceCubit, FloatingWorkspaceState>(
+          builder: (context, _) {
+            return _buildForState(context, cubit.state);
+          },
+        );
+      },
     );
   }
 
   Widget _buildForState(BuildContext context, FloatingWorkspaceState state) {
-    final hasTabs = state.activeBucket.tabs.isNotEmpty;
+    final cubit = context.read<FloatingWorkspaceCubit>();
+    final bucket = cubit.bucketFor(state.activeWorkspaceId);
+    final hasTabs = bucket.tabs.isNotEmpty;
     final keepAliveMinimized =
         state.visibility == FloatingPanelVisibility.minimized && hasTabs;
 
@@ -68,6 +80,7 @@ class _FloatingWorkspacePanelState extends State<FloatingWorkspacePanel> {
       child: _FloatingWorkspacePanelBody(
         key: const Key('floating_workspace_panel'),
         state: state,
+        bucket: bucket,
         registry: registry,
       ),
     );
@@ -91,11 +104,13 @@ class _FloatingWorkspacePanelState extends State<FloatingWorkspacePanel> {
 class _FloatingWorkspacePanelBody extends StatefulWidget {
   const _FloatingWorkspacePanelBody({
     required this.state,
+    required this.bucket,
     required this.registry,
     super.key,
   });
 
   final FloatingWorkspaceState state;
+  final FloatingWorkspaceBucket bucket;
   final FloatingSurfaceRegistry registry;
 
   @override
@@ -212,6 +227,7 @@ class _FloatingWorkspacePanelBodyState
                     holdHandle: _terminalHold,
                     child: _PanelChromeFrame(
                       state: state,
+                      bucket: widget.bucket,
                       registry: widget.registry,
                       hostSize: hostSize,
                       panelBounds: positioned,
@@ -326,6 +342,7 @@ Size floatingPanelRestoreSize(FloatingWorkspaceState state, Size hostSize) {
 class _PanelChromeFrame extends StatefulWidget {
   const _PanelChromeFrame({
     required this.state,
+    required this.bucket,
     required this.registry,
     required this.hostSize,
     required this.panelBounds,
@@ -337,6 +354,7 @@ class _PanelChromeFrame extends StatefulWidget {
   });
 
   final FloatingWorkspaceState state;
+  final FloatingWorkspaceBucket bucket;
   final FloatingSurfaceRegistry registry;
   final Size hostSize;
   final Rect panelBounds;
@@ -362,122 +380,144 @@ class _PanelChromeFrameState extends State<_PanelChromeFrame> {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
-    final bucket = widget.state.activeBucket;
+    final bucket = widget.bucket;
     final tabs = bucket.tabs;
     final activeId = bucket.activeTabId;
-    final activeTab =
-        tabs.firstWhereOrNull((t) => t.id == activeId) ?? tabs.firstOrNull;
-    final surface = activeTab == null
-        ? null
-        : widget.registry[activeTab.surfaceId];
 
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.48 : 0.16),
-            blurRadius: isDark ? 28 : 22,
-            offset: Offset(0, isDark ? 12 : 8),
+    final shadow = BoxDecoration(
+      borderRadius: BorderRadius.circular(10),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: isDark ? 0.48 : 0.16),
+          blurRadius: isDark ? 28 : 22,
+          offset: Offset(0, isDark ? 12 : 8),
+        ),
+        BoxShadow(
+          color: Colors.black.withValues(alpha: isDark ? 0.28 : 0.08),
+          blurRadius: isDark ? 10 : 8,
+          offset: const Offset(0, 2),
+        ),
+      ],
+    );
+
+    // Shadow layer is separate from tab/body content so Empty→first-tab does
+    // not re-blur the soft shadow (that work sits outside layout/paint probes).
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        RepaintBoundary(
+          child: DecoratedBox(
+            decoration: shadow,
+            child: const SizedBox.expand(),
           ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.28 : 0.08),
-            blurRadius: isDark ? 10 : 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Material(
-        elevation: 0,
-        color: cs.surface,
-        shape: RoundedRectangleBorder(
+        ),
+        // Avoid Material/_InkFeatures on Empty→first-tab; ClipRRect is enough.
+        ClipRRect(
           borderRadius: BorderRadius.circular(10),
-          side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.7)),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Stack(
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _TitleBar(
-                  onPanStart: widget.allowTitleDrag ? _onDragStart : null,
-                  onPanUpdate: widget.allowTitleDrag ? _onDragUpdate : null,
-                  onPanEnd: widget.allowTitleDrag ? _onDragEnd : null,
-                  onDoubleTap: widget.allowTitleDrag
-                      ? () {
-                          context.read<FloatingWorkspaceCubit>().setMaximized(
-                            !widget.state.isMaximized,
+          clipBehavior: Clip.hardEdge,
+          child: ColoredBox(
+            color: cs.surface,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: cs.outlineVariant.withValues(alpha: 0.7),
+                ),
+              ),
+              child: Stack(
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _TitleBar(
+                        onPanStart: widget.allowTitleDrag ? _onDragStart : null,
+                        onPanUpdate: widget.allowTitleDrag
+                            ? _onDragUpdate
+                            : null,
+                        onPanEnd: widget.allowTitleDrag ? _onDragEnd : null,
+                        onDoubleTap: widget.allowTitleDrag
+                            ? () {
+                                context
+                                    .read<FloatingWorkspaceCubit>()
+                                    .setMaximized(!widget.state.isMaximized);
+                              }
+                            : null,
+                        onOpenFile: () {
+                          context.read<CommandBus>().invoke(
+                            CommandIds.floatingOpenFile,
                           );
-                        }
-                      : null,
-                  onOpenFile: () {
-                    context.read<CommandBus>().invoke(
-                      CommandIds.floatingOpenFile,
-                    );
-                  },
-                  tabBar: FloatingWorkspaceTabBar(
-                    tabs: tabs,
-                    activeTabId: activeId,
-                    onSelect: (id) {
-                      context.read<FloatingWorkspaceCubit>().selectTab(id);
-                      final tab = tabs.firstWhereOrNull((t) => t.id == id);
-                      if (tab == null) return;
-                      final s = widget.registry[tab.surfaceId];
-                      if (s != null) unawaited(s.activate(tab));
-                    },
-                    onClose: (tab) {
-                      unawaited(
-                        closeFloatingTab(
-                          cubit: context.read<FloatingWorkspaceCubit>(),
-                          registry: widget.registry,
-                          tab: tab,
-                          context: context,
+                        },
+                        tabBar: FloatingWorkspaceTabBar(
+                          tabs: tabs,
+                          activeTabId: activeId,
+                          onSelect: (id) {
+                            context.read<FloatingWorkspaceCubit>().selectTab(
+                              id,
+                            );
+                            final tab = tabs.firstWhereOrNull(
+                              (t) => t.id == id,
+                            );
+                            if (tab == null) return;
+                            final s = widget.registry[tab.surfaceId];
+                            if (s != null) {
+                              unawaited(s.activate(tab));
+                            }
+                          },
+                          onClose: (tab) {
+                            unawaited(
+                              closeFloatingTab(
+                                cubit: context.read<FloatingWorkspaceCubit>(),
+                                registry: widget.registry,
+                                tab: tab,
+                                context: context,
+                              ),
+                            );
+                          },
+                          onCloseOthers: (tab) {
+                            unawaited(
+                              closeOtherFloatingTabs(
+                                cubit: context.read<FloatingWorkspaceCubit>(),
+                                registry: widget.registry,
+                                keepTabId: tab.id,
+                                context: context,
+                              ),
+                            );
+                          },
+                          onCloseRight: (tab) {
+                            unawaited(
+                              closeFloatingTabsToTheRight(
+                                cubit: context.read<FloatingWorkspaceCubit>(),
+                                registry: widget.registry,
+                                fromTabId: tab.id,
+                                context: context,
+                              ),
+                            );
+                          },
                         ),
-                      );
-                    },
-                    onCloseOthers: (tab) {
-                      unawaited(
-                        closeOtherFloatingTabs(
-                          cubit: context.read<FloatingWorkspaceCubit>(),
-                          registry: widget.registry,
-                          keepTabId: tab.id,
-                          context: context,
+                      ),
+                      Expanded(
+                        child: RepaintBoundary(
+                          child: _FloatingPanelBodySlot(
+                            tabs: tabs,
+                            activeTabId: activeId,
+                            registry: widget.registry,
+                            empty: FloatingWorkspaceEmpty(
+                              autofocus: tabs.isEmpty,
+                              rows: _emptyRows(context),
+                              onActivate: (id) => _onEmptyActivate(context, id),
+                            ),
+                          ),
                         ),
-                      );
-                    },
-                    onCloseRight: (tab) {
-                      unawaited(
-                        closeFloatingTabsToTheRight(
-                          cubit: context.read<FloatingWorkspaceCubit>(),
-                          registry: widget.registry,
-                          fromTabId: tab.id,
-                          context: context,
-                        ),
-                      );
-                    },
+                      ),
+                    ],
                   ),
-                ),
-                Expanded(
-                  child: tabs.isEmpty
-                      ? FloatingWorkspaceEmpty(
-                          autofocus: true,
-                          rows: _emptyRows(context),
-                          onActivate: (id) => _onEmptyActivate(context, id),
-                        )
-                      : (surface == null || activeTab == null)
-                      ? const SizedBox.shrink()
-                      : KeyedSubtree(
-                          key: ValueKey(activeTab.id),
-                          child: surface.build(context, activeTab),
-                        ),
-                ),
-              ],
+                  if (widget.allowEdgeResize) ..._resizeHandles(),
+                ],
+              ),
             ),
-            if (widget.allowEdgeResize) ..._resizeHandles(),
-          ],
+          ),
         ),
-      ),
+      ],
     );
   }
 
@@ -869,5 +909,84 @@ class _ResizeHandle extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// Empty launcher or tab bodies (not both — avoid rebuild Empty on ensureTab).
+class _FloatingPanelBodySlot extends StatelessWidget {
+  const _FloatingPanelBodySlot({
+    required this.tabs,
+    required this.activeTabId,
+    required this.registry,
+    required this.empty,
+  });
+
+  final List<FloatingTab> tabs;
+  final String? activeTabId;
+  final FloatingSurfaceRegistry registry;
+  final Widget empty;
+
+  @override
+  Widget build(BuildContext context) {
+    if (tabs.isEmpty) return empty;
+    return _FloatingTabBodyStack(
+      tabs: tabs,
+      activeTabId: activeTabId,
+      registry: registry,
+    );
+  }
+}
+
+/// Keeps every open floating tab mounted; inactive tabs skip layout/paint.
+///
+/// Avoids disposing the previous surface on tab change (e.g. file → terminal).
+/// Not sufficient alone: first terminal open still janks with no prior file.
+/// Mirror [HomeWorkspaceBodyStack] keep-alive.
+class _FloatingTabBodyStack extends StatelessWidget {
+  const _FloatingTabBodyStack({
+    required this.tabs,
+    required this.activeTabId,
+    required this.registry,
+  });
+
+  final List<FloatingTab> tabs;
+  final String? activeTabId;
+  final FloatingSurfaceRegistry registry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        for (final tab in tabs)
+          TpKeepAliveLayer(
+            key: ValueKey(tab.id),
+            active: tab.id == activeTabId,
+            child: ExcludeSemantics(
+              excluding: tab.id != activeTabId,
+              child: TickerMode(
+                enabled: tab.id == activeTabId,
+                child: IgnorePointer(
+                  ignoring: tab.id != activeTabId,
+                  child: TpDeferredForegroundMount(
+                    active: tab.id == activeTabId,
+                    retainWhenInactive: true,
+                    placeholder: ColoredBox(
+                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                    ),
+                    builder: (context) => _buildTabBody(context, tab),
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildTabBody(BuildContext context, FloatingTab tab) {
+    final surface = registry[tab.surfaceId];
+    if (surface == null) return const SizedBox.shrink();
+    return surface.build(context, tab);
   }
 }

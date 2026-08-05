@@ -11,6 +11,8 @@ import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../cubits/file_tree_cubit.dart';
+import '../../cubits/floating_workspace/floating_workspace_cubit.dart';
+import '../../cubits/floating_workspace/floating_workspace_projection.dart';
 import '../../cubits/workbench/workbench_cubit.dart';
 import '../../cubits/workbench/workbench_tab.dart';
 
@@ -298,22 +300,28 @@ class _FileTreePanelState extends State<FileTreePanel> {
                                     .anyRootExists) {
                                   return const SizedBox.shrink();
                                 }
-                                return _FileTreeList(
-                                  rows: rows,
-                                  cubit: _cubit,
-                                  textColor: cs.onSurface,
-                                  listScrollController: _listScrollController,
-                                  horizontalScrollController:
-                                      _horizontalScrollController,
-                                  desktopShellActions: _desktopShellActionsFor(
-                                    _workContext,
-                                  ),
-                                  remoteFileManagerActions:
-                                      _remoteFileManagerActionsFor(
-                                        _workContext,
-                                      ),
-                                  workContext: _workContext,
+                                return _FloatingPreviewHighlight(
                                   workspaceId: widget.workspaceId,
+                                  builder: (context, path) => _FileTreeList(
+                                    rows: rows,
+                                    cubit: _cubit,
+                                    textColor: cs.onSurface,
+                                    listScrollController:
+                                        _listScrollController,
+                                    horizontalScrollController:
+                                        _horizontalScrollController,
+                                    desktopShellActions:
+                                        _desktopShellActionsFor(
+                                          _workContext,
+                                        ),
+                                    remoteFileManagerActions:
+                                        _remoteFileManagerActionsFor(
+                                          _workContext,
+                                        ),
+                                    workContext: _workContext,
+                                    workspaceId: widget.workspaceId,
+                                    activeFloatingFilePath: path,
+                                  ),
                                 );
                               },
                             ),
@@ -450,6 +458,67 @@ class _FileTreeFilterField extends StatelessWidget {
   }
 }
 
+/// Surface id of the floating file-preview tab (mirrors
+/// `FilePreviewFloatingSurface.id`; the file tree decides what counts as a
+/// highlight — the cubit stays surface-agnostic).
+const String _kFloatingFilePreviewSurfaceId = 'filePreview';
+
+/// Projects the active floating file-preview path for [workspaceId] and
+/// rebuilds [builder] only when that path actually changes.
+///
+/// Unrelated tab opens / switches cost one cheap projection recompute (no
+/// notify on unchanged value) instead of rebuilding the whole file tree.
+class _FloatingPreviewHighlight extends StatefulWidget {
+  const _FloatingPreviewHighlight({
+    required this.workspaceId,
+    required this.builder,
+  });
+
+  final String workspaceId;
+  final Widget Function(BuildContext context, String? path) builder;
+
+  @override
+  State<_FloatingPreviewHighlight> createState() =>
+      _FloatingPreviewHighlightState();
+}
+
+class _FloatingPreviewHighlightState extends State<_FloatingPreviewHighlight> {
+  FloatingWorkspaceProjection<String?>? _projection;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _projection ??= FloatingWorkspaceProjection<String?>(
+      context.read<FloatingWorkspaceCubit>(),
+      _projectPath,
+      initial: null,
+    );
+  }
+
+  String? _projectPath(FloatingWorkspaceCubit cubit) {
+    final active = cubit.activeTabFor(widget.workspaceId);
+    if (active == null ||
+        active.surfaceId != _kFloatingFilePreviewSurfaceId) {
+      return null;
+    }
+    return active.payload is String ? active.payload as String : null;
+  }
+
+  @override
+  void dispose() {
+    _projection?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<String?>(
+      valueListenable: _projection!,
+      builder: (context, path, _) => widget.builder(context, path),
+    );
+  }
+}
+
 class _FileTreeList extends StatefulWidget {
   const _FileTreeList({
     required this.rows,
@@ -461,6 +530,7 @@ class _FileTreeList extends StatefulWidget {
     required this.remoteFileManagerActions,
     required this.workContext,
     required this.workspaceId,
+    required this.activeFloatingFilePath,
   });
 
   final List<FileTreeVisibleRow> rows;
@@ -472,6 +542,7 @@ class _FileTreeList extends StatefulWidget {
   final bool remoteFileManagerActions;
   final RuntimeContext workContext;
   final String workspaceId;
+  final String? activeFloatingFilePath;
 
   @override
   State<_FileTreeList> createState() => _FileTreeListState();
@@ -690,6 +761,8 @@ class _FileTreeListState extends State<_FileTreeList> {
                           hoverEnabled: _hoverEnabled,
                           isRoot: row.isRoot,
                           rootMissing: row.rootMissing,
+                          activeFloatingFilePath:
+                              widget.activeFloatingFilePath,
                         ),
                       );
                     },

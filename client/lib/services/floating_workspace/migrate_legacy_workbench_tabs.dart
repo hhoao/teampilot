@@ -105,7 +105,7 @@ int migrateFloatingFileTabsToWorkbench({
 
   try {
     final snapshot = Map<String, FloatingWorkspaceBucket>.of(
-      floating.state.buckets,
+      floating.buckets,
     );
     for (final entry in snapshot.entries) {
       final workspaceId = entry.key;

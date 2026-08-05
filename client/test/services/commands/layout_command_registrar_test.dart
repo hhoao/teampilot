@@ -139,7 +139,7 @@ void main() {
       expect(layout.state.preferences.workspaceTerminalVisible, terminalVisible);
       expect(floating.state.visibility, FloatingPanelVisibility.open);
       expect(
-        floating.state.activeBucket.tabs.any((t) => t.payload == 'e1'),
+        floating.activeBucket.tabs.any((t) => t.payload == 'e1'),
         isTrue,
       );
     });

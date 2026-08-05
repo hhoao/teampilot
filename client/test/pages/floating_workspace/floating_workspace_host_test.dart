@@ -94,14 +94,23 @@ void main() {
         payload: 'a',
       ),
     );
+    // tabsTick + TpDeferredForegroundMount (frame callback + post-frame).
+    await tester.pump();
+    await tester.pump();
     await tester.pump();
     expect(find.text('fake-body'), findsOneWidget);
 
     cubit.minimize();
+    // Visibility emit → BlocBuilder setState can land on the following frame
+    // when Provider dependents are also marked in the same emit. Deferred tab
+    // body remounts under Visibility after another frame or two.
+    await tester.pump();
+    await tester.pump();
+    await tester.pump();
     await tester.pump();
 
     expect(cubit.state.visibility, FloatingPanelVisibility.minimized);
-    expect(cubit.state.activeBucket.tabs, isNotEmpty);
+    expect(cubit.activeBucket.tabs, isNotEmpty);
     expect(
       find.byKey(
         const Key('floating_workspace_panel_keep_alive'),

@@ -39,9 +39,9 @@ void main() {
       ),
     );
     cubit.setActiveWorkspace('ws-b');
-    expect(cubit.state.activeBucket.tabs, isEmpty);
+    expect(cubit.activeBucket.tabs, isEmpty);
     cubit.setActiveWorkspace('ws-a');
-    expect(cubit.state.activeBucket.tabs.single.id, 'f1');
+    expect(cubit.activeBucket.tabs.single.id, 'f1');
   });
 
   test('minimizeWithNoTabsGoesHidden when bucket empty', () {
@@ -81,13 +81,76 @@ void main() {
       ),
     );
     cubit.selectTab('b');
-    expect(cubit.state.activeBucket.activeTabId, 'b');
+    expect(cubit.activeBucket.activeTabId, 'b');
 
     cubit.reorderTabs(0, 1);
     expect(
-      cubit.state.activeBucket.tabs.map((t) => t.id).toList(),
+      cubit.activeBucket.tabs.map((t) => t.id).toList(),
       ['b', 'a', 'c'],
     );
-    expect(cubit.state.activeBucket.activeTabId, 'b');
+    expect(cubit.activeBucket.activeTabId, 'b');
+  });
+
+  test('activeTabFor projects the active tab of the active workspace', () {
+    final cubit = FloatingWorkspaceCubit();
+    addTearDown(cubit.close);
+    cubit.setActiveWorkspace('ws-a');
+    expect(cubit.activeTabFor('ws-a'), isNull);
+
+    cubit.ensureTab(
+      FloatingTab(
+        id: 'f1',
+        surfaceId: 'filePreview',
+        title: 'a.txt',
+        payload: '/a.txt',
+      ),
+    );
+    expect(cubit.activeTabFor('ws-a')?.id, 'f1');
+    expect(cubit.activeTabFor('ws-a')?.surfaceId, 'filePreview');
+    expect(cubit.activeTabFor('ws-a')?.payload, '/a.txt');
+
+    // ensureTab makes the latest tab active; surface/payload pass through.
+    cubit.ensureTab(
+      FloatingTab(id: 't1', surfaceId: 'terminal', title: 'term', payload: 'e1'),
+    );
+    expect(cubit.activeTabFor('ws-a')?.id, 't1');
+    expect(cubit.activeTabFor('ws-a')?.surfaceId, 'terminal');
+
+    cubit.selectTab('f1');
+    expect(cubit.activeTabFor('ws-a')?.id, 'f1');
+
+    // Inactive workspaces / no tabs → null.
+    expect(cubit.activeTabFor('ws-other'), isNull);
+    cubit.setActiveWorkspace('ws-b');
+    expect(cubit.activeTabFor('ws-a'), isNull);
+    expect(cubit.activeTabFor('ws-b'), isNull);
+  });
+
+  test('tabsChanged fires on tab mutations only, not chrome emits', () {
+    final cubit = FloatingWorkspaceCubit();
+    addTearDown(cubit.close);
+    var tabTicks = 0;
+    cubit.tabsChanged.addListener(() => tabTicks++);
+
+    cubit.ensureOpen();
+    cubit.setMaximized(true);
+    cubit.setActiveWorkspace('ws-a');
+    expect(tabTicks, 0, reason: 'chrome emits must not fire tabsChanged');
+
+    cubit.ensureTab(
+      FloatingTab(
+        id: 'f1',
+        surfaceId: 'filePreview',
+        title: 'a.txt',
+        payload: '/a.txt',
+      ),
+    );
+    expect(tabTicks, 1);
+    cubit.selectTab('f1');
+    expect(tabTicks, 1, reason: 'no-op select must not fire');
+    cubit.removeTab('f1');
+    expect(tabTicks, 2);
+    cubit.removeTab('f1');
+    expect(tabTicks, 2, reason: 'removing a missing tab must not fire');
   });
 }

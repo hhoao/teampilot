@@ -57,7 +57,7 @@ void main() {
     );
 
     expect(seenInitialDirectory, '/repo');
-    expect(floating.state.activeBucket.tabs.single.id, 'file:/repo/a.txt');
+    expect(floating.activeBucket.tabs.single.id, 'file:/repo/a.txt');
     expect(editor.state.bucket('ws-1').openFilePaths, ['/repo/a.txt']);
   });
 
@@ -89,6 +89,6 @@ void main() {
       }) async => null,
     );
 
-    expect(floating.state.activeBucket.tabs, isEmpty);
+    expect(floating.activeBucket.tabs, isEmpty);
   });
 }

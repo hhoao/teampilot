@@ -30,19 +30,14 @@ TerminalSession _testSession() => TerminalSession(
 
 class _FakeSessionOps extends WorkspaceTerminalSessionOps {
   @override
-  Future<WorkspaceTerminalEntry> openEntry({
+  Future<WorkspaceTerminalEntry> createEntry({
     required WorkspaceTerminalGroup group,
     required WorkspaceShellConnector connector,
-    required WorkspaceTerminalConnectCoordinator connectCoordinator,
     required String cwd,
     required WorkspaceTerminalSessionSpec spec,
-    required TerminalTheme theme,
-    required String sshConnectFailedMessage,
     required bool select,
     String titleLabel = '',
     bool followWorkspace = false,
-    VoidCallback? onStateChanged,
-    bool Function()? mounted,
   }) async {
     return group.addEntry(
       cwd: cwd,
@@ -53,6 +48,17 @@ class _FakeSessionOps extends WorkspaceTerminalSessionOps {
       followWorkspace: followWorkspace,
     );
   }
+
+  @override
+  Future<void> connectEntry({
+    required WorkspaceTerminalGroup group,
+    required WorkspaceTerminalEntry entry,
+    required WorkspaceTerminalConnectCoordinator connectCoordinator,
+    required TerminalTheme theme,
+    required String sshConnectFailedMessage,
+    VoidCallback? onStateChanged,
+    bool Function()? mounted,
+  }) async {}
 }
 
 class _StubConnector extends WorkspaceShellConnector {
@@ -226,7 +232,7 @@ void main() {
       expect(floating.state.visibility, FloatingPanelVisibility.open);
       expect(floating.state.activeWorkspaceId, 'ws');
       expect(
-        floating.state.activeBucket.tabs,
+        floating.activeBucket.tabs,
         [
           FloatingTab(
             id: 'shell:${entry.id}',
@@ -295,7 +301,7 @@ void main() {
       await launcher.focusOrCreateDefaultShell();
 
       expect(floating.state.visibility, FloatingPanelVisibility.open);
-      expect(floating.state.activeBucket.activeTabId, 'shell:e1');
+      expect(floating.activeBucket.activeTabId, 'shell:e1');
       expect(
         workbench.state.bucket('ws').tabOrder.where(
           (t) => t.kind == WorkbenchTabKind.shell,

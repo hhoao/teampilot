@@ -8,6 +8,32 @@ import 'workspace_terminal_registry.dart';
 
 /// Shared create+connect path for workspace terminal tabs (panel + Run inject).
 class WorkspaceTerminalSessionOps {
+  /// Creates a session and adds a group entry without connecting the transport.
+  ///
+  /// Use when the UI tab should appear before [connectEntry] (floating open).
+  Future<WorkspaceTerminalEntry> createEntry({
+    required WorkspaceTerminalGroup group,
+    required WorkspaceShellConnector connector,
+    required String cwd,
+    required WorkspaceTerminalSessionSpec spec,
+    required bool select,
+    String titleLabel = '',
+    bool followWorkspace = false,
+  }) async {
+    final session = connector.createSession(spec);
+    final label = titleLabel.isNotEmpty
+        ? titleLabel
+        : await connector.labelForSpec(spec);
+    return group.addEntry(
+      cwd: cwd,
+      spec: spec,
+      session: session,
+      select: select,
+      titleLabel: label,
+      followWorkspace: followWorkspace,
+    );
+  }
+
   /// Creates a session, adds a group entry, and connects the transport.
   Future<WorkspaceTerminalEntry> openEntry({
     required WorkspaceTerminalGroup group,
@@ -23,16 +49,13 @@ class WorkspaceTerminalSessionOps {
     VoidCallback? onStateChanged,
     bool Function()? mounted,
   }) async {
-    final session = connector.createSession(spec);
-    final label = titleLabel.isNotEmpty
-        ? titleLabel
-        : await connector.labelForSpec(spec);
-    final entry = group.addEntry(
+    final entry = await createEntry(
+      group: group,
+      connector: connector,
       cwd: cwd,
       spec: spec,
-      session: session,
       select: select,
-      titleLabel: label,
+      titleLabel: titleLabel,
       followWorkspace: followWorkspace,
     );
     await connectEntry(

@@ -41,14 +41,14 @@ void main() {
     expect(moved, 2);
     expect(workbench.tabOrder(ws), [session, run]);
     expect(
-      floating.state.buckets[ws]!.tabs.map((t) => t.id).toList(),
+      floating.buckets[ws]!.tabs.map((t) => t.id).toList(),
       containsAll([
         'file:/repo/a.txt',
         floatingShellTabId('entry-1'),
       ]),
     );
     expect(
-      floating.state.buckets[ws]!.tabs
+      floating.buckets[ws]!.tabs
           .firstWhere((t) => t.id == 'file:/repo/a.txt')
           .title,
       p.basename('/repo/a.txt'),
@@ -71,7 +71,7 @@ void main() {
       ),
       0,
     );
-    expect(floating.state.buckets, isEmpty);
+    expect(floating.buckets, isEmpty);
   });
 
   test('migrateLegacyWorkbenchTabsToFloating can leave file tabs on center', () {
@@ -99,7 +99,7 @@ void main() {
     expect(moved, 1);
     expect(workbench.tabOrder(ws), [file]);
     expect(
-      floating.state.buckets[ws]!.tabs.map((t) => t.id).toList(),
+      floating.buckets[ws]!.tabs.map((t) => t.id).toList(),
       [floatingShellTabId('entry-1')],
     );
   });
@@ -138,7 +138,7 @@ void main() {
     expect(moved, 1);
     expect(workbench.tabOrder(ws), [WorkbenchTabId.file('/repo/a.txt')]);
     expect(
-      floating.state.buckets[ws]!.tabs.map((t) => t.id).toList(),
+      floating.buckets[ws]!.tabs.map((t) => t.id).toList(),
       [floatingShellTabId('entry-1')],
     );
     expect(floating.state.activeWorkspaceId, 'other');
@@ -169,6 +169,6 @@ void main() {
 
     expect(moved, 1);
     expect(workbench.tabOrder(ws), [WorkbenchTabId.file('/repo/b.txt')]);
-    expect(floating.state.buckets[ws], isNull);
+    expect(floating.buckets[ws], isNull);
   });
 }

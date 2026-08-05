@@ -6,7 +6,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../cubits/file_tree_cubit.dart';
-import '../cubits/floating_workspace/floating_workspace_cubit.dart';
 import '../cubits/workbench/workbench_cubit.dart';
 import '../cubits/workbench/workbench_tab.dart';
 import '../services/editor/file_editor_theme.dart';
@@ -41,6 +40,7 @@ class FileTreeNode extends StatefulWidget {
     this.hoverEnabled = true,
     this.isRoot = false,
     this.rootMissing = false,
+    this.activeFloatingFilePath,
     super.key,
   });
 
@@ -60,6 +60,9 @@ class FileTreeNode extends StatefulWidget {
 
   /// True when this root row points at a directory that no longer exists.
   final bool rootMissing;
+
+  /// Active floating file-preview path (selected once at the list root).
+  final String? activeFloatingFilePath;
 
   @override
   State<FileTreeNode> createState() => _FileTreeNodeState();
@@ -82,20 +85,9 @@ class _FileTreeNodeState extends State<FileTreeNode> {
         fileTreePathsEqual(pathCtx, widget.path, active.id)) {
       return true;
     }
-    // Floating file-preview host: active tab lives on FloatingWorkspaceCubit.
-    final floatingPath = context.select<FloatingWorkspaceCubit, String?>((c) {
-      if (c.state.activeWorkspaceId != widget.workspaceId) return null;
-      final bucket = c.state.activeBucket;
-      final activeId = bucket.activeTabId;
-      if (activeId == null) return null;
-      for (final tab in bucket.tabs) {
-        if (tab.id != activeId) continue;
-        if (tab.surfaceId != 'filePreview') return null;
-        final payload = tab.payload;
-        return payload is String ? payload : null;
-      }
-      return null;
-    });
+    // Parent selects FloatingWorkspaceCubit once — do not depend per row
+    // (ensureTab would wake every mounted FileTreeNode).
+    final floatingPath = widget.activeFloatingFilePath;
     if (floatingPath == null || floatingPath.isEmpty) return false;
     return fileTreePathsEqual(pathCtx, widget.path, floatingPath);
   }

@@ -41,7 +41,7 @@ void main() {
       isEmpty,
     );
     expect(
-      floating.state.activeBucket.tabs.any((t) => t.payload == '/repo/a.txt'),
+      floating.activeBucket.tabs.any((t) => t.payload == '/repo/a.txt'),
       isTrue,
     );
     expect(floating.state.visibility, FloatingPanelVisibility.open);
@@ -81,7 +81,7 @@ void main() {
       isEmpty,
     );
     expect(
-      floating.state.activeBucket.tabs.any((t) => t.payload == '/repo/a.txt'),
+      floating.activeBucket.tabs.any((t) => t.payload == '/repo/a.txt'),
       isTrue,
     );
     expect(floating.state.visibility, FloatingPanelVisibility.open);
@@ -116,7 +116,7 @@ void main() {
       isEmpty,
     );
     expect(
-      floating.state.activeBucket.tabs.any((t) => t.payload == '/repo/a.png'),
+      floating.activeBucket.tabs.any((t) => t.payload == '/repo/a.png'),
       isTrue,
     );
     expect(floating.state.visibility, FloatingPanelVisibility.open);
@@ -154,7 +154,7 @@ void main() {
     );
     expect(workbench.state.bucket('ws').tabOrder, isEmpty);
     expect(
-      floating.state.activeBucket.tabs.any((t) => t.payload == diffKey),
+      floating.activeBucket.tabs.any((t) => t.payload == diffKey),
       isTrue,
     );
     expect(floating.state.visibility, FloatingPanelVisibility.open);
@@ -189,7 +189,7 @@ void main() {
       workbench.activeTabId('ws'),
       WorkbenchTabId.diff('/repo/a.txt', source: WorkbenchDiffSource.changes),
     );
-    expect(floating.state.activeBucket.tabs, isEmpty);
+    expect(floating.activeBucket.tabs, isEmpty);
   });
 
   test('openFile opens center workbench tab when filePreviewHost is center', () async {
@@ -215,7 +215,7 @@ void main() {
 
     expect(workbench.activeTabId('ws')?.kind, WorkbenchTabKind.file);
     expect(workbench.activeTabId('ws')?.id, '/repo/a.txt');
-    expect(floating.state.activeBucket.tabs, isEmpty);
+    expect(floating.activeBucket.tabs, isEmpty);
     expect(editor.state.bucket('ws').openFilePaths, contains('/repo/a.txt'));
   });
 }

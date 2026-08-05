@@ -29,7 +29,7 @@ Future<void> closeOtherFloatingTabs({
   required String keepTabId,
   BuildContext? context,
 }) async {
-  final toClose = cubit.state.activeBucket.tabs
+  final toClose = cubit.activeBucket.tabs
       .where((t) => t.id != keepTabId)
       .toList(growable: false);
   for (final tab in toClose) {
@@ -49,7 +49,7 @@ Future<void> closeFloatingTabsToTheRight({
   required String fromTabId,
   BuildContext? context,
 }) async {
-  final tabs = cubit.state.activeBucket.tabs;
+  final tabs = cubit.activeBucket.tabs;
   final index = tabs.indexWhere((t) => t.id == fromTabId);
   if (index < 0 || index >= tabs.length - 1) return;
   final toClose = tabs.sublist(index + 1);

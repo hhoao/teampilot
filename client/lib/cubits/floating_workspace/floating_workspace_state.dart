@@ -34,12 +34,18 @@ class FloatingWorkspaceBucket extends Equatable {
   List<Object?> get props => [tabs, activeTabId];
 }
 
+/// Panel chrome snapshot — visibility / geometry / attention.
+///
+/// Floating tab buckets live on [FloatingWorkspaceCubit] (see `buckets` /
+/// `tabsChanged`), not in this state: tab mutations must not `emit` (every
+/// emit wakes every `context.select` / `BlocBuilder` dependent app-wide via
+/// BlocProvider). Consumers read tabs through `cubit.bucketFor` /
+/// `cubit.activeTabFor` and subscribe to [FloatingWorkspaceCubit.tabsChanged].
 class FloatingWorkspaceState extends Equatable {
   const FloatingWorkspaceState({
     this.visibility = FloatingPanelVisibility.hidden,
     this.isMaximized = false,
     this.activeWorkspaceId = '',
-    this.buckets = const {},
     this.panelPlacement,
     this.legacyAbsoluteBounds,
     this.toggleOffset = kFloatingWorkspaceToggleDefaultOffset,
@@ -49,7 +55,6 @@ class FloatingWorkspaceState extends Equatable {
   final FloatingPanelVisibility visibility;
   final bool isMaximized;
   final String activeWorkspaceId;
-  final Map<String, FloatingWorkspaceBucket> buckets;
 
   /// App-relative placement (bottom-right insets). Null until first place.
   final FloatingPanelPlacement? panelPlacement;
@@ -63,14 +68,10 @@ class FloatingWorkspaceState extends Equatable {
   bool get hasPlacedPanel =>
       panelPlacement != null || legacyAbsoluteBounds != null;
 
-  FloatingWorkspaceBucket get activeBucket =>
-      buckets[activeWorkspaceId] ?? const FloatingWorkspaceBucket();
-
   FloatingWorkspaceState copyWith({
     FloatingPanelVisibility? visibility,
     bool? isMaximized,
     String? activeWorkspaceId,
-    Map<String, FloatingWorkspaceBucket>? buckets,
     FloatingPanelPlacement? panelPlacement,
     Rect? legacyAbsoluteBounds,
     bool clearPanelPlacement = false,
@@ -82,7 +83,6 @@ class FloatingWorkspaceState extends Equatable {
       visibility: visibility ?? this.visibility,
       isMaximized: isMaximized ?? this.isMaximized,
       activeWorkspaceId: activeWorkspaceId ?? this.activeWorkspaceId,
-      buckets: buckets ?? this.buckets,
       panelPlacement: clearPanelPlacement
           ? null
           : (panelPlacement ?? this.panelPlacement),
@@ -99,7 +99,6 @@ class FloatingWorkspaceState extends Equatable {
     visibility,
     isMaximized,
     activeWorkspaceId,
-    buckets,
     panelPlacement,
     legacyAbsoluteBounds,
     toggleOffset,
