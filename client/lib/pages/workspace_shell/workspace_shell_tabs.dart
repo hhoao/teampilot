@@ -314,6 +314,7 @@ class WorkbenchStripTabChip extends StatefulWidget {
     this.icon = Icons.terminal_rounded,
     this.cli,
     this.accentColor,
+    this.enableTooltip = true,
   });
 
   final WorkbenchTabKind kind;
@@ -339,6 +340,7 @@ class WorkbenchStripTabChip extends StatefulWidget {
   final IconData icon;
   final CliTool? cli;
   final Color? accentColor;
+  final bool enableTooltip;
 
   @override
   State<WorkbenchStripTabChip> createState() => WorkbenchStripTabChipState();
@@ -435,6 +437,7 @@ class WorkbenchStripTabChipState extends State<WorkbenchStripTabChip> {
       working: working || waiting,
       workingIndicator: workingIndicator,
       accentColor: widget.accentColor,
+      enableTooltip: widget.enableTooltip,
       onTap: widget.onTap,
       onClose: widget.onClose,
       onSecondaryTapDown: _showTabContextMenuAtTap,
