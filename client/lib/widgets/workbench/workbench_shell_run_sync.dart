@@ -41,7 +41,6 @@ class _WorkbenchShellRunSyncState extends State<WorkbenchShellRunSync> {
   StreamSubscription<RunUiIntent>? _uiIntentSub;
   RunCubit? _subscribedCubit;
   WorkspaceTerminalGroup? _group;
-  VoidCallback? _groupListener;
 
   @override
   void didChangeDependencies() {
@@ -66,7 +65,7 @@ class _WorkbenchShellRunSyncState extends State<WorkbenchShellRunSync> {
     unawaited(_uiIntentSub?.cancel());
     _uiIntentSub = null;
     _subscribedCubit = null;
-    _detachGroupListener();
+    _group = null;
     super.dispose();
   }
 
@@ -83,25 +82,9 @@ class _WorkbenchShellRunSyncState extends State<WorkbenchShellRunSync> {
       widget.tabScopeId,
     );
     if (identical(_group, group)) return;
-    _detachGroupListener();
     _group = group;
-    // Registry still drives hold-handle selection / focus for run→terminal
-    // intents; we no longer reconcile shell tabs into WorkbenchCubit.
-    _groupListener = () {
-      if (!mounted) return;
-      setState(() {});
-    };
-    group.addListener(_groupListener!);
-  }
-
-  void _detachGroupListener() {
-    final group = _group;
-    final listener = _groupListener;
-    if (group != null && listener != null) {
-      group.removeListener(listener);
-    }
-    _group = null;
-    _groupListener = null;
+    // No group.addListener: shell tabs open on the floating surface; a former
+    // setState(() {}) here only dirtied ChatPageShell on every addEntry.
   }
 
   void _onUiIntent(RunUiIntent intent) {

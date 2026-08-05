@@ -70,20 +70,25 @@ class _TeampilotAlacrittyTerminalState extends State<TeampilotAlacrittyTerminal>
   }
 
   @override
-  Widget build(BuildContext context) {
+  void initState() {
+    super.initState();
+  }
+
+  Map<ShortcutActivator, Intent> _terminalShortcuts(BuildContext context) {
     final shortcutCubit = context.watch<ShortcutCubit>();
     var floatingPanelOpen = false;
     try {
-      floatingPanelOpen =
-          context.watch<FloatingWorkspaceCubit>().state.visibility ==
-          FloatingPanelVisibility.open;
+      // select: ensureTab / tab changes must NOT rebuild every session terminal.
+      floatingPanelOpen = context.select<FloatingWorkspaceCubit, bool>(
+        (c) => c.state.visibility == FloatingPanelVisibility.open,
+      );
     } catch (_) {
       // Terminal hosts outside the floating cubit (isolated tests).
     }
     final overlayContext = ShortcutContext(
       floatingPanelOpen: floatingPanelOpen && !isTpActionMenuOpen,
     );
-    final terminalShortcuts = <ShortcutActivator, Intent>{
+    return <ShortcutActivator, Intent>{
       ...defaultTerminalShortcuts,
       ...terminalPassthroughShortcutOverlay(
         effectiveByCommand: shortcutCubit.effective,
@@ -91,34 +96,42 @@ class _TeampilotAlacrittyTerminalState extends State<TeampilotAlacrittyTerminal>
         context: overlayContext,
       ),
     };
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final touchShell = isTouchShell();
+
+    final view = TerminalView(
+      widget.engine,
+      key: touchShell ? _viewKey : widget.terminalViewKey,
+      controller: widget.controller,
+      theme: widget.theme,
+      backgroundOpacity: widget.backgroundOpacity,
+      padding: widget.padding,
+      textStyle: appTerminalTextStyle(context),
+      autofocus: widget.autofocus,
+      preferGpuSurface: false,
+      shortcuts: _terminalShortcuts(context),
+      linkProviders: widget.linkProviders,
+      modifierLatch: touchShell ? _latch : null,
+      primaryTapActivatesLink: context
+          .watch<SessionPreferencesCubit>()
+          .state
+          .preferences
+          .terminalLinkClickOpensInApp,
+      onPtyResize: widget.onPtyResize,
+      onTapDown: widget.onTapDown,
+      onLinkActivate: widget.onLinkActivate,
+      onSecondaryTapDown: widget.onSecondaryTapDown,
+    );
+
     final content = ShortcutFocus(
       kind: ShortcutFocusKind.terminal,
       child: TerminalWithHistoryScrollbar(
         engine: widget.engine,
         controller: widget.controller,
-        child: TerminalView(
-          widget.engine,
-          key: touchShell ? _viewKey : widget.terminalViewKey,
-          controller: widget.controller,
-          theme: widget.theme,
-          backgroundOpacity: widget.backgroundOpacity,
-          padding: widget.padding,
-          textStyle: appTerminalTextStyle(context),
-          autofocus: widget.autofocus,
-          shortcuts: terminalShortcuts,
-          linkProviders: widget.linkProviders,
-          modifierLatch: touchShell ? _latch : null,
-          primaryTapActivatesLink: context
-              .watch<SessionPreferencesCubit>()
-              .state
-              .preferences
-              .terminalLinkClickOpensInApp,
-          onPtyResize: widget.onPtyResize,
-          onTapDown: widget.onTapDown,
-          onLinkActivate: widget.onLinkActivate,
-          onSecondaryTapDown: widget.onSecondaryTapDown,
-        ),
+        child: view,
       ),
     );
 
