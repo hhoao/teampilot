@@ -113,9 +113,10 @@ one line (often `` **…`code`…** ``). Probe:
 (one case per process).
 
 **Exceptions:** diff line-height `TextPainter` (must match `CodeEditorStyle`),
-proportional monogram glyphs, editor/terminal (warmed separately). Link
-`WidgetSpan` cost is mount/layout of nested paragraphs — fix rendering, not
-charset warmup.
+proportional monogram glyphs, editor (via `EditorPlatform.bootstrap`), and
+terminal (`UiInteractiveWarmup` → `warmTerminalTextPipeline`: cell metrics +
+ASCII `GlyphAtlas`, matching `appTerminalTextStyle`). Link `WidgetSpan` cost
+is mount/layout of nested paragraphs — fix rendering, not charset warmup.
 
 ## Checklist for a new heavy surface
 

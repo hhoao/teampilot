@@ -1475,10 +1475,6 @@ Future<AppShell> buildAppShell({
       'workspaces=${chatCubit.state.workspaces.length} '
       '(sessions load on demand)',
     );
-    await AppDataBootstrap.warmUiInteractive(
-      boot: boot,
-      layoutPreferences: layoutCubit.state.preferences,
-    );
     bootstrapCubit?.beginWarmAuxiliary();
     await AppDataBootstrap.warmAuxiliaryData(
       boot: boot,

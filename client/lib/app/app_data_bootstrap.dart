@@ -18,7 +18,6 @@ import '../models/workspace.dart';
 import '../repositories/app_settings_repository.dart';
 import '../repositories/session_repository.dart';
 import '../router/app_router.dart';
-import '../services/app/ui_interactive_warmup.dart';
 import '../services/workspace/workspace_icon_warmup.dart';
 import '../services/home_workspace/home_workspace_ui_cache.dart';
 import '../services/storage/launch_profile_provisioner.dart';
@@ -255,19 +254,6 @@ abstract final class AppDataBootstrap {
     );
 
     boot('warmAuxiliaryData complete +${phaseSw.elapsedMilliseconds}ms');
-    await yieldUiFrame();
-  }
-
-  /// Fonts, glyph cache, and terminal engine — time-sliced for spinner fluidity.
-  static Future<void> warmUiInteractive({
-    required BootLog boot,
-    required LayoutPreferences layoutPreferences,
-  }) async {
-    await _timed(
-      boot,
-      'uiInteractive',
-      () => UiInteractiveWarmup.run(layoutPreferences: layoutPreferences),
-    );
     await yieldUiFrame();
   }
 
