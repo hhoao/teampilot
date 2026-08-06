@@ -117,34 +117,13 @@ void main() {
     );
     expect(await fresh.loadAll(), [saved]);
   });
-}
 
-extension on DiscoverableMember {
-  DiscoverableMember copyWith({
-    String? key,
-    String? name,
-    String? description,
-    String? category,
-    ExpertMemberSource? source,
-    DiscoverableTeamMember? member,
-    List<SkillDependencyRef>? skillDeps,
-    List<PluginDependencyRef>? pluginDeps,
-    List<McpDependencyRef>? mcpDeps,
-  }) {
-    return DiscoverableMember(
-      key: key ?? this.key,
-      name: name ?? this.name,
-      description: description ?? this.description,
-      category: category ?? this.category,
-      author: author,
-      updatedAt: updatedAt,
-      tags: tags,
-      member: member ?? this.member,
-      skillDeps: skillDeps ?? this.skillDeps,
-      pluginDeps: pluginDeps ?? this.pluginDeps,
-      mcpDeps: mcpDeps ?? this.mcpDeps,
-      source: source ?? this.source,
-      originTeamKey: originTeamKey,
+  test('save preserves catalogKey provenance', () async {
+    final saved = await store.save(
+      _sampleMember().copyWith(catalogKey: 'acme/experts/pm'),
     );
-  }
+
+    expect(saved.catalogKey, 'acme/experts/pm');
+    expect((await store.getByKey(saved.key))?.catalogKey, 'acme/experts/pm');
+  });
 }

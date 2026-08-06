@@ -58,6 +58,7 @@ class LocalMemberTemplateStore {
       mcpDeps: member.mcpDeps,
       source: ExpertMemberSource.local,
       originTeamKey: member.originTeamKey,
+      catalogKey: member.catalogKey,
     );
     await _fs.ensureDir(_dir);
     await _fs.atomicWrite(
