@@ -69,7 +69,6 @@ class WorkbenchEditorOpener {
           payload: normalized,
         ),
       );
-      _chat?.dismissNewChat();
       await _editor.openFile(workspaceId, normalized, fs: fs);
       return;
     }
@@ -114,7 +113,6 @@ class WorkbenchEditorOpener {
           payload: tab.id,
         ),
       );
-      _chat?.dismissNewChat();
       return;
     }
     final replaced = _workbench.ensureTab(workspaceId, tab, preview: preview);
