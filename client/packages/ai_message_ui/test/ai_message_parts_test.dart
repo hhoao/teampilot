@@ -363,4 +363,127 @@ void main() {
     expect(firstView.actionBarReveal, AiActionBarReveal.hover);
     expect(lastView.actionBarReveal, AiActionBarReveal.always);
   });
+
+  testWidgets('tip thinking auto-expands chain and inner reasoning', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AiMessageView(
+            chainOfThoughtAutoExpand: true,
+            message: AiMessage(
+              id: 'a1',
+              role: AiRole.assistant,
+              parts: const [
+                AiReasoningPart(text: 'first step'),
+                AiReasoningPart(text: 'second step'),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.textContaining('Thinking process · 2 steps'), findsOneWidget);
+    // Inner reasoning steps are open — their content is visible.
+    expect(find.textContaining('first step'), findsOneWidget);
+    expect(find.textContaining('second step'), findsOneWidget);
+  });
+
+  testWidgets('non-tip thinking stays collapsed by default', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AiMessageView(
+            message: AiMessage(
+              id: 'a1',
+              role: AiRole.assistant,
+              parts: const [AiReasoningPart(text: 'hidden thinking')],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.textContaining('Thinking process · 1 steps'), findsOneWidget);
+    expect(find.textContaining('hidden thinking'), findsNothing);
+  });
+
+  testWidgets('auto-expanded thinking collapses once non-thinking arrives', (
+    tester,
+  ) async {
+    Future<void> pump({
+      required bool autoExpand,
+      required List<AiMessagePart> parts,
+    }) {
+      return tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: AiMessageView(
+              chainOfThoughtAutoExpand: autoExpand,
+              message: AiMessage(
+                id: 'a1',
+                role: AiRole.assistant,
+                parts: parts,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    await pump(
+      autoExpand: true,
+      parts: const [AiReasoningPart(text: 'live thinking')],
+    );
+    expect(find.textContaining('live thinking'), findsOneWidget);
+
+    await pump(
+      autoExpand: false,
+      parts: const [
+        AiReasoningPart(text: 'live thinking'),
+        AiTextPart(text: 'the answer'),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('the answer'), findsOneWidget);
+    expect(find.textContaining('live thinking'), findsNothing);
+  });
+
+  testWidgets('AiThread auto-expands only the last all-thinking message', (
+    tester,
+  ) async {
+    final store = ExternalStoreAiThreadRuntime()
+      ..setMessages([
+        AiMessage(
+          id: '1',
+          role: AiRole.assistant,
+          parts: const [AiReasoningPart(text: 'old reasoning')],
+        ),
+        AiMessage(
+          id: '2',
+          role: AiRole.assistant,
+          parts: const [AiReasoningPart(text: 'tip reasoning')],
+        ),
+      ]);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AiThread(
+            runtime: store,
+            loadingBuilder: (_) => const SizedBox.shrink(),
+            emptyBuilder: (_) => const SizedBox.shrink(),
+            errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('tip reasoning'), findsOneWidget);
+    expect(find.textContaining('old reasoning'), findsNothing);
+  });
 }

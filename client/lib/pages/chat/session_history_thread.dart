@@ -475,6 +475,8 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
   Widget build(BuildContext context) {
     final displayMessages = _displayMessages;
     final lastId = displayMessages.isEmpty ? null : displayMessages.last.id;
+    // Last *real* message (excludes the running footer appended to the tip).
+    final realTipId = _messages.isEmpty ? null : _messages.last.id;
     final aiTheme = AiMessageTheme.of(context);
 
     final Widget? header = widget.hasOlder
@@ -567,6 +569,11 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                           actionBarReveal: ai.id == lastId
                               ? AiActionBarReveal.always
                               : AiActionBarReveal.hover,
+                          // Keep the tip "thinking" expanded while it streams;
+                          // collapse once a non-thinking part appears or the
+                          // message is no longer the last real message.
+                          chainOfThoughtAutoExpand:
+                              ai.id == realTipId && aiMessageIsThinkingOnly(ai),
                         );
                         return tightenForRunning
                             ? Theme(

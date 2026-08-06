@@ -11,16 +11,36 @@ import 'tool_call_part_view.dart';
 
 /// Default-collapsed chain-of-thought chrome for contiguous reasoning + tools.
 class AiChainOfThoughtView extends StatefulWidget {
-  const AiChainOfThoughtView({required this.parts, super.key});
+  const AiChainOfThoughtView({
+    required this.parts,
+    this.autoExpand = false,
+    super.key,
+  });
 
   final List<AiMessagePart> parts;
+
+  /// While true, the chain stays expanded (including inner reasoning steps) so
+  /// live "thinking" content remains visible. The host flips this off once a
+  /// non-thinking part arrives or the message is no longer the tip, collapsing
+  /// the reasoning back to its default collapsed chrome.
+  final bool autoExpand;
 
   @override
   State<AiChainOfThoughtView> createState() => _AiChainOfThoughtViewState();
 }
 
 class _AiChainOfThoughtViewState extends State<AiChainOfThoughtView> {
-  bool _open = false;
+  late bool _open = widget.autoExpand;
+
+  @override
+  void didUpdateWidget(covariant AiChainOfThoughtView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Entering auto-expand opens the chain; leaving it collapses back to the
+    // default chrome. While the mode is unchanged, respect manual toggles.
+    if (widget.autoExpand != oldWidget.autoExpand) {
+      _open = widget.autoExpand;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -98,7 +118,8 @@ class _AiChainOfThoughtViewState extends State<AiChainOfThoughtView> {
     return switch (part) {
       AiReasoningPart() => AiReasoningPartView(
         part: part,
-        initiallyExpanded: aiTheme.cotExpandReasoningOnOpen,
+        initiallyExpanded:
+            widget.autoExpand || aiTheme.cotExpandReasoningOnOpen,
       ),
       AiToolCallPart() => AiToolCallPartView(
         part: part,

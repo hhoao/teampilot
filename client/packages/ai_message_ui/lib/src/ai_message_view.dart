@@ -19,6 +19,7 @@ class AiMessageView extends StatefulWidget {
     this.showActionBar = true,
     this.actionBarReveal = AiActionBarReveal.always,
     this.actionBarHoverEnabled,
+    this.chainOfThoughtAutoExpand = false,
     super.key,
   });
 
@@ -30,6 +31,10 @@ class AiMessageView extends StatefulWidget {
   /// When `false`, ignore pointer-enter for hover ActionBars (history fling).
   /// Defaults to always enabled when null.
   final ValueListenable<bool>? actionBarHoverEnabled;
+
+  /// Auto-expand chain-of-thought while this message is the tip and consists
+  /// only of thinking content (see [AiChainOfThoughtView.autoExpand]).
+  final bool chainOfThoughtAutoExpand;
 
   @override
   State<AiMessageView> createState() => _AiMessageViewState();
@@ -78,6 +83,7 @@ class _AiMessageViewState extends State<AiMessageView> {
       child: AiMessageParts(
         parts: widget.message.parts,
         registry: widget.registry,
+        chainOfThoughtAutoExpand: widget.chainOfThoughtAutoExpand,
       ),
     );
     final trackHover = widget.showActionBar &&
