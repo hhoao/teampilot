@@ -21,7 +21,7 @@ import 'package:teampilot/services/cli/registry/cli_tool_registry_scope.dart';
 import 'package:teampilot/services/expert_hub/builtin_member_templates.dart';
 import 'package:teampilot/services/expert_hub/composite_expert_hub_source.dart';
 import 'package:teampilot/services/expert_hub/expert_hub_source.dart';
-import 'package:teampilot/services/expert_hub/local_member_template_store.dart';
+import 'package:teampilot/services/expert_hub/local_expert_store.dart';
 import '../../support/stub_member_roster_service.dart';
 import 'package:teampilot/utils/team/team_member_naming.dart';
 
@@ -33,7 +33,7 @@ class _FakeSource extends CompositeExpertHubSource {
     : super(
         builtIns: members,
         registry: _EmptyRegistry(),
-        localStore: LocalMemberTemplateStore(
+        localStore: LocalExpertStore(
           fs: InMemoryFilesystem(),
           dirOverride: '/local-templates',
         ),

@@ -1670,6 +1670,7 @@
   "expertHubSourceRegistry": "注册表",
   "expertHubSourceLocal": "我的模板",
   "expertHubSourceTeamExtract": "来自团队",
+  "expertHubSourceClone": "克隆",
   "expertHubPrompt": "职责",
   "expertHubPlaybook": "工作手册",
   "expertHubCapabilities": "能力",

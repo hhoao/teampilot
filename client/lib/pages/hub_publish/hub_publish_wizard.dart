@@ -8,7 +8,7 @@ import '../../cubits/github_account_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/discoverable_member.dart';
 import '../../models/team_config.dart';
-import '../../services/expert_hub/local_member_template_store.dart';
+import '../../services/expert_hub/local_expert_store.dart';
 import '../../services/hub_publish/bundle_provenance_lookup.dart';
 import '../../services/hub_publish/github_registry_publisher.dart';
 import '../../services/github/github_credentials_store.dart';
@@ -67,7 +67,7 @@ class _HubPublishWizardState extends State<HubPublishWizard> {
     if (team == null) return const [];
     return [
       for (final slot in team.roster)
-        if (LocalMemberTemplateStore.isLocalKey(slot.expertKey))
+        if (LocalExpertStore.isLocalKey(slot.expertKey))
           slot.expertKey,
     ];
   }
@@ -90,7 +90,7 @@ class _HubPublishWizardState extends State<HubPublishWizard> {
       final remapped = _expertKeyRemap[key];
       if (remapped == null ||
           remapped.isEmpty ||
-          LocalMemberTemplateStore.isLocalKey(remapped)) {
+          LocalExpertStore.isLocalKey(remapped)) {
         return false;
       }
     }

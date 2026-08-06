@@ -11,7 +11,7 @@ import '../../cubits/skill_cubit.dart';
 import '../../models/discoverable_member.dart';
 import '../../models/team_config.dart';
 import '../../repositories/ssh_credential_store.dart';
-import '../../services/expert_hub/local_member_template_store.dart';
+import '../../services/expert_hub/local_expert_store.dart';
 import '../../services/hub_publish/bundle_provenance_lookup.dart';
 import '../../services/hub_publish/github_registry_publisher.dart';
 import '../../services/github/github_credentials_store.dart';
@@ -127,7 +127,7 @@ List<DiscoverableMember> _remapCandidatesFromContext(BuildContext context) {
     final hub = context.read<ExpertHubCubit>();
     return [
       for (final m in hub.state.allMembers)
-        if (!LocalMemberTemplateStore.isLocalKey(m.key)) m,
+        if (!LocalExpertStore.isLocalKey(m.key)) m,
     ];
   } catch (_) {
     return const [];

@@ -209,6 +209,7 @@ class ExpertSourceBadge extends StatelessWidget {
       ExpertMemberSource.registry => l10n.expertHubSourceRegistry,
       ExpertMemberSource.local => l10n.expertHubSourceLocal,
       ExpertMemberSource.teamExtract => l10n.expertHubSourceTeamExtract,
+      ExpertMemberSource.clone => l10n.expertHubSourceClone,
     };
     return TeamStatChip(label: label, accent: accent);
   }

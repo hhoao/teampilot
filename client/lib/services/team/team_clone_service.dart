@@ -14,15 +14,13 @@ typedef PluginDepInstaller = Future<String?> Function(PluginDependencyRef ref);
 /// Adds one MCP dep; returns its local server id, or null on failure.
 typedef McpDepInstaller = Future<String?> Function(McpDependencyRef ref);
 
-/// Clones one roster expert for a team clone; returns the key the slot should
-/// reference (kept or new local key), or null on failure.
+/// Clones one roster expert for a team clone. Returns `null` on failure;
+/// otherwise the outcome records whether a new local clone was created. The
+/// roster slot key is unchanged under the shadow model.
 typedef ExpertSlotCloner = Future<ExpertCloneOutcome?> Function({
   required String expertKey,
   String? originTeamKey,
 });
-
-/// Produces a per-clone-run [ExpertSlotCloner] (run-scoped memoization).
-typedef ExpertSlotClonerFactory = ExpertSlotCloner Function();
 
 /// Creates the cloned team; returns the new team id, or null on failure.
 typedef ClonedTeamCreator =
@@ -120,14 +118,14 @@ class TeamCloneService {
     required this.installSkill,
     required this.installPlugin,
     required this.installMcp,
-    required this.expertClonerFactory,
+    required this.expertCloner,
     required this.createTeam,
   });
 
   final SkillDepInstaller installSkill;
   final PluginDepInstaller installPlugin;
   final McpDepInstaller installMcp;
-  final ExpertSlotClonerFactory expertClonerFactory;
+  final ExpertSlotCloner expertCloner;
   final ClonedTeamCreator createTeam;
 
   Future<CloneResult> clone(
@@ -180,26 +178,24 @@ class TeamCloneService {
       progress(dep.name);
     }
 
-    final cloner = expertClonerFactory();
     final now = DateTime.now().millisecondsSinceEpoch;
+    final roster = team.roster
+        .map(
+          (slot) => slot.joinedAt == 0 ? slot.copyWith(joinedAt: now) : slot,
+        )
+        .toList(growable: false);
+
+    // Shadow model: roster keys stay the catalog keys; cloning only ensures a
+    // local clone exists per referenced expert (O(1) dedup in the store).
     final clonedExpertKeys = <String>[];
-    final repointedRoster = <TeamRosterSlot>[];
     for (final slot in team.roster) {
       final key = slot.expertKey.trim();
-      final base = slot.joinedAt == 0 ? slot.copyWith(joinedAt: now) : slot;
-      if (key.isEmpty) {
-        repointedRoster.add(base);
-        continue;
-      }
-      final outcome = await cloner(expertKey: key, originTeamKey: team.key);
+      if (key.isEmpty) continue;
+      final outcome = await expertCloner(expertKey: key, originTeamKey: team.key);
       if (outcome == null) {
         failed.add(DependencyFailure(DependencyKind.expert, key));
-        repointedRoster.add(base);
-      } else {
-        if (outcome.cloned) clonedExpertKeys.add(outcome.key);
-        repointedRoster.add(
-          outcome.key == key ? base : base.copyWith(expertKey: outcome.key),
-        );
+      } else if (outcome.cloned) {
+        clonedExpertKeys.add(key);
       }
       progress('expert:$key');
     }
@@ -208,7 +204,7 @@ class TeamCloneService {
       name: team.name,
       cli: team.cli,
       teamMode: team.teamMode,
-      roster: repointedRoster,
+      roster: roster,
       skillIds: skillIds,
       pluginIds: pluginIds,
       mcpServerIds: mcpIds,

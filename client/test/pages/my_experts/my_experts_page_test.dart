@@ -15,7 +15,7 @@ import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/expert_hub/composite_expert_hub_source.dart';
 import 'package:teampilot/services/expert_hub/expert_hub_source.dart';
 import 'package:teampilot/services/expert_hub/local_expert_writer.dart';
-import 'package:teampilot/services/expert_hub/local_member_template_store.dart';
+import 'package:teampilot/services/expert_hub/local_expert_store.dart';
 import '../../support/stub_member_roster_service.dart';
 import 'package:teampilot/services/hub_publish/hub_publish_record_store.dart';
 
@@ -129,7 +129,7 @@ void main() {
 
     final fs = InMemoryFilesystem();
     final writer = LocalExpertWriter(
-      store: LocalMemberTemplateStore(
+      store: LocalExpertStore(
         fs: fs,
         dirOverride: '/experts',
         uuidFactory: () => 'new-expert',
@@ -169,7 +169,7 @@ void main() {
 
     final fs = InMemoryFilesystem();
     final writer = LocalExpertWriter(
-      store: LocalMemberTemplateStore(fs: fs, dirOverride: '/experts'),
+      store: LocalExpertStore(fs: fs, dirOverride: '/experts'),
     );
     await writer.save(_localExpert(id: 'e1', name: 'Before'));
     final launch = _launchCubit();
@@ -203,7 +203,7 @@ void main() {
 
     final fs = InMemoryFilesystem();
     final writer = LocalExpertWriter(
-      store: LocalMemberTemplateStore(fs: fs, dirOverride: '/experts'),
+      store: LocalExpertStore(fs: fs, dirOverride: '/experts'),
     );
     await writer.save(_localExpert(id: 'gone', name: 'Disposable'));
     final launch = _launchCubit();
@@ -234,7 +234,7 @@ void main() {
 
     final fs = InMemoryFilesystem();
     final writer = LocalExpertWriter(
-      store: LocalMemberTemplateStore(fs: fs, dirOverride: '/experts'),
+      store: LocalExpertStore(fs: fs, dirOverride: '/experts'),
     );
     await writer.save(_localExpert(id: 'used', name: 'In Use'));
     final launch = _launchCubit(
@@ -279,7 +279,7 @@ void main() {
 
     final fs = InMemoryFilesystem();
     final writer = LocalExpertWriter(
-      store: LocalMemberTemplateStore(fs: fs, dirOverride: '/experts'),
+      store: LocalExpertStore(fs: fs, dirOverride: '/experts'),
     );
     await writer.save(_localExpert(id: 'e1', name: 'Published One'));
     await writer.save(_localExpert(id: 'e2', name: 'Unpublished'));

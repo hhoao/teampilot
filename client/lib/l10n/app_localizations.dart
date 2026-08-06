@@ -7601,6 +7601,12 @@ abstract class AppLocalizations {
   /// **'From team'**
   String get expertHubSourceTeamExtract;
 
+  /// No description provided for @expertHubSourceClone.
+  ///
+  /// In en, this message translates to:
+  /// **'Cloned'**
+  String get expertHubSourceClone;
+
   /// No description provided for @expertHubPrompt.
   ///
   /// In en, this message translates to:

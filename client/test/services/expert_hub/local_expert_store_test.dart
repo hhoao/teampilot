@@ -1,7 +1,9 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/discoverable_member.dart';
 import 'package:teampilot/models/discoverable_team.dart';
-import 'package:teampilot/services/expert_hub/local_member_template_store.dart';
+import 'package:teampilot/services/expert_hub/local_expert_store.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 
 import '../../support/in_memory_filesystem.dart';
@@ -23,12 +25,12 @@ DiscoverableMember _sampleMember({String key = 'owner/repo/pm'}) {
 
 void main() {
   late InMemoryFilesystem fs;
-  late LocalMemberTemplateStore store;
+  late LocalExpertStore store;
 
   setUp(() {
     fs = InMemoryFilesystem();
     final paths = AppPaths('/tp');
-    store = LocalMemberTemplateStore(
+    store = LocalExpertStore(
       fs: fs,
       dirOverride: paths.memberHubLocalTemplatesDir,
       uuidFactory: () => 'test-uuid',
@@ -111,19 +113,71 @@ void main() {
   test('persists across store instances', () async {
     final saved = await store.save(_sampleMember());
 
-    final fresh = LocalMemberTemplateStore(
+    final fresh = LocalExpertStore(
       fs: fs,
       dirOverride: AppPaths('/tp').memberHubLocalTemplatesDir,
     );
     expect(await fresh.loadAll(), [saved]);
   });
 
-  test('save preserves catalogKey provenance', () async {
-    final saved = await store.save(
-      _sampleMember().copyWith(catalogKey: 'acme/experts/pm'),
+  test('putClone stores under the catalog key (nested path)', () async {
+    final saved = await store.putClone(
+      _sampleMember().copyWith(
+        key: 'acme/experts/pm',
+        source: ExpertMemberSource.clone,
+        originTeamKey: 'acme/teams/squad',
+        clonedAt: 1723000000000,
+      ),
+    );
+    expect(saved.key, 'acme/experts/pm');
+
+    final loaded = await store.getByKey('acme/experts/pm');
+    expect(loaded, isNotNull);
+    expect(loaded!.source, ExpertMemberSource.clone);
+    expect(loaded.originTeamKey, 'acme/teams/squad');
+    expect(loaded.clonedAt, 1723000000000);
+  });
+
+  test('getByKey reads any key (shadow lookup)', () async {
+    await store.putClone(_sampleMember().copyWith(key: 'acme/experts/pm'));
+    expect(await store.getByKey('acme/experts/pm'), isNotNull);
+  });
+
+  test('loadAll reads nested clone files', () async {
+    await store.putClone(_sampleMember().copyWith(key: 'acme/experts/pm'));
+    await store.save(_sampleMember());
+
+    final loaded = await store.loadAll();
+    expect(
+      loaded.map((m) => m.key),
+      containsAll(['acme/experts/pm', 'local/test-uuid']),
+    );
+  });
+
+  test('migrateLegacyLayout purges old clones and keeps user-custom', () async {
+    final ctx = fs.pathContext;
+    final dir = AppPaths('/tp').memberHubLocalTemplatesDir;
+    await fs.writeString(
+      ctx.join(dir, 'old-clone.json'),
+      jsonEncode({
+        ..._sampleMember().toJson(),
+        'catalogKey': 'acme/experts/pm', // legacy uuid-clone marker
+      }),
+    );
+    await fs.writeString(
+      ctx.join(dir, 'old-custom.json'),
+      jsonEncode(
+        _sampleMember().copyWith(key: 'local/old-custom').toJson(),
+      ),
     );
 
-    expect(saved.catalogKey, 'acme/experts/pm');
-    expect((await store.getByKey(saved.key))?.catalogKey, 'acme/experts/pm');
+    await store.migrateLegacyLayout();
+
+    expect(await fs.readString(ctx.join(dir, 'old-clone.json')), isNull,
+        reason: 'old uuid clone is purged');
+    final relocated = await store.getByKey('local/old-custom');
+    expect(relocated, isNotNull,
+        reason: 'legacy user-custom is relocated under local/');
+    expect(relocated!.name, 'Product Manager');
   });
 }

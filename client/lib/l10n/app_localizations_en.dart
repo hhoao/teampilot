@@ -4237,6 +4237,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get expertHubSourceTeamExtract => 'From team';
 
   @override
+  String get expertHubSourceClone => 'Cloned';
+
+  @override
   String get expertHubPrompt => 'Responsibilities';
 
   @override

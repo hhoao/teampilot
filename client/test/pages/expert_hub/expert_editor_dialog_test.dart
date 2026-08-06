@@ -10,7 +10,7 @@ import 'package:teampilot/pages/expert_hub/expert_editor_dialog.dart';
 import 'package:teampilot/services/expert_hub/composite_expert_hub_source.dart';
 import 'package:teampilot/services/expert_hub/expert_hub_source.dart';
 import 'package:teampilot/services/expert_hub/local_expert_writer.dart';
-import 'package:teampilot/services/expert_hub/local_member_template_store.dart';
+import 'package:teampilot/services/expert_hub/local_expert_store.dart';
 import '../../support/stub_member_roster_service.dart';
 
 import '../../support/in_memory_filesystem.dart';
@@ -35,7 +35,7 @@ class _EmptyRegistry implements ExpertHubSource {
 }
 
 class _SpyWriter extends LocalExpertWriter {
-  _SpyWriter({required LocalMemberTemplateStore store}) : super(store: store);
+  _SpyWriter({required LocalExpertStore store}) : super(store: store);
 
   final saved = <DiscoverableMember>[];
 
@@ -83,7 +83,7 @@ void main() {
 
     final fs = InMemoryFilesystem();
     final writer = _SpyWriter(
-      store: LocalMemberTemplateStore(fs: fs, dirOverride: '/t'),
+      store: LocalExpertStore(fs: fs, dirOverride: '/t'),
     );
     final hub = _SpyHubCubit();
     addTearDown(() async {
@@ -155,7 +155,7 @@ void main() {
     expect(result!.member.responsibilities, 'Keep the archive tidy.');
     expect(result!.member.playbook, 'Read first, then write.');
     expect(result!.tags, {'docs', 'archive'});
-    expect(LocalMemberTemplateStore.isLocalKey(result!.key), isTrue);
+    expect(LocalExpertStore.isLocalKey(result!.key), isTrue);
     expect(hub.forceRefreshCalls, 1);
   });
 
@@ -164,7 +164,7 @@ void main() {
 
     final fs = InMemoryFilesystem();
     final writer = _SpyWriter(
-      store: LocalMemberTemplateStore(fs: fs, dirOverride: '/t'),
+      store: LocalExpertStore(fs: fs, dirOverride: '/t'),
     );
 
     DiscoverableMember? result;
@@ -264,7 +264,7 @@ void main() {
                 await showExpertEditorDialog(
                   context,
                   writer: _SpyWriter(
-                    store: LocalMemberTemplateStore(
+                    store: LocalExpertStore(
                       fs: InMemoryFilesystem(),
                       dirOverride: '/t',
                     ),
@@ -316,7 +316,7 @@ void main() {
 
     final fs = InMemoryFilesystem();
     final writer = _SpyWriter(
-      store: LocalMemberTemplateStore(fs: fs, dirOverride: '/t'),
+      store: LocalExpertStore(fs: fs, dirOverride: '/t'),
     );
     const orphan = SkillDependencyRef(
       repoOwner: 'missing',
@@ -398,7 +398,7 @@ void main() {
 
     final fs = InMemoryFilesystem();
     final writer = _SpyWriter(
-      store: LocalMemberTemplateStore(fs: fs, dirOverride: '/t'),
+      store: LocalExpertStore(fs: fs, dirOverride: '/t'),
     );
 
     DiscoverableMember? result;
@@ -486,7 +486,7 @@ void main() {
 
     final fs = InMemoryFilesystem();
     final writer = _SpyWriter(
-      store: LocalMemberTemplateStore(fs: fs, dirOverride: '/t'),
+      store: LocalExpertStore(fs: fs, dirOverride: '/t'),
     );
 
     DiscoverableMember? result;
@@ -562,7 +562,7 @@ void main() {
 
     final fs = InMemoryFilesystem();
     final writer = _SpyWriter(
-      store: LocalMemberTemplateStore(
+      store: LocalExpertStore(
         fs: fs,
         dirOverride: '/t',
         uuidFactory: () => 'fixed-id',
@@ -634,7 +634,7 @@ void main() {
 
     final fs = InMemoryFilesystem();
     final writer = _SpyWriter(
-      store: LocalMemberTemplateStore(fs: fs, dirOverride: '/t'),
+      store: LocalExpertStore(fs: fs, dirOverride: '/t'),
     );
 
     await tester.pumpWidget(

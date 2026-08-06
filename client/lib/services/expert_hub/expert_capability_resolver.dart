@@ -8,7 +8,7 @@ import 'composite_expert_hub_source.dart';
 import 'expert_capability_pack.dart';
 import 'expert_member_materializer.dart';
 import 'expert_member_resolver.dart';
-import 'local_member_template_store.dart';
+import 'local_expert_store.dart';
 
 /// Resolves an expert into a capability pack (persona + installed deps).
 ///
@@ -21,7 +21,7 @@ class ExpertCapabilityResolver {
     required PluginDepInstaller installPlugin,
     required McpDepInstaller installMcp,
     CompositeExpertHubSource? source,
-    LocalMemberTemplateStore? localStore,
+    LocalExpertStore? localStore,
     ExpertHubCubit? cubit,
   }) : _installSkill = installSkill,
        _installPlugin = installPlugin,
@@ -34,7 +34,7 @@ class ExpertCapabilityResolver {
   final PluginDepInstaller _installPlugin;
   final McpDepInstaller _installMcp;
   final CompositeExpertHubSource? _source;
-  final LocalMemberTemplateStore? _localStore;
+  final LocalExpertStore? _localStore;
   ExpertHubCubit? _cubit;
 
   /// Late-bind hub cubit after bootstrap constructs [ExpertHubCubit].

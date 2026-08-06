@@ -3,7 +3,7 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/ai/team_config_draft.dart';
 import 'package:teampilot/services/ai/team_draft_roster_mapper.dart';
 import 'package:teampilot/services/expert_hub/local_expert_writer.dart';
-import 'package:teampilot/services/expert_hub/local_member_template_store.dart';
+import 'package:teampilot/services/expert_hub/local_expert_store.dart';
 import 'package:teampilot/utils/team/team_member_naming.dart';
 
 import '../../support/in_memory_filesystem.dart';
@@ -13,7 +13,7 @@ void main() {
     var uuidCounter = 0;
     final fs = InMemoryFilesystem();
     final writer = LocalExpertWriter(
-      store: LocalMemberTemplateStore(
+      store: LocalExpertStore(
         fs: fs,
         dirOverride: '/t',
         uuidFactory: () => 'uuid-${++uuidCounter}',
@@ -46,7 +46,7 @@ void main() {
     expect(slots[0].id, TeamMemberNaming.teamLeadName);
     expect(slots[1].id, 'worker');
     expect(
-      slots.every((s) => LocalMemberTemplateStore.isLocalKey(s.expertKey)),
+      slots.every((s) => LocalExpertStore.isLocalKey(s.expertKey)),
       isTrue,
     );
 

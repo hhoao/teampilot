@@ -1,12 +1,12 @@
 import '../../models/discoverable_member.dart';
-import 'local_member_template_store.dart';
+import 'local_expert_store.dart';
 
 /// Sole persistence API for user-saved local experts (UI and AI New Team).
 class LocalExpertWriter {
-  LocalExpertWriter({LocalMemberTemplateStore? store})
-    : _store = store ?? LocalMemberTemplateStore();
+  LocalExpertWriter({LocalExpertStore? store})
+    : _store = store ?? LocalExpertStore();
 
-  final LocalMemberTemplateStore _store;
+  final LocalExpertStore _store;
 
   Future<DiscoverableMember> save(DiscoverableMember member) =>
       _store.save(member);

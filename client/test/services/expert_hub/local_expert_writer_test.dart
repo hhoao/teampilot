@@ -2,18 +2,18 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/discoverable_member.dart';
 import 'package:teampilot/models/discoverable_team.dart';
 import 'package:teampilot/services/expert_hub/local_expert_writer.dart';
-import 'package:teampilot/services/expert_hub/local_member_template_store.dart';
+import 'package:teampilot/services/expert_hub/local_expert_store.dart';
 
 import '../../support/in_memory_filesystem.dart';
 
 void main() {
   late InMemoryFilesystem fs;
-  late LocalMemberTemplateStore store;
+  late LocalExpertStore store;
   late LocalExpertWriter writer;
 
   setUp(() {
     fs = InMemoryFilesystem();
-    store = LocalMemberTemplateStore(fs: fs, dirOverride: '/t');
+    store = LocalExpertStore(fs: fs, dirOverride: '/t');
     writer = LocalExpertWriter(store: store);
   });
 
@@ -29,7 +29,7 @@ void main() {
       ),
     );
 
-    expect(LocalMemberTemplateStore.isLocalKey(saved.key), isTrue);
+    expect(LocalExpertStore.isLocalKey(saved.key), isTrue);
     expect(await writer.loadAll(), [saved]);
   });
 

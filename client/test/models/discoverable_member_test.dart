@@ -147,37 +147,40 @@ void main() {
     expect(roundTrip.forLocale('zh').name, 'gstack 评审官');
   });
 
-  test('catalogKey round-trips through JSON', () {
+  test('clone source and clonedAt round-trip through JSON', () {
     final m = DiscoverableMember(
-      key: 'teampilot/builtin/developer',
-      name: 'Developer',
-      description: 'Implements features',
-      category: 'Development',
-      source: ExpertMemberSource.local,
-      member: const DiscoverableTeamMember(name: 'developer'),
-      catalogKey: 'acme/experts/developer',
+      key: 'acme/experts/pm',
+      name: 'Product Manager',
+      description: 'Plans.',
+      category: 'Business',
+      source: ExpertMemberSource.clone,
+      member: const DiscoverableTeamMember(name: 'pm'),
       originTeamKey: 'acme/teams/squad',
+      clonedAt: 1723000000000,
     );
     final decoded = DiscoverableMember.fromJson(m.toJson());
     expect(decoded, m);
-    expect(decoded.catalogKey, 'acme/experts/developer');
+    expect(decoded.source, ExpertMemberSource.clone);
+    expect(decoded.clonedAt, 1723000000000);
   });
 
-  test('copyWith updates catalogKey and originTeamKey', () {
+  test('copyWith overrides source, originTeamKey and clonedAt', () {
     const m = DiscoverableMember(
-      key: 'local/abc',
+      key: 'acme/experts/pm',
       name: 'PM',
       description: '',
       category: 'Business',
-      source: ExpertMemberSource.local,
+      source: ExpertMemberSource.registry,
       member: DiscoverableTeamMember(name: 'pm'),
     );
     final updated = m.copyWith(
-      catalogKey: 'acme/experts/pm',
+      source: ExpertMemberSource.clone,
       originTeamKey: 'acme/teams/squad',
+      clonedAt: 1723000000000,
     );
-    expect(updated.catalogKey, 'acme/experts/pm');
+    expect(updated.source, ExpertMemberSource.clone);
     expect(updated.originTeamKey, 'acme/teams/squad');
-    expect(updated.key, 'local/abc');
+    expect(updated.clonedAt, 1723000000000);
+    expect(updated.key, 'acme/experts/pm');
   });
 }

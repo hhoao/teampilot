@@ -3,7 +3,7 @@ import '../../models/discoverable_team.dart';
 import 'builtin_member_templates.dart';
 import 'expert_hub_source.dart';
 import 'git_registry_expert_hub_source.dart';
-import 'local_member_template_store.dart';
+import 'local_expert_store.dart';
 import 'team_member_index_source.dart';
 
 /// Stable hash of member prompt + playbook for deduping team-extracted entries
@@ -25,18 +25,18 @@ class CompositeExpertHubSource {
     ExpertHubSource? registry,
     List<DiscoverableTeam> teams = const [],
     TeamIndexLoader? teamIndex,
-    LocalMemberTemplateStore? localStore,
+    LocalExpertStore? localStore,
   }) : _builtIns = builtIns,
        _registry = registry ?? GitRegistryExpertHubSource(),
        _teams = teams,
        _teamIndex = teamIndex,
-       _localStore = localStore ?? LocalMemberTemplateStore();
+       _localStore = localStore ?? LocalExpertStore();
 
   factory CompositeExpertHubSource.withDefaults({
     ExpertHubSource? registry,
     List<DiscoverableTeam> teams = const [],
     TeamIndexLoader? teamIndex,
-    LocalMemberTemplateStore? localStore,
+    LocalExpertStore? localStore,
   }) => CompositeExpertHubSource(
     builtIns: builtinExpertMembers(),
     registry: registry,
@@ -49,7 +49,7 @@ class CompositeExpertHubSource {
   final ExpertHubSource _registry;
   final List<DiscoverableTeam> _teams;
   final TeamIndexLoader? _teamIndex;
-  final LocalMemberTemplateStore _localStore;
+  final LocalExpertStore _localStore;
 
   Future<List<DiscoverableMember>> fetchMembers({
     bool forceRefresh = false,
@@ -63,20 +63,28 @@ class CompositeExpertHubSource {
     final teamExtract = indexMembersFromTeams(teams);
     final local = await _localStore.loadAll();
 
+    // A local clone (or user-created expert) shadows the catalog/builtin
+    // entry with the same key, so a cloned team resolves to its clone.
+    final localKeys = local.map((m) => m.key).toSet();
     final builtinKeys = builtIns.map((m) => m.key).toSet();
+    final builtins = _builtIns
+        .where((m) => !localKeys.contains(m.key))
+        .toList(growable: false);
     final registryOnly = registry
-        .where((m) => !builtinKeys.contains(m.key))
+        .where((m) => !builtinKeys.contains(m.key) && !localKeys.contains(m.key))
         .toList(growable: false);
 
     final preferredHashes = {
-      for (final m in [...builtIns, ...registryOnly])
+      for (final m in [...builtins, ...registryOnly])
         memberContentHash(m.member),
     };
 
     final teamExtractOnly = teamExtract
-        .where((m) => !preferredHashes.contains(memberContentHash(m.member)))
+        .where((m) =>
+            !localKeys.contains(m.key) &&
+            !preferredHashes.contains(memberContentHash(m.member)))
         .toList(growable: false);
 
-    return [...builtIns, ...registryOnly, ...teamExtractOnly, ...local];
+    return [...builtins, ...registryOnly, ...teamExtractOnly, ...local];
   }
 }

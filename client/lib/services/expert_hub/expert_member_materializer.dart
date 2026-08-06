@@ -3,7 +3,7 @@ import '../../models/team_config.dart';
 import '../../models/team_roster_slot.dart';
 import 'composite_expert_hub_source.dart';
 import 'expert_member_resolver.dart';
-import 'local_member_template_store.dart';
+import 'local_expert_store.dart';
 
 /// Resolves catalog experts into runtime [TeamMemberConfig] for connect/launch.
 abstract final class ExpertMemberMaterializer {
@@ -43,7 +43,7 @@ abstract final class ExpertMemberMaterializer {
   static Future<List<TeamMemberConfig>> materializeRosterAsync({
     required TeamProfile team,
     CompositeExpertHubSource? source,
-    LocalMemberTemplateStore? localStore,
+    LocalExpertStore? localStore,
   }) async {
     final out = <TeamMemberConfig>[];
     for (final slot in team.roster) {
@@ -119,7 +119,7 @@ abstract final class ExpertMemberMaterializer {
   static Future<TeamProfile> attachMaterializedMembers(
     TeamProfile team, {
     CompositeExpertHubSource? source,
-    LocalMemberTemplateStore? localStore,
+    LocalExpertStore? localStore,
   }) async {
     final members = await materializeRosterAsync(
       team: team,
@@ -132,7 +132,7 @@ abstract final class ExpertMemberMaterializer {
   static Future<List<TeamProfile>> attachMaterializedMembersAll(
     Iterable<TeamProfile> teams, {
     CompositeExpertHubSource? source,
-    LocalMemberTemplateStore? localStore,
+    LocalExpertStore? localStore,
   }) async {
     final out = <TeamProfile>[];
     for (final team in teams) {

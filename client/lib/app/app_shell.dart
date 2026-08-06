@@ -118,6 +118,7 @@ import '../services/team_hub/team_hub_favorites_store.dart';
 import '../services/expert_hub/composite_expert_hub_source.dart';
 import '../services/expert_hub/expert_capability_resolver.dart';
 import '../services/expert_hub/expert_clone_service.dart';
+import '../services/expert_hub/local_expert_store.dart';
 import '../services/expert_hub/expert_hub_favorites_store.dart';
 import '../services/expert_hub/git_registry_expert_hub_source.dart';
 import '../services/expert_hub/member_roster_service.dart';
@@ -954,15 +955,17 @@ Future<AppShell> buildAppShell({
     registry: GitRegistryExpertHubSource(),
     teamIndex: teamHubSource.fetchTeams,
   );
+  final localExpertStore = LocalExpertStore();
+  await localExpertStore.migrateLegacyLayout();
+  final expertCloneService = ExpertCloneService(
+    source: compositeExpertHubSource,
+    store: localExpertStore,
+  );
   final teamCloneService = TeamCloneService(
     installSkill: skillCubit.installTeamDependency,
     installPlugin: pluginCubit.installTeamDependency,
     installMcp: mcpCubit.installTeamDependency,
-    expertClonerFactory: () {
-      final cloner = ExpertCloneService(source: compositeExpertHubSource);
-      return ({required expertKey, originTeamKey}) =>
-          cloner.clone(expertKey: expertKey, originTeamKey: originTeamKey);
-    },
+    expertCloner: expertCloneService.clone,
     createTeam:
         ({
           required name,

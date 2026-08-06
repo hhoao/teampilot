@@ -1962,6 +1962,7 @@
   "expertHubSourceRegistry": "Registry",
   "expertHubSourceLocal": "My template",
   "expertHubSourceTeamExtract": "From team",
+  "expertHubSourceClone": "Cloned",
   "expertHubPrompt": "Responsibilities",
   "expertHubPlaybook": "Playbook",
   "expertHubCapabilities": "Capabilities",

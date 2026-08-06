@@ -4,7 +4,7 @@ import 'package:teampilot/models/discoverable_team.dart';
 import 'package:teampilot/services/expert_hub/composite_expert_hub_source.dart';
 import 'package:teampilot/services/expert_hub/expert_clone_service.dart';
 import 'package:teampilot/services/expert_hub/expert_hub_source.dart';
-import 'package:teampilot/services/expert_hub/local_member_template_store.dart';
+import 'package:teampilot/services/expert_hub/local_expert_store.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 
 import '../../support/in_memory_filesystem.dart';
@@ -34,31 +34,25 @@ DiscoverableMember _catalogExpert({String key = 'acme/experts/pm'}) =>
 
 void main() {
   late InMemoryFilesystem fs;
-  late LocalMemberTemplateStore store;
+  late LocalExpertStore store;
   late ExpertCloneService service;
-
-  ExpertCloneService make({
-    List<DiscoverableMember> catalog = const [],
-  }) {
-    final source = CompositeExpertHubSource(
-      builtIns: const [],
-      registry: _FakeExpertHubSource(catalog),
-      localStore: store,
-    );
-    return ExpertCloneService(source: source, localStore: store);
-  }
 
   setUp(() {
     fs = InMemoryFilesystem();
-    store = LocalMemberTemplateStore(
+    store = LocalExpertStore(
       fs: fs,
       dirOverride: AppPaths('/tp').memberHubLocalTemplatesDir,
       uuidFactory: () => 'test-uuid',
     );
-    service = make(catalog: [_catalogExpert()]);
+    final source = CompositeExpertHubSource(
+      builtIns: const [],
+      registry: _FakeExpertHubSource([_catalogExpert()]),
+      localStore: store,
+    );
+    service = ExpertCloneService(source: source, store: store);
   });
 
-  test('catalog expert is cloned to a local key with provenance', () async {
+  test('clones a catalog expert under its key with provenance', () async {
     final out = await service.clone(
       expertKey: 'acme/experts/pm',
       originTeamKey: 'acme/teams/squad',
@@ -66,63 +60,36 @@ void main() {
 
     expect(out, isNotNull);
     expect(out!.cloned, isTrue);
-    expect(out.key, 'local/test-uuid');
 
-    final saved = await store.getByKey('local/test-uuid');
+    final saved = await store.getByKey('acme/experts/pm');
     expect(saved, isNotNull);
-    expect(saved!.catalogKey, 'acme/experts/pm');
+    expect(saved!.source, ExpertMemberSource.clone);
     expect(saved.originTeamKey, 'acme/teams/squad');
-    expect(saved.name, 'Product Manager');
+    expect(saved.clonedAt, greaterThan(0));
+  });
+
+  test('reuses an existing clone (O(1) dedup, no duplicate file)', () async {
+    await service.clone(expertKey: 'acme/experts/pm');
+    final second = await service.clone(expertKey: 'acme/experts/pm');
+
+    expect(second, isNotNull);
+    expect(second!.cloned, isFalse);
+    expect(await store.loadAll(), hasLength(1));
   });
 
   test('built-in expert is kept, not cloned', () async {
     final out = await service.clone(expertKey: 'teampilot/builtin/team-lead');
 
     expect(out, isNotNull);
-    expect(out!.key, 'teampilot/builtin/team-lead');
-    expect(out.cloned, isFalse);
+    expect(out!.cloned, isFalse);
     expect(await store.loadAll(), isEmpty);
   });
 
-  test('existing local key is kept', () async {
-    await store.save(_catalogExpert(key: 'local/existing'));
-
-    final out = await service.clone(expertKey: 'local/existing');
-
-    expect(out, isNotNull);
-    expect(out!.key, 'local/existing');
-    expect(out.cloned, isFalse);
+  test('unresolvable key is a failure', () async {
+    expect(await service.clone(expertKey: 'acme/experts/nope'), isNull);
   });
 
-  test('dangling local key is a failure', () async {
-    final out = await service.clone(expertKey: 'local/gone');
-    expect(out, isNull);
-  });
-
-  test('unresolvable catalog key is a failure', () async {
-    final out = await service.clone(expertKey: 'acme/experts/nope');
-    expect(out, isNull);
-  });
-
-  test('reuses an existing local copy from the same catalogKey', () async {
-    final first = await service.clone(expertKey: 'acme/experts/pm');
-    expect(first!.key, 'local/test-uuid');
-
-    // A fresh service (new run) sees the already-saved local copy.
-    final out = await make(catalog: [_catalogExpert()]).clone(
-      expertKey: 'acme/experts/pm',
-    );
-    expect(out, isNotNull);
-    expect(out!.key, 'local/test-uuid');
-    expect(out.cloned, isFalse);
-    expect(await store.loadAll(), hasLength(1));
-  });
-
-  test('same expert referenced twice in one run is cloned once', () async {
-    final out1 = await service.clone(expertKey: 'acme/experts/pm');
-    final out2 = await service.clone(expertKey: 'acme/experts/pm');
-
-    expect(out1!.key, out2!.key);
-    expect(await store.loadAll(), hasLength(1));
+  test('empty key is a failure', () async {
+    expect(await service.clone(expertKey: '  '), isNull);
   });
 }

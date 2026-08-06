@@ -2,7 +2,7 @@ import '../../models/discoverable_member.dart';
 import '../../cubits/expert_hub_cubit.dart';
 import 'builtin_member_templates.dart';
 import 'composite_expert_hub_source.dart';
-import 'local_member_template_store.dart';
+import 'local_expert_store.dart';
 
 /// Resolves an Expert Hub member key to a [DiscoverableMember] for UI labels
 /// and connect-time materialization.
@@ -44,18 +44,15 @@ class ExpertMemberResolver {
     required String? key,
     ExpertHubState? hubState,
     CompositeExpertHubSource? source,
-    LocalMemberTemplateStore? localStore,
+    LocalExpertStore? localStore,
     ExpertHubCubit? cubit,
   }) async {
     final trimmed = key?.trim() ?? '';
     if (trimmed.isEmpty) return null;
 
-    if (LocalMemberTemplateStore.isLocalKey(trimmed)) {
-      final local = await (localStore ?? LocalMemberTemplateStore()).getByKey(
-        trimmed,
-      );
-      if (local != null) return local;
-    }
+    // Shadow: a local clone (or user-created expert) wins over the catalog.
+    final local = await (localStore ?? LocalExpertStore()).getByKey(trimmed);
+    if (local != null) return local;
 
     ExpertHubState? effectiveHub = hubState ?? cubit?.state;
     if (cubit != null && (effectiveHub?.allMembers.isEmpty ?? true)) {

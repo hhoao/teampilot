@@ -322,7 +322,9 @@ class ExpertHubCubit extends Cubit<ExpertHubState> {
       base = base.where((m) => state.favorites.contains(m.key));
     }
     if (state.localOnly) {
-      base = base.where((m) => m.source == ExpertMemberSource.local);
+      base = base.where((m) =>
+          m.source == ExpertMemberSource.local ||
+          m.source == ExpertMemberSource.clone);
     }
     if (state.teamExtractOnly) {
       base = base.where((m) => m.source == ExpertMemberSource.teamExtract);

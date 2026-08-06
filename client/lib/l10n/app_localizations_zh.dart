@@ -4077,6 +4077,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get expertHubSourceTeamExtract => '来自团队';
 
   @override
+  String get expertHubSourceClone => '克隆';
+
+  @override
   String get expertHubPrompt => '职责';
 
   @override

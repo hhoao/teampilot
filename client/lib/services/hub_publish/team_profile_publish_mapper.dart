@@ -1,7 +1,7 @@
 import '../../models/discoverable_team.dart';
 import '../../models/team_config.dart';
 import '../../models/team_roster_slot.dart';
-import '../../services/expert_hub/local_member_template_store.dart';
+import '../../services/expert_hub/local_expert_store.dart';
 import 'bundle_provenance_lookup.dart';
 
 /// Outcome of mapping a local [TeamProfile] for Hub publish.
@@ -37,7 +37,7 @@ class TeamProfilePublishMapper {
     final remappedRoster = <TeamRosterSlot>[];
     for (final slot in team.roster) {
       final remappedKey = expertKeyRemap[slot.expertKey] ?? slot.expertKey;
-      if (LocalMemberTemplateStore.isLocalKey(remappedKey)) {
+      if (LocalExpertStore.isLocalKey(remappedKey)) {
         reasons.add('Unresolved local expert key: ${slot.expertKey}');
         continue;
       }

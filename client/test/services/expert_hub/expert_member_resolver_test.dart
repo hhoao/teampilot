@@ -3,7 +3,23 @@ import 'package:teampilot/cubits/expert_hub_cubit.dart';
 import 'package:teampilot/models/discoverable_member.dart';
 import 'package:teampilot/models/discoverable_team.dart';
 import 'package:teampilot/services/expert_hub/builtin_member_templates.dart';
+import 'package:teampilot/services/expert_hub/composite_expert_hub_source.dart';
+import 'package:teampilot/services/expert_hub/expert_hub_source.dart';
 import 'package:teampilot/services/expert_hub/expert_member_resolver.dart';
+import 'package:teampilot/services/expert_hub/local_expert_store.dart';
+import 'package:teampilot/services/storage/app_storage.dart';
+
+import '../../support/in_memory_filesystem.dart';
+
+class _FakeExpertHubSource implements ExpertHubSource {
+  _FakeExpertHubSource(this.members);
+  final List<DiscoverableMember> members;
+  @override
+  Future<List<DiscoverableMember>> fetchMembers({bool forceRefresh = false}) async =>
+      members;
+  @override
+  Future<List<String>> categories({bool forceRefresh = false}) async => const [];
+}
 
 void main() {
   test('resolve returns builtin member by key', () {
@@ -81,5 +97,37 @@ void main() {
     expect(resolved?.name, 'Developer');
     expect(resolved?.member.responsibilities, 'Build features');
     expect(resolved?.member.playbook, 'Use TDD');
+  });
+
+  test('resolveMember prefers a local clone over the catalog', () async {
+    final store = LocalExpertStore(
+      fs: InMemoryFilesystem(),
+      dirOverride: AppPaths('/tp').memberHubLocalTemplatesDir,
+    );
+    const catalogMember = DiscoverableMember(
+      key: 'acme/experts/pm',
+      name: 'Catalog PM',
+      description: '',
+      category: 'c',
+      source: ExpertMemberSource.registry,
+      member: DiscoverableTeamMember(name: 'pm'),
+    );
+    await store.putClone(
+      catalogMember.copyWith(source: ExpertMemberSource.clone),
+    );
+    final source = CompositeExpertHubSource(
+      builtIns: const [],
+      registry: _FakeExpertHubSource([catalogMember]),
+      localStore: store,
+    );
+
+    final resolved = await ExpertMemberResolver.resolveMember(
+      key: 'acme/experts/pm',
+      source: source,
+      localStore: store,
+    );
+    expect(resolved, isNotNull);
+    expect(resolved!.source, ExpertMemberSource.clone,
+        reason: 'local clone shadows the catalog entry');
   });
 }

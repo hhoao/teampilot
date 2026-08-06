@@ -48,8 +48,8 @@ void main() {
       installSkill: (d) async => 'anthropics/skills:deep-research',
       installPlugin: (d) async => 'acme/plugins/linter',
       installMcp: (d) async => 'context7',
-      expertClonerFactory: () => ({required expertKey, originTeamKey}) async =>
-          ExpertCloneOutcome(key: expertKey, cloned: false),
+      expertCloner: ({required expertKey, originTeamKey}) async =>
+          ExpertCloneOutcome(cloned: false),
       createTeam:
           ({
             required name,
@@ -86,8 +86,8 @@ void main() {
       installSkill: (d) async => null,
       installPlugin: (d) async => 'acme/plugins/linter',
       installMcp: (d) async => 'context7',
-      expertClonerFactory: () => ({required expertKey, originTeamKey}) async =>
-          ExpertCloneOutcome(key: expertKey, cloned: false),
+      expertCloner: ({required expertKey, originTeamKey}) async =>
+          ExpertCloneOutcome(cloned: false),
       createTeam:
           ({
             required name,
@@ -117,8 +117,8 @@ void main() {
       installSkill: (d) async => 's',
       installPlugin: (d) async => 'p',
       installMcp: (d) async => 'm',
-      expertClonerFactory: () => ({required expertKey, originTeamKey}) async =>
-          ExpertCloneOutcome(key: expertKey, cloned: false),
+      expertCloner: ({required expertKey, originTeamKey}) async =>
+          ExpertCloneOutcome(cloned: false),
       createTeam:
           ({
             required name,
@@ -136,16 +136,14 @@ void main() {
     expect(() => service.clone(team()), throwsA(isA<CloneException>()));
   });
 
-  test('repoints roster slots to cloned local expert keys', () async {
+  test('clones experts without repointing roster keys', () async {
     TeamRosterSlot? createdSlot;
     final service = TeamCloneService(
       installSkill: (d) async => null,
       installPlugin: (d) async => null,
       installMcp: (d) async => null,
-      expertClonerFactory: () => ({required expertKey, originTeamKey}) async =>
-          expertKey == 'catalog/pm'
-              ? ExpertCloneOutcome(key: 'local/cloned-pm', cloned: true)
-              : ExpertCloneOutcome(key: expertKey, cloned: false),
+      expertCloner: ({required expertKey, originTeamKey}) async =>
+          ExpertCloneOutcome(cloned: true),
       createTeam:
           ({
             required name,
@@ -177,9 +175,10 @@ void main() {
       ),
     );
 
-    expect(createdSlot!.expertKey, 'local/cloned-pm');
+    expect(createdSlot!.expertKey, 'catalog/pm',
+        reason: 'shadow model keeps the catalog key');
     expect(result.installed.expertCount, 1);
-    expect(result.installed.expertKeys, ['local/cloned-pm']);
+    expect(result.installed.expertKeys, ['catalog/pm']);
     expect(result.failedDeps, isEmpty);
   });
 
@@ -189,8 +188,7 @@ void main() {
       installSkill: (d) async => null,
       installPlugin: (d) async => null,
       installMcp: (d) async => null,
-      expertClonerFactory: () => ({required expertKey, originTeamKey}) async =>
-          null,
+      expertCloner: ({required expertKey, originTeamKey}) async => null,
       createTeam:
           ({
             required name,

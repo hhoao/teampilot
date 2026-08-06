@@ -10,8 +10,8 @@ void main() {
       installSkill: (_) async => null,
       installPlugin: (_) async => null,
       installMcp: (_) async => null,
-      expertClonerFactory: () => ({required expertKey, originTeamKey}) async =>
-          ExpertCloneOutcome(key: expertKey, cloned: false),
+      expertCloner: ({required expertKey, originTeamKey}) async =>
+          ExpertCloneOutcome(cloned: false),
       createTeam: ({
         required name,
         required cli,
