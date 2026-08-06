@@ -19,7 +19,7 @@ class WorkbenchShellRunSyncPlan {
   /// Always empty — floating surface owns shell tabs.
   final List<WorkbenchTabId> shellTabsToRemove;
 
-  /// New RunPanel session ids — ensure and select (last wins if several).
+  /// Always empty — floating surface owns run tabs.
   final List<String> runIdsToEnsureAndSelect;
 
   /// Run tabs whose RunPanel session no longer exists.
@@ -47,6 +47,43 @@ List<String> runIdsToEnsureAndSelect({
   ];
 }
 
+/// Live RunPanel session ids not yet present as floating run tabs.
+List<String> floatingRunIdsToEnsure({
+  required Iterable<String> existingFloatingRunSessionIds,
+  required Iterable<String> liveRunPanelSessionIds,
+}) {
+  final existing = existingFloatingRunSessionIds.toSet();
+  return [
+    for (final id in liveRunPanelSessionIds)
+      if (!existing.contains(id)) id,
+  ];
+}
+
+/// Whether passive reconcile should mutate floating run tabs for [bridgeWorkspaceId].
+///
+/// Returns false when there is nothing to ensure/remove, or when the floating
+/// panel is focused on a different workspace (avoids hijacking active workspace).
+bool shouldSyncFloatingRuns({
+  required String bridgeWorkspaceId,
+  required String floatingActiveWorkspaceId,
+  required bool hasFloatingMutations,
+}) {
+  if (!hasFloatingMutations) return false;
+  return floatingActiveWorkspaceId.trim() == bridgeWorkspaceId.trim();
+}
+
+/// Floating run session ids whose RunPanel session no longer exists.
+List<String> floatingRunIdsToRemove({
+  required Iterable<String> existingFloatingRunSessionIds,
+  required Iterable<String> liveRunPanelSessionIds,
+}) {
+  final live = liveRunPanelSessionIds.toSet();
+  return [
+    for (final id in existingFloatingRunSessionIds)
+      if (!live.contains(id)) id,
+  ];
+}
+
 /// Run tabs whose RunPanel session id is gone.
 List<WorkbenchTabId> runTabsToRemove({
   required List<WorkbenchTabId> tabOrder,
@@ -71,10 +108,7 @@ WorkbenchShellRunSyncPlan planWorkbenchShellRunSync({
   return WorkbenchShellRunSyncPlan(
     shellIdsToEnsure: const [],
     shellTabsToRemove: const [],
-    runIdsToEnsureAndSelect: runIdsToEnsureAndSelect(
-      tabOrder: tabOrder,
-      runPanelSessionIds: runPanelSessionIds,
-    ),
+    runIdsToEnsureAndSelect: const [],
     runTabsToRemove: runTabsToRemove(
       tabOrder: tabOrder,
       runPanelSessionIds: runPanelSessionIds,

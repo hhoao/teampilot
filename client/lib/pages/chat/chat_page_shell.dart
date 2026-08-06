@@ -10,13 +10,10 @@ import '../../cubits/chat/model/chat_tab.dart';
 import '../../cubits/cli_presets_cubit.dart';
 import '../../cubits/editor_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
-import '../../cubits/run_cubit.dart';
 import '../../cubits/workbench/workbench_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../utils/workspace/workspace_chrome_profile.dart';
-import '../../models/run/run_session.dart';
 import '../../models/team_config.dart';
-import '../../services/run/run_panel_session.dart';
 import '../../services/terminal/workspace_shell_connector.dart';
 import '../../services/terminal/workspace_terminal_registry.dart';
 import '../../services/terminal/workspace_terminal_title_resolver.dart';
@@ -29,7 +26,6 @@ import '../../utils/debounce/debounce.dart';
 import '../../utils/workspace/workspace_active_context.dart';
 import '../../cubits/workspace_landing_context_cubit.dart';
 import '../../widgets/workbench/workbench_session_sync.dart';
-import '../../widgets/workbench/workbench_shell_run_sync.dart';
 import '../../widgets/workspace_terminal/workspace_terminal_new_session_menu.dart';
 import '../../widgets/workspace_terminal_panel.dart';
 import '../workbench/workbench_body.dart';
@@ -209,11 +205,7 @@ class _ChatWorkspaceShell extends StatelessWidget {
           sessionIds: sessionIds,
           activeSessionId: view.workbenchSlice.activeSessionId,
           newChatActive: view.newChatActive,
-          child: WorkbenchShellRunSync(
-            workspaceId: workspaceId,
-            tabScopeId: tabScopeId,
-            holdHandle: holdHandle,
-            child: BlocBuilder<WorkbenchCubit, WorkbenchState>(
+          child: BlocBuilder<WorkbenchCubit, WorkbenchState>(
               buildWhen: (prev, next) =>
                   prev.bucket(workspaceId) != next.bucket(workspaceId),
               builder: (context, workbenchState) {
@@ -261,19 +253,6 @@ class _ChatWorkspaceShell extends StatelessWidget {
                           : entry.titleLabel,
                     ),
                 };
-                final runSessions = context.watch<RunCubit>().state.sessions;
-                final runTitles = {
-                  for (final session in runSessions)
-                    if (sessionUsesRunPanel(session))
-                      session.id: session.owned.configuration.name,
-                };
-                final runWorking = {
-                  for (final session in runSessions)
-                    if (sessionUsesRunPanel(session) &&
-                        (session.status == RunSessionStatus.running ||
-                            session.status == RunSessionStatus.starting))
-                      session.id: true,
-                };
                 final tabs = projectWorkbenchTabs(
                   tabOrder: order,
                   sessionTitles: sessionTitles,
@@ -285,8 +264,6 @@ class _ChatWorkspaceShell extends StatelessWidget {
                       .bucket(workspaceId)
                       .previewTabIds,
                   shellTitles: shellTitles,
-                  runTitles: runTitles,
-                  runWorking: runWorking,
                   sessionAccent: Theme.of(context).colorScheme.primary,
                 );
                 final activeTabIndex = activeId == null
@@ -431,7 +408,6 @@ class _ChatWorkspaceShell extends StatelessWidget {
                 );
               },
             ),
-          ),
         );
       },
     );

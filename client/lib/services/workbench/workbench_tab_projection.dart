@@ -16,8 +16,6 @@ List<TabInfo> projectWorkbenchTabs({
   required Set<WorkbenchTabId> previewTabIds,
   Map<String, bool> sessionPinned = const {},
   Map<String, String> shellTitles = const {},
-  Map<String, String> runTitles = const {},
-  Map<String, bool> runWorking = const {},
   Color? sessionAccent,
 }) {
   return [
@@ -53,16 +51,8 @@ List<TabInfo> projectWorkbenchTabs({
           kind: WorkbenchTabKind.diff,
           filePath: tab.diffAbsolutePath,
         ),
-        WorkbenchTabKind.run => TabInfo(
-          id: tab.id,
-          title: runTitles[tab.id] ?? tab.id,
-          icon: Icons.play_arrow_rounded,
-          working: runWorking[tab.id] ?? false,
-          pinnable: false,
-          kind: WorkbenchTabKind.run,
-        ),
-        WorkbenchTabKind.shell => throw StateError(
-          'shell tabs are filtered before center-strip projection',
+        WorkbenchTabKind.shell || WorkbenchTabKind.run => throw StateError(
+          'shell/run tabs are filtered before center-strip projection',
         ),
       },
   ];

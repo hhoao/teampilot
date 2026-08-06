@@ -8,10 +8,12 @@ class FloatingSurfaceRegistry {
     required FloatingSurface file,
     required FloatingSurface terminal,
     FloatingSurface? diff,
+    FloatingSurface? run,
   }) => FloatingSurfaceRegistry([
     terminal,
     file,
     if (diff != null) diff,
+    if (run != null) run,
   ]);
 
   final Map<String, FloatingSurface> _byId;

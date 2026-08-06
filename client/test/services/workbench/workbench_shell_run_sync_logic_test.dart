@@ -51,8 +51,108 @@ void main() {
     });
   });
 
+  group('floatingRunIdsToEnsure', () {
+    test('live sessions missing from floating → ensure ids', () {
+      expect(
+        floatingRunIdsToEnsure(
+          existingFloatingRunSessionIds: ['r1'],
+          liveRunPanelSessionIds: ['r1', 'r2', 'r3'],
+        ),
+        ['r2', 'r3'],
+      );
+    });
+
+    test('preserves live order', () {
+      expect(
+        floatingRunIdsToEnsure(
+          existingFloatingRunSessionIds: const [],
+          liveRunPanelSessionIds: ['r-old', 'r-new'],
+        ),
+        ['r-old', 'r-new'],
+      );
+    });
+
+    test('all live sessions already floating → empty', () {
+      expect(
+        floatingRunIdsToEnsure(
+          existingFloatingRunSessionIds: ['r1', 'r2'],
+          liveRunPanelSessionIds: ['r1', 'r2'],
+        ),
+        isEmpty,
+      );
+    });
+  });
+
+  group('shouldSyncFloatingRuns', () {
+    test('no mutations → skip even when workspaces match', () {
+      expect(
+        shouldSyncFloatingRuns(
+          bridgeWorkspaceId: 'ws-a',
+          floatingActiveWorkspaceId: 'ws-a',
+          hasFloatingMutations: false,
+        ),
+        isFalse,
+      );
+    });
+
+    test('mutations needed + active workspace matches → sync', () {
+      expect(
+        shouldSyncFloatingRuns(
+          bridgeWorkspaceId: 'ws-a',
+          floatingActiveWorkspaceId: 'ws-a',
+          hasFloatingMutations: true,
+        ),
+        isTrue,
+      );
+    });
+
+    test('mutations needed + active workspace differs → skip (no hijack)', () {
+      expect(
+        shouldSyncFloatingRuns(
+          bridgeWorkspaceId: 'ws-a',
+          floatingActiveWorkspaceId: 'ws-b',
+          hasFloatingMutations: true,
+        ),
+        isFalse,
+      );
+    });
+
+    test('trimmed ids compare equal', () {
+      expect(
+        shouldSyncFloatingRuns(
+          bridgeWorkspaceId: ' ws-a ',
+          floatingActiveWorkspaceId: 'ws-a',
+          hasFloatingMutations: true,
+        ),
+        isTrue,
+      );
+    });
+  });
+
+  group('floatingRunIdsToRemove', () {
+    test('floating run tab whose session is gone → remove id', () {
+      expect(
+        floatingRunIdsToRemove(
+          existingFloatingRunSessionIds: ['r1', 'gone'],
+          liveRunPanelSessionIds: ['r1'],
+        ),
+        ['gone'],
+      );
+    });
+
+    test('no stale floating tabs → empty', () {
+      expect(
+        floatingRunIdsToRemove(
+          existingFloatingRunSessionIds: ['r1'],
+          liveRunPanelSessionIds: ['r1', 'r2'],
+        ),
+        isEmpty,
+      );
+    });
+  });
+
   group('planWorkbenchShellRunSync', () {
-    test('only syncs run tabs; never projects shell onto center strip', () {
+    test('only removes stale center run tabs; never ensures run on center', () {
       final plan = planWorkbenchShellRunSync(
         tabOrder: [
           WorkbenchTabId.shell('keep-shell'),
@@ -67,7 +167,7 @@ void main() {
 
       expect(plan.shellIdsToEnsure, isEmpty);
       expect(plan.shellTabsToRemove, isEmpty);
-      expect(plan.runIdsToEnsureAndSelect, ['new-run']);
+      expect(plan.runIdsToEnsureAndSelect, isEmpty);
       expect(plan.runTabsToRemove, [WorkbenchTabId.run('drop-run')]);
     });
   });

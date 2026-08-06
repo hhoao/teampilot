@@ -123,7 +123,7 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
   /// adopted into the shared preview slot (used after [syncSessions] appends a
   /// session before the open path marks it preview).
   ///
-  /// Shell and run tabs never enter the preview slot.
+  /// Shell and run tabs must not be added to the center strip.
   WorkbenchTabId? ensureTab(
     String workspaceId,
     WorkbenchTabId tab, {
@@ -132,15 +132,12 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
     if (!isCenterStripWorkbenchTab(tab.kind)) {
       assert(() {
         debugPrint(
-          'WorkbenchCubit.ensureTab: shell tabs must not be '
+          'WorkbenchCubit.ensureTab: shell/run tabs must not be '
           'added to the center workbench strip',
         );
         return true;
       }());
       return null;
-    }
-    if (tab.kind == WorkbenchTabKind.run) {
-      preview = false;
     }
     final bucket = state.bucket(workspaceId);
     final order = List<WorkbenchTabId>.from(bucket.tabOrder);
@@ -374,7 +371,7 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
   /// null so the welcome page is not replaced by an auto-selected session.
   /// When not in new-chat / welcome mode and active is unset/invalid, activates
   /// [preferredActiveSessionId] (or the first session).
-  /// Does not override an active file/diff/shell/run tab.
+  /// Does not override an active file/diff tab.
   void syncSessions(
     String workspaceId,
     List<String> sessionIds, {

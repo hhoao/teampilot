@@ -4,9 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/floating_workspace/floating_workspace_cubit.dart';
+import '../../cubits/floating_workspace/floating_workspace_state.dart';
 import '../../cubits/run_cubit.dart';
 import '../../cubits/workbench/workbench_cubit.dart';
-import '../../cubits/workbench/workbench_tab.dart';
+import '../../models/run/run_session.dart';
 import '../../models/run/run_ui_intent.dart';
 import '../../services/run/run_panel_session.dart';
 import '../../services/terminal/workspace_terminal_registry.dart';
@@ -14,8 +15,8 @@ import '../../services/workbench/workbench_run_intent.dart';
 import '../../services/workbench/workbench_shell_run_sync_logic.dart';
 import '../workspace_terminal_panel.dart';
 
-/// Passively mirrors RunPanel sessions into the center workbench strip
-/// (peer to [WorkbenchSessionSync]).
+/// Reconciles RunPanel sessions with floating run tabs and strips stale center
+/// run tabs (peer to [WorkbenchSessionSync]).
 ///
 /// Workspace shell entries are **not** projected here — they open on the
 /// floating terminal surface via [WorkbenchShellLauncher].
@@ -87,25 +88,52 @@ class _WorkbenchShellRunSyncState extends State<WorkbenchShellRunSync> {
     // setState(() {}) here only dirtied ChatPageShell on every addEntry.
   }
 
+  RunSession? _latestRunPanelSession(List<RunSession> sessions) {
+    final runPanelSessions = sessions
+        .where(sessionUsesRunPanel)
+        .toList(growable: false);
+    if (runPanelSessions.isEmpty) return null;
+    return runPanelSessions.last;
+  }
+
+  List<String> _existingFloatingRunSessionIds(
+    List<FloatingTab> tabs,
+  ) {
+    return [
+      for (final tab in tabs)
+        if (tab.surfaceId == 'run') _floatingRunSessionId(tab),
+    ].where((id) => id.isNotEmpty).toList(growable: false);
+  }
+
+  String _floatingRunSessionId(FloatingTab tab) {
+    final payload = tab.payload;
+    if (payload is String) {
+      final trimmed = payload.trim();
+      if (trimmed.isNotEmpty) return trimmed;
+    }
+    if (tab.id.startsWith('run:')) {
+      return tab.id.substring('run:'.length).trim();
+    }
+    return '';
+  }
+
   void _onUiIntent(RunUiIntent intent) {
     if (!mounted) return;
 
     if (intent.surface == RunToolSurface.run) {
-      final workbench = context.read<WorkbenchCubit>();
       final sessions = context.read<RunCubit>().state.sessions;
-      final runPanelSessions = sessions
-          .where(sessionUsesRunPanel)
-          .toList(growable: false);
-      final latestRunId = runPanelSessions.isEmpty
-          ? null
-          : runPanelSessions.last.id;
-      final tab = resolveWorkbenchTabForRunIntent(
+      final session = _latestRunPanelSession(sessions);
+      final tab = resolveFloatingTabForRunIntent(
         intent,
-        latestRunSessionId: latestRunId,
+        runSessionId: session?.id,
+        title: session?.owned.configuration.name ?? '',
       );
       if (tab != null) {
-        workbench.ensureTab(widget.workspaceId, tab);
-        workbench.select(widget.workspaceId, tab);
+        final floating = context.read<FloatingWorkspaceCubit>();
+        floating.ensureOpen();
+        floating.setActiveWorkspace(widget.workspaceId);
+        floating.ensureTab(tab);
+        floating.selectTab(tab.id);
       }
     } else if (intent.surface == RunToolSurface.terminal) {
       final group = _group ??
@@ -140,34 +168,67 @@ class _WorkbenchShellRunSyncState extends State<WorkbenchShellRunSync> {
 
   void _reconcile() {
     final workbench = context.read<WorkbenchCubit>();
-    final runPanelIds = context
-        .read<RunCubit>()
-        .state
-        .sessions
+    final runCubit = context.read<RunCubit>();
+    final runPanelSessions = runCubit.state.sessions
         .where(sessionUsesRunPanel)
-        .map((s) => s.id)
         .toList(growable: false);
+    final runPanelIds = [
+      for (final session in runPanelSessions) session.id,
+    ];
     final tabOrder = workbench.tabOrder(widget.workspaceId);
     final plan = planWorkbenchShellRunSync(
       tabOrder: tabOrder,
       registryEntryIds: const [],
       runPanelSessionIds: runPanelIds,
     );
-    if (plan.isEmpty) return;
 
     for (final tab in plan.runTabsToRemove) {
       workbench.removeTab(widget.workspaceId, tab);
     }
 
-    if (plan.runIdsToEnsureAndSelect.isEmpty) return;
+    final floating = context.read<FloatingWorkspaceCubit>();
+    final bucket =
+        floating.state.buckets[widget.workspaceId] ??
+        const FloatingWorkspaceBucket();
+    final existingFloatingRunIds = _existingFloatingRunSessionIds(bucket.tabs);
+    final runIdsToRemove = floatingRunIdsToRemove(
+      existingFloatingRunSessionIds: existingFloatingRunIds,
+      liveRunPanelSessionIds: runPanelIds,
+    );
+    final runIdsToEnsure = floatingRunIdsToEnsure(
+      existingFloatingRunSessionIds: existingFloatingRunIds,
+      liveRunPanelSessionIds: runPanelIds,
+    );
 
-    WorkbenchTabId? lastRun;
-    for (final id in plan.runIdsToEnsureAndSelect) {
-      lastRun = WorkbenchTabId.run(id);
-      workbench.ensureTab(widget.workspaceId, lastRun);
+    if (!shouldSyncFloatingRuns(
+      bridgeWorkspaceId: widget.workspaceId,
+      floatingActiveWorkspaceId: floating.state.activeWorkspaceId,
+      hasFloatingMutations:
+          runIdsToRemove.isNotEmpty || runIdsToEnsure.isNotEmpty,
+    )) {
+      return;
     }
-    if (lastRun != null) {
-      workbench.select(widget.workspaceId, lastRun);
+
+    for (final id in runIdsToRemove) {
+      floating.removeTab(floatingRunTabId(id));
+    }
+
+    final sessionsById = {for (final session in runPanelSessions) session.id: session};
+    for (final id in runIdsToEnsure) {
+      final session = sessionsById[id];
+      if (session == null) continue;
+      final tab = resolveFloatingTabForRunIntent(
+        const RunUiIntent(
+          surface: RunToolSurface.run,
+          activateToolWindow: true,
+          focusToolWindow: false,
+        ),
+        runSessionId: session.id,
+        title: session.owned.configuration.name,
+      );
+      if (tab != null) {
+        floating.ensureTab(tab);
+      }
     }
   }
 

@@ -34,19 +34,19 @@ void main() {
       const ws = 'ws-a';
       final session = WorkbenchTabId.session('s1');
       final file = WorkbenchTabId.file('/a.dart');
-      final run = WorkbenchTabId.run('r1');
+      final diff = WorkbenchTabId.diffStaged('/b.dart', staged: false);
 
       cubit.ensureTab(ws, session);
       cubit.ensureTab(ws, file);
-      cubit.ensureTab(ws, run);
-      expect(cubit.activeTabId(ws), run);
+      cubit.ensureTab(ws, diff);
+      expect(cubit.activeTabId(ws), diff);
 
       cubit.reorderTabs(ws, 0, 2);
-      expect(cubit.tabOrder(ws), [file, run, session]);
-      expect(cubit.activeTabId(ws), run);
+      expect(cubit.tabOrder(ws), [file, diff, session]);
+      expect(cubit.activeTabId(ws), diff);
     });
 
-    test('ensureTab rejects shell tabs but allows file on center strip', () {
+    test('ensureTab rejects shell and run tabs but allows file on center strip', () {
       const ws = 'ws-a';
       final session = WorkbenchTabId.session('s1');
       cubit.ensureTab(ws, session);
@@ -57,6 +57,10 @@ void main() {
       expect(cubit.activeTabId(ws), file);
 
       cubit.ensureTab(ws, WorkbenchTabId.shell('e1'));
+      expect(cubit.tabOrder(ws), [session, file]);
+      expect(cubit.activeTabId(ws), file);
+
+      cubit.ensureTab(ws, WorkbenchTabId.run('r1'));
       expect(cubit.tabOrder(ws), [session, file]);
       expect(cubit.activeTabId(ws), file);
     });
@@ -201,28 +205,29 @@ void main() {
       expect(cubit.activeTabId(ws), diff);
     });
 
-    // Landing compose unmounts ChatPage while a Run tab may stay active;
-    // syncSessions alone must not focus the new session (callers ensureTab).
-    test('syncSessions does not steal focus from run tab', () {
-      const ws = 'ws-a';
+    test('syncSessions drops stale shell/run tabs and preserves file tabs', () {
+      const ws = 'ws';
+      final s1 = WorkbenchTabId.session('s1');
+      final shell = WorkbenchTabId.shell('e1');
       final run = WorkbenchTabId.run('r1');
-      cubit.ensureTab(ws, run);
-      cubit.syncSessions(
-        ws,
-        ['s-new'],
-        preferredActiveSessionId: 's-new',
-        newChatActive: false,
+      final file = WorkbenchTabId.file('/a.dart');
+      cubit.ensureTab(ws, s1);
+      cubit.ensureTab(ws, file);
+      cubit.emit(
+        cubit.state.withBucket(
+          ws,
+          cubit.state.bucket(ws).copyWith(
+            tabOrder: [s1, shell, run, file],
+          ),
+        ),
       );
-      expect(cubit.activeTabId(ws), run);
-      expect(cubit.tabOrder(ws), contains(WorkbenchTabId.session('s-new')));
-    });
-
-    test('ensureTab selects session over active run tab', () {
-      const ws = 'ws-a';
-      final run = WorkbenchTabId.run('r1');
-      cubit.ensureTab(ws, run);
-      cubit.ensureTab(ws, WorkbenchTabId.session('s-new'));
-      expect(cubit.activeTabId(ws), WorkbenchTabId.session('s-new'));
+      cubit.syncSessions(ws, ['s1', 's2']);
+      expect(
+        cubit.tabOrder(ws),
+        containsAll([file, WorkbenchTabId.session('s2')]),
+      );
+      expect(cubit.tabOrder(ws), isNot(contains(shell)));
+      expect(cubit.tabOrder(ws), isNot(contains(run)));
     });
 
     test('preview open replaces existing preview; permanent pins', () {
@@ -314,40 +319,5 @@ void main() {
       expect(a, isNot(c));
     });
 
-    test('ensureTab run ignores preview flag (never enters preview set)', () {
-      const ws = 'ws';
-      final session = WorkbenchTabId.session('s1');
-      cubit.ensureTab(ws, session, preview: true);
-      expect(cubit.isPreview(ws, session), isTrue);
-
-      final run = WorkbenchTabId.run('r1');
-      cubit.ensureTab(ws, run, preview: true);
-      expect(cubit.isPreview(ws, run), isFalse);
-      expect(cubit.isPreview(ws, session), isTrue); // not displaced
-    });
-
-    test('syncSessions preserves run/file tabs and drops legacy shell tabs', () {
-      const ws = 'ws';
-      final s1 = WorkbenchTabId.session('s1');
-      final shell = WorkbenchTabId.shell('e1');
-      final run = WorkbenchTabId.run('r1');
-      final file = WorkbenchTabId.file('/a.dart');
-      cubit.ensureTab(ws, s1);
-      cubit.ensureTab(ws, run);
-      cubit.emit(
-        cubit.state.withBucket(
-          ws,
-          cubit.state.bucket(ws).copyWith(
-            tabOrder: [s1, shell, run, file],
-          ),
-        ),
-      );
-      cubit.syncSessions(ws, ['s1', 's2']);
-      expect(
-        cubit.tabOrder(ws),
-        containsAll([run, file, WorkbenchTabId.session('s2')]),
-      );
-      expect(cubit.tabOrder(ws), isNot(contains(shell)));
-    });
   });
 }

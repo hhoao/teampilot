@@ -6,6 +6,7 @@ import 'package:teampilot/cubits/workbench/workbench_tab.dart';
 import 'package:teampilot/models/floating_workspace_tab.dart';
 import 'package:teampilot/models/layout_preferences.dart';
 import 'package:teampilot/services/floating_workspace/migrate_legacy_workbench_tabs.dart';
+import 'package:teampilot/services/workbench/workbench_run_intent.dart';
 import 'package:teampilot/services/workbench/workbench_shell_launcher.dart';
 
 void main() {
@@ -38,13 +39,14 @@ void main() {
       floating: floating,
     );
 
-    expect(moved, 2);
-    expect(workbench.tabOrder(ws), [session, run]);
+    expect(moved, 3);
+    expect(workbench.tabOrder(ws), [session]);
     expect(
       floating.buckets[ws]!.tabs.map((t) => t.id).toList(),
       containsAll([
         'file:/repo/a.txt',
         floatingShellTabId('entry-1'),
+        floatingRunTabId('r1'),
       ]),
     );
     expect(
@@ -56,6 +58,67 @@ void main() {
     // Active workspace restored after migration.
     expect(floating.state.activeWorkspaceId, 'other');
   });
+
+  test('migrateLegacyWorkbenchTabsToFloating moves run tab to floating', () {
+    final workbench = WorkbenchCubit();
+    final floating = FloatingWorkspaceCubit();
+    addTearDown(workbench.close);
+    addTearDown(floating.close);
+
+    const ws = 'ws-a';
+    final run = WorkbenchTabId.run('r1');
+    workbench.emit(
+      workbench.state.withBucket(
+        ws,
+        workbench.state.bucket(ws).copyWith(tabOrder: [run]),
+      ),
+    );
+
+    final moved = migrateLegacyWorkbenchTabsToFloating(
+      workbench: workbench,
+      floating: floating,
+    );
+
+    expect(moved, 1);
+    expect(workbench.tabOrder(ws), isEmpty);
+    final runTab = floating.state.buckets[ws]!.tabs.single;
+    expect(runTab.id, floatingRunTabId('r1'));
+    expect(runTab.surfaceId, 'run');
+    expect(runTab.payload, 'r1');
+  });
+
+  test(
+    'migrateLegacyWorkbenchTabsToFloating moves run even when migrateFiles false',
+    () {
+      final workbench = WorkbenchCubit();
+      final floating = FloatingWorkspaceCubit();
+      addTearDown(workbench.close);
+      addTearDown(floating.close);
+
+      const ws = 'ws-a';
+      final file = WorkbenchTabId.file('/repo/a.txt');
+      final run = WorkbenchTabId.run('r1');
+      workbench.emit(
+        workbench.state.withBucket(
+          ws,
+          workbench.state.bucket(ws).copyWith(tabOrder: [file, run]),
+        ),
+      );
+
+      final moved = migrateLegacyWorkbenchTabsToFloating(
+        workbench: workbench,
+        floating: floating,
+        migrateFiles: false,
+      );
+
+      expect(moved, 1);
+      expect(workbench.tabOrder(ws), [file]);
+      expect(
+        floating.state.buckets[ws]!.tabs.map((t) => t.id).toList(),
+        [floatingRunTabId('r1')],
+      );
+    },
+  );
 
   test('migrateLegacyWorkbenchTabsToFloating is a no-op when strip is clean', () {
     final workbench = WorkbenchCubit();

@@ -22,6 +22,7 @@ import '../../../utils/workspace/workspace_new_chat_active.dart';
 import '../../../widgets/right_tools/right_tools_panel.dart';
 import '../../../widgets/workspace_terminal_panel.dart';
 import '../../chat_page.dart';
+import '../../../widgets/workbench/workbench_shell_run_sync.dart';
 import '../../workspace_ide/workspace_ide_shell.dart';
 import 'workspace_ide_center.dart';
 import 'workspace_route_active_scope.dart';
@@ -144,38 +145,43 @@ class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
             workspace: widget.workspace,
             cwd: cwd,
             tabScopeId: widget.tabScopeId,
-            child: WorkspaceIdeShell(
-              composeLanding: composeLanding,
-              terminalHold: _terminalHold,
-              onOpenWorkspaceManagement: () =>
-                  openWorkspaceManagementRoute(context, widget.workspace),
-              left: WorkspaceSidebar(
-                workspace: widget.workspace,
-                tabScopeId: widget.tabScopeId,
-                embedFooter:
-                    !(TpSidebarScope.maybeOf(context)?.isMobile ?? false),
-              ),
-              // Unbound Chat pane skips ChatPageShell / workbench projection.
-              center: buildWorkspaceIdeCenter(
-                newChat: composeLanding,
-                workspace: widget.workspace,
-                chatPage: ChatPage(
-                  cwd: cwd,
-                  additionalPaths: widget.workspace.extraFolderPaths,
-                  workspaceId: widget.workspace.workspaceId,
+            child: WorkbenchShellRunSync(
+              workspaceId: widget.workspace.workspaceId,
+              tabScopeId: widget.tabScopeId,
+              holdHandle: _terminalHold,
+              child: WorkspaceIdeShell(
+                composeLanding: composeLanding,
+                terminalHold: _terminalHold,
+                onOpenWorkspaceManagement: () =>
+                    openWorkspaceManagementRoute(context, widget.workspace),
+                left: WorkspaceSidebar(
+                  workspace: widget.workspace,
                   tabScopeId: widget.tabScopeId,
-                  holdHandle: _terminalHold,
+                  embedFooter:
+                      !(TpSidebarScope.maybeOf(context)?.isMobile ?? false),
                 ),
-              ),
-              // Side panes are off the first-open critical path: chrome +
-              // landing paint first, then tools mount.
-              right: TpDeferredMountShell(
-                delayFrames: 2,
-                child: _WorkspaceRightToolsPane(
-                  cwd: cwd,
-                  additionalPaths: widget.workspace.extraFolderPaths,
-                  workspaceId: widget.workspace.workspaceId,
-                  tabScopeId: widget.tabScopeId,
+                // Unbound Chat pane skips ChatPageShell / workbench projection.
+                center: buildWorkspaceIdeCenter(
+                  newChat: composeLanding,
+                  workspace: widget.workspace,
+                  chatPage: ChatPage(
+                    cwd: cwd,
+                    additionalPaths: widget.workspace.extraFolderPaths,
+                    workspaceId: widget.workspace.workspaceId,
+                    tabScopeId: widget.tabScopeId,
+                    holdHandle: _terminalHold,
+                  ),
+                ),
+                // Side panes are off the first-open critical path: chrome +
+                // landing paint first, then tools mount.
+                right: TpDeferredMountShell(
+                  delayFrames: 2,
+                  child: _WorkspaceRightToolsPane(
+                    cwd: cwd,
+                    additionalPaths: widget.workspace.extraFolderPaths,
+                    workspaceId: widget.workspace.workspaceId,
+                    tabScopeId: widget.tabScopeId,
+                  ),
                 ),
               ),
             ),

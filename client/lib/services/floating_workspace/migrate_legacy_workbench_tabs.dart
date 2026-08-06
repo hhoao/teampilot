@@ -5,14 +5,15 @@ import '../../cubits/floating_workspace/floating_workspace_state.dart';
 import '../../cubits/workbench/workbench_cubit.dart';
 import '../../cubits/workbench/workbench_tab.dart';
 import '../../models/layout_preferences.dart';
+import '../workbench/workbench_run_intent.dart';
 import '../workbench/workbench_shell_launcher.dart';
 import 'surfaces/diff_preview_floating_surface.dart';
 
-/// One-shot migration of leftover center-strip `file` / `diff` / `shell` tabs
-/// into the floating workspace bucket.
+/// One-shot migration of leftover center-strip `file` / `diff` / `shell` / `run`
+/// tabs into the floating workspace bucket.
 ///
 /// When [migrateFiles] is false (center file-preview preference), only shell
-/// tabs move; file and diff tabs stay on the center strip.
+/// and run tabs move; file and diff tabs stay on the center strip.
 ///
 /// Returns the number of tabs moved. Safe to call multiple times (idempotent
 /// once the strip is clean). Does not open the floating panel.
@@ -31,6 +32,7 @@ int migrateLegacyWorkbenchTabsToFloating({
           .where(
             (t) =>
                 t.kind == WorkbenchTabKind.shell ||
+                t.kind == WorkbenchTabKind.run ||
                 (migrateFiles &&
                     (t.kind == WorkbenchTabKind.file ||
                         t.kind == WorkbenchTabKind.diff)),
@@ -74,8 +76,17 @@ int migrateLegacyWorkbenchTabsToFloating({
                 payload: entryId,
               ),
             );
-          case WorkbenchTabKind.session:
           case WorkbenchTabKind.run:
+            final runSessionId = tab.id;
+            floating.ensureTab(
+              FloatingTab(
+                id: floatingRunTabId(runSessionId),
+                surfaceId: 'run',
+                title: runSessionId,
+                payload: runSessionId,
+              ),
+            );
+          case WorkbenchTabKind.session:
             continue;
         }
         workbench.removeTab(workspaceId, tab);
@@ -158,7 +169,8 @@ int migrateFloatingFileTabsToWorkbench({
 
 /// Aligns in-memory file/diff tabs with [host] after a runtime preference change.
 ///
-/// Shell leftovers always migrate to floating; file/diff tabs follow [host].
+/// Shell and run leftovers always migrate to floating; file/diff tabs follow
+/// [host].
 int syncFilePreviewHostTabs({
   required WorkbenchCubit workbench,
   required FloatingWorkspaceCubit floating,
