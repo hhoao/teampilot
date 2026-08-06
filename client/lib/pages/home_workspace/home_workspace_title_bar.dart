@@ -195,6 +195,7 @@ class HomeTitleBar extends StatefulWidget {
     this.onHomeTap,
     this.onSelectTab,
     this.onCloseTab,
+    this.onCloseAllTabs,
     this.onReopenClosedTab,
     this.onCreateWorkspace,
     super.key,
@@ -224,6 +225,9 @@ class HomeTitleBar extends StatefulWidget {
   final VoidCallback? onHomeTap;
   final ValueChanged<String>? onSelectTab;
   final ValueChanged<String>? onCloseTab;
+
+  /// Closes every open workspace tab at once.
+  final VoidCallback? onCloseAllTabs;
   final ValueChanged<String>? onReopenClosedTab;
   final VoidCallback? onCreateWorkspace;
 
@@ -397,6 +401,7 @@ class _HomeTitleBarState extends State<HomeTitleBar> with WindowListener {
                                           widget.onSelectTab?.call(tab.id),
                                       onClose: () =>
                                           widget.onCloseTab?.call(tab.id),
+                                      onCloseAll: widget.onCloseAllTabs,
                                     ),
                                   ),
                                 ],
@@ -619,6 +624,7 @@ class _WorkspaceTab extends StatefulWidget {
     this.closable = true,
     this.onTap,
     this.onClose,
+    this.onCloseAll,
   });
 
   final String label;
@@ -628,6 +634,9 @@ class _WorkspaceTab extends StatefulWidget {
   final bool closable;
   final VoidCallback? onTap;
   final VoidCallback? onClose;
+
+  /// Closes every open workspace tab at once.
+  final VoidCallback? onCloseAll;
 
   @override
   State<_WorkspaceTab> createState() => _WorkspaceTabState();
@@ -651,10 +660,20 @@ class _WorkspaceTabState extends State<_WorkspaceTab> {
           icon: Icons.close,
           label: l10n.closeTab,
         ),
+        if (widget.onCloseAll != null)
+          TpActionMenuSpec.item(
+            value: 'closeAll',
+            icon: Icons.select_all,
+            label: l10n.closeAllTabs,
+          ),
       ],
     );
     if (!mounted || selected == null) return;
-    if (selected == 'close') widget.onClose?.call();
+    if (selected == 'close') {
+      widget.onClose?.call();
+    } else if (selected == 'closeAll') {
+      widget.onCloseAll?.call();
+    }
   }
 
   Future<void> _showTabContextMenuAtTap(TapDownDetails details) async {

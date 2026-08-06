@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -399,5 +400,45 @@ void main() {
     expect(menuButton, findsOneWidget);
     final expected = homeTitleBarControlSize(tester.element(menuButton));
     expect(tester.getSize(menuButton), Size(expected, expected));
+  });
+
+  testWidgets('tab context menu offers Close All and fires onCloseAllTabs', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1600, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    var closeAllRequested = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: _wrapTitleBar(
+          chatCubit: chatCubit,
+          child: HomeTitleBar(
+            tabs: const [
+              HomeWorkspaceTab(id: 'ws-a', name: 'Solo'),
+              HomeWorkspaceTab(id: 'ws-b', name: 'Shared'),
+            ],
+            activeTabKey: 'ws-a',
+            onCloseTab: (_) {},
+            onCloseAllTabs: () => closeAllRequested = true,
+          ),
+        ),
+      ),
+    );
+
+    // Right-click a tab chip to open its context menu.
+    await tester.tap(find.text('Solo'), buttons: kSecondaryButton);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Close All'), findsOneWidget);
+
+    await tester.tap(find.text('Close All'));
+    await tester.pumpAndSettle();
+
+    expect(closeAllRequested, isTrue);
   });
 }

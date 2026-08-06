@@ -299,6 +299,15 @@
     }
   },
   "homeWorkspaceCloseWorkspaceConfirm": "关闭并终止会话",
+  "homeWorkspaceCloseAllTabsTitle": "关闭全部标签？",
+  "homeWorkspaceCloseAllTabsMessage": "{count, plural, =1{关闭全部标签会终止 1 个运行中的会话。} other{关闭全部标签会终止 {count} 个运行中的会话。}}",
+  "@homeWorkspaceCloseAllTabsMessage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "homeWorkspaceWorkspaceManagement": "工作区管理",
   "homeWorkspaceWorkspaceList": "工作区列表",
   "homeWorkspaceConversations": "对话管理",
@@ -717,6 +726,7 @@
   "closeTab": "关闭",
   "closeOtherTabs": "关闭其他标签",
   "closeRightTabs": "关闭右侧标签",
+  "closeAllTabs": "关闭全部",
   "session": "会话",
   "sessionPageSubtitle": "配置 Shell 会话启动方式、终端行为与存储后端。",
   "cliConfig": "CLI",

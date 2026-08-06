@@ -324,6 +324,15 @@
     }
   },
   "homeWorkspaceCloseWorkspaceConfirm": "Close & end sessions",
+  "homeWorkspaceCloseAllTabsTitle": "Close all tabs?",
+  "homeWorkspaceCloseAllTabsMessage": "{count, plural, =1{Closing all tabs will end 1 running session.} other{Closing all tabs will end {count} running sessions.}}",
+  "@homeWorkspaceCloseAllTabsMessage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "homeWorkspaceWorkspaceManagement": "Workspace management",
   "homeWorkspaceWorkspaceList": "Workspaces",
   "homeWorkspaceConversations": "Conversations",
@@ -756,6 +765,7 @@
   "closeTab": "Close",
   "closeOtherTabs": "Close Others",
   "closeRightTabs": "Close to the Right",
+  "closeAllTabs": "Close All",
   "session": "Session",
   "sessionPageSubtitle": "Configure shell session launch, terminal behavior, and storage backend.",
   "cliConfig": "CLI",

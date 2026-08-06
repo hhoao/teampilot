@@ -349,7 +349,7 @@ class _HomeShellState extends State<HomeShell> {
     await _reloadRecentlyClosed();
   }
 
-  Future<void> _closeTab(String tabKey) async {
+  Future<void> _closeTab(String tabKey, {bool alreadyConfirmed = false}) async {
     final tab = _openTabs.where((t) => t.tabKey == tabKey).firstOrNull;
     if (tab == null) return;
     final workspaces = context.read<ChatCubit>().state.workspaces;
@@ -359,8 +359,10 @@ class _HomeShellState extends State<HomeShell> {
     final workspaceTools = context.read<WorkspaceToolsCubit>();
     final running = chat.openTabCountForWorkspace(tab.tabKey);
     if (running > 0) {
-      final confirmed = await _confirmCloseWithSessions(running);
-      if (confirmed != true || !mounted) return;
+      if (!alreadyConfirmed) {
+        final confirmed = await _confirmCloseWithSessions(running);
+        if (confirmed != true || !mounted) return;
+      }
       chat.closeTabsForWorkspace(tab.tabKey);
     }
     final idx = _openTabs.indexWhere((t) => t.tabKey == tabKey);
@@ -412,7 +414,45 @@ class _HomeShellState extends State<HomeShell> {
     }
   }
 
+  /// Closes every open workspace tab. A single confirmation is shown when any
+  /// tab has running sessions; each tab then closes without re-prompting.
+  Future<void> _closeAllTabs() async {
+    final tabs = [..._openTabs];
+    if (tabs.isEmpty) return;
+    final chat = context.read<ChatCubit>();
+    var running = 0;
+    for (final tab in tabs) {
+      running += chat.openTabCountForWorkspace(tab.tabKey);
+    }
+    if (running > 0) {
+      final confirmed = await _confirmCloseAllWithSessions(running);
+      if (confirmed != true || !mounted) return;
+    }
+    for (final tab in tabs) {
+      await _closeTab(tab.tabKey, alreadyConfirmed: true);
+    }
+  }
+
   Future<bool?> _confirmCloseWithSessions(int running) {
+    final l10n = context.l10n;
+    return _confirmCloseEndSessions(
+      title: l10n.homeWorkspaceCloseWorkspaceTitle,
+      message: l10n.homeWorkspaceCloseWorkspaceMessage(running),
+    );
+  }
+
+  Future<bool?> _confirmCloseAllWithSessions(int running) {
+    final l10n = context.l10n;
+    return _confirmCloseEndSessions(
+      title: l10n.homeWorkspaceCloseAllTabsTitle,
+      message: l10n.homeWorkspaceCloseAllTabsMessage(running),
+    );
+  }
+
+  Future<bool?> _confirmCloseEndSessions({
+    required String title,
+    required String message,
+  }) {
     final l10n = context.l10n;
     return showDialog<bool>(
       context: context,
@@ -423,11 +463,11 @@ class _HomeShellState extends State<HomeShell> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             TpDialogHeader(
-              title: l10n.homeWorkspaceCloseWorkspaceTitle,
+              title: title,
               onClose: () => Navigator.of(dialogContext).pop(false),
             ),
             const SizedBox(height: 16),
-            Text(l10n.homeWorkspaceCloseWorkspaceMessage(running)),
+            Text(message),
             TpDialogActions(
               children: [
                 TextButton(
@@ -492,6 +532,7 @@ class _HomeShellState extends State<HomeShell> {
                     if (tab != null) _selectTab(tab);
                   },
                   onCloseTab: (tabKey) => unawaited(_closeTab(tabKey)),
+                  onCloseAllTabs: () => unawaited(_closeAllTabs()),
                   onReopenClosedTab: (tabKey) =>
                       unawaited(_reopenClosedTab(tabKey)),
                   onCreateWorkspace: () {
@@ -548,6 +589,7 @@ class _HomeShellTitleBar extends StatelessWidget {
     required this.onHomeTap,
     required this.onSelectTab,
     required this.onCloseTab,
+    required this.onCloseAllTabs,
     required this.onReopenClosedTab,
     required this.onCreateWorkspace,
   });
@@ -558,6 +600,7 @@ class _HomeShellTitleBar extends StatelessWidget {
   final VoidCallback onHomeTap;
   final ValueChanged<String> onSelectTab;
   final ValueChanged<String> onCloseTab;
+  final VoidCallback onCloseAllTabs;
   final ValueChanged<String> onReopenClosedTab;
   final VoidCallback onCreateWorkspace;
 
@@ -597,6 +640,7 @@ class _HomeShellTitleBar extends StatelessWidget {
       onHomeTap: onHomeTap,
       onSelectTab: onSelectTab,
       onCloseTab: onCloseTab,
+      onCloseAllTabs: onCloseAllTabs,
       onReopenClosedTab: onReopenClosedTab,
       onCreateWorkspace: onCreateWorkspace,
     );

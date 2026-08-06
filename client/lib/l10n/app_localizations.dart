@@ -1544,6 +1544,18 @@ abstract class AppLocalizations {
   /// **'Close & end sessions'**
   String get homeWorkspaceCloseWorkspaceConfirm;
 
+  /// No description provided for @homeWorkspaceCloseAllTabsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Close all tabs?'**
+  String get homeWorkspaceCloseAllTabsTitle;
+
+  /// No description provided for @homeWorkspaceCloseAllTabsMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Closing all tabs will end 1 running session.} other{Closing all tabs will end {count} running sessions.}}'**
+  String homeWorkspaceCloseAllTabsMessage(int count);
+
   /// No description provided for @homeWorkspaceWorkspaceManagement.
   ///
   /// In en, this message translates to:
@@ -3193,6 +3205,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Close to the Right'**
   String get closeRightTabs;
+
+  /// No description provided for @closeAllTabs.
+  ///
+  /// In en, this message translates to:
+  /// **'Close All'**
+  String get closeAllTabs;
 
   /// No description provided for @session.
   ///

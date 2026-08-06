@@ -797,6 +797,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeWorkspaceCloseWorkspaceConfirm => 'Close & end sessions';
 
   @override
+  String get homeWorkspaceCloseAllTabsTitle => 'Close all tabs?';
+
+  @override
+  String homeWorkspaceCloseAllTabsMessage(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Closing all tabs will end $count running sessions.',
+      one: 'Closing all tabs will end 1 running session.',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get homeWorkspaceWorkspaceManagement => 'Workspace management';
 
   @override
@@ -1728,6 +1742,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get closeRightTabs => 'Close to the Right';
+
+  @override
+  String get closeAllTabs => 'Close All';
 
   @override
   String get session => 'Session';

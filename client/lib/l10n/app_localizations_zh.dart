@@ -763,6 +763,20 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeWorkspaceCloseWorkspaceConfirm => '关闭并终止会话';
 
   @override
+  String get homeWorkspaceCloseAllTabsTitle => '关闭全部标签？';
+
+  @override
+  String homeWorkspaceCloseAllTabsMessage(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '关闭全部标签会终止 $count 个运行中的会话。',
+      one: '关闭全部标签会终止 1 个运行中的会话。',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get homeWorkspaceWorkspaceManagement => '工作区管理';
 
   @override
@@ -1647,6 +1661,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get closeRightTabs => '关闭右侧标签';
+
+  @override
+  String get closeAllTabs => '关闭全部';
 
   @override
   String get session => '会话';
