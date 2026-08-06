@@ -11,6 +11,7 @@ import 'package:teampilot/services/team_bus/bus_user_line_capture.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/session/shell_launch_spec.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
+import 'package:teampilot/services/compose/compose_draft_cache.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../support/post_frame_test_harness.dart';
@@ -93,6 +94,7 @@ class _FakeTerminalSession extends TerminalSession {
 
 void main() {
   setUp(setUpTestAppStorage);
+  setUp(() => composeDraftCache.clear());
   tearDown(tearDownTestAppStorage);
 
   group('ChatCubit team session scope', () {
@@ -772,6 +774,77 @@ void main() {
           cubit.state.sessions.any((s) => s.sessionId == session.sessionId),
           isFalse,
         );
+      },
+    );
+
+    test(
+      'deleteSession clears the cached session compose draft',
+      () async {
+        final tmp = await Directory.systemTemp.createTemp(
+          'chat_cubit_draft_clear_',
+        );
+        final repo = SessionRepository(rootDir: tmp.path);
+        final workspace = await repo.createWorkspace([
+          WorkspaceFolder(path: '/a'),
+        ]);
+        final session = await repo.createSession(
+          workspace.workspaceId,
+          sessionTeam: '',
+          rosterMembers: const [],
+        );
+        final postFrame = PostFrameTestHarness();
+        final cubit = ChatCubit(
+          executableResolver: () => 'true',
+          automationRepository: testAutomationRepository(),
+          sessionRepository: repo,
+          terminalSessionFactory:
+              ({required String executable, int scrollbackLines = 10000}) =>
+                  _FakeTerminalSession(executable: executable),
+          postFrameScheduler: postFrame.scheduler,
+        );
+        _registerTempCubitCleanup(tmp: tmp, cubit: cubit, postFrame: postFrame);
+
+        await cubit.loadWorkspaceData(repo);
+        composeDraftCache.setSessionDraft(session.sessionId, 'in progress');
+
+        await cubit.deleteSession(repo, session.sessionId);
+        await drainPendingAsyncWork();
+        await postFrame.flush();
+
+        expect(composeDraftCache.sessionDraft(session.sessionId), isNull);
+      },
+    );
+
+    test(
+      'deleteWorkspace clears the cached landing compose draft',
+      () async {
+        final tmp = await Directory.systemTemp.createTemp(
+          'chat_cubit_workspace_draft_clear_',
+        );
+        final repo = SessionRepository(rootDir: tmp.path);
+        final workspace = await repo.createWorkspace([
+          WorkspaceFolder(path: '/a'),
+        ]);
+        final postFrame = PostFrameTestHarness();
+        final cubit = ChatCubit(
+          executableResolver: () => 'true',
+          automationRepository: testAutomationRepository(),
+          sessionRepository: repo,
+          terminalSessionFactory:
+              ({required String executable, int scrollbackLines = 10000}) =>
+                  _FakeTerminalSession(executable: executable),
+          postFrameScheduler: postFrame.scheduler,
+        );
+        _registerTempCubitCleanup(tmp: tmp, cubit: cubit, postFrame: postFrame);
+
+        await cubit.loadWorkspaceData(repo);
+        composeDraftCache.setLandingDraft(workspace.workspaceId, 'draft');
+
+        await cubit.deleteWorkspace(repo, workspace.workspaceId);
+        await drainPendingAsyncWork();
+        await postFrame.flush();
+
+        expect(composeDraftCache.landingDraft(workspace.workspaceId), isNull);
       },
     );
 

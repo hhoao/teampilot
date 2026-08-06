@@ -13,6 +13,7 @@ import '../../../models/landing_launch_context.dart';
 import '../../../models/workspace.dart';
 import '../../../utils/ui/app_keys.dart';
 import '../../../utils/workspace/landing_draft_resolver.dart';
+import '../../../services/compose/compose_draft_cache.dart';
 import '../../chat/chat_workbench_placeholders.dart';
 import 'workspace_chat_landing.dart';
 import 'workspace_landing_skeleton.dart';
@@ -79,6 +80,8 @@ class _WorkspaceChatPaneState extends State<WorkspaceChatPane> {
         message: message,
         workingDirectory: workingDirectory,
         expertKey: draft.expertKey,
+        onSessionOpened: (_) =>
+            composeDraftCache.clearLandingDraft(workspace.workspaceId),
       );
     } finally {
       if (mounted) setState(() => _submitting = false);

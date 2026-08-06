@@ -46,6 +46,7 @@ import '../services/terminal/session_member_cli_resolver.dart';
 import '../services/termux/termux_connection_gate.dart';
 import '../services/terminal/terminal_theme_for_launch.dart';
 import '../services/terminal/terminal_transport_factory.dart';
+import '../services/compose/compose_draft_cache.dart';
 import '../services/follow_up/follow_up_queue.dart';
 import '../services/follow_up/follow_up_queue_drainer.dart';
 import '../pages/chat/history_continue_delivery.dart';
@@ -1925,6 +1926,7 @@ class ChatCubit extends Cubit<ChatState>
     final session = state.sessions
         .where((s) => s.sessionId == sessionId)
         .firstOrNull;
+    composeDraftCache.clearSessionDraft(sessionId);
     final wasActive = state.activeSessionId == sessionId;
     final sessions = state.sessions
         .where((s) => s.sessionId != sessionId)
@@ -2023,6 +2025,7 @@ class ChatCubit extends Cubit<ChatState>
       }
     }
     if (workspace == null) return;
+    composeDraftCache.clearLandingDraft(workspaceId);
     for (final sid in workspace.sessionIds.toList()) {
       await deleteSession(repo, sid);
     }
