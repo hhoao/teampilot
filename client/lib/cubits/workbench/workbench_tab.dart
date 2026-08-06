@@ -2,10 +2,10 @@ import 'package:equatable/equatable.dart';
 
 enum WorkbenchTabKind { session, file, diff, shell, run }
 
-/// Center strip tabs — shell lives in the floating panel; file/diff may host
-/// on center or floating based on [LayoutPreferences.filePreviewHost].
+/// Center strip tabs — shell and run live in the floating panel; file/diff may
+/// host on center or floating based on [LayoutPreferences.filePreviewHost].
 bool isCenterStripWorkbenchTab(WorkbenchTabKind kind) =>
-    kind != WorkbenchTabKind.shell;
+    kind != WorkbenchTabKind.shell && kind != WorkbenchTabKind.run;
 
 /// Which git diff a center-pane diff tab is showing.
 enum WorkbenchDiffSource {

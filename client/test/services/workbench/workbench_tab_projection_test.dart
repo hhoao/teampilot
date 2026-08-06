@@ -7,7 +7,7 @@ void main() {
   group('projectWorkbenchTabs', () {
     const editorBucket = WorkspaceEditorBucket();
 
-    test('omits shell tabs from center strip projection', () {
+    test('omits shell and run tabs from center strip projection', () {
       final session = WorkbenchTabId.session('s1');
       final file = WorkbenchTabId.file('/repo/a.dart');
       final diff = WorkbenchTabId.diffStaged('/repo/a.dart', staged: false);
@@ -21,10 +21,9 @@ void main() {
         sessionCli: const {},
         editorBucket: editorBucket,
         previewTabIds: const {},
-        runTitles: const {'r1': 'Run'},
       );
 
-      expect(tabs.map((t) => t.id), ['s1', file.id, diff.id, 'r1']);
+      expect(tabs.map((t) => t.id), ['s1', file.id, diff.id]);
     });
   });
 }

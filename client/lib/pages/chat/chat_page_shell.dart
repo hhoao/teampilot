@@ -10,13 +10,10 @@ import '../../cubits/chat/model/chat_tab.dart';
 import '../../cubits/cli_presets_cubit.dart';
 import '../../cubits/editor_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
-import '../../cubits/run_cubit.dart';
 import '../../cubits/workbench/workbench_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../utils/workspace/workspace_chrome_profile.dart';
-import '../../models/run/run_session.dart';
 import '../../models/team_config.dart';
-import '../../services/run/run_panel_session.dart';
 import '../../services/terminal/workspace_shell_connector.dart';
 import '../../services/terminal/workspace_terminal_registry.dart';
 import '../../services/terminal/workspace_terminal_title_resolver.dart';
@@ -256,19 +253,6 @@ class _ChatWorkspaceShell extends StatelessWidget {
                           : entry.titleLabel,
                     ),
                 };
-                final runSessions = context.watch<RunCubit>().state.sessions;
-                final runTitles = {
-                  for (final session in runSessions)
-                    if (sessionUsesRunPanel(session))
-                      session.id: session.owned.configuration.name,
-                };
-                final runWorking = {
-                  for (final session in runSessions)
-                    if (sessionUsesRunPanel(session) &&
-                        (session.status == RunSessionStatus.running ||
-                            session.status == RunSessionStatus.starting))
-                      session.id: true,
-                };
                 final tabs = projectWorkbenchTabs(
                   tabOrder: order,
                   sessionTitles: sessionTitles,
@@ -280,8 +264,6 @@ class _ChatWorkspaceShell extends StatelessWidget {
                       .bucket(workspaceId)
                       .previewTabIds,
                   shellTitles: shellTitles,
-                  runTitles: runTitles,
-                  runWorking: runWorking,
                   sessionAccent: Theme.of(context).colorScheme.primary,
                 );
                 final activeTabIndex = activeId == null
