@@ -165,6 +165,12 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
     final next = widget.runtime.messages;
     final wasPrepend = _isPrepend(_messages, next);
     final tipGrew = _tipGrew(_messages, next, wasPrepend: wasPrepend);
+    // Sending a message appends a fresh user turn at the tip. Re-stick even if
+    // the user had scrolled up reading history — the sent bubble (and the
+    // response) must be visible, exactly like tapping the new-messages chip.
+    if (_newUserTip(_messages, next)) {
+      _setStickToEnd(true);
+    }
     setState(() {
       _messages = next;
       if (!_stickToEnd && tipGrew) {
@@ -174,6 +180,16 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
     if (_stickToEnd && !wasPrepend) {
       _scheduleStickFrames();
     }
+  }
+
+  /// True when the tip of [next] is a user turn that was not the tip of
+  /// [current] — i.e. the user just sent a new message.
+  static bool _newUserTip(List<AiMessage> current, List<AiMessage> next) {
+    if (next.isEmpty) return false;
+    final tip = next.last;
+    if (tip.role != AiRole.user) return false;
+    if (current.isEmpty) return true;
+    return current.last.id != tip.id;
   }
 
   static bool _isPrepend(List<AiMessage> current, List<AiMessage> next) {

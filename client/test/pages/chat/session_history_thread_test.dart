@@ -184,6 +184,43 @@ void main() {
   );
 
   testWidgets(
+    'sending a message after scrolling up re-sticks to the new tip',
+    (tester) async {
+      final store = ExternalStoreAiThreadRuntime()
+        ..setMessages(_soloUserMessages(20));
+
+      await tester.pumpWidget(_harness(runtime: store));
+      await tester.pumpAndSettle();
+
+      // User scrolls up to read history → stick released.
+      await tester.drag(find.byType(Scrollable).first, const Offset(0, 120));
+      await tester.pumpAndSettle();
+
+      var position = tester
+          .state<ScrollableState>(find.byType(Scrollable).first)
+          .position;
+      expect(position.pixels, lessThan(position.maxScrollExtent));
+
+      // User sends a message → user bubble appended to the tip.
+      store.setMessages([
+        ..._soloUserMessages(20),
+        AiMessage(
+          id: 'sent',
+          role: AiRole.user,
+          parts: const [AiTextPart(text: 'hello')],
+        ),
+      ]);
+      await tester.pumpAndSettle();
+
+      position = tester
+          .state<ScrollableState>(find.byType(Scrollable).first)
+          .position;
+      // The sent bubble must be visible: the thread re-sticks to the bottom.
+      expect(position.pixels, closeTo(position.maxScrollExtent, 2.0));
+    },
+  );
+
+  testWidgets(
     'tapping new-messages chip scrolls to tip and resumes stick',
     (tester) async {
       final store = ExternalStoreAiThreadRuntime()
