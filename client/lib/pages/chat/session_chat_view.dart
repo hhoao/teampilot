@@ -37,6 +37,7 @@ import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/terminal/session_member_cli_resolver.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../services/compose/compose_at_file_refs.dart';
+import '../../services/compose/compose_draft_cache.dart';
 import '../../services/compose/compose_file_attach.dart';
 import '../../services/compose/compose_file_drop_ingestor.dart';
 import '../../services/compose/compose_landing_bundle.dart';
@@ -197,6 +198,15 @@ class _SessionChatViewState extends State<SessionChatView> {
       },
     );
     unawaited(_voiceInput.initialize());
+    // Restore the cached session draft before attaching the change listener so
+    // the restore does not notify _onComposeChanged (no setState during mount).
+    final draft = composeDraftCache.sessionDraft(widget.session.sessionId);
+    if (draft != null && draft.isNotEmpty) {
+      _controller.value = TextEditingValue(
+        text: draft,
+        selection: TextSelection.collapsed(offset: draft.length),
+      );
+    }
     _controller.addListener(_onComposeChanged);
     _bindSeat();
     _loadHistory();
@@ -289,6 +299,10 @@ class _SessionChatViewState extends State<SessionChatView> {
   }
 
   void _onComposeChanged() {
+    composeDraftCache.setSessionDraft(
+      widget.session.sessionId,
+      _controller.text,
+    );
     if (mounted) setState(() {});
   }
 
