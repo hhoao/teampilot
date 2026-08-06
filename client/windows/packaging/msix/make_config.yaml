@@ -5,3 +5,5 @@ publisher: CN=hhoa
 logo_path: assets/icons/icon_bg.png
 languages: en-us, zh-cn
 capabilities: internetClient, internetClientServer, privateNetworkClientServer
+# CI has no TTY — msix Prompter crashes with Null on stdin when this stays true.
+install_certificate: "false"
