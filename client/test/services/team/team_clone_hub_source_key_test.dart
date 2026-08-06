@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/discoverable_team.dart';
+import 'package:teampilot/services/expert_hub/expert_clone_service.dart';
 import 'package:teampilot/services/team/team_clone_service.dart';
 
 void main() {
@@ -9,6 +10,8 @@ void main() {
       installSkill: (_) async => null,
       installPlugin: (_) async => null,
       installMcp: (_) async => null,
+      expertClonerFactory: () => ({required expertKey, originTeamKey}) async =>
+          ExpertCloneOutcome(key: expertKey, cloned: false),
       createTeam: ({
         required name,
         required cli,
