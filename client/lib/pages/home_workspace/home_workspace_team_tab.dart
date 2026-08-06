@@ -286,30 +286,27 @@ class _MemberChipState extends State<_MemberChip> {
         backgroundColor: restingBg,
         hoverColor: Color.alphaBlend(hoverTint, restingBg),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: borderColor),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                widget.member.isTeamLead
-                    ? Icons.star_rounded
-                    : Icons.person_outline,
-                size: context.tpIconSizes.md,
-                color: selected ? cs.primary : cs.onSurfaceVariant,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                widget.member.displayName,
-                style: selected
-                    ? styles.smSemiboldColored(cs.primary)
-                    : styles.smColored(cs.onSurface),
-              ),
-            ],
-          ),
+        // Border on the same decoration as the fill so the stroke sits on the
+        // outer edge — not inside [TpHover]'s padding.
+        border: Border.all(color: borderColor),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              widget.member.isTeamLead
+                  ? Icons.star_rounded
+                  : Icons.person_outline,
+              size: context.tpIconSizes.md,
+              color: selected ? cs.primary : cs.onSurfaceVariant,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              widget.member.displayName,
+              style: selected
+                  ? styles.smSemiboldColored(cs.primary)
+                  : styles.smColored(cs.onSurface),
+            ),
+          ],
         ),
       ),
     );
@@ -344,16 +341,13 @@ class _AddMemberChipState extends State<_AddMemberChip> {
       backgroundColor: restingBg,
       hoverColor: Color.alphaBlend(hoverTint, restingBg),
       padding: const EdgeInsets.all(9),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: borderColor),
-        ),
-        child: Icon(
-          Icons.person_add_alt_1_outlined,
-          size: context.tpIconSizes.md,
-          color: cs.onSurfaceVariant,
-        ),
+      // Border on the same decoration as the fill so the stroke sits on the
+      // outer edge — not inside [TpHover]'s padding.
+      border: Border.all(color: borderColor),
+      child: Icon(
+        Icons.person_add_alt_1_outlined,
+        size: context.tpIconSizes.md,
+        color: cs.onSurfaceVariant,
       ),
     );
   }
