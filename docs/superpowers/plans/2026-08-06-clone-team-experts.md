@@ -1,152 +1,110 @@
-# Clone Team — Clone Missing Experts into My Experts — Implementation Plan
+# Clone Team — Shadow-Clone Missing Experts into My Experts — Implementation Plan (rev. 2)
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** When a TeamHub team is cloned, any roster-referenced expert that is not already present locally is cloned into My Experts, and the team's roster repoints to the local copy so the team is self-contained.
+**Goal:** When a TeamHub team is cloned, roster-referenced experts that are not already cloned locally are cloned into My Experts under their **catalog key**, and resolution **shadows** the catalog entry — team rosters stay unchanged and the team becomes self-contained. No backward compatibility with the initial uuid-clone layout beyond a one-time cleanup.
 
-**Architecture:** `TeamCloneService.clone` gains a per-run `ExpertSlotCloner` (produced by an injected `expertClonerFactory`). The cloner resolves each roster `expertKey` via the expert hub source, saves a local copy through `LocalMemberTemplateStore` (recording `catalogKey` provenance for cross-clone dedup), and returns the key the slot should reference. `DiscoverableMember` gains an optional `catalogKey` field; `CloneResult`/summary and the clone toast report cloned-expert counts and non-blocking expert failures.
+**Architecture:** `LocalExpertStore` (replaces `LocalMemberTemplateStore`) stores clones under `member-hub/local-templates/{key}.json` (nested, key = catalog key) and user-created experts under `local/{uuid}.json`. `ExpertMemberResolver.resolveMember` checks the store for **any** key first (shadow); `CompositeExpertHubSource.fetchMembers` dedups so a local clone shadows the catalog entry in listings. `ExpertCloneService` is a stateless singleton (O(1) dedup by key existence). `TeamCloneService` takes a plain `ExpertSlotCloner` (tear-off), roster unchanged, counts clones / records `DependencyKind.expert` failures. `DiscoverableMember` drops `catalogKey`, gains `ExpertMemberSource.clone` + `clonedAt`. A one-time `migrateLegacyLayout()` purges old uuid clones (files carrying `catalogKey`) and relocates legacy user-created files into `local/`.
 
-**Tech Stack:** Dart / Flutter, flutter_bloc cubits, `LocalMemberTemplateStore` (disk under `member-hub/local-templates/`), generated l10n (`flutter gen-l10n`).
+**Tech Stack:** Dart / Flutter, flutter_bloc cubits, `LocalExpertStore` (Filesystem: `listDirRecursive`, `ensureDir`, `readString`), generated l10n.
 
 ## Global Constraints
 
 - Layering: services in `client/lib/services/…`; models in `client/lib/models/…`; UI in `client/lib/pages/…`; wiring in `client/lib/app/app_shell.dart`.
-- l10n: edit `client/lib/l10n/app_en.arb` and `app_zh.arb` **only**; regenerate generated files with `cd client && flutter gen-l10n`.
-- No `print`; diagnostics go through `AppLogger`.
+- l10n: edit `app_en.arb` / `app_zh.arb` only; regenerate with `cd client && flutter gen-l10n`.
 - Tests: constructor injection / `InMemoryFilesystem` (`client/test/support/in_memory_filesystem.dart`); no network.
-- Final gate: `cd client && flutter analyze --no-fatal-infos --no-fatal-warnings && flutter test --exclude-tags integration`.
+- Final gate: `flutter analyze --no-fatal-infos --no-fatal-warnings` must show **0 non-`third_party/fastforge` errors** (that vendored dir is pre-existing noise) + `flutter test --exclude-tags integration`.
 - Design spec: `docs/superpowers/specs/2026-08-06-clone-team-experts-design.md`.
 
 ## File Structure
 
 | File | Action | Responsibility |
 |------|--------|----------------|
-| `client/lib/models/discoverable_member.dart` | Modify | Add `catalogKey` provenance field + real `copyWith` |
-| `client/test/models/discoverable_member_test.dart` | Modify | Tests for `catalogKey` round-trip / `forLocale` / `copyWith` |
-| `client/lib/services/expert_hub/local_member_template_store.dart` | Modify | `save` preserves `catalogKey` |
-| `client/test/services/expert_hub/local_member_template_store_test.dart` | Modify | Test `catalogKey` persistence; drop redundant test-local `copyWith` extension |
-| `client/lib/services/expert_hub/expert_clone_service.dart` | Create | `ExpertCloneOutcome` + `ExpertCloneService` (resolve → save → repoint key) |
-| `client/test/services/expert_hub/expert_clone_service_test.dart` | Create | Unit tests with fake `ExpertHubSource` + in-memory store |
-| `client/lib/services/team/team_clone_service.dart` | Modify | `expertClonerFactory`, per-slot repoint, `DependencyKind.expert`, summary expert keys |
-| `client/test/services/team/team_clone_service_test.dart` | Modify | Add cloner factory to existing tests + new repoint/failure tests |
-| `client/lib/app/app_shell.dart` | Modify | Move `compositeExpertHubSource` earlier; wire `expertClonerFactory` |
-| `client/lib/pages/team_hub/team_hub_clone_feedback.dart` | Modify | Toast copy includes expert count |
-| `client/lib/l10n/app_en.arb`, `app_zh.arb` | Modify | Add `expertCount` placeholder to clone strings |
-| `client/test/pages/team_hub/team_hub_clone_feedback_test.dart` | Modify | Update expected strings; add expert-count test |
+| `client/lib/models/discoverable_member.dart` | Modify | Drop `catalogKey`; add `ExpertMemberSource.clone` + `clonedAt`; pure `copyWith` |
+| `client/test/models/discoverable_member_test.dart` | Modify | Clone source / `clonedAt` round-trip; copyWith |
+| `client/lib/services/expert_hub/local_expert_store.dart` | **Rename from** `local_member_template_store.dart` | Nested store, `getByKey` any key, `save` user-custom → `local/`, `putClone`, recursive `loadAll`, `migrateLegacyLayout` |
+| `client/test/services/expert_hub/local_expert_store_test.dart` | **Rename from** `local_member_template_store_test.dart` | Store behaviors |
+| `client/lib/services/expert_hub/expert_member_resolver.dart` | Modify | Shadow: local store first for any key |
+| `client/lib/services/expert_hub/composite_expert_hub_source.dart` | Modify | Dedup: local shadows catalog/builtin/teamExtract by key |
+| `client/test/services/expert_hub/composite_expert_hub_source_test.dart` | Modify | Shadow dedup |
+| `client/lib/services/expert_hub/expert_clone_service.dart` | Modify | Stateless, O(1) dedup, `putClone`, `source: clone`, `clonedAt` |
+| `client/test/services/expert_hub/expert_clone_service_test.dart` | Modify | Shadow clone / reuse / builtin / failure |
+| `client/lib/services/team/team_clone_service.dart` | Modify | `expertCloner` plain function (no factory); no repoint |
+| `client/test/services/team/team_clone_service_test.dart` | Modify | No repoint, counts, failure |
+| `client/lib/app/app_shell.dart` | Modify | Singleton store + clone service; `migrateLegacyLayout()`; tear-off |
+| `client/lib/pages/expert_hub/expert_hub_cards.dart` | Modify | `ExpertMemberSource.clone` source label |
+| `client/lib/cubits/expert_hub_cubit.dart` | Modify | `localOnly` includes `clone` |
+| `client/lib/l10n/app_en.arb`, `app_zh.arb` | Modify | `expertHubSourceClone` |
 
 ---
 
-### Task 1: `DiscoverableMember.catalogKey` + real `copyWith`
+### Task R1: `DiscoverableMember` — drop `catalogKey`, add `clone` source + `clonedAt`
 
-**Files:**
-- Modify: `client/lib/models/discoverable_member.dart`
-- Test: `client/test/models/discoverable_member_test.dart`
+**Files:** `client/lib/models/discoverable_member.dart`, `client/test/models/discoverable_member_test.dart`
 
 **Interfaces:**
-- Produces: `DiscoverableMember.catalogKey` (`String?`), `DiscoverableMember.copyWith({String? key, String? name, String? description, String? category, String? author, int? updatedAt, Set<String>? tags, DiscoverableTeamMember? member, List<SkillDependencyRef>? skillDeps, List<PluginDependencyRef>? pluginDeps, List<McpDependencyRef>? mcpDeps, ExpertMemberSource? source, String? originTeamKey, bool updateOriginTeamKey = false, String? catalogKey, bool updateCatalogKey = false, Map<String, DiscoverableMemberLocaleText>? i18n})`.
+- Produces: `ExpertMemberSource.clone`, `DiscoverableMember.clonedAt` (`int?`), `DiscoverableMember.copyWith` (pure `??`, no `update*` flags).
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **Step 1: Write failing tests**
 
-Add to `client/test/models/discoverable_member_test.dart`:
+In `discoverable_member_test.dart`, replace the `catalogKey` tests with:
 
 ```dart
-  test('catalogKey round-trips through JSON', () {
+  test('clone source and clonedAt round-trip through JSON', () {
     final m = DiscoverableMember(
-      key: 'teampilot/builtin/developer',
-      name: 'Developer',
-      description: 'Implements features',
-      category: 'Development',
-      source: ExpertMemberSource.local,
-      member: const DiscoverableTeamMember(name: 'developer'),
-      catalogKey: 'acme/experts/developer',
+      key: 'acme/experts/pm',
+      name: 'Product Manager',
+      description: 'Plans.',
+      category: 'Business',
+      source: ExpertMemberSource.clone,
+      member: const DiscoverableTeamMember(name: 'pm'),
       originTeamKey: 'acme/teams/squad',
+      clonedAt: 1723000000000,
     );
     final decoded = DiscoverableMember.fromJson(m.toJson());
     expect(decoded, m);
-    expect(decoded.catalogKey, 'acme/experts/developer');
+    expect(decoded.source, ExpertMemberSource.clone);
+    expect(decoded.clonedAt, 1723000000000);
   });
 
-  test('copyWith updates catalogKey and originTeamKey', () {
+  test('copyWith overrides source, originTeamKey and clonedAt', () {
     const m = DiscoverableMember(
-      key: 'local/abc',
+      key: 'acme/experts/pm',
       name: 'PM',
       description: '',
       category: 'Business',
-      source: ExpertMemberSource.local,
+      source: ExpertMemberSource.registry,
       member: DiscoverableTeamMember(name: 'pm'),
     );
     final updated = m.copyWith(
-      catalogKey: 'acme/experts/pm',
+      source: ExpertMemberSource.clone,
       originTeamKey: 'acme/teams/squad',
+      clonedAt: 1723000000000,
     );
-    expect(updated.catalogKey, 'acme/experts/pm');
+    expect(updated.source, ExpertMemberSource.clone);
     expect(updated.originTeamKey, 'acme/teams/squad');
-    expect(updated.key, 'local/abc');
+    expect(updated.clonedAt, 1723000000000);
+    expect(updated.key, 'acme/experts/pm');
   });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [ ] **Step 2: Run to verify fail**
 
 Run: `cd client && flutter test test/models/discoverable_member_test.dart`
-Expected: FAIL — `catalogKey` is not a field on `DiscoverableMember` (compile error) and `copyWith` is not defined.
+Expected: FAIL — `clonedAt` not defined, `ExpertMemberSource.clone` not defined; `catalogKey` tests still reference removed field.
 
-- [ ] **Step 3: Implement the field and `copyWith`**
+- [ ] **Step 3: Implement**
 
-In `client/lib/models/discoverable_member.dart`:
-
-Add constructor param after `this.originTeamKey,`:
-
-```dart
-    this.originTeamKey,
-    this.catalogKey,
-    this.i18n = const {},
-  });
-```
-
-Add field after `originTeamKey`:
-
-```dart
-  final String? originTeamKey;
-
-  /// Provenance: catalog key this local clone was saved from (cross-clone dedup).
-  final String? catalogKey;
-```
-
-In `fromJson`, after the `originTeamKey` line:
-
-```dart
-      originTeamKey: json['originTeamKey'] as String?,
-      catalogKey: json['catalogKey'] as String?,
-```
-
-In `toJson`, after the `originTeamKey` line:
-
-```dart
-    if (originTeamKey != null && originTeamKey!.isNotEmpty)
-      'originTeamKey': originTeamKey,
-    if (catalogKey != null && catalogKey!.isNotEmpty) 'catalogKey': catalogKey,
-```
-
-In `forLocale`, add after `originTeamKey: originTeamKey,`:
-
-```dart
-      catalogKey: catalogKey,
-```
-
-In `==`, add after `originTeamKey == other.originTeamKey &&`:
-
-```dart
-      catalogKey == other.catalogKey &&
-```
-
-In `hashCode`, add after `originTeamKey,`:
-
-```dart
-    originTeamKey,
-    catalogKey,
-```
-
-Add a `copyWith` method right after the `forLocale` method (before `_overlayFor`):
+In `discoverable_member.dart`:
+- `enum ExpertMemberSource` — add `clone('clone')` after `local('local')`.
+- Add field after `originTeamKey`: `final int? clonedAt;` with constructor param `this.clonedAt,`.
+- Remove `catalogKey` field + constructor param.
+- `fromJson`: replace `catalogKey: json['catalogKey'] as String?,` with `clonedAt: (json['clonedAt'] as num?)?.toInt(),`.
+- `toJson`: replace the `catalogKey` line with `if (clonedAt != null && clonedAt! > 0) 'clonedAt': clonedAt,`.
+- `forLocale`: replace `catalogKey: catalogKey,` with `clonedAt: clonedAt,`.
+- `==`: replace `catalogKey == other.catalogKey &&` with `clonedAt == other.clonedAt &&`.
+- `hashCode`: replace `catalogKey,` with `clonedAt,`.
+- `copyWith`: remove `updateOriginTeamKey` / `updateCatalogKey`; add `int? clonedAt`; pure `??` body.
 
 ```dart
   DiscoverableMember copyWith({
@@ -163,9 +121,7 @@ Add a `copyWith` method right after the `forLocale` method (before `_overlayFor`
     List<McpDependencyRef>? mcpDeps,
     ExpertMemberSource? source,
     String? originTeamKey,
-    bool updateOriginTeamKey = false,
-    String? catalogKey,
-    bool updateCatalogKey = false,
+    int? clonedAt,
     Map<String, DiscoverableMemberLocaleText>? i18n,
   }) {
     return DiscoverableMember(
@@ -181,101 +137,245 @@ Add a `copyWith` method right after the `forLocale` method (before `_overlayFor`
       pluginDeps: pluginDeps ?? this.pluginDeps,
       mcpDeps: mcpDeps ?? this.mcpDeps,
       source: source ?? this.source,
-      originTeamKey: updateOriginTeamKey
-          ? originTeamKey
-          : (originTeamKey ?? this.originTeamKey),
-      catalogKey: updateCatalogKey
-          ? catalogKey
-          : (catalogKey ?? this.catalogKey),
+      originTeamKey: originTeamKey ?? this.originTeamKey,
+      clonedAt: clonedAt ?? this.clonedAt,
       i18n: i18n ?? this.i18n,
     );
   }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [ ] **Step 4: Run to verify pass**
 
 Run: `cd client && flutter test test/models/discoverable_member_test.dart`
-Expected: PASS (all tests in the file).
+Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add client/lib/models/discoverable_member.dart client/test/models/discoverable_member_test.dart
-git commit -m "feat(expert): add catalogKey provenance + copyWith to DiscoverableMember"
+git commit -m "refactor(expert): drop catalogKey, add clone source + clonedAt"
 ```
 
 ---
 
-### Task 2: `LocalMemberTemplateStore.save` preserves `catalogKey`
+### Task R2: `LocalExpertStore` (rename + nested store + clone API + legacy migration)
 
 **Files:**
-- Modify: `client/lib/services/expert_hub/local_member_template_store.dart`
-- Test: `client/test/services/expert_hub/local_member_template_store_test.dart`
+- `client/lib/services/expert_hub/local_member_template_store.dart` → rename → `local_expert_store.dart`
+- `client/test/services/expert_hub/local_member_template_store_test.dart` → rename → `local_expert_store_test.dart`
 
 **Interfaces:**
-- Consumes: `DiscoverableMember.catalogKey`, `DiscoverableMember.copyWith` (from Task 1).
-- Produces: `LocalMemberTemplateStore.save` keeps `catalogKey` on the persisted copy.
+- Consumes: `DiscoverableMember.copyWith`, `ExpertMemberSource` (R1).
+- Produces:
+  - `class LocalExpertStore { Future<DiscoverableMember> save(DiscoverableMember m); Future<DiscoverableMember> putClone(DiscoverableMember m); Future<DiscoverableMember?> getByKey(String key); Future<List<DiscoverableMember>> loadAll(); Future<void> delete(String key); Future<void> migrateLegacyLayout(); }`
+  - `static bool isLocalKey(String key)` (kept; `local/` prefix = user-created).
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **Step 1: Rename the file + class (compile-fix sweep)**
 
-Add to `client/test/services/expert_hub/local_member_template_store_test.dart`:
+```bash
+cd client && git mv lib/services/expert_hub/local_member_template_store.dart lib/services/expert_hub/local_expert_store.dart
+git mv test/services/expert_hub/local_member_template_store_test.dart test/services/expert_hub/local_expert_store_test.dart
+```
+In both files, rename `LocalMemberTemplateStore` → `LocalExpertStore`. Fix the three `lib` importers (`composite_expert_hub_source.dart`, `expert_member_resolver.dart`, `expert_clone_service.dart`) and their tests to import `local_expert_store.dart`. Re-run the store test to keep it green before behavior changes.
+
+- [ ] **Step 2: Write failing tests (nested / any-key / putClone / migrate)**
+
+In `local_expert_store_test.dart`, add:
 
 ```dart
-  test('save preserves catalogKey provenance', () async {
-    final saved = await store.save(
-      _sampleMember().copyWith(catalogKey: 'acme/experts/pm'),
+  test('putClone stores under the catalog key (nested path)', () async {
+    final saved = await store.putClone(
+      _sampleMember().copyWith(
+        key: 'acme/experts/pm',
+        source: ExpertMemberSource.clone,
+        originTeamKey: 'acme/teams/squad',
+        clonedAt: 1723000000000,
+      ),
     );
+    expect(saved.key, 'acme/experts/pm');
+    final loaded = await store.getByKey('acme/experts/pm');
+    expect(loaded, isNotNull);
+    expect(loaded!.source, ExpertMemberSource.clone);
+    expect(loaded.originTeamKey, 'acme/teams/squad');
+  });
 
-    expect(saved.catalogKey, 'acme/experts/pm');
-    expect((await store.getByKey(saved.key))?.catalogKey, 'acme/experts/pm');
+  test('getByKey reads any key (shadow lookup)', () async {
+    await store.putClone(_sampleMember().copyWith(key: 'acme/experts/pm'));
+    expect(await store.getByKey('acme/experts/pm'), isNotNull);
+  });
+
+  test('save keeps user-custom keys under the local/ namespace', () async {
+    final saved = await store.save(_sampleMember());
+    expect(saved.key, 'local/test-uuid');
+    expect(await store.getByKey('local/test-uuid'), isNotNull);
+  });
+
+  test('loadAll reads nested clone files', () async {
+    await store.putClone(_sampleMember().copyWith(key: 'acme/experts/pm'));
+    await store.save(_sampleMember());
+    final loaded = await store.loadAll();
+    expect(loaded.map((m) => m.key), containsAll(['acme/experts/pm', 'local/test-uuid']));
+  });
+
+  test('migrateLegacyLayout purges old clones and keeps user-custom', () async {
+    final ctx = fs.pathContext;
+    final dir = AppPaths('/tp').memberHubLocalTemplatesDir;
+    // old flat files at root
+    await fs.writeString(
+      ctx.join(dir, 'old-clone.json'),
+      jsonEncode(_sampleMember().copyWith(catalogKey: 'acme/experts/pm').toJson()),
+    );
+    await fs.writeString(
+      ctx.join(dir, 'old-custom.json'),
+      jsonEncode(_sampleMember().copyWith(key: 'local/old-custom').toJson()),
+    );
+    await store.migrateLegacyLayout();
+    expect(fs.fileExists(ctx.join(dir, 'old-clone.json')), isFalse);
+    expect(await store.getByKey('local/old-custom'), isNotNull);
   });
 ```
 
-Then remove the now-redundant test-local `copyWith` extension at the bottom of that file (lines 122-150, the `extension on DiscoverableMember { ... }` block). The model's real `copyWith` supersedes it.
+Note: the migrate test needs `dart:convert` for `jsonEncode` and an in-memory `fs.fileExists` helper (add it if missing).
 
-- [ ] **Step 2: Run test to verify it fails**
+- [ ] **Step 3: Run to verify fail**
 
-Run: `cd client && flutter test test/services/expert_hub/local_member_template_store_test.dart`
-Expected: FAIL — `saved.catalogKey` is `null`.
+Run: `cd client && flutter test test/services/expert_hub/local_expert_store_test.dart`
+Expected: FAIL — `putClone`/`migrateLegacyLayout`/any-key `getByKey` not implemented; nested reads miss.
+
+- [ ] **Step 4: Implement**
+
+In `local_expert_store.dart`:
+- Path helpers: `String _pathForKey(String key) => ctx.join(_dir, '$key.json');`
+- `save`: assign `local/{uuid}` when not `isLocalKey`; write to `_pathForKey(newKey)` with `ensureDir(ctx.dirname(...))`.
+- `putClone`: write under `member.key` verbatim with `ensureDir` of parent; return member.
+- `getByKey`: read `_pathForKey(key)` for **any** key (drop the `isLocalKey` guard); null on missing/invalid.
+- `loadAll`: use `_fs.listDirRecursive(_dir)`; skip non-`.json`; parse each; skip unreadable.
+- `delete`: remove `_pathForKey(key)` (best-effort); keep behavior.
+- `migrateLegacyLayout`: non-recursive `_fs.listDir(_dir)`; for each root `.json`: read raw text; `jsonDecode`; if `json['catalogKey']` is a non-empty String → delete; else (legacy user-custom, key is `local/...`) → re-save via the new path (`putClone`-style write under the same key) and delete the old root file.
+
+- [ ] **Step 5: Run to verify pass**
+
+Run: `cd client && flutter test test/services/expert_hub/local_expert_store_test.dart`
+Expected: PASS.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add -A client/lib/services/expert_hub/local_expert_store.dart client/lib/services/expert_hub/local_member_template_store.dart client/lib/services/expert_hub/composite_expert_hub_source.dart client/lib/services/expert_hub/expert_member_resolver.dart client/lib/services/expert_hub/expert_clone_service.dart client/test/services/expert_hub/local_expert_store_test.dart client/test/services/expert_hub/local_member_template_store_test.dart
+git commit -m "refactor(expert): rename to LocalExpertStore with shadow clone storage"
+```
+
+---
+
+### Task R3: Resolution shadow (resolver + hub source dedup)
+
+**Files:**
+- `client/lib/services/expert_hub/expert_member_resolver.dart`
+- `client/lib/services/expert_hub/composite_expert_hub_source.dart`
+- `client/test/services/expert_hub/composite_expert_hub_source_test.dart`
+
+**Interfaces:**
+- Consumes: `LocalExpertStore` (R2).
+- Produces: `resolveMember` prefers local for any key; `fetchMembers` local shadows builtin/registry/teamExtract.
+
+- [ ] **Step 1: Write failing tests**
+
+In `composite_expert_hub_source_test.dart`, add:
+
+```dart
+  test('local clone shadows a registry entry with the same key', () async {
+    final registryMember = DiscoverableMember(
+      key: 'acme/experts/pm', name: 'Registry PM', description: '', category: 'c',
+      source: ExpertMemberSource.registry, member: const DiscoverableTeamMember(name: 'pm'));
+    await store.putClone(registryMember.copyWith(
+      source: ExpertMemberSource.clone, name: 'Cloned PM'));
+    final source = CompositeExpertHubSource(
+      builtIns: const [], registry: _FakeExpertHubSource([registryMember]), localStore: store);
+    final members = await source.fetchMembers();
+    expect(members.map((m) => m.key), contains('acme/experts/pm'));
+    expect(members.where((m) => m.key == 'acme/experts/pm'), hasLength(1));
+    expect(members.firstWhere((m) => m.key == 'acme/experts/pm').name, 'Cloned PM');
+  });
+```
+
+Add a resolver test in `expert_member_resolver_test.dart`:
+
+```dart
+  test('resolveMember prefers a local clone over the catalog', () async {
+    await store.putClone(_catalogExpert().copyWith(source: ExpertMemberSource.clone));
+    final resolved = await ExpertMemberResolver.resolveMember(
+      key: 'acme/experts/pm', source: compositeSource, localStore: store);
+    expect(resolved, isNotNull);
+    expect(resolved!.source, ExpertMemberSource.clone);
+  });
+```
+
+(Adjust to the existing test helpers in each file.)
+
+- [ ] **Step 2: Run to verify fail**
+
+Run: `cd client && flutter test test/services/expert_hub/composite_expert_hub_source_test.dart test/services/expert_hub/expert_member_resolver_test.dart`
+Expected: FAIL — duplicate entries / registry wins.
 
 - [ ] **Step 3: Implement**
 
-In `client/lib/services/expert_hub/local_member_template_store.dart`, in `save`, add after `originTeamKey: member.originTeamKey,`:
+`expert_member_resolver.dart` — replace the `isLocalKey` guard with any-key shadow:
 
 ```dart
-      originTeamKey: member.originTeamKey,
-      catalogKey: member.catalogKey,
+    final store = localStore ?? LocalExpertStore();
+    final local = await store.getByKey(trimmed);
+    if (local != null) return local;
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+`composite_expert_hub_source.dart` `fetchMembers` — filter by local keys:
 
-Run: `cd client && flutter test test/services/expert_hub/local_member_template_store_test.dart`
-Expected: PASS (all tests in the file).
+```dart
+    final local = await _localStore.loadAll();
+    final localKeys = local.map((m) => m.key).toSet();
+    final builtinKeys = builtIns.map((m) => m.key).toSet();
+    final builtins = _builtIns
+        .where((m) => !localKeys.contains(m.key))
+        .toList(growable: false);
+    final registryOnly = registry
+        .where((m) => !builtinKeys.contains(m.key) && !localKeys.contains(m.key))
+        .toList(growable: false);
+    final preferredHashes = {
+      for (final m in [...builtins, ...registryOnly])
+        memberContentHash(m.member),
+    };
+    final teamExtractOnly = teamExtract
+        .where((m) =>
+            !localKeys.contains(m.key) &&
+            !preferredHashes.contains(memberContentHash(m.member)))
+        .toList(growable: false);
+    return [...builtins, ...registryOnly, ...teamExtractOnly, ...local];
+```
+
+- [ ] **Step 4: Run to verify pass**
+
+Run: `cd client && flutter test test/services/expert_hub/composite_expert_hub_source_test.dart test/services/expert_hub/expert_member_resolver_test.dart`
+Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add client/lib/services/expert_hub/local_member_template_store.dart client/test/services/expert_hub/local_member_template_store_test.dart
-git commit -m "feat(expert): persist catalogKey provenance in LocalMemberTemplateStore"
+git add client/lib/services/expert_hub/expert_member_resolver.dart client/lib/services/expert_hub/composite_expert_hub_source.dart client/test/services/expert_hub/composite_expert_hub_source_test.dart client/test/services/expert_hub/expert_member_resolver_test.dart
+git commit -m "feat(expert): shadow local clones over catalog in resolution"
 ```
 
 ---
 
-### Task 3: `ExpertCloneService`
+### Task R4: `ExpertCloneService` — stateless singleton
 
-**Files:**
-- Create: `client/lib/services/expert_hub/expert_clone_service.dart`
-- Test: `client/test/services/expert_hub/expert_clone_service_test.dart`
+**Files:** `client/lib/services/expert_hub/expert_clone_service.dart`, `client/test/services/expert_hub/expert_clone_service_test.dart`
 
 **Interfaces:**
-- Consumes: `CompositeExpertHubSource` (`withDefaults` factory or direct constructor with `ExpertHubSource? registry`), `LocalMemberTemplateStore`, `ExpertMemberResolver.resolveMember({required String? key, CompositeExpertHubSource? source, LocalMemberTemplateStore? localStore})`, `DiscoverableMember.copyWith`.
-- Produces:
-  - `class ExpertCloneOutcome { const ExpertCloneOutcome({required this.key, required this.cloned}); final String key; final bool cloned; }`
-  - `class ExpertCloneService { ExpertCloneService({required CompositeExpertHubSource source, LocalMemberTemplateStore? localStore}); Future<ExpertCloneOutcome?> clone({required String expertKey, String? originTeamKey}); }` — returns `null` when the expert cannot be resolved; memoizes per instance (`Map<String,String> _memo`).
+- Consumes: `LocalExpertStore` (R2), shadow resolver (R3), `ExpertMemberSource.clone`, `clonedAt` (R1).
+- Produces: `class ExpertCloneOutcome { const ExpertCloneOutcome({required this.cloned}); final bool cloned; }`; `ExpertCloneService.clone({required String expertKey, String? originTeamKey}) → Future<ExpertCloneOutcome?>` (null = failure).
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **Step 1: Rewrite tests**
 
-Create `client/test/services/expert_hub/expert_clone_service_test.dart`:
+Rewrite `expert_clone_service_test.dart`:
 
 ```dart
 import 'package:flutter_test/flutter_test.dart';
@@ -284,7 +384,7 @@ import 'package:teampilot/models/discoverable_team.dart';
 import 'package:teampilot/services/expert_hub/composite_expert_hub_source.dart';
 import 'package:teampilot/services/expert_hub/expert_clone_service.dart';
 import 'package:teampilot/services/expert_hub/expert_hub_source.dart';
-import 'package:teampilot/services/expert_hub/local_member_template_store.dart';
+import 'package:teampilot/services/expert_hub/local_expert_store.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 
 import '../../support/in_memory_filesystem.dart';
@@ -293,8 +393,7 @@ class _FakeExpertHubSource implements ExpertHubSource {
   _FakeExpertHubSource(this.members);
   final List<DiscoverableMember> members;
   @override
-  Future<List<DiscoverableMember>> fetchMembers({bool forceRefresh = false}) async =>
-      members;
+  Future<List<DiscoverableMember>> fetchMembers({bool forceRefresh = false}) async => members;
   @override
   Future<List<String>> categories({bool forceRefresh = false}) async => const [];
 }
@@ -306,155 +405,96 @@ DiscoverableMember _catalogExpert({String key = 'acme/experts/pm'}) =>
       description: 'Plans.',
       category: 'Business',
       source: ExpertMemberSource.registry,
-      member: const DiscoverableTeamMember(
-        name: 'pm',
-        responsibilities: 'You are a PM.',
-      ),
+      member: const DiscoverableTeamMember(name: 'pm', responsibilities: 'You are a PM.'),
     );
 
 void main() {
   late InMemoryFilesystem fs;
-  late LocalMemberTemplateStore store;
+  late LocalExpertStore store;
   late ExpertCloneService service;
-
-  ExpertCloneService make({
-    List<DiscoverableMember> catalog = const [],
-  }) {
-    final source = CompositeExpertHubSource(
-      builtIns: const [],
-      registry: _FakeExpertHubSource(catalog),
-      localStore: store,
-    );
-    return ExpertCloneService(source: source, localStore: store);
-  }
 
   setUp(() {
     fs = InMemoryFilesystem();
-    store = LocalMemberTemplateStore(
+    store = LocalExpertStore(
       fs: fs,
       dirOverride: AppPaths('/tp').memberHubLocalTemplatesDir,
       uuidFactory: () => 'test-uuid',
     );
-    service = make(catalog: [_catalogExpert()]);
+    final source = CompositeExpertHubSource(
+      builtIns: const [],
+      registry: _FakeExpertHubSource([_catalogExpert()]),
+      localStore: store,
+    );
+    service = ExpertCloneService(source: source, store: store);
   });
 
-  test('catalog expert is cloned to a local key with provenance', () async {
-    final out = await service.clone(
-      expertKey: 'acme/experts/pm',
-      originTeamKey: 'acme/teams/squad',
-    );
-
+  test('clones a catalog expert under its key with provenance', () async {
+    final out = await service.clone(expertKey: 'acme/experts/pm', originTeamKey: 'acme/teams/squad');
     expect(out, isNotNull);
     expect(out!.cloned, isTrue);
-    expect(out.key, 'local/test-uuid');
-
-    final saved = await store.getByKey('local/test-uuid');
+    final saved = await store.getByKey('acme/experts/pm');
     expect(saved, isNotNull);
-    expect(saved!.catalogKey, 'acme/experts/pm');
+    expect(saved!.source, ExpertMemberSource.clone);
     expect(saved.originTeamKey, 'acme/teams/squad');
-    expect(saved.name, 'Product Manager');
+    expect(saved.clonedAt, greaterThan(0));
+  });
+
+  test('reuses an existing clone (O(1) dedup, no duplicate file)', () async {
+    await service.clone(expertKey: 'acme/experts/pm');
+    final second = await service.clone(expertKey: 'acme/experts/pm');
+    expect(second, isNotNull);
+    expect(second!.cloned, isFalse);
+    expect(await store.loadAll(), hasLength(1));
   });
 
   test('built-in expert is kept, not cloned', () async {
     final out = await service.clone(expertKey: 'teampilot/builtin/team-lead');
-
     expect(out, isNotNull);
-    expect(out!.key, 'teampilot/builtin/team-lead');
-    expect(out.cloned, isFalse);
+    expect(out!.cloned, isFalse);
     expect(await store.loadAll(), isEmpty);
   });
 
-  test('existing local key is kept', () async {
-    await store.save(_catalogExpert(key: 'local/existing'));
-
-    final out = await service.clone(expertKey: 'local/existing');
-
-    expect(out, isNotNull);
-    expect(out!.key, 'local/existing');
-    expect(out.cloned, isFalse);
+  test('unresolvable key is a failure', () async {
+    expect(await service.clone(expertKey: 'acme/experts/nope'), isNull);
   });
 
-  test('dangling local key is a failure', () async {
-    final out = await service.clone(expertKey: 'local/gone');
-    expect(out, isNull);
-  });
-
-  test('unresolvable catalog key is a failure', () async {
-    final out = await service.clone(expertKey: 'acme/experts/nope');
-    expect(out, isNull);
-  });
-
-  test('reuses an existing local copy from the same catalogKey', () async {
-    final first = await service.clone(expertKey: 'acme/experts/pm');
-    expect(first!.key, 'local/test-uuid');
-
-    // A fresh service (new run) sees the already-saved local copy.
-    final second = make(catalog: [_catalogExpert()]).clone(
-      expertKey: 'acme/experts/pm',
-    );
-    final out = await second;
-    expect(out, isNotNull);
-    expect(out!.key, 'local/test-uuid');
-    expect(out.cloned, isFalse);
-    expect(await store.loadAll(), hasLength(1));
-  });
-
-  test('same expert referenced twice in one run is cloned once', () async {
-    final out1 = await service.clone(expertKey: 'acme/experts/pm');
-    final out2 = await service.clone(expertKey: 'acme/experts/pm');
-
-    expect(out1!.key, out2!.key);
-    expect(await store.loadAll(), hasLength(1));
+  test('empty key is a failure', () async {
+    expect(await service.clone(expertKey: '  '), isNull);
   });
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [ ] **Step 2: Run to verify fail**
 
 Run: `cd client && flutter test test/services/expert_hub/expert_clone_service_test.dart`
-Expected: FAIL — import `expert_clone_service.dart` cannot be resolved.
+Expected: FAIL — service still has per-run memo / `ExpertCloneOutcome.key` mismatch.
 
 - [ ] **Step 3: Implement**
 
-Create `client/lib/services/expert_hub/expert_clone_service.dart`:
+Rewrite `expert_clone_service.dart`:
 
 ```dart
 import '../../models/discoverable_member.dart';
 import 'composite_expert_hub_source.dart';
 import 'expert_member_resolver.dart';
-import 'local_member_template_store.dart';
+import 'local_expert_store.dart';
 
-/// Built-in catalog key prefix — always resolvable, never cloned.
 const String kBuiltinExpertKeyPrefix = 'teampilot/builtin/';
 
-/// Result of attempting to clone one expert for a team roster slot.
 class ExpertCloneOutcome {
-  const ExpertCloneOutcome({required this.key, required this.cloned});
-
-  /// The key the roster slot should reference (kept or new local key).
-  final String key;
-
-  /// True when a new local copy was created in My Experts.
+  const ExpertCloneOutcome({required this.cloned});
   final bool cloned;
 }
 
-/// Clones a catalog expert into My Experts when missing, so a cloned team is
-/// self-contained. One instance per clone run (holds the run-scoped memo).
-///
-/// Returns the key the slot should reference, or `null` if the expert cannot
-/// be resolved (caller reports a non-blocking failure).
 class ExpertCloneService {
   ExpertCloneService({
     required CompositeExpertHubSource source,
-    LocalMemberTemplateStore? localStore,
+    LocalExpertStore? store,
   }) : _source = source,
-       _localStore = localStore ?? LocalMemberTemplateStore();
+       _store = store ?? LocalExpertStore();
 
   final CompositeExpertHubSource _source;
-  final LocalMemberTemplateStore _localStore;
-
-  /// Run-scoped memo: catalog key -> cloned local key (one clone per expert).
-  final Map<String, String> _memo = {};
+  final LocalExpertStore _store;
 
   Future<ExpertCloneOutcome?> clone({
     required String expertKey,
@@ -463,609 +503,249 @@ class ExpertCloneService {
     final key = expertKey.trim();
     if (key.isEmpty) return null;
 
-    if (LocalMemberTemplateStore.isLocalKey(key)) {
-      final local = await _localStore.getByKey(key);
-      if (local == null) return null; // dangling local key
-      return ExpertCloneOutcome(key: key, cloned: false);
-    }
-
     if (key.startsWith(kBuiltinExpertKeyPrefix)) {
-      return ExpertCloneOutcome(key: key, cloned: false);
+      return const ExpertCloneOutcome(cloned: false);
     }
 
-    final memoized = _memo[key];
-    if (memoized != null) {
-      return ExpertCloneOutcome(key: memoized, cloned: true);
-    }
-
-    final existing = await _findLocalByCatalogKey(key);
+    final existing = await _store.getByKey(key);
     if (existing != null) {
-      _memo[key] = existing.key;
-      return ExpertCloneOutcome(key: existing.key, cloned: false);
+      return const ExpertCloneOutcome(cloned: false);
     }
 
     final expert = await ExpertMemberResolver.resolveMember(
       key: key,
       source: _source,
-      localStore: _localStore,
+      localStore: _store,
     );
     if (expert == null) return null;
 
-    final saved = await _localStore.save(
-      expert.copyWith(catalogKey: key, originTeamKey: originTeamKey),
+    await _store.putClone(
+      expert.copyWith(
+        source: ExpertMemberSource.clone,
+        originTeamKey: originTeamKey,
+        clonedAt: DateTime.now().millisecondsSinceEpoch,
+      ),
     );
-    _memo[key] = saved.key;
-    return ExpertCloneOutcome(key: saved.key, cloned: true);
-  }
-
-  Future<DiscoverableMember?> _findLocalByCatalogKey(String catalogKey) async {
-    final locals = await _localStore.loadAll();
-    for (final member in locals) {
-      if (member.catalogKey == catalogKey) return member;
-    }
-    return null;
+    return const ExpertCloneOutcome(cloned: true);
   }
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [ ] **Step 4: Run to verify pass**
 
 Run: `cd client && flutter test test/services/expert_hub/expert_clone_service_test.dart`
-Expected: PASS (all tests).
+Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add client/lib/services/expert_hub/expert_clone_service.dart client/test/services/expert_hub/expert_clone_service_test.dart
-git commit -m "feat(expert): add ExpertCloneService to clone missing experts"
+git commit -m "refactor(expert): make ExpertCloneService stateless with O(1) dedup"
 ```
 
 ---
 
-### Task 4: `TeamCloneService` integration
+### Task R5: `TeamCloneService` — plain cloner, no repoint
 
-**Files:**
-- Modify: `client/lib/services/team/team_clone_service.dart`
-- Test: `client/test/services/team/team_clone_service_test.dart`
+**Files:** `client/lib/services/team/team_clone_service.dart`, `client/test/services/team/team_clone_service_test.dart`
 
 **Interfaces:**
-- Consumes: `ExpertCloneService` → `ExpertCloneOutcome`, `ExpertSlotCloner` (defined here).
-- Produces:
-  - `typedef ExpertSlotCloner = Future<ExpertCloneOutcome?> Function({required String expertKey, String? originTeamKey});`
-  - `typedef ExpertSlotClonerFactory = ExpertSlotCloner Function();`
-  - `TeamCloneService` constructor gains `required ExpertSlotClonerFactory expertClonerFactory`.
-  - `DependencyKind` gains `expert` value.
-  - `CloneDepInstallSummary` gains `expertKeys` (`List<String>`, default `const []`) / `expertCount`; `totalCount` includes it; `isEmpty` considers it.
-  - `CloneResult.installed` carries cloned expert keys.
+- Consumes: `ExpertCloneOutcome` (R4).
+- Produces: `typedef ExpertSlotCloner = Future<ExpertCloneOutcome?> Function({required String expertKey, String? originTeamKey});`; `TeamCloneService({..., required ExpertSlotCloner expertCloner, ...})`.
 
-- [ ] **Step 1: Write the failing tests**
+- [ ] **Step 1: Update tests**
 
-Update `client/test/services/team/team_clone_service_test.dart`:
-
-Add `expertClonerFactory` to all three existing `TeamCloneService(...)` constructions (a keep-as-is cloner):
+In `team_clone_service_test.dart`, replace all `expertClonerFactory:` with a direct cloner:
 
 ```dart
-      expertClonerFactory: () => ({required expertKey, originTeamKey}) async =>
-          ExpertCloneOutcome(key: expertKey, cloned: false),
+      expertCloner: ({required expertKey, originTeamKey}) async =>
+          ExpertCloneOutcome(cloned: true),
 ```
 
-Add new tests at the end of `main()`:
+Rewrite the "repoints roster slots" test to assert **no repoint** + counting:
 
 ```dart
-  test('repoints roster slots to cloned local expert keys', () async {
+  test('clones experts without repointing roster keys', () async {
     TeamRosterSlot? createdSlot;
     final service = TeamCloneService(
       installSkill: (d) async => null,
       installPlugin: (d) async => null,
       installMcp: (d) async => null,
-      expertClonerFactory: () =>
-          ({required expertKey, originTeamKey}) async => expertKey ==
-                  'catalog/pm'
-              ? ExpertCloneOutcome(key: 'local/cloned-pm', cloned: true)
-              : ExpertCloneOutcome(key: expertKey, cloned: false),
-      createTeam:
-          ({
-            required name,
-            required cli,
-            required teamMode,
-            required roster,
-            required skillIds,
-            required pluginIds,
-            required mcpServerIds,
-            required description,
-            required extraArgs,
-            String? hubSourceKey,
-          }) async {
-            createdSlot = roster.single;
-            return 'squad';
-          },
+      expertCloner: ({required expertKey, originTeamKey}) async =>
+          ExpertCloneOutcome(cloned: true),
+      createTeam: ({
+        required name, required cli, required teamMode, required roster,
+        required skillIds, required pluginIds, required mcpServerIds,
+        required description, required extraArgs, String? hubSourceKey,
+      }) async {
+        createdSlot = roster.single;
+        return 'squad';
+      },
     );
-
-    final result = await service.clone(
-      const DiscoverableTeam(
-        key: 'o/r/squad',
-        name: 'Squad',
-        description: 'd',
-        category: 'AI',
-        updatedAt: 1,
-        cli: CliTool.claude,
-        teamMode: TeamMode.mixed,
-        roster: [TeamRosterSlot(id: 'pm', expertKey: 'catalog/pm')],
-      ),
-    );
-
-    expect(createdSlot!.expertKey, 'local/cloned-pm');
+    final result = await service.clone(const DiscoverableTeam(
+      key: 'o/r/squad', name: 'Squad', description: 'd', category: 'AI',
+      updatedAt: 1, cli: CliTool.claude, teamMode: TeamMode.mixed,
+      roster: [TeamRosterSlot(id: 'pm', expertKey: 'catalog/pm')],
+    ));
+    expect(createdSlot!.expertKey, 'catalog/pm',
+        reason: 'shadow model keeps the catalog key');
     expect(result.installed.expertCount, 1);
-    expect(result.installed.expertKeys, ['local/cloned-pm']);
+    expect(result.installed.expertKeys, ['catalog/pm']);
     expect(result.failedDeps, isEmpty);
   });
-
-  test('unresolvable expert is a non-blocking failure, key kept', () async {
-    TeamRosterSlot? createdSlot;
-    final service = TeamCloneService(
-      installSkill: (d) async => null,
-      installPlugin: (d) async => null,
-      installMcp: (d) async => null,
-      expertClonerFactory: () => ({required expertKey, originTeamKey}) async =>
-          null,
-      createTeam:
-          ({
-            required name,
-            required cli,
-            required teamMode,
-            required roster,
-            required skillIds,
-            required pluginIds,
-            required mcpServerIds,
-            required description,
-            required extraArgs,
-            String? hubSourceKey,
-          }) async {
-            createdSlot = roster.single;
-            return 'squad';
-          },
-    );
-
-    final result = await service.clone(
-      const DiscoverableTeam(
-        key: 'o/r/squad',
-        name: 'Squad',
-        description: 'd',
-        category: 'AI',
-        updatedAt: 1,
-        cli: CliTool.claude,
-        teamMode: TeamMode.mixed,
-        roster: [TeamRosterSlot(id: 'pm', expertKey: 'catalog/pm')],
-      ),
-    );
-
-    expect(createdSlot!.expertKey, 'catalog/pm',
-        reason: 'original key kept on failure');
-    expect(result.failedDeps, hasLength(1));
-    expect(result.failedDeps.single.kind, DependencyKind.expert);
-    expect(result.failedDeps.single.name, 'catalog/pm');
-    expect(result.installed.expertCount, 0);
-  });
 ```
 
-Note: `DiscoverableTeam` has no `copyWith`; the new tests construct the team inline with the custom roster.
+Keep the failure test (cloner returns null → `DependencyKind.expert` failure, slot unchanged).
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [ ] **Step 2: Run to verify fail**
 
 Run: `cd client && flutter test test/services/team/team_clone_service_test.dart`
-Expected: FAIL — `expertClonerFactory` is not a named parameter of `TeamCloneService`; `DependencyKind.expert` does not exist; `CloneDepInstallSummary.expertCount` does not exist; import of `ExpertCloneOutcome` unresolved.
+Expected: FAIL — `expertCloner` not a named param.
 
 - [ ] **Step 3: Implement**
 
-In `client/lib/services/team/team_clone_service.dart`:
-
-Add import at the top:
-
-```dart
-import '../expert_hub/expert_clone_service.dart';
-```
-
-Add the typedefs after the `McpDepInstaller` typedef:
+In `team_clone_service.dart`:
+- `typedef ExpertSlotCloner` — keep.
+- Remove `ExpertSlotClonerFactory` typedef and `expertClonerFactory`; add `required ExpertSlotCloner expertCloner` + field.
+- In `clone()`: roster stays the stamped original; expert pass only records clones/failures (no repoint). Replace the repoint loop with:
 
 ```dart
-/// Clones one roster expert for a team clone; returns the key the slot should
-/// reference (kept or new local key), or null on failure.
-typedef ExpertSlotCloner = Future<ExpertCloneOutcome?> Function({
-  required String expertKey,
-  String? originTeamKey,
-});
-
-/// Produces a per-clone-run [ExpertSlotCloner] (run-scoped memoization).
-typedef ExpertSlotClonerFactory = ExpertSlotCloner Function();
-```
-
-Add `expert` to `DependencyKind`:
-
-```dart
-enum DependencyKind { skill, plugin, mcp, expert }
-```
-
-Add `expertKeys` to `CloneDepInstallSummary`:
-
-```dart
-  const CloneDepInstallSummary({
-    this.skillIds = const [],
-    this.pluginIds = const [],
-    this.mcpIds = const [],
-    this.expertKeys = const [],
-  });
-
-  final List<String> skillIds;
-  final List<String> pluginIds;
-  final List<String> mcpIds;
-  final List<String> expertKeys;
-
-  int get skillCount => skillIds.length;
-  int get pluginCount => pluginIds.length;
-  int get mcpCount => mcpIds.length;
-  int get expertCount => expertKeys.length;
-  int get totalCount => skillCount + pluginCount + mcpCount + expertCount;
-  bool get isEmpty => totalCount == 0;
-```
-
-Update `==` and `hashCode` to include `expertKeys`.
-
-Add constructor param and field:
-
-```dart
-  TeamCloneService({
-    required this.installSkill,
-    required this.installPlugin,
-    required this.installMcp,
-    required this.expertClonerFactory,
-    required this.createTeam,
-  });
-
-  final SkillDepInstaller installSkill;
-  final PluginDepInstaller installPlugin;
-  final McpDepInstaller installMcp;
-  final ExpertSlotClonerFactory expertClonerFactory;
-  final ClonedTeamCreator createTeam;
-```
-
-Replace the body of `clone()` — specifically, replace the `final now = ...` / roster-stamping block (`team_clone_service.dart:162-169`) and the `createTeam(...)` call's `roster:` argument — with:
-
-```dart
-    final cloner = expertClonerFactory();
     final now = DateTime.now().millisecondsSinceEpoch;
+    final roster = team.roster
+        .map((slot) => slot.joinedAt == 0 ? slot.copyWith(joinedAt: now) : slot)
+        .toList(growable: false);
+
     final clonedExpertKeys = <String>[];
-    final repointedRoster = <TeamRosterSlot>[];
     for (final slot in team.roster) {
       final key = slot.expertKey.trim();
-      final base = slot.joinedAt == 0 ? slot.copyWith(joinedAt: now) : slot;
-      if (key.isEmpty) {
-        repointedRoster.add(base);
-        continue;
-      }
-      final outcome = await cloner(expertKey: key, originTeamKey: team.key);
+      if (key.isEmpty) continue;
+      final outcome = await expertCloner(expertKey: key, originTeamKey: team.key);
       if (outcome == null) {
         failed.add(DependencyFailure(DependencyKind.expert, key));
-        repointedRoster.add(base);
-      } else {
-        if (outcome.cloned) clonedExpertKeys.add(outcome.key);
-        repointedRoster.add(
-          outcome.key == key ? base : base.copyWith(expertKey: outcome.key),
-        );
+      } else if (outcome.cloned) {
+        clonedExpertKeys.add(key);
       }
       progress('expert:$key');
     }
-
-    final teamId = await createTeam(
-      name: team.name,
-      cli: team.cli,
-      teamMode: team.teamMode,
-      roster: repointedRoster,
-      skillIds: skillIds,
-      pluginIds: pluginIds,
-      mcpServerIds: mcpIds,
-      description: team.description,
-      extraArgs: team.extraArgs,
-      hubSourceKey: team.key,
-    );
-    if (teamId == null) {
-      throw CloneException('team creation failed for "${team.name}"');
-    }
-    return CloneResult(
-      teamId: teamId,
-      installed: CloneDepInstallSummary(
-        skillIds: skillIds,
-        pluginIds: pluginIds,
-        mcpIds: mcpIds,
-        expertKeys: clonedExpertKeys,
-      ),
-      failedDeps: failed,
-    );
 ```
 
-Update the `total` computation at the top of `clone()` to include expert slots:
+`createTeam` receives `roster` (unchanged); summary keeps `expertKeys: clonedExpertKeys`.
 
-```dart
-    final total =
-        team.skillDeps.length +
-        team.pluginDeps.length +
-        team.mcpDeps.length +
-        team.roster.where((s) => s.expertKey.trim().isNotEmpty).length;
-```
-
-- [ ] **Step 4: Run tests to verify they pass**
+- [ ] **Step 4: Run to verify pass**
 
 Run: `cd client && flutter test test/services/team/team_clone_service_test.dart`
-Expected: PASS (all tests, including the 2 new ones).
+Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add client/lib/services/team/team_clone_service.dart client/test/services/team/team_clone_service_test.dart
-git commit -m "feat(clone): clone missing roster experts into My Experts during team clone"
+git commit -m "refactor(clone): plain expert cloner, roster unchanged under shadow model"
 ```
 
 ---
 
-### Task 5: Wire `expertClonerFactory` in `app_shell.dart`
+### Task R6: `app_shell.dart` wiring + one-time migration
+
+**Files:** `client/lib/app/app_shell.dart`
+
+- [ ] **Step 1: Implement**
+
+Near the `compositeExpertHubSource` construction (already before `teamCloneService`):
+
+```dart
+  final localExpertStore = LocalExpertStore();
+  await localExpertStore.migrateLegacyLayout();
+  final expertCloneService = ExpertCloneService(
+    source: compositeExpertHubSource,
+    store: localExpertStore,
+  );
+```
+
+Pass the tear-off:
+
+```dart
+    expertCloner: expertCloneService.clone,
+```
+
+Remove the old `expertClonerFactory: () { ... }` closure. Update the import `local_member_template_store.dart` → `local_expert_store.dart` (if present).
+
+- [ ] **Step 2: Verify compiles**
+
+Run: `cd client && flutter analyze --no-fatal-infos --no-fatal-warnings 2>&1 | grep -E "error •" | grep -v "third_party/fastforge"`
+Expected: empty.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add client/lib/app/app_shell.dart
+git commit -m "feat(clone): wire shadow expert cloning + legacy migration in bootstrap"
+```
+
+---
+
+### Task R7: clone source UI label + `localOnly` filter + l10n
 
 **Files:**
-- Modify: `client/lib/app/app_shell.dart`
+- `client/lib/pages/expert_hub/expert_hub_cards.dart`
+- `client/lib/cubits/expert_hub_cubit.dart`
+- `client/lib/l10n/app_en.arb`, `app_zh.arb`
+- regenerate `app_localizations*.dart`
 
-**Interfaces:**
-- Consumes: `TeamCloneService` (Task 4), `ExpertCloneService` (Task 3), `CompositeExpertHubSource.withDefaults`.
-- Produces: working wiring — no unit test (integration point); verified by `flutter analyze`.
+- [ ] **Step 1: Add label + filter**
 
-- [ ] **Step 1: Move `compositeExpertHubSource` construction earlier**
-
-In `client/lib/app/app_shell.dart`, the block currently around lines 1004-1008:
-
-```dart
-  final expertHubFavorites = ExpertHubFavoritesStore();
-  final compositeExpertHubSource = CompositeExpertHubSource.withDefaults(
-    registry: GitRegistryExpertHubSource(),
-    teamIndex: teamHubSource.fetchTeams,
-  );
-```
-
-Move **only the `compositeExpertHubSource` line** to just before the `TeamCloneService(` construction (before line 951), and keep `expertHubFavorites` where it is. The moved block becomes:
+`expert_hub_cards.dart` source switch — add case:
 
 ```dart
-  final compositeExpertHubSource = CompositeExpertHubSource.withDefaults(
-    registry: GitRegistryExpertHubSource(),
-    teamIndex: teamHubSource.fetchTeams,
-  );
+      ExpertMemberSource.clone => l10n.expertHubSourceClone,
 ```
 
-So the order becomes: `teamHubSource` (947) → `compositeExpertHubSource` (new, before `teamCloneService`) → `teamCloneService` → … → `expertHubFavorites` (original location, still before `teamCubit.attachExpertHubSource(compositeExpertHubSource)`).
-
-- [ ] **Step 2: Pass `expertClonerFactory` to `TeamCloneService`**
-
-In the `TeamCloneService(` construction, after `installMcp: mcpCubit.installTeamDependency,`, add:
+`expert_hub_cubit.dart` `localOnly` filter — include clones:
 
 ```dart
-    expertClonerFactory: () {
-      final cloner = ExpertCloneService(source: compositeExpertHubSource);
-      return ({required expertKey, originTeamKey}) =>
-          cloner.clone(expertKey: expertKey, originTeamKey: originTeamKey);
-    },
+      base = base.where((m) =>
+          m.source == ExpertMemberSource.local ||
+          m.source == ExpertMemberSource.clone);
 ```
 
-Add the import at the top of the file (with the other expert_hub imports):
+- [ ] **Step 2: arb + regen**
 
-```dart
-import '../services/expert_hub/expert_clone_service.dart';
+`app_en.arb` (after `expertHubSourceLocal`):
+```json
+  "expertHubSourceClone": "Cloned",
 ```
+`app_zh.arb`:
+```json
+  "expertHubSourceClone": "克隆",
+```
+Run: `cd client && flutter gen-l10n`.
 
-- [ ] **Step 3: Verify it compiles**
+- [ ] **Step 3: Verify**
 
-Run: `cd client && flutter analyze --no-fatal-infos --no-fatal-warnings`
-Expected: no new errors/warnings (pre-existing ones allowed at this point).
+Run: `cd client && flutter test test/pages/expert_hub` and `flutter analyze ...` (non-fastforge).
+Expected: PASS / 0 errors.
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add client/lib/app/app_shell.dart
-git commit -m "feat(clone): wire expert cloning into team clone service"
+git add client/lib/pages/expert_hub/expert_hub_cards.dart client/lib/cubits/expert_hub_cubit.dart client/lib/l10n/app_en.arb client/lib/l10n/app_zh.arb client/lib/l10n/app_localizations.dart client/lib/l10n/app_localizations_en.dart client/lib/l10n/app_localizations_zh.dart
+git commit -m "feat(expert-hub): show clone source label in expert hub"
 ```
 
 ---
 
-### Task 6: l10n + clone toast
+### Task R8: Full verification
 
-**Files:**
-- Modify: `client/lib/pages/team_hub/team_hub_clone_feedback.dart`
-- Modify: `client/lib/l10n/app_en.arb`, `client/lib/l10n/app_zh.arb`
-- Test: `client/test/pages/team_hub/team_hub_clone_feedback_test.dart`
+- [ ] **Step 1: Analyze + full suite**
 
-**Interfaces:**
-- Consumes: `CloneDepInstallSummary.expertCount` (Task 4).
-- Produces: `l10n.teamHubCloneSuccessWithDeps(name, skillCount, pluginCount, mcpCount, expertCount)` and `l10n.teamHubClonePartial(name, skillCount, pluginCount, mcpCount, expertCount, failedCount, failedNames)`.
+Run: `cd client && flutter analyze --no-fatal-infos --no-fatal-warnings 2>&1 | grep -E "error •" | grep -cv "third_party/fastforge"`
+Expected: `0`.
+Run: `cd client && flutter test --exclude-tags integration`
+Expected: only the pre-existing `session_chat_view_draft_cache_test.dart` failures from the merged branch (unrelated); all clone/expert/store/resolver tests pass.
 
-- [ ] **Step 1: Write the failing tests**
-
-Update `client/test/pages/team_hub/team_hub_clone_feedback_test.dart`:
-
-Update the expected string in "success with deps lists install counts":
-
-```dart
-    expect(
-      msg,
-      'Cloned "Squad". Installed 2 skills, 1 plugins, and 0 MCP servers, and cloned 0 experts.',
-    );
-```
-
-Add a new test:
-
-```dart
-  test('success lists cloned expert count', () {
-    final msg = teamHubCloneToastMessage(
-      l10n,
-      teamName: 'Squad',
-      result: const CloneResult(
-        teamId: 'id',
-        installed: CloneDepInstallSummary(expertKeys: ['local/pm']),
-        failedDeps: [],
-      ),
-    );
-    expect(
-      msg,
-      'Cloned "Squad". Installed 0 skills, 0 plugins, and 0 MCP servers, and cloned 1 experts.',
-    );
-  });
-```
-
-- [ ] **Step 2: Run test to verify it fails**
-
-Run: `cd client && flutter test test/pages/team_hub/team_hub_clone_feedback_test.dart`
-Expected: FAIL — `teamHubCloneSuccessWithDeps` still has 4 params / old string.
-
-- [ ] **Step 3: Update the arb files**
-
-In `client/lib/l10n/app_en.arb`, replace:
-
-```json
-  "teamHubCloneSuccessWithDeps": "Cloned \"{name}\". Installed {skillCount} skills, {pluginCount} plugins, and {mcpCount} MCP servers.",
-  "@teamHubCloneSuccessWithDeps": {
-    "placeholders": {
-      "name": {},
-      "skillCount": {"type": "int"},
-      "pluginCount": {"type": "int"},
-      "mcpCount": {"type": "int"}
-    }
-  },
-```
-
-with:
-
-```json
-  "teamHubCloneSuccessWithDeps": "Cloned \"{name}\". Installed {skillCount} skills, {pluginCount} plugins, and {mcpCount} MCP servers, and cloned {expertCount} experts.",
-  "@teamHubCloneSuccessWithDeps": {
-    "placeholders": {
-      "name": {},
-      "skillCount": {"type": "int"},
-      "pluginCount": {"type": "int"},
-      "mcpCount": {"type": "int"},
-      "expertCount": {"type": "int"}
-    }
-  },
-```
-
-Replace `teamHubClonePartial` with:
-
-```json
-  "teamHubClonePartial": "Cloned \"{name}\". Installed {skillCount} skills, {pluginCount} plugins, {mcpCount} MCP servers, cloned {expertCount} experts. {failedCount} could not be installed: {failedNames}.",
-  "@teamHubClonePartial": {
-    "placeholders": {
-      "name": {},
-      "skillCount": {"type": "int"},
-      "pluginCount": {"type": "int"},
-      "mcpCount": {"type": "int"},
-      "expertCount": {"type": "int"},
-      "failedCount": {"type": "int"},
-      "failedNames": {}
-    }
-  },
-```
-
-In `client/lib/l10n/app_zh.arb`, replace `teamHubCloneSuccessWithDeps` with:
-
-```json
-  "teamHubCloneSuccessWithDeps": "已克隆「{name}」。已安装 {skillCount} 个 Skill、{pluginCount} 个插件、{mcpCount} 个 MCP 服务,并克隆了 {expertCount} 个专家。",
-  "@teamHubCloneSuccessWithDeps": {
-    "placeholders": {
-      "name": {},
-      "skillCount": {"type": "int"},
-      "pluginCount": {"type": "int"},
-      "mcpCount": {"type": "int"},
-      "expertCount": {"type": "int"}
-    }
-  },
-```
-
-Replace `teamHubClonePartial` with:
-
-```json
-  "teamHubClonePartial": "已克隆「{name}」。已安装 {skillCount} 个 Skill、{pluginCount} 个插件、{mcpCount} 个 MCP 服务,克隆了 {expertCount} 个专家;{failedCount} 个未能安装:{failedNames}。",
-  "@teamHubClonePartial": {
-    "placeholders": {
-      "name": {},
-      "skillCount": {"type": "int"},
-      "pluginCount": {"type": "int"},
-      "mcpCount": {"type": "int"},
-      "expertCount": {"type": "int"},
-      "failedCount": {"type": "int"},
-      "failedNames": {}
-    }
-  },
-```
-
-- [ ] **Step 4: Regenerate l10n**
-
-Run: `cd client && flutter gen-l10n`
-Expected: `app_localizations.dart`, `app_localizations_en.dart`, `app_localizations_zh.dart` regenerate with the new 5-param / 7-param methods.
-
-- [ ] **Step 5: Update `teamHubCloneToastMessage`**
-
-In `client/lib/pages/team_hub/team_hub_clone_feedback.dart`, pass `expertCount` in both branches:
-
-```dart
-    return l10n.teamHubCloneSuccessWithDeps(
-      teamName,
-      installed.skillCount,
-      installed.pluginCount,
-      installed.mcpCount,
-      installed.expertCount,
-    );
-```
-
-and:
-
-```dart
-  return l10n.teamHubClonePartial(
-    teamName,
-    installed.skillCount,
-    installed.pluginCount,
-    installed.mcpCount,
-    installed.expertCount,
-    result.failedDeps.length,
-    failedNames,
-  );
-```
-
-- [ ] **Step 6: Run tests to verify they pass**
-
-Run: `cd client && flutter test test/pages/team_hub/team_hub_clone_feedback_test.dart`
-Expected: PASS.
-
-- [ ] **Step 7: Commit**
-
-```bash
-git add client/lib/pages/team_hub/team_hub_clone_feedback.dart client/lib/l10n/app_en.arb client/lib/l10n/app_zh.arb client/lib/l10n/app_localizations.dart client/lib/l10n/app_localizations_en.dart client/lib/l10n/app_localizations_zh.dart client/test/pages/team_hub/team_hub_clone_feedback_test.dart
-git commit -m "feat(team-hub): report cloned expert count in clone toast"
-```
-
----
-
-### Task 7: Full verification
-
-**Files:** none (verification only).
-
-- [ ] **Step 1: Analyze + full test suite**
-
-Run: `cd client && flutter analyze --no-fatal-infos --no-fatal-warnings && flutter test --exclude-tags integration`
-Expected: analyzer clean; all tests pass (including `team_clone_service_test.dart`, `expert_clone_service_test.dart`, `local_member_template_store_test.dart`, `discoverable_member_test.dart`, `team_hub_clone_feedback_test.dart`).
-
-- [ ] **Step 2: Commit any stragglers**
+- [ ] **Step 2: Final commit of stragglers**
 
 ```bash
 git status --short
 ```
-Expected: no unexpected modified files. If a regenerated l10n file or a pre-existing working-tree change to the same files is present, confirm it is intentional before committing.
-
----
-
-## Self-Review Notes
-
-- **Spec coverage:** model field (Task 1), store persistence (Task 2), clone service (Task 3), TeamCloneService integration + summary + `DependencyKind.expert` (Task 4), wiring (Task 5), toast/l10n (Task 6). Non-goals respected: no per-expert dep install at clone, no local-key-convention change (`local/{uuid}` preserved), no built-in cloning.
-- **Type consistency:** `ExpertCloneOutcome`/`ExpertCloneService` defined in Task 3 are consumed by Task 4 (`expertClonerFactory` typedef) and Task 5 (wiring). `CloneDepInstallSummary.expertKeys` from Task 4 feeds Task 6 (`expertCount`). `DiscoverableMember.copyWith` from Task 1 is used by Task 3.
-- **Placeholder scan:** every code step shows full code; no TBD.
+Confirm only expected files remain modified; commit any stragglers with a clear message.
