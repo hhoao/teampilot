@@ -7,7 +7,6 @@ import 'package:mocktail/mocktail.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/cubits/agent_attention_cubit.dart';
 import 'package:teampilot/cubits/ai_history_cubit.dart';
-import 'package:teampilot/cubits/ai_history_seat.dart';
 import 'package:teampilot/cubits/app_provider_cubit.dart';
 import 'package:teampilot/cubits/chat/chat_tab_store.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
