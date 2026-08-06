@@ -114,6 +114,7 @@ class DiscoverableMember {
     this.pluginDeps = const [],
     this.mcpDeps = const [],
     this.originTeamKey,
+    this.catalogKey,
     this.i18n = const {},
   });
 
@@ -131,6 +132,9 @@ class DiscoverableMember {
   final List<McpDependencyRef> mcpDeps;
   final ExpertMemberSource source;
   final String? originTeamKey;
+
+  /// Provenance: catalog key this local clone was saved from (cross-clone dedup).
+  final String? catalogKey;
 
   /// Locale overlays keyed by language code (`zh`, `ja`, …). Root fields are
   /// the default / fallback language (typically English).
@@ -175,6 +179,7 @@ class DiscoverableMember {
       mcpDeps: list(json['mcpDeps'], McpDependencyRef.fromJson),
       source: ExpertMemberSource.decode(json['source']),
       originTeamKey: json['originTeamKey'] as String?,
+      catalogKey: json['catalogKey'] as String?,
       i18n: i18n,
     );
   }
@@ -195,6 +200,7 @@ class DiscoverableMember {
     'source': source.value,
     if (originTeamKey != null && originTeamKey!.isNotEmpty)
       'originTeamKey': originTeamKey,
+    if (catalogKey != null && catalogKey!.isNotEmpty) 'catalogKey': catalogKey,
     if (i18n.isNotEmpty)
       'i18n': {
         for (final e in i18n.entries) e.key: e.value.toJson(),
@@ -232,7 +238,50 @@ class DiscoverableMember {
       pluginDeps: pluginDeps,
       mcpDeps: mcpDeps,
       originTeamKey: originTeamKey,
+      catalogKey: catalogKey,
       i18n: i18n,
+    );
+  }
+
+  DiscoverableMember copyWith({
+    String? key,
+    String? name,
+    String? description,
+    String? category,
+    String? author,
+    int? updatedAt,
+    Set<String>? tags,
+    DiscoverableTeamMember? member,
+    List<SkillDependencyRef>? skillDeps,
+    List<PluginDependencyRef>? pluginDeps,
+    List<McpDependencyRef>? mcpDeps,
+    ExpertMemberSource? source,
+    String? originTeamKey,
+    bool updateOriginTeamKey = false,
+    String? catalogKey,
+    bool updateCatalogKey = false,
+    Map<String, DiscoverableMemberLocaleText>? i18n,
+  }) {
+    return DiscoverableMember(
+      key: key ?? this.key,
+      name: name ?? this.name,
+      description: description ?? this.description,
+      category: category ?? this.category,
+      author: author ?? this.author,
+      updatedAt: updatedAt ?? this.updatedAt,
+      tags: tags ?? this.tags,
+      member: member ?? this.member,
+      skillDeps: skillDeps ?? this.skillDeps,
+      pluginDeps: pluginDeps ?? this.pluginDeps,
+      mcpDeps: mcpDeps ?? this.mcpDeps,
+      source: source ?? this.source,
+      originTeamKey: updateOriginTeamKey
+          ? originTeamKey
+          : (originTeamKey ?? this.originTeamKey),
+      catalogKey: updateCatalogKey
+          ? catalogKey
+          : (catalogKey ?? this.catalogKey),
+      i18n: i18n ?? this.i18n,
     );
   }
 
@@ -271,6 +320,7 @@ class DiscoverableMember {
       listEquals(mcpDeps, other.mcpDeps) &&
       source == other.source &&
       originTeamKey == other.originTeamKey &&
+      catalogKey == other.catalogKey &&
       mapEquals(i18n, other.i18n);
 
   @override
@@ -288,6 +338,7 @@ class DiscoverableMember {
     Object.hashAll(mcpDeps),
     source,
     originTeamKey,
+    catalogKey,
     Object.hashAll(i18n.entries.map((e) => Object.hash(e.key, e.value))),
   );
 }

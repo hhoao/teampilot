@@ -146,4 +146,38 @@ void main() {
     expect(roundTrip, m);
     expect(roundTrip.forLocale('zh').name, 'gstack 评审官');
   });
+
+  test('catalogKey round-trips through JSON', () {
+    final m = DiscoverableMember(
+      key: 'teampilot/builtin/developer',
+      name: 'Developer',
+      description: 'Implements features',
+      category: 'Development',
+      source: ExpertMemberSource.local,
+      member: const DiscoverableTeamMember(name: 'developer'),
+      catalogKey: 'acme/experts/developer',
+      originTeamKey: 'acme/teams/squad',
+    );
+    final decoded = DiscoverableMember.fromJson(m.toJson());
+    expect(decoded, m);
+    expect(decoded.catalogKey, 'acme/experts/developer');
+  });
+
+  test('copyWith updates catalogKey and originTeamKey', () {
+    const m = DiscoverableMember(
+      key: 'local/abc',
+      name: 'PM',
+      description: '',
+      category: 'Business',
+      source: ExpertMemberSource.local,
+      member: DiscoverableTeamMember(name: 'pm'),
+    );
+    final updated = m.copyWith(
+      catalogKey: 'acme/experts/pm',
+      originTeamKey: 'acme/teams/squad',
+    );
+    expect(updated.catalogKey, 'acme/experts/pm');
+    expect(updated.originTeamKey, 'acme/teams/squad');
+    expect(updated.key, 'local/abc');
+  });
 }
