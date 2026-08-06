@@ -3935,8 +3935,9 @@ class AppLocalizationsZh extends AppLocalizations {
     int skillCount,
     int pluginCount,
     int mcpCount,
+    int expertCount,
   ) {
-    return '已克隆「$name」。已安装 $skillCount 个 Skill、$pluginCount 个插件、$mcpCount 个 MCP 服务。';
+    return '已克隆「$name」。已安装 $skillCount 个 Skill、$pluginCount 个插件、$mcpCount 个 MCP 服务,并克隆了 $expertCount 个专家。';
   }
 
   @override
@@ -3945,10 +3946,11 @@ class AppLocalizationsZh extends AppLocalizations {
     int skillCount,
     int pluginCount,
     int mcpCount,
+    int expertCount,
     int failedCount,
     Object failedNames,
   ) {
-    return '已克隆「$name」。已安装 $skillCount 个 Skill、$pluginCount 个插件、$mcpCount 个 MCP；$failedCount 个依赖安装失败：$failedNames。';
+    return '已克隆「$name」。已安装 $skillCount 个 Skill、$pluginCount 个插件、$mcpCount 个 MCP 服务,克隆了 $expertCount 个专家;$failedCount 个未能安装:$failedNames。';
   }
 
   @override

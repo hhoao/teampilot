@@ -4092,8 +4092,9 @@ class AppLocalizationsEn extends AppLocalizations {
     int skillCount,
     int pluginCount,
     int mcpCount,
+    int expertCount,
   ) {
-    return 'Cloned \"$name\". Installed $skillCount skills, $pluginCount plugins, and $mcpCount MCP servers.';
+    return 'Cloned \"$name\". Installed $skillCount skills, $pluginCount plugins, and $mcpCount MCP servers, and cloned $expertCount experts.';
   }
 
   @override
@@ -4102,10 +4103,11 @@ class AppLocalizationsEn extends AppLocalizations {
     int skillCount,
     int pluginCount,
     int mcpCount,
+    int expertCount,
     int failedCount,
     Object failedNames,
   ) {
-    return 'Cloned \"$name\". Installed $skillCount skills, $pluginCount plugins, $mcpCount MCP. $failedCount could not be installed: $failedNames.';
+    return 'Cloned \"$name\". Installed $skillCount skills, $pluginCount plugins, $mcpCount MCP servers, cloned $expertCount experts. $failedCount could not be installed: $failedNames.';
   }
 
   @override

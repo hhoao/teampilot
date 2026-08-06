@@ -44,7 +44,23 @@ void main() {
     );
     expect(
       msg,
-      'Cloned "Squad". Installed 2 skills, 1 plugins, and 0 MCP servers.',
+      'Cloned "Squad". Installed 2 skills, 1 plugins, and 0 MCP servers, and cloned 0 experts.',
+    );
+  });
+
+  test('success lists cloned expert count', () {
+    final msg = teamHubCloneToastMessage(
+      l10n,
+      teamName: 'Squad',
+      result: const CloneResult(
+        teamId: 'id',
+        installed: CloneDepInstallSummary(expertKeys: ['local/pm']),
+        failedDeps: [],
+      ),
+    );
+    expect(
+      msg,
+      'Cloned "Squad". Installed 0 skills, 0 plugins, and 0 MCP servers, and cloned 1 experts.',
     );
   });
 

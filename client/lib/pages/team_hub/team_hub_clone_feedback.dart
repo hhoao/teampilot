@@ -17,6 +17,7 @@ String teamHubCloneToastMessage(
       installed.skillCount,
       installed.pluginCount,
       installed.mcpCount,
+      installed.expertCount,
     );
   }
   final failedNames = result.failedDeps.map((f) => f.name).join(', ');
@@ -25,6 +26,7 @@ String teamHubCloneToastMessage(
     installed.skillCount,
     installed.pluginCount,
     installed.mcpCount,
+    installed.expertCount,
     result.failedDeps.length,
     failedNames,
   );

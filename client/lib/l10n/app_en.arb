@@ -1899,22 +1899,24 @@
   "teamHubCloning": "Cloning…",
   "teamHubCloneSuccess": "Cloned \"{name}\".",
   "@teamHubCloneSuccess": { "placeholders": { "name": {} } },
-  "teamHubCloneSuccessWithDeps": "Cloned \"{name}\". Installed {skillCount} skills, {pluginCount} plugins, and {mcpCount} MCP servers.",
+  "teamHubCloneSuccessWithDeps": "Cloned \"{name}\". Installed {skillCount} skills, {pluginCount} plugins, and {mcpCount} MCP servers, and cloned {expertCount} experts.",
   "@teamHubCloneSuccessWithDeps": {
     "placeholders": {
       "name": {},
       "skillCount": {"type": "int"},
       "pluginCount": {"type": "int"},
-      "mcpCount": {"type": "int"}
+      "mcpCount": {"type": "int"},
+      "expertCount": {"type": "int"}
     }
   },
-  "teamHubClonePartial": "Cloned \"{name}\". Installed {skillCount} skills, {pluginCount} plugins, {mcpCount} MCP. {failedCount} could not be installed: {failedNames}.",
+  "teamHubClonePartial": "Cloned \"{name}\". Installed {skillCount} skills, {pluginCount} plugins, {mcpCount} MCP servers, cloned {expertCount} experts. {failedCount} could not be installed: {failedNames}.",
   "@teamHubClonePartial": {
     "placeholders": {
       "name": {},
       "skillCount": {"type": "int"},
       "pluginCount": {"type": "int"},
       "mcpCount": {"type": "int"},
+      "expertCount": {"type": "int"},
       "failedCount": {"type": "int"},
       "failedNames": {}
     }

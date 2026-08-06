@@ -1607,22 +1607,24 @@
   "teamHubClone": "克隆为我的团队",
   "teamHubCloning": "正在克隆…",
   "teamHubCloneSuccess": "已克隆「{name}」。",
-  "teamHubCloneSuccessWithDeps": "已克隆「{name}」。已安装 {skillCount} 个 Skill、{pluginCount} 个插件、{mcpCount} 个 MCP 服务。",
+  "teamHubCloneSuccessWithDeps": "已克隆「{name}」。已安装 {skillCount} 个 Skill、{pluginCount} 个插件、{mcpCount} 个 MCP 服务,并克隆了 {expertCount} 个专家。",
   "@teamHubCloneSuccessWithDeps": {
     "placeholders": {
       "name": {},
       "skillCount": {"type": "int"},
       "pluginCount": {"type": "int"},
-      "mcpCount": {"type": "int"}
+      "mcpCount": {"type": "int"},
+      "expertCount": {"type": "int"}
     }
   },
-  "teamHubClonePartial": "已克隆「{name}」。已安装 {skillCount} 个 Skill、{pluginCount} 个插件、{mcpCount} 个 MCP；{failedCount} 个依赖安装失败：{failedNames}。",
+  "teamHubClonePartial": "已克隆「{name}」。已安装 {skillCount} 个 Skill、{pluginCount} 个插件、{mcpCount} 个 MCP 服务,克隆了 {expertCount} 个专家;{failedCount} 个未能安装:{failedNames}。",
   "@teamHubClonePartial": {
     "placeholders": {
       "name": {},
       "skillCount": {"type": "int"},
       "pluginCount": {"type": "int"},
       "mcpCount": {"type": "int"},
+      "expertCount": {"type": "int"},
       "failedCount": {"type": "int"},
       "failedNames": {}
     }
