@@ -25,6 +25,7 @@ import '../../../models/workspace.dart';
 import '../../../models/runtime_target.dart';
 import '../../../services/ai/headless_ai_service.dart';
 import '../../../services/compose/compose_at_file_refs.dart';
+import '../../../services/compose/compose_draft_cache.dart';
 import '../../../services/compose/compose_file_attach.dart';
 import '../../../services/compose/compose_file_drop_ingestor.dart';
 import '../../../services/storage/app_storage.dart';
@@ -185,11 +186,34 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
         text: seed,
         selection: TextSelection.collapsed(offset: seed.length),
       );
+    } else if (widget.initialText == null) {
+      // Restore the cached landing draft so navigating away and back does not
+      // lose typed text. Ask AI (initialText != null) never reads the cache.
+      final draft = composeDraftCache.landingDraft(
+        widget.workspace.workspaceId,
+      );
+      if (draft != null && draft.isNotEmpty) {
+        _controller.value = TextEditingValue(
+          text: draft,
+          selection: TextSelection.collapsed(offset: draft.length),
+        );
+      }
     }
+    _controller.addListener(_syncComposeDraft);
     unawaited(_loadDraft());
     unawaited(_loadWorkspaceProjectBundle());
     unawaited(_loadRecentExperts());
     unawaited(_loadRecentTeams());
+  }
+
+  /// Keeps [composeDraftCache] in sync with the compose field on every change
+  /// (typing, voice insert, enhance). No setState — the field's own onChanged
+  /// rebuilds; this fires for programmatic edits too.
+  void _syncComposeDraft() {
+    composeDraftCache.setLandingDraft(
+      widget.workspace.workspaceId,
+      _controller.text,
+    );
   }
 
   Future<void> _loadRecentExperts() async {
@@ -311,6 +335,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
   void dispose() {
     _stopVoiceSessionClock();
     _voiceInput.dispose();
+    _controller.removeListener(_syncComposeDraft);
     _controller.dispose();
     _focusNode.dispose();
     super.dispose();
