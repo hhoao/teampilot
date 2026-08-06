@@ -51,6 +51,10 @@ class CompositeExpertHubSource {
   final TeamIndexLoader? _teamIndex;
   final LocalExpertStore _localStore;
 
+  /// The local store this source reads clones / user-created experts from.
+  /// Threaded into resolution so the loaded singleton shadows the catalog.
+  LocalExpertStore get localStore => _localStore;
+
   Future<List<DiscoverableMember>> fetchMembers({
     bool forceRefresh = false,
   }) async {

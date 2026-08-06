@@ -951,12 +951,14 @@ Future<AppShell> buildAppShell({
     GitRegistryTeamHubSource(),
   );
   final teamHubFavorites = TeamHubFavoritesStore();
+  final localExpertStore = LocalExpertStore();
+  await localExpertStore.migrateLegacyLayout();
+  await localExpertStore.ensureIndexLoaded();
   final compositeExpertHubSource = CompositeExpertHubSource.withDefaults(
     registry: GitRegistryExpertHubSource(),
     teamIndex: teamHubSource.fetchTeams,
+    localStore: localExpertStore,
   );
-  final localExpertStore = LocalExpertStore();
-  await localExpertStore.migrateLegacyLayout();
   final expertCloneService = ExpertCloneService(
     source: compositeExpertHubSource,
     store: localExpertStore,

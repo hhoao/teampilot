@@ -166,6 +166,7 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
       ExpertMemberMaterializer.attachMaterializedMembers(
         team,
         source: _expertHubSource,
+        localStore: _expertHubSource?.localStore,
       );
 
   Future<List<TeamProfile>> _materializeTeams(List<TeamProfile> teams) =>
