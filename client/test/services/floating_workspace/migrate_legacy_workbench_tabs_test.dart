@@ -81,7 +81,7 @@ void main() {
 
     expect(moved, 1);
     expect(workbench.tabOrder(ws), isEmpty);
-    final runTab = floating.state.buckets[ws]!.tabs.single;
+    final runTab = floating.buckets[ws]!.tabs.single;
     expect(runTab.id, floatingRunTabId('r1'));
     expect(runTab.surfaceId, 'run');
     expect(runTab.payload, 'r1');
@@ -114,7 +114,7 @@ void main() {
       expect(moved, 1);
       expect(workbench.tabOrder(ws), [file]);
       expect(
-        floating.state.buckets[ws]!.tabs.map((t) => t.id).toList(),
+        floating.buckets[ws]!.tabs.map((t) => t.id).toList(),
         [floatingRunTabId('r1')],
       );
     },

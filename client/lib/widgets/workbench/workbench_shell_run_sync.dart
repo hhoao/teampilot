@@ -187,9 +187,7 @@ class _WorkbenchShellRunSyncState extends State<WorkbenchShellRunSync> {
     }
 
     final floating = context.read<FloatingWorkspaceCubit>();
-    final bucket =
-        floating.state.buckets[widget.workspaceId] ??
-        const FloatingWorkspaceBucket();
+    final bucket = floating.bucketFor(widget.workspaceId);
     final existingFloatingRunIds = _existingFloatingRunSessionIds(bucket.tabs);
     final runIdsToRemove = floatingRunIdsToRemove(
       existingFloatingRunSessionIds: existingFloatingRunIds,
