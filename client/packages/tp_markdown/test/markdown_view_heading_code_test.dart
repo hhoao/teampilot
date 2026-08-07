@@ -196,4 +196,46 @@ void main() {
     expect(find.byIcon(Icons.keyboard_arrow_down_rounded), findsNothing);
     expect(find.textContaining('line 399'), findsOneWidget);
   });
+
+  testWidgets('clicking faded preview text does not expand; chevron does', (
+    tester,
+  ) async {
+    final code = List.generate(400, (i) => 'line $i ${'x' * 40}').join('\n');
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: MarkdownView(
+              document: MarkdownDocument(
+                blocks: [CodeBlock(language: 'dart', text: code)],
+              ),
+              tokens: MarkdownTokens.test(),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Tap the faded text band (bottom strip, left of the centered chevron).
+    final panel = find
+        .ancestor(
+          of: find.textContaining('line 0'),
+          matching: find.byType(DecoratedBox),
+        )
+        .first;
+    final rect = tester.getRect(panel);
+    await tester.tapAt(Offset(rect.left + 20, rect.bottom - 18));
+    await tester.pumpAndSettle();
+
+    // Still collapsed — content clicks must not expand.
+    expect(find.byIcon(Icons.keyboard_arrow_up_rounded), findsNothing);
+    expect(find.textContaining('line 399'), findsNothing);
+
+    // The chevron icon itself still expands.
+    await tester.tap(find.byIcon(Icons.keyboard_arrow_down_rounded));
+    await tester.pumpAndSettle();
+    expect(find.byIcon(Icons.keyboard_arrow_up_rounded), findsOneWidget);
+    expect(find.textContaining('line 399'), findsOneWidget);
+  });
 }

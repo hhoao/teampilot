@@ -310,6 +310,10 @@ class _MarkdownCodeBlockState extends State<_MarkdownCodeBlock> {
 }
 
 /// Bottom fade strip + chevron for a collapsed/expanded code block mask.
+///
+/// The fade is purely visual (`IgnorePointer`); only the chevron icon itself is
+/// tappable — clicking the faded preview text does nothing (avoids surprising
+/// expand-on-content-click).
 class _MaskFadeChevron extends StatelessWidget {
   const _MaskFadeChevron({
     required this.icon,
@@ -327,31 +331,37 @@ class _MaskFadeChevron extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Tooltip(
-      message: tooltip,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onTap,
-        child: SizedBox(
-          height: 36,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              Positioned.fill(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [fadeColor.withValues(alpha: 0), fadeColor],
-                    ),
+    return SizedBox(
+      height: 36,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Positioned.fill(
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [fadeColor.withValues(alpha: 0), fadeColor],
                   ),
                 ),
               ),
-              Icon(icon, size: 20, color: iconColor),
-            ],
+            ),
           ),
-        ),
+          // Compact tap target around just the chevron icon.
+          Tooltip(
+            message: tooltip,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: onTap,
+              child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: Icon(icon, size: 20, color: iconColor),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
