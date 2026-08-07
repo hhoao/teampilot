@@ -272,16 +272,20 @@ class _MarkdownCodeBlockState extends State<_MarkdownCodeBlock> {
         borderRadius: BorderRadius.vertical(bottom: Radius.circular(radius)),
         border: Border.all(color: borderColor),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: Stack(
+        clipBehavior: Clip.hardEdge,
         children: [
           body,
-          Center(
-            child: _MaskFadeChevron(
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: _FadeChevronOverlay(
               icon: _expanded
                   ? Icons.keyboard_arrow_up_rounded
                   : Icons.keyboard_arrow_down_rounded,
               tooltip: _expanded ? strings.showLess : strings.showMore,
+              fadeColor: muted,
               color: iconColor,
               onTap: () => setState(() => _expanded = !_expanded),
             ),
@@ -317,31 +321,56 @@ class _MarkdownCodeBlockState extends State<_MarkdownCodeBlock> {
   }
 }
 
-/// Centered chevron button for a collapsed/expanded code block mask.
-class _MaskFadeChevron extends StatelessWidget {
-  const _MaskFadeChevron({
+/// Bottom fade strip + centered chevron overlay for a collapsed/expanded code
+/// block mask — matches Write/Edit's `AiFadeExpandBody` visual. The fade is
+/// purely visual (`IgnorePointer`); only the centered chevron is tappable.
+class _FadeChevronOverlay extends StatelessWidget {
+  const _FadeChevronOverlay({
     required this.icon,
     required this.tooltip,
+    required this.fadeColor,
     required this.color,
     required this.onTap,
   });
 
   final IconData icon;
   final String tooltip;
+  final Color fadeColor;
   final Color color;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Tooltip(
-      message: tooltip,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-          child: Icon(icon, size: 20, color: color),
-        ),
+    return SizedBox(
+      height: 36,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Positioned.fill(
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [fadeColor.withValues(alpha: 0), fadeColor],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Tooltip(
+            message: tooltip,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: onTap,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                child: Icon(icon, size: 20, color: color),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
