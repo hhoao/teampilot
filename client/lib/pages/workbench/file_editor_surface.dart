@@ -28,6 +28,7 @@ import '../../services/workbench/workbench_editor_opener.dart';
 import '../../theme/app_markdown_style_sheet.dart' show buildAppMarkdownTokens;
 import '../../widgets/app_toast/app_toast.dart';
 import '../../widgets/scroll_cursor_lock.dart';
+import '../../widgets/workbench/code_editor_find_panel.dart';
 import '../../widgets/workbench/file_diff_surface_toggle.dart';
 import '../../widgets/workbench/markdown_view_mode_toggle.dart';
 import 'file_editor_image_preview.dart';
@@ -448,6 +449,10 @@ class _CodeEditorPaneState extends State<_CodeEditorPane> {
         workspaceId: widget.workspaceId,
         filePath: widget.path,
       ),
+      // Find/replace (Ctrl+F / Ctrl+Alt+F): re-editor enables its find
+      // shortcuts and shows the find bar only when a builder is supplied.
+      findBuilder: (context, controller, readOnly) =>
+          CodeEditorFindPanel(controller: controller, readOnly: readOnly),
       style: codeEditorStyleFor(
         context,
         widget.path,

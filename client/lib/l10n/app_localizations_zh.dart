@@ -2149,6 +2149,33 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get editorFindHint => '查找';
+
+  @override
+  String get editorFindReplaceHint => '替换';
+
+  @override
+  String get editorFindReplaceAll => '全部替换';
+
+  @override
+  String get editorFindPrevious => '上一个匹配';
+
+  @override
+  String get editorFindNext => '下一个匹配';
+
+  @override
+  String get editorFindClose => '关闭';
+
+  @override
+  String get editorFindMatchCase => '区分大小写';
+
+  @override
+  String get editorFindUseRegex => '使用正则表达式';
+
+  @override
+  String get editorFindNoResults => '无结果';
+
+  @override
   String get fileTreeRevealActiveFile => '定位当前文件';
 
   @override

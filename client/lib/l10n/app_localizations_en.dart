@@ -2255,6 +2255,33 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get editorFindHint => 'Find';
+
+  @override
+  String get editorFindReplaceHint => 'Replace';
+
+  @override
+  String get editorFindReplaceAll => 'Replace all';
+
+  @override
+  String get editorFindPrevious => 'Previous match';
+
+  @override
+  String get editorFindNext => 'Next match';
+
+  @override
+  String get editorFindClose => 'Close';
+
+  @override
+  String get editorFindMatchCase => 'Match case';
+
+  @override
+  String get editorFindUseRegex => 'Use regular expression';
+
+  @override
+  String get editorFindNoResults => 'No results';
+
+  @override
   String get fileTreeRevealActiveFile => 'Reveal active file';
 
   @override
