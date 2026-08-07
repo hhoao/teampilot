@@ -4094,6 +4094,60 @@ abstract class AppLocalizations {
   /// **'Save failed: {error}'**
   String editorSaveFailed(String error);
 
+  /// No description provided for @editorFindHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Find'**
+  String get editorFindHint;
+
+  /// No description provided for @editorFindReplaceHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace'**
+  String get editorFindReplaceHint;
+
+  /// No description provided for @editorFindReplaceAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace all'**
+  String get editorFindReplaceAll;
+
+  /// No description provided for @editorFindPrevious.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous match'**
+  String get editorFindPrevious;
+
+  /// No description provided for @editorFindNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Next match'**
+  String get editorFindNext;
+
+  /// No description provided for @editorFindClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get editorFindClose;
+
+  /// No description provided for @editorFindMatchCase.
+  ///
+  /// In en, this message translates to:
+  /// **'Match case'**
+  String get editorFindMatchCase;
+
+  /// No description provided for @editorFindUseRegex.
+  ///
+  /// In en, this message translates to:
+  /// **'Use regular expression'**
+  String get editorFindUseRegex;
+
+  /// No description provided for @editorFindNoResults.
+  ///
+  /// In en, this message translates to:
+  /// **'No results'**
+  String get editorFindNoResults;
+
   /// No description provided for @fileTreeRevealActiveFile.
   ///
   /// In en, this message translates to:

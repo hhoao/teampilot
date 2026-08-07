@@ -978,6 +978,15 @@
       }
     }
   },
+  "editorFindHint": "Find",
+  "editorFindReplaceHint": "Replace",
+  "editorFindReplaceAll": "Replace all",
+  "editorFindPrevious": "Previous match",
+  "editorFindNext": "Next match",
+  "editorFindClose": "Close",
+  "editorFindMatchCase": "Match case",
+  "editorFindUseRegex": "Use regular expression",
+  "editorFindNoResults": "No results",
   "fileTreeRevealActiveFile": "Reveal active file",
   "fileTreeRefresh": "Refresh",
   "fileTreeShowFilter": "Show file filter",
