@@ -199,7 +199,7 @@ class WorkspaceSessionContentIndex {
   /// Drops cached docs for [sessionId] (e.g. when the user opens it and new
   /// messages may have arrived).
   void invalidateSession(String sessionId) {
-    final prefix = '${sessionId.trim()}${_keySeparator}';
+    final prefix = '${sessionId.trim()}$_keySeparator';
     _docs.removeWhere((key, _) => key.startsWith(prefix));
   }
 
@@ -294,7 +294,7 @@ class WorkspaceSessionContentIndex {
   }
 
   static String _seatKey(String sessionId, String memberId) =>
-      '${sessionId.trim()}${_keySeparator}${memberId.trim()}';
+      '${sessionId.trim()}$_keySeparator${memberId.trim()}';
 
   static WorkspaceSessionContentMatch? _matchInDoc(
     SessionTranscriptDoc doc,

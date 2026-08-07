@@ -190,6 +190,7 @@ import '../services/git/git_repo_store.dart';
 import '../services/workspace/workspace_tools_scope_registry.dart';
 import '../services/workspace/workspace_run_registry.dart';
 import '../services/run/workspace_run_platform_factory.dart';
+import '../services/search/workspace_search_indexes.dart';
 import '../services/workspace/workspace_worktree_registry.dart';
 import '../services/terminal/workspace_shell_connector.dart';
 import '../services/terminal/workspace_terminal_registry.dart';
@@ -232,6 +233,7 @@ class AppShell {
     required this.workspaceTerminalRunService,
     required this.gitRepoStore,
     required this.workspaceFileTreeStore,
+    required this.workspaceSearchIndexes,
     required this.workspaceWorktreeRegistry,
     required this.workspaceToolsScopeRegistry,
     required this.workspaceRunRegistry,
@@ -310,6 +312,7 @@ class AppShell {
   final WorkspaceTerminalRunService workspaceTerminalRunService;
   final GitRepoStore gitRepoStore;
   final WorkspaceFileTreeStore workspaceFileTreeStore;
+  final WorkspaceSearchIndexes workspaceSearchIndexes;
   final WorkspaceWorktreeRegistry workspaceWorktreeRegistry;
   final WorkspaceToolsScopeRegistry workspaceToolsScopeRegistry;
   final WorkspaceRunRegistry workspaceRunRegistry;
@@ -1045,6 +1048,7 @@ Future<AppShell> buildAppShell({
   final workspaceTerminalRegistry = WorkspaceTerminalRegistry();
   final gitRepoStore = GitRepoStore();
   final workspaceFileTreeStore = WorkspaceFileTreeStore();
+  final workspaceSearchIndexes = WorkspaceSearchIndexes();
   final workspaceWorktreeRegistry = WorkspaceWorktreeRegistry();
   final workspaceToolsScopeRegistry = WorkspaceToolsScopeRegistry();
   final workspaceRunRegistry = WorkspaceRunRegistry(
@@ -1669,6 +1673,7 @@ Future<AppShell> buildAppShell({
     workspaceTerminalRunService: workspaceTerminalRunService,
     gitRepoStore: gitRepoStore,
     workspaceFileTreeStore: workspaceFileTreeStore,
+    workspaceSearchIndexes: workspaceSearchIndexes,
     workspaceWorktreeRegistry: workspaceWorktreeRegistry,
     workspaceToolsScopeRegistry: workspaceToolsScopeRegistry,
     workspaceRunRegistry: workspaceRunRegistry,
