@@ -188,10 +188,33 @@ void main() {
       _assistant(_todoWrite({
         'merge': false,
         'todos': [
-          {'content': 'no id', 'status': 'pending'},
+          {'status': 'pending'},
         ],
       })),
     ]);
     expect(board.totalCount, 0);
+  });
+
+  test('id-less TodoWrite (OpenAI/codex/opencode style) replaces the board',
+      () {
+    final board = reduceCliTaskBoard([
+      _assistant(_todoWrite({
+        'todos': [
+          {'content': 'Task A', 'status': 'in_progress'},
+          {'content': 'Task B', 'status': 'pending'},
+        ],
+      })),
+      _assistant(_todoWrite({
+        'todos': [
+          {'content': 'Task A', 'status': 'completed'},
+          {'content': 'Task B', 'status': 'completed'},
+        ],
+      })),
+    ]);
+    expect(board.totalCount, 2);
+    expect(board.tasks[0].subject, 'Task A');
+    expect(board.tasks[0].status, CliTaskStatus.completed);
+    expect(board.tasks[1].subject, 'Task B');
+    expect(board.tasks[1].status, CliTaskStatus.completed);
   });
 }

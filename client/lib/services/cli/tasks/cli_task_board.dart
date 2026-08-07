@@ -163,12 +163,16 @@ List<_TodoEntry> _parseTodoWrite(Object? raw) {
   final out = <_TodoEntry>[];
   for (final item in raw) {
     if (item is! Map) continue;
+    final content = _str(item['content']).trim();
+    // Cursor's TodoWrite carries explicit ids; OpenAI-family (codex/opencode)
+    // todos are id-less and replace the whole board each call — fall back to
+    // the content so those items are not dropped.
     final id = _str(item['id']).trim();
-    if (id.isEmpty) continue;
+    if (id.isEmpty && content.isEmpty) continue;
     out.add(
       _TodoEntry(
-        id: id,
-        content: _str(item['content']).trim(),
+        id: id.isNotEmpty ? id : content,
+        content: content,
         activeForm: _str(item['activeForm']).trim(),
         status: cliTaskStatusFromString(_str(item['status'])),
       ),
