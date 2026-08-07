@@ -226,7 +226,10 @@ class _SessionChatViewState extends State<SessionChatView> {
     _taskBoardController?.dispose();
     _taskBoardController = seat == null
         ? null
-        : CliTaskBoardController(seat.runtime);
+        : CliTaskBoardController(
+            runtime: seat.runtime,
+            loadedMessages: () => seat.loadedMessages,
+          );
   }
 
   void _applyVoiceListening(bool listening) {

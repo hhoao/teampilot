@@ -5,31 +5,36 @@ import 'package:flutter/foundation.dart';
 
 import 'cli_task_board.dart';
 
-/// Memoizing presenter: re-derives [board] only when the runtime's message
-/// list content actually changes.
+/// Memoizing presenter: re-derives [board] from the FULL loaded transcript
+/// (not the thread's visible window) only when its content actually changes.
 ///
-/// The runtime reuses unchanged message instances and only notifies when
-/// content changed, so an instance-identity comparison is a correct (and
-/// cheap) change detector for the derivation.
+/// The seat holds the full transcript in [AiHistorySeat.loadedMessages]; the
+/// thread runtime only publishes a paginated slice (`kSessionHistoryInitialTurns`
+/// turns). Deriving from the slice would drop TaskCreate calls that fell
+/// outside the window and turn the later TaskUpdate calls into empty
+/// placeholders — so the board reads the full list and uses the runtime only
+/// as a change signal.
 class CliTaskBoardController extends ChangeNotifier {
-  CliTaskBoardController(AiThreadRuntime runtime) {
-    _runtime = runtime;
-    _lastMessages = runtime.messages;
-    _board = reduceCliTaskBoard(_lastMessages);
+  CliTaskBoardController({
+    required AiThreadRuntime runtime,
+    required List<AiMessage> Function() loadedMessages,
+  }) : _loadedMessages = loadedMessages {
+    _last = loadedMessages();
+    _board = reduceCliTaskBoard(_last);
     _sub = runtime.changes.listen((_) => _onChanges());
   }
 
-  late final AiThreadRuntime _runtime;
-  late List<AiMessage> _lastMessages;
+  final List<AiMessage> Function() _loadedMessages;
+  late List<AiMessage> _last;
   late CliTaskBoard _board;
   StreamSubscription<void>? _sub;
 
   CliTaskBoard get board => _board;
 
   void _onChanges() {
-    final messages = _runtime.messages;
-    if (_sameInstancesInOrder(messages, _lastMessages)) return;
-    _lastMessages = messages;
+    final messages = _loadedMessages();
+    if (_sameInstancesInOrder(messages, _last)) return;
+    _last = messages;
     _board = reduceCliTaskBoard(messages);
     notifyListeners();
   }

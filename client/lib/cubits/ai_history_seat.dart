@@ -132,6 +132,12 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
   _loadMailboxRecords;
   final ExternalStoreAiThreadRuntime runtime = ExternalStoreAiThreadRuntime();
 
+  /// Full loaded transcript, beyond the thread's visible pagination window
+  /// ([runtime] only publishes the last `kSessionHistoryInitialTurns` turns).
+  /// The CLI task board derives from this so TaskCreate calls earlier in a
+  /// large session are not sliced away.
+  List<AiMessage> get loadedMessages => _allMessages;
+
   int _loadGeneration = 0;
 
   /// Raw CLI transcript from [_loader.load], before merging mailbox mail.
