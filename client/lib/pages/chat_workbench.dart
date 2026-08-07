@@ -409,6 +409,10 @@ class _ChatWorkbenchBody extends StatelessWidget {
       if (activeId == null || activeId.isEmpty) {
         return SessionWorkbenchView.chat;
       }
+      // The pod is the canonical view source; fall back to the tab during the
+      // thin-ChatCubit transition.
+      final podView = c.podFor(activeId)?.view;
+      if (podView != null) return podView;
       final tab = c.tabStore.openTabBySessionId(activeId);
       return tab?.workbenchView ?? SessionWorkbenchView.chat;
     });

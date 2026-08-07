@@ -628,6 +628,10 @@ class _ScopedMembersPanelState extends State<_ScopedMembersPanel> {
     if (sessionId == null || sessionId.isEmpty) {
       return SessionWorkbenchView.chat;
     }
+    // The pod is the canonical view source; fall back to the tab during the
+    // thin-ChatCubit transition.
+    final podView = chat.podFor(sessionId)?.view;
+    if (podView != null) return podView;
     final tab = chat.tabStore.openTabBySessionId(sessionId);
     return tab?.workbenchView ?? SessionWorkbenchView.chat;
   }

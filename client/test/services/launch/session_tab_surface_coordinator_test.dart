@@ -91,7 +91,7 @@ void main() {
         );
 
         expect(status, SessionOpenStatus.opened);
-        expect(existing.workbenchView, SessionWorkbenchView.terminal);
+        expect(host.podViews['sess-1'], SessionWorkbenchView.terminal);
       },
     );
 
@@ -108,7 +108,7 @@ void main() {
         );
 
         expect(status, SessionOpenStatus.opened);
-        expect(existing.workbenchView, SessionWorkbenchView.chat);
+        expect(host.podViews['sess-1'], isNull);
         expect(host.beginConnectIds, ['sess-1']);
       },
     );
@@ -188,7 +188,7 @@ void main() {
         expect(status, SessionOpenStatus.opened);
         final tab = tabStore.openTabBySessionId('sess-new');
         expect(tab, isNotNull);
-        expect(tab!.workbenchView, SessionWorkbenchView.terminal);
+        expect(host.podViews['sess-new'], SessionWorkbenchView.terminal);
       },
     );
 
@@ -208,7 +208,7 @@ void main() {
         expect(status, SessionOpenStatus.opened);
         final tab = tabStore.openTabBySessionId('sess-new');
         expect(tab, isNotNull);
-        expect(tab!.workbenchView, SessionWorkbenchView.chat);
+        expect(host.podViews['sess-new'], isNull);
         expect(host.beginConnectIds, ['sess-new']);
       },
     );
@@ -244,6 +244,14 @@ class _FakeHost implements SessionLaunchHost {
   @override
   void beginSessionConnect(String sessionId) {
     beginConnectIds.add(sessionId);
+  }
+
+  /// Records pod view writes so tests can assert the canonical source.
+  final podViews = <String, SessionWorkbenchView>{};
+
+  @override
+  void setPodView(String sessionId, SessionWorkbenchView view) {
+    podViews[sessionId] = view;
   }
 
   @override

@@ -114,7 +114,7 @@ class SessionTabSurfaceCoordinator {
     // Chat continue connects the PTY while staying on Chat; do not
     // force-switch the workbench (would unmount SessionChatView).
     if (!request.preserveWorkbenchView) {
-      existing.workbenchView = SessionWorkbenchView.terminal;
+      _host.setPodView(existing.info.id, SessionWorkbenchView.terminal);
     }
     if (_shouldAutoConnect(request) && !connectAlreadyScheduled) {
       _host.beginSessionConnect(session.sessionId);
@@ -192,7 +192,7 @@ class SessionTabSurfaceCoordinator {
     }
 
     if (!request.preserveWorkbenchView) {
-      tab.workbenchView = SessionWorkbenchView.terminal;
+      _host.setPodView(tab.info.id, SessionWorkbenchView.terminal);
     }
     if (_shouldAutoConnect(request)) {
       _host.beginSessionConnect(session.sessionId);

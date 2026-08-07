@@ -7,6 +7,7 @@ import 'package:teampilot/cubits/chat/chat_tab_store.dart';
 import 'package:teampilot/cubits/chat/model/chat_state.dart';
 import 'package:teampilot/cubits/chat/model/chat_tab.dart';
 import 'package:teampilot/cubits/chat/model/session_create_request.dart';
+import 'package:teampilot/cubits/chat/model/session_workbench_view.dart';
 import 'package:teampilot/cubits/chat/model/session_open_status.dart';
 import 'package:teampilot/cubits/chat/session_launch_host.dart';
 import 'package:teampilot/cubits/chat/session_launch_service.dart';
@@ -488,6 +489,9 @@ class _CapturingHost implements SessionLaunchHost {
 
   @override
   PostFrameScheduler get postFrameScheduler => (VoidCallback cb) => cb();
+
+  @override
+  void setPodView(String sessionId, SessionWorkbenchView view) {}
 
   @override
   dynamic noSuchMethod(Invocation invocation) {
