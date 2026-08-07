@@ -36,6 +36,7 @@ import '../../services/cli/registry/capabilities/turn_interrupt_capability.dart'
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/terminal/session_member_cli_resolver.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
+import '../../services/cli/tasks/cli_task_board_controller.dart';
 import '../../services/compose/compose_at_file_refs.dart';
 import '../../services/compose/compose_draft_cache.dart';
 import '../../services/compose/compose_file_attach.dart';
@@ -68,10 +69,12 @@ import '../../widgets/compose/workspace_compose_card.dart';
 import '../../widgets/follow_up/follow_up_queue_strip.dart';
 import '../home_workspace/workspace/workspace_landing_team_settings_dialog.dart';
 import 'agent_permission_attention_banner.dart';
+import 'cli_task_bubbles.dart';
 import 'compose_stop_visibility.dart';
 import 'session_follow_up_compose_submit.dart';
 import 'history_continue_delivery.dart';
 import 'history_mailbox_queued_strip.dart';
+import 'session_cli_task_panel.dart';
 import 'session_history_live_chrome.dart';
 import 'session_history_review_messages.dart';
 import 'session_history_review_submit.dart';
@@ -132,6 +135,7 @@ class _SessionChatViewState extends State<SessionChatView> {
   final _subagentPreview = SubagentPreviewController();
   AiHistoryLiveRefreshController? _liveRefresh;
   AiHistorySeat? _seat;
+  CliTaskBoardController? _taskBoardController;
 
   final _submitLock = HistoryContinueSubmitLock();
   final _mailboxQueued = StreamController<PendingUserMessage>.broadcast();
@@ -218,6 +222,11 @@ class _SessionChatViewState extends State<SessionChatView> {
       sessionId: widget.session.sessionId,
       selectedMemberId: widget.selectedMemberId,
     );
+    final seat = _seat;
+    _taskBoardController?.dispose();
+    _taskBoardController = seat == null
+        ? null
+        : CliTaskBoardController(seat.runtime);
   }
 
   void _applyVoiceListening(bool listening) {
@@ -290,6 +299,8 @@ class _SessionChatViewState extends State<SessionChatView> {
     final live = _liveRefresh;
     _liveRefresh = null;
     unawaited(live?.stop() ?? Future<void>.value());
+    _taskBoardController?.dispose();
+    _taskBoardController = null;
     unawaited(_mailboxQueued.close());
     _voiceInput.dispose();
     _subagentPreview.dispose();
@@ -1528,14 +1539,17 @@ class _SessionChatViewState extends State<SessionChatView> {
                                                 prefs.userMessageMode,
                                             codeBlockMode:
                                                 prefs.chatCodeBlockMode,
-                                            child: SessionHistoryReviewMessages(
-                                              state: state,
-                                              runtime: historySeat.runtime,
-                                              onRetry: () =>
-                                                  _loadHistory(force: true),
-                                              onLoadOlder:
-                                                  historySeat.loadOlder,
-                                              liveChrome: liveChrome,
+                                            child: AiToolCallBubbleScope(
+                                              builders: cliTaskBubbleBuilders(),
+                                              child: SessionHistoryReviewMessages(
+                                                state: state,
+                                                runtime: historySeat.runtime,
+                                                onRetry: () =>
+                                                    _loadHistory(force: true),
+                                                onLoadOlder:
+                                                    historySeat.loadOlder,
+                                                liveChrome: liveChrome,
+                                              ),
                                             ),
                                           );
                                         },
@@ -1560,6 +1574,31 @@ class _SessionChatViewState extends State<SessionChatView> {
                                                 onBack: _subagentPreview.pop,
                                               ),
                                             ),
+                                          ),
+                                        ),
+                                      if (_taskBoardController != null)
+                                        Positioned(
+                                          top: spacing.sm,
+                                          right: spacing.sm,
+                                          child: ListenableBuilder(
+                                            listenable: _taskBoardController!,
+                                            builder: (context, _) {
+                                              final board =
+                                                  _taskBoardController!.board;
+                                              if (board.totalCount == 0) {
+                                                return const SizedBox.shrink();
+                                              }
+                                              return SessionCliTaskPanel(
+                                                board: board,
+                                                title: l10n.cliTaskBoardTitle,
+                                                countText: l10n.cliTaskBoardCount(
+                                                  board.completedCount,
+                                                  board.totalCount,
+                                                ),
+                                                moreLabel: (count) => l10n
+                                                    .cliTaskBoardMore(count),
+                                              );
+                                            },
                                           ),
                                         ),
                                     ],
