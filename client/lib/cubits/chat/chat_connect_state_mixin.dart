@@ -18,14 +18,13 @@ mixin ChatConnectStateMixin on Cubit<ChatState> {
 
   // Pod registry (implemented by ChatCubit) so connect lifecycle drives the
   // per-session phase.
-  SessionPod? podFor(String sessionId);
-  SessionPod ensurePod(String sessionId);
-  void updatePod(SessionPod pod);
+  SessionPod? podRuntime(String sessionId);
+  SessionPod ensurePodRuntime(String sessionId);
 
   void beginSessionConnect(String sessionId) {
     appLogger.d('[session-launch] connecting start session=$sessionId');
     clearLaunchError(sessionId);
-    _phaseInto(ensurePod(sessionId), SessionPhase.connecting);
+    ensurePodRuntime(sessionId).setPhase(SessionPhase.connecting);
     if (state.sessionConnectingId == sessionId) return;
     emit(
       state.copyWith(
@@ -33,12 +32,6 @@ mixin ChatConnectStateMixin on Cubit<ChatState> {
         stateVersion: state.stateVersion + 1,
       ),
     );
-  }
-
-  /// Applies [phase] to the pod when it exists; no-op otherwise.
-  void _phaseInto(SessionPod? pod, SessionPhase phase) {
-    if (pod == null) return;
-    updatePod(pod.copyWith(phase: phase));
   }
 
   void setLaunchError(String sessionId, String rawMessage) {
@@ -88,11 +81,10 @@ mixin ChatConnectStateMixin on Cubit<ChatState> {
       '[session-launch] connecting failed session=$sessionId: $rawMessage',
     );
     setLaunchError(sessionId, rawMessage);
-    final pod = podFor(sessionId);
+    final pod = podRuntime(sessionId);
     if (pod != null) {
-      updatePod(
-        pod.copyWith(phase: SessionPhase.error, launchError: rawMessage),
-      );
+      pod.setPhase(SessionPhase.error);
+      pod.setLaunchError(rawMessage);
     }
     updateTabRunning(sessionId);
     _clearConnectingIdIfMatch(sessionId);
@@ -101,7 +93,7 @@ mixin ChatConnectStateMixin on Cubit<ChatState> {
   void finishSessionConnect(String sessionId) {
     updateTabRunning(sessionId);
     if (isClosed) return;
-    _phaseInto(podFor(sessionId), SessionPhase.running);
+    podRuntime(sessionId)?.setPhase(SessionPhase.running);
     _clearConnectingIdIfMatch(sessionId);
   }
 

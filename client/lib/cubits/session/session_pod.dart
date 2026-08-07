@@ -3,12 +3,11 @@ import 'package:flutter/foundation.dart';
 import '../chat/model/session_workbench_view.dart';
 import 'session_phase.dart';
 
-/// Immutable per-session state value. The runtime pod (Task 5) owns a mutable
-/// copy of this plus the HistoryStore/keep-alive identity; the UI binds to
-/// revisions of this value so unchanged pods do not rebuild.
+/// Immutable projection of a session pod's observable state. Selectors bind to
+/// [revision] so unchanged pods do not rebuild.
 @immutable
-class SessionPod {
-  const SessionPod({
+class SessionPodState {
+  const SessionPodState({
     required this.sessionId,
     required this.workspaceId,
     this.phase = SessionPhase.idle,
@@ -28,7 +27,7 @@ class SessionPod {
   /// Bumped on every field change so selectors can cheaply skip rebuilds.
   final int revision;
 
-  SessionPod copyWith({
+  SessionPodState copyWith({
     SessionPhase? phase,
     String? launchError,
     bool clearLaunchError = false,
@@ -44,7 +43,7 @@ class SessionPod {
         nextError != this.launchError ||
         nextMember != this.selectedMemberId ||
         nextView != this.view;
-    return SessionPod(
+    return SessionPodState(
       sessionId: sessionId,
       workspaceId: workspaceId,
       phase: nextPhase,
@@ -57,10 +56,57 @@ class SessionPod {
 
   @override
   bool operator ==(Object other) =>
-      other is SessionPod &&
+      other is SessionPodState &&
       other.sessionId == sessionId &&
       other.revision == revision;
 
   @override
   int get hashCode => Object.hash(sessionId, revision);
+}
+
+/// Mutable runtime object for ONE open conversation. Owns the pod's observable
+/// state and (Phase 2) its HistoryStore. Pure-Dart; the host (ChatCubit) is
+/// notified through [onChanged] so it can emit stateVersion bumps.
+class SessionPod {
+  SessionPod({
+    required this.sessionId,
+    required this.workspaceId,
+    this.onChanged,
+    SessionPodState? initial,
+  }) : _state = initial ??
+            SessionPodState(sessionId: sessionId, workspaceId: workspaceId);
+
+  final String sessionId;
+  final String workspaceId;
+  final void Function()? onChanged;
+
+  SessionPodState _state;
+  SessionPodState get state => _state;
+
+  void setPhase(SessionPhase phase) {
+    if (_state.phase == phase) return;
+    _state = _state.copyWith(phase: phase);
+    onChanged?.call();
+  }
+
+  void setLaunchError(String? error) {
+    final next = error == null
+        ? _state.copyWith(clearLaunchError: true)
+        : _state.copyWith(launchError: error);
+    if (next == _state) return;
+    _state = next;
+    onChanged?.call();
+  }
+
+  void selectMember(String memberId) {
+    if (_state.selectedMemberId == memberId) return;
+    _state = _state.copyWith(selectedMemberId: memberId);
+    onChanged?.call();
+  }
+
+  void setView(SessionWorkbenchView view) {
+    if (_state.view == view) return;
+    _state = _state.copyWith(view: view);
+    onChanged?.call();
+  }
 }

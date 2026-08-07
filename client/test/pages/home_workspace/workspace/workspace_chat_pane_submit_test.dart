@@ -71,7 +71,7 @@ void main() {
       // Active session is launching → the pane must NOT swap to a full-pane
       // loading view; the landing stays mounted with scoped progress.
       when(() => chatCubit.activePod).thenReturn(
-        const SessionPod(
+        const SessionPodState(
           sessionId: 'new-session',
           workspaceId: 'workspace-1',
           phase: SessionPhase.connecting,

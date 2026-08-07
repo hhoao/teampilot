@@ -18,7 +18,7 @@ void main() {
   });
 
   test('begin→finish drives pod phase connecting→running', () {
-    cubit.ensurePod('s1');
+    cubit.ensurePodRuntime('s1');
     cubit.beginSessionConnect('s1');
     expect(cubit.podFor('s1')!.phase, SessionPhase.connecting);
     cubit.finishSessionConnect('s1');
@@ -26,7 +26,7 @@ void main() {
   });
 
   test('failSessionConnect drives pod to error with launchError, not running', () {
-    cubit.ensurePod('s1');
+    cubit.ensurePodRuntime('s1');
     cubit.beginSessionConnect('s1');
     cubit.failSessionConnect('s1', 'boom');
     final pod = cubit.podFor('s1')!;
@@ -35,8 +35,8 @@ void main() {
   });
 
   test('phases are isolated per session', () {
-    cubit.ensurePod('s1');
-    cubit.ensurePod('s2');
+    cubit.ensurePodRuntime('s1');
+    cubit.ensurePodRuntime('s2');
     cubit.beginSessionConnect('s1');
     expect(cubit.podFor('s1')!.phase, SessionPhase.connecting);
     expect(cubit.podFor('s2')!.phase, SessionPhase.idle);

@@ -362,40 +362,38 @@ class ChatCubit extends Cubit<ChatState>
 
   // ===== SessionPod registry =====
 
-  /// Value of the pod for [sessionId], or null when no pod exists yet.
+  /// Runtime pod for [sessionId], or null when none exists yet.
   @override
-  SessionPod? podFor(String sessionId) => _pods[sessionId.trim()];
+  SessionPod? podRuntime(String sessionId) => _pods[sessionId.trim()];
 
-  /// Seeds an idle pod for [sessionId] if absent and returns it.
+  /// Seeds an idle runtime pod for [sessionId] if absent and returns it.
   @override
-  SessionPod ensurePod(String sessionId) =>
+  SessionPod ensurePodRuntime(String sessionId) =>
       _pods.putIfAbsent(sessionId.trim(), () {
         final tab = _tabStore.openTabBySessionId(sessionId.trim());
+        final sid = sessionId.trim();
         return SessionPod(
-          sessionId: sessionId.trim(),
+          sessionId: sid,
           workspaceId: tab?.workspaceId ?? '',
-          selectedMemberId: tab?.selectedMemberId ?? '',
+          onChanged: () => _bumpPodRevision(sid),
         );
       });
 
-  /// Applies a new pod value, keeping only the latest revision per session.
-  /// Bumps [ChatState.stateVersion] on change so [context.select] callers (the
-  /// workbench overlay) rebuild when a pod's phase transitions.
-  @override
-  void updatePod(SessionPod pod) {
-    final existing = _pods[pod.sessionId];
-    if (existing != null && existing.revision >= pod.revision) return;
-    _pods[pod.sessionId] = pod;
-    if (!isClosed) {
-      emit(state.copyWith(stateVersion: state.stateVersion + 1));
-    }
-  }
+  /// Observable state of the pod for [sessionId], or null.
+  SessionPodState? podFor(String sessionId) => _pods[sessionId.trim()]?.state;
 
-  /// Pod of the active session (foreground tab), or null.
-  SessionPod? get activePod {
+  /// Observable state of the active session's pod (foreground tab), or null.
+  SessionPodState? get activePod {
     final id = state.activeSessionId;
     if (id == null || id.isEmpty) return null;
-    return _pods[id];
+    return _pods[id]?.state;
+  }
+
+  /// Emits a stateVersion bump so [context.select] callers rebuild when a pod's
+  /// phase/member/view transitions.
+  void _bumpPodRevision(String sessionId) {
+    if (isClosed) return;
+    emit(state.copyWith(stateVersion: state.stateVersion + 1));
   }
 
   // ===== SessionLaunchHost =====
