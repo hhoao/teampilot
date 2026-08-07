@@ -109,47 +109,47 @@ class WorkspaceHubNavItem extends StatelessWidget {
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
               child: Row(
-                  children: [
-                    Icon(
-                      leadingIcon,
-                      color: selected ? selectedFg : muted,
-                      size: iconSize,
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              title,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style:
-                                  (hubStyle
-                                          ? TpTextStyles.of(
-                                              context,
-                                            ).mdSemiboldTightSnug
-                                          : TpTextStyles.of(context).md)
-                                      .copyWith(
-                                        color: selected ? selectedFg : normalFg,
-                                      ),
-                            ),
+                children: [
+                  Icon(
+                    leadingIcon,
+                    color: selected ? selectedFg : muted,
+                    size: iconSize,
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style:
+                                (hubStyle
+                                        ? TpTextStyles.of(
+                                            context,
+                                          ).mdSemiboldTightSnug
+                                        : TpTextStyles.of(context).md)
+                                    .copyWith(
+                                      color: selected ? selectedFg : normalFg,
+                                    ),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                    if (trailing != null)
-                      Icon(
-                        trailing,
-                        size: hubStyle ? 22 : 18,
-                        color: selected ? selectedFg : muted,
-                      ),
-                  ],
-                ),
+                  ),
+                  if (trailing != null)
+                    Icon(
+                      trailing,
+                      size: hubStyle ? 22 : 18,
+                      color: selected ? selectedFg : muted,
+                    ),
+                ],
               ),
             ),
           ),
         ),
+      ),
     );
   }
 }
@@ -250,9 +250,7 @@ class WorkspaceHubPage extends StatelessWidget {
           subtitle: subtitle,
           showSubtitle: showSubtitle,
         ),
-        Expanded(
-          child: WorkspaceHubNavList(entries: entries, hubStyle: true),
-        ),
+        Expanded(child: WorkspaceHubNavList(entries: entries, hubStyle: true)),
       ],
     );
 

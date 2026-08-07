@@ -57,54 +57,54 @@ class ProgressActivityTile extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: cs.primary.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(
-                  progressActivityKindIcon(activity.kind),
-                  size: 20,
-                  color: cs.primary,
-                ),
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: cs.primary.withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(10),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+              child: Icon(
+                progressActivityKindIcon(activity.kind),
+                size: 20,
+                color: cs.primary,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    activity.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: styles.mdSemiboldTightSnugColored(cs.onSurface),
+                  ),
+                  if (subtitle != null && subtitle.isNotEmpty) ...[
+                    const SizedBox(height: 4),
                     Text(
-                      activity.title,
+                      subtitle,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: styles.mdSemiboldTightSnugColored(cs.onSurface),
+                      style: styles.mdColored(cs.onSurfaceVariant),
                     ),
-                    if (subtitle != null && subtitle.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        subtitle,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: styles.mdColored(cs.onSurfaceVariant),
-                      ),
-                    ],
-                    const SizedBox(height: 8),
-                    progressBar,
                   ],
-                ),
+                  const SizedBox(height: 8),
+                  progressBar,
+                ],
               ),
-              if (activity.cancellable)
-                TextButton(
-                  onPressed: canCancel ? onCancel : null,
-                  child: Text(l10n.cancel),
-                ),
-            ],
-          ),
+            ),
+            if (activity.cancellable)
+              TextButton(
+                onPressed: canCancel ? onCancel : null,
+                child: Text(l10n.cancel),
+              ),
+          ],
         ),
+      ),
     );
   }
 }
