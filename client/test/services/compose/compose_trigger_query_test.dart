@@ -97,5 +97,44 @@ void main() {
 
       expect(candidates.map((c) => c.insertText), ['/brainstorming']);
     });
+
+    test('surfaces enabled plugin skills as slash candidates', () {
+      final candidates = buildComposeSlashCandidates(
+        skills: const [],
+        plugins: const [
+          Plugin(
+            id: 'acme/demo',
+            name: 'Demo',
+            description: '',
+            version: '1.0.0',
+            directory: 'demo-bundle',
+            capabilities: PluginCapabilities(
+              commands: [PluginCommand(name: 'custom-command')],
+              skills: [
+                PluginSkillRef(
+                  name: 'systematic-debugging',
+                  description: 'debug',
+                ),
+                PluginSkillRef(name: 'brainstorming'),
+              ],
+            ),
+            installedAt: 0,
+            updatedAt: 0,
+          ),
+        ],
+        enabledBundle: const ConfigBundle(pluginIds: ['acme/demo']),
+        query: '',
+      );
+
+      final inserts = candidates.map((c) => c.insertText).toSet();
+      expect(
+        inserts,
+        containsAll([
+          '/systematic-debugging',
+          '/brainstorming',
+          '/custom-command',
+        ]),
+      );
+    });
   });
 }

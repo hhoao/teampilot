@@ -57,6 +57,7 @@ List<ComposeSlashCandidate> buildComposeSlashCandidates({
 
   for (final plugin in plugins) {
     if (!enabledPluginIds.contains(plugin.id)) continue;
+    final pluginLabel = plugin.name.trim().isNotEmpty ? plugin.name.trim() : null;
     for (final command in plugin.capabilities.commands) {
       final name = command.name.trim();
       if (name.isEmpty) continue;
@@ -64,8 +65,22 @@ List<ComposeSlashCandidate> buildComposeSlashCandidates({
         ComposeSlashCandidate(
           insertText: '/$name',
           label: name,
-          subtitle: plugin.name.trim().isNotEmpty ? plugin.name.trim() : null,
+          subtitle: pluginLabel,
           kind: ComposeSlashCandidateKind.command,
+        ),
+      );
+    }
+    // Plugin bundles carry skills too — surface them as slash candidates so
+    // a skills-only plugin (e.g. superpowers) is usable from the `/` menu.
+    for (final skill in plugin.capabilities.skills) {
+      final name = skill.name.trim();
+      if (name.isEmpty) continue;
+      add(
+        ComposeSlashCandidate(
+          insertText: '/$name',
+          label: name,
+          subtitle: pluginLabel,
+          kind: ComposeSlashCandidateKind.skill,
         ),
       );
     }
