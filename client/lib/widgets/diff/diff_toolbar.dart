@@ -263,6 +263,7 @@ class _DiffModeSegment extends StatelessWidget {
         backgroundColor: selected
             ? cs.onSurface.withValues(alpha: 0.12)
             : Colors.transparent,
+        borderRadius: BorderRadius.zero,
         width: 30,
         height: DiffToolbar._actionSize,
         hoverColor: color.withValues(alpha: 0.12),

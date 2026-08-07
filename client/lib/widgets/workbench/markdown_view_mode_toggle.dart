@@ -77,6 +77,7 @@ class _Segment extends StatelessWidget {
         backgroundColor: selected
             ? cs.onSurface.withValues(alpha: 0.12)
             : Colors.transparent,
+        borderRadius: BorderRadius.zero,
         width: 30,
         height: MarkdownViewModeToggle._size,
         hoverColor: color.withValues(alpha: 0.12),

@@ -41,6 +41,7 @@ class DiffHunkApplyGutter extends StatelessWidget {
                 message: tooltip,
                 child: TpHover(
                   key: Key('diff-apply-hunk-${block.startRow}'),
+                  borderRadius: BorderRadius.zero,
                   onTap: () => onApply(block),
                   child: const Center(
                     child: Text(
