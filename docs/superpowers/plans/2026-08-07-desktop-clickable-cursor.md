@@ -1067,7 +1067,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 - Modify: `client/lib/pages/chat/session_history_thread.dart`
 - Modify: `client/lib/pages/chat/session_cli_task_panel.dart`
 - Modify: `client/lib/pages/chat/ask_user_question_card.dart`
-- Test: `cd client && flutter test test/pages/chat test/widgets/ai test/cubits --exclude-tags integration` (run after change)
+- Test: `cd client && flutter test test/pages/chat test/cubits --exclude-tags integration` (run after change)
 
 - [ ] **Step 1: `session_history_thread.dart` (stadium "stick to tip" button)**
 
