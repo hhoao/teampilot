@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:tp_markdown/tp_markdown.dart' show ContentDisplayMode;
 
 import '../models/layout_preferences.dart';
 import '../theme/app_theme.dart';
@@ -368,6 +369,15 @@ class LayoutCubit extends Cubit<LayoutState> {
 
   Future<void> setCotExpandToolsOnOpen(bool value) =>
       _save(state.preferences.copyWith(cotExpandToolsOnOpen: value));
+
+  Future<void> setChatUserMessageMode(ContentDisplayMode value) =>
+      _save(state.preferences.copyWith(chatUserMessageMode: value));
+
+  Future<void> setChatCodeBlockMode(ContentDisplayMode value) =>
+      _save(state.preferences.copyWith(chatCodeBlockMode: value));
+
+  Future<void> setFileCodeBlockMode(ContentDisplayMode value) =>
+      _save(state.preferences.copyWith(fileCodeBlockMode: value));
 
   Future<void> setFloatingWorkspaceGeometry({
     double? panelLeft,

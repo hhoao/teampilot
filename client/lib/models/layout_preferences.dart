@@ -1,3 +1,5 @@
+import 'package:tp_markdown/tp_markdown.dart' show ContentDisplayMode;
+
 import '../theme/app_theme.dart';
 import '../theme/app_typography_scale.dart';
 import '../theme/font_catalog.dart';
@@ -70,6 +72,9 @@ class LayoutPreferences {
     this.markdownOpenMode = MarkdownOpenMode.preview,
     this.cotExpandReasoningOnOpen = false,
     this.cotExpandToolsOnOpen = false,
+    this.chatUserMessageMode = ContentDisplayMode.foldFixedHeight,
+    this.chatCodeBlockMode = ContentDisplayMode.foldFixedHeight,
+    this.fileCodeBlockMode = ContentDisplayMode.foldFixedHeight,
     this.floatingPanelLeft,
     this.floatingPanelTop,
     this.floatingPanelWidth,
@@ -151,6 +156,15 @@ class LayoutPreferences {
       cotExpandReasoningOnOpen:
           json['cotExpandReasoningOnOpen'] as bool? ?? false,
       cotExpandToolsOnOpen: json['cotExpandToolsOnOpen'] as bool? ?? false,
+      chatUserMessageMode:
+          _enumValue(ContentDisplayMode.values, json['chatUserMessageMode']) ??
+          ContentDisplayMode.foldFixedHeight,
+      chatCodeBlockMode:
+          _enumValue(ContentDisplayMode.values, json['chatCodeBlockMode']) ??
+          ContentDisplayMode.foldFixedHeight,
+      fileCodeBlockMode:
+          _enumValue(ContentDisplayMode.values, json['fileCodeBlockMode']) ??
+          ContentDisplayMode.foldFixedHeight,
       floatingPanelLeft: _optionalDouble(json['floatingPanelLeft']),
       floatingPanelTop: _optionalDouble(json['floatingPanelTop']),
       floatingPanelWidth: _optionalDouble(json['floatingPanelWidth']),
@@ -225,6 +239,9 @@ class LayoutPreferences {
   final MarkdownOpenMode markdownOpenMode;
   final bool cotExpandReasoningOnOpen;
   final bool cotExpandToolsOnOpen;
+  final ContentDisplayMode chatUserMessageMode;
+  final ContentDisplayMode chatCodeBlockMode;
+  final ContentDisplayMode fileCodeBlockMode;
   final double? floatingPanelLeft;
   final double? floatingPanelTop;
   final double? floatingPanelWidth;
@@ -266,6 +283,9 @@ class LayoutPreferences {
     MarkdownOpenMode? markdownOpenMode,
     bool? cotExpandReasoningOnOpen,
     bool? cotExpandToolsOnOpen,
+    ContentDisplayMode? chatUserMessageMode,
+    ContentDisplayMode? chatCodeBlockMode,
+    ContentDisplayMode? fileCodeBlockMode,
     double? floatingPanelLeft,
     double? floatingPanelTop,
     double? floatingPanelWidth,
@@ -338,6 +358,9 @@ class LayoutPreferences {
       cotExpandReasoningOnOpen:
           cotExpandReasoningOnOpen ?? this.cotExpandReasoningOnOpen,
       cotExpandToolsOnOpen: cotExpandToolsOnOpen ?? this.cotExpandToolsOnOpen,
+      chatUserMessageMode: chatUserMessageMode ?? this.chatUserMessageMode,
+      chatCodeBlockMode: chatCodeBlockMode ?? this.chatCodeBlockMode,
+      fileCodeBlockMode: fileCodeBlockMode ?? this.fileCodeBlockMode,
       floatingPanelLeft: floatingPanelLeft ?? this.floatingPanelLeft,
       floatingPanelTop: floatingPanelTop ?? this.floatingPanelTop,
       floatingPanelWidth: floatingPanelWidth ?? this.floatingPanelWidth,
@@ -387,6 +410,9 @@ class LayoutPreferences {
       markdownOpenMode: markdownOpenMode,
       cotExpandReasoningOnOpen: cotExpandReasoningOnOpen,
       cotExpandToolsOnOpen: cotExpandToolsOnOpen,
+      chatUserMessageMode: chatUserMessageMode,
+      chatCodeBlockMode: chatCodeBlockMode,
+      fileCodeBlockMode: fileCodeBlockMode,
       floatingPanelLeft: floatingPanelLeft,
       floatingPanelTop: floatingPanelTop,
       floatingPanelWidth: floatingPanelWidth,
@@ -431,6 +457,9 @@ class LayoutPreferences {
       'markdownOpenMode': markdownOpenMode.name,
       'cotExpandReasoningOnOpen': cotExpandReasoningOnOpen,
       'cotExpandToolsOnOpen': cotExpandToolsOnOpen,
+      'chatUserMessageMode': chatUserMessageMode.name,
+      'chatCodeBlockMode': chatCodeBlockMode.name,
+      'fileCodeBlockMode': fileCodeBlockMode.name,
       'floatingPanelLeft': floatingPanelLeft,
       'floatingPanelTop': floatingPanelTop,
       'floatingPanelWidth': floatingPanelWidth,

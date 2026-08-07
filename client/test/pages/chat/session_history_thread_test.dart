@@ -7,6 +7,7 @@ import 'package:teampilot/pages/chat/history_scroll_cursor_lock.dart';
 import 'package:teampilot/pages/chat/session_history_live_chrome.dart';
 import 'package:teampilot/pages/chat/session_history_thread.dart';
 import 'package:teampilot/widgets/scroll_cursor_lock.dart';
+import 'package:tp_markdown/tp_markdown.dart' show ContentDisplayMode, MarkdownDisplayModeScope;
 
 List<AiMessage> _soloUserMessages(int count) {
   return List.generate(
@@ -459,6 +460,51 @@ void main() {
       expect(find.byKey(kMaskCollapseBarKey), findsOneWidget);
     },
   );
+
+  testWidgets('flatten user message via scope renders no mask', (tester) async {
+    final store = ExternalStoreAiThreadRuntime()
+      ..setMessages([
+        AiMessage(
+          id: 'huge',
+          role: AiRole.user,
+          parts: [
+            AiTextPart(
+              text:
+                  '| A |\n| --- |\n${List.generate(12, (i) => '| c$i |').join('\n')}',
+            ),
+          ],
+        ),
+      ]);
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        locale: const Locale('en'),
+        theme: ThemeData(extensions: [AiMessageTheme.test()]),
+        home: Scaffold(
+          body: MarkdownDisplayModeScope(
+            userMessageMode: ContentDisplayMode.flatten,
+            child: SizedBox(
+              width: 600,
+              height: 400,
+              child: SessionHistoryThread(
+                runtime: store,
+                hasOlder: false,
+                isLoadingOlder: false,
+                onLoadOlder: () {},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // flatten mode: the user message renders fully — no mask chevron.
+    expect(find.byIcon(Icons.expand_more), findsNothing);
+    expect(find.text('c0'), findsOneWidget);
+    expect(find.text('c11'), findsOneWidget);
+  });
 
   testWidgets(
     'jumpTo during layout does not schedule build mid-frame',

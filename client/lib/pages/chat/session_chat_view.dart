@@ -1266,13 +1266,25 @@ class _SessionChatViewState extends State<SessionChatView> {
       ],
       child: ColoredBox(
         color: cs.surface,
-        child: BlocSelector<LayoutCubit, LayoutState, (bool, bool)>(
+        child: BlocSelector<
+          LayoutCubit,
+          LayoutState,
+          ({
+            bool expandReasoning,
+            bool expandTools,
+            ContentDisplayMode userMessageMode,
+            ContentDisplayMode chatCodeBlockMode,
+          })
+        >(
           selector: (s) => (
-            s.preferences.cotExpandReasoningOnOpen,
-            s.preferences.cotExpandToolsOnOpen,
+            expandReasoning: s.preferences.cotExpandReasoningOnOpen,
+            expandTools: s.preferences.cotExpandToolsOnOpen,
+            userMessageMode: s.preferences.chatUserMessageMode,
+            chatCodeBlockMode: s.preferences.chatCodeBlockMode,
           ),
-          builder: (context, cotExpand) {
-            final (expandReasoning, expandTools) = cotExpand;
+          builder: (context, prefs) {
+            final expandReasoning = prefs.expandReasoning;
+            final expandTools = prefs.expandTools;
             return LayoutBuilder(
               builder: (context, constraints) {
                 final columnWidth = resolveSessionHistoryColumnWidth(
@@ -1511,13 +1523,20 @@ class _SessionChatViewState extends State<SessionChatView> {
                                                 sessionConnecting:
                                                     seat.sessionConnecting,
                                               );
-                                          return SessionHistoryReviewMessages(
-                                            state: state,
-                                            runtime: historySeat.runtime,
-                                            onRetry: () =>
-                                                _loadHistory(force: true),
-                                            onLoadOlder: historySeat.loadOlder,
-                                            liveChrome: liveChrome,
+                                          return MarkdownDisplayModeScope(
+                                            userMessageMode:
+                                                prefs.userMessageMode,
+                                            codeBlockMode:
+                                                prefs.chatCodeBlockMode,
+                                            child: SessionHistoryReviewMessages(
+                                              state: state,
+                                              runtime: historySeat.runtime,
+                                              onRetry: () =>
+                                                  _loadHistory(force: true),
+                                              onLoadOlder:
+                                                  historySeat.loadOlder,
+                                              liveChrome: liveChrome,
+                                            ),
                                           );
                                         },
                                       ),

@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/layout_preferences.dart';
+import 'package:tp_markdown/tp_markdown.dart' show ContentDisplayMode;
 
 void main() {
   test('fromJson ignores legacy tool layout keys', () {
@@ -202,6 +203,30 @@ void main() {
         'markdownOpenMode': 'nope',
       }).markdownOpenMode,
       MarkdownOpenMode.preview,
+    );
+  });
+
+  test('content display modes default foldFixedHeight and round-trip', () {
+    final defaults = LayoutPreferences.fromJson(const {});
+    expect(defaults.chatUserMessageMode, ContentDisplayMode.foldFixedHeight);
+    expect(defaults.chatCodeBlockMode, ContentDisplayMode.foldFixedHeight);
+    expect(defaults.fileCodeBlockMode, ContentDisplayMode.foldFixedHeight);
+
+    final set = const LayoutPreferences().copyWith(
+      chatUserMessageMode: ContentDisplayMode.flatten,
+      chatCodeBlockMode: ContentDisplayMode.foldExpandFull,
+      fileCodeBlockMode: ContentDisplayMode.flatten,
+    );
+    final round = LayoutPreferences.fromJson(set.toJson());
+    expect(round.chatUserMessageMode, ContentDisplayMode.flatten);
+    expect(round.chatCodeBlockMode, ContentDisplayMode.foldExpandFull);
+    expect(round.fileCodeBlockMode, ContentDisplayMode.flatten);
+
+    expect(
+      LayoutPreferences.fromJson(const {
+        'chatUserMessageMode': 'nope',
+      }).chatUserMessageMode,
+      ContentDisplayMode.foldFixedHeight,
     );
   });
 }
