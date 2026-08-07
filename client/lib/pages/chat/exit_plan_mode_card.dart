@@ -40,8 +40,7 @@ class _ExitPlanModeCardState extends State<ExitPlanModeCard> {
   var _approving = false;
   String? _inlineError;
 
-  bool get _canApprove =>
-      widget.onApprove != null && widget.onReject != null;
+  bool get _canApprove => widget.onApprove != null && widget.onReject != null;
 
   Future<void> _approve() => _submit(widget.onApprove, approve: true);
 
@@ -56,7 +55,19 @@ class _ExitPlanModeCardState extends State<ExitPlanModeCard> {
       _approving = true;
       _inlineError = null;
     });
-    final result = await action();
+    final ExitPlanApprovalResult result;
+    try {
+      result = await action();
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _approving = false;
+        _inlineError = approve
+            ? context.l10n.exitPlanModeApproveFailed
+            : context.l10n.exitPlanModeRejectFailed;
+      });
+      return;
+    }
     if (!mounted) return;
     if (result is ExitPlanApprovalFailed) {
       setState(() {
@@ -154,8 +165,7 @@ class _ExitPlanModeCardState extends State<ExitPlanModeCard> {
                   alignment: Alignment.centerRight,
                   child: TextButton(
                     key: AppKeys.exitPlanModeExpandButton,
-                    onPressed: () =>
-                        setState(() => _expanded = !_expanded),
+                    onPressed: () => setState(() => _expanded = !_expanded),
                     child: Text(
                       _expanded
                           ? l10n.exitPlanModeCollapse
@@ -166,31 +176,35 @@ class _ExitPlanModeCardState extends State<ExitPlanModeCard> {
               ],
               if (path.isNotEmpty) ...[
                 SizedBox(height: spacing.sm),
-                TpHover(
-                  borderRadius: BorderRadius.circular(radius),
-                  onTap: () => widget.onOpenPlanFile(path),
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: spacing.xs,
-                      vertical: spacing.xs,
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.description_outlined,
-                          size: 14,
-                          color: cs.onSurfaceVariant,
-                        ),
-                        SizedBox(width: spacing.xs),
-                        Expanded(
-                          child: Text(
-                            path,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: styles.xsColored(cs.onSurfaceVariant),
+                Tooltip(
+                  key: AppKeys.exitPlanModeOpenPlanFileButton,
+                  message: l10n.exitPlanModeOpenPlanFile,
+                  child: TpHover(
+                    borderRadius: BorderRadius.circular(radius),
+                    onTap: () => widget.onOpenPlanFile(path),
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: spacing.xs,
+                        vertical: spacing.xs,
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.description_outlined,
+                            size: 14,
+                            color: cs.onSurfaceVariant,
                           ),
-                        ),
-                      ],
+                          SizedBox(width: spacing.xs),
+                          Expanded(
+                            child: Text(
+                              path,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: styles.xsColored(cs.onSurfaceVariant),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),

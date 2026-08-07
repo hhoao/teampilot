@@ -89,8 +89,9 @@ class AgentPermissionAttentionBanner extends StatelessWidget {
       return false;
     }
     final toolRegistry = registry ?? CliToolRegistry.builtIn();
-    final capability =
-        toolRegistry.capability<AskUserQuestionCapability>(seatCli);
+    final capability = toolRegistry.capability<AskUserQuestionCapability>(
+      seatCli,
+    );
     return shouldShowAskUserQuestionCard(
       capability: capability,
       questions: entry.lastEvent?.askUserQuestions,
@@ -125,7 +126,9 @@ class AgentPermissionAttentionBanner extends StatelessWidget {
     final lockedCli = _resolveSeatCli(context, seatId: seatId);
     final registry =
         CliToolRegistryScope.maybeOf(context) ?? CliToolRegistry.builtIn();
-    final capability = registry.capability<AskUserQuestionCapability>(lockedCli);
+    final capability = registry.capability<AskUserQuestionCapability>(
+      lockedCli,
+    );
     final showAskCard = shouldShowAskUserQuestionCard(
       capability: capability,
       questions: questions,
@@ -153,27 +156,29 @@ class AgentPermissionAttentionBanner extends StatelessWidget {
     final planFilePath = lastEvent?.planFilePath?.trim() ?? '';
     if (isExitPlanModeTool(lastEvent?.toolName) &&
         (planText.isNotEmpty || planFilePath.isNotEmpty)) {
-      final exitPlanCapability =
-          registry.capability<ExitPlanModeCapability>(lockedCli);
+      final exitPlanCapability = registry.capability<ExitPlanModeCapability>(
+        lockedCli,
+      );
       final supportsInChatApproval =
           exitPlanCapability?.supportsInChatApproval ?? false;
       final toolUseId = lastEvent?.toolUseId?.trim() ?? '';
+      final inChatApproval = supportsInChatApproval && toolUseId.isNotEmpty;
       return ExitPlanModeCard(
         planText: planText,
         planFilePath: planFilePath.isEmpty ? null : planFilePath,
-        onApprove: supportsInChatApproval
+        onApprove: inChatApproval
             ? () => context.read<ChatCubit>().approveExitPlanMode(
-                  sessionId: sessionId,
-                  memberId: seatId,
-                  toolUseId: toolUseId,
-                )
+                sessionId: sessionId,
+                memberId: seatId,
+                toolUseId: toolUseId,
+              )
             : null,
-        onReject: supportsInChatApproval
+        onReject: inChatApproval
             ? () => context.read<ChatCubit>().rejectExitPlanMode(
-                  sessionId: sessionId,
-                  memberId: seatId,
-                  toolUseId: toolUseId,
-                )
+                sessionId: sessionId,
+                memberId: seatId,
+                toolUseId: toolUseId,
+              )
             : null,
         onOpenTerminal: () => _openTerminal(
           context,
@@ -184,11 +189,11 @@ class AgentPermissionAttentionBanner extends StatelessWidget {
         onOpenPlanFile: (path) {
           unawaited(
             context.read<WorkbenchEditorOpener>().openFile(
-                  session.workspaceId,
-                  path,
-                  preview: true,
-                  fs: filesystemForComposeAtFileOpen(path),
-                ),
+              session.workspaceId,
+              path,
+              preview: true,
+              fs: filesystemForComposeAtFileOpen(path),
+            ),
           );
         },
       );

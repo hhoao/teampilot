@@ -162,44 +162,47 @@ void main() {
     final decoded = jsonDecode(await resp.transform(utf8.decoder).join());
     final hook = (decoded as Map)['hookSpecificOutput'] as Map;
     expect(hook['permissionDecision'], 'deny');
+    expect(hook['permissionDecisionReason'], 'User rejected the plan');
   });
 
-  test('ExitPlan without gate still returns empty 200 and keeps waiting',
-      () async {
-    final soloCubit = AgentAttentionCubit(pruneInterval: null);
-    addTearDown(soloCubit.close);
-    final soloGateway = TeammateBusMcpGateway();
-    await soloGateway.ensureStarted();
-    addTearDown(soloGateway.dispose);
-    soloGateway.attachAgentStatusHandler(
-      AgentStatusHttpHandler(
-        attention: soloCubit,
-        resolveCli: (_, __) => CliTool.claude,
-        resolveSkipPermissions: (_, __) => false,
-      ),
-    );
-    soloGateway.registerAgentStatusSession(sessionId: 'no-gate');
+  test(
+    'ExitPlan without gate still returns empty 200 and keeps waiting',
+    () async {
+      final soloCubit = AgentAttentionCubit(pruneInterval: null);
+      addTearDown(soloCubit.close);
+      final soloGateway = TeammateBusMcpGateway();
+      await soloGateway.ensureStarted();
+      addTearDown(soloGateway.dispose);
+      soloGateway.attachAgentStatusHandler(
+        AgentStatusHttpHandler(
+          attention: soloCubit,
+          resolveCli: (_, __) => CliTool.claude,
+          resolveSkipPermissions: (_, __) => false,
+        ),
+      );
+      soloGateway.registerAgentStatusSession(sessionId: 'no-gate');
 
-    final uri = Uri.parse(
-      'http://127.0.0.1:${soloGateway.httpPort}/agent-status',
-    );
-    final req = await client.postUrl(uri);
-    req.headers.set('content-type', 'application/json');
-    req.headers.set('connection', 'close');
-    req.headers.set(teammateBusMcpSessionHeader, 'no-gate');
-    req.headers.set(teammateBusMcpMemberHeader, 'm1');
-    req.add(
-      utf8.encode(
-        jsonEncode(exitPlanBody(toolUseId: 'toolu-x', plan: '1. Do z.')),
-      ),
-    );
-    final resp = await req.close().timeout(const Duration(seconds: 5));
-    expect(resp.statusCode, HttpStatus.ok);
-    final text = await resp.transform(utf8.decoder).join();
-    expect(jsonDecode(text), <String, Object?>{});
-    expect(
-      soloCubit.state.attentionFor(sessionId: 'no-gate', memberId: 'm1'),
-      AgentSeatAttention.waiting,
-    );
-  });
+      final uri = Uri.parse(
+        'http://127.0.0.1:${soloGateway.httpPort}/agent-status',
+      );
+      final req = await client.postUrl(uri);
+      req.headers.set('content-type', 'application/json');
+      req.headers.set('connection', 'close');
+      req.headers.set(teammateBusMcpSessionHeader, 'no-gate');
+      req.headers.set(teammateBusMcpMemberHeader, 'm1');
+      req.add(
+        utf8.encode(
+          jsonEncode(exitPlanBody(toolUseId: 'toolu-x', plan: '1. Do z.')),
+        ),
+      );
+      final resp = await req.close().timeout(const Duration(seconds: 5));
+      expect(resp.statusCode, HttpStatus.ok);
+      final text = await resp.transform(utf8.decoder).join();
+      expect(jsonDecode(text), <String, Object?>{});
+      expect(
+        soloCubit.state.attentionFor(sessionId: 'no-gate', memberId: 'm1'),
+        AgentSeatAttention.waiting,
+      );
+    },
+  );
 }

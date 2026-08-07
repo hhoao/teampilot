@@ -34,7 +34,6 @@ import '../services/agent_status/agent_attention_state.dart';
 import '../services/agent_status/agent_status_event.dart';
 import '../services/agent_status/agent_status_seat_lookup.dart';
 import '../services/agent_status/ask_user_answer_pending_store.dart';
-import '../services/agent_status/exit_plan_mode_hook_gate.dart';
 import 'agent_attention_cubit.dart';
 import '../services/launch/launch_factory.dart';
 import '../services/launch/session_connect_orchestrator.dart';
@@ -612,7 +611,8 @@ class ChatCubit extends Cubit<ChatState>
       sessionConnect.workspaceProvision;
 
   @override
-  CliProvisionActivityAdapter? get cliProvisionActivity => _cliProvisionActivity;
+  CliProvisionActivityAdapter? get cliProvisionActivity =>
+      _cliProvisionActivity;
 
   @override
   CliToolRegistry get cliRegistry => _lifecycle.cliToolRegistry;
@@ -773,13 +773,12 @@ class ChatCubit extends Cubit<ChatState>
       ),
       resolveChannel: resolveChannel,
       connectWorkspaceSession: connectWorkspaceSession,
-      ensureMemberInputReady:
-          (sid, mid, {bool directToPty = false}) =>
-              _memberMaterializer.ensureMemberInputReady(
-                sid,
-                mid,
-                directToPty: directToPty,
-              ),
+      ensureMemberInputReady: (sid, mid, {bool directToPty = false}) =>
+          _memberMaterializer.ensureMemberInputReady(
+            sid,
+            mid,
+            directToPty: directToPty,
+          ),
       deliverUserCommandToMember:
           (sid, mid, text, {bool directToPty = false}) =>
               _sessionRuntime.deliverUserCommandToMember(
@@ -947,8 +946,7 @@ class ChatCubit extends Cubit<ChatState>
       answers: answers,
       freeText: freeText,
       freeTexts: freeTexts,
-      questions: _agentAttentionCubit
-          ?.state
+      questions: _agentAttentionCubit?.state
           .entryFor(sessionId: sessionId, memberId: mid)
           ?.lastEvent
           ?.askUserQuestions,
@@ -1058,8 +1056,7 @@ class ChatCubit extends Cubit<ChatState>
   }) {
     final explicit = askRequestId?.trim();
     if (explicit != null && explicit.isNotEmpty) return explicit;
-    final fromAttention = _agentAttentionCubit
-        ?.state
+    final fromAttention = _agentAttentionCubit?.state
         .entryFor(sessionId: sessionId, memberId: memberId)
         ?.lastEvent
         ?.askRequestId
