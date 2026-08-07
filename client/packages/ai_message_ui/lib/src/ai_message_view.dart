@@ -249,9 +249,14 @@ class _UserBubble extends StatelessWidget {
                             .map((p) => p.text)
                             .join('\u0000'),
                         fadeColor: aiTheme.resolveUserBubble(scheme),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 10,
+                        // Aligned with the code-block panel padding so the
+                        // collapsed user-message mask matches the Write/Edit
+                        // style.
+                        contentPadding: const EdgeInsets.fromLTRB(
+                          14,
+                          10,
+                          14,
+                          12,
                         ),
                         child: DefaultTextStyle.merge(
                           style: aiTheme.markdown.userBubble(
