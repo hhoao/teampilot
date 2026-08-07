@@ -14,6 +14,7 @@ class SessionCliTaskPanel extends StatefulWidget {
     required this.title,
     required this.countText,
     required this.moreLabel,
+    required this.showLessLabel,
     this.maxVisible = 6,
     super.key,
   });
@@ -27,6 +28,9 @@ class SessionCliTaskPanel extends StatefulWidget {
   /// Overflow label builder, e.g. "… +3 more".
   final String Function(int count) moreLabel;
 
+  /// Label for collapsing the overflow back to [maxVisible] rows.
+  final String showLessLabel;
+
   final int maxVisible;
 
   @override
@@ -35,13 +39,18 @@ class SessionCliTaskPanel extends StatefulWidget {
 
 class _SessionCliTaskPanelState extends State<SessionCliTaskPanel> {
   bool _expanded = false;
+  bool _showAll = false;
 
   @override
   Widget build(BuildContext context) {
     final board = widget.board;
     if (board.totalCount == 0) return const SizedBox.shrink();
-    if (!_expanded) return _buildCollapsed(context);
-    return _buildExpanded(context, board);
+    // SelectionArea makes task content selectable / copyable.
+    return SelectionArea(
+      child: _expanded
+          ? _buildExpanded(context, board)
+          : _buildCollapsed(context),
+    );
   }
 
   Widget _buildCollapsed(BuildContext context) {
@@ -61,7 +70,10 @@ class _SessionCliTaskPanelState extends State<SessionCliTaskPanel> {
       borderRadius: BorderRadius.circular(999),
       child: InkWell(
         borderRadius: BorderRadius.circular(999),
-        onTap: () => setState(() => _expanded = true),
+        onTap: () => setState(() {
+          _expanded = true;
+          _showAll = false;
+        }),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           child: Row(
@@ -78,10 +90,9 @@ class _SessionCliTaskPanelState extends State<SessionCliTaskPanel> {
               if (showActive)
                 ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 240),
-                  child: Text(
-                    label,
+                  child: _OverflowTooltipText(
+                    text: label,
                     maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                     style: TpTextStyles.of(context).smColored(scheme.onSurface),
                   ),
                 )
@@ -101,8 +112,9 @@ class _SessionCliTaskPanelState extends State<SessionCliTaskPanel> {
 
   Widget _buildExpanded(BuildContext context, CliTaskBoard board) {
     final scheme = Theme.of(context).colorScheme;
-    final visible = board.tasks.take(widget.maxVisible).toList();
-    final overflow = board.tasks.length - visible.length;
+    final tasks = board.tasks;
+    final visible = _showAll ? tasks : tasks.take(widget.maxVisible).toList();
+    final hasMore = tasks.length > widget.maxVisible;
     return Material(
       color: scheme.surface,
       elevation: 4,
@@ -133,7 +145,10 @@ class _SessionCliTaskPanelState extends State<SessionCliTaskPanel> {
                   ),
                   const SizedBox(width: 4),
                   InkWell(
-                    onTap: () => setState(() => _expanded = false),
+                    onTap: () => setState(() {
+                      _expanded = false;
+                      _showAll = false;
+                    }),
                     borderRadius: BorderRadius.circular(6),
                     child: Padding(
                       padding: const EdgeInsets.all(4),
@@ -148,13 +163,33 @@ class _SessionCliTaskPanelState extends State<SessionCliTaskPanel> {
               ),
               const SizedBox(height: 10),
               for (final task in visible) _TaskRow(task: task),
-              if (overflow > 0)
+              if (hasMore)
                 Padding(
                   padding: const EdgeInsets.only(top: 6),
-                  child: Text(
-                    widget.moreLabel(overflow),
-                    style: TpTextStyles.of(context).smColored(
-                      scheme.onSurfaceVariant,
+                  child: InkWell(
+                    onTap: () => setState(() => _showAll = !_showAll),
+                    borderRadius: BorderRadius.circular(4),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 2),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            _showAll
+                                ? widget.showLessLabel
+                                : widget.moreLabel(tasks.length - widget.maxVisible),
+                            style: TpTextStyles.of(context).smColored(
+                              scheme.primary,
+                            ),
+                          ),
+                          const SizedBox(width: 2),
+                          Icon(
+                            _showAll ? Icons.expand_less : Icons.expand_more,
+                            size: 14,
+                            color: scheme.primary,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -196,10 +231,9 @@ class _TaskRow extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(
-              subject,
+            child: _OverflowTooltipText(
+              text: subject,
               maxLines: 2,
-              overflow: TextOverflow.ellipsis,
               style: textStyle.copyWith(
                 decoration: done ? TextDecoration.lineThrough : null,
                 decorationColor: scheme.onSurfaceVariant,
@@ -208,6 +242,41 @@ class _TaskRow extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Ellipsizes [text] but shows a hover tooltip with the full content only
+/// when the text actually overflows its box (short subjects stay tooltip-free).
+class _OverflowTooltipText extends StatelessWidget {
+  const _OverflowTooltipText({
+    required this.text,
+    required this.style,
+    this.maxLines = 2,
+  });
+
+  final String text;
+  final TextStyle style;
+  final int maxLines;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final painter = TextPainter(
+          text: TextSpan(text: text, style: style),
+          maxLines: maxLines,
+          textDirection: Directionality.of(context),
+        )..layout(maxWidth: constraints.maxWidth);
+        final label = Text(
+          text,
+          maxLines: maxLines,
+          overflow: TextOverflow.ellipsis,
+          style: style,
+        );
+        if (!painter.didExceedMaxLines) return label;
+        return Tooltip(message: text, child: label);
+      },
     );
   }
 }

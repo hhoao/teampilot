@@ -3102,5 +3102,6 @@
   "cliTaskStatusInProgress": "In progress",
   "cliTaskStatusCompleted": "Done",
   "cliTaskStatusCancelled": "Cancelled",
-  "cliTaskStatusUnknown": "Unknown"
+  "cliTaskStatusUnknown": "Unknown",
+  "cliTaskBoardShowLess": "Show less"
 }

@@ -2668,5 +2668,6 @@
   "cliTaskStatusInProgress": "进行中",
   "cliTaskStatusCompleted": "已完成",
   "cliTaskStatusCancelled": "已取消",
-  "cliTaskStatusUnknown": "未知"
+  "cliTaskStatusUnknown": "未知",
+  "cliTaskBoardShowLess": "收起"
 }

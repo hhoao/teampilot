@@ -40,6 +40,7 @@ void main() {
           title: 'Tasks',
           countText: '0/0',
           moreLabel: (n) => '… +$n more',
+          showLessLabel: 'Show less',
         ),
       ),
     );
@@ -58,6 +59,7 @@ void main() {
           title: 'Tasks',
           countText: '0/2',
           moreLabel: (n) => '… +$n more',
+          showLessLabel: 'Show less',
         ),
       ),
     );
@@ -85,6 +87,7 @@ void main() {
           title: 'Tasks',
           countText: '1/2',
           moreLabel: (n) => '… +$n more',
+          showLessLabel: 'Show less',
         ),
       ),
     );
@@ -107,6 +110,7 @@ void main() {
           title: 'Tasks',
           countText: '1/2',
           moreLabel: (n) => '… +$n more',
+          showLessLabel: 'Show less',
         ),
       ),
     );
@@ -129,6 +133,7 @@ void main() {
           title: 'Tasks',
           countText: '1/3',
           moreLabel: (n) => '… +$n more',
+          showLessLabel: 'Show less',
         ),
       ),
     );
@@ -155,6 +160,7 @@ void main() {
           title: 'Tasks',
           countText: '0/1',
           moreLabel: (n) => '… +$n more',
+          showLessLabel: 'Show less',
         ),
       ),
     );
@@ -174,7 +180,8 @@ void main() {
     expect(iconCenter.dy, lessThan(textRect.center.dy));
   });
 
-  testWidgets('overflow shows +N more label', (tester) async {
+  testWidgets('overflow +N more expands to all tasks and collapses back',
+      (tester) async {
     await tester.pumpWidget(
       _host(
         SessionCliTaskPanel(
@@ -184,6 +191,7 @@ void main() {
           title: 'Tasks',
           countText: '0/8',
           moreLabel: (n) => '… +$n more',
+          showLessLabel: 'Show less',
           maxVisible: 6,
         ),
       ),
@@ -193,5 +201,66 @@ void main() {
     expect(find.text('… +2 more'), findsOneWidget);
     expect(find.text('T1: item'), findsOneWidget);
     expect(find.text('T8: item'), findsNothing);
+
+    // Tap "+2 more" → all rows visible, footer becomes "Show less".
+    await tester.tap(find.text('… +2 more'));
+    await tester.pump();
+    expect(find.text('T8: item'), findsOneWidget);
+    expect(find.text('Show less'), findsOneWidget);
+
+    // Tap "Show less" → capped again.
+    await tester.tap(find.text('Show less'));
+    await tester.pump();
+    expect(find.text('T8: item'), findsNothing);
+    expect(find.text('… +2 more'), findsOneWidget);
+  });
+
+  testWidgets('truncated subject shows a tooltip with the full text; short does not',
+      (tester) async {
+    const long =
+        'T1: this subject is extremely long and definitely wraps beyond the '
+        'two line limit of the narrow task card so it gets truncated';
+    const short = 'T2: short';
+    await tester.pumpWidget(
+      _host(
+        SessionCliTaskPanel(
+          board: _board([
+            _task(long, CliTaskStatus.pending),
+            _task(short, CliTaskStatus.pending),
+          ]),
+          title: 'Tasks',
+          countText: '0/2',
+          moreLabel: (n) => '… +$n more',
+          showLessLabel: 'Show less',
+        ),
+      ),
+    );
+    // No in-progress task → pill shows count; expand the card.
+    await tester.tap(find.text('0/2'));
+    await tester.pump();
+    expect(
+      find.byWidgetPredicate((w) => w is Tooltip && w.message == long),
+      findsOneWidget,
+    );
+    expect(
+      find.byWidgetPredicate((w) => w is Tooltip && w.message == short),
+      findsNothing,
+    );
+  });
+
+  testWidgets('panel content is wrapped in a SelectionArea (copyable)',
+      (tester) async {
+    await tester.pumpWidget(
+      _host(
+        SessionCliTaskPanel(
+          board: _board([_task('T1: item', CliTaskStatus.pending)]),
+          title: 'Tasks',
+          countText: '0/1',
+          moreLabel: (n) => '… +$n more',
+          showLessLabel: 'Show less',
+        ),
+      ),
+    );
+    expect(find.byType(SelectionArea), findsOneWidget);
   });
 }

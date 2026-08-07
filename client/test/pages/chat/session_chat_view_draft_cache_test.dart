@@ -115,6 +115,7 @@ void main() {
     _stubCubit(seat, const AiHistoryState());
     when(() => seat.subagentAttachments).thenReturn(const {});
     when(() => seat.runtime).thenReturn(ExternalStoreAiThreadRuntime());
+    when(() => seat.loadedMessages).thenReturn(const []);
     when(() => seat.applyWorkingSessionSync(
           sessionWorking: any(named: 'sessionWorking'),
           sessionConnecting: any(named: 'sessionConnecting'),

@@ -12223,6 +12223,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Unknown'**
   String get cliTaskStatusUnknown;
+
+  /// No description provided for @cliTaskBoardShowLess.
+  ///
+  /// In en, this message translates to:
+  /// **'Show less'**
+  String get cliTaskBoardShowLess;
 }
 
 class _AppLocalizationsDelegate

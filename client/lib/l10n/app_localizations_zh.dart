@@ -6575,4 +6575,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get cliTaskStatusUnknown => '未知';
+
+  @override
+  String get cliTaskBoardShowLess => '收起';
 }

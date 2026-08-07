@@ -6842,4 +6842,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get cliTaskStatusUnknown => 'Unknown';
+
+  @override
+  String get cliTaskBoardShowLess => 'Show less';
 }

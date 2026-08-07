@@ -1600,6 +1600,8 @@ class _SessionChatViewState extends State<SessionChatView> {
                                                 ),
                                                 moreLabel: (count) => l10n
                                                     .cliTaskBoardMore(count),
+                                                showLessLabel:
+                                                    l10n.cliTaskBoardShowLess,
                                               );
                                             },
                                           ),
