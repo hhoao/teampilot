@@ -521,6 +521,13 @@ class ClaudeFlavorRegistryWriter {
   }) async {
     final ctx = fs.pathContext;
     final dest = ctx.join(pluginsDir, 'marketplaces', marketplaceName);
+    // A pre-seeded symlink already shares the per-tool flavor dir (created by
+    // MarketplaceSharedStore): keep it instead of reverting to a full copy.
+    // Never write a stamp through the link into the shared dir.
+    if ((await fs.lstat(dest)).isSymlink) {
+      await CliPluginLayout.projectBundleToFlavor(fs, dest, paths);
+      return dest;
+    }
     if (await CliPluginProvisionCache.isMarketplaceMaterializationCurrent(
       fs: fs,
       dest: dest,

@@ -47,6 +47,22 @@ class LocalFilesystem implements Filesystem, FsWatcher {
   }
 
   @override
+  Future<FsStat> lstat(String path) async {
+    // Non-following stat: a symlink-to-directory reports symlink, not the
+    // target's directory kind. size/mtime of the link itself are unavailable
+    // from dart:io; only kind matters for link-aware callers.
+    final kind = FileSystemEntity.typeSync(path, followLinks: false);
+    return switch (kind) {
+      FileSystemEntityType.directory => const FsStat(
+        kind: FsEntityKind.directory,
+      ),
+      FileSystemEntityType.file => const FsStat(kind: FsEntityKind.file),
+      FileSystemEntityType.link => const FsStat(kind: FsEntityKind.symlink),
+      _ => const FsStat(kind: FsEntityKind.notFound),
+    };
+  }
+
+  @override
   Future<void> ensureDir(String path) async {
     switch (FileSystemEntity.typeSync(path, followLinks: false)) {
       case FileSystemEntityType.directory:

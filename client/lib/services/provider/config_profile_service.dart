@@ -16,6 +16,7 @@ import '../cli/registry/capabilities/config_profile_capability.dart';
 import '../cli/registry/capabilities/plugin_provisioner_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../plugin/installed_plugin_catalog.dart';
+import '../plugin/marketplace_shared_store.dart';
 import '../../repositories/workspace_project_config_repository.dart';
 import '../io/filesystem.dart';
 import '../cli/registry/mcp_writers/claude_project_mcp_cleanup.dart';
@@ -317,6 +318,17 @@ class ConfigProfileService implements ConfigProfileDelegate {
           )
           .then((json) => memberProvisionJson = json),
     ]);
+    final configDir = _launchResourceConfigDir(
+      cli: cli,
+      workspaceId: trimmedWorkspaceId,
+      sessionId: trimmedSessionId,
+      memberId: memberId,
+      team: team,
+    );
+    // Share the persisted marketplace clone into this session's CONFIG_DIR so
+    // the CLI reuses one per-tool flavor dir instead of cloning per session.
+    await MarketplaceSharedStore(fs: fs, teampilotRoot: basePath)
+        .ensureSessionMarketplacesLinked(configDir: configDir, tool: cli);
     final pluginProvisioner = _cliRegistry
         .capability<PluginProvisionerCapability>(cli);
     final warmTier = CursorWorkspaceWarmTier.applies(team: team, cli: cli);
@@ -327,13 +339,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
         PluginProvisionContext(
           fs: fs,
           teampilotRoot: basePath,
-          configDir: _launchResourceConfigDir(
-            cli: cli,
-            workspaceId: trimmedWorkspaceId,
-            sessionId: trimmedSessionId,
-            memberId: memberId,
-            team: team,
-          ),
+          configDir: configDir,
           bundlePoolDir: layout.sessionRuntimePluginsDir(
             trimmedWorkspaceId,
             trimmedSessionId,

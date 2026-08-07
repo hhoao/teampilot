@@ -3,15 +3,47 @@ import 'package:path/path.dart' as p;
 
 import '../../models/plugin.dart';
 import '../../utils/logging/logger.dart';
+import '../io/filesystem.dart';
 import '../storage/app_storage.dart';
 import '../storage/remote_file_store.dart';
 
 class PluginRepoService {
   PluginRepoService();
 
-  static const _defaults = [
+  static const defaultMarketplaces = [
     PluginMarketplace(owner: 'anthropics', name: 'claude-plugins-official'),
   ];
+
+  /// Local-only marketplace list read through an injected [Filesystem] (no
+  /// [AppStorage] singleton). Falls back to [defaultMarketplaces] when the
+  /// manifest is missing or unreadable.
+  static Future<List<PluginMarketplace>> loadMarketplacesFor(
+    Filesystem fs,
+    String teampilotRoot,
+  ) async {
+    final path = AppPaths.pluginMarketplacesConfigPathForTeampilotRoot(
+      teampilotRoot.trim(),
+    );
+    final stat = await fs.stat(path);
+    if (!stat.isFile) return defaultMarketplaces.toList();
+    try {
+      final content = await fs.readString(path);
+      if (content == null || content.isEmpty) {
+        return defaultMarketplaces.toList();
+      }
+      final cache = (json.decode(content) as Map<String, dynamic>)
+          .cast<String, Object?>();
+      final raw = cache['marketplaces'] as List<dynamic>?;
+      if (raw == null) return defaultMarketplaces.toList();
+      final list = raw
+          .whereType<Map>()
+          .map((m) => PluginMarketplace.fromJson(m.cast<String, Object?>()))
+          .toList();
+      return list.isEmpty ? defaultMarketplaces.toList() : list;
+    } on Object {
+      return defaultMarketplaces.toList();
+    }
+  }
 
   Future<String> _configPath() async {
     if (AppStorage.isInstalled) {
@@ -24,12 +56,12 @@ class PluginRepoService {
     final cache = await _readManifest();
     if (cache.isEmpty) {
       await _writeManifest({
-        'marketplaces': _defaults.map((m) => m.toJson()).toList(),
+        'marketplaces': defaultMarketplaces.map((m) => m.toJson()).toList(),
       });
-      return _defaults.toList();
+      return defaultMarketplaces.toList();
     }
     final raw = cache['marketplaces'] as List<dynamic>?;
-    if (raw == null) return _defaults.toList();
+    if (raw == null) return defaultMarketplaces.toList();
     return raw
         .whereType<Map>()
         .map((m) => PluginMarketplace.fromJson(m.cast<String, Object?>()))

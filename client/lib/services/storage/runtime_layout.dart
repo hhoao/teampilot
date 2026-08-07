@@ -532,7 +532,7 @@ class RuntimeLayout {
     required String source,
     required String target,
   }) async {
-    final targetStat = await _fs.stat(target);
+    final targetStat = await _fs.lstat(target);
     if (!targetStat.exists) return false;
     final normalizedSource = _pathContext.normalize(
       _pathContext.absolute(source),

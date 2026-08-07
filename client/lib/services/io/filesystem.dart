@@ -104,3 +104,21 @@ abstract interface class Filesystem {
 
   Future<void> appendString(String path, String content);
 }
+
+/// Link-aware stat: the returned kind reflects the path itself, not its
+/// symlink target.
+///
+/// [Filesystem.stat] follows symlinks on real backends (dart:io's `FileStat`
+/// follows), so a symlink-to-directory reports `kind: directory` and callers
+/// cannot tell a link apart from a real directory. [lstat] reports
+/// `kind: symlink` instead. Backends may override with a native no-follow stat;
+/// this default derives the kind from [Filesystem.readSymlinkTarget] and falls
+/// back to [Filesystem.stat].
+extension FilesystemLstat on Filesystem {
+  Future<FsStat> lstat(String path) async {
+    if (await readSymlinkTarget(path) != null) {
+      return const FsStat(kind: FsEntityKind.symlink);
+    }
+    return stat(path);
+  }
+}

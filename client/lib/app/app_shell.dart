@@ -168,6 +168,7 @@ import '../services/notification/notification_recorder.dart';
 import '../services/session/session_lifecycle_service.dart';
 import '../services/skill/skill_acquisition_engine.dart';
 import '../services/skill/skill_fetch_service.dart';
+import '../services/plugin/marketplace_shared_store.dart';
 import '../services/plugin/plugin_repo_disk_cache_service.dart';
 import '../services/skill/skill_install_service.dart';
 import '../services/skill/skill_manifest_service.dart';
@@ -1433,6 +1434,28 @@ Future<AppShell> buildAppShell({
     unawaited(sshConnectionCubit.connect(pid));
   }
 
+  /// Background one-time migration: replace stale per-session marketplace
+  /// clones with a symlink to the shared flavor dir (see
+  /// [MarketplaceSharedStore]). Skips currently-open sessions; non-fatal.
+  Future<void> _sweepStaleMarketplaceClones() async {
+    try {
+      await MarketplaceSharedStore(
+        fs: AppStorage.fs,
+        teampilotRoot: AppStorage.paths.basePath,
+      ).sweepAll(
+        workspaceIds: [
+          for (final workspace in chatCubit.state.workspaces)
+            workspace.workspaceId,
+        ],
+        activeSessionKeys: {
+          for (final tab in chatCubit.state.tabs) tab.id,
+        },
+      );
+    } on Object catch (e, st) {
+      appLogger.w('[boot] marketplaceCloneSweep failed: $e\n$st');
+    }
+  }
+
   Future<void> bootstrapAppData() async {
     await notificationBootstrap;
     final indexReady = bootstrapCubit?.state.homeIndexReady ?? false;
@@ -1487,6 +1510,7 @@ Future<AppShell> buildAppShell({
       'workspaces=${chatCubit.state.workspaces.length} '
       '(sessions load on demand)',
     );
+    unawaited(_sweepStaleMarketplaceClones());
     bootstrapCubit?.beginWarmAuxiliary();
     await AppDataBootstrap.warmAuxiliaryData(
       boot: boot,

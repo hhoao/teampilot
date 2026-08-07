@@ -23,13 +23,19 @@ class PluginRepoDiskCacheService {
     PluginRepoGitService? gitService,
     Filesystem? filesystem,
     AsyncKeyedCoalescer? coalescer,
+    String? teampilotRoot,
   }) : _git = gitService ?? PluginRepoGitService(),
        _fsOverride = filesystem,
-       _coalescer = coalescer ?? RepoDiskSyncCoalescer.instance;
+       _coalescer = coalescer ?? RepoDiskSyncCoalescer.instance,
+       _teampilotRoot = teampilotRoot;
 
   final PluginRepoGitService _git;
   final Filesystem? _fsOverride;
   final AsyncKeyedCoalescer _coalescer;
+
+  /// Explicit cache root override (root dir passed into [AppPaths]); when null
+  /// the global [AppStorage] context is used.
+  final String? _teampilotRoot;
 
   Filesystem get _fs => _fsOverride ?? AppStorage.fs;
 
@@ -39,6 +45,10 @@ class PluginRepoDiskCacheService {
       '${m.owner}/${m.name}@${m.branch}';
 
   Future<String> _cacheRoot() async {
+    final root = _teampilotRoot?.trim();
+    if (root != null && root.isNotEmpty) {
+      return AppPaths.pluginMarketplaceCacheDirForTeampilotRoot(root);
+    }
     if (AppStorage.isInstalled) {
       return AppStorage.context.pluginMarketplaceCacheDir;
     }
