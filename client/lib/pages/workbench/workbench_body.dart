@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../cubits/chat/model/chat_state.dart';
+import '../../cubits/chat/model/chat_tab.dart';
+import '../../cubits/chat_cubit.dart';
 import '../../cubits/workbench/workbench_cubit.dart';
 import '../../cubits/workbench/workbench_tab.dart';
 import '../../models/team_config.dart';
 import '../../models/workspace.dart';
 import '../../services/workbench/workbench_center_mode.dart';
 import '../chat/chat_workbench_slice.dart';
+import '../chat/keep_alive_session_stack.dart';
 import '../chat_workbench.dart';
 import 'diff_editor_surface.dart';
 import 'file_editor_surface.dart';
@@ -67,7 +71,7 @@ class WorkbenchBody extends StatelessWidget {
       fit: StackFit.expand,
       children: [
         if (selected.kind == WorkbenchTabKind.session)
-          ChatWorkbench(
+          _SessionKeepAliveHosts(
             workspaceId: workspaceId,
             tabScopeId: tabScopeId,
             profileId: profileId,
@@ -92,4 +96,74 @@ class WorkbenchBody extends StatelessWidget {
       ],
     );
   }
+}
+
+/// One [ChatWorkbench] per open session, kept alive inside a
+/// [KeepAliveSessionStack]. Each host is scoped to its own session id (per-host
+/// [ChatWorkbenchSlice]) so switching conversations changes only the active
+/// index — no remount, no history reload.
+class _SessionKeepAliveHosts extends StatelessWidget {
+  const _SessionKeepAliveHosts({
+    required this.workspaceId,
+    required this.tabScopeId,
+    required this.profileId,
+    required this.routeActive,
+    required this.sessionId,
+    required this.isPersonalContext,
+    required this.team,
+    required this.workbenchSlice,
+  });
+
+  final String workspaceId;
+  final String tabScopeId;
+  final String? profileId;
+  final bool routeActive;
+  final String? sessionId;
+  final bool isPersonalContext;
+  final TeamProfile? team;
+  final ChatWorkbenchSlice workbenchSlice;
+
+  @override
+  Widget build(BuildContext context) {
+    final chat = context.watch<ChatCubit>();
+    final tabs = chat.tabStore.tabsForWorkspace(tabScopeId);
+    final activeId = workbenchSlice.activeSessionId;
+    return KeepAliveSessionStack(
+      sessionIds: [for (final t in tabs) t.info.id],
+      activeSessionId: activeId,
+      hosts: [
+        for (var i = 0; i < tabs.length; i++)
+          ChatWorkbench(
+            key: ValueKey('session-host-${tabs[i].info.id}'),
+            workspaceId: workspaceId,
+            tabScopeId: tabScopeId,
+            profileId: profileId,
+            // Only the active host is route-active: offstage hosts must not
+            // spawn placeholder shells or claim terminal input focus.
+            routeActive: routeActive && tabs[i].info.id == activeId,
+            sessionId: sessionId,
+            isPersonalContext: isPersonalContext,
+            team: team,
+            workbenchSlice: _sliceForSession(chat.state, tabs[i]),
+          ),
+      ],
+    );
+  }
+}
+
+/// Scopes a workbench slice to a single session so an offstage host resolves
+/// only its own tab/shell — never the active conversation's.
+ChatWorkbenchSlice _sliceForSession(ChatState state, ChatTab tab) {
+  return ChatWorkbenchSlice(
+    stateVersion: state.stateVersion,
+    activeSessionId: tab.info.id,
+    selectedMemberId: tab.selectedMemberId,
+    activeTabIndex: 0,
+    tabCount: 1,
+    newChatActive: false,
+    sessionConnectingId: state.sessionConnectingId == tab.info.id
+        ? state.sessionConnectingId
+        : null,
+    sessionLaunchError: tab.info.launchError,
+  );
 }
