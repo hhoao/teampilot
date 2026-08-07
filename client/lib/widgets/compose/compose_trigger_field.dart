@@ -519,47 +519,45 @@ class _ComposeTriggerSuggestionPanel extends StatelessWidget {
       };
 
       children.add(
-        Material(
-          color: selected
+        TpHover(
+          backgroundColor: selected
               ? cs.primary.withValues(alpha: 0.08)
               : Colors.transparent,
-          child: InkWell(
-            onTapDown: (_) => onSelected(suggestion),
-            onTap: () => onSelected(suggestion),
-            onHover: (_) => onHover(index),
-            child: Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: spacing.md,
-                vertical: spacing.sm,
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: EdgeInsets.only(top: spacing.xs / 2),
-                    child: Icon(icon, size: 18, color: cs.onSurfaceVariant),
-                  ),
-                  SizedBox(width: spacing.sm),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
+          onTapDown: (_) => onSelected(suggestion),
+          onTap: () => onSelected(suggestion),
+          onHoverChanged: (_) => onHover(index),
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: spacing.md,
+              vertical: spacing.sm,
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: EdgeInsets.only(top: spacing.xs / 2),
+                  child: Icon(icon, size: 18, color: cs.onSurfaceVariant),
+                ),
+                SizedBox(width: spacing.sm),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        label,
+                        style: styles.smSemibold,
+                      ),
+                      if (subtitle != null && subtitle.trim().isNotEmpty)
                         Text(
-                          label,
-                          style: styles.smSemibold,
+                          subtitle,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: styles.smColored(cs.onSurfaceVariant,),
                         ),
-                        if (subtitle != null && subtitle.trim().isNotEmpty)
-                          Text(
-                            subtitle,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: styles.smColored(cs.onSurfaceVariant,),
-                          ),
-                      ],
-                    ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),

@@ -65,33 +65,31 @@ class _ComposeAtFileChip extends StatelessWidget {
       context,
     ).smColored(palette.muted);
 
-    return Material(
-      color: palette.chipFill,
-      shape: StadiumBorder(side: BorderSide(color: palette.border)),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(
-            minHeight: ComposeToolbarChip.minHeight,
+    return TpHover(
+      backgroundColor: palette.chipFill,
+      shape: TpPressableShape.stadium,
+      border: Border.all(color: palette.border),
+      onTap: onTap,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(
+          minHeight: ComposeToolbarChip.minHeight,
+        ),
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: spacing.md,
+            vertical: spacing.sm,
           ),
-          child: Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: spacing.md,
-              vertical: spacing.sm,
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _ComposeAtFileChipLeading(
-                  path: ref.absolutePath,
-                  palette: palette,
-                  iconSize: icons.sm,
-                ),
-                SizedBox(width: spacing.xs),
-                Text(ref.displayName, style: labelStyle),
-              ],
-            ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _ComposeAtFileChipLeading(
+                path: ref.absolutePath,
+                palette: palette,
+                iconSize: icons.sm,
+              ),
+              SizedBox(width: spacing.xs),
+              Text(ref.displayName, style: labelStyle),
+            ],
           ),
         ),
       ),

@@ -78,32 +78,30 @@ class ComposeToolbarChip extends StatelessWidget {
       context,
     ).smColored(palette.muted);
 
-    return Material(
-      color: palette.chipFill,
-      shape: StadiumBorder(side: BorderSide(color: palette.border)),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: minHeight),
-          child: Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: spacing.md,
-              vertical: spacing.sm,
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                leading ?? Icon(icon, size: icons.sm, color: palette.muted),
-                SizedBox(width: spacing.xs),
-                Text(label, style: labelStyle),
-                Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  size: icons.md,
-                  color: palette.muted,
-                ),
-              ],
-            ),
+    return TpHover(
+      backgroundColor: palette.chipFill,
+      shape: TpPressableShape.stadium,
+      border: Border.all(color: palette.border),
+      onTap: onTap,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: minHeight),
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: spacing.md,
+            vertical: spacing.sm,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              leading ?? Icon(icon, size: icons.sm, color: palette.muted),
+              SizedBox(width: spacing.xs),
+              Text(label, style: labelStyle),
+              Icon(
+                Icons.keyboard_arrow_down_rounded,
+                size: icons.md,
+                color: palette.muted,
+              ),
+            ],
           ),
         ),
       ),
