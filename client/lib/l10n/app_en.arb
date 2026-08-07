@@ -3085,5 +3085,22 @@
       "username": { "type": "String" }
     }
   },
-  "androidWorkEnvironmentSelectorManageTermux": "Termux setup…"
+  "androidWorkEnvironmentSelectorManageTermux": "Termux setup…",
+  "cliTaskBoardTitle": "Tasks",
+  "cliTaskBoardCount": "{completed}/{total}",
+  "@cliTaskBoardCount": {
+    "placeholders": {
+      "completed": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "cliTaskBoardMore": "… +{count} more",
+  "@cliTaskBoardMore": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "cliTaskStatusPending": "Pending",
+  "cliTaskStatusInProgress": "In progress",
+  "cliTaskStatusCompleted": "Done",
+  "cliTaskStatusCancelled": "Cancelled",
+  "cliTaskStatusUnknown": "Unknown"
 }

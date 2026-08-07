@@ -6547,4 +6547,32 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get androidWorkEnvironmentSelectorManageTermux => 'Termux 设置…';
+
+  @override
+  String get cliTaskBoardTitle => '任务';
+
+  @override
+  String cliTaskBoardCount(int completed, int total) {
+    return '$completed/$total';
+  }
+
+  @override
+  String cliTaskBoardMore(int count) {
+    return '… +$count 更多';
+  }
+
+  @override
+  String get cliTaskStatusPending => '待处理';
+
+  @override
+  String get cliTaskStatusInProgress => '进行中';
+
+  @override
+  String get cliTaskStatusCompleted => '已完成';
+
+  @override
+  String get cliTaskStatusCancelled => '已取消';
+
+  @override
+  String get cliTaskStatusUnknown => '未知';
 }

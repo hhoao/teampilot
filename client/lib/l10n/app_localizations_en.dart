@@ -6814,4 +6814,32 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get androidWorkEnvironmentSelectorManageTermux => 'Termux setup…';
+
+  @override
+  String get cliTaskBoardTitle => 'Tasks';
+
+  @override
+  String cliTaskBoardCount(int completed, int total) {
+    return '$completed/$total';
+  }
+
+  @override
+  String cliTaskBoardMore(int count) {
+    return '… +$count more';
+  }
+
+  @override
+  String get cliTaskStatusPending => 'Pending';
+
+  @override
+  String get cliTaskStatusInProgress => 'In progress';
+
+  @override
+  String get cliTaskStatusCompleted => 'Done';
+
+  @override
+  String get cliTaskStatusCancelled => 'Cancelled';
+
+  @override
+  String get cliTaskStatusUnknown => 'Unknown';
 }

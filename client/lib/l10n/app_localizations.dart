@@ -12175,6 +12175,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Termux setup…'**
   String get androidWorkEnvironmentSelectorManageTermux;
+
+  /// No description provided for @cliTaskBoardTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Tasks'**
+  String get cliTaskBoardTitle;
+
+  /// No description provided for @cliTaskBoardCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{completed}/{total}'**
+  String cliTaskBoardCount(int completed, int total);
+
+  /// No description provided for @cliTaskBoardMore.
+  ///
+  /// In en, this message translates to:
+  /// **'… +{count} more'**
+  String cliTaskBoardMore(int count);
+
+  /// No description provided for @cliTaskStatusPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending'**
+  String get cliTaskStatusPending;
+
+  /// No description provided for @cliTaskStatusInProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'In progress'**
+  String get cliTaskStatusInProgress;
+
+  /// No description provided for @cliTaskStatusCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get cliTaskStatusCompleted;
+
+  /// No description provided for @cliTaskStatusCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled'**
+  String get cliTaskStatusCancelled;
+
+  /// No description provided for @cliTaskStatusUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown'**
+  String get cliTaskStatusUnknown;
 }
 
 class _AppLocalizationsDelegate
