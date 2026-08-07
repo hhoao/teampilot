@@ -407,6 +407,46 @@ class ChatCubit extends Cubit<ChatState>
     return _pods[id]?.state;
   }
 
+  // ===== History seed routing (pod store first, global cubit fallback) =====
+
+  /// Fallback sinks wired to AiHistoryCubit post-bootstrap, used only when a
+  /// pod has no HistoryStore yet.
+  void Function(String sessionId, String memberId, String text)?
+  onSeedHistoryPending;
+  void Function(String sessionId, String text)? onCancelSeedHistoryPending;
+
+  /// Seeds an optimistic user bubble on the pod's HistoryStore (or the global
+  /// cubit as fallback) so Chat shows the user turn before connect/deliver.
+  void seedHistoryPending({
+    required String sessionId,
+    required String memberId,
+    required String text,
+  }) {
+    final store = podRuntime(sessionId)?.history;
+    if (store != null) {
+      store.seedPendingUser(
+        sessionId: sessionId,
+        memberId: memberId,
+        text: text,
+      );
+      return;
+    }
+    onSeedHistoryPending?.call(sessionId, memberId, text);
+  }
+
+  /// Cancels a landing seed when send fails.
+  void cancelHistorySeedPending({
+    required String sessionId,
+    required String text,
+  }) {
+    final store = podRuntime(sessionId)?.history;
+    if (store != null) {
+      store.cancelSeedPendingUser(sessionId: sessionId, text: text);
+      return;
+    }
+    onCancelSeedHistoryPending?.call(sessionId, text);
+  }
+
   /// Emits a stateVersion bump so [context.select] callers rebuild when a pod's
   /// phase/member/view transitions.
   void _bumpPodRevision(String sessionId) {
@@ -1484,6 +1524,9 @@ class ChatCubit extends Cubit<ChatState>
 
   Future<void> _tearDownTab(ChatTab tab) async {
     final sessionId = tab.info.id;
+    // Dispose the pod's own history store first; the global cubit sink handles
+    // legacy seats and any pods that predate history wiring.
+    await podRuntime(sessionId)?.history?.disposeSeats(sessionId);
     onHistorySeatsDispose?.call(sessionId);
     for (final session in tab.sessions) {
       session.dispose();

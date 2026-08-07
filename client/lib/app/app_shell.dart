@@ -1367,6 +1367,11 @@ Future<AppShell> buildAppShell({
     unawaited(aiHistoryCubit.softReloadIfSession(sessionId));
   };
   chatCubit.onHistorySeatsDispose = aiHistoryCubit.disposeSeatsForSession;
+  // Landing seed routing: pods own the store; these sinks are the fallback.
+  chatCubit.onSeedHistoryPending = (sid, mid, text) => aiHistoryCubit
+      .seedPendingUser(sessionId: sid, memberId: mid, text: text);
+  chatCubit.onCancelSeedHistoryPending = (sid, text) =>
+      aiHistoryCubit.cancelSeedPendingUser(sessionId: sid, text: text);
 
   final appUpdateResolver = RemoteDownloadResolver.withProvider(
     () => remoteDownloadCatalogCubit.state.catalog,
