@@ -93,15 +93,22 @@ class WorkspaceHubNavItem extends StatelessWidget {
         : BorderRadius.circular(12);
     final leadingIcon = showLeaderBadge ? teamLeadNavIcon : icon;
 
+    // TpHover paints hoverFill in place of backgroundColor on hover, so the
+    // selection / hub surface fill must be preserved by blending the hover
+    // tint over the resting fill (same pattern as home_workspace_sidebar.dart).
+    final restingBg = selected
+        ? selectedColor
+        : hubStyle
+        ? cs.workspaceSubtleSurface
+        : Colors.transparent;
+    final hoverTint = cs.onSurface.withValues(alpha: 0.06);
+
     return RepaintBoundary(
       child: Padding(
         padding: EdgeInsets.only(left: leftIndent, bottom: 8),
         child: TpHover(
-          backgroundColor: selected
-              ? selectedColor
-              : hubStyle
-              ? cs.workspaceSubtleSurface
-              : Colors.transparent,
+          backgroundColor: restingBg,
+          hoverColor: Color.alphaBlend(hoverTint, restingBg),
           borderRadius: borderRadius,
           onTap: onTap,
           child: SizedBox(
