@@ -454,6 +454,14 @@ class ChatCubit extends Cubit<ChatState>
     emit(state.copyWith(stateVersion: state.stateVersion + 1));
   }
 
+  /// Releases a session's pod: closes its HistoryStore and drops the registry
+  /// entry. Called on tab teardown; idempotent.
+  Future<void> disposePod(String sessionId) async {
+    final pod = _pods.remove(sessionId.trim());
+    if (pod == null) return;
+    await pod.history?.close();
+  }
+
   // ===== SessionLaunchHost =====
 
   // ===== SessionLaunchHost =====
@@ -1524,9 +1532,9 @@ class ChatCubit extends Cubit<ChatState>
 
   Future<void> _tearDownTab(ChatTab tab) async {
     final sessionId = tab.info.id;
-    // Dispose the pod's own history store first; the global cubit sink handles
-    // legacy seats and any pods that predate history wiring.
-    await podRuntime(sessionId)?.history?.disposeSeats(sessionId);
+    // Release the pod (history store + registry entry) first; the global cubit
+    // sink handles legacy seats and any pods that predate history wiring.
+    await disposePod(sessionId);
     onHistorySeatsDispose?.call(sessionId);
     for (final session in tab.sessions) {
       session.dispose();
