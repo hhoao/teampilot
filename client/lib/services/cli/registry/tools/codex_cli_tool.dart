@@ -32,6 +32,7 @@ import '../capabilities/member_config_inspection_capability.dart';
 import '../capabilities/provider_form_capability.dart';
 import '../capabilities/resource_capability.dart';
 import '../capabilities/ask_user_question_capability.dart';
+import '../capabilities/exit_plan_mode_capability.dart';
 import '../capabilities/turn_interrupt_capability.dart';
 import '../mcp_writers/codex_mcp_config_writer.dart';
 import '../plugin_provisioners/codex_plugin_provisioner.dart';
@@ -63,6 +64,7 @@ final class CodexCliTool implements CliToolDefinition {
     this.mcpConfigWriter = const CodexMcpConfigWriter(),
     this.turnInterrupt = const CtrlCTurnInterrupt(),
     this.askUserQuestion = const PtyAskUserQuestionCapability(),
+    this.exitPlanMode = const NoExitPlanModeCapability(),
     this.aiHistory = const CodexAiHistoryCapability(),
     this.skillSyntax = const CodexSkillInvocationSyntaxCapability(),
     ProviderCredentialCapability? providerCredential,
@@ -94,6 +96,7 @@ final class CodexCliTool implements CliToolDefinition {
   final RemoteCliLocatorCapability remoteCliLocator;
   final TurnInterruptCapability turnInterrupt;
   final AskUserQuestionCapability askUserQuestion;
+  final ExitPlanModeCapability exitPlanMode;
   final CodexAiHistoryCapability aiHistory;
   final SkillInvocationSyntaxCapability skillSyntax;
 
@@ -128,6 +131,7 @@ final class CodexCliTool implements CliToolDefinition {
     mcpConfigWriter,
     turnInterrupt,
     askUserQuestion,
+    exitPlanMode,
     aiHistory,
     skillSyntax,
   ];
