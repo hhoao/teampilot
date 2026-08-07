@@ -1,6 +1,7 @@
 import 'package:path/path.dart' as p;
 
 import '../../utils/workspace/workspace_path_utils.dart';
+import '../file_tree/workspace_file_search.dart';
 import '../io/filesystem.dart';
 
 class ComposeFileCandidate {
@@ -13,6 +14,30 @@ class ComposeFileCandidate {
   final bool isDirectory;
 
   String get insertText => '@$relativePath';
+}
+
+/// Merges a [WorkspaceFileIndex] file-name result set into compose candidates
+/// in the same order as [searchComposeFiles] / [searchComposeFilesDeep]:
+/// directories first, then files, each group alphabetical (case-insensitive).
+/// Directory paths are emitted with a trailing `/` so drilling keeps working.
+List<ComposeFileCandidate> mergeComposeCandidates({
+  required List<WorkspaceFileMatch> fileMatches,
+  required List<String> directoryPaths,
+}) {
+  final out = <ComposeFileCandidate>[
+    for (final dir in directoryPaths)
+      ComposeFileCandidate(relativePath: '$dir/', isDirectory: true),
+    for (final match in fileMatches)
+      ComposeFileCandidate(
+        relativePath: match.relativePath.replaceAll(r'\', '/'),
+        isDirectory: false,
+      ),
+  ];
+  out.sort((a, b) {
+    if (a.isDirectory != b.isDirectory) return a.isDirectory ? -1 : 1;
+    return a.relativePath.toLowerCase().compareTo(b.relativePath.toLowerCase());
+  });
+  return out;
 }
 
 Future<List<ComposeFileCandidate>> searchComposeFiles({
@@ -108,11 +133,15 @@ Future<List<ComposeFileCandidate>> searchComposeFilesDeep({
       final relative = p.relative(absolute, from: root).replaceAll(r'\', '/');
       if (entry.isDirectory) {
         if (needle.isEmpty || name.toLowerCase().contains(needle)) {
-          out.add(ComposeFileCandidate(relativePath: '$relative/', isDirectory: true));
+          out.add(
+            ComposeFileCandidate(relativePath: '$relative/', isDirectory: true),
+          );
         }
         await walk(absolute, depth + 1);
       } else if (needle.isEmpty || name.toLowerCase().contains(needle)) {
-        out.add(ComposeFileCandidate(relativePath: relative, isDirectory: false));
+        out.add(
+          ComposeFileCandidate(relativePath: relative, isDirectory: false),
+        );
       }
     }
   }

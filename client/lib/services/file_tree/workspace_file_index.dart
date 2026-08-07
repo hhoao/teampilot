@@ -50,6 +50,10 @@ class WorkspaceFileIndex {
 
   /// Entries built so far; `null` until the first [ensureFresh] completes.
   List<WorkspaceFileMatch>? _entries;
+
+  /// Distinct relative directory paths (e.g. `src/utils`) collected during the
+  /// same build, used by [queryDirectories] for directory-name matches.
+  List<String>? _dirs;
   DateTime? _builtRootMtime;
   DateTime? _builtAt;
   Future<void>? _buildInFlight;
@@ -83,6 +87,7 @@ class WorkspaceFileIndex {
   /// Drops the built index; the next [ensureFresh] rebuilds.
   void invalidate() {
     _entries = null;
+    _dirs = null;
     _builtRootMtime = null;
     _builtAt = null;
   }
@@ -101,6 +106,7 @@ class WorkspaceFileIndex {
   Future<void> _build() async {
     final ctx = _fs.pathContext;
     final entries = <WorkspaceFileMatch>[];
+    final dirs = <String>[];
     final queue = <String>[root];
     var scanned = 0;
     var dirsListed = 0;
@@ -122,6 +128,8 @@ class WorkspaceFileIndex {
         if (entry.isDirectory) {
           if (workspaceFileIgnoredDirNames.contains(entry.name)) continue;
           queue.add(full);
+          final relative = ctx.relative(full, from: root);
+          if (relative.isNotEmpty) dirs.add(relative);
           continue;
         }
         entries.add(
@@ -140,6 +148,7 @@ class WorkspaceFileIndex {
     }
 
     _entries = entries;
+    _dirs = dirs;
     _builtAt = DateTime.now();
     _builtRootMtime = (await _fs.stat(root)).mtime;
   }
@@ -181,6 +190,26 @@ class WorkspaceFileIndex {
           : a.match.relativePath.compareTo(b.match.relativePath);
     });
     return [for (final s in scored.take(cap)) s.match];
+  }
+
+  /// Returns relative directory paths (no trailing slash) whose **basename**
+  /// contains [query], case-insensitively. Used by the compose `@`-mention
+  /// picker to keep directory-drilling suggestions alongside file matches.
+  /// Empty when the index is not built yet or [query] is blank.
+  List<String> queryDirectories(String query, {int limit = 20}) {
+    final dirs = _dirs;
+    if (dirs == null) return const [];
+    final q = query.trim().toLowerCase();
+    if (q.isEmpty || limit <= 0) return const [];
+    final out = <String>[];
+    for (final dir in dirs) {
+      if (out.length >= limit) break;
+      final slash = dir.lastIndexOf('/');
+      final base = slash < 0 ? dir : dir.substring(slash + 1);
+      if (!base.toLowerCase().contains(q)) continue;
+      out.add(dir);
+    }
+    return out;
   }
 }
 

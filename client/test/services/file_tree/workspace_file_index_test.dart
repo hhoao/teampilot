@@ -112,6 +112,22 @@ void main() {
       );
     });
 
+    test('queryDirectories matches directory basenames for compose drilling', () async {
+      final index = WorkspaceFileIndex(fs: fs, root: root);
+      await index.ensureFresh();
+
+      expect(index.queryDirectories('widgets'), contains('lib/widgets'));
+      expect(index.queryDirectories('widgets'), isNot(contains('lib')));
+
+      // Blank query yields nothing.
+      expect(index.queryDirectories('   '), isEmpty);
+      // Unbuilt index yields nothing.
+      expect(
+        WorkspaceFileIndex(fs: fs, root: root).queryDirectories('widgets'),
+        isEmpty,
+      );
+    });
+
     test('respects maxIndexEntries during the build walk', () async {
       await fs.writeString('$root/a/one.txt', '');
       await fs.writeString('$root/b/two.txt', '');
