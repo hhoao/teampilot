@@ -1686,15 +1686,26 @@ class ChatCubit extends Cubit<ChatState>
     _pushPresenceTarget();
   }
 
-  /// Sets Chat vs Terminal center body for an open session tab.
+  /// Sets Chat vs Terminal center body for an open session tab. The pod owns
+  /// the view; `ChatTab.workbenchView` stays in sync during the transition.
   void setSessionWorkbenchView(String sessionId, SessionWorkbenchView view) {
+    final pod = podRuntime(sessionId);
+    if (pod != null && pod.state.view == view) return;
+    setPodView(sessionId, view);
     final tab = _tabStore.openTabBySessionId(sessionId);
-    if (tab == null || tab.workbenchView == view) return;
-    tab.workbenchView = view;
+    if (tab != null && tab.workbenchView != view) {
+      tab.workbenchView = view;
+    }
     emit(state.copyWith(stateVersion: state.stateVersion + 1));
     if (view == SessionWorkbenchView.chat) {
       onSessionHistoryStale?.call(sessionId);
     }
+  }
+
+  /// SessionLaunchHost port: the pod owns the per-session chat/terminal view.
+  @override
+  void setPodView(String sessionId, SessionWorkbenchView view) {
+    podRuntime(sessionId)?.setView(view);
   }
 
   /// Shows the new-chat landing for [workspaceId] without closing open tabs.

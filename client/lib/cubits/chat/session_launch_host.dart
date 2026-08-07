@@ -18,6 +18,7 @@ import '../../services/team_bus/remote/remote_bus_binding_resolver.dart';
 import 'chat_session_shell_factory.dart';
 import 'model/chat_state.dart';
 import 'model/chat_tab.dart';
+import 'model/session_workbench_view.dart';
 import 'session_data_store.dart';
 import 'tab_member_materializer.dart';
 import 'tab_session_runtime_coordinator.dart';
@@ -33,6 +34,10 @@ abstract interface class SessionConnectStatePort {
   void setLaunchError(String sessionId, String rawMessage);
   void emitLaunchWarnings(List<String> warnings);
   void updateTabRunning(String tabId);
+
+  /// Sets the pod's chat-vs-terminal view for [sessionId] (thin-ChatCubit: the
+  /// pod owns the per-session view; the launch surface routes through this).
+  void setPodView(String sessionId, SessionWorkbenchView view);
 
   /// Updates (or clears) live remote provision UI for [memberId] on [sessionId].
   void setMemberRemoteProvisionProgress(
