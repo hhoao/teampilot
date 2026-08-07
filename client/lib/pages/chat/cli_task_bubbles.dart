@@ -11,6 +11,7 @@ import '../../services/cli/tasks/cli_task_board.dart';
 Map<String, AiToolCallBubbleBuilder> cliTaskBubbleBuilders() => {
   'taskcreate': (context, part) => CliTaskCreateBubble(part: part),
   'taskupdate': (context, part) => CliTaskUpdateBubble(part: part),
+  'todowrite': (context, part) => CliTodoWriteBubble(part: part),
 };
 
 String _stringify(Object? value) {
@@ -168,6 +169,143 @@ class _CliTaskUpdateBubbleState extends State<CliTaskUpdateBubble> {
         ],
       ),
     );
+  }
+}
+
+/// Dedicated bubble for a Cursor / OpenAI-family TodoWrite tool call. The tool
+/// carries the whole todo list (snapshot or merge), so the bubble shows the
+/// item count and an expandable per-item list with status icons.
+class CliTodoWriteBubble extends StatefulWidget {
+  const CliTodoWriteBubble({required this.part, super.key});
+
+  final AiToolCallPart part;
+
+  @override
+  State<CliTodoWriteBubble> createState() => _CliTodoWriteBubbleState();
+}
+
+class _CliTodoWriteBubbleState extends State<CliTodoWriteBubble> {
+  bool _open = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final aiTheme = AiMessageTheme.of(context);
+    final triggerColor = aiTheme.resolveToolTrigger(scheme);
+    final args = widget.part.args ?? const <String, Object?>{};
+    final todos = _todoWriteItems(args['todos']);
+    final completed =
+        todos.where((t) => t.status == CliTaskStatus.completed).length;
+    final pill = todos.isEmpty ? '0' : '$completed/${todos.length}';
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: aiTheme.partSpacing),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SelectionContainer.disabled(
+            child: _BubbleHeader(
+              icon: Icons.fact_check_outlined,
+              color: triggerColor,
+              label: 'TodoWrite',
+              emphasized: '',
+              pill: pill,
+              pillColor: scheme.onSurfaceVariant,
+              open: _open,
+              onToggle: () => setState(() => _open = !_open),
+            ),
+          ),
+          if (_open && todos.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(left: 24, top: 4, bottom: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (final t in todos)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 2),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _TodoStatusIcon(
+                            status: t.status,
+                            color: _statusColor(scheme, t.status),
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              t.content.isEmpty ? '…' : t.content,
+                              style: aiTheme.markdown.toolTrigger(
+                                scheme.onSurface,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TodoWriteItem {
+  const _TodoWriteItem({required this.content, required this.status});
+
+  final String content;
+  final CliTaskStatus status;
+}
+
+List<_TodoWriteItem> _todoWriteItems(Object? raw) {
+  if (raw is! List) return const [];
+  return [
+    for (final item in raw)
+      if (item is Map)
+        _TodoWriteItem(
+          content: _stringify(item['content']).trim(),
+          status: cliTaskStatusFromString(_stringify(item['status'])),
+        ),
+  ];
+}
+
+class _TodoStatusIcon extends StatelessWidget {
+  const _TodoStatusIcon({required this.status, required this.color});
+
+  final CliTaskStatus status;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return switch (status) {
+      CliTaskStatus.pending => Icon(
+        Icons.radio_button_unchecked,
+        size: 14,
+        color: color,
+      ),
+      CliTaskStatus.inProgress => Icon(
+        Icons.arrow_forward,
+        size: 14,
+        color: color,
+      ),
+      CliTaskStatus.completed => Icon(
+        Icons.check_circle_outline,
+        size: 14,
+        color: color,
+      ),
+      CliTaskStatus.cancelled => Icon(
+        Icons.cancel_outlined,
+        size: 14,
+        color: color,
+      ),
+      CliTaskStatus.unknown => Icon(
+        Icons.help_outline,
+        size: 14,
+        color: color,
+      ),
+    };
   }
 }
 

@@ -49,13 +49,19 @@ class CliTaskBoard {
 
 const String _kTaskCreate = 'taskcreate';
 const String _kTaskUpdate = 'taskupdate';
+const String _kTodoWrite = 'todowrite';
 
 /// Reduces a transcript into a [CliTaskBoard].
 ///
-/// Walks assistant `AiToolCallPart`s in order: `TaskCreate` appends a pending
-/// task (taskId from the correlated result); `TaskUpdate` flips a task's
-/// status by id, or appends a placeholder when the id is unknown (resume
-/// window where the create predates the transcript).
+/// Walks assistant `AiToolCallPart`s in order:
+/// - `TaskCreate` appends a pending task (taskId from the correlated result).
+/// - `TaskUpdate` flips a task's status by id, or appends a placeholder when
+///   the id is unknown (resume window where the create predates the
+///   transcript). Only a `status` arg is a lifecycle transition — dependency
+///   updates (e.g. addBlockedBy) are ignored.
+/// - `TodoWrite` (Cursor / OpenAI-family CLIs) carries the whole todo list:
+///   `merge: false` replaces the board with a snapshot, `merge: true` upserts
+///   by id into the existing board.
 CliTaskBoard reduceCliTaskBoard(List<AiMessage> messages) {
   final tasks = <CliTask>[];
   var seq = 0;
@@ -81,9 +87,6 @@ CliTaskBoard reduceCliTaskBoard(List<AiMessage> messages) {
         final args = part.args ?? const <String, Object?>{};
         final taskId = _str(args['taskId']);
         if (taskId.isEmpty) continue;
-        // TaskUpdate is a generic "update task N" tool — only a `status` arg
-        // is a lifecycle transition worth rendering. Dependency/metadata
-        // updates (e.g. addBlockedBy) must not create or change tasks.
         final statusRaw = _str(args['status']).trim();
         if (statusRaw.isEmpty) continue;
         final status = cliTaskStatusFromString(statusRaw);
@@ -102,11 +105,86 @@ CliTaskBoard reduceCliTaskBoard(List<AiMessage> messages) {
             ),
           );
         }
+      } else if (name == _kTodoWrite) {
+        final args = part.args ?? const <String, Object?>{};
+        final entries = _parseTodoWrite(args['todos']);
+        if (entries.isEmpty) continue;
+        if (args['merge'] == true) {
+          // Upsert by id, preserving existing order.
+          for (final e in entries) {
+            final index = tasks.indexWhere((t) => t.taskId == e.id);
+            if (index >= 0) {
+              final existing = tasks[index];
+              tasks[index] = CliTask(
+                taskId: e.id,
+                subject: e.content.isEmpty ? existing.subject : e.content,
+                description: e.activeForm.isEmpty
+                    ? existing.description
+                    : e.activeForm,
+                activeForm: existing.activeForm,
+                status: e.status,
+                seq: existing.seq,
+              );
+            } else {
+              tasks.add(_taskFromTodo(e, seq++));
+            }
+          }
+        } else {
+          // Snapshot: replace the whole board.
+          tasks.clear();
+          seq = 0;
+          for (final e in entries) {
+            tasks.add(_taskFromTodo(e, seq++));
+          }
+        }
       }
     }
   }
   return CliTaskBoard(tasks: List.unmodifiable(tasks));
 }
+
+/// One parsed `TodoWrite` item.
+class _TodoEntry {
+  const _TodoEntry({
+    required this.id,
+    required this.content,
+    required this.activeForm,
+    required this.status,
+  });
+
+  final String id;
+  final String content;
+  final String activeForm;
+  final CliTaskStatus status;
+}
+
+List<_TodoEntry> _parseTodoWrite(Object? raw) {
+  if (raw is! List) return const [];
+  final out = <_TodoEntry>[];
+  for (final item in raw) {
+    if (item is! Map) continue;
+    final id = _str(item['id']).trim();
+    if (id.isEmpty) continue;
+    out.add(
+      _TodoEntry(
+        id: id,
+        content: _str(item['content']).trim(),
+        activeForm: _str(item['activeForm']).trim(),
+        status: cliTaskStatusFromString(_str(item['status'])),
+      ),
+    );
+  }
+  return out;
+}
+
+CliTask _taskFromTodo(_TodoEntry e, int seq) => CliTask(
+  taskId: e.id,
+  subject: e.content,
+  description: e.activeForm,
+  activeForm: '',
+  status: e.status,
+  seq: seq,
+);
 
 String _str(Object? value) => value == null ? '' : '$value';
 

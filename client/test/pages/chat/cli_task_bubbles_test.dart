@@ -66,9 +66,35 @@ void main() {
     expect(find.text('In progress'), findsOneWidget);
   });
 
-  testWidgets('cliTaskBubbleBuilders returns create + update builders',
+  testWidgets('TodoWrite bubble shows count pill and expandable todo list',
+      (tester) async {
+    final part = AiToolCallPart(
+      toolCallId: 't',
+      toolName: 'TodoWrite',
+      args: const {
+        'merge': false,
+        'todos': [
+          {'id': 'a', 'content': 'Task A', 'status': 'in_progress'},
+          {'id': 'b', 'content': 'Task B', 'status': 'pending'},
+        ],
+      },
+      status: AiToolCallStatus.complete,
+    );
+    await tester.pumpWidget(_host(CliTodoWriteBubble(part: part)));
+    expect(find.textContaining('TodoWrite', findRichText: true), findsOneWidget);
+    expect(find.text('0/2'), findsOneWidget);
+    await tester.tap(find.text('0/2'));
+    await tester.pump();
+    expect(find.text('Task A'), findsOneWidget);
+    expect(find.text('Task B'), findsOneWidget);
+  });
+
+  testWidgets('cliTaskBubbleBuilders returns create + update + todowrite',
       (_) async {
     final builders = cliTaskBubbleBuilders();
-    expect(builders.keys, containsAll(['taskcreate', 'taskupdate']));
+    expect(
+      builders.keys,
+      containsAll(['taskcreate', 'taskupdate', 'todowrite']),
+    );
   });
 }

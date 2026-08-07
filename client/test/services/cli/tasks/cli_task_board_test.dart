@@ -24,6 +24,13 @@ AiToolCallPart _update(Map<String, Object?> args) => AiToolCallPart(
   status: AiToolCallStatus.complete,
 );
 
+AiToolCallPart _todoWrite(Map<String, Object?> args) => AiToolCallPart(
+  toolCallId: 't',
+  toolName: 'TodoWrite',
+  args: args,
+  status: AiToolCallStatus.complete,
+);
+
 void main() {
   test('TaskCreate appends a pending task with subject/description/activeForm',
       () {
@@ -132,5 +139,59 @@ void main() {
       _assistant(_create(args: {'subject': 'B'})),
     ]);
     expect(board.tasks.map((t) => t.subject).toList(), ['A', 'B']);
+  });
+
+  test('TodoWrite snapshot (merge:false) replaces the whole board', () {
+    final board = reduceCliTaskBoard([
+      _assistant(_todoWrite({
+        'merge': false,
+        'todos': [
+          {'id': 'a', 'content': 'Task A', 'status': 'in_progress'},
+          {'id': 'b', 'content': 'Task B', 'status': 'pending'},
+        ],
+      })),
+    ]);
+    expect(board.totalCount, 2);
+    expect(board.tasks[0].taskId, 'a');
+    expect(board.tasks[0].subject, 'Task A');
+    expect(board.tasks[0].status, CliTaskStatus.inProgress);
+    expect(board.tasks[1].subject, 'Task B');
+    expect(board.tasks[1].status, CliTaskStatus.pending);
+  });
+
+  test('TodoWrite merge (merge:true) upserts by id', () {
+    final board = reduceCliTaskBoard([
+      _assistant(_todoWrite({
+        'merge': false,
+        'todos': [
+          {'id': 'a', 'content': 'Task A', 'status': 'in_progress'},
+          {'id': 'b', 'content': 'Task B', 'status': 'pending'},
+        ],
+      })),
+      _assistant(_todoWrite({
+        'merge': true,
+        'todos': [
+          {'id': 'a', 'content': 'Task A', 'status': 'completed'},
+          {'id': 'c', 'content': 'Task C', 'status': 'in_progress'},
+        ],
+      })),
+    ]);
+    expect(board.totalCount, 3);
+    expect(board.tasks[0].status, CliTaskStatus.completed);
+    expect(board.tasks[1].status, CliTaskStatus.pending);
+    expect(board.tasks[2].subject, 'Task C');
+    expect(board.tasks[2].status, CliTaskStatus.inProgress);
+  });
+
+  test('TodoWrite with no id entries is ignored', () {
+    final board = reduceCliTaskBoard([
+      _assistant(_todoWrite({
+        'merge': false,
+        'todos': [
+          {'content': 'no id', 'status': 'pending'},
+        ],
+      })),
+    ]);
+    expect(board.totalCount, 0);
   });
 }
