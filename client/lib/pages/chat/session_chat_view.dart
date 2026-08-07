@@ -214,10 +214,18 @@ class _SessionChatViewState extends State<SessionChatView> {
   }
 
   void _bindSeat() {
-    _seat = context.read<AiHistoryCubit>().ensureSeat(
-      sessionId: widget.session.sessionId,
-      selectedMemberId: widget.selectedMemberId,
-    );
+    final chat = context.read<ChatCubit>();
+    final store = chat.podRuntime(widget.session.sessionId)?.history;
+    _seat = store != null
+        ? store.memberSeat(
+            sessionId: widget.session.sessionId,
+            memberId: widget.selectedMemberId,
+          )
+        // Fallback until pods own a HistoryStore (bootstrap wiring).
+        : context.read<AiHistoryCubit>().ensureSeat(
+            sessionId: widget.session.sessionId,
+            selectedMemberId: widget.selectedMemberId,
+          );
   }
 
   void _applyVoiceListening(bool listening) {
@@ -442,9 +450,16 @@ class _SessionChatViewState extends State<SessionChatView> {
       await _liveRefresh?.stop();
       return;
     }
-    final cubit = context.read<AiHistoryCubit>();
     try {
-      final roots = await cubit.loader.resolveSeatRuntime(
+      final historyCubit = context.read<AiHistoryCubit>();
+      final loader =
+          context
+                  .read<ChatCubit>()
+                  .podRuntime(widget.session.sessionId)
+                  ?.history
+                  ?.loader ??
+              historyCubit.loader;
+      final roots = await loader.resolveSeatRuntime(
         launchContext: _launchContext,
         memberId: widget.selectedMemberId,
       );
@@ -464,7 +479,7 @@ class _SessionChatViewState extends State<SessionChatView> {
       _liveRefresh = AiHistoryLiveRefreshController(
         seat: seat,
         fs: () => roots.filesystem,
-        resolveWatchMeta: () => cubit.loader.resolveWatchMeta(
+        resolveWatchMeta: () => loader.resolveWatchMeta(
           launchContext: _launchContext,
           memberId: widget.selectedMemberId,
           team: widget.team,

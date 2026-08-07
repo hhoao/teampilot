@@ -22,6 +22,7 @@ import '../repositories/session_repository.dart';
 import '../services/workspace/workspace_icon_service.dart';
 import '../services/workspace/workspace_icon_storage.dart';
 import '../services/storage/app_storage.dart';
+import '../services/session/ai_history_loader.dart';
 import '../services/session/session_lifecycle_service.dart';
 import '../services/session/session_member_cli_locks.dart';
 import '../services/remote/remote_cli_readiness.dart';
@@ -74,6 +75,7 @@ import 'chat/model/session_open_request.dart';
 import 'chat/model/session_open_status.dart';
 import 'chat/model/session_workbench_view.dart';
 import 'chat/session_continue_overrides_controller.dart';
+import 'session/history_store.dart';
 import 'session/session_pod.dart';
 import '../models/cli_preset.dart';
 
@@ -228,6 +230,11 @@ class ChatCubit extends Cubit<ChatState>
   /// lifecycle (Task 6) drives `phase`; the workbench overlay derives from the
   /// active pod instead of global connecting sentinels.
   final Map<String, SessionPod> _pods = {};
+
+  /// Wired post-bootstrap (the AiHistoryLoader is built after ChatCubit). When
+  /// set, pods own a [HistoryStore]; consumers fall back to the global cubit
+  /// until then.
+  AiHistoryLoader? historyLoader;
   static const _continueOverridesController =
       SessionContinueOverridesController();
   final Map<String, Future<void>> _sessionHydrationByWorkspace = {};
@@ -372,10 +379,21 @@ class ChatCubit extends Cubit<ChatState>
       _pods.putIfAbsent(sessionId.trim(), () {
         final tab = _tabStore.openTabBySessionId(sessionId.trim());
         final sid = sessionId.trim();
+        final loader = historyLoader;
         return SessionPod(
           sessionId: sid,
           workspaceId: tab?.workspaceId ?? '',
           onChanged: () => _bumpPodRevision(sid),
+          history: loader == null
+              ? null
+              : HistoryStore(
+                  loader: loader,
+                  loadMailboxRecords: (s, m) async {
+                    final bus = _tabStore.openTabBySessionId(s)?.teamBus;
+                    if (bus == null) return const [];
+                    return bus.memberMailRecords(m);
+                  },
+                ),
         );
       });
 

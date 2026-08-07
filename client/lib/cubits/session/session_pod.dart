@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../chat/model/session_workbench_view.dart';
+import 'history_store.dart';
 import 'session_phase.dart';
 
 /// Immutable projection of a session pod's observable state. Selectors bind to
@@ -72,6 +73,7 @@ class SessionPod {
     required this.sessionId,
     required this.workspaceId,
     this.onChanged,
+    this.history,
     SessionPodState? initial,
   }) : _state = initial ??
             SessionPodState(sessionId: sessionId, workspaceId: workspaceId);
@@ -79,6 +81,11 @@ class SessionPod {
   final String sessionId;
   final String workspaceId;
   final void Function()? onChanged;
+
+  /// Per-session history store (member-partitioned). Null until the host wires
+  /// a loader (bootstrap order); consumers fall back to the global cubit when
+  /// null.
+  final HistoryStore? history;
 
   SessionPodState _state;
   SessionPodState get state => _state;

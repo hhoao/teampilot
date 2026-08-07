@@ -1,7 +1,5 @@
 import 'dart:async';
 
-import 'package:ai_message_core/ai_message_core.dart';
-
 import '../../services/session/ai_history_loader.dart';
 import '../../services/session/history_seat_key.dart';
 import '../../services/team_bus/persistence/bus_message_log.dart';
