@@ -1461,6 +1461,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get subagentPreviewEmpty => 'No subagent content yet';
 
   @override
+  String get workflowCardRunMissing =>
+      'Workflow run not found for this tool call.';
+
+  @override
+  String workflowCardAgents(int count) {
+    return '$count agents';
+  }
+
+  @override
   String subagentPreviewTitleAgent(String title) {
     return '$title';
   }

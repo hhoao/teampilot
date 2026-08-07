@@ -598,6 +598,15 @@
   "subagentPreviewUnavailable": "无法打开该子会话预览",
   "subagentPreviewBack": "返回",
   "subagentPreviewEmpty": "暂无子会话内容",
+  "workflowCardRunMissing": "未找到该调用的 Workflow 运行记录",
+  "workflowCardAgents": "{count} 个 agent",
+  "@workflowCardAgents": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "subagentPreviewTitleAgent": "{title}",
   "@subagentPreviewTitleAgent": {
     "placeholders": {

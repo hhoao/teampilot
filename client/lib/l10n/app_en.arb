@@ -623,6 +623,15 @@
   "subagentPreviewUnavailable": "Subagent preview is unavailable for this tool call.",
   "subagentPreviewBack": "Back",
   "subagentPreviewEmpty": "No subagent content yet",
+  "workflowCardRunMissing": "Workflow run not found for this tool call.",
+  "workflowCardAgents": "{count} agents",
+  "@workflowCardAgents": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "subagentPreviewTitleAgent": "{title}",
   "@subagentPreviewTitleAgent": {
     "placeholders": {

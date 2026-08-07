@@ -2702,6 +2702,18 @@ abstract class AppLocalizations {
   /// **'No subagent content yet'**
   String get subagentPreviewEmpty;
 
+  /// No description provided for @workflowCardRunMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Workflow run not found for this tool call.'**
+  String get workflowCardRunMissing;
+
+  /// No description provided for @workflowCardAgents.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} agents'**
+  String workflowCardAgents(int count);
+
   /// No description provided for @subagentPreviewTitleAgent.
   ///
   /// In en, this message translates to:

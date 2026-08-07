@@ -56,7 +56,37 @@ class SubagentAttachmentInflater {
         );
         out[part.toolCallId] = attachment;
 
-        if (depth < maxDepth) {
+        if (depth >= maxDepth) continue;
+
+        final workflow = attachment.workflow;
+        if (workflow != null) {
+          // A Workflow run fans out into one preview entry per agent; each
+          // agent transcript may itself nest further sub-agents.
+          for (final agent in workflow.agents) {
+            final childId = subagentWorkflowChildToolCallId(
+              workflow.runId,
+              agent.agentId,
+            );
+            if (out.containsKey(childId)) continue;
+            final child = AiSubagentAttachment(
+              toolCallId: childId,
+              messages: agent.messages,
+              source: AiSubagentAttachmentSource.sideTranscript,
+              title: agent.role,
+              handle: agent.handle,
+            );
+            out[childId] = child;
+            await _walk(
+              messages: child.messages,
+              ctx: ctx,
+              capability: capability,
+              rootTranscriptPath: rootTranscriptPath,
+              parentHandle: child.handle,
+              depth: depth + 1,
+              out: out,
+            );
+          }
+        } else {
           await _walk(
             messages: attachment.messages,
             ctx: ctx,
@@ -101,6 +131,7 @@ class SubagentAttachmentInflater {
           source: AiSubagentAttachmentSource.sideTranscript,
           title: title,
           handle: resolved.handle,
+          workflow: resolved.workflow,
         );
       }
     } catch (e, st) {

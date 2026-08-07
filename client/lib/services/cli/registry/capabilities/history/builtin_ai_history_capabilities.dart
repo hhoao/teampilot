@@ -8,6 +8,7 @@ import 'cursor_ai_transcript.dart';
 import 'flashskyai_ai_transcript.dart';
 import 'opencode_ai_transcript.dart';
 import 'claude_compatible_side_resolver.dart';
+import 'claude_side_resolver.dart';
 import 'codex_side_resolver.dart';
 import 'cursor_side_resolver.dart';
 import 'claude_compatible_tool_result_enricher.dart';
@@ -18,7 +19,7 @@ import 'tool_result_enricher.dart';
 
 final class ClaudeAiHistoryCapability implements AiHistoryCapability {
   const ClaudeAiHistoryCapability({
-    this.subagentSideResolver = const ClaudeCompatibleSideResolver(),
+    this.subagentSideResolver = const ClaudeSideResolver(),
     this.toolResultEnricher = const ClaudeCompatibleToolResultEnricher(),
   });
 
@@ -30,7 +31,7 @@ final class ClaudeAiHistoryCapability implements AiHistoryCapability {
   AiTranscriptAdapter get adapter => const ClaudeAiTranscriptAdapter();
 
   @override
-  Set<String> get subagentToolNames => const {'agent', 'task'};
+  Set<String> get subagentToolNames => const {'agent', 'task', 'workflow'};
 
   @override
   final SubagentSideResolver subagentSideResolver;

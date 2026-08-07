@@ -47,11 +47,12 @@ Future<Map<String, AiSubagentAttachment>> _inflate({
   required Filesystem fs,
   required String? rootTranscriptPath,
   int maxDepth = 8,
+  AiHistoryCapability? capability,
 }) {
   return SubagentAttachmentInflater(maxDepth: maxDepth).inflate(
     messages: messages,
     ctx: _testCtx(fs),
-    capability: _Cap(const ClaudeCompatibleSideResolver()),
+    capability: capability ?? _Cap(const ClaudeCompatibleSideResolver()),
     rootTranscriptPath: rootTranscriptPath,
   );
 }
@@ -507,6 +508,126 @@ void main() {
     // Nothing past the cap.
     expect(index.containsKey('toolu_d${maxDepth + 1}'), isFalse);
   });
+
+  test('Workflow run fans out into per-agent preview entries', () async {
+    final fs = InMemoryFilesystem();
+    final messages = [
+      AiMessage(
+        id: 'root',
+        role: AiRole.assistant,
+        parts: [
+          const AiToolCallPart(
+            toolCallId: 'call_00_wf',
+            toolName: 'Workflow',
+            args: {'script': 'export const meta = {};'},
+          ),
+        ],
+      ),
+    ];
+
+    final index = await _inflate(
+      messages: messages,
+      fs: fs,
+      rootTranscriptPath: '/projects/enc/uuid.jsonl',
+      capability: _WorkflowCap(const _WorkflowStubResolver()),
+    );
+
+    final parent = index['call_00_wf'];
+    expect(parent, isNotNull);
+    final workflow = parent!.workflow;
+    expect(workflow, isNotNull);
+    expect(workflow!.runId, 'wf_run1');
+    expect(workflow.workflowName, 'migrate');
+    expect(workflow.agents, hasLength(2));
+
+    final childAId = subagentWorkflowChildToolCallId('wf_run1', 'agent-a');
+    final childBId = subagentWorkflowChildToolCallId('wf_run1', 'agent-b');
+    expect(index.containsKey(childAId), isTrue);
+    expect(index.containsKey(childBId), isTrue);
+
+    final childA = index[childAId]!;
+    expect(childA.title, 'implementer');
+    expect(childA.messages, isNotEmpty);
+    expect(childA.sidePath, endsWith('agent-agent-a.jsonl'));
+    expect(
+      childA.messages.single.parts.single,
+      isA<AiTextPart>(),
+    );
+  });
+}
+
+class _WorkflowCap implements AiHistoryCapability {
+  _WorkflowCap(this.subagentSideResolver);
+
+  @override
+  Future<AiTranscriptBundle?> locate(SessionHistoryContext ctx) async => null;
+
+  @override
+  AiTranscriptAdapter get adapter => const ClaudeAiTranscriptAdapter();
+
+  @override
+  Set<String> get subagentToolNames => const {'agent', 'task', 'workflow'};
+
+  @override
+  final SubagentSideResolver subagentSideResolver;
+
+  @override
+  ToolResultEnricher get toolResultEnricher => const NoOpToolResultEnricher();
+}
+
+class _WorkflowStubResolver implements SubagentSideResolver {
+  const _WorkflowStubResolver();
+
+  @override
+  Future<SubagentSideResolveResult?> resolve({
+    required AiToolCallPart part,
+    required SessionHistoryContext ctx,
+    required SubagentSideHandle? parentHandle,
+    required String? rootTranscriptPath,
+    DateTime? toolCallAt,
+  }) async {
+    if (part.toolName.trim().toLowerCase() != 'workflow') return null;
+    return SubagentSideResolveResult(
+      messages: const [],
+      handle: const SubagentFileHandle('/runs/wf_run1'),
+      workflow: SubagentWorkflowInfo(
+        runId: 'wf_run1',
+        workflowName: 'migrate',
+        status: 'DONE',
+        phases: const ['Implement', 'Review'],
+        agentCount: 2,
+        summary: 'all done',
+        agents: [
+          SubagentWorkflowAgent(
+            agentId: 'agent-a',
+            role: 'implementer',
+            status: 'DONE',
+            messages: [
+              AiMessage(
+                id: 'a',
+                role: AiRole.assistant,
+                parts: const [AiTextPart(text: 'implemented')],
+              ),
+            ],
+            handle: const SubagentFileHandle('/runs/wf_run1/agent-agent-a.jsonl'),
+          ),
+          SubagentWorkflowAgent(
+            agentId: 'agent-b',
+            role: 'reviewer',
+            status: 'approved',
+            messages: [
+              AiMessage(
+                id: 'b',
+                role: AiRole.assistant,
+                parts: const [AiTextPart(text: 'approved')],
+              ),
+            ],
+            handle: const SubagentFileHandle('/runs/wf_run1/agent-agent-b.jsonl'),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 String _userAssistantJsonl({required String user, required String assistant}) {

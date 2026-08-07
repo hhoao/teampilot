@@ -6,9 +6,14 @@ class SubagentSideResolveResult {
   const SubagentSideResolveResult({
     required this.messages,
     required this.handle,
+    this.workflow,
   });
   final List<AiMessage> messages;
   final SubagentSideHandle handle;
+
+  /// Present when the resolved tool call is a Claude `Workflow` run; carries
+  /// run metadata plus per-agent transcripts.
+  final SubagentWorkflowInfo? workflow;
 }
 
 abstract interface class SubagentSideResolver {

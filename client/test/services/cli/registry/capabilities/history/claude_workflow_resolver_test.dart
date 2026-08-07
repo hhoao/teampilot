@@ -1,0 +1,232 @@
+import 'dart:convert';
+
+import 'package:ai_message_core/ai_message_core.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/services/cli/registry/capabilities/history/claude_workflow_resolver.dart';
+import 'package:teampilot/services/cli/registry/capabilities/history/subagent_side_resolver.dart';
+import 'package:teampilot/services/io/filesystem.dart';
+import 'package:teampilot/services/session/session_history_context.dart';
+import 'package:teampilot/services/session/subagent_side_transcript_path.dart';
+
+import '../../../../../support/in_memory_filesystem.dart';
+
+const _parentPath = '/projects/enc/ses-1.jsonl';
+const _runId = 'wf_871552ba-110';
+const _taskId = 'wh8pw12dw';
+const _toolCallId = 'call_00_1mjZUYbD5Btsf7KubuTm7229';
+
+SessionHistoryContext _ctx(Filesystem fs) => SessionHistoryContext(
+  fs: fs,
+  taskId: 'task-1',
+  env: const {},
+  transcriptRoots: const [],
+  bucket: 'bucket',
+);
+
+Future<SubagentSideResolveResult?> _resolve({
+  required Filesystem fs,
+  required AiToolCallPart part,
+}) {
+  return const ClaudeWorkflowResolver().resolve(
+    part: part,
+    ctx: _ctx(fs),
+    parentTranscriptPath: _parentPath,
+  );
+}
+
+/// Parent transcript that pairs [toolCallId] with [taskId] through a
+/// `<task-notification>` (as Claude Code writes in `queue-operation` and
+/// injected `user` records).
+String _parentJsonl(String toolCallId, String taskId) {
+  final notification =
+      '<task-notification>\n<task-id>$taskId</task-id>\n'
+      '<tool-use-id>$toolCallId</tool-use-id>\n</task-notification>';
+  return [
+    jsonEncode({
+      'type': 'user',
+      'message': {'role': 'user', 'content': 'start'},
+      'uuid': 'u0',
+      'timestamp': '2026-08-07T09:00:00.000Z',
+    }),
+    jsonEncode({
+      'type': 'queue-operation',
+      'operation': 'enqueue',
+      'content': notification,
+      'timestamp': '2026-08-07T09:00:01.000Z',
+    }),
+  ].join('\n');
+}
+
+String _runRecordJson({String? status, int agentCount = 2}) {
+  return jsonEncode({
+    'runId': _runId,
+    'taskId': _taskId,
+    'workflowName': 'migrate-inkwell-task',
+    'status': status ?? 'DONE',
+    'phases': ['Implement', 'Spec review', 'Quality review'],
+    'agentCount': agentCount,
+    'summary': 'migrated all four sites',
+    'durationMs': 160000,
+    'result': {'summary': 'result summary'},
+  });
+}
+
+String _agentJsonl(String rolePrompt, String done) {
+  return [
+    jsonEncode({
+      'type': 'user',
+      'message': {'role': 'user', 'content': rolePrompt},
+      'uuid': 'u-${rolePrompt.hashCode}',
+      'timestamp': '2026-08-07T09:01:00.000Z',
+    }),
+    jsonEncode({
+      'type': 'assistant',
+      'message': {
+        'role': 'assistant',
+        'content': [
+          {'type': 'text', 'text': done},
+        ],
+      },
+      'uuid': 'a-${done.hashCode}',
+      'timestamp': '2026-08-07T09:01:30.000Z',
+    }),
+  ].join('\n');
+}
+
+String _journalJsonl(List<({String agentId, String status})> entries) {
+  return [
+    for (final e in entries)
+      jsonEncode({
+        'type': 'result',
+        'key': 'v2:${e.agentId}',
+        'agentId': e.agentId,
+        'result': {
+          'status': e.status,
+          'summary': 'agent ${e.agentId} summary',
+        },
+      }),
+  ].join('\n');
+}
+
+Future<void> _writeRunFixtures(
+  Filesystem fs, {
+  int agentCount = 2,
+  String? runStatus,
+}) async {
+  final workflowsDir = claudeWorkflowsDirFor(_parentPath);
+  final runDir = claudeWorkflowRunDirFor(_parentPath, runId: _runId);
+  await fs.writeString(
+    '$workflowsDir/$_runId.json',
+    _runRecordJson(status: runStatus, agentCount: agentCount),
+  );
+  for (var i = 0; i < agentCount; i++) {
+    final agentId = 'agent-${i}a';
+    await fs.writeString(
+      '$runDir/agent-$agentId.jsonl',
+      _agentJsonl('You are the Implementer for task $i', 'done $i'),
+    );
+  }
+  await fs.writeString(
+    '$runDir/journal.jsonl',
+    _journalJsonl([
+      for (var i = 0; i < agentCount; i++)
+        (agentId: 'agent-${i}a', status: 'DONE'),
+    ]),
+  );
+}
+
+void main() {
+  const part = AiToolCallPart(
+    toolCallId: _toolCallId,
+    toolName: 'Workflow',
+    args: {'script': 'export const meta = {};'},
+  );
+
+  test('inline script Workflow resolves run + per-agent transcripts', () async {
+    final fs = InMemoryFilesystem();
+    await fs.writeString(_parentPath, _parentJsonl(_toolCallId, _taskId));
+    await _writeRunFixtures(fs);
+
+    final result = await _resolve(fs: fs, part: part);
+
+    expect(result, isNotNull);
+    final workflow = result!.workflow;
+    expect(workflow, isNotNull);
+    expect(workflow!.runId, _runId);
+    expect(workflow.workflowName, 'migrate-inkwell-task');
+    expect(workflow.status, 'DONE');
+    expect(workflow.phases, ['Implement', 'Spec review', 'Quality review']);
+    expect(workflow.agentCount, 2);
+    expect(workflow.summary, 'migrated all four sites');
+    expect(workflow.duration, const Duration(seconds: 160));
+    expect(workflow.agents, hasLength(2));
+
+    final first = workflow.agents.first;
+    expect(first.role, contains('Implementer'));
+    expect(first.status, 'DONE');
+    expect(first.messages, isNotEmpty);
+    expect(first.handle.path, endsWith('agent-agent-0a.jsonl'));
+  });
+
+  test('scriptPath Workflow call resolves through task-notification', () async {
+    final fs = InMemoryFilesystem();
+    await fs.writeString(_parentPath, _parentJsonl(_toolCallId, _taskId));
+    await _writeRunFixtures(fs);
+
+    final result = await _resolve(
+      fs: fs,
+      part: const AiToolCallPart(
+        toolCallId: _toolCallId,
+        toolName: 'Workflow',
+        args: {'scriptPath': '…/workflows/scripts/migrate-$_runId.json'},
+      ),
+    );
+
+    expect(result, isNotNull);
+    expect(result!.workflow!.runId, _runId);
+    expect(result.workflow!.agents, hasLength(2));
+  });
+
+  test('no task-notification for the tool call -> null (cancelled run)',
+      () async {
+    final fs = InMemoryFilesystem();
+    await fs.writeString(
+      _parentPath,
+      _parentJsonl('call_other', 'other-task'),
+    );
+    await _writeRunFixtures(fs);
+
+    final result = await _resolve(fs: fs, part: part);
+    expect(result, isNull);
+  });
+
+  test('run record missing for taskId -> null', () async {
+    final fs = InMemoryFilesystem();
+    await fs.writeString(_parentPath, _parentJsonl(_toolCallId, 'unknown-task'));
+    await _writeRunFixtures(fs);
+
+    final result = await _resolve(fs: fs, part: part);
+    expect(result, isNull);
+  });
+
+  test('run with no agent transcripts -> workflow with empty agents',
+      () async {
+    final fs = InMemoryFilesystem();
+    await fs.writeString(_parentPath, _parentJsonl(_toolCallId, _taskId));
+    await _writeRunFixtures(fs, agentCount: 0);
+
+    final result = await _resolve(fs: fs, part: part);
+    expect(result, isNotNull);
+    expect(result!.workflow!.agents, isEmpty);
+    expect(result.workflow!.agentCount, 0);
+  });
+
+  test('isWorkflowTool matches casing variants', () {
+    expect(isWorkflowTool('Workflow'), isTrue);
+    expect(isWorkflowTool('workflow'), isTrue);
+    expect(isWorkflowTool('Work_Flow'), isTrue);
+    expect(isWorkflowTool('Agent'), isFalse);
+    expect(isWorkflowTool(null), isFalse);
+    expect(isWorkflowTool(''), isFalse);
+  });
+}

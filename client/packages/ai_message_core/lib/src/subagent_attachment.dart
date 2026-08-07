@@ -16,6 +16,53 @@ final class SubagentSessionHandle extends SubagentSideHandle {
   final String sessionId;
 }
 
+/// One agent spawned by a Claude `Workflow` run: parsed transcript plus its
+/// role / status. The inflater fans these out into per-agent attachments keyed
+/// [subagentWorkflowChildToolCallId].
+class SubagentWorkflowAgent {
+  const SubagentWorkflowAgent({
+    required this.agentId,
+    required this.messages,
+    required this.handle,
+    this.role,
+    this.status,
+  });
+
+  final String agentId;
+  final String? role;
+  final String? status;
+  final List<AiMessage> messages;
+  final SubagentFileHandle handle;
+}
+
+/// Run-level metadata for a Claude `Workflow` tool call, resolved from the run
+/// record (`…/workflows/wf_{runId}.json`) plus its per-agent transcripts.
+class SubagentWorkflowInfo {
+  const SubagentWorkflowInfo({
+    required this.runId,
+    this.workflowName,
+    this.status,
+    this.phases = const [],
+    this.agentCount = 0,
+    this.summary,
+    this.duration,
+    this.agents = const [],
+  });
+
+  final String runId;
+  final String? workflowName;
+  final String? status;
+  final List<String> phases;
+  final int agentCount;
+  final String? summary;
+  final Duration? duration;
+  final List<SubagentWorkflowAgent> agents;
+}
+
+/// Synthetic attachment key for one workflow agent: `'{runId}/{agentId}'`.
+String subagentWorkflowChildToolCallId(String runId, String agentId) =>
+    '$runId/$agentId';
+
 class AiSubagentAttachment {
   const AiSubagentAttachment({
     required this.toolCallId,
@@ -23,6 +70,7 @@ class AiSubagentAttachment {
     required this.source,
     this.title,
     this.handle,
+    this.workflow,
   });
 
   final String toolCallId;
@@ -30,6 +78,9 @@ class AiSubagentAttachment {
   final AiSubagentAttachmentSource source;
   final String? title;
   final SubagentSideHandle? handle;
+
+  /// Present when this attachment is the aggregate of a Claude `Workflow` run.
+  final SubagentWorkflowInfo? workflow;
 
   /// File-handle path for debug/compat; null for session handles.
   String? get sidePath {

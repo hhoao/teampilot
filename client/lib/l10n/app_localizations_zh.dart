@@ -1390,6 +1390,14 @@ class AppLocalizationsZh extends AppLocalizations {
   String get subagentPreviewEmpty => '暂无子会话内容';
 
   @override
+  String get workflowCardRunMissing => '未找到该调用的 Workflow 运行记录';
+
+  @override
+  String workflowCardAgents(int count) {
+    return '$count 个 agent';
+  }
+
+  @override
   String subagentPreviewTitleAgent(String title) {
     return '$title';
   }

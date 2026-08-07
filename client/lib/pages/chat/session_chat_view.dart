@@ -79,6 +79,7 @@ import 'session_history_live_chrome.dart';
 import 'session_history_review_messages.dart';
 import 'session_history_review_submit.dart';
 import 'subagent_preview_controller.dart';
+import 'workflow_card.dart';
 
 /// Bound Chat view: history thread + slim compose for a session body.
 class SessionChatView extends StatefulWidget {
@@ -1558,7 +1559,16 @@ class _SessionChatViewState extends State<SessionChatView> {
                                             codeBlockMode:
                                                 prefs.chatCodeBlockMode,
                                             child: AiToolCallBubbleScope(
-                                              builders: cliTaskBubbleBuilders(),
+                                              builders: {
+                                                ...cliTaskBubbleBuilders(),
+                                                'workflow': (ctx, part) =>
+                                                    WorkflowCard(
+                                                      part: part,
+                                                      attachment: historySeat
+                                                              .subagentAttachments[
+                                                          part.toolCallId],
+                                                    ),
+                                              },
                                               child: SessionHistoryReviewMessages(
                                                 state: state,
                                                 runtime: historySeat.runtime,

@@ -3,6 +3,7 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/registry/capabilities/ai_history_capability.dart';
 import 'package:teampilot/services/cli/registry/capabilities/history/builtin_ai_history_capabilities.dart';
 import 'package:teampilot/services/cli/registry/capabilities/history/claude_compatible_tool_result_enricher.dart';
+import 'package:teampilot/services/cli/registry/capabilities/history/claude_side_resolver.dart';
 import 'package:teampilot/services/cli/registry/capabilities/history/cursor_terminal_tool_result_enricher.dart';
 import 'package:teampilot/services/cli/registry/capabilities/history/tool_result_enricher.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
@@ -38,6 +39,14 @@ void main() {
       const OpencodeAiHistoryCapability().toolResultEnricher,
       isA<NoOpToolResultEnricher>(),
     );
+  });
+
+  test('Claude capability recognizes Workflow as a subagent tool', () {
+    final cap = const ClaudeAiHistoryCapability();
+    expect(cap.subagentToolNames, contains('workflow'));
+    expect(cap.subagentToolNames, contains('agent'));
+    expect(cap.subagentToolNames, contains('task'));
+    expect(cap.subagentSideResolver, isA<ClaudeSideResolver>());
   });
 
   test('all launch CLIs expose AiHistoryCapability', () {

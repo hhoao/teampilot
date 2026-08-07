@@ -61,6 +61,9 @@ class AppKeys {
   );
   static const askUserQuestionCard = Key('ask-user-question-card');
   static const exitPlanModeCard = Key('exit-plan-mode-card');
+  static const workflowCard = Key('workflow-card');
+  static Key workflowAgentRow(String runId, String agentId) =>
+      Key('workflow-agent-row-$runId-$agentId');
   static const askUserQuestionSubmitButton = Key(
     'ask-user-question-submit-button',
   );
