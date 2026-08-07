@@ -57,6 +57,7 @@ class FloatingWorkspaceTabBar extends StatelessWidget {
     required this.onClose,
     required this.onCloseOthers,
     required this.onCloseRight,
+    this.onCloseAll,
     super.key,
   });
 
@@ -66,6 +67,9 @@ class FloatingWorkspaceTabBar extends StatelessWidget {
   final ValueChanged<FloatingTab> onClose;
   final ValueChanged<FloatingTab> onCloseOthers;
   final ValueChanged<FloatingTab> onCloseRight;
+
+  /// Closes every tab in the floating workspace strip.
+  final VoidCallback? onCloseAll;
 
   @override
   Widget build(BuildContext context) {
@@ -114,6 +118,7 @@ class FloatingWorkspaceTabBar extends StatelessWidget {
           onClose: () => onClose(tab),
           onCloseOthers: () => onCloseOthers(tab),
           onCloseRight: () => onCloseRight(tab),
+          onCloseAll: onCloseAll,
         );
       },
     );

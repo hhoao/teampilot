@@ -62,3 +62,20 @@ Future<void> closeFloatingTabsToTheRight({
     );
   }
 }
+
+/// Close every floating tab, respecting each surface's [canClose].
+Future<void> closeAllFloatingTabs({
+  required FloatingWorkspaceCubit cubit,
+  required FloatingSurfaceRegistry registry,
+  BuildContext? context,
+}) async {
+  final toClose = [...cubit.activeBucket.tabs];
+  for (final tab in toClose) {
+    await closeFloatingTab(
+      cubit: cubit,
+      registry: registry,
+      tab: tab,
+      context: context,
+    );
+  }
+}

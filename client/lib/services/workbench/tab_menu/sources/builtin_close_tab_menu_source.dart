@@ -54,6 +54,17 @@ class BuiltinCloseTabMenuSource implements WorkbenchTabMenuSource {
       );
     }
 
+    if (ctx.onCloseAll != null) {
+      items.add(
+        WorkbenchTabMenuItem(
+          id: 'builtin.close_all',
+          icon: Icons.select_all,
+          label: l10n.closeAllTabs,
+          onAction: ctx.onCloseAll!,
+        ),
+      );
+    }
+
     return items;
   }
 }

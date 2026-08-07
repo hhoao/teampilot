@@ -20,6 +20,7 @@ class WorkbenchTabMenuContext {
     required this.onClose,
     this.onCloseOthers,
     this.onCloseRight,
+    this.onCloseAll,
     this.onPin,
     this.workContext,
   });
@@ -46,6 +47,9 @@ class WorkbenchTabMenuContext {
   final VoidCallback onClose;
   final VoidCallback? onCloseOthers;
   final VoidCallback? onCloseRight;
+
+  /// Closes every tab in the workspace's strip.
+  final VoidCallback? onCloseAll;
   final VoidCallback? onPin;
 
   final RuntimeContext? workContext;

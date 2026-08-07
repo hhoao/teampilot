@@ -23,6 +23,7 @@ class WorkspaceShell extends StatelessWidget {
     this.onTabClosed,
     this.onTabCloseOthers,
     this.onTabCloseRight,
+    this.onTabCloseAll,
     this.onTabPin,
     this.onTabsReorder,
     this.showNewChatButton = false,
@@ -47,6 +48,9 @@ class WorkspaceShell extends StatelessWidget {
   final ValueChanged<int>? onTabClosed;
   final ValueChanged<int>? onTabCloseOthers;
   final ValueChanged<int>? onTabCloseRight;
+
+  /// Closes every tab in the active workspace's strip.
+  final ValueChanged<int>? onTabCloseAll;
   final ValueChanged<int>? onTabPin;
 
   /// Material [ReorderableListView.onReorderItem] for the center strip.
@@ -131,6 +135,7 @@ class WorkspaceShell extends StatelessWidget {
             onTabClosed: onTabClosed,
             onTabCloseOthers: onTabCloseOthers,
             onTabCloseRight: onTabCloseRight,
+            onTabCloseAll: onTabCloseAll,
             onTabPin: onTabPin,
             onReorder: onTabsReorder,
             newChatButton: showNewChatButton

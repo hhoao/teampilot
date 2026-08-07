@@ -493,6 +493,15 @@ class _PanelChromeFrameState extends State<_PanelChromeFrame> {
                               ),
                             );
                           },
+                          onCloseAll: () {
+                            unawaited(
+                              closeAllFloatingTabs(
+                                cubit: context.read<FloatingWorkspaceCubit>(),
+                                registry: widget.registry,
+                                context: context,
+                              ),
+                            );
+                          },
                         ),
                       ),
                       Expanded(

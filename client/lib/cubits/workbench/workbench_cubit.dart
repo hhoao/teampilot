@@ -356,6 +356,29 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
     return removed;
   }
 
+  /// Closes every tab in [workspaceId]'s strip. Returns the removed tabs so
+  /// domain closers can tear them down. Mirrors [removeTab] on the last tab:
+  /// the active tab becomes null and [WorkbenchWorkspaceState.welcomeActive] is
+  /// preserved, so the workspace keeps its landing / welcome state.
+  List<WorkbenchTabId> closeAll(String workspaceId) {
+    final bucket = state.bucket(workspaceId);
+    final removed = List<WorkbenchTabId>.from(bucket.tabOrder);
+    if (removed.isEmpty) return const [];
+    emit(
+      state.withBucket(
+        workspaceId,
+        WorkbenchWorkspaceState(
+          tabOrder: const [],
+          activeTabId: null,
+          previewTabIds: const {},
+          lastFocusedShellTabId: bucket.lastFocusedShellTabId,
+          welcomeActive: bucket.welcomeActive,
+        ),
+      ),
+    );
+    return removed;
+  }
+
   void clearWorkspace(String workspaceId) {
     if (!state.byWorkspace.containsKey(workspaceId)) return;
     final next = Map<String, WorkbenchWorkspaceState>.from(state.byWorkspace)

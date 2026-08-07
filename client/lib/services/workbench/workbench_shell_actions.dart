@@ -178,6 +178,24 @@ abstract final class WorkbenchShellActions {
     }
   }
 
+  static Future<void> closeAll({
+    required BuildContext context,
+    required String workspaceId,
+    required String tabScopeId,
+  }) async {
+    final workbench = context.read<WorkbenchCubit>();
+    final removed = workbench.closeAll(workspaceId);
+    for (final tab in removed) {
+      if (!context.mounted) return;
+      await _closeDomainOnly(
+        context: context,
+        workspaceId: workspaceId,
+        tabScopeId: tabScopeId,
+        tab: tab,
+      );
+    }
+  }
+
   static Future<void> closeReplacedPreview({
     required BuildContext context,
     required String workspaceId,

@@ -134,6 +134,7 @@ class WorkspaceShellTabRow extends StatelessWidget {
     this.onTabClosed,
     this.onTabCloseOthers,
     this.onTabCloseRight,
+    this.onTabCloseAll,
     this.onTabPin,
     this.onReorder,
     this.newChatButton,
@@ -147,6 +148,7 @@ class WorkspaceShellTabRow extends StatelessWidget {
   final ValueChanged<int>? onTabClosed;
   final ValueChanged<int>? onTabCloseOthers;
   final ValueChanged<int>? onTabCloseRight;
+  final ValueChanged<int>? onTabCloseAll;
   final ValueChanged<int>? onTabPin;
   final ReorderCallback? onReorder;
   final Widget? newChatButton;
@@ -202,6 +204,7 @@ class WorkspaceShellTabRow extends StatelessWidget {
           onClose: () => onTabClosed?.call(i),
           onCloseOthers: () => onTabCloseOthers?.call(i),
           onCloseRight: () => onTabCloseRight?.call(i),
+          onCloseAll: () => onTabCloseAll?.call(i),
           onPin: tab.pinnable && onTabPin != null
               ? () => onTabPin!(i)
               : null,
@@ -306,6 +309,7 @@ class WorkbenchStripTabChip extends StatefulWidget {
     this.sessionId,
     this.onCloseOthers,
     this.onCloseRight,
+    this.onCloseAll,
     this.onPin,
     this.working = false,
     this.preview = false,
@@ -335,6 +339,9 @@ class WorkbenchStripTabChip extends StatefulWidget {
   final VoidCallback onClose;
   final VoidCallback? onCloseOthers;
   final VoidCallback? onCloseRight;
+
+  /// Closes every tab in the workspace's strip.
+  final VoidCallback? onCloseAll;
   final VoidCallback? onPin;
   final IconData icon;
   final CliTool? cli;
@@ -361,6 +368,7 @@ class WorkbenchStripTabChipState extends State<WorkbenchStripTabChip> {
       onClose: widget.onClose,
       onCloseOthers: widget.onCloseOthers,
       onCloseRight: widget.onCloseRight,
+      onCloseAll: widget.onCloseAll,
       onPin: widget.onPin,
     );
     return WorkbenchTabMenuComposer.compose(

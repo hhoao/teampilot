@@ -131,6 +131,29 @@ void main() {
       expect(cubit.activeTabId(ws), d1);
     });
 
+    test('closeAll clears every tab and returns the removed list', () {
+      const ws = 'ws-a';
+      final s1 = WorkbenchTabId.session('s1');
+      final d1 = WorkbenchTabId.diffStaged('/a.dart', staged: false);
+      final d2 = WorkbenchTabId.diffStaged('/b.dart', staged: true);
+
+      cubit.ensureTab(ws, s1);
+      cubit.ensureTab(ws, d1);
+      cubit.ensureTab(ws, d2);
+      expect(cubit.activeTabId(ws), d2);
+
+      final closed = cubit.closeAll(ws);
+      expect(closed, [s1, d1, d2]);
+      expect(cubit.tabOrder(ws), isEmpty);
+      expect(cubit.activeTabId(ws), isNull);
+    });
+
+    test('closeAll is a no-op on an empty workspace', () {
+      const ws = 'ws-a';
+      expect(cubit.closeAll(ws), isEmpty);
+      expect(cubit.tabOrder(ws), isEmpty);
+    });
+
     test('staged and unstaged diffs are distinct tabs', () {
       const ws = 'ws-a';
       final unstaged = WorkbenchTabId.diffStaged('/a.dart', staged: false);

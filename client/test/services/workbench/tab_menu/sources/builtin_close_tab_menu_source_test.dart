@@ -20,6 +20,7 @@ void main() {
     VoidCallback? onPin,
     VoidCallback? onCloseOthers,
     VoidCallback? onCloseRight,
+    VoidCallback? onCloseAll,
   }) {
     return WorkbenchTabMenuContext(
       l10n: l10n,
@@ -33,6 +34,7 @@ void main() {
       onPin: onPin,
       onCloseOthers: onCloseOthers,
       onCloseRight: onCloseRight,
+      onCloseAll: onCloseAll,
     );
   }
 
@@ -86,6 +88,27 @@ void main() {
     expect(
       items.singleWhere((item) => item.id == 'builtin.close_right').label,
       l10n.closeRightTabs,
+    );
+  });
+
+  test('omits close_all when onCloseAll is null', () {
+    final items = source.buildItems(ctx());
+    expect(items.any((item) => item.id == 'builtin.close_all'), isFalse);
+  });
+
+  test('includes close_all after close_right when onCloseAll is present', () {
+    final items = source.buildItems(
+      ctx(onCloseOthers: () {}, onCloseRight: () {}, onCloseAll: () {}),
+    );
+    expect(items.map((item) => item.id), [
+      'builtin.close',
+      'builtin.close_others',
+      'builtin.close_right',
+      'builtin.close_all',
+    ]);
+    expect(
+      items.singleWhere((item) => item.id == 'builtin.close_all').label,
+      l10n.closeAllTabs,
     );
   });
 }

@@ -359,6 +359,17 @@ class _ChatWorkspaceShell extends StatelessWidget {
                           );
                         }
                       : null,
+                  onTabCloseAll: routeActive
+                      ? (index) {
+                          unawaited(
+                            WorkbenchShellActions.closeAll(
+                              context: context,
+                              workspaceId: workspaceId,
+                              tabScopeId: tabScopeId,
+                            ),
+                          );
+                        }
+                      : null,
                   onTabPin: routeActive
                       ? (index) {
                           if (index < 0 || index >= order.length) return;
