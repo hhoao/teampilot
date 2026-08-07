@@ -136,10 +136,7 @@ class _FilterPill extends StatelessWidget {
                 Icon(icon, size: 16, color: fg),
                 const SizedBox(width: 6),
               ],
-              Text(
-                label,
-                style: fg != null ? styles.mdColored(fg) : styles.md,
-              ),
+              Text(label, style: fg != null ? styles.mdColored(fg) : styles.md),
               if (count != null) ...[
                 const SizedBox(width: 6),
                 Text(

@@ -322,7 +322,9 @@ class _HomeTitleBarState extends State<HomeTitleBar> with WindowListener {
               if (!compactChrome)
                 SizedBox(width: useMacWindowChromeStyle ? 8 : 20),
               if (showSidebarTrigger) ...[
-                _HomeTitleBarMobileDrawerTrigger(activeTabKey: widget.activeTabKey),
+                _HomeTitleBarMobileDrawerTrigger(
+                  activeTabKey: widget.activeTabKey,
+                ),
                 const SizedBox(width: 8),
               ],
               if (!compactChrome) ...[
@@ -445,9 +447,7 @@ class _HomeTitleBarState extends State<HomeTitleBar> with WindowListener {
                     'assets/icons/settings_gear.svg',
                     width: context.tpIconSizes.md,
                     height: context.tpIconSizes.md,
-                    theme: SvgTheme(
-                      currentColor: cs.onSurfaceVariant,
-                    ),
+                    theme: SvgTheme(currentColor: cs.onSurfaceVariant),
                   ),
                   tooltip: l10n.settings,
                   backgroundColor: Colors.transparent,
@@ -485,9 +485,7 @@ class _HomeTitleBarState extends State<HomeTitleBar> with WindowListener {
                             'assets/icons/settings_gear.svg',
                             width: context.tpIconSizes.md,
                             height: context.tpIconSizes.md,
-                            theme: SvgTheme(
-                              currentColor: cs.onSurfaceVariant,
-                            ),
+                            theme: SvgTheme(currentColor: cs.onSurfaceVariant),
                           ),
                           tooltip: l10n.settings,
                           backgroundColor: Colors.transparent,
@@ -519,10 +517,7 @@ class _HomeTitleBarMobileDrawerTrigger extends StatelessWidget {
     final controlSize = homeTitleBarControlSize(context);
     if (activeTabKey == null) {
       final openMobile = TpSidebarScope.of(context).openMobile;
-      return TpSidebarTrigger(
-        size: controlSize,
-        selected: openMobile,
-      );
+      return TpSidebarTrigger(size: controlSize, selected: openMobile);
     }
 
     final composeLanding = context.select<ChatCubit, bool>(
@@ -582,7 +577,9 @@ class _HomePill extends StatelessWidget {
     final styles = TpTextStyles.of(context);
     final Color fg = active ? cs.primary : cs.onSurfaceVariant;
     return TpHover(
-      backgroundColor: active ? cs.primary.withValues(alpha: 0.16) : Colors.transparent,
+      backgroundColor: active
+          ? cs.primary.withValues(alpha: 0.16)
+          : Colors.transparent,
       borderRadius: BorderRadius.circular(8),
       border: Border.all(
         color: active ? cs.primary.withValues(alpha: 0.28) : Colors.transparent,

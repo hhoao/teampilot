@@ -90,9 +90,8 @@ class _MixedWorkspaceMemberPlacementPanelState
   Set<String> _deadTargetIds = const {};
   List<String>? _deadCheckKey;
 
-  TargetLiveness _liveness(BuildContext context) => DefaultTargetLiveness(
-    sshProfiles: context.read<SshProfileRepository>(),
-  );
+  TargetLiveness _liveness(BuildContext context) =>
+      DefaultTargetLiveness(sshProfiles: context.read<SshProfileRepository>());
 
   void _ensureDeadTargetsChecked(List<String> targetIds) {
     if (_deadCheckKey != null && listEquals(_deadCheckKey, targetIds)) return;
@@ -394,6 +393,9 @@ class _TargetTile extends StatelessWidget {
       backgroundColor: selected
           ? cs.primaryContainer.withValues(alpha: 0.35)
           : Colors.transparent,
+      // The prior Material had no shape (rectangular fill); keep the
+      // full-width selection highlight a rectangle, not rounded.
+      borderRadius: BorderRadius.zero,
       onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),

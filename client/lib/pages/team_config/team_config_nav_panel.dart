@@ -95,11 +95,7 @@ class TeamConfigMemberNavAddTile extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 14),
               child: Row(
                 children: [
-                  Icon(
-                    Icons.add,
-                    size: context.tpIconSizes.md,
-                    color: muted,
-                  ),
+                  Icon(Icons.add, size: context.tpIconSizes.md, color: muted),
                   SizedBox(width: 10),
                   Expanded(
                     child: Text(

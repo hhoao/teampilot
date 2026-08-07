@@ -73,10 +73,7 @@ class _ExpertHubBodyState extends State<ExpertHubBody> {
               final searchField = TextField(
                 decoration: InputDecoration(
                   hintText: l10n.expertHubSearchHint,
-                  prefixIcon: Icon(
-                    Icons.search,
-                    size: context.tpIconSizes.md,
-                  ),
+                  prefixIcon: Icon(Icons.search, size: context.tpIconSizes.md),
                   floatingLabelBehavior: FloatingLabelBehavior.never,
                 ),
                 onChanged: _onSearchChanged,
@@ -332,7 +329,8 @@ class _FilterPill extends StatelessWidget {
                 const SizedBox(width: 6),
                 Text(
                   '$count',
-                  style: styles.xsColored(selected
+                  style: styles.xsColored(
+                    selected
                         ? cs.primary.withValues(alpha: 0.8)
                         : cs.onSurfaceVariant,
                   ),
