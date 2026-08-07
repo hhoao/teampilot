@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../services/cli/tasks/cli_task_board.dart';
+import '../../widgets/session_working_spinner.dart';
 
 /// Floating task-board card pinned to the top-right of the chat message area.
 ///
@@ -222,8 +223,7 @@ class _TaskStatusIcon extends StatelessWidget {
         size: 16,
         color: color,
       ),
-      CliTaskStatus.inProgress => Icon(
-        Icons.play_arrow,
+      CliTaskStatus.inProgress => SessionWorkingSpinner(
         size: 16,
         color: color,
       ),

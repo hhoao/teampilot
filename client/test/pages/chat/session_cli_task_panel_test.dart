@@ -4,6 +4,7 @@ import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/pages/chat/session_cli_task_panel.dart';
 import 'package:teampilot/services/cli/tasks/cli_task_board.dart';
 import 'package:teampilot/theme/app_typography_scale.dart';
+import 'package:teampilot/widgets/session_working_spinner.dart';
 
 Widget _host(Widget child) {
   final theme = ThemeData(useMaterial3: true);
@@ -135,11 +136,11 @@ void main() {
     // Collapsed pill shows the in-progress task; tap it to expand.
     await tester.tap(find.text('T1: active'));
     await tester.pump();
-    // in progress → arrow, pending → hollow circle, completed → check.
-    expect(find.byIcon(Icons.play_arrow), findsOneWidget);
+    // in progress → Session working indicator, pending → hollow circle, done → check.
+    expect(find.byType(SessionWorkingSpinner), findsOneWidget);
     expect(find.byIcon(Icons.radio_button_unchecked), findsOneWidget);
     expect(find.byIcon(Icons.check_circle_outline), findsOneWidget);
-    // A loading spinner must never represent an in-progress task.
+    // A material loading spinner must never represent an in-progress task.
     expect(find.byType(CircularProgressIndicator), findsNothing);
   });
 
