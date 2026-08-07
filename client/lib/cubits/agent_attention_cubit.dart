@@ -8,6 +8,7 @@ import '../services/agent_status/agent_status_event.dart';
 import '../services/agent_status/agent_status_normalizer.dart';
 import '../services/agent_status/ask_user_question_hook_gate.dart';
 import '../services/agent_status/claude_permission_sticky.dart';
+import '../services/agent_status/exit_plan_mode.dart';
 
 /// Orca-aligned TTL: drop seat attention with no refresh after this duration.
 const Duration agentAttentionStaleAfter = Duration(minutes: 30);
@@ -210,16 +211,18 @@ class AgentAttentionCubit extends Cubit<AgentAttentionState> {
     required bool skipPermissions,
   }) {
     // Claude Code's --dangerously-skip-permissions does not skip
-    // AskUserQuestion, and opencode's question tool always needs an answer —
-    // both still block on an interactive prompt the operator must answer.
-    // Keep the seat waiting for them so the chat card stays available.
-    final isAskUserQuestionWaiting =
+    // AskUserQuestion, opencode's question tool always needs an answer, and
+    // ExitPlanMode plan approval is also an interactive prompt — these still
+    // block on the operator. Keep the seat waiting for them so the chat card
+    // stays available.
+    final isInteractiveWaiting =
         event.state == AgentSeatAttention.waiting &&
         (isAskUserQuestionTool(event.toolName) ||
+            isExitPlanModeTool(event.toolName) ||
             event.hookEventName == 'question.asked');
     if (skipPermissions &&
         event.state == AgentSeatAttention.waiting &&
-        !isAskUserQuestionWaiting) {
+        !isInteractiveWaiting) {
       pruneStale();
       return;
     }
@@ -264,9 +267,12 @@ class AgentAttentionCubit extends Cubit<AgentAttentionState> {
       }
     }
 
-    final effective = preserveAskUserQuestionPayload(
+    final effective = preserveExitPlanModePayload(
       previous,
-      attachClaudePermissionToolUseId(previous, event),
+      preserveAskUserQuestionPayload(
+        previous,
+        attachClaudePermissionToolUseId(previous, event),
+      ),
     );
 
     if (shouldKeepClaudePermissionVisible(previous, effective)) {

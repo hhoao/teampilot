@@ -60,6 +60,7 @@ class AppKeys {
     'agent-permission-open-terminal-button',
   );
   static const askUserQuestionCard = Key('ask-user-question-card');
+  static const exitPlanModeCard = Key('exit-plan-mode-card');
   static const askUserQuestionSubmitButton = Key(
     'ask-user-question-submit-button',
   );

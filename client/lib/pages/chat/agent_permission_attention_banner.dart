@@ -12,6 +12,7 @@ import '../../models/cli_preset.dart';
 import '../../models/team_config.dart';
 import '../../services/agent_status/agent_attention_state.dart';
 import '../../services/agent_status/ask_user_question_policy.dart';
+import '../../services/agent_status/exit_plan_mode.dart';
 import '../../services/cli/preset_resolver.dart';
 import '../../services/cli/registry/capabilities/ask_user_question_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
@@ -19,6 +20,7 @@ import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../services/terminal/session_member_cli_resolver.dart';
 import '../../utils/ui/app_keys.dart';
 import 'ask_user_question_card.dart';
+import 'exit_plan_mode_card.dart';
 
 /// Compact card shown just above Chat compose when the seat needs Terminal
 /// confirmation. Does not auto-switch; CTA jumps to Terminal.
@@ -133,6 +135,23 @@ class AgentPermissionAttentionBanner extends StatelessWidget {
         supportsMultiSelectInChat:
             capability?.supportsMultiSelectInChat ?? false,
         onAnswerInTerminal: () => _openTerminal(
+          context,
+          sessionId: sessionId,
+          seatId: seatId,
+          selectedMemberId: selectedMemberId,
+        ),
+      );
+    }
+
+    final lastEvent = entry.lastEvent;
+    final planText = lastEvent?.planText?.trim() ?? '';
+    final planFilePath = lastEvent?.planFilePath?.trim() ?? '';
+    if (isExitPlanModeTool(lastEvent?.toolName) &&
+        (planText.isNotEmpty || planFilePath.isNotEmpty)) {
+      return ExitPlanModeCard(
+        planText: planText,
+        planFilePath: planFilePath.isEmpty ? null : planFilePath,
+        onOpenTerminal: () => _openTerminal(
           context,
           sessionId: sessionId,
           seatId: seatId,

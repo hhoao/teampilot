@@ -75,6 +75,57 @@ void main() {
       expect(c.state.sessionHasWaiting('s1'), isTrue);
     });
 
+    test('skipPermissions keeps ExitPlanMode waiting (plan approval needed)',
+        () {
+      final c = _cubit();
+      c.applyEvent(
+        sessionId: 's1',
+        memberId: 'm1',
+        event: const AgentStatusEvent(
+          state: AgentSeatAttention.waiting,
+          hookEventName: 'PermissionRequest',
+          toolName: 'ExitPlanMode',
+        ),
+        skipPermissions: true,
+      );
+      expect(
+        c.state.attentionFor(sessionId: 's1', memberId: 'm1'),
+        AgentSeatAttention.waiting,
+      );
+      expect(c.state.sessionHasWaiting('s1'), isTrue);
+    });
+
+    test('PermissionRequest keeps ExitPlanMode plan payload from PreToolUse',
+        () {
+      final c = _cubit();
+      c.applyEvent(
+        sessionId: 's1',
+        memberId: 'm1',
+        event: const AgentStatusEvent(
+          state: AgentSeatAttention.waiting,
+          hookEventName: 'PreToolUse',
+          toolName: 'ExitPlanMode',
+          planText: 'Refactor the launcher.',
+          planFilePath: '/tmp/plan.md',
+        ),
+        skipPermissions: true,
+      );
+      c.applyEvent(
+        sessionId: 's1',
+        memberId: 'm1',
+        event: const AgentStatusEvent(
+          state: AgentSeatAttention.waiting,
+          hookEventName: 'PermissionRequest',
+          toolName: 'ExitPlanMode',
+        ),
+        skipPermissions: true,
+      );
+      final entry = c.state.entryFor(sessionId: 's1', memberId: 'm1');
+      expect(entry?.attention, AgentSeatAttention.waiting);
+      expect(entry?.lastEvent?.planText, 'Refactor the launcher.');
+      expect(entry?.lastEvent?.planFilePath, '/tmp/plan.md');
+    });
+
     test('skipPermissions keeps opencode question.asked waiting', () {
       final c = _cubit();
       c.applyEvent(

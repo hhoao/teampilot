@@ -24,6 +24,37 @@ void main() {
       expect(e?.state, AgentSeatAttention.waiting);
     });
 
+    test('Claude ExitPlanMode PreToolUse → waiting', () {
+      final e = AgentStatusNormalizer.normalize(
+        cli: CliTool.claude,
+        body: {
+          'hook_event_name': 'PreToolUse',
+          'tool_name': 'ExitPlanMode',
+          'tool_use_id': 'toolu-plan-1',
+          'tool_input': {
+            'plan': '1. Refactor the launcher.\n2. Add tests.',
+            'planFilePath': '/tmp/plan.md',
+          },
+        },
+      );
+      expect(e?.state, AgentSeatAttention.waiting);
+      expect(e?.toolName, 'ExitPlanMode');
+      expect(e?.toolUseId, 'toolu-plan-1');
+      expect(e?.planText, '1. Refactor the launcher.\n2. Add tests.');
+      expect(e?.planFilePath, '/tmp/plan.md');
+    });
+
+    test('exit_plan_mode PreToolUse → waiting (casing variants)', () {
+      final e = AgentStatusNormalizer.normalize(
+        cli: CliTool.claude,
+        body: {
+          'hook_event_name': 'PreToolUse',
+          'tool_name': 'exit_plan_mode',
+        },
+      );
+      expect(e?.state, AgentSeatAttention.waiting);
+    });
+
     test('Claude Stop → done', () {
       final e = AgentStatusNormalizer.normalize(
         cli: CliTool.claude,

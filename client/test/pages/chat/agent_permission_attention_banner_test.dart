@@ -167,6 +167,57 @@ void main() {
     expect(find.byKey(AppKeys.agentPermissionAttentionBanner), findsNothing);
   });
 
+  testWidgets('ExitPlanMode shows plan card and opens Terminal', (
+    tester,
+  ) async {
+    final session = _simpleSession();
+    final chat = _RecordingChatCubit();
+    addTearDown(chat.close);
+    chat.tabStore.setActiveWorkspace(session.workspaceId);
+    chat.tabStore.append(
+      ChatTab(
+        info: ChatTabInfo(
+          id: session.sessionId,
+          title: 'Chat',
+          subtitle: 'simple',
+        ),
+        cliTeamName: '',
+        workbenchView: SessionWorkbenchView.chat,
+      ),
+    );
+
+    final attention = AgentAttentionCubit(pruneInterval: null);
+    addTearDown(attention.close);
+    attention.applyEvent(
+      sessionId: session.sessionId,
+      memberId: session.sessionId,
+      event: const AgentStatusEvent(
+        state: AgentSeatAttention.waiting,
+        hookEventName: 'PreToolUse',
+        toolName: 'ExitPlanMode',
+        planText: '1. Refactor the launcher.\n2. Add tests.',
+        planFilePath: '/tmp/plan.md',
+      ),
+      skipPermissions: true,
+    );
+
+    await tester.pumpWidget(
+      _harness(chat: chat, attention: attention, session: session),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(AppKeys.exitPlanModeCard), findsOneWidget);
+    expect(find.textContaining('Refactor the launcher'), findsOneWidget);
+    expect(find.text('/tmp/plan.md'), findsOneWidget);
+
+    await tester.tap(find.byKey(AppKeys.agentPermissionOpenTerminalButton));
+    await tester.pumpAndSettle();
+
+    expect(chat.workbenchViews, [
+      (session.sessionId, SessionWorkbenchView.terminal),
+    ]);
+  });
+
   testWidgets('banner hidden when workbench is Terminal', (tester) async {
     final session = _simpleSession();
     final chat = _RecordingChatCubit();

@@ -3,6 +3,7 @@ import 'agent_attention_state.dart';
 import 'agent_status_event.dart';
 import 'agent_status_tool_input.dart';
 import 'ask_user_question.dart';
+import 'exit_plan_mode.dart';
 
 /// Maps raw CLI hook / plugin JSON to a normalized [AgentStatusEvent].
 ///
@@ -10,7 +11,7 @@ import 'ask_user_question.dart';
 /// (Cursor uses the title path only).
 ///
 /// Claude-family rules mirror Orca `normalizeClaudeEvent`:
-/// - AskUserQuestion PreToolUse / PermissionRequest → waiting
+/// - AskUserQuestion / ExitPlanMode PreToolUse / PermissionRequest → waiting
 /// - non-AskUserQuestion PreToolUse / PostToolUse / PostToolUseFailure /
 ///   UserPromptSubmit → working
 /// - Stop / StopFailure → done
@@ -70,16 +71,21 @@ class AgentStatusNormalizer {
 
     final toolName = _readString(body, const ['tool_name', 'toolName']);
     final askUser = isAskUserQuestionTool(toolName);
+    final exitPlan = isExitPlanModeTool(toolName);
     final rawToolInput = body['tool_input'] ?? body['input'] ?? body['arguments'];
     final toolInput = deriveToolInputPreview(toolName, rawToolInput);
     final toolUseId = _readString(body, const ['tool_use_id', 'toolUseId']);
     final toolAgentId = _readString(body, const ['agent_id', 'agentId']);
     final toolAgentType = _readString(body, const ['agent_type', 'agentType']);
 
-    // Only the AskUserQuestion PreToolUse event carries the structured payload
-    // the chat needs to render and answer the question.
+    // AskUserQuestion / ExitPlanMode carry structured payloads the chat needs
+    // to render (and optionally answer / confirm).
     final askUserQuestions =
         askUser ? parseAskUserQuestions(rawToolInput) : null;
+    final planText = exitPlan ? parseExitPlanModeText(rawToolInput) : null;
+    final planFilePath = exitPlan
+        ? parseExitPlanModeFilePath(rawToolInput)
+        : null;
 
     // AskUserQuestion PreToolUse: askRequestId mirrors tool_use_id so answer
     // correlation works the same as OpenCode request_id.
@@ -97,11 +103,15 @@ class AgentStatusNormalizer {
           hasExplicitPrompt: explicit,
           askUserQuestions: askUserQuestions,
           askRequestId: askRequestId,
+          planText: planText,
+          planFilePath: planFilePath,
         );
 
     return switch (eventName) {
       'PermissionRequest' => build(AgentSeatAttention.waiting),
-      'PreToolUse' when askUser => build(AgentSeatAttention.waiting),
+      'PreToolUse' when askUser || exitPlan => build(
+        AgentSeatAttention.waiting,
+      ),
       'PreToolUse' || 'PostToolUse' || 'PostToolUseFailure' => build(
         AgentSeatAttention.working,
       ),

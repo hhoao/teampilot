@@ -17,6 +17,8 @@ class AgentStatusEvent {
     this.nativeSessionId,
     this.message,
     this.restoreAskWaiting = false,
+    this.planText,
+    this.planFilePath,
   });
 
   final AgentSeatAttention state;
@@ -58,6 +60,12 @@ class AgentStatusEvent {
   /// present — cubit should restore the waiting ask card (Task 4).
   final bool restoreAskWaiting;
 
+  /// Claude `ExitPlanMode` plan text for the chat approval card.
+  final String? planText;
+
+  /// Claude `ExitPlanMode` plan file path (when the CLI persisted it).
+  final String? planFilePath;
+
   AgentStatusEvent copyWith({
     AgentSeatAttention? state,
     String? toolName,
@@ -72,6 +80,8 @@ class AgentStatusEvent {
     String? nativeSessionId,
     String? message,
     bool? restoreAskWaiting,
+    String? planText,
+    String? planFilePath,
   }) => AgentStatusEvent(
     state: state ?? this.state,
     toolName: toolName ?? this.toolName,
@@ -86,6 +96,8 @@ class AgentStatusEvent {
     nativeSessionId: nativeSessionId ?? this.nativeSessionId,
     message: message ?? this.message,
     restoreAskWaiting: restoreAskWaiting ?? this.restoreAskWaiting,
+    planText: planText ?? this.planText,
+    planFilePath: planFilePath ?? this.planFilePath,
   );
 
   @override
@@ -104,7 +116,9 @@ class AgentStatusEvent {
           askRequestId == other.askRequestId &&
           nativeSessionId == other.nativeSessionId &&
           message == other.message &&
-          restoreAskWaiting == other.restoreAskWaiting;
+          restoreAskWaiting == other.restoreAskWaiting &&
+          planText == other.planText &&
+          planFilePath == other.planFilePath;
 
   @override
   int get hashCode => Object.hash(
@@ -121,6 +135,8 @@ class AgentStatusEvent {
     nativeSessionId,
     message,
     restoreAskWaiting,
+    planText,
+    planFilePath,
   );
 }
 
