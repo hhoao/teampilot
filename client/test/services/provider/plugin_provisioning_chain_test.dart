@@ -209,6 +209,85 @@ void main() {
     expect((settings['enabledPlugins'] as Map), contains('demo@local'));
   });
 
+  test('workspace plugin registers for a flashskyai session too', () async {
+    final root = AppStorage.paths.basePath;
+    final fs = AppStorage.fs;
+    final layout = RuntimeLayout(teampilotRoot: root, fs: fs);
+    const workspaceId = 'ws-fs';
+    const sessionId = 'sess-fs';
+
+    await _installPlugin(root, 'acme/demo', 'demo', 'demo-bundle');
+
+    await ConfigProfileService(
+      basePath: root,
+      fs: fs,
+      layout: layout,
+    ).prepareSimpleSessionLaunch(
+      workspaceId: workspaceId,
+      sessionId: sessionId,
+      runtimeBundle: const ConfigBundle(pluginIds: ['acme/demo']),
+      member: const TeamMemberConfig(
+        id: 'solo',
+        name: 'solo',
+        cli: CliTool.flashskyai,
+      ),
+      workingDirectory: '/workspace/simple',
+    );
+
+    final fsDir = layout.sessionRuntimeToolDir(
+      workspaceId,
+      sessionId,
+      'flashskyai',
+    );
+    final pluginsDir = p.join(fsDir, 'plugins');
+    expect(
+      Directory(p.join(pluginsDir, 'demo-bundle')).existsSync(),
+      isTrue,
+      reason: 'the workspace plugin must materialize for flashskyai too',
+    );
+    final installed = jsonDecode(
+      File(p.join(pluginsDir, 'installed_plugins.json')).readAsStringSync(),
+    ) as Map;
+    expect((installed['plugins'] as Map).keys, contains('demo@local'));
+  });
+
+  test('workspace plugin lands in an opencode session pool (decompose CLI)',
+      () async {
+    final root = AppStorage.paths.basePath;
+    final fs = AppStorage.fs;
+    final layout = RuntimeLayout(teampilotRoot: root, fs: fs);
+    const workspaceId = 'ws-op';
+    const sessionId = 'sess-op';
+
+    await _installPlugin(root, 'acme/demo', 'demo', 'demo-bundle');
+
+    await ConfigProfileService(
+      basePath: root,
+      fs: fs,
+      layout: layout,
+    ).prepareSimpleSessionLaunch(
+      workspaceId: workspaceId,
+      sessionId: sessionId,
+      runtimeBundle: const ConfigBundle(pluginIds: ['acme/demo']),
+      member: const TeamMemberConfig(
+        id: 'solo',
+        name: 'solo',
+        cli: CliTool.opencode,
+      ),
+      workingDirectory: '/workspace/simple',
+    );
+
+    final pluginsDir = p.join(
+      layout.sessionRuntimeToolDir(workspaceId, sessionId, 'opencode'),
+      'plugins',
+    );
+    expect(
+      Directory(p.join(pluginsDir, 'demo-bundle')).existsSync(),
+      isTrue,
+      reason: 'opencode decomposes from the same populated pool',
+    );
+  });
+
   test('re-launching without the plugin clears it from the session pool',
       () async {
     final root = AppStorage.paths.basePath;
