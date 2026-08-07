@@ -494,6 +494,15 @@ class _CapturingHost implements SessionLaunchHost {
   void setPodView(String sessionId, SessionWorkbenchView view) {}
 
   @override
+  bool isSessionConnecting(String sessionId) => false;
+
+  @override
+  bool get hasConnectingSession => false;
+
+  @override
+  void setMaterializingInFlight(bool value) {}
+
+  @override
   dynamic noSuchMethod(Invocation invocation) {
     if (invocation.isGetter) return null;
     if (invocation.isSetter) return null;

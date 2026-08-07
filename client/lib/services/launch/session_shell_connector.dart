@@ -96,7 +96,7 @@ class SessionShellConnector {
     if (remoteMemberKey != null) {
       unawaited(tab.closeMemberRemotePlane(remoteMemberKey));
     }
-    if (_host.state.sessionConnectingId == tab.info.id) {
+    if (_host.isSessionConnecting(tab.info.id)) {
       _host.finishSessionConnect(tab.info.id);
     }
   }

@@ -86,7 +86,7 @@ class SessionTabSurfaceCoordinator {
     }
     final state = _state();
     final connectAlreadyScheduled =
-        state.sessionConnectingId == session.sessionId;
+        _host.isSessionConnecting(session.sessionId);
     if (!connectAlreadyScheduled) {
       existing.bumpLaunchGeneration();
     }
