@@ -936,52 +936,39 @@ class _OptionRow extends StatelessWidget {
         ? descriptionStyle
         : descriptionStyle.copyWith(color: accent.withValues(alpha: 0.85));
 
-    return Material(
-      color: bg ?? Colors.transparent,
+    return TpHover(
+      backgroundColor: bg ?? Colors.transparent,
       borderRadius: BorderRadius.circular(radius),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(radius),
-        // Keep focus on the card Focus node — otherwise the freeform TextField
-        // can steal focus and wipe the authored selection via custom select.
-        canRequestFocus: false,
-        onTap: enabled ? onTap : null,
-        mouseCursor: enabled
-            ? SystemMouseCursors.click
-            : SystemMouseCursors.basic,
-        splashFactory: NoSplash.splashFactory,
-        splashColor: Colors.transparent,
-        highlightColor: Colors.transparent,
-        hoverColor: cs.primary.withValues(alpha: 0.08),
-        overlayColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.hovered) && !selected) {
-            return cs.primary.withValues(alpha: 0.08);
-          }
-          return Colors.transparent;
-        }),
-        child: Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: spacing.md,
-            vertical: spacing.md,
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              SizedBox(
-                width: indexWidth + spacing.md,
-                child: Text(indexLabel, style: effectiveIndex),
-              ),
-              SizedBox(
-                width: labelWidth + spacing.lg,
-                child: Text(option.label, style: effectiveLabel),
-              ),
-              Expanded(
-                child: option.description == null
-                    ? const SizedBox.shrink()
-                    : Text(option.description!, style: effectiveDesc),
-              ),
-            ],
-          ),
+      // Keep focus on the card Focus node — otherwise the freeform TextField
+      // can steal focus and wipe the authored selection via custom select.
+      canRequestFocus: false,
+      splashColor: Colors.transparent,
+      hoverColor: cs.primary.withValues(alpha: 0.08),
+      enabled: enabled,
+      onTap: enabled ? onTap : null,
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: spacing.md,
+          vertical: spacing.md,
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            SizedBox(
+              width: indexWidth + spacing.md,
+              child: Text(indexLabel, style: effectiveIndex),
+            ),
+            SizedBox(
+              width: labelWidth + spacing.lg,
+              child: Text(option.label, style: effectiveLabel),
+            ),
+            Expanded(
+              child: option.description == null
+                  ? const SizedBox.shrink()
+                  : Text(option.description!, style: effectiveDesc),
+            ),
+          ],
         ),
       ),
     );

@@ -409,8 +409,8 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
             elevation: 2,
             shadowColor: Colors.black.withValues(alpha: 0.12),
             shape: const StadiumBorder(),
-            child: InkWell(
-              customBorder: const StadiumBorder(),
+            child: TpHover(
+              shape: TpPressableShape.stadium,
               onTap: _resumeStickToTip,
               child: Padding(
                 padding: const EdgeInsets.symmetric(

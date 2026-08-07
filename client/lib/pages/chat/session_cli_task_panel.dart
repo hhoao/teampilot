@@ -75,7 +75,8 @@ class _SessionCliTaskPanelState extends State<SessionCliTaskPanel> {
       elevation: 3,
       shadowColor: scheme.shadow,
       borderRadius: BorderRadius.circular(999),
-      child: InkWell(
+      child: TpHover(
+        shape: TpPressableShape.stadium,
         borderRadius: BorderRadius.circular(999),
         onTap: () => setState(() {
           _expanded = true;
@@ -151,7 +152,7 @@ class _SessionCliTaskPanelState extends State<SessionCliTaskPanel> {
                     ),
                   ),
                   const SizedBox(width: 4),
-                  InkWell(
+                  TpHover(
                     onTap: () => setState(() {
                       _expanded = false;
                       _showAll = false;
@@ -187,7 +188,7 @@ class _SessionCliTaskPanelState extends State<SessionCliTaskPanel> {
               if (hasMore)
                 Padding(
                   padding: const EdgeInsets.only(top: 6),
-                  child: InkWell(
+                  child: TpHover(
                     onTap: () => setState(() => _showAll = !_showAll),
                     borderRadius: BorderRadius.circular(4),
                     child: Padding(
