@@ -346,6 +346,39 @@ class AppLocalizationsEn extends AppLocalizations {
       'When you open a thinking-process block, expand nested tool call details automatically.';
 
   @override
+  String get contentDisplayModeSectionTitle => 'Content display';
+
+  @override
+  String get chatUserMessageModeTitle => 'User messages';
+
+  @override
+  String get chatUserMessageModeDescription =>
+      'How oversized user messages render in chat.';
+
+  @override
+  String get chatCodeBlockModeTitle => 'Code blocks in chat';
+
+  @override
+  String get chatCodeBlockModeDescription =>
+      'How oversized code blocks render in chat.';
+
+  @override
+  String get fileCodeBlockModeTitle => 'Code blocks in file preview';
+
+  @override
+  String get fileCodeBlockModeDescription =>
+      'How oversized code blocks render in the markdown file preview.';
+
+  @override
+  String get contentDisplayModeFoldFixedHeight => 'Fold · fixed height';
+
+  @override
+  String get contentDisplayModeFoldExpandFull => 'Fold · expand full';
+
+  @override
+  String get contentDisplayModeFlatten => 'Flatten (natural height)';
+
+  @override
   String get markdownViewToggleSource => 'Source';
 
   @override

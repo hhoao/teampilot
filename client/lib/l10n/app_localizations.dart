@@ -710,6 +710,66 @@ abstract class AppLocalizations {
   /// **'When you open a thinking-process block, expand nested tool call details automatically.'**
   String get cotExpandToolsOnOpenDescription;
 
+  /// No description provided for @contentDisplayModeSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Content display'**
+  String get contentDisplayModeSectionTitle;
+
+  /// No description provided for @chatUserMessageModeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'User messages'**
+  String get chatUserMessageModeTitle;
+
+  /// No description provided for @chatUserMessageModeDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'How oversized user messages render in chat.'**
+  String get chatUserMessageModeDescription;
+
+  /// No description provided for @chatCodeBlockModeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Code blocks in chat'**
+  String get chatCodeBlockModeTitle;
+
+  /// No description provided for @chatCodeBlockModeDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'How oversized code blocks render in chat.'**
+  String get chatCodeBlockModeDescription;
+
+  /// No description provided for @fileCodeBlockModeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Code blocks in file preview'**
+  String get fileCodeBlockModeTitle;
+
+  /// No description provided for @fileCodeBlockModeDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'How oversized code blocks render in the markdown file preview.'**
+  String get fileCodeBlockModeDescription;
+
+  /// No description provided for @contentDisplayModeFoldFixedHeight.
+  ///
+  /// In en, this message translates to:
+  /// **'Fold · fixed height'**
+  String get contentDisplayModeFoldFixedHeight;
+
+  /// No description provided for @contentDisplayModeFoldExpandFull.
+  ///
+  /// In en, this message translates to:
+  /// **'Fold · expand full'**
+  String get contentDisplayModeFoldExpandFull;
+
+  /// No description provided for @contentDisplayModeFlatten.
+  ///
+  /// In en, this message translates to:
+  /// **'Flatten (natural height)'**
+  String get contentDisplayModeFlatten;
+
   /// No description provided for @markdownViewToggleSource.
   ///
   /// In en, this message translates to:

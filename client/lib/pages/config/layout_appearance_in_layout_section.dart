@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
+import 'package:tp_markdown/tp_markdown.dart' show ContentDisplayMode;
 
 import '../../cubits/layout_cubit.dart';
 import '../../cubits/floating_workspace/floating_workspace_cubit.dart';
@@ -256,6 +257,88 @@ class LayoutAppearanceInLayoutSection extends StatelessWidget {
                       (c) => c.state.preferences.cotExpandToolsOnOpen,
                     ),
                     onChanged: controller.setCotExpandToolsOnOpen,
+                  ),
+                  showDividerBelow: true,
+                ),
+                TpSectionHeader(title: l10n.contentDisplayModeSectionTitle),
+                TpPreferenceRow(
+                  title: l10n.chatUserMessageModeTitle,
+                  subtitle: l10n.chatUserMessageModeDescription,
+                  trailing: TpCompactSelect<ContentDisplayMode>(
+                    value: context.select<LayoutCubit, ContentDisplayMode>(
+                      (c) => c.state.preferences.chatUserMessageMode,
+                    ),
+                    entries: [
+                      (
+                        ContentDisplayMode.foldFixedHeight,
+                        l10n.contentDisplayModeFoldFixedHeight,
+                      ),
+                      (
+                        ContentDisplayMode.foldExpandFull,
+                        l10n.contentDisplayModeFoldExpandFull,
+                      ),
+                      (
+                        ContentDisplayMode.flatten,
+                        l10n.contentDisplayModeFlatten,
+                      ),
+                    ],
+                    onChanged: (v) {
+                      if (v != null) controller.setChatUserMessageMode(v);
+                    },
+                  ),
+                  showDividerBelow: true,
+                ),
+                TpPreferenceRow(
+                  title: l10n.chatCodeBlockModeTitle,
+                  subtitle: l10n.chatCodeBlockModeDescription,
+                  trailing: TpCompactSelect<ContentDisplayMode>(
+                    value: context.select<LayoutCubit, ContentDisplayMode>(
+                      (c) => c.state.preferences.chatCodeBlockMode,
+                    ),
+                    entries: [
+                      (
+                        ContentDisplayMode.foldFixedHeight,
+                        l10n.contentDisplayModeFoldFixedHeight,
+                      ),
+                      (
+                        ContentDisplayMode.foldExpandFull,
+                        l10n.contentDisplayModeFoldExpandFull,
+                      ),
+                      (
+                        ContentDisplayMode.flatten,
+                        l10n.contentDisplayModeFlatten,
+                      ),
+                    ],
+                    onChanged: (v) {
+                      if (v != null) controller.setChatCodeBlockMode(v);
+                    },
+                  ),
+                  showDividerBelow: true,
+                ),
+                TpPreferenceRow(
+                  title: l10n.fileCodeBlockModeTitle,
+                  subtitle: l10n.fileCodeBlockModeDescription,
+                  trailing: TpCompactSelect<ContentDisplayMode>(
+                    value: context.select<LayoutCubit, ContentDisplayMode>(
+                      (c) => c.state.preferences.fileCodeBlockMode,
+                    ),
+                    entries: [
+                      (
+                        ContentDisplayMode.foldFixedHeight,
+                        l10n.contentDisplayModeFoldFixedHeight,
+                      ),
+                      (
+                        ContentDisplayMode.foldExpandFull,
+                        l10n.contentDisplayModeFoldExpandFull,
+                      ),
+                      (
+                        ContentDisplayMode.flatten,
+                        l10n.contentDisplayModeFlatten,
+                      ),
+                    ],
+                    onChanged: (v) {
+                      if (v != null) controller.setFileCodeBlockMode(v);
+                    },
                   ),
                   showDividerBelow: true,
                 ),

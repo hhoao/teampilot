@@ -328,6 +328,36 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cotExpandToolsOnOpenDescription => '展开「思考过程」时，自动展开内部工具调用详情。';
 
   @override
+  String get contentDisplayModeSectionTitle => '内容显示';
+
+  @override
+  String get chatUserMessageModeTitle => '用户消息';
+
+  @override
+  String get chatUserMessageModeDescription => '聊天中超大用户消息的呈现方式。';
+
+  @override
+  String get chatCodeBlockModeTitle => '聊天·代码块';
+
+  @override
+  String get chatCodeBlockModeDescription => '聊天中超大代码块的呈现方式。';
+
+  @override
+  String get fileCodeBlockModeTitle => '文件预览·代码块';
+
+  @override
+  String get fileCodeBlockModeDescription => 'markdown 文件预览中超大代码块的呈现方式。';
+
+  @override
+  String get contentDisplayModeFoldFixedHeight => '折叠·固定高度';
+
+  @override
+  String get contentDisplayModeFoldExpandFull => '折叠·全部展开';
+
+  @override
+  String get contentDisplayModeFlatten => '铺平（自然高度）';
+
+  @override
   String get markdownViewToggleSource => '源码';
 
   @override
