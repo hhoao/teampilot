@@ -322,9 +322,10 @@ class _MarkdownCodeBlockState extends State<_MarkdownCodeBlock> {
 }
 
 /// Bottom fade strip + centered chevron overlay for a collapsed/expanded code
-/// block mask — matches Write/Edit's `AiFadeExpandBody` visual. The fade is
-/// purely visual (`IgnorePointer`); only the centered chevron is tappable.
-class _FadeChevronOverlay extends StatelessWidget {
+/// block mask — matches Write/Edit's `AiFadeExpandBody` visual, including the
+/// hover affordance: the whole strip shows a click cursor and brightens on
+/// hover (fade + icon), and is the tap target for expand/collapse.
+class _FadeChevronOverlay extends StatefulWidget {
   const _FadeChevronOverlay({
     required this.icon,
     required this.tooltip,
@@ -340,37 +341,54 @@ class _FadeChevronOverlay extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
+  State<_FadeChevronOverlay> createState() => _FadeChevronOverlayState();
+}
+
+class _FadeChevronOverlayState extends State<_FadeChevronOverlay> {
+  var _hovering = false;
+
+  @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 36,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Positioned.fill(
-            child: IgnorePointer(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [fadeColor.withValues(alpha: 0), fadeColor],
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+    final fadeEnd = _hovering
+        ? Color.alphaBlend(onSurface.withValues(alpha: 0.14), widget.fadeColor)
+        : widget.fadeColor;
+    final iconColor = _hovering
+        ? Color.alphaBlend(onSurface.withValues(alpha: 0.30), widget.color)
+        : widget.color;
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovering = true),
+      onExit: (_) => setState(() => _hovering = false),
+      child: Tooltip(
+        message: widget.tooltip,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: widget.onTap,
+          child: SizedBox(
+            height: 36,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [fadeEnd.withValues(alpha: 0), fadeEnd],
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-              ),
+                Icon(widget.icon, size: 20, color: iconColor),
+              ],
             ),
           ),
-          Tooltip(
-            message: tooltip,
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: onTap,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                child: Icon(icon, size: 20, color: color),
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

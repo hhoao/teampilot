@@ -196,7 +196,7 @@ void main() {
     expect(find.textContaining('line 399'), findsOneWidget);
   });
 
-  testWidgets('clicking faded preview text does not expand; chevron does', (
+  testWidgets('content above mask does not expand; the mask strip expands', (
     tester,
   ) async {
     final code = List.generate(400, (i) => 'line $i ${'x' * 40}').join('\n');
@@ -216,7 +216,6 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // Tap the faded text band (bottom strip, left of the centered chevron).
     final panel = find
         .ancestor(
           of: find.textContaining('line 0'),
@@ -224,17 +223,17 @@ void main() {
         )
         .first;
     final rect = tester.getRect(panel);
-    await tester.tapAt(Offset(rect.left + 20, rect.bottom - 18));
-    await tester.pumpAndSettle();
 
-    // Still collapsed — content clicks must not expand.
+    // Tapping the code CONTENT (above the fade strip) does not expand.
+    await tester.tapAt(Offset(rect.center.dx, rect.top + 10));
+    await tester.pumpAndSettle();
     expect(find.byIcon(Icons.keyboard_arrow_up_rounded), findsNothing);
     expect(find.textContaining('line 399'), findsNothing);
 
-    // The chevron icon itself still expands.
-    await tester.tap(find.byIcon(Icons.keyboard_arrow_down_rounded));
+    // Tapping the mask strip (bottom band) expands — the whole strip is the
+    // target, matching Write/Edit's AiFadeExpandBody.
+    await tester.tapAt(Offset(rect.center.dx, rect.bottom - 18));
     await tester.pumpAndSettle();
-    expect(find.byIcon(Icons.keyboard_arrow_up_rounded), findsOneWidget);
     expect(find.textContaining('line 399'), findsOneWidget);
   });
 }
