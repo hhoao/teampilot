@@ -34,11 +34,12 @@ class WorkspaceFileSearchResult {
   final bool truncated;
 }
 
-/// Tuning knobs for [searchWorkspaceFiles].
+/// Tuning knobs for [searchWorkspaceFiles] and [WorkspaceFileIndex].
 class WorkspaceFileSearchLimits {
   const WorkspaceFileSearchLimits({
     this.maxResults = 50,
     this.maxEntriesScanned = 20000,
+    this.maxIndexEntries = 200000,
   });
 
   /// Stop after collecting this many matches (sets `truncated`).
@@ -46,10 +47,17 @@ class WorkspaceFileSearchLimits {
 
   /// Hard ceiling on entries visited so a huge tree can't hang the search.
   final int maxEntriesScanned;
+
+  /// Ceiling on entries (files + directories) a [WorkspaceFileIndex] build
+  /// visits. Indexed results need the whole tree for ranking, so this is much
+  /// larger than [maxEntriesScanned] to bound memory rather than time.
+  final int maxIndexEntries;
 }
 
-/// Directory names skipped wholesale during traversal.
-const _ignoredDirNames = {
+/// Directory names skipped wholesale during traversal. Public so
+/// [WorkspaceFileIndex] applies the exact same skip rules as
+/// [searchWorkspaceFiles].
+const workspaceFileIgnoredDirNames = {
   '.git',
   '.hg',
   '.svn',
@@ -96,7 +104,7 @@ Future<WorkspaceFileSearchResult> searchWorkspaceFiles({
       if (entry.name.startsWith('.')) continue;
       final full = ctx.join(dir, entry.name);
       if (entry.isDirectory) {
-        if (_ignoredDirNames.contains(entry.name)) continue;
+        if (workspaceFileIgnoredDirNames.contains(entry.name)) continue;
         queue.add(full);
         continue;
       }
