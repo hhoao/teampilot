@@ -1293,6 +1293,33 @@ class AppLocalizationsEn extends AppLocalizations {
   String get agentPermissionOpenTerminal => 'Open Terminal';
 
   @override
+  String get exitPlanModeTitle => 'Plan ready for approval';
+
+  @override
+  String get exitPlanModeApprove => 'Approve';
+
+  @override
+  String get exitPlanModeReject => 'Reject';
+
+  @override
+  String get exitPlanModeCopyPlan => 'Copy plan';
+
+  @override
+  String get exitPlanModeExpand => 'Expand';
+
+  @override
+  String get exitPlanModeCollapse => 'Collapse';
+
+  @override
+  String get exitPlanModeOpenPlanFile => 'Open plan file';
+
+  @override
+  String get exitPlanModeApproveFailed => 'Couldn\'t approve the plan';
+
+  @override
+  String get exitPlanModeRejectFailed => 'Couldn\'t reject the plan';
+
+  @override
   String get agentAskUserQuestionTitle => 'Agent is asking you a question';
 
   @override

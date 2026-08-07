@@ -1228,6 +1228,33 @@ class AppLocalizationsZh extends AppLocalizations {
   String get agentPermissionOpenTerminal => '打开终端';
 
   @override
+  String get exitPlanModeTitle => '计划已就绪，等待批准';
+
+  @override
+  String get exitPlanModeApprove => '批准';
+
+  @override
+  String get exitPlanModeReject => '拒绝';
+
+  @override
+  String get exitPlanModeCopyPlan => '复制计划';
+
+  @override
+  String get exitPlanModeExpand => '展开';
+
+  @override
+  String get exitPlanModeCollapse => '收起';
+
+  @override
+  String get exitPlanModeOpenPlanFile => '打开计划文件';
+
+  @override
+  String get exitPlanModeApproveFailed => '批准计划失败';
+
+  @override
+  String get exitPlanModeRejectFailed => '拒绝计划失败';
+
+  @override
   String get agentAskUserQuestionTitle => '正在向你提问';
 
   @override
