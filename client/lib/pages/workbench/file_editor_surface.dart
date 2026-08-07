@@ -11,6 +11,7 @@ import 'package:tp_markdown/tp_markdown.dart';
 
 import '../../cubits/chat_cubit.dart';
 import '../../cubits/editor_cubit.dart';
+import '../../cubits/layout_cubit.dart';
 import '../../cubits/workbench/workbench_cubit.dart';
 import '../../cubits/workbench/workbench_tab.dart';
 import '../../l10n/l10n_extensions.dart';
@@ -602,6 +603,9 @@ class _MarkdownPreviewPaneState extends State<_MarkdownPreviewPane> {
     final theme = Theme.of(context);
     final shell = _fileEditorShellColor(theme.colorScheme);
     final opener = context.read<WorkbenchEditorOpener>();
+    final fileCodeBlockMode = context.select<LayoutCubit, ContentDisplayMode>(
+      (c) => c.state.preferences.fileCodeBlockMode,
+    );
     // Floating file preview is a Stack sibling of WorkspaceToolsScope — resolve
     // roots via inherited scope, registry peek, then workspace folderPaths.
     final roots = markdownPreviewWorkspaceRoots(
@@ -643,15 +647,21 @@ class _MarkdownPreviewPaneState extends State<_MarkdownPreviewPane> {
             padding: insets.markdownPadding,
             child: AiLineSpacedSelectionStyle(
               child: SelectionArea(
-                child: MarkdownView(
-                  document: compileMarkdown(_data),
-                  tokens: buildAppMarkdownTokens(
-                    theme,
-                    MarkdownProfile.document,
-                    // v1: window width, not preview pane width.
-                    width: MediaQuery.sizeOf(context).width,
+                child: MarkdownDisplayModeScope(
+                  codeBlockMode: fileCodeBlockMode,
+                  child: VirtualMarkdownView(
+                    document: compileMarkdown(_data),
+                    tokens: buildAppMarkdownTokens(
+                      theme,
+                      MarkdownProfile.document,
+                      // v1: window width, not preview pane width.
+                      width: MediaQuery.sizeOf(context).width,
+                    ),
+                    resolvers: resolvers,
+                    // Natural-height block virtualization: a large .md file
+                    // previews without freezing (only visible blocks laid out).
+                    flatten: true,
                   ),
-                  resolvers: resolvers,
                 ),
               ),
             ),
