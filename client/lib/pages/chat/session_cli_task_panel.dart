@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../services/cli/tasks/cli_task_board.dart';
-import '../../widgets/session_working_spinner.dart';
 
 /// Floating task-board card pinned to the top-right of the chat message area.
 ///
@@ -177,13 +176,19 @@ class _TaskRow extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final subject = task.subject.trim().isEmpty ? '…' : task.subject;
     final done = task.status == CliTaskStatus.completed;
+    final textStyle = TpTextStyles.of(context).smColored(scheme.onSurface);
+    // Center the 16px icon on the FIRST text line (not the whole 1–2 line
+    // block) by nudging it into the first line box.
+    const iconSize = 16.0;
+    final lineHeight = (textStyle.fontSize ?? 12) * (textStyle.height ?? 1.0);
+    final iconTop = ((lineHeight - iconSize) / 2).clamp(0.0, double.infinity);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.only(top: 1),
+            padding: EdgeInsets.only(top: iconTop),
             child: _TaskStatusIcon(
               status: task.status,
               color: scheme.onSurfaceVariant,
@@ -195,12 +200,10 @@ class _TaskRow extends StatelessWidget {
               subject,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: TpTextStyles.of(context)
-                  .smColored(scheme.onSurface)
-                  .copyWith(
-                    decoration: done ? TextDecoration.lineThrough : null,
-                    decorationColor: scheme.onSurfaceVariant,
-                  ),
+              style: textStyle.copyWith(
+                decoration: done ? TextDecoration.lineThrough : null,
+                decorationColor: scheme.onSurfaceVariant,
+              ),
             ),
           ),
         ],
@@ -223,7 +226,8 @@ class _TaskStatusIcon extends StatelessWidget {
         size: 16,
         color: color,
       ),
-      CliTaskStatus.inProgress => SessionWorkingSpinner(
+      CliTaskStatus.inProgress => Icon(
+        Icons.arrow_forward,
         size: 16,
         color: color,
       ),

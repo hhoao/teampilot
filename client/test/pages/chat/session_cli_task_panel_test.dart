@@ -4,7 +4,6 @@ import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/pages/chat/session_cli_task_panel.dart';
 import 'package:teampilot/services/cli/tasks/cli_task_board.dart';
 import 'package:teampilot/theme/app_typography_scale.dart';
-import 'package:teampilot/widgets/session_working_spinner.dart';
 
 Widget _host(Widget child) {
   final theme = ThemeData(useMaterial3: true);
@@ -136,12 +135,43 @@ void main() {
     // Collapsed pill shows the in-progress task; tap it to expand.
     await tester.tap(find.text('T1: active'));
     await tester.pump();
-    // in progress → Session working indicator, pending → hollow circle, done → check.
-    expect(find.byType(SessionWorkingSpinner), findsOneWidget);
+    // in progress → arrow, pending → hollow circle, done → check.
+    expect(find.byIcon(Icons.arrow_forward), findsOneWidget);
     expect(find.byIcon(Icons.radio_button_unchecked), findsOneWidget);
     expect(find.byIcon(Icons.check_circle_outline), findsOneWidget);
     // A material loading spinner must never represent an in-progress task.
     expect(find.byType(CircularProgressIndicator), findsNothing);
+  });
+
+  testWidgets('in-progress icon vertically centers on the first text line',
+      (tester) async {
+    const subject =
+        'T1: a very long subject line that is going to wrap across two full '
+        'lines inside the narrow task card';
+    await tester.pumpWidget(
+      _host(
+        SessionCliTaskPanel(
+          board: _board([_task(subject, CliTaskStatus.inProgress)]),
+          title: 'Tasks',
+          countText: '0/1',
+          moreLabel: (n) => '… +$n more',
+        ),
+      ),
+    );
+    // Collapsed pill shows the in-progress subject; tap to expand the card.
+    await tester.tap(find.textContaining(subject));
+    await tester.pump();
+    expect(find.byIcon(Icons.arrow_forward), findsOneWidget);
+    final iconCenter = tester.getCenter(find.byIcon(Icons.arrow_forward));
+    final textRect = tester.getRect(find.text(subject));
+    // The subject wraps to two lines; the 16px icon must center on the FIRST
+    // line box, not the middle of the two-line block.
+    final textStyle = tester.widget<Text>(find.text(subject)).style!;
+    final lineHeight =
+        (textStyle.fontSize ?? 12) * (textStyle.height ?? 1.0);
+    final firstLineCenter = textRect.top + lineHeight / 2;
+    expect((iconCenter.dy - firstLineCenter).abs(), lessThan(0.5));
+    expect(iconCenter.dy, lessThan(textRect.center.dy));
   });
 
   testWidgets('overflow shows +N more label', (tester) async {
