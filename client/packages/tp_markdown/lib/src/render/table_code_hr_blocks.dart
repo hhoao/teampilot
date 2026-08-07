@@ -138,11 +138,13 @@ class _MarkdownCodeBlock extends StatefulWidget {
 }
 
 class _MarkdownCodeBlockState extends State<_MarkdownCodeBlock> {
-  /// Code blocks longer than this collapse behind a fade + chevron mask
-  /// (Claude Code-style per-block "show more").
+  /// Code blocks longer than this collapse behind a "first N lines + chevron"
+  /// mask (Claude Code-style per-block "show more").
   static const int _kCollapseChars = 6000;
-  static const int _kPreviewChars = 4000;
-  static const double _kCollapsedMaxHeight = 260;
+  /// Collapsed preview shows only this many lines; the rest is hidden entirely
+  /// (no clipped overflow text in the tree — this is what caused the vertical
+  /// "text spills off screen" in the file preview's flatten view).
+  static const int _kCollapsedLines = 6;
   static const double _kExpandedMaxHeight = 420;
 
   bool _copied = false;
@@ -217,7 +219,7 @@ class _MarkdownCodeBlockState extends State<_MarkdownCodeBlock> {
                   BorderRadius.vertical(bottom: Radius.circular(radius)),
               border: Border.all(color: borderColor),
             ),
-            child: _codeText(widget.code),
+            child: _codeBody(widget.code),
           )
         else
           _buildMaskedBody(
@@ -232,8 +234,9 @@ class _MarkdownCodeBlockState extends State<_MarkdownCodeBlock> {
     );
   }
 
-  /// Oversized code: bounded preview clipped with a bottom fade + chevron
-  /// (per-block "show more"). Expanded renders in a fixed-height scroll shell
+  /// Oversized code: collapsed shows the first [_kCollapsedLines] lines (the
+  /// rest is hidden entirely, no clipped overflow text), with a centered
+  /// chevron below. Expanded renders in a fixed-height scroll shell
   /// ([expandFull] false) or at full natural height ([expandFull] true).
   Widget _buildMaskedBody(
     BuildContext context,
@@ -243,28 +246,23 @@ class _MarkdownCodeBlockState extends State<_MarkdownCodeBlock> {
     Color borderColor, {
     required bool expandFull,
   }) {
-    final code = _expanded
-        ? widget.code
-        : widget.code.substring(0, _kPreviewChars);
+    final code = _expanded ? widget.code : _firstCodeLines(widget.code);
     final iconColor =
         (widget.tokens.codeBlock.color ?? Colors.black54).withValues(
           alpha: 0.6,
         );
 
-    // Collapsed: clipped teaser. foldFixedHeight expanded: fixed scroll shell.
-    // foldExpandFull expanded: full natural height (no clamp).
+    // Collapsed: naturally short preview (first N lines). foldFixedHeight
+    // expanded: fixed scroll shell. foldExpandFull expanded: full height.
     final Widget body;
     if (!_expanded) {
-      body = ConstrainedBox(
-        constraints: const BoxConstraints(maxHeight: _kCollapsedMaxHeight),
-        child: _codeText(code),
-      );
+      body = _codeBody(code);
     } else if (expandFull) {
-      body = _codeText(code);
+      body = _codeBody(code);
     } else {
       body = ConstrainedBox(
         constraints: const BoxConstraints(maxHeight: _kExpandedMaxHeight),
-        child: SingleChildScrollView(child: _codeText(code)),
+        child: SingleChildScrollView(child: _codeBody(code)),
       );
     }
 
@@ -274,21 +272,17 @@ class _MarkdownCodeBlockState extends State<_MarkdownCodeBlock> {
         borderRadius: BorderRadius.vertical(bottom: Radius.circular(radius)),
         border: Border.all(color: borderColor),
       ),
-      child: Stack(
-        clipBehavior: Clip.hardEdge,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           body,
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
+          Center(
             child: _MaskFadeChevron(
               icon: _expanded
                   ? Icons.keyboard_arrow_up_rounded
                   : Icons.keyboard_arrow_down_rounded,
               tooltip: _expanded ? strings.showLess : strings.showMore,
-              fadeColor: muted,
-              iconColor: iconColor,
+              color: iconColor,
               onTap: () => setState(() => _expanded = !_expanded),
             ),
           ),
@@ -297,71 +291,57 @@ class _MarkdownCodeBlockState extends State<_MarkdownCodeBlock> {
     );
   }
 
-  Widget _codeText(String code) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
-      child: Text(
-        code,
-        style: widget.tokens.codeBlock,
-        strutStyle: forcedStrut(widget.tokens.codeBlock),
+  /// First [_kCollapsedLines] lines of [code]; the rest is hidden entirely.
+  String _firstCodeLines(String code) {
+    final lines = code.split('\n');
+    if (lines.length <= _kCollapsedLines) return code;
+    return lines.take(_kCollapsedLines).join('\n');
+  }
+
+  /// Code body: `white-space: pre` (no wrapping) with horizontal scrolling for
+  /// long lines — long lines never wrap into a tall blob (the vertical-overflow
+  /// cause).
+  Widget _codeBody(String code) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+        child: Text(
+          code,
+          style: widget.tokens.codeBlock,
+          softWrap: false,
+          strutStyle: forcedStrut(widget.tokens.codeBlock),
+        ),
       ),
     );
   }
 }
 
-/// Bottom fade strip + chevron for a collapsed/expanded code block mask.
-///
-/// The fade is purely visual (`IgnorePointer`); only the chevron icon itself is
-/// tappable — clicking the faded preview text does nothing (avoids surprising
-/// expand-on-content-click).
+/// Centered chevron button for a collapsed/expanded code block mask.
 class _MaskFadeChevron extends StatelessWidget {
   const _MaskFadeChevron({
     required this.icon,
     required this.tooltip,
-    required this.fadeColor,
-    required this.iconColor,
+    required this.color,
     required this.onTap,
   });
 
   final IconData icon;
   final String tooltip;
-  final Color fadeColor;
-  final Color iconColor;
+  final Color color;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 36,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Positioned.fill(
-            child: IgnorePointer(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [fadeColor.withValues(alpha: 0), fadeColor],
-                  ),
-                ),
-              ),
-            ),
-          ),
-          // Compact tap target around just the chevron icon.
-          Tooltip(
-            message: tooltip,
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: onTap,
-              child: Padding(
-                padding: const EdgeInsets.all(8),
-                child: Icon(icon, size: 20, color: iconColor),
-              ),
-            ),
-          ),
-        ],
+    return Tooltip(
+      message: tooltip,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+          child: Icon(icon, size: 20, color: color),
+        ),
       ),
     );
   }
