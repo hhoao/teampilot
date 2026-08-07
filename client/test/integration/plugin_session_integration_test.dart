@@ -132,5 +132,16 @@ void main() {
       isTrue,
       reason: 'the marketplace the plugin ships from must be linked',
     );
+
+    // known_marketplaces.json records a GitHub source, which Claude Code
+    // requires (reserved names reject directory sources).
+    final known = jsonDecode(
+      File(p.join(pluginsDir, 'known_marketplaces.json')).readAsStringSync(),
+    ) as Map;
+    final marketplace = (known['demo-marketplace'] as Map);
+    expect((marketplace['source'] as Map), {
+      'source': 'github',
+      'repo': 'acme/demo-marketplace',
+    });
   });
 }

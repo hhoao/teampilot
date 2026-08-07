@@ -419,7 +419,10 @@ class ClaudeFlavorRegistryWriter {
         return (
           stamp: stamp,
           knownEntry: MapEntry(name, {
-            'source': {'source': 'directory', 'path': cliInstallLocation},
+            'source': {
+              'source': 'github',
+              'repo': entry.repo,
+            },
             'installLocation': cliInstallLocation,
             'lastUpdated': now,
           }),
@@ -633,9 +636,18 @@ class ClaudeFlavorRegistryWriter {
 }
 
 class _EnabledMarketplaceEntry {
-  const _EnabledMarketplaceEntry({required this.name, required this.cacheDir});
+  const _EnabledMarketplaceEntry({
+    required this.name,
+    required this.repo,
+    required this.cacheDir,
+  });
 
   final String name;
+
+  /// GitHub `owner/name` the marketplace ships from. Claude Code requires a
+  /// GitHub source for reserved marketplace names (e.g. `claude-plugins-official`),
+  /// so `known_marketplaces.json` must record the repo, not a directory path.
+  final String repo;
   final String cacheDir;
 }
 
@@ -694,7 +706,11 @@ class _MarketplaceLaunchContext {
       if (stamp == null) continue;
       stamps.add(stamp);
       enabledEntries.add(
-        _EnabledMarketplaceEntry(name: name, cacheDir: teampilotCache),
+        _EnabledMarketplaceEntry(
+          name: name,
+          repo: '$owner/$name',
+          cacheDir: teampilotCache,
+        ),
       );
     }
 
