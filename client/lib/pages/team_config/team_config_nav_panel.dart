@@ -82,36 +82,33 @@ class TeamConfigMemberNavAddTile extends StatelessWidget {
     final muted = textBase.withValues(alpha: 0.72);
     return Padding(
       padding: const EdgeInsets.only(top: 2, bottom: 6),
-      child: Material(
-        color: Colors.transparent,
+      child: TpHover(
+        backgroundColor: Colors.transparent,
         borderRadius: BorderRadius.circular(10),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(10),
-          onTap: onTap,
-          child: DottedBorderContainer(
-            color: cs.outlineVariant,
-            radius: 10,
-            child: SizedBox(
-              height: 44,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.add,
-                      size: context.tpIconSizes.md,
-                      color: muted,
+        onTap: onTap,
+        child: DottedBorderContainer(
+          color: cs.outlineVariant,
+          radius: 10,
+          child: SizedBox(
+            height: 44,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.add,
+                    size: context.tpIconSizes.md,
+                    color: muted,
+                  ),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      '${l10n.add} ${l10n.memberName}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        '${l10n.add} ${l10n.memberName}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),

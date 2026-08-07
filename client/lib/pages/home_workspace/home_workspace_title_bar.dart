@@ -581,34 +581,27 @@ class _HomePill extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final styles = TpTextStyles.of(context);
     final Color fg = active ? cs.primary : cs.onSurfaceVariant;
-    return Material(
-      color: active ? cs.primary.withValues(alpha: 0.16) : Colors.transparent,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-        side: BorderSide(
-          color: active
-              ? cs.primary.withValues(alpha: 0.28)
-              : Colors.transparent,
-        ),
+    return TpHover(
+      backgroundColor: active ? cs.primary.withValues(alpha: 0.16) : Colors.transparent,
+      borderRadius: BorderRadius.circular(8),
+      border: Border.all(
+        color: active ? cs.primary.withValues(alpha: 0.28) : Colors.transparent,
       ),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: kHomeTitleBarChipVerticalPadding,
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.home_filled, size: context.tpIconSizes.md, color: fg),
-              if (label.isNotEmpty) ...[
-                const SizedBox(width: 6),
-                Text(label, style: styles.smColored(fg)),
-              ],
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: kHomeTitleBarChipVerticalPadding,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.home_filled, size: context.tpIconSizes.md, color: fg),
+            if (label.isNotEmpty) ...[
+              const SizedBox(width: 6),
+              Text(label, style: styles.smColored(fg)),
             ],
-          ),
+          ],
         ),
       ),
     );

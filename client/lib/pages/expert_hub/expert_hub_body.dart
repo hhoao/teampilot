@@ -313,34 +313,32 @@ class _FilterPill extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.only(right: 8),
-      child: Material(
-        color: selected ? cs.surfaceContainer : Colors.transparent,
-        shape: StadiumBorder(side: BorderSide(color: border)),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (icon != null) ...[
-                  Icon(icon, size: 16, color: fg),
-                  const SizedBox(width: 6),
-                ],
-                Text(label, style: fg != null ? styles.mdColored(fg) : styles.md),
-                if (count != null) ...[
-                  const SizedBox(width: 6),
-                  Text(
-                    '$count',
-                    style: styles.xsColored(selected
-                          ? cs.primary.withValues(alpha: 0.8)
-                          : cs.onSurfaceVariant,
-                    ),
-                  ),
-                ],
+      child: TpHover(
+        backgroundColor: selected ? cs.surfaceContainer : Colors.transparent,
+        shape: TpPressableShape.stadium,
+        border: Border.all(color: border),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon != null) ...[
+                Icon(icon, size: 16, color: fg),
+                const SizedBox(width: 6),
               ],
-            ),
+              Text(label, style: fg != null ? styles.mdColored(fg) : styles.md),
+              if (count != null) ...[
+                const SizedBox(width: 6),
+                Text(
+                  '$count',
+                  style: styles.xsColored(selected
+                        ? cs.primary.withValues(alpha: 0.8)
+                        : cs.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ],
           ),
         ),
       ),

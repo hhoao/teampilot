@@ -17,26 +17,23 @@ class SkillSourceToggle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Material(
-      color: selected ? cs.primaryContainer : Colors.transparent,
+    return TpHover(
+      backgroundColor: selected ? cs.primaryContainer : Colors.transparent,
       borderRadius: BorderRadius.circular(8),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(8),
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: selected ? cs.primaryContainer : cs.outlineVariant,
-            ),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: selected ? cs.primaryContainer : cs.outlineVariant,
           ),
-          child: Text(
-            label,
-            style: selected
-                ? TpTextStyles.of(context).mdBold
-                : TpTextStyles.of(context).mdSemibold,
-          ),
+        ),
+        child: Text(
+          label,
+          style: selected
+              ? TpTextStyles.of(context).mdBold
+              : TpTextStyles.of(context).mdSemibold,
         ),
       ),
     );

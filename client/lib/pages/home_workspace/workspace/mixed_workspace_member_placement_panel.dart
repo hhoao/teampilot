@@ -390,83 +390,81 @@ class _TargetTile extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final styles = TpTextStyles.of(context);
     final pathPreview = paths.join(', ');
-    return Material(
-      color: selected
+    return TpHover(
+      backgroundColor: selected
           ? cs.primaryContainer.withValues(alpha: 0.35)
           : Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  Expanded(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: styles.mdSemiboldColored(cs.onSurface),
+                  ),
+                ),
+                if (instanceCount > 0)
+                  CircleAvatar(
+                    radius: 12,
+                    backgroundColor: cs.primary,
                     child: Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: styles.mdSemiboldColored(cs.onSurface),
+                      '$instanceCount',
+                      style: styles.xsColored(cs.onPrimary),
                     ),
                   ),
-                  if (instanceCount > 0)
-                    CircleAvatar(
-                      radius: 12,
-                      backgroundColor: cs.primary,
-                      child: Text(
-                        '$instanceCount',
-                        style: styles.xsColored(cs.onPrimary),
+              ],
+            ),
+            if (pathPreview.isNotEmpty) ...[
+              const SizedBox(height: 2),
+              Text(
+                pathPreview,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: styles.sm,
+              ),
+            ],
+            if (isDead) ...[
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 4,
+                runSpacing: 4,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: cs.errorContainer,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      l10n.workspaceDeadTargetBadge,
+                      style: styles.xsColored(cs.onErrorContainer),
+                    ),
+                  ),
+                  if (onRemap != null)
+                    TextButton(
+                      onPressed: remapping ? null : onRemap,
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
+                      child: Text(l10n.workspaceDeadTargetRemap),
                     ),
                 ],
               ),
-              if (pathPreview.isNotEmpty) ...[
-                const SizedBox(height: 2),
-                Text(
-                  pathPreview,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: styles.sm,
-                ),
-              ],
-              if (isDead) ...[
-                const SizedBox(height: 6),
-                Wrap(
-                  spacing: 4,
-                  runSpacing: 4,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: cs.errorContainer,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        l10n.workspaceDeadTargetBadge,
-                        style: styles.xsColored(cs.onErrorContainer),
-                      ),
-                    ),
-                    if (onRemap != null)
-                      TextButton(
-                        onPressed: remapping ? null : onRemap,
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                        child: Text(l10n.workspaceDeadTargetRemap),
-                      ),
-                  ],
-                ),
-              ],
             ],
-          ),
+          ],
         ),
       ),
     );
