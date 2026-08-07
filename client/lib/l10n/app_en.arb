@@ -524,6 +524,7 @@
   "sessionIdleNotificationSubtitle": "Ready for your next message",
   "sessionStarting": "Starting session…",
   "sessionHistoryLoading": "Loading conversation history…",
+  "sessionHistoryRefreshing": "Refreshing conversation…",
   "sessionHistoryEmpty": "No prior messages for this member yet.",
   "sessionHistoryError": "Couldn't load conversation history.",
   "sessionHistorySoftReloadError": "Couldn't refresh conversation history.",

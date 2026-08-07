@@ -1240,6 +1240,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionHistoryLoading => 'Loading conversation history…';
 
   @override
+  String get sessionHistoryRefreshing => 'Refreshing conversation…';
+
+  @override
   String get sessionHistoryEmpty => 'No prior messages for this member yet.';
 
   @override

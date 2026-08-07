@@ -2306,6 +2306,12 @@ abstract class AppLocalizations {
   /// **'Loading conversation history…'**
   String get sessionHistoryLoading;
 
+  /// No description provided for @sessionHistoryRefreshing.
+  ///
+  /// In en, this message translates to:
+  /// **'Refreshing conversation…'**
+  String get sessionHistoryRefreshing;
+
   /// No description provided for @sessionHistoryEmpty.
   ///
   /// In en, this message translates to:

@@ -48,6 +48,8 @@ class SessionHistoryReviewMessages extends StatelessWidget {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (state.status == AiHistoryViewStatus.refreshing)
+            const _RefreshingStrip(),
           if ((state.softReloadError?.trim() ?? '').isNotEmpty)
             const _SoftReloadErrorStrip(),
           Expanded(
@@ -129,6 +131,40 @@ class SessionHistoryReviewMessages extends StatelessWidget {
       ),
       AiHistoryViewStatus.ready => const SizedBox.shrink(),
     };
+  }
+}
+
+/// Slim non-blocking strip shown while a cached transcript is refreshing.
+class _RefreshingStrip extends StatelessWidget {
+  const _RefreshingStrip();
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      color: cs.surfaceContainerHighest.withValues(alpha: 0.6),
+      padding: EdgeInsets.symmetric(
+        horizontal: context.tpSpacing.md,
+        vertical: context.tpSpacing.sm,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const SizedBox(
+            width: 12,
+            height: 12,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+          SizedBox(width: context.tpSpacing.sm),
+          Text(
+            context.l10n.sessionHistoryRefreshing,
+            style: TpTextStyles.of(context).smColored(cs.onSurfaceVariant),
+          ),
+        ],
+      ),
+    );
   }
 }
 
