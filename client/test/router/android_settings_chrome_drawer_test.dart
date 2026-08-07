@@ -94,9 +94,11 @@ void main() {
       of: backIcon,
       matching: find.byType(TpIconButton),
     );
-    final ink = find.descendant(of: button, matching: find.byType(Ink));
+    // TpIconButton's surface is now TpHover (the Ink widget was removed when
+    // shared_ui migrated to the adaptive pressable primitive); the button
+    // itself carries the chrome-aligned square size.
     final expected = TpIconButton.chromeAlignedSize(tester.element(button));
-    expect(tester.getSize(ink), Size.square(expected));
+    expect(tester.getSize(button), Size.square(expected));
     expect(find.text('Automations'), findsNothing);
 
     final gesture = await tester.startGesture(const Offset(2, 400));
