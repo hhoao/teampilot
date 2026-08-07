@@ -1075,7 +1075,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get workspaceSearchTitle => '搜索';
 
   @override
-  String get workspaceSearchHint => '搜索会话和文件';
+  String get workspaceSearchHint => '搜索会话、文件和会话内容';
 
   @override
   String get workspaceSearchFilesSection => '文件';
@@ -1084,10 +1084,22 @@ class AppLocalizationsZh extends AppLocalizations {
   String get workspaceSearchSearching => '正在搜索文件…';
 
   @override
+  String get workspaceSearchIndexing => '正在索引…';
+
+  @override
+  String get workspaceSearchRecentSessions => '最近会话';
+
+  @override
+  String get workspaceSearchSessionContentSection => '会话内容';
+
+  @override
   String get workspaceSearchNoResults => '没有匹配结果';
 
   @override
   String get workspaceSearchFilesTruncated => '还有更多文件，请细化搜索';
+
+  @override
+  String get workspaceSearchContentTruncated => '还有更多会话，请细化搜索';
 
   @override
   String get appDropdownSearchHint => '搜索…';

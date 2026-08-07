@@ -8,7 +8,8 @@ import '../../../l10n/l10n_extensions.dart';
 import '../../../models/workspace.dart';
 import '../../../models/app_session.dart';
 import '../../../services/file_tree/workspace_file_search.dart';
-import '../../../services/storage/app_storage.dart';
+import '../../../services/search/workspace_search_indexes.dart';
+import '../../../services/session/workspace_session_content_index.dart';
 import '../../../services/workbench/workbench_editor_opener.dart';
 import '../../../utils/debounce/debounce.dart';
 import '../../../utils/session/workspace_sessions.dart';
@@ -17,10 +18,16 @@ import 'workspace_session_actions.dart';
 import 'package:shared_ui/shared_ui.dart';
 import '../../../services/workspace/workspace_pane_policy.dart';
 
-/// Opens the workspace search dialog, which searches both conversation sessions
-/// and workspace files by name. Reads the current session list and CLI fallback
-/// title from [context] up front; selecting a result pops the dialog and
-/// performs the action against the still-mounted [context].
+/// Result-count caps shown in the dialog.
+const _maxFileResults = 50;
+const _maxContentResults = 20;
+const _maxRecentSessions = 8;
+
+/// Opens the workspace search dialog, which searches conversation sessions
+/// (by title and by transcript content) and workspace files by name. Reads the
+/// current session list, CLI fallback title, and shared search indexes from
+/// [context] up front; selecting a result pops the dialog and performs the
+/// action against the still-mounted [context].
 ///
 /// No-ops if a search dialog is already open (e.g. repeated shortcut presses).
 Future<void> showWorkspaceSearchDialog(
@@ -32,6 +39,7 @@ Future<void> showWorkspaceSearchDialog(
   try {
     final chatCubit = context.read<ChatCubit>();
     final opener = context.read<WorkbenchEditorOpener>();
+    final indexes = context.read<WorkspaceSearchIndexes>();
     final fallback = context.l10n.defaultNewChatSessionTitle;
     final sessions = sessionsForWorkspace(workspace, chatCubit.state.sessions);
 
@@ -44,6 +52,7 @@ Future<void> showWorkspaceSearchDialog(
       builder: (dialogContext) => WorkspaceSearchDialog(
         workspace: workspace,
         sessions: sessions,
+        indexes: indexes,
         emptyTitleFallback: fallback,
         onOpenSession: (session) async {
           Navigator.of(dialogContext).pop();
@@ -64,13 +73,16 @@ Future<void> showWorkspaceSearchDialog(
 
 var _workspaceSearchDialogOpen = false;
 
-/// Centered modal that filters sessions and walks the workspace tree for file
-/// name matches. Pure UI: result actions are delegated to callbacks so the
-/// dialog needs no cubit/navigator wiring of its own.
+/// Centered modal that filters sessions (title + transcript content) and
+/// workspace files for name matches. Pure UI: result actions are delegated to
+/// callbacks, and searches hit the shared [WorkspaceSearchIndexes] so files and
+/// transcripts are indexed once per workspace instead of re-walking on every
+/// keystroke.
 class WorkspaceSearchDialog extends StatefulWidget {
   const WorkspaceSearchDialog({
     required this.workspace,
     required this.sessions,
+    required this.indexes,
     required this.emptyTitleFallback,
     required this.onOpenSession,
     required this.onOpenFile,
@@ -79,6 +91,7 @@ class WorkspaceSearchDialog extends StatefulWidget {
 
   final Workspace workspace;
   final List<AppSession> sessions;
+  final WorkspaceSearchIndexes indexes;
   final String emptyTitleFallback;
   final FutureOr<void> Function(AppSession session) onOpenSession;
   final ValueChanged<String> onOpenFile;
@@ -95,10 +108,23 @@ class _WorkspaceSearchDialogState extends State<WorkspaceSearchDialog> {
   var _query = '';
   var _searchingFiles = false;
   var _fileResultsTruncated = false;
+  var _contentResultsTruncated = false;
   List<WorkspaceFileMatch> _fileMatches = const [];
+  List<WorkspaceSessionContentMatch> _contentMatches = const [];
 
-  /// Bumped per file search; stale async results are discarded.
-  var _fileSearchSeq = 0;
+  /// True while the transcript content index is warming (dialog open or first
+  /// query after staleness). Set optimistically so the very first frame shows
+  /// the indexing hint; cleared when the background warm completes.
+  var _contentIndexing = true;
+
+  /// Bumped per search; stale async results are discarded.
+  var _searchSeq = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_warmIndexes());
+  }
 
   @override
   void dispose() {
@@ -107,20 +133,75 @@ class _WorkspaceSearchDialogState extends State<WorkspaceSearchDialog> {
     super.dispose();
   }
 
+  /// Warm the shared file + transcript content indexes in the background so the
+  /// first query is served from memory.
+  Future<void> _warmIndexes() async {
+    final indexes = widget.indexes;
+    final workspaceId = widget.workspace.workspaceId;
+    final contentWarm = indexes
+        .contentIndexFor(workspaceId)
+        .warm(sessions: widget.sessions);
+    final root = widget.workspace.firstFolderPath;
+    final fileWarm = root.isEmpty
+        ? Future<void>.value()
+        : indexes.fileIndexFor(root).ensureFresh();
+    try {
+      await contentWarm;
+      await fileWarm;
+      // Re-run the active query so matches that only surfaced once the warm
+      // completed appear without the user needing another keystroke.
+      if (mounted && _query.trim().isNotEmpty) {
+        await _runSearches(_query);
+      }
+    } finally {
+      if (mounted) setState(() => _contentIndexing = false);
+    }
+  }
+
   void _onQueryChanged(String value) {
     setState(() => _query = value);
     Debounces.debounce(
       _debounceTag,
-      const Duration(milliseconds: 220),
-      () => unawaited(_runFileSearch(value)),
+      const Duration(milliseconds: 180),
+      () => unawaited(_runSearches(value)),
     );
   }
 
-  Future<void> _runFileSearch(String value) async {
-    final seq = ++_fileSearchSeq;
+  Future<void> _runSearches(String value) async {
+    final seq = ++_searchSeq;
     final query = value.trim();
+
+    if (query.isEmpty) {
+      if (!mounted) return;
+      setState(() {
+        _searchingFiles = false;
+        _fileMatches = const [];
+        _fileResultsTruncated = false;
+        _contentMatches = const [];
+        _contentResultsTruncated = false;
+      });
+      return;
+    }
+
+    // Transcript content: synchronous over the warmed docs. The background
+    // warm fills in seats progressively, so partial results appear early.
+    final content = widget.indexes
+        .contentIndexFor(widget.workspace.workspaceId)
+        .search(query, sessions: widget.sessions);
+    final contentTruncated = content.length > _maxContentResults;
+    final cappedContent = contentTruncated
+        ? content.sublist(0, _maxContentResults)
+        : content;
+    if (mounted) {
+      setState(() {
+        _contentMatches = cappedContent;
+        _contentResultsTruncated = contentTruncated;
+      });
+    }
+
+    // Files: cached index, synchronous after the first build.
     final root = widget.workspace.firstFolderPath;
-    if (query.isEmpty || root.isEmpty) {
+    if (root.isEmpty) {
       if (!mounted) return;
       setState(() {
         _searchingFiles = false;
@@ -129,31 +210,39 @@ class _WorkspaceSearchDialogState extends State<WorkspaceSearchDialog> {
       });
       return;
     }
-
-    setState(() => _searchingFiles = true);
-    final result = await searchWorkspaceFiles(
-      fs: AppStorage.fs,
-      root: root,
-      query: query,
-    );
-    if (!mounted || seq != _fileSearchSeq) return;
+    final fileIndex = widget.indexes.fileIndexFor(root);
+    if (!fileIndex.isReady && mounted) setState(() => _searchingFiles = true);
+    await fileIndex.ensureFresh();
+    if (!mounted || seq != _searchSeq) return;
+    final fileQuery = fileIndex.query(query, limit: _maxFileResults + 1);
+    final truncated = fileQuery.length > _maxFileResults;
+    final files = truncated ? fileQuery.sublist(0, _maxFileResults) : fileQuery;
     setState(() {
       _searchingFiles = false;
-      _fileMatches = result.matches;
-      _fileResultsTruncated = result.truncated;
+      _fileMatches = files;
+      _fileResultsTruncated = truncated;
     });
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final filteredSessions = filterSessionsByQuery(
-      widget.sessions,
-      query: _query,
-      emptyTitleFallback: widget.emptyTitleFallback,
-    );
     final hasQuery = _query.trim().isNotEmpty;
-    final hasResults = filteredSessions.isNotEmpty || _fileMatches.isNotEmpty;
+
+    final sessions = hasQuery
+        ? filterSessionsByQuery(
+            widget.sessions,
+            query: _query,
+            emptyTitleFallback: widget.emptyTitleFallback,
+          )
+        : _recentSessions(widget.sessions);
+
+    final hasResults =
+        sessions.isNotEmpty ||
+        _contentMatches.isNotEmpty ||
+        _fileMatches.isNotEmpty ||
+        _searchingFiles ||
+        _contentIndexing;
 
     return TpDialogPageShell(
       title: l10n.workspaceSearchTitle,
@@ -176,18 +265,31 @@ class _WorkspaceSearchDialogState extends State<WorkspaceSearchDialog> {
             const SizedBox(height: 12),
             Expanded(
               child: !hasQuery
-                  ? const SizedBox.shrink()
-                  : (!hasResults && !_searchingFiles)
+                  ? _RecentSessions(
+                      sessions: sessions,
+                      header: l10n.workspaceSearchRecentSessions,
+                      onOpenSession: widget.onOpenSession,
+                    )
+                  : (!hasResults)
                   ? _EmptyResults(label: l10n.workspaceSearchNoResults)
                   : _Results(
-                      sessions: filteredSessions,
+                      query: _query,
+                      sessions: sessions,
+                      contentMatches: _contentMatches,
+                      contentIndexing: _contentIndexing,
+                      contentTruncated: _contentResultsTruncated,
                       fileMatches: _fileMatches,
                       searchingFiles: _searchingFiles,
                       fileResultsTruncated: _fileResultsTruncated,
                       sessionsHeader: l10n.homeWorkspaceConversationsSection,
+                      contentHeader: l10n.workspaceSearchSessionContentSection,
                       filesHeader: l10n.workspaceSearchFilesSection,
+                      indexingLabel: l10n.workspaceSearchIndexing,
                       searchingLabel: l10n.workspaceSearchSearching,
+                      contentTruncatedLabel:
+                          l10n.workspaceSearchContentTruncated,
                       truncatedLabel: l10n.workspaceSearchFilesTruncated,
+                      emptyTitleFallback: widget.emptyTitleFallback,
                       onOpenSession: widget.onOpenSession,
                       onOpenFile: widget.onOpenFile,
                     ),
@@ -199,6 +301,17 @@ class _WorkspaceSearchDialogState extends State<WorkspaceSearchDialog> {
   }
 }
 
+/// Sessions sorted most-recent-first (updatedAt, else createdAt), capped.
+List<AppSession> _recentSessions(List<AppSession> all) {
+  final sorted = [...all]
+    ..sort((a, b) {
+      final at = a.updatedAt != 0 ? a.updatedAt : a.createdAt;
+      final bt = b.updatedAt != 0 ? b.updatedAt : b.createdAt;
+      return bt.compareTo(at);
+    });
+  return sorted.take(_maxRecentSessions).toList();
+}
+
 EdgeInsets _pageHostPadding(BuildContext context) {
   final narrow =
       MediaQuery.sizeOf(context).width <
@@ -206,30 +319,17 @@ EdgeInsets _pageHostPadding(BuildContext context) {
   return narrow ? const EdgeInsets.fromLTRB(16, 0, 16, 16) : EdgeInsets.zero;
 }
 
-class _Results extends StatelessWidget {
-  const _Results({
+/// Compact recent-sessions list shown before any query is typed.
+class _RecentSessions extends StatelessWidget {
+  const _RecentSessions({
     required this.sessions,
-    required this.fileMatches,
-    required this.searchingFiles,
-    required this.fileResultsTruncated,
-    required this.sessionsHeader,
-    required this.filesHeader,
-    required this.searchingLabel,
-    required this.truncatedLabel,
+    required this.header,
     required this.onOpenSession,
-    required this.onOpenFile,
   });
 
   final List<AppSession> sessions;
-  final List<WorkspaceFileMatch> fileMatches;
-  final bool searchingFiles;
-  final bool fileResultsTruncated;
-  final String sessionsHeader;
-  final String filesHeader;
-  final String searchingLabel;
-  final String truncatedLabel;
+  final String header;
   final FutureOr<void> Function(AppSession session) onOpenSession;
-  final ValueChanged<String> onOpenFile;
 
   @override
   Widget build(BuildContext context) {
@@ -237,29 +337,120 @@ class _Results extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (sessions.isNotEmpty) ...[
-            _SectionHeader(label: sessionsHeader),
-            for (final session in sessions)
-              SidebarSessionTile(
-                session: session,
-                tapThrottleKeyPrefix: 'workspace_search_session',
-                onTap: () => onOpenSession(session),
-              ),
-            const SizedBox(height: 8),
-          ],
-          _SectionHeader(label: filesHeader),
-          if (searchingFiles)
-            _StatusRow(label: searchingLabel)
-          else ...[
-            for (final match in fileMatches)
-              _FileResultTile(
-                match: match,
-                onTap: () => onOpenFile(match.path),
-              ),
-            if (fileResultsTruncated) _StatusRow(label: truncatedLabel),
-          ],
+          _SectionHeader(label: header),
+          for (final session in sessions)
+            SidebarSessionTile(
+              session: session,
+              tapThrottleKeyPrefix: 'workspace_search_recent',
+              onTap: () => onOpenSession(session),
+            ),
         ],
       ),
+    );
+  }
+}
+
+class _Results extends StatelessWidget {
+  const _Results({
+    required this.query,
+    required this.sessions,
+    required this.contentMatches,
+    required this.contentIndexing,
+    required this.contentTruncated,
+    required this.fileMatches,
+    required this.searchingFiles,
+    required this.fileResultsTruncated,
+    required this.sessionsHeader,
+    required this.contentHeader,
+    required this.filesHeader,
+    required this.indexingLabel,
+    required this.searchingLabel,
+    required this.contentTruncatedLabel,
+    required this.truncatedLabel,
+    required this.emptyTitleFallback,
+    required this.onOpenSession,
+    required this.onOpenFile,
+  });
+
+  final String query;
+  final List<AppSession> sessions;
+  final List<WorkspaceSessionContentMatch> contentMatches;
+  final bool contentIndexing;
+  final bool contentTruncated;
+  final List<WorkspaceFileMatch> fileMatches;
+  final bool searchingFiles;
+  final bool fileResultsTruncated;
+  final String sessionsHeader;
+  final String contentHeader;
+  final String filesHeader;
+  final String indexingLabel;
+  final String searchingLabel;
+  final String contentTruncatedLabel;
+  final String truncatedLabel;
+  final String emptyTitleFallback;
+  final FutureOr<void> Function(AppSession session) onOpenSession;
+  final ValueChanged<String> onOpenFile;
+
+  @override
+  Widget build(BuildContext context) {
+    final showContent =
+        contentMatches.isNotEmpty || contentIndexing || contentTruncated;
+    return CustomScrollView(
+      slivers: [
+        if (sessions.isNotEmpty) ...[
+          SliverToBoxAdapter(child: _SectionHeader(label: sessionsHeader)),
+          SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) => SidebarSessionTile(
+                session: sessions[index],
+                tapThrottleKeyPrefix: 'workspace_search_session',
+                onTap: () => onOpenSession(sessions[index]),
+              ),
+              childCount: sessions.length,
+            ),
+          ),
+          const SliverToBoxAdapter(child: SizedBox(height: 8)),
+        ],
+        if (showContent) ...[
+          SliverToBoxAdapter(child: _SectionHeader(label: contentHeader)),
+          if (contentIndexing && contentMatches.isEmpty)
+            SliverToBoxAdapter(child: _StatusRow(label: indexingLabel))
+          else ...[
+            SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) => _ContentResultTile(
+                  match: contentMatches[index],
+                  query: query,
+                  emptyTitleFallback: emptyTitleFallback,
+                  onTap: () => onOpenSession(contentMatches[index].session),
+                ),
+                childCount: contentMatches.length,
+              ),
+            ),
+            if (contentTruncated)
+              SliverToBoxAdapter(
+                child: _StatusRow(label: contentTruncatedLabel),
+              ),
+          ],
+          const SliverToBoxAdapter(child: SizedBox(height: 8)),
+        ],
+        SliverToBoxAdapter(child: _SectionHeader(label: filesHeader)),
+        if (searchingFiles)
+          SliverToBoxAdapter(child: _StatusRow(label: searchingLabel))
+        else ...[
+          SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) => _FileResultTile(
+                match: fileMatches[index],
+                onTap: () => onOpenFile(fileMatches[index].path),
+              ),
+              childCount: fileMatches.length,
+            ),
+          ),
+          if (fileResultsTruncated)
+            SliverToBoxAdapter(child: _StatusRow(label: truncatedLabel)),
+        ],
+      ],
     );
   }
 }
@@ -294,10 +485,114 @@ class _StatusRow extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
       child: Text(
         label,
-        style: TpTextStyles.of(
-          context,
-        ).smColored(cs.onSurfaceVariant),
+        style: TpTextStyles.of(context).smColored(cs.onSurfaceVariant),
       ),
+    );
+  }
+}
+
+/// A transcript content hit: the session title plus a one-line snippet with the
+/// matched query emphasized.
+class _ContentResultTile extends StatelessWidget {
+  const _ContentResultTile({
+    required this.match,
+    required this.query,
+    required this.emptyTitleFallback,
+    required this.onTap,
+  });
+
+  final WorkspaceSessionContentMatch match;
+  final String query;
+  final String emptyTitleFallback;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final styles = TpTextStyles.of(context);
+    final title = match.session.resolveDisplayTitle(emptyTitleFallback);
+    final member = match.memberLabel.trim();
+    final subtitle = member.isEmpty
+        ? match.snippet
+        : '$member · ${match.snippet}';
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
+      child: TpHover(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        hoverColor: cs.onSurface.withValues(alpha: 0.05),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              Icons.chat_bubble_outline_rounded,
+              size: context.tpIconSizes.md,
+              color: cs.onSurfaceVariant,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: styles.mdMediumColored(cs.onSurface),
+                  ),
+                  const SizedBox(height: 2),
+                  _HighlightedSnippet(text: subtitle, query: query),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// One-to-two line snippet with the first case-insensitive [query] occurrence
+/// in bold. Falls back to plain text when [query] is empty.
+class _HighlightedSnippet extends StatelessWidget {
+  const _HighlightedSnippet({required this.text, required this.query});
+
+  final String text;
+  final String query;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final style = TpTextStyles.of(context).smColored(cs.onSurfaceVariant);
+    final q = query.trim().toLowerCase();
+    final lower = text.toLowerCase();
+    final idx = q.isEmpty ? -1 : lower.indexOf(q);
+    if (idx < 0) {
+      return Text(
+        text,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        style: style,
+      );
+    }
+    return Text.rich(
+      TextSpan(
+        children: [
+          TextSpan(text: text.substring(0, idx)),
+          TextSpan(
+            text: text.substring(idx, idx + q.length),
+            style: style.copyWith(
+              fontWeight: FontWeight.w600,
+              color: cs.primary,
+            ),
+          ),
+          TextSpan(text: text.substring(idx + q.length)),
+        ],
+      ),
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
     );
   }
 }
@@ -342,7 +637,7 @@ class _FileResultTile extends StatelessWidget {
                     match.relativePath,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: styles.smColored(cs.onSurfaceVariant,),
+                    style: styles.smColored(cs.onSurfaceVariant),
                   ),
                 ],
               ),

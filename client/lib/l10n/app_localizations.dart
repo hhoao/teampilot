@@ -2123,7 +2123,7 @@ abstract class AppLocalizations {
   /// No description provided for @workspaceSearchHint.
   ///
   /// In en, this message translates to:
-  /// **'Search sessions and files'**
+  /// **'Search sessions, files and transcript content'**
   String get workspaceSearchHint;
 
   /// No description provided for @workspaceSearchFilesSection.
@@ -2138,6 +2138,24 @@ abstract class AppLocalizations {
   /// **'Searching files…'**
   String get workspaceSearchSearching;
 
+  /// No description provided for @workspaceSearchIndexing.
+  ///
+  /// In en, this message translates to:
+  /// **'Indexing…'**
+  String get workspaceSearchIndexing;
+
+  /// No description provided for @workspaceSearchRecentSessions.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent sessions'**
+  String get workspaceSearchRecentSessions;
+
+  /// No description provided for @workspaceSearchSessionContentSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Session content'**
+  String get workspaceSearchSessionContentSection;
+
   /// No description provided for @workspaceSearchNoResults.
   ///
   /// In en, this message translates to:
@@ -2149,6 +2167,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'More files match — refine your search'**
   String get workspaceSearchFilesTruncated;
+
+  /// No description provided for @workspaceSearchContentTruncated.
+  ///
+  /// In en, this message translates to:
+  /// **'More sessions match — refine your search'**
+  String get workspaceSearchContentTruncated;
 
   /// No description provided for @appDropdownSearchHint.
   ///

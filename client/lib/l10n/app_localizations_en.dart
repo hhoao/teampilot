@@ -1132,7 +1132,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get workspaceSearchTitle => 'Search';
 
   @override
-  String get workspaceSearchHint => 'Search sessions and files';
+  String get workspaceSearchHint =>
+      'Search sessions, files and transcript content';
 
   @override
   String get workspaceSearchFilesSection => 'Files';
@@ -1141,11 +1142,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get workspaceSearchSearching => 'Searching files…';
 
   @override
+  String get workspaceSearchIndexing => 'Indexing…';
+
+  @override
+  String get workspaceSearchRecentSessions => 'Recent sessions';
+
+  @override
+  String get workspaceSearchSessionContentSection => 'Session content';
+
+  @override
   String get workspaceSearchNoResults => 'No matches';
 
   @override
   String get workspaceSearchFilesTruncated =>
       'More files match — refine your search';
+
+  @override
+  String get workspaceSearchContentTruncated =>
+      'More sessions match — refine your search';
 
   @override
   String get appDropdownSearchHint => 'Search…';
