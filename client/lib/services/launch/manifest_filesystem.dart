@@ -169,15 +169,49 @@ class ManifestFilesystem implements Filesystem {
   @override
   Future<List<FsDirEntry>> listDir(String path) async {
     path = _normalize(path);
+    final names = <String>{};
+    final entries = <FsDirEntry>[];
+    // Base listing from the read delegate when the dir is already real there.
     // ensureDir walks parents into _overlayDirs (e.g. $HOME when staging a
-    // session tree under it). Do not hide an already-real directory — that
-    // breaks Cursor home passthrough listDir($HOME). Only staged dirs that
-    // do not exist on the read delegate stay empty.
-    if (_overlayDirs.contains(path)) {
-      final real = await readDelegate.stat(path);
-      if (!real.exists) return const [];
+    // session tree under it); a real home must still be listed (Cursor
+    // passthrough listDir($HOME)).
+    final realStat = await readDelegate.stat(path);
+    if (realStat.exists && realStat.isDirectory) {
+      for (final entry in await readDelegate.listDir(path)) {
+        names.add(entry.name);
+        entries.add(entry);
+      }
     }
-    return readDelegate.listDir(path);
+    // Surface entries staged during this pass so writers can read back what
+    // they wrote (e.g. the plugin writer scans the pool it just materialized).
+    final prefix = '$path/';
+    for (final file in _overlayFiles.keys) {
+      final rel = _directChild(prefix, file);
+      if (rel != null && names.add(rel)) {
+        entries.add(FsDirEntry(name: rel, isDirectory: false));
+      }
+    }
+    for (final dir in _overlayDirs) {
+      final rel = _directChild(prefix, dir);
+      if (rel != null && names.add(rel)) {
+        entries.add(FsDirEntry(name: rel, isDirectory: true));
+      }
+    }
+    for (final link in _overlaySymlinks.keys) {
+      final rel = _directChild(prefix, link);
+      if (rel != null && names.add(rel)) {
+        entries.add(FsDirEntry(name: rel, isDirectory: false));
+      }
+    }
+    entries.sort((a, b) => a.name.compareTo(b.name));
+    return entries;
+  }
+
+  /// Child name if [path] sits directly under [prefix], else `null`.
+  static String? _directChild(String prefix, String path) {
+    if (!path.startsWith(prefix) || path.length <= prefix.length) return null;
+    final rel = path.substring(prefix.length);
+    return rel.contains('/') ? null : rel;
   }
 
   @override
@@ -212,6 +246,37 @@ class ManifestFilesystem implements Filesystem {
   }) async {
     manifest.copyTree(source: source, destination: destination);
     await ensureDir(pathContext.dirname(destination));
+    // Populate the overlay too, so a later read in the same staging pass sees
+    // the copied tree (e.g. the plugin writer scans the pool it just
+    // materialized). The manifest entry still applies the real copy at flush.
+    await _copyTreeIntoOverlay(source, destination);
+  }
+
+  Future<void> _copyTreeIntoOverlay(String source, String destination) async {
+    // Read through `this` (overlay-first): the source may itself have been
+    // staged earlier in this pass (e.g. a flavor projection copying from a
+    // just-copied bundle), not present on the read delegate.
+    final sourceStat = await stat(source);
+    if (sourceStat.isFile) {
+      final bytes = await readBytes(source);
+      if (bytes != null) await writeBytes(destination, bytes);
+      return;
+    }
+    if (sourceStat.isSymlink) {
+      final target = await readSymlinkTarget(source);
+      if (target != null) {
+        await createSymlink(target: target, linkPath: destination);
+      }
+      return;
+    }
+    if (!sourceStat.isDirectory) return;
+    await ensureDir(destination);
+    for (final entry in await listDir(source)) {
+      await _copyTreeIntoOverlay(
+        pathContext.join(source, entry.name),
+        pathContext.join(destination, entry.name),
+      );
+    }
   }
 
   @override

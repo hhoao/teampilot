@@ -186,7 +186,6 @@ import '../widgets/ssh/ssh_host_key_prompt_dialog.dart';
 import '../services/ssh/ssh_profile_connection_coordinator.dart';
 import '../services/ssh/ssh_transport_close.dart';
 import '../services/ssh/android_ssh_connect_home.dart';
-import '../services/plugin/profile_plugin_linker_service.dart';
 import '../services/terminal/terminal_transport_factory.dart';
 import '../services/file_tree/workspace_file_tree_store.dart';
 import '../services/git/git_command_runner.dart';
@@ -890,7 +889,6 @@ Future<AppShell> buildAppShell({
     llmConfigPathOverride: llmConfigPathOverrideForLaunch,
     storageRootsResolver: () async => AppStorage.context,
     lifecycleService: sessionLifecycleService,
-    pluginLinker: ProfilePluginLinkerService(),
     pluginRepository: pluginRepository,
     installedPluginsLoader: () => pluginRepository.loadAll(),
     mcpLinker: ProfileMcpLinkerService(),

@@ -17,6 +17,7 @@ import '../cli/registry/capabilities/plugin_provisioner_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../plugin/installed_plugin_catalog.dart';
 import '../plugin/marketplace_shared_store.dart';
+import '../plugin/plugin_bundle_pool_service.dart';
 import '../../repositories/workspace_project_config_repository.dart';
 import '../io/filesystem.dart';
 import '../cli/registry/mcp_writers/claude_project_mcp_cleanup.dart';
@@ -273,7 +274,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     await fs.ensureDir(teamScopeDir(trimmed));
   }
 
-  Future<void> ensureSessionProfile(
+  Future<List<String>> ensureSessionProfile(
     String workspaceId,
     String sessionId,
     String teamId, {
@@ -286,6 +287,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     String workingDirectory = '',
     MemberBusIdleEndpoint? busIdle,
   }) async {
+    final warnings = <String>[];
     final trimmedWorkspaceId = effectiveLaunchWorkspaceId(
       workspaceId: workspaceId,
       teamId: teamId,
@@ -295,29 +297,17 @@ class ConfigProfileService implements ConfigProfileDelegate {
     if (trimmedWorkspaceId.isEmpty ||
         trimmedSessionId.isEmpty ||
         trimmedTeamId.isEmpty) {
-      return;
+      return warnings;
     }
 
     await ensureTeamProfile(trimmedTeamId, cli: cli);
-    String? memberProvisionJson;
-    await Future.wait([
-      layout.ensureSessionRuntimeInheritsIdentity(
-        trimmedWorkspaceId,
-        trimmedSessionId,
-        trimmedTeamId,
-        cli.value,
-        memberId: memberId,
-      ),
-      layout
-          .provisionSessionPluginsFromIdentity(
-            trimmedWorkspaceId,
-            trimmedSessionId,
-            trimmedTeamId,
-            cli.value,
-            memberId: memberId,
-          )
-          .then((json) => memberProvisionJson = json),
-    ]);
+    await layout.ensureSessionRuntimeInheritsIdentity(
+      trimmedWorkspaceId,
+      trimmedSessionId,
+      trimmedTeamId,
+      cli.value,
+      memberId: memberId,
+    );
     final configDir = _launchResourceConfigDir(
       cli: cli,
       workspaceId: trimmedWorkspaceId,
@@ -333,8 +323,26 @@ class ConfigProfileService implements ConfigProfileDelegate {
         .capability<PluginProvisionerCapability>(cli);
     final warmTier = CursorWorkspaceWarmTier.applies(team: team, cli: cli);
     if (pluginProvisioner != null) {
-      final enabledPlugins =
-          runtimeBundle?.pluginIds ?? const <String>[];
+      final installedCatalog = await InstalledPluginCatalog.load(fs, basePath);
+      final enabledPlugins = runtimeBundle?.pluginIds ?? const <String>[];
+      final poolResult = await PluginBundlePoolService(
+        fs: fs,
+        teampilotRoot: basePath,
+      ).reconcile(
+        poolDir: layout.sessionRuntimePluginsDir(
+          trimmedWorkspaceId,
+          trimmedSessionId,
+          cli.value,
+          memberId: memberId,
+        ),
+        enabledPluginIds: enabledPlugins,
+        installedCatalog: installedCatalog,
+        paths: pluginProvisioner.manifestPaths ?? neutralPluginManifestPaths,
+      );
+      warnings.addAll([
+        for (final id in poolResult.skippedMissingIds) 'plugin_missing_$id',
+        ...poolResult.errors,
+      ]);
       await pluginProvisioner.provision(
         PluginProvisionContext(
           fs: fs,
@@ -347,10 +355,10 @@ class ConfigProfileService implements ConfigProfileDelegate {
             memberId: memberId,
           ),
           enabledPluginIds: enabledPlugins,
-          installedCatalog: await InstalledPluginCatalog.load(fs, basePath),
+          installedCatalog: installedCatalog,
           layout: layout,
           tool: cli,
-          memberProvisionJson: memberProvisionJson,
+          memberProvisionJson: poolResult.memberProvisionStampJson,
           mcpConfigFileName: warmTier
               ? CursorWorkspaceWarmTier.mcpBaseFileName
               : null,
@@ -410,6 +418,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
         projectMcpRoots: projectMcpRoots,
       );
     }
+    return warnings;
   }
 
   Future<void> ensureWorkspaceProfile(
@@ -474,27 +483,52 @@ class ConfigProfileService implements ConfigProfileDelegate {
       cli.value,
     );
 
+    final configDir = _launchResourceConfigDir(
+      cli: cli,
+      workspaceId: trimmedWorkspaceId,
+      sessionId: trimmedSessionId,
+    );
+    // Share the persisted marketplace clone into this session's CONFIG_DIR so
+    // the CLI reuses one per-tool flavor dir instead of cloning per session.
+    await MarketplaceSharedStore(fs: fs, teampilotRoot: basePath)
+        .ensureSessionMarketplacesLinked(configDir: configDir, tool: cli);
+
     final pluginProvisioner = _cliRegistry
         .capability<PluginProvisionerCapability>(cli);
     if (pluginProvisioner != null) {
+      final installedCatalog = await InstalledPluginCatalog.load(fs, basePath);
+      final poolResult = await PluginBundlePoolService(
+        fs: fs,
+        teampilotRoot: basePath,
+      ).reconcile(
+        poolDir: layout.sessionRuntimePluginsDir(
+          trimmedWorkspaceId,
+          trimmedSessionId,
+          cli.value,
+        ),
+        enabledPluginIds: runtimeBundle.pluginIds,
+        installedCatalog: installedCatalog,
+        paths: pluginProvisioner.manifestPaths ?? neutralPluginManifestPaths,
+      );
+      warnings.addAll([
+        for (final id in poolResult.skippedMissingIds) 'plugin_missing_$id',
+        ...poolResult.errors,
+      ]);
       await pluginProvisioner.provision(
         PluginProvisionContext(
           fs: fs,
           teampilotRoot: basePath,
-          configDir: _launchResourceConfigDir(
-            cli: cli,
-            workspaceId: trimmedWorkspaceId,
-            sessionId: trimmedSessionId,
-          ),
+          configDir: configDir,
           bundlePoolDir: layout.sessionRuntimePluginsDir(
             trimmedWorkspaceId,
             trimmedSessionId,
             cli.value,
           ),
           enabledPluginIds: runtimeBundle.pluginIds,
-          installedCatalog: await InstalledPluginCatalog.load(fs, basePath),
+          installedCatalog: installedCatalog,
           layout: layout,
           tool: cli,
+          memberProvisionJson: poolResult.memberProvisionStampJson,
         ),
       );
     }
@@ -769,21 +803,23 @@ class ConfigProfileService implements ConfigProfileDelegate {
       workTeampilotRoot: workTeampilotRoot,
     );
 
-    await staging.ensureSessionProfile(
-      trimmedWorkspaceId,
-      trimmedSessionId,
-      trimmedTeamId,
-      cli: launchCli,
-      team: team,
-      runtimeBundle: runtimeBundle,
-      memberId: memberId,
-      extraMcpServers: extraMcpServers,
-      projectMcpRoots: projectMcpRootsFromLaunch(
+    warnings.addAll(
+      await staging.ensureSessionProfile(
+        trimmedWorkspaceId,
+        trimmedSessionId,
+        trimmedTeamId,
+        cli: launchCli,
+        team: team,
+        runtimeBundle: runtimeBundle,
+        memberId: memberId,
+        extraMcpServers: extraMcpServers,
+        projectMcpRoots: projectMcpRootsFromLaunch(
+          workingDirectory: workingDirectory,
+          additionalDirectories: additionalDirectories,
+        ),
         workingDirectory: workingDirectory,
-        additionalDirectories: additionalDirectories,
+        busIdle: busIdle,
       ),
-      workingDirectory: workingDirectory,
-      busIdle: busIdle,
     );
 
     if (team != null) {

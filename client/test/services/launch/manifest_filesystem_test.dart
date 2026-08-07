@@ -94,6 +94,39 @@ void main() {
     );
 
     test(
+      'copyTree is readable back within the same staging pass',
+      () async {
+        final disk = InMemoryFilesystem();
+        await disk.ensureDir('/src/demo/.plugin');
+        await disk.writeString(
+          '/src/demo/.plugin/plugin.json',
+          '{"name":"demo"}',
+        );
+
+        final staging = ManifestFilesystem(
+          manifest: LaunchManifest(),
+          readDelegate: disk,
+        );
+        await staging.copyTree(
+          source: '/src/demo',
+          destination: '/pool/demo',
+        );
+        // Chained copy FROM a just-staged dir (flavor projection pattern).
+        await staging.copyTree(
+          source: '/pool/demo/.plugin',
+          destination: '/pool/demo/.claude-plugin',
+        );
+
+        final poolEntries = await staging.listDir('/pool');
+        expect(poolEntries.map((e) => e.name), contains('demo'));
+        expect(
+          await staging.readString('/pool/demo/.claude-plugin/plugin.json'),
+          '{"name":"demo"}',
+        );
+      },
+    );
+
+    test(
       'cursor home passthrough stages symlinks after ensureDir under real home',
       () async {
         final disk = InMemoryFilesystem();

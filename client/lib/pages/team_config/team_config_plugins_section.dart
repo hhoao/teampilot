@@ -38,7 +38,6 @@ class TeamPluginsSection extends StatelessWidget {
     final pluginState = context.watch<PluginCubit>().state;
     final teamState = context.watch<LaunchProfileCubit>().state;
     final syncing = teamState.isSyncingPlugins;
-    final conflicts = teamState.pluginSyncConflicts;
     final installed = pluginState.installed;
     final installedIds = installed.map((p) => p.id).toSet();
     final missingIds = team.pluginIds
@@ -124,7 +123,6 @@ class TeamPluginsSection extends StatelessWidget {
                         TeamPluginRow(
                           plugin: plugin,
                           assigned: team.pluginIds.contains(plugin.id),
-                          conflictDir: conflicts[plugin.id],
                           onAssignedChanged: (assigned) {
                             final ids = List<String>.from(team.pluginIds);
                             if (assigned) {
@@ -161,13 +159,11 @@ class TeamPluginRow extends StatelessWidget {
     required this.plugin,
     required this.assigned,
     required this.onAssignedChanged,
-    this.conflictDir,
   });
 
   final Plugin plugin;
   final bool assigned;
   final ValueChanged<bool> onAssignedChanged;
-  final String? conflictDir;
 
   @override
   Widget build(BuildContext context) {
@@ -224,26 +220,6 @@ class TeamPluginRow extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TpTextStyles.of(context).smColored(textBase.withValues(alpha: 0.6),
                       ),
-                    ),
-                  ],
-                  if (conflictDir != null) ...[
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.warning_amber_rounded,
-                          size: context.tpIconSizes.md,
-                          color: cs.tertiary,
-                        ),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            l10n.teamPluginsNameConflict(conflictDir!),
-                            style: TpTextStyles.of(context).xsColored(textBase.withValues(alpha: 0.65),
-                            ),
-                          ),
-                        ),
-                      ],
                     ),
                   ],
                 ],

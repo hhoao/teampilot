@@ -19,7 +19,6 @@ import '../services/provider/config_profile_service.dart';
 import '../services/session/session_lifecycle_service.dart';
 import '../services/mcp/profile_mcp_linker_service.dart';
 import '../services/storage/launch_profile_provisioner.dart';
-import '../services/plugin/profile_plugin_linker_service.dart';
 import '../utils/logging/logger.dart';
 import '../utils/team/team_member_naming.dart';
 import 'team/launch_profile_cubit_host.dart';
@@ -51,7 +50,6 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
     ConfigProfileService? configProfileService,
     StorageRootsResolver? storageRootsResolver,
     SessionLifecycleService? lifecycleService,
-    ProfilePluginLinkerService? pluginLinker,
     PluginRepository? pluginRepository,
     InstalledPluginsLoader? installedPluginsLoader,
     ProfileMcpLinkerService? mcpLinker,
@@ -79,7 +77,6 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
              configProfileService: configProfileService,
              storageRootsResolver: storageRootsResolver,
            ),
-       _pluginLinker = pluginLinker ?? ProfilePluginLinkerService(),
        _pluginRepository = pluginRepository ?? PluginRepository(),
        _installedPluginsLoader = installedPluginsLoader,
        _mcpLinker = mcpLinker ?? ProfileMcpLinkerService(),
@@ -102,7 +99,6 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
   final ConfigProfileService? _configProfileService;
   final StorageRootsResolver? _storageRootsResolver;
   final SessionLifecycleService _lifecycle;
-  final ProfilePluginLinkerService _pluginLinker;
   final PluginRepository _pluginRepository;
   final InstalledPluginsLoader? _installedPluginsLoader;
   final ProfileMcpLinkerService _mcpLinker;
@@ -130,7 +126,6 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
   late final TeamResourceSyncService _sync = TeamResourceSyncService(
     host: this,
     provisioner: _provisioner,
-    pluginLinker: _pluginLinker,
     mcpLinker: _mcpLinker,
     pluginRepository: _pluginRepository,
     mcpRepository: _mcpRepository,

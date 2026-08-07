@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
-import 'package:teampilot/services/plugin/cli_plugin_layout.dart';
 import 'package:teampilot/services/cli/registry/capabilities/plugin_manifest_paths.dart';
 import 'package:teampilot/services/plugin/cli_plugin_provision_cache.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
@@ -24,89 +23,6 @@ void main() {
       }
     });
 
-    test('copyBundlesToMember skips when team bundles unchanged', () async {
-      final teamPlugins = Directory(p.join(base.path, 'team', 'plugins'))
-        ..createSync(recursive: true);
-      final bundle = Directory(p.join(teamPlugins.path, 'demo'))..createSync();
-      Directory(p.join(bundle.path, '.claude-plugin')).createSync();
-      File(
-        p.join(bundle.path, '.claude-plugin', 'plugin.json'),
-      ).writeAsStringSync('{"name":"demo","version":"1.0.0"}');
-
-      final memberPlugins = p.join(base.path, 'member', 'plugins');
-      await CliPluginLayout.copyBundlesToMember(
-        fs: fs,
-        teamPluginsDir: teamPlugins.path,
-        memberPluginsDir: memberPlugins,
-        paths: flashskyaiPluginManifestPaths,
-      );
-      final firstCopy = File(
-        p.join(memberPlugins, 'demo', '.claude-plugin', 'plugin.json'),
-      ).readAsStringSync();
-
-      await CliPluginLayout.copyBundlesToMember(
-        fs: fs,
-        teamPluginsDir: teamPlugins.path,
-        memberPluginsDir: memberPlugins,
-        paths: flashskyaiPluginManifestPaths,
-      );
-      final secondCopy = File(
-        p.join(memberPlugins, 'demo', '.claude-plugin', 'plugin.json'),
-      ).readAsStringSync();
-
-      expect(firstCopy, secondCopy);
-      expect(
-        await CliPluginProvisionCache.isMemberProvisionCurrent(
-          fs: fs,
-          teamPluginsDir: teamPlugins.path,
-          memberPluginsDir: memberPlugins,
-          paths: flashskyaiPluginManifestPaths,
-        ),
-        isTrue,
-      );
-    });
-
-    test(
-      'copyBundlesToMember recopies when team plugin version changes',
-      () async {
-        final teamPlugins = Directory(p.join(base.path, 'team', 'plugins'))
-          ..createSync(recursive: true);
-        final bundle = Directory(p.join(teamPlugins.path, 'demo'))
-          ..createSync();
-        Directory(p.join(bundle.path, '.claude-plugin')).createSync();
-        final manifestPath = p.join(
-          bundle.path,
-          '.claude-plugin',
-          'plugin.json',
-        );
-        File(
-          manifestPath,
-        ).writeAsStringSync('{"name":"demo","version":"1.0.0"}');
-
-        final memberPlugins = p.join(base.path, 'member', 'plugins');
-        await CliPluginLayout.copyBundlesToMember(
-          fs: fs,
-          teamPluginsDir: teamPlugins.path,
-          memberPluginsDir: memberPlugins,
-          paths: flashskyaiPluginManifestPaths,
-        );
-
-        await Future<void>.delayed(const Duration(milliseconds: 10));
-        File(
-          manifestPath,
-        ).writeAsStringSync('{"name":"demo","version":"2.0.0"}');
-
-        expect(
-          await CliPluginProvisionCache.isMemberProvisionCurrent(
-            fs: fs,
-            teamPluginsDir: teamPlugins.path,
-            memberPluginsDir: memberPlugins,
-            paths: flashskyaiPluginManifestPaths,
-          ),
-          isFalse,
-        );
-      },
-    );
 
     test(
       'provisionFingerprintForRegistry ignores metadata-only stamp fields',

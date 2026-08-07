@@ -1,9 +1,7 @@
 import 'dart:convert';
 import '../cli/registry/capabilities/plugin_provisioner_capability.dart';
 import '../cli/registry/capabilities/plugin_manifest_paths.dart';
-import 'cli_plugin_provision_cache.dart';
 import '../io/filesystem.dart';
-import '../../utils/lock_pool.dart';
 
 /// Claude / FlashskyAI plugin directory layout (one bundle per child under `plugins/`).
 class CliPluginLayout {
@@ -11,11 +9,6 @@ class CliPluginLayout {
 
   static const claudeManifestDirName = '.claude-plugin';
   static const flashskyaiManifestDirName = '.flashskyai-plugin';
-
-  /// Serializes [copyBundlesToMember] per member plugins dir so a concurrent
-  /// launch's `removeRecursive` can't delete an in-flight stamp temp file
-  /// (otherwise the atomic stamp rename fails with PathNotFound / errno 2).
-  static final _memberProvisionLocks = LockPool();
 
   /// Resolves the plugin root inside [dirPath] (handles nested checkout dirs).
   static Future<String?> resolvePluginRoot(
@@ -199,7 +192,8 @@ class CliPluginLayout {
     return null;
   }
 
-  static Future<void> _removeManifestDir(
+  /// Removes a foreign flavor manifest dir from a materialized bundle.
+  static Future<void> removeManifestDir(
     Filesystem fs,
     String pluginRoot,
     String manifestDirName,
@@ -233,116 +227,5 @@ class CliPluginLayout {
     if (linked) return true;
     await fs.copyTree(source: source, destination: destination);
     return false;
-  }
-
-  /// Links (or copies) each CLI plugin bundle from [teamPluginsDir] into
-  /// [memberPluginsDir].
-  ///
-  /// Skips provisioning when [memberPluginsDir] already matches team bundles (see
-  /// [CliPluginProvisionCache]). Returns member provision stamp JSON.
-  static Future<String?> copyBundlesToMember({
-    required Filesystem fs,
-    required String teamPluginsDir,
-    required String memberPluginsDir,
-    PluginManifestPaths paths = claudePluginManifestPaths,
-  }) {
-    return _memberProvisionLocks.synchronized(
-      memberPluginsDir,
-      () => _copyBundlesToMemberUnlocked(
-        fs: fs,
-        teamPluginsDir: teamPluginsDir,
-        memberPluginsDir: memberPluginsDir,
-        paths: paths,
-      ),
-    );
-  }
-
-  static Future<String?> _copyBundlesToMemberUnlocked({
-    required Filesystem fs,
-    required String teamPluginsDir,
-    required String memberPluginsDir,
-    required PluginManifestPaths paths,
-  }) async {
-    final ctx = fs.pathContext;
-    final teamStat = await fs.stat(teamPluginsDir);
-    if (!teamStat.isDirectory) {
-      await fs.ensureDir(memberPluginsDir);
-      await CliPluginProvisionCache.writeMemberProvisionStamp(
-        fs: fs,
-        teamPluginsDir: teamPluginsDir,
-        memberPluginsDir: memberPluginsDir,
-        paths: paths,
-      );
-      return await CliPluginProvisionCache.memberProvisionStampJson(
-        fs: fs,
-        memberPluginsDir: memberPluginsDir,
-      );
-    }
-
-    if (await CliPluginProvisionCache.trySkipMemberProvision(
-          fs: fs,
-          teamPluginsDir: teamPluginsDir,
-          memberPluginsDir: memberPluginsDir,
-          paths: paths,
-        )
-        case final stampJson?) {
-      return stampJson;
-    }
-
-    if ((await fs.stat(memberPluginsDir)).exists) {
-      await fs.removeRecursive(memberPluginsDir);
-    }
-    await fs.ensureDir(memberPluginsDir);
-
-    final teamEntries = await fs.listDir(teamPluginsDir);
-    final teamPluginsMtimeMs = teamStat.mtime?.millisecondsSinceEpoch ?? 0;
-    final copied = await Future.wait(
-      teamEntries.map((entry) async {
-        final source = ctx.join(teamPluginsDir, entry.name);
-        if (!await isPluginBundleEntry(fs, source)) return null;
-        final root = await resolvePluginRoot(fs, source, paths: paths);
-        if (root == null) return null;
-        final dirName = await bundleDirName(fs, root, paths: paths);
-        final dest = ctx.join(memberPluginsDir, dirName);
-        var linked = await linkOrCopyTree(
-          fs: fs,
-          source: root,
-          destination: dest,
-        );
-        if (linked) {
-          await fs.removeRecursive(dest);
-          linked = false;
-          await fs.copyTree(source: root, destination: dest);
-        }
-        await projectBundleToFlavor(fs, dest, paths);
-        if (paths.manifestDirName ==
-            claudePluginManifestPaths.manifestDirName) {
-          await _removeManifestDir(fs, dest, flashskyaiManifestDirName);
-        }
-        final manifest = await readManifest(fs, root, paths: paths);
-        final rootStat = await fs.stat(root);
-        return {
-          'dirName': dirName,
-          'teamEntryName': entry.name,
-          'name': manifest?.name ?? dirName,
-          'version': manifest?.version ?? '0.0.0',
-          'mtimeMs': rootStat.mtime?.millisecondsSinceEpoch ?? 0,
-        };
-      }),
-    );
-    final bundleStamps = copied.whereType<Map<String, Object?>>().toList();
-
-    await CliPluginProvisionCache.writeMemberProvisionStamp(
-      fs: fs,
-      teamPluginsDir: teamPluginsDir,
-      memberPluginsDir: memberPluginsDir,
-      paths: paths,
-      bundles: bundleStamps,
-      teamPluginsMtimeMs: teamPluginsMtimeMs,
-    );
-    return await CliPluginProvisionCache.memberProvisionStampJson(
-      fs: fs,
-      memberPluginsDir: memberPluginsDir,
-    );
   }
 }

@@ -28,14 +28,9 @@ import 'package:teampilot/repositories/launch_profile_repository.dart';
 import 'package:teampilot/services/app/connection_mode_service.dart';
 import 'package:teampilot/services/app/onboarding_service.dart';
 import 'package:teampilot/services/storage/launch_profile_provisioner.dart';
-import 'package:teampilot/services/plugin/profile_plugin_linker_service.dart';
 import 'package:teampilot/theme/app_typography_scale.dart';
 import '../../support/in_memory_filesystem.dart';
 import '../../support/post_frame_test_harness.dart';
-
-class _NoopPluginLinker extends ProfilePluginLinkerService {
-  _NoopPluginLinker() : super(appPluginsRoot: '/tmp');
-}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -148,7 +143,6 @@ void main() {
         repository: teamRepo,
         sessionRepository: SessionRepository(),
         executableResolver: () => 'claude',
-        pluginLinker: _NoopPluginLinker(),
       );
       await teamCubit.load();
 

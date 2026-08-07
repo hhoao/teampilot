@@ -3,14 +3,12 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/launch_profile_cubit.dart';
 import 'package:teampilot/models/mcp_server.dart';
-import 'package:teampilot/models/plugin.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/repositories/launch_profile_repository.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/mcp/profile_mcp_linker_service.dart';
-import 'package:teampilot/services/plugin/profile_plugin_linker_service.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 
 import '../support/post_frame_test_harness.dart';
@@ -58,19 +56,6 @@ class _RecordingMcpLinker extends ProfileMcpLinkerService {
     _index++;
     return result;
   }
-}
-
-/// No-op plugin linker so `selectTeam` doesn't touch the real catalogs
-/// (keeps test output free of benign linker errors).
-class _NoopPluginLinker extends ProfilePluginLinkerService {
-  _NoopPluginLinker() : super(appPluginsRoot: '/tmp');
-
-  @override
-  Future<ProfilePluginSyncResult> syncForProfile({
-    required String profileId,
-    required List<String> pluginIds,
-    required List<Plugin> installed,
-  }) async => const ProfilePluginSyncResult();
 }
 
 LaunchProfileRepository _repo(Directory dir) =>
@@ -165,7 +150,6 @@ void main() {
         sessionRepository: SessionRepository(),
         executableResolver: () => 'flashskyai',
         mcpLinker: linker,
-        pluginLinker: _NoopPluginLinker(),
         installedMcpLoader: () async => [_userServer],
         installedPluginsLoader: () async => [],
         extensionMcpContributor: (teamId) async => [_extServer],
@@ -209,7 +193,6 @@ void main() {
           sessionRepository: SessionRepository(),
           executableResolver: () => 'flashskyai',
           mcpLinker: linker,
-          pluginLinker: _NoopPluginLinker(),
           installedMcpLoader: () async => [_userServer],
           installedPluginsLoader: () async => [],
           extensionMcpContributor: (teamId) async => [_extServer],

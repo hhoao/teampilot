@@ -22,9 +22,8 @@ class ProfileMcpSyncResult {
 /// Writes identity MCP snapshot to
 /// `identities-runtime/{profileId}/mcp/servers.json`.
 ///
-/// Defaults to [AppStorage.fs] (same as [ProfilePluginLinkerService]) so
-/// Android/SSH control-plane roots under `$HOME` are written remotely, not
-/// via the device-local filesystem.
+/// Defaults to [AppStorage.fs] so Android/SSH control-plane roots under
+/// `$HOME` are written remotely, not via the device-local filesystem.
 class ProfileMcpLinkerService {
   ProfileMcpLinkerService({Filesystem? fs}) : _fsOverride = fs;
 

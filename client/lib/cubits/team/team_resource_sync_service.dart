@@ -4,7 +4,7 @@ import '../../models/team_config.dart';
 import '../../repositories/mcp_repository.dart';
 import '../../repositories/plugin_repository.dart';
 import '../../services/mcp/profile_mcp_linker_service.dart';
-import '../../services/plugin/profile_plugin_linker_service.dart';
+import '../../services/plugin/plugin_bundle_resolver.dart';
 import '../../utils/logging/logger.dart';
 import 'launch_profile_cubit_host.dart';
 import 'team_profile_provisioner.dart';
@@ -39,7 +39,6 @@ class TeamResourceSyncService {
   TeamResourceSyncService({
     required LaunchProfileCubitHost host,
     required TeamProfileProvisioner provisioner,
-    required ProfilePluginLinkerService pluginLinker,
     required ProfileMcpLinkerService mcpLinker,
     required PluginRepository pluginRepository,
     required McpRepository mcpRepository,
@@ -49,7 +48,6 @@ class TeamResourceSyncService {
     extensionMcpContributor,
   }) : _h = host,
        _provisioner = provisioner,
-       _pluginLinker = pluginLinker,
        _mcpLinker = mcpLinker,
        _pluginRepository = pluginRepository,
        _mcpRepository = mcpRepository,
@@ -59,7 +57,6 @@ class TeamResourceSyncService {
 
   final LaunchProfileCubitHost _h;
   final TeamProfileProvisioner _provisioner;
-  final ProfilePluginLinkerService _pluginLinker;
   final ProfileMcpLinkerService _mcpLinker;
   final PluginRepository _pluginRepository;
   final McpRepository _mcpRepository;
@@ -240,7 +237,6 @@ class TeamResourceSyncService {
           await (_installedPluginsLoader?.call() ??
               _pluginRepository.loadAll());
 
-      var conflicts = _h.state.pluginSyncConflicts;
       for (final teamId in ids) {
         TeamProfile? team;
         for (final candidate in _h.state.teams) {
@@ -251,43 +247,30 @@ class TeamResourceSyncService {
         }
         if (team == null) continue;
 
-        final result = await _pluginLinker.syncForProfile(
-          profileId: team.id,
-          pluginIds: team.pluginIds,
-          installed: catalog,
+        // Plugins are materialized per-session from the merged runtime bundle
+        // at launch (PluginBundlePoolService). Team-edit time only validates
+        // that enabled ids resolve to an installed plugin, so users hear about
+        // uninstalled plugins without a stale identity pool being maintained.
+        final result = PluginBundleResolver.resolve(
+          enabledPluginIds: team.pluginIds,
+          installedCatalog: catalog,
         );
-
         if (result.skippedMissingIds.isNotEmpty) {
           appLogger.w(
             '[team-plugins] skipped missing for ${team.id}: '
             '${result.skippedMissingIds}',
           );
-        }
-
-        if (result.errors.isNotEmpty) {
-          appLogger.w(
-            '[team-plugins] sync errors for ${team.id}: ${result.errors}',
-          );
           if (team.id == _h.state.selectedTeamId) {
             _h.applyState(
               _h.state.copyWith(
                 statusMessage:
-                    'Plugin sync had ${result.errors.length} error(s): '
-                    '${result.errors.first}',
+                    'Plugin sync had ${result.skippedMissingIds.length} '
+                    'uninstalled plugin(s): ${result.skippedMissingIds.join(', ')}',
               ),
             );
           }
         }
-
-        if (team.id == _h.state.selectedTeamId) {
-          conflicts = {
-            for (final resolution in result.conflictResolutions)
-              resolution.$1: resolution.$2,
-          };
-        }
       }
-
-      _h.applyState(_h.state.copyWith(pluginSyncConflicts: conflicts));
     } catch (e) {
       appLogger.e('[team-plugins] sync failed: $e');
     } finally {

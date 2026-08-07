@@ -5,7 +5,6 @@ import 'package:path/path.dart' as p;
 import 'package:teampilot/cubits/launch_profile_cubit.dart';
 import 'package:teampilot/models/discoverable_member.dart';
 import 'package:teampilot/models/launch_profile.dart';
-import 'package:teampilot/models/plugin.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/repositories/launch_profile_repository.dart';
@@ -13,7 +12,6 @@ import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
-import 'package:teampilot/services/plugin/profile_plugin_linker_service.dart';
 import 'package:teampilot/services/storage/launch_profile_provisioner.dart';
 import 'package:teampilot/services/expert_hub/builtin_member_templates.dart';
 import 'package:teampilot/services/expert_hub/composite_expert_hub_source.dart';
@@ -53,27 +51,6 @@ class _ThrowingExpertHubSource implements ExpertHubSource {
   @override
   Future<List<String>> categories({bool forceRefresh = false}) async =>
       const [];
-}
-
-class _RecordingPluginLinker extends ProfilePluginLinkerService {
-  _RecordingPluginLinker() : super(appPluginsRoot: '/tmp');
-
-  final syncs =
-      <({String profileId, List<String> pluginIds, List<Plugin> installed})>[];
-
-  @override
-  Future<ProfilePluginSyncResult> syncForProfile({
-    required String profileId,
-    required List<String> pluginIds,
-    required List<Plugin> installed,
-  }) async {
-    syncs.add((
-      profileId: profileId,
-      pluginIds: List.of(pluginIds),
-      installed: List.of(installed),
-    ));
-    return const ProfilePluginSyncResult();
-  }
 }
 
 class _RecordingLifecycleService extends SessionLifecycleService {
@@ -148,7 +125,6 @@ void main() {
       repository: repo,
       sessionRepository: SessionRepository(),
       executableResolver: () => 'flashskyai',
-      pluginLinker: _RecordingPluginLinker(),
     );
 
     const team = TeamProfile(
@@ -170,15 +146,13 @@ void main() {
     await _deleteTeamTempDir(dir);
   });
 
-  test('removePluginFromAllTeams prunes all teams and syncs each', () async {
+  test('removePluginFromAllTeams prunes all teams', () async {
     final dir = await Directory.systemTemp.createTemp('team-cubit-');
     final repo = _repo(dir);
-    final linker = _RecordingPluginLinker();
     final cubit = LaunchProfileCubit(
       repository: repo,
       sessionRepository: SessionRepository(),
       executableResolver: () => 'flashskyai',
-      pluginLinker: linker,
       installedPluginsLoader: () async => [],
     );
 
@@ -197,7 +171,6 @@ void main() {
     await repo.saveTeamProfiles([teamA, teamB]);
     await cubit.load();
     await cubit.selectTeam('b');
-    linker.syncs.clear();
 
     await cubit.removePluginFromAllTeams('acme/market/p1');
 
@@ -205,31 +178,18 @@ void main() {
       cubit.state.teams.every((t) => !t.pluginIds.contains('acme/market/p1')),
       isTrue,
     );
-    expect(linker.syncs.map((s) => s.profileId).toSet(), {'a', 'b'});
 
     await _deleteTeamTempDir(dir);
   });
 
-  test('updateSelected syncs when pluginIds change', () async {
+  test('updateSelected surfaces uninstalled plugin ids via plugin sync', () async {
     final dir = await Directory.systemTemp.createTemp('team-cubit-');
     final repo = _repo(dir);
-    final linker = _RecordingPluginLinker();
-    const plugin = Plugin(
-      id: 'acme/market/p1',
-      name: 'p1',
-      description: 'd',
-      version: '1.0.0',
-      directory: 'acme__market__p1',
-      capabilities: PluginCapabilities(),
-      installedAt: 1,
-      updatedAt: 1,
-    );
     final cubit = LaunchProfileCubit(
       repository: repo,
       sessionRepository: SessionRepository(),
       executableResolver: () => 'flashskyai',
-      pluginLinker: linker,
-      installedPluginsLoader: () async => [plugin],
+      installedPluginsLoader: () async => [],
     );
 
     const team = TeamProfile(
@@ -239,27 +199,25 @@ void main() {
     );
     await repo.saveTeamProfiles([team]);
     await cubit.load();
-    linker.syncs.clear();
 
     await cubit.updateSelected(
       cubit.state.selectedTeam!.copyWith(pluginIds: ['acme/market/p1']),
     );
 
-    expect(linker.syncs, isNotEmpty);
-    expect(linker.syncs.last.pluginIds, ['acme/market/p1']);
+    // updateSelected awaits the resolver-based plugin sync, which surfaces
+    // enabled-but-uninstalled ids on the selected team via statusMessage.
+    expect(cubit.state.statusMessage, contains('acme/market/p1'));
 
     await _deleteTeamTempDir(dir);
   });
 
-  test('syncTeamsUsingPlugin syncs all teams referencing plugin id', () async {
+  test('syncTeamsUsingPlugin validates teams referencing plugin id', () async {
     final dir = await Directory.systemTemp.createTemp('team-cubit-');
     final repo = _repo(dir);
-    final linker = _RecordingPluginLinker();
     final cubit = LaunchProfileCubit(
       repository: repo,
       sessionRepository: SessionRepository(),
       executableResolver: () => 'flashskyai',
-      pluginLinker: linker,
       installedPluginsLoader: () async => [],
     );
 
@@ -277,11 +235,12 @@ void main() {
     );
     await repo.saveTeamProfiles([teamA, teamB]);
     await cubit.load();
-    linker.syncs.clear();
 
     await cubit.syncTeamsUsingPlugin('acme/market/p1');
 
-    expect(linker.syncs.map((s) => s.profileId).toSet(), {'a', 'b'});
+    // Selected team (a) references p1 which is not installed: the resolver
+    // validation surfaces it on the selected team.
+    expect(cubit.state.statusMessage, contains('acme/market/p1'));
     await _deleteTeamTempDir(dir);
   });
 
@@ -292,7 +251,6 @@ void main() {
       repository: repo,
       sessionRepository: SessionRepository(),
       executableResolver: () => 'flashskyai',
-      pluginLinker: _RecordingPluginLinker(),
     );
     await cubit.load();
 
@@ -323,7 +281,6 @@ void main() {
       repository: _repo(dir),
       sessionRepository: SessionRepository(),
       executableResolver: () => 'flashskyai',
-      pluginLinker: _RecordingPluginLinker(),
     );
     await cubit.load();
 
@@ -352,7 +309,6 @@ void main() {
         repository: repo,
         sessionRepository: SessionRepository(),
         executableResolver: () => 'flashskyai',
-        pluginLinker: _RecordingPluginLinker(),
       );
       const team = TeamProfile(
         id: 'old',
@@ -392,7 +348,6 @@ void main() {
       repository: _repo(base),
       sessionRepository: SessionRepository(),
       executableResolver: () => 'flashskyai',
-      pluginLinker: _RecordingPluginLinker(),
       appDataBasePath: base.path,
       configProfileService: ConfigProfileService(basePath: base.path),
     );
@@ -414,7 +369,6 @@ void main() {
       repository: _repo(base),
       sessionRepository: SessionRepository(),
       executableResolver: () => 'flashskyai',
-      pluginLinker: _RecordingPluginLinker(),
       appDataBasePath: base.path,
       configProfileService: ConfigProfileService(basePath: base.path),
     );
@@ -436,7 +390,6 @@ void main() {
       repository: _repo(base),
       sessionRepository: SessionRepository(),
       executableResolver: () => 'flashskyai',
-      pluginLinker: _RecordingPluginLinker(),
       appDataBasePath: base.path,
       configProfileService: ConfigProfileService(basePath: base.path),
     );
@@ -460,7 +413,6 @@ void main() {
         repository: _repo(base),
         sessionRepository: SessionRepository(),
         executableResolver: () => 'flashskyai',
-        pluginLinker: _RecordingPluginLinker(),
         appDataBasePath: base.path,
         configProfileService: ConfigProfileService(basePath: base.path),
       );
@@ -506,7 +458,6 @@ void main() {
       repository: _repo(base),
       sessionRepository: SessionRepository(),
       executableResolver: () => 'flashskyai',
-      pluginLinker: _RecordingPluginLinker(),
       cliExecutableResolver: (cli) =>
           cli == CliTool.claude ? '/opt/bin/claude' : cli.value,
       appDataBasePath: base.path,
@@ -544,7 +495,6 @@ void main() {
       repository: repo,
       sessionRepository: SessionRepository(),
       executableResolver: () => 'claude',
-      pluginLinker: _RecordingPluginLinker(),
       appDataBasePath: base.path,
       configProfileService: ConfigProfileService(basePath: base.path),
     );
@@ -608,7 +558,6 @@ void main() {
       repository: repo,
       sessionRepository: SessionRepository(),
       executableResolver: () => 'claude',
-      pluginLinker: _RecordingPluginLinker(),
       appDataBasePath: base.path,
       configProfileService: ConfigProfileService(basePath: base.path),
       launcher: (_, member) async => launched.add(member.name),
@@ -649,7 +598,6 @@ void main() {
       repository: _repo(base),
       sessionRepository: SessionRepository(),
       executableResolver: () => 'flashskyai',
-      pluginLinker: _RecordingPluginLinker(),
       appDataBasePath: base.path,
       configProfileService: ConfigProfileService(basePath: base.path),
     );
@@ -673,7 +621,6 @@ void main() {
       repository: repo,
       sessionRepository: SessionRepository(),
       executableResolver: () => 'claude',
-      pluginLinker: _RecordingPluginLinker(),
     );
 
     const team = TeamProfile(
@@ -719,7 +666,6 @@ void main() {
         repository: repo,
         sessionRepository: SessionRepository(),
         executableResolver: () => 'claude',
-        pluginLinker: _RecordingPluginLinker(),
       );
 
       const team = TeamProfile(
@@ -768,7 +714,6 @@ void main() {
         repository: repo,
         sessionRepository: SessionRepository(),
         executableResolver: () => 'claude',
-        pluginLinker: _RecordingPluginLinker(),
       );
 
       const team = TeamProfile(

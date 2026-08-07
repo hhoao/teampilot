@@ -12,7 +12,6 @@ class LaunchProfileState extends Equatable {
     this.isLoading = true,
     this.isLaunching = false,
     this.isSyncingPlugins = false,
-    this.pluginSyncConflicts = const {},
   });
 
   final List<LaunchProfile> identities;
@@ -21,9 +20,6 @@ class LaunchProfileState extends Equatable {
   final bool isLoading;
   final bool isLaunching;
   final bool isSyncingPlugins;
-
-  /// Plugin ids on the selected team that were linked under a fallback dir name.
-  final Map<String, String> pluginSyncConflicts;
 
   List<TeamProfile> get teams =>
       identities.whereType<TeamProfile>().toList(growable: false);
@@ -46,7 +42,6 @@ class LaunchProfileState extends Equatable {
     bool? isLoading,
     bool? isLaunching,
     bool? isSyncingPlugins,
-    Map<String, String>? pluginSyncConflicts,
     bool clearSelectedTeamId = false,
   }) {
     final nextIdentities =
@@ -61,7 +56,6 @@ class LaunchProfileState extends Equatable {
       isLoading: isLoading ?? this.isLoading,
       isLaunching: isLaunching ?? this.isLaunching,
       isSyncingPlugins: isSyncingPlugins ?? this.isSyncingPlugins,
-      pluginSyncConflicts: pluginSyncConflicts ?? this.pluginSyncConflicts,
     );
   }
 
@@ -73,6 +67,5 @@ class LaunchProfileState extends Equatable {
     isLoading,
     isLaunching,
     isSyncingPlugins,
-    pluginSyncConflicts,
   ];
 }
