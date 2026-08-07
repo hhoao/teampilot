@@ -8,6 +8,7 @@ import 'package:teampilot/cubits/agent_attention_cubit.dart';
 import 'package:teampilot/cubits/automation_cubit.dart';
 import 'package:teampilot/cubits/automation_state.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
+import 'package:teampilot/cubits/session/session_phase.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/automation.dart';
@@ -351,6 +352,35 @@ void main() {
     chatCubit.emit(
       chatCubit.state.copyWith(workingSessionIds: {_session.sessionId}),
     );
+
+    await tester.pumpWidget(
+      _host(
+        chatCubit: chatCubit,
+        automationCubit: automationCubit,
+        sessionRepository: SessionRepository(),
+        attentionCubit: attention,
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byType(SessionWorkingSpinner), findsOneWidget);
+    expect(find.byKey(AppKeys.sidebarSessionWaitingMarker), findsNothing);
+  });
+
+  testWidgets('launching pod (connecting) shows the sidebar working spinner', (
+    tester,
+  ) async {
+    final chatCubit = testChatCubit(executableResolver: () => 'claude');
+    final (attention, automationCubit) = _tileCubits();
+    addTearDown(chatCubit.close);
+    addTearDown(automationCubit.close);
+    addTearDown(attention.close);
+
+    // Pod launching without any agent working yet — the sidebar must still
+    // show the starting spinner (derived from pod phase, not workingSessionIds).
+    chatCubit
+        .ensurePodRuntime(_session.sessionId)
+        .setPhase(SessionPhase.connecting);
 
     await tester.pumpWidget(
       _host(
