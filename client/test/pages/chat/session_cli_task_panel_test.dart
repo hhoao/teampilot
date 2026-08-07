@@ -263,4 +263,33 @@ void main() {
     );
     expect(find.byType(SelectionArea), findsOneWidget);
   });
+
+  testWidgets('long task list is height-capped and scrolls internally',
+      (tester) async {
+    await tester.pumpWidget(
+      _host(
+        SessionCliTaskPanel(
+          board: _board([
+            for (var i = 1; i <= 20; i++) _task('T$i: item', CliTaskStatus.pending),
+          ]),
+          title: 'Tasks',
+          countText: '0/20',
+          moreLabel: (n) => '… +$n more',
+          showLessLabel: 'Show less',
+          maxVisible: 6,
+        ),
+      ),
+    );
+    await tester.tap(find.text('0/20'));
+    await tester.pump();
+    await tester.tap(find.text('… +14 more'));
+    await tester.pump();
+
+    // The card stays bounded even with 20 rows (the list scrolls internally).
+    final cardSize = tester.getSize(find.byType(SessionCliTaskPanel));
+    expect(cardSize.height, lessThan(500));
+    // A far row is still present (built) inside the scrollable list.
+    expect(find.byType(SingleChildScrollView), findsWidgets);
+    expect(find.text('T20: item'), findsOneWidget);
+  });
 }

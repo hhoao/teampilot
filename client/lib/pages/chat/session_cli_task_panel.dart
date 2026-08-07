@@ -53,6 +53,13 @@ class _SessionCliTaskPanelState extends State<SessionCliTaskPanel> {
     );
   }
 
+  /// Max height for the task list inside the expanded card (scrolls beyond).
+  double _maxListHeight(BuildContext context) {
+    return (MediaQuery.sizeOf(context).height * 0.4)
+        .clamp(180.0, 360.0)
+        .toDouble();
+  }
+
   Widget _buildCollapsed(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     // Surface the task currently in progress; fall back to the count pill
@@ -162,7 +169,21 @@ class _SessionCliTaskPanelState extends State<SessionCliTaskPanel> {
                 ],
               ),
               const SizedBox(height: 10),
-              for (final task in visible) _TaskRow(task: task),
+              // Cap the list height; overflow scrolls inside the card so a
+              // huge task board does not cover the whole chat.
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: _maxListHeight(context),
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (final task in visible) _TaskRow(task: task),
+                    ],
+                  ),
+                ),
+              ),
               if (hasMore)
                 Padding(
                   padding: const EdgeInsets.only(top: 6),
