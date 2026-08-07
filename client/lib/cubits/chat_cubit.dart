@@ -60,7 +60,6 @@ import 'chat/chat_connect_state_mixin.dart';
 import 'chat/session_data_store.dart';
 import 'chat/chat_session_shell_factory.dart';
 import 'chat/chat_tab_store.dart';
-import 'chat/session_launch_host.dart';
 import 'chat/session_launch_service.dart';
 import 'chat/tab_member_materializer.dart';
 import 'chat/tab_session_runtime_coordinator.dart';
@@ -75,7 +74,6 @@ import 'chat/model/session_open_request.dart';
 import 'chat/model/session_open_status.dart';
 import 'chat/model/session_workbench_view.dart';
 import 'chat/session_continue_overrides_controller.dart';
-import 'session/session_phase.dart';
 import 'session/session_pod.dart';
 import '../models/cli_preset.dart';
 
@@ -365,9 +363,11 @@ class ChatCubit extends Cubit<ChatState>
   // ===== SessionPod registry =====
 
   /// Value of the pod for [sessionId], or null when no pod exists yet.
+  @override
   SessionPod? podFor(String sessionId) => _pods[sessionId.trim()];
 
   /// Seeds an idle pod for [sessionId] if absent and returns it.
+  @override
   SessionPod ensurePod(String sessionId) =>
       _pods.putIfAbsent(sessionId.trim(), () {
         final tab = _tabStore.openTabBySessionId(sessionId.trim());
@@ -379,10 +379,16 @@ class ChatCubit extends Cubit<ChatState>
       });
 
   /// Applies a new pod value, keeping only the latest revision per session.
+  /// Bumps [ChatState.stateVersion] on change so [context.select] callers (the
+  /// workbench overlay) rebuild when a pod's phase transitions.
+  @override
   void updatePod(SessionPod pod) {
     final existing = _pods[pod.sessionId];
     if (existing != null && existing.revision >= pod.revision) return;
     _pods[pod.sessionId] = pod;
+    if (!isClosed) {
+      emit(state.copyWith(stateVersion: state.stateVersion + 1));
+    }
   }
 
   /// Pod of the active session (foreground tab), or null.

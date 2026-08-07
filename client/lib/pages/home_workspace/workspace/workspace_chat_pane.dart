@@ -8,7 +8,6 @@ import 'package:shared_ui/shared_ui.dart';
 import '../../../cubits/chat_cubit.dart';
 import '../../../cubits/launch_profile_cubit.dart';
 import '../../../cubits/worktree_cubit.dart';
-import '../../../l10n/l10n_extensions.dart';
 import '../../../models/landing_launch_context.dart';
 import '../../../models/workspace.dart';
 import '../../../utils/ui/app_keys.dart';

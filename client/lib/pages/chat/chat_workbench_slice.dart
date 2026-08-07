@@ -40,16 +40,6 @@ class ChatWorkbenchSlice {
   final String? sessionConnectingId;
   final String? sessionLaunchError;
 
-  bool get isActiveSessionConnecting {
-    if (newChatActive || tabCount == 0) return false;
-    final id = sessionConnectingId;
-    final active = activeSessionId;
-    if (id == null || id.isEmpty) return false;
-    if (id == 'pending') return true;
-    if (active == null || active.isEmpty) return false;
-    return id == active;
-  }
-
   @override
   bool operator ==(Object other) {
     return other is ChatWorkbenchSlice &&
