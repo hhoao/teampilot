@@ -251,6 +251,23 @@ class _MarkdownCodeBlockState extends State<_MarkdownCodeBlock> {
           alpha: 0.6,
         );
 
+    // Collapsed: clipped teaser. foldFixedHeight expanded: fixed scroll shell.
+    // foldExpandFull expanded: full natural height (no clamp).
+    final Widget body;
+    if (!_expanded) {
+      body = ConstrainedBox(
+        constraints: const BoxConstraints(maxHeight: _kCollapsedMaxHeight),
+        child: _codeText(code),
+      );
+    } else if (expandFull) {
+      body = _codeText(code);
+    } else {
+      body = ConstrainedBox(
+        constraints: const BoxConstraints(maxHeight: _kExpandedMaxHeight),
+        child: SingleChildScrollView(child: _codeText(code)),
+      );
+    }
+
     return DecoratedBox(
       decoration: BoxDecoration(
         color: muted,
@@ -260,16 +277,7 @@ class _MarkdownCodeBlockState extends State<_MarkdownCodeBlock> {
       child: Stack(
         clipBehavior: Clip.hardEdge,
         children: [
-          ConstrainedBox(
-            constraints: BoxConstraints(
-              maxHeight: _expanded && !expandFull
-                  ? _kExpandedMaxHeight
-                  : _kCollapsedMaxHeight,
-            ),
-            child: (_expanded && !expandFull)
-                ? SingleChildScrollView(child: _codeText(code))
-                : _codeText(code),
-          ),
+          body,
           Positioned(
             left: 0,
             right: 0,

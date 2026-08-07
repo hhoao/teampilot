@@ -156,9 +156,17 @@ void main() {
     await tester.tap(find.byIcon(Icons.keyboard_arrow_down_rounded));
     await tester.pumpAndSettle();
 
-    // Full natural height: the full code is mounted, no inner scroll shell.
+    // Full natural height: the full code is mounted, no inner scroll shell,
+    // and the panel is as tall as the code (not clamped to the collapsed height).
     expect(find.textContaining('line 399'), findsOneWidget);
     expect(find.byType(SingleChildScrollView), findsOneWidget); // outer only
+    final panel = find
+        .ancestor(
+          of: find.textContaining('line 0'),
+          matching: find.byType(DecoratedBox),
+        )
+        .first;
+    expect(tester.getRect(panel).height, greaterThan(1000));
   });
 
   testWidgets('flatten code renders full natural height with no mask', (
