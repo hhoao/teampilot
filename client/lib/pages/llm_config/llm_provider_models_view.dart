@@ -97,7 +97,7 @@ class LlmProviderModelsView extends StatelessWidget {
                 ),
                 Padding(
                   padding: const EdgeInsets.only(left: 8),
-                  child: InkWell(
+                  child: TpHover(
                     borderRadius: BorderRadius.circular(6),
                     onTap: () => _addModel(context, provider.name),
                     child: Padding(
@@ -263,10 +263,7 @@ Future<void> _showValidationDialog(BuildContext context, LlmConfig config) {
               separatorBuilder: (_, __) => const SizedBox(height: 8),
               itemBuilder: (context, index) {
                 final tx = TpTextStyles.of(context);
-                return Text(
-                  '${index + 1}. ${messages[index]}',
-                  style: tx.md,
-                );
+                return Text('${index + 1}. ${messages[index]}', style: tx.md);
               },
             ),
           TpDialogActions(

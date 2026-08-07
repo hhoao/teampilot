@@ -162,9 +162,7 @@ class _McpFormPageState extends State<McpFormPage> {
               Expanded(
                 child: Text(
                   _isEditing ? l10n.mcpEdit : l10n.mcpAddTitle,
-                  style: TpTextStyles.of(
-                    context,
-                  ).mdBoldColored(textBase),
+                  style: TpTextStyles.of(context).mdBoldColored(textBase),
                 ),
               ),
               FilledButton.icon(
@@ -212,7 +210,7 @@ class _McpFormPageState extends State<McpFormPage> {
                 ),
               ),
               const SizedBox(height: 8),
-              InkWell(
+              TpHover(
                 onTap: () =>
                     setState(() => _metadataExpanded = !_metadataExpanded),
                 borderRadius: BorderRadius.circular(8),
@@ -311,8 +309,9 @@ class _McpFormPageState extends State<McpFormPage> {
                     decoration: InputDecoration(
                       errorText: _jsonError,
                       filled: true,
-                      fillColor:
-                          cs.surfaceContainerHighest.withValues(alpha: 0.35),
+                      fillColor: cs.surfaceContainerHighest.withValues(
+                        alpha: 0.35,
+                      ),
                       border: const OutlineInputBorder(),
                     ),
                   );

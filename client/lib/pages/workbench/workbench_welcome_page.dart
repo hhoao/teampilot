@@ -79,40 +79,36 @@ class _WelcomeShortcutRow extends StatelessWidget {
     final isMacOS = defaultIsMacOS();
     final cs = Theme.of(context).colorScheme;
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        key: AppKeys.workbenchWelcomeCommandRow(commandId),
-        onTap: () => context.read<CommandBus>().invoke(commandId),
-        borderRadius: BorderRadius.circular(8),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  titleForCommand(l10n, commandId),
-                  style: TpTextStyles.of(context).mdColored(cs.onSurface),
-                ),
+    return TpHover(
+      key: AppKeys.workbenchWelcomeCommandRow(commandId),
+      backgroundColor: Colors.transparent,
+      borderRadius: BorderRadius.circular(8),
+      onTap: () => context.read<CommandBus>().invoke(commandId),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                titleForCommand(l10n, commandId),
+                style: TpTextStyles.of(context).mdColored(cs.onSurface),
               ),
-              const SizedBox(width: 12),
-              if (chords.isEmpty)
-                Text(
-                  l10n.shortcutsNotSet,
-                  style: TpTextStyles.of(context).mutedSm,
-                )
-              else
-                Wrap(
-                  spacing: 6,
-                  children: [
-                    for (final chord in chords)
-                      _ChordChip(
-                        label: formatKeyChord(chord, isMacOS: isMacOS),
-                      ),
-                  ],
-                ),
-            ],
-          ),
+            ),
+            const SizedBox(width: 12),
+            if (chords.isEmpty)
+              Text(
+                l10n.shortcutsNotSet,
+                style: TpTextStyles.of(context).mutedSm,
+              )
+            else
+              Wrap(
+                spacing: 6,
+                children: [
+                  for (final chord in chords)
+                    _ChordChip(label: formatKeyChord(chord, isMacOS: isMacOS)),
+                ],
+              ),
+          ],
         ),
       ),
     );

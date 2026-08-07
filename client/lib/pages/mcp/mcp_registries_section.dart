@@ -370,59 +370,58 @@ class _RegistryRow extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onEdit,
-          borderRadius: BorderRadius.circular(10),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: workspaceInsetDecoration(cs, radius: 10),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        source.baseUrl,
-                        style: TpTextStyles.of(
-                          context,
-                        ).mdSemiboldColored(textBase),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        label,
-                        style: TpTextStyles.of(context).xsColored(textBase.withValues(alpha: 0.55),
-                        ),
-                      ),
-                    ],
-                  ),
+      child: TpHover(
+        backgroundColor: Colors.transparent,
+        borderRadius: BorderRadius.circular(10),
+        onTap: onEdit,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: workspaceInsetDecoration(cs, radius: 10),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      source.baseUrl,
+                      style: TpTextStyles.of(
+                        context,
+                      ).mdSemiboldColored(textBase),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      label,
+                      style: TpTextStyles.of(
+                        context,
+                      ).xsColored(textBase.withValues(alpha: 0.55)),
+                    ),
+                  ],
                 ),
-                if (testing) ...[
-                  const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-                  const SizedBox(width: 8),
-                ],
-                Switch(value: source.enabled, onChanged: onToggle),
-                IconButton(
-                  tooltip: l10n.mcpRegistryResetTitle,
-                  onPressed: onReset,
-                  icon: Icon(
-                    Icons.delete_outline,
-                    size: context.tpIconSizes.md,
-                    color: cs.error,
-                  ),
+              ),
+              if (testing) ...[
+                const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
                 ),
+                const SizedBox(width: 8),
               ],
-            ),
+              Switch(value: source.enabled, onChanged: onToggle),
+              IconButton(
+                tooltip: l10n.mcpRegistryResetTitle,
+                onPressed: onReset,
+                icon: Icon(
+                  Icons.delete_outline,
+                  size: context.tpIconSizes.md,
+                  color: cs.error,
+                ),
+              ),
+            ],
           ),
         ),
       ),
