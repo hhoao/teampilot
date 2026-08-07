@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 
 import '../edit/edit_tool_card.dart';
 import '../shell/shell_tool_card.dart';
+import '../tool_call_bubble_scope.dart';
 import '../markdown/compiled_markdown_chrome.dart';
 import 'package:tp_markdown/tp_markdown.dart';
 import 'expandable_tool_card.dart';
@@ -45,6 +46,14 @@ class _AiToolCallPartViewState extends State<AiToolCallPartView> {
     final markdown = aiTheme.markdown;
     final triggerColor = aiTheme.resolveToolTrigger(scheme);
     final part = widget.part;
+    final bubble = AiToolCallBubbleScope
+        .maybeOf(context)
+        ?.builders[part.toolName.toLowerCase()];
+    if (bubble != null) {
+      return SelectionContainer.disabled(
+        child: bubble(context, part),
+      );
+    }
     final cancelled = part.isCancelled;
     final bottom = widget.dense ? 2.0 : aiTheme.partSpacing;
     final fileActions = AiToolFileActions.of(context);
