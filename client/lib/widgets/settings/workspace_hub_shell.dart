@@ -96,21 +96,19 @@ class WorkspaceHubNavItem extends StatelessWidget {
     return RepaintBoundary(
       child: Padding(
         padding: EdgeInsets.only(left: leftIndent, bottom: 8),
-        child: Material(
-          color: selected
+        child: TpHover(
+          backgroundColor: selected
               ? selectedColor
               : hubStyle
               ? cs.workspaceSubtleSurface
               : Colors.transparent,
           borderRadius: borderRadius,
-          child: InkWell(
-            borderRadius: borderRadius,
-            onTap: onTap,
-            child: SizedBox(
-              height: height,
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-                child: Row(
+          onTap: onTap,
+          child: SizedBox(
+            height: height,
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+              child: Row(
                   children: [
                     Icon(
                       leadingIcon,
@@ -152,7 +150,6 @@ class WorkspaceHubNavItem extends StatelessWidget {
             ),
           ),
         ),
-      ),
     );
   }
 }

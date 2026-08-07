@@ -46,7 +46,7 @@ class AndroidWorkEnvironmentSelector extends StatelessWidget {
     return TpActionMenuIconAnchor(
       minWidth: 280,
       triggerBuilder: (context, controller) {
-        return InkWell(
+        return TpHover(
           onTap: () {
             if (controller.isOpen) {
               controller.close();

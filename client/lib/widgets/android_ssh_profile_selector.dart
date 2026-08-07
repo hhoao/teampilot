@@ -39,7 +39,7 @@ class AndroidSshProfileSelector extends StatelessWidget {
     return TpActionMenuIconAnchor(
       minWidth: 260,
       triggerBuilder: (context, controller) {
-        return InkWell(
+        return TpHover(
           onTap: () {
             if (controller.isOpen) {
               controller.close();

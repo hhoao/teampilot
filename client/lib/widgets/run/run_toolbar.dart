@@ -120,35 +120,31 @@ class _ChoiceOptionSelector extends StatelessWidget {
         }
       },
       triggerBuilder: (context, controller) {
-        return Material(
-          color: Colors.transparent,
+        return TpHover(
+          backgroundColor: Colors.transparent,
           borderRadius: BorderRadius.circular(6),
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(6),
-            onTap: () {
-              if (controller.isOpen) {
-                controller.close();
-              } else {
-                controller.open();
-              }
-            },
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 120),
-                    child: Text(
-                      label,
-                      overflow: TextOverflow.ellipsis,
-                      style: TpTextStyles.of(context).mdColored(cs.onSurface),
-                    ),
+          onTap: () {
+            if (controller.isOpen) {
+              controller.close();
+            } else {
+              controller.open();
+            }
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 120),
+                  child: Text(
+                    label,
+                    overflow: TextOverflow.ellipsis,
+                    style: TpTextStyles.of(context).mdColored(cs.onSurface),
                   ),
-                  Icon(Icons.arrow_drop_down, color: cs.onSurfaceVariant),
-                ],
-              ),
+                ),
+                Icon(Icons.arrow_drop_down, color: cs.onSurfaceVariant),
+              ],
             ),
           ),
         );

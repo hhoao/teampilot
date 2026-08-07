@@ -594,7 +594,7 @@ class _Header extends StatelessWidget {
     return Row(
       children: [
         Expanded(
-          child: InkWell(
+          child: TpHover(
             onTap: onBranch,
             borderRadius: BorderRadius.circular(6),
             child: Padding(

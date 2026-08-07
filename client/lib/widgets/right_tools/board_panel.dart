@@ -159,7 +159,7 @@ class _CardTile extends StatelessWidget {
     final isError =
         card.status == TaskStatus.failed || card.status == TaskStatus.cancelled;
 
-    return InkWell(
+    return TpHover(
       onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),

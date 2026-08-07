@@ -50,13 +50,13 @@ class ProgressActivityTile extends StatelessWidget {
       );
     }
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          child: Row(
+    return TpHover(
+      backgroundColor: Colors.transparent,
+      borderRadius: BorderRadius.zero,
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
@@ -105,7 +105,6 @@ class ProgressActivityTile extends StatelessWidget {
             ],
           ),
         ),
-      ),
     );
   }
 }
