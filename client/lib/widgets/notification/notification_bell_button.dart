@@ -92,14 +92,21 @@ class _BellGlyph extends StatelessWidget {
         hoverColor: cs.onSurface.withValues(alpha: 0.07),
         width: size,
         height: size,
+        // Fill the hit target so the glyph centers inside it — TpHover lays
+        // its child out top-left, so a child that only wraps the icon would be
+        // pinned to the corner of the button square.
         child: Stack(
           clipBehavior: Clip.none,
-          alignment: Alignment.center,
           children: [
-            Icon(
-              Icons.notifications_outlined,
-              size: context.tpIconSizes.md,
-              color: hasUnread ? cs.primary : cs.onSurfaceVariant,
+            Positioned.fill(
+              child: Align(
+                alignment: Alignment.center,
+                child: Icon(
+                  Icons.notifications_outlined,
+                  size: context.tpIconSizes.md,
+                  color: hasUnread ? cs.primary : cs.onSurfaceVariant,
+                ),
+              ),
             ),
             if (hasUnread)
               Positioned(
