@@ -419,7 +419,7 @@ void main() {
 
         expect(cubit.state.tabs, hasLength(1));
         expect(cubit.state.activeSessionId, session.sessionId);
-        expect(cubit.state.sessionConnectingId, session.sessionId);
+        expect(cubit.isSessionConnecting(session.sessionId), isTrue);
       },
     );
 
@@ -455,7 +455,7 @@ void main() {
 
         expect(cubit.state.tabs, hasLength(1));
         expect(cubit.state.activeSessionId, isNotEmpty);
-        expect(cubit.state.sessionConnectingId, cubit.state.activeSessionId);
+        expect(cubit.isSessionConnecting(cubit.state.activeSessionId!), isTrue);
         expect(cubit.state.sessions, hasLength(1));
       },
     );
@@ -507,7 +507,7 @@ void main() {
 
         expect(cubit.state.tabs, hasLength(1));
         expect(cubit.state.activeSessionId, session.sessionId);
-        expect(cubit.state.sessionConnectingId, session.sessionId);
+        expect(cubit.isSessionConnecting(session.sessionId), isTrue);
       },
     );
 

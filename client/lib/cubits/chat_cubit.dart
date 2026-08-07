@@ -231,6 +231,10 @@ class ChatCubit extends Cubit<ChatState>
   /// active pod instead of global connecting sentinels.
   final Map<String, SessionPod> _pods = {};
 
+  /// Pre-session materialization (the former `'pending'` connect): no real pod
+  /// exists yet, but a connect is in flight so concurrent connects must wait.
+  bool _materializingInFlight = false;
+
   /// Wired post-bootstrap (the AiHistoryLoader is built after ChatCubit). When
   /// set, pods own a [HistoryStore]; consumers fall back to the global cubit
   /// until then.
@@ -1706,6 +1710,21 @@ class ChatCubit extends Cubit<ChatState>
   @override
   void setPodView(String sessionId, SessionWorkbenchView view) {
     podRuntime(sessionId)?.setView(view);
+  }
+
+  /// SessionLaunchHost port: pod-phase concurrency gate.
+  @override
+  bool isSessionConnecting(String sessionId) =>
+      podRuntime(sessionId)?.state.phase.isLaunching ?? false;
+
+  @override
+  bool get hasConnectingSession =>
+      _materializingInFlight ||
+      _pods.values.any((p) => p.state.phase.isLaunching);
+
+  @override
+  void setMaterializingInFlight(bool value) {
+    _materializingInFlight = value;
   }
 
   /// Shows the new-chat landing for [workspaceId] without closing open tabs.

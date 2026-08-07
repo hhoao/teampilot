@@ -20,18 +20,19 @@ mixin ChatConnectStateMixin on Cubit<ChatState> {
   // per-session phase.
   SessionPod? podRuntime(String sessionId);
   SessionPod ensurePodRuntime(String sessionId);
+  bool isSessionConnecting(String sessionId);
+  bool get hasConnectingSession;
+  void setMaterializingInFlight(bool value);
 
   void beginSessionConnect(String sessionId) {
     appLogger.d('[session-launch] connecting start session=$sessionId');
     clearLaunchError(sessionId);
+    if (sessionId == 'pending') {
+      // Pre-session materialization (no real pod exists yet).
+      setMaterializingInFlight(true);
+      return;
+    }
     ensurePodRuntime(sessionId).setPhase(SessionPhase.connecting);
-    if (state.sessionConnectingId == sessionId) return;
-    emit(
-      state.copyWith(
-        sessionConnectingId: sessionId,
-        stateVersion: state.stateVersion + 1,
-      ),
-    );
   }
 
   void setLaunchError(String sessionId, String rawMessage) {
@@ -81,35 +82,27 @@ mixin ChatConnectStateMixin on Cubit<ChatState> {
       '[session-launch] connecting failed session=$sessionId: $rawMessage',
     );
     setLaunchError(sessionId, rawMessage);
+    if (sessionId == 'pending') {
+      setMaterializingInFlight(false);
+      updateTabRunning(sessionId);
+      return;
+    }
     final pod = podRuntime(sessionId);
     if (pod != null) {
       pod.setPhase(SessionPhase.error);
       pod.setLaunchError(rawMessage);
     }
     updateTabRunning(sessionId);
-    _clearConnectingIdIfMatch(sessionId);
   }
 
   void finishSessionConnect(String sessionId) {
     updateTabRunning(sessionId);
     if (isClosed) return;
+    if (sessionId == 'pending') {
+      setMaterializingInFlight(false);
+      return;
+    }
     podRuntime(sessionId)?.setPhase(SessionPhase.running);
-    _clearConnectingIdIfMatch(sessionId);
-  }
-
-  /// Clears [sessionConnectingId] when it still points at [sessionId]. Shared
-  /// by the success and failure paths so an error does not run through the
-  /// success phase transition.
-  void _clearConnectingIdIfMatch(String sessionId) {
-    if (isClosed) return;
-    if (state.sessionConnectingId != sessionId) return;
-    appLogger.d('[session-launch] connecting done session=$sessionId');
-    emit(
-      state.copyWith(
-        clearSessionConnectingId: true,
-        stateVersion: state.stateVersion + 1,
-      ),
-    );
   }
 
   void updateTabRunning(String tabId) {

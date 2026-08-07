@@ -39,6 +39,16 @@ abstract interface class SessionConnectStatePort {
   /// pod owns the per-session view; the launch surface routes through this).
   void setPodView(String sessionId, SessionWorkbenchView view);
 
+  /// True when [sessionId]'s pod is still provisioning/connecting.
+  bool isSessionConnecting(String sessionId);
+
+  /// True when any session is connecting or pre-session materialization is in
+  /// flight (the former `'pending'` connect).
+  bool get hasConnectingSession;
+
+  /// Marks pre-session materialization (former `'pending'`) in flight.
+  void setMaterializingInFlight(bool value);
+
   /// Updates (or clears) live remote provision UI for [memberId] on [sessionId].
   void setMemberRemoteProvisionProgress(
     String sessionId,
