@@ -370,6 +370,19 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
     var merged = Map<String, Object?>.from(settings);
     if (enabledPlugins is Map && enabledPlugins.isNotEmpty) {
       merged['enabledPlugins'] = enabledPlugins;
+    } else if (memberToolDir != null && memberToolDir.trim().isNotEmpty) {
+      // The CLI's effective settings may be a per-session file under the
+      // config dir (`settings/<member>.json`, passed via `--settings`) while
+      // plugin provisioning writes `enabledPlugins` into the config-dir
+      // `settings.json`. Inherit the plugin state so the file the CLI actually
+      // reads enables the session's plugins.
+      final dirSettings = await _readSettingsFile(
+        _fs.pathContext.join(memberToolDir, 'settings.json'),
+      );
+      final dirEnabled = dirSettings['enabledPlugins'];
+      if (dirEnabled is Map && dirEnabled.isNotEmpty) {
+        merged['enabledPlugins'] = dirEnabled;
+      }
     }
     merged = await applyExtensionSettings(
       merged,

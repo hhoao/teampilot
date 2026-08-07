@@ -153,6 +153,14 @@ void main() {
       File(p.join(claudeDir, 'settings.json')).readAsStringSync(),
     ) as Map;
     expect((settings['enabledPlugins'] as Map), contains('demo@local'));
+    // The CLI's effective settings file (--settings settings/<member>.json)
+    // must also enable the plugin, or the running CLI ignores it.
+    final memberSettings = jsonDecode(
+      File(
+        p.join(claudeDir, 'settings', '${plan.member.id}.json'),
+      ).readAsStringSync(),
+    ) as Map;
+    expect((memberSettings['enabledPlugins'] as Map), contains('demo@local'));
   });
 
   test('team plugin ids reach the session via the merged runtime bundle',
