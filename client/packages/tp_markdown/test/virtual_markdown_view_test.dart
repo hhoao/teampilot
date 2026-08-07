@@ -83,6 +83,47 @@ void main() {
     );
   });
 
+  testWidgets('flatten renders natural height and only mounts visible blocks', (
+    tester,
+  ) async {
+    // Parent scroll: the flatten view must size naturally and follow THIS scroll.
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 400,
+            height: 300,
+            child: SingleChildScrollView(
+              child: VirtualMarkdownView(
+                document: _blockDoc(200),
+                tokens: MarkdownTokens.test(),
+                flatten: true,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Natural height: as tall as all 200 blocks, not bounded to the viewport.
+    expect(
+      tester.getSize(find.byType(VirtualMarkdownView)).height,
+      greaterThan(1000),
+    );
+    // Only visible blocks mounted; far tail not built.
+    expect(_blockText('block-0'), findsOneWidget);
+    expect(_blockText('block-190'), findsNothing);
+
+    // Scrolling the PARENT reaches the tail.
+    final position = tester
+        .state<ScrollableState>(find.byType(Scrollable).first)
+        .position;
+    position.jumpTo(position.maxScrollExtent);
+    await tester.pumpAndSettle();
+    expect(_blockText('block-199'), findsOneWidget);
+  });
+
   testWidgets('link tap routes through resolvers', (tester) async {
     String? tapped;
     final doc = MarkdownDocument(

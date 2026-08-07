@@ -1,5 +1,6 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 
 import '../ir/markdown_block_kind.dart';
 import '../ir/markdown_document.dart';
@@ -9,15 +10,24 @@ import '../strings.dart';
 import '../tokens/markdown_tokens.dart';
 import 'inline_spans.dart';
 
-/// Bounded, internally-scrolling, block-level virtualized markdown renderer.
+/// Block-level virtualized markdown renderer for very large documents.
 ///
 /// [MarkdownView] lays out every block in a [Column], which freezes the frame
 /// for a single very large message (e.g. a bundled-skill user turn). This view
 /// instead keeps a height cache per layout unit (a merged paragraph run or a
-/// single block) and mounts only the units inside the scroll viewport (+
-/// overscan), recycling on scroll — Monaco-style smooth browsing of a huge
-/// message. Renders the same blocks as [MarkdownView] (registry + tokens +
-/// gaps), just lazily.
+/// single block) and mounts only the units in the scroll viewport (+ overscan),
+/// recycling on scroll.
+///
+/// Two modes:
+/// - **bounded** (default): owns a `SingleChildScrollView` capped at [maxHeight]
+///   — Monaco-style panel with its own scrollbar.
+/// - **flatten** ([flatten] = true): renders at **natural height inside the
+///   parent scroll** (no own scrollbar, no max-height), reading the parent's
+///   scroll position + own viewport offset to mount only visible blocks — VS
+///   Code markdown preview-style flow; the parent owns scrolling.
+///
+/// Renders the same blocks as [MarkdownView] (registry + tokens + gaps), just
+/// lazily.
 class VirtualMarkdownView extends StatefulWidget {
   const VirtualMarkdownView({
     super.key,
@@ -29,6 +39,7 @@ class VirtualMarkdownView extends StatefulWidget {
     this.maxHeight = 480,
     this.estimateHeight = 44,
     this.overscan = 6,
+    this.flatten = false,
   });
 
   final MarkdownDocument document;
@@ -37,7 +48,8 @@ class VirtualMarkdownView extends StatefulWidget {
   final MarkdownStrings strings;
   final BlockWidgetRegistry? registry;
 
-  /// Cap on the internal scroll viewport (the panel height).
+  /// Cap on the internal scroll viewport (the panel height). Ignored when
+  /// [flatten] is true.
   final double maxHeight;
 
   /// Per-unit height used before a unit has been measured.
@@ -45,6 +57,11 @@ class VirtualMarkdownView extends StatefulWidget {
 
   /// Extra units mounted beyond the visible range.
   final int overscan;
+
+  /// When true, render at **natural height inside the parent scroll** (no own
+  /// scrollbar, no max-height), mounting only the blocks visible in the parent
+  /// viewport. VS Code markdown preview-style flow; the parent owns scrolling.
+  final bool flatten;
 
   @override
   State<VirtualMarkdownView> createState() => _VirtualMarkdownViewState();
@@ -64,6 +81,10 @@ class _VirtualMarkdownViewState extends State<VirtualMarkdownView> {
   bool _correctionScheduled = false;
   double _pendingCorrection = 0;
 
+  /// Parent scroll position we follow in [flatten] mode (the parent's
+  /// `Scrollable`); null in bounded mode.
+  ScrollPosition? _parentPosition;
+
   @override
   void initState() {
     super.initState();
@@ -75,12 +96,28 @@ class _VirtualMarkdownViewState extends State<VirtualMarkdownView> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _syncVisibleRange();
+      if (widget.flatten) {
+        // Our viewport offset is only meaningful after the parent laid us out.
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          _syncVisibleRange();
+        });
+      }
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _bindParentScroll();
   }
 
   @override
   void didUpdateWidget(covariant VirtualMarkdownView oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.flatten != widget.flatten) {
+      _bindParentScroll();
+    }
     if (oldWidget.document != widget.document) {
       _units = _computeUnits(widget.document);
       _cache.invalidateAll();
@@ -93,8 +130,24 @@ class _VirtualMarkdownViewState extends State<VirtualMarkdownView> {
     }
   }
 
+  void _bindParentScroll() {
+    if (!widget.flatten) {
+      if (_parentPosition != null) {
+        _parentPosition!.removeListener(_onScroll);
+        _parentPosition = null;
+      }
+      return;
+    }
+    final position = Scrollable.maybeOf(context)?.position;
+    if (identical(position, _parentPosition)) return;
+    _parentPosition?.removeListener(_onScroll);
+    _parentPosition = position;
+    _parentPosition?.addListener(_onScroll);
+  }
+
   @override
   void dispose() {
+    _parentPosition?.removeListener(_onScroll);
     _disposeRecognizers(_linkRecognizers);
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
@@ -183,6 +236,10 @@ class _VirtualMarkdownViewState extends State<VirtualMarkdownView> {
 
   void _syncVisibleRange() {
     if (!mounted || _units.isEmpty) return;
+    if (widget.flatten) {
+      _syncFlattenRange();
+      return;
+    }
     if (!_scrollController.hasClients ||
         !_scrollController.position.hasViewportDimension) {
       final count = widget.overscan.clamp(1, _units.length);
@@ -215,6 +272,54 @@ class _VirtualMarkdownViewState extends State<VirtualMarkdownView> {
     _applyRange(clamped);
   }
 
+  /// Flatten mode: compute the visible block window from the **parent** scroll.
+  /// Our offset in the parent viewport comes from [RenderAbstractViewport]; the
+  /// visible document range is `[parentPixels - myOffset, +viewportHeight]`.
+  void _syncFlattenRange() {
+    final renderObject = context.findRenderObject();
+    if (renderObject is! RenderBox || !renderObject.hasSize) {
+      // Cold: mount a small window at the top on the estimated extent.
+      final count = widget.overscan.clamp(1, _units.length);
+      _applyRange(
+        _BlockVisibleRange(
+          firstIndex: 0,
+          lastIndex: count - 1,
+          paddingTop: 0,
+          paddingBottom:
+              _cache.totalExtent(_units.length) -
+              _cache.offsetBefore(_units.length, count),
+        ),
+      );
+      return;
+    }
+    final viewport = RenderAbstractViewport.of(renderObject);
+    final pixels = _parentPosition?.pixels ?? 0.0;
+    final revealed = viewport.getOffsetToReveal(renderObject, 0.0);
+    final visibleTop = pixels - revealed.offset;
+    final viewportHeight = _parentPosition?.viewportDimension ?? 0.0;
+    final range = _cache.visibleRange(
+      unitCount: _units.length,
+      scrollPixels: visibleTop,
+      viewportHeight: viewportHeight,
+      overscan: widget.overscan,
+    );
+    final clamped = _cache.clampUnmeasuredMounts(
+      unitCount: _units.length,
+      range: range,
+      maxUnmeasured: widget.overscan,
+      preferEnd: _flattenNearEnd(pixels, viewportHeight),
+    );
+    _applyRange(clamped);
+  }
+
+  bool _flattenNearEnd(double pixels, double viewportHeight) {
+    final p = _parentPosition;
+    if (p == null) return true;
+    final max = p.maxScrollExtent;
+    if (max <= 0) return true;
+    return max - pixels <= viewportHeight;
+  }
+
   void _applyRange(_BlockVisibleRange range) {
     if (range.firstIndex == _firstIndex &&
         range.lastIndex == _lastIndex &&
@@ -242,7 +347,9 @@ class _VirtualMarkdownViewState extends State<VirtualMarkdownView> {
     final before = _cache.heightOf(index);
     _cache.setMeasured(index, height);
     final delta = height - before;
-    if (delta.abs() >= 0.5 && _scrollController.hasClients) {
+    // In flatten mode the parent (turn/thread machinery) owns scroll
+    // correction — height growth shifts the parent extent, not an inner panel.
+    if (!widget.flatten && delta.abs() >= 0.5 && _scrollController.hasClients) {
       final unitStart = _cache.offsetBefore(_units.length, index);
       final scrollPixels = _scrollController.position.pixels;
       if (unitStart + before <= scrollPixels) {
@@ -282,29 +389,35 @@ class _VirtualMarkdownViewState extends State<VirtualMarkdownView> {
     final strings = widget.strings;
     final reg = widget.registry ?? BlockWidgetRegistry.builtIn();
 
+    final content = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (_units.isEmpty)
+          const SizedBox.shrink()
+        else if (_firstIndex > _lastIndex)
+          // Cold first frame: estimated full extent so the scrollbar has a
+          // stable range before units mount and measure.
+          SizedBox(height: _cache.totalExtent(_units.length))
+        else ...[
+          SizedBox(height: _paddingTop),
+          for (var i = _firstIndex; i <= _lastIndex; i++)
+            _buildUnit(i, tokens, resolvers, strings, reg),
+          SizedBox(height: _paddingBottom),
+        ],
+      ],
+    );
+
+    if (widget.flatten) {
+      // Natural height inside the parent scroll — no inner scrollbar.
+      return MarkdownStringsScope(strings: strings, child: content);
+    }
     return MarkdownStringsScope(
       strings: strings,
       child: ConstrainedBox(
         constraints: BoxConstraints(maxHeight: widget.maxHeight),
         child: SingleChildScrollView(
           controller: _scrollController,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (_units.isEmpty)
-                const SizedBox.shrink()
-              else if (_firstIndex > _lastIndex)
-                // Cold first frame: estimated full extent so the scrollbar has
-                // a stable range before units mount and measure.
-                SizedBox(height: _cache.totalExtent(_units.length))
-              else ...[
-                SizedBox(height: _paddingTop),
-                for (var i = _firstIndex; i <= _lastIndex; i++)
-                  _buildUnit(i, tokens, resolvers, strings, reg),
-                SizedBox(height: _paddingBottom),
-              ],
-            ],
-          ),
+          child: content,
         ),
       ),
     );

@@ -507,6 +507,14 @@ class SessionShellConnector {
           if (remoteMemberKeyForRollback != null) {
             unawaited(tab.closeMemberRemotePlane(remoteMemberKeyForRollback));
           }
+          // Non-zero exit (crash / interrupt) never fires a CLI `Stop` done
+          // hook; without this the agent-status seat keeps the session lit as
+          // working until the stale TTL, exactly like [onProcessExited] clears
+          // on a clean exit.
+          _host.clearAgentStatusSeat(
+            sessionId: activeSession.sessionId,
+            memberId: agentStatusSeatMemberId,
+          );
           _host.failSessionConnect(tab.info.id, message);
         },
         onProcessExited: () {

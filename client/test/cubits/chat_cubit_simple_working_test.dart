@@ -358,5 +358,68 @@ void main() {
         expect(cubit.state.workingSessionIds, isEmpty);
       },
     );
+
+    test(
+      'compose Stop must clear attention so the session does not stay working',
+      () async {
+        final workspace = await repo.createWorkspace([
+          WorkspaceFolder(path: '/tmp'),
+        ]);
+        final session = await repo.createSession(workspace.workspaceId);
+        await cubit.loadWorkspaceData(repo);
+
+        await cubit.requestOpenSession(
+          SessionOpenRequest(
+            session: session,
+            workspace: workspace,
+            repo: repo,
+            connectImmediately: false,
+          ),
+        );
+        await drainPendingAsyncWork();
+        final memberId = cubit.activeTab!.memberShells.keys.single;
+
+        // Agent is mid-turn: attention hook reports working (real agent hook).
+        attention.applyEvent(
+          sessionId: session.sessionId,
+          memberId: memberId,
+          event: const AgentStatusEvent(
+            state: AgentSeatAttention.working,
+            hookEventName: 'PostToolUse',
+            toolName: 'Bash',
+            toolUseId: 'toolu-1',
+          ),
+          skipPermissions: false,
+        );
+        await drainPendingAsyncWork();
+        expect(
+          cubit.state.workingSessionIds,
+          contains(session.sessionId),
+          reason: 'attention.working lights the session before Stop',
+        );
+
+        // User presses Stop → compose stop handler routes through
+        // interruptSelectedMemberTurn (writes Ctrl+C; process may exit or not).
+        await cubit.interruptSelectedMemberTurn(
+          sessionId: session.sessionId,
+          memberId: memberId,
+        );
+        await drainPendingAsyncWork();
+
+        expect(
+          attention.state.attentionFor(
+            sessionId: session.sessionId,
+            memberId: memberId,
+          ),
+          isNull,
+          reason: 'Stop must clear the agent-status working seat',
+        );
+        expect(
+          cubit.state.workingSessionIds,
+          isEmpty,
+          reason: 'a terminated turn must not keep the session working',
+        );
+      },
+    );
   });
 }
