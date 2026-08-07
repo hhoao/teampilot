@@ -6461,6 +6461,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get runFieldInterpreterPath => 'Interpreter path';
 
   @override
+  String get runFieldInterpreterPathEditTooltip => 'Edit interpreter path';
+
+  @override
   String get runFieldInterpreterOptions => 'Interpreter options';
 
   @override

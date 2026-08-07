@@ -204,12 +204,10 @@ void main() {
       workspaceId: 'ws-1',
       terminalRunDeps: depsResolver,
       emitUiIntent: intents.add,
-      registerTerminalSession: ({
-        required String entryId,
-        required String sessionId,
-      }) {
-        bound.add((entryId: entryId, sessionId: sessionId));
-      },
+      registerTerminalSession:
+          ({required String entryId, required String sessionId}) {
+            bound.add((entryId: entryId, sessionId: sessionId));
+          },
       processExecutor: ProcessRunExecutor(
         spawner:
             ({
@@ -244,7 +242,10 @@ void main() {
     expect(runService.openCalls.single['selectionKey'], 'local|/proj|cfg');
     expect(runService.openCalls.single['title'], 'Run me');
     expect(runService.openCalls.single['cwd'], '/proj');
-    expect(runService.openCalls.single['sshConnectFailedMessage'], 'ssh failed');
+    expect(
+      runService.openCalls.single['sshConnectFailedMessage'],
+      'ssh failed',
+    );
     expect(runService.waitForReadyCalls, 1);
     expect(runService.injectCalls, 1);
     expect(runService.lastInjectLine, "cd '/proj' && '/bin/bash' -c 'echo hi'");
@@ -268,45 +269,48 @@ void main() {
     expect(runService.interruptCalls, 1);
   });
 
-  test('terminal branch forwards preferTerminalEntryId to openForRun', () async {
-    final launcher = RunShellScriptLauncher(
-      workspaceId: 'ws-1',
-      terminalRunDeps: depsResolver,
-      processExecutor: ProcessRunExecutor(
-        spawner:
-            ({
-              required executable,
-              required arguments,
-              required workingDirectory,
-              environment,
-              runInShell = false,
-              includeParentEnvironment = true,
-            }) async {
-              fail('ProcessRunExecutor must not be called in terminal mode');
-            },
-      ),
-    );
+  test(
+    'terminal branch forwards preferTerminalEntryId to openForRun',
+    () async {
+      final launcher = RunShellScriptLauncher(
+        workspaceId: 'ws-1',
+        terminalRunDeps: depsResolver,
+        processExecutor: ProcessRunExecutor(
+          spawner:
+              ({
+                required executable,
+                required arguments,
+                required workingDirectory,
+                environment,
+                runInShell = false,
+                includeParentEnvironment = true,
+              }) async {
+                fail('ProcessRunExecutor must not be called in terminal mode');
+              },
+        ),
+      );
 
-    await launcher.launch(
-      sessionId: 'sess-prefer',
-      owned: _owned(
-        extras: {
-          'execute': 'scriptText',
-          'scriptText': 'echo hi',
-          'interpreterPath': '/bin/bash',
-          'cwd': '/proj',
-          'executeInTerminal': true,
-          'allowMultipleInstances': true,
-        },
-      ),
-      onOutput: (_) {},
-      preferTerminalEntryId: 'entry-prefer',
-    );
+      await launcher.launch(
+        sessionId: 'sess-prefer',
+        owned: _owned(
+          extras: {
+            'execute': 'scriptText',
+            'scriptText': 'echo hi',
+            'interpreterPath': '/bin/bash',
+            'cwd': '/proj',
+            'executeInTerminal': true,
+            'allowMultipleInstances': true,
+          },
+        ),
+        onOutput: (_) {},
+        preferTerminalEntryId: 'entry-prefer',
+      );
 
-    expect(runService.openCalls, hasLength(1));
-    expect(runService.openCalls.single['preferEntryId'], 'entry-prefer');
-    expect(runService.openCalls.single['allowMultipleInstances'], true);
-  });
+      expect(runService.openCalls, hasLength(1));
+      expect(runService.openCalls.single['preferEntryId'], 'entry-prefer');
+      expect(runService.openCalls.single['allowMultipleInstances'], true);
+    },
+  );
 
   test('non-terminal branch delegates to ProcessRunExecutor', () async {
     final spawned = <Map<String, Object?>>[];
@@ -379,5 +383,92 @@ void main() {
     expect(await handle.exitCode, 0);
     await handle.stop();
     expect(processHandle.killCount, 1);
+  });
+
+  test(
+    'terminal branch re-spells Windows backslash cwd for posix targets',
+    () async {
+      final launcher = RunShellScriptLauncher(
+        workspaceId: 'ws-1',
+        terminalRunDeps: depsResolver,
+        processExecutor: ProcessRunExecutor(
+          spawner:
+              ({
+                required executable,
+                required arguments,
+                required workingDirectory,
+                environment,
+                runInShell = false,
+                includeParentEnvironment = true,
+              }) async {
+                fail('ProcessRunExecutor must not be called in terminal mode');
+              },
+        ),
+      );
+
+      await launcher.launch(
+        sessionId: 'sess-posix',
+        owned: OwnedLaunchConfiguration(
+          owner: const WorkspaceFolder(
+            path: '/proj',
+            targetId: 'ssh:profile-1',
+          ),
+          configuration: LaunchConfiguration(
+            id: 'cfg',
+            name: 'Run',
+            type: 'shellScript',
+            cwd: r'${workspaceFolder}\client',
+            extras: {
+              'execute': 'scriptText',
+              'scriptText': 'echo hi',
+              'interpreterPath': '/bin/bash',
+              'executeInTerminal': true,
+            },
+          ),
+        ),
+        onOutput: (_) {},
+      );
+
+      expect(runService.openCalls.single['cwd'], '/proj/client');
+    },
+  );
+
+  test('missing path-like interpreter fails fast on a local target', () async {
+    final launcher = RunShellScriptLauncher(
+      workspaceId: 'ws-1',
+      terminalRunDeps: depsResolver,
+      processExecutor: ProcessRunExecutor(
+        spawner:
+            ({
+              required executable,
+              required arguments,
+              required workingDirectory,
+              environment,
+              runInShell = false,
+              includeParentEnvironment = true,
+            }) async {
+              fail('ProcessRunExecutor must not be called');
+            },
+      ),
+    );
+
+    await expectLater(
+      launcher.launch(
+        sessionId: 'sess-missing',
+        owned: _owned(
+          extras: {
+            'execute': 'scriptText',
+            'scriptText': 'echo hi',
+            'interpreterPath': '/definitely/not/a/real/shell',
+            'cwd': '/proj',
+            'executeInTerminal': true,
+          },
+        ),
+        onOutput: (_) {},
+      ),
+      throwsStateError,
+    );
+
+    expect(runService.openCalls, isEmpty);
   });
 }

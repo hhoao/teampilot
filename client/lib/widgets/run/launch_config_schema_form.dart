@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../models/run/launch_configuration.dart';
+import '../../services/host/host_interactive_shell.dart';
 import '../../services/run/launch_config_l10n.dart';
 import '../../services/run/launch_config_schema_fields.dart';
 import 'package:shared_ui/shared_ui.dart';
@@ -171,13 +172,9 @@ class _LaunchConfigSchemaFormState extends State<LaunchConfigSchemaForm> {
       case LaunchConfigSchemaFieldType.enumValue:
         _emit(_writeString(_working, field.key, text));
       case LaunchConfigSchemaFieldType.stringArray:
-        _emit(
-          _writeStringList(_working, field.key, parseLaunchArgsText(text)),
-        );
+        _emit(_writeStringList(_working, field.key, parseLaunchArgsText(text)));
       case LaunchConfigSchemaFieldType.stringMap:
-        _emit(
-          _writeStringMap(_working, field.key, parseLaunchEnvText(text)),
-        );
+        _emit(_writeStringMap(_working, field.key, parseLaunchEnvText(text)));
       case LaunchConfigSchemaFieldType.boolean:
       case LaunchConfigSchemaFieldType.unsupported:
         break;
@@ -192,6 +189,49 @@ class _LaunchConfigSchemaFormState extends State<LaunchConfigSchemaForm> {
     setState(() {
       _emit(_writeString(_working, key, value));
     });
+  }
+
+  Widget _buildInterpreterPathField(
+    BuildContext context,
+    LaunchConfigSchemaField field,
+  ) {
+    final stored = _readString(_working, 'interpreterPath')?.trim() ?? '';
+    // Show the platform default when the config leaves it unset; the stored
+    // value stays empty so the config stays portable and the launch resolves
+    // the default per host.
+    final display = stored.isNotEmpty
+        ? stored
+        : HostInteractiveShell.defaultExecutable();
+    final shells = HostInteractiveShell.discoverSpecs()
+        .map((s) => s.executable)
+        .toList(growable: false);
+    final l10n = context.l10n;
+    return TpFormField<String>(
+      id: field.key,
+      initialValue: display,
+      label: Text(localizeLaunchConfigFieldLabel(l10n, field)),
+      layoutStyle: TpFormFieldLayoutStyle.inline,
+      labelWidth: kLaunchConfigFormLabelWidth,
+      builder: (state) {
+        return TpSelectWithCustomInput(
+          key: const Key('launch-config-field-interpreterPath'),
+          value: display,
+          items: shells,
+          hintText: l10n.runFieldInterpreterPath,
+          decoration: TpSelectDecorations.themed(context),
+          searchable: shells.length >= 6,
+          customInputTooltip: l10n.runFieldInterpreterPathEditTooltip,
+          cancelLabel: l10n.cancel,
+          confirmLabel: l10n.confirm,
+          onChanged: (next) {
+            state.didChange(next);
+            setState(() {
+              _emit(_writeString(_working, 'interpreterPath', next));
+            });
+          },
+        );
+      },
+    );
   }
 
   InputDecoration _controlDecoration({required bool hasError}) {
@@ -257,6 +297,12 @@ class _LaunchConfigSchemaFormState extends State<LaunchConfigSchemaForm> {
     LaunchConfigSchemaField field,
     TpTextStyles styles,
   ) {
+    // The interpreter is an executable spec: render a picker over the shells
+    // discovered on this host (with a custom-path affordance) instead of a bare
+    // text field. A Windows-authored config must be re-pickable on Linux.
+    if (field.key == 'interpreterPath') {
+      return _buildInterpreterPathField(context, field);
+    }
     final fieldKey = Key('launch-config-field-${field.key}');
     final label = Text(localizeLaunchConfigFieldLabel(context.l10n, field));
     switch (field.type) {
@@ -329,9 +375,9 @@ class _LaunchConfigSchemaFormState extends State<LaunchConfigSchemaForm> {
                 state.didChange(t);
                 _onFieldTextChanged(field, t);
               },
-              decoration: _controlDecoration(hasError: state.hasError).copyWith(
-                alignLabelWithHint: true,
-              ),
+              decoration: _controlDecoration(
+                hasError: state.hasError,
+              ).copyWith(alignLabelWithHint: true),
             );
           },
         );

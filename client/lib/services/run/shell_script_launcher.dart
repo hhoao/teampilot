@@ -2,6 +2,7 @@ import 'dart:async';
 
 import '../../models/run/launch_configuration.dart';
 import '../../models/run/run_ui_intent.dart';
+import '../../models/runtime_target.dart';
 import '../terminal/workspace_terminal_run_service.dart';
 import 'launch_type_normalize.dart';
 import 'launch_variable_expander.dart';
@@ -46,10 +47,15 @@ class RunShellScriptLauncher implements RunProcessLauncher {
     required void Function(ProcessRunOutput output) onOutput,
     String? preferTerminalEntryId,
   }) async {
+    // Resolve the run target first: cwd/scriptPath must be spelled in the
+    // target machine's path style, and a local interpreter is validated
+    // against the host before a terminal is opened.
+    final target = _resolver.targetFor(owned.owner);
     final expanded = LaunchVariableExpander.expandConfiguration(
       owned.configuration,
       workspaceFolder: owned.owner.path,
       env: owned.configuration.env,
+      pathStyle: pathStyleForTarget(target),
     );
 
     if (!isBuiltInShellType(expanded.type)) {
@@ -64,6 +70,7 @@ class RunShellScriptLauncher implements RunProcessLauncher {
     }
 
     final shell = ShellScriptConfiguration.fromLaunchConfiguration(expanded);
+    _validateInterpreter(shell, target);
     if (shell.executeInTerminal) {
       return _launchInTerminal(
         sessionId: sessionId,
@@ -78,6 +85,23 @@ class RunShellScriptLauncher implements RunProcessLauncher {
       shell: shell,
       onOutput: onOutput,
     );
+  }
+
+  /// Fails fast with an actionable message when [shell]'s interpreter is a
+  /// path-like executable that does not exist on a local target — instead of a
+  /// cryptic PTY spawn failure. Remote/WSL targets cannot be probed locally and
+  /// bare names (`bash`, `python`) resolve via PATH at spawn.
+  void _validateInterpreter(
+    ShellScriptConfiguration shell,
+    RuntimeTarget target,
+  ) {
+    if (target.kind != RuntimeKind.local) return;
+    if (ShellScriptConfiguration.missingOnLocalHost(shell.interpreterPath)) {
+      throw StateError(
+        'Interpreter not found: ${shell.interpreterPath}. '
+        'Open the run configuration and choose a shell for this machine.',
+      );
+    }
   }
 
   Future<RunLaunchHandle> _launchInTerminal({

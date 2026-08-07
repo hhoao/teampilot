@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 
 import '../../models/run/launch_configuration.dart';
@@ -65,6 +67,27 @@ class ShellScriptConfiguration {
   bool get isScriptFile => execute == 'scriptFile';
   bool get isScriptText => execute == 'scriptText';
 
+  /// True when [interpreterPath] names a path-like executable that does not
+  /// exist on the local host.
+  ///
+  /// Bare names (`bash`, `sh`, `python`) are left for PATH resolution at spawn
+  /// and are never reported missing here. Path-like means it carries a
+  /// separator or a drive letter (`/bin/bash`, `C:\...\cmd.exe`).
+  static bool missingOnLocalHost(String interpreterPath) {
+    final trimmed = interpreterPath.trim();
+    if (trimmed.isEmpty) return false;
+    final looksLikePath =
+        trimmed.contains('/') ||
+        trimmed.contains(r'\') ||
+        trimmed.contains(':');
+    if (!looksLikePath) return false;
+    try {
+      return !File(trimmed).existsSync();
+    } on FileSystemException {
+      return true;
+    }
+  }
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -108,6 +131,7 @@ Map<String, String> _stringMap(Object? raw) {
   if (raw is! Map) return const {};
   return {
     for (final entry in raw.entries)
-      if (entry.key != null) entry.key.toString(): entry.value?.toString() ?? '',
+      if (entry.key != null)
+        entry.key.toString(): entry.value?.toString() ?? '',
   };
 }

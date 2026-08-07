@@ -6215,6 +6215,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get runFieldInterpreterPath => '解释器路径';
 
   @override
+  String get runFieldInterpreterPathEditTooltip => '编辑解释器路径';
+
+  @override
   String get runFieldInterpreterOptions => '解释器选项';
 
   @override

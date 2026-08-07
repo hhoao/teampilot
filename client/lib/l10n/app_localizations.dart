@@ -11540,6 +11540,12 @@ abstract class AppLocalizations {
   /// **'Interpreter path'**
   String get runFieldInterpreterPath;
 
+  /// No description provided for @runFieldInterpreterPathEditTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit interpreter path'**
+  String get runFieldInterpreterPathEditTooltip;
+
   /// No description provided for @runFieldInterpreterOptions.
   ///
   /// In en, this message translates to:

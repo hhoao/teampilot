@@ -2949,6 +2949,7 @@
   "runFieldExecute": "Execute",
   "runFieldScriptOptions": "Script options",
   "runFieldInterpreterPath": "Interpreter path",
+  "runFieldInterpreterPathEditTooltip": "Edit interpreter path",
   "runFieldInterpreterOptions": "Interpreter options",
   "runFieldExecuteInTerminal": "Execute in the terminal",
   "runFieldAllowMultipleInstances": "Allow multiple instances",

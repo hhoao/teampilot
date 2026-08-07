@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 import 'package:teampilot/models/run/launch_configuration.dart';
 import 'package:teampilot/services/run/launch_variable_expander.dart';
 
@@ -11,6 +12,79 @@ void main() {
     );
     expect(out, '/proj/bin:/home/u');
   });
+
+  test('expandPath re-spells Windows backslashes into posix style', () {
+    expect(
+      LaunchVariableExpander.expandPath(
+        r'${workspaceFolder}\client',
+        workspaceFolder: '/proj',
+        style: p.Style.posix,
+      ),
+      '/proj/client',
+    );
+  });
+
+  test('expandPath re-spells posix slashes into windows style', () {
+    expect(
+      LaunchVariableExpander.expandPath(
+        r'${workspaceFolder}/client',
+        workspaceFolder: r'C:\proj',
+        style: p.Style.windows,
+      ),
+      r'C:\proj\client',
+    );
+  });
+
+  test(
+    'expandConfiguration normalizes cwd and scriptPath to the target style',
+    () {
+      final expanded = LaunchVariableExpander.expandConfiguration(
+        const LaunchConfiguration(
+          id: 'sh',
+          name: 'Shell',
+          type: 'shellScript',
+          cwd: r'${workspaceFolder}\client',
+          extras: {
+            'execute': 'scriptFile',
+            'scriptPath': r'${workspaceFolder}\scripts\run.sh',
+          },
+        ),
+        workspaceFolder: '/proj',
+        pathStyle: p.Style.posix,
+      );
+
+      expect(expanded.cwd, '/proj/client');
+      expect(expanded.extras['scriptPath'], '/proj/scripts/run.sh');
+    },
+  );
+
+  test(
+    'expandConfiguration leaves interpreterPath and script text verbatim',
+    () {
+      final expanded = LaunchVariableExpander.expandConfiguration(
+        const LaunchConfiguration(
+          id: 'sh',
+          name: 'Shell',
+          type: 'shellScript',
+          extras: {
+            'execute': 'scriptText',
+            'scriptText': r'echo C:\temp\${workspaceFolder}',
+            'interpreterPath': r'C:\Windows\system32\cmd.exe',
+          },
+        ),
+        workspaceFolder: '/proj',
+        pathStyle: p.Style.posix,
+      );
+
+      // Shell text and the executable spec keep their backslashes — only
+      // path-shaped fields are re-spelled.
+      expect(expanded.extras['scriptText'], r'echo C:\temp\/proj');
+      expect(
+        expanded.extras['interpreterPath'],
+        r'C:\Windows\system32\cmd.exe',
+      );
+    },
+  );
 
   test('expandConfiguration expands shellScript extras string fields', () {
     final expanded = LaunchVariableExpander.expandConfiguration(
@@ -30,6 +104,7 @@ void main() {
         },
       ),
       workspaceFolder: '/proj',
+      pathStyle: p.Style.posix,
     );
 
     expect(expanded.cwd, '/proj');

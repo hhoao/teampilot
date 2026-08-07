@@ -5,16 +5,16 @@
       "id": "flutter",
       "name": "flutter run",
       "type": "shellScript",
-      "cwd": "${workspaceFolder}\\client",
+      "cwd": "${workspaceFolder}/client",
       "execute": "scriptText",
-      "scriptText": "flutter run -d windows",
+      "scriptText": "flutter run -d linux",
       "scriptOptions": "",
       "interpreterOptions": "",
       "executeInTerminal": true,
       "allowMultipleInstances": true,
       "activateToolWindow": true,
       "focusToolWindow": false,
-      "interpreterPath": "C:\\Windows\\system32\\cmd.exe"
+      "interpreterPath": "/bin/bash"
     }
   ]
 }

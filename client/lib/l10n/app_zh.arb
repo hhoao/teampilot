@@ -2520,6 +2520,7 @@
   "runFieldExecute": "执行方式",
   "runFieldScriptOptions": "脚本选项",
   "runFieldInterpreterPath": "解释器路径",
+  "runFieldInterpreterPathEditTooltip": "编辑解释器路径",
   "runFieldInterpreterOptions": "解释器选项",
   "runFieldExecuteInTerminal": "在终端中执行",
   "runFieldAllowMultipleInstances": "允许运行多个实例",
