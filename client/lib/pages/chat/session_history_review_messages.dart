@@ -34,12 +34,11 @@ class SessionHistoryReviewMessages extends StatelessWidget {
 
   bool get _showThread {
     if (state.status == AiHistoryViewStatus.ready) return true;
-    // Optimistic pendings may land while status is still empty/loading.
-    if (runtime.messages.isNotEmpty &&
-        (state.status == AiHistoryViewStatus.empty ||
-            state.status == AiHistoryViewStatus.loading)) {
-      return true;
-    }
+    if (state.status == AiHistoryViewStatus.refreshing) return true;
+    // Optimistic pendings may land while status is still empty/loading, and a
+    // refresh failure keeps content under an error status — any content keeps
+    // the thread mounted (never the full-pane spinner or a blanked error pane).
+    if (runtime.messages.isNotEmpty) return true;
     return false;
   }
 
@@ -65,6 +64,9 @@ class SessionHistoryReviewMessages extends StatelessWidget {
     }
 
     return switch (state.status) {
+      // Unreachable (refreshing always shows the thread via _showThread), but
+      // required for exhaustiveness.
+      AiHistoryViewStatus.refreshing => const SizedBox.shrink(),
       AiHistoryViewStatus.loading => _HistoryStatusPane(
         child: Column(
           mainAxisSize: MainAxisSize.min,
