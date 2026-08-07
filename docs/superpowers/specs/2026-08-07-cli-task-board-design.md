@@ -66,7 +66,7 @@ Ownership: `_SessionChatViewState` creates one per seat (keyed to `_seat`), disp
 ### 3. Floating task panel — `client/lib/pages/chat/session_cli_task_panel.dart`
 
 - Rendered as a `Positioned(top: spacing.sm, right: spacing.sm)` child of the message-area `Stack` in `SessionChatView` (the same `Stack` that hosts the thread and the subagent preview overlay). Hidden when `board.totalCount == 0`.
-- **Collapsed**: a compact pill (task icon + count) anchored top-right.
+- **Collapsed**: a compact pill anchored top-right that surfaces the task currently **in progress** (spinner + subject, ellipsized to ≤240 px); when nothing is in progress it falls back to the task-icon + count pill.
 - **Expanded**: a ~320 px card styled after `git-tool-panel-demo.html`:
   - Header row: title "任务" + count `N/M` (completed/total), plus collapse/expand icon buttons.
   - Task rows: status icon + `subject` (ellipsis, up to 2 lines).

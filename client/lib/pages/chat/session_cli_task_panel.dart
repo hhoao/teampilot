@@ -5,8 +5,9 @@ import '../../services/cli/tasks/cli_task_board.dart';
 
 /// Floating task-board card pinned to the top-right of the chat message area.
 ///
-/// Collapsed to a small pill showing the count; tapping expands to a 320 px
-/// card (title, completed/total, status-icon + subject rows, "+N more").
+/// Collapsed to a small pill that shows the task currently in progress (or the
+/// count when nothing is in progress); tapping expands to a 320 px card (title,
+/// completed/total, status-icon + subject rows, "+N more").
 class SessionCliTaskPanel extends StatefulWidget {
   const SessionCliTaskPanel({
     required this.board,
@@ -45,6 +46,14 @@ class _SessionCliTaskPanelState extends State<SessionCliTaskPanel> {
 
   Widget _buildCollapsed(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    // Surface the task currently in progress; fall back to the count pill
+    // when nothing is in progress.
+    final active = widget.board.tasks
+        .where((t) => t.status == CliTaskStatus.inProgress)
+        .firstOrNull;
+    final activeSubject = active?.subject.trim();
+    final showActive = activeSubject != null && activeSubject.isNotEmpty;
+    final label = showActive ? activeSubject : widget.countText;
     return Material(
       color: scheme.surface,
       elevation: 3,
@@ -58,12 +67,29 @@ class _SessionCliTaskPanelState extends State<SessionCliTaskPanel> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.task_alt_rounded, size: 16, color: scheme.primary),
+              if (showActive)
+                _TaskStatusIcon(
+                  status: CliTaskStatus.inProgress,
+                  color: scheme.primary,
+                )
+              else
+                Icon(Icons.task_alt_rounded, size: 16, color: scheme.primary),
               const SizedBox(width: 6),
-              Text(
-                widget.countText,
-                style: TpTextStyles.of(context).smColored(scheme.onSurface),
-              ),
+              if (showActive)
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 240),
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TpTextStyles.of(context).smColored(scheme.onSurface),
+                  ),
+                )
+              else
+                Text(
+                  label,
+                  style: TpTextStyles.of(context).smColored(scheme.onSurface),
+                ),
               const SizedBox(width: 2),
               Icon(Icons.expand_more, size: 16, color: scheme.onSurfaceVariant),
             ],

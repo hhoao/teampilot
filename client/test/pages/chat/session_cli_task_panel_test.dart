@@ -46,7 +46,8 @@ void main() {
     expect(find.text('Tasks'), findsNothing);
   });
 
-  testWidgets('collapsed pill shows count; tap expands to card', (tester) async {
+  testWidgets('collapsed pill shows in-progress task; tap expands to card',
+      (tester) async {
     await tester.pumpWidget(
       _host(
         SessionCliTaskPanel(
@@ -60,15 +61,39 @@ void main() {
         ),
       ),
     );
-    // Collapsed pill: count visible, title not yet.
-    expect(find.text('0/2'), findsOneWidget);
+    // Collapsed pill: shows the in-progress subject, not the count/title.
+    expect(find.text('T1: first'), findsOneWidget);
+    expect(find.text('0/2'), findsNothing);
     expect(find.text('Tasks'), findsNothing);
 
-    await tester.tap(find.text('0/2'));
+    await tester.tap(find.text('T1: first'));
     await tester.pump();
     expect(find.text('Tasks'), findsOneWidget);
     expect(find.text('T1: first'), findsOneWidget);
     expect(find.text('T2: second'), findsOneWidget);
+  });
+
+  testWidgets('collapsed pill falls back to count when nothing is in progress',
+      (tester) async {
+    await tester.pumpWidget(
+      _host(
+        SessionCliTaskPanel(
+          board: _board([
+            _task('T1: done', CliTaskStatus.completed),
+            _task('T2: wait', CliTaskStatus.pending),
+          ]),
+          title: 'Tasks',
+          countText: '1/2',
+          moreLabel: (n) => '… +$n more',
+        ),
+      ),
+    );
+    expect(find.text('1/2'), findsOneWidget);
+    expect(find.text('T1: done'), findsNothing);
+
+    await tester.tap(find.text('1/2'));
+    await tester.pump();
+    expect(find.text('Tasks'), findsOneWidget);
   });
 
   testWidgets('completed tasks are struck through and counted', (tester) async {
