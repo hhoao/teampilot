@@ -79,9 +79,10 @@ WorkbenchOverlay overlayFor({
   required SessionPhase phase,
   required HistoryStatus historyStatus,
   required bool terminalView,
-  required bool hasCachedTranscript,
 }) => /* exhaustive switch, unit-tested */
 ```
+
+`hasCachedTranscript` is not a separate input: `historyStatus == initialLoading` means "no cache"; any other status means cache content exists. The mapping is made explicit in the switch.
 
 No overlay reads another session's phase. `ChatState.sessionConnectingId` and the `'pending'` sentinel are deleted; `isActiveSessionConnecting` cross-session inference is removed.
 
@@ -166,7 +167,7 @@ submit on landing ──► pod.phase provisioning → connecting → running (p
 
 - **HistoryStore unit tests:** read-through cache semantics; the **no-blank invariant** (refreshing/error never clear rendered messages); first-open initialLoading; incremental disk-index cursor; mailbox merge.
 - **SessionPhase state machine:** every transition; per-session isolation (one pod in `error` does not affect another).
-- **Overlay selector:** pure-function test over every `(phase, historyStatus, terminalView, hasCachedTranscript)` combination.
+- **Overlay selector:** pure-function test over every `(phase, historyStatus, terminalView)` combination.
 - **KeepAliveSessionStack widget test:** switching tabs does not re-mount `SessionChatView` and does not call `load()`.
 - **Landing submit test:** pane stays interactive while a pod is `provisioning`/`connecting`; switching away mid-launch does not block the other conversation.
 - Existing `ChatCubit` tests are rewritten to the pod API.
