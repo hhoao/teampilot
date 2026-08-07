@@ -509,6 +509,7 @@
   "sessionIdleNotificationSubtitle": "可以继续对话了",
   "sessionStarting": "正在启动会话…",
   "sessionHistoryLoading": "正在加载对话历史…",
+  "sessionHistoryRefreshing": "正在刷新对话…",
   "sessionHistoryEmpty": "该成员暂无历史消息。",
   "sessionHistoryError": "无法加载对话历史。",
   "sessionHistorySoftReloadError": "无法刷新对话历史。",

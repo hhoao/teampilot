@@ -34,12 +34,11 @@ class SessionHistoryReviewMessages extends StatelessWidget {
 
   bool get _showThread {
     if (state.status == AiHistoryViewStatus.ready) return true;
-    // Optimistic pendings may land while status is still empty/loading.
-    if (runtime.messages.isNotEmpty &&
-        (state.status == AiHistoryViewStatus.empty ||
-            state.status == AiHistoryViewStatus.loading)) {
-      return true;
-    }
+    if (state.status == AiHistoryViewStatus.refreshing) return true;
+    // Optimistic pendings may land while status is still empty/loading, and a
+    // refresh failure keeps content under an error status — any content keeps
+    // the thread mounted (never the full-pane spinner or a blanked error pane).
+    if (runtime.messages.isNotEmpty) return true;
     return false;
   }
 
@@ -49,6 +48,8 @@ class SessionHistoryReviewMessages extends StatelessWidget {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (state.status == AiHistoryViewStatus.refreshing)
+            const _RefreshingStrip(),
           if ((state.softReloadError?.trim() ?? '').isNotEmpty)
             const _SoftReloadErrorStrip(),
           Expanded(
@@ -65,6 +66,9 @@ class SessionHistoryReviewMessages extends StatelessWidget {
     }
 
     return switch (state.status) {
+      // Unreachable (refreshing always shows the thread via _showThread), but
+      // required for exhaustiveness.
+      AiHistoryViewStatus.refreshing => const SizedBox.shrink(),
       AiHistoryViewStatus.loading => _HistoryStatusPane(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -127,6 +131,40 @@ class SessionHistoryReviewMessages extends StatelessWidget {
       ),
       AiHistoryViewStatus.ready => const SizedBox.shrink(),
     };
+  }
+}
+
+/// Slim non-blocking strip shown while a cached transcript is refreshing.
+class _RefreshingStrip extends StatelessWidget {
+  const _RefreshingStrip();
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      color: cs.surfaceContainerHighest.withValues(alpha: 0.6),
+      padding: EdgeInsets.symmetric(
+        horizontal: context.tpSpacing.md,
+        vertical: context.tpSpacing.sm,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const SizedBox(
+            width: 12,
+            height: 12,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+          SizedBox(width: context.tpSpacing.sm),
+          Text(
+            context.l10n.sessionHistoryRefreshing,
+            style: TpTextStyles.of(context).smColored(cs.onSurfaceVariant),
+          ),
+        ],
+      ),
+    );
   }
 }
 

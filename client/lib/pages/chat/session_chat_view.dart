@@ -218,10 +218,18 @@ class _SessionChatViewState extends State<SessionChatView> {
   }
 
   void _bindSeat() {
-    _seat = context.read<AiHistoryCubit>().ensureSeat(
-      sessionId: widget.session.sessionId,
-      selectedMemberId: widget.selectedMemberId,
-    );
+    final chat = context.read<ChatCubit>();
+    final store = chat.podRuntime(widget.session.sessionId)?.history;
+    _seat = store != null
+        ? store.memberSeat(
+            sessionId: widget.session.sessionId,
+            memberId: widget.selectedMemberId,
+          )
+        // Fallback until pods own a HistoryStore (bootstrap wiring).
+        : context.read<AiHistoryCubit>().ensureSeat(
+            sessionId: widget.session.sessionId,
+            selectedMemberId: widget.selectedMemberId,
+          );
     final seat = _seat;
     _taskBoardController?.dispose();
     _taskBoardController = seat == null
@@ -456,9 +464,16 @@ class _SessionChatViewState extends State<SessionChatView> {
       await _liveRefresh?.stop();
       return;
     }
-    final cubit = context.read<AiHistoryCubit>();
     try {
-      final roots = await cubit.loader.resolveSeatRuntime(
+      final historyCubit = context.read<AiHistoryCubit>();
+      final loader =
+          context
+                  .read<ChatCubit>()
+                  .podRuntime(widget.session.sessionId)
+                  ?.history
+                  ?.loader ??
+              historyCubit.loader;
+      final roots = await loader.resolveSeatRuntime(
         launchContext: _launchContext,
         memberId: widget.selectedMemberId,
       );
@@ -478,7 +493,7 @@ class _SessionChatViewState extends State<SessionChatView> {
       _liveRefresh = AiHistoryLiveRefreshController(
         seat: seat,
         fs: () => roots.filesystem,
-        resolveWatchMeta: () => cubit.loader.resolveWatchMeta(
+        resolveWatchMeta: () => loader.resolveWatchMeta(
           launchContext: _launchContext,
           memberId: widget.selectedMemberId,
           team: widget.team,
@@ -1107,16 +1122,16 @@ class _SessionChatViewState extends State<SessionChatView> {
       if (!mounted) return;
       final seat = _seat;
       if (seat == null || !seat.state.awaitingAssistant) return;
-      final chat = context.read<ChatCubit>().state;
+      final cubit = context.read<ChatCubit>();
+      final chat = cubit.state;
       final sid = widget.session.sessionId;
-      final connectingId = chat.sessionConnectingId;
       final working = chat.workingSessionIds.contains(sid);
       if (working) {
         // Working rose during grace — latch via normal sync.
         seat.applyWorkingSessionSync(
           sessionWorking: true,
-          sessionConnecting: connectingId == sid || connectingId == 'pending',
-          memberRunning: context.read<ChatCubit>().isMemberRunning(
+          sessionConnecting: _podConnecting(cubit, sid),
+          memberRunning: cubit.isMemberRunning(
             sessionId: sid,
             memberId: _shellMemberId,
           ),
@@ -1128,14 +1143,14 @@ class _SessionChatViewState extends State<SessionChatView> {
     });
   }
 
-  void _syncAwaitingFromWorkingSessions(ChatState chat) {
+  void _syncAwaitingFromWorkingSessions(ChatState chat, {ChatCubit? cubit}) {
     final seat = _seat;
     if (seat == null) return;
     final sid = widget.session.sessionId;
-    final connectingId = chat.sessionConnectingId;
+    final chatCubit = cubit ?? context.read<ChatCubit>();
     final action = seat.applyWorkingSessionSync(
       sessionWorking: chat.workingSessionIds.contains(sid),
-      sessionConnecting: connectingId == sid || connectingId == 'pending',
+      sessionConnecting: _podConnecting(chatCubit, sid),
       memberRunning: context.read<ChatCubit>().isMemberRunning(
         sessionId: sid,
         memberId: _shellMemberId,
@@ -1157,6 +1172,11 @@ class _SessionChatViewState extends State<SessionChatView> {
         return;
     }
   }
+
+  /// Whether this session is currently connecting, derived from its own pod
+  /// phase — never from the global `sessionConnectingId`/'pending' sentinel.
+  static bool _podConnecting(ChatCubit cubit, String sessionId) =>
+      cubit.podFor(sessionId)?.phase.isLaunching ?? false;
 
   @override
   Widget build(BuildContext context) {
@@ -1492,18 +1512,13 @@ class _SessionChatViewState extends State<SessionChatView> {
                                               >((c) {
                                                 final sid =
                                                     widget.session.sessionId;
-                                                final connectingId = c
-                                                    .state
-                                                    .sessionConnectingId;
                                                 return (
                                                   sessionWorking: c
                                                       .state
                                                       .workingSessionIds
                                                       .contains(sid),
                                                   sessionConnecting:
-                                                      connectingId == sid ||
-                                                      connectingId ==
-                                                          'pending',
+                                                      _podConnecting(c, sid),
                                                   memberRunning: c
                                                       .isMemberRunning(
                                                         sessionId: sid,

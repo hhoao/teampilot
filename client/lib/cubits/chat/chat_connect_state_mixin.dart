@@ -4,6 +4,8 @@ import '../../services/team/team_config_launch_validator.dart';
 import '../../utils/logging/logger.dart';
 import '../../utils/session/session_launch_error.dart';
 import '../../models/member_remote_provision_progress.dart';
+import '../session/session_phase.dart';
+import '../session/session_pod.dart';
 import 'chat_tab_store.dart';
 import 'model/chat_state.dart';
 
@@ -14,9 +16,15 @@ mixin ChatConnectStateMixin on Cubit<ChatState> {
 
   void onTabRunningChanged();
 
+  // Pod registry (implemented by ChatCubit) so connect lifecycle drives the
+  // per-session phase.
+  SessionPod? podRuntime(String sessionId);
+  SessionPod ensurePodRuntime(String sessionId);
+
   void beginSessionConnect(String sessionId) {
     appLogger.d('[session-launch] connecting start session=$sessionId');
     clearLaunchError(sessionId);
+    ensurePodRuntime(sessionId).setPhase(SessionPhase.connecting);
     if (state.sessionConnectingId == sessionId) return;
     emit(
       state.copyWith(
@@ -73,11 +81,26 @@ mixin ChatConnectStateMixin on Cubit<ChatState> {
       '[session-launch] connecting failed session=$sessionId: $rawMessage',
     );
     setLaunchError(sessionId, rawMessage);
-    finishSessionConnect(sessionId);
+    final pod = podRuntime(sessionId);
+    if (pod != null) {
+      pod.setPhase(SessionPhase.error);
+      pod.setLaunchError(rawMessage);
+    }
+    updateTabRunning(sessionId);
+    _clearConnectingIdIfMatch(sessionId);
   }
 
   void finishSessionConnect(String sessionId) {
     updateTabRunning(sessionId);
+    if (isClosed) return;
+    podRuntime(sessionId)?.setPhase(SessionPhase.running);
+    _clearConnectingIdIfMatch(sessionId);
+  }
+
+  /// Clears [sessionConnectingId] when it still points at [sessionId]. Shared
+  /// by the success and failure paths so an error does not run through the
+  /// success phase transition.
+  void _clearConnectingIdIfMatch(String sessionId) {
     if (isClosed) return;
     if (state.sessionConnectingId != sessionId) return;
     appLogger.d('[session-launch] connecting done session=$sessionId');

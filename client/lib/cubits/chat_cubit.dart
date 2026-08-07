@@ -22,6 +22,7 @@ import '../repositories/session_repository.dart';
 import '../services/workspace/workspace_icon_service.dart';
 import '../services/workspace/workspace_icon_storage.dart';
 import '../services/storage/app_storage.dart';
+import '../services/session/ai_history_loader.dart';
 import '../services/session/session_lifecycle_service.dart';
 import '../services/session/session_member_cli_locks.dart';
 import '../services/remote/remote_cli_readiness.dart';
@@ -60,7 +61,6 @@ import 'chat/chat_connect_state_mixin.dart';
 import 'chat/session_data_store.dart';
 import 'chat/chat_session_shell_factory.dart';
 import 'chat/chat_tab_store.dart';
-import 'chat/session_launch_host.dart';
 import 'chat/session_launch_service.dart';
 import 'chat/tab_member_materializer.dart';
 import 'chat/tab_session_runtime_coordinator.dart';
@@ -75,6 +75,8 @@ import 'chat/model/session_open_request.dart';
 import 'chat/model/session_open_status.dart';
 import 'chat/model/session_workbench_view.dart';
 import 'chat/session_continue_overrides_controller.dart';
+import 'session/history_store.dart';
+import 'session/session_pod.dart';
 import '../models/cli_preset.dart';
 
 export 'chat/model/chat_state.dart';
@@ -223,6 +225,16 @@ class ChatCubit extends Cubit<ChatState>
 
   final ChatTabStore _tabStore = ChatTabStore();
   final SessionDataStore _dataStore = SessionDataStore();
+
+  /// Per-session [SessionPod] values, keyed by session id. The launch/connect
+  /// lifecycle (Task 6) drives `phase`; the workbench overlay derives from the
+  /// active pod instead of global connecting sentinels.
+  final Map<String, SessionPod> _pods = {};
+
+  /// Wired post-bootstrap (the AiHistoryLoader is built after ChatCubit). When
+  /// set, pods own a [HistoryStore]; consumers fall back to the global cubit
+  /// until then.
+  AiHistoryLoader? historyLoader;
   static const _continueOverridesController =
       SessionContinueOverridesController();
   final Map<String, Future<void>> _sessionHydrationByWorkspace = {};
@@ -354,6 +366,103 @@ class ChatCubit extends Cubit<ChatState>
 
   @override
   void onTabRunningChanged() => _pushPresenceTarget();
+
+  // ===== SessionPod registry =====
+
+  /// Runtime pod for [sessionId], or null when none exists yet.
+  @override
+  SessionPod? podRuntime(String sessionId) => _pods[sessionId.trim()];
+
+  /// Seeds an idle runtime pod for [sessionId] if absent and returns it.
+  @override
+  SessionPod ensurePodRuntime(String sessionId) =>
+      _pods.putIfAbsent(sessionId.trim(), () {
+        final tab = _tabStore.openTabBySessionId(sessionId.trim());
+        final sid = sessionId.trim();
+        final loader = historyLoader;
+        return SessionPod(
+          sessionId: sid,
+          workspaceId: tab?.workspaceId ?? '',
+          onChanged: () => _bumpPodRevision(sid),
+          history: loader == null
+              ? null
+              : HistoryStore(
+                  loader: loader,
+                  loadMailboxRecords: (s, m) async {
+                    final bus = _tabStore.openTabBySessionId(s)?.teamBus;
+                    if (bus == null) return const [];
+                    return bus.memberMailRecords(m);
+                  },
+                ),
+        );
+      });
+
+  /// Observable state of the pod for [sessionId], or null.
+  SessionPodState? podFor(String sessionId) => _pods[sessionId.trim()]?.state;
+
+  /// Observable state of the active session's pod (foreground tab), or null.
+  SessionPodState? get activePod {
+    final id = state.activeSessionId;
+    if (id == null || id.isEmpty) return null;
+    return _pods[id]?.state;
+  }
+
+  // ===== History seed routing (pod store first, global cubit fallback) =====
+
+  /// Fallback sinks wired to AiHistoryCubit post-bootstrap, used only when a
+  /// pod has no HistoryStore yet.
+  void Function(String sessionId, String memberId, String text)?
+  onSeedHistoryPending;
+  void Function(String sessionId, String text)? onCancelSeedHistoryPending;
+
+  /// Seeds an optimistic user bubble on the pod's HistoryStore (or the global
+  /// cubit as fallback) so Chat shows the user turn before connect/deliver.
+  void seedHistoryPending({
+    required String sessionId,
+    required String memberId,
+    required String text,
+  }) {
+    final store = podRuntime(sessionId)?.history;
+    if (store != null) {
+      store.seedPendingUser(
+        sessionId: sessionId,
+        memberId: memberId,
+        text: text,
+      );
+      return;
+    }
+    onSeedHistoryPending?.call(sessionId, memberId, text);
+  }
+
+  /// Cancels a landing seed when send fails.
+  void cancelHistorySeedPending({
+    required String sessionId,
+    required String text,
+  }) {
+    final store = podRuntime(sessionId)?.history;
+    if (store != null) {
+      store.cancelSeedPendingUser(sessionId: sessionId, text: text);
+      return;
+    }
+    onCancelSeedHistoryPending?.call(sessionId, text);
+  }
+
+  /// Emits a stateVersion bump so [context.select] callers rebuild when a pod's
+  /// phase/member/view transitions.
+  void _bumpPodRevision(String sessionId) {
+    if (isClosed) return;
+    emit(state.copyWith(stateVersion: state.stateVersion + 1));
+  }
+
+  /// Releases a session's pod: closes its HistoryStore and drops the registry
+  /// entry. Called on tab teardown; idempotent.
+  Future<void> disposePod(String sessionId) async {
+    final pod = _pods.remove(sessionId.trim());
+    if (pod == null) return;
+    await pod.history?.close();
+  }
+
+  // ===== SessionLaunchHost =====
 
   // ===== SessionLaunchHost =====
 
@@ -1429,6 +1538,9 @@ class ChatCubit extends Cubit<ChatState>
 
   Future<void> _tearDownTab(ChatTab tab) async {
     final sessionId = tab.info.id;
+    // Release the pod (history store + registry entry) first; the global cubit
+    // sink handles legacy seats and any pods that predate history wiring.
+    await disposePod(sessionId);
     onHistorySeatsDispose?.call(sessionId);
     for (final session in tab.sessions) {
       session.dispose();

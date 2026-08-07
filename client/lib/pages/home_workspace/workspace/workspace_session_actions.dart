@@ -8,7 +8,6 @@ import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 import 'package:uuid/uuid.dart';
 
-import '../../../cubits/ai_history_cubit.dart';
 import '../../../cubits/chat_cubit.dart';
 import '../../../cubits/cli_presets_cubit.dart';
 import '../../../cubits/expert_hub_cubit.dart';
@@ -317,7 +316,6 @@ Future<void> submitWorkspaceLandingMessage(
   if (trimmed.isEmpty) return;
 
   final chatCubit = context.read<ChatCubit>();
-  final aiHistoryCubit = context.read<AiHistoryCubit>();
   final repo = context.read<SessionRepository>();
   final l10n = context.l10n;
   final liveWorkspace = chatCubit.state.workspaces.firstWhere(
@@ -418,7 +416,7 @@ Future<void> submitWorkspaceLandingMessage(
       ? ''
       : (_teamLead(team)?.id ?? 'team-lead');
   if (!switchToTerminal) {
-    aiHistoryCubit.seedPendingUser(
+    chatCubit.seedHistoryPending(
       sessionId: plannedSessionId,
       memberId: historyMemberId,
       text: trimmed,
@@ -437,7 +435,7 @@ Future<void> submitWorkspaceLandingMessage(
       'sessionId=$plannedSessionId workspace=${liveWorkspace.workspaceId}',
     );
     if (!switchToTerminal) {
-      aiHistoryCubit.cancelSeedPendingUser(
+      chatCubit.cancelHistorySeedPending(
         sessionId: plannedSessionId,
         text: trimmed,
       );
@@ -464,7 +462,7 @@ Future<void> submitWorkspaceLandingMessage(
       'session=${session.sessionId} member=$memberId',
     );
     if (!switchToTerminal) {
-      aiHistoryCubit.cancelSeedPendingUser(
+      chatCubit.cancelHistorySeedPending(
         sessionId: session.sessionId,
         text: trimmed,
       );
@@ -490,7 +488,7 @@ Future<void> submitWorkspaceLandingMessage(
     await chatCubit.applyFirstPromptTitle(session.sessionId, trimmed);
   } on Object catch (error, stackTrace) {
     if (!switchToTerminal) {
-      aiHistoryCubit.cancelSeedPendingUser(
+      chatCubit.cancelHistorySeedPending(
         sessionId: session.sessionId,
         text: trimmed,
       );

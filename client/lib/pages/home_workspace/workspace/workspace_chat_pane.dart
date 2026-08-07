@@ -8,13 +8,11 @@ import 'package:shared_ui/shared_ui.dart';
 import '../../../cubits/chat_cubit.dart';
 import '../../../cubits/launch_profile_cubit.dart';
 import '../../../cubits/worktree_cubit.dart';
-import '../../../l10n/l10n_extensions.dart';
 import '../../../models/landing_launch_context.dart';
 import '../../../models/workspace.dart';
 import '../../../utils/ui/app_keys.dart';
 import '../../../utils/workspace/landing_draft_resolver.dart';
 import '../../../services/compose/compose_draft_cache.dart';
-import '../../chat/chat_workbench_placeholders.dart';
 import 'workspace_chat_landing.dart';
 import 'workspace_landing_skeleton.dart';
 import 'workspace_session_actions.dart';
@@ -34,7 +32,9 @@ class WorkspaceChatPane extends StatefulWidget {
 }
 
 class _WorkspaceChatPaneState extends State<WorkspaceChatPane> {
-  var _submitting = false;
+  /// Re-entrancy guard only — never drives UI. Visible launch progress comes
+  /// from the active pod's phase (session-scoped), not this pane-global bool.
+  bool _submitInFlight = false;
 
   Workspace _workspaceForSubmit(BuildContext context) {
     final id = widget.workspace.workspaceId;
@@ -45,9 +45,8 @@ class _WorkspaceChatPaneState extends State<WorkspaceChatPane> {
   }
 
   Future<void> _submit(String message, LandingLaunchContext draft) async {
-    if (_submitting) return;
-
-    setState(() => _submitting = true);
+    if (_submitInFlight) return;
+    _submitInFlight = true;
     try {
       final workspace = _workspaceForSubmit(context);
       String? workingDirectory;
@@ -84,9 +83,16 @@ class _WorkspaceChatPaneState extends State<WorkspaceChatPane> {
             composeDraftCache.clearLandingDraft(workspace.workspaceId),
       );
     } finally {
-      if (mounted) setState(() => _submitting = false);
+      _submitInFlight = false;
     }
   }
+
+  /// Whether the active session is still launching. Scoped to that session's
+  /// pod — it never blocks the rest of the pane or other conversations.
+  bool _launchInFlight(BuildContext context) =>
+      context.select<ChatCubit, bool>(
+        (c) => c.activePod?.phase.isLaunching ?? false,
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -97,27 +103,24 @@ class _WorkspaceChatPaneState extends State<WorkspaceChatPane> {
         orElse: () => widget.workspace,
       ),
     );
+    final launching = _launchInFlight(context);
     return SizedBox.expand(
       child: ColoredBox(
         color: cs.surface,
         key: AppKeys.chatWorkspace,
-        child: _submitting
-            ? ChatWorkbenchSessionLoadingView(
-                message: context.l10n.sessionStarting,
-              )
-            // One frame after sidebar list (delayFrames: 1) so real session
-            // list and landing body do not share the same mount frame.
-            : TpDeferredMountShell(
-                delayFrames: 2,
-                awaitIdle: false,
-                placeholder: const WorkspaceLandingSkeleton(),
-                child: WorkspaceChatLanding(
-                  workspace: workspace,
-                  isSubmitting: _submitting,
-                  onSubmit: (message, draft) =>
-                      unawaited(_submit(message, draft)),
-                ),
-              ),
+        // The landing always stays mounted and interactive; `launching` only
+        // drives the scoped compose progress, never a full-pane replacement.
+        child: TpDeferredMountShell(
+          delayFrames: 2,
+          awaitIdle: false,
+          placeholder: const WorkspaceLandingSkeleton(),
+          child: WorkspaceChatLanding(
+            workspace: workspace,
+            isSubmitting: launching,
+            onSubmit: (message, draft) =>
+                unawaited(_submit(message, draft)),
+          ),
+        ),
       ),
     );
   }

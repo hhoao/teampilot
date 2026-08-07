@@ -19,7 +19,18 @@ import '../services/team_bus/persistence/bus_message_log.dart';
 import '../utils/logging/logger.dart';
 
 /// Host-local AI history status — not session connect / "starting…".
-enum AiHistoryViewStatus { loading, ready, empty, error }
+enum AiHistoryViewStatus {
+  /// No content yet — first load of a seat. The only status that may render a
+  /// full-pane loading view.
+  loading,
+
+  /// Content already cached; a background read-through is in flight. The list
+  /// must NOT be blanked — the UI keeps the thread and shows a slim strip.
+  refreshing,
+  ready,
+  empty,
+  error,
+}
 
 class AiHistoryState extends Equatable {
   const AiHistoryState({
@@ -182,6 +193,11 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
   }) async {
     final seatChanged =
         state.sessionId != session.sessionId || state.memberId != memberId;
+    // No-blank invariant: only a seat change or an empty list may clear the
+    // transcript. A re-load of content that already exists refreshes in place
+    // (refreshing) so the UI never blanks a conversation it is switching to.
+    final hadContent = _allMessages.isNotEmpty;
+    final isRefresh = !seatChanged && hadContent;
     if (seatChanged) {
       clearPendings();
     }
@@ -194,22 +210,38 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
 
     final gen = ++_loadGeneration;
     _cancelTipHoldTimer();
-    _cliMessages = const [];
-    _allMessages = const [];
-    _visibleCount = 0;
-    _committedLength = 0;
-    _clearSubagentAttachments();
-    runtime.setLoading();
-    emit(
-      AiHistoryState(
-        status: AiHistoryViewStatus.loading,
-        // Preserve turn chrome across soft→cold remounts of the same seat.
-        awaitingAssistant: !seatChanged && state.awaitingAssistant,
-        sessionId: session.sessionId,
-        memberId: memberId,
-        subagentAttachmentEpoch: _subagentAttachmentEpoch,
-      ),
-    );
+    if (isRefresh) {
+      // Keep the cached transcript and thread runtime; background read-through
+      // patches the list in place. Never call runtime.setLoading() here.
+      emit(
+        AiHistoryState(
+          status: AiHistoryViewStatus.refreshing,
+          awaitingAssistant: state.awaitingAssistant,
+          sessionId: session.sessionId,
+          memberId: memberId,
+          totalMessageCount: state.totalMessageCount,
+          hasOlder: state.hasOlder,
+          subagentAttachmentEpoch: _subagentAttachmentEpoch,
+        ),
+      );
+    } else {
+      _cliMessages = const [];
+      _allMessages = const [];
+      _visibleCount = 0;
+      _committedLength = 0;
+      _clearSubagentAttachments();
+      runtime.setLoading();
+      emit(
+        AiHistoryState(
+          status: AiHistoryViewStatus.loading,
+          // Preserve turn chrome across soft→cold remounts of the same seat.
+          awaitingAssistant: !seatChanged && state.awaitingAssistant,
+          sessionId: session.sessionId,
+          memberId: memberId,
+          subagentAttachmentEpoch: _subagentAttachmentEpoch,
+        ),
+      );
+    }
 
     try {
       final result = await _loader.load(
@@ -238,6 +270,21 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
         stackTrace: st,
       );
       if (gen != _loadGeneration || isClosed) return;
+      if (isRefresh) {
+        // Refresh failure keeps the cached content; the UI maps
+        // error-with-content to the thread plus a non-blocking strip.
+        emit(
+          AiHistoryState(
+            status: AiHistoryViewStatus.error,
+            errorMessage: e.toString(),
+            sessionId: session.sessionId,
+            memberId: memberId,
+            totalMessageCount: _allMessages.length,
+            subagentAttachmentEpoch: _subagentAttachmentEpoch,
+          ),
+        );
+        return;
+      }
       _cliMessages = const [];
       _allMessages = const [];
       _visibleCount = 0;

@@ -1210,6 +1210,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sessionHistoryLoading => '正在加载对话历史…';
 
   @override
+  String get sessionHistoryRefreshing => '正在刷新对话…';
+
+  @override
   String get sessionHistoryEmpty => '该成员暂无历史消息。';
 
   @override
