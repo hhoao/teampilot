@@ -117,6 +117,32 @@ void main() {
     expect(doneText.style?.decoration, TextDecoration.lineThrough);
   });
 
+  testWidgets('status icons are distinct, no loading spinner', (tester) async {
+    await tester.pumpWidget(
+      _host(
+        SessionCliTaskPanel(
+          board: _board([
+            _task('T1: active', CliTaskStatus.inProgress),
+            _task('T2: todo', CliTaskStatus.pending),
+            _task('T3: done', CliTaskStatus.completed),
+          ]),
+          title: 'Tasks',
+          countText: '1/3',
+          moreLabel: (n) => '… +$n more',
+        ),
+      ),
+    );
+    // Collapsed pill shows the in-progress task; tap it to expand.
+    await tester.tap(find.text('T1: active'));
+    await tester.pump();
+    // in progress → arrow, pending → hollow circle, completed → check.
+    expect(find.byIcon(Icons.play_arrow), findsOneWidget);
+    expect(find.byIcon(Icons.radio_button_unchecked), findsOneWidget);
+    expect(find.byIcon(Icons.check_circle_outline), findsOneWidget);
+    // A loading spinner must never represent an in-progress task.
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+  });
+
   testWidgets('overflow shows +N more label', (tester) async {
     await tester.pumpWidget(
       _host(

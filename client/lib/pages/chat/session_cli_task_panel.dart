@@ -222,10 +222,10 @@ class _TaskStatusIcon extends StatelessWidget {
         size: 16,
         color: color,
       ),
-      CliTaskStatus.inProgress => SizedBox(
-        width: 16,
-        height: 16,
-        child: CircularProgressIndicator(strokeWidth: 2, color: color),
+      CliTaskStatus.inProgress => Icon(
+        Icons.play_arrow,
+        size: 16,
+        color: color,
       ),
       CliTaskStatus.completed => Icon(
         Icons.check_circle_outline,
