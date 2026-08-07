@@ -59,11 +59,6 @@ class ChatScopedTabView {
         activeTabIndex: index,
         tabCount: bucket.length,
         newChatActive: newChatActive,
-        sessionConnectingId:
-            activeSessionId != null &&
-                state.sessionConnectingId == activeSessionId
-            ? state.sessionConnectingId
-            : null,
         sessionLaunchError: tab?.info.launchError,
       ),
     );

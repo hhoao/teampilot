@@ -379,8 +379,7 @@ class _ChatWorkbenchBody extends StatelessWidget {
       return const Center(child: CircularProgressIndicator());
     }
 
-    // Connecting is per-session (this host's pod phase), never a global
-    // 'pending'/'sessionConnectingId' read.
+    // Connecting is per-session (this host's pod phase).
     final hostSessionId = slice.activeSessionId;
     final sessionConnectInProgress = context.select<ChatCubit, bool>(
       (c) => hostSessionId != null && hostSessionId.isNotEmpty

@@ -243,8 +243,8 @@ void main() {
         await postFrame.flush();
         await drainPendingAsyncWork();
 
-        expect(chatCubit.state.sessionConnectingId, isNull);
-        expect(chatCubit.state.isActiveSessionConnecting, isFalse);
+        expect(chatCubit.hasConnectingSession, isFalse);
+        expect(chatCubit.isSessionConnecting(chatCubit.state.activeSessionId!), isFalse);
         expect(shells.fold<int>(0, (sum, s) => sum + s.connectCalls), 0);
       },
     );

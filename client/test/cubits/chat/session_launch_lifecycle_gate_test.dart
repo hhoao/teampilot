@@ -188,7 +188,10 @@ void main() {
       expect(denyLifecycle.initializeCalls, greaterThanOrEqualTo(1));
       expect(shells, isNotEmpty);
       expect(shells.first.connectCalls, 0);
-      expect(cubit.state.isActiveSessionConnecting, isFalse);
+      expect(
+        cubit.isSessionConnecting(cubit.state.activeSessionId!),
+        isFalse,
+      );
       expect(cubit.tabStore.activeTabs.first.info.launchError, isNotNull);
     });
   });

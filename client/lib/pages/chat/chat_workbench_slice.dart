@@ -14,7 +14,6 @@ class ChatWorkbenchSlice {
     required this.activeTabIndex,
     required this.tabCount,
     required this.newChatActive,
-    required this.sessionConnectingId,
     required this.sessionLaunchError,
   });
 
@@ -26,7 +25,6 @@ class ChatWorkbenchSlice {
       activeTabIndex: state.activeTabIndex,
       tabCount: state.tabs.length,
       newChatActive: state.newChatActive,
-      sessionConnectingId: state.sessionConnectingId,
       sessionLaunchError: state.sessionLaunchError,
     );
   }
@@ -37,7 +35,6 @@ class ChatWorkbenchSlice {
   final int activeTabIndex;
   final int tabCount;
   final bool newChatActive;
-  final String? sessionConnectingId;
   final String? sessionLaunchError;
 
   @override
@@ -49,7 +46,6 @@ class ChatWorkbenchSlice {
         activeTabIndex == other.activeTabIndex &&
         tabCount == other.tabCount &&
         newChatActive == other.newChatActive &&
-        sessionConnectingId == other.sessionConnectingId &&
         sessionLaunchError == other.sessionLaunchError;
   }
 
@@ -61,7 +57,6 @@ class ChatWorkbenchSlice {
     activeTabIndex,
     tabCount,
     newChatActive,
-    sessionConnectingId,
     sessionLaunchError,
   );
 }
