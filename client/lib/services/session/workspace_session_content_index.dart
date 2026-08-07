@@ -296,14 +296,31 @@ class WorkspaceSessionContentIndex {
   static String _seatKey(String sessionId, String memberId) =>
       '${sessionId.trim()}$_keySeparator${memberId.trim()}';
 
+  /// First case-insensitive occurrence of [query] in [text], returning the
+  /// start index into [text].
+  ///
+  /// Length-safe: `String.toLowerCase()` can change a string's length (e.g.
+  /// `ß` → `ss`), so an index found on a lowercased copy misaligns against the
+  /// original text. Matching on the original with a case-insensitive RegExp
+  /// keeps the returned index valid for slicing.
+  static int? caseInsensitiveIndexOf(String text, String query) {
+    final q = query.trim().toLowerCase();
+    if (q.isEmpty) return null;
+    final match = RegExp(
+      RegExp.escape(q),
+      caseSensitive: false,
+    ).firstMatch(text);
+    return match?.start;
+  }
+
   static WorkspaceSessionContentMatch? _matchInDoc(
     SessionTranscriptDoc doc,
     String q, {
     required AppSession session,
     required _Seat seat,
   }) {
-    final idx = doc.text.toLowerCase().indexOf(q);
-    if (idx < 0) return null;
+    final idx = caseInsensitiveIndexOf(doc.text, q);
+    if (idx == null) return null;
     return WorkspaceSessionContentMatch(
       session: session,
       memberId: seat.memberId,

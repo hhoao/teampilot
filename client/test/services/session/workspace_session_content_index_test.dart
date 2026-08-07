@@ -15,35 +15,81 @@ const bucket = '-ws-project';
 
 void main() {
   group('buildTranscriptDoc', () {
-    test('projects roles, text, reasoning and tool calls into searchable text', () {
-      final messages = [
-        AiMessage(
-          id: 'u1',
-          role: AiRole.user,
-          parts: [AiTextPart(text: 'Fix the widget color to red')],
-        ),
-        AiMessage(
-          id: 'a1',
-          role: AiRole.assistant,
-          parts: [
-            AiTextPart(text: 'I will update settings_page.dart'),
-            AiToolCallPart(
-              toolCallId: 't1',
-              toolName: 'Edit',
-              argsText: '{"file":"settings_page.dart"}',
-            ),
-          ],
-        ),
-      ];
+    test(
+      'projects roles, text, reasoning and tool calls into searchable text',
+      () {
+        final messages = [
+          AiMessage(
+            id: 'u1',
+            role: AiRole.user,
+            parts: [AiTextPart(text: 'Fix the widget color to red')],
+          ),
+          AiMessage(
+            id: 'a1',
+            role: AiRole.assistant,
+            parts: [
+              AiTextPart(text: 'I will update settings_page.dart'),
+              AiToolCallPart(
+                toolCallId: 't1',
+                toolName: 'Edit',
+                argsText: '{"file":"settings_page.dart"}',
+              ),
+            ],
+          ),
+        ];
 
-      final doc = buildTranscriptDoc(messages);
-      final lower = doc.text.toLowerCase();
-      expect(lower, contains('red'));
-      expect(lower, contains('settings_page.dart'));
-      expect(lower, contains('[tool] edit'));
-      expect(lower, contains('user:'));
-      expect(lower, contains('assistant:'));
-      expect(doc.messageStarts, hasLength(2));
+        final doc = buildTranscriptDoc(messages);
+        final lower = doc.text.toLowerCase();
+        expect(lower, contains('red'));
+        expect(lower, contains('settings_page.dart'));
+        expect(lower, contains('[tool] edit'));
+        expect(lower, contains('user:'));
+        expect(lower, contains('assistant:'));
+        expect(doc.messageStarts, hasLength(2));
+      },
+    );
+  });
+
+  group('caseInsensitiveIndexOf', () {
+    test('matches case-insensitively on the original string', () {
+      expect(
+        WorkspaceSessionContentIndex.caseInsensitiveIndexOf(
+          'Hello WORLD',
+          'world',
+        ),
+        6,
+      );
+      expect(
+        WorkspaceSessionContentIndex.caseInsensitiveIndexOf(
+          'Hello WORLD',
+          '  world ',
+        ),
+        6,
+      );
+    });
+
+    test('is length-safe for Unicode lowercase expansions', () {
+      // 'ß' lowercases to 'ss' (length change), so an index computed on a
+      // lowercased copy would misalign against the original text.
+      const text = 'Größe fix the color';
+      final idx = WorkspaceSessionContentIndex.caseInsensitiveIndexOf(
+        text,
+        'fix',
+      );
+      expect(idx, isNotNull);
+      expect(text.substring(idx!), startsWith('fix'));
+      expect(idx! + 'fix'.length, lessThanOrEqualTo(text.length));
+    });
+
+    test('returns null for blanks and non-matches', () {
+      expect(
+        WorkspaceSessionContentIndex.caseInsensitiveIndexOf('abc', '   '),
+        isNull,
+      );
+      expect(
+        WorkspaceSessionContentIndex.caseInsensitiveIndexOf('abc', 'z'),
+        isNull,
+      );
     });
   });
 
@@ -104,13 +150,16 @@ void main() {
       expect(matches.single.snippet.toLowerCase(), contains('edit'));
     });
 
-    test('returns no matches for a session with no locatable transcript', () async {
-      final index = buildIndex();
-      final sessions = [simpleSession()];
+    test(
+      'returns no matches for a session with no locatable transcript',
+      () async {
+        final index = buildIndex();
+        final sessions = [simpleSession()];
 
-      await index.warm(sessions: sessions);
-      expect(index.search('anything', sessions: sessions), isEmpty);
-    });
+        await index.warm(sessions: sessions);
+        expect(index.search('anything', sessions: sessions), isEmpty);
+      },
+    );
 
     test('empty query yields no content matches', () async {
       await writeSimpleTranscript('sess-1');
@@ -188,7 +237,8 @@ void main() {
   });
 }
 
-const transcriptJsonl = ''
+const transcriptJsonl =
+    ''
     '{"type":"user","message":{"id":"u1","content":"Fix the widget color to red"}}\n'
     '{"type":"assistant","message":{"id":"a1","content":[{"type":"text",'
     '"text":"I will update settings_page.dart to use the brand color."},'

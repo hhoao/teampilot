@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:collection';
 
 import '../io/filesystem.dart';
 import 'workspace_file_search.dart';
@@ -107,13 +108,15 @@ class WorkspaceFileIndex {
     final ctx = _fs.pathContext;
     final entries = <WorkspaceFileMatch>[];
     final dirs = <String>[];
-    final queue = <String>[root];
+    // BFS with O(1) pop (List.removeAt(0) is O(n) and would make a large
+    // workspace build quadratic).
+    final queue = ListQueue<String>()..add(root);
     var scanned = 0;
     var dirsListed = 0;
     final maxEntries = _limits.maxIndexEntries;
 
     while (queue.isNotEmpty && scanned < maxEntries) {
-      final dir = queue.removeAt(0);
+      final dir = queue.removeFirst();
       List<FsDirEntry> children;
       try {
         children = await _fs.listDir(dir);

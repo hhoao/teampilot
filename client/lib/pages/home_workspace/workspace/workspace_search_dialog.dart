@@ -566,10 +566,11 @@ class _HighlightedSnippet extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final style = TpTextStyles.of(context).smColored(cs.onSurfaceVariant);
-    final q = query.trim().toLowerCase();
-    final lower = text.toLowerCase();
-    final idx = q.isEmpty ? -1 : lower.indexOf(q);
-    if (idx < 0) {
+    final idx = WorkspaceSessionContentIndex.caseInsensitiveIndexOf(
+      text,
+      query,
+    );
+    if (idx == null) {
       return Text(
         text,
         maxLines: 2,
@@ -577,18 +578,19 @@ class _HighlightedSnippet extends StatelessWidget {
         style: style,
       );
     }
+    final end = idx + query.trim().length;
     return Text.rich(
       TextSpan(
         children: [
           TextSpan(text: text.substring(0, idx)),
           TextSpan(
-            text: text.substring(idx, idx + q.length),
+            text: text.substring(idx, end),
             style: style.copyWith(
               fontWeight: FontWeight.w600,
               color: cs.primary,
             ),
           ),
-          TextSpan(text: text.substring(idx + q.length)),
+          TextSpan(text: text.substring(end)),
         ],
       ),
       maxLines: 2,
