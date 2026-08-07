@@ -74,6 +74,7 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
 
   var _stickToEnd = true;
   var _stickGeneration = 0;
+
   /// Delay message mounts until after the first jump-to-end so open does not
   /// build the top of the thread under a scroll offset of 0.
   var _mountTurns = false;
@@ -512,100 +513,108 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
           )
         : null;
 
-    final thread = NotificationListener<ScrollNotification>(
-      onNotification: _onScrollNotification,
-      child: ValueListenableBuilder<bool>(
-        valueListenable: _hoverEffectsEnabled,
-        builder: (context, hoverEnabled, child) {
-          return HistoryScrollCursorLock(
-            active: !hoverEnabled,
-            child: child!,
-          );
-        },
-        // SelectionArea must sit *inside* the scroll content. As an ancestor it
-        // enables edge auto-scroll while selecting, which yanks the thread to
-        // the top (flutter/flutter#110917).
-        child: SingleChildScrollView(
-          controller: _scrollController,
-          padding: const EdgeInsets.fromLTRB(0, 16, 0, 24),
-          // Width chrome outside [VirtualThreadViewport]: turn bodies are
-          // cached and would keep a stale per-message ConstrainedBox.
-          child: Align(
-            alignment: Alignment.topCenter,
-            child: Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: aiTheme.threadHorizontalPadding,
-              ),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: aiTheme.threadMaxWidth),
-                child: AiLineSpacedSelectionStyle(
-                  child: SelectionArea(
-                    contextMenuBuilder: buildAiThreadSelectionContextMenu,
-                    child: VirtualThreadViewport(
-                      messages: displayMessages,
-                      scrollController: _scrollController,
-                      header: header,
-                      anchorEnd: true,
-                      overscan: 5,
-                      // Claude-like: keep the loaded pagination window mounted while
-                      // scrolling; fill in chunks after open so the first paint stays light.
-                      retainMountedTurns: true,
-                      fillDataWindow: true,
-                      mountTurns: _mountTurns,
-                      suppressMeasureScrollCorrection: _stickToEnd,
-                      onMeasureScrollCorrection: (delta) {
-                        if (!_scrollController.hasClients || delta.abs() < 0.5) {
-                          return;
-                        }
-                        final next = (_scrollController.position.pixels + delta)
-                            .clamp(
-                              0.0,
-                              _scrollController.position.maxScrollExtent,
+    final thread = AiHistoryRenderScope(
+      // History-review policy (Claude Code webview-aligned): oversized
+      // markdown collapses to a budgeted preview with "Show more / Show less"
+      // (see AiTextPartView). Without this scope, a giant single message (e.g.
+      // a bundled-skill user turn) renders in full and freezes open for seconds.
+      child: NotificationListener<ScrollNotification>(
+        onNotification: _onScrollNotification,
+        child: ValueListenableBuilder<bool>(
+          valueListenable: _hoverEffectsEnabled,
+          builder: (context, hoverEnabled, child) {
+            return HistoryScrollCursorLock(
+              active: !hoverEnabled,
+              child: child!,
+            );
+          },
+          // SelectionArea must sit *inside* the scroll content. As an ancestor
+          // it enables edge auto-scroll while selecting, which yanks the thread
+          // to the top (flutter/flutter#110917).
+          child: SingleChildScrollView(
+            controller: _scrollController,
+            padding: const EdgeInsets.fromLTRB(0, 16, 0, 24),
+            // Width chrome outside [VirtualThreadViewport]: turn bodies are
+            // cached and would keep a stale per-message ConstrainedBox.
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: aiTheme.threadHorizontalPadding,
+                ),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: aiTheme.threadMaxWidth),
+                  child: AiLineSpacedSelectionStyle(
+                    child: SelectionArea(
+                      contextMenuBuilder: buildAiThreadSelectionContextMenu,
+                      child: VirtualThreadViewport(
+                        messages: displayMessages,
+                        scrollController: _scrollController,
+                        header: header,
+                        anchorEnd: true,
+                        overscan: 5,
+                        // Claude-like: keep the loaded pagination window mounted while
+                        // scrolling; fill in chunks after open so the first paint stays light.
+                        retainMountedTurns: true,
+                        fillDataWindow: true,
+                        mountTurns: _mountTurns,
+                        suppressMeasureScrollCorrection: _stickToEnd,
+                        onMeasureScrollCorrection: (delta) {
+                          if (!_scrollController.hasClients ||
+                              delta.abs() < 0.5) {
+                            return;
+                          }
+                          final next =
+                              (_scrollController.position.pixels + delta).clamp(
+                                0.0,
+                                _scrollController.position.maxScrollExtent,
+                              );
+                          _jumpTo(next);
+                        },
+                        messageBuilder: (context, ai) {
+                          if (ai.id == kSessionHistoryRunningPlaceholder.id) {
+                            return SelectionContainer.disabled(
+                              child: _buildRunningInMessage(context),
                             );
-                        _jumpTo(next);
-                      },
-                      messageBuilder: (context, ai) {
-                        if (ai.id == kSessionHistoryRunningPlaceholder.id) {
-                          return SelectionContainer.disabled(
-                            child: _buildRunningInMessage(context),
+                          }
+                          // While Running is appended as the tip turn, keep the real tip's
+                          // bottom gap tight so Running sits under it like in-turn chrome.
+                          final tightenForRunning =
+                              widget.liveChrome.isActive &&
+                              displayMessages.length >= 2 &&
+                              displayMessages.last.id ==
+                                  kSessionHistoryRunningPlaceholder.id &&
+                              ai.id ==
+                                  displayMessages[displayMessages.length - 2]
+                                      .id;
+                          final messageChild = AiMessageView(
+                            key: ValueKey(ai.id),
+                            message: ai,
+                            actionBarHoverEnabled: _hoverEffectsEnabled,
+                            actionBarReveal: ai.id == lastId
+                                ? AiActionBarReveal.always
+                                : AiActionBarReveal.hover,
+                            // Keep the tip "thinking" expanded while it streams;
+                            // collapse once a non-thinking part appears or the
+                            // message is no longer the last real message.
+                            chainOfThoughtAutoExpand:
+                                ai.id == realTipId &&
+                                aiMessageIsThinkingOnly(ai),
                           );
-                        }
-                        // While Running is appended as the tip turn, keep the real tip's
-                        // bottom gap tight so Running sits under it like in-turn chrome.
-                        final tightenForRunning = widget.liveChrome.isActive &&
-                            displayMessages.length >= 2 &&
-                            displayMessages.last.id ==
-                                kSessionHistoryRunningPlaceholder.id &&
-                            ai.id ==
-                                displayMessages[displayMessages.length - 2].id;
-                        final messageChild = AiMessageView(
-                          key: ValueKey(ai.id),
-                          message: ai,
-                          actionBarHoverEnabled: _hoverEffectsEnabled,
-                          actionBarReveal: ai.id == lastId
-                              ? AiActionBarReveal.always
-                              : AiActionBarReveal.hover,
-                          // Keep the tip "thinking" expanded while it streams;
-                          // collapse once a non-thinking part appears or the
-                          // message is no longer the last real message.
-                          chainOfThoughtAutoExpand:
-                              ai.id == realTipId && aiMessageIsThinkingOnly(ai),
-                        );
-                        return tightenForRunning
-                            ? Theme(
-                                data: Theme.of(context).copyWith(
-                                  extensions: [
-                                    ...Theme.of(context).extensions.values
-                                        .where(
-                                          (e) => e is! AiMessageTheme,
-                                        ),
-                                    aiTheme.copyWith(messageSpacing: 8),
-                                  ],
-                                ),
-                                child: messageChild,
-                              )
-                            : messageChild;
-                      },
+                          return tightenForRunning
+                              ? Theme(
+                                  data: Theme.of(context).copyWith(
+                                    extensions: [
+                                      ...Theme.of(context).extensions.values
+                                          .where((e) => e is! AiMessageTheme),
+                                      aiTheme.copyWith(messageSpacing: 8),
+                                    ],
+                                  ),
+                                  child: messageChild,
+                                )
+                              : messageChild;
+                        },
+                      ),
                     ),
                   ),
                 ),

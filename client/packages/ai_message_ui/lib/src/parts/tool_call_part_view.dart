@@ -8,6 +8,7 @@ import '../edit/edit_tool_card.dart';
 import '../shell/shell_tool_card.dart';
 import '../markdown/compiled_markdown_chrome.dart';
 import 'package:tp_markdown/tp_markdown.dart';
+import 'expandable_tool_card.dart';
 import '../strings.dart';
 import '../theme.dart';
 import '../tool_file_actions.dart';
@@ -141,7 +142,7 @@ class _AiToolCallPartViewState extends State<AiToolCallPartView> {
                   children: [
                     if (_hasArgs(part))
                       _MutedPre(
-                        text: _argsText(part),
+                        text: capToolPanelText(_argsText(part)),
                         color: aiTheme.resolveToolPanel(scheme),
                         radius: aiTheme.panelRadius,
                         foreground: scheme.onSurface.withValues(alpha: 0.9),
@@ -154,7 +155,7 @@ class _AiToolCallPartViewState extends State<AiToolCallPartView> {
                       ),
                       const SizedBox(height: 4),
                       _MutedPre(
-                        text: _stringify(part.result),
+                        text: capToolPanelText(_stringify(part.result)),
                         color: aiTheme.resolveToolPanel(scheme),
                         radius: aiTheme.panelRadius,
                         foreground: part.isError

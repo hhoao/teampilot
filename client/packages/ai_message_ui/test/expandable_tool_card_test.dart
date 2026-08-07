@@ -44,4 +44,17 @@ void main() {
     const text = 'line1\nline2\nline3';
     expect(previewToolCardText(text), text);
   });
+
+  test('capToolPanelText keeps head + marker beyond maxChars', () {
+    final text = List.generate(20, (_) => 'x' * 4000).join('\n'); // 80 KB
+    final capped = capToolPanelText(text, maxChars: 50000);
+    expect(capped.length, lessThan(50000 + 100));
+    expect(capped.contains(kAiToolPanelTruncationMarker), isTrue);
+    expect(capped.startsWith('xxxx'), isTrue);
+  });
+
+  test('capToolPanelText returns full text within maxChars', () {
+    const text = 'small output';
+    expect(capToolPanelText(text), text);
+  });
 }

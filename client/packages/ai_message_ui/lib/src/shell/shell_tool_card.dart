@@ -161,9 +161,14 @@ class _ShellTerminalBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final mono = markdown.codeBlock;
+    // Cap the strings, not just the visual clip: AiFadeExpandBody lays the
+    // child out at full height even while collapsed, so a giant command
+    // output would otherwise freeze the frame on every message mount.
+    final cappedCommand = capToolPanelText(command);
     final rawOutput = part.result == null ? null : _stringify(part.result);
-    final hasOutput = rawOutput != null && rawOutput.trim().isNotEmpty;
-    final output = hasOutput ? rawOutput : null;
+    final output = (rawOutput != null && rawOutput.trim().isNotEmpty)
+        ? capToolPanelText(rawOutput)
+        : null;
     final outputColor = part.isError
         ? scheme.error
         : scheme.onSurface.withValues(alpha: 0.65);
@@ -184,7 +189,7 @@ class _ShellTerminalBody extends StatelessWidget {
                   style: mono.copyWith(color: accentColor),
                 ),
                 TextSpan(
-                  text: command,
+                  text: cappedCommand,
                   style: mono.copyWith(
                     color: scheme.onSurface.withValues(alpha: 0.9),
                   ),

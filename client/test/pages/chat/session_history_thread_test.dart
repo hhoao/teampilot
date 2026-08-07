@@ -425,6 +425,42 @@ void main() {
   );
 
   testWidgets(
+    'oversized user message collapses to a fade mask and expands',
+    (tester) async {
+      // A giant single user message (e.g. a bundled-skill paste) must not render
+      // in full: SessionHistoryThread provides AiHistoryRenderScope so the
+      // budgeted mask collapse kicks in instead of laying out the whole
+      // document (which froze open for ~10 s on a 785 KB user message).
+      final rows = [
+        for (var r = 0; r < 20; r++) '| c$r-a | c$r-b |',
+      ].join('\n');
+      final markdown = '| A | B |\n| --- | --- |\n$rows';
+      final store = ExternalStoreAiThreadRuntime()
+        ..setMessages([
+          AiMessage(
+            id: 'huge',
+            role: AiRole.user,
+            parts: [AiTextPart(text: markdown)],
+          ),
+        ]);
+
+      await tester.pumpWidget(_harness(runtime: store));
+      await tester.pumpAndSettle();
+
+      // Collapsed by default: budgeted preview masked with an expand chevron.
+      expect(find.byIcon(Icons.expand_more), findsOneWidget);
+      expect(find.text('c0-a'), findsOneWidget);
+      expect(find.text('c19-a'), findsNothing);
+
+      await tester.tap(find.byIcon(Icons.expand_more));
+      await tester.pumpAndSettle();
+
+      expect(find.text('c19-a'), findsOneWidget);
+      expect(find.byKey(kMaskCollapseBarKey), findsOneWidget);
+    },
+  );
+
+  testWidgets(
     'jumpTo during layout does not schedule build mid-frame',
     (tester) async {
       // Measure/stick jumps and Scrollable.jumpTo dispatch ScrollStart during

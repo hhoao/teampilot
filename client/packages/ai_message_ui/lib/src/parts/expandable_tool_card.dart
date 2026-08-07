@@ -41,3 +41,14 @@ String previewToolCardText(String text, {int lines = kAiToolCardPreviewLines}) {
   if (split.length <= lines) return text;
   return split.take(lines).join('\n');
 }
+
+/// Bounds panel text (shell command/output, tool args/results) so a
+/// pathologically large string cannot freeze layout. Keeps the head + a
+/// truncation marker; the tool row/card collapse stays the primary gate.
+const int kAiToolPanelMaxChars = 50000;
+const String kAiToolPanelTruncationMarker = '\n… [truncated]';
+
+String capToolPanelText(String text, {int maxChars = kAiToolPanelMaxChars}) {
+  if (text.length <= maxChars) return text;
+  return '${text.substring(0, maxChars)}${kAiToolPanelTruncationMarker}';
+}

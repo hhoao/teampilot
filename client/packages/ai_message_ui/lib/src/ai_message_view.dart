@@ -3,8 +3,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'ai_message_parts.dart';
+import 'history_render_scope.dart';
 import 'markdown/compiled_markdown_chrome.dart';
 import 'message_action_bar.dart';
+import 'message_role_scope.dart';
 import 'message_streaming_scope.dart';
 import 'part_registry.dart';
 import 'parts/fade_expand_body.dart';
@@ -78,12 +80,15 @@ class _AiMessageViewState extends State<AiMessageView> {
   Widget build(BuildContext context) {
     final aiTheme = AiMessageTheme.of(context);
     final scheme = Theme.of(context).colorScheme;
-    final parts = AiMessageStreamingScope(
-      streaming: widget.message.status == AiMessageStatus.incomplete,
-      child: AiMessageParts(
-        parts: widget.message.parts,
-        registry: widget.registry,
-        chainOfThoughtAutoExpand: widget.chainOfThoughtAutoExpand,
+    final parts = AiMessageRoleScope(
+      role: widget.message.role,
+      child: AiMessageStreamingScope(
+        streaming: widget.message.status == AiMessageStatus.incomplete,
+        child: AiMessageParts(
+          parts: widget.message.parts,
+          registry: widget.registry,
+          chainOfThoughtAutoExpand: widget.chainOfThoughtAutoExpand,
+        ),
       ),
     );
     final trackHover = widget.showActionBar &&
@@ -320,6 +325,13 @@ class _UserBubbleFadeHostState extends State<_UserBubbleFadeHost> {
 
   @override
   Widget build(BuildContext context) {
+    // History review already budgets long markdown with its own "Show more /
+    // Show less" (AiHistoryRenderScope). The bubble fade would clip that
+    // collapsed content to 120 px and bury the expand button — render at
+    // content height instead so the preview + control stay reachable.
+    if (AiHistoryRenderScope.maybeOf(context) != null) {
+      return Padding(padding: widget.contentPadding, child: widget.child);
+    }
     return AiFadeExpandBody(
       open: _open,
       onToggle: () => setState(() => _open = !_open),

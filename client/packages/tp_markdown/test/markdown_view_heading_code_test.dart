@@ -91,4 +91,38 @@ void main() {
       expect(codeStyle!.fontFamily, 'Mono');
     },
   );
+
+  testWidgets('oversized code block collapses to a fade mask and expands', (
+    tester,
+  ) async {
+    final code = List.generate(
+      400,
+      (i) => 'line $i ${'x' * 40}',
+    ).join('\n'); // ~18 KB, over the collapse threshold
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: MarkdownView(
+              document: MarkdownDocument(
+                blocks: [CodeBlock(language: 'dart', text: code)],
+              ),
+              tokens: MarkdownTokens.test(),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Masked: expand chevron present, the tail is not mounted.
+    expect(find.byIcon(Icons.keyboard_arrow_down_rounded), findsOneWidget);
+    expect(find.textContaining('line 399'), findsNothing);
+
+    await tester.tap(find.byIcon(Icons.keyboard_arrow_down_rounded));
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.keyboard_arrow_up_rounded), findsOneWidget);
+    expect(find.textContaining('line 399'), findsOneWidget);
+  });
 }

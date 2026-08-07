@@ -7,11 +7,15 @@ class MarkdownStrings {
     required this.copy,
     required this.copied,
     required this.code,
+    this.showMore = 'Show more',
+    this.showLess = 'Show less',
   });
 
   final String copy;
   final String copied;
   final String code;
+  final String showMore;
+  final String showLess;
 
   static const MarkdownStrings english = MarkdownStrings(
     copy: 'Copy',
@@ -40,5 +44,7 @@ class MarkdownStringsScope extends InheritedWidget {
   bool updateShouldNotify(MarkdownStringsScope oldWidget) =>
       strings.copy != oldWidget.strings.copy ||
       strings.copied != oldWidget.strings.copied ||
-      strings.code != oldWidget.strings.code;
+      strings.code != oldWidget.strings.code ||
+      strings.showMore != oldWidget.strings.showMore ||
+      strings.showLess != oldWidget.strings.showLess;
 }

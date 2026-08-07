@@ -1525,14 +1525,21 @@ class _SessionChatViewState extends State<SessionChatView> {
                                         Positioned.fill(
                                           child: Material(
                                             color: cs.surface,
-                                            child: SubagentPreviewScaffold(
-                                              title: previewTitle,
-                                              messages: top.messages,
-                                              emptyLabel:
-                                                  l10n.subagentPreviewEmpty,
-                                              backTooltip:
-                                                  l10n.subagentPreviewBack,
-                                              onBack: _subagentPreview.pop,
+                                            child: AiHistoryRenderScope(
+                                              // History-review budget also
+                                              // guards subagent messages: a
+                                              // giant subagent turn collapses
+                                              // instead of freezing the
+                                              // preview open.
+                                              child: SubagentPreviewScaffold(
+                                                title: previewTitle,
+                                                messages: top.messages,
+                                                emptyLabel: l10n
+                                                    .subagentPreviewEmpty,
+                                                backTooltip:
+                                                    l10n.subagentPreviewBack,
+                                                onBack: _subagentPreview.pop,
+                                              ),
                                             ),
                                           ),
                                         ),

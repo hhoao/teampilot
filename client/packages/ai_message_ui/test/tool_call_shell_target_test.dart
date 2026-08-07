@@ -257,4 +257,35 @@ void main() {
     expect(find.textContaining('Used tool:'), findsNothing);
     expect(find.textContaining('foo.dart'), findsOneWidget);
   });
+
+  testWidgets('huge shell output is capped so layout stays bounded', (
+    tester,
+  ) async {
+    // > 50 KB output — must be capped with a marker, not laid out in full
+    // (AiFadeExpandBody lays the child out at full height even collapsed).
+    final result = List.generate(1500, (i) => 'line$i-${'x' * 40}').join(
+      '\n',
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AiToolCallPartView(
+            part: AiToolCallPart(
+              toolCallId: '1',
+              toolName: 'Bash',
+              args: {'command': 'make test'},
+              result: result,
+              status: AiToolCallStatus.complete,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.textContaining(kAiToolPanelTruncationMarker), findsOneWidget);
+    // The capped-away tail is not mounted.
+    expect(find.textContaining('line1499-'), findsNothing);
+    // The head is still visible.
+    expect(find.textContaining('line0-'), findsOneWidget);
+  });
 }

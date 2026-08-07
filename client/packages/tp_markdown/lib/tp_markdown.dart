@@ -10,6 +10,7 @@ export 'src/registry/block_widget_registry.dart';
 export 'src/registry/markdown_resolvers.dart';
 export 'src/render/inline_spans.dart' show forcedStrut;
 export 'src/render/markdown_view.dart';
+export 'src/render/virtual_markdown_view.dart';
 export 'src/strings.dart';
 
 export 'src/tokens/markdown_profile.dart';

@@ -137,7 +137,15 @@ class _MarkdownCodeBlock extends StatefulWidget {
 }
 
 class _MarkdownCodeBlockState extends State<_MarkdownCodeBlock> {
+  /// Code blocks longer than this collapse behind a fade + chevron mask
+  /// (Claude Code-style per-block "show more").
+  static const int _kCollapseChars = 6000;
+  static const int _kPreviewChars = 4000;
+  static const double _kCollapsedMaxHeight = 260;
+  static const double _kExpandedMaxHeight = 420;
+
   bool _copied = false;
+  var _expanded = false;
 
   @override
   Widget build(BuildContext context) {
@@ -197,23 +205,131 @@ class _MarkdownCodeBlockState extends State<_MarkdownCodeBlock> {
             ),
           ),
         ),
-        DecoratedBox(
-          decoration: BoxDecoration(
-            color: muted,
-            borderRadius:
-                BorderRadius.vertical(bottom: Radius.circular(radius)),
-            border: Border.all(color: borderColor),
+        if (widget.code.length > _kCollapseChars)
+          _buildMaskedBody(context, strings, muted, radius, borderColor)
+        else
+          DecoratedBox(
+            decoration: BoxDecoration(
+              color: muted,
+              borderRadius:
+                  BorderRadius.vertical(bottom: Radius.circular(radius)),
+              border: Border.all(color: borderColor),
+            ),
+            child: _codeText(widget.code),
           ),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
-            child: Text(
-              widget.code,
-              style: widget.tokens.codeBlock,
-              strutStyle: forcedStrut(widget.tokens.codeBlock),
+      ],
+    );
+  }
+
+  /// Oversized code: bounded preview clipped with a bottom fade + chevron
+  /// (per-block "show more"); expanded shows the full code in a scroll shell.
+  Widget _buildMaskedBody(
+    BuildContext context,
+    MarkdownStrings strings,
+    Color muted,
+    double radius,
+    Color borderColor,
+  ) {
+    final code = _expanded
+        ? widget.code
+        : widget.code.substring(0, _kPreviewChars);
+    final iconColor =
+        (widget.tokens.codeBlock.color ?? Colors.black54).withValues(
+          alpha: 0.6,
+        );
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: muted,
+        borderRadius: BorderRadius.vertical(bottom: Radius.circular(radius)),
+        border: Border.all(color: borderColor),
+      ),
+      child: Stack(
+        clipBehavior: Clip.hardEdge,
+        children: [
+          ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: _expanded ? _kExpandedMaxHeight : _kCollapsedMaxHeight,
+            ),
+            child: _expanded
+                ? SingleChildScrollView(child: _codeText(code))
+                : _codeText(code),
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: _MaskFadeChevron(
+              icon: _expanded
+                  ? Icons.keyboard_arrow_up_rounded
+                  : Icons.keyboard_arrow_down_rounded,
+              tooltip: _expanded ? strings.showLess : strings.showMore,
+              fadeColor: muted,
+              iconColor: iconColor,
+              onTap: () => setState(() => _expanded = !_expanded),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _codeText(String code) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+      child: Text(
+        code,
+        style: widget.tokens.codeBlock,
+        strutStyle: forcedStrut(widget.tokens.codeBlock),
+      ),
+    );
+  }
+}
+
+/// Bottom fade strip + chevron for a collapsed/expanded code block mask.
+class _MaskFadeChevron extends StatelessWidget {
+  const _MaskFadeChevron({
+    required this.icon,
+    required this.tooltip,
+    required this.fadeColor,
+    required this.iconColor,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final Color fadeColor;
+  final Color iconColor;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: SizedBox(
+          height: 36,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [fadeColor.withValues(alpha: 0), fadeColor],
+                    ),
+                  ),
+                ),
+              ),
+              Icon(icon, size: 20, color: iconColor),
+            ],
+          ),
         ),
-      ],
+      ),
     );
   }
 }
