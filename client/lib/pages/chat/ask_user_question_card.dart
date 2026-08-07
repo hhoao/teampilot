@@ -943,11 +943,20 @@ class _OptionRow extends StatelessWidget {
       // can steal focus and wipe the authored selection via custom select.
       canRequestFocus: false,
       splashColor: Colors.transparent,
-      // Keep the original InkWell overlayColor guard: a selected row keeps its
-      // fill (primary 0.14) on hover instead of lightening to the hover tint.
+      // Desktop fill REPLACES the idle background on hover, so mirror the
+      // original InkWell overlayColor guard for selection AND keyboard focus:
+      // a selected row keeps its fill (primary 0.14); a focused (not yet
+      // selected) row keeps its surfaceContainerHighest keyboard base with the
+      // primary hover tint layered on top (Color.alphaBlend reproduces the
+      // two-layer composite the InkWell painted) instead of swapping to 0.08.
       hoverColor: selected
           ? cs.primary.withValues(alpha: 0.14)
-          : cs.primary.withValues(alpha: 0.08),
+          : focused
+              ? Color.alphaBlend(
+                  cs.primary.withValues(alpha: 0.08),
+                  cs.surfaceContainerHighest.withValues(alpha: 0.28),
+                )
+              : cs.primary.withValues(alpha: 0.08),
       enabled: enabled,
       onTap: enabled ? onTap : null,
       child: Padding(
