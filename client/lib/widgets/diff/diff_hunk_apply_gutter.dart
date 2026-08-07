@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../services/diff/diff_model.dart';
 
@@ -38,19 +39,16 @@ class DiffHunkApplyGutter extends StatelessWidget {
               height: _buttonHeight,
               child: Tooltip(
                 message: tooltip,
-                child: Material(
-                  type: MaterialType.transparency,
-                  child: InkWell(
-                    key: Key('diff-apply-hunk-${block.startRow}'),
-                    onTap: () => onApply(block),
-                    child: const Center(
-                      child: Text(
-                        '>>',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          height: 1,
-                        ),
+                child: TpHover(
+                  key: Key('diff-apply-hunk-${block.startRow}'),
+                  onTap: () => onApply(block),
+                  child: const Center(
+                    child: Text(
+                      '>>',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        height: 1,
                       ),
                     ),
                   ),

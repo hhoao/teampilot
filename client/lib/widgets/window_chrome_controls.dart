@@ -583,11 +583,11 @@ class _WindowsChromeButtonState extends State<_WindowsChromeButton> {
           height: widget.height,
           child: Material(
             color: background,
-            child: InkWell(
-              onTap: () => widget.onPressed(),
+            child: TpHover(
+              width: 46,
+              height: widget.height,
               hoverColor: Colors.transparent,
-              splashColor: Colors.transparent,
-              highlightColor: Colors.transparent,
+              onTap: () => widget.onPressed(),
               child: Icon(
                 widget.icon,
                 size: context.tpIconSizes.md,

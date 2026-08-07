@@ -23,24 +23,22 @@ class WorkspaceTerminalEmptyPane extends StatelessWidget {
     final styles = TpTextStyles.of(context);
 
     return Center(
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onNewTerminal,
-          borderRadius: BorderRadius.circular(8),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.terminal_outlined, size: 20, color: foreground),
-                const SizedBox(width: 12),
-                Text(
-                  l10n.workspaceTerminalNewSession,
-                  style: styles.smMediumColored(foreground),
-                ),
-              ],
-            ),
+      child: TpHover(
+        backgroundColor: Colors.transparent,
+        borderRadius: BorderRadius.circular(8),
+        onTap: onNewTerminal,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.terminal_outlined, size: 20, color: foreground),
+              const SizedBox(width: 12),
+              Text(
+                l10n.workspaceTerminalNewSession,
+                style: styles.smMediumColored(foreground),
+              ),
+            ],
           ),
         ),
       ),

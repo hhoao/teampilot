@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
@@ -259,19 +259,17 @@ class _DiffModeSegment extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     return Tooltip(
       message: tooltip,
-      child: Material(
-        color: selected
+      child: TpHover(
+        backgroundColor: selected
             ? cs.onSurface.withValues(alpha: 0.12)
             : Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          hoverColor: color.withValues(alpha: 0.12),
-          splashColor: color.withValues(alpha: 0.2),
-          child: SizedBox(
-            width: 30,
-            height: DiffToolbar._actionSize,
-            child: Icon(icon, size: context.tpIconSizes.sm, color: color),
-          ),
+        width: 30,
+        height: DiffToolbar._actionSize,
+        hoverColor: color.withValues(alpha: 0.12),
+        splashColor: color.withValues(alpha: 0.2),
+        onTap: onTap,
+        child: Center(
+          child: Icon(icon, size: context.tpIconSizes.sm, color: color),
         ),
       ),
     );
@@ -303,9 +301,7 @@ class _DiffToolbarIconToggle extends StatelessWidget {
       size: DiffToolbar._actionSize,
       compact: true,
       color: color,
-      backgroundColor: selected
-          ? cs.onSurface.withValues(alpha: 0.12)
-          : null,
+      backgroundColor: selected ? cs.onSurface.withValues(alpha: 0.12) : null,
       onTap: () => onChanged(!selected),
     );
   }

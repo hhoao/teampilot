@@ -120,7 +120,7 @@ class _WorkspaceIconPickerDialogState
               final selected =
                   _draftIcon is WorkspaceIconPreset &&
                   (_draftIcon as WorkspaceIconPreset).index == index;
-              return InkWell(
+              return TpHover(
                 borderRadius: BorderRadius.circular(12),
                 onTap: () {
                   setState(() => _draftIcon = WorkspaceIconPreset(index));

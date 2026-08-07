@@ -92,19 +92,17 @@ class _Segment extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     return Tooltip(
       message: tooltip,
-      child: Material(
-        color: selected
+      child: TpHover(
+        backgroundColor: selected
             ? cs.onSurface.withValues(alpha: 0.12)
             : Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          hoverColor: color.withValues(alpha: 0.12),
-          splashColor: color.withValues(alpha: 0.2),
-          child: SizedBox(
-            width: 30,
-            height: FileDiffSurfaceToggle._size,
-            child: Icon(icon, size: context.tpIconSizes.sm, color: color),
-          ),
+        width: 30,
+        height: FileDiffSurfaceToggle._size,
+        hoverColor: color.withValues(alpha: 0.12),
+        splashColor: color.withValues(alpha: 0.2),
+        onTap: onTap,
+        child: Center(
+          child: Icon(icon, size: context.tpIconSizes.sm, color: color),
         ),
       ),
     );
