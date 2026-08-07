@@ -177,19 +177,13 @@ class _ComposeVoiceIconButton extends StatelessWidget {
     final icons = context.tpIconSizes;
     return Tooltip(
       message: tooltip,
-      child: Material(
-        color: Colors.transparent,
-        clipBehavior: Clip.antiAlias,
-        shape: const CircleBorder(),
-        child: InkWell(
-          onTap: onTap,
-          customBorder: const CircleBorder(),
-          child: SizedBox(
-            width: _size,
-            height: _size,
-            child: Icon(icon, size: icons.md, color: palette.muted),
-          ),
-        ),
+      child: TpHover(
+        shape: TpPressableShape.circle,
+        width: _size,
+        height: _size,
+        backgroundColor: Colors.transparent,
+        onTap: onTap,
+        child: Center(child: Icon(icon, size: icons.md, color: palette.muted)),
       ),
     );
   }
@@ -213,27 +207,21 @@ class _ComposeVoiceStopButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Tooltip(
       message: tooltip,
-      child: Material(
-        color: palette.chipFill,
-        clipBehavior: Clip.antiAlias,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-          side: BorderSide(color: palette.border),
-        ),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(10),
-          child: SizedBox(
-            width: _outer,
-            height: _outer,
-            child: Center(
-              child: Container(
-                width: _inner,
-                height: _inner,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE85D5D),
-                  borderRadius: BorderRadius.circular(3),
-                ),
+      child: TpHover(
+        backgroundColor: palette.chipFill,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: palette.border),
+        onTap: onTap,
+        child: SizedBox(
+          width: _outer,
+          height: _outer,
+          child: Center(
+            child: Container(
+              width: _inner,
+              height: _inner,
+              decoration: BoxDecoration(
+                color: const Color(0xFFE85D5D),
+                borderRadius: BorderRadius.circular(3),
               ),
             ),
           ),

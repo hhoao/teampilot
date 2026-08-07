@@ -634,36 +634,36 @@ class _TeamSettingsButton extends StatelessWidget {
 
     return Tooltip(
       message: tooltip,
-      child: Material(
-        color: palette.chipFill,
-        shape: CircleBorder(side: BorderSide(color: palette.border)),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: enabled ? onTap : null,
-          customBorder: const CircleBorder(),
-          child: SizedBox(
-            width: _size,
-            height: _size,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Icon(Icons.settings_outlined, size: icons.md, color: color),
-                if (showAttention)
-                  Positioned(
-                    top: 6,
-                    right: 6,
-                    child: Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.error,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: palette.chipFill, width: 1.5),
-                      ),
+      child: TpHover(
+        shape: TpPressableShape.circle,
+        width: _size,
+        height: _size,
+        backgroundColor: palette.chipFill,
+        border: Border.all(color: palette.border),
+        enabled: enabled,
+        onTap: enabled ? onTap : null,
+        child: SizedBox(
+          width: _size,
+          height: _size,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Icon(Icons.settings_outlined, size: icons.md, color: color),
+              if (showAttention)
+                Positioned(
+                  top: 6,
+                  right: 6,
+                  child: Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.error,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: palette.chipFill, width: 1.5),
                     ),
                   ),
-              ],
-            ),
+                ),
+            ],
           ),
         ),
       ),
@@ -693,23 +693,17 @@ class _StopButton extends StatelessWidget {
       child: Semantics(
         button: true,
         label: tooltip,
-        child: Material(
-          color: palette.sendActive,
-          shape: const CircleBorder(),
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: throttledOnPressed('session_review_compose_stop', onStop),
-            customBorder: const CircleBorder(),
-            child: SizedBox(
-              width: _size,
-              height: _size,
-              child: Center(
-                child: Icon(
-                  Icons.stop_rounded,
-                  color: palette.sendIcon,
-                  size: icons.md,
-                ),
-              ),
+        child: TpHover(
+          shape: TpPressableShape.circle,
+          width: _size,
+          height: _size,
+          backgroundColor: palette.sendActive,
+          onTap: throttledOnPressed('session_review_compose_stop', onStop),
+          child: Center(
+            child: Icon(
+              Icons.stop_rounded,
+              color: palette.sendIcon,
+              size: icons.md,
             ),
           ),
         ),
@@ -743,23 +737,18 @@ class _VoicePrimaryButton extends StatelessWidget {
       child: Semantics(
         button: true,
         label: tooltip,
-        child: Material(
-          color: palette.sendIdle,
-          shape: const CircleBorder(),
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: enabled ? onTap : null,
-            customBorder: const CircleBorder(),
-            child: SizedBox(
-              width: _size,
-              height: _size,
-              child: Center(
-                child: Icon(
-                  Icons.mic_none_outlined,
-                  color: color,
-                  size: icons.md,
-                ),
-              ),
+        child: TpHover(
+          shape: TpPressableShape.circle,
+          width: _size,
+          height: _size,
+          backgroundColor: palette.sendIdle,
+          enabled: enabled,
+          onTap: enabled ? onTap : null,
+          child: Center(
+            child: Icon(
+              Icons.mic_none_outlined,
+              color: color,
+              size: icons.md,
             ),
           ),
         ),
@@ -793,37 +782,28 @@ class _SendButton extends StatelessWidget {
     final active = canSubmit && !isSubmitting;
     final tooltip = blockedTooltip?.trim();
 
-    final button = Material(
-      color: active ? palette.sendActive : palette.sendIdle,
-      shape: const CircleBorder(),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: active
-            ? throttledOnPressed(throttleKey, onSubmit)
-            : tooltip != null && tooltip.isNotEmpty
-            ? () {}
-            : null,
-        customBorder: const CircleBorder(),
-        child: SizedBox(
-          width: _size,
-          height: _size,
-          child: Center(
-            child: isSubmitting
-                ? SizedBox(
-                    width: icons.sm,
-                    height: icons.sm,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: palette.sendIcon,
-                    ),
-                  )
-                : Icon(
-                    Icons.arrow_upward_rounded,
-                    color: active ? palette.sendIcon : palette.disabled,
-                    size: icons.md,
-                  ),
-          ),
-        ),
+    final button = TpHover(
+      shape: TpPressableShape.circle,
+      width: _size,
+      height: _size,
+      backgroundColor: active ? palette.sendActive : palette.sendIdle,
+      enabled: active,
+      onTap: active ? throttledOnPressed(throttleKey, onSubmit) : null,
+      child: Center(
+        child: isSubmitting
+            ? SizedBox(
+                width: icons.sm,
+                height: icons.sm,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: palette.sendIcon,
+                ),
+              )
+            : Icon(
+                Icons.arrow_upward_rounded,
+                color: active ? palette.sendIcon : palette.disabled,
+                size: icons.md,
+              ),
       ),
     );
 
@@ -860,29 +840,24 @@ class _ComposeActionIcon extends StatelessWidget {
 
     return Tooltip(
       message: tooltip,
-      child: Material(
-        color: Colors.transparent,
-        clipBehavior: Clip.antiAlias,
-        shape: const CircleBorder(),
-        child: InkWell(
-          onTap: interactive ? onTap : null,
-          customBorder: const CircleBorder(),
-          child: SizedBox(
-            width: _size,
-            height: _size,
-            child: isLoading
-                ? Center(
-                    child: SizedBox(
-                      width: icons.sm,
-                      height: icons.sm,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: palette.muted,
-                      ),
-                    ),
-                  )
-                : Icon(icon, size: icons.md, color: color),
-          ),
+      child: TpHover(
+        shape: TpPressableShape.circle,
+        width: _size,
+        height: _size,
+        backgroundColor: Colors.transparent,
+        enabled: interactive,
+        onTap: interactive ? onTap : null,
+        child: Center(
+          child: isLoading
+              ? SizedBox(
+                  width: icons.sm,
+                  height: icons.sm,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: palette.muted,
+                  ),
+                )
+              : Icon(icon, size: icons.md, color: color),
         ),
       ),
     );
