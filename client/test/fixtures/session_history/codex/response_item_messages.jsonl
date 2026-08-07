@@ -1,0 +1,8 @@
+{"timestamp":"2026-08-07T09:59:34.000Z","type":"event_msg","payload":{"type":"task_started","turn_id":"t1"}}
+{"timestamp":"2026-08-07T09:59:34.000Z","type":"response_item","payload":{"type":"message","role":"developer","content":[{"type":"input_text","text":"<skills_instructions>developer noise</skills_instructions>"}]}}
+{"timestamp":"2026-08-07T09:59:34.000Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"# AGENTS.md instructions\n\n<INSTRUCTION>\n@/rtk.md\n</INSTRUCTION>"},{"type":"input_text","text":"<environment_context>\ncwd: /home/me/proj\n</environment_context>"}]}}
+{"timestamp":"2026-08-07T09:59:34.000Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"hello"}]}}
+{"timestamp":"2026-08-07T09:59:35.000Z","type":"response_item","payload":{"type":"reasoning","summary":[{"type":"summary_text","text":"The user just said hello."}]}}
+{"timestamp":"2026-08-07T09:59:35.000Z","type":"response_item","payload":{"type":"function_call","name":"exec_command","arguments":"{\"cmd\":\"ls\"}","call_id":"call_1"}}
+{"timestamp":"2026-08-07T09:59:35.000Z","type":"response_item","payload":{"type":"function_call_output","call_id":"call_1","output":"a.txt\nb.txt"}}
+{"timestamp":"2026-08-07T09:59:36.000Z","type":"response_item","payload":{"type":"message","role":"assistant","content":[{"type":"output_text","text":"Hello! Here are the files."}]}}

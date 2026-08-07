@@ -153,6 +153,9 @@ void _appendFromEventMsg(
       final message = '${payload['message'] ?? ''}'.trim();
       if (message.isEmpty) return;
       if (_isEnvironmentContext(message)) return;
+      // Older codex wrote the same text as response_item.message role=user
+      // (echo) right before this event_msg — keep only the first.
+      if (_isAdjacentDuplicateUserText(messages, message)) return;
       messages.add(
         AiMessage(
           id: fallbackId(),
@@ -264,9 +267,53 @@ void _appendFromResponseItem(
         fallbackId: fallbackId,
       );
     case 'message':
-      // Prefer event_msg for user/agent text; skip developer / duplicate noise.
+      // codex ≥0.147 writes user/assistant text as response_item.message
+      // (older versions used event_msg.user_message / agent_message, and
+      // echoed the text here too). Surface user/assistant, dedup the echo,
+      // and keep developer / system / tool roles hidden.
+      final role = payload['role'];
+      final text = _messageText(payload['content']);
+      if (text == null || text.isEmpty) return;
+      if (role == 'user') {
+        if (_isEnvironmentContext(text)) return;
+        if (_isAdjacentDuplicateUserText(messages, text)) return;
+        messages.add(
+          AiMessage(
+            id: fallbackId(),
+            role: AiRole.user,
+            parts: [AiTextPart(text: text)],
+            createdAt: timestamp,
+          ),
+        );
+      } else if (role == 'assistant') {
+        if (_isAdjacentDuplicateAssistantText(messages, text)) return;
+        messages.add(
+          AiMessage(
+            id: fallbackId(),
+            role: AiRole.assistant,
+            parts: [AiTextPart(text: text)],
+            createdAt: timestamp,
+          ),
+        );
+      }
       return;
   }
+}
+
+/// Joins the input_text / output_text chunks of a `response_item.message`
+/// content array into one text block; null when there is nothing to surface.
+String? _messageText(Object? contentRaw) {
+  if (contentRaw is! List) return null;
+  final chunks = <String>[];
+  for (final item in contentRaw) {
+    if (item is! Map) continue;
+    final type = item['type'];
+    if (type != 'input_text' && type != 'output_text') continue;
+    final text = '${item['text'] ?? ''}'.trim();
+    if (text.isNotEmpty) chunks.add(text);
+  }
+  if (chunks.isEmpty) return null;
+  return chunks.join('\n');
 }
 
 /// Codex often logs the same reasoning as both `event_msg.agent_reasoning`
@@ -297,6 +344,14 @@ bool _isAdjacentDuplicateAssistantReasoning(
   if (last.role != AiRole.assistant || last.parts.length != 1) return false;
   final part = last.parts.single;
   return part is AiReasoningPart && part.text == text;
+}
+
+bool _isAdjacentDuplicateUserText(List<AiMessage> messages, String text) {
+  if (messages.isEmpty) return false;
+  final last = messages.last;
+  if (last.role != AiRole.user || last.parts.length != 1) return false;
+  final part = last.parts.single;
+  return part is AiTextPart && part.text == text;
 }
 
 bool _isAdjacentDuplicateAssistantText(List<AiMessage> messages, String text) {

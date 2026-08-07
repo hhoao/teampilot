@@ -132,6 +132,93 @@ void main() {
     expect(bundle, isNull);
   });
 
+  test(
+      'parses user/assistant text from response_item.message (codex >=0.147 '
+      'rollout format)',
+      () async {
+    final bytes = await File(
+      'test/fixtures/session_history/codex/response_item_messages.jsonl',
+    ).readAsBytes();
+    final messages = await const CodexAiTranscriptAdapter().parse(
+      AiTranscriptBundle(
+        adapterId: 'codex',
+        fragments: [
+          AiTranscriptFragment(
+            name: 'response_item_messages.jsonl',
+            bytes: bytes,
+          ),
+        ],
+      ),
+    );
+
+    expect(messages, hasLength(2));
+
+    final user = messages[0];
+    expect(user.role, AiRole.user);
+    expect((user.parts.single as AiTextPart).text, 'hello');
+
+    final assistant = messages[1];
+    expect(assistant.role, AiRole.assistant);
+    expect(assistant.parts[0], isA<AiReasoningPart>());
+    expect(assistant.parts[1], isA<AiToolCallPart>());
+    expect(assistant.parts[2], isA<AiTextPart>());
+    final tool = assistant.parts[1] as AiToolCallPart;
+    expect(tool.toolCallId, 'call_1');
+    expect(tool.toolName, 'exec_command');
+    expect(tool.result, 'a.txt\nb.txt');
+    expect(
+      (assistant.parts[2] as AiTextPart).text,
+      'Hello! Here are the files.',
+    );
+
+    // System/developer and AGENTS.md+environment_context noise stay filtered.
+    expect(
+      messages.any(
+        (m) => m.parts.any(
+          (p) => p is AiTextPart && p.text.contains('environment_context'),
+        ),
+      ),
+      isFalse,
+    );
+    expect(
+      messages.any(
+        (m) => m.parts.any(
+          (p) => p is AiTextPart && p.text.contains('developer noise'),
+        ),
+      ),
+      isFalse,
+    );
+  });
+
+  test(
+      'response_item.message echo does not duplicate event_msg user/agent '
+      'text (older codex wrote both)',
+      () async {
+    final bytes = await File(
+      'test/fixtures/session_history/codex/response_item_message_echo.jsonl',
+    ).readAsBytes();
+    final messages = await const CodexAiTranscriptAdapter().parse(
+      AiTranscriptBundle(
+        adapterId: 'codex',
+        fragments: [
+          AiTranscriptFragment(
+            name: 'response_item_message_echo.jsonl',
+            bytes: bytes,
+          ),
+        ],
+      ),
+    );
+
+    expect(messages, hasLength(2));
+    expect(messages[0].role, AiRole.user);
+    expect((messages[0].parts.single as AiTextPart).text, 'list files');
+    expect(messages[1].role, AiRole.assistant);
+    expect(
+      (messages[1].parts.single as AiTextPart).text,
+      'Here are the files.',
+    );
+  });
+
   test('parses reasoning summary and shell_command from real rollout shape',
       () async {
     final bytes = await File(

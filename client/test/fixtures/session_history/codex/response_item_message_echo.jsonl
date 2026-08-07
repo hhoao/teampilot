@@ -1,0 +1,4 @@
+{"timestamp":"2026-07-07T03:57:08.000Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"list files"}]}}
+{"timestamp":"2026-07-07T03:57:08.000Z","type":"event_msg","payload":{"type":"user_message","message":"list files"}}
+{"timestamp":"2026-07-07T03:57:08.000Z","type":"response_item","payload":{"type":"message","role":"assistant","content":[{"type":"output_text","text":"Here are the files."}]}}
+{"timestamp":"2026-07-07T03:57:08.000Z","type":"event_msg","payload":{"type":"agent_message","message":"Here are the files."}}
