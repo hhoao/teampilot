@@ -34,6 +34,7 @@ import '../services/agent_status/agent_attention_state.dart';
 import '../services/agent_status/agent_status_event.dart';
 import '../services/agent_status/agent_status_seat_lookup.dart';
 import '../services/agent_status/ask_user_answer_pending_store.dart';
+import '../services/agent_status/exit_plan_mode_hook_gate.dart';
 import 'agent_attention_cubit.dart';
 import '../services/launch/launch_factory.dart';
 import '../services/launch/session_connect_orchestrator.dart';
@@ -42,6 +43,7 @@ import '../services/progress_activity/cli_provision_activity_adapter.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
 import '../services/terminal/terminal_session.dart';
 import '../services/terminal/ask_user_question_answer_service.dart';
+import '../services/terminal/exit_plan_mode_approval_service.dart';
 import '../services/terminal/member_turn_interrupt_service.dart';
 import '../services/terminal/session_member_cli_resolver.dart';
 import '../services/termux/termux_connection_gate.dart';
@@ -112,6 +114,7 @@ class ChatCubit extends Cubit<ChatState>
     AgentAttentionCubit? agentAttentionCubit,
     AskUserAnswerPendingStore? askUserAnswerPendingStore,
     AskUserQuestionAnswerService? askUserQuestionAnswerService,
+    ExitPlanModeApprovalService? exitPlanApprovalService,
     InMemoryFollowUpQueueStore? followUpQueueStore,
     FollowUpQueueDrainer? followUpQueueDrainer,
     Future<TeamProfile?> Function(String teamId)? teamById,
@@ -156,6 +159,8 @@ class ChatCubit extends Cubit<ChatState>
            termuxDisconnectedWorkOpsMessageResolver,
        _termuxGateHomeResolver = termuxGateHomeResolver,
        super(const ChatState()) {
+    _exitPlanApproval =
+        exitPlanApprovalService ?? ExitPlanModeApprovalService();
     _askUserAnswer =
         askUserQuestionAnswerService ??
         AskUserQuestionAnswerService(store: askUserAnswerPendingStore);
@@ -274,6 +279,7 @@ class ChatCubit extends Cubit<ChatState>
         abortMemberInject: _sessionRuntime.abortMemberInject,
       );
   late final AskUserQuestionAnswerService _askUserAnswer;
+  late final ExitPlanModeApprovalService _exitPlanApproval;
   late final TabMemberMaterializer _memberMaterializer = TabMemberMaterializer(
     runtime: _sessionRuntime,
     tabStore: _tabStore,
@@ -995,6 +1001,49 @@ class ChatCubit extends Cubit<ChatState>
       _agentAttentionCubit?.markAskAnswered(
         sessionId: sessionId,
         memberId: mid,
+      );
+    }
+    return result;
+  }
+
+  /// Approves the pending Claude `ExitPlanMode` plan from the chat card
+  /// (completes the held PreToolUse hook with allow). On success,
+  /// optimistically dismisses the waiting attention.
+  Future<ExitPlanApprovalResult> approveExitPlanMode({
+    required String sessionId,
+    required String memberId,
+    required String toolUseId,
+  }) async {
+    final result = await _exitPlanApproval.approve(
+      sessionId: sessionId,
+      memberId: memberId,
+      toolUseId: toolUseId,
+    );
+    if (result is ExitPlanApprovalOk) {
+      _agentAttentionCubit?.dismissWaiting(
+        sessionId: sessionId,
+        memberId: memberId,
+      );
+    }
+    return result;
+  }
+
+  /// Rejects the pending Claude `ExitPlanMode` plan (keeps the agent in plan
+  /// mode). On success, optimistically dismisses the waiting attention.
+  Future<ExitPlanApprovalResult> rejectExitPlanMode({
+    required String sessionId,
+    required String memberId,
+    required String toolUseId,
+  }) async {
+    final result = await _exitPlanApproval.reject(
+      sessionId: sessionId,
+      memberId: memberId,
+      toolUseId: toolUseId,
+    );
+    if (result is ExitPlanApprovalOk) {
+      _agentAttentionCubit?.dismissWaiting(
+        sessionId: sessionId,
+        memberId: memberId,
       );
     }
     return result;
