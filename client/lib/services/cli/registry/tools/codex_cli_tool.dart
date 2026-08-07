@@ -4,6 +4,7 @@ import '../cli_capability.dart';
 import '../cli_tool_definition.dart';
 import '../capabilities/bus_transport_capability.dart';
 import '../capabilities/remote_cli_locator_capability.dart';
+import '../capabilities/skill_invocation_syntax_capability.dart';
 import '../capabilities/built_in_tool_capabilities.dart';
 import '../capabilities/codex_provider_catalog_capability.dart';
 import '../capabilities/provider_catalog_capability.dart';
@@ -63,6 +64,7 @@ final class CodexCliTool implements CliToolDefinition {
     this.turnInterrupt = const CtrlCTurnInterrupt(),
     this.askUserQuestion = const PtyAskUserQuestionCapability(),
     this.aiHistory = const CodexAiHistoryCapability(),
+    this.skillSyntax = const CodexSkillInvocationSyntaxCapability(),
     ProviderCredentialCapability? providerCredential,
   }) : providerCredential =
            providerCredential ?? CodexProviderCredentialCapability();
@@ -93,6 +95,7 @@ final class CodexCliTool implements CliToolDefinition {
   final TurnInterruptCapability turnInterrupt;
   final AskUserQuestionCapability askUserQuestion;
   final CodexAiHistoryCapability aiHistory;
+  final SkillInvocationSyntaxCapability skillSyntax;
 
   @override
   CliTool get id => CliTool.codex;
@@ -126,5 +129,6 @@ final class CodexCliTool implements CliToolDefinition {
     turnInterrupt,
     askUserQuestion,
     aiHistory,
+    skillSyntax,
   ];
 }

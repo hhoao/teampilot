@@ -11,6 +11,7 @@ import '../../pages/chat/session_launch_failure_presenter.dart';
 import '../../pages/home_workspace/workspace/workspace_chat_landing_palette.dart';
 import '../../pages/home_workspace/workspace/workspace_chat_landing_voice_bar.dart';
 import '../../services/workspace_dnd/workspace_drop_target.dart';
+import '../../services/cli/registry/capabilities/skill_invocation_syntax_capability.dart';
 import '../../services/compose/compose_at_file_refs.dart';
 import '../../utils/debounce/debounce.dart';
 import 'compose_at_file_chip_row.dart';
@@ -61,6 +62,7 @@ class WorkspaceComposeCard extends StatelessWidget {
     required this.skills,
     required this.plugins,
     required this.slashBundle,
+    this.skillSyntax,
     this.isSubmitting = false,
     this.onPasteImage,
     this.submitBlockedTooltip,
@@ -95,6 +97,7 @@ class WorkspaceComposeCard extends StatelessWidget {
   final List<Skill> skills;
   final List<Plugin> plugins;
   final ConfigBundle slashBundle;
+  final SkillInvocationSyntaxCapability? skillSyntax;
   final bool isSubmitting;
   final Future<bool> Function()? onPasteImage;
   final String? submitBlockedTooltip;
@@ -139,6 +142,7 @@ class WorkspaceComposeCard extends StatelessWidget {
       skills: skills,
       plugins: plugins,
       slashBundle: slashBundle,
+      skillSyntax: skillSyntax,
       mutedColor: palette.muted,
       hintColor: palette.hint,
       onPasteImage: onPasteImage,

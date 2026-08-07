@@ -4,6 +4,7 @@ import '../cli_capability.dart';
 import '../cli_tool_definition.dart';
 import '../capabilities/bus_transport_capability.dart';
 import '../capabilities/remote_cli_locator_capability.dart';
+import '../capabilities/skill_invocation_syntax_capability.dart';
 import '../capabilities/built_in_tool_capabilities.dart';
 import '../capabilities/config_profile_capability.dart';
 import '../capabilities/executable_resolver_capability.dart';
@@ -63,6 +64,7 @@ final class OpencodeCliTool implements CliToolDefinition {
     this.turnInterrupt = const CtrlCTurnInterrupt(),
     this.askUserQuestion = const OpenCodeAskUserQuestionCapability(),
     this.aiHistory = const OpencodeAiHistoryCapability(),
+    this.skillSyntax = const OpencodeSkillInvocationSyntaxCapability(),
     ProviderCredentialCapability? providerCredential,
   }) : providerCredential =
            providerCredential ?? OpencodeProviderCredentialCapability();
@@ -93,6 +95,7 @@ final class OpencodeCliTool implements CliToolDefinition {
   final TurnInterruptCapability turnInterrupt;
   final AskUserQuestionCapability askUserQuestion;
   final OpencodeAiHistoryCapability aiHistory;
+  final SkillInvocationSyntaxCapability skillSyntax;
 
   @override
   CliTool get id => CliTool.opencode;
@@ -126,5 +129,6 @@ final class OpencodeCliTool implements CliToolDefinition {
     turnInterrupt,
     askUserQuestion,
     aiHistory,
+    skillSyntax,
   ];
 }

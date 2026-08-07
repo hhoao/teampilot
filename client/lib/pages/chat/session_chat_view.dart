@@ -32,6 +32,7 @@ import '../../repositories/workspace_project_config_repository.dart';
 import '../../services/ai/headless_ai_service.dart';
 import '../../services/cli/preset_resolver.dart';
 import '../../services/cli/registry/capabilities/ai_history_capability.dart';
+import '../../services/cli/registry/capabilities/skill_invocation_syntax_capability.dart';
 import '../../services/cli/registry/capabilities/turn_interrupt_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/terminal/session_member_cli_resolver.dart';
@@ -1277,6 +1278,8 @@ class _SessionChatViewState extends State<SessionChatView> {
       composeTextEmpty: composeTextEmpty,
     );
     final historyCap = registry.capability<AiHistoryCapability>(lockedCli);
+    final skillSyntax =
+        registry.capability<SkillInvocationSyntaxCapability>(lockedCli);
 
     return MultiBlocListener(
       listeners: [
@@ -1824,6 +1827,7 @@ class _SessionChatViewState extends State<SessionChatView> {
                                   skills: skills,
                                   plugins: plugins,
                                   slashBundle: _slashBundle(context),
+                                  skillSyntax: skillSyntax,
                                   onOpenAtFile: (path) {
                                     unawaited(
                                       context

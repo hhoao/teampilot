@@ -4,6 +4,7 @@ import '../cli_capability.dart';
 import '../cli_tool_definition.dart';
 import '../capabilities/bus_transport_capability.dart';
 import '../capabilities/remote_cli_locator_capability.dart';
+import '../capabilities/skill_invocation_syntax_capability.dart';
 import '../capabilities/built_in_tool_capabilities.dart';
 import '../capabilities/claude_provider_catalog_capability.dart';
 import '../capabilities/provider_catalog_capability.dart';
@@ -66,6 +67,7 @@ final class ClaudeCliTool implements CliToolDefinition {
     this.turnInterrupt = const CtrlCTurnInterrupt(),
     this.askUserQuestion = const PtyAskUserQuestionCapability(),
     this.aiHistory = const ClaudeAiHistoryCapability(),
+    this.skillSyntax = const DefaultSkillInvocationSyntaxCapability(),
     ProviderCredentialCapability? providerCredential,
   }) : providerCredential =
            providerCredential ?? ClaudeProviderCredentialCapability();
@@ -96,6 +98,7 @@ final class ClaudeCliTool implements CliToolDefinition {
   final TurnInterruptCapability turnInterrupt;
   final AskUserQuestionCapability askUserQuestion;
   final ClaudeAiHistoryCapability aiHistory;
+  final SkillInvocationSyntaxCapability skillSyntax;
 
   @override
   CliTool get id => CliTool.claude;
@@ -134,5 +137,6 @@ final class ClaudeCliTool implements CliToolDefinition {
     turnInterrupt,
     askUserQuestion,
     aiHistory,
+    skillSyntax,
   ];
 }

@@ -4,6 +4,7 @@ import '../cli_capability.dart';
 import '../cli_tool_definition.dart';
 import '../capabilities/bus_transport_capability.dart';
 import '../capabilities/remote_cli_locator_capability.dart';
+import '../capabilities/skill_invocation_syntax_capability.dart';
 import '../../../provider/cursor/cursor_cli_config_layout.dart';
 import '../../../provider/cursor/cursor_provider_catalog_capability.dart';
 import '../capabilities/cli_config_layout_capability.dart';
@@ -67,6 +68,7 @@ final class CursorCliTool implements CliToolDefinition {
     this.turnInterrupt = const CtrlCTurnInterrupt(),
     this.askUserQuestion = const NoAskUserQuestionCapability(),
     this.aiHistory = const CursorAiHistoryCapability(),
+    this.skillSyntax = const DefaultSkillInvocationSyntaxCapability(),
     this.postManifestFlush = const CursorPostManifestFlushCapability(),
     ProviderCredentialCapability? providerCredential,
   }) : providerModel = providerModel ?? CursorProviderModelCapability(),
@@ -99,6 +101,7 @@ final class CursorCliTool implements CliToolDefinition {
   final TurnInterruptCapability turnInterrupt;
   final AskUserQuestionCapability askUserQuestion;
   final CursorAiHistoryCapability aiHistory;
+  final SkillInvocationSyntaxCapability skillSyntax;
   final PostManifestFlushCapability postManifestFlush;
 
   @override
@@ -133,6 +136,7 @@ final class CursorCliTool implements CliToolDefinition {
     turnInterrupt,
     askUserQuestion,
     aiHistory,
+    skillSyntax,
     postManifestFlush,
   ];
 }

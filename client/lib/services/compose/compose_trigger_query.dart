@@ -16,7 +16,14 @@ class ComposeTriggerQuery {
 }
 
 /// Returns the in-progress `@path` or `/name` token touching [cursorOffset].
-ComposeTriggerQuery? detectComposeTrigger(String text, int cursorOffset) {
+///
+/// [additionalSlashTriggers] are extra single-character prefixes that open the
+/// slash menu alongside `/` (e.g. `$` when the target CLI is Codex).
+ComposeTriggerQuery? detectComposeTrigger(
+  String text,
+  int cursorOffset, {
+  Set<String> additionalSlashTriggers = const {},
+}) {
   if (cursorOffset < 0 || cursorOffset > text.length) return null;
 
   final before = text.substring(0, cursorOffset);
@@ -25,7 +32,9 @@ ComposeTriggerQuery? detectComposeTrigger(String text, int cursorOffset) {
   if (token.isEmpty) return null;
 
   final trigger = token[0];
-  if (trigger != '@' && trigger != '/') return null;
+  final isSlashTrigger =
+      trigger == '/' || additionalSlashTriggers.contains(trigger);
+  if (trigger != '@' && !isSlashTrigger) return null;
 
   final query = token.substring(1);
   if (query.contains(RegExp(r'\s')) || query.contains(trigger)) return null;

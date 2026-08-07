@@ -25,6 +25,30 @@ void main() {
       expect(trigger?.triggerStart, 0);
     });
 
+    test(r'$ is not a trigger by default', () {
+      expect(detectComposeTrigger(r'$', 1), isNull);
+    });
+
+    test(r'$ opens the slash menu when declared as an extra trigger', () {
+      final trigger = detectComposeTrigger(
+        r'$',
+        1,
+        additionalSlashTriggers: const {r'$'},
+      );
+      expect(trigger?.kind, ComposeTriggerKind.slashInvoke);
+      expect(trigger?.query, isEmpty);
+    });
+
+    test(r'$ trigger carries the in-progress skill query', () {
+      final trigger = detectComposeTrigger(
+        r'$using-git',
+        10,
+        additionalSlashTriggers: const {r'$'},
+      );
+      expect(trigger?.kind, ComposeTriggerKind.slashInvoke);
+      expect(trigger?.query, 'using-git');
+    });
+
     test('ignores @ inside email-like token', () {
       const text = 'mail user@host';
       expect(detectComposeTrigger(text, text.length), isNull);

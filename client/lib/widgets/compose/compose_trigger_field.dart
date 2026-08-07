@@ -15,6 +15,7 @@ import '../../services/compose/compose_slash_catalog.dart';
 import '../../services/compose/compose_trigger_caret.dart';
 import '../../services/compose/compose_trigger_insert.dart';
 import '../../services/compose/compose_trigger_query.dart';
+import '../../services/cli/registry/capabilities/skill_invocation_syntax_capability.dart';
 import '../../services/keyboard/compose_keyboard_shortcut_handler.dart';
 import '../../services/inline_token/inline_token_palette.dart';
 import 'package:shared_ui/shared_ui.dart';
@@ -47,6 +48,7 @@ class ComposeTriggerField extends StatefulWidget {
     required this.slashBundle,
     required this.mutedColor,
     required this.hintColor,
+    this.skillSyntax,
     this.onPasteImage,
     super.key,
   });
@@ -64,6 +66,7 @@ class ComposeTriggerField extends StatefulWidget {
   final ConfigBundle slashBundle;
   final Color mutedColor;
   final Color hintColor;
+  final SkillInvocationSyntaxCapability? skillSyntax;
   final Future<bool> Function()? onPasteImage;
 
   @override
@@ -113,7 +116,8 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
     if (oldWidget.workspaceRoot != widget.workspaceRoot ||
         oldWidget.skills != widget.skills ||
         oldWidget.plugins != widget.plugins ||
-        oldWidget.slashBundle != widget.slashBundle) {
+        oldWidget.slashBundle != widget.slashBundle ||
+        oldWidget.skillSyntax != widget.skillSyntax) {
       _refreshSuggestions(immediate: true);
     }
   }
@@ -233,12 +237,24 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
     _syncSubmitRegistration();
   }
 
+  /// Extra chars that open the slash menu alongside `/` — e.g. `$` when the
+  /// target CLI (Codex) invokes skills with `$`.
+  Set<String> _skillSlashTriggers() {
+    final prefix = widget.skillSyntax?.skillInvocationPrefix;
+    if (prefix == null || prefix == '/') return const {};
+    return {prefix};
+  }
+
   void _refreshSuggestions({bool immediate = false}) {
     final value = widget.controller.value;
     final cursor = value.selection.isValid
         ? value.selection.baseOffset
         : value.text.length;
-    final trigger = detectComposeTrigger(value.text, cursor);
+    final trigger = detectComposeTrigger(
+      value.text,
+      cursor,
+      additionalSlashTriggers: _skillSlashTriggers(),
+    );
     if (trigger == null) {
       _clearSuggestions();
       return;
@@ -278,6 +294,7 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
           plugins: widget.plugins,
           enabledBundle: widget.slashBundle,
           query: trigger.query,
+          syntax: widget.skillSyntax,
         );
         suggestions = [
           for (final item in slash) ComposeTriggerSlashSuggestion(item),

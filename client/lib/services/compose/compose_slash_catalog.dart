@@ -1,6 +1,7 @@
 import '../../models/plugin.dart';
 import '../../models/skill.dart';
 import '../../models/config_bundle.dart';
+import '../cli/registry/capabilities/skill_invocation_syntax_capability.dart';
 
 enum ComposeSlashCandidateKind { skill, command }
 
@@ -23,6 +24,7 @@ List<ComposeSlashCandidate> buildComposeSlashCandidates({
   required List<Plugin> plugins,
   required ConfigBundle enabledBundle,
   required String query,
+  SkillInvocationSyntaxCapability? syntax,
   int limit = 20,
 }) {
   final needle = query.trim().toLowerCase();
@@ -47,7 +49,7 @@ List<ComposeSlashCandidate> buildComposeSlashCandidates({
     if (name.isEmpty) continue;
     add(
       ComposeSlashCandidate(
-        insertText: '/$name',
+        insertText: syntax?.skillInvocationText(name) ?? '/$name',
         label: name,
         subtitle: skill.name.trim().isNotEmpty ? skill.name.trim() : null,
         kind: ComposeSlashCandidateKind.skill,
@@ -72,12 +74,16 @@ List<ComposeSlashCandidate> buildComposeSlashCandidates({
     }
     // Plugin bundles carry skills too — surface them as slash candidates so
     // a skills-only plugin (e.g. superpowers) is usable from the `/` menu.
+    // Plugin skills get the plugin name as the namespace when the target CLI
+    // expects one (Codex: `$superpowers:using-git-worktrees`).
     for (final skill in plugin.capabilities.skills) {
       final name = skill.name.trim();
       if (name.isEmpty) continue;
       add(
         ComposeSlashCandidate(
-          insertText: '/$name',
+          insertText:
+              syntax?.skillInvocationText(name, namespace: plugin.name) ??
+              '/$name',
           label: name,
           subtitle: pluginLabel,
           kind: ComposeSlashCandidateKind.skill,
