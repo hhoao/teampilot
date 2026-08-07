@@ -77,7 +77,6 @@ class _SessionCliTaskPanelState extends State<SessionCliTaskPanel> {
       borderRadius: BorderRadius.circular(999),
       child: TpHover(
         shape: TpPressableShape.stadium,
-        borderRadius: BorderRadius.circular(999),
         onTap: () => setState(() {
           _expanded = true;
           _showAll = false;
