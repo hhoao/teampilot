@@ -248,10 +248,10 @@ int _boundaryBonus(String text, int index) {
   final cur = text.codeUnitAt(index);
   final prevChar = String.fromCharCode(prev);
   final curChar = String.fromCharCode(cur);
-  final prevUpper = prevChar.toUpperCase() == prevChar &&
-      prevChar.toLowerCase() != prevChar;
-  final curLower = curChar.toLowerCase() == curChar &&
-      curChar.toUpperCase() != curChar;
+  final prevUpper =
+      prevChar.toUpperCase() == prevChar && prevChar.toLowerCase() != prevChar;
+  final curLower =
+      curChar.toLowerCase() == curChar && curChar.toUpperCase() != curChar;
   return prevUpper && curLower ? 4 : 0; // camelCase boundary
 }
 
