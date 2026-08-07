@@ -68,6 +68,9 @@ class _AiTextPartViewState extends State<AiTextPartView> {
   /// Message role — user messages collapse as whole pastes; assistant prose
   /// renders fully inline (never clipped).
   var _role = AiRole.assistant;
+  /// User-message display mode — `flatten` needs the full doc immediately (no
+  /// mask), so oversized user text is not clip-compiled in that mode.
+  var _userMessageMode = ContentDisplayMode.foldFixedHeight;
   var _initialized = false;
   /// True when [_document] was compiled from a preview clip (not the full
   /// [widget.text]) — the full doc is compiled lazily on expand.
@@ -88,15 +91,18 @@ class _AiTextPartViewState extends State<AiTextPartView> {
     final streaming = AiMessageStreamingScope.of(context);
     final inHistory = AiHistoryRenderScope.maybeOf(context) != null;
     final role = AiMessageRoleScope.of(context);
+    final userMode = MarkdownDisplayModeScope.userMessageOf(context);
     if (_initialized &&
         streaming == _lastStreaming &&
         inHistory == _inHistoryScope &&
-        role == _role) {
+        role == _role &&
+        userMode == _userMessageMode) {
       return;
     }
     _lastStreaming = streaming;
     _inHistoryScope = inHistory;
     _role = role;
+    _userMessageMode = userMode;
     if (!_initialized) {
       _initialized = true;
       // First sync: compile synchronously (scope-aware source) so the first
@@ -133,6 +139,7 @@ class _AiTextPartViewState extends State<AiTextPartView> {
     if (_lastStreaming ?? false) return text;
     if (!_inHistoryScope) return text;
     if (_role != AiRole.user) return text;
+    if (_userMessageMode == ContentDisplayMode.flatten) return text;
     return text.substring(0, _kPreviewCompileChars);
   }
 
@@ -311,7 +318,16 @@ class _ExpandableHistoryMarkdownState extends State<_ExpandableHistoryMarkdown> 
       );
     }
 
-    // User message: whole-message mask collapse (giant pastes).
+    // User message: whole-message collapse, per display mode.
+    final userMode = MarkdownDisplayModeScope.userMessageOf(context);
+    if (userMode == ContentDisplayMode.flatten) {
+      // Always natural height in the flow — no mask, no bounded panel.
+      final flattened = widget.clipped
+          ? (_fullDocument ?? widget.document)
+          : widget.document;
+      return _buildFlattenMarkdown(context, flattened);
+    }
+
     final truncated = truncateMessageContent(
       widget.document,
       budget: widget.budget,
@@ -344,28 +360,34 @@ class _ExpandableHistoryMarkdownState extends State<_ExpandableHistoryMarkdown> 
       );
     }
 
-    // Expanded: full content (virtualized panel for huge messages) + collapse.
+    // Expanded: full content + collapse bar.
     final expandedDoc = widget.clipped
         ? (_fullDocument ?? widget.document)
         : widget.document;
-    final bool huge =
-        widget.clipped ||
-        expandedDoc.blocks.length >= kVirtualizeMarkdownBlockThreshold;
-    final Widget body = huge
-        ? VirtualMarkdownView(
-            document: expandedDoc,
-            tokens: AiMessageTheme.of(context).markdown,
-            resolvers: _chatResolvers(widget.onTapLink),
-            strings: _chatMarkdownStrings(context),
-            maxHeight: (MediaQuery.sizeOf(context).height * 0.7).clamp(
-              240.0,
-              800.0,
-            ),
-          )
-        : _ChatMarkdownView(
-            document: expandedDoc,
-            onTapLink: widget.onTapLink,
-          );
+    final Widget body;
+    if (userMode == ContentDisplayMode.foldExpandFull) {
+      // Mask → expand to full natural height in the flow (no bounded panel).
+      body = _buildFlattenMarkdown(context, expandedDoc);
+    } else {
+      final bool huge =
+          widget.clipped ||
+          expandedDoc.blocks.length >= kVirtualizeMarkdownBlockThreshold;
+      body = huge
+          ? VirtualMarkdownView(
+              document: expandedDoc,
+              tokens: AiMessageTheme.of(context).markdown,
+              resolvers: _chatResolvers(widget.onTapLink),
+              strings: _chatMarkdownStrings(context),
+              maxHeight: (MediaQuery.sizeOf(context).height * 0.7).clamp(
+                240.0,
+                800.0,
+              ),
+            )
+          : _ChatMarkdownView(
+              document: expandedDoc,
+              onTapLink: widget.onTapLink,
+            );
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
@@ -378,6 +400,16 @@ class _ExpandableHistoryMarkdownState extends State<_ExpandableHistoryMarkdown> 
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildFlattenMarkdown(BuildContext context, MarkdownDocument doc) {
+    return VirtualMarkdownView(
+      document: doc,
+      tokens: AiMessageTheme.of(context).markdown,
+      resolvers: _chatResolvers(widget.onTapLink),
+      strings: _chatMarkdownStrings(context),
+      flatten: true,
     );
   }
 }

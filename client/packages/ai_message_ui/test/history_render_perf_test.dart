@@ -112,6 +112,59 @@ void main() {
     expect(find.byKey(kMaskCollapseBarKey), findsOneWidget);
   });
 
+  testWidgets(
+    'user message foldExpandFull expands to natural height (no bounded panel)',
+    (tester) async {
+      final message = AiMessage(
+        id: 'u2',
+        role: AiRole.user,
+        parts: [AiTextPart(text: tableMarkdown(20))],
+      );
+      await tester.pumpWidget(
+        wrap(
+          MarkdownDisplayModeScope(
+            userMessageMode: ContentDisplayMode.foldExpandFull,
+            child: AiMessageView(message: message, showActionBar: false),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byIcon(Icons.expand_more), findsOneWidget); // masked first
+      await tester.tap(find.byIcon(Icons.expand_more));
+      await tester.pumpAndSettle();
+
+      expect(find.text('c19-a'), findsOneWidget);
+      // Natural height in the flow, not a bounded panel.
+      final vm = tester.widget<VirtualMarkdownView>(
+        find.byType(VirtualMarkdownView),
+      );
+      expect(vm.flatten, isTrue);
+    },
+  );
+
+  testWidgets('user message flatten renders natural height with no mask', (
+    tester,
+  ) async {
+    final message = AiMessage(
+      id: 'u3',
+      role: AiRole.user,
+      parts: [AiTextPart(text: tableMarkdown(20))],
+    );
+    await tester.pumpWidget(
+      wrap(
+        MarkdownDisplayModeScope(
+          userMessageMode: ContentDisplayMode.flatten,
+          child: AiMessageView(message: message, showActionBar: false),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.expand_more), findsNothing); // no mask
+    expect(find.text('c19-a'), findsOneWidget); // full table visible
+  });
+
   testWidgets('without history scope content is fully expanded', (tester) async {
     final message = AiMessage(
       id: 'a1',
