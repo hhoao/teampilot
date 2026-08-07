@@ -4,6 +4,8 @@ import '../../services/team/team_config_launch_validator.dart';
 import '../../utils/logging/logger.dart';
 import '../../utils/session/session_launch_error.dart';
 import '../../models/member_remote_provision_progress.dart';
+import '../session/session_phase.dart';
+import '../session/session_pod.dart';
 import 'chat_tab_store.dart';
 import 'model/chat_state.dart';
 
@@ -14,9 +16,16 @@ mixin ChatConnectStateMixin on Cubit<ChatState> {
 
   void onTabRunningChanged();
 
+  // Pod registry (implemented by ChatCubit) so connect lifecycle drives the
+  // per-session phase.
+  SessionPod? podFor(String sessionId);
+  SessionPod ensurePod(String sessionId);
+  void updatePod(SessionPod pod);
+
   void beginSessionConnect(String sessionId) {
     appLogger.d('[session-launch] connecting start session=$sessionId');
     clearLaunchError(sessionId);
+    _phaseInto(ensurePod(sessionId), SessionPhase.connecting);
     if (state.sessionConnectingId == sessionId) return;
     emit(
       state.copyWith(
@@ -24,6 +33,12 @@ mixin ChatConnectStateMixin on Cubit<ChatState> {
         stateVersion: state.stateVersion + 1,
       ),
     );
+  }
+
+  /// Applies [phase] to the pod when it exists; no-op otherwise.
+  void _phaseInto(SessionPod? pod, SessionPhase phase) {
+    if (pod == null) return;
+    updatePod(pod.copyWith(phase: phase));
   }
 
   void setLaunchError(String sessionId, String rawMessage) {
@@ -73,11 +88,27 @@ mixin ChatConnectStateMixin on Cubit<ChatState> {
       '[session-launch] connecting failed session=$sessionId: $rawMessage',
     );
     setLaunchError(sessionId, rawMessage);
-    finishSessionConnect(sessionId);
+    final pod = podFor(sessionId);
+    if (pod != null) {
+      updatePod(
+        pod.copyWith(phase: SessionPhase.error, launchError: rawMessage),
+      );
+    }
+    updateTabRunning(sessionId);
+    _clearConnectingIdIfMatch(sessionId);
   }
 
   void finishSessionConnect(String sessionId) {
     updateTabRunning(sessionId);
+    if (isClosed) return;
+    _phaseInto(podFor(sessionId), SessionPhase.running);
+    _clearConnectingIdIfMatch(sessionId);
+  }
+
+  /// Clears [sessionConnectingId] when it still points at [sessionId]. Shared
+  /// by the success and failure paths so an error does not run through the
+  /// success phase transition.
+  void _clearConnectingIdIfMatch(String sessionId) {
     if (isClosed) return;
     if (state.sessionConnectingId != sessionId) return;
     appLogger.d('[session-launch] connecting done session=$sessionId');

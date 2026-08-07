@@ -269,7 +269,9 @@ class SessionLaunchPipeline {
     SessionConnectRequest request, {
     SessionRepository? repo,
   }) async {
-    if (_state().isActiveSessionConnecting) {
+    // Any connect in flight serializes a second one (this includes the
+    // pre-materialization 'pending' id, which no active conversation may claim).
+    if (_state().sessionConnectingId != null) {
       return LaunchSkipped();
     }
 

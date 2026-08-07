@@ -141,7 +141,9 @@ class ChatState extends Equatable {
     final id = sessionConnectingId;
     final active = activeSessionId;
     if (id == null || id.isEmpty) return false;
-    if (id == 'pending') return true;
+    // A 'pending' connect belongs to a session that does not exist yet; it must
+    // never light up an unrelated active conversation.
+    if (id == 'pending') return false;
     if (active == null || active.isEmpty) return false;
     return id == active;
   }
