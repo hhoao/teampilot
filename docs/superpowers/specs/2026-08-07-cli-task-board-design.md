@@ -46,8 +46,8 @@ class CliTaskBoard {
 `CliTaskBoard reduceCliTaskBoard(List<AiMessage> messages)` — a pure, deterministic reducer:
 
 - Walk `messages` in order; for each **assistant** `AiToolCallPart`:
-  - **`taskcreate`** (case-insensitive): read `args.subject` / `args.description` / `args.activeForm`; read `taskId` (or `id`) from the correlated `result` (result is already attached by `applyAiToolResult`). Append a task with `status = pending`. If no taskId in the result, keep `taskId = null` and still append (displayable, just not updatable by id).
-  - **`taskupdate`**: read `args.taskId` + `args.status`; map the status string (`pending` / `in_progress` / `completed` / `cancelled`, anything else → `unknown`) and update the matching task. **If the taskId is not present** (e.g. resume where the create call predates the transcript window), append a placeholder task keyed by that taskId with empty subject — the board never silently loses an entry.
+  - **`taskcreate`** (case-insensitive): read `args.subject` / `args.description` / `args.activeForm`; read the task id from the correlated `result` — either a Map (`result['taskId']` / `result['id']`) or the Claude Code string form `"Task #N created successfully: …"` (extract `N`). Append a task with `status = pending`. If no id is extractable, keep `taskId = null` and still append (displayable, just not updatable by id).
+  - **`taskupdate`**: `TaskUpdate` is a generic "update task N" tool, so **only a `status` arg is a lifecycle transition** — dependency/metadata updates (e.g. `addBlockedBy`) are ignored. With `status` present: read `args.taskId` + `args.status`, map the status string (`pending` / `in_progress` / `completed` / `cancelled`, anything else → `unknown`), and update the matching task. **If the taskId is not found** (e.g. resume where the create call predates the transcript window), append a placeholder task keyed by that taskId with empty subject — the board never silently loses a status-bearing entry.
   - Ignore every other tool name.
 - Non-task tool calls and user/system messages do not affect the board.
 

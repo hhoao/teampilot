@@ -53,6 +53,23 @@ void main() {
     expect(board.tasks.single.taskId, '9');
   });
 
+  test('TaskCreate reads taskId from a string result', () {
+    final board = reduceCliTaskBoard([
+      _assistant(_create(
+        args: {'subject': 'do a thing'},
+        result: 'Task #1 created successfully: do a thing',
+      )),
+    ]);
+    expect(board.tasks.single.taskId, '1');
+  });
+
+  test('TaskUpdate without status is ignored (no placeholder)', () {
+    final board = reduceCliTaskBoard([
+      _assistant(_update({'taskId': '2', 'addBlockedBy': ['1']})),
+    ]);
+    expect(board.totalCount, 0);
+  });
+
   test('TaskUpdate flips status when taskId matches a created task', () {
     final board = reduceCliTaskBoard([
       _assistant(_create(args: {'subject': 'T1'}, result: {'taskId': '9'})),

@@ -81,7 +81,12 @@ CliTaskBoard reduceCliTaskBoard(List<AiMessage> messages) {
         final args = part.args ?? const <String, Object?>{};
         final taskId = _str(args['taskId']);
         if (taskId.isEmpty) continue;
-        final status = cliTaskStatusFromString(_str(args['status']));
+        // TaskUpdate is a generic "update task N" tool — only a `status` arg
+        // is a lifecycle transition worth rendering. Dependency/metadata
+        // updates (e.g. addBlockedBy) must not create or change tasks.
+        final statusRaw = _str(args['status']).trim();
+        if (statusRaw.isEmpty) continue;
+        final status = cliTaskStatusFromString(statusRaw);
         final index = tasks.indexWhere((t) => t.taskId == taskId);
         if (index >= 0) {
           tasks[index] = tasks[index].copyWith(status: status);
@@ -111,6 +116,11 @@ String? _taskIdFromCreate(AiToolCallPart part) {
     final id = result['taskId'] ?? result['id'];
     final s = id == null ? '' : '$id';
     if (s.isNotEmpty) return s;
+  }
+  if (result is String) {
+    // Claude Code returns e.g. "Task #1 created successfully: <subject>".
+    final match = RegExp(r'Task\s*#(\d+)\s*created').firstMatch(result);
+    if (match != null) return match.group(1);
   }
   return null;
 }
