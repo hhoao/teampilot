@@ -1,8 +1,26 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/pages/floating_workspace/floating_workspace_empty.dart';
+
+/// Runs [body] on a desktop platform so TpHover renders its desktop
+/// (GestureDetector + animated fill) path. flutter_test defaults to Android,
+/// which would render the touch (InkWell) path with no AnimatedContainer.
+void testOnDesktop(
+  String description,
+  WidgetTesterCallback body,
+) {
+  testWidgets(description, (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.linux;
+    try {
+      await body(tester);
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
+}
 
 void main() {
   Widget wrap(Widget child) {
@@ -111,7 +129,7 @@ void main() {
     expect(activated, 'openFile');
   });
 
-  testWidgets('hover highlight clears when pointer leaves the row', (
+  testOnDesktop('hover highlight clears when pointer leaves the row', (
     tester,
   ) async {
     await tester.pumpWidget(
