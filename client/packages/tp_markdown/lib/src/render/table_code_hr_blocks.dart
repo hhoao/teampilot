@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../ir/markdown_document.dart';
+import '../markdown_display_mode_scope.dart';
 import '../registry/markdown_resolvers.dart';
 import '../strings.dart';
 import '../tokens/markdown_tokens.dart';
@@ -156,6 +157,8 @@ class _MarkdownCodeBlockState extends State<_MarkdownCodeBlock> {
     final lang = widget.language.isEmpty
         ? strings.code
         : widget.language.toLowerCase();
+    final mode = MarkdownDisplayModeScope.codeBlockOf(context);
+    final huge = widget.code.length > _kCollapseChars;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -205,9 +208,8 @@ class _MarkdownCodeBlockState extends State<_MarkdownCodeBlock> {
             ),
           ),
         ),
-        if (widget.code.length > _kCollapseChars)
-          _buildMaskedBody(context, strings, muted, radius, borderColor)
-        else
+        if (!huge || mode == ContentDisplayMode.flatten)
+          // Short code, or flatten mode: always full natural height, no mask.
           DecoratedBox(
             decoration: BoxDecoration(
               color: muted,
@@ -216,20 +218,31 @@ class _MarkdownCodeBlockState extends State<_MarkdownCodeBlock> {
               border: Border.all(color: borderColor),
             ),
             child: _codeText(widget.code),
+          )
+        else
+          _buildMaskedBody(
+            context,
+            strings,
+            muted,
+            radius,
+            borderColor,
+            expandFull: mode == ContentDisplayMode.foldExpandFull,
           ),
       ],
     );
   }
 
   /// Oversized code: bounded preview clipped with a bottom fade + chevron
-  /// (per-block "show more"); expanded shows the full code in a scroll shell.
+  /// (per-block "show more"). Expanded renders in a fixed-height scroll shell
+  /// ([expandFull] false) or at full natural height ([expandFull] true).
   Widget _buildMaskedBody(
     BuildContext context,
     MarkdownStrings strings,
     Color muted,
     double radius,
-    Color borderColor,
-  ) {
+    Color borderColor, {
+    required bool expandFull,
+  }) {
     final code = _expanded
         ? widget.code
         : widget.code.substring(0, _kPreviewChars);
@@ -249,9 +262,11 @@ class _MarkdownCodeBlockState extends State<_MarkdownCodeBlock> {
         children: [
           ConstrainedBox(
             constraints: BoxConstraints(
-              maxHeight: _expanded ? _kExpandedMaxHeight : _kCollapsedMaxHeight,
+              maxHeight: _expanded && !expandFull
+                  ? _kExpandedMaxHeight
+                  : _kCollapsedMaxHeight,
             ),
-            child: _expanded
+            child: (_expanded && !expandFull)
                 ? SingleChildScrollView(child: _codeText(code))
                 : _codeText(code),
           ),

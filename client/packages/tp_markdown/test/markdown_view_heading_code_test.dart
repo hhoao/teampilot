@@ -125,4 +125,67 @@ void main() {
     expect(find.byIcon(Icons.keyboard_arrow_up_rounded), findsOneWidget);
     expect(find.textContaining('line 399'), findsOneWidget);
   });
+
+  testWidgets('foldExpandFull code expands to full natural height (no shell)', (
+    tester,
+  ) async {
+    final code = List.generate(400, (i) => 'line $i ${'x' * 40}').join('\n');
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MarkdownDisplayModeScope(
+          codeBlockMode: ContentDisplayMode.foldExpandFull,
+          child: Scaffold(
+            body: SingleChildScrollView(
+              child: MarkdownView(
+                document: MarkdownDocument(
+                  blocks: [CodeBlock(language: 'dart', text: code)],
+                ),
+                tokens: MarkdownTokens.test(),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Masked by default; expand chevron present, tail absent.
+    expect(find.byIcon(Icons.keyboard_arrow_down_rounded), findsOneWidget);
+    expect(find.textContaining('line 399'), findsNothing);
+
+    await tester.tap(find.byIcon(Icons.keyboard_arrow_down_rounded));
+    await tester.pumpAndSettle();
+
+    // Full natural height: the full code is mounted, no inner scroll shell.
+    expect(find.textContaining('line 399'), findsOneWidget);
+    expect(find.byType(SingleChildScrollView), findsOneWidget); // outer only
+  });
+
+  testWidgets('flatten code renders full natural height with no mask', (
+    tester,
+  ) async {
+    final code = List.generate(400, (i) => 'line $i ${'x' * 40}').join('\n');
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MarkdownDisplayModeScope(
+          codeBlockMode: ContentDisplayMode.flatten,
+          child: Scaffold(
+            body: SingleChildScrollView(
+              child: MarkdownView(
+                document: MarkdownDocument(
+                  blocks: [CodeBlock(language: 'dart', text: code)],
+                ),
+                tokens: MarkdownTokens.test(),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // No mask chevron; full code mounted.
+    expect(find.byIcon(Icons.keyboard_arrow_down_rounded), findsNothing);
+    expect(find.textContaining('line 399'), findsOneWidget);
+  });
 }
