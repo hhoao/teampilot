@@ -2,6 +2,15 @@ import 'package:flutter/material.dart';
 
 import 'package:tp_markdown/tp_markdown.dart';
 
+/// Content padding inside the user bubble. The collapsed mask (fade + chevron)
+/// is edge-to-edge (flush) while regular content keeps this padding.
+const EdgeInsets kUserBubbleContentPadding = EdgeInsets.fromLTRB(
+  14,
+  10,
+  14,
+  12,
+);
+
 /// Theme tokens aligned with assistant-ui Thread / Message / ToolFallback.
 ///
 /// Hosts **must** supply [markdown] from their warmup-aligned typography

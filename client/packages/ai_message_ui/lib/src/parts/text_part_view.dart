@@ -319,13 +319,18 @@ class _ExpandableHistoryMarkdownState extends State<_ExpandableHistoryMarkdown> 
     }
 
     // User message: whole-message collapse, per display mode.
+    // The bubble no longer applies outer padding in history (the mask must be
+    // edge-to-edge like Write/Edit), so apply it internally to the content.
     final userMode = MarkdownDisplayModeScope.userMessageOf(context);
     if (userMode == ContentDisplayMode.flatten) {
       // Always natural height in the flow — no mask, no bounded panel.
       final flattened = widget.clipped
           ? (_fullDocument ?? widget.document)
           : widget.document;
-      return _buildFlattenMarkdown(context, flattened);
+      return Padding(
+        padding: kUserBubbleContentPadding,
+        child: _buildFlattenMarkdown(context, flattened),
+      );
     }
 
     final truncated = truncateMessageContent(
@@ -333,16 +338,18 @@ class _ExpandableHistoryMarkdownState extends State<_ExpandableHistoryMarkdown> 
       budget: widget.budget,
     );
     if (!widget.clipped && !truncated.wasTruncated) {
-      return _ChatMarkdownView(
-        document: widget.document,
-        onTapLink: widget.onTapLink,
+      return Padding(
+        padding: kUserBubbleContentPadding,
+        child: _ChatMarkdownView(
+          document: widget.document,
+          onTapLink: widget.onTapLink,
+        ),
       );
     }
 
     if (!_expanded) {
-      // Masked preview: budgeted content clipped to a teaser with a bottom
-      // fade + chevron. `forceChrome` keeps the mask even for a short preview
-      // (there is always more content behind the expand action).
+      // Masked preview: budgeted content with a bottom fade + chevron that is
+      // edge-to-edge inside the bubble (`contentPadding` pads only the text).
       return AiFadeExpandBody(
         open: false,
         onToggle: _toggle,
@@ -351,6 +358,7 @@ class _ExpandableHistoryMarkdownState extends State<_ExpandableHistoryMarkdown> 
         ),
         collapsedMaxHeight: kMaskCollapsedMaxHeight,
         forceChrome: true,
+        contentPadding: kUserBubbleContentPadding,
         child: _ChatMarkdownView(
           document: truncated.wasTruncated
               ? truncated.document
@@ -388,18 +396,21 @@ class _ExpandableHistoryMarkdownState extends State<_ExpandableHistoryMarkdown> 
               onTapLink: widget.onTapLink,
             );
     }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        body,
-        _MaskCollapseBar(
-          onTap: _toggle,
-          fadeColor: AiMessageTheme.of(context).resolveUserBubble(
-            Theme.of(context).colorScheme,
+    return Padding(
+      padding: kUserBubbleContentPadding,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          body,
+          _MaskCollapseBar(
+            onTap: _toggle,
+            fadeColor: AiMessageTheme.of(context).resolveUserBubble(
+              Theme.of(context).colorScheme,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 

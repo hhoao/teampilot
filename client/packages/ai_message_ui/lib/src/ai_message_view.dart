@@ -249,15 +249,7 @@ class _UserBubble extends StatelessWidget {
                             .map((p) => p.text)
                             .join('\u0000'),
                         fadeColor: aiTheme.resolveUserBubble(scheme),
-                        // Aligned with the code-block panel padding so the
-                        // collapsed user-message mask matches the Write/Edit
-                        // style.
-                        contentPadding: const EdgeInsets.fromLTRB(
-                          14,
-                          10,
-                          14,
-                          12,
-                        ),
+                        contentPadding: kUserBubbleContentPadding,
                         child: DefaultTextStyle.merge(
                           style: aiTheme.markdown.userBubble(
                             aiTheme.resolveUserForeground(scheme),
@@ -330,12 +322,12 @@ class _UserBubbleFadeHostState extends State<_UserBubbleFadeHost> {
 
   @override
   Widget build(BuildContext context) {
-    // History review already budgets long markdown with its own "Show more /
-    // Show less" (AiHistoryRenderScope). The bubble fade would clip that
-    // collapsed content to 120 px and bury the expand button — render at
-    // content height instead so the preview + control stay reachable.
+    // History review already budgets long markdown with its own mask
+    // (_ExpandableHistoryMarkdown), which applies [kUserBubbleContentPadding]
+    // internally and keeps its fade/chevron edge-to-edge. Do not add an outer
+    // padding here or the mask would be inset from the bubble edges.
     if (AiHistoryRenderScope.maybeOf(context) != null) {
-      return Padding(padding: widget.contentPadding, child: widget.child);
+      return widget.child;
     }
     return AiFadeExpandBody(
       open: _open,
