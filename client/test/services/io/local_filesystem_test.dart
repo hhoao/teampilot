@@ -121,4 +121,49 @@ void main() {
       expect(text, contains('"i":'));
     },
   );
+
+  group('copyTree / copyFile preserve executable bit', () {
+    Future<int> modeBits(String path) async {
+      final mode = (await File(path).stat()).mode;
+      return mode & 0x49; // any exec bit
+    }
+
+    test('copyTree keeps an executable file executable and others not',
+        () async {
+      if (Platform.isWindows) {
+        return; // POSIX exec bits are meaningless on Windows
+      }
+      final src = p.join(root.path, 'src');
+      final dest = p.join(root.path, 'dst');
+      final hook = p.join(src, 'hooks', 'run-hook.cmd');
+      final plain = p.join(src, 'SKILL.md');
+      await fs.ensureDir(p.join(src, 'hooks'));
+      await fs.writeString(hook, '#!/usr/bin/env bash\n');
+      await fs.writeString(plain, 'content');
+      await Process.run('chmod', ['+x', hook]);
+
+      await fs.copyTree(source: src, destination: dest);
+
+      expect(await modeBits(p.join(dest, 'hooks', 'run-hook.cmd')),
+          isNot(equals(0)));
+      expect(await modeBits(p.join(dest, 'SKILL.md')), equals(0));
+    });
+
+    test('copyFile keeps an executable file executable and others not', () async {
+      if (Platform.isWindows) {
+        return; // POSIX exec bits are meaningless on Windows
+      }
+      final hook = p.join(root.path, 'hook.sh');
+      final plain = p.join(root.path, 'plain.txt');
+      await fs.writeString(hook, '#!/usr/bin/env bash\n');
+      await fs.writeString(plain, 'content');
+      await Process.run('chmod', ['+x', hook]);
+
+      await fs.copyFile(hook, p.join(root.path, 'hook-copy.sh'));
+      await fs.copyFile(plain, p.join(root.path, 'plain-copy.txt'));
+
+      expect(await modeBits(p.join(root.path, 'hook-copy.sh')), isNot(equals(0)));
+      expect(await modeBits(p.join(root.path, 'plain-copy.txt')), equals(0));
+    });
+  });
 }

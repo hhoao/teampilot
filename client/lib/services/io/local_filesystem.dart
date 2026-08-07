@@ -428,6 +428,7 @@ class LocalFilesystem implements Filesystem, FsWatcher {
       } else if (entity is File) {
         await ensureDir(pathContext.dirname(destPath));
         await entity.copy(destPath);
+        await _mirrorModeIfExecutable(entity.path, destPath);
       }
     }
   }
@@ -436,6 +437,25 @@ class LocalFilesystem implements Filesystem, FsWatcher {
   Future<void> copyFile(String source, String destination) async {
     await ensureDir(pathContext.dirname(destination));
     await File(source).copy(destination);
+    await _mirrorModeIfExecutable(source, destination);
+  }
+
+  /// `File.copy` does not carry the source's POSIX mode. When the source file
+  /// has any executable bit set, mirror its permission octal onto the copy so
+  /// script hooks (e.g. Claude Code plugin `hooks/*`) stay runnable in
+  /// materialized trees. Best-effort: on failure the copy keeps its default
+  /// mode (matches today's behavior, a non-blocking warning in the CLI).
+  Future<void> _mirrorModeIfExecutable(String source, String destination) async {
+    if (Platform.isWindows) return; // no POSIX exec bits
+    try {
+      final mode = (await File(source).stat()).mode;
+      // 0o111 = 0x49 (any exec bit), 0o777 = 0x1FF (permission octal).
+      if (mode & 0x49 == 0) return; // not executable → leave default mode
+      final octal = (mode & 0x1FF).toRadixString(8);
+      await Process.run('chmod', [octal, destination]);
+    } on Object {
+      // best-effort; a non-executable hook is a session-local warning, not fatal
+    }
   }
 
   @override
