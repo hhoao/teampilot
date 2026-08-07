@@ -75,6 +75,8 @@ import 'chat/model/session_open_request.dart';
 import 'chat/model/session_open_status.dart';
 import 'chat/model/session_workbench_view.dart';
 import 'chat/session_continue_overrides_controller.dart';
+import 'session/session_phase.dart';
+import 'session/session_pod.dart';
 import '../models/cli_preset.dart';
 
 export 'chat/model/chat_state.dart';
@@ -223,6 +225,11 @@ class ChatCubit extends Cubit<ChatState>
 
   final ChatTabStore _tabStore = ChatTabStore();
   final SessionDataStore _dataStore = SessionDataStore();
+
+  /// Per-session [SessionPod] values, keyed by session id. The launch/connect
+  /// lifecycle (Task 6) drives `phase`; the workbench overlay derives from the
+  /// active pod instead of global connecting sentinels.
+  final Map<String, SessionPod> _pods = {};
   static const _continueOverridesController =
       SessionContinueOverridesController();
   final Map<String, Future<void>> _sessionHydrationByWorkspace = {};
@@ -354,6 +361,38 @@ class ChatCubit extends Cubit<ChatState>
 
   @override
   void onTabRunningChanged() => _pushPresenceTarget();
+
+  // ===== SessionPod registry =====
+
+  /// Value of the pod for [sessionId], or null when no pod exists yet.
+  SessionPod? podFor(String sessionId) => _pods[sessionId.trim()];
+
+  /// Seeds an idle pod for [sessionId] if absent and returns it.
+  SessionPod ensurePod(String sessionId) =>
+      _pods.putIfAbsent(sessionId.trim(), () {
+        final tab = _tabStore.openTabBySessionId(sessionId.trim());
+        return SessionPod(
+          sessionId: sessionId.trim(),
+          workspaceId: tab?.workspaceId ?? '',
+          selectedMemberId: tab?.selectedMemberId ?? '',
+        );
+      });
+
+  /// Applies a new pod value, keeping only the latest revision per session.
+  void updatePod(SessionPod pod) {
+    final existing = _pods[pod.sessionId];
+    if (existing != null && existing.revision >= pod.revision) return;
+    _pods[pod.sessionId] = pod;
+  }
+
+  /// Pod of the active session (foreground tab), or null.
+  SessionPod? get activePod {
+    final id = state.activeSessionId;
+    if (id == null || id.isEmpty) return null;
+    return _pods[id];
+  }
+
+  // ===== SessionLaunchHost =====
 
   // ===== SessionLaunchHost =====
 
