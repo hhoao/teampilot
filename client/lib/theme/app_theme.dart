@@ -335,6 +335,12 @@ ThemeData _applyTypography(
       outlinedButtonTheme: buttons.outlined,
       elevatedButtonTheme: buttons.elevated,
       textButtonTheme: buttons.text,
+      iconButtonTheme: IconButtonThemeData(
+        style: ButtonStyle(mouseCursor: kTpClickableMouseCursor),
+      ),
+      checkboxTheme: CheckboxThemeData(
+        mouseCursor: kTpClickableMouseCursor,
+      ),
       listTileTheme: buildAppListTileTheme(
         colorScheme: scheme,
         textTheme: textTheme,
@@ -399,6 +405,12 @@ ThemeData _applyTypography(
     outlinedButtonTheme: buttons.outlined,
     elevatedButtonTheme: buttons.elevated,
     textButtonTheme: buttons.text,
+    iconButtonTheme: IconButtonThemeData(
+      style: ButtonStyle(mouseCursor: kTpClickableMouseCursor),
+    ),
+    checkboxTheme: CheckboxThemeData(
+      mouseCursor: kTpClickableMouseCursor,
+    ),
     listTileTheme: buildAppListTileTheme(
       colorScheme: scheme,
       textTheme: mergedTextTheme,

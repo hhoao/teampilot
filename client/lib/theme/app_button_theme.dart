@@ -12,6 +12,18 @@ typedef AppButtonThemes = ({
 /// which is black for amber/forest seeds).
 const Color kFilledButtonForeground = Colors.white;
 
+/// Hand cursor for interactive controls; arrow when disabled.
+///
+/// Material's default `WidgetStateMouseCursor.adaptiveClickable` resolves to an
+/// arrow on non-web desktop, so we opt every button family into a hand pointer.
+final WidgetStateProperty<MouseCursor> kTpClickableMouseCursor =
+    WidgetStateProperty.resolveWith((states) {
+  if (states.contains(WidgetState.disabled)) {
+    return SystemMouseCursors.basic;
+  }
+  return SystemMouseCursors.click;
+});
+
 /// Geometry for [size] (default medium = theme). Does not set foreground —
 /// filled chrome uses [kFilledButtonForeground]; outline/text use onSurface.
 ///
@@ -110,5 +122,6 @@ ButtonStyle _buttonGeometry({
     shape: WidgetStatePropertyAll(
       RoundedRectangleBorder(borderRadius: BorderRadius.circular(radius)),
     ),
+    mouseCursor: kTpClickableMouseCursor,
   );
 }
