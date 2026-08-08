@@ -36,6 +36,7 @@ import '../capabilities/provider_form_capability.dart';
 import '../capabilities/resource_capability.dart';
 import '../capabilities/ask_user_question_capability.dart';
 import '../capabilities/exit_plan_mode_capability.dart';
+import '../capabilities/turn_completion_capability.dart';
 import '../capabilities/turn_interrupt_capability.dart';
 import '../mcp_writers/claude_mcp_config_writer.dart';
 import '../plugin_provisioners/claude_plugin_provisioner.dart';
@@ -70,6 +71,7 @@ final class ClaudeCliTool implements CliToolDefinition {
     this.exitPlanMode = const HookExitPlanModeCapability(),
     this.aiHistory = const ClaudeAiHistoryCapability(),
     this.skillSyntax = const DefaultSkillInvocationSyntaxCapability(),
+    this.turnCompletion = const ClaudeTurnCompletion(),
     ProviderCredentialCapability? providerCredential,
   }) : providerCredential =
            providerCredential ?? ClaudeProviderCredentialCapability();
@@ -102,6 +104,7 @@ final class ClaudeCliTool implements CliToolDefinition {
   final ExitPlanModeCapability exitPlanMode;
   final ClaudeAiHistoryCapability aiHistory;
   final SkillInvocationSyntaxCapability skillSyntax;
+  final TurnCompletionCapability turnCompletion;
 
   @override
   CliTool get id => CliTool.claude;
@@ -142,5 +145,16 @@ final class ClaudeCliTool implements CliToolDefinition {
     exitPlanMode,
     aiHistory,
     skillSyntax,
+    turnCompletion,
   ];
+}
+
+final class ClaudeTurnCompletion implements TurnCompletionCapability {
+  const ClaudeTurnCompletion();
+  @override
+  Set<String> get doneEventNames => const {'Stop', 'StopFailure'};
+  @override
+  bool get requiresPtyFallback => false;
+  @override
+  bool get usesDoorbellPush => false;
 }

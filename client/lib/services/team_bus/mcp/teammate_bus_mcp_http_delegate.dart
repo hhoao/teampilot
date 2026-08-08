@@ -53,6 +53,7 @@ class TeammateBusMcpHttpDelegate {
         )
         ..write(reply);
       await request.response.close();
+      endTurnForIdle(memberId);
     } catch (e, st) {
       appLogger.e(
         '[teammate-bus-mcp] idle request failed',
@@ -63,6 +64,15 @@ class TeammateBusMcpHttpDelegate {
         request.response.statusCode = HttpStatus.internalServerError;
         await request.response.close();
       } catch (_) {}
+    }
+  }
+
+  /// Ends the bus turn for an idle push CLI. No-op for forceWait CLIs: they
+  /// are re-directed into `wait_for_message` on `/idle`, and their turn ends
+  /// only when they actually park there.
+  void endTurnForIdle(String memberId) {
+    if (memberId.isNotEmpty && handler.isPushDelivery(memberId)) {
+      handler.notifyIdle(memberId);
     }
   }
 

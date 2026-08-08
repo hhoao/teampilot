@@ -33,6 +33,7 @@ import '../capabilities/provider_form_capability.dart';
 import '../capabilities/resource_capability.dart';
 import '../capabilities/ask_user_question_capability.dart';
 import '../capabilities/exit_plan_mode_capability.dart';
+import '../capabilities/turn_completion_capability.dart';
 import '../capabilities/turn_interrupt_capability.dart';
 import '../mcp_writers/claude_mcp_config_writer.dart';
 import '../plugin_provisioners/flashskyai_plugin_provisioner.dart';
@@ -67,6 +68,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     this.exitPlanMode = const HookExitPlanModeCapability(),
     this.aiHistory = const FlashskyaiAiHistoryCapability(),
     this.skillSyntax = const DefaultSkillInvocationSyntaxCapability(),
+    this.turnCompletion = const FlashskyaiTurnCompletion(),
   });
 
   final LaunchArgsCapability launchArgs;
@@ -91,6 +93,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
   final BusTransportCapability busTransport;
   final RemoteCliLocatorCapability remoteCliLocator;
   final TurnInterruptCapability turnInterrupt;
+  final TurnCompletionCapability turnCompletion;
   final AskUserQuestionCapability askUserQuestion;
   final ExitPlanModeCapability exitPlanMode;
   final FlashskyaiAiHistoryCapability aiHistory;
@@ -130,9 +133,20 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     resource,
     mcpConfigWriter,
     turnInterrupt,
+    turnCompletion,
     askUserQuestion,
     exitPlanMode,
     aiHistory,
     skillSyntax,
   ];
+}
+
+final class FlashskyaiTurnCompletion implements TurnCompletionCapability {
+  const FlashskyaiTurnCompletion();
+  @override
+  Set<String> get doneEventNames => const {'Stop', 'StopFailure'};
+  @override
+  bool get requiresPtyFallback => false;
+  @override
+  bool get usesDoorbellPush => false;
 }

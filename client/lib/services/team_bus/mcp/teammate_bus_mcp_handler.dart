@@ -45,6 +45,12 @@ class TeammateBusMcpHandler {
   bool _resolveForceWait(String memberId) =>
       _forceWaitForMember?.call(memberId) ?? forceWaitBeforeStop;
 
+  /// True for push-delivery CLIs (e.g. cursor): they stop normally at the
+  /// prompt and never block in `wait_for_message`, so their `/idle` must end
+  /// the bus turn. ForceWait CLIs are re-directed into `wait_for_message` on
+  /// `/idle`; their turn ends only when they actually park there.
+  bool isPushDelivery(String memberId) => !_resolveForceWait(memberId);
+
   static const protocolVersion = '2025-06-18';
   static const serverName = 'teampilot-teammate-bus';
 

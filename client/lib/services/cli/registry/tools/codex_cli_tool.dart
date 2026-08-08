@@ -33,6 +33,7 @@ import '../capabilities/provider_form_capability.dart';
 import '../capabilities/resource_capability.dart';
 import '../capabilities/ask_user_question_capability.dart';
 import '../capabilities/exit_plan_mode_capability.dart';
+import '../capabilities/turn_completion_capability.dart';
 import '../capabilities/turn_interrupt_capability.dart';
 import '../mcp_writers/codex_mcp_config_writer.dart';
 import '../plugin_provisioners/codex_plugin_provisioner.dart';
@@ -67,6 +68,7 @@ final class CodexCliTool implements CliToolDefinition {
     this.exitPlanMode = const NoExitPlanModeCapability(),
     this.aiHistory = const CodexAiHistoryCapability(),
     this.skillSyntax = const CodexSkillInvocationSyntaxCapability(),
+    this.turnCompletion = const CodexTurnCompletion(),
     ProviderCredentialCapability? providerCredential,
   }) : providerCredential =
            providerCredential ?? CodexProviderCredentialCapability();
@@ -95,6 +97,7 @@ final class CodexCliTool implements CliToolDefinition {
   final BusTransportCapability busTransport;
   final RemoteCliLocatorCapability remoteCliLocator;
   final TurnInterruptCapability turnInterrupt;
+  final TurnCompletionCapability turnCompletion;
   final AskUserQuestionCapability askUserQuestion;
   final ExitPlanModeCapability exitPlanMode;
   final CodexAiHistoryCapability aiHistory;
@@ -130,9 +133,20 @@ final class CodexCliTool implements CliToolDefinition {
     resource,
     mcpConfigWriter,
     turnInterrupt,
+    turnCompletion,
     askUserQuestion,
     exitPlanMode,
     aiHistory,
     skillSyntax,
   ];
+}
+
+final class CodexTurnCompletion implements TurnCompletionCapability {
+  const CodexTurnCompletion();
+  @override
+  Set<String> get doneEventNames => const {'Stop', 'StopFailure'};
+  @override
+  bool get requiresPtyFallback => false;
+  @override
+  bool get usesDoorbellPush => false;
 }

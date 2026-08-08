@@ -29,6 +29,7 @@ class TabSessionRuntimeCoordinator {
     TabWorkingAggregator? workingAggregator,
     VoidCallback? onAfterIdleWatchTick,
     void Function(String sessionId, String memberId)? onAfterTurnLatched,
+    void Function(String sessionId, String memberId)? onAfterTurnEnded,
     String? Function()? activeSessionId,
     Map<String, MemberPresence> Function()? presence,
     bool Function(String sessionId)? sessionBusyFromAttention,
@@ -64,6 +65,7 @@ class TabSessionRuntimeCoordinator {
           delivery: ptyDelivery,
           isClosed: isClosed,
           onAfterTick: onAfterIdleWatchTick,
+          onAfterTurnEnded: onAfterTurnEnded,
         );
     final aggregator =
         workingAggregator ??
