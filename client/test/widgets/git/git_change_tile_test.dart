@@ -78,7 +78,7 @@ void main() {
       expect(find.byIcon(Icons.add), findsOneWidget);
 
       final rowRect = tester.getRect(find.byType(GitChangeTile).first);
-      final btnRect = tester.getRect(find.byIcon(Icons.file_open_outlined));
+      final btnRect = tester.getRect(find.byIcon(Icons.add));
       expect(rowRect.right - btnRect.right, lessThan(16));
     });
   });

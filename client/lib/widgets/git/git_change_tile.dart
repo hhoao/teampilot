@@ -123,30 +123,6 @@ class _GitChangeTileState extends State<GitChangeTile> {
   List<Widget> _actions(BuildContext context) {
     final l10n = context.l10n;
     final actions = <Widget>[
-      if (widget.change.staged)
-        TpIconButton(
-          icon: Icons.remove,
-          compact: true,
-          size: TpIconButton.kCompactSize,
-          tooltip: l10n.gitUnstage,
-          onTap: widget.onUnstage,
-        )
-      else ...[
-        TpIconButton(
-          icon: Icons.undo,
-          compact: true,
-          size: TpIconButton.kCompactSize,
-          tooltip: l10n.gitDiscard,
-          onTap: widget.onDiscard,
-        ),
-        TpIconButton(
-          icon: Icons.add,
-          compact: true,
-          size: TpIconButton.kCompactSize,
-          tooltip: l10n.gitStage,
-          onTap: widget.onStage,
-        ),
-      ],
       if (widget.onOpenFile != null)
         TpIconButton(
           icon: Icons.file_open_outlined,
@@ -156,6 +132,34 @@ class _GitChangeTileState extends State<GitChangeTile> {
           onTap: widget.onOpenFile,
         ),
     ];
-    return actions;
+    if (widget.change.staged) {
+      actions.add(
+        TpIconButton(
+          icon: Icons.remove,
+          compact: true,
+          size: TpIconButton.kCompactSize,
+          tooltip: l10n.gitUnstage,
+          onTap: widget.onUnstage,
+        ),
+      );
+      return actions;
+    }
+    return [
+      ...actions,
+      TpIconButton(
+        icon: Icons.undo,
+        compact: true,
+        size: TpIconButton.kCompactSize,
+        tooltip: l10n.gitDiscard,
+        onTap: widget.onDiscard,
+      ),
+      TpIconButton(
+        icon: Icons.add,
+        compact: true,
+        size: TpIconButton.kCompactSize,
+        tooltip: l10n.gitStage,
+        onTap: widget.onStage,
+      ),
+    ];
   }
 }
