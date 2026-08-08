@@ -638,12 +638,23 @@ void main() {
 Provide a minimal fake `HttpRequest`/response if the delegate needs one — check whether `handleIdleRequest` requires a real `dart:io HttpRequest`; if so, refactor to extract a testable method `Future<String> idleDecisionForMember(String memberId)` + a `void endTurnForIdle(String memberId)` and test the latter directly. Prefer extracting:
 
 ```dart
-/// Ends the bus turn for an idle push CLI. No-op for forceWait CLIs
-/// (parked → onMemberIdle returns early).
+/// Ends the bus turn for an idle push CLI. No-op for forceWait CLIs: they
+/// are re-directed into `wait_for_message` on `/idle`, and their turn ends
+/// only when they actually park there.
 void endTurnForIdle(String memberId) {
-  if (memberId.isNotEmpty) handler.notifyIdle(memberId);
+  if (memberId.isNotEmpty && handler.isPushDelivery(memberId)) {
+    handler.notifyIdle(memberId);
+  }
 }
 ```
+
+`isPushDelivery` is a new public predicate on `TeammateBusMcpHandler`
+(`!_resolveForceWait(memberId)`). The gate matters: existing integration
+tests (`session_idle_busy_integration_test.dart` "HTTP POST /idle blocks CLI
+without ending bus turn", "bus turn ends when member enters wait_for_message,
+not on Stop-hook") assert that forceWait members' `/idle` must NOT end the
+turn — only parking in wait_for_message does. Scoping to push CLIs preserves
+that contract while fixing the cursor (push) case.
 
 and call it from `handleIdleRequest` after closing the response.
 
