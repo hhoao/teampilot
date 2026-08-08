@@ -439,14 +439,15 @@ class DiscoverableTeam {
     required this.category,
     required this.updatedAt,
     this.author,
-    this.cli = CliTool.claude,
-    this.teamMode = TeamMode.native,
+    CliTool? cli,
+    TeamMode? teamMode,
     this.extraArgs = '',
     this.roster = const [],
     this.skillDeps = const [],
     this.pluginDeps = const [],
     this.mcpDeps = const [],
-  });
+  }) : _cli = cli,
+       _teamMode = teamMode;
 
   /// Unique discovery key: `owner/name/slug`.
   final String key;
@@ -455,8 +456,22 @@ class DiscoverableTeam {
   final String category;
   final String? author;
   final int updatedAt;
-  final CliTool cli;
-  final TeamMode teamMode;
+
+  /// CLI as declared in the manifest; null when not written.
+  final CliTool? _cli;
+
+  /// teamMode as declared in the manifest; null when not written.
+  final TeamMode? _teamMode;
+
+  /// Effective CLI: declared value or [CliTool.claude].
+  CliTool get cli => _cli ?? CliTool.claude;
+
+  /// Effective team mode: declared value or [TeamMode.native].
+  TeamMode get teamMode => _teamMode ?? TeamMode.native;
+
+  bool get cliDeclared => _cli != null;
+  bool get teamModeDeclared => _teamMode != null;
+
   final String extraArgs;
   final List<TeamRosterSlot> roster;
   final List<SkillDependencyRef> skillDeps;
@@ -478,8 +493,8 @@ class DiscoverableTeam {
       category: json['category'] as String? ?? '',
       author: json['author'] as String?,
       updatedAt: (json['updatedAt'] as num?)?.toInt() ?? 0,
-      cli: CliTool.decode(json['cli']),
-      teamMode: TeamMode.decode(json['teamMode']),
+      cli: CliTool.tryParse(json['cli'] as String?),
+      teamMode: TeamMode.tryParse(json['teamMode'] as String?),
       extraArgs: json['extraArgs'] as String? ?? '',
       roster: list(json['roster'], TeamRosterSlot.fromJson),
       skillDeps: list(json['skillDeps'], SkillDependencyRef.fromJson),
@@ -495,8 +510,8 @@ class DiscoverableTeam {
     'category': category,
     if (author != null) 'author': author,
     'updatedAt': updatedAt,
-    'cli': cli.value,
-    'teamMode': teamMode.value,
+    if (_cli != null) 'cli': _cli!.value,
+    if (_teamMode != null) 'teamMode': _teamMode!.value,
     if (extraArgs.isNotEmpty) 'extraArgs': extraArgs,
     'roster': roster.map((s) => s.toJson()).toList(),
     'skillDeps': skillDeps.map((d) => d.toJson()).toList(),
@@ -513,8 +528,8 @@ class DiscoverableTeam {
       category == other.category &&
       author == other.author &&
       updatedAt == other.updatedAt &&
-      cli == other.cli &&
-      teamMode == other.teamMode &&
+      _cli == other._cli &&
+      _teamMode == other._teamMode &&
       extraArgs == other.extraArgs &&
       listEquals(roster, other.roster) &&
       listEquals(skillDeps, other.skillDeps) &&
@@ -529,8 +544,8 @@ class DiscoverableTeam {
     category,
     author,
     updatedAt,
-    cli,
-    teamMode,
+    _cli,
+    _teamMode,
     extraArgs,
     Object.hashAll(roster),
     Object.hashAll(skillDeps),
