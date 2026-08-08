@@ -82,12 +82,11 @@ void main() {
     expect(def.terminalPassthrough, isTrue);
   });
 
-  test('workspace search defaults to Mod+F and double Shift', () {
+  test('workspace search defaults to double Shift only', () {
     final def = CommandCatalog.v1.singleWhere(
       (c) => c.id == CommandIds.workspaceSearch,
     );
     expect(def.defaultChords, [
-      KeyChord(key: 'f', mods: [KeyChordMod.mod]),
       KeyChord.doubleTapShift(),
     ]);
     expect(def.when, ShortcutWhen.hasWorkspace);

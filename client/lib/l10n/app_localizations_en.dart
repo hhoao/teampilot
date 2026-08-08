@@ -6182,7 +6182,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get shortcutsWorkspaceReopenClosed => 'Reopen Closed Workspace Tab';
 
   @override
-  String get shortcutsWorkspaceSearch => 'Search Workspace';
+  String get shortcutsWorkspaceSearch => 'Search Workspace (double-tap Shift)';
 
   @override
   String get shortcutsStripNextTab => 'Next Tab';
@@ -6902,4 +6902,22 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get cliTaskBoardShowLess => 'Show less';
+
+  @override
+  String get chatFindHint => 'Find in conversation';
+
+  @override
+  String get chatFindNoResults => 'No matches';
+
+  @override
+  String get chatFindResults => 'Matches';
+
+  @override
+  String get chatFindPrevious => 'Previous match';
+
+  @override
+  String get chatFindNext => 'Next match';
+
+  @override
+  String get chatFindClose => 'Close find';
 }

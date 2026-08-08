@@ -2399,7 +2399,7 @@
   "shortcutsWorkspacePrevTab": "上一个工作区标签",
   "shortcutsWorkspaceCloseTab": "关闭工作区标签",
   "shortcutsWorkspaceReopenClosed": "重新打开已关闭的工作区标签",
-  "shortcutsWorkspaceSearch": "搜索工作区",
+  "shortcutsWorkspaceSearch": "搜索工作区（双击 Shift）",
   "shortcutsStripNextTab": "下一个标签",
   "shortcutsStripPrevTab": "上一个标签",
   "shortcutsSessionNewTab": "新建会话标签",
@@ -2694,5 +2694,11 @@
   "cliTaskStatusCompleted": "已完成",
   "cliTaskStatusCancelled": "已取消",
   "cliTaskStatusUnknown": "未知",
-  "cliTaskBoardShowLess": "收起"
+  "cliTaskBoardShowLess": "收起",
+  "chatFindHint": "在对话中查找",
+  "chatFindNoResults": "无匹配",
+  "chatFindResults": "匹配结果",
+  "chatFindPrevious": "上一个匹配",
+  "chatFindNext": "下一个匹配",
+  "chatFindClose": "关闭查找"
 }

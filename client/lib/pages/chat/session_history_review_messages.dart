@@ -4,6 +4,7 @@ import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/ai_history_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
+import 'chat_reveal_controller.dart';
 import 'session_history_live_chrome.dart';
 import 'session_history_thread.dart';
 
@@ -23,6 +24,8 @@ class SessionHistoryReviewMessages extends StatelessWidget {
     required this.onRetry,
     required this.onLoadOlder,
     this.liveChrome = SessionHistoryLiveChrome.none,
+    this.highlightMessageId,
+    this.revealRequest,
     super.key,
   });
 
@@ -31,6 +34,12 @@ class SessionHistoryReviewMessages extends StatelessWidget {
   final VoidCallback onRetry;
   final VoidCallback onLoadOlder;
   final SessionHistoryLiveChrome liveChrome;
+
+  /// Message id whose bubble gets a highlight ring (chat find current match).
+  final String? highlightMessageId;
+
+  /// Carries the reveal intent (jump + highlight) from the chat find host.
+  final ChatRevealController? revealRequest;
 
   bool get _showThread {
     if (state.status == AiHistoryViewStatus.ready) return true;
@@ -59,6 +68,8 @@ class SessionHistoryReviewMessages extends StatelessWidget {
               isLoadingOlder: state.isLoadingOlder,
               onLoadOlder: onLoadOlder,
               liveChrome: liveChrome,
+              highlightMessageId: highlightMessageId,
+              revealRequest: revealRequest,
             ),
           ),
         ],

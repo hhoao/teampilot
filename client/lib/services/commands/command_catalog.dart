@@ -62,7 +62,6 @@ abstract final class CommandCatalog {
       id: CommandIds.workspaceSearch,
       category: CommandCategory.navigation,
       defaultChords: [
-        KeyChord(key: 'f', mods: [KeyChordMod.mod]),
         KeyChord.doubleTapShift(),
       ],
       when: ShortcutWhen.hasWorkspace,

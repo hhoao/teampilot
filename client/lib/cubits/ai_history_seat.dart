@@ -648,6 +648,20 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
     _emitReadyWindow(state.sessionId, state.memberId);
   }
 
+  /// Expands the committed + visible render window so the message at [index]
+  /// (0-based into the full loaded transcript) is rendered. No-op when already
+  /// visible or out of range. Used by chat find to jump to a match without
+  /// iterating `loadOlder` (the full transcript is already in memory).
+  void revealMessage(int index) {
+    if (isClosed) return;
+    if (index < 0 || index >= _allMessages.length) return;
+    _commitAll();
+    final need = _allMessages.length - index;
+    if (_visibleCount >= need) return;
+    _visibleCount = need;
+    _emitReadyWindow(state.sessionId, state.memberId);
+  }
+
   /// Merges [cliMessages] with read mailbox user mail for [sessionId] /
   /// [memberId]. Mailbox load failures degrade to CLI-only (logged, not thrown)
   /// so a mailbox hiccup never blocks history from loading.

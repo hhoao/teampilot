@@ -325,12 +325,12 @@ class WorkspaceSessionContentIndex {
       session: session,
       memberId: seat.memberId,
       memberLabel: seat.memberLabel,
-      snippet: _snippetAround(doc.text, idx, q.length),
-      messageIndex: _messageIndexAt(doc.messageStarts, idx),
+      snippet: snippetAround(doc.text, idx, q.length),
+      messageIndex: messageIndexAt(doc.messageStarts, idx),
     );
   }
 
-  static int _messageIndexAt(List<int> starts, int offset) {
+  static int messageIndexAt(List<int> starts, int offset) {
     var index = 0;
     for (var i = 0; i < starts.length; i++) {
       if (starts[i] > offset) break;
@@ -339,7 +339,7 @@ class WorkspaceSessionContentIndex {
     return index;
   }
 
-  static String _snippetAround(
+  static String snippetAround(
     String text,
     int start,
     int queryLength, {

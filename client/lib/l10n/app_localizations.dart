@@ -11033,7 +11033,7 @@ abstract class AppLocalizations {
   /// No description provided for @shortcutsWorkspaceSearch.
   ///
   /// In en, this message translates to:
-  /// **'Search Workspace'**
+  /// **'Search Workspace (double-tap Shift)'**
   String get shortcutsWorkspaceSearch;
 
   /// No description provided for @shortcutsStripNextTab.
@@ -12337,6 +12337,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Show less'**
   String get cliTaskBoardShowLess;
+
+  /// No description provided for @chatFindHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Find in conversation'**
+  String get chatFindHint;
+
+  /// No description provided for @chatFindNoResults.
+  ///
+  /// In en, this message translates to:
+  /// **'No matches'**
+  String get chatFindNoResults;
+
+  /// No description provided for @chatFindResults.
+  ///
+  /// In en, this message translates to:
+  /// **'Matches'**
+  String get chatFindResults;
+
+  /// No description provided for @chatFindPrevious.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous match'**
+  String get chatFindPrevious;
+
+  /// No description provided for @chatFindNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Next match'**
+  String get chatFindNext;
+
+  /// No description provided for @chatFindClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close find'**
+  String get chatFindClose;
 }
 
 class _AppLocalizationsDelegate

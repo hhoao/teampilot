@@ -2826,7 +2826,7 @@
   "shortcutsWorkspacePrevTab": "Previous Workspace Tab",
   "shortcutsWorkspaceCloseTab": "Close Workspace Tab",
   "shortcutsWorkspaceReopenClosed": "Reopen Closed Workspace Tab",
-  "shortcutsWorkspaceSearch": "Search Workspace",
+  "shortcutsWorkspaceSearch": "Search Workspace (double-tap Shift)",
   "shortcutsStripNextTab": "Next Tab",
   "shortcutsStripPrevTab": "Previous Tab",
   "shortcutsSessionNewTab": "New Session Tab",
@@ -3128,5 +3128,11 @@
   "cliTaskStatusCompleted": "Done",
   "cliTaskStatusCancelled": "Cancelled",
   "cliTaskStatusUnknown": "Unknown",
-  "cliTaskBoardShowLess": "Show less"
+  "cliTaskBoardShowLess": "Show less",
+  "chatFindHint": "Find in conversation",
+  "chatFindNoResults": "No matches",
+  "chatFindResults": "Matches",
+  "chatFindPrevious": "Previous match",
+  "chatFindNext": "Next match",
+  "chatFindClose": "Close find"
 }

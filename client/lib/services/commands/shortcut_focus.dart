@@ -1,4 +1,7 @@
+import 'package:flutter/foundation.dart' show setEquals;
 import 'package:flutter/widgets.dart';
+
+import 'key_chord.dart';
 
 /// Kind of shortcut-relevant focus target that a [ShortcutFocus] ancestor
 /// marks its subtree with.
@@ -16,10 +19,29 @@ enum ShortcutFocusKind { compose, terminal, text }
 /// Wrap the focusable widget itself (or its direct parent) — the lookup in
 /// [maybeOf] intentionally does not establish a build dependency since it is
 /// called from outside `build()` (on every key event).
+///
+/// [claims] lets a surface declare that it owns certain [KeyChord]s while its
+/// subtree has focus; the live [ShortcutContext] unions `claims` over every
+/// [ShortcutFocus] ancestor of the primary focus and [KeybindingResolver.match]
+/// skips a global command whose chord is claimed (the surface's own `Shortcuts`
+/// is the single handler for it).
 class ShortcutFocus extends InheritedWidget {
-  const ShortcutFocus({super.key, required this.kind, required super.child});
+  const ShortcutFocus({
+    this.kind,
+    this.claims = const {},
+    required super.child,
+    super.key,
+  });
 
-  final ShortcutFocusKind kind;
+  /// Null when the surface only claims chords and does not change the
+  /// `inCompose` / `inTerminal` / `inTextInput` classification (e.g. the
+  /// code editor wrapper).
+  final ShortcutFocusKind? kind;
+
+  /// Chords this surface owns while its subtree has focus. A global command
+  /// whose chord is claimed is skipped by [KeybindingResolver.match]; the
+  /// surface's own `Shortcuts` is the single handler for it.
+  final Set<KeyChord> claims;
 
   /// Returns the nearest [ShortcutFocus] ancestor's kind visible from
   /// [context], or `null` if [context] is not under a [ShortcutFocus].
@@ -34,6 +56,20 @@ class ShortcutFocus extends InheritedWidget {
     return element?.widget as ShortcutFocus?;
   }
 
+  /// Union of [claims] over every [ShortcutFocus] ancestor of [context]
+  /// (nearest → root). Called outside build() on every key event, so it must
+  /// not register a rebuild dependency.
+  static Set<KeyChord> claimsOf(BuildContext context) {
+    final result = <KeyChord>{};
+    context.visitAncestorElements((element) {
+      final widget = element.widget;
+      if (widget is ShortcutFocus) result.addAll(widget.claims);
+      return true;
+    });
+    return result;
+  }
+
   @override
-  bool updateShouldNotify(ShortcutFocus oldWidget) => kind != oldWidget.kind;
+  bool updateShouldNotify(ShortcutFocus oldWidget) =>
+      kind != oldWidget.kind || !setEquals(claims, oldWidget.claims);
 }
