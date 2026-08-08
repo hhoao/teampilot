@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../cubits/chat/chat_tab_store.dart';
@@ -269,9 +270,17 @@ class SessionLaunchPipeline {
     SessionConnectRequest request, {
     SessionRepository? repo,
   }) async {
-    // Any connect in flight serializes a second one (this includes pre-session
-    // materialization, which has no real pod yet).
-    if (_host.hasConnectingSession) {
+    // Same-target connect guard. Different sessions launch concurrently: their
+    // config provisioning writes are session-scoped (`sessions/{id}/runtime/`),
+    // so there is no shared-write race. Only the target session's own in-flight
+    // connect (or pre-session materialization, which has no session pod yet)
+    // must serialize.
+    if (shouldSerializeConnect(
+      request: request,
+      tabStore: _tabStore,
+      isSessionConnecting: _host.isSessionConnecting,
+      isMaterializingInFlight: _host.isMaterializingInFlight,
+    )) {
       return LaunchSkipped();
     }
 
@@ -621,4 +630,32 @@ class SessionLaunchPipeline {
     session?.write('\r\n[$message]\r\n');
     _host.failSessionConnect(_activeTab()?.info.id ?? 'pending', message);
   }
+}
+
+/// Whether [request] must wait behind an in-flight connect.
+///
+/// Only the *target* session's own connect blocks a new one (same-session
+/// double-connect, or a member of that session already owned by the member
+/// scheduler). Different sessions connect concurrently — their config
+/// provisioning writes are session-scoped, so there is no shared-write race.
+/// Pre-session materialization (no session pod yet) still serializes.
+@visibleForTesting
+bool shouldSerializeConnect({
+  required SessionConnectRequest request,
+  required ChatTabStore tabStore,
+  required bool Function(String sessionId) isSessionConnecting,
+  required bool isMaterializingInFlight,
+}) {
+  if (request case ExistingSessionConnect(:final session, :final member)) {
+    final memberId = member?.id;
+    final tab = tabStore.openTabBySessionId(session.sessionId);
+    final memberOwnedElsewhere =
+        memberId != null &&
+        memberId.isNotEmpty &&
+        tab != null &&
+        (tab.membersPendingConnect.contains(memberId) ||
+            tab.memberShells[memberId]?.isConnecting == true);
+    return isSessionConnecting(session.sessionId) || memberOwnedElsewhere;
+  }
+  return isMaterializingInFlight;
 }

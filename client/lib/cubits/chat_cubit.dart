@@ -1693,12 +1693,13 @@ class ChatCubit extends Cubit<ChatState>
   /// the view; `ChatTab.workbenchView` stays in sync during the transition.
   void setSessionWorkbenchView(String sessionId, SessionWorkbenchView view) {
     final pod = podRuntime(sessionId);
-    if (pod != null && pod.state.view == view) return;
-    setPodView(sessionId, view);
-    final tab = _tabStore.openTabBySessionId(sessionId);
-    if (tab != null && tab.workbenchView != view) {
-      tab.workbenchView = view;
+    if (pod != null && pod.state.view == view) {
+      // Already the active view — still reconcile the transition copy on the
+      // tab so tab reads (e.g. the view toggle) agree with the pod.
+      _syncTabWorkbenchView(sessionId, view);
+      return;
     }
+    setPodView(sessionId, view);
     emit(state.copyWith(stateVersion: state.stateVersion + 1));
     if (view == SessionWorkbenchView.chat) {
       onSessionHistoryStale?.call(sessionId);
@@ -1706,9 +1707,19 @@ class ChatCubit extends Cubit<ChatState>
   }
 
   /// SessionLaunchHost port: the pod owns the per-session chat/terminal view.
+  /// Keeps [ChatTab.workbenchView] in sync so tab reads (view toggle) agree
+  /// with the pod — including connects that force Terminal via this port.
   @override
   void setPodView(String sessionId, SessionWorkbenchView view) {
     podRuntime(sessionId)?.setView(view);
+    _syncTabWorkbenchView(sessionId, view);
+  }
+
+  void _syncTabWorkbenchView(String sessionId, SessionWorkbenchView view) {
+    final tab = _tabStore.openTabBySessionId(sessionId);
+    if (tab != null && tab.workbenchView != view) {
+      tab.workbenchView = view;
+    }
   }
 
   /// SessionLaunchHost port: pod-phase concurrency gate.
@@ -1720,6 +1731,9 @@ class ChatCubit extends Cubit<ChatState>
   bool get hasConnectingSession =>
       _materializingInFlight ||
       _pods.values.any((p) => p.state.phase.isLaunching);
+
+  @override
+  bool get isMaterializingInFlight => _materializingInFlight;
 
   @override
   void setMaterializingInFlight(bool value) {

@@ -46,6 +46,10 @@ abstract interface class SessionConnectStatePort {
   /// flight (the former `'pending'` connect).
   bool get hasConnectingSession;
 
+  /// True while pre-session materialization (the former `'pending'` connect) is
+  /// in flight — no session pod exists yet, so it cannot be per-session gated.
+  bool get isMaterializingInFlight;
+
   /// Marks pre-session materialization (former `'pending'`) in flight.
   void setMaterializingInFlight(bool value);
 

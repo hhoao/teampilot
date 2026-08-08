@@ -38,6 +38,10 @@ class SessionWorkbenchViewToggle extends StatelessWidget {
     }
     final sessionId = active.id;
     final view = context.select<ChatCubit, SessionWorkbenchView>((c) {
+      // The pod is the canonical view source (same read as the workbench
+      // body); fall back to the tab during the thin-ChatCubit transition.
+      final podView = c.podFor(sessionId)?.view;
+      if (podView != null) return podView;
       final tab = c.tabStore.openTabBySessionId(sessionId);
       return tab?.workbenchView ?? SessionWorkbenchView.chat;
     });
