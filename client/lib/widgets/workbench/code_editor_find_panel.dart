@@ -65,12 +65,18 @@ class CodeEditorFindPanel extends StatelessWidget
                   padding: const EdgeInsets.fromLTRB(0, 4, 4, 4),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    // Chevron centered vertically across the rows: with one
+                    // row (find only) it fills that row; with two rows it sits
+                    // mid-way between find + replace.
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       _buildChevronToggle(context, showReplace),
                       const SizedBox(width: 2),
                       Column(
                         mainAxisSize: MainAxisSize.min,
+                        // Left-align the narrower replace row under the find
+                        // row instead of the Column default (center).
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           _buildFindRow(context, value),
                           if (showReplace) _buildReplaceRow(context, value),
