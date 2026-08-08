@@ -55,6 +55,28 @@ void main() {
     expect(controller.currentIndex, 1);
   });
 
+  test('select sets the current match index', () {
+    controller.search('alpha');
+    expect(controller.hits.length, 3);
+    controller.select(1);
+    expect(controller.currentIndex, 1);
+    controller.select(0);
+    expect(controller.currentIndex, 0);
+  });
+
+  test('select is a no-op out of range or with no hits', () {
+    controller.search('alpha');
+    expect(controller.currentIndex, 0);
+    controller.select(99);
+    expect(controller.currentIndex, 0);
+    controller.select(-1);
+    expect(controller.currentIndex, 0);
+
+    controller.clear();
+    controller.select(0);
+    expect(controller.currentIndex, -1);
+  });
+
   test('snippet stays within the matching message', () {
     controller.search('beta');
     expect(controller.hits.single.messageIndex, 3);

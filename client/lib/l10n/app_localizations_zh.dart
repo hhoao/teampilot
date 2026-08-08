@@ -6627,9 +6627,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get chatFindResults => '匹配结果';
 
   @override
-  String get chatFindLoading => '正在加载对话…';
-
-  @override
   String get chatFindPrevious => '上一个匹配';
 
   @override

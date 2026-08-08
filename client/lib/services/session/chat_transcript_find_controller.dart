@@ -69,6 +69,15 @@ class ChatTranscriptFindController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Sets the current match index (e.g. when the user taps a specific result
+  /// row). No-op when out of range or there are no hits.
+  void select(int index) {
+    if (_hits.isEmpty) return;
+    if (index < 0 || index >= _hits.length) return;
+    _currentIndex = index;
+    notifyListeners();
+  }
+
   void next() {
     if (_hits.isEmpty) return;
     _currentIndex = (_currentIndex + 1) % _hits.length;

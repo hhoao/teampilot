@@ -3126,7 +3126,6 @@
   "chatFindHint": "Find in conversation",
   "chatFindNoResults": "No matches",
   "chatFindResults": "Matches",
-  "chatFindLoading": "Loading conversation…",
   "chatFindPrevious": "Previous match",
   "chatFindNext": "Next match",
   "chatFindClose": "Close find"

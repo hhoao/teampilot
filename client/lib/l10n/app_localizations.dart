@@ -12320,12 +12320,6 @@ abstract class AppLocalizations {
   /// **'Matches'**
   String get chatFindResults;
 
-  /// No description provided for @chatFindLoading.
-  ///
-  /// In en, this message translates to:
-  /// **'Loading conversation…'**
-  String get chatFindLoading;
-
   /// No description provided for @chatFindPrevious.
   ///
   /// In en, this message translates to:

@@ -6895,9 +6895,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get chatFindResults => 'Matches';
 
   @override
-  String get chatFindLoading => 'Loading conversation…';
-
-  @override
   String get chatFindPrevious => 'Previous match';
 
   @override

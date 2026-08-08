@@ -2692,7 +2692,6 @@
   "chatFindHint": "在对话中查找",
   "chatFindNoResults": "无匹配",
   "chatFindResults": "匹配结果",
-  "chatFindLoading": "正在加载对话…",
   "chatFindPrevious": "上一个匹配",
   "chatFindNext": "下一个匹配",
   "chatFindClose": "关闭查找"

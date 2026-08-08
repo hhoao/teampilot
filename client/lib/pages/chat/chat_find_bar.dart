@@ -4,7 +4,6 @@ import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../services/session/chat_transcript_find_controller.dart';
-import '../../services/session/workspace_session_content_index.dart';
 import '../../utils/debounce/debounce.dart';
 
 /// Find bar for the chat page: query field + n/N counter + prev/next + close,
@@ -64,6 +63,7 @@ class _ChatFindBarState extends State<ChatFindBar> {
   void _navigateIndex(int index) {
     final hits = widget.controller.hits;
     if (index < 0 || index >= hits.length) return;
+    widget.controller.select(index);
     widget.onNavigate(hits[index]);
   }
 
@@ -95,7 +95,6 @@ class _ChatFindBarState extends State<ChatFindBar> {
             final current = controller.currentIndex;
             final counter = total == 0 ? '' : '${current + 1}/$total';
             final hasQuery = controller.hasQuery;
-            final loading = hasQuery && total == 0;
 
             return Align(
               alignment: Alignment.topCenter,
@@ -175,9 +174,7 @@ class _ChatFindBarState extends State<ChatFindBar> {
                               : Padding(
                                   padding: const EdgeInsets.all(8),
                                   child: Text(
-                                    loading
-                                        ? l10n.chatFindLoading
-                                        : l10n.chatFindNoResults,
+                                    l10n.chatFindNoResults,
                                     style: TpTextStyles.of(
                                       context,
                                     ).smColored(cs.onSurfaceVariant),
@@ -313,11 +310,8 @@ class _HighlightedSnippet extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final style = TpTextStyles.of(context).smColored(cs.onSurfaceVariant);
-    final idx = WorkspaceSessionContentIndex.caseInsensitiveIndexOf(
-      text,
-      query,
-    );
-    if (idx == null) {
+    final q = query.trim();
+    if (q.isEmpty) {
       return Text(
         text,
         maxLines: 2,
@@ -325,13 +319,26 @@ class _HighlightedSnippet extends StatelessWidget {
         style: style,
       );
     }
-    final end = idx + query.trim().length;
+    final match = RegExp(
+      RegExp.escape(q),
+      caseSensitive: false,
+    ).firstMatch(text);
+    if (match == null) {
+      return Text(
+        text,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        style: style,
+      );
+    }
+    final start = match.start;
+    final end = match.end;
     return Text.rich(
       TextSpan(
         children: [
-          TextSpan(text: text.substring(0, idx)),
+          TextSpan(text: text.substring(0, start)),
           TextSpan(
-            text: text.substring(idx, end),
+            text: text.substring(start, end),
             style: style.copyWith(
               fontWeight: FontWeight.w600,
               color: cs.primary,
