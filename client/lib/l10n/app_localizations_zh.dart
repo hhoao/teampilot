@@ -6616,4 +6616,25 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get cliTaskBoardShowLess => '收起';
+
+  @override
+  String get chatFindHint => '在对话中查找';
+
+  @override
+  String get chatFindNoResults => '无匹配';
+
+  @override
+  String get chatFindResults => '匹配结果';
+
+  @override
+  String get chatFindLoading => '正在加载对话…';
+
+  @override
+  String get chatFindPrevious => '上一个匹配';
+
+  @override
+  String get chatFindNext => '下一个匹配';
+
+  @override
+  String get chatFindClose => '关闭查找';
 }

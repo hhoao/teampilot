@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:ai_message_ui/ai_message_ui.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
@@ -31,6 +32,8 @@ import '../../models/workspace_launch_context.dart';
 import '../../repositories/workspace_project_config_repository.dart';
 import '../../services/ai/headless_ai_service.dart';
 import '../../services/cli/preset_resolver.dart';
+import '../../services/commands/key_chord.dart';
+import '../../services/commands/shortcut_focus.dart';
 import '../../services/cli/registry/capabilities/ai_history_capability.dart';
 import '../../services/cli/registry/capabilities/skill_invocation_syntax_capability.dart';
 import '../../services/cli/registry/capabilities/turn_interrupt_capability.dart';
@@ -49,6 +52,7 @@ import '../../services/compose/compose_voice_input.dart';
 import '../../services/expert_hub/expert_member_resolver.dart';
 import '../../services/follow_up/follow_up_queue.dart';
 import '../../services/session/ai_history_live_refresh_controller.dart';
+import '../../services/session/chat_transcript_find_controller.dart';
 import '../../services/session/history_seat_key.dart';
 import '../../services/session/history_awaiting_working_sync.dart';
 import '../../services/session/session_continue_overrides_apply.dart';
@@ -70,6 +74,8 @@ import '../../widgets/compose/workspace_compose_card.dart';
 import '../../widgets/follow_up/follow_up_queue_strip.dart';
 import '../home_workspace/workspace/workspace_landing_team_settings_dialog.dart';
 import 'agent_permission_attention_banner.dart';
+import 'chat_find_bar.dart';
+import 'chat_reveal_controller.dart';
 import 'cli_task_bubbles.dart';
 import 'compose_stop_visibility.dart';
 import 'session_follow_up_compose_submit.dart';
@@ -81,6 +87,13 @@ import 'session_history_review_messages.dart';
 import 'session_history_review_submit.dart';
 import 'subagent_preview_controller.dart';
 import 'workflow_card.dart';
+
+/// Fired by Mod+F (Ctrl+F / Cmd+F) in [SessionChatView] to toggle the find
+/// bar. Escape is handled inside [ChatFindBar], which is only mounted while
+/// find is visible.
+class _ChatFindToggleIntent extends Intent {
+  const _ChatFindToggleIntent();
+}
 
 /// Bound Chat view: history thread + slim compose for a session body.
 class SessionChatView extends StatefulWidget {
@@ -161,6 +174,18 @@ class _SessionChatViewState extends State<SessionChatView> {
   /// Compose Stop cleared Running chrome; ignore residual sessionWorking until
   /// the next user turn latches awaiting again.
   var _userStoppedTurn = false;
+
+  /// Chat find bar (Mod+F): full-transcript search + n/N navigation, revealed
+  /// via [AiHistorySeat.revealMessage] + [ChatRevealController].
+  final _findQueryController = TextEditingController();
+  final _findFocusNode = FocusNode(debugLabel: 'session_chat_find');
+  // late: the provider closure reads `_seat`, which is bound after construction.
+  late final _findController = ChatTranscriptFindController(
+    messagesProvider: () => _seat?.loadedMessages ?? const [],
+  );
+  final _revealController = ChatRevealController();
+  bool _findVisible = false;
+  String? _findHighlightId;
 
   @override
   void initState() {
@@ -303,6 +328,38 @@ class _SessionChatViewState extends State<SessionChatView> {
     if (mounted) setState(() {});
   }
 
+  void _toggleFind() {
+    setState(() => _findVisible = !_findVisible);
+    if (_findVisible) {
+      _findFocusNode.requestFocus();
+    } else {
+      _closeFind();
+    }
+  }
+
+  void _closeFind() {
+    _findController.clear();
+    _findQueryController.clear();
+    setState(() {
+      _findVisible = false;
+      _findHighlightId = null;
+    });
+    _revealController.clear();
+  }
+
+  void _navigateFindTo(TranscriptHit hit) {
+    final seat = _seat;
+    if (seat != null) {
+      seat.revealMessage(hit.messageIndex);
+    }
+    setState(() => _findHighlightId = hit.messageId);
+    // Reveal after the frame so the seat's window update has reached the thread
+    // and the target message is in `displayMessages` when the offset is computed.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _revealController.reveal(hit.messageId);
+    });
+  }
+
   @override
   void dispose() {
     _awaitingIdleGraceTimer?.cancel();
@@ -319,6 +376,10 @@ class _SessionChatViewState extends State<SessionChatView> {
     _subagentPreview.dispose();
     _controller.dispose();
     _focusNode.dispose();
+    _findQueryController.dispose();
+    _findFocusNode.dispose();
+    _findController.dispose();
+    _revealController.dispose();
     super.dispose();
   }
 
@@ -1281,7 +1342,29 @@ class _SessionChatViewState extends State<SessionChatView> {
     final skillSyntax =
         registry.capability<SkillInvocationSyntaxCapability>(lockedCli);
 
-    return MultiBlocListener(
+    return ShortcutFocus(
+      // The chat page owns Mod+F (find bar). Claimed so the global workspace
+      // search / other Mod+F global commands stay suppressed here.
+      claims: {KeyChord(key: 'f', mods: [KeyChordMod.mod])},
+      child: Shortcuts(
+        shortcuts: <ShortcutActivator, Intent>{
+          // Ctrl+F (Linux/Windows) and Cmd+F (macOS) both toggle the find bar;
+          // only the platform-matching activator fires for a given key press.
+          const SingleActivator(LogicalKeyboardKey.keyF, control: true):
+              const _ChatFindToggleIntent(),
+          const SingleActivator(LogicalKeyboardKey.keyF, meta: true):
+              const _ChatFindToggleIntent(),
+        },
+        child: Actions(
+          actions: <Type, Action<Intent>>{
+            _ChatFindToggleIntent: CallbackAction<_ChatFindToggleIntent>(
+              onInvoke: (_) {
+                _toggleFind();
+                return null;
+              },
+            ),
+          },
+          child: MultiBlocListener(
       listeners: [
         BlocListener<ChatCubit, ChatState>(
           listenWhen: (previous, current) =>
@@ -1408,7 +1491,10 @@ class _SessionChatViewState extends State<SessionChatView> {
                             // Full-bleed scroll surface: margins beside the text
                             // column still receive wheel / drag. Message width is
                             // capped inside SessionHistoryThread.
-                            child: AiToolFileActionsScope(
+                            child: Stack(
+                              children: [
+                                Positioned.fill(
+                                  child: AiToolFileActionsScope(
                               actions: AiToolFileActions(
                                 onOpenFile: (target) async {
                                   final fs =
@@ -1580,8 +1666,10 @@ class _SessionChatViewState extends State<SessionChatView> {
                                                 onLoadOlder:
                                                     historySeat.loadOlder,
                                                 liveChrome: liveChrome,
-                                                highlightMessageId: null,
-                                                revealRequest: null,
+                                                highlightMessageId:
+                                                    _findHighlightId,
+                                                revealRequest:
+                                                    _revealController,
                                               ),
                                             ),
                                           );
@@ -1640,6 +1728,22 @@ class _SessionChatViewState extends State<SessionChatView> {
                                   ),
                                 ),
                               ),
+                                  ),
+                                ),
+                                if (_findVisible)
+                                  Positioned(
+                                    left: 0,
+                                    right: 0,
+                                    top: 0,
+                                    child: ChatFindBar(
+                                      controller: _findController,
+                                      queryController: _findQueryController,
+                                      focusNode: _findFocusNode,
+                                      onNavigate: _navigateFindTo,
+                                      onClose: _closeFind,
+                                    ),
+                                  ),
+                              ],
                             ),
                           ),
                           if (top == null)
@@ -1860,6 +1964,9 @@ class _SessionChatViewState extends State<SessionChatView> {
               },
             );
           },
+        ),
+      ),
+          ),
         ),
       ),
     );

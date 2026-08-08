@@ -3122,5 +3122,12 @@
   "cliTaskStatusCompleted": "Done",
   "cliTaskStatusCancelled": "Cancelled",
   "cliTaskStatusUnknown": "Unknown",
-  "cliTaskBoardShowLess": "Show less"
+  "cliTaskBoardShowLess": "Show less",
+  "chatFindHint": "Find in conversation",
+  "chatFindNoResults": "No matches",
+  "chatFindResults": "Matches",
+  "chatFindLoading": "Loading conversation…",
+  "chatFindPrevious": "Previous match",
+  "chatFindNext": "Next match",
+  "chatFindClose": "Close find"
 }
