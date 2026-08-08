@@ -143,6 +143,20 @@ class ManifestFilesystem implements Filesystem {
     await writeString(path, utf8.decode(bytes, allowMalformed: true));
   }
 
+  /// Overlay-only write: seeds `_overlayFiles` so a later read in the same
+  /// staging pass sees the content, but records **no** manifest entry.
+  ///
+  /// Used by `copyTree` to mirror a copied tree into the overlay. Recording
+  /// per-file `ManifestWriteFile` entries here would re-write every copied
+  /// file with the default mode at flush, stripping the source's executable
+  /// bit (e.g. superpowers `hooks/run-hook.cmd`); the `ManifestCopyTree`
+  /// entry already applies the real copy (mode-preserving) at flush.
+  Future<void> _writeOverlayOnly(String path, List<int> bytes) async {
+    path = _normalize(path);
+    await ensureDir(pathContext.dirname(path));
+    _overlayFiles[path] = utf8.decode(bytes, allowMalformed: true);
+  }
+
   @override
   Future<List<int>?> readBytesRange(
     String path,
@@ -259,7 +273,8 @@ class ManifestFilesystem implements Filesystem {
     final sourceStat = await stat(source);
     if (sourceStat.isFile) {
       final bytes = await readBytes(source);
-      if (bytes != null) await writeBytes(destination, bytes);
+      // Overlay-only: no manifest entry (see [_writeOverlayOnly]).
+      if (bytes != null) await _writeOverlayOnly(destination, bytes);
       return;
     }
     if (sourceStat.isSymlink) {
