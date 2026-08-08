@@ -136,6 +136,8 @@ Future<void> _writeRunFixtures(
 }
 
 void main() {
+  setUp(ClaudeWorkflowResolver.clearWorkflowCache);
+
   const part = AiToolCallPart(
     toolCallId: _toolCallId,
     toolName: 'Workflow',
@@ -229,4 +231,97 @@ void main() {
     expect(isWorkflowTool(null), isFalse);
     expect(isWorkflowTool(''), isFalse);
   });
+
+  test('unchanged run reuses parsed agents across resolves (no re-read)',
+      () async {
+    final workflowsDir = claudeWorkflowsDirFor(_parentPath);
+    final runDir = claudeWorkflowRunDirFor(_parentPath, runId: _runId);
+    final fs = _CountingReadFilesystem();
+    await fs.writeString(_parentPath, _parentJsonl(_toolCallId, _taskId));
+    await _writeRunFixtures(fs);
+    fs.setMtime(_parentPath, DateTime.utc(2026, 8, 7, 10));
+    fs.setMtime(
+      '$workflowsDir/$_runId.json',
+      DateTime.utc(2026, 8, 7, 10, 1),
+    );
+    fs.setMtime('$runDir/agent-agent-0a.jsonl', DateTime.utc(2026, 8, 7, 10, 2));
+    fs.setMtime('$runDir/agent-agent-1a.jsonl', DateTime.utc(2026, 8, 7, 10, 3));
+    fs.setMtime('$runDir/journal.jsonl', DateTime.utc(2026, 8, 7, 10, 4));
+
+    final first = await _resolve(fs: fs, part: part);
+    expect(first!.workflow!.agents, hasLength(2));
+
+    fs.agentReads.clear();
+    final second = await _resolve(fs: fs, part: part);
+    expect(second!.workflow!.agents, hasLength(2));
+    expect(second.workflow!.agents.first.role, contains('Implementer'));
+    expect(fs.agentReads, isEmpty,
+        reason: 'unchanged agent files must be reused, not re-read');
+  });
+
+  test('appended agent transcript is re-parsed; unchanged ones reused',
+      () async {
+    final workflowsDir = claudeWorkflowsDirFor(_parentPath);
+    final runDir = claudeWorkflowRunDirFor(_parentPath, runId: _runId);
+    final fs = _CountingReadFilesystem();
+    await fs.writeString(_parentPath, _parentJsonl(_toolCallId, _taskId));
+    await _writeRunFixtures(fs);
+    fs.setMtime(_parentPath, DateTime.utc(2026, 8, 7, 10));
+    fs.setMtime(
+      '$workflowsDir/$_runId.json',
+      DateTime.utc(2026, 8, 7, 10, 1),
+    );
+    fs.setMtime('$runDir/agent-agent-0a.jsonl', DateTime.utc(2026, 8, 7, 10, 2));
+    fs.setMtime('$runDir/agent-agent-1a.jsonl', DateTime.utc(2026, 8, 7, 10, 3));
+    fs.setMtime('$runDir/journal.jsonl', DateTime.utc(2026, 8, 7, 10, 4));
+
+    final first = await _resolve(fs: fs, part: part);
+    expect(first!.workflow!.agents, hasLength(2));
+
+    fs.agentReads.clear();
+    await fs.writeString(
+      '$runDir/agent-agent-0a.jsonl',
+      _agentJsonl('You are the Implementer for task 0 (updated)', 'done 0 v2'),
+    );
+    fs.setMtime('$runDir/agent-agent-0a.jsonl', DateTime.utc(2026, 8, 7, 10, 5));
+
+    final second = await _resolve(fs: fs, part: part);
+    expect(second!.workflow!.agents, hasLength(2));
+    expect(fs.agentReads, contains('$runDir/agent-agent-0a.jsonl'),
+        reason: 'the grown agent must be re-read');
+    expect(fs.agentReads, isNot(contains('$runDir/agent-agent-1a.jsonl')),
+        reason: 'the unchanged agent must be reused');
+    expect(second.workflow!.agents.first.role, contains('updated'));
+  });
+}
+
+class _MtimeFilesystem extends InMemoryFilesystem {
+  final Map<String, DateTime> mtimes = {};
+
+  void setMtime(String path, DateTime mtime) => mtimes[path] = mtime;
+
+  @override
+  Future<FsStat> stat(String path) async {
+    final base = await super.stat(path);
+    if (!base.exists) return base;
+    return FsStat(
+      kind: base.kind,
+      size: base.size,
+      mtime: mtimes[path],
+    );
+  }
+}
+
+class _CountingReadFilesystem extends _MtimeFilesystem {
+  final Set<String> agentReads = {};
+
+  @override
+  Future<String?> readString(String path) async {
+    if (path.contains('/subagents/workflows/') &&
+        path.endsWith('.jsonl') &&
+        !path.endsWith('journal.jsonl')) {
+      agentReads.add(path);
+    }
+    return super.readString(path);
+  }
 }

@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:ai_message_core/ai_message_core.dart';
+import 'package:meta/meta.dart';
 
 import '../../../../io/filesystem.dart';
 import '../../../../session/session_history_context.dart';
@@ -30,8 +31,33 @@ bool isWorkflowTool(String? toolName) {
 /// A run that never materialized (cancelled / stopped immediately) has no
 /// `taskId` notification or no agent transcripts — [resolve] returns null and
 /// the inflater falls back to the tool result.
+///
+/// ## Incremental resolution
+///
+/// The history loader re-inflates subagent attachments on every live refresh
+/// (cache token = parent transcript mtime, which changes on each append while
+/// a workflow runs). To avoid re-reading + re-parsing everything every ~750ms,
+/// this resolver memoizes per parent transcript path:
+///
+///   * the `<task-notification>` index and run-record index — rebuilt only when
+///     the parent transcript changes;
+///   * per-agent parsed transcripts, validated by file (mtime, size) — a run
+///     that has not changed is reused instead of re-parsed, so a live run only
+///     pays for agents that actually grew.
+///
+/// [clearWorkflowCache] releases the memo (and is called by tests).
 final class ClaudeWorkflowResolver {
   const ClaudeWorkflowResolver();
+
+  static const int _maxCachedParents = 4;
+  static final Map<String, _WorkflowCache> _byParent = {};
+  static final List<String> _lru = <String>[];
+
+  @visibleForTesting
+  static void clearWorkflowCache() {
+    _byParent.clear();
+    _lru.clear();
+  }
 
   Future<SubagentSideResolveResult?> resolve({
     required AiToolCallPart part,
@@ -42,16 +68,23 @@ final class ClaudeWorkflowResolver {
     if (parentPath == null) return null;
     if (part.toolCallId.trim().isEmpty) return null;
 
-    final taskId = await _taskIdForToolUse(ctx, parentPath, part.toolCallId);
+    final cache = await _entryFor(ctx, parentPath);
+    final taskId = cache.taskNotifications[part.toolCallId];
     if (taskId == null) return null;
 
-    final runRecord = await _runRecordForTaskId(ctx, parentPath, taskId);
+    final runRecord = cache.runRecords[taskId];
     if (runRecord == null) return null;
 
     final runId = _trimmed(runRecord['runId']);
     if (runId == null) return null;
 
-    final agents = await _loadAgents(ctx, parentPath, runId, part.toolCallId);
+    final agents = await _agentsFor(
+      ctx,
+      cache,
+      parentPath,
+      runId,
+      part.toolCallId,
+    );
 
     final info = SubagentWorkflowInfo(
       runId: runId,
@@ -72,15 +105,52 @@ final class ClaudeWorkflowResolver {
     );
   }
 
-  Future<String?> _taskIdForToolUse(
+  /// Returns the per-parent cache, rebuilding the notification/run-record
+  /// indexes only when the parent transcript changed, and carrying over the
+  /// per-agent caches (each still validated by mtime on reuse).
+  static Future<_WorkflowCache> _entryFor(
     SessionHistoryContext ctx,
     String parentPath,
-    String toolCallId,
   ) async {
+    _lru.remove(parentPath);
+    _lru.add(parentPath);
+
+    final stat = await ctx.fs.stat(parentPath);
+    final key = _statKey(stat);
+    final existing = _byParent[parentPath];
+    if (existing != null && existing.key != null && existing.key == key) {
+      return existing;
+    }
+
+    final previous = existing;
     final content = await ctx.fs.readString(parentPath);
-    if (content == null) return null;
-    final notifications = _taskNotifications(content);
-    return notifications[toolCallId];
+    final entry = _WorkflowCache(
+      key: key,
+      taskNotifications: content == null
+          ? const {}
+          : _taskNotifications(content),
+      runRecords: await _scanRunRecords(ctx, parentPath),
+    );
+    if (previous != null) {
+      entry.agentsByPath.addAll(previous.agentsByPath);
+      entry.journalByPath.addAll(previous.journalByPath);
+    }
+    _byParent[parentPath] = entry;
+    _evictIfNeeded();
+    return entry;
+  }
+
+  static void _evictIfNeeded() {
+    while (_byParent.length > _maxCachedParents && _lru.isNotEmpty) {
+      final oldest = _lru.removeAt(0);
+      _byParent.remove(oldest);
+    }
+  }
+
+  static String? _statKey(FsStat stat) {
+    final mtime = stat.mtime;
+    if (mtime == null) return null;
+    return '${mtime.toUtc().toIso8601String()}:${stat.size ?? -1}';
   }
 
   static Map<String, String> _taskNotifications(String content) {
@@ -98,17 +168,18 @@ final class ClaudeWorkflowResolver {
     return out;
   }
 
-  Future<Map<String, Object?>?> _runRecordForTaskId(
+  /// Indexes every run record `workflows/wf_*.json` by its `taskId`.
+  static Future<Map<String, Map<String, Object?>>> _scanRunRecords(
     SessionHistoryContext ctx,
     String parentPath,
-    String taskId,
   ) async {
+    final out = <String, Map<String, Object?>>{};
     final workflowsDir = claudeWorkflowsDirFor(parentPath);
     List<FsDirEntry> entries;
     try {
       entries = await ctx.fs.listDir(workflowsDir);
     } catch (_) {
-      return null;
+      return out;
     }
     for (final entry in entries) {
       if (entry.isDirectory || !entry.name.endsWith('.json')) continue;
@@ -118,13 +189,16 @@ final class ClaudeWorkflowResolver {
       if (content == null) continue;
       final decoded = _tryDecodeObject(content);
       if (decoded == null) continue;
-      if (_trimmed(decoded['taskId']) == taskId) return decoded;
+      final taskId = _trimmed(decoded['taskId']);
+      if (taskId == null) continue;
+      out[taskId] = decoded;
     }
-    return null;
+    return out;
   }
 
-  Future<List<SubagentWorkflowAgent>> _loadAgents(
+  Future<List<SubagentWorkflowAgent>> _agentsFor(
     SessionHistoryContext ctx,
+    _WorkflowCache cache,
     String parentPath,
     String runId,
     String parentToolCallId,
@@ -137,7 +211,7 @@ final class ClaudeWorkflowResolver {
       return const [];
     }
 
-    final journal = await _readJournal(ctx, runDir);
+    final journal = await _journalFor(ctx, cache, runDir);
     final path = ctx.fs.pathContext;
     final agents = <SubagentWorkflowAgent>[];
     for (final entry in entries) {
@@ -152,23 +226,15 @@ final class ClaudeWorkflowResolver {
       if (agentId.isEmpty) continue;
 
       final filePath = path.join(runDir, name);
-      final content = await ctx.fs.readString(filePath);
-      if (content == null) continue;
-
-      final messages = parseClaudeCompatibleJsonl(
-        content,
-        fallbackId: () => 'workflow-agent-$agentId-$parentToolCallId',
+      final agent = await _agentFor(
+        ctx,
+        cache,
+        filePath,
+        agentId,
+        parentToolCallId,
+        journal,
       );
-      final j = journal[agentId];
-      agents.add(
-        SubagentWorkflowAgent(
-          agentId: agentId,
-          role: _roleFromFirstUser(messages),
-          status: j?.status,
-          messages: messages,
-          handle: SubagentFileHandle(filePath),
-        ),
-      );
+      if (agent != null) agents.add(agent);
     }
     agents.sort(
       (a, b) =>
@@ -179,9 +245,61 @@ final class ClaudeWorkflowResolver {
     return agents;
   }
 
+  /// Parses one agent transcript unless the file is unchanged since it was
+  /// last parsed (validated by mtime + size).
+  Future<SubagentWorkflowAgent?> _agentFor(
+    SessionHistoryContext ctx,
+    _WorkflowCache cache,
+    String filePath,
+    String agentId,
+    String parentToolCallId,
+    Map<String, _AgentJournal> journal,
+  ) async {
+    final stat = await ctx.fs.stat(filePath);
+    final key = _statKey(stat);
+    final cached = cache.agentsByPath[filePath];
+    if (key != null && cached != null && cached.key == key) {
+      return cached.agent;
+    }
+
+    final content = await ctx.fs.readString(filePath);
+    if (content == null) return null;
+    final messages = parseClaudeCompatibleJsonl(
+      content,
+      fallbackId: () => 'workflow-agent-$agentId-$parentToolCallId',
+    );
+    final j = journal[agentId];
+    final agent = SubagentWorkflowAgent(
+      agentId: agentId,
+      role: _roleFromFirstUser(messages),
+      status: j?.status,
+      messages: messages,
+      handle: SubagentFileHandle(filePath),
+    );
+    cache.agentsByPath[filePath] = _CachedAgent(key: key, agent: agent);
+    return agent;
+  }
+
+  Future<Map<String, _AgentJournal>> _journalFor(
+    SessionHistoryContext ctx,
+    _WorkflowCache cache,
+    String runDir,
+  ) async {
+    final journalPath = ctx.fs.pathContext.join(runDir, 'journal.jsonl');
+    final stat = await ctx.fs.stat(journalPath);
+    final key = _statKey(stat);
+    final cached = cache.journalByPath[journalPath];
+    if (key != null && cached != null && cached.key == key) {
+      return cached.map;
+    }
+    final map = await _readJournal(ctx, runDir);
+    cache.journalByPath[journalPath] = _CachedJournal(key: key, map: map);
+    return map;
+  }
+
   /// Journal lines: `{"type":"started"|"result","agentId":…,"result":{…}}`.
   /// Keeps the last result per agent plus its first-seen order.
-  Future<Map<String, _AgentJournal>> _readJournal(
+  static Future<Map<String, _AgentJournal>> _readJournal(
     SessionHistoryContext ctx,
     String runDir,
   ) async {
@@ -301,6 +419,39 @@ final class ClaudeWorkflowResolver {
     if (ms == null) return null;
     return Duration(milliseconds: ms);
   }
+}
+
+class _WorkflowCache {
+  _WorkflowCache({
+    required this.key,
+    required this.taskNotifications,
+    required this.runRecords,
+  });
+
+  /// Parent transcript (mtime, size); null when unkeyable (never reused).
+  final String? key;
+  final Map<String, String> taskNotifications;
+  final Map<String, Map<String, Object?>> runRecords;
+
+  /// Parsed agent transcripts by file path, validated by (mtime, size).
+  final Map<String, _CachedAgent> agentsByPath = {};
+
+  /// Parsed per-run journals by journal file path.
+  final Map<String, _CachedJournal> journalByPath = {};
+}
+
+class _CachedAgent {
+  _CachedAgent({required this.key, required this.agent});
+
+  final String? key;
+  final SubagentWorkflowAgent agent;
+}
+
+class _CachedJournal {
+  _CachedJournal({required this.key, required this.map});
+
+  final String? key;
+  final Map<String, _AgentJournal> map;
 }
 
 class _AgentJournal {
