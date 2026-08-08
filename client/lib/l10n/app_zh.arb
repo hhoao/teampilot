@@ -294,6 +294,7 @@
   "teamModeMixedTitle": "混合模式",
   "teamModeNativeDescription": "全部成员共用同一个 CLI，原生协同，配置简单。",
   "teamModeMixedDescription": "不同成员可使用不同 CLI，通过 TeamBus 跨工具协作。",
+  "teamHubCloneOptionsTitle": "克隆选项",
   "homeWorkspaceNewWorkspaceSubtitle": "选择工作区的工作目录，并为它命名。",
   "homeWorkspaceNewWorkspaceDirectoryLabel": "工作区目录",
   "homeWorkspaceNewWorkspaceChooseDirectory": "选择文件夹",

@@ -761,6 +761,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get teamModeMixedDescription => '不同成员可使用不同 CLI，通过 TeamBus 跨工具协作。';
 
   @override
+  String get teamHubCloneOptionsTitle => '克隆选项';
+
+  @override
   String get homeWorkspaceNewWorkspaceSubtitle => '选择工作区的工作目录，并为它命名。';
 
   @override
