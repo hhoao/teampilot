@@ -167,7 +167,7 @@ git commit -m "refactor(history): expose appendClaudeJsonlEvent for incremental 
   - `class TailRefreshResult { List<AiMessage> messages; String? pathKey; bool changed; bool fullReseek; }`
   - `class AiTranscriptTailer { Future<TailRefreshResult> refresh({required SessionHistoryContext ctx, required String seatKey, required String? transcriptPath, bool force = false}); void clear(); void remove(String seatKey); void removeWhere(bool Function(String) test); }`
 
-**Behavior (per spec S1):** state per seat = `{path, pathKey, byteOffset, raw, finalized}`. `refresh`: stat → `(mtime, size)`; read first line → `pathKey = '<mtimeIso>:<size>:<firstLineHash>'`. Full re-seek when `force` OR path changed OR `pathKey` changed OR `size < byteOffset`. Else if `size == byteOffset` → unchanged. Else read the tail, consume up to the last `\n`, `appendClaudeJsonlEvent` each line into `raw`, re-`finalize`, bump `byteOffset`.
+**Behavior (per spec S1):** state per seat = `{path, pathKey, byteOffset, raw, finalized}`. `refresh`: stat → `(mtime, size)`; read first line → `pathKey = firstLineFingerprint` (hash of the first line only — **not** mtime/size: those change on every append, and including them would make every delta refresh full-reseek, defeating the tailer). Full re-seek when `force` OR path changed OR `pathKey` changed OR `size < byteOffset`. Else if `size == byteOffset` → unchanged. Else read the tail, consume up to the last `\n`, `appendClaudeJsonlEvent` each line into `raw`, re-`finalize`, bump `byteOffset`. Rewrites (compaction, in-place) are caught by the shrink branch and/or the first-line change; a rewrite that keeps the first line byte-identical at the same size is an accepted edge.
 
 - [ ] **Step 1: Write the failing test** — create `client/test/services/session/ai_transcript_tailer_test.dart`:
 
@@ -583,9 +583,10 @@ final class AiTranscriptTailer {
   ) async {
     if (size <= 0) return '$size:0';
     final head = await ctx.fs.readBytesRange(path, 0, maxFirstLineBytes);
-    final mtime = stat.mtime;
-    final m = mtime?.toUtc().toIso8601String() ?? 'no-mtime';
-    return '$m:$size:${_firstLineFromBytes(head).hashCode}';
+    // First-line fingerprint only: stable across appends, so a pure append
+    // (mtime+size change) does NOT full-reseek. mtime/size must stay out of
+    // the key or every delta refresh would be a full re-seek.
+    return '${_firstLineFromBytes(head).hashCode}';
   }
 
   static String _firstLineFromBytes(List<int>? bytes) {

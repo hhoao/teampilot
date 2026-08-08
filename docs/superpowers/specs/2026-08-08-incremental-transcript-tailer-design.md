@@ -44,7 +44,7 @@ One tailer per (session, member, cli), owned by the loader. State:
 ```dart
 class AiTranscriptTailState {
   String? path;              // located transcript path
-  String? pathKey;           // '<mtime>:<size>:<firstLineHash>' replacement guard
+  String? pathKey;           // first-line fingerprint (NOT mtime/size) replacement guard
   int byteOffset;            // consumed prefix bytes
   List<AiMessage> raw;       // un-finalized messages accumulated so far
   List<AiMessage> finalized; // finalize(raw) — what the seat displays
@@ -70,7 +70,7 @@ class AiTranscriptTailState {
 ## S2 — Loader integration (`ai_history_loader.dart`)
 
 - `AiHistoryLoader` owns the `AiTranscriptTailer` per (session, member); `AiHistoryLoader.load` calls `tailer.refresh` instead of `locate` + `adapter.parse(bundle)`.
-- Cache token becomes the tailer `pathKey` (`(mtime, size, firstLineHash)`) — the seat's existing token short-circuit keeps working, and a token change no longer implies a full re-parse.
+- The loader keeps its own mtime-based token gate (an unchanged transcript skips `locate` entirely); the tailer's `pathKey` (first-line fingerprint, stable across appends) is used internally for its replacement guard, and a tailer `changed` result gates enrich+inflate. A token change no longer implies a full re-parse.
 - `force: true` (initial open, `invalidateAndReload`) → full re-seek.
 - `AiTranscriptAdapter` (`ai_message_core/lib/src/transcript_adapter.dart`) gains an incremental entry point. All five adapters (claude, flashskyai, codex, opencode, cursor) keep a full `parse(bundle)`; only Claude/flashskyai (JSONL, append-only) wire the delta path first. Codex/opencode/cursor fall back to full parse on any change until their adapters support incremental — the tailer still saves them the unchanged-file case.
 
