@@ -5,6 +5,7 @@ import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/services/cli/registry/capabilities/history/claude_ai_transcript.dart';
+import 'package:teampilot/services/cli/registry/capabilities/history/claude_compatible_jsonl.dart';
 import 'package:teampilot/services/session/ai_history_watch_meta.dart';
 import 'package:teampilot/services/session/session_history_context.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
@@ -179,6 +180,63 @@ not-json
       );
     },
   );
+
+  test('appendClaudeJsonlEvent merges streamed assistant lines across calls',
+      () {
+    final messages = <AiMessage>[];
+    expect(
+      appendClaudeJsonlEvent(
+        messages,
+        {
+          'type': 'assistant',
+          'message': {
+            'role': 'assistant',
+            'content': [
+              {'type': 'text', 'text': 'hello'},
+            ],
+            'id': 'msg-1',
+          },
+          'uuid': 'a1',
+        },
+        fallbackId: () => 'fb',
+      ),
+      isTrue,
+    );
+    expect(
+      appendClaudeJsonlEvent(
+        messages,
+        {
+          'type': 'assistant',
+          'message': {
+            'role': 'assistant',
+            'content': [
+              {'type': 'text', 'text': ' world'},
+            ],
+            'id': 'msg-1',
+          },
+          'uuid': 'a2',
+        },
+        fallbackId: () => 'fb',
+      ),
+      isTrue,
+    );
+    expect(messages, hasLength(1));
+    expect(
+      messages.single.parts.map((p) => (p as AiTextPart).text).join(),
+      'hello world',
+    );
+  });
+
+  test('appendClaudeJsonlEvent skips noise records', () {
+    expect(
+      appendClaudeJsonlEvent(
+        [],
+        {'type': 'queue-operation', 'operation': 'enqueue'},
+        fallbackId: () => 'fb',
+      ),
+      isFalse,
+    );
+  });
 }
 
 List<int> utf8Bytes(String s) => utf8.encode(s);

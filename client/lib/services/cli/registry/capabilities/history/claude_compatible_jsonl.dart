@@ -2,27 +2,7 @@ import 'dart:convert';
 
 import 'package:ai_message_core/ai_message_core.dart';
 
-/// Shared Claude Code / flashskyai JSONL → [AiMessage] parser.
-///
-/// Real transcripts stream one logical assistant turn across multiple lines that
-/// share [message.id] (different event `uuid`s). We merge those into one
-/// [AiMessage]. `thinking` blocks become [AiReasoningPart].
-List<AiMessage> parseClaudeCompatibleJsonl(
-  String content, {
-  required String Function() fallbackId,
-}) {
-  final messages = <AiMessage>[];
-  for (final line in const LineSplitter().convert(content)) {
-    final trimmed = line.trim();
-    if (trimmed.isEmpty) continue;
-    final event = _tryDecodeObject(trimmed);
-    if (event == null) continue;
-    _appendFromEvent(messages, event, fallbackId: fallbackId);
-  }
-  return finalizeAiMessagesForHistory(messages);
-}
-
-Map<String, dynamic>? _tryDecodeObject(String line) {
+Map<String, dynamic>? tryDecodeJsonlLine(String line) {
   try {
     final decoded = jsonDecode(line);
     if (decoded is Map<String, dynamic>) return decoded;
@@ -33,16 +13,20 @@ Map<String, dynamic>? _tryDecodeObject(String line) {
   return null;
 }
 
-void _appendFromEvent(
+/// Appends/merges one decoded event into [messages]. Returns false for noise
+/// records that carry no display content. Streamed assistant partials sharing
+/// a logical `message.id` merge into the previous message. Used by both the
+/// full parser and the incremental tailer.
+bool appendClaudeJsonlEvent(
   List<AiMessage> messages,
   Map<String, dynamic> event, {
   required String Function() fallbackId,
 }) {
   final type = event['type'];
-  if (type != 'user' && type != 'assistant') return;
+  if (type != 'user' && type != 'assistant') return false;
 
   final message = event['message'];
-  if (message is! Map) return;
+  if (message is! Map) return false;
   final messageMap = Map<String, dynamic>.from(message);
   final content = messageMap['content'];
   final timestamp = _parseTimestamp(event['timestamp']);
@@ -50,7 +34,7 @@ void _appendFromEvent(
 
   if (content is String) {
     final text = content.trim();
-    if (text.isEmpty) return;
+    if (text.isEmpty) return false;
     _addOrMerge(
       messages,
       AiMessage(
@@ -60,10 +44,10 @@ void _appendFromEvent(
         createdAt: timestamp,
       ),
     );
-    return;
+    return true;
   }
 
-  if (content is! List) return;
+  if (content is! List) return false;
 
   final textParts = <AiMessagePart>[];
   final toolParts = <AiToolCallPart>[];
@@ -74,8 +58,8 @@ void _appendFromEvent(
     final blockMap = Map<String, dynamic>.from(block);
     switch (blockMap['type']) {
       case 'text':
-        final text = '${blockMap['text'] ?? ''}'.trim();
-        if (text.isNotEmpty) {
+        final text = '${blockMap['text'] ?? ''}';
+        if (text.trim().isNotEmpty) {
           textParts.add(AiTextPart(text: text));
         }
       case 'thinking':
@@ -120,7 +104,7 @@ void _appendFromEvent(
     ...textParts,
     if (type == 'assistant') ...toolParts,
   ];
-  if (parts.isEmpty) return;
+  if (parts.isEmpty) return false;
 
   _addOrMerge(
     messages,
@@ -131,6 +115,27 @@ void _appendFromEvent(
       createdAt: timestamp,
     ),
   );
+  return true;
+}
+
+/// Shared Claude Code / flashskyai JSONL → [AiMessage] parser.
+///
+/// Real transcripts stream one logical assistant turn across multiple lines that
+/// share [message.id] (different event `uuid`s). We merge those into one
+/// [AiMessage]. `thinking` blocks become [AiReasoningPart].
+List<AiMessage> parseClaudeCompatibleJsonl(
+  String content, {
+  required String Function() fallbackId,
+}) {
+  final messages = <AiMessage>[];
+  for (final line in const LineSplitter().convert(content)) {
+    final trimmed = line.trim();
+    if (trimmed.isEmpty) continue;
+    final event = tryDecodeJsonlLine(trimmed);
+    if (event == null) continue;
+    appendClaudeJsonlEvent(messages, event, fallbackId: fallbackId);
+  }
+  return finalizeAiMessagesForHistory(messages);
 }
 
 /// Prefer Claude/flashskyai `message.id` so streamed partial lines coalesce.
