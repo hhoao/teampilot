@@ -184,7 +184,7 @@ final class AiHistoryLoader {
       if (bundle != null && parentPath != null && !tail.changed) {
         _tokens[cacheKey] = token ?? 'unchanged-$cacheKey';
         return AiHistoryLoadResult(
-          messages: messages,
+          messages: _messages[cacheKey] ?? const [],
           subagentAttachments: _attachments[cacheKey] ?? const {},
         );
       }

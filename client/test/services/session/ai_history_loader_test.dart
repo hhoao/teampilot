@@ -392,6 +392,71 @@ void main() {
     expect(result.messages.single.id, 'enriched');
   });
 
+  test('unchanged reload returns cached enriched messages, not the raw tail',
+      () async {
+    // Seed a transcript carrying the truncation sentinel so the first load
+    // enriches (storing the enriched list in _messages), then bump the cache
+    // token while leaving bytes byte-identical so the second load hits the
+    // tailer's unchanged branch and must hand back the enriched messages.
+    final bucket = RuntimeLayout.workspaceBucketForPrimaryPath('/work/project');
+    final session = simpleSession();
+    final toolRoot = layout.sessionRuntimeToolDir(
+      'ws-1',
+      session.sessionId,
+      'claude',
+    );
+    final projects = p.join(toolRoot, 'projects', bucket);
+    await Directory(projects).create(recursive: true);
+    final path = p.join(projects, '${session.sessionId}.jsonl');
+    final fixture = await File(
+      'test/fixtures/session_history/claude/truncated_bash.jsonl',
+    ).readAsBytes();
+    await File(path).writeAsBytes(fixture);
+
+    final enricher = _RecordingEnricher();
+    final registry = fakeAiHistoryRegistry(
+      cli: CliTool.claude,
+      adapter: _EchoAdapter(),
+      toolResultEnricher: enricher,
+      locate: (_) async => AiTranscriptBundle(
+        adapterId: 'claude',
+        fragments: const [
+          AiTranscriptFragment(name: 't.jsonl', bytes: [1, 2, 3]),
+        ],
+        hints: AiHistoryWatchMeta(
+          changeWatchRoot: p.dirname(path),
+          cacheTokenPaths: [path],
+        ).toHints(),
+      ),
+    );
+    final loader = buildLoader(registry: registry);
+    final ctx = launchContextFor(session);
+
+    mtimeToken = 'mtime-1';
+    final first = await loader.load(
+      session: session,
+      memberId: '',
+      launchContext: ctx,
+    );
+    expect(first.messages.single.id, 'enriched');
+
+    mtimeToken = 'mtime-2';
+    File(path).setLastModifiedSync(
+      DateTime.now().add(const Duration(seconds: 2)),
+    );
+    final second = await loader.load(
+      session: session,
+      memberId: '',
+      launchContext: ctx,
+    );
+    expect(
+      second.messages.single.id,
+      'enriched',
+      reason: 'unchanged reload must return cached enriched messages, not the raw tail',
+    );
+    expect(enricher.calls, 1, reason: 'unchanged reload must not re-enrich');
+  });
+
   test('appended transcript lines surface on reload; unchanged reload reuses attachments',
       () async {
     mtimeToken = 'mtime-1';

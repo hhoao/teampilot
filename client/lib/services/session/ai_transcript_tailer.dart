@@ -71,10 +71,19 @@ final class AiTranscriptTailer {
         state.pathKey != pathKey ||
         size < state.byteOffset;
     if (fullReseek) {
-      final content = await ctx.fs.readString(path);
+      // Consume complete lines only and defer any trailing partial line (and
+      // any trailing partial multi-byte char) to the delta path: land byteOffset
+      // on the byte after the last '\n' so the next delta starts at a valid
+      // boundary instead of mid-code-point.
+      final content = await ctx.fs.readBytes(path);
       state.raw.clear();
       if (content != null) {
-        for (final line in const LineSplitter().convert(content)) {
+        final lastNl = content.lastIndexOf(0x0A);
+        final consumed =
+            lastNl < 0 ? const <int>[] : content.sublist(0, lastNl + 1);
+        state.byteOffset = lastNl < 0 ? 0 : lastNl + 1;
+        final text = utf8.decode(consumed, allowMalformed: true);
+        for (final line in const LineSplitter().convert(text)) {
           final trimmed = line.trim();
           if (trimmed.isEmpty) continue;
           final event = tryDecodeJsonlLine(trimmed);
@@ -89,7 +98,6 @@ final class AiTranscriptTailer {
       state
         ..path = path
         ..pathKey = pathKey
-        ..byteOffset = size < 0 ? 0 : size
         ..finalized = finalizeAiMessagesForHistory(state.raw);
       return TailRefreshResult(
         messages: state.finalized,
@@ -132,8 +140,9 @@ final class AiTranscriptTailer {
     }
     final consumed = tail.sublist(0, lastNl + 1);
     state.byteOffset += consumed.length;
-    // Ends at '\n' (0x0A), so this is always a valid UTF-8 boundary.
-    final content = utf8.decode(consumed);
+    // Ends at '\n' (0x0A), so this is always a valid UTF-8 boundary; tolerate
+    // stray malformed bytes (defense-in-depth, mirrors readString/the enricher).
+    final content = utf8.decode(consumed, allowMalformed: true);
     for (final line in const LineSplitter().convert(content)) {
       final trimmed = line.trim();
       if (trimmed.isEmpty) continue;
