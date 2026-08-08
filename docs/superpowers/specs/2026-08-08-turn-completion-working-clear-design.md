@@ -276,3 +276,22 @@ Phase 5 — full verification
 - "waiting not cleared by fallback" asserted in every CLI case.
 - simple cases assert `liveChrome.none` (UI-level), not just internal state.
 - Each phase runs its own test set before moving on.
+
+## Investigation findings (2026-08-09)
+
+**Cursor `stop` hook, simple mode.** `CursorHomeProvisioner.provision` with a
+stamped `agentStatus` endpoint writes `~/.cursor/hooks.json` including a
+`stop` entry whose script POSTs `/agent-status?event=stop` (verified by
+`cursor_stop_hook_investigation_test.dart`). So the `stop`→done path is fully
+wired at install time. The unreliability in interactive mode is that
+cursor-agent emits `stop` only when its agent loop ends — an interactive
+composer session keeps that loop open between turns — so the event does not
+arrive per conversation turn. The PTY-quiet fallback
+(`ChatCubit._onTurnEnded`) is therefore the reliable simple-mode clear, and
+cursor's `requiresPtyFallback=true` remains the correct declaration.
+
+**`/idle`→bus scoping.** The `/idle` handler now calls
+`handler.notifyIdle` only for push-delivery CLIs (`isPushDelivery`). For
+forceWait CLIs the turn must still end only on `wait_for_message` park —
+ending it at the Stop-hook would double-deliver coordination messages and
+contradicts existing mixed-mode tests.
