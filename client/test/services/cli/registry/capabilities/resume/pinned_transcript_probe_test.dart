@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:path/path.dart' as p;
 import 'package:teampilot/services/cli/registry/capabilities/resume/pinned_transcript_probe.dart';
 import '../../../../../support/in_memory_filesystem.dart';
 
@@ -19,10 +18,10 @@ void main() {
         // listDir order, so the dir match shadowed the real file and the
         // Claude locator (requires isFile) then returned null → empty chat.
         await fs.ensureDir(
-          p.join(root, 'projects', '-client', sid, 'workflows'),
+          fs.pathContext.join(root, 'projects', '-client', sid, 'workflows'),
         );
         await fs.writeString(
-          p.join(root, 'projects', '-card', '$sid.jsonl'),
+          fs.pathContext.join(root, 'projects', '-card', '$sid.jsonl'),
           '{"type":"assistant","message":{"id":"a1","content":"hi"}}\n',
         );
 
@@ -35,7 +34,7 @@ void main() {
         );
 
         expect(result.exists, isTrue);
-        expect(result.matchedPath, p.join(root, 'projects', '-card', '$sid.jsonl'));
+        expect(result.matchedPath, fs.pathContext.join(root, 'projects', '-card', '$sid.jsonl'));
       },
     );
 
@@ -44,8 +43,8 @@ void main() {
       const root = '/layout';
       const sid = 'task-2';
 
-      await fs.ensureDir(p.join(root, 'projects', '-client', sid, 'workflows'));
-      await fs.ensureDir(p.join(root, 'projects', '-card', sid));
+      await fs.ensureDir(fs.pathContext.join(root, 'projects', '-client', sid, 'workflows'));
+      await fs.ensureDir(fs.pathContext.join(root, 'projects', '-card', sid));
 
       final result = await probePinnedTranscript(
         fs: fs,
@@ -56,7 +55,7 @@ void main() {
       );
 
       expect(result.exists, isTrue);
-      expect(result.matchedPath, endsWith(p.join(sid)));
+      expect(result.matchedPath, endsWith(fs.pathContext.join(sid)));
     });
 
     test('respects the pinned bucket dir first when it has the file', () async {
@@ -64,9 +63,9 @@ void main() {
       const root = '/layout';
       const sid = 'task-3';
 
-      await fs.ensureDir(p.join(root, 'projects', '-client', sid, 'workflows'));
+      await fs.ensureDir(fs.pathContext.join(root, 'projects', '-client', sid, 'workflows'));
       await fs.writeString(
-        p.join(root, 'projects', 'main-bucket', '$sid.jsonl'),
+        fs.pathContext.join(root, 'projects', 'main-bucket', '$sid.jsonl'),
         '{"type":"user","message":{"id":"u1","content":"x"}}\n',
       );
 
@@ -79,7 +78,7 @@ void main() {
       );
 
       expect(result.exists, isTrue);
-      expect(result.matchedPath, p.join(root, 'projects', 'main-bucket', '$sid.jsonl'));
+      expect(result.matchedPath, fs.pathContext.join(root, 'projects', 'main-bucket', '$sid.jsonl'));
     });
 
     test(
@@ -91,7 +90,7 @@ void main() {
         const sid = 'task-4';
 
         // Only a workflow sidecar directory exists — no `.jsonl` anywhere.
-        await fs.ensureDir(p.join(root, 'projects', '-client', sid, 'workflows'));
+        await fs.ensureDir(fs.pathContext.join(root, 'projects', '-client', sid, 'workflows'));
 
         final result = await probePinnedTranscript(
           fs: fs,
@@ -116,9 +115,9 @@ void main() {
         const root = '/layout';
         const sid = 'task-5';
 
-        await fs.ensureDir(p.join(root, 'projects', '-client', sid, 'workflows'));
+        await fs.ensureDir(fs.pathContext.join(root, 'projects', '-client', sid, 'workflows'));
         await fs.writeString(
-          p.join(root, 'projects', '-card', '$sid.jsonl'),
+          fs.pathContext.join(root, 'projects', '-card', '$sid.jsonl'),
           '{"type":"assistant","message":{"id":"a1","content":"hi"}}\n',
         );
 
@@ -132,7 +131,7 @@ void main() {
         );
 
         expect(result.exists, isTrue);
-        expect(result.matchedPath, p.join(root, 'projects', '-card', '$sid.jsonl'));
+        expect(result.matchedPath, fs.pathContext.join(root, 'projects', '-card', '$sid.jsonl'));
       },
     );
 
@@ -145,9 +144,9 @@ void main() {
 
         // The pinned bucket has only a session dir (no file); a sibling
         // bucket has the real transcript.
-        await fs.ensureDir(p.join(root, 'projects', 'main-bucket', sid));
+        await fs.ensureDir(fs.pathContext.join(root, 'projects', 'main-bucket', sid));
         await fs.writeString(
-          p.join(root, 'projects', '-card', '$sid.jsonl'),
+          fs.pathContext.join(root, 'projects', '-card', '$sid.jsonl'),
           '{"type":"assistant","message":{"id":"a1","content":"hi"}}\n',
         );
 
@@ -161,7 +160,7 @@ void main() {
         );
 
         expect(result.exists, isTrue);
-        expect(result.matchedPath, p.join(root, 'projects', '-card', '$sid.jsonl'));
+        expect(result.matchedPath, fs.pathContext.join(root, 'projects', '-card', '$sid.jsonl'));
       },
     );
 
@@ -177,12 +176,12 @@ void main() {
         // lines, no conversation. The worktree bucket holds the real full
         // transcript for the same session id. The probe must pick the real one.
         await fs.writeString(
-          p.join(root, 'projects', 'main-bucket', '$sid.jsonl'),
+          fs.pathContext.join(root, 'projects', 'main-bucket', '$sid.jsonl'),
           '{"type":"last-prompt","lastPrompt":"hi","sessionId":"$sid"}\n'
           '{"type":"ai-title","aiTitle":"t","sessionId":"$sid"}\n',
         );
         await fs.writeString(
-          p.join(root, 'projects', 'worktree-bucket', '$sid.jsonl'),
+          fs.pathContext.join(root, 'projects', 'worktree-bucket', '$sid.jsonl'),
           '{"type":"assistant","message":{"id":"a1","content":"hi"}}\n'
           '{"type":"user","message":{"id":"u1","content":"hello"}}\n'
           '{"type":"assistant","message":{"id":"a2","content":"bye"}}\n',
@@ -200,7 +199,7 @@ void main() {
         expect(result.exists, isTrue);
         expect(
           result.matchedPath,
-          p.join(root, 'projects', 'worktree-bucket', '$sid.jsonl'),
+          fs.pathContext.join(root, 'projects', 'worktree-bucket', '$sid.jsonl'),
         );
       },
     );
@@ -211,11 +210,11 @@ void main() {
       const sid = 'task-8';
 
       await fs.writeString(
-        p.join(root, 'projects', 'main-bucket', '$sid.jsonl'),
+        fs.pathContext.join(root, 'projects', 'main-bucket', '$sid.jsonl'),
         '{"type":"last-prompt","lastPrompt":"hi","sessionId":"$sid"}\n',
       );
       await fs.writeString(
-        p.join(root, 'projects', 'worktree-bucket', '$sid.jsonl'),
+        fs.pathContext.join(root, 'projects', 'worktree-bucket', '$sid.jsonl'),
         '{"type":"assistant","message":{"id":"a1","content":"hi"}}\n'
         '{"type":"user","message":{"id":"u1","content":"hello"}}\n',
       );
@@ -231,7 +230,7 @@ void main() {
       expect(result.exists, isTrue);
       expect(
         result.matchedPath,
-        p.join(root, 'projects', 'worktree-bucket', '$sid.jsonl'),
+        fs.pathContext.join(root, 'projects', 'worktree-bucket', '$sid.jsonl'),
       );
     });
 
@@ -246,11 +245,11 @@ void main() {
         // first so it scans before the pinned one; the pinned bucket must win
         // regardless of listDir order.
         await fs.writeString(
-          p.join(root, 'projects', 'other-bucket', '$sid.jsonl'),
+          fs.pathContext.join(root, 'projects', 'other-bucket', '$sid.jsonl'),
           '{"type":"assistant","message":{"id":"a1","content":"x"}}\n',
         );
         await fs.writeString(
-          p.join(root, 'projects', 'main-bucket', '$sid.jsonl'),
+          fs.pathContext.join(root, 'projects', 'main-bucket', '$sid.jsonl'),
           '{"type":"assistant","message":{"id":"a1","content":"x"}}\n',
         );
 
@@ -265,7 +264,7 @@ void main() {
         expect(result.exists, isTrue);
         expect(
           result.matchedPath,
-          p.join(root, 'projects', 'main-bucket', '$sid.jsonl'),
+          fs.pathContext.join(root, 'projects', 'main-bucket', '$sid.jsonl'),
         );
       },
     );
@@ -279,8 +278,8 @@ void main() {
 
         // No `.jsonl` anywhere; two session dirs exist. The non-pinned one is
         // scanned first; the pinned bucket's dir must win the fallback.
-        await fs.ensureDir(p.join(root, 'projects', 'other-bucket', sid));
-        await fs.ensureDir(p.join(root, 'projects', 'main-bucket', sid));
+        await fs.ensureDir(fs.pathContext.join(root, 'projects', 'other-bucket', sid));
+        await fs.ensureDir(fs.pathContext.join(root, 'projects', 'main-bucket', sid));
 
         final result = await probePinnedTranscript(
           fs: fs,
@@ -293,7 +292,7 @@ void main() {
         expect(result.exists, isTrue);
         expect(
           result.matchedPath,
-          p.join(root, 'projects', 'main-bucket', sid),
+          fs.pathContext.join(root, 'projects', 'main-bucket', sid),
         );
       },
     );

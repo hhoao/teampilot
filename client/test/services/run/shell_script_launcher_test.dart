@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
@@ -198,6 +199,10 @@ void main() {
   });
 
   test('terminal branch opens, waits, injects; stop interrupts', () async {
+    if (Platform.isWindows) {
+      markTestSkipped('POSIX interpreter /bin/bash is not present on Windows');
+      return;
+    }
     final intents = <RunUiIntent>[];
     final bound = <({String entryId, String sessionId})>[];
     final launcher = RunShellScriptLauncher(
@@ -272,6 +277,10 @@ void main() {
   test(
     'terminal branch forwards preferTerminalEntryId to openForRun',
     () async {
+      if (Platform.isWindows) {
+        markTestSkipped('POSIX interpreter /bin/bash is not present on Windows');
+        return;
+      }
       final launcher = RunShellScriptLauncher(
         workspaceId: 'ws-1',
         terminalRunDeps: depsResolver,
@@ -313,6 +322,10 @@ void main() {
   );
 
   test('non-terminal branch delegates to ProcessRunExecutor', () async {
+    if (Platform.isWindows) {
+      markTestSkipped('POSIX interpreter /bin/bash is not present on Windows');
+      return;
+    }
     final spawned = <Map<String, Object?>>[];
     final intents = <RunUiIntent>[];
     final processHandle = _RecordingProcessHandle();

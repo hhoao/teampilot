@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
@@ -174,7 +176,10 @@ void main() {
       await tester.tap(find.byIcon(Icons.file_open_outlined));
       await tester.pump();
 
-      expect(opener!.openedPaths, ['/repo/a.txt']);
+      expect(
+        opener!.openedPaths,
+        [Platform.isWindows ? r'\repo\a.txt' : '/repo/a.txt'],
+      );
       expect(opener!.openedWorkspaceIds, ['ws-test']);
       // The opener must receive the backend filesystem (identical, not a copy)
       // so WSL/SSH workspace paths resolve against the backend.

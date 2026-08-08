@@ -12,7 +12,10 @@ void main() {
       owner: const WorkspaceFolder(path: '/proj', targetId: 'local'),
       cwd: r'${workspaceFolder}/app',
     );
-    expect(plan.workingDirectory, '/proj/app');
+    expect(
+      plan.workingDirectory,
+      Platform.isWindows ? r'\proj\app' : '/proj/app',
+    );
     expect(plan.runtimeTarget, RuntimeTarget.local());
     expect(plan.targetId, 'local');
     expect(plan.useWslPaths, isFalse);
@@ -31,7 +34,10 @@ void main() {
       cwd: r'${workspaceFolder}/${env:APP}',
       env: const {'APP': 'server'},
     );
-    expect(plan.workingDirectory, '/proj/server');
+    expect(
+      plan.workingDirectory,
+      Platform.isWindows ? r'\proj\server' : '/proj/server',
+    );
   });
 
   test('resolver returns wsl plan for wsl targetId', () {
