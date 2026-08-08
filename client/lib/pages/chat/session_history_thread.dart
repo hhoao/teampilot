@@ -592,15 +592,22 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                         retainMountedTurns: true,
                         fillDataWindow: true,
                         mountTurns: _mountTurns,
+                        // Rebuild turn bodies when the highlight target changes
+                        // so the ring moves even though the message list
+                        // instance is unchanged (see VirtualThreadViewport.buildKey).
+                        buildKey: widget.highlightMessageId,
                         revealMessageId: _revealTargetId,
                         revealEpoch: _revealEpoch,
                         onRevealOffset: (offset) {
                           if (!_scrollController.hasClients || offset < 0) {
                             return;
                           }
+                          // 16 = SingleChildScrollView top padding; the
+                          // delivered offset is viewport-space document pixels.
+                          final target = offset + 16;
                           final max =
                               _scrollController.position.maxScrollExtent;
-                          _jumpTo(offset > max ? max : offset);
+                          _jumpTo(target > max ? max : target);
                         },
                         suppressMeasureScrollCorrection: _stickToEnd,
                         onMeasureScrollCorrection: (delta) {

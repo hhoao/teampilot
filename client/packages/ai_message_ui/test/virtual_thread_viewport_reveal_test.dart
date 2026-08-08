@@ -124,4 +124,52 @@ void main() {
       expect(offsets.last, closeTo(headerHeight + 15 * 40, 0.001));
     },
   );
+
+  testWidgets(
+    'buildKey change re-runs cached messageBuilder (same message list)',
+    (tester) async {
+      final controller = ScrollController();
+      addTearDown(controller.dispose);
+      // Same instance across rebuilds — the normal find-navigation case where
+      // the seat's loaded list does not change.
+      final messages = _messages(20);
+      var builds = 0;
+
+      Future<void> pump(Object? buildKey) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: SingleChildScrollView(
+              controller: controller,
+              child: VirtualThreadViewport(
+                messages: messages,
+                scrollController: controller,
+                mountTurns: true,
+                // Mirrors SessionHistoryThread: retain+fill keeps the window
+                // monotonic so measurement syncs never shrink it and
+                // pumpAndSettle terminates once fill reaches the data window.
+                retainMountedTurns: true,
+                fillDataWindow: true,
+                buildKey: buildKey,
+                messageBuilder: (context, message) {
+                  builds++;
+                  return SizedBox(height: 40, child: Text(message.id));
+                },
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+      }
+
+      await pump('a');
+      final buildsAfterA = builds;
+      expect(buildsAfterA, greaterThan(0));
+
+      // Same messages instance, only buildKey changed. The cached turn bodies
+      // must be invalidated so the builder re-runs (the highlight ring's host
+      // state changed even though the transcript is unchanged).
+      await pump('b');
+      expect(builds, greaterThan(buildsAfterA));
+    },
+  );
 }

@@ -45,6 +45,7 @@ class VirtualThreadViewport extends StatefulWidget {
     this.revealMessageId,
     this.revealEpoch = 0,
     this.onRevealOffset,
+    this.buildKey,
     super.key,
   });
 
@@ -76,6 +77,12 @@ class VirtualThreadViewport extends StatefulWidget {
   /// host must add its own outer scroll padding (e.g. SingleChildScrollView top
   /// padding) when jumping.
   final void Function(double offset)? onRevealOffset;
+
+  /// Host-controlled cache key. When it changes (with the same message list
+  /// instance), cached `messageBuilder` outputs are invalidated so the builder
+  /// re-runs — needed when the host's builder depends on external state such as
+  /// a highlight id.
+  final Object? buildKey;
 
   @override
   State<VirtualThreadViewport> createState() => _VirtualThreadViewportState();
@@ -570,8 +577,10 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
       _turnKeys.putIfAbsent(turnId, GlobalKey.new);
 
   Widget _turnBody(ThreadTurn turn) {
-    final identity =
-        _identityByTurnId[turn.id] ?? turnContentIdentity(turn, widget.messages);
+    final identity = Object.hash(
+      _identityByTurnId[turn.id] ?? turnContentIdentity(turn, widget.messages),
+      widget.buildKey,
+    );
     final cached = _builtTurnBody[turn.id];
     if (cached != null && cached.identity == identity) {
       return cached.child;
@@ -662,7 +671,7 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
 class _CachedTurnBody {
   const _CachedTurnBody({required this.identity, required this.child});
 
-  final String identity;
+  final Object identity;
   final Widget child;
 }
 
