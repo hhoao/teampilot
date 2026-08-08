@@ -13,6 +13,14 @@ class PinnedTranscriptProbeResult {
 /// `{sessionId}/` directory also counts as "session exists"; transcript
 /// location (history parse) must pass `false` so a workflow sidecar directory
 /// can never shadow the real `.jsonl` file.
+///
+/// The pinned [bucket] is a hint, not an authority: the same session id may
+/// exist under several buckets (e.g. a residual stub in the main-repo bucket
+/// plus the real transcript in a worktree bucket), and `listDir` order is not
+/// deterministic. Files are ranked by size — the fullest `.jsonl` wins — and a
+/// `{sessionId}/` directory match is used only when no file exists anywhere.
+/// Equal-size matches fall back to the pinned [bucket], so scanning stays
+/// deterministic regardless of `listDir` order.
 Future<PinnedTranscriptProbeResult> probePinnedTranscript({
   required Filesystem fs,
   required Iterable<String> toolRoots,
@@ -35,35 +43,15 @@ Future<PinnedTranscriptProbeResult> probePinnedTranscript({
       if (!root.contains(memberSegment)) root,
   ];
 
-  final rootsTried = <String>[];
   for (final root in orderedRoots) {
-    rootsTried.add(root);
     for (final layoutSegment in layoutSegments) {
       final layoutDir = path.join(root, layoutSegment);
-      if (bucket.isNotEmpty) {
-        final bucketDir = path.join(layoutDir, bucket);
-        final transcriptFile = path.join(bucketDir, '$id.jsonl');
-        if ((await fs.stat(transcriptFile)).isFile) {
-          return PinnedTranscriptProbeResult(
-            exists: true,
-            matchedPath: transcriptFile,
-          );
-        }
-        if (matchDirectories) {
-          final transcriptDir = path.join(bucketDir, id);
-          if ((await fs.stat(transcriptDir)).isDirectory) {
-            return PinnedTranscriptProbeResult(
-              exists: true,
-              matchedPath: transcriptDir,
-            );
-          }
-        }
-      }
       final scanned = await _scanLayoutBuckets(
         fs,
         layoutDir,
         id,
         matchDirectories: matchDirectories,
+        pinnedBucket: bucket,
       );
       if (scanned != null) {
         return PinnedTranscriptProbeResult(exists: true, matchedPath: scanned);
@@ -73,33 +61,53 @@ Future<PinnedTranscriptProbeResult> probePinnedTranscript({
   return const PinnedTranscriptProbeResult(exists: false);
 }
 
+/// Scans every bucket under [layoutDir] for [sessionId]. Returns the fullest
+/// `.jsonl` file (largest bytes) — so a residual metadata-only stub in one
+/// bucket never shadows the real transcript in another — or, when no file
+/// exists anywhere, the first `{sessionId}/` directory match. Equal-size files
+/// (and equal dir matches) prefer the pinned [pinnedBucket], so the result
+/// never depends on non-deterministic `listDir` order.
 Future<String?> _scanLayoutBuckets(
   Filesystem fs,
   String layoutDir,
   String sessionId, {
   required bool matchDirectories,
+  required String pinnedBucket,
 }) async {
   final path = fs.pathContext;
   try {
     final buckets = await fs.listDir(layoutDir);
-    final dirMatches = <String>[];
+    String? bestFile;
+    var bestSize = -1;
+    var bestIsPinned = false;
+    String? firstDir;
+    var firstDirIsPinned = false;
     for (final bucket in buckets) {
       if (!bucket.isDirectory) continue;
+      final isPinned = bucket.name == pinnedBucket;
       final bucketPath = path.join(layoutDir, bucket.name);
       final transcriptFile = path.join(bucketPath, '$sessionId.jsonl');
-      if ((await fs.stat(transcriptFile)).isFile) return transcriptFile;
+      final fileStat = await fs.stat(transcriptFile);
+      if (fileStat.isFile) {
+        final size = fileStat.size ?? 0;
+        if (size > bestSize ||
+            (bestFile != null && size == bestSize && isPinned && !bestIsPinned)) {
+          bestSize = size;
+          bestFile = transcriptFile;
+          bestIsPinned = isPinned;
+        }
+        continue;
+      }
       if (!matchDirectories) continue;
       final transcriptDir = path.join(bucketPath, sessionId);
       if ((await fs.stat(transcriptDir)).isDirectory) {
-        // Defer directory matches: a workflow sidecar bucket (e.g. a
-        // `-client` sibling) may hold a `{sessionId}/` dir without any
-        // transcript, and listDir order is not deterministic. A real
-        // `.jsonl` in a later bucket must win, so collect dir matches and
-        // only fall back to them if no file exists anywhere.
-        dirMatches.add(transcriptDir);
+        if (firstDir == null || (isPinned && !firstDirIsPinned)) {
+          firstDir = transcriptDir;
+          firstDirIsPinned = isPinned;
+        }
       }
     }
-    return dirMatches.isEmpty ? null : dirMatches.first;
+    return bestFile ?? firstDir;
   } on Object {
     return null;
   }
