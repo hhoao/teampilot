@@ -269,9 +269,9 @@ class SessionLaunchPipeline {
     SessionConnectRequest request, {
     SessionRepository? repo,
   }) async {
-    // Any connect in flight serializes a second one (this includes the
-    // pre-materialization 'pending' id, which no active conversation may claim).
-    if (_state().sessionConnectingId != null) {
+    // Any connect in flight serializes a second one (this includes pre-session
+    // materialization, which has no real pod yet).
+    if (_host.hasConnectingSession) {
       return LaunchSkipped();
     }
 

@@ -39,7 +39,6 @@ class ChatState extends Equatable {
     this.selectedMemberId = '',
     this.stateVersion = 0,
     this.snackbarMessage,
-    this.sessionConnectingId,
     this.sessionLaunchError,
     this.teamConfigValidation,
     this.workingSessionIds = const {},
@@ -56,9 +55,6 @@ class ChatState extends Equatable {
   final String selectedMemberId;
   final int stateVersion;
   final String? snackbarMessage;
-
-  /// Session id while prepareLaunch / terminal spawn is in progress.
-  final String? sessionConnectingId;
 
   /// Launch error when connect fails before a tab exists (empty workbench).
   final String? sessionLaunchError;
@@ -88,8 +84,6 @@ class ChatState extends Equatable {
     int? stateVersion,
     String? snackbarMessage,
     bool clearSnackbarMessage = false,
-    String? sessionConnectingId,
-    bool clearSessionConnectingId = false,
     String? sessionLaunchError,
     bool clearSessionLaunchError = false,
     TeamConfigValidation? teamConfigValidation,
@@ -112,9 +106,6 @@ class ChatState extends Equatable {
       snackbarMessage: clearSnackbarMessage
           ? null
           : (snackbarMessage ?? this.snackbarMessage),
-      sessionConnectingId: clearSessionConnectingId
-          ? null
-          : (sessionConnectingId ?? this.sessionConnectingId),
       sessionLaunchError: clearSessionLaunchError
           ? null
           : (sessionLaunchError ?? this.sessionLaunchError),
@@ -136,18 +127,6 @@ class ChatState extends Equatable {
     return '';
   }
 
-  bool get isActiveSessionConnecting {
-    if (tabs.isEmpty) return false;
-    final id = sessionConnectingId;
-    final active = activeSessionId;
-    if (id == null || id.isEmpty) return false;
-    // A 'pending' connect belongs to a session that does not exist yet; it must
-    // never light up an unrelated active conversation.
-    if (id == 'pending') return false;
-    if (active == null || active.isEmpty) return false;
-    return id == active;
-  }
-
   @override
   List<Object?> get props => [
     tabs,
@@ -160,7 +139,6 @@ class ChatState extends Equatable {
     selectedMemberId,
     stateVersion,
     snackbarMessage,
-    sessionConnectingId,
     sessionLaunchError,
     teamConfigValidation,
     workingSessionIds,

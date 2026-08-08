@@ -603,7 +603,7 @@ class SessionLaunchService
 
   /// True when another launch path already owns PTY connect for [memberId].
   bool isMemberConnectOwnedElsewhere(String sessionId, String memberId) {
-    if (_state.sessionConnectingId == sessionId) return true;
+    if (_h.isSessionConnecting(sessionId)) return true;
     final tab = _tabStore.openTabBySessionId(sessionId);
     if (tab == null) return false;
     if (tab.membersPendingConnect.contains(memberId)) return true;

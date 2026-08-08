@@ -123,7 +123,7 @@ class SessionMemberConnectScheduler {
       state.sessions,
       workspaces: state.workspaces,
     );
-    final ownsConnectToken = state.sessionConnectingId != tab.info.id;
+    final ownsConnectToken = !_host.hasConnectingSession;
     if (ownsConnectToken) {
       _host.beginSessionConnect(tab.info.id);
     }

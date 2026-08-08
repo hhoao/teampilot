@@ -182,11 +182,10 @@ class SessionLaunchConnectPrepRunner {
 
       final launchSession = prep.launchSession;
       final shell = prep.shell;
-      final state = _host.state;
 
       if (shell.isRunning || shell.isConnecting) {
         _host.updateTabRunning(tab.info.id);
-        if (state.sessionConnectingId == launchSession.sessionId) {
+        if (_host.isSessionConnecting(launchSession.sessionId)) {
           _host.finishSessionConnect(launchSession.sessionId);
         }
         return;
@@ -199,7 +198,7 @@ class SessionLaunchConnectPrepRunner {
       }
 
       if (_shouldAutoConnect(request) &&
-          state.sessionConnectingId != launchSession.sessionId) {
+          !_host.isSessionConnecting(launchSession.sessionId)) {
         _host.beginSessionConnect(launchSession.sessionId);
       }
 

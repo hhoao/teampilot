@@ -13,7 +13,6 @@ class ChatPageStructuralSignal {
     required this.activeTabIndex,
     required this.newChatActive,
     required this.selectedMemberId,
-    required this.sessionConnectingId,
     required this.sessionLaunchError,
     required this.pinnedBySessionId,
   });
@@ -22,7 +21,6 @@ class ChatPageStructuralSignal {
   final int activeTabIndex;
   final bool newChatActive;
   final String selectedMemberId;
-  final String? sessionConnectingId;
   final String? sessionLaunchError;
   final Map<String, bool> pinnedBySessionId;
 
@@ -33,7 +31,6 @@ class ChatPageStructuralSignal {
         activeTabIndex == other.activeTabIndex &&
         newChatActive == other.newChatActive &&
         selectedMemberId == other.selectedMemberId &&
-        sessionConnectingId == other.sessionConnectingId &&
         sessionLaunchError == other.sessionLaunchError &&
         const MapEquality<String, bool>().equals(
           pinnedBySessionId,
@@ -47,7 +44,6 @@ class ChatPageStructuralSignal {
     activeTabIndex,
     newChatActive,
     selectedMemberId,
-    sessionConnectingId,
     sessionLaunchError,
     const MapEquality<String, bool>().hash(pinnedBySessionId),
   );
@@ -66,7 +62,6 @@ ChatPageStructuralSignal chatPageStructuralSignal({
       activeTabIndex: state.activeTabIndex,
       newChatActive: state.newChatActive,
       selectedMemberId: state.selectedMemberId,
-      sessionConnectingId: _scopedConnectingId(state, state.activeSessionId),
       sessionLaunchError: state.sessionLaunchError,
       pinnedBySessionId: _pinnedForTabIds(state, tabIds),
     );
@@ -79,27 +74,14 @@ ChatPageStructuralSignal chatPageStructuralSignal({
       ? null
       : bucket[index.clamp(0, bucket.length - 1)];
   final tabIds = bucket.map((t) => t.info.id).toList(growable: false);
-  final activeSessionId = tab?.info.id;
   return ChatPageStructuralSignal(
     tabIds: tabIds,
     activeTabIndex: index,
     newChatActive: newChatActive,
     selectedMemberId: tab?.selectedMemberId ?? '',
-    sessionConnectingId:
-        activeSessionId != null && state.sessionConnectingId == activeSessionId
-        ? state.sessionConnectingId
-        : null,
     sessionLaunchError: tab?.info.launchError,
     pinnedBySessionId: _pinnedForTabIds(state, tabIds),
   );
-}
-
-String? _scopedConnectingId(ChatState state, String? activeSessionId) {
-  final id = state.sessionConnectingId;
-  if (id == null || id.isEmpty) return null;
-  if (id == 'pending') return id;
-  if (activeSessionId == null || activeSessionId.isEmpty) return null;
-  return id == activeSessionId ? id : null;
 }
 
 Map<String, bool> _pinnedForTabIds(ChatState state, List<String> tabIds) {

@@ -23,6 +23,38 @@ void main() {
     expect(notifications, 1);
   });
 
+  test('update batches multiple mutations into one onChanged', () {
+    var notifications = 0;
+    final pod = SessionPod(
+      sessionId: 's1',
+      workspaceId: 'w1',
+      onChanged: () => notifications++,
+    );
+
+    pod.update((p) {
+      p.setPhase(SessionPhase.error);
+      p.setLaunchError('boom');
+    });
+
+    expect(notifications, 1, reason: 'one logical transition, one notify');
+    expect(pod.state.phase, SessionPhase.error);
+    expect(pod.state.launchError, 'boom');
+    expect(pod.state.revision, 2);
+  });
+
+  test('update with no-op mutations fires no notify', () {
+    var notifications = 0;
+    final pod = SessionPod(
+      sessionId: 's1',
+      workspaceId: 'w1',
+      onChanged: () => notifications++,
+    );
+    pod.update((p) {
+      p.setPhase(SessionPhase.idle); // already idle
+    });
+    expect(notifications, 0);
+  });
+
   test('per-session isolation: mutating one pod leaves another untouched', () {
     final a = SessionPod(sessionId: 'a', workspaceId: 'w');
     final b = SessionPod(sessionId: 'b', workspaceId: 'w');

@@ -44,4 +44,21 @@ void main() {
     expect(cubit.podFor('s1')!.phase, SessionPhase.error);
     expect(cubit.podFor('s2')!.phase, SessionPhase.idle);
   });
+
+  test('pending materialization sets hasConnectingSession without a real pod', () {
+    cubit.beginSessionConnect('pending');
+    expect(cubit.hasConnectingSession, isTrue);
+    expect(cubit.podFor('pending'), isNull, reason: 'no real pod for pending');
+    cubit.finishSessionConnect('pending');
+    expect(cubit.hasConnectingSession, isFalse);
+  });
+
+  test('isSessionConnecting follows a real session pod phase', () {
+    cubit.ensurePodRuntime('s1');
+    expect(cubit.isSessionConnecting('s1'), isFalse);
+    cubit.beginSessionConnect('s1');
+    expect(cubit.isSessionConnecting('s1'), isTrue);
+    cubit.finishSessionConnect('s1');
+    expect(cubit.isSessionConnecting('s1'), isFalse);
+  });
 }

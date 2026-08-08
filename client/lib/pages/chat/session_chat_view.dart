@@ -1176,7 +1176,7 @@ class _SessionChatViewState extends State<SessionChatView> {
   }
 
   /// Whether this session is currently connecting, derived from its own pod
-  /// phase — never from the global `sessionConnectingId`/'pending' sentinel.
+  /// phase.
   static bool _podConnecting(ChatCubit cubit, String sessionId) =>
       cubit.podFor(sessionId)?.phase.isLaunching ?? false;
 
@@ -1286,7 +1286,6 @@ class _SessionChatViewState extends State<SessionChatView> {
         BlocListener<ChatCubit, ChatState>(
           listenWhen: (previous, current) =>
               previous.workingSessionIds != current.workingSessionIds ||
-              previous.sessionConnectingId != current.sessionConnectingId ||
               previous.stateVersion != current.stateVersion,
           listener: (context, state) {
             _syncAwaitingFromWorkingSessions(state);
