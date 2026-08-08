@@ -122,6 +122,7 @@ ShortcutContext _liveShortcutContext(
     inTextInput:
         focusKind == ShortcutFocusKind.compose ||
         focusKind == ShortcutFocusKind.text,
+    claimedChords: _primaryClaimedChords(),
     hasWorkspace: location.contains('/home-v2/workspace/'),
     hasOpenWorkspaceTabs: workspaceChromeCommands.openTabCount >= 1,
     hasSessionTab: chatCubit.state.activeSessionId != null,
@@ -139,6 +140,18 @@ ShortcutFocusKind? _primaryShortcutFocusKind() {
   final focusContext = FocusManager.instance.primaryFocus?.context;
   if (focusContext == null) return null;
   return ShortcutFocus.maybeOf(focusContext)?.kind;
+}
+
+/// Union of `claims` over every [ShortcutFocus] ancestor of the primary focus.
+/// A global command whose chord is claimed is skipped by
+/// [KeybindingResolver.match]; the focused surface's own `Shortcuts` handles
+/// it instead. Called on every key event, so it must not register build
+/// dependencies ([ShortcutFocus.claimsOf] uses ancestor traversal, not
+/// `dependOnInheritedWidgetOfExactType`).
+Set<KeyChord> _primaryClaimedChords() {
+  final focusContext = FocusManager.instance.primaryFocus?.context;
+  if (focusContext == null) return const {};
+  return ShortcutFocus.claimsOf(focusContext);
 }
 
 /// Installs the root [ShortcutDispatcher]: attaches a [HardwareKeyboard]

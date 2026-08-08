@@ -16,6 +16,7 @@ PhysicalKeyboardKey _physicalFor(LogicalKeyboardKey logicalKey) {
     LogicalKeyboardKey.metaLeft => PhysicalKeyboardKey.metaLeft,
     LogicalKeyboardKey.keyW => PhysicalKeyboardKey.keyW,
     LogicalKeyboardKey.keyK => PhysicalKeyboardKey.keyK,
+    LogicalKeyboardKey.keyF => PhysicalKeyboardKey.keyF,
     LogicalKeyboardKey.escape => PhysicalKeyboardKey.escape,
     _ => throw UnsupportedError('Add mapping for $logicalKey'),
   };
@@ -331,6 +332,41 @@ void main() {
       );
 
       expect(result, 'test.first');
+    });
+
+    group('claimed chords suppress the global command', () {
+      test('a claimed Mod+F does not fire workspaceSearch', () {
+        pressModifier(LogicalKeyboardKey.controlLeft);
+        addTearDown(() => releaseModifier(LogicalKeyboardKey.controlLeft));
+
+        final result = KeybindingResolver.match(
+          event: keyDown(LogicalKeyboardKey.keyF),
+          effectiveByCommand: effective,
+          // Not const: KeyChord's factory is not const, so a claimed-chords
+          // set cannot live in a const expression.
+          context: ShortcutContext(
+            hasWorkspace: true,
+            claimedChords: {KeyChord(key: 'f', mods: [KeyChordMod.mod])},
+          ),
+          isMacOS: false,
+        );
+
+        expect(result, isNull);
+      });
+
+      test('an unclaimed Mod+F still fires workspaceSearch', () {
+        pressModifier(LogicalKeyboardKey.controlLeft);
+        addTearDown(() => releaseModifier(LogicalKeyboardKey.controlLeft));
+
+        final result = KeybindingResolver.match(
+          event: keyDown(LogicalKeyboardKey.keyF),
+          effectiveByCommand: effective,
+          context: const ShortcutContext(hasWorkspace: true),
+          isMacOS: false,
+        );
+
+        expect(result, CommandIds.workspaceSearch);
+      });
     });
   });
 

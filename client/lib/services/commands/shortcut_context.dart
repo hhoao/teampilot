@@ -1,4 +1,5 @@
 import 'package:teampilot/services/commands/command_definition.dart';
+import 'package:teampilot/services/commands/key_chord.dart';
 
 /// Snapshot of app focus/state used to decide whether a shortcut fires.
 ///
@@ -13,6 +14,7 @@ class ShortcutContext {
     this.hasOpenWorkspaceTabs = false,
     this.hasSessionTab = false,
     this.floatingPanelOpen = false,
+    this.claimedChords = const {},
   });
 
   /// Primary focus is an agent PTY or workspace shell terminal view.
@@ -35,6 +37,11 @@ class ShortcutContext {
 
   /// Floating workspace panel visibility is [FloatingPanelVisibility.open].
   final bool floatingPanelOpen;
+
+  /// Chords owned by the focused surface (union over every `ShortcutFocus`
+  /// ancestor). A global command whose chord is claimed must not fire; the
+  /// surface's own `Shortcuts` handles it instead.
+  final Set<KeyChord> claimedChords;
 }
 
 extension ShortcutWhenEvaluation on ShortcutWhen {

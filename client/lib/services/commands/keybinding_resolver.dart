@@ -76,6 +76,12 @@ abstract final class KeybindingResolver {
           }
         }
 
+        // The focused surface owns this chord (e.g. editor/chat find) — the
+        // global command must not fire; the surface's own Shortcuts handles it.
+        if (context.claimedChords.contains(chord)) {
+          continue;
+        }
+
         final activator = chord.toActivator(isMacOS: isMacOS);
         if (activator.accepts(event, HardwareKeyboard.instance)) {
           return def.id;
