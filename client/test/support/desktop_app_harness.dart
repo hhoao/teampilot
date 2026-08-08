@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:teampilot/app/ui_zoom_baseline.dart';
 import 'package:teampilot/cubits/agent_attention_cubit.dart';
 import 'package:teampilot/cubits/ai_feature_settings_cubit.dart';
+import 'package:teampilot/cubits/ai_history_cubit.dart';
 import 'package:teampilot/cubits/app_bootstrap_cubit.dart';
 import 'package:teampilot/cubits/app_provider_cubit.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
@@ -66,7 +67,10 @@ import 'package:teampilot/services/run/workspace_run_platform_factory.dart';
 import 'package:teampilot/services/ssh/ssh_client_factory.dart';
 import 'package:teampilot/services/ssh/ssh_connection_events.dart';
 import 'package:teampilot/services/ssh/ssh_profile_connection_coordinator.dart';
+import 'package:teampilot/services/session/ai_history_loader.dart';
+import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/storage/home_target_controller.dart';
+import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:teampilot/services/terminal/terminal_transport_factory.dart';
 import 'package:teampilot/services/terminal/workspace_shell_connector.dart';
 import 'package:teampilot/services/terminal/workspace_terminal_registry.dart';
@@ -149,6 +153,28 @@ Widget buildTestApp({
       );
   final presence = memberPresenceCubit ?? MemberPresenceCubit();
   chat.bindPresenceCubit(presence);
+  // SessionChatView binds a History seat through the pod's HistoryStore when
+  // pods own one; the pre-pod fallback reads AiHistoryCubit from context. The
+  // harness must provide it or chat-workspace smoke tests throw during the
+  // first build (ProviderNotFoundException) and cascade into framework teardown
+  // assertions that poison the whole suite.
+  final aiHistoryCubit = AiHistoryCubit(
+    loader: AiHistoryLoader(
+      resolveWorkContext: (launchCtx, {String? memberId}) async {
+        final basePath = AppStorage.paths.basePath;
+        return RuntimeContext(
+          target: RuntimeTarget.local(),
+          filesystem: LocalFilesystem(
+            pathContext: AppPaths.pathContextForDataRoot(basePath),
+          ),
+          home: basePath,
+          cwd: basePath,
+          appDataRoot: basePath,
+          paths: AppPaths(basePath),
+        );
+      },
+    ),
+  );
   final sshEvents = SshConnectionEvents();
   final sshCredentialStore = InMemorySshCredentialStore();
   final sshKnownHosts = InMemorySshKnownHostRepository();
@@ -264,6 +290,7 @@ Widget buildTestApp({
         BlocProvider.value(value: layoutCubit ?? LayoutCubit()),
         BlocProvider.value(value: sessionPreferencesCubit),
         BlocProvider.value(value: aiFeatures),
+        BlocProvider.value(value: aiHistoryCubit),
         BlocProvider(create: (_) => ShortcutCubit()),
         BlocProvider(create: (_) => EditorCubit(fs: LocalFilesystem())),
         BlocProvider(create: (_) => WorkbenchCubit()),
