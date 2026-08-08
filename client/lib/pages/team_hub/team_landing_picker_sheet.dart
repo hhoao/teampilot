@@ -14,6 +14,7 @@ import '../../services/team/team_landing_recent_store.dart';
 import '../../services/team/team_landing_selection.dart';
 
 import 'team_hub_clone_feedback.dart';
+import 'team_hub_clone_options_dialog.dart';
 import 'team_hub_detail_overlay.dart';
 import 'team_landing_catalog.dart';
 import 'team_landing_picker_catalog_body.dart';
@@ -128,8 +129,19 @@ class _TeamLandingPickerDialogState extends State<TeamLandingPickerDialog> {
     setState(() => _confirming = true);
     final l10n = context.l10n;
     try {
+      final options = await resolveTeamHubCloneOptions(context, team);
+      if (!mounted) return;
+      if (options == null) {
+        setState(() => _confirming = false);
+        return; // 用户取消：不克隆
+      }
       final teams = context.read<LaunchProfileCubit>().state.teams;
-      final result = await _selection.resolveHub(team: team, teams: teams);
+      final result = await _selection.resolveHub(
+        team: team,
+        teams: teams,
+        teamMode: options.teamMode,
+        cli: options.cli,
+      );
       if (!mounted) return;
       final clone = result.cloneResult;
       if (clone != null) {
