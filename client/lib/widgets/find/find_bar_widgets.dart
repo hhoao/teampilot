@@ -99,17 +99,15 @@ class FindField extends StatelessWidget {
                     focusNode: focusNode,
                     autofocus: autofocus,
                     maxLines: 1,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: palette.text,
-                    ),
+                    style: TpTextStyles.of(
+                      context,
+                    ).md.copyWith(color: palette.text),
                     decoration: InputDecoration(
                       isDense: true,
                       hintText: hint,
-                      hintStyle: TextStyle(
-                        fontSize: 13,
-                        color: palette.mutedText,
-                      ),
+                      hintStyle: TpTextStyles.of(
+                        context,
+                      ).md.copyWith(color: palette.mutedText),
                       border: InputBorder.none,
                       enabledBorder: InputBorder.none,
                       focusedBorder: InputBorder.none,
@@ -209,8 +207,7 @@ class FindToggleButton extends StatelessWidget {
         child: Center(
           child: Text(
             label,
-            style: TextStyle(
-              fontSize: 11,
+            style: TpTextStyles.of(context).md.copyWith(
               fontWeight: FontWeight.w600,
               color: checked ? palette.toggleOnText : palette.icon,
             ),
@@ -291,9 +288,9 @@ class ReplaceActionButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = FindBarPalette.of(context);
     final color = enabled ? palette.icon : palette.mutedText;
-    final style = TextStyle(
-      fontSize: 9,
-      fontFamily: 'monospace',
+    // md-size monospace (from the AppTypographyScale / font theme), so the
+    // b→c / ab→ac glyphs follow the app's typography scale.
+    final style = TpTextStyles.of(context).mono.copyWith(
       fontWeight: FontWeight.w600,
       color: color,
     );
@@ -349,8 +346,7 @@ class FindCounterText extends StatelessWidget {
         textAlign: TextAlign.center,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: TextStyle(
-          fontSize: 12,
+        style: TpTextStyles.of(context).md.copyWith(
           color: empty ? palette.mutedText : palette.text,
         ),
       ),

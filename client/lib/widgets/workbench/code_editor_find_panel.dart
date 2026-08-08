@@ -26,9 +26,9 @@ class CodeEditorFindPanel extends StatelessWidget
 
   static const double _rowHeight = 26;
   static const double _panelVerticalPadding = 8;
-  static const double _panelWidth = 432;
+  static const double _panelWidth = 452;
   static const double _findFieldWidth = 260;
-  static const double _counterWidth = 56;
+  static const double _counterWidth = 76;
   static const double _buttonSize = 22;
   static const double _chevronWidth = 16;
 

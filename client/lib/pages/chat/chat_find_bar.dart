@@ -198,9 +198,9 @@ class _ChatFindBarState extends State<ChatFindBar> {
                                         alignment: Alignment.centerLeft,
                                         child: Text(
                                           l10n.chatFindResults,
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
+                                          style: TpTextStyles.of(
+                                            context,
+                                          ).mdSemibold.copyWith(
                                             color: FindBarPalette.of(
                                               context,
                                             ).mutedText,
@@ -227,8 +227,7 @@ class _ChatFindBarState extends State<ChatFindBar> {
                                     alignment: Alignment.centerLeft,
                                     child: Text(
                                       l10n.chatFindNoResults,
-                                      style: TextStyle(
-                                        fontSize: 12,
+                                      style: TpTextStyles.of(context).md.copyWith(
                                         color: FindBarPalette.of(
                                           context,
                                         ).mutedText,
@@ -315,7 +314,7 @@ class _HighlightedSnippet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = FindBarPalette.of(context);
-    final style = TextStyle(fontSize: 12, color: palette.mutedText);
+    final style = TpTextStyles.of(context).md.copyWith(color: palette.mutedText);
     final q = query.trim();
     if (q.isEmpty) {
       return Text(
