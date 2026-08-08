@@ -3,7 +3,52 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/git_status.dart';
 import 'package:teampilot/services/git/git_changes_visible_rows.dart';
 
+GitChangesVisibleRow fileRow({required bool staged}) => GitChangesVisibleRow.file(
+  change: GitFileChange(
+    path: 'src',
+    kind: GitChangeKind.modified,
+    staged: staged,
+  ),
+  depth: 0,
+);
+
 void main() {
+  test('unstaged rows reserve wider trailing than staged/folder rows', () {
+    const style = TextStyle(fontSize: 12);
+    final unstaged = fileRow(staged: false);
+    final staged = fileRow(staged: true);
+    final folder = GitChangesVisibleRow.folder(
+      folderPath: 'src',
+      name: 'src',
+      depth: 0,
+    );
+
+    final wUnstaged = gitChangesMinContentWidth(
+      rows: [unstaged],
+      fileLabelStyle: style,
+      folderLabelStyle: style,
+    );
+    final wStaged = gitChangesMinContentWidth(
+      rows: [staged],
+      fileLabelStyle: style,
+      folderLabelStyle: style,
+    );
+    final wFolder = gitChangesMinContentWidth(
+      rows: [folder],
+      fileLabelStyle: style,
+      folderLabelStyle: style,
+    );
+
+    expect(
+      wUnstaged - wStaged,
+      closeTo(
+        kGitChangesTrailingActionsWidth - kGitChangesTrailingTwoActionsWidth,
+        1,
+      ),
+    );
+    expect(wFolder, closeTo(wStaged, 1));
+  });
+
   test('visibleGitChangesRows nests files under expanded folders', () {
     const changes = [
       GitFileChange(

@@ -67,8 +67,12 @@ const double kGitChangesNodePaddingRight = 6;
 /// Leading chrome: chevron slot + icon + gap (16px icons).
 const double kGitChangesLeadingChromeWidth = 16 + 16 + 6;
 
-/// Trailing stage/unstage actions (two compact buttons).
-const double kGitChangesTrailingActionsWidth = 60;
+/// Trailing open/discard/stage actions on an unstaged row (three compact
+/// buttons, `TpIconButton.kCompactSize` = 28).
+const double kGitChangesTrailingActionsWidth = 84;
+
+/// Trailing actions on a staged row or a folder row (two compact buttons).
+const double kGitChangesTrailingTwoActionsWidth = 56;
 
 /// Single status badge width.
 const double kGitChangesTrailingBadgeWidth = 22;
@@ -113,7 +117,7 @@ double gitChangesMinContentWidth({
           kGitChangesNodePaddingRight +
           kGitChangesRowHorizontalPadding * 2 +
           painter.width +
-          kGitChangesTrailingActionsWidth;
+          kGitChangesTrailingTwoActionsWidth;
       maxWidth = math.max(maxWidth, rowWidth);
       continue;
     }
@@ -122,7 +126,7 @@ double gitChangesMinContentWidth({
     painter.text = TextSpan(text: label, style: fileLabelStyle);
     painter.layout();
     final trailing = row.change!.staged
-        ? kGitChangesTrailingBadgeWidth
+        ? kGitChangesTrailingTwoActionsWidth
         : kGitChangesTrailingActionsWidth;
     final rowWidth =
         row.depth * kGitChangesIndentWidth +
@@ -143,9 +147,9 @@ double _rowWidthEstimate(GitChangesVisibleRow row) {
   for (final rune in label.runes) {
     units += rune >= 0x1100 ? 2.0 : 1.0;
   }
-  final trailing = row.isFolder || !row.change!.staged
-      ? kGitChangesTrailingActionsWidth
-      : kGitChangesTrailingBadgeWidth;
+  final trailing = row.isFolder || row.change!.staged
+      ? kGitChangesTrailingTwoActionsWidth
+      : kGitChangesTrailingActionsWidth;
   return row.depth * 2.0 + units + trailing / 8.0;
 }
 
