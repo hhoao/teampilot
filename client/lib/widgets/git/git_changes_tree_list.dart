@@ -22,6 +22,7 @@ class GitChangesTreeList extends StatefulWidget {
     required this.horizontalScrollController,
     required this.onOpenDiff,
     required this.onConfirmDiscard,
+    this.onOpenFile,
     super.key,
   });
 
@@ -31,6 +32,7 @@ class GitChangesTreeList extends StatefulWidget {
   final ScrollController horizontalScrollController;
   final ValueChanged<GitFileChange> onOpenDiff;
   final ValueChanged<GitFileChange> onConfirmDiscard;
+  final ValueChanged<GitFileChange>? onOpenFile;
 
   @override
   State<GitChangesTreeList> createState() => _GitChangesTreeListState();
@@ -190,6 +192,8 @@ class _GitChangesTreeListState extends State<GitChangesTreeList> {
     }
 
     final change = row.change!;
+    final canOpenFile =
+        widget.onOpenFile != null && change.kind != GitChangeKind.deleted;
     return GitChangeTile(
       key: ValueKey('${staged ? 'staged' : 'unstaged'}:${change.path}'),
       change: change,
@@ -199,6 +203,7 @@ class _GitChangesTreeListState extends State<GitChangesTreeList> {
       onStage: staged ? () {} : () => unawaited(widget.cubit.stage(change)),
       onUnstage: staged ? () => unawaited(widget.cubit.unstage(change)) : () {},
       onDiscard: staged ? () {} : () => widget.onConfirmDiscard(change),
+      onOpenFile: canOpenFile ? () => widget.onOpenFile!(change) : null,
     );
   }
 }

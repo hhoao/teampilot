@@ -302,6 +302,15 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
     );
   }
 
+  void _openFile(GitFileChange change) {
+    final absolutePath = p.join(_cubit.state.repoRoot, change.path);
+    unawaited(
+      context
+          .read<WorkbenchEditorOpener>()
+          .openFile(widget.workspaceId, absolutePath),
+    );
+  }
+
   Future<void> _confirmDiscard(GitFileChange change) async {
     final l10n = context.l10n;
     final ok = await showDialog<bool>(
@@ -520,6 +529,7 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
                       onOpenDiff: (change) => unawaited(_openDiff(change)),
                       onConfirmDiscard: (change) =>
                           unawaited(_confirmDiscard(change)),
+                      onOpenFile: _openFile,
                     );
                   },
                 ),
