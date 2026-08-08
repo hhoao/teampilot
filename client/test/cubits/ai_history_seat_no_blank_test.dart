@@ -154,4 +154,54 @@ void main() {
     await future;
     expect(seat.state.status, AiHistoryViewStatus.empty);
   });
+
+  group('revealMessage', () {
+    test('expands the visible window to include a not-yet-loaded index', () async {
+      holderMessages = messages(40);
+      bumpCacheToken();
+      await seat.load(session: session(), memberId: '', launchContext: ctx(session()));
+
+      // Initial window covers only the tail (kSessionHistoryInitialTurns).
+      // The thread renders runtime.messages; loadedMessages is the full
+      // transcript regardless of the window.
+      final beforeIds = seat.runtime.messages.map((m) => m.id).toList();
+      expect(beforeIds.length, lessThan(40));
+      expect(beforeIds, isNot(contains('m-5')));
+
+      seat.revealMessage(5);
+      final afterIds = seat.runtime.messages.map((m) => m.id).toList();
+      expect(afterIds.length, greaterThan(beforeIds.length));
+      expect(afterIds.first, 'm-5');
+      expect(afterIds, contains('m-5'));
+
+      // Full loaded transcript is unchanged — reveal only widens the window.
+      expect(seat.loadedMessages.length, 40);
+      expect(seat.loadedMessages.first.id, 'm-0');
+      expect(seat.loadedMessages[5].id, 'm-5');
+
+      // Content before the revealed index stays hidden, so hasOlder is true.
+      expect(seat.state.hasOlder, isTrue);
+    });
+
+    test('no-op when the index is already visible', () async {
+      holderMessages = messages(10);
+      bumpCacheToken();
+      await seat.load(session: session(), memberId: '', launchContext: ctx(session()));
+
+      final before = seat.runtime.messages.length;
+      seat.revealMessage(0);
+      expect(seat.runtime.messages.length, before);
+    });
+
+    test('ignores out-of-range indices', () async {
+      holderMessages = messages(10);
+      bumpCacheToken();
+      await seat.load(session: session(), memberId: '', launchContext: ctx(session()));
+
+      final before = seat.runtime.messages.length;
+      seat.revealMessage(-1);
+      seat.revealMessage(100);
+      expect(seat.runtime.messages.length, before);
+    });
+  });
 }
