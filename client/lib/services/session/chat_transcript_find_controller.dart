@@ -37,6 +37,10 @@ class ChatTranscriptFindController extends ChangeNotifier {
   SessionTranscriptDoc? _doc;
   List<AiMessage>? _docMessages;
 
+  /// The message-list instance whose hits were last computed, so a re-search of
+  /// the same query text still re-scans when the transcript grew (new instance).
+  List<AiMessage>? _scannedMessages;
+
   String get query => _query;
   List<TranscriptHit> get hits => _hits;
   int get currentIndex => _hits.isEmpty ? -1 : _currentIndex;
@@ -46,17 +50,21 @@ class ChatTranscriptFindController extends ChangeNotifier {
 
   void search(String value) {
     final query = value.trim();
-    if (query == _query) return;
+    final messages = messagesProvider();
+    // Re-scan even for the same query text when the transcript's message-list
+    // instance changed (live refresh / loadOlder), so hits don't go stale.
+    if (query == _query && identical(_scannedMessages, messages)) return;
     _query = query;
     if (query.isEmpty) {
       _hits = const [];
       _currentIndex = -1;
+      _scannedMessages = null;
       notifyListeners();
       return;
     }
-    final messages = messagesProvider();
     final doc = _docFor(messages);
     _hits = _scan(query, doc, messages);
+    _scannedMessages = messages;
     _currentIndex = _hits.isEmpty ? -1 : 0;
     notifyListeners();
   }
@@ -94,6 +102,10 @@ class ChatTranscriptFindController extends ChangeNotifier {
     for (final match in pattern.allMatches(doc.text)) {
       if (hits.length >= kChatFindMaxResults) break;
       final index = match.start;
+      // Use the match's real extent, not query.length: case-folded matches can
+      // differ in code-unit length, and the downstream highlight slices the
+      // snippet by this bound.
+      final matchLength = match.end - match.start;
       final messageIndex = WorkspaceSessionContentIndex.messageIndexAt(
         doc.messageStarts,
         index,
@@ -106,7 +118,7 @@ class ChatTranscriptFindController extends ChangeNotifier {
           snippet: WorkspaceSessionContentIndex.snippetAround(
             doc.text,
             index,
-            query.length,
+            matchLength,
           ),
         ),
       );
