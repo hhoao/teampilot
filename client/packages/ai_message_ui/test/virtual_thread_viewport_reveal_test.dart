@@ -161,14 +161,18 @@ void main() {
         await tester.pumpAndSettle();
       }
 
-      await pump('a');
+      // buildKey must be a real message id in the transcript: invalidation is
+      // scoped to the turn that contains the highlight, so a key that matches
+      // no message must not invalidate any cached turn body.
+      await pump('m-5');
       final buildsAfterA = builds;
       expect(buildsAfterA, greaterThan(0));
 
-      // Same messages instance, only buildKey changed. The cached turn bodies
-      // must be invalidated so the builder re-runs (the highlight ring's host
-      // state changed even though the transcript is unchanged).
-      await pump('b');
+      // Same messages instance, only buildKey changed. The cached turn body
+      // holding the new highlight must be invalidated so the builder re-runs
+      // (the highlight ring's host state changed even though the transcript is
+      // unchanged).
+      await pump('m-15');
       expect(builds, greaterThan(buildsAfterA));
     },
   );

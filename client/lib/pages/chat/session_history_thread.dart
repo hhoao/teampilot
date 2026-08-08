@@ -111,7 +111,11 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
       _revealTargetId = request.targetMessageId;
       _revealEpoch = request.epoch;
     }
-    _setStickToEnd(false);
+    // Only unpin stick-to-end for a real targeted reveal; a bare open/close of
+    // the find bar (clear()) must not unpin a live chat at the bottom.
+    if (request?.targetMessageId != null) {
+      _setStickToEnd(false);
+    }
     setState(() {});
   }
 

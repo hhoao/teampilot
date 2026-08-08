@@ -577,9 +577,11 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
       _turnKeys.putIfAbsent(turnId, GlobalKey.new);
 
   Widget _turnBody(ThreadTurn turn) {
+    final highlightInTurn =
+        widget.buildKey != null && turn.messageIds.contains(widget.buildKey);
     final identity = Object.hash(
       _identityByTurnId[turn.id] ?? turnContentIdentity(turn, widget.messages),
-      widget.buildKey,
+      highlightInTurn ? widget.buildKey : null,
     );
     final cached = _builtTurnBody[turn.id];
     if (cached != null && cached.identity == identity) {

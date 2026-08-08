@@ -165,11 +165,35 @@ class _ChatFindBarState extends State<ChatFindBar> {
                         ),
                         if (hasQuery)
                           total > 0
-                              ? _ResultsList(
-                                  hits: controller.hits,
-                                  currentIndex: current,
-                                  query: controller.query,
-                                  onTap: _navigateIndex,
+                              ? Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Padding(
+                                      padding: const EdgeInsets.fromLTRB(
+                                        12,
+                                        6,
+                                        12,
+                                        2,
+                                      ),
+                                      child: Align(
+                                        alignment: Alignment.centerLeft,
+                                        child: Text(
+                                          l10n.chatFindResults,
+                                          style: TpTextStyles.of(
+                                            context,
+                                          ).smSemiboldColored(
+                                            cs.onSurfaceVariant,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    _ResultsList(
+                                      hits: controller.hits,
+                                      currentIndex: current,
+                                      query: controller.query,
+                                      onTap: _navigateIndex,
+                                    ),
+                                  ],
                                 )
                               : Padding(
                                   padding: const EdgeInsets.all(8),
