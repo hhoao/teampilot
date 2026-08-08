@@ -15,6 +15,8 @@ import '../../cubits/layout_cubit.dart';
 import '../../cubits/workbench/workbench_cubit.dart';
 import '../../cubits/workbench/workbench_tab.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../services/commands/key_chord.dart';
+import '../../services/commands/shortcut_focus.dart';
 import '../../services/editor/file_editor_ai_context.dart';
 import '../../services/editor/file_editor_theme.dart';
 import '../../services/editor/file_editor_toolbar.dart';
@@ -475,37 +477,44 @@ class _CodeEditorPaneState extends State<_CodeEditorPane> {
             );
           },
     );
-    return ListenableBuilder(
-      listenable: _menuOpen,
-      child: codeEditor,
-      builder: (context, child) {
-        return SelectionAskAiFabHost(
-          listenable: widget.controller,
-          selectionActive: () => !widget.controller.selection.isCollapsed,
-          readAiContext: () => formatEditorAiContext(
-            filePath: widget.path,
-            controller: widget.controller,
-          ),
-          onAskAi: (aiContext) async {
-            final workspace = context
-                .read<ChatCubit>()
-                .state
-                .workspaces
-                .firstWhereOrNull(
-                  (candidate) => candidate.workspaceId == widget.workspaceId,
-                );
-            if (workspace == null) return;
-            await SelectionAskAi.openComposeDialog(
-              context,
-              aiContext: aiContext,
-              workspace: workspace,
-              tabScopeId: widget.workspaceId,
-            );
-          },
-          menuOpen: _menuOpen.value,
-          child: child!,
-        );
+    return ShortcutFocus(
+      // The code editor owns Mod+F (re-editor find); document the claim so any
+      // future global command binding Mod+F is suppressed here.
+      claims: {
+        KeyChord(key: 'f', mods: [KeyChordMod.mod]),
       },
+      child: ListenableBuilder(
+        listenable: _menuOpen,
+        child: codeEditor,
+        builder: (context, child) {
+          return SelectionAskAiFabHost(
+            listenable: widget.controller,
+            selectionActive: () => !widget.controller.selection.isCollapsed,
+            readAiContext: () => formatEditorAiContext(
+              filePath: widget.path,
+              controller: widget.controller,
+            ),
+            onAskAi: (aiContext) async {
+              final workspace = context
+                  .read<ChatCubit>()
+                  .state
+                  .workspaces
+                  .firstWhereOrNull(
+                    (candidate) => candidate.workspaceId == widget.workspaceId,
+                  );
+              if (workspace == null) return;
+              await SelectionAskAi.openComposeDialog(
+                context,
+                aiContext: aiContext,
+                workspace: workspace,
+                tabScopeId: widget.workspaceId,
+              );
+            },
+            menuOpen: _menuOpen.value,
+            child: child!,
+          );
+        },
+      ),
     );
   }
 }
