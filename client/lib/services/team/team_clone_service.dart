@@ -131,6 +131,8 @@ class TeamCloneService {
   Future<CloneResult> clone(
     DiscoverableTeam team, {
     void Function(CloneProgress)? onProgress,
+    TeamMode? teamMode,
+    CliTool? cli,
   }) async {
     final failed = <DependencyFailure>[];
     final total =
@@ -202,8 +204,8 @@ class TeamCloneService {
 
     final teamId = await createTeam(
       name: team.name,
-      cli: team.cli,
-      teamMode: team.teamMode,
+      cli: cli ?? team.cli,
+      teamMode: teamMode ?? team.teamMode,
       roster: roster,
       skillIds: skillIds,
       pluginIds: pluginIds,
