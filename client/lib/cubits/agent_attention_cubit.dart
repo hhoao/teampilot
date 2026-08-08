@@ -316,6 +316,22 @@ class AgentAttentionCubit extends Cubit<AgentAttentionState> {
     emit(AgentAttentionState(seats: seats, clock: _clock));
   }
 
+  /// Remove the seat only when it is currently [AgentSeatAttention.working].
+  /// Never touches [AgentSeatAttention.waiting] (permission prompts) so a
+  /// PTY-quiet turn-end fallback cannot mis-clear a pending question.
+  void clearWorkingIfWorking({
+    required String sessionId,
+    required String memberId,
+  }) {
+    final key = agentSeatKey(sessionId: sessionId, memberId: memberId);
+    final entry = state.seats[key];
+    if (entry == null) return;
+    if (entry.attention != AgentSeatAttention.working) return;
+    final seats = Map<String, AgentSeatAttentionEntry>.of(state.seats)
+      ..remove(key);
+    emit(AgentAttentionState(seats: seats, clock: _clock));
+  }
+
   /// Remove all seats for a session (e.g. tab close).
   void clearSession(String sessionId) {
     final prefix = '${sessionId.trim()}\u0000';
