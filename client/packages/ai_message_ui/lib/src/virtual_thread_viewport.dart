@@ -72,6 +72,9 @@ class VirtualThreadViewport extends StatefulWidget {
   /// See constructor docs.
   final String? revealMessageId;
   final int revealEpoch;
+  /// Delivered in viewport-space document pixels (header height included). The
+  /// host must add its own outer scroll padding (e.g. SingleChildScrollView top
+  /// padding) when jumping.
   final void Function(double offset)? onRevealOffset;
 
   @override
@@ -169,7 +172,7 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
           final turnIndex =
               _turns.indexWhere((t) => t.messageIds.contains(targetId));
           if (turnIndex < 0) return;
-          onOffset(_cache.offsetBefore(_turns, turnIndex));
+          onOffset(_headerHeight + _cache.offsetBefore(_turns, turnIndex));
         });
       }
     }
