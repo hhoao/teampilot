@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:ai_message_core/ai_message_core.dart';
-import 'package:meta/meta.dart';
 
 import '../cli/registry/capabilities/history/claude_compatible_jsonl.dart';
 import 'session_history_context.dart';
@@ -37,7 +36,7 @@ final class AiTranscriptTailer {
 
   final Map<String, _TailState> _states = {};
 
-  @visibleForTesting
+  /// Evicts every seat cursor (loader `clearCache`).
   void clear() => _states.clear();
 
   void remove(String seatKey) => _states.remove(seatKey);

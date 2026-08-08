@@ -14,6 +14,7 @@ import '../terminal/session_member_cli_resolver.dart';
 import 'ai_history_load_result.dart';
 import 'ai_history_locator.dart';
 import 'ai_history_watch_meta.dart';
+import 'ai_transcript_tailer.dart';
 import 'session_history_context.dart';
 import 'session_history_context_builder.dart';
 import 'subagent_attachment_inflater.dart';
@@ -25,18 +26,6 @@ typedef AiHistoryWorkContextResolver =
       WorkspaceLaunchContext ctx, {
       String? memberId,
     });
-
-class _AiHistoryCacheEntry {
-  const _AiHistoryCacheEntry({
-    required this.token,
-    required this.messages,
-    this.subagentAttachments = const {},
-  });
-
-  final String token;
-  final List<AiMessage> messages;
-  final Map<String, AiSubagentAttachment> subagentAttachments;
-}
 
 class _AiHistorySeat {
   const _AiHistorySeat({
@@ -50,7 +39,7 @@ class _AiHistorySeat {
   final SessionHistoryContext ctx;
 }
 
-/// Resolves seat CLI → locate bundle → [AiTranscriptAdapter] → messages, with
+/// Resolves seat CLI → locate path → [AiTranscriptTailer] → messages, with
 /// sessionId+memberId(+mtime) caching.
 final class AiHistoryLoader {
   AiHistoryLoader({
@@ -77,7 +66,13 @@ final class AiHistoryLoader {
   final SessionHistoryCacheTokenResolver? _resolveCacheToken;
   final List<CliPreset> Function()? _globalPresets;
 
-  final _cache = <String, _AiHistoryCacheEntry>{};
+  /// Incremental transcript reader holding per-seat byte cursors.
+  final AiTranscriptTailer _tailer = AiTranscriptTailer();
+
+  /// Per-seat cache: resolver token → messages → attachments.
+  final _tokens = <String, String>{};
+  final _messages = <String, List<AiMessage>>{};
+  final _attachments = <String, Map<String, AiSubagentAttachment>>{};
 
   /// Work-plane context for the seat (live refresh binds this FS).
   Future<RuntimeContext> resolveSeatRuntime({
@@ -92,7 +87,12 @@ final class AiHistoryLoader {
   }
 
   /// Clears all seats (v1 work-plane evict).
-  void clearCache() => _cache.clear();
+  void clearCache() {
+    _tailer.clear();
+    _tokens.clear();
+    _messages.clear();
+    _attachments.clear();
+  }
 
   /// Locate-only watch hints for live transcript refresh (no full parse).
   Future<AiHistoryWatchMeta?> resolveWatchMeta({
@@ -140,43 +140,17 @@ final class AiHistoryLoader {
     }
 
     final cacheKey = _cacheKey(session.sessionId, effectiveMemberId);
-    final preliminaryToken = await (_resolveCacheToken ?? _defaultCacheToken)(
-      ctx,
-    );
-    if (!force && preliminaryToken != null) {
-      final hit = _cache[cacheKey];
-      if (hit != null && hit.token == preliminaryToken) {
-        return AiHistoryLoadResult(
-          messages: hit.messages,
-          subagentAttachments: hit.subagentAttachments,
-        );
-      }
+
+    final token = await (_resolveCacheToken ?? _defaultCacheToken)(ctx);
+    if (!force && token != null && _tokens[cacheKey] == token) {
+      return AiHistoryLoadResult(
+        messages: _messages[cacheKey] ?? const [],
+        subagentAttachments: _attachments[cacheKey] ?? const {},
+      );
     }
 
     try {
       final bundle = await _locator.locate(ctx: ctx, cli: cli);
-      final hintToken = bundle?.hints['cacheToken']?.trim();
-      // Custom resolvers own the cache key; otherwise prefer locate hints.
-      final token = _resolveCacheToken != null
-          ? preliminaryToken
-          : ((hintToken != null && hintToken.isNotEmpty)
-                ? hintToken
-                : preliminaryToken);
-
-      if (!force && token != null) {
-        final hit = _cache[cacheKey];
-        if (hit != null && hit.token == token) {
-          return AiHistoryLoadResult(
-            messages: hit.messages,
-            subagentAttachments: hit.subagentAttachments,
-          );
-        }
-      }
-
-      final messages = bundle == null
-          ? const <AiMessage>[]
-          : await cap.adapter.parse(bundle);
-
       final watch = bundle == null
           ? null
           : AiHistoryWatchMeta.fromHints(bundle.hints);
@@ -189,32 +163,53 @@ final class AiHistoryLoader {
         return null; // degrade-only; never invent a path from fragment basename
       }();
 
-      final enrichedMessages = await cap.toolResultEnricher.enrich(
-        messages: messages,
+      final tail = await _tailer.refresh(
         ctx: ctx,
-        rootTranscriptPath: parentPath,
-        bundle: bundle,
+        seatKey: cacheKey,
+        transcriptPath: parentPath,
+        force: force,
       );
 
+      // The tailer needs a real transcript file to hold a byte cursor. When
+      // locate produced a bundle without a usable cacheTokenPath (synthetic or
+      // degraded locate), parse the located bytes through the adapter instead
+      // of dropping them.
+      var messages = tail.messages;
+      if (bundle == null) {
+        messages = const <AiMessage>[];
+      } else if (parentPath == null) {
+        messages = await cap.adapter.parse(bundle);
+      }
+
+      if (bundle != null && parentPath != null && !tail.changed) {
+        _tokens[cacheKey] = token ?? 'unchanged-$cacheKey';
+        return AiHistoryLoadResult(
+          messages: messages,
+          subagentAttachments: _attachments[cacheKey] ?? const {},
+        );
+      }
+
+      if (_needsToolResultEnrichment(messages)) {
+        messages = await cap.toolResultEnricher.enrich(
+          messages: messages,
+          ctx: ctx,
+          rootTranscriptPath: parentPath,
+          bundle: bundle,
+        );
+      }
+
       final attachments = await const SubagentAttachmentInflater().inflate(
-        messages: enrichedMessages,
+        messages: messages,
         ctx: ctx,
         capability: cap,
         rootTranscriptPath: parentPath,
       );
 
-      // Null token is uncacheable — never treat null==null as a forever hit.
-      if (token != null) {
-        _cache[cacheKey] = _AiHistoryCacheEntry(
-          token: token,
-          messages: enrichedMessages,
-          subagentAttachments: attachments,
-        );
-      } else {
-        _cache.remove(cacheKey);
-      }
+      _messages[cacheKey] = messages;
+      _attachments[cacheKey] = attachments;
+      _tokens[cacheKey] = token ?? 'changed-$cacheKey';
       return AiHistoryLoadResult(
-        messages: enrichedMessages,
+        messages: messages,
         subagentAttachments: attachments,
       );
     } on Object catch (e, st) {
@@ -230,11 +225,18 @@ final class AiHistoryLoader {
 
   void invalidate({required String sessionId, String? memberId}) {
     if (memberId != null) {
-      _cache.remove(_cacheKey(sessionId, memberId));
+      final key = _cacheKey(sessionId, memberId);
+      _tailer.remove(key);
+      _tokens.remove(key);
+      _messages.remove(key);
+      _attachments.remove(key);
       return;
     }
     final prefix = '${sessionId.trim()}\u0000';
-    _cache.removeWhere((key, _) => key.startsWith(prefix));
+    _tailer.removeWhere((key) => key.startsWith(prefix));
+    _tokens.removeWhere((key, _) => key.startsWith(prefix));
+    _messages.removeWhere((key, _) => key.startsWith(prefix));
+    _attachments.removeWhere((key, _) => key.startsWith(prefix));
   }
 
   Future<_AiHistorySeat> _resolveSeat({
@@ -301,6 +303,22 @@ final class AiHistoryLoader {
 
   static String _cacheKey(String sessionId, String memberId) =>
       '${sessionId.trim()}\u0000${memberId.trim()}';
+
+  /// The Claude enricher full-reads the transcript to resolve truncated tool
+  /// results; skip it when no part carries the truncation sentinel.
+  static bool _needsToolResultEnrichment(List<AiMessage> messages) {
+    for (final message in messages) {
+      for (final part in message.parts) {
+        if (part is AiToolCallPart) {
+          final result = part.result;
+          if (result is String && result.contains('tool output truncated')) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
 
   /// Best-effort transcript mtime under common Claude/flashskyai layouts.
   static Future<String?> _defaultCacheToken(SessionHistoryContext ctx) async {

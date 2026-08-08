@@ -346,6 +346,23 @@ void main() {
   });
 
   test('load calls toolResultEnricher once between parse and inflate', () async {
+    // Seed a transcript whose tool result carries the truncation sentinel so
+    // the loader's enricher guard fires (the tailer parses the real file now).
+    final bucket = RuntimeLayout.workspaceBucketForPrimaryPath('/work/project');
+    final session = simpleSession();
+    final toolRoot = layout.sessionRuntimeToolDir(
+      'ws-1',
+      session.sessionId,
+      'claude',
+    );
+    final projects = p.join(toolRoot, 'projects', bucket);
+    await Directory(projects).create(recursive: true);
+    final path = p.join(projects, '${session.sessionId}.jsonl');
+    final fixture = await File(
+      'test/fixtures/session_history/claude/truncated_bash.jsonl',
+    ).readAsBytes();
+    await File(path).writeAsBytes(fixture);
+
     final enricher = _RecordingEnricher();
     final registry = fakeAiHistoryRegistry(
       cli: CliTool.claude,
@@ -356,14 +373,13 @@ void main() {
         fragments: const [
           AiTranscriptFragment(name: 't.jsonl', bytes: [1, 2, 3]),
         ],
-        hints: const AiHistoryWatchMeta(
-          changeWatchRoot: '/proj',
-          cacheTokenPaths: ['/proj/t.jsonl'],
+        hints: AiHistoryWatchMeta(
+          changeWatchRoot: p.dirname(path),
+          cacheTokenPaths: [path],
         ).toHints(),
       ),
     );
     final loader = buildLoader(registry: registry);
-    final session = simpleSession();
 
     final result = await loader.load(
       session: session,
@@ -374,6 +390,73 @@ void main() {
     expect(enricher.calls, 1);
     expect(result.messages, hasLength(1));
     expect(result.messages.single.id, 'enriched');
+  });
+
+  test('appended transcript lines surface on reload; unchanged reload reuses attachments',
+      () async {
+    mtimeToken = 'mtime-1';
+    // Seed a transcript under the located toolRoot so locate finds it.
+    final bucket = RuntimeLayout.workspaceBucketForPrimaryPath('/work/project');
+    final session = simpleSession();
+    final toolRoot = layout.sessionRuntimeToolDir(
+      'ws-1',
+      session.sessionId,
+      'claude',
+    );
+    final projects = p.join(toolRoot, 'projects', bucket);
+    await Directory(projects).create(recursive: true);
+    final fixture = await File(
+      'test/fixtures/session_history/claude/basic.jsonl',
+    ).readAsBytes();
+    await File(p.join(projects, '${session.sessionId}.jsonl')).writeAsBytes(
+      fixture,
+    );
+
+    final loader = buildLoader();
+    final ctx = launchContextFor(session);
+    await loader.load(session: session, memberId: '', launchContext: ctx);
+    final meta = await loader.resolveWatchMeta(launchContext: ctx, memberId: '');
+    final paths = meta?.cacheTokenPaths ?? const [];
+    final path = paths.isEmpty ? null : paths.first;
+    expect(path, isNotNull, reason: 'transcript must be located');
+
+    final before = (await fs.readString(path!))!;
+    await fs.writeString(
+      path,
+      '$before{"type":"user","message":{"role":"user","content":"appended"}}\n',
+    );
+    // Touch mtime so the loader token gate opens. With the injected resolver
+    // the gate token is [mtimeToken]; the real file mtime drives the default
+    // _defaultCacheToken in production.
+    final f = File(path);
+    f.setLastModifiedSync(DateTime.now().add(const Duration(seconds: 1)));
+    mtimeToken = 'mtime-2';
+
+    final second = await loader.load(
+      session: session,
+      memberId: '',
+      launchContext: ctx,
+    );
+    expect(
+      second.messages.any(
+        (m) =>
+            m.parts.any(
+              (p) => p is AiTextPart && p.text.contains('appended'),
+            ),
+      ),
+      isTrue,
+    );
+
+    final third = await loader.load(
+      session: session,
+      memberId: '',
+      launchContext: ctx,
+    );
+    expect(
+      identical(second.subagentAttachments, third.subagentAttachments),
+      isTrue,
+      reason: 'unchanged reload must reuse the attachment map',
+    );
   });
 }
 
