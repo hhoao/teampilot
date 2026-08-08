@@ -115,6 +115,7 @@ flutter:
   assets:
     - google_fonts/
     - assets/icons/
+    - assets/icons/svg/
     - assets/file_icons/
     - assets/providers/
     - assets/geometry/
