@@ -11,6 +11,7 @@ import 'package:teampilot/services/commands/shortcut_dispatcher.dart';
 
 PhysicalKeyboardKey _physicalFor(LogicalKeyboardKey logicalKey) {
   return switch (logicalKey) {
+    LogicalKeyboardKey.keyF => PhysicalKeyboardKey.keyF,
     LogicalKeyboardKey.keyK => PhysicalKeyboardKey.keyK,
     LogicalKeyboardKey.keyN => PhysicalKeyboardKey.keyN,
     LogicalKeyboardKey.keyZ => PhysicalKeyboardKey.keyZ,
@@ -197,7 +198,6 @@ void main() {
         id: searchId,
         category: CommandCategory.navigation,
         defaultChords: [
-          KeyChord(key: 'f', mods: [KeyChordMod.mod]),
           KeyChord.doubleTapShift(),
         ],
         when: ShortcutWhen.hasWorkspace,
@@ -270,6 +270,28 @@ void main() {
         ),
         isFalse,
       );
+      expect(called, isFalse);
+    });
+
+    test('Ctrl+F does not invoke workspace search (Mod+F is surface-owned)', () {
+      final bus = CommandBus();
+      var called = false;
+      bus.register(searchId, () => called = true);
+      final dispatcher = ShortcutDispatcher(
+        bus: bus,
+        effectiveChords: (id) => searchCatalog
+            .firstWhere((def) => def.id == id)
+            .defaultChords,
+        context: () => const ShortcutContext(hasWorkspace: true),
+        isMacOS: () => false,
+        catalog: searchCatalog,
+      );
+
+      pressModifier(LogicalKeyboardKey.controlLeft);
+      addTearDown(() => releaseModifier(LogicalKeyboardKey.controlLeft));
+
+      final handled = dispatcher.handle(keyDown(LogicalKeyboardKey.keyF));
+      expect(handled, isFalse);
       expect(called, isFalse);
     });
   });

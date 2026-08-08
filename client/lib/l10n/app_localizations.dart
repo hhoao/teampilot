@@ -10997,7 +10997,7 @@ abstract class AppLocalizations {
   /// No description provided for @shortcutsWorkspaceSearch.
   ///
   /// In en, this message translates to:
-  /// **'Search Workspace'**
+  /// **'Search Workspace (double-tap Shift)'**
   String get shortcutsWorkspaceSearch;
 
   /// No description provided for @shortcutsStripNextTab.

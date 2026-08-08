@@ -2820,7 +2820,7 @@
   "shortcutsWorkspacePrevTab": "Previous Workspace Tab",
   "shortcutsWorkspaceCloseTab": "Close Workspace Tab",
   "shortcutsWorkspaceReopenClosed": "Reopen Closed Workspace Tab",
-  "shortcutsWorkspaceSearch": "Search Workspace",
+  "shortcutsWorkspaceSearch": "Search Workspace (double-tap Shift)",
   "shortcutsStripNextTab": "Next Tab",
   "shortcutsStripPrevTab": "Previous Tab",
   "shortcutsSessionNewTab": "New Session Tab",

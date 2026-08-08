@@ -6164,7 +6164,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get shortcutsWorkspaceReopenClosed => 'Reopen Closed Workspace Tab';
 
   @override
-  String get shortcutsWorkspaceSearch => 'Search Workspace';
+  String get shortcutsWorkspaceSearch => 'Search Workspace (double-tap Shift)';
 
   @override
   String get shortcutsStripNextTab => 'Next Tab';

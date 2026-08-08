@@ -16,6 +16,7 @@ PhysicalKeyboardKey _physicalFor(LogicalKeyboardKey logicalKey) {
     LogicalKeyboardKey.metaLeft => PhysicalKeyboardKey.metaLeft,
     LogicalKeyboardKey.keyW => PhysicalKeyboardKey.keyW,
     LogicalKeyboardKey.keyK => PhysicalKeyboardKey.keyK,
+    LogicalKeyboardKey.keyN => PhysicalKeyboardKey.keyN,
     LogicalKeyboardKey.keyF => PhysicalKeyboardKey.keyF,
     LogicalKeyboardKey.escape => PhysicalKeyboardKey.escape,
     _ => throw UnsupportedError('Add mapping for $logicalKey'),
@@ -335,18 +336,18 @@ void main() {
     });
 
     group('claimed chords suppress the global command', () {
-      test('a claimed Mod+F does not fire workspaceSearch', () {
+      test('a claimed Mod+N does not fire sessionNewChat', () {
         pressModifier(LogicalKeyboardKey.controlLeft);
         addTearDown(() => releaseModifier(LogicalKeyboardKey.controlLeft));
 
         final result = KeybindingResolver.match(
-          event: keyDown(LogicalKeyboardKey.keyF),
+          event: keyDown(LogicalKeyboardKey.keyN),
           effectiveByCommand: effective,
           // Not const: KeyChord's factory is not const, so a claimed-chords
           // set cannot live in a const expression.
           context: ShortcutContext(
             hasWorkspace: true,
-            claimedChords: {KeyChord(key: 'f', mods: [KeyChordMod.mod])},
+            claimedChords: {KeyChord(key: 'n', mods: [KeyChordMod.mod])},
           ),
           isMacOS: false,
         );
@@ -354,18 +355,18 @@ void main() {
         expect(result, isNull);
       });
 
-      test('an unclaimed Mod+F still fires workspaceSearch', () {
+      test('an unclaimed Mod+N still fires sessionNewChat', () {
         pressModifier(LogicalKeyboardKey.controlLeft);
         addTearDown(() => releaseModifier(LogicalKeyboardKey.controlLeft));
 
         final result = KeybindingResolver.match(
-          event: keyDown(LogicalKeyboardKey.keyF),
+          event: keyDown(LogicalKeyboardKey.keyN),
           effectiveByCommand: effective,
           context: const ShortcutContext(hasWorkspace: true),
           isMacOS: false,
         );
 
-        expect(result, CommandIds.workspaceSearch);
+        expect(result, CommandIds.sessionNewChat);
       });
     });
   });
