@@ -157,6 +157,13 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
   List<AiMessage> _allMessages = const [];
   int _visibleCount = 0;
 
+  /// CLI user-turn count of the last applied snapshot. CLI user turns that
+  /// newly appear past this baseline each confirm one outstanding optimistic
+  /// send (FIFO). Mailbox turns are deliberately excluded: they come from the
+  /// bus log, not from CLI-recorded sends, and mailbox sends roll back their
+  /// pending explicitly (see [removePendingMatching]).
+  int _lastUserTurnCount = 0;
+
   Map<String, AiSubagentAttachment> _subagentAttachments = {};
   int _subagentAttachmentEpoch = 0;
 
@@ -229,6 +236,7 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
       _allMessages = const [];
       _visibleCount = 0;
       _committedLength = 0;
+      _lastUserTurnCount = 0;
       _clearSubagentAttachments();
       runtime.setLoading();
       emit(
@@ -683,7 +691,7 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
     _allMessages = messages;
     _committedLength = _allMessages.length;
     _visibleCount = math.min(kSessionHistoryInitialTurns, _committedLength);
-    _dropMatchedPendings();
+    _reconcilePendings();
 
     if (_allMessages.isEmpty) {
       _emitEmptyOrPendingReady(sessionId, memberId);
@@ -716,7 +724,7 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
     } else {
       _visibleCount = math.min(newLength, oldVisible + tipDelta);
     }
-    _dropMatchedPendings();
+    _reconcilePendings();
 
     if (_allMessages.isEmpty) {
       _cancelTipHoldTimer();
@@ -803,41 +811,26 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
     );
   }
 
-  void _dropMatchedPendings() {
-    if (_pendingQueue.isEmpty) return;
-    final n = math.max(_pendingQueue.length + 2, 5);
+  /// Confirms optimistic sends by the count of CLI user turns that newly
+  /// appeared since the last applied snapshot, oldest pending first (FIFO).
+  ///
+  /// The CLI transcript is ground truth: every recorded user turn corresponds
+  /// to one sent message, in order. The pending text is deliberately not
+  /// compared — a CLI may rewrite what the user typed (a slash command expands
+  /// into `<command-message>/<command-name>/<command-args>` markup), so only
+  /// the turn count is meaningful. Counts [_cliMessages] (not the merged
+  /// timeline) so bus-log mailbox turns never consume a PTY send's pending.
+  void _reconcilePendings() {
     final userTurns = [
-      for (final m in _allMessages)
+      for (final m in _cliMessages)
         if (m.role == AiRole.user) m,
     ];
-    final tipUsers = userTurns.length <= n
-        ? userTurns
-        : userTurns.sublist(userTurns.length - n);
-    final matched = List<bool>.filled(tipUsers.length, false);
-    final remaining = <_PendingUser>[];
-
-    for (final pending in _pendingQueue) {
-      final norm = normalizeAiHistoryPendingText(pending.text);
-      var matchIdx = -1;
-      for (var i = tipUsers.length - 1; i >= 0; i--) {
-        if (matched[i]) continue;
-        final tipNorm = normalizeAiHistoryPendingText(
-          aiHistoryUserPlainText(tipUsers[i]),
-        );
-        if (tipNorm == norm) {
-          matchIdx = i;
-          break;
-        }
-      }
-      if (matchIdx >= 0) {
-        matched[matchIdx] = true;
-      } else {
-        remaining.add(pending);
-      }
+    final appeared = math.max(0, userTurns.length - _lastUserTurnCount);
+    final drop = math.min(appeared, _pendingQueue.length);
+    if (drop > 0) {
+      _pendingQueue.removeRange(0, drop);
     }
-    _pendingQueue
-      ..clear()
-      ..addAll(remaining);
+    _lastUserTurnCount = userTurns.length;
   }
 
   /// Soft reload must not clear this — a turn may flush many assistant messages.

@@ -482,7 +482,7 @@ void main() {
     expect(seatRuntime().messages.last.id, 'a-1');
   });
 
-  test('multi pending drops independently by normalized text', () async {
+  test('multiple in-flight sends reconcile FIFO as their turns land', () async {
     holderMessages = messages(1);
     locator.emitBundle = true;
     await cubit.load(session: simpleSession(), memberId: '', launchContext: launchCtx(simpleSession()));
@@ -494,7 +494,10 @@ void main() {
       hasLength(2),
     );
 
+    // Only the first send has landed so far — its turn confirms it, the second
+    // stays pending until its own turn appears.
     holderMessages = [
+      ...messages(1),
       const AiMessage(
         id: 'u-a',
         role: AiRole.user,
@@ -509,7 +512,76 @@ void main() {
         .toList();
     expect(pendings, hasLength(1));
     expect((pendings.single.parts.single as AiTextPart).text, 'b');
+
+    // Second send lands — its turn confirms it.
+    holderMessages = [
+      ...holderMessages,
+      const AiMessage(
+        id: 'u-b',
+        role: AiRole.user,
+        parts: [AiTextPart(text: 'b')],
+      ),
+    ];
+    bumpCacheToken();
+    await cubit.softReload();
+
+    expect(
+      seatRuntime().messages.where((m) => m.id.startsWith('pending:')),
+      isEmpty,
+    );
   });
+
+  test(
+    'command-expanded user turn reconciles the typed pending bubble',
+    () async {
+      // A slash-command message from compose is recorded by the CLI as
+      // <command-message>/<command-name>/<command-args> markup — the recorded
+      // user turn is a CLI rewrite, not the typed text. Reconciliation must not
+      // depend on text, or the pending bubble sticks at the tip forever.
+      holderMessages = messages(1);
+      locator.emitBundle = true;
+      await cubit.load(
+        session: simpleSession(),
+        memberId: '',
+        launchContext: launchCtx(simpleSession()),
+      );
+
+      cubit.enqueuePendingUser(r'/using-git-worktrees /subagent-driven-development 开始吧');
+      expect(
+        seatRuntime().messages.where((m) => m.id.startsWith('pending:')),
+        hasLength(1),
+      );
+
+      holderMessages = [
+        ...messages(1),
+        const AiMessage(
+          id: 'u-cmd',
+          role: AiRole.user,
+          parts: [
+            AiTextPart(
+              text: '<command-message>superpowers:using-git-worktrees</command-message>\n'
+                  '<command-name>/superpowers:using-git-worktrees</command-name>\n'
+                  '<command-args>开始吧</command-args>',
+            ),
+          ],
+        ),
+        const AiMessage(
+          id: 'a-1',
+          role: AiRole.assistant,
+          parts: [AiTextPart(text: 'on it')],
+        ),
+      ];
+      bumpCacheToken();
+      await cubit.softReload();
+
+      expect(
+        seatRuntime().messages.where((m) => m.id.startsWith('pending:')),
+        isEmpty,
+        reason: 'pending should reconcile to the command-expanded real message',
+      );
+      expect(seatRuntime().messages.last.id, 'u-cmd');
+    },
+  );
 
   test('enqueuePendingUser on empty promotes to ready with pending tip', () async {
     locator.emitBundle = false;
