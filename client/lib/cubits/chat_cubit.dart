@@ -40,6 +40,8 @@ import '../services/launch/session_connect_orchestrator.dart';
 import '../services/launch/workspace_provision_coordinator.dart';
 import '../services/progress_activity/cli_provision_activity_adapter.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
+import '../services/cli/registry/capabilities/turn_completion_capability.dart';
+import '../services/cli/preset_resolver.dart';
 import '../services/terminal/terminal_session.dart';
 import '../services/terminal/ask_user_question_answer_service.dart';
 import '../services/terminal/exit_plan_mode_approval_service.dart';
@@ -824,9 +826,45 @@ class ChatCubit extends Cubit<ChatState>
   }
 
   /// PTY-quiet turn end — clears the attention working seat for CLIs whose
-  /// done event may be unreliable (requiresPtyFallback). Filled in a later task.
+  /// done event may be unreliable (requiresPtyFallback). Only fires after the
+  /// shell turn latch ends (PTY quiet after turn activity), so it never
+  /// mis-clears a `waiting` permission seat (clearWorkingIfWorking is
+  /// waiting-safe) and defers while a doorbell is still pending.
   void _onTurnEnded(String sessionId, String memberId) {
-    // Implemented in Task 4.
+    final attention = _agentAttentionCubit;
+    if (attention == null || memberId.trim().isEmpty) return;
+    final tab = _tabStore.openTabBySessionId(sessionId);
+    final session = tab?.persistedSession;
+    if (tab == null || session == null) return;
+
+    final cli = SessionMemberCliResolver.resolve(
+      persistedSession: session,
+      team: _activeTeam,
+      memberId: memberId,
+      cliForMember: (team, id, {globalPresets = const []}) =>
+          memberLaunchCli(
+            team: team,
+            member: _rosterMemberFor(team, id) ??
+                TeamMemberConfig(id: id, name: id),
+            globalPresets: globalPresets,
+          ),
+      globalPresets: _lifecycle.globalPresets,
+    );
+    final cap = cliRegistry.capability<TurnCompletionCapability>(cli);
+    if (cap == null || !cap.requiresPtyFallback) return;
+    final bus = tab.teamBus;
+    if (bus != null && bus.hasPendingDoorbell(memberId)) return;
+    attention.clearWorkingIfWorking(sessionId: sessionId, memberId: memberId);
+    _recomputeWorkingSessions();
+  }
+
+  /// Roster member by id from the active team, or null when the member is not
+  /// in the team (personal sessions resolve their CLI via [AppSession.cli]).
+  TeamMemberConfig? _rosterMemberFor(TeamProfile team, String memberId) {
+    for (final member in team.members) {
+      if (member.id == memberId) return member;
+    }
+    return null;
   }
 
   /// Mixed `wait_for_message` park — drop PreToolUse working so the sidebar

@@ -253,6 +253,14 @@ class TeamBus implements CoordinationView {
     return node.doorbelled && !node.inbox.isEmpty;
   }
 
+  /// True when a doorbell was rung and unread mail remains — PTY-quiet turn
+  /// end must be deferred (the agent is expected to consume via read_messages).
+  bool hasPendingDoorbell(String memberId) {
+    final node = _members[memberId];
+    if (node == null) return false;
+    return node.doorbelled && !node.inbox.isEmpty;
+  }
+
   void noteMailDeliveryStarted(String memberId) {
     final node = _members[memberId];
     if (node == null || node.inbox.isEmpty) return;
