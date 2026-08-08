@@ -73,6 +73,16 @@ class AppKeys {
   static const askUserQuestionInlineError = Key(
     'ask-user-question-inline-error',
   );
+  static const exitPlanModeApproveButton = Key('exit-plan-mode-approve-button');
+  static const exitPlanModeRejectButton = Key('exit-plan-mode-reject-button');
+  static const exitPlanModeCopyPlanButton = Key(
+    'exit-plan-mode-copy-plan-button',
+  );
+  static const exitPlanModeExpandButton = Key('exit-plan-mode-expand-button');
+  static const exitPlanModeOpenPlanFileButton = Key(
+    'exit-plan-mode-open-plan-file-button',
+  );
+  static const exitPlanModeInlineError = Key('exit-plan-mode-inline-error');
 
   /// Option row key for a single-question AskUserQuestion card (`{index}`).
   static Key askUserQuestionOption(int index) =>

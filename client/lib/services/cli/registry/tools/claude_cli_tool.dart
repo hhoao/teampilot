@@ -35,6 +35,7 @@ import '../capabilities/member_config_inspection_capability.dart';
 import '../capabilities/provider_form_capability.dart';
 import '../capabilities/resource_capability.dart';
 import '../capabilities/ask_user_question_capability.dart';
+import '../capabilities/exit_plan_mode_capability.dart';
 import '../capabilities/turn_interrupt_capability.dart';
 import '../mcp_writers/claude_mcp_config_writer.dart';
 import '../plugin_provisioners/claude_plugin_provisioner.dart';
@@ -66,6 +67,7 @@ final class ClaudeCliTool implements CliToolDefinition {
     this.mcpConfigWriter = const ClaudeMcpConfigWriter(),
     this.turnInterrupt = const CtrlCTurnInterrupt(),
     this.askUserQuestion = const PtyAskUserQuestionCapability(),
+    this.exitPlanMode = const HookExitPlanModeCapability(),
     this.aiHistory = const ClaudeAiHistoryCapability(),
     this.skillSyntax = const DefaultSkillInvocationSyntaxCapability(),
     ProviderCredentialCapability? providerCredential,
@@ -97,6 +99,7 @@ final class ClaudeCliTool implements CliToolDefinition {
   final RemoteCliLocatorCapability remoteCliLocator;
   final TurnInterruptCapability turnInterrupt;
   final AskUserQuestionCapability askUserQuestion;
+  final ExitPlanModeCapability exitPlanMode;
   final ClaudeAiHistoryCapability aiHistory;
   final SkillInvocationSyntaxCapability skillSyntax;
 
@@ -136,6 +139,7 @@ final class ClaudeCliTool implements CliToolDefinition {
     mcpConfigWriter,
     turnInterrupt,
     askUserQuestion,
+    exitPlanMode,
     aiHistory,
     skillSyntax,
   ];

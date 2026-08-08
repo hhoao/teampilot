@@ -42,6 +42,7 @@ import '../services/progress_activity/cli_provision_activity_adapter.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
 import '../services/terminal/terminal_session.dart';
 import '../services/terminal/ask_user_question_answer_service.dart';
+import '../services/terminal/exit_plan_mode_approval_service.dart';
 import '../services/terminal/member_turn_interrupt_service.dart';
 import '../services/terminal/session_member_cli_resolver.dart';
 import '../services/termux/termux_connection_gate.dart';
@@ -112,6 +113,7 @@ class ChatCubit extends Cubit<ChatState>
     AgentAttentionCubit? agentAttentionCubit,
     AskUserAnswerPendingStore? askUserAnswerPendingStore,
     AskUserQuestionAnswerService? askUserQuestionAnswerService,
+    ExitPlanModeApprovalService? exitPlanApprovalService,
     InMemoryFollowUpQueueStore? followUpQueueStore,
     FollowUpQueueDrainer? followUpQueueDrainer,
     Future<TeamProfile?> Function(String teamId)? teamById,
@@ -156,6 +158,8 @@ class ChatCubit extends Cubit<ChatState>
            termuxDisconnectedWorkOpsMessageResolver,
        _termuxGateHomeResolver = termuxGateHomeResolver,
        super(const ChatState()) {
+    _exitPlanApproval =
+        exitPlanApprovalService ?? ExitPlanModeApprovalService();
     _askUserAnswer =
         askUserQuestionAnswerService ??
         AskUserQuestionAnswerService(store: askUserAnswerPendingStore);
@@ -278,6 +282,7 @@ class ChatCubit extends Cubit<ChatState>
         abortMemberInject: _sessionRuntime.abortMemberInject,
       );
   late final AskUserQuestionAnswerService _askUserAnswer;
+  late final ExitPlanModeApprovalService _exitPlanApproval;
   late final TabMemberMaterializer _memberMaterializer = TabMemberMaterializer(
     runtime: _sessionRuntime,
     tabStore: _tabStore,
@@ -610,7 +615,8 @@ class ChatCubit extends Cubit<ChatState>
       sessionConnect.workspaceProvision;
 
   @override
-  CliProvisionActivityAdapter? get cliProvisionActivity => _cliProvisionActivity;
+  CliProvisionActivityAdapter? get cliProvisionActivity =>
+      _cliProvisionActivity;
 
   @override
   CliToolRegistry get cliRegistry => _lifecycle.cliToolRegistry;
@@ -771,13 +777,12 @@ class ChatCubit extends Cubit<ChatState>
       ),
       resolveChannel: resolveChannel,
       connectWorkspaceSession: connectWorkspaceSession,
-      ensureMemberInputReady:
-          (sid, mid, {bool directToPty = false}) =>
-              _memberMaterializer.ensureMemberInputReady(
-                sid,
-                mid,
-                directToPty: directToPty,
-              ),
+      ensureMemberInputReady: (sid, mid, {bool directToPty = false}) =>
+          _memberMaterializer.ensureMemberInputReady(
+            sid,
+            mid,
+            directToPty: directToPty,
+          ),
       deliverUserCommandToMember:
           (sid, mid, text, {bool directToPty = false}) =>
               _sessionRuntime.deliverUserCommandToMember(
@@ -945,8 +950,7 @@ class ChatCubit extends Cubit<ChatState>
       answers: answers,
       freeText: freeText,
       freeTexts: freeTexts,
-      questions: _agentAttentionCubit
-          ?.state
+      questions: _agentAttentionCubit?.state
           .entryFor(sessionId: sessionId, memberId: mid)
           ?.lastEvent
           ?.askUserQuestions,
@@ -1004,6 +1008,49 @@ class ChatCubit extends Cubit<ChatState>
     return result;
   }
 
+  /// Approves the pending Claude `ExitPlanMode` plan from the chat card
+  /// (completes the held PreToolUse hook with allow). On success,
+  /// optimistically dismisses the waiting attention.
+  Future<ExitPlanApprovalResult> approveExitPlanMode({
+    required String sessionId,
+    required String memberId,
+    required String toolUseId,
+  }) async {
+    final result = await _exitPlanApproval.approve(
+      sessionId: sessionId,
+      memberId: memberId,
+      toolUseId: toolUseId,
+    );
+    if (result is ExitPlanApprovalOk) {
+      _agentAttentionCubit?.dismissWaiting(
+        sessionId: sessionId,
+        memberId: memberId,
+      );
+    }
+    return result;
+  }
+
+  /// Rejects the pending Claude `ExitPlanMode` plan (keeps the agent in plan
+  /// mode). On success, optimistically dismisses the waiting attention.
+  Future<ExitPlanApprovalResult> rejectExitPlanMode({
+    required String sessionId,
+    required String memberId,
+    required String toolUseId,
+  }) async {
+    final result = await _exitPlanApproval.reject(
+      sessionId: sessionId,
+      memberId: memberId,
+      toolUseId: toolUseId,
+    );
+    if (result is ExitPlanApprovalOk) {
+      _agentAttentionCubit?.dismissWaiting(
+        sessionId: sessionId,
+        memberId: memberId,
+      );
+    }
+    return result;
+  }
+
   /// Prefer an explicit id; otherwise read OpenCode/Claude ask id from the
   /// seat's last attention event when available.
   String? _resolveAskRequestId({
@@ -1013,8 +1060,7 @@ class ChatCubit extends Cubit<ChatState>
   }) {
     final explicit = askRequestId?.trim();
     if (explicit != null && explicit.isNotEmpty) return explicit;
-    final fromAttention = _agentAttentionCubit
-        ?.state
+    final fromAttention = _agentAttentionCubit?.state
         .entryFor(sessionId: sessionId, memberId: memberId)
         ?.lastEvent
         ?.askRequestId

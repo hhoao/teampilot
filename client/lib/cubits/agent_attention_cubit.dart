@@ -196,6 +196,23 @@ class AgentAttentionCubit extends Cubit<AgentAttentionState> {
     emit(AgentAttentionState(seats: seats, clock: _clock));
   }
 
+  /// Optimistically drop a waiting seat back to working (plan approved /
+  /// rejected) while retaining [AgentSeatAttentionEntry.lastEvent].
+  void dismissWaiting({required String sessionId, required String memberId}) {
+    final key = agentSeatKey(sessionId: sessionId, memberId: memberId);
+    final existing = state.seats[key];
+    if (existing == null || existing.attention != AgentSeatAttention.waiting) {
+      return;
+    }
+    final seats = Map<String, AgentSeatAttentionEntry>.of(state.seats);
+    seats[key] = AgentSeatAttentionEntry(
+      attention: AgentSeatAttention.working,
+      updatedAt: _clock(),
+      lastEvent: existing.lastEvent,
+    );
+    emit(AgentAttentionState(seats: seats, clock: _clock));
+  }
+
   /// Apply a normalized status event for one seat.
   ///
   /// When [skipPermissions] is true and [event] is waiting, the event is

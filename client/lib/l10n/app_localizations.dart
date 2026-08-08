@@ -2438,6 +2438,60 @@ abstract class AppLocalizations {
   /// **'Open Terminal'**
   String get agentPermissionOpenTerminal;
 
+  /// No description provided for @exitPlanModeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan ready for approval'**
+  String get exitPlanModeTitle;
+
+  /// No description provided for @exitPlanModeApprove.
+  ///
+  /// In en, this message translates to:
+  /// **'Approve'**
+  String get exitPlanModeApprove;
+
+  /// No description provided for @exitPlanModeReject.
+  ///
+  /// In en, this message translates to:
+  /// **'Reject'**
+  String get exitPlanModeReject;
+
+  /// No description provided for @exitPlanModeCopyPlan.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy plan'**
+  String get exitPlanModeCopyPlan;
+
+  /// No description provided for @exitPlanModeExpand.
+  ///
+  /// In en, this message translates to:
+  /// **'Expand'**
+  String get exitPlanModeExpand;
+
+  /// No description provided for @exitPlanModeCollapse.
+  ///
+  /// In en, this message translates to:
+  /// **'Collapse'**
+  String get exitPlanModeCollapse;
+
+  /// No description provided for @exitPlanModeOpenPlanFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Open plan file'**
+  String get exitPlanModeOpenPlanFile;
+
+  /// No description provided for @exitPlanModeApproveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t approve the plan'**
+  String get exitPlanModeApproveFailed;
+
+  /// No description provided for @exitPlanModeRejectFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t reject the plan'**
+  String get exitPlanModeRejectFailed;
+
   /// No description provided for @agentAskUserQuestionTitle.
   ///
   /// In en, this message translates to:

@@ -33,6 +33,7 @@ import '../capabilities/member_config_inspection_capability.dart';
 import '../capabilities/provider_form_capability.dart';
 import '../capabilities/resource_capability.dart';
 import '../capabilities/ask_user_question_capability.dart';
+import '../capabilities/exit_plan_mode_capability.dart';
 import '../capabilities/turn_interrupt_capability.dart';
 import '../mcp_writers/cursor_mcp_config_writer.dart';
 import '../plugin_provisioners/cursor_plugin_provisioner.dart';
@@ -67,6 +68,7 @@ final class CursorCliTool implements CliToolDefinition {
     this.mcpConfigWriter = const CursorMcpConfigWriter(),
     this.turnInterrupt = const CtrlCTurnInterrupt(),
     this.askUserQuestion = const NoAskUserQuestionCapability(),
+    this.exitPlanMode = const NoExitPlanModeCapability(),
     this.aiHistory = const CursorAiHistoryCapability(),
     this.skillSyntax = const DefaultSkillInvocationSyntaxCapability(),
     this.postManifestFlush = const CursorPostManifestFlushCapability(),
@@ -100,6 +102,7 @@ final class CursorCliTool implements CliToolDefinition {
   final RemoteCliLocatorCapability remoteCliLocator;
   final TurnInterruptCapability turnInterrupt;
   final AskUserQuestionCapability askUserQuestion;
+  final ExitPlanModeCapability exitPlanMode;
   final CursorAiHistoryCapability aiHistory;
   final SkillInvocationSyntaxCapability skillSyntax;
   final PostManifestFlushCapability postManifestFlush;
@@ -135,6 +138,7 @@ final class CursorCliTool implements CliToolDefinition {
     mcpConfigWriter,
     turnInterrupt,
     askUserQuestion,
+    exitPlanMode,
     aiHistory,
     skillSyntax,
     postManifestFlush,

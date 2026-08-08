@@ -30,6 +30,7 @@ AgentStatusEvent preserveExitPlanModePayload(
   return next.copyWith(
     planText: previous.planText,
     planFilePath: previous.planFilePath,
+    toolUseId: next.toolUseId ?? previous.toolUseId,
   );
 }
 

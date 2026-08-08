@@ -4,9 +4,13 @@ import 'dart:typed_data';
 
 import '../../cubits/agent_attention_cubit.dart';
 import '../../models/team_config.dart';
+import '../../services/cli/registry/capabilities/exit_plan_mode_capability.dart';
+import '../../services/cli/registry/cli_tool_registry.dart';
 import 'agent_status_event.dart';
 import 'agent_status_normalizer.dart';
 import 'ask_user_question_hook_gate.dart';
+import 'exit_plan_mode.dart';
+import 'exit_plan_mode_hook_gate.dart';
 
 /// Max POST body size for `/agent-status` (~1 MiB).
 const int agentStatusMaxBodyBytes = 1024 * 1024;
@@ -25,12 +29,16 @@ class AgentStatusHttpHandler {
     required this.resolveCli,
     required this.resolveSkipPermissions,
     this.askUserHookGate,
-  });
+    this.exitPlanModeHookGate,
+    CliToolRegistry? registry,
+  }) : registry = registry ?? CliToolRegistry.builtIn();
 
   final AgentAttentionCubit attention;
   final CliTool? Function(String sessionId, String memberId) resolveCli;
   final bool Function(String sessionId, String memberId) resolveSkipPermissions;
   final AskUserQuestionHookGate? askUserHookGate;
+  final ExitPlanModeHookGate? exitPlanModeHookGate;
+  final CliToolRegistry registry;
 
   Future<void> handle(
     HttpRequest request, {
@@ -59,6 +67,13 @@ class AgentStatusHttpHandler {
               event: event,
             );
             if (answered) return;
+            final answeredPlan = await _maybeAnswerExitPlanModeHook(
+              request,
+              sessionId: sessionId,
+              memberId: memberId,
+              event: event,
+            );
+            if (answeredPlan) return;
           }
         }
       }
@@ -119,6 +134,60 @@ class AgentStatusHttpHandler {
           'questions': askUserQuestionsToJson(qs),
           'answers': answers,
         },
+      },
+    });
+    return true;
+  }
+
+  /// Returns true when the HTTP response was already written.
+  ///
+  /// Holds ExitPlanMode `PreToolUse` until the chat card approves/rejects,
+  /// then returns the official `permissionDecision` allow/deny (TUI skipped).
+  Future<bool> _maybeAnswerExitPlanModeHook(
+    HttpRequest request, {
+    required String sessionId,
+    required String memberId,
+    required AgentStatusEvent event,
+  }) async {
+    final gate = exitPlanModeHookGate;
+    if (gate == null) return false;
+    final hook = event.hookEventName?.trim() ?? '';
+    if (hook != 'PreToolUse' || !isExitPlanModeTool(event.toolName)) {
+      return false;
+    }
+    final hasPlan =
+        (event.planText?.trim() ?? '').isNotEmpty ||
+        (event.planFilePath?.trim() ?? '').isNotEmpty;
+    if (!hasPlan) return false;
+    final cli = resolveCli(sessionId, memberId);
+    if (cli == null) return false;
+    final capability = registry.capability<ExitPlanModeCapability>(cli);
+    if (capability == null || !capability.supportsInChatApproval) return false;
+    final toolUseId = event.toolUseId?.trim() ?? '';
+    if (toolUseId.isEmpty) return false;
+
+    final reply = await gate.wait(
+      sessionId: sessionId,
+      memberId: memberId,
+      toolUseId: toolUseId,
+    );
+    if (reply == null) return false;
+
+    if (reply.deny) {
+      await _writeJson(request, {
+        'hookSpecificOutput': {
+          'hookEventName': 'PreToolUse',
+          'permissionDecision': 'deny',
+          'permissionDecisionReason': 'User rejected the plan',
+        },
+      });
+      return true;
+    }
+
+    await _writeJson(request, {
+      'hookSpecificOutput': {
+        'hookEventName': 'PreToolUse',
+        'permissionDecision': 'allow',
       },
     });
     return true;

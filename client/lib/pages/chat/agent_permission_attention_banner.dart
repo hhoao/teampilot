@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
@@ -15,9 +17,12 @@ import '../../services/agent_status/ask_user_question_policy.dart';
 import '../../services/agent_status/exit_plan_mode.dart';
 import '../../services/cli/preset_resolver.dart';
 import '../../services/cli/registry/capabilities/ask_user_question_capability.dart';
+import '../../services/cli/registry/capabilities/exit_plan_mode_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
+import '../../services/compose/compose_at_file_refs.dart';
 import '../../services/terminal/session_member_cli_resolver.dart';
+import '../../services/workbench/workbench_editor_opener.dart';
 import '../../utils/ui/app_keys.dart';
 import 'ask_user_question_card.dart';
 import 'exit_plan_mode_card.dart';
@@ -84,8 +89,9 @@ class AgentPermissionAttentionBanner extends StatelessWidget {
       return false;
     }
     final toolRegistry = registry ?? CliToolRegistry.builtIn();
-    final capability =
-        toolRegistry.capability<AskUserQuestionCapability>(seatCli);
+    final capability = toolRegistry.capability<AskUserQuestionCapability>(
+      seatCli,
+    );
     return shouldShowAskUserQuestionCard(
       capability: capability,
       questions: entry.lastEvent?.askUserQuestions,
@@ -120,7 +126,9 @@ class AgentPermissionAttentionBanner extends StatelessWidget {
     final lockedCli = _resolveSeatCli(context, seatId: seatId);
     final registry =
         CliToolRegistryScope.maybeOf(context) ?? CliToolRegistry.builtIn();
-    final capability = registry.capability<AskUserQuestionCapability>(lockedCli);
+    final capability = registry.capability<AskUserQuestionCapability>(
+      lockedCli,
+    );
     final showAskCard = shouldShowAskUserQuestionCard(
       capability: capability,
       questions: questions,
@@ -148,15 +156,46 @@ class AgentPermissionAttentionBanner extends StatelessWidget {
     final planFilePath = lastEvent?.planFilePath?.trim() ?? '';
     if (isExitPlanModeTool(lastEvent?.toolName) &&
         (planText.isNotEmpty || planFilePath.isNotEmpty)) {
+      final exitPlanCapability = registry.capability<ExitPlanModeCapability>(
+        lockedCli,
+      );
+      final supportsInChatApproval =
+          exitPlanCapability?.supportsInChatApproval ?? false;
+      final toolUseId = lastEvent?.toolUseId?.trim() ?? '';
+      final inChatApproval = supportsInChatApproval && toolUseId.isNotEmpty;
       return ExitPlanModeCard(
         planText: planText,
         planFilePath: planFilePath.isEmpty ? null : planFilePath,
+        onApprove: inChatApproval
+            ? () => context.read<ChatCubit>().approveExitPlanMode(
+                sessionId: sessionId,
+                memberId: seatId,
+                toolUseId: toolUseId,
+              )
+            : null,
+        onReject: inChatApproval
+            ? () => context.read<ChatCubit>().rejectExitPlanMode(
+                sessionId: sessionId,
+                memberId: seatId,
+                toolUseId: toolUseId,
+              )
+            : null,
         onOpenTerminal: () => _openTerminal(
           context,
           sessionId: sessionId,
           seatId: seatId,
           selectedMemberId: selectedMemberId,
         ),
+        onOpenPlanFile: (path) {
+          unawaited(
+            context.read<WorkbenchEditorOpener>().openFile(
+              session.workspaceId,
+              path,
+              preview: true,
+              fs: filesystemForComposeAtFileOpen(path),
+            ),
+          );
+        },
       );
     }
 
