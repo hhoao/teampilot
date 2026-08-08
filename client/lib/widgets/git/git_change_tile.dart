@@ -20,6 +20,7 @@ class GitChangeTile extends StatefulWidget {
     required this.onStage,
     required this.onUnstage,
     required this.onDiscard,
+    this.onOpenFile,
     this.hoverEnabled = true,
     super.key,
   });
@@ -30,6 +31,7 @@ class GitChangeTile extends StatefulWidget {
   final VoidCallback onStage;
   final VoidCallback onUnstage;
   final VoidCallback onDiscard;
+  final VoidCallback? onOpenFile;
   final bool hoverEnabled;
 
   @override
@@ -81,27 +83,26 @@ class _GitChangeTileState extends State<GitChangeTile> {
           kGitChangesNodePaddingRight + kGitChangesRowHorizontalPadding,
           kGitChangesRowVerticalPadding,
         ),
-        child: OverflowBox(
-          maxWidth: double.infinity,
-          alignment: Alignment.centerLeft,
-          child: SizedBox(
-            height: kGitChangesNodeHeight,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const SizedBox(width: 16),
-                FileIconWidget(fileName: name),
-                const SizedBox(width: 6),
-                Text(
+        child: SizedBox(
+          width: double.infinity,
+          height: kGitChangesNodeHeight,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const SizedBox(width: 16),
+              FileIconWidget(fileName: name),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
                   name,
                   maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TpTextStyles.of(context).md,
                 ),
-                const SizedBox(width: 8),
-                if (_hovered) ..._actions(context) else _badge(cs),
-              ],
-            ),
+              ),
+              const SizedBox(width: 8),
+              if (_hovered) ..._actions(context) else _badge(cs),
+            ],
           ),
         ),
       ),
@@ -109,7 +110,7 @@ class _GitChangeTileState extends State<GitChangeTile> {
   }
 
   Widget _badge(ColorScheme cs) => SizedBox(
-    width: 22,
+    width: kGitChangesTrailingBadgeWidth,
     child: Text(
       widget.change.badge,
       textAlign: TextAlign.center,
@@ -121,32 +122,40 @@ class _GitChangeTileState extends State<GitChangeTile> {
 
   List<Widget> _actions(BuildContext context) {
     final l10n = context.l10n;
-    if (widget.change.staged) {
-      return [
+    final actions = <Widget>[
+      if (widget.change.staged)
         TpIconButton(
           icon: Icons.remove,
           compact: true,
           size: TpIconButton.kCompactSize,
           tooltip: l10n.gitUnstage,
           onTap: widget.onUnstage,
+        )
+      else ...[
+        TpIconButton(
+          icon: Icons.undo,
+          compact: true,
+          size: TpIconButton.kCompactSize,
+          tooltip: l10n.gitDiscard,
+          onTap: widget.onDiscard,
         ),
-      ];
-    }
-    return [
-      TpIconButton(
-        icon: Icons.undo,
-        compact: true,
-        size: TpIconButton.kCompactSize,
-        tooltip: l10n.gitDiscard,
-        onTap: widget.onDiscard,
-      ),
-      TpIconButton(
-        icon: Icons.add,
-        compact: true,
-        size: TpIconButton.kCompactSize,
-        tooltip: l10n.gitStage,
-        onTap: widget.onStage,
-      ),
+        TpIconButton(
+          icon: Icons.add,
+          compact: true,
+          size: TpIconButton.kCompactSize,
+          tooltip: l10n.gitStage,
+          onTap: widget.onStage,
+        ),
+      ],
+      if (widget.onOpenFile != null)
+        TpIconButton(
+          icon: Icons.file_open_outlined,
+          compact: true,
+          size: TpIconButton.kCompactSize,
+          tooltip: l10n.gitOpenFile,
+          onTap: widget.onOpenFile,
+        ),
     ];
+    return actions;
   }
 }
