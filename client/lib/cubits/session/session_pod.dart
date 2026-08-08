@@ -90,10 +90,27 @@ class SessionPod {
   SessionPodState _state;
   SessionPodState get state => _state;
 
+  /// True while [update] runs; mutators suppress [onChanged] so one logical
+  /// transition fires a single host notify.
+  bool _inBatch = false;
+
+  /// Applies multiple mutations as one change: [mutate] may call several
+  /// `setXxx`, but [onChanged] fires at most once (and only if state changed).
+  void update(void Function(SessionPod) mutate) {
+    final before = _state.revision;
+    _inBatch = true;
+    try {
+      mutate(this);
+    } finally {
+      _inBatch = false;
+    }
+    if (_state.revision != before) onChanged?.call();
+  }
+
   void setPhase(SessionPhase phase) {
     if (_state.phase == phase) return;
     _state = _state.copyWith(phase: phase);
-    onChanged?.call();
+    if (!_inBatch) onChanged?.call();
   }
 
   void setLaunchError(String? error) {
@@ -102,18 +119,18 @@ class SessionPod {
         : _state.copyWith(launchError: error);
     if (next == _state) return;
     _state = next;
-    onChanged?.call();
+    if (!_inBatch) onChanged?.call();
   }
 
   void selectMember(String memberId) {
     if (_state.selectedMemberId == memberId) return;
     _state = _state.copyWith(selectedMemberId: memberId);
-    onChanged?.call();
+    if (!_inBatch) onChanged?.call();
   }
 
   void setView(SessionWorkbenchView view) {
     if (_state.view == view) return;
     _state = _state.copyWith(view: view);
-    onChanged?.call();
+    if (!_inBatch) onChanged?.call();
   }
 }

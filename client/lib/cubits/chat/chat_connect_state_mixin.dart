@@ -89,8 +89,11 @@ mixin ChatConnectStateMixin on Cubit<ChatState> {
     }
     final pod = podRuntime(sessionId);
     if (pod != null) {
-      pod.setPhase(SessionPhase.error);
-      pod.setLaunchError(rawMessage);
+      // Batch phase + launchError into one pod notify (single stateVersion bump).
+      pod.update((p) {
+        p.setPhase(SessionPhase.error);
+        p.setLaunchError(rawMessage);
+      });
     }
     updateTabRunning(sessionId);
   }
