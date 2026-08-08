@@ -560,6 +560,7 @@ void main() {
     late Directory tmp;
     late SessionRepository repo;
     late ChatCubit cubit;
+    late AgentAttentionCubit attention;
     late PostFrameTestHarness postFrame;
     final created = <_SimpleRunningShell>[];
 
@@ -568,11 +569,13 @@ void main() {
       repo = SessionRepository(rootDir: tmp.path);
       postFrame = PostFrameTestHarness();
       created.clear();
+      attention = AgentAttentionCubit(pruneInterval: null);
       cubit = ChatCubit(
         executableResolver: () => 'true',
         automationRepository: testAutomationRepository(),
         sessionRepository: repo,
         postFrameScheduler: postFrame.scheduler,
+        agentAttentionCubit: attention,
         terminalSessionFactory:
             ({required String executable, int scrollbackLines = 10000}) {
               final shell = _SimpleRunningShell(executable: executable);
@@ -586,6 +589,7 @@ void main() {
       await postFrame.flush();
       await drainPendingAsyncWork();
       await cubit.close();
+      await attention.close();
       await drainPendingAsyncWork();
       await deleteTempDirBestEffort(tmp);
     });
