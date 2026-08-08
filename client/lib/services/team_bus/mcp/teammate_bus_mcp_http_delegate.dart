@@ -67,10 +67,13 @@ class TeammateBusMcpHttpDelegate {
     }
   }
 
-  /// Ends the bus turn for an idle push CLI. No-op for forceWait CLIs
-  /// (parked in wait_for_message → onMemberIdle returns early).
+  /// Ends the bus turn for an idle push CLI. No-op for forceWait CLIs: they
+  /// are re-directed into `wait_for_message` on `/idle`, and their turn ends
+  /// only when they actually park there.
   void endTurnForIdle(String memberId) {
-    if (memberId.isNotEmpty) handler.notifyIdle(memberId);
+    if (memberId.isNotEmpty && handler.isPushDelivery(memberId)) {
+      handler.notifyIdle(memberId);
+    }
   }
 
   Future<void> handleMcpRequest(
