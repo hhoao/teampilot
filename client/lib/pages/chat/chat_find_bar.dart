@@ -131,19 +131,19 @@ class _ChatFindBarState extends State<ChatFindBar> {
                                 onClear: _clear,
                                 toggles: [
                                   FindToggleButton(
-                                    label: 'Aa',
+                                    iconAsset: FindBarIcons.caseSensitive,
                                     tooltip: l10n.chatFindMatchCase,
                                     checked: controller.caseSensitive,
                                     onTap: controller.toggleCaseSensitive,
                                   ),
                                   FindToggleButton(
-                                    label: 'ab',
+                                    iconAsset: FindBarIcons.wholeWord,
                                     tooltip: l10n.chatFindWholeWord,
                                     checked: controller.wholeWord,
                                     onTap: controller.toggleWholeWord,
                                   ),
                                   FindToggleButton(
-                                    label: '.*',
+                                    iconAsset: FindBarIcons.regexp,
                                     tooltip: l10n.chatFindUseRegex,
                                     checked: controller.regex,
                                     onTap: controller.toggleRegex,

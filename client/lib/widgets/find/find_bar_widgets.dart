@@ -1,10 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import 'find_bar_palette.dart';
 
 /// Compact VS Code-style primitives shared by the chat and editor find bars
 /// (built on [FindBarPalette] + the [TpHover] surface).
+
+/// Asset paths for the find-widget SVG icons (`assets/icons/svg`).
+abstract final class FindBarIcons {
+  static const String caseSensitive = 'assets/icons/svg/case_sensitive.svg';
+  static const String wholeWord = 'assets/icons/svg/whole_word.svg';
+  static const String regexp = 'assets/icons/svg/regexp.svg';
+  static const String upperCase = 'assets/icons/svg/upper_case.svg';
+  static const String replace = 'assets/icons/svg/replace.svg';
+  static const String replaceAll = 'assets/icons/svg/replace_all.svg';
+}
 
 /// Outer shell of a VS Code-style find widget: panel bg, hairline border,
 /// drop shadow, small radius. Rows are stacked inside by the caller.
@@ -169,10 +180,10 @@ class _ClearButton extends StatelessWidget {
 }
 
 /// Small `Aa` / `ab` / `.*` / `AB` option toggle with an on state (bg + border
-/// + accent label), like VS Code's find-widget toggles.
+/// + accent icon), like VS Code's find-widget toggles.
 class FindToggleButton extends StatelessWidget {
   const FindToggleButton({
-    required this.label,
+    required this.iconAsset,
     required this.tooltip,
     required this.checked,
     required this.onTap,
@@ -182,15 +193,19 @@ class FindToggleButton extends StatelessWidget {
 
   static const double kSize = 20;
 
-  final String label;
+  /// `assets/icons/svg/*.svg` asset rendered at [kIconSize].
+  final String iconAsset;
   final String tooltip;
   final bool checked;
   final VoidCallback onTap;
   final bool enabled;
 
+  static const double kIconSize = 14;
+
   @override
   Widget build(BuildContext context) {
     final palette = FindBarPalette.of(context);
+    final color = checked ? palette.toggleOnText : palette.icon;
     return Tooltip(
       message: tooltip,
       child: TpHover(
@@ -204,36 +219,40 @@ class FindToggleButton extends StatelessWidget {
             : null,
         enabled: enabled,
         onTap: enabled ? onTap : null,
-        child: Center(
-          child: Text(
-            label,
-            style: TpTextStyles.of(context).md.copyWith(
-              fontWeight: FontWeight.w600,
-              color: checked ? palette.toggleOnText : palette.icon,
-            ),
-          ),
+        child: SvgPicture.asset(
+          iconAsset,
+          width: kIconSize,
+          height: kIconSize,
+          colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
         ),
       ),
     );
   }
 }
 
-/// Compact icon action button (prev / next / find-in-selection / close).
+/// Compact icon action button (prev / next / find-in-selection / close /
+/// replace). Renders a Material [icon] or, when [assetPath] is set, the SVG
+/// asset from `assets/icons/svg`.
 ///
 /// When [checked] is true the button renders as an active toggle (accent bg +
 /// border), for controls that are on/off rather than one-shot actions.
 class FindActionButton extends StatelessWidget {
   const FindActionButton({
-    required this.icon,
     required this.tooltip,
     required this.onTap,
+    this.icon,
+    this.assetPath,
     this.enabled = true,
     this.checked = false,
     this.size = 22,
     super.key,
   });
 
-  final IconData icon;
+  /// Material icon shown when [assetPath] is null.
+  final IconData? icon;
+
+  /// `assets/icons/svg/*.svg` asset rendered instead of [icon] when set.
+  final String? assetPath;
   final String tooltip;
   final VoidCallback onTap;
   final bool enabled;
@@ -248,6 +267,14 @@ class FindActionButton extends StatelessWidget {
         : checked
         ? palette.toggleOnText
         : palette.icon;
+    final Widget glyph = assetPath != null
+        ? SvgPicture.asset(
+            assetPath!,
+            width: 16,
+            height: 16,
+            colorFilter: ColorFilter.mode(iconColor, BlendMode.srcIn),
+          )
+        : Icon(icon, size: 16, color: iconColor);
     return Tooltip(
       message: tooltip,
       child: TpHover(
@@ -261,63 +288,7 @@ class FindActionButton extends StatelessWidget {
             : null,
         enabled: enabled,
         onTap: enabled ? onTap : null,
-        child: Icon(icon, size: 16, color: iconColor),
-      ),
-    );
-  }
-}
-
-/// The mockup's `b→c` / `ab→ac` replace buttons (small text + arrow glyphs).
-class ReplaceActionButton extends StatelessWidget {
-  const ReplaceActionButton({
-    required this.source,
-    required this.target,
-    required this.tooltip,
-    required this.onTap,
-    this.enabled = true,
-    super.key,
-  });
-
-  final String source;
-  final String target;
-  final String tooltip;
-  final VoidCallback onTap;
-  final bool enabled;
-
-  @override
-  Widget build(BuildContext context) {
-    final palette = FindBarPalette.of(context);
-    final color = enabled ? palette.icon : palette.mutedText;
-    // md-size monospace (from the AppTypographyScale / font theme), so the
-    // b→c / ab→ac glyphs follow the app's typography scale.
-    final style = TpTextStyles.of(context).mono.copyWith(
-      fontWeight: FontWeight.w600,
-      color: color,
-    );
-    return Tooltip(
-      message: tooltip,
-      child: TpHover(
-        height: 22,
-        borderRadius: BorderRadius.circular(3),
-        hoverColor: palette.hoverBg,
-        padding: const EdgeInsets.symmetric(horizontal: 5),
-        enabled: enabled,
-        onTap: enabled ? onTap : null,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(source, style: style),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 1),
-              child: Icon(
-                Icons.arrow_right_rounded,
-                size: 11,
-                color: color,
-              ),
-            ),
-            Text(target, style: style),
-          ],
-        ),
+        child: glyph,
       ),
     );
   }

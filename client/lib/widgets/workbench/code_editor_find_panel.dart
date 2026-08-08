@@ -122,19 +122,19 @@ class CodeEditorFindPanel extends StatelessWidget
             hint: l10n.editorFindHint,
             toggles: [
               FindToggleButton(
-                label: 'Aa',
+                iconAsset: FindBarIcons.caseSensitive,
                 tooltip: l10n.editorFindMatchCase,
                 checked: value.option.caseSensitive,
                 onTap: controller.toggleCaseSensitive,
               ),
               FindToggleButton(
-                label: 'ab',
+                iconAsset: FindBarIcons.wholeWord,
                 tooltip: l10n.editorFindWholeWord,
                 checked: value.option.wholeWord,
                 onTap: controller.toggleWholeWord,
               ),
               FindToggleButton(
-                label: '.*',
+                iconAsset: FindBarIcons.regexp,
                 tooltip: l10n.editorFindUseRegex,
                 checked: value.option.regex,
                 onTap: controller.toggleRegex,
@@ -195,7 +195,7 @@ class CodeEditorFindPanel extends StatelessWidget
             hint: l10n.editorFindReplaceHint,
             toggles: [
               FindToggleButton(
-                label: 'AB',
+                iconAsset: FindBarIcons.upperCase,
                 tooltip: l10n.editorFindReplacePreserveCase,
                 checked: value.option.preserveCase,
                 onTap: controller.togglePreserveCase,
@@ -210,16 +210,16 @@ class CodeEditorFindPanel extends StatelessWidget
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  ReplaceActionButton(
-                    source: 'b',
-                    target: 'c',
+                  FindActionButton(
+                    key: const ValueKey('editor-replace-one'),
+                    assetPath: FindBarIcons.replace,
                     tooltip: l10n.editorFindReplaceOne,
                     enabled: hasMatch,
                     onTap: controller.replaceMatch,
                   ),
-                  ReplaceActionButton(
-                    source: 'ab',
-                    target: 'ac',
+                  FindActionButton(
+                    key: const ValueKey('editor-replace-all'),
+                    assetPath: FindBarIcons.replaceAll,
                     tooltip: l10n.editorFindReplaceAll,
                     enabled: hasMatch,
                     onTap: controller.replaceAllMatches,
