@@ -37,6 +37,14 @@ class VirtualThreadViewport extends StatefulWidget {
     this.fillDataWindow = false,
     /// Injectable clock (tests); defaults to [DateTime.now].
     this.clock,
+    /// When [revealEpoch] changes and [revealMessageId] is non-null and present
+    /// in [messages], compute the pixel offset of its turn and call
+    /// [onRevealOffset] post-frame (estimate-based until that turn is measured).
+    /// Host jumps the scroll controller; the normal measurement-correction path
+    /// then refines.
+    this.revealMessageId,
+    this.revealEpoch = 0,
+    this.onRevealOffset,
     super.key,
   });
 
@@ -60,6 +68,11 @@ class VirtualThreadViewport extends StatefulWidget {
   final bool retainMountedTurns;
   final bool fillDataWindow;
   final DateTime Function()? clock;
+
+  /// See constructor docs.
+  final String? revealMessageId;
+  final int revealEpoch;
+  final void Function(double offset)? onRevealOffset;
 
   @override
   State<VirtualThreadViewport> createState() => _VirtualThreadViewportState();
@@ -89,11 +102,18 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
   Timer? _keepAliveTimer;
   var _fillScheduled = false;
 
+  String? _lastRevealMessageId;
+  int _lastRevealEpoch = 0;
+
   static const _fillChunk = 2;
 
   @override
   void initState() {
     super.initState();
+    // Seed the last-seen reveal so the first build (which carries the host's
+    // initial request) does not re-fire on the very first frame.
+    _lastRevealMessageId = widget.revealMessageId;
+    _lastRevealEpoch = widget.revealEpoch;
     _cache = TurnHeightCache(estimate: widget.estimateHeight);
     _rebuildTurns(previous: const []);
     _syncVisibleRange();
@@ -137,6 +157,22 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
       }
     }
     _syncVisibleRange();
+    if (widget.revealMessageId != _lastRevealMessageId ||
+        widget.revealEpoch != _lastRevealEpoch) {
+      _lastRevealMessageId = widget.revealMessageId;
+      _lastRevealEpoch = widget.revealEpoch;
+      final targetId = widget.revealMessageId;
+      final onOffset = widget.onRevealOffset;
+      if (targetId != null && onOffset != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          final turnIndex =
+              _turns.indexWhere((t) => t.messageIds.contains(targetId));
+          if (turnIndex < 0) return;
+          onOffset(_cache.offsetBefore(_turns, turnIndex));
+        });
+      }
+    }
   }
 
   @override
