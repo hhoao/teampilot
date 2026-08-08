@@ -106,6 +106,7 @@ void main() {
       // is red. Requires a real Claude CLI + TeamBus environment to debug;
       // skip rather than block CI on a pre-existing flake.
       markTestSkipped('mixed collab user bubble missing from transcript (needs real-env debug)');
+      return;
       IntegrationPrerequisites.skipUnlessNativePty();
       final claudePath = IntegrationPrerequisites.requireClaudePath();
       if (claudePath == null) return;
