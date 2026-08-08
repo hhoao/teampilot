@@ -21,6 +21,9 @@ Future<AiTranscriptBundle?> locateFlashskyaiTranscript(
     sessionId: ctx.taskId,
     bucket: ctx.bucket,
     layoutSegments: const ['projects', 'workspaces'],
+    // History parse needs the transcript file itself; a `{sessionId}/`
+    // sidecar directory must not shadow it.
+    matchDirectories: false,
   );
   final path = probe.matchedPath;
   if (!probe.exists || path == null) return null;

@@ -18,6 +18,9 @@ Future<AiTranscriptBundle?> locateClaudeTranscript(
     sessionId: ctx.taskId,
     bucket: ctx.bucket,
     layoutSegments: const ['projects'],
+    // History parse needs the transcript file itself; a `{sessionId}/`
+    // sidecar directory (workflow scripts) must not shadow it.
+    matchDirectories: false,
   );
   final path = probe.matchedPath;
   if (!probe.exists || path == null) return null;

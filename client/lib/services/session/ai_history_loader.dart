@@ -310,6 +310,9 @@ final class AiHistoryLoader {
       sessionId: ctx.taskId,
       bucket: ctx.bucket,
       layoutSegments: const ['projects', 'workspaces'],
+      // Cache token tracks the transcript file's own mtime; a `{sessionId}/`
+      // sidecar directory would invalidate on unrelated workflow writes.
+      matchDirectories: false,
     );
     final path = probe.matchedPath;
     if (path == null) return null;
