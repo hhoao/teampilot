@@ -14,6 +14,7 @@ import '../../widgets/settings/workspace_pane_header.dart';
 import '../home_workspace/home_workspace_route.dart';
 import 'team_hub_body.dart';
 import 'team_hub_clone_feedback.dart';
+import 'team_hub_clone_options_dialog.dart';
 import 'team_hub_detail_overlay.dart';
 
 /// Single-page team hub: search + inline filters (favorites, category) over a
@@ -78,7 +79,13 @@ class _TeamHubPageState extends State<TeamHubPage> {
   Future<void> _clone(TeamHubCubit cubit, DiscoverableTeam team) async {
     final l10n = context.l10n;
     try {
-      final result = await cubit.clone(team);
+      final options = await resolveTeamHubCloneOptions(context, team);
+      if (options == null || !mounted) return; // 取消或页面已销毁
+      final result = await cubit.clone(
+        team,
+        teamMode: options.teamMode,
+        cli: options.cli,
+      );
       if (!mounted) return;
       setState(() => _detail = null);
       AppToast.show(
