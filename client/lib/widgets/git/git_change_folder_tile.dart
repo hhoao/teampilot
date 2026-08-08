@@ -98,44 +98,43 @@ class _GitChangeFolderTileState extends State<GitChangeFolderTile> {
           kGitChangesNodePaddingRight + kGitChangesRowHorizontalPadding,
           kGitChangesRowVerticalPadding,
         ),
-        child: OverflowBox(
-          maxWidth: double.infinity,
-          alignment: Alignment.centerLeft,
-          child: SizedBox(
-            height: kGitChangesNodeHeight,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: AnimatedRotation(
-                    turns: isExpanded ? 0.25 : 0.0,
-                    duration: const Duration(milliseconds: 150),
-                    child: Icon(
-                      Icons.chevron_right,
-                      size: 16,
-                      color: cs.onSurfaceVariant,
-                    ),
+        child: SizedBox(
+          width: double.infinity,
+          height: kGitChangesNodeHeight,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: 16,
+                height: 16,
+                child: AnimatedRotation(
+                  turns: isExpanded ? 0.25 : 0.0,
+                  duration: const Duration(milliseconds: 150),
+                  child: Icon(
+                    Icons.chevron_right,
+                    size: 16,
+                    color: cs.onSurfaceVariant,
                   ),
                 ),
-                Icon(
-                  isExpanded ? Icons.folder_open : Icons.folder_outlined,
-                  color: cs.onSurfaceVariant,
-                ),
-                const SizedBox(width: 6),
-                Text(
+              ),
+              Icon(
+                isExpanded ? Icons.folder_open : Icons.folder_outlined,
+                color: cs.onSurfaceVariant,
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
                   widget.name,
                   maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TpTextStyles.of(context).md,
                 ),
-                if (showActions) ...[
-                  const SizedBox(width: 8),
-                  ..._actions(context),
-                ],
+              ),
+              if (showActions) ...[
+                const SizedBox(width: 8),
+                ..._actions(context),
               ],
-            ),
+            ],
           ),
         ),
       ),
