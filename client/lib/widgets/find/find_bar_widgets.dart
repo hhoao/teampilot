@@ -179,8 +179,8 @@ class _ClearButton extends StatelessWidget {
   }
 }
 
-/// Small `Aa` / `ab` / `.*` / `AB` option toggle with an on state (bg + border
-/// + accent icon), like VS Code's find-widget toggles.
+/// Small `Aa` / `ab` / `.*` / `AB` option toggle with an on state shown only
+/// by the icon color (no background box), like VS Code's find-widget toggles.
 class FindToggleButton extends StatelessWidget {
   const FindToggleButton({
     required this.iconAsset,
@@ -193,14 +193,12 @@ class FindToggleButton extends StatelessWidget {
 
   static const double kSize = 20;
 
-  /// `assets/icons/svg/*.svg` asset rendered at [kIconSize].
+  /// `assets/icons/svg/*.svg` asset rendered at the theme's md icon size.
   final String iconAsset;
   final String tooltip;
   final bool checked;
   final VoidCallback onTap;
   final bool enabled;
-
-  static const double kIconSize = 14;
 
   @override
   Widget build(BuildContext context) {
@@ -212,17 +210,16 @@ class FindToggleButton extends StatelessWidget {
         width: kSize,
         height: kSize,
         borderRadius: BorderRadius.circular(3),
-        backgroundColor: checked ? palette.activeBg : null,
-        hoverColor: checked ? palette.activeBg : palette.hoverBg,
-        border: checked
-            ? Border.all(color: palette.activeBorder, width: 1)
-            : null,
+        // Transparent surface: these live inside the input field, so the on
+        // state is conveyed purely by the icon color.
+        backgroundColor: Colors.transparent,
+        hoverColor: Colors.transparent,
         enabled: enabled,
         onTap: enabled ? onTap : null,
         child: SvgPicture.asset(
           iconAsset,
-          width: kIconSize,
-          height: kIconSize,
+          width: context.tpIconSizes.md,
+          height: context.tpIconSizes.md,
           colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
         ),
       ),
@@ -267,14 +264,15 @@ class FindActionButton extends StatelessWidget {
         : checked
         ? palette.toggleOnText
         : palette.icon;
+    final double iconSize = context.tpIconSizes.md;
     final Widget glyph = assetPath != null
         ? SvgPicture.asset(
             assetPath!,
-            width: 16,
-            height: 16,
+            width: iconSize,
+            height: iconSize,
             colorFilter: ColorFilter.mode(iconColor, BlendMode.srcIn),
           )
-        : Icon(icon, size: 16, color: iconColor);
+        : Icon(icon, size: iconSize, color: iconColor);
     return Tooltip(
       message: tooltip,
       child: TpHover(

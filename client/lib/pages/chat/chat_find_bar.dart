@@ -39,7 +39,7 @@ class _ChatFindCloseIntent extends Intent {
 }
 
 class _ChatFindBarState extends State<ChatFindBar> {
-  static const double _width = 440;
+  static const double _width = 460;
 
   @override
   void dispose() {
@@ -99,11 +99,8 @@ class _ChatFindBarState extends State<ChatFindBar> {
             final controller = widget.controller;
             final total = controller.hits.length;
             final current = controller.currentIndex;
-            final hasQuery = controller.hasQuery;
-            final counter = !hasQuery
-                ? ''
-                : total == 0
-                ? '0/0'
+            final counter = total == 0
+                ? l10n.chatFindNoResults
                 : '${current + 1}/$total';
 
             return Align(
@@ -153,8 +150,8 @@ class _ChatFindBarState extends State<ChatFindBar> {
                               const SizedBox(width: 4),
                               FindCounterText(
                                 label: counter,
-                                empty: hasQuery && total == 0,
-                                width: 44,
+                                empty: total == 0,
+                                width: 76,
                               ),
                               FindActionButton(
                                 icon: Icons.keyboard_arrow_up,
@@ -182,59 +179,41 @@ class _ChatFindBarState extends State<ChatFindBar> {
                             ],
                           ),
                         ),
-                        if (hasQuery)
-                          total > 0
-                              ? Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Padding(
-                                      padding: const EdgeInsets.fromLTRB(
-                                        10,
-                                        2,
-                                        10,
-                                        4,
-                                      ),
-                                      child: Align(
-                                        alignment: Alignment.centerLeft,
-                                        child: Text(
-                                          l10n.chatFindResults,
-                                          style: TpTextStyles.of(
-                                            context,
-                                          ).mdSemibold.copyWith(
-                                            color: FindBarPalette.of(
-                                              context,
-                                            ).mutedText,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    _ResultsList(
-                                      hits: controller.hits,
-                                      currentIndex: current,
-                                      query: controller.query,
-                                      onTap: _navigateIndex,
-                                    ),
-                                  ],
-                                )
-                              : Padding(
-                                  padding: const EdgeInsets.fromLTRB(
-                                    10,
-                                    2,
-                                    10,
-                                    8,
-                                  ),
-                                  child: Align(
-                                    alignment: Alignment.centerLeft,
-                                    child: Text(
-                                      l10n.chatFindNoResults,
-                                      style: TpTextStyles.of(context).md.copyWith(
-                                        color: FindBarPalette.of(
-                                          context,
-                                        ).mutedText,
-                                      ),
+                        // The counter already reports "no matches", so the
+                        // results list only appears once there are hits.
+                        if (total > 0)
+                          Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  10,
+                                  2,
+                                  10,
+                                  4,
+                                ),
+                                child: Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                    l10n.chatFindResults,
+                                    style: TpTextStyles.of(
+                                      context,
+                                    ).mdSemibold.copyWith(
+                                      color: FindBarPalette.of(
+                                        context,
+                                      ).mutedText,
                                     ),
                                   ),
                                 ),
+                              ),
+                              _ResultsList(
+                                hits: controller.hits,
+                                currentIndex: current,
+                                query: controller.query,
+                                onTap: _navigateIndex,
+                              ),
+                            ],
+                          ),
                       ],
                     ),
                   ),

@@ -2233,7 +2233,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get editorFindReplaceOne => '替换';
 
   @override
-  String get editorFindNoResults => '无结果';
+  String get editorFindNoResults => '无匹配';
 
   @override
   String get fileTreeRevealActiveFile => '定位当前文件';

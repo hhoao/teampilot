@@ -2339,7 +2339,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editorFindReplaceOne => 'Replace';
 
   @override
-  String get editorFindNoResults => 'No results';
+  String get editorFindNoResults => 'No matches';
 
   @override
   String get fileTreeRevealActiveFile => 'Reveal active file';

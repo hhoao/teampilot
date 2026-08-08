@@ -1006,7 +1006,7 @@
   "editorFindInSelection": "Find in selection",
   "editorFindReplacePreserveCase": "Preserve case",
   "editorFindReplaceOne": "Replace",
-  "editorFindNoResults": "No results",
+  "editorFindNoResults": "No matches",
   "fileTreeRevealActiveFile": "Reveal active file",
   "fileTreeRefresh": "Refresh",
   "fileTreeShowFilter": "Show file filter",

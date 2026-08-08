@@ -4265,7 +4265,7 @@ abstract class AppLocalizations {
   /// No description provided for @editorFindNoResults.
   ///
   /// In en, this message translates to:
-  /// **'No results'**
+  /// **'No matches'**
   String get editorFindNoResults;
 
   /// No description provided for @fileTreeRevealActiveFile.

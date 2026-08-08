@@ -29,7 +29,6 @@ class CodeEditorFindPanel extends StatelessWidget
   static const double _panelWidth = 452;
   static const double _findFieldWidth = 260;
   static const double _counterWidth = 76;
-  static const double _buttonSize = 22;
   static const double _chevronWidth = 16;
 
   @override
@@ -144,7 +143,7 @@ class CodeEditorFindPanel extends StatelessWidget
           const SizedBox(width: 4),
           FindCounterText(
             label: _counterLabel(context, value),
-            empty: !hasMatch && value.option.pattern.isNotEmpty,
+            empty: !hasMatch,
             width: _counterWidth,
           ),
           const SizedBox(width: 2),
@@ -180,9 +179,6 @@ class CodeEditorFindPanel extends StatelessWidget
   Widget _buildReplaceRow(BuildContext context, CodeFindValue value) {
     final l10n = context.l10n;
     final hasMatch = value.result?.matches.isNotEmpty ?? false;
-    // Mirror the find row's trailing section (counter + buttons) so the
-    // replace actions sit right-aligned under the find buttons.
-    final trailingWidth = _counterWidth + 2 + 4 * _buttonSize;
     return SizedBox(
       height: _rowHeight,
       child: Row(
@@ -203,30 +199,26 @@ class CodeEditorFindPanel extends StatelessWidget
             ],
           ),
           const SizedBox(width: 4),
-          SizedBox(
-            width: trailingWidth,
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  FindActionButton(
-                    key: const ValueKey('editor-replace-one'),
-                    assetPath: FindBarIcons.replace,
-                    tooltip: l10n.editorFindReplaceOne,
-                    enabled: hasMatch,
-                    onTap: controller.replaceMatch,
-                  ),
-                  FindActionButton(
-                    key: const ValueKey('editor-replace-all'),
-                    assetPath: FindBarIcons.replaceAll,
-                    tooltip: l10n.editorFindReplaceAll,
-                    enabled: hasMatch,
-                    onTap: controller.replaceAllMatches,
-                  ),
-                ],
+          // Replace / replace-all sit flush after the field (left-aligned),
+          // like VS Code's replace row.
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              FindActionButton(
+                key: const ValueKey('editor-replace-one'),
+                assetPath: FindBarIcons.replace,
+                tooltip: l10n.editorFindReplaceOne,
+                enabled: hasMatch,
+                onTap: controller.replaceMatch,
               ),
-            ),
+              FindActionButton(
+                key: const ValueKey('editor-replace-all'),
+                assetPath: FindBarIcons.replaceAll,
+                tooltip: l10n.editorFindReplaceAll,
+                enabled: hasMatch,
+                onTap: controller.replaceAllMatches,
+              ),
+            ],
           ),
         ],
       ),
@@ -234,9 +226,6 @@ class CodeEditorFindPanel extends StatelessWidget
   }
 
   String _counterLabel(BuildContext context, CodeFindValue value) {
-    if (value.option.pattern.isEmpty) {
-      return '';
-    }
     final result = value.result;
     if (result != null && result.matches.isNotEmpty) {
       return '${result.index + 1}/${result.matches.length}';
