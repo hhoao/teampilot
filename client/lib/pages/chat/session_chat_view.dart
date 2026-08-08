@@ -1580,6 +1580,8 @@ class _SessionChatViewState extends State<SessionChatView> {
                                                 onLoadOlder:
                                                     historySeat.loadOlder,
                                                 liveChrome: liveChrome,
+                                                highlightMessageId: null,
+                                                revealRequest: null,
                                               ),
                                             ),
                                           );

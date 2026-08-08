@@ -9,6 +9,7 @@ import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import 'ai_thread_selection_context_menu.dart';
+import 'chat_reveal_controller.dart';
 import 'history_scroll_cursor_lock.dart';
 import 'session_history_live_chrome.dart';
 
@@ -44,6 +45,8 @@ class SessionHistoryThread extends StatefulWidget {
     required this.isLoadingOlder,
     this.onLoadOlder,
     this.liveChrome = SessionHistoryLiveChrome.none,
+    this.highlightMessageId,
+    this.revealRequest,
     super.key,
   });
 
@@ -54,6 +57,12 @@ class SessionHistoryThread extends StatefulWidget {
 
   /// Slim starting/running footer under the scroll surface.
   final SessionHistoryLiveChrome liveChrome;
+
+  /// Message id whose bubble gets a highlight ring (chat find current match).
+  final String? highlightMessageId;
+
+  /// Carries the reveal intent (jump + highlight) from the chat find host.
+  final ChatRevealController? revealRequest;
 
   @override
   State<SessionHistoryThread> createState() => _SessionHistoryThreadState();
@@ -90,12 +99,30 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
 
   List<AiMessage> _messages = const [];
 
+  /// Message to reveal in the viewport (from [ChatRevealController]).
+  String? _revealTargetId;
+  int _revealEpoch = 0;
+  ChatRevealController? _boundReveal;
+
+  void _onRevealRequestChanged() {
+    if (!mounted) return;
+    final request = widget.revealRequest;
+    if (request != null) {
+      _revealTargetId = request.targetMessageId;
+      _revealEpoch = request.epoch;
+    }
+    _setStickToEnd(false);
+    setState(() {});
+  }
+
   @override
   void initState() {
     super.initState();
     _messages = widget.runtime.messages;
     _scrollController = ScrollController()..addListener(_onScrollTick);
     _runtimeSub = widget.runtime.changes.listen((_) => _onRuntimeChanged());
+    _boundReveal = widget.revealRequest;
+    _boundReveal?.addListener(_onRevealRequestChanged);
     _scheduleOpenAtEnd();
   }
 
@@ -115,6 +142,12 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
       if (widget.liveChrome.isActive && _stickToEnd) {
         _scheduleStickFrames();
       }
+    }
+    if (oldWidget.revealRequest != widget.revealRequest) {
+      _boundReveal?.removeListener(_onRevealRequestChanged);
+      _boundReveal = widget.revealRequest;
+      _boundReveal?.addListener(_onRevealRequestChanged);
+      _onRevealRequestChanged();
     }
   }
 
@@ -144,6 +177,7 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
     _hoverResumeTimer?.cancel();
     _hoverEffectsEnabled.dispose();
     _runtimeSub?.cancel();
+    _boundReveal?.removeListener(_onRevealRequestChanged);
     _scrollController
       ..removeListener(_onScrollTick)
       ..dispose();
@@ -558,6 +592,16 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                         retainMountedTurns: true,
                         fillDataWindow: true,
                         mountTurns: _mountTurns,
+                        revealMessageId: _revealTargetId,
+                        revealEpoch: _revealEpoch,
+                        onRevealOffset: (offset) {
+                          if (!_scrollController.hasClients || offset < 0) {
+                            return;
+                          }
+                          final max =
+                              _scrollController.position.maxScrollExtent;
+                          _jumpTo(offset > max ? max : offset);
+                        },
                         suppressMeasureScrollCorrection: _stickToEnd,
                         onMeasureScrollCorrection: (delta) {
                           if (!_scrollController.hasClients ||
@@ -601,7 +645,7 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                                 ai.id == realTipId &&
                                 aiMessageIsThinkingOnly(ai),
                           );
-                          return tightenForRunning
+                          var result = tightenForRunning
                               ? Theme(
                                   data: Theme.of(context).copyWith(
                                     extensions: [
@@ -613,6 +657,24 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                                   child: messageChild,
                                 )
                               : messageChild;
+                          // Chat find current match: ring the bubble so the jump
+                          // target is obvious even when it is off-center.
+                          if (ai.id == widget.highlightMessageId) {
+                            final cs = Theme.of(context).colorScheme;
+                            result = Container(
+                              margin: const EdgeInsets.symmetric(vertical: 2),
+                              padding: const EdgeInsets.all(3),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: cs.primary,
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: result,
+                            );
+                          }
+                          return result;
                         },
                       ),
                     ),
