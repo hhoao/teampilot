@@ -16,17 +16,20 @@ final class TabSessionIdleWatch {
     required TabMemberPtyDelivery delivery,
     required bool Function() isClosed,
     VoidCallback? onAfterTick,
+    void Function(String sessionId, String memberId)? onAfterTurnEnded,
   }) : _tabStore = tabStore,
        _coordinationFactory = coordinationFactory,
        _delivery = delivery,
        _isClosed = isClosed,
-       _onAfterTick = onAfterTick;
+       _onAfterTick = onAfterTick,
+       _onAfterTurnEnded = onAfterTurnEnded;
 
   final ChatTabStore _tabStore;
   final TabMemberCoordinationFactory _coordinationFactory;
   final TabMemberPtyDelivery _delivery;
   final bool Function() _isClosed;
   final VoidCallback? _onAfterTick;
+  final void Function(String sessionId, String memberId)? _onAfterTurnEnded;
 
   Timer? _timer;
 
@@ -117,6 +120,7 @@ final class TabSessionIdleWatch {
               'busInTurn=${bus?.isMemberInTurn(memberId)}',
             );
             coordination.endTurn();
+            _onAfterTurnEnded?.call(tab.info.id, memberId);
           },
         );
       });

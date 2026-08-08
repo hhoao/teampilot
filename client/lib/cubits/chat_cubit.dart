@@ -275,6 +275,7 @@ class ChatCubit extends Cubit<ChatState>
         },
         onAfterIdleWatchTick: () => unawaited(_onIdleWatchTick()),
         onAfterTurnLatched: _onOperatorTurnLatched,
+        onAfterTurnEnded: _onTurnEnded,
       );
   late final MemberTurnInterruptService _turnInterrupt =
       MemberTurnInterruptService(
@@ -820,6 +821,12 @@ class ChatCubit extends Cubit<ChatState>
       attention.clearSeat(sessionId: sessionId, memberId: memberId);
     }
     _recomputeWorkingSessions();
+  }
+
+  /// PTY-quiet turn end — clears the attention working seat for CLIs whose
+  /// done event may be unreliable (requiresPtyFallback). Filled in a later task.
+  void _onTurnEnded(String sessionId, String memberId) {
+    // Implemented in Task 4.
   }
 
   /// Mixed `wait_for_message` park — drop PreToolUse working so the sidebar
