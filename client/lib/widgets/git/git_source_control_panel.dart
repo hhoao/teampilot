@@ -307,7 +307,11 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
     unawaited(
       context
           .read<WorkbenchEditorOpener>()
-          .openFile(widget.workspaceId, absolutePath),
+          .openFile(
+            widget.workspaceId,
+            absolutePath,
+            fs: widget.workContext.filesystem,
+          ),
     );
   }
 

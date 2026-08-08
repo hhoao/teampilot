@@ -47,6 +47,11 @@ void main() {
       ),
     );
     expect(wFolder, closeTo(wStaged, 1));
+
+    // Absolute floor: each width must exceed its trailing-actions constant so
+    // both constants can't drift down together and still pass the relative diff.
+    expect(wStaged, greaterThan(kGitChangesTrailingTwoActionsWidth));
+    expect(wUnstaged, greaterThan(kGitChangesTrailingActionsWidth));
   });
 
   test('visibleGitChangesRows nests files under expanded folders', () {

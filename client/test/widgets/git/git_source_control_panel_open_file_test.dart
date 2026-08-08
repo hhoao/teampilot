@@ -53,6 +53,8 @@ class _RecordingOpener extends WorkbenchEditorOpener {
   );
 
   final openedPaths = <String>[];
+  final openedWorkspaceIds = <String>[];
+  final openedFs = <Filesystem>[];
 
   @override
   Future<void> openFile(
@@ -62,6 +64,8 @@ class _RecordingOpener extends WorkbenchEditorOpener {
     bool preview = true,
   }) async {
     openedPaths.add(path);
+    openedWorkspaceIds.add(workspaceId);
+    openedFs.add(fs!);
   }
 }
 
@@ -171,6 +175,10 @@ void main() {
       await tester.pump();
 
       expect(opener!.openedPaths, ['/repo/a.txt']);
+      expect(opener!.openedWorkspaceIds, ['ws-test']);
+      // The opener must receive the backend filesystem (identical, not a copy)
+      // so WSL/SSH workspace paths resolve against the backend.
+      expect(opener!.openedFs, [same(workContext.filesystem)]);
       await gesture.removePointer();
     });
   });
