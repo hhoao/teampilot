@@ -79,9 +79,11 @@ void main() {
   setUp(() {
     setUpTestAppStorage();
     base = Directory.systemTemp.createTempSync('ai_history_loader_');
-    fs = LocalFilesystem(
-      pathContext: p.Context(style: p.Style.posix, current: base.path),
-    );
+    // Host context (not forced POSIX): on Windows `base.path` is a `C:\…`
+    // path, so a POSIX context would produce mixed separators that never
+    // match the host-context paths written by the fixture (p.join) and read
+    // by the loader (fs.pathContext).
+    fs = LocalFilesystem();
     layout = RuntimeLayout(teampilotRoot: base.path, fs: fs);
   });
 

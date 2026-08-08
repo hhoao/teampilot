@@ -256,13 +256,14 @@ void main() {
         () async {
       final memFs = _NoSymlinkFilesystem();
       final memStore = MarketplaceSharedStore(fs: memFs, teampilotRoot: '/tp');
-      final memCache = '/tp/plugins/marketplace-cache/owner/demo@main';
-      await memFs.ensureDir(p.join(memCache, '.claude-plugin'));
+      final memPath = memFs.pathContext;
+      final memCache = memPath.join('/tp', 'plugins', 'marketplace-cache', 'owner', 'demo@main');
+      await memFs.ensureDir(memPath.join(memCache, '.claude-plugin'));
       await memFs.writeString(
-        p.join(memCache, '.claude-plugin', 'marketplace.json'),
+        memPath.join(memCache, '.claude-plugin', 'marketplace.json'),
         '{}',
       );
-      final memConfig = '/tp/workspace/workspaces/proj/sessions/s1/runtime/claude';
+      final memConfig = memPath.join('/tp', 'workspace', 'workspaces', 'proj', 'sessions', 's1', 'runtime', 'claude');
 
       await memStore.ensureSessionLinked(
         configDir: memConfig,
@@ -270,10 +271,10 @@ void main() {
         tool: CliTool.claude,
         paths: claudePluginManifestPaths,
       );
-      final memDest = p.join(memConfig, 'plugins', 'marketplaces', 'demo');
+      final memDest = memPath.join(memConfig, 'plugins', 'marketplaces', 'demo');
       expect((await memFs.lstat(memDest)).isDirectory, isTrue);
       expect(
-        await memFs.readString(p.join(memDest, '.claude-plugin', 'marketplace.json')),
+        await memFs.readString(memPath.join(memDest, '.claude-plugin', 'marketplace.json')),
         '{}',
       );
     });
