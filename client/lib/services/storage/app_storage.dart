@@ -124,11 +124,16 @@ class AppPaths {
   }
 
   /// Joins under [root], using POSIX separators when [root] is a remote path.
+  ///
+  /// [segment] is written POSIX-style (`a/b/c`) so it stays identical across
+  /// hosts; split it and re-join with the host context so Windows roots never
+  /// end up with mixed `\`/`/` separators (`...\plugins/marketplace-cache`).
   static String _pathUnderTeampilotRoot(String teampilotRoot, String segment) {
+    final parts = segment.split('/');
     if (teampilotRoot.startsWith('/')) {
-      return posixPathContext.join(teampilotRoot, segment);
+      return posixPathContext.joinAll([teampilotRoot, ...parts]);
     }
-    return p.join(teampilotRoot, segment);
+    return p.joinAll([teampilotRoot, ...parts]);
   }
 
   /// UI identity JSON under a TeamPilot app-data root ([launchProfilesDir] layout).
