@@ -2297,6 +2297,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editorFindUseRegex => 'Use regular expression';
 
   @override
+  String get editorFindWholeWord => 'Match whole word';
+
+  @override
+  String get editorFindToggleReplace => 'Toggle replace';
+
+  @override
+  String get editorFindInSelection => 'Find in selection';
+
+  @override
+  String get editorFindReplacePreserveCase => 'Preserve case';
+
+  @override
+  String get editorFindReplaceOne => 'Replace';
+
+  @override
   String get editorFindNoResults => 'No results';
 
   @override
@@ -6920,4 +6935,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get chatFindClose => 'Close find';
+
+  @override
+  String get chatFindMatchCase => 'Match case';
+
+  @override
+  String get chatFindWholeWord => 'Match whole word';
+
+  @override
+  String get chatFindUseRegex => 'Use regular expression';
 }

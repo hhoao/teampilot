@@ -5,9 +5,12 @@ import 'package:shared_ui/shared_ui.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../services/session/chat_transcript_find_controller.dart';
 import '../../utils/debounce/debounce.dart';
+import '../../widgets/find/find_bar_palette.dart';
+import '../../widgets/find/find_bar_widgets.dart';
 
-/// Find bar for the chat page: query field + n/N counter + prev/next + close,
-/// plus a collapsible results list. Driven by [ChatTranscriptFindController].
+/// Find bar for the chat page: VS Code-style query field with inline
+/// Aa / ab / .* toggles + n/N counter + prev/next/close, plus a collapsible
+/// results list. Driven by [ChatTranscriptFindController].
 class ChatFindBar extends StatefulWidget {
   const ChatFindBar({
     required this.controller,
@@ -36,8 +39,7 @@ class _ChatFindCloseIntent extends Intent {
 }
 
 class _ChatFindBarState extends State<ChatFindBar> {
-  static const double _rowHeight = 34;
-  static const double _width = 420;
+  static const double _width = 440;
 
   @override
   void dispose() {
@@ -55,6 +57,11 @@ class _ChatFindBarState extends State<ChatFindBar> {
     );
   }
 
+  void _clear() {
+    widget.queryController.clear();
+    widget.controller.clear();
+  }
+
   void _navigateCurrent() {
     final hit = widget.controller.current;
     if (hit != null) widget.onNavigate(hit);
@@ -69,7 +76,6 @@ class _ChatFindBarState extends State<ChatFindBar> {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
     // Escape closes find. Mounted only while find is visible, so Escape can
     // never open it. (Mirrors TerminalFindShortcuts' Esc handling.)
@@ -93,46 +99,65 @@ class _ChatFindBarState extends State<ChatFindBar> {
             final controller = widget.controller;
             final total = controller.hits.length;
             final current = controller.currentIndex;
-            final counter = total == 0 ? '' : '${current + 1}/$total';
             final hasQuery = controller.hasQuery;
+            final counter = !hasQuery
+                ? ''
+                : total == 0
+                ? '0/0'
+                : '${current + 1}/$total';
 
             return Align(
               alignment: Alignment.topCenter,
               child: Padding(
                 padding: const EdgeInsets.only(top: 8),
-                child: Material(
-                  elevation: 4,
-                  borderRadius: BorderRadius.circular(6),
-                  clipBehavior: Clip.antiAlias,
-                  color: cs.surfaceContainerHighest,
-                  child: SizedBox(
-                    width: _width,
+                child: SizedBox(
+                  width: _width,
+                  child: FindBarPanel(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        SizedBox(
-                          height: _rowHeight,
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(4, 4, 4, 4),
                           child: Row(
                             children: [
-                              _input(context),
-                              SizedBox(
-                                width: 44,
-                                child: Text(
-                                  counter,
-                                  textAlign: TextAlign.center,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: cs.onSurfaceVariant,
+                              FindField(
+                                width: 300,
+                                controller: widget.queryController,
+                                focusNode: widget.focusNode,
+                                hint: l10n.chatFindHint,
+                                autofocus: true,
+                                showClear: true,
+                                onChanged: _onChanged,
+                                onClear: _clear,
+                                toggles: [
+                                  FindToggleButton(
+                                    label: 'Aa',
+                                    tooltip: l10n.chatFindMatchCase,
+                                    checked: controller.caseSensitive,
+                                    onTap: controller.toggleCaseSensitive,
                                   ),
-                                ),
+                                  FindToggleButton(
+                                    label: 'ab',
+                                    tooltip: l10n.chatFindWholeWord,
+                                    checked: controller.wholeWord,
+                                    onTap: controller.toggleWholeWord,
+                                  ),
+                                  FindToggleButton(
+                                    label: '.*',
+                                    tooltip: l10n.chatFindUseRegex,
+                                    checked: controller.regex,
+                                    onTap: controller.toggleRegex,
+                                  ),
+                                ],
                               ),
-                              TpIconButton(
+                              const SizedBox(width: 4),
+                              FindCounterText(
+                                label: counter,
+                                empty: hasQuery && total == 0,
+                                width: 44,
+                              ),
+                              FindActionButton(
                                 icon: Icons.keyboard_arrow_up,
-                                size: TpIconButton.kCompactSize,
-                                compact: true,
-                                color: cs.onSurfaceVariant,
                                 tooltip: l10n.chatFindPrevious,
                                 enabled: total > 0,
                                 onTap: () {
@@ -140,11 +165,8 @@ class _ChatFindBarState extends State<ChatFindBar> {
                                   _navigateCurrent();
                                 },
                               ),
-                              TpIconButton(
+                              FindActionButton(
                                 icon: Icons.keyboard_arrow_down,
-                                size: TpIconButton.kCompactSize,
-                                compact: true,
-                                color: cs.onSurfaceVariant,
                                 tooltip: l10n.chatFindNext,
                                 enabled: total > 0,
                                 onTap: () {
@@ -152,11 +174,8 @@ class _ChatFindBarState extends State<ChatFindBar> {
                                   _navigateCurrent();
                                 },
                               ),
-                              TpIconButton(
+                              FindActionButton(
                                 icon: Icons.close,
-                                size: TpIconButton.kCompactSize,
-                                compact: true,
-                                color: cs.onSurfaceVariant,
                                 tooltip: l10n.chatFindClose,
                                 onTap: widget.onClose,
                               ),
@@ -170,19 +189,21 @@ class _ChatFindBarState extends State<ChatFindBar> {
                                   children: [
                                     Padding(
                                       padding: const EdgeInsets.fromLTRB(
-                                        12,
-                                        6,
-                                        12,
+                                        10,
                                         2,
+                                        10,
+                                        4,
                                       ),
                                       child: Align(
                                         alignment: Alignment.centerLeft,
                                         child: Text(
                                           l10n.chatFindResults,
-                                          style: TpTextStyles.of(
-                                            context,
-                                          ).smSemiboldColored(
-                                            cs.onSurfaceVariant,
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            color: FindBarPalette.of(
+                                              context,
+                                            ).mutedText,
                                           ),
                                         ),
                                       ),
@@ -196,12 +217,23 @@ class _ChatFindBarState extends State<ChatFindBar> {
                                   ],
                                 )
                               : Padding(
-                                  padding: const EdgeInsets.all(8),
-                                  child: Text(
-                                    l10n.chatFindNoResults,
-                                    style: TpTextStyles.of(
-                                      context,
-                                    ).smColored(cs.onSurfaceVariant),
+                                  padding: const EdgeInsets.fromLTRB(
+                                    10,
+                                    2,
+                                    10,
+                                    8,
+                                  ),
+                                  child: Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: Text(
+                                      l10n.chatFindNoResults,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: FindBarPalette.of(
+                                          context,
+                                        ).mutedText,
+                                      ),
+                                    ),
                                   ),
                                 ),
                       ],
@@ -212,53 +244,6 @@ class _ChatFindBarState extends State<ChatFindBar> {
             );
           },
         ),
-      ),
-    );
-  }
-
-  Widget _input(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return SizedBox(
-      width: 220,
-      height: _rowHeight,
-      child: TextField(
-        controller: widget.queryController,
-        focusNode: widget.focusNode,
-        maxLines: 1,
-        autofocus: true,
-        style: const TextStyle(fontSize: 13),
-        decoration: InputDecoration(
-          isDense: true,
-          hintText: context.l10n.chatFindHint,
-          hintStyle: TextStyle(fontSize: 13, color: cs.onSurfaceVariant),
-          filled: true,
-          fillColor: cs.surface,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(4),
-            borderSide: BorderSide(color: cs.outlineVariant),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(4),
-            borderSide: BorderSide(color: cs.outlineVariant),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(4),
-            borderSide: BorderSide(color: cs.primary),
-          ),
-          suffixIcon: widget.queryController.text.isNotEmpty
-              ? TpIconButton(
-                  icon: Icons.clear,
-                  compact: true,
-                  size: TpIconButton.kCompactSize,
-                  onTap: () {
-                    widget.queryController.clear();
-                    widget.controller.clear();
-                  },
-                )
-              : null,
-        ),
-        onChanged: _onChanged,
       ),
     );
   }
@@ -279,41 +264,38 @@ class _ResultsList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
+    final palette = FindBarPalette.of(context);
     return ConstrainedBox(
       constraints: const BoxConstraints(maxHeight: 240),
       child: ListView.builder(
         shrinkWrap: true,
-        padding: const EdgeInsets.symmetric(vertical: 4),
+        padding: const EdgeInsets.symmetric(vertical: 2),
         itemCount: hits.length,
         itemBuilder: (context, index) {
           final hit = hits[index];
           final selected = index == currentIndex;
-          return Material(
-            color: selected
-                ? cs.primary.withValues(alpha: 0.10)
-                : Colors.transparent,
-            child: InkWell(
-              onTap: () => onTap(index),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.chat_bubble_outline_rounded,
-                      size: 14,
-                      color: cs.onSurfaceVariant,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _HighlightedSnippet(
-                        text: hit.snippet,
-                        query: query,
-                      ),
-                    ),
-                  ],
+          return TpHover(
+            width: double.infinity,
+            borderRadius: BorderRadius.circular(3),
+            backgroundColor: selected ? palette.activeBg : null,
+            hoverColor: palette.hoverBg,
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            onTap: () => onTap(index),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.chat_bubble_outline_rounded,
+                  size: 14,
+                  color: palette.mutedText,
                 ),
-              ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _HighlightedSnippet(
+                    text: hit.snippet,
+                    query: query,
+                  ),
+                ),
+              ],
             ),
           );
         },
@@ -332,8 +314,8 @@ class _HighlightedSnippet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final style = TpTextStyles.of(context).smColored(cs.onSurfaceVariant);
+    final palette = FindBarPalette.of(context);
+    final style = TextStyle(fontSize: 12, color: palette.mutedText);
     final q = query.trim();
     if (q.isEmpty) {
       return Text(
@@ -365,7 +347,7 @@ class _HighlightedSnippet extends StatelessWidget {
             text: text.substring(start, end),
             style: style.copyWith(
               fontWeight: FontWeight.w600,
-              color: cs.primary,
+              color: palette.focusBorder,
             ),
           ),
           TextSpan(text: text.substring(end)),

@@ -128,4 +128,55 @@ void main() {
     expect(hit.messageIndex, 0);
     expect(hit.snippet.toLowerCase(), contains('target'));
   });
+
+  group('options', () {
+    test('toggleCaseSensitive narrows to exact case', () {
+      messages = _messages(['Alpha project', 'alpha flag']);
+      controller.search('alpha');
+      expect(controller.hits.length, 2);
+      controller.toggleCaseSensitive();
+      expect(controller.caseSensitive, isTrue);
+      expect(controller.hits.length, 1);
+      expect(controller.hits.single.messageIndex, 1);
+    });
+
+    test('toggleWholeWord drops matches embedded in longer words', () {
+      // 'foo bar foo' has two standalone matches; 'foobar' has one match that
+      // is not a whole word.
+      messages = _messages(['foo bar foo', 'foobar baz']);
+      controller.search('foo');
+      expect(controller.hits.length, 3);
+      controller.toggleWholeWord();
+      expect(controller.wholeWord, isTrue);
+      expect(controller.hits.length, 2);
+      expect(controller.hits.every((h) => h.messageIndex == 0), isTrue);
+    });
+
+    test('toggleRegex switches to regular expression matching', () {
+      messages = _messages(['item 1', 'item 2', 'no match']);
+      controller.search(r'item \d');
+      expect(controller.hits, isEmpty);
+      controller.toggleRegex();
+      expect(controller.regex, isTrue);
+      expect(controller.hits.length, 2);
+    });
+
+    test('invalid regex yields no hits instead of throwing', () {
+      messages = _messages(['hello']);
+      controller.toggleRegex();
+      controller.search('(');
+      expect(controller.hits, isEmpty);
+      expect(controller.currentIndex, -1);
+    });
+
+    test('re-scanning after an option toggle applies the new option', () {
+      controller.search('alpha');
+      expect(controller.hits.length, 3);
+      controller.toggleCaseSensitive();
+      // Same query text + same message-list instance: the toggle must still
+      // force a re-scan (not hit the no-op guard). Only the two lowercase
+      // 'alpha' matches survive; 'Alpha is now implemented.' drops out.
+      expect(controller.hits.length, 2);
+    });
+  });
 }

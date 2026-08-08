@@ -992,6 +992,11 @@
   "editorFindClose": "Close",
   "editorFindMatchCase": "Match case",
   "editorFindUseRegex": "Use regular expression",
+  "editorFindWholeWord": "Match whole word",
+  "editorFindToggleReplace": "Toggle replace",
+  "editorFindInSelection": "Find in selection",
+  "editorFindReplacePreserveCase": "Preserve case",
+  "editorFindReplaceOne": "Replace",
   "editorFindNoResults": "No results",
   "fileTreeRevealActiveFile": "Reveal active file",
   "fileTreeRefresh": "Refresh",
@@ -3134,5 +3139,8 @@
   "chatFindResults": "Matches",
   "chatFindPrevious": "Previous match",
   "chatFindNext": "Next match",
-  "chatFindClose": "Close find"
+  "chatFindClose": "Close find",
+  "chatFindMatchCase": "Match case",
+  "chatFindWholeWord": "Match whole word",
+  "chatFindUseRegex": "Use regular expression"
 }

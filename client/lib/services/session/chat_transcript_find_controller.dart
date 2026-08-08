@@ -31,6 +31,9 @@ class ChatTranscriptFindController extends ChangeNotifier {
   final List<AiMessage> Function() messagesProvider;
 
   String _query = '';
+  bool _caseSensitive = false;
+  bool _wholeWord = false;
+  bool _regex = false;
   List<TranscriptHit> _hits = const [];
   int _currentIndex = -1;
 
@@ -42,11 +45,29 @@ class ChatTranscriptFindController extends ChangeNotifier {
   List<AiMessage>? _scannedMessages;
 
   String get query => _query;
+  bool get caseSensitive => _caseSensitive;
+  bool get wholeWord => _wholeWord;
+  bool get regex => _regex;
   List<TranscriptHit> get hits => _hits;
   int get currentIndex => _hits.isEmpty ? -1 : _currentIndex;
   bool get hasQuery => _query.trim().isNotEmpty;
   TranscriptHit? get current =>
       _hits.isEmpty || _currentIndex < 0 ? null : _hits[_currentIndex];
+
+  void toggleCaseSensitive() {
+    _caseSensitive = !_caseSensitive;
+    _rescan();
+  }
+
+  void toggleWholeWord() {
+    _wholeWord = !_wholeWord;
+    _rescan();
+  }
+
+  void toggleRegex() {
+    _regex = !_regex;
+    _rescan();
+  }
 
   void search(String value) {
     final query = value.trim();
@@ -55,6 +76,14 @@ class ChatTranscriptFindController extends ChangeNotifier {
     // instance changed (live refresh / loadOlder), so hits don't go stale.
     if (query == _query && identical(_scannedMessages, messages)) return;
     _query = query;
+    _rescan(messages: messages);
+  }
+
+  /// Re-runs the scan for the current query (e.g. after toggling an option),
+  /// always re-scanning regardless of the message-list instance.
+  void _rescan({List<AiMessage>? messages}) {
+    final query = _query.trim();
+    final List<AiMessage> msgs = messages ?? messagesProvider();
     if (query.isEmpty) {
       _hits = const [];
       _currentIndex = -1;
@@ -62,9 +91,16 @@ class ChatTranscriptFindController extends ChangeNotifier {
       notifyListeners();
       return;
     }
-    final doc = _docFor(messages);
-    _hits = _scan(query, doc, messages);
-    _scannedMessages = messages;
+    final doc = _docFor(msgs);
+    _hits = _scan(
+      query,
+      doc,
+      msgs,
+      caseSensitive: _caseSensitive,
+      wholeWord: _wholeWord,
+      regex: _regex,
+    );
+    _scannedMessages = msgs;
     _currentIndex = _hits.isEmpty ? -1 : 0;
     notifyListeners();
   }
@@ -104,9 +140,22 @@ class ChatTranscriptFindController extends ChangeNotifier {
   static List<TranscriptHit> _scan(
     String query,
     SessionTranscriptDoc doc,
-    List<AiMessage> messages,
-  ) {
-    final pattern = RegExp(RegExp.escape(query), caseSensitive: false);
+    List<AiMessage> messages, {
+    bool caseSensitive = false,
+    bool wholeWord = false,
+    bool regex = false,
+  }) {
+    final String source = regex ? query : RegExp.escape(query);
+    final RegExp pattern;
+    try {
+      pattern = RegExp(
+        wholeWord ? '(?<![\\w])(?:$source)(?![\\w])' : source,
+        caseSensitive: caseSensitive,
+      );
+    } on FormatException {
+      // Invalid regex: treat as no matches rather than crashing the search.
+      return const [];
+    }
     final hits = <TranscriptHit>[];
     for (final match in pattern.allMatches(doc.text)) {
       if (hits.length >= kChatFindMaxResults) break;

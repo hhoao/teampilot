@@ -14,6 +14,7 @@ import 'app_markdown_style_sheet.dart';
 import 'app_outline_input_theme.dart';
 import 'app_typography_scale.dart';
 import 'font_catalog.dart';
+import '../widgets/find/find_bar_palette.dart';
 
 /// Persisted preset ids (order = settings UI order).
 const List<String> kThemeColorPresetIds = [
@@ -247,7 +248,15 @@ List<ThemeExtension<dynamic>> _appThemeExtensions({
     textTheme: textTheme,
     extensions: [fontTheme, typographyTheme],
   );
-  return [fontTheme, typographyTheme, buildAppAiMessageTheme(bootstrap)];
+  final findBarPalette = flexTheme.brightness == Brightness.dark
+      ? FindBarPalette.dark
+      : FindBarPalette.light;
+  return [
+    fontTheme,
+    typographyTheme,
+    buildAppAiMessageTheme(bootstrap),
+    findBarPalette,
+  ];
 }
 
 ThemeData _withSoftenedForeground(ThemeData base) {

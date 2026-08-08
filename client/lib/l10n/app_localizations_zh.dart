@@ -2191,6 +2191,21 @@ class AppLocalizationsZh extends AppLocalizations {
   String get editorFindUseRegex => '使用正则表达式';
 
   @override
+  String get editorFindWholeWord => '全字匹配';
+
+  @override
+  String get editorFindToggleReplace => '切换替换';
+
+  @override
+  String get editorFindInSelection => '在选定内容中查找';
+
+  @override
+  String get editorFindReplacePreserveCase => '保留大小写';
+
+  @override
+  String get editorFindReplaceOne => '替换';
+
+  @override
   String get editorFindNoResults => '无结果';
 
   @override
@@ -6652,4 +6667,13 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get chatFindClose => '关闭查找';
+
+  @override
+  String get chatFindMatchCase => '区分大小写';
+
+  @override
+  String get chatFindWholeWord => '全字匹配';
+
+  @override
+  String get chatFindUseRegex => '使用正则表达式';
 }

@@ -929,6 +929,11 @@
   "editorFindClose": "关闭",
   "editorFindMatchCase": "区分大小写",
   "editorFindUseRegex": "使用正则表达式",
+  "editorFindWholeWord": "全字匹配",
+  "editorFindToggleReplace": "切换替换",
+  "editorFindInSelection": "在选定内容中查找",
+  "editorFindReplacePreserveCase": "保留大小写",
+  "editorFindReplaceOne": "替换",
   "editorFindNoResults": "无结果",
   "fileTreeRevealActiveFile": "定位当前文件",
   "fileTreeRefresh": "刷新",
@@ -2700,5 +2705,8 @@
   "chatFindResults": "匹配结果",
   "chatFindPrevious": "上一个匹配",
   "chatFindNext": "下一个匹配",
-  "chatFindClose": "关闭查找"
+  "chatFindClose": "关闭查找",
+  "chatFindMatchCase": "区分大小写",
+  "chatFindWholeWord": "全字匹配",
+  "chatFindUseRegex": "使用正则表达式"
 }

@@ -4178,6 +4178,36 @@ abstract class AppLocalizations {
   /// **'Use regular expression'**
   String get editorFindUseRegex;
 
+  /// No description provided for @editorFindWholeWord.
+  ///
+  /// In en, this message translates to:
+  /// **'Match whole word'**
+  String get editorFindWholeWord;
+
+  /// No description provided for @editorFindToggleReplace.
+  ///
+  /// In en, this message translates to:
+  /// **'Toggle replace'**
+  String get editorFindToggleReplace;
+
+  /// No description provided for @editorFindInSelection.
+  ///
+  /// In en, this message translates to:
+  /// **'Find in selection'**
+  String get editorFindInSelection;
+
+  /// No description provided for @editorFindReplacePreserveCase.
+  ///
+  /// In en, this message translates to:
+  /// **'Preserve case'**
+  String get editorFindReplacePreserveCase;
+
+  /// No description provided for @editorFindReplaceOne.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace'**
+  String get editorFindReplaceOne;
+
   /// No description provided for @editorFindNoResults.
   ///
   /// In en, this message translates to:
@@ -12373,6 +12403,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Close find'**
   String get chatFindClose;
+
+  /// No description provided for @chatFindMatchCase.
+  ///
+  /// In en, this message translates to:
+  /// **'Match case'**
+  String get chatFindMatchCase;
+
+  /// No description provided for @chatFindWholeWord.
+  ///
+  /// In en, this message translates to:
+  /// **'Match whole word'**
+  String get chatFindWholeWord;
+
+  /// No description provided for @chatFindUseRegex.
+  ///
+  /// In en, this message translates to:
+  /// **'Use regular expression'**
+  String get chatFindUseRegex;
 }
 
 class _AppLocalizationsDelegate

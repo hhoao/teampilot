@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:re_editor/re_editor.dart';
 import 'package:teampilot/l10n/l10n_extensions.dart';
+import 'package:teampilot/widgets/find/find_bar_widgets.dart';
 import 'package:teampilot/widgets/workbench/code_editor_find_panel.dart';
 
 /// Verifies the workbench file-editor find/replace bar.
@@ -96,7 +97,8 @@ void main() {
     ctrl.replaceMode();
     await tester.pump();
     expect(find.byType(TextField), findsNWidgets(2));
-    expect(find.byIcon(Icons.done_all), findsOneWidget);
+    // VS Code-style replace actions: b→c (single) + ab→ac (replace all).
+    expect(find.byType(ReplaceActionButton), findsNWidgets(2));
   });
 
   testWidgets('read-only files keep the find bar but hide replace', (
@@ -108,7 +110,7 @@ void main() {
     ctrl.replaceMode();
     await tester.pump();
     expect(find.byType(TextField), findsOneWidget);
-    expect(find.byIcon(Icons.done_all), findsNothing);
+    expect(find.byType(ReplaceActionButton), findsNothing);
   });
 
   testWidgets('CodeEditor wires the find bar through findBuilder', (
