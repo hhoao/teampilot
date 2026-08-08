@@ -1195,18 +1195,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get workspaceSearchRecentSessions => 'Recent sessions';
 
   @override
-  String get workspaceSearchSessionContentSection => 'Session content';
+  String get workspaceSearchFilterAll => 'All';
+
+  @override
+  String get workspaceSearchFilterConversations => 'Tasks';
+
+  @override
+  String get workspaceSearchFilterFiles => 'Files';
+
+  @override
+  String get workspaceSearchShowMore => 'Show more results';
+
+  @override
+  String get workspaceSearchFilesEmptyHint => 'Type to search files';
 
   @override
   String get workspaceSearchNoResults => 'No matches';
-
-  @override
-  String get workspaceSearchFilesTruncated =>
-      'More files match — refine your search';
-
-  @override
-  String get workspaceSearchContentTruncated =>
-      'More sessions match — refine your search';
 
   @override
   String get appDropdownSearchHint => 'Search…';

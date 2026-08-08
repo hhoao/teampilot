@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../../cubits/chat_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
@@ -11,17 +12,22 @@ import '../../../services/file_tree/workspace_file_search.dart';
 import '../../../services/search/workspace_search_indexes.dart';
 import '../../../services/session/workspace_session_content_index.dart';
 import '../../../services/workbench/workbench_editor_opener.dart';
+import '../../../services/workspace/workspace_pane_policy.dart';
 import '../../../utils/debounce/debounce.dart';
 import '../../../utils/session/workspace_sessions.dart';
 import '../../../widgets/sidebar_session_tile.dart';
+import 'workspace_search_widgets.dart';
 import 'workspace_session_actions.dart';
-import 'package:shared_ui/shared_ui.dart';
-import '../../../services/workspace/workspace_pane_policy.dart';
 
-/// Result-count caps shown in the dialog.
+/// Result-count caps shown before the section's "查看更多结果" link appears.
+const _maxConversationResults = 20;
 const _maxFileResults = 50;
-const _maxContentResults = 20;
 const _maxRecentSessions = 8;
+
+/// Files are queried once with this effectively-unbounded limit so the
+/// "查看更多结果" link can reveal every match without a second pass. The fuzzy
+/// index scores every entry regardless of the limit, so this is free.
+const _maxFileResultsExpanded = 100000;
 
 /// Opens the workspace search dialog, which searches conversation sessions
 /// (by title and by transcript content) and workspace files by name. Reads the
@@ -47,8 +53,8 @@ Future<void> showWorkspaceSearchDialog(
       context: context,
       presentation: TpDialogPresentation.page,
       mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
-      maxWidth: 560,
-      maxHeight: 560,
+      maxWidth: 680,
+      maxHeight: 640,
       builder: (dialogContext) => WorkspaceSearchDialog(
         workspace: workspace,
         sessions: sessions,
@@ -74,10 +80,13 @@ Future<void> showWorkspaceSearchDialog(
 var _workspaceSearchDialogOpen = false;
 
 /// Centered modal that filters sessions (title + transcript content) and
-/// workspace files for name matches. Pure UI: result actions are delegated to
-/// callbacks, and searches hit the shared [WorkspaceSearchIndexes] so files and
-/// transcripts are indexed once per workspace instead of re-walking on every
-/// keystroke.
+/// workspace files for name matches, styled after the search-panel mockup: a
+/// headerless rounded search field, single-select filter chips (全部 / 任务 / 文件),
+/// a merged 对话 group (title hits + content hits deduped by session), a 文件
+/// group, and per-section "查看更多结果" links that expand the section to all
+/// matches. Pure UI: result actions are delegated to callbacks, and searches hit
+/// the shared [WorkspaceSearchIndexes] so files and transcripts are indexed once
+/// per workspace instead of re-walking on every keystroke.
 class WorkspaceSearchDialog extends StatefulWidget {
   const WorkspaceSearchDialog({
     required this.workspace,
@@ -100,6 +109,28 @@ class WorkspaceSearchDialog extends StatefulWidget {
   State<WorkspaceSearchDialog> createState() => _WorkspaceSearchDialogState();
 }
 
+enum _SearchFilter { all, conversations, files }
+
+/// One merged conversation result: a session plus, when it also matched by
+/// transcript content, the snippet and member label to show under the title.
+class _ConversationHit {
+  const _ConversationHit({
+    required this.session,
+    this.snippet,
+    this.source,
+  });
+
+  final AppSession session;
+  final String? snippet;
+
+  /// Right-meta source label: the roster member type for team seats, the team
+  /// name otherwise. Null when the session is unteamed and unmixed.
+  final String? source;
+
+  int get activityTimestampMs =>
+      session.updatedAt != 0 ? session.updatedAt : session.createdAt;
+}
+
 class _WorkspaceSearchDialogState extends State<WorkspaceSearchDialog> {
   final _controller = TextEditingController();
   late final String _debounceTag =
@@ -107,8 +138,13 @@ class _WorkspaceSearchDialogState extends State<WorkspaceSearchDialog> {
 
   var _query = '';
   var _searchingFiles = false;
-  var _fileResultsTruncated = false;
-  var _contentResultsTruncated = false;
+  var _activeFilter = _SearchFilter.all;
+  var _conversationsExpanded = false;
+  var _filesExpanded = false;
+
+  /// All matching files (queried with an effectively-unbounded limit) and all
+  /// content matches; display slices them by the per-section caps unless the
+  /// user expanded the section.
   List<WorkspaceFileMatch> _fileMatches = const [];
   List<WorkspaceSessionContentMatch> _contentMatches = const [];
 
@@ -159,7 +195,12 @@ class _WorkspaceSearchDialogState extends State<WorkspaceSearchDialog> {
   }
 
   void _onQueryChanged(String value) {
-    setState(() => _query = value);
+    setState(() {
+      _query = value;
+      // A new query restarts the section expansion state.
+      _conversationsExpanded = false;
+      _filesExpanded = false;
+    });
     Debounces.debounce(
       _debounceTag,
       const Duration(milliseconds: 180),
@@ -176,9 +217,7 @@ class _WorkspaceSearchDialogState extends State<WorkspaceSearchDialog> {
       setState(() {
         _searchingFiles = false;
         _fileMatches = const [];
-        _fileResultsTruncated = false;
         _contentMatches = const [];
-        _contentResultsTruncated = false;
       });
       return;
     }
@@ -188,16 +227,7 @@ class _WorkspaceSearchDialogState extends State<WorkspaceSearchDialog> {
     final content = widget.indexes
         .contentIndexFor(widget.workspace.workspaceId)
         .search(query, sessions: widget.sessions);
-    final contentTruncated = content.length > _maxContentResults;
-    final cappedContent = contentTruncated
-        ? content.sublist(0, _maxContentResults)
-        : content;
-    if (mounted) {
-      setState(() {
-        _contentMatches = cappedContent;
-        _contentResultsTruncated = contentTruncated;
-      });
-    }
+    if (mounted) setState(() => _contentMatches = content);
 
     // Files: cached index, synchronous after the first build.
     final root = widget.workspace.firstFolderPath;
@@ -206,7 +236,6 @@ class _WorkspaceSearchDialogState extends State<WorkspaceSearchDialog> {
       setState(() {
         _searchingFiles = false;
         _fileMatches = const [];
-        _fileResultsTruncated = false;
       });
       return;
     }
@@ -214,94 +243,270 @@ class _WorkspaceSearchDialogState extends State<WorkspaceSearchDialog> {
     if (!fileIndex.isReady && mounted) setState(() => _searchingFiles = true);
     await fileIndex.ensureFresh();
     if (!mounted || seq != _searchSeq) return;
-    final fileQuery = fileIndex.query(query, limit: _maxFileResults + 1);
-    final truncated = fileQuery.length > _maxFileResults;
-    final files = truncated ? fileQuery.sublist(0, _maxFileResults) : fileQuery;
+    final fileQuery = fileIndex.query(query, limit: _maxFileResultsExpanded);
     setState(() {
       _searchingFiles = false;
-      _fileMatches = files;
-      _fileResultsTruncated = truncated;
+      _fileMatches = fileQuery;
     });
+  }
+
+  /// Merged conversation hits for the active query: title-matched sessions
+  /// first (in session order), then content-only matches, deduped by session id.
+  /// A title hit that also has a content hit carries that snippet + source.
+  List<_ConversationHit> _conversationHits() {
+    final titleHits = filterSessionsByQuery(
+      widget.sessions,
+      query: _query,
+      emptyTitleFallback: widget.emptyTitleFallback,
+    );
+    final contentById = <String, WorkspaceSessionContentMatch>{};
+    for (final match in _contentMatches) {
+      contentById[match.session.sessionId] = match;
+    }
+    final out = <_ConversationHit>[];
+    final seen = <String>{};
+    for (final session in titleHits) {
+      out.add(_hitFor(session, contentById[session.sessionId]));
+      seen.add(session.sessionId);
+    }
+    for (final match in _contentMatches) {
+      if (seen.contains(match.session.sessionId)) continue;
+      out.add(_hitFor(match.session, match));
+      seen.add(match.session.sessionId);
+    }
+    return out;
+  }
+
+  _ConversationHit _hitFor(
+    AppSession session,
+    WorkspaceSessionContentMatch? content,
+  ) {
+    final member = content?.memberLabel.trim() ?? '';
+    final source = member.isNotEmpty
+        ? member
+        : (session.sessionTeam.trim().isNotEmpty
+              ? session.sessionTeam.trim()
+              : null);
+    return _ConversationHit(
+      session: session,
+      snippet: content?.snippet,
+      source: source,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final hasQuery = _query.trim().isNotEmpty;
+    final isNarrow =
+        MediaQuery.sizeOf(context).width <
+        WorkspacePanePolicy.narrowBreakpointWidth;
 
-    final sessions = hasQuery
-        ? filterSessionsByQuery(
-            widget.sessions,
-            query: _query,
-            emptyTitleFallback: widget.emptyTitleFallback,
-          )
-        : _recentSessions(widget.sessions);
-
-    final hasResults =
-        sessions.isNotEmpty ||
-        _contentMatches.isNotEmpty ||
-        _fileMatches.isNotEmpty ||
-        _searchingFiles ||
-        _contentIndexing;
-
-    return TpDialogPageShell(
-      title: l10n.workspaceSearchTitle,
-      mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
-      fillBody: true,
-      child: Padding(
-        padding: _pageHostPadding(context),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _SearchField(
-              controller: _controller,
-              hint: l10n.workspaceSearchHint,
-              onChanged: _onQueryChanged,
-              onClear: () {
-                _controller.clear();
-                _onQueryChanged('');
-              },
-            ),
-            const SizedBox(height: 12),
-            Expanded(
-              child: !hasQuery
-                  ? _RecentSessions(
-                      sessions: sessions,
-                      header: l10n.workspaceSearchRecentSessions,
-                      onOpenSession: widget.onOpenSession,
-                    )
-                  : (!hasResults)
-                  ? _EmptyResults(label: l10n.workspaceSearchNoResults)
-                  : _Results(
-                      query: _query,
-                      sessions: sessions,
-                      contentMatches: _contentMatches,
-                      contentIndexing: _contentIndexing,
-                      contentTruncated: _contentResultsTruncated,
-                      fileMatches: _fileMatches,
-                      searchingFiles: _searchingFiles,
-                      fileResultsTruncated: _fileResultsTruncated,
-                      sessionsHeader: l10n.homeWorkspaceConversationsSection,
-                      contentHeader: l10n.workspaceSearchSessionContentSection,
-                      filesHeader: l10n.workspaceSearchFilesSection,
-                      indexingLabel: l10n.workspaceSearchIndexing,
-                      searchingLabel: l10n.workspaceSearchSearching,
-                      contentTruncatedLabel:
-                          l10n.workspaceSearchContentTruncated,
-                      truncatedLabel: l10n.workspaceSearchFilesTruncated,
-                      emptyTitleFallback: widget.emptyTitleFallback,
-                      onOpenSession: widget.onOpenSession,
-                      onOpenFile: widget.onOpenFile,
-                    ),
-            ),
-          ],
-        ),
-      ),
+    final Widget field = WorkspaceSearchField(
+      controller: _controller,
+      hint: l10n.workspaceSearchHint,
+      onChanged: _onQueryChanged,
+      onClear: () {
+        _controller.clear();
+        _onQueryChanged('');
+      },
     );
+    final Widget chips = _FilterChips(
+      active: _activeFilter,
+      onChanged: (filter) => setState(() => _activeFilter = filter),
+    );
+
+    if (isNarrow) {
+      // Fullscreen page: search + chips pinned, results fill and scroll.
+      final body = Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          field,
+          const SizedBox(height: 12),
+          chips,
+          const SizedBox(height: 10),
+          Expanded(child: _buildResults(shrinkWrap: false)),
+        ],
+      );
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TpDialogMobileNavBar(
+            title: l10n.workspaceSearchTitle,
+            onLeading: () => Navigator.of(context).maybePop(),
+          ),
+          Expanded(
+            child: SafeArea(top: false, child: body),
+          ),
+        ],
+      );
+    }
+
+    // Wide: the dialog height adapts to its content and only grows to the
+    // showTpDialog maxHeight. The results area shrink-wraps (loose flex) so a
+    // few matches yield a compact panel while a full list caps and scrolls.
+    final body = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        field,
+        const SizedBox(height: 12),
+        chips,
+        const SizedBox(height: 10),
+        Flexible(fit: FlexFit.loose, child: _buildResults(shrinkWrap: true)),
+      ],
+    );
+    return SafeArea(
+      child: Padding(padding: const EdgeInsets.all(16), child: body),
+    );
+  }
+
+  /// Results body: recent sessions before any query, grouped search results after.
+  /// [shrinkWrap] sizes the list to its content (wide adaptive height); when
+  /// false the list fills its box and scrolls (narrow fullscreen).
+  Widget _buildResults({bool shrinkWrap = false}) {
+    return _query.trim().isEmpty
+        ? _buildRecentResults(shrinkWrap: shrinkWrap)
+        : _buildSearchResults(shrinkWrap: shrinkWrap);
+  }
+
+  /// No query: recent conversations (expandable to all sessions), or a files
+  /// hint when the 文件 filter is active.
+  Widget _buildRecentResults({required bool shrinkWrap}) {
+    final l10n = context.l10n;
+    if (_activeFilter == _SearchFilter.files) {
+      return ListView(
+        shrinkWrap: shrinkWrap,
+        children: [
+          WorkspaceSearchSectionHeader(label: l10n.workspaceSearchFilesSection),
+          WorkspaceSearchStatusRow(label: l10n.workspaceSearchFilesEmptyHint),
+        ],
+      );
+    }
+    final all = _recentSessions(widget.sessions);
+    final shown = _conversationsExpanded
+        ? all
+        : all.take(_maxRecentSessions).toList();
+    return ListView(
+      shrinkWrap: shrinkWrap,
+      children: [
+        WorkspaceSearchSectionHeader(
+          label: l10n.workspaceSearchRecentSessions,
+        ),
+        for (final session in shown)
+          SidebarSessionTile(
+            session: session,
+            tapThrottleKeyPrefix: 'workspace_search_recent',
+            onTap: () => widget.onOpenSession(session),
+          ),
+        if (!_conversationsExpanded && all.length > _maxRecentSessions)
+          WorkspaceSearchShowMore(
+            label: l10n.workspaceSearchShowMore,
+            onTap: () => setState(() => _conversationsExpanded = true),
+          ),
+      ],
+    );
+  }
+
+  /// Query results: 对话 (merged title + content) and 文件 sections, filtered by
+  /// the active chip and expandable past their initial caps. Sections with no
+  /// content are skipped so a truly empty query falls through to the empty state.
+  Widget _buildSearchResults({required bool shrinkWrap}) {
+    final l10n = context.l10n;
+    final children = <Widget>[];
+
+    if (_activeFilter != _SearchFilter.files) {
+      children.addAll(_buildConversationsSection(l10n));
+    }
+    if (_activeFilter != _SearchFilter.conversations) {
+      children.addAll(_buildFilesSection(l10n));
+    }
+
+    if (children.isEmpty) {
+      return _EmptyResults(label: l10n.workspaceSearchNoResults);
+    }
+    return ListView(shrinkWrap: shrinkWrap, children: children);
+  }
+
+  /// 对话 section: title-matched + content-matched sessions, merged and deduped.
+  List<Widget> _buildConversationsSection(AppLocalizations l10n) {
+    final out = <Widget>[];
+    final hits = _conversationHits();
+    if (hits.isEmpty && _contentIndexing) {
+      out.add(
+        WorkspaceSearchSectionHeader(
+          label: l10n.homeWorkspaceConversationsSection,
+        ),
+      );
+      out.add(WorkspaceSearchStatusRow(label: l10n.workspaceSearchIndexing));
+      return out;
+    }
+    if (hits.isEmpty) return out;
+    out.add(
+      WorkspaceSearchSectionHeader(label: l10n.homeWorkspaceConversationsSection),
+    );
+    final shown = _conversationsExpanded
+        ? hits
+        : hits.take(_maxConversationResults).toList();
+    for (final hit in shown) {
+      out.add(
+        WorkspaceSearchConversationRow(
+          title: hit.session.resolveDisplayTitle(widget.emptyTitleFallback),
+          query: _query,
+          snippet: hit.snippet,
+          source: hit.source,
+          activityTimestampMs: hit.activityTimestampMs,
+          onTap: () => widget.onOpenSession(hit.session),
+        ),
+      );
+    }
+    if (!_conversationsExpanded && hits.length > _maxConversationResults) {
+      out.add(
+        WorkspaceSearchShowMore(
+          label: l10n.workspaceSearchShowMore,
+          onTap: () => setState(() => _conversationsExpanded = true),
+        ),
+      );
+    }
+    return out;
+  }
+
+  /// 文件 section: file-name matches, expandable past [_maxFileResults].
+  List<Widget> _buildFilesSection(AppLocalizations l10n) {
+    final out = <Widget>[];
+    if (_searchingFiles) {
+      out.add(WorkspaceSearchSectionHeader(label: l10n.workspaceSearchFilesSection));
+      out.add(WorkspaceSearchStatusRow(label: l10n.workspaceSearchSearching));
+      return out;
+    }
+    if (_fileMatches.isEmpty) return out;
+    out.add(WorkspaceSearchSectionHeader(label: l10n.workspaceSearchFilesSection));
+    final shown = _filesExpanded
+        ? _fileMatches
+        : _fileMatches.take(_maxFileResults).toList();
+    for (final match in shown) {
+      out.add(
+        WorkspaceSearchFileRow(
+          name: match.name,
+          query: _query,
+          relativePath: match.relativePath,
+          onTap: () => widget.onOpenFile(match.path),
+        ),
+      );
+    }
+    if (!_filesExpanded && _fileMatches.length > _maxFileResults) {
+      out.add(
+        WorkspaceSearchShowMore(
+          label: l10n.workspaceSearchShowMore,
+          onTap: () => setState(() => _filesExpanded = true),
+        ),
+      );
+    }
+    return out;
   }
 }
 
-/// Sessions sorted most-recent-first (updatedAt, else createdAt), capped.
+/// Sessions sorted most-recent-first (updatedAt, else createdAt). Uncapped so
+/// the recent section can expand past [_maxRecentSessions].
 List<AppSession> _recentSessions(List<AppSession> all) {
   final sorted = [...all]
     ..sort((a, b) {
@@ -309,402 +514,42 @@ List<AppSession> _recentSessions(List<AppSession> all) {
       final bt = b.updatedAt != 0 ? b.updatedAt : b.createdAt;
       return bt.compareTo(at);
     });
-  return sorted.take(_maxRecentSessions).toList();
+  return sorted;
 }
 
-EdgeInsets _pageHostPadding(BuildContext context) {
-  final narrow =
-      MediaQuery.sizeOf(context).width <
-      WorkspacePanePolicy.narrowBreakpointWidth;
-  return narrow ? const EdgeInsets.fromLTRB(16, 0, 16, 16) : EdgeInsets.zero;
-}
+/// Single-select filter chips row: 全部 / 任务 / 文件.
+class _FilterChips extends StatelessWidget {
+  const _FilterChips({required this.active, required this.onChanged});
 
-/// Compact recent-sessions list shown before any query is typed.
-class _RecentSessions extends StatelessWidget {
-  const _RecentSessions({
-    required this.sessions,
-    required this.header,
-    required this.onOpenSession,
-  });
-
-  final List<AppSession> sessions;
-  final String header;
-  final FutureOr<void> Function(AppSession session) onOpenSession;
+  final _SearchFilter active;
+  final ValueChanged<_SearchFilter> onChanged;
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _SectionHeader(label: header),
-          for (final session in sessions)
-            SidebarSessionTile(
-              session: session,
-              tapThrottleKeyPrefix: 'workspace_search_recent',
-              onTap: () => onOpenSession(session),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Results extends StatelessWidget {
-  const _Results({
-    required this.query,
-    required this.sessions,
-    required this.contentMatches,
-    required this.contentIndexing,
-    required this.contentTruncated,
-    required this.fileMatches,
-    required this.searchingFiles,
-    required this.fileResultsTruncated,
-    required this.sessionsHeader,
-    required this.contentHeader,
-    required this.filesHeader,
-    required this.indexingLabel,
-    required this.searchingLabel,
-    required this.contentTruncatedLabel,
-    required this.truncatedLabel,
-    required this.emptyTitleFallback,
-    required this.onOpenSession,
-    required this.onOpenFile,
-  });
-
-  final String query;
-  final List<AppSession> sessions;
-  final List<WorkspaceSessionContentMatch> contentMatches;
-  final bool contentIndexing;
-  final bool contentTruncated;
-  final List<WorkspaceFileMatch> fileMatches;
-  final bool searchingFiles;
-  final bool fileResultsTruncated;
-  final String sessionsHeader;
-  final String contentHeader;
-  final String filesHeader;
-  final String indexingLabel;
-  final String searchingLabel;
-  final String contentTruncatedLabel;
-  final String truncatedLabel;
-  final String emptyTitleFallback;
-  final FutureOr<void> Function(AppSession session) onOpenSession;
-  final ValueChanged<String> onOpenFile;
-
-  @override
-  Widget build(BuildContext context) {
-    final showContent =
-        contentMatches.isNotEmpty || contentIndexing || contentTruncated;
-    return CustomScrollView(
-      slivers: [
-        if (sessions.isNotEmpty) ...[
-          SliverToBoxAdapter(child: _SectionHeader(label: sessionsHeader)),
-          SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (context, index) => SidebarSessionTile(
-                session: sessions[index],
-                tapThrottleKeyPrefix: 'workspace_search_session',
-                onTap: () => onOpenSession(sessions[index]),
-              ),
-              childCount: sessions.length,
-            ),
-          ),
-          const SliverToBoxAdapter(child: SizedBox(height: 8)),
-        ],
-        if (showContent) ...[
-          SliverToBoxAdapter(child: _SectionHeader(label: contentHeader)),
-          if (contentIndexing && contentMatches.isEmpty)
-            SliverToBoxAdapter(child: _StatusRow(label: indexingLabel))
-          else ...[
-            SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (context, index) => _ContentResultTile(
-                  match: contentMatches[index],
-                  query: query,
-                  emptyTitleFallback: emptyTitleFallback,
-                  onTap: () => onOpenSession(contentMatches[index].session),
-                ),
-                childCount: contentMatches.length,
-              ),
-            ),
-            if (contentTruncated)
-              SliverToBoxAdapter(
-                child: _StatusRow(label: contentTruncatedLabel),
-              ),
-          ],
-          const SliverToBoxAdapter(child: SizedBox(height: 8)),
-        ],
-        SliverToBoxAdapter(child: _SectionHeader(label: filesHeader)),
-        if (searchingFiles)
-          SliverToBoxAdapter(child: _StatusRow(label: searchingLabel))
-        else ...[
-          SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (context, index) => _FileResultTile(
-                match: fileMatches[index],
-                onTap: () => onOpenFile(fileMatches[index].path),
-              ),
-              childCount: fileMatches.length,
-            ),
-          ),
-          if (fileResultsTruncated)
-            SliverToBoxAdapter(child: _StatusRow(label: truncatedLabel)),
-        ],
+    final l10n = context.l10n;
+    return Row(
+      children: [
+        WorkspaceSearchFilterChip(
+          label: l10n.workspaceSearchFilterAll,
+          icon: Icons.format_list_bulleted_rounded,
+          active: active == _SearchFilter.all,
+          onTap: () => onChanged(_SearchFilter.all),
+        ),
+        const SizedBox(width: 6),
+        WorkspaceSearchFilterChip(
+          label: l10n.workspaceSearchFilterConversations,
+          icon: Icons.chat_bubble_outline_rounded,
+          active: active == _SearchFilter.conversations,
+          onTap: () => onChanged(_SearchFilter.conversations),
+        ),
+        const SizedBox(width: 6),
+        WorkspaceSearchFilterChip(
+          label: l10n.workspaceSearchFilterFiles,
+          icon: Icons.description_outlined,
+          active: active == _SearchFilter.files,
+          onTap: () => onChanged(_SearchFilter.files),
+        ),
       ],
-    );
-  }
-}
-
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 4, 4, 6),
-      child: Text(
-        label,
-        style: TpTextStyles.of(context).smSemiboldColored(cs.onSurfaceVariant),
-      ),
-    );
-  }
-}
-
-class _StatusRow extends StatelessWidget {
-  const _StatusRow({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
-      child: Text(
-        label,
-        style: TpTextStyles.of(context).smColored(cs.onSurfaceVariant),
-      ),
-    );
-  }
-}
-
-/// A transcript content hit: the session title plus a one-line snippet with the
-/// matched query emphasized.
-class _ContentResultTile extends StatelessWidget {
-  const _ContentResultTile({
-    required this.match,
-    required this.query,
-    required this.emptyTitleFallback,
-    required this.onTap,
-  });
-
-  final WorkspaceSessionContentMatch match;
-  final String query;
-  final String emptyTitleFallback;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final styles = TpTextStyles.of(context);
-    final title = match.session.resolveDisplayTitle(emptyTitleFallback);
-    final member = match.memberLabel.trim();
-    final subtitle = member.isEmpty
-        ? match.snippet
-        : '$member · ${match.snippet}';
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
-      child: TpHover(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
-        hoverColor: cs.onSurface.withValues(alpha: 0.05),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(
-              Icons.chat_bubble_outline_rounded,
-              size: context.tpIconSizes.md,
-              color: cs.onSurfaceVariant,
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: styles.mdMediumColored(cs.onSurface),
-                  ),
-                  const SizedBox(height: 2),
-                  _HighlightedSnippet(text: subtitle, query: query),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// One-to-two line snippet with the first case-insensitive [query] occurrence
-/// in bold. Falls back to plain text when [query] is empty.
-class _HighlightedSnippet extends StatelessWidget {
-  const _HighlightedSnippet({required this.text, required this.query});
-
-  final String text;
-  final String query;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final style = TpTextStyles.of(context).smColored(cs.onSurfaceVariant);
-    final idx = WorkspaceSessionContentIndex.caseInsensitiveIndexOf(
-      text,
-      query,
-    );
-    if (idx == null) {
-      return Text(
-        text,
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-        style: style,
-      );
-    }
-    final end = idx + query.trim().length;
-    return Text.rich(
-      TextSpan(
-        children: [
-          TextSpan(text: text.substring(0, idx)),
-          TextSpan(
-            text: text.substring(idx, end),
-            style: style.copyWith(
-              fontWeight: FontWeight.w600,
-              color: cs.primary,
-            ),
-          ),
-          TextSpan(text: text.substring(end)),
-        ],
-      ),
-      maxLines: 2,
-      overflow: TextOverflow.ellipsis,
-    );
-  }
-}
-
-class _FileResultTile extends StatelessWidget {
-  const _FileResultTile({required this.match, required this.onTap});
-
-  final WorkspaceFileMatch match;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final styles = TpTextStyles.of(context);
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
-      child: TpHover(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
-        hoverColor: cs.onSurface.withValues(alpha: 0.05),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        child: Row(
-          children: [
-            Icon(
-              Icons.insert_drive_file_outlined,
-              size: context.tpIconSizes.md,
-              color: cs.onSurfaceVariant,
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    match.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: styles.mdMediumColored(cs.onSurface),
-                  ),
-                  Text(
-                    match.relativePath,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: styles.smColored(cs.onSurfaceVariant),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SearchField extends StatelessWidget {
-  const _SearchField({
-    required this.controller,
-    required this.hint,
-    required this.onChanged,
-    required this.onClear,
-  });
-
-  final TextEditingController controller;
-  final String hint;
-  final ValueChanged<String> onChanged;
-  final VoidCallback onClear;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return TextField(
-      controller: controller,
-      autofocus: true,
-      decoration: InputDecoration(
-        hintText: hint,
-        isDense: true,
-        filled: true,
-        fillColor: cs.surfaceContainer,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 10,
-          vertical: 10,
-        ),
-        prefixIcon: Icon(
-          Icons.search_rounded,
-          size: context.tpIconSizes.md,
-          color: cs.onSurfaceVariant,
-        ),
-        floatingLabelBehavior: FloatingLabelBehavior.never,
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(
-            color: cs.outlineVariant.withValues(alpha: 0.7),
-          ),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: cs.primary),
-        ),
-        suffixIcon: controller.text.isNotEmpty
-            ? TpIconButton(
-                icon: Icons.clear,
-                compact: true,
-                size: TpIconButton.kCompactSize,
-                onTap: onClear,
-              )
-            : null,
-      ),
-      onChanged: onChanged,
     );
   }
 }
@@ -733,7 +578,7 @@ class _EmptyResults extends StatelessWidget {
             Text(
               label,
               textAlign: TextAlign.center,
-              style: styles.smColored(cs.onSurfaceVariant),
+              style: styles.mdColored(cs.onSurfaceVariant),
             ),
           ],
         ),

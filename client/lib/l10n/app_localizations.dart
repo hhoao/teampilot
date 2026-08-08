@@ -2222,29 +2222,41 @@ abstract class AppLocalizations {
   /// **'Recent sessions'**
   String get workspaceSearchRecentSessions;
 
-  /// No description provided for @workspaceSearchSessionContentSection.
+  /// No description provided for @workspaceSearchFilterAll.
   ///
   /// In en, this message translates to:
-  /// **'Session content'**
-  String get workspaceSearchSessionContentSection;
+  /// **'All'**
+  String get workspaceSearchFilterAll;
+
+  /// No description provided for @workspaceSearchFilterConversations.
+  ///
+  /// In en, this message translates to:
+  /// **'Tasks'**
+  String get workspaceSearchFilterConversations;
+
+  /// No description provided for @workspaceSearchFilterFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Files'**
+  String get workspaceSearchFilterFiles;
+
+  /// No description provided for @workspaceSearchShowMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Show more results'**
+  String get workspaceSearchShowMore;
+
+  /// No description provided for @workspaceSearchFilesEmptyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Type to search files'**
+  String get workspaceSearchFilesEmptyHint;
 
   /// No description provided for @workspaceSearchNoResults.
   ///
   /// In en, this message translates to:
   /// **'No matches'**
   String get workspaceSearchNoResults;
-
-  /// No description provided for @workspaceSearchFilesTruncated.
-  ///
-  /// In en, this message translates to:
-  /// **'More files match — refine your search'**
-  String get workspaceSearchFilesTruncated;
-
-  /// No description provided for @workspaceSearchContentTruncated.
-  ///
-  /// In en, this message translates to:
-  /// **'More sessions match — refine your search'**
-  String get workspaceSearchContentTruncated;
 
   /// No description provided for @appDropdownSearchHint.
   ///

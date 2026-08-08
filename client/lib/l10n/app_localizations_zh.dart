@@ -1134,16 +1134,22 @@ class AppLocalizationsZh extends AppLocalizations {
   String get workspaceSearchRecentSessions => '最近会话';
 
   @override
-  String get workspaceSearchSessionContentSection => '会话内容';
+  String get workspaceSearchFilterAll => '全部';
+
+  @override
+  String get workspaceSearchFilterConversations => '任务';
+
+  @override
+  String get workspaceSearchFilterFiles => '文件';
+
+  @override
+  String get workspaceSearchShowMore => '查看更多结果';
+
+  @override
+  String get workspaceSearchFilesEmptyHint => '输入关键词搜索文件';
 
   @override
   String get workspaceSearchNoResults => '没有匹配结果';
-
-  @override
-  String get workspaceSearchFilesTruncated => '还有更多文件，请细化搜索';
-
-  @override
-  String get workspaceSearchContentTruncated => '还有更多会话，请细化搜索';
 
   @override
   String get appDropdownSearchHint => '搜索…';
