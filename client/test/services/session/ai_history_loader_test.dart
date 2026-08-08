@@ -136,9 +136,9 @@ void main() {
   test('load uses work-context FS from resolver, not home FS', () async {
     final workRoot = Directory.systemTemp.createTempSync('ai_history_work_');
     try {
-      final workFs = LocalFilesystem(
-        pathContext: p.Context(style: p.Style.posix, current: workRoot.path),
-      );
+      // Host context: a forced POSIX context over a `C:\…` workRoot would
+      // produce mixed separators on Windows and fail to locate the fixture.
+      final workFs = LocalFilesystem();
       final workRuntime = RuntimeContext(
         target: RuntimeTarget.local(),
         filesystem: workFs,
