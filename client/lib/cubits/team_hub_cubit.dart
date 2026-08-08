@@ -2,6 +2,7 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/discoverable_team.dart';
+import '../models/team_config.dart';
 import '../services/team/team_clone_service.dart';
 import '../services/team_hub/team_hub_source.dart';
 
@@ -11,7 +12,14 @@ enum TeamSort { name, updated }
 
 typedef FavoritesLoader = Future<Set<String>> Function();
 typedef FavoriteToggler = Future<bool> Function(String key);
-typedef TeamCloner = Future<CloneResult> Function(DiscoverableTeam team);
+
+/// Clones a hub team, with optional clone-time teamMode/cli overrides for
+/// manifest-undeclared fields.
+typedef TeamCloner = Future<CloneResult> Function(
+  DiscoverableTeam team, {
+  TeamMode? teamMode,
+  CliTool? cli,
+});
 
 /// Loads the set of local skill/plugin/MCP ids already installed, so the detail
 /// view can mark each dependency as installed vs to-pull.
@@ -190,10 +198,14 @@ class TeamHubCubit extends Cubit<TeamHubState> {
 
   /// Clones [team]; tracks the key in `cloningKeys` for spinner UI. Refreshes
   /// [installedDepIds] after a successful clone. May throw [CloneException].
-  Future<CloneResult> clone(DiscoverableTeam team) async {
+  Future<CloneResult> clone(
+    DiscoverableTeam team, {
+    TeamMode? teamMode,
+    CliTool? cli,
+  }) async {
     emit(state.copyWith(cloningKeys: {...state.cloningKeys, team.key}));
     try {
-      final result = await _cloneTeam(team);
+      final result = await _cloneTeam(team, teamMode: teamMode, cli: cli);
       final installed =
           await _loadInstalledDepIds?.call() ?? state.installedDepIds;
       emit(state.copyWith(installedDepIds: installed));

@@ -56,7 +56,7 @@ void main() {
       source: source,
       loadFavorites: () async => <String>{},
       saveFavoriteToggle: (k) async => true,
-      cloneTeam: (t) async => const CloneResult(
+      cloneTeam: (t, {teamMode, cli}) async => const CloneResult(
         teamId: 'new-id',
         installed: CloneDepInstallSummary(),
         failedDeps: [],

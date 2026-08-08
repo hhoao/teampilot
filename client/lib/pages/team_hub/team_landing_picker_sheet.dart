@@ -61,7 +61,8 @@ class _TeamLandingPickerDialogState extends State<TeamLandingPickerDialog> {
   bool _confirming = false;
 
   TeamLandingSelection get _selection => TeamLandingSelection(
-    cloneTeam: (team) => context.read<TeamHubCubit>().clone(team),
+    cloneTeam: (team, {teamMode, cli}) =>
+        context.read<TeamHubCubit>().clone(team, teamMode: teamMode, cli: cli),
     touchRecent: widget.touchRecent ?? TeamLandingRecentStore().touch,
   );
 

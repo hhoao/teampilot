@@ -1001,13 +1001,17 @@ Future<AppShell> buildAppShell({
     source: teamHubSource,
     loadFavorites: teamHubFavorites.load,
     saveFavoriteToggle: teamHubFavorites.toggle,
-    cloneTeam: (team) => hubCloneActivityAdapter.runTracked(
+    cloneTeam: (team, {teamMode, cli}) => hubCloneActivityAdapter.runTracked(
       title: 'Clone ${team.name}',
       historyMessageFor: (result) => result.hasFailures
           ? 'Cloned ${team.name} with ${result.failedDeps.length} dependency failures'
           : 'Cloned ${team.name}',
-      run: (onProgress) =>
-          teamCloneService.clone(team, onProgress: onProgress),
+      run: (onProgress) => teamCloneService.clone(
+        team,
+        teamMode: teamMode,
+        cli: cli,
+        onProgress: onProgress,
+      ),
     ),
     loadInstalledDepIds: () async {
       final skills = await skillRepo.loadInstalled();
