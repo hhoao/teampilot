@@ -34,6 +34,7 @@ import '../capabilities/provider_form_capability.dart';
 import '../capabilities/resource_capability.dart';
 import '../capabilities/ask_user_question_capability.dart';
 import '../capabilities/exit_plan_mode_capability.dart';
+import '../capabilities/turn_completion_capability.dart';
 import '../capabilities/turn_interrupt_capability.dart';
 import '../mcp_writers/cursor_mcp_config_writer.dart';
 import '../plugin_provisioners/cursor_plugin_provisioner.dart';
@@ -72,6 +73,7 @@ final class CursorCliTool implements CliToolDefinition {
     this.aiHistory = const CursorAiHistoryCapability(),
     this.skillSyntax = const DefaultSkillInvocationSyntaxCapability(),
     this.postManifestFlush = const CursorPostManifestFlushCapability(),
+    this.turnCompletion = const CursorTurnCompletion(),
     ProviderCredentialCapability? providerCredential,
   }) : providerModel = providerModel ?? CursorProviderModelCapability(),
        providerCredential =
@@ -101,6 +103,7 @@ final class CursorCliTool implements CliToolDefinition {
   final BusTransportCapability busTransport;
   final RemoteCliLocatorCapability remoteCliLocator;
   final TurnInterruptCapability turnInterrupt;
+  final TurnCompletionCapability turnCompletion;
   final AskUserQuestionCapability askUserQuestion;
   final ExitPlanModeCapability exitPlanMode;
   final CursorAiHistoryCapability aiHistory;
@@ -137,10 +140,21 @@ final class CursorCliTool implements CliToolDefinition {
     configLayout,
     mcpConfigWriter,
     turnInterrupt,
+    turnCompletion,
     askUserQuestion,
     exitPlanMode,
     aiHistory,
     skillSyntax,
     postManifestFlush,
   ];
+}
+
+final class CursorTurnCompletion implements TurnCompletionCapability {
+  const CursorTurnCompletion();
+  @override
+  Set<String> get doneEventNames => const {'stop'};
+  @override
+  bool get requiresPtyFallback => true;
+  @override
+  bool get usesDoorbellPush => true;
 }
