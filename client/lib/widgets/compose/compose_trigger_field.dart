@@ -11,6 +11,8 @@ import '../../services/commands/command_bus.dart';
 import '../../services/commands/shortcut_focus.dart';
 import '../../services/storage/app_storage.dart';
 import '../../services/compose/compose_file_search.dart';
+import '../../services/file_tree/workspace_file_index.dart';
+import '../../services/search/workspace_search_indexes.dart';
 import '../../services/compose/compose_slash_catalog.dart';
 import '../../services/compose/compose_trigger_caret.dart';
 import '../../services/compose/compose_trigger_insert.dart';
@@ -277,11 +279,7 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
     switch (trigger.kind) {
       case ComposeTriggerKind.fileReference:
         try {
-          final files = await searchComposeFilesDeep(
-            fs: AppStorage.fs,
-            workspaceRoot: widget.workspaceRoot,
-            query: trigger.query,
-          );
+          final files = await _searchComposeFiles(trigger.query);
           suggestions = [
             for (final file in files) ComposeTriggerFileSuggestion(file),
           ];
@@ -311,6 +309,42 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
     });
     _syncSubmitRegistration();
     _scheduleMenuAnchorUpdate();
+  }
+
+  /// Resolves `@`-mention file candidates. Path-segment queries (containing
+  /// `/`) list one directory directly (already cheap); plain name queries hit
+  /// the shared [WorkspaceFileIndex] so the tree is walked once per root
+  /// instead of on every keystroke. The compose suggestion semantics are
+  /// preserved: files and directories whose name contains the query, dirs
+  /// first.
+  Future<List<ComposeFileCandidate>> _searchComposeFiles(String query) async {
+    final segments = query
+        .split('/')
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
+    if (segments.length > 1) {
+      return searchComposeFiles(
+        fs: AppStorage.fs,
+        workspaceRoot: widget.workspaceRoot,
+        query: query,
+      );
+    }
+    final needle = segments.isEmpty ? '' : segments.first;
+    final index = context.read<WorkspaceSearchIndexes>().fileIndexFor(
+      widget.workspaceRoot,
+    );
+    await index.ensureFresh();
+    final fileMatches = index.query(
+      needle,
+      mode: WorkspaceFileMatchMode.contains,
+      limit: 40,
+    );
+    final dirs = index.queryDirectories(needle, limit: 20);
+    return mergeComposeCandidates(
+      fileMatches: fileMatches,
+      directoryPaths: dirs,
+    );
   }
 
   bool get _overlayVisible => _trigger != null && _suggestions.isNotEmpty;
@@ -395,8 +429,7 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
       });
     }
 
-    final lineHeight =
-        (textStyle.fontSize ?? 14) * (textStyle.height ?? 1.35);
+    final lineHeight = (textStyle.fontSize ?? 14) * (textStyle.height ?? 1.35);
     final minH = lineHeight * 3;
     final maxH = lineHeight * 6;
 
@@ -434,8 +467,7 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
                     suggestions: _suggestions,
                     selectedIndex: _selectedIndex,
                     onSelected: _selectSuggestion,
-                    onHover: (index) =>
-                        setState(() => _selectedIndex = index),
+                    onHover: (index) => setState(() => _selectedIndex = index),
                   )
                 : null,
           );
@@ -607,10 +639,7 @@ class _ComposeTriggerSectionHeader extends StatelessWidget {
         spacing.md,
         spacing.xs,
       ),
-      child: Text(
-        label,
-        style: styles.smSemiboldTrackColored(color),
-      ),
+      child: Text(label, style: styles.smSemiboldTrackColored(color)),
     );
   }
 }

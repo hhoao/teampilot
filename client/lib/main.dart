@@ -65,6 +65,7 @@ import 'services/ssh/ssh_client_factory.dart';
 import 'services/ssh/ssh_profile_connection_coordinator.dart';
 import 'services/terminal/terminal_transport_factory.dart';
 import 'services/file_tree/workspace_file_tree_store.dart';
+import 'services/search/workspace_search_indexes.dart';
 import 'services/floating_workspace/floating_maximize_insets.dart';
 import 'services/floating_workspace/floating_surface_registry.dart';
 import 'services/git/git_repo_store.dart';
@@ -665,6 +666,9 @@ void main() async {
                 ),
                 RepositoryProvider<WorkspaceFileTreeStore>.value(
                   value: shell.workspaceFileTreeStore,
+                ),
+                RepositoryProvider<WorkspaceSearchIndexes>.value(
+                  value: shell.workspaceSearchIndexes,
                 ),
                 RepositoryProvider<WorkspaceWorktreeRegistry>.value(
                   value: shell.workspaceWorktreeRegistry,
