@@ -180,6 +180,7 @@
   "treeExpandAllFolders": "展开所有目录",
   "treeCollapseAllFolders": "折叠所有目录",
   "gitDiscard": "放弃更改",
+  "gitOpenFile": "打开文件",
   "gitDiscardConfirmTitle": "放弃更改？",
   "gitDiscardConfirmBody": "放弃 {path} 中的所有更改？此操作无法撤销。",
   "@gitDiscardConfirmBody": {

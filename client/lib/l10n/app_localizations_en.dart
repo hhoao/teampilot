@@ -526,6 +526,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gitDiscard => 'Discard changes';
 
   @override
+  String get gitOpenFile => 'Open File';
+
+  @override
   String get gitDiscardConfirmTitle => 'Discard changes?';
 
   @override

@@ -501,6 +501,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get gitDiscard => '放弃更改';
 
   @override
+  String get gitOpenFile => '打开文件';
+
+  @override
   String get gitDiscardConfirmTitle => '放弃更改？';
 
   @override

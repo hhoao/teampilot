@@ -1052,6 +1052,12 @@ abstract class AppLocalizations {
   /// **'Discard changes'**
   String get gitDiscard;
 
+  /// No description provided for @gitOpenFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Open File'**
+  String get gitOpenFile;
+
   /// No description provided for @gitDiscardConfirmTitle.
   ///
   /// In en, this message translates to:
