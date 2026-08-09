@@ -110,6 +110,9 @@ final class TabMemberPtyDelivery {
       'preview=${_doorbellLogPreview(trimmed)}',
     );
     if (usesFullScreen) {
+      if (_deferMailDoorbellIfBooting(sessionId, memberId, shell, trimmed)) {
+        return;
+      }
       await _deliverFullScreen(
         sessionId: sessionId,
         memberId: memberId,
@@ -149,6 +152,9 @@ final class TabMemberPtyDelivery {
     if (trimmed.isEmpty) return;
     final isMailDoorbell = _isMailDoorbellText(trimmed);
     if (isMailDoorbell && !_beginMailDelivery(sessionId, memberId)) return;
+    if (_deferMailDoorbellIfBooting(sessionId, memberId, shell, trimmed)) {
+      return;
+    }
 
     appLogger.d(
       '[session-runtime] retry-delivery member=$memberId session=$sessionId '
@@ -267,6 +273,14 @@ final class TabMemberPtyDelivery {
       dueRetryText: tick.text,
     )) {
       dropStaleAutomationRetry(tick.sessionId, tick.memberId, shell);
+      return;
+    }
+    if (_deferMailDoorbellIfBooting(
+      tick.sessionId,
+      tick.memberId,
+      shell,
+      tick.text,
+    )) {
       return;
     }
     final settle = _pasteSettleForMember(
@@ -441,6 +455,25 @@ final class TabMemberPtyDelivery {
 
   static bool _isMailDoorbellText(String text) =>
       text == TeamBus.doorbellNotice;
+
+  /// 门铃投递的 boot 门控:全屏 TUI 未就绪时推迟到重试 tick,避免盲粘启动屏。
+  /// 返回 true 表示已推迟(调用方应 return)。只对邮件门铃生效——operator 直投
+  /// 已由 [ensureMemberInputReady] 等过 boot frame。
+  bool _deferMailDoorbellIfBooting(
+    String sessionId,
+    String memberId,
+    TerminalSession shell,
+    String text,
+  ) {
+    if (!_isMailDoorbellText(text)) return false;
+    if (shell.activityTracker.isBootFrameReady) return false;
+    appLogger.d(
+      '[session-runtime] doorbell deferred (boot) member=$memberId '
+      'session=$sessionId',
+    );
+    _ptyInject.deferForBoot(sessionId, memberId, text);
+    return true;
+  }
 
   void _reportMailDeliveryOutcome(
     String sessionId,
