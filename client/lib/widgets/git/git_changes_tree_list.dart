@@ -138,12 +138,14 @@ class _GitChangesTreeListState extends State<GitChangesTreeList> {
       key: ValueKey('file:${change.path}'),
       change: change,
       depth: row.depth,
+      selected: false,
       hoverEnabled: _hoverEnabled,
+      onSelect: () => widget.onOpenDiff(change),
       onOpenDiff: () => widget.onOpenDiff(change),
-      onStage: change.staged ? () {} : () => unawaited(widget.cubit.stage(change)),
-      onUnstage: change.staged ? () => unawaited(widget.cubit.unstage(change)) : () {},
-      onDiscard: change.staged ? () {} : () => widget.onConfirmDiscard(change),
       onOpenFile: canOpenFile ? () => widget.onOpenFile!(change) : null,
+      onStage: () => unawaited(widget.cubit.stage(change)),
+      onUnstage: () => unawaited(widget.cubit.unstage(change)),
+      onDiscard: () => widget.onConfirmDiscard(change),
     );
   }
 }

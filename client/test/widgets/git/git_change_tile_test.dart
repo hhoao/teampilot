@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter/gestures.dart' show PointerDeviceKind;
+import 'package:flutter/gestures.dart'
+    show PointerDeviceKind, kSecondaryMouseButton;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
@@ -17,32 +18,25 @@ void main() {
 
   GitChangeTile tile({
     required GitFileChange change,
+    bool selected = false,
+    VoidCallback? onSelect,
     VoidCallback? onOpenFile,
+    VoidCallback? onStage,
+    VoidCallback? onUnstage,
+    VoidCallback? onDiscard,
   }) =>
       GitChangeTile(
         change: change,
         depth: 0,
+        selected: selected,
+        onSelect: onSelect ?? () {},
         onOpenDiff: () {},
-        onStage: () {},
-        onUnstage: () {},
-        onDiscard: () {},
         onOpenFile: onOpenFile,
+        onStage: onStage ?? () {},
+        onUnstage: onUnstage ?? () {},
+        onDiscard: onDiscard ?? () {},
       );
 
-  Future<void> hover(WidgetTester tester, Finder finder) async {
-    final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
-    await gesture.addPointer(location: Offset.zero);
-    addTearDown(gesture.removePointer);
-    await tester.pump();
-    await gesture.moveTo(tester.getCenter(finder));
-    await tester.pump();
-  }
-
-  // TpHover renders its desktop (GestureDetector + animated fill) path on a
-  // desktop platform. flutter_test defaults to Android, which would render the
-  // touch (InkWell) path with no onHoverChanged callback. The override must be
-  // reset inside the test body (before flutter_test's invariant check runs), so
-  // it is set/reset via try/finally rather than setUp/tearDown.
   Future<void> runOnDesktop(
     WidgetTester tester,
     Future<void> Function() body,
@@ -55,72 +49,138 @@ void main() {
     }
   }
 
-  testWidgets('hover on unstaged row shows open/discard/stage right-aligned', (
+  testWidgets('unstaged file shows unchecked box; clicking it stages', (
     tester,
   ) async {
+    var stagedCalls = 0;
     await runOnDesktop(tester, () async {
       await tester.pumpWidget(
-        wrap(
-          tile(
-            change: const GitFileChange(
-              path: 'main.dart',
-              kind: GitChangeKind.modified,
-              staged: false,
-            ),
-            onOpenFile: () {},
+        wrap(tile(
+          change: const GitFileChange(
+            path: 'main.dart',
+            kind: GitChangeKind.modified,
+            staged: false,
           ),
-        ),
+          onStage: () => stagedCalls++,
+        )),
       );
-      await hover(tester, find.byType(GitChangeTile));
-
-      expect(find.byIcon(Icons.file_open_outlined), findsOneWidget);
-      expect(find.byIcon(Icons.undo), findsOneWidget);
-      expect(find.byIcon(Icons.add), findsOneWidget);
-
-      final rowRect = tester.getRect(find.byType(GitChangeTile).first);
-      final btnRect = tester.getRect(find.byIcon(Icons.add));
-      expect(rowRect.right - btnRect.right, lessThan(16));
+      await tester.tap(find.byType(Checkbox));
+      await tester.pump();
+      expect(stagedCalls, 1);
+      final cb = tester.widget<Checkbox>(find.byType(Checkbox));
+      expect(cb.value, isFalse);
     });
   });
 
-  testWidgets('hover on staged row shows open + unstage, no stage', (tester) async {
+  testWidgets('staged file shows checked box; clicking it unstages', (
+    tester,
+  ) async {
+    var unstagedCalls = 0;
     await runOnDesktop(tester, () async {
       await tester.pumpWidget(
-        wrap(
-          tile(
-            change: const GitFileChange(
-              path: 'main.dart',
-              kind: GitChangeKind.modified,
-              staged: true,
-            ),
-            onOpenFile: () {},
+        wrap(tile(
+          change: const GitFileChange(
+            path: 'main.dart',
+            kind: GitChangeKind.modified,
+            staged: true,
           ),
-        ),
+          onUnstage: () => unstagedCalls++,
+        )),
       );
-      await hover(tester, find.byType(GitChangeTile));
-
-      expect(find.byIcon(Icons.file_open_outlined), findsOneWidget);
-      expect(find.byIcon(Icons.remove), findsOneWidget);
-      expect(find.byIcon(Icons.add), findsNothing);
+      await tester.tap(find.byType(Checkbox));
+      await tester.pump();
+      expect(unstagedCalls, 1);
     });
   });
 
-  testWidgets('badge shown when not hovered, no buttons', (tester) async {
+  testWidgets('single click on row selects', (tester) async {
+    var selectCalls = 0;
     await runOnDesktop(tester, () async {
       await tester.pumpWidget(
-        wrap(
-          tile(
-            change: const GitFileChange(
-              path: 'main.dart',
-              kind: GitChangeKind.modified,
-              staged: false,
-            ),
+        wrap(tile(
+          change: const GitFileChange(
+            path: 'main.dart',
+            kind: GitChangeKind.modified,
+            staged: false,
           ),
-        ),
+          onSelect: () => selectCalls++,
+          onOpenFile: () {},
+        )),
       );
+      await tester.tap(find.byType(GitChangeTile));
+      // Both onTap and onDoubleTap registered → tap fires after the
+      // double-tap window expires.
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(selectCalls, 1);
+    });
+  });
 
+  testWidgets('double click opens the file', (tester) async {
+    var openCalls = 0;
+    await runOnDesktop(tester, () async {
+      await tester.pumpWidget(
+        wrap(tile(
+          change: const GitFileChange(
+            path: 'main.dart',
+            kind: GitChangeKind.modified,
+            staged: false,
+          ),
+          onOpenFile: () => openCalls++,
+        )),
+      );
+      // Two taps must each come from a fresh pointer (see Task 4
+      // hover_double_tap_test.dart); reusing one TestGesture trips a
+      // framework gesture-arena assertion unrelated to the tile.
+      await tester.tap(find.byType(GitChangeTile), kind: PointerDeviceKind.mouse);
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.tap(find.byType(GitChangeTile), kind: PointerDeviceKind.mouse);
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(openCalls, 1);
+    });
+  });
+
+  testWidgets('right-click shows context menu; Open File dispatches', (
+    tester,
+  ) async {
+    var openCalls = 0;
+    await runOnDesktop(tester, () async {
+      await tester.pumpWidget(
+        wrap(tile(
+          change: const GitFileChange(
+            path: 'main.dart',
+            kind: GitChangeKind.modified,
+            staged: false,
+          ),
+          onOpenFile: () => openCalls++,
+        )),
+      );
+      final center = tester.getCenter(find.byType(GitChangeTile));
+      final gesture = await tester.startGesture(
+        center,
+        kind: PointerDeviceKind.mouse,
+        buttons: kSecondaryMouseButton,
+      );
+      await gesture.up();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(find.text('Open File'));
+      await tester.pump();
+      expect(openCalls, 1);
+    });
+  });
+
+  testWidgets('status badge shown', (tester) async {
+    await runOnDesktop(tester, () async {
+      await tester.pumpWidget(
+        wrap(tile(
+          change: const GitFileChange(
+            path: 'main.dart',
+            kind: GitChangeKind.modified,
+            staged: false,
+          ),
+        )),
+      );
       expect(find.text('M'), findsOneWidget);
-      expect(find.byIcon(Icons.file_open_outlined), findsNothing);
     });
   });
 }
