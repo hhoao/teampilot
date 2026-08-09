@@ -63,12 +63,25 @@ class _UnstagedGitStub extends GitService {
     bool ignoreWhitespace = false,
     bool fullContext = false,
   }) async {
-    return '--- a/${change.path}\n'
-        '+++ b/${change.path}\n'
-        '@@ -1 +1 @@\n'
-        '-old\n'
-        '+new\n';
+    return _fakeDiff(change.path);
   }
+
+  @override
+  Future<String> diffAgainstHead(
+    String dir,
+    String relativePath, {
+    bool ignoreWhitespace = false,
+    bool fullContext = false,
+    bool untracked = false,
+  }) async {
+    return _fakeDiff(relativePath);
+  }
+
+  String _fakeDiff(String path) => '--- a/$path\n'
+      '+++ b/$path\n'
+      '@@ -1 +1 @@\n'
+      '-old\n'
+      '+new\n';
 }
 
 class _RecordingOpener extends WorkbenchEditorOpener {

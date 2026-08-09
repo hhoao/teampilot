@@ -31,6 +31,7 @@ void main() {
       ],
       unstaged: [change('domain/Baz.java'), change('domain/core/Qux.java')],
       expandedFolderPaths: const {'domain'},
+      selectedPaths: const {'domain/Foo.java', 'domain/core/Bar.java'},
     );
     final folderRows = view.rows.where((r) => r.isFolder).toList();
     // root-level folder 'domain': 2 staged of 4 total
@@ -50,6 +51,7 @@ void main() {
       staged: [change('b.java', staged: true)],
       unstaged: [change('a.dart'), change('c.txt')],
       expandedFolderPaths: const <String>{},
+      selectedPaths: const {},
     );
     final files = view.rows
         .where((r) => !r.isFolder)
@@ -63,11 +65,28 @@ void main() {
       staged: [change('a/x.java', staged: true)],
       unstaged: [change('a/y.java')],
       expandedFolderPaths: const <String>{},
+      selectedPaths: const {'a/x.java'},
     );
     final folder = view.rows.singleWhere((r) => r.isFolder);
     expect(folder.subtreeTotalCount, 2);
     expect(folder.subtreeStagedCount, 1);
     expect(view.rows.where((r) => !r.isFolder), isEmpty); // children not emitted
+  });
+
+  test('unified tree projects staged=true for selected paths only', () {
+    final view = visibleUnifiedGitChangesTreeView(
+      staged: [change('b.txt', staged: true)],
+      unstaged: [change('a.txt')],
+      expandedFolderPaths: const {},
+      selectedPaths: const {'a.txt'},
+    );
+    final files = view.rows.where((r) => !r.isFolder).toList();
+    final a = files.firstWhere((r) => r.change!.path == 'a.txt');
+    final b = files.firstWhere((r) => r.change!.path == 'b.txt');
+    expect(a.change!.staged, isTrue); // selected
+    expect(b.change!.staged, isFalse); // not selected
+    expect(view.stagedCount, 1); // selected count
+    expect(view.totalCount, 2);
   });
 
   test('min content width accounts for checkbox + badge per row type', () {

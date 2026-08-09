@@ -44,8 +44,11 @@ class GitChangesVisibleRow extends Equatable {
   ];
 }
 
-/// Pre-flattened unified rows for the changes tree list, with staged/total
+/// Pre-flattened unified rows for the changes tree list, with selected/total
 /// counts so the panel can render tri-state folder checkboxes and badges.
+/// `stagedCount` / `allStaged` / `noneStaged` now mean "selected for the next
+/// commit" (the checkbox state), not the git index (field names are renamed in
+/// a later task).
 class GitChangesTreeViewData extends Equatable {
   const GitChangesTreeViewData({
     required this.rows,
@@ -187,19 +190,26 @@ GitChangesTreeViewData visibleUnifiedGitChangesTreeView({
   required List<GitFileChange> staged,
   required List<GitFileChange> unstaged,
   required Set<String> expandedFolderPaths,
+  required Set<String> selectedPaths,
 }) {
   final merged = mergeGitChangesByPath(staged: staged, unstaged: unstaged);
-  var stagedCount = 0;
-  for (final c in merged) {
-    if (c.staged) stagedCount++;
+  // UI projection: in the tree, `staged` means "selected for the next commit"
+  // (the checkbox state), NOT the git index. Merge dedup above still used the
+  // real index `staged` (staged side wins).
+  final projected = <GitFileChange>[
+    for (final c in merged) c.copyWith(staged: selectedPaths.contains(c.path)),
+  ];
+  var selectedCount = 0;
+  for (final c in projected) {
+    if (c.staged) selectedCount++;
   }
   final rows = visibleGitChangesRows(
-    changes: merged,
+    changes: projected,
     expandedFolderPaths: expandedFolderPaths,
   );
   return GitChangesTreeViewData(
     rows: rows,
-    stagedCount: stagedCount,
+    stagedCount: selectedCount,
     totalCount: merged.length,
   );
 }
