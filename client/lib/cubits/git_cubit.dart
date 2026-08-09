@@ -25,8 +25,9 @@ class GitState extends Equatable {
     this.expandedFolderPaths = const {},
     this.generatingCommitMessage = false,
     this.changesTreeView = const GitChangesTreeViewData(
-      stagedRows: [],
-      unstagedRows: [],
+      rows: [],
+      stagedCount: 0,
+      totalCount: 0,
     ),
   });
 
@@ -128,7 +129,7 @@ class GitCubit extends Cubit<GitState> {
     var published = next;
     if (recomputeRows) {
       published = next.copyWith(
-        changesTreeView: visibleGitChangesTreeViewData(
+        changesTreeView: visibleUnifiedGitChangesTreeView(
           staged: next.status.staged,
           unstaged: next.status.unstaged,
           expandedFolderPaths: next.expandedFolderPaths,
@@ -150,8 +151,9 @@ class GitCubit extends Cubit<GitState> {
         branches: const [],
         expandedFolderPaths: const {},
         changesTreeView: const GitChangesTreeViewData(
-          stagedRows: [],
-          unstagedRows: [],
+          rows: [],
+          stagedCount: 0,
+          totalCount: 0,
         ),
         clearError: true,
       ),
@@ -331,6 +333,11 @@ class GitCubit extends Cubit<GitState> {
 
   Future<void> discard(GitFileChange change) =>
       _mutate(() => _service.discard(state.repoRoot, change));
+
+  Future<void> discardAll() => _mutate(() => _service.discardAll(state.repoRoot));
+
+  Future<void> discardFolder(String folderPath) =>
+      _mutate(() => _service.discardFolder(state.repoRoot, folderPath));
 
   /// Commits staged changes. No-op (with an error message) when the message is
   /// blank or nothing is staged.

@@ -310,6 +310,14 @@ class GitService {
     return _run(dir, ['restore', '--', change.path]);
   }
 
+  /// Discards all unstaged changes to tracked files. Untracked files are
+  /// left alone (they would need `git clean`, which is destructive).
+  Future<void> discardAll(String dir) => _run(dir, ['restore', '.']);
+
+  /// Discards unstaged changes to tracked files under [folderPath].
+  Future<void> discardFolder(String dir, String folderPath) =>
+      _run(dir, ['restore', '--', folderPath]);
+
   Future<void> commit(String dir, String message) =>
       _run(dir, ['commit', '-m', message]);
 

@@ -52,6 +52,21 @@ class _FakeGitService extends GitService {
 
   @override
   Future<void> commit(String dir, String message) => _record('commit:$message');
+
+  final List<String> discardAllCalls = [];
+  final List<List<String>> discardFolderCalls = [];
+
+  @override
+  Future<void> discardAll(String dir) async {
+    discardAllCalls.add(dir);
+    await _record('discardAll');
+  }
+
+  @override
+  Future<void> discardFolder(String dir, String folderPath) async {
+    discardFolderCalls.add([dir, folderPath]);
+    await _record('discardFolder');
+  }
 }
 
 GitRepoStatus _repoWith({
@@ -86,8 +101,9 @@ void main() {
 
     expect(cubit.state.repoRoot, '/repo');
     expect(cubit.state.isRepository, isTrue);
-    expect(cubit.state.changesTreeView.stagedRows, isEmpty);
-    expect(cubit.state.changesTreeView.unstagedRows, isEmpty);
+    expect(cubit.state.changesTreeView.rows, isEmpty);
+    expect(cubit.state.changesTreeView.stagedCount, 0);
+    expect(cubit.state.changesTreeView.totalCount, 0);
     expect(service.calls, contains('status'));
     expect(cubit.state.branches, isEmpty);
     expect(service.calls, isNot(contains('branches')));
@@ -115,7 +131,7 @@ void main() {
     await cubit.setRepoRoot('/repo');
 
     expect(
-      cubit.state.changesTreeView.unstagedRows.map(
+      cubit.state.changesTreeView.rows.map(
         (r) => r.isFolder ? 'D:${r.name}' : 'F:${r.change!.path}',
       ),
       ['D:src', 'F:src/foo.dart'],
@@ -166,6 +182,34 @@ void main() {
     expect(service.unstagedPaths, [
       ['src/utils'],
     ]);
+    await cubit.close();
+  });
+
+  test('discardAll runs git restore . and refreshes', () async {
+    final service = _FakeGitService(statusToReturn: _repoWith());
+    final cubit = GitCubit(service: service);
+    await cubit.setRepoRoot('/repo');
+    service.calls.clear();
+
+    await cubit.discardAll();
+
+    expect(service.discardAllCalls, ['/repo']);
+    expect(service.calls, ['discardAll', 'status']);
+    await cubit.close();
+  });
+
+  test('discardFolder passes folder path to service and refreshes', () async {
+    final service = _FakeGitService(statusToReturn: _repoWith());
+    final cubit = GitCubit(service: service);
+    await cubit.setRepoRoot('/repo');
+    service.calls.clear();
+
+    await cubit.discardFolder('src/utils');
+
+    expect(service.discardFolderCalls, [
+      ['/repo', 'src/utils'],
+    ]);
+    expect(service.calls, ['discardFolder', 'status']);
     await cubit.close();
   });
 
