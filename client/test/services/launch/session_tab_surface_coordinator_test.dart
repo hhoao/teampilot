@@ -21,6 +21,8 @@ void main() {
     late _FakeHost host;
     late SessionTabSurfaceCoordinator coordinator;
     late AppSession session;
+    late List<({String workspaceId, String sessionId, bool preview, bool activate})>
+        openedCalls;
 
     setUp(() {
       tabStore = ChatTabStore();
@@ -43,6 +45,7 @@ void main() {
         ChatState(activeTabIndex: 0, activeSessionId: 'sess-1'),
         tabStore: tabStore,
       );
+      openedCalls = [];
       coordinator = SessionTabSurfaceCoordinator(
         host: host,
         tabStore: tabStore,
@@ -72,6 +75,15 @@ void main() {
               required session,
               required request,
             }) async {},
+        onSessionTabOpened:
+            (workspaceId, sessionId, {preview = false, activate = true}) {
+          openedCalls.add((
+            workspaceId: workspaceId,
+            sessionId: sessionId,
+            preview: preview,
+            activate: activate,
+          ));
+        },
       );
     });
 
@@ -112,6 +124,19 @@ void main() {
         expect(host.beginConnectIds, ['sess-1']);
       },
     );
+
+    test('does not feed onSessionTabOpened when reusing an existing tab', () {
+      final status = coordinator.surfaceExistingTab(
+        request: SessionOpenRequest(
+          session: session,
+          connectImmediately: true,
+        ),
+        existingIdx: 0,
+      );
+
+      expect(status, SessionOpenStatus.opened);
+      expect(openedCalls, isEmpty);
+    });
   });
 
   group('SessionTabSurfaceCoordinator.surfaceNewTab', () {
@@ -120,6 +145,8 @@ void main() {
     late SessionTabSurfaceCoordinator coordinator;
     late AppSession session;
     late Workspace workspace;
+    late List<({String workspaceId, String sessionId, bool preview, bool activate})>
+        openedCalls;
 
     setUp(() {
       tabStore = ChatTabStore();
@@ -137,6 +164,7 @@ void main() {
         updatedAt: 1,
       );
       host = _FakeHost(const ChatState(), tabStore: tabStore);
+      openedCalls = [];
       coordinator = SessionTabSurfaceCoordinator(
         host: host,
         tabStore: tabStore,
@@ -166,6 +194,15 @@ void main() {
               required session,
               required request,
             }) async {},
+        onSessionTabOpened:
+            (workspaceId, sessionId, {preview = false, activate = true}) {
+          openedCalls.add((
+            workspaceId: workspaceId,
+            sessionId: sessionId,
+            preview: preview,
+            activate: activate,
+          ));
+        },
       );
     });
 
@@ -212,6 +249,48 @@ void main() {
         expect(host.beginConnectIds, ['sess-new']);
       },
     );
+
+    test('feeds onSessionTabOpened once with the tab id and activate', () {
+      final status = coordinator.surfaceNewTab(
+        request: SessionOpenRequest(
+          session: session,
+          workspace: workspace,
+          connectImmediately: true,
+        ),
+        session: session,
+      );
+
+      expect(status, SessionOpenStatus.opened);
+      expect(openedCalls, [
+        (
+          workspaceId: 'ws-1',
+          sessionId: 'sess-new',
+          preview: false,
+          activate: true,
+        ),
+      ]);
+    });
+
+    test('feeds preview: true when connectImmediately is false', () {
+      final status = coordinator.surfaceNewTab(
+        request: SessionOpenRequest(
+          session: session,
+          workspace: workspace,
+          connectImmediately: false,
+        ),
+        session: session,
+      );
+
+      expect(status, SessionOpenStatus.opened);
+      expect(openedCalls, [
+        (
+          workspaceId: 'ws-1',
+          sessionId: 'sess-new',
+          preview: true,
+          activate: true,
+        ),
+      ]);
+    });
   });
 }
 
