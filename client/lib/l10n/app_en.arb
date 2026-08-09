@@ -319,6 +319,7 @@
   "teamModeMixedTitle": "Mixed mode",
   "teamModeNativeDescription": "All members share one CLI for native, low-config collaboration.",
   "teamModeMixedDescription": "Members can run different CLIs and collaborate across tools over TeamBus.",
+  "teamHubCloneOptionsTitle": "Clone options",
   "homeWorkspaceNewWorkspaceSubtitle": "Choose a working directory and name your workspace.",
   "homeWorkspaceNewWorkspaceDirectoryLabel": "Workspace directory",
   "homeWorkspaceNewWorkspaceChooseDirectory": "Choose folder",

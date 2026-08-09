@@ -1556,6 +1556,12 @@ abstract class AppLocalizations {
   /// **'Members can run different CLIs and collaborate across tools over TeamBus.'**
   String get teamModeMixedDescription;
 
+  /// No description provided for @teamHubCloneOptionsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Clone options'**
+  String get teamHubCloneOptionsTitle;
+
   /// No description provided for @homeWorkspaceNewWorkspaceSubtitle.
   ///
   /// In en, this message translates to:

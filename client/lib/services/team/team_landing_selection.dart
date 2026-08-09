@@ -45,14 +45,22 @@ TeamProfile? earliestTeamWithHubSourceKey(
   return matches.first;
 }
 
+/// Clones a hub team during landing selection, with optional clone-time
+/// teamMode/cli overrides for manifest-undeclared fields.
+typedef TeamLandingCloner = Future<CloneResult> Function(
+  DiscoverableTeam team, {
+  TeamMode? teamMode,
+  CliTool? cli,
+});
+
 class TeamLandingSelection {
   TeamLandingSelection({
-    required Future<CloneResult> Function(DiscoverableTeam team) cloneTeam,
+    required TeamLandingCloner cloneTeam,
     required Future<void> Function(String teamId) touchRecent,
   }) : _cloneTeam = cloneTeam,
        _touchRecent = touchRecent;
 
-  final Future<CloneResult> Function(DiscoverableTeam team) _cloneTeam;
+  final TeamLandingCloner _cloneTeam;
   final Future<void> Function(String teamId) _touchRecent;
 
   Future<TeamLandingResolveSuccess> resolveLocal({
@@ -71,6 +79,8 @@ class TeamLandingSelection {
   Future<TeamLandingResolveSuccess> resolveHub({
     required DiscoverableTeam team,
     required List<TeamProfile> teams,
+    TeamMode? teamMode,
+    CliTool? cli,
   }) async {
     final existing = earliestTeamWithHubSourceKey(teams, team.key);
     if (existing != null) {
@@ -79,7 +89,7 @@ class TeamLandingSelection {
     }
 
     try {
-      final result = await _cloneTeam(team);
+      final result = await _cloneTeam(team, teamMode: teamMode, cli: cli);
       await _touchRecent(result.teamId);
       return TeamLandingResolveSuccess(
         teamId: result.teamId,

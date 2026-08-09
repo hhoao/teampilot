@@ -795,6 +795,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'Members can run different CLIs and collaborate across tools over TeamBus.';
 
   @override
+  String get teamHubCloneOptionsTitle => 'Clone options';
+
+  @override
   String get homeWorkspaceNewWorkspaceSubtitle =>
       'Choose a working directory and name your workspace.';
 

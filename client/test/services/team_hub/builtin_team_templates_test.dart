@@ -90,4 +90,11 @@ void main() {
     expect(text, contains('reviewer'));
     expect(text, contains('phase gates'));
   });
+
+  test('superpowers quartet declares claude as its base CLI', () {
+    expect(kSuperpowersTrioTeamTemplate.cliDeclared, isTrue);
+    expect(kSuperpowersTrioTeamTemplate.cli, CliTool.claude);
+    expect(kSuperpowersTrioTeamTemplate.teamModeDeclared, isTrue);
+    expect(kSuperpowersTrioTeamTemplate.teamMode, TeamMode.mixed);
+  });
 }

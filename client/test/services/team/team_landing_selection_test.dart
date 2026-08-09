@@ -16,7 +16,8 @@ void main() {
   test('resolveLocal returns id and touches recent', () async {
     final touched = <String>[];
     final selection = TeamLandingSelection(
-      cloneTeam: (_) async => throw StateError('should not clone'),
+      cloneTeam: (_, {teamMode, cli}) async =>
+          throw StateError('should not clone'),
       touchRecent: (id) async => touched.add(id),
     );
     final teams = [
@@ -31,7 +32,7 @@ void main() {
 
   test('resolveLocal throws when team missing', () async {
     final selection = TeamLandingSelection(
-      cloneTeam: (_) async => throw StateError('no'),
+      cloneTeam: (_, {teamMode, cli}) async => throw StateError('no'),
       touchRecent: (_) async {},
     );
     expect(
@@ -43,7 +44,7 @@ void main() {
   test('resolveHub reuses earliest hubSourceKey match without cloning', () async {
     var clones = 0;
     final selection = TeamLandingSelection(
-      cloneTeam: (_) async {
+      cloneTeam: (_, {teamMode, cli}) async {
         clones++;
         return const CloneResult(
           teamId: 'new',
@@ -78,7 +79,7 @@ void main() {
   test('resolveHub clones when no match and touches new id', () async {
     final touched = <String>[];
     final selection = TeamLandingSelection(
-      cloneTeam: (t) async => CloneResult(
+      cloneTeam: (t, {teamMode, cli}) async => CloneResult(
         teamId: 'cloned-${t.key}',
         installed: const CloneDepInstallSummary(),
         failedDeps: const [],
@@ -92,5 +93,30 @@ void main() {
     expect(ok.teamId, 'cloned-o/r/s');
     expect(ok.cloneResult, isNotNull);
     expect(touched, ['cloned-o/r/s']);
+  });
+
+  test('resolveHub forwards teamMode/cli overrides to the cloner', () async {
+    TeamMode? seenMode;
+    CliTool? seenCli;
+    final selection = TeamLandingSelection(
+      cloneTeam: (t, {teamMode, cli}) async {
+        seenMode = teamMode;
+        seenCli = cli;
+        return const CloneResult(
+          teamId: 'cloned',
+          installed: CloneDepInstallSummary(),
+          failedDeps: [],
+        );
+      },
+      touchRecent: (_) async {},
+    );
+    await selection.resolveHub(
+      team: hub('o/r/s'),
+      teams: const [],
+      teamMode: TeamMode.mixed,
+      cli: CliTool.opencode,
+    );
+    expect(seenMode, TeamMode.mixed);
+    expect(seenCli, CliTool.opencode);
   });
 }

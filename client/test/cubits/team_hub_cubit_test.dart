@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/team_hub_cubit.dart';
 import 'package:teampilot/models/discoverable_team.dart';
+import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/team/team_clone_service.dart';
 import 'package:teampilot/services/team_hub/team_hub_source.dart';
 
@@ -42,7 +43,7 @@ void main() {
       source: source,
       loadFavorites: () async => {'o/r/alpha'},
       saveFavoriteToggle: (key) async => true,
-      cloneTeam: (team) async => const CloneResult(
+      cloneTeam: (team, {teamMode, cli}) async => const CloneResult(
         teamId: 'new-id',
         installed: CloneDepInstallSummary(),
         failedDeps: [],
@@ -99,7 +100,7 @@ void main() {
       source: source,
       loadFavorites: () async => <String>{},
       saveFavoriteToggle: (key) async => true,
-      cloneTeam: (team) async {
+      cloneTeam: (team, {teamMode, cli}) async {
         cloneCalls++;
         return const CloneResult(
           teamId: 'new-id',
@@ -116,5 +117,33 @@ void main() {
     await cubit.clone(_t('Delta', 'AI', 5));
     expect(cloneCalls, 1);
     expect(cubit.state.installedDepIds, {'skill-a', 'plugin-b'});
+  });
+
+  test('clone forwards teamMode/cli overrides to the cloner', () async {
+    TeamMode? seenMode;
+    CliTool? seenCli;
+    final spy = TeamHubCubit(
+      source: source,
+      loadFavorites: () async => const {},
+      saveFavoriteToggle: (_) async => true,
+      cloneTeam: (team, {teamMode, cli}) async {
+        seenMode = teamMode;
+        seenCli = cli;
+        return const CloneResult(
+          teamId: 'new-id',
+          installed: CloneDepInstallSummary(),
+          failedDeps: [],
+        );
+      },
+    );
+    addTearDown(spy.close);
+
+    await spy.clone(
+      _t('A', 'AI', 1),
+      teamMode: TeamMode.native,
+      cli: CliTool.cursor,
+    );
+    expect(seenMode, TeamMode.native);
+    expect(seenCli, CliTool.cursor);
   });
 }

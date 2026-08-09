@@ -227,4 +227,38 @@ void main() {
     expect(result.failedDeps.single.name, 'catalog/pm');
     expect(result.installed.expertCount, 0);
   });
+
+  test('explicit teamMode/cli overrides the manifest values', () async {
+    TeamMode? createdMode;
+    CliTool? createdCli;
+    final service = TeamCloneService(
+      installSkill: (d) async => 's',
+      installPlugin: (d) async => 'p',
+      installMcp: (d) async => 'm',
+      expertCloner: ({required expertKey, originTeamKey}) async =>
+          ExpertCloneOutcome(cloned: false),
+      createTeam:
+          ({
+            required name,
+            required cli,
+            required teamMode,
+            required roster,
+            required skillIds,
+            required pluginIds,
+            required mcpServerIds,
+            required description,
+            required extraArgs,
+            String? hubSourceKey,
+          }) async {
+            createdMode = teamMode;
+            createdCli = cli;
+            return 'squad';
+          },
+    );
+
+    // team() 的 manifest 是 claude + mixed；覆盖成 codex + native 应优先。
+    await service.clone(team(), teamMode: TeamMode.native, cli: CliTool.codex);
+    expect(createdMode, TeamMode.native);
+    expect(createdCli, CliTool.codex);
+  });
 }

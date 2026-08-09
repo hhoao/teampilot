@@ -66,4 +66,40 @@ void main() {
     expect(team.mcpDeps.single.server['command'], 'npx');
     expect(DiscoverableTeam.fromJson(team.toJson()), team);
   });
+
+  test('undeclared teamMode/cli default to native/claude and are omitted on toJson', () {
+    final team = DiscoverableTeam.fromJson(const {
+      'key': 'o/r/s',
+      'name': 'S',
+      'description': '',
+      'category': 'AI',
+      'updatedAt': 1,
+    });
+    expect(team.teamMode, TeamMode.native);
+    expect(team.cli, CliTool.claude);
+    expect(team.teamModeDeclared, isFalse);
+    expect(team.cliDeclared, isFalse);
+    final json = team.toJson();
+    expect(json.containsKey('teamMode'), isFalse);
+    expect(json.containsKey('cli'), isFalse);
+  });
+
+  test('declared teamMode/cli are preserved', () {
+    final team = DiscoverableTeam.fromJson(const {
+      'key': 'o/r/s',
+      'name': 'S',
+      'description': '',
+      'category': 'AI',
+      'updatedAt': 1,
+      'cli': 'codex',
+      'teamMode': 'mixed',
+    });
+    expect(team.teamMode, TeamMode.mixed);
+    expect(team.cli, CliTool.codex);
+    expect(team.teamModeDeclared, isTrue);
+    expect(team.cliDeclared, isTrue);
+    final json = team.toJson();
+    expect(json['teamMode'], 'mixed');
+    expect(json['cli'], 'codex');
+  });
 }
