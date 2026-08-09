@@ -18,6 +18,7 @@ import '../../../models/workspace_topology.dart';
 import '../../../repositories/session_repository.dart';
 import '../../../services/cli/preset_resolver.dart';
 import '../../../services/cli/registry/cli_display_name.dart';
+import '../../../services/cli/registry/capabilities/provider_display_capability.dart';
 import '../../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../../services/launch/member_placement_save.dart';
 import '../../../services/workspace/workspace_pane_policy.dart';
@@ -529,8 +530,11 @@ class _TeamPane extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final catalogCli = catalogCliForTeam(context, team.cli);
-    final showDelegateRow =
-        catalogCli == CliTool.claude || catalogCli == CliTool.flashskyai;
+    final showDelegateRow = catalogCli != null &&
+        (CliToolRegistryScope.of(context)
+                .capability<ProviderDisplayCapability>(catalogCli)
+                ?.supportsDelegate ??
+            false);
 
     return SingleChildScrollView(
       child: Column(

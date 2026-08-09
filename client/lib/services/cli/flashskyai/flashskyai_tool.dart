@@ -34,6 +34,8 @@ import '../registry/capabilities/resource_capability.dart';
 import '../registry/capabilities/ask_user_question_capability.dart';
 import '../registry/capabilities/exit_plan_mode_capability.dart';
 import '../registry/capabilities/turn_completion_capability.dart';
+import 'capabilities/provider_display.dart';
+import '../registry/capabilities/provider_display_capability.dart';
 import 'capabilities/wait_before_stop.dart';
 import '../registry/capabilities/wait_before_stop_capability.dart';
 import '../registry/capabilities/turn_interrupt_capability.dart';
@@ -72,6 +74,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     this.skillSyntax = const DefaultSkillInvocationSyntaxCapability(),
     this.turnCompletion = const FlashskyaiTurnCompletion(),
     this.waitBeforeStop = const DefaultWaitBeforeStop(),
+    this.providerDisplay = const FlashskyaiProviderDisplay(),
   });
 
   final LaunchArgsCapability launchArgs;
@@ -98,6 +101,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
   final TurnInterruptCapability turnInterrupt;
   final TurnCompletionCapability turnCompletion;
   final WaitBeforeStopCapability waitBeforeStop;
+  final ProviderDisplayCapability providerDisplay;
   final AskUserQuestionCapability askUserQuestion;
   final ExitPlanModeCapability exitPlanMode;
   final FlashskyaiAiHistoryCapability aiHistory;
@@ -139,6 +143,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     turnInterrupt,
     turnCompletion,
     waitBeforeStop,
+    providerDisplay,
     askUserQuestion,
     exitPlanMode,
     aiHistory,
