@@ -612,6 +612,10 @@ class _ChatWorkbenchBody extends StatelessWidget {
                 ChatWorkbenchSessionLoadingView(
                   message: context.l10n.sessionStarting,
                 ),
+              if (workbenchView == SessionWorkbenchView.terminal &&
+                  !mountTerminalForLayout &&
+                  overlay == ChatWorkbenchOverlay.none)
+                _buildTerminalPlaceholder(context, chatCubit: chatCubit),
               if (showTerminalLaunchError && failure != null)
                 Positioned(
                   top: 0,
@@ -666,6 +670,78 @@ class _ChatWorkbenchBody extends StatelessWidget {
     if (member == null) return '';
     final name = member.name.trim();
     return name.isNotEmpty ? name : '';
+  }
+
+  /// Placeholder for a member terminal that is not running — either reclaimed
+  /// for idle or never launched (lazy default). Tap restores it.
+  Widget _buildTerminalPlaceholder(
+    BuildContext context, {
+    required ChatCubit chatCubit,
+  }) {
+    final sessionId = slice.activeSessionId;
+    final memberId = slice.selectedMemberId;
+    final reclaimed = sessionId != null &&
+        memberId.isNotEmpty &&
+        chatCubit.isMemberTerminalReclaimed(sessionId, memberId);
+    final theme = Theme.of(context);
+    return Center(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: () => _restoreTerminalFromPlaceholder(
+          context,
+          chatCubit: chatCubit,
+          sessionId: sessionId,
+          memberId: memberId,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                reclaimed ? Icons.restore_outlined : Icons.terminal_outlined,
+                size: 40,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                reclaimed
+                    ? context.l10n.memberTerminalReclaimedTitle
+                    : context.l10n.memberTerminalNotStartedTitle,
+                style: theme.textTheme.titleMedium,
+                textAlign: TextAlign.center,
+              ),
+              if (reclaimed) ...[
+                const SizedBox(height: 4),
+                Text(
+                  context.l10n.memberTerminalReclaimedBody,
+                  style: theme.textTheme.bodySmall,
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _restoreTerminalFromPlaceholder(
+    BuildContext context, {
+    required ChatCubit chatCubit,
+    required String? sessionId,
+    required String memberId,
+  }) {
+    if (sessionId == null || sessionId.isEmpty) return;
+    if (memberId.isEmpty) return;
+    // Simple mode restores via the existing reconnect path; team members go
+    // through the lazy-spawn funnel (resume).
+    final appSession = _resolveAppSession(chatCubit: chatCubit, slice: slice);
+    if (appSession?.sessionTeam.trim().isEmpty ?? true) {
+      unawaited(chatCubit.retrySessionLaunch(sessionId));
+    } else {
+      unawaited(chatCubit.ensureMemberTerminalForView(sessionId, memberId));
+    }
   }
 
   Widget _buildSessionChatView(
