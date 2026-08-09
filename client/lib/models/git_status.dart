@@ -28,6 +28,13 @@ class GitFileChange extends Equatable {
   /// True when this entry comes from the index (staged) area.
   final bool staged;
 
+  GitFileChange copyWith({bool? staged, GitChangeKind? kind}) => GitFileChange(
+    path: path,
+    originalPath: originalPath,
+    kind: kind ?? this.kind,
+    staged: staged ?? this.staged,
+  );
+
   /// Single-letter badge shown in the UI (M/A/D/R/U/?).
   String get badge => switch (kind) {
     GitChangeKind.modified => 'M',
@@ -72,6 +79,25 @@ class GitRepoStatus extends Equatable {
 
   /// Worktree-area changes, including untracked files.
   final List<GitFileChange> unstaged;
+
+  GitRepoStatus copyWith({
+    bool? isRepository,
+    String? branch,
+    String? upstream,
+    int? ahead,
+    int? behind,
+    List<GitFileChange>? staged,
+    List<GitFileChange>? unstaged,
+  }) =>
+      GitRepoStatus(
+        isRepository: isRepository ?? this.isRepository,
+        branch: branch ?? this.branch,
+        upstream: upstream ?? this.upstream,
+        ahead: ahead ?? this.ahead,
+        behind: behind ?? this.behind,
+        staged: staged ?? this.staged,
+        unstaged: unstaged ?? this.unstaged,
+      );
 
   bool get hasChanges => staged.isNotEmpty || unstaged.isNotEmpty;
 

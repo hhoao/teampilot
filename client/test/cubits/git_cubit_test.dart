@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/git_cubit.dart';
 import 'package:teampilot/models/git_status.dart';
@@ -152,6 +154,32 @@ void main() {
     expect(service.stagedPaths, [
       ['b.txt'],
     ]);
+    await cubit.close();
+  });
+
+  test('stage flips the change to staged immediately (optimistic)', () async {
+    final gate = Completer<void>();
+    final service = _GatedGitService(
+      statusToReturn: _repoWith(unstaged: const [_unstaged]),
+      stageGate: gate,
+    );
+    final cubit = GitCubit(service: service);
+    await cubit.setRepoRoot('/repo');
+
+    final future = cubit.stage(_unstaged);
+
+    // Optimistic: before the gate completes, the change is already staged.
+    expect(
+      cubit.state.status.staged.map((c) => c.path),
+      contains(_unstaged.path),
+    );
+    expect(
+      cubit.state.status.unstaged.map((c) => c.path),
+      isNot(contains(_unstaged.path)),
+    );
+
+    gate.complete();
+    await future;
     await cubit.close();
   });
 
@@ -367,5 +395,19 @@ class _SlowBranchesGitService extends _FakeGitService {
   Future<List<String>> branches(String dir) async {
     await Future<void>.delayed(const Duration(milliseconds: 20));
     return super.branches(dir);
+  }
+}
+
+/// Delays `stage` until [stageGate] completes, so a test can observe the
+/// cubit's optimistic state update before the command finishes.
+class _GatedGitService extends _FakeGitService {
+  _GatedGitService({required super.statusToReturn, required this.stageGate});
+
+  final Completer<void> stageGate;
+
+  @override
+  Future<void> stage(String dir, List<String> paths) async {
+    await stageGate.future;
+    return super.stage(dir, paths);
   }
 }

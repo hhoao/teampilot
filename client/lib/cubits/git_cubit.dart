@@ -314,22 +314,35 @@ class GitCubit extends Cubit<GitState> {
     }
   }
 
-  Future<void> stage(GitFileChange change) =>
-      _mutate(() => _service.stage(state.repoRoot, [change.path]));
+  Future<void> stage(GitFileChange change) => _optimisticMutate(
+    apply: () => _moveOptimistic(change, toStaged: true),
+    action: () => _service.stage(state.repoRoot, [change.path]),
+  );
 
-  Future<void> unstage(GitFileChange change) =>
-      _mutate(() => _service.unstage(state.repoRoot, [change.path]));
+  Future<void> unstage(GitFileChange change) => _optimisticMutate(
+    apply: () => _moveOptimistic(change, toStaged: false),
+    action: () => _service.unstage(state.repoRoot, [change.path]),
+  );
 
-  Future<void> stageFolder(String folderPath) =>
-      _mutate(() => _service.stage(state.repoRoot, [folderPath]));
+  Future<void> stageFolder(String folderPath) => _optimisticMutate(
+    apply: () => _moveFolderOptimistic(folderPath, toStaged: true),
+    action: () => _service.stage(state.repoRoot, [folderPath]),
+  );
 
-  Future<void> unstageFolder(String folderPath) =>
-      _mutate(() => _service.unstage(state.repoRoot, [folderPath]));
+  Future<void> unstageFolder(String folderPath) => _optimisticMutate(
+    apply: () => _moveFolderOptimistic(folderPath, toStaged: false),
+    action: () => _service.unstage(state.repoRoot, [folderPath]),
+  );
 
-  Future<void> stageAll() => _mutate(() => _service.stageAll(state.repoRoot));
+  Future<void> stageAll() => _optimisticMutate(
+    apply: () => _moveAllOptimistic(toStaged: true),
+    action: () => _service.stageAll(state.repoRoot),
+  );
 
-  Future<void> unstageAll() =>
-      _mutate(() => _service.unstageAll(state.repoRoot));
+  Future<void> unstageAll() => _optimisticMutate(
+    apply: () => _moveAllOptimistic(toStaged: false),
+    action: () => _service.unstageAll(state.repoRoot),
+  );
 
   Future<void> discard(GitFileChange change) =>
       _mutate(() => _service.discard(state.repoRoot, change));
@@ -338,6 +351,76 @@ class GitCubit extends Cubit<GitState> {
 
   Future<void> discardFolder(String folderPath) =>
       _mutate(() => _service.discardFolder(state.repoRoot, folderPath));
+
+  /// Like [_mutate] but publishes the staged/unstaged move [apply] predicts
+  /// immediately, so checkbox toggles feel instant. The real [action] runs in
+  /// the background; on success the follow-up [refresh] reconciles with git's
+  /// actual state. On failure the optimistic move is reverted to [prior] (a
+  /// failed git op is atomic, so the pre-op status is the truth) and the error
+  /// is surfaced.
+  Future<void> _optimisticMutate({
+    required GitRepoStatus Function() apply,
+    required Future<void> Function() action,
+  }) async {
+    if (state.busy) return;
+    final prior = state.status;
+    _publish(state.copyWith(status: apply(), busy: true, clearError: true));
+    try {
+      await action();
+    } on GitException catch (e) {
+      if (isClosed) return;
+      _publish(
+        state.copyWith(
+          status: prior,
+          errorMessage: e.message,
+          busy: false,
+        ),
+      );
+      return;
+    }
+    await refresh();
+    if (isClosed) return;
+    _publish(state.copyWith(busy: false), recomputeRows: false);
+  }
+
+  GitRepoStatus _moveOptimistic(GitFileChange change, {required bool toStaged}) {
+    final staged = [...state.status.staged];
+    final unstaged = [...state.status.unstaged];
+    final from = toStaged ? unstaged : staged;
+    from.removeWhere((c) => c.path == change.path);
+    (toStaged ? staged : unstaged)
+        .add(change.copyWith(staged: toStaged));
+    return state.status.copyWith(staged: staged, unstaged: unstaged);
+  }
+
+  GitRepoStatus _moveFolderOptimistic(
+    String folderPath, {
+    required bool toStaged,
+  }) {
+    final staged = [...state.status.staged];
+    final unstaged = [...state.status.unstaged];
+    final from = toStaged ? unstaged : staged;
+    final moved = <GitFileChange>[
+      for (final c in from)
+        if (c.path == folderPath || c.path.startsWith('$folderPath/')) c,
+    ];
+    from.removeWhere(
+      (c) => c.path == folderPath || c.path.startsWith('$folderPath/'),
+    );
+    (toStaged ? staged : unstaged)
+        .addAll(moved.map((c) => c.copyWith(staged: toStaged)));
+    return state.status.copyWith(staged: staged, unstaged: unstaged);
+  }
+
+  GitRepoStatus _moveAllOptimistic({required bool toStaged}) {
+    final staged = [...state.status.staged];
+    final unstaged = [...state.status.unstaged];
+    final from = toStaged ? unstaged : staged;
+    final moved = from.map((c) => c.copyWith(staged: toStaged)).toList();
+    from.clear();
+    (toStaged ? staged : unstaged).addAll(moved);
+    return state.status.copyWith(staged: staged, unstaged: unstaged);
+  }
 
   /// Commits staged changes. No-op (with an error message) when the message is
   /// blank or nothing is staged.
