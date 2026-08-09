@@ -243,7 +243,7 @@ class FindActionButton extends StatelessWidget {
     this.assetPath,
     this.enabled = true,
     this.checked = false,
-    this.width = 26,
+    this.width = FindField.kHeight,
     this.height = FindField.kHeight,
     super.key,
   });
