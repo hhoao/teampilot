@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
 import '../../cubits/git_cubit.dart';
-import '../../l10n/l10n_extensions.dart';
 import '../../models/git_status.dart';
 import '../../services/git/git_changes_visible_rows.dart';
 import 'package:shared_ui/shared_ui.dart';
@@ -60,13 +59,6 @@ class _GitChangesTreeListState extends State<GitChangesTreeList> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final stagedRows = widget.treeView.stagedRows;
-    final unstagedRows = widget.treeView.unstagedRows;
-    final stagedCount = widget.cubit.state.status.staged.length;
-    final unstagedCount = widget.cubit.state.status.unstaged.length;
-    final allRows = [...stagedRows, ...unstagedRows];
-
     return LayoutBuilder(
       builder: (context, constraints) {
         final fileLabelStyle = TpTextStyles.of(context).sm;
@@ -76,7 +68,7 @@ class _GitChangesTreeListState extends State<GitChangesTreeList> {
         final contentWidth = math.max(
           constraints.maxWidth,
           gitChangesMinContentWidth(
-            rows: allRows,
+            rows: widget.treeView.rows,
             fileLabelStyle: fileLabelStyle,
             folderLabelStyle: folderLabelStyle,
             textScaler: MediaQuery.textScalerOf(context),
@@ -103,62 +95,17 @@ class _GitChangesTreeListState extends State<GitChangesTreeList> {
                     scrollCacheExtent: ScrollCacheExtent.pixels(400),
                     controller: widget.listScrollController,
                     slivers: [
-                      if (stagedRows.isNotEmpty) ...[
-                        SliverToBoxAdapter(
-                          child: GitChangesSectionHeader(
-                            title: l10n.gitStagedChanges,
-                            count: stagedCount,
-                            action: TpIconButton(
-                              icon: Icons.remove,
-                              compact: true,
-                              size: TpIconButton.kCompactSize,
-                              tooltip: l10n.gitUnstageAll,
-                              onTap: () => unawaited(widget.cubit.unstageAll()),
-                            ),
-                          ),
-                        ),
+                      if (widget.treeView.rows.isNotEmpty)
                         SliverFixedExtentList(
                           itemExtent: kGitChangesRowExtent,
                           delegate: SliverChildBuilderDelegate(
                             (context, index) => SizedBox(
                               width: contentWidth,
-                              child: _buildTreeRow(
-                                row: stagedRows[index],
-                                staged: true,
-                              ),
+                              child: _buildTreeRow(widget.treeView.rows[index]),
                             ),
-                            childCount: stagedRows.length,
+                            childCount: widget.treeView.rows.length,
                           ),
                         ),
-                      ],
-                      if (unstagedRows.isNotEmpty) ...[
-                        SliverToBoxAdapter(
-                          child: GitChangesSectionHeader(
-                            title: l10n.gitChanges,
-                            count: unstagedCount,
-                            action: TpIconButton(
-                              icon: Icons.add,
-                              compact: true,
-                              size: TpIconButton.kCompactSize,
-                              tooltip: l10n.gitStageAll,
-                              onTap: () => unawaited(widget.cubit.stageAll()),
-                            ),
-                          ),
-                        ),
-                        SliverFixedExtentList(
-                          itemExtent: kGitChangesRowExtent,
-                          delegate: SliverChildBuilderDelegate(
-                            (context, index) => SizedBox(
-                              width: contentWidth,
-                              child: _buildTreeRow(
-                                row: unstagedRows[index],
-                                staged: false,
-                              ),
-                            ),
-                            childCount: unstagedRows.length,
-                          ),
-                        ),
-                      ],
                     ],
                   ),
                 ),
@@ -170,10 +117,7 @@ class _GitChangesTreeListState extends State<GitChangesTreeList> {
     );
   }
 
-  Widget _buildTreeRow({
-    required GitChangesVisibleRow row,
-    required bool staged,
-  }) {
+  Widget _buildTreeRow(GitChangesVisibleRow row) {
     if (row.isFolder) {
       return GitChangeFolderTile(
         key: ValueKey('folder:${row.folderPath}'),
@@ -182,12 +126,8 @@ class _GitChangesTreeListState extends State<GitChangesTreeList> {
         depth: row.depth,
         cubit: widget.cubit,
         hoverEnabled: _hoverEnabled,
-        onStage: staged
-            ? null
-            : () => unawaited(widget.cubit.stageFolder(row.folderPath!)),
-        onUnstage: staged
-            ? () => unawaited(widget.cubit.unstageFolder(row.folderPath!))
-            : null,
+        onStage: () => unawaited(widget.cubit.stageFolder(row.folderPath!)),
+        onUnstage: () => unawaited(widget.cubit.unstageFolder(row.folderPath!)),
       );
     }
 
@@ -195,51 +135,15 @@ class _GitChangesTreeListState extends State<GitChangesTreeList> {
     final canOpenFile =
         widget.onOpenFile != null && change.kind != GitChangeKind.deleted;
     return GitChangeTile(
-      key: ValueKey('${staged ? 'staged' : 'unstaged'}:${change.path}'),
+      key: ValueKey('file:${change.path}'),
       change: change,
       depth: row.depth,
       hoverEnabled: _hoverEnabled,
       onOpenDiff: () => widget.onOpenDiff(change),
-      onStage: staged ? () {} : () => unawaited(widget.cubit.stage(change)),
-      onUnstage: staged ? () => unawaited(widget.cubit.unstage(change)) : () {},
-      onDiscard: staged ? () {} : () => widget.onConfirmDiscard(change),
+      onStage: change.staged ? () {} : () => unawaited(widget.cubit.stage(change)),
+      onUnstage: change.staged ? () => unawaited(widget.cubit.unstage(change)) : () {},
+      onDiscard: change.staged ? () {} : () => widget.onConfirmDiscard(change),
       onOpenFile: canOpenFile ? () => widget.onOpenFile!(change) : null,
-    );
-  }
-}
-
-class GitChangesSectionHeader extends StatelessWidget {
-  const GitChangesSectionHeader({
-    required this.title,
-    required this.count,
-    required this.action,
-    super.key,
-  });
-
-  final String title;
-  final int count;
-  final Widget action;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 6, 0, 2),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              title,
-              style: TpTextStyles.of(
-                context,
-              ).xsBoldWideColored(cs.onSurfaceVariant),
-            ),
-          ),
-          action,
-          const SizedBox(width: 2),
-          GitChangesCountBadge(count: count),
-        ],
-      ),
     );
   }
 }
