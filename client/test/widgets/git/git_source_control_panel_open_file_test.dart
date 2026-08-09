@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
@@ -26,6 +24,11 @@ import '../../support/post_frame_test_harness.dart';
 import '../../support/test_runtime_context.dart';
 
 class _UnstagedGitStub extends GitService {
+  /// Recorded discardAll command args, mirroring the real `git restore .`.
+  /// Static so tests can assert regardless of how many stub instances the
+  /// [GitRepoStore] created.
+  static final calls = <List<String>>[];
+
   @override
   Future<bool> get isAvailable async => true;
 
@@ -36,12 +39,21 @@ class _UnstagedGitStub extends GitService {
     staged: [],
     unstaged: [
       GitFileChange(path: 'a.txt', kind: GitChangeKind.modified, staged: false),
-      GitFileChange(path: 'gone.txt', kind: GitChangeKind.deleted, staged: false),
+      GitFileChange(
+        path: 'gone.txt',
+        kind: GitChangeKind.deleted,
+        staged: false,
+      ),
     ],
   );
 
   @override
   Future<List<String>> branches(String dir) async => const ['main'];
+
+  @override
+  Future<void> discardAll(String dir) async {
+    calls.add(['restore', '.']);
+  }
 }
 
 class _RecordingOpener extends WorkbenchEditorOpener {
@@ -78,6 +90,7 @@ void main() {
 
   setUp(() {
     setUpTestAppStorage();
+    _UnstagedGitStub.calls.clear();
     workContext = testRuntimeContext('/home');
     GitService.debugOverrideFactory = _UnstagedGitStub.new;
     GitService.debugResetExecutableCache();
@@ -119,21 +132,11 @@ void main() {
     );
   }
 
-  Future<TestGesture> hover(WidgetTester tester, Finder finder) async {
-    final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
-    await gesture.addPointer(location: Offset.zero);
-    addTearDown(gesture.removePointer);
-    await tester.pump();
-    await gesture.moveTo(tester.getCenter(finder));
-    await tester.pump();
-    return gesture;
-  }
-
   // TpHover renders its desktop (GestureDetector + animated fill) path on a
   // desktop platform. flutter_test defaults to Android, which would render the
-  // touch (InkWell) path with no onHoverChanged callback. The override must be
-  // reset inside the test body (before flutter_test's invariant check runs), so
-  // it is set/reset via try/finally rather than setUp/tearDown.
+  // touch (InkWell) path. The override must be reset inside the test body
+  // (before flutter_test's invariant check runs), so it is set/reset via
+  // try/finally rather than setUp/tearDown.
   Future<void> runOnDesktop(
     WidgetTester tester,
     Future<void> Function() body,
@@ -146,7 +149,17 @@ void main() {
     }
   }
 
-  testWidgets('open-file button opens the changed file', (tester) async {
+  /// Drives two quick left-clicks at [finder] (a double-click). Each tap must
+  /// come from a fresh pointer — reusing one TestGesture for both downs trips a
+  /// framework gesture-arena assertion ('isOpen': is not true).
+  Future<void> doubleClick(WidgetTester tester, Finder finder) async {
+    await tester.tap(finder, kind: PointerDeviceKind.mouse);
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.tap(finder, kind: PointerDeviceKind.mouse);
+    await tester.pump(const Duration(milliseconds: 400));
+  }
+
+  testWidgets('double-click on a changed row opens the file', (tester) async {
     await runOnDesktop(tester, () async {
       final aiSettingsCubit = AiFeatureSettingsCubit(
         repository: InMemoryAppSettingsRepository(),
@@ -172,23 +185,19 @@ void main() {
       );
       expect(rowA, findsOneWidget);
 
-      final gesture = await hover(tester, rowA);
-      await tester.tap(find.byIcon(Icons.file_open_outlined));
-      await tester.pump();
+      await doubleClick(tester, rowA);
 
-      expect(
-        opener!.openedPaths,
-        [Platform.isWindows ? r'\repo\a.txt' : '/repo/a.txt'],
-      );
+      expect(opener!.openedPaths, ['/repo/a.txt']);
       expect(opener!.openedWorkspaceIds, ['ws-test']);
       // The opener must receive the backend filesystem (identical, not a copy)
       // so WSL/SSH workspace paths resolve against the backend.
       expect(opener!.openedFs, [same(workContext.filesystem)]);
-      await gesture.removePointer();
     });
   });
 
-  testWidgets('deleted rows do not show the open-file button', (tester) async {
+  testWidgets('double-click on a deleted row does not open the file', (
+    tester,
+  ) async {
     await runOnDesktop(tester, () async {
       final aiSettingsCubit = AiFeatureSettingsCubit(
         repository: InMemoryAppSettingsRepository(),
@@ -214,10 +223,94 @@ void main() {
       );
       expect(rowGone, findsOneWidget);
 
-      final gesture = await hover(tester, rowGone);
+      await doubleClick(tester, rowGone);
 
-      expect(find.byIcon(Icons.file_open_outlined), findsNothing);
-      await gesture.removePointer();
+      expect(opener!.openedPaths, isEmpty);
+    });
+  });
+
+  testWidgets('toolbar discard-all confirms then calls discardAll', (
+    tester,
+  ) async {
+    final aiSettingsCubit = AiFeatureSettingsCubit(
+      repository: InMemoryAppSettingsRepository(),
+    );
+    addTearDown(aiSettingsCubit.close);
+
+    await tester.pumpWidget(
+      wrap(
+        aiSettingsCubit,
+        GitSourceControlPanel(
+          roots: const ['/repo'],
+          workContext: workContext,
+          workspaceId: 'ws-test',
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    // Open the discard dropdown.
+    await tester.tap(find.byIcon(Icons.undo));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.text('Discard All Unstaged Changes'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    // Confirm dialog.
+    await tester.tap(find.text('Discard changes'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(
+      _UnstagedGitStub.calls.any((a) => a.join(' ').contains('restore .')),
+      isTrue,
+    );
+  });
+
+  testWidgets('selecting a row enables Discard Selected Change', (tester) async {
+    await runOnDesktop(tester, () async {
+      final aiSettingsCubit = AiFeatureSettingsCubit(
+        repository: InMemoryAppSettingsRepository(),
+      );
+      addTearDown(aiSettingsCubit.close);
+
+      await tester.pumpWidget(
+        wrap(
+          aiSettingsCubit,
+          GitSourceControlPanel(
+            roots: const ['/repo'],
+            workContext: workContext,
+            workspaceId: 'ws-test',
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      final rowA = find.ancestor(
+        of: find.text('a.txt'),
+        matching: find.byType(GitChangeTile),
+      );
+      expect(rowA, findsOneWidget);
+
+      // Single click selects the row (desktop TpHover delays onTap past the
+      // double-tap window when onDoubleTap is also wired).
+      await tester.tap(rowA);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      await tester.tap(find.byIcon(Icons.undo));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      final selectedItem = tester.widget<PopupMenuItem<String>>(
+        find.ancestor(
+          of: find.text('Discard Selected Change'),
+          matching: find.byType(PopupMenuItem<String>),
+        ),
+      );
+      expect(selectedItem.enabled, isTrue);
     });
   });
 }

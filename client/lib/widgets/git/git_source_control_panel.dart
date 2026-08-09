@@ -262,6 +262,10 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
   final _horizontalScrollController = ScrollController();
   var _changesListReady = false;
 
+  /// Currently selected change path (IDEA-style row selection), or null when
+  /// nothing is selected. Enables "Discard Selected Change" in the toolbar.
+  String? _selectedPath;
+
   @override
   void initState() {
     super.initState();
@@ -350,6 +354,61 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
     if (ok == true) {
       await _cubit.discard(change);
     }
+  }
+
+  Future<void> _confirmDiscardAll() async {
+    final l10n = context.l10n;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => TpDialog(
+        maxWidth: 480,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TpDialogHeader(
+              title: l10n.gitDiscardAllConfirmTitle,
+              onClose: () => Navigator.of(ctx).pop(false),
+            ),
+            const SizedBox(height: 16),
+            Text(l10n.gitDiscardAllConfirmBody),
+            TpDialogActions(
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(false),
+                  child: Text(MaterialLocalizations.of(ctx).cancelButtonLabel),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.of(ctx).pop(true),
+                  child: Text(l10n.gitDiscard),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+    if (ok == true) {
+      await _cubit.discardAll();
+    }
+  }
+
+  Future<void> _discardSelected() async {
+    final path = _selectedPath;
+    if (path == null) return;
+    final change = _findChange(path);
+    if (change == null) return;
+    await _confirmDiscard(change);
+  }
+
+  GitFileChange? _findChange(String path) {
+    for (final c in _cubit.state.status.staged) {
+      if (c.path == path) return c;
+    }
+    for (final c in _cubit.state.status.unstaged) {
+      if (c.path == path) return c;
+    }
+    return null;
   }
 
   Future<void> _openBranchSheet() async {
@@ -443,6 +502,10 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
                 onPull: () => unawaited(_cubit.pull()),
                 onBranch: () => unawaited(_openBranchSheet()),
                 onToggleExpandAll: _cubit.toggleExpandAllFolders,
+                onDiscardSelected: _selectedPath == null
+                    ? null
+                    : () => unawaited(_discardSelected()),
+                onDiscardAll: () => unawaited(_confirmDiscardAll()),
               );
             },
           ),
@@ -530,6 +593,8 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
                       cubit: _cubit,
                       listScrollController: _changesScrollController,
                       horizontalScrollController: _horizontalScrollController,
+                      selectedPath: _selectedPath,
+                      onSelect: (path) => setState(() => _selectedPath = path),
                       onOpenDiff: (change) => unawaited(_openDiff(change)),
                       onConfirmDiscard: (change) =>
                           unawaited(_confirmDiscard(change)),
@@ -587,6 +652,8 @@ class _Header extends StatelessWidget {
     required this.onPull,
     required this.onBranch,
     required this.onToggleExpandAll,
+    this.onDiscardSelected,
+    this.onDiscardAll,
   });
 
   final String branch;
@@ -599,6 +666,8 @@ class _Header extends StatelessWidget {
   final VoidCallback onPull;
   final VoidCallback onBranch;
   final VoidCallback onToggleExpandAll;
+  final VoidCallback? onDiscardSelected;
+  final VoidCallback? onDiscardAll;
 
   @override
   Widget build(BuildContext context) {
@@ -662,6 +731,26 @@ class _Header extends StatelessWidget {
               ? l10n.treeCollapseAllFolders
               : l10n.treeExpandAllFolders,
           onTap: onToggleExpandAll,
+        ),
+        PopupMenuButton<String>(
+          tooltip: l10n.gitDiscard,
+          icon: const Icon(Icons.undo, size: 18),
+          padding: EdgeInsets.zero,
+          onSelected: (value) {
+            if (value == 'selected') onDiscardSelected?.call();
+            if (value == 'all') onDiscardAll?.call();
+          },
+          itemBuilder: (context) => [
+            PopupMenuItem(
+              value: 'selected',
+              enabled: onDiscardSelected != null,
+              child: Text(l10n.gitDiscardSelected),
+            ),
+            PopupMenuItem(
+              value: 'all',
+              child: Text(l10n.gitDiscardAllUnstaged),
+            ),
+          ],
         ),
         TpIconButton(
           icon: Icons.download_outlined,
