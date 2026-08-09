@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/services/cli/registry/capabilities/provider_model_capability.dart';
+import 'package:teampilot/services/cli/opencode/provider/opencode_provider_model_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/claude/provider/claude_provider_model_capability.dart';
 
@@ -120,7 +121,7 @@ void main() {
   });
 
   test('opencode capability exposes zen catalog and custom entry', () {
-    const capability = OpencodeProviderModelCapability();
+    final capability = OpencodeProviderModelCapability();
     const provider = AppProviderConfig(
       id: 'opencode',
       cli: CliTool.opencode,
@@ -142,7 +143,7 @@ void main() {
   });
 
   test('opencode catalog resolves from providerId without provider row', () {
-    const capability = OpencodeProviderModelCapability();
+    final capability = OpencodeProviderModelCapability();
     final models = capability.modelCandidates(
       provider: null,
       providerId: 'opencode',
