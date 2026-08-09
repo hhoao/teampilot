@@ -85,6 +85,7 @@ class TabSessionRuntimeCoordinator {
                 policy: () =>
                     TerminalReclaimPolicy(idleAfter: Duration(seconds: reclaimSeconds())),
                 onDiscardMember: onReclaimMember,
+                sessionBusyFromAttention: sessionBusyFromAttention,
               ));
     final aggregator =
         workingAggregator ??
