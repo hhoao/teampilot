@@ -1,411 +1,345 @@
+import 'dart:async';
+
 import 'package:equatable/equatable.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:shared_ui/shared_ui.dart';
 
+import 'tab_strip.dart';
+import 'workbench_domain_port.dart';
 import 'workbench_tab.dart';
+import 'workbench_tab_bar.dart';
 
+class _NoopPort implements WorkbenchDomainPort {
+  const _NoopPort();
+  @override
+  Future<void> onTabRemoved(String workspaceId, WorkbenchTabId id) async {}
+}
+
+/// Back-compat facade over [WorkspaceTabBar.center] so existing readers of the
+/// old `bucket(ws).tabOrder` surface keep compiling during migration. Deleted
+/// with the wrapper methods in Task 5.
 class WorkbenchWorkspaceState extends Equatable {
-  const WorkbenchWorkspaceState({
-    this.tabOrder = const [],
-    this.activeTabId,
-    this.previewTabIds = const {},
-    this.lastFocusedShellTabId,
-    this.welcomeActive = false,
-  });
+  const WorkbenchWorkspaceState(this.bar);
 
-  final List<WorkbenchTabId> tabOrder;
-  final WorkbenchTabId? activeTabId;
+  final WorkspaceTabBar bar;
 
-  /// Tabs that are still preview (replaceable) until pinned.
-  ///
-  /// Shared across session / file / diff — at most one preview slot.
-  final Set<WorkbenchTabId> previewTabIds;
+  List<WorkbenchTabId> get tabOrder => bar.center.order;
+  WorkbenchTabId? get activeTabId => bar.center.activeId;
+  Set<WorkbenchTabId> get previewTabIds => bar.center.previewIds;
+  bool get welcomeActive => bar.center.landingActive;
+  bool isPreview(WorkbenchTabId tab) => bar.center.previewIds.contains(tab);
 
-  /// Last shell tab the user focused in this workspace (for re-open).
-  final WorkbenchTabId? lastFocusedShellTabId;
-
-  /// User explicitly entered the welcome/start empty center (e.g. landing ←).
-  /// While true, [WorkbenchCubit.syncSessions] must not auto-select a session.
-  final bool welcomeActive;
-
-  bool isPreview(WorkbenchTabId tab) => previewTabIds.contains(tab);
-
+  /// Back-compat: the migrate path (`migrate_legacy_workbench_tabs`) builds a
+  /// center strip with shell/run tabs via `copyWith(tabOrder: [...])`. Rewrites
+  /// the underlying center strip. Deleted with the facade in Task 6.
   WorkbenchWorkspaceState copyWith({
     List<WorkbenchTabId>? tabOrder,
     WorkbenchTabId? activeTabId,
     Set<WorkbenchTabId>? previewTabIds,
-    WorkbenchTabId? lastFocusedShellTabId,
     bool? welcomeActive,
     bool clearActive = false,
   }) {
+    final order = tabOrder ?? bar.center.order;
+    var active = clearActive ? null : (activeTabId ?? bar.center.activeId);
+    if (welcomeActive == true) active = null;
     return WorkbenchWorkspaceState(
-      tabOrder: tabOrder ?? this.tabOrder,
-      activeTabId: clearActive ? null : (activeTabId ?? this.activeTabId),
-      previewTabIds: previewTabIds ?? this.previewTabIds,
-      lastFocusedShellTabId:
-          lastFocusedShellTabId ?? this.lastFocusedShellTabId,
-      welcomeActive: welcomeActive ?? this.welcomeActive,
+      bar.copyWith(
+        center: TabStrip(
+          order: order,
+          activeId: active,
+          previewIds: previewTabIds ?? bar.center.previewIds,
+        ),
+      ),
     );
   }
 
   @override
-  List<Object?> get props => [
-    tabOrder,
-    activeTabId,
-    previewTabIds,
-    lastFocusedShellTabId,
-    welcomeActive,
-  ];
+  List<Object?> get props => [bar];
 }
 
 class WorkbenchState extends Equatable {
   const WorkbenchState({this.byWorkspace = const {}});
 
-  final Map<String, WorkbenchWorkspaceState> byWorkspace;
+  final Map<String, WorkspaceTabBar> byWorkspace;
 
+  WorkspaceTabBar bar(String workspaceId) =>
+      byWorkspace[workspaceId] ?? const WorkspaceTabBar();
+
+  /// Back-compat facade (Task 5 removes callers of this).
   WorkbenchWorkspaceState bucket(String workspaceId) =>
-      byWorkspace[workspaceId] ?? const WorkbenchWorkspaceState();
+      WorkbenchWorkspaceState(bar(workspaceId));
 
-  WorkbenchState withBucket(
-    String workspaceId,
-    WorkbenchWorkspaceState bucket,
-  ) {
-    return WorkbenchState(byWorkspace: {...byWorkspace, workspaceId: bucket});
+  WorkbenchState withBar(String workspaceId, WorkspaceTabBar bar) {
+    return WorkbenchState(byWorkspace: {...byWorkspace, workspaceId: bar});
+  }
+
+  /// Back-compat: the migrate path (`migrate_legacy_workbench_tabs`) writes
+  /// buckets via `withBucket`. Deleted with the facade in Task 6.
+  WorkbenchState withBucket(String workspaceId, WorkbenchWorkspaceState bucket) {
+    return WorkbenchState(byWorkspace: {...byWorkspace, workspaceId: bucket.bar});
   }
 
   @override
   List<Object?> get props => [byWorkspace];
 }
 
-/// Owns center-bar [tabOrder] and [activeTabId] per title-bar workspace.
+/// Owns the workbench tab bar: per-workspace center + floating strips.
+///
+/// The single writer of tab presence / order / active. Domain runtimes are
+/// referenced by id and reached via [WorkbenchDomainPort] on close.
 class WorkbenchCubit extends Cubit<WorkbenchState> {
-  WorkbenchCubit() : super(const WorkbenchState());
+  WorkbenchCubit({WorkbenchDomainPort? port})
+      : _port = port ?? const _NoopPort(),
+        super(const WorkbenchState());
 
-  List<WorkbenchTabId> tabOrder(String workspaceId) =>
-      state.bucket(workspaceId).tabOrder;
+  final WorkbenchDomainPort _port;
+  static const TabStripReducer _r = TabStripReducer();
 
-  WorkbenchTabId? activeTabId(String workspaceId) =>
-      state.bucket(workspaceId).activeTabId;
+  // ---- NEW core API ----
 
-  bool welcomeActive(String workspaceId) =>
-      state.bucket(workspaceId).welcomeActive;
+  WorkbenchTabId? openSession(
+    String workspaceId,
+    String sessionId, {
+    bool preview = false,
+    bool activate = true,
+  }) => _openCenter(
+    workspaceId,
+    WorkbenchTabId.session(sessionId),
+    preview: preview,
+    activate: activate,
+  );
 
-  bool isPreview(String workspaceId, WorkbenchTabId tab) =>
-      state.bucket(workspaceId).isPreview(tab);
+  WorkbenchTabId? openFile(
+    String workspaceId,
+    String path, {
+    bool preview = false,
+    bool activate = true,
+  }) => _openCenter(
+    workspaceId,
+    WorkbenchTabId.file(path),
+    preview: preview,
+    activate: activate,
+  );
 
-  WorkbenchTabId? lastFocusedShellTabId(String workspaceId) =>
-      state.bucket(workspaceId).lastFocusedShellTabId;
+  WorkbenchTabId? openDiff(
+    String workspaceId,
+    WorkbenchTabId tab, {
+    bool preview = false,
+    bool activate = true,
+  }) => _openCenter(
+    workspaceId,
+    tab,
+    preview: preview,
+    activate: activate,
+  );
 
-  WorkbenchTabId? resolveMostRecentShell(String workspaceId) {
-    final bucket = state.bucket(workspaceId);
-    final last = bucket.lastFocusedShellTabId;
-    if (last != null &&
-        last.kind == WorkbenchTabKind.shell &&
-        bucket.tabOrder.contains(last)) {
-      return last;
-    }
-    for (var i = bucket.tabOrder.length - 1; i >= 0; i--) {
-      if (bucket.tabOrder[i].kind == WorkbenchTabKind.shell) {
-        return bucket.tabOrder[i];
-      }
-    }
-    return null;
+  WorkbenchTabId? _openCenter(
+    String workspaceId,
+    WorkbenchTabId tab, {
+    required bool preview,
+    bool activate = true,
+  }) {
+    if (!isCenterStripWorkbenchTab(tab.kind)) return null;
+    final bar = state.bar(workspaceId);
+    final (next, replaced) = _r.add(
+      bar.center,
+      tab,
+      preview: preview,
+      activate: activate,
+    );
+    emit(state.withBar(workspaceId, bar.copyWith(center: next)));
+    return replaced;
   }
 
-  /// Ensures [tab] is in the bar and active.
+  /// Removes [id] from the owning strip and returns it, or null if absent.
+  /// The port's [WorkbenchDomainPort.onTabRemoved] is called for teardown.
   ///
-  /// When [preview] is true and another preview exists (any kind), that preview
-  /// is replaced in-place and returned so callers can close its domain state.
-  /// When [preview] is false, the tab is permanent (pinned).
-  ///
-  /// If [tab] already exists as a permanent tab and [preview] is true, it is
-  /// adopted into the shared preview slot (used after [syncSessions] appends a
-  /// session before the open path marks it preview).
-  ///
-  /// Shell and run tabs must not be added to the center strip.
+  /// NOTE: `Cubit` already declares `Future<void> close()` for lifecycle, so
+  /// this id-based close is declared as an override with optional positional
+  /// params — `close()` (no args) performs the lifecycle close, `close(ws, id)`
+  /// removes a tab and resolves to the removed id (or null when absent).
+  @override
+  Future<WorkbenchTabId?> close([String? workspaceId, WorkbenchTabId? id]) async {
+    if (workspaceId == null || id == null) {
+      await super.close();
+      return null;
+    }
+    final bar = state.bar(workspaceId);
+    final isCenter = isCenterStripWorkbenchTab(id.kind);
+    final strip = isCenter ? bar.center : bar.floating;
+    final next = _r.remove(strip, id);
+    if (next == null) return null;
+    emit(state.withBar(
+      workspaceId,
+      isCenter ? bar.copyWith(center: next) : bar.copyWith(floating: next),
+    ));
+    await _port.onTabRemoved(workspaceId, id);
+    return id;
+  }
+
+  void openShell(String workspaceId, String entryId, {bool activate = true}) {
+    final bar = state.bar(workspaceId);
+    final (next, _) = _r.add(
+      bar.floating,
+      WorkbenchTabId.shell(entryId),
+      preview: false,
+      activate: activate,
+    );
+    emit(state.withBar(workspaceId, bar.copyWith(floating: next)));
+  }
+
+  void openRun(String workspaceId, String runSessionId, {bool activate = true}) {
+    final bar = state.bar(workspaceId);
+    final (next, _) = _r.add(
+      bar.floating,
+      WorkbenchTabId.run(runSessionId),
+      preview: false,
+      activate: activate,
+    );
+    emit(state.withBar(workspaceId, bar.copyWith(floating: next)));
+  }
+
+  void activate(String workspaceId, WorkbenchTabId id) {
+    final bar = state.bar(workspaceId);
+    final strip = isCenterStripWorkbenchTab(id.kind) ? bar.center : bar.floating;
+    final next = _r.activate(strip, id);
+    emit(state.withBar(
+      workspaceId,
+      isCenterStripWorkbenchTab(id.kind)
+          ? bar.copyWith(center: next)
+          : bar.copyWith(floating: next),
+    ));
+  }
+
+  void pin(String workspaceId, WorkbenchTabId id) {
+    final bar = state.bar(workspaceId);
+    final next = _r.pin(bar.center, id);
+    emit(state.withBar(workspaceId, bar.copyWith(center: next)));
+  }
+
+  /// Shows the center landing (new-chat / welcome) without closing tabs.
+  void enterLanding(String workspaceId) {
+    final bar = state.bar(workspaceId);
+    final next = _r.enterLanding(bar.center);
+    emit(state.withBar(workspaceId, bar.copyWith(center: next)));
+  }
+
+  void reorder(String workspaceId, int oldIndex, int newIndex) {
+    final bar = state.bar(workspaceId);
+    final next = _r.reorder(bar.center, oldIndex, newIndex);
+    emit(state.withBar(workspaceId, bar.copyWith(center: next)));
+  }
+
+  List<WorkbenchTabId> centerOrder(String workspaceId) =>
+      state.bar(workspaceId).center.order;
+
+  WorkbenchTabId? centerActiveId(String workspaceId) =>
+      state.bar(workspaceId).center.activeId;
+
+  // ---- Legacy wrappers (deleted in Task 5; keep callers compiling) ----
+
   WorkbenchTabId? ensureTab(
     String workspaceId,
     WorkbenchTabId tab, {
     bool preview = false,
-  }) {
-    if (!isCenterStripWorkbenchTab(tab.kind)) {
-      assert(() {
-        debugPrint(
-          'WorkbenchCubit.ensureTab: shell/run tabs must not be '
-          'added to the center workbench strip',
-        );
-        return true;
-      }());
-      return null;
-    }
-    final bucket = state.bucket(workspaceId);
-    final order = List<WorkbenchTabId>.from(bucket.tabOrder);
-    final previews = Set<WorkbenchTabId>.from(bucket.previewTabIds);
+  }) => _openCenter(workspaceId, tab, preview: preview, activate: true);
 
-    final existing = order.indexOf(tab);
-    if (existing >= 0) {
-      if (!preview) {
-        previews.remove(tab);
-        emit(
-          state.withBucket(
-            workspaceId,
-            bucket.copyWith(
-              tabOrder: order,
-              activeTabId: tab,
-              previewTabIds: previews,
-              welcomeActive: false,
-            ),
-          ),
-        );
-        return null;
-      }
-      if (previews.contains(tab)) {
-        emit(
-          state.withBucket(
-            workspaceId,
-            bucket.copyWith(
-              tabOrder: order,
-              activeTabId: tab,
-              previewTabIds: previews,
-              welcomeActive: false,
-            ),
-          ),
-        );
-        return null;
-      }
-      // Exists but not preview — drop and re-insert into the preview slot.
-      order.removeAt(existing);
-    }
-
-    WorkbenchTabId? replaced;
-    if (preview) {
-      for (final candidate in order) {
-        if (previews.contains(candidate)) {
-          replaced = candidate;
-          break;
-        }
-      }
-    }
-
-    if (replaced != null) {
-      final i = order.indexOf(replaced);
-      order[i] = tab;
-      previews.remove(replaced);
-      previews.add(tab);
-    } else {
-      order.add(tab);
-      if (preview) previews.add(tab);
-    }
-
-    emit(
-      state.withBucket(
-        workspaceId,
-        bucket.copyWith(
-          tabOrder: order,
-          activeTabId: tab,
-          previewTabIds: previews,
-          welcomeActive: false,
-        ),
-      ),
-    );
-    return replaced;
-  }
-
-  void pinTab(String workspaceId, WorkbenchTabId tab) {
-    final bucket = state.bucket(workspaceId);
-    if (!bucket.previewTabIds.contains(tab)) return;
-    final previews = Set<WorkbenchTabId>.from(bucket.previewTabIds)
-      ..remove(tab);
-    emit(
-      state.withBucket(workspaceId, bucket.copyWith(previewTabIds: previews)),
-    );
-  }
-
-  void select(String workspaceId, WorkbenchTabId tab) {
-    final bucket = state.bucket(workspaceId);
-    if (!bucket.tabOrder.contains(tab)) return;
-    final alreadyActive = bucket.activeTabId == tab;
-    final needsShellFocus =
-        tab.kind == WorkbenchTabKind.shell &&
-        bucket.lastFocusedShellTabId != tab;
-    if (alreadyActive && !needsShellFocus) return;
-
-    if (alreadyActive) {
-      // Still record shell focus when ensureTab already activated this tab.
-      emit(
-        state.withBucket(
-          workspaceId,
-          bucket.copyWith(lastFocusedShellTabId: tab),
-        ),
-      );
-      return;
-    }
-
-    emit(
-      state.withBucket(
-        workspaceId,
-        tab.kind == WorkbenchTabKind.shell
-            ? bucket.copyWith(
-                activeTabId: tab,
-                lastFocusedShellTabId: tab,
-                welcomeActive: false,
-              )
-            : bucket.copyWith(activeTabId: tab, welcomeActive: false),
-      ),
-    );
-  }
-
-  /// Permutes center-strip [tabOrder]. Preserves [activeTabId].
-  void reorderTabs(String workspaceId, int oldIndex, int newIndex) {
-    final bucket = state.bucket(workspaceId);
-    if (bucket.tabOrder.isEmpty) return;
-    final order = reorderListItems(bucket.tabOrder, oldIndex, newIndex);
-    if (_listEquals(order, bucket.tabOrder)) return;
-    emit(
-      state.withBucket(
-        workspaceId,
-        bucket.copyWith(tabOrder: order),
-      ),
-    );
-  }
-
+  /// Legacy close. Unlike the new kind-routed [close], this removes from the
+  /// center strip regardless of kind — the migrate path injects shell/run tabs
+  /// into the center via the facade and relies on that. Deleted in Task 6.
   void removeTab(String workspaceId, WorkbenchTabId tab) {
-    final bucket = state.bucket(workspaceId);
-    final order = List<WorkbenchTabId>.from(bucket.tabOrder);
-    final index = order.indexOf(tab);
-    if (index < 0) return;
-    order.removeAt(index);
-    final previews = Set<WorkbenchTabId>.from(bucket.previewTabIds)
-      ..remove(tab);
-
-    WorkbenchTabId? nextActive = bucket.activeTabId;
-    if (bucket.activeTabId == tab) {
-      if (order.isEmpty) {
-        nextActive = null;
-      } else if (index > 0) {
-        nextActive = order[index - 1];
-      } else {
-        nextActive = order.first;
-      }
-    }
-
-    emit(
-      state.withBucket(
-        workspaceId,
-        WorkbenchWorkspaceState(
-          tabOrder: order,
-          activeTabId: nextActive,
-          previewTabIds: previews,
-          lastFocusedShellTabId: bucket.lastFocusedShellTabId,
-          welcomeActive: nextActive == null ? bucket.welcomeActive : false,
-        ),
-      ),
-    );
+    final bar = state.bar(workspaceId);
+    final next = _r.remove(bar.center, tab);
+    if (next == null) return;
+    emit(state.withBar(workspaceId, bar.copyWith(center: next)));
+    unawaited(_port.onTabRemoved(workspaceId, tab));
   }
 
-  /// Returns tabs that were removed (domain closers should run on these).
+  void select(String workspaceId, WorkbenchTabId tab) =>
+      activate(workspaceId, tab);
+
+  void reorderTabs(String workspaceId, int oldIndex, int newIndex) =>
+      reorder(workspaceId, oldIndex, newIndex);
+
+  void pinTab(String workspaceId, WorkbenchTabId tab) =>
+      pin(workspaceId, tab);
+
+  void clearActive(String workspaceId) => enterLanding(workspaceId);
+
+  void enterWelcome(String workspaceId) => enterLanding(workspaceId);
+
   List<WorkbenchTabId> closeOthers(String workspaceId, WorkbenchTabId keep) {
-    final bucket = state.bucket(workspaceId);
-    if (!bucket.tabOrder.contains(keep)) return const [];
-    final removed = bucket.tabOrder
-        .where((t) => t != keep)
-        .toList(growable: false);
-    final previews = {if (bucket.previewTabIds.contains(keep)) keep};
-    emit(
-      state.withBucket(
-        workspaceId,
-        WorkbenchWorkspaceState(
-          tabOrder: [keep],
-          activeTabId: keep,
-          previewTabIds: previews,
-          lastFocusedShellTabId: bucket.lastFocusedShellTabId,
-          welcomeActive: false,
+    final bar = state.bar(workspaceId);
+    final center = bar.center;
+    if (!center.order.contains(keep)) return const [];
+    final removed = center.order.where((t) => t != keep).toList(growable: false);
+    emit(state.withBar(
+      workspaceId,
+      bar.copyWith(
+        center: TabStrip(
+          order: [keep],
+          activeId: keep,
+          previewIds: center.previewIds.contains(keep)
+              ? {keep}
+              : const <WorkbenchTabId>{},
         ),
       ),
-    );
-    return removed;
-  }
-
-  /// Returns tabs that were removed.
-  List<WorkbenchTabId> closeRight(String workspaceId, WorkbenchTabId anchor) {
-    final bucket = state.bucket(workspaceId);
-    final index = bucket.tabOrder.indexOf(anchor);
-    if (index < 0 || index >= bucket.tabOrder.length - 1) {
-      return const [];
+    ));
+    for (final tab in removed) {
+      unawaited(_port.onTabRemoved(workspaceId, tab));
     }
-    final kept = bucket.tabOrder.sublist(0, index + 1);
-    final removed = bucket.tabOrder.sublist(index + 1);
-    final active = bucket.activeTabId;
-    final nextActive = active != null && removed.contains(active)
-        ? anchor
-        : active;
-    final previews = bucket.previewTabIds.where(kept.contains).toSet();
-    emit(
-      state.withBucket(
-        workspaceId,
-        WorkbenchWorkspaceState(
-          tabOrder: kept,
-          activeTabId: nextActive,
-          previewTabIds: previews,
-          lastFocusedShellTabId: bucket.lastFocusedShellTabId,
-          welcomeActive: nextActive == null ? bucket.welcomeActive : false,
-        ),
-      ),
-    );
     return removed;
   }
 
-  /// Closes every tab in [workspaceId]'s strip. Returns the removed tabs so
-  /// domain closers can tear them down. Mirrors [removeTab] on the last tab:
-  /// the active tab becomes null and [WorkbenchWorkspaceState.welcomeActive] is
-  /// preserved, so the workspace keeps its landing / welcome state.
+  List<WorkbenchTabId> closeRight(String workspaceId, WorkbenchTabId anchor) {
+    final center = state.bar(workspaceId).center;
+    final index = center.order.indexOf(anchor);
+    if (index < 0 || index >= center.order.length - 1) return const [];
+    final kept = center.order.sublist(0, index + 1);
+    final removed = center.order.sublist(index + 1);
+    final active = center.activeId;
+    final nextActive = active != null && removed.contains(active) ? anchor : active;
+    emit(state.withBar(
+      workspaceId,
+      state.bar(workspaceId).copyWith(
+        center: TabStrip(
+          order: kept,
+          activeId: nextActive,
+          previewIds: center.previewIds.where(kept.contains).toSet(),
+        ),
+      ),
+    ));
+    for (final tab in removed) {
+      unawaited(_port.onTabRemoved(workspaceId, tab));
+    }
+    return removed;
+  }
+
   List<WorkbenchTabId> closeAll(String workspaceId) {
-    final bucket = state.bucket(workspaceId);
-    final removed = List<WorkbenchTabId>.from(bucket.tabOrder);
+    final center = state.bar(workspaceId).center;
+    final removed = List<WorkbenchTabId>.from(center.order);
     if (removed.isEmpty) return const [];
-    emit(
-      state.withBucket(
-        workspaceId,
-        WorkbenchWorkspaceState(
-          tabOrder: const [],
-          activeTabId: null,
-          previewTabIds: const {},
-          lastFocusedShellTabId: bucket.lastFocusedShellTabId,
-          welcomeActive: bucket.welcomeActive,
-        ),
-      ),
-    );
+    emit(state.withBar(
+      workspaceId,
+      state.bar(workspaceId).copyWith(center: const TabStrip()),
+    ));
+    for (final tab in removed) {
+      unawaited(_port.onTabRemoved(workspaceId, tab));
+    }
     return removed;
   }
 
-  void clearWorkspace(String workspaceId) {
-    if (!state.byWorkspace.containsKey(workspaceId)) return;
-    final next = Map<String, WorkbenchWorkspaceState>.from(state.byWorkspace)
-      ..remove(workspaceId);
-    emit(WorkbenchState(byWorkspace: next));
-  }
-
-  /// Keep session tabs in [tabOrder] aligned with [sessionIds] (create/close/hydrate).
-  ///
-  /// When [newChatActive] is true, [activeTabId] stays null so the body shows
-  /// landing while session tabs may still appear in the bar.
-  /// When [WorkbenchWorkspaceState.welcomeActive] is true, [activeTabId] stays
-  /// null so the welcome page is not replaced by an auto-selected session.
-  /// When not in new-chat / welcome mode and active is unset/invalid, activates
-  /// [preferredActiveSessionId] (or the first session).
-  /// Does not override an active file/diff tab.
+  /// Legacy reconcile-by-append. Kept ONLY until Task 3 deletes it together
+  /// with [WorkbenchSessionSync]; the bridge then feeds the bar directly.
   void syncSessions(
     String workspaceId,
     List<String> sessionIds, {
     String? preferredActiveSessionId,
     bool newChatActive = false,
   }) {
-    final bucket = state.bucket(workspaceId);
+    final bar = state.bar(workspaceId);
     final sessionSet = sessionIds.toSet();
     final order = <WorkbenchTabId>[];
-
-    for (final tab in bucket.tabOrder) {
+    for (final tab in bar.center.order) {
       if (!isCenterStripWorkbenchTab(tab.kind)) continue;
       if (tab.kind == WorkbenchTabKind.session) {
         if (sessionSet.contains(tab.id)) order.add(tab);
@@ -413,7 +347,6 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
         order.add(tab);
       }
     }
-
     final existingSessions = {
       for (final t in order)
         if (t.kind == WorkbenchTabKind.session) t.id,
@@ -423,86 +356,36 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
         order.add(WorkbenchTabId.session(id));
       }
     }
-
-    var welcomeActive = bucket.welcomeActive;
-    WorkbenchTabId? active = bucket.activeTabId;
+    var active = bar.center.activeId;
     if (newChatActive) {
-      active = null;
-      welcomeActive = false;
-    } else if (welcomeActive) {
       active = null;
     } else if (active != null && !order.contains(active)) {
       active = null;
     }
-
-    if (!newChatActive &&
-        !welcomeActive &&
-        (active == null || active.kind == WorkbenchTabKind.session)) {
-      final preferred = preferredActiveSessionId == null
-          ? null
-          : WorkbenchTabId.session(preferredActiveSessionId);
-      if (preferred != null && order.contains(preferred)) {
-        active = preferred;
-      } else if (active == null) {
-        WorkbenchTabId? firstSession;
-        for (final t in order) {
-          if (t.kind == WorkbenchTabKind.session) {
-            firstSession = t;
-            break;
-          }
-        }
-        active = firstSession;
-      }
-    }
-
-    if (_listEquals(order, bucket.tabOrder) &&
-        active == bucket.activeTabId &&
-        welcomeActive == bucket.welcomeActive) {
-      return;
-    }
-
-    final previews = bucket.previewTabIds.where(order.contains).toSet();
-    emit(
-      state.withBucket(
-        workspaceId,
-        WorkbenchWorkspaceState(
-          tabOrder: order,
-          activeTabId: active,
-          previewTabIds: previews,
-          lastFocusedShellTabId: bucket.lastFocusedShellTabId,
-          welcomeActive: welcomeActive,
+    emit(state.withBar(
+      workspaceId,
+      bar.copyWith(
+        center: TabStrip(
+          order: order,
+          activeId: active,
+          previewIds: bar.center.previewIds.where(order.contains).toSet(),
         ),
       ),
-    );
+    ));
   }
 
-  void clearActive(String workspaceId) {
-    final bucket = state.bucket(workspaceId);
-    if (bucket.activeTabId == null) return;
-    emit(state.withBucket(workspaceId, bucket.copyWith(clearActive: true)));
+  void clearWorkspace(String workspaceId) {
+    if (!state.byWorkspace.containsKey(workspaceId)) return;
+    final next = Map<String, WorkspaceTabBar>.from(state.byWorkspace)
+      ..remove(workspaceId);
+    emit(WorkbenchState(byWorkspace: next));
   }
 
-  /// Leave compose / clear selection and hold the welcome empty center.
-  ///
-  /// Unlike [clearActive], this works when active is already null (compose
-  /// path) and blocks [syncSessions] from auto-selecting a session tab.
-  void enterWelcome(String workspaceId) {
-    final bucket = state.bucket(workspaceId);
-    if (bucket.activeTabId == null && bucket.welcomeActive) return;
-    emit(
-      state.withBucket(
-        workspaceId,
-        bucket.copyWith(clearActive: true, welcomeActive: true),
-      ),
-    );
-  }
+  List<WorkbenchTabId> tabOrder(String workspaceId) => centerOrder(workspaceId);
 
-  static bool _listEquals(List<WorkbenchTabId> a, List<WorkbenchTabId> b) {
-    if (identical(a, b)) return true;
-    if (a.length != b.length) return false;
-    for (var i = 0; i < a.length; i++) {
-      if (a[i] != b[i]) return false;
-    }
-    return true;
-  }
+  WorkbenchTabId? activeTabId(String workspaceId) =>
+      centerActiveId(workspaceId);
+
+  bool welcomeActive(String workspaceId) =>
+      state.bar(workspaceId).center.landingActive;
 }
