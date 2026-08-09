@@ -12,36 +12,56 @@ class GitChangesVisibleRow extends Equatable {
     required this.folderPath,
     required this.name,
     required this.depth,
+    required this.subtreeStagedCount,
+    required this.subtreeTotalCount,
   }) : change = null,
        isFolder = true;
 
   const GitChangesVisibleRow.file({required this.change, required this.depth})
     : folderPath = null,
       name = null,
+      subtreeStagedCount = 0,
+      subtreeTotalCount = 0,
       isFolder = false;
 
   final String? folderPath;
   final String? name;
   final GitFileChange? change;
   final int depth;
+  final int subtreeStagedCount;
+  final int subtreeTotalCount;
   final bool isFolder;
 
   @override
-  List<Object?> get props => [folderPath, name, change, depth, isFolder];
+  List<Object?> get props => [
+    folderPath,
+    name,
+    change,
+    depth,
+    subtreeStagedCount,
+    subtreeTotalCount,
+    isFolder,
+  ];
 }
 
-/// Pre-flattened staged + unstaged rows for the changes tree list.
+/// Pre-flattened unified rows for the changes tree list, with staged/total
+/// counts so the panel can render tri-state folder checkboxes and badges.
 class GitChangesTreeViewData extends Equatable {
   const GitChangesTreeViewData({
-    required this.stagedRows,
-    required this.unstagedRows,
+    required this.rows,
+    required this.stagedCount,
+    required this.totalCount,
   });
 
-  final List<GitChangesVisibleRow> stagedRows;
-  final List<GitChangesVisibleRow> unstagedRows;
+  final List<GitChangesVisibleRow> rows;
+  final int stagedCount;
+  final int totalCount;
+
+  bool get allStaged => totalCount > 0 && stagedCount == totalCount;
+  bool get noneStaged => stagedCount == 0;
 
   @override
-  List<Object?> get props => [...stagedRows, ...unstagedRows];
+  List<Object?> get props => [...rows, stagedCount, totalCount];
 }
 
 /// Inner content height of a git changes row (excluding outer vertical padding).
@@ -64,15 +84,8 @@ const double kGitChangesRowHorizontalPadding = 2;
 const double kGitChangesNodePaddingLeft = 6;
 const double kGitChangesNodePaddingRight = 6;
 
-/// Leading chrome: chevron slot + icon + gap (16px icons).
-const double kGitChangesLeadingChromeWidth = 16 + 16 + 6;
-
-/// Trailing open/discard/stage actions on an unstaged row (three compact
-/// buttons, `TpIconButton.kCompactSize` = 28).
-const double kGitChangesTrailingActionsWidth = 84;
-
-/// Trailing actions on a staged row or a folder row (two compact buttons).
-const double kGitChangesTrailingTwoActionsWidth = 56;
+/// Width of the stage checkbox at the leading edge of each row.
+const double kGitChangesCheckboxWidth = 18;
 
 /// Single status badge width.
 const double kGitChangesTrailingBadgeWidth = 22;
@@ -110,14 +123,17 @@ double gitChangesMinContentWidth({
     if (row.isFolder) {
       painter.text = TextSpan(text: row.name, style: folderLabelStyle);
       painter.layout();
+      final leading = kGitChangesIndentWidth +
+          kGitChangesCheckboxWidth +
+          16 +
+          6; // chevron + checkbox + folder icon + gap
       final rowWidth =
           row.depth * kGitChangesIndentWidth +
           kGitChangesNodePaddingLeft +
-          kGitChangesLeadingChromeWidth +
+          leading +
           kGitChangesNodePaddingRight +
           kGitChangesRowHorizontalPadding * 2 +
-          painter.width +
-          kGitChangesTrailingTwoActionsWidth;
+          painter.width;
       maxWidth = math.max(maxWidth, rowWidth);
       continue;
     }
@@ -125,17 +141,16 @@ double gitChangesMinContentWidth({
     final label = p.basename(row.change!.path);
     painter.text = TextSpan(text: label, style: fileLabelStyle);
     painter.layout();
-    final trailing = row.change!.staged
-        ? kGitChangesTrailingTwoActionsWidth
-        : kGitChangesTrailingActionsWidth;
+    final leading =
+        kGitChangesCheckboxWidth + 16 + 6; // checkbox + file icon + gap
     final rowWidth =
         row.depth * kGitChangesIndentWidth +
         kGitChangesNodePaddingLeft +
-        kGitChangesLeadingChromeWidth +
+        leading +
         kGitChangesNodePaddingRight +
         kGitChangesRowHorizontalPadding * 2 +
         painter.width +
-        trailing;
+        kGitChangesTrailingBadgeWidth;
     maxWidth = math.max(maxWidth, rowWidth);
   }
   return maxWidth.ceilToDouble() + kGitChangesContentWidthSlack;
@@ -147,10 +162,8 @@ double _rowWidthEstimate(GitChangesVisibleRow row) {
   for (final rune in label.runes) {
     units += rune >= 0x1100 ? 2.0 : 1.0;
   }
-  final trailing = row.isFolder || row.change!.staged
-      ? kGitChangesTrailingTwoActionsWidth
-      : kGitChangesTrailingActionsWidth;
-  return row.depth * 2.0 + units + trailing / 8.0;
+  final extra = row.isFolder ? kGitChangesCheckboxWidth : kGitChangesTrailingBadgeWidth;
+  return row.depth * 2.0 + units + extra / 8.0;
 }
 
 /// Default expanded folders: every directory prefix of a changed path.
@@ -170,21 +183,38 @@ Set<String> gitChangesDefaultExpandedFolders(List<GitFileChange> changes) {
 Set<String> gitChangesAllFolderPaths(List<GitFileChange> changes) =>
     gitChangesDefaultExpandedFolders(changes);
 
-GitChangesTreeViewData visibleGitChangesTreeViewData({
+GitChangesTreeViewData visibleUnifiedGitChangesTreeView({
   required List<GitFileChange> staged,
   required List<GitFileChange> unstaged,
   required Set<String> expandedFolderPaths,
 }) {
-  return GitChangesTreeViewData(
-    stagedRows: visibleGitChangesRows(
-      changes: staged,
-      expandedFolderPaths: expandedFolderPaths,
-    ),
-    unstagedRows: visibleGitChangesRows(
-      changes: unstaged,
-      expandedFolderPaths: expandedFolderPaths,
-    ),
+  final merged = mergeGitChangesByPath(staged: staged, unstaged: unstaged);
+  var stagedCount = 0;
+  for (final c in merged) {
+    if (c.staged) stagedCount++;
+  }
+  final rows = visibleGitChangesRows(
+    changes: merged,
+    expandedFolderPaths: expandedFolderPaths,
   );
+  return GitChangesTreeViewData(
+    rows: rows,
+    stagedCount: stagedCount,
+    totalCount: merged.length,
+  );
+}
+
+/// Merges staged + unstaged into one list, deduped by path. When a path
+/// appears in both (partial staging), the staged entry wins for kind/badge
+/// and `staged` reflects "has staged content".
+List<GitFileChange> mergeGitChangesByPath({
+  required List<GitFileChange> staged,
+  required List<GitFileChange> unstaged,
+}) {
+  final byPath = <String, GitFileChange>{};
+  for (final c in unstaged) byPath.putIfAbsent(c.path, () => c);
+  for (final c in staged) byPath[c.path] = c;
+  return byPath.values.toList();
 }
 
 /// Flatten [changes] into folder + file rows for tree view.
@@ -206,6 +236,7 @@ List<GitChangesVisibleRow> visibleGitChangesRows({
     depth: 0,
     expandedFolderPaths: expandedFolderPaths,
     rows: rows,
+    emit: true,
   );
   return rows;
 }
@@ -229,39 +260,47 @@ void _insertChange(_GitChangesFolderNode root, GitFileChange change) {
   node.files.add(change);
 }
 
-void _walk({
+(int, int) _walk({
   required _GitChangesFolderNode node,
   required String folderPath,
   required int depth,
   required Set<String> expandedFolderPaths,
   required List<GitChangesVisibleRow> rows,
+  required bool emit,
 }) {
+  var total = 0;
+  var staged = 0;
   final folderNames = node.subfolders.keys.toList()..sort();
   for (final name in folderNames) {
-    final childPath = folderPath.isEmpty
-        ? name
-        : p.posix.join(folderPath, name);
-    rows.add(
-      GitChangesVisibleRow.folder(
-        folderPath: childPath,
-        name: name,
-        depth: depth,
-      ),
+    final childPath = folderPath.isEmpty ? name : p.posix.join(folderPath, name);
+    final childRows = <GitChangesVisibleRow>[];
+    final (childTotal, childStaged) = _walk(
+      node: node.subfolders[name]!,
+      folderPath: childPath,
+      depth: depth + 1,
+      expandedFolderPaths: expandedFolderPaths,
+      rows: childRows,
+      emit: emit && expandedFolderPaths.contains(childPath),
     );
-    if (expandedFolderPaths.contains(childPath)) {
-      _walk(
-        node: node.subfolders[name]!,
-        folderPath: childPath,
-        depth: depth + 1,
-        expandedFolderPaths: expandedFolderPaths,
-        rows: rows,
+    if (emit) {
+      rows.add(
+        GitChangesVisibleRow.folder(
+          folderPath: childPath,
+          name: name,
+          depth: depth,
+          subtreeStagedCount: childStaged,
+          subtreeTotalCount: childTotal,
+        ),
       );
+      rows.addAll(childRows);
     }
+    total += childTotal;
+    staged += childStaged;
   }
-
-  final files = node.files.toList()
-    ..sort((a, b) => p.basename(a.path).compareTo(p.basename(b.path)));
-  for (final change in files) {
-    rows.add(GitChangesVisibleRow.file(change: change, depth: depth));
+  for (final change in node.files) {
+    total++;
+    if (change.staged) staged++;
+    if (emit) rows.add(GitChangesVisibleRow.file(change: change, depth: depth));
   }
+  return (total, staged);
 }

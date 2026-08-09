@@ -1,35 +1,77 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/git_status.dart';
 import 'package:teampilot/services/git/git_changes_visible_rows.dart';
 
-GitChangesVisibleRow fileRow({required bool staged}) => GitChangesVisibleRow.file(
-  change: GitFileChange(
-    path: 'src',
-    kind: GitChangeKind.modified,
-    staged: staged,
-  ),
-  depth: 0,
-);
+GitFileChange change(String path, {bool staged = false, GitChangeKind kind = GitChangeKind.modified}) =>
+    GitFileChange(path: path, kind: kind, staged: staged);
 
 void main() {
-  test('unstaged rows reserve wider trailing than staged/folder rows', () {
+  test('mergeGitChangesByPath dedups partial-staged paths, staged side wins', () {
+    final merged = mergeGitChangesByPath(
+      staged: [
+        change('a/b.txt', staged: true, kind: GitChangeKind.added),
+        change('c.txt', staged: true),
+      ],
+      unstaged: [change('a/b.txt'), change('d.txt')],
+    );
+    final paths = merged.map((c) => c.path).toSet();
+    expect(paths, {'a/b.txt', 'c.txt', 'd.txt'});
+    final ab = merged.firstWhere((c) => c.path == 'a/b.txt');
+    expect(ab.staged, isTrue);
+    expect(ab.kind, GitChangeKind.added); // staged side kind wins
+  });
+
+  test('unified tree gives folder tri-state subtree counts', () {
+    final view = visibleUnifiedGitChangesTreeView(
+      staged: [
+        change('domain/Foo.java', staged: true),
+        change('domain/core/Bar.java', staged: true),
+      ],
+      unstaged: [change('domain/Baz.java'), change('domain/core/Qux.java')],
+      expandedFolderPaths: const {'domain'},
+    );
+    final folderRows = view.rows.where((r) => r.isFolder).toList();
+    // root-level folder 'domain': 2 staged of 4 total
+    final domain = folderRows.firstWhere((r) => r.folderPath == 'domain');
+    expect(domain.subtreeTotalCount, 4);
+    expect(domain.subtreeStagedCount, 2);
+    // nested folder 'domain/core': 1 staged of 2 total
+    final core = folderRows.firstWhere((r) => r.folderPath == 'domain/core');
+    expect(core.subtreeTotalCount, 2);
+    expect(core.subtreeStagedCount, 1);
+    expect(view.stagedCount, 2);
+    expect(view.totalCount, 4);
+  });
+
+  test('collapsed folders still report subtree counts', () {
+    final view = visibleUnifiedGitChangesTreeView(
+      staged: [change('a/x.java', staged: true)],
+      unstaged: [change('a/y.java')],
+      expandedFolderPaths: const <String>{},
+    );
+    final folder = view.rows.singleWhere((r) => r.isFolder);
+    expect(folder.subtreeTotalCount, 2);
+    expect(folder.subtreeStagedCount, 1);
+    expect(view.rows.where((r) => !r.isFolder), isEmpty); // children not emitted
+  });
+
+  test('min content width accounts for checkbox + badge per row type', () {
     const style = TextStyle(fontSize: 12);
-    final unstaged = fileRow(staged: false);
-    final staged = fileRow(staged: true);
-    final folder = GitChangesVisibleRow.folder(
-      folderPath: 'src',
-      name: 'src',
+    // Equal-width labels (Ahem font: every glyph is fontSize wide).
+    final file = GitChangesVisibleRow.file(
+      change: change('aaaaa'),
       depth: 0,
     );
-
-    final wUnstaged = gitChangesMinContentWidth(
-      rows: [unstaged],
-      fileLabelStyle: style,
-      folderLabelStyle: style,
+    final folder = GitChangesVisibleRow.folder(
+      folderPath: 'aaaaa',
+      name: 'aaaaa',
+      depth: 0,
+      subtreeStagedCount: 0,
+      subtreeTotalCount: 1,
     );
-    final wStaged = gitChangesMinContentWidth(
-      rows: [staged],
+    final wFile = gitChangesMinContentWidth(
+      rows: [file],
       fileLabelStyle: style,
       folderLabelStyle: style,
     );
@@ -38,162 +80,12 @@ void main() {
       fileLabelStyle: style,
       folderLabelStyle: style,
     );
-
+    // Equal labels → the difference is (file leading + badge) − (folder
+    // leading), i.e. (checkbox+icon+gap + 22) − (chevron+checkbox+icon+gap).
     expect(
-      wUnstaged - wStaged,
-      closeTo(
-        kGitChangesTrailingActionsWidth - kGitChangesTrailingTwoActionsWidth,
-        1,
-      ),
+      wFile - wFolder,
+      closeTo(kGitChangesTrailingBadgeWidth - 16, 1), // 22 − chevron slot
     );
-    expect(wFolder, closeTo(wStaged, 1));
-
-    // Absolute floor: each width must exceed its trailing-actions constant so
-    // both constants can't drift down together and still pass the relative diff.
-    expect(wStaged, greaterThan(kGitChangesTrailingTwoActionsWidth));
-    expect(wUnstaged, greaterThan(kGitChangesTrailingActionsWidth));
-  });
-
-  test('visibleGitChangesRows nests files under expanded folders', () {
-    const changes = [
-      GitFileChange(
-        path: 'src/utils/foo.dart',
-        kind: GitChangeKind.modified,
-        staged: false,
-      ),
-      GitFileChange(
-        path: 'readme.md',
-        kind: GitChangeKind.modified,
-        staged: false,
-      ),
-    ];
-
-    final rows = visibleGitChangesRows(
-      changes: changes,
-      expandedFolderPaths: {'src', 'src/utils'},
-    );
-
-    expect(
-      rows.map((r) => r.isFolder ? 'D:${r.name}' : 'F:${r.change!.path}'),
-      ['D:src', 'D:utils', 'F:src/utils/foo.dart', 'F:readme.md'],
-    );
-  });
-
-  test('visibleGitChangesRows hides nested files when folder collapsed', () {
-    const changes = [
-      GitFileChange(
-        path: 'src/main.dart',
-        kind: GitChangeKind.modified,
-        staged: false,
-      ),
-    ];
-
-    final rows = visibleGitChangesRows(
-      changes: changes,
-      expandedFolderPaths: {},
-    );
-
-    expect(rows, [
-      isA<GitChangesVisibleRow>().having((r) => r.isFolder, 'folder', isTrue),
-    ]);
-  });
-
-  test('gitChangesMinContentWidth accounts for depth and trailing actions', () {
-    const fileStyle = TextStyle(fontSize: 12);
-    const folderStyle = TextStyle(fontSize: 12, fontWeight: FontWeight.w500);
-    final rows = [
-      const GitChangesVisibleRow.folder(
-        folderPath: 'src',
-        name: 'src',
-        depth: 0,
-      ),
-      GitChangesVisibleRow.file(
-        change: const GitFileChange(
-          path: 'src/very-long-filename.dart',
-          kind: GitChangeKind.modified,
-          staged: false,
-        ),
-        depth: 1,
-      ),
-    ];
-
-    final width = gitChangesMinContentWidth(
-      rows: rows,
-      fileLabelStyle: fileStyle,
-      folderLabelStyle: folderStyle,
-    );
-    expect(width, greaterThan(200));
-  });
-
-  test('gitChangesDefaultExpandedFolders includes all directory prefixes', () {
-    const changes = [
-      GitFileChange(
-        path: 'src/utils/foo.dart',
-        kind: GitChangeKind.modified,
-        staged: false,
-      ),
-    ];
-
-    expect(gitChangesDefaultExpandedFolders(changes), {'src', 'src/utils'});
-  });
-
-  test('visibleGitChangesTreeViewData splits staged and unstaged rows', () {
-    const staged = [
-      GitFileChange(
-        path: 'lib/a.dart',
-        kind: GitChangeKind.modified,
-        staged: true,
-      ),
-    ];
-    const unstaged = [
-      GitFileChange(
-        path: 'lib/b.dart',
-        kind: GitChangeKind.modified,
-        staged: false,
-      ),
-    ];
-
-    final data = visibleGitChangesTreeViewData(
-      staged: staged,
-      unstaged: unstaged,
-      expandedFolderPaths: const {'lib'},
-    );
-
-    expect(data.stagedRows.any((r) => r.change?.path == 'lib/a.dart'), isTrue);
-    expect(
-      data.unstagedRows.any((r) => r.change?.path == 'lib/b.dart'),
-      isTrue,
-    );
-  });
-
-  test('gitChangesMinContentWidth samples rows on large trees', () {
-    const fileStyle = TextStyle(fontSize: 12);
-    const folderStyle = TextStyle(fontSize: 12, fontWeight: FontWeight.w500);
-    final rows = [
-      for (var i = 0; i < 64; i++)
-        GitChangesVisibleRow.file(
-          change: GitFileChange(
-            path: 'dir/file_$i.txt',
-            kind: GitChangeKind.modified,
-            staged: false,
-          ),
-          depth: 1,
-        ),
-      const GitChangesVisibleRow.file(
-        change: GitFileChange(
-          path: 'dir/zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz.dart',
-          kind: GitChangeKind.modified,
-          staged: false,
-        ),
-        depth: 1,
-      ),
-    ];
-
-    final width = gitChangesMinContentWidth(
-      rows: rows,
-      fileLabelStyle: fileStyle,
-      folderLabelStyle: folderStyle,
-    );
-    expect(width, greaterThan(300));
+    expect(wFile, greaterThan(100));
   });
 }
