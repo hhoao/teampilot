@@ -387,16 +387,6 @@ class _ChatWorkbenchBody extends StatelessWidget {
           : false,
     );
 
-    final session = _resolveSession(
-      chatCubit: chatCubit,
-      slice: slice,
-      team: team,
-    );
-    if (session == null) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    onSyncTerminalTheme(session, terminalTheme, slice.selectedMemberId);
-
     final launchError =
         routeActive &&
             chatCubit.tabStore.activeWorkspaceId == tabScopeId
@@ -415,6 +405,39 @@ class _ChatWorkbenchBody extends StatelessWidget {
       final tab = c.tabStore.openTabBySessionId(activeId);
       return tab?.workbenchView ?? SessionWorkbenchView.chat;
     });
+
+    final session = _resolveSession(
+      chatCubit: chatCubit,
+      slice: slice,
+      team: team,
+    );
+    if (session == null) {
+      // A reclaimed simple session has no live shell (`memberShells` was torn
+      // down and `ensureSession` is team-only). Chat history is still readable
+      // without a shell; the terminal view shows the restore placeholder —
+      // neither may be a perpetual loading spinner.
+      if (workbenchView == SessionWorkbenchView.chat) {
+        return _buildSessionChatView(
+          context,
+          chatCubit: chatCubit,
+          team: team,
+          launchError: launchError,
+          sessionConnectInProgress: sessionConnectInProgress,
+        );
+      }
+      final activeId = slice.activeSessionId;
+      if (activeId != null && activeId.isNotEmpty) {
+        final tab = chatCubit.tabStore.openTabBySessionId(activeId);
+        final appSession = tab?.persistedSession;
+        final isPersonal =
+            appSession != null && appSession.sessionTeam.trim().isEmpty;
+        if (isPersonal) {
+          return _buildTerminalPlaceholder(context, chatCubit: chatCubit);
+        }
+      }
+      return const Center(child: CircularProgressIndicator());
+    }
+    onSyncTerminalTheme(session, terminalTheme, slice.selectedMemberId);
 
     final memberId = slice.selectedMemberId.isNotEmpty
         ? slice.selectedMemberId
