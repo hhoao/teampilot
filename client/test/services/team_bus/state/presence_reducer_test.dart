@@ -67,12 +67,12 @@ void main() {
     expect(t.effects, isEmpty);
   });
 
-  test('MaterializeCompleted → running + active + Doorbell', () {
+  test('MaterializeCompleted → running + turnDoneReady + Doorbell (honest: active only on real turn)', () {
     final t = _run(
-      const Presence(MemberLifecycle.materializing, MemberActivity.active),
+      const Presence(MemberLifecycle.materializing, MemberActivity.none),
       const MaterializeCompleted(),
     );
-    expect(t.presence, _active);
+    expect(t.presence, _atPrompt);
     expect(t.effects.single, isA<DoorbellEffect>());
   });
 
