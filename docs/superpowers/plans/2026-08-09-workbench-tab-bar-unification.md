@@ -14,7 +14,7 @@
 - All close operations are by `WorkbenchTabId`, never by index into a `ChatTabStore` bucket.
 - The bar never holds payloads (no `ChatTab`, no `FloatingTab`) — only `WorkbenchTabId`.
 - `ChatState.activeSessionId` / `selectedMemberId` are mirrors written only by `WorkbenchChatBridge`; no other code mutates them.
-- During migration, `WorkbenchCubit` keeps its old method names as thin wrappers over the new core so callers compile; **all wrappers are deleted in Task 5**.
+- During migration, `WorkbenchCubit` keeps its old method names as thin wrappers over the new core so callers compile; **all wrappers and the `WorkbenchWorkspaceState` facade are deleted in Task 6**.
 - Every task ends green: `cd client && flutter analyze --no-fatal-infos --no-fatal-warnings && flutter test --exclude-tags integration` passes for the touched area.
 - Keep commits small and task-scoped.
 
