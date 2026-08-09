@@ -2510,6 +2510,27 @@ class AppLocalizationsZh extends AppLocalizations {
       '开启后，点击连接或重启会为每个有效成员启动终端；关闭则仅启动当前选中的成员。';
 
   @override
+  String get memberTerminalReclaimedTitle => '终端已回收以释放内存';
+
+  @override
+  String get memberTerminalReclaimedBody => '点击重新连接（会话会恢复）';
+
+  @override
+  String get memberTerminalNotStartedTitle => '终端未启动 — 点击启动';
+
+  @override
+  String get reclaimIdleTerminalsTitle => '回收空闲终端';
+
+  @override
+  String get reclaimIdleTerminalsDescription => '空闲超时后关闭成员/会话终端以释放内存；需要时自动重连。';
+
+  @override
+  String get reclaimIdleTerminalMinutesTitle => '空闲回收超时（分钟）';
+
+  @override
+  String get reclaimIdleTerminalMinutesDescription => '终端可保持空闲多少分钟后被回收。';
+
+  @override
   String get openExistingSessionStartsTerminalTitle => '打开已有会话时直接启动终端';
 
   @override

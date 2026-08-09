@@ -99,6 +99,8 @@ class ChatCubit extends Cubit<ChatState>
         defaultTerminalSessionFactory,
     PostFrameScheduler? postFrameScheduler,
     bool Function()? autoLaunchAllMembersOnConnect,
+    bool Function()? reclaimIdleTerminalsEnabled,
+    int Function()? reclaimIdleTerminalAfterSeconds,
     SessionLifecycleService? lifecycleService,
     SessionRepository? sessionRepository,
     TerminalTransportFactory? transportFactory,
@@ -152,6 +154,8 @@ class ChatCubit extends Cubit<ChatState>
        ),
        _postFrameScheduler = postFrameScheduler ?? _defaultPostFrameScheduler,
        _autoLaunchAllMembersOnConnect = autoLaunchAllMembersOnConnect,
+       _reclaimIdleTerminalsEnabled = reclaimIdleTerminalsEnabled,
+       _reclaimIdleTerminalAfterSeconds = reclaimIdleTerminalAfterSeconds,
        _lifecycle = lifecycleService ?? SessionLifecycleService(),
        _sessionRepository = sessionRepository,
        _followUpQueue = followUpQueueStore ?? InMemoryFollowUpQueueStore(),
@@ -278,6 +282,10 @@ class ChatCubit extends Cubit<ChatState>
         onAfterIdleWatchTick: () => unawaited(_onIdleWatchTick()),
         onAfterTurnLatched: _onOperatorTurnLatched,
         onAfterTurnEnded: _onTurnEnded,
+        reclaimEnabled: () => _reclaimIdleTerminalsEnabled?.call() ?? false,
+        reclaimIdleAfterSeconds: () =>
+            _reclaimIdleTerminalAfterSeconds?.call() ?? 180,
+        onReclaimMember: _launchService.discardMemberTerminal,
       );
   late final MemberTurnInterruptService _turnInterrupt =
       MemberTurnInterruptService(
@@ -370,6 +378,8 @@ class ChatCubit extends Cubit<ChatState>
   final ChatSessionShellFactory _shellFactory;
   final PostFrameScheduler _postFrameScheduler;
   final bool Function()? _autoLaunchAllMembersOnConnect;
+  final bool Function()? _reclaimIdleTerminalsEnabled;
+  final int Function()? _reclaimIdleTerminalAfterSeconds;
   final SessionLifecycleService _lifecycle;
   final SessionRepository? _sessionRepository;
 
@@ -887,6 +897,9 @@ class ChatCubit extends Cubit<ChatState>
 
   @visibleForTesting
   void debugTickIdleWatch() => _sessionRuntime.debugTickIdleWatch();
+
+  @visibleForTesting
+  void debugTickReclaimWatch() => _sessionRuntime.debugTickReclaimWatch();
 
   @visibleForTesting
   void debugRecomputeWorkingSessions() => _recomputeWorkingSessions();
@@ -1795,6 +1808,13 @@ class ChatCubit extends Cubit<ChatState>
     if (view == SessionWorkbenchView.chat) {
       onSessionHistoryStale?.call(sessionId);
     }
+    if (view == SessionWorkbenchView.terminal) {
+      final tab = _tabStore.openTabBySessionId(sessionId);
+      final memberId = tab?.selectedMemberId ?? state.selectedMemberId;
+      if (memberId.trim().isNotEmpty) {
+        unawaited(ensureMemberTerminalForView(sessionId, memberId));
+      }
+    }
   }
 
   /// SessionLaunchHost port: the pod owns the per-session chat/terminal view.
@@ -1905,6 +1925,10 @@ class ChatCubit extends Cubit<ChatState>
     if (state.selectedMemberId == memberId) return;
     _activeTab?.selectedMemberId = memberId;
     emit(state.copyWith(selectedMemberId: memberId));
+    final tab = _activeTab;
+    if (tab != null && tab.workbenchView == SessionWorkbenchView.terminal) {
+      unawaited(ensureMemberTerminalForView(tab.info.id, memberId));
+    }
   }
 
   /// Whether the member's PTY is up (spawning through running).
@@ -1997,6 +2021,19 @@ class ChatCubit extends Cubit<ChatState>
       onSessionHistoryStale?.call(sessionId);
     }
   }
+
+  void discardMemberTerminal(String sessionId, String memberId) =>
+      _launchService.discardMemberTerminal(sessionId, memberId);
+
+  Future<void> ensureMemberTerminalForView(String sessionId, String memberId) =>
+      _launchService.ensureMemberTerminalForView(sessionId, memberId);
+
+  bool isMemberTerminalReclaimed(String sessionId, String memberId) =>
+      _tabStore
+          .openTabBySessionId(sessionId)
+          ?.reclaimedMemberIds
+          .contains(memberId) ??
+      false;
 
   Future<void> restartWorkspaceSession(
     SessionConnectRequest request, {

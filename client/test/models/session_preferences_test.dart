@@ -8,7 +8,7 @@ void main() {
       expect(prefs.cliExecutablePathFor('flashskyai'), '');
       expect(prefs.defaultSshWorkingDirectory, '');
       expect(prefs.sshUseLoginShell, false);
-      expect(prefs.autoLaunchAllMembersOnConnect, true);
+      expect(prefs.autoLaunchAllMembersOnConnect, false);
       expect(prefs.scopeSessionsToSelectedTeam, true);
       expect(prefs.notifyOnSessionIdle, true);
       expect(prefs.openExistingSessionStartsTerminal, false);
@@ -56,7 +56,7 @@ void main() {
       expect(restored.cliExecutablePaths, isEmpty);
       expect(restored.defaultSshWorkingDirectory, '');
       expect(restored.sshUseLoginShell, false);
-      expect(restored.autoLaunchAllMembersOnConnect, true);
+      expect(restored.autoLaunchAllMembersOnConnect, false);
       expect(restored.scopeSessionsToSelectedTeam, true);
       expect(restored.openExistingSessionStartsTerminal, false);
       expect(restored.simpleModeDefaultFullAccess, true);
@@ -73,7 +73,7 @@ void main() {
       expect(next.cliExecutablePaths, {'flashskyai': '/a/b', 'claude': '/c/d'});
       expect(next.defaultSshWorkingDirectory, '');
       expect(next.sshUseLoginShell, false);
-      expect(next.autoLaunchAllMembersOnConnect, true);
+      expect(next.autoLaunchAllMembersOnConnect, false);
       expect(next.scopeSessionsToSelectedTeam, true);
       expect(next.openExistingSessionStartsTerminal, true);
       expect(next.simpleModeDefaultFullAccess, false);
@@ -122,6 +122,40 @@ void main() {
       });
 
       expect(restored.cliExecutablePaths, {'claude': '/opt/bin/claude'});
+    });
+  });
+
+  group('idle terminal reclaim', () {
+    test('reclaim defaults: enabled, 3 minutes', () {
+      final p = SessionPreferences();
+      expect(p.reclaimIdleTerminals, isTrue);
+      expect(p.reclaimIdleTerminalAfterSeconds, 180);
+    });
+
+    test('reclaim fields survive JSON round-trip', () {
+      final p = SessionPreferences(
+        reclaimIdleTerminals: false,
+        reclaimIdleTerminalAfterSeconds: 7,
+      );
+      final back = SessionPreferences.fromJson(p.toJson());
+      expect(back.reclaimIdleTerminals, isFalse);
+      expect(back.reclaimIdleTerminalAfterSeconds, 7);
+    });
+
+    test('fromJson falls back to defaults for missing reclaim keys', () {
+      final p = SessionPreferences.fromJson(const {});
+      expect(p.reclaimIdleTerminals, isTrue);
+      expect(p.reclaimIdleTerminalAfterSeconds, 180);
+    });
+
+    test('copyWith updates reclaim fields', () {
+      final p = SessionPreferences();
+      final q = p.copyWith(
+        reclaimIdleTerminals: false,
+        reclaimIdleTerminalAfterSeconds: 12,
+      );
+      expect(q.reclaimIdleTerminals, isFalse);
+      expect(q.reclaimIdleTerminalAfterSeconds, 12);
     });
   });
 }

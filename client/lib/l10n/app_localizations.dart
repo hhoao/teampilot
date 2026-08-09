@@ -4772,6 +4772,48 @@ abstract class AppLocalizations {
   /// **'When enabled, Connect and Restart launch every valid member shell; otherwise only the selected member starts.'**
   String get autoLaunchAllMembersDescription;
 
+  /// No description provided for @memberTerminalReclaimedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Terminal reclaimed to save memory'**
+  String get memberTerminalReclaimedTitle;
+
+  /// No description provided for @memberTerminalReclaimedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to reconnect (the session resumes)'**
+  String get memberTerminalReclaimedBody;
+
+  /// No description provided for @memberTerminalNotStartedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Terminal not started — tap to launch'**
+  String get memberTerminalNotStartedTitle;
+
+  /// No description provided for @reclaimIdleTerminalsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reclaim idle terminals'**
+  String get reclaimIdleTerminalsTitle;
+
+  /// No description provided for @reclaimIdleTerminalsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Close idle member/session terminals after a timeout to free memory; they reconnect on demand.'**
+  String get reclaimIdleTerminalsDescription;
+
+  /// No description provided for @reclaimIdleTerminalMinutesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Idle reclaim timeout (minutes)'**
+  String get reclaimIdleTerminalMinutesTitle;
+
+  /// No description provided for @reclaimIdleTerminalMinutesDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Minutes a terminal may sit idle before it is reclaimed.'**
+  String get reclaimIdleTerminalMinutesDescription;
+
   /// No description provided for @openExistingSessionStartsTerminalTitle.
   ///
   /// In en, this message translates to:

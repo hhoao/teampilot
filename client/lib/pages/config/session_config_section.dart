@@ -253,6 +253,35 @@ class _SessionControlsState extends State<_SessionControls> {
                   showDividerBelow: true,
                 ),
                 TpPreferenceRow(
+                  title: l10n.reclaimIdleTerminalsTitle,
+                  subtitle: l10n.reclaimIdleTerminalsDescription,
+                  trailing: Switch(
+                    value: snapshot.reclaimIdleTerminals,
+                    onChanged: (value) =>
+                        unawaited(cubit.setReclaimIdleTerminals(value)),
+                  ),
+                  showDividerBelow: true,
+                ),
+                TpPreferenceRow(
+                  title: l10n.reclaimIdleTerminalMinutesTitle,
+                  subtitle: l10n.reclaimIdleTerminalMinutesDescription,
+                  trailing: SizedBox(
+                    width: 120,
+                    child: TextFormField(
+                      initialValue:
+                          '${snapshot.reclaimIdleTerminalAfterSeconds ~/ 60}',
+                      keyboardType: TextInputType.number,
+                      onFieldSubmitted: (value) {
+                        final parsed = int.tryParse(value.trim());
+                        if (parsed != null) {
+                          unawaited(cubit.setReclaimIdleTerminalAfterMinutes(parsed));
+                        }
+                      },
+                    ),
+                  ),
+                  showDividerBelow: true,
+                ),
+                TpPreferenceRow(
                   title: l10n.openExistingSessionStartsTerminalTitle,
                   subtitle: l10n.openExistingSessionStartsTerminalDescription,
                   trailing: Switch(
@@ -321,6 +350,8 @@ class _SessionControlsSnapshot {
     required this.terminalScrollbackLines,
     required this.terminalLinkClickOpensInApp,
     required this.autoLaunchAllMembersOnConnect,
+    required this.reclaimIdleTerminals,
+    required this.reclaimIdleTerminalAfterSeconds,
     required this.openExistingSessionStartsTerminal,
     required this.chatSubmitSwitchesToTerminal,
     required this.simpleModeDefaultFullAccess,
@@ -333,6 +364,8 @@ class _SessionControlsSnapshot {
   final int terminalScrollbackLines;
   final bool terminalLinkClickOpensInApp;
   final bool autoLaunchAllMembersOnConnect;
+  final bool reclaimIdleTerminals;
+  final int reclaimIdleTerminalAfterSeconds;
   final bool openExistingSessionStartsTerminal;
   final bool chatSubmitSwitchesToTerminal;
   final bool simpleModeDefaultFullAccess;
@@ -346,6 +379,9 @@ class _SessionControlsSnapshot {
       terminalScrollbackLines: preferences.terminalScrollbackLines,
       terminalLinkClickOpensInApp: preferences.terminalLinkClickOpensInApp,
       autoLaunchAllMembersOnConnect: preferences.autoLaunchAllMembersOnConnect,
+      reclaimIdleTerminals: preferences.reclaimIdleTerminals,
+      reclaimIdleTerminalAfterSeconds:
+          preferences.reclaimIdleTerminalAfterSeconds,
       openExistingSessionStartsTerminal:
           preferences.openExistingSessionStartsTerminal,
       chatSubmitSwitchesToTerminal: preferences.chatSubmitSwitchesToTerminal,
@@ -363,6 +399,9 @@ class _SessionControlsSnapshot {
         other.terminalScrollbackLines == terminalScrollbackLines &&
         other.terminalLinkClickOpensInApp == terminalLinkClickOpensInApp &&
         other.autoLaunchAllMembersOnConnect == autoLaunchAllMembersOnConnect &&
+        other.reclaimIdleTerminals == reclaimIdleTerminals &&
+        other.reclaimIdleTerminalAfterSeconds ==
+            reclaimIdleTerminalAfterSeconds &&
         other.openExistingSessionStartsTerminal ==
             openExistingSessionStartsTerminal &&
         other.chatSubmitSwitchesToTerminal == chatSubmitSwitchesToTerminal &&
@@ -378,6 +417,8 @@ class _SessionControlsSnapshot {
     terminalScrollbackLines,
     terminalLinkClickOpensInApp,
     autoLaunchAllMembersOnConnect,
+    reclaimIdleTerminals,
+    reclaimIdleTerminalAfterSeconds,
     openExistingSessionStartsTerminal,
     chatSubmitSwitchesToTerminal,
     simpleModeDefaultFullAccess,

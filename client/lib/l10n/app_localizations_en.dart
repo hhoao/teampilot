@@ -2624,6 +2624,33 @@ class AppLocalizationsEn extends AppLocalizations {
       'When enabled, Connect and Restart launch every valid member shell; otherwise only the selected member starts.';
 
   @override
+  String get memberTerminalReclaimedTitle =>
+      'Terminal reclaimed to save memory';
+
+  @override
+  String get memberTerminalReclaimedBody =>
+      'Tap to reconnect (the session resumes)';
+
+  @override
+  String get memberTerminalNotStartedTitle =>
+      'Terminal not started — tap to launch';
+
+  @override
+  String get reclaimIdleTerminalsTitle => 'Reclaim idle terminals';
+
+  @override
+  String get reclaimIdleTerminalsDescription =>
+      'Close idle member/session terminals after a timeout to free memory; they reconnect on demand.';
+
+  @override
+  String get reclaimIdleTerminalMinutesTitle =>
+      'Idle reclaim timeout (minutes)';
+
+  @override
+  String get reclaimIdleTerminalMinutesDescription =>
+      'Minutes a terminal may sit idle before it is reclaimed.';
+
+  @override
   String get openExistingSessionStartsTerminalTitle =>
       'Open existing sessions in terminal';
 

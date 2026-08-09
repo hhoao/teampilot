@@ -1169,6 +1169,10 @@ Future<AppShell> buildAppShell({
     layoutCubit: layoutCubit,
     autoLaunchAllMembersOnConnect: () =>
         sessionPreferencesCubit.state.preferences.autoLaunchAllMembersOnConnect,
+    reclaimIdleTerminalsEnabled: () =>
+        sessionPreferencesCubit.state.preferences.reclaimIdleTerminals,
+    reclaimIdleTerminalAfterSeconds: () =>
+        sessionPreferencesCubit.state.preferences.reclaimIdleTerminalAfterSeconds,
     executableResolver: () => sessionPreferencesCubit.resolveExecutable(),
     cliExecutableResolver: sessionPreferencesCubit.resolveExecutable,
     transportFactory: transportFactory,

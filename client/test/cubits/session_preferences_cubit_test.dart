@@ -99,6 +99,26 @@ void main() {
     expect(cubit.state.preferences.autoLaunchAllMembersOnConnect, true);
   });
 
+  test('setReclaimIdleTerminals persists the flag', () async {
+    final cubit = await makeCubit();
+    await cubit.load();
+    await cubit.setReclaimIdleTerminals(false);
+
+    expect(cubit.state.preferences.reclaimIdleTerminals, false);
+
+    final cubit2 = await makeCubit();
+    await cubit2.load();
+    expect(cubit2.state.preferences.reclaimIdleTerminals, false);
+  });
+
+  test('setReclaimIdleTerminalAfterMinutes stores seconds', () async {
+    final cubit = await makeCubit();
+    await cubit.load();
+    await cubit.setReclaimIdleTerminalAfterMinutes(2);
+
+    expect(cubit.state.preferences.reclaimIdleTerminalAfterSeconds, 120);
+  });
+
   test('setScopeSessionsToSelectedTeam persists the flag', () async {
     final cubit = await makeCubit();
     await cubit.load();

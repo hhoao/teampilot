@@ -17,7 +17,7 @@ void main() {
     final loaded = await repo.load();
 
     expect(loaded.cliExecutablePathFor('flashskyai'), '');
-    expect(loaded.autoLaunchAllMembersOnConnect, true);
+    expect(loaded.autoLaunchAllMembersOnConnect, false);
     expect(loaded.scopeSessionsToSelectedTeam, true);
   });
 
@@ -53,7 +53,7 @@ void main() {
     final loaded = await repo.load();
 
     expect(loaded.cliExecutablePathFor('flashskyai'), '');
-    expect(loaded.autoLaunchAllMembersOnConnect, true);
+    expect(loaded.autoLaunchAllMembersOnConnect, false);
     expect(loaded.scopeSessionsToSelectedTeam, true);
   });
 
