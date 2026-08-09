@@ -449,6 +449,10 @@ class GitCubit extends Cubit<GitState> {
       final diff = await _service.diffSelectedPaths(
         dir,
         state.selectedPaths.toList(),
+        untrackedPaths: <String>{
+          for (final c in state.status.unstaged)
+            if (c.kind == GitChangeKind.untracked) c.path,
+        },
       );
       if (isClosed || state.repoRoot != dir) return;
       if (diff.trim().isEmpty) {

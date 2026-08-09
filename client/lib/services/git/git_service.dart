@@ -296,10 +296,21 @@ class GitService {
   /// Concatenated HEAD-vs-worktree diffs for [paths], each path handled like
   /// [diffAgainstHead] (untracked via --no-index). Used to summarize the
   /// selected changes for a generated commit message.
-  Future<String> diffSelectedPaths(String dir, List<String> paths) async {
+  ///
+  /// Paths listed in [untrackedPaths] are diffed as untracked (`--no-index`
+  /// against `/dev/null`); everything else diffs against HEAD.
+  Future<String> diffSelectedPaths(
+    String dir,
+    List<String> paths, {
+    Set<String> untrackedPaths = const {},
+  }) async {
     final parts = <String>[];
     for (final path in paths) {
-      final d = await diffAgainstHead(dir, path);
+      final d = await diffAgainstHead(
+        dir,
+        path,
+        untracked: untrackedPaths.contains(path),
+      );
       if (d.isNotEmpty) parts.add(d);
     }
     return parts.join('\n');

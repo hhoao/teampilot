@@ -200,6 +200,33 @@ void main() {
     });
 
     test(
+      'diffSelectedPaths uses --no-index for paths in untrackedPaths',
+      () async {
+        final runner = _FakeRunner({
+          'diff HEAD -- a.txt': _ok('diff a\n'),
+          'diff --no-index /dev/null new.txt': _ok('diff new\n'),
+        });
+        final service = GitService(
+          runner: LocalGitCommandRunner(runner: runner.call),
+        );
+
+        final out = await service.diffSelectedPaths(
+          '/repo',
+          ['a.txt', 'new.txt'],
+          untrackedPaths: {'new.txt'},
+        );
+
+        // Tracked path diffs against HEAD; the untracked path goes through
+        // --no-index against /dev/null instead of an (empty) HEAD diff.
+        expect(runner.calls, [
+          ['diff', 'HEAD', '--', 'a.txt'],
+          ['diff', '--no-index', '/dev/null', 'new.txt'],
+        ]);
+        expect(out, 'diff a\n\ndiff new\n');
+      },
+    );
+
+    test(
       'discard chooses restore for tracked and clean for untracked',
       () async {
         final runner = _FakeRunner({});

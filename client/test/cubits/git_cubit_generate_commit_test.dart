@@ -15,6 +15,9 @@ class _StubGitService extends GitService {
   /// Each `diffSelectedPaths` invocation's path list (selection order).
   final List<List<String>> diffSelectedPathsCalls = [];
 
+  /// Each `diffSelectedPaths` invocation's untracked-path set.
+  final List<Set<String>> diffSelectedPathsUntrackedCalls = [];
+
   @override
   Future<bool> get isAvailable async => true;
 
@@ -22,8 +25,13 @@ class _StubGitService extends GitService {
   Future<String> stagedDiff(String dir, {int maxChars = 12000}) async => _diff;
 
   @override
-  Future<String> diffSelectedPaths(String dir, List<String> paths) async {
+  Future<String> diffSelectedPaths(
+    String dir,
+    List<String> paths, {
+    Set<String> untrackedPaths = const {},
+  }) async {
     diffSelectedPathsCalls.add(paths);
+    diffSelectedPathsUntrackedCalls.add(untrackedPaths);
     return _diff;
   }
 }
@@ -79,6 +87,9 @@ void main() {
 
     expect(service.diffSelectedPathsCalls, [
       ['a.txt'],
+    ]);
+    expect(service.diffSelectedPathsUntrackedCalls, [
+      <String>{},
     ]);
     expect(cubit.state.commitMessage, 'feat: generated');
     expect(cubit.state.generatingCommitMessage, isFalse);
@@ -150,6 +161,56 @@ void main() {
 
     expect(service.diffSelectedPathsCalls, [
       ['b.txt'],
+    ]);
+    expect(service.diffSelectedPathsUntrackedCalls, [
+      {'b.txt'},
+    ]);
+    expect(cubit.state.commitMessage, 'feat: generated');
+    expect(aiRuns, 1);
+  });
+
+  test(
+      'untracked selected paths are passed to diffSelectedPaths, tracked are not',
+      () async {
+    var aiRuns = 0;
+    final service = _StubGitService('diff');
+    final cubit = GitCubit(
+      service: service,
+      headless: _headless(onRun: () => aiRuns++),
+    );
+    cubit.debugSetState(
+      const GitState(
+        repoRoot: '/repo',
+        selectedPaths: {'tracked.txt', 'new.txt'},
+        status: GitRepoStatus(
+          isRepository: true,
+          staged: [
+            GitFileChange(
+              path: 'tracked.txt',
+              kind: GitChangeKind.modified,
+              staged: true,
+            ),
+          ],
+          unstaged: [
+            GitFileChange(
+              path: 'new.txt',
+              kind: GitChangeKind.untracked,
+              staged: false,
+            ),
+          ],
+        ),
+      ),
+    );
+
+    await cubit.generateCommitMessage(_setting);
+
+    expect(service.diffSelectedPathsCalls, [
+      ['tracked.txt', 'new.txt'],
+    ]);
+    // Only the untracked path (new.txt) lands in the untracked set; the
+    // selected-but-tracked path (tracked.txt) must not.
+    expect(service.diffSelectedPathsUntrackedCalls, [
+      {'new.txt'},
     ]);
     expect(cubit.state.commitMessage, 'feat: generated');
     expect(aiRuns, 1);
