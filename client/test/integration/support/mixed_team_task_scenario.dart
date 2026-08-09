@@ -402,6 +402,8 @@ abstract final class MixedTeamTaskScenario {
     Future<void> Function(MixedTeamScenarioCtx ctx)? afterReady,
     Future<void> Function(MixedTeamScenarioCtx ctx)? verify,
     bool withPresence = false,
+    bool Function()? reclaimIdleTerminalsEnabled,
+    int Function()? reclaimIdleTerminalAfterSeconds,
   }) async {
     IntegrationPrerequisites.skipUnlessNativePty();
     final claudePath = IntegrationPrerequisites.requireClaudePath()!;
@@ -415,7 +417,11 @@ abstract final class MixedTeamTaskScenario {
       await harness.startMockServer(scenarios: scenarios);
       await harness.writeMockProviders();
       final repo = SessionRepository();
-      cubit = harness.createCubit(postFrame: postFrame);
+      cubit = harness.createCubit(
+        postFrame: postFrame,
+        reclaimIdleTerminalsEnabled: reclaimIdleTerminalsEnabled,
+        reclaimIdleTerminalAfterSeconds: reclaimIdleTerminalAfterSeconds,
+      );
       if (withPresence) {
         presenceCubit = MemberPresenceCubit();
         bindMixedTeamPresence(chatCubit: cubit, presenceCubit: presenceCubit);

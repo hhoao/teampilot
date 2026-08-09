@@ -133,13 +133,19 @@ class MixedTeamIntegrationHarness {
     ]);
   }
 
-  ChatCubit createCubit({required PostFrameTestHarness postFrame}) {
+  ChatCubit createCubit({
+    required PostFrameTestHarness postFrame,
+    bool Function()? reclaimIdleTerminalsEnabled,
+    int Function()? reclaimIdleTerminalAfterSeconds,
+  }) {
     final created = ChatCubit(
       executableResolver: () => claudePath,
       automationRepository: testAutomationRepository(),
       cliExecutableResolver: (_) => claudePath,
       postFrameScheduler: postFrame.scheduler,
       autoLaunchAllMembersOnConnect: () => true,
+      reclaimIdleTerminalsEnabled: reclaimIdleTerminalsEnabled,
+      reclaimIdleTerminalAfterSeconds: reclaimIdleTerminalAfterSeconds,
       sessionRepository: SessionRepository(),
       lifecycleService: SessionLifecycleService(
         appDataBasePath: AppStorage.paths.basePath,

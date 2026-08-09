@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>查找和替换</title>
+  <style>
+    :root {
+      --bg-page: #1e1e1e;
+      --bg-widget: #252526;
+      --bg-input: #3c3c3c;
+      --border: #3e3e42;
+      --border-focus: #007acc;
+      --text: #cccccc;
+      --text-muted: #858585;
+      --hover: #2a2d2e;
+      --icon-hover-bg: #3e3e42;
+      --toggle-active: #0e639c;
+      --radius: 4px;
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+        "Microsoft YaHei", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 48px 24px;
+      background: var(--bg-page);
+      font-family: var(--font);
+      color: var(--text);
+    }
+
+    /* ── Widget shell ── */
+    .find-widget {
+      display: flex;
+      align-items: stretch;
+      gap: 4px;
+      width: 460px;
+      max-width: 100%;
+      padding: 6px 6px 6px 4px;
+      background: var(--bg-widget);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.36);
+    }
+
+    /* ── Expand chevron ── */
+    .expand-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      flex-shrink: 0;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-radius: 2px;
+      transition: color 0.1s, background 0.1s;
+    }
+
+    .expand-toggle:hover {
+      color: var(--text);
+      background: var(--icon-hover-bg);
+    }
+
+    .expand-toggle svg {
+      width: 14px;
+      height: 14px;
+      transition: transform 0.15s ease;
+    }
+
+    .find-widget.collapsed .expand-toggle svg {
+      transform: rotate(-90deg);
+    }
+
+    .find-widget.collapsed .replace-row {
+      display: none;
+    }
+
+    /* ── Inputs column ── */
+    .inputs {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .input-row {
+      position: relative;
+      display: flex;
+      align-items: center;
+      height: 28px;
+      background: var(--bg-input);
+      border: 1px solid transparent;
+      border-radius: 2px;
+    }
+
+    .input-row:focus-within {
+      border-color: var(--border-focus);
+    }
+
+    .input-row input {
+      flex: 1;
+      min-width: 0;
+      height: 100%;
+      padding: 0 8px;
+      border: none;
+      outline: none;
+      background: transparent;
+      color: var(--text);
+      font: 13px/1 var(--font);
+      caret-color: var(--text);
+    }
+
+    .input-row input::placeholder {
+      color: var(--text-muted);
+    }
+
+    /* inline toggle buttons (Aa, ab, .*, AB) */
+    .inline-toggles {
+      display: flex;
+      align-items: center;
+      gap: 1px;
+      padding-right: 3px;
+      flex-shrink: 0;
+    }
+
+    .toggle-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 22px;
+      height: 22px;
+      padding: 0 3px;
+      border: 1px solid transparent;
+      border-radius: 3px;
+      background: transparent;
+      color: var(--text-muted);
+      font: 600 11px/1 var(--font);
+      cursor: pointer;
+      user-select: none;
+      transition: color 0.1s, background 0.1s, border-color 0.1s;
+    }
+
+    .toggle-btn:hover {
+      color: var(--text);
+      background: var(--hover);
+    }
+
+    .toggle-btn.active {
+      color: #fff;
+      background: var(--toggle-active);
+      border-color: var(--toggle-active);
+    }
+
+    .toggle-btn.regex {
+      font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+      font-weight: 500;
+      letter-spacing: -0.5px;
+    }
+
+    /* ── Action icons column ── */
+    .actions {
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      gap: 4px;
+      flex-shrink: 0;
+      padding-top: 1px;
+    }
+
+    .action-row {
+      display: flex;
+      align-items: center;
+      height: 28px;
+      gap: 1px;
+    }
+
+    .action-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      border: none;
+      border-radius: 3px;
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: color 0.1s, background 0.1s;
+    }
+
+    .action-btn:hover {
+      color: var(--text);
+      background: var(--icon-hover-bg);
+    }
+
+    .action-btn:active {
+      background: #505050;
+    }
+
+    .action-btn svg {
+      width: 16px;
+      height: 16px;
+      fill: currentColor;
+    }
+
+    .action-btn.replace-all svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    /* spacer so bottom row aligns under replace buttons */
+    .action-row .spacer {
+      flex: 1;
+    }
+  </style>
+</head>
+<body>
+  <div class="find-widget" id="widget" role="search" aria-label="查找和替换">
+    <!-- expand / collapse -->
+    <button
+      type="button"
+      class="expand-toggle"
+      id="expandBtn"
+      aria-label="切换替换"
+      aria-expanded="true"
+      title="切换替换"
+    >
+      <svg viewBox="0 0 16 16" aria-hidden="true">
+        <path
+          fill="currentColor"
+          d="M11.078 5.957L8.043 9 5 5.957l.707-.707L8.043 7.586l2.336-2.336.699.707z"
+        />
+      </svg>
+    </button>
+
+    <!-- inputs -->
+    <div class="inputs">
+      <div class="input-row find-row">
+        <input
+          type="text"
+          id="findInput"
+          placeholder="查找"
+          value="查找"
+          aria-label="查找"
+          autocomplete="off"
+          spellcheck="false"
+        />
+        <div class="inline-toggles">
+          <button type="button" class="toggle-btn" data-opt="case" title="区分大小写 (Alt+C)" aria-pressed="false">Aa</button>
+          <button type="button" class="toggle-btn" data-opt="word" title="全字匹配 (Alt+W)" aria-pressed="false">ab</button>
+          <button type="button" class="toggle-btn regex" data-opt="regex" title="使用正则表达式 (Alt+R)" aria-pressed="false">.*</button>
+        </div>
+      </div>
+
+      <div class="input-row replace-row">
+        <input
+          type="text"
+          id="replaceInput"
+          placeholder="替换"
+          value="替换"
+          aria-label="替换"
+          autocomplete="off"
+          spellcheck="false"
+          autofocus
+        />
+        <div class="inline-toggles">
+          <button type="button" class="toggle-btn" data-opt="preserve" title="保留大小写 (Alt+P)" aria-pressed="false">AB</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- action icons -->
+    <div class="actions">
+      <div class="action-row">
+        <button type="button" class="action-btn" title="上一个匹配 (Shift+Enter)" aria-label="上一个匹配">
+          <!-- chevron up -->
+          <svg viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M8 5.5L3.5 10h9L8 5.5z" />
+          </svg>
+        </button>
+        <button type="button" class="action-btn" title="下一个匹配 (Enter)" aria-label="下一个匹配">
+          <!-- chevron down -->
+          <svg viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M8 10.5L12.5 6h-9L8 10.5z" />
+          </svg>
+        </button>
+        <button type="button" class="action-btn" title="在选定内容中查找" aria-label="在选定内容中查找">
+          <!-- funnel / filter -->
+          <svg viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M2 3.5h12l-4.5 5.2V13l-3-1.5V8.7L2 3.5zm1.7.8l3.3 3.8v2.4l1.5.75V8.1l3.3-3.8H3.7z" />
+          </svg>
+        </button>
+        <button type="button" class="action-btn" title="关闭 (Escape)" aria-label="关闭" id="closeBtn">
+          <!-- close X -->
+          <svg viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M9.1 8l3.4-3.4-.7-.7L8.4 7.3 5 3.9l-.7.7L7.7 8 4.3 11.4l.7.7 3.4-3.4 3.4 3.4.7-.7L9.1 8z" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="action-row replace-row">
+        <button type="button" class="action-btn" title="替换 (Ctrl+Shift+1)" aria-label="替换">
+          <!-- replace one: a → b -->
+          <svg viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M3.5 3.5h3v1H4.7l1.4 3.2L7.5 5h1L6.3 10.2H5.1L2.8 4.8H1.5v-1h2zm6.2 1.8c.9 0 1.5.3 1.9.8.4.5.6 1.2.6 2s-.2 1.5-.6 2c-.4.5-1 .8-1.9.8s-1.5-.3-1.9-.8c-.4-.5-.6-1.2-.6-2s.2-1.5.6-2c.4-.5 1-.8 1.9-.8zm0 .9c-.5 0-.9.2-1.1.5-.2.3-.3.8-.3 1.4s.1 1.1.3 1.4c.2.3.6.5 1.1.5s.9-.2 1.1-.5c.2-.3.3-.8.3-1.4s-.1-1.1-.3-1.4c-.2-.3-.6-.5-1.1-.5zM11 12.5l2-2v1.3h2.5v1.4H13V14.5l-2-2z" />
+          </svg>
+        </button>
+        <button type="button" class="action-btn replace-all" title="全部替换 (Ctrl+Alt+Enter)" aria-label="全部替换">
+          <!-- replace all -->
+          <svg viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M2 2.5h2.2v.8H2.9l1 2.3.9-2.2h.8L4 6.5H3.1L1.5 3.4H.6v-.9H2zm4.4 1.1c.6 0 1 .2 1.3.6.3.3.4.8.4 1.4s-.1 1.1-.4 1.4c-.3.3-.7.6-1.3.6s-1-.2-1.3-.6c-.3-.3-.4-.8-.4-1.4s.1-1.1.4-1.4c.3-.4.7-.6 1.3-.6zm0 .7c-.3 0-.6.1-.7.4-.2.2-.2.5-.2 1s0 .8.2 1c.1.2.4.4.7.4s.6-.1.7-.4c.2-.2.2-.5.2-1s0-.8-.2-1c-.1-.2-.4-.4-.7-.4zM8.5 2.5h2.2v.8H9.4l1 2.3.9-2.2h.8L10.5 6.5h-.9L8 3.4h-.9v-.9h1.4zm4.4 1.1c.6 0 1 .2 1.3.6.3.3.4.8.4 1.4s-.1 1.1-.4 1.4c-.3.3-.7.6-1.3.6s-1-.2-1.3-.6c-.3-.3-.4-.8-.4-1.4s.1-1.1.4-1.4c.3-.4.7-.6 1.3-.6zm0 .7c-.3 0-.6.1-.7.4-.2.2-.2.5-.2 1s0 .8.2 1c.1.2.4.4.7.4s.6-.1.7-.4c.2-.2.2-.5.2-1s0-.8-.2-1c-.1-.2-.4-.4-.7-.4zM1.5 9h2.5v.9H2.2l1.2 2.7 1-2.6h1L3.4 13.3H2.5L.8 10H0V9h1.5zm5.2 1.4c.7 0 1.2.2 1.5.7.3.4.5 1 .5 1.7s-.2 1.3-.5 1.7c-.3.4-.8.7-1.5.7s-1.2-.2-1.5-.7c-.3-.4-.5-1-.5-1.7s.2-1.3.5-1.7c.3-.5.8-.7 1.5-.7zm0 .9c-.4 0-.7.2-.9.4-.2.3-.3.7-.3 1.2s.1.9.3 1.2c.2.3.5.4.9.4s.7-.2.9-.4c.2-.3.3-.7.3-1.2s-.1-.9-.3-1.2c-.2-.3-.5-.4-.9-.4zM10 11.5l2.5-2v1.5h3v1.5h-3V14L10 12v-.5z" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const widget = document.getElementById("widget");
+    const expandBtn = document.getElementById("expandBtn");
+    const replaceInput = document.getElementById("replaceInput");
+
+    // Focus replace field to match the screenshot (blue border)
+    replaceInput.focus();
+    replaceInput.select();
+
+    // Expand / collapse replace row
+    expandBtn.addEventListener("click", () => {
+      const collapsed = widget.classList.toggle("collapsed");
+      expandBtn.setAttribute("aria-expanded", String(!collapsed));
+    });
+
+    // Option toggles (Aa / ab / .* / AB)
+    document.querySelectorAll(".toggle-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const on = btn.classList.toggle("active");
+        btn.setAttribute("aria-pressed", String(on));
+      });
+    });
+
+    // Close (visual only)
+    document.getElementById("closeBtn").addEventListener("click", () => {
+      widget.style.opacity = "0";
+      widget.style.transition = "opacity 0.15s";
+      setTimeout(() => {
+        widget.style.display = "none";
+      }, 150);
+    });
+
+    // Escape closes
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        document.getElementById("closeBtn").click();
+      }
+    });
+  </script>
+</body>
+</html>
