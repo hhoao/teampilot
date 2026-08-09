@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:teampilot/models/app_provider_config.dart';
+import 'package:teampilot/services/cli/opencode/provider/opencode_model_catalog.dart';
 import 'package:teampilot/services/cli/opencode/provider/opencode_models_service.dart';
 import 'package:teampilot/services/cli/opencode/provider/opencode_provider_model_capability.dart';
 import 'package:teampilot/services/cli/registry/capabilities/provider_model_capability.dart';
@@ -55,5 +56,16 @@ void main() {
       ),
       ProviderModelPickerMode.catalogWithCustomEntry,
     );
+  });
+
+  test('static fallback covers opencode-go and current zen ids', () {
+    final go = OpencodeModelCatalog.knownModelsForProvider('opencode-go');
+    expect(go, containsAll(['deepseek-v4-flash', 'qwen3.7-max', 'kimi-k3']));
+    expect(go, hasLength(24));
+
+    final zen = OpencodeModelCatalog.knownModelsForProvider('opencode');
+    expect(zen, contains('claude-sonnet-5'));
+    expect(zen, contains('gemini-3.6-flash'));
+    expect(zen, hasLength(87));
   });
 }
