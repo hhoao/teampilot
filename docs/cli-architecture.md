@@ -157,6 +157,12 @@ final cap = CliToolRegistry.builtIn()
 | `WaitBeforeStopCapability` | `registry/capabilities/wait_before_stop_capability.dart` | 停止前等待 |
 | `ProviderDisplayCapability` | `registry/capabilities/provider_display_capability.dart` | Provider UI 展示 |
 | `CliConfigUiCapability` | `registry/capabilities/cli_config_ui_capability.dart` | 设置页 UI |
+| `TitleAttentionCapability` | `registry/capabilities/title_attention_capability.dart` | OSC 标题注意力 |
+| `MarketplaceConsumerCapability` | `registry/capabilities/marketplace_consumer_capability.dart` | 市场插件消费 |
+| `AgentStatusNormalizerCapability` | `registry/capabilities/agent_status_normalizer_capability.dart` | Agent 状态事件归一化 |
+| `HistoryContextEnvCapability` | `registry/capabilities/history_context_env_capability.dart` | 历史上下文环境变量 |
+| `CredentialExportCapability` | `registry/capabilities/credential_export_capability.dart` | 凭证导出（远程推送） |
+| `RemoteAppDataCapability` | `registry/capabilities/remote_app_data_capability.dart` | 远程应用数据预置 |
 
 以下能力根据 CLI 是否支持决定：
 
@@ -247,6 +253,12 @@ mkdir -p services/cli/newcli/{capabilities/history,provider}
 | `capabilities/wait_before_stop.dart` | `WaitBeforeStopCapability` 实现 |
 | `capabilities/provider_display.dart` | `ProviderDisplayCapability` 实现 |
 | `capabilities/config_ui.dart` | `CliConfigUiCapability` 实现 |
+| `capabilities/title_attention.dart` | `TitleAttentionCapability` 实现 |
+| `capabilities/marketplace_consumer.dart` | `MarketplaceConsumerCapability` 实现 |
+| `capabilities/agent_status_normalizer.dart` | `AgentStatusNormalizerCapability` 实现 |
+| `capabilities/history_context_env.dart` | `HistoryContextEnvCapability` 实现 |
+| `capabilities/credential_export.dart` | `CredentialExportCapability` 实现 |
+| `capabilities/remote_app_data.dart` | `RemoteAppDataCapability` 实现 |
 
 ### 4. 实现可选的能力
 
@@ -421,9 +433,9 @@ for (final def in CliToolRegistry.builtIn().launchable)
 | `ResourceCapability` | `registry/capabilities/resource_capability.dart` | 标记 | - |
 | `AiHistoryCapability` | `registry/capabilities/ai_history_capability.dart` | 服务 | - |
 | `SkillInvocationSyntaxCapability` | `registry/capabilities/skill_invocation_syntax_capability.dart` | 标记 | - |
-| `AgentStatusNormalizerCapability` | - | 服务 | (待提取) |
-| `HistoryContextEnvCapability` | - | 服务 | (待提取) |
-| `TitleAttentionCapability` | - | 标记 | (待提取) |
-| `MarketplaceConsumerCapability` | - | 标记 | (待提取) |
-| `CredentialExportCapability` | - | 服务 | (待提取) |
-| `RemoteAppDataCapability` | - | 服务 | (待提取) |
+| `AgentStatusNormalizerCapability` | `registry/capabilities/agent_status_normalizer_capability.dart` | 标记 | ✅ |
+| `HistoryContextEnvCapability` | `registry/capabilities/history_context_env_capability.dart` | 服务 | ✅ |
+| `TitleAttentionCapability` | `registry/capabilities/title_attention_capability.dart` | 标记 | ✅ |
+| `MarketplaceConsumerCapability` | `registry/capabilities/marketplace_consumer_capability.dart` | 标记 | ✅ |
+| `CredentialExportCapability` | `registry/capabilities/credential_export_capability.dart` | 服务 | ✅ |
+| `RemoteAppDataCapability` | `registry/capabilities/remote_app_data_capability.dart` | 服务 | ✅ |
