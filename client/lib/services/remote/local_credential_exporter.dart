@@ -1,12 +1,12 @@
 import '../../models/app_provider_config.dart';
 import '../../repositories/app_provider_repository.dart';
-import '../provider/claude/claude_provider_credentials_service.dart';
-import '../provider/codex/codex_auth_artifacts.dart';
-import '../provider/codex/codex_provider_credentials_service.dart';
+import '../cli/claude/provider/claude_provider_credentials_service.dart';
+import '../cli/codex/provider/codex_auth_artifacts.dart';
+import '../cli/codex/provider/codex_provider_credentials_service.dart';
 import '../provider/credential_binding.dart';
-import '../provider/cursor/cursor_provider_credentials_service.dart';
-import '../provider/opencode/opencode_data_layout.dart';
-import '../provider/opencode/opencode_provider_credentials_service.dart';
+import '../cli/cursor/provider/cursor_provider_credentials_service.dart';
+import '../cli/opencode/provider/opencode_data_layout.dart';
+import '../cli/opencode/provider/opencode_provider_credentials_service.dart';
 import '../storage/app_storage.dart';
 import 'remote_credential_materializer.dart';
 

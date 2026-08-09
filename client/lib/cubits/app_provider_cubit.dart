@@ -7,13 +7,14 @@ import '../models/credential_action_result.dart';
 import '../models/llm_config.dart';
 import '../repositories/app_provider_repository.dart';
 import '../services/storage/app_storage.dart';
-import '../services/provider/claude/claude_provider_credentials_service.dart';
+import '../services/cli/claude/provider/claude_provider_credentials_service.dart';
 import '../services/provider/credential_binding.dart';
-import '../services/provider/cursor/cursor_provider_credentials_service.dart';
+import '../services/cli/cursor/provider/cursor_provider_credentials_service.dart';
 import '../services/cli/registry/capabilities/provider_credential_capability.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
 import '../services/provider/provider_import_service.dart';
 import '../services/provider/tool_config_generator.dart';
+import 'package:logger/logger.dart';
 import '../utils/logging/logger.dart';
 
 class AppProviderState extends Equatable {

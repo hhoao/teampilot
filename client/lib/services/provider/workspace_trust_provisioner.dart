@@ -1,12 +1,12 @@
 import '../../utils/workspace/trusted_project_paths.dart';
-import '../cli/registry/config_profile/claude_config_profile_capability.dart';
-import '../cli/registry/config_profile/codex_config_profile_capability.dart';
-import '../cli/registry/config_profile/cursor_config_profile_capability.dart';
-import '../cli/registry/config_profile/flashskyai_config_profile_capability.dart';
+import '../cli/claude/capabilities/config_profile.dart';
+import '../cli/codex/capabilities/config_profile.dart';
+import '../cli/cursor/capabilities/config_profile.dart';
+import '../cli/flashskyai/capabilities/config_profile.dart';
 import '../io/filesystem.dart';
-import '../provider/codex/codex_project_trust_toml.dart';
-import '../provider/cursor/cursor_session_config_dir.dart';
-import '../provider/cursor/cursor_workspace_trust_provisioner.dart';
+import '../cli/codex/provider/codex_project_trust_toml.dart';
+import '../cli/cursor/provider/cursor_session_config_dir.dart';
+import '../cli/cursor/provider/cursor_workspace_trust_provisioner.dart';
 import '../storage/runtime_layout.dart';
 import 'config_profile_infrastructure.dart';
 

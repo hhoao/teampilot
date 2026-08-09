@@ -5,6 +5,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:window_manager/window_manager.dart';
 
+import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 
 typedef NotificationTapHandler = void Function(String? payload);

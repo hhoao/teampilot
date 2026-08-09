@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:teampilot/models/team_config.dart';
+import '../../models/team_config.dart';
 
 import '../../services/cli/registry/cli_tool_definition.dart';
 import '../app_provider/provider_brand_icon.dart';

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:path/path.dart' as p;
 
 import '../../models/skill.dart';
+import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import '../storage/app_storage.dart';
 import '../storage/remote_file_store.dart';

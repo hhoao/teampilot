@@ -4,6 +4,7 @@ import 'package:path/path.dart' as p;
 
 import '../../models/skill.dart';
 import '../../utils/git_process_stderr.dart';
+import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import '../cli/cli_tool_locator.dart';
 import '../io/filesystem.dart';

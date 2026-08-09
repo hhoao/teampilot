@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../../../models/app_provider_config.dart';
-import '../../../provider/opencode/opencode_model_catalog.dart';
+import '../../opencode/provider/opencode_model_catalog.dart';
 import '../cli_capability.dart';
 
 /// Model catalog that can be refreshed asynchronously (e.g. `cursor-agent models`).

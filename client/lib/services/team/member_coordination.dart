@@ -4,6 +4,7 @@ import '../../models/member_presence.dart';
 import '../../models/team_config.dart';
 import '../cli/preset_resolver.dart';
 import '../cli/registry/capabilities/presence_capability.dart';
+import '../cli/registry/capabilities/wait_before_stop_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../team_bus/team_bus.dart';
 import '../terminal/terminal_session.dart';
@@ -233,7 +234,10 @@ final class MixedMemberCoordination extends MemberCoordination {
       member: member,
       globalPresets: scope.globalPresets,
     );
-    if (member.effectiveForceWaitBeforeStop(scope.team, launchCli: launchCli) &&
+    final waitCfg = CliToolRegistry.builtIn()
+        .capability<WaitBeforeStopCapability>(launchCli)
+        ?.defaultForceWaitBeforeStop;
+    if (member.effectiveForceWaitBeforeStop(scope.team, cliDefault: waitCfg) &&
         !b.isWaitingForMessage(member.id)) {
       return false;
     }

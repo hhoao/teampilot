@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:teampilot/models/team_config.dart';
+import 'team_config.dart';
 
 @immutable
 class SessionMemberBinding {

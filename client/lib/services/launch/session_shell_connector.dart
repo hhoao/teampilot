@@ -31,6 +31,7 @@ import '../../services/team_bus/remote/remote_bus_mount.dart';
 import '../../services/team_bus/remote/ssh_remote_bus_mount_factory.dart';
 import '../../services/terminal/terminal_session.dart';
 import '../../services/terminal/terminal_theme_for_launch.dart';
+import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 
 typedef TermuxWorkOpsBlockResolver = String? Function(RuntimeTarget target);

@@ -4,7 +4,7 @@ import 'package:shared_ui/shared_ui.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/discoverable_team.dart';
 import 'team_hub_visuals.dart';
-import 'package:teampilot/theme/workspace_surface_layers.dart';
+import '../../theme/workspace_surface_layers.dart';
 
 /// Bordered detail shell — matches [McpWorkspaceCard] / [SkillManagementCard].
 class TeamHubWorkspaceCard extends StatelessWidget {

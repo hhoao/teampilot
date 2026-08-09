@@ -11,7 +11,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/discoverable_member.dart';
 import '../../models/team_config.dart';
 import '../../models/team_roster_slot.dart';
-import '../../services/app/flashskyai_agent_catalog_service.dart';
+import '../../services/cli/flashskyai/agent_catalog_service.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../services/expert_hub/expert_member_resolver.dart';
 import '../../utils/debounce/debounce.dart';

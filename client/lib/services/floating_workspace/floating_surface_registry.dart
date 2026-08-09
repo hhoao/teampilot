@@ -1,4 +1,4 @@
-import 'package:teampilot/services/floating_workspace/floating_surface.dart';
+import 'floating_surface.dart';
 
 class FloatingSurfaceRegistry {
   FloatingSurfaceRegistry(List<FloatingSurface> surfaces)

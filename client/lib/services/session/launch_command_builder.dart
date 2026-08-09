@@ -10,7 +10,7 @@ import 'shell_launch_spec.dart';
 import '../cli/registry/capabilities/launch_args_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../cli/cli_invocation.dart';
-import '../cli/registry/config_profile/claude_config_profile_capability.dart';
+import '../cli/claude/capabilities/config_profile.dart';
 import 'member_role_provision.dart';
 
 typedef ProcessStarter =

@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_ui/shared_ui.dart';
-import 'package:teampilot/widgets/app_toast/app_toast.dart';
+import '../../../widgets/app_toast/app_toast.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../cubits/chat_cubit.dart';
@@ -30,6 +30,7 @@ import '../../../services/expert_hub/expert_member_resolver.dart';
 import '../../../services/workbench/workbench_shell_actions.dart';
 import '../../../utils/workspace/landing_draft_resolver.dart';
 import '../../../utils/team/team_member_naming.dart';
+import 'package:logger/logger.dart';
 import '../../../utils/logging/logger.dart';
 import '../../../utils/workspace/workspace_path_utils.dart';
 import '../../chat/session_history_review_submit.dart';

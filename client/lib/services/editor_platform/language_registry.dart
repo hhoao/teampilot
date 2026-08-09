@@ -1,4 +1,4 @@
-import 'package:teampilot/services/editor_platform/language_pack.dart';
+import 'language_pack.dart';
 
 /// Resolves file paths to [LanguagePack]s. Unknown extensions (including
 /// extensions intentionally left as plain text, e.g. `.scss` this phase)

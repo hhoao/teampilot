@@ -12,6 +12,7 @@ import '../services/provider/llm_config_path_resolver.dart';
 import '../services/storage/remote_file_store.dart';
 import '../services/storage/remote_home_resolver.dart';
 import '../services/ssh/ssh_client_factory.dart';
+import 'package:logger/logger.dart';
 import '../utils/logging/logger.dart';
 
 class LlmConfigState extends Equatable {

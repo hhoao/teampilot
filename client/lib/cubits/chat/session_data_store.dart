@@ -10,6 +10,7 @@ import '../../models/team_config.dart' show CliTool, TeamMemberConfig, TeamProfi
 import '../../repositories/launch_profile_repository.dart';
 import '../../repositories/session_repository.dart';
 import '../../services/session/session_member_cli_locks.dart';
+import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import '../../utils/workspace/workspace_path_utils.dart';
 

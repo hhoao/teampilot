@@ -1,6 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
-import 'package:teampilot/widgets/app_toast/app_toast.dart';
+import '../../widgets/app_toast/app_toast.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/skill_cubit.dart';

@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 
-import '../../../l10n/l10n_extensions.dart';
-import '../../../models/discoverable_team.dart';
-import '../../../models/team_config.dart';
-import '../../../services/cli/registry/cli_display_name.dart';
-import '../../../services/cli/registry/cli_tool_registry_scope.dart';
-import '../../../widgets/app_provider/brand_dropdown_rows.dart';
+import '../../l10n/l10n_extensions.dart';
+import '../../models/discoverable_team.dart';
+import '../../models/team_config.dart';
+import '../../services/cli/registry/cli_display_name.dart';
+import '../../services/cli/registry/cli_tool_registry_scope.dart';
+import '../../widgets/app_provider/brand_dropdown_rows.dart';
 
 /// Clone-time launch params resolved for a hub team whose manifest omitted them.
 class TeamHubCloneOptions {

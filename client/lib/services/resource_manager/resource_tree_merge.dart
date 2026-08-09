@@ -1,6 +1,6 @@
-import 'package:teampilot/services/resource_manager/resource_binding.dart';
-import 'package:teampilot/services/resource_manager/resource_memory_format.dart';
-import 'package:teampilot/services/resource_manager/resource_memory_models.dart';
+import 'resource_binding.dart';
+import 'resource_memory_format.dart';
+import 'resource_memory_models.dart';
 
 /// Merged Resource Manager tree ready for the status-bar panel.
 class ResourceTreeViewModel {

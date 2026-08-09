@@ -5,6 +5,7 @@ import '../../models/team_config.dart';
 import '../../models/workspace.dart';
 import '../../repositories/session_repository.dart';
 import '../../services/session/session_member_cli_locks.dart';
+import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import 'session_launch_workspace_index.dart';
 

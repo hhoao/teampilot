@@ -5,7 +5,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/mcp_catalog_listing.dart';
 import '../../models/mcp_server.dart';
 import '../../widgets/github_details_button.dart';
-import 'package:teampilot/theme/workspace_surface_layers.dart';
+import '../../theme/workspace_surface_layers.dart';
 
 class McpWorkspaceCard extends StatelessWidget {
   const McpWorkspaceCard({required this.child, super.key});

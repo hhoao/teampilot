@@ -2,9 +2,10 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:teampilot/services/resource_manager/process_table_parser.dart';
-import 'package:teampilot/services/resource_manager/resource_memory_models.dart';
-import 'package:teampilot/utils/logging/logger.dart';
+import 'process_table_parser.dart';
+import 'resource_memory_models.dart';
+import 'package:logger/logger.dart';
+import '../../utils/logging/logger.dart';
 
 /// Host process sweep → [ResourceMemorySnapshot] for the Resource Manager.
 ///

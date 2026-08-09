@@ -5,7 +5,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart' as p;
 import 'package:shared_ui/shared_ui.dart';
-import 'package:teampilot/widgets/app_toast/app_toast.dart';
+import '../app_toast/app_toast.dart';
 
 import '../../cubits/ai_feature_settings_cubit.dart';
 import '../../cubits/cli_presets_cubit.dart';

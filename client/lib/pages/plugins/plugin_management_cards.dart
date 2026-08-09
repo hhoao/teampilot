@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
-import 'package:teampilot/widgets/app_toast/app_toast.dart';
+import '../../widgets/app_toast/app_toast.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../l10n/l10n_extensions.dart';
-import 'package:teampilot/theme/workspace_surface_layers.dart';
+import '../../theme/workspace_surface_layers.dart';
 
 class PluginManagementCard extends StatelessWidget {
   const PluginManagementCard({super.key, required this.child});

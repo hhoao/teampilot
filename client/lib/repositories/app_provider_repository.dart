@@ -2,17 +2,17 @@ import 'dart:convert';
 
 import '../models/app_provider_config.dart';
 import '../services/storage/app_storage.dart';
-import '../services/provider/claude/claude_provider_credentials_service.dart';
-import '../services/provider/codex/codex_provider_credentials_service.dart';
-import '../services/provider/cursor/cursor_provider_credentials_service.dart';
-import '../services/provider/opencode/opencode_provider_credentials_service.dart';
+import '../services/cli/claude/provider/claude_provider_credentials_service.dart';
+import '../services/cli/codex/provider/codex_provider_credentials_service.dart';
+import '../services/cli/cursor/provider/cursor_provider_credentials_service.dart';
+import '../services/cli/opencode/provider/opencode_provider_credentials_service.dart';
 import '../services/io/filesystem.dart';
 import '../services/provider/tool_config_generator.dart';
-import 'provider_persistence/claude_provider_persistence.dart';
-import 'provider_persistence/codex_provider_persistence.dart';
-import 'provider_persistence/cursor_provider_persistence.dart';
-import 'provider_persistence/flashskyai_provider_persistence.dart';
-import 'provider_persistence/opencode_provider_persistence.dart';
+import '../services/cli/claude/provider_persistence.dart';
+import '../services/cli/codex/provider_persistence.dart';
+import '../services/cli/cursor/provider_persistence.dart';
+import '../services/cli/flashskyai/provider_persistence.dart';
+import '../services/cli/opencode/provider_persistence.dart';
 import 'provider_persistence/provider_persistence_strategy.dart';
 
 export 'provider_persistence/provider_persistence_strategy.dart'

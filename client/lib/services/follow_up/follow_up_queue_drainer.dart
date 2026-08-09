@@ -1,6 +1,7 @@
-import 'package:teampilot/pages/chat/history_continue_delivery.dart';
-import 'package:teampilot/services/follow_up/follow_up_queue.dart';
-import 'package:teampilot/utils/logging/logger.dart';
+import '../../pages/chat/history_continue_delivery.dart';
+import 'follow_up_queue.dart';
+import 'package:logger/logger.dart';
+import '../../utils/logging/logger.dart';
 
 final class FollowUpQueueDrainer {
   FollowUpQueueDrainer({

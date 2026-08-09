@@ -1,10 +1,10 @@
 import 'package:flutter/foundation.dart';
 
-import '../../provider/claude/claude_provider_credentials_service.dart';
-import '../../provider/codex/codex_provider_credentials_service.dart';
-import '../../provider/cursor/cursor_agent_models_service.dart';
-import '../../provider/cursor/cursor_provider_credentials_service.dart';
-import '../../provider/opencode/opencode_provider_credentials_service.dart';
+import '../claude/provider/claude_provider_credentials_service.dart';
+import '../codex/provider/codex_provider_credentials_service.dart';
+import '../cursor/provider/cursor_agent_models_service.dart';
+import '../cursor/provider/cursor_provider_credentials_service.dart';
+import '../opencode/provider/opencode_provider_credentials_service.dart';
 
 /// Runtime services wired into [CliToolRegistry] after [AppStorage] is ready.
 ///

@@ -1,8 +1,8 @@
 import 'package:flutter/services.dart';
-import 'package:teampilot/services/commands/command_catalog.dart';
-import 'package:teampilot/services/commands/command_definition.dart';
-import 'package:teampilot/services/commands/key_chord.dart';
-import 'package:teampilot/services/commands/shortcut_context.dart';
+import 'command_catalog.dart';
+import 'command_definition.dart';
+import 'key_chord.dart';
+import 'shortcut_context.dart';
 
 /// Two or more commands whose effective chord lists share [chord].
 class KeybindingConflict {

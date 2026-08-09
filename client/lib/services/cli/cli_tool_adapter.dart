@@ -83,256 +83,7 @@ abstract interface class CliToolAdapter implements LaunchArgsCapability {
   List<String> buildArguments(CliLaunchContext context);
 }
 
-class FlashskyaiCliToolAdapter implements CliToolAdapter {
-  const FlashskyaiCliToolAdapter();
-
-  @override
-  List<String> buildArguments(CliLaunchContext context) {
-    final args = <String>[
-      ..._buildSessionPrefixArgs(context),
-      // Personal/simple passes nativeAgentTeam:false — omit roster flags so
-      // flashskyai stays in single-agent mode (avoids multi-call team loops
-      // that burn scripted mock turns).
-      if (context.usesNativeAgentTeam) ...[
-        '--team',
-        context.teamName,
-        '--member',
-        context.memberCliId,
-      ],
-      // Same Agent-tool burn as Claude personal: a follow-up subagent API call
-      // after end_turn consumes the next scripted TextTurn.
-      if (context.nativeAgentTeam == false) ...[
-        '--disallowedTools',
-        'Agent',
-      ],
-    ];
-
-    final loop = context.team.loop;
-    if (context.usesNativeAgentTeam && loop != null) {
-      args.addAll(['--loop', loop ? 'true' : 'false']);
-    }
-
-    final member = context.member;
-    if (member.provider.trim().isNotEmpty) {
-      args.addAll(['--provider', member.provider.trim()]);
-    }
-    if (member.model.trim().isNotEmpty) {
-      args.addAll(['--model', member.model.trim()]);
-    }
-    if (member.agent.trim().isNotEmpty) {
-      args.addAll(['--agent', member.agent.trim()]);
-    }
-    if (member.dangerouslySkipPermissions) {
-      args.add('--dangerously-skip-permissions');
-    }
-    _addExtraArgs(args, context.team.extraArgs);
-    _addExtraArgs(args, member.extraArgs);
-
-    final appendFile = context.appendSystemPromptFile?.trim() ?? '';
-    if (appendFile.isNotEmpty) {
-      args.addAll(['--append-system-prompt-file', appendFile]);
-    }
-
-    return args;
-  }
-}
-
-class ClaudeCodeCliToolAdapter implements CliToolAdapter {
-  const ClaudeCodeCliToolAdapter();
-
-  @override
-  List<String> buildArguments(CliLaunchContext context) {
-    final member = context.member;
-    final mixed = context.team.teamMode == TeamMode.mixed;
-    final args = <String>[
-      ..._buildSessionPrefixArgs(context, includeWorkingDirectory: false),
-      if (context.usesNativeAgentTeam) ...[
-        '--team-name',
-        context.teamName,
-        '--agent-name',
-        context.memberCliId,
-        '--agent-id',
-        TeamMemberNaming.cliAgentId(
-          memberId: context.memberCliId,
-          cliTeamName: context.teamName,
-        ),
-      ],
-      // Personal/simple: Agent tool otherwise spawns a follow-up subagent API
-      // call after a normal end_turn (burns scripted mock turns).
-      if (context.nativeAgentTeam == false) ...[
-        '--disallowedTools',
-        'Agent',
-      ],
-    ];
-
-    if (mixed) {
-      final denied = MemberRoleProvision.disallowedToolsForMixedClaude(
-        isLead: TeamMemberNaming.isTeamLead(member),
-      );
-      args.addAll(['--disallowedTools', ...denied]);
-    }
-
-    if (member.model.trim().isNotEmpty) {
-      args.addAll(['--model', member.model.trim()]);
-    }
-    final settings = context.settingsPath?.trim() ?? '';
-    if (settings.isNotEmpty) {
-      args.addAll(['--settings', settings]);
-    }
-    final appendFile = context.appendSystemPromptFile?.trim() ?? '';
-    if (appendFile.isNotEmpty) {
-      args.addAll(['--append-system-prompt-file', appendFile]);
-    }
-    if (member.dangerouslySkipPermissions) {
-      args.add('--dangerously-skip-permissions');
-    }
-    _addExtraArgs(args, context.team.extraArgs);
-    _addExtraArgs(args, member.extraArgs);
-
-    return args;
-  }
-}
-
-/// opencode TUI（bare `opencode`，默认命令）。工作目录走进程 cwd；
-/// 模型用 `provider/model` 形式；resume 用 `--session`（opencode 无「指定 id 新建」flag）。
-class OpencodeCliToolAdapter implements CliToolAdapter {
-  const OpencodeCliToolAdapter();
-
-  @override
-  List<String> buildArguments(CliLaunchContext context) {
-    final member = context.member;
-    final args = <String>[];
-
-    final resume = context.resumeSessionId?.trim() ?? '';
-    if (resume.isNotEmpty) {
-      args.addAll(['--session', resume]);
-    }
-
-    final model = _opencodeModel(member);
-    if (model.isNotEmpty) {
-      args.addAll(['--model', model]);
-    }
-
-    final agent = member.agent.trim();
-    if (agent.isNotEmpty) {
-      args.addAll(['--agent', agent]);
-    }
-
-    _addExtraArgs(args, context.team.extraArgs);
-    _addExtraArgs(args, member.extraArgs);
-
-    return args;
-  }
-
-  /// opencode 期望 `provider/model`；缺 provider 时退回裸 model。
-  String _opencodeModel(TeamMemberConfig member) {
-    final provider = member.provider.trim();
-    final model = member.model.trim();
-    if (model.isEmpty) return '';
-    if (provider.isEmpty) return model;
-    return '$provider/$model';
-  }
-}
-
-/// OpenAI Codex CLI (`codex` TUI). LaunchProfile is injected via `$CODEX_HOME/AGENTS.md`
-/// and team-bus wiring via `$CODEX_HOME/config.toml` (see [CodexConfigProfileCapability]),
-/// so — unlike flashskyai — codex takes none of `--team`/`--member`/`--session-id`/
-/// `--append-system-prompt-file`. Working dir is `--cd`, model is `-m`. codex
-/// cannot be told an id at creation; to resume we replay the id captured from
-/// its isolated `$CODEX_HOME/sessions` via the `resume <id>` subcommand (see
-/// docs/session-resume-architecture.md).
-class CodexCliToolAdapter implements CliToolAdapter {
-  const CodexCliToolAdapter();
-
-  @override
-  List<String> buildArguments(CliLaunchContext context) {
-    final member = context.member;
-    final args = <String>[];
-
-    // `resume <id>` must lead the argv (it is a subcommand). codex ignores any
-    // create-time id, so there is no fresh-session prefix.
-    final resume = context.resumeSessionId?.trim() ?? '';
-    if (resume.isNotEmpty) {
-      args.addAll(['resume', resume]);
-    }
-
-    final wd = context.workingDirectory ?? '';
-    if (wd.isNotEmpty) {
-      args.addAll(['--cd', _normalizePathForCli(wd, context.useWslPaths)]);
-    }
-
-    final model = member.model.trim();
-    if (model.isNotEmpty) {
-      args.addAll(['-m', model]);
-    }
-
-    if (member.dangerouslySkipPermissions) {
-      args.add('--dangerously-bypass-approvals-and-sandbox');
-    }
-    // TeamPilot writes hooks into CODEX_HOME (mixed Stop→/idle, and
-    // agent-status curl hooks in simple + team). Bypass Codex's interactive
-    // "Hooks need review" prompt for this managed invocation.
-    args.add('--dangerously-bypass-hook-trust');
-
-    _addExtraArgs(args, context.team.extraArgs);
-    _addExtraArgs(args, member.extraArgs);
-
-    return args;
-  }
-}
-
-/// Cursor CLI (`cursor-agent` TUI). No `--system-prompt` flag — member
-/// identity lives in fake HOME `~/.cursor/rules/role.mdc` (see
-/// [CursorRoleRuleWriter]). Config isolation is via `$CURSOR_CONFIG_DIR` /
-/// fake `$HOME` (see [CursorConfigProfileCapability]). Working dir is
-/// `--workspace`, model `--model`, skip-permissions `--force`. Session id is
-/// allocated out-of-band (`cursor-agent create-chat`) and replayed through
-/// [resumeSessionId].
-class CursorCliToolAdapter implements CliToolAdapter {
-  const CursorCliToolAdapter();
-
-  @override
-  List<String> buildArguments(CliLaunchContext context) {
-    final member = context.member;
-    final mixed = context.team.teamMode == TeamMode.mixed;
-    final args = <String>[];
-
-    final wd = context.workingDirectory ?? '';
-    if (wd.isNotEmpty) {
-      args.addAll([
-        '--workspace',
-        _normalizePathForCli(wd, context.useWslPaths),
-      ]);
-    }
-
-    final resume = context.resumeSessionId?.trim() ?? '';
-    if (resume.isNotEmpty) {
-      args.addAll(['--resume', resume]);
-    }
-
-    final model = member.model.trim();
-    if (model.isNotEmpty) {
-      args.addAll(['--model', model]);
-    }
-
-    if (member.dangerouslySkipPermissions) {
-      args.add('--force');
-    }
-
-    // Mixed mode registers a localhost teammate-bus MCP server; auto-approve
-    // the server trust prompt (tool-level allowlist is in cli-config.json).
-    if (mixed) {
-      args.add('--approve-mcps');
-    }
-
-    _addExtraArgs(args, context.team.extraArgs);
-    _addExtraArgs(args, member.extraArgs);
-
-    return args;
-  }
-}
-
-List<String> _buildSessionPrefixArgs(
+List<String> buildSessionPrefixArgs(
   CliLaunchContext context, {
   bool includeWorkingDirectory = true,
 }) {
@@ -346,28 +97,28 @@ List<String> _buildSessionPrefixArgs(
   }
   final wd = context.workingDirectory ?? '';
   if (includeWorkingDirectory && wd.isNotEmpty) {
-    args.addAll(['--dir', _normalizePathForCli(wd, context.useWslPaths)]);
+    args.addAll(['--dir', normalizePathForCli(wd, context.useWslPaths)]);
   }
   for (final path in context.additionalDirectories) {
     final trimmed = path.trim();
     if (trimmed.isNotEmpty) {
       args.addAll([
         '--add-dir',
-        _normalizePathForCli(trimmed, context.useWslPaths),
+        normalizePathForCli(trimmed, context.useWslPaths),
       ]);
     }
   }
   return args;
 }
 
-void _addExtraArgs(List<String> args, String raw) {
+void addExtraArgs(List<String> args, String raw) {
   final trimmed = raw.trim();
   if (trimmed.isNotEmpty) {
-    args.addAll(_splitArgs(trimmed));
+    args.addAll(splitArgs(trimmed));
   }
 }
 
-List<String> _splitArgs(String input) {
+List<String> splitArgs(String input) {
   final args = <String>[];
   final buffer = StringBuffer();
   String? quote;
@@ -415,12 +166,12 @@ List<String> _splitArgs(String input) {
   return args;
 }
 
-String _normalizePathForCli(String path, bool useWslPaths) {
+String normalizePathForCli(String path, bool useWslPaths) {
   if (!useWslPaths) return path;
-  return _windowsPathToWsl(path) ?? path;
+  return windowsPathToWsl(path) ?? path;
 }
 
-String? _windowsPathToWsl(String path) {
+String? windowsPathToWsl(String path) {
   final trimmed = path.trim();
   final uncMatch = RegExp(
     r'^\\+(?:wsl\.localhost|wsl\$)\\[^\\]+\\(.+)$',

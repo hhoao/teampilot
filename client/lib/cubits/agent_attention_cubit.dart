@@ -7,7 +7,7 @@ import '../services/agent_status/agent_attention_state.dart';
 import '../services/agent_status/agent_status_event.dart';
 import '../services/agent_status/agent_status_normalizer.dart';
 import '../services/agent_status/ask_user_question_hook_gate.dart';
-import '../services/agent_status/claude_permission_sticky.dart';
+import '../services/cli/claude/capabilities/permission_sticky.dart';
 import '../services/agent_status/exit_plan_mode.dart';
 
 /// Orca-aligned TTL: drop seat attention with no refresh after this duration.

@@ -10,6 +10,7 @@ import '../../cubits/chat/model/session_workbench_view.dart';
 import '../../cubits/chat/session_launch_host.dart';
 import '../../models/app_session.dart';
 import '../../models/workspace.dart';
+import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import '../../utils/team/team_member_naming.dart';
 

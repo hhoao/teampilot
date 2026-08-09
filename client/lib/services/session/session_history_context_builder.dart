@@ -2,10 +2,11 @@ import 'package:path/path.dart' as p;
 
 import '../../models/app_session.dart';
 import '../../models/team_config.dart';
+import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import '../io/filesystem.dart';
-import '../provider/codex/codex_session_config_dir.dart';
-import '../provider/cursor/cursor_session_config_dir.dart';
+import '../cli/codex/provider/codex_session_config_dir.dart';
+import '../cli/cursor/provider/cursor_session_config_dir.dart';
 import '../storage/runtime_layout.dart';
 import 'session_history_context.dart';
 

@@ -20,6 +20,7 @@ import '../../repositories/session_repository.dart';
 import '../../services/session/session_member_cli_locks.dart';
 import '../../services/session/team_session_member_plan.dart';
 import '../../services/terminal/terminal_session.dart';
+import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import 'launch_operation.dart';
 import 'launch_outcome.dart';

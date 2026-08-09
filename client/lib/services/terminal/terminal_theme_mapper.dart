@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
-import 'package:teampilot/theme/workspace_surface_layers.dart';
+import '../../theme/workspace_surface_layers.dart';
 
 int _packColor(Color color) => color.toARGB32() & 0xFFFFFF;
 

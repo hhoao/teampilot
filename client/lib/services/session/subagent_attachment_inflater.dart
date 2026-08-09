@@ -1,5 +1,6 @@
 import 'package:ai_message_core/ai_message_core.dart';
 
+import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import '../cli/registry/capabilities/ai_history_capability.dart';
 import 'session_history_context.dart';

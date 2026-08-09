@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import '../../../../models/mcp_server_spec.dart';
 import '../../../io/filesystem.dart';
-import 'claude_shape_mcp_json.dart';
+import '../../claude/capabilities/mcp_shape_json.dart';
 
 Future<void> mergeMetadataMcpServers({
   required Filesystem fs,

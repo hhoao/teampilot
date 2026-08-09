@@ -1,5 +1,5 @@
 import '../../models/app_provider_config.dart';
-import 'claude/claude_official_provider.dart';
+import '../cli/claude/provider/claude_official_provider.dart';
 
 /// How an official-account provider resolves OAuth / credential files.
 enum CredentialBindingKind {

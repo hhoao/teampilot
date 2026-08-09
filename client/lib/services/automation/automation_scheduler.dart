@@ -4,6 +4,7 @@ import 'package:collection/collection.dart';
 
 import '../../models/automation.dart';
 import '../../repositories/automation_repository.dart';
+import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import 'automation_dispatcher.dart';
 import 'automation_schedule_calculator.dart';

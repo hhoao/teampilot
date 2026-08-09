@@ -10,7 +10,7 @@ import 'fatal_app_theme.dart';
 import 'log_config_workspace.dart';
 import 'log_helpers.dart';
 import 'package:shared_ui/shared_ui.dart';
-import 'package:teampilot/theme/workspace_surface_layers.dart';
+import '../../theme/workspace_surface_layers.dart';
 
 /// Fallback UI when startup fails before the main app shell loads.
 Future<void> showInitErrorApp({

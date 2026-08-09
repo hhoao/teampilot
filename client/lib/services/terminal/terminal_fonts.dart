@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
-import 'package:teampilot/theme/app_fonts.dart';
-import 'package:teampilot/theme/app_typography_scale.dart';
+import '../../theme/app_fonts.dart';
+import '../../theme/app_typography_scale.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 /// Bundled JetBrains catalog family name (not necessarily the active terminal

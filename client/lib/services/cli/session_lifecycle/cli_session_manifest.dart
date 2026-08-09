@@ -1,4 +1,4 @@
-import '../../provider/cursor/cursor_workspace_warm_tier.dart';
+import '../cursor/provider/cursor_workspace_warm_tier.dart';
 import '../registry/capabilities/cli_session_lifecycle_capability.dart';
 
 /// Workspace-level shared warm-tier paths (relative to workspace root).

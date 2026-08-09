@@ -1,0 +1,161 @@
+import '../../../models/team_config.dart';
+import 'capabilities/launch_args.dart';
+import '../registry/cli_capability.dart';
+import '../registry/cli_tool_definition.dart';
+import '../registry/capabilities/bus_transport_capability.dart';
+import '../registry/capabilities/remote_cli_locator_capability.dart';
+import '../registry/capabilities/skill_invocation_syntax_capability.dart';
+import '../registry/capabilities/built_in_tool_capabilities.dart';
+import 'capabilities/provider_catalog.dart';
+import '../registry/capabilities/provider_catalog_capability.dart';
+import '../registry/capabilities/member_agent_preset_capability.dart';
+import '../registry/capabilities/native_team_capability.dart';
+import '../registry/capabilities/config_profile_capability.dart';
+import '../registry/capabilities/executable_resolver_capability.dart';
+import '../registry/capabilities/installer_capability.dart';
+import '../registry/capabilities/launch_args_capability.dart';
+import '../registry/capabilities/presence_capability.dart';
+import '../registry/capabilities/cli_effort_capability.dart';
+import '../registry/capabilities/headless_run_capability.dart';
+import '../registry/capabilities/headless_provision_capability.dart';
+import '../registry/capabilities/provider_credential_capability.dart';
+import '../registry/capabilities/provider_model_capability.dart';
+import '../registry/capabilities/session_resume_capability.dart';
+import '../registry/capabilities/history/builtin_ai_history_capabilities.dart';
+import 'capabilities/resume_strategy.dart';
+import 'capabilities/config_profile.dart';
+import 'capabilities/headless_run.dart';
+import 'capabilities/headless_provision.dart';
+import 'capabilities/installer.dart';
+import 'provider/claude_effort_capability.dart';
+import 'provider/claude_provider_credential_capability.dart';
+import 'provider/claude_provider_form_capability.dart';
+import 'provider/claude_provider_model_capability.dart';
+import '../registry/capabilities/member_config_inspection_capability.dart';
+import '../registry/capabilities/provider_form_capability.dart';
+import '../registry/capabilities/resource_capability.dart';
+import '../registry/capabilities/ask_user_question_capability.dart';
+import '../registry/capabilities/exit_plan_mode_capability.dart';
+import '../registry/capabilities/turn_completion_capability.dart';
+import '../registry/capabilities/wait_before_stop_capability.dart';
+import '../registry/capabilities/turn_interrupt_capability.dart';
+import 'capabilities/mcp_config_writer.dart';
+import 'capabilities/plugin_provisioner.dart';
+import '../registry/resources/default_resource_capability.dart';
+
+final class ClaudeCliTool implements CliToolDefinition {
+  ClaudeCliTool({
+    this.busTransport = const BusTransportCapability(
+      longBlockingWaitForMessage: true,
+    ),
+    this.remoteCliLocator = const DefaultRemoteCliLocator('claude'),
+    this.launchArgs = const ClaudeCodeCliToolAdapter(),
+    this.configProfile = const ClaudeConfigProfileCapability(),
+    this.sessionResume = const ClaudeResumeStrategy(),
+    this.executableResolver = const ClaudeExecutableResolver(),
+    this.installer = const ClaudeInstallerCapability(),
+    this.presence = const ClaudePresence(),
+    this.display = const ClaudeDisplay(),
+    this.terminalBehavior = const ClaudeTerminalBehavior(),
+    this.memberConfigInspection = const DefaultMemberConfigInspection(),
+    this.pluginProvisioner = const ClaudePluginProvisioner(),
+    this.providerCatalog = const ClaudeProviderCatalogCapability(),
+    this.providerModel = const ClaudeProviderModelCapability(),
+    this.effort = const ClaudeEffortCapability(),
+    this.headlessRun = const ClaudeHeadlessRunCapability(),
+    this.headlessProvision = const ClaudeHeadlessProvisionCapability(),
+    this.providerForm = const ClaudeProviderFormCapability(),
+    this.resource = const DefaultResourceCapability(),
+    this.mcpConfigWriter = const ClaudeMcpConfigWriter(),
+    this.turnInterrupt = const CtrlCTurnInterrupt(),
+    this.askUserQuestion = const PtyAskUserQuestionCapability(),
+    this.exitPlanMode = const HookExitPlanModeCapability(),
+    this.aiHistory = const ClaudeAiHistoryCapability(),
+    this.skillSyntax = const DefaultSkillInvocationSyntaxCapability(),
+    this.turnCompletion = const ClaudeTurnCompletion(),
+    ProviderCredentialCapability? providerCredential,
+  }) : providerCredential =
+           providerCredential ?? ClaudeProviderCredentialCapability();
+
+  final ProviderCredentialCapability providerCredential;
+  final ProviderFormCapability providerForm;
+
+  final LaunchArgsCapability launchArgs;
+  final ConfigProfileCapability configProfile;
+  final SessionResumeCapability sessionResume;
+  final ExecutableResolverCapability executableResolver;
+  final InstallerCapability installer;
+  final PresenceCapability presence;
+  final ClaudeDisplay display;
+  final ClaudeTerminalBehavior terminalBehavior;
+  final MemberConfigInspectionCapability memberConfigInspection;
+  final ClaudePluginProvisioner pluginProvisioner;
+  final ProviderCatalogCapability providerCatalog;
+  final ProviderModelCapability providerModel;
+  final CliEffortCapability effort;
+  final HeadlessRunCapability headlessRun;
+  final HeadlessProvisionCapability headlessProvision;
+  final ResourceCapability resource;
+  final ClaudeMcpConfigWriter mcpConfigWriter;
+
+  final BusTransportCapability busTransport;
+  final RemoteCliLocatorCapability remoteCliLocator;
+  final TurnInterruptCapability turnInterrupt;
+  final AskUserQuestionCapability askUserQuestion;
+  final ExitPlanModeCapability exitPlanMode;
+  final ClaudeAiHistoryCapability aiHistory;
+  final SkillInvocationSyntaxCapability skillSyntax;
+  final TurnCompletionCapability turnCompletion;
+
+  @override
+  CliTool get id => CliTool.claude;
+
+  @override
+  bool get isLaunchSupported => true;
+
+  static const _nativeTeam = NativeTeamSupport();
+  static const _memberAgentPreset = ClaudeMemberAgentPreset();
+
+  @override
+  Iterable<CliCapability> get capabilities => [
+    busTransport,
+    remoteCliLocator,
+    _nativeTeam,
+    _memberAgentPreset,
+    launchArgs,
+    configProfile,
+    sessionResume,
+    executableResolver,
+    installer,
+    presence,
+    display,
+    terminalBehavior,
+    memberConfigInspection,
+    pluginProvisioner,
+    providerCatalog,
+    providerModel,
+    providerCredential,
+    providerForm,
+    effort,
+    headlessRun,
+    headlessProvision,
+    resource,
+    mcpConfigWriter,
+    turnInterrupt,
+    askUserQuestion,
+    exitPlanMode,
+    aiHistory,
+    skillSyntax,
+    turnCompletion,
+  ];
+}
+
+final class ClaudeTurnCompletion implements TurnCompletionCapability {
+  const ClaudeTurnCompletion();
+  @override
+  Set<String> get doneEventNames => const {'Stop', 'StopFailure'};
+  @override
+  bool get requiresPtyFallback => false;
+  @override
+  bool get usesDoorbellPush => false;
+}

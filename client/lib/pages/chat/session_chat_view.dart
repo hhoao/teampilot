@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
-import 'package:teampilot/widgets/app_toast/app_toast.dart';
+import '../../widgets/app_toast/app_toast.dart';
 import 'package:tp_markdown/tp_markdown.dart';
 
 import '../../cubits/ai_history_cubit.dart';
@@ -65,6 +65,7 @@ import '../../services/workbench/workbench_editor_opener.dart';
 import '../../services/workspace/workspace_tools_scope.dart';
 import '../../services/terminal/pending_user_message.dart';
 import '../../theme/app_markdown_style_sheet.dart';
+import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import '../../utils/team/team_member_naming.dart';
 import '../../widgets/compose/compose_chrome.dart';

@@ -1,4 +1,4 @@
-import 'package:teampilot/services/commands/key_chord.dart';
+import 'key_chord.dart';
 
 enum CommandCategory { navigation, tabs, view, zoom, compose, run, meta }
 

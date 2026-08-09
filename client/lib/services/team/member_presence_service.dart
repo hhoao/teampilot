@@ -8,7 +8,7 @@ import '../io/filesystem.dart';
 import '../storage/app_storage.dart';
 import '../team_bus/team_bus.dart';
 import '../terminal/terminal_session.dart';
-import 'claude_roster_activity_source.dart';
+import '../cli/claude/roster_activity_source.dart';
 import 'member_coordination.dart';
 
 /// Session-scoped inputs for [MemberPresenceService.compute].

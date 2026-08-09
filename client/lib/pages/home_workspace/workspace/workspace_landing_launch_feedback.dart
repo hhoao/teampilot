@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
-import 'package:teampilot/widgets/app_toast/app_toast.dart';
+import '../../../widgets/app_toast/app_toast.dart';
 
 import '../../../l10n/l10n_extensions.dart';
 import '../../../services/cli/registry/cli_display_name.dart';

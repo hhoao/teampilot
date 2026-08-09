@@ -1,7 +1,8 @@
 import '../../models/team_config.dart';
+import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import '../io/filesystem.dart';
-import '../provider/opencode/opencode_shared_plugin_deps.dart';
+import '../cli/opencode/provider/opencode_shared_plugin_deps.dart';
 import '../storage/runtime_layout.dart';
 import 'materialization_manifest.dart';
 import 'remote_credential_materializer.dart';

@@ -9,7 +9,7 @@ import '../../services/hub_publish/hub_publish_record_store.dart';
 import '../hub_publish/hub_publish_badge.dart';
 import '../team_hub/team_hub_cards.dart';
 import 'package:shared_ui/shared_ui.dart';
-import 'package:teampilot/theme/workspace_surface_layers.dart';
+import '../../theme/workspace_surface_layers.dart';
 
 String formatMyTeamsTimestamp(int ms) {
   if (ms <= 0) return '—';

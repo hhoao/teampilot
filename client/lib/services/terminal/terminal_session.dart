@@ -28,6 +28,7 @@ import '../team/terminal_activity_tracker.dart';
 import '../team_bus/bus_user_line_capture.dart';
 import '../../models/workspace_shell_launch_plan.dart';
 import '../workspace_dnd/runtime_target.dart';
+import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import 'terminal_theme_mapper.dart';
 
