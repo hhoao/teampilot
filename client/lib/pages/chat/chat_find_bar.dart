@@ -39,7 +39,7 @@ class _ChatFindCloseIntent extends Intent {
 }
 
 class _ChatFindBarState extends State<ChatFindBar> {
-  static const double _width = 460;
+  static const double _width = 470;
 
   @override
   void dispose() {

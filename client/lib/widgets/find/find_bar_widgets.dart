@@ -68,7 +68,8 @@ class FindField extends StatelessWidget {
     super.key,
   });
 
-  static const double kHeight = 26;
+  /// Tall enough for the md text + vertical padding without clipping.
+  static const double kHeight = 34;
 
   final TextEditingController controller;
   final FocusNode focusNode;
@@ -124,6 +125,7 @@ class FindField extends StatelessWidget {
                       focusedBorder: InputBorder.none,
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 6,
+                        vertical: 5,
                       ),
                     ),
                     onChanged: onChanged,
@@ -241,7 +243,8 @@ class FindActionButton extends StatelessWidget {
     this.assetPath,
     this.enabled = true,
     this.checked = false,
-    this.size = 22,
+    this.width = 26,
+    this.height = FindField.kHeight,
     super.key,
   });
 
@@ -254,7 +257,10 @@ class FindActionButton extends StatelessWidget {
   final VoidCallback onTap;
   final bool enabled;
   final bool checked;
-  final double size;
+  final double width;
+
+  /// Matches the input field height so the buttons align with the rows.
+  final double height;
 
   @override
   Widget build(BuildContext context) {
@@ -276,8 +282,8 @@ class FindActionButton extends StatelessWidget {
     return Tooltip(
       message: tooltip,
       child: TpHover(
-        width: size,
-        height: size,
+        width: width,
+        height: height,
         borderRadius: BorderRadius.circular(3),
         backgroundColor: checked ? palette.activeBg : null,
         hoverColor: checked ? palette.activeBg : palette.hoverBg,

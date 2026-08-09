@@ -24,9 +24,10 @@ class CodeEditorFindPanel extends StatelessWidget
   final CodeFindController controller;
   final bool readOnly;
 
-  static const double _rowHeight = 26;
+  static const double _rowHeight = FindField.kHeight;
+  static const double _rowGap = 4;
   static const double _panelVerticalPadding = 8;
-  static const double _panelWidth = 452;
+  static const double _panelWidth = 468;
   static const double _findFieldWidth = 260;
   static const double _counterWidth = 76;
   static const double _chevronWidth = 16;
@@ -38,7 +39,11 @@ class CodeEditorFindPanel extends StatelessWidget
       return const Size(double.infinity, 0);
     }
     final rows = value.replaceMode && !readOnly ? 2 : 1;
-    return Size(double.infinity, rows * _rowHeight + _panelVerticalPadding);
+    final gap = rows > 1 ? (rows - 1) * _rowGap : 0;
+    return Size(
+      double.infinity,
+      rows * _rowHeight + gap + _panelVerticalPadding,
+    );
   }
 
   @override
@@ -79,7 +84,10 @@ class CodeEditorFindPanel extends StatelessWidget
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           _buildFindRow(context, value),
-                          if (showReplace) _buildReplaceRow(context, value),
+                          if (showReplace) ...[
+                            const SizedBox(height: _rowGap),
+                            _buildReplaceRow(context, value),
+                          ],
                         ],
                       ),
                     ],
