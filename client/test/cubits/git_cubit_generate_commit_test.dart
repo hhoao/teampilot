@@ -11,10 +11,21 @@ import 'package:teampilot/services/git/git_service.dart';
 class _StubGitService extends GitService {
   _StubGitService(this._diff);
   final String _diff;
+
+  /// Each `diffSelectedPaths` invocation's path list (selection order).
+  final List<List<String>> diffSelectedPathsCalls = [];
+
   @override
   Future<bool> get isAvailable async => true;
+
   @override
   Future<String> stagedDiff(String dir, {int maxChars = 12000}) async => _diff;
+
+  @override
+  Future<String> diffSelectedPaths(String dir, List<String> paths) async {
+    diffSelectedPathsCalls.add(paths);
+    return _diff;
+  }
 }
 
 const _setting = AiFeatureSetting(
@@ -23,8 +34,11 @@ const _setting = AiFeatureSetting(
   model: 'm',
 );
 
-GitState _withStaged() => const GitState(
+/// A repo whose selection contains `a.txt` (the index may be empty in the
+/// selection model — generate must not care).
+GitState _withSelection() => const GitState(
   repoRoot: '/repo',
+  selectedPaths: {'a.txt'},
   status: GitRepoStatus(
     isRepository: true,
     staged: [
@@ -34,53 +48,110 @@ GitState _withStaged() => const GitState(
   ),
 );
 
+HeadlessAiService _headless({
+  required void Function() onRun,
+  bool failResolve = false,
+}) {
+  return HeadlessAiService(
+    resolveProvider: (_, __) async => null,
+    resolveExecutable: (name) async => failResolve ? null : name,
+    tempDirFactory: () async => Directory.systemTemp.createTempSync('gc_'),
+    resolveProvisionCapability: (_) => null,
+    run: (exe, args, {environment, workingDirectory, timeout}) async {
+      onRun();
+      return ProcessResult(0, 0, '```\nfeat: generated\n```', '');
+    },
+  );
+}
+
 void main() {
-  test('fills commit message from the AI result', () async {
-    final headless = HeadlessAiService(
-      resolveProvider: (_, __) async => null,
-      resolveExecutable: (name) async => name,
-      tempDirFactory: () async => Directory.systemTemp.createTempSync('gc_'),
-      resolveProvisionCapability: (_) => null,
-      run: (exe, args, {environment, workingDirectory, timeout}) async =>
-          ProcessResult(0, 0, '```\nfeat: generated\n```', ''),
-    );
+  test('fills commit message from the AI result, diffing the selected paths',
+      () async {
+    var aiRuns = 0;
+    final service = _StubGitService('diff');
     final cubit = GitCubit(
-      service: _StubGitService('diff'),
-      headless: headless,
+      service: service,
+      headless: _headless(onRun: () => aiRuns++),
     );
-    cubit.debugSetState(_withStaged());
+    cubit.debugSetState(_withSelection());
 
     await cubit.generateCommitMessage(_setting);
 
+    expect(service.diffSelectedPathsCalls, [
+      ['a.txt'],
+    ]);
     expect(cubit.state.commitMessage, 'feat: generated');
     expect(cubit.state.generatingCommitMessage, isFalse);
+    expect(aiRuns, 1);
   });
 
   test('sets error on headless failure', () async {
-    final headless = HeadlessAiService(
-      resolveProvider: (_, __) async => null,
-      resolveExecutable: (_) async => null,
-      tempDirFactory: () async => Directory.systemTemp.createTempSync('gc_'),
-      resolveProvisionCapability: (_) => null,
-      run: (exe, args, {environment, workingDirectory, timeout}) async =>
-          ProcessResult(0, 0, '', ''),
-    );
+    var aiRuns = 0;
+    final service = _StubGitService('diff');
     final cubit = GitCubit(
-      service: _StubGitService('diff'),
-      headless: headless,
+      service: service,
+      headless: _headless(onRun: () => aiRuns++, failResolve: true),
     );
-    cubit.debugSetState(_withStaged());
+    cubit.debugSetState(_withSelection());
 
     await cubit.generateCommitMessage(_setting);
 
     expect(cubit.state.errorMessage, isNotNull);
     expect(cubit.state.generatingCommitMessage, isFalse);
+    expect(service.diffSelectedPathsCalls, [
+      ['a.txt'],
+    ]);
+    expect(aiRuns, 0); // headless failed to resolve; run never invoked
   });
 
-  test('no-op when nothing staged', () async {
-    final cubit = GitCubit(service: _StubGitService('diff'));
+  test('no-op when nothing selected (no diff, no AI call)', () async {
+    var aiRuns = 0;
+    final service = _StubGitService('diff');
+    final cubit = GitCubit(
+      service: service,
+      headless: _headless(onRun: () => aiRuns++),
+    );
     cubit.debugSetState(const GitState(repoRoot: '/repo'));
+
     await cubit.generateCommitMessage(_setting);
+
     expect(cubit.state.commitMessage, '');
+    expect(service.diffSelectedPathsCalls, isEmpty);
+    expect(aiRuns, 0);
+  });
+
+  test('selected paths drive the diff even when the git index is empty', () async {
+    var aiRuns = 0;
+    final service = _StubGitService('diff');
+    final cubit = GitCubit(
+      service: service,
+      headless: _headless(onRun: () => aiRuns++),
+    );
+    // Selection model: nothing is staged in the index, but `b.txt` is selected.
+    cubit.debugSetState(
+      const GitState(
+        repoRoot: '/repo',
+        selectedPaths: {'b.txt'},
+        status: GitRepoStatus(
+          isRepository: true,
+          staged: [],
+          unstaged: [
+            GitFileChange(
+              path: 'b.txt',
+              kind: GitChangeKind.untracked,
+              staged: false,
+            ),
+          ],
+        ),
+      ),
+    );
+
+    await cubit.generateCommitMessage(_setting);
+
+    expect(service.diffSelectedPathsCalls, [
+      ['b.txt'],
+    ]);
+    expect(cubit.state.commitMessage, 'feat: generated');
+    expect(aiRuns, 1);
   });
 }

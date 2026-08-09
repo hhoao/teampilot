@@ -293,6 +293,18 @@ class GitService {
         '[diff truncated: $dropped more characters]';
   }
 
+  /// Concatenated HEAD-vs-worktree diffs for [paths], each path handled like
+  /// [diffAgainstHead] (untracked via --no-index). Used to summarize the
+  /// selected changes for a generated commit message.
+  Future<String> diffSelectedPaths(String dir, List<String> paths) async {
+    final parts = <String>[];
+    for (final path in paths) {
+      final d = await diffAgainstHead(dir, path);
+      if (d.isNotEmpty) parts.add(d);
+    }
+    return parts.join('\n');
+  }
+
   Future<void> stage(String dir, List<String> paths) =>
       _run(dir, ['add', '--', ...paths]);
 

@@ -435,18 +435,21 @@ class GitCubit extends Cubit<GitState> {
     }
   }
 
-  /// Generates a commit message draft from the staged diff via [setting].
-  /// Fills [GitState.commitMessage]; never commits.
+  /// Generates a commit message draft from the diff of the selected paths via
+  /// [setting]. Fills [GitState.commitMessage]; never commits.
   Future<void> generateCommitMessage(AiFeatureSetting setting) async {
     final dir = state.repoRoot;
     if (dir.isEmpty ||
-        state.status.staged.isEmpty ||
+        state.selectedPaths.isEmpty ||
         state.generatingCommitMessage) {
       return;
     }
     _publish(state.copyWith(generatingCommitMessage: true, clearError: true));
     try {
-      final diff = await _service.stagedDiff(dir);
+      final diff = await _service.diffSelectedPaths(
+        dir,
+        state.selectedPaths.toList(),
+      );
       if (isClosed || state.repoRoot != dir) return;
       if (diff.trim().isEmpty) {
         _publish(

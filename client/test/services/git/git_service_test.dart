@@ -163,6 +163,42 @@ void main() {
       ]);
     });
 
+    test('diffSelectedPaths diffs each path against HEAD and joins', () async {
+      final runner = _FakeRunner({
+        'diff HEAD -- a.txt': _ok('diff a\n'),
+        'diff HEAD -- b.txt': _ok('diff b\n'),
+      });
+      final service = GitService(
+        runner: LocalGitCommandRunner(runner: runner.call),
+      );
+
+      final out = await service.diffSelectedPaths('/repo', ['a.txt', 'b.txt']);
+
+      expect(runner.calls, [
+        ['diff', 'HEAD', '--', 'a.txt'],
+        ['diff', 'HEAD', '--', 'b.txt'],
+      ]);
+      expect(out, 'diff a\n\ndiff b\n');
+    });
+
+    test('diffSelectedPaths skips empty per-path diffs', () async {
+      final runner = _FakeRunner({
+        'diff HEAD -- a.txt': _ok('diff a\n'),
+        'diff HEAD -- b.txt': _ok(''),
+      });
+      final service = GitService(
+        runner: LocalGitCommandRunner(runner: runner.call),
+      );
+
+      final out = await service.diffSelectedPaths('/repo', ['a.txt', 'b.txt']);
+
+      expect(runner.calls, [
+        ['diff', 'HEAD', '--', 'a.txt'],
+        ['diff', 'HEAD', '--', 'b.txt'],
+      ]);
+      expect(out, 'diff a\n');
+    });
+
     test(
       'discard chooses restore for tracked and clean for untracked',
       () async {
