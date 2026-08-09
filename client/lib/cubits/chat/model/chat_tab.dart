@@ -100,6 +100,10 @@ class ChatTab {
   /// Member ids with a scheduled or in-flight member connect.
   final Set<String> membersPendingConnect = {};
 
+  /// Members whose live terminal was reclaimed for idle and not yet
+  /// re-materialized. The UI shows a "reclaimed" placeholder for these.
+  final Set<String> reclaimedMemberIds = {};
+
   /// Per-member remote workspace/CLI provision UI (SSH off-home connect).
   final Map<String, MemberRemoteProvisionProgress> memberRemoteProvision = {};
 

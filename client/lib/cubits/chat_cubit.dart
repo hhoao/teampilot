@@ -1998,6 +1998,19 @@ class ChatCubit extends Cubit<ChatState>
     }
   }
 
+  void discardMemberTerminal(String sessionId, String memberId) =>
+      _launchService.discardMemberTerminal(sessionId, memberId);
+
+  Future<void> ensureMemberTerminalForView(String sessionId, String memberId) =>
+      _launchService.ensureMemberTerminalForView(sessionId, memberId);
+
+  bool isMemberTerminalReclaimed(String sessionId, String memberId) =>
+      _tabStore
+          .openTabBySessionId(sessionId)
+          ?.reclaimedMemberIds
+          .contains(memberId) ??
+      false;
+
   Future<void> restartWorkspaceSession(
     SessionConnectRequest request, {
     SessionRepository? repo,

@@ -360,6 +360,9 @@ class SessionLaunchService
         );
         switch (result) {
           case ConnectShellResult.attached:
+            if (member != null) {
+              tab.reclaimedMemberIds.remove(member.id);
+            }
             if (!request.isPersonal &&
                 team != null &&
                 member != null &&
@@ -703,6 +706,61 @@ class SessionLaunchService
     _h.clearAgentStatusSeat(sessionId: tab.info.id, memberId: mid);
     _h.clearLaunchError(tab.info.id);
     _h.updateTabRunning(tab.info.id);
+  }
+
+  /// Reclaims an idle member's live terminal (Chrome-style discard).
+  ///
+  /// Synchronous: flips the TeamBus lifecycle to `declared` before tearing down
+  /// the shell so no send-into-dead-PTY window exists. The materialize funnel or
+  /// [ensureMemberTerminalForView] re-brings the member online on demand (resume).
+  void discardMemberTerminal(String sessionId, String memberId) {
+    final id = sessionId.trim();
+    final mid = memberId.trim();
+    if (id.isEmpty || mid.isEmpty) return;
+    final tab = _tabStore.openTabBySessionId(id);
+    if (tab == null) return;
+    final shell = tab.memberShells[mid];
+    if (shell == null || !shell.isRunning) return;
+    tab.teamBus?.markMemberDiscarded(mid);
+    tab.membersPendingConnect.remove(mid);
+    shell.disconnect();
+    tab.memberShells.remove(mid);
+    tab.reclaimedMemberIds.add(mid);
+    unawaited(tab.closeMemberRemotePlane(mid));
+    _h.clearAgentStatusSeat(sessionId: tab.info.id, memberId: mid);
+    _h.clearLaunchError(tab.info.id);
+    _h.updateTabRunning(tab.info.id);
+  }
+
+  /// Lazy-spawn / restore entry for "member selected + terminal view visible".
+  ///
+  /// No-op when the shell is already up, connecting, or a connect is pending.
+  /// Team sessions resolve the roster member and schedule a connect (resume).
+  /// Simple sessions are intentionally not handled here — their restore is the
+  /// existing chat-submit / history-review connect path.
+  Future<void> ensureMemberTerminalForView(
+    String sessionId,
+    String memberId,
+  ) async {
+    final id = sessionId.trim();
+    final mid = memberId.trim();
+    if (id.isEmpty || mid.isEmpty) return;
+    final tab = _tabStore.openTabBySessionId(id);
+    if (tab == null) return;
+    final shell = tab.memberShells[mid];
+    if (shell != null && (shell.isRunning || shell.isConnecting)) return;
+    if (tab.membersPendingConnect.contains(mid)) return;
+    final session = tab.persistedSession;
+    if (session == null) return;
+    final teamId = session.sessionTeam.trim();
+    if (teamId.isEmpty) return; // Simple mode — not this path.
+    final team = await _h.teamProfileById(teamId);
+    if (team == null) return;
+    final member = sessionRosterMembers(session, team)
+        .where((m) => m.id == mid)
+        .firstOrNull;
+    if (member == null || !member.isValid) return;
+    _memberConnectScheduler.schedule(team, member, tab);
   }
 
   Future<void> restartWorkspaceSession(

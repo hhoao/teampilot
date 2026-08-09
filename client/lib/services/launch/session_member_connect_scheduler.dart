@@ -160,6 +160,7 @@ class SessionMemberConnectScheduler {
           member: member,
         );
         if (result == ConnectShellResult.attached) {
+          tab.reclaimedMemberIds.remove(member.id);
           _host.updateTabRunning(tab.info.id);
         }
       } on Object catch (e, st) {
