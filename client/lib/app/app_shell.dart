@@ -154,6 +154,7 @@ import '../services/host/host_process_starter_for_context.dart';
 import '../services/cli/claude/provider/claude_provider_credentials_service.dart';
 import '../services/cli/codex/provider/codex_provider_credentials_service.dart';
 import '../services/cli/opencode/provider/opencode_provider_credentials_service.dart';
+import '../services/cli/opencode/provider/opencode_models_service.dart';
 import '../services/cli/cursor/provider/cursor_agent_models_service.dart';
 import '../services/cli/cursor/provider/cursor_provider_credentials_service.dart';
 import '../services/provider/provider_credential_host_runner.dart';
@@ -752,6 +753,7 @@ Future<AppShell> buildAppShell({
       ),
       CliTool.opencode: OpencodeBootstrapEntry(
         credentialsService: opencodeCredentialsService,
+        modelsService: OpencodeModelsService(),
       ),
     }),
   );

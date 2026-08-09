@@ -8,6 +8,7 @@ import '../../../services/cli/cursor/provider/cursor_provider_credential_capabil
 import '../../../services/cli/cursor/provider/cursor_provider_model_capability.dart';
 import '../../../services/cli/opencode/opencode_bootstrap_entry.dart';
 import '../../../services/cli/opencode/provider/opencode_provider_credential_capability.dart';
+import '../../../services/cli/opencode/provider/opencode_provider_model_capability.dart';
 import 'capabilities/member_agent_preset_capability.dart';
 import 'capabilities/member_config_inspection_capability.dart';
 import 'capabilities/provider_model_capability.dart';
@@ -44,6 +45,9 @@ void registerBuiltInCliTools(
   );
   registry.register(
     OpencodeCliTool(
+      providerModel: OpencodeProviderModelCapability(
+        modelsService: opencodeEntry?.modelsService,
+      ),
       providerCredential: OpencodeProviderCredentialCapability(
         credentials: opencodeEntry?.credentialsService,
       ),
