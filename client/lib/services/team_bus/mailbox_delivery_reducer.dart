@@ -91,17 +91,21 @@ abstract final class MailboxDeliveryReducer {
         );
 
       case MailDeliveryStarted():
-        final attempts = state.attempts + 1;
-        if (attempts > maxAttempts) {
+        // failed 非终态:重臂一轮新预算(attempts 归零),避免投递义务被耗尽后封死。
+        final attempts = (state.phase == MailboxDeliveryPhase.failed)
+            ? 0
+            : state.attempts;
+        final nextAttempts = attempts + 1;
+        if (nextAttempts > maxAttempts) {
           return MailboxDeliverySnapshot(
             phase: MailboxDeliveryPhase.failed,
-            attempts: attempts,
+            attempts: nextAttempts,
             lastError: state.lastError ?? MailboxDeliveryError.crStuck,
           );
         }
         return state.copyWith(
           phase: MailboxDeliveryPhase.inFlight,
-          attempts: attempts,
+          attempts: nextAttempts,
         );
 
       case MailDeliverySubmitted():
@@ -109,17 +113,17 @@ abstract final class MailboxDeliveryReducer {
         return state.copyWith(phase: MailboxDeliveryPhase.pending);
 
       case MailDeliveryFailed(:final error):
-        final attempts = state.attempts + 1;
-        if (attempts >= maxAttempts) {
+        // 只回报结果,不叠加次数(次数由 Started 计),避免一次尝试双计快速耗竭预算。
+        if (state.attempts >= maxAttempts) {
           return MailboxDeliverySnapshot(
             phase: MailboxDeliveryPhase.failed,
-            attempts: attempts,
+            attempts: state.attempts,
             lastError: error,
           );
         }
         return MailboxDeliverySnapshot(
           phase: MailboxDeliveryPhase.pending,
-          attempts: attempts,
+          attempts: state.attempts,
           lastError: error,
         );
 

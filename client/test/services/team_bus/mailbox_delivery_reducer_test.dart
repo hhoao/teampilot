@@ -28,10 +28,10 @@ void main() {
       expect(next.attempts, 1);
     });
 
-    test('MailDeliveryFailed at budget → failed', () {
+    test('MailDeliveryFailed at budget → failed (attempts not double-counted)', () {
       const state = MailboxDeliverySnapshot(
         phase: MailboxDeliveryPhase.inFlight,
-        attempts: 5,
+        attempts: 6,
       );
       final next = MailboxDeliveryReducer.reduce(
         state,
@@ -40,8 +40,38 @@ void main() {
         maxAttempts: 6,
       );
       expect(next.phase, MailboxDeliveryPhase.failed);
-      expect(next.attempts, 6);
+      expect(next.attempts, 6); // 次数由 Started 计,Failed 不叠加
       expect(next.lastError, MailboxDeliveryError.crStuck);
+    });
+
+    test('MailDeliveryFailed does not double-count attempts', () {
+      const state = MailboxDeliverySnapshot(
+        phase: MailboxDeliveryPhase.inFlight,
+        attempts: 3,
+      );
+      final next = MailboxDeliveryReducer.reduce(
+        state,
+        const MailDeliveryFailed(MailboxDeliveryError.pasteNotFound),
+        hasUnread: true,
+        maxAttempts: 6,
+      );
+      expect(next.attempts, 3); // 不再 +1
+      expect(next.phase, MailboxDeliveryPhase.pending);
+    });
+
+    test('MailDeliveryStarted on failed phase re-arms a fresh budget', () {
+      const state = MailboxDeliverySnapshot(
+        phase: MailboxDeliveryPhase.failed,
+        attempts: 6,
+      );
+      final next = MailboxDeliveryReducer.reduce(
+        state,
+        const MailDeliveryStarted(),
+        hasUnread: true,
+        maxAttempts: 6,
+      );
+      expect(next.phase, MailboxDeliveryPhase.inFlight);
+      expect(next.attempts, 1); // 重置后第一轮
     });
 
     test('MailDeliverySubmitted with unread → pending', () {

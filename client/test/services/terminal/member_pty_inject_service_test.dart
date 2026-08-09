@@ -50,4 +50,14 @@ void main() {
     expect(MemberPtyInjectService.maxPtyNotifyAttempts, TeamBus.maxPtyNotifyAttempts);
     expect(TeamBus.maxPtyNotifyAttempts, 6);
   });
+
+  test('deferForBoot re-times without consuming retry attempts', () {
+    final queue = PtyAutomationRetryQueue(retryIntervalMs: 0, maxAttempts: 1);
+    final inject = MemberPtyInjectService(retryQueue: queue);
+    inject.deferForBoot('sess', 'worker', TeamBus.doorbellNotice);
+    inject.deferForBoot('sess', 'worker', TeamBus.doorbellNotice);
+    // 若 defer 像 schedule 一样递增 attempt,第二次会因 attempt(2)>max(1) 被
+    // clear → hasPendingRetry 变 false。defer 不耗预算 → 两次后仍 pending。
+    expect(inject.hasPendingRetry('sess', 'worker'), isTrue);
+  });
 }

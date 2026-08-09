@@ -53,6 +53,17 @@ final class MemberPtyInjectService {
     clearPending(sessionId, memberId);
   }
 
+  /// 门铃在 TUI boot 未就绪时推迟:排入重试队列,就绪后由重试 tick 落地。
+  /// 不执行粘贴(避免盲粘进启动屏),也不消耗 attempts。
+  void deferForBoot(String sessionId, String memberId, String text) {
+    _retryQueue.defer(
+      key: PtyAutomationSessionLock.key(sessionId, memberId),
+      sessionId: sessionId,
+      memberId: memberId,
+      text: text,
+    );
+  }
+
   bool isAbortRequested(String sessionId, String memberId) => _abortRequested
       .contains(PtyAutomationSessionLock.key(sessionId, memberId));
 
