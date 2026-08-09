@@ -1808,6 +1808,13 @@ class ChatCubit extends Cubit<ChatState>
     if (view == SessionWorkbenchView.chat) {
       onSessionHistoryStale?.call(sessionId);
     }
+    if (view == SessionWorkbenchView.terminal) {
+      final tab = _tabStore.openTabBySessionId(sessionId);
+      final memberId = tab?.selectedMemberId ?? state.selectedMemberId;
+      if (memberId.trim().isNotEmpty) {
+        unawaited(ensureMemberTerminalForView(sessionId, memberId));
+      }
+    }
   }
 
   /// SessionLaunchHost port: the pod owns the per-session chat/terminal view.
@@ -1918,6 +1925,10 @@ class ChatCubit extends Cubit<ChatState>
     if (state.selectedMemberId == memberId) return;
     _activeTab?.selectedMemberId = memberId;
     emit(state.copyWith(selectedMemberId: memberId));
+    final tab = _activeTab;
+    if (tab != null && tab.workbenchView == SessionWorkbenchView.terminal) {
+      unawaited(ensureMemberTerminalForView(tab.info.id, memberId));
+    }
   }
 
   /// Whether the member's PTY is up (spawning through running).
