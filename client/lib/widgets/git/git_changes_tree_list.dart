@@ -20,6 +20,8 @@ class GitChangesTreeList extends StatefulWidget {
     required this.cubit,
     required this.listScrollController,
     required this.horizontalScrollController,
+    this.selectedPath,
+    this.onSelect = _noopSelect,
     required this.onOpenDiff,
     required this.onConfirmDiscard,
     this.onOpenFile,
@@ -30,6 +32,13 @@ class GitChangesTreeList extends StatefulWidget {
   final GitCubit cubit;
   final ScrollController listScrollController;
   final ScrollController horizontalScrollController;
+
+  /// Currently selected change path (highlights the matching file row), or
+  /// null when nothing is selected.
+  final String? selectedPath;
+
+  /// Called with the change path when a file row is single-clicked.
+  final ValueChanged<String> onSelect;
   final ValueChanged<GitFileChange> onOpenDiff;
   final ValueChanged<GitFileChange> onConfirmDiscard;
   final ValueChanged<GitFileChange>? onOpenFile;
@@ -133,6 +142,21 @@ class _GitChangesTreeListState extends State<GitChangesTreeList> {
                     scrollCacheExtent: ScrollCacheExtent.pixels(400),
                     controller: widget.listScrollController,
                     slivers: [
+                      SliverToBoxAdapter(
+                        child: _GitChangesRootHeader(
+                          stagedCount: widget.treeView.stagedCount,
+                          totalCount: widget.treeView.totalCount,
+                          allStaged: widget.treeView.allStaged,
+                          noneStaged: widget.treeView.noneStaged,
+                          onToggleAll: () {
+                            if (widget.treeView.allStaged) {
+                              unawaited(widget.cubit.unstageAll());
+                            } else {
+                              unawaited(widget.cubit.stageAll());
+                            }
+                          },
+                        ),
+                      ),
                       if (widget.treeView.rows.isNotEmpty)
                         SliverFixedExtentList(
                           itemExtent: kGitChangesRowExtent,
@@ -179,14 +203,76 @@ class _GitChangesTreeListState extends State<GitChangesTreeList> {
       key: ValueKey('file:${change.path}'),
       change: change,
       depth: row.depth,
-      selected: false,
+      selected: widget.selectedPath == change.path,
       hoverEnabled: _hoverEnabled,
-      onSelect: () => widget.onOpenDiff(change),
+      onSelect: () => widget.onSelect(change.path),
       onOpenDiff: () => widget.onOpenDiff(change),
       onOpenFile: canOpenFile ? () => widget.onOpenFile!(change) : null,
       onStage: () => unawaited(widget.cubit.stage(change)),
       onUnstage: () => unawaited(widget.cubit.unstage(change)),
       onDiscard: () => widget.onConfirmDiscard(change),
+    );
+  }
+}
+
+/// Default [GitChangesTreeList.onSelect] when a caller does not wire selection
+/// yet (the panel owns the selected path; unmodified call sites stay valid).
+void _noopSelect(String _) {}
+
+/// Top-level "Changes" header: a tri-state select-all checkbox plus the change
+/// count badge, rendered as the first sliver of the changes tree list.
+class _GitChangesRootHeader extends StatelessWidget {
+  const _GitChangesRootHeader({
+    required this.stagedCount,
+    required this.totalCount,
+    required this.allStaged,
+    required this.noneStaged,
+    required this.onToggleAll,
+  });
+
+  final int stagedCount;
+  final int totalCount;
+  final bool allStaged;
+  final bool noneStaged;
+  final VoidCallback onToggleAll;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final triState = totalCount == 0
+        ? false
+        : allStaged
+        ? true
+        : noneStaged
+        ? false
+        : null;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 6, 0, 2),
+      child: Row(
+        children: [
+          SizedBox(
+            width: kGitChangesCheckboxWidth,
+            height: kGitChangesCheckboxWidth,
+            child: Checkbox(
+              value: triState,
+              tristate: true,
+              onChanged: (_) => onToggleAll(),
+              visualDensity: VisualDensity.compact,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: Text(
+              context.l10n.gitChanges,
+              style: TpTextStyles.of(
+                context,
+              ).xsBoldWideColored(cs.onSurfaceVariant),
+            ),
+          ),
+          const SizedBox(width: 2),
+          GitChangesCountBadge(count: totalCount),
+        ],
+      ),
     );
   }
 }
