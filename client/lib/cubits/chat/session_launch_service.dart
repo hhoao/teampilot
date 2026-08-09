@@ -52,10 +52,20 @@ class SessionLaunchService
   SessionLaunchService(
     this._h, {
     TermuxWorkOpsBlockResolver? termuxWorkOpsBlockFor,
+    this.onSessionTabOpened,
   }) : _termuxWorkOpsBlockFor = termuxWorkOpsBlockFor;
 
   final SessionLaunchHost _h;
   final TermuxWorkOpsBlockResolver? _termuxWorkOpsBlockFor;
+
+  /// Domain → bar handshake for newly staged session tabs (wired by the app
+  /// shell to [WorkbenchChatBridge.onSessionTabOpened]).
+  final void Function(
+    String workspaceId,
+    String sessionId, {
+    bool preview,
+    bool activate,
+  })? onSessionTabOpened;
   late final SessionShellConnector _shellConnector = SessionShellConnector(
     _h,
     this,
@@ -95,6 +105,7 @@ class SessionLaunchService
       isTabsEmpty: () => _tabStore.activeTabsIsEmpty,
       activeBucketKey: () => _tabStore.activeWorkspaceId,
       uuid: _uuid,
+      onSessionTabOpened: onSessionTabOpened,
     ),
   );
   SessionLaunchPipeline get _pipeline => _launch.pipeline;

@@ -125,15 +125,9 @@ void main() {
       expect(workbench.welcomeActive(workspace.workspaceId), isTrue);
       expect(workbench.tabOrder(workspace.workspaceId), orderBefore);
 
-      // Runtime path: WorkbenchSessionSync calls syncSessions after compose ends.
-      workbench.syncSessions(
-        workspace.workspaceId,
-        [session.sessionId],
-        preferredActiveSessionId: session.sessionId,
-        newChatActive: false,
-      );
-      expect(workbench.activeTabId(workspace.workspaceId), isNull);
-      expect(workbench.welcomeActive(workspace.workspaceId), isTrue);
+      // The deleted WorkbenchSessionSync reconcile used to re-align the bar at
+      // compose end; the bridge now feeds the bar only on session open, so the
+      // welcome state is preserved without any reconcile step.
       expect(
         resolveWorkbenchCenterMode(
           newChatActive: chat.state.newChatActive,

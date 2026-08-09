@@ -50,6 +50,7 @@ class SessionTabSurfaceCoordinator {
     required PrepareNewTabConnectFn prepareNewTabConnect,
     required PrepareExistingTabConnectFn prepareExistingTabConnect,
     required PrepareDeferredTeamTabFn prepareDeferredTeamTab,
+    this.onSessionTabOpened,
   }) : _host = host,
        _tabStore = tabStore,
        _state = state,
@@ -58,6 +59,15 @@ class SessionTabSurfaceCoordinator {
        _prepareNewTabConnect = prepareNewTabConnect,
        _prepareExistingTabConnect = prepareExistingTabConnect,
        _prepareDeferredTeamTab = prepareDeferredTeamTab;
+
+  /// Single domain → bar handshake: feed a just-staged session tab into the
+  /// workbench bar (the [WorkbenchChatBridge] callback). Null in tests.
+  final void Function(
+    String workspaceId,
+    String sessionId, {
+    bool preview,
+    bool activate,
+  })? onSessionTabOpened;
 
   final SessionLaunchHost _host;
   final ChatTabStore _tabStore;
@@ -174,6 +184,14 @@ class SessionTabSurfaceCoordinator {
         selectedMemberId: placeholderMemberId,
         newChatActive: false,
       ),
+    );
+    // Feed the bar: the new tab must surface in the workbench strip. Only new
+    // tabs go through the bridge; reused tabs are already in the bar.
+    onSessionTabOpened?.call(
+      session.workspaceId,
+      tab.info.id,
+      preview: !request.connectImmediately,
+      activate: true,
     );
     _host.refreshActiveWorkspaceTabs();
 

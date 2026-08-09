@@ -46,6 +46,7 @@ import '../cubits/ai_history_cubit.dart';
 import '../cubits/shortcut_cubit.dart';
 import '../cubits/editor_cubit.dart';
 import '../cubits/workbench/workbench_cubit.dart';
+import '../services/workbench/workbench_chat_bridge.dart';
 import '../services/workbench/workbench_editor_opener.dart';
 import '../services/workbench/workbench_shell_launcher.dart';
 import '../services/workbench/workbench_strip_navigator.dart';
@@ -1570,6 +1571,10 @@ Future<AppShell> buildAppShell({
   // open paints colored instead of cold. Never blocks app start.
   unawaited(EditorPlatform.bootstrap());
   final workbenchCubit = WorkbenchCubit();
+  // Single domain → bar handshake: new session tabs surface in the bar via
+  // the bridge instead of the deleted WorkbenchSessionSync reconcile.
+  final workbenchChatBridge = WorkbenchChatBridge(workbench: workbenchCubit);
+  chatCubit.onSessionTabOpened = workbenchChatBridge.onSessionTabOpened;
   final markdownViewModes = MarkdownViewModeStore();
   final workbenchEditorOpener = WorkbenchEditorOpener(
     editor: editorCubit,

@@ -11,12 +11,14 @@ import '../../models/run/run_session.dart';
 import '../../models/run/run_ui_intent.dart';
 import '../../services/run/run_panel_session.dart';
 import '../../services/terminal/workspace_terminal_registry.dart';
+import '../../services/workbench/workbench_chat_bridge.dart';
 import '../../services/workbench/workbench_run_intent.dart';
 import '../../services/workbench/workbench_shell_run_sync_logic.dart';
 import '../workspace_terminal_panel.dart';
 
 /// Reconciles RunPanel sessions with floating run tabs and strips stale center
-/// run tabs (peer to [WorkbenchSessionSync]).
+/// run tabs. (Session tabs reach the bar via [WorkbenchChatBridge]; run tabs
+/// still reconcile here because they are owned by the RunPanel, not chat.)
 ///
 /// Workspace shell entries are **not** projected here — they open on the
 /// floating terminal surface via [WorkbenchShellLauncher].

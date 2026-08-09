@@ -235,7 +235,7 @@ Future<void> createAndOpenWorkspaceConversation(
     blockedMixedMessage: context.l10n.mixedWorkspaceCreateSessionBlocked,
   );
   if (status != SessionOpenStatus.opened) return;
-  // syncSessions will not override an active run/shell/file tab.
+  // ensureTab will not override an active run/shell/file tab.
   final sessionId = context.read<ChatCubit>().state.activeSessionId?.trim() ?? '';
   if (sessionId.isNotEmpty) {
     context.read<WorkbenchCubit>().ensureTab(
@@ -393,7 +393,7 @@ Future<void> submitWorkspaceLandingMessage(
   }
 
   // Landing unmounts ChatPage while a Run tab (启动配置) may still be active;
-  // syncSessions does not steal focus from run/shell/file — select explicitly.
+  // ensureTab does not steal focus from run/shell/file — select explicitly.
   if (context.mounted) {
     context.read<WorkbenchCubit>().ensureTab(
       liveWorkspace.workspaceId,

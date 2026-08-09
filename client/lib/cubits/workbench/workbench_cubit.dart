@@ -328,52 +328,6 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
     return removed;
   }
 
-  /// Legacy reconcile-by-append. Kept ONLY until Task 3 deletes it together
-  /// with [WorkbenchSessionSync]; the bridge then feeds the bar directly.
-  void syncSessions(
-    String workspaceId,
-    List<String> sessionIds, {
-    String? preferredActiveSessionId,
-    bool newChatActive = false,
-  }) {
-    final bar = state.bar(workspaceId);
-    final sessionSet = sessionIds.toSet();
-    final order = <WorkbenchTabId>[];
-    for (final tab in bar.center.order) {
-      if (!isCenterStripWorkbenchTab(tab.kind)) continue;
-      if (tab.kind == WorkbenchTabKind.session) {
-        if (sessionSet.contains(tab.id)) order.add(tab);
-      } else {
-        order.add(tab);
-      }
-    }
-    final existingSessions = {
-      for (final t in order)
-        if (t.kind == WorkbenchTabKind.session) t.id,
-    };
-    for (final id in sessionIds) {
-      if (!existingSessions.contains(id)) {
-        order.add(WorkbenchTabId.session(id));
-      }
-    }
-    var active = bar.center.activeId;
-    if (newChatActive) {
-      active = null;
-    } else if (active != null && !order.contains(active)) {
-      active = null;
-    }
-    emit(state.withBar(
-      workspaceId,
-      bar.copyWith(
-        center: TabStrip(
-          order: order,
-          activeId: active,
-          previewIds: bar.center.previewIds.where(order.contains).toSet(),
-        ),
-      ),
-    ));
-  }
-
   void clearWorkspace(String workspaceId) {
     if (!state.byWorkspace.containsKey(workspaceId)) return;
     final next = Map<String, WorkspaceTabBar>.from(state.byWorkspace)

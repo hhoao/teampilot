@@ -48,6 +48,7 @@ class SessionLaunchBundleDeps {
     required this.isTabsEmpty,
     required this.activeBucketKey,
     required this.uuid,
+    this.onSessionTabOpened,
   });
 
   final SessionLaunchHost host;
@@ -98,6 +99,15 @@ class SessionLaunchBundleDeps {
   final bool Function() isTabsEmpty;
   final String Function() activeBucketKey;
   final Uuid uuid;
+
+  /// Fired after a new session tab surfaces so the workbench bar can be fed
+  /// (the [WorkbenchChatBridge] handshake). Null when the bar is not wired.
+  final void Function(
+    String workspaceId,
+    String sessionId, {
+    bool preview,
+    bool activate,
+  })? onSessionTabOpened;
 }
 
 /// Composition root for launch pipeline collaborators.
@@ -158,6 +168,7 @@ class SessionLaunchBundle {
             workspaceById: deps.workspaceById,
           ),
       prepareDeferredTeamTab: prepRunner.prepareDeferredTeamTab,
+      onSessionTabOpened: deps.onSessionTabOpened,
     );
 
     final materializer = SessionDefaultMaterializer(

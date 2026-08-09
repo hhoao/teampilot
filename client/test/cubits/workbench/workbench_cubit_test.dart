@@ -65,12 +65,6 @@ void main() {
       expect(bucket.previewTabIds, isEmpty);
       expect(bucket.welcomeActive, isFalse);
     });
-
-    test('legacy syncSessions still aligns sessions into the bar', () {
-      cubit.openSession(_ws, 's1');
-      cubit.syncSessions(_ws, ['s1', 's2']);
-      expect(cubit.state.bar(_ws).center.order, contains(_s2));
-    });
   });
 
   group('closeOthers / closeRight / closeAll', () {

@@ -189,6 +189,16 @@ class ChatCubit extends Cubit<ChatState>
   /// Fired when a session tab is torn down so History can dispose its seats.
   void Function(String sessionId)? onHistorySeatsDispose;
 
+  /// Domain → workbench-bar handshake: fired after a new session tab surfaces
+  /// so the bar can be fed (wired to [WorkbenchChatBridge.onSessionTabOpened]
+  /// by the app shell after construction).
+  void Function(
+    String workspaceId,
+    String sessionId, {
+    bool preview,
+    bool activate,
+  })? onSessionTabOpened;
+
   final RemoteBusBindingResolver? _remoteBusResolver;
   final RemoteCliReadinessService? _remoteCliReadiness;
   final CliProvisionActivityAdapter? _cliProvisionActivity;
@@ -255,7 +265,25 @@ class ChatCubit extends Cubit<ChatState>
   late final SessionLaunchService _launchService = SessionLaunchService(
     this,
     termuxWorkOpsBlockFor: _termuxWorkOpsBlockFor,
+    onSessionTabOpened: _forwardSessionTabOpened,
   );
+
+  /// Forwards to [onSessionTabOpened], resolved at call time so wiring set by
+  /// the app shell after construction is always observed (the launch service is
+  /// built lazily on first session open).
+  void _forwardSessionTabOpened(
+    String workspaceId,
+    String sessionId, {
+    bool preview = false,
+    bool activate = true,
+  }) {
+    onSessionTabOpened?.call(
+      workspaceId,
+      sessionId,
+      preview: preview,
+      activate: activate,
+    );
+  }
   late final TabSessionRuntimeCoordinator _sessionRuntime =
       TabSessionRuntimeCoordinator(
         tabStore: _tabStore,
