@@ -179,6 +179,28 @@ void main() {
       },
     );
 
+    test('discardAll issues `restore .`', () async {
+      final runner = _FakeRunner({});
+      final service = GitService(
+        runner: LocalGitCommandRunner(runner: runner.call),
+      );
+
+      await service.discardAll('/repo');
+
+      expect(runner.calls, [['restore', '.']]);
+    });
+
+    test('discardFolder issues `restore -- <folder>`', () async {
+      final runner = _FakeRunner({});
+      final service = GitService(
+        runner: LocalGitCommandRunner(runner: runner.call),
+      );
+
+      await service.discardFolder('/repo', 'src/utils');
+
+      expect(runner.calls, [['restore', '--', 'src/utils']]);
+    });
+
     test('throws GitException with stderr on non-zero exit', () async {
       final runner = _FakeRunner({
         'push': ProcessResult(0, 1, '', 'remote rejected'),

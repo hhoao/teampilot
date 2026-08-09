@@ -7,6 +7,7 @@ import 'package:teampilot/cubits/ai_feature_settings_cubit.dart';
 import 'package:teampilot/cubits/editor_cubit.dart';
 import 'package:teampilot/cubits/floating_workspace/floating_workspace_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
+import 'package:teampilot/cubits/workbench/workbench_tab.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/git_status.dart';
 import 'package:teampilot/models/layout_preferences.dart';
@@ -54,6 +55,20 @@ class _UnstagedGitStub extends GitService {
   Future<void> discardAll(String dir) async {
     calls.add(['restore', '.']);
   }
+
+  @override
+  Future<String> diff(
+    String dir,
+    GitFileChange change, {
+    bool ignoreWhitespace = false,
+    bool fullContext = false,
+  }) async {
+    return '--- a/${change.path}\n'
+        '+++ b/${change.path}\n'
+        '@@ -1 +1 @@\n'
+        '-old\n'
+        '+new\n';
+  }
 }
 
 class _RecordingOpener extends WorkbenchEditorOpener {
@@ -69,6 +84,7 @@ class _RecordingOpener extends WorkbenchEditorOpener {
   final openedPaths = <String>[];
   final openedWorkspaceIds = <String>[];
   final openedFs = <Filesystem>[];
+  final openedDiffs = <String>[];
 
   @override
   Future<void> openFile(
@@ -80,6 +96,20 @@ class _RecordingOpener extends WorkbenchEditorOpener {
     openedPaths.add(path);
     openedWorkspaceIds.add(workspaceId);
     openedFs.add(fs!);
+  }
+
+  @override
+  void openDiff({
+    required String workspaceId,
+    required String absolutePath,
+    required WorkbenchDiffSource source,
+    required String title,
+    required String diffText,
+    DiffReload? reloadDiff,
+    Future<void> Function()? onWorkingTreeWritten,
+    bool preview = true,
+  }) {
+    openedDiffs.add(absolutePath);
   }
 }
 
@@ -226,6 +256,58 @@ void main() {
       await doubleClick(tester, rowGone);
 
       expect(opener!.openedPaths, isEmpty);
+    });
+  });
+
+  testWidgets('single click on a changed row selects and opens the diff', (
+    tester,
+  ) async {
+    await runOnDesktop(tester, () async {
+      final aiSettingsCubit = AiFeatureSettingsCubit(
+        repository: InMemoryAppSettingsRepository(),
+      );
+      addTearDown(aiSettingsCubit.close);
+
+      await tester.pumpWidget(
+        wrap(
+          aiSettingsCubit,
+          GitSourceControlPanel(
+            roots: const ['/repo'],
+            workContext: workContext,
+            workspaceId: 'ws-test',
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      final rowA = find.ancestor(
+        of: find.text('a.txt'),
+        matching: find.byType(GitChangeTile),
+      );
+      expect(rowA, findsOneWidget);
+
+      // Single click selects AND opens the diff (desktop TpHover delays onTap
+      // past the double-tap window when onDoubleTap is also wired). No file
+      // open — that stays on double-click.
+      await tester.tap(rowA);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(opener!.openedDiffs, ['/repo/a.txt']);
+      expect(opener!.openedPaths, isEmpty);
+
+      // Selection enables "Discard Selected Change".
+      await tester.tap(find.byIcon(Icons.undo));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      final selectedItem = tester.widget<PopupMenuItem<String>>(
+        find.ancestor(
+          of: find.text('Discard Selected Change'),
+          matching: find.byType(PopupMenuItem<String>),
+        ),
+      );
+      expect(selectedItem.enabled, isTrue);
     });
   });
 

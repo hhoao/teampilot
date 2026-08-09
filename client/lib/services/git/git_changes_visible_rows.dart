@@ -212,8 +212,12 @@ List<GitFileChange> mergeGitChangesByPath({
   required List<GitFileChange> unstaged,
 }) {
   final byPath = <String, GitFileChange>{};
-  for (final c in unstaged) byPath.putIfAbsent(c.path, () => c);
-  for (final c in staged) byPath[c.path] = c;
+  for (final c in unstaged) {
+    byPath.putIfAbsent(c.path, () => c);
+  }
+  for (final c in staged) {
+    byPath[c.path] = c;
+  }
   return byPath.values.toList();
 }
 

@@ -144,7 +144,6 @@ class _GitChangesTreeListState extends State<GitChangesTreeList> {
                     slivers: [
                       SliverToBoxAdapter(
                         child: _GitChangesRootHeader(
-                          stagedCount: widget.treeView.stagedCount,
                           totalCount: widget.treeView.totalCount,
                           allStaged: widget.treeView.allStaged,
                           noneStaged: widget.treeView.noneStaged,
@@ -223,14 +222,12 @@ void _noopSelect(String _) {}
 /// count badge, rendered as the first sliver of the changes tree list.
 class _GitChangesRootHeader extends StatelessWidget {
   const _GitChangesRootHeader({
-    required this.stagedCount,
     required this.totalCount,
     required this.allStaged,
     required this.noneStaged,
     required this.onToggleAll,
   });
 
-  final int stagedCount;
   final int totalCount;
   final bool allStaged;
   final bool noneStaged;

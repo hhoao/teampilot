@@ -411,6 +411,32 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
     return null;
   }
 
+  /// Clears [_selectedPath] when its change is no longer staged/unstaged, so
+  /// "Discard Selected Change" never stays enabled for a vanished path.
+  void _syncSelectedPath(GitState state) {
+    final selected = _selectedPath;
+    if (selected == null) return;
+    final stillPresent = state.status.staged.any((c) => c.path == selected) ||
+        state.status.unstaged.any((c) => c.path == selected);
+    if (!stillPresent) setState(() => _selectedPath = null);
+  }
+
+  /// True when the set of change paths (staged ∪ unstaged) is identical, i.e.
+  /// the status refresh did not add/remove any rows that could invalidate the
+  /// current [_selectedPath].
+  bool _statusPathsEqual(GitRepoStatus a, GitRepoStatus b) {
+    final aPaths = <String>{
+      for (final c in a.staged) c.path,
+      for (final c in a.unstaged) c.path,
+    };
+    final bPaths = <String>{
+      for (final c in b.staged) c.path,
+      for (final c in b.unstaged) c.path,
+    };
+    if (aPaths.length != bPaths.length) return false;
+    return aPaths.containsAll(bPaths);
+  }
+
   Future<void> _openBranchSheet() async {
     await _cubit.ensureBranches(force: true);
     if (!mounted) return;
@@ -435,7 +461,8 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
         listenWhen: (prev, next) =>
             (prev.errorMessage != next.errorMessage &&
                 next.errorMessage != null) ||
-            prev.commitMessage != next.commitMessage,
+            prev.commitMessage != next.commitMessage ||
+            !_statusPathsEqual(prev.status, next.status),
         listener: (context, state) {
           if (state.errorMessage != null) {
             AppToast.show(
@@ -447,6 +474,7 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
           if (_commitController.text != state.commitMessage) {
             _commitController.text = state.commitMessage;
           }
+          _syncSelectedPath(state);
         },
         buildWhen: (prev, next) =>
             prev.gitAvailable != next.gitAvailable ||
@@ -594,7 +622,11 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
                       listScrollController: _changesScrollController,
                       horizontalScrollController: _horizontalScrollController,
                       selectedPath: _selectedPath,
-                      onSelect: (path) => setState(() => _selectedPath = path),
+                      onSelect: (path) {
+                        setState(() => _selectedPath = path);
+                        final change = _findChange(path);
+                        if (change != null) unawaited(_openDiff(change));
+                      },
                       onOpenDiff: (change) => unawaited(_openDiff(change)),
                       onConfirmDiscard: (change) =>
                           unawaited(_confirmDiscard(change)),
