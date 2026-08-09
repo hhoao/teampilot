@@ -39,6 +39,8 @@ import '../registry/capabilities/exit_plan_mode_capability.dart';
 import '../registry/capabilities/turn_completion_capability.dart';
 import 'capabilities/provider_display.dart';
 import '../registry/capabilities/provider_display_capability.dart';
+import 'capabilities/config_ui.dart';
+import '../registry/capabilities/cli_config_ui_capability.dart';
 import '../registry/capabilities/wait_before_stop_capability.dart';
 import '../registry/capabilities/turn_interrupt_capability.dart';
 import 'capabilities/mcp_config_writer.dart';

@@ -791,12 +791,6 @@ Future<AppShell> buildAppShell({
 
   appProviderCubit = AppProviderCubit(
     flashskyaiExecutablePath: sessionPreferencesCubit.resolveExecutable,
-    claudeExecutablePath: () =>
-        sessionPreferencesCubit.resolveExecutable(CliTool.claude),
-    cursorExecutablePath: () =>
-        sessionPreferencesCubit.resolveExecutable(CliTool.cursor),
-    claudeCredentialsService: claudeCredentialsService,
-    cursorCredentialsService: cursorCredentialsService,
   );
 
   llmConfigCubit = LlmConfigCubit(

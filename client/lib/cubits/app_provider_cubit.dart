@@ -7,10 +7,9 @@ import '../models/credential_action_result.dart';
 import '../models/llm_config.dart';
 import '../repositories/app_provider_repository.dart';
 import '../services/storage/app_storage.dart';
-import '../services/cli/claude/provider/claude_provider_credentials_service.dart';
 import '../services/provider/credential_binding.dart';
-import '../services/cli/cursor/provider/cursor_provider_credentials_service.dart';
 import '../services/cli/registry/capabilities/provider_credential_capability.dart';
+import '../services/cli/registry/capabilities/provider_display_capability.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
 import '../services/provider/provider_import_service.dart';
 import '../services/provider/tool_config_generator.dart';
@@ -81,39 +80,18 @@ class AppProviderCubit extends Cubit<AppProviderState> {
     AppProviderRepository? repository,
     ProviderImportService? importService,
     String? Function()? flashskyaiExecutablePath,
-    String? Function()? claudeExecutablePath,
     ToolConfigGenerator? generator,
-    ClaudeProviderCredentialsService? claudeCredentialsService,
-    CursorProviderCredentialsService? cursorCredentialsService,
-    String? Function()? cursorExecutablePath,
     String? basePath,
   }) : _repository = repository ?? AppProviderRepository(basePath: basePath),
        _generator = generator ?? const ToolConfigGenerator(),
        _flashskyaiExecutablePath = flashskyaiExecutablePath,
        _importService = importService,
-       _claudeCredentials =
-           claudeCredentialsService ??
-           ClaudeProviderCredentialsService(
-             fs: AppStorage.fs,
-             basePath: _resolveBasePath(basePath),
-             resolveClaudeExecutable: claudeExecutablePath,
-           ),
-       _cursorCredentials =
-           cursorCredentialsService ??
-           CursorProviderCredentialsService(
-             fs: AppStorage.fs,
-             basePath: _resolveBasePath(basePath),
-             resolveCursorExecutable: cursorExecutablePath,
-           ),
        super(const AppProviderState());
 
   final AppProviderRepository _repository;
   final ToolConfigGenerator _generator;
   final ProviderImportService? _importService;
   final String? Function()? _flashskyaiExecutablePath;
-  final ClaudeProviderCredentialsService _claudeCredentials;
-  final CursorProviderCredentialsService _cursorCredentials;
-
   static String _resolveBasePath(String? basePath) {
     if (basePath != null && basePath.trim().isNotEmpty) {
       return basePath.trim();
@@ -372,30 +350,13 @@ class AppProviderCubit extends Cubit<AppProviderState> {
     AppProviderConfig provider,
     CredentialBindingKind binding,
   ) async {
-    if (provider.cli != CliTool.claude) return false;
+    final display = CliToolRegistry.builtIn()
+        .capability<ProviderDisplayCapability>(provider.cli);
+    if (display == null || !display.hasCredentialBinding) return false;
     final updated = provider.copyWith(
       config: withCredentialBinding(provider.config, binding),
     );
     return upsertProvider(updated);
-  }
-
-  Future<CredentialProbe> probeClaudeCredentials(String providerId) async {
-    final provider = state.providers
-        .where((p) => p.id == providerId)
-        .firstOrNull;
-    if (provider == null) {
-      return CredentialProbe(
-        providerId: providerId,
-        status: CredentialStatus.missing,
-        credentialPath: '',
-      );
-    }
-    final binding = resolveCredentialBinding(provider);
-    return _claudeCredentials.probe(
-      providerId,
-      binding: binding,
-      homeDirectory: AppStorage.home,
-    );
   }
 
   Future<bool> loginClaudeOfficialProvider(String providerId) async {
@@ -450,10 +411,6 @@ class AppProviderCubit extends Cubit<AppProviderState> {
       provider: provider,
       kind: ProviderCredentialActionKind.revoke,
     ).then((result) => result.ok);
-  }
-
-  Future<CredentialProbe> probeCursorCredentials(String providerId) async {
-    return _cursorCredentials.probe(providerId);
   }
 
   Future<bool> loginCursorProvider(String providerId) async {
