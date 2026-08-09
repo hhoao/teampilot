@@ -496,26 +496,8 @@ class GitCubit extends Cubit<GitState> {
     }
   }
 
-  Future<String?> diff(
-    GitFileChange change, {
-    bool ignoreWhitespace = false,
-    bool fullContext = false,
-  }) async {
-    try {
-      return await _service.diff(
-        state.repoRoot,
-        change,
-        ignoreWhitespace: ignoreWhitespace,
-        fullContext: fullContext,
-      );
-    } on GitException catch (e) {
-      _publish(state.copyWith(errorMessage: e.message), recomputeRows: false);
-      return null;
-    }
-  }
-
   /// Working tree vs HEAD for [relativePath]. When the path is untracked in
-  /// the current status snapshot, uses `--no-index` like [diff] for untracked.
+  /// the current status snapshot, uses `--no-index` for untracked paths.
   Future<String?> diffAgainstHead(
     String relativePath, {
     bool ignoreWhitespace = false,

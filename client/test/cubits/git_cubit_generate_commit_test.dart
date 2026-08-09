@@ -22,9 +22,6 @@ class _StubGitService extends GitService {
   Future<bool> get isAvailable async => true;
 
   @override
-  Future<String> stagedDiff(String dir, {int maxChars = 12000}) async => _diff;
-
-  @override
   Future<String> diffSelectedPaths(
     String dir,
     List<String> paths, {

@@ -176,9 +176,21 @@
   "gitDiscard": "放弃更改",
   "gitOpenFile": "打开文件",
   "gitIncludeInCommit": "纳入本次提交",
+  "@gitIncludeInCommit": {
+    "description": "右键菜单动作：将文件纳入本次提交。"
+  },
   "gitExcludeFromCommit": "排除出本次提交",
+  "@gitExcludeFromCommit": {
+    "description": "右键菜单动作：将文件排除出本次提交。"
+  },
   "gitIncludeFolderInCommit": "纳入文件夹到本次提交",
+  "@gitIncludeFolderInCommit": {
+    "description": "右键菜单动作：将文件夹及其更改的文件纳入本次提交。"
+  },
   "gitExcludeFolderFromCommit": "从本次提交排除文件夹",
+  "@gitExcludeFolderFromCommit": {
+    "description": "右键菜单动作：将文件夹及其更改的文件排除出本次提交。"
+  },
   "gitShowDiff": "显示差异",
   "gitCopyPath": "复制路径",
   "gitDiscardFolder": "放弃文件夹中的更改",

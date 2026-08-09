@@ -163,9 +163,52 @@ void main() {
       await gesture.up();
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
+      // An unstaged (unchecked) row offers to include it in the next commit.
+      expect(find.text('Include in Commit'), findsOneWidget);
       await tester.tap(find.text('Open File'));
       await tester.pump();
       expect(openCalls, 1);
+    });
+  });
+
+  testWidgets(
+      'right-click on an unstaged row shows Include; staged row shows Exclude',
+      (tester) async {
+    await runOnDesktop(tester, () async {
+      Future<void> openMenu(GitFileChange change) async {
+        await tester.pumpWidget(wrap(tile(change: change)));
+        final center = tester.getCenter(find.byType(GitChangeTile));
+        final gesture = await tester.startGesture(
+          center,
+          kind: PointerDeviceKind.mouse,
+          buttons: kSecondaryMouseButton,
+        );
+        await gesture.up();
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+      }
+
+      // Unstaged row → "Include in Commit" (not a legacy "Stage changes" label).
+      await openMenu(
+        const GitFileChange(
+          path: 'main.dart',
+          kind: GitChangeKind.modified,
+          staged: false,
+        ),
+      );
+      expect(find.text('Include in Commit'), findsOneWidget);
+      expect(find.text('Exclude from Commit'), findsNothing);
+
+      // Staged row → "Exclude from Commit".
+      await openMenu(
+        const GitFileChange(
+          path: 'main.dart',
+          kind: GitChangeKind.modified,
+          staged: true,
+        ),
+      );
+      expect(find.text('Exclude from Commit'), findsOneWidget);
+      expect(find.text('Include in Commit'), findsNothing);
     });
   });
 

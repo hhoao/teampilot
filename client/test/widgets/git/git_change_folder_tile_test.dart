@@ -73,7 +73,7 @@ void main() {
     );
   }
 
-  testWidgets('folder checkbox is checked when all staged', (tester) async {
+  testWidgets('folder checkbox is checked when all selected', (tester) async {
     await runOnDesktop(tester, () async {
       await tester.pumpWidget(
         buildTile(subtreeSelectedCount: 2, subtreeTotalCount: 2),
@@ -83,7 +83,7 @@ void main() {
     });
   });
 
-  testWidgets('folder checkbox is tri-state when partially staged', (
+  testWidgets('folder checkbox is tri-state when partially selected', (
     tester,
   ) async {
     await runOnDesktop(tester, () async {
@@ -95,7 +95,7 @@ void main() {
     });
   });
 
-  testWidgets('folder checkbox unchecked when none staged', (tester) async {
+  testWidgets('folder checkbox unchecked when none selected', (tester) async {
     await runOnDesktop(tester, () async {
       await tester.pumpWidget(
         buildTile(subtreeSelectedCount: 0, subtreeTotalCount: 2),

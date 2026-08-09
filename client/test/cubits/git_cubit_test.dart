@@ -35,21 +35,6 @@ class _FakeGitService extends GitService {
     }
   }
 
-  final List<List<String>> stagedPaths = [];
-  final List<List<String>> unstagedPaths = [];
-
-  @override
-  Future<void> stage(String dir, List<String> paths) async {
-    stagedPaths.add(paths);
-    await _record('stage');
-  }
-
-  @override
-  Future<void> unstage(String dir, List<String> paths) async {
-    unstagedPaths.add(paths);
-    await _record('unstage');
-  }
-
   @override
   Future<void> commit(String dir, String message) => _record('commit:$message');
 
@@ -259,7 +244,8 @@ void main() {
     await cubit.close();
   });
 
-  test('commit succeeds, clears message, and refreshes', () async {
+  test('commit succeeds, clears message, refreshes, and clears the selection',
+      () async {
     final service = _FakeGitService(
       statusToReturn: _repoWith(staged: const [_staged]),
     );
@@ -267,6 +253,10 @@ void main() {
     await cubit.setRepoRoot('/repo'); // a.txt auto-selected
     cubit.setCommitMessage('hello');
     service.calls.clear();
+
+    // After the commit the tree is clean, so the committed path is gone from
+    // the status; the post-commit refresh must drop it from the selection.
+    service.statusToReturn = _repoWith();
 
     final ok = await cubit.commit();
 
@@ -277,6 +267,7 @@ void main() {
     ]);
     expect(service.calls, contains('status')); // refresh after commit
     expect(cubit.state.commitMessage, '');
+    expect(cubit.state.selectedPaths, isEmpty); // committed paths deselected
     await cubit.close();
   });
 
