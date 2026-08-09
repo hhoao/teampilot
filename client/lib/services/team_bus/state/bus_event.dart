@@ -11,6 +11,11 @@ class PtySpawned extends BusEvent {
   const PtySpawned();
 }
 
+/// 空闲回收:PTY 被丢弃(running|materializing → declared)。inbox 保留,消息不丢。
+class PtyClosed extends BusEvent {
+  const PtyClosed();
+}
+
 /// 出站 send 命中 declared 成员:开始物化(declared → materializing)。
 class MaterializeStarted extends BusEvent {
   const MaterializeStarted(this.bootstrap);

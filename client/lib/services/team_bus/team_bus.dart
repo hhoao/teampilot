@@ -154,6 +154,13 @@ class TeamBus implements CoordinationView {
     _apply(node, const PtySpawned());
   }
 
+  /// 空闲回收:PTY 被丢弃 → 复位为 declared(保留 inbox),以便 materialize 漏斗按需重拉。
+  void markMemberDiscarded(String memberId) {
+    final node = _members[memberId];
+    if (node == null) return;
+    _apply(node, const PtyClosed());
+  }
+
   /// 跑 reducer：算出新在线态写回 node，返回待落地的效果。
   List<BusEffect> _reduce(AgentNode node, BusEvent event) {
     final before = Presence(node.lifecycle, node.activity);

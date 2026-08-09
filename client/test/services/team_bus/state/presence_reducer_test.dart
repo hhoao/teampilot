@@ -170,4 +170,37 @@ void main() {
       );
     });
   });
+
+  group('PtyClosed', () {
+    test('running (at prompt) → declared + none, no effect', () {
+      final t = _run(_atPrompt, const PtyClosed());
+      expect(t.presence.lifecycle, MemberLifecycle.declared);
+      expect(t.presence.activity, MemberActivity.none);
+      expect(t.effects, isEmpty);
+    });
+
+    test('running active → declared + none', () {
+      final t = _run(_active, const PtyClosed());
+      expect(t.presence.lifecycle, MemberLifecycle.declared);
+      expect(t.presence.activity, MemberActivity.none);
+    });
+
+    test('materializing → declared', () {
+      final t = _run(
+        const Presence(MemberLifecycle.materializing, MemberActivity.active),
+        const PtyClosed(),
+      );
+      expect(t.presence.lifecycle, MemberLifecycle.declared);
+    });
+
+    test('running + unread → declared + mailQueued (inbox preserved)', () {
+      final t = _run(_parked, const PtyClosed(), hasUnread: true);
+      expect(t.presence.lifecycle, MemberLifecycle.declared);
+      expect(t.presence.activity, MemberActivity.mailQueued);
+    });
+
+    test('declared → no change', () {
+      expect(_run(_declared, const PtyClosed()).presence, _declared);
+    });
+  });
 }

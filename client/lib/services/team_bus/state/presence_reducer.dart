@@ -106,6 +106,19 @@ abstract final class PresenceReducer {
         // 回合结束 → prompt。门铃只走 [MailArrived]（[onMemberIdle] 在落态后补发）。
         if (s.activity != MemberActivity.active) return _stay(s);
         return _to(s.copyWith(activity: MemberActivity.turnDoneReady));
+
+      case PtyClosed():
+        // 空闲回收:PTY 被丢弃 → 复位为 declared(保留 inbox)。activity 依未读落到
+        // none / mailQueued,之后 materialize 漏斗按需重拉。
+        if (!s.ptyRunning) return _stay(s);
+        return _to(
+          s.copyWith(
+            lifecycle: MemberLifecycle.declared,
+            activity: ctx.hasUnread
+                ? MemberActivity.mailQueued
+                : MemberActivity.none,
+          ),
+        );
     }
   }
 
