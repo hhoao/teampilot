@@ -40,9 +40,6 @@ class _Cap implements AiHistoryCapability {
 
   @override
   ToolResultEnricher get toolResultEnricher => const NoOpToolResultEnricher();
-
-  @override
-  AiTranscriptLineAppend? get lineAppend => appendClaudeJsonlEvent;
 }
 
 Future<Map<String, AiSubagentAttachment>> _inflate({
@@ -576,9 +573,6 @@ class _WorkflowCap implements AiHistoryCapability {
 
   @override
   ToolResultEnricher get toolResultEnricher => const NoOpToolResultEnricher();
-
-  @override
-  AiTranscriptLineAppend? get lineAppend => appendClaudeJsonlEvent;
 }
 
 class _WorkflowStubResolver implements SubagentSideResolver {

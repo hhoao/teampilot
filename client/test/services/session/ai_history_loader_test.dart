@@ -11,7 +11,6 @@ import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/models/workspace_launch_context.dart';
 import 'package:teampilot/services/cli/registry/capabilities/ai_history_capability.dart';
 import 'package:teampilot/services/cli/registry/capabilities/history/claude_ai_transcript.dart';
-import 'package:teampilot/services/cli/registry/capabilities/history/claude_compatible_jsonl.dart';
 import 'package:teampilot/services/cli/registry/capabilities/history/cursor_ai_transcript.dart';
 import 'package:teampilot/services/cli/registry/capabilities/history/tool_result_enricher.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
@@ -135,38 +134,21 @@ void main() {
     );
   });
 
-  test('Cursor transcript parses via tailer + appendCursorJsonlEvent', () async {
+  test('Cursor transcript parses via the capability adapter', () async {
     // Cursor rows use a top-level `role` field (not claude's `type`), wrap
-    // user text in <user_query>, and omit tool_use ids. The loader must parse
-    // them with the cursor line dialect — not the claude-compatible tailer.
-    final bucket = RuntimeLayout.workspaceBucketForPrimaryPath('/work/project');
+    // user text in <user_query>, and omit tool_use ids. The loader parses them
+    // through the capability's adapter — not a claude-compatible dialect.
     final session = simpleSession().copyWith(cli: CliTool.cursor);
-    final toolRoot = layout.sessionRuntimeToolDir(
-      'ws-1',
-      session.sessionId,
-      'cursor',
-    );
-    final projects = p.join(toolRoot, 'projects', bucket);
-    await Directory(projects).create(recursive: true);
-    final path = p.join(projects, '${session.sessionId}.jsonl');
     final fixture = await File(
       'test/fixtures/session_history/cursor/agent_transcript_no_tool_id.jsonl',
     ).readAsBytes();
-    await File(path).writeAsBytes(fixture);
 
     final registry = fakeAiHistoryRegistry(
       cli: CliTool.cursor,
       adapter: const CursorAiTranscriptAdapter(),
-      lineAppend: appendCursorJsonlEvent,
       locate: (_) async => AiTranscriptBundle(
         adapterId: 'cursor',
-        fragments: [
-          AiTranscriptFragment(name: 't.jsonl', bytes: [1, 2, 3]),
-        ],
-        hints: AiHistoryWatchMeta(
-          changeWatchRoot: p.dirname(path),
-          cacheTokenPaths: [path],
-        ).toHints(),
+        fragments: [AiTranscriptFragment(name: 't.jsonl', bytes: fixture)],
       ),
     );
     final loader = buildLoader(registry: registry);
@@ -404,46 +386,26 @@ void main() {
   });
 
   test('load calls toolResultEnricher once between parse and inflate', () async {
-    // Seed a transcript whose tool result carries the truncation sentinel so
-    // the loader's enricher guard fires (the tailer parses the real file now).
-    final bucket = RuntimeLayout.workspaceBucketForPrimaryPath('/work/project');
-    final session = simpleSession();
-    final toolRoot = layout.sessionRuntimeToolDir(
-      'ws-1',
-      session.sessionId,
-      'claude',
-    );
-    final projects = p.join(toolRoot, 'projects', bucket);
-    await Directory(projects).create(recursive: true);
-    final path = p.join(projects, '${session.sessionId}.jsonl');
-    final fixture = await File(
-      'test/fixtures/session_history/claude/truncated_bash.jsonl',
-    ).readAsBytes();
-    await File(path).writeAsBytes(fixture);
-
+    // The adapter emits a tool result carrying the truncation sentinel, so the
+    // loader's enricher guard fires; the enricher output is what is returned.
     final enricher = _RecordingEnricher();
     final registry = fakeAiHistoryRegistry(
       cli: CliTool.claude,
       adapter: _EchoAdapter(),
       toolResultEnricher: enricher,
-      lineAppend: appendClaudeJsonlEvent,
       locate: (_) async => AiTranscriptBundle(
         adapterId: 'claude',
         fragments: const [
           AiTranscriptFragment(name: 't.jsonl', bytes: [1, 2, 3]),
         ],
-        hints: AiHistoryWatchMeta(
-          changeWatchRoot: p.dirname(path),
-          cacheTokenPaths: [path],
-        ).toHints(),
       ),
     );
     final loader = buildLoader(registry: registry);
 
     final result = await loader.load(
-      session: session,
+      session: simpleSession(),
       memberId: '',
-      launchContext: launchContextFor(session),
+      launchContext: launchContextFor(simpleSession()),
     );
 
     expect(enricher.calls, 1);
@@ -453,46 +415,27 @@ void main() {
 
   test('unchanged reload returns cached enriched messages, not the raw tail',
       () async {
-    // Seed a transcript carrying the truncation sentinel so the first load
-    // enriches (storing the enriched list in _messages), then bump the cache
-    // token while leaving bytes byte-identical so the second load hits the
-    // tailer's unchanged branch and must hand back the enriched messages.
-    final bucket = RuntimeLayout.workspaceBucketForPrimaryPath('/work/project');
+    // The adapter emits a tool result carrying the truncation sentinel so the
+    // first load enriches (storing the enriched list in _messages). With the
+    // same cache token, the second load hits the loader's token cache and must
+    // hand back the cached enriched messages without re-parsing/re-enriching.
+    mtimeToken = 'mtime-1';
     final session = simpleSession();
-    final toolRoot = layout.sessionRuntimeToolDir(
-      'ws-1',
-      session.sessionId,
-      'claude',
-    );
-    final projects = p.join(toolRoot, 'projects', bucket);
-    await Directory(projects).create(recursive: true);
-    final path = p.join(projects, '${session.sessionId}.jsonl');
-    final fixture = await File(
-      'test/fixtures/session_history/claude/truncated_bash.jsonl',
-    ).readAsBytes();
-    await File(path).writeAsBytes(fixture);
-
     final enricher = _RecordingEnricher();
     final registry = fakeAiHistoryRegistry(
       cli: CliTool.claude,
       adapter: _EchoAdapter(),
       toolResultEnricher: enricher,
-      lineAppend: appendClaudeJsonlEvent,
       locate: (_) async => AiTranscriptBundle(
         adapterId: 'claude',
         fragments: const [
           AiTranscriptFragment(name: 't.jsonl', bytes: [1, 2, 3]),
         ],
-        hints: AiHistoryWatchMeta(
-          changeWatchRoot: p.dirname(path),
-          cacheTokenPaths: [path],
-        ).toHints(),
       ),
     );
     final loader = buildLoader(registry: registry);
     final ctx = launchContextFor(session);
 
-    mtimeToken = 'mtime-1';
     final first = await loader.load(
       session: session,
       memberId: '',
@@ -500,10 +443,7 @@ void main() {
     );
     expect(first.messages.single.id, 'enriched');
 
-    mtimeToken = 'mtime-2';
-    File(path).setLastModifiedSync(
-      DateTime.now().add(const Duration(seconds: 2)),
-    );
+    // Same token → cache hit; no re-parse, no re-enrich.
     final second = await loader.load(
       session: session,
       memberId: '',
@@ -643,11 +583,19 @@ class _EchoAdapter implements AiTranscriptAdapter {
 
   @override
   Future<List<AiMessage>> parse(AiTranscriptBundle bundle) async {
+    // Carries the truncation sentinel so the loader's enricher guard fires.
     return [
       AiMessage(
         id: 'parsed',
         role: AiRole.user,
-        parts: [AiTextPart(text: 'parsed')],
+        parts: [
+          AiToolCallPart(
+            toolCallId: 'call_0',
+            toolName: 'Bash',
+            result: 'tool output truncated',
+            status: AiToolCallStatus.complete,
+          ),
+        ],
       ),
     ];
   }

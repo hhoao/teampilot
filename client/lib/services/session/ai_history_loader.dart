@@ -1,3 +1,5 @@
+import 'dart:isolate';
+
 import 'package:ai_message_core/ai_message_core.dart';
 
 import '../../models/app_session.dart';
@@ -14,7 +16,6 @@ import '../terminal/session_member_cli_resolver.dart';
 import 'ai_history_load_result.dart';
 import 'ai_history_locator.dart';
 import 'ai_history_watch_meta.dart';
-import 'ai_transcript_tailer.dart';
 import 'session_history_context.dart';
 import 'session_history_context_builder.dart';
 import 'subagent_attachment_inflater.dart';
@@ -39,8 +40,8 @@ class _AiHistorySeat {
   final SessionHistoryContext ctx;
 }
 
-/// Resolves seat CLI → locate path → [AiTranscriptTailer] → messages, with
-/// sessionId+memberId(+mtime) caching.
+/// Resolves seat CLI → locate bundle → [AiTranscriptAdapter] parse → messages,
+/// with sessionId+memberId(+mtime) caching.
 final class AiHistoryLoader {
   AiHistoryLoader({
     SessionHistoryContextBuilder contextBuilder =
@@ -66,13 +67,14 @@ final class AiHistoryLoader {
   final SessionHistoryCacheTokenResolver? _resolveCacheToken;
   final List<CliPreset> Function()? _globalPresets;
 
-  /// Incremental transcript reader holding per-seat byte cursors.
-  final AiTranscriptTailer _tailer = AiTranscriptTailer();
-
   /// Per-seat cache: resolver token → messages → attachments.
   final _tokens = <String, String>{};
   final _messages = <String, List<AiMessage>>{};
   final _attachments = <String, Map<String, AiSubagentAttachment>>{};
+
+  /// Bundles at/above this size parse on a worker isolate; smaller ones parse
+  /// in place (isolate spawn + transfer overhead would dominate).
+  static const _isolateParseMinBytes = 256 * 1024;
 
   /// Work-plane context for the seat (live refresh binds this FS).
   Future<RuntimeContext> resolveSeatRuntime({
@@ -88,7 +90,6 @@ final class AiHistoryLoader {
 
   /// Clears all seats (v1 work-plane evict).
   void clearCache() {
-    _tailer.clear();
     _tokens.clear();
     _messages.clear();
     _attachments.clear();
@@ -162,35 +163,24 @@ final class AiHistoryLoader {
         }
         return null; // degrade-only; never invent a path from fragment basename
       }();
-      final lineAppend = cap.lineAppend;
-
-      // Tailer is per-CLI: each capability supplies its own line parser. When
-      // the CLI has no incremental dialect (opencode's multi-file DB) or the
-      // locate bundle carries no byte-cursor path, fall back to a full parse
-      // through the capability's adapter.
-      final useTailer = lineAppend != null && parentPath != null;
+      // Full parse through the capability's adapter: reads the whole located
+      // transcript each time. The mtime token above skips the work when nothing
+      // changed. (The incremental tailer was rolled back — see git history.)
+      //
+      // Heavy transcripts parse on a worker isolate so the UI thread never
+      // spends tens of ms re-decoding a large JSONL on live refresh. Isolate
+      // spawn + transfer have a fixed ~ms cost, so small bundles parse in place
+      // where the overhead would dominate.
       var messages = const <AiMessage>[];
-      var tailChanged = false;
-      if (useTailer) {
-        final tail = await _tailer.refresh(
-          ctx: ctx,
-          seatKey: cacheKey,
-          transcriptPath: parentPath,
-          appendEvent: lineAppend,
-          force: force,
+      if (bundle != null) {
+        final adapter = cap.adapter;
+        final totalBytes = bundle.fragments.fold<int>(
+          0,
+          (sum, f) => sum + f.bytes.length,
         );
-        messages = tail.messages;
-        tailChanged = tail.changed;
-      } else if (bundle != null) {
-        messages = await cap.adapter.parse(bundle);
-      }
-
-      if (bundle != null && useTailer && !tailChanged) {
-        _tokens[cacheKey] = token ?? 'unchanged-$cacheKey';
-        return AiHistoryLoadResult(
-          messages: _messages[cacheKey] ?? const [],
-          subagentAttachments: _attachments[cacheKey] ?? const {},
-        );
+        messages = totalBytes >= _isolateParseMinBytes
+            ? await Isolate.run(() => adapter.parse(bundle))
+            : await adapter.parse(bundle);
       }
 
       if (_needsToolResultEnrichment(messages)) {
@@ -230,14 +220,12 @@ final class AiHistoryLoader {
   void invalidate({required String sessionId, String? memberId}) {
     if (memberId != null) {
       final key = _cacheKey(sessionId, memberId);
-      _tailer.remove(key);
       _tokens.remove(key);
       _messages.remove(key);
       _attachments.remove(key);
       return;
     }
     final prefix = '${sessionId.trim()}\u0000';
-    _tailer.removeWhere((key) => key.startsWith(prefix));
     _tokens.removeWhere((key, _) => key.startsWith(prefix));
     _messages.removeWhere((key, _) => key.startsWith(prefix));
     _attachments.removeWhere((key, _) => key.startsWith(prefix));

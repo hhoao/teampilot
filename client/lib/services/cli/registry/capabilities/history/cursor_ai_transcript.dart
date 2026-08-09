@@ -180,10 +180,9 @@ Map<String, dynamic>? _tryDecodeObject(String raw) {
   return null;
 }
 
-/// Appends one Cursor agent-transcript event into [messages]. Public so the
-/// incremental tailer ([AiTranscriptLineAppend]) can parse cursor rows with
-/// the same `role` dialect, text wrapper cleanup and id-less tool fallback as
-/// [CursorAiTranscriptAdapter.parse].
+/// Appends one Cursor agent-transcript event into [messages]. Used by
+/// [CursorAiTranscriptAdapter.parse] with the same `role` dialect, text wrapper
+/// cleanup and id-less tool fallback.
 void appendCursorJsonlEvent(
   List<AiMessage> messages,
   Map<String, dynamic> event, {

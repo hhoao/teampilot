@@ -112,10 +112,9 @@ Map<String, dynamic>? _tryDecodeObject(String line) {
   return null;
 }
 
-/// Appends one Codex transcript record into [messages]. Public so the
-/// incremental tailer ([AiTranscriptLineAppend]) can parse codex's
-/// `payload`-wrapped `event_msg`/`response_item` rows with the same dialect as
-/// [CodexAiTranscriptAdapter.parse].
+/// Appends one Codex transcript record into [messages]. Used by
+/// [CodexAiTranscriptAdapter.parse] to parse codex's `payload`-wrapped
+/// `event_msg`/`response_item` rows.
 void appendCodexJsonlEvent(
   List<AiMessage> messages,
   Map<String, dynamic> record, {
