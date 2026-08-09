@@ -1058,6 +1058,30 @@ abstract class AppLocalizations {
   /// **'Open File'**
   String get gitOpenFile;
 
+  /// No description provided for @gitIncludeInCommit.
+  ///
+  /// In en, this message translates to:
+  /// **'Include in Commit'**
+  String get gitIncludeInCommit;
+
+  /// No description provided for @gitExcludeFromCommit.
+  ///
+  /// In en, this message translates to:
+  /// **'Exclude from Commit'**
+  String get gitExcludeFromCommit;
+
+  /// No description provided for @gitIncludeFolderInCommit.
+  ///
+  /// In en, this message translates to:
+  /// **'Include Folder in Commit'**
+  String get gitIncludeFolderInCommit;
+
+  /// No description provided for @gitExcludeFolderFromCommit.
+  ///
+  /// In en, this message translates to:
+  /// **'Exclude Folder from Commit'**
+  String get gitExcludeFolderFromCommit;
+
   /// No description provided for @gitShowDiff.
   ///
   /// In en, this message translates to:

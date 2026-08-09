@@ -149,6 +149,20 @@ void main() {
       expect(runner.calls[4], ['reset', '-q', 'HEAD']);
     });
 
+    test('commitSelected stages the paths then commits only those paths', () async {
+      final runner = _FakeRunner({});
+      final service = GitService(
+        runner: LocalGitCommandRunner(runner: runner.call),
+      );
+
+      await service.commitSelected('/repo', 'feat: x', ['a.txt', 'b.dart']);
+
+      expect(runner.calls, [
+        ['add', '--', 'a.txt', 'b.dart'],
+        ['commit', '-m', 'feat: x', '--', 'a.txt', 'b.dart'],
+      ]);
+    });
+
     test(
       'discard chooses restore for tracked and clean for untracked',
       () async {

@@ -321,6 +321,18 @@ class GitService {
   Future<void> commit(String dir, String message) =>
       _run(dir, ['commit', '-m', message]);
 
+  /// Stages [paths] then commits exactly those paths. `git add` handles
+  /// untracked and deleted files; `git commit -- <paths>` restricts the commit
+  /// to the selected set, leaving any other index entries alone.
+  Future<void> commitSelected(
+    String dir,
+    String message,
+    List<String> paths,
+  ) async {
+    await _run(dir, ['add', '--', ...paths]);
+    await _run(dir, ['commit', '-m', message, '--', ...paths]);
+  }
+
   Future<void> push(String dir) => _run(dir, ['push']);
 
   Future<void> pull(String dir) => _run(dir, ['pull']);

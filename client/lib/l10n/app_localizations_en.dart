@@ -529,6 +529,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gitOpenFile => 'Open File';
 
   @override
+  String get gitIncludeInCommit => 'Include in Commit';
+
+  @override
+  String get gitExcludeFromCommit => 'Exclude from Commit';
+
+  @override
+  String get gitIncludeFolderInCommit => 'Include Folder in Commit';
+
+  @override
+  String get gitExcludeFolderFromCommit => 'Exclude Folder from Commit';
+
+  @override
   String get gitShowDiff => 'Show Diff';
 
   @override

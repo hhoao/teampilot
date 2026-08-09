@@ -504,6 +504,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get gitOpenFile => '打开文件';
 
   @override
+  String get gitIncludeInCommit => '纳入本次提交';
+
+  @override
+  String get gitExcludeFromCommit => '排除出本次提交';
+
+  @override
+  String get gitIncludeFolderInCommit => '纳入文件夹到本次提交';
+
+  @override
+  String get gitExcludeFolderFromCommit => '从本次提交排除文件夹';
+
+  @override
   String get gitShowDiff => '显示差异';
 
   @override
