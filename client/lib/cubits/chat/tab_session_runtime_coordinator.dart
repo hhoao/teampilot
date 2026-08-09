@@ -5,10 +5,12 @@ import '../../models/member_presence.dart';
 import '../../models/team_config.dart';
 import '../../services/team/session_working_resolver.dart';
 import '../../services/team_bus/team_bus.dart';
+import '../../services/terminal/terminal_reclaim_policy.dart';
 import 'chat_session_shell_factory.dart';
 import 'chat_tab_store.dart';
 import 'tab_member_coordination_factory.dart';
 import 'tab_member_pty_delivery.dart';
+import 'tab_member_reclaim_watch.dart';
 import 'tab_session_idle_watch.dart';
 import 'tab_working_aggregator.dart';
 
@@ -26,6 +28,10 @@ class TabSessionRuntimeCoordinator {
     TabMemberCoordinationFactory? coordinationFactory,
     TabMemberPtyDelivery? delivery,
     TabSessionIdleWatch? idleWatch,
+    TabMemberReclaimWatch? reclaimWatch,
+    bool Function()? reclaimEnabled,
+    int Function()? reclaimIdleAfterSeconds,
+    void Function(String sessionId, String memberId)? onReclaimMember,
     TabWorkingAggregator? workingAggregator,
     VoidCallback? onAfterIdleWatchTick,
     void Function(String sessionId, String memberId)? onAfterTurnLatched,
@@ -67,6 +73,19 @@ class TabSessionRuntimeCoordinator {
           onAfterTick: onAfterIdleWatchTick,
           onAfterTurnEnded: onAfterTurnEnded,
         );
+    final reclaimSeconds = reclaimIdleAfterSeconds ?? () => 180;
+    final reclaim =
+        reclaimWatch ??
+        (onReclaimMember == null
+            ? null
+            : TabMemberReclaimWatch(
+                tabStore: tabStore,
+                reclaimEnabled: reclaimEnabled ?? () => true,
+                activeTeam: activeTeam,
+                policy: () =>
+                    TerminalReclaimPolicy(idleAfter: Duration(seconds: reclaimSeconds())),
+                onDiscardMember: onReclaimMember,
+              ));
     final aggregator =
         workingAggregator ??
         TabWorkingAggregator(
@@ -82,6 +101,7 @@ class TabSessionRuntimeCoordinator {
       coordinationFactory: coordination,
       delivery: ptyDelivery,
       idleWatch: idle,
+      reclaimWatch: reclaim,
       workingAggregator: aggregator,
     );
   }
@@ -90,15 +110,18 @@ class TabSessionRuntimeCoordinator {
     required TabMemberCoordinationFactory coordinationFactory,
     required TabMemberPtyDelivery delivery,
     required TabSessionIdleWatch idleWatch,
+    required TabMemberReclaimWatch? reclaimWatch,
     required TabWorkingAggregator workingAggregator,
   }) : _coordinationFactory = coordinationFactory,
        _delivery = delivery,
        _idleWatch = idleWatch,
+       _reclaimWatch = reclaimWatch,
        _workingAggregator = workingAggregator;
 
   final TabMemberCoordinationFactory _coordinationFactory;
   final TabMemberPtyDelivery _delivery;
   final TabSessionIdleWatch _idleWatch;
+  final TabMemberReclaimWatch? _reclaimWatch;
   final TabWorkingAggregator _workingAggregator;
 
   SessionWorkingResolver get sessionWorking =>
@@ -159,11 +182,24 @@ class TabSessionRuntimeCoordinator {
 
   Set<String> recomputeWorkingSessions() => _workingAggregator.compute();
 
-  void ensureIdleWatch() => _idleWatch.ensureStarted();
+  /// Starts both the idle-watch heartbeat and the reclaim watch; existing
+  /// callers of [ensureIdleWatch] automatically drive the reclaim pass too.
+  void ensureIdleWatch() {
+    _idleWatch.ensureStarted();
+    _reclaimWatch?.ensureStarted();
+  }
 
-  void maybeStopIdleWatch() => _idleWatch.maybeStop();
+  void maybeStopIdleWatch() {
+    _idleWatch.maybeStop();
+    _reclaimWatch?.maybeStop();
+  }
 
-  void disposeIdleWatch() => _idleWatch.dispose();
+  void disposeIdleWatch() {
+    _idleWatch.dispose();
+    _reclaimWatch?.dispose();
+  }
 
   void debugTickIdleWatch() => _idleWatch.tick();
+
+  void debugTickReclaimWatch() => _reclaimWatch?.tick();
 }
