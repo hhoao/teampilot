@@ -5,8 +5,10 @@ import '../../models/team_config.dart';
 import '../../utils/lock_pool.dart';
 import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
+import '../cli/registry/capabilities/marketplace_consumer_capability.dart';
 import '../cli/registry/capabilities/plugin_manifest_paths.dart';
 import '../cli/registry/capabilities/plugin_provisioner_capability.dart';
+import '../cli/registry/cli_tool_registry.dart';
 import '../io/filesystem.dart';
 import '../storage/app_storage.dart';
 import '../storage/workspace_layout.dart';
@@ -17,11 +19,12 @@ import 'plugin_repo_service.dart';
 
 /// Tools whose plugin provisioning consumes marketplaces from the session
 /// CONFIG_DIR (`{config}/plugins/marketplaces`).
-final List<CliTool> marketplaceConsumerTools = const [
-  CliTool.claude,
-  CliTool.flashskyai,
-  CliTool.cursor,
-];
+Iterable<CliTool> get marketplaceConsumerTools => CliToolRegistry.builtIn()
+    .withCapability<MarketplaceConsumerCapability>()
+    .where((def) => CliToolRegistry.builtIn()
+        .capability<MarketplaceConsumerCapability>(def.id)
+        ?.consumesMarketplaces == true)
+    .map((def) => def.id);
 
 /// Single owner of **shared** marketplace materialization.
 ///

@@ -1,3 +1,5 @@
+import '../cli/registry/capabilities/agent_status_normalizer_capability.dart';
+import '../cli/registry/cli_tool_registry.dart';
 import '../../models/team_config.dart';
 import 'agent_attention_state.dart';
 import 'agent_status_event.dart';
@@ -23,11 +25,14 @@ class AgentStatusNormalizer {
     required CliTool cli,
     required Map<String, Object?> body,
   }) {
-    return switch (cli) {
-      CliTool.claude || CliTool.flashskyai || CliTool.codex =>
-        _normalizeClaudeFamily(body),
-      CliTool.opencode => _normalizeOpenCode(body),
-      CliTool.cursor => _normalizeCursor(body),
+    final profile = CliToolRegistry.builtIn()
+        .capability<AgentStatusNormalizerCapability>(cli)
+        ?.profile;
+    return switch (profile) {
+      'claude_family' => _normalizeClaudeFamily(body),
+      'opencode' => _normalizeOpenCode(body),
+      'cursor' => _normalizeCursor(body),
+      _ => null,
     };
   }
 

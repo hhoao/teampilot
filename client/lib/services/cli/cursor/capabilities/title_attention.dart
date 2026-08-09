@@ -1,4 +1,5 @@
 import '../../../agent_status/agent_attention_state.dart';
+import '../../registry/capabilities/title_attention_capability.dart';
 
 /// Classifies Cursor PTY OSC titles into permission attention.
 ///
@@ -22,3 +23,9 @@ AgentSeatAttention? detectCursorTitleAttention(String title) {
 /// True when [title] is cursor-agent's bare native OSC title (case-insensitive).
 bool isCursorNativeTitle(String title) =>
     title.trim().toLowerCase() == 'cursor agent';
+
+final class CursorTitleAttention implements TitleAttentionCapability {
+  const CursorTitleAttention();
+  @override
+  bool get bindTitleAttention => true;
+}

@@ -15,6 +15,8 @@ import '../../models/workspace.dart';
 import '../../models/workspace_launch_context.dart';
 import '../../repositories/session_repository.dart';
 import '../../services/cli/installer_types.dart';
+import '../../services/cli/registry/capabilities/title_attention_capability.dart';
+import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/cli/preset_resolver.dart';
 import '../../services/launch/connect_shell_result.dart';
 import '../../services/launch/member_bus_mcp_transport_resolver.dart';
@@ -428,7 +430,11 @@ class SessionShellConnector {
             shellLaunch.launchContext.member.dangerouslySkipPermissions,
         agentStatus: agentStatus,
       );
-      if (launchCli == CliTool.cursor) {
+      final titleAttention = CliToolRegistry.builtIn()
+          .capability<TitleAttentionCapability>(launchCli)
+          ?.bindTitleAttention ??
+          false;
+      if (titleAttention) {
         final attention = _host.agentAttentionCubit;
         if (attention != null) {
           final sessionId = activeSession.sessionId;

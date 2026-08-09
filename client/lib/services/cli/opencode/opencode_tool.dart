@@ -38,6 +38,16 @@ import 'capabilities/provider_display.dart';
 import '../registry/capabilities/provider_display_capability.dart';
 import 'capabilities/config_ui.dart';
 import '../registry/capabilities/cli_config_ui_capability.dart';
+import 'capabilities/title_attention.dart';
+import 'capabilities/marketplace_consumer.dart';
+import 'capabilities/agent_status_normalizer.dart';
+import 'capabilities/history_context_env.dart';
+import 'capabilities/remote_app_data.dart';
+import '../registry/capabilities/title_attention_capability.dart';
+import '../registry/capabilities/marketplace_consumer_capability.dart';
+import '../registry/capabilities/remote_app_data_capability.dart';
+import '../registry/capabilities/history_context_env_capability.dart';
+import '../registry/capabilities/agent_status_normalizer_capability.dart';
 import 'capabilities/wait_before_stop.dart';
 import '../registry/capabilities/wait_before_stop_capability.dart';
 import '../registry/capabilities/turn_interrupt_capability.dart';
@@ -78,6 +88,11 @@ final class OpencodeCliTool implements CliToolDefinition {
     this.waitBeforeStop = const DefaultWaitBeforeStop(),
     this.providerDisplay = const OpencodeProviderDisplay(),
     this.configUi = const OpencodeConfigUi(),
+    this.titleAttention = const NoTitleAttention(),
+    this.marketplaceConsumer = const NoMarketplaceConsumer(),
+    this.agentStatusNormalizer = const OpencodeAgentStatusNormalizer(),
+    this.historyContextEnv = const OpencodeHistoryContextEnv(),
+    this.remoteAppData = const OpencodeRemoteAppData(),
     ProviderCredentialCapability? providerCredential,
   }) : providerCredential =
            providerCredential ?? OpencodeProviderCredentialCapability();
@@ -110,6 +125,11 @@ final class OpencodeCliTool implements CliToolDefinition {
   final WaitBeforeStopCapability waitBeforeStop;
   final ProviderDisplayCapability providerDisplay;
   final CliConfigUiCapability configUi;
+  final TitleAttentionCapability titleAttention;
+  final MarketplaceConsumerCapability marketplaceConsumer;
+  final AgentStatusNormalizerCapability agentStatusNormalizer;
+  final HistoryContextEnvCapability historyContextEnv;
+  final RemoteAppDataCapability remoteAppData;
   final AskUserQuestionCapability askUserQuestion;
   final ExitPlanModeCapability exitPlanMode;
   final OpencodeAiHistoryCapability aiHistory;
@@ -149,6 +169,11 @@ final class OpencodeCliTool implements CliToolDefinition {
     waitBeforeStop,
     providerDisplay,
     configUi,
+    titleAttention,
+    marketplaceConsumer,
+    agentStatusNormalizer,
+    historyContextEnv,
+    remoteAppData,
     askUserQuestion,
     exitPlanMode,
     aiHistory,
