@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter/gestures.dart' show PointerDeviceKind;
+import 'package:flutter/gestures.dart' show PointerDeviceKind, kSecondaryMouseButton;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -12,23 +12,16 @@ import 'package:teampilot/widgets/git/git_change_folder_tile.dart';
 class _FolderGitStub extends GitService {
   @override
   Future<bool> get isAvailable async => true;
-
   @override
   Future<GitRepoStatus> status(String dir) async => const GitRepoStatus(
     isRepository: true,
     branch: 'main',
   );
-
   @override
   Future<List<String>> branches(String dir) async => const ['main'];
 }
 
 void main() {
-  // TpHover renders its desktop (GestureDetector + animated fill) path on a
-  // desktop platform. flutter_test defaults to Android, which would render the
-  // touch (InkWell) path with no onHoverChanged callback. The override must be
-  // reset inside the test body (before flutter_test's invariant check runs), so
-  // it is set/reset via try/finally rather than setUp/tearDown.
   Future<void> runOnDesktop(
     WidgetTester tester,
     Future<void> Function() body,
@@ -41,45 +34,99 @@ void main() {
     }
   }
 
-  testWidgets('folder hover shows right-aligned stage button', (tester) async {
-    await runOnDesktop(tester, () async {
-      final cubit = GitCubit(service: _FolderGitStub())..setRepoRoot('/repo');
-      addTearDown(cubit.close);
-
-      await tester.pumpWidget(
-        MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: BlocProvider.value(
-            value: cubit,
-            child: Scaffold(
-              body: SizedBox(
-                width: 400,
-                height: 36,
-                child: GitChangeFolderTile(
-                  folderPath: 'src',
-                  name: 'src',
-                  depth: 0,
-                  cubit: cubit,
-                  onStage: () {},
-                ),
-              ),
+  // Builds a folder tile wrapped in a MaterialApp + BlocProvider for the
+  // (required) GitCubit ancestor. Returns the cubit via `onCubit` so callers
+  // can close it in addTearDown.
+  Widget buildTile({
+    required int subtreeStagedCount,
+    required int subtreeTotalCount,
+    VoidCallback? onStage,
+    VoidCallback? onUnstage,
+    VoidCallback? onDiscardFolder,
+    ValueChanged<GitCubit>? onCubit,
+  }) {
+    final cubit = GitCubit(service: _FolderGitStub())..setRepoRoot('/repo');
+    onCubit?.call(cubit);
+    return MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: BlocProvider.value(
+        value: cubit,
+        child: Scaffold(
+          body: SizedBox(
+            width: 400,
+            height: 36,
+            child: GitChangeFolderTile(
+              folderPath: 'src',
+              name: 'src',
+              depth: 0,
+              subtreeStagedCount: subtreeStagedCount,
+              subtreeTotalCount: subtreeTotalCount,
+              cubit: cubit,
+              onStage: onStage ?? () {},
+              onUnstage: onUnstage ?? () {},
+              onDiscardFolder: onDiscardFolder ?? () {},
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  testWidgets('folder checkbox is checked when all staged', (tester) async {
+    await runOnDesktop(tester, () async {
+      await tester.pumpWidget(
+        buildTile(subtreeStagedCount: 2, subtreeTotalCount: 2),
       );
+      final cb = tester.widget<Checkbox>(find.byType(Checkbox));
+      expect(cb.value, isTrue);
+    });
+  });
 
-      final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
-      await gesture.addPointer(location: Offset.zero);
-      addTearDown(gesture.removePointer);
-      await tester.pump();
-      await gesture.moveTo(tester.getCenter(find.byType(GitChangeFolderTile)));
-      await tester.pump();
+  testWidgets('folder checkbox is tri-state when partially staged', (
+    tester,
+  ) async {
+    await runOnDesktop(tester, () async {
+      await tester.pumpWidget(
+        buildTile(subtreeStagedCount: 1, subtreeTotalCount: 2),
+      );
+      final cb = tester.widget<Checkbox>(find.byType(Checkbox));
+      expect(cb.value, isNull);
+    });
+  });
 
-      expect(find.byIcon(Icons.add), findsOneWidget);
-      final rowRect = tester.getRect(find.byType(GitChangeFolderTile).first);
-      final btnRect = tester.getRect(find.byIcon(Icons.add));
-      expect(rowRect.right - btnRect.right, lessThan(16));
+  testWidgets('folder checkbox unchecked when none staged', (tester) async {
+    await runOnDesktop(tester, () async {
+      await tester.pumpWidget(
+        buildTile(subtreeStagedCount: 0, subtreeTotalCount: 2),
+      );
+      final cb = tester.widget<Checkbox>(find.byType(Checkbox));
+      expect(cb.value, isFalse);
+    });
+  });
+
+  testWidgets('folder context menu discards folder', (tester) async {
+    var discardCalls = 0;
+    await runOnDesktop(tester, () async {
+      await tester.pumpWidget(
+        buildTile(
+          subtreeStagedCount: 0,
+          subtreeTotalCount: 1,
+          onDiscardFolder: () => discardCalls++,
+        ),
+      );
+      final center = tester.getCenter(find.byType(GitChangeFolderTile));
+      final gesture = await tester.startGesture(
+        center,
+        kind: PointerDeviceKind.mouse,
+        buttons: kSecondaryMouseButton,
+      );
+      await gesture.up();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(find.text('Discard changes in folder'));
+      await tester.pump();
+      expect(discardCalls, 1);
     });
   });
 }

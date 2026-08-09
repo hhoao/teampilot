@@ -71,3 +71,57 @@ abstract final class GitFileContextMenu {
     }
   }
 }
+
+/// Right-click menu for a folder row in the source control tree.
+abstract final class GitFolderContextMenu {
+  static Future<void> show({
+    required BuildContext context,
+    required TapDownDetails tapDetails,
+    required String folderPath,
+    required VoidCallback onStage,
+    required VoidCallback onUnstage,
+    required VoidCallback onDiscardFolder,
+  }) async {
+    final l10n = context.l10n;
+    final specs = <TpActionMenuSpec>[
+      TpActionMenuSpec.item(
+        value: 'stage',
+        icon: Icons.add,
+        label: l10n.gitStageFolder,
+      ),
+      TpActionMenuSpec.item(
+        value: 'unstage',
+        icon: Icons.remove,
+        label: l10n.gitUnstageFolder,
+      ),
+      TpActionMenuSpec.item(
+        value: 'discard',
+        icon: Icons.undo,
+        label: l10n.gitDiscardFolder,
+        destructive: true,
+      ),
+      const TpActionMenuSpec.divider(),
+      TpActionMenuSpec.item(
+        value: 'copy_path',
+        icon: Icons.copy,
+        label: l10n.gitCopyPath,
+      ),
+    ];
+    final value = await showTpActionMenuFromSpecsAtTap<String>(
+      context: context,
+      tapDetails: tapDetails,
+      specs: specs,
+    );
+    if (!context.mounted || value == null) return;
+    switch (value) {
+      case 'stage':
+        onStage();
+      case 'unstage':
+        onUnstage();
+      case 'discard':
+        onDiscardFolder();
+      case 'copy_path':
+        await Clipboard.setData(ClipboardData(text: folderPath));
+    }
+  }
+}

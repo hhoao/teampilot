@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
 import '../../cubits/git_cubit.dart';
+import '../../l10n/l10n_extensions.dart';
 import '../../models/git_status.dart';
 import '../../services/git/git_changes_visible_rows.dart';
 import 'package:shared_ui/shared_ui.dart';
@@ -55,6 +56,43 @@ class _GitChangesTreeListState extends State<GitChangesTreeList> {
       }
     }
     return false;
+  }
+
+  Future<void> _confirmDiscardFolder(String folderPath) async {
+    final l10n = context.l10n;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => TpDialog(
+        maxWidth: 480,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TpDialogHeader(
+              title: l10n.gitDiscardFolderConfirmTitle,
+              onClose: () => Navigator.of(ctx).pop(false),
+            ),
+            const SizedBox(height: 16),
+            Text(l10n.gitDiscardFolderConfirmBody(folderPath)),
+            TpDialogActions(
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(false),
+                  child: Text(MaterialLocalizations.of(ctx).cancelButtonLabel),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.of(ctx).pop(true),
+                  child: Text(l10n.gitDiscard),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+    if (ok == true) {
+      await widget.cubit.discardFolder(folderPath);
+    }
   }
 
   @override
@@ -124,10 +162,13 @@ class _GitChangesTreeListState extends State<GitChangesTreeList> {
         folderPath: row.folderPath!,
         name: row.name!,
         depth: row.depth,
+        subtreeStagedCount: row.subtreeStagedCount,
+        subtreeTotalCount: row.subtreeTotalCount,
         cubit: widget.cubit,
         hoverEnabled: _hoverEnabled,
         onStage: () => unawaited(widget.cubit.stageFolder(row.folderPath!)),
         onUnstage: () => unawaited(widget.cubit.unstageFolder(row.folderPath!)),
+        onDiscardFolder: () => unawaited(_confirmDiscardFolder(row.folderPath!)),
       );
     }
 

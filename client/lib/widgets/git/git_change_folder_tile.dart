@@ -1,20 +1,26 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/git_cubit.dart';
-import '../../l10n/l10n_extensions.dart';
 import '../../services/git/git_changes_visible_rows.dart';
 import 'package:shared_ui/shared_ui.dart';
+import 'git_context_menu.dart';
 
-/// Folder row in the git changes tree view.
-class GitChangeFolderTile extends StatefulWidget {
+/// Folder row in the git changes tree view. IDEA-style: a tri-state stage
+/// checkbox, chevron toggle on click, context menu on right-click.
+class GitChangeFolderTile extends StatelessWidget {
   const GitChangeFolderTile({
     required this.folderPath,
     required this.name,
     required this.depth,
+    required this.subtreeStagedCount,
+    required this.subtreeTotalCount,
     required this.cubit,
-    this.onStage,
-    this.onUnstage,
+    required this.onStage,
+    required this.onUnstage,
+    required this.onDiscardFolder,
     this.hoverEnabled = true,
     super.key,
   });
@@ -22,76 +28,49 @@ class GitChangeFolderTile extends StatefulWidget {
   final String folderPath;
   final String name;
   final int depth;
+  final int subtreeStagedCount;
+  final int subtreeTotalCount;
   final GitCubit cubit;
-  final VoidCallback? onStage;
-  final VoidCallback? onUnstage;
+  final VoidCallback onStage;
+  final VoidCallback onUnstage;
+  final VoidCallback onDiscardFolder;
   final bool hoverEnabled;
 
-  @override
-  State<GitChangeFolderTile> createState() => _GitChangeFolderTileState();
-}
-
-class _GitChangeFolderTileState extends State<GitChangeFolderTile> {
-  var _hovered = false;
-
-  @override
-  void didUpdateWidget(covariant GitChangeFolderTile oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (!widget.hoverEnabled && _hovered) {
-      _hovered = false;
-    }
-  }
-
-  List<Widget> _actions(BuildContext context) {
-    final l10n = context.l10n;
-    final actions = <Widget>[];
-    if (widget.onUnstage != null) {
-      actions.add(
-        TpIconButton(
-          icon: Icons.remove,
-          compact: true,
-          size: TpIconButton.kCompactSize,
-          tooltip: l10n.gitUnstageFolder,
-          onTap: widget.onUnstage!,
-        ),
-      );
-    }
-    if (widget.onStage != null) {
-      actions.add(
-        TpIconButton(
-          icon: Icons.add,
-          compact: true,
-          size: TpIconButton.kCompactSize,
-          tooltip: l10n.gitStageFolder,
-          onTap: widget.onStage!,
-        ),
-      );
-    }
-    return actions;
-  }
+  bool? get _triState =>
+      subtreeTotalCount == 0
+          ? false
+          : subtreeStagedCount == subtreeTotalCount
+          ? true
+          : subtreeStagedCount == 0
+          ? false
+          : null;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isExpanded = context.select<GitCubit, bool>(
-      (c) => c.state.expandedFolderPaths.contains(widget.folderPath),
+      (c) => c.state.expandedFolderPaths.contains(folderPath),
     );
-    final showActions =
-        _hovered && (widget.onStage != null || widget.onUnstage != null);
 
     return RepaintBoundary(
       child: TpHover(
-        onTap: () => widget.cubit.toggleFolderExpanded(widget.folderPath),
-        hoverColor: widget.hoverEnabled ? null : Colors.transparent,
-        onHoverChanged: (hovered) {
-          if (!widget.hoverEnabled) return;
-          setState(() => _hovered = hovered);
-        },
+        onTap: () => cubit.toggleFolderExpanded(folderPath),
+        onSecondaryTapDown: (details) => unawaited(
+          GitFolderContextMenu.show(
+            context: context,
+            tapDetails: details,
+            folderPath: folderPath,
+            onStage: onStage,
+            onUnstage: onUnstage,
+            onDiscardFolder: onDiscardFolder,
+          ),
+        ),
+        hoverColor: hoverEnabled ? null : Colors.transparent,
         borderRadius: BorderRadius.circular(6),
         width: double.infinity,
         height: double.infinity,
         padding: EdgeInsets.fromLTRB(
-          widget.depth * kGitChangesIndentWidth +
+          depth * kGitChangesIndentWidth +
               kGitChangesNodePaddingLeft +
               kGitChangesRowHorizontalPadding,
           kGitChangesRowVerticalPadding,
@@ -117,6 +96,19 @@ class _GitChangeFolderTileState extends State<GitChangeFolderTile> {
                   ),
                 ),
               ),
+              SizedBox(
+                width: kGitChangesCheckboxWidth,
+                height: kGitChangesCheckboxWidth,
+                child: Checkbox(
+                  value: _triState,
+                  tristate: true,
+                  onChanged: (_) => _triState == true
+                      ? onUnstage()
+                      : onStage(),
+                  visualDensity: VisualDensity.compact,
+                ),
+              ),
+              const SizedBox(width: 4),
               Icon(
                 isExpanded ? Icons.folder_open : Icons.folder_outlined,
                 color: cs.onSurfaceVariant,
@@ -124,16 +116,12 @@ class _GitChangeFolderTileState extends State<GitChangeFolderTile> {
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
-                  widget.name,
+                  name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TpTextStyles.of(context).md,
                 ),
               ),
-              if (showActions) ...[
-                const SizedBox(width: 8),
-                ..._actions(context),
-              ],
             ],
           ),
         ),
