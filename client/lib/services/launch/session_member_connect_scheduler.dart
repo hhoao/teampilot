@@ -107,6 +107,10 @@ class SessionMemberConnectScheduler {
         'reason=shell_active running=${shell.isRunning} '
         'connecting=${shell.isConnecting}',
       );
+      // A shell created for a declared/reclaimed member can report running
+      // (e.g. a resumed in-place shell); unblock any pending materialize
+      // waiter so the send/materialize future does not orphan.
+      _host.memberMaterializer.markMemberReady(tab.info.id, member.id);
       _host.updateTabRunning(tab.info.id);
       return;
     }

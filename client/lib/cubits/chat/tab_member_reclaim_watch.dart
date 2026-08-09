@@ -99,6 +99,13 @@ class TabMemberReclaimWatch {
     TeamProfile? team,
   ) {
     final bus = tab.teamBus;
+    // Simple sessions always show their one terminal in the terminal view, so
+    // the "displayed" protection would permanently block reclaim there. Apply
+    // it only to team sessions (roster member selection), where background
+    // member terminals are the reclaim target.
+    final isTeamSession =
+        (tab.persistedSession?.sessionTeam.trim().isNotEmpty ?? false) ||
+        (bus != null);
     return TerminalReclaimSnapshot(
       sessionId: tab.info.id,
       memberId: memberId,
@@ -106,7 +113,8 @@ class TabMemberReclaimWatch {
       shellConnecting: shell.isConnecting ||
           tab.membersPendingConnect.contains(memberId),
       isTeamLead: _isTeamLead(team, memberId),
-      isDisplayed: tab.workbenchView == SessionWorkbenchView.terminal &&
+      isDisplayed: isTeamSession &&
+          tab.workbenchView == SessionWorkbenchView.terminal &&
           tab.selectedMemberId == memberId,
       inTurn: bus?.isMemberInTurn(memberId) ?? shell.userTurnActive,
       hasUnread: (bus?.memberById(memberId)?.inbox.unreadCount ?? 0) > 0,
