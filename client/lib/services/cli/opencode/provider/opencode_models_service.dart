@@ -31,10 +31,7 @@ class OpencodeModelsCacheEntry {
       for (final entry in raw.entries) {
         final ids = entry.value;
         if (ids is List) {
-          final list = ids
-              .map((e) => e.toString().trim())
-              .where((e) => e.isNotEmpty)
-              .toList();
+          final list = OpencodeModelsService._extractModelIds(ids);
           if (list.isNotEmpty) {
             byProvider[entry.key.toString().trim()] = list;
           }
@@ -100,15 +97,17 @@ class OpencodeModelsService {
     }
     final existing = _inFlight;
     if (existing != null) return existing;
-    final task = _load().whenComplete(() => _inFlight = null);
+    final task = _load(forceRefresh: forceRefresh).whenComplete(
+      () => _inFlight = null,
+    );
     _inFlight = task;
     return task;
   }
 
-  Future<void> _load() async {
+  Future<void> _load({bool forceRefresh = false}) async {
     final roots = await _resolveStorage();
     final disk = await _readDiskCache(roots);
-    if (disk != null && _isFresh(disk)) {
+    if (!forceRefresh && disk != null && _isFresh(disk)) {
       _memory = disk;
       _catalogUpdates.bump();
       return;
@@ -116,8 +115,16 @@ class OpencodeModelsService {
 
     final fetched = await _fetchLive();
     if (fetched != null) {
+      // Populate memory BEFORE writing so candidates are available even if the
+      // write fails; swallow write errors (disk full, read-only FS, SFTP) so a
+      // fire-and-forget refresh never throws. The disk cache self-heals on the
+      // next refresh.
       _memory = fetched;
-      await _writeDiskCache(roots, fetched);
+      try {
+        await _writeDiskCache(roots, fetched);
+      } on Object {
+        // Ignored: memory is already populated.
+      }
       _catalogUpdates.bump();
       return;
     }
@@ -131,6 +138,10 @@ class OpencodeModelsService {
   Future<_ResolvedStorage> _resolveStorage() async {
     final fsOverride = _fsOverride;
     final basePathOverride = _basePathOverride;
+    assert(
+      (fsOverride == null) == (basePathOverride == null),
+      'Test overrides must be provided together: fs and basePath, or neither.',
+    );
     if (fsOverride != null && basePathOverride != null) {
       _syncMemoryForBasePath(basePathOverride);
       return _ResolvedStorage(fs: fsOverride, basePath: basePathOverride);
@@ -195,9 +206,20 @@ class OpencodeModelsService {
     await roots.fs.writeString(path, jsonEncode(entry.toJson()));
   }
 
+  static List<String> _extractModelIds(Iterable<Object?> raw) {
+    final ids = <String>[];
+    for (final value in raw) {
+      final id = value.toString().trim();
+      if (id.isNotEmpty) ids.add(id);
+    }
+    return ids;
+  }
+
   Future<OpencodeModelsCacheEntry?> _fetchLive() async {
     try {
-      final response = await _httpClient.get(Uri.parse(_modelsDevUrl));
+      final response = await _httpClient
+          .get(Uri.parse(_modelsDevUrl))
+          .timeout(const Duration(seconds: 10));
       if (response.statusCode != 200) return null;
       final decoded = jsonDecode(response.body);
       if (decoded is! Map) return null;
@@ -209,10 +231,7 @@ class OpencodeModelsService {
         if (provider is! Map) continue;
         final models = provider['models'];
         if (models is! Map) continue;
-        final ids = models.keys
-            .map((e) => e.toString().trim())
-            .where((e) => e.isNotEmpty)
-            .toList();
+        final ids = _extractModelIds(models.keys);
         if (ids.isEmpty) continue;
         byProvider[providerId] = ids;
       }
