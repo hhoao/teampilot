@@ -1,8 +1,12 @@
 import '../../../models/team_config.dart';
+import '../../../services/cli/claude/claude_bootstrap_entry.dart';
 import '../../../services/cli/claude/provider/claude_provider_credential_capability.dart';
+import '../../../services/cli/codex/codex_bootstrap_entry.dart';
 import '../../../services/cli/codex/provider/codex_provider_credential_capability.dart';
+import '../../../services/cli/cursor/cursor_bootstrap_entry.dart';
 import '../../../services/cli/cursor/provider/cursor_provider_credential_capability.dart';
 import '../../../services/cli/cursor/provider/cursor_provider_model_capability.dart';
+import '../../../services/cli/opencode/opencode_bootstrap_entry.dart';
 import '../../../services/cli/opencode/provider/opencode_provider_credential_capability.dart';
 import 'capabilities/member_agent_preset_capability.dart';
 import 'capabilities/member_config_inspection_capability.dart';
@@ -17,36 +21,41 @@ import '../opencode/opencode_tool.dart';
 
 void registerBuiltInCliTools(
   CliToolRegistry registry, {
-  CliBootstrap bootstrap = const CliBootstrap(),
+  CliBootstrap bootstrap = const CliBootstrap({}),
 }) {
+  final claudeEntry = bootstrap.entry<ClaudeBootstrapEntry>(CliTool.claude);
+  final codexEntry = bootstrap.entry<CodexBootstrapEntry>(CliTool.codex);
+  final opencodeEntry = bootstrap.entry<OpencodeBootstrapEntry>(CliTool.opencode);
+  final cursorEntry = bootstrap.entry<CursorBootstrapEntry>(CliTool.cursor);
+
   registry.register(
     ClaudeCliTool(
       providerCredential: ClaudeProviderCredentialCapability(
-        credentials: bootstrap.claudeCredentialsService,
+        credentials: claudeEntry?.credentialsService,
       ),
     ),
   );
   registry.register(
     CodexCliTool(
       providerCredential: CodexProviderCredentialCapability(
-        credentials: bootstrap.codexCredentialsService,
+        credentials: codexEntry?.credentialsService,
       ),
     ),
   );
   registry.register(
     OpencodeCliTool(
       providerCredential: OpencodeProviderCredentialCapability(
-        credentials: bootstrap.opencodeCredentialsService,
+        credentials: opencodeEntry?.credentialsService,
       ),
     ),
   );
   registry.register(
     CursorCliTool(
       providerModel: CursorProviderModelCapability(
-        modelsService: bootstrap.cursorAgentModelsService,
+        modelsService: cursorEntry?.agentModelsService,
       ),
       providerCredential: CursorProviderCredentialCapability(
-        credentials: bootstrap.cursorCredentialsService,
+        credentials: cursorEntry?.credentialsService,
       ),
     ),
   );

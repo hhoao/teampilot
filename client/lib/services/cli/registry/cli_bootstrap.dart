@@ -1,27 +1,27 @@
 import 'package:flutter/foundation.dart';
 
-import '../claude/provider/claude_provider_credentials_service.dart';
-import '../codex/provider/codex_provider_credentials_service.dart';
-import '../cursor/provider/cursor_agent_models_service.dart';
-import '../cursor/provider/cursor_provider_credentials_service.dart';
-import '../opencode/provider/opencode_provider_credentials_service.dart';
+import '../../../models/team_config.dart';
+
+/// Marker interface for per-CLI bootstrap entries.
+///
+/// Each CLI directory may define a concrete entry class holding runtime services
+/// (credentials, model catalogs, …) that are injected after [AppStorage] is
+/// ready.
+abstract interface class CliBootstrapEntry {}
 
 /// Runtime services wired into [CliToolRegistry] after [AppStorage] is ready.
 ///
-/// Extend when another CLI needs injected catalogs (live model lists, agents, …).
+/// Add a new CLI: create a [CliBootstrapEntry] in the CLI directory and add it
+/// to the map in [AppShell]; no changes needed here.
 @immutable
 class CliBootstrap {
-  const CliBootstrap({
-    this.cursorAgentModelsService,
-    this.claudeCredentialsService,
-    this.cursorCredentialsService,
-    this.codexCredentialsService,
-    this.opencodeCredentialsService,
-  });
+  const CliBootstrap(this._entries);
 
-  final CursorAgentModelsService? cursorAgentModelsService;
-  final ClaudeProviderCredentialsService? claudeCredentialsService;
-  final CursorProviderCredentialsService? cursorCredentialsService;
-  final CodexProviderCredentialsService? codexCredentialsService;
-  final OpencodeProviderCredentialsService? opencodeCredentialsService;
+  final Map<CliTool, CliBootstrapEntry> _entries;
+
+  /// Returns the [CliBootstrapEntry] for [cli] cast to [T], or `null`.
+  T? entry<T extends CliBootstrapEntry>(CliTool cli) {
+    final e = _entries[cli];
+    return e is T ? e : null;
+  }
 }

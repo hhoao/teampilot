@@ -145,6 +145,10 @@ import '../services/floating_workspace/surfaces/terminal_floating_surface.dart';
 import '../pages/home_workspace/workspace_chrome_commands.dart';
 import '../services/cli/registry/cli_bootstrap.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
+import '../services/cli/claude/claude_bootstrap_entry.dart';
+import '../services/cli/codex/codex_bootstrap_entry.dart';
+import '../services/cli/cursor/cursor_bootstrap_entry.dart';
+import '../services/cli/opencode/opencode_bootstrap_entry.dart';
 import '../services/host/host_one_shot_runner_for_context.dart';
 import '../services/host/host_process_starter_for_context.dart';
 import '../services/cli/claude/provider/claude_provider_credentials_service.dart';
@@ -735,13 +739,21 @@ Future<AppShell> buildAppShell({
   );
 
   cliToolRegistry.configure(
-    CliBootstrap(
-      cursorAgentModelsService: CursorAgentModelsService(),
-      claudeCredentialsService: claudeCredentialsService,
-      cursorCredentialsService: cursorCredentialsService,
-      codexCredentialsService: codexCredentialsService,
-      opencodeCredentialsService: opencodeCredentialsService,
-    ),
+    CliBootstrap({
+      CliTool.claude: ClaudeBootstrapEntry(
+        credentialsService: claudeCredentialsService,
+      ),
+      CliTool.cursor: CursorBootstrapEntry(
+        credentialsService: cursorCredentialsService,
+        agentModelsService: CursorAgentModelsService(),
+      ),
+      CliTool.codex: CodexBootstrapEntry(
+        credentialsService: codexCredentialsService,
+      ),
+      CliTool.opencode: OpencodeBootstrapEntry(
+        credentialsService: opencodeCredentialsService,
+      ),
+    }),
   );
 
   final skillManifest = SkillManifestService();

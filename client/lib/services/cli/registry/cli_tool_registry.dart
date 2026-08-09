@@ -12,7 +12,7 @@ class CliToolRegistry {
   CliToolRegistry._();
 
   static CliToolRegistry? _builtIn;
-  CliBootstrap _bootstrap = const CliBootstrap();
+  CliBootstrap _bootstrap = const CliBootstrap({});
 
   /// Single built-in registry for all default (non-injected) call sites.
   factory CliToolRegistry.builtIn() {
