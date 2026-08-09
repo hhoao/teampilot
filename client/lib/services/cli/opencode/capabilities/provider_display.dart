@@ -8,4 +8,6 @@ final class OpencodeProviderDisplay implements ProviderDisplayCapability {
   @override bool get serializesCredentialStatus => false;
   @override bool get hasCredentialBinding => false;
   @override bool get supportsDelegate => false;
+  @override bool get supportsOAuthCredentials => true;
+  @override bool get usesLlmConfigJsonPreview => false;
 }

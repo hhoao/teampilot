@@ -33,7 +33,11 @@ Map<String, Object?> resolveMemberBusMcpTransportConfig({
     final localNative =
         !AppStorage.isInstalled ||
         AppStorage.context.mode == StorageBackendMode.native;
-    if (cli == CliTool.claude && localNative) {
+    final supportsBridge = cliRegistry
+            .capability<BusTransportCapability>(cli)
+            ?.supportsLocalStdioBridge ??
+        false;
+    if (supportsBridge && localNative) {
       localBridge = BusBridgeLocator.resolve();
     }
   }

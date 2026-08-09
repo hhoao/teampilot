@@ -19,4 +19,11 @@ abstract interface class ProviderDisplayCapability implements CliCapability {
 
   /// Whether this CLI appears in the delegate-row team settings UI.
   bool get supportsDelegate;
+
+  /// Whether this CLI supports OAuth credential badges (all except flashskyai).
+  bool get supportsOAuthCredentials;
+
+  /// Whether the provider detail panel uses llm_config format for JSON preview
+  /// (flashskyai) rather than a generic JSON dump.
+  bool get usesLlmConfigJsonPreview;
 }

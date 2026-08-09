@@ -8,4 +8,6 @@ final class ClaudeProviderDisplay implements ProviderDisplayCapability {
   @override bool get serializesCredentialStatus => true;
   @override bool get hasCredentialBinding => true;
   @override bool get supportsDelegate => true;
+  @override bool get supportsOAuthCredentials => true;
+  @override bool get usesLlmConfigJsonPreview => false;
 }

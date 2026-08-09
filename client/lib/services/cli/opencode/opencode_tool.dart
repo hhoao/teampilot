@@ -43,9 +43,11 @@ import 'capabilities/marketplace_consumer.dart';
 import 'capabilities/agent_status_normalizer.dart';
 import 'capabilities/history_context_env.dart';
 import 'capabilities/remote_app_data.dart';
+import 'capabilities/credential_export.dart';
 import '../registry/capabilities/title_attention_capability.dart';
 import '../registry/capabilities/marketplace_consumer_capability.dart';
 import '../registry/capabilities/remote_app_data_capability.dart';
+import '../registry/capabilities/credential_export_capability.dart';
 import '../registry/capabilities/history_context_env_capability.dart';
 import '../registry/capabilities/agent_status_normalizer_capability.dart';
 import 'capabilities/wait_before_stop.dart';
@@ -93,6 +95,7 @@ final class OpencodeCliTool implements CliToolDefinition {
     this.agentStatusNormalizer = const OpencodeAgentStatusNormalizer(),
     this.historyContextEnv = const OpencodeHistoryContextEnv(),
     this.remoteAppData = const OpencodeRemoteAppData(),
+    this.credentialExport = const OpencodeCredentialExport(),
     ProviderCredentialCapability? providerCredential,
   }) : providerCredential =
            providerCredential ?? OpencodeProviderCredentialCapability();
@@ -130,6 +133,7 @@ final class OpencodeCliTool implements CliToolDefinition {
   final AgentStatusNormalizerCapability agentStatusNormalizer;
   final HistoryContextEnvCapability historyContextEnv;
   final RemoteAppDataCapability remoteAppData;
+  final CredentialExportCapability credentialExport;
   final AskUserQuestionCapability askUserQuestion;
   final ExitPlanModeCapability exitPlanMode;
   final OpencodeAiHistoryCapability aiHistory;
@@ -174,6 +178,7 @@ final class OpencodeCliTool implements CliToolDefinition {
     agentStatusNormalizer,
     historyContextEnv,
     remoteAppData,
+    credentialExport,
     askUserQuestion,
     exitPlanMode,
     aiHistory,

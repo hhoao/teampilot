@@ -1,5 +1,14 @@
 import '../../../models/team_config.dart';
 import 'capabilities/launch_args.dart';
+import 'capabilities/wait_before_stop.dart';
+import 'capabilities/provider_display.dart';
+import 'capabilities/config_ui.dart';
+import 'capabilities/title_attention.dart';
+import 'capabilities/marketplace_consumer.dart';
+import 'capabilities/agent_status_normalizer.dart';
+import 'capabilities/history_context_env.dart';
+import 'capabilities/remote_app_data.dart';
+import 'capabilities/credential_export.dart';
 import '../registry/cli_capability.dart';
 import '../registry/cli_tool_definition.dart';
 import '../registry/capabilities/bus_transport_capability.dart';
@@ -37,6 +46,15 @@ import '../registry/capabilities/resource_capability.dart';
 import '../registry/capabilities/ask_user_question_capability.dart';
 import '../registry/capabilities/exit_plan_mode_capability.dart';
 import '../registry/capabilities/turn_completion_capability.dart';
+import '../registry/capabilities/wait_before_stop_capability.dart';
+import '../registry/capabilities/provider_display_capability.dart';
+import '../registry/capabilities/cli_config_ui_capability.dart';
+import '../registry/capabilities/title_attention_capability.dart';
+import '../registry/capabilities/marketplace_consumer_capability.dart';
+import '../registry/capabilities/agent_status_normalizer_capability.dart';
+import '../registry/capabilities/history_context_env_capability.dart';
+import '../registry/capabilities/remote_app_data_capability.dart';
+import '../registry/capabilities/credential_export_capability.dart';
 import 'capabilities/provider_display.dart';
 import '../registry/capabilities/provider_display_capability.dart';
 import 'capabilities/config_ui.dart';
@@ -46,9 +64,11 @@ import 'capabilities/marketplace_consumer.dart';
 import 'capabilities/agent_status_normalizer.dart';
 import 'capabilities/history_context_env.dart';
 import 'capabilities/remote_app_data.dart';
+import 'capabilities/credential_export.dart';
 import '../registry/capabilities/title_attention_capability.dart';
 import '../registry/capabilities/marketplace_consumer_capability.dart';
 import '../registry/capabilities/remote_app_data_capability.dart';
+import '../registry/capabilities/credential_export_capability.dart';
 import '../registry/capabilities/history_context_env_capability.dart';
 import '../registry/capabilities/agent_status_normalizer_capability.dart';
 import '../registry/capabilities/wait_before_stop_capability.dart';
@@ -61,6 +81,7 @@ final class ClaudeCliTool implements CliToolDefinition {
   ClaudeCliTool({
     this.busTransport = const BusTransportCapability(
       longBlockingWaitForMessage: true,
+      supportsLocalStdioBridge: true,
     ),
     this.remoteCliLocator = const DefaultRemoteCliLocator('claude'),
     this.launchArgs = const ClaudeCodeCliToolAdapter(),
@@ -87,6 +108,15 @@ final class ClaudeCliTool implements CliToolDefinition {
     this.aiHistory = const ClaudeAiHistoryCapability(),
     this.skillSyntax = const DefaultSkillInvocationSyntaxCapability(),
     this.turnCompletion = const ClaudeTurnCompletion(),
+    this.waitBeforeStop = const DefaultWaitBeforeStop(),
+    this.providerDisplay = const ClaudeProviderDisplay(),
+    this.configUi = const ClaudeConfigUi(),
+    this.titleAttention = const NoTitleAttention(),
+    this.marketplaceConsumer = const MarketplaceConsumer(),
+    this.agentStatusNormalizer = const ClaudeFamilyAgentStatusNormalizer(),
+    this.historyContextEnv = const NoHistoryContextEnv(),
+    this.remoteAppData = const NoRemoteAppData(),
+    this.credentialExport = const ClaudeCredentialExport(),
     ProviderCredentialCapability? providerCredential,
   }) : providerCredential =
            providerCredential ?? ClaudeProviderCredentialCapability();
@@ -120,6 +150,15 @@ final class ClaudeCliTool implements CliToolDefinition {
   final ClaudeAiHistoryCapability aiHistory;
   final SkillInvocationSyntaxCapability skillSyntax;
   final TurnCompletionCapability turnCompletion;
+  final WaitBeforeStopCapability waitBeforeStop;
+  final ProviderDisplayCapability providerDisplay;
+  final CliConfigUiCapability configUi;
+  final TitleAttentionCapability titleAttention;
+  final MarketplaceConsumerCapability marketplaceConsumer;
+  final AgentStatusNormalizerCapability agentStatusNormalizer;
+  final HistoryContextEnvCapability historyContextEnv;
+  final RemoteAppDataCapability remoteAppData;
+  final CredentialExportCapability credentialExport;
 
   @override
   CliTool get id => CliTool.claude;
@@ -161,6 +200,15 @@ final class ClaudeCliTool implements CliToolDefinition {
     aiHistory,
     skillSyntax,
     turnCompletion,
+    waitBeforeStop,
+    providerDisplay,
+    configUi,
+    titleAttention,
+    marketplaceConsumer,
+    agentStatusNormalizer,
+    historyContextEnv,
+    remoteAppData,
+    credentialExport,
   ];
 }
 
