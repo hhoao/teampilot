@@ -205,6 +205,19 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
     );
   }
 
+  Future<void> setReclaimIdleTerminals(bool value) {
+    return _save(state.preferences.copyWith(reclaimIdleTerminals: value));
+  }
+
+  Future<void> setReclaimIdleTerminalAfterMinutes(int minutes) {
+    final clamped = minutes.clamp(1, 120);
+    return _save(
+      state.preferences.copyWith(
+        reclaimIdleTerminalAfterSeconds: clamped * 60,
+      ),
+    );
+  }
+
   Future<void> setScopeSessionsToSelectedTeam(bool value) {
     return _save(
       state.preferences.copyWith(scopeSessionsToSelectedTeam: value),

@@ -4,7 +4,9 @@ class SessionPreferences {
     Map<String, String> toolchainPaths = const {},
     this.defaultSshWorkingDirectory = '',
     this.sshUseLoginShell = false,
-    this.autoLaunchAllMembersOnConnect = true,
+    this.autoLaunchAllMembersOnConnect = false,
+    this.reclaimIdleTerminals = true,
+    this.reclaimIdleTerminalAfterSeconds = 180,
     this.scopeSessionsToSelectedTeam = true,
     this.terminalScrollbackLines = 10000,
     this.terminalLinkClickOpensInApp = true,
@@ -33,7 +35,10 @@ class SessionPreferences {
           json['defaultSshWorkingDirectory'] as String? ?? '',
       sshUseLoginShell: json['sshUseLoginShell'] as bool? ?? false,
       autoLaunchAllMembersOnConnect:
-          json['autoLaunchAllMembersOnConnect'] as bool? ?? true,
+          json['autoLaunchAllMembersOnConnect'] as bool? ?? false,
+      reclaimIdleTerminals: json['reclaimIdleTerminals'] as bool? ?? true,
+      reclaimIdleTerminalAfterSeconds:
+          (json['reclaimIdleTerminalAfterSeconds'] as num?)?.toInt() ?? 180,
       scopeSessionsToSelectedTeam:
           json['scopeSessionsToSelectedTeam'] as bool? ?? true,
       terminalScrollbackLines:
@@ -68,8 +73,16 @@ class SessionPreferences {
   final bool sshUseLoginShell;
 
   /// When true, connecting or restarting the shell session starts every valid
-  /// team member instead of only the selected one.
+  /// team member instead of only the selected one. Default false (lazy spawn).
   final bool autoLaunchAllMembersOnConnect;
+
+  /// When true, idle member/session terminals are reclaimed after
+  /// [reclaimIdleTerminalAfterSeconds] to free memory; they reconnect on demand.
+  final bool reclaimIdleTerminals;
+
+  /// Seconds a terminal may sit idle before [reclaimIdleTerminals] reclaims it.
+  /// Runtime-configurable so integration tests can run with a few seconds.
+  final int reclaimIdleTerminalAfterSeconds;
 
   /// When true, the sidebar lists only sessions whose [AppSession.sessionTeam]
   /// matches the selected team id.
@@ -110,6 +123,8 @@ class SessionPreferences {
     String? defaultSshWorkingDirectory,
     bool? sshUseLoginShell,
     bool? autoLaunchAllMembersOnConnect,
+    bool? reclaimIdleTerminals,
+    int? reclaimIdleTerminalAfterSeconds,
     bool? scopeSessionsToSelectedTeam,
     int? terminalScrollbackLines,
     bool? terminalLinkClickOpensInApp,
@@ -126,6 +141,9 @@ class SessionPreferences {
       sshUseLoginShell: sshUseLoginShell ?? this.sshUseLoginShell,
       autoLaunchAllMembersOnConnect:
           autoLaunchAllMembersOnConnect ?? this.autoLaunchAllMembersOnConnect,
+      reclaimIdleTerminals: reclaimIdleTerminals ?? this.reclaimIdleTerminals,
+      reclaimIdleTerminalAfterSeconds:
+          reclaimIdleTerminalAfterSeconds ?? this.reclaimIdleTerminalAfterSeconds,
       scopeSessionsToSelectedTeam:
           scopeSessionsToSelectedTeam ?? this.scopeSessionsToSelectedTeam,
       terminalScrollbackLines:
@@ -150,6 +168,8 @@ class SessionPreferences {
       'defaultSshWorkingDirectory': defaultSshWorkingDirectory,
       'sshUseLoginShell': sshUseLoginShell,
       'autoLaunchAllMembersOnConnect': autoLaunchAllMembersOnConnect,
+      'reclaimIdleTerminals': reclaimIdleTerminals,
+      'reclaimIdleTerminalAfterSeconds': reclaimIdleTerminalAfterSeconds,
       'scopeSessionsToSelectedTeam': scopeSessionsToSelectedTeam,
       'terminalScrollbackLines': terminalScrollbackLines,
       'terminalLinkClickOpensInApp': terminalLinkClickOpensInApp,
