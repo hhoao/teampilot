@@ -1,5 +1,6 @@
 import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 import 'package:teampilot/models/git_status.dart';
 import 'package:teampilot/services/git/git_changes_visible_rows.dart';
 
@@ -42,6 +43,19 @@ void main() {
     expect(core.subtreeStagedCount, 1);
     expect(view.stagedCount, 2);
     expect(view.totalCount, 4);
+  });
+
+  test('files within a folder are ordered by basename', () {
+    final view = visibleUnifiedGitChangesTreeView(
+      staged: [change('b.java', staged: true)],
+      unstaged: [change('a.dart'), change('c.txt')],
+      expandedFolderPaths: const <String>{},
+    );
+    final files = view.rows
+        .where((r) => !r.isFolder)
+        .map((r) => p.basename(r.change!.path))
+        .toList();
+    expect(files, ['a.dart', 'b.java', 'c.txt']);
   });
 
   test('collapsed folders still report subtree counts', () {

@@ -297,7 +297,9 @@ void _insertChange(_GitChangesFolderNode root, GitFileChange change) {
     total += childTotal;
     staged += childStaged;
   }
-  for (final change in node.files) {
+  final files = node.files.toList()
+    ..sort((a, b) => p.basename(a.path).compareTo(p.basename(b.path)));
+  for (final change in files) {
     total++;
     if (change.staged) staged++;
     if (emit) rows.add(GitChangesVisibleRow.file(change: change, depth: depth));
