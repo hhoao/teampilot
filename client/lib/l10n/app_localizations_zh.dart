@@ -504,6 +504,35 @@ class AppLocalizationsZh extends AppLocalizations {
   String get gitOpenFile => '打开文件';
 
   @override
+  String get gitShowDiff => '显示差异';
+
+  @override
+  String get gitCopyPath => '复制路径';
+
+  @override
+  String get gitDiscardFolder => '放弃文件夹中的更改';
+
+  @override
+  String get gitDiscardSelected => '放弃所选更改';
+
+  @override
+  String get gitDiscardAllUnstaged => '放弃全部未暂存更改';
+
+  @override
+  String get gitDiscardAllConfirmTitle => '放弃所有更改？';
+
+  @override
+  String get gitDiscardAllConfirmBody => '放弃工作区中的所有未暂存更改？此操作无法撤销。';
+
+  @override
+  String get gitDiscardFolderConfirmTitle => '放弃文件夹更改？';
+
+  @override
+  String gitDiscardFolderConfirmBody(String path) {
+    return '放弃 $path 中的所有更改？此操作无法撤销。';
+  }
+
+  @override
   String get gitDiscardConfirmTitle => '放弃更改？';
 
   @override

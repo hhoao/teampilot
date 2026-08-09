@@ -190,6 +190,22 @@
   "treeCollapseAllFolders": "Collapse all folders",
   "gitDiscard": "Discard changes",
   "gitOpenFile": "Open File",
+  "gitShowDiff": "Show Diff",
+  "gitCopyPath": "Copy Path",
+  "gitDiscardFolder": "Discard changes in folder",
+  "gitDiscardSelected": "Discard Selected Change",
+  "gitDiscardAllUnstaged": "Discard All Unstaged Changes",
+  "gitDiscardAllConfirmTitle": "Discard all changes?",
+  "gitDiscardAllConfirmBody": "Discard all unstaged changes in the working tree? This cannot be undone.",
+  "gitDiscardFolderConfirmTitle": "Discard folder changes?",
+  "gitDiscardFolderConfirmBody": "Discard all changes in {path}? This cannot be undone.",
+  "@gitDiscardFolderConfirmBody": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
   "gitDiscardConfirmTitle": "Discard changes?",
   "gitDiscardConfirmBody": "Discard all changes in {path}? This cannot be undone.",
   "@gitDiscardConfirmBody": {

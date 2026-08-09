@@ -529,6 +529,36 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gitOpenFile => 'Open File';
 
   @override
+  String get gitShowDiff => 'Show Diff';
+
+  @override
+  String get gitCopyPath => 'Copy Path';
+
+  @override
+  String get gitDiscardFolder => 'Discard changes in folder';
+
+  @override
+  String get gitDiscardSelected => 'Discard Selected Change';
+
+  @override
+  String get gitDiscardAllUnstaged => 'Discard All Unstaged Changes';
+
+  @override
+  String get gitDiscardAllConfirmTitle => 'Discard all changes?';
+
+  @override
+  String get gitDiscardAllConfirmBody =>
+      'Discard all unstaged changes in the working tree? This cannot be undone.';
+
+  @override
+  String get gitDiscardFolderConfirmTitle => 'Discard folder changes?';
+
+  @override
+  String gitDiscardFolderConfirmBody(String path) {
+    return 'Discard all changes in $path? This cannot be undone.';
+  }
+
+  @override
   String get gitDiscardConfirmTitle => 'Discard changes?';
 
   @override

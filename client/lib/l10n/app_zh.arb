@@ -181,6 +181,22 @@
   "treeCollapseAllFolders": "折叠所有目录",
   "gitDiscard": "放弃更改",
   "gitOpenFile": "打开文件",
+  "gitShowDiff": "显示差异",
+  "gitCopyPath": "复制路径",
+  "gitDiscardFolder": "放弃文件夹中的更改",
+  "gitDiscardSelected": "放弃所选更改",
+  "gitDiscardAllUnstaged": "放弃全部未暂存更改",
+  "gitDiscardAllConfirmTitle": "放弃所有更改？",
+  "gitDiscardAllConfirmBody": "放弃工作区中的所有未暂存更改？此操作无法撤销。",
+  "gitDiscardFolderConfirmTitle": "放弃文件夹更改？",
+  "gitDiscardFolderConfirmBody": "放弃 {path} 中的所有更改？此操作无法撤销。",
+  "@gitDiscardFolderConfirmBody": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
   "gitDiscardConfirmTitle": "放弃更改？",
   "gitDiscardConfirmBody": "放弃 {path} 中的所有更改？此操作无法撤销。",
   "@gitDiscardConfirmBody": {

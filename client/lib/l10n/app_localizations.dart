@@ -1058,6 +1058,60 @@ abstract class AppLocalizations {
   /// **'Open File'**
   String get gitOpenFile;
 
+  /// No description provided for @gitShowDiff.
+  ///
+  /// In en, this message translates to:
+  /// **'Show Diff'**
+  String get gitShowDiff;
+
+  /// No description provided for @gitCopyPath.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy Path'**
+  String get gitCopyPath;
+
+  /// No description provided for @gitDiscardFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard changes in folder'**
+  String get gitDiscardFolder;
+
+  /// No description provided for @gitDiscardSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard Selected Change'**
+  String get gitDiscardSelected;
+
+  /// No description provided for @gitDiscardAllUnstaged.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard All Unstaged Changes'**
+  String get gitDiscardAllUnstaged;
+
+  /// No description provided for @gitDiscardAllConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard all changes?'**
+  String get gitDiscardAllConfirmTitle;
+
+  /// No description provided for @gitDiscardAllConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard all unstaged changes in the working tree? This cannot be undone.'**
+  String get gitDiscardAllConfirmBody;
+
+  /// No description provided for @gitDiscardFolderConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard folder changes?'**
+  String get gitDiscardFolderConfirmTitle;
+
+  /// No description provided for @gitDiscardFolderConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard all changes in {path}? This cannot be undone.'**
+  String gitDiscardFolderConfirmBody(String path);
+
   /// No description provided for @gitDiscardConfirmTitle.
   ///
   /// In en, this message translates to:
