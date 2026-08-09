@@ -2,9 +2,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/registry/capabilities/post_manifest_flush_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
-import 'package:teampilot/services/cli/registry/post_flush/cursor_post_manifest_flush_capability.dart';
+import 'package:teampilot/services/cli/cursor/capabilities/post_manifest_flush.dart';
 import 'package:teampilot/services/launch/work_plane_script_runner.dart';
-import 'package:teampilot/services/provider/cursor/cursor_home_layout.dart';
+import 'package:teampilot/services/cli/cursor/provider/cursor_home_layout.dart';
 
 import '../../../../support/in_memory_filesystem.dart';
 

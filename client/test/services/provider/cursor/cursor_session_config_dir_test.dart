@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
-import 'package:teampilot/services/provider/cursor/cursor_session_config_dir.dart';
+import 'package:teampilot/services/cli/cursor/provider/cursor_session_config_dir.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 
 import '../../../support/cursor_warm_tier_manifest_paths.dart';

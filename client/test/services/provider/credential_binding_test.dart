@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/app_provider_config.dart';
-import 'package:teampilot/services/provider/claude/claude_official_provider.dart';
+import 'package:teampilot/services/cli/claude/provider/claude_official_provider.dart';
 import 'package:teampilot/services/provider/credential_binding.dart';
 
 void main() {

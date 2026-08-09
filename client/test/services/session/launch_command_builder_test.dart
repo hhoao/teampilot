@@ -5,7 +5,7 @@ import 'package:teampilot/services/cli/cli_tool_adapter.dart';
 import 'package:teampilot/services/cli/registry/config_profile/config_profile_context.dart';
 import 'package:teampilot/services/session/launch_command_builder.dart';
 import 'package:teampilot/services/session/shell_launch_spec.dart';
-import 'package:teampilot/services/cli/registry/config_profile/claude_config_profile_capability.dart';
+import 'package:teampilot/services/cli/claude/capabilities/config_profile.dart';
 import 'package:teampilot/services/session/member_role_provision.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:flutter_test/flutter_test.dart';

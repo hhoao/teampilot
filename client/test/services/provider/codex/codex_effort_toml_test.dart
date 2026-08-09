@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/provider/codex/codex_effort_toml.dart';
+import 'package:teampilot/services/cli/codex/provider/codex_effort_toml.dart';
 
 void main() {
   test('applyReasoningEffort replaces existing line', () {

@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
-import 'package:teampilot/services/cli/registry/capabilities/history/cursor_ai_transcript.dart';
+import 'package:teampilot/services/cli/cursor/capabilities/history/ai_transcript.dart';
 import 'package:teampilot/services/session/ai_history_watch_meta.dart';
 import 'package:teampilot/services/session/session_history_context.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';

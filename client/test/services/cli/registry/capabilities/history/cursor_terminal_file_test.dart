@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/cli/registry/capabilities/history/cursor_terminal_file.dart';
+import 'package:teampilot/services/cli/cursor/capabilities/history/terminal_file.dart';
 
 void main() {
   group('parseCursorTerminalFile', () {

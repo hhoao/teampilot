@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/provider/codex/codex_managed_hook_overlay.dart';
+import 'package:teampilot/services/cli/codex/provider/codex_managed_hook_overlay.dart';
 
 void main() {
   group('CodexManagedHookOverlay', () {

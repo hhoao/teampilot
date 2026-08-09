@@ -2,10 +2,10 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/provider/cursor/cursor_auth_artifacts.dart';
-import 'package:teampilot/services/provider/cursor/cursor_cli_config_policy.dart';
-import 'package:teampilot/services/provider/cursor/cursor_home_layout.dart';
-import 'package:teampilot/services/provider/cursor/cursor_home_provisioner.dart';
+import 'package:teampilot/services/cli/cursor/provider/cursor_auth_artifacts.dart';
+import 'package:teampilot/services/cli/cursor/provider/cursor_cli_config_policy.dart';
+import 'package:teampilot/services/cli/cursor/provider/cursor_home_layout.dart';
+import 'package:teampilot/services/cli/cursor/provider/cursor_home_provisioner.dart';
 import 'package:teampilot/services/team_bus/member_bus_idle_endpoint.dart';
 import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_config.dart';
 

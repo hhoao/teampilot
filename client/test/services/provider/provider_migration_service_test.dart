@@ -8,7 +8,7 @@ import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/provider/opencode/opencode_data_layout.dart';
+import 'package:teampilot/services/cli/opencode/provider/opencode_data_layout.dart';
 import 'package:teampilot/services/provider/provider_import_service.dart';
 
 void main() {

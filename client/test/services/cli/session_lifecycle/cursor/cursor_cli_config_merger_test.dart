@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/cli/session_lifecycle/cursor/cursor_cli_config_merger.dart';
-import 'package:teampilot/services/provider/cursor/cursor_cli_config_policy.dart';
+import 'package:teampilot/services/cli/cursor/capabilities/cli_config_merger.dart';
+import 'package:teampilot/services/cli/cursor/provider/cursor_cli_config_policy.dart';
 
 void main() {
   group('extractWarmTier', () {

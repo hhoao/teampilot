@@ -4,12 +4,12 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/registry/capabilities/cli_session_lifecycle_capability.dart';
 import 'package:teampilot/services/cli/registry/config_profile/config_profile_context.dart';
 import 'package:teampilot/services/cli/session_lifecycle/cli_session_manifest_store.dart';
-import 'package:teampilot/services/cli/session_lifecycle/cursor/cursor_session_lifecycle_capability.dart';
-import 'package:teampilot/services/cli/session_lifecycle/cursor/cursor_session_lifecycle_paths.dart';
+import 'package:teampilot/services/cli/cursor/capabilities/session_lifecycle.dart';
+import 'package:teampilot/services/cli/cursor/capabilities/session_lifecycle_paths.dart';
 import 'package:teampilot/services/host/host_execution_environment.dart';
 import 'package:teampilot/services/io/filesystem.dart';
-import 'package:teampilot/services/provider/cursor/cursor_home_layout.dart';
-import 'package:teampilot/services/provider/cursor/cursor_workspace_trust.dart';
+import 'package:teampilot/services/cli/cursor/provider/cursor_home_layout.dart';
+import 'package:teampilot/services/cli/cursor/provider/cursor_workspace_trust.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/utils/team/team_member_naming.dart';
 

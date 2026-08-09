@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/services/cli/registry/capabilities/provider_catalog_capability.dart';
-import 'package:teampilot/services/provider/cursor/cursor_home_layout.dart';
-import 'package:teampilot/services/provider/cursor/cursor_live_import.dart';
+import 'package:teampilot/services/cli/cursor/provider/cursor_home_layout.dart';
+import 'package:teampilot/services/cli/cursor/provider/cursor_live_import.dart';
 
 import '../../../support/in_memory_filesystem.dart';
 

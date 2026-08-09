@@ -3,9 +3,9 @@ import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/registry/capabilities/cli_effort_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
-import 'package:teampilot/services/cli/registry/config_profile/opencode_config_profile_capability.dart';
-import 'package:teampilot/services/provider/flashskyai/flashskyai_effort_capability.dart';
-import 'package:teampilot/services/provider/opencode/opencode_effort_capability.dart';
+import 'package:teampilot/services/cli/opencode/capabilities/config_profile.dart';
+import 'package:teampilot/services/cli/flashskyai/provider/flashskyai_effort_capability.dart';
+import 'package:teampilot/services/cli/opencode/provider/opencode_effort_capability.dart';
 
 void main() {
   test('built-in registry registers effort on CLIs that support it', () {

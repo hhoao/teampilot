@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/provider/cursor/cursor_auth_artifacts.dart';
+import 'package:teampilot/services/cli/cursor/provider/cursor_auth_artifacts.dart';
 
 void main() {
   test('requiredForAuth includes cli-config.json', () {

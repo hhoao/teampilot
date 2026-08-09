@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/provider/cursor/cursor_launch_environment.dart';
+import 'package:teampilot/services/cli/cursor/provider/cursor_launch_environment.dart';
 
 void main() {
   group('CursorLaunchEnvironment', () {

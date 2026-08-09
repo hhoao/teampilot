@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/agent_status/agent_status_event.dart';
 import 'package:teampilot/services/agent_status/agent_attention_state.dart';
-import 'package:teampilot/services/agent_status/claude_permission_sticky.dart';
+import 'package:teampilot/services/cli/claude/capabilities/permission_sticky.dart';
 
 void main() {
   group('shouldKeepClaudePermissionVisible', () {

@@ -1,11 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
-import 'package:teampilot/services/cli/session_lifecycle/cursor/cursor_session_lifecycle_paths.dart';
-import 'package:teampilot/services/cli/registry/resources/cursor_resource_capability.dart';
+import 'package:teampilot/services/cli/cursor/capabilities/session_lifecycle_paths.dart';
+import 'package:teampilot/services/cli/cursor/capabilities/resource.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/provider/cursor/cursor_home_layout.dart';
-import 'package:teampilot/services/provider/cursor/cursor_workspace_trust.dart';
-import 'package:teampilot/services/provider/cursor/cursor_workspace_warm_tier.dart';
+import 'package:teampilot/services/cli/cursor/provider/cursor_home_layout.dart';
+import 'package:teampilot/services/cli/cursor/provider/cursor_workspace_trust.dart';
+import 'package:teampilot/services/cli/cursor/provider/cursor_workspace_warm_tier.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 
 import '../../../../support/cursor_warm_tier_manifest_paths.dart';

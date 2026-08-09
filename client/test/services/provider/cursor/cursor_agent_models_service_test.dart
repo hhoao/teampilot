@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/provider/cursor/cursor_agent_models_service.dart';
+import 'package:teampilot/services/cli/cursor/provider/cursor_agent_models_service.dart';
 
 import '../../../support/in_memory_filesystem.dart';
 

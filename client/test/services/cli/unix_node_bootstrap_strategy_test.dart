@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/services/cli/installer_types.dart';
-import 'package:teampilot/services/cli/registry/installer/claude_installer_capability.dart';
-import 'package:teampilot/services/cli/registry/installer/cursor_installer_capability.dart';
+import 'package:teampilot/services/cli/claude/capabilities/installer.dart';
+import 'package:teampilot/services/cli/cursor/capabilities/installer.dart';
 import 'package:teampilot/services/cli/registry/installer/installer_context.dart';
 import 'package:teampilot/services/cli/registry/installer/termux_remote_detect.dart';
 import 'package:teampilot/services/cli/registry/installer/unix_node_bootstrap_strategy.dart';

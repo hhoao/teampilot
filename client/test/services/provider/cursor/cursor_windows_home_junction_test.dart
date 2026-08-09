@@ -2,8 +2,8 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
-import 'package:teampilot/services/provider/cursor/cursor_session_config_dir.dart';
-import 'package:teampilot/services/provider/cursor/cursor_windows_home_junction.dart';
+import 'package:teampilot/services/cli/cursor/provider/cursor_session_config_dir.dart';
+import 'package:teampilot/services/cli/cursor/provider/cursor_windows_home_junction.dart';
 import 'package:teampilot/services/storage/windows_cli_runtime_junction.dart';
 
 void main() {

@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/services/cli/registry/capabilities/provider_model_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
-import 'package:teampilot/services/provider/claude/claude_provider_model_capability.dart';
+import 'package:teampilot/services/cli/claude/provider/claude_provider_model_capability.dart';
 
 void main() {
   test('backgroundModelFromProvider returns the role-flagged model id', () {

@@ -3,7 +3,7 @@ import 'package:path/path.dart' as p;
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/launch/launch_manifest.dart';
 import 'package:teampilot/services/launch/launch_manifest_paths.dart';
-import 'package:teampilot/services/provider/cursor/cursor_launch_environment.dart';
+import 'package:teampilot/services/cli/cursor/provider/cursor_launch_environment.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 

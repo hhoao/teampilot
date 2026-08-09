@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/provider/opencode/opencode_shared_plugin_deps.dart';
+import 'package:teampilot/services/cli/opencode/provider/opencode_shared_plugin_deps.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 
 void main() {
