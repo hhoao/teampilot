@@ -1,6 +1,7 @@
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/registry/capabilities/ai_history_capability.dart';
+import 'package:teampilot/services/cli/registry/capabilities/history/claude_compatible_jsonl.dart';
 import 'package:teampilot/services/cli/registry/capabilities/history/subagent_side_resolver.dart';
 import 'package:teampilot/services/cli/registry/capabilities/history/tool_result_enricher.dart';
 import 'package:teampilot/services/cli/registry/cli_capability.dart';
@@ -15,6 +16,7 @@ final class FakeAiHistoryCapability implements AiHistoryCapability {
     this.locateFn,
     this.subagentSideResolver = const NullSubagentSideResolver(),
     this.toolResultEnricher = const NoOpToolResultEnricher(),
+    this.lineAppend,
   });
 
   @override
@@ -29,6 +31,9 @@ final class FakeAiHistoryCapability implements AiHistoryCapability {
 
   @override
   Set<String> get subagentToolNames => const {};
+
+  @override
+  final AiTranscriptLineAppend? lineAppend;
 
   @override
   final SubagentSideResolver subagentSideResolver;
@@ -59,6 +64,7 @@ CliToolRegistry fakeAiHistoryRegistry({
   Future<AiTranscriptBundle?> Function(SessionHistoryContext ctx)? locate,
   SubagentSideResolver subagentSideResolver = const NullSubagentSideResolver(),
   ToolResultEnricher toolResultEnricher = const NoOpToolResultEnricher(),
+  AiTranscriptLineAppend? lineAppend,
 }) {
   final registry = CliToolRegistry();
   registry.register(
@@ -69,6 +75,7 @@ CliToolRegistry fakeAiHistoryRegistry({
         locateFn: locate,
         subagentSideResolver: subagentSideResolver,
         toolResultEnricher: toolResultEnricher,
+        lineAppend: lineAppend,
       ),
     ),
   );

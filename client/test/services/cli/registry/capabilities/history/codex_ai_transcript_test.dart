@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:ai_message_core/ai_message_core.dart';
@@ -259,4 +260,63 @@ void main() {
       'I will inspect the plan first.',
     );
   });
+
+  test('appendCodexJsonlEvent line-parse matches adapter (tailer dialect)', () async {
+    final bytes = await File(
+      'test/fixtures/session_history/codex/basic.jsonl',
+    ).readAsBytes();
+    final content = String.fromCharCodes(bytes);
+
+    final adapter = const CodexAiTranscriptAdapter();
+    final adapterMessages = await adapter.parse(
+      AiTranscriptBundle(
+        adapterId: 'codex',
+        fragments: [
+          AiTranscriptFragment(name: 'rollout.jsonl', bytes: bytes),
+        ],
+      ),
+    );
+
+    final raw = <AiMessage>[];
+    for (final line in const LineSplitter().convert(content)) {
+      final trimmed = line.trim();
+      if (trimmed.isEmpty) continue;
+      final event = _tryDecode(trimmed);
+      if (event == null) continue;
+      appendCodexJsonlEvent(raw, event, fallbackId: () => 't');
+    }
+    final lineMessages = finalizeAiMessagesForHistory(raw);
+
+    expect(lineMessages, hasLength(adapterMessages.length));
+    for (var i = 0; i < adapterMessages.length; i++) {
+      expect(lineMessages[i].role, adapterMessages[i].role);
+      expect(
+        lineMessages[i].parts.length,
+        adapterMessages[i].parts.length,
+      );
+      final a = lineMessages[i].parts;
+      final b = adapterMessages[i].parts;
+      for (var j = 0; j < a.length; j++) {
+        if (a[j] is AiTextPart && b[j] is AiTextPart) {
+          expect((a[j] as AiTextPart).text, (b[j] as AiTextPart).text);
+        }
+        if (a[j] is AiToolCallPart && b[j] is AiToolCallPart) {
+          expect((a[j] as AiToolCallPart).toolName, (b[j] as AiToolCallPart).toolName);
+          expect(
+            (a[j] as AiToolCallPart).toolCallId,
+            (b[j] as AiToolCallPart).toolCallId,
+          );
+        }
+      }
+    }
+  });
+}
+
+Map<String, dynamic>? _tryDecode(String line) {
+  try {
+    final d = jsonDecode(line);
+    return d is Map<String, dynamic> ? d : (d is Map ? Map<String, dynamic>.from(d) : null);
+  } on FormatException {
+    return null;
+  }
 }

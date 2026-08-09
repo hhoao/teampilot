@@ -48,6 +48,7 @@ final class AiTranscriptTailer {
     required SessionHistoryContext ctx,
     required String seatKey,
     required String? transcriptPath,
+    required AiTranscriptLineAppend appendEvent,
     bool force = false,
   }) async {
     final state = _states.putIfAbsent(seatKey, _TailState.new);
@@ -88,7 +89,7 @@ final class AiTranscriptTailer {
           if (trimmed.isEmpty) continue;
           final event = tryDecodeJsonlLine(trimmed);
           if (event == null) continue;
-          appendClaudeJsonlEvent(
+          appendEvent(
             state.raw,
             event,
             fallbackId: () => 'full-$seatKey',
@@ -148,7 +149,7 @@ final class AiTranscriptTailer {
       if (trimmed.isEmpty) continue;
       final event = tryDecodeJsonlLine(trimmed);
       if (event == null) continue;
-      appendClaudeJsonlEvent(state.raw, event, fallbackId: () => 'delta-$seatKey');
+      appendEvent(state.raw, event, fallbackId: () => 'delta-$seatKey');
     }
     state.finalized = finalizeAiMessagesForHistory(state.raw);
     return TailRefreshResult(

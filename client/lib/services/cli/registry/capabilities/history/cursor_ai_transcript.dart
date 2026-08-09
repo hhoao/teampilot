@@ -157,7 +157,7 @@ final class CursorAiTranscriptAdapter implements AiTranscriptAdapter {
         if (trimmed.isEmpty) continue;
         final event = _tryDecodeObject(trimmed);
         if (event == null) continue;
-        _appendFromEvent(
+        appendCursorJsonlEvent(
           messages,
           event,
           fallbackId: () => 'cursor-${fallbackSeq++}',
@@ -180,7 +180,11 @@ Map<String, dynamic>? _tryDecodeObject(String raw) {
   return null;
 }
 
-void _appendFromEvent(
+/// Appends one Cursor agent-transcript event into [messages]. Public so the
+/// incremental tailer ([AiTranscriptLineAppend]) can parse cursor rows with
+/// the same `role` dialect, text wrapper cleanup and id-less tool fallback as
+/// [CursorAiTranscriptAdapter.parse].
+void appendCursorJsonlEvent(
   List<AiMessage> messages,
   Map<String, dynamic> event, {
   required String Function() fallbackId,

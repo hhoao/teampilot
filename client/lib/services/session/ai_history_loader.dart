@@ -162,26 +162,30 @@ final class AiHistoryLoader {
         }
         return null; // degrade-only; never invent a path from fragment basename
       }();
+      final lineAppend = cap.lineAppend;
 
-      final tail = await _tailer.refresh(
-        ctx: ctx,
-        seatKey: cacheKey,
-        transcriptPath: parentPath,
-        force: force,
-      );
-
-      // The tailer needs a real transcript file to hold a byte cursor. When
-      // locate produced a bundle without a usable cacheTokenPath (synthetic or
-      // degraded locate), parse the located bytes through the adapter instead
-      // of dropping them.
-      var messages = tail.messages;
-      if (bundle == null) {
-        messages = const <AiMessage>[];
-      } else if (parentPath == null) {
+      // Tailer is per-CLI: each capability supplies its own line parser. When
+      // the CLI has no incremental dialect (opencode's multi-file DB) or the
+      // locate bundle carries no byte-cursor path, fall back to a full parse
+      // through the capability's adapter.
+      final useTailer = lineAppend != null && parentPath != null;
+      var messages = const <AiMessage>[];
+      var tailChanged = false;
+      if (useTailer) {
+        final tail = await _tailer.refresh(
+          ctx: ctx,
+          seatKey: cacheKey,
+          transcriptPath: parentPath,
+          appendEvent: lineAppend,
+          force: force,
+        );
+        messages = tail.messages;
+        tailChanged = tail.changed;
+      } else if (bundle != null) {
         messages = await cap.adapter.parse(bundle);
       }
 
-      if (bundle != null && parentPath != null && !tail.changed) {
+      if (bundle != null && useTailer && !tailChanged) {
         _tokens[cacheKey] = token ?? 'unchanged-$cacheKey';
         return AiHistoryLoadResult(
           messages: _messages[cacheKey] ?? const [],

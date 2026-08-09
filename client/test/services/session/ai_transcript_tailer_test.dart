@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/services/cli/registry/capabilities/history/claude_compatible_jsonl.dart';
+import 'package:teampilot/services/cli/registry/capabilities/history/cursor_ai_transcript.dart';
 import 'package:teampilot/services/io/filesystem.dart';
 import 'package:teampilot/services/session/ai_transcript_tailer.dart';
 import 'package:teampilot/services/session/session_history_context.dart';
@@ -58,6 +60,20 @@ String _toolResult(String toolUseId, String text) => _line({
   'timestamp': '2026-08-08T00:00:03.000Z',
 });
 
+/// Cursor agent-transcripts put the speaker on the TOP-LEVEL `role` field
+/// (Claude/flashskyai use `type`). The tailer must parse both.
+String _cursorLine(String role, String text) => _line({
+  'role': role,
+  'message': {
+    'role': role,
+    'content': [
+      {'type': 'text', 'text': text},
+    ],
+  },
+  'uuid': '$role-${text.hashCode}',
+  'timestamp': '2026-08-08T00:00:04.000Z',
+});
+
 class _MtimeFs extends InMemoryFilesystem {
   final Map<String, DateTime> mtimes = {};
   void setMtime(String path, DateTime t) => mtimes[path] = t;
@@ -109,7 +125,7 @@ void main() {
     fs.setMtime(_path, DateTime.parse(t0));
     final tailer = AiTranscriptTailer();
 
-    final first = await tailer.refresh(ctx: _ctx(fs), seatKey: _seat, transcriptPath: _path);
+    final first = await tailer.refresh(ctx: _ctx(fs), seatKey: _seat, transcriptPath: _path, appendEvent: appendClaudeJsonlEvent);
     expect(first.changed, isTrue);
     expect(first.fullReseek, isTrue);
     expect(first.messages, hasLength(2));
@@ -119,7 +135,7 @@ void main() {
 
     await _append(fs, '${_user('three')}\n', DateTime.parse('2026-08-08T00:00:10Z'));
     final secondSize = (await fs.readBytes(_path))!.length;
-    final second = await tailer.refresh(ctx: _ctx(fs), seatKey: _seat, transcriptPath: _path);
+    final second = await tailer.refresh(ctx: _ctx(fs), seatKey: _seat, transcriptPath: _path, appendEvent: appendClaudeJsonlEvent);
     expect(second.changed, isTrue);
     expect(second.fullReseek, isFalse);
     expect(second.messages, hasLength(3));
@@ -131,14 +147,63 @@ void main() {
     );
   });
 
+  test('parses Cursor transcripts that use a top-level role field', () async {
+    final fs = _ProbeFs();
+    await fs.writeString(
+      _path,
+      '${_cursorLine('user', 'hello')}\n'
+      '${_cursorLine('assistant', 'hi')}\n'
+      '${_cursorLine('user', 'again')}\n'
+      '${_cursorLine('assistant', 'bye')}\n',
+    );
+    fs.setMtime(_path, DateTime.parse('2026-08-08T00:00:00Z'));
+    final tailer = AiTranscriptTailer();
+
+    final first = await tailer.refresh(
+      ctx: _ctx(fs),
+      seatKey: _seat,
+      transcriptPath: _path,
+      appendEvent: appendCursorJsonlEvent,
+    );
+    expect(first.changed, isTrue);
+    expect(first.messages, hasLength(4));
+    expect(first.messages[0].role, AiRole.user);
+    expect((first.messages[0].parts.single as AiTextPart).text, 'hello');
+    expect(first.messages[1].role, AiRole.assistant);
+    expect((first.messages[1].parts.single as AiTextPart).text, 'hi');
+    expect(first.messages[2].role, AiRole.user);
+    expect((first.messages[2].parts.single as AiTextPart).text, 'again');
+    expect(first.messages[3].role, AiRole.assistant);
+    expect((first.messages[3].parts.single as AiTextPart).text, 'bye');
+
+    // Delta refresh must keep parsing cursor rows.
+    await _append(
+      fs,
+      '${_cursorLine('user', 'more')}\n'
+      '${_cursorLine('assistant', 'final')}\n',
+      DateTime.parse('2026-08-08T00:00:10Z'),
+    );
+    final second = await tailer.refresh(
+      ctx: _ctx(fs),
+      seatKey: _seat,
+      transcriptPath: _path,
+      appendEvent: appendCursorJsonlEvent,
+    );
+    expect(second.changed, isTrue);
+    expect(second.fullReseek, isFalse);
+    expect(second.messages, hasLength(6));
+    expect(second.messages[5].role, AiRole.assistant);
+    expect((second.messages[5].parts.single as AiTextPart).text, 'final');
+  });
+
   test('unchanged refresh returns cached with zero delta work', () async {
     final fs = _ProbeFs();
     await fs.writeString(_path, '${_user('one')}\n');
     fs.setMtime(_path, DateTime.parse('2026-08-08T00:00:00Z'));
     final tailer = AiTranscriptTailer();
-    await tailer.refresh(ctx: _ctx(fs), seatKey: _seat, transcriptPath: _path);
+    await tailer.refresh(ctx: _ctx(fs), seatKey: _seat, transcriptPath: _path, appendEvent: appendClaudeJsonlEvent);
 
-    final again = await tailer.refresh(ctx: _ctx(fs), seatKey: _seat, transcriptPath: _path);
+    final again = await tailer.refresh(ctx: _ctx(fs), seatKey: _seat, transcriptPath: _path, appendEvent: appendClaudeJsonlEvent);
     expect(again.changed, isFalse);
     expect(again.messages, hasLength(1));
   });
@@ -148,10 +213,10 @@ void main() {
     await fs.writeString(_path, '${_assistant('m1', 'hello')}\n');
     fs.setMtime(_path, DateTime.parse('2026-08-08T00:00:00Z'));
     final tailer = AiTranscriptTailer();
-    await tailer.refresh(ctx: _ctx(fs), seatKey: _seat, transcriptPath: _path);
+    await tailer.refresh(ctx: _ctx(fs), seatKey: _seat, transcriptPath: _path, appendEvent: appendClaudeJsonlEvent);
 
     await _append(fs, '${_assistant('m1', ' world')}\n', DateTime.parse('2026-08-08T00:00:05Z'));
-    final second = await tailer.refresh(ctx: _ctx(fs), seatKey: _seat, transcriptPath: _path);
+    final second = await tailer.refresh(ctx: _ctx(fs), seatKey: _seat, transcriptPath: _path, appendEvent: appendClaudeJsonlEvent);
     expect(second.messages, hasLength(1));
     expect(
       second.messages.single.parts.map((p) => (p as AiTextPart).text).join(),
@@ -164,10 +229,10 @@ void main() {
     await fs.writeString(_path, '${_toolUse('a', 'call_1')}\n');
     fs.setMtime(_path, DateTime.parse('2026-08-08T00:00:00Z'));
     final tailer = AiTranscriptTailer();
-    await tailer.refresh(ctx: _ctx(fs), seatKey: _seat, transcriptPath: _path);
+    await tailer.refresh(ctx: _ctx(fs), seatKey: _seat, transcriptPath: _path, appendEvent: appendClaudeJsonlEvent);
 
     await _append(fs, '${_toolResult('call_1', 'out')}\n', DateTime.parse('2026-08-08T00:00:05Z'));
-    final second = await tailer.refresh(ctx: _ctx(fs), seatKey: _seat, transcriptPath: _path);
+    final second = await tailer.refresh(ctx: _ctx(fs), seatKey: _seat, transcriptPath: _path, appendEvent: appendClaudeJsonlEvent);
     final call = second.messages
         .expand((m) => m.parts)
         .whereType<AiToolCallPart>()
@@ -182,12 +247,12 @@ void main() {
     await fs.writeString(_path, '${_user('one')}\n${_user('two')}\n');
     fs.setMtime(_path, DateTime.parse('2026-08-08T00:00:00Z'));
     final tailer = AiTranscriptTailer();
-    await tailer.refresh(ctx: _ctx(fs), seatKey: _seat, transcriptPath: _path);
+    await tailer.refresh(ctx: _ctx(fs), seatKey: _seat, transcriptPath: _path, appendEvent: appendClaudeJsonlEvent);
 
     // Simulated /compact: rewrite a smaller file with a different first line.
     await fs.writeString(_path, '${_user('collapsed')}\n');
     fs.setMtime(_path, DateTime.parse('2026-08-08T00:01:00Z'));
-    final again = await tailer.refresh(ctx: _ctx(fs), seatKey: _seat, transcriptPath: _path);
+    final again = await tailer.refresh(ctx: _ctx(fs), seatKey: _seat, transcriptPath: _path, appendEvent: appendClaudeJsonlEvent);
     expect(again.fullReseek, isTrue);
     expect(again.messages.map((m) => (m.parts.single as AiTextPart).text), ['collapsed']);
   });
@@ -198,11 +263,11 @@ void main() {
     await fs.writeString(_path, '${_user('aaaa')}\n${_user('bbbb')}\n');
     fs.setMtime(_path, DateTime.parse('2026-08-08T00:00:00Z'));
     final tailer = AiTranscriptTailer();
-    await tailer.refresh(ctx: _ctx(fs), seatKey: _seat, transcriptPath: _path);
+    await tailer.refresh(ctx: _ctx(fs), seatKey: _seat, transcriptPath: _path, appendEvent: appendClaudeJsonlEvent);
 
     await fs.writeString(_path, '${_user('cccc')}\n${_user('bbbb')}\n');
     fs.setMtime(_path, DateTime.parse('2026-08-08T00:01:00Z'));
-    final again = await tailer.refresh(ctx: _ctx(fs), seatKey: _seat, transcriptPath: _path);
+    final again = await tailer.refresh(ctx: _ctx(fs), seatKey: _seat, transcriptPath: _path, appendEvent: appendClaudeJsonlEvent);
     expect(again.fullReseek, isTrue);
     expect(again.messages.map((m) => (m.parts.single as AiTextPart).text), ['cccc', 'bbbb']);
   });
@@ -212,14 +277,14 @@ void main() {
     await fs.writeString(_path, '${_user('one')}\n');
     fs.setMtime(_path, DateTime.parse('2026-08-08T00:00:00Z'));
     final tailer = AiTranscriptTailer();
-    await tailer.refresh(ctx: _ctx(fs), seatKey: _seat, transcriptPath: _path);
+    await tailer.refresh(ctx: _ctx(fs), seatKey: _seat, transcriptPath: _path, appendEvent: appendClaudeJsonlEvent);
 
     await _append(fs, _user('partial'), DateTime.parse('2026-08-08T00:00:05Z'));
-    final deferred = await tailer.refresh(ctx: _ctx(fs), seatKey: _seat, transcriptPath: _path);
+    final deferred = await tailer.refresh(ctx: _ctx(fs), seatKey: _seat, transcriptPath: _path, appendEvent: appendClaudeJsonlEvent);
     expect(deferred.messages, hasLength(1), reason: 'partial line must not be consumed');
 
     await _append(fs, '\n', DateTime.parse('2026-08-08T00:00:06Z'));
-    final landed = await tailer.refresh(ctx: _ctx(fs), seatKey: _seat, transcriptPath: _path);
+    final landed = await tailer.refresh(ctx: _ctx(fs), seatKey: _seat, transcriptPath: _path, appendEvent: appendClaudeJsonlEvent);
     expect(landed.messages, hasLength(2));
   });
 
@@ -234,7 +299,7 @@ void main() {
     fs.setMtime(_path, DateTime.parse('2026-08-08T00:00:00Z'));
     final tailer = AiTranscriptTailer();
 
-    final first = await tailer.refresh(ctx: _ctx(fs), seatKey: _seat, transcriptPath: _path);
+    final first = await tailer.refresh(ctx: _ctx(fs), seatKey: _seat, transcriptPath: _path, appendEvent: appendClaudeJsonlEvent);
     expect(first.fullReseek, isTrue);
     expect(first.messages, hasLength(1), reason: 'trailing partial line must be deferred');
     final partialStart = utf8.encode('${_user('one')}\n').length;
@@ -243,7 +308,7 @@ void main() {
 
     await _append(fs, '}\n', DateTime.parse('2026-08-08T00:00:05Z'));
     final secondSize = (await fs.readBytes(_path))!.length;
-    final second = await tailer.refresh(ctx: _ctx(fs), seatKey: _seat, transcriptPath: _path);
+    final second = await tailer.refresh(ctx: _ctx(fs), seatKey: _seat, transcriptPath: _path, appendEvent: appendClaudeJsonlEvent);
     expect(second.changed, isTrue);
     expect(second.messages, hasLength(2), reason: 'completed line must appear, not drop');
     expect(
@@ -280,7 +345,7 @@ void main() {
     fs.setMtime(_path, DateTime.parse('2026-08-08T00:00:00Z'));
     final tailer = AiTranscriptTailer();
 
-    final first = await tailer.refresh(ctx: _ctx(fs), seatKey: _seat, transcriptPath: _path);
+    final first = await tailer.refresh(ctx: _ctx(fs), seatKey: _seat, transcriptPath: _path, appendEvent: appendClaudeJsonlEvent);
     expect(first.fullReseek, isTrue);
     expect(first.messages, hasLength(1), reason: 'partial multibyte line deferred');
 
@@ -290,7 +355,7 @@ void main() {
       0x0A,
     ]);
     fs.setMtime(_path, DateTime.parse('2026-08-08T00:00:05Z'));
-    final second = await tailer.refresh(ctx: _ctx(fs), seatKey: _seat, transcriptPath: _path);
+    final second = await tailer.refresh(ctx: _ctx(fs), seatKey: _seat, transcriptPath: _path, appendEvent: appendClaudeJsonlEvent);
     expect(second.changed, isTrue);
     expect(second.messages, hasLength(2), reason: 'completed multibyte line appears');
     expect(
@@ -304,9 +369,9 @@ void main() {
     await fs.writeString(_path, '${_user('one')}\n');
     fs.setMtime(_path, DateTime.parse('2026-08-08T00:00:00Z'));
     final tailer = AiTranscriptTailer();
-    await tailer.refresh(ctx: _ctx(fs), seatKey: _seat, transcriptPath: _path);
+    await tailer.refresh(ctx: _ctx(fs), seatKey: _seat, transcriptPath: _path, appendEvent: appendClaudeJsonlEvent);
 
-    final forced = await tailer.refresh(ctx: _ctx(fs), seatKey: _seat, transcriptPath: _path, force: true);
+    final forced = await tailer.refresh(ctx: _ctx(fs), seatKey: _seat, transcriptPath: _path, force: true, appendEvent: appendClaudeJsonlEvent);
     expect(forced.fullReseek, isTrue);
   });
 
@@ -315,12 +380,12 @@ void main() {
     await fs.writeString(_path, '${_user('one')}\n');
     fs.setMtime(_path, DateTime.parse('2026-08-08T00:00:00Z'));
     final tailer = AiTranscriptTailer();
-    await tailer.refresh(ctx: _ctx(fs), seatKey: _seat, transcriptPath: _path);
+    await tailer.refresh(ctx: _ctx(fs), seatKey: _seat, transcriptPath: _path, appendEvent: appendClaudeJsonlEvent);
 
     const other = '/proj/other.jsonl';
     await fs.writeString(other, '${_user('other')}\n');
     fs.setMtime(other, DateTime.parse('2026-08-08T00:02:00Z'));
-    final again = await tailer.refresh(ctx: _ctx(fs), seatKey: _seat, transcriptPath: other);
+    final again = await tailer.refresh(ctx: _ctx(fs), seatKey: _seat, transcriptPath: other, appendEvent: appendClaudeJsonlEvent);
     expect(again.fullReseek, isTrue);
     expect(again.messages, hasLength(1));
   });

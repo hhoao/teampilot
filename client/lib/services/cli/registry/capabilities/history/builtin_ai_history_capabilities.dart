@@ -3,6 +3,7 @@ import 'package:ai_message_core/ai_message_core.dart';
 import '../../../../session/session_history_context.dart';
 import '../ai_history_capability.dart';
 import 'claude_ai_transcript.dart';
+import 'claude_compatible_jsonl.dart';
 import 'codex_ai_transcript.dart';
 import 'cursor_ai_transcript.dart';
 import 'flashskyai_ai_transcript.dart';
@@ -34,6 +35,9 @@ final class ClaudeAiHistoryCapability implements AiHistoryCapability {
   Set<String> get subagentToolNames => const {'agent', 'task', 'workflow'};
 
   @override
+  AiTranscriptLineAppend get lineAppend => appendClaudeJsonlEvent;
+
+  @override
   final SubagentSideResolver subagentSideResolver;
 
   @override
@@ -55,6 +59,9 @@ final class FlashskyaiAiHistoryCapability implements AiHistoryCapability {
 
   @override
   Set<String> get subagentToolNames => const {'agent', 'task'};
+
+  @override
+  AiTranscriptLineAppend get lineAppend => appendClaudeJsonlEvent;
 
   @override
   final SubagentSideResolver subagentSideResolver;
@@ -80,6 +87,9 @@ final class CodexAiHistoryCapability implements AiHistoryCapability {
   Set<String> get subagentToolNames => const {'spawn_agent', 'agent', 'task'};
 
   @override
+  AiTranscriptLineAppend get lineAppend => appendCodexJsonlEvent;
+
+  @override
   final SubagentSideResolver subagentSideResolver;
 
   @override
@@ -103,6 +113,9 @@ final class OpencodeAiHistoryCapability implements AiHistoryCapability {
   Set<String> get subagentToolNames => const {'task'};
 
   @override
+  AiTranscriptLineAppend? get lineAppend => null; // multi-file DB; no single-line incremental dialect.
+
+  @override
   final SubagentSideResolver subagentSideResolver;
 
   @override
@@ -124,6 +137,9 @@ final class CursorAiHistoryCapability implements AiHistoryCapability {
 
   @override
   Set<String> get subagentToolNames => const {'agent', 'task'};
+
+  @override
+  AiTranscriptLineAppend get lineAppend => appendCursorJsonlEvent;
 
   @override
   final SubagentSideResolver subagentSideResolver;

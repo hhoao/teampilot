@@ -89,7 +89,7 @@ final class CodexAiTranscriptAdapter implements AiTranscriptAdapter {
         if (trimmed.isEmpty) continue;
         final event = _tryDecodeObject(trimmed);
         if (event == null) continue;
-        _appendFromRecord(
+        appendCodexJsonlEvent(
           messages,
           event,
           fallbackId: () => 'codex-${fallbackSeq++}',
@@ -112,7 +112,11 @@ Map<String, dynamic>? _tryDecodeObject(String line) {
   return null;
 }
 
-void _appendFromRecord(
+/// Appends one Codex transcript record into [messages]. Public so the
+/// incremental tailer ([AiTranscriptLineAppend]) can parse codex's
+/// `payload`-wrapped `event_msg`/`response_item` rows with the same dialect as
+/// [CodexAiTranscriptAdapter.parse].
+void appendCodexJsonlEvent(
   List<AiMessage> messages,
   Map<String, dynamic> record, {
   required String Function() fallbackId,

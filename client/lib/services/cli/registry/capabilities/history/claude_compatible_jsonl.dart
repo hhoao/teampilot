@@ -2,6 +2,18 @@ import 'dart:convert';
 
 import 'package:ai_message_core/ai_message_core.dart';
 
+/// Appends one decoded transcript event into [messages]. No return — the
+/// incremental tailer discards it (a bool-returning fn like
+/// [appendClaudeJsonlEvent] still satisfies this since the value is ignored).
+///
+/// Per-CLI dialects plug this into [AiTranscriptTailer] so each CLI parses its
+/// own JSONL shape instead of a shared claude dialect.
+typedef AiTranscriptLineAppend = void Function(
+  List<AiMessage> messages,
+  Map<String, dynamic> event, {
+  required String Function() fallbackId,
+});
+
 Map<String, dynamic>? tryDecodeJsonlLine(String line) {
   try {
     final decoded = jsonDecode(line);
@@ -22,7 +34,9 @@ bool appendClaudeJsonlEvent(
   Map<String, dynamic> event, {
   required String Function() fallbackId,
 }) {
-  final type = event['type'];
+  // Claude/flashskyai put the speaker on the top-level `type` field; Cursor
+  // agent-transcripts use a top-level `role` field with the same values.
+  final type = event['type'] ?? event['role'];
   if (type != 'user' && type != 'assistant') return false;
 
   final message = event['message'];

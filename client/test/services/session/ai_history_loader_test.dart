@@ -11,6 +11,8 @@ import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/models/workspace_launch_context.dart';
 import 'package:teampilot/services/cli/registry/capabilities/ai_history_capability.dart';
 import 'package:teampilot/services/cli/registry/capabilities/history/claude_ai_transcript.dart';
+import 'package:teampilot/services/cli/registry/capabilities/history/claude_compatible_jsonl.dart';
+import 'package:teampilot/services/cli/registry/capabilities/history/cursor_ai_transcript.dart';
 import 'package:teampilot/services/cli/registry/capabilities/history/tool_result_enricher.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/session/session_history_context.dart';
@@ -127,6 +129,60 @@ void main() {
     expect(messages, isNotEmpty);
     expect(messages.first.id, 'u-1');
     expect(messages.first.role, AiRole.user);
+    expect(
+      messages.where((m) => m.role == AiRole.assistant),
+      isNotEmpty,
+    );
+  });
+
+  test('Cursor transcript parses via tailer + appendCursorJsonlEvent', () async {
+    // Cursor rows use a top-level `role` field (not claude's `type`), wrap
+    // user text in <user_query>, and omit tool_use ids. The loader must parse
+    // them with the cursor line dialect — not the claude-compatible tailer.
+    final bucket = RuntimeLayout.workspaceBucketForPrimaryPath('/work/project');
+    final session = simpleSession().copyWith(cli: CliTool.cursor);
+    final toolRoot = layout.sessionRuntimeToolDir(
+      'ws-1',
+      session.sessionId,
+      'cursor',
+    );
+    final projects = p.join(toolRoot, 'projects', bucket);
+    await Directory(projects).create(recursive: true);
+    final path = p.join(projects, '${session.sessionId}.jsonl');
+    final fixture = await File(
+      'test/fixtures/session_history/cursor/agent_transcript_no_tool_id.jsonl',
+    ).readAsBytes();
+    await File(path).writeAsBytes(fixture);
+
+    final registry = fakeAiHistoryRegistry(
+      cli: CliTool.cursor,
+      adapter: const CursorAiTranscriptAdapter(),
+      lineAppend: appendCursorJsonlEvent,
+      locate: (_) async => AiTranscriptBundle(
+        adapterId: 'cursor',
+        fragments: [
+          AiTranscriptFragment(name: 't.jsonl', bytes: [1, 2, 3]),
+        ],
+        hints: AiHistoryWatchMeta(
+          changeWatchRoot: p.dirname(path),
+          cacheTokenPaths: [path],
+        ).toHints(),
+      ),
+    );
+    final loader = buildLoader(registry: registry);
+
+    final result = await loader.load(
+      session: session,
+      memberId: '',
+      launchContext: launchContextFor(session),
+    );
+
+    final messages = result.messages;
+    // user(hello) + assistant(tool_use w/ no id) + assistant(text) — the two
+    // consecutive assistant rows coalesce into one.
+    expect(messages, isNotEmpty);
+    expect(messages.first.role, AiRole.user);
+    expect((messages.first.parts.single as AiTextPart).text, contains('hello'));
     expect(
       messages.where((m) => m.role == AiRole.assistant),
       isNotEmpty,
@@ -370,6 +426,7 @@ void main() {
       cli: CliTool.claude,
       adapter: _EchoAdapter(),
       toolResultEnricher: enricher,
+      lineAppend: appendClaudeJsonlEvent,
       locate: (_) async => AiTranscriptBundle(
         adapterId: 'claude',
         fragments: const [
@@ -420,6 +477,7 @@ void main() {
       cli: CliTool.claude,
       adapter: _EchoAdapter(),
       toolResultEnricher: enricher,
+      lineAppend: appendClaudeJsonlEvent,
       locate: (_) async => AiTranscriptBundle(
         adapterId: 'claude',
         fragments: const [
