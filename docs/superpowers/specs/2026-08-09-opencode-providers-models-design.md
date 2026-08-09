@@ -28,6 +28,7 @@ teampilot 当前状态：
 1. 在 teampilot 中体验 opencode 的**完整供应商 + 完整模型**：新增 `opencode-go` 订阅供应商，模型选择器显示各 provider 的**实时全量**模型。
 2. 复用项目既有架构（`CursorAgentModelsService` 的 live-fetch + 磁盘缓存模式），不新增 UI 面；`provider_model_picker_field.dart` 已泛化支持 `RefreshableProviderModelCapability`，UI 零改动。
 3. 离线时自动回退到静态清单，不劣于现状。
+4. **遵循 CLI 架构规范**（`docs/cli-architecture.md`）：代码落在 per-CLI 目录 `services/cli/opencode/` 下；把仍留在共享 `registry/capabilities/provider_model_capability.dart` 的 `OpencodeCatalogSource` / `OpencodeProviderModelCapability` 迁到 `services/cli/opencode/provider/opencode_provider_model_capability.dart`（对齐 cursor/claude 的 per-CLI 先例），共享文件只留接口定义与 `ProviderRecordModelCapability`。
 
 ## 非目标
 
@@ -38,7 +39,7 @@ teampilot 当前状态：
 
 ## 设计
 
-### 1. `opencode-go` preset（`client/lib/models/provider_presets/opencode_provider_presets.dart`）
+### 1. `opencode-go` preset（`client/lib/services/cli/opencode/provider_presets.dart`）
 
 在 `OpencodeProviderPresets.all` 增加一项：
 
@@ -69,9 +70,9 @@ AppProviderPreset(
 - 凭据能力 `appliesTo`（要求 `cli == opencode && isOfficial`）命中 → login/import/revoke 全可用，`opencode providers login -p opencode-go` 走通；
 - 全局 auth.json live-import（`OpencodeLiveImport`）命中 preset → `isOfficial: true`，不再降级成 `custom`。
 
-### 2. `OpencodeModelsService`（新文件 `client/lib/services/provider/opencode/opencode_models_service.dart`）
+### 2. `OpencodeModelsService`（新文件 `client/lib/services/cli/opencode/provider/opencode_models_service.dart`）
 
-镜像 `CursorAgentModelsService`（`client/lib/services/provider/cursor/cursor_agent_models_service.dart`）但面向**全局目录**：
+镜像 `CursorAgentModelsService`（`client/lib/services/cli/cursor/provider/cursor_agent_models_service.dart`）但面向**全局目录**：
 
 - 运行时拉 `https://models.dev/api.json`（opencode 自己同步的目录；首拉几 MB，一个 TTL 只拉一次）。
 - HTTP 客户端可注入（构造参数 `http.Client?`；测试用 `package:http/testing.dart` 的 `MockClient`）。
@@ -82,34 +83,58 @@ AppProviderPreset(
 
 models.dev 的 provider 顶层没有"默认模型"字段 → `defaultModelIdFor` 不需要，默认模型仍由 preset 的 `defaultModel` 决定。
 
-### 3. Capability 升级 + 接线
+### 3. Capability 迁移 + 升级 + 接线
 
-**`client/lib/services/cli/registry/capabilities/provider_model_capability.dart`**（或独立文件）：
-- `OpencodeCatalogSource` 改为携带 service：
-  ```dart
-  final class OpencodeCatalogSource implements ModelCatalogSource {
-    const OpencodeCatalogSource(this._modelsService);
-    final OpencodeModelsService? _modelsService;
-    @override
-    List<String> modelsFor({required provider, required providerId}) {
-      final id = provider?.id ?? providerId;
-      final live = _modelsService?.modelIdsFor(providerId: id) ?? const [];
-      if (live.isNotEmpty) return live;
-      return OpencodeModelCatalog.knownModelsForProvider(id);
-    }
+**3a. 新建 per-CLI 能力文件** `client/lib/services/cli/opencode/provider/opencode_provider_model_capability.dart`：
+
+把 `OpencodeCatalogSource` + `OpencodeProviderModelCapability` 从共享 `registry/capabilities/provider_model_capability.dart` **迁出**，并升级为 live-fetch 版：
+
+```dart
+final class OpencodeCatalogSource implements ModelCatalogSource {
+  const OpencodeCatalogSource(this._modelsService);
+  final OpencodeModelsService? _modelsService;
+  @override
+  List<String> modelsFor({required AppProviderConfig? provider, required String providerId}) {
+    final id = provider?.id ?? providerId;
+    final live = _modelsService?.modelIdsFor(providerId: id) ?? const [];
+    if (live.isNotEmpty) return live;
+    return OpencodeModelCatalog.knownModelsForProvider(id);
   }
-  ```
-- `OpencodeProviderModelCapability` 升级为 `implements RefreshableProviderModelCapability`（照 `CursorProviderModelCapability`）：构造可注入 `OpencodeModelsService?`，`catalogUpdates` / `refreshModelCatalog` 委托 service（`executable` 参数忽略——HTTP 拉取不需要）。
+}
 
-**接线**（mirror cursor）：
-- `client/lib/app/app_shell.dart`：构造 `opencodeModelsService: OpencodeModelsService()`。
-- `client/lib/services/cli/cli_bootstrap.dart`：新增 `opencodeModelsService` 字段。
-- `client/lib/services/cli/registry/built_in_cli_tools.dart`：`OpencodeCliTool(providerModel: OpencodeProviderModelCapability(modelsService: bootstrap.opencodeModelsService), …)`。
-- `client/lib/services/cli/registry/tools/opencode_cli_tool.dart`：构造参数从 `this.providerModel = const OpencodeProviderModelCapability()` 改为 `OpencodeProviderModelCapability? providerModel` + 默认构造（mirror `CursorCliTool`），保持无 service 时的 const 默认。
+final class OpencodeProviderModelCapability extends CatalogModelCapability
+    implements RefreshableProviderModelCapability {
+  OpencodeProviderModelCapability({OpencodeModelsService? modelsService})
+      : _modelsService = modelsService;
+  final OpencodeModelsService? _modelsService;
+  @override
+  bool get supportsModelTiers => false;
+  @override
+  List<ModelCatalogSource> get catalogSources => [OpencodeCatalogSource(_modelsService)];
+  @override
+  Listenable get catalogUpdates => _modelsService?.catalogUpdates ?? _emptyCatalogUpdates;
+  @override
+  Future<void> refreshModelCatalog({required String providerId, String? executable, bool forceRefresh = false})
+      => _modelsService?.refresh(providerId: providerId, forceRefresh: forceRefresh) ?? Future.value();
+  @override
+  ProviderModelPickerMode pickerMode(AppProviderConfig provider) => ProviderModelPickerMode.catalogWithCustomEntry;
+}
+```
+
+（`executable` 参数忽略——HTTP 拉取不需要。`Listenable`/`RefreshableProviderModelCapability`/`ModelCatalogSource`/`CatalogModelCapability` 等接口与基类、`ProviderRecordModelCapability` 继续留在共享 `registry/capabilities/provider_model_capability.dart`。）
+
+**3b. 更新 `opencode_tool.dart`**（`client/lib/services/cli/opencode/opencode_tool.dart`）：
+- 构造参数 `this.providerModel = const OpencodeProviderModelCapability()` 改为 `OpencodeProviderModelCapability? providerModel` + `providerModel ?? OpencodeProviderModelCapability()`（mirror `CursorCliTool`）。
+- import 从 `../registry/capabilities/provider_model_capability.dart` 改为 `provider/opencode_provider_model_capability.dart`（interface 若仍需要 `ProviderModelPickerMode` 等可保留对共享文件的 import）。
+
+**3c. Bootstrap 注入**：
+- `client/lib/services/cli/opencode/opencode_bootstrap_entry.dart`：新增 `final OpencodeModelsService? modelsService;`（mirror `CursorBootstrapEntry.agentModelsService`）。
+- `client/lib/services/cli/registry/built_in_cli_tools.dart`：`OpencodeCliTool(providerModel: OpencodeProviderModelCapability(modelsService: opencodeEntry?.modelsService), …)`。
+- `client/lib/app/app_shell.dart`：`CliBootstrap` map 里 `OpencodeBootstrapEntry(credentialsService: …, modelsService: OpencodeModelsService())`。
 
 **收益**：`provider_model_picker_field.dart`（`lib/widgets/app_provider/provider_model_picker_field.dart`）已泛化——capability 实现 `RefreshableProviderModelCapability` 后，picker 打开即触发 refresh、显示加载指示条、`catalogUpdates` 后刷新候选。**UI 零改动**。
 
-### 4. 静态回退清单（`client/lib/services/provider/opencode/opencode_model_catalog.dart`）
+### 4. 静态回退清单（`client/lib/services/cli/opencode/provider/opencode_model_catalog.dart`）
 
 - `_byProviderId` 增加 `'opencode-go'`：按实时 models.dev 目录的 24 个模型 id 列出（`deepseek-v4-flash/pro`、`glm-5/5.1/5.2`、`kimi-k2.5/k2.6/k2.7-code/k3`、`mimo-v2-*`、`minimax-m2.5/m2.7/m3`、`qwen3.5-plus/3.6-plus/3.7-max/3.7-plus/3.8-max`、`gpt-5.6-luna`、`grok-4.5`、`hy3`）。
 - `zen` 清单刷新到实时 87 个（live-fetch 主用，静态仅离线兜底）。
@@ -117,8 +142,9 @@ models.dev 的 provider 顶层没有"默认模型"字段 → `defaultModelIdFor`
 
 ### 5. 测试
 
-- **`client/test/services/provider/opencode/opencode_models_service_test.dart`**（新建）：注入 `MockClient` 返回 api.json fixture；覆盖：解析切片、TTL 新鲜命中、磁盘缓存读写、in-flight 去重、拉取失败回退、离线兜底空返回。用 `setUpTestAppStorage()` / `tearDownTestAppStorage()`。
+- **`client/test/services/provider/opencode/opencode_models_service_test.dart`**（新建，与现有 opencode 测试目录一致）：注入 `MockClient`（`package:http/testing.dart`）返回 api.json fixture；覆盖：解析切片、TTL 新鲜命中、磁盘缓存读写、in-flight 去重、拉取失败回退、离线兜底空返回。用 `setUpTestAppStorage()` / `tearDownTestAppStorage()`。
 - **preset 测试**：断言 `OpencodeProviderPresets.byId('opencode-go')` 命中且 `isOfficial`；`OpencodeLiveImport` 在 auth.json 含 `opencode-go` 条目时产出 official provider。
+- **能力迁移**：确认 `registry/capabilities/provider_model_capability.dart` 不再含 opencode 实现；`opencode_tool.dart` 的 `ProviderModelCapability` 来自 per-CLI 文件。
 - 现有 opencode 凭据/catalog 测试保持绿；最后 `cd client && flutter analyze --no-fatal-infos --no-fatal-warnings && flutter test --exclude-tags integration`。
 
 ## 验证
