@@ -474,24 +474,6 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get gitStage => '暂存更改';
-
-  @override
-  String get gitUnstage => '取消暂存';
-
-  @override
-  String get gitStageAll => '暂存所有更改';
-
-  @override
-  String get gitUnstageAll => '取消暂存所有更改';
-
-  @override
-  String get gitStageFolder => '暂存此目录下的更改';
-
-  @override
-  String get gitUnstageFolder => '取消暂存此目录下的更改';
-
-  @override
   String get treeExpandAllFolders => '展开所有目录';
 
   @override

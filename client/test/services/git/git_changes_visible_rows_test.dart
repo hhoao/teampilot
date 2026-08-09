@@ -37,12 +37,12 @@ void main() {
     // root-level folder 'domain': 2 staged of 4 total
     final domain = folderRows.firstWhere((r) => r.folderPath == 'domain');
     expect(domain.subtreeTotalCount, 4);
-    expect(domain.subtreeStagedCount, 2);
+    expect(domain.subtreeSelectedCount, 2);
     // nested folder 'domain/core': 1 staged of 2 total
     final core = folderRows.firstWhere((r) => r.folderPath == 'domain/core');
     expect(core.subtreeTotalCount, 2);
-    expect(core.subtreeStagedCount, 1);
-    expect(view.stagedCount, 2);
+    expect(core.subtreeSelectedCount, 1);
+    expect(view.selectedCount, 2);
     expect(view.totalCount, 4);
   });
 
@@ -69,7 +69,7 @@ void main() {
     );
     final folder = view.rows.singleWhere((r) => r.isFolder);
     expect(folder.subtreeTotalCount, 2);
-    expect(folder.subtreeStagedCount, 1);
+    expect(folder.subtreeSelectedCount, 1);
     expect(view.rows.where((r) => !r.isFolder), isEmpty); // children not emitted
   });
 
@@ -85,7 +85,7 @@ void main() {
     final b = files.firstWhere((r) => r.change!.path == 'b.txt');
     expect(a.change!.staged, isTrue); // selected
     expect(b.change!.staged, isFalse); // not selected
-    expect(view.stagedCount, 1); // selected count
+    expect(view.selectedCount, 1); // selected count
     expect(view.totalCount, 2);
   });
 
@@ -100,7 +100,7 @@ void main() {
       folderPath: 'aaaaa',
       name: 'aaaaa',
       depth: 0,
-      subtreeStagedCount: 0,
+      subtreeSelectedCount: 0,
       subtreeTotalCount: 1,
     );
     final wFile = gitChangesMinContentWidth(

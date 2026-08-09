@@ -34,7 +34,7 @@ abstract final class GitFileContextMenu {
       TpActionMenuSpec.item(
         value: staged ? 'unstage' : 'stage',
         icon: staged ? Icons.remove : Icons.add,
-        label: staged ? l10n.gitUnstage : l10n.gitStage,
+        label: staged ? l10n.gitExcludeFromCommit : l10n.gitIncludeInCommit,
       ),
       TpActionMenuSpec.item(
         value: 'discard',
@@ -87,12 +87,12 @@ abstract final class GitFolderContextMenu {
       TpActionMenuSpec.item(
         value: 'stage',
         icon: Icons.add,
-        label: l10n.gitStageFolder,
+        label: l10n.gitIncludeFolderInCommit,
       ),
       TpActionMenuSpec.item(
         value: 'unstage',
         icon: Icons.remove,
-        label: l10n.gitUnstageFolder,
+        label: l10n.gitExcludeFolderFromCommit,
       ),
       TpActionMenuSpec.item(
         value: 'discard',

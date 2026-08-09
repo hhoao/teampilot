@@ -15,7 +15,7 @@ class GitChangeFolderTile extends StatelessWidget {
     required this.folderPath,
     required this.name,
     required this.depth,
-    required this.subtreeStagedCount,
+    required this.subtreeSelectedCount,
     required this.subtreeTotalCount,
     required this.cubit,
     required this.onStage,
@@ -28,7 +28,7 @@ class GitChangeFolderTile extends StatelessWidget {
   final String folderPath;
   final String name;
   final int depth;
-  final int subtreeStagedCount;
+  final int subtreeSelectedCount;
   final int subtreeTotalCount;
   final GitCubit cubit;
   final VoidCallback onStage;
@@ -39,9 +39,9 @@ class GitChangeFolderTile extends StatelessWidget {
   bool? get _triState =>
       subtreeTotalCount == 0
           ? false
-          : subtreeStagedCount == subtreeTotalCount
+          : subtreeSelectedCount == subtreeTotalCount
           ? true
-          : subtreeStagedCount == 0
+          : subtreeSelectedCount == 0
           ? false
           : null;
 

@@ -27,7 +27,7 @@ class GitState extends Equatable {
     this.generatingCommitMessage = false,
     this.changesTreeView = const GitChangesTreeViewData(
       rows: [],
-      stagedCount: 0,
+      selectedCount: 0,
       totalCount: 0,
     ),
   });
@@ -167,7 +167,7 @@ class GitCubit extends Cubit<GitState> {
         selectedPaths: const {},
         changesTreeView: const GitChangesTreeViewData(
           rows: [],
-          stagedCount: 0,
+          selectedCount: 0,
           totalCount: 0,
         ),
         clearError: true,
@@ -348,31 +348,28 @@ class GitCubit extends Cubit<GitState> {
   }
 
   /// Selection-model ops: these are pure UI state (no git), matching IDEA's
-  /// "include in the next commit" checkboxes. Names are the legacy stage
-  /// vocabulary; a later task renames them.
-  Future<void> stage(GitFileChange change) async {
-    _publish(
-      state.copyWith(selectedPaths: {...state.selectedPaths, change.path}),
-    );
+  /// "include in the next commit" checkboxes.
+  Future<void> selectPath(String path) async {
+    _publish(state.copyWith(selectedPaths: {...state.selectedPaths, path}));
   }
 
-  Future<void> unstage(GitFileChange change) async {
-    final next = {...state.selectedPaths}..remove(change.path);
+  Future<void> deselectPath(String path) async {
+    final next = {...state.selectedPaths}..remove(path);
     _publish(state.copyWith(selectedPaths: next));
   }
 
-  Future<void> stageFolder(String folderPath) async {
+  Future<void> selectFolder(String folderPath) async {
     final changed = _changedPathsUnder(folderPath);
     _publish(state.copyWith(selectedPaths: {...state.selectedPaths, ...changed}));
   }
 
-  Future<void> unstageFolder(String folderPath) async {
+  Future<void> deselectFolder(String folderPath) async {
     final changed = _changedPathsUnder(folderPath);
     final next = {...state.selectedPaths}..removeAll(changed);
     _publish(state.copyWith(selectedPaths: next));
   }
 
-  Future<void> stageAll() async {
+  Future<void> selectAll() async {
     _publish(
       state.copyWith(
         selectedPaths: <String>{
@@ -383,7 +380,7 @@ class GitCubit extends Cubit<GitState> {
     );
   }
 
-  Future<void> unstageAll() async {
+  Future<void> selectNone() async {
     _publish(state.copyWith(selectedPaths: const <String>{}));
   }
 

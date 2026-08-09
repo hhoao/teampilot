@@ -12,7 +12,7 @@ class GitChangesVisibleRow extends Equatable {
     required this.folderPath,
     required this.name,
     required this.depth,
-    required this.subtreeStagedCount,
+    required this.subtreeSelectedCount,
     required this.subtreeTotalCount,
   }) : change = null,
        isFolder = true;
@@ -20,7 +20,7 @@ class GitChangesVisibleRow extends Equatable {
   const GitChangesVisibleRow.file({required this.change, required this.depth})
     : folderPath = null,
       name = null,
-      subtreeStagedCount = 0,
+      subtreeSelectedCount = 0,
       subtreeTotalCount = 0,
       isFolder = false;
 
@@ -28,7 +28,7 @@ class GitChangesVisibleRow extends Equatable {
   final String? name;
   final GitFileChange? change;
   final int depth;
-  final int subtreeStagedCount;
+  final int subtreeSelectedCount;
   final int subtreeTotalCount;
   final bool isFolder;
 
@@ -38,7 +38,7 @@ class GitChangesVisibleRow extends Equatable {
     name,
     change,
     depth,
-    subtreeStagedCount,
+    subtreeSelectedCount,
     subtreeTotalCount,
     isFolder,
   ];
@@ -46,25 +46,24 @@ class GitChangesVisibleRow extends Equatable {
 
 /// Pre-flattened unified rows for the changes tree list, with selected/total
 /// counts so the panel can render tri-state folder checkboxes and badges.
-/// `stagedCount` / `allStaged` / `noneStaged` now mean "selected for the next
-/// commit" (the checkbox state), not the git index (field names are renamed in
-/// a later task).
+/// `selectedCount` / `allSelected` / `noneSelected` mean "selected for the
+/// next commit" (the checkbox state), not the git index.
 class GitChangesTreeViewData extends Equatable {
   const GitChangesTreeViewData({
     required this.rows,
-    required this.stagedCount,
+    required this.selectedCount,
     required this.totalCount,
   });
 
   final List<GitChangesVisibleRow> rows;
-  final int stagedCount;
+  final int selectedCount;
   final int totalCount;
 
-  bool get allStaged => totalCount > 0 && stagedCount == totalCount;
-  bool get noneStaged => stagedCount == 0;
+  bool get allSelected => totalCount > 0 && selectedCount == totalCount;
+  bool get noneSelected => selectedCount == 0;
 
   @override
-  List<Object?> get props => [...rows, stagedCount, totalCount];
+  List<Object?> get props => [...rows, selectedCount, totalCount];
 }
 
 /// Inner content height of a git changes row (excluding outer vertical padding).
@@ -209,7 +208,7 @@ GitChangesTreeViewData visibleUnifiedGitChangesTreeView({
   );
   return GitChangesTreeViewData(
     rows: rows,
-    stagedCount: selectedCount,
+    selectedCount: selectedCount,
     totalCount: merged.length,
   );
 }
@@ -283,12 +282,12 @@ void _insertChange(_GitChangesFolderNode root, GitFileChange change) {
   required bool emit,
 }) {
   var total = 0;
-  var staged = 0;
+  var selected = 0;
   final folderNames = node.subfolders.keys.toList()..sort();
   for (final name in folderNames) {
     final childPath = folderPath.isEmpty ? name : p.posix.join(folderPath, name);
     final childRows = <GitChangesVisibleRow>[];
-    final (childTotal, childStaged) = _walk(
+    final (childTotal, childSelected) = _walk(
       node: node.subfolders[name]!,
       folderPath: childPath,
       depth: depth + 1,
@@ -302,21 +301,21 @@ void _insertChange(_GitChangesFolderNode root, GitFileChange change) {
           folderPath: childPath,
           name: name,
           depth: depth,
-          subtreeStagedCount: childStaged,
+          subtreeSelectedCount: childSelected,
           subtreeTotalCount: childTotal,
         ),
       );
       rows.addAll(childRows);
     }
     total += childTotal;
-    staged += childStaged;
+    selected += childSelected;
   }
   final files = node.files.toList()
     ..sort((a, b) => p.basename(a.path).compareTo(p.basename(b.path)));
   for (final change in files) {
     total++;
-    if (change.staged) staged++;
+    if (change.staged) selected++;
     if (emit) rows.add(GitChangesVisibleRow.file(change: change, depth: depth));
   }
-  return (total, staged);
+  return (total, selected);
 }

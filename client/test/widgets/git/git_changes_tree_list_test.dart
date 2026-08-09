@@ -168,7 +168,7 @@ void main() {
 
       await tester.tap(find.byType(Checkbox).first);
       await tester.pump();
-      // unstageAll is a pure selection op now (no git), so the selection clears.
+      // selectNone is a pure selection op now (no git), so the selection clears.
       expect(cubit.state.selectedPaths, isEmpty);
     },
   );

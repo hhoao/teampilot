@@ -110,7 +110,7 @@ void main() {
     expect(cubit.state.repoRoot, '/repo');
     expect(cubit.state.isRepository, isTrue);
     expect(cubit.state.changesTreeView.rows, isEmpty);
-    expect(cubit.state.changesTreeView.stagedCount, 0);
+    expect(cubit.state.changesTreeView.selectedCount, 0);
     expect(cubit.state.changesTreeView.totalCount, 0);
     expect(service.calls, contains('status'));
     expect(cubit.state.branches, isEmpty);
@@ -148,7 +148,7 @@ void main() {
     await cubit.close();
   });
 
-  test('stageFolder selects every changed path under the folder', () async {
+  test('selectFolder selects every changed path under the folder', () async {
     final service = _FakeGitService(
       statusToReturn: _repoWith(
         unstaged: const [
@@ -168,14 +168,14 @@ void main() {
     );
     final cubit = GitCubit(service: service);
     await cubit.setRepoRoot('/repo');
-    await cubit.unstageAll(); // clear the auto-selection first
-    await cubit.stageFolder('docs');
+    await cubit.selectNone(); // clear the auto-selection first
+    await cubit.selectFolder('docs');
 
     expect(cubit.state.selectedPaths, {'docs/a.txt', 'docs/b.txt'});
     await cubit.close();
   });
 
-  test('unstageFolder clears every selected path under the folder', () async {
+  test('deselectFolder clears every selected path under the folder', () async {
     final service = _FakeGitService(
       statusToReturn: _repoWith(
         unstaged: const [
@@ -196,7 +196,7 @@ void main() {
     final cubit = GitCubit(service: service);
     await cubit.setRepoRoot('/repo'); // all auto-selected
 
-    await cubit.unstageFolder('docs');
+    await cubit.deselectFolder('docs');
 
     expect(cubit.state.selectedPaths, {'b.txt'});
     await cubit.close();
@@ -280,18 +280,18 @@ void main() {
     await cubit.close();
   });
 
-  test('stage/unstage only change the selection, never run git', () async {
+  test('selectPath/deselectPath only change the selection, never run git', () async {
     final service = _FakeGitService(statusToReturn: _repoWith(unstaged: const [_unstaged]));
     final cubit = GitCubit(service: service);
     await cubit.setRepoRoot('/repo');
     service.calls.clear();
 
     final unstagedPath = cubit.state.status.unstaged.single.path;
-    await cubit.stage(_unstaged);
+    await cubit.selectPath(_unstaged.path);
     expect(cubit.state.selectedPaths, contains(unstagedPath));
     expect(service.calls, isEmpty); // NO git call
 
-    await cubit.unstage(_unstaged);
+    await cubit.deselectPath(_unstaged.path);
     expect(cubit.state.selectedPaths, isEmpty);
     expect(service.calls, isEmpty);
     await cubit.close();
@@ -306,7 +306,7 @@ void main() {
     expect(cubit.state.selectedPaths, {'b.txt'});
 
     // manual uncheck of b.txt
-    await cubit.unstage(_unstaged);
+    await cubit.deselectPath(_unstaged.path);
     expect(cubit.state.selectedPaths, isEmpty);
 
     // next refresh adds a NEW file c.txt (auto-checked), b.txt stays unchecked
@@ -323,7 +323,7 @@ void main() {
     final cubit = GitCubit(service: service);
     await cubit.setRepoRoot('/repo');
     cubit.setCommitMessage('msg'); // setCommitMessage 已存在（面板在用）
-    await cubit.stageAll(); // Task 2 阶段方法名仍是 stageAll
+    await cubit.selectAll();
     service.calls.clear();
 
     final ok = await cubit.commit();

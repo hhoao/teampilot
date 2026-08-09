@@ -998,42 +998,6 @@ abstract class AppLocalizations {
   /// **'Message (commit to \"{branch}\")'**
   String gitCommitMessageHint(String branch);
 
-  /// No description provided for @gitStage.
-  ///
-  /// In en, this message translates to:
-  /// **'Stage changes'**
-  String get gitStage;
-
-  /// No description provided for @gitUnstage.
-  ///
-  /// In en, this message translates to:
-  /// **'Unstage changes'**
-  String get gitUnstage;
-
-  /// No description provided for @gitStageAll.
-  ///
-  /// In en, this message translates to:
-  /// **'Stage all changes'**
-  String get gitStageAll;
-
-  /// No description provided for @gitUnstageAll.
-  ///
-  /// In en, this message translates to:
-  /// **'Unstage all changes'**
-  String get gitUnstageAll;
-
-  /// No description provided for @gitStageFolder.
-  ///
-  /// In en, this message translates to:
-  /// **'Stage changes in folder'**
-  String get gitStageFolder;
-
-  /// No description provided for @gitUnstageFolder.
-  ///
-  /// In en, this message translates to:
-  /// **'Unstage changes in folder'**
-  String get gitUnstageFolder;
-
   /// No description provided for @treeExpandAllFolders.
   ///
   /// In en, this message translates to:
