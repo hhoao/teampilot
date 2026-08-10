@@ -1,3 +1,4 @@
+import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/registry/capabilities/ai_history_capability.dart';
@@ -13,7 +14,9 @@ void main() {
     for (final cap in [
       const ClaudeAiHistoryCapability(),
       const FlashskyaiAiHistoryCapability(),
-      const CursorAiHistoryCapability(),
+      const CursorAiHistoryCapability(
+        shellResolver: DefaultAiShellToolTargetResolver(),
+      ),
       const CodexAiHistoryCapability(),
       const OpencodeAiHistoryCapability(),
     ]) {
@@ -28,7 +31,9 @@ void main() {
       isA<ClaudeCompatibleToolResultEnricher>(),
     );
     expect(
-      const CursorAiHistoryCapability().toolResultEnricher,
+      const CursorAiHistoryCapability(
+        shellResolver: DefaultAiShellToolTargetResolver(),
+      ).toolResultEnricher,
       isA<CursorTerminalToolResultEnricher>(),
     );
     expect(

@@ -71,7 +71,9 @@ void main() {
   test(
     'Cursor fixture: Shell without tool_result enriches stdout from terminals',
     () async {
-      const cap = CursorAiHistoryCapability();
+      const cap = CursorAiHistoryCapability(
+        shellResolver: DefaultAiShellToolTargetResolver(),
+      );
       const chatId = 'chat-shell-missing-result';
 
       final bundle = await locateCursorTranscript(cursorCtx(chatId: chatId));

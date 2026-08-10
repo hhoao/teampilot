@@ -81,7 +81,9 @@ $trailer''';
     required List<AiMessage> messages,
     required String rootTranscriptPath,
   }) {
-    return const CursorTerminalToolResultEnricher().enrich(
+    return const CursorTerminalToolResultEnricher(
+        shellResolver: DefaultAiShellToolTargetResolver(),
+      ).enrich(
       messages: messages,
       ctx: ctx(),
       rootTranscriptPath: rootTranscriptPath,

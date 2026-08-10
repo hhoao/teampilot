@@ -113,9 +113,7 @@ final class CursorAiHistoryCapability implements AiHistoryCapability {
   const CursorAiHistoryCapability({
     required this.shellResolver,
     this.subagentSideResolver = const CursorSideResolver(),
-  }) : toolResultEnricher = CursorTerminalToolResultEnricher(
-         shellResolver: shellResolver,
-       );
+  });
 
   final AiShellToolTargetResolver shellResolver;
 
@@ -133,5 +131,7 @@ final class CursorAiHistoryCapability implements AiHistoryCapability {
   final SubagentSideResolver subagentSideResolver;
 
   @override
-  final ToolResultEnricher toolResultEnricher;
+  ToolResultEnricher get toolResultEnricher => CursorTerminalToolResultEnricher(
+        shellResolver: shellResolver,
+      );
 }

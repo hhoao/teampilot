@@ -21,6 +21,7 @@ import '../registry/capabilities/headless_run_capability.dart';
 import '../registry/capabilities/provider_credential_capability.dart';
 import '../registry/capabilities/session_resume_capability.dart';
 import '../registry/capabilities/history/builtin_ai_history_capabilities.dart';
+import 'capabilities/history/side_resolver.dart';
 import 'capabilities/resume_strategy.dart';
 import 'capabilities/installer.dart';
 import 'capabilities/config_profile.dart';
