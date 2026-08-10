@@ -11,6 +11,7 @@ import '../../cubits/editor_cubit.dart';
 import '../../cubits/layout_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_session.dart';
+import '../../models/team_config.dart';
 import '../../models/workspace.dart';
 import '../../models/workspace_launch_context.dart';
 import '../../services/ai_history/workspace_edit_line_highlighter.dart';
@@ -20,6 +21,7 @@ import '../../services/session/chat_transcript_find_controller.dart';
 import '../../services/workbench/ai_tool_file_open_coordinator.dart';
 import '../../services/workbench/session_member_filesystem.dart';
 import '../../services/workbench/workbench_editor_opener.dart';
+import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../services/workspace/workspace_tools_scope.dart';
 import '../../widgets/app_toast/app_toast.dart';
 import 'chat_find_bar.dart';
@@ -121,6 +123,10 @@ class SessionChatMessageArea extends StatelessWidget {
     // Promote to local so the ternary below can promote to non-null.
     final cap = historyCap;
 
+    final registry = CliToolRegistryScope.of(context);
+    final toolResolvers =
+        registry.toolCallResolvers(session.cli ?? CliTool.claude);
+
     return Expanded(
       // Full-bleed scroll surface: margins beside the text
       // column still receive wheel / drag. Message width is
@@ -130,6 +136,12 @@ class SessionChatMessageArea extends StatelessWidget {
           Positioned.fill(
             child: AiToolFileActionsScope(
               actions: AiToolFileActions(
+                fileResolver:
+                    toolResolvers?.fileResolver ?? _noopFileResolver,
+                editResolver:
+                    toolResolvers?.editResolver ?? _noopEditResolver,
+                shellResolver:
+                    toolResolvers?.shellResolver ?? _noopShellResolver,
                 onOpenFile: (target) async {
                   final fs = await resolveSessionMemberFilesystem(
                     lifecycle: lifecycle,
@@ -325,4 +337,29 @@ class SessionChatMessageArea extends StatelessWidget {
       ),
     );
   }
+}
+
+const _noopFileResolver = _NoopFileResolver();
+const _noopEditResolver = _NoopEditResolver();
+const _noopShellResolver = _NoopShellResolver();
+
+class _NoopFileResolver implements AiToolFileTargetResolver {
+  const _NoopFileResolver();
+
+  @override
+  AiToolFileTarget? resolve(AiToolCallPart part) => null;
+}
+
+class _NoopEditResolver implements AiEditToolTargetResolver {
+  const _NoopEditResolver();
+
+  @override
+  AiEditToolTarget? resolve(AiToolCallPart part) => null;
+}
+
+class _NoopShellResolver implements AiShellToolTargetResolver {
+  const _NoopShellResolver();
+
+  @override
+  AiShellToolTarget? resolve(AiToolCallPart part) => null;
 }
