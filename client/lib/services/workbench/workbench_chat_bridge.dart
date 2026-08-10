@@ -63,6 +63,9 @@ class WorkbenchChatBridge implements WorkbenchDomainPort, ChatWorkbenchPort {
     _workbench.closeAll(workspaceId);
   }
 
+  @override
+  void syncForeground() => _syncForeground();
+
   // ===== WorkbenchDomainPort (bar → domain teardown) =====
 
   @override

@@ -42,11 +42,6 @@ class ChatTabStore {
   ChatTab? removeSession(String sessionId) =>
       _bySessionId.remove(sessionId.trim());
 
-  /// Remove and return the runtime for [sessionId], if any (alias used by the
-  /// teardown path — the caller owns disposing the runtime).
-  ChatTab? disposeSession(String sessionId) =>
-      _bySessionId.remove(sessionId.trim());
-
   /// Session ids whose runtime belongs to [workspaceId].
   List<String> sessionsForWorkspace(String workspaceId) =>
       [for (final tab in _bySessionId.values)

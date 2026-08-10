@@ -209,4 +209,9 @@ abstract class ChatWorkbenchPort {
 
   /// Close every center tab for [workspaceId] (each removal tears down).
   void closeAll(String workspaceId);
+
+  /// Re-sync [ChatState.activeSessionId]/`selectedMemberId` from the bar's
+  /// center-active for the now-active workspace; called after a
+  /// foreground-workspace switch.
+  void syncForeground();
 }

@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:teampilot/cubits/chat/model/session_connect_request.dart';
+import 'package:teampilot/cubits/chat/model/chat_tab.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_tab.dart';
@@ -738,6 +739,53 @@ void main() {
           isFalse,
         );
         expect(cubit.state.activeSessionId, session.sessionId);
+      },
+    );
+
+    test(
+      'setActiveWorkspace re-syncs the foreground session from the bar',
+      () async {
+        final cubit = ChatCubit(
+          executableResolver: () => 'true',
+          automationRepository: testAutomationRepository(),
+        );
+        addTearDown(cubit.close);
+        final workbench = WorkbenchCubit();
+        addTearDown(workbench.close);
+        final bridge = WorkbenchChatBridge(workbench: workbench, chat: cubit);
+        workbench.port = bridge;
+        cubit.workbenchPort = bridge;
+        cubit.onSessionTabOpened = bridge.onSessionTabOpened;
+
+        ChatTab tab(String id) => ChatTab(
+          info: ChatTabInfo(id: id, title: id, subtitle: ''),
+          cliTeamName: id,
+        );
+
+        // Workspace A: two open session tabs, bar active on the second.
+        cubit.setActiveWorkspace('ws-a');
+        cubit.tabStore.registerSession(tab('a-1'));
+        cubit.tabStore.registerSession(tab('a-2'));
+        bridge.onSessionTabOpened('ws-a', 'a-1');
+        bridge.onSessionTabOpened('ws-a', 'a-2');
+
+        // Workspace B: two open session tabs, bar active on the second.
+        cubit.setActiveWorkspace('ws-b');
+        cubit.tabStore.registerSession(tab('b-1'));
+        cubit.tabStore.registerSession(tab('b-2'));
+        bridge.onSessionTabOpened('ws-b', 'b-1');
+        bridge.onSessionTabOpened('ws-b', 'b-2');
+
+        expect(workbench.centerActiveId('ws-a')?.id, 'a-2');
+        expect(workbench.centerActiveId('ws-b')?.id, 'b-2');
+
+        // Switching to ws-b mirrors ws-b's bar center-active session.
+        cubit.setActiveWorkspace('ws-b');
+        expect(cubit.state.activeSessionId, 'b-2');
+
+        // Switching back to ws-a mirrors ws-a's bar center-active session.
+        cubit.setActiveWorkspace('ws-a');
+        expect(cubit.state.activeSessionId, 'a-2');
       },
     );
 

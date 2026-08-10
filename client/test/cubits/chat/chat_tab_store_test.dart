@@ -46,13 +46,13 @@ void main() {
     expect(store.sessionsForWorkspace('w2'), ['c']);
   });
 
-  test('removeSession / disposeSession drop the runtime', () {
+  test('removeSession drops the runtime', () {
     final store = ChatTabStore();
     store.registerSession(_tab('a'));
     store.registerSession(_tab('b'));
     expect(store.removeSession('a')!.info.id, 'a');
     expect(store.openTabBySessionId('a'), isNull);
-    expect(store.disposeSession('b')!.info.id, 'b');
+    expect(store.removeSession('b')!.info.id, 'b');
     expect(store.hasOpenTabs, isFalse);
   });
 

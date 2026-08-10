@@ -27,7 +27,6 @@ void main() {
     );
     cubit.setActiveWorkspace('personal-A');
     cubit.tabStore.registerSession(_tab('a-sess'));
-    cubit.refreshActiveWorkspaceTabs();
     expect(
       cubit.tabStore.tabsForWorkspace('personal-A').map((t) => t.info.id),
       ['a-sess'],

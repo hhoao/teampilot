@@ -1215,6 +1215,7 @@ class ChatCubit extends Cubit<ChatState>
   /// mirror follows the bar via the bridge.
   void setActiveWorkspace(String workspaceId) {
     _tabStore.setActiveWorkspaceId(workspaceId);
+    _workbenchPort?.syncForeground();
   }
 
   /// Switches the foreground workspace and session visibility scope in one
@@ -1226,6 +1227,7 @@ class ChatCubit extends Cubit<ChatState>
     String? selectedTeamId,
   }) {
     _tabStore.setActiveWorkspaceId(workspaceTabKey);
+    _workbenchPort?.syncForeground();
     if (_dataStore.setScope(
       scopeSessionsToSelectedTeam: scopeSessionsToSelectedTeam,
       selectedTeamId: selectedTeamId,
