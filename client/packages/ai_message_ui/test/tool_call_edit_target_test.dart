@@ -81,7 +81,12 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: AiToolFileActionsScope(
-          actions: AiToolFileActions(onOpenFile: (t) async => opened = t),
+          actions: AiToolFileActions(
+            fileResolver: const DefaultAiToolFileTargetResolver(),
+            editResolver: const DefaultAiEditToolTargetResolver(),
+            shellResolver: const DefaultAiShellToolTargetResolver(),
+            onOpenFile: (t) async => opened = t,
+          ),
           child: const Scaffold(
             body: AiToolCallPartView(
               part: AiToolCallPart(
@@ -164,7 +169,12 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: AiToolFileActionsScope(
-          actions: AiToolFileActions(onOpenFile: (t) async => opened = t),
+          actions: AiToolFileActions(
+            fileResolver: const DefaultAiToolFileTargetResolver(),
+            editResolver: const DefaultAiEditToolTargetResolver(),
+            shellResolver: const DefaultAiShellToolTargetResolver(),
+            onOpenFile: (t) async => opened = t,
+          ),
           child: const Scaffold(
             body: AiToolCallPartView(
               part: AiToolCallPart(

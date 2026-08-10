@@ -12,6 +12,9 @@ void main() {
       MaterialApp(
         home: AiToolFileActionsScope(
           actions: AiToolFileActions(
+            fileResolver: const DefaultAiToolFileTargetResolver(),
+            editResolver: const DefaultAiEditToolTargetResolver(),
+            shellResolver: const DefaultAiShellToolTargetResolver(),
             onOpenFile: (t) async => opened = t,
           ),
           child: const Scaffold(
@@ -94,6 +97,9 @@ void main() {
       MaterialApp(
         home: AiToolFileActionsScope(
           actions: AiToolFileActions(
+            fileResolver: const DefaultAiToolFileTargetResolver(),
+            editResolver: const DefaultAiEditToolTargetResolver(),
+            shellResolver: const DefaultAiShellToolTargetResolver(),
             onOpenFile: (t) async => opened = t,
           ),
           child: const Scaffold(

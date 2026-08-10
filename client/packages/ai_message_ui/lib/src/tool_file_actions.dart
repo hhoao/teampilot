@@ -3,25 +3,56 @@ import 'package:flutter/material.dart';
 
 import 'edit/edit_line_highlighter.dart';
 
-/// Host-injected resolver + open handler for tool-call file targets.
+/// Host-injected resolvers + open handler for tool-call targets.
 @immutable
 class AiToolFileActions {
   const AiToolFileActions({
-    this.resolver = const DefaultAiToolFileTargetResolver(),
+    required this.fileResolver,
+    required this.editResolver,
+    required this.shellResolver,
     this.onOpenFile,
     this.lineHighlighter = const PlainEditLineHighlighter(),
   });
 
-  final AiToolFileTargetResolver resolver;
+  final AiToolFileTargetResolver fileResolver;
+  final AiEditToolTargetResolver editResolver;
+  final AiShellToolTargetResolver shellResolver;
   final Future<void> Function(AiToolFileTarget target)? onOpenFile;
   final AiEditLineHighlighter lineHighlighter;
+
+  static const _fallback = AiToolFileActions(
+    fileResolver: _NoopFileResolver(),
+    editResolver: _NoopEditResolver(),
+    shellResolver: _NoopShellResolver(),
+  );
 
   static AiToolFileActions of(BuildContext context) {
     return context
             .dependOnInheritedWidgetOfExactType<_AiToolFileActionsScope>()
             ?.actions ??
-        const AiToolFileActions();
+        _fallback;
   }
+}
+
+class _NoopFileResolver implements AiToolFileTargetResolver {
+  const _NoopFileResolver();
+
+  @override
+  AiToolFileTarget? resolve(AiToolCallPart part) => null;
+}
+
+class _NoopEditResolver implements AiEditToolTargetResolver {
+  const _NoopEditResolver();
+
+  @override
+  AiEditToolTarget? resolve(AiToolCallPart part) => null;
+}
+
+class _NoopShellResolver implements AiShellToolTargetResolver {
+  const _NoopShellResolver();
+
+  @override
+  AiShellToolTarget? resolve(AiToolCallPart part) => null;
 }
 
 class AiToolFileActionsScope extends StatelessWidget {

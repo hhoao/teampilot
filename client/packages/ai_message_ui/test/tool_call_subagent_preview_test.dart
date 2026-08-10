@@ -164,6 +164,9 @@ void main() {
       MaterialApp(
         home: AiToolFileActionsScope(
           actions: AiToolFileActions(
+            fileResolver: const DefaultAiToolFileTargetResolver(),
+            editResolver: const DefaultAiEditToolTargetResolver(),
+            shellResolver: const DefaultAiShellToolTargetResolver(),
             onOpenFile: (t) async => openedFile = t,
           ),
           child: AiToolSubagentActionsScope(
