@@ -198,9 +198,12 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
       messages: widget.messages,
     );
     // Host builders often close over tip/lastId chrome. Membership changes
-    // (append/prepend) can restyle neighbors without changing message content.
+    // (append/prepend) can restyle neighbors without changing message content;
+    // invalidate only the affected turns plus the tip boundary instead of the
+    // whole cache (clearing every cached body re-ran messageBuilder for all
+    // mounted turns on each appended message).
     if (!identical(_turns, previous)) {
-      _builtTurnBody.clear();
+      _invalidateChangedTurnBodies(previous);
     }
     // Snapshot the previous message map BEFORE overwriting _messageById so we
     // can detect which message objects changed (reference-comparison — AiMessage
@@ -244,6 +247,40 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
     _keepAliveUntil.removeWhere((id, _) => !liveIds.contains(id));
     _turnKeys.removeWhere((id, _) => !liveIds.contains(id));
     _builtTurnBody.removeWhere((id, _) => !liveIds.contains(id));
+  }
+
+  /// Removes cached turn bodies whose membership changed, plus the tip
+  /// boundary. Unchanged turns keep their cached [Widget]s and skip
+  /// [VirtualThreadViewport.messageBuilder] entirely.
+  void _invalidateChangedTurnBodies(List<ThreadTurn> previous) {
+    final prevById = <String, ThreadTurn>{
+      for (final t in previous) t.id: t,
+    };
+    final stale = <String>{};
+    for (final turn in _turns) {
+      final prev = prevById[turn.id];
+      if (prev == null || prev.messageIds.length != turn.messageIds.length) {
+        stale.add(turn.id);
+        continue;
+      }
+      for (var i = 0; i < turn.messageIds.length; i++) {
+        if (prev.messageIds[i] != turn.messageIds[i]) {
+          stale.add(turn.id);
+          break;
+        }
+      }
+    }
+    if (_turns.isEmpty) return;
+    // Tip boundary: the host's messageBuilder closes over tip/lastId chrome
+    // (action bar reveal, tighten-for-running), so the last two turns restyle
+    // even when their membership is unchanged — e.g. a new user turn appended
+    // after the previous tip.
+    stale.add(_turns.last.id);
+    if (_turns.length >= 2) {
+      stale.add(_turns[_turns.length - 2].id);
+    }
+    if (stale.isEmpty) return;
+    _builtTurnBody.removeWhere((id, _) => stale.contains(id));
   }
 
   void _onScroll() {

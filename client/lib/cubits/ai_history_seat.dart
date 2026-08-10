@@ -158,6 +158,12 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
   List<AiMessage> _allMessages = const [];
   int _visibleCount = 0;
 
+  /// Mailbox records of the last applied snapshot. The bus log is append-only
+  /// per member, so a per-record `seq` + `read` scan is a cheap fingerprint —
+  /// it lets [softReload] skip the whole merge + window path when neither the
+  /// CLI transcript nor the mailbox moved.
+  List<LoggedMessage>? _lastMailboxRecords;
+
   /// CLI user-turn count of the last applied snapshot. CLI user turns that
   /// newly appear past this baseline each confirm one outstanding optimistic
   /// send (FIFO). Mailbox turns are deliberately excluded: they come from the
@@ -364,6 +370,7 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
         final hasNewReadMailboxUsers = mailboxEvents.any(
           (e) => !existingIds.contains(e.id),
         );
+        _lastMailboxRecords = mailboxRecords;
         if (!hasNewReadMailboxUsers) return;
 
         final merged = buildConversationTimeline(
@@ -374,18 +381,25 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
         return;
       }
 
-      final cliUnchanged = sameMessageListContent(_cliMessages, messages);
+      // The loader returns the same list instance from its token cache when
+      // the transcript mtime is unchanged, so an instance comparison is a
+      // zero-cost "CLI unchanged" test (the previous full-content identity scan
+      // string-built every message — including every tool result — on the UI
+      // isolate on each live refresh).
+      final cliUnchanged = identical(messages, _cliMessages);
+      if (cliUnchanged && _mailboxUnchanged(mailboxRecords)) {
+        _lastMailboxRecords = mailboxRecords;
+        return;
+      }
       if (!cliUnchanged) {
         _cliMessages = messages;
       }
+      _lastMailboxRecords = mailboxRecords;
       _setSubagentAttachments(result.subagentAttachments);
       final merged = buildConversationTimeline(
         cliMessages: _cliMessages,
         mailboxRecords: mailboxRecords,
       ).messages;
-      if (cliUnchanged && sameMessageListContent(_allMessages, merged)) {
-        return;
-      }
       _applySoftReloadMessages(merged, sessionId, memberId);
     } catch (e, st) {
       appLogger.e(
@@ -427,6 +441,7 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
         cliMessages: _cliMessages,
         mailboxRecords: mailboxRecords,
       ).messages;
+      _lastMailboxRecords = mailboxRecords;
       _applySoftReloadMessages(merged, sessionId, memberId);
     } catch (e, st) {
       appLogger.e(
@@ -672,6 +687,7 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
     String memberId,
   ) async {
     final mailboxRecords = await _safeLoadMailboxRecords(sessionId, memberId);
+    _lastMailboxRecords = mailboxRecords;
     return buildConversationTimeline(
       cliMessages: cliMessages,
       mailboxRecords: mailboxRecords,
@@ -695,6 +711,22 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
       );
       return const [];
     }
+  }
+
+  /// True when [next] carries the same records as the last applied snapshot.
+  ///
+  /// The bus log is append-only per member, so equality of length + per-record
+  /// `seq` (monotonic) + `read` flag is a faithful fingerprint. O(mailbox), and
+  /// a member's mailbox is tiny compared to the transcript.
+  bool _mailboxUnchanged(List<LoggedMessage> next) {
+    final previous = _lastMailboxRecords;
+    if (previous == null) return false;
+    if (previous.length != next.length) return false;
+    for (var i = 0; i < previous.length; i++) {
+      if (previous[i].seq != next[i].seq) return false;
+      if (previous[i].read != next[i].read) return false;
+    }
+    return true;
   }
 
   void _applyMessages(
@@ -723,10 +755,6 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
     String sessionId,
     String memberId,
   ) {
-    if (sameMessageListContent(_allMessages, messages)) {
-      // Tip-identical: runtime already has these identities; skip emit fan-out.
-      return;
-    }
     final oldLength = _allMessages.length;
     final oldVisible = _visibleCount;
     final oldCommitted = _committedLength;

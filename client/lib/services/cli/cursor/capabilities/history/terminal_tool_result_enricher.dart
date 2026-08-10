@@ -16,23 +16,29 @@ final class CursorTerminalToolResultEnricher implements ToolResultEnricher {
   final AiShellToolTargetResolver shellResolver;
 
   @override
+  bool get requiresFilesystem => true;
+
+  @override
   Future<List<AiMessage>> enrich({
     required List<AiMessage> messages,
-    required SessionHistoryContext ctx,
+    required SessionHistoryContext? ctx,
     required String? rootTranscriptPath,
     required AiTranscriptBundle? bundle,
   }) async {
+    final fs = ctx?.fs;
+    if (fs == null) return messages;
+
     final transcriptPath = rootTranscriptPath?.trim();
     if (transcriptPath == null || transcriptPath.isEmpty) return messages;
 
     final terminalsDir = _cursorTerminalsDirFor(
       transcriptPath,
-      pathContext: ctx.fs.pathContext,
+      pathContext: fs.pathContext,
     );
     if (terminalsDir == null) return messages;
 
     try {
-      final terminalFiles = await _loadTerminalFiles(ctx.fs, terminalsDir);
+      final terminalFiles = await _loadTerminalFiles(fs, terminalsDir);
       if (terminalFiles.isEmpty) return messages;
 
       final pool = List<_TerminalCandidate>.from(terminalFiles);

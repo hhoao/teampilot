@@ -13,9 +13,12 @@ final class ClaudeCompatibleToolResultEnricher implements ToolResultEnricher {
   const ClaudeCompatibleToolResultEnricher();
 
   @override
+  bool get requiresFilesystem => false;
+
+  @override
   Future<List<AiMessage>> enrich({
     required List<AiMessage> messages,
-    required SessionHistoryContext ctx,
+    required SessionHistoryContext? ctx,
     required String? rootTranscriptPath,
     required AiTranscriptBundle? bundle,
   }) async {
@@ -90,7 +93,7 @@ final class _Replacement {
 }
 
 Future<String?> _loadTranscriptContent({
-  required SessionHistoryContext ctx,
+  required SessionHistoryContext? ctx,
   required String? rootTranscriptPath,
   required AiTranscriptBundle? bundle,
 }) async {
@@ -105,8 +108,10 @@ Future<String?> _loadTranscriptContent({
 
   final path = rootTranscriptPath?.trim();
   if (path == null || path.isEmpty) return null;
+  final fs = ctx?.fs;
+  if (fs == null) return null;
 
-  final bytes = await ctx.fs.readBytes(path);
+  final bytes = await fs.readBytes(path);
   if (bytes == null) return null;
   return utf8.decode(bytes, allowMalformed: true);
 }

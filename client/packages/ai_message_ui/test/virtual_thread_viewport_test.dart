@@ -638,6 +638,70 @@ void main() {
       );
     },
   );
+
+  testWidgets(
+    'appending an assistant message rebuilds only the affected turns',
+    (tester) async {
+      final builds = <String, int>{};
+      final controller = ScrollController();
+      var messages = _soloUserMessages(12);
+
+      Widget harness(List<AiMessage> msgs) => _harness(
+        messages: msgs,
+        controller: controller,
+        overscan: 1,
+        estimateHeight: 100,
+        retainMountedTurns: true,
+        fillDataWindow: true,
+        messageBuilder: (_, m) => _RebuildCountingBox(
+          id: m.id,
+          builds: builds,
+          text: (m.parts.first as AiTextPart).text,
+        ),
+      );
+
+      await tester.pumpWidget(harness(messages));
+      for (var i = 0; i < 30; i++) {
+        await tester.pump();
+      }
+      await tester.pumpAndSettle();
+
+      final baseline = Map<String, int>.from(builds);
+
+      // A streamed assistant reply joins the last user turn: membership of
+      // turn m11 changes to [m11, m12]. Only that turn (plus the tip-boundary
+      // neighbor m10) may re-run the builder — earlier turns keep their cached
+      // bodies.
+      messages = [
+        ..._soloUserMessages(11),
+        const AiMessage(
+          id: 'm11',
+          role: AiRole.user,
+          parts: [AiTextPart(text: 't11')],
+        ),
+        const AiMessage(
+          id: 'm12',
+          role: AiRole.assistant,
+          parts: [AiTextPart(text: 'reply')],
+        ),
+      ];
+      await tester.pumpWidget(harness(messages));
+      await tester.pump();
+
+      for (var i = 0; i < 10; i++) {
+        expect(
+          builds['m$i'],
+          baseline['m$i'],
+          reason: 'unchanged turn m$i must not rebuild on tip append',
+        );
+      }
+      expect(
+        builds['m12'],
+        greaterThanOrEqualTo(1),
+        reason: 'new assistant message must build',
+      );
+    },
+  );
 }
 
 class _MountCountingBox extends StatefulWidget {

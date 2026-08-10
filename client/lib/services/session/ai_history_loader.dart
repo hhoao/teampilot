@@ -172,25 +172,48 @@ final class AiHistoryLoader {
       // spends tens of ms re-decoding a large JSONL on live refresh. Isolate
       // spawn + transfer have a fixed ~ms cost, so small bundles parse in place
       // where the overhead would dominate.
+      //
+      // Bundle-only enrichers (no filesystem access, e.g. the Claude-compatible
+      // tool-result enricher that re-indexes the transcript for truncated
+      // results) run in the same isolate pass — on the caller isolate the full
+      // line-by-line re-decode + jsonDecode of the whole transcript would
+      // block the UI thread on every live refresh once any truncated result
+      // exists in the transcript.
       var messages = const <AiMessage>[];
       if (bundle != null) {
         final adapter = cap.adapter;
+        final enricher = cap.toolResultEnricher;
         final totalBytes = bundle.fragments.fold<int>(
           0,
           (sum, f) => sum + f.bytes.length,
         );
-        messages = totalBytes >= _isolateParseMinBytes
-            ? await Isolate.run(() => adapter.parse(bundle))
-            : await adapter.parse(bundle);
-      }
-
-      if (_needsToolResultEnrichment(messages)) {
-        messages = await cap.toolResultEnricher.enrich(
-          messages: messages,
-          ctx: ctx,
-          rootTranscriptPath: parentPath,
-          bundle: bundle,
-        );
+        if (totalBytes >= _isolateParseMinBytes) {
+          messages = await Isolate.run(() async {
+            var parsed = await adapter.parse(bundle);
+            // Bundle-only enrichers never touch ctx (guarded by
+            // requiresFilesystem), so null is safe on the worker isolate.
+            if (!enricher.requiresFilesystem &&
+                _needsToolResultEnrichment(parsed)) {
+              parsed = await enricher.enrich(
+                messages: parsed,
+                ctx: null,
+                rootTranscriptPath: parentPath,
+                bundle: bundle,
+              );
+            }
+            return parsed;
+          });
+        } else {
+          messages = await adapter.parse(bundle);
+          if (_needsToolResultEnrichment(messages)) {
+            messages = await enricher.enrich(
+              messages: messages,
+              ctx: ctx,
+              rootTranscriptPath: parentPath,
+              bundle: bundle,
+            );
+          }
+        }
       }
 
       final attachments = await const SubagentAttachmentInflater().inflate(

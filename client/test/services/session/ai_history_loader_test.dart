@@ -560,9 +560,12 @@ class _RecordingEnricher implements ToolResultEnricher {
   var calls = 0;
 
   @override
+  bool get requiresFilesystem => false;
+
+  @override
   Future<List<AiMessage>> enrich({
     required List<AiMessage> messages,
-    required SessionHistoryContext ctx,
+    required SessionHistoryContext? ctx,
     required String? rootTranscriptPath,
     required AiTranscriptBundle? bundle,
   }) async {

@@ -85,18 +85,25 @@ class ExternalStoreAiThreadRuntime implements AiThreadRuntime {
     final previousById = <String, AiMessage>{
       for (final m in _messages) m.id: m,
     };
-    final previousIdentity = <String, String>{
-      for (final m in _messages) m.id: messageContentIdentity(m),
-    };
 
-    return [
-      for (final m in incoming)
-        if (previousById[m.id] case final prev?
-            when previousIdentity[m.id] == messageContentIdentity(m))
-          prev
-        else
-          m,
-    ];
+    // Identity strings build every part's payload (text, reasoning, tool
+    // results) — expensive for messages with large results. Only compute them
+    // for messages whose instance changed; identical instances reuse directly.
+    final merged = <AiMessage>[];
+    for (final m in incoming) {
+      final prev = previousById[m.id];
+      if (identical(prev, m)) {
+        merged.add(m);
+        continue;
+      }
+      if (prev != null &&
+          messageContentIdentity(prev) == messageContentIdentity(m)) {
+        merged.add(prev);
+        continue;
+      }
+      merged.add(m);
+    }
+    return merged;
   }
 
   static bool _sameInstancesInOrder(List<AiMessage> a, List<AiMessage> b) {
