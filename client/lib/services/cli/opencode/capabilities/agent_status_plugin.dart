@@ -5,7 +5,7 @@
 ///
 /// On `question.asked`, also polls `GET /ask-user-answer?request_id=` and calls
 /// OpenCode SDK `client.question.reply` / `client.question.reject` when the SDK
-/// exposes them; otherwise delivers over the raw HTTP API
+/// exposes them; otherwise delivers over the OpenCode HTTP API
 /// (`POST /question/{requestID}/reply|reject`).
 ///
 /// SDK note: the plugin `input.client` (`createOpencodeClient` from
@@ -13,9 +13,14 @@
 /// (verified 1.18.x and current main) — `client.question.reply` throws and the
 /// answer silently never reaches OpenCode. The v2 SDK (`@opencode-ai/sdk/v2`)
 /// does expose `question.reply({ requestID, answers? })` with the flat shape
-/// (HTTP `POST /question/{requestID}/reply|reject`); prefer it when present and
-/// fall back to `fetch` against `input.serverUrl` (auth is only required when
-/// `OPENCODE_SERVER_PASSWORD` is set, which TeamPilot launches never do).
+/// (HTTP `POST /question/{requestID}/reply|reject`); prefer it when present.
+///
+/// Fallback must route through the client's own request pipeline
+/// (`client._client.post`), **not** a raw `fetch(input.serverUrl)`:
+/// in the default TUI mode (`opencode` without `--port`/`--hostname`/mdns) the
+/// server never binds a TCP port — HTTP is handled in-process via the worker
+/// RPC bridge, and `input.serverUrl` is a dead `http://localhost:4096`
+/// (checked against opencode 1.18.4 `cli/cmd/tui.ts`).
 const opencodeAgentStatusPluginFileName = 'teampilot-agent-status.js';
 
 const opencodeAgentStatusPluginSource = r'''
@@ -61,7 +66,10 @@ export const TeampilotAgentStatus = async (input, options) => {
   // Deliver the user's answer back into OpenCode. The plugin `input.client`
   // is the v1 SDK client, which has no `question` member (see file comment);
   // prefer the SDK call when a future version exposes it, otherwise POST the
-  // OpenCode HTTP API directly on the server URL from `input.serverUrl`.
+  // OpenCode HTTP API through the client's own request pipeline (`_client`).
+  // The pipeline keeps this runtime's fetch (in-process RPC bridge in default
+  // TUI mode) and auth headers; a raw `fetch(input.serverUrl)` would hit a
+  // dead `http://localhost:4096` because no TCP listener exists.
   const deliverQuestionReply = async (requestId, body) => {
     if (client?.question?.reply) {
       if (body.reject) {
@@ -74,10 +82,24 @@ export const TeampilotAgentStatus = async (input, options) => {
       }
       return;
     }
+    const action = body.reject ? "reject" : "reply";
+    const raw = client?._client;
+    if (raw?.post) {
+      const result = await raw.post({
+        url: `/question/${encodeURIComponent(requestId)}/${action}`,
+        headers: { "Content-Type": "application/json" },
+        body: body.reject ? undefined : { answers: body.answers },
+      });
+      if (result?.error) {
+        throw new Error(
+          `opencode question ${action} failed: ${JSON.stringify(result.error)}`,
+        );
+      }
+      return;
+    }
     const serverUrl = input?.serverUrl ? String(input.serverUrl) : null;
     if (!serverUrl) throw new Error("no opencode serverUrl");
     const base = serverUrl.replace(/\/+$/, "");
-    const action = body.reject ? "reject" : "reply";
     const r = await fetch(
       `${base}/question/${encodeURIComponent(requestId)}/${action}`,
       {

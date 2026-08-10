@@ -22,8 +22,13 @@ void main() {
     expect(source, contains('client.question.reply'));
     expect(source, contains('client.question.reject'));
     // The plugin `input.client` (v1 SDK) has no `question` member, so answers
-    // must fall back to the OpenCode HTTP API on `input.serverUrl`.
+    // must fall back to the OpenCode HTTP API. Default TUI mode has no TCP
+    // listener (in-process RPC bridge), so delivery must go through the
+    // client's own request pipeline (`client._client.post`) — a raw
+    // `fetch(input.serverUrl)` would hit a dead localhost:4096.
     expect(source, contains('deliverQuestionReply'));
+    expect(source, contains('client?._client'));
+    expect(source, contains('raw?.post'));
     expect(source, contains(r'/question/${encodeURIComponent(requestId)}/'));
     expect(source, contains('input?.serverUrl'));
     expect(source, contains('"reject"'));
