@@ -1,5 +1,6 @@
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:ai_message_ui/ai_message_ui.dart';
+import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
@@ -63,10 +64,12 @@ void main() {
     expect(find.byType(VirtualThreadViewport), findsOneWidget);
   });
 
-  // SelectionArea as a scroll ancestor enables edge auto-scroll and yanks
-  // the thread toward the top while selecting (flutter/flutter#110917).
+  // SelectionArea must be an *ancestor* of the scrollable so the framework's
+  // edge auto-scroll engages while drag-selecting (Scrollable's
+  // _ScrollableSelectionContainerDelegate). Sitting inside the scroll content
+  // (old flutter/flutter#110917 workaround) disables edge auto-scroll.
   testWidgets(
-    'SelectionArea sits inside SingleChildScrollView, not as scroll ancestor',
+    'SelectionArea wraps SingleChildScrollView as scroll ancestor',
     (tester) async {
       final store = ExternalStoreAiThreadRuntime()
         ..setMessages(_soloUserMessages(5));
@@ -77,19 +80,53 @@ void main() {
       final scrollView = find.byType(SingleChildScrollView);
       expect(scrollView, findsOneWidget);
       expect(
-        find.descendant(
+        find.ancestor(
           of: scrollView,
           matching: find.byType(SelectionArea),
         ),
         findsOneWidget,
       );
       expect(
-        find.ancestor(
+        find.descendant(
           of: scrollView,
           matching: find.byType(SelectionArea),
         ),
         findsNothing,
       );
+    },
+  );
+
+  testWidgets(
+    'drag-selecting beyond the top edge auto-scrolls the thread',
+    (tester) async {
+      final store = ExternalStoreAiThreadRuntime()
+        ..setMessages(_soloUserMessages(120));
+
+      await tester.pumpWidget(_harness(runtime: store));
+      await tester.pumpAndSettle();
+
+      final position = tester
+          .state<ScrollableState>(find.byType(Scrollable).first)
+          .position;
+      final before = position.pixels;
+      expect(before, greaterThan(100));
+
+      final gesture = await tester.startGesture(
+        tester.getCenter(find.byType(SingleChildScrollView)) +
+            const Offset(0, -80),
+        kind: PointerDeviceKind.mouse,
+      );
+      await tester.pump();
+      // Hold the drag beyond the top edge of the viewport.
+      await gesture.moveTo(const Offset(200, -60));
+      await tester.pump(const Duration(milliseconds: 50));
+      for (var i = 0; i < 20; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      await gesture.up();
+      await tester.pumpAndSettle();
+
+      expect(position.pixels, lessThan(before));
     },
   );
 
