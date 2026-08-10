@@ -114,13 +114,12 @@ void main() {
       folderLabelStyle: style,
     );
     // Equal labels → the difference is (file leading + badge) − (folder
-    // leading), i.e. (checkbox+icon+gap + 22) − (chevron+checkbox+icon+gap).
+    // leading). The file row is offset by a chevron-width column so its
+    // checkbox lands where a folder's does; that cancels the folder's chevron,
+    // leaving only the trailing badge (22).
     expect(
       wFile - wFolder,
-      closeTo(
-        kGitChangesTrailingBadgeWidth - kGitChangesChevronWidth,
-        1,
-      ), // 22 − chevron column (18)
+      closeTo(kGitChangesTrailingBadgeWidth, 1), // 22 − trailing badge
     );
     expect(wFile, greaterThan(100));
   });

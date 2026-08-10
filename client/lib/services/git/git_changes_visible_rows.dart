@@ -76,9 +76,11 @@ const double kGitChangesRowVerticalPadding = 4;
 const double kGitChangesRowExtent =
     kGitChangesNodeHeight + kGitChangesRowVerticalPadding * 2;
 
-/// Per tree level, the whole leading column = chevron (18) + checkbox (18),
-/// so a child file's checkbox aligns with its parent folder's checkbox right.
-const double kGitChangesIndentWidth = 36;
+/// Per tree level, one column (18px). Folders indent by this; files indent by
+/// this plus a chevron column so their checkbox lands where a folder's does —
+/// a child folder's chevron aligns with its parent folder's checkbox, and a
+/// child file's checkbox with its parent folder's checkbox right edge.
+const double kGitChangesIndentWidth = 18;
 
 /// Outer horizontal inset on each list row in tree view.
 const double kGitChangesRowHorizontalPadding = 2;
@@ -153,6 +155,7 @@ double gitChangesMinContentWidth({
         kGitChangesCheckboxWidth + 16 + 6; // checkbox + file icon + gap
     final rowWidth =
         row.depth * kGitChangesIndentWidth +
+        kGitChangesChevronWidth +
         kGitChangesNodePaddingLeft +
         leading +
         kGitChangesNodePaddingRight +
@@ -171,7 +174,7 @@ double _rowWidthEstimate(GitChangesVisibleRow row) {
     units += rune >= 0x1100 ? 2.0 : 1.0;
   }
   final extra = row.isFolder ? kGitChangesCheckboxWidth : kGitChangesTrailingBadgeWidth;
-  return row.depth * 4.0 + units + extra / 8.0;
+  return row.depth * 2.0 + units + extra / 8.0;
 }
 
 /// Default expanded folders: every directory prefix of a changed path.

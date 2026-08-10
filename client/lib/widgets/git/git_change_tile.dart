@@ -78,6 +78,7 @@ class GitChangeTile extends StatelessWidget {
         height: double.infinity,
         padding: EdgeInsets.fromLTRB(
           depth * kGitChangesIndentWidth +
+              kGitChangesChevronWidth +
               kGitChangesNodePaddingLeft +
               kGitChangesRowHorizontalPadding,
           kGitChangesRowVerticalPadding,

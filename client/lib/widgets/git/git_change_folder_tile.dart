@@ -86,13 +86,18 @@ class GitChangeFolderTile extends StatelessWidget {
               SizedBox(
                 width: kGitChangesChevronWidth,
                 height: 16,
-                child: AnimatedRotation(
-                  turns: isExpanded ? 0.25 : 0.0,
-                  duration: const Duration(milliseconds: 150),
-                  child: Icon(
-                    Icons.chevron_right,
-                    size: 16,
-                    color: cs.onSurfaceVariant,
+                // Flush the 16px glyph to the left edge of the 18px column so
+                // it aligns with the parent folder's checkbox left edge.
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: AnimatedRotation(
+                    turns: isExpanded ? 0.25 : 0.0,
+                    duration: const Duration(milliseconds: 150),
+                    child: Icon(
+                      Icons.chevron_right,
+                      size: 16,
+                      color: cs.onSurfaceVariant,
+                    ),
                   ),
                 ),
               ),
