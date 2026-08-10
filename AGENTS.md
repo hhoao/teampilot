@@ -15,6 +15,7 @@ Guidance for Claude Code and other AI assistants working in this repository.
 | [docs/PERFORMANCE.md](docs/PERFORMANCE.md) | Progressive paint / UX jank optimization (`TpDeferred*`) |
 | [docs/PERFORMANCE_ANALYSIS.md](docs/PERFORMANCE_ANALYSIS.md) | DevTools performance JSON offline analysis (`tool/analyze_performance_json.dart`) |
 | [docs/workspace-storage-layout.md](docs/workspace-storage-layout.md) | On-disk layout under `<teampilotRoot>` |
+| [docs/tool-call-parsing-convention.md](docs/tool-call-parsing-convention.md) | **Tool call 解析约定**: ai_message_core 纯接口，解析实现 + CLI 配置放 client/lib/services |
 
 All app code lives under `client/lib/` (cubits, pages, repositories, services, models). Vendored deps: `client/packages/` (git submodules: xterm, flutter_pty_new, dartssh2, re-editor, flutter_alacritty, **shared_ui**). Cross-route UI primitives live in **`shared_ui`** as the **Tp** design system (`TpButton`, `TpInput`, `TpTheme`, …); see [client/packages/shared_ui/README.md](client/packages/shared_ui/README.md).
 
