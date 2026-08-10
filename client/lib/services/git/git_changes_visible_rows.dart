@@ -76,11 +76,12 @@ const double kGitChangesRowVerticalPadding = 4;
 const double kGitChangesRowExtent =
     kGitChangesNodeHeight + kGitChangesRowVerticalPadding * 2;
 
-/// Per tree level, one column (18px). Folders indent by this; files indent by
-/// this plus a chevron column so their checkbox lands where a folder's does —
-/// a child folder's chevron aligns with its parent folder's checkbox, and a
-/// child file's checkbox with its parent folder's checkbox right edge.
-const double kGitChangesIndentWidth = 18;
+/// Folder indent step per tree level: the chevron column (18) plus the
+/// checkbox's left padding (2). Files indent by this plus a chevron column.
+/// The extra 2px keeps a child folder's chevron aligned with its parent's
+/// checkbox box while opening a 2px gap between parent and child checkbox
+/// boxes (a child box starts at its parent box's right edge + 2).
+const double kGitChangesIndentWidth = 20;
 
 /// Outer horizontal inset on each list row in tree view.
 const double kGitChangesRowHorizontalPadding = 2;
@@ -99,9 +100,9 @@ const double kGitChangesCheckboxWidth = 18;
 const double kGitChangesCheckboxHPadding = 2;
 
 /// Width of the stage-checkbox column: the [kGitChangesCheckboxWidth] box plus
-/// [kGitChangesCheckboxHPadding] on each side. The chevron column stays
-/// [kGitChangesChevronWidth] (the box width), so the tree alignment holds; the
-/// child-folder chevron lands on the checkbox column's left edge.
+/// [kGitChangesCheckboxHPadding] on each side. The box keeps its natural size;
+/// [kGitChangesIndentWidth] absorbs the left padding so a child folder's
+/// chevron stays aligned with its parent's checkbox box.
 const double kGitChangesCheckboxColumnWidth =
     kGitChangesCheckboxWidth + kGitChangesCheckboxHPadding * 2;
 
