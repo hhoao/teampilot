@@ -28,6 +28,25 @@ class ManifestFilesystem implements Filesystem {
 
   String _normalize(String path) => normalizeWorkPath(this, path);
 
+  /// When [path] is under an overlay symlink, return the resolved path on
+  /// [readDelegate]. When [path] is the symlink itself, return `null` so
+  /// callers can treat it as a link node.
+  String? _resolveViaOverlaySymlink(String path) {
+    path = _normalize(path);
+    if (_overlaySymlinks.containsKey(path)) return null;
+    var current = path;
+    while (true) {
+      final parent = pathContext.dirname(current);
+      if (parent == current || parent.isEmpty) return null;
+      final target = _overlaySymlinks[parent];
+      if (target != null) {
+        final rel = pathContext.relative(path, from: parent);
+        return rel == '.' ? target : pathContext.join(target, rel);
+      }
+      current = parent;
+    }
+  }
+
   void _clearOverlayUnder(String path) {
     path = _normalize(path);
     _overlayFiles.removeWhere(
@@ -43,6 +62,7 @@ class ManifestFilesystem implements Filesystem {
 
   @override
   Future<FsStat> stat(String path) async {
+    path = _normalize(path);
     if (_overlayFiles.containsKey(path)) {
       return const FsStat(kind: FsEntityKind.file);
     }
@@ -52,6 +72,8 @@ class ManifestFilesystem implements Filesystem {
     if (_overlayDirs.contains(path)) {
       return const FsStat(kind: FsEntityKind.directory);
     }
+    final resolved = _resolveViaOverlaySymlink(path);
+    if (resolved != null) return readDelegate.stat(resolved);
     return readDelegate.stat(path);
   }
 
@@ -120,14 +142,21 @@ class ManifestFilesystem implements Filesystem {
   }
 
   @override
-  Future<String?> readString(String path) async =>
-      _overlayFiles[path] ?? readDelegate.readString(path);
+  Future<String?> readString(String path) async {
+    path = _normalize(path);
+    final overlay = _overlayFiles[path];
+    if (overlay != null) return overlay;
+    final resolved = _resolveViaOverlaySymlink(path);
+    return readDelegate.readString(resolved ?? path);
+  }
 
   @override
   Future<List<int>?> readBytes(String path) async {
+    path = _normalize(path);
     final overlay = _overlayFiles[path];
     if (overlay != null) return utf8.encode(overlay);
-    return readDelegate.readBytes(path);
+    final resolved = _resolveViaOverlaySymlink(path);
+    return readDelegate.readBytes(resolved ?? path);
   }
 
   @override
@@ -183,6 +212,15 @@ class ManifestFilesystem implements Filesystem {
   @override
   Future<List<FsDirEntry>> listDir(String path) async {
     path = _normalize(path);
+    final symlinkTarget = _overlaySymlinks[path];
+    if (symlinkTarget != null) {
+      return listDir(symlinkTarget);
+    }
+    final resolved = _resolveViaOverlaySymlink(path);
+    if (resolved != null) {
+      return readDelegate.listDir(resolved);
+    }
+
     final names = <String>{};
     final entries = <FsDirEntry>[];
     // Base listing from the read delegate when the dir is already real there.

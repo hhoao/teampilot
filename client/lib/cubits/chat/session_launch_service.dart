@@ -210,6 +210,7 @@ class SessionLaunchService
       throw StateError('Session repository unavailable');
     }
 
+    final sw = Stopwatch()..start();
     final teamId = params.sessionTeamId.trim();
     final memberClis = teamId.isEmpty
         ? const <String, CliTool>{}
@@ -235,6 +236,11 @@ class SessionLaunchService
       continueOverrides: params.continueOverrides,
       members: session.members,
       memberTargets: session.memberTargets,
+      knownWorkspace: request.workspace,
+    );
+    appLogger.d(
+      '[session-launch] createSession '
+      'session=${persisted.sessionId} ms=${sw.elapsedMilliseconds}',
     );
     var persistedWithTitle = persisted;
     final stagedTitle = _state
@@ -362,7 +368,17 @@ class SessionLaunchService
     required TeamMemberConfig? member,
     VoidCallback? onFinally,
   }) {
+    final queuedAt = DateTime.now();
+    appLogger.d(
+      '[session-launch] scheduleShellConnect queued '
+      'session=${session.sessionId}',
+    );
     _h.postFrameScheduler(() async {
+      appLogger.d(
+        '[session-launch] scheduleShellConnect frame '
+        'session=${session.sessionId} '
+        'waitMs=${DateTime.now().difference(queuedAt).inMilliseconds}',
+      );
       if (!_launchStillValid(tab, generation)) {
         _shellConnector.abortConnectShellIfStale(
           tab: tab,

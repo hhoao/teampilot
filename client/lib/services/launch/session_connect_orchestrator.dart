@@ -70,12 +70,20 @@ class SessionConnectOrchestrator {
     MemberAgentStatusEndpoint? agentStatus,
     void Function(CliInstallProgress progress)? onProvisionProgress,
   }) async {
+    final planSw = Stopwatch()..start();
     final identity = session.simpleIdentity;
     final plan = await runtimePlanBuilder.buildSimple(
       workspaceId: workspace.workspaceId,
       sessionId: session.sessionId,
       memberId: session.sessionId,
       identity: identity,
+    );
+    appLogger.d(
+      '[session-launch] build-runtime-plan '
+      'session=${session.sessionId} '
+      'plugins=${plan.runtimeBundle.pluginIds.length} '
+      'skills=${plan.runtimeBundle.skillIds.length} '
+      'ms=${planSw.elapsedMilliseconds}',
     );
     final finalizedMember = finalizeSessionLaunchMember(
       session: session,

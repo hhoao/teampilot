@@ -3,8 +3,10 @@ import 'package:path/path.dart' as p;
 import '../../models/config_bundle.dart';
 import '../../models/cli_preset.dart';
 import '../../models/extension_manifest.dart';
+import '../../models/plugin.dart';
 import '../../models/skill.dart';
 import '../../models/team_config.dart';
+import '../../utils/logging/logger.dart';
 import '../team_bus/member_bus_idle_endpoint.dart';
 import '../agent_status/member_agent_status_endpoint.dart';
 import '../storage/runtime_layout.dart';
@@ -476,11 +478,25 @@ class ConfigProfileService implements ConfigProfileDelegate {
       return const [];
     }
 
+    final total = Stopwatch()..start();
+    Future<void> step(String name, Future<void> Function() run) async {
+      final sw = Stopwatch()..start();
+      await run();
+      appLogger.d(
+        '[session-launch] stage-fs $name '
+        'session=$trimmedSessionId cli=${cli.value} '
+        'ms=${sw.elapsedMilliseconds}',
+      );
+    }
+
     final warnings = <String>[];
-    await layout.ensureSessionRuntimeInheritsWorkspace(
-      trimmedWorkspaceId,
-      trimmedSessionId,
-      cli.value,
+    await step(
+      'inherit-workspace',
+      () => layout.ensureSessionRuntimeInheritsWorkspace(
+        trimmedWorkspaceId,
+        trimmedSessionId,
+        cli.value,
+      ),
     );
 
     final configDir = _launchResourceConfigDir(
@@ -490,76 +506,100 @@ class ConfigProfileService implements ConfigProfileDelegate {
     );
     // Share the persisted marketplace clone into this session's CONFIG_DIR so
     // the CLI reuses one per-tool flavor dir instead of cloning per session.
-    await MarketplaceSharedStore(fs: fs, teampilotRoot: basePath)
-        .ensureSessionMarketplacesLinked(configDir: configDir, tool: cli);
+    await step(
+      'marketplaces',
+      () => MarketplaceSharedStore(fs: fs, teampilotRoot: basePath)
+          .ensureSessionMarketplacesLinked(configDir: configDir, tool: cli),
+    );
 
     final pluginProvisioner = _cliRegistry
         .capability<PluginProvisionerCapability>(cli);
     if (pluginProvisioner != null) {
-      final installedCatalog = await InstalledPluginCatalog.load(fs, basePath);
-      final poolResult = await PluginBundlePoolService(
-        fs: fs,
-        teampilotRoot: basePath,
-      ).reconcile(
-        poolDir: layout.sessionRuntimePluginsDir(
-          trimmedWorkspaceId,
-          trimmedSessionId,
-          cli.value,
-        ),
-        enabledPluginIds: runtimeBundle.pluginIds,
-        installedCatalog: installedCatalog,
-        paths: pluginProvisioner.manifestPaths ?? neutralPluginManifestPaths,
-      );
-      warnings.addAll([
-        for (final id in poolResult.skippedMissingIds) 'plugin_missing_$id',
-        ...poolResult.errors,
-      ]);
-      await pluginProvisioner.provision(
-        PluginProvisionContext(
+      late final List<Plugin> installedCatalog;
+      late final PluginBundlePoolResult poolResult;
+      await step('plugin-catalog', () async {
+        installedCatalog = await InstalledPluginCatalog.load(fs, basePath);
+      });
+      await step('plugin-pool', () async {
+        poolResult = await PluginBundlePoolService(
           fs: fs,
           teampilotRoot: basePath,
-          configDir: configDir,
-          bundlePoolDir: layout.sessionRuntimePluginsDir(
+        ).reconcile(
+          poolDir: layout.sessionRuntimePluginsDir(
             trimmedWorkspaceId,
             trimmedSessionId,
             cli.value,
           ),
           enabledPluginIds: runtimeBundle.pluginIds,
           installedCatalog: installedCatalog,
-          layout: layout,
-          tool: cli,
-          memberProvisionJson: poolResult.memberProvisionStampJson,
+          paths: pluginProvisioner.manifestPaths ?? neutralPluginManifestPaths,
+        );
+      });
+      warnings.addAll([
+        for (final id in poolResult.skippedMissingIds) 'plugin_missing_$id',
+        ...poolResult.errors,
+      ]);
+      await step(
+        'plugin-provision',
+        () => pluginProvisioner.provision(
+          PluginProvisionContext(
+            fs: fs,
+            teampilotRoot: basePath,
+            configDir: configDir,
+            bundlePoolDir: layout.sessionRuntimePluginsDir(
+              trimmedWorkspaceId,
+              trimmedSessionId,
+              cli.value,
+            ),
+            enabledPluginIds: runtimeBundle.pluginIds,
+            installedCatalog: installedCatalog,
+            layout: layout,
+            tool: cli,
+            memberProvisionJson: poolResult.memberProvisionStampJson,
+          ),
         ),
       );
     }
 
-    final provisionResult =
-        await ResourceProvisioningService(
-          fs: fs,
-          registry: _cliRegistry,
-        ).provisionForLaunch(
-          scope: SimpleResourceScope(bundle: runtimeBundle),
-          cli: cli,
-          configDir: _launchResourceConfigDir(
+    await step('skills', () async {
+      final provisionResult =
+          await ResourceProvisioningService(
+            fs: fs,
+            registry: _cliRegistry,
+          ).provisionForLaunch(
+            scope: SimpleResourceScope(bundle: runtimeBundle),
             cli: cli,
-            workspaceId: trimmedWorkspaceId,
-            sessionId: trimmedSessionId,
-          ),
-          catalog: await _skillCatalog(),
-        );
-    warnings.addAll(provisionResult.warnings);
+            configDir: _launchResourceConfigDir(
+              cli: cli,
+              workspaceId: trimmedWorkspaceId,
+              sessionId: trimmedSessionId,
+            ),
+            catalog: await _skillCatalog(),
+          );
+      warnings.addAll(provisionResult.warnings);
+    });
 
-    await McpRegistryService(
-      fs: fs,
-      layout: layout,
-    ).writeForSimpleSession(
-      workspaceId: trimmedWorkspaceId,
-      sessionId: trimmedSessionId,
-      mcpServerIds: runtimeBundle.mcpServerIds,
-      extraServers: extraMcpServers,
-      projectMcpRoots: projectMcpRoots,
+    await step(
+      'mcp',
+      () => McpRegistryService(
+        fs: fs,
+        layout: layout,
+      ).writeForSimpleSession(
+        workspaceId: trimmedWorkspaceId,
+        sessionId: trimmedSessionId,
+        mcpServerIds: runtimeBundle.mcpServerIds,
+        extraServers: extraMcpServers,
+        projectMcpRoots: projectMcpRoots,
+      ),
     );
 
+    appLogger.d(
+      '[session-launch] stage-fs done '
+      'session=$trimmedSessionId cli=${cli.value} '
+      'plugins=${runtimeBundle.pluginIds.length} '
+      'skills=${runtimeBundle.skillIds.length} '
+      'ms=${total.elapsedMilliseconds}',
+    );
     return warnings;
   }
 
@@ -663,6 +703,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     );
 
     final cli = member.cli ?? CliTool.claude;
+    final fsSw = Stopwatch()..start();
     final fsWarnings = await staging.applySimpleSessionFilesystem(
       workspaceId: workspaceId,
       sessionId: sessionId,
@@ -674,6 +715,12 @@ class ConfigProfileService implements ConfigProfileDelegate {
         additionalDirectories: additionalDirectories,
       ),
     );
+    appLogger.d(
+      '[session-launch] stage-simple apply-fs '
+      'session=$sessionId ms=${fsSw.elapsedMilliseconds} '
+      'ops=${manifest.entries.length}',
+    );
+    final contributeSw = Stopwatch()..start();
     final outcome = await staging.contributeSimpleSessionLaunch(
       workspaceId: workspaceId,
       sessionId: sessionId,
@@ -682,6 +729,11 @@ class ConfigProfileService implements ConfigProfileDelegate {
       additionalDirectories: additionalDirectories,
       busIdle: busIdle,
       agentStatus: agentStatus,
+    );
+    appLogger.d(
+      '[session-launch] stage-simple contribute '
+      'session=$sessionId ms=${contributeSw.elapsedMilliseconds} '
+      'ops=${manifest.entries.length}',
     );
     return (
       outcome: TeamLaunchOutcome(

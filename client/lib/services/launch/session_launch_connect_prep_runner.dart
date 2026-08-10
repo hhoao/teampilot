@@ -76,6 +76,11 @@ class SessionLaunchConnectPrepRunner {
     required Workspace? workspace,
     required bool connect,
   }) async {
+    final started = Stopwatch()..start();
+    appLogger.d(
+      '[session-launch] prepareNewTab begin '
+      'session=${session.sessionId} connect=$connect',
+    );
     try {
       final prep = await runSessionTabConnectPrep(
         callbacks: _prepCallbacks,
@@ -94,6 +99,11 @@ class SessionLaunchConnectPrepRunner {
       }
       final launched =
           prep.launchSession.launchState == AppSessionLaunchState.started;
+      appLogger.d(
+        '[session-launch] prepareNewTab schedule-connect '
+        'session=${prep.launchSession.sessionId} '
+        'ms=${started.elapsedMilliseconds}',
+      );
       _scheduleShellConnect(
         generation: generation,
         tab: tab,

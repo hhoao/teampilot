@@ -798,4 +798,50 @@ void main() {
       expect(clonedSession.bindingFor('worker')?.cli, isNull);
     },
   );
+
+  test(
+    'createSession with knownWorkspace skips scanning every session.json',
+    () async {
+      final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
+      addTearDown(() => tmp.deleteSync(recursive: true));
+
+      final repo = SessionRepository(rootDir: tmp.path);
+      final workspace = await repo.createWorkspace([
+        WorkspaceFolder(path: '/tmp/known-ws'),
+      ]);
+
+      // Plant many sibling session dirs. A full listSessionIdsForWorkspace walk
+      // would open each session.json; create with knownWorkspace must not.
+      final sessionsRoot =
+          '${tmp.path}/workspace/workspaces/${workspace.workspaceId}/sessions';
+      for (var i = 0; i < 80; i++) {
+        final dir = Directory('$sessionsRoot/seed-$i')..createSync(recursive: true);
+        File('${dir.path}/session.json').writeAsStringSync(
+          jsonEncode({
+            'sessionId': 'seed-$i',
+            'workspaceId': workspace.workspaceId,
+            'createdAt': i,
+            'updatedAt': i,
+            'folders': [
+              {'path': '/tmp/known-ws', 'targetId': 'local'},
+            ],
+          }),
+        );
+      }
+
+      final created = await repo.createSession(
+        workspace.workspaceId,
+        knownWorkspace: workspace,
+      );
+      expect(created.workspaceId, workspace.workspaceId);
+      expect(created.firstFolderPath, '/tmp/known-ws');
+
+      final indexed = await repo.loadWorkspacesIndex();
+      expect(
+        indexed.singleWhere((w) => w.workspaceId == workspace.workspaceId)
+            .sessionIds,
+        contains(created.sessionId),
+      );
+    },
+  );
 }

@@ -13,21 +13,44 @@ class InMemoryFilesystem implements Filesystem {
   final Set<String> directories = {};
   final Map<String, String> symlinks = {};
 
+  /// Resolve [path] through an ancestor directory symlink, if any.
+  String _follow(String path) {
+    var current = path;
+    while (true) {
+      final parent = pathContext.dirname(current);
+      if (parent == current || parent.isEmpty) return path;
+      final target = symlinks[parent];
+      if (target != null) {
+        final rel = pathContext.relative(path, from: parent);
+        return rel == '.' ? target : pathContext.join(target, rel);
+      }
+      current = parent;
+    }
+  }
+
   @override
   Future<FsStat> stat(String path) async {
-    if (byteFiles.containsKey(path)) {
-      return FsStat(kind: FsEntityKind.file, size: byteFiles[path]!.length);
+    Future<FsStat> direct(String p) async {
+      if (byteFiles.containsKey(p)) {
+        return FsStat(kind: FsEntityKind.file, size: byteFiles[p]!.length);
+      }
+      if (files.containsKey(p)) {
+        return FsStat(kind: FsEntityKind.file, size: files[p]!.length);
+      }
+      if (directories.contains(p)) {
+        return const FsStat(kind: FsEntityKind.directory);
+      }
+      if (symlinks.containsKey(p)) {
+        return const FsStat(kind: FsEntityKind.symlink);
+      }
+      return const FsStat(kind: FsEntityKind.notFound);
     }
-    if (files.containsKey(path)) {
-      return FsStat(kind: FsEntityKind.file, size: files[path]!.length);
-    }
-    if (directories.contains(path)) {
-      return const FsStat(kind: FsEntityKind.directory);
-    }
-    if (symlinks.containsKey(path)) {
-      return const FsStat(kind: FsEntityKind.symlink);
-    }
-    return const FsStat(kind: FsEntityKind.notFound);
+
+    final own = await direct(path);
+    if (own.exists) return own;
+    final followed = _follow(path);
+    if (followed != path) return direct(followed);
+    return own;
   }
 
   @override
@@ -114,15 +137,25 @@ class InMemoryFilesystem implements Filesystem {
   }
 
   @override
-  Future<String?> readString(String path) async => files[path];
+  Future<String?> readString(String path) async {
+    final direct = files[path];
+    if (direct != null) return direct;
+    final followed = _follow(path);
+    return followed == path ? null : files[followed];
+  }
 
   @override
   Future<List<int>?> readBytes(String path) async {
     final bytes = byteFiles[path];
     if (bytes != null) return bytes;
     final text = files[path];
-    if (text == null) return null;
-    return text.codeUnits;
+    if (text != null) return text.codeUnits;
+    final followed = _follow(path);
+    if (followed == path) return null;
+    final followedBytes = byteFiles[followed];
+    if (followedBytes != null) return followedBytes;
+    final followedText = files[followed];
+    return followedText?.codeUnits;
   }
 
   @override
@@ -166,24 +199,29 @@ class InMemoryFilesystem implements Filesystem {
 
   @override
   Future<List<FsDirEntry>> listDir(String path) async {
+    if (symlinks.containsKey(path)) {
+      return listDir(symlinks[path]!);
+    }
+    final followed = _follow(path);
+    final listPath = followed != path ? followed : path;
     final names = <String, bool>{};
     for (final dir in directories) {
-      if (pathContext.dirname(dir) == path) {
+      if (pathContext.dirname(dir) == listPath) {
         names[pathContext.basename(dir)] = true;
       }
     }
     for (final file in files.keys) {
-      if (pathContext.dirname(file) == path) {
+      if (pathContext.dirname(file) == listPath) {
         names[pathContext.basename(file)] = false;
       }
     }
     for (final file in byteFiles.keys) {
-      if (pathContext.dirname(file) == path) {
+      if (pathContext.dirname(file) == listPath) {
         names[pathContext.basename(file)] = false;
       }
     }
     for (final link in symlinks.keys) {
-      if (pathContext.dirname(link) == path) {
+      if (pathContext.dirname(link) == listPath) {
         names[pathContext.basename(link)] = false;
       }
     }

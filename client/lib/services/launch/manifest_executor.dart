@@ -49,10 +49,31 @@ class ManifestExecutor {
     required Filesystem targetFs,
     required Filesystem sourceFs,
   }) async {
+    final expandSw = Stopwatch()..start();
     final applied = identical(sourceFs, targetFs)
         ? manifest
         : await _expandCopies(manifest, sourceFs);
+    if (!identical(sourceFs, targetFs)) {
+      appLogger.d(
+        '[session-launch] manifest expand-copies '
+        'in=${manifest.entries.length} out=${applied.entries.length} '
+        'ms=${expandSw.elapsedMilliseconds}',
+      );
+    }
+    final byKindMs = <String, int>{};
+    final byKindCount = <String, int>{};
+    const slowMs = 50;
     for (final entry in applied.entries) {
+      final kind = switch (entry) {
+        ManifestEnsureDir() => 'ensureDir',
+        ManifestWriteFile() => 'writeFile',
+        ManifestSymlink() => 'symlink',
+        ManifestCopyFile() => 'copyFile',
+        ManifestCopyTree() => 'copyTree',
+        ManifestRemoveRecursive() => 'removeRecursive',
+        ManifestRename() => 'rename',
+      };
+      final sw = Stopwatch()..start();
       switch (entry) {
         case ManifestEnsureDir(:final path):
           await targetFs.ensureDir(path);
@@ -69,7 +90,35 @@ class ManifestExecutor {
         case ManifestRename(:final from, :final to):
           await targetFs.rename(from, to);
       }
+      final ms = sw.elapsedMilliseconds;
+      byKindMs[kind] = (byKindMs[kind] ?? 0) + ms;
+      byKindCount[kind] = (byKindCount[kind] ?? 0) + 1;
+      if (ms >= slowMs) {
+        final detail = switch (entry) {
+          ManifestEnsureDir(:final path) => path,
+          ManifestWriteFile(:final path) => path,
+          ManifestSymlink(:final linkPath) => linkPath,
+          ManifestCopyFile(:final destination) => destination,
+          ManifestCopyTree(:final source, :final destination) =>
+            '$source -> $destination',
+          ManifestRemoveRecursive(:final path) => path,
+          ManifestRename(:final from, :final to) => '$from -> $to',
+        };
+        appLogger.d(
+          '[session-launch] manifest slow-op kind=$kind ms=$ms detail=$detail',
+        );
+      }
     }
+    final summary = byKindCount.keys
+        .map(
+          (k) =>
+              '$k=${byKindCount[k]}x/${byKindMs[k]}ms',
+        )
+        .join(' ');
+    appLogger.d(
+      '[session-launch] manifest flush-local '
+      'ops=${applied.entries.length} $summary',
+    );
   }
 
   Future<void> _flushViaSsh({

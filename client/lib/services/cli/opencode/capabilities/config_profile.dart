@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../../../../models/app_provider_config.dart';
 import '../../../../models/simple_launch_identity.dart';
 import '../../../../models/team_config.dart';
+import '../../../../utils/logging/logger.dart';
 import '../../../launch/work_plane_paths.dart';
 import '../../../provider/cross_machine_credential_bridge.dart';
 import '../../../provider/provider_catalog_access.dart';
@@ -309,14 +310,24 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
     // into the work-plane session dir. Never npm-install on paths.fs (SFTP).
     // Seed failures become warnings so launch env (OPENCODE_DB, …) still applies.
     try {
+      final depsSw = Stopwatch()..start();
       await OpencodeSharedPluginDeps(
         layout: ctx.catalog.layout,
         fs: ctx.catalog.fs,
       ).ensureSharedInstalled();
+      appLogger.d(
+        '[session-launch] opencode ensure-shared-plugin-deps '
+        'session=${ctx.scope.sessionId} ms=${depsSw.elapsedMilliseconds}',
+      );
+      final inheritSw = Stopwatch()..start();
       await paths.layout.ensureSessionInheritsOpencodePluginDeps(
         ctx.scope.workspaceId,
         ctx.scope.sessionId,
         memberId: ctx.scope.memberId,
+      );
+      appLogger.d(
+        '[session-launch] opencode inherit-plugin-deps '
+        'session=${ctx.scope.sessionId} ms=${inheritSw.elapsedMilliseconds}',
       );
     } on Object catch (e) {
       warnings.add('opencode_plugin_deps: $e');

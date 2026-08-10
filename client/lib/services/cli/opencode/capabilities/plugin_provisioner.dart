@@ -87,8 +87,11 @@ final class OpencodePluginProvisioner implements PluginProvisionerCapability {
       final skillFile = fs.pathContext.join(source, 'SKILL.md');
       if (!(await fs.stat(skillFile)).isFile) continue;
 
-      await fs.ensureDir(dest);
-      await fs.copyTree(source: source, destination: dest);
+      await CliPluginLayout.linkOrCopyTree(
+        fs: fs,
+        source: source,
+        destination: dest,
+      );
     }
   }
 

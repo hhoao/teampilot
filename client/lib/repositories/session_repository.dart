@@ -91,15 +91,26 @@ class SessionRepository {
     String workspaceId, {
     bool indexOnly = false,
   }) async {
+    final total = Stopwatch()..start();
     final raw = await fs.readText(fs.manifestFile(workspaceId));
+    final readMs = total.elapsedMilliseconds;
     if (raw == null || raw.isEmpty) return null;
     try {
       final json = jsonDecode(raw);
       if (json is Map<String, Object?>) {
         final workspace = Workspace.fromJson(json);
+        final listSw = Stopwatch()..start();
         final sessionIds = indexOnly
             ? await fs.listSessionDirectoryIds(workspaceId)
             : await fs.listSessionIdsForWorkspace(workspaceId);
+        final listMs = listSw.elapsedMilliseconds;
+        if (readMs >= 50 || listMs >= 50) {
+          appLogger.d(
+            '[session-launch] readManifest '
+            'workspace=$workspaceId indexOnly=$indexOnly '
+            'readMs=$readMs listMs=$listMs sessions=${sessionIds.length}',
+          );
+        }
         // Migration: infer mixed placement init in-memory only when remembered
         // targets are non-empty and all host ids are still in the workspace.
         // Roster/lead is unavailable at load, so pass members: [] (lead check
@@ -664,9 +675,34 @@ class SessionRepository {
     SessionContinueOverrides? continueOverrides,
     List<SessionMemberBinding>? members,
     Map<String, String>? memberTargets,
+    Workspace? knownWorkspace,
   }) async {
+    final total = Stopwatch()..start();
+    var stepAt = total.elapsedMilliseconds;
+    void mark(String name) {
+      final now = total.elapsedMilliseconds;
+      appLogger.d(
+        '[session-launch] createSession.$name '
+        'workspace=$workspaceId ms=${now - stepAt} totalMs=$now',
+      );
+      stepAt = now;
+    }
+
     final fs = await _fs();
-    var workspace = await _readManifest(fs, workspaceId);
+    mark('bind-fs');
+    // Launch already has the workspace snapshot; skip re-reading every
+    // session.json (listSessionIdsForWorkspace) — create only needs folders /
+    // placement fields, and sync-index re-lists directory names afterward.
+    Workspace? workspace = knownWorkspace != null &&
+            knownWorkspace.workspaceId == workspaceId
+        ? knownWorkspace
+        : null;
+    if (workspace != null) {
+      mark('reuse-workspace');
+    } else {
+      workspace = await _readManifest(fs, workspaceId, indexOnly: true);
+      mark('read-manifest');
+    }
     if (workspace == null) {
       throw StateError('Unknown workspaceId: $workspaceId');
     }
@@ -733,6 +769,7 @@ class SessionRepository {
         layout: counterCtx.layout,
       );
       cliTeamName = await counter.nextCliTeamName(trimmedTeam);
+      mark('team-plan');
     }
 
     final pinnedId = fixedSessionId?.trim() ?? '';
@@ -769,11 +806,18 @@ class SessionRepository {
       continueOverrides: continueOverrides ?? const SessionContinueOverrides(),
     );
     await fs.ensureSessionDir(workspaceId, sessionId);
+    mark('ensure-dir');
     await fs.writeText(
       fs.sessionFile(workspaceId, sessionId),
       jsonEncode(session.toJson()),
     );
+    mark('write-session');
     await _syncWorkspaceIndexEntry(fs, workspace);
+    mark('sync-index');
+    appLogger.d(
+      '[session-launch] createSession done '
+      'session=$sessionId ms=${total.elapsedMilliseconds}',
+    );
     return session;
   }
 

@@ -127,6 +127,46 @@ void main() {
     );
 
     test(
+      'reads and lists through overlay symlinks via the readDelegate target',
+      () async {
+        final disk = InMemoryFilesystem();
+        await disk.ensureDir('/installed/demo/.plugin');
+        await disk.writeString(
+          '/installed/demo/.plugin/plugin.json',
+          '{"name":"demo"}',
+        );
+        await disk.ensureDir('/installed/demo/skills/foo');
+        await disk.writeString(
+          '/installed/demo/skills/foo/SKILL.md',
+          '# foo',
+        );
+
+        final staging = ManifestFilesystem(
+          manifest: LaunchManifest(),
+          readDelegate: disk,
+        );
+        await staging.createSymlink(
+          target: '/installed/demo',
+          linkPath: '/pool/demo',
+        );
+
+        expect((await staging.stat('/pool/demo')).isSymlink, isTrue);
+        expect(
+          await staging.readString('/pool/demo/.plugin/plugin.json'),
+          '{"name":"demo"}',
+        );
+        expect(
+          (await staging.listDir('/pool/demo/skills')).map((e) => e.name),
+          contains('foo'),
+        );
+        expect(
+          await staging.readString('/pool/demo/skills/foo/SKILL.md'),
+          '# foo',
+        );
+      },
+    );
+
+    test(
       'cursor home passthrough stages symlinks after ensureDir under real home',
       () async {
         final disk = InMemoryFilesystem();

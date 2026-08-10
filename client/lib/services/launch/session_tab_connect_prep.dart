@@ -4,6 +4,7 @@ import '../../models/app_session.dart';
 import '../../models/team_config.dart';
 import '../../models/workspace.dart';
 import '../../services/terminal/terminal_session.dart';
+import '../../utils/logging/logger.dart';
 
 typedef ResolvedLaunchMembers = ({
   TeamProfile? team,
@@ -78,18 +79,35 @@ Future<TabConnectPrepResult?> runSessionTabConnectPrep({
   required Workspace? workspace,
   required bool installTeamRuntime,
 }) async {
+  final total = Stopwatch()..start();
+  Future<T> step<T>(String name, Future<T> Function() run) async {
+    final sw = Stopwatch()..start();
+    final result = await run();
+    appLogger.d(
+      '[session-launch] tab-prep $name '
+      'session=${session.sessionId} ms=${sw.elapsedMilliseconds}',
+    );
+    return result;
+  }
+
   var launchSession = session;
-  launchSession = await callbacks.persistSessionIfNeeded(
-    request: request,
-    session: session,
-    tab: tab,
+  launchSession = await step(
+    'persist',
+    () => callbacks.persistSessionIfNeeded(
+      request: request,
+      session: session,
+      tab: tab,
+    ),
   );
   if (!callbacks.launchStillValid(tab, generation)) return null;
 
-  final ready = await callbacks.ensureTeamSessionReady(
-    request: request,
-    session: launchSession,
-    workspace: workspace,
+  final ready = await step(
+    'ensure-ready',
+    () => callbacks.ensureTeamSessionReady(
+      request: request,
+      session: launchSession,
+      workspace: workspace,
+    ),
   );
   if (!callbacks.launchStillValid(tab, generation)) return null;
   if (ready == null) {
@@ -103,19 +121,25 @@ Future<TabConnectPrepResult?> runSessionTabConnectPrep({
   launchSession = ready;
   tab.persistedSession = ready;
 
-  final resolved = await callbacks.resolveLaunchMembers(
-    session: launchSession,
-    request: request,
-    workspace: workspace,
+  final resolved = await step(
+    'resolve-members',
+    () => callbacks.resolveLaunchMembers(
+      session: launchSession,
+      request: request,
+      workspace: workspace,
+    ),
   );
   if (!callbacks.launchStillValid(tab, generation)) return null;
 
   if (installTeamRuntime) {
-    await callbacks.installTeamRuntimeIfNeeded(
-      tab: tab,
-      session: launchSession,
-      team: resolved.team,
-      generation: generation,
+    await step(
+      'install-team-runtime',
+      () => callbacks.installTeamRuntimeIfNeeded(
+        tab: tab,
+        session: launchSession,
+        team: resolved.team,
+        generation: generation,
+      ),
     );
     if (!callbacks.launchStillValid(tab, generation)) return null;
   }
@@ -131,6 +155,10 @@ Future<TabConnectPrepResult?> runSessionTabConnectPrep({
     rosterMemberId: request.isPersonal ? null : resolved.member.id,
   );
 
+  appLogger.d(
+    '[session-launch] tab-prep done '
+    'session=${launchSession.sessionId} ms=${total.elapsedMilliseconds}',
+  );
   return TabConnectPrepResult(
     launchSession: launchSession,
     resolved: resolved,

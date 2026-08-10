@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/plugin.dart';
 import 'package:teampilot/services/cli/registry/capabilities/plugin_manifest_paths.dart';
+import 'package:teampilot/services/cli/registry/capabilities/plugin_provisioner_capability.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/plugin/plugin_bundle_pool_service.dart';
 
@@ -82,6 +83,7 @@ void main() {
       () async {
     await _writeNeutralBundle(sourceRoot, 'demo-bundle');
     final poolDir = p.join(base.path, 'session', 'plugins');
+    final installed = p.join(sourceRoot, 'demo-bundle');
 
     final result = await service().reconcile(
       poolDir: poolDir,
@@ -97,20 +99,86 @@ void main() {
     expect(result.skippedMissingIds, isEmpty);
     final dest = p.join(poolDir, 'demo-bundle');
     expect(Directory(dest).existsSync(), isTrue);
-    // Copied (not a session symlink into the shared installed bundle).
+    // Session pool keeps a symlink; missing Claude flavor is seeded into the
+    // shared installed root once (not a per-session full copyTree).
     if (Platform.isLinux || Platform.isMacOS) {
-      expect(Link(dest).existsSync(), isFalse);
+      expect(Link(dest).existsSync(), isTrue);
+      expect(Link(dest).targetSync(), installed);
     }
-    // Neutral manifest preserved + target flavor projected.
     expect(File(p.join(dest, '.plugin', 'plugin.json')).existsSync(), isTrue);
     expect(
       File(p.join(dest, '.claude-plugin', 'plugin.json')).existsSync(),
       isTrue,
     );
-    // Member stamp written for the writer's registry invalidation.
+    expect(
+      File(p.join(installed, '.claude-plugin', 'plugin.json')).existsSync(),
+      isTrue,
+      reason: 'flavor projection seeds the shared installed bundle',
+    );
     expect(result.memberProvisionStampJson, isNotNull);
   });
 
+  test(
+    'keeps a symlink for Claude when installed already has the flavor',
+    () async {
+      await _writeNeutralBundle(sourceRoot, 'demo-bundle');
+      Directory(p.join(sourceRoot, 'demo-bundle', '.claude-plugin'))
+          .createSync(recursive: true);
+      File(
+        p.join(sourceRoot, 'demo-bundle', '.claude-plugin', 'plugin.json'),
+      ).writeAsStringSync(
+        '{"name":"demo","version":"1.0.0","description":""}',
+      );
+      final poolDir = p.join(base.path, 'session', 'plugins');
+      final installed = p.join(sourceRoot, 'demo-bundle');
+
+      final result = await service().reconcile(
+        poolDir: poolDir,
+        enabledPluginIds: ['acme/demo'],
+        installedCatalog: [
+          _plugin('acme/demo', 'demo', directory: 'demo-bundle'),
+        ],
+        paths: claudePluginManifestPaths,
+      );
+
+      expect(result.linked, ['demo-bundle']);
+      final dest = p.join(poolDir, 'demo-bundle');
+      if (Platform.isLinux || Platform.isMacOS) {
+        expect(Link(dest).existsSync(), isTrue);
+        expect(Link(dest).targetSync(), installed);
+      }
+    },
+  );
+
+  test(
+    'keeps a symlink for neutral paths that do not need flavor projection',
+    () async {
+      await _writeNeutralBundle(sourceRoot, 'demo-bundle');
+      final poolDir = p.join(base.path, 'session', 'plugins');
+      final installed = p.join(sourceRoot, 'demo-bundle');
+
+      final result = await service().reconcile(
+        poolDir: poolDir,
+        enabledPluginIds: ['acme/demo'],
+        installedCatalog: [
+          _plugin('acme/demo', 'demo', directory: 'demo-bundle'),
+        ],
+        paths: neutralPluginManifestPaths,
+      );
+
+      expect(result.linked, ['demo-bundle']);
+      expect(result.errors, isEmpty);
+      final dest = p.join(poolDir, 'demo-bundle');
+      if (Platform.isLinux || Platform.isMacOS) {
+        expect(Link(dest).existsSync(), isTrue);
+        expect(Link(dest).targetSync(), installed);
+      }
+      expect(
+        File(p.join(dest, '.plugin', 'plugin.json')).existsSync(),
+        isTrue,
+      );
+    },
+  );
   test('removes stale bundles but keeps writer-managed entries', () async {
     await _writeNeutralBundle(sourceRoot, 'demo-bundle');
     final poolDir = p.join(base.path, 'session', 'plugins');

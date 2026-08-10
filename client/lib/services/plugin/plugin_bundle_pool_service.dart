@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import '../../models/plugin.dart';
 import '../../utils/lock_pool.dart';
+import '../../utils/logging/logger.dart';
 import '../cli/registry/capabilities/plugin_manifest_paths.dart';
 import '../cli/registry/capabilities/plugin_provisioner_capability.dart';
 import '../io/filesystem.dart';
@@ -79,6 +80,7 @@ class PluginBundlePoolService {
     required List<Plugin> installedCatalog,
     required PluginManifestPaths paths,
   }) async {
+    final total = Stopwatch()..start();
     final resolved = PluginBundleResolver.resolve(
       enabledPluginIds: enabledPluginIds,
       installedCatalog: installedCatalog,
@@ -93,6 +95,10 @@ class PluginBundlePoolService {
     );
     if (savedStampJson.isNotEmpty &&
         _stampMatchesDesired(savedStampJson, resolved.enabled, paths)) {
+      appLogger.d(
+        '[session-launch] plugin-pool stamp-hit '
+        'enabled=${resolved.enabled.length} ms=${total.elapsedMilliseconds}',
+      );
       return PluginBundlePoolResult(
         linked: const [],
         skippedMissingIds: resolved.skippedMissingIds,
@@ -141,6 +147,7 @@ class PluginBundlePoolService {
         continue;
       }
       final dest = ctx.join(poolDir, linkName);
+      final pluginSw = Stopwatch()..start();
       try {
         if ((await _fs.stat(dest)).exists) {
           await _fs.removeRecursive(dest);
@@ -150,22 +157,43 @@ class PluginBundlePoolService {
           source: root,
           destination: dest,
         );
-        if (linkedNow) {
-          // Projection writes into the destination — never write through a
-          // symlink into the shared installed bundle.
-          await _fs.removeRecursive(dest);
-          linkedNow = false;
-          await _fs.copyTree(source: root, destination: dest);
+        // Prefer keeping the session pool as a symlink into the shared
+        // installed bundle. Flavor projection seeds the *installed* root once
+        // when missing — never a per-session full copyTree of large plugins.
+        final needsFlavor =
+            paths.manifestDirName !=
+            neutralPluginManifestPaths.manifestDirName;
+        var seededFlavorIntoInstalled = false;
+        final projectSw = Stopwatch()..start();
+        if (needsFlavor) {
+          final flavorReady = (await _fs.stat(
+            ctx.join(root, paths.manifestRelativePath),
+          )).isFile;
+          if (linkedNow) {
+            if (!flavorReady) {
+              await CliPluginLayout.projectBundleToFlavor(_fs, root, paths);
+              seededFlavorIntoInstalled = true;
+            }
+          } else {
+            // Symlink unavailable — project into the session copy.
+            await CliPluginLayout.projectBundleToFlavor(_fs, dest, paths);
+            if (paths.manifestDirName ==
+                claudePluginManifestPaths.manifestDirName) {
+              await CliPluginLayout.removeManifestDir(
+                _fs,
+                dest,
+                flashskyaiPluginManifestPaths.manifestDirName,
+              );
+            }
+          }
         }
-        await CliPluginLayout.projectBundleToFlavor(_fs, dest, paths);
-        if (paths.manifestDirName ==
-            claudePluginManifestPaths.manifestDirName) {
-          await CliPluginLayout.removeManifestDir(
-            _fs,
-            dest,
-            flashskyaiPluginManifestPaths.manifestDirName,
-          );
-        }
+        appLogger.d(
+          '[session-launch] plugin-pool materialize '
+          'id=${plugin.id} keptSymlink=$linkedNow '
+          'seededFlavor=$seededFlavorIntoInstalled '
+          'projectMs=${projectSw.elapsedMilliseconds} '
+          'ms=${pluginSw.elapsedMilliseconds}',
+        );
         final rootStat = await _fs.stat(root);
         bundles.add({
           'dirName': linkName,
@@ -194,6 +222,11 @@ class PluginBundlePoolService {
       memberPluginsDir: poolDir,
     );
 
+    appLogger.d(
+      '[session-launch] plugin-pool done '
+      'linked=${linked.length} errors=${errors.length} '
+      'ms=${total.elapsedMilliseconds}',
+    );
     return PluginBundlePoolResult(
       linked: linked,
       skippedMissingIds: resolved.skippedMissingIds,

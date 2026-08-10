@@ -130,7 +130,17 @@ class SessionMemberConnectScheduler {
     if (ownsConnectToken) {
       _host.beginSessionConnect(tab.info.id);
     }
+    final queuedAt = DateTime.now();
+    appLogger.d(
+      '[session-launch] scheduleMemberConnect queued '
+      'session=${tab.info.id} member=${member.id}',
+    );
     _host.postFrameScheduler(() async {
+      appLogger.d(
+        '[session-launch] scheduleMemberConnect frame '
+        'session=${tab.info.id} member=${member.id} '
+        'waitMs=${DateTime.now().difference(queuedAt).inMilliseconds}',
+      );
       try {
         if (shell.isRunning) {
           _host.memberMaterializer.markMemberReady(tab.info.id, member.id);
