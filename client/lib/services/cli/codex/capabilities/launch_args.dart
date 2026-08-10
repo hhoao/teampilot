@@ -29,6 +29,7 @@ final class CodexCliToolAdapter implements CliToolAdapter {
 
     if (member.dangerouslySkipPermissions) {
       args.add('--dangerously-bypass-approvals-and-sandbox');
+      args.add('--dangerously-bypass-hook-trust');
     }
 
     addExtraArgs(args, context.team.extraArgs);
