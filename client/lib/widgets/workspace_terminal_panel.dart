@@ -489,15 +489,7 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
           await Clipboard.setData(ClipboardData(text: text));
         }
       case 'selectAll':
-        final grid = entry.session.engine.grid;
-        if (grid.rows > 0 && grid.columns > 0) {
-          entry.controller.selectionStart(0, 0, false, 0);
-          entry.controller.selectionUpdate(
-            grid.rows - 1,
-            grid.columns - 1,
-            false,
-          );
-        }
+        await entry.controller.selectAll();
       default:
         break;
     }

@@ -151,15 +151,7 @@ Future<void> showChatWorkbenchTerminalContextMenu({
         await Clipboard.setData(ClipboardData(text: text));
       }
     case 'selectAll':
-      final grid = engine.grid;
-      if (grid.rows > 0 && grid.columns > 0) {
-        terminalController.selectionStart(0, 0, false, 0);
-        terminalController.selectionUpdate(
-          grid.rows - 1,
-          grid.columns - 1,
-          false,
-        );
-      }
+      await terminalController.selectAll();
     case 'clearSelection':
       terminalController.clearSelection();
     case 'disconnect':
