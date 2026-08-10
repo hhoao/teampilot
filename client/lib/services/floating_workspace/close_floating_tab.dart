@@ -102,7 +102,7 @@ Future<void> closeFloatingTabByBarId({
   required WorkbenchTabId id,
   BuildContext? context,
 }) async {
-  final surfaceId = _surfaceIdFor(id);
+  final surfaceId = surfaceIdFor(id.kind);
   if (surfaceId == null) {
     await workbench.close(workspaceId, id);
     return;
@@ -121,14 +121,4 @@ Future<void> closeFloatingTabByBarId({
     tab: tab,
     context: context,
   );
-}
-
-String? _surfaceIdFor(WorkbenchTabId id) {
-  return switch (id.kind) {
-    WorkbenchTabKind.shell => 'terminal',
-    WorkbenchTabKind.run => 'run',
-    WorkbenchTabKind.file => 'filePreview',
-    WorkbenchTabKind.diff => 'diffPreview',
-    WorkbenchTabKind.session => null,
-  };
 }

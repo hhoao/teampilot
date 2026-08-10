@@ -56,6 +56,24 @@ void main() {
     });
   });
 
+  group('reorder', () {
+    test('moves a tab within bounds', () {
+      cubit.openSession(_ws, 's1');
+      cubit.openSession(_ws, 's2');
+      cubit.reorder(_ws, 0, 1);
+      expect(cubit.state.bar(_ws).center.order, [_s2, _s1]);
+    });
+
+    test('clamps newIndex == order.length (no crash, order kept)', () {
+      cubit.openSession(_ws, 's1');
+      cubit.openSession(_ws, 's2');
+      // ReorderableListView may pass newIndex == itemCount when dragging to
+      // the end; the cubit must not crash or mutate the order.
+      cubit.reorder(_ws, 0, 2);
+      expect(cubit.state.bar(_ws).center.order, [_s1, _s2]);
+    });
+  });
+
   group('closeOthers / closeRight / closeAll', () {
     test('closeOthers returns removed list', () {
       cubit.openSession(_ws, 's1');

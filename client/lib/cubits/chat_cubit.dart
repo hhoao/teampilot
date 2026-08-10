@@ -1677,14 +1677,17 @@ class ChatCubit extends Cubit<ChatState>
   /// routing the workspace close through the bar and tearing down each
   /// runtime. Idempotent.
   Future<void> closeTabsForWorkspace(String workspaceId) async {
-    final ids = _tabStore.sessionsForWorkspace(workspaceId);
     final port = _workbenchPort;
     if (port != null) {
-      // Bar removal fires onTabRemoved → teardownSession per center tab.
+      // Single teardown path: bar removal fires onTabRemoved →
+      // teardownSession per center tab. Do not also loop teardownSession —
+      // the port's onTabRemoved already handles each runtime.
       port.closeAll(workspaceId);
-    }
-    for (final id in ids) {
-      await teardownSession(id);
+    } else {
+      // No bar (tests / legacy): tear down each runtime directly.
+      for (final id in _tabStore.sessionsForWorkspace(workspaceId)) {
+        await teardownSession(id);
+      }
     }
     _updateWorkingSessions(_sessionRuntime.recomputeWorkingSessions());
   }

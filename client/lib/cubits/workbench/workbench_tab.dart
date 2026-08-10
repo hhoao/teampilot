@@ -2,6 +2,16 @@ import 'package:equatable/equatable.dart';
 
 enum WorkbenchTabKind { session, file, diff, shell, run }
 
+/// Floating panel surface id for [kind], or null when the kind hosts on the
+/// center strip (session) rather than the floating panel.
+String? surfaceIdFor(WorkbenchTabKind kind) => switch (kind) {
+  WorkbenchTabKind.shell => 'terminal',
+  WorkbenchTabKind.run => 'run',
+  WorkbenchTabKind.file => 'filePreview',
+  WorkbenchTabKind.diff => 'diffPreview',
+  WorkbenchTabKind.session => null,
+};
+
 /// Center strip tabs — shell and run live in the floating panel; file/diff may
 /// host on center or floating based on [LayoutPreferences.filePreviewHost].
 bool isCenterStripWorkbenchTab(WorkbenchTabKind kind) =>

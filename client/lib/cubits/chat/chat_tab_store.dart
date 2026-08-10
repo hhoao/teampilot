@@ -25,7 +25,8 @@ class ChatTabStore {
   List<ChatTab> tabsForWorkspace(String workspaceId) =>
       _bySessionId.values.where((t) => t.workspaceId == workspaceId).toList();
 
-  /// Runtime tabs for the foreground workspace (domain convenience).
+  /// Every open session runtime, globally — not scoped to the foreground
+  /// workspace (bar presence/order lives in `WorkbenchCubit`).
   List<ChatTab> get activeTabs => _bySessionId.values.toList();
 
   bool get activeTabsIsEmpty => _bySessionId.isEmpty;

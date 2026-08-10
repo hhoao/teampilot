@@ -76,13 +76,7 @@ class FloatingWorkspaceCloseShortcut extends StatelessWidget {
       return;
     }
 
-    final surfaceId = switch (activeId.kind) {
-      WorkbenchTabKind.shell => 'terminal',
-      WorkbenchTabKind.run => 'run',
-      WorkbenchTabKind.file => 'filePreview',
-      WorkbenchTabKind.diff => 'diffPreview',
-      WorkbenchTabKind.session => null,
-    };
+    final surfaceId = surfaceIdFor(activeId.kind);
     if (surfaceId == null) {
       cubit.minimize(closeIfEmpty: true);
       return;

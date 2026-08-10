@@ -29,16 +29,9 @@ FloatingTab? resolveFloatingTabForId({
   required WorkbenchTabId id,
 }) {
   if (id.kind == WorkbenchTabKind.session) return null;
-  final (surfaceId, payload) = switch (id.kind) {
-    WorkbenchTabKind.shell => ('terminal', id.id),
-    WorkbenchTabKind.run => ('run', id.id),
-    WorkbenchTabKind.file => ('filePreview', id.id),
-    WorkbenchTabKind.diff => ('diffPreview', id.id),
-    WorkbenchTabKind.session => ('', ''),
-  };
-  final surface = registry[surfaceId];
+  final surface = registry[surfaceIdFor(id.kind)!];
   if (surface == null) return null;
-  return surface.createTab(workspaceId: workspaceId, payload: payload);
+  return surface.createTab(workspaceId: workspaceId, payload: id.id);
 }
 
 /// Reconciles RunPanel sessions with floating run tabs and strips stale center

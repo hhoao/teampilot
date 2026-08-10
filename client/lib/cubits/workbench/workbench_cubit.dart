@@ -195,8 +195,10 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
   }
 
   /// Shows the center landing (new-chat / welcome) without closing tabs.
+  /// No-op when the center strip is already in landing (activeId == null).
   void enterLanding(String workspaceId) {
     final bar = state.bar(workspaceId);
+    if (bar.center.landingActive) return;
     final next = _r.enterLanding(bar.center);
     emit(state.withBar(workspaceId, bar.copyWith(center: next)));
   }

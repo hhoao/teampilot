@@ -77,6 +77,17 @@ void main() {
       expect(s3.activeId, _s2);
     });
 
+    test('reorder clamps newIndex == order.length (no crash, order kept)', () {
+      final (s1, _) = r.add(empty, _s1, preview: false);
+      final (s2, _) = r.add(s1, _s2, preview: false);
+      // ReorderableListView may pass newIndex == itemCount when dragging to
+      // the end; the reducer must treat it as a no-op, not crash.
+      final s3 = r.reorder(s2, 0, s2.order.length);
+      expect(identical(s3, s2), isTrue);
+      expect(s3.order, [_s1, _s2]);
+      expect(s3.activeId, _s2);
+    });
+
     test('activate selects an existing tab', () {
       final (s1, _) = r.add(empty, _s1, preview: false);
       final (s2, _) = r.add(s1, _s2, preview: false);
