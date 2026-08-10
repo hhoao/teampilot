@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -35,6 +36,15 @@ String worktreeGroupCollapseKey(WorktreeGroup group) {
   }
   return group.worktree?.path ?? '<orphan>';
 }
+
+/// Approximate row height of a session tile in the sidebar list.
+const double _groupSessionRowHeight = 46;
+
+/// Max session rows shown before the user expands a group.
+const int _groupCollapsedCap = 8;
+
+/// Row count of the fixed-height scrollable an expanded group reveals.
+const int _groupExpandedRowCount = 10;
 
 /// Worktree create/remove on the workspace work-plane (native, WSL, or SSH git).
 bool worktreeManagementEnabled(RuntimeContext workContext) =>
@@ -379,8 +389,10 @@ class _GroupCollapseLeading extends StatelessWidget {
   }
 }
 
-/// Session tiles for one worktree group, capped at [_cap] with a "show
-/// more / show less" toggle so a busy worktree doesn't flood the sidebar.
+/// Session tiles for one worktree group. Collapsed (default) shows at most
+/// [_groupCollapsedCap] rows at their natural height; the "more" toggle
+/// expands the group to a fixed [_groupExpandedRowCount]-row scrollable, so a
+/// busy worktree never floods the sidebar.
 class _GroupSessionList extends StatefulWidget {
   const _GroupSessionList({
     required this.sessionIds,
@@ -405,7 +417,6 @@ class _GroupSessionList extends StatefulWidget {
 }
 
 class _GroupSessionListState extends State<_GroupSessionList> {
-  static const _cap = 5;
   bool _showAll = false;
 
   @override
@@ -420,53 +431,63 @@ class _GroupSessionListState extends State<_GroupSessionList> {
       ],
       sort: widget.sessionSort,
     );
-    final overflow = all.length - _cap;
-    final visible = (_showAll || overflow <= 0) ? all : all.take(_cap).toList();
-    final visibleIds = [for (final s in visible) s.sessionId];
     final allIds = [for (final s in all) s.sessionId];
+    final overflow = all.length - _groupCollapsedCap;
+    final visible = (_showAll || overflow <= 0)
+        ? all
+        : all.take(_groupCollapsedCap).toList();
+    final visibleIds = [for (final s in visible) s.sessionId];
+
+    // Collapsed: rows at natural height (no scroll). Expanded: fixed
+    // row-count viewport that keeps the list lazy, so a busy group never
+    // builds every session tile in one frame.
+    final height =
+        math.min(_groupExpandedRowCount, visible.length) *
+        _groupSessionRowHeight;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        ReorderableListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          buildDefaultDragHandles: false,
-          padding: EdgeInsets.zero,
-          itemCount: visible.length,
-          onReorderItem: (oldIndex, newIndex) {
-            final groupOrdered = reorderVisibleSessionIds(
-              allIds: allIds,
-              visibleIds: visibleIds,
-              oldIndex: oldIndex,
-              newIndex: newIndex,
-            );
-            widget.onSessionsReordered(
-              mergeGroupSessionReorder(
-                workspaceOrderedIds: widget.workspaceOrderedSessionIds,
-                groupOrderedIds: groupOrdered,
-              ),
-            );
-          },
-          itemBuilder: (context, index) {
-            final sessionId = visibleIds[index];
-            final session = byId[sessionId];
-            if (session == null) return SizedBox(key: ValueKey(sessionId));
-            return SidebarSessionTile(
-              key: ValueKey('worktree-session-$sessionId'),
-              session: session,
-              index: index,
-              highlightSessionId: widget.highlightSessionId,
-              contentLeftInset: 0,
-              tapThrottleKeyPrefix: 'worktree_sidebar_session',
-              onTap: () => openWorkspaceSessionTab(
-                context,
-                widget.workspace,
-                session,
-                tabScopeId: widget.tabScopeId,
-              ),
-            );
-          },
+        SizedBox(
+          height: height,
+          child: ReorderableListView.builder(
+            buildDefaultDragHandles: false,
+            padding: EdgeInsets.zero,
+            itemCount: visible.length,
+            onReorderItem: (oldIndex, newIndex) {
+              final groupOrdered = reorderVisibleSessionIds(
+                allIds: allIds,
+                visibleIds: visibleIds,
+                oldIndex: oldIndex,
+                newIndex: newIndex,
+              );
+              widget.onSessionsReordered(
+                mergeGroupSessionReorder(
+                  workspaceOrderedIds: widget.workspaceOrderedSessionIds,
+                  groupOrderedIds: groupOrdered,
+                ),
+              );
+            },
+            itemBuilder: (context, index) {
+              final sessionId = visibleIds[index];
+              final session = byId[sessionId];
+              if (session == null) return SizedBox(key: ValueKey(sessionId));
+              return SidebarSessionTile(
+                key: ValueKey('worktree-session-$sessionId'),
+                session: session,
+                index: index,
+                highlightSessionId: widget.highlightSessionId,
+                contentLeftInset: 0,
+                tapThrottleKeyPrefix: 'worktree_sidebar_session',
+                onTap: () => openWorkspaceSessionTab(
+                  context,
+                  widget.workspace,
+                  session,
+                  tabScopeId: widget.tabScopeId,
+                ),
+              );
+            },
+          ),
         ),
         if (overflow > 0)
           _GroupShowMoreRow(
@@ -521,7 +542,8 @@ class _GroupShowMoreRowState extends State<_GroupShowMoreRow> {
                 widget.label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TpTextStyles.of(context).mdColored(cs.onSurface.withValues(alpha: 0.55),
+                style: TpTextStyles.of(context).mdColored(
+                  cs.onSurface.withValues(alpha: 0.55),
                 ),
               ),
             ),
