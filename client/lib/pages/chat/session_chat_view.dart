@@ -606,13 +606,6 @@ class _SessionChatViewState extends State<SessionChatView> {
     _focusNode.requestFocus();
   }
 
-  void _insertComposeReferences(List<String> references) {
-    insertComposeReferences(_controller, references);
-    if (!mounted) return;
-    setState(() {});
-    _focusNode.requestFocus();
-  }
-
   Future<bool> _pasteComposeImage() async {
     if (_isSubmitting || _enhancing) return false;
     final pasted = await pasteComposeImageAttachment(
