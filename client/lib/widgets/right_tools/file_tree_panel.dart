@@ -460,10 +460,11 @@ class _FileTreeFilterField extends StatelessWidget {
   }
 }
 
-/// Surface id of the floating file-preview tab (mirrors
-/// `FilePreviewFloatingSurface.id`; the file tree decides what counts as a
-/// highlight — the cubit stays surface-agnostic).
-const String _kFloatingFilePreviewSurfaceId = 'filePreview';
+/// Workbench kind of the floating file-preview tab. File previews float only
+/// when the preview host is floating; the file tree reads the bar's active id
+/// directly (kind stays surface-agnostic here).
+const WorkbenchTabKind _kFloatingFilePreviewWorkbenchKind =
+    WorkbenchTabKind.file;
 
 /// Projects the active floating file-preview path for [workspaceId] and
 /// rebuilds [builder] only when that path actually changes.
@@ -492,18 +493,27 @@ class _FloatingPreviewHighlightState extends State<_FloatingPreviewHighlight> {
     super.didChangeDependencies();
     _projection ??= FloatingWorkspaceProjection<String?>(
       context.read<FloatingWorkspaceCubit>(),
+      context.read<WorkbenchCubit>(),
       _projectPath,
       initial: null,
     );
   }
 
-  String? _projectPath(FloatingWorkspaceCubit cubit) {
-    final active = cubit.activeTabFor(widget.workspaceId);
-    if (active == null ||
-        active.surfaceId != _kFloatingFilePreviewSurfaceId) {
+  String? _projectPath(
+    FloatingWorkspaceCubit floating,
+    WorkbenchCubit workbench,
+  ) {
+    if (floating.state.activeWorkspaceId != widget.workspaceId) return null;
+    final activeId = workbench
+        .state
+        .bar(widget.workspaceId)
+        .floating
+        .activeId;
+    if (activeId == null ||
+        activeId.kind != _kFloatingFilePreviewWorkbenchKind) {
       return null;
     }
-    return active.payload is String ? active.payload as String : null;
+    return activeId.id;
   }
 
   @override

@@ -4,11 +4,8 @@ import 'package:shared_ui/shared_ui.dart';
 import 'package:tp_markdown/tp_markdown.dart' show ContentDisplayMode;
 
 import '../../cubits/layout_cubit.dart';
-import '../../cubits/floating_workspace/floating_workspace_cubit.dart';
-import '../../cubits/workbench/workbench_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/layout_preferences.dart';
-import '../../services/floating_workspace/migrate_legacy_workbench_tabs.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_typography_scale.dart';
 import '../../theme/font_catalog.dart';
@@ -227,12 +224,11 @@ class LayoutAppearanceInLayoutSection extends StatelessWidget {
                       (c) => c.state.preferences.filePreviewHost,
                     ),
                     onChanged: (host) {
+                      // Tab relocation on host switch was dropped with the
+                      // migrate-file deletion: existing file/diff previews stay
+                      // where they are (bar presence wins), new opens follow
+                      // the new host. See workbench-tab-bar-unification report.
                       controller.setFilePreviewHost(host);
-                      syncFilePreviewHostTabs(
-                        workbench: context.read<WorkbenchCubit>(),
-                        floating: context.read<FloatingWorkspaceCubit>(),
-                        host: host,
-                      );
                     },
                   ),
                   showDividerBelow: true,

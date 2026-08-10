@@ -2,7 +2,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/floating_workspace/floating_panel_visibility.dart';
 import 'package:teampilot/cubits/floating_workspace/floating_workspace_cubit.dart';
 import 'package:teampilot/cubits/layout_cubit.dart';
-import 'package:teampilot/models/floating_workspace_tab.dart';
+import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
+import 'package:teampilot/cubits/workbench/workbench_tab.dart';
 import 'package:teampilot/services/commands/command_bus.dart';
 import 'package:teampilot/services/commands/command_ids.dart';
 import 'package:teampilot/services/commands/layout_command_registrar.dart';
@@ -109,7 +110,9 @@ void main() {
 
     test('togglePanel invokes onTogglePanel create-or-focus handler', () async {
       final floating = FloatingWorkspaceCubit();
+      final workbench = WorkbenchCubit();
       addTearDown(floating.close);
+      addTearDown(workbench.close);
       var calls = 0;
       final panelBus = CommandBus();
       registerLayoutCommands(
@@ -120,14 +123,7 @@ void main() {
           calls++;
           floating.ensureOpen();
           floating.setActiveWorkspace('ws');
-          floating.ensureTab(
-            const FloatingTab(
-              id: 'shell:e1',
-              surfaceId: 'terminal',
-              title: 'Local',
-              payload: 'e1',
-            ),
-          );
+          workbench.openShell('ws', 'e1');
         },
       );
       final terminalVisible = layout.state.preferences.workspaceTerminalVisible;
@@ -139,7 +135,9 @@ void main() {
       expect(layout.state.preferences.workspaceTerminalVisible, terminalVisible);
       expect(floating.state.visibility, FloatingPanelVisibility.open);
       expect(
-        floating.activeBucket.tabs.any((t) => t.payload == 'e1'),
+        workbench.state.bar('ws').floating.order.any(
+          (t) => t.kind == WorkbenchTabKind.shell && t.id == 'e1',
+        ),
         isTrue,
       );
     });

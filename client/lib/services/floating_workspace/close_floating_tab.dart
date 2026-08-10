@@ -1,63 +1,74 @@
 import 'package:flutter/material.dart';
 
-import '../../cubits/floating_workspace/floating_workspace_cubit.dart';
+import '../../cubits/workbench/workbench_cubit.dart';
+import '../../cubits/workbench/workbench_tab.dart';
 import '../../models/floating_workspace_tab.dart';
 import 'floating_surface.dart';
 import 'floating_surface_registry.dart';
 
-/// Close pipeline: [FloatingSurface.canClose] → [onTabClosed] → cubit remove.
+/// Close pipeline: [FloatingSurface.canClose] → [onTabClosed] → bar close.
+///
+/// The floating strip ([WorkbenchCubit.bar(workspaceId).floating]) owns
+/// presence/order/active; the bar removal also resolves through the domain
+/// port (a no-op for shell/run/file/diff — teardown happens in [onTabClosed]).
 Future<void> closeFloatingTab({
-  required FloatingWorkspaceCubit cubit,
+  required WorkbenchCubit workbench,
+  required String workspaceId,
   required FloatingSurfaceRegistry registry,
+  required WorkbenchTabId id,
   required FloatingTab tab,
   BuildContext? context,
 }) async {
   final surface = registry[tab.surfaceId];
   if (surface == null) {
-    cubit.removeTab(tab.id);
+    await workbench.close(workspaceId, id);
     return;
   }
   if (!await surface.canClose(tab, context: context)) return;
   surface.onTabClosed(tab);
-  cubit.removeTab(tab.id);
+  await workbench.close(workspaceId, id);
 }
 
-/// Close every tab except [keepTabId], respecting each surface's [canClose].
+/// Close every floating tab except [keepId], respecting each surface's
+/// [canClose]. [order] is snapshotted so removals do not shift iteration.
 Future<void> closeOtherFloatingTabs({
-  required FloatingWorkspaceCubit cubit,
+  required WorkbenchCubit workbench,
+  required String workspaceId,
   required FloatingSurfaceRegistry registry,
-  required String keepTabId,
+  required WorkbenchTabId keepId,
   BuildContext? context,
 }) async {
-  final toClose = cubit.activeBucket.tabs
-      .where((t) => t.id != keepTabId)
-      .toList(growable: false);
-  for (final tab in toClose) {
-    await closeFloatingTab(
-      cubit: cubit,
+  final order = List<WorkbenchTabId>.of(workbench.floatingOrder(workspaceId));
+  for (final id in order) {
+    if (id == keepId) continue;
+    await closeFloatingTabByBarId(
+      workbench: workbench,
+      workspaceId: workspaceId,
       registry: registry,
-      tab: tab,
+      id: id,
       context: context,
     );
   }
 }
 
-/// Close tabs to the right of [fromTabId] (exclusive), respecting [canClose].
+/// Close tabs to the right of [fromId] (exclusive), respecting [canClose].
 Future<void> closeFloatingTabsToTheRight({
-  required FloatingWorkspaceCubit cubit,
+  required WorkbenchCubit workbench,
+  required String workspaceId,
   required FloatingSurfaceRegistry registry,
-  required String fromTabId,
+  required WorkbenchTabId fromId,
   BuildContext? context,
 }) async {
-  final tabs = cubit.activeBucket.tabs;
-  final index = tabs.indexWhere((t) => t.id == fromTabId);
-  if (index < 0 || index >= tabs.length - 1) return;
-  final toClose = tabs.sublist(index + 1);
-  for (final tab in toClose) {
-    await closeFloatingTab(
-      cubit: cubit,
+  final order = workbench.floatingOrder(workspaceId);
+  final index = order.indexOf(fromId);
+  if (index < 0 || index >= order.length - 1) return;
+  final toClose = order.sublist(index + 1);
+  for (final id in toClose) {
+    await closeFloatingTabByBarId(
+      workbench: workbench,
+      workspaceId: workspaceId,
       registry: registry,
-      tab: tab,
+      id: id,
       context: context,
     );
   }
@@ -65,17 +76,59 @@ Future<void> closeFloatingTabsToTheRight({
 
 /// Close every floating tab, respecting each surface's [canClose].
 Future<void> closeAllFloatingTabs({
-  required FloatingWorkspaceCubit cubit,
+  required WorkbenchCubit workbench,
+  required String workspaceId,
   required FloatingSurfaceRegistry registry,
   BuildContext? context,
 }) async {
-  final toClose = [...cubit.activeBucket.tabs];
-  for (final tab in toClose) {
-    await closeFloatingTab(
-      cubit: cubit,
+  final order = List<WorkbenchTabId>.of(workbench.floatingOrder(workspaceId));
+  for (final id in order) {
+    await closeFloatingTabByBarId(
+      workbench: workbench,
+      workspaceId: workspaceId,
       registry: registry,
-      tab: tab,
+      id: id,
       context: context,
     );
   }
+}
+
+/// Resolves the [FloatingTab] view model for a bar [id] then runs the close
+/// pipeline. Falls back to a bare bar close when the surface is unknown.
+Future<void> closeFloatingTabByBarId({
+  required WorkbenchCubit workbench,
+  required String workspaceId,
+  required FloatingSurfaceRegistry registry,
+  required WorkbenchTabId id,
+  BuildContext? context,
+}) async {
+  final surfaceId = _surfaceIdFor(id);
+  if (surfaceId == null) {
+    await workbench.close(workspaceId, id);
+    return;
+  }
+  final surface = registry[surfaceId];
+  if (surface == null) {
+    await workbench.close(workspaceId, id);
+    return;
+  }
+  final tab = surface.createTab(workspaceId: workspaceId, payload: id.id);
+  await closeFloatingTab(
+    workbench: workbench,
+    workspaceId: workspaceId,
+    registry: registry,
+    id: id,
+    tab: tab,
+    context: context,
+  );
+}
+
+String? _surfaceIdFor(WorkbenchTabId id) {
+  return switch (id.kind) {
+    WorkbenchTabKind.shell => 'terminal',
+    WorkbenchTabKind.run => 'run',
+    WorkbenchTabKind.file => 'filePreview',
+    WorkbenchTabKind.diff => 'diffPreview',
+    WorkbenchTabKind.session => null,
+  };
 }

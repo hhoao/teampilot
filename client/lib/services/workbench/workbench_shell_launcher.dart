@@ -7,8 +7,8 @@ import 'package:flutter_alacritty/flutter_alacritty.dart';
 import '../../cubits/chat_cubit.dart';
 import '../../cubits/floating_workspace/floating_workspace_cubit.dart';
 import '../../cubits/layout_cubit.dart';
+import '../../cubits/workbench/workbench_cubit.dart';
 import '../../cubits/workbench/workbench_tab.dart';
-import '../../models/floating_workspace_tab.dart';
 import '../../models/runtime_target.dart';
 import '../../models/workspace_folder.dart';
 import '../../models/workspace_terminal_session_spec.dart';
@@ -53,32 +53,26 @@ class WorkbenchShellTogglePlan {
 /// Floating terminal tab id for a registry [entryId].
 String floatingShellTabId(String entryId) => 'shell:$entryId';
 
-/// Resolves the most recent shell from floating terminal tabs (by payload
-/// entry id), then falls back to [registryActiveEntryId].
+/// Resolves the most recent shell from the floating strip ([order]), then
+/// falls back to [registryActiveEntryId].
 ///
-/// Center workbench no longer hosts shell tabs after the floating migration —
-/// do not use `WorkbenchCubit.resolveMostRecentShell`.
+/// The strip's [activeId] wins; otherwise the last `shell` tab; otherwise the
+/// registry's active entry id. Center workbench no longer hosts shell tabs
+/// after the floating migration.
 WorkbenchTabId? resolveMostRecentFloatingShell({
-  required List<FloatingTab> tabs,
-  required String? activeTabId,
+  required List<WorkbenchTabId> order,
+  required WorkbenchTabId? activeId,
   String? registryActiveEntryId,
 }) {
-  if (activeTabId != null) {
-    for (final tab in tabs) {
-      if (tab.id != activeTabId || tab.surfaceId != 'terminal') continue;
-      final entryId = tab.payload;
-      if (entryId is String && entryId.trim().isNotEmpty) {
-        return WorkbenchTabId.shell(entryId.trim());
-      }
-    }
+  if (activeId != null && activeId.kind == WorkbenchTabKind.shell) {
+    final entryId = activeId.id.trim();
+    if (entryId.isNotEmpty) return activeId;
   }
-  for (var i = tabs.length - 1; i >= 0; i--) {
-    final tab = tabs[i];
-    if (tab.surfaceId != 'terminal') continue;
-    final entryId = tab.payload;
-    if (entryId is String && entryId.trim().isNotEmpty) {
-      return WorkbenchTabId.shell(entryId.trim());
-    }
+  for (var i = order.length - 1; i >= 0; i--) {
+    final tab = order[i];
+    if (tab.kind != WorkbenchTabKind.shell) continue;
+    final entryId = tab.id.trim();
+    if (entryId.isNotEmpty) return tab;
   }
   final reg = registryActiveEntryId?.trim() ?? '';
   if (reg.isNotEmpty) return WorkbenchTabId.shell(reg);
@@ -111,6 +105,7 @@ WorkbenchShellTogglePlan? resolveWorkbenchShellToggle({
 class WorkbenchShellLauncher {
   WorkbenchShellLauncher({
     required FloatingWorkspaceCubit floating,
+    required WorkbenchCubit workbench,
     required ChatCubit chat,
     required WorkspaceTerminalRegistry registry,
     required WorkspaceShellConnector connector,
@@ -123,6 +118,7 @@ class WorkbenchShellLauncher {
     bool Function()? termuxConnected,
     String Function()? termuxWorkOpsBlockedMessage,
   }) : _floating = floating,
+       _workbench = workbench,
        _chat = chat,
        _registry = registry,
        _connector = connector,
@@ -141,6 +137,7 @@ class WorkbenchShellLauncher {
        _termuxWorkOpsBlockedMessage = termuxWorkOpsBlockedMessage;
 
   final FloatingWorkspaceCubit _floating;
+  final WorkbenchCubit _workbench;
   final ChatCubit _chat;
   final WorkspaceTerminalRegistry _registry;
   final WorkspaceShellConnector _connector;
@@ -154,10 +151,10 @@ class WorkbenchShellLauncher {
   final String Function()? _termuxWorkOpsBlockedMessage;
 
   WorkbenchTabId? _resolveMostRecentShell(String workspaceId) {
-    final bucket = _floating.bucketFor(workspaceId);
+    final strip = _workbench.state.bar(workspaceId).floating;
     return resolveMostRecentFloatingShell(
-      tabs: bucket.tabs,
-      activeTabId: bucket.activeTabId,
+      order: strip.order,
+      activeId: strip.activeId,
       registryActiveEntryId: _registry.groupFor(workspaceId).activeId,
     );
   }
@@ -176,7 +173,7 @@ class WorkbenchShellLauncher {
       if (existing != null) {
         _floating.ensureOpen();
         _floating.setActiveWorkspace(plan.workspaceId);
-        _floating.selectTab(floatingShellTabId(existing.id));
+        _workbench.activate(plan.workspaceId, existing);
       }
       return;
     }
@@ -228,24 +225,14 @@ class WorkbenchShellLauncher {
       followWorkspace: followWorkspace,
     );
 
-    final title = entry.titleLabel.trim().isNotEmpty
-        ? entry.titleLabel
-        : entry.id;
     // Empty→first-tab UI is deferred one frame in FloatingWorkspacePanel so
     // connect must wait an extra frame on that path. Check the *target*
-    // workspace's bucket (the current active workspace may differ).
+    // workspace's floating strip (the current active workspace may differ).
     final deferFirstTabUi =
-        _floating.bucketFor(workspaceId).tabs.isEmpty;
+        _workbench.state.bar(workspaceId).floating.order.isEmpty;
     _floating.ensureOpen();
     _floating.setActiveWorkspace(workspaceId);
-    _floating.ensureTab(
-      FloatingTab(
-        id: floatingShellTabId(entry.id),
-        surfaceId: 'terminal',
-        title: title,
-        payload: entry.id,
-      ),
-    );
+    _workbench.openShell(workspaceId, entry.id, activate: true);
 
     final resolvedTheme =
         theme ??

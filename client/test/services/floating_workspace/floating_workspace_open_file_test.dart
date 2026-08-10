@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/editor_cubit.dart';
 import 'package:teampilot/cubits/floating_workspace/floating_workspace_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
+import 'package:teampilot/cubits/workbench/workbench_tab.dart';
 import 'package:teampilot/models/layout_preferences.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
@@ -57,7 +58,10 @@ void main() {
     );
 
     expect(seenInitialDirectory, '/repo');
-    expect(floating.activeBucket.tabs.single.id, 'file:/repo/a.txt');
+    expect(
+      workbench.state.bar('ws-1').floating.order,
+      [WorkbenchTabId.file('/repo/a.txt')],
+    );
     expect(editor.state.bucket('ws-1').openFilePaths, ['/repo/a.txt']);
   });
 
@@ -89,6 +93,6 @@ void main() {
       }) async => null,
     );
 
-    expect(floating.activeBucket.tabs, isEmpty);
+    expect(workbench.state.bar('ws-1').floating.order, isEmpty);
   });
 }

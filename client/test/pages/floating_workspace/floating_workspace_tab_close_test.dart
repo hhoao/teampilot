@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/cubits/floating_workspace/floating_workspace_cubit.dart';
+import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
+import 'package:teampilot/cubits/workbench/workbench_tab.dart';
 import 'package:teampilot/models/floating_workspace_tab.dart';
 import 'package:teampilot/services/floating_workspace/close_floating_tab.dart';
 import 'package:teampilot/services/floating_workspace/floating_surface.dart';
@@ -8,8 +9,8 @@ import 'package:teampilot/services/floating_workspace/floating_surface_registry.
 
 void main() {
   test('closeFloatingTab removes tab after canClose and onTabClosed', () async {
-    final cubit = FloatingWorkspaceCubit();
-    addTearDown(cubit.close);
+    final workbench = WorkbenchCubit();
+    addTearDown(workbench.close);
 
     var closed = false;
     final surface = _FakeSurface(
@@ -18,24 +19,29 @@ void main() {
     );
     final registry = FloatingSurfaceRegistry([surface]);
 
-    cubit.setActiveWorkspace('ws-1');
     const tab = FloatingTab(
       id: 'shell:a',
       surfaceId: 'terminal',
       title: 'Terminal',
       payload: 'a',
     );
-    cubit.ensureTab(tab);
+    workbench.openFloating('ws-1', WorkbenchTabId.shell('a'));
 
-    await closeFloatingTab(cubit: cubit, registry: registry, tab: tab);
+    await closeFloatingTab(
+      workbench: workbench,
+      workspaceId: 'ws-1',
+      registry: registry,
+      id: WorkbenchTabId.shell('a'),
+      tab: tab,
+    );
 
     expect(closed, isTrue);
-    expect(cubit.activeBucket.tabs, isEmpty);
+    expect(workbench.state.bar('ws-1').floating.order, isEmpty);
   });
 
   test('closeFloatingTab aborts when canClose returns false', () async {
-    final cubit = FloatingWorkspaceCubit();
-    addTearDown(cubit.close);
+    final workbench = WorkbenchCubit();
+    addTearDown(workbench.close);
 
     var closed = false;
     final surface = _FakeSurface(
@@ -45,93 +51,96 @@ void main() {
     );
     final registry = FloatingSurfaceRegistry([surface]);
 
-    cubit.setActiveWorkspace('ws-1');
     const tab = FloatingTab(
       id: 'file:/a.txt',
       surfaceId: 'filePreview',
       title: 'a.txt',
       payload: '/a.txt',
     );
-    cubit.ensureTab(tab);
+    workbench.openFloating('ws-1', WorkbenchTabId.file('/a.txt'));
 
-    await closeFloatingTab(cubit: cubit, registry: registry, tab: tab);
+    await closeFloatingTab(
+      workbench: workbench,
+      workspaceId: 'ws-1',
+      registry: registry,
+      id: WorkbenchTabId.file('/a.txt'),
+      tab: tab,
+    );
 
     expect(closed, isFalse);
-    expect(cubit.activeBucket.tabs.single.id, tab.id);
+    expect(
+      workbench.state.bar('ws-1').floating.order,
+      [WorkbenchTabId.file('/a.txt')],
+    );
   });
 
   test('closeFloatingTab removes unknown surface tab without callback', () async {
-    final cubit = FloatingWorkspaceCubit();
-    addTearDown(cubit.close);
+    final workbench = WorkbenchCubit();
+    addTearDown(workbench.close);
     final registry = FloatingSurfaceRegistry([]);
 
-    cubit.setActiveWorkspace('ws-1');
     const tab = FloatingTab(
       id: 'orphan',
       surfaceId: 'missing',
       title: 'Orphan',
     );
-    cubit.ensureTab(tab);
+    workbench.openFloating('ws-1', WorkbenchTabId.shell('orphan'));
 
-    await closeFloatingTab(cubit: cubit, registry: registry, tab: tab);
+    await closeFloatingTab(
+      workbench: workbench,
+      workspaceId: 'ws-1',
+      registry: registry,
+      id: WorkbenchTabId.shell('orphan'),
+      tab: tab,
+    );
 
-    expect(cubit.activeBucket.tabs, isEmpty);
+    expect(workbench.state.bar('ws-1').floating.order, isEmpty);
   });
 
   test('closeOtherFloatingTabs keeps only the requested tab', () async {
-    final cubit = FloatingWorkspaceCubit();
-    addTearDown(cubit.close);
+    final workbench = WorkbenchCubit();
+    addTearDown(workbench.close);
     final registry = FloatingSurfaceRegistry([
       _FakeSurface(id: 'terminal', onClosed: () {}),
     ]);
 
-    cubit.setActiveWorkspace('ws-1');
-    const keep = FloatingTab(
-      id: 'keep',
-      surfaceId: 'terminal',
-      title: 'Keep',
-    );
-    const other = FloatingTab(
-      id: 'other',
-      surfaceId: 'terminal',
-      title: 'Other',
-    );
-    cubit.ensureTab(keep);
-    cubit.ensureTab(other);
+    workbench.openFloating('ws-1', WorkbenchTabId.shell('keep'));
+    workbench.openFloating('ws-1', WorkbenchTabId.shell('other'));
 
     await closeOtherFloatingTabs(
-      cubit: cubit,
+      workbench: workbench,
+      workspaceId: 'ws-1',
       registry: registry,
-      keepTabId: keep.id,
-    );
-
-    expect(cubit.activeBucket.tabs.single.id, keep.id);
-  });
-
-  test('closeFloatingTabsToTheRight trims after the pivot', () async {
-    final cubit = FloatingWorkspaceCubit();
-    addTearDown(cubit.close);
-    final registry = FloatingSurfaceRegistry([
-      _FakeSurface(id: 'terminal', onClosed: () {}),
-    ]);
-
-    cubit.setActiveWorkspace('ws-1');
-    const a = FloatingTab(id: 'a', surfaceId: 'terminal', title: 'A');
-    const b = FloatingTab(id: 'b', surfaceId: 'terminal', title: 'B');
-    const c = FloatingTab(id: 'c', surfaceId: 'terminal', title: 'C');
-    cubit.ensureTab(a);
-    cubit.ensureTab(b);
-    cubit.ensureTab(c);
-
-    await closeFloatingTabsToTheRight(
-      cubit: cubit,
-      registry: registry,
-      fromTabId: a.id,
+      keepId: WorkbenchTabId.shell('keep'),
     );
 
     expect(
-      cubit.activeBucket.tabs.map((t) => t.id).toList(),
-      ['a'],
+      workbench.state.bar('ws-1').floating.order,
+      [WorkbenchTabId.shell('keep')],
+    );
+  });
+
+  test('closeFloatingTabsToTheRight trims after the pivot', () async {
+    final workbench = WorkbenchCubit();
+    addTearDown(workbench.close);
+    final registry = FloatingSurfaceRegistry([
+      _FakeSurface(id: 'terminal', onClosed: () {}),
+    ]);
+
+    workbench.openFloating('ws-1', WorkbenchTabId.shell('a'));
+    workbench.openFloating('ws-1', WorkbenchTabId.shell('b'));
+    workbench.openFloating('ws-1', WorkbenchTabId.shell('c'));
+
+    await closeFloatingTabsToTheRight(
+      workbench: workbench,
+      workspaceId: 'ws-1',
+      registry: registry,
+      fromId: WorkbenchTabId.shell('a'),
+    );
+
+    expect(
+      workbench.state.bar('ws-1').floating.order,
+      [WorkbenchTabId.shell('a')],
     );
   });
 }

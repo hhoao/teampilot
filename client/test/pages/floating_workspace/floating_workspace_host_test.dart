@@ -3,6 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/floating_workspace/floating_panel_visibility.dart';
 import 'package:teampilot/cubits/floating_workspace/floating_workspace_cubit.dart';
+import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
+import 'package:teampilot/cubits/workbench/workbench_tab.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/floating_workspace_tab.dart';
 import 'package:teampilot/pages/floating_workspace/floating_workspace_host.dart';
@@ -15,6 +17,7 @@ import 'package:teampilot/services/terminal/workspace_terminal_registry.dart';
 void main() {
   Widget wrap({
     required FloatingWorkspaceCubit cubit,
+    required WorkbenchCubit workbench,
     required FloatingSurfaceRegistry registry,
     required FloatingMaximizeInsets insets,
     WorkspaceTerminalRegistry? terminalRegistry,
@@ -33,9 +36,12 @@ void main() {
               value: terminalRegistry ?? WorkspaceTerminalRegistry(),
               child: BlocProvider.value(
                 value: cubit,
-                child: const Scaffold(
-                  body: FloatingWorkspaceHost(
-                    child: SizedBox.expand(child: Text('shell-body')),
+                child: BlocProvider<WorkbenchCubit>.value(
+                  value: workbench,
+                  child: const Scaffold(
+                    body: FloatingWorkspaceHost(
+                      child: SizedBox.expand(child: Text('shell-body')),
+                    ),
                   ),
                 ),
               ),
@@ -48,13 +54,20 @@ void main() {
 
   testWidgets('host shows panel when open, hides when hidden', (tester) async {
     final cubit = FloatingWorkspaceCubit();
+    final workbench = WorkbenchCubit();
     addTearDown(cubit.close);
+    addTearDown(workbench.close);
     final registry = FloatingSurfaceRegistry([_FakeSurface()]);
     final insets = FloatingMaximizeInsets();
     addTearDown(insets.dispose);
 
     await tester.pumpWidget(
-      wrap(cubit: cubit, registry: registry, insets: insets),
+      wrap(
+        cubit: cubit,
+        workbench: workbench,
+        registry: registry,
+        insets: insets,
+      ),
     );
 
     expect(find.text('shell-body'), findsOneWidget);
@@ -72,29 +85,30 @@ void main() {
     tester,
   ) async {
     final cubit = FloatingWorkspaceCubit();
+    final workbench = WorkbenchCubit();
     addTearDown(cubit.close);
+    addTearDown(workbench.close);
     final registry = FloatingSurfaceRegistry([_FakeSurface()]);
     final insets = FloatingMaximizeInsets();
     addTearDown(insets.dispose);
 
     await tester.pumpWidget(
-      wrap(cubit: cubit, registry: registry, insets: insets),
+      wrap(
+        cubit: cubit,
+        workbench: workbench,
+        registry: registry,
+        insets: insets,
+      ),
     );
     await tester.pump();
 
-    // Drive open + tab through the live widget tree so BlocBuilder is subscribed.
+    // Drive open + tab through the live widget tree so the projection is
+    // subscribed to the workbench bar.
     cubit.setActiveWorkspace('ws-1');
     cubit.ensureOpen();
     await tester.pump();
-    cubit.ensureTab(
-      const FloatingTab(
-        id: 'terminal:a',
-        surfaceId: 'terminal',
-        title: 'Terminal',
-        payload: 'a',
-      ),
-    );
-    // tabsTick + TpDeferredForegroundMount (frame callback + post-frame).
+    workbench.openFloating('ws-1', WorkbenchTabId.shell('a'));
+    // Recompute + TpDeferredForegroundMount (frame callback + post-frame).
     await tester.pump();
     await tester.pump();
     await tester.pump();
@@ -110,7 +124,7 @@ void main() {
     await tester.pump();
 
     expect(cubit.state.visibility, FloatingPanelVisibility.minimized);
-    expect(cubit.activeBucket.tabs, isNotEmpty);
+    expect(workbench.state.bar('ws-1').floating.order, isNotEmpty);
     expect(
       find.byKey(
         const Key('floating_workspace_panel_keep_alive'),
@@ -125,13 +139,20 @@ void main() {
     tester,
   ) async {
     final cubit = FloatingWorkspaceCubit();
+    final workbench = WorkbenchCubit();
     addTearDown(cubit.close);
+    addTearDown(workbench.close);
     final registry = FloatingSurfaceRegistry([_FakeSurface()]);
     final insets = FloatingMaximizeInsets();
     addTearDown(insets.dispose);
 
     await tester.pumpWidget(
-      wrap(cubit: cubit, registry: registry, insets: insets),
+      wrap(
+        cubit: cubit,
+        workbench: workbench,
+        registry: registry,
+        insets: insets,
+      ),
     );
     cubit.ensureOpen();
     cubit.minimize();

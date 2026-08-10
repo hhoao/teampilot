@@ -43,7 +43,9 @@ void main() {
       isEmpty,
     );
     expect(
-      floating.activeBucket.tabs.any((t) => t.payload == '/repo/a.txt'),
+      workbench.state.bar('ws').floating.order.any(
+            (t) => t.kind == WorkbenchTabKind.file && t.id == '/repo/a.txt',
+          ),
       isTrue,
     );
     expect(floating.state.visibility, FloatingPanelVisibility.open);
@@ -83,7 +85,9 @@ void main() {
       isEmpty,
     );
     expect(
-      floating.activeBucket.tabs.any((t) => t.payload == '/repo/a.txt'),
+      workbench.state.bar('ws').floating.order.any(
+            (t) => t.kind == WorkbenchTabKind.file && t.id == '/repo/a.txt',
+          ),
       isTrue,
     );
     expect(floating.state.visibility, FloatingPanelVisibility.open);
@@ -118,7 +122,9 @@ void main() {
       isEmpty,
     );
     expect(
-      floating.activeBucket.tabs.any((t) => t.payload == '/repo/a.png'),
+      workbench.state.bar('ws').floating.order.any(
+            (t) => t.kind == WorkbenchTabKind.file && t.id == '/repo/a.png',
+          ),
       isTrue,
     );
     expect(floating.state.visibility, FloatingPanelVisibility.open);
@@ -156,7 +162,9 @@ void main() {
     );
     expect(workbench.state.bar('ws').center.order, isEmpty);
     expect(
-      floating.activeBucket.tabs.any((t) => t.payload == diffKey),
+      workbench.state.bar('ws').floating.order.any(
+            (t) => t.kind == WorkbenchTabKind.diff && t.id == diffKey,
+          ),
       isTrue,
     );
     expect(floating.state.visibility, FloatingPanelVisibility.open);
@@ -191,7 +199,7 @@ void main() {
       workbench.centerActiveId('ws'),
       WorkbenchTabId.diff('/repo/a.txt', source: WorkbenchDiffSource.changes),
     );
-    expect(floating.activeBucket.tabs, isEmpty);
+    expect(workbench.state.bar('ws').floating.order, isEmpty);
   });
 
   test('openFile opens center workbench tab when filePreviewHost is center', () async {
@@ -217,7 +225,7 @@ void main() {
 
     expect(workbench.centerActiveId('ws')?.kind, WorkbenchTabKind.file);
     expect(workbench.centerActiveId('ws')?.id, '/repo/a.txt');
-    expect(floating.activeBucket.tabs, isEmpty);
+    expect(workbench.state.bar('ws').floating.order, isEmpty);
     expect(editor.state.bucket('ws').openFilePaths, contains('/repo/a.txt'));
   });
 

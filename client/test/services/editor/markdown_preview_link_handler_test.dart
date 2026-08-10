@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/editor_cubit.dart';
 import 'package:teampilot/cubits/floating_workspace/floating_workspace_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
+import 'package:teampilot/cubits/workbench/workbench_tab.dart';
 import 'package:teampilot/models/layout_preferences.dart';
 import 'package:teampilot/services/editor/file_editor_theme.dart';
 import 'package:teampilot/services/editor/markdown_preview_link_handler.dart';
@@ -56,8 +57,8 @@ void main() {
 
     // Must stay POSIX even on Windows hosts (SSH / in-memory roots).
     expect(
-      floating.activeBucket.tabs.any(
-        (t) => t.payload == '/repo/docs/b.md',
+      workbench.state.bar('ws').floating.order.any(
+        (t) => t.kind == WorkbenchTabKind.file && t.id == '/repo/docs/b.md',
       ),
       isTrue,
     );
@@ -89,7 +90,7 @@ void main() {
       ),
     );
 
-    expect(floating.activeBucket.tabs, isEmpty);
+    expect(workbench.state.bar('ws').floating.order, isEmpty);
     expect(editor.state.bucket('ws').openFilePaths, isEmpty);
   });
 

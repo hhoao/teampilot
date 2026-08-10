@@ -7,7 +7,6 @@ import 'package:teampilot/cubits/floating_workspace/floating_workspace_cubit.dar
 import 'package:teampilot/cubits/layout_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_tab.dart';
-import 'package:teampilot/models/floating_workspace_tab.dart';
 import 'package:teampilot/models/workspace_terminal_session_spec.dart';
 import 'package:teampilot/repositories/ssh_credential_store.dart';
 import 'package:teampilot/repositories/ssh_known_host_repository.dart';
@@ -75,12 +74,14 @@ class _StubConnector extends WorkspaceShellConnector {
 
 WorkbenchShellLauncher _launcher({
   required ChatCubit chat,
+  required WorkbenchCubit workbench,
   required FloatingWorkspaceCubit floating,
   required WorkspaceTerminalRegistry registry,
   WorkspaceTerminalSessionOps? sessionOps,
 }) {
   return WorkbenchShellLauncher(
     floating: floating,
+    workbench: workbench,
     chat: chat,
     registry: registry,
     connector: _StubConnector(),
@@ -99,21 +100,11 @@ void main() {
   group('resolveMostRecentFloatingShell', () {
     test('prefers active terminal tab payload', () {
       final shell = resolveMostRecentFloatingShell(
-        tabs: const [
-          FloatingTab(
-            id: 'shell:e1',
-            surfaceId: 'terminal',
-            title: 'Local',
-            payload: 'e1',
-          ),
-          FloatingTab(
-            id: 'shell:e2',
-            surfaceId: 'terminal',
-            title: 'Local',
-            payload: 'e2',
-          ),
+        order: [
+          WorkbenchTabId.shell('e1'),
+          WorkbenchTabId.shell('e2'),
         ],
-        activeTabId: 'shell:e1',
+        activeId: WorkbenchTabId.shell('e1'),
       );
       expect(shell, WorkbenchTabId.shell('e1'));
     });
@@ -121,34 +112,19 @@ void main() {
     test('falls back to last terminal tab then registry active', () {
       expect(
         resolveMostRecentFloatingShell(
-          tabs: const [
-            FloatingTab(
-              id: 'file:/a',
-              surfaceId: 'filePreview',
-              title: 'a',
-              payload: '/a',
-            ),
-            FloatingTab(
-              id: 'shell:e1',
-              surfaceId: 'terminal',
-              title: 'Local',
-              payload: 'e1',
-            ),
-            FloatingTab(
-              id: 'shell:e2',
-              surfaceId: 'terminal',
-              title: 'Local',
-              payload: 'e2',
-            ),
+          order: [
+            WorkbenchTabId.file('/a'),
+            WorkbenchTabId.shell('e1'),
+            WorkbenchTabId.shell('e2'),
           ],
-          activeTabId: 'file:/a',
+          activeId: WorkbenchTabId.file('/a'),
         ),
         WorkbenchTabId.shell('e2'),
       );
       expect(
         resolveMostRecentFloatingShell(
-          tabs: const [],
-          activeTabId: null,
+          order: const <WorkbenchTabId>[],
+          activeId: null,
           registryActiveEntryId: 'reg-1',
         ),
         WorkbenchTabId.shell('reg-1'),
@@ -216,6 +192,7 @@ void main() {
     test('creates registry entry and floating tab, not workbench shell', () async {
       final launcher = _launcher(
         chat: chat,
+        workbench: workbench,
         floating: floating,
         registry: registry,
       );
@@ -232,15 +209,8 @@ void main() {
       expect(floating.state.visibility, FloatingPanelVisibility.open);
       expect(floating.state.activeWorkspaceId, 'ws');
       expect(
-        floating.activeBucket.tabs,
-        [
-          FloatingTab(
-            id: 'shell:${entry.id}',
-            surfaceId: 'terminal',
-            title: entry.titleLabel,
-            payload: entry.id,
-          ),
-        ],
+        workbench.state.bar('ws').floating.order,
+        [WorkbenchTabId.shell(entry.id)],
       );
       expect(
         workbench.state.bar('ws').center.order.where(
@@ -274,34 +244,22 @@ void main() {
     test('selectExisting focuses floating tab, not workbench', () async {
       chat.setActiveWorkspace('ws');
       floating.setActiveWorkspace('ws');
-      floating.ensureTab(
-        const FloatingTab(
-          id: 'shell:e1',
-          surfaceId: 'terminal',
-          title: 'Local',
-          payload: 'e1',
-        ),
-      );
-      floating.ensureTab(
-        const FloatingTab(
-          id: 'shell:e2',
-          surfaceId: 'terminal',
-          title: 'Local',
-          payload: 'e2',
-        ),
-      );
-      floating.selectTab('shell:e1');
+      workbench.openShell('ws', 'e1');
+      workbench.openShell('ws', 'e2');
+      workbench.activate('ws', WorkbenchTabId.shell('e1'));
       floating.minimize();
 
       final launcher = _launcher(
         chat: chat,
+        workbench: workbench,
         floating: floating,
         registry: registry,
       );
       await launcher.focusOrCreateDefaultShell();
 
       expect(floating.state.visibility, FloatingPanelVisibility.open);
-      expect(floating.activeBucket.activeTabId, 'shell:e1');
+      expect(workbench.state.bar('ws').floating.activeId,
+          WorkbenchTabId.shell('e1'));
       expect(
         workbench.state.bar('ws').center.order.where(
           (t) => t.kind == WorkbenchTabKind.shell,

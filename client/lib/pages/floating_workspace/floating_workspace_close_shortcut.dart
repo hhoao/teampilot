@@ -5,10 +5,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/floating_workspace/floating_workspace_cubit.dart';
-import '../../models/floating_workspace_tab.dart';
+import '../../cubits/workbench/workbench_cubit.dart';
+import '../../cubits/workbench/workbench_tab.dart';
 import '../../services/commands/key_chord.dart';
 import '../../services/floating_workspace/close_floating_tab.dart';
 import '../../services/floating_workspace/floating_surface_registry.dart';
+import '../../widgets/workbench/workbench_shell_run_sync.dart';
 
 /// Intent for Ctrl/Cmd+W scoped to the floating workspace panel.
 class FloatingWorkspaceCloseTabIntent extends Intent {
@@ -59,27 +61,50 @@ class FloatingWorkspaceCloseShortcut extends StatelessWidget {
 
   void _handleClose(BuildContext context) {
     final cubit = context.read<FloatingWorkspaceCubit>();
-    final bucket = cubit.activeBucket;
-    final activeId = bucket.activeTabId;
-    if (activeId == null || bucket.tabs.isEmpty) {
+    final workbench = context.read<WorkbenchCubit>();
+    final workspaceId = cubit.state.activeWorkspaceId.trim();
+    if (workspaceId.isEmpty) return;
+
+    final strip = workbench.state.bar(workspaceId).floating;
+    if (strip.order.isEmpty) {
       cubit.minimize(closeIfEmpty: true);
       return;
     }
-    FloatingTab? tab;
-    for (final t in bucket.tabs) {
-      if (t.id == activeId) {
-        tab = t;
-        break;
-      }
-    }
-    if (tab == null) {
+    final activeId = strip.activeId;
+    if (activeId == null || !strip.contains(activeId)) {
       cubit.minimize(closeIfEmpty: true);
+      return;
+    }
+
+    final surfaceId = switch (activeId.kind) {
+      WorkbenchTabKind.shell => 'terminal',
+      WorkbenchTabKind.run => 'run',
+      WorkbenchTabKind.file => 'filePreview',
+      WorkbenchTabKind.diff => 'diffPreview',
+      WorkbenchTabKind.session => null,
+    };
+    if (surfaceId == null) {
+      cubit.minimize(closeIfEmpty: true);
+      return;
+    }
+    final surface = registry[surfaceId];
+    final tab = surface == null
+        ? null
+        : resolveFloatingTabForId(
+            registry: registry,
+            workspaceId: workspaceId,
+            id: activeId,
+          );
+    if (tab == null) {
+      unawaited(workbench.close(workspaceId, activeId));
       return;
     }
     unawaited(
       closeFloatingTab(
-        cubit: cubit,
+        workbench: workbench,
+        workspaceId: workspaceId,
         registry: registry,
+        id: activeId,
         tab: tab,
         context: context,
       ),

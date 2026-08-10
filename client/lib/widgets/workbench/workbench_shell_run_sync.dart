@@ -4,17 +4,42 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/floating_workspace/floating_workspace_cubit.dart';
-import '../../cubits/floating_workspace/floating_workspace_state.dart';
 import '../../cubits/run_cubit.dart';
 import '../../cubits/workbench/workbench_cubit.dart';
+import '../../cubits/workbench/workbench_tab.dart';
+import '../../models/floating_workspace_tab.dart';
 import '../../models/run/run_session.dart';
 import '../../models/run/run_ui_intent.dart';
+import '../../services/floating_workspace/floating_surface_registry.dart';
 import '../../services/run/run_panel_session.dart';
 import '../../services/terminal/workspace_terminal_registry.dart';
 import '../../services/workbench/workbench_chat_bridge.dart';
-import '../../services/workbench/workbench_run_intent.dart';
 import '../../services/workbench/workbench_shell_run_sync_logic.dart';
 import '../workspace_terminal_panel.dart';
+
+/// Maps a bar floating [WorkbenchTabId] to the [FloatingTab] view model the
+/// panel renders, resolving title / payload from the domain surface by id.
+///
+/// Mirror of how the center strip resolves session facts: the bar stores only
+/// the id; display data is derived on demand. Unknown kinds (session) return
+/// null — the floating panel never renders center tabs.
+FloatingTab? resolveFloatingTabForId({
+  required FloatingSurfaceRegistry registry,
+  required String workspaceId,
+  required WorkbenchTabId id,
+}) {
+  if (id.kind == WorkbenchTabKind.session) return null;
+  final (surfaceId, payload) = switch (id.kind) {
+    WorkbenchTabKind.shell => ('terminal', id.id),
+    WorkbenchTabKind.run => ('run', id.id),
+    WorkbenchTabKind.file => ('filePreview', id.id),
+    WorkbenchTabKind.diff => ('diffPreview', id.id),
+    WorkbenchTabKind.session => ('', ''),
+  };
+  final surface = registry[surfaceId];
+  if (surface == null) return null;
+  return surface.createTab(workspaceId: workspaceId, payload: payload);
+}
 
 /// Reconciles RunPanel sessions with floating run tabs and strips stale center
 /// run tabs. (Session tabs reach the bar via [WorkbenchChatBridge]; run tabs
@@ -98,25 +123,11 @@ class _WorkbenchShellRunSyncState extends State<WorkbenchShellRunSync> {
     return runPanelSessions.last;
   }
 
-  List<String> _existingFloatingRunSessionIds(
-    List<FloatingTab> tabs,
-  ) {
+  List<String> _existingFloatingRunSessionIds(List<WorkbenchTabId> order) {
     return [
-      for (final tab in tabs)
-        if (tab.surfaceId == 'run') _floatingRunSessionId(tab),
+      for (final tab in order)
+        if (tab.kind == WorkbenchTabKind.run) tab.id,
     ].where((id) => id.isNotEmpty).toList(growable: false);
-  }
-
-  String _floatingRunSessionId(FloatingTab tab) {
-    final payload = tab.payload;
-    if (payload is String) {
-      final trimmed = payload.trim();
-      if (trimmed.isNotEmpty) return trimmed;
-    }
-    if (tab.id.startsWith('run:')) {
-      return tab.id.substring('run:'.length).trim();
-    }
-    return '';
   }
 
   void _onUiIntent(RunUiIntent intent) {
@@ -125,46 +136,35 @@ class _WorkbenchShellRunSyncState extends State<WorkbenchShellRunSync> {
     if (intent.surface == RunToolSurface.run) {
       final sessions = context.read<RunCubit>().state.sessions;
       final session = _latestRunPanelSession(sessions);
-      final tab = resolveFloatingTabForRunIntent(
-        intent,
-        runSessionId: session?.id,
-        title: session?.owned.configuration.name ?? '',
-      );
-      if (tab != null) {
+      final runSessionId = session?.id.trim() ?? '';
+      if (runSessionId.isNotEmpty) {
         final floating = context.read<FloatingWorkspaceCubit>();
         floating.ensureOpen();
         floating.setActiveWorkspace(widget.workspaceId);
-        floating.ensureTab(tab);
-        floating.selectTab(tab.id);
+        context
+            .read<WorkbenchCubit>()
+            .openRun(widget.workspaceId, runSessionId, activate: true);
       }
     } else if (intent.surface == RunToolSurface.terminal) {
-      final group = _group ??
-          context.read<WorkspaceTerminalRegistry>().groupFor(widget.tabScopeId);
       final entryId = intent.terminalEntryId?.trim() ?? '';
-      final entryTitle = entryId.isEmpty
-          ? ''
-          : (group.entryById(entryId)?.titleLabel ?? '');
-      final floatingTab = resolveFloatingTabForTerminalRunIntent(
-        intent,
-        entryTitle: entryTitle,
-      );
-      if (floatingTab != null) {
+      if (entryId.isNotEmpty) {
         final floating = context.read<FloatingWorkspaceCubit>();
         floating.ensureOpen();
         floating.setActiveWorkspace(widget.workspaceId);
-        floating.ensureTab(floatingTab);
-        floating.selectTab(floatingTab.id);
+        context
+            .read<WorkbenchCubit>()
+            .openShell(widget.workspaceId, entryId, activate: true);
       }
     }
 
+    if (intent.focusToolWindow && intent.surface == RunToolSurface.terminal) {
+      widget.holdHandle?.requestFocus();
+    }
     final entryId = intent.terminalEntryId?.trim();
     if (entryId != null &&
         entryId.isNotEmpty &&
         intent.surface == RunToolSurface.terminal) {
       widget.holdHandle?.selectEntry(entryId);
-    }
-    if (intent.focusToolWindow && intent.surface == RunToolSurface.terminal) {
-      widget.holdHandle?.requestFocus();
     }
   }
 
@@ -177,20 +177,22 @@ class _WorkbenchShellRunSyncState extends State<WorkbenchShellRunSync> {
     final runPanelIds = [
       for (final session in runPanelSessions) session.id,
     ];
+
+    // Stale center run tabs (legacy; floating owns run now).
     final tabOrder = workbench.centerOrder(widget.workspaceId);
     final plan = planWorkbenchShellRunSync(
       tabOrder: tabOrder,
       registryEntryIds: const [],
       runPanelSessionIds: runPanelIds,
     );
-
     for (final tab in plan.runTabsToRemove) {
       unawaited(workbench.close(widget.workspaceId, tab));
     }
 
-    final floating = context.read<FloatingWorkspaceCubit>();
-    final bucket = floating.bucketFor(widget.workspaceId);
-    final existingFloatingRunIds = _existingFloatingRunSessionIds(bucket.tabs);
+    final floatingStrip = workbench.state.bar(widget.workspaceId).floating;
+    final existingFloatingRunIds = _existingFloatingRunSessionIds(
+      floatingStrip.order,
+    );
     final runIdsToRemove = floatingRunIdsToRemove(
       existingFloatingRunSessionIds: existingFloatingRunIds,
       liveRunPanelSessionIds: runPanelIds,
@@ -202,7 +204,8 @@ class _WorkbenchShellRunSyncState extends State<WorkbenchShellRunSync> {
 
     if (!shouldSyncFloatingRuns(
       bridgeWorkspaceId: widget.workspaceId,
-      floatingActiveWorkspaceId: floating.state.activeWorkspaceId,
+      floatingActiveWorkspaceId:
+          context.read<FloatingWorkspaceCubit>().state.activeWorkspaceId,
       hasFloatingMutations:
           runIdsToRemove.isNotEmpty || runIdsToEnsure.isNotEmpty,
     )) {
@@ -210,25 +213,10 @@ class _WorkbenchShellRunSyncState extends State<WorkbenchShellRunSync> {
     }
 
     for (final id in runIdsToRemove) {
-      floating.removeTab(floatingRunTabId(id));
+      unawaited(workbench.close(widget.workspaceId, WorkbenchTabId.run(id)));
     }
-
-    final sessionsById = {for (final session in runPanelSessions) session.id: session};
     for (final id in runIdsToEnsure) {
-      final session = sessionsById[id];
-      if (session == null) continue;
-      final tab = resolveFloatingTabForRunIntent(
-        const RunUiIntent(
-          surface: RunToolSurface.run,
-          activateToolWindow: true,
-          focusToolWindow: false,
-        ),
-        runSessionId: session.id,
-        title: session.owned.configuration.name,
-      );
-      if (tab != null) {
-        floating.ensureTab(tab);
-      }
+      workbench.openRun(widget.workspaceId, id, activate: false);
     }
   }
 

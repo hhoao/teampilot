@@ -5,11 +5,9 @@ import '../../cubits/editor_cubit.dart';
 import '../../cubits/floating_workspace/floating_workspace_cubit.dart';
 import '../../cubits/workbench/workbench_cubit.dart';
 import '../../cubits/workbench/workbench_tab.dart';
-import '../../models/floating_workspace_tab.dart';
 import '../../models/layout_preferences.dart';
 import '../editor/file_editor_theme.dart';
 import '../editor/markdown_view_mode_store.dart';
-import '../floating_workspace/surfaces/diff_preview_floating_surface.dart';
 import '../io/filesystem.dart';
 
 /// Single entry for opening file/diff tabs (editor bucket + host strip).
@@ -61,13 +59,10 @@ class WorkbenchEditorOpener {
     if (_readFilePreviewInFloating()) {
       _floating.ensureOpen();
       _floating.setActiveWorkspace(workspaceId);
-      _floating.ensureTab(
-        FloatingTab(
-          id: 'file:$normalized',
-          surfaceId: 'filePreview',
-          title: p.basename(normalized),
-          payload: normalized,
-        ),
+      _workbench.openFloating(
+        workspaceId,
+        WorkbenchTabId.file(normalized),
+        activate: true,
       );
       await _editor.openFile(workspaceId, normalized, fs: fs);
       return;
@@ -101,18 +96,9 @@ class WorkbenchEditorOpener {
     );
     final tab = WorkbenchTabId.diff(absolutePath, source: source);
     if (_readFilePreviewInFloating()) {
-      final stagedSuffix =
-          source == WorkbenchDiffSource.staged ? ' (staged)' : '';
       _floating.ensureOpen();
       _floating.setActiveWorkspace(workspaceId);
-      _floating.ensureTab(
-        FloatingTab(
-          id: floatingDiffTabId(tab.id),
-          surfaceId: 'diffPreview',
-          title: '${p.basename(absolutePath)}$stagedSuffix',
-          payload: tab.id,
-        ),
-      );
+      _workbench.openFloating(workspaceId, tab, activate: true);
       return;
     }
     final replaced = _workbench.openDiff(workspaceId, tab, preview: preview);

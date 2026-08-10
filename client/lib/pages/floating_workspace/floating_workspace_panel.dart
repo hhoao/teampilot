@@ -2,14 +2,19 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:collection/collection.dart';
+import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/floating_workspace/floating_panel_visibility.dart';
 import '../../cubits/floating_workspace/floating_workspace_cubit.dart';
+import '../../cubits/floating_workspace/floating_workspace_projection.dart';
 import '../../cubits/floating_workspace/floating_workspace_state.dart';
 import '../../cubits/shortcut_cubit.dart';
+import '../../cubits/workbench/tab_strip.dart';
+import '../../cubits/workbench/workbench_cubit.dart';
+import '../../cubits/workbench/workbench_tab.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../services/commands/command_bus.dart';
 import '../../services/commands/command_catalog.dart';
@@ -22,6 +27,7 @@ import '../../services/floating_workspace/floating_maximize_insets.dart';
 import '../../services/floating_workspace/floating_surface_registry.dart';
 import '../../services/floating_workspace/floating_terminal_pty_hold_scope.dart';
 import '../../services/floating_workspace/floating_workspace_toggle_metrics.dart';
+import '../../widgets/workbench/workbench_shell_run_sync.dart';
 import '../../widgets/workspace_terminal_panel.dart';
 import 'floating_workspace_chrome.dart';
 import 'floating_workspace_close_shortcut.dart';
@@ -43,28 +49,48 @@ class FloatingWorkspacePanel extends StatefulWidget {
 }
 
 class _FloatingWorkspacePanelState extends State<FloatingWorkspacePanel> {
+  late final FloatingWorkspaceProjection<_FloatingPanelView> _projection;
+
   @override
-  Widget build(BuildContext context) {
-    final cubit = context.read<FloatingWorkspaceCubit>();
-    // Tab mutations notify [tabsChanged] only — not BlocProvider dependents.
-    // Chrome emits are low frequency, so rebuild unconditionally (no buildWhen:
-    // legacy-bounds / toggle-offset changes must repaint the open panel too).
-    return ListenableBuilder(
-      listenable: cubit.tabsChanged,
-      builder: (context, _) {
-        return BlocBuilder<FloatingWorkspaceCubit, FloatingWorkspaceState>(
-          builder: (context, _) {
-            return _buildForState(context, cubit.state);
-          },
-        );
-      },
+  void initState() {
+    super.initState();
+    final floating = context.read<FloatingWorkspaceCubit>();
+    final workbench = context.read<WorkbenchCubit>();
+    // Combines the two change planes: chrome (FloatingWorkspaceCubit) and the
+    // floating strip (WorkbenchCubit bar.floating). Only the active workspace's
+    // strip is projected so unrelated bar mutations do not rebuild the panel.
+    _projection = FloatingWorkspaceProjection<_FloatingPanelView>(
+      floating,
+      workbench,
+      (floating, workbench) => _FloatingPanelView(
+        state: floating.state,
+        strip: workbench.state.bar(floating.state.activeWorkspaceId).floating,
+      ),
+      initial: _FloatingPanelView(
+        state: floating.state,
+        strip: workbench.state.bar(floating.state.activeWorkspaceId).floating,
+      ),
     );
   }
 
-  Widget _buildForState(BuildContext context, FloatingWorkspaceState state) {
-    final cubit = context.read<FloatingWorkspaceCubit>();
-    final bucket = cubit.bucketFor(state.activeWorkspaceId);
-    final hasTabs = bucket.tabs.isNotEmpty;
+  @override
+  void dispose() {
+    _projection.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<_FloatingPanelView>(
+      valueListenable: _projection,
+      builder: (context, view, _) => _buildForView(context, view),
+    );
+  }
+
+  Widget _buildForView(BuildContext context, _FloatingPanelView view) {
+    final state = view.state;
+    final strip = view.strip;
+    final hasTabs = strip.order.isNotEmpty;
     final keepAliveMinimized =
         state.visibility == FloatingPanelVisibility.minimized && hasTabs;
 
@@ -74,13 +100,32 @@ class _FloatingWorkspacePanelState extends State<FloatingWorkspacePanel> {
     }
 
     final registry = context.read<FloatingSurfaceRegistry>();
+    final workspaceId = state.activeWorkspaceId.trim();
+    final tabs = <FloatingTab>[];
+    final barIdByTabId = <String, WorkbenchTabId>{};
+    String? activeTabId;
+    for (final barId in strip.order) {
+      final tab = resolveFloatingTabForId(
+        registry: registry,
+        workspaceId: workspaceId,
+        id: barId,
+      );
+      if (tab == null) continue;
+      tabs.add(tab);
+      barIdByTabId[tab.id] = barId;
+      if (barId == strip.activeId) activeTabId = tab.id;
+    }
+
     Widget child = FloatingWorkspaceCloseShortcut(
       registry: registry,
       autofocus: state.visibility == FloatingPanelVisibility.open,
       child: _FloatingWorkspacePanelBody(
         key: const Key('floating_workspace_panel'),
         state: state,
-        bucket: bucket,
+        workspaceId: workspaceId,
+        tabs: tabs,
+        activeTabId: activeTabId,
+        barIdByTabId: barIdByTabId,
         registry: registry,
       ),
     );
@@ -101,16 +146,34 @@ class _FloatingWorkspacePanelState extends State<FloatingWorkspacePanel> {
   }
 }
 
+/// Snapshot the panel needs each rebuild: chrome state + the floating strip of
+/// the active workspace.
+class _FloatingPanelView extends Equatable {
+  const _FloatingPanelView({required this.state, required this.strip});
+
+  final FloatingWorkspaceState state;
+  final TabStrip strip;
+
+  @override
+  List<Object?> get props => [state, strip];
+}
+
 class _FloatingWorkspacePanelBody extends StatefulWidget {
   const _FloatingWorkspacePanelBody({
     required this.state,
-    required this.bucket,
+    required this.workspaceId,
+    required this.tabs,
+    required this.activeTabId,
+    required this.barIdByTabId,
     required this.registry,
     super.key,
   });
 
   final FloatingWorkspaceState state;
-  final FloatingWorkspaceBucket bucket;
+  final String workspaceId;
+  final List<FloatingTab> tabs;
+  final String? activeTabId;
+  final Map<String, WorkbenchTabId> barIdByTabId;
   final FloatingSurfaceRegistry registry;
 
   @override
@@ -227,7 +290,10 @@ class _FloatingWorkspacePanelBodyState
                     holdHandle: _terminalHold,
                     child: _PanelChromeFrame(
                       state: state,
-                      bucket: widget.bucket,
+                      workspaceId: widget.workspaceId,
+                      tabs: widget.tabs,
+                      activeTabId: widget.activeTabId,
+                      barIdByTabId: widget.barIdByTabId,
                       registry: widget.registry,
                       hostSize: hostSize,
                       panelBounds: positioned,
@@ -342,7 +408,10 @@ Size floatingPanelRestoreSize(FloatingWorkspaceState state, Size hostSize) {
 class _PanelChromeFrame extends StatefulWidget {
   const _PanelChromeFrame({
     required this.state,
-    required this.bucket,
+    required this.workspaceId,
+    required this.tabs,
+    required this.activeTabId,
+    required this.barIdByTabId,
     required this.registry,
     required this.hostSize,
     required this.panelBounds,
@@ -354,7 +423,10 @@ class _PanelChromeFrame extends StatefulWidget {
   });
 
   final FloatingWorkspaceState state;
-  final FloatingWorkspaceBucket bucket;
+  final String workspaceId;
+  final List<FloatingTab> tabs;
+  final String? activeTabId;
+  final Map<String, WorkbenchTabId> barIdByTabId;
   final FloatingSurfaceRegistry registry;
   final Size hostSize;
   final Rect panelBounds;
@@ -380,9 +452,8 @@ class _PanelChromeFrameState extends State<_PanelChromeFrame> {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
-    final bucket = widget.bucket;
-    final tabs = bucket.tabs;
-    final activeId = bucket.activeTabId;
+    final tabs = widget.tabs;
+    final activeId = widget.activeTabId;
 
     final shadow = BoxDecoration(
       borderRadius: BorderRadius.circular(10),
@@ -451,44 +522,60 @@ class _PanelChromeFrameState extends State<_PanelChromeFrame> {
                           tabs: tabs,
                           activeTabId: activeId,
                           onSelect: (id) {
-                            context.read<FloatingWorkspaceCubit>().selectTab(
-                              id,
-                            );
                             final tab = tabs.firstWhereOrNull(
                               (t) => t.id == id,
                             );
                             if (tab == null) return;
+                            final barId = widget.barIdByTabId[id];
+                            if (barId != null) {
+                              context
+                                  .read<WorkbenchCubit>()
+                                  .activate(widget.workspaceId, barId);
+                            }
                             final s = widget.registry[tab.surfaceId];
                             if (s != null) {
                               unawaited(s.activate(tab));
                             }
                           },
                           onClose: (tab) {
+                            final barId = widget.barIdByTabId[tab.id];
+                            if (barId == null) return;
                             unawaited(
                               closeFloatingTab(
-                                cubit: context.read<FloatingWorkspaceCubit>(),
+                                workbench:
+                                    context.read<WorkbenchCubit>(),
+                                workspaceId: widget.workspaceId,
                                 registry: widget.registry,
+                                id: barId,
                                 tab: tab,
                                 context: context,
                               ),
                             );
                           },
                           onCloseOthers: (tab) {
+                            final barId = widget.barIdByTabId[tab.id];
+                            if (barId == null) return;
                             unawaited(
                               closeOtherFloatingTabs(
-                                cubit: context.read<FloatingWorkspaceCubit>(),
+                                workbench:
+                                    context.read<WorkbenchCubit>(),
+                                workspaceId: widget.workspaceId,
                                 registry: widget.registry,
-                                keepTabId: tab.id,
+                                keepId: barId,
                                 context: context,
                               ),
                             );
                           },
                           onCloseRight: (tab) {
+                            final barId = widget.barIdByTabId[tab.id];
+                            if (barId == null) return;
                             unawaited(
                               closeFloatingTabsToTheRight(
-                                cubit: context.read<FloatingWorkspaceCubit>(),
+                                workbench:
+                                    context.read<WorkbenchCubit>(),
+                                workspaceId: widget.workspaceId,
                                 registry: widget.registry,
-                                fromTabId: tab.id,
+                                fromId: barId,
                                 context: context,
                               ),
                             );
@@ -496,10 +583,19 @@ class _PanelChromeFrameState extends State<_PanelChromeFrame> {
                           onCloseAll: () {
                             unawaited(
                               closeAllFloatingTabs(
-                                cubit: context.read<FloatingWorkspaceCubit>(),
+                                workbench:
+                                    context.read<WorkbenchCubit>(),
+                                workspaceId: widget.workspaceId,
                                 registry: widget.registry,
                                 context: context,
                               ),
+                            );
+                          },
+                          onReorder: (oldIndex, newIndex) {
+                            context.read<WorkbenchCubit>().reorderFloating(
+                              widget.workspaceId,
+                              oldIndex,
+                              newIndex,
                             );
                           },
                         ),

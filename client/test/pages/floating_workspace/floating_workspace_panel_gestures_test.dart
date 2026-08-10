@@ -5,6 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/floating_workspace/floating_panel_placement.dart';
 import 'package:teampilot/cubits/floating_workspace/floating_panel_visibility.dart';
 import 'package:teampilot/cubits/floating_workspace/floating_workspace_cubit.dart';
+import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
+import 'package:teampilot/cubits/workbench/workbench_tab.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/floating_workspace_tab.dart';
 import 'package:teampilot/pages/floating_workspace/floating_workspace_chrome.dart';
@@ -13,7 +15,6 @@ import 'package:teampilot/services/commands/command_bus.dart';
 import 'package:teampilot/services/floating_workspace/floating_maximize_insets.dart';
 import 'package:teampilot/services/floating_workspace/floating_surface.dart';
 import 'package:teampilot/services/floating_workspace/floating_surface_registry.dart';
-import 'package:teampilot/theme/workspace_surface_layers.dart';
 
 void main() {
   const hostSize = Size(1400, 900);
@@ -26,6 +27,7 @@ void main() {
 
   Widget wrap({
     required FloatingWorkspaceCubit cubit,
+    required WorkbenchCubit workbench,
     required FloatingSurfaceRegistry registry,
     required FloatingMaximizeInsets insets,
   }) {
@@ -41,11 +43,14 @@ void main() {
             value: insets,
             child: BlocProvider.value(
               value: cubit,
-              child: const Scaffold(
-                body: SizedBox(
-                  width: 1400,
-                  height: 900,
-                  child: FloatingWorkspacePanel(),
+              child: BlocProvider<WorkbenchCubit>.value(
+                value: workbench,
+                child: const Scaffold(
+                  body: SizedBox(
+                    width: 1400,
+                    height: 900,
+                    child: FloatingWorkspacePanel(),
+                  ),
                 ),
               ),
             ),
@@ -75,13 +80,20 @@ void main() {
     tester,
   ) async {
     final cubit = FloatingWorkspaceCubit();
+    final workbench = WorkbenchCubit();
     addTearDown(cubit.close);
+    addTearDown(workbench.close);
     final registry = FloatingSurfaceRegistry([_FakeSurface()]);
     final insets = FloatingMaximizeInsets();
     addTearDown(insets.dispose);
 
     await tester.pumpWidget(
-      wrap(cubit: cubit, registry: registry, insets: insets),
+      wrap(
+        cubit: cubit,
+        workbench: workbench,
+        registry: registry,
+        insets: insets,
+      ),
     );
     cubit.ensureOpen();
     cubit.setPanelPlacement(placement);
@@ -104,13 +116,20 @@ void main() {
 
   testWidgets('double-tap title bar toggles maximize', (tester) async {
     final cubit = FloatingWorkspaceCubit();
+    final workbench = WorkbenchCubit();
     addTearDown(cubit.close);
+    addTearDown(workbench.close);
     final registry = FloatingSurfaceRegistry([_FakeSurface()]);
     final insets = FloatingMaximizeInsets();
     addTearDown(insets.dispose);
 
     await tester.pumpWidget(
-      wrap(cubit: cubit, registry: registry, insets: insets),
+      wrap(
+        cubit: cubit,
+        workbench: workbench,
+        registry: registry,
+        insets: insets,
+      ),
     );
     cubit.ensureOpen();
     cubit.setPanelPlacement(placement);
@@ -142,14 +161,21 @@ void main() {
     tester,
   ) async {
     final cubit = FloatingWorkspaceCubit();
+    final workbench = WorkbenchCubit();
     addTearDown(cubit.close);
+    addTearDown(workbench.close);
     final registry = FloatingSurfaceRegistry([_FakeSurface()]);
     final insets = FloatingMaximizeInsets();
     addTearDown(insets.dispose);
     insets.update(EdgeInsets.zero);
 
     await tester.pumpWidget(
-      wrap(cubit: cubit, registry: registry, insets: insets),
+      wrap(
+        cubit: cubit,
+        workbench: workbench,
+        registry: registry,
+        insets: insets,
+      ),
     );
     cubit.ensureOpen();
     cubit.setPanelPlacement(placement);
@@ -178,13 +204,20 @@ void main() {
 
   testWidgets('title bar has bottom divider under tabs', (tester) async {
     final cubit = FloatingWorkspaceCubit();
+    final workbench = WorkbenchCubit();
     addTearDown(cubit.close);
+    addTearDown(workbench.close);
     final registry = FloatingSurfaceRegistry([_FakeSurface()]);
     final insets = FloatingMaximizeInsets();
     addTearDown(insets.dispose);
 
     await tester.pumpWidget(
-      wrap(cubit: cubit, registry: registry, insets: insets),
+      wrap(
+        cubit: cubit,
+        workbench: workbench,
+        registry: registry,
+        insets: insets,
+      ),
     );
     cubit.ensureOpen();
     cubit.setPanelPlacement(placement);
@@ -209,13 +242,20 @@ void main() {
     tester,
   ) async {
     final cubit = FloatingWorkspaceCubit();
+    final workbench = WorkbenchCubit();
     addTearDown(cubit.close);
+    addTearDown(workbench.close);
     final registry = FloatingSurfaceRegistry([_FakeSurface()]);
     final insets = FloatingMaximizeInsets();
     addTearDown(insets.dispose);
 
     await tester.pumpWidget(
-      wrap(cubit: cubit, registry: registry, insets: insets),
+      wrap(
+        cubit: cubit,
+        workbench: workbench,
+        registry: registry,
+        insets: insets,
+      ),
     );
     cubit.ensureOpen();
     cubit.setPanelPlacement(
@@ -228,14 +268,7 @@ void main() {
     );
     cubit.setActiveWorkspace('ws');
     for (var i = 0; i < 6; i++) {
-      cubit.ensureTab(
-        FloatingTab(
-          id: 't$i',
-          surfaceId: 'terminal',
-          title: 'Session tab number $i',
-          payload: 'p$i',
-        ),
-      );
+      workbench.openFloating('ws', WorkbenchTabId.shell('Session tab number $i'));
     }
     await tester.pumpAndSettle();
 
@@ -261,25 +294,25 @@ void main() {
 
   testWidgets('+ follows last tab when strip fits', (tester) async {
     final cubit = FloatingWorkspaceCubit();
+    final workbench = WorkbenchCubit();
     addTearDown(cubit.close);
+    addTearDown(workbench.close);
     final registry = FloatingSurfaceRegistry([_FakeSurface()]);
     final insets = FloatingMaximizeInsets();
     addTearDown(insets.dispose);
 
     await tester.pumpWidget(
-      wrap(cubit: cubit, registry: registry, insets: insets),
+      wrap(
+        cubit: cubit,
+        workbench: workbench,
+        registry: registry,
+        insets: insets,
+      ),
     );
     cubit.ensureOpen();
     cubit.setPanelPlacement(placement);
     cubit.setActiveWorkspace('ws');
-    cubit.ensureTab(
-      FloatingTab(
-        id: 'only',
-        surfaceId: 'terminal',
-        title: 'One',
-        payload: 'p',
-      ),
-    );
+    workbench.openFloating('ws', WorkbenchTabId.shell('One'));
     await tester.pumpAndSettle();
 
     final tabRight = tester.getTopRight(find.text('One')).dx;
@@ -298,13 +331,20 @@ void main() {
     tester,
   ) async {
     final cubit = FloatingWorkspaceCubit();
+    final workbench = WorkbenchCubit();
     addTearDown(cubit.close);
+    addTearDown(workbench.close);
     final registry = FloatingSurfaceRegistry([_FakeSurface()]);
     final insets = FloatingMaximizeInsets();
     addTearDown(insets.dispose);
 
     await tester.pumpWidget(
-      wrap(cubit: cubit, registry: registry, insets: insets),
+      wrap(
+        cubit: cubit,
+        workbench: workbench,
+        registry: registry,
+        insets: insets,
+      ),
     );
     cubit.ensureOpen();
     cubit.setPanelPlacement(
@@ -317,14 +357,7 @@ void main() {
     );
     cubit.setActiveWorkspace('ws');
     for (var i = 0; i < 5; i++) {
-      cubit.ensureTab(
-        FloatingTab(
-          id: 't$i',
-          surfaceId: 'terminal',
-          title: 'Session tab number $i',
-          payload: 'p$i',
-        ),
-      );
+      workbench.openFloating('ws', WorkbenchTabId.shell('Session tab number $i'));
     }
     await tester.pumpAndSettle();
 
@@ -341,25 +374,25 @@ void main() {
     tester,
   ) async {
     final cubit = FloatingWorkspaceCubit();
+    final workbench = WorkbenchCubit();
     addTearDown(cubit.close);
+    addTearDown(workbench.close);
     final registry = FloatingSurfaceRegistry([_FakeSurface()]);
     final insets = FloatingMaximizeInsets();
     addTearDown(insets.dispose);
 
     await tester.pumpWidget(
-      wrap(cubit: cubit, registry: registry, insets: insets),
+      wrap(
+        cubit: cubit,
+        workbench: workbench,
+        registry: registry,
+        insets: insets,
+      ),
     );
     cubit.ensureOpen();
     cubit.setPanelPlacement(placement);
     cubit.setActiveWorkspace('ws');
-    cubit.ensureTab(
-      FloatingTab(
-        id: 'only',
-        surfaceId: 'terminal',
-        title: 'One',
-        payload: 'p',
-      ),
-    );
+    workbench.openFloating('ws', WorkbenchTabId.shell('One'));
     await tester.pumpAndSettle();
 
     final chrome = find.byType(FloatingWorkspaceChrome);
@@ -394,10 +427,11 @@ class _FakeSurface extends FloatingSurface {
 
   @override
   FloatingTab createTab({required String workspaceId, Object? payload}) {
+    final label = payload is String && payload.isNotEmpty ? payload : 'fake';
     return FloatingTab(
-      id: 'fake:$workspaceId',
+      id: 'fake:$label',
       surfaceId: id,
-      title: 'fake',
+      title: label,
       payload: payload,
     );
   }

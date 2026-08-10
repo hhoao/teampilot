@@ -103,6 +103,18 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
     return replaced;
   }
 
+  /// The strip that owns [id]: prefers presence, falls back to kind-routing.
+  ///
+  /// File/diff previews may live on the floating strip (when the file-preview
+  /// host is floating), so presence must win over `isCenterStripWorkbenchTab`.
+  (TabStrip, bool) _owningStrip(WorkspaceTabBar bar, WorkbenchTabId id) {
+    if (bar.center.contains(id)) return (bar.center, true);
+    if (bar.floating.contains(id)) return (bar.floating, false);
+    return isCenterStripWorkbenchTab(id.kind)
+        ? (bar.center, true)
+        : (bar.floating, false);
+  }
+
   /// Removes [id] from the owning strip and returns it, or null if absent.
   /// The port's [WorkbenchDomainPort.onTabRemoved] is called for teardown.
   ///
@@ -117,8 +129,7 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
       return null;
     }
     final bar = state.bar(workspaceId);
-    final isCenter = isCenterStripWorkbenchTab(id.kind);
-    final strip = isCenter ? bar.center : bar.floating;
+    final (strip, isCenter) = _owningStrip(bar, id);
     final next = _r.remove(strip, id);
     if (next == null) return null;
     emit(state.withBar(
@@ -129,39 +140,53 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
     return id;
   }
 
-  void openShell(String workspaceId, String entryId, {bool activate = true}) {
+  /// Adds [tab] to the floating strip (shell / run / floating file or diff
+  /// preview). Presence, order, and active are owned here.
+  void openFloating(
+    String workspaceId,
+    WorkbenchTabId tab, {
+    bool activate = true,
+  }) {
     final bar = state.bar(workspaceId);
     final (next, _) = _r.add(
       bar.floating,
-      WorkbenchTabId.shell(entryId),
+      tab,
       preview: false,
       activate: activate,
     );
     emit(state.withBar(workspaceId, bar.copyWith(floating: next)));
   }
 
+  void openShell(String workspaceId, String entryId, {bool activate = true}) {
+    openFloating(workspaceId, WorkbenchTabId.shell(entryId), activate: activate);
+  }
+
   void openRun(String workspaceId, String runSessionId, {bool activate = true}) {
-    final bar = state.bar(workspaceId);
-    final (next, _) = _r.add(
-      bar.floating,
-      WorkbenchTabId.run(runSessionId),
-      preview: false,
-      activate: activate,
-    );
-    emit(state.withBar(workspaceId, bar.copyWith(floating: next)));
+    openFloating(workspaceId, WorkbenchTabId.run(runSessionId), activate: activate);
   }
 
   void activate(String workspaceId, WorkbenchTabId id) {
     final bar = state.bar(workspaceId);
-    final strip = isCenterStripWorkbenchTab(id.kind) ? bar.center : bar.floating;
+    final (strip, isCenter) = _owningStrip(bar, id);
     final next = _r.activate(strip, id);
     emit(state.withBar(
       workspaceId,
-      isCenterStripWorkbenchTab(id.kind)
-          ? bar.copyWith(center: next)
-          : bar.copyWith(floating: next),
+      isCenter ? bar.copyWith(center: next) : bar.copyWith(floating: next),
     ));
   }
+
+  /// Reorders the floating strip for [workspaceId].
+  void reorderFloating(String workspaceId, int oldIndex, int newIndex) {
+    final bar = state.bar(workspaceId);
+    final next = _r.reorder(bar.floating, oldIndex, newIndex);
+    emit(state.withBar(workspaceId, bar.copyWith(floating: next)));
+  }
+
+  List<WorkbenchTabId> floatingOrder(String workspaceId) =>
+      state.bar(workspaceId).floating.order;
+
+  WorkbenchTabId? floatingActiveId(String workspaceId) =>
+      state.bar(workspaceId).floating.activeId;
 
   void pin(String workspaceId, WorkbenchTabId id) {
     final bar = state.bar(workspaceId);

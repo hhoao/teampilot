@@ -12,7 +12,6 @@ import '../../cubits/resource_manager_cubit.dart';
 import '../../cubits/workbench/workbench_cubit.dart';
 import '../../cubits/workbench/workbench_tab.dart';
 import '../../l10n/l10n_extensions.dart';
-import '../../models/floating_workspace_tab.dart';
 import '../../models/team_config.dart';
 import '../../services/resource_manager/process_metrics_service.dart';
 import '../../services/resource_manager/pty_process_registry.dart';
@@ -22,7 +21,6 @@ import '../../services/resource_manager/resource_manager_lifecycle.dart';
 import '../../services/resource_manager/resource_tree_merge.dart';
 import '../../services/terminal/workspace_terminal_registry.dart';
 import '../../services/terminal/workspace_terminal_run_service.dart';
-import '../../services/workbench/workbench_shell_launcher.dart';
 
 import '../../widgets/app_toast/app_toast.dart';
 import '../../widgets/workspace_status_bar/progress_activities_status_item.dart';
@@ -214,15 +212,14 @@ class _GlobalResourceManagerHostState extends State<GlobalResourceManagerHost> {
           );
           runService.handleEntryClosed(entryId);
           group.removeEntry(entryId);
+          final floating = context.read<FloatingWorkspaceCubit>();
+          floating.setActiveWorkspace(workspaceId);
           unawaited(
             context.read<WorkbenchCubit>().close(
               workspaceId,
               WorkbenchTabId.shell(entryId),
             ),
           );
-          final floating = context.read<FloatingWorkspaceCubit>();
-          floating.setActiveWorkspace(workspaceId);
-          floating.removeTab(floatingShellTabId(entryId));
         },
       );
       _refreshBindings();
@@ -268,18 +265,12 @@ class _GlobalResourceManagerHostState extends State<GlobalResourceManagerHost> {
             .read<WorkspaceTerminalRegistry>()
             .groupFor(workspaceId);
         group.activeId = entryId;
-        final label = group.entryById(entryId)?.titleLabel.trim() ?? '';
         final floating = context.read<FloatingWorkspaceCubit>();
         floating.ensureOpen();
         floating.setActiveWorkspace(workspaceId);
-        floating.ensureTab(
-          FloatingTab(
-            id: floatingShellTabId(entryId),
-            surfaceId: 'terminal',
-            title: label.isNotEmpty ? label : entryId,
-            payload: entryId,
-          ),
-        );
+        context
+            .read<WorkbenchCubit>()
+            .openShell(workspaceId, entryId, activate: true);
     }
   }
 

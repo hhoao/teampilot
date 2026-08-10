@@ -2,10 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
 
-import '../../cubits/floating_workspace/floating_workspace_cubit.dart';
 import '../../cubits/workbench/workbench_tab.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/floating_workspace_tab.dart';
@@ -58,6 +56,7 @@ class FloatingWorkspaceTabBar extends StatelessWidget {
     required this.onCloseOthers,
     required this.onCloseRight,
     this.onCloseAll,
+    this.onReorder,
     super.key,
   });
 
@@ -70,6 +69,9 @@ class FloatingWorkspaceTabBar extends StatelessWidget {
 
   /// Closes every tab in the floating workspace strip.
   final VoidCallback? onCloseAll;
+
+  /// Reorders the floating strip (delegates to [WorkbenchCubit.reorderFloating]).
+  final void Function(int oldIndex, int newIndex)? onReorder;
 
   @override
   Widget build(BuildContext context) {
@@ -88,11 +90,7 @@ class FloatingWorkspaceTabBar extends StatelessWidget {
       fillWidth: false,
       itemCount: tabs.length,
       itemKey: (i) => ValueKey(tabs[i].id),
-      onReorder: tabs.length > 1
-          ? (oldIndex, newIndex) => context
-                .read<FloatingWorkspaceCubit>()
-                .reorderTabs(oldIndex, newIndex)
-          : null,
+      onReorder: tabs.length > 1 ? onReorder : null,
       itemBuilder: (context, index) {
         final tab = tabs[index];
         final (kind, filePath) = floatingTabMenuIdentity(tab);
