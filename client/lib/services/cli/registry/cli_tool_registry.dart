@@ -4,6 +4,7 @@ import 'capabilities/cli_session_lifecycle_capability.dart';
 import 'capabilities/member_agent_preset_capability.dart';
 import 'capabilities/native_team_capability.dart';
 import 'capabilities/noop_cli_session_lifecycle_capability.dart';
+import 'capabilities/tool_call_resolver_capability.dart';
 import 'cli_bootstrap.dart';
 import 'cli_capability.dart';
 import 'cli_tool_definition.dart';
@@ -75,4 +76,7 @@ class CliToolRegistry {
   CliSessionLifecycleCapability lifecycleFor(CliTool cli) =>
       capability<CliSessionLifecycleCapability>(cli) ??
       const NoopCliSessionLifecycleCapability();
+
+  ToolCallResolversCapability? toolCallResolvers(CliTool cli) =>
+      capability<ToolCallResolversCapability>(cli);
 }

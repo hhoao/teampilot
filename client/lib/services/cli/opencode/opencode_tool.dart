@@ -54,6 +54,7 @@ import '../registry/capabilities/agent_status_normalizer_capability.dart';
 import 'capabilities/wait_before_stop.dart';
 import '../registry/capabilities/wait_before_stop_capability.dart';
 import '../registry/capabilities/turn_interrupt_capability.dart';
+import '../registry/capabilities/opencode_tool_call_resolvers.dart';
 import 'capabilities/mcp_config_writer.dart';
 import 'capabilities/plugin_provisioner.dart';
 import 'capabilities/resource.dart';
@@ -97,6 +98,7 @@ final class OpencodeCliTool implements CliToolDefinition {
     this.historyContextEnv = const OpencodeHistoryContextEnv(),
     this.remoteAppData = const OpencodeRemoteAppData(),
     this.credentialExport = const OpencodeCredentialExport(),
+    this.toolCallResolvers = const OpencodeToolCallResolvers(),
     ProviderCredentialCapability? providerCredential,
   }) : providerModel = providerModel ?? OpencodeProviderModelCapability(),
        providerCredential =
@@ -136,6 +138,7 @@ final class OpencodeCliTool implements CliToolDefinition {
   final HistoryContextEnvCapability historyContextEnv;
   final RemoteAppDataCapability remoteAppData;
   final CredentialExportCapability credentialExport;
+  final OpencodeToolCallResolvers toolCallResolvers;
   final AskUserQuestionCapability askUserQuestion;
   final ExitPlanModeCapability exitPlanMode;
   final OpencodeAiHistoryCapability aiHistory;
@@ -185,6 +188,7 @@ final class OpencodeCliTool implements CliToolDefinition {
     exitPlanMode,
     aiHistory,
     skillSyntax,
+    toolCallResolvers,
   ];
 }
 

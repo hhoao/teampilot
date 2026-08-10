@@ -53,6 +53,7 @@ import '../registry/capabilities/agent_status_normalizer_capability.dart';
 import 'capabilities/wait_before_stop.dart';
 import '../registry/capabilities/wait_before_stop_capability.dart';
 import '../registry/capabilities/turn_interrupt_capability.dart';
+import '../registry/capabilities/codex_tool_call_resolvers.dart';
 import 'capabilities/mcp_config_writer.dart';
 import 'capabilities/plugin_provisioner.dart';
 import '../registry/resources/default_resource_capability.dart';
@@ -96,6 +97,7 @@ final class CodexCliTool implements CliToolDefinition {
     this.historyContextEnv = const CodexHistoryContextEnv(),
     this.remoteAppData = const NoRemoteAppData(),
     this.credentialExport = const CodexCredentialExport(),
+    this.toolCallResolvers = const CodexToolCallResolvers(),
     ProviderCredentialCapability? providerCredential,
   }) : providerCredential =
            providerCredential ?? CodexProviderCredentialCapability();
@@ -134,6 +136,7 @@ final class CodexCliTool implements CliToolDefinition {
   final HistoryContextEnvCapability historyContextEnv;
   final RemoteAppDataCapability remoteAppData;
   final CredentialExportCapability credentialExport;
+  final CodexToolCallResolvers toolCallResolvers;
   final AskUserQuestionCapability askUserQuestion;
   final ExitPlanModeCapability exitPlanMode;
   final CodexAiHistoryCapability aiHistory;
@@ -183,6 +186,7 @@ final class CodexCliTool implements CliToolDefinition {
     exitPlanMode,
     aiHistory,
     skillSyntax,
+    toolCallResolvers,
   ];
 }
 
