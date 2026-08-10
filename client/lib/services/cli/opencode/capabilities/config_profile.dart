@@ -105,6 +105,34 @@ Map<String, Object?> mergeOpencodeAgentStatusPlugin(
   return {...config, 'plugin': plugins};
 }
 
+/// Merges materialized opencode plugin entry paths (`./plugins/<name>/<rel>`)
+/// into the `plugin` array. String entries are appended when absent; tuple
+/// entries (`[path, options]`, e.g. the idle/agent-status plugins) are
+/// preserved and matched by their leading path.
+Map<String, Object?> mergeOpencodePluginEntries(
+  Map<String, Object?> config,
+  Iterable<String> entryPaths,
+) {
+  if (entryPaths.isEmpty) return config;
+  final plugins = List<Object?>.from((config['plugin'] as List?) ?? const []);
+  final present = <Object?>{
+    for (final e in plugins)
+      if (e is String)
+        e
+      else if (e is List && e.isNotEmpty)
+        e.first,
+  };
+  var changed = false;
+  for (final path in entryPaths) {
+    if (present.contains(path)) continue;
+    plugins.add(path);
+    present.add(path);
+    changed = true;
+  }
+  if (!changed) return config;
+  return {...config, 'plugin': plugins};
+}
+
 /// opencode 工具调用超时(ms）。opencode 默认只有 30s（`DEFAULT_TIMEOUT`），长阻塞的
 /// `wait_for_message` 因此很快超时。opencode 用同一个 MCP SDK，超时由 config 的
 /// `timeout` 控；设大到 24h 让它不主动超时（stdio 下这是唯一上限；remote 下也把

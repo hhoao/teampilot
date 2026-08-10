@@ -8,20 +8,30 @@ import '../../registry/capabilities/plugin_manifest_paths.dart';
 import '../../registry/capabilities/plugin_provisioner_capability.dart';
 import '../../registry/capabilities/resource_capability.dart';
 import '../../registry/cli_tool_registry.dart';
+import 'config_profile.dart';
 import 'mcp_config_writer.dart';
 
-/// Decomposes plugin bundles into opencode skills/agents/mcp (no plugin registration).
+/// Materializes plugin bundles for opencode:
+/// - decomposes skills/agents/mcp into opencode's on-disk layout
+/// - bundles shipping an opencode plugin (`.opencode/{plugin,plugins}/*.{js,ts}`
+///   or a root `package.json` `main` entry) are copied into
+///   `<configDir>/plugins/<name>/` and registered in `opencode.json` `plugin`
+///   so opencode loads them at startup (path specs resolve relative to the
+///   config file — no npm install needed).
 final class OpencodePluginProvisioner implements PluginProvisionerCapability {
   const OpencodePluginProvisioner();
 
   static const agentSubdir = 'agent';
+  static const pluginsSubdir = 'plugins';
+  static const opencodeFlavorDir = '.opencode';
+  static const _opencodePluginDirs = ['plugins', 'plugin'];
 
   @override
   PluginManifestPaths? get manifestPaths => null;
 
-  // Opencode decomposes bundles (no plugins dir); inspection finds nothing here.
+  // Materialized bundles land under `plugins/`; inspection lists them here.
   @override
-  List<String> get memberPluginsSubpath => const ['plugins'];
+  List<String> get memberPluginsSubpath => const [pluginsSubdir];
 
   @override
   Set<PluginComponentKind> get supported => const {
@@ -44,6 +54,7 @@ final class OpencodePluginProvisioner implements PluginProvisionerCapability {
     final skillRoot = ctx.fs.pathContext.join(ctx.configDir, skillSubdir);
     final agentRoot = ctx.fs.pathContext.join(ctx.configDir, agentSubdir);
     final mcpSpecs = <McpServerSpec>[];
+    final pluginEntries = <String>[];
 
     for (final entry in await ctx.fs.listDir(ctx.bundlePoolDir)) {
       if (entry.name.startsWith('.')) continue;
@@ -59,13 +70,131 @@ final class OpencodePluginProvisioner implements PluginProvisionerCapability {
       await _decomposeSkills(ctx.fs, root, skillRoot);
       await _decomposeAgents(ctx.fs, root, agentRoot);
       mcpSpecs.addAll(await _readBundledMcp(ctx.fs, root));
+      pluginEntries.addAll(
+        await _materializeOpencodePlugin(
+          ctx.fs,
+          ctx.configDir,
+          entry.name,
+          root,
+        ),
+      );
     }
 
-    if (mcpSpecs.isEmpty) return;
-    await const OpencodeMcpConfigWriter().write(
-      fs: ctx.fs,
-      configDir: ctx.configDir,
-      servers: mcpSpecs,
+    if (mcpSpecs.isNotEmpty) {
+      await const OpencodeMcpConfigWriter().write(
+        fs: ctx.fs,
+        configDir: ctx.configDir,
+        servers: mcpSpecs,
+      );
+    }
+    if (pluginEntries.isNotEmpty) {
+      await _mergePluginEntries(ctx.fs, ctx.configDir, pluginEntries);
+    }
+  }
+
+  /// Copies the whole bundle into `<configDir>/plugins/<name>/` when it ships
+  /// an opencode plugin, returning `plugin` array entries (`./plugins/...`)
+  /// for each entry file. The full tree is copied (not just the entry file)
+  /// because opencode plugins resolve sibling content relative to
+  /// `import.meta.url` / `__dirname` (e.g. superpowers reads `../../skills`).
+  static Future<List<String>> _materializeOpencodePlugin(
+    Filesystem fs,
+    String configDir,
+    String poolEntryName,
+    String pluginRoot,
+  ) async {
+    final rels = await _discoverPluginEntryFiles(fs, pluginRoot);
+    if (rels.isEmpty) return const [];
+
+    final ctx = fs.pathContext;
+    final destRoot = ctx.join(configDir, pluginsSubdir, poolEntryName);
+    await CliPluginLayout.linkOrCopyTree(
+      fs: fs,
+      source: pluginRoot,
+      destination: destRoot,
+    );
+    return [
+      for (final rel in rels) './$pluginsSubdir/$poolEntryName/$rel',
+    ];
+  }
+
+  /// Discovers opencode plugin entry files under [pluginRoot], mirroring
+  /// opencode's own convention (`{plugin,plugins}/*.{js,ts}` under
+  /// `.opencode/`), falling back to a root `package.json` `main` pointing at
+  /// a JS/TS source file inside the bundle.
+  static Future<List<String>> _discoverPluginEntryFiles(
+    Filesystem fs,
+    String pluginRoot,
+  ) async {
+    final ctx = fs.pathContext;
+    final out = <String>[];
+    final opencodeDir = ctx.join(pluginRoot, opencodeFlavorDir);
+    if ((await fs.stat(opencodeDir)).isDirectory) {
+      for (final dirName in _opencodePluginDirs) {
+        final dir = ctx.join(opencodeDir, dirName);
+        if (!(await fs.stat(dir)).isDirectory) continue;
+        for (final entry in await fs.listDir(dir)) {
+          if (entry.isDirectory) continue;
+          if (!_isPluginSourceFile(entry.name)) continue;
+          out.add(ctx.join(opencodeFlavorDir, dirName, entry.name));
+        }
+      }
+    }
+    if (out.isNotEmpty) return out;
+
+    final pkgJson = ctx.join(pluginRoot, 'package.json');
+    if (!(await fs.stat(pkgJson)).isFile) return const [];
+    final text = await fs.readString(pkgJson);
+    if (text == null || text.trim().isEmpty) return const [];
+    try {
+      final json = (jsonDecode(text) as Map).cast<String, Object?>();
+      final main = (json['main'] as String?)?.trim() ?? '';
+      if (!_isPluginSourceFile(main)) return const [];
+      if ((await fs.stat(ctx.join(pluginRoot, main))).isFile) {
+        out.add(main);
+      }
+    } on Object {
+      // Invalid package.json — ignore, decomposition still applies.
+    }
+    return out;
+  }
+
+  static bool _isPluginSourceFile(String name) {
+    return name.endsWith('.js') ||
+        name.endsWith('.mjs') ||
+        name.endsWith('.cjs') ||
+        name.endsWith('.ts') ||
+        name.endsWith('.tsx');
+  }
+
+  /// Merges materialized plugin entries into `opencode.json` `plugin` array.
+  static Future<void> _mergePluginEntries(
+    Filesystem fs,
+    String configDir,
+    List<String> entries,
+  ) async {
+    final configPath = fs.pathContext.join(
+      configDir,
+      OpencodeConfigProfileCapability.opencodeConfigFileName,
+    );
+    final stat = await fs.stat(configPath);
+    Map<String, Object?> existing;
+    if (stat.isFile) {
+      final text = await fs.readString(configPath);
+      existing = text == null || text.trim().isEmpty
+          ? <String, Object?>{}
+          : (jsonDecode(text) as Map).cast<String, Object?>();
+    } else {
+      existing = <String, Object?>{};
+    }
+
+    final merged = mergeOpencodePluginEntries(existing, entries);
+    if (identical(merged, existing)) return;
+
+    await fs.ensureDir(fs.pathContext.dirname(configPath));
+    await fs.atomicWrite(
+      configPath,
+      const JsonEncoder.withIndent('  ').convert(merged),
     );
   }
 
