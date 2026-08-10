@@ -10,6 +10,7 @@ import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/session/shell_launch_spec.dart';
 import 'package:teampilot/services/team_bus/bus_user_line_capture.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
+import 'package:teampilot/services/workbench/workbench_chat_bridge.dart';
 import 'package:teampilot/services/workbench/workbench_strip_navigator.dart';
 
 import '../../support/post_frame_test_harness.dart';
@@ -112,6 +113,9 @@ void main() {
                 _FakeTerminalSession(executable: executable),
       );
       workbench = WorkbenchCubit();
+      final bridge = WorkbenchChatBridge(workbench: workbench, chat: chat);
+      workbench.port = bridge;
+      chat.workbenchPort = bridge;
       strip = WorkbenchStripNavigator(workbench: workbench, chat: chat);
       final workspace = await repo.createWorkspace([
         WorkspaceFolder(path: '/a'),
@@ -135,7 +139,7 @@ void main() {
       strip.next();
       strip.previous();
       expect(workbench.activeTabId(workspaceId), isNull);
-      expect(chat.state.newChatActive, isTrue);
+      expect(workbench.state.bar(workspaceId).center.landingActive, isTrue);
     });
 
     test('next/prev wrap across mixed session and diff tabs', () async {
@@ -188,36 +192,36 @@ void main() {
       await openSession();
       await openSession();
       final s0 = WorkbenchTabId.session(sessionIds[0]);
-      final s1 = WorkbenchTabId.session(sessionIds[1]);
       workbench.select(workspaceId, s0);
-      chat.selectTab(0);
-      chat.enterNewChat(workspaceId);
-      expect(chat.state.newChatActive, isTrue);
+      workbench.enterLanding(workspaceId);
+      expect(workbench.state.bar(workspaceId).center.landingActive, isTrue);
 
+      // Landing is not a tab: next() activates the first strip tab.
       strip.next();
-      expect(chat.state.newChatActive, isFalse);
-      expect(workbench.activeTabId(workspaceId), s1);
+      expect(workbench.state.bar(workspaceId).center.landingActive, isFalse);
+      expect(workbench.activeTabId(workspaceId), s0);
     });
 
-    test('closeTab(activeTabIndex) is the session-close-tab command equivalent',
+    test('close(active session) is the session-close-tab command equivalent',
         () async {
       await openSession();
       await openSession();
-      expect(chat.state.tabs, hasLength(2));
+      expect(chat.tabStore.openTabs, hasLength(2));
       final closing = chat.state.activeSessionId;
-      chat.closeTab(chat.state.activeTabIndex);
+      final active = workbench.centerActiveId(workspaceId);
+      await workbench.close(workspaceId, active!);
       await drainPendingAsyncWork();
       await postFrame.flush();
-      expect(chat.state.tabs, hasLength(1));
+      expect(chat.tabStore.openTabs, hasLength(1));
       expect(chat.state.activeSessionId, isNot(closing));
     });
 
-    test('enterNewChat(activeWorkspaceId) is the session-new-tab command '
+    test('enterLanding(activeWorkspaceId) is the session-new-tab command '
         'equivalent', () async {
       await openSession();
-      expect(chat.state.newChatActive, isFalse);
-      chat.enterNewChat(chat.tabStore.activeWorkspaceId);
-      expect(chat.state.newChatActive, isTrue);
+      expect(workbench.state.bar(workspaceId).center.landingActive, isFalse);
+      workbench.enterLanding(chat.tabStore.activeWorkspaceId);
+      expect(workbench.state.bar(workspaceId).center.landingActive, isTrue);
     });
   });
 }

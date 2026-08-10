@@ -98,7 +98,7 @@ void main() {
       executableResolver: _testExecutable,
       automationRepository: testAutomationRepository(),
     );
-    expect(cubit.state.tabs, isEmpty);
+    expect(cubit.tabStore.openTabs, isEmpty);
     expect(cubit.state.selectedMemberId, isEmpty);
 
     final team = TeamProfile(
@@ -143,8 +143,8 @@ void main() {
     await cubit.openMemberTab(team, team.members[1]);
     await postFrame.flush();
 
-    expect(cubit.state.tabs.length, 1);
-    expect(cubit.state.tabs.single.id, 'local-test-team');
+    expect(cubit.tabStore.openTabs.length, 1);
+    expect(cubit.tabStore.openTabs.single.info.id, 'local-test-team');
     expect(cubit.state.selectedMemberId, 'dev');
     expect(cubit.isMemberRunning(sessionId: cubit.state.activeSessionId!, memberId: 'team-lead'), isTrue);
     expect(cubit.isMemberRunning(sessionId: cubit.state.activeSessionId!, memberId: 'dev'), isTrue);
@@ -246,7 +246,7 @@ void main() {
       await drainPendingAsyncWork();
       await postFrame.flush();
 
-      expect(cubit.state.tabs.length, 1);
+      expect(cubit.tabStore.openTabs.length, 1);
       expect(cubit.isMemberRunning(sessionId: cubit.state.activeSessionId!, memberId: 'team-lead'), isTrue);
       expect(cubit.isMemberRunning(sessionId: cubit.state.activeSessionId!, memberId: 'dev'), isTrue);
       expect(cubit.state.selectedMemberId, 'team-lead');
@@ -298,7 +298,7 @@ void main() {
       await drainPendingAsyncWork();
       await postFrame.flush();
 
-      expect(cubit.state.tabs.length, 1);
+      expect(cubit.tabStore.openTabs.length, 1);
       expect(cubit.isMemberRunning(sessionId: cubit.state.activeSessionId!, memberId: 'team-lead'), isTrue);
       expect(cubit.isMemberRunning(sessionId: cubit.state.activeSessionId!, memberId: 'dev'), isFalse);
       expect(cubit.state.selectedMemberId, 'team-lead');
@@ -359,8 +359,8 @@ void main() {
       await drainPendingAsyncWork();
       await postFrame.flush();
 
-      expect(cubit.state.tabs.length, 1);
-      expect(cubit.state.tabs.single.id, 'session-1');
+      expect(cubit.tabStore.openTabs.length, 1);
+      expect(cubit.tabStore.openTabs.single.info.id, 'session-1');
       expect(cubit.state.activeSessionId, 'session-1');
       expect(cubit.state.selectedMemberId, 'dev');
       expect(cubit.isMemberRunning(sessionId: cubit.state.activeSessionId!, memberId: 'team-lead'), isTrue);

@@ -68,7 +68,7 @@ void main() {
     WorkbenchCubit workbench, {
     required String sessionId,
   }) {
-    chat.tabStore.setActiveWorkspace('w1');
+    chat.tabStore.setActiveWorkspaceId('w1');
     final session = AppSession(
       sessionId: sessionId,
       workspaceId: 'w1',
@@ -76,7 +76,7 @@ void main() {
       createdAt: 1,
       updatedAt: 1,
     );
-    chat.tabStore.append(
+    chat.tabStore.registerSession(
       ChatTab(
         info: ChatTabInfo(id: sessionId, title: 'S', subtitle: ''),
         cliTeamName: '',

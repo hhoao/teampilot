@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../../cubits/chat_cubit.dart';
+import '../../../cubits/workbench/workbench_cubit.dart';
 import '../../../cubits/worktree_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/app_session.dart';
@@ -474,7 +475,7 @@ class _ConversationListHost extends StatelessWidget {
           workspaceOrderedSessionIds: workspaceOrderedSessionIds,
           onSessionsReordered: onSessionsReordered,
           highlightSessionId: scopedActiveSessionId(
-            context.read<ChatCubit>(),
+            context.read<WorkbenchCubit>(),
             tabScopeId,
           ),
           collapsed: wtView.collapsed.contains(worktreeGroupCollapseKey(group)),
@@ -542,7 +543,7 @@ class _ConversationListHost extends StatelessWidget {
       session: session,
       index: index,
       highlightSessionId: scopedActiveSessionId(
-        context.read<ChatCubit>(),
+        context.read<WorkbenchCubit>(),
         tabScopeId,
       ),
       tapThrottleKeyPrefix: 'workspace_sidebar_session',
@@ -587,7 +588,7 @@ class _RunningSessionsSection extends StatelessWidget {
               key: ValueKey('workspace-running-session-$sessionId'),
               session: session,
               highlightSessionId: scopedActiveSessionId(
-                context.read<ChatCubit>(),
+                context.read<WorkbenchCubit>(),
                 tabScopeId,
               ),
               tapThrottleKeyPrefix: 'workspace_running_session',

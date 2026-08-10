@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../cubits/chat_cubit.dart';
+import '../../../cubits/workbench/workbench_cubit.dart';
 import '../../../cubits/worktree_cubit.dart';
 import '../../../models/app_session.dart';
 import '../../../models/workspace.dart';
@@ -45,7 +46,10 @@ class _WorkspaceToolsScopeSyncState extends State<WorkspaceToolsScopeSync> {
   bool get _routeActive => WorkspaceRouteActiveScope.routeActiveOf(context);
 
   AppSession? _activeSession(ChatCubit chat) {
-    final sessionId = scopedActiveSessionId(chat, widget.tabScopeId);
+    final sessionId = scopedActiveSessionId(
+      context.read<WorkbenchCubit>(),
+      widget.tabScopeId,
+    );
     if (sessionId == null || sessionId.isEmpty) return null;
     final workspaceId = widget.workspace.workspaceId;
     for (final session in chat.state.sessions) {

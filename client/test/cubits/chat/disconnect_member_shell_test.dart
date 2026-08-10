@@ -101,12 +101,8 @@ void main() {
       tabA.selectedMemberId = memberId;
       tabB.selectedMemberId = memberId;
 
-      // Make A the active tab; Resource Manager kill must still hit B.
-      final indexA = cubit.tabStore
-          .tabsForWorkspace(workspace.workspaceId)
-          .indexWhere((t) => t.info.id == sessionA.sessionId);
-      expect(indexA, greaterThanOrEqualTo(0));
-      cubit.selectTab(indexA);
+      // Make A the active session; Resource Manager kill must still hit B.
+      cubit.setForegroundSession(sessionA.sessionId, memberId);
       expect(cubit.state.activeSessionId, sessionA.sessionId);
       expect(shellA.isRunning, isTrue);
       expect(shellB.isRunning, isTrue);

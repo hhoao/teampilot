@@ -26,16 +26,22 @@ void main() {
       automationRepository: testAutomationRepository(),
     );
     cubit.setActiveWorkspace('personal-A');
-    cubit.tabStore.append(_tab('a-sess'));
+    cubit.tabStore.registerSession(_tab('a-sess'));
     cubit.refreshActiveWorkspaceTabs();
-    expect(cubit.state.tabs.map((t) => t.id), ['a-sess']);
+    expect(
+      cubit.tabStore.tabsForWorkspace('personal-A').map((t) => t.info.id),
+      ['a-sess'],
+    );
 
     // Two personal workspaces (both empty teamId) must not see each other's tabs.
     cubit.setActiveWorkspace('personal-B');
-    expect(cubit.state.tabs, isEmpty);
+    expect(cubit.tabStore.tabsForWorkspace('personal-B'), isEmpty);
 
     cubit.setActiveWorkspace('personal-A');
-    expect(cubit.state.tabs.map((t) => t.id), ['a-sess']);
+    expect(
+      cubit.tabStore.tabsForWorkspace('personal-A').map((t) => t.info.id),
+      ['a-sess'],
+    );
     addTearDown(cubit.close);
   });
 

@@ -80,14 +80,13 @@ class SessionTabSurfaceCoordinator {
 
   SessionOpenStatus surfaceExistingTab({
     required SessionOpenRequest request,
-    required int existingIdx,
+    required ChatTab existing,
   }) {
     final session = request.session;
     appLogger.d(
       '[session-launch] requestOpenSession reuse existing tab '
-      'session=${session.sessionId} idx=$existingIdx',
+      'session=${session.sessionId}',
     );
-    final existing = _tabStore.activeTabs[existingIdx];
     final memberId = request.isPersonal
         ? existing.selectedMemberId
         : (request.member?.id ?? existing.selectedMemberId);
@@ -103,10 +102,8 @@ class SessionTabSurfaceCoordinator {
     final generation = existing.launchGeneration;
     _host.applyState(
       state.copyWith(
-        activeTabIndex: existingIdx,
         activeSessionId: session.sessionId,
         selectedMemberId: memberId.isNotEmpty ? memberId : null,
-        newChatActive: false,
       ),
     );
     _host.refreshActiveWorkspaceTabs();
@@ -175,14 +172,12 @@ class SessionTabSurfaceCoordinator {
     tab.bumpLaunchGeneration();
     final generation = tab.launchGeneration;
 
-    _tabStore.append(tab);
+    _tabStore.registerSession(tab);
     _host.sessionRuntime.ensureIdleWatch();
     _host.applyState(
       _state().copyWith(
-        activeTabIndex: _tabStore.activeTabCount - 1,
         activeSessionId: session.sessionId,
         selectedMemberId: placeholderMemberId,
-        newChatActive: false,
       ),
     );
     // Feed the bar: the new tab must surface in the workbench strip. Only new

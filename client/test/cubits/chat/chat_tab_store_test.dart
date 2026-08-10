@@ -29,21 +29,38 @@ void main() {
     expect(tab.effectiveCliTeamName, 'default-native-team-3');
   });
 
-  test('append + activeTabBySessionId + activeTabInfos', () {
-    final store = ChatTabStore();
-    store.append(_tab('a'));
-    store.append(_tab('b'));
+  test('registerSession keys by session id; workspace scope filters', () {
+    final store = ChatTabStore()..setActiveWorkspaceId('w1');
+    store.registerSession(_tab('a'));
+    store.registerSession(_tab('b'));
 
-    expect(store.activeTabCount, 2);
-    expect(store.activeTabBySessionId('b')!.cliTeamName, 'b');
-    expect(store.activeTabInfos().map((i) => i.id).toList(), ['a', 'b']);
+    expect(store.openTabs.length, 2);
+    expect(store.openTabBySessionId('b')!.cliTeamName, 'b');
+    expect(store.tabsForWorkspace('w1').map((t) => t.info.id).toList(),
+        ['a', 'b']);
+    store.setActiveWorkspaceId('w2');
+    store.registerSession(_tab('c'));
+    expect(store.tabsForWorkspace('w1').map((t) => t.info.id).toList(),
+        ['a', 'b']);
+    expect(store.tabsForWorkspace('w2').map((t) => t.info.id).toList(), ['c']);
+    expect(store.sessionsForWorkspace('w2'), ['c']);
   });
 
-  test('activeTab clamps index', () {
+  test('removeSession / disposeSession drop the runtime', () {
+    final store = ChatTabStore();
+    store.registerSession(_tab('a'));
+    store.registerSession(_tab('b'));
+    expect(store.removeSession('a')!.info.id, 'a');
+    expect(store.openTabBySessionId('a'), isNull);
+    expect(store.disposeSession('b')!.info.id, 'b');
+    expect(store.hasOpenTabs, isFalse);
+  });
+
+  test('activeTab back-compat helper returns the first open runtime', () {
     final store = ChatTabStore()
-      ..append(_tab('a'))
-      ..append(_tab('b'));
-    expect(store.activeTab(99)!.info.id, 'b');
+      ..registerSession(_tab('a'))
+      ..registerSession(_tab('b'));
+    expect(store.activeTab(99)!.info.id, 'a');
     expect(store.activeTab(-1)!.info.id, 'a');
   });
 
@@ -100,6 +117,6 @@ void main() {
       ],
     );
     expect(store.defaultMemberId(team), 'team-lead');
-    expect(store.activeTabCount, 0);
+    expect(store.hasOpenTabs, isFalse);
   });
 }

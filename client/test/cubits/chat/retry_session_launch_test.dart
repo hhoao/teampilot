@@ -44,8 +44,8 @@ void main() {
         updatedAt: 1,
       );
 
-      cubit.tabStore.setActiveWorkspace('w1');
-      cubit.tabStore.append(
+      cubit.tabStore.setActiveWorkspaceId('w1');
+      cubit.tabStore.registerSession(
         ChatTab(
           info: ChatTabInfo(id: session.sessionId, title: 'S', subtitle: ''),
           cliTeamName: '',

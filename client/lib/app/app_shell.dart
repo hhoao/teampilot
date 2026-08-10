@@ -1248,11 +1248,16 @@ Future<AppShell> buildAppShell({
     onNewTerminal: focusOrCreateDefaultShell,
     onOpenFile: openFloatingFilePicker,
   );
+  final workbenchCubit = WorkbenchCubit();
   registerLayoutCommands(
     commandBus,
     layoutCubit,
     uiZoomBaseline: () => uiZoomBaseline.value,
-    composeLanding: () => chatCubit.state.newChatActive,
+    composeLanding: () => workbenchCubit
+        .state
+        .bar(chatCubit.tabStore.activeWorkspaceId)
+        .center
+        .landingActive,
     onTogglePanel: openFloatingNewTerminal,
   );
 
@@ -1353,11 +1358,11 @@ Future<AppShell> buildAppShell({
   });
 
   final mailboxCubit = MailboxCubit(
-    busForScope: (scope) => scopedTeamBus(chatCubit, scope),
+    busForScope: (scope) => scopedTeamBus(workbenchCubit, chatCubit, scope),
   );
 
   final boardCubit = BoardCubit(
-    busForScope: (scope) => scopedTeamBus(chatCubit, scope),
+    busForScope: (scope) => scopedTeamBus(workbenchCubit, chatCubit, scope),
   );
 
   final aiHistoryLoader = AiHistoryLoader(
@@ -1475,7 +1480,7 @@ Future<AppShell> buildAppShell({
             workspace.workspaceId,
         ],
         activeSessionKeys: {
-          for (final tab in chatCubit.state.tabs) tab.id,
+          for (final tab in chatCubit.tabStore.openTabs) tab.info.id,
         },
       );
     } on Object catch (e, st) {
@@ -1570,10 +1575,15 @@ Future<AppShell> buildAppShell({
   // Fire-and-forget: warm the common tree-sitter grammars so the first file
   // open paints colored instead of cold. Never blocks app start.
   unawaited(EditorPlatform.bootstrap());
-  final workbenchCubit = WorkbenchCubit();
-  // Single domain → bar handshake: new session tabs surface in the bar via
-  // the bridge instead of the deleted WorkbenchSessionSync reconcile.
-  final workbenchChatBridge = WorkbenchChatBridge(workbench: workbenchCubit);
+  // Single domain ↔ bar handshake: new session tabs surface in the bar and
+  // bar removals tear down the domain via the bridge (which implements both
+  // ports) instead of the deleted WorkbenchSessionSync reconcile.
+  final workbenchChatBridge = WorkbenchChatBridge(
+    workbench: workbenchCubit,
+    chat: chatCubit,
+  );
+  workbenchCubit.port = workbenchChatBridge;
+  chatCubit.workbenchPort = workbenchChatBridge;
   chatCubit.onSessionTabOpened = workbenchChatBridge.onSessionTabOpened;
   final markdownViewModes = MarkdownViewModeStore();
   final workbenchEditorOpener = WorkbenchEditorOpener(
@@ -1661,6 +1671,7 @@ Future<AppShell> buildAppShell({
   registerSessionCommands(
     commandBus,
     chatCubit,
+    workbenchCubit,
     WorkbenchStripNavigator(workbench: workbenchCubit, chat: chatCubit),
   );
 

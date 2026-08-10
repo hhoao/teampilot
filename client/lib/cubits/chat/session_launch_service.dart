@@ -124,7 +124,7 @@ class SessionLaunchService
         launchContextFor: launchContextFor,
         launchWorkTarget: _launchWorkTarget,
         scheduleMemberConnect: _memberConnectScheduler.schedule,
-        tabIndexOfSession: _tabStore.activeIndexOfSession,
+        tabOpen: (sessionId) => _tabStore.openTabBySessionId(sessionId) != null,
       );
   late final SessionPromptMetadataSync _promptMetadata =
       SessionPromptMetadataSync(host: _h, state: () => _h.state);
@@ -262,7 +262,7 @@ class SessionLaunchService
 
   bool _launchStillValid(ChatTab tab, int generation) {
     if (_h.isClosed) return false;
-    if (_tabStore.activeIndexOfSession(tab.info.id) == -1) return false;
+    if (_tabStore.openTabBySessionId(tab.info.id) == null) return false;
     return tab.launchGeneration == generation;
   }
 
@@ -793,13 +793,12 @@ class SessionLaunchService
   ChatTab _appendLocalTab(TeamProfile team, {required bool emitChange}) {
     final tab = _tabStore.appendLocalTab(team, cliTeamName: _uuid.v4());
     if (emitChange) {
+      // Mirror only: the bar owns presence/order/active (fed via the bridge);
+      // activeSessionId/selectedMemberId are the foreground-session mirrors.
       _h.applyState(
         _state.copyWith(
-          tabs: _tabStore.activeTabInfos(),
-          activeTabIndex: _tabStore.activeTabCount - 1,
           activeSessionId: tab.info.id,
           selectedMemberId: tab.selectedMemberId,
-          newChatActive: false,
         ),
       );
     }

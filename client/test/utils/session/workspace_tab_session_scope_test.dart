@@ -1,7 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/chat/model/chat_tab.dart';
-import 'package:teampilot/pages/chat/chat_scoped_tab_view.dart';
+import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
+import 'package:teampilot/services/workbench/workbench_chat_bridge.dart';
 import 'package:teampilot/utils/session/workspace_tab_session_scope.dart';
 import '../../support/post_frame_test_harness.dart';
 
@@ -10,140 +11,111 @@ ChatCubit _cubit() => ChatCubit(
   automationRepository: testAutomationRepository(),
 );
 
-ChatTab _tab(String id, {String? launchError}) => ChatTab(
-  info: ChatTabInfo(id: id, title: id, subtitle: '', launchError: launchError),
+ChatTab _tab(String id) => ChatTab(
+  info: ChatTabInfo(id: id, title: id, subtitle: ''),
   cliTeamName: id,
 );
 
+/// Wires the bar behind [cubit] via the bridge.
+WorkbenchCubit _wireWorkbench(ChatCubit cubit) {
+  final workbench = WorkbenchCubit();
+  final bridge = WorkbenchChatBridge(workbench: workbench, chat: cubit);
+  workbench.port = bridge;
+  cubit.workbenchPort = bridge;
+  return workbench;
+}
+
+/// Feeds a session runtime + bar entry for [workspaceId].
+void _openSession(
+  ChatCubit cubit,
+  WorkbenchCubit workbench,
+  String workspaceId,
+  String sessionId, {
+  bool activate = true,
+}) {
+  cubit.setActiveWorkspace(workspaceId);
+  cubit.tabStore.registerSession(_tab(sessionId));
+  workbench.openSession(workspaceId, sessionId, activate: activate);
+}
+
 void main() {
   group('scopedActiveSessionId', () {
-    test('foreground tab follows ChatState.activeSessionId', () {
+    test('reads the bar center-active session for the workspace', () {
       final cubit = _cubit();
       addTearDown(cubit.close);
+      final workbench = _wireWorkbench(cubit);
+      addTearDown(workbench.close);
 
-      cubit.setActiveWorkspace('tab-A');
-      cubit.tabStore.append(_tab('a1'));
-      cubit.tabStore.append(_tab('a2'));
-      cubit.tabStore.setNewChatActive('tab-A', false);
-      cubit.refreshActiveWorkspaceTabs();
+      _openSession(cubit, workbench, 'tab-A', 'a1');
+      _openSession(cubit, workbench, 'tab-A', 'a2');
 
-      expect(scopedActiveSessionId(cubit, 'tab-A'), 'a1');
+      expect(scopedActiveSessionId(workbench, 'tab-A'), 'a2');
     });
 
-    test('background tab freezes to saved bucket index', () {
+    test('background workspace keeps its own bar active session', () {
       final cubit = _cubit();
       addTearDown(cubit.close);
+      final workbench = _wireWorkbench(cubit);
+      addTearDown(workbench.close);
 
-      cubit.setActiveWorkspace('tab-A');
-      cubit.tabStore.append(_tab('a1'));
-      cubit.tabStore.append(_tab('a2'));
-      cubit.tabStore.setNewChatActive('tab-A', false);
-      cubit.tabStore.setActiveWorkspace('tab-B', currentActiveIndex: 1);
+      _openSession(cubit, workbench, 'tab-A', 'a1');
+      _openSession(cubit, workbench, 'tab-A', 'a2');
+      _openSession(cubit, workbench, 'tab-B', 'b1');
 
-      cubit.tabStore.append(_tab('b1'));
-      cubit.tabStore.setNewChatActive('tab-B', false);
-      cubit.refreshActiveWorkspaceTabs();
+      expect(scopedActiveSessionId(workbench, 'tab-A'), 'a2');
+      expect(scopedActiveSessionId(workbench, 'tab-B'), 'b1');
+    });
 
-      expect(scopedActiveSessionId(cubit, 'tab-A'), 'a2');
-      expect(scopedActiveSessionId(cubit, 'tab-B'), 'b1');
+    test('landing active resolves null', () {
+      final cubit = _cubit();
+      addTearDown(cubit.close);
+      final workbench = _wireWorkbench(cubit);
+      addTearDown(workbench.close);
+
+      _openSession(cubit, workbench, 'tab-A', 'a1');
+      workbench.enterLanding('tab-A');
+
+      expect(scopedActiveSessionId(workbench, 'tab-A'), isNull);
     });
   });
 
   group('scopedActiveChatTab', () {
-    test('foreground tab follows ChatState active index', () {
+    test('resolves the runtime for the bar center-active session', () {
       final cubit = _cubit();
       addTearDown(cubit.close);
+      final workbench = _wireWorkbench(cubit);
+      addTearDown(workbench.close);
 
-      cubit.setActiveWorkspace('tab-A');
-      cubit.tabStore.append(_tab('a1'));
-      cubit.tabStore.append(_tab('a2'));
-      cubit.tabStore.setNewChatActive('tab-A', false);
-      cubit.refreshActiveWorkspaceTabs();
+      _openSession(cubit, workbench, 'tab-A', 'a1');
+      _openSession(cubit, workbench, 'tab-A', 'a2');
 
-      expect(scopedActiveChatTab(cubit, 'tab-A')?.info.id, 'a1');
+      expect(scopedActiveChatTab(workbench, cubit, 'tab-A')?.info.id, 'a2');
     });
 
-    test('background tab freezes to saved bucket index', () {
+    test('background workspace resolves its own active runtime', () {
       final cubit = _cubit();
       addTearDown(cubit.close);
+      final workbench = _wireWorkbench(cubit);
+      addTearDown(workbench.close);
 
-      cubit.setActiveWorkspace('tab-A');
-      cubit.tabStore.append(_tab('a1'));
-      cubit.tabStore.append(_tab('a2'));
-      cubit.tabStore.setNewChatActive('tab-A', false);
-      cubit.tabStore.setActiveWorkspace('tab-B', currentActiveIndex: 1);
-      cubit.tabStore.append(_tab('b1'));
-      cubit.tabStore.setNewChatActive('tab-B', false);
-      cubit.refreshActiveWorkspaceTabs();
+      _openSession(cubit, workbench, 'tab-A', 'a1');
+      _openSession(cubit, workbench, 'tab-A', 'a2');
+      _openSession(cubit, workbench, 'tab-B', 'b1');
 
-      expect(scopedActiveChatTab(cubit, 'tab-A')?.info.id, 'a2');
-      expect(scopedActiveChatTab(cubit, 'tab-B')?.info.id, 'b1');
-    });
-  });
-
-  group('ChatScopedTabView', () {
-    test('reads frozen bucket for background workspace tab', () {
-      final cubit = _cubit();
-      addTearDown(cubit.close);
-
-      cubit.setActiveWorkspace('tab-A');
-      cubit.tabStore.append(_tab('a1'));
-      cubit.refreshActiveWorkspaceTabs();
-
-      cubit.setActiveWorkspace('tab-B');
-      cubit.tabStore.append(_tab('b1'));
-      cubit.refreshActiveWorkspaceTabs();
-
-      final background = ChatScopedTabView.resolve(cubit, 'tab-A');
-      expect(background.tabs.map((t) => t.id), ['a1']);
-      expect(background.activeTabIndex, 0);
-
-      final foreground = ChatScopedTabView.resolve(cubit, 'tab-B');
-      expect(foreground.tabs.map((t) => t.id), ['b1']);
-      expect(foreground.activeTabIndex, 0);
+      expect(scopedActiveChatTab(workbench, cubit, 'tab-A')?.info.id, 'a2');
+      expect(scopedActiveChatTab(workbench, cubit, 'tab-B')?.info.id, 'b1');
     });
 
-    test(
-      'background bucket does not inherit foreground sessionLaunchError',
-      () {
-        final cubit = _cubit();
-        addTearDown(cubit.close);
-
-        cubit.setActiveWorkspace('tab-A');
-        cubit.tabStore.append(_tab('a1'));
-        cubit.refreshActiveWorkspaceTabs();
-
-        cubit.setActiveWorkspace('tab-B');
-        cubit.tabStore.append(_tab('b1'));
-        cubit.refreshActiveWorkspaceTabs();
-
-        cubit.emit(
-          cubit.state.copyWith(sessionLaunchError: 'foreground-only error'),
-        );
-
-        final background = ChatScopedTabView.resolve(cubit, 'tab-A');
-        expect(background.workbenchSlice.sessionLaunchError, isNull);
-
-        final foreground = ChatScopedTabView.resolve(cubit, 'tab-B');
-        expect(
-          foreground.workbenchSlice.sessionLaunchError,
-          'foreground-only error',
-        );
-      },
-    );
-    test('resolve is unchanged when only workingSessionIds flips', () {
+    test('non-session active (file tab) resolves null', () {
       final cubit = _cubit();
       addTearDown(cubit.close);
+      final workbench = _wireWorkbench(cubit);
+      addTearDown(workbench.close);
 
-      cubit.setActiveWorkspace('tab-A');
-      cubit.tabStore.append(_tab('a1'));
-      cubit.refreshActiveWorkspaceTabs();
+      _openSession(cubit, workbench, 'tab-A', 'a1');
+      workbench.openFile('tab-A', '/tmp/x.dart');
 
-      final before = ChatScopedTabView.resolve(cubit, 'tab-A');
-      cubit.updateWorkingSessionsForTest({'a1'});
-      final after = ChatScopedTabView.resolve(cubit, 'tab-A');
-
-      expect(before, equals(after));
+      expect(scopedActiveChatTab(workbench, cubit, 'tab-A'), isNull);
     });
   });
 }

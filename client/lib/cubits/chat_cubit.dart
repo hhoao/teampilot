@@ -199,6 +199,13 @@ class ChatCubit extends Cubit<ChatState>
     bool activate,
   })? onSessionTabOpened;
 
+  /// Domain → bar port: routes session closes, landing, and workspace closes
+  /// through the workbench bar. Wired to the [WorkbenchChatBridge] by the app
+  /// shell after construction (null until then — the domain falls back to a
+  /// direct teardown).
+  ChatWorkbenchPort? _workbenchPort;
+  set workbenchPort(ChatWorkbenchPort? value) => _workbenchPort = value;
+
   final RemoteBusBindingResolver? _remoteBusResolver;
   final RemoteCliReadinessService? _remoteCliReadiness;
   final CliProvisionActivityAdapter? _cliProvisionActivity;
@@ -517,15 +524,7 @@ class ChatCubit extends Cubit<ChatState>
   // ===== SessionLaunchHost =====
 
   @override
-  void applyState(ChatState next) {
-    final workspaceId = _tabStore.activeWorkspaceId;
-    if (next.newChatActive) {
-      _tabStore.setNewChatActive(workspaceId, true);
-    } else {
-      _tabStore.setNewChatActive(workspaceId, false);
-    }
-    emit(next);
-  }
+  void applyState(ChatState next) => emit(next);
 
   @override
   void emitSnapshot(ChatDataSnapshot snapshot) => _emitSnapshot(snapshot);
@@ -577,15 +576,26 @@ class ChatCubit extends Cubit<ChatState>
 
   @override
   void closeSessionTab(String sessionId) {
-    final idx = _tabStore.activeIndexOfSession(sessionId);
-    if (idx != -1) closeTab(idx);
+    final tab = _tabStore.openTabBySessionId(sessionId);
+    if (tab == null) return;
+    // Domain-driven close: remove from the bar; the port calls teardownSession.
+    final port = _workbenchPort;
+    if (port != null) {
+      port.onSessionTabClosed(tab.workspaceId, sessionId);
+    } else {
+      unawaited(teardownSession(sessionId));
+    }
   }
 
   @override
   void pushPresenceTarget() => _pushPresenceTarget();
 
   @override
-  ChatTab? get activeTab => _activeTab;
+  ChatTab? get activeTab {
+    final id = state.activeSessionId;
+    if (id == null || id.isEmpty) return null;
+    return _tabStore.openTabBySessionId(id);
+  }
 
   @override
   set activeTeam(TeamProfile? team) => _activeTeam = team;
@@ -1199,106 +1209,56 @@ class ChatCubit extends Cubit<ChatState>
     );
   }
 
-  /// Switches the active workspace bucket and republishes its tabs into state.
-  /// Called by the workspace page whenever the active workspace changes.
+  /// Switches the foreground workspace in the session runtime registry. Called
+  /// by the workspace page whenever the active workspace changes. Bar presence
+  /// / order / active are owned by the workbench bar; the foreground-session
+  /// mirror follows the bar via the bridge.
   void setActiveWorkspace(String workspaceId) {
-    final restoredIndex = _tabStore.setActiveWorkspace(
-      workspaceId,
-      currentActiveIndex: state.activeTabIndex,
-    );
-    _publishActiveWorkspaceTabs(restoredIndex);
+    _tabStore.setActiveWorkspaceId(workspaceId);
   }
 
-  /// Switches the chat tab bucket and session visibility scope in one [emit].
-  /// Use on workspace tab activation so [setTeamSessionScope] does not fire a
-  /// second rebuild on the next frame.
+  /// Switches the foreground workspace and session visibility scope in one
+  /// [emit]. Use on workspace tab activation so [setTeamSessionScope] does not
+  /// fire a second rebuild on the next frame.
   void activateWorkspaceTab({
     required String workspaceTabKey,
     required bool scopeSessionsToSelectedTeam,
     String? selectedTeamId,
   }) {
-    final restoredIndex = _tabStore.setActiveWorkspace(
-      workspaceTabKey,
-      currentActiveIndex: state.activeTabIndex,
-    );
-    final scopeChanged = _dataStore.setScope(
+    _tabStore.setActiveWorkspaceId(workspaceTabKey);
+    if (_dataStore.setScope(
       scopeSessionsToSelectedTeam: scopeSessionsToSelectedTeam,
       selectedTeamId: selectedTeamId,
-    );
-    final snapshot = scopeChanged
-        ? _dataStore.deriveSnapshot(
-            workspaces: state.workspaces,
-            sessions: state.sessions,
-          )
-        : null;
-    _publishActiveWorkspaceTabs(restoredIndex, snapshot: snapshot);
+    )) {
+      _emitSnapshot(
+        _dataStore.deriveSnapshot(
+          workspaces: state.workspaces,
+          sessions: state.sessions,
+        ),
+      );
+    }
   }
 
-  /// Re-emits the active bucket's tab infos without changing the workspace, after
-  /// callers mutate the active bucket directly via [tabStore].
-  @override
-  void refreshActiveWorkspaceTabs() =>
-      _publishActiveWorkspaceTabs(state.activeTabIndex);
-
-  void _publishActiveWorkspaceTabs(
-    int desiredIndex, {
-    ChatDataSnapshot? snapshot,
-  }) {
-    final workspaceId = _tabStore.activeWorkspaceId;
-    if (_tabStore.activeTabsIsEmpty) {
-      _tabStore.setNewChatActive(workspaceId, true);
-      final empty = snapshot;
-      emit(
-        state.copyWith(
-          tabs: const [],
-          activeTabIndex: 0,
-          clearActiveSessionId: true,
-          selectedMemberId: '',
-          newChatActive: true,
-          workspaces: empty?.workspaces,
-          sessions: empty?.sessions,
-          visibleWorkspaces: empty?.visibleWorkspaces,
-          visibleSessions: empty?.visibleSessions,
-        ),
-      );
-      _pushPresenceTarget();
-      return;
-    }
-    final index = desiredIndex.clamp(0, _tabStore.activeTabCount - 1);
-    final newChatActive = _tabStore.isNewChatActive(workspaceId);
-    if (newChatActive) {
-      emit(
-        state.copyWith(
-          tabs: _tabStore.activeTabInfos(),
-          activeTabIndex: index,
-          clearActiveSessionId: true,
-          selectedMemberId: '',
-          newChatActive: true,
-          workspaces: snapshot?.workspaces,
-          sessions: snapshot?.sessions,
-          visibleWorkspaces: snapshot?.visibleWorkspaces,
-          visibleSessions: snapshot?.visibleSessions,
-        ),
-      );
-      _pushPresenceTarget();
-      return;
-    }
-    final tab = _tabStore.activeTabs[index];
+  /// Single writer for the foreground-session mirror, called by the bridge
+  /// ([WorkbenchChatBridge]) when the bar's center-active changes. Emits only
+  /// the mirror fields — presence/order/active live in the bar.
+  void setForegroundSession(String? sessionId, String selectedMemberId) {
+    if (isClosed) return;
+    final id = sessionId?.trim();
+    final active = (id == null || id.isEmpty) ? null : id;
     emit(
       state.copyWith(
-        tabs: _tabStore.activeTabInfos(),
-        activeTabIndex: index,
-        activeSessionId: tab.info.id,
-        selectedMemberId: tab.selectedMemberId,
-        newChatActive: false,
-        workspaces: snapshot?.workspaces,
-        sessions: snapshot?.sessions,
-        visibleWorkspaces: snapshot?.visibleWorkspaces,
-        visibleSessions: snapshot?.visibleSessions,
+        clearActiveSessionId: active == null,
+        activeSessionId: active,
+        selectedMemberId: selectedMemberId,
       ),
     );
-    _pushPresenceTarget();
   }
+
+  /// SessionLaunchHost port: bar presence/order is the strip's job — there is
+  /// nothing left to republish. Kept so launch-pipeline callers compile.
+  @override
+  void refreshActiveWorkspaceTabs() {}
 
   static void _defaultPostFrameScheduler(VoidCallback callback) {
     WidgetsBinding.instance.addPostFrameCallback((_) => callback());
@@ -1334,7 +1294,7 @@ class ChatCubit extends Cubit<ChatState>
     );
   }
 
-  ChatTab? get _activeTab => _tabStore.activeTab(state.activeTabIndex);
+  ChatTab? get _activeTab => activeTab;
 
   TerminalSession? get currentSession {
     final tab = _activeTab;
@@ -1358,11 +1318,8 @@ class ChatCubit extends Cubit<ChatState>
 
   /// Last launch failure for the active tab, or [ChatState.sessionLaunchError].
   String? get activeLaunchError {
-    if (!_tabStore.activeTabsIsEmpty) {
-      final index = state.activeTabIndex.clamp(0, _tabStore.activeTabCount - 1);
-      final error = _tabStore.activeTabs[index].info.launchError;
-      if (error != null && error.isNotEmpty) return error;
-    }
+    final error = _activeTab?.info.launchError;
+    if (error != null && error.isNotEmpty) return error;
     final pending = state.sessionLaunchError;
     if (pending != null && pending.isNotEmpty) return pending;
     return null;
@@ -1689,136 +1646,45 @@ class ChatCubit extends Cubit<ChatState>
     await tab.disposeBus();
   }
 
-  void closeTab(int index) {
-    if (index < 0 || index >= _tabStore.activeTabCount) return;
-    final tab = _tabStore.removeAt(index);
+  /// Tears down a session runtime after the bar removed its tab. Idempotent:
+  /// a session already removed (e.g. by a prior closeAll) is a no-op.
+  Future<void> teardownSession(String sessionId) async {
+    final tab = _tabStore.removeSession(sessionId);
+    if (tab == null) return;
     _sessionRuntime.maybeStopIdleWatch();
-    // Emit tabs before tearDown so working→idle sees the tab already gone
-    // (idle notify must not fire for user-closed sessions).
-    if (_tabStore.activeTabsIsEmpty) {
-      _tabStore.setNewChatActive(_tabStore.activeWorkspaceId, true);
-      emit(
-        state.copyWith(
-          tabs: [],
-          activeTabIndex: 0,
-          clearActiveSessionId: true,
-          newChatActive: true,
-          workingSessionIds: _sessionRuntime.recomputeWorkingSessions(),
-        ),
-      );
-    } else {
-      final newIdx = state.activeTabIndex >= _tabStore.activeTabCount
-          ? _tabStore.activeTabCount - 1
-          : state.activeTabIndex;
-      final nextTab = _tabStore.activeTabs[newIdx];
-      emit(
-        state.copyWith(
-          tabs: _tabStore.activeTabInfos(),
-          activeTabIndex: newIdx,
-          activeSessionId: nextTab.info.id,
-          selectedMemberId: nextTab.selectedMemberId,
-          newChatActive: false,
-          workingSessionIds: _sessionRuntime.recomputeWorkingSessions(),
-        ),
-      );
-    }
-    unawaited(_tearDownTab(tab));
+    await _tearDownTab(tab);
     _pushPresenceTarget();
+    _updateWorkingSessions(_sessionRuntime.recomputeWorkingSessions());
   }
 
-  /// Number of open session-backed tabs in [workspaceId]'s bucket (excludes
-  /// `local-` scratch tabs, which have no persisted workspace session).
-  int openTabCountForWorkspace(String workspaceId) =>
-      _tabStore.sessionBackedCountForWorkspace(workspaceId);
+  /// Registers a staged session runtime (bar presence is handled by the
+  /// bridge) and starts the session idle/reclaim watches.
+  void registerSessionRuntime(ChatTab tab) {
+    _tabStore.registerSession(tab);
+    _sessionRuntime.ensureIdleWatch();
+  }
 
-  /// Closes (terminates) every open tab belonging to [workspaceId] by dropping
-  /// its whole bucket and disposing each tab's sessions and team-bus.
-  void closeTabsForWorkspace(String workspaceId) {
-    final removed = _tabStore.removeWorkspace(workspaceId);
-    if (removed.isEmpty) return;
-    _sessionRuntime.maybeStopIdleWatch();
-    // Republish whenever the active bucket was affected: either it was the
-    // named bucket for this workspace, or it is the legacy empty-string bucket
-    // and tabs were removed from it (legacy path before setActiveWorkspace).
-    final activeIsAffected =
-        workspaceId == _tabStore.activeWorkspaceId ||
-        _tabStore.activeWorkspaceId.isEmpty;
-    if (activeIsAffected) {
-      _publishActiveWorkspaceTabs(0);
+  /// Number of open session-backed tabs in [workspaceId] (excludes `local-`
+  /// scratch tabs, which have no persisted workspace session).
+  int openTabCountForWorkspace(String workspaceId) => _tabStore
+      .tabsForWorkspace(workspaceId)
+      .where((t) => !t.info.id.startsWith('local-'))
+      .length;
+
+  /// Closes (terminates) every open session belonging to [workspaceId] by
+  /// routing the workspace close through the bar and tearing down each
+  /// runtime. Idempotent.
+  Future<void> closeTabsForWorkspace(String workspaceId) async {
+    final ids = _tabStore.sessionsForWorkspace(workspaceId);
+    final port = _workbenchPort;
+    if (port != null) {
+      // Bar removal fires onTabRemoved → teardownSession per center tab.
+      port.closeAll(workspaceId);
+    }
+    for (final id in ids) {
+      await teardownSession(id);
     }
     _updateWorkingSessions(_sessionRuntime.recomputeWorkingSessions());
-    for (final tab in removed) {
-      unawaited(_tearDownTab(tab));
-    }
-  }
-
-  void closeOtherTabs(int index) {
-    if (index < 0 || index >= _tabStore.activeTabCount) return;
-    final removed = <ChatTab>[];
-    for (var i = _tabStore.activeTabCount - 1; i >= 0; i--) {
-      if (i == index) continue;
-      removed.add(_tabStore.removeAt(i));
-    }
-    _sessionRuntime.maybeStopIdleWatch();
-    final kept = _tabStore.activeTabs.single;
-    _tabStore.setNewChatActive(_tabStore.activeWorkspaceId, false);
-    emit(
-      state.copyWith(
-        tabs: _tabStore.activeTabInfos(),
-        activeTabIndex: 0,
-        activeSessionId: kept.info.id,
-        selectedMemberId: kept.selectedMemberId,
-        newChatActive: false,
-        workingSessionIds: _sessionRuntime.recomputeWorkingSessions(),
-      ),
-    );
-    for (final tab in removed) {
-      unawaited(_tearDownTab(tab));
-    }
-    _pushPresenceTarget();
-  }
-
-  void closeRightTabs(int index) {
-    if (index < 0 || index >= _tabStore.activeTabCount) return;
-    final removed = <ChatTab>[];
-    for (var i = _tabStore.activeTabCount - 1; i > index; i--) {
-      removed.add(_tabStore.removeAt(i));
-    }
-    _sessionRuntime.maybeStopIdleWatch();
-    final active = _activeTab;
-    _tabStore.setNewChatActive(_tabStore.activeWorkspaceId, false);
-    emit(
-      state.copyWith(
-        tabs: _tabStore.activeTabInfos(),
-        activeTabIndex: state.activeTabIndex.clamp(
-          0,
-          _tabStore.activeTabCount - 1,
-        ),
-        activeSessionId: active?.info.id,
-        selectedMemberId: active?.selectedMemberId ?? '',
-        newChatActive: false,
-        workingSessionIds: _sessionRuntime.recomputeWorkingSessions(),
-      ),
-    );
-    for (final tab in removed) {
-      unawaited(_tearDownTab(tab));
-    }
-    _pushPresenceTarget();
-  }
-
-  void selectTab(int index) {
-    if (index < 0 || index >= _tabStore.activeTabCount) return;
-    final tab = _tabStore.activeTabs[index];
-    _tabStore.setNewChatActive(_tabStore.activeWorkspaceId, false);
-    emit(
-      state.copyWith(
-        activeTabIndex: index,
-        activeSessionId: tab.info.id,
-        selectedMemberId: tab.selectedMemberId,
-        newChatActive: false,
-      ),
-    );
-    _pushPresenceTarget();
   }
 
   /// Sets Chat vs Terminal center body for an open session tab. The pod owns
@@ -1880,62 +1746,23 @@ class ChatCubit extends Cubit<ChatState>
   }
 
   /// Shows the new-chat landing for [workspaceId] without closing open tabs.
+  ///
+  /// The bar owns the landing surface ([WorkbenchCubit.enterLanding]); this
+  /// routes through the port so the workbench is the single source of
+  /// presence/active. When the port is not yet wired (tests), the landing is
+  /// left to the bar caller.
   void enterNewChat(String workspaceId) {
-    final wasActive = _tabStore.activeWorkspaceId == workspaceId;
-    if (!wasActive) {
-      _tabStore.setNewChatActive(workspaceId, true);
-      return;
-    }
-    _tabStore.setNewChatActive(workspaceId, true);
-    final index = state.activeTabIndex.clamp(
-      0,
-      _tabStore.activeTabCount == 0 ? 0 : _tabStore.activeTabCount - 1,
-    );
-    emit(
-      state.copyWith(
-        activeTabIndex: index,
-        clearActiveSessionId: true,
-        selectedMemberId: '',
-        newChatActive: true,
-      ),
-    );
-    _pushPresenceTarget();
+    _workbenchPort?.enterLanding(workspaceId);
   }
 
-  /// Leaves new-chat mode and selects the remembered session tab index.
-  void exitNewChat() {
-    final workspaceId = _tabStore.activeWorkspaceId;
-    if (!_tabStore.isNewChatActive(workspaceId)) return;
-    _tabStore.setNewChatActive(workspaceId, false);
-    if (_tabStore.activeTabsIsEmpty) {
-      _tabStore.setNewChatActive(workspaceId, true);
-      emit(state.copyWith(newChatActive: true));
-      return;
-    }
-    final index = state.activeTabIndex.clamp(0, _tabStore.activeTabCount - 1);
-    final tab = _tabStore.activeTabs[index];
-    emit(
-      state.copyWith(
-        activeTabIndex: index,
-        activeSessionId: tab.info.id,
-        selectedMemberId: tab.selectedMemberId,
-        newChatActive: false,
-      ),
-    );
-    _pushPresenceTarget();
-  }
+  /// Leaves new-chat mode. The bar's center-active is the single source —
+  /// selecting a session exits landing automatically; this is a no-op.
+  void exitNewChat() {}
 
-  /// Clears new-chat mode without selecting a session (e.g. opening a file/diff tab).
-  void dismissNewChat() {
-    final workspaceId = _tabStore.activeWorkspaceId;
-    if (!_tabStore.isNewChatActive(workspaceId) && !state.newChatActive) {
-      return;
-    }
-    _tabStore.setNewChatActive(workspaceId, false);
-    if (state.newChatActive) {
-      emit(state.copyWith(newChatActive: false));
-    }
-  }
+  /// Clears new-chat mode without selecting a session (e.g. opening a
+  /// file/diff tab). The bar recomputes active on open/activate, so landing
+  /// clears itself; kept so legacy callers compile.
+  void dismissNewChat() {}
 
   void syncTeam(TeamProfile team) {
     if (team.members.isEmpty) {
@@ -2079,10 +1906,6 @@ class ChatCubit extends Cubit<ChatState>
       if (s.sessionId == sessionId) return s.copyWith(display: newName);
       return s;
     }).toList();
-    final tabs = state.tabs.map((t) {
-      if (t.id == sessionId) return t.copyWith(title: newName);
-      return t;
-    }).toList();
     for (final tab in _tabStore.openTabs) {
       if (tab.info.id == sessionId) {
         tab.info = tab.info.copyWith(title: newName);
@@ -2093,7 +1916,7 @@ class ChatCubit extends Cubit<ChatState>
         workspaces: state.workspaces,
         sessions: sessions,
       ),
-      base: state.copyWith(sessions: sessions, tabs: tabs),
+      base: state.copyWith(sessions: sessions),
     );
   }
 
@@ -2248,62 +2071,33 @@ class ChatCubit extends Cubit<ChatState>
     final sessions = state.sessions
         .where((s) => s.sessionId != sessionId)
         .toList();
-    ChatTab? removedTab;
-    final idx = _tabStore.activeIndexOfSession(sessionId);
-    if (idx != -1) {
-      removedTab = _tabStore.removeAt(idx);
+    final tab = _tabStore.openTabBySessionId(sessionId);
+    final port = _workbenchPort;
+    if (tab != null) {
       _sessionRuntime.maybeStopIdleWatch();
+      if (port != null) {
+        // Bar removal fires onTabRemoved → teardownSession (removes the runtime
+        // and disposes it); the bar recomputes center-active, and the bridge
+        // fixes the foreground-session mirror.
+        port.onSessionTabClosed(tab.workspaceId, sessionId);
+      } else {
+        await _tearDownTab(tab);
+        _tabStore.removeSession(sessionId);
+      }
     }
-    final tabs = _tabStore.activeTabs.map((t) => t.info).toList();
     final working = _sessionRuntime.recomputeWorkingSessions();
-
-    if (wasActive && !_tabStore.activeTabsIsEmpty) {
-      final newIdx = idx < _tabStore.activeTabCount
-          ? idx
-          : _tabStore.activeTabCount - 1;
-      final nextTab = _tabStore.activeTabs[newIdx];
-      _emitSnapshot(
-        _dataStore.deriveSnapshot(
-          workspaces: state.workspaces,
-          sessions: sessions,
-        ),
-        base: state.copyWith(
-          tabs: tabs,
-          activeTabIndex: newIdx,
-          activeSessionId: nextTab.info.id,
-          selectedMemberId: nextTab.selectedMemberId,
-          workingSessionIds: working,
-        ),
-      );
-    } else if (_tabStore.activeTabsIsEmpty) {
-      _tabStore.setNewChatActive(_tabStore.activeWorkspaceId, true);
-      _emitSnapshot(
-        _dataStore.deriveSnapshot(
-          workspaces: state.workspaces,
-          sessions: sessions,
-        ),
-        base: state.copyWith(
-          tabs: [],
-          activeTabIndex: 0,
-          clearActiveSessionId: true,
-          newChatActive: true,
-          workingSessionIds: working,
-        ),
-      );
-    } else {
-      _emitSnapshot(
-        _dataStore.deriveSnapshot(
-          workspaces: state.workspaces,
-          sessions: sessions,
-        ),
-        base: state.copyWith(tabs: tabs, workingSessionIds: working),
-      );
-    }
-
-    if (removedTab != null) {
-      await _tearDownTab(removedTab);
-    }
-
+    _emitSnapshot(
+      _dataStore.deriveSnapshot(
+        workspaces: state.workspaces,
+        sessions: sessions,
+      ),
+      base: state.copyWith(
+        clearActiveSessionId: wasActive,
+        activeSessionId: wasActive ? null : state.activeSessionId,
+        selectedMemberId: wasActive ? '' : state.selectedMemberId,
+        workingSessionIds: working,
+      ),
+    );
     _emitSnapshot(await _dataStore.deleteSessionRecord(repo, sessionId));
     if (session != null) {
       await _automationRepository.disableForSession(

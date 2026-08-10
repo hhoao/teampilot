@@ -191,9 +191,9 @@ void main() {
       final endpoint = cubit.teammateBusMcpEndpointForSession(
         session.sessionId,
       )!;
-      expect(cubit.state.tabs.length, 1);
+      expect(cubit.tabStore.openTabs.length, 1);
 
-      cubit.closeTab(0);
+      cubit.closeSessionTab(session.sessionId);
       await drainPendingAsyncWork();
 
       expect(cubit.hasTeamBusResources(session.sessionId), isFalse);

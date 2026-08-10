@@ -11,6 +11,7 @@ import '../../cubits/cli_presets_cubit.dart';
 import '../../cubits/editor_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
 import '../../cubits/workbench/workbench_cubit.dart';
+import '../../cubits/workbench/workbench_tab.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../utils/workspace/workspace_chrome_profile.dart';
 import '../../models/team_config.dart';
@@ -31,7 +32,7 @@ import '../workbench/workbench_body.dart';
 import '../workspace_shell/workspace_shell.dart';
 import 'chat_page_structural_signal.dart';
 import 'chat_page_shell_probe.dart';
-import 'chat_scoped_tab_view.dart';
+import 'chat_workbench_slice.dart';
 import 'session_tab_cli.dart';
 import 'session_workbench_view_toggle.dart';
 import 'team_config_incomplete_dialog.dart';
@@ -154,6 +155,7 @@ class _ChatWorkspaceShell extends StatelessWidget {
   }
 
   bool _scopedTabBuildWhen(
+    WorkbenchCubit workbench,
     ChatCubit cubit,
     ChatState previous,
     ChatState next,
@@ -162,11 +164,13 @@ class _ChatWorkspaceShell extends StatelessWidget {
     final prevSignal = chatPageStructuralSignal(
       state: previous,
       tabStore: cubit.tabStore,
+      workbench: workbench,
       tabScopeId: tabScopeId,
     );
     final nextSignal = chatPageStructuralSignal(
       state: next,
       tabStore: cubit.tabStore,
+      workbench: workbench,
       tabScopeId: tabScopeId,
     );
     return prevSignal != nextSignal;
@@ -175,11 +179,13 @@ class _ChatWorkspaceShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cubit = context.read<ChatCubit>();
+    final workbench = context.read<WorkbenchCubit>();
     return BlocBuilder<ChatCubit, ChatState>(
-      buildWhen: (previous, next) => _scopedTabBuildWhen(cubit, previous, next),
+      buildWhen: (previous, next) =>
+          _scopedTabBuildWhen(workbench, cubit, previous, next),
       builder: (context, state) {
-        final view = ChatScopedTabView.resolve(cubit, tabScopeId);
         final active = WorkspaceActiveContext.resolve(
+          workbench: workbench,
           chat: cubit,
           launchProfiles: context.read<LaunchProfileCubit>(),
           tabScopeId: tabScopeId,
@@ -191,7 +197,6 @@ class _ChatWorkspaceShell extends StatelessWidget {
         final personalFallbackCli = isPersonalContext
             ? _personalPresetCli(context)
             : null;
-        final sessionIds = view.tabs.map((t) => t.id).toList(growable: false);
         final workspace = state.workspaces
             .where((w) => w.workspaceId == workspaceId)
             .firstOrNull;
@@ -201,20 +206,25 @@ class _ChatWorkspaceShell extends StatelessWidget {
 
         return BlocBuilder<WorkbenchCubit, WorkbenchState>(
             buildWhen: (prev, next) =>
-                prev.bucket(workspaceId) != next.bucket(workspaceId),
+                prev.bar(workspaceId) != next.bar(workspaceId),
             builder: (context, workbenchState) {
               final editorBucket = context
                   .select<EditorCubit, WorkspaceEditorBucket>(
                     (c) => c.state.bucket(workspaceId),
                   );
-              final order = workbenchState.bucket(workspaceId).tabOrder;
-              final activeId = workbenchState.bucket(workspaceId).activeTabId;
+              final bar = workbenchState.bar(workspaceId);
+              final order = bar.center.order;
+              final activeId = bar.center.activeId;
+              final sessionIds = [
+                for (final t in order)
+                  if (t.kind == WorkbenchTabKind.session) t.id,
+              ];
               const sessionTitles = <String, String>{};
               const sessionWorking = <String, bool>{};
               final sessionCli = <String, CliTool?>{
-                for (final t in view.tabs)
-                  t.id: () {
-                    final runtimeTab = tabById[t.id];
+                for (final id in sessionIds)
+                  id: () {
+                    final runtimeTab = tabById[id];
                     if (runtimeTab == null) return null;
                     return resolveSessionTabCli(
                       tab: runtimeTab,
@@ -254,9 +264,7 @@ class _ChatWorkspaceShell extends StatelessWidget {
                 sessionCli: sessionCli,
                 sessionPinned: sessionPinned,
                 editorBucket: editorBucket,
-                previewTabIds: workbenchState
-                    .bucket(workspaceId)
-                    .previewTabIds,
+                previewTabIds: bar.center.previewIds,
                 shellTitles: shellTitles,
                 sessionAccent: Theme.of(context).colorScheme.primary,
               );
@@ -281,12 +289,9 @@ class _ChatWorkspaceShell extends StatelessWidget {
                     context.l10n.homeWorkspaceNewConversation,
                 newTerminalLabel: context.l10n.workspaceTerminalNewSession,
                 onNewConversation: routeActive
-                    ? () {
-                        context.read<WorkbenchCubit>().clearActive(
+                    ? () => context.read<WorkbenchCubit>().enterLanding(
                           workspaceId,
-                        );
-                        cubit.enterNewChat(tabScopeId);
-                      }
+                        )
                     : null,
                 onNewTerminal: routeActive
                     ? (anchor) => unawaited(
@@ -407,7 +412,7 @@ class _ChatWorkspaceShell extends StatelessWidget {
                     sessionId: sessionId,
                     isPersonalContext: isPersonalContext,
                     team: teamConfig,
-                    workbenchSlice: view.workbenchSlice,
+                    workbenchSlice: ChatWorkbenchSlice.from(state),
                   ),
                 ),
               );

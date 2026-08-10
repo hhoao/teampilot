@@ -106,7 +106,7 @@ void main() {
     addTearDown(worktreeCubit.close);
 
     _stubCubit(chatCubit, ChatState(workspaces: [workspace]));
-    final tabStore = ChatTabStore()..setActiveWorkspace(workspace.workspaceId);
+    final tabStore = ChatTabStore()..setActiveWorkspaceId(workspace.workspaceId);
     when(() => chatCubit.tabStore).thenReturn(tabStore);
     _stubCubit(cliPresetsCubit, const CliPresetsState());
     _stubCubit(launchProfileCubit, const LaunchProfileState());
@@ -186,7 +186,7 @@ void main() {
     addTearDown(worktreeCubit.close);
 
     _stubCubit(chatCubit, ChatState(workspaces: [workspace]));
-    final tabStore = ChatTabStore()..setActiveWorkspace(workspace.workspaceId);
+    final tabStore = ChatTabStore()..setActiveWorkspaceId(workspace.workspaceId);
     when(() => chatCubit.tabStore).thenReturn(tabStore);
     _stubCubit(cliPresetsCubit, const CliPresetsState());
     _stubCubit(launchProfileCubit, const LaunchProfileState());
@@ -270,7 +270,7 @@ void main() {
     addTearDown(worktreeCubit.close);
 
     _stubCubit(chatCubit, ChatState(workspaces: [workspace]));
-    final tabStore = ChatTabStore()..setActiveWorkspace(workspace.workspaceId);
+    final tabStore = ChatTabStore()..setActiveWorkspaceId(workspace.workspaceId);
     when(() => chatCubit.tabStore).thenReturn(tabStore);
     _stubCubit(cliPresetsCubit, const CliPresetsState());
     _stubCubit(launchProfileCubit, const LaunchProfileState());

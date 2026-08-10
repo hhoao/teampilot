@@ -17,7 +17,7 @@ void main() {
       info: const ChatTabInfo(id: 's1', title: 'T', subtitle: ''),
       cliTeamName: 's1',
     );
-    store.append(tab);
+    store.registerSession(tab);
 
     final shell = await ConnectedRecordingShell.connect();
     tab.memberShells['s1'] = shell.session;

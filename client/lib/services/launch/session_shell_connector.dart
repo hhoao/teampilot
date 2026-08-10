@@ -76,7 +76,7 @@ class SessionShellConnector {
     required TerminalSession shell,
   }) {
     if (_host.isClosed) return false;
-    if (_tabStore.activeIndexOfSession(tab.info.id) == -1) return false;
+    if (_tabStore.openTabBySessionId(tab.info.id) == null) return false;
     if (shell.isDisposed) return false;
     return true;
   }

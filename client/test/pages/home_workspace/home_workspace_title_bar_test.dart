@@ -6,6 +6,7 @@ import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/layout_cubit.dart';
 import 'package:teampilot/cubits/notification_cubit.dart';
+import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
 import 'package:teampilot/cubits/progress_activity_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/pages/home_workspace/home_workspace_title_bar.dart';
@@ -23,6 +24,7 @@ Widget _wrapTitleBar({
   return MultiBlocProvider(
     providers: [
       BlocProvider<ChatCubit>.value(value: chatCubit),
+      BlocProvider(create: (_) => WorkbenchCubit()),
       BlocProvider(create: (_) => NotificationCubit()),
       BlocProvider(
         create: (context) => ProgressActivityCubit(

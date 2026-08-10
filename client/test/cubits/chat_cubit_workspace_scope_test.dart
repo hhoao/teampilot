@@ -23,64 +23,65 @@ class _RunningShell extends TerminalSession {
 
 void main() {
   group('ChatCubit workspace scoping', () {
-    test('setActiveWorkspace swaps the visible tab list', () {
+    test('setActiveWorkspace switches the foreground workspace', () {
       final cubit = _cubit();
+      addTearDown(cubit.close);
+
       cubit.setActiveWorkspace('A');
-      cubit.tabStore.append(_tab('a1'));
-      cubit.tabStore.append(_tab('a2'));
-      // Mirror into state the way the launch flow does:
-      cubit.refreshActiveWorkspaceTabs();
-      expect(cubit.state.tabs.map((t) => t.id), ['a1', 'a2']);
+      cubit.tabStore.registerSession(_tab('a1'));
+      expect(cubit.tabStore.activeWorkspaceId, 'A');
+      expect(cubit.tabStore.tabsForWorkspace('A').map((t) => t.info.id),
+          ['a1']);
 
       cubit.setActiveWorkspace('B');
-      expect(cubit.state.tabs, isEmpty);
+      expect(cubit.tabStore.activeWorkspaceId, 'B');
+      // The registry is global; per-workspace scoping filters by workspaceId.
+      expect(cubit.tabStore.tabsForWorkspace('A').map((t) => t.info.id),
+          ['a1']);
 
       cubit.setActiveWorkspace('A');
-      expect(cubit.state.tabs.map((t) => t.id), ['a1', 'a2']);
-      addTearDown(cubit.close);
+      expect(cubit.tabStore.activeWorkspaceId, 'A');
     });
 
-    test('switching workspaces preserves each workspace active index', () {
+    test('switching workspaces preserves each workspace runtime set', () {
       final cubit = _cubit();
-      cubit.setActiveWorkspace('A');
-      cubit.tabStore.append(_tab('a1'));
-      cubit.tabStore.append(_tab('a2'));
-      cubit.tabStore.append(_tab('a3'));
-      cubit.refreshActiveWorkspaceTabs();
-      cubit.selectTab(2);
-      expect(cubit.state.activeTabIndex, 2);
-
-      cubit.setActiveWorkspace('B');
-      cubit.setActiveWorkspace('A');
-      expect(cubit.state.activeTabIndex, 2);
       addTearDown(cubit.close);
+
+      cubit.setActiveWorkspace('A');
+      cubit.tabStore.registerSession(_tab('a1'));
+      cubit.tabStore.registerSession(_tab('a2'));
+      cubit.setActiveWorkspace('B');
+      cubit.tabStore.registerSession(_tab('b1'));
+
+      expect(cubit.tabStore.sessionsForWorkspace('A'), ['a1', 'a2']);
+      expect(cubit.tabStore.sessionsForWorkspace('B'), ['b1']);
     });
 
     test(
-      'openTabCountForWorkspace counts only session tabs in that bucket',
+      'openTabCountForWorkspace counts only session tabs in that workspace',
       () {
         final cubit = _cubit();
+        addTearDown(cubit.close);
+
         cubit.setActiveWorkspace('A');
-        cubit.tabStore.append(_tab('sess-1'));
-        cubit.tabStore.append(_tab('local-team'));
+        cubit.tabStore.registerSession(_tab('sess-1'));
+        cubit.tabStore.registerSession(_tab('local-team'));
         cubit.setActiveWorkspace('B');
-        cubit.tabStore.append(_tab('sess-2'));
+        cubit.tabStore.registerSession(_tab('sess-2'));
         expect(cubit.openTabCountForWorkspace('A'), 1);
         expect(cubit.openTabCountForWorkspace('B'), 1);
-        addTearDown(cubit.close);
       },
     );
 
     test(
-      'activateWorkspaceTab updates tab bucket and session scope together',
+      'activateWorkspaceTab updates active workspace and scope together',
       () {
         final cubit = _cubit();
         addTearDown(cubit.close);
 
         cubit.setActiveWorkspace('A');
-        cubit.tabStore.append(_tab('a1'));
-        cubit.refreshActiveWorkspaceTabs();
-        expect(cubit.state.tabs, isNotEmpty);
+        cubit.tabStore.registerSession(_tab('a1'));
+        expect(cubit.tabStore.activeWorkspaceId, 'A');
 
         cubit.activateWorkspaceTab(
           workspaceTabKey: 'B',
@@ -89,7 +90,6 @@ void main() {
         );
 
         expect(cubit.tabStore.activeWorkspaceId, 'B');
-        expect(cubit.state.tabs, isEmpty);
       },
     );
 
@@ -98,15 +98,13 @@ void main() {
       addTearDown(cubit.close);
 
       cubit.setActiveWorkspace('A');
-      cubit.tabStore.append(_tab('a-session'));
-      cubit.refreshActiveWorkspaceTabs();
+      cubit.tabStore.registerSession(_tab('a-session'));
 
       cubit.setActiveWorkspace('B');
       final bTab = _tab('b-session');
       const shellId = 'b-shell';
       bTab.memberShells[shellId] = _RunningShell();
-      cubit.tabStore.append(bTab);
-      cubit.refreshActiveWorkspaceTabs();
+      cubit.tabStore.registerSession(bTab);
 
       cubit.setActiveWorkspace('A');
       expect(cubit.tabStore.activeWorkspaceId, 'A');
@@ -116,7 +114,7 @@ void main() {
       );
     });
 
-    test('closeTab disposes history seats for that session', () async {
+    test('closeSessionTab disposes history seats for that session', () async {
       final cubit = _cubit();
       addTearDown(cubit.close);
 
@@ -124,10 +122,9 @@ void main() {
       cubit.onHistorySeatsDispose = disposed.add;
 
       cubit.setActiveWorkspace('A');
-      cubit.tabStore.append(_tab('sess-close'));
-      cubit.refreshActiveWorkspaceTabs();
+      cubit.tabStore.registerSession(_tab('sess-close'));
 
-      cubit.closeTab(0);
+      cubit.closeSessionTab('sess-close');
       await drainPendingAsyncWork();
 
       expect(disposed, ['sess-close']);

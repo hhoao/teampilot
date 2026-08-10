@@ -9,6 +9,7 @@ import 'package:window_manager/window_manager.dart';
 
 import '../../cubits/chat_cubit.dart';
 import '../../cubits/layout_cubit.dart';
+import '../../cubits/workbench/workbench_cubit.dart';
 import '../../cubits/mobile_workspace_drawer.dart';
 
 import '../../l10n/l10n_extensions.dart';
@@ -520,8 +521,11 @@ class _HomeTitleBarMobileDrawerTrigger extends StatelessWidget {
       return TpSidebarTrigger(size: controlSize, selected: openMobile);
     }
 
-    final composeLanding = context.select<ChatCubit, bool>(
-      (c) => c.state.newChatActive,
+    final activeWorkspaceId = context.select<ChatCubit, String>(
+      (c) => c.tabStore.activeWorkspaceId,
+    );
+    final composeLanding = context.select<WorkbenchCubit, bool>(
+      (w) => w.state.bar(activeWorkspaceId).center.landingActive,
     );
     return BlocBuilder<LayoutCubit, LayoutState>(
       buildWhen: (a, b) =>

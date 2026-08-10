@@ -8,6 +8,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../cubits/app_provider_cubit.dart';
 import '../../cubits/cli_presets_cubit.dart';
 import '../../cubits/chat_cubit.dart';
+import '../../cubits/workbench/workbench_cubit.dart';
 import '../../cubits/chat/model/session_workbench_view.dart';
 import '../../cubits/file_tree_cubit.dart';
 import '../../cubits/mailbox_cubit.dart';
@@ -190,12 +191,13 @@ class RightToolsChatSlice {
 
   factory RightToolsChatSlice.from(
     ChatState state, {
+    required bool hasActiveTab,
     required bool hasTeamBus,
     AppSession? persistedSession,
   }) {
     return RightToolsChatSlice(
       selectedMemberId: state.selectedMemberId,
-      hasActiveTab: state.tabs.isNotEmpty,
+      hasActiveTab: hasActiveTab,
       activeSessionId: state.activeSessionId,
       hasTeamBus: hasTeamBus,
       persistedSession: persistedSession,
@@ -343,10 +345,13 @@ class _RightToolsToolViewsState extends State<RightToolsToolViews> {
       return const SizedBox.shrink();
     }
 
+    final workbench = context.read<WorkbenchCubit>();
     final chatSlice = context.select<ChatCubit, RightToolsChatSlice>(
       (c) => RightToolsChatSlice.from(
         c.state,
-        hasTeamBus: scopedTeamBus(c, widget.toolsScopeId) != null,
+        hasActiveTab:
+            c.tabStore.tabsForWorkspace(widget.toolsScopeId).isNotEmpty,
+        hasTeamBus: scopedTeamBus(workbench, c, widget.toolsScopeId) != null,
         persistedSession: c.activeTab?.persistedSession,
       ),
     );

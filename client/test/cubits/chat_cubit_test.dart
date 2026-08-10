@@ -2,6 +2,9 @@ import 'dart:io';
 
 import 'package:teampilot/cubits/chat/model/session_connect_request.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
+import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
+import 'package:teampilot/cubits/workbench/workbench_tab.dart';
+import 'package:teampilot/services/workbench/workbench_chat_bridge.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/workspace_folder.dart';
@@ -334,7 +337,7 @@ void main() {
       await cubit.connectWorkspaceSession(TeamSessionConnect(team));
       await postFrame.flush();
       await drainPendingAsyncWork();
-      expect(cubit.state.tabs.length, 1);
+      expect(cubit.tabStore.openTabs.length, 1);
       expect(cubit.state.selectedMemberId, 'm-lead');
     });
 
@@ -346,7 +349,7 @@ void main() {
         ]);
         await cubit.loadWorkspaceData(repo);
         cubit.setActiveWorkspace(workspace.workspaceId);
-        expect(cubit.state.tabs, isEmpty);
+        expect(cubit.tabStore.openTabs, isEmpty);
 
         await cubit.connectWorkspaceSession(
           PersonalSessionConnect(workspaceId: workspace.workspaceId),
@@ -355,7 +358,7 @@ void main() {
         await postFrame.flush();
         await drainPendingAsyncWork();
 
-        expect(cubit.state.tabs.length, 1);
+        expect(cubit.tabStore.openTabs.length, 1);
         expect(cubit.state.sessions.single.sessionTeam, '');
       },
     );
@@ -417,7 +420,7 @@ void main() {
           ),
         );
 
-        expect(cubit.state.tabs, hasLength(1));
+        expect(cubit.tabStore.openTabs, hasLength(1));
         expect(cubit.state.activeSessionId, session.sessionId);
         expect(cubit.isSessionConnecting(session.sessionId), isTrue);
       },
@@ -453,7 +456,7 @@ void main() {
           ),
         );
 
-        expect(cubit.state.tabs, hasLength(1));
+        expect(cubit.tabStore.openTabs, hasLength(1));
         expect(cubit.state.activeSessionId, isNotEmpty);
         expect(cubit.isSessionConnecting(cubit.state.activeSessionId!), isTrue);
         expect(cubit.state.sessions, hasLength(1));
@@ -505,7 +508,7 @@ void main() {
           ),
         );
 
-        expect(cubit.state.tabs, hasLength(1));
+        expect(cubit.tabStore.openTabs, hasLength(1));
         expect(cubit.state.activeSessionId, session.sessionId);
         expect(cubit.isSessionConnecting(session.sessionId), isTrue);
       },
@@ -562,7 +565,7 @@ void main() {
         await drainPendingAsyncWork();
         await postFrame.flush();
 
-        expect(cubit.state.tabs.length, 1);
+        expect(cubit.tabStore.openTabs.length, 1);
         expect(cubit.isMemberRunning(sessionId: cubit.state.activeSessionId!, memberId: 'm-lead'), isTrue);
         expect(cubit.isMemberRunning(sessionId: cubit.state.activeSessionId!, memberId: 'm-dev'), isTrue);
         expect(cubit.state.selectedMemberId, 'm-lead');
@@ -616,6 +619,9 @@ void main() {
         );
         _registerTempCubitCleanup(tmp: tmp, cubit: cubit, postFrame: postFrame);
 
+        // Runtime registry stamps each staged tab with the active workspace, so
+        // switch the foreground workspace to match the session being opened.
+        cubit.setActiveWorkspace(workspaceA.workspaceId);
         await cubit.requestOpenSession(
           SessionOpenRequest(
             session: sessionA,
@@ -624,6 +630,7 @@ void main() {
             repo: repo,
           ),
         );
+        cubit.setActiveWorkspace(workspaceB.workspaceId);
         await cubit.requestOpenSession(
           SessionOpenRequest(
             session: sessionB,
@@ -635,14 +642,14 @@ void main() {
         await drainPendingAsyncWork();
         await postFrame.flush();
 
-        expect(cubit.state.tabs.length, 2);
+        expect(cubit.tabStore.openTabs.length, 2);
         expect(cubit.openTabCountForWorkspace(workspaceA.workspaceId), 1);
         expect(cubit.openTabCountForWorkspace(workspaceB.workspaceId), 1);
         expect(cubit.openTabCountForWorkspace('no-such-workspace'), 0);
 
         cubit.closeTabsForWorkspace(workspaceA.workspaceId);
 
-        expect(cubit.state.tabs.length, 1);
+        expect(cubit.tabStore.openTabs.length, 1);
         expect(cubit.openTabCountForWorkspace(workspaceA.workspaceId), 0);
         expect(cubit.openTabCountForWorkspace(workspaceB.workspaceId), 1);
       },
@@ -681,6 +688,12 @@ void main() {
           postFrameScheduler: postFrame.scheduler,
         );
         _registerTempCubitCleanup(tmp: tmp, cubit: cubit, postFrame: postFrame);
+        final workbench = WorkbenchCubit();
+        addTearDown(workbench.close);
+        final bridge = WorkbenchChatBridge(workbench: workbench, chat: cubit);
+        workbench.port = bridge;
+        cubit.workbenchPort = bridge;
+        cubit.onSessionTabOpened = bridge.onSessionTabOpened;
 
         cubit.setActiveWorkspace(workspace.workspaceId);
         await cubit.requestOpenSession(
@@ -694,20 +707,36 @@ void main() {
         await drainPendingAsyncWork();
         await postFrame.flush();
 
-        expect(cubit.state.tabs, hasLength(1));
-        expect(cubit.state.newChatActive, isFalse);
+        expect(cubit.tabStore.openTabs, hasLength(1));
+        expect(
+          workbench.state.bar(workspace.workspaceId).center.landingActive,
+          isFalse,
+        );
         expect(cubit.state.activeSessionId, session.sessionId);
 
+        // Entering new-chat routes through the port to the bar landing.
         cubit.enterNewChat(workspace.workspaceId);
+        await drainPendingAsyncWork();
 
-        expect(cubit.state.tabs, hasLength(1));
-        expect(cubit.state.newChatActive, isTrue);
+        expect(cubit.tabStore.openTabs, hasLength(1));
+        expect(
+          workbench.state.bar(workspace.workspaceId).center.landingActive,
+          isTrue,
+        );
         expect(cubit.state.activeSessionId, isNull);
         expect(cubit.openTabCountForWorkspace(workspace.workspaceId), 1);
 
-        cubit.exitNewChat();
+        // Re-selecting the session exits the landing.
+        workbench.select(
+          workspace.workspaceId,
+          WorkbenchTabId.session(session.sessionId),
+        );
+        await drainPendingAsyncWork();
 
-        expect(cubit.state.newChatActive, isFalse);
+        expect(
+          workbench.state.bar(workspace.workspaceId).center.landingActive,
+          isFalse,
+        );
         expect(cubit.state.activeSessionId, session.sessionId);
       },
     );
@@ -745,6 +774,12 @@ void main() {
           postFrameScheduler: postFrame.scheduler,
         );
         _registerTempCubitCleanup(tmp: tmp, cubit: cubit, postFrame: postFrame);
+        final workbench = WorkbenchCubit();
+        addTearDown(workbench.close);
+        final bridge = WorkbenchChatBridge(workbench: workbench, chat: cubit);
+        workbench.port = bridge;
+        cubit.workbenchPort = bridge;
+        cubit.onSessionTabOpened = bridge.onSessionTabOpened;
 
         await cubit.loadWorkspaceData(repo);
         cubit.setActiveWorkspace(workspace.workspaceId);
@@ -759,16 +794,23 @@ void main() {
         await drainPendingAsyncWork();
         await postFrame.flush();
 
-        expect(cubit.state.tabs, hasLength(1));
-        expect(cubit.state.newChatActive, isFalse);
+        expect(cubit.tabStore.openTabs, hasLength(1));
+        expect(
+          workbench.state.bar(workspace.workspaceId).center.landingActive,
+          isFalse,
+        );
         expect(cubit.state.activeSessionId, session.sessionId);
 
         await cubit.deleteSession(repo, session.sessionId);
         await drainPendingAsyncWork();
         await postFrame.flush();
 
-        expect(cubit.state.tabs, isEmpty);
-        expect(cubit.state.newChatActive, isTrue);
+        expect(cubit.tabStore.openTabs, isEmpty);
+        // Closing the last center tab returns the workspace to landing.
+        expect(
+          workbench.state.bar(workspace.workspaceId).center.landingActive,
+          isTrue,
+        );
         expect(cubit.state.activeSessionId, isNull);
         expect(
           cubit.state.sessions.any((s) => s.sessionId == session.sessionId),
@@ -1011,7 +1053,7 @@ void main() {
       await drainPendingAsyncWork();
       await postFrame.flush();
 
-      expect(cubit.state.tabs.length, 1);
+      expect(cubit.tabStore.openTabs.length, 1);
       expect(cubit.isMemberRunning(sessionId: cubit.state.activeSessionId!, memberId: 'team-lead'), isTrue);
       expect(
         fakeSessions.expand((s) => s.connectedMembers),
@@ -1072,7 +1114,7 @@ void main() {
         await drainPendingAsyncWork();
         await postFrame.flush();
 
-        expect(cubit.state.tabs.length, 1);
+        expect(cubit.tabStore.openTabs.length, 1);
         expect(cubit.isMemberRunning(sessionId: cubit.state.activeSessionId!, memberId: 'team-lead'), isFalse);
         expect(cubit.isMemberRunning(sessionId: cubit.state.activeSessionId!, memberId: 'm-dev'), isFalse);
         expect(fakeSessions.expand((s) => s.connectedMembers), isEmpty);
@@ -1204,7 +1246,7 @@ void main() {
 
         expect(cubit.state.workspaces, hasLength(1));
         expect(cubit.state.workspaces.single.firstFolderPath, workspacePath);
-        expect(cubit.state.tabs, hasLength(1));
+        expect(cubit.tabStore.openTabs, hasLength(1));
       },
     );
   });

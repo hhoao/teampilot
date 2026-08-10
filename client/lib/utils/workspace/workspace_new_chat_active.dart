@@ -1,10 +1,5 @@
-import '../../cubits/chat_cubit.dart';
+import '../../cubits/workbench/workbench_cubit.dart';
 
 /// Whether [tabScopeId] is showing new-chat landing (not a session tab).
-bool workspaceNewChatActive(ChatCubit cubit, String tabScopeId) {
-  final store = cubit.tabStore;
-  if (store.activeWorkspaceId == tabScopeId) {
-    return cubit.state.newChatActive;
-  }
-  return store.isNewChatActive(tabScopeId);
-}
+bool workspaceNewChatActive(WorkbenchCubit workbench, String tabScopeId) =>
+    workbench.state.bar(tabScopeId).center.landingActive;

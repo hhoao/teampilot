@@ -134,11 +134,11 @@ class SessionLaunchPipeline {
     );
     if (blocked != null) return LaunchOpened(blocked);
 
-    final existingIdx = _tabStore.activeIndexOfSession(session.sessionId);
-    if (existingIdx != -1) {
+    final existing = _tabStore.openTabBySessionId(session.sessionId);
+    if (existing != null) {
       final status = _tabSurface.surfaceExistingTab(
         request: request.withSession(session),
-        existingIdx: existingIdx,
+        existing: existing,
       );
       return LaunchOpened(status);
     }
@@ -508,9 +508,9 @@ class SessionLaunchPipeline {
     }
     tab.persistedSession = launchSession;
 
-    if (_tabStore.activeIndexOfSession(session.sessionId) == -1) {
+    if (_tabStore.openTabBySessionId(session.sessionId) == null) {
       appLogger.w(
-        '[session-launch] existing session connect tab not in foreground bucket '
+        '[session-launch] existing session connect tab not open '
         'session=${session.sessionId} active=${_tabStore.activeWorkspaceId} '
         'tabWorkspace=${tab.workspaceId}',
       );

@@ -123,6 +123,7 @@ class PerformanceScenarioApp {
           executableResolver: () => performanceTestExecutable,
           automationRepository: testAutomationRepository(),
         );
+    final workbench = WorkbenchCubit();
     final presence = MemberPresenceCubit();
     chat.bindPresenceCubit(presence);
     final sshEvents = SshConnectionEvents();
@@ -251,7 +252,7 @@ class PerformanceScenarioApp {
               create: (_) => AiFeatureSettingsCubit(repository: settings),
             ),
             BlocProvider(create: (_) => EditorCubit(fs: LocalFilesystem())),
-            BlocProvider(create: (_) => WorkbenchCubit()),
+            BlocProvider.value(value: workbench),
             BlocProvider(
               create: (_) => ExtensionCubit(
                 extensionRepo,
@@ -300,12 +301,12 @@ class PerformanceScenarioApp {
             ),
             BlocProvider(
               create: (_) => MailboxCubit(
-                busForScope: (scope) => scopedTeamBus(chat, scope),
+                busForScope: (scope) => scopedTeamBus(workbench, chat, scope),
               ),
             ),
             BlocProvider(
               create: (_) => BoardCubit(
-                busForScope: (scope) => scopedTeamBus(chat, scope),
+                busForScope: (scope) => scopedTeamBus(workbench, chat, scope),
               ),
             ),
             BlocProvider(create: (_) => McpCubit(McpRepository())),

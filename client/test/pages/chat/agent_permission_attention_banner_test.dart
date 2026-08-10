@@ -93,8 +93,8 @@ void main() {
     final session = _simpleSession();
     final chat = _RecordingChatCubit();
     addTearDown(chat.close);
-    chat.tabStore.setActiveWorkspace(session.workspaceId);
-    chat.tabStore.append(
+    chat.tabStore.setActiveWorkspaceId(session.workspaceId);
+    chat.tabStore.registerSession(
       ChatTab(
         info: ChatTabInfo(
           id: session.sessionId,
@@ -143,8 +143,8 @@ void main() {
     final session = _simpleSession();
     final chat = _RecordingChatCubit();
     addTearDown(chat.close);
-    chat.tabStore.setActiveWorkspace(session.workspaceId);
-    chat.tabStore.append(
+    chat.tabStore.setActiveWorkspaceId(session.workspaceId);
+    chat.tabStore.registerSession(
       ChatTab(
         info: ChatTabInfo(
           id: session.sessionId,
@@ -173,8 +173,8 @@ void main() {
     final session = _simpleSession();
     final chat = _RecordingChatCubit();
     addTearDown(chat.close);
-    chat.tabStore.setActiveWorkspace(session.workspaceId);
-    chat.tabStore.append(
+    chat.tabStore.setActiveWorkspaceId(session.workspaceId);
+    chat.tabStore.registerSession(
       ChatTab(
         info: ChatTabInfo(
           id: session.sessionId,
@@ -222,8 +222,8 @@ void main() {
     final session = _simpleSession();
     final chat = _RecordingChatCubit();
     addTearDown(chat.close);
-    chat.tabStore.setActiveWorkspace(session.workspaceId);
-    chat.tabStore.append(
+    chat.tabStore.setActiveWorkspaceId(session.workspaceId);
+    chat.tabStore.registerSession(
       ChatTab(
         info: ChatTabInfo(
           id: session.sessionId,

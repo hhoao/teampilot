@@ -8,27 +8,18 @@ void main() {
         stateVersion: 1,
         activeSessionId: 's1',
         selectedMemberId: 'agent',
-        activeTabIndex: 0,
-        tabCount: 1,
-        newChatActive: false,
         sessionLaunchError: null,
       );
       const same = ChatWorkbenchSlice(
         stateVersion: 1,
         activeSessionId: 's1',
         selectedMemberId: 'agent',
-        activeTabIndex: 0,
-        tabCount: 1,
-        newChatActive: false,
         sessionLaunchError: null,
       );
       const changed = ChatWorkbenchSlice(
         stateVersion: 2,
         activeSessionId: 's1',
         selectedMemberId: 'agent',
-        activeTabIndex: 0,
-        tabCount: 1,
-        newChatActive: false,
         sessionLaunchError: null,
       );
 

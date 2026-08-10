@@ -33,7 +33,7 @@ import 'package:uuid/uuid.dart';
 void main() {
   group('stable member taskId staging', () {
     test('provisional team bindings use plan taskIds not sessionId', () async {
-      final tabStore = ChatTabStore()..setActiveWorkspace('ws-1');
+      final tabStore = ChatTabStore()..setActiveWorkspaceId('ws-1');
       final workspace = Workspace(
         workspaceId: 'ws-1',
         folders: const [WorkspaceFolder(path: '/proj')],
@@ -115,7 +115,7 @@ void main() {
         cli: CliTool.claude,
       );
 
-      final tabStore = ChatTabStore()..setActiveWorkspace(workspace.workspaceId);
+      final tabStore = ChatTabStore()..setActiveWorkspaceId(workspace.workspaceId);
       final host = _CapturingHost(
         ChatState(workspaces: [workspace]),
         tabStore: tabStore,
@@ -175,7 +175,7 @@ void main() {
           cli: CliTool.claude,
         );
         final capturer = _CapturingSessionRepository();
-        final tabStore = ChatTabStore()..setActiveWorkspace('ws-1');
+        final tabStore = ChatTabStore()..setActiveWorkspaceId('ws-1');
         final host = _CapturingHost(
           ChatState(workspaces: [workspace]),
           tabStore: tabStore,
@@ -411,13 +411,7 @@ class _CapturingHost implements SessionLaunchHost {
   bool get isClosed => false;
 
   @override
-  ChatTab? get activeTab {
-    final idx = state.activeTabIndex;
-    if (idx == null || idx < 0 || idx >= tabStore.activeTabCount) {
-      return null;
-    }
-    return tabStore.activeTabs[idx];
-  }
+  ChatTab? get activeTab => tabStore.activeTab(0);
 
   @override
   set activeTeam(TeamProfile? team) {}

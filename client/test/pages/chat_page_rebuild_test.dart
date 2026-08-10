@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/cubits/ai_history_cubit.dart';
 import 'package:teampilot/cubits/agent_attention_cubit.dart';
 import 'package:teampilot/cubits/chat/model/chat_tab.dart';
 import 'package:teampilot/cubits/chat/model/chat_tab_info.dart';
@@ -23,6 +24,7 @@ import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/landing_launch_context.dart';
+import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/pages/chat/chat_page_shell.dart';
@@ -37,6 +39,11 @@ import 'package:teampilot/services/cli/registry/cli_tool_registry_scope.dart';
 import 'package:teampilot/services/file_tree/workspace_file_tree_store.dart';
 import 'package:teampilot/services/git/git_repo_store.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
+import 'package:teampilot/services/session/ai_history_loader.dart';
+import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/runtime_context.dart';
+import 'package:teampilot/services/storage/runtime_context_registry.dart';
+import 'package:teampilot/services/terminal/terminal_transport_factory.dart';
 import 'package:teampilot/services/plugin/plugin_repo_service.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/terminal/workspace_terminal_registry.dart';
@@ -68,7 +75,36 @@ Widget _chatPageShell({bool wrapCliRegistry = false}) {
   );
 }
 
-void _openSessionTab(ChatCubit chatCubit, AppSession session, String title) {
+/// `SessionChatView` binds a History seat through the pod's HistoryStore when
+/// pods own one; the pre-pod fallback reads [AiHistoryCubit] from context. The
+/// rebuild tests render a session body (fed into the bar), so the harness must
+/// provide the cubit or the first build throws ProviderNotFoundException.
+AiHistoryCubit _testAiHistoryCubit() {
+  return AiHistoryCubit(
+    loader: AiHistoryLoader(
+      resolveWorkContext: (launchCtx, {String? memberId}) async {
+        final basePath = AppStorage.paths.basePath;
+        return RuntimeContext(
+          target: RuntimeTarget.local(),
+          filesystem: LocalFilesystem(
+            pathContext: AppPaths.pathContextForDataRoot(basePath),
+          ),
+          home: basePath,
+          cwd: basePath,
+          appDataRoot: basePath,
+          paths: AppPaths(basePath),
+        );
+      },
+    ),
+  );
+}
+
+void _openSessionTab(
+  ChatCubit chatCubit,
+  WorkbenchCubit workbenchCubit,
+  AppSession session,
+  String title,
+) {
   chatCubit.setActiveWorkspace('personal-test');
   if (!chatCubit.state.sessions.any((s) => s.sessionId == session.sessionId)) {
     chatCubit.ingestWorkspaceSessionSnapshot(
@@ -76,14 +112,13 @@ void _openSessionTab(ChatCubit chatCubit, AppSession session, String title) {
       sessions: [...chatCubit.state.sessions, session],
     );
   }
-  chatCubit.tabStore.append(
+  chatCubit.tabStore.registerSession(
     ChatTab(
       info: ChatTabInfo(id: session.sessionId, title: title, subtitle: ''),
       cliTeamName: session.sessionId,
     ),
   );
-  chatCubit.tabStore.setNewChatActive('personal-test', false);
-  chatCubit.refreshActiveWorkspaceTabs();
+  workbenchCubit.openSession('personal-test', session.sessionId);
 }
 
 void main() {
@@ -160,6 +195,9 @@ void main() {
       chatCubit.bindPresenceCubit(presenceCubit);
       addTearDown(() => presenceCubit.close());
 
+      final aiHistoryCubit = _testAiHistoryCubit();
+      addTearDown(() => aiHistoryCubit.close());
+
       final cliPresetsCubit = CliPresetsCubit(
         repository: CliPresetsRepository(
           fs: InMemoryFilesystem(),
@@ -216,6 +254,7 @@ void main() {
                 BlocProvider(
                   create: (_) => AgentAttentionCubit(pruneInterval: null),
                 ),
+                BlocProvider.value(value: aiHistoryCubit),
                 BlocProvider.value(value: WorkspaceToolsCubit()),
                 BlocProvider.value(value: cliPresetsCubit),
                 BlocProvider.value(value: sessionPreferencesCubit),
@@ -315,6 +354,9 @@ void main() {
       chatCubit.bindPresenceCubit(presenceCubit);
       addTearDown(() => presenceCubit.close());
 
+      final aiHistoryCubit = _testAiHistoryCubit();
+      addTearDown(() => aiHistoryCubit.close());
+
       final cliPresetsCubit = CliPresetsCubit(
         repository: CliPresetsRepository(
           fs: InMemoryFilesystem(),
@@ -343,6 +385,7 @@ void main() {
 
       _openSessionTab(
         chatCubit,
+        workbenchCubit,
         AppSession(
           sessionId: 'sess-1',
           workspaceId: 'personal-test',
@@ -383,6 +426,7 @@ void main() {
                 BlocProvider(
                   create: (_) => AgentAttentionCubit(pruneInterval: null),
                 ),
+                BlocProvider.value(value: aiHistoryCubit),
                 BlocProvider.value(value: WorkspaceToolsCubit()),
                 BlocProvider.value(value: cliPresetsCubit),
                 BlocProvider.value(value: sessionPreferencesCubit),
@@ -487,6 +531,9 @@ void main() {
     chatCubit.bindPresenceCubit(presenceCubit);
     addTearDown(() => presenceCubit.close());
 
+    final aiHistoryCubit = _testAiHistoryCubit();
+    addTearDown(() => aiHistoryCubit.close());
+
     final cliPresetsCubit = CliPresetsCubit(
       repository: CliPresetsRepository(
         fs: InMemoryFilesystem(),
@@ -515,6 +562,7 @@ void main() {
 
     _openSessionTab(
       chatCubit,
+      workbenchCubit,
       AppSession(
         sessionId: 'sess-1',
         workspaceId: 'personal-test',
@@ -555,6 +603,7 @@ void main() {
               BlocProvider(
                 create: (_) => AgentAttentionCubit(pruneInterval: null),
               ),
+              BlocProvider.value(value: aiHistoryCubit),
               BlocProvider.value(value: WorkspaceToolsCubit()),
               BlocProvider.value(value: cliPresetsCubit),
               BlocProvider.value(value: sessionPreferencesCubit),
@@ -584,6 +633,7 @@ void main() {
 
     _openSessionTab(
       chatCubit,
+      workbenchCubit,
       AppSession(
         sessionId: 'sess-2',
         workspaceId: 'personal-test',
@@ -594,6 +644,11 @@ void main() {
       'Session two',
     );
     await tester.pump();
+    // The bar-driven structural rebuild propagates over a couple of frames
+    // (the workbench emit rebuilds the inner shell, then the body beneath it),
+    // so settle with a short frame budget instead of a single pump.
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.pump(const Duration(milliseconds: 50));
 
     expect(
       _structuralProbe(tester).buildCount,
@@ -666,6 +721,9 @@ void main() {
       chatCubit.bindPresenceCubit(presenceCubit);
       addTearDown(() => presenceCubit.close());
 
+      final aiHistoryCubit = _testAiHistoryCubit();
+      addTearDown(() => aiHistoryCubit.close());
+
       final cliPresetsCubit = CliPresetsCubit(
         repository: CliPresetsRepository(
           fs: InMemoryFilesystem(),
@@ -722,6 +780,7 @@ void main() {
                 BlocProvider(
                   create: (_) => AgentAttentionCubit(pruneInterval: null),
                 ),
+                BlocProvider.value(value: aiHistoryCubit),
                 BlocProvider.value(value: WorkspaceToolsCubit()),
                 BlocProvider.value(value: cliPresetsCubit),
                 BlocProvider.value(value: sessionPreferencesCubit),

@@ -91,7 +91,12 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
       : _port = port ?? const _NoopPort(),
         super(const WorkbenchState());
 
-  final WorkbenchDomainPort _port;
+  WorkbenchDomainPort _port;
+
+  /// Late-wired teardown port. The app shell sets this after the domain bridge
+  /// exists (the bridge is constructed after both cubits, so the no-op default
+  /// is replaced once the port is available).
+  set port(WorkbenchDomainPort value) => _port = value;
   static const TabStripReducer _r = TabStripReducer();
 
   // ---- NEW core API ----

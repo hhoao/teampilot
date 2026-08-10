@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import '../../cubits/chat_cubit.dart';
+import '../../cubits/workbench/workbench_cubit.dart';
 import '../workbench/workbench_strip_navigator.dart';
 import 'command_bus.dart';
 import 'command_ids.dart';
@@ -10,21 +13,26 @@ import 'command_ids.dart';
 void registerSessionCommands(
   CommandBus bus,
   ChatCubit chat,
+  WorkbenchCubit workbench,
   WorkbenchStripNavigator strip,
 ) {
   bus.register(CommandIds.stripNextTab, strip.next);
   bus.register(CommandIds.stripPrevTab, strip.previous);
   bus.register(
     CommandIds.sessionNewTab,
-    () => chat.enterNewChat(chat.tabStore.activeWorkspaceId),
+    () => workbench.enterLanding(chat.tabStore.activeWorkspaceId),
   );
   bus.register(
     CommandIds.sessionNewChat,
-    () => chat.enterNewChat(chat.tabStore.activeWorkspaceId),
+    () => workbench.enterLanding(chat.tabStore.activeWorkspaceId),
   );
   bus.register(
     CommandIds.sessionCloseTab,
-    () => chat.closeTab(chat.state.activeTabIndex),
+    () {
+      final ws = chat.tabStore.activeWorkspaceId;
+      final active = workbench.centerActiveId(ws);
+      if (active != null) unawaited(workbench.close(ws, active));
+    },
   );
   for (var n = 1; n <= 10; n++) {
     final ordinal = n;

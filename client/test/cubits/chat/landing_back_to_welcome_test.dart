@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/cubits/chat/model/session_connect_request.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_tab.dart';
@@ -52,7 +51,7 @@ void main() {
   tearDown(tearDownTestAppStorage);
 
   test(
-    'dismissNewChat + clearActive yields welcome and keeps tabOrder',
+    'clearing active via landing yields welcome and keeps tabOrder',
     () async {
       const team = TeamProfile(
         id: 'team-a',
@@ -112,15 +111,21 @@ void main() {
       final sessionTab = WorkbenchTabId.session(session.sessionId);
       workbench.ensureTab(workspace.workspaceId, sessionTab);
       expect(workbench.activeTabId(workspace.workspaceId), sessionTab);
+      expect(
+        workbench.state.bar(workspace.workspaceId).center.landingActive,
+        isFalse,
+      );
 
-      chat.enterNewChat(workspace.workspaceId);
-      expect(chat.state.newChatActive, isTrue);
+      // Entering landing (compose) clears the active tab without dropping it.
+      workbench.enterLanding(workspace.workspaceId);
+      expect(
+        workbench.state.bar(workspace.workspaceId).center.landingActive,
+        isTrue,
+      );
 
       final orderBefore = List.of(workbench.tabOrder(workspace.workspaceId));
-      chat.dismissNewChat();
       workbench.enterWelcome(workspace.workspaceId);
 
-      expect(chat.state.newChatActive, isFalse);
       expect(workbench.activeTabId(workspace.workspaceId), isNull);
       expect(workbench.welcomeActive(workspace.workspaceId), isTrue);
       expect(workbench.tabOrder(workspace.workspaceId), orderBefore);
@@ -130,7 +135,7 @@ void main() {
       // welcome state is preserved without any reconcile step.
       expect(
         resolveWorkbenchCenterMode(
-          newChatActive: chat.state.newChatActive,
+          newChatActive: false,
           activeTabId: workbench.activeTabId(workspace.workspaceId),
         ),
         WorkbenchCenterMode.welcome,
@@ -138,66 +143,61 @@ void main() {
     },
   );
 
-  test(
-    'empty tabs: dismiss + clearActive stays welcome not forced compose',
-    () async {
-      final tmp = await Directory.systemTemp.createTemp('landing_back_empty_');
-      addTearDown(() async {
-        try {
-          if (await tmp.exists()) await tmp.delete(recursive: true);
-        } on FileSystemException {
-          // ignore
-        }
-      });
+  test('empty tabs: clearing active stays welcome not forced compose', () async {
+    final tmp = await Directory.systemTemp.createTemp('landing_back_empty_');
+    addTearDown(() async {
+      try {
+        if (await tmp.exists()) await tmp.delete(recursive: true);
+      } on FileSystemException {
+        // ignore
+      }
+    });
 
-      final repo = SessionRepository(rootDir: tmp.path);
-      final workspace = await repo.createWorkspace([
-        WorkspaceFolder(path: '/a'),
-      ]);
+    final repo = SessionRepository(rootDir: tmp.path);
+    final workspace = await repo.createWorkspace([
+      WorkspaceFolder(path: '/a'),
+    ]);
 
-      final postFrame = PostFrameTestHarness();
-      final chat = ChatCubit(
-        executableResolver: () => 'true',
-        automationRepository: testAutomationRepository(),
-        sessionRepository: repo,
-        terminalSessionFactory:
-            ({required String executable, int scrollbackLines = 10000}) =>
-                _FakeTerminalSession(executable: executable),
-        postFrameScheduler: postFrame.scheduler,
-      );
-      addTearDown(() async {
-        await postFrame.flush();
-        await drainPendingAsyncWork();
-        await chat.close();
-      });
+    final postFrame = PostFrameTestHarness();
+    final chat = ChatCubit(
+      executableResolver: () => 'true',
+      automationRepository: testAutomationRepository(),
+      sessionRepository: repo,
+      terminalSessionFactory:
+          ({required String executable, int scrollbackLines = 10000}) =>
+              _FakeTerminalSession(executable: executable),
+      postFrameScheduler: postFrame.scheduler,
+    );
+    addTearDown(() async {
+      await postFrame.flush();
+      await drainPendingAsyncWork();
+      await chat.close();
+    });
 
-      await chat.loadWorkspaceData(repo);
-      chat.setActiveWorkspace(workspace.workspaceId);
-      chat.enterNewChat(workspace.workspaceId);
-      expect(chat.state.newChatActive, isTrue);
-      expect(chat.state.tabs, isEmpty);
+    await chat.loadWorkspaceData(repo);
+    chat.setActiveWorkspace(workspace.workspaceId);
+    expect(chat.tabStore.openTabs, isEmpty);
 
-      final workbench = WorkbenchCubit();
-      addTearDown(workbench.close);
+    final workbench = WorkbenchCubit();
+    addTearDown(workbench.close);
 
-      chat.dismissNewChat();
-      workbench.enterWelcome(workspace.workspaceId);
+    workbench.enterLanding(workspace.workspaceId);
 
-      expect(chat.state.newChatActive, isFalse);
-      expect(workbench.activeTabId(workspace.workspaceId), isNull);
-      expect(workbench.welcomeActive(workspace.workspaceId), isTrue);
-      expect(
-        resolveWorkbenchCenterMode(
-          newChatActive: chat.state.newChatActive,
-          activeTabId: workbench.activeTabId(workspace.workspaceId),
-        ),
-        WorkbenchCenterMode.welcome,
-      );
+    expect(workbench.activeTabId(workspace.workspaceId), isNull);
+    expect(workbench.welcomeActive(workspace.workspaceId), isTrue);
+    expect(
+      resolveWorkbenchCenterMode(
+        newChatActive: false,
+        activeTabId: workbench.activeTabId(workspace.workspaceId),
+      ),
+      WorkbenchCenterMode.welcome,
+    );
 
-      // Contrast: exitNewChat with empty tabs re-enters compose.
-      chat.enterNewChat(workspace.workspaceId);
-      chat.exitNewChat();
-      expect(chat.state.newChatActive, isTrue);
-    },
-  );
+    // Re-entering landing stays landing (compose), not a forced re-open.
+    workbench.enterLanding(workspace.workspaceId);
+    expect(
+      workbench.state.bar(workspace.workspaceId).center.landingActive,
+      isTrue,
+    );
+  });
 }

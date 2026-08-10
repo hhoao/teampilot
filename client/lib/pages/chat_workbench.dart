@@ -373,9 +373,7 @@ class _ChatWorkbenchBody extends StatelessWidget {
     );
     final terminalBackground = Color(0xFF000000 | terminalTheme.background);
     final chatCubit = context.read<ChatCubit>();
-    if (sessionId != null && slice.tabCount == 0) {
-      return const Center(child: CircularProgressIndicator());
-    } else if (slice.tabCount == 0) {
+    if (slice.activeSessionId == null) {
       return const Center(child: CircularProgressIndicator());
     }
 

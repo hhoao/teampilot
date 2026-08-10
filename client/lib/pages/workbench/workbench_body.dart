@@ -157,9 +157,6 @@ ChatWorkbenchSlice _sliceForSession(ChatState state, ChatTab tab) {
     stateVersion: state.stateVersion,
     activeSessionId: tab.info.id,
     selectedMemberId: tab.selectedMemberId,
-    activeTabIndex: 0,
-    tabCount: 1,
-    newChatActive: false,
     sessionLaunchError: tab.info.launchError,
   );
 }

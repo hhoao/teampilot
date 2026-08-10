@@ -7,7 +7,6 @@ import '../../../models/ssh_profile.dart';
 import '../../../models/team_config.dart';
 import '../../../services/team/team_config_launch_validator.dart';
 import '../../../services/terminal/terminal_session.dart';
-import 'chat_tab_info.dart';
 
 typedef TerminalSessionFactory =
     TerminalSession Function({required String executable, int scrollbackLines});
@@ -29,8 +28,6 @@ typedef CliExecutableResolver = String Function(CliTool cli);
 
 class ChatState extends Equatable {
   const ChatState({
-    this.tabs = const [],
-    this.activeTabIndex = 0,
     this.workspaces = const [],
     this.sessions = const [],
     this.visibleWorkspaces = const [],
@@ -42,11 +39,8 @@ class ChatState extends Equatable {
     this.sessionLaunchError,
     this.teamConfigValidation,
     this.workingSessionIds = const {},
-    this.newChatActive = true,
   });
 
-  final List<ChatTabInfo> tabs;
-  final int activeTabIndex;
   final List<Workspace> workspaces;
   final List<AppSession> sessions;
   final List<Workspace> visibleWorkspaces;
@@ -68,12 +62,7 @@ class ChatState extends Equatable {
   /// open, bus-backed (mixed) sessions appear here.
   final Set<String> workingSessionIds;
 
-  /// When true, the workbench shows new-chat landing instead of a session terminal.
-  final bool newChatActive;
-
   ChatState copyWith({
-    List<ChatTabInfo>? tabs,
-    int? activeTabIndex,
     List<Workspace>? workspaces,
     List<AppSession>? sessions,
     List<Workspace>? visibleWorkspaces,
@@ -89,11 +78,8 @@ class ChatState extends Equatable {
     TeamConfigValidation? teamConfigValidation,
     bool clearTeamConfigValidation = false,
     Set<String>? workingSessionIds,
-    bool? newChatActive,
   }) {
     return ChatState(
-      tabs: tabs ?? this.tabs,
-      activeTabIndex: activeTabIndex ?? this.activeTabIndex,
       workspaces: workspaces ?? this.workspaces,
       sessions: sessions ?? this.sessions,
       visibleWorkspaces: visibleWorkspaces ?? this.visibleWorkspaces,
@@ -113,24 +99,11 @@ class ChatState extends Equatable {
           ? null
           : (teamConfigValidation ?? this.teamConfigValidation),
       workingSessionIds: workingSessionIds ?? this.workingSessionIds,
-      newChatActive: newChatActive ?? this.newChatActive,
     );
-  }
-
-  /// Working directory of the active session tab (its cwd), or empty when no
-  /// tab is open. Used by chat routes that scope the tools to the active
-  /// session rather than a fixed workspace.
-  String get activeCwd {
-    if (activeTabIndex >= 0 && activeTabIndex < tabs.length) {
-      return tabs[activeTabIndex].subtitle;
-    }
-    return '';
   }
 
   @override
   List<Object?> get props => [
-    tabs,
-    activeTabIndex,
     workspaces,
     sessions,
     visibleWorkspaces,
@@ -142,6 +115,5 @@ class ChatState extends Equatable {
     sessionLaunchError,
     teamConfigValidation,
     workingSessionIds,
-    newChatActive,
   ];
 }

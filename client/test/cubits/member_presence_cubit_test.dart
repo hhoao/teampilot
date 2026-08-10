@@ -485,7 +485,9 @@ void main() {
             expect(service.computeCalls, greaterThan(0));
             final callsWithTeamTab = service.computeCalls;
 
-            chatCubit.selectTab(1);
+            final tab1 = chatCubit.tabStore.openTabs.toList()[1];
+            chatCubit.setForegroundSession(tab1.info.id, tab1.selectedMemberId);
+            chatCubit.pushPresenceTarget();
             async.flushMicrotasks();
             unawaited(harness.flush());
             async.flushMicrotasks();

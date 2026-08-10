@@ -1,5 +1,6 @@
 import '../../cubits/chat_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
+import '../../cubits/workbench/workbench_cubit.dart';
 import '../../models/app_session.dart';
 import '../../models/landing_launch_context.dart';
 import '../../models/team_config.dart';
@@ -18,12 +19,13 @@ class WorkspaceActiveContext {
   final String? activeSessionId;
 
   static WorkspaceActiveContext resolve({
+    required WorkbenchCubit workbench,
     required ChatCubit chat,
     required LaunchProfileCubit launchProfiles,
     required String tabScopeId,
     LandingLaunchContext? landingFallback,
   }) {
-    final activeTab = scopedActiveChatTab(chat, tabScopeId);
+    final activeTab = scopedActiveChatTab(workbench, chat, tabScopeId);
     final sessionId = activeTab?.info.id;
     if (sessionId != null && sessionId.isNotEmpty) {
       final session = _sessionById(chat.state.sessions, sessionId);

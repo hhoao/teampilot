@@ -28,6 +28,7 @@ import 'package:teampilot/cubits/shortcut_cubit.dart';
 import 'package:teampilot/cubits/skill_cubit.dart';
 import 'package:teampilot/cubits/ssh_connection_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
+import 'package:teampilot/services/workbench/workbench_chat_bridge.dart';
 import 'package:teampilot/cubits/workspace_tools_cubit.dart';
 import 'package:teampilot/main.dart';
 import 'package:teampilot/models/llm_config.dart';
@@ -151,6 +152,16 @@ Widget buildTestApp({
         executableResolver: desktopHarnessExecutable,
         automationRepository: testAutomationRepository(),
       );
+  final workbenchCubit = WorkbenchCubit();
+  // Mirror the production bridge wiring (app_shell.dart) so session opens feed
+  // the bar and bar-close tears down the domain in harness-driven tests too.
+  final chatBridge = WorkbenchChatBridge(
+    workbench: workbenchCubit,
+    chat: chat,
+  );
+  workbenchCubit.port = chatBridge;
+  chat.workbenchPort = chatBridge;
+  chat.onSessionTabOpened = chatBridge.onSessionTabOpened;
   final presence = memberPresenceCubit ?? MemberPresenceCubit();
   chat.bindPresenceCubit(presence);
   // SessionChatView binds a History seat through the pod's HistoryStore when
@@ -293,7 +304,7 @@ Widget buildTestApp({
         BlocProvider.value(value: aiHistoryCubit),
         BlocProvider(create: (_) => ShortcutCubit()),
         BlocProvider(create: (_) => EditorCubit(fs: LocalFilesystem())),
-        BlocProvider(create: (_) => WorkbenchCubit()),
+        BlocProvider.value(value: workbenchCubit),
         BlocProvider.value(
           value: extensionCubit ??
               ExtensionCubit(

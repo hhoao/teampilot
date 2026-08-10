@@ -9,6 +9,7 @@ import 'package:teampilot/models/team_config.dart';
 import '../../cubits/agent_attention_cubit.dart';
 import '../../cubits/chat_cubit.dart';
 import '../../cubits/layout_cubit.dart';
+import '../../cubits/workbench/workbench_cubit.dart';
 import '../../cubits/workbench/workbench_tab.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
@@ -50,8 +51,12 @@ class WorkspaceShellRightToolsVisibilityToggle extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
-    final composeLanding = context.select<ChatCubit, bool>(
-      (c) => c.state.newChatActive, // chrome is for the active workspace
+    // Chrome is for the active workspace: land-state comes from its bar.
+    final activeWorkspaceId = context.select<ChatCubit, String>(
+      (c) => c.tabStore.activeWorkspaceId,
+    );
+    final composeLanding = context.select<WorkbenchCubit, bool>(
+      (w) => w.state.bar(activeWorkspaceId).center.landingActive,
     );
     return BlocBuilder<LayoutCubit, LayoutState>(
       buildWhen: (a, b) =>

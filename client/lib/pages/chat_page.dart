@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../cubits/chat_cubit.dart';
 import '../cubits/launch_profile_cubit.dart';
+import '../cubits/workbench/workbench_cubit.dart';
 import '../utils/workspace/workspace_active_context.dart';
 import '../widgets/workspace_terminal_panel.dart';
 import 'chat/chat_page_shell.dart';
@@ -44,6 +45,7 @@ class ChatPage extends StatelessWidget {
     final chat = context.watch<ChatCubit>();
     final launchProfiles = context.watch<LaunchProfileCubit>();
     final active = WorkspaceActiveContext.resolve(
+      workbench: context.watch<WorkbenchCubit>(),
       chat: chat,
       launchProfiles: launchProfiles,
       tabScopeId: _tabScopeId,

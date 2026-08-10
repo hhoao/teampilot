@@ -85,7 +85,7 @@ void main() {
         ),
       );
       await drainPendingAsyncWork();
-      expect(cubit.state.tabs.length, 1);
+      expect(cubit.tabStore.openTabs.length, 1);
       final shell = created.single;
 
       // Idle before any send: not working.

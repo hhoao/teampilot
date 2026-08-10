@@ -193,3 +193,20 @@ extension SessionLaunchHostAgentStatus on SessionLaunchHost {
     );
   }
 }
+
+/// Narrow surface the session domain uses to drive the workbench bar.
+///
+/// Implemented by [WorkbenchChatBridge] in production; null in tests until the
+/// app shell wires the bridge.
+abstract class ChatWorkbenchPort {
+  /// Domain-driven close: remove [sessionId]'s tab from the bar. The bar then
+  /// calls back [WorkbenchDomainPort.onTabRemoved], which tears down the
+  /// session runtime.
+  void onSessionTabClosed(String workspaceId, String sessionId);
+
+  /// Show the new-chat landing for [workspaceId] (bar active → null).
+  void enterLanding(String workspaceId);
+
+  /// Close every center tab for [workspaceId] (each removal tears down).
+  void closeAll(String workspaceId);
+}

@@ -60,6 +60,9 @@ abstract final class WorkbenchShellActions {
   }
 
   /// Context-free select used by keyboard strip navigation and the tab bar.
+  ///
+  /// The bar's active is the single source; the bridge mirrors it into
+  /// [ChatState]. No chat-side tab selection is performed here anymore.
   static void selectResolved({
     required WorkbenchCubit workbench,
     required ChatCubit chat,
@@ -67,15 +70,7 @@ abstract final class WorkbenchShellActions {
     required String tabScopeId,
     required WorkbenchTabId tab,
   }) {
-    workbench.select(workspaceId, tab);
-    if (chat.state.newChatActive) {
-      chat.exitNewChat();
-    }
-    if (workbenchSelectSyncsChatTab(tab.kind)) {
-      final tabs = chat.tabStore.tabsForWorkspace(tabScopeId);
-      final index = tabs.indexWhere((t) => t.info.id == tab.id);
-      if (index >= 0) chat.selectTab(index);
-    }
+    workbench.activate(workspaceId, tab);
   }
 
   static Future<void> closeAt({
@@ -85,15 +80,9 @@ abstract final class WorkbenchShellActions {
     required WorkbenchTabId tab,
   }) async {
     final workbench = context.read<WorkbenchCubit>();
-    final chat = context.read<ChatCubit>();
     final editor = context.read<EditorCubit>();
 
     switch (tab.kind) {
-      case WorkbenchTabKind.session:
-        final tabs = chat.tabStore.tabsForWorkspace(tabScopeId);
-        final index = tabs.indexWhere((t) => t.info.id == tab.id);
-        if (index >= 0) chat.closeTab(index);
-        workbench.removeTab(workspaceId, tab);
       case WorkbenchTabKind.file:
         final dirty = editor.state.bucket(workspaceId).isDirty(tab.id);
         if (dirty) {
@@ -101,17 +90,14 @@ abstract final class WorkbenchShellActions {
           if (discard != true || !context.mounted) return;
         }
         editor.closeFile(workspaceId, tab.id, force: true);
-        workbench.removeTab(workspaceId, tab);
       case WorkbenchTabKind.diff:
         editor.closeDiff(workspaceId, tab.id);
-        workbench.removeTab(workspaceId, tab);
       case WorkbenchTabKind.shell:
         disposeWorkbenchShellDomain(
           runService: context.read<WorkspaceTerminalRunService>(),
           group: context.read<WorkspaceTerminalRegistry>().groupFor(tabScopeId),
           entryId: tab.id,
         );
-        workbench.removeTab(workspaceId, tab);
       case WorkbenchTabKind.run:
         final runCubit = context.read<RunCubit>();
         final session = _runSessionById(runCubit.state.sessions, tab.id);
@@ -129,8 +115,12 @@ abstract final class WorkbenchShellActions {
             return;
           }
         }
-        workbench.removeTab(workspaceId, tab);
+      case WorkbenchTabKind.session:
+        // Teardown handled by the port (chat.teardownSession) after the bar
+        // removes the entry via [WorkbenchCubit.close].
+        break;
     }
+    await workbench.close(workspaceId, tab);
   }
 
   static Future<void> closeOthers({
@@ -217,13 +207,12 @@ abstract final class WorkbenchShellActions {
     required String tabScopeId,
     required WorkbenchTabId tab,
   }) async {
-    final chat = context.read<ChatCubit>();
     final editor = context.read<EditorCubit>();
     switch (tab.kind) {
       case WorkbenchTabKind.session:
-        final tabs = chat.tabStore.tabsForWorkspace(tabScopeId);
-        final index = tabs.indexWhere((t) => t.info.id == tab.id);
-        if (index >= 0) chat.closeTab(index);
+        // Teardown already routed by the bar close (onTabRemoved → chat.
+        // teardownSession) for closeOthers/closeRight/closeAll.
+        break;
       case WorkbenchTabKind.file:
         editor.closeFile(workspaceId, tab.id, force: true);
       case WorkbenchTabKind.diff:

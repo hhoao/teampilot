@@ -5,188 +5,59 @@ import '../../services/storage/app_storage.dart';
 import 'model/chat_tab.dart';
 import 'model/chat_tab_info.dart';
 
-/// Owns open chat tabs bucketed by workspace.
-///
-/// Two projections:
-/// - **View** ([activeTabs], [activeTabBySessionId]): the foreground workspace.
-/// - **Runtime** ([openTabs], [openTabBySessionId]): every open tab with live PTY/bus.
+/// Session runtime registry. Owns the *runtime* behind each session tab, not
+/// bar presence/order (that is `WorkbenchCubit`). Keyed by session id.
 class ChatTabStore {
-  final Map<String, List<ChatTab>> _byWorkspace = {};
-  final Map<String, int> _savedActiveIndex = {};
-  final Map<String, bool> _newChatActiveByWorkspace = {};
+  final Map<String, ChatTab> _bySessionId = {};
   String _activeWorkspaceId = '';
-
-  List<ChatTab> get _active =>
-      _byWorkspace.putIfAbsent(_activeWorkspaceId, () => []);
-
-  /// Switches the active bucket. Pass [currentActiveIndex] (the cubit's current
-  /// `ChatState.activeTabIndex`) to snapshot the outgoing workspace's selection.
-  /// Returns the restored active-tab index for the incoming workspace (clamped).
-  int setActiveWorkspace(String workspaceId, {int? currentActiveIndex}) {
-    if (currentActiveIndex != null && _activeWorkspaceId.isNotEmpty) {
-      _savedActiveIndex[_activeWorkspaceId] = currentActiveIndex;
-    }
-    _activeWorkspaceId = workspaceId;
-    _byWorkspace.putIfAbsent(workspaceId, () => []);
-    final saved = _savedActiveIndex[workspaceId] ?? 0;
-    final len = _byWorkspace[workspaceId]!.length;
-    if (len == 0) return 0;
-    return saved.clamp(0, len - 1);
-  }
 
   String get activeWorkspaceId => _activeWorkspaceId;
 
-  /// Tabs in the foreground workspace bucket (view projection).
-  List<ChatTab> get activeTabs => _active;
+  /// Switches the foreground workspace (single simple field — per-workspace
+  /// buckets are gone; runtime presence is global, keyed by session id).
+  void setActiveWorkspaceId(String id) => _activeWorkspaceId = id;
 
-  int get activeTabCount => _active.length;
+  ChatTab? openTabBySessionId(String sessionId) =>
+      _bySessionId[sessionId.trim()];
 
-  bool get activeTabsIsEmpty => _active.isEmpty;
+  Iterable<ChatTab> get openTabs => _bySessionId.values;
 
-  /// Every open tab across all workspace buckets (runtime projection).
-  Iterable<ChatTab> get openTabs sync* {
-    for (final bucket in _byWorkspace.values) {
-      yield* bucket;
-    }
-  }
+  List<ChatTab> tabsForWorkspace(String workspaceId) =>
+      _bySessionId.values.where((t) => t.workspaceId == workspaceId).toList();
 
-  bool get hasOpenTabs {
-    for (final bucket in _byWorkspace.values) {
-      if (bucket.isNotEmpty) return true;
-    }
-    return false;
-  }
+  /// Runtime tabs for the foreground workspace (domain convenience).
+  List<ChatTab> get activeTabs => _bySessionId.values.toList();
 
-  /// Clears every bucket (used on cubit close).
-  void clear() {
-    _byWorkspace.clear();
-    _savedActiveIndex.clear();
-    _newChatActiveByWorkspace.clear();
-  }
+  bool get activeTabsIsEmpty => _bySessionId.isEmpty;
 
-  /// Whether the workspace shows the new-chat landing instead of a session tab.
-  ///
-  /// Defaults to `true` when the bucket has no open tabs.
-  bool isNewChatActive(String workspaceId) {
-    final bucket = _byWorkspace[workspaceId];
-    if (bucket == null || bucket.isEmpty) return true;
-    return _newChatActiveByWorkspace[workspaceId] ?? false;
-  }
+  bool get hasOpenTabs => _bySessionId.isNotEmpty;
 
-  void setNewChatActive(String workspaceId, bool active) {
-    if (active) {
-      _newChatActiveByWorkspace[workspaceId] = true;
-      return;
-    }
-    _newChatActiveByWorkspace.remove(workspaceId);
-  }
-
-  /// Removes and returns all tabs belonging to [workspaceId] (for disposal by the
-  /// caller). Clears the named bucket and also removes matching tabs from the
-  /// legacy empty-string bucket (tabs added before [setActiveWorkspace] was called).
-  List<ChatTab> removeWorkspace(String workspaceId) {
-    _savedActiveIndex.remove(workspaceId);
-    _newChatActiveByWorkspace.remove(workspaceId);
-    final removed = <ChatTab>[];
-    // Named bucket.
-    final named = _byWorkspace.remove(workspaceId);
-    if (named != null) removed.addAll(named);
-    // Legacy bucket: tabs whose persisted session belongs to this workspace.
-    if (workspaceId.isNotEmpty) {
-      final legacy = _byWorkspace[''];
-      if (legacy != null) {
-        final matching = legacy
-            .where((t) => t.persistedSession?.workspaceId == workspaceId)
-            .toList();
-        if (matching.isNotEmpty) {
-          legacy.removeWhere(
-            (t) => t.persistedSession?.workspaceId == workspaceId,
-          );
-          removed.addAll(matching);
-        }
-      }
-    }
-    return removed;
-  }
-
-  /// Session-backed (non-`local-`) tab count for [workspaceId], across any bucket.
-  ///
-  /// Checks the named bucket first. Also scans the legacy empty-string bucket
-  /// by persisted-session workspaceId so that tabs opened before [setActiveWorkspace]
-  /// is called (e.g. the connect flow before the UI switches workspace context)
-  /// are counted correctly.
-  int sessionBackedCountForWorkspace(String workspaceId) {
-    int count = 0;
-    // Named bucket: tabs explicitly placed here via setActiveWorkspace.
-    final named = _byWorkspace[workspaceId];
-    if (named != null) {
-      count += named.where((t) => !t.info.id.startsWith('local-')).length;
-    }
-    // Legacy / no-active-workspace bucket: check persisted session's workspaceId.
-    if (workspaceId.isNotEmpty) {
-      final legacy = _byWorkspace[''];
-      if (legacy != null) {
-        count += legacy
-            .where(
-              (t) =>
-                  !t.info.id.startsWith('local-') &&
-                  t.persistedSession?.workspaceId == workspaceId,
-            )
-            .length;
-      }
-    }
-    return count;
-  }
-
-  int savedActiveIndexFor(String workspaceTabKey) {
-    final bucket = _byWorkspace[workspaceTabKey];
-    if (bucket == null || bucket.isEmpty) return 0;
-    return (_savedActiveIndex[workspaceTabKey] ?? 0).clamp(
-      0,
-      bucket.length - 1,
-    );
-  }
-
-  List<ChatTab> tabsForWorkspace(String workspaceTabKey) =>
-      List.unmodifiable(_byWorkspace[workspaceTabKey] ?? const []);
-
-  List<ChatTabInfo> tabInfosForWorkspace(String workspaceTabKey) =>
-      tabsForWorkspace(workspaceTabKey).map((t) => t.info).toList();
-
-  List<ChatTabInfo> activeTabInfos() => _active.map((t) => t.info).toList();
-
-  ChatTab? activeTab(int activeTabIndex) {
-    if (_active.isEmpty) return null;
-    final index = activeTabIndex.clamp(0, _active.length - 1);
-    return _active[index];
-  }
-
-  /// View projection: session in the foreground workspace bucket only.
-  ChatTab? activeTabBySessionId(String id) {
-    for (final tab in _active) {
-      if (tab.info.id == id) return tab;
-    }
-    return null;
-  }
-
-  /// Runtime projection: session in any open workspace bucket.
-  ChatTab? openTabBySessionId(String id) {
-    for (final tab in openTabs) {
-      if (tab.info.id == id) return tab;
-    }
-    return null;
-  }
-
-  /// View projection: index within the foreground workspace bucket.
-  int activeIndexOfSession(String id) =>
-      _active.indexWhere((t) => t.info.id == id);
-
-  void append(ChatTab tab) {
+  /// Register a staged session runtime (bar presence is handled by the bridge).
+  void registerSession(ChatTab tab) {
     tab.workspaceId = _activeWorkspaceId;
-    _active.add(tab);
+    _bySessionId[tab.info.id.trim()] = tab;
   }
 
-  ChatTab removeAt(int index) => _active.removeAt(index);
+  /// Remove and return the runtime for [sessionId], if any.
+  ChatTab? removeSession(String sessionId) =>
+      _bySessionId.remove(sessionId.trim());
+
+  /// Remove and return the runtime for [sessionId], if any (alias used by the
+  /// teardown path — the caller owns disposing the runtime).
+  ChatTab? disposeSession(String sessionId) =>
+      _bySessionId.remove(sessionId.trim());
+
+  /// Session ids whose runtime belongs to [workspaceId].
+  List<String> sessionsForWorkspace(String workspaceId) =>
+      [for (final tab in _bySessionId.values)
+        if (tab.workspaceId == workspaceId) tab.info.id];
+
+  void clear() => _bySessionId.clear();
+
+  /// Thin back-compat helper: the foreground runtime (first open), ignoring the
+  /// index. Deleted with the remaining callers.
+  ChatTab? activeTab(int index) =>
+      _bySessionId.isEmpty ? null : _bySessionId.values.first;
 
   String defaultMemberId(TeamProfile team) {
     if (team.members.isEmpty) return '';
@@ -207,7 +78,7 @@ class ChatTabStore {
       selectedMemberId: defaultMemberId(team),
       workspaceId: _activeWorkspaceId,
     );
-    _active.add(tab);
+    registerSession(tab);
     return tab;
   }
 

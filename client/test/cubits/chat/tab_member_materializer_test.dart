@@ -35,7 +35,7 @@ void main() {
 
   test('mixed materialize waits without duplicate connect while bus boots', () async {
     final store = ChatTabStore();
-    store.setActiveWorkspace('ws-1');
+    store.setActiveWorkspaceId('ws-1');
     final tab = ChatTab(
       info: const ChatTabInfo(id: 'sess-1', title: 't', subtitle: ''),
       workspaceId: 'ws-1',
@@ -47,7 +47,7 @@ void main() {
         cliTeamName: 'team-runtime',
         createdAt: 0,
       );
-    store.append(tab);
+    store.registerSession(tab);
 
     const team = TeamProfile(
       id: 'team-1',
@@ -86,7 +86,7 @@ void main() {
     'materialize resolves numbered instance ids from session roster',
     () async {
       final store = ChatTabStore();
-      store.setActiveWorkspace('ws-1');
+      store.setActiveWorkspaceId('ws-1');
       final tab = ChatTab(
         info: const ChatTabInfo(id: 'sess-1', title: 't', subtitle: ''),
         workspaceId: 'ws-1',
@@ -106,7 +106,7 @@ void main() {
             ),
           ],
         );
-      store.append(tab);
+      store.registerSession(tab);
 
       // In-memory team still has type ids only (replicas may even be stale).
       // Use native mode so this unit test does not wait on TeamBus install.
@@ -154,7 +154,7 @@ void main() {
     'personal materialize hangs until markMemberReady when shell not running',
     () async {
       final store = ChatTabStore();
-      store.setActiveWorkspace('ws-1');
+      store.setActiveWorkspaceId('ws-1');
       final tab = ChatTab(
         info: const ChatTabInfo(id: 'sess-1', title: 't', subtitle: ''),
         workspaceId: 'ws-1',
@@ -165,7 +165,7 @@ void main() {
           sessionTeam: '',
           createdAt: 0,
         );
-      store.append(tab);
+      store.registerSession(tab);
 
       final materializer = TabMemberMaterializer(
         runtime: TabSessionRuntimeCoordinator(

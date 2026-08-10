@@ -1,11 +1,13 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/layout_cubit.dart';
+import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
@@ -88,7 +90,7 @@ void main() {
     expect(find.byKey(AppKeys.membersPanel), findsNothing);
     final selectedTeam = teamCubit.state.selectedTeam;
     expect(selectedTeam, isNotNull);
-    expect(chatCubit.state.tabs.length, 0);
+    expect(chatCubit.tabStore.openTabs.length, 0);
     final workbenchCtx = tester.element(find.byKey(AppKeys.chatWorkspace));
     final l10n = AppLocalizations.of(workbenchCtx);
     expect(find.text(l10n.workspaceChatLandingInputHint), findsOneWidget);
@@ -121,13 +123,19 @@ void main() {
       await postFrame.flush();
     });
     await tester.pump();
-    expect(chatCubit.state.tabs.length, 1);
-    expect(chatCubit.state.tabs.single.id.startsWith('local-'), isFalse);
+    expect(chatCubit.tabStore.openTabs.length, 1);
+    expect(chatCubit.tabStore.openTabs.single.info.id.startsWith('local-'), isFalse);
     expect(chatCubit.isMemberRunning(sessionId: chatCubit.state.activeSessionId!, memberId: 'team-lead'), isTrue);
     await pumpPhaseTransitions(tester);
     // Session exits compose: prefs dock restored. Prefer key mount over
     // hitTestable — pane size sync can lag TpDeferredMountShell in smoke.
-    expect(chatCubit.state.newChatActive, isFalse);
+    final workbenchCubit = tester
+        .element(find.byKey(AppKeys.chatWorkspace))
+        .read<WorkbenchCubit>();
+    expect(
+      workbenchCubit.state.bar(workspace.workspaceId).center.landingActive,
+      isFalse,
+    );
     expect(
       WorkspacePanePolicy.effective(
         preferences: layoutCubit.state.preferences,

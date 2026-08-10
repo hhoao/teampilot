@@ -59,7 +59,7 @@ void main() {
   test('reclaims an idle worker after threshold, never the lead', () {
     final store = ChatTabStore();
     final tab = _tabWithBus();
-    store.append(tab);
+    store.registerSession(tab);
     final bus = _busWith('team-lead', MemberLifecycle.running, MemberActivity.turnDoneReady);
     bus.declareMember(
       AgentNode.test(
@@ -88,7 +88,7 @@ void main() {
   test('in-turn and unread members are never reclaimed', () async {
     final store = ChatTabStore();
     final tab = _tabWithBus();
-    store.append(tab);
+    store.registerSession(tab);
     final bus = _busWith('worker-1', MemberLifecycle.running, MemberActivity.active);
     tab.teamBus = bus;
     tab.memberShells['worker-1'] = _runningShell();

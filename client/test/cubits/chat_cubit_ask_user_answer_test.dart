@@ -101,7 +101,7 @@ void main() {
         cliTeamName: sessionId,
         selectedMemberId: sessionId,
       );
-      cubit.tabStore.append(tab);
+      cubit.tabStore.registerSession(tab);
       cubit.refreshActiveWorkspaceTabs();
       attention.applyEvent(
         sessionId: sessionId,

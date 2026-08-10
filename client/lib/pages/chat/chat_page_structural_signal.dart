@@ -1,11 +1,15 @@
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 
-import '../../cubits/chat/model/chat_state.dart';
-import '../../cubits/chat/model/chat_tab.dart';
 import '../../cubits/chat/chat_tab_store.dart';
+import '../../cubits/chat/model/chat_state.dart';
+import '../../cubits/workbench/workbench_cubit.dart';
+import '../../cubits/workbench/workbench_tab.dart';
 
 /// Title-free structural tuple for [ChatPageShell] scoped tab rebuild gating.
+///
+/// Derived from the workbench bar (single source of strip order/active) plus the
+/// session registry for per-workspace runtime state.
 @immutable
 class ChatPageStructuralSignal {
   const ChatPageStructuralSignal({
@@ -52,34 +56,30 @@ class ChatPageStructuralSignal {
 ChatPageStructuralSignal chatPageStructuralSignal({
   required ChatState state,
   required ChatTabStore tabStore,
+  required WorkbenchCubit workbench,
   required String tabScopeId,
 }) {
+  final bar = workbench.state.bar(tabScopeId);
+  final order = bar.center.order;
+  final activeId = bar.center.activeId;
+  final tabIds = [
+    for (final t in order)
+      if (t.kind == WorkbenchTabKind.session) t.id,
+  ];
   final isForeground = tabStore.activeWorkspaceId == tabScopeId;
-  if (isForeground) {
-    final tabIds = state.tabs.map((t) => t.id).toList(growable: false);
-    return ChatPageStructuralSignal(
-      tabIds: tabIds,
-      activeTabIndex: state.activeTabIndex,
-      newChatActive: state.newChatActive,
-      selectedMemberId: state.selectedMemberId,
-      sessionLaunchError: state.sessionLaunchError,
-      pinnedBySessionId: _pinnedForTabIds(state, tabIds),
-    );
-  }
-
-  final bucket = tabStore.tabsForWorkspace(tabScopeId);
-  final index = tabStore.savedActiveIndexFor(tabScopeId);
-  final newChatActive = tabStore.isNewChatActive(tabScopeId);
-  final ChatTab? tab = bucket.isEmpty || newChatActive
+  final activeTab = activeId == null || activeId.kind != WorkbenchTabKind.session
       ? null
-      : bucket[index.clamp(0, bucket.length - 1)];
-  final tabIds = bucket.map((t) => t.info.id).toList(growable: false);
+      : tabStore.openTabBySessionId(activeId.id);
   return ChatPageStructuralSignal(
     tabIds: tabIds,
-    activeTabIndex: index,
-    newChatActive: newChatActive,
-    selectedMemberId: tab?.selectedMemberId ?? '',
-    sessionLaunchError: tab?.info.launchError,
+    activeTabIndex: activeId == null ? -1 : order.indexOf(activeId),
+    newChatActive: bar.center.landingActive,
+    selectedMemberId: isForeground
+        ? state.selectedMemberId
+        : (activeTab?.selectedMemberId ?? ''),
+    sessionLaunchError: isForeground
+        ? state.sessionLaunchError
+        : activeTab?.info.launchError,
     pinnedBySessionId: _pinnedForTabIds(state, tabIds),
   );
 }

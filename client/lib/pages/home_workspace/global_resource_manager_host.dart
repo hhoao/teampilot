@@ -255,9 +255,7 @@ class _GlobalResourceManagerHostState extends State<GlobalResourceManagerHost> {
           WorkbenchTabId.session(sessionId),
           preview: false,
         );
-        final tabs = chat.tabStore.tabsForWorkspace(workspaceId);
-        final index = tabs.indexWhere((t) => t.info.id == sessionId);
-        if (index >= 0) chat.selectTab(index);
+        workbench.activate(workspaceId, WorkbenchTabId.session(sessionId));
         if (memberId.isNotEmpty) chat.selectMember(memberId);
         // Keep whatever chat/terminal surface the session already shows
         // (do not force terminal like a process-manager jump).

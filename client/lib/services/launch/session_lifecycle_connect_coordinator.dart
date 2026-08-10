@@ -21,13 +21,13 @@ class SessionLifecycleConnectCoordinator {
     required RuntimeTarget Function(AppSession session, {String? memberId})
     launchWorkTarget,
     required ScheduleMemberConnectFn scheduleMemberConnect,
-    required int Function(String sessionId) tabIndexOfSession,
+    required bool Function(String sessionId) tabOpen,
     Duration retryDelay = const Duration(seconds: 2),
   }) : _host = host,
        _launchContextFor = launchContextFor,
        _launchWorkTarget = launchWorkTarget,
        _scheduleMemberConnect = scheduleMemberConnect,
-       _tabIndexOfSession = tabIndexOfSession,
+       _tabOpen = tabOpen,
        _retryDelay = retryDelay;
 
   final SessionLaunchHost _host;
@@ -35,7 +35,7 @@ class SessionLifecycleConnectCoordinator {
   final RuntimeTarget Function(AppSession session, {String? memberId})
   _launchWorkTarget;
   final ScheduleMemberConnectFn _scheduleMemberConnect;
-  final int Function(String sessionId) _tabIndexOfSession;
+  final bool Function(String sessionId) _tabOpen;
   final Duration _retryDelay;
   final _retryTimers = <(String, String), Timer>{};
 
@@ -74,7 +74,7 @@ class SessionLifecycleConnectCoordinator {
     _retryTimers.remove(key)?.cancel();
     _retryTimers[key] = Timer(_retryDelay, () {
       _retryTimers.remove(key);
-      if (_host.isClosed || _tabIndexOfSession(sessionId) == -1) return;
+      if (_host.isClosed || !_tabOpen(sessionId)) return;
       _scheduleMemberConnect(team, member, tab);
     });
   }

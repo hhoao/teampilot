@@ -60,7 +60,10 @@ class _SessionIdleNotificationListenerState
       _service.notifySessionsBecameIdle(
         sessionIds: becameIdle,
         sessions: state.sessions,
-        openTabSessionIds: {for (final tab in state.tabs) tab.id},
+        openTabSessionIds: {
+          for (final tab in context.read<ChatCubit>().tabStore.openTabs)
+            tab.info.id,
+        },
         emptySessionTitle: l10n.defaultNewChatSessionTitle,
         notificationSubtitle: l10n.sessionIdleNotificationSubtitle,
         notificationBadge: l10n.sessionIdleNotificationTitle,

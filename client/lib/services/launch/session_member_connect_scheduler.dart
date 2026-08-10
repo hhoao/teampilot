@@ -94,10 +94,8 @@ class SessionMemberConnectScheduler {
     final state = _state();
     _host.applyState(
       state.copyWith(
-        tabs: _tabStore.activeTabInfos(),
         activeSessionId: tab.info.id,
         selectedMemberId: member.id,
-        newChatActive: false,
       ),
     );
     if (shell.isRunning || shell.isConnecting) {

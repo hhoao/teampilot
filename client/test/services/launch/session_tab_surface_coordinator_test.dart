@@ -26,7 +26,7 @@ void main() {
 
     setUp(() {
       tabStore = ChatTabStore();
-      tabStore.setActiveWorkspace('ws-1');
+      tabStore.setActiveWorkspaceId('ws-1');
       session = AppSession(
         sessionId: 'sess-1',
         workspaceId: 'ws-1',
@@ -40,9 +40,9 @@ void main() {
         workspaceId: 'ws-1',
         workbenchView: SessionWorkbenchView.chat,
       )..persistedSession = session;
-      tabStore.append(existing);
+      tabStore.registerSession(existing);
       host = _FakeHost(
-        ChatState(activeTabIndex: 0, activeSessionId: 'sess-1'),
+        ChatState(activeSessionId: 'sess-1'),
         tabStore: tabStore,
       );
       openedCalls = [];
@@ -99,7 +99,7 @@ void main() {
             session: session,
             connectImmediately: true,
           ),
-          existingIdx: 0,
+          existing: existing,
         );
 
         expect(status, SessionOpenStatus.opened);
@@ -116,7 +116,7 @@ void main() {
             connectImmediately: true,
             preserveWorkbenchView: true,
           ),
-          existingIdx: 0,
+          existing: existing,
         );
 
         expect(status, SessionOpenStatus.opened);
@@ -131,7 +131,7 @@ void main() {
           session: session,
           connectImmediately: true,
         ),
-        existingIdx: 0,
+        existing: existing,
       );
 
       expect(status, SessionOpenStatus.opened);
@@ -150,7 +150,7 @@ void main() {
 
     setUp(() {
       tabStore = ChatTabStore();
-      tabStore.setActiveWorkspace('ws-1');
+      tabStore.setActiveWorkspaceId('ws-1');
       workspace = Workspace(
         workspaceId: 'ws-1',
         folders: const [WorkspaceFolder(path: '/tmp')],

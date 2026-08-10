@@ -5,6 +5,7 @@ import 'package:teampilot/cubits/agent_attention_cubit.dart';
 import 'package:teampilot/cubits/automation_cubit.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/worktree_cubit.dart';
+import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/workspace.dart';
@@ -92,6 +93,7 @@ void main() {
                   lazy: false,
                   create: (_) => chatCubit,
                 ),
+                BlocProvider<WorkbenchCubit>(create: (_) => WorkbenchCubit()),
                 BlocProvider<AutomationCubit>.value(value: automationCubit),
                 BlocProvider<WorktreeCubit>.value(value: worktreeCubit),
                 BlocProvider<AgentAttentionCubit>.value(value: attentionCubit),
