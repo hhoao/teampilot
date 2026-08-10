@@ -49,8 +49,7 @@ import '../../services/compose/compose_file_attach.dart';
 import '../../services/compose/compose_file_drop_ingestor.dart';
 import '../../services/compose/compose_landing_bundle.dart';
 import '../../services/compose/compose_prompt_enhance.dart';
-import '../../services/compose/compose_text_edit.dart';
-import '../../services/compose/compose_voice_input.dart';
+import 'session_chat_voice_controller.dart';
 import '../../services/expert_hub/expert_member_resolver.dart';
 import '../../services/follow_up/follow_up_queue.dart';
 import '../../services/session/ai_history_live_refresh_controller.dart';
@@ -148,7 +147,7 @@ class SessionChatView extends StatefulWidget {
 class _SessionChatViewState extends State<SessionChatView> {
   final _controller = TextEditingController();
   late final FocusNode _focusNode;
-  late final ComposeVoiceInput _voiceInput;
+  late final SessionVoiceController _voice;
   final _headlessAi = HeadlessAiService();
   final _subagentPreview = SubagentPreviewController();
   AiHistoryLiveRefreshController? _liveRefresh;
@@ -162,12 +161,6 @@ class _SessionChatViewState extends State<SessionChatView> {
   final Map<String, String> _mailboxQueuedSeats = {};
   var _mailboxQueuedClearToken = 0;
   var _enhancing = false;
-  var _voiceListening = false;
-  var _voiceSoundLevel = 0.0;
-  var _discardVoiceTranscript = false;
-  TextEditingValue? _voiceInsertBaseline;
-  Stopwatch? _voiceStopwatch;
-  Timer? _voiceTimer;
   var _workspaceProjectBundle = const ConfigBundle();
   var _workspaceBundleGeneration = 0;
 
@@ -194,44 +187,11 @@ class _SessionChatViewState extends State<SessionChatView> {
   void initState() {
     super.initState();
     _focusNode = FocusNode(debugLabel: 'session_history_review_compose');
-    _voiceInput = ComposeVoiceInput(
-      onFinalTranscript: (text) {
-        if (!mounted || _discardVoiceTranscript) return;
-        if (_voiceInsertBaseline != null) {
-          _controller.value = _voiceInsertBaseline!;
-        }
-        _controller.value = insertTextAtSelection(
-          _controller,
-          text,
-          separatorBefore: ' ',
-          separatorAfter: ' ',
-        );
-        _voiceInsertBaseline = null;
-        setState(() {});
-      },
-      onListeningChanged: (listening) {
-        if (!mounted) return;
-        _applyVoiceListening(listening);
-      },
-      onSoundLevel: (level) {
-        if (!mounted) return;
-        setState(() => _voiceSoundLevel = level);
-      },
-      onError: (error) {
-        if (!mounted) return;
-        final l10n = context.l10n;
-        final message = speechRecognitionErrorIsPermissionDenied(error)
-            ? l10n.workspaceChatLandingVoicePermissionDenied
-            : l10n.workspaceChatLandingVoiceUnavailable;
-        AppToast.show(
-          context,
-          message: message,
-          variant: TpToastVariant.warning,
-        );
-        _applyVoiceListening(false);
-      },
-    );
-    unawaited(_voiceInput.initialize());
+    _voice = SessionVoiceController(composeController: _controller);
+    _voice.onNeedsHostRebuild = () {
+      if (mounted) setState(() {});
+    };
+    _voice.initialize();
     // Restore the cached session draft before attaching the change listener so
     // the restore does not notify _onComposeChanged (no setState during mount).
     final draft = composeDraftCache.sessionDraft(widget.session.sessionId);
@@ -268,25 +228,6 @@ class _SessionChatViewState extends State<SessionChatView> {
             runtime: seat.runtime,
             loadedMessages: () => seat.loadedMessages,
           );
-  }
-
-  void _applyVoiceListening(bool listening) {
-    if (listening) {
-      _discardVoiceTranscript = false;
-      _voiceInsertBaseline ??= _controller.value;
-      final needsRebuild = !_voiceListening || _voiceStopwatch == null;
-      _voiceListening = true;
-      if (_voiceStopwatch == null) _startVoiceSessionClock();
-      if (needsRebuild && mounted) setState(() {});
-      return;
-    }
-    if (!_voiceListening && _voiceStopwatch == null) return;
-    if (_discardVoiceTranscript) {
-      _voiceInsertBaseline = null;
-    }
-    _voiceListening = false;
-    _stopVoiceSessionClock();
-    if (mounted) setState(() {});
   }
 
   @override
@@ -368,14 +309,13 @@ class _SessionChatViewState extends State<SessionChatView> {
     _awaitingIdleGraceTimer?.cancel();
     _awaitingIdleGraceTimer = null;
     _controller.removeListener(_onComposeChanged);
-    _stopVoiceSessionClock();
+    _voice.dispose();
     final live = _liveRefresh;
     _liveRefresh = null;
     unawaited(live?.stop() ?? Future<void>.value());
     _taskBoardController?.dispose();
     _taskBoardController = null;
     unawaited(_mailboxQueued.close());
-    _voiceInput.dispose();
     _subagentPreview.dispose();
     _controller.dispose();
     _focusNode.dispose();
@@ -394,26 +334,7 @@ class _SessionChatViewState extends State<SessionChatView> {
     if (mounted) setState(() {});
   }
 
-  void _startVoiceSessionClock() {
-    _voiceStopwatch = Stopwatch()..start();
-    _voiceSoundLevel = 0;
-    _voiceTimer?.cancel();
-    _voiceTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) setState(() {});
-    });
-  }
-
-  void _stopVoiceSessionClock() {
-    _voiceTimer?.cancel();
-    _voiceTimer = null;
-    _voiceStopwatch?.stop();
-    _voiceStopwatch = null;
-    _voiceSoundLevel = 0;
-  }
-
   bool get _isSubmitting => _submitLock.isBusy || widget.isSubmitting;
-
-  Duration get _voiceElapsed => _voiceStopwatch?.elapsed ?? Duration.zero;
 
   String get _workspaceRoot {
     final work = widget.session.workDirsForMember(
@@ -1022,42 +943,22 @@ class _SessionChatViewState extends State<SessionChatView> {
     }
   }
 
-  Future<void> _toggleVoice() async {
+  Future<void> _handleVoiceToggle() async {
     if (_isSubmitting || _enhancing) return;
 
-    final available = await _voiceInput.initialize();
+    final ok = await _voice.toggle(Localizations.localeOf(context));
     if (!mounted) return;
-    if (!available) {
+    if (!ok) {
       AppToast.show(
         context,
-        message: _voiceInput.permissionDenied
+        message: _voice.permissionDenied
             ? context.l10n.workspaceChatLandingVoicePermissionDenied
             : context.l10n.workspaceChatLandingVoiceUnavailable,
         variant: TpToastVariant.warning,
       );
       return;
     }
-
-    final started = await _voiceInput.toggleListening(
-      preferredLocale: Localizations.localeOf(context),
-    );
-    if (!mounted) return;
-    if (!started && !_voiceInput.isSessionActive) return;
-    if (started || _voiceInput.isSessionActive) {
-      _focusNode.requestFocus();
-    }
-  }
-
-  Future<void> _cancelVoice() async {
-    if (!_voiceListening && !_voiceInput.isSessionActive) return;
-    _discardVoiceTranscript = true;
-    await _voiceInput.endSession(discard: true);
-  }
-
-  Future<void> _stopVoice() async {
-    if (!_voiceListening && !_voiceInput.isSessionActive) return;
-    _discardVoiceTranscript = false;
-    await _voiceInput.endSession(discard: false);
+    _focusNode.requestFocus();
   }
 
   Future<void> _handleComposeStop(ChatCubit chat) async {
@@ -1923,15 +1824,15 @@ class _SessionChatViewState extends State<SessionChatView> {
                                   voiceStopTooltip:
                                       l10n.workspaceChatLandingVoiceStop,
                                   isEnhancing: _enhancing,
-                                  isVoiceListening: _voiceListening,
-                                  voiceElapsed: _voiceElapsed,
-                                  voiceSoundLevel: _voiceSoundLevel,
+                                  isVoiceListening: _voice.isListening,
+                                  voiceElapsed: _voice.elapsed,
+                                  voiceSoundLevel: _voice.soundLevel,
                                   onAttach: () => unawaited(_attachFiles()),
                                   onEnhance: () => unawaited(_enhancePrompt()),
-                                  onVoice: () => unawaited(_toggleVoice()),
+                                  onVoice: () => unawaited(_handleVoiceToggle()),
                                   onVoiceCancel: () =>
-                                      unawaited(_cancelVoice()),
-                                  onVoiceStop: () => unawaited(_stopVoice()),
+                                      unawaited(_voice.cancel()),
+                                  onVoiceStop: () => unawaited(_voice.stop()),
                                   onPasteImage: _pasteComposeImage,
                                   workspaceRoot: _workspaceRoot,
                                   skills: skills,
