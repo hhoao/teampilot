@@ -92,6 +92,12 @@ const double kGitChangesNodePaddingRight = 6;
 /// Width of the stage checkbox at the leading edge of each row.
 const double kGitChangesCheckboxWidth = 18;
 
+/// Horizontal padding inside the stage-checkbox column, so the box doesn't sit
+/// flush against the chevron (or the row edge) on the left and the file/folder
+/// icon on the right. The column stays [kGitChangesCheckboxWidth] wide, so tree
+/// alignment is unaffected.
+const double kGitChangesCheckboxHPadding = 2;
+
 /// Width of the folder chevron column; equal to the checkbox width so a child
 /// file's checkbox left edge lands exactly on its parent folder's checkbox
 /// right edge.

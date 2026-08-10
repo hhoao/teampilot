@@ -94,10 +94,15 @@ class GitChangeTile extends StatelessWidget {
               SizedBox(
                 width: kGitChangesCheckboxWidth,
                 height: kGitChangesCheckboxWidth,
-                child: Checkbox(
-                  value: change.staged,
-                  onChanged: (_) => change.staged ? onUnstage() : onStage(),
-                  visualDensity: VisualDensity.compact,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: kGitChangesCheckboxHPadding,
+                  ),
+                  child: Checkbox(
+                    value: change.staged,
+                    onChanged: (_) => change.staged ? onUnstage() : onStage(),
+                    visualDensity: VisualDensity.compact,
+                  ),
                 ),
               ),
               const SizedBox(width: 4),

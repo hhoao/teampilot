@@ -104,13 +104,18 @@ class GitChangeFolderTile extends StatelessWidget {
               SizedBox(
                 width: kGitChangesCheckboxWidth,
                 height: kGitChangesCheckboxWidth,
-                child: Checkbox(
-                  value: _triState,
-                  tristate: true,
-                  onChanged: (_) => _triState == true
-                      ? onUnstage()
-                      : onStage(),
-                  visualDensity: VisualDensity.compact,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: kGitChangesCheckboxHPadding,
+                  ),
+                  child: Checkbox(
+                    value: _triState,
+                    tristate: true,
+                    onChanged: (_) => _triState == true
+                        ? onUnstage()
+                        : onStage(),
+                    visualDensity: VisualDensity.compact,
+                  ),
                 ),
               ),
               const SizedBox(width: 4),
