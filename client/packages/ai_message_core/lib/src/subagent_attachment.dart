@@ -89,12 +89,6 @@ class AiSubagentAttachment {
     return null;
   }
 }
-
-const kAiSubagentToolNames = {'agent', 'task', 'spawn_agent'};
-
-bool isAiSubagentToolName(String toolName) =>
-    kAiSubagentToolNames.contains(toolName.trim().toLowerCase());
-
 String? subagentTitleFromPart(AiToolCallPart part) {
   final args = part.args;
   if (args != null) {

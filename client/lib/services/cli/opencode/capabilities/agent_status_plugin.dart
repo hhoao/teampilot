@@ -4,13 +4,18 @@
 /// 本 plugin 在 simple/team 只要 `agentStatus != null` 就安装，POST `/agent-status`。
 ///
 /// On `question.asked`, also polls `GET /ask-user-answer?request_id=` and calls
-/// OpenCode SDK `client.question.reply` / `client.question.reject`.
+/// OpenCode SDK `client.question.reply` / `client.question.reject` when the SDK
+/// exposes them; otherwise delivers over the raw HTTP API
+/// (`POST /question/{requestID}/reply|reject`).
 ///
-/// SDK note (OpenCode `@opencode-ai/sdk` v2 / app): methods take a flat
-/// `{ requestID, answers? }` object — not hey-api `{ path, body }` and not
-/// `sessionID` in the path (HTTP is `POST /question/{requestID}/reply|reject`).
-/// Plugin `input.client` historically used path/body for `session.prompt`
-/// (v1); question APIs follow the flat shape used by the OpenCode app.
+/// SDK note: the plugin `input.client` (`createOpencodeClient` from
+/// `@opencode-ai/sdk`) is the **v1** client, which has **no `question` member**
+/// (verified 1.18.x and current main) — `client.question.reply` throws and the
+/// answer silently never reaches OpenCode. The v2 SDK (`@opencode-ai/sdk/v2`)
+/// does expose `question.reply({ requestID, answers? })` with the flat shape
+/// (HTTP `POST /question/{requestID}/reply|reject`); prefer it when present and
+/// fall back to `fetch` against `input.serverUrl` (auth is only required when
+/// `OPENCODE_SERVER_PASSWORD` is set, which TeamPilot launches never do).
 const opencodeAgentStatusPluginFileName = 'teampilot-agent-status.js';
 
 const opencodeAgentStatusPluginSource = r'''
@@ -53,9 +58,41 @@ export const TeampilotAgentStatus = async (input, options) => {
   const ASK_POLL_TTL_MS = 30 * 60 * 1000;
   const ASK_POLL_INTERVAL_MS = 400;
 
+  // Deliver the user's answer back into OpenCode. The plugin `input.client`
+  // is the v1 SDK client, which has no `question` member (see file comment);
+  // prefer the SDK call when a future version exposes it, otherwise POST the
+  // OpenCode HTTP API directly on the server URL from `input.serverUrl`.
+  const deliverQuestionReply = async (requestId, body) => {
+    if (client?.question?.reply) {
+      if (body.reject) {
+        await client.question.reject({ requestID: requestId });
+      } else {
+        await client.question.reply({
+          requestID: requestId,
+          answers: body.answers,
+        });
+      }
+      return;
+    }
+    const serverUrl = input?.serverUrl ? String(input.serverUrl) : null;
+    if (!serverUrl) throw new Error("no opencode serverUrl");
+    const base = serverUrl.replace(/\/+$/, "");
+    const action = body.reject ? "reject" : "reply";
+    const r = await fetch(
+      `${base}/question/${encodeURIComponent(requestId)}/${action}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: body.reject ? undefined : JSON.stringify({ answers: body.answers }),
+      },
+    );
+    if (!r.ok) throw new Error(`opencode question ${action} HTTP ${r.status}`);
+  };
+
   const pollAndReply = async (requestId) => {
     if (!requestId || !port) return;
     const deadline = Date.now() + ASK_POLL_TTL_MS;
+    let replyFailureReported = false;
     while (Date.now() < deadline) {
       let status = 0;
       let body = null;
@@ -73,21 +110,20 @@ export const TeampilotAgentStatus = async (input, options) => {
       }
       if (status === 200 && body) {
         try {
-          // Flat SDK shape (see file-level Dart comment). Prefer try/catch so
-          // missing client.question still surfaces as reply_failed.
-          if (body.reject) {
-            await client.question.reject({ requestID: requestId });
-          } else {
-            await client.question.reply({
-              requestID: requestId,
-              answers: body.answers,
+          await deliverQuestionReply(requestId, body);
+        } catch (e) {
+          // Delivery failed (v1 SDK without question, server down, auth, …).
+          // Signal once so the chat restores the waiting card, then keep
+          // polling: a re-answer stores a fresh entry under the same request
+          // id and this loop delivers it.
+          if (!replyFailureReported) {
+            replyFailureReported = true;
+            await post("question.reply_failed", {
+              request_id: requestId,
+              message: String(e),
             });
           }
-        } catch (e) {
-          await post("question.reply_failed", {
-            request_id: requestId,
-            message: String(e),
-          });
+          continue;
         }
         return;
       }

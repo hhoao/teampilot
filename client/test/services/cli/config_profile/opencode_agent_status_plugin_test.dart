@@ -21,6 +21,12 @@ void main() {
     // OpenCode SDK reply / reject (flat requestID API; see plugin comment).
     expect(source, contains('client.question.reply'));
     expect(source, contains('client.question.reject'));
+    // The plugin `input.client` (v1 SDK) has no `question` member, so answers
+    // must fall back to the OpenCode HTTP API on `input.serverUrl`.
+    expect(source, contains('deliverQuestionReply'));
+    expect(source, contains(r'/question/${encodeURIComponent(requestId)}/'));
+    expect(source, contains('input?.serverUrl'));
+    expect(source, contains('"reject"'));
     // SDK error AND poll timeout both POST reply_failed.
     expect(source, contains('question.reply_failed'));
     expect(source, contains('ask-user-answer poll timed out'));

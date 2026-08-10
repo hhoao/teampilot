@@ -2,18 +2,6 @@ import 'package:ai_message_core/ai_message_core.dart';
 import 'package:test/test.dart';
 
 void main() {
-  test('isAiSubagentToolName accepts Agent/Task case-insensitive', () {
-    expect(isAiSubagentToolName('Agent'), isTrue);
-    expect(isAiSubagentToolName('task'), isTrue);
-    expect(isAiSubagentToolName('Bash'), isFalse);
-    expect(isAiSubagentToolName('Read'), isFalse);
-  });
-
-  test('isAiSubagentToolName accepts spawn_agent', () {
-    expect(isAiSubagentToolName('spawn_agent'), isTrue);
-    expect(isAiSubagentToolName('Spawn_Agent'), isTrue);
-  });
-
   test('AiSubagentAttachment stores typed handle', () {
     const file = SubagentFileHandle('/tmp/a.jsonl');
     const att = AiSubagentAttachment(

@@ -60,8 +60,7 @@ class _AiToolCallPartViewState extends State<AiToolCallPartView> {
     final subagentActions = AiToolSubagentActions.of(context);
     final onOpenSubagent = subagentActions.onOpenSubagent;
     final isSub =
-        (subagentActions.isSubagentTool?.call(part.toolName) ??
-            isAiSubagentToolName(part.toolName)) &&
+        (subagentActions.isSubagentTool?.call(part.toolName) ?? false) &&
         onOpenSubagent != null;
     final useSubagentChrome = isSub;
     final shellTarget =
