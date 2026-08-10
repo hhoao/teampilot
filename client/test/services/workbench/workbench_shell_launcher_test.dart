@@ -243,7 +243,7 @@ void main() {
         ],
       );
       expect(
-        workbench.state.bucket('ws').tabOrder.where(
+        workbench.state.bar('ws').center.order.where(
           (t) => t.kind == WorkbenchTabKind.shell,
         ),
         isEmpty,
@@ -303,7 +303,7 @@ void main() {
       expect(floating.state.visibility, FloatingPanelVisibility.open);
       expect(floating.activeBucket.activeTabId, 'shell:e1');
       expect(
-        workbench.state.bucket('ws').tabOrder.where(
+        workbench.state.bar('ws').center.order.where(
           (t) => t.kind == WorkbenchTabKind.shell,
         ),
         isEmpty,

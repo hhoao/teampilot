@@ -379,7 +379,7 @@ class _ChatWorkspaceShell extends StatelessWidget {
                     : null,
                 onTabsReorder: routeActive
                     ? (oldIndex, newIndex) {
-                        context.read<WorkbenchCubit>().reorderTabs(
+                        context.read<WorkbenchCubit>().reorder(
                           workspaceId,
                           oldIndex,
                           newIndex,

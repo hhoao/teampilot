@@ -74,7 +74,7 @@ class WorkbenchEditorOpener {
     }
 
     final tab = WorkbenchTabId.file(normalized);
-    final replaced = _workbench.ensureTab(workspaceId, tab, preview: preview);
+    final replaced = _workbench.openFile(workspaceId, tab.id, preview: preview);
     _closeReplaced(workspaceId, replaced);
     _chat?.dismissNewChat();
     await _editor.openFile(workspaceId, normalized, fs: fs);
@@ -115,7 +115,7 @@ class WorkbenchEditorOpener {
       );
       return;
     }
-    final replaced = _workbench.ensureTab(workspaceId, tab, preview: preview);
+    final replaced = _workbench.openDiff(workspaceId, tab, preview: preview);
     _closeReplaced(workspaceId, replaced);
     _chat?.dismissNewChat();
   }

@@ -14,48 +14,6 @@ class _NoopPort implements WorkbenchDomainPort {
   Future<void> onTabRemoved(String workspaceId, WorkbenchTabId id) async {}
 }
 
-/// Back-compat facade over [WorkspaceTabBar.center] so existing readers of the
-/// old `bucket(ws).tabOrder` surface keep compiling during migration. Deleted
-/// with the wrapper methods in Task 5.
-class WorkbenchWorkspaceState extends Equatable {
-  const WorkbenchWorkspaceState(this.bar);
-
-  final WorkspaceTabBar bar;
-
-  List<WorkbenchTabId> get tabOrder => bar.center.order;
-  WorkbenchTabId? get activeTabId => bar.center.activeId;
-  Set<WorkbenchTabId> get previewTabIds => bar.center.previewIds;
-  bool get welcomeActive => bar.center.landingActive;
-  bool isPreview(WorkbenchTabId tab) => bar.center.previewIds.contains(tab);
-
-  /// Back-compat: the migrate path (`migrate_legacy_workbench_tabs`) builds a
-  /// center strip with shell/run tabs via `copyWith(tabOrder: [...])`. Rewrites
-  /// the underlying center strip. Deleted with the facade in Task 6.
-  WorkbenchWorkspaceState copyWith({
-    List<WorkbenchTabId>? tabOrder,
-    WorkbenchTabId? activeTabId,
-    Set<WorkbenchTabId>? previewTabIds,
-    bool? welcomeActive,
-    bool clearActive = false,
-  }) {
-    final order = tabOrder ?? bar.center.order;
-    var active = clearActive ? null : (activeTabId ?? bar.center.activeId);
-    if (welcomeActive == true) active = null;
-    return WorkbenchWorkspaceState(
-      bar.copyWith(
-        center: TabStrip(
-          order: order,
-          activeId: active,
-          previewIds: previewTabIds ?? bar.center.previewIds,
-        ),
-      ),
-    );
-  }
-
-  @override
-  List<Object?> get props => [bar];
-}
-
 class WorkbenchState extends Equatable {
   const WorkbenchState({this.byWorkspace = const {}});
 
@@ -64,18 +22,8 @@ class WorkbenchState extends Equatable {
   WorkspaceTabBar bar(String workspaceId) =>
       byWorkspace[workspaceId] ?? const WorkspaceTabBar();
 
-  /// Back-compat facade (Task 5 removes callers of this).
-  WorkbenchWorkspaceState bucket(String workspaceId) =>
-      WorkbenchWorkspaceState(bar(workspaceId));
-
   WorkbenchState withBar(String workspaceId, WorkspaceTabBar bar) {
     return WorkbenchState(byWorkspace: {...byWorkspace, workspaceId: bar});
-  }
-
-  /// Back-compat: the migrate path (`migrate_legacy_workbench_tabs`) writes
-  /// buckets via `withBucket`. Deleted with the facade in Task 6.
-  WorkbenchState withBucket(String workspaceId, WorkbenchWorkspaceState bucket) {
-    return WorkbenchState(byWorkspace: {...byWorkspace, workspaceId: bucket.bar});
   }
 
   @override
@@ -240,38 +188,6 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
   WorkbenchTabId? centerActiveId(String workspaceId) =>
       state.bar(workspaceId).center.activeId;
 
-  // ---- Legacy wrappers (deleted in Task 5; keep callers compiling) ----
-
-  WorkbenchTabId? ensureTab(
-    String workspaceId,
-    WorkbenchTabId tab, {
-    bool preview = false,
-  }) => _openCenter(workspaceId, tab, preview: preview, activate: true);
-
-  /// Legacy close. Unlike the new kind-routed [close], this removes from the
-  /// center strip regardless of kind — the migrate path injects shell/run tabs
-  /// into the center via the facade and relies on that. Deleted in Task 6.
-  void removeTab(String workspaceId, WorkbenchTabId tab) {
-    final bar = state.bar(workspaceId);
-    final next = _r.remove(bar.center, tab);
-    if (next == null) return;
-    emit(state.withBar(workspaceId, bar.copyWith(center: next)));
-    unawaited(_port.onTabRemoved(workspaceId, tab));
-  }
-
-  void select(String workspaceId, WorkbenchTabId tab) =>
-      activate(workspaceId, tab);
-
-  void reorderTabs(String workspaceId, int oldIndex, int newIndex) =>
-      reorder(workspaceId, oldIndex, newIndex);
-
-  void pinTab(String workspaceId, WorkbenchTabId tab) =>
-      pin(workspaceId, tab);
-
-  void clearActive(String workspaceId) => enterLanding(workspaceId);
-
-  void enterWelcome(String workspaceId) => enterLanding(workspaceId);
-
   List<WorkbenchTabId> closeOthers(String workspaceId, WorkbenchTabId keep) {
     final bar = state.bar(workspaceId);
     final center = bar.center;
@@ -339,12 +255,4 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
       ..remove(workspaceId);
     emit(WorkbenchState(byWorkspace: next));
   }
-
-  List<WorkbenchTabId> tabOrder(String workspaceId) => centerOrder(workspaceId);
-
-  WorkbenchTabId? activeTabId(String workspaceId) =>
-      centerActiveId(workspaceId);
-
-  bool welcomeActive(String workspaceId) =>
-      state.bar(workspaceId).center.landingActive;
 }

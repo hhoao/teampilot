@@ -31,7 +31,7 @@ class SessionWorkbenchViewToggle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final active = context.select<WorkbenchCubit, WorkbenchTabId?>(
-      (c) => c.activeTabId(workspaceId),
+      (c) => c.centerActiveId(workspaceId),
     );
     if (active == null || active.kind != WorkbenchTabKind.session) {
       return const SizedBox.shrink();
@@ -75,8 +75,8 @@ class SessionWorkbenchViewToggle extends StatelessWidget {
 
     if (showingChat) {
       chat.setSessionWorkbenchView(sessionId, SessionWorkbenchView.terminal);
-      workbench.pinTab(workspaceId, tabId);
-      workbench.ensureTab(workspaceId, tabId, preview: false);
+      workbench.pin(workspaceId, tabId);
+      workbench.openSession(workspaceId, tabId.id, preview: false);
 
       final tab = chat.tabStore.openTabBySessionId(sessionId);
       if (tab == null) return;

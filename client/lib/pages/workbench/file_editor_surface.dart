@@ -134,7 +134,7 @@ class FileEditorSurface extends StatelessWidget {
       );
     }
     // Center preview tabs pin on first edit; floating tabs are not in the
-    // workbench preview set so [pinTab] is a no-op there.
+    // workbench preview set so [pin] is a no-op there.
     return BlocListener<EditorCubit, EditorState>(
       listenWhen: (prev, next) {
         final wasDirty = prev.bucket(workspaceId).isDirty(path);
@@ -142,7 +142,7 @@ class FileEditorSurface extends StatelessWidget {
         return !wasDirty && isDirty;
       },
       listener: (context, state) {
-        context.read<WorkbenchCubit>().pinTab(
+        context.read<WorkbenchCubit>().pin(
           workspaceId,
           WorkbenchTabId.file(path),
         );

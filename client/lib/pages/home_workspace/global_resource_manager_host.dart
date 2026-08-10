@@ -214,9 +214,11 @@ class _GlobalResourceManagerHostState extends State<GlobalResourceManagerHost> {
           );
           runService.handleEntryClosed(entryId);
           group.removeEntry(entryId);
-          context.read<WorkbenchCubit>().removeTab(
-            workspaceId,
-            WorkbenchTabId.shell(entryId),
+          unawaited(
+            context.read<WorkbenchCubit>().close(
+              workspaceId,
+              WorkbenchTabId.shell(entryId),
+            ),
           );
           final floating = context.read<FloatingWorkspaceCubit>();
           floating.setActiveWorkspace(workspaceId);
@@ -250,9 +252,9 @@ class _GlobalResourceManagerHostState extends State<GlobalResourceManagerHost> {
         final sessionId = leaf.sessionId?.trim() ?? '';
         final memberId = leaf.memberId?.trim() ?? '';
         if (sessionId.isEmpty) return;
-        workbench.ensureTab(
+        workbench.openSession(
           workspaceId,
-          WorkbenchTabId.session(sessionId),
+          sessionId,
           preview: false,
         );
         workbench.activate(workspaceId, WorkbenchTabId.session(sessionId));

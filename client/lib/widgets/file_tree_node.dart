@@ -78,7 +78,7 @@ class _FileTreeNodeState extends State<FileTreeNode> {
     if (widget.entry.isDirectory) return false;
     final pathCtx = widget.cubit.fs.pathContext;
     final active = context.select<WorkbenchCubit, WorkbenchTabId?>(
-      (c) => c.activeTabId(widget.workspaceId),
+      (c) => c.centerActiveId(widget.workspaceId),
     );
     if (active != null &&
         active.kind == WorkbenchTabKind.file &&

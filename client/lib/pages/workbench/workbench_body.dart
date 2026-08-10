@@ -43,7 +43,7 @@ class WorkbenchBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final active = context.select<WorkbenchCubit, WorkbenchTabId?>(
-      (c) => c.activeTabId(workspaceId),
+      (c) => c.centerActiveId(workspaceId),
     );
 
     // Compose mounts only via newChatActive IDE path; here we are never compose.

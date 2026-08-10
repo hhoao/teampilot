@@ -177,7 +177,7 @@ class _WorkbenchShellRunSyncState extends State<WorkbenchShellRunSync> {
     final runPanelIds = [
       for (final session in runPanelSessions) session.id,
     ];
-    final tabOrder = workbench.tabOrder(widget.workspaceId);
+    final tabOrder = workbench.centerOrder(widget.workspaceId);
     final plan = planWorkbenchShellRunSync(
       tabOrder: tabOrder,
       registryEntryIds: const [],
@@ -185,7 +185,7 @@ class _WorkbenchShellRunSyncState extends State<WorkbenchShellRunSync> {
     );
 
     for (final tab in plan.runTabsToRemove) {
-      workbench.removeTab(widget.workspaceId, tab);
+      unawaited(workbench.close(widget.workspaceId, tab));
     }
 
     final floating = context.read<FloatingWorkspaceCubit>();

@@ -121,13 +121,13 @@ Future<void> openWorkspaceSessionTab(
     final existing = chatCubit.tabStore.openTabBySessionId(session.sessionId);
     // Already live: focus + pin, keep whatever Chat/Terminal view the user set.
     if (existing != null && existing.isRunning) {
-      workbench.ensureTab(workspace.workspaceId, tabId, preview: false);
+      workbench.openSession(workspace.workspaceId, tabId.id, preview: false);
       return;
     }
   }
-  final replaced = workbench.ensureTab(
+  final replaced = workbench.openSession(
     workspace.workspaceId,
-    tabId,
+    tabId.id,
     preview: asPreview,
   );
   if (!context.mounted) return;
@@ -238,10 +238,7 @@ Future<void> createAndOpenWorkspaceConversation(
   // ensureTab will not override an active run/shell/file tab.
   final sessionId = context.read<ChatCubit>().state.activeSessionId?.trim() ?? '';
   if (sessionId.isNotEmpty) {
-    context.read<WorkbenchCubit>().ensureTab(
-      workspace.workspaceId,
-      WorkbenchTabId.session(sessionId),
-    );
+    context.read<WorkbenchCubit>().openSession(workspace.workspaceId, sessionId);
   }
 }
 
@@ -395,9 +392,9 @@ Future<void> submitWorkspaceLandingMessage(
   // Landing unmounts ChatPage while a Run tab (启动配置) may still be active;
   // ensureTab does not steal focus from run/shell/file — select explicitly.
   if (context.mounted) {
-    context.read<WorkbenchCubit>().ensureTab(
+    context.read<WorkbenchCubit>().openSession(
       liveWorkspace.workspaceId,
-      WorkbenchTabId.session(plannedSessionId),
+      plannedSessionId,
     );
   }
 

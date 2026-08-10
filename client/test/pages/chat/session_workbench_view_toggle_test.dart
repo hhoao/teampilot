@@ -6,7 +6,6 @@ import 'package:teampilot/cubits/chat/model/chat_tab.dart';
 import 'package:teampilot/cubits/chat/model/session_connect_request.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
-import 'package:teampilot/cubits/workbench/workbench_tab.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/workspace_folder.dart';
@@ -82,7 +81,7 @@ void main() {
         cliTeamName: '',
       )..persistedSession = session,
     );
-    workbench.ensureTab('w1', WorkbenchTabId.session(sessionId));
+    workbench.openSession('w1', sessionId);
   }
 
   IconData toggleIcon(WidgetTester tester) {

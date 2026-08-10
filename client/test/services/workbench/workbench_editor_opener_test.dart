@@ -37,7 +37,7 @@ void main() {
     await Future<void>.delayed(Duration.zero);
 
     expect(
-      workbench.state.bucket('ws').tabOrder.where(
+      workbench.state.bar('ws').center.order.where(
         (t) => t.kind == WorkbenchTabKind.file,
       ),
       isEmpty,
@@ -75,9 +75,9 @@ void main() {
     gate.complete();
     await opener.openFile('ws', '/repo/a.txt');
 
-    expect(workbench.activeTabId('ws')?.kind, isNot(WorkbenchTabKind.file));
+    expect(workbench.centerActiveId('ws')?.kind, isNot(WorkbenchTabKind.file));
     expect(
-      workbench.state.bucket('ws').tabOrder.where(
+      workbench.state.bar('ws').center.order.where(
         (t) => t.kind == WorkbenchTabKind.file,
       ),
       isEmpty,
@@ -112,7 +112,7 @@ void main() {
     await Future<void>.delayed(Duration.zero);
 
     expect(
-      workbench.state.bucket('ws').tabOrder.where(
+      workbench.state.bar('ws').center.order.where(
         (t) => t.kind == WorkbenchTabKind.file,
       ),
       isEmpty,
@@ -154,7 +154,7 @@ void main() {
       '/repo/a.txt',
       source: WorkbenchDiffSource.changes,
     );
-    expect(workbench.state.bucket('ws').tabOrder, isEmpty);
+    expect(workbench.state.bar('ws').center.order, isEmpty);
     expect(
       floating.activeBucket.tabs.any((t) => t.payload == diffKey),
       isTrue,
@@ -188,7 +188,7 @@ void main() {
     );
 
     expect(
-      workbench.activeTabId('ws'),
+      workbench.centerActiveId('ws'),
       WorkbenchTabId.diff('/repo/a.txt', source: WorkbenchDiffSource.changes),
     );
     expect(floating.activeBucket.tabs, isEmpty);
@@ -215,8 +215,8 @@ void main() {
     gate.complete();
     await opener.openFile('ws', '/repo/a.txt');
 
-    expect(workbench.activeTabId('ws')?.kind, WorkbenchTabKind.file);
-    expect(workbench.activeTabId('ws')?.id, '/repo/a.txt');
+    expect(workbench.centerActiveId('ws')?.kind, WorkbenchTabKind.file);
+    expect(workbench.centerActiveId('ws')?.id, '/repo/a.txt');
     expect(floating.activeBucket.tabs, isEmpty);
     expect(editor.state.bucket('ws').openFilePaths, contains('/repo/a.txt'));
   });

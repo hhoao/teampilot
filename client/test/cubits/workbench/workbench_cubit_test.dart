@@ -56,17 +56,6 @@ void main() {
     });
   });
 
-  group('legacy facade', () {
-    test('bucket exposes old getters for existing readers', () {
-      cubit.openSession(_ws, 's1');
-      final bucket = cubit.state.bucket(_ws);
-      expect(bucket.tabOrder, [_s1]);
-      expect(bucket.activeTabId, _s1);
-      expect(bucket.previewTabIds, isEmpty);
-      expect(bucket.welcomeActive, isFalse);
-    });
-  });
-
   group('closeOthers / closeRight / closeAll', () {
     test('closeOthers returns removed list', () {
       cubit.openSession(_ws, 's1');

@@ -109,8 +109,8 @@ void main() {
       final workbench = WorkbenchCubit();
       addTearDown(workbench.close);
       final sessionTab = WorkbenchTabId.session(session.sessionId);
-      workbench.ensureTab(workspace.workspaceId, sessionTab);
-      expect(workbench.activeTabId(workspace.workspaceId), sessionTab);
+      workbench.openSession(workspace.workspaceId, sessionTab.id);
+      expect(workbench.centerActiveId(workspace.workspaceId), sessionTab);
       expect(
         workbench.state.bar(workspace.workspaceId).center.landingActive,
         isFalse,
@@ -123,12 +123,12 @@ void main() {
         isTrue,
       );
 
-      final orderBefore = List.of(workbench.tabOrder(workspace.workspaceId));
-      workbench.enterWelcome(workspace.workspaceId);
+      final orderBefore = List.of(workbench.centerOrder(workspace.workspaceId));
+      workbench.enterLanding(workspace.workspaceId);
 
-      expect(workbench.activeTabId(workspace.workspaceId), isNull);
-      expect(workbench.welcomeActive(workspace.workspaceId), isTrue);
-      expect(workbench.tabOrder(workspace.workspaceId), orderBefore);
+      expect(workbench.centerActiveId(workspace.workspaceId), isNull);
+      expect(workbench.state.bar(workspace.workspaceId).center.landingActive, isTrue);
+      expect(workbench.centerOrder(workspace.workspaceId), orderBefore);
 
       // The deleted WorkbenchSessionSync reconcile used to re-align the bar at
       // compose end; the bridge now feeds the bar only on session open, so the
@@ -136,7 +136,7 @@ void main() {
       expect(
         resolveWorkbenchCenterMode(
           newChatActive: false,
-          activeTabId: workbench.activeTabId(workspace.workspaceId),
+          activeTabId: workbench.centerActiveId(workspace.workspaceId),
         ),
         WorkbenchCenterMode.welcome,
       );
@@ -183,12 +183,12 @@ void main() {
 
     workbench.enterLanding(workspace.workspaceId);
 
-    expect(workbench.activeTabId(workspace.workspaceId), isNull);
-    expect(workbench.welcomeActive(workspace.workspaceId), isTrue);
+    expect(workbench.centerActiveId(workspace.workspaceId), isNull);
+    expect(workbench.state.bar(workspace.workspaceId).center.landingActive, isTrue);
     expect(
       resolveWorkbenchCenterMode(
         newChatActive: false,
-        activeTabId: workbench.activeTabId(workspace.workspaceId),
+        activeTabId: workbench.centerActiveId(workspace.workspaceId),
       ),
       WorkbenchCenterMode.welcome,
     );

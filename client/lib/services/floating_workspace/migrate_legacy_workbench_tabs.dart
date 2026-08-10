@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:path/path.dart' as p;
 
 import '../../cubits/floating_workspace/floating_workspace_cubit.dart';
@@ -28,7 +30,7 @@ int migrateLegacyWorkbenchTabsToFloating({
   try {
     for (final entry in workbench.state.byWorkspace.entries) {
       final workspaceId = entry.key;
-      final leftovers = entry.value.tabOrder
+      final leftovers = entry.value.center.order
           .where(
             (t) =>
                 t.kind == WorkbenchTabKind.shell ||
@@ -89,7 +91,7 @@ int migrateLegacyWorkbenchTabsToFloating({
           case WorkbenchTabKind.session:
             continue;
         }
-        workbench.removeTab(workspaceId, tab);
+        unawaited(workbench.close(workspaceId, tab));
         moved++;
       }
     }
@@ -142,15 +144,15 @@ int migrateFloatingFileTabsToWorkbench({
             floating.removeTab(tab.id);
             continue;
           }
-          workbench.ensureTab(
+          workbench.openDiff(
             workspaceId,
             WorkbenchTabId.diff(parsed.$1, source: parsed.$2),
             preview: false,
           );
         } else {
-          workbench.ensureTab(
+          workbench.openFile(
             workspaceId,
-            WorkbenchTabId.file(payload),
+            payload,
             preview: false,
           );
         }

@@ -86,7 +86,9 @@ class _FileTreePanelState extends State<FileTreePanel> {
 
   Future<void> _revealActiveEditorFile() async {
     if (!mounted) return;
-    final active = context.read<WorkbenchCubit>().activeTabId(widget.workspaceId);
+    final active = context.read<WorkbenchCubit>().centerActiveId(
+      widget.workspaceId,
+    );
     if (active == null || active.kind != WorkbenchTabKind.file) return;
 
     _filterController.clear();

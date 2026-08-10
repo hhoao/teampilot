@@ -82,7 +82,7 @@ class WorkspaceChatLanding extends StatelessWidget {
             onTap: () {
               final workspaceId = workspace.workspaceId;
               context.read<ChatCubit>().dismissNewChat();
-              context.read<WorkbenchCubit>().enterWelcome(workspaceId);
+              context.read<WorkbenchCubit>().enterLanding(workspaceId);
             },
           ),
         ),

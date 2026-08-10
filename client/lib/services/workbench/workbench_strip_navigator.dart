@@ -19,7 +19,7 @@ class WorkbenchStripNavigator {
   void focusAt(int ordinal) {
     final workspaceId = _activeWorkspaceId;
     if (workspaceId == null) return;
-    final target = workbenchTabAt(_workbench.tabOrder(workspaceId), ordinal);
+    final target = workbenchTabAt(_workbench.centerOrder(workspaceId), ordinal);
     if (target == null) return;
     _select(workspaceId, target);
   }
@@ -27,8 +27,8 @@ class WorkbenchStripNavigator {
   void next() {
     final workspaceId = _activeWorkspaceId;
     if (workspaceId == null) return;
-    final bucket = _workbench.state.bucket(workspaceId);
-    final target = workbenchNextTab(bucket.tabOrder, bucket.activeTabId);
+    final center = _workbench.state.bar(workspaceId).center;
+    final target = workbenchNextTab(center.order, center.activeId);
     if (target == null) return;
     _select(workspaceId, target);
   }
@@ -36,8 +36,8 @@ class WorkbenchStripNavigator {
   void previous() {
     final workspaceId = _activeWorkspaceId;
     if (workspaceId == null) return;
-    final bucket = _workbench.state.bucket(workspaceId);
-    final target = workbenchPrevTab(bucket.tabOrder, bucket.activeTabId);
+    final center = _workbench.state.bar(workspaceId).center;
+    final target = workbenchPrevTab(center.order, center.activeId);
     if (target == null) return;
     _select(workspaceId, target);
   }

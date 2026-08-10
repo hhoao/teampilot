@@ -728,7 +728,7 @@ void main() {
         expect(cubit.openTabCountForWorkspace(workspace.workspaceId), 1);
 
         // Re-selecting the session exits the landing.
-        workbench.select(
+        workbench.activate(
           workspace.workspaceId,
           WorkbenchTabId.session(session.sessionId),
         );

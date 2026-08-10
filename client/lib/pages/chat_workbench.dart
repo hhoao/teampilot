@@ -14,7 +14,6 @@ import '../cubits/layout_cubit.dart';
 import '../cubits/launch_profile_cubit.dart';
 import '../cubits/session_preferences_cubit.dart';
 import '../cubits/workbench/workbench_cubit.dart';
-import '../cubits/workbench/workbench_tab.dart';
 import '../l10n/l10n_extensions.dart';
 import '../models/app_session.dart';
 import '../models/workspace.dart';
@@ -859,9 +858,9 @@ class _ChatWorkbenchBody extends StatelessWidget {
             SessionWorkbenchView.terminal,
           );
         }
-        context.read<WorkbenchCubit>().ensureTab(
+        context.read<WorkbenchCubit>().openSession(
           workspaceId,
-          WorkbenchTabId.session(appSession.sessionId),
+          appSession.sessionId,
           preview: false,
         );
         final connectRequest = ExistingSessionConnect(

@@ -91,9 +91,9 @@ void main() {
       );
       await drainPendingAsyncWork();
       await postFrame.flush();
-      workbench.ensureTab(
+      workbench.openSession(
         workspaceId,
-        WorkbenchTabId.session(session.sessionId),
+        session.sessionId,
         preview: false,
       );
     }
@@ -135,10 +135,10 @@ void main() {
     });
 
     test('next/prev no-op when strip is empty', () {
-      expect(workbench.tabOrder(workspaceId), isEmpty);
+      expect(workbench.centerOrder(workspaceId), isEmpty);
       strip.next();
       strip.previous();
-      expect(workbench.activeTabId(workspaceId), isNull);
+      expect(workbench.centerActiveId(workspaceId), isNull);
       expect(workbench.state.bar(workspaceId).center.landingActive, isTrue);
     });
 
@@ -148,58 +148,58 @@ void main() {
       final s0 = WorkbenchTabId.session(sessionIds[0]);
       final s1 = WorkbenchTabId.session(sessionIds[1]);
       final diff = WorkbenchTabId.diffStaged('/tmp/a.dart', staged: false);
-      workbench.ensureTab(workspaceId, diff, preview: false);
-      workbench.select(workspaceId, s0);
-      expect(workbench.tabOrder(workspaceId), [s0, s1, diff]);
+      workbench.openDiff(workspaceId, diff, preview: false);
+      workbench.activate(workspaceId, s0);
+      expect(workbench.centerOrder(workspaceId), [s0, s1, diff]);
 
       strip.next();
-      expect(workbench.activeTabId(workspaceId), s1);
+      expect(workbench.centerActiveId(workspaceId), s1);
       expect(chat.state.activeSessionId, sessionIds[1]);
 
       strip.next();
-      expect(workbench.activeTabId(workspaceId), diff);
+      expect(workbench.centerActiveId(workspaceId), diff);
 
       strip.next();
-      expect(workbench.activeTabId(workspaceId), s0);
+      expect(workbench.centerActiveId(workspaceId), s0);
 
       strip.previous();
-      expect(workbench.activeTabId(workspaceId), diff);
+      expect(workbench.centerActiveId(workspaceId), diff);
     });
 
     test('focusAt selects 1-based strip ordinal including diffs', () async {
       await openSession();
       final s0 = WorkbenchTabId.session(sessionIds[0]);
       final diff = WorkbenchTabId.diffStaged('/tmp/b.dart', staged: false);
-      workbench.ensureTab(workspaceId, diff, preview: false);
-      workbench.select(workspaceId, s0);
+      workbench.openDiff(workspaceId, diff, preview: false);
+      workbench.activate(workspaceId, s0);
 
       strip.focusAt(2);
-      expect(workbench.activeTabId(workspaceId), diff);
+      expect(workbench.centerActiveId(workspaceId), diff);
 
       strip.focusAt(1);
-      expect(workbench.activeTabId(workspaceId), s0);
+      expect(workbench.centerActiveId(workspaceId), s0);
       expect(chat.state.activeSessionId, sessionIds[0]);
     });
 
     test('focusAt no-ops when ordinal is out of range', () async {
       await openSession();
-      final active = workbench.activeTabId(workspaceId);
+      final active = workbench.centerActiveId(workspaceId);
       strip.focusAt(3);
-      expect(workbench.activeTabId(workspaceId), active);
+      expect(workbench.centerActiveId(workspaceId), active);
     });
 
     test('next clears new-chat landing', () async {
       await openSession();
       await openSession();
       final s0 = WorkbenchTabId.session(sessionIds[0]);
-      workbench.select(workspaceId, s0);
+      workbench.activate(workspaceId, s0);
       workbench.enterLanding(workspaceId);
       expect(workbench.state.bar(workspaceId).center.landingActive, isTrue);
 
       // Landing is not a tab: next() activates the first strip tab.
       strip.next();
       expect(workbench.state.bar(workspaceId).center.landingActive, isFalse);
-      expect(workbench.activeTabId(workspaceId), s0);
+      expect(workbench.centerActiveId(workspaceId), s0);
     });
 
     test('close(active session) is the session-close-tab command equivalent',
