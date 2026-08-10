@@ -94,9 +94,16 @@ const double kGitChangesCheckboxWidth = 18;
 
 /// Horizontal padding inside the stage-checkbox column, so the box doesn't sit
 /// flush against the chevron (or the row edge) on the left and the file/folder
-/// icon on the right. The column stays [kGitChangesCheckboxWidth] wide, so tree
-/// alignment is unaffected.
+/// icon on the right. The box keeps its natural [kGitChangesCheckboxWidth]
+/// size; the extra room widens the column, not the box.
 const double kGitChangesCheckboxHPadding = 2;
+
+/// Width of the stage-checkbox column: the [kGitChangesCheckboxWidth] box plus
+/// [kGitChangesCheckboxHPadding] on each side. The chevron column stays
+/// [kGitChangesChevronWidth] (the box width), so the tree alignment holds; the
+/// child-folder chevron lands on the checkbox column's left edge.
+const double kGitChangesCheckboxColumnWidth =
+    kGitChangesCheckboxWidth + kGitChangesCheckboxHPadding * 2;
 
 /// Width of the folder chevron column; equal to the checkbox width so a child
 /// file's checkbox left edge lands exactly on its parent folder's checkbox
@@ -140,9 +147,9 @@ double gitChangesMinContentWidth({
       painter.text = TextSpan(text: row.name, style: folderLabelStyle);
       painter.layout();
       final leading = kGitChangesChevronWidth +
-          kGitChangesCheckboxWidth +
+          kGitChangesCheckboxColumnWidth +
           16 +
-          6; // chevron + checkbox + folder icon + gap
+          6; // chevron + checkbox column + folder icon + gap
       final rowWidth =
           row.depth * kGitChangesIndentWidth +
           kGitChangesNodePaddingLeft +
@@ -158,7 +165,7 @@ double gitChangesMinContentWidth({
     painter.text = TextSpan(text: label, style: fileLabelStyle);
     painter.layout();
     final leading =
-        kGitChangesCheckboxWidth + 16 + 6; // checkbox + file icon + gap
+        kGitChangesCheckboxColumnWidth + 16 + 6; // checkbox column + file icon + gap
     final rowWidth =
         row.depth * kGitChangesIndentWidth +
         kGitChangesChevronWidth +

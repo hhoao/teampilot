@@ -92,7 +92,7 @@ class GitChangeTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               SizedBox(
-                width: kGitChangesCheckboxWidth,
+                width: kGitChangesCheckboxColumnWidth,
                 height: kGitChangesCheckboxWidth,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
