@@ -28,6 +28,7 @@ import 'capabilities/headless_provision.dart';
 import 'capabilities/installer.dart';
 import 'provider/opencode_effort_capability.dart';
 import 'provider/opencode_provider_form_capability.dart';
+import 'provider/opencode_provider_model_capability.dart';
 import '../registry/capabilities/member_config_inspection_capability.dart';
 import '../registry/capabilities/provider_form_capability.dart';
 import '../registry/capabilities/resource_capability.dart';
@@ -74,7 +75,7 @@ final class OpencodeCliTool implements CliToolDefinition {
     this.memberConfigInspection = const DefaultMemberConfigInspection(),
     this.pluginProvisioner = const OpencodePluginProvisioner(),
     this.providerCatalog = const OpencodeProviderCatalogCapability(),
-    this.providerModel = const OpencodeProviderModelCapability(),
+    OpencodeProviderModelCapability? providerModel,
     this.effort = const OpencodeEffortCapability(),
     this.headlessRun = const OpencodeHeadlessRunCapability(),
     this.headlessProvision = const OpencodeHeadlessProvisionCapability(),
@@ -97,7 +98,8 @@ final class OpencodeCliTool implements CliToolDefinition {
     this.remoteAppData = const OpencodeRemoteAppData(),
     this.credentialExport = const OpencodeCredentialExport(),
     ProviderCredentialCapability? providerCredential,
-  }) : providerCredential =
+  }) : providerModel = providerModel ?? OpencodeProviderModelCapability(),
+       providerCredential =
            providerCredential ?? OpencodeProviderCredentialCapability();
 
   final ProviderCredentialCapability providerCredential;

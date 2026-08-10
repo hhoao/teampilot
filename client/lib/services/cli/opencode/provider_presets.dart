@@ -31,6 +31,22 @@ class OpencodeProviderPresets {
       ),
     ),
     AppProviderPreset(
+      id: "opencode-go",
+      label: "OpenCode Go (subscription)",
+      template: AppProviderConfig(
+        id: "opencode-go",
+        cli: CliTool.opencode,
+        name: "OpenCode Go",
+        websiteUrl: "https://opencode.ai",
+        apiKeyUrl: "https://opencode.ai/go",
+        category: AppProviderCategory.official,
+        baseUrl: "https://opencode.ai/zen/go/v1",
+        defaultModel: "deepseek-v4-flash",
+        config: {"npm": "@ai-sdk/openai-compatible"},
+        isOfficial: true,
+      ),
+    ),
+    AppProviderPreset(
       id: "openai",
       label: "OpenAI",
       template: AppProviderConfig(
