@@ -68,7 +68,7 @@ final attachments = await const SubagentAttachmentInflater().inflate(...);
 
 2. **子代理附件**:inflate 返回的 `Map<String, AiSubagentAttachment>` 是**独立的数据结构**(attachment.messages 永不合并回 `messages`,subagent_preview_scaffold 直接渲染它们)。loader 在 inflate 之后遍历 `attachments.values` 的每条 `messages` 递归标注——顶层 messages 里的子代理 tool call 已被标注,嵌套引用只是 map 内其他 key,遍历全部 value 即全覆盖。
 
-3. **mailbox 合并后**:`_mergeWithMailbox`(ai_history_seat.dart:273/684)在 `loader.load` **之后**运行,mailbox 消息中的 tool call 会绕过 loader 通道。seat 在两个 merge 汇聚点(load:273-279 与 softReload 路径)对 merged 列表再调用一次 `loader.annotate(messages)`(loader 暴露薄封装,内部复用缓存好的 resolver)。
+3. **mailbox 合并后**:`_mergeWithMailbox`(ai_history_seat.dart:273/684)在 `loader.load` **之后**运行,可能引入绕过 loader 通道的 tool call(防御性标注;当前 mailbox 事件为纯用户文本,refreshMailboxTimeline 路径同样安全)。seat 在两个 merge 汇聚点(load:273-279 与 softReload:399-403)对 merged 列表再调用一次 `loader.annotate(messages)`(loader 暴露薄封装,内部复用缓存好的 resolver)。
 
 - loader 内部通过 `_registry.capability<ToolCallResolversCapability>(cli)` 获取 categoryResolver(注意:loader 手头只有 `AiHistoryCapability`,需**第二次 registry 查询**)
 - 标注结果随 loader 的 per-token 缓存一起缓存,不重复计算
@@ -174,10 +174,10 @@ client/lib/
 | 层 | 用例 |
 |---|---|
 | ai_message_core | 枚举;`AiToolCallPart` category 默认值 / copyWith;`messageContentIdentity` 不含 category |
-| client(映射) | 每 CLI 全表测试:已知工具名 → 类别、`mcp__` 前缀 → mcp、未知 → other、大小写不敏感 |
+| client(映射) | 每 CLI 全表测试:已知工具名 → 类别、`mcp__` 前缀 → mcp、未知 → other、大小写不敏感;跨 capability 一致性(`subagentToolNames` ⊂ subagent 类别) |
 | client(标注) | `annotateToolCallCategories` 对子代理附件 transcript(`AiSubagentAttachment.messages`,含 workflow agents)一并标注;幂等(重复调用结果不变);mailbox merge 后 seat 调用 `loader.annotate` 补标 |
 | ai_message_ui | `groupMessageParts` 谓词:reasoning 恒折、折 / 不折边界、混合 run、纯工具 run、计数只含折入 parts;scope 缺省 = 全折 |
-| prefs | 默认折叠集合;toggle 持久化 |
+| prefs | 默认折叠集合;toggle 持久化;`foldToolCallCategories` JSON round-trip(枚举 `.name`) |
 | 设置页 | widget 测试:每类别 Switch 渲染与切换 |
 
 ## 性能
@@ -209,4 +209,8 @@ client/lib/
 | mcp | 前缀规则:`mcp__` |
 | other | 其余一切(含 custom_tool_call 等) |
 
-命名说明:`task` 精确名归 **subagent**(opencode `task`、Claude `Task`、codex `task` 均为子代理工具,与 builtin_ai_history_capabilities 的 subagentToolNames 一致),而 `taskcreate` / `taskupdate` / `todowrite` 等任务看板工具归 **task**;`exitplanmode` 属 plan 而非 plan 类名冲突。共享表的 subagent 集合取各 CLI `AiHistoryCapability.subagentToolNames` 的**并集**(当前即 {agent, task, workflow, spawn_agent, agentdelegate}),并配一条跨 capability 一致性测试:对每个 CLI,`subagentToolNames` 中每个名字解析出的类别必须为 `subagent`(防止两处漂移)。
+命名说明:`task` 精确名归 **subagent**(opencode `task`、Claude `Task`、codex `task` 均为子代理工具,与 builtin_ai_history_capabilities 的 subagentToolNames 一致),而 `taskcreate` / `taskupdate` / `todowrite` 等任务看板工具归 **task**;`exitplanmode` 属 plan 而非 plan 类名冲突。共享表的 subagent 集合取各 CLI `AiHistoryCapability.subagentToolNames` 的**并集**(builtin_ai_history_capabilities.dart:38/64/90/116/144,当前实际为 {agent, task, workflow, spawn_agent}),并配一条跨 capability 一致性测试:对每个 CLI,`subagentToolNames` 中每个名字解析出的类别必须为 `subagent`(防止两处漂移)。
+
+**能力缺失兜底**:loader 的 `_registry.capability<ToolCallResolversCapability>(cli)` 对内置 5 CLI 均有实现;若未来某自定义 tool definition 只实现 `AiHistoryCapability` 而无 resolver capability,标注回落为**共享默认表**(无 per-CLI 增量),仍无法命中的一律 `other`。
+
+**偏好序列化**:`foldToolCallCategories` 以枚举 `.name` 字符串集合存入 LayoutPreferences JSON(与现有偏好字段一致的风格),round-trip 由 layout prefs 仓储测试覆盖。
