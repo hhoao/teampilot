@@ -76,8 +76,9 @@ const double kGitChangesRowVerticalPadding = 4;
 const double kGitChangesRowExtent =
     kGitChangesNodeHeight + kGitChangesRowVerticalPadding * 2;
 
-/// Matches [GitChangeTile] / [GitChangeFolderTile] indent step.
-const double kGitChangesIndentWidth = 16;
+/// Per tree level, the whole leading column = chevron (18) + checkbox (18),
+/// so a child file's checkbox aligns with its parent folder's checkbox right.
+const double kGitChangesIndentWidth = 36;
 
 /// Outer horizontal inset on each list row in tree view.
 const double kGitChangesRowHorizontalPadding = 2;
@@ -88,6 +89,11 @@ const double kGitChangesNodePaddingRight = 6;
 
 /// Width of the stage checkbox at the leading edge of each row.
 const double kGitChangesCheckboxWidth = 18;
+
+/// Width of the folder chevron column; equal to the checkbox width so a child
+/// file's checkbox left edge lands exactly on its parent folder's checkbox
+/// right edge.
+const double kGitChangesChevronWidth = kGitChangesCheckboxWidth;
 
 /// Single status badge width.
 const double kGitChangesTrailingBadgeWidth = 22;
@@ -125,7 +131,7 @@ double gitChangesMinContentWidth({
     if (row.isFolder) {
       painter.text = TextSpan(text: row.name, style: folderLabelStyle);
       painter.layout();
-      final leading = kGitChangesIndentWidth +
+      final leading = kGitChangesChevronWidth +
           kGitChangesCheckboxWidth +
           16 +
           6; // chevron + checkbox + folder icon + gap
@@ -165,7 +171,7 @@ double _rowWidthEstimate(GitChangesVisibleRow row) {
     units += rune >= 0x1100 ? 2.0 : 1.0;
   }
   final extra = row.isFolder ? kGitChangesCheckboxWidth : kGitChangesTrailingBadgeWidth;
-  return row.depth * 2.0 + units + extra / 8.0;
+  return row.depth * 4.0 + units + extra / 8.0;
 }
 
 /// Default expanded folders: every directory prefix of a changed path.

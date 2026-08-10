@@ -84,7 +84,7 @@ class GitChangeFolderTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               SizedBox(
-                width: 16,
+                width: kGitChangesChevronWidth,
                 height: 16,
                 child: AnimatedRotation(
                   turns: isExpanded ? 0.25 : 0.0,

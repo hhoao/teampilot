@@ -117,7 +117,10 @@ void main() {
     // leading), i.e. (checkbox+icon+gap + 22) − (chevron+checkbox+icon+gap).
     expect(
       wFile - wFolder,
-      closeTo(kGitChangesTrailingBadgeWidth - 16, 1), // 22 − chevron slot
+      closeTo(
+        kGitChangesTrailingBadgeWidth - kGitChangesChevronWidth,
+        1,
+      ), // 22 − chevron column (18)
     );
     expect(wFile, greaterThan(100));
   });
