@@ -3,6 +3,38 @@ import 'package:ai_message_ui/ai_message_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+class _TestFileResolver implements AiToolFileTargetResolver {
+  const _TestFileResolver();
+
+  @override
+  AiToolFileTarget? resolve(AiToolCallPart part) {
+    final path = part.args?['file_path'] as String? ??
+        part.args?['path'] as String?;
+    if (path == null) return null;
+    final offset = part.args?['offset'] as int?;
+    final limit = part.args?['limit'] as int?;
+    return AiToolFileTarget(
+      path: path,
+      startLine: offset,
+      endLine: offset != null && limit != null ? offset + limit - 1 : null,
+    );
+  }
+}
+
+class _TestEditResolver implements AiEditToolTargetResolver {
+  const _TestEditResolver();
+
+  @override
+  AiEditToolTarget? resolve(AiToolCallPart part) => null;
+}
+
+class _TestShellResolver implements AiShellToolTargetResolver {
+  const _TestShellResolver();
+
+  @override
+  AiShellToolTarget? resolve(AiToolCallPart part) => null;
+}
+
 void main() {
   testWidgets('summary shows basename; tap opens; chevron expands', (
     tester,
@@ -12,9 +44,9 @@ void main() {
       MaterialApp(
         home: AiToolFileActionsScope(
           actions: AiToolFileActions(
-            fileResolver: const DefaultAiToolFileTargetResolver(),
-            editResolver: const DefaultAiEditToolTargetResolver(),
-            shellResolver: const DefaultAiShellToolTargetResolver(),
+            fileResolver: const _TestFileResolver(),
+            editResolver: const _TestEditResolver(),
+            shellResolver: const _TestShellResolver(),
             onOpenFile: (t) async => opened = t,
           ),
           child: const Scaffold(
@@ -97,9 +129,9 @@ void main() {
       MaterialApp(
         home: AiToolFileActionsScope(
           actions: AiToolFileActions(
-            fileResolver: const DefaultAiToolFileTargetResolver(),
-            editResolver: const DefaultAiEditToolTargetResolver(),
-            shellResolver: const DefaultAiShellToolTargetResolver(),
+            fileResolver: const _TestFileResolver(),
+            editResolver: const _TestEditResolver(),
+            shellResolver: const _TestShellResolver(),
             onOpenFile: (t) async => opened = t,
           ),
           child: const Scaffold(

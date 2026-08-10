@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/history/terminal_tool_result_enricher.dart';
+import 'package:teampilot/services/ai_history/tool_call_resolvers.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/session/session_history_context.dart';
 
@@ -82,7 +83,12 @@ $trailer''';
     required String rootTranscriptPath,
   }) {
     return const CursorTerminalToolResultEnricher(
-        shellResolver: DefaultAiShellToolTargetResolver(),
+        shellResolver: ConfigurableAiShellToolTargetResolver(
+          toolNames: {
+            'bash', 'shell', 'shell_command', 'exec_command',
+            'run_shell_command', 'run_terminal_cmd', 'execute',
+          },
+        ),
       ).enrich(
       messages: messages,
       ctx: ctx(),

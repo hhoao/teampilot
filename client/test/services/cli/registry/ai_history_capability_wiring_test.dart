@@ -1,4 +1,3 @@
-import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/registry/capabilities/ai_history_capability.dart';
@@ -7,6 +6,7 @@ import 'package:teampilot/services/cli/claude/capabilities/history/compatible_to
 import 'package:teampilot/services/cli/claude/capabilities/history/side_resolver.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/history/terminal_tool_result_enricher.dart';
 import 'package:teampilot/services/cli/registry/capabilities/history/tool_result_enricher.dart';
+import 'package:teampilot/services/ai_history/tool_call_resolvers.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 
 void main() {
@@ -15,7 +15,12 @@ void main() {
       const ClaudeAiHistoryCapability(),
       const FlashskyaiAiHistoryCapability(),
       const CursorAiHistoryCapability(
-        shellResolver: DefaultAiShellToolTargetResolver(),
+        shellResolver: ConfigurableAiShellToolTargetResolver(
+          toolNames: {
+            'bash', 'shell', 'shell_command', 'exec_command',
+            'run_shell_command', 'run_terminal_cmd', 'execute',
+          },
+        ),
       ),
       const CodexAiHistoryCapability(),
       const OpencodeAiHistoryCapability(),
@@ -32,7 +37,12 @@ void main() {
     );
     expect(
       const CursorAiHistoryCapability(
-        shellResolver: DefaultAiShellToolTargetResolver(),
+        shellResolver: ConfigurableAiShellToolTargetResolver(
+          toolNames: {
+            'bash', 'shell', 'shell_command', 'exec_command',
+            'run_shell_command', 'run_terminal_cmd', 'execute',
+          },
+        ),
       ).toolResultEnricher,
       isA<CursorTerminalToolResultEnricher>(),
     );

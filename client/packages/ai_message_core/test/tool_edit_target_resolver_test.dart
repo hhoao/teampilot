@@ -1,27 +1,38 @@
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:test/test.dart';
 
-void main() {
-  const resolver = DefaultAiEditToolTargetResolver();
+/// Minimal inline resolver for testing the [AiEditToolTargetResolver]
+/// interface contract.
+class _TestResolver implements AiEditToolTargetResolver {
+  const _TestResolver();
 
-  test('resolver routes StrReplace; unknown tool → null', () {
-    expect(
-      resolver
-          .resolve(
-            const AiToolCallPart(
-              toolCallId: '1',
-              toolName: 'StrReplace',
-              args: {
-                'file_path': 'a.dart',
-                'old_string': 'x',
-                'new_string': 'y',
-              },
-            ),
-          )
-          ?.hunk
-          .path,
-      'a.dart',
+  @override
+  AiEditToolTarget? resolve(AiToolCallPart part) {
+    final name = part.toolName.toLowerCase();
+    if (name == 'strreplace' || name == 'edit') {
+      final path = part.args?['file_path'] as String?;
+      if (path == null) return null;
+      return AiEditToolTarget(
+        hunk: AiEditHunk(path: path, lines: [], addedCount: 0, removedCount: 0),
+      );
+    }
+    return null;
+  }
+}
+
+void main() {
+  const resolver = _TestResolver();
+
+  test('resolver routes StrReplace; unknown tool null', () {
+    final t = resolver.resolve(
+      const AiToolCallPart(
+        toolCallId: '1',
+        toolName: 'StrReplace',
+        args: {'file_path': 'a.dart'},
+      ),
     );
+    expect(t?.hunk.path, 'a.dart');
+
     expect(
       resolver.resolve(
         const AiToolCallPart(toolCallId: '1', toolName: 'Grep', args: {}),
@@ -30,50 +41,32 @@ void main() {
     );
   });
 
-  test('argsText JSON fallback', () {
-    final t = resolver.resolve(
-      const AiToolCallPart(
-        toolCallId: '1',
-        toolName: 'strreplace',
-        argsText:
-            '{"file_path":"b.dart","old_string":"o","new_string":"n"}',
-      ),
-    );
-    expect(t?.hunk.path, 'b.dart');
-  });
-
-  test('resolver routes Write and ApplyPatch', () {
+  test('case-insensitive name match', () {
     expect(
       resolver
           .resolve(
             const AiToolCallPart(
               toolCallId: '1',
-              toolName: 'Write',
-              args: {
-                'file_path': 'a.dart',
-                'contents': 'hello',
-              },
-            ),
-          )
-          ?.hunk
-          .addedCount,
-      1,
-    );
-    expect(
-      resolver
-          .resolve(
-            const AiToolCallPart(
-              toolCallId: '1',
-              toolName: 'ApplyPatch',
-              args: {
-                'path': 'b.dart',
-                'patch': '-old\n+new',
-              },
+              toolName: 'strreplace',
+              args: {'file_path': 'b.dart'},
             ),
           )
           ?.hunk
           .path,
       'b.dart',
+    );
+  });
+
+  test('missing path returns null', () {
+    expect(
+      resolver.resolve(
+        const AiToolCallPart(
+          toolCallId: '1',
+          toolName: 'StrReplace',
+          args: {'old_string': 'x'},
+        ),
+      ),
+      isNull,
     );
   });
 }
