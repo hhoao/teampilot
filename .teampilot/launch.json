@@ -15,6 +15,21 @@
       "activateToolWindow": true,
       "focusToolWindow": false,
       "interpreterPath": "/bin/bash"
+    },
+    {
+      "id": "package-appimage",
+      "name": "package (AppImage)",
+      "type": "shellScript",
+      "cwd": "${workspaceFolder}/client",
+      "execute": "scriptText",
+      "scriptOptions": "",
+      "interpreterOptions": "",
+      "executeInTerminal": true,
+      "allowMultipleInstances": false,
+      "activateToolWindow": true,
+      "focusToolWindow": false,
+      "interpreterPath": "/bin/bash",
+      "scriptText": "dart pub global activate fastforge & fastforge package --platform linux --targets appimage"
     }
   ]
 }
