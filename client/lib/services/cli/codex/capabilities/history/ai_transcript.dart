@@ -114,8 +114,9 @@ Map<String, dynamic>? _tryDecodeObject(String line) {
 
 /// Appends one Codex transcript record into [messages]. Used by
 /// [CodexAiTranscriptAdapter.parse] to parse codex's `payload`-wrapped
-/// `event_msg`/`response_item` rows.
-void appendCodexJsonlEvent(
+/// `event_msg`/`response_item` rows. Returns whether the event was consumed
+/// (produced or modified a message).
+bool appendCodexJsonlEvent(
   List<AiMessage> messages,
   Map<String, dynamic> record, {
   required String Function() fallbackId,
@@ -123,28 +124,30 @@ void appendCodexJsonlEvent(
   final type = record['type'];
   final timestamp = _parseTimestamp(record['timestamp']);
   final payloadRaw = record['payload'];
-  if (payloadRaw is! Map) return;
+  if (payloadRaw is! Map) return false;
   final payload = Map<String, dynamic>.from(payloadRaw);
 
   switch (type) {
     case 'event_msg':
-      _appendFromEventMsg(
+      return _appendFromEventMsg(
         messages,
         payload,
         timestamp: timestamp,
         fallbackId: fallbackId,
       );
     case 'response_item':
-      _appendFromResponseItem(
+      return _appendFromResponseItem(
         messages,
         payload,
         timestamp: timestamp,
         fallbackId: fallbackId,
       );
+    default:
+      return false;
   }
 }
 
-void _appendFromEventMsg(
+bool _appendFromEventMsg(
   List<AiMessage> messages,
   Map<String, dynamic> payload, {
   required DateTime? timestamp,
@@ -154,11 +157,11 @@ void _appendFromEventMsg(
   switch (kind) {
     case 'user_message':
       final message = '${payload['message'] ?? ''}'.trim();
-      if (message.isEmpty) return;
-      if (_isEnvironmentContext(message)) return;
+      if (message.isEmpty) return false;
+      if (_isEnvironmentContext(message)) return false;
       // Older codex wrote the same text as response_item.message role=user
       // (echo) right before this event_msg — keep only the first.
-      if (_isAdjacentDuplicateUserText(messages, message)) return;
+      if (_isAdjacentDuplicateUserText(messages, message)) return false;
       messages.add(
         AiMessage(
           id: fallbackId(),
@@ -167,11 +170,12 @@ void _appendFromEventMsg(
           createdAt: timestamp,
         ),
       );
+      return true;
     case 'agent_message':
       final message = '${payload['message'] ?? ''}'.trim();
-      if (message.isEmpty) return;
+      if (message.isEmpty) return false;
       // commentary + final_answer can emit identical text for one turn.
-      if (_isAdjacentDuplicateAssistantText(messages, message)) return;
+      if (_isAdjacentDuplicateAssistantText(messages, message)) return false;
       messages.add(
         AiMessage(
           id: fallbackId(),
@@ -180,19 +184,22 @@ void _appendFromEventMsg(
           createdAt: timestamp,
         ),
       );
+      return true;
     case 'agent_reasoning':
       final text = '${payload['text'] ?? ''}'.trim();
-      if (text.isEmpty) return;
-      _appendAssistantReasoning(
+      if (text.isEmpty) return false;
+      return _appendAssistantReasoning(
         messages,
         text: text,
         timestamp: timestamp,
         fallbackId: fallbackId,
       );
+    default:
+      return false;
   }
 }
 
-void _appendFromResponseItem(
+bool _appendFromResponseItem(
   List<AiMessage> messages,
   Map<String, dynamic> payload, {
   required DateTime? timestamp,
@@ -203,7 +210,7 @@ void _appendFromResponseItem(
     case 'function_call':
       final name = '${payload['name'] ?? ''}'.trim();
       final callId = payload['call_id'];
-      if (callId is! String || callId.isEmpty) return;
+      if (callId is! String || callId.isEmpty) return false;
       final toolName = name.isEmpty ? 'tool' : name;
       messages.add(
         AiMessage(
@@ -220,19 +227,21 @@ void _appendFromResponseItem(
           createdAt: timestamp,
         ),
       );
+      return true;
     case 'function_call_output':
       final callId = payload['call_id'];
-      if (callId is! String || callId.isEmpty) return;
+      if (callId is! String || callId.isEmpty) return false;
       _applyToolResult(
         messages,
         toolUseId: callId,
         result: '${payload['output'] ?? ''}',
         isError: false,
       );
+      return true;
     case 'custom_tool_call':
       final name = '${payload['name'] ?? ''}'.trim();
       final callId = payload['call_id'];
-      if (callId is! String || callId.isEmpty) return;
+      if (callId is! String || callId.isEmpty) return false;
       final toolName = name.isEmpty ? 'tool' : name;
       final input = payload['input'];
       messages.add(
@@ -250,20 +259,22 @@ void _appendFromResponseItem(
           createdAt: timestamp,
         ),
       );
+      return true;
     case 'custom_tool_call_output':
       final callId = payload['call_id'];
-      if (callId is! String || callId.isEmpty) return;
+      if (callId is! String || callId.isEmpty) return false;
       _applyToolResult(
         messages,
         toolUseId: callId,
         result: '${payload['output'] ?? ''}',
         isError: false,
       );
+      return true;
     case 'reasoning':
       // Dual-written with event_msg agent_reasoning — keep the first only.
       final text = _reasoningSummaryText(payload);
-      if (text == null) return;
-      _appendAssistantReasoning(
+      if (text == null) return false;
+      return _appendAssistantReasoning(
         messages,
         text: text,
         timestamp: timestamp,
@@ -276,10 +287,10 @@ void _appendFromResponseItem(
       // and keep developer / system / tool roles hidden.
       final role = payload['role'];
       final text = _messageText(payload['content']);
-      if (text == null || text.isEmpty) return;
+      if (text == null || text.isEmpty) return false;
       if (role == 'user') {
-        if (_isEnvironmentContext(text)) return;
-        if (_isAdjacentDuplicateUserText(messages, text)) return;
+        if (_isEnvironmentContext(text)) return false;
+        if (_isAdjacentDuplicateUserText(messages, text)) return false;
         messages.add(
           AiMessage(
             id: fallbackId(),
@@ -288,8 +299,9 @@ void _appendFromResponseItem(
             createdAt: timestamp,
           ),
         );
+        return true;
       } else if (role == 'assistant') {
-        if (_isAdjacentDuplicateAssistantText(messages, text)) return;
+        if (_isAdjacentDuplicateAssistantText(messages, text)) return false;
         messages.add(
           AiMessage(
             id: fallbackId(),
@@ -298,8 +310,11 @@ void _appendFromResponseItem(
             createdAt: timestamp,
           ),
         );
+        return true;
       }
-      return;
+      return false;
+    default:
+      return false;
   }
 }
 
@@ -321,13 +336,13 @@ String? _messageText(Object? contentRaw) {
 
 /// Codex often logs the same reasoning as both `event_msg.agent_reasoning`
 /// and `response_item.reasoning`. Keep whichever arrives first.
-void _appendAssistantReasoning(
+bool _appendAssistantReasoning(
   List<AiMessage> messages, {
   required String text,
   required DateTime? timestamp,
   required String Function() fallbackId,
 }) {
-  if (_isAdjacentDuplicateAssistantReasoning(messages, text)) return;
+  if (_isAdjacentDuplicateAssistantReasoning(messages, text)) return false;
   messages.add(
     AiMessage(
       id: fallbackId(),
@@ -336,6 +351,7 @@ void _appendAssistantReasoning(
       createdAt: timestamp,
     ),
   );
+  return true;
 }
 
 bool _isAdjacentDuplicateAssistantReasoning(

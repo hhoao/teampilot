@@ -13,6 +13,7 @@ final class FakeAiHistoryCapability implements AiHistoryCapability {
   FakeAiHistoryCapability({
     required this.adapter,
     this.locateFn,
+    this.lineAppend,
     this.subagentSideResolver = const NullSubagentSideResolver(),
     this.toolResultEnricher = const NoOpToolResultEnricher(),
   });
@@ -26,6 +27,9 @@ final class FakeAiHistoryCapability implements AiHistoryCapability {
   @override
   Future<AiTranscriptBundle?> locate(SessionHistoryContext ctx) =>
       locateFn?.call(ctx) ?? Future.value(null);
+
+  @override
+  final AiTranscriptLineAppend? lineAppend;
 
   @override
   Set<String> get subagentToolNames => const {};

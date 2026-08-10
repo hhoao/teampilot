@@ -7,6 +7,7 @@ import '../../../codex/capabilities/history/ai_transcript.dart';
 import '../../../cursor/capabilities/history/ai_transcript.dart';
 import '../../../flashskyai/capabilities/history/ai_transcript.dart';
 import '../../../opencode/capabilities/history/ai_transcript.dart';
+import '../../../claude/capabilities/history/compatible_jsonl.dart';
 import '../../../claude/capabilities/history/compatible_side_resolver.dart';
 import '../../../claude/capabilities/history/side_resolver.dart';
 import '../../../codex/capabilities/history/side_resolver.dart';
@@ -29,6 +30,9 @@ final class ClaudeAiHistoryCapability implements AiHistoryCapability {
 
   @override
   AiTranscriptAdapter get adapter => const ClaudeAiTranscriptAdapter();
+
+  @override
+  AiTranscriptLineAppend get lineAppend => appendClaudeJsonlEvent;
 
   @override
   Set<String> get subagentToolNames => const {'agent', 'task', 'workflow'};
@@ -54,6 +58,9 @@ final class FlashskyaiAiHistoryCapability implements AiHistoryCapability {
   AiTranscriptAdapter get adapter => const FlashskyaiAiTranscriptAdapter();
 
   @override
+  AiTranscriptLineAppend get lineAppend => appendClaudeJsonlEvent;
+
+  @override
   Set<String> get subagentToolNames => const {'agent', 'task'};
 
   @override
@@ -75,6 +82,9 @@ final class CodexAiHistoryCapability implements AiHistoryCapability {
 
   @override
   AiTranscriptAdapter get adapter => const CodexAiTranscriptAdapter();
+
+  @override
+  AiTranscriptLineAppend get lineAppend => appendCodexJsonlEvent;
 
   @override
   Set<String> get subagentToolNames => const {'spawn_agent', 'agent', 'task'};
@@ -100,6 +110,9 @@ final class OpencodeAiHistoryCapability implements AiHistoryCapability {
   AiTranscriptAdapter get adapter => const OpencodeAiTranscriptAdapter();
 
   @override
+  AiTranscriptLineAppend? get lineAppend => null; // multi-file DB; no single-line incremental dialect.
+
+  @override
   Set<String> get subagentToolNames => const {'task'};
 
   @override
@@ -123,6 +136,9 @@ final class CursorAiHistoryCapability implements AiHistoryCapability {
 
   @override
   AiTranscriptAdapter get adapter => const CursorAiTranscriptAdapter();
+
+  @override
+  AiTranscriptLineAppend get lineAppend => appendCursorJsonlEvent;
 
   @override
   Set<String> get subagentToolNames => const {'agent', 'task'};

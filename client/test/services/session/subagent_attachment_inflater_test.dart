@@ -33,6 +33,9 @@ class _Cap implements AiHistoryCapability {
   AiTranscriptAdapter get adapter => const ClaudeAiTranscriptAdapter();
 
   @override
+  AiTranscriptLineAppend? get lineAppend => null;
+
+  @override
   Set<String> get subagentToolNames => const {'agent', 'task'};
 
   @override
@@ -564,6 +567,9 @@ class _WorkflowCap implements AiHistoryCapability {
 
   @override
   AiTranscriptAdapter get adapter => const ClaudeAiTranscriptAdapter();
+
+  @override
+  AiTranscriptLineAppend? get lineAppend => null;
 
   @override
   Set<String> get subagentToolNames => const {'agent', 'task', 'workflow'};

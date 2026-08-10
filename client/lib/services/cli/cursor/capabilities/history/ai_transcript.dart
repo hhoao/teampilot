@@ -182,17 +182,18 @@ Map<String, dynamic>? _tryDecodeObject(String raw) {
 
 /// Appends one Cursor agent-transcript event into [messages]. Used by
 /// [CursorAiTranscriptAdapter.parse] with the same `role` dialect, text wrapper
-/// cleanup and id-less tool fallback.
-void appendCursorJsonlEvent(
+/// cleanup and id-less tool fallback. Returns whether the event was consumed
+/// (produced or modified a message).
+bool appendCursorJsonlEvent(
   List<AiMessage> messages,
   Map<String, dynamic> event, {
   required String Function() fallbackId,
 }) {
   final role = event['role'];
-  if (role != 'user' && role != 'assistant') return;
+  if (role != 'user' && role != 'assistant') return false;
 
   final message = event['message'];
-  if (message is! Map) return;
+  if (message is! Map) return false;
   final messageMap = Map<String, dynamic>.from(message);
   final content = messageMap['content'];
   final timestamp = _parseTimestamp(event['timestamp']);
@@ -200,7 +201,7 @@ void appendCursorJsonlEvent(
 
   if (content is String) {
     final text = _cursorVisibleText(content);
-    if (text == null) return;
+    if (text == null) return false;
     messages.add(
       AiMessage(
         id: id,
@@ -209,10 +210,10 @@ void appendCursorJsonlEvent(
         createdAt: timestamp,
       ),
     );
-    return;
+    return true;
   }
 
-  if (content is! List) return;
+  if (content is! List) return false;
 
   final textParts = <AiTextPart>[];
   final toolParts = <AiToolCallPart>[];
@@ -269,7 +270,7 @@ void appendCursorJsonlEvent(
     ...textParts,
     if (role == 'assistant') ...toolParts,
   ];
-  if (parts.isEmpty) return;
+  if (parts.isEmpty) return false;
 
   final next = AiMessage(
     id: id,
@@ -291,10 +292,11 @@ void appendCursorJsonlEvent(
       createdAt: last.createdAt ?? next.createdAt,
       status: next.status,
     );
-    return;
+    return true;
   }
 
   messages.add(next);
+  return true;
 }
 
 /// Cursor parent-facing transcripts put a literal `[REDACTED]` text block
