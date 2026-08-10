@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -217,6 +218,73 @@ void main() {
         expect(call.memberTargets, provisional.memberTargets);
       },
     );
+
+    test('persistSessionIfNeeded preserves a staged prompt title', () async {
+      final workspace = Workspace(
+        workspaceId: 'ws-1',
+        folders: const [WorkspaceFolder(path: '/proj')],
+        createdAt: 1,
+        updatedAt: 1,
+      );
+      final team = TeamProfile(
+        id: 'team-1',
+        name: 'Team',
+        members: const [
+          TeamMemberConfig(id: 'team-lead', name: 'Lead'),
+          TeamMemberConfig(id: 'builder', name: 'Builder'),
+        ],
+        cli: CliTool.claude,
+      );
+      final capturer = _CapturingSessionRepository()
+        ..createGate = Completer<void>();
+      final tabStore = ChatTabStore()..setActiveWorkspaceId('ws-1');
+      final host = _CapturingHost(
+        ChatState(workspaces: [workspace]),
+        tabStore: tabStore,
+        lifecycle: SessionLifecycleService(loadPresets: () => const []),
+        sessionRepository: capturer,
+      );
+      final service = SessionLaunchService(host);
+
+      const fixedSessionId = 'sess-title-cccccccccccccccc';
+      final status = await service.requestCreateAndOpenSession(
+        SessionCreateRequest(
+          workspace: workspace,
+          isPersonal: false,
+          team: team,
+          member: team.members.first,
+          repo: capturer,
+          fixedSessionId: fixedSessionId,
+        ),
+      );
+      expect(status, SessionOpenStatus.opened);
+      expect(host.appended, hasLength(1));
+
+      await _waitUntil(() => capturer.createCalls.isNotEmpty);
+
+      // Simulate the landing-prompt rename landing before async persistence.
+      final provisional = host.appended.single;
+      host.applyState(
+        host.state.copyWith(
+          sessions: [
+            provisional.copyWith(display: 'Fix the landing title'),
+          ],
+        ),
+      );
+
+      capturer.createGate!.complete();
+      await _waitUntil(() => host.replaced.isNotEmpty);
+
+      final persisted = host.replaced.single;
+      expect(persisted.display, 'Fix the landing title');
+      expect(
+        capturer.renames,
+        contains((
+          'sess-title-cccccccccccccccc',
+          'Fix the landing title',
+        )),
+      );
+    });
   });
 }
 
@@ -320,6 +388,13 @@ class _CreateSessionCall {
 
 class _CapturingSessionRepository extends Fake implements SessionRepository {
   final createCalls = <_CreateSessionCall>[];
+  final renames = <(String, String)>[];
+  Completer<void>? createGate;
+
+  @override
+  Future<void> renameSession(String sessionId, String newName) async {
+    renames.add((sessionId, newName));
+  }
 
   @override
   Future<AppSession> createSession(
@@ -346,6 +421,7 @@ class _CapturingSessionRepository extends Fake implements SessionRepository {
         memberTargets: memberTargets,
       ),
     );
+    await createGate?.future;
     return AppSession(
       sessionId: fixedSessionId ?? 'generated',
       workspaceId: workspaceId,

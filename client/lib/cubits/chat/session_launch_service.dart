@@ -236,9 +236,22 @@ class SessionLaunchService
       members: session.members,
       memberTargets: session.memberTargets,
     );
-    tab.persistedSession = persisted;
-    _h.replaceSessionSnapshot(persisted);
-    return persisted;
+    var persistedWithTitle = persisted;
+    final stagedTitle = _state
+        .sessions
+        .where((s) => s.sessionId == session.sessionId)
+        .firstOrNull
+        ?.display
+        .trim();
+    if (stagedTitle != null &&
+        stagedTitle.isNotEmpty &&
+        persistedWithTitle.display.trim().isEmpty) {
+      await repo.renameSession(session.sessionId, stagedTitle);
+      persistedWithTitle = persistedWithTitle.copyWith(display: stagedTitle);
+    }
+    tab.persistedSession = persistedWithTitle;
+    _h.replaceSessionSnapshot(persistedWithTitle);
+    return persistedWithTitle;
   }
 
   void _rollbackStagedLaunch({

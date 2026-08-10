@@ -62,6 +62,24 @@ SessionOpenRequest buildOpenExistingSessionRequest({
   );
 }
 
+/// Best-effort rename of an untitled session from the landing prompt, before
+/// connect/delivery. A title-write failure must not block the launch.
+Future<void> applyLandingPromptTitleBestEffort({
+  required ChatCubit chatCubit,
+  required String sessionId,
+  required String prompt,
+}) async {
+  try {
+    await chatCubit.applyFirstPromptTitle(sessionId, prompt);
+  } on Object catch (error, stackTrace) {
+    appLogger.e(
+      'applyLandingPromptTitleBestEffort',
+      error: error,
+      stackTrace: stackTrace,
+    );
+  }
+}
+
 Future<void> openWorkspaceSessionTab(
   BuildContext context,
   Workspace workspace,
@@ -441,6 +459,14 @@ Future<void> submitWorkspaceLandingMessage(
     return;
   }
 
+  // Landing inject bypasses FirstUserLineCapture (keyboard path only); rename
+  // before connect so the tab title appears while the session is still launching.
+  await applyLandingPromptTitleBestEffort(
+    chatCubit: chatCubit,
+    sessionId: session.sessionId,
+    prompt: trimmed,
+  );
+
   final memberId = await _resolveLandingMemberId(
     chatCubit: chatCubit,
     session: session,
@@ -482,8 +508,6 @@ Future<void> submitWorkspaceLandingMessage(
       trimmed,
       directToPty: true,
     );
-    // Landing inject bypasses FirstUserLineCapture (keyboard path only).
-    await chatCubit.applyFirstPromptTitle(session.sessionId, trimmed);
   } on Object catch (error, stackTrace) {
     if (!switchToTerminal) {
       chatCubit.cancelHistorySeedPending(

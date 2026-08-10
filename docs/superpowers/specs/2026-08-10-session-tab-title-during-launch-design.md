@@ -52,6 +52,12 @@ The rename is best-effort: wrap it in try/catch and log failures with
 so it cannot overwrite a manual title or race with the keyboard
 `FirstUserLineCapture` path.
 
+Persistence runs asynchronously after the tab is staged, so
+`_persistSessionIfNeeded` also preserves a staged display title: after
+`createSession` returns, if the current state already has a non-empty display
+for the session and the persisted copy is empty, it calls `repo.renameSession`
+and carries the title into the replaced snapshot.
+
 ### 3. Testing
 
 - Widget test: a session `WorkbenchStripTabChip` with an empty `display` paints
