@@ -66,19 +66,51 @@ void main() {
     expect(anchor.row, 0);
   });
 
-  test('locateClaudeCollapsedPasteNeedle finds Claude paste chrome', () {
+  test('locateCollapsedPasteNeedle finds Claude Code paste chrome', () {
     final lines = List<String>.filled(10, '');
     lines[7] = '❯ [Pasted text #3 +17 lines]';
     lines[9] = 'paste again to expand';
     final grid = _FakeGrid.fromRows(lines);
 
-    final anchor = locateClaudeCollapsedPasteNeedle(
+    final anchor = locateCollapsedPasteNeedle(
       grid,
       scanRows: 10,
       composerPrefix: '❯',
     );
     expect(anchor, isNotNull);
     expect(anchor!.needle, '[Pasted text #3 +17 lines]');
+    expect(anchor.row, 7);
+  });
+
+  test('locateCollapsedPasteNeedle finds opencode paste chrome', () {
+    final lines = List<String>.filled(10, '');
+    lines[7] = '┃  [Pasted ~152 lines]';
+    lines[9] = '';
+    final grid = _FakeGrid.fromRows(lines);
+
+    final anchor = locateCollapsedPasteNeedle(
+      grid,
+      scanRows: 10,
+      composerPrefix: '┃',
+    );
+    expect(anchor, isNotNull);
+    expect(anchor!.needle, '[Pasted ~152 lines]');
+    expect(anchor.row, 7);
+  });
+
+  test('locateCollapsedPasteNeedle finds Codex paste chrome', () {
+    final lines = List<String>.filled(10, '');
+    lines[7] = '› [Pasted Content 29390 chars]';
+    lines[9] = '';
+    final grid = _FakeGrid.fromRows(lines);
+
+    final anchor = locateCollapsedPasteNeedle(
+      grid,
+      scanRows: 10,
+      composerPrefix: '›',
+    );
+    expect(anchor, isNotNull);
+    expect(anchor!.needle, '[Pasted Content 29390 chars]');
     expect(anchor.row, 7);
   });
 
