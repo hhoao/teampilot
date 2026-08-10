@@ -92,7 +92,7 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
   late List<ThreadTurn> _turns;
   late TurnHeightCache _cache;
   final Map<String, String> _identityByTurnId = {};
-  late Map<String, AiMessage> _messageById;
+  Map<String, AiMessage> _messageById = const {};
 
   int _firstIndex = 0;
   int _lastIndex = -1;
@@ -202,10 +202,37 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
     if (!identical(_turns, previous)) {
       _builtTurnBody.clear();
     }
+    // Snapshot the previous message map BEFORE overwriting _messageById so we
+    // can detect which message objects changed (reference-comparison — AiMessage
+    // is immutable, so a new object for the same id means content changed).
+    final prevMessagesById = _messageById;
     _messageById = {for (final m in widget.messages) m.id: m};
     final liveIds = <String>{};
+    // Build a quick lookup of previous turns by id so we can skip identity
+    // recomputation for turns that are unchanged (identical object + unchanged
+    // message references + not the streaming tip).
+    final prevById = <String, ThreadTurn>{
+      for (final t in previous) t.id: t,
+    };
+    final tipId = _turns.isNotEmpty ? _turns.last.id : null;
     for (final turn in _turns) {
       liveIds.add(turn.id);
+      final prev = prevById[turn.id];
+      // Unchanged turn object with all messages still the same objects: skip the
+      // O(messages-in-turn) identity recomputation. Always recompute the tip
+      // turn — streaming appends/edits create new message objects for the same
+      // IDs. Also fall through to recompute when any message reference changed
+      // (content edits replace the AiMessage object for a given id).
+      if (identical(turn, prev) && turn.id != tipId) {
+        var allMessagesSame = true;
+        for (final id in turn.messageIds) {
+          if (!identical(_messageById[id], prevMessagesById[id])) {
+            allMessagesSame = false;
+            break;
+          }
+        }
+        if (allMessagesSame) continue;
+      }
       final identity = turnContentIdentity(turn, widget.messages);
       final previousIdentity = _identityByTurnId[turn.id];
       if (previousIdentity != null && previousIdentity != identity) {

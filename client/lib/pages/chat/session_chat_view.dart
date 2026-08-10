@@ -26,6 +26,8 @@ import '../../models/cli_preset.dart';
 import '../../models/config_bundle.dart';
 import '../../models/member_presence.dart';
 import '../../models/landing_launch_context.dart';
+import '../../models/plugin.dart';
+import '../../models/skill.dart';
 import '../../models/team_config.dart';
 import '../../models/workspace.dart';
 import '../../models/workspace_launch_context.dart';
@@ -665,10 +667,19 @@ class _SessionChatViewState extends State<SessionChatView> {
   }
 
   /// Build-only live team (`context.watch`). Do not call from handlers.
-  TeamProfile? _watchLiveTeam(BuildContext context) => _liveTeamFor(
-    _watchDisplaySession(context),
-    context.watch<LaunchProfileCubit>(),
-  );
+  /// Build-only live team — uses [context.select] scoped to the session's team
+  /// profile so other profile changes do not rebuild this widget. Do not call
+  /// from handlers.
+  TeamProfile? _watchLiveTeam(BuildContext context) {
+    final session = _watchDisplaySession(context);
+    if (session.isSimple) return null;
+    final teamId = session.sessionTeam.trim();
+    if (teamId.isEmpty) return null;
+    return context.select<LaunchProfileCubit, TeamProfile?>((c) {
+      final profile = c.byId(teamId);
+      return profile is TeamProfile ? profile : widget.team;
+    });
+  }
 
   /// Event-handler live team (`context.read`).
   TeamProfile? _readLiveTeam(BuildContext context) => _liveTeamFor(
@@ -796,9 +807,12 @@ class _SessionChatViewState extends State<SessionChatView> {
     );
   }
 
+  /// Hub state for resolving expert identity labels. Uses [context.select] so
+  /// only ExpertHubState changes that affect content trigger rebuilds
+  /// (ExpertHubState extends Equatable — value equality, not reference).
   ExpertHubState? _expertHubState(BuildContext context) {
     try {
-      return context.watch<ExpertHubCubit>().state;
+      return context.select<ExpertHubCubit, ExpertHubState>((c) => c.state);
     } on ProviderNotFoundException {
       return null;
     }
@@ -1247,9 +1261,15 @@ class _SessionChatViewState extends State<SessionChatView> {
     final l10n = context.l10n;
     final spacing = context.tpSpacing;
     final cs = Theme.of(context).colorScheme;
-    final skills = context.watch<SkillCubit>().state.installed;
-    final plugins = context.watch<PluginCubit>().state.installed;
-    final presets = context.watch<CliPresetsCubit>().state.presets;
+    final skills = context.select<SkillCubit, List<Skill>>(
+      (c) => c.state.installed,
+    );
+    final plugins = context.select<PluginCubit, List<Plugin>>(
+      (c) => c.state.installed,
+    );
+    final presets = context.select<CliPresetsCubit, List<CliPreset>>(
+      (c) => c.state.presets,
+    );
     final session = _watchDisplaySession(context);
     final team = _watchLiveTeam(context);
     final hubState = _expertHubState(context);
@@ -1590,37 +1610,23 @@ class _SessionChatViewState extends State<SessionChatView> {
                                     children: [
                                       Builder(
                                         builder: (context) {
-                                          final seat =
-                                              context.select<
-                                                ChatCubit,
-                                                ({
-                                                  bool sessionWorking,
-                                                  bool sessionConnecting,
-                                                  bool memberRunning,
-                                                  int stateVersion,
-                                                })
-                                              >((c) {
-                                                final sid =
-                                                    widget.session.sessionId;
-                                                return (
-                                                  sessionWorking: c
-                                                      .state
-                                                      .workingSessionIds
-                                                      .contains(sid),
-                                                  sessionConnecting:
-                                                      _podConnecting(c, sid),
-                                                  memberRunning: c
-                                                      .isMemberRunning(
-                                                        sessionId: sid,
-                                                        memberId:
-                                                            _shellMemberId,
-                                                      ),
-                                                  // Connect completion bumps
-                                                  // this so PTY-up rebuilds.
-                                                  stateVersion:
-                                                      c.state.stateVersion,
-                                                );
-                                              });
+                                          // Read ChatCubit imperatively — no
+                                          // context.select dependency. Enclosing
+                                          // AiHistorySeat BlocBuilder already
+                                          // rebuilds when awaitingAssistant
+                                          // changes (synced with working state).
+                                          final cubit = context.read<ChatCubit>();
+                                          final sid = widget.session.sessionId;
+                                          final sessionWorking = cubit
+                                              .state.workingSessionIds
+                                              .contains(sid);
+                                          final sessionConnecting =
+                                              _podConnecting(cubit, sid);
+                                          final memberRunning = cubit
+                                              .isMemberRunning(
+                                                sessionId: sid,
+                                                memberId: _shellMemberId,
+                                              );
                                           final liveChrome =
                                               SessionHistoryLiveChromeX.resolve(
                                                 turnInFlight:
@@ -1631,16 +1637,14 @@ class _SessionChatViewState extends State<SessionChatView> {
                                                           state
                                                               .awaitingAssistant,
                                                       sessionWorking:
-                                                          seat.sessionWorking,
+                                                          sessionWorking,
                                                       userStoppedTurn:
                                                           _userStoppedTurn,
                                                     ),
-                                                memberRunning:
-                                                    seat.memberRunning,
-                                                sessionWorking:
-                                                    seat.sessionWorking,
+                                                memberRunning: memberRunning,
+                                                sessionWorking: sessionWorking,
                                                 sessionConnecting:
-                                                    seat.sessionConnecting,
+                                                    sessionConnecting,
                                               );
                                           return MarkdownDisplayModeScope(
                                             userMessageMode:
