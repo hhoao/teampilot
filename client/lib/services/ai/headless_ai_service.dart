@@ -9,6 +9,7 @@ import '../../models/app_provider_config.dart';
 import '../../repositories/app_provider_repository.dart';
 import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
+import '../../utils/logging/log_redaction.dart';
 import '../cli/cli_tool_locator.dart';
 import '../cli/registry/capabilities/cli_effort_capability.dart';
 import '../cli/registry/capabilities/headless_provision_capability.dart';
@@ -236,7 +237,7 @@ class HeadlessAiService {
         ...inv.environment,
         ...provision.extraEnvironment,
       };
-      // Log only env keys — values carry secrets (e.g. OPENCODE_AUTH_CONTENT).
+      // Values are redacted in logs (e.g. OPENCODE_AUTH_CONTENT).
       appLogger.d(
         '--------------------------------\n'
         'Starting headless run:\n'
@@ -244,7 +245,7 @@ class HeadlessAiService {
         'Executable: ${inv.executable},\n'
         'Arguments: ${inv.arguments.join(' ')},\n'
         'WorkingDirectory: ${ctx.workingDirectory},\n'
-        'Environment keys: ${environment.keys.join(', ')}\n'
+        'Environment: ${stringifyEnvironmentForLog(environment)}\n'
         '--------------------------------\n',
       );
       final exe = await _resolveExecutable(inv.executable);

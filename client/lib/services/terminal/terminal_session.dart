@@ -30,6 +30,7 @@ import '../../models/workspace_shell_launch_plan.dart';
 import '../workspace_dnd/runtime_target.dart';
 import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
+import '../../utils/logging/log_redaction.dart';
 import 'terminal_theme_mapper.dart';
 
 export 'terminal_color_scheme_report.dart' show stripColorSchemeReport;
@@ -307,7 +308,7 @@ class TerminalSession {
       'Executable: ${invocation.executable},\n'
       'Arguments: ${launchArgs.join(' ')},\n'
       'WorkingDirectory: $ptyWorkingDirectory,\n'
-      'Environment: ${normalizedEnvironment?.entries.map((e) => '${e.key}=${e.value}').join(', ')}\n'
+      'Environment: ${stringifyEnvironmentForLog(normalizedEnvironment)}\n'
       '--------------------------------\n',
     );
 
