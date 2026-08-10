@@ -307,15 +307,23 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       );
     }
 
-    await _maybeLinkOfficialCredentials(
-      delegate: delegate,
-      catalog: catalog,
-      crossMachine: ctx.crossMachine,
-      scope: scope,
-      claude: claude,
-      launchedMember: ctx.member,
-      warnings: warnings,
-    );
+    // Credential linking is best-effort — failures must not prevent the
+    // environment from being built.  When the provider-level symlink already
+    // exists (the common case when multiple members launch concurrently),
+    // materializeLinkedBinding is a no-op thanks to the readSymlinkTarget guard.
+    try {
+      await _maybeLinkOfficialCredentials(
+        delegate: delegate,
+        catalog: catalog,
+        crossMachine: ctx.crossMachine,
+        scope: scope,
+        claude: claude,
+        launchedMember: ctx.member,
+        warnings: warnings,
+      );
+    } on Object catch (e) {
+      warnings.add('claude_credentials_link_error: $e');
+    }
     if (stepSw != null) {
       _logClaudeContributeLaunchStep(
         stepSw,

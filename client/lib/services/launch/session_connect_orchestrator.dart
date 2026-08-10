@@ -25,6 +25,7 @@ import 'manifest_executor.dart';
 import 'session_runtime_plan.dart';
 import 'session_runtime_plan_builder.dart';
 import 'work_plane_script_runner.dart';
+import 'session_bootstrap_coordinator.dart';
 import 'workspace_provision_coordinator.dart';
 
 export '../provider/config_profile_service.dart' show TeamLaunchOutcome;
@@ -43,8 +44,10 @@ class SessionConnectOrchestrator {
     required this.homeContext,
     required this.manifestExecutor,
     required this.runtimePlanBuilder,
+    SessionBootstrapCoordinator? sessionBootstrap,
     CliToolRegistry? registry,
-  }) : registry = registry ?? CliToolRegistry.builtIn();
+  }) : sessionBootstrap = sessionBootstrap ?? SessionBootstrapCoordinator(),
+       registry = registry ?? CliToolRegistry.builtIn();
 
   final SessionLifecycleService lifecycle;
   final WorkspaceProvisionCoordinator workspaceProvision;
@@ -52,6 +55,7 @@ class SessionConnectOrchestrator {
   final RuntimeContext Function() homeContext;
   final ManifestExecutor manifestExecutor;
   final SessionRuntimePlanBuilder runtimePlanBuilder;
+  final SessionBootstrapCoordinator sessionBootstrap;
   final CliToolRegistry registry;
 
   Future<
@@ -215,6 +219,16 @@ class SessionConnectOrchestrator {
     appLogger.d(
       '[session-launch] stage-session begin '
       'session=${session.sessionId} cli=${cli.value} offHome=$offHome',
+    );
+
+    // Ensure session-level shared resources (credential symlinks, workspace
+    // trust) are provisioned exactly once.  With readSymlinkTarget-based
+    // detection the underlying operations are idempotent; the bootstrap
+    // coordinator provides a shared-future barrier so concurrent member
+    // connects don't duplicate the work.
+    sessionBootstrap.ensureBootstrapped(
+      session.sessionId,
+      () async => const SessionBootstrapResult(),
     );
 
     final catalogProfile = await configProfileFor(

@@ -131,10 +131,18 @@ class ClaudeProviderCredentialsService {
     }
     await _fs.ensureDir(providerDir(providerId));
     final dest = credentialPath(providerId);
-    final destStat = await _fs.stat(dest);
-    if (destStat.isSymlink) {
+
+    // Check whether dest is already a symlink.  Use readSymlinkTarget rather
+    // than stat().isSymlink because dart:io FileStat.stat follows symlinks and
+    // reports `file` for a valid symlink-to-file, which would bypass this
+    // early-return and cause a remove+recreate cycle.  When multiple members
+    // launch concurrently, that cycle produces a PathExistsException race.
+    final existingTarget = await _fs.readSymlinkTarget(dest);
+    if (existingTarget != null) {
       return CredentialActionResult.success;
     }
+
+    final destStat = await _fs.stat(dest);
     if (destStat.exists && !replace) {
       return CredentialActionResult.failure(
         const CredentialActionFailure(

@@ -619,11 +619,11 @@ class ConfigProfileService implements ConfigProfileDelegate {
           agentStatus: agentStatus,
         ),
       );
-    } on Object catch (e) {
-      return TeamLaunchOutcome(
-        environment: const {},
-        warnings: [...warnings, 'config_profile_${cli.value}: $e'],
-      );
+    } on Object catch (e, st) {
+      // Let the exception propagate — silently returning an empty environment
+      // produces a broken session.  The caller surfaces the error as a proper
+      // session-connect failure.
+      Error.throwWithStackTrace(e, st);
     }
 
     return TeamLaunchOutcome(
@@ -874,14 +874,13 @@ class ConfigProfileService implements ConfigProfileDelegate {
           memberId: memberId,
         ),
       );
-    } on Object catch (e) {
-      return (
-        outcome: TeamLaunchOutcome(
-          environment: const {},
-          warnings: [...warnings, 'config_profile_${launchCli.value}: $e'],
-        ),
-        manifest: manifest,
-      );
+    } on Object catch (e, st) {
+      // Let the exception propagate — silently returning an empty environment
+      // produces a broken session that starts without CLI config, settings, or
+      // role prompt (members launch with Environment: null).  The caller
+      // (SessionConnectOrchestrator / SessionShellConnector) surfaces the error
+      // as a proper session-connect failure.
+      Error.throwWithStackTrace(e, st);
     }
 
     return (
