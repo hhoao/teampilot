@@ -111,9 +111,13 @@ final class OpencodeAiHistoryCapability implements AiHistoryCapability {
 
 final class CursorAiHistoryCapability implements AiHistoryCapability {
   const CursorAiHistoryCapability({
+    required this.shellResolver,
     this.subagentSideResolver = const CursorSideResolver(),
-    this.toolResultEnricher = const CursorTerminalToolResultEnricher(),
-  });
+  }) : toolResultEnricher = CursorTerminalToolResultEnricher(
+         shellResolver: shellResolver,
+       );
+
+  final AiShellToolTargetResolver shellResolver;
 
   @override
   Future<AiTranscriptBundle?> locate(SessionHistoryContext ctx) =>

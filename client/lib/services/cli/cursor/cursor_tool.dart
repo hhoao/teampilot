@@ -89,7 +89,7 @@ final class CursorCliTool implements CliToolDefinition {
     this.turnInterrupt = const CtrlCTurnInterrupt(),
     this.askUserQuestion = const NoAskUserQuestionCapability(),
     this.exitPlanMode = const NoExitPlanModeCapability(),
-    this.aiHistory = const CursorAiHistoryCapability(),
+    CursorAiHistoryCapability? aiHistory,
     this.skillSyntax = const DefaultSkillInvocationSyntaxCapability(),
     this.postManifestFlush = const CursorPostManifestFlushCapability(),
     this.turnCompletion = const CursorTurnCompletion(),
@@ -104,7 +104,12 @@ final class CursorCliTool implements CliToolDefinition {
     this.credentialExport = const CursorCredentialExport(),
     this.toolCallResolvers = const CursorToolCallResolvers(),
     ProviderCredentialCapability? providerCredential,
-  }) : providerModel = providerModel ?? CursorProviderModelCapability(),
+  }) : aiHistory = aiHistory ??
+           CursorAiHistoryCapability(
+             shellResolver: toolCallResolvers.shellResolver,
+             subagentSideResolver: const CursorSideResolver(),
+           ),
+       providerModel = providerModel ?? CursorProviderModelCapability(),
        providerCredential =
            providerCredential ?? CursorProviderCredentialCapability();
 

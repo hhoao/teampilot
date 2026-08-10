@@ -10,7 +10,7 @@ import '../../../registry/capabilities/history/tool_result_enricher.dart';
 
 final class CursorTerminalToolResultEnricher implements ToolResultEnricher {
   const CursorTerminalToolResultEnricher({
-    this.shellResolver = const DefaultAiShellToolTargetResolver(),
+    required this.shellResolver,
   });
 
   final AiShellToolTargetResolver shellResolver;
