@@ -1,12 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/services/cli/registry/capabilities/provider_credential_capability.dart';
-import 'package:teampilot/services/provider/claude/claude_official_provider.dart';
-import 'package:teampilot/services/provider/claude/claude_provider_credential_capability.dart';
-import 'package:teampilot/services/provider/codex/codex_official_provider.dart';
-import 'package:teampilot/services/provider/codex/codex_provider_credential_capability.dart';
-import 'package:teampilot/services/provider/cursor/cursor_provider_credential_capability.dart';
-import 'package:teampilot/services/provider/opencode/opencode_provider_credential_capability.dart';
+import 'package:teampilot/services/cli/claude/provider/claude_official_provider.dart';
+import 'package:teampilot/services/cli/claude/provider/claude_provider_credential_capability.dart';
+import 'package:teampilot/services/cli/codex/provider/codex_official_provider.dart';
+import 'package:teampilot/services/cli/codex/provider/codex_provider_credential_capability.dart';
+import 'package:teampilot/services/cli/cursor/provider/cursor_provider_credential_capability.dart';
+import 'package:teampilot/services/cli/opencode/provider/opencode_provider_credential_capability.dart';
 
 void main() {
   test('claude official provider exposes login and import actions', () {

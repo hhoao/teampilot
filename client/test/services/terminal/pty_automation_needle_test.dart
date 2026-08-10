@@ -51,6 +51,29 @@ void main() {
     );
   });
 
+  test('collapsedPasteNeedle extracts opencode paste chrome', () {
+    const row = '┃  [Pasted ~152 lines] ~152 lines]';
+    expect(
+      PtyAutomationNeedle.collapsedPasteNeedle(row),
+      '[Pasted ~152 lines]',
+    );
+  });
+
+  test('collapsedPasteNeedle accepts singular line for opencode', () {
+    expect(
+      PtyAutomationNeedle.collapsedPasteNeedle('[Pasted ~1 line]'),
+      '[Pasted ~1 line]',
+    );
+  });
+
+  test('collapsedPasteNeedle extracts Codex paste chrome', () {
+    const row = '› [Pasted Content 29390 chars]';
+    expect(
+      PtyAutomationNeedle.collapsedPasteNeedle(row),
+      '[Pasted Content 29390 chars]',
+    );
+  });
+
   test('collapsedPasteNeedle returns null when absent', () {
     expect(PtyAutomationNeedle.collapsedPasteNeedle('❯ hello world'), isNull);
   });

@@ -2,11 +2,11 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 import 'package:sqlite3/sqlite3.dart';
-import 'package:teampilot/services/cli/registry/capabilities/resume/claude_resume_strategy.dart';
-import 'package:teampilot/services/cli/registry/capabilities/resume/codex_resume_strategy.dart';
-import 'package:teampilot/services/cli/registry/capabilities/resume/cursor_resume_strategy.dart';
+import 'package:teampilot/services/cli/claude/capabilities/resume_strategy.dart';
+import 'package:teampilot/services/cli/codex/capabilities/resume_strategy.dart';
+import 'package:teampilot/services/cli/cursor/capabilities/resume_strategy.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
-import 'package:teampilot/services/cli/registry/capabilities/resume/opencode_resume_strategy.dart';
+import 'package:teampilot/services/cli/opencode/capabilities/resume_strategy.dart';
 import 'package:teampilot/services/cli/registry/capabilities/resume/transcript_resume_strategy.dart';
 import 'package:teampilot/services/cli/registry/capabilities/session_resume_capability.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';

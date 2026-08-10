@@ -66,13 +66,15 @@ class SessionPodState {
 }
 
 /// Mutable runtime object for ONE open conversation. Owns the pod's observable
-/// state and (Phase 2) its HistoryStore. Pure-Dart; the host (ChatCubit) is
-/// notified through [onChanged] so it can emit stateVersion bumps.
-class SessionPod {
+/// state and (Phase 2) its HistoryStore.
+///
+/// Extends [ChangeNotifier] so widgets can listen directly via
+/// [ListenableBuilder] or `context.watch<SessionPod>()` — pod phase / view /
+/// launchError changes no longer need to go through [ChatCubit]'s global emit.
+class SessionPod extends ChangeNotifier {
   SessionPod({
     required this.sessionId,
     required this.workspaceId,
-    this.onChanged,
     this.history,
     SessionPodState? initial,
   }) : _state = initial ??
@@ -80,7 +82,6 @@ class SessionPod {
 
   final String sessionId;
   final String workspaceId;
-  final void Function()? onChanged;
 
   /// Per-session history store (member-partitioned). Null until the host wires
   /// a loader (bootstrap order); consumers fall back to the global cubit when
@@ -90,12 +91,12 @@ class SessionPod {
   SessionPodState _state;
   SessionPodState get state => _state;
 
-  /// True while [update] runs; mutators suppress [onChanged] so one logical
-  /// transition fires a single host notify.
+  /// True while [update] runs; mutators suppress [notifyListeners] so one
+  /// logical transition fires a single notify.
   bool _inBatch = false;
 
   /// Applies multiple mutations as one change: [mutate] may call several
-  /// `setXxx`, but [onChanged] fires at most once (and only if state changed).
+  /// `setXxx`, but listeners fire at most once (and only if state changed).
   void update(void Function(SessionPod) mutate) {
     final before = _state.revision;
     _inBatch = true;
@@ -104,13 +105,13 @@ class SessionPod {
     } finally {
       _inBatch = false;
     }
-    if (_state.revision != before) onChanged?.call();
+    if (_state.revision != before) notifyListeners();
   }
 
   void setPhase(SessionPhase phase) {
     if (_state.phase == phase) return;
     _state = _state.copyWith(phase: phase);
-    if (!_inBatch) onChanged?.call();
+    if (!_inBatch) notifyListeners();
   }
 
   void setLaunchError(String? error) {
@@ -119,18 +120,18 @@ class SessionPod {
         : _state.copyWith(launchError: error);
     if (next == _state) return;
     _state = next;
-    if (!_inBatch) onChanged?.call();
+    if (!_inBatch) notifyListeners();
   }
 
   void selectMember(String memberId) {
     if (_state.selectedMemberId == memberId) return;
     _state = _state.copyWith(selectedMemberId: memberId);
-    if (!_inBatch) onChanged?.call();
+    if (!_inBatch) notifyListeners();
   }
 
   void setView(SessionWorkbenchView view) {
     if (_state.view == view) return;
     _state = _state.copyWith(view: view);
-    if (!_inBatch) onChanged?.call();
+    if (!_inBatch) notifyListeners();
   }
 }

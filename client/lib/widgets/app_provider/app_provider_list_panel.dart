@@ -1,3 +1,5 @@
+import '../../services/cli/registry/capabilities/provider_display_capability.dart';
+import '../../services/cli/registry/cli_tool_registry.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -373,7 +375,10 @@ class _ProviderListTile extends StatelessWidget {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
     final styles = TpTextStyles.of(context);
-    final subtitle = provider.cli == CliTool.flashskyai
+    final hasModelCount = CliToolRegistry.builtIn()
+        .capability<ProviderDisplayCapability>(provider.cli)
+        ?.showModelCount == true;
+    final subtitle = hasModelCount
         ? l10n.providerListModelCount(provider.flashskyaiModelCount)
         : l10n.appProviderToolLabel(provider.cli);
     final titleColor = selected ? cs.onPrimaryContainer : cs.onSurface;

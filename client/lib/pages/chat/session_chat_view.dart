@@ -5,88 +5,59 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
-import 'package:teampilot/widgets/app_toast/app_toast.dart';
+import '../../widgets/app_toast/app_toast.dart';
 import 'package:tp_markdown/tp_markdown.dart';
 
 import '../../cubits/ai_history_cubit.dart';
 import '../../cubits/agent_attention_cubit.dart';
 import '../../cubits/app_provider_cubit.dart';
 import '../../cubits/chat_cubit.dart';
-import '../../cubits/editor_cubit.dart';
 import '../../cubits/cli_presets_cubit.dart';
-import '../../cubits/expert_hub_cubit.dart';
 import '../../cubits/layout_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
 import '../../cubits/member_presence_cubit.dart';
-import '../../cubits/plugin_cubit.dart';
-import '../../cubits/skill_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_session.dart';
 import '../../models/cli_preset.dart';
-import '../../models/config_bundle.dart';
-import '../../models/member_presence.dart';
 import '../../models/landing_launch_context.dart';
+import '../../models/member_presence.dart';
 import '../../models/team_config.dart';
 import '../../models/workspace.dart';
 import '../../models/workspace_launch_context.dart';
-import '../../repositories/workspace_project_config_repository.dart';
 import '../../services/ai/headless_ai_service.dart';
 import '../../services/cli/preset_resolver.dart';
 import '../../services/commands/key_chord.dart';
 import '../../services/commands/shortcut_focus.dart';
 import '../../services/cli/registry/capabilities/ai_history_capability.dart';
-import '../../services/cli/registry/capabilities/skill_invocation_syntax_capability.dart';
 import '../../services/cli/registry/capabilities/turn_interrupt_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/terminal/session_member_cli_resolver.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../services/cli/tasks/cli_task_board_controller.dart';
-import '../../services/compose/compose_at_file_refs.dart';
 import '../../services/compose/compose_draft_cache.dart';
 import '../../services/compose/compose_file_attach.dart';
-import '../../services/compose/compose_file_drop_ingestor.dart';
-import '../../services/compose/compose_landing_bundle.dart';
 import '../../services/compose/compose_prompt_enhance.dart';
-import '../../services/compose/compose_text_edit.dart';
-import '../../services/compose/compose_voice_input.dart';
-import '../../services/expert_hub/expert_member_resolver.dart';
+import 'session_chat_voice_controller.dart';
 import '../../services/follow_up/follow_up_queue.dart';
 import '../../services/session/ai_history_live_refresh_controller.dart';
 import '../../services/session/chat_transcript_find_controller.dart';
 import '../../services/session/history_seat_key.dart';
 import '../../services/session/history_awaiting_working_sync.dart';
-import '../../services/session/session_continue_overrides_apply.dart';
 import '../../services/session/session_history_pagination.dart';
 import '../../services/storage/app_storage.dart';
-import '../../services/ai_history/workspace_edit_line_highlighter.dart';
-import '../../services/workbench/ai_tool_file_open_coordinator.dart';
-import '../../services/workbench/session_member_filesystem.dart';
-import '../../services/workbench/workbench_editor_opener.dart';
-import '../../services/workspace/workspace_tools_scope.dart';
 import '../../services/terminal/pending_user_message.dart';
 import '../../theme/app_markdown_style_sheet.dart';
 import '../../utils/logging/logger.dart';
 import '../../utils/team/team_member_naming.dart';
-import '../../widgets/compose/compose_chrome.dart';
-import '../../widgets/compose/compose_model_preset_chip.dart';
-import '../../widgets/compose/simple_custom_launch_dialog.dart';
-import '../../widgets/compose/workspace_compose_card.dart';
-import '../../widgets/follow_up/follow_up_queue_strip.dart';
-import '../home_workspace/workspace/workspace_landing_team_settings_dialog.dart';
+import 'session_chat_compose_section.dart';
+import 'session_chat_message_area.dart';
 import 'agent_permission_attention_banner.dart';
 import 'chat_find_bar.dart';
 import 'chat_reveal_controller.dart';
-import 'cli_task_bubbles.dart';
-import 'compose_stop_visibility.dart';
 import 'session_follow_up_compose_submit.dart';
 import 'history_continue_delivery.dart';
-import 'history_mailbox_queued_strip.dart';
-import 'session_cli_task_panel.dart';
-import 'session_history_live_chrome.dart';
-import 'session_history_review_messages.dart';
 import 'session_history_review_submit.dart';
 import 'subagent_preview_controller.dart';
-import 'workflow_card.dart';
 
 /// Fired by Mod+F (Ctrl+F / Cmd+F) in [SessionChatView] to toggle the find
 /// bar. Escape is handled inside [ChatFindBar], which is only mounted while
@@ -145,7 +116,7 @@ class SessionChatView extends StatefulWidget {
 class _SessionChatViewState extends State<SessionChatView> {
   final _controller = TextEditingController();
   late final FocusNode _focusNode;
-  late final ComposeVoiceInput _voiceInput;
+  late final SessionVoiceController _voice;
   final _headlessAi = HeadlessAiService();
   final _subagentPreview = SubagentPreviewController();
   AiHistoryLiveRefreshController? _liveRefresh;
@@ -159,21 +130,9 @@ class _SessionChatViewState extends State<SessionChatView> {
   final Map<String, String> _mailboxQueuedSeats = {};
   var _mailboxQueuedClearToken = 0;
   var _enhancing = false;
-  var _voiceListening = false;
-  var _voiceSoundLevel = 0.0;
-  var _discardVoiceTranscript = false;
-  TextEditingValue? _voiceInsertBaseline;
-  Stopwatch? _voiceStopwatch;
-  Timer? _voiceTimer;
-  var _workspaceProjectBundle = const ConfigBundle();
-  var _workspaceBundleGeneration = 0;
 
   /// Host-owned Timer for [historyAwaitingIdleGrace]; latch lives on the seat.
   Timer? _awaitingIdleGraceTimer;
-
-  /// Compose Stop cleared Running chrome; ignore residual sessionWorking until
-  /// the next user turn latches awaiting again.
-  var _userStoppedTurn = false;
 
   /// Chat find bar (Mod+F): full-transcript search + n/N navigation, revealed
   /// via [AiHistorySeat.revealMessage] + [ChatRevealController].
@@ -191,44 +150,11 @@ class _SessionChatViewState extends State<SessionChatView> {
   void initState() {
     super.initState();
     _focusNode = FocusNode(debugLabel: 'session_history_review_compose');
-    _voiceInput = ComposeVoiceInput(
-      onFinalTranscript: (text) {
-        if (!mounted || _discardVoiceTranscript) return;
-        if (_voiceInsertBaseline != null) {
-          _controller.value = _voiceInsertBaseline!;
-        }
-        _controller.value = insertTextAtSelection(
-          _controller,
-          text,
-          separatorBefore: ' ',
-          separatorAfter: ' ',
-        );
-        _voiceInsertBaseline = null;
-        setState(() {});
-      },
-      onListeningChanged: (listening) {
-        if (!mounted) return;
-        _applyVoiceListening(listening);
-      },
-      onSoundLevel: (level) {
-        if (!mounted) return;
-        setState(() => _voiceSoundLevel = level);
-      },
-      onError: (error) {
-        if (!mounted) return;
-        final l10n = context.l10n;
-        final message = speechRecognitionErrorIsPermissionDenied(error)
-            ? l10n.workspaceChatLandingVoicePermissionDenied
-            : l10n.workspaceChatLandingVoiceUnavailable;
-        AppToast.show(
-          context,
-          message: message,
-          variant: TpToastVariant.warning,
-        );
-        _applyVoiceListening(false);
-      },
-    );
-    unawaited(_voiceInput.initialize());
+    _voice = SessionVoiceController(composeController: _controller);
+    _voice.onNeedsHostRebuild = () {
+      if (mounted) setState(() {});
+    };
+    _voice.initialize();
     // Restore the cached session draft before attaching the change listener so
     // the restore does not notify _onComposeChanged (no setState during mount).
     final draft = composeDraftCache.sessionDraft(widget.session.sessionId);
@@ -241,7 +167,6 @@ class _SessionChatViewState extends State<SessionChatView> {
     _controller.addListener(_onComposeChanged);
     _bindSeat();
     _loadHistory();
-    unawaited(_loadWorkspaceProjectBundle());
   }
 
   void _bindSeat() {
@@ -265,25 +190,6 @@ class _SessionChatViewState extends State<SessionChatView> {
             runtime: seat.runtime,
             loadedMessages: () => seat.loadedMessages,
           );
-  }
-
-  void _applyVoiceListening(bool listening) {
-    if (listening) {
-      _discardVoiceTranscript = false;
-      _voiceInsertBaseline ??= _controller.value;
-      final needsRebuild = !_voiceListening || _voiceStopwatch == null;
-      _voiceListening = true;
-      if (_voiceStopwatch == null) _startVoiceSessionClock();
-      if (needsRebuild && mounted) setState(() {});
-      return;
-    }
-    if (!_voiceListening && _voiceStopwatch == null) return;
-    if (_discardVoiceTranscript) {
-      _voiceInsertBaseline = null;
-    }
-    _voiceListening = false;
-    _stopVoiceSessionClock();
-    if (mounted) setState(() {});
   }
 
   @override
@@ -310,9 +216,6 @@ class _SessionChatViewState extends State<SessionChatView> {
       });
     } else if (oldWidget.routeActive != widget.routeActive) {
       _maybeStartLiveRefreshForRunningPty();
-    }
-    if (oldWidget.session.workspaceId != widget.session.workspaceId) {
-      unawaited(_loadWorkspaceProjectBundle());
     }
   }
 
@@ -365,14 +268,13 @@ class _SessionChatViewState extends State<SessionChatView> {
     _awaitingIdleGraceTimer?.cancel();
     _awaitingIdleGraceTimer = null;
     _controller.removeListener(_onComposeChanged);
-    _stopVoiceSessionClock();
+    _voice.dispose();
     final live = _liveRefresh;
     _liveRefresh = null;
     unawaited(live?.stop() ?? Future<void>.value());
     _taskBoardController?.dispose();
     _taskBoardController = null;
     unawaited(_mailboxQueued.close());
-    _voiceInput.dispose();
     _subagentPreview.dispose();
     _controller.dispose();
     _focusNode.dispose();
@@ -391,26 +293,7 @@ class _SessionChatViewState extends State<SessionChatView> {
     if (mounted) setState(() {});
   }
 
-  void _startVoiceSessionClock() {
-    _voiceStopwatch = Stopwatch()..start();
-    _voiceSoundLevel = 0;
-    _voiceTimer?.cancel();
-    _voiceTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) setState(() {});
-    });
-  }
-
-  void _stopVoiceSessionClock() {
-    _voiceTimer?.cancel();
-    _voiceTimer = null;
-    _voiceStopwatch?.stop();
-    _voiceStopwatch = null;
-    _voiceSoundLevel = 0;
-  }
-
   bool get _isSubmitting => _submitLock.isBusy || widget.isSubmitting;
-
-  Duration get _voiceElapsed => _voiceStopwatch?.elapsed ?? Duration.zero;
 
   String get _workspaceRoot {
     final work = widget.session.workDirsForMember(
@@ -585,20 +468,6 @@ class _SessionChatViewState extends State<SessionChatView> {
     if (mounted) setState(() {});
   }
 
-  Future<void> _loadWorkspaceProjectBundle() async {
-    final generation = ++_workspaceBundleGeneration;
-    try {
-      final config = await WorkspaceProjectConfigRepository().load(
-        widget.session.workspaceId,
-      );
-      if (!mounted || generation != _workspaceBundleGeneration) return;
-      setState(() => _workspaceProjectBundle = config.bundle);
-    } on Object {
-      if (!mounted || generation != _workspaceBundleGeneration) return;
-      setState(() => _workspaceProjectBundle = const ConfigBundle());
-    }
-  }
-
   LandingLaunchContext _enhanceDraft([AppSession? live]) {
     final session = live ?? widget.session;
     final isPersonal = session.sessionTeam.trim().isEmpty;
@@ -616,16 +485,6 @@ class _SessionChatViewState extends State<SessionChatView> {
       provider: isPersonal ? session.provider : null,
       model: isPersonal ? session.model : null,
       effort: isPersonal ? session.effort : null,
-    );
-  }
-
-  ConfigBundle _slashBundle(BuildContext context) {
-    final live = _readCubitSession(context) ?? widget.session;
-    return slashBundleForLanding(
-      draft: _enhanceDraft(live),
-      team: widget.team,
-      workspace: _workspaceProjectBundle,
-      hubState: _expertHubState(context),
     );
   }
 
@@ -664,10 +523,19 @@ class _SessionChatViewState extends State<SessionChatView> {
   }
 
   /// Build-only live team (`context.watch`). Do not call from handlers.
-  TeamProfile? _watchLiveTeam(BuildContext context) => _liveTeamFor(
-    _watchDisplaySession(context),
-    context.watch<LaunchProfileCubit>(),
-  );
+  /// Build-only live team — uses [context.select] scoped to the session's team
+  /// profile so other profile changes do not rebuild this widget. Do not call
+  /// from handlers.
+  TeamProfile? _watchLiveTeam(BuildContext context) {
+    final session = _watchDisplaySession(context);
+    if (session.isSimple) return null;
+    final teamId = session.sessionTeam.trim();
+    if (teamId.isEmpty) return null;
+    return context.select<LaunchProfileCubit, TeamProfile?>((c) {
+      final profile = c.byId(teamId);
+      return profile is TeamProfile ? profile : widget.team;
+    });
+  }
 
   /// Event-handler live team (`context.read`).
   TeamProfile? _readLiveTeam(BuildContext context) => _liveTeamFor(
@@ -726,192 +594,6 @@ class _SessionChatViewState extends State<SessionChatView> {
     );
   }
 
-  bool _effectivePermission({
-    required AppSession session,
-    required TeamProfile? team,
-  }) {
-    final overrides = session.continueOverrides;
-    if (session.isSimple) {
-      return resolveContinueSkipPermissions(
-        sessionLevel: overrides.dangerouslySkipPermissions,
-        memberLevel: null,
-        launchDefault: false,
-      );
-    }
-    final member = _selectedMember(team);
-    final memberId = _effectiveMemberId(team);
-    final memberOverride = overrides.memberOverrides[memberId];
-    return resolveContinueSkipPermissions(
-      sessionLevel: overrides.dangerouslySkipPermissions,
-      memberLevel: memberOverride?.dangerouslySkipPermissions,
-      launchDefault: member?.dangerouslySkipPermissions ?? true,
-    );
-  }
-
-  String? _selectedPresetId({
-    required AppSession session,
-    required TeamProfile? team,
-  }) {
-    if (session.isSimple) {
-      final id = session.presetId.trim();
-      return id.isEmpty ? null : id;
-    }
-    final memberId = _effectiveMemberId(team);
-    final fromOverride = session
-        .continueOverrides
-        .memberOverrides[memberId]
-        ?.presetId
-        ?.trim();
-    if (fromOverride != null && fromOverride.isNotEmpty) return fromOverride;
-    final member = _selectedMember(team);
-    if (member == null) return null;
-    if (member.inheritsTeamPreset) {
-      final teamPreset = team?.activePresetId?.trim() ?? '';
-      return teamPreset.isEmpty ? null : teamPreset;
-    }
-    if (member.hasExplicitPreset) {
-      final id = member.activePresetId?.trim() ?? '';
-      return id.isEmpty ? null : id;
-    }
-    return null;
-  }
-
-  String? _identityLabel({
-    required AppSession session,
-    required TeamProfile? team,
-    required ExpertHubState? hubState,
-    required String expertFallback,
-  }) {
-    if (!session.isSimple) {
-      final name = team?.name.trim() ?? '';
-      return name.isEmpty ? null : name;
-    }
-    final key = session.expertKey.trim();
-    if (key.isEmpty) return null;
-    return ExpertMemberResolver.labelForKey(
-      key: key,
-      fallbackLabel: expertFallback,
-      hubState: hubState,
-    );
-  }
-
-  ExpertHubState? _expertHubState(BuildContext context) {
-    try {
-      return context.watch<ExpertHubCubit>().state;
-    } on ProviderNotFoundException {
-      return null;
-    }
-  }
-
-  Workspace? _workspaceForSettings(BuildContext context) {
-    final id = widget.session.workspaceId;
-    return context
-        .read<ChatCubit>()
-        .state
-        .workspaces
-        .where((w) => w.workspaceId == id)
-        .firstOrNull;
-  }
-
-  Future<void> _openTeamSettings(TeamProfile team) async {
-    final workspace = _workspaceForSettings(context);
-    if (workspace == null) return;
-    await showLandingTeamSettingsDialog(
-      context,
-      workspace: workspace,
-      team: team,
-    );
-  }
-
-  void _toastContinueSaveFailed() {
-    AppToast.show(
-      context,
-      message: context.l10n.sessionHistoryContinueSaveFailed,
-      variant: TpToastVariant.warning,
-    );
-  }
-
-  Future<void> _onPermissionSelected({
-    required bool value,
-    required TeamProfile? team,
-  }) async {
-    final session = _readCubitSession(context);
-    if (session == null) {
-      if (mounted) _toastContinueSaveFailed();
-      return;
-    }
-    final memberId = session.isSimple ? null : _effectiveMemberId(team);
-    if (!session.isSimple && (memberId == null || memberId.isEmpty)) return;
-    try {
-      final ok = await context.read<ChatCubit>().setSessionContinuePermission(
-        sessionId: session.sessionId,
-        dangerouslySkipPermissions: value,
-        memberId: memberId,
-      );
-      if (!ok && mounted) _toastContinueSaveFailed();
-    } on Object {
-      if (mounted) _toastContinueSaveFailed();
-    }
-  }
-
-  Future<void> _onPresetSelected({
-    required String presetId,
-    required TeamProfile? team,
-    required List<CliPreset> sameCliPresets,
-    required CliTool lockedCli,
-  }) async {
-    final session = _readCubitSession(context);
-    if (session == null) {
-      if (mounted) _toastContinueSaveFailed();
-      return;
-    }
-    final preset = sameCliPresets.where((p) => p.id == presetId).firstOrNull;
-    if (preset == null) return;
-    final memberId = session.isSimple ? null : _effectiveMemberId(team);
-    if (!session.isSimple && (memberId == null || memberId.isEmpty)) return;
-    try {
-      final ok = await context.read<ChatCubit>().setSessionContinuePreset(
-        sessionId: session.sessionId,
-        preset: preset,
-        memberId: memberId,
-        lockedCli: lockedCli,
-      );
-      if (!ok && mounted) _toastContinueSaveFailed();
-    } on Object {
-      if (mounted) _toastContinueSaveFailed();
-    }
-  }
-
-  Future<void> _openContinueCustomLaunchDialog({
-    required AppSession session,
-  }) async {
-    final result = await showSimpleCustomLaunchDialog(
-      context,
-      lockCli: true,
-      initialCli: session.cli ?? CliTool.claude,
-      initialProvider: session.provider,
-      initialModel: session.model,
-      initialEffort: session.effort,
-    );
-    if (!mounted || result == null) return;
-    final live = _readCubitSession(context);
-    if (live == null) {
-      if (mounted) _toastContinueSaveFailed();
-      return;
-    }
-    try {
-      final ok = await context.read<ChatCubit>().setSessionContinueCustom(
-        sessionId: live.sessionId,
-        provider: result.provider,
-        model: result.model,
-        effort: result.effort,
-      );
-      if (!ok && mounted) _toastContinueSaveFailed();
-    } on Object {
-      if (mounted) _toastContinueSaveFailed();
-    }
-  }
-
   Future<void> _attachFiles() async {
     if (_isSubmitting || _enhancing) return;
     await pickAndInsertComposeFileReferences(
@@ -923,18 +605,6 @@ class _SessionChatViewState extends State<SessionChatView> {
     setState(() {});
     _focusNode.requestFocus();
   }
-
-  void _insertComposeReferences(List<String> references) {
-    insertComposeReferences(_controller, references);
-    if (!mounted) return;
-    setState(() {});
-    _focusNode.requestFocus();
-  }
-
-  ComposeFileDropIngestor _composeDropIngestor() => ComposeFileDropIngestor(
-    workspaceRoot: _workspaceRoot,
-    onInsertReferences: _insertComposeReferences,
-  );
 
   Future<bool> _pasteComposeImage() async {
     if (_isSubmitting || _enhancing) return false;
@@ -1007,66 +677,13 @@ class _SessionChatViewState extends State<SessionChatView> {
     }
   }
 
-  Future<void> _toggleVoice() async {
-    if (_isSubmitting || _enhancing) return;
-
-    final available = await _voiceInput.initialize();
-    if (!mounted) return;
-    if (!available) {
-      AppToast.show(
-        context,
-        message: _voiceInput.permissionDenied
-            ? context.l10n.workspaceChatLandingVoicePermissionDenied
-            : context.l10n.workspaceChatLandingVoiceUnavailable,
-        variant: TpToastVariant.warning,
-      );
-      return;
-    }
-
-    final started = await _voiceInput.toggleListening(
-      preferredLocale: Localizations.localeOf(context),
-    );
-    if (!mounted) return;
-    if (!started && !_voiceInput.isSessionActive) return;
-    if (started || _voiceInput.isSessionActive) {
-      _focusNode.requestFocus();
-    }
-  }
-
-  Future<void> _cancelVoice() async {
-    if (!_voiceListening && !_voiceInput.isSessionActive) return;
-    _discardVoiceTranscript = true;
-    await _voiceInput.endSession(discard: true);
-  }
-
-  Future<void> _stopVoice() async {
-    if (!_voiceListening && !_voiceInput.isSessionActive) return;
-    _discardVoiceTranscript = false;
-    await _voiceInput.endSession(discard: false);
-  }
-
-  Future<void> _handleComposeStop(ChatCubit chat) async {
-    await chat.interruptSelectedMemberTurn(
-      sessionId: widget.session.sessionId,
-      memberId: _shellMemberId,
-    );
-    chat.pauseFollowUpQueue(widget.session.sessionId, _shellMemberId);
-    // Clear History "运行中…" immediately — do not wait for PTY idleAfter.
-    final seat = _seat;
-    if (seat != null && seat.state.awaitingAssistant) {
-      seat.flushHeldTip(endAwaiting: true);
-    }
-    _cancelAwaitingIdleGrace();
-    _userStoppedTurn = true;
-    if (mounted) setState(() {});
-  }
-
-  Future<void> _handleSubmit() async {
-    if (_isSubmitting) return;
-    final text = _controller.text.trim();
+  Future<HistoryContinueSubmitResult> _handleComposeSubmit(String text) async {
+    if (_isSubmitting) return const HistoryContinueSubmitResult.failed();
+    final trimmed = text.trim();
     final selectedMemberId = widget.selectedMemberId;
     final chat = context.read<ChatCubit>();
-    final permissionWaiting = AgentPermissionAttentionBanner.isSelectedSeatWaiting(
+    final permissionWaiting =
+        AgentPermissionAttentionBanner.isSelectedSeatWaiting(
       attention: context.read<AgentAttentionCubit>(),
       session: widget.session,
       selectedMemberId: selectedMemberId,
@@ -1090,14 +707,14 @@ class _SessionChatViewState extends State<SessionChatView> {
     final action = resolveHistoryComposeSubmitAction(
       permissionWaiting: permissionWaiting,
       memberWorking: memberWorking,
-      trimmedText: text,
+      trimmedText: trimmed,
       supportsTurnInterrupt: supportsTurnInterrupt,
     );
 
     var delivered = false;
     dispatchHistoryComposeSubmit(
       action: action,
-      text: text,
+      text: trimmed,
       onEnqueue: (queued) {
         chat.followUpQueue.enqueue(_followUpSeatKey, queued);
         _controller.clear();
@@ -1106,24 +723,24 @@ class _SessionChatViewState extends State<SessionChatView> {
       },
       onDeliver: (_) => delivered = true,
     );
-    if (!delivered) return;
+    if (!delivered) return const HistoryContinueSubmitResult.failed();
 
-    await _deliverComposeMessage(text);
+    return await _deliverComposeMessage(trimmed);
   }
 
-  Future<void> _deliverComposeMessage(String text) async {
-    if (text.isEmpty) return;
+  Future<HistoryContinueSubmitResult> _deliverComposeMessage(String text) async {
+    if (text.isEmpty) return const HistoryContinueSubmitResult.failed();
     final selectedMemberId = widget.selectedMemberId;
     if (AgentPermissionAttentionBanner.isSelectedSeatWaiting(
       attention: context.read<AgentAttentionCubit>(),
       session: widget.session,
       selectedMemberId: selectedMemberId,
     )) {
-      return;
+      return const HistoryContinueSubmitResult.failed();
     }
 
     final seat = _seat;
-    if (seat == null) return;
+    if (seat == null) return const HistoryContinueSubmitResult.failed();
     // Peek before connect so mailbox continues skip optimistic thread pending.
     // onSubmit re-resolves after connect; rollback if peek was wrong.
     final peek =
@@ -1131,7 +748,6 @@ class _SessionChatViewState extends State<SessionChatView> {
     final optimisticPty = peek == HistoryContinueChannel.pty;
     if (optimisticPty) {
       seat.enqueuePendingUser(text);
-      _userStoppedTurn = false;
       _syncAwaitingFromWorkingSessions(context.read<ChatCubit>().state);
     }
     _controller.clear();
@@ -1141,7 +757,7 @@ class _SessionChatViewState extends State<SessionChatView> {
       if (mounted) setState(() {});
       return widget.onSubmit(text);
     });
-    if (!mounted) return;
+    if (!mounted) return const HistoryContinueSubmitResult.failed();
     setState(() {});
     if (!result.ok) {
       _cancelAwaitingIdleGrace();
@@ -1150,7 +766,7 @@ class _SessionChatViewState extends State<SessionChatView> {
         ..text = text
         ..selection = TextSelection.collapsed(offset: text.length);
       setState(() {});
-      return;
+      return result;
     }
 
     if (result.isMailbox) {
@@ -1161,16 +777,16 @@ class _SessionChatViewState extends State<SessionChatView> {
       _mailboxQueued.add(PendingUserMessage(id: mailId, content: text));
       setState(() {});
       // Mailbox text is not in the CLI transcript — skip live refresh churn.
-      return;
+      return result;
     }
 
     if (!optimisticPty) {
       // Peek said mailbox but post-connect path was PTY — show the bubble now.
       seat.enqueuePendingUser(text);
-      _userStoppedTurn = false;
       _syncAwaitingFromWorkingSessions(context.read<ChatCubit>().state);
     }
     unawaited(_startLiveRefresh());
+    return result;
   }
 
   void _cancelAwaitingIdleGrace() {
@@ -1246,72 +862,12 @@ class _SessionChatViewState extends State<SessionChatView> {
     final l10n = context.l10n;
     final spacing = context.tpSpacing;
     final cs = Theme.of(context).colorScheme;
-    final skills = context.watch<SkillCubit>().state.installed;
-    final plugins = context.watch<PluginCubit>().state.installed;
-    final presets = context.watch<CliPresetsCubit>().state.presets;
     final session = _watchDisplaySession(context);
     final team = _watchLiveTeam(context);
-    final hubState = _expertHubState(context);
     final selectedMemberId = widget.selectedMemberId;
-    final permissionWaiting = context.select<AgentAttentionCubit, bool>(
-      (c) => AgentPermissionAttentionBanner.isSelectedSeatWaiting(
-        attention: c,
-        session: session,
-        selectedMemberId: selectedMemberId,
-      ),
-    );
-    if (permissionWaiting && _focusNode.hasFocus) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && _focusNode.hasFocus) _focusNode.unfocus();
-      });
-    }
-    final canSubmit =
-        !permissionWaiting &&
-        _controller.text.trim().isNotEmpty &&
-        !_isSubmitting;
 
-    final lockedCli = _lockedCli(
-      session: session,
-      team: team,
-      presets: presets,
-    );
-    final askCardVisible = context.select<AgentAttentionCubit, bool>(
-      (c) => AgentPermissionAttentionBanner.isSelectedSeatAskCard(
-        attention: c,
-        session: session,
-        selectedMemberId: selectedMemberId,
-        seatCli: lockedCli,
-        registry: CliToolRegistryScope.maybeOf(context),
-      ),
-    );
-    final sameCliPresets = presetsForCli(presets, lockedCli);
-    final selectedPresetId = _selectedPresetId(session: session, team: team);
-    final selectedPreset = selectedPresetId == null
-        ? null
-        : sameCliPresets.where((p) => p.id == selectedPresetId).firstOrNull;
-    final modelLabel = session.isSimple
-        ? simpleLaunchChipLabel(
-            presetName: selectedPreset?.name,
-            cli: lockedCli,
-            provider: session.provider,
-            model: session.model,
-            emptyLabel: l10n.workspaceChatLandingUsePreset,
-          )
-        : (selectedPreset?.name.trim().isNotEmpty == true
-              ? selectedPreset!.name.trim()
-              : l10n.workspaceChatLandingUsePreset);
-    final identityLabel = _identityLabel(
-      session: session,
-      team: team,
-      hubState: hubState,
-      expertFallback: l10n.expertHubNoneSelected,
-    );
-    final workspace = _workspaceForSettings(context);
-    final showTeamSettings = !session.isSimple && team != null;
-    final teamSettingsAttention =
-        showTeamSettings &&
-        workspace != null &&
-        landingTeamSettingsNeedsAttention(workspace: workspace, team: team);
+    final registry =
+        CliToolRegistryScope.maybeOf(context) ?? CliToolRegistry.builtIn();
 
     // Rebuild when session working or bus presence changes (seat-level stop).
     context.select<ChatCubit, (String?, Set<String>)>(
@@ -1320,27 +876,26 @@ class _SessionChatViewState extends State<SessionChatView> {
     context.select<MemberPresenceCubit, Map<String, MemberPresence>>(
       (c) => c.state.presence,
     );
-    final chat = context.read<ChatCubit>();
-    final memberWorking = chat.isMemberWorking(
-      widget.session.sessionId,
-      _shellMemberId,
+
+    // lockedCli is still needed by the parent for historyCap (subagent tools).
+    final presets = context.select<CliPresetsCubit, List<CliPreset>>(
+      (c) => c.state.presets,
     );
-    final composeTextEmpty = _controller.text.trim().isEmpty;
-    final registry =
-        CliToolRegistryScope.maybeOf(context) ?? CliToolRegistry.builtIn();
-    final supportsTurnInterrupt =
-        registry
-            .capability<TurnInterruptCapability>(lockedCli)
-            ?.supportsTurnInterrupt ??
-        false;
-    final showComposeStop = shouldShowComposeStop(
-      memberWorking: memberWorking,
-      supportsTurnInterrupt: supportsTurnInterrupt,
-      composeTextEmpty: composeTextEmpty,
+    final lockedCli = _lockedCli(
+      session: session,
+      team: team,
+      presets: presets,
     );
     final historyCap = registry.capability<AiHistoryCapability>(lockedCli);
-    final skillSyntax =
-        registry.capability<SkillInvocationSyntaxCapability>(lockedCli);
+    final askCardVisible = context.select<AgentAttentionCubit, bool>(
+      (c) => AgentPermissionAttentionBanner.isSelectedSeatAskCard(
+        attention: c,
+        session: session,
+        selectedMemberId: selectedMemberId,
+        seatCli: lockedCli,
+        registry: registry,
+      ),
+    );
 
     return ShortcutFocus(
       // The chat page owns Mod+F (find bar). Claimed so the global workspace
@@ -1368,8 +923,7 @@ class _SessionChatViewState extends State<SessionChatView> {
       listeners: [
         BlocListener<ChatCubit, ChatState>(
           listenWhen: (previous, current) =>
-              previous.workingSessionIds != current.workingSessionIds ||
-              previous.stateVersion != current.stateVersion,
+              previous.workingSessionIds != current.workingSessionIds,
           listener: (context, state) {
             _syncAwaitingFromWorkingSessions(state);
             _maybeStartLiveRefreshForRunningPty();
@@ -1457,15 +1011,6 @@ class _SessionChatViewState extends State<SessionChatView> {
                   if (historySeat == null) {
                     return const SizedBox.shrink();
                   }
-                  final lifecycle = context.read<ChatCubit>().lifecycle;
-                  final workspaceFolderPaths = sessionMemberFolderPaths(
-                    lifecycle: lifecycle,
-                    launchContext: _launchContext,
-                    memberId: widget.selectedMemberId,
-                  );
-                  final sessionWorkingDirectory = _workspaceRoot.isEmpty
-                      ? null
-                      : _workspaceRoot;
                   return ListenableBuilder(
                     listenable: _subagentPreview,
                     builder: (context, _) {
@@ -1486,473 +1031,62 @@ class _SessionChatViewState extends State<SessionChatView> {
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Expanded(
-                            // Full-bleed scroll surface: margins beside the text
-                            // column still receive wheel / drag. Message width is
-                            // capped inside SessionHistoryThread.
-                            child: Stack(
-                              children: [
-                                Positioned.fill(
-                                  child: AiToolFileActionsScope(
-                              actions: AiToolFileActions(
-                                onOpenFile: (target) async {
-                                  final fs =
-                                      await resolveSessionMemberFilesystem(
-                                        lifecycle: lifecycle,
-                                        launchContext: _launchContext,
-                                        memberId: widget.selectedMemberId,
-                                        toolsScope:
-                                            WorkspaceToolsScope.maybeOf(
-                                              context,
-                                            ),
-                                      );
-                                  if (!context.mounted) return;
-                                  final coordinator =
-                                      AiToolFileOpenCoordinator(
-                                        opener: context
-                                            .read<WorkbenchEditorOpener>(),
-                                        editor: context.read<EditorCubit>(),
-                                      );
-                                  final result = await coordinator.openToolFile(
-                                    workspaceId: widget.session.workspaceId,
-                                    target: target,
-                                    sessionWorkingDirectory:
-                                        sessionWorkingDirectory,
-                                    workspaceFolderPaths:
-                                        workspaceFolderPaths,
-                                    fs: fs,
-                                  );
-                                  if (!context.mounted) return;
-                                  if (result.isMissing) {
-                                    AppToast.show(
-                                      context,
-                                      message: l10n.aiToolFileNotFound(
-                                        target.path,
-                                      ),
-                                      variant: TpToastVariant.warning,
-                                    );
-                                  }
-                                },
-                                lineHighlighter: WorkspaceAiEditLineHighlighter(
-                                  brightness: Theme.of(context).brightness,
-                                ),
-                              ),
-                              child: AiToolSubagentActionsScope(
-                                actions: AiToolSubagentActions(
-                                  isSubagentTool: historyCap == null
-                                      ? null
-                                      : (name) => historyCap.subagentToolNames
-                                          .contains(name.trim().toLowerCase()),
-                                  onOpenSubagent: (id) async {
-                                    final attachments =
-                                        _seat?.subagentAttachments ?? const {};
-                                    if (!attachments.containsKey(id)) {
-                                      if (!context.mounted) return;
-                                      AppToast.show(
-                                        context,
-                                        message:
-                                            l10n.subagentPreviewUnavailable,
-                                        variant: TpToastVariant.warning,
-                                      );
-                                      return;
-                                    }
-                                    _subagentPreview.push(id);
-                                  },
-                                ),
-                                child: AiMessageStringsScope(
-                                  strings: AiMessageStrings(
-                                    usedTool: l10n.aiMessageUsedTool,
-                                    cancelledTool: l10n.aiMessageCancelledTool,
-                                    formatToolsUsed: l10n.aiMessageToolsUsed,
-                                    reasoning: l10n.aiMessageReasoning,
-                                    result: l10n.aiMessageToolResult,
-                                    copy: l10n.copy,
-                                    copied: l10n.aiMessageCopied,
-                                    exportMarkdown:
-                                        l10n.aiMessageExportMarkdown,
-                                    messageIncomplete:
-                                        l10n.aiMessageIncomplete,
-                                    messageCancelled:
-                                        l10n.aiMessageCancelled,
-                                    scrollToBottom:
-                                        l10n.aiMessageScrollToBottom,
-                                    showMore: l10n.aiMessageShowMore,
-                                    showLess: l10n.aiMessageShowLess,
-                                    thinkingProcess:
-                                        l10n.aiMessageThinkingProcess,
-                                    formatThinkingProcessSteps: (count) => l10n
-                                        .aiMessageThinkingProcessSteps(
-                                          count as int,
-                                        ),
-                                  ),
-                                  child: Stack(
-                                    children: [
-                                      Builder(
-                                        builder: (context) {
-                                          final seat =
-                                              context.select<
-                                                ChatCubit,
-                                                ({
-                                                  bool sessionWorking,
-                                                  bool sessionConnecting,
-                                                  bool memberRunning,
-                                                  int stateVersion,
-                                                })
-                                              >((c) {
-                                                final sid =
-                                                    widget.session.sessionId;
-                                                return (
-                                                  sessionWorking: c
-                                                      .state
-                                                      .workingSessionIds
-                                                      .contains(sid),
-                                                  sessionConnecting:
-                                                      _podConnecting(c, sid),
-                                                  memberRunning: c
-                                                      .isMemberRunning(
-                                                        sessionId: sid,
-                                                        memberId:
-                                                            _shellMemberId,
-                                                      ),
-                                                  // Connect completion bumps
-                                                  // this so PTY-up rebuilds.
-                                                  stateVersion:
-                                                      c.state.stateVersion,
-                                                );
-                                              });
-                                          final liveChrome =
-                                              SessionHistoryLiveChromeX.resolve(
-                                                turnInFlight:
-                                                    historyTurnInFlight(
-                                                      isSubmitting:
-                                                          _isSubmitting,
-                                                      awaitingAssistant:
-                                                          state
-                                                              .awaitingAssistant,
-                                                      sessionWorking:
-                                                          seat.sessionWorking,
-                                                      userStoppedTurn:
-                                                          _userStoppedTurn,
-                                                    ),
-                                                memberRunning:
-                                                    seat.memberRunning,
-                                                sessionWorking:
-                                                    seat.sessionWorking,
-                                                sessionConnecting:
-                                                    seat.sessionConnecting,
-                                              );
-                                          return MarkdownDisplayModeScope(
-                                            userMessageMode:
-                                                prefs.userMessageMode,
-                                            codeBlockMode:
-                                                prefs.chatCodeBlockMode,
-                                            child: AiToolCallBubbleScope(
-                                              builders: {
-                                                ...cliTaskBubbleBuilders(),
-                                                'workflow': (ctx, part) =>
-                                                    WorkflowCard(
-                                                      part: part,
-                                                      attachment: historySeat
-                                                              .subagentAttachments[
-                                                          part.toolCallId],
-                                                    ),
-                                              },
-                                              child: SessionHistoryReviewMessages(
-                                                state: state,
-                                                runtime: historySeat.runtime,
-                                                onRetry: () =>
-                                                    _loadHistory(force: true),
-                                                onLoadOlder:
-                                                    historySeat.loadOlder,
-                                                liveChrome: liveChrome,
-                                                highlightMessageId:
-                                                    _findHighlightId,
-                                                revealRequest:
-                                                    _revealController,
-                                              ),
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                      if (top != null)
-                                        Positioned.fill(
-                                          child: Material(
-                                            color: cs.surface,
-                                            child: AiHistoryRenderScope(
-                                              // History-review budget also
-                                              // guards subagent messages: a
-                                              // giant subagent turn collapses
-                                              // instead of freezing the
-                                              // preview open.
-                                              child: SubagentPreviewScaffold(
-                                                title: previewTitle,
-                                                messages: top.messages,
-                                                emptyLabel: l10n
-                                                    .subagentPreviewEmpty,
-                                                backTooltip:
-                                                    l10n.subagentPreviewBack,
-                                                onBack: _subagentPreview.pop,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      if (_taskBoardController != null)
-                                        Positioned(
-                                          top: spacing.sm,
-                                          right: spacing.sm,
-                                          child: ListenableBuilder(
-                                            listenable: _taskBoardController!,
-                                            builder: (context, _) {
-                                              final board =
-                                                  _taskBoardController!.board;
-                                              if (board.totalCount == 0) {
-                                                return const SizedBox.shrink();
-                                              }
-                                              return SessionCliTaskPanel(
-                                                board: board,
-                                                title: l10n.cliTaskBoardTitle,
-                                                countText: l10n.cliTaskBoardCount(
-                                                  board.completedCount,
-                                                  board.totalCount,
-                                                ),
-                                                moreLabel: (count) => l10n
-                                                    .cliTaskBoardMore(count),
-                                                showLessLabel:
-                                                    l10n.cliTaskBoardShowLess,
-                                              );
-                                            },
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                                  ),
-                                ),
-                                if (_findVisible)
-                                  Positioned(
-                                    left: 0,
-                                    right: 0,
-                                    top: 0,
-                                    child: ChatFindBar(
-                                      controller: _findController,
-                                      queryController: _findQueryController,
-                                      focusNode: _findFocusNode,
-                                      onNavigate: _navigateFindTo,
-                                      onClose: _closeFind,
-                                    ),
-                                  ),
-                              ],
-                            ),
+                          SessionChatMessageArea(
+                            session: widget.session,
+                            workspace: widget.workspace,
+                            selectedMemberId: selectedMemberId,
+                            shellMemberId: _shellMemberId,
+                            isSubmitting: _isSubmitting,
+                            state: state,
+                            historySeat: historySeat,
+                            top: top,
+                            previewTitle: previewTitle,
+                            subagentPreview: _subagentPreview,
+                            taskBoardController: _taskBoardController,
+                            findVisible: _findVisible,
+                            findHighlightId: _findHighlightId,
+                            findController: _findController,
+                            findQueryController: _findQueryController,
+                            findFocusNode: _findFocusNode,
+                            revealController: _revealController,
+                            historyCap: historyCap,
+                            onRetry: () => _loadHistory(force: true),
+                            onCloseFind: _closeFind,
+                            onNavigateFind: _navigateFindTo,
                           ),
                           if (top == null)
-                      Align(
-                        alignment: Alignment.topCenter,
-                        child: ConstrainedBox(
-                          constraints: BoxConstraints(
-                            maxWidth: columnWidth,
-                          ),
-                          child: Padding(
-                            padding: EdgeInsets.fromLTRB(
-                              spacing.md,
-                              0,
-                              spacing.md,
-                              spacing.lg,
+                            SessionChatComposeSection(
+                              session: session,
+                              workspace: widget.workspace,
+                              selectedMemberId: selectedMemberId,
+                              shellMemberId: _shellMemberId,
+                              composeController: _controller,
+                              composeFocusNode: _focusNode,
+                              voiceController: _voice,
+                              isSubmitting: _isSubmitting,
+                              isEnhancing: _enhancing,
+                              workspaceRoot: _workspaceRoot,
+                              askCardVisible: askCardVisible,
+                              launchError: widget.launchError,
+                              onRemapDeadTarget: widget.onRemapDeadTarget,
+                              onRetry: widget.onRetry,
+                              sessionConnectInProgress:
+                                  widget.sessionConnectInProgress,
+                              isMailboxUnread: widget.isMailboxUnread,
+                              mailboxQueued: _mailboxQueued,
+                              mailboxQueuedSeats: _mailboxQueuedSeats,
+                              mailboxQueuedClearToken: _mailboxQueuedClearToken,
+                              onMailboxConsumed: (mailId) {
+                                if (!mounted) return;
+                                unawaited(_seat?.refreshMailboxTimeline());
+                              },
+                              onAttach: () => unawaited(_attachFiles()),
+                              onEnhance: () => unawaited(_enhancePrompt()),
+                              onPasteImage: _pasteComposeImage,
+                              onComposeChanged: () => setState(() {}),
+                              routeActive: widget.routeActive,
+                              onSubmit: _handleComposeSubmit,
                             ),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                AgentPermissionAttentionBanner(
-                                  session: widget.session,
-                                  selectedMemberId: widget.selectedMemberId,
-                                ),
-                                StreamBuilder<FollowUpQueue>(
-                                  stream: chat.followUpQueue.watch(_followUpSeatKey),
-                                  initialData: chat.followUpQueue.queueFor(
-                                    _followUpSeatKey,
-                                  ),
-                                  builder: (context, snapshot) {
-                                    final queue =
-                                        snapshot.data ?? const FollowUpQueue();
-                                    return FollowUpQueueStrip(
-                                      queue: queue,
-                                      onDelete: (id) => chat.followUpQueue.remove(
-                                        _followUpSeatKey,
-                                        id,
-                                      ),
-                                      onEdit: (id, content) =>
-                                          chat.followUpQueue.edit(
-                                            _followUpSeatKey,
-                                            id,
-                                            content,
-                                          ),
-                                      onMoveUp: (id) => chat.followUpQueue.moveUp(
-                                        _followUpSeatKey,
-                                        id,
-                                      ),
-                                      onResume: () => unawaited(
-                                        chat.resumeFollowUpQueue(
-                                          widget.session.sessionId,
-                                          _shellMemberId,
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
-                                if (widget.isMailboxUnread != null)
-                                  HistoryMailboxQueuedStrip(
-                                    key: ValueKey(
-                                      'mailbox-queued-$_mailboxQueuedClearToken',
-                                    ),
-                                    submissions: _mailboxQueued.stream,
-                                    isUnread: widget.isMailboxUnread!,
-                                    clearToken: _mailboxQueuedClearToken,
-                                    onConsumed: (msg) {
-                                      if (!mounted) return;
-                                      final seatKey = _mailboxQueuedSeats
-                                          .remove(msg.id);
-                                      if (seatKey != _mailboxSeatKey()) {
-                                        return;
-                                      }
-                                      // Mail is read in the bus log now —
-                                      // refresh the merged timeline so the
-                                      // message appears as real history.
-                                      unawaited(
-                                        _seat?.refreshMailboxTimeline(),
-                                      );
-                                    },
-                                  ),
-                                if (!askCardVisible)
-                                WorkspaceComposeCard(
-                                  controller: _controller,
-                                  focusNode: _focusNode,
-                                  hint: memberWorking
-                                      ? l10n.sessionFollowUpAddPlaceholder
-                                      : l10n.sessionHistoryComposeHint,
-                                  canSubmit: canSubmit,
-                                  isSubmitting: _isSubmitting,
-                                  onSubmit: () => unawaited(_handleSubmit()),
-                                  onChanged: (_) => setState(() {}),
-                                  chrome: BoundComposeChrome(
-                                    composeEnabled: !permissionWaiting,
-                                    launchError: widget.launchError,
-                                    onRemapDeadTarget: widget.onRemapDeadTarget,
-                                    onRetry: widget.onRetry,
-                                    sessionConnectInProgress:
-                                        widget.sessionConnectInProgress,
-                                    floating: true,
-                                    identityLabel: identityLabel,
-                                    identityIcon: session.isSimple
-                                        ? Icons.psychology_outlined
-                                        : Icons.groups_outlined,
-                                    sameCliPresets: sameCliPresets,
-                                    selectedPresetId: selectedPresetId,
-                                    modelPresetLabel: modelLabel,
-                                    emptyPresetHintLabel:
-                                        l10n.workspaceCliPresetsEmptyHint,
-                                    onPresetSelected: (presetId) => unawaited(
-                                      _onPresetSelected(
-                                        presetId: presetId,
-                                        team: team,
-                                        sameCliPresets: sameCliPresets,
-                                        lockedCli: lockedCli,
-                                      ),
-                                    ),
-                                    customLabel: session.isSimple
-                                        ? l10n.workspaceChatLandingCustomLaunch
-                                        : null,
-                                    customSelected:
-                                        session.isSimple &&
-                                        session.presetId.trim().isEmpty,
-                                    onCustom: session.isSimple
-                                        ? () => unawaited(
-                                            _openContinueCustomLaunchDialog(
-                                              session: session,
-                                            ),
-                                          )
-                                        : null,
-                                    dangerouslySkipPermissions:
-                                        _effectivePermission(
-                                          session: session,
-                                          team: team,
-                                        ),
-                                    defaultPermissionsLabel: l10n
-                                        .workspaceChatLandingDefaultPermissions,
-                                    fullAccessPermissionsLabel: l10n
-                                        .workspaceChatLandingFullAccessPermissions,
-                                    onPermissionSelected: (value) =>
-                                        unawaited(
-                                          _onPermissionSelected(
-                                            value: value,
-                                            team: team,
-                                          ),
-                                        ),
-                                    teamSettingsTooltip: showTeamSettings
-                                        ? l10n.teamSettings
-                                        : null,
-                                    onTeamSettings: showTeamSettings
-                                        ? () => unawaited(
-                                            _openTeamSettings(team),
-                                          )
-                                        : null,
-                                    showTeamSettingsAttention:
-                                        teamSettingsAttention,
-                                    showStop: showComposeStop,
-                                    onStop: showComposeStop
-                                        ? () => unawaited(
-                                            _handleComposeStop(chat),
-                                          )
-                                        : null,
-                                  ),
-                                  dropTarget: _composeDropIngestor(),
-                                  deferFieldMount: false,
-                                  attachTooltip:
-                                      l10n.workspaceChatLandingAttach,
-                                  enhanceTooltip:
-                                      l10n.workspaceChatLandingEnhance,
-                                  voiceTooltip:
-                                      l10n.workspaceChatLandingVoice,
-                                  voiceCancelTooltip:
-                                      l10n.workspaceChatLandingVoiceCancel,
-                                  voiceStopTooltip:
-                                      l10n.workspaceChatLandingVoiceStop,
-                                  isEnhancing: _enhancing,
-                                  isVoiceListening: _voiceListening,
-                                  voiceElapsed: _voiceElapsed,
-                                  voiceSoundLevel: _voiceSoundLevel,
-                                  onAttach: () => unawaited(_attachFiles()),
-                                  onEnhance: () => unawaited(_enhancePrompt()),
-                                  onVoice: () => unawaited(_toggleVoice()),
-                                  onVoiceCancel: () =>
-                                      unawaited(_cancelVoice()),
-                                  onVoiceStop: () => unawaited(_stopVoice()),
-                                  onPasteImage: _pasteComposeImage,
-                                  workspaceRoot: _workspaceRoot,
-                                  skills: skills,
-                                  plugins: plugins,
-                                  slashBundle: _slashBundle(context),
-                                  skillSyntax: skillSyntax,
-                                  onOpenAtFile: (path) {
-                                    unawaited(
-                                      context
-                                          .read<WorkbenchEditorOpener>()
-                                          .openFile(
-                                            widget.session.workspaceId,
-                                            path,
-                                            preview: true,
-                                            fs: filesystemForComposeAtFileOpen(
-                                              path,
-                                            ),
-                                          ),
-                                    );
-                                  },
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
                         ],
                       );
                     },

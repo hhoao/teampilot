@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/app_provider_config.dart';
-import 'package:teampilot/services/provider/claude/claude_model_catalog.dart';
+import 'package:teampilot/services/cli/claude/provider/claude_model_catalog.dart';
 
 void main() {
   test('official catalog includes aliases and frontier model ids', () {

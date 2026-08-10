@@ -5,10 +5,10 @@ import 'package:teampilot/services/cli/registry/capabilities/installer_capabilit
 import 'package:teampilot/services/cli/registry/capabilities/launch_args_capability.dart';
 import 'package:teampilot/services/cli/registry/capabilities/provider_catalog_capability.dart';
 import 'package:teampilot/services/cli/registry/capabilities/provider_model_capability.dart';
-import 'package:teampilot/services/cli/registry/installer/claude_installer_capability.dart';
-import 'package:teampilot/services/cli/registry/installer/codex_installer_capability.dart';
-import 'package:teampilot/services/cli/registry/installer/cursor_installer_capability.dart';
-import 'package:teampilot/services/cli/registry/installer/opencode_installer_capability.dart';
+import 'package:teampilot/services/cli/claude/capabilities/installer.dart';
+import 'package:teampilot/services/cli/codex/capabilities/installer.dart';
+import 'package:teampilot/services/cli/cursor/capabilities/installer.dart';
+import 'package:teampilot/services/cli/opencode/capabilities/installer.dart';
 import 'package:teampilot/services/cli/registry/built_in_cli_tools.dart';
 import 'package:teampilot/services/cli/registry/capabilities/member_agent_preset_capability.dart';
 import 'package:teampilot/services/cli/registry/capabilities/native_team_capability.dart';

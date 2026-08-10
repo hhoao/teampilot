@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
-import 'package:teampilot/models/run/launch_configuration.dart';
+import '../../models/run/launch_configuration.dart';
 
 /// Expands VS Code-style launch variables in configuration fields.
 ///

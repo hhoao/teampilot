@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
-import 'package:teampilot/services/github/github_http.dart';
+import 'github_http.dart';
 
 typedef GithubDeviceFlowHttpPost =
     Future<http.Response> Function(

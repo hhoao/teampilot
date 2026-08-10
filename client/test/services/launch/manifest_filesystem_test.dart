@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/launch/launch_manifest.dart';
 import 'package:teampilot/services/launch/manifest_executor.dart';
 import 'package:teampilot/services/launch/manifest_filesystem.dart';
-import 'package:teampilot/services/provider/cursor/cursor_member_home_passthrough.dart';
+import 'package:teampilot/services/cli/cursor/provider/cursor_member_home_passthrough.dart';
 
 import '../../support/in_memory_filesystem.dart';
 

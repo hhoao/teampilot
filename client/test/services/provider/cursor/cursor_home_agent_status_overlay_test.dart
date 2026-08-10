@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/agent_status/member_agent_status_endpoint.dart';
-import 'package:teampilot/services/provider/cursor/cursor_home_agent_status_overlay.dart';
+import 'package:teampilot/services/cli/cursor/provider/cursor_home_agent_status_overlay.dart';
 
 void main() {
   const endpoint = MemberAgentStatusEndpoint(

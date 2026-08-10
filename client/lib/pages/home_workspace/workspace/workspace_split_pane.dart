@@ -210,15 +210,19 @@ class _WorkspaceRightToolsPane extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final chat = context.watch<ChatCubit>();
-    final workbench = context.watch<WorkbenchCubit>();
+    final chat = context.read<ChatCubit>();
+    // Select only the fields this right-tools pane actually reads — avoids
+    // rebuilding the tools subtree on every session working-state change.
+    // composeLanding comes from the bar (single owner of landing state).
+    final composeLanding = context.select<WorkbenchCubit, bool>(
+      (w) => workspaceNewChatActive(w, tabScopeId),
+    );
     final active = WorkspaceActiveContext.resolve(
-      workbench: workbench,
+      workbench: context.read<WorkbenchCubit>(),
       chat: chat,
       launchProfiles: context.read<LaunchProfileCubit>(),
       tabScopeId: tabScopeId,
     );
-    final composeLanding = workspaceNewChatActive(workbench, tabScopeId);
     final layoutState = context.watch<LayoutCubit>().state;
     final effectiveRight = composeLanding
         ? (layoutState.landingRightToolsOverride ?? false)

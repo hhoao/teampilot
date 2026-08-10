@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/git_cubit.dart';
 import 'package:teampilot/models/git_status.dart';
@@ -37,23 +35,16 @@ class _FakeGitService extends GitService {
     }
   }
 
-  final List<List<String>> stagedPaths = [];
-  final List<List<String>> unstagedPaths = [];
-
-  @override
-  Future<void> stage(String dir, List<String> paths) async {
-    stagedPaths.add(paths);
-    await _record('stage');
-  }
-
-  @override
-  Future<void> unstage(String dir, List<String> paths) async {
-    unstagedPaths.add(paths);
-    await _record('unstage');
-  }
-
   @override
   Future<void> commit(String dir, String message) => _record('commit:$message');
+
+  final List<List<String>> commitSelectedCalls = [];
+
+  @override
+  Future<void> commitSelected(String dir, String message, List<String> paths) async {
+    commitSelectedCalls.add(['add', '--', ...paths]);
+    commitSelectedCalls.add(['commit', '-m', message, '--', ...paths]);
+  }
 
   final List<String> discardAllCalls = [];
   final List<List<String>> discardFolderCalls = [];
@@ -104,7 +95,7 @@ void main() {
     expect(cubit.state.repoRoot, '/repo');
     expect(cubit.state.isRepository, isTrue);
     expect(cubit.state.changesTreeView.rows, isEmpty);
-    expect(cubit.state.changesTreeView.stagedCount, 0);
+    expect(cubit.state.changesTreeView.selectedCount, 0);
     expect(cubit.state.changesTreeView.totalCount, 0);
     expect(service.calls, contains('status'));
     expect(cubit.state.branches, isEmpty);
@@ -142,74 +133,57 @@ void main() {
     await cubit.close();
   });
 
-  test('stage calls service then refreshes', () async {
-    final service = _FakeGitService(statusToReturn: _repoWith());
-    final cubit = GitCubit(service: service);
-    await cubit.setRepoRoot('/repo');
-    service.calls.clear();
-
-    await cubit.stage(_unstaged);
-
-    expect(service.calls, ['stage', 'status']);
-    expect(service.stagedPaths, [
-      ['b.txt'],
-    ]);
-    await cubit.close();
-  });
-
-  test('stage flips the change to staged immediately (optimistic)', () async {
-    final gate = Completer<void>();
-    final service = _GatedGitService(
-      statusToReturn: _repoWith(unstaged: const [_unstaged]),
-      stageGate: gate,
+  test('selectFolder selects every changed path under the folder', () async {
+    final service = _FakeGitService(
+      statusToReturn: _repoWith(
+        unstaged: const [
+          _unstaged, // b.txt
+          GitFileChange(
+            path: 'docs/a.txt',
+            kind: GitChangeKind.modified,
+            staged: false,
+          ),
+          GitFileChange(
+            path: 'docs/b.txt',
+            kind: GitChangeKind.modified,
+            staged: false,
+          ),
+        ],
+      ),
     );
     final cubit = GitCubit(service: service);
     await cubit.setRepoRoot('/repo');
+    await cubit.selectNone(); // clear the auto-selection first
+    await cubit.selectFolder('docs');
 
-    final future = cubit.stage(_unstaged);
-
-    // Optimistic: before the gate completes, the change is already staged.
-    expect(
-      cubit.state.status.staged.map((c) => c.path),
-      contains(_unstaged.path),
-    );
-    expect(
-      cubit.state.status.unstaged.map((c) => c.path),
-      isNot(contains(_unstaged.path)),
-    );
-
-    gate.complete();
-    await future;
+    expect(cubit.state.selectedPaths, {'docs/a.txt', 'docs/b.txt'});
     await cubit.close();
   });
 
-  test('stageFolder passes directory path to service', () async {
-    final service = _FakeGitService(statusToReturn: _repoWith());
+  test('deselectFolder clears every selected path under the folder', () async {
+    final service = _FakeGitService(
+      statusToReturn: _repoWith(
+        unstaged: const [
+          _unstaged, // b.txt
+          GitFileChange(
+            path: 'docs/a.txt',
+            kind: GitChangeKind.modified,
+            staged: false,
+          ),
+          GitFileChange(
+            path: 'docs/b.txt',
+            kind: GitChangeKind.modified,
+            staged: false,
+          ),
+        ],
+      ),
+    );
     final cubit = GitCubit(service: service);
-    await cubit.setRepoRoot('/repo');
-    service.calls.clear();
+    await cubit.setRepoRoot('/repo'); // all auto-selected
 
-    await cubit.stageFolder('docs');
+    await cubit.deselectFolder('docs');
 
-    expect(service.calls, ['stage', 'status']);
-    expect(service.stagedPaths, [
-      ['docs'],
-    ]);
-    await cubit.close();
-  });
-
-  test('unstageFolder passes directory path to service', () async {
-    final service = _FakeGitService(statusToReturn: _repoWith());
-    final cubit = GitCubit(service: service);
-    await cubit.setRepoRoot('/repo');
-    service.calls.clear();
-
-    await cubit.unstageFolder('src/utils');
-
-    expect(service.calls, ['unstage', 'status']);
-    expect(service.unstagedPaths, [
-      ['src/utils'],
-    ]);
+    expect(cubit.state.selectedPaths, {'b.txt'});
     await cubit.close();
   });
 
@@ -256,7 +230,7 @@ void main() {
     await cubit.close();
   });
 
-  test('commit is a no-op when nothing is staged', () async {
+  test('commit is a no-op when nothing is selected', () async {
     final service = _FakeGitService(statusToReturn: _repoWith());
     final cubit = GitCubit(service: service);
     await cubit.setRepoRoot('/repo');
@@ -270,20 +244,85 @@ void main() {
     await cubit.close();
   });
 
-  test('commit succeeds, clears message, and refreshes', () async {
+  test('commit succeeds, clears message, refreshes, and clears the selection',
+      () async {
     final service = _FakeGitService(
       statusToReturn: _repoWith(staged: const [_staged]),
     );
     final cubit = GitCubit(service: service);
-    await cubit.setRepoRoot('/repo');
+    await cubit.setRepoRoot('/repo'); // a.txt auto-selected
     cubit.setCommitMessage('hello');
     service.calls.clear();
+
+    // After the commit the tree is clean, so the committed path is gone from
+    // the status; the post-commit refresh must drop it from the selection.
+    service.statusToReturn = _repoWith();
 
     final ok = await cubit.commit();
 
     expect(ok, isTrue);
-    expect(service.calls, ['commit:hello', 'status']);
+    expect(service.commitSelectedCalls, [
+      ['add', '--', 'a.txt'],
+      ['commit', '-m', 'hello', '--', 'a.txt'],
+    ]);
+    expect(service.calls, contains('status')); // refresh after commit
     expect(cubit.state.commitMessage, '');
+    expect(cubit.state.selectedPaths, isEmpty); // committed paths deselected
+    await cubit.close();
+  });
+
+  test('selectPath/deselectPath only change the selection, never run git', () async {
+    final service = _FakeGitService(statusToReturn: _repoWith(unstaged: const [_unstaged]));
+    final cubit = GitCubit(service: service);
+    await cubit.setRepoRoot('/repo');
+    service.calls.clear();
+
+    final unstagedPath = cubit.state.status.unstaged.single.path;
+    await cubit.selectPath(_unstaged.path);
+    expect(cubit.state.selectedPaths, contains(unstagedPath));
+    expect(service.calls, isEmpty); // NO git call
+
+    await cubit.deselectPath(_unstaged.path);
+    expect(cubit.state.selectedPaths, isEmpty);
+    expect(service.calls, isEmpty);
+    await cubit.close();
+  });
+
+  test('refresh reconciles selection: new files checked, vanished dropped, manual uncheck kept', () async {
+    final service = _FakeGitService(
+      statusToReturn: _repoWith(unstaged: const [_unstaged]),
+    );
+    final cubit = GitCubit(service: service);
+    await cubit.setRepoRoot('/repo'); // first load: b.txt selected by default
+    expect(cubit.state.selectedPaths, {'b.txt'});
+
+    // manual uncheck of b.txt
+    await cubit.deselectPath(_unstaged.path);
+    expect(cubit.state.selectedPaths, isEmpty);
+
+    // next refresh adds a NEW file c.txt (auto-checked), b.txt stays unchecked
+    service.statusToReturn = _repoWith(
+      unstaged: const [_unstaged, GitFileChange(path: 'c.txt', kind: GitChangeKind.modified, staged: false)],
+    );
+    await cubit.refresh();
+    expect(cubit.state.selectedPaths, {'c.txt'});
+    await cubit.close();
+  });
+
+  test('commit passes the selected paths to commitSelected', () async {
+    final service = _FakeGitService(statusToReturn: _repoWith(staged: const [_staged], unstaged: const [_unstaged]));
+    final cubit = GitCubit(service: service);
+    await cubit.setRepoRoot('/repo');
+    cubit.setCommitMessage('msg'); // setCommitMessage 已存在（面板在用）
+    await cubit.selectAll();
+    service.calls.clear();
+
+    final ok = await cubit.commit();
+    expect(ok, isTrue);
+    expect(service.commitSelectedCalls, [
+      ['add', '--', 'a.txt', 'b.txt'],
+      ['commit', '-m', 'msg', '--', 'a.txt', 'b.txt'],
+    ]);
     await cubit.close();
   });
 
@@ -293,7 +332,7 @@ void main() {
     final cubit = GitCubit(service: service);
     await cubit.setRepoRoot('/repo');
 
-    await cubit.stage(_unstaged);
+    await cubit.discardAll();
 
     expect(cubit.state.errorMessage, 'boom');
     expect(cubit.state.busy, isFalse);
@@ -395,19 +434,5 @@ class _SlowBranchesGitService extends _FakeGitService {
   Future<List<String>> branches(String dir) async {
     await Future<void>.delayed(const Duration(milliseconds: 20));
     return super.branches(dir);
-  }
-}
-
-/// Delays `stage` until [stageGate] completes, so a test can observe the
-/// cubit's optimistic state update before the command finishes.
-class _GatedGitService extends _FakeGitService {
-  _GatedGitService({required super.statusToReturn, required this.stageGate});
-
-  final Completer<void> stageGate;
-
-  @override
-  Future<void> stage(String dir, List<String> paths) async {
-    await stageGate.future;
-    return super.stage(dir, paths);
   }
 }

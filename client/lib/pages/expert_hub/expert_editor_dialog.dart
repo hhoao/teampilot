@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
 import '../../services/workspace/workspace_pane_policy.dart';
-import 'package:teampilot/widgets/app_toast/app_toast.dart';
+import '../../widgets/app_toast/app_toast.dart';
 
 import '../../cubits/expert_hub_cubit.dart';
 import '../../cubits/mcp_cubit.dart';

@@ -998,42 +998,6 @@ abstract class AppLocalizations {
   /// **'Message (commit to \"{branch}\")'**
   String gitCommitMessageHint(String branch);
 
-  /// No description provided for @gitStage.
-  ///
-  /// In en, this message translates to:
-  /// **'Stage changes'**
-  String get gitStage;
-
-  /// No description provided for @gitUnstage.
-  ///
-  /// In en, this message translates to:
-  /// **'Unstage changes'**
-  String get gitUnstage;
-
-  /// No description provided for @gitStageAll.
-  ///
-  /// In en, this message translates to:
-  /// **'Stage all changes'**
-  String get gitStageAll;
-
-  /// No description provided for @gitUnstageAll.
-  ///
-  /// In en, this message translates to:
-  /// **'Unstage all changes'**
-  String get gitUnstageAll;
-
-  /// No description provided for @gitStageFolder.
-  ///
-  /// In en, this message translates to:
-  /// **'Stage changes in folder'**
-  String get gitStageFolder;
-
-  /// No description provided for @gitUnstageFolder.
-  ///
-  /// In en, this message translates to:
-  /// **'Unstage changes in folder'**
-  String get gitUnstageFolder;
-
   /// No description provided for @treeExpandAllFolders.
   ///
   /// In en, this message translates to:
@@ -1057,6 +1021,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Open File'**
   String get gitOpenFile;
+
+  /// Context-menu action to include a file in the next commit.
+  ///
+  /// In en, this message translates to:
+  /// **'Include in Commit'**
+  String get gitIncludeInCommit;
+
+  /// Context-menu action to exclude a file from the next commit.
+  ///
+  /// In en, this message translates to:
+  /// **'Exclude from Commit'**
+  String get gitExcludeFromCommit;
+
+  /// Context-menu action to include a folder and its changed files in the next commit.
+  ///
+  /// In en, this message translates to:
+  /// **'Include Folder in Commit'**
+  String get gitIncludeFolderInCommit;
+
+  /// Context-menu action to exclude a folder and its changed files from the next commit.
+  ///
+  /// In en, this message translates to:
+  /// **'Exclude Folder from Commit'**
+  String get gitExcludeFolderFromCommit;
 
   /// No description provided for @gitShowDiff.
   ///

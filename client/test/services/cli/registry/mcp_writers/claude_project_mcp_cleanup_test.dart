@@ -2,10 +2,10 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/cli/registry/mcp_writers/claude_project_mcp_cleanup.dart';
+import 'package:teampilot/services/cli/claude/capabilities/mcp_project_cleanup.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/mcp/mcp_registry_service.dart';
-import 'package:teampilot/services/cli/registry/config_profile/claude_config_profile_capability.dart';
+import 'package:teampilot/services/cli/claude/capabilities/config_profile.dart';
 import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_config.dart';
 import 'package:path/path.dart' as p;
 

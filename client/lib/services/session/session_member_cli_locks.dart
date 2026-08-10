@@ -1,7 +1,7 @@
-import 'package:teampilot/models/cli_preset.dart';
-import 'package:teampilot/models/session_member_binding.dart';
-import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/cli/preset_resolver.dart';
+import '../../models/cli_preset.dart';
+import '../../models/session_member_binding.dart';
+import '../../models/team_config.dart';
+import '../cli/preset_resolver.dart';
 
 /// Resolves per-**type** CLI locks for session create.
 ///

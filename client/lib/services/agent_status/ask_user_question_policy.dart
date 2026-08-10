@@ -1,5 +1,5 @@
-import 'package:teampilot/services/agent_status/ask_user_question.dart';
-import 'package:teampilot/services/cli/registry/capabilities/ask_user_question_capability.dart';
+import 'ask_user_question.dart';
+import '../cli/registry/capabilities/ask_user_question_capability.dart';
 
 /// Whether the chat should render an [AskUserQuestionCard] for the given
 /// capability and parsed questions (vs a generic attention banner).

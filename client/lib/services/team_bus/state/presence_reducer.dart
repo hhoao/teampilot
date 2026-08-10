@@ -59,10 +59,13 @@ abstract final class PresenceReducer {
         );
 
       case MaterializeCompleted():
+        // 诚实状态:active 只等于真实回合进行中。门铃投递成功确认后由
+        // noteMailDeliverySubmitted → TurnStarted 置 active;投递失败则停在
+        // turnDoneReady(at-prompt),看门狗可持续重试门铃。
         return PresenceTransition(
           s.copyWith(
             lifecycle: MemberLifecycle.running,
-            activity: MemberActivity.active,
+            activity: MemberActivity.turnDoneReady,
           ),
           [DoorbellEffect(ctx.memberId)],
         );

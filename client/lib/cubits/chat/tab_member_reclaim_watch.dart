@@ -3,6 +3,7 @@ import 'dart:async';
 import '../../models/team_config.dart';
 import '../../services/terminal/terminal_reclaim_policy.dart';
 import '../../services/terminal/terminal_session.dart';
+import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import '../../utils/team/team_member_naming.dart';
 import 'chat_tab_store.dart';
@@ -20,12 +21,14 @@ class TabMemberReclaimWatch {
     required TeamProfile? Function() activeTeam,
     required TerminalReclaimPolicy Function() policy,
     required void Function(String sessionId, String memberId) onDiscardMember,
+    bool Function(String sessionId)? sessionBusyFromAttention,
     DateTime Function()? now,
   }) : _tabStore = tabStore,
        _reclaimEnabled = reclaimEnabled,
        _activeTeam = activeTeam,
        _policy = policy,
        _onDiscardMember = onDiscardMember,
+       _sessionBusyFromAttention = sessionBusyFromAttention,
        _now = now ?? DateTime.now;
 
   final ChatTabStore _tabStore;
@@ -33,6 +36,7 @@ class TabMemberReclaimWatch {
   final TeamProfile? Function() _activeTeam;
   final TerminalReclaimPolicy Function() _policy;
   final void Function(String sessionId, String memberId) _onDiscardMember;
+  final bool Function(String sessionId)? _sessionBusyFromAttention;
   final DateTime Function() _now;
 
   Timer? _timer;
@@ -116,7 +120,8 @@ class TabMemberReclaimWatch {
       isDisplayed: isTeamSession &&
           tab.workbenchView == SessionWorkbenchView.terminal &&
           tab.selectedMemberId == memberId,
-      inTurn: bus?.isMemberInTurn(memberId) ?? shell.userTurnActive,
+      inTurn: (bus?.isMemberInTurn(memberId) ?? shell.userTurnActive) ||
+          (_sessionBusyFromAttention?.call(tab.info.id) ?? false),
       hasUnread: (bus?.memberById(memberId)?.inbox.unreadCount ?? 0) > 0,
     );
   }

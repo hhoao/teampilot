@@ -145,13 +145,13 @@ class _GitChangesTreeListState extends State<GitChangesTreeList> {
                       SliverToBoxAdapter(
                         child: _GitChangesRootHeader(
                           totalCount: widget.treeView.totalCount,
-                          allStaged: widget.treeView.allStaged,
-                          noneStaged: widget.treeView.noneStaged,
+                          allSelected: widget.treeView.allSelected,
+                          noneSelected: widget.treeView.noneSelected,
                           onToggleAll: () {
-                            if (widget.treeView.allStaged) {
-                              unawaited(widget.cubit.unstageAll());
+                            if (widget.treeView.allSelected) {
+                              unawaited(widget.cubit.selectNone());
                             } else {
-                              unawaited(widget.cubit.stageAll());
+                              unawaited(widget.cubit.selectAll());
                             }
                           },
                         ),
@@ -185,12 +185,12 @@ class _GitChangesTreeListState extends State<GitChangesTreeList> {
         folderPath: row.folderPath!,
         name: row.name!,
         depth: row.depth,
-        subtreeStagedCount: row.subtreeStagedCount,
+        subtreeSelectedCount: row.subtreeSelectedCount,
         subtreeTotalCount: row.subtreeTotalCount,
         cubit: widget.cubit,
         hoverEnabled: _hoverEnabled,
-        onStage: () => unawaited(widget.cubit.stageFolder(row.folderPath!)),
-        onUnstage: () => unawaited(widget.cubit.unstageFolder(row.folderPath!)),
+        onStage: () => unawaited(widget.cubit.selectFolder(row.folderPath!)),
+        onUnstage: () => unawaited(widget.cubit.deselectFolder(row.folderPath!)),
         onDiscardFolder: () => unawaited(_confirmDiscardFolder(row.folderPath!)),
       );
     }
@@ -207,8 +207,8 @@ class _GitChangesTreeListState extends State<GitChangesTreeList> {
       onSelect: () => widget.onSelect(change.path),
       onOpenDiff: () => widget.onOpenDiff(change),
       onOpenFile: canOpenFile ? () => widget.onOpenFile!(change) : null,
-      onStage: () => unawaited(widget.cubit.stage(change)),
-      onUnstage: () => unawaited(widget.cubit.unstage(change)),
+      onStage: () => unawaited(widget.cubit.selectPath(change.path)),
+      onUnstage: () => unawaited(widget.cubit.deselectPath(change.path)),
       onDiscard: () => widget.onConfirmDiscard(change),
     );
   }
@@ -223,14 +223,14 @@ void _noopSelect(String _) {}
 class _GitChangesRootHeader extends StatelessWidget {
   const _GitChangesRootHeader({
     required this.totalCount,
-    required this.allStaged,
-    required this.noneStaged,
+    required this.allSelected,
+    required this.noneSelected,
     required this.onToggleAll,
   });
 
   final int totalCount;
-  final bool allStaged;
-  final bool noneStaged;
+  final bool allSelected;
+  final bool noneSelected;
   final VoidCallback onToggleAll;
 
   @override
@@ -238,9 +238,9 @@ class _GitChangesRootHeader extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final triState = totalCount == 0
         ? false
-        : allStaged
+        : allSelected
         ? true
-        : noneStaged
+        : noneSelected
         ? false
         : null;
     return Padding(

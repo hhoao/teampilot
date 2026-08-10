@@ -6,9 +6,9 @@ import 'package:path/path.dart' as p;
 import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/services/host/host_execution_environment.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/provider/codex/codex_home_provisioner.dart';
-import 'package:teampilot/services/provider/codex/codex_proxy_launch_auth.dart';
-import 'package:teampilot/services/provider/codex/codex_team_bus_overlay.dart';
+import 'package:teampilot/services/cli/codex/provider/codex_home_provisioner.dart';
+import 'package:teampilot/services/cli/codex/provider/codex_proxy_launch_auth.dart';
+import 'package:teampilot/services/cli/codex/provider/codex_team_bus_overlay.dart';
 import 'package:teampilot/services/team_bus/member_bus_idle_endpoint.dart';
 
 void main() {

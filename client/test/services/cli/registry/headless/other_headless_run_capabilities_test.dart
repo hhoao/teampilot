@@ -2,10 +2,10 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/cli/registry/capabilities/headless_run_capability.dart';
-import 'package:teampilot/services/cli/registry/headless/codex_headless_run_capability.dart';
-import 'package:teampilot/services/cli/registry/headless/cursor_headless_run_capability.dart';
-import 'package:teampilot/services/cli/registry/headless/opencode_headless_run_capability.dart';
-import 'package:teampilot/services/cli/registry/headless/flashskyai_headless_run_capability.dart';
+import 'package:teampilot/services/cli/codex/capabilities/headless_run.dart';
+import 'package:teampilot/services/cli/cursor/capabilities/headless_run.dart';
+import 'package:teampilot/services/cli/opencode/capabilities/headless_run.dart';
+import 'package:teampilot/services/cli/flashskyai/capabilities/headless_run.dart';
 
 HeadlessRunContext ctx({String effort = '', String model = 'm'}) =>
     HeadlessRunContext(

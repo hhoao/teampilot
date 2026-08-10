@@ -1,7 +1,7 @@
 import 'dart:async';
 
-import 'package:teampilot/services/file_tree_import/import_models.dart';
-import 'package:teampilot/services/io/filesystem.dart';
+import 'import_models.dart';
+import '../io/filesystem.dart';
 
 typedef ConflictResolver = Future<ConflictChoice> Function({
   required String destPath,

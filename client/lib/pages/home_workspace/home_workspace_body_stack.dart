@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
 
-import '../../../cubits/chat_cubit.dart';
-import '../../../cubits/workspace_landing_context_cubit.dart';
-import '../../../models/workspace.dart';
-import '../../../models/workspace_tab_ref.dart';
+import '../../cubits/chat_cubit.dart';
+import '../../cubits/workspace_landing_context_cubit.dart';
+import '../../models/workspace.dart';
+import '../../models/workspace_tab_ref.dart';
 import 'home_route_active_scope.dart';
 import 'home_workspace_route.dart';
 import 'home_workspace_page.dart';

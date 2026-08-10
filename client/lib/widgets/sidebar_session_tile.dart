@@ -301,13 +301,12 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
             (cubit) => cubit.state.activeSessionId == sessionId,
           );
     // Working (agent turn) OR launching (pod still provisioning/connecting) —
-    // both show the sidebar spinner. Launching comes from the session's own pod
-    // phase, never a global connecting sentinel.
-    final working = context.select<ChatCubit, bool>(
-      (cubit) =>
-          cubit.state.workingSessionIds.contains(sessionId) ||
-          (cubit.podFor(sessionId)?.phase.isLaunching ?? false),
+    // both show the sidebar spinner. Pod phase comes from the ChangeNotifier;
+    // workingSessionIds still from ChatState.
+    final workingFromState = context.select<ChatCubit, bool>(
+      (cubit) => cubit.state.workingSessionIds.contains(sessionId),
     );
+    final pod = context.read<ChatCubit>().ensurePodRuntime(sessionId);
     final waiting = context.select<AgentAttentionCubit, bool>(
       (cubit) => cubit.state.sessionHasWaiting(sessionId),
     );
@@ -319,15 +318,23 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
 
     // Leading area: shared 24×24 slot — indicator (idle) ↔ drag handle (hover).
     // Waiting (needs-you) wins over working spinner — distinct tertiary hand icon.
-    final Widget indicator = SessionWorkingIndicator(
-      working: working,
-      waiting: waiting,
-      size: 13,
-      color: cs.primary,
-      waitingColor: cs.tertiary,
-      idleColor: (selected ? cs.primary : cs.onSurfaceVariant).withValues(
-        alpha: 0.5,
-      ),
+    // Listens to the pod ChangeNotifier so the connecting→running transition
+    // updates the spinner without a global ChatCubit emit.
+    final Widget indicator = ListenableBuilder(
+      listenable: pod,
+      builder: (context, _) {
+        final currentWorking = workingFromState || pod.state.phase.isLaunching;
+        return SessionWorkingIndicator(
+          working: currentWorking,
+          waiting: waiting,
+          size: 13,
+          color: cs.primary,
+          waitingColor: cs.tertiary,
+          idleColor: (selected ? cs.primary : cs.onSurfaceVariant).withValues(
+            alpha: 0.5,
+          ),
+        );
+      },
     );
     final Widget leadingWidget;
     if (widget.index >= 0) {

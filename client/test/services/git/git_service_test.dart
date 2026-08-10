@@ -130,24 +130,142 @@ void main() {
   });
 
   group('GitService mutations', () {
-    test('stage / unstage / commit issue the expected argv', () async {
+    test('commit issues the expected argv', () async {
       final runner = _FakeRunner({});
       final service = GitService(
         runner: LocalGitCommandRunner(runner: runner.call),
       );
 
-      await service.stage('/repo', ['a.txt']);
-      await service.unstage('/repo', ['a.txt']);
       await service.commit('/repo', 'msg');
-      await service.stageAll('/repo');
-      await service.unstageAll('/repo');
 
-      expect(runner.calls[0], ['add', '--', 'a.txt']);
-      expect(runner.calls[1], ['reset', '-q', 'HEAD', '--', 'a.txt']);
-      expect(runner.calls[2], ['commit', '-m', 'msg']);
-      expect(runner.calls[3], ['add', '-A']);
-      expect(runner.calls[4], ['reset', '-q', 'HEAD']);
+      expect(runner.calls, [['commit', '-m', 'msg']]);
     });
+
+    test('commitSelected stages the paths then commits only those paths', () async {
+      final runner = _FakeRunner({});
+      final service = GitService(
+        runner: LocalGitCommandRunner(runner: runner.call),
+      );
+
+      await service.commitSelected('/repo', 'feat: x', ['a.txt', 'b.dart']);
+
+      expect(runner.calls, [
+        ['add', '--', 'a.txt', 'b.dart'],
+        ['commit', '-m', 'feat: x', '--', 'a.txt', 'b.dart'],
+      ]);
+    });
+
+    test('diffSelectedPaths diffs each path against HEAD and joins', () async {
+      final runner = _FakeRunner({
+        'diff HEAD --no-color -- a.txt': _ok('diff a\n'),
+        'diff HEAD --no-color -- b.txt': _ok('diff b\n'),
+      });
+      final service = GitService(
+        runner: LocalGitCommandRunner(runner: runner.call),
+      );
+
+      final out = await service.diffSelectedPaths('/repo', ['a.txt', 'b.txt']);
+
+      expect(runner.calls, [
+        ['diff', 'HEAD', '--no-color', '--', 'a.txt'],
+        ['diff', 'HEAD', '--no-color', '--', 'b.txt'],
+      ]);
+      expect(out, 'diff a\n\ndiff b\n');
+    });
+
+    test('diffSelectedPaths skips empty per-path diffs', () async {
+      final runner = _FakeRunner({
+        'diff HEAD --no-color -- a.txt': _ok('diff a\n'),
+        'diff HEAD --no-color -- b.txt': _ok(''),
+      });
+      final service = GitService(
+        runner: LocalGitCommandRunner(runner: runner.call),
+      );
+
+      final out = await service.diffSelectedPaths('/repo', ['a.txt', 'b.txt']);
+
+      expect(runner.calls, [
+        ['diff', 'HEAD', '--no-color', '--', 'a.txt'],
+        ['diff', 'HEAD', '--no-color', '--', 'b.txt'],
+      ]);
+      expect(out, 'diff a\n');
+    });
+
+    test('diffSelectedPaths truncates an oversized joined diff', () async {
+      final runner = _FakeRunner({
+        'diff HEAD --no-color -- big.txt': _ok('${'x' * 8000}\n'),
+        'diff HEAD --no-color -- other.txt': _ok('${'y' * 8000}\n'),
+      });
+      final service = GitService(
+        runner: LocalGitCommandRunner(runner: runner.call),
+      );
+
+      final out = await service.diffSelectedPaths('/repo', [
+        'big.txt',
+        'other.txt',
+      ]);
+
+      // ~16000 joined chars exceed the 12000 cap; the tail is trimmed and
+      // annotated rather than handed to the prompt in full.
+      expect(out.length, lessThan(12000 + 200));
+      expect(out, contains('diff truncated'));
+      expect(out, contains('more characters'));
+    });
+
+    test(
+      'diffSelectedPaths skips a stale path whose diff throws',
+      () async {
+        final runner = _FakeRunner({
+          'diff HEAD --no-color -- a.txt': _ok('diff a\n'),
+          'diff --no-index --no-color /dev/null stale.txt': ProcessResult(
+            0,
+            128,
+            '',
+            'fatal: Pathspec stale.txt is in submodule',
+          ),
+        });
+        final service = GitService(
+          runner: LocalGitCommandRunner(runner: runner.call),
+        );
+
+        final out = await service.diffSelectedPaths(
+          '/repo',
+          ['a.txt', 'stale.txt'],
+          untrackedPaths: {'stale.txt'},
+        );
+
+        // The stale (deleted) untracked path must not abort the whole prompt;
+        // it is skipped and the healthy path's diff is still returned.
+        expect(out, 'diff a\n');
+      },
+    );
+
+    test(
+      'diffSelectedPaths uses --no-index for paths in untrackedPaths',
+      () async {
+        final runner = _FakeRunner({
+          'diff HEAD --no-color -- a.txt': _ok('diff a\n'),
+          'diff --no-index --no-color /dev/null new.txt': _ok('diff new\n'),
+        });
+        final service = GitService(
+          runner: LocalGitCommandRunner(runner: runner.call),
+        );
+
+        final out = await service.diffSelectedPaths(
+          '/repo',
+          ['a.txt', 'new.txt'],
+          untrackedPaths: {'new.txt'},
+        );
+
+        // Tracked path diffs against HEAD; the untracked path goes through
+        // --no-index against /dev/null instead of an (empty) HEAD diff.
+        expect(runner.calls, [
+          ['diff', 'HEAD', '--no-color', '--', 'a.txt'],
+          ['diff', '--no-index', '--no-color', '/dev/null', 'new.txt'],
+        ]);
+        expect(out, 'diff a\n\ndiff new\n');
+      },
+    );
 
     test(
       'discard chooses restore for tracked and clean for untracked',

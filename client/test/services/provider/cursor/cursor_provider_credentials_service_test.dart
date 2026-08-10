@@ -6,8 +6,8 @@ import 'package:teampilot/models/claude_credential_link_result.dart';
 import 'package:teampilot/services/host/host_one_shot_runner.dart';
 import 'package:teampilot/services/host/host_process_starter.dart';
 import 'package:teampilot/services/host/process_run_handle.dart';
-import 'package:teampilot/services/provider/cursor/cursor_home_layout.dart';
-import 'package:teampilot/services/provider/cursor/cursor_provider_credentials_service.dart';
+import 'package:teampilot/services/cli/cursor/provider/cursor_home_layout.dart';
+import 'package:teampilot/services/cli/cursor/provider/cursor_provider_credentials_service.dart';
 import 'package:teampilot/services/provider/provider_credential_host_runner.dart';
 
 import '../../../support/in_memory_filesystem.dart';

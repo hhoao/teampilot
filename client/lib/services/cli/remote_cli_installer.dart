@@ -1,4 +1,5 @@
 import '../../models/team_config.dart';
+import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import 'installer_types.dart';
 import 'remote_cli_locator.dart';

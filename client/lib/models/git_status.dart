@@ -80,25 +80,6 @@ class GitRepoStatus extends Equatable {
   /// Worktree-area changes, including untracked files.
   final List<GitFileChange> unstaged;
 
-  GitRepoStatus copyWith({
-    bool? isRepository,
-    String? branch,
-    String? upstream,
-    int? ahead,
-    int? behind,
-    List<GitFileChange>? staged,
-    List<GitFileChange>? unstaged,
-  }) =>
-      GitRepoStatus(
-        isRepository: isRepository ?? this.isRepository,
-        branch: branch ?? this.branch,
-        upstream: upstream ?? this.upstream,
-        ahead: ahead ?? this.ahead,
-        behind: behind ?? this.behind,
-        staged: staged ?? this.staged,
-        unstaged: unstaged ?? this.unstaged,
-      );
-
   bool get hasChanges => staged.isNotEmpty || unstaged.isNotEmpty;
 
   @override

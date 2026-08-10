@@ -6,7 +6,7 @@ import 'package:teampilot/services/cli/cli_invocation.dart';
 import 'package:teampilot/services/host/host_one_shot_runner.dart';
 import 'package:teampilot/services/host/host_process_starter.dart';
 import 'package:teampilot/services/host/process_run_handle.dart';
-import 'package:teampilot/services/provider/claude/claude_provider_credentials_service.dart';
+import 'package:teampilot/services/cli/claude/provider/claude_provider_credentials_service.dart';
 import 'package:teampilot/services/provider/credential_binding.dart';
 import 'package:teampilot/services/provider/credential_host_request.dart';
 import 'package:teampilot/services/provider/provider_credential_host_runner.dart';

@@ -1,0 +1,573 @@
+import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
+
+import '../../../../models/app_provider_config.dart';
+import '../../../../models/simple_launch_identity.dart';
+import '../../../../models/team_config.dart';
+import '../../../launch/work_plane_paths.dart';
+import '../../../provider/cross_machine_credential_bridge.dart';
+import '../../../provider/provider_catalog_access.dart';
+import '../provider/opencode_auth_artifacts.dart';
+import '../provider/opencode_data_layout.dart';
+import '../provider/opencode_provider_settings_resolver.dart';
+import '../provider/opencode_effort_capability.dart';
+import '../provider/opencode_shared_plugin_deps.dart';
+import '../../../session/member_role_provision.dart';
+import '../../../storage/runtime_context.dart';
+import '../../../storage/app_storage.dart';
+import '../../../team_bus/mcp/bus_bridge_locator.dart';
+import '../../../team_bus/mcp/teammate_bus_mcp_config.dart';
+import '../../registry/capabilities/cli_effort_capability.dart';
+import '../../registry/capabilities/config_profile_capability.dart';
+import 'agent_status_plugin.dart';
+import 'idle_plugin.dart';
+
+/// Parses bus idle URL (e.g. `http://127.0.0.1:12345/idle`) to the listening port.
+@visibleForTesting
+int? parseBusPortFromIdleUrl(String? idleUrl) {
+  if (idleUrl == null || idleUrl.isEmpty) return null;
+  final uri = Uri.tryParse(idleUrl);
+  if (uri == null || !uri.hasPort) return null;
+  return uri.port;
+}
+
+/// Merges opencode.json `plugin` entry for TeamBus idle reporting (mixed mode).
+@visibleForTesting
+Map<String, Object?> mergeOpencodeIdlePlugin(
+  Map<String, Object?> config,
+  String memberId,
+  int port, {
+  String? token,
+  String? sessionId,
+}) {
+  final pluginPath = './$opencodeIdlePluginFileName';
+  final options = <String, Object?>{'member': memberId, 'port': port};
+  if (sessionId != null && sessionId.isNotEmpty) {
+    options['session'] = sessionId;
+  }
+  if (token != null && token.isNotEmpty) {
+    options['token'] = token;
+  }
+  final entry = <Object?>[pluginPath, options];
+  final plugins = List<Object?>.from((config['plugin'] as List?) ?? const []);
+  final exists = plugins.any(
+    (e) =>
+        e is List &&
+        e.isNotEmpty &&
+        e[0] == pluginPath &&
+        e.length > 1 &&
+        e[1] is Map &&
+        (e[1] as Map)['member'] == memberId &&
+        (e[1] as Map)['port'] == port,
+  );
+  if (!exists) {
+    plugins.add(entry);
+  }
+  return {...config, 'plugin': plugins};
+}
+
+/// Merges opencode.json `plugin` entry for `/agent-status` reporting.
+///
+/// Install whenever [url] is stamped (simple + team) — not gated on mixed.
+@visibleForTesting
+Map<String, Object?> mergeOpencodeAgentStatusPlugin(
+  Map<String, Object?> config,
+  String memberId,
+  String url, {
+  String? token,
+  String? sessionId,
+}) {
+  final pluginPath = './$opencodeAgentStatusPluginFileName';
+  final options = <String, Object?>{'member': memberId, 'url': url};
+  if (sessionId != null && sessionId.isNotEmpty) {
+    options['session'] = sessionId;
+  }
+  if (token != null && token.isNotEmpty) {
+    options['token'] = token;
+  }
+  final entry = <Object?>[pluginPath, options];
+  final plugins = List<Object?>.from((config['plugin'] as List?) ?? const []);
+  final exists = plugins.any(
+    (e) =>
+        e is List &&
+        e.isNotEmpty &&
+        e[0] == pluginPath &&
+        e.length > 1 &&
+        e[1] is Map &&
+        (e[1] as Map)['member'] == memberId &&
+        (e[1] as Map)['url'] == url,
+  );
+  if (!exists) {
+    plugins.add(entry);
+  }
+  return {...config, 'plugin': plugins};
+}
+
+/// opencode 工具调用超时(ms）。opencode 默认只有 30s（`DEFAULT_TIMEOUT`），长阻塞的
+/// `wait_for_message` 因此很快超时。opencode 用同一个 MCP SDK，超时由 config 的
+/// `timeout` 控；设大到 24h 让它不主动超时（stdio 下这是唯一上限；remote 下也把
+/// 30s 提到 24h，严格改进）。对齐 claude 的 `busToolTimeoutMs`。
+const opencodeBusToolTimeoutMs = 86400000; // 24h
+
+/// Merges the teammate-bus MCP server into opencode.json `mcp` so the member can
+/// send/receive teammate messages (mixed mode).
+///
+/// opencode uses the top-level `mcp` field (not `mcpServers`). 传 [bridgePath]
+/// （本地 PTY + 桥接可用）→ `type: "local"`（stdio，经 `teammate_bus_bridge` 绕开
+/// HTTP 传输超时，`wait_for_message` 真阻塞）；否则 `type: "remote"`（HTTP 回落）。
+/// 两者都带 `timeout` = [opencodeBusToolTimeoutMs]，并需 `enabled` 才会启动加载。
+@visibleForTesting
+Map<String, Object?> mergeOpencodeTeammateBusMcp(
+  Map<String, Object?> config,
+  String memberId,
+  int port, {
+  required String sessionId,
+  String? bridgePath,
+}) {
+  final servers = <String, Object?>{
+    ...((config['mcp'] as Map?)?.cast<String, Object?>() ??
+        const <String, Object?>{}),
+  };
+  final endpoint = 'http://127.0.0.1:$port/mcp';
+  servers[teammateBusMcpServerName] = bridgePath != null
+      ? <String, Object?>{
+          'type': 'local',
+          'command': <String>[
+            bridgePath,
+            '--member',
+            memberId,
+            '--session',
+            sessionId,
+            '--bus-url',
+            endpoint,
+          ],
+          'enabled': true,
+          'timeout': opencodeBusToolTimeoutMs,
+        }
+      : <String, Object?>{
+          'type': 'remote',
+          'url': endpoint,
+          'enabled': true,
+          'headers': <String, Object?>{
+            teammateBusMcpMemberHeader: memberId,
+            teammateBusMcpSessionHeader: sessionId,
+          },
+          'timeout': opencodeBusToolTimeoutMs,
+        };
+  return {...config, 'mcp': servers};
+}
+
+/// Merges a provider's credentials into opencode.json `provider.<id>.options`.
+///
+/// opencode reads `apiKey` / `baseURL` (note the capital `URL`) from the
+/// provider's `options`; an optional `npm` (from the app provider's `config`)
+/// tells opencode which SDK to use for fully custom, non-catalog providers.
+@visibleForTesting
+Map<String, Object?> mergeOpencodeProvider(
+  Map<String, Object?> config,
+  AppProviderConfig provider,
+) {
+  final id = provider.id.trim();
+  if (id.isEmpty) return config;
+
+  final providers = <String, Object?>{
+    ...((config['provider'] as Map?)?.cast<String, Object?>() ??
+        const <String, Object?>{}),
+  };
+  final existing =
+      (providers[id] as Map?)?.cast<String, Object?>() ?? <String, Object?>{};
+  final entry = <String, Object?>{...existing};
+  final options = <String, Object?>{
+    ...((existing['options'] as Map?)?.cast<String, Object?>() ??
+        const <String, Object?>{}),
+  };
+
+  final apiKey = provider.apiKey.trim();
+  if (apiKey.isNotEmpty) options['apiKey'] = apiKey;
+  final baseUrl = provider.baseUrl.trim();
+  if (baseUrl.isNotEmpty) options['baseURL'] = baseUrl;
+
+  final npm = provider.config['npm'];
+  if (npm is String && npm.trim().isNotEmpty && entry['npm'] == null) {
+    entry['npm'] = npm.trim();
+  }
+
+  // Custom openai-compatible providers need an explicit models map or
+  // `--model provider/id` fails with "model not found".
+  final defaultModel = provider.defaultModel.trim();
+  if (defaultModel.isNotEmpty) {
+    final models = <String, Object?>{
+      ...((entry['models'] as Map?)?.cast<String, Object?>() ??
+          const <String, Object?>{}),
+    };
+    if (!models.containsKey(defaultModel)) {
+      models[defaultModel] = <String, Object?>{'name': defaultModel};
+      entry['models'] = models;
+    }
+  }
+
+  if (options.isNotEmpty) entry['options'] = options;
+  if (entry.isEmpty) return config;
+
+  providers[id] = entry;
+  return {...config, 'provider': providers};
+}
+
+/// Writes `provider.<id>.models.<model>.options.reasoningEffort` for launch.
+@visibleForTesting
+Map<String, Object?> mergeOpencodeReasoningEffort(
+  Map<String, Object?> config,
+  AppProviderConfig provider,
+  String reasoningEffort, {
+  String? memberModel,
+}) {
+  final effort = reasoningEffort.trim();
+  if (effort.isEmpty) return config;
+
+  final providerId = provider.id.trim();
+  final modelId = (memberModel?.trim().isNotEmpty ?? false)
+      ? memberModel!.trim()
+      : provider.defaultModel.trim();
+  if (providerId.isEmpty || modelId.isEmpty) return config;
+
+  final providers = <String, Object?>{
+    ...((config['provider'] as Map?)?.cast<String, Object?>() ??
+        const <String, Object?>{}),
+  };
+  final existing =
+      (providers[providerId] as Map?)?.cast<String, Object?>() ??
+      <String, Object?>{};
+  final entry = <String, Object?>{...existing};
+  final models = <String, Object?>{
+    ...((existing['models'] as Map?)?.cast<String, Object?>() ??
+        const <String, Object?>{}),
+  };
+  final modelEntry = <String, Object?>{
+    ...((models[modelId] as Map?)?.cast<String, Object?>() ??
+        const <String, Object?>{}),
+  };
+  final options = <String, Object?>{
+    ...((modelEntry['options'] as Map?)?.cast<String, Object?>() ??
+        const <String, Object?>{}),
+  };
+  options['reasoningEffort'] = effort;
+  modelEntry['options'] = options;
+  models[modelId] = modelEntry;
+  entry['models'] = models;
+  providers[providerId] = entry;
+  return {...config, 'provider': providers};
+}
+
+/// opencode CLI launch: provisions a per-session config dir (`OPENCODE_CONFIG_DIR`)
+/// holding `opencode.json` (provider credentials, member identity via `AGENTS.md`,
+/// and in mixed mode the team-bus idle plugin + teammate-bus MCP server).
+final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
+  const OpencodeConfigProfileCapability();
+
+  static const toolId = 'opencode';
+  static const opencodeConfigFileName = 'opencode.json';
+  static const agentsFileName = 'AGENTS.md';
+
+  /// opencode treats `OPENCODE_CONFIG_DIR` as its config root: it loads
+  /// `opencode.json` from this dir and auto-discovers `AGENTS.md` here as a
+  /// global instruction. (The bare `OPENCODE` env is an internal run marker,
+  /// not a path — setting it does nothing.)
+  static const configDirEnv = 'OPENCODE_CONFIG_DIR';
+
+  /// Absolute path to the session SQLite file. OpenCode reads this via
+  /// `Flag.OPENCODE_DB` ([anomalyco/opencode] `packages/core/src/database/database.ts`);
+  /// there is no `OPENCODE_DATA_DIR`. Default without this is
+  /// `$XDG_DATA_HOME/opencode/opencode.db`.
+  static const dbPathEnv = 'OPENCODE_DB';
+  static const authContentEnv = 'OPENCODE_AUTH_CONTENT';
+
+  static const _opencodeDataLayout = OpencodeDataLayout();
+
+  @override
+  Future<void> ensureSessionProfile(ConfigProfileSessionContext ctx) async {}
+
+  @override
+  Future<ConfigProfileLaunchContribution> contributeLaunch(
+    ConfigProfileLaunchContext ctx,
+  ) async {
+    final paths = ctx.paths;
+    final opencodeDir = paths.sessionToolDir(
+      ctx.scope.workspaceId,
+      ctx.scope.sessionId,
+      toolId,
+      memberId: ctx.scope.memberId,
+    );
+    final team = ctx.team;
+    final member = ctx.member;
+    final mixed = team?.teamMode == TeamMode.mixed;
+    final warnings = <String>[];
+
+    await paths.fs.ensureDir(opencodeDir);
+
+    // Seed shared plugin deps on home/control plane (local npm), then inherit
+    // into the work-plane session dir. Never npm-install on paths.fs (SFTP).
+    // Seed failures become warnings so launch env (OPENCODE_DB, …) still applies.
+    try {
+      await OpencodeSharedPluginDeps(
+        layout: ctx.catalog.layout,
+        fs: ctx.catalog.fs,
+      ).ensureSharedInstalled();
+      await paths.layout.ensureSessionInheritsOpencodePluginDeps(
+        ctx.scope.workspaceId,
+        ctx.scope.sessionId,
+        memberId: ctx.scope.memberId,
+      );
+    } on Object catch (e) {
+      warnings.add('opencode_plugin_deps: $e');
+    }
+
+    final configPath = paths.joinWork(
+      opencodeDir,
+      opencodeConfigFileName,
+    );
+    var config = await paths.readSettingsFile(configPath);
+    var changed = false;
+    AppProviderConfig? launchProvider;
+
+    if (team != null) {
+      launchProvider = await _resolver(
+        ctx.catalog,
+      ).resolveForLaunch(team: team, member: member);
+      if (launchProvider == null) {
+        warnings.add('opencode_provider_missing');
+      }
+    } else if (ctx.isSimple) {
+      final required =
+          member ?? (throw StateError('Simple launch requires plan.member'));
+      final resolver = _resolver(ctx.catalog);
+      var fromMember = required.provider.trim();
+      if (fromMember.isEmpty) {
+        fromMember =
+            SimpleLaunchIdentity.officialProviderIdFor(CliTool.opencode) ?? '';
+      }
+      launchProvider = await resolver.findById(fromMember);
+      launchProvider ??= await resolver.resolveSole();
+    }
+
+    if (launchProvider != null) {
+      config = mergeOpencodeProvider(config, launchProvider);
+      final effort = _resolveOpencodeEffort(
+        team: team,
+        member: member,
+        provider: launchProvider,
+        profileEffort: member?.effort ?? '',
+      );
+      if (effort.isNotEmpty) {
+        config = mergeOpencodeReasoningEffort(
+          config,
+          launchProvider,
+          effort,
+          memberModel: member?.model,
+        );
+      }
+      changed = true;
+    }
+
+    if (await _writeMemberIdentity(
+      paths: paths,
+      opencodeDir: opencodeDir,
+      member: member,
+      forceTeamLeadDelegateMode: team?.forceTeamLeadDelegateMode ?? false,
+      mixed: mixed,
+    )) {
+      changed = true;
+    }
+
+    final busIdle = ctx.busIdle;
+    if (mixed && busIdle != null && member != null && member.isValid) {
+      final port = busIdle.port;
+      if (port != null) {
+        await _writeIdlePlugin(paths: paths, opencodeDir: opencodeDir);
+        config = mergeOpencodeIdlePlugin(
+          config,
+          member.id,
+          port,
+          token: busIdle.token,
+          sessionId: busIdle.sessionId,
+        );
+        if (!busIdle.isRemote) {
+          final localNative =
+              !AppStorage.isInstalled ||
+              AppStorage.context.mode == StorageBackendMode.native;
+          final bridgePath = localNative ? BusBridgeLocator.resolve() : null;
+          config = mergeOpencodeTeammateBusMcp(
+            config,
+            member.id,
+            port,
+            sessionId: busIdle.sessionId ?? ctx.sessionId,
+            bridgePath: bridgePath,
+          );
+        }
+        changed = true;
+      } else {
+        warnings.add('opencode_bus_idle_port_missing');
+      }
+    }
+
+    // Agent-status plugin: simple + team whenever stamped — not mixed-gated.
+    final agentStatus = ctx.agentStatus;
+    if (agentStatus != null && member != null && member.isValid) {
+      await _writeAgentStatusPlugin(paths: paths, opencodeDir: opencodeDir);
+      config = mergeOpencodeAgentStatusPlugin(
+        config,
+        member.id,
+        agentStatus.url,
+        token: agentStatus.token,
+        sessionId: agentStatus.sessionId,
+      );
+      changed = true;
+    }
+
+    if (changed) {
+      await paths.writeJsonIfChanged(configPath, config);
+    }
+
+    if (launchProvider != null &&
+        launchProvider.isOfficial &&
+        ctx.crossMachine) {
+      final copied = await CrossMachineCredentialBridge.materializeOpencodeAuth(
+        catalog: ctx.catalog,
+        work: paths,
+        providerId: launchProvider.id,
+      );
+      if (!copied) {
+        warnings.add('opencode_credentials_missing');
+      }
+    }
+
+    final normalizedOpencodeDir = paths.normalizeWork(opencodeDir);
+    final environment = <String, String>{
+      configDirEnv: normalizedOpencodeDir,
+      // Absolute OPENCODE_DB → Database.Path (anomalyco/opencode).
+      dbPathEnv: paths.normalizeWork(
+        paths.pathContext.join(opencodeDir, 'opencode.db'),
+      ),
+    };
+    final authContent = launchProvider == null
+        ? null
+        : await _readStoredAuthContent(paths, launchProvider);
+    if (authContent != null) {
+      environment[authContentEnv] = authContent;
+    }
+
+    return ConfigProfileLaunchContribution(
+      environment: environment,
+      warnings: warnings,
+    );
+  }
+
+  Future<String?> _readStoredAuthContent(
+    ConfigProfileDelegate paths,
+    AppProviderConfig provider,
+  ) async {
+    if (!provider.isOfficial) return null;
+    final providerDir = paths.joinWork(
+      paths.basePath,
+      'providers',
+      'opencode',
+      provider.id,
+    );
+    final authPath = paths.normalizeWork(
+      _opencodeDataLayout.providerAuthJsonPath(providerDir),
+    );
+    if (!(await paths.fs.stat(authPath)).isFile) return null;
+    final bytes = await paths.fs.readBytes(authPath);
+    final content = bytes != null
+        ? utf8.decode(bytes)
+        : await paths.fs.readString(authPath);
+    if (content == null || content.trim().isEmpty) return null;
+    if (!OpencodeAuthArtifacts.authJsonIndicatesReady(content, provider.id)) {
+      return null;
+    }
+    return content.trim();
+  }
+
+  OpencodeProviderSettingsResolver _resolver(ConfigProfilePaths catalog) =>
+      OpencodeProviderSettingsResolver(
+        basePath: catalog.basePath,
+        repository: providerCatalogRepository(catalog),
+      );
+
+  /// Writes member identity to `AGENTS.md`; opencode auto-loads it from the
+  /// config dir as a global instruction. Returns whether anything was written.
+  Future<bool> _writeMemberIdentity({
+    required ConfigProfileDelegate paths,
+    required String opencodeDir,
+    required TeamMemberConfig? member,
+    required bool forceTeamLeadDelegateMode,
+    required bool mixed,
+  }) async {
+    if (member == null || !member.isValid) return false;
+    final prompt = MemberRoleProvision.composeRolePrompt(
+      member: member,
+      forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
+      mixed: mixed,
+    ).trim();
+    if (prompt.isEmpty) return false;
+    await paths.fs.atomicWrite(
+      paths.joinWork(opencodeDir, agentsFileName),
+      '$prompt\n',
+    );
+    return true;
+  }
+
+  Future<void> _writeIdlePlugin({
+    required ConfigProfileDelegate paths,
+    required String opencodeDir,
+  }) async {
+    final pluginPath = paths.joinWork(
+      opencodeDir,
+      opencodeIdlePluginFileName,
+    );
+    final existing = await paths.fs.readString(pluginPath);
+    if (existing == opencodeIdlePluginSource) {
+      return;
+    }
+    await paths.fs.atomicWrite(pluginPath, opencodeIdlePluginSource);
+  }
+
+  Future<void> _writeAgentStatusPlugin({
+    required ConfigProfileDelegate paths,
+    required String opencodeDir,
+  }) async {
+    final pluginPath = paths.joinWork(
+      opencodeDir,
+      opencodeAgentStatusPluginFileName,
+    );
+    final existing = await paths.fs.readString(pluginPath);
+    if (existing == opencodeAgentStatusPluginSource) {
+      return;
+    }
+    await paths.fs.atomicWrite(pluginPath, opencodeAgentStatusPluginSource);
+  }
+
+  static String _resolveOpencodeEffort({
+    required TeamProfile? team,
+    required TeamMemberConfig? member,
+    required AppProviderConfig provider,
+    String? profileEffort,
+  }) {
+    if (profileEffort != null && profileEffort.trim().isNotEmpty) {
+      return profileEffort.trim();
+    }
+    const capability = OpencodeEffortCapability();
+    return resolveLaunchEffort(
+      capability: capability,
+      cli: CliTool.opencode,
+      context: EffortResolveContext(
+        team: team,
+        member: member,
+        provider: provider,
+        model: member?.model.isNotEmpty == true
+            ? member!.model
+            : provider.defaultModel,
+      ),
+    );
+  }
+}

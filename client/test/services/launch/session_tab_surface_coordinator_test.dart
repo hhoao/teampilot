@@ -49,7 +49,6 @@ void main() {
       coordinator = SessionTabSurfaceCoordinator(
         host: host,
         tabStore: tabStore,
-        state: () => host.state,
         workspaceById: (_) => null,
         shouldAutoConnect: (_) => true,
         prepareNewTabConnect:
@@ -168,7 +167,6 @@ void main() {
       coordinator = SessionTabSurfaceCoordinator(
         host: host,
         tabStore: tabStore,
-        state: () => host.state,
         workspaceById: (_) => workspace,
         shouldAutoConnect: (_) => true,
         prepareNewTabConnect:

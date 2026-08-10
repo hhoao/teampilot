@@ -16,7 +16,7 @@ import '../models/workspace_icon_picker_result.dart';
 import '../models/workspace_icon_ref.dart';
 import '../models/team_config.dart';
 import '../models/runtime_target.dart';
-import '../../repositories/launch_profile_repository.dart';
+import '../repositories/launch_profile_repository.dart';
 import '../repositories/automation_repository.dart';
 import '../repositories/session_repository.dart';
 import '../services/workspace/workspace_icon_service.dart';
@@ -57,7 +57,7 @@ import '../pages/chat/history_continue_delivery.dart';
 import '../pages/chat/session_chat_continue_seat.dart';
 import '../pages/chat/session_history_review_submit.dart';
 import '../utils/session/workspace_sessions.dart';
-import '../../widgets/workspace_icon_picker_dialog.dart';
+import '../widgets/workspace_icon_picker_dialog.dart';
 import '../utils/logging/logger_utils.dart';
 import 'chat/session_launch_retry.dart';
 import 'chat/chat_connect_state_mixin.dart';
@@ -431,6 +431,7 @@ class ChatCubit extends Cubit<ChatState>
   SessionPod? podRuntime(String sessionId) => _pods[sessionId.trim()];
 
   /// Seeds an idle runtime pod for [sessionId] if absent and returns it.
+  /// The pod is a [ChangeNotifier] — consumers listen directly; no global emit.
   @override
   SessionPod ensurePodRuntime(String sessionId) =>
       _pods.putIfAbsent(sessionId.trim(), () {
@@ -440,7 +441,6 @@ class ChatCubit extends Cubit<ChatState>
         return SessionPod(
           sessionId: sid,
           workspaceId: tab?.workspaceId ?? '',
-          onChanged: () => _bumpPodRevision(sid),
           history: loader == null
               ? null
               : HistoryStore(
@@ -502,13 +502,6 @@ class ChatCubit extends Cubit<ChatState>
       return;
     }
     onCancelSeedHistoryPending?.call(sessionId, text);
-  }
-
-  /// Emits a stateVersion bump so [context.select] callers rebuild when a pod's
-  /// phase/member/view transitions.
-  void _bumpPodRevision(String sessionId) {
-    if (isClosed) return;
-    emit(state.copyWith(stateVersion: state.stateVersion + 1));
   }
 
   /// Releases a session's pod: closes its HistoryStore and drops the registry
@@ -1703,7 +1696,6 @@ class ChatCubit extends Cubit<ChatState>
       return;
     }
     setPodView(sessionId, view);
-    emit(state.copyWith(stateVersion: state.stateVersion + 1));
     if (view == SessionWorkbenchView.chat) {
       onSessionHistoryStale?.call(sessionId);
     }
@@ -1721,8 +1713,14 @@ class ChatCubit extends Cubit<ChatState>
   /// with the pod — including connects that force Terminal via this port.
   @override
   void setPodView(String sessionId, SessionWorkbenchView view) {
-    podRuntime(sessionId)?.setView(view);
+    ensurePodRuntime(sessionId).setView(view);
     _syncTabWorkbenchView(sessionId, view);
+    // Bump podViewVersion so widgets reading ChatTab.workbenchView (or using
+    // context.select on pod state through ChatCubit) stay in sync without the
+    // removed stateVersion catch-all.
+    if (!isClosed) {
+      emit(state.copyWith(podViewVersion: state.podViewVersion + 1));
+    }
   }
 
   void _syncTabWorkbenchView(String sessionId, SessionWorkbenchView view) {

@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 
 import '../../../../models/app_provider_config.dart';
-import '../../../provider/opencode/opencode_model_catalog.dart';
 import '../cli_capability.dart';
 
 /// Model catalog that can be refreshed asynchronously (e.g. `cursor-agent models`).
@@ -202,33 +201,6 @@ abstract base class CatalogModelCapability implements ProviderModelCapability {
     provider: provider,
     providerId: providerId,
   );
-}
-
-/// OpenCode's built-in Zen / direct-API catalog keyed by provider id.
-final class OpencodeCatalogSource implements ModelCatalogSource {
-  const OpencodeCatalogSource();
-
-  @override
-  List<String> modelsFor({
-    required AppProviderConfig? provider,
-    required String providerId,
-  }) => OpencodeModelCatalog.knownModelsForProvider(provider?.id ?? providerId);
-}
-
-final class OpencodeProviderModelCapability extends CatalogModelCapability {
-  const OpencodeProviderModelCapability();
-
-  @override
-  bool get supportsModelTiers => false;
-
-  @override
-  List<ModelCatalogSource> get catalogSources => const [
-    OpencodeCatalogSource(),
-  ];
-
-  @override
-  ProviderModelPickerMode pickerMode(AppProviderConfig provider) =>
-      ProviderModelPickerMode.catalogWithCustomEntry;
 }
 
 /// Catalog from the provider record only; supports custom model ids.

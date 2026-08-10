@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
-import 'package:teampilot/models/team_config.dart';
+import '../../models/team_config.dart';
 
 import '../../cubits/agent_attention_cubit.dart';
 import '../../cubits/chat_cubit.dart';

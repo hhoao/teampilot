@@ -6,9 +6,16 @@ import '../cli_capability.dart';
 /// at idle-at-prompt and are woken via stdin, so they only ever make short MCP
 /// requests and can speak plain HTTP over the tunnel — no relay needed.
 class BusTransportCapability implements CliCapability {
-  const BusTransportCapability({required this.longBlockingWaitForMessage});
+  const BusTransportCapability({
+    required this.longBlockingWaitForMessage,
+    this.supportsLocalStdioBridge = false,
+  });
 
   /// True when the CLI parks in a long-blocking `wait_for_message` (claude,
   /// flashskyai, codex, opencode); false for doorbell CLIs (cursor).
   final bool longBlockingWaitForMessage;
+
+  /// Whether this CLI supports a local stdio bridge for bus transport.
+  /// Only claude currently uses this.
+  final bool supportsLocalStdioBridge;
 }

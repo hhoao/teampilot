@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/cli/registry/capabilities/headless_run_capability.dart';
-import 'package:teampilot/services/cli/registry/headless/claude_headless_run_capability.dart';
+import 'package:teampilot/services/cli/claude/capabilities/headless_run.dart';
 
 HeadlessRunContext _ctx({
   String model = 'sonnet',

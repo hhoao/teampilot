@@ -19,6 +19,7 @@ import '../services/provider/config_profile_service.dart';
 import '../services/session/session_lifecycle_service.dart';
 import '../services/mcp/profile_mcp_linker_service.dart';
 import '../services/storage/launch_profile_provisioner.dart';
+import 'package:logger/logger.dart';
 import '../utils/logging/logger.dart';
 import '../utils/team/team_member_naming.dart';
 import 'team/launch_profile_cubit_host.dart';

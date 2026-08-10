@@ -1,9 +1,9 @@
-import 'package:teampilot/cubits/file_tree_cubit.dart';
-import 'package:teampilot/services/file_tree_import/import_models.dart';
-import 'package:teampilot/services/file_tree_import/workspace_import_service.dart';
-import 'package:teampilot/services/io/filesystem.dart';
-import 'package:teampilot/services/storage/runtime_context.dart';
-import 'package:teampilot/services/workspace_dnd/workspace_file_ref.dart';
+import '../../cubits/file_tree_cubit.dart';
+import 'import_models.dart';
+import 'workspace_import_service.dart';
+import '../io/filesystem.dart';
+import '../storage/runtime_context.dart';
+import '../workspace_dnd/workspace_file_ref.dart';
 
 ImportMode resolveFileTreeImportMode({
   required bool fromExternalOs,

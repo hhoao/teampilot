@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import 'package:shared_ui/shared_ui.dart';
-import 'package:teampilot/l10n/l10n_extensions.dart';
-import 'package:teampilot/services/file_tree_import/import_models.dart';
-import 'package:teampilot/services/file_tree_import/workspace_import_service.dart';
-import 'package:teampilot/widgets/app_toast/app_toast.dart';
+import '../../l10n/l10n_extensions.dart';
+import '../../services/file_tree_import/import_models.dart';
+import '../../services/file_tree_import/workspace_import_service.dart';
+import '../app_toast/app_toast.dart';
 
 class FileTreeImportConflictDialogResult {
   const FileTreeImportConflictDialogResult({

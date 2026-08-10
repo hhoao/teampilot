@@ -145,13 +145,18 @@ import '../services/floating_workspace/surfaces/terminal_floating_surface.dart';
 import '../pages/home_workspace/workspace_chrome_commands.dart';
 import '../services/cli/registry/cli_bootstrap.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
+import '../services/cli/claude/claude_bootstrap_entry.dart';
+import '../services/cli/codex/codex_bootstrap_entry.dart';
+import '../services/cli/cursor/cursor_bootstrap_entry.dart';
+import '../services/cli/opencode/opencode_bootstrap_entry.dart';
 import '../services/host/host_one_shot_runner_for_context.dart';
 import '../services/host/host_process_starter_for_context.dart';
-import '../services/provider/claude/claude_provider_credentials_service.dart';
-import '../services/provider/codex/codex_provider_credentials_service.dart';
-import '../services/provider/opencode/opencode_provider_credentials_service.dart';
-import '../services/provider/cursor/cursor_agent_models_service.dart';
-import '../services/provider/cursor/cursor_provider_credentials_service.dart';
+import '../services/cli/claude/provider/claude_provider_credentials_service.dart';
+import '../services/cli/codex/provider/codex_provider_credentials_service.dart';
+import '../services/cli/opencode/provider/opencode_provider_credentials_service.dart';
+import '../services/cli/opencode/provider/opencode_models_service.dart';
+import '../services/cli/cursor/provider/cursor_agent_models_service.dart';
+import '../services/cli/cursor/provider/cursor_provider_credentials_service.dart';
 import '../services/provider/provider_credential_host_runner.dart';
 import '../services/app/connection_mode_service.dart';
 import '../services/cli/remote_cli_locator.dart';
@@ -202,6 +207,7 @@ import '../services/terminal/workspace_terminal_registry.dart';
 import '../services/terminal/workspace_terminal_connect_coordinator.dart';
 import '../services/terminal/workspace_terminal_run_service.dart';
 import '../services/terminal/workspace_terminal_session_ops.dart';
+import 'package:logger/logger.dart';
 import '../utils/logging/logger.dart';
 import 'ui_zoom_baseline.dart';
 
@@ -734,13 +740,22 @@ Future<AppShell> buildAppShell({
   );
 
   cliToolRegistry.configure(
-    CliBootstrap(
-      cursorAgentModelsService: CursorAgentModelsService(),
-      claudeCredentialsService: claudeCredentialsService,
-      cursorCredentialsService: cursorCredentialsService,
-      codexCredentialsService: codexCredentialsService,
-      opencodeCredentialsService: opencodeCredentialsService,
-    ),
+    CliBootstrap({
+      CliTool.claude: ClaudeBootstrapEntry(
+        credentialsService: claudeCredentialsService,
+      ),
+      CliTool.cursor: CursorBootstrapEntry(
+        credentialsService: cursorCredentialsService,
+        agentModelsService: CursorAgentModelsService(),
+      ),
+      CliTool.codex: CodexBootstrapEntry(
+        credentialsService: codexCredentialsService,
+      ),
+      CliTool.opencode: OpencodeBootstrapEntry(
+        credentialsService: opencodeCredentialsService,
+        modelsService: OpencodeModelsService(),
+      ),
+    }),
   );
 
   final skillManifest = SkillManifestService();
@@ -778,12 +793,6 @@ Future<AppShell> buildAppShell({
 
   appProviderCubit = AppProviderCubit(
     flashskyaiExecutablePath: sessionPreferencesCubit.resolveExecutable,
-    claudeExecutablePath: () =>
-        sessionPreferencesCubit.resolveExecutable(CliTool.claude),
-    cursorExecutablePath: () =>
-        sessionPreferencesCubit.resolveExecutable(CliTool.cursor),
-    claudeCredentialsService: claudeCredentialsService,
-    cursorCredentialsService: cursorCredentialsService,
   );
 
   llmConfigCubit = LlmConfigCubit(

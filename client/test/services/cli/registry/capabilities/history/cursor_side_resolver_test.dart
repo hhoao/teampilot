@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/cli/registry/capabilities/history/cursor_side_resolver.dart';
+import 'package:teampilot/services/cli/cursor/capabilities/history/side_resolver.dart';
 import 'package:teampilot/services/cli/registry/capabilities/history/subagent_side_resolver.dart';
 import 'package:teampilot/services/io/filesystem.dart';
 import 'package:teampilot/services/session/session_history_context.dart';

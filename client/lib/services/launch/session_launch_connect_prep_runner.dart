@@ -7,6 +7,7 @@ import '../../models/app_session.dart';
 import '../../models/team_config.dart';
 import '../../models/workspace.dart';
 import '../../services/terminal/terminal_session.dart';
+import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import 'session_tab_connect_prep.dart';
 
@@ -134,9 +135,7 @@ class SessionLaunchConnectPrepRunner {
       );
       if (!_prepCallbacks.launchStillValid(tab, generation)) return;
       tab.selectedMemberId = request.member!.id;
-      _host.applyState(
-        _host.state.copyWith(selectedMemberId: request.member!.id),
-      );
+      _host.selectMember(request.member!.id);
       _host.updateTabRunning(session.sessionId);
     } on Object catch (e, st) {
       appLogger.e(

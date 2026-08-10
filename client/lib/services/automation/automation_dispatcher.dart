@@ -17,6 +17,7 @@ import '../../repositories/automation_repository.dart';
 import '../../repositories/session_repository.dart';
 import '../../services/expert_hub/expert_landing_preflight.dart';
 import '../../utils/workspace/automation_launch_directory.dart';
+import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import 'automation_bus_gateway.dart';
 import 'automation_dispatch_result.dart';

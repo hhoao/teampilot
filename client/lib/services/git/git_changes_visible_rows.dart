@@ -12,7 +12,7 @@ class GitChangesVisibleRow extends Equatable {
     required this.folderPath,
     required this.name,
     required this.depth,
-    required this.subtreeStagedCount,
+    required this.subtreeSelectedCount,
     required this.subtreeTotalCount,
   }) : change = null,
        isFolder = true;
@@ -20,7 +20,7 @@ class GitChangesVisibleRow extends Equatable {
   const GitChangesVisibleRow.file({required this.change, required this.depth})
     : folderPath = null,
       name = null,
-      subtreeStagedCount = 0,
+      subtreeSelectedCount = 0,
       subtreeTotalCount = 0,
       isFolder = false;
 
@@ -28,7 +28,7 @@ class GitChangesVisibleRow extends Equatable {
   final String? name;
   final GitFileChange? change;
   final int depth;
-  final int subtreeStagedCount;
+  final int subtreeSelectedCount;
   final int subtreeTotalCount;
   final bool isFolder;
 
@@ -38,30 +38,32 @@ class GitChangesVisibleRow extends Equatable {
     name,
     change,
     depth,
-    subtreeStagedCount,
+    subtreeSelectedCount,
     subtreeTotalCount,
     isFolder,
   ];
 }
 
-/// Pre-flattened unified rows for the changes tree list, with staged/total
+/// Pre-flattened unified rows for the changes tree list, with selected/total
 /// counts so the panel can render tri-state folder checkboxes and badges.
+/// `selectedCount` / `allSelected` / `noneSelected` mean "selected for the
+/// next commit" (the checkbox state), not the git index.
 class GitChangesTreeViewData extends Equatable {
   const GitChangesTreeViewData({
     required this.rows,
-    required this.stagedCount,
+    required this.selectedCount,
     required this.totalCount,
   });
 
   final List<GitChangesVisibleRow> rows;
-  final int stagedCount;
+  final int selectedCount;
   final int totalCount;
 
-  bool get allStaged => totalCount > 0 && stagedCount == totalCount;
-  bool get noneStaged => stagedCount == 0;
+  bool get allSelected => totalCount > 0 && selectedCount == totalCount;
+  bool get noneSelected => selectedCount == 0;
 
   @override
-  List<Object?> get props => [...rows, stagedCount, totalCount];
+  List<Object?> get props => [...rows, selectedCount, totalCount];
 }
 
 /// Inner content height of a git changes row (excluding outer vertical padding).
@@ -74,8 +76,12 @@ const double kGitChangesRowVerticalPadding = 4;
 const double kGitChangesRowExtent =
     kGitChangesNodeHeight + kGitChangesRowVerticalPadding * 2;
 
-/// Matches [GitChangeTile] / [GitChangeFolderTile] indent step.
-const double kGitChangesIndentWidth = 16;
+/// Folder indent step per tree level: the chevron column (18) plus the
+/// checkbox's left padding (2). Files indent by this plus a chevron column.
+/// The extra 2px keeps a child folder's chevron aligned with its parent's
+/// checkbox box while opening a 2px gap between parent and child checkbox
+/// boxes (a child box starts at its parent box's right edge + 2).
+const double kGitChangesIndentWidth = 20;
 
 /// Outer horizontal inset on each list row in tree view.
 const double kGitChangesRowHorizontalPadding = 2;
@@ -86,6 +92,24 @@ const double kGitChangesNodePaddingRight = 6;
 
 /// Width of the stage checkbox at the leading edge of each row.
 const double kGitChangesCheckboxWidth = 18;
+
+/// Horizontal padding inside the stage-checkbox column, so the box doesn't sit
+/// flush against the chevron (or the row edge) on the left and the file/folder
+/// icon on the right. The box keeps its natural [kGitChangesCheckboxWidth]
+/// size; the extra room widens the column, not the box.
+const double kGitChangesCheckboxHPadding = 2;
+
+/// Width of the stage-checkbox column: the [kGitChangesCheckboxWidth] box plus
+/// [kGitChangesCheckboxHPadding] on each side. The box keeps its natural size;
+/// [kGitChangesIndentWidth] absorbs the left padding so a child folder's
+/// chevron stays aligned with its parent's checkbox box.
+const double kGitChangesCheckboxColumnWidth =
+    kGitChangesCheckboxWidth + kGitChangesCheckboxHPadding * 2;
+
+/// Width of the folder chevron column; equal to the checkbox width so a child
+/// file's checkbox left edge lands exactly on its parent folder's checkbox
+/// right edge.
+const double kGitChangesChevronWidth = kGitChangesCheckboxWidth;
 
 /// Single status badge width.
 const double kGitChangesTrailingBadgeWidth = 22;
@@ -123,10 +147,10 @@ double gitChangesMinContentWidth({
     if (row.isFolder) {
       painter.text = TextSpan(text: row.name, style: folderLabelStyle);
       painter.layout();
-      final leading = kGitChangesIndentWidth +
-          kGitChangesCheckboxWidth +
+      final leading = kGitChangesChevronWidth +
+          kGitChangesCheckboxColumnWidth +
           16 +
-          6; // chevron + checkbox + folder icon + gap
+          6; // chevron + checkbox column + folder icon + gap
       final rowWidth =
           row.depth * kGitChangesIndentWidth +
           kGitChangesNodePaddingLeft +
@@ -142,9 +166,10 @@ double gitChangesMinContentWidth({
     painter.text = TextSpan(text: label, style: fileLabelStyle);
     painter.layout();
     final leading =
-        kGitChangesCheckboxWidth + 16 + 6; // checkbox + file icon + gap
+        kGitChangesCheckboxColumnWidth + 16 + 6; // checkbox column + file icon + gap
     final rowWidth =
         row.depth * kGitChangesIndentWidth +
+        kGitChangesChevronWidth +
         kGitChangesNodePaddingLeft +
         leading +
         kGitChangesNodePaddingRight +
@@ -187,19 +212,26 @@ GitChangesTreeViewData visibleUnifiedGitChangesTreeView({
   required List<GitFileChange> staged,
   required List<GitFileChange> unstaged,
   required Set<String> expandedFolderPaths,
+  required Set<String> selectedPaths,
 }) {
   final merged = mergeGitChangesByPath(staged: staged, unstaged: unstaged);
-  var stagedCount = 0;
-  for (final c in merged) {
-    if (c.staged) stagedCount++;
+  // UI projection: in the tree, `staged` means "selected for the next commit"
+  // (the checkbox state), NOT the git index. Merge dedup above still used the
+  // real index `staged` (staged side wins).
+  final projected = <GitFileChange>[
+    for (final c in merged) c.copyWith(staged: selectedPaths.contains(c.path)),
+  ];
+  var selectedCount = 0;
+  for (final c in projected) {
+    if (c.staged) selectedCount++;
   }
   final rows = visibleGitChangesRows(
-    changes: merged,
+    changes: projected,
     expandedFolderPaths: expandedFolderPaths,
   );
   return GitChangesTreeViewData(
     rows: rows,
-    stagedCount: stagedCount,
+    selectedCount: selectedCount,
     totalCount: merged.length,
   );
 }
@@ -273,12 +305,12 @@ void _insertChange(_GitChangesFolderNode root, GitFileChange change) {
   required bool emit,
 }) {
   var total = 0;
-  var staged = 0;
+  var selected = 0;
   final folderNames = node.subfolders.keys.toList()..sort();
   for (final name in folderNames) {
     final childPath = folderPath.isEmpty ? name : p.posix.join(folderPath, name);
     final childRows = <GitChangesVisibleRow>[];
-    final (childTotal, childStaged) = _walk(
+    final (childTotal, childSelected) = _walk(
       node: node.subfolders[name]!,
       folderPath: childPath,
       depth: depth + 1,
@@ -292,21 +324,21 @@ void _insertChange(_GitChangesFolderNode root, GitFileChange change) {
           folderPath: childPath,
           name: name,
           depth: depth,
-          subtreeStagedCount: childStaged,
+          subtreeSelectedCount: childSelected,
           subtreeTotalCount: childTotal,
         ),
       );
       rows.addAll(childRows);
     }
     total += childTotal;
-    staged += childStaged;
+    selected += childSelected;
   }
   final files = node.files.toList()
     ..sort((a, b) => p.basename(a.path).compareTo(p.basename(b.path)));
   for (final change in files) {
     total++;
-    if (change.staged) staged++;
+    if (change.staged) selected++;
     if (emit) rows.add(GitChangesVisibleRow.file(change: change, depth: depth));
   }
-  return (total, staged);
+  return (total, selected);
 }

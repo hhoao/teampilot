@@ -1,8 +1,8 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/provider/cursor/cursor_workspace_trust.dart';
-import 'package:teampilot/services/provider/cursor/cursor_workspace_trust_provisioner.dart';
+import 'package:teampilot/services/cli/cursor/provider/cursor_workspace_trust.dart';
+import 'package:teampilot/services/cli/cursor/provider/cursor_workspace_trust_provisioner.dart';
 
 import '../../../support/in_memory_filesystem.dart';
 

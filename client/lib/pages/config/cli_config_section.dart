@@ -7,6 +7,8 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/session_preferences.dart';
 import '../../models/team_config.dart';
 import '../../services/app/connection_mode_service.dart';
+import '../../services/cli/registry/capabilities/cli_config_ui_capability.dart';
+import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../utils/ui/app_keys.dart';
 import 'cli_executable_path_settings_row.dart';
 import 'toolchain_path_settings_row.dart';
@@ -77,91 +79,8 @@ class _CliControls extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                CliExecutablePathSettingsRow(
-                  cubit: cubit,
-                  cli: CliTool.claude,
-                  title: l10n.claudeCliExecutablePathLabel,
-                  subtitle: isSshMode
-                      ? l10n.claudeCliExecutablePathDescriptionSsh
-                      : l10n.claudeCliExecutablePathDescription,
-                  fieldKey: AppKeys.claudeCliExecutablePathField,
-                  browseKey: AppKeys.claudeCliExecutablePathBrowseButton,
-                  resetKey: AppKeys.claudeCliExecutablePathResetButton,
-                  debouncerTag: 'claude_cli_executable_path',
-                  installKey: AppKeys.claudeCliInstallButton,
-                  showDividerBelow: true,
-                ),
-                CliExecutablePathSettingsRow(
-                  cubit: cubit,
-                  cli: CliTool.codex,
-                  title: l10n.cliExecutablePathLabelFor(
-                    l10n.appProviderToolCodex,
-                  ),
-                  subtitle: isSshMode
-                      ? l10n.cliExecutablePathDescriptionSshFor(
-                          l10n.appProviderToolCodex,
-                        )
-                      : l10n.cliExecutablePathDescriptionFor(
-                          l10n.appProviderToolCodex,
-                        ),
-                  fieldKey: AppKeys.codexCliExecutablePathField,
-                  browseKey: AppKeys.codexCliExecutablePathBrowseButton,
-                  resetKey: AppKeys.codexCliExecutablePathResetButton,
-                  debouncerTag: 'codex_cli_executable_path',
-                  installKey: AppKeys.codexCliInstallButton,
-                  showDividerBelow: true,
-                ),
-                CliExecutablePathSettingsRow(
-                  cubit: cubit,
-                  cli: CliTool.opencode,
-                  title: l10n.cliExecutablePathLabelFor(
-                    l10n.appProviderToolOpencode,
-                  ),
-                  subtitle: isSshMode
-                      ? l10n.cliExecutablePathDescriptionSshFor(
-                          l10n.appProviderToolOpencode,
-                        )
-                      : l10n.cliExecutablePathDescriptionFor(
-                          l10n.appProviderToolOpencode,
-                        ),
-                  fieldKey: AppKeys.opencodeCliExecutablePathField,
-                  browseKey: AppKeys.opencodeCliExecutablePathBrowseButton,
-                  resetKey: AppKeys.opencodeCliExecutablePathResetButton,
-                  debouncerTag: 'opencode_cli_executable_path',
-                  installKey: AppKeys.opencodeCliInstallButton,
-                  showDividerBelow: true,
-                ),
-                CliExecutablePathSettingsRow(
-                  cubit: cubit,
-                  cli: CliTool.cursor,
-                  title: l10n.cliCursorExecutablePathLabel,
-                  subtitle: isSshMode
-                      ? l10n.cliExecutablePathDescriptionSshFor(
-                          l10n.appProviderToolCursor,
-                        )
-                      : l10n.cliExecutablePathDescriptionFor(
-                          l10n.appProviderToolCursor,
-                        ),
-                  fieldKey: AppKeys.cursorCliExecutablePathField,
-                  browseKey: AppKeys.cursorCliExecutablePathBrowseButton,
-                  resetKey: AppKeys.cursorCliExecutablePathResetButton,
-                  debouncerTag: 'cursor_cli_executable_path',
-                  installKey: AppKeys.cursorCliInstallButton,
-                  showDividerBelow: true,
-                ),
-                CliExecutablePathSettingsRow(
-                  cubit: cubit,
-                  cli: CliTool.flashskyai,
-                  title: l10n.cliExecutablePathLabel,
-                  subtitle: isSshMode
-                      ? l10n.cliExecutablePathDescriptionSsh
-                      : l10n.cliExecutablePathDescription,
-                  fieldKey: AppKeys.cliExecutablePathField,
-                  browseKey: AppKeys.cliExecutablePathBrowseButton,
-                  resetKey: AppKeys.cliExecutablePathResetButton,
-                  debouncerTag: 'cli_executable_path',
-                  showDividerBelow: false,
-                ),
+                for (final def in CliToolRegistry.builtIn().launchable)
+                  _buildCliRow(def.id, cubit, isSshMode, l10n),
               ],
             ),
           ),
@@ -212,4 +131,39 @@ class _CliControls extends StatelessWidget {
       ),
     );
   }
+}
+
+Widget _buildCliRow(
+  CliTool cli,
+  SessionPreferencesCubit cubit,
+  bool isSshMode,
+  AppLocalizations l10n,
+) {
+  final registry = CliToolRegistry.builtIn();
+  final spec =
+      registry.capability<CliConfigUiCapability>(cli)?.executablePathRowSpec;
+  if (spec == null) return const SizedBox.shrink();
+
+  final label = l10n.appProviderToolLabel(cli);
+
+  return CliExecutablePathSettingsRow(
+    cubit: cubit,
+    cli: cli,
+    title: spec.isCustomTitle
+        ? l10n.claudeCliExecutablePathLabel
+        : l10n.cliExecutablePathLabelFor(label),
+    subtitle: spec.isCustomTitle
+        ? isSshMode
+            ? l10n.claudeCliExecutablePathDescriptionSsh
+            : l10n.claudeCliExecutablePathDescription
+        : isSshMode
+            ? l10n.cliExecutablePathDescriptionSshFor(label)
+            : l10n.cliExecutablePathDescriptionFor(label),
+    fieldKey: ValueKey(spec.fieldKey),
+    browseKey: ValueKey(spec.browseKey),
+    resetKey: ValueKey(spec.resetKey),
+    debouncerTag: spec.debouncerTag,
+    installKey: ValueKey(spec.installKey),
+    showDividerBelow: spec.showDividerBelow,
+  );
 }

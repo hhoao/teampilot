@@ -127,7 +127,7 @@ void main() {
       },
     );
 
-    test('skips when mail delivery failed but unread remains', () {
+    test('does not skip when mail delivery failed but unread remains', () {
       final bus = TeamBus(launcher: FakeMemberLauncher());
       final node = AgentNode.test(
         memberId: 'worker',
@@ -143,9 +143,10 @@ void main() {
         error: MailboxDeliveryError.crStuck,
       );
 
+      // failed 非终态:门铃仍欠着,重试不跳过
       expect(
         PtyAutomationDeliveryGuard.shouldSkipRetry(bus: bus, memberId: 'worker'),
-        isTrue,
+        isFalse,
       );
     });
 

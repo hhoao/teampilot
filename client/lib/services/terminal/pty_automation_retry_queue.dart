@@ -14,6 +14,27 @@ final class PtyAutomationRetryQueue {
 
   bool isPending(String key) => _pending.containsKey(key);
 
+  /// 门铃 boot 推迟:重新定时且不消耗 attempts(与失败重试 [schedule] 区分)。
+  /// TUI 未就绪时的等待不是一次失败,不应吃掉重试预算。
+  bool defer({
+    required String key,
+    required String sessionId,
+    required String memberId,
+    required String text,
+  }) {
+    final prev = _pending[key];
+    final attempt = prev?.attempt ?? 0;
+    if (attempt > maxAttempts) return false;
+    _pending[key] = _PendingRetry(
+      sessionId: sessionId,
+      memberId: memberId,
+      text: text,
+      nextRetryAtMs: _nowMs() + retryIntervalMs,
+      attempt: attempt,
+    );
+    return true;
+  }
+
   /// Schedules or bumps a retry for [key]. Returns false when budget exhausted.
   bool schedule({
     required String key,

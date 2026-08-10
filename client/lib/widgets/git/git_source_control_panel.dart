@@ -5,7 +5,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart' as p;
 import 'package:shared_ui/shared_ui.dart';
-import 'package:teampilot/widgets/app_toast/app_toast.dart';
+import '../app_toast/app_toast.dart';
 
 import '../../cubits/ai_feature_settings_cubit.dart';
 import '../../cubits/cli_presets_cubit.dart';
@@ -285,20 +285,19 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
 
   Future<void> _openDiff(GitFileChange change) async {
     // Match DiffViewer.initialFullContext so the first paint is full-file,
-    // without a second git diff + parse after mount.
-    final diff = await _cubit.diff(change, fullContext: true);
+    // without a second git diff + parse after mount. Show working tree vs HEAD
+    // (selection model has no index split anymore).
+    final diff = await _cubit.diffAgainstHead(change.path, fullContext: true);
     if (!mounted || diff == null) return;
     final absolutePath = p.join(_cubit.state.repoRoot, change.path);
     context.read<WorkbenchEditorOpener>().openDiff(
       workspaceId: widget.workspaceId,
       absolutePath: absolutePath,
-      source: change.staged
-          ? WorkbenchDiffSource.staged
-          : WorkbenchDiffSource.unstaged,
+      source: WorkbenchDiffSource.changes,
       title: change.path,
       diffText: diff,
-      reloadDiff: (ignoreWhitespace, fullContext) => _cubit.diff(
-        change,
+      reloadDiff: (ignoreWhitespace, fullContext) => _cubit.diffAgainstHead(
+        change.path,
         ignoreWhitespace: ignoreWhitespace,
         fullContext: fullContext,
       ),
@@ -540,18 +539,18 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
           const SizedBox(height: 10),
           BlocSelector<GitCubit, GitState, (bool, bool, bool, String)>(
             selector: (state) => (
-              state.status.staged.isNotEmpty,
+              state.selectedPaths.isNotEmpty,
               state.busy,
               state.generatingCommitMessage,
               state.status.branch ?? 'HEAD',
             ),
             builder: (context, commit) {
-              final (hasStaged, busy, generating, branch) = commit;
+              final (hasSelection, busy, generating, branch) = commit;
               return _CommitBox(
                 controller: _commitController,
                 hint: l10n.gitCommitMessageHint(branch),
-                canCommit: hasStaged && !busy,
-                canGenerate: hasStaged && !busy,
+                canCommit: hasSelection && !busy,
+                canGenerate: hasSelection && !busy,
                 generating: generating,
                 onChanged: _cubit.setCommitMessage,
                 onCommit: () async {

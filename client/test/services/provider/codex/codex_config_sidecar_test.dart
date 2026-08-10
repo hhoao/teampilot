@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/provider/codex/codex_config_sidecar.dart';
+import 'package:teampilot/services/cli/codex/provider/codex_config_sidecar.dart';
 
 void main() {
   group('CodexConfigSidecar', () {

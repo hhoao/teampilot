@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
-import 'package:teampilot/services/provider/cursor/cursor_home_layout.dart';
+import 'package:teampilot/services/cli/cursor/provider/cursor_home_layout.dart';
 
 void main() {
   group('CursorHomeLayout', () {

@@ -43,7 +43,7 @@ final class TerminalFullscreenPtyPort implements FullscreenPtyDeliveryPort {
 
   @override
   FullscreenPromptAnchor? locateCollapsedPasteNeedle({int scanRows = 24}) =>
-      _probe.locateClaudeCollapsedPasteNeedle(
+      _probe.locateCollapsedPasteNeedle(
         scanRows: scanRows,
         composerPrefix: _crAckConfig.composerPrefix,
       );

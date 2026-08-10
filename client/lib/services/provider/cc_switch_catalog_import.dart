@@ -5,7 +5,7 @@ import 'package:sqlite3/sqlite3.dart';
 
 import '../../models/app_provider_config.dart';
 import '../io/filesystem.dart';
-import 'codex/codex_cc_switch_import.dart';
+import '../cli/codex/provider/codex_cc_switch_import.dart';
 
 /// Reads provider rows from `~/.cc-switch/cc-switch.db`.
 final class CcSwitchCatalogImport {

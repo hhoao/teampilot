@@ -14,7 +14,8 @@ abstract interface class FullscreenPtyDeliveryPort {
 
   FullscreenPromptAnchor? locateNeedle(String needle, {int scanRows = 24});
 
-  /// Claude collapsed-paste chrome ACK when body text is hidden from the grid.
+  /// Collapsed-paste chrome ACK when body text is hidden from the grid
+  /// (e.g. Claude Code `[Pasted text #N +M lines]`, opencode `[Pasted ~N lines]`).
   FullscreenPromptAnchor? locateCollapsedPasteNeedle({int scanRows = 24});
 
   bool isAtAnchor(FullscreenPromptAnchor anchor);

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/provider/cursor/cursor_agent_models_parser.dart';
+import 'package:teampilot/services/cli/cursor/provider/cursor_agent_models_parser.dart';
 
 void main() {
   const sample = '''

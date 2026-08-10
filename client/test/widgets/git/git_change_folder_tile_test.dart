@@ -38,7 +38,7 @@ void main() {
   // (required) GitCubit ancestor. Returns the cubit via `onCubit` so callers
   // can close it in addTearDown.
   Widget buildTile({
-    required int subtreeStagedCount,
+    required int subtreeSelectedCount,
     required int subtreeTotalCount,
     VoidCallback? onStage,
     VoidCallback? onUnstage,
@@ -60,7 +60,7 @@ void main() {
               folderPath: 'src',
               name: 'src',
               depth: 0,
-              subtreeStagedCount: subtreeStagedCount,
+              subtreeSelectedCount: subtreeSelectedCount,
               subtreeTotalCount: subtreeTotalCount,
               cubit: cubit,
               onStage: onStage ?? () {},
@@ -73,32 +73,32 @@ void main() {
     );
   }
 
-  testWidgets('folder checkbox is checked when all staged', (tester) async {
+  testWidgets('folder checkbox is checked when all selected', (tester) async {
     await runOnDesktop(tester, () async {
       await tester.pumpWidget(
-        buildTile(subtreeStagedCount: 2, subtreeTotalCount: 2),
+        buildTile(subtreeSelectedCount: 2, subtreeTotalCount: 2),
       );
       final cb = tester.widget<Checkbox>(find.byType(Checkbox));
       expect(cb.value, isTrue);
     });
   });
 
-  testWidgets('folder checkbox is tri-state when partially staged', (
+  testWidgets('folder checkbox is tri-state when partially selected', (
     tester,
   ) async {
     await runOnDesktop(tester, () async {
       await tester.pumpWidget(
-        buildTile(subtreeStagedCount: 1, subtreeTotalCount: 2),
+        buildTile(subtreeSelectedCount: 1, subtreeTotalCount: 2),
       );
       final cb = tester.widget<Checkbox>(find.byType(Checkbox));
       expect(cb.value, isNull);
     });
   });
 
-  testWidgets('folder checkbox unchecked when none staged', (tester) async {
+  testWidgets('folder checkbox unchecked when none selected', (tester) async {
     await runOnDesktop(tester, () async {
       await tester.pumpWidget(
-        buildTile(subtreeStagedCount: 0, subtreeTotalCount: 2),
+        buildTile(subtreeSelectedCount: 0, subtreeTotalCount: 2),
       );
       final cb = tester.widget<Checkbox>(find.byType(Checkbox));
       expect(cb.value, isFalse);
@@ -110,7 +110,7 @@ void main() {
     await runOnDesktop(tester, () async {
       await tester.pumpWidget(
         buildTile(
-          subtreeStagedCount: 0,
+          subtreeSelectedCount: 0,
           subtreeTotalCount: 1,
           onDiscardFolder: () => discardCalls++,
         ),

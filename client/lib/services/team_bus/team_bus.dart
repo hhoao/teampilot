@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import 'agent_node.dart';
 import 'bus_feed_entry.dart';
@@ -136,9 +137,9 @@ class TeamBus implements CoordinationView {
   String? pendingDoorbellNoticeFor(String memberId) {
     final node = _members[memberId];
     if (node == null || node.lifecycle != MemberLifecycle.running) return null;
+    if (node.waitingForMessage) return null; // parked:waiter 直收,不欠门铃
     if (!node.inbox.isEmpty) {
-      if (node.deliveryPhase == MailboxDeliveryPhase.failed) return null;
-      return doorbellNotice;
+      return doorbellNotice; // failed 非终态:未读即欠
     }
     final queue = _taskQueue;
     if (queue != null && _hasEligiblePendingTask(node, queue)) {
@@ -255,8 +256,8 @@ class TeamBus implements CoordinationView {
   bool shouldDeferPtyIdleEnd(String memberId) {
     final node = _members[memberId];
     if (node == null) return false;
-    if (node.deliveryPhase == MailboxDeliveryPhase.failed) return false;
     if (node.deliveryPhase == MailboxDeliveryPhase.inFlight) return false;
+    // failed 非终态:门铃仍欠着,PTY 安静不该提前结束回合。
     return node.doorbelled && !node.inbox.isEmpty;
   }
 
@@ -873,10 +874,8 @@ class TeamBus implements CoordinationView {
 
   /// 注入门铃全文并置幂等闸（绕过 reducer 的路径也必须设 [AgentNode.doorbelled]）。
   void _ringDoorbell(AgentNode node, String notice) {
-    if (notice == doorbellNotice &&
-        node.deliveryPhase == MailboxDeliveryPhase.failed) {
-      return;
-    }
+    // 不再因 deliveryPhase.failed 短路——投递义务由 running+未读+未 park 决定,
+    // 失败永远可重试(failed 在 MailDeliveryStarted 时自动重臂)。
     // Task doorbell still marks agent in-turn; mail notify uses delivery only.
     if (notice == taskDoorbellNotice &&
         node.lifecycle == MemberLifecycle.running &&
@@ -1030,6 +1029,9 @@ class TeamBus implements CoordinationView {
     for (final node in _members.values) {
       if (node.profile.isTeamLead) continue;
       if (node.lifecycle != MemberLifecycle.running) continue;
+      if (node.waitingForMessage) continue; // parked 直收,不重敲门铃
+      // 只在 at-prompt 或任务门铃卡死时重敲门铃;active(真正工作中)不打断,
+      // 其未读邮件会在 turn 结束(onMemberIdle → MailArrived)时再响。
       final atPromptIdle = node.activity == MemberActivity.turnDoneReady;
       final taskDoorbellStuck =
           node.inbox.isEmpty &&
@@ -1038,17 +1040,9 @@ class TeamBus implements CoordinationView {
           (node.doorbelled || node.doorbelledAt != null) &&
           node.activity == MemberActivity.active;
       if (!atPromptIdle && !taskDoorbellStuck) continue;
+      final notice = pendingDoorbellNoticeFor(node.memberId);
+      if (notice == null) continue; // 不欠门铃(无未读、无队列任务)
       if (_recentlyDoorbelled(node)) continue;
-      final String notice;
-      if (!node.inbox.isEmpty) {
-        if (node.deliveryPhase == MailboxDeliveryPhase.failed) continue;
-        if (node.deliveryAttempts >= maxPtyNotifyAttempts) continue;
-        notice = doorbellNotice;
-      } else if (queue != null && _hasEligiblePendingTask(node, queue)) {
-        notice = taskDoorbellNotice;
-      } else {
-        continue; // 没有欠它的门铃。
-      }
       // 已响过门铃：扫屏后重贴或补 CR（coordinator 决定，避免盲 nudge 状态栏）。
       if (node.doorbelled || node.doorbelledAt != null) {
         appLogger.d(

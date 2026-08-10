@@ -150,7 +150,6 @@ class SessionLaunchBundle {
     final tabSurface = SessionTabSurfaceCoordinator(
       host: deps.host,
       tabStore: deps.tabStore,
-      state: deps.state,
       workspaceById: deps.workspaceById,
       shouldAutoConnect: deps.shouldAutoConnect,
       prepareNewTabConnect: prepRunner.prepareNewTabConnect,

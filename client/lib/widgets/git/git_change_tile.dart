@@ -78,6 +78,7 @@ class GitChangeTile extends StatelessWidget {
         height: double.infinity,
         padding: EdgeInsets.fromLTRB(
           depth * kGitChangesIndentWidth +
+              kGitChangesChevronWidth +
               kGitChangesNodePaddingLeft +
               kGitChangesRowHorizontalPadding,
           kGitChangesRowVerticalPadding,
@@ -91,12 +92,17 @@ class GitChangeTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               SizedBox(
-                width: kGitChangesCheckboxWidth,
+                width: kGitChangesCheckboxColumnWidth,
                 height: kGitChangesCheckboxWidth,
-                child: Checkbox(
-                  value: change.staged,
-                  onChanged: (_) => change.staged ? onUnstage() : onStage(),
-                  visualDensity: VisualDensity.compact,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: kGitChangesCheckboxHPadding,
+                  ),
+                  child: Checkbox(
+                    value: change.staged,
+                    onChanged: (_) => change.staged ? onUnstage() : onStage(),
+                    visualDensity: VisualDensity.compact,
+                  ),
                 ),
               ),
               const SizedBox(width: 4),

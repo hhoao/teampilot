@@ -1,7 +1,10 @@
+import '../cli/registry/capabilities/remote_app_data_capability.dart';
+import '../cli/registry/cli_tool_registry.dart';
 import '../../models/team_config.dart';
+import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import '../io/filesystem.dart';
-import '../provider/opencode/opencode_shared_plugin_deps.dart';
+import '../cli/opencode/provider/opencode_shared_plugin_deps.dart';
 import '../storage/runtime_layout.dart';
 import 'materialization_manifest.dart';
 import 'remote_credential_materializer.dart';
@@ -84,22 +87,15 @@ class RemoteAppDataMaterializer {
 
     // Seed shared opencode plugin deps on home before reconcile copies
     // cli-defaults onto the work machine. Never npm-install on workFs/SFTP.
-    if (cli == CliTool.opencode) {
-      step('opencode-shared-plugin-deps begin');
-      final seeder =
-          ensureOpencodeSharedPluginDeps ??
-          ({required Filesystem homeFs, required String homeRoot}) async {
-            final homeLayout = RuntimeLayout(
-              teampilotRoot: homeRoot,
-              fs: homeFs,
-            );
-            await OpencodeSharedPluginDeps(
-              layout: homeLayout,
-              fs: homeFs,
-            ).ensureSharedInstalled();
-          };
-      await seeder(homeFs: homeFs, homeRoot: homeRoot);
-      step('opencode-shared-plugin-deps done');
+    final remoteAppData = CliToolRegistry.builtIn()
+        .capability<RemoteAppDataCapability>(cli);
+    if (remoteAppData?.needsSharedPluginDepsBeforeReconcile == true) {
+      step('shared-plugin-deps begin');
+      await remoteAppData!.seedSharedPluginDeps(
+        homeFs: homeFs,
+        homeRoot: homeRoot,
+      );
+      step('shared-plugin-deps done');
     }
 
     step('reconcile begin');

@@ -33,30 +33,6 @@ class _TreeStub extends GitService {
   Future<List<String>> branches(String dir) async => const ['main'];
 }
 
-/// Every change staged: lets the root "Changes" header show a checked
-/// select-all checkbox and record `unstageAll` calls.
-class _AllStagedStub extends GitService {
-  final unstageAllCalls = <String>[];
-
-  @override
-  Future<bool> get isAvailable async => true;
-
-  @override
-  Future<GitRepoStatus> status(String dir) async => GitRepoStatus(
-    isRepository: true,
-    branch: 'main',
-    staged: const [
-      GitFileChange(path: 'a.java', kind: GitChangeKind.added, staged: true),
-    ],
-  );
-
-  @override
-  Future<List<String>> branches(String dir) async => const ['main'];
-
-  @override
-  Future<void> unstageAll(String dir) async => unstageAllCalls.add(dir);
-}
-
 void main() {
   Future<void> runOnDesktop(
     WidgetTester tester,
@@ -178,12 +154,11 @@ void main() {
   });
 
   testWidgets(
-    'root select-all is checked when all staged; tapping it unstages all',
+    'root select-all is checked when all selected; tapping it clears the selection',
     (tester) async {
-      final stub = _AllStagedStub();
-      final cubit = GitCubit(service: stub);
+      final cubit = GitCubit(service: _TreeStub());
       addTearDown(cubit.close);
-      await cubit.setRepoRoot('/repo');
+      await cubit.setRepoRoot('/repo'); // a.java + b.dart auto-selected
       await tester.pumpWidget(buildTreeList(cubit: cubit));
       await tester.pump();
 
@@ -193,7 +168,8 @@ void main() {
 
       await tester.tap(find.byType(Checkbox).first);
       await tester.pump();
-      expect(stub.unstageAllCalls, ['/repo']);
+      // selectNone is a pure selection op now (no git), so the selection clears.
+      expect(cubit.state.selectedPaths, isEmpty);
     },
   );
 }

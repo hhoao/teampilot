@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:logger/logger.dart';
 import '../../../utils/logging/logger.dart';
 import '../artifacts/artifact_transfer_service.dart';
 import '../cancellation.dart';

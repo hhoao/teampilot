@@ -1,3 +1,5 @@
+import '../../services/cli/registry/capabilities/provider_display_capability.dart';
+import '../../services/cli/registry/cli_tool_registry.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -119,7 +121,10 @@ class LlmProviderConfigPage extends StatelessWidget {
                 }
               },
               onShowModels: () {
-                if (provider.cli == CliTool.flashskyai) {
+            if (CliToolRegistry.builtIn()
+                    .capability<ProviderDisplayCapability>(provider.cli)
+                    ?.hasModelPanel ==
+                true) {
                   context.push(llmProviderModelsRoute(cli, provider.id));
                 }
               },

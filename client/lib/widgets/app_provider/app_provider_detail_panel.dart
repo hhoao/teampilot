@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_ui/shared_ui.dart';
-import 'package:teampilot/widgets/app_toast/app_toast.dart';
+import '../app_toast/app_toast.dart';
 
 import '../../theme/app_fonts.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -12,8 +12,10 @@ import '../../cubits/app_provider_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_provider_config.dart';
 import '../../models/llm_config.dart';
-import '../../services/provider/claude/claude_official_provider.dart';
-import '../../services/provider/codex/codex_official_provider.dart';
+import '../../services/cli/claude/provider/claude_official_provider.dart';
+import '../../services/cli/registry/cli_tool_registry.dart';
+import '../../services/cli/registry/capabilities/provider_display_capability.dart';
+import '../../services/cli/codex/provider/codex_official_provider.dart';
 import '../../services/provider/credential_binding.dart';
 import '../../services/provider/tool_config_generator.dart';
 import '../../theme/workspace_surface_layers.dart';
@@ -40,7 +42,11 @@ class AppProviderDetailPanel extends StatelessWidget {
     final l10n = context.l10n;
     final styles = TpTextStyles.of(context);
     final requiresKey = provider.requiresApiKey;
-    final modelCount = provider.flashskyaiModelCount;
+    final display = CliToolRegistry.builtIn()
+        .capability<ProviderDisplayCapability>(provider.cli);
+    final modelCount = display?.showModelCount == true
+        ? provider.flashskyaiModelCount
+        : 0;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
@@ -66,11 +72,9 @@ class AppProviderDetailPanel extends StatelessWidget {
                       provider.name,
                       style: styles.lgBold,
                     ),
-                    if (isOfficialClaudeProvider(provider) ||
-                        (provider.cli == CliTool.cursor &&
-                            provider.isOfficial) ||
-                        isOfficialCodexOAuthProvider(provider) ||
-                        (provider.cli == CliTool.opencode &&
+                    if (_supportsOAuth(provider) &&
+                        (isOfficialClaudeProvider(provider) ||
+                            isOfficialCodexOAuthProvider(provider) ||
                             provider.isOfficial))
                       ProviderCredentialStatusBadge(
                         cli: provider.cli,
@@ -79,7 +83,7 @@ class AppProviderDetailPanel extends StatelessWidget {
                   ],
                 ),
               ),
-              if (provider.cli == CliTool.flashskyai)
+              if (display?.hasModelPanel == true)
                 TextButton.icon(
                   onPressed: onShowModels,
                   icon: Icon(Icons.hub_outlined, size: context.tpIconSizes.md),
@@ -204,7 +208,9 @@ class _ProviderJsonPreviewState extends State<_ProviderJsonPreview> {
     setState(() => _json = null);
     Future<void>.microtask(() {
       if (!mounted || generation != _loadGeneration) return;
-      final json = widget.provider.cli == CliTool.flashskyai
+      final json = CliToolRegistry.builtIn()
+          .capability<ProviderDisplayCapability>(widget.provider.cli)
+          ?.usesLlmConfigJsonPreview == true
           ? _generator
                 .buildFlashskyaiLlmConfig(widget.provider)
                 .toMaskedJsonString()
@@ -253,7 +259,9 @@ class _ProviderJsonPreviewCopyButtonState
   static const _generator = ToolConfigGenerator();
 
   Future<void> _copy(BuildContext context) async {
-    final json = widget.provider.cli == CliTool.flashskyai
+    final json = CliToolRegistry.builtIn()
+          .capability<ProviderDisplayCapability>(widget.provider.cli)
+          ?.usesLlmConfigJsonPreview == true
         ? _generator
               .buildFlashskyaiLlmConfig(widget.provider)
               .toMaskedJsonString()
@@ -345,4 +353,11 @@ class AppProviderModelsBridge extends StatelessWidget {
       (models) => cubit.updateFlashskyaiModels(provider.id, models),
     );
   }
+}
+
+bool _supportsOAuth(AppProviderConfig provider) {
+  return CliToolRegistry.builtIn()
+          .capability<ProviderDisplayCapability>(provider.cli)
+          ?.supportsOAuthCredentials ==
+      true;
 }

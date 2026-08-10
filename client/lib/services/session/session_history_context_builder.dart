@@ -1,11 +1,14 @@
+import '../cli/registry/capabilities/history_context_env_capability.dart';
+import '../cli/registry/cli_tool_registry.dart';
 import 'package:path/path.dart' as p;
 
 import '../../models/app_session.dart';
 import '../../models/team_config.dart';
+import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import '../io/filesystem.dart';
-import '../provider/codex/codex_session_config_dir.dart';
-import '../provider/cursor/cursor_session_config_dir.dart';
+import '../cli/codex/provider/codex_session_config_dir.dart';
+import '../cli/cursor/provider/cursor_session_config_dir.dart';
 import '../storage/runtime_layout.dart';
 import 'session_history_context.dart';
 
@@ -137,44 +140,39 @@ final class SessionHistoryContextBuilder {
     String? memberId,
     String? teamId,
   }) {
-    switch (cli) {
-      case CliTool.codex:
-        return {
-          'CODEX_HOME': CodexSessionConfigDir.resolve(
+    final cap = CliToolRegistry.builtIn()
+        .capability<HistoryContextEnvCapability>(cli);
+    if (cap == null) return const {};
+    final toolRoot = layout.sessionRuntimeToolDir(
+      workspaceId,
+      sessionId,
+      cli.value,
+      memberId: memberId,
+    );
+    // Codex and Cursor have custom tool-root computation; resolve via their
+    // layout helpers and pass as toolRoot.
+    final resolvedRoot = cli == CliTool.codex
+        ? CodexSessionConfigDir.resolve(
             layout,
             workspaceId: workspaceId,
             sessionId: sessionId,
             memberId: memberId,
-          ),
-        };
-      case CliTool.opencode:
-        final toolDir = layout.sessionRuntimeToolDir(
-          workspaceId,
-          sessionId,
-          'opencode',
-          memberId: memberId,
-        );
-        return {
-          'OPENCODE_DB': p.join(toolDir, 'opencode.db'),
-        };
-      case CliTool.cursor:
-        final cursorRoot = CursorSessionConfigDir.resolve(
-          layout,
-          workspaceId: workspaceId,
-          sessionId: sessionId,
-          memberId: memberId,
-          teamId: teamId,
-        );
-        return {
-          'CURSOR_CONFIG_DIR': cursorRoot,
-          'HOME': p.dirname(cursorRoot),
-          'USERPROFILE': p.dirname(cursorRoot),
-        };
-      case CliTool.claude:
-      case CliTool.flashskyai:
-        // Adapters locate via transcriptRoots + bucket; no env keys required.
-        return const {};
-    }
+          )
+        : cli == CliTool.cursor
+            ? CursorSessionConfigDir.resolve(
+                layout,
+                workspaceId: workspaceId,
+                sessionId: sessionId,
+                memberId: memberId,
+                teamId: teamId,
+              )
+            : toolRoot;
+    final home = cli == CliTool.cursor ? p.dirname(resolvedRoot) : null;
+    return cap.sessionEnv(
+      toolRoot: resolvedRoot,
+      home: home,
+      userProfile: home,
+    );
   }
 
   /// Matches [SessionLifecycleService] simple-mode transcript roots (no

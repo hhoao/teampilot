@@ -4,6 +4,8 @@ import '../../models/runtime_target.dart';
 import '../../models/ssh_profile.dart';
 import '../../models/team_config.dart';
 import '../../services/cli/preset_resolver.dart';
+import '../../services/cli/registry/capabilities/wait_before_stop_capability.dart';
+import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/team_bus/agent_node.dart';
 import '../../services/team_bus/artifacts/artifact_transfer_service.dart';
 import '../../services/team_bus/bus_user_line_capture.dart';
@@ -16,6 +18,7 @@ import '../../services/team_bus/tasks/task_log_factory.dart';
 import '../../services/team_bus/tasks/task_queue.dart';
 import '../../services/team_bus/team_bus.dart';
 import '../../services/team_bus/teammate_roster_profile.dart';
+import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import '../../utils/team/team_member_naming.dart';
 import 'chat_tab_store.dart';
@@ -97,15 +100,21 @@ class TabTeamBusCoordinator {
     final presets = _globalPresets();
     final forceWaitByMember = {
       for (final m in runtimeMembers)
-        m.id: m.effectiveForceWaitBeforeStop(
-          team,
-          launchCli: sessionMemberLaunchCli(
+        m.id: (() {
+          final launchCli = sessionMemberLaunchCli(
             session: session,
             team: team,
             member: m,
             globalPresets: presets,
-          ),
-        ),
+          );
+          final cliDefault = CliToolRegistry.builtIn()
+              .capability<WaitBeforeStopCapability>(launchCli)
+              ?.defaultForceWaitBeforeStop;
+          return m.effectiveForceWaitBeforeStop(
+            team,
+            cliDefault: cliDefault,
+          );
+        })(),
     };
     final bus = TeamBus(
       launcher: ChatCubitMemberLauncher(

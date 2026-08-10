@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/host/host_script_dialect.dart';
-import 'package:teampilot/services/provider/codex/codex_http_hook_script.dart';
+import 'package:teampilot/services/cli/codex/provider/codex_http_hook_script.dart';
 
 void main() {
   group('CodexHttpHookScript', () {

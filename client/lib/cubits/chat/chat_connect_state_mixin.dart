@@ -1,6 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../services/team/team_config_launch_validator.dart';
+import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import '../../utils/session/session_launch_error.dart';
 import '../../models/member_remote_provision_progress.dart';
@@ -41,18 +42,12 @@ mixin ChatConnectStateMixin on Cubit<ChatState> {
     final tab = tabStore.openTabBySessionId(sessionId);
     if (tab != null) {
       tab.info = tab.info.copyWith(launchError: message);
-      emit(
-        state.copyWith(
-          clearSessionLaunchError: true,
-          stateVersion: state.stateVersion + 1,
-        ),
-      );
+      emit(state.copyWith(clearSessionLaunchError: true));
       return;
     }
     emit(
       state.copyWith(
         sessionLaunchError: message,
-        stateVersion: state.stateVersion + 1,
       ),
     );
   }
@@ -68,7 +63,6 @@ mixin ChatConnectStateMixin on Cubit<ChatState> {
     emit(
       state.copyWith(
         clearSessionLaunchError: true,
-        stateVersion: state.stateVersion + 1,
       ),
     );
   }
@@ -108,9 +102,6 @@ mixin ChatConnectStateMixin on Cubit<ChatState> {
     final tab = tabStore.openTabBySessionId(tabId);
     if (tab == null) return;
     tab.info = tab.info.copyWith(isRunning: tab.isRunning);
-    emit(
-      state.copyWith(stateVersion: state.stateVersion + 1),
-    );
     onTabRunningChanged();
   }
 
@@ -122,7 +113,6 @@ mixin ChatConnectStateMixin on Cubit<ChatState> {
     emit(
       state.copyWith(
         snackbarMessage: warnings.first,
-        stateVersion: state.stateVersion + 1,
       ),
     );
   }
@@ -139,7 +129,6 @@ mixin ChatConnectStateMixin on Cubit<ChatState> {
     emit(
       state.copyWith(
         teamConfigValidation: validation,
-        stateVersion: state.stateVersion + 1,
       ),
     );
   }
@@ -160,7 +149,8 @@ mixin ChatConnectStateMixin on Cubit<ChatState> {
     } else {
       tab.memberRemoteProvision[key] = progress;
     }
-    emit(state.copyWith(stateVersion: state.stateVersion + 1));
+    // Bump the provision version so remote-provision UI (ChatWorkbench) rebuilds.
+    emit(state.copyWith(provisionVersion: state.provisionVersion + 1));
   }
 
   void clearTeamConfigValidation() {

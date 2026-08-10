@@ -180,16 +180,26 @@
       }
     }
   },
-  "gitStage": "Stage changes",
-  "gitUnstage": "Unstage changes",
-  "gitStageAll": "Stage all changes",
-  "gitUnstageAll": "Unstage all changes",
-  "gitStageFolder": "Stage changes in folder",
-  "gitUnstageFolder": "Unstage changes in folder",
   "treeExpandAllFolders": "Expand all folders",
   "treeCollapseAllFolders": "Collapse all folders",
   "gitDiscard": "Discard changes",
   "gitOpenFile": "Open File",
+  "gitIncludeInCommit": "Include in Commit",
+  "@gitIncludeInCommit": {
+    "description": "Context-menu action to include a file in the next commit."
+  },
+  "gitExcludeFromCommit": "Exclude from Commit",
+  "@gitExcludeFromCommit": {
+    "description": "Context-menu action to exclude a file from the next commit."
+  },
+  "gitIncludeFolderInCommit": "Include Folder in Commit",
+  "@gitIncludeFolderInCommit": {
+    "description": "Context-menu action to include a folder and its changed files in the next commit."
+  },
+  "gitExcludeFolderFromCommit": "Exclude Folder from Commit",
+  "@gitExcludeFolderFromCommit": {
+    "description": "Context-menu action to exclude a folder and its changed files from the next commit."
+  },
   "gitShowDiff": "Show Diff",
   "gitCopyPath": "Copy Path",
   "gitDiscardFolder": "Discard changes in folder",

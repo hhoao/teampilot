@@ -5,7 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:teampilot/services/agent_status/member_agent_status_endpoint.dart';
 import 'package:teampilot/services/host/host_execution_environment.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/provider/codex/codex_agent_status_overlay.dart';
+import 'package:teampilot/services/cli/codex/provider/codex_agent_status_overlay.dart';
 import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_config.dart';
 
 String _bashHookFileName(String baseName) =>

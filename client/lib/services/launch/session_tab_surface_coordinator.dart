@@ -10,6 +10,7 @@ import '../../cubits/chat/model/session_workbench_view.dart';
 import '../../cubits/chat/session_launch_host.dart';
 import '../../models/app_session.dart';
 import '../../models/workspace.dart';
+import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import '../../utils/team/team_member_naming.dart';
 
@@ -44,7 +45,6 @@ class SessionTabSurfaceCoordinator {
   SessionTabSurfaceCoordinator({
     required SessionLaunchHost host,
     required ChatTabStore tabStore,
-    required ChatState Function() state,
     required Workspace? Function(String workspaceId) workspaceById,
     required bool Function(SessionOpenRequest request) shouldAutoConnect,
     required PrepareNewTabConnectFn prepareNewTabConnect,
@@ -53,7 +53,6 @@ class SessionTabSurfaceCoordinator {
     this.onSessionTabOpened,
   }) : _host = host,
        _tabStore = tabStore,
-       _state = state,
        _workspaceById = workspaceById,
        _shouldAutoConnect = shouldAutoConnect,
        _prepareNewTabConnect = prepareNewTabConnect,
@@ -71,7 +70,6 @@ class SessionTabSurfaceCoordinator {
 
   final SessionLaunchHost _host;
   final ChatTabStore _tabStore;
-  final ChatState Function() _state;
   final Workspace? Function(String workspaceId) _workspaceById;
   final bool Function(SessionOpenRequest request) _shouldAutoConnect;
   final PrepareNewTabConnectFn _prepareNewTabConnect;
@@ -93,7 +91,6 @@ class SessionTabSurfaceCoordinator {
     if (memberId.isNotEmpty) {
       existing.selectedMemberId = memberId;
     }
-    final state = _state();
     final connectAlreadyScheduled =
         _host.isSessionConnecting(session.sessionId);
     if (!connectAlreadyScheduled) {
@@ -101,7 +98,7 @@ class SessionTabSurfaceCoordinator {
     }
     final generation = existing.launchGeneration;
     _host.applyState(
-      state.copyWith(
+      _host.state.copyWith(
         activeSessionId: session.sessionId,
         selectedMemberId: memberId.isNotEmpty ? memberId : null,
       ),
@@ -175,7 +172,7 @@ class SessionTabSurfaceCoordinator {
     _tabStore.registerSession(tab);
     _host.sessionRuntime.ensureIdleWatch();
     _host.applyState(
-      _state().copyWith(
+      _host.state.copyWith(
         activeSessionId: session.sessionId,
         selectedMemberId: placeholderMemberId,
       ),

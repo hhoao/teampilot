@@ -202,12 +202,17 @@ class TeamMemberConfig {
   /// CLI 默认：**cursor 为 false** —— cursor 的 MCP 工具调用有 ~60s agent 层硬限
   /// （不可配、progress 不续），无法阻塞在 `wait_for_message` 里；改为正常停到
   /// idle-at-prompt，由门铃（stdin 注入 + `read_messages`）push 投递。
+  /// Returns whether this member should block the CLI via `wait_for_message`
+  /// before stopping.
+  ///
+  /// Priority: member override → [cliDefault] (from [WaitBeforeStopCapability])
+  /// → team default.
   bool effectiveForceWaitBeforeStop(
     TeamProfile team, {
-    required CliTool launchCli,
+    bool? cliDefault,
   }) {
     if (forceWaitBeforeStop != null) return forceWaitBeforeStop!;
-    if (launchCli == CliTool.cursor) return false;
+    if (cliDefault != null) return cliDefault;
     return team.forceWaitBeforeStop;
   }
 

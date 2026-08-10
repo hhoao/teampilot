@@ -11,6 +11,7 @@ Guidance for Claude Code and other AI assistants working in this repository.
 | [docs/flutter-patches.md](docs/flutter-patches.md) | Mandatory Flutter SDK patches (apply / add / CI) |
 | [docs/CODE_QUALITY.md](docs/CODE_QUALITY.md) | File size, layering, tests, Extension conventions |
 | [docs/DEBUGGING.md](docs/DEBUGGING.md) | Systematic debugging process |
+| [docs/cli-architecture.md](docs/cli-architecture.md) | **CLI architecture**: directory layout, capability pattern, adding a new CLI |
 | [docs/PERFORMANCE.md](docs/PERFORMANCE.md) | Progressive paint / UX jank optimization (`TpDeferred*`) |
 | [docs/PERFORMANCE_ANALYSIS.md](docs/PERFORMANCE_ANALYSIS.md) | DevTools performance JSON offline analysis (`tool/analyze_performance_json.dart`) |
 | [docs/workspace-storage-layout.md](docs/workspace-storage-layout.md) | On-disk layout under `<teampilotRoot>` |
@@ -170,7 +171,7 @@ Session runtime dirs: `workspace/workspaces/{workspaceId}/sessions/{sessionId}/r
 | Hub publish | `client/lib/services/hub_publish/`, `client/lib/pages/hub_publish/` |
 | Member placement | landing Machines UI + workspace member targets; `sessionRosterMembers` in `models/app_session.dart` |
 | Mixed-CLI coordination | `client/lib/services/team_bus/`, `member_presence_cubit.dart`, `mailbox_cubit.dart`, `board_cubit.dart` |
-| CLI registry & capabilities | `client/lib/services/cli/registry/` |
+| CLI registry & capabilities | `client/lib/services/cli/registry/` — see [docs/cli-architecture.md](docs/cli-architecture.md) |
 | Launch plan | `client/lib/services/session/session_lifecycle_service.dart` |
 | PTY + terminal | `client/lib/services/terminal/terminal_session.dart` |
 | Launch args / WSL paths | `client/lib/services/session/launch_command_builder.dart` |

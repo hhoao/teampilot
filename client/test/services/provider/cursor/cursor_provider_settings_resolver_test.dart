@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
-import 'package:teampilot/services/provider/cursor/cursor_provider_settings_resolver.dart';
+import 'package:teampilot/services/cli/cursor/provider/cursor_provider_settings_resolver.dart';
 
 import '../../../support/in_memory_filesystem.dart';
 

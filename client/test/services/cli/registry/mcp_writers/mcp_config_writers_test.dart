@@ -2,11 +2,11 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/mcp_server_spec.dart';
-import 'package:teampilot/services/cli/registry/mcp_writers/claude_mcp_config_writer.dart';
-import 'package:teampilot/services/cli/registry/mcp_writers/codex_mcp_config_writer.dart';
-import 'package:teampilot/services/cli/registry/mcp_writers/codex_toml_merge.dart';
-import 'package:teampilot/services/cli/registry/mcp_writers/cursor_mcp_config_writer.dart';
-import 'package:teampilot/services/cli/registry/mcp_writers/opencode_mcp_config_writer.dart';
+import 'package:teampilot/services/cli/claude/capabilities/mcp_config_writer.dart';
+import 'package:teampilot/services/cli/codex/capabilities/mcp_config_writer.dart';
+import 'package:teampilot/services/cli/codex/capabilities/toml_merge.dart';
+import 'package:teampilot/services/cli/cursor/capabilities/mcp_config_writer.dart';
+import 'package:teampilot/services/cli/opencode/capabilities/mcp_config_writer.dart';
 import 'package:toml/toml.dart';
 
 import '../../../../support/in_memory_filesystem.dart';

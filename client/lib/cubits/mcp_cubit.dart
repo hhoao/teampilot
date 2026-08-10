@@ -5,6 +5,7 @@ import '../models/discoverable_team.dart';
 import '../models/mcp_server.dart';
 import '../repositories/mcp_repository.dart';
 import '../services/mcp/mcp_import_service.dart';
+import 'package:logger/logger.dart';
 import '../utils/logging/logger.dart';
 
 enum McpLoadStatus { idle, loading, ready, error }

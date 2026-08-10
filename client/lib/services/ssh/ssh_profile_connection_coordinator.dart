@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:dartssh2/dartssh2.dart';
 
 import '../../models/ssh_profile.dart';
+import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import '../remote/remote_connection_monitor.dart';
 import 'ssh_client_factory.dart';

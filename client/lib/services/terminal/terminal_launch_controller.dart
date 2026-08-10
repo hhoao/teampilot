@@ -6,11 +6,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
 
 import '../../cubits/agent_attention_cubit.dart';
+import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import '../../utils/terminal/osc_title_extractor.dart';
 import '../agent_status/agent_attention_state.dart';
 import '../agent_status/agent_status_event.dart';
-import '../agent_status/cursor_title_attention.dart';
+import '../cli/cursor/capabilities/title_attention.dart';
 import '../cli/cli_executable_validator.dart';
 import '../team/terminal_activity_tracker.dart';
 import 'terminal_startup_failure_detector.dart';

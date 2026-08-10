@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/cli_tool_adapter.dart';
+import 'package:teampilot/services/cli/opencode/capabilities/launch_args.dart';
 
 void main() {
   const team = TeamProfile(id: 't', name: 'agent', cli: CliTool.opencode);

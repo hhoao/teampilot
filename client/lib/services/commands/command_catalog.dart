@@ -1,6 +1,6 @@
-import 'package:teampilot/services/commands/command_definition.dart';
-import 'package:teampilot/services/commands/command_ids.dart';
-import 'package:teampilot/services/commands/key_chord.dart';
+import 'command_definition.dart';
+import 'command_ids.dart';
+import 'key_chord.dart';
 
 /// Built-in command catalog for keyboard shortcuts.
 abstract final class CommandCatalog {

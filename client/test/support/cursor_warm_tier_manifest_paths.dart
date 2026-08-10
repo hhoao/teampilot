@@ -1,5 +1,5 @@
 import 'package:teampilot/services/cli/session_lifecycle/cli_session_manifest.dart';
-import 'package:teampilot/services/provider/cursor/cursor_workspace_warm_tier.dart';
+import 'package:teampilot/services/cli/cursor/provider/cursor_workspace_warm_tier.dart';
 
 const cursorTestTeamId = 'team-a';
 

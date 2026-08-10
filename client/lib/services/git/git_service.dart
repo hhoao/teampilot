@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../../models/git_status.dart';
+import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import '../storage/runtime_context.dart';
 import 'git_command_runner.dart';
@@ -32,6 +33,10 @@ class GitService {
   static GitService Function()? debugOverrideFactory;
 
   final GitCommandRunner _runner;
+
+  /// Cap on the concatenated per-path diff passed to the commit-message prompt;
+  /// mirrors the truncation `stagedDiff` previously applied.
+  static const int _diffPromptMaxChars = 12000;
 
   /// Resets static caches on local/remote runners. Tests call this in setUp.
   static void debugResetExecutableCache() {
@@ -209,36 +214,6 @@ class GitService {
     _ => GitChangeKind.modified,
   };
 
-  /// Unified diff for [change]. Untracked files are shown as a full addition.
-  Future<String> diff(
-    String dir,
-    GitFileChange change, {
-    bool ignoreWhitespace = false,
-    bool fullContext = false,
-  }) async {
-    // A very large unified context makes git emit the whole file (all unchanged
-    // lines), so the viewer can show full text instead of only the hunks.
-    final context = fullContext ? '-U1000000' : null;
-    if (change.kind == GitChangeKind.untracked) {
-      return _runDiff(dir, [
-        'diff',
-        '--no-index',
-        if (ignoreWhitespace) '-w',
-        if (context != null) context,
-        '/dev/null',
-        change.path,
-      ]);
-    }
-    return _runDiff(dir, [
-      'diff',
-      if (change.staged) '--cached',
-      if (ignoreWhitespace) '-w',
-      if (context != null) context,
-      '--',
-      change.path,
-    ]);
-  }
-
   /// Uncommitted diff for [relativePath]: working tree vs HEAD (staged +
   /// unstaged combined). Untracked paths use `--no-index` against `/dev/null`.
   Future<String> diffAgainstHead(
@@ -253,6 +228,7 @@ class GitService {
       return _runDiff(dir, [
         'diff',
         '--no-index',
+        '--no-color',
         if (ignoreWhitespace) '-w',
         if (context != null) context,
         '/dev/null',
@@ -262,6 +238,7 @@ class GitService {
     return _runDiff(dir, [
       'diff',
       'HEAD',
+      '--no-color',
       if (ignoreWhitespace) '-w',
       if (context != null) context,
       '--',
@@ -283,25 +260,41 @@ class GitService {
     throw GitException(detail.isEmpty ? 'git ${args.first} failed' : detail);
   }
 
-  /// Unified diff of staged changes (`git diff --cached`), capped at
-  /// [maxChars] to bound prompt size.
-  Future<String> stagedDiff(String dir, {int maxChars = 12000}) async {
-    final out = await _run(dir, ['diff', '--cached', '--no-color']);
-    if (out.length <= maxChars) return out;
-    final dropped = out.length - maxChars;
-    return '${out.substring(0, maxChars)}\n\n'
-        '[diff truncated: $dropped more characters]';
+  /// Concatenated HEAD-vs-worktree diffs for [paths], each path handled like
+  /// [diffAgainstHead] (untracked via --no-index). Used to summarize the
+  /// selected changes for a generated commit message.
+  ///
+  /// Paths listed in [untrackedPaths] are diffed as untracked (`--no-index`
+  /// against `/dev/null`); everything else diffs against HEAD. A path whose
+  /// diff throws (e.g. a stale untracked path deleted since the last status)
+  /// is skipped without aborting the rest.
+  Future<String> diffSelectedPaths(
+    String dir,
+    List<String> paths, {
+    Set<String> untrackedPaths = const {},
+  }) async {
+    final parts = <String>[];
+    for (final path in paths) {
+      String? d;
+      try {
+        d = await diffAgainstHead(
+          dir,
+          path,
+          untracked: untrackedPaths.contains(path),
+        );
+      } on GitException {
+        d = null; // stale path (deleted since last status); skip
+      }
+      if (d != null && d.isNotEmpty) parts.add(d);
+    }
+    var joined = parts.join('\n');
+    if (joined.length > _diffPromptMaxChars) {
+      joined =
+          '${joined.substring(0, _diffPromptMaxChars)}\n[diff truncated: '
+          '${joined.length - _diffPromptMaxChars} more characters]';
+    }
+    return joined;
   }
-
-  Future<void> stage(String dir, List<String> paths) =>
-      _run(dir, ['add', '--', ...paths]);
-
-  Future<void> unstage(String dir, List<String> paths) =>
-      _run(dir, ['reset', '-q', 'HEAD', '--', ...paths]);
-
-  Future<void> stageAll(String dir) => _run(dir, ['add', '-A']);
-
-  Future<void> unstageAll(String dir) => _run(dir, ['reset', '-q', 'HEAD']);
 
   Future<void> discard(String dir, GitFileChange change) {
     if (change.kind == GitChangeKind.untracked) {
@@ -320,6 +313,18 @@ class GitService {
 
   Future<void> commit(String dir, String message) =>
       _run(dir, ['commit', '-m', message]);
+
+  /// Stages [paths] then commits exactly those paths. `git add` handles
+  /// untracked and deleted files; `git commit -- <paths>` restricts the commit
+  /// to the selected set, leaving any other index entries alone.
+  Future<void> commitSelected(
+    String dir,
+    String message,
+    List<String> paths,
+  ) async {
+    await _run(dir, ['add', '--', ...paths]);
+    await _run(dir, ['commit', '-m', message, '--', ...paths]);
+  }
 
   Future<void> push(String dir) => _run(dir, ['push']);
 

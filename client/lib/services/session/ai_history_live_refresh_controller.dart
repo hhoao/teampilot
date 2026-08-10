@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import '../../cubits/ai_history_seat.dart';
+import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import '../io/filesystem.dart';
 import 'ai_history_watch_meta.dart';

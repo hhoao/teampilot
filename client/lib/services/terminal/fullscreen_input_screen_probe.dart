@@ -79,11 +79,12 @@ FullscreenPromptAnchor? locateFullscreenPromptNeedle(
   return null;
 }
 
-/// Claude Code hides long pastes behind `[Pasted text #N +M lines]` chrome.
+/// Full-screen TUIs (Claude Code, opencode, etc.) hide long pastes behind
+/// `[Pasted text #N +M lines]` or `[Pasted ~N lines]` chrome.
 ///
 /// Body text is absent from the grid, so [locateFullscreenPromptNeedle] on the
 /// original paste fails — treat this composer chrome as paste ACK instead.
-FullscreenPromptAnchor? locateClaudeCollapsedPasteNeedle(
+FullscreenPromptAnchor? locateCollapsedPasteNeedle(
   TerminalScreenGrid grid, {
   int scanRows = 8,
   String? composerPrefix,

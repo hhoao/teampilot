@@ -1,12 +1,7 @@
 import '../../models/app_provider_config.dart';
 import '../../repositories/app_provider_repository.dart';
-import '../provider/claude/claude_provider_credentials_service.dart';
-import '../provider/codex/codex_auth_artifacts.dart';
-import '../provider/codex/codex_provider_credentials_service.dart';
-import '../provider/credential_binding.dart';
-import '../provider/cursor/cursor_provider_credentials_service.dart';
-import '../provider/opencode/opencode_data_layout.dart';
-import '../provider/opencode/opencode_provider_credentials_service.dart';
+import '../cli/registry/capabilities/credential_export_capability.dart';
+import '../cli/registry/cli_tool_registry.dart';
 import '../storage/app_storage.dart';
 import 'remote_credential_materializer.dart';
 
@@ -45,66 +40,14 @@ class LocalCredentialExporter {
     CliTool cli,
     AppProviderConfig provider,
   ) async {
-    final fs = AppStorage.fs;
-    final toolRoot = fs.pathContext.join(_basePath, 'providers', cli.value);
-    final providerId = provider.id;
-    switch (cli) {
-      case CliTool.claude:
-        final binding = resolveCredentialBinding(provider);
-        final svc = ClaudeProviderCredentialsService(
-          fs: fs,
-          basePath: _basePath,
-          resolveHomeDirectory: () => _home,
-        );
-        final path = svc.effectiveCredentialPath(
-          providerId,
-          binding: binding,
-          homeDirectory: _home,
-        );
-        final content = await fs.readString(path);
-        if (content == null || content.trim().isEmpty) return null;
-        return CredentialFile(
-          relativePath:
-              '$providerId/${ClaudeProviderCredentialsService.credentialsFileName}',
-          content: content,
-        );
-      case CliTool.codex:
-        final path = CodexProviderCredentialsService(
-          fs: fs,
-          basePath: _basePath,
-        ).credentialPath(providerId);
-        final content = await fs.readString(path);
-        if (content == null || content.trim().isEmpty) return null;
-        return CredentialFile(
-          relativePath: '$providerId/${CodexAuthArtifacts.authFileName}',
-          content: content,
-        );
-      case CliTool.cursor:
-        final probe = await CursorProviderCredentialsService(
-          fs: fs,
-          basePath: _basePath,
-        ).probe(providerId);
-        if (!probe.isReady) return null;
-        final content = await fs.readString(probe.credentialPath);
-        if (content == null || content.trim().isEmpty) return null;
-        final relative = fs.pathContext.relative(
-          probe.credentialPath,
-          from: toolRoot,
-        );
-        return CredentialFile(relativePath: relative, content: content);
-      case CliTool.opencode:
-        final path = OpencodeProviderCredentialsService(
-          fs: fs,
-          basePath: _basePath,
-        ).credentialPath(providerId);
-        final content = await fs.readString(path);
-        if (content == null || content.trim().isEmpty) return null;
-        return CredentialFile(
-          relativePath: '$providerId/${OpencodeDataLayout.authFileName}',
-          content: content,
-        );
-      case CliTool.flashskyai:
-        return null;
-    }
+    final cap = CliToolRegistry.builtIn()
+        .capability<CredentialExportCapability>(cli);
+    if (cap == null) return null;
+    return cap.exportCredential(
+      fs: AppStorage.fs,
+      basePath: _basePath,
+      home: _home,
+      provider: provider,
+    );
   }
 }

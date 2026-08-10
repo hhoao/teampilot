@@ -81,6 +81,7 @@ abstract interface class SessionLaunchHost
   /// Single emit entry point (wraps the cubit's protected emit).
   void applyState(ChatState next);
   void refreshActiveWorkspaceTabs();
+
   void closeSessionTab(String sessionId);
   void emitTeamConfigValidation(TeamConfigValidation validation);
 

@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/team/claude_roster_activity_source.dart';
+import 'package:teampilot/services/cli/claude/roster_activity_source.dart';
 
 void main() {
   late Directory tmp;

@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/app_provider_cubit.dart';
-import 'package:teampilot/models/provider_presets/claude_provider_presets.dart';
-import 'package:teampilot/models/provider_presets/codex_provider_presets.dart';
-import 'package:teampilot/models/provider_presets/flashskyai_provider_presets.dart';
-import 'package:teampilot/models/provider_presets/opencode_provider_presets.dart';
+import 'package:teampilot/services/cli/claude/provider_presets.dart';
+import 'package:teampilot/services/cli/codex/provider_presets.dart';
+import 'package:teampilot/services/cli/flashskyai/provider_presets.dart';
+import 'package:teampilot/services/cli/opencode/provider_presets.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/provider/tool_config_generator.dart';
 

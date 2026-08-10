@@ -4,7 +4,7 @@ import 'package:shared_ui/shared_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
-import 'package:teampilot/widgets/app_toast/app_toast.dart';
+import '../../widgets/app_toast/app_toast.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../services/storage/app_storage.dart';

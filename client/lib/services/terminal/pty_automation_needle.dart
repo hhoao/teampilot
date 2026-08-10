@@ -5,10 +5,13 @@ abstract final class PtyAutomationNeedle {
   static const busTag = '[teammate-bus]';
   static const maxNeedleChars = 40;
 
-  /// Claude Code collapses long staged pastes to composer chrome like
-  /// `[Pasted text #3 +17 lines]` (body hidden until paste-again expand).
+  /// Full-screen TUIs collapse long staged pastes into composer chrome when the
+  /// body text is hidden from the grid — treat this chrome as paste ACK:
+  /// - Claude Code: `[Pasted text #3 +17 lines]`
+  /// - opencode:    `[Pasted ~152 lines]`
+  /// - Codex:       `[Pasted Content 29390 chars]`
   static final collapsedPastePattern = RegExp(
-    r'\[Pasted text #\d+ \+\d+ lines?\]',
+    r'\[Pasted [^\]]+\]',
   );
 
   /// Doorbell lines use a stable prefix; short landing text (e.g. CJK) fits whole;
@@ -28,7 +31,7 @@ abstract final class PtyAutomationNeedle {
     return flat.substring(flat.length - maxNeedleChars);
   }
 
-  /// Returns the Claude collapsed-paste chrome substring, or null.
+  /// Returns the collapsed-paste chrome substring, or null.
   static String? collapsedPasteNeedle(String haystack) =>
       collapsedPastePattern.firstMatch(haystack)?.group(0);
 }

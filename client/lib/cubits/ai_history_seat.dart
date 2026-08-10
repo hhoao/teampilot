@@ -16,6 +16,7 @@ import '../services/session/ai_history_pending_text.dart';
 import '../services/session/history_awaiting_working_sync.dart';
 import '../services/session/session_history_pagination.dart';
 import '../services/team_bus/persistence/bus_message_log.dart';
+import 'package:logger/logger.dart';
 import '../utils/logging/logger.dart';
 
 /// Host-local AI history status — not session connect / "starting…".

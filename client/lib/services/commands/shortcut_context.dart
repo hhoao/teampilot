@@ -1,5 +1,5 @@
-import 'package:teampilot/services/commands/command_definition.dart';
-import 'package:teampilot/services/commands/key_chord.dart';
+import 'command_definition.dart';
+import 'key_chord.dart';
 
 /// Snapshot of app focus/state used to decide whether a shortcut fires.
 ///

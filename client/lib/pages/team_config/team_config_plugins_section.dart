@@ -12,7 +12,7 @@ import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../utils/github/github_source_url.dart';
 import '../../widgets/github_details_button.dart';
 import 'team_config_cards.dart';
-import 'package:teampilot/theme/workspace_surface_layers.dart';
+import '../../theme/workspace_surface_layers.dart';
 
 class TeamPluginsSection extends StatelessWidget {
   const TeamPluginsSection({

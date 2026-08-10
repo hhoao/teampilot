@@ -4,15 +4,15 @@ import 'package:android_package_installer/android_package_installer.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:teampilot/l10n/l10n_extensions.dart';
-import 'package:teampilot/models/app_models.dart';
-import 'package:teampilot/router/app_router.dart';
-import 'package:teampilot/services/app/app_update_installer.dart';
-import 'package:teampilot/services/app/app_update_service.dart';
-import 'package:teampilot/services/app/backend_app_update_service.dart';
-import 'package:teampilot/utils/ui/changelog_parser.dart';
+import '../l10n/l10n_extensions.dart';
+import '../models/app_models.dart';
+import '../router/app_router.dart';
+import '../services/app/app_update_installer.dart';
+import '../services/app/app_update_service.dart';
+import '../services/app/backend_app_update_service.dart';
+import '../utils/ui/changelog_parser.dart';
 import 'package:shared_ui/shared_ui.dart';
-import 'package:teampilot/widgets/app_toast/app_toast.dart';
+import 'app_toast/app_toast.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Backend-driven update dialog: download and install on Android and desktop.

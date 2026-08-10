@@ -171,16 +171,26 @@
       }
     }
   },
-  "gitStage": "暂存更改",
-  "gitUnstage": "取消暂存",
-  "gitStageAll": "暂存所有更改",
-  "gitUnstageAll": "取消暂存所有更改",
-  "gitStageFolder": "暂存此目录下的更改",
-  "gitUnstageFolder": "取消暂存此目录下的更改",
   "treeExpandAllFolders": "展开所有目录",
   "treeCollapseAllFolders": "折叠所有目录",
   "gitDiscard": "放弃更改",
   "gitOpenFile": "打开文件",
+  "gitIncludeInCommit": "纳入本次提交",
+  "@gitIncludeInCommit": {
+    "description": "右键菜单动作：将文件纳入本次提交。"
+  },
+  "gitExcludeFromCommit": "排除出本次提交",
+  "@gitExcludeFromCommit": {
+    "description": "右键菜单动作：将文件排除出本次提交。"
+  },
+  "gitIncludeFolderInCommit": "纳入文件夹到本次提交",
+  "@gitIncludeFolderInCommit": {
+    "description": "右键菜单动作：将文件夹及其更改的文件纳入本次提交。"
+  },
+  "gitExcludeFolderFromCommit": "从本次提交排除文件夹",
+  "@gitExcludeFolderFromCommit": {
+    "description": "右键菜单动作：将文件夹及其更改的文件排除出本次提交。"
+  },
   "gitShowDiff": "显示差异",
   "gitCopyPath": "复制路径",
   "gitDiscardFolder": "放弃文件夹中的更改",
@@ -672,7 +682,7 @@
   "workspaceChatLandingUsePreset": "使用预设",
   "workspaceChatLandingCustomLaunch": "自定义…",
   "workspaceChatLandingCustomLaunchTitle": "自定义启动",
-  "workspaceChatLandingFullAccessPermissions": "完成访问权限",
+  "workspaceChatLandingFullAccessPermissions": "完全访问权限",
   "workspaceChatLandingSkills": "技能",
   "workspaceChatLandingConnectApps": "连应用",
   "workspaceChatLandingDefaultPermissions": "默认权限",

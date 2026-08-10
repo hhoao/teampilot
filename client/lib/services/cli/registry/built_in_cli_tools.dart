@@ -1,52 +1,65 @@
 import '../../../models/team_config.dart';
-import '../../../services/provider/claude/claude_provider_credential_capability.dart';
-import '../../../services/provider/codex/codex_provider_credential_capability.dart';
-import '../../../services/provider/cursor/cursor_provider_credential_capability.dart';
-import '../../../services/provider/cursor/cursor_provider_model_capability.dart';
-import '../../../services/provider/opencode/opencode_provider_credential_capability.dart';
+import '../../../services/cli/claude/claude_bootstrap_entry.dart';
+import '../../../services/cli/claude/provider/claude_provider_credential_capability.dart';
+import '../../../services/cli/codex/codex_bootstrap_entry.dart';
+import '../../../services/cli/codex/provider/codex_provider_credential_capability.dart';
+import '../../../services/cli/cursor/cursor_bootstrap_entry.dart';
+import '../../../services/cli/cursor/provider/cursor_provider_credential_capability.dart';
+import '../../../services/cli/cursor/provider/cursor_provider_model_capability.dart';
+import '../../../services/cli/opencode/opencode_bootstrap_entry.dart';
+import '../../../services/cli/opencode/provider/opencode_provider_credential_capability.dart';
+import '../../../services/cli/opencode/provider/opencode_provider_model_capability.dart';
 import 'capabilities/member_agent_preset_capability.dart';
 import 'capabilities/member_config_inspection_capability.dart';
 import 'capabilities/provider_model_capability.dart';
 import 'cli_bootstrap.dart';
 import 'cli_tool_registry.dart';
-import 'tools/claude_cli_tool.dart';
-import 'tools/codex_cli_tool.dart';
-import 'tools/cursor_cli_tool.dart';
-import 'tools/flashskyai_cli_tool.dart';
-import 'tools/opencode_cli_tool.dart';
+import '../claude/claude_tool.dart';
+import '../codex/codex_tool.dart';
+import '../cursor/cursor_tool.dart';
+import '../flashskyai/flashskyai_tool.dart';
+import '../opencode/opencode_tool.dart';
 
 void registerBuiltInCliTools(
   CliToolRegistry registry, {
-  CliBootstrap bootstrap = const CliBootstrap(),
+  CliBootstrap bootstrap = const CliBootstrap({}),
 }) {
+  final claudeEntry = bootstrap.entry<ClaudeBootstrapEntry>(CliTool.claude);
+  final codexEntry = bootstrap.entry<CodexBootstrapEntry>(CliTool.codex);
+  final opencodeEntry = bootstrap.entry<OpencodeBootstrapEntry>(CliTool.opencode);
+  final cursorEntry = bootstrap.entry<CursorBootstrapEntry>(CliTool.cursor);
+
   registry.register(
     ClaudeCliTool(
       providerCredential: ClaudeProviderCredentialCapability(
-        credentials: bootstrap.claudeCredentialsService,
+        credentials: claudeEntry?.credentialsService,
       ),
     ),
   );
   registry.register(
     CodexCliTool(
       providerCredential: CodexProviderCredentialCapability(
-        credentials: bootstrap.codexCredentialsService,
+        credentials: codexEntry?.credentialsService,
       ),
     ),
   );
   registry.register(
     OpencodeCliTool(
+      providerModel: OpencodeProviderModelCapability(
+        modelsService: opencodeEntry?.modelsService,
+      ),
       providerCredential: OpencodeProviderCredentialCapability(
-        credentials: bootstrap.opencodeCredentialsService,
+        credentials: opencodeEntry?.credentialsService,
       ),
     ),
   );
   registry.register(
     CursorCliTool(
       providerModel: CursorProviderModelCapability(
-        modelsService: bootstrap.cursorAgentModelsService,
+        modelsService: cursorEntry?.agentModelsService,
       ),
       providerCredential: CursorProviderCredentialCapability(
-        credentials: bootstrap.cursorCredentialsService,
+        credentials: cursorEntry?.credentialsService,
       ),
     ),
   );

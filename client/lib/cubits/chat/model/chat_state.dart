@@ -34,7 +34,8 @@ class ChatState extends Equatable {
     this.visibleSessions = const [],
     this.activeSessionId,
     this.selectedMemberId = '',
-    this.stateVersion = 0,
+    this.provisionVersion = 0,
+    this.podViewVersion = 0,
     this.snackbarMessage,
     this.sessionLaunchError,
     this.teamConfigValidation,
@@ -47,7 +48,16 @@ class ChatState extends Equatable {
   final List<AppSession> visibleSessions;
   final String? activeSessionId;
   final String selectedMemberId;
-  final int stateVersion;
+
+  /// Bumped on every remote provision progress update so the remote-provision UI
+  /// (ChatWorkbench) rebuilds without a catch-all state version.
+  final int provisionVersion;
+
+  /// Bumped when [SessionPod.setView] changes the workbench view (chat↔terminal).
+  /// Widgets that read [ChatTab.workbenchView] (or the equivalent pod view) use
+  /// this to stay in sync without depending on the removed stateVersion.
+  final int podViewVersion;
+
   final String? snackbarMessage;
 
   /// Launch error when connect fails before a tab exists (empty workbench).
@@ -70,7 +80,8 @@ class ChatState extends Equatable {
     String? activeSessionId,
     String? selectedMemberId,
     bool clearActiveSessionId = false,
-    int? stateVersion,
+    int? provisionVersion,
+    int? podViewVersion,
     String? snackbarMessage,
     bool clearSnackbarMessage = false,
     String? sessionLaunchError,
@@ -88,7 +99,8 @@ class ChatState extends Equatable {
           ? null
           : (activeSessionId ?? this.activeSessionId),
       selectedMemberId: selectedMemberId ?? this.selectedMemberId,
-      stateVersion: stateVersion ?? this.stateVersion,
+      provisionVersion: provisionVersion ?? this.provisionVersion,
+      podViewVersion: podViewVersion ?? this.podViewVersion,
       snackbarMessage: clearSnackbarMessage
           ? null
           : (snackbarMessage ?? this.snackbarMessage),
@@ -110,7 +122,8 @@ class ChatState extends Equatable {
     visibleSessions,
     activeSessionId,
     selectedMemberId,
-    stateVersion,
+    provisionVersion,
+    podViewVersion,
     snackbarMessage,
     sessionLaunchError,
     teamConfigValidation,

@@ -23,10 +23,11 @@ class GitState extends Equatable {
     this.branches = const [],
     this.errorMessage,
     this.expandedFolderPaths = const {},
+    this.selectedPaths = const {},
     this.generatingCommitMessage = false,
     this.changesTreeView = const GitChangesTreeViewData(
       rows: [],
-      stagedCount: 0,
+      selectedCount: 0,
       totalCount: 0,
     ),
   });
@@ -42,6 +43,10 @@ class GitState extends Equatable {
   final List<String> branches;
   final String? errorMessage;
   final Set<String> expandedFolderPaths;
+
+  /// Paths included in the next commit (IDEA-style selection model: checkbox
+  /// = include). Pure UI state, reconciled against the status on refresh.
+  final Set<String> selectedPaths;
   final bool generatingCommitMessage;
 
   /// Flattened staged/unstaged rows for the changes tree (recomputed in cubit).
@@ -68,6 +73,7 @@ class GitState extends Equatable {
     List<String>? branches,
     String? errorMessage,
     Set<String>? expandedFolderPaths,
+    Set<String>? selectedPaths,
     bool? generatingCommitMessage,
     GitChangesTreeViewData? changesTreeView,
     bool clearError = false,
@@ -82,6 +88,7 @@ class GitState extends Equatable {
       branches: branches ?? this.branches,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
       expandedFolderPaths: expandedFolderPaths ?? this.expandedFolderPaths,
+      selectedPaths: selectedPaths ?? this.selectedPaths,
       generatingCommitMessage:
           generatingCommitMessage ?? this.generatingCommitMessage,
       changesTreeView: changesTreeView ?? this.changesTreeView,
@@ -99,6 +106,7 @@ class GitState extends Equatable {
     branches,
     errorMessage,
     expandedFolderPaths,
+    selectedPaths,
     generatingCommitMessage,
     changesTreeView,
   ];
@@ -122,6 +130,10 @@ class GitCubit extends Cubit<GitState> {
   /// Seeds [GitState.expandedFolderPaths] once after the first status load.
   bool _treeExpansionInitialized = false;
 
+  /// Paths seen in the last status refresh. Used by [_reconcileSelectedPaths]
+  /// to auto-check newly-appeared changes while preserving manual unchecks.
+  Set<String> _knownChangedPaths = {};
+
   @visibleForTesting
   void debugSetState(GitState next) => _publish(next, recomputeRows: false);
 
@@ -133,6 +145,7 @@ class GitCubit extends Cubit<GitState> {
           staged: next.status.staged,
           unstaged: next.status.unstaged,
           expandedFolderPaths: next.expandedFolderPaths,
+          selectedPaths: next.selectedPaths,
         ),
       );
     }
@@ -145,14 +158,16 @@ class GitCubit extends Cubit<GitState> {
     _treeExpansionInitialized = false;
     _branchesLoaded = false;
     _branchesInFlight = null;
+    _knownChangedPaths = {};
     _publish(
       state.copyWith(
         repoRoot: path,
         branches: const [],
         expandedFolderPaths: const {},
+        selectedPaths: const {},
         changesTreeView: const GitChangesTreeViewData(
           rows: [],
-          stagedCount: 0,
+          selectedCount: 0,
           totalCount: 0,
         ),
         clearError: true,
@@ -231,14 +246,17 @@ class GitCubit extends Cubit<GitState> {
         ]);
         _treeExpansionInitialized = true;
       }
+      final selected = _reconcileSelectedPaths(status);
       final next = state.copyWith(
         gitAvailable: true,
         isLoading: false,
         status: status,
         expandedFolderPaths: expanded,
+        selectedPaths: selected,
       );
       if (next.status == state.status &&
           next.expandedFolderPaths == state.expandedFolderPaths &&
+          next.selectedPaths == state.selectedPaths &&
           next.isLoading == state.isLoading &&
           next.gitAvailable == state.gitAvailable &&
           next.errorMessage == state.errorMessage) {
@@ -249,6 +267,21 @@ class GitCubit extends Cubit<GitState> {
       if (isClosed || state.repoRoot != dir) return;
       _publish(state.copyWith(isLoading: false, errorMessage: e.message));
     }
+  }
+
+  /// Keeps manual selection across refreshes: drops paths that vanished,
+  /// auto-checks newly-appeared changes, preserves everything else.
+  Set<String> _reconcileSelectedPaths(GitRepoStatus status) {
+    final changedNow = <String>{
+      for (final c in status.staged) c.path,
+      for (final c in status.unstaged) c.path,
+    };
+    final next = <String>{
+      ...state.selectedPaths.where(changedNow.contains),
+      ...changedNow.difference(_knownChangedPaths),
+    };
+    _knownChangedPaths = changedNow;
+    return next;
   }
 
   /// Lazily loads the branch list for the current repo (first call only, unless
@@ -314,35 +347,47 @@ class GitCubit extends Cubit<GitState> {
     }
   }
 
-  Future<void> stage(GitFileChange change) => _optimisticMutate(
-    apply: () => _moveOptimistic(change, toStaged: true),
-    action: () => _service.stage(state.repoRoot, [change.path]),
-  );
+  /// Selection-model ops: these are pure UI state (no git), matching IDEA's
+  /// "include in the next commit" checkboxes.
+  Future<void> selectPath(String path) async {
+    _publish(state.copyWith(selectedPaths: {...state.selectedPaths, path}));
+  }
 
-  Future<void> unstage(GitFileChange change) => _optimisticMutate(
-    apply: () => _moveOptimistic(change, toStaged: false),
-    action: () => _service.unstage(state.repoRoot, [change.path]),
-  );
+  Future<void> deselectPath(String path) async {
+    final next = {...state.selectedPaths}..remove(path);
+    _publish(state.copyWith(selectedPaths: next));
+  }
 
-  Future<void> stageFolder(String folderPath) => _optimisticMutate(
-    apply: () => _moveFolderOptimistic(folderPath, toStaged: true),
-    action: () => _service.stage(state.repoRoot, [folderPath]),
-  );
+  Future<void> selectFolder(String folderPath) async {
+    final changed = _changedPathsUnder(folderPath);
+    _publish(state.copyWith(selectedPaths: {...state.selectedPaths, ...changed}));
+  }
 
-  Future<void> unstageFolder(String folderPath) => _optimisticMutate(
-    apply: () => _moveFolderOptimistic(folderPath, toStaged: false),
-    action: () => _service.unstage(state.repoRoot, [folderPath]),
-  );
+  Future<void> deselectFolder(String folderPath) async {
+    final changed = _changedPathsUnder(folderPath);
+    final next = {...state.selectedPaths}..removeAll(changed);
+    _publish(state.copyWith(selectedPaths: next));
+  }
 
-  Future<void> stageAll() => _optimisticMutate(
-    apply: () => _moveAllOptimistic(toStaged: true),
-    action: () => _service.stageAll(state.repoRoot),
-  );
+  Future<void> selectAll() async {
+    _publish(
+      state.copyWith(
+        selectedPaths: <String>{
+          for (final c in [...state.status.staged, ...state.status.unstaged])
+            c.path,
+        },
+      ),
+    );
+  }
 
-  Future<void> unstageAll() => _optimisticMutate(
-    apply: () => _moveAllOptimistic(toStaged: false),
-    action: () => _service.unstageAll(state.repoRoot),
-  );
+  Future<void> selectNone() async {
+    _publish(state.copyWith(selectedPaths: const <String>{}));
+  }
+
+  Set<String> _changedPathsUnder(String folderPath) => <String>{
+    for (final c in [...state.status.staged, ...state.status.unstaged])
+      if (c.path == folderPath || c.path.startsWith('$folderPath/')) c.path,
+  };
 
   Future<void> discard(GitFileChange change) =>
       _mutate(() => _service.discard(state.repoRoot, change));
@@ -352,84 +397,17 @@ class GitCubit extends Cubit<GitState> {
   Future<void> discardFolder(String folderPath) =>
       _mutate(() => _service.discardFolder(state.repoRoot, folderPath));
 
-  /// Like [_mutate] but publishes the staged/unstaged move [apply] predicts
-  /// immediately, so checkbox toggles feel instant. The real [action] runs in
-  /// the background; on success the follow-up [refresh] reconciles with git's
-  /// actual state. On failure the optimistic move is reverted to [prior] (a
-  /// failed git op is atomic, so the pre-op status is the truth) and the error
-  /// is surfaced.
-  Future<void> _optimisticMutate({
-    required GitRepoStatus Function() apply,
-    required Future<void> Function() action,
-  }) async {
-    if (state.busy) return;
-    final prior = state.status;
-    _publish(state.copyWith(status: apply(), busy: true, clearError: true));
-    try {
-      await action();
-    } on GitException catch (e) {
-      if (isClosed) return;
-      _publish(
-        state.copyWith(
-          status: prior,
-          errorMessage: e.message,
-          busy: false,
-        ),
-      );
-      return;
-    }
-    await refresh();
-    if (isClosed) return;
-    _publish(state.copyWith(busy: false), recomputeRows: false);
-  }
-
-  GitRepoStatus _moveOptimistic(GitFileChange change, {required bool toStaged}) {
-    final staged = [...state.status.staged];
-    final unstaged = [...state.status.unstaged];
-    final from = toStaged ? unstaged : staged;
-    from.removeWhere((c) => c.path == change.path);
-    (toStaged ? staged : unstaged)
-        .add(change.copyWith(staged: toStaged));
-    return state.status.copyWith(staged: staged, unstaged: unstaged);
-  }
-
-  GitRepoStatus _moveFolderOptimistic(
-    String folderPath, {
-    required bool toStaged,
-  }) {
-    final staged = [...state.status.staged];
-    final unstaged = [...state.status.unstaged];
-    final from = toStaged ? unstaged : staged;
-    final moved = <GitFileChange>[
-      for (final c in from)
-        if (c.path == folderPath || c.path.startsWith('$folderPath/')) c,
-    ];
-    from.removeWhere(
-      (c) => c.path == folderPath || c.path.startsWith('$folderPath/'),
-    );
-    (toStaged ? staged : unstaged)
-        .addAll(moved.map((c) => c.copyWith(staged: toStaged)));
-    return state.status.copyWith(staged: staged, unstaged: unstaged);
-  }
-
-  GitRepoStatus _moveAllOptimistic({required bool toStaged}) {
-    final staged = [...state.status.staged];
-    final unstaged = [...state.status.unstaged];
-    final from = toStaged ? unstaged : staged;
-    final moved = from.map((c) => c.copyWith(staged: toStaged)).toList();
-    from.clear();
-    (toStaged ? staged : unstaged).addAll(moved);
-    return state.status.copyWith(staged: staged, unstaged: unstaged);
-  }
-
-  /// Commits staged changes. No-op (with an error message) when the message is
-  /// blank or nothing is staged.
+  /// Commits the selected paths. No-op when the message is blank or nothing is
+  /// selected.
   Future<bool> commit() async {
     final message = state.commitMessage.trim();
-    if (message.isEmpty || state.status.staged.isEmpty) {
+    final paths = state.selectedPaths.toList();
+    if (message.isEmpty || paths.isEmpty) {
       return false;
     }
-    final ok = await _mutate(() => _service.commit(state.repoRoot, message));
+    final ok = await _mutate(
+      () => _service.commitSelected(state.repoRoot, message, paths),
+    );
     if (ok) {
       _publish(state.copyWith(commitMessage: ''), recomputeRows: false);
     }
@@ -454,18 +432,25 @@ class GitCubit extends Cubit<GitState> {
     }
   }
 
-  /// Generates a commit message draft from the staged diff via [setting].
-  /// Fills [GitState.commitMessage]; never commits.
+  /// Generates a commit message draft from the diff of the selected paths via
+  /// [setting]. Fills [GitState.commitMessage]; never commits.
   Future<void> generateCommitMessage(AiFeatureSetting setting) async {
     final dir = state.repoRoot;
     if (dir.isEmpty ||
-        state.status.staged.isEmpty ||
+        state.selectedPaths.isEmpty ||
         state.generatingCommitMessage) {
       return;
     }
     _publish(state.copyWith(generatingCommitMessage: true, clearError: true));
     try {
-      final diff = await _service.stagedDiff(dir);
+      final diff = await _service.diffSelectedPaths(
+        dir,
+        state.selectedPaths.toList(),
+        untrackedPaths: <String>{
+          for (final c in state.status.unstaged)
+            if (c.kind == GitChangeKind.untracked) c.path,
+        },
+      );
       if (isClosed || state.repoRoot != dir) return;
       if (diff.trim().isEmpty) {
         _publish(
@@ -511,26 +496,8 @@ class GitCubit extends Cubit<GitState> {
     }
   }
 
-  Future<String?> diff(
-    GitFileChange change, {
-    bool ignoreWhitespace = false,
-    bool fullContext = false,
-  }) async {
-    try {
-      return await _service.diff(
-        state.repoRoot,
-        change,
-        ignoreWhitespace: ignoreWhitespace,
-        fullContext: fullContext,
-      );
-    } on GitException catch (e) {
-      _publish(state.copyWith(errorMessage: e.message), recomputeRows: false);
-      return null;
-    }
-  }
-
   /// Working tree vs HEAD for [relativePath]. When the path is untracked in
-  /// the current status snapshot, uses `--no-index` like [diff] for untracked.
+  /// the current status snapshot, uses `--no-index` for untracked paths.
   Future<String?> diffAgainstHead(
     String relativePath, {
     bool ignoreWhitespace = false,

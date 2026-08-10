@@ -12,7 +12,7 @@ import '../../utils/debounce/debounce.dart';
 import '../../utils/github/github_source_url.dart';
 import '../../widgets/github_details_button.dart';
 import 'skill_management_cards.dart';
-import 'package:teampilot/theme/workspace_surface_layers.dart';
+import '../../theme/workspace_surface_layers.dart';
 
 class SkillInstalledSection extends StatelessWidget {
   const SkillInstalledSection({

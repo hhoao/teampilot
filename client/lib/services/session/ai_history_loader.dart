@@ -6,6 +6,7 @@ import '../../models/app_session.dart';
 import '../../models/cli_preset.dart';
 import '../../models/team_config.dart';
 import '../../models/workspace_launch_context.dart';
+import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import '../cli/preset_resolver.dart';
 import '../cli/registry/capabilities/ai_history_capability.dart';

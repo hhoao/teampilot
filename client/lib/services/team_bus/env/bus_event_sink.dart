@@ -1,3 +1,4 @@
+import 'package:logger/logger.dart';
 import '../../../utils/logging/logger.dart';
 import 'bus_observation.dart';
 

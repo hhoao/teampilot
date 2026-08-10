@@ -474,24 +474,6 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get gitStage => '暂存更改';
-
-  @override
-  String get gitUnstage => '取消暂存';
-
-  @override
-  String get gitStageAll => '暂存所有更改';
-
-  @override
-  String get gitUnstageAll => '取消暂存所有更改';
-
-  @override
-  String get gitStageFolder => '暂存此目录下的更改';
-
-  @override
-  String get gitUnstageFolder => '取消暂存此目录下的更改';
-
-  @override
   String get treeExpandAllFolders => '展开所有目录';
 
   @override
@@ -502,6 +484,18 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get gitOpenFile => '打开文件';
+
+  @override
+  String get gitIncludeInCommit => '纳入本次提交';
+
+  @override
+  String get gitExcludeFromCommit => '排除出本次提交';
+
+  @override
+  String get gitIncludeFolderInCommit => '纳入文件夹到本次提交';
+
+  @override
+  String get gitExcludeFolderFromCommit => '从本次提交排除文件夹';
 
   @override
   String get gitShowDiff => '显示差异';
@@ -1536,7 +1530,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get workspaceChatLandingCustomLaunchTitle => '自定义启动';
 
   @override
-  String get workspaceChatLandingFullAccessPermissions => '完成访问权限';
+  String get workspaceChatLandingFullAccessPermissions => '完全访问权限';
 
   @override
   String get workspaceChatLandingSkills => '技能';

@@ -4,8 +4,8 @@ import 'dart:io';
 
 import '../services/io/filesystem.dart';
 import '../services/io/local_filesystem.dart';
-import '../services/provider/cursor/cursor_session_config_dir.dart';
-import '../services/provider/cursor/cursor_windows_home_junction.dart';
+import '../services/cli/cursor/provider/cursor_session_config_dir.dart';
+import '../services/cli/cursor/provider/cursor_windows_home_junction.dart';
 import '../services/storage/app_storage.dart';
 import '../services/storage/workspace_layout.dart';
 import 'session_snapshot_reader.dart';

@@ -15,7 +15,7 @@ class GitChangeFolderTile extends StatelessWidget {
     required this.folderPath,
     required this.name,
     required this.depth,
-    required this.subtreeStagedCount,
+    required this.subtreeSelectedCount,
     required this.subtreeTotalCount,
     required this.cubit,
     required this.onStage,
@@ -28,7 +28,7 @@ class GitChangeFolderTile extends StatelessWidget {
   final String folderPath;
   final String name;
   final int depth;
-  final int subtreeStagedCount;
+  final int subtreeSelectedCount;
   final int subtreeTotalCount;
   final GitCubit cubit;
   final VoidCallback onStage;
@@ -39,9 +39,9 @@ class GitChangeFolderTile extends StatelessWidget {
   bool? get _triState =>
       subtreeTotalCount == 0
           ? false
-          : subtreeStagedCount == subtreeTotalCount
+          : subtreeSelectedCount == subtreeTotalCount
           ? true
-          : subtreeStagedCount == 0
+          : subtreeSelectedCount == 0
           ? false
           : null;
 
@@ -84,28 +84,38 @@ class GitChangeFolderTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               SizedBox(
-                width: 16,
+                width: kGitChangesChevronWidth,
                 height: 16,
-                child: AnimatedRotation(
-                  turns: isExpanded ? 0.25 : 0.0,
-                  duration: const Duration(milliseconds: 150),
-                  child: Icon(
-                    Icons.chevron_right,
-                    size: 16,
-                    color: cs.onSurfaceVariant,
+                // Flush the 16px glyph to the left edge of the 18px column so
+                // it aligns with the parent folder's checkbox left edge.
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: AnimatedRotation(
+                    turns: isExpanded ? 0.25 : 0.0,
+                    duration: const Duration(milliseconds: 150),
+                    child: Icon(
+                      Icons.chevron_right,
+                      size: 16,
+                      color: cs.onSurfaceVariant,
+                    ),
                   ),
                 ),
               ),
               SizedBox(
-                width: kGitChangesCheckboxWidth,
+                width: kGitChangesCheckboxColumnWidth,
                 height: kGitChangesCheckboxWidth,
-                child: Checkbox(
-                  value: _triState,
-                  tristate: true,
-                  onChanged: (_) => _triState == true
-                      ? onUnstage()
-                      : onStage(),
-                  visualDensity: VisualDensity.compact,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: kGitChangesCheckboxHPadding,
+                  ),
+                  child: Checkbox(
+                    value: _triState,
+                    tristate: true,
+                    onChanged: (_) => _triState == true
+                        ? onUnstage()
+                        : onStage(),
+                    visualDensity: VisualDensity.compact,
+                  ),
                 ),
               ),
               const SizedBox(width: 4),

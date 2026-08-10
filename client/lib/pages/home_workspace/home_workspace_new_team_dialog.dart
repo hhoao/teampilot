@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
 import '../../services/workspace/workspace_pane_policy.dart';
-import 'package:teampilot/widgets/app_toast/app_toast.dart';
+import '../../widgets/app_toast/app_toast.dart';
 
 import '../../cubits/ai_feature_settings_cubit.dart';
 import '../../cubits/app_provider_cubit.dart';
