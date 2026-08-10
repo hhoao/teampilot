@@ -32,7 +32,13 @@ bool appendClaudeJsonlEvent(
   final messageMap = Map<String, dynamic>.from(message);
   final content = messageMap['content'];
   final timestamp = _parseTimestamp(event['timestamp']);
-  final id = _logicalMessageId(event, fallbackId);
+
+  // Lazily compute the logical message id so an event that ends up discarded
+  // (empty text / tool_result-only batch) never consumes a fallback id:
+  // the incremental tailer's fallback seq must advance exactly like the full
+  // parse's, otherwise message ids flip between incremental and rebuild.
+  String? memoId;
+  String id() => memoId ??= _logicalMessageId(event, fallbackId);
 
   if (content is String) {
     final text = content.trim();
@@ -40,7 +46,7 @@ bool appendClaudeJsonlEvent(
     _addOrMerge(
       messages,
       AiMessage(
-        id: id,
+        id: id(),
         role: type == 'user' ? AiRole.user : AiRole.assistant,
         parts: [AiTextPart(text: text)],
         createdAt: timestamp,
@@ -93,25 +99,27 @@ bool appendClaudeJsonlEvent(
     }
   }
 
+  var appliedAny = false;
   for (final result in toolResults) {
-    _applyToolResult(
-      messages,
-      toolUseId: result.toolUseId,
-      result: result.result,
-      isError: result.isError,
-    );
+    appliedAny = _applyToolResult(
+          messages,
+          toolUseId: result.toolUseId,
+          result: result.result,
+          isError: result.isError,
+        ) ||
+        appliedAny;
   }
 
   final parts = <AiMessagePart>[
     ...textParts,
     if (type == 'assistant') ...toolParts,
   ];
-  if (parts.isEmpty) return false;
+  if (parts.isEmpty) return appliedAny;
 
   _addOrMerge(
     messages,
     AiMessage(
-      id: id,
+      id: id(),
       role: type == 'user' ? AiRole.user : AiRole.assistant,
       parts: parts,
       createdAt: timestamp,
@@ -195,13 +203,13 @@ Object? _toolResultValue(Object? content) {
   };
 }
 
-void _applyToolResult(
+bool _applyToolResult(
   List<AiMessage> messages, {
   required String toolUseId,
   required Object? result,
   required bool isError,
 }) {
-  applyAiToolResult(
+  return applyAiToolResult(
     messages,
     toolUseId: toolUseId,
     result: result,

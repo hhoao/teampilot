@@ -231,13 +231,12 @@ bool _appendFromResponseItem(
     case 'function_call_output':
       final callId = payload['call_id'];
       if (callId is! String || callId.isEmpty) return false;
-      _applyToolResult(
+      return _applyToolResult(
         messages,
         toolUseId: callId,
         result: '${payload['output'] ?? ''}',
         isError: false,
       );
-      return true;
     case 'custom_tool_call':
       final name = '${payload['name'] ?? ''}'.trim();
       final callId = payload['call_id'];
@@ -263,13 +262,12 @@ bool _appendFromResponseItem(
     case 'custom_tool_call_output':
       final callId = payload['call_id'];
       if (callId is! String || callId.isEmpty) return false;
-      _applyToolResult(
+      return _applyToolResult(
         messages,
         toolUseId: callId,
         result: '${payload['output'] ?? ''}',
         isError: false,
       );
-      return true;
     case 'reasoning':
       // Dual-written with event_msg agent_reasoning — keep the first only.
       final text = _reasoningSummaryText(payload);
@@ -431,13 +429,13 @@ String? _argsText(Object? argsRaw) {
   return null;
 }
 
-void _applyToolResult(
+bool _applyToolResult(
   List<AiMessage> messages, {
   required String toolUseId,
   required Object? result,
   required bool isError,
 }) {
-  applyAiToolResult(
+  return applyAiToolResult(
     messages,
     toolUseId: toolUseId,
     result: result,
