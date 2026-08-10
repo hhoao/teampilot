@@ -68,7 +68,7 @@ final attachments = await const SubagentAttachmentInflater().inflate(...);
 
 2. **子代理附件**:inflate 返回的 `Map<String, AiSubagentAttachment>` 是**独立的数据结构**(attachment.messages 永不合并回 `messages`,subagent_preview_scaffold 直接渲染它们)。loader 在 inflate 之后遍历 `attachments.values` 的每条 `messages` 递归标注——顶层 messages 里的子代理 tool call 已被标注,嵌套引用只是 map 内其他 key,遍历全部 value 即全覆盖。
 
-3. **mailbox 合并后**:`_mergeWithMailbox`(ai_history_seat.dart:273/684)在 `loader.load` **之后**运行,可能引入绕过 loader 通道的 tool call(防御性标注;当前 mailbox 事件为纯用户文本,refreshMailboxTimeline 路径同样安全)。seat 在两个 merge 汇聚点(load:273-279 与 softReload:399-403)对 merged 列表再调用一次 `loader.annotate(messages)`(loader 暴露薄封装,内部复用缓存好的 resolver)。
+3. **mailbox 合并后**:`_mergeWithMailbox`(ai_history_seat.dart:273/684)在 `loader.load` **之后**运行,可能引入绕过 loader 通道的 tool call(防御性标注;当前 mailbox 事件为纯用户文本,refreshMailboxTimeline 路径同样安全)。seat 在 merge 汇聚点对 merged 列表再调用一次 `loader.annotate(messages)`(loader 暴露薄封装,内部复用缓存好的 resolver)。汇聚点包括:load(273-279)、softReload(399-403)以及 empty-CLI 预定位路径(376-380,该路径重组的是已标注的 `_cliMessages`,标注为幂等可选调用——实现时三处统一调用,避免遗漏)。
 
 - loader 内部通过 `_registry.capability<ToolCallResolversCapability>(cli)` 获取 categoryResolver(注意:loader 手头只有 `AiHistoryCapability`,需**第二次 registry 查询**)
 - 标注结果随 loader 的 per-token 缓存一起缓存,不重复计算
@@ -202,7 +202,7 @@ client/lib/
 | command | bash, shell, shell_command, exec_command, run_shell_command, run_terminal_cmd, zsh, sh |
 | search | websearch, web_search, webfetch, web_fetch, fetch, url_fetch, search_web |
 | browser | browser, browser_navigate, browser_click, browser_type, browser_act, playwright, computer, computer_use |
-| subagent | agent, task, workflow, spawn_agent, agentdelegate, subagent |
+| subagent | agent, task, workflow, spawn_agent, agentdelegate(前瞻预留,当前无 CLI 使用), subagent |
 | askUser | askuserquestion, ask_user_question, ask_user |
 | plan | plan, exitplanmode, exit_plan_mode |
 | task | todowrite, todo_write, taskcreate, task_create, taskupdate, task_update |
