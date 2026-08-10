@@ -25,7 +25,7 @@ String? firstNonEmptyString(Map<String, Object?>? args, List<String> keys) {
   if (args == null) return null;
   for (final key in keys) {
     final value = args[key];
-    if (value is String && value.isNotEmpty) return value;
+    if (value is String && value.trim().isNotEmpty) return value.trim();
   }
   return null;
 }
@@ -57,7 +57,7 @@ int? firstPositiveInt(Map<String, Object?>? args, List<String> keys) {
 /// [String] representations.
 int? parsePositiveInt(Object? value) {
   if (value is int && value >= 1) return value;
-  if (value is num && value >= 1) return value.toInt();
+  if (value is num && value.isFinite && value >= 1) return value.toInt();
   if (value is String) {
     final parsed = int.tryParse(value.trim());
     if (parsed != null && parsed >= 1) return parsed;

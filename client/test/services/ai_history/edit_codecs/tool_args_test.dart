@@ -117,6 +117,16 @@ void main() {
       expect(firstNonEmptyString(args, ['x', 'y']), isNull);
     });
 
+    test('skips whitespace-only strings', () {
+      final args = <String, Object?>{'x': '   ', 'y': '\t\n'};
+      expect(firstNonEmptyString(args, ['x', 'y']), isNull);
+    });
+
+    test('trims whitespace from returned string', () {
+      final args = <String, Object?>{'x': '  hello  '};
+      expect(firstNonEmptyString(args, ['x']), equals('hello'));
+    });
+
     test('skips non-string values', () {
       final args = <String, Object?>{'num': 42, 'str': 'valid'};
       expect(firstNonEmptyString(args, ['num', 'str']), equals('valid'));
@@ -245,6 +255,14 @@ void main() {
 
     test('returns null for double < 1', () {
       expect(parsePositiveInt(0.5), isNull);
+    });
+
+    test('returns null for double.infinity', () {
+      expect(parsePositiveInt(double.infinity), isNull);
+    });
+
+    test('returns null for double.nan', () {
+      expect(parsePositiveInt(double.nan), isNull);
     });
 
     test('parses positive numeric string', () {
