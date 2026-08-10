@@ -341,11 +341,24 @@ class LocalFilesystem implements Filesystem, FsWatcher {
       if (_linkAlreadyPointsTo(target: normalizedTarget, linkPath: linkPath)) {
         return true;
       }
-      if (!Platform.isWindows) rethrow;
-      if (await _createWindowsJunction(
-        linkPath: linkPath,
-        target: normalizedTarget,
-      )) {
+      // Retry once: _linkAlreadyPointsTo can return false when a concurrent
+      // removeRecursive deletes the link between its typeSync and targetSync
+      // calls — targetSync throws, the check returns false, but the link
+      // WAS correct before the race.  A single retry handles this window.
+      try {
+        await Link(linkPath).create(normalizedTarget);
+        return true;
+      } on FileSystemException {
+        if (_linkAlreadyPointsTo(target: normalizedTarget, linkPath: linkPath)) {
+          return true;
+        }
+        if (!Platform.isWindows) rethrow;
+      }
+      if (Platform.isWindows &&
+          await _createWindowsJunction(
+            linkPath: linkPath,
+            target: normalizedTarget,
+          )) {
         return true;
       }
       throw FileSystemException('junction failed', linkPath, e.osError);
