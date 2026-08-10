@@ -783,15 +783,7 @@ class SessionLaunchService
   ChatTab _appendLocalTab(TeamProfile team, {required bool emitChange}) {
     final tab = _tabStore.appendLocalTab(team, cliTeamName: _uuid.v4());
     if (emitChange) {
-      _h.applyState(
-        _state.copyWith(
-          tabs: _tabStore.activeTabInfos(),
-          activeTabIndex: _tabStore.activeTabCount - 1,
-          activeSessionId: tab.info.id,
-          selectedMemberId: tab.selectedMemberId,
-          newChatActive: false,
-        ),
-      );
+      _h.publishTabsAtIndex(_tabStore.activeTabCount - 1);
     }
     return tab;
   }

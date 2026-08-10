@@ -923,8 +923,7 @@ class _SessionChatViewState extends State<SessionChatView> {
       listeners: [
         BlocListener<ChatCubit, ChatState>(
           listenWhen: (previous, current) =>
-              previous.workingSessionIds != current.workingSessionIds ||
-              previous.stateVersion != current.stateVersion,
+              previous.workingSessionIds != current.workingSessionIds,
           listener: (context, state) {
             _syncAwaitingFromWorkingSessions(state);
             _maybeStartLiveRefreshForRunningPty();

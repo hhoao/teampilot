@@ -179,7 +179,6 @@ void main() {
           sessions: [
             stale.copyWith(display: 'RenamedTitle'),
           ],
-          stateVersion: chatCubit.state.stateVersion + 1,
         ),
       );
       await tester.pump();

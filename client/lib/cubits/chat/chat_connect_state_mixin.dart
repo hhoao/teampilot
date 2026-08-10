@@ -47,7 +47,6 @@ mixin ChatConnectStateMixin on Cubit<ChatState> {
           state.copyWith(
             tabs: tabStore.activeTabInfos(),
             clearSessionLaunchError: true,
-            stateVersion: state.stateVersion + 1,
           ),
         );
       }
@@ -56,7 +55,6 @@ mixin ChatConnectStateMixin on Cubit<ChatState> {
     emit(
       state.copyWith(
         sessionLaunchError: message,
-        stateVersion: state.stateVersion + 1,
       ),
     );
   }
@@ -73,7 +71,6 @@ mixin ChatConnectStateMixin on Cubit<ChatState> {
       state.copyWith(
         tabs: tabChanged ? tabStore.activeTabInfos() : state.tabs,
         clearSessionLaunchError: true,
-        stateVersion: state.stateVersion + 1,
       ),
     );
   }
@@ -120,7 +117,6 @@ mixin ChatConnectStateMixin on Cubit<ChatState> {
     emit(
       state.copyWith(
         tabs: tabStore.activeTabInfos(),
-        stateVersion: state.stateVersion + 1,
       ),
     );
     onTabRunningChanged();
@@ -134,7 +130,6 @@ mixin ChatConnectStateMixin on Cubit<ChatState> {
     emit(
       state.copyWith(
         snackbarMessage: warnings.first,
-        stateVersion: state.stateVersion + 1,
       ),
     );
   }
@@ -151,7 +146,6 @@ mixin ChatConnectStateMixin on Cubit<ChatState> {
     emit(
       state.copyWith(
         teamConfigValidation: validation,
-        stateVersion: state.stateVersion + 1,
       ),
     );
   }
@@ -172,7 +166,8 @@ mixin ChatConnectStateMixin on Cubit<ChatState> {
     } else {
       tab.memberRemoteProvision[key] = progress;
     }
-    emit(state.copyWith(stateVersion: state.stateVersion + 1));
+    // Bump the provision version so remote-provision UI (ChatWorkbench) rebuilds.
+    emit(state.copyWith(provisionVersion: state.provisionVersion + 1));
   }
 
   void clearTeamConfigValidation() {

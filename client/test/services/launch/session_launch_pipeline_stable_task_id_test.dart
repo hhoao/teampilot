@@ -250,7 +250,6 @@ SessionLaunchPipeline _pipelineForStaging({
   final tabSurface = SessionTabSurfaceCoordinator(
     host: host,
     tabStore: tabStore,
-    state: () => host.state,
     workspaceById: (id) {
       for (final w in host.state.workspaces) {
         if (w.workspaceId == id) return w;

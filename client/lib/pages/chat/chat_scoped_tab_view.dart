@@ -53,7 +53,6 @@ class ChatScopedTabView {
       selectedMemberId: tab?.selectedMemberId ?? '',
       newChatActive: newChatActive,
       workbenchSlice: ChatWorkbenchSlice(
-        stateVersion: state.stateVersion,
         activeSessionId: activeSessionId,
         selectedMemberId: tab?.selectedMemberId ?? '',
         activeTabIndex: index,

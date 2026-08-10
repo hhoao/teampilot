@@ -124,7 +124,16 @@ class _SessionKeepAliveHosts extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final chat = context.watch<ChatCubit>();
+    final chat = context.read<ChatCubit>();
+    // Select a stable composite key of tab structure + per-tab mutable fields
+    // so this widget rebuilds only when session tabs are added/removed or their
+    // selected member / launch error changes — not on every ChatState emit.
+    final _ = context.select<ChatCubit, String>((c) {
+      final tabs = c.tabStore.tabsForWorkspace(tabScopeId);
+      return tabs
+          .map((t) => '${t.info.id}:${t.selectedMemberId}:${t.info.launchError}')
+          .join(',');
+    });
     final tabs = chat.tabStore.tabsForWorkspace(tabScopeId);
     final activeId = workbenchSlice.activeSessionId;
     return KeepAliveSessionStack(
@@ -154,7 +163,6 @@ class _SessionKeepAliveHosts extends StatelessWidget {
 /// only its own tab/shell — never the active conversation's.
 ChatWorkbenchSlice _sliceForSession(ChatState state, ChatTab tab) {
   return ChatWorkbenchSlice(
-    stateVersion: state.stateVersion,
     activeSessionId: tab.info.id,
     selectedMemberId: tab.selectedMemberId,
     activeTabIndex: 0,

@@ -45,7 +45,6 @@ class SessionTabSurfaceCoordinator {
   SessionTabSurfaceCoordinator({
     required SessionLaunchHost host,
     required ChatTabStore tabStore,
-    required ChatState Function() state,
     required Workspace? Function(String workspaceId) workspaceById,
     required bool Function(SessionOpenRequest request) shouldAutoConnect,
     required PrepareNewTabConnectFn prepareNewTabConnect,
@@ -53,7 +52,6 @@ class SessionTabSurfaceCoordinator {
     required PrepareDeferredTeamTabFn prepareDeferredTeamTab,
   }) : _host = host,
        _tabStore = tabStore,
-       _state = state,
        _workspaceById = workspaceById,
        _shouldAutoConnect = shouldAutoConnect,
        _prepareNewTabConnect = prepareNewTabConnect,
@@ -62,7 +60,6 @@ class SessionTabSurfaceCoordinator {
 
   final SessionLaunchHost _host;
   final ChatTabStore _tabStore;
-  final ChatState Function() _state;
   final Workspace? Function(String workspaceId) _workspaceById;
   final bool Function(SessionOpenRequest request) _shouldAutoConnect;
   final PrepareNewTabConnectFn _prepareNewTabConnect;
@@ -85,22 +82,14 @@ class SessionTabSurfaceCoordinator {
     if (memberId.isNotEmpty) {
       existing.selectedMemberId = memberId;
     }
-    final state = _state();
     final connectAlreadyScheduled =
         _host.isSessionConnecting(session.sessionId);
     if (!connectAlreadyScheduled) {
       existing.bumpLaunchGeneration();
     }
     final generation = existing.launchGeneration;
-    _host.applyState(
-      state.copyWith(
-        activeTabIndex: existingIdx,
-        activeSessionId: session.sessionId,
-        selectedMemberId: memberId.isNotEmpty ? memberId : null,
-        newChatActive: false,
-      ),
-    );
-    _host.refreshActiveWorkspaceTabs();
+    // Single emit: old code called applyState + refreshActiveWorkspaceTabs (2 emits).
+    _host.publishTabsAtIndex(existingIdx);
     if (!request.connectImmediately) {
       unawaited(
         _prepareExistingTabConnect(
@@ -168,15 +157,10 @@ class SessionTabSurfaceCoordinator {
 
     _tabStore.append(tab);
     _host.sessionRuntime.ensureIdleWatch();
-    _host.applyState(
-      _state().copyWith(
-        activeTabIndex: _tabStore.activeTabCount - 1,
-        activeSessionId: session.sessionId,
-        selectedMemberId: placeholderMemberId,
-        newChatActive: false,
-      ),
-    );
-    _host.refreshActiveWorkspaceTabs();
+    // Single emit: old code called applyState (with stale tabs!) then
+    // refreshActiveWorkspaceTabs — two emits in one frame, the first of which
+    // rendered inconsistent state.
+    _host.publishTabsAtIndex(_tabStore.activeTabCount - 1);
 
     if (!request.connectImmediately) {
       unawaited(

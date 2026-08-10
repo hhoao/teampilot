@@ -81,6 +81,12 @@ abstract interface class SessionLaunchHost
   /// Single emit entry point (wraps the cubit's protected emit).
   void applyState(ChatState next);
   void refreshActiveWorkspaceTabs();
+
+  /// Single-emit replacement for [applyState] + [refreshActiveWorkspaceTabs]:
+  /// publishes tab state for [desiredIndex] in one frame so new-tab creation
+  /// and tab selection are each a single rebuild.
+  void publishTabsAtIndex(int desiredIndex);
+
   void closeSessionTab(String sessionId);
   void emitTeamConfigValidation(TeamConfigValidation validation);
 
