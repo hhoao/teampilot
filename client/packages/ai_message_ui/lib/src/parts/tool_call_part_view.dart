@@ -64,16 +64,14 @@ class _AiToolCallPartViewState extends State<AiToolCallPartView> {
             isAiSubagentToolName(part.toolName)) &&
         onOpenSubagent != null;
     final useSubagentChrome = isSub;
-    const shellResolver = DefaultAiShellToolTargetResolver();
     final shellTarget =
-        useSubagentChrome ? null : shellResolver.resolve(part);
-    const editResolver = DefaultAiEditToolTargetResolver();
+        useSubagentChrome ? null : fileActions.shellResolver.resolve(part);
     final editTarget = useSubagentChrome || shellTarget != null
         ? null
-        : editResolver.resolve(part);
+        : fileActions.editResolver.resolve(part);
     final target = useSubagentChrome || shellTarget != null || editTarget != null
         ? null
-        : fileActions.resolver.resolve(part);
+        : fileActions.fileResolver.resolve(part);
 
     return Padding(
       padding: EdgeInsets.only(bottom: bottom),
