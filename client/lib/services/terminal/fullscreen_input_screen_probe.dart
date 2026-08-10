@@ -71,7 +71,7 @@ FullscreenPromptAnchor? locateFullscreenPromptNeedle(
     composerAboveSlack: composerAboveSlack,
   );
   for (var r = rows - 1; r >= searchStart; r--) {
-    final startCol = _findNeedleStartCol(grid, r, needleRunes);
+    final startCol = _findNeedleStartCol(grid, r, needleRunes, composerPrefix: composerPrefix);
     if (startCol >= 0) {
       return FullscreenPromptAnchor(row: r, startCol: startCol, needle: needle);
     }
@@ -104,7 +104,7 @@ FullscreenPromptAnchor? locateCollapsedPasteNeedle(
     final rowText = _logicalRowText(grid, r);
     final marker = PtyAutomationNeedle.collapsedPasteNeedle(rowText);
     if (marker == null) continue;
-    final startCol = _findNeedleStartCol(grid, r, marker.runes.toList());
+    final startCol = _findNeedleStartCol(grid, r, marker.runes.toList(), composerPrefix: composerPrefix);
     if (startCol >= 0) {
       return FullscreenPromptAnchor(row: r, startCol: startCol, needle: marker);
     }
@@ -170,10 +170,11 @@ int _composerLocateStartRow(
 /// soft-wrapped rows.
 bool isFullscreenPromptAtAnchor(
   TerminalScreenGrid grid,
-  FullscreenPromptAnchor anchor,
-) {
+  FullscreenPromptAnchor anchor, {
+  String? composerPrefix,
+}) {
   final needleRunes = anchor.needle.runes.toList();
-  return _matchesNeedleAt(grid, anchor.row, anchor.startCol, needleRunes);
+  return _matchesNeedleAt(grid, anchor.row, anchor.startCol, needleRunes, composerPrefix: composerPrefix);
 }
 
 /// Whether a CR submit is complete per [config].
@@ -188,9 +189,9 @@ bool isFullscreenPromptSubmitted(
     case FullscreenCrAckStrategy.timed:
       return true;
     case FullscreenCrAckStrategy.anchorCellClears:
-      return !isFullscreenPromptAtAnchor(grid, anchor);
+      return !isFullscreenPromptAtAnchor(grid, anchor, composerPrefix: composerPrefix);
     case FullscreenCrAckStrategy.composerMovesDown:
-      if (!isFullscreenPromptAtAnchor(grid, anchor)) return true;
+      if (!isFullscreenPromptAtAnchor(grid, anchor, composerPrefix: composerPrefix)) return true;
       final prefix = composerPrefix?.trim();
       if (prefix == null || prefix.isEmpty) return false;
       return _hasComposerRowBelow(
@@ -238,11 +239,12 @@ String describeProbeWindow(TerminalScreenGrid grid, {int scanRows = 8}) {
 int _findNeedleStartCol(
   TerminalScreenGrid grid,
   int row,
-  List<int> needleRunes,
-) {
+  List<int> needleRunes, {
+  String? composerPrefix,
+}) {
   for (var start = 0; start < grid.columns; start++) {
     if (_isWideSpacer(grid, row, start)) continue;
-    if (_matchesNeedleAt(grid, row, start, needleRunes)) return start;
+    if (_matchesNeedleAt(grid, row, start, needleRunes, composerPrefix: composerPrefix)) return start;
   }
   return -1;
 }
@@ -251,8 +253,9 @@ bool _matchesNeedleAt(
   TerminalScreenGrid grid,
   int row,
   int startCol,
-  List<int> needleRunes,
-) {
+  List<int> needleRunes, {
+  String? composerPrefix,
+}) {
   var r = row;
   var col = startCol;
   // After a soft wrap, leading indent is chrome and word-break spaces in the
@@ -277,7 +280,7 @@ bool _matchesNeedleAt(
       if (!_rowHasNonSpaceContent(grid, r) && cp != 0x20) return false;
       // Claude / other TUIs indent wrapped composer lines past the prompt
       // prefix. Leading spaces are chrome, not paste content.
-      col = _skipLeadingPadding(grid, r);
+      col = _skipLeadingPadding(grid, r, composerPrefix: composerPrefix);
       wrapped = true;
     }
     if (wrapped) collapseWrapSpaces = true;
@@ -365,13 +368,18 @@ int _skipWideSpacers(TerminalScreenGrid grid, int row, int col) {
 }
 
 /// Advances past leading empty / space cells on a soft-wrapped continuation row.
-int _skipLeadingPadding(TerminalScreenGrid grid, int row) {
+int _skipLeadingPadding(TerminalScreenGrid grid, int row, {String? composerPrefix}) {
   var col = 0;
+  // OpenCode (and potentially other TUIs) repeats its composer prefix char on
+  // every wrapped continuation line — skip it just like space/null padding.
+  final prefixCp = (composerPrefix != null && composerPrefix.trim().isNotEmpty)
+      ? composerPrefix.trim().runes.first
+      : null;
   while (col < grid.columns) {
     col = _skipWideSpacers(grid, row, col);
     if (col >= grid.columns) break;
     final cp = grid.codepointAt(row, col);
-    if (cp != 0 && cp != 0x20) break;
+    if (cp != 0 && cp != 0x20 && (prefixCp == null || cp != prefixCp)) break;
     col++;
   }
   return col;

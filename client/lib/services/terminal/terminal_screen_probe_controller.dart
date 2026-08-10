@@ -37,8 +37,8 @@ final class TerminalScreenProbeController {
         composerPrefix: composerPrefix,
       );
 
-  bool isFullscreenPromptAtAnchor(probe.FullscreenPromptAnchor anchor) =>
-      probe.isFullscreenPromptAtAnchor(_screenGrid, anchor);
+  bool isFullscreenPromptAtAnchor(probe.FullscreenPromptAnchor anchor, {String? composerPrefix}) =>
+      probe.isFullscreenPromptAtAnchor(_screenGrid, anchor, composerPrefix: composerPrefix);
 
   bool isFullscreenPromptSubmitted(
     probe.FullscreenPromptAnchor anchor, {

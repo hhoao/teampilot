@@ -50,7 +50,7 @@ final class TerminalFullscreenPtyPort implements FullscreenPtyDeliveryPort {
 
   @override
   bool isAtAnchor(FullscreenPromptAnchor anchor) =>
-      _probe.isFullscreenPromptAtAnchor(anchor);
+      _probe.isFullscreenPromptAtAnchor(anchor, composerPrefix: _crAckConfig.composerPrefix);
 
   @override
   bool isSubmittedAfterCr(FullscreenPromptAnchor anchor, {int scanRows = 24}) =>
