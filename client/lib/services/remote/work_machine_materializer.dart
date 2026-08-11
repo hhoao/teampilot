@@ -25,6 +25,10 @@ class WorkMachineMaterializer {
   }) : _homeLayout = RuntimeLayout(teampilotRoot: homeRoot, fs: homeFs),
        _workLayout = RuntimeLayout(teampilotRoot: machineRoot, fs: workFs);
 
+  /// Bounded concurrency for ancestry file copies (per-file SFTP round trips
+  /// dominate first materialization; see [_copySubtree]).
+  static const int copyWriteConcurrency = 8;
+
   final Filesystem homeFs;
   final String homeRoot;
   final Filesystem workFs;
@@ -82,22 +86,48 @@ class WorkMachineMaterializer {
   /// Copies every file under home `<homeRoot>/<relDir>` to the work machine
   /// `<machineRoot>/<relDir>`, skipping files whose content hash matches the
   /// manifest. [hashes] is updated in place (caller persists).
+  ///
+  /// Writes run through a worker pool bounded by [copyWriteConcurrency]: the
+  /// first materialization ships a large tree (e.g. `cli-defaults/opencode`
+  /// with npm `node_modules`) and each per-file SFTP write costs several
+  /// network round trips, so serial writes dominate the launch time.
   Future<void> _copySubtree(String relDir, Map<String, String> hashes) async {
     final homeDir = homeFs.pathContext.join(homeRoot, relDir);
     if (!(await homeFs.stat(homeDir)).exists) return;
     final entries = await homeFs.listDirRecursive(homeDir);
-    for (final entry in entries) {
-      if (entry.isDirectory) continue;
-      final homePath = homeFs.pathContext.join(homeDir, entry.name);
-      final bytes = await homeFs.readBytes(homePath);
-      if (bytes == null) continue;
-      final homeKey = homeFs.pathContext.relative(homePath, from: homeRoot);
-      final key = normalizeWorkPath(workFs, homeKey);
-      final hash = manifest.hashOf(bytes);
-      if (hashes[key] == hash) continue; // unchanged → skip re-copy
-      final workPath = workFs.pathContext.join(machineRoot, key);
-      await workFs.writeBytes(workPath, bytes);
-      hashes[key] = hash;
+    final files = [
+      for (final entry in entries)
+        if (!entry.isDirectory) entry.name,
+    ];
+    var next = 0;
+    Future<void> copyNext() async {
+      while (true) {
+        final index = next++;
+        if (index >= files.length) return;
+        await _copyOne(files[index], homeDir, hashes);
+      }
     }
+
+    await Future.wait(
+      [for (var i = 0; i < copyWriteConcurrency; i++) copyNext()],
+      eagerError: true,
+    );
+  }
+
+  Future<void> _copyOne(
+    String name,
+    String homeDir,
+    Map<String, String> hashes,
+  ) async {
+    final homePath = homeFs.pathContext.join(homeDir, name);
+    final bytes = await homeFs.readBytes(homePath);
+    if (bytes == null) return;
+    final homeKey = homeFs.pathContext.relative(homePath, from: homeRoot);
+    final key = normalizeWorkPath(workFs, homeKey);
+    final hash = manifest.hashOf(bytes);
+    if (hashes[key] == hash) return; // unchanged → skip re-copy
+    final workPath = workFs.pathContext.join(machineRoot, key);
+    await workFs.writeBytes(workPath, bytes);
+    hashes[key] = hash;
   }
 }
