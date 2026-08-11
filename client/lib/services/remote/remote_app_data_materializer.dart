@@ -91,10 +91,15 @@ class RemoteAppDataMaterializer {
         .capability<RemoteAppDataCapability>(cli);
     if (remoteAppData?.needsSharedPluginDepsBeforeReconcile == true) {
       step('shared-plugin-deps begin');
-      await remoteAppData!.seedSharedPluginDeps(
-        homeFs: homeFs,
-        homeRoot: homeRoot,
-      );
+      final seeder = ensureOpencodeSharedPluginDeps;
+      if (seeder != null) {
+        await seeder(homeFs: homeFs, homeRoot: homeRoot);
+      } else {
+        await remoteAppData!.seedSharedPluginDeps(
+          homeFs: homeFs,
+          homeRoot: homeRoot,
+        );
+      }
       step('shared-plugin-deps done');
     }
 
