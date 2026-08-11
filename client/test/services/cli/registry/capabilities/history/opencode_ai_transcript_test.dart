@@ -359,4 +359,72 @@ VALUES (
       );
     },
   );
+
+  test(
+      'locateOpencodeTranscriptIncremental returns only messages after afterMessageId',
+      () async {
+    final dbPath = p.join(base.path, 'opencode.db');
+    final db = sqlite3.open(dbPath);
+    db.execute('PRAGMA journal_mode=WAL;');
+    db.execute('''
+    CREATE TABLE message (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      session_id TEXT NOT NULL,
+      data TEXT NOT NULL,
+      time_created INTEGER NOT NULL
+    )''');
+    db.execute('''
+    CREATE TABLE part (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      message_id INTEGER NOT NULL,
+      data TEXT NOT NULL,
+      time_created INTEGER NOT NULL
+    )''');
+    final userData = jsonEncode({
+      'role': 'user',
+      'time': {'created': 1000},
+      'content': [
+        {'type': 'text', 'text': 'hi'}
+      ],
+    });
+    final asstData = jsonEncode({
+      'role': 'assistant',
+      'time': {'created': 2000},
+      'content': [
+        {'type': 'text', 'text': 'hello'}
+      ],
+    });
+    db.execute(
+      'INSERT INTO message (session_id, data, time_created) VALUES (?, ?, ?)',
+      ['sess-1', userData, 1000]);
+    db.execute(
+      'INSERT INTO message (session_id, data, time_created) VALUES (?, ?, ?)',
+      ['sess-1', asstData, 2000]);
+    db.execute(
+      'INSERT INTO part (message_id, data, time_created) VALUES (?, ?, ?)',
+      [1, jsonEncode({'type': 'text', 'text': 'hi'}), 1000]);
+    db.execute(
+      'INSERT INTO part (message_id, data, time_created) VALUES (?, ?, ?)',
+      [2, jsonEncode({'type': 'text', 'text': 'hello'}), 2000]);
+    db.dispose();
+
+    final first = await locateOpencodeTranscriptIncremental(
+      ctx(dataDir: base.path, persistedNativeId: 'sess-1'),
+      afterMessageId: 0,
+    );
+    expect(first, isNotNull);
+    expect(first!.hints['lastMessageId'], '2');
+    final adapter = const OpencodeAiTranscriptAdapter();
+    expect(await adapter.parse(first), hasLength(2));
+
+    final second = await locateOpencodeTranscriptIncremental(
+      ctx(dataDir: base.path, persistedNativeId: 'sess-1'),
+      afterMessageId: 1,
+    );
+    expect(second, isNotNull);
+    expect(second!.hints['lastMessageId'], '2');
+    final messages = await adapter.parse(second);
+    expect(messages, hasLength(1));
+    expect(messages.single.role, AiRole.assistant);
+  });
 }
