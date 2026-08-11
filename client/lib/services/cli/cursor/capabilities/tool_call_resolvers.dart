@@ -1,7 +1,7 @@
 import 'package:ai_message_core/ai_message_core.dart';
 
 import '../../../ai_history/tool_call_resolvers.dart';
-import 'shared_tool_call_resolvers.dart';
+import '../../registry/capabilities/shared_tool_call_resolvers.dart';
 
 /// Cursor tool-call resolvers: shared configuration plus `execute` as a shell
 /// / terminal tool name.

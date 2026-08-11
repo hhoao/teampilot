@@ -52,26 +52,65 @@ void main() {
     expect(identity.presetId, 'requested-preset');
   });
 
-  test('resolve fills official provider defaults for simple launch clis', () {
+  test('resolve fills official provider defaults via injected resolver', () {
+    String? resolveOfficial(CliTool cli) => switch (cli) {
+      CliTool.claude => 'claude-official',
+      CliTool.cursor => 'cursor-account',
+      CliTool.codex => 'openai-official',
+      CliTool.opencode => 'opencode',
+      CliTool.flashskyai => null,
+    };
     expect(
-      SimpleLaunchIdentity.resolve(cli: CliTool.claude).provider,
+      SimpleLaunchIdentity.resolve(
+        cli: CliTool.claude,
+        officialProviderId: resolveOfficial,
+      ).provider,
       'claude-official',
     );
     expect(
-      SimpleLaunchIdentity.resolve(cli: CliTool.cursor).provider,
+      SimpleLaunchIdentity.resolve(
+        cli: CliTool.cursor,
+        officialProviderId: resolveOfficial,
+      ).provider,
       'cursor-account',
     );
     expect(
-      SimpleLaunchIdentity.resolve(cli: CliTool.codex).provider,
+      SimpleLaunchIdentity.resolve(
+        cli: CliTool.codex,
+        officialProviderId: resolveOfficial,
+      ).provider,
       'openai-official',
     );
     expect(
-      SimpleLaunchIdentity.resolve(cli: CliTool.opencode).provider,
+      SimpleLaunchIdentity.resolve(
+        cli: CliTool.opencode,
+        officialProviderId: resolveOfficial,
+      ).provider,
       'opencode',
     );
     expect(
-      SimpleLaunchIdentity.resolve(cli: CliTool.flashskyai).provider,
+      SimpleLaunchIdentity.resolve(
+        cli: CliTool.flashskyai,
+        officialProviderId: resolveOfficial,
+      ).provider,
       isEmpty,
+    );
+  });
+
+  test('resolve leaves provider empty without an injected resolver', () {
+    expect(SimpleLaunchIdentity.resolve(cli: CliTool.claude).provider, isEmpty);
+  });
+
+  test('withOfficialDefaultProvider back-fills only an empty provider', () {
+    const empty = SimpleLaunchIdentity(cli: CliTool.claude);
+    expect(
+      empty.withOfficialDefaultProvider((cli) => 'claude-official').provider,
+      'claude-official',
+    );
+    const set = SimpleLaunchIdentity(cli: CliTool.claude, provider: 'custom');
+    expect(
+      set.withOfficialDefaultProvider((cli) => 'claude-official').provider,
+      'custom',
     );
   });
 }

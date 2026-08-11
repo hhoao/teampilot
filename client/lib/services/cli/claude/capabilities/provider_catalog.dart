@@ -10,6 +10,8 @@ final class ClaudeProviderCatalogCapability
   CliTool get catalogCli => CliTool.claude;
 
   @override
+  String? get defaultOfficialProviderId => 'claude-official';
+  @override
   Future<ProviderCatalogSnapshot> loadFromLiveSources(
     ProviderCatalogLoadContext context,
   ) => ClaudeLiveImport.loadSnapshot(context);

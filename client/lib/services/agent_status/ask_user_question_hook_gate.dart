@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'agent_attention_state.dart';
 import 'agent_status_event.dart';
-import 'agent_status_normalizer.dart';
 import 'ask_user_question.dart';
 
 /// Reply for a held Claude-family AskUserQuestion `PreToolUse` HTTP hook.

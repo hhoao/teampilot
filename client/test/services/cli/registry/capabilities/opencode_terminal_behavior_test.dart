@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/cli/registry/capabilities/built_in_tool_capabilities.dart';
+import 'package:teampilot/services/cli/opencode/capabilities/terminal_behavior.dart';
 import 'package:teampilot/services/cli/registry/capabilities/terminal_behavior_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 

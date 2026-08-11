@@ -48,6 +48,10 @@ class ProviderCatalogLoadContext {
 abstract interface class ProviderCatalogCapability implements CliCapability {
   CliTool get catalogCli;
 
+  /// Preferred official catalog id used when a Simple launch provider is unset.
+  /// Null when the CLI has no official catalog row (flashskyai).
+  String? get defaultOfficialProviderId;
+
   /// Scans the user's global CLI install for importable provider rows.
   Future<ProviderCatalogSnapshot> loadFromLiveSources(
     ProviderCatalogLoadContext context,

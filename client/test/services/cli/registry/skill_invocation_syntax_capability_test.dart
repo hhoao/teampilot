@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/services/cli/codex/capabilities/skill_invocation_syntax.dart';
+import 'package:teampilot/services/cli/opencode/capabilities/skill_invocation_syntax.dart';
 import 'package:teampilot/services/cli/registry/capabilities/skill_invocation_syntax_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 

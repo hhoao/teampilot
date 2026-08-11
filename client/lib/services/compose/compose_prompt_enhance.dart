@@ -2,7 +2,6 @@ import '../../cubits/app_provider_cubit.dart';
 import '../../models/ai_feature_setting.dart';
 import '../../models/cli_preset.dart';
 import '../../models/landing_launch_context.dart';
-import '../../models/simple_launch_identity.dart';
 import '../../models/team_config.dart';
 import '../ai/ai_feature_setting_resolver.dart';
 import '../ai/commit_message_prompt.dart';
@@ -57,7 +56,7 @@ AiFeatureSetting? resolveLandingEnhanceSetting({
     if (draft.cli != null) {
       final providerId = draft.provider?.trim().isNotEmpty == true
           ? draft.provider!.trim()
-          : (SimpleLaunchIdentity.officialProviderIdFor(draft.cli!) ?? '');
+          : (registry.defaultOfficialProviderId(draft.cli!) ?? '');
       if (providerId.isEmpty) return null;
       return resolveAiFeatureSetting(
         stored: AiFeatureSetting(

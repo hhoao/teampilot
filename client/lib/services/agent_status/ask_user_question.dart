@@ -127,3 +127,13 @@ List<AgentAskUserOption> _parseOptions(Object? raw) {
   }
   return options;
 }
+
+/// True for AskUserQuestion across casing variants (`AskUserQuestion`,
+/// `ask_user_question`, `askUserQuestion`) — same rule as Orca.
+bool isAskUserQuestionTool(String? toolName) {
+  if (toolName == null || toolName.isEmpty) return false;
+  final compact = toolName
+      .replaceAll(RegExp(r'[^a-zA-Z0-9]'), '')
+      .toLowerCase();
+  return compact == 'askuserquestion';
+}

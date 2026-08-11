@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/cli/registry/capabilities/built_in_tool_capabilities.dart';
+import 'package:teampilot/services/cli/cursor/capabilities/terminal_behavior.dart';
 import 'package:teampilot/services/terminal/fullscreen_cr_ack_config.dart';
 import 'package:teampilot/services/terminal/fullscreen_input_screen_probe.dart';
 import 'package:teampilot/services/terminal/fullscreen_pty_automation.dart';

@@ -10,6 +10,8 @@ final class OpencodeProviderCatalogCapability
   CliTool get catalogCli => CliTool.opencode;
 
   @override
+  String? get defaultOfficialProviderId => 'opencode';
+  @override
   Future<ProviderCatalogSnapshot> loadFromLiveSources(
     ProviderCatalogLoadContext context,
   ) => OpencodeLiveImport.loadSnapshot(context);

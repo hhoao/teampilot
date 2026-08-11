@@ -10,6 +10,8 @@ final class CodexProviderCatalogCapability
   CliTool get catalogCli => CliTool.codex;
 
   @override
+  String? get defaultOfficialProviderId => 'openai-official';
+  @override
   Future<ProviderCatalogSnapshot> loadFromLiveSources(
     ProviderCatalogLoadContext context,
   ) => CodexLiveImport.loadSnapshot(context);

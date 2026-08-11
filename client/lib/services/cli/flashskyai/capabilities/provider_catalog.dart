@@ -10,6 +10,8 @@ final class FlashskyaiProviderCatalogCapability
   CliTool get catalogCli => CliTool.flashskyai;
 
   @override
+  String? get defaultOfficialProviderId => null;
+  @override
   Future<ProviderCatalogSnapshot> loadFromLiveSources(
     ProviderCatalogLoadContext context,
   ) => FlashskyaiLiveImport.loadSnapshot(context);

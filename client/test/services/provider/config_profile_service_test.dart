@@ -149,6 +149,87 @@ void main() {
     if (await base.exists()) await base.delete(recursive: true);
   });
 
+  test(
+    'simple opencode launch keeps plugin-decomposed skills in the skill dir',
+    () async {
+      final fs = service.fs;
+      // Installed plugin bundle shipping a skill + an opencode plugin entry.
+      final bundleRoot = p.join(
+        base.path,
+        'plugins',
+        'installed',
+        'demo-plugin',
+      );
+      await fs.ensureDir(p.join(bundleRoot, '.plugin'));
+      await fs.writeString(
+        p.join(bundleRoot, '.plugin', 'plugin.json'),
+        jsonEncode({'name': 'demo', 'version': '1.0.0', 'description': ''}),
+      );
+      await fs.writeString(
+        p.join(bundleRoot, 'skills', 'plugin-only-skill', 'SKILL.md'),
+        '---\nname: plugin-only-skill\ndescription: from plugin\n---\n',
+      );
+      await fs.writeString(
+        p.join(bundleRoot, '.opencode', 'plugins', 'demo.js'),
+        'export const Demo = async () => ({});',
+      );
+      // Installed plugin catalog (`plugins/plugins.json`).
+      await fs.writeString(
+        p.join(base.path, 'plugins', 'plugins.json'),
+        jsonEncode({
+          'plugins': [
+            {
+              'id': 'acme/demo',
+              'name': 'demo',
+              'description': '',
+              'version': '1.0.0',
+              'directory': 'demo-plugin',
+            },
+          ],
+        }),
+      );
+
+      await service.prepareSimpleSessionLaunch(
+        workspaceId: _testWorkspaceId,
+        sessionId: 'simple-1',
+        runtimeBundle: const ConfigBundle(pluginIds: ['acme/demo']),
+        member: const TeamMemberConfig(
+          id: 'solo',
+          name: 'solo',
+          cli: CliTool.opencode,
+        ),
+      );
+
+      final opencodeDir = _sessionToolDir(
+        base.path,
+        'simple-1',
+        'opencode',
+      );
+      // The skill materializer must not prune the plugin-decomposed skill
+      // (it runs before the plugin decompose now, so nothing to prune).
+      expect(
+        await fs.readString(
+          p.join(opencodeDir, 'skill', 'plugin-only-skill', 'SKILL.md'),
+        ),
+        contains('from plugin'),
+      );
+      // Plugin entry registered and reachable (no self-loop in the pool).
+      final opencodeJson =
+          jsonDecode((await fs.readString(p.join(opencodeDir, 'opencode.json')))!)
+              as Map<String, Object?>;
+      expect(
+        opencodeJson['plugin'],
+        contains('./plugins/demo-plugin/.opencode/plugins/demo.js'),
+      );
+      expect(
+        await fs.readString(
+          p.join(opencodeDir, 'plugins', 'demo-plugin', '.opencode', 'plugins', 'demo.js'),
+        ),
+        contains('Demo'),
+      );
+    },
+  );
+
   test('ensureTeamProfile creates bare team scope dir only', () async {
     await service.ensureTeamProfile('team-a', cli: CliTool.flashskyai);
 

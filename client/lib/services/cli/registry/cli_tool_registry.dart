@@ -4,6 +4,7 @@ import 'capabilities/cli_session_lifecycle_capability.dart';
 import 'capabilities/member_agent_preset_capability.dart';
 import 'capabilities/native_team_capability.dart';
 import 'capabilities/noop_cli_session_lifecycle_capability.dart';
+import 'capabilities/provider_catalog_capability.dart';
 import 'capabilities/tool_call_resolver_capability.dart';
 import 'cli_bootstrap.dart';
 import 'cli_capability.dart';
@@ -79,4 +80,9 @@ class CliToolRegistry {
 
   ToolCallResolversCapability? toolCallResolvers(CliTool cli) =>
       capability<ToolCallResolversCapability>(cli);
+
+  /// Official catalog id used when a Simple launch provider is unset (see
+  /// [ProviderCatalogCapability.defaultOfficialProviderId]).
+  String? defaultOfficialProviderId(CliTool cli) =>
+      capability<ProviderCatalogCapability>(cli)?.defaultOfficialProviderId;
 }

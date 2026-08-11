@@ -307,19 +307,17 @@ class AppSession {
   bool get isSimple => sessionTeam.trim().isEmpty;
 
   /// Denormalized Simple launch identity. Throws if this is a team session.
+  /// Provider is returned as stored; legacy rows with an empty provider can be
+  /// back-filled via [SimpleLaunchIdentity.withOfficialDefaultProvider] at the
+  /// connect seam (the model never switches on [CliTool]).
   SimpleLaunchIdentity get simpleIdentity {
     if (!isSimple) {
       throw StateError('simpleIdentity requires a Simple (unteamed) session');
     }
     final resolvedCli = cli ?? CliTool.claude;
-    var resolvedProvider = provider.trim();
-    if (resolvedProvider.isEmpty) {
-      resolvedProvider =
-          SimpleLaunchIdentity.officialProviderIdFor(resolvedCli) ?? '';
-    }
     return SimpleLaunchIdentity(
       cli: resolvedCli,
-      provider: resolvedProvider,
+      provider: provider.trim(),
       model: model.trim(),
       effort: effort.trim(),
       expertKey: expertKey.trim(),

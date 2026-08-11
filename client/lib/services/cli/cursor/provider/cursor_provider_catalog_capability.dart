@@ -10,6 +10,8 @@ final class CursorProviderCatalogCapability
   CliTool get catalogCli => CliTool.cursor;
 
   @override
+  String? get defaultOfficialProviderId => 'cursor-account';
+  @override
   Future<ProviderCatalogSnapshot> loadFromLiveSources(
     ProviderCatalogLoadContext context,
   ) => CursorLiveImport.loadSnapshot(context);

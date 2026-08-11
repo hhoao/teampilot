@@ -8,6 +8,7 @@ import '../../services/cli/registry/capabilities/exit_plan_mode_capability.dart'
 import '../../services/cli/registry/cli_tool_registry.dart';
 import 'agent_status_event.dart';
 import 'agent_status_normalizer.dart';
+import 'ask_user_question.dart';
 import 'ask_user_question_hook_gate.dart';
 import 'exit_plan_mode.dart';
 import 'exit_plan_mode_hook_gate.dart';

@@ -71,7 +71,11 @@ class SessionConnectOrchestrator {
     void Function(CliInstallProgress progress)? onProvisionProgress,
   }) async {
     final planSw = Stopwatch()..start();
-    final identity = session.simpleIdentity;
+    // Back-fill the official default provider for legacy rows persisted before
+    // provider resolution existed.
+    final identity = session.simpleIdentity.withOfficialDefaultProvider(
+      CliToolRegistry.builtIn().defaultOfficialProviderId,
+    );
     final plan = await runtimePlanBuilder.buildSimple(
       workspaceId: workspace.workspaceId,
       sessionId: session.sessionId,

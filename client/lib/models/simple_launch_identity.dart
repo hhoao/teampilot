@@ -27,17 +27,10 @@ class SimpleLaunchIdentity {
   /// Provenance only — which global preset was chosen at create.
   final String presetId;
 
-  /// Preferred official catalog id when provider is unset.
-  static String? officialProviderIdFor(CliTool cli) => switch (cli) {
-    CliTool.claude => 'claude-official',
-    CliTool.cursor => 'cursor-account',
-    CliTool.codex => 'openai-official',
-    CliTool.opencode => 'opencode',
-    CliTool.flashskyai => null,
-  };
-
-  /// Create-time resolve: preset wins over explicit args; empty provider →
-  /// official catalog id for [cli].
+  /// Create-time resolve: preset wins over explicit args; an empty provider is
+  /// filled by [officialProviderId] when supplied (services pass the CLI's
+  /// [ProviderCatalogCapability.defaultOfficialProviderId] — the model never
+  /// switches on [CliTool]).
   factory SimpleLaunchIdentity.resolve({
     CliTool? cli,
     CliPreset? preset,
@@ -46,6 +39,7 @@ class SimpleLaunchIdentity {
     String? effort,
     String? expertKey,
     String? presetId,
+    String? Function(CliTool cli)? officialProviderId,
   }) {
     final resolvedCli = preset?.cli ?? cli ?? CliTool.claude;
     final fromPresetId = preset?.id.trim() ?? '';
@@ -57,8 +51,8 @@ class SimpleLaunchIdentity {
     var resolvedProvider = (preset?.provider.trim().isNotEmpty ?? false)
         ? preset!.provider.trim()
         : (provider?.trim() ?? '');
-    if (resolvedProvider.isEmpty) {
-      resolvedProvider = officialProviderIdFor(resolvedCli) ?? '';
+    if (resolvedProvider.isEmpty && officialProviderId != null) {
+      resolvedProvider = officialProviderId(resolvedCli) ?? '';
     }
 
     final resolvedModel = (preset?.model.trim().isNotEmpty ?? false)
@@ -94,6 +88,15 @@ class SimpleLaunchIdentity {
       expertKey: expertKey ?? this.expertKey,
       presetId: presetId ?? this.presetId,
     );
+  }
+
+  /// Defensive fallback for legacy rows whose provider predates persistence:
+  /// fills the CLI's official default catalog id when unset.
+  SimpleLaunchIdentity withOfficialDefaultProvider(
+    String? Function(CliTool cli) resolveOfficialProvider,
+  ) {
+    if (provider.trim().isNotEmpty) return this;
+    return copyWith(provider: resolveOfficialProvider(cli)?.trim() ?? '');
   }
 
   /// Apply identity onto an expert-pack member for staging / shell.

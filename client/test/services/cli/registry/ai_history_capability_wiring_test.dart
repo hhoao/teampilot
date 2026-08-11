@@ -1,7 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/registry/capabilities/ai_history_capability.dart';
-import 'package:teampilot/services/cli/registry/capabilities/history/builtin_ai_history_capabilities.dart';
+import 'package:teampilot/services/cli/claude/capabilities/history/ai_history_capability.dart';
+import 'package:teampilot/services/cli/codex/capabilities/history/ai_history_capability.dart';
+import 'package:teampilot/services/cli/cursor/capabilities/history/ai_history_capability.dart';
+import 'package:teampilot/services/cli/flashskyai/capabilities/history/ai_history_capability.dart';
+import 'package:teampilot/services/cli/opencode/capabilities/history/ai_history_capability.dart';
 import 'package:teampilot/services/cli/claude/capabilities/history/compatible_tool_result_enricher.dart';
 import 'package:teampilot/services/cli/claude/capabilities/history/side_resolver.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/history/terminal_tool_result_enricher.dart';

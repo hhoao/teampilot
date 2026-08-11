@@ -14,16 +14,3 @@ enum MemberAgentPresetStyle {
   claudeAgentType,
 }
 
-final class FlashskyaiMemberAgentPreset implements MemberAgentPresetCapability {
-  const FlashskyaiMemberAgentPreset();
-
-  @override
-  MemberAgentPresetStyle get style => MemberAgentPresetStyle.flashskyaiCatalog;
-}
-
-final class ClaudeMemberAgentPreset implements MemberAgentPresetCapability {
-  const ClaudeMemberAgentPreset();
-
-  @override
-  MemberAgentPresetStyle get style => MemberAgentPresetStyle.claudeAgentType;
-}

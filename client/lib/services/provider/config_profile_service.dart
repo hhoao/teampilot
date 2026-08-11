@@ -512,6 +512,28 @@ class ConfigProfileService implements ConfigProfileDelegate {
           .ensureSessionMarketplacesLinked(configDir: configDir, tool: cli),
     );
 
+    // Catalog skills land in `skill/` BEFORE plugin bundles are decomposed:
+    // the skills materializer reconciles `skill/` to exactly the catalog set,
+    // so running it after plugin provision would prune plugin-provided skills.
+    // Plugin decompose then fills only the names the catalog does not provide.
+    await step('skills', () async {
+      final provisionResult =
+          await ResourceProvisioningService(
+            fs: fs,
+            registry: _cliRegistry,
+          ).provisionForLaunch(
+            scope: SimpleResourceScope(bundle: runtimeBundle),
+            cli: cli,
+            configDir: _launchResourceConfigDir(
+              cli: cli,
+              workspaceId: trimmedWorkspaceId,
+              sessionId: trimmedSessionId,
+            ),
+            catalog: await _skillCatalog(),
+          );
+      warnings.addAll(provisionResult.warnings);
+    });
+
     final pluginProvisioner = _cliRegistry
         .capability<PluginProvisionerCapability>(cli);
     if (pluginProvisioner != null) {
@@ -560,24 +582,6 @@ class ConfigProfileService implements ConfigProfileDelegate {
         ),
       );
     }
-
-    await step('skills', () async {
-      final provisionResult =
-          await ResourceProvisioningService(
-            fs: fs,
-            registry: _cliRegistry,
-          ).provisionForLaunch(
-            scope: SimpleResourceScope(bundle: runtimeBundle),
-            cli: cli,
-            configDir: _launchResourceConfigDir(
-              cli: cli,
-              workspaceId: trimmedWorkspaceId,
-              sessionId: trimmedSessionId,
-            ),
-            catalog: await _skillCatalog(),
-          );
-      warnings.addAll(provisionResult.warnings);
-    });
 
     await step(
       'mcp',
@@ -855,25 +859,11 @@ class ConfigProfileService implements ConfigProfileDelegate {
       workTeampilotRoot: workTeampilotRoot,
     );
 
-    warnings.addAll(
-      await staging.ensureSessionProfile(
-        trimmedWorkspaceId,
-        trimmedSessionId,
-        trimmedTeamId,
-        cli: launchCli,
-        team: team,
-        runtimeBundle: runtimeBundle,
-        memberId: memberId,
-        extraMcpServers: extraMcpServers,
-        projectMcpRoots: projectMcpRootsFromLaunch(
-          workingDirectory: workingDirectory,
-          additionalDirectories: additionalDirectories,
-        ),
-        workingDirectory: workingDirectory,
-        busIdle: busIdle,
-      ),
-    );
-
+    // Catalog skills land in `skill/` BEFORE the session profile is staged:
+    // `ensureSessionProfile` decomposes plugin skills into the same dir, and
+    // the skills materializer would prune them if it ran afterwards. It
+    // reconciles `skill/` to exactly the catalog set, then the plugin
+    // decompose fills only the names the catalog does not provide.
     if (team != null) {
       final provisionResult =
           await ResourceProvisioningService(
@@ -893,6 +883,25 @@ class ConfigProfileService implements ConfigProfileDelegate {
           );
       warnings.addAll(provisionResult.warnings);
     }
+
+    warnings.addAll(
+      await staging.ensureSessionProfile(
+        trimmedWorkspaceId,
+        trimmedSessionId,
+        trimmedTeamId,
+        cli: launchCli,
+        team: team,
+        runtimeBundle: runtimeBundle,
+        memberId: memberId,
+        extraMcpServers: extraMcpServers,
+        projectMcpRoots: projectMcpRootsFromLaunch(
+          workingDirectory: workingDirectory,
+          additionalDirectories: additionalDirectories,
+        ),
+        workingDirectory: workingDirectory,
+        busIdle: busIdle,
+      ),
+    );
 
     final cap = _cliRegistry.capability<ConfigProfileCapability>(launchCli);
     if (cap == null) {

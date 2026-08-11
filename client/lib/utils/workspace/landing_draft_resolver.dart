@@ -3,6 +3,7 @@ import '../../models/landing_launch_context.dart';
 import '../../models/simple_launch_identity.dart';
 import '../../models/team_config.dart';
 import '../../services/cli/preset_resolver.dart';
+import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/home_workspace/landing_prefs_store.dart';
 
 /// True when [draft] uses explicit Simple custom cli/provider/model/effort.
@@ -28,6 +29,7 @@ SimpleLaunchIdentity resolveLandingSimpleLaunchIdentity({
       preset: preset,
       presetId: presetId,
       expertKey: expertKey,
+      officialProviderId: _officialProviderId,
     );
   }
   return SimpleLaunchIdentity.resolve(
@@ -37,8 +39,13 @@ SimpleLaunchIdentity resolveLandingSimpleLaunchIdentity({
     effort: effort,
     presetId: '',
     expertKey: expertKey,
+    officialProviderId: _officialProviderId,
   );
 }
+
+String? _officialProviderId(CliTool cli) =>
+    CliToolRegistry.builtIn().defaultOfficialProviderId(cli);
+
 
 /// Select a global preset and clear any custom four-tuple.
 LandingLaunchContext landingDraftSelectingPreset(

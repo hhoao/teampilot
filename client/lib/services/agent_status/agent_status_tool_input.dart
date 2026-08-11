@@ -85,3 +85,12 @@ const _fallbackKeys = [
   'TargetFile',
   'Prompt',
 ];
+
+/// Reads the first non-empty string field among [keys] from a payload map.
+String? readPayloadString(Map<String, Object?> body, List<String> keys) {
+  for (final key in keys) {
+    final value = body[key];
+    if (value is String && value.trim().isNotEmpty) return value.trim();
+  }
+  return null;
+}

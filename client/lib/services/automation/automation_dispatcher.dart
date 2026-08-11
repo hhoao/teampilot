@@ -23,6 +23,7 @@ import 'automation_bus_gateway.dart';
 import 'automation_dispatch_result.dart';
 import 'automation_launch_session_binding.dart';
 import 'automation_schedule_calculator.dart';
+import '../../services/cli/registry/cli_tool_registry.dart';
 
 typedef AutomationWorkspaceResolver = Workspace? Function(String workspaceId);
 typedef AutomationTeamResolver = TeamProfile? Function(String teamId);
@@ -241,6 +242,7 @@ class AutomationDispatcher {
         preset: preset,
         presetId: presetId,
         expertKey: expertKey,
+        officialProviderId: CliToolRegistry.builtIn().defaultOfficialProviderId,
       );
       status = await _requestCreateAndOpenSession(
         SessionCreateRequest(

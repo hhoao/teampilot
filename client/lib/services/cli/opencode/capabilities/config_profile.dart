@@ -3,8 +3,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 
 import '../../../../models/app_provider_config.dart';
-import '../../../../models/simple_launch_identity.dart';
 import '../../../../models/team_config.dart';
+import '../../registry/cli_tool_registry.dart';
 import '../../../../utils/logging/logger.dart';
 import '../../../launch/work_plane_paths.dart';
 import '../../../provider/cross_machine_credential_bridge.dart';
@@ -383,7 +383,7 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
       var fromMember = required.provider.trim();
       if (fromMember.isEmpty) {
         fromMember =
-            SimpleLaunchIdentity.officialProviderIdFor(CliTool.opencode) ?? '';
+            CliToolRegistry.builtIn().defaultOfficialProviderId(CliTool.opencode) ?? '';
       }
       launchProvider = await resolver.findById(fromMember);
       launchProvider ??= await resolver.resolveSole();

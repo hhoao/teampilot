@@ -5,7 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../services/agent_status/agent_attention_state.dart';
 import '../services/agent_status/agent_status_event.dart';
-import '../services/agent_status/agent_status_normalizer.dart';
+import '../services/agent_status/ask_user_question.dart';
 import '../services/agent_status/ask_user_question_hook_gate.dart';
 import '../services/cli/claude/capabilities/permission_sticky.dart';
 import '../services/agent_status/exit_plan_mode.dart';

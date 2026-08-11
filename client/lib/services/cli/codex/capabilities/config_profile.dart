@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart';
 
 import '../../../../models/app_provider_config.dart';
-import '../../../../models/simple_launch_identity.dart';
 import '../../../../models/team_config.dart';
+import '../../registry/cli_tool_registry.dart';
 import '../provider/codex_auth_artifacts.dart';
 import '../../../mcp/mcp_credentials_store.dart';
 import '../provider/codex_effort_capability.dart';
@@ -82,7 +82,7 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
           member ?? (throw StateError('Simple launch requires plan.member'));
       var fromMember = required.provider.trim();
       if (fromMember.isEmpty) {
-        fromMember = SimpleLaunchIdentity.officialProviderIdFor(CliTool.codex) ?? '';
+        fromMember = CliToolRegistry.builtIn().defaultOfficialProviderId(CliTool.codex) ?? '';
       }
       provider = await resolver.findById(
         fromMember,

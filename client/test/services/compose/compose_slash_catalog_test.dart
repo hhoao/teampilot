@@ -2,6 +2,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/config_bundle.dart';
 import 'package:teampilot/models/plugin.dart';
 import 'package:teampilot/models/skill.dart';
+import 'package:teampilot/services/cli/codex/capabilities/skill_invocation_syntax.dart';
+import 'package:teampilot/services/cli/opencode/capabilities/skill_invocation_syntax.dart';
 import 'package:teampilot/services/cli/registry/capabilities/skill_invocation_syntax_capability.dart';
 import 'package:teampilot/services/compose/compose_slash_catalog.dart';
 

@@ -3,6 +3,7 @@ import '../../models/runtime_target.dart';
 import '../../models/simple_launch_identity.dart';
 import '../../models/workspace.dart';
 import '../../models/team_config.dart';
+import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/storage/work_target_canonicalizer.dart';
 
 /// In-memory session used to stage the workbench before disk persistence.
@@ -31,6 +32,8 @@ AppSession buildProvisionalSession({
             SimpleLaunchIdentity.resolve(
               cli: cli,
               expertKey: expertKey,
+              officialProviderId:
+                  CliToolRegistry.builtIn().defaultOfficialProviderId,
             ))
       : null;
 

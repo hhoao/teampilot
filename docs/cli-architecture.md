@@ -10,21 +10,30 @@ TeamPilot 支持多个 CLI 工具（Claude Code、Cursor、Codex、OpenCode、Fl
 services/cli/{cli_name}/
   {cli_name}_tool.dart              # CliToolDefinition 实现（必需）
   {cli_name}_bootstrap_entry.dart   # 运行时服务注入（如需要）
-  capabilities/                     # CliCapability 接口实现
+  capabilities/                     # CliCapability 接口实现（每个能力一个文件）
     config_profile.dart             # ConfigProfileCapability（必需）
     launch_args.dart                # LaunchArgsCapability（必需）
     wait_before_stop.dart           # WaitBeforeStopCapability（必需）
     provider_display.dart           # ProviderDisplayCapability（必需）
     config_ui.dart                  # CliConfigUiCapability（必需）
     credential_binding.dart         # CredentialBindingCapability（仅 claude）
+    executable_resolver.dart        # ExecutableResolverCapability（必需）
+    presence.dart                   # PresenceCapability
+    display.dart                    # DisplayCapability
+    terminal_behavior.dart          # TerminalBehaviorCapability
+    tool_call_resolvers.dart        # ToolCallResolversCapability
+    member_agent_preset.dart        # MemberAgentPresetCapability（claude/flashskyai）
+    skill_invocation_syntax.dart    # SkillInvocationSyntaxCapability（codex/opencode 覆盖）
+    agent_status_normalizer.dart    # AgentStatusNormalizerCapability（cursor/opencode 各自实现）
     installer.dart                  # InstallerCapability
     headless_run.dart               # HeadlessRunCapability
     headless_provision.dart         # HeadlessProvisionCapability
     mcp_config_writer.dart          # McpConfigWriterCapability
     plugin_provisioner.dart         # PluginProvisionerCapability
     resume_strategy.dart            # SessionResumeCapability
-    provider_catalog.dart           # ProviderCatalogCapability
+    provider_catalog.dart           # ProviderCatalogCapability（含 defaultOfficialProviderId）
     history/                        # AiHistoryCapability 相关
+      ai_history_capability.dart    # 该 CLI 的 AiHistoryCapability 实现
       ai_transcript.dart
       side_resolver.dart
       ...
@@ -39,6 +48,11 @@ services/cli/{cli_name}/
   provider_presets.dart             # 预设 provider 数据
   provider_persistence.dart         # 凭证持久化策略
 ```
+
+每个 CLI 的**所有**具体能力实现都放在自己的目录下；`registry/capabilities/` 里不允许出现
+按 CLI 命名的具体类（`ClaudeXxx`/`CursorXxx`/…），只能有接口定义、共享数据类和被多个 CLI
+共用的共享实现（如 `ClaudeFamilyAgentStatusNormalizer`、`SharedToolCallResolvers`、
+`DefaultCliConfigLayout`、`NoopCliSessionLifecycleCapability`）。
 
 CLI 专属 UI 组件（表单段、binding 字段）也放在 `services/cli/{cli_name}/provider/` 下，由对应
 ProviderForm / CredentialBinding 能力引用；不要在 `widgets/` 下散落 `claude_*` 组件。
@@ -457,7 +471,7 @@ for (final def in CliToolRegistry.builtIn().launchable)
 | `ResourceCapability` | `registry/capabilities/resource_capability.dart` | 标记 | - |
 | `AiHistoryCapability` | `registry/capabilities/ai_history_capability.dart` | 服务 | - |
 | `SkillInvocationSyntaxCapability` | `registry/capabilities/skill_invocation_syntax_capability.dart` | 标记 | - |
-| `AgentStatusNormalizerCapability` | `registry/capabilities/agent_status_normalizer_capability.dart` | 标记 | ✅ |
+| `AgentStatusNormalizerCapability` | `registry/capabilities/agent_status_normalizer_capability.dart` | 服务 | ✅ |
 | `HistoryContextEnvCapability` | `registry/capabilities/history_context_env_capability.dart` | 服务 | ✅ |
 | `TitleAttentionCapability` | `registry/capabilities/title_attention_capability.dart` | 标记 | ✅ |
 | `MarketplaceConsumerCapability` | `registry/capabilities/marketplace_consumer_capability.dart` | 标记 | ✅ |
@@ -473,6 +487,14 @@ for (final def in CliToolRegistry.builtIn().launchable)
   的 catalog 行镜像成 flashskyai 记录），`ProviderImportService` 只做编排。
 - **AiHistory 增量前缀**：`AiHistoryCapability.tailFallbackPrefix` 由各 CLI 声明（必须与全量
   adapter 的 fallback id 前缀一致），loader 不再 `switch (cli)`。
+- **官方 catalog id**：`ProviderCatalogCapability.defaultOfficialProviderId` 由各 CLI 声明；
+  `CliToolRegistry.defaultOfficialProviderId(cli)` 供服务层取用。模型层不持有 cli 键控数据：
+  `SimpleLaunchIdentity.resolve(..., officialProviderId:)` 由服务注入解析函数，
+  `AppSession.simpleIdentity` 对旧数据的兜底在连接接缝处通过
+  `SimpleLaunchIdentity.withOfficialDefaultProvider` 注入完成。
+- **Agent 状态归一化**：`AgentStatusNormalizerCapability` 是**服务能力**（`normalize(body)`），
+  claude/codex/flashskyai 共用 registry 下的 `ClaudeFamilyAgentStatusNormalizer`，cursor 与
+  opencode 各在自己的目录实现；共享 `AgentStatusNormalizer` 门面只做能力查找。
 
 ## 能力清单中的 l10n 映射
 
