@@ -2,6 +2,7 @@
 library ai_message_core;
 
 export 'src/message.dart';
+export 'src/tool_category_resolver.dart';
 export 'src/subagent_attachment.dart';
 export 'src/tool_edit_hunk.dart';
 export 'src/tool_edit_hunk_codec.dart';

@@ -1,5 +1,22 @@
 enum AiRole { user, assistant, system }
 
+/// Coarse cross-CLI tool call category. Computed once at parse/annotation time
+/// and stored on [AiToolCallPart]; drives fold policy and future chrome.
+enum AiToolCallCategory {
+  read, // 文件读取 / glob / grep / list
+  write, // 新建 / 覆写文件
+  edit, // 修改已有文件
+  command, // bash / exec / shell
+  search, // web 搜索 / 抓取
+  browser, // 浏览器 / computer 操作
+  subagent, // agent / task / workflow / spawn_agent
+  askUser, // AskUserQuestion
+  plan, // Plan / ExitPlanMode
+  task, // todo / taskcreate / taskupdate
+  mcp, // mcp__ 前缀
+  other, // 未知 / 其他(默认兜底)
+}
+
 sealed class AiMessagePart {}
 
 class AiTextPart implements AiMessagePart {
@@ -20,6 +37,7 @@ class AiToolCallPart implements AiMessagePart {
     this.result,
     this.status = AiToolCallStatus.incomplete,
     this.isError = false,
+    this.category = AiToolCallCategory.other,
   });
 
   final String toolCallId;
@@ -35,6 +53,10 @@ class AiToolCallPart implements AiMessagePart {
   /// [AiToolCallStatus.complete]).
   final bool isError;
 
+  /// Coarse category, computed once at parse/annotation time. Not part of
+  /// [messageContentIdentity].
+  final AiToolCallCategory category;
+
   bool get isCancelled => status == AiToolCallStatus.cancelled;
 
   bool get isRunning => status == AiToolCallStatus.running;
@@ -48,6 +70,7 @@ class AiToolCallPart implements AiMessagePart {
     bool clearResult = false,
     AiToolCallStatus? status,
     bool? isError,
+    AiToolCallCategory? category,
   }) {
     return AiToolCallPart(
       toolCallId: toolCallId ?? this.toolCallId,
@@ -57,6 +80,7 @@ class AiToolCallPart implements AiMessagePart {
       result: clearResult ? null : (result ?? this.result),
       status: status ?? this.status,
       isError: isError ?? this.isError,
+      category: category ?? this.category,
     );
   }
 }
