@@ -44,6 +44,16 @@ final class ClaudeSideResolver implements SubagentSideResolver {
     );
   }
 
+  @override
+  Future<String?> fingerprint({
+    required SessionHistoryContext ctx,
+    required String? rootTranscriptPath,
+  }) {
+    // Workflow run dirs (`subagents/workflows/wf_*/`) live inside the same
+    // `subagents/` tree the compatible resolver fingerprints.
+    return compatible.fingerprint(ctx: ctx, rootTranscriptPath: rootTranscriptPath);
+  }
+
   static String? _parentTranscriptPath(
     SubagentSideHandle? parentHandle,
     String? rootTranscriptPath,

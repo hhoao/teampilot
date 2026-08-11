@@ -634,6 +634,12 @@ class _WorkflowStubResolver implements SubagentSideResolver {
       ),
     );
   }
+
+  @override
+  Future<String?> fingerprint({
+    required SessionHistoryContext ctx,
+    required String? rootTranscriptPath,
+  }) async => null;
 }
 
 String _userAssistantJsonl({required String user, required String assistant}) {

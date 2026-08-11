@@ -20,6 +20,7 @@ import '../terminal/session_member_cli_resolver.dart';
 import 'ai_history_load_result.dart';
 import 'ai_history_locator.dart';
 import 'ai_history_watch_meta.dart';
+import 'ai_transcript_tail_reader.dart';
 import 'session_history_context.dart';
 import 'session_history_context_builder.dart';
 import 'subagent_attachment_inflater.dart';
@@ -76,6 +77,17 @@ final class AiHistoryLoader {
   final _messages = <String, List<AiMessage>>{};
   final _attachments = <String, Map<String, AiSubagentAttachment>>{};
 
+  /// Per-seat located parent transcript path (for side fingerprinting) and
+  /// last-observed side-transcript fingerprint.
+  final _parentPaths = <String, String>{};
+  final _sideTokens = <String, String>{};
+
+  /// Incremental tail state (cacheKey → state) and per-CLI tail readers. The
+  /// state owns the live [List] that [load] hands out; the reader is stateless
+  /// per CLI (all mutable state lives in [TailReaderState]).
+  final _tailStates = <String, TailReaderState>{};
+  final _tailReaders = <String, AiTranscriptTailReader>{};
+
   /// Bundles at/above this size parse on a worker isolate; smaller ones parse
   /// in place (isolate spawn + transfer overhead would dominate).
   static const _isolateParseMinBytes = 256 * 1024;
@@ -97,6 +109,54 @@ final class AiHistoryLoader {
     _tokens.clear();
     _messages.clear();
     _attachments.clear();
+    _parentPaths.clear();
+    _sideTokens.clear();
+    _tailStates.clear();
+  }
+
+  /// Per-CLI tail reader for JSONL-style transcripts. Returns null when the
+  /// capability has no [AiTranscriptLineAppend] (e.g. opencode's multi-file DB)
+  /// so the loader falls back to the full adapter parse.
+  AiTranscriptTailReader? _tailReaderFor(CliTool cli) {
+    final lineAppend = _registry
+        .capability<AiHistoryCapability>(cli)
+        ?.lineAppend;
+    if (lineAppend == null) return null;
+    return _tailReaders.putIfAbsent(
+      cli.name,
+      () => AiTranscriptTailReader(
+        lineAppend: lineAppend,
+        fallbackPrefix: switch (cli) {
+          CliTool.claude => 'claude',
+          CliTool.codex => 'codex',
+          CliTool.cursor => 'cursor',
+          _ => 'tail',
+        },
+      ),
+    );
+  }
+
+  /// Incremental path: locate → parent path → tail refresh on the state's
+  /// in-place list. Returns null when unavailable (no parent path / no
+  /// lineAppend) so [load] falls back to the full adapter parse.
+  Future<List<AiMessage>?> _tryIncrementalLoad({
+    required String cacheKey,
+    required CliTool cli,
+    required SessionHistoryContext ctx,
+    required String? parentPath,
+    bool force = false,
+  }) async {
+    if (parentPath == null || parentPath.isEmpty) return null;
+    final reader = _tailReaderFor(cli);
+    if (reader == null) return null;
+    final state = _tailStates.putIfAbsent(cacheKey, TailReaderState.new);
+    await reader.refresh(
+      fs: ctx.fs,
+      path: parentPath,
+      state: state,
+      force: force,
+    );
+    return state.messages;
   }
 
   AiToolCallCategoryResolver _categoryResolverFor(CliTool cli) =>
@@ -159,10 +219,41 @@ final class AiHistoryLoader {
 
     final token = await (_resolveCacheToken ?? _defaultCacheToken)(ctx);
     if (!force && token != null && _tokens[cacheKey] == token) {
+      final cachedMessages = _messages[cacheKey] ?? const [];
+      final cachedAttachments = _attachments[cacheKey] ?? const {};
+      // Parent transcript unchanged. While a sub-agent is still running its
+      // side transcript appends lines but the parent transcript only moves
+      // when the tool result lands — so the parent cache token cannot see it.
+      // Re-inflate attachments from the cached messages when the side data
+      // fingerprint moved (skip when the CLI layout cannot fingerprint).
+      final sideToken = await cap.subagentSideResolver.fingerprint(
+        ctx: ctx,
+        rootTranscriptPath: _parentPaths[cacheKey],
+      );
+      if (sideToken == null || _sideTokens[cacheKey] == sideToken) {
+        return AiHistoryLoadResult(
+          messages: cachedMessages,
+          cli: cli,
+          subagentAttachments: cachedAttachments,
+        );
+      }
+      var attachments = await const SubagentAttachmentInflater().inflate(
+        messages: cachedMessages,
+        ctx: ctx,
+        capability: cap,
+        rootTranscriptPath: _parentPaths[cacheKey],
+      );
+      // Fresh parts from the re-inflate are unannotated → annotate now.
+      attachments = annotateSubagentAttachments(
+        attachments,
+        resolver: _categoryResolverFor(cli),
+      );
+      _attachments[cacheKey] = attachments;
+      _sideTokens[cacheKey] = sideToken;
       return AiHistoryLoadResult(
-        messages: _messages[cacheKey] ?? const [],
+        messages: cachedMessages,
         cli: cli,
-        subagentAttachments: _attachments[cacheKey] ?? const {},
+        subagentAttachments: attachments,
       );
     }
 
@@ -179,9 +270,54 @@ final class AiHistoryLoader {
         }
         return null; // degrade-only; never invent a path from fragment basename
       }();
+      _parentPaths[cacheKey] = parentPath ?? '';
+
+      // 增量优先:JSONL 类 CLI 走 tail-anchor 增量(原地变异复用消息实例);
+      // 失败/不适配(无 path、无 lineAppend、非 JSONL 存储)回退全量 parse。
+      var incremental = await _tryIncrementalLoad(
+        cacheKey: cacheKey,
+        cli: cli,
+        ctx: ctx,
+        parentPath: parentPath,
+        force: force,
+      );
+      if (incremental != null) {
+        // Tail-appended parts are unannotated → annotate now (idempotent on
+        // parts the previous load already covered).
+        incremental = annotateToolCallCategories(
+          incremental,
+          resolver: _categoryResolverFor(cli),
+        );
+        // Attachments: reuse the cached map across appends — only the first
+        // (inflate-less) load inflates, and only when nothing is cached yet.
+        // Cached maps are already annotated (we always store the annotated
+        // result); only the fresh inflate needs annotation.
+        var attachments = _attachments[cacheKey];
+        if (attachments == null) {
+          attachments = await const SubagentAttachmentInflater().inflate(
+            messages: incremental,
+            ctx: ctx,
+            capability: cap,
+            rootTranscriptPath: parentPath,
+          );
+          attachments = annotateSubagentAttachments(
+            attachments,
+            resolver: _categoryResolverFor(cli),
+          );
+        }
+        _messages[cacheKey] = incremental;
+        _attachments[cacheKey] = attachments;
+        _tokens[cacheKey] = token ?? 'changed-$cacheKey';
+        return AiHistoryLoadResult(
+          messages: incremental,
+          cli: cli,
+          subagentAttachments: attachments,
+        );
+      }
+
       // Full parse through the capability's adapter: reads the whole located
       // transcript each time. The mtime token above skips the work when nothing
-      // changed. (The incremental tailer was rolled back — see git history.)
+      // changed.
       //
       // Heavy transcripts parse on a worker isolate so the UI thread never
       // spends tens of ms re-decoding a large JSONL on live refresh. Isolate
@@ -253,6 +389,11 @@ final class AiHistoryLoader {
       _messages[cacheKey] = messages;
       _attachments[cacheKey] = attachments;
       _tokens[cacheKey] = token ?? 'changed-$cacheKey';
+      final sideToken = await cap.subagentSideResolver.fingerprint(
+        ctx: ctx,
+        rootTranscriptPath: parentPath,
+      );
+      if (sideToken != null) _sideTokens[cacheKey] = sideToken;
       return AiHistoryLoadResult(
         messages: messages,
         cli: cli,
@@ -275,12 +416,18 @@ final class AiHistoryLoader {
       _tokens.remove(key);
       _messages.remove(key);
       _attachments.remove(key);
+      _parentPaths.remove(key);
+      _sideTokens.remove(key);
+      _tailStates.remove(key);
       return;
     }
     final prefix = '${sessionId.trim()}\u0000';
     _tokens.removeWhere((key, _) => key.startsWith(prefix));
     _messages.removeWhere((key, _) => key.startsWith(prefix));
     _attachments.removeWhere((key, _) => key.startsWith(prefix));
+    _parentPaths.removeWhere((key, _) => key.startsWith(prefix));
+    _sideTokens.removeWhere((key, _) => key.startsWith(prefix));
+    _tailStates.removeWhere((key, _) => key.startsWith(prefix));
   }
 
   Future<_AiHistorySeat> _resolveSeat({

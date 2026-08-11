@@ -16,6 +16,7 @@ final class FakeAiHistoryCapability implements AiHistoryCapability {
     this.lineAppend,
     this.subagentSideResolver = const NullSubagentSideResolver(),
     this.toolResultEnricher = const NoOpToolResultEnricher(),
+    this.subagentToolNames = const {},
   });
 
   @override
@@ -32,7 +33,7 @@ final class FakeAiHistoryCapability implements AiHistoryCapability {
   final AiTranscriptLineAppend? lineAppend;
 
   @override
-  Set<String> get subagentToolNames => const {};
+  final Set<String> subagentToolNames;
 
   @override
   final SubagentSideResolver subagentSideResolver;
@@ -63,6 +64,7 @@ CliToolRegistry fakeAiHistoryRegistry({
   Future<AiTranscriptBundle?> Function(SessionHistoryContext ctx)? locate,
   SubagentSideResolver subagentSideResolver = const NullSubagentSideResolver(),
   ToolResultEnricher toolResultEnricher = const NoOpToolResultEnricher(),
+  Set<String> subagentToolNames = const {},
 }) {
   final registry = CliToolRegistry();
   registry.register(
@@ -73,6 +75,7 @@ CliToolRegistry fakeAiHistoryRegistry({
         locateFn: locate,
         subagentSideResolver: subagentSideResolver,
         toolResultEnricher: toolResultEnricher,
+        subagentToolNames: subagentToolNames,
       ),
     ),
   );

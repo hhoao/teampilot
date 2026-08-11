@@ -17,9 +17,27 @@ class _CountingFs extends InMemoryFilesystem {
   }
 }
 
+/// InMemoryFilesystem that simulates remote write latency and records the peak
+/// number of concurrently in-flight writes (the SFTP round-trip bottleneck).
+class _ConcurrencyProbeFs extends InMemoryFilesystem {
+  int _inFlight = 0;
+  int maxConcurrent = 0;
+  int writeBytesCount = 0;
+
+  @override
+  Future<void> writeBytes(String path, List<int> bytes) async {
+    _inFlight++;
+    if (_inFlight > maxConcurrent) maxConcurrent = _inFlight;
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+    _inFlight--;
+    writeBytesCount++;
+    await super.writeBytes(path, bytes);
+  }
+}
+
 WorkMachineMaterializer _materializer(
   InMemoryFilesystem homeFs,
-  _CountingFs workFs,
+  InMemoryFilesystem workFs,
 ) => WorkMachineMaterializer(
   homeFs: homeFs,
   homeRoot: '/home',
@@ -123,4 +141,30 @@ void main() {
     await m.reconcile(tools: {'claude'}, workspaceId: 'w1');
     expect(workFs.writeBytesCount, 3); // only x re-copied
   });
+
+  test(
+    'copies subtree files with bounded concurrency instead of serial writes',
+    () async {
+      final homeFs = InMemoryFilesystem();
+      for (var i = 0; i < 12; i++) {
+        await homeFs.writeString(
+          '/home/cli-defaults/claude/agents/a$i.md',
+          'content-$i',
+        );
+      }
+      final workFs = _ConcurrencyProbeFs();
+      final m = _materializer(homeFs, workFs);
+
+      await m.reconcile(tools: {'claude'}, workspaceId: 'w1');
+
+      expect(workFs.maxConcurrent, greaterThan(1),
+          reason: 'serial per-file writes were the 50s SFTP bottleneck');
+      expect(
+        workFs.maxConcurrent,
+        lessThanOrEqualTo(WorkMachineMaterializer.copyWriteConcurrency),
+        reason: 'writes must stay within the bounded worker pool',
+      );
+      expect(workFs.writeBytesCount, 12);
+    },
+  );
 }

@@ -82,16 +82,14 @@ class WorkspaceTeamMemberTargetsSection extends StatelessWidget {
 
   Future<void> _openAssignDialog(BuildContext context, Workspace live) async {
     final repo = context.read<SessionRepository>();
-    final chat = context.read<ChatCubit>();
-    final saved = await showWorkspaceTeamMemberTargetsDialog(
+    // The dialog commits via TeamSettingsCommitService and patches the chat
+    // snapshot in memory — no full workspace/session reload needed here.
+    await showWorkspaceTeamMemberTargetsDialog(
       context,
       repository: repo,
       workspace: live,
       team: team,
     );
-    if (saved == true && context.mounted) {
-      await chat.loadWorkspaceData(repo);
-    }
   }
 }
 

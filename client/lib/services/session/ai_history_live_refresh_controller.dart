@@ -30,6 +30,7 @@ class AiHistoryLiveRefreshController {
     required Future<AiHistoryWatchMeta?> Function() resolveWatchMeta,
     AiHistoryLiveRefreshSignalFactory? createSignal,
     Duration? metaRetryInterval,
+    this.reloadMinInterval = const Duration(seconds: 1),
   }) : _seat = seat,
        _fs = fs,
        _resolveWatchMeta = resolveWatchMeta,
@@ -42,9 +43,14 @@ class AiHistoryLiveRefreshController {
   final AiHistoryLiveRefreshSignalFactory _createSignal;
   final Duration? _metaRetryIntervalOverride;
 
+  /// 两次 reload 之间的最小间隔;持续输出时把高频变更合并为一次刷新。
+  final Duration reloadMinInterval;
+
   AiHistoryWatchMeta? _meta;
   TranscriptChangeSignalHandle? _signal;
   Timer? _metaRetryTimer;
+  DateTime? _lastReloadAt;
+  Timer? _throttleTimer;
   bool _started = false;
   bool _reloadInFlight = false;
   bool _reloadQueued = false;
@@ -63,6 +69,9 @@ class AiHistoryLiveRefreshController {
     _started = true;
     if (!skipInitialRefresh) {
       await refreshNow();
+      // Mount refresh is not a throttle baseline — throttling only coalesces
+      // change/poll-driven reloads after the first live change.
+      _lastReloadAt = null;
     }
     if (!_started) return;
     await _attachSignal();
@@ -77,6 +86,9 @@ class AiHistoryLiveRefreshController {
     if (!_started) return;
     _started = false;
     _reloadQueued = false;
+    _throttleTimer?.cancel();
+    _throttleTimer = null;
+    _lastReloadAt = null;
     _cancelMetaRetry();
     final signal = _signal;
     _signal = null;
@@ -148,8 +160,27 @@ class AiHistoryLiveRefreshController {
     return false;
   }
 
-  Future<void> _requestReload() async {
+  Future<void> _requestReload({bool skipThrottle = false}) async {
     if (!_started) return;
+    if (!skipThrottle) {
+      final now = DateTime.now();
+      final last = _lastReloadAt;
+      if (last != null && now.difference(last) < reloadMinInterval) {
+        _reloadQueued = true;
+        _throttleTimer ??= Timer(
+          reloadMinInterval - now.difference(last),
+          () {
+            _throttleTimer = null;
+            if (_started && _reloadQueued) {
+              _reloadQueued = false;
+              unawaited(_requestReload());
+            }
+          },
+        );
+        return;
+      }
+      _lastReloadAt = now;
+    }
     if (_reloadInFlight) {
       _reloadQueued = true;
       return;
@@ -191,7 +222,7 @@ class AiHistoryLiveRefreshController {
       _reloadInFlight = false;
     }
     if (_reloadQueued && _started) {
-      unawaited(_requestReload());
+      unawaited(_requestReload(skipThrottle: true));
     }
   }
 

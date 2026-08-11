@@ -71,6 +71,7 @@ void main() {
     Future<AiHistoryWatchMeta?> Function()? resolveWatchMeta,
     Filesystem Function()? fsFn,
     Duration? metaRetryInterval,
+    Duration reloadMinInterval = const Duration(seconds: 1),
   }) {
     final session = simpleSession();
     return AiHistoryLiveRefreshController(
@@ -83,6 +84,7 @@ void main() {
             cacheTokenPaths: ['/proj/a.jsonl'],
           ),
       metaRetryInterval: metaRetryInterval,
+      reloadMinInterval: reloadMinInterval,
       createSignal:
           ({
             required Filesystem fs,
@@ -333,6 +335,46 @@ void main() {
     await controller.stop();
   });
 
+
+  test('reloads are throttled to min interval under continuous change', () async {
+    final session = simpleSession();
+    messagesBySession[session.sessionId] = messages(1);
+    locator.emitBundle = true;
+    await cubit.load(
+      session: session,
+      memberId: '',
+      launchContext: launchCtx(session),
+    );
+
+    var softReloadPasses = 0;
+    locator.onLocate = () async {
+      softReloadPasses++;
+      return _dummyBundle(session.sessionId);
+    };
+
+    final controller = buildController(
+      seat: seatFor(session),
+      reloadMinInterval: const Duration(seconds: 1),
+    );
+    await controller.start();
+    expect(softReloadPasses, 0);
+
+    for (var i = 0; i < 5; i++) {
+      messagesBySession[session.sessionId] = messages(i + 2);
+      lastSignal!.fire();
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    }
+    expect(softReloadPasses, lessThanOrEqualTo(2),
+        reason: '100ms 内 5 次变更被节流为至多 2 次 reload(1s 间隔)');
+
+    // 节流窗口结束后,排队中的变更合并为一次 reload 并送达最新内容。
+    await Future<void>.delayed(const Duration(milliseconds: 1100));
+    await pumpEventQueue();
+    expect(softReloadPasses, 2);
+    expect(cubit.state.totalMessageCount, 6);
+
+    await controller.stop();
+  });
 
   test('stop cancels signal and ignores late callbacks', () async {
     final session = simpleSession();

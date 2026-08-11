@@ -390,9 +390,19 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
       // the transcript mtime is unchanged, so an instance comparison is a
       // zero-cost "CLI unchanged" test (the previous full-content identity scan
       // string-built every message — including every tool result — on the UI
-      // isolate on each live refresh).
+      // isolate on each live refresh). The same instance test applies to the
+      // subagent attachment map; the loader may still re-inflate it from side
+      // transcripts while the CLI text is frozen (a running sub-agent appends
+      // its own transcript but the parent only moves when the tool result
+      // lands), so a content comparison covers that map too.
       final cliUnchanged = identical(messages, _cliMessages);
-      if (cliUnchanged && _mailboxUnchanged(mailboxRecords)) {
+      final attachmentsUnchanged =
+          identical(result.subagentAttachments, _subagentAttachments) ||
+          _sameSubagentAttachments(
+            _subagentAttachments,
+            result.subagentAttachments,
+          );
+      if (cliUnchanged && attachmentsUnchanged && _mailboxUnchanged(mailboxRecords)) {
         _lastMailboxRecords = mailboxRecords;
         return;
       }

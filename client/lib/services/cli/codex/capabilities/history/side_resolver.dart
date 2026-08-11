@@ -52,6 +52,16 @@ final class CodexSideResolver implements SubagentSideResolver {
     return _buildResult(ctx, sidePath);
   }
 
+  // The agent id (and thus the rollout) is only discoverable from the tool
+  // args/result; there is no cheap dir-level fingerprint, and the parent cache
+  // token already misses for Codex (rollout JSONL is not under projects/),
+  // so every live refresh re-inflates anyway.
+  @override
+  Future<String?> fingerprint({
+    required SessionHistoryContext ctx,
+    required String? rootTranscriptPath,
+  }) async => null;
+
   static String? _parentTranscriptPath(
     SubagentSideHandle? parentHandle,
     String? rootTranscriptPath,
