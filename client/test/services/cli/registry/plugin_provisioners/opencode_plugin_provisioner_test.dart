@@ -128,6 +128,51 @@ void main() {
       },
     );
 
+    test(
+      'does not self-link pool entry when bundle pool IS configDir/plugins '
+      '(opencode session layout)',
+      () async {
+        final fs = InMemoryFilesystem();
+        // Real opencode wiring: sessionRuntimePluginsDir(configDir, opencode)
+        // is exactly `{configDir}/plugins`, so the pool entry and the
+        // materialized destination are the same path.
+        const configDir = '/cfg';
+        const poolDir = '/cfg/plugins';
+
+        await fs.writeString(
+          '/installed/superpowers/.plugin/plugin.json',
+          jsonEncode({'name': 'superpowers', 'version': '6.2.0'}),
+        );
+        await fs.writeString(
+          '/installed/superpowers/skills/brainstorming/SKILL.md',
+          '---\nname: brainstorming\ndescription: x\n---\n',
+        );
+        await fs.writeString(
+          '/installed/superpowers/.opencode/plugins/superpowers.js',
+          'export const SuperpowersPlugin = async () => ({});',
+        );
+        // Pool reconcile links `{poolDir}/<name>` -> installed bundle.
+        await fs.createSymlink(
+          target: '/installed/superpowers',
+          linkPath: '$poolDir/superpowers',
+        );
+
+        await _provision(fs, configDir, poolDir);
+
+        // The pool entry must still reach the bundle — no self-loop.
+        expect(
+          await fs.readSymlinkTarget('$poolDir/superpowers'),
+          '/installed/superpowers',
+        );
+        expect(
+          await fs.readString(
+            '$configDir/plugins/superpowers/.opencode/plugins/superpowers.js',
+          ),
+          contains('SuperpowersPlugin'),
+        );
+      },
+    );
+
     test('is idempotent across repeated provisions', () async {
       final fs = InMemoryFilesystem();
       const configDir = '/cfg';

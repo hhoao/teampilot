@@ -179,6 +179,47 @@ void main() {
       );
     },
   );
+  test('heals a self-referencing symlink loop on the next reconcile', () async {
+    await _writeNeutralBundle(sourceRoot, 'demo-bundle');
+    final poolDir = p.join(base.path, 'session', 'plugins');
+    final catalog = [
+      _plugin('acme/demo', 'demo', directory: 'demo-bundle'),
+    ];
+
+    final first = await service().reconcile(
+      poolDir: poolDir,
+      enabledPluginIds: ['acme/demo'],
+      installedCatalog: catalog,
+      paths: neutralPluginManifestPaths,
+    );
+    expect(first.linked, ['demo-bundle']);
+
+    // Simulate the historic bug: the pool entry replaced by a link pointing
+    // at itself (materialize onto the pool path), matching the stamp so the
+    // fast path would otherwise skip the cleanup.
+    final dest = p.join(poolDir, 'demo-bundle');
+    final link = Link(dest);
+    if (Platform.isLinux || Platform.isMacOS) {
+      await link.delete();
+      await Link(dest).create(dest);
+      expect(await fs.resolveSymlink(dest), isNull,
+          reason: 'self-loop must not resolve');
+    } else {
+      return; // Windows junctions cannot self-link; loop heal is POSIX-only.
+    }
+
+    final second = await service().reconcile(
+      poolDir: poolDir,
+      enabledPluginIds: ['acme/demo'],
+      installedCatalog: catalog,
+      paths: neutralPluginManifestPaths,
+    );
+
+    expect(second.linked, ['demo-bundle'],
+        reason: 'broken pool entry must be re-linked, not fast-pathed');
+    expect(await fs.resolveSymlink(dest), p.join(sourceRoot, 'demo-bundle'));
+  });
+
   test('removes stale bundles but keeps writer-managed entries', () async {
     await _writeNeutralBundle(sourceRoot, 'demo-bundle');
     final poolDir = p.join(base.path, 'session', 'plugins');

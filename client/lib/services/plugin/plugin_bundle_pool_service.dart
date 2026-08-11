@@ -94,7 +94,8 @@ class PluginBundlePoolService {
       memberPluginsDir: poolDir,
     );
     if (savedStampJson.isNotEmpty &&
-        _stampMatchesDesired(savedStampJson, resolved.enabled, paths)) {
+        _stampMatchesDesired(savedStampJson, resolved.enabled, paths) &&
+        await _poolLinksHealthy(poolDir)) {
       appLogger.d(
         '[session-launch] plugin-pool stamp-hit '
         'enabled=${resolved.enabled.length} ms=${total.elapsedMilliseconds}',
@@ -120,7 +121,9 @@ class PluginBundlePoolService {
         if (entry.name.startsWith('.')) continue;
         if (_managedNames.contains(entry.name)) continue;
         final path = ctx.join(poolDir, entry.name);
-        final stat = await _fs.stat(path);
+        // lstat (not stat): a self-referencing symlink loop reports as
+        // `notFound` from stat (ELOOP swallowed) and would never be cleaned.
+        final stat = await _fs.lstat(path);
         if (!(stat.isDirectory || stat.isSymlink)) continue;
         await _fs.removeRecursive(path);
       }
@@ -233,6 +236,29 @@ class PluginBundlePoolService {
       errors: errors,
       memberProvisionStampJson: stampJson,
     );
+  }
+
+  /// Whether every non-managed pool entry still reaches its bundle.
+  ///
+  /// Guards the stamp fast path against broken entries that would otherwise
+  /// skip the reconcile cleanup forever — most notably a self-referencing
+  /// symlink loop (previously created when a plugin was materialized onto its
+  /// own pool path). A loop is detected by a link whose target is the path
+  /// itself; any exception means "not healthy" so the slow path heals.
+  Future<bool> _poolLinksHealthy(String poolDir) async {
+    try {
+      for (final entry in await _fs.listDir(poolDir)) {
+        if (entry.name.startsWith('.')) continue;
+        if (_managedNames.contains(entry.name)) continue;
+        final path = _fs.pathContext.join(poolDir, entry.name);
+        final target = await _fs.readSymlinkTarget(path);
+        if (target == null) continue;
+        if (_fs.pathContext.equals(target, path)) return false;
+      }
+    } on Object {
+      return false;
+    }
+    return true;
   }
 
   /// Whether a saved member stamp already matches the desired enabled bundles.
