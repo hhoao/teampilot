@@ -158,8 +158,10 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
   List<AiMessage> _allMessages = const [];
   int _visibleCount = 0;
 
-  /// CLI identity of the last [load]. Stable for the seat's lifetime; only
-  /// set by [load] — [softReload] / [refreshMailboxTimeline] reuse this value.
+  /// CLI identity of the last successful [load] / [softReload]. [softReload]
+  /// also refreshes it so a failed cold load (which never reaches the success
+  /// path) or a seat switch is recovered by the next live refresh;
+  /// [refreshMailboxTimeline] reuses this value without re-resolving.
   CliTool? _lastCli;
 
   /// Mailbox records of the last applied snapshot. The bus log is append-only
@@ -349,6 +351,8 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
           memberId != _lastMemberId) {
         return;
       }
+
+      _lastCli = result.cli;
 
       final messages = result.messages;
       final mailboxRecords = await _safeLoadMailboxRecords(
