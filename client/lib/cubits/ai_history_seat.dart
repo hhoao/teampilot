@@ -973,6 +973,9 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
           entry.value.sidePath != other.sidePath) {
         return false;
       }
+      // Same message list instance (incremental append reuses it) → skip the
+      // content scan that string-builds every message part on the UI isolate.
+      if (identical(entry.value.messages, other.messages)) continue;
       if (!sameMessageListContent(entry.value.messages, other.messages)) {
         return false;
       }
