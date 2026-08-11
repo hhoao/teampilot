@@ -21,6 +21,7 @@ import '../../../services/cli/registry/cli_display_name.dart';
 import '../../../services/cli/registry/capabilities/provider_display_capability.dart';
 import '../../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../../services/launch/member_placement_save.dart';
+import '../../../services/launch/team_settings_commit_service.dart';
 import '../../../services/workspace/workspace_pane_policy.dart';
 import '../../../utils/team/team_member_naming.dart';
 import '../../../widgets/cli/cli_brand_icon.dart';
@@ -39,6 +40,10 @@ const double _kDialogHeight = 720;
 enum _LandingTeamSettingsSection { team, members, machines }
 
 /// Launch-critical team settings from compose landing (left nav + right pane).
+///
+/// Edits a local draft and only persists on Save (single commit via
+/// [TeamSettingsCommitService]); nested configure dialogs return their updated
+/// team. Escape / barrier tap safely discard the draft.
 Future<bool?> showLandingTeamSettingsDialog(
   BuildContext context, {
   required Workspace workspace,
@@ -48,7 +53,6 @@ Future<bool?> showLandingTeamSettingsDialog(
     context: context,
     presentation: TpDialogPresentation.page,
     mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
-    barrierDismissible: false,
     maxWidth: _kDialogWidth,
     maxHeight: _kDialogHeight,
     builder: (_) =>
@@ -105,12 +109,10 @@ class _LandingTeamSettingsDialogState
     extends State<_LandingTeamSettingsDialog> {
   late int _selectedIndex;
   late final int _initialIndex;
-  late TeamProfile _initialTeam;
   late TeamProfile _teamDraft;
   late Workspace _workspace;
   late MemberPlacementByTarget _placement;
   var _saving = false;
-  var _cubitDirty = false;
   final _wideBodyKey = GlobalKey();
 
   bool get _needsMixedInit => workspaceNeedsMixedPlacementInit(
@@ -130,8 +132,7 @@ class _LandingTeamSettingsDialogState
     super.initState();
     _workspace = widget.workspace;
     final cubit = context.read<LaunchProfileCubit>();
-    _initialTeam = _teamFromCubit(cubit) ?? widget.team;
-    _teamDraft = _initialTeam;
+    _teamDraft = _teamFromCubit(cubit) ?? widget.team;
     _placement = _placementFromWorkspace(_workspace, _teamDraft);
     _initialIndex = _needsMixedInit
         ? _sections.indexOf(_LandingTeamSettingsSection.machines)
@@ -189,28 +190,16 @@ class _LandingTeamSettingsDialogState
 
   bool get _canSave => !_saving && _preparedSave.leadValid;
 
-  Future<void> _syncDraftToCubit() async {
-    final cubit = context.read<LaunchProfileCubit>();
-    await cubit.selectTeam(widget.team.id, silent: true, syncResources: false);
-    await cubit.updateSelected(_teamDraft);
-    _cubitDirty = true;
-    _refreshDraftFromCubit(overlayDraftFields: true);
-  }
-
-  void _refreshDraftFromCubit({required bool overlayDraftFields}) {
-    final cubit = context.read<LaunchProfileCubit>();
-    final fromCubit = _teamFromCubit(cubit);
-    if (fromCubit == null) return;
-    if (!overlayDraftFields) {
-      setState(() => _teamDraft = fromCubit);
-      return;
-    }
+  /// Adopts a nested-configure result as the new draft. Nested dialogs persist
+  /// via [LaunchProfileCubit] immediately, so their result becomes the new
+  /// baseline; draft-only fields (switches) are re-overlaid on top.
+  void _adoptUpdatedTeam(TeamProfile updated) {
     setState(() {
-      _teamDraft = fromCubit.copyWith(
+      _teamDraft = updated.copyWith(
         forceTeamLeadDelegateMode: _teamDraft.forceTeamLeadDelegateMode,
         updateForceTeamLeadDelegateMode: true,
         members: [
-          for (final member in fromCubit.members)
+          for (final member in updated.members)
             _overlayMemberDraftFields(member),
         ],
       );
@@ -229,42 +218,26 @@ class _LandingTeamSettingsDialogState
   }
 
   Future<void> _openTeamPresetConfigure() async {
-    await _syncDraftToCubit();
-    if (!mounted) return;
     final cubit = context.read<LaunchProfileCubit>();
-    final team = _teamFromCubit(cubit) ?? _teamDraft;
-    await openTeamDefaultPresetConfigureDialog(
+    final updated = await openTeamDefaultPresetConfigureDialog(
       context,
-      team: team,
+      team: _teamDraft,
       cubit: cubit,
     );
-    if (!mounted) return;
-    _adoptCubitAsBaseline(overlayDraftFields: true);
+    if (!mounted || updated == null) return;
+    _adoptUpdatedTeam(updated);
   }
 
   Future<void> _openMemberConfigure(TeamMemberConfig member) async {
-    await _syncDraftToCubit();
-    if (!mounted) return;
     final cubit = context.read<LaunchProfileCubit>();
-    final team = _teamFromCubit(cubit) ?? _teamDraft;
-    await showDialog<void>(
-      context: context,
-      builder: (ctx) =>
-          MemberLaunchConfigureDialog(team: team, member: member, cubit: cubit),
+    final updated = await showMemberLaunchConfigureDialog(
+      context,
+      team: _teamDraft,
+      member: member,
+      cubit: cubit,
     );
-    if (!mounted) return;
-    _adoptCubitAsBaseline(overlayDraftFields: true);
-  }
-
-  /// Nested configure dialogs persist via [LaunchProfileCubit]; adopt that as the
-  /// Cancel baseline so outer dismiss does not wipe those fields.
-  void _adoptCubitAsBaseline({required bool overlayDraftFields}) {
-    final cubit = context.read<LaunchProfileCubit>();
-    final fromCubit = _teamFromCubit(cubit);
-    if (fromCubit == null) return;
-    _refreshDraftFromCubit(overlayDraftFields: overlayDraftFields);
-    _initialTeam = fromCubit;
-    _cubitDirty = false;
+    if (!mounted || updated == null) return;
+    _adoptUpdatedTeam(updated);
   }
 
   void _updateMember(TeamMemberConfig updated) {
@@ -278,16 +251,9 @@ class _LandingTeamSettingsDialogState
     });
   }
 
-  Future<void> _revertCubitIfNeeded() async {
-    if (!_cubitDirty) return;
-    final cubit = context.read<LaunchProfileCubit>();
-    await cubit.selectTeam(widget.team.id, silent: true, syncResources: false);
-    await cubit.updateSelected(_initialTeam);
-  }
-
-  Future<void> _cancel() async {
-    await _revertCubitIfNeeded();
-    if (!mounted) return;
+  /// Draft-only dismiss: nothing was persisted by this dialog, so Cancel just
+  /// pops (nested configure dialogs already committed their own edits).
+  void _cancel() {
     Navigator.of(context).pop(false);
   }
 
@@ -295,35 +261,18 @@ class _LandingTeamSettingsDialogState
     if (!_canSave) return;
     setState(() => _saving = true);
     try {
-      final cubit = context.read<LaunchProfileCubit>();
-      final sessions = context.read<SessionRepository>();
-      final prepared = prepareMemberPlacementSave(
-        team: _teamDraft,
-        folders: _workspace.folders,
-        placement: _placement,
+      final ok = await TeamSettingsCommitService(
+        launchProfileCubit: context.read<LaunchProfileCubit>(),
+        sessionRepository: context.read<SessionRepository>(),
+        chatCubit: context.read<ChatCubit>(),
+      ).commit(
+        workspaceId: _workspace.workspaceId,
+        teamId: widget.team.id,
+        prepared: _preparedSave,
       );
-      if (!prepared.leadValid) return;
-      await cubit.selectTeam(
-        widget.team.id,
-        silent: true,
-        syncResources: false,
-      );
-      // Persist placement totals on roster.overrides.replicas (members alone
-      // are runtime-only and would be dropped on the next materialize).
-      _teamDraft = prepared.team;
-      await cubit.updateSelected(_teamDraft);
-      await sessions.updateWorkspaceMemberPlacement(
-        _workspace.workspaceId,
-        widget.team.id,
-        targets: prepared.targets,
-      );
-      if (mounted) {
-        await context.read<ChatCubit>().loadWorkspaceData(sessions);
+      if (ok && mounted) {
+        Navigator.of(context).pop(true);
       }
-      _cubitDirty = false;
-      _initialTeam = _teamDraft;
-      if (!mounted) return;
-      Navigator.of(context).pop(true);
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -337,7 +286,7 @@ class _LandingTeamSettingsDialogState
         Expanded(
           child: TpDialogNavShell(
             mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
-            onClose: () => unawaited(_cancel()),
+            onClose: _cancel,
             navTitle: (c) => c.l10n.teamSettings,
             initialIndex: _initialIndex,
             onSelectedIndexChanged: (index) {
@@ -356,7 +305,7 @@ class _LandingTeamSettingsDialogState
                 : _needsMixedInit
                 ? context.l10n.mixedWorkspaceMemberAssignmentIncomplete
                 : null,
-            onCancel: () => unawaited(_cancel()),
+            onCancel: _cancel,
             onSave: () => unawaited(_save()),
           ),
         ),

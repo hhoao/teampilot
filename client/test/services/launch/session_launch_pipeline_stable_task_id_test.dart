@@ -413,6 +413,7 @@ class _CapturingSessionRepository extends Fake implements SessionRepository {
     SessionContinueOverrides? continueOverrides,
     List<SessionMemberBinding>? members,
     Map<String, String>? memberTargets,
+    Workspace? knownWorkspace,
   }) async {
     createCalls.add(
       _CreateSessionCall(

@@ -510,9 +510,11 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
   }
 
   /// Launch-config-only persist: no Expert Hub rematerialize, one profile write.
-  Future<void> _persistSelectedLaunchConfig(TeamProfile updated) async {
+  ///
+  /// Returns the persisted team, or `null` when no team is selected.
+  Future<TeamProfile?> _persistSelectedLaunchConfig(TeamProfile updated) async {
     final selected = state.selectedTeam;
-    if (selected == null) return;
+    if (selected == null) return null;
     final normalized = updated.normalizedLaunchConfig();
     final next = ExpertMemberMaterializer.reapplyLaunchInheritance(normalized);
     final teams = [
@@ -529,6 +531,7 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
       ),
     );
     await _repository.save(next);
+    return next;
   }
 
   Future<void> deleteTeam(String id) async {
@@ -601,9 +604,14 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
     return added;
   }
 
-  Future<void> updateMember(String memberId, TeamMemberConfig updated) async {
+  /// Returns the updated member of the selected team after persisting, or
+  /// `null` when the team is missing or the mutation was rejected.
+  Future<TeamProfile?> updateMember(
+    String memberId,
+    TeamMemberConfig updated,
+  ) async {
     final team = state.selectedTeam;
-    if (team == null) return;
+    if (team == null) return null;
     final mutation = _rosterEditor.updateMemberOverrides(
       team,
       memberId,
@@ -611,9 +619,10 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
     );
     if (mutation.isRejected) {
       emit(state.copyWith(statusMessage: mutation.statusMessage));
-      return;
+      return null;
     }
     await updateSelected(mutation.team!);
+    return state.selectedTeam;
   }
 
   /// Swaps the catalog expert referenced by a roster slot (persona is
@@ -642,9 +651,13 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
   /// [presetId] may be a preset UUID, `null` (clear), or empty (clear).
   /// [syncCli] aligns [TeamProfile.cli] with the preset for mixed/native launch.
   /// Completes after the selected profile is persisted (no hub rematerialize).
-  Future<void> setTeamActivePreset(String? presetId, {CliTool? syncCli}) async {
+  /// Returns the persisted team, or `null` when no team is selected.
+  Future<TeamProfile?> setTeamActivePreset(
+    String? presetId, {
+    CliTool? syncCli,
+  }) async {
     final team = state.selectedTeam;
-    if (team == null) return;
+    if (team == null) return null;
     final effectiveId = (presetId == null || presetId.trim().isEmpty)
         ? null
         : presetId.trim();
@@ -654,13 +667,14 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
     } else {
       next = team.asPresetLaunch(effectiveId, syncCli: syncCli);
     }
-    await _persistSelectedLaunchConfig(next);
+    return _persistSelectedLaunchConfig(next);
   }
 
   /// Persists team custom launch defaults for [catalogCli] and clears any preset.
   ///
   /// Completes after the selected profile is persisted (no hub rematerialize).
-  Future<void> updateTeamCustomLaunch({
+  /// Returns the persisted team, or `null` when no team is selected.
+  Future<TeamProfile?> updateTeamCustomLaunch({
     required CliTool catalogCli,
     CliTool? defaultCli,
     required String providerId,
@@ -668,7 +682,7 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
     required String effort,
   }) async {
     final team = state.selectedTeam;
-    if (team == null) return;
+    if (team == null) return null;
     var next = team.asCustomLaunch(
       cli: catalogCli,
       providerId: providerId,
@@ -678,7 +692,7 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
     if (defaultCli != null && team.teamMode == TeamMode.mixed) {
       next = next.copyWith(cli: defaultCli);
     }
-    await _persistSelectedLaunchConfig(next);
+    return _persistSelectedLaunchConfig(next);
   }
 
   /// Sets the active preset for a member of the selected team.
@@ -688,15 +702,18 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
   /// or empty (custom).
   ///
   /// In [TeamMode.mixed], [syncCli] is required when selecting an explicit preset.
-  Future<void> setMemberActivePreset(
+  ///
+  /// Returns the updated selected team, or `null` when it is missing or the
+  /// slot mutation was rejected.
+  Future<TeamProfile?> setMemberActivePreset(
     String memberId,
     String? presetId, {
     CliTool? syncCli,
   }) async {
     final team = state.selectedTeam;
-    if (team == null) return;
+    if (team == null) return null;
     final slot = _rosterEditor.slotById(team, memberId);
-    if (slot == null) return;
+    if (slot == null) return null;
     final overrides = slot.overrides;
     final effectiveId = (presetId == null || presetId.trim().isEmpty)
         ? null
@@ -746,9 +763,10 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
     );
     if (mutation.isRejected) {
       emit(state.copyWith(statusMessage: mutation.statusMessage));
-      return;
+      return null;
     }
     await updateSelected(mutation.team!);
+    return state.selectedTeam;
   }
 
   Future<void> deleteMember(String memberId) async {

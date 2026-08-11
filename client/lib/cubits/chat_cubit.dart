@@ -1407,6 +1407,27 @@ class ChatCubit extends Cubit<ChatState>
     );
   }
 
+  /// Patches one [Workspace] in the snapshot in memory (no disk rescan).
+  ///
+  /// Prefer after a targeted workspace-manifest mutation (e.g. member
+  /// placement saves) — [loadWorkspaceData] rescans every workspace and
+  /// session on disk. Sessions are unaffected by manifest-only edits, so a
+  /// full reload buys nothing here.
+  void patchWorkspace(Workspace updated) {
+    _emitSnapshot(
+      _dataStore.deriveSnapshot(
+        workspaces: [
+          for (final workspace in state.workspaces)
+            if (workspace.workspaceId == updated.workspaceId)
+              updated
+            else
+              workspace,
+        ],
+        sessions: state.sessions,
+      ),
+    );
+  }
+
   Future<AppSession> createSession(
     String workspaceId,
     SessionRepository repo, {
