@@ -1752,7 +1752,7 @@ cd client/packages/ai_message_ui && flutter test
 - **Task 6 是回归守卫**:mailbox 纯文本使 seat 补标在现有数据流不可达,测试前后都通过;实现正确性靠代码走查(`_applyMessages`(732)/ `_applySoftReloadMessages`(753)开头有 `_loader.annotate`;`_lastCli` 只在 `load()` 设置,seat CLI 稳定)。
 - **Task 10 是组合守卫**:`SessionHistoryReviewMessages` harness 树中不含 `SessionChatMessageArea` 的 Stack,测试镜像生产装配(偏好 → scope 谓词),前后都通过;消息区装配本身靠代码走查。
 - **fake registry 测试**:`fakeAiHistoryRegistry` 只注册 `AiHistoryCapability`,loader 的 category 走 fallback 默认表——这是设计内行为,不是 bug;`tool_call_category_mapping_test` 用 `CliToolRegistry.builtIn()` 覆盖全量映射。
-- **`withAtLeastOneToolVisible`**:新增偏好字段时必须同步所有显式重建 `LayoutPreferences` 的地方(共 2 处:fromJson 与该方法本身)。
+- **`withAtLeastOneToolVisible`**:新增偏好字段时必须同步所有显式重建 `LayoutPreferences` 的地方(**共 3 处**:`fromJson`、`copyWith` 主体、`withAtLeastOneToolVisible` 自身——`copyWith` 是每次偏好变更的热路径,最容易漏)。
 - **gen-l10n**:若 `client/lib/l10n/app_localizations_*.dart` 由生成器产出,不要手改;跑 `flutter gen-l10n` 或分析触发。
 - **链头断言用图标**:`Icons.psychology_outlined`(chain_of_thought_view.dart:76),不依赖 strings 文案。
 - **缓存一致性**:loader 缓存里存的是标注后的消息;`annotate` 幂等,seat 补标不会产生内容差异,`sameMessageListContent` 不受影响(类别不进 identity)。
