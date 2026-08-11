@@ -146,6 +146,34 @@ void main() {
     );
   });
 
+  test('merged messages keep tool call categories after mailbox merge', () async {
+    messagesBySession['sess-a'] = [
+      AiMessage(
+        id: 'm-tool',
+        role: AiRole.assistant,
+        parts: [AiToolCallPart(toolCallId: 't1', toolName: 'Bash')],
+      ),
+    ];
+    locator.emitBundle = true;
+    final session = simpleSession(id: 'sess-a');
+    await cubit.load(
+      session: session,
+      memberId: '',
+      launchContext: launchCtx(session),
+    );
+    final seat = cubit.ensureSeat(
+      sessionId: session.sessionId,
+      selectedMemberId: '',
+    );
+
+    final tool = seat.runtime.messages
+        .expand((m) => m.parts)
+        .whereType<AiToolCallPart>()
+        .single;
+    expect(tool.toolName, 'Bash');
+    expect(tool.category, AiToolCallCategory.command);
+  });
+
   test('softReload seat A does not change seat B messages', () async {
     locator.emitBundle = true;
     final sessionA = simpleSession(id: 'sess-a');

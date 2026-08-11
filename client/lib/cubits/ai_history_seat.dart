@@ -158,6 +158,10 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
   List<AiMessage> _allMessages = const [];
   int _visibleCount = 0;
 
+  /// CLI identity of the last [load]. Stable for the seat's lifetime; only
+  /// set by [load] — [softReload] / [refreshMailboxTimeline] reuse this value.
+  CliTool? _lastCli;
+
   /// Mailbox records of the last applied snapshot. The bus log is append-only
   /// per member, so a per-record `seq` + `read` scan is a cheap fingerprint —
   /// it lets [softReload] skip the whole merge + window path when neither the
@@ -269,6 +273,7 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
       );
       if (gen != _loadGeneration || isClosed) return;
       _cliMessages = result.messages;
+      _lastCli = result.cli;
       _setSubagentAttachments(result.subagentAttachments);
       final merged = await _mergeWithMailbox(
         result.messages,
@@ -734,6 +739,10 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
     String sessionId,
     String memberId,
   ) {
+    final cli = _lastCli;
+    if (cli != null) {
+      messages = _loader.annotate(messages, cli: cli);
+    }
     _cancelTipHoldTimer();
     _allMessages = messages;
     _committedLength = _allMessages.length;
@@ -755,6 +764,10 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
     String sessionId,
     String memberId,
   ) {
+    final cli = _lastCli;
+    if (cli != null) {
+      messages = _loader.annotate(messages, cli: cli);
+    }
     final oldLength = _allMessages.length;
     final oldVisible = _visibleCount;
     final oldCommitted = _committedLength;
