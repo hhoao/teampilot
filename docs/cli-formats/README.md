@@ -14,7 +14,7 @@
 | claude | `{config}/projects/{bucket}/{taskId}.jsonl` | JSONL | [claude.md](claude.md) | `services/cli/claude/capabilities/history/ai_transcript.dart` | 有（lineAppend 非空；tailFallbackPrefix=`claude`） | 完成 |
 | codex | `$CODEX_HOME/sessions/**/rollout-*.jsonl`（实测日期分层目录 `sessions/YYYY/MM/DD/`） | JSONL | [codex.md](codex.md) | `services/cli/codex/capabilities/history/ai_transcript.dart` | 有（lineAppend 非空；tailFallbackPrefix=`codex`） | 完成 |
 | opencode | `$XDG_DATA_HOME/opencode/opencode.db`（实测 `~/.local/share/opencode/opencode.db`；TeamPilot 会话为 `{runtime}/opencode/opencode.db`，走 `OPENCODE_DB`） | SQLite(WAL) | [opencode.md](opencode.md) | `services/cli/opencode/capabilities/history/ai_transcript.dart` | 有（`lineAppend=null`；sqlite 增量 locate `id>afterMessageId` + liveCacheToken store 级指纹） | 完成 |
-| cursor | `{configDir}/projects/{project}/agent-transcripts/…` | JSONL | [cursor.md](cursor.md) | `services/cli/cursor/capabilities/history/ai_transcript.dart` | 待调研 | 待调研 |
+| cursor | `{configDir}/projects/{project}/agent-transcripts/{chatId}/{chatId}.jsonl`（亦支持扁平 `agent-transcripts/{chatId}.jsonl`；configDir = `$CURSOR_CONFIG_DIR`，缺省 `$HOME/.cursor`） | JSONL | [cursor.md](cursor.md) | `services/cli/cursor/capabilities/history/ai_transcript.dart` | 有（lineAppend 非空；tailFallbackPrefix=`cursor`；liveCacheToken=null） | 完成 |
 | flashskyai | `~/.flashskyai/projects/{bucket}/{id}.jsonl` | JSONL | [flashskyai.md](flashskyai.md) | `services/cli/flashskyai/capabilities/history/ai_transcript.dart` | 待调研 | 待调研 |
 
 > 注：位置列来自 adapter 源码注释，各 CLI 页面需核实并给出实测结论；
