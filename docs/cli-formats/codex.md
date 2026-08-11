@@ -35,7 +35,7 @@ adapter `client/lib/services/cli/codex/capabilities/history/{ai_transcript,ai_hi
 
 - **id**：fallback `codex-{seq}`（惰性求值，被丢弃的事件不占号）；**createdAt**：`timestamp` 可被 `DateTime.tryParse` 解析才设置。
 - **去重**：user / assistant 文本与 reasoning 都有相邻重复检测（`_isAdjacentDuplicateUserText` / `_isAdjacentDuplicateAssistantText` / `_isAdjacentDuplicateAssistantReasoning`），用于抑制 response_item.message 与 event_msg 的 echo 双写（实测 `response_item_message_echo.jsonl`）。
-- 解析后处理（`finalizeAiMessagesForHistory`，ai_message_core）：合并相邻 assistant 消息；`result==null` 且 status 非 running 的 tool call → `status=incomplete`。
+- 解析后处理（`finalizeAiMessagesForHistory`，ai_message_core）：合并相邻 assistant 消息；`result==null` 且 status=complete（非 error）或 running 的 tool call → `status=incomplete`。
 
 ## 工具调用 schema
 

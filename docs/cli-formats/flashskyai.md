@@ -67,7 +67,7 @@ status 非 running 且非 error 的 tool call → `status=incomplete`（磁盘 t
 - 回填规则：`toolUseResult` 为 Map 时取 `stdout` / `stderr`（非空则 `stdout\nstderr` 拼接）、`exitCode != 0` → `isError`；为字符串则直接使用；
 - 实测字段（streamed_tools.jsonl 第 6 行，对应 `call_02` 的 Bash 截断结果）：`{"stdout":…,"stderr":"","interrupted":false,"isImage":false,"noOutputExpected":false,"exitCode":0,"isTruncated":true}`——
   比 Claude 的 truncated_bash.jsonl 多出 `interrupted` / `isImage` / `noOutputExpected` 三个字段，**enricher 只读 stdout/stderr/exitCode，其余忽略**；
-  另一处实测（第 5 行，对应 `call_01` 的 Read 失败）顶层 `toolUseResult` 为字符串 `"Error: File does not exist. …"`（同时 `is_error: true`）→ 字符串直接使用；
+  另一处实测（第 5 行，对应 `call_01` 的 Read 失败）顶层 `toolUseResult` 为字符串 `"Error: File does not exist. …"`（同时 `is_error: true`），字段可为字符串类型；
 - 替换后写回 `result`、`status=complete`、`isError \|= 原 is_error`。
 
 ## Reasoning / 子代理形态
