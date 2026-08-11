@@ -1,7 +1,7 @@
 # CLI 格式参考库
 
 **日期:** 2026-08-12
-**状态:** 建立中（每完成一页回填矩阵，Task 6 校验无残留）
+**状态:** 完成（5 页全部落地，Task 7 收尾校验通过）
 
 各 CLI 原生 transcript 的消息格式与工具调用格式参考。统一解析体系设计见
 [docs/superpowers/specs/2026-08-12-cli-parsing-unification-design.md](../superpowers/specs/2026-08-12-cli-parsing-unification-design.md)；
@@ -17,8 +17,8 @@
 | cursor | `{configDir}/projects/{project}/agent-transcripts/{chatId}/{chatId}.jsonl`（亦支持扁平 `agent-transcripts/{chatId}.jsonl`；configDir = `$CURSOR_CONFIG_DIR`，缺省 `$HOME/.cursor`） | JSONL | [cursor.md](cursor.md) | `services/cli/cursor/capabilities/history/ai_transcript.dart` | 有（lineAppend 非空；tailFallbackPrefix=`cursor`；liveCacheToken=null） | 完成 |
 | flashskyai | `~/.flashskyai/projects/{bucket}/{id}.jsonl`（实测 `projects/`；`layoutSegments: ['projects','workspaces']` 双探针，`workspaces` 为旧布局回退） | JSONL | [flashskyai.md](flashskyai.md) | `services/cli/flashskyai/capabilities/history/ai_transcript.dart` | 有（lineAppend 非空，复用 `appendClaudeJsonlEvent`；tailFallbackPrefix=`flashskyai`） | 完成 |
 
-> 注：位置列来自 adapter 源码注释，各 CLI 页面需核实并给出实测结论；
-> 「增量能力」= 该 CLI 的 `AiHistoryCapability.lineAppend` 是否非空（opencode 走 sqlite 增量 locate，需在页面中说明机制）。
+> 注：位置列与各 CLI 页面「Transcript 存储」表语义一致（token 写法以各页定义为准，如 claude/flashskyai 的 `{root}` = CLI config 目录对应的 transcript roots）；
+> 「增量能力」= 该 CLI 的 `AiHistoryCapability.lineAppend` 是否非空（opencode 走 sqlite 增量 locate，机制见 [opencode.md](opencode.md)）。
 
 ## 新增 CLI
 

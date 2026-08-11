@@ -94,6 +94,17 @@ adapter 映射（`ai_transcript.dart:638-682`）：`toolCallId = callID ?? part.
 | webfetch | `url`、`format` | search | 本机实测 |
 | （兜底）tool | 无 | other | `ai_transcript.dart:643`——`tool` 字段为空时的默认名 |
 
+**共享解析器兜底别名（无内置 CLI 实测发射）**：`SharedToolCallResolvers` 的 str-replace / write / unified-diff codec 与 read 文件规则还接受一组别名——当前 5 个内置 CLI（claude/codex/opencode/cursor/flashskyai）**均未实测发出**，仅当未来某 CLI 发出时解析器才按对应类别处理（`shared_tool_call_resolvers.dart:20-71`；类别均已注册在共享表 `tool_call_categories.dart`）：
+
+| tool name | 所属解析器配置 | 解析类别 |
+|---|---|---|
+| strreplace / editnotebook / notebookedit | str-replace codec `toolNames`（`shared_tool_call_resolvers.dart:20`） | edit |
+| writefile / write_file / create / create_file | write codec `toolNames`（`shared_tool_call_resolvers.dart:28`） | write |
+| applypatch / apply_patch | unified-diff codec `toolNames`（`shared_tool_call_resolvers.dart:34`） | edit |
+| readfile / read_file | read 文件规则 `toolNames`（`shared_tool_call_resolvers.dart:41`） | read |
+
+汇总工具调用覆盖矩阵时：上表别名计入「解析器可解析」列，不计入任何 CLI 的实测发射表。
+
 **camelCase 与 snake_case 混用（重点）**：读写类工具参数是 **camelCase**——`read`/`edit`/`write`/`grep`/`glob` 的 `filePath`、`edit` 的 `oldString`/`newString`、`write` 的 `content`、`bash` 的 `workdir`；而子代理工具 `task` 用 **snake_case**——`subagent_type`、`task_id`。写解析器/文档对照时不可假设单一命名风格；`tool` part 内的字段名本身是 camelCase（`callID`、`state.input`、`state.output`），与 claude/codex 的 snake_case 事件层（`tool_use_id`、`call_id`）形成对照。
 
 ## Reasoning / 子代理形态
