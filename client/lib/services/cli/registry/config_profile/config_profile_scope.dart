@@ -1,7 +1,7 @@
 import 'package:path/path.dart' as p;
 
 import '../../../../models/team_config.dart';
-import '../../../team/claude_team_roster_service.dart';
+import '../../../cli/claude/team_roster_service.dart';
 
 /// Profile directory key when launching without a chat [AppSession].
 const configProfileAdhocSessionId = '_adhoc';

@@ -11,7 +11,7 @@ import 'package:teampilot/services/cli/registry/config_profile/config_profile_sc
 import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
-import 'package:teampilot/services/team/claude_team_roster_service.dart';
+import 'package:teampilot/services/cli/claude/team_roster_service.dart';
 
 import '../../support/post_frame_test_harness.dart';
 

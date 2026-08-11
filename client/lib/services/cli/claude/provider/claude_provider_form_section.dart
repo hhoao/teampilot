@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../l10n/l10n_extensions.dart';
+import '../../../../l10n/l10n_extensions.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 const _apiKeyFields = ['ANTHROPIC_AUTH_TOKEN', 'ANTHROPIC_API_KEY'];

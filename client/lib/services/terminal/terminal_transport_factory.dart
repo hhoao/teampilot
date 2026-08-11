@@ -4,7 +4,7 @@ import '../../models/launch_target.dart';
 import '../../repositories/ssh_credential_store.dart';
 import '../../repositories/ssh_known_host_repository.dart';
 import '../../repositories/ssh_profile_repository.dart';
-import '../session/remote_flashskyai_command_builder.dart';
+import '../cli/flashskyai/remote_flashskyai_command_builder.dart';
 import '../ssh/ssh_member_session.dart';
 import 'local_pty_transport.dart';
 import '../ssh/ssh_client_factory.dart';

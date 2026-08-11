@@ -1,5 +1,6 @@
 import '../../models/app_provider_config.dart';
 import '../../repositories/app_provider_repository.dart';
+import '../cli/flashskyai/provider/flashskyai_provider_mirror.dart';
 import '../cli/registry/capabilities/provider_catalog_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../storage/app_storage.dart';
@@ -108,7 +109,9 @@ class ProviderImportService {
     var mirrored = 0;
     var mirrorSkipped = 0;
     if (snapshot.mirrorToFlashskyai) {
-      final mirrorResult = await _mirrorToFlashskyai(snapshot.providers);
+      final mirrorResult = await FlashskyaiProviderMirror(
+        repository: _repository,
+      ).mirror(snapshot.providers);
       mirrored = mirrorResult.added;
       mirrorSkipped = mirrorResult.skipped;
     }
@@ -122,112 +125,4 @@ class ProviderImportService {
       sources: snapshot.sources,
     );
   }
-
-  Future<_MirrorResult> _mirrorToFlashskyai(
-    List<AppProviderConfig> providers,
-  ) async {
-    final existing = await _repository.loadProviders(CliTool.flashskyai);
-    final byId = {for (final provider in existing) provider.id: provider};
-    final existingModelIds = <String>{
-      for (final provider in existing) ..._flashskyaiModelIds(provider),
-    };
-    var added = 0;
-    var skipped = 0;
-    for (final provider in providers) {
-      final mirrored = _toFlashskyaiProvider(
-        provider,
-        reservedModelIds: existingModelIds,
-      );
-      if (mirrored == null) continue;
-      if (byId.containsKey(mirrored.id)) {
-        skipped++;
-        continue;
-      }
-      existingModelIds.addAll(_flashskyaiModelIds(mirrored));
-      byId[mirrored.id] = mirrored;
-      added++;
-    }
-    if (added > 0) {
-      await _repository.saveProviders(CliTool.flashskyai, byId.values.toList());
-    }
-    return _MirrorResult(added: added, skipped: skipped);
-  }
-
-  AppProviderConfig? _toFlashskyaiProvider(
-    AppProviderConfig provider, {
-    Set<String> reservedModelIds = const {},
-  }) {
-    if (provider.cli == CliTool.flashskyai) return null;
-    if (provider.id == 'default' &&
-        provider.apiKey.trim().isEmpty &&
-        provider.baseUrl.trim().isEmpty) {
-      return null;
-    }
-    final now = DateTime.now().toUtc().millisecondsSinceEpoch;
-    final model = provider.defaultModel.trim();
-    final shouldMirrorModel =
-        model.isNotEmpty && !reservedModelIds.contains(model);
-    final mirroredDefaultModel = shouldMirrorModel ? model : '';
-    final providerType = _providerTypeFor(provider);
-    return AppProviderConfig(
-      id: provider.id,
-      cli: CliTool.flashskyai,
-      name: provider.name,
-      notes: provider.notes,
-      websiteUrl: provider.websiteUrl,
-      apiKeyUrl: provider.apiKeyUrl,
-      category: provider.category,
-      apiKey: provider.apiKey,
-      apiKeyField: 'api_key',
-      baseUrl: provider.baseUrl,
-      defaultModel: mirroredDefaultModel,
-      icon: provider.icon,
-      iconColor: provider.iconColor,
-      isOfficial: provider.isOfficial,
-      isPartner: provider.isPartner,
-      partnerPromotionKey: provider.partnerPromotionKey,
-      endpointCandidates: provider.endpointCandidates,
-      config: {
-        'type': 'api',
-        'provider_type': providerType,
-        if (shouldMirrorModel)
-          'models': {
-            model: {
-              'name': model,
-              'provider': provider.id,
-              'model': model,
-              'enabled': true,
-            },
-          },
-      },
-      createdAt: now,
-      updatedAt: now,
-    );
-  }
-
-  Set<String> _flashskyaiModelIds(AppProviderConfig provider) {
-    final rawModels = provider.config['models'];
-    if (rawModels is Map) {
-      return rawModels.keys.map((key) => key.toString()).toSet();
-    }
-    final model = provider.defaultModel.trim();
-    if (model.isEmpty) return const {};
-    return {model};
-  }
-
-  String _providerTypeFor(AppProviderConfig provider) {
-    if (provider.cli == CliTool.codex) return 'openai';
-    final url = provider.baseUrl.toLowerCase();
-    if (url.contains('anthropic') || url.contains('claude')) {
-      return 'anthropic';
-    }
-    return 'openai';
-  }
-}
-
-class _MirrorResult {
-  const _MirrorResult({required this.added, required this.skipped});
-
-  final int added;
-  final int skipped;
 }

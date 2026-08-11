@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
-import 'package:teampilot/services/team/claude_team_roster_service.dart';
+import 'package:teampilot/services/cli/claude/team_roster_service.dart';
 
 String claudeTeamRosterDir({
   required String claudeDir,

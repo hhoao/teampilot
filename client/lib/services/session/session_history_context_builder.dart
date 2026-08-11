@@ -1,14 +1,12 @@
+import '../cli/registry/capabilities/cli_config_layout_capability.dart';
 import '../cli/registry/capabilities/history_context_env_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
-import 'package:path/path.dart' as p;
 
 import '../../models/app_session.dart';
 import '../../models/team_config.dart';
 import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import '../io/filesystem.dart';
-import '../cli/codex/provider/codex_session_config_dir.dart';
-import '../cli/cursor/provider/cursor_session_config_dir.dart';
 import '../storage/runtime_layout.dart';
 import 'session_history_context.dart';
 
@@ -140,39 +138,22 @@ final class SessionHistoryContextBuilder {
     String? memberId,
     String? teamId,
   }) {
-    final cap = CliToolRegistry.builtIn()
-        .capability<HistoryContextEnvCapability>(cli);
+    final registry = CliToolRegistry.builtIn();
+    final cap = registry.capability<HistoryContextEnvCapability>(cli);
     if (cap == null) return const {};
-    final toolRoot = layout.sessionRuntimeToolDir(
-      workspaceId,
-      sessionId,
-      cli.value,
+    // The session CONFIG_DIR is resolved by the CLI's layout capability
+    // (cursor isolates a fake $HOME; every other CLI uses the standard
+    // sessionRuntimeToolDir) so this builder never special-cases a CLI.
+    final toolRoot = sessionConfigDirForTool(
+      cli,
+      layout,
+      workspaceId: workspaceId,
+      sessionId: sessionId,
       memberId: memberId,
+      teamId: teamId,
+      registry: registry,
     );
-    // Codex and Cursor have custom tool-root computation; resolve via their
-    // layout helpers and pass as toolRoot.
-    final resolvedRoot = cli == CliTool.codex
-        ? CodexSessionConfigDir.resolve(
-            layout,
-            workspaceId: workspaceId,
-            sessionId: sessionId,
-            memberId: memberId,
-          )
-        : cli == CliTool.cursor
-            ? CursorSessionConfigDir.resolve(
-                layout,
-                workspaceId: workspaceId,
-                sessionId: sessionId,
-                memberId: memberId,
-                teamId: teamId,
-              )
-            : toolRoot;
-    final home = cli == CliTool.cursor ? p.dirname(resolvedRoot) : null;
-    return cap.sessionEnv(
-      toolRoot: resolvedRoot,
-      home: home,
-      userProfile: home,
-    );
+    return cap.sessionEnv(toolRoot: toolRoot);
   }
 
   /// Matches [SessionLifecycleService] simple-mode transcript roots (no

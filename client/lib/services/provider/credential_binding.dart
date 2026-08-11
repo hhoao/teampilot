@@ -1,5 +1,6 @@
 import '../../models/app_provider_config.dart';
-import '../cli/claude/provider/claude_official_provider.dart';
+import '../cli/registry/capabilities/credential_binding_capability.dart';
+import '../cli/registry/cli_tool_registry.dart';
 
 /// How an official-account provider resolves OAuth / credential files.
 enum CredentialBindingKind {
@@ -25,16 +26,19 @@ enum CredentialBindingKind {
 /// Config key under [AppProviderConfig.config] for [CredentialBindingKind].
 const credentialBindingConfigKey = 'credentialBinding';
 
-/// Default official Claude providers follow the global `~/.claude` credential.
-CredentialBindingKind resolveCredentialBinding(AppProviderConfig provider) {
+/// Resolves the binding for [provider]: an explicit config key wins; otherwise
+/// the provider's CLI capability decides (Claude official → global link).
+CredentialBindingKind resolveCredentialBinding(
+  AppProviderConfig provider, {
+  CliToolRegistry? registry,
+}) {
   final raw = provider.config[credentialBindingConfigKey];
   if (raw != null) {
     return CredentialBindingKind.parse(raw);
   }
-  if (provider.cli == CliTool.claude && isOfficialClaudeProvider(provider)) {
-    return CredentialBindingKind.linked;
-  }
-  return CredentialBindingKind.isolated;
+  final capability = (registry ?? CliToolRegistry.builtIn())
+      .capability<CredentialBindingCapability>(provider.cli);
+  return capability?.defaultBinding(provider) ?? CredentialBindingKind.isolated;
 }
 
 Map<String, Object?> withCredentialBinding(

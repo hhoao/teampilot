@@ -8,7 +8,7 @@ import '../../models/workspace_terminal_session_spec.dart';
 import '../../repositories/ssh_profile_repository.dart';
 import '../storage/work_target_canonicalizer.dart';
 import '../session/launch_command_builder.dart';
-import '../session/remote_flashskyai_command_builder.dart';
+import '../cli/flashskyai/remote_flashskyai_command_builder.dart';
 import '../ssh/ssh_member_session.dart';
 import '../workspace_dnd/runtime_target.dart' as dnd;
 import 'ssh_pty_transport.dart';

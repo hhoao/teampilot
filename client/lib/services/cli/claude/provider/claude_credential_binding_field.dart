@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../l10n/l10n_extensions.dart';
-import '../../services/provider/credential_binding.dart';
+import '../../../../l10n/l10n_extensions.dart';
+import '../../../provider/credential_binding.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 /// Official Claude OAuth: follow global `~/.claude` or use an isolated copy.

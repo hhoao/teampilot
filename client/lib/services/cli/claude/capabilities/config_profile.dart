@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import '../../../../models/claude_credential_link_result.dart';
+import '../../../../models/credential_link_result.dart';
 import '../../../../models/cli_preset.dart';
 import '../../../../models/team_config.dart';
 import '../../../../repositories/cli_presets_repository.dart';
@@ -15,7 +15,7 @@ import '../../../provider/cross_machine_credential_bridge.dart';
 import '../../../provider/provider_catalog_access.dart';
 import '../provider/claude_provider_settings_resolver.dart';
 import '../../../session/member_role_provision.dart';
-import '../../../team/claude_team_roster_service.dart';
+import '../team_roster_service.dart';
 import '../../registry/capabilities/config_profile_capability.dart';
 import '../../../provider/workspace_trust_provisioner.dart';
 import '../../../agent_status/member_agent_status_endpoint.dart';

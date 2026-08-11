@@ -1,5 +1,5 @@
 import '../../../../models/app_provider_config.dart';
-import '../../../../models/claude_credential_link_result.dart';
+import '../../../../models/credential_probe.dart';
 import '../../../../models/credential_action_result.dart';
 import '../cli_capability.dart';
 

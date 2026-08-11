@@ -5774,17 +5774,17 @@ abstract class AppLocalizations {
   /// **'No credentials saved for this provider'**
   String get claudeOfficialCredentialsMissing;
 
-  /// No description provided for @claudeOfficialCredentialsAuthenticated.
+  /// No description provided for @providerCredentialsAuthenticated.
   ///
   /// In en, this message translates to:
   /// **'Authenticated'**
-  String get claudeOfficialCredentialsAuthenticated;
+  String get providerCredentialsAuthenticated;
 
-  /// No description provided for @claudeOfficialCredentialsUnauthenticated.
+  /// No description provided for @providerCredentialsUnauthenticated.
   ///
   /// In en, this message translates to:
   /// **'Unauthenticated'**
-  String get claudeOfficialCredentialsUnauthenticated;
+  String get providerCredentialsUnauthenticated;
 
   /// No description provided for @claudeOfficialCredentialsLogin.
   ///
@@ -5827,18 +5827,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not update credentials'**
   String get claudeOfficialCredentialsActionFailed;
-
-  /// No description provided for @cursorCredentialsAuthenticated.
-  ///
-  /// In en, this message translates to:
-  /// **'Authenticated'**
-  String get cursorCredentialsAuthenticated;
-
-  /// No description provided for @cursorCredentialsUnauthenticated.
-  ///
-  /// In en, this message translates to:
-  /// **'Unauthenticated'**
-  String get cursorCredentialsUnauthenticated;
 
   /// No description provided for @cursorCredentialsLogin.
   ///

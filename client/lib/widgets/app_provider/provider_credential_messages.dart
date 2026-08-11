@@ -8,7 +8,7 @@ String providerCredentialSuccessMessage(AppLocalizations l10n, CliTool cli) {
     CliTool.cursor => l10n.cursorCredentialsActionSuccess,
     CliTool.codex => l10n.codexCredentialsActionSuccess,
     CliTool.opencode => l10n.opencodeCredentialsActionSuccess,
-    _ => l10n.claudeOfficialCredentialsActionSuccess,
+    CliTool.flashskyai => l10n.appProviderToolFlashskyai,
   };
 }
 
@@ -85,6 +85,6 @@ String _genericFailureMessage(AppLocalizations l10n, CliTool cli) {
     CliTool.cursor => l10n.cursorCredentialsActionFailed,
     CliTool.codex => l10n.codexCredentialsActionFailed,
     CliTool.opencode => l10n.opencodeCredentialsActionFailed,
-    _ => l10n.claudeOfficialCredentialsActionFailed,
+    CliTool.flashskyai => l10n.appProviderToolFlashskyai,
   };
 }

@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import '../../io/filesystem.dart';
-import '../../team/claude_team_roster_service.dart';
+import 'team_roster_service.dart';
 
 /// Reads Claude team roster `members[].isActive` from shared session config.
 class ClaudeRosterActivitySource {

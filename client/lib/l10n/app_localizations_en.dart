@@ -3197,10 +3197,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'No credentials saved for this provider';
 
   @override
-  String get claudeOfficialCredentialsAuthenticated => 'Authenticated';
+  String get providerCredentialsAuthenticated => 'Authenticated';
 
   @override
-  String get claudeOfficialCredentialsUnauthenticated => 'Unauthenticated';
+  String get providerCredentialsUnauthenticated => 'Unauthenticated';
 
   @override
   String get claudeOfficialCredentialsLogin => 'Sign in with Claude';
@@ -3225,12 +3225,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get claudeOfficialCredentialsActionFailed =>
       'Could not update credentials';
-
-  @override
-  String get cursorCredentialsAuthenticated => 'Authenticated';
-
-  @override
-  String get cursorCredentialsUnauthenticated => 'Unauthenticated';
 
   @override
   String get cursorCredentialsLogin => 'Sign in with Cursor';

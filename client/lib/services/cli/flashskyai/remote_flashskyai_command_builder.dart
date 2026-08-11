@@ -1,4 +1,4 @@
-import '../host/remote_login_shell.dart';
+import '../../host/remote_login_shell.dart';
 
 class RemoteFlashskyaiCommandBuilder {
   const RemoteFlashskyaiCommandBuilder();

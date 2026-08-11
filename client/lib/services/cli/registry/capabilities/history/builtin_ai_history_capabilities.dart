@@ -35,6 +35,9 @@ final class ClaudeAiHistoryCapability implements AiHistoryCapability {
   AiTranscriptLineAppend get lineAppend => appendClaudeJsonlEvent;
 
   @override
+  String get tailFallbackPrefix => 'claude';
+
+  @override
   Set<String> get subagentToolNames => const {'agent', 'task', 'workflow'};
 
   @override
@@ -64,6 +67,9 @@ final class FlashskyaiAiHistoryCapability implements AiHistoryCapability {
   AiTranscriptLineAppend get lineAppend => appendClaudeJsonlEvent;
 
   @override
+  String get tailFallbackPrefix => 'flashskyai';
+
+  @override
   Set<String> get subagentToolNames => const {'agent', 'task'};
 
   @override
@@ -91,6 +97,9 @@ final class CodexAiHistoryCapability implements AiHistoryCapability {
 
   @override
   AiTranscriptLineAppend get lineAppend => appendCodexJsonlEvent;
+
+  @override
+  String get tailFallbackPrefix => 'codex';
 
   @override
   Set<String> get subagentToolNames => const {'spawn_agent', 'agent', 'task'};
@@ -125,6 +134,9 @@ final class OpencodeAiHistoryCapability implements AiHistoryCapability {
   AiTranscriptLineAppend? get lineAppend => null; // multi-file DB; no single-line incremental dialect.
 
   @override
+  String get tailFallbackPrefix => 'opencode';
+
+  @override
   Set<String> get subagentToolNames => const {'task'};
 
   @override
@@ -155,6 +167,9 @@ final class CursorAiHistoryCapability implements AiHistoryCapability {
 
   @override
   AiTranscriptLineAppend get lineAppend => appendCursorJsonlEvent;
+
+  @override
+  String get tailFallbackPrefix => 'cursor';
 
   @override
   Set<String> get subagentToolNames => const {'agent', 'task'};

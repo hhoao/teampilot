@@ -4,7 +4,7 @@ import '../../models/ssh_profile.dart';
 import '../../models/cli_preset.dart';
 import '../../models/team_config.dart';
 import '../../services/cli/preset_resolver.dart';
-import '../../services/session/remote_flashskyai_command_builder.dart';
+import '../../services/cli/flashskyai/remote_flashskyai_command_builder.dart';
 import '../../services/ssh/ssh_client_factory.dart';
 import '../../services/terminal/ssh_pty_transport.dart';
 import '../../services/terminal/terminal_session.dart';

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/session/remote_flashskyai_command_builder.dart';
+import 'package:teampilot/services/cli/flashskyai/remote_flashskyai_command_builder.dart';
 import 'package:teampilot/services/terminal/ssh_pty_transport.dart';
 
 void main() {

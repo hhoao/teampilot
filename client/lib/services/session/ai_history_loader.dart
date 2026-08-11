@@ -118,20 +118,14 @@ final class AiHistoryLoader {
   /// capability has no [AiTranscriptLineAppend] (e.g. opencode's multi-file DB)
   /// so the loader falls back to the full adapter parse.
   AiTranscriptTailReader? _tailReaderFor(CliTool cli) {
-    final lineAppend = _registry
-        .capability<AiHistoryCapability>(cli)
-        ?.lineAppend;
+    final history = _registry.capability<AiHistoryCapability>(cli);
+    final lineAppend = history?.lineAppend;
     if (lineAppend == null) return null;
     return _tailReaders.putIfAbsent(
       cli.name,
       () => AiTranscriptTailReader(
         lineAppend: lineAppend,
-        fallbackPrefix: switch (cli) {
-          CliTool.claude => 'claude',
-          CliTool.codex => 'codex',
-          CliTool.cursor => 'cursor',
-          _ => 'tail',
-        },
+        fallbackPrefix: history!.tailFallbackPrefix,
       ),
     );
   }

@@ -2,14 +2,13 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/app_provider_config.dart';
-import '../models/claude_credential_link_result.dart';
 import '../models/credential_action_result.dart';
 import '../models/llm_config.dart';
 import '../repositories/app_provider_repository.dart';
 import '../services/storage/app_storage.dart';
 import '../services/provider/credential_binding.dart';
 import '../services/cli/registry/capabilities/provider_credential_capability.dart';
-import '../services/cli/registry/capabilities/provider_display_capability.dart';
+import '../services/cli/registry/capabilities/credential_binding_capability.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
 import '../services/provider/provider_import_service.dart';
 import '../services/provider/tool_config_generator.dart';
@@ -346,15 +345,15 @@ class AppProviderCubit extends Cubit<AppProviderState> {
     return CredentialActionResult.success;
   }
 
-  Future<bool> setClaudeCredentialBinding(
+  Future<bool> setProviderCredentialBinding(
     AppProviderConfig provider,
     CredentialBindingKind binding,
   ) async {
-    final display = CliToolRegistry.builtIn()
-        .capability<ProviderDisplayCapability>(provider.cli);
-    if (display == null || !display.hasCredentialBinding) return false;
+    final capability = CliToolRegistry.builtIn()
+        .capability<CredentialBindingCapability>(provider.cli);
+    if (capability == null) return false;
     final updated = provider.copyWith(
-      config: withCredentialBinding(provider.config, binding),
+      config: capability.withBinding(provider.config, binding),
     );
     return upsertProvider(updated);
   }

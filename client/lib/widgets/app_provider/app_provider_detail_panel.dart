@@ -12,15 +12,16 @@ import '../../cubits/app_provider_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_provider_config.dart';
 import '../../models/llm_config.dart';
-import '../../services/cli/claude/provider/claude_official_provider.dart';
+import '../../services/cli/registry/capabilities/credential_binding_capability.dart';
+import '../../services/cli/registry/capabilities/provider_credential_capability.dart';
+import '../../services/cli/registry/capabilities/provider_model_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/cli/registry/capabilities/provider_display_capability.dart';
-import '../../services/cli/codex/provider/codex_official_provider.dart';
 import '../../services/provider/credential_binding.dart';
 import '../../services/provider/tool_config_generator.dart';
 import '../../theme/workspace_surface_layers.dart';
 import 'provider_brand_icon.dart';
-import 'claude_credential_binding_field.dart';
+import '../../services/cli/claude/provider/claude_credential_binding_field.dart';
 import 'provider_credential_action_bar.dart';
 
 class AppProviderDetailPanel extends StatelessWidget {
@@ -45,7 +46,7 @@ class AppProviderDetailPanel extends StatelessWidget {
     final display = CliToolRegistry.builtIn()
         .capability<ProviderDisplayCapability>(provider.cli);
     final modelCount = display?.showModelCount == true
-        ? provider.flashskyaiModelCount
+        ? providerModelCount(provider)
         : 0;
 
     return SingleChildScrollView(
@@ -72,10 +73,8 @@ class AppProviderDetailPanel extends StatelessWidget {
                       provider.name,
                       style: styles.lgBold,
                     ),
-                    if (_supportsOAuth(provider) &&
-                        (isOfficialClaudeProvider(provider) ||
-                            isOfficialCodexOAuthProvider(provider) ||
-                            provider.isOfficial))
+                    if (_credentialCapability(provider)?.appliesTo(provider) ==
+                        true)
                       ProviderCredentialStatusBadge(
                         cli: provider.cli,
                         ready: provider.credentialStatus == 'ready',
@@ -117,7 +116,7 @@ class AppProviderDetailPanel extends StatelessWidget {
             _InfoRow(label: l10n.baseUrl, value: provider.baseUrl),
           if (provider.defaultModel.isNotEmpty)
             _InfoRow(label: l10n.defaultModel, value: provider.defaultModel),
-          if (isOfficialClaudeProvider(provider))
+          if (_bindingCapability(provider)?.appliesTo(provider) == true)
             BlocBuilder<AppProviderCubit, AppProviderState>(
               buildWhen: (prev, next) {
                 final before = prev
@@ -145,7 +144,7 @@ class AppProviderDetailPanel extends StatelessWidget {
                     onChanged: (binding) {
                       context
                           .read<AppProviderCubit>()
-                          .setClaudeCredentialBinding(current, binding);
+                          .setProviderCredentialBinding(current, binding);
                     },
                   ),
                 );
@@ -360,4 +359,16 @@ bool _supportsOAuth(AppProviderConfig provider) {
           .capability<ProviderDisplayCapability>(provider.cli)
           ?.supportsOAuthCredentials ==
       true;
+}
+
+ProviderCredentialCapability? _credentialCapability(
+  AppProviderConfig provider,
+) {
+  return CliToolRegistry.builtIn()
+      .capability<ProviderCredentialCapability>(provider.cli);
+}
+
+CredentialBindingCapability? _bindingCapability(AppProviderConfig provider) {
+  return CliToolRegistry.builtIn()
+      .capability<CredentialBindingCapability>(provider.cli);
 }

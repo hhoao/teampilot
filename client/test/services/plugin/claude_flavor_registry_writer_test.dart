@@ -7,7 +7,7 @@ import 'package:teampilot/models/plugin.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/registry/capabilities/plugin_manifest_paths.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/plugin/claude_flavor_registry_writer.dart';
+import 'package:teampilot/services/cli/registry/plugins/claude_flavor_registry_writer.dart';
 
 void main() {
   group('ClaudeFlavorRegistryWriter marketplace materialization', () {

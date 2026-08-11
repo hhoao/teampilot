@@ -5,7 +5,7 @@ import '../../io/filesystem.dart';
 import '../../storage/app_storage.dart';
 import '../../storage/runtime_layout.dart';
 import '../../storage/runtime_context.dart' show RuntimeContext;
-import '../../team/claude_team_roster_service.dart';
+import '../../cli/claude/team_roster_service.dart';
 import '../registry/capabilities/cli_config_layout_capability.dart';
 import '../registry/capabilities/member_config_inspection_capability.dart';
 import '../registry/cli_tool_registry.dart';

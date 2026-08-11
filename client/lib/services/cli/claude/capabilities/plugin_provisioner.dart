@@ -1,6 +1,6 @@
 import '../../registry/capabilities/plugin_manifest_paths.dart';
 import '../../registry/capabilities/plugin_provisioner_capability.dart';
-import '../../../plugin/claude_flavor_registry_writer.dart';
+import '../../../cli/registry/plugins/claude_flavor_registry_writer.dart';
 
 /// Claude Code plugin registration (`enabledPlugins`, installed_plugins v2).
 final class ClaudePluginProvisioner implements PluginProvisionerCapability {

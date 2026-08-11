@@ -3062,10 +3062,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get claudeOfficialCredentialsMissing => '该 Provider 尚未保存凭据';
 
   @override
-  String get claudeOfficialCredentialsAuthenticated => '已认证';
+  String get providerCredentialsAuthenticated => '已认证';
 
   @override
-  String get claudeOfficialCredentialsUnauthenticated => '未认证';
+  String get providerCredentialsUnauthenticated => '未认证';
 
   @override
   String get claudeOfficialCredentialsLogin => 'Claude 登录';
@@ -3089,12 +3089,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get claudeOfficialCredentialsActionFailed => '凭据更新失败';
-
-  @override
-  String get cursorCredentialsAuthenticated => '已认证';
-
-  @override
-  String get cursorCredentialsUnauthenticated => '未认证';
 
   @override
   String get cursorCredentialsLogin => 'Cursor 登录';

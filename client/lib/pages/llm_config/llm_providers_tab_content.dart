@@ -9,6 +9,8 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/app_provider_config.dart';
 import '../../models/layout_preferences.dart';
 import '../../services/app/platform_utils.dart';
+import '../../services/cli/registry/capabilities/provider_display_capability.dart';
+import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../widgets/app_provider/app_provider_detail_panel.dart';
 import '../../widgets/app_provider/app_provider_form_sheet.dart';
 import '../../widgets/split_layout.dart';
@@ -208,7 +210,10 @@ class _LlmProvidersRightPanel extends StatelessWidget {
         final showModels =
             modelsProviderId != null &&
             modelsProviderId == selected.id &&
-            selected.cli == CliTool.flashskyai;
+            CliToolRegistry.builtIn()
+                    .capability<ProviderDisplayCapability>(selected.cli)
+                    ?.hasModelPanel ==
+                true;
 
         if (showModels) {
           return LlmAppProviderModelsPanel(

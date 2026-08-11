@@ -104,7 +104,7 @@ void main() {
       final claude = await repository.loadProviders(CliTool.claude);
       final official = claude.singleWhere((p) => p.id == 'default');
       expect(official.category, AppProviderCategory.official);
-      expect(official.hasClaudeCredentialsReady, isTrue);
+      expect(official.hasCredentialsReady, isTrue);
       expect(
         await File(
           p.join(

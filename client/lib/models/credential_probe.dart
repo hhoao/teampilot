@@ -1,7 +1,7 @@
-enum CredentialLinkResult { alreadyPresent, linked, copied, missing }
-
+/// Credential readiness state for a provider row.
 enum CredentialStatus { missing, ready }
 
+/// Credential readiness probe result for a provider row.
 class CredentialProbe {
   const CredentialProbe({
     required this.providerId,

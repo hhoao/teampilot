@@ -107,7 +107,7 @@ void main() {
     );
 
     final providers = await repository.loadProviders(CliTool.claude);
-    expect(providers.single.hasClaudeCredentialsReady, isTrue);
+    expect(providers.single.hasCredentialsReady, isTrue);
     expect(
       fs.symlinks[fs.pathContext.join(
         base,
@@ -151,7 +151,7 @@ void main() {
       );
 
       final providers = await repository.loadProviders(CliTool.claude);
-      expect(providers.single.hasClaudeCredentialsReady, isFalse);
+      expect(providers.single.hasCredentialsReady, isFalse);
       expect(
         (await fs.stat(
           fs.pathContext.join(
@@ -201,7 +201,7 @@ void main() {
         CliTool.claude,
         importCredentialsFromGlobal: true,
       );
-      expect(providers.single.hasClaudeCredentialsReady, isTrue);
+      expect(providers.single.hasCredentialsReady, isTrue);
       expect(
         fs.symlinks[fs.pathContext.join(
           base,

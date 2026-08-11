@@ -14,7 +14,7 @@ import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/config_profile.dart';
 import 'package:teampilot/services/team_bus/member_bus_idle_endpoint.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
-import 'package:teampilot/services/team/claude_team_roster_service.dart';
+import 'package:teampilot/services/cli/claude/team_roster_service.dart';
 
 import '../../../support/in_memory_filesystem.dart';
 

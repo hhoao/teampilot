@@ -1,6 +1,6 @@
 import '../../registry/capabilities/plugin_manifest_paths.dart';
 import '../../registry/capabilities/plugin_provisioner_capability.dart';
-import '../../../plugin/claude_flavor_registry_writer.dart';
+import '../../../cli/registry/plugins/claude_flavor_registry_writer.dart';
 
 /// FlashskyAI plugin registration (Claude-compatible wire format).
 final class FlashskyaiPluginProvisioner implements PluginProvisionerCapability {

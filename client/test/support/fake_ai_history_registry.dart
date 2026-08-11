@@ -36,6 +36,9 @@ final class FakeAiHistoryCapability implements AiHistoryCapability {
   final AiTranscriptLineAppend? lineAppend;
 
   @override
+  String get tailFallbackPrefix => 'test';
+
+  @override
   final Set<String> subagentToolNames;
 
   @override

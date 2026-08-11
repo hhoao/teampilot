@@ -31,7 +31,7 @@ import '../launch/launch_manifest_paths.dart';
 import '../launch/manifest_executor.dart';
 import '../launch/manifest_filesystem.dart';
 import '../provider/workspace_trust_provisioner.dart';
-import '../team/claude_team_roster_service.dart';
+import '../cli/claude/team_roster_service.dart';
 import '../cli/cursor/provider/cursor_workspace_warm_tier.dart';
 import '../cli/registry/capabilities/cli_config_layout_capability.dart';
 import '../cli/registry/capabilities/cli_session_lifecycle_capability.dart';

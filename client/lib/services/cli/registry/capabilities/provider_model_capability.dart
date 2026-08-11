@@ -131,6 +131,16 @@ List<String> modelsDeclaredOnProvider(AppProviderConfig provider) {
   return names.toList();
 }
 
+/// Number of models declared on [provider] for list/detail badges.
+///
+/// UI gates visibility via [ProviderDisplayCapability.showModelCount] — this
+/// only counts what the provider row actually declares, with no CLI identity.
+int providerModelCount(AppProviderConfig provider) {
+  final rawModels = provider.config['models'];
+  if (rawModels is Map) return rawModels.length;
+  return provider.defaultModel.trim().isEmpty ? 0 : 1;
+}
+
 String resolveDefaultProviderModel(
   ProviderModelCapability capability, {
   required AppProviderConfig? provider,

@@ -21,6 +21,12 @@ abstract interface class AiHistoryCapability implements CliCapability {
   /// Null 当该 CLI 的 transcript 无法增量解析(如 opencode 的 SQLite /
   /// JSON 树存储),loader 回退全量 [adapter].parse。
   AiTranscriptLineAppend? get lineAppend;
+
+  /// Fallback id 前缀,必须与全量 adapter parse 的 `'$prefix-${seq}'` 一致
+  /// (Claude→'claude',Codex→'codex',Cursor→'cursor',FlashskyAI→'flashskyai'),
+  /// 保证增量与全量生成的消息 id 序列完全相同。
+  String get tailFallbackPrefix;
+
   /// Lower-case names.
   Set<String> get subagentToolNames;
   SubagentSideResolver get subagentSideResolver;

@@ -1,15 +1,15 @@
 import 'dart:convert';
 
-import '../../models/plugin.dart';
-import '../../models/team_config.dart';
-import '../cli/registry/capabilities/plugin_manifest_paths.dart';
-import '../io/filesystem.dart';
-import '../storage/app_storage.dart';
+import '../../../../models/plugin.dart';
+import '../../../../models/team_config.dart';
+import '../capabilities/plugin_manifest_paths.dart';
+import '../../../io/filesystem.dart';
+import '../../../storage/app_storage.dart';
 import 'package:logger/logger.dart';
-import '../../utils/logging/logger.dart';
-import 'cli_plugin_layout.dart';
-import 'cli_plugin_provision_cache.dart';
-import 'installed_plugin_catalog.dart';
+import '../../../../utils/logging/logger.dart';
+import '../../../plugin/cli_plugin_layout.dart';
+import '../../../plugin/cli_plugin_provision_cache.dart';
+import '../../../plugin/installed_plugin_catalog.dart';
 
 /// Shared Claude-flavor plugin registry writer (installed_plugins v2, enabledPlugins).
 ///

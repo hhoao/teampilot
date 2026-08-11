@@ -48,6 +48,7 @@ import '../registry/capabilities/exit_plan_mode_capability.dart';
 import '../registry/capabilities/turn_completion_capability.dart';
 import '../registry/capabilities/wait_before_stop_capability.dart';
 import '../registry/capabilities/provider_display_capability.dart';
+import '../registry/capabilities/credential_binding_capability.dart';
 import '../registry/capabilities/cli_config_ui_capability.dart';
 import '../registry/capabilities/title_attention_capability.dart';
 import '../registry/capabilities/marketplace_consumer_capability.dart';
@@ -55,27 +56,11 @@ import '../registry/capabilities/agent_status_normalizer_capability.dart';
 import '../registry/capabilities/history_context_env_capability.dart';
 import '../registry/capabilities/remote_app_data_capability.dart';
 import '../registry/capabilities/credential_export_capability.dart';
-import 'capabilities/provider_display.dart';
-import '../registry/capabilities/provider_display_capability.dart';
-import 'capabilities/config_ui.dart';
-import '../registry/capabilities/cli_config_ui_capability.dart';
-import 'capabilities/title_attention.dart';
-import 'capabilities/marketplace_consumer.dart';
-import 'capabilities/agent_status_normalizer.dart';
-import 'capabilities/history_context_env.dart';
-import 'capabilities/remote_app_data.dart';
-import 'capabilities/credential_export.dart';
-import '../registry/capabilities/title_attention_capability.dart';
-import '../registry/capabilities/marketplace_consumer_capability.dart';
-import '../registry/capabilities/remote_app_data_capability.dart';
-import '../registry/capabilities/credential_export_capability.dart';
-import '../registry/capabilities/history_context_env_capability.dart';
-import '../registry/capabilities/agent_status_normalizer_capability.dart';
-import '../registry/capabilities/wait_before_stop_capability.dart';
 import '../registry/capabilities/turn_interrupt_capability.dart';
 import '../registry/capabilities/claude_tool_call_resolvers.dart';
 import 'capabilities/mcp_config_writer.dart';
 import 'capabilities/plugin_provisioner.dart';
+import 'capabilities/credential_binding.dart';
 import '../registry/resources/default_resource_capability.dart';
 
 final class ClaudeCliTool implements CliToolDefinition {
@@ -119,6 +104,7 @@ final class ClaudeCliTool implements CliToolDefinition {
     this.remoteAppData = const NoRemoteAppData(),
     this.credentialExport = const ClaudeCredentialExport(),
     this.toolCallResolvers = const ClaudeToolCallResolvers(),
+    this.credentialBinding = const ClaudeCredentialBindingCapability(),
     ProviderCredentialCapability? providerCredential,
   }) : providerCredential =
            providerCredential ?? ClaudeProviderCredentialCapability();
@@ -162,6 +148,7 @@ final class ClaudeCliTool implements CliToolDefinition {
   final RemoteAppDataCapability remoteAppData;
   final CredentialExportCapability credentialExport;
   final ClaudeToolCallResolvers toolCallResolvers;
+  final CredentialBindingCapability credentialBinding;
 
   @override
   CliTool get id => CliTool.claude;
@@ -213,6 +200,7 @@ final class ClaudeCliTool implements CliToolDefinition {
     remoteAppData,
     credentialExport,
     toolCallResolvers,
+    credentialBinding,
   ];
 }
 

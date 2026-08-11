@@ -108,11 +108,21 @@ final class OpencodePluginProvisioner implements PluginProvisionerCapability {
 
     final ctx = fs.pathContext;
     final destRoot = ctx.join(configDir, pluginsSubdir, poolEntryName);
-    await CliPluginLayout.linkOrCopyTree(
-      fs: fs,
-      source: pluginRoot,
-      destination: destRoot,
-    );
+    // For opencode the bundle pool dir IS `{configDir}/plugins` (the pool
+    // reconcile already materialized the full bundle at the pool entry), so
+    // the source sits exactly where the plugin would be copied. Linking it
+    // onto itself would replace the pool entry with a self-referencing
+    // symlink loop and break both the plugin JS and decomposed skills.
+    final alreadyInPlace =
+        ctx.equals(destRoot, pluginRoot) ||
+        ctx.isWithin(destRoot, pluginRoot);
+    if (!alreadyInPlace) {
+      await CliPluginLayout.linkOrCopyTree(
+        fs: fs,
+        source: pluginRoot,
+        destination: destRoot,
+      );
+    }
     return [
       for (final rel in rels) './$pluginsSubdir/$poolEntryName/$rel',
     ];

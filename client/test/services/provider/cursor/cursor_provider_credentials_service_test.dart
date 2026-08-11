@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
-import 'package:teampilot/models/claude_credential_link_result.dart';
+import 'package:teampilot/models/credential_link_result.dart';
 import 'package:teampilot/services/host/host_one_shot_runner.dart';
 import 'package:teampilot/services/host/host_process_starter.dart';
 import 'package:teampilot/services/host/process_run_handle.dart';

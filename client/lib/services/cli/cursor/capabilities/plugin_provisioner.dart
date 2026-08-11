@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import '../../../../models/mcp_server_spec.dart';
 import '../../../io/filesystem.dart';
-import '../../../plugin/claude_flavor_registry_writer.dart';
+import '../../../cli/registry/plugins/claude_flavor_registry_writer.dart';
 import '../../../plugin/cli_plugin_layout.dart';
 import '../../registry/capabilities/plugin_manifest_paths.dart';
 import '../../registry/capabilities/plugin_provisioner_capability.dart';

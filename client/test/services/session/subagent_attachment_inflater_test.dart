@@ -36,6 +36,9 @@ class _Cap implements AiHistoryCapability {
   AiTranscriptLineAppend? get lineAppend => null;
 
   @override
+  String get tailFallbackPrefix => 'test';
+
+  @override
   Set<String> get subagentToolNames => const {'agent', 'task'};
 
   @override
@@ -573,6 +576,9 @@ class _WorkflowCap implements AiHistoryCapability {
 
   @override
   AiTranscriptLineAppend? get lineAppend => null;
+
+  @override
+  String get tailFallbackPrefix => 'test';
 
   @override
   Set<String> get subagentToolNames => const {'agent', 'task', 'workflow'};

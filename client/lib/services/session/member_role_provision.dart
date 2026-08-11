@@ -2,7 +2,7 @@ import 'package:path/path.dart' as p;
 
 import '../../models/team_config.dart';
 import '../../utils/team/team_member_naming.dart';
-import '../team/claude_team_roster_service.dart';
+import '../cli/claude/team_roster_service.dart';
 import '../team_bus/mcp/teammate_bus_mcp_config.dart';
 import '../io/filesystem.dart';
 

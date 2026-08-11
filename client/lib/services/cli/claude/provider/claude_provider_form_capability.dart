@@ -2,7 +2,7 @@ import 'package:flutter/widgets.dart';
 
 import '../../../../models/app_provider_config.dart';
 import '../provider_presets.dart';
-import '../../../../widgets/app_provider/claude_provider_form_section.dart';
+import 'claude_provider_form_section.dart';
 import '../../registry/capabilities/provider_form_capability.dart';
 
 const _apiKeyFields = ['ANTHROPIC_AUTH_TOKEN', 'ANTHROPIC_API_KEY'];

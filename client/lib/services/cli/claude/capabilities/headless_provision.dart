@@ -1,6 +1,6 @@
 import 'package:path/path.dart' as p;
 
-import '../../../../models/claude_credential_link_result.dart';
+import '../../../../models/credential_link_result.dart';
 import '../provider/claude_official_provider.dart';
 import '../../../provider/credential_binding.dart';
 import '../provider/claude_provider_credentials_service.dart';

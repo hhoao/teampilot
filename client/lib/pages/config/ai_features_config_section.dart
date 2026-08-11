@@ -11,6 +11,7 @@ import '../../models/ai_feature_setting.dart';
 import '../../models/app_provider_config.dart';
 import '../../services/ai/ai_feature_setting_resolver.dart';
 import '../../services/cli/registry/capabilities/provider_model_capability.dart';
+import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../widgets/app_provider/provider_brand_icon.dart';
 import '../../widgets/cli/cli_brand_icon.dart';
@@ -278,13 +279,8 @@ class _AiFeatureConfigureDialogState extends State<AiFeatureConfigureDialog> {
   late String _modelId;
   late String _effortId;
 
-  static const _cliItems = [
-    CliTool.claude,
-    CliTool.codex,
-    CliTool.flashskyai,
-    CliTool.cursor,
-    CliTool.opencode,
-  ];
+  List<CliTool> _cliItems(CliToolRegistry registry) =>
+      [for (final def in registry.launchable) def.id];
 
   @override
   void initState() {
@@ -415,7 +411,7 @@ class _AiFeatureConfigureDialogState extends State<AiFeatureConfigureDialog> {
                     effortId: _effortId,
                     registry: registry,
                     cliFieldKind: CliLaunchCliFieldKind.toolList,
-                    cliItems: _cliItems,
+                    cliItems: _cliItems(registry),
                     onCliChanged: _applyCli,
                     effortContext: CliLaunchEffortContext.standalone,
                     effortSubtitle: l10n.workspaceCliEffortLevelSubtitle,

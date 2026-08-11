@@ -354,8 +354,8 @@ class ProviderCredentialStatusBadge extends StatelessWidget {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
     final label = ready
-        ? _authenticatedLabel(l10n, cli)
-        : _unauthenticatedLabel(l10n, cli);
+        ? _authenticatedLabel(l10n)
+        : _unauthenticatedLabel(l10n);
     final bg = ready ? cs.primaryContainer : cs.errorContainer;
     final fg = ready ? cs.onPrimaryContainer : cs.onErrorContainer;
 
@@ -381,7 +381,7 @@ String _sectionTitle(AppLocalizations l10n, CliTool cli) {
     CliTool.cursor => l10n.appProviderToolCursor,
     CliTool.codex => l10n.appProviderToolCodex,
     CliTool.opencode => l10n.appProviderToolOpencode,
-    _ => l10n.claudeOfficialCredentialsTitle,
+    CliTool.flashskyai => l10n.appProviderToolFlashskyai,
   };
 }
 
@@ -396,20 +396,21 @@ String _actionLabel(
       CliTool.cursor => l10n.cursorCredentialsLogin,
       CliTool.codex => l10n.codexCredentialsLogin,
       CliTool.opencode => l10n.opencodeCredentialsLogin,
-      _ => l10n.claudeOfficialCredentialsLogin,
+      CliTool.flashskyai => l10n.appProviderToolFlashskyai,
     },
     ProviderCredentialActionKind.importGlobal => switch (cli) {
       CliTool.claude => l10n.claudeOfficialCredentialsImportGlobal,
       CliTool.cursor => l10n.cursorCredentialsImportGlobal,
       CliTool.codex => l10n.codexCredentialsImportGlobal,
       CliTool.opencode => l10n.opencodeCredentialsImportGlobal,
-      _ => l10n.appProviderImport,
+      CliTool.flashskyai => l10n.appProviderToolFlashskyai,
     },
     ProviderCredentialActionKind.importFile => switch (cli) {
       CliTool.claude => l10n.claudeOfficialCredentialsImportFile,
+      CliTool.cursor => l10n.cursorCredentialsImportFile,
       CliTool.codex => l10n.codexCredentialsImportFile,
       CliTool.opencode => l10n.opencodeCredentialsImportFile,
-      _ => l10n.cursorCredentialsImportFile,
+      CliTool.flashskyai => l10n.appProviderToolFlashskyai,
     },
     ProviderCredentialActionKind.importDirectory =>
       l10n.cursorCredentialsImportFile,
@@ -418,25 +419,17 @@ String _actionLabel(
       CliTool.cursor => l10n.cursorCredentialsRevoke,
       CliTool.codex => l10n.codexCredentialsRevoke,
       CliTool.opencode => l10n.opencodeCredentialsRevoke,
-      _ => l10n.claudeOfficialCredentialsRevoke,
+      CliTool.flashskyai => l10n.appProviderToolFlashskyai,
     },
   };
 }
 
-String _authenticatedLabel(AppLocalizations l10n, CliTool cli) {
-  return switch (cli) {
-    CliTool.claude => l10n.claudeOfficialCredentialsAuthenticated,
-    CliTool.cursor => l10n.cursorCredentialsAuthenticated,
-    _ => l10n.claudeOfficialCredentialsAuthenticated,
-  };
+String _authenticatedLabel(AppLocalizations l10n) {
+  return l10n.providerCredentialsAuthenticated;
 }
 
-String _unauthenticatedLabel(AppLocalizations l10n, CliTool cli) {
-  return switch (cli) {
-    CliTool.claude => l10n.claudeOfficialCredentialsUnauthenticated,
-    CliTool.cursor => l10n.cursorCredentialsUnauthenticated,
-    _ => l10n.claudeOfficialCredentialsUnauthenticated,
-  };
+String _unauthenticatedLabel(AppLocalizations l10n) {
+  return l10n.providerCredentialsUnauthenticated;
 }
 
 String _revokeConfirmMessage(
@@ -450,7 +443,7 @@ String _revokeConfirmMessage(
     CliTool.cursor => l10n.cursorCredentialsRevokeConfirm(provider.name),
     CliTool.codex => l10n.codexCredentialsRevokeConfirm(provider.name),
     CliTool.opencode => l10n.opencodeCredentialsRevokeConfirm(provider.name),
-    _ => l10n.claudeOfficialCredentialsRevokeConfirm(provider.name),
+    CliTool.flashskyai => l10n.appProviderToolFlashskyai,
   };
 }
 

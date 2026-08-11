@@ -16,6 +16,7 @@ services/cli/{cli_name}/
     wait_before_stop.dart           # WaitBeforeStopCapability（必需）
     provider_display.dart           # ProviderDisplayCapability（必需）
     config_ui.dart                  # CliConfigUiCapability（必需）
+    credential_binding.dart         # CredentialBindingCapability（仅 claude）
     installer.dart                  # InstallerCapability
     headless_run.dart               # HeadlessRunCapability
     headless_provision.dart         # HeadlessProvisionCapability
@@ -39,17 +40,22 @@ services/cli/{cli_name}/
   provider_persistence.dart         # 凭证持久化策略
 ```
 
+CLI 专属 UI 组件（表单段、binding 字段）也放在 `services/cli/{cli_name}/provider/` 下，由对应
+ProviderForm / CredentialBinding 能力引用；不要在 `widgets/` 下散落 `claude_*` 组件。
+
 ### 共享基础设施
 
-`services/cli/registry/` 目录只保留能力接口定义和解析引擎，**不包含任何 CLI 特定实现**：
+`services/cli/registry/` 目录只保留能力接口定义、解析引擎和**跨 CLI 共享基础设施**，**不包含任何 CLI 特定实现**：
 
 ```
 registry/
   cli_capability.dart               # CliCapability marker 接口
   cli_tool_definition.dart          # CliToolDefinition 抽象接口
   cli_tool_registry.dart            # 能力解析引擎
-  built_in_cli_tools.dart           # 注册函数
-  cli_bootstrap.dart                # 运行时服务注入
+  built_in_cli_tools.dart           # 注册函数 + 必需能力 assert 校验
+  cli_bootstrap.dart                # 运行时服务注入（Map 驱动）
+  cli_tool_adapter.dart             # LaunchArgs 共享辅助（参数切分、路径归一化）
+  cli_executable_discovery.dart     # 可执行文件发现（共享）
   capabilities/                     # 所有能力接口定义
     launch_args_capability.dart
     config_profile_capability.dart
@@ -63,11 +69,21 @@ registry/
     plugin_provisioner_capability.dart
     provider_credential_capability.dart
     provider_model_capability.dart
+    credential_binding_capability.dart
     session_resume_capability.dart
     bus_transport_capability.dart
     turn_completion_capability.dart
     ...
+  config_profile/                   # 共享：config profile 作用域 / agent 状态钩子
+  headless/                         # 共享：无头供给支撑
+  installer/                        # 共享：npm / node / termux 安装策略
+  mcp_writers/                      # 共享：MCP 元数据合并
+  plugins/                          # 共享：claude-flavor 插件注册表写入器
+  resources/                        # 共享：默认 ResourceCapability
 ```
+
+共享基础设施（如被 Claude/FlashskyAI/Cursor 共用的 `plugins/claude_flavor_registry_writer.dart`）
+放 registry 子目录；只有单一 CLI 使用的实现必须留在 `{cli_name}/` 下。
 
 ## 能力接口模式
 
@@ -146,7 +162,7 @@ final cap = CliToolRegistry.builtIn()
 
 ## 必需能力 vs 可选能力
 
-每个 CLI **必须**实现以下能力（在 `built_in_cli_tools.dart` 中有 assert 校验）：
+每个 CLI **必须**实现以下能力（在 `built_in_cli_tools.dart` 中有 `_verifyRequired<T>` / assert 全量校验）：
 
 | 能力 | 接口 | 说明 |
 |------|------|------|
@@ -177,7 +193,13 @@ final cap = CliToolRegistry.builtIn()
 | `PluginProvisionerCapability` | 插件供给 |
 | `SessionResumeCapability` | 会话恢复 |
 | `CliSessionLifecycleCapability` | 会话生命周期（仅 cursor） |
-| `CliConfigLayoutCapability` | CLI 配置布局（仅 cursor） |
+| `CliConfigLayoutCapability` | CLI 配置布局（仅 cursor 注册覆盖；`sessionConfigDirForTool()` 为默认回退） |
+| `CredentialBindingCapability` | 凭证绑定（仅 claude；共享解析器 `resolveCredentialBinding` 通过它取默认值） |
+
+`CliConfigLayoutCapability` 是所有历史定位 / 环境构造的**唯一**配置目录来源：如
+`SessionHistoryContextBuilder` 通过 `sessionConfigDirForTool()` 解析 toolRoot 后传给
+`HistoryContextEnvCapability.sessionEnv(toolRoot:)`，各 CLI 自行推导所需 env（cursor 的
+`HOME` = 配置目录的父目录），外部代码不做 `if (cli == …)` 特判。
 
 ## BootstrapEntry 模式
 
@@ -353,12 +375,14 @@ return cap?.defaultForceWaitBeforeStop ?? true;
 
 ```dart
 // ❌ 禁止 — CLI 特定服务散落在通用目录
-services/agent_status/claude_permission_sticky.dart
-services/team/claude_roster_activity_source.dart
+services/team/claude_team_roster_service.dart
+services/session/remote_flashskyai_command_builder.dart
+widgets/app_provider/claude_credential_binding_field.dart
 
 // ✅ 正确 — 所有 CLI 代码在 services/cli/{cli_name}/ 下
-services/cli/claude/capabilities/permission_sticky.dart
-services/cli/claude/roster_activity_source.dart
+services/cli/claude/team_roster_service.dart
+services/cli/claude/provider/claude_credential_binding_field.dart
+services/cli/flashskyai/remote_flashskyai_command_builder.dart
 ```
 
 ### 禁止所有 CLI 代码塞在一个文件
@@ -439,3 +463,19 @@ for (final def in CliToolRegistry.builtIn().launchable)
 | `MarketplaceConsumerCapability` | `registry/capabilities/marketplace_consumer_capability.dart` | 标记 | ✅ |
 | `CredentialExportCapability` | `registry/capabilities/credential_export_capability.dart` | 服务 | ✅ |
 | `RemoteAppDataCapability` | `registry/capabilities/remote_app_data_capability.dart` | 服务 | ✅ |
+| `CredentialBindingCapability` | `registry/capabilities/credential_binding_capability.dart` | 服务 | - |
+
+## 共享模型与能力归属
+
+- **Provider 凭证模型**：`CredentialProbe` / `CredentialStatus` 在 `models/credential_probe.dart`；
+  `CredentialLinkResult`（claude/cursor 共用）在 `models/credential_link_result.dart`。
+- **flashskyai 镜像**：`services/cli/flashskyai/provider/flashskyai_provider_mirror.dart`（把其它 CLI
+  的 catalog 行镜像成 flashskyai 记录），`ProviderImportService` 只做编排。
+- **AiHistory 增量前缀**：`AiHistoryCapability.tailFallbackPrefix` 由各 CLI 声明（必须与全量
+  adapter 的 fallback id 前缀一致），loader 不再 `switch (cli)`。
+
+## 能力清单中的 l10n 映射
+
+UI 层的 CLI 标签映射（如 provider 凭证操作条）使用**穷尽式 `switch (cli)`**（覆盖全部
+`CliTool.values`，无 `_` 默认分支）——新增 CLI 枚举值时编译强制补齐标签，杜绝静默落到
+错误文案。工具名映射集中在 `l10n/l10n_extensions.dart#appProviderToolLabel`。

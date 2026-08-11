@@ -15,7 +15,7 @@ import 'package:teampilot/services/storage/runtime_context.dart';
 import '../../support/test_runtime_context.dart';
 import 'package:teampilot/services/team_bus/member_bus_idle_endpoint.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
-import 'package:teampilot/services/team/claude_team_roster_service.dart';
+import 'package:teampilot/services/cli/claude/team_roster_service.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_windows_home_junction.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 

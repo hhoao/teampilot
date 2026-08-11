@@ -1,7 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
-import '../../../../models/claude_credential_link_result.dart';
+import '../../../../models/credential_probe.dart';
+import '../../../../models/credential_link_result.dart';
 import '../../../../models/credential_action_result.dart';
 import '../../../host/host_one_shot_runner.dart';
 import '../../../io/filesystem.dart';

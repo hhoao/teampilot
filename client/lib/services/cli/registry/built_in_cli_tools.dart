@@ -12,7 +12,19 @@ import '../../../services/cli/opencode/provider/opencode_provider_model_capabili
 import 'capabilities/member_agent_preset_capability.dart';
 import 'capabilities/member_config_inspection_capability.dart';
 import 'capabilities/provider_model_capability.dart';
+import 'capabilities/config_profile_capability.dart';
+import 'capabilities/launch_args_capability.dart';
+import 'capabilities/wait_before_stop_capability.dart';
+import 'capabilities/provider_display_capability.dart';
+import 'capabilities/cli_config_ui_capability.dart';
+import 'capabilities/title_attention_capability.dart';
+import 'capabilities/marketplace_consumer_capability.dart';
+import 'capabilities/agent_status_normalizer_capability.dart';
+import 'capabilities/history_context_env_capability.dart';
+import 'capabilities/credential_export_capability.dart';
+import 'capabilities/remote_app_data_capability.dart';
 import 'cli_bootstrap.dart';
+import 'cli_capability.dart';
 import 'cli_tool_registry.dart';
 import '../claude/claude_tool.dart';
 import '../codex/codex_tool.dart';
@@ -87,8 +99,26 @@ void registerBuiltInCliTools(
     ),
     'Every CliTool must register MemberConfigInspectionCapability',
   );
+  _verifyRequired<ConfigProfileCapability>(registry);
+  _verifyRequired<LaunchArgsCapability>(registry);
+  _verifyRequired<WaitBeforeStopCapability>(registry);
+  _verifyRequired<ProviderDisplayCapability>(registry);
+  _verifyRequired<CliConfigUiCapability>(registry);
+  _verifyRequired<TitleAttentionCapability>(registry);
+  _verifyRequired<MarketplaceConsumerCapability>(registry);
+  _verifyRequired<AgentStatusNormalizerCapability>(registry);
+  _verifyRequired<HistoryContextEnvCapability>(registry);
+  _verifyRequired<CredentialExportCapability>(registry);
+  _verifyRequired<RemoteAppDataCapability>(registry);
   _verifyNativeTeamRegistration(registry);
   _verifyMemberAgentPresetRegistration(registry);
+}
+
+void _verifyRequired<T extends CliCapability>(CliToolRegistry registry) {
+  assert(
+    CliTool.values.every((cli) => registry.capability<T>(cli) != null),
+    'Every CliTool must register ${T.toString()}',
+  );
 }
 
 void _verifyMemberAgentPresetRegistration(CliToolRegistry registry) {

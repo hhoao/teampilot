@@ -43,7 +43,7 @@ Future<void> confirmDeleteAppProvider(BuildContext context, String id) async {
       .where((p) => p.id == id)
       .firstOrNull;
   final label = provider?.name ?? id;
-  final hasCredentials = provider?.hasClaudeCredentialsReady ?? false;
+  final hasCredentials = provider?.hasCredentialsReady ?? false;
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (ctx) => TpDialog(

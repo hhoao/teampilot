@@ -11,12 +11,6 @@ abstract interface class ProviderDisplayCapability implements CliCapability {
   /// Whether the provider list shows a model count badge (flashskyai).
   bool get showModelCount;
 
-  /// Whether credential-status fields are serialized in [AppProviderConfig.toJson].
-  bool get serializesCredentialStatus;
-
-  /// Whether this CLI supports credential binding UI (Claude symlink binding).
-  bool get hasCredentialBinding;
-
   /// Whether this CLI appears in the delegate-row team settings UI.
   bool get supportsDelegate;
 

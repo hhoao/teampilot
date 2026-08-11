@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 
-import 'claude_credential_link_result.dart';
+import 'credential_probe.dart';
 import 'team_config.dart';
 
 export 'team_config.dart' show CliTool;
@@ -149,22 +149,12 @@ class AppProviderConfig {
   final int credentialUpdatedAt;
   final Map<String, Object?> unknownFields;
 
-  bool get hasClaudeCredentialsReady => credentialStatus == 'ready';
-
-  bool get hasCursorCredentialsReady => credentialStatus == 'ready';
+  bool get hasCredentialsReady => credentialStatus == 'ready';
 
   bool get requiresApiKey =>
       category == AppProviderCategory.thirdParty ||
       category == AppProviderCategory.aggregator ||
       category == AppProviderCategory.cnOfficial;
-
-  int get flashskyaiModelCount {
-    if (cli != CliTool.flashskyai) return 0;
-    final raw = config['models'];
-    if (raw is Map) return raw.length;
-    if (defaultModel.trim().isNotEmpty) return 1;
-    return 0;
-  }
 
   AppProviderConfig copyWith({
     String? id,
@@ -247,10 +237,8 @@ class AppProviderConfig {
       'config': config,
       'createdAt': createdAt,
       'updatedAt': updatedAt,
-      if (cli == CliTool.claude || cli == CliTool.cursor) ...{
-        'credentialStatus': credentialStatus,
-        if (credentialUpdatedAt > 0) 'credentialUpdatedAt': credentialUpdatedAt,
-      },
+      'credentialStatus': credentialStatus,
+      if (credentialUpdatedAt > 0) 'credentialUpdatedAt': credentialUpdatedAt,
     };
   }
 }
