@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:ai_message_core/ai_message_core.dart';
@@ -523,6 +524,82 @@ void main() {
       reason: 'unchanged reload must reuse the attachment map',
     );
   });
+
+  test(
+    'running subagent side transcript growth re-inflates attachments while parent mtime is frozen',
+    () async {
+      mtimeToken = 'mtime-1';
+      // Parent transcript with an `agent` tool_use but no tool_result yet
+      // (the sub-agent is still running — the parent jsonl stays frozen).
+      final bucket = RuntimeLayout.workspaceBucketForPrimaryPath('/work/project');
+      final session = simpleSession();
+      final toolRoot = layout.sessionRuntimeToolDir(
+        'ws-1',
+        session.sessionId,
+        'claude',
+      );
+      final projects = p.join(toolRoot, 'projects', bucket);
+      await Directory(projects).create(recursive: true);
+      final parentPath = p.join(projects, '${session.sessionId}.jsonl');
+      await File(parentPath).writeAsString(_agentToolUseJsonl());
+
+      final subagentsDir = p.join(projects, session.sessionId, 'subagents');
+      await Directory(subagentsDir).create(recursive: true);
+      await File(
+        p.join(subagentsDir, 'agent-abc.meta.json'),
+      ).writeAsString(jsonEncode({'toolUseId': 'toolu_agent'}));
+      await File(
+        p.join(subagentsDir, 'agent-abc.jsonl'),
+      ).writeAsString(_sideTranscriptJsonl(lines: 1));
+
+      final loader = buildLoader();
+      final ctx = launchContextFor(session);
+      final first = await loader.load(
+        session: session,
+        memberId: '',
+        launchContext: ctx,
+      );
+      final firstAttachment = first.subagentAttachments['toolu_agent'];
+      expect(firstAttachment, isNotNull);
+      expect(firstAttachment!.source, AiSubagentAttachmentSource.sideTranscript);
+      expect(firstAttachment.messages, hasLength(1));
+
+      // The running sub-agent appends its own transcript; the parent jsonl
+      // (and thus the cache token) does not move. The loader must re-inflate
+      // from the cached messages without re-parsing the parent.
+      await File(
+        p.join(subagentsDir, 'agent-abc.jsonl'),
+      ).writeAsString(_sideTranscriptJsonl(lines: 2));
+      final second = await loader.load(
+        session: session,
+        memberId: '',
+        launchContext: ctx,
+      );
+      expect(
+        identical(second.messages, first.messages),
+        isTrue,
+        reason: 'side-only change must reuse the cached parent parse',
+      );
+      final secondAttachment = second.subagentAttachments['toolu_agent']!;
+      expect(secondAttachment.messages, hasLength(2));
+      expect(
+        (secondAttachment.messages.last.parts.single as AiTextPart).text,
+        'progress 1',
+      );
+
+      // Side data stable again → same attachment map instance, no re-inflate.
+      final third = await loader.load(
+        session: session,
+        memberId: '',
+        launchContext: ctx,
+      );
+      expect(
+        identical(third.subagentAttachments, second.subagentAttachments),
+        isTrue,
+        reason: 'unchanged side data must reuse the attachment map',
+      );
+    },
+  );
 }
 
 class _CountingLocator extends AiHistoryLocator {
@@ -602,4 +679,53 @@ class _EchoAdapter implements AiTranscriptAdapter {
       ),
     ];
   }
+}
+
+String _agentToolUseJsonl() {
+  return [
+    jsonEncode({
+      'type': 'user',
+      'message': {'role': 'user', 'content': 'hello'},
+      'uuid': 'u-1',
+      'timestamp': '2026-07-10T10:00:00.000Z',
+    }),
+    jsonEncode({
+      'type': 'assistant',
+      'message': {
+        'role': 'assistant',
+        'content': [
+          {
+            'type': 'tool_use',
+            'id': 'toolu_agent',
+            'name': 'Agent',
+            'input': {'description': 'explore'},
+          },
+        ],
+      },
+      'uuid': 'a-1',
+      'timestamp': '2026-07-10T10:00:01.000Z',
+    }),
+  ].join('\n');
+}
+
+/// Claude side-transcript lines: assistant progress rows only (as a live
+/// sub-agent appends them).
+String _sideTranscriptJsonl({required int lines}) {
+  // Alternate roles so adjacent rows never coalesce into one message; a live
+  // sub-agent's transcript interleaves assistant output and user tool results.
+  final roles = ['assistant', 'user'];
+  return [
+    for (var i = 0; i < lines; i++)
+      jsonEncode({
+        'type': roles[i % 2],
+        'message': {
+          'role': roles[i % 2],
+          'content': [
+            {'type': 'text', 'text': 'progress $i'},
+          ],
+        },
+        'uuid': 's-$i',
+        'timestamp': '2026-07-10T10:00:0${i + 2}.000Z',
+      }),
+  ].join('\n');
 }

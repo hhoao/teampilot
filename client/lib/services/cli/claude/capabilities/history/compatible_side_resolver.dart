@@ -136,4 +136,57 @@ final class ClaudeCompatibleSideResolver implements SubagentSideResolver {
     }
     return map;
   }
+
+  @override
+  Future<String?> fingerprint({
+    required SessionHistoryContext ctx,
+    required String? rootTranscriptPath,
+  }) async {
+    final parent = _parentTranscriptPath(null, rootTranscriptPath);
+    if (parent == null) return null;
+    final subagentsDir = claudeSubagentsDirFor(
+      parent,
+      pathContext: ctx.fs.pathContext,
+    );
+    final stat = await ctx.fs.stat(subagentsDir);
+    if (!stat.isDirectory) return null;
+
+    final parts = <String>[];
+    await _fingerprintDir(ctx, subagentsDir, parts);
+    return parts.isEmpty ? null : parts.join('\n');
+  }
+
+  /// Recursive walk of the `subagents/` tree — regular `agent-*.jsonl` /
+  /// `.meta.json` files plus `workflows/wf_*/` run dirs that append while a
+  /// Workflow orchestration runs.
+  static Future<void> _fingerprintDir(
+    SessionHistoryContext ctx,
+    String dir,
+    List<String> out,
+  ) async {
+    List<FsDirEntry> entries;
+    try {
+      entries = await ctx.fs.listDir(dir);
+    } on Object {
+      return;
+    }
+    entries.sort((a, b) => a.name.compareTo(b.name));
+    final path = ctx.fs.pathContext;
+    for (final entry in entries) {
+      final full = path.join(dir, entry.name);
+      if (entry.isDirectory) {
+        await _fingerprintDir(ctx, full, out);
+        continue;
+      }
+      if (!entry.name.endsWith('.jsonl') &&
+          !entry.name.endsWith('.meta.json')) {
+        continue;
+      }
+      final st = await ctx.fs.stat(full);
+      if (!st.exists) continue;
+      out.add(
+        '${entry.name}|${st.size ?? 0}|${st.mtime?.toUtc().toIso8601String() ?? ''}',
+      );
+    }
+  }
 }

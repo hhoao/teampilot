@@ -73,6 +73,11 @@ final class AiHistoryLoader {
   final _messages = <String, List<AiMessage>>{};
   final _attachments = <String, Map<String, AiSubagentAttachment>>{};
 
+  /// Per-seat located parent transcript path (for side fingerprinting) and
+  /// last-observed side-transcript fingerprint.
+  final _parentPaths = <String, String>{};
+  final _sideTokens = <String, String>{};
+
   /// Bundles at/above this size parse on a worker isolate; smaller ones parse
   /// in place (isolate spawn + transfer overhead would dominate).
   static const _isolateParseMinBytes = 256 * 1024;
@@ -94,6 +99,8 @@ final class AiHistoryLoader {
     _tokens.clear();
     _messages.clear();
     _attachments.clear();
+    _parentPaths.clear();
+    _sideTokens.clear();
   }
 
   /// Locate-only watch hints for live transcript refresh (no full parse).
@@ -145,9 +152,34 @@ final class AiHistoryLoader {
 
     final token = await (_resolveCacheToken ?? _defaultCacheToken)(ctx);
     if (!force && token != null && _tokens[cacheKey] == token) {
+      final cachedMessages = _messages[cacheKey] ?? const [];
+      final cachedAttachments = _attachments[cacheKey] ?? const {};
+      // Parent transcript unchanged. While a sub-agent is still running its
+      // side transcript appends lines but the parent transcript only moves
+      // when the tool result lands — so the parent cache token cannot see it.
+      // Re-inflate attachments from the cached messages when the side data
+      // fingerprint moved (skip when the CLI layout cannot fingerprint).
+      final sideToken = await cap.subagentSideResolver.fingerprint(
+        ctx: ctx,
+        rootTranscriptPath: _parentPaths[cacheKey],
+      );
+      if (sideToken == null || _sideTokens[cacheKey] == sideToken) {
+        return AiHistoryLoadResult(
+          messages: cachedMessages,
+          subagentAttachments: cachedAttachments,
+        );
+      }
+      final attachments = await const SubagentAttachmentInflater().inflate(
+        messages: cachedMessages,
+        ctx: ctx,
+        capability: cap,
+        rootTranscriptPath: _parentPaths[cacheKey],
+      );
+      _attachments[cacheKey] = attachments;
+      _sideTokens[cacheKey] = sideToken;
       return AiHistoryLoadResult(
-        messages: _messages[cacheKey] ?? const [],
-        subagentAttachments: _attachments[cacheKey] ?? const {},
+        messages: cachedMessages,
+        subagentAttachments: attachments,
       );
     }
 
@@ -164,6 +196,7 @@ final class AiHistoryLoader {
         }
         return null; // degrade-only; never invent a path from fragment basename
       }();
+      _parentPaths[cacheKey] = parentPath ?? '';
       // Full parse through the capability's adapter: reads the whole located
       // transcript each time. The mtime token above skips the work when nothing
       // changed. (The incremental tailer was rolled back — see git history.)
@@ -226,6 +259,11 @@ final class AiHistoryLoader {
       _messages[cacheKey] = messages;
       _attachments[cacheKey] = attachments;
       _tokens[cacheKey] = token ?? 'changed-$cacheKey';
+      final sideToken = await cap.subagentSideResolver.fingerprint(
+        ctx: ctx,
+        rootTranscriptPath: parentPath,
+      );
+      if (sideToken != null) _sideTokens[cacheKey] = sideToken;
       return AiHistoryLoadResult(
         messages: messages,
         subagentAttachments: attachments,
@@ -247,12 +285,16 @@ final class AiHistoryLoader {
       _tokens.remove(key);
       _messages.remove(key);
       _attachments.remove(key);
+      _parentPaths.remove(key);
+      _sideTokens.remove(key);
       return;
     }
     final prefix = '${sessionId.trim()}\u0000';
     _tokens.removeWhere((key, _) => key.startsWith(prefix));
     _messages.removeWhere((key, _) => key.startsWith(prefix));
     _attachments.removeWhere((key, _) => key.startsWith(prefix));
+    _parentPaths.removeWhere((key, _) => key.startsWith(prefix));
+    _sideTokens.removeWhere((key, _) => key.startsWith(prefix));
   }
 
   Future<_AiHistorySeat> _resolveSeat({

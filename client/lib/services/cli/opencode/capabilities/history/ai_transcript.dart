@@ -23,7 +23,7 @@ import '../native_session_id.dart';
 Future<AiTranscriptBundle?> locateOpencodeTranscript(
   SessionHistoryContext ctx,
 ) async {
-  final dataDir = _resolveDataDir(ctx);
+  final dataDir = opencodeDataDirFromEnv(ctx);
   if (dataDir.isEmpty) return null;
 
   final sessionId = await _resolveSessionId(ctx, dataDir);
@@ -38,7 +38,7 @@ Future<AiTranscriptBundle?> locateOpencodeTranscriptForSession(
   SessionHistoryContext ctx,
   String sessionId,
 ) async {
-  final dataDir = _resolveDataDir(ctx);
+  final dataDir = opencodeDataDirFromEnv(ctx);
   if (dataDir.isEmpty) return null;
 
   final trimmed = sessionId.trim();
@@ -51,7 +51,7 @@ Future<AiTranscriptBundle?> locateOpencodeTranscriptForSession(
 }
 
 /// TeamPilot history context: dirname of absolute [OPENCODE_DB].
-String _resolveDataDir(SessionHistoryContext ctx) {
+String opencodeDataDirFromEnv(SessionHistoryContext ctx) {
   final db = ctx.env['OPENCODE_DB']?.trim() ?? '';
   if (db.isEmpty || db == ':memory:') return '';
   return ctx.fs.pathContext.dirname(db);

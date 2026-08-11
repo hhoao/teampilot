@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
+import 'package:sqlite3/sqlite3.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/history/side_resolver.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/session/session_history_context.dart';
@@ -414,5 +415,394 @@ void main() {
       ),
       isNull,
     );
+  });
+
+  group('running child discovery (no tool result yet)', () {
+    setUp(OpencodeSideResolver.clearDiscoveryMemo);
+
+    Future<void> writeRunningParent() async {
+      await writeJson('storage/session/proj_demo/$parentSessionId.json', {
+        'id': parentSessionId,
+        'projectID': 'proj_demo',
+        'title': 'parent',
+        'time': {'created': 1},
+      });
+      await writeJson('storage/message/$parentSessionId/msg_task.json', {
+        'id': 'msg_task',
+        'sessionID': parentSessionId,
+        'role': 'assistant',
+        'time': {'created': 2},
+      });
+      await writeJson('storage/part/msg_task/prt_task.json', {
+        'id': 'prt_task',
+        'messageID': 'msg_task',
+        'type': 'tool',
+        'tool': 'task',
+        'callID': 'call_task_1',
+        'state': {
+          'status': 'running',
+          'input': {'prompt': 'do work'},
+          'metadata': {},
+        },
+      });
+    }
+
+    AiToolCallPart runningTaskPart() {
+      return AiToolCallPart(
+        toolCallId: 'call_task_1',
+        toolName: 'task',
+        args: const {'prompt': 'do work'},
+        status: AiToolCallStatus.incomplete,
+      );
+    }
+
+    test('discovers child via parent_id linkage when result carries no id',
+        () async {
+      await writeRunningParent();
+      await writeChildSession(
+        sessionId: childSessionId,
+        parentId: parentSessionId,
+        userText: 'child working',
+      );
+
+      final result = await resolver.resolve(
+        part: runningTaskPart(),
+        ctx: ctx(dataDir: base.path, persistedNativeId: parentSessionId),
+        parentHandle: null,
+        rootTranscriptPath: null,
+      );
+
+      expect(result, isNotNull);
+      expect(
+        (result!.handle as SubagentSessionHandle).sessionId,
+        childSessionId,
+      );
+      expect(
+        (result.messages.first.parts.single as AiTextPart).text,
+        'child working',
+      );
+    });
+
+    test('does not discover children of another parent', () async {
+      await writeRunningParent();
+      await writeChildSession(
+        sessionId: childSessionId,
+        parentId: 'ses_some_other_parent',
+        userText: 'unrelated child',
+      );
+
+      expect(
+        await resolver.resolve(
+          part: runningTaskPart(),
+          ctx: ctx(dataDir: base.path, persistedNativeId: parentSessionId),
+          parentHandle: null,
+          rootTranscriptPath: null,
+        ),
+        isNull,
+      );
+    });
+
+    test('prefers the child created after the tool call', () async {
+      await writeRunningParent();
+      await writeChildSession(
+        sessionId: childSessionId,
+        parentId: parentSessionId,
+        userText: 'older child',
+      );
+      await writeJson('storage/session/proj_demo/$nestedChildSessionId.json', {
+        'id': nestedChildSessionId,
+        'projectID': 'proj_demo',
+        'title': 'child',
+        'time': {'created': 8},
+        'parent_id': parentSessionId,
+      });
+      await writeJson(
+        'storage/message/$nestedChildSessionId/msg_child_user.json',
+        {
+          'id': 'msg_child_user',
+          'sessionID': nestedChildSessionId,
+          'role': 'user',
+          'time': {'created': 9},
+        },
+      );
+      await writeJson(
+        'storage/part/msg_child_user/prt_child_text.json',
+        {
+          'id': 'prt_child_text',
+          'messageID': 'msg_child_user',
+          'type': 'text',
+          'text': 'newer child',
+        },
+      );
+
+      final result = await resolver.resolve(
+        part: runningTaskPart(),
+        ctx: ctx(dataDir: base.path, persistedNativeId: parentSessionId),
+        parentHandle: null,
+        rootTranscriptPath: null,
+        toolCallAt: DateTime.fromMillisecondsSinceEpoch(5, isUtc: true),
+      );
+
+      expect(result, isNotNull);
+      expect(
+        (result!.handle as SubagentSessionHandle).sessionId,
+        nestedChildSessionId,
+      );
+      expect(
+        (result.messages.first.parts.single as AiTextPart).text,
+        'newer child',
+      );
+    });
+
+    test('resolves nested running child via SubagentSessionHandle parent',
+        () async {
+      await writeChildSession(
+        sessionId: childSessionId,
+        parentId: parentSessionId,
+        userText: 'child',
+      );
+      await writeJson('storage/message/$childSessionId/msg_nested_task.json', {
+        'id': 'msg_nested_task',
+        'sessionID': childSessionId,
+        'role': 'assistant',
+        'time': {'created': 5},
+      });
+      await writeJson('storage/part/msg_nested_task/prt_nested_task.json', {
+        'id': 'prt_nested_task',
+        'messageID': 'msg_nested_task',
+        'type': 'tool',
+        'tool': 'task',
+        'callID': 'call_nested_task',
+        'state': {
+          'status': 'running',
+          'input': {'prompt': 'nested work'},
+        },
+      });
+      await writeChildSession(
+        sessionId: nestedChildSessionId,
+        parentId: childSessionId,
+        userText: 'nested working',
+      );
+
+      final result = await resolver.resolve(
+        part: AiToolCallPart(
+          toolCallId: 'call_nested_task',
+          toolName: 'task',
+          args: const {'prompt': 'nested work'},
+          status: AiToolCallStatus.incomplete,
+        ),
+        ctx: ctx(dataDir: base.path, persistedNativeId: parentSessionId),
+        parentHandle: SubagentSessionHandle(childSessionId),
+        rootTranscriptPath: null,
+      );
+
+      expect(result, isNotNull);
+      expect(
+        (result!.handle as SubagentSessionHandle).sessionId,
+        nestedChildSessionId,
+      );
+      expect(
+        (result.messages.first.parts.single as AiTextPart).text,
+        'nested working',
+      );
+    });
+
+    test('discoveries from SQLite layout (no JSON storage)', () async {
+      final dbPath = p.join(base.path, 'opencode.db');
+      final db = sqlite3.open(dbPath);
+      addTearDown(db.dispose);
+      db.execute('''
+CREATE TABLE session (
+  id TEXT PRIMARY KEY,
+  data TEXT,
+  time_created INTEGER
+);
+''');
+      db.execute(
+        '''
+INSERT INTO session(id, data, time_created)
+VALUES (
+  'ses_child003',
+  '{"id":"ses_child003","parentID":"ses_parent001","time":{"created":3}}',
+  3
+)
+''',
+      );
+      db.execute(
+        '''
+CREATE TABLE message (
+  id TEXT PRIMARY KEY,
+  session_id TEXT,
+  time_created INTEGER,
+  data TEXT
+);
+CREATE TABLE part (
+  id TEXT PRIMARY KEY,
+  message_id TEXT,
+  session_id TEXT,
+  time_created INTEGER,
+  data TEXT
+);
+''',
+      );
+      db.execute(
+        '''
+INSERT INTO message(id, session_id, time_created, data)
+VALUES (
+  'msg_child_user',
+  'ses_child003',
+  4,
+  '{"role":"user","time":{"created":4}}'
+)
+''',
+      );
+      db.execute(
+        '''
+INSERT INTO part(id, message_id, session_id, time_created, data)
+VALUES (
+  'prt_child_text',
+  'msg_child_user',
+  'ses_child003',
+  4,
+  '{"type":"text","text":"db child working"}'
+)
+''',
+      );
+
+      final result = await resolver.resolve(
+        part: runningTaskPart(),
+        ctx: ctx(dataDir: base.path, persistedNativeId: parentSessionId),
+        parentHandle: null,
+        rootTranscriptPath: null,
+      );
+
+      expect(result, isNotNull);
+      expect(
+        (result!.handle as SubagentSessionHandle).sessionId,
+        'ses_child003',
+      );
+      expect(
+        (result.messages.first.parts.single as AiTextPart).text,
+        'db child working',
+      );
+    });
+
+    test('returns null when no running child exists', () async {
+      await writeRunningParent();
+
+      expect(
+        await resolver.resolve(
+          part: runningTaskPart(),
+          ctx: ctx(dataDir: base.path, persistedNativeId: parentSessionId),
+          parentHandle: null,
+          rootTranscriptPath: null,
+        ),
+        isNull,
+      );
+    });
+
+    test('discovery memo invalidates when the store moves', () async {
+      await writeRunningParent();
+      await writeChildSession(
+        sessionId: childSessionId,
+        parentId: parentSessionId,
+        userText: 'first child',
+      );
+
+      final first = await resolver.resolve(
+        part: runningTaskPart(),
+        ctx: ctx(dataDir: base.path, persistedNativeId: parentSessionId),
+        parentHandle: null,
+        rootTranscriptPath: null,
+      );
+      expect(
+        (first!.handle as SubagentSessionHandle).sessionId,
+        childSessionId,
+      );
+
+      // A newer child of the same parent appears → the fingerprint moves and
+      // the memo must not serve the stale child.
+      await writeJson('storage/session/proj_demo/$nestedChildSessionId.json', {
+        'id': nestedChildSessionId,
+        'projectID': 'proj_demo',
+        'title': 'child',
+        'time': {'created': 8},
+        'parent_id': parentSessionId,
+      });
+      await writeJson(
+        'storage/message/$nestedChildSessionId/msg_child_user.json',
+        {
+          'id': 'msg_child_user',
+          'sessionID': nestedChildSessionId,
+          'role': 'user',
+          'time': {'created': 9},
+        },
+      );
+      await writeJson(
+        'storage/part/msg_child_user/prt_child_text.json',
+        {
+          'id': 'prt_child_text',
+          'messageID': 'msg_child_user',
+          'type': 'text',
+          'text': 'second child',
+        },
+      );
+      final second = await resolver.resolve(
+        part: runningTaskPart(),
+        ctx: ctx(dataDir: base.path, persistedNativeId: parentSessionId),
+        parentHandle: null,
+        rootTranscriptPath: null,
+      );
+      expect(
+        (second!.handle as SubagentSessionHandle).sessionId,
+        nestedChildSessionId,
+      );
+
+      // Unchanged store → memo hit still returns the same (fresh) child.
+      final third = await resolver.resolve(
+        part: runningTaskPart(),
+        ctx: ctx(dataDir: base.path, persistedNativeId: parentSessionId),
+        parentHandle: null,
+        rootTranscriptPath: null,
+      );
+      expect(
+        (third!.handle as SubagentSessionHandle).sessionId,
+        nestedChildSessionId,
+      );
+    });
+
+    test('discovery memo does not serve children that vanished', () async {
+      await writeRunningParent();
+      await writeChildSession(
+        sessionId: childSessionId,
+        parentId: parentSessionId,
+        userText: 'child',
+      );
+
+      final first = await resolver.resolve(
+        part: runningTaskPart(),
+        ctx: ctx(dataDir: base.path, persistedNativeId: parentSessionId),
+        parentHandle: null,
+        rootTranscriptPath: null,
+      );
+      expect(first, isNotNull);
+
+      // Remove the child's session file → the store fingerprint moves and the
+      // re-scan finds nothing; the memo must not resurrect the old child.
+      final sessionFile = File(
+        p.join(base.path, 'storage', 'session', 'proj_demo', '$childSessionId.json'),
+      );
+      await sessionFile.delete();
+
+      expect(
+        await resolver.resolve(
+          part: runningTaskPart(),
+          ctx: ctx(dataDir: base.path, persistedNativeId: parentSessionId),
+          parentHandle: null,
+          rootTranscriptPath: null,
+        ),
+        isNull,
+      );
+    });
   });
 }

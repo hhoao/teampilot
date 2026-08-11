@@ -64,6 +64,54 @@ final class CursorSideResolver implements SubagentSideResolver {
     if (root != null && root.isNotEmpty) return root;
     return null;
   }
+
+  @override
+  Future<String?> fingerprint({
+    required SessionHistoryContext ctx,
+    required String? rootTranscriptPath,
+  }) async {
+    final parent = _parentTranscriptPath(null, rootTranscriptPath);
+    if (parent == null) return null;
+    final transcriptsRoot = cursorAgentTranscriptsRootFor(
+      parent,
+      pathContext: ctx.fs.pathContext,
+    );
+    if (transcriptsRoot == null) return null;
+
+    final path = ctx.fs.pathContext;
+    final excludeStem = path.basenameWithoutExtension(parent);
+    List<FsDirEntry> entries;
+    try {
+      entries = await ctx.fs.listDir(transcriptsRoot);
+    } on Object {
+      return null;
+    }
+    entries.sort((a, b) => a.name.compareTo(b.name));
+
+    final parts = <String>[];
+    for (final entry in entries) {
+      if (entry.name == excludeStem || entry.name == 'subagents') continue;
+      final candidatePaths = <String>[];
+      if (entry.isDirectory) {
+        candidatePaths.add(
+          path.join(transcriptsRoot, entry.name, '${entry.name}.jsonl'),
+        );
+      } else if (entry.name.endsWith('.jsonl')) {
+        candidatePaths.add(path.join(transcriptsRoot, entry.name));
+      }
+      for (final candidatePath in candidatePaths) {
+        if (path.basenameWithoutExtension(candidatePath) == excludeStem) {
+          continue;
+        }
+        final st = await ctx.fs.stat(candidatePath);
+        if (!st.isFile) continue;
+        parts.add(
+          '${entry.name}|${st.size ?? 0}|${st.mtime?.toUtc().toIso8601String() ?? ''}',
+        );
+      }
+    }
+    return parts.isEmpty ? null : parts.join('\n');
+  }
 }
 
 /// Cursor layout: parent `…/agent-transcripts/{stem}/{stem}.jsonl` or flat
