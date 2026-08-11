@@ -346,6 +346,45 @@ class AppLocalizationsEn extends AppLocalizations {
       'When you open a thinking-process block, expand nested tool call details automatically.';
 
   @override
+  String get thinkingProcessFoldSectionTitle => 'Fold into thinking process';
+
+  @override
+  String get toolCategoryRead => 'Read file';
+
+  @override
+  String get toolCategoryWrite => 'Write file';
+
+  @override
+  String get toolCategoryEdit => 'Edit file';
+
+  @override
+  String get toolCategoryCommand => 'Shell command';
+
+  @override
+  String get toolCategorySearch => 'Web search';
+
+  @override
+  String get toolCategoryBrowser => 'Browser';
+
+  @override
+  String get toolCategorySubagent => 'Subagent';
+
+  @override
+  String get toolCategoryAskUser => 'Ask user';
+
+  @override
+  String get toolCategoryPlan => 'Plan';
+
+  @override
+  String get toolCategoryTask => 'Tasks & todos';
+
+  @override
+  String get toolCategoryMcp => 'MCP';
+
+  @override
+  String get toolCategoryOther => 'Other';
+
+  @override
   String get contentDisplayModeSectionTitle => 'Content display';
 
   @override

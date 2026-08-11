@@ -1,3 +1,4 @@
+import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
@@ -256,6 +257,27 @@ class LayoutAppearanceInLayoutSection extends StatelessWidget {
                   ),
                   showDividerBelow: true,
                 ),
+                TpSectionHeader(title: l10n.thinkingProcessFoldSectionTitle),
+                for (final category in AiToolCallCategory.values) ...[
+                  TpPreferenceRow(
+                    title: _foldCategoryTitle(l10n, category),
+                    trailing: Switch(
+                      value: context.select<LayoutCubit, bool>(
+                        (c) => c
+                            .state
+                            .preferences
+                            .foldToolCallCategories
+                            .contains(category),
+                      ),
+                      onChanged: (value) =>
+                          controller.setFoldToolCallCategory(
+                        category,
+                        fold: value,
+                      ),
+                    ),
+                    showDividerBelow: true,
+                  ),
+                ],
                 TpSectionHeader(title: l10n.contentDisplayModeSectionTitle),
                 TpPreferenceRow(
                   title: l10n.chatUserMessageModeTitle,
@@ -385,3 +407,19 @@ class LayoutAppearanceInLayoutSection extends StatelessWidget {
     );
   }
 }
+
+String _foldCategoryTitle(AppLocalizations l10n, AiToolCallCategory c) =>
+    switch (c) {
+      AiToolCallCategory.read => l10n.toolCategoryRead,
+      AiToolCallCategory.write => l10n.toolCategoryWrite,
+      AiToolCallCategory.edit => l10n.toolCategoryEdit,
+      AiToolCallCategory.command => l10n.toolCategoryCommand,
+      AiToolCallCategory.search => l10n.toolCategorySearch,
+      AiToolCallCategory.browser => l10n.toolCategoryBrowser,
+      AiToolCallCategory.subagent => l10n.toolCategorySubagent,
+      AiToolCallCategory.askUser => l10n.toolCategoryAskUser,
+      AiToolCallCategory.plan => l10n.toolCategoryPlan,
+      AiToolCallCategory.task => l10n.toolCategoryTask,
+      AiToolCallCategory.mcp => l10n.toolCategoryMcp,
+      AiToolCallCategory.other => l10n.toolCategoryOther,
+    };

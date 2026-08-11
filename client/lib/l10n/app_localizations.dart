@@ -710,6 +710,84 @@ abstract class AppLocalizations {
   /// **'When you open a thinking-process block, expand nested tool call details automatically.'**
   String get cotExpandToolsOnOpenDescription;
 
+  /// No description provided for @thinkingProcessFoldSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Fold into thinking process'**
+  String get thinkingProcessFoldSectionTitle;
+
+  /// No description provided for @toolCategoryRead.
+  ///
+  /// In en, this message translates to:
+  /// **'Read file'**
+  String get toolCategoryRead;
+
+  /// No description provided for @toolCategoryWrite.
+  ///
+  /// In en, this message translates to:
+  /// **'Write file'**
+  String get toolCategoryWrite;
+
+  /// No description provided for @toolCategoryEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit file'**
+  String get toolCategoryEdit;
+
+  /// No description provided for @toolCategoryCommand.
+  ///
+  /// In en, this message translates to:
+  /// **'Shell command'**
+  String get toolCategoryCommand;
+
+  /// No description provided for @toolCategorySearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Web search'**
+  String get toolCategorySearch;
+
+  /// No description provided for @toolCategoryBrowser.
+  ///
+  /// In en, this message translates to:
+  /// **'Browser'**
+  String get toolCategoryBrowser;
+
+  /// No description provided for @toolCategorySubagent.
+  ///
+  /// In en, this message translates to:
+  /// **'Subagent'**
+  String get toolCategorySubagent;
+
+  /// No description provided for @toolCategoryAskUser.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask user'**
+  String get toolCategoryAskUser;
+
+  /// No description provided for @toolCategoryPlan.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan'**
+  String get toolCategoryPlan;
+
+  /// No description provided for @toolCategoryTask.
+  ///
+  /// In en, this message translates to:
+  /// **'Tasks & todos'**
+  String get toolCategoryTask;
+
+  /// No description provided for @toolCategoryMcp.
+  ///
+  /// In en, this message translates to:
+  /// **'MCP'**
+  String get toolCategoryMcp;
+
+  /// No description provided for @toolCategoryOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get toolCategoryOther;
+
   /// No description provided for @contentDisplayModeSectionTitle.
   ///
   /// In en, this message translates to:

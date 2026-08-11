@@ -47,4 +47,37 @@ void main() {
     expect(find.byType(TpCompactSelect<ContentDisplayMode>), findsNWidgets(3));
     expect(find.text('Fold · fixed height'), findsNWidgets(3));
   });
+
+  testWidgets('thinking-process fold section shows all category toggles', (
+    tester,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    final cubit = LayoutCubit(repository: LayoutRepository(prefs));
+    await cubit.load();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        locale: const Locale('en'),
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: BlocProvider.value(
+              value: cubit,
+              child: const LayoutAppearanceInLayoutSection(),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Fold into thinking process'), findsOneWidget);
+    // 12 categories + the existing 2 cot expand switches = 14 Switch widgets.
+    expect(find.byType(Switch), findsNWidgets(14));
+    final switches = tester.widgetList<Switch>(find.byType(Switch)).toList();
+    // 8 categories default to folded (on); the two cot switches default off.
+    final onCount = switches.where((s) => s.value).length;
+    expect(onCount, 8);
+  });
 }

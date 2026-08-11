@@ -328,6 +328,45 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cotExpandToolsOnOpenDescription => '展开「思考过程」时，自动展开内部工具调用详情。';
 
   @override
+  String get thinkingProcessFoldSectionTitle => '折叠进思考过程';
+
+  @override
+  String get toolCategoryRead => '读取文件';
+
+  @override
+  String get toolCategoryWrite => '写入文件';
+
+  @override
+  String get toolCategoryEdit => '编辑文件';
+
+  @override
+  String get toolCategoryCommand => 'Shell 命令';
+
+  @override
+  String get toolCategorySearch => '网络搜索';
+
+  @override
+  String get toolCategoryBrowser => '浏览器';
+
+  @override
+  String get toolCategorySubagent => '子代理';
+
+  @override
+  String get toolCategoryAskUser => '询问用户';
+
+  @override
+  String get toolCategoryPlan => '计划';
+
+  @override
+  String get toolCategoryTask => '任务与待办';
+
+  @override
+  String get toolCategoryMcp => 'MCP';
+
+  @override
+  String get toolCategoryOther => '其他';
+
+  @override
   String get contentDisplayModeSectionTitle => '内容显示';
 
   @override
