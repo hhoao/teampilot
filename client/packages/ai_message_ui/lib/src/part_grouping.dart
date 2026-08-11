@@ -1,5 +1,7 @@
 import 'package:ai_message_core/ai_message_core.dart';
 
+import 'tool_call_fold_scope.dart';
+
 /// Render tree nodes after consecutive-part grouping (assistant-ui GroupedParts).
 sealed class AiRenderNode {
   const AiRenderNode();
@@ -29,17 +31,22 @@ final class AiRenderChainOfThought extends AiRenderNode {
   final List<AiMessagePart> parts;
 }
 
-bool _isCotPart(AiMessagePart part) =>
-    part is AiReasoningPart || part is AiToolCallPart;
-
 /// Groups reasoning/tool runs into chain-of-thought nodes; text stays outside.
-List<AiRenderNode> groupMessageParts(List<AiMessagePart> parts) {
+/// Tool calls fold only when [shouldFold] allows (null folds everything);
+/// unfolded tool calls split the run like text.
+List<AiRenderNode> groupMessageParts(
+  List<AiMessagePart> parts, {
+  AiToolCallFoldPredicate? shouldFold,
+}) {
   final out = <AiRenderNode>[];
   var i = 0;
+  bool isChainPart(AiMessagePart p) =>
+      p is AiReasoningPart ||
+      (p is AiToolCallPart && (shouldFold == null || shouldFold(p)));
   while (i < parts.length) {
-    if (_isCotPart(parts[i])) {
+    if (isChainPart(parts[i])) {
       final run = <AiMessagePart>[];
-      while (i < parts.length && _isCotPart(parts[i])) {
+      while (i < parts.length && isChainPart(parts[i])) {
         run.add(parts[i]);
         i++;
       }

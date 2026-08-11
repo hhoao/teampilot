@@ -5,6 +5,7 @@ import 'part_grouping.dart';
 import 'part_registry.dart';
 import 'parts/chain_of_thought_view.dart';
 import 'theme.dart';
+import 'tool_call_fold_scope.dart';
 
 /// Dispatches grouped parts through [AiPartRegistry].
 class AiMessageParts extends StatelessWidget {
@@ -26,7 +27,8 @@ class AiMessageParts extends StatelessWidget {
   Widget build(BuildContext context) {
     if (parts.isEmpty) return const SizedBox.shrink();
     final gap = AiMessageTheme.of(context).partSpacing;
-    final nodes = groupMessageParts(parts);
+    final shouldFold = AiToolCallFoldScope.maybeOf(context)?.shouldFold;
+    final nodes = groupMessageParts(parts, shouldFold: shouldFold);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,

@@ -24,6 +24,7 @@ export 'src/strings.dart';
 export 'src/edit/edit_line_highlighter.dart';
 export 'src/edit/edit_tool_card.dart' show EditToolCard, previewEditHunkLines;
 export 'src/tool_call_bubble_scope.dart';
+export 'src/tool_call_fold_scope.dart';
 export 'src/tool_file_actions.dart';
 export 'src/tool_subagent_actions.dart';
 export 'src/theme.dart';
