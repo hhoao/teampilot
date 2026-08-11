@@ -931,7 +931,7 @@ git commit -m "refactor(cli): shared tool call resolvers base + category resolve
 在 `parses Claude fixture bytes via locate + adapter` 测试之后加:
 
 ```dart
-test('annotates tool call categories after parse (fallback resolver)', () async {
+test('annotates tool call categories after parse (built-in resolver)', () async {
   final bucket = RuntimeLayout.workspaceBucketForPrimaryPath('/work/project');
   final sessionId = 'sess-cat';
   final toolRoot = layout.sessionRuntimeToolDir('ws-1', sessionId, 'claude');
@@ -953,21 +953,12 @@ test('annotates tool call categories after parse (fallback resolver)', () async 
     for (final m in result.messages) ...m.parts.whereType<AiToolCallPart>(),
   ];
   expect(parts, isNotEmpty);
-  for (final part in parts) {
-    // fallback (fake registry 无 ToolCallResolversCapability → 默认表):
-    // Bash → command, Read → read, Task → subagent; 其余 → other
-    final expected = switch (part.toolName.toLowerCase()) {
-      'bash' => AiToolCallCategory.command,
-      'read' => AiToolCallCategory.read,
-      'task' => AiToolCallCategory.subagent,
-      _ => AiToolCallCategory.other,
-    };
-    expect(part.category, expected, reason: part.toolName);
-  }
+  // fixture 只有 Bash(basic.jsonl 仅含一条 tool_use):
+  expect(parts.single.category, AiToolCallCategory.command);
 });
 ```
 
-先用 `rg -n '"tool_use"' test/fixtures/session_history/claude/basic.jsonl | head -3` 确认 fixture 里实际出现的 tool name,按实际值调整 expected 映射(若 fixture 不含上述工具,改用 `_ => other` 之外的断言:所有 part.category != null 且命中 other,并另加一个直接用 `buildLoader` + 内存 adapter 的用例——见 Step 3 备注)。
+(buildLoader 默认 `CliToolRegistry.builtIn()`,含 ToolCallResolversCapability——该用例验证的是 built-in 解析路径,不是 fallback。fixture 已确认只含 Bash。)
 
 - [ ] **Step 2: 运行确认失败**
 
@@ -997,7 +988,7 @@ class AiHistoryLoadResult {
 ```
 
 `ai_history_loader.dart`:
-- import 增加:`../../models/team_config.dart`(已间接有)、`../ai_history/tool_call_categories.dart`、`../ai_history/tool_call_category_annotator.dart`、`../cli/registry/capabilities/tool_call_resolver_capability.dart`(原 import 若已含则不改)
+- import 增加:`../ai_history/tool_call_categories.dart`、`../ai_history/tool_call_category_annotator.dart`、`../cli/registry/capabilities/tool_call_resolver_capability.dart`
 - 增加私有辅助:
 
 ```dart
@@ -1013,33 +1004,11 @@ List<AiMessage> annotate(List<AiMessage> messages, {required CliTool cli}) =>
     );
 ```
 
-- `load()` 内 parse 完成后(第 217 行 `messages` 赋值之后)、`SubagentAttachmentInflater().inflate` 之前:
+- 两个 `AiHistoryLoadResult(` 返回点(148 缓存命中、229 新鲜)都加 `cli: cli`。
+- 新鲜路径(215-250):parse 后先 `messages = annotateToolCallCategories(messages, resolver: _categoryResolverFor(cli));`(inflate 之前),inflate 之后 `attachments = annotateSubagentAttachments(attachments, resolver: _categoryResolverFor(cli));`(`final` 改 `var`)。
+- 缓存命中路径(148-152)返回的是已标注的缓存实例,无需处理。
 
-```dart
-messages = annotateToolCallCategories(
-  messages,
-  resolver: _categoryResolverFor(cli),
-);
-```
-
-- inflate 之后:
-
-```dart
-var attachments = await const SubagentAttachmentInflater().inflate(
-  messages: messages,
-  ctx: ctx,
-  capability: cap,
-  rootTranscriptPath: parentPath,
-);
-attachments = annotateSubagentAttachments(
-  attachments,
-  resolver: _categoryResolverFor(cli),
-);
-```
-
-(原 `final attachments = await ...` 改为 `var`。)
-
-- 两个 `return AiHistoryLoadResult(...)` 处(缓存命中 148-151 与新鲜 229-232)都加 `cli: cli`。
+> **注意(用户未提交改动)**:主工作区 `ai_history_loader.dart` 有一条未提交的 side-refresh 重标路径(缓存命中时按 side-transcript fingerprint 重建附件),会产生未标注的新 `AiToolCallPart`。本 worktree 基于已提交 HEAD(无该路径),本次不处理;用户合并该改动时需在两个 inflate 点都补 `annotateSubagentAttachments`(与上文一致)。
 
 - [ ] **Step 4: 运行确认通过**
 
@@ -1063,12 +1032,12 @@ git commit -m "feat(history): annotate tool call categories in loader"
 - Modify: `client/lib/cubits/ai_history_seat.dart`
 - Test: `client/test/cubits/ai_history_seat_isolation_test.dart`(extend)
 
-- [ ] **Step 1: 写失败测试 — extend `ai_history_seat_isolation_test.dart`**
+- [ ] **Step 1: 写回归守卫测试 — extend `ai_history_seat_isolation_test.dart`**
 
-在文件内加(复用现有 `messagesBySession` / `_ScriptedLocator` 结构,新加一组带工具调用的 fixture):
+mailbox 事件当前为纯用户文本,seat 补标在现有数据流下**不可达**(loader 已在 Task 5 标注,merge 复用同一批 part 实例)。因此本用例定位为**回归守卫**:保证 Task 5 之后 merged 消息仍带类别,且补标路径不破坏现有行为。该测试在 seat 补标实现**前后都应通过**;Step 2 的"失败预期"不适用——这是 Task 6 与 Task 5 的差异点,实现验证靠代码走查(两处 `_apply*` 入口有 `_loader.annotate` 调用)而非红绿循环。
 
 ```dart
-test('mailbox merge keeps tool call categories annotated', () async {
+test('merged messages keep tool call categories after mailbox merge', () async {
   messagesBySession['sess-a'] = [
     AiMessage(
       id: 'm-tool',
@@ -1076,24 +1045,24 @@ test('mailbox merge keeps tool call categories annotated', () async {
       parts: [AiToolCallPart(toolCallId: 't1', toolName: 'Bash')],
     ),
   ];
-  // 通过 seat load 后,state 里的 tool part 类别应为 command(fallback 默认表)。
-  // (现有 harness 的 cubit/seat 装配方式照抄本文件其他测试。)
+  // 通过现有 harness 的 seat load 路径装载,再断言 state 消息里的
+  // tool part.category == command(沿用本文件其他测试读取消息的方式)。
 });
 ```
 
-若该文件已有可直接复用的 seat 装配 helper,照其模式;断言通过 `cubit.state` 拿消息(参考本文件其他测试如何读取 state 里的消息列表)。
+(若该文件已有可直接复用的 seat 装配 helper,照其模式;断言通过 `cubit.ensureSeat(...)` 后的 `seat.runtime.messages` 读取——`AiHistoryState` 本身不含消息列表,照本文件现有测试的读取方式。)
 
-- [ ] **Step 2: 运行确认失败**
+- [ ] **Step 2: 运行确认通过(前后都应通过)**
 
 Run: `cd client && flutter test test/cubits/ai_history_seat_isolation_test.dart`
-Expected: 失败 — part.category 为 other(未补标)
+Expected: PASS
 
 - [ ] **Step 3: 实现**
 
 `ai_history_seat.dart`:
 - 增加字段 `CliTool? _lastCli;`
 - `load()` 内 `_loader.load` 返回后、`_cliMessages = result.messages;` 附近加 `_lastCli = result.cli;`
-- `_applyMessages` 与 `_applySoftReloadMessages` 两个方法开头加:
+- `_applyMessages`(742 行)与 `_applySoftReloadMessages`(753 行)两个方法开头加:
 
 ```dart
 final cli = _lastCli;
@@ -1102,7 +1071,7 @@ if (cli != null) {
 }
 ```
 
-(两方法签名不变,参数名都是 `List<AiMessage> messages`;`_applyMessages` 位于 ~700 行,`_applySoftReloadMessages` 位于 753 行。所有 4 条 merge 路径 —— load:279、empty-CLI:380、softReload:403、refreshMailboxTimeline:445 —— 都汇聚到这两个方法,一处补标全覆盖。)
+(两方法签名不变,参数名都是 `List<AiMessage> messages`。所有 4 条 merge 路径 —— load:279、empty-CLI:380、softReload:403、refreshMailboxTimeline:445 —— 都汇聚到这两个方法,一处补标全覆盖;`annotate` 幂等,常见路径零分配。)
 
 - [ ] **Step 4: 运行确认通过**
 
@@ -1257,6 +1226,8 @@ Widget build(BuildContext context) {
 
 - [ ] **Step 6: 新 widget 测试 — `tool_call_fold_scope_test.dart`(端到端经 AiMessageView)**
 
+关键断言:reasoning **恒**折——`(_) => false` 时仍有一个仅含 reasoning 的链头;区别在 Bash 是否可见(折叠时在链内、链默认收起 → 不可见;不折叠时独立行 → 可见)。
+
 ```dart
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:ai_message_ui/ai_message_ui.dart';
@@ -1294,11 +1265,14 @@ void main() {
     );
   }
 
-  testWidgets('fold scope folds the tool call into the chain', (tester) async {
+  testWidgets('fold scope folds the tool call into the collapsed chain', (
+    tester,
+  ) async {
     await tester.pumpWidget(harness(shouldFold: (_) => true));
     await tester.pumpAndSettle();
-    // Chain header visible; no standalone tool trigger row outside it.
-    expect(find.textContaining('Thinking'), findsOneWidget);
+    expect(find.byIcon(Icons.psychology_outlined), findsOneWidget);
+    // Bash 在折叠的链内,不单独渲染
+    expect(find.textContaining('Bash'), findsNothing);
   });
 
   testWidgets('fold scope keeps unfolded tool call as standalone row', (
@@ -1306,22 +1280,22 @@ void main() {
   ) async {
     await tester.pumpWidget(harness(shouldFold: (_) => false));
     await tester.pumpAndSettle();
-    // No chain header; standalone tool row shows the tool name.
-    expect(find.textContaining('Thinking'), findsNothing);
+    // reasoning 仍折 → 恰一个链头
+    expect(find.byIcon(Icons.psychology_outlined), findsOneWidget);
+    // Bash 独立成行
     expect(find.textContaining('Bash'), findsWidgets);
   });
 
   testWidgets('no scope defaults to folding', (tester) async {
     await tester.pumpWidget(harness());
     await tester.pumpAndSettle();
-    expect(find.textContaining('Thinking'), findsOneWidget);
+    expect(find.byIcon(Icons.psychology_outlined), findsOneWidget);
+    expect(find.textContaining('Bash'), findsNothing);
   });
 }
 ```
 
-注意:`AiMessageTheme.test()` 是否存在——参考同包其他测试(如 `collapsed_parts_test.dart` 直接用 `MaterialApp` + `AiToolCallPartView`,未显式给 theme;`session_history_review_messages_test.dart` 用 `AiMessageTheme.test()`)。若 `.test()` 不存在则用 `ThemeData(extensions: [AiMessageTheme()])` 或省略 theme(默认全零)。写测试时先 `rg -n "AiMessageTheme.test" client/packages/ai_message_ui/test/ client/test/` 确认;找不到就用默认 `MaterialApp`(现有 collapsed_parts_test 即无 theme 直接渲染)。
-
-另外确认链标题文案:默认 strings 是 `formatThinkingProcessSteps` 生成的 "Thinking process (N steps)"?——若 strings scope 缺失时 `AiMessageStrings.of(context)` 的 fallback 文案以 `strings.dart` 实际默认值为准;断言改为查找 `find.byIcon(Icons.psychology_outlined)`(链头图标,不依赖文案)。
+注意:`AiMessageTheme.test()` 已存在(theme.dart:42,同包测试多处使用)。
 
 - [ ] **Step 7: 运行确认通过**
 
@@ -1544,11 +1518,12 @@ testWidgets('thinking-process fold section shows all category toggles', (
   await tester.pumpAndSettle();
 
   expect(find.text('Fold into thinking process'), findsOneWidget);
-  // 12 categories; 默认折叠的 8 个 Switch 为 on
-  expect(find.byType(Switch), findsNWidgets(12));
+  // 12 类别 + 既有 2 个 cot 展开开关 = 14 个 Switch
+  expect(find.byType(Switch), findsNWidgets(14));
   final switches = tester
       .widgetList<Switch>(find.byType(Switch))
       .toList();
+  // 默认折叠 8 类为 on;两个 cot 开关默认 off
   final onCount = switches.where((s) => s.value).length;
   expect(onCount, 8);
 });
@@ -1668,13 +1643,13 @@ git commit -m "feat(settings): per-category thinking-process fold toggles"
 
 - [ ] **Step 1: 写失败测试 — extend `session_history_review_messages_test.dart`**
 
-在现有 `_harness` 基础上加一个可注入 LayoutCubit 的变体(或新 helper),断言:默认偏好下,`subagent` 类别的工具调用**不在**思考过程链内(独立渲染);`read` 类别在链内。构造含 reasoning + 两个工具调用的消息,用 `find.byIcon(Icons.psychology_outlined)` 定位链头:
+在现有 `_harness` 基础上加一个可注入 LayoutCubit 的变体(或新 helper)。消息顺序 **`[reasoning, Read, Task]`**(不能是 `[reasoning, Task, Read]`——那会产生两个链:reasoning 单独成链 + Read 单独成链,计数不可判别)。默认偏好下:Read(read,折)并入 reasoning 链(共 1 个链头);Task(subagent,不折)独立成行可见。装配前(无 scope)Task 也在链内、不可见:
 
 ```dart
 testWidgets('fold scope wired from LayoutCubit default preferences', (
   tester,
 ) async {
-  // 消息: reasoning + Task(subagent,不折) + Read(read,折)
+  // 消息: reasoning + Read(折) + Task(subagent,不折)
   final runtime = ExternalStoreAiThreadRuntime()
     ..setMessages([
       AiMessage(
@@ -1682,26 +1657,28 @@ testWidgets('fold scope wired from LayoutCubit default preferences', (
         role: AiRole.assistant,
         parts: [
           const AiReasoningPart(text: 'r'),
-          AiToolCallPart(toolCallId: '1', toolName: 'Task'),
-          AiToolCallPart(toolCallId: '2', toolName: 'Read'),
+          AiToolCallPart(toolCallId: '1', toolName: 'Read'),
+          AiToolCallPart(toolCallId: '2', toolName: 'Task'),
         ],
       ),
     ]);
-  // 包裹 BlocProvider<LayoutCubit>(默认偏好)+ 既有 _harness
-  // 断言: 恰好 1 个链头图标;Task 工具行独立可见(可点开)。
+  // 包裹 BlocProvider<LayoutCubit>(默认偏好)+ 既有 _harness,await cubit.load()
+  // 断言(装配后):
+  //   链头恰 1 个(Icons.psychology_outlined)
+  //   Task 独立可见(find.textContaining('Task') findsWidgets —— 子代理行含工具名)
+  //   Read 在折叠链内不可见(find.textContaining('Read') findsNothing)
 });
 ```
 
-按现有 harness 扩展(需要把 `_harness` 包进 `BlocProvider.value(value: LayoutCubit(repository: LayoutRepository(prefs)), child: ...)`,并 `await cubit.load()`)。
+装配前该测试失败点:Task 在链内 → `find.textContaining('Task')` findsNothing(或链内含 Task 而 Read/Task 计数与断言不符)。
 
 - [ ] **Step 2: 运行确认失败**
 
 Run: `cd client && flutter test test/pages/chat/session_history_review_messages_test.dart`
-Expected: 失败 — 未装配 scope 时 Task 也被折入链(链头计数不符)
+Expected: 失败 — Task 不可见(尚未装配 scope)
 
 - [ ] **Step 3: 实现 `session_chat_message_area.dart`**
 
-- import 加 `package:ai_message_core/ai_message_core.dart`(已含)与 ai_message_ui 的 `AiToolCallFoldScope`(同包已导出)
 - `build()` 中 `prefs` 之外再加:
 
 ```dart
@@ -1711,14 +1688,6 @@ final foldCategories = context.select<LayoutCubit, Set<AiToolCallCategory>>(
 ```
 
 - 用 scope 包裹内层 `Stack`(第 216 行起,同时覆盖 `SessionHistoryReviewMessages` 与子代理预览 overlay):
-
-```dart
-child: Stack(
-  children: [ ... ],
-)
-```
-
-改为:
 
 ```dart
 child: AiToolCallFoldScope(
@@ -1762,8 +1731,10 @@ cd client/packages/ai_message_ui && flutter test
 
 ## 风险与备注
 
+- **loader 返回点以 worktree 内已提交版本为准**(2 处:148 缓存命中、229 新鲜;主工作区有未提交的 side-refresh 重标路径,本次不涉及——见 Task 5 备注)。
+- **Task 6 是回归守卫**:mailbox 纯文本使 seat 补标在现有数据流不可达,测试前后都通过;实现正确性靠代码走查(`_applyMessages` / `_applySoftReloadMessages` 开头有 `_loader.annotate`)。
 - **fake registry 测试**:`fakeAiHistoryRegistry` 只注册 `AiHistoryCapability`,loader 的 category 走 fallback 默认表——这是设计内行为,不是 bug;`tool_call_category_mapping_test` 用 `CliToolRegistry.builtIn()` 覆盖全量映射。
 - **`withAtLeastOneToolVisible`**:新增偏好字段时必须同步所有显式重建 `LayoutPreferences` 的地方(共 2 处:fromJson 与该方法本身)。
 - **gen-l10n**:若 `client/lib/l10n/app_localizations_*.dart` 由生成器产出,不要手改;跑 `flutter gen-l10n` 或分析触发。
-- **`AiMessageStrings` 缺省文案**:链头断言用 `Icons.psychology_outlined` 图标而非文案,避免依赖 strings scope 默认值。
+- **链头断言用图标**:`Icons.psychology_outlined`(chain_of_thought_view.dart:76),不依赖 strings 文案。
 - **缓存一致性**:loader 缓存里存的是标注后的消息;`annotate` 幂等,seat 补标不会产生内容差异,`sameMessageListContent` 不受影响(类别不进 identity)。
