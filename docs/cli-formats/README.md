@@ -11,7 +11,7 @@
 
 | CLI | transcript 位置 | 文件格式 | 消息 schema 页 | 解析入口 | 增量能力 | 状态 |
 |-----|----------------|---------|---------------|---------|---------|------|
-| claude | `{config}/projects/{bucket}/{taskId}.jsonl` | JSONL | [claude.md](claude.md) | `services/cli/claude/capabilities/history/ai_transcript.dart` | 待调研 | 待调研 |
+| claude | `{config}/projects/{bucket}/{taskId}.jsonl` | JSONL | [claude.md](claude.md) | `services/cli/claude/capabilities/history/ai_transcript.dart` | 有（lineAppend 非空；tailFallbackPrefix=`claude`） | 完成 |
 | codex | `$CODEX_HOME/sessions/**/rollout-*.jsonl` | JSONL | [codex.md](codex.md) | `services/cli/codex/capabilities/history/ai_transcript.dart` | 待调研 | 待调研 |
 | opencode | `$XDG_DATA_HOME/opencode/opencode.db` | SQLite(WAL) | [opencode.md](opencode.md) | `services/cli/opencode/capabilities/history/ai_transcript.dart` | 待调研 | 待调研 |
 | cursor | `{configDir}/projects/{project}/agent-transcripts/…` | JSONL | [cursor.md](cursor.md) | `services/cli/cursor/capabilities/history/ai_transcript.dart` | 待调研 | 待调研 |
