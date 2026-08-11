@@ -33,6 +33,22 @@ class SubagentWorkflowAgent {
   final String? status;
   final List<AiMessage> messages;
   final SubagentFileHandle handle;
+
+  SubagentWorkflowAgent copyWith({
+    String? agentId,
+    String? role,
+    String? status,
+    List<AiMessage>? messages,
+    SubagentFileHandle? handle,
+  }) {
+    return SubagentWorkflowAgent(
+      agentId: agentId ?? this.agentId,
+      role: role ?? this.role,
+      status: status ?? this.status,
+      messages: messages ?? this.messages,
+      handle: handle ?? this.handle,
+    );
+  }
 }
 
 /// Run-level metadata for a Claude `Workflow` tool call, resolved from the run
@@ -57,6 +73,28 @@ class SubagentWorkflowInfo {
   final String? summary;
   final Duration? duration;
   final List<SubagentWorkflowAgent> agents;
+
+  SubagentWorkflowInfo copyWith({
+    String? runId,
+    String? workflowName,
+    String? status,
+    List<String>? phases,
+    int? agentCount,
+    String? summary,
+    Duration? duration,
+    List<SubagentWorkflowAgent>? agents,
+  }) {
+    return SubagentWorkflowInfo(
+      runId: runId ?? this.runId,
+      workflowName: workflowName ?? this.workflowName,
+      status: status ?? this.status,
+      phases: phases ?? this.phases,
+      agentCount: agentCount ?? this.agentCount,
+      summary: summary ?? this.summary,
+      duration: duration ?? this.duration,
+      agents: agents ?? this.agents,
+    );
+  }
 }
 
 /// Synthetic attachment key for one workflow agent: `'{runId}/{agentId}'`.
@@ -81,6 +119,24 @@ class AiSubagentAttachment {
 
   /// Present when this attachment is the aggregate of a Claude `Workflow` run.
   final SubagentWorkflowInfo? workflow;
+
+  AiSubagentAttachment copyWith({
+    String? toolCallId,
+    List<AiMessage>? messages,
+    AiSubagentAttachmentSource? source,
+    String? title,
+    SubagentSideHandle? handle,
+    SubagentWorkflowInfo? workflow,
+  }) {
+    return AiSubagentAttachment(
+      toolCallId: toolCallId ?? this.toolCallId,
+      messages: messages ?? this.messages,
+      source: source ?? this.source,
+      title: title ?? this.title,
+      handle: handle ?? this.handle,
+      workflow: workflow ?? this.workflow,
+    );
+  }
 
   /// File-handle path for debug/compat; null for session handles.
   String? get sidePath {
