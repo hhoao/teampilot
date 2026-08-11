@@ -1,3 +1,4 @@
+import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/layout_preferences.dart';
 import 'package:tp_markdown/tp_markdown.dart' show ContentDisplayMode;
@@ -227,6 +228,45 @@ void main() {
         'chatUserMessageMode': 'nope',
       }).chatUserMessageMode,
       ContentDisplayMode.foldFixedHeight,
+    );
+  });
+
+  test('foldToolCallCategories defaults to workhorse set', () {
+    final prefs = const LayoutPreferences();
+    expect(
+      prefs.foldToolCallCategories,
+      LayoutPreferences.defaultFoldToolCallCategories,
+    );
+    expect(
+      prefs.foldToolCallCategories.contains(AiToolCallCategory.read),
+      isTrue,
+    );
+    expect(
+      prefs.foldToolCallCategories.contains(AiToolCallCategory.subagent),
+      isFalse,
+    );
+  });
+
+  test('foldToolCallCategories round-trips via JSON names', () {
+    final prefs = const LayoutPreferences().copyWith(
+      foldToolCallCategories: {AiToolCallCategory.command, AiToolCallCategory.mcp},
+    );
+    final parsed = LayoutPreferences.fromJson(prefs.toJson());
+    expect(
+      parsed.foldToolCallCategories,
+      {AiToolCallCategory.command, AiToolCallCategory.mcp},
+    );
+  });
+
+  test('foldToolCallCategories missing key → default; empty list → empty', () {
+    expect(
+      LayoutPreferences.fromJson(const {}).foldToolCallCategories,
+      LayoutPreferences.defaultFoldToolCallCategories,
+    );
+    expect(
+      LayoutPreferences.fromJson(const {'foldToolCallCategories': <String>[]})
+          .foldToolCallCategories,
+      isEmpty,
     );
   });
 }

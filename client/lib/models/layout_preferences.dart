@@ -1,3 +1,4 @@
+import 'package:ai_message_core/ai_message_core.dart';
 import 'package:tp_markdown/tp_markdown.dart' show ContentDisplayMode;
 
 import '../theme/app_theme.dart';
@@ -85,6 +86,7 @@ class LayoutPreferences {
     this.floatingToggleDy,
     this.floatingMaximized = false,
     this.filePreviewHost = FilePreviewHost.floating,
+    this.foldToolCallCategories = defaultFoldToolCallCategories,
   });
 
   factory LayoutPreferences.fromJson(Map<String, Object?> json) {
@@ -177,6 +179,7 @@ class LayoutPreferences {
       filePreviewHost:
           _enumValue(FilePreviewHost.values, json['filePreviewHost']) ??
           FilePreviewHost.floating,
+      foldToolCallCategories: _categorySet(json['foldToolCallCategories']),
     ).withAtLeastOneToolVisible();
   }
 
@@ -191,6 +194,18 @@ class LayoutPreferences {
   static const maxWorkspaceNavWidth = 360.0;
   static const defaultWorkspaceTerminalHeight = 220.0;
   static const minWorkspaceTerminalHeight = 120.0;
+
+  /// Categories folded into the thinking-process chain by default.
+  static const Set<AiToolCallCategory> defaultFoldToolCallCategories = {
+    AiToolCallCategory.read,
+    AiToolCallCategory.write,
+    AiToolCallCategory.edit,
+    AiToolCallCategory.command,
+    AiToolCallCategory.search,
+    AiToolCallCategory.browser,
+    AiToolCallCategory.mcp,
+    AiToolCallCategory.task,
+  };
 
   /// Minimum extent for the main workbench column beside a side panel.
   static const minWorkbenchMainWidth = 320.0;
@@ -253,6 +268,8 @@ class LayoutPreferences {
   final bool floatingMaximized;
   final FilePreviewHost filePreviewHost;
 
+  final Set<AiToolCallCategory> foldToolCallCategories;
+
   LayoutPreferences copyWith({
     LayoutPreset? preset,
     WorkspaceEntryMode? workspaceEntryMode,
@@ -296,6 +313,7 @@ class LayoutPreferences {
     double? floatingToggleDy,
     bool? floatingMaximized,
     FilePreviewHost? filePreviewHost,
+    Set<AiToolCallCategory>? foldToolCallCategories,
   }) {
     return LayoutPreferences(
       preset: preset ?? this.preset,
@@ -373,6 +391,8 @@ class LayoutPreferences {
       floatingToggleDy: floatingToggleDy ?? this.floatingToggleDy,
       floatingMaximized: floatingMaximized ?? this.floatingMaximized,
       filePreviewHost: filePreviewHost ?? this.filePreviewHost,
+      foldToolCallCategories:
+          foldToolCallCategories ?? this.foldToolCallCategories,
     ).withAtLeastOneToolVisible();
   }
 
@@ -423,6 +443,7 @@ class LayoutPreferences {
       floatingToggleDy: floatingToggleDy,
       floatingMaximized: floatingMaximized,
       filePreviewHost: filePreviewHost,
+      foldToolCallCategories: foldToolCallCategories,
     );
   }
 
@@ -470,6 +491,9 @@ class LayoutPreferences {
       'floatingToggleDy': floatingToggleDy,
       'floatingMaximized': floatingMaximized,
       'filePreviewHost': filePreviewHost.name,
+      'foldToolCallCategories': foldToolCallCategories
+          .map((c) => c.name)
+          .toList(),
     };
   }
 }
@@ -513,4 +537,19 @@ WorkspaceEntryMode _workspaceEntryModeFromJson(String? raw) {
   }
   // Legacy `hub` and unknown values open home (no redirect shim).
   return WorkspaceEntryMode.home;
+}
+
+Set<AiToolCallCategory> _categorySet(Object? raw) {
+  if (raw is! List) return LayoutPreferences.defaultFoldToolCallCategories;
+  final out = <AiToolCallCategory>{};
+  for (final value in raw) {
+    if (value is! String) continue;
+    for (final category in AiToolCallCategory.values) {
+      if (category.name == value) {
+        out.add(category);
+        break;
+      }
+    }
+  }
+  return out;
 }

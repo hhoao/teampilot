@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:ai_message_core/ai_message_core.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:tp_markdown/tp_markdown.dart' show ContentDisplayMode;
@@ -378,6 +379,19 @@ class LayoutCubit extends Cubit<LayoutState> {
 
   Future<void> setFileCodeBlockMode(ContentDisplayMode value) =>
       _save(state.preferences.copyWith(fileCodeBlockMode: value));
+
+  Future<void> setFoldToolCallCategory(
+    AiToolCallCategory category, {
+    required bool fold,
+  }) {
+    final next = {...state.preferences.foldToolCallCategories};
+    if (fold) {
+      next.add(category);
+    } else {
+      next.remove(category);
+    }
+    return _save(state.preferences.copyWith(foldToolCallCategories: next));
+  }
 
   Future<void> setFloatingWorkspaceGeometry({
     double? panelLeft,

@@ -1,3 +1,4 @@
+import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:teampilot/cubits/layout_cubit.dart';
@@ -16,5 +17,31 @@ void main() {
 
     await cubit.setThemeMode('dark');
     expect(cubit.state.preferences.themeMode, 'dark');
+  });
+
+  test('setFoldToolCallCategory toggles and persists', () async {
+    final prefs = await SharedPreferences.getInstance();
+    final cubit = LayoutCubit(repository: LayoutRepository(prefs));
+    await cubit.load();
+    await cubit.setFoldToolCallCategory(
+      AiToolCallCategory.subagent,
+      fold: true,
+    );
+    expect(
+      cubit.state.preferences.foldToolCallCategories.contains(
+        AiToolCallCategory.subagent,
+      ),
+      isTrue,
+    );
+    await cubit.setFoldToolCallCategory(
+      AiToolCallCategory.subagent,
+      fold: false,
+    );
+    expect(
+      cubit.state.preferences.foldToolCallCategories.contains(
+        AiToolCallCategory.subagent,
+      ),
+      isFalse,
+    );
   });
 }
