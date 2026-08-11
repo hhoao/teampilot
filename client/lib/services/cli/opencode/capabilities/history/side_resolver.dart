@@ -158,20 +158,14 @@ final class OpencodeSideResolver implements SubagentSideResolver {
     );
     if (handle == null) return null;
 
-    Database? db;
-    try {
-      db = sqlite3.open(handle.path, mode: OpenMode.readOnly);
+    return handle.read<String?>((db) {
       final rows = db.select(
         'SELECT COUNT(*), MAX(time_updated) FROM part WHERE session_id = ?',
         [childId],
       );
       if (rows.isEmpty) return null;
       return '${rows.first['COUNT(*)']}|${rows.first['MAX(time_updated)']}';
-    } on Object {
-      return null;
-    } finally {
-      db?.dispose();
-    }
+    });
   }
 
   /// While a `task` sub-agent runs, OpenCode only writes the child `ses_*`
@@ -350,10 +344,7 @@ final class OpencodeSideResolver implements SubagentSideResolver {
     );
     if (handle == null) return null;
 
-    Database? db;
-    try {
-      db = sqlite3.open(handle.path, mode: OpenMode.readOnly);
-
+    return handle.read<String?>((db) {
       final candidates = <({String id, int createdMs})>[];
       try {
         // Current OpenCode layout: `parent_id` is a real column — one
@@ -385,11 +376,7 @@ final class OpencodeSideResolver implements SubagentSideResolver {
         }
       }
       return _pickRunningChild(candidates, toolCallAt);
-    } on Object {
-      return null;
-    } finally {
-      db?.close();
-    }
+    });
   }
 
   /// Prefer the child created at/after the tool call time (earliest such —

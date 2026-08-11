@@ -576,9 +576,15 @@ void main() async {
     },
   );
 
+  // Diagnostics: exclude the whole tree from semantics on desktop (no screen
+  // reader users). `isBlockingPreviousSibling` semantics traversal is O(n²)
+  // and burns the main isolate on every frame with large chat/terminal
+  // surfaces. See docs/deadlock-analysis-2026-08-11.md.
   runApp(
-    BlocProvider.value(
-      value: bootstrapCubit,
+    ExcludeSemantics(
+      excluding: true,
+      child: BlocProvider.value(
+        value: bootstrapCubit,
       child: TeamPilotBootstrap(
         preferences: preferences,
         nativeAppDataPath: nativeAppDataPath,
@@ -771,6 +777,7 @@ void main() async {
             ),
           );
         },
+        ),
       ),
     ),
   );

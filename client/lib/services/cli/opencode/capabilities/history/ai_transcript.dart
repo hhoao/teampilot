@@ -66,20 +66,14 @@ Future<String?> _seatFingerprint(
   );
   if (handle == null) return null;
 
-  Database? db;
-  try {
-    db = sqlite3.open(handle.path, mode: OpenMode.readOnly);
+  return handle.read<String?>((db) {
     final rows = db.select(
       'SELECT COUNT(*), MAX(time_updated) FROM part WHERE session_id = ?',
       [sessionId],
     );
     if (rows.isEmpty) return null;
     return '${rows.first['COUNT(*)']}|${rows.first['MAX(time_updated)']}';
-  } on Object {
-    return null;
-  } finally {
-    db?.dispose();
-  }
+  });
 }
 
 final Map<String, _ParentBundleMemo> _parentBundles = {};
@@ -153,9 +147,7 @@ Future<String?> opencodeLiveCacheToken(SessionHistoryContext ctx) async {
   );
   if (handle == null) return null;
 
-  Database? db;
-  try {
-    db = sqlite3.open(handle.path, mode: OpenMode.readOnly);
+  return handle.read<String?>((db) {
     final parts = db.select('SELECT COUNT(*), MAX(time_updated) FROM part');
     final sessions = db.select(
       'SELECT COUNT(*), MAX(time_updated) FROM session',
@@ -163,11 +155,7 @@ Future<String?> opencodeLiveCacheToken(SessionHistoryContext ctx) async {
     if (parts.isEmpty || sessions.isEmpty) return null;
     return 'oc|${parts.first['COUNT(*)']}|${parts.first['MAX(time_updated)']}'
         '|${sessions.first['COUNT(*)']}|${sessions.first['MAX(time_updated)']}';
-  } on Object {
-    return null;
-  } finally {
-    db?.dispose();
-  }
+  });
 }
 
 Future<AiTranscriptBundle?> _locateJsonStorage(
@@ -269,48 +257,49 @@ Future<AiTranscriptBundle?> locateOpencodeTranscriptIncremental(
   );
   if (handle == null) return null;
 
-  Database? db;
-  try {
-    db = sqlite3.open(handle.path, mode: OpenMode.readOnly);
-
-    final messageRows = db.select(
-      '''
+  final read = await handle.read<({List<SqliteFragmentData> fragments, String lastId})?>(
+    (db) {
+      final messageRows = db.select(
+        '''
 SELECT id, data, time_created
 FROM message
 WHERE session_id = ? AND id > ?
 ORDER BY id ASC
 ''',
-      [sessionId, afterMessageId],
-    );
-    if (messageRows.isEmpty) return null;
+        [sessionId, afterMessageId],
+      );
+      if (messageRows.isEmpty) return null;
+      final fragments = _buildSqliteFragments(db, sessionId, messageRows);
+      return (
+        fragments: fragments,
+        lastId: '${messageRows.last['id']}',
+      );
+    },
+  );
+  if (read == null) return null;
 
-    final fragments = _buildSqliteFragments(db, sessionId, messageRows);
-    if (fragments.where((f) => f.name.startsWith('message/')).isEmpty) {
-      return null;
-    }
-
-    final lastId = '${messageRows.last['id']}';
-    return AiTranscriptBundle(
-      adapterId: 'opencode',
-      fragments: fragments,
-      hints: {
-        'sessionId': sessionId,
-        'source': 'sqlite',
-        'incremental': 'true',
-        'afterMessageId': '$afterMessageId',
-        'lastMessageId': lastId,
-        'cacheToken': 'opencode-sqlite|$sessionId|$lastId',
-        ...AiHistoryWatchMeta(
-          changeWatchRoot: dataDir,
-          cacheTokenPaths: handle.sourcePaths,
-        ).toHints(),
-      },
-    );
-  } on Object {
+  final fragments = _toTranscriptFragments(read.fragments);
+  if (fragments.where((f) => f.name.startsWith('message/')).isEmpty) {
     return null;
-  } finally {
-    db?.close();
   }
+
+  final lastId = read.lastId;
+  return AiTranscriptBundle(
+    adapterId: 'opencode',
+    fragments: fragments,
+    hints: {
+      'sessionId': sessionId,
+      'source': 'sqlite',
+      'incremental': 'true',
+      'afterMessageId': '$afterMessageId',
+      'lastMessageId': lastId,
+      'cacheToken': 'opencode-sqlite|$sessionId|$lastId',
+      ...AiHistoryWatchMeta(
+        changeWatchRoot: dataDir,
+        cacheTokenPaths: handle.sourcePaths,
+      ).toHints(),
+    },
+  );
 }
 
 Future<AiTranscriptBundle?> _locateSqliteStorage(
@@ -326,10 +315,7 @@ Future<AiTranscriptBundle?> _locateSqliteStorage(
   );
   if (handle == null) return null;
 
-  Database? db;
-  try {
-    db = sqlite3.open(handle.path, mode: OpenMode.readOnly);
-
+  final fragmentsData = await handle.read<List<SqliteFragmentData>>((db) {
     final messageRows = db.select(
       '''
 SELECT id, data, time_created
@@ -340,42 +326,53 @@ ORDER BY time_created ASC, id ASC
       [sessionId],
     );
     if (messageRows.isEmpty) return null;
-
-    final fragments = _buildSqliteFragments(db, sessionId, messageRows);
-    if (fragments.where((f) => f.name.startsWith('message/')).isEmpty) {
-      return null;
-    }
-
-    final totalBytes =
-        fragments.fold<int>(0, (sum, f) => sum + f.bytes.length);
-    return AiTranscriptBundle(
-      adapterId: 'opencode',
-      fragments: fragments,
-      hints: {
-        'sessionId': sessionId,
-        'source': 'sqlite',
-        'cacheToken': 'opencode-sqlite|$sessionId|$totalBytes',
-        ...AiHistoryWatchMeta(
-          changeWatchRoot: dataDir,
-          cacheTokenPaths: handle.sourcePaths,
-        ).toHints(),
-      },
-    );
-  } on Object {
+    return _buildSqliteFragments(db, sessionId, messageRows);
+  });
+  if (fragmentsData == null) return null;
+  final fragments = _toTranscriptFragments(fragmentsData);
+  if (fragments.where((f) => f.name.startsWith('message/')).isEmpty) {
     return null;
-  } finally {
-    db?.close();
   }
+
+  final totalBytes = fragments.fold<int>(0, (sum, f) => sum + f.bytes.length);
+  return AiTranscriptBundle(
+    adapterId: 'opencode',
+    fragments: fragments,
+    hints: {
+      'sessionId': sessionId,
+      'source': 'sqlite',
+      'cacheToken': 'opencode-sqlite|$sessionId|$totalBytes',
+      ...AiHistoryWatchMeta(
+        changeWatchRoot: dataDir,
+        cacheTokenPaths: handle.sourcePaths,
+      ).toHints(),
+    },
+  );
+}
+
+/// Converts sendable fragment data (built on a worker isolate) back into
+/// [AiTranscriptFragment]s on the UI isolate.
+List<AiTranscriptFragment> _toTranscriptFragments(
+  List<SqliteFragmentData> data,
+) {
+  return [
+    for (final d in data) AiTranscriptFragment(name: d.name, bytes: d.bytes),
+  ];
 }
 
 /// Message → `message/{id}.json` (+ parts → `part/{messageId}/{partId}.json`)
 /// fragments, shared by the full and incremental sqlite locates.
-List<AiTranscriptFragment> _buildSqliteFragments(
+///
+/// Returns sendable name+bytes records so the whole query + fragment build can
+/// run on a worker isolate ([OpencodeSqliteReadHandle.read]).
+typedef SqliteFragmentData = ({String name, List<int> bytes});
+
+List<SqliteFragmentData> _buildSqliteFragments(
   Database db,
   String sessionId,
   List<Row> messageRows,
 ) {
-  final fragments = <AiTranscriptFragment>[];
+  final fragments = <SqliteFragmentData>[];
 
   // Batch the per-message part lookups into one session-scoped query; the
   // old N+1 (one `WHERE message_id = ?` per message) multiplied the query
@@ -417,12 +414,10 @@ ORDER BY time_created ASC, id ASC
         obj['time'] = {'created': created};
       }
     }
-    fragments.add(
-      AiTranscriptFragment(
-        name: 'message/$messageId.json',
-        bytes: utf8.encode(jsonEncode(obj)),
-      ),
-    );
+    fragments.add((
+      name: 'message/$messageId.json',
+      bytes: utf8.encode(jsonEncode(obj)),
+    ));
 
     final partsForMessage = batchedParts
         ? partsByMessage[messageId] ?? const <Row>[]
@@ -441,12 +436,10 @@ ORDER BY time_created ASC, id ASC
       if (partObj == null) continue;
       partObj.putIfAbsent('id', () => partId);
       partObj.putIfAbsent('messageID', () => messageId);
-      fragments.add(
-        AiTranscriptFragment(
-          name: 'part/$messageId/$partId.json',
-          bytes: utf8.encode(jsonEncode(partObj)),
-        ),
-      );
+      fragments.add((
+        name: 'part/$messageId/$partId.json',
+        bytes: utf8.encode(jsonEncode(partObj)),
+      ));
     }
   }
   return fragments;

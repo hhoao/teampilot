@@ -1,4 +1,5 @@
 import 'dart:io' show Directory, File;
+import 'dart:isolate';
 
 import 'package:path/path.dart' as p;
 import 'package:sqlite3/sqlite3.dart';
@@ -60,9 +61,7 @@ Future<String?> resolveOpencodeNativeSessionIdFromSqlite(
   );
   if (handle == null) return null;
 
-  Database? db;
-  try {
-    db = sqlite3.open(handle.path, mode: OpenMode.readOnly);
+  return handle.read<String?>((db) {
     final rows = db.select(
       '''
 SELECT id
@@ -74,11 +73,7 @@ LIMIT 1
     if (rows.isEmpty) return null;
     final id = '${rows.first['id']}'.trim();
     return id.isEmpty ? null : id;
-  } on Object {
-    return null;
-  } finally {
-    db?.close();
-  }
+  });
 }
 
 Future<bool> opencodeSqliteMainExists(Filesystem fs, String dbPath) async {
@@ -121,6 +116,32 @@ class OpencodeSqliteReadHandle {
   /// Change-signal paths for the watch meta: the live DB file (local) or the
   /// copied snapshot files (remote).
   final List<String> sourcePaths;
+
+  /// Runs a read-only SQLite query **off the UI isolate**.
+  ///
+  /// `sqlite3` FFI calls are synchronous and block the calling isolate's
+  /// thread for the whole query; on a large store (40MB+ WAL) that is
+  /// hundreds of ms of UI-isolate time per live-refresh tick, during which the
+  /// isolate cannot reach a safepoint either. Running the open + query on a
+  /// worker isolate keeps the UI isolate responsive and out of native code.
+  ///
+  /// [query] must be sendable-safe: it may only capture sendable values, and
+  /// its result [T] must itself be sendable (primitive / String / List / Map /
+  /// records of those). Returns null when the open or query fails.
+  Future<T?> read<T>(T? Function(Database db) query) {
+    final dbPath = path;
+    return Isolate.run(() {
+      Database? db;
+      try {
+        db = sqlite3.open(dbPath, mode: OpenMode.readOnly);
+        return query(db);
+      } on Object {
+        return null;
+      } finally {
+        db?.dispose();
+      }
+    });
+  }
 }
 
 /// Resolves a readable local path for the OpenCode SQLite store:
