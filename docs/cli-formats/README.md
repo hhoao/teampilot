@@ -15,7 +15,7 @@
 | codex | `$CODEX_HOME/sessions/**/rollout-*.jsonl`（实测日期分层目录 `sessions/YYYY/MM/DD/`） | JSONL | [codex.md](codex.md) | `services/cli/codex/capabilities/history/ai_transcript.dart` | 有（lineAppend 非空；tailFallbackPrefix=`codex`） | 完成 |
 | opencode | `$XDG_DATA_HOME/opencode/opencode.db`（实测 `~/.local/share/opencode/opencode.db`；TeamPilot 会话为 `{runtime}/opencode/opencode.db`，走 `OPENCODE_DB`） | SQLite(WAL) | [opencode.md](opencode.md) | `services/cli/opencode/capabilities/history/ai_transcript.dart` | 有（`lineAppend=null`；sqlite 增量 locate `id>afterMessageId` + liveCacheToken store 级指纹） | 完成 |
 | cursor | `{configDir}/projects/{project}/agent-transcripts/{chatId}/{chatId}.jsonl`（亦支持扁平 `agent-transcripts/{chatId}.jsonl`；configDir = `$CURSOR_CONFIG_DIR`，缺省 `$HOME/.cursor`） | JSONL | [cursor.md](cursor.md) | `services/cli/cursor/capabilities/history/ai_transcript.dart` | 有（lineAppend 非空；tailFallbackPrefix=`cursor`；liveCacheToken=null） | 完成 |
-| flashskyai | `~/.flashskyai/projects/{bucket}/{id}.jsonl` | JSONL | [flashskyai.md](flashskyai.md) | `services/cli/flashskyai/capabilities/history/ai_transcript.dart` | 待调研 | 待调研 |
+| flashskyai | `~/.flashskyai/projects/{bucket}/{id}.jsonl`（实测 `projects/`；`layoutSegments: ['projects','workspaces']` 双探针，`workspaces` 为旧布局回退） | JSONL | [flashskyai.md](flashskyai.md) | `services/cli/flashskyai/capabilities/history/ai_transcript.dart` | 有（lineAppend 非空，复用 `appendClaudeJsonlEvent`；tailFallbackPrefix=`flashskyai`） | 完成 |
 
 > 注：位置列来自 adapter 源码注释，各 CLI 页面需核实并给出实测结论；
 > 「增量能力」= 该 CLI 的 `AiHistoryCapability.lineAppend` 是否非空（opencode 走 sqlite 增量 locate，需在页面中说明机制）。
