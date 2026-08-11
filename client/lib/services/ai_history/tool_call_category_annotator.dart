@@ -80,5 +80,9 @@ AiSubagentAttachment _annotateAttachment(
   final nextWorkflow = agentsChanged
       ? workflow.copyWith(agents: agents)
       : workflow;
+  if (identical(messages, attachment.messages) &&
+      identical(nextWorkflow, workflow)) {
+    return attachment;
+  }
   return attachment.copyWith(messages: messages, workflow: nextWorkflow);
 }

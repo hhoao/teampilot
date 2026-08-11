@@ -52,6 +52,29 @@ void main() {
         AiToolCallCategory.other);
   });
 
+  test('attachment with workflow: re-annotation returns same instance', () {
+    final agent = SubagentWorkflowAgent(
+      agentId: 'ag1',
+      messages: [assistantWithTool('Grep')],
+      handle: const SubagentFileHandle('/side/a'),
+    );
+    final attachment = AiSubagentAttachment(
+      toolCallId: 't1',
+      messages: [assistantWithTool('Grep')],
+      source: AiSubagentAttachmentSource.sideTranscript,
+      workflow: SubagentWorkflowInfo(runId: 'r1', agents: [agent]),
+    );
+    final once = annotateSubagentAttachments(
+      {'t1': attachment},
+      resolver: resolver,
+    )['t1']!;
+    final twice = annotateSubagentAttachments(
+      {'t1': once},
+      resolver: resolver,
+    )['t1']!;
+    expect(identical(once, twice), isTrue);
+  });
+
   test('annotates attachment transcripts including workflow agents', () {
     final sideMessages = [assistantWithTool('Grep')];
     final agent = SubagentWorkflowAgent(
