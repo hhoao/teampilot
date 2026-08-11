@@ -98,6 +98,9 @@ class SessionChatMessageArea extends StatelessWidget {
         chatCodeBlockMode: c.state.preferences.chatCodeBlockMode,
       ),
     );
+    final foldCategories = context.select<LayoutCubit, Set<AiToolCallCategory>>(
+      (c) => c.state.preferences.foldToolCallCategories,
+    );
 
     final launchContext = WorkspaceLaunchContext(
       session: session,
@@ -213,7 +216,10 @@ class SessionChatMessageArea extends StatelessWidget {
                     formatThinkingProcessSteps: (count) =>
                         l10n.aiMessageThinkingProcessSteps(count as int),
                   ),
-                  child: Stack(
+                  child: AiToolCallFoldScope(
+                    shouldFold: (part) =>
+                        foldCategories.contains(part.category),
+                    child: Stack(
                     children: [
                       Builder(
                         builder: (context) {
@@ -319,6 +325,7 @@ class SessionChatMessageArea extends StatelessWidget {
                 ),
               ),
             ),
+          ),
           ),
           if (findVisible)
             Positioned(
