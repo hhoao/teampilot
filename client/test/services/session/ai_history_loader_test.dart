@@ -134,6 +134,32 @@ void main() {
     );
   });
 
+  test('annotates tool call categories after parse (built-in resolver)', () async {
+    final bucket = RuntimeLayout.workspaceBucketForPrimaryPath('/work/project');
+    final sessionId = 'sess-cat';
+    final toolRoot = layout.sessionRuntimeToolDir('ws-1', sessionId, 'claude');
+    final projects = p.join(toolRoot, 'projects', bucket);
+    await Directory(projects).create(recursive: true);
+    final fixture = await File(
+      'test/fixtures/session_history/claude/basic.jsonl',
+    ).readAsBytes();
+    await File(p.join(projects, '$sessionId.jsonl')).writeAsBytes(fixture);
+
+    final session = simpleSession(id: sessionId);
+    final result = await buildLoader().load(
+      session: session,
+      memberId: '',
+      launchContext: launchContextFor(session),
+    );
+    expect(result.cli, CliTool.claude);
+    final parts = [
+      for (final m in result.messages) ...m.parts.whereType<AiToolCallPart>(),
+    ];
+    expect(parts, isNotEmpty);
+    // fixture 只有 Bash(basic.jsonl 仅含一条 tool_use):
+    expect(parts.single.category, AiToolCallCategory.command);
+  });
+
   test('Cursor transcript parses via the capability adapter', () async {
     // Cursor rows use a top-level `role` field (not claude's `type`), wrap
     // user text in <user_query>, and omit tool_use ids. The loader parses them

@@ -8,9 +8,12 @@ import '../../models/team_config.dart';
 import '../../models/workspace_launch_context.dart';
 import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
+import '../ai_history/tool_call_categories.dart';
+import '../ai_history/tool_call_category_annotator.dart';
 import '../cli/preset_resolver.dart';
 import '../cli/registry/capabilities/ai_history_capability.dart';
 import '../cli/registry/capabilities/resume/pinned_transcript_probe.dart';
+import '../cli/registry/capabilities/tool_call_resolver_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../storage/runtime_context.dart';
 import '../terminal/session_member_cli_resolver.dart';
@@ -96,6 +99,17 @@ final class AiHistoryLoader {
     _attachments.clear();
   }
 
+  AiToolCallCategoryResolver _categoryResolverFor(CliTool cli) =>
+      _registry.capability<ToolCallResolversCapability>(cli)?.categoryResolver ??
+      defaultToolCallCategoryResolver;
+
+  /// Defensive annotation for post-load merged lists (mailbox). Idempotent.
+  List<AiMessage> annotate(List<AiMessage> messages, {required CliTool cli}) =>
+      annotateToolCallCategories(
+        messages,
+        resolver: _categoryResolverFor(cli),
+      );
+
   /// Locate-only watch hints for live transcript refresh (no full parse).
   Future<AiHistoryWatchMeta?> resolveWatchMeta({
     required WorkspaceLaunchContext launchContext,
@@ -147,6 +161,7 @@ final class AiHistoryLoader {
     if (!force && token != null && _tokens[cacheKey] == token) {
       return AiHistoryLoadResult(
         messages: _messages[cacheKey] ?? const [],
+        cli: cli,
         subagentAttachments: _attachments[cacheKey] ?? const {},
       );
     }
@@ -216,11 +231,23 @@ final class AiHistoryLoader {
         }
       }
 
-      final attachments = await const SubagentAttachmentInflater().inflate(
+      // Fresh parse: annotate tool call categories before inflating so that
+      // both top-level messages and inflated attachments are covered. The
+      // annotator is idempotent, so cache hits below return the same lists.
+      messages = annotateToolCallCategories(
+        messages,
+        resolver: _categoryResolverFor(cli),
+      );
+
+      var attachments = await const SubagentAttachmentInflater().inflate(
         messages: messages,
         ctx: ctx,
         capability: cap,
         rootTranscriptPath: parentPath,
+      );
+      attachments = annotateSubagentAttachments(
+        attachments,
+        resolver: _categoryResolverFor(cli),
       );
 
       _messages[cacheKey] = messages;
@@ -228,6 +255,7 @@ final class AiHistoryLoader {
       _tokens[cacheKey] = token ?? 'changed-$cacheKey';
       return AiHistoryLoadResult(
         messages: messages,
+        cli: cli,
         subagentAttachments: attachments,
       );
     } on Object catch (e, st) {
