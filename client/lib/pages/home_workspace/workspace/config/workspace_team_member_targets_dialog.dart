@@ -10,6 +10,7 @@ import '../../../../models/workspace.dart';
 import '../../../../models/workspace_topology.dart';
 import '../../../../repositories/session_repository.dart';
 import '../../../../services/launch/member_placement_save.dart';
+import '../../../../services/launch/team_settings_commit_service.dart';
 import '../mixed_workspace_member_placement_panel.dart';
 import 'package:shared_ui/shared_ui.dart';
 
@@ -112,24 +113,18 @@ class _WorkspaceTeamMemberTargetsDialogState
         folders: _workspace.folders,
         placement: _placement,
       );
-      if (!prepared.leadValid) return;
-
-      final cubit = context.read<LaunchProfileCubit>();
-      await cubit.selectTeam(
-        widget.team.id,
-        silent: true,
-        syncResources: false,
+      final ok = await TeamSettingsCommitService(
+        launchProfileCubit: context.read<LaunchProfileCubit>(),
+        sessionRepository: widget.repository,
+        chatCubit: context.read<ChatCubit>(),
+      ).commit(
+        workspaceId: _workspace.workspaceId,
+        teamId: widget.team.id,
+        prepared: prepared,
       );
-      // Persist placement totals on roster.overrides.replicas (members alone
-      // are runtime-only and would be dropped on the next materialize).
-      await cubit.updateSelected(prepared.team);
-      await widget.repository.updateWorkspaceMemberPlacement(
-        _workspace.workspaceId,
-        widget.team.id,
-        targets: prepared.targets,
-      );
-      if (!mounted) return;
-      Navigator.of(context).pop(true);
+      if (ok && mounted) {
+        Navigator.of(context).pop(true);
+      }
     } finally {
       if (mounted) setState(() => _saving = false);
     }

@@ -502,12 +502,12 @@ class SessionRepository {
   }
 
   /// Persists remembered mixed-workspace machine pins for a team.
-  Future<void> updateWorkspaceMemberTargets(
+  Future<Workspace?> updateWorkspaceMemberTargets(
     String workspaceId,
     String teamId, {
     required MemberTargetAssignments targets,
   }) async {
-    await _updateWorkspaceMemberTargetsAndInit(
+    return _updateWorkspaceMemberTargetsAndInit(
       workspaceId,
       teamId,
       targets: targets,
@@ -516,12 +516,16 @@ class SessionRepository {
   }
 
   /// Persists member targets and marks placement initialized for [teamId].
-  Future<void> updateWorkspaceMemberPlacement(
+  ///
+  /// Returns the updated [Workspace] manifest (or `null` when the workspace
+  /// does not exist) so callers can patch in-memory snapshots without a full
+  /// disk rescan.
+  Future<Workspace?> updateWorkspaceMemberPlacement(
     String workspaceId,
     String teamId, {
     required MemberTargetAssignments targets,
   }) async {
-    await _updateWorkspaceMemberTargetsAndInit(
+    return _updateWorkspaceMemberTargetsAndInit(
       workspaceId,
       teamId,
       targets: targets,
@@ -529,17 +533,17 @@ class SessionRepository {
     );
   }
 
-  Future<void> _updateWorkspaceMemberTargetsAndInit(
+  Future<Workspace?> _updateWorkspaceMemberTargetsAndInit(
     String workspaceId,
     String teamId, {
     required MemberTargetAssignments targets,
     required bool markInitialized,
   }) async {
     final trimmedTeam = teamId.trim();
-    if (trimmedTeam.isEmpty) return;
+    if (trimmedTeam.isEmpty) return null;
     final fs = await _fs();
     final existing = await _readManifest(fs, workspaceId);
-    if (existing == null) return;
+    if (existing == null) return null;
     final now = DateTime.now().millisecondsSinceEpoch;
     final nextByTeam = Map<String, MemberTargetAssignments>.from(
       existing.memberTargetsByTeam,
@@ -561,14 +565,13 @@ class SessionRepository {
       nextInitialized = Map<String, bool>.from(nextInitialized)
         ..[trimmedTeam] = true;
     }
-    await _writeManifest(
-      fs,
-      existing.copyWith(
-        memberTargetsByTeam: nextByTeam,
-        memberPlacementInitializedByTeam: nextInitialized,
-        updatedAt: now,
-      ),
+    final updated = existing.copyWith(
+      memberTargetsByTeam: nextByTeam,
+      memberPlacementInitializedByTeam: nextInitialized,
+      updatedAt: now,
     );
+    await _writeManifest(fs, updated);
+    return updated;
   }
 
   Future<Workspace> remapWorkspaceTarget(

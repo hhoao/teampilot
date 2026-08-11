@@ -20,12 +20,15 @@ import '../../widgets/cli_launch_config/team_launch_config_type_field.dart';
 import '../home_workspace/workspace/config/cli_presets_manage_dialog.dart';
 import 'team_config_helpers.dart';
 
-Future<void> openTeamDefaultPresetConfigureDialog(
+/// Opens team default launch-config edit; returns the updated team on save,
+/// `null` on cancel. The dialog persists via [cubit] (callers may ignore the
+/// return value).
+Future<TeamProfile?> openTeamDefaultPresetConfigureDialog(
   BuildContext context, {
   required TeamProfile team,
   required LaunchProfileCubit cubit,
 }) {
-  return showDialog<void>(
+  return showDialog<TeamProfile?>(
     context: context,
     builder: (_) => TeamDefaultPresetConfigureDialog(team: team, cubit: cubit),
   );
@@ -131,9 +134,10 @@ class _TeamDefaultPresetConfigureDialogState
   Future<void> _save() async {
     if (_saving) return;
     setState(() => _saving = true);
+    TeamProfile? updated;
     try {
       if (_configKind == TeamLaunchConfigKind.custom) {
-        await widget.cubit.updateTeamCustomLaunch(
+        updated = await widget.cubit.updateTeamCustomLaunch(
           catalogCli: _catalogCli,
           defaultCli: _baselineTeam.teamMode == TeamMode.mixed
               ? _catalogCli
@@ -152,13 +156,13 @@ class _TeamDefaultPresetConfigureDialogState
             break;
           }
         }
-        await widget.cubit.setTeamActivePreset(
+        updated = await widget.cubit.setTeamActivePreset(
           _presetToken,
           syncCli: syncCli,
         );
       }
       if (!mounted) return;
-      Navigator.of(context).pop();
+      Navigator.of(context).pop(updated);
     } finally {
       if (mounted) setState(() => _saving = false);
     }

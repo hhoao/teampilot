@@ -66,8 +66,8 @@ bool appendClaudeJsonlEvent(
     final blockMap = Map<String, dynamic>.from(block);
     switch (blockMap['type']) {
       case 'text':
-        final text = '${blockMap['text'] ?? ''}';
-        if (text.trim().isNotEmpty) {
+        final text = '${blockMap['text'] ?? ''}'.trim();
+        if (text.isNotEmpty) {
           textParts.add(AiTextPart(text: text));
         }
       case 'thinking':
@@ -170,7 +170,7 @@ void _addOrMerge(List<AiMessage> messages, AiMessage next) {
       messages[messages.length - 1] = AiMessage(
         id: last.id,
         role: last.role,
-        parts: [...last.parts, ...next.parts],
+        parts: _mergeParts(last.parts, next.parts),
         createdAt: last.createdAt ?? next.createdAt,
         status: next.status,
       );
@@ -178,6 +178,37 @@ void _addOrMerge(List<AiMessage> messages, AiMessage next) {
     }
   }
   messages.add(next);
+}
+
+/// Same-id merge: coalesce the boundary text run (trailing text parts of [a]
+/// plus leading text parts of [b]) into a single [AiTextPart], so streamed
+/// partial chunks render as one text block. Parts are trimmed individually
+/// by the caller, so the boundary run joins with a space.
+List<AiMessagePart> _mergeParts(
+  List<AiMessagePart> a,
+  List<AiMessagePart> b,
+) {
+  var lastRunStart = a.length;
+  while (lastRunStart > 0 && a[lastRunStart - 1] is AiTextPart) {
+    lastRunStart--;
+  }
+  var firstRunEnd = 0;
+  while (firstRunEnd < b.length && b[firstRunEnd] is AiTextPart) {
+    firstRunEnd++;
+  }
+  if (lastRunStart == a.length || firstRunEnd == 0) {
+    return [...a, ...b];
+  }
+  final joined =
+      [
+        for (final p in a.sublist(lastRunStart)) (p as AiTextPart).text,
+        for (final p in b.sublist(0, firstRunEnd)) (p as AiTextPart).text,
+      ].join(' ');
+  return [
+    ...a.sublist(0, lastRunStart),
+    AiTextPart(text: joined),
+    ...b.sublist(firstRunEnd),
+  ];
 }
 
 Map<String, Object?>? _asArgs(Object? input) {

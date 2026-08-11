@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ui/shared_ui.dart';
@@ -232,6 +233,34 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
     expect(find.text(l10n.landingTeamSettingsGlobalHint), findsWidgets);
+  });
+
+  testWidgets('escape dismisses the draft dialog', (tester) async {
+    final launchCubit = _launchCubit();
+    addTearDown(launchCubit.close);
+    final presetsCubit = _presetsCubit();
+    addTearDown(presetsCubit.close);
+    final providerCubit = _SeededAppProviderCubit();
+    addTearDown(providerCubit.close);
+    final chatCubit = testChatCubit(executableResolver: () => 'claude');
+    addTearDown(chatCubit.close);
+
+    await _openLandingSettings(
+      tester,
+      viewport: const Size(1200, 800),
+      launchCubit: launchCubit,
+      presetsCubit: presetsCubit,
+      providerCubit: providerCubit,
+      chatCubit: chatCubit,
+    );
+
+    expect(find.byType(TpDialogNavShell), findsOneWidget);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.byType(TpDialogNavShell), findsNothing);
   });
 
   testWidgets('uses WorkspacePanePolicy narrow breakpoint', (tester) async {

@@ -203,7 +203,7 @@ class _MemberLaunchConfigRowBody extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               OutlinedButton.icon(
-                onPressed: () => _openMemberLaunchConfigureDialog(
+                onPressed: () => showMemberLaunchConfigureDialog(
                   context,
                   team: team,
                   member: member,
@@ -243,13 +243,15 @@ class _LaunchIcon extends StatelessWidget {
   }
 }
 
-Future<void> _openMemberLaunchConfigureDialog(
+/// Opens member launch-config edit; returns the updated team on save, `null`
+/// on cancel. The dialog persists via [cubit] (callers may ignore the return).
+Future<TeamProfile?> showMemberLaunchConfigureDialog(
   BuildContext context, {
   required TeamProfile team,
   required TeamMemberConfig member,
   required LaunchProfileCubit cubit,
 }) {
-  return showDialog<void>(
+  return showDialog<TeamProfile?>(
     context: context,
     builder: (ctx) =>
         MemberLaunchConfigureDialog(team: team, member: member, cubit: cubit),
@@ -369,6 +371,7 @@ class _MemberLaunchConfigureDialogState
   Future<void> _save() async {
     if (_saving) return;
     setState(() => _saving = true);
+    TeamProfile? updated;
     try {
       switch (_configKind) {
         case MemberLaunchConfigKind.custom:
@@ -376,7 +379,7 @@ class _MemberLaunchConfigureDialogState
           final nextCli = mixed && _cliToken.isNotEmpty
               ? CliTool.decode(_cliToken)
               : null;
-          await widget.cubit.updateMember(
+          updated = await widget.cubit.updateMember(
             widget.member.id,
             widget.member.copyWith(
               cli: nextCli,
@@ -400,19 +403,19 @@ class _MemberLaunchConfigureDialogState
               break;
             }
           }
-          await widget.cubit.setMemberActivePreset(
+          updated = await widget.cubit.setMemberActivePreset(
             widget.member.id,
             _presetToken,
             syncCli: syncCli,
           );
         case MemberLaunchConfigKind.inheritTeam:
-          await widget.cubit.setMemberActivePreset(
+          updated = await widget.cubit.setMemberActivePreset(
             widget.member.id,
             TeamProfile.inheritPresetId,
           );
       }
       if (!mounted) return;
-      Navigator.of(context).pop();
+      Navigator.of(context).pop(updated);
     } finally {
       if (mounted) setState(() => _saving = false);
     }
