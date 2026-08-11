@@ -896,7 +896,7 @@ class CursorToolCallResolvers extends SharedToolCallResolvers {
 
 - [ ] **Step 6: 运行确认通过**
 
-Run: `cd client && flutter test test/services/cli/registry/capabilities/tool_call_category_mapping_test.dart test/services/cli/registry/capabilities/ai_history_capability_wiring_test.dart`
+Run: `cd client && flutter test test/services/cli/registry/capabilities/tool_call_category_mapping_test.dart test/services/cli/registry/ai_history_capability_wiring_test.dart`
 Expected: PASS
 
 - [ ] **Step 7: 提交**
@@ -1652,8 +1652,18 @@ testWidgets('default prefs fold read but keep subagent standalone', (
         role: AiRole.assistant,
         parts: [
           const AiReasoningPart(text: 'r'),
-          AiToolCallPart(toolCallId: '1', toolName: 'Read'),
-          AiToolCallPart(toolCallId: '2', toolName: 'Task'),
+          // 注意:测试直接构造 part,不经标注管线 —— 必须显式给 category,
+          // 否则默认 other 会导致谓词判断错误(Read 也会独立渲染)。
+          AiToolCallPart(
+            toolCallId: '1',
+            toolName: 'Read',
+            category: AiToolCallCategory.read,
+          ),
+          AiToolCallPart(
+            toolCallId: '2',
+            toolName: 'Task',
+            category: AiToolCallCategory.subagent,
+          ),
         ],
       ),
     ]);
