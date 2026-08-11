@@ -217,7 +217,7 @@ final class AiHistoryLoader {
 
     final cacheKey = _cacheKey(session.sessionId, effectiveMemberId);
 
-    final token = await (_resolveCacheToken ?? _defaultCacheToken)(ctx);
+    final token = await (_resolveCacheToken ?? _defaultTokenResolverFor(cap))(ctx);
     if (!force && token != null && _tokens[cacheKey] == token) {
       final cachedMessages = _messages[cacheKey] ?? const [];
       final cachedAttachments = _attachments[cacheKey] ?? const {};
@@ -509,6 +509,15 @@ final class AiHistoryLoader {
       }
     }
     return false;
+  }
+
+  /// Default token resolver: the capability's own cheap live fingerprint
+  /// first (OpenCode SQLite store), else the pinned-transcript probe used by
+  /// the JSONL CLIs.
+  static SessionHistoryCacheTokenResolver _defaultTokenResolverFor(
+    AiHistoryCapability cap,
+  ) {
+    return (ctx) async => await cap.liveCacheToken(ctx) ?? _defaultCacheToken(ctx);
   }
 
   /// Best-effort transcript mtime under common Claude/flashskyai layouts.

@@ -66,6 +66,7 @@ void main() {
     AiHistoryLocator? locator,
     CliToolRegistry? registry,
     AiHistoryWorkContextResolver? resolveWorkContext,
+    bool useCapabilityToken = false,
   }) {
     final resolvedRegistry = registry ?? CliToolRegistry.builtIn();
     return AiHistoryLoader(
@@ -74,7 +75,7 @@ void main() {
           resolveWorkContext ?? ((_, {String? memberId}) async => fixedRoots()),
       registry: resolvedRegistry,
       locator: locator ?? AiHistoryLocator(registry: resolvedRegistry),
-      resolveCacheToken: (_) async => mtimeToken,
+      resolveCacheToken: useCapabilityToken ? null : (_) async => mtimeToken,
     );
   }
 
@@ -364,6 +365,77 @@ void main() {
       isEmpty,
     );
     expect(locateCalls, 2);
+  });
+
+  test('capability liveCacheToken gates reloads when unchanged', () async {
+    // Simulates an OpenCode-style store: the capability owns the fingerprint
+    // (the default pinned-transcript probe misses), so an unchanged token
+    // must skip locate + parse + inflate entirely.
+    var token = 'oc-1';
+    var locateCalls = 0;
+    final session = simpleSession(id: 'sess-o').copyWith(cli: CliTool.opencode);
+    final ctx = launchContextFor(session);
+    final locator = _CountingLocator(() async {
+      locateCalls++;
+      return AiTranscriptBundle(
+        adapterId: 'opencode',
+        fragments: const [
+          AiTranscriptFragment(name: 'm.json', bytes: [1, 2, 3]),
+        ],
+      );
+    });
+    final loader = buildLoader(
+      locator: locator,
+      useCapabilityToken: true,
+      registry: fakeAiHistoryRegistry(
+        cli: CliTool.opencode,
+        adapter: _HolderAdapter(() => [
+          AiMessage(
+            id: 'm1',
+            role: AiRole.user,
+            parts: const [AiTextPart(text: 'hi')],
+          ),
+        ]),
+        locate: (_) => locator.locate(
+          ctx: SessionHistoryContext(
+            fs: LocalFilesystem(),
+            taskId: 't',
+            env: const {},
+            transcriptRoots: const [],
+            bucket: '',
+          ),
+          cli: CliTool.opencode,
+        ),
+        liveCacheToken: (_) async => token,
+      ),
+    );
+
+    final first = await loader.load(
+      session: session,
+      memberId: '',
+      launchContext: ctx,
+    );
+    expect(first.messages, isNotEmpty);
+    expect(locateCalls, 1);
+
+    // Unchanged store token → cache hit, no locate.
+    final second = await loader.load(
+      session: session,
+      memberId: '',
+      launchContext: ctx,
+    );
+    expect(identical(second.messages, first.messages), isTrue);
+    expect(locateCalls, 1);
+
+    // Store moved (e.g. a running sub-agent appended) → reload.
+    token = 'oc-2';
+    final third = await loader.load(
+      session: session,
+      memberId: '',
+      launchContext: ctx,
+    );
+    expect(locateCalls, 2);
+    expect(identical(third.messages, first.messages), isFalse);
   });
 
   test('built-in registry exposes Claude AiHistoryCapability', () {
@@ -710,6 +782,19 @@ class _CapturingLocator extends AiHistoryLocator {
     onLocate(ctx);
     return super.locate(ctx: ctx, cli: cli);
   }
+}
+
+class _HolderAdapter implements AiTranscriptAdapter {
+  _HolderAdapter(this.messages);
+
+  final List<AiMessage> Function() messages;
+
+  @override
+  String get id => 'opencode';
+
+  @override
+  Future<List<AiMessage>> parse(AiTranscriptBundle bundle) async =>
+      List.of(messages());
 }
 
 class _RecordingEnricher implements ToolResultEnricher {

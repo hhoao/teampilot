@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io' show Directory;
 
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:meta/meta.dart';
@@ -60,8 +59,13 @@ final class OpencodeSideResolver implements SubagentSideResolver {
     DateTime? toolCallAt,
   }) async {
     final childSessionId = opencodeChildSessionId(part);
-    final resolvedId =
-        (childSessionId == null || childSessionId.isEmpty)
+    // Discovery only makes sense while the task is genuinely running: an
+    // error/completed result without a session id has no live child to follow,
+    // and scanning the store for it on every refresh is pure waste.
+    final needsDiscovery =
+        (childSessionId == null || childSessionId.isEmpty) &&
+        part.status == AiToolCallStatus.incomplete;
+    final resolvedId = needsDiscovery
         ? await _discoverRunningChildSession(
             ctx: ctx,
             parentSessionId: _parentSessionId(ctx, parentHandle),
@@ -71,7 +75,7 @@ final class OpencodeSideResolver implements SubagentSideResolver {
         : childSessionId;
     if (resolvedId == null || resolvedId.isEmpty) return null;
 
-    final bundle = await locateOpencodeTranscriptForSession(ctx, resolvedId);
+    final bundle = await _bundleForChild(ctx, resolvedId);
     if (bundle == null) return null;
 
     if (childSessionId != null && childSessionId.isNotEmpty) {
@@ -97,6 +101,76 @@ final class OpencodeSideResolver implements SubagentSideResolver {
         stackTrace: st,
       );
       return null;
+    }
+  }
+
+  /// Child bundle with an mtime-validated memo: a session with a dozen task
+  /// children would otherwise re-query + re-parse every child on each live
+  /// refresh even though only the running one moved.
+  Future<AiTranscriptBundle?> _bundleForChild(
+    SessionHistoryContext ctx,
+    String childId,
+  ) async {
+    final fingerprint = await _childFingerprint(ctx, childId);
+    if (fingerprint == null) {
+      return locateOpencodeTranscriptForSession(ctx, childId);
+    }
+    final memo = _childBundles[childId];
+    if (memo != null && memo.fingerprint == fingerprint) {
+      return memo.bundle;
+    }
+    final bundle = await locateOpencodeTranscriptForSession(ctx, childId);
+    if (bundle != null) {
+      _childBundles[childId] = _ChildBundleMemo(
+        fingerprint: fingerprint,
+        bundle: bundle,
+      );
+      _evictChildBundles();
+    }
+    return bundle;
+  }
+
+  static final Map<String, _ChildBundleMemo> _childBundles = {};
+  static const int _childBundleCap = 64;
+
+  static void _evictChildBundles() {
+    if (_childBundles.length <= _childBundleCap) return;
+    _childBundles.removeWhere(
+      (_, __) => _childBundles.length > _childBundleCap,
+    );
+  }
+
+  @visibleForTesting
+  static void clearChildBundleMemo() => _childBundles.clear();
+
+  /// Cheap change signal for one child session: part row count + newest
+  /// `time_updated` (parts are appended/updated while a task streams output).
+  Future<String?> _childFingerprint(
+    SessionHistoryContext ctx,
+    String childId,
+  ) async {
+    final dataDir = opencodeDataDirFromEnv(ctx);
+    if (dataDir.isEmpty) return null;
+    final path = ctx.fs.pathContext;
+    final handle = await resolveOpencodeSqliteReadPath(
+      fs: ctx.fs,
+      dbPath: path.join(dataDir, 'opencode.db'),
+    );
+    if (handle == null) return null;
+
+    Database? db;
+    try {
+      db = sqlite3.open(handle.path, mode: OpenMode.readOnly);
+      final rows = db.select(
+        'SELECT COUNT(*), MAX(time_updated) FROM part WHERE session_id = ?',
+        [childId],
+      );
+      if (rows.isEmpty) return null;
+      return '${rows.first['COUNT(*)']}|${rows.first['MAX(time_updated)']}';
+    } on Object {
+      return null;
+    } finally {
+      db?.dispose();
     }
   }
 
@@ -270,46 +344,51 @@ final class OpencodeSideResolver implements SubagentSideResolver {
   }) async {
     final path = ctx.fs.pathContext;
     final dbPath = path.join(dataDir, 'opencode.db');
-    if (!await opencodeSqliteMainExists(ctx.fs, dbPath)) return null;
+    final handle = await resolveOpencodeSqliteReadPath(
+      fs: ctx.fs,
+      dbPath: dbPath,
+    );
+    if (handle == null) return null;
 
-    Directory? tempDir;
     Database? db;
     try {
-      tempDir = await Directory.systemTemp.createTemp('opencode-child-');
-      final tempDbPath = path.join(tempDir.path, 'opencode.db');
-      final copied = await copyOpencodeSqliteSnapshot(
-        fs: ctx.fs,
-        dbPath: dbPath,
-        destDbPath: tempDbPath,
-      );
-      if (copied.isEmpty) return null;
-      db = sqlite3.open(tempDbPath, mode: OpenMode.readOnly);
+      db = sqlite3.open(handle.path, mode: OpenMode.readOnly);
 
-      final rows = db.select('SELECT id, data, time_created FROM session');
       final candidates = <({String id, int createdMs})>[];
-      for (final row in rows) {
-        final id = '${row['id']}'.trim();
-        if (!id.startsWith('ses_')) continue;
-        final obj = _decodeRowData(row['data']);
-        if (obj == null) continue;
-        if (_parentOf(obj) != parentSessionId) continue;
-        final created = _createdMs(obj['time']);
-        final ms = created > 0 ? created : _intValue(row['time_created']);
-        if (ms <= 0) continue;
-        candidates.add((id: id, createdMs: ms));
+      try {
+        // Current OpenCode layout: `parent_id` is a real column — one
+        // indexed scoped query, no full-scan + JSON decode.
+        final rows = db.select(
+          'SELECT id, time_created FROM session WHERE parent_id = ?',
+          [parentSessionId],
+        );
+        for (final row in rows) {
+          final id = '${row['id']}'.trim();
+          if (!id.startsWith('ses_')) continue;
+          final ms = _intValue(row['time_created']);
+          if (ms <= 0) continue;
+          candidates.add((id: id, createdMs: ms));
+        }
+      } on SqliteException {
+        // Legacy layout: parent linkage inside the `data` JSON blob.
+        final rows = db.select('SELECT id, data, time_created FROM session');
+        for (final row in rows) {
+          final id = '${row['id']}'.trim();
+          if (!id.startsWith('ses_')) continue;
+          final obj = _decodeRowData(row['data']);
+          if (obj == null) continue;
+          if (_parentOf(obj) != parentSessionId) continue;
+          final created = _createdMs(obj['time']);
+          final ms = created > 0 ? created : _intValue(row['time_created']);
+          if (ms <= 0) continue;
+          candidates.add((id: id, createdMs: ms));
+        }
       }
       return _pickRunningChild(candidates, toolCallAt);
     } on Object {
       return null;
     } finally {
       db?.close();
-      if (tempDir != null) {
-        try {
-          await tempDir.delete(recursive: true);
-        } on Object {
-          // best-effort cleanup
-        }
-      }
     }
   }
 
@@ -389,6 +468,16 @@ class _ChildDiscoveryMemo {
 
   final String fingerprint;
   final String childId;
+}
+
+class _ChildBundleMemo {
+  const _ChildBundleMemo({
+    required this.fingerprint,
+    required this.bundle,
+  });
+
+  final String fingerprint;
+  final AiTranscriptBundle bundle;
 }
 
 String? _parentSessionId(

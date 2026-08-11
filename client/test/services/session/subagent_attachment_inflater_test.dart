@@ -43,6 +43,9 @@ class _Cap implements AiHistoryCapability {
 
   @override
   ToolResultEnricher get toolResultEnricher => const NoOpToolResultEnricher();
+
+  @override
+  Future<String?> liveCacheToken(SessionHistoryContext ctx) async => null;
 }
 
 Future<Map<String, AiSubagentAttachment>> _inflate({
@@ -579,6 +582,9 @@ class _WorkflowCap implements AiHistoryCapability {
 
   @override
   ToolResultEnricher get toolResultEnricher => const NoOpToolResultEnricher();
+
+  @override
+  Future<String?> liveCacheToken(SessionHistoryContext ctx) async => null;
 }
 
 class _WorkflowStubResolver implements SubagentSideResolver {

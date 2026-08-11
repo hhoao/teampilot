@@ -418,7 +418,10 @@ void main() {
   });
 
   group('running child discovery (no tool result yet)', () {
-    setUp(OpencodeSideResolver.clearDiscoveryMemo);
+    setUp(() {
+      OpencodeSideResolver.clearDiscoveryMemo();
+      OpencodeSideResolver.clearChildBundleMemo();
+    });
 
     Future<void> writeRunningParent() async {
       await writeJson('storage/session/proj_demo/$parentSessionId.json', {
@@ -611,21 +614,19 @@ void main() {
       final dbPath = p.join(base.path, 'opencode.db');
       final db = sqlite3.open(dbPath);
       addTearDown(db.dispose);
+      // Current OpenCode layout: parent_id is a real column.
       db.execute('''
 CREATE TABLE session (
   id TEXT PRIMARY KEY,
-  data TEXT,
-  time_created INTEGER
+  parent_id TEXT,
+  time_created INTEGER,
+  time_updated INTEGER
 );
 ''');
       db.execute(
         '''
-INSERT INTO session(id, data, time_created)
-VALUES (
-  'ses_child003',
-  '{"id":"ses_child003","parentID":"ses_parent001","time":{"created":3}}',
-  3
-)
+INSERT INTO session(id, parent_id, time_created, time_updated)
+VALUES ('ses_child003', 'ses_parent001', 3, 3)
 ''',
       );
       db.execute(
@@ -634,6 +635,7 @@ CREATE TABLE message (
   id TEXT PRIMARY KEY,
   session_id TEXT,
   time_created INTEGER,
+  time_updated INTEGER,
   data TEXT
 );
 CREATE TABLE part (
@@ -641,6 +643,7 @@ CREATE TABLE part (
   message_id TEXT,
   session_id TEXT,
   time_created INTEGER,
+  time_updated INTEGER,
   data TEXT
 );
 ''',
@@ -684,6 +687,113 @@ VALUES (
       expect(
         (result.messages.first.parts.single as AiTextPart).text,
         'db child working',
+      );
+    });
+
+    test('discovery falls back to legacy data-blob parent linkage', () async {
+      final dbPath = p.join(base.path, 'opencode.db');
+      final db = sqlite3.open(dbPath);
+      addTearDown(db.dispose);
+      db.execute('''
+CREATE TABLE session (
+  id TEXT PRIMARY KEY,
+  data TEXT,
+  time_created INTEGER
+);
+''');
+      db.execute(
+        '''
+INSERT INTO session(id, data, time_created)
+VALUES (
+  'ses_child004',
+  '{"id":"ses_child004","parentID":"ses_parent001","time":{"created":3}}',
+  3
+)
+''',
+      );
+      db.execute(
+        '''
+CREATE TABLE message (
+  id TEXT PRIMARY KEY,
+  session_id TEXT,
+  time_created INTEGER,
+  data TEXT
+);
+CREATE TABLE part (
+  id TEXT PRIMARY KEY,
+  message_id TEXT,
+  session_id TEXT,
+  time_created INTEGER,
+  data TEXT
+);
+''',
+      );
+      db.execute(
+        '''
+INSERT INTO message(id, session_id, time_created, data)
+VALUES (
+  'msg_child_user',
+  'ses_child004',
+  4,
+  '{"role":"user","time":{"created":4}}'
+)
+''',
+      );
+      db.execute(
+        '''
+INSERT INTO part(id, message_id, session_id, time_created, data)
+VALUES (
+  'prt_child_text',
+  'msg_child_user',
+  'ses_child004',
+  4,
+  '{"type":"text","text":"legacy child"}'
+)
+''',
+      );
+
+      final result = await resolver.resolve(
+        part: runningTaskPart(),
+        ctx: ctx(dataDir: base.path, persistedNativeId: parentSessionId),
+        parentHandle: null,
+        rootTranscriptPath: null,
+      );
+
+      expect(result, isNotNull);
+      expect(
+        (result!.handle as SubagentSessionHandle).sessionId,
+        'ses_child004',
+      );
+      expect(
+        (result.messages.first.parts.single as AiTextPart).text,
+        'legacy child',
+      );
+    });
+
+    test('does not discover for completed/error parts without a result id',
+        () async {
+      await writeRunningParent();
+      await writeChildSession(
+        sessionId: childSessionId,
+        parentId: parentSessionId,
+        userText: 'child',
+      );
+
+      // A completed part whose result carries no session id must degrade
+      // (null) instead of scanning the store for a "running" child.
+      expect(
+        await resolver.resolve(
+          part: AiToolCallPart(
+            toolCallId: 'call_task_1',
+            toolName: 'task',
+            args: const {'prompt': 'do work'},
+            status: AiToolCallStatus.complete,
+          ),
+          ctx: ctx(dataDir: base.path, persistedNativeId: parentSessionId),
+          parentHandle: null,
+          rootTranscriptPath: null,
+        ),
+        isNull,
       );
     });
 

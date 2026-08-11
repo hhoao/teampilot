@@ -17,6 +17,7 @@ final class FakeAiHistoryCapability implements AiHistoryCapability {
     this.subagentSideResolver = const NullSubagentSideResolver(),
     this.toolResultEnricher = const NoOpToolResultEnricher(),
     this.subagentToolNames = const {},
+    this.liveCacheTokenFn,
   });
 
   @override
@@ -24,6 +25,8 @@ final class FakeAiHistoryCapability implements AiHistoryCapability {
 
   final Future<AiTranscriptBundle?> Function(SessionHistoryContext ctx)?
   locateFn;
+
+  final Future<String?> Function(SessionHistoryContext ctx)? liveCacheTokenFn;
 
   @override
   Future<AiTranscriptBundle?> locate(SessionHistoryContext ctx) =>
@@ -40,6 +43,10 @@ final class FakeAiHistoryCapability implements AiHistoryCapability {
 
   @override
   final ToolResultEnricher toolResultEnricher;
+
+  @override
+  Future<String?> liveCacheToken(SessionHistoryContext ctx) =>
+      liveCacheTokenFn?.call(ctx) ?? Future.value(null);
 }
 
 class _FakeHistoryCliTool implements CliToolDefinition {
@@ -65,6 +72,7 @@ CliToolRegistry fakeAiHistoryRegistry({
   SubagentSideResolver subagentSideResolver = const NullSubagentSideResolver(),
   ToolResultEnricher toolResultEnricher = const NoOpToolResultEnricher(),
   Set<String> subagentToolNames = const {},
+  Future<String?> Function(SessionHistoryContext ctx)? liveCacheToken,
 }) {
   final registry = CliToolRegistry();
   registry.register(
@@ -76,6 +84,7 @@ CliToolRegistry fakeAiHistoryRegistry({
         subagentSideResolver: subagentSideResolver,
         toolResultEnricher: toolResultEnricher,
         subagentToolNames: subagentToolNames,
+        liveCacheTokenFn: liveCacheToken,
       ),
     ),
   );

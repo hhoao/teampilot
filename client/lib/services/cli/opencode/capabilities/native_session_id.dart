@@ -1,8 +1,10 @@
 import 'dart:io' show Directory, File;
 
+import 'package:path/path.dart' as p;
 import 'package:sqlite3/sqlite3.dart';
 
 import '../../../io/filesystem.dart';
+import '../../../io/local_filesystem.dart';
 
 /// Resolves OpenCode's native `ses_*` id for a per-session data dir.
 ///
@@ -52,20 +54,15 @@ Future<String?> resolveOpencodeNativeSessionIdFromSqlite(
 ) async {
   final path = fs.pathContext;
   final dbPath = path.join(dataDir, 'opencode.db');
-  if (!await opencodeSqliteMainExists(fs, dbPath)) return null;
+  final handle = await resolveOpencodeSqliteReadPath(
+    fs: fs,
+    dbPath: dbPath,
+  );
+  if (handle == null) return null;
 
-  Directory? tempDir;
   Database? db;
   try {
-    tempDir = await Directory.systemTemp.createTemp('opencode-session-');
-    final tempDbPath = path.join(tempDir.path, 'opencode.db');
-    final copied = await copyOpencodeSqliteSnapshot(
-      fs: fs,
-      dbPath: dbPath,
-      destDbPath: tempDbPath,
-    );
-    if (copied.isEmpty) return null;
-    db = sqlite3.open(tempDbPath, mode: OpenMode.readOnly);
+    db = sqlite3.open(handle.path, mode: OpenMode.readOnly);
     final rows = db.select(
       '''
 SELECT id
@@ -81,13 +78,6 @@ LIMIT 1
     return null;
   } finally {
     db?.close();
-    if (tempDir != null) {
-      try {
-        await tempDir.delete(recursive: true);
-      } on Object {
-        // best-effort cleanup
-      }
-    }
   }
 }
 
@@ -116,4 +106,131 @@ Future<List<String>> copyOpencodeSqliteSnapshot({
     copiedSources.add(src);
   }
   return copiedSources;
+}
+
+/// Read handle for the OpenCode SQLite store.
+class OpencodeSqliteReadHandle {
+  const OpencodeSqliteReadHandle({
+    required this.path,
+    required this.sourcePaths,
+  });
+
+  /// Path to open read-only (live DB on local backends, snapshot on remote).
+  final String path;
+
+  /// Change-signal paths for the watch meta: the live DB file (local) or the
+  /// copied snapshot files (remote).
+  final List<String> sourcePaths;
+}
+
+/// Resolves a readable local path for the OpenCode SQLite store:
+///
+///  - **native local backend**: the live DB itself. OpenCode keeps a WAL
+///    writer open, but a second read-only connection reads the WAL fine, so no
+///    full-file copy is needed — critical because a session with many task
+///    sub-agents resolves the store once per sub-agent per live refresh.
+///  - **remote backends** (SFTP / WSL): a snapshot copied through the
+///    filesystem abstraction, memoized per `(dbPath, fingerprint)` so the
+///    whole live-refresh burst shares a single transfer until the store moves.
+///
+/// Returns null when the store is absent.
+Future<OpencodeSqliteReadHandle?> resolveOpencodeSqliteReadPath({
+  required Filesystem fs,
+  required String dbPath,
+}) async {
+  if (fs is LocalFilesystem) {
+    final st = await fs.stat(dbPath);
+    if (!st.isFile) return null;
+    // Watch targets: the main DB plus any WAL sidecar, so poll-fallback
+    // change detection still sees writes that only hit the WAL.
+    final sources = <String>[dbPath];
+    for (final suffix in const ['-wal', '-shm']) {
+      final sidecar = await fs.stat('$dbPath$suffix');
+      if (sidecar.isFile) sources.add('$dbPath$suffix');
+    }
+    return OpencodeSqliteReadHandle(path: dbPath, sourcePaths: sources);
+  }
+
+  final fingerprint = await _sqliteStoreFingerprint(fs, dbPath);
+  if (fingerprint == null) return null;
+
+  final memo = _snapshots[dbPath];
+  if (memo != null && memo.fingerprint == fingerprint) {
+    return OpencodeSqliteReadHandle(
+      path: memo.tempDbPath,
+      sourcePaths: memo.sourcePaths,
+    );
+  }
+
+  final tempDir = await Directory.systemTemp.createTemp('opencode-snapshot-');
+  final tempDbPath = p.join(tempDir.path, 'opencode.db');
+  final copied = await copyOpencodeSqliteSnapshot(
+    fs: fs,
+    dbPath: dbPath,
+    destDbPath: tempDbPath,
+  );
+  if (copied.isEmpty) {
+    try {
+      await tempDir.delete(recursive: true);
+    } on Object {
+      // best-effort cleanup
+    }
+    return null;
+  }
+
+  final previous = _snapshots.remove(dbPath);
+  if (previous != null) {
+    try {
+      await Directory(previous.tempDir).delete(recursive: true);
+    } on Object {
+      // best-effort cleanup
+    }
+  }
+  _snapshots[dbPath] = _SqliteSnapshot(
+    fingerprint: fingerprint,
+    tempDbPath: tempDbPath,
+    tempDir: tempDir.path,
+    sourcePaths: copied,
+  );
+  if (_snapshots.length > _snapshotCap) {
+    _snapshots.clear();
+  }
+  return OpencodeSqliteReadHandle(
+    path: tempDbPath,
+    sourcePaths: copied,
+  );
+}
+
+final Map<String, _SqliteSnapshot> _snapshots = {};
+const int _snapshotCap = 8;
+
+/// Store change signal: mtime+size of `opencode.db` plus WAL sidecars (with
+/// WAL the main file can stay static between checkpoints).
+Future<String?> _sqliteStoreFingerprint(
+  Filesystem fs,
+  String dbPath,
+) async {
+  final parts = <String>[];
+  for (final suffix in const ['', '-wal', '-shm']) {
+    final st = await fs.stat('$dbPath$suffix');
+    if (!st.isFile) continue;
+    parts.add(
+      '$suffix|${st.size ?? 0}|${st.mtime?.toUtc().toIso8601String() ?? ''}',
+    );
+  }
+  return parts.isEmpty ? null : parts.join('\n');
+}
+
+class _SqliteSnapshot {
+  const _SqliteSnapshot({
+    required this.fingerprint,
+    required this.tempDbPath,
+    required this.tempDir,
+    required this.sourcePaths,
+  });
+
+  final String fingerprint;
+  final String tempDbPath;
+  final String tempDir;
+  final List<String> sourcePaths;
 }

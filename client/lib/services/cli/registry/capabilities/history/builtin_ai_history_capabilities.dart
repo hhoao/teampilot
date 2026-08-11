@@ -42,6 +42,9 @@ final class ClaudeAiHistoryCapability implements AiHistoryCapability {
 
   @override
   final ToolResultEnricher toolResultEnricher;
+
+  @override
+  Future<String?> liveCacheToken(SessionHistoryContext ctx) async => null;
 }
 
 final class FlashskyaiAiHistoryCapability implements AiHistoryCapability {
@@ -68,6 +71,9 @@ final class FlashskyaiAiHistoryCapability implements AiHistoryCapability {
 
   @override
   final ToolResultEnricher toolResultEnricher;
+
+  @override
+  Future<String?> liveCacheToken(SessionHistoryContext ctx) async => null;
 }
 
 final class CodexAiHistoryCapability implements AiHistoryCapability {
@@ -94,13 +100,19 @@ final class CodexAiHistoryCapability implements AiHistoryCapability {
 
   @override
   final ToolResultEnricher toolResultEnricher;
+
+  @override
+  Future<String?> liveCacheToken(SessionHistoryContext ctx) async => null;
 }
 
 final class OpencodeAiHistoryCapability implements AiHistoryCapability {
   const OpencodeAiHistoryCapability({
     this.subagentSideResolver = const OpencodeSideResolver(),
     this.toolResultEnricher = const NoOpToolResultEnricher(),
+    this.liveCacheTokenImpl = opencodeLiveCacheToken,
   });
+
+  final Future<String?> Function(SessionHistoryContext ctx) liveCacheTokenImpl;
 
   @override
   Future<AiTranscriptBundle?> locate(SessionHistoryContext ctx) =>
@@ -120,6 +132,10 @@ final class OpencodeAiHistoryCapability implements AiHistoryCapability {
 
   @override
   final ToolResultEnricher toolResultEnricher;
+
+  @override
+  Future<String?> liveCacheToken(SessionHistoryContext ctx) =>
+      liveCacheTokenImpl(ctx);
 }
 
 final class CursorAiHistoryCapability implements AiHistoryCapability {
@@ -150,4 +166,7 @@ final class CursorAiHistoryCapability implements AiHistoryCapability {
   ToolResultEnricher get toolResultEnricher => CursorTerminalToolResultEnricher(
         shellResolver: shellResolver,
       );
+
+  @override
+  Future<String?> liveCacheToken(SessionHistoryContext ctx) async => null;
 }

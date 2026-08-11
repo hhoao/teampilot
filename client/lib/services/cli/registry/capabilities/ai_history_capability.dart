@@ -25,4 +25,11 @@ abstract interface class AiHistoryCapability implements CliCapability {
   Set<String> get subagentToolNames;
   SubagentSideResolver get subagentSideResolver;
   ToolResultEnricher get toolResultEnricher;
+
+  /// Cheap live cache token for the loader's seat cache. Null → the loader
+  /// falls back to its default pinned-transcript probe. Implementers whose
+  /// transcript lives outside the probed JSONL layout (e.g. OpenCode's
+  /// SQLite store) return their own fingerprint so unchanged data skips the
+  /// full locate + parse + subagent inflate on every live refresh.
+  Future<String?> liveCacheToken(SessionHistoryContext ctx) async => null;
 }
