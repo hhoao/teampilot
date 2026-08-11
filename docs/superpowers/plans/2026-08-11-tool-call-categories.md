@@ -193,37 +193,7 @@ git commit -m "feat(core): add AiToolCallCategory and AiToolCallPart.category"
 
 - [ ] **Step 1: 写失败测试 — extend `subagent_attachment_test.dart`**
 
-```dart
-test('attachment/workflow copyWith rebuilds messages', () {
-  const messages = [AiMessage(id: 'a', role: AiRole.assistant, parts: [])];
-  const agent = SubagentWorkflowAgent(
-    agentId: 'ag1',
-    messages: messages,
-    handle: SubagentFileHandle('/side/a'),
-  );
-  final wf = const SubagentWorkflowInfo(runId: 'r1', agents: [agent]);
-  final attachment = AiSubagentAttachment(
-    toolCallId: 't1',
-    messages: messages,
-    source: AiSubagentAttachmentSource.sideTranscript,
-    workflow: wf,
-  );
-
-  final newMessages = [
-    AiMessage(id: 'b', role: AiRole.assistant, parts: [AiTextPart(text: 'x')]),
-  ];
-  final edited = attachment.copyWith(messages: newMessages);
-  expect(edited.messages, same(newMessages));
-  expect(edited.workflow, isNull); // 缺省保留?不 — 见实现说明
-
-  final wfEdited = wf.copyWith(
-    agents: [agent.copyWith(messages: newMessages)],
-  );
-  expect(wfEdited.agents.single.messages, same(newMessages));
-});
-```
-
-注意:实现用"显式传 null 即清空"还是"缺省保留"需与既有 copyWith 风格一致——本文件各模型无 copyWith,按 Task 1 中 `AiToolCallPart.copyWith` 的 `?? this.` 语义实现(workflow 传 null 不清空,另加 `clearWorkflow` 不需要——本设计只用 set 场景)。上面测试按 `workflow` 缺省保留改写:
+实现采用与既有 `AiToolCallPart.copyWith` 一致的 `?? this.` 语义(workflow 缺省保留,set 场景不需要 clear):
 
 ```dart
 test('attachment copyWith preserves workflow when not provided', () {
@@ -237,6 +207,25 @@ test('attachment copyWith preserves workflow when not provided', () {
   );
   final edited = attachment.copyWith(messages: messages);
   expect(edited.workflow, same(wf));
+  expect(edited.messages, same(messages));
+});
+
+test('workflow copyWith rebuilds agents', () {
+  const messages = [AiMessage(id: 'a', role: AiRole.assistant, parts: [])];
+  const agent = SubagentWorkflowAgent(
+    agentId: 'ag1',
+    messages: messages,
+    handle: SubagentFileHandle('/side/a'),
+  );
+  final wf = const SubagentWorkflowInfo(runId: 'r1', agents: [agent]);
+  final newMessages = [
+    AiMessage(id: 'b', role: AiRole.assistant, parts: [AiTextPart(text: 'x')]),
+  ];
+  final wfEdited = wf.copyWith(
+    agents: [agent.copyWith(messages: newMessages)],
+  );
+  expect(wfEdited.agents.single.messages, same(newMessages));
+  expect(wfEdited.runId, 'r1');
 });
 ```
 
@@ -550,7 +539,7 @@ void main() {
       toolCallId: 't1',
       messages: sideMessages,
       source: AiSubagentAttachmentSource.sideTranscript,
-      workflow: const SubagentWorkflowInfo(runId: 'r1', agents: [agent]),
+      workflow: SubagentWorkflowInfo(runId: 'r1', agents: [agent]),
     );
     final out = annotateSubagentAttachments(
       {'t1': attachment},
@@ -1061,8 +1050,8 @@ Expected: PASS
 
 `ai_history_seat.dart`:
 - 增加字段 `CliTool? _lastCli;`
-- `load()` 内 `_loader.load` 返回后、`_cliMessages = result.messages;` 附近加 `_lastCli = result.cli;`
-- `_applyMessages`(742 行)与 `_applySoftReloadMessages`(753 行)两个方法开头加:
+- `load()` 内 `_loader.load` 返回后、`_cliMessages = result.messages;` 附近加 `_lastCli = result.cli;`(仅 `load()` 设置即可——seat 的 CLI 身份在会话生命周期内稳定,`softReload` / `refreshMailboxTimeline` 复用同一值,无需重复赋值)
+- `_applyMessages`(732 行)与 `_applySoftReloadMessages`(753 行)两个方法开头加:
 
 ```dart
 final cli = _lastCli;
@@ -1641,15 +1630,21 @@ git commit -m "feat(settings): per-category thinking-process fold toggles"
 - Modify: `client/lib/pages/chat/session_chat_message_area.dart`
 - Test: `client/test/pages/chat/session_history_review_messages_test.dart`(extend)
 
-- [ ] **Step 1: 写失败测试 — extend `session_history_review_messages_test.dart`**
+- [ ] **Step 1: 写组合守卫测试 — extend `session_history_review_messages_test.dart`**
 
-在现有 `_harness` 基础上加一个可注入 LayoutCubit 的变体(或新 helper)。消息顺序 **`[reasoning, Read, Task]`**(不能是 `[reasoning, Task, Read]`——那会产生两个链:reasoning 单独成链 + Read 单独成链,计数不可判别)。默认偏好下:Read(read,折)并入 reasoning 链(共 1 个链头);Task(subagent,不折)独立成行可见。装配前(无 scope)Task 也在链内、不可见:
+**测试可达性说明**:`_harness` 直接渲染 `SessionHistoryReviewMessages`,而 Step 3 的 scope 包在 `SessionChatMessageArea` 的内层 Stack 里——harness 树中**不可见**。因此本测试不验证消息区装配本身(那由代码走查确认),而是**镜像生产的装配逻辑**验证组合:`LayoutCubit 默认偏好 → AiToolCallFoldScope 谓词 → 分组结果`。该测试在 Step 3 **前后都通过**(回归守卫),防止未来有人改坏偏好→折叠的链路。
+
+消息顺序 **`[reasoning, Read, Task]`**(不能是 `[reasoning, Task, Read]`——那会产生两个链:reasoning 单独成链 + Read 单独成链,计数不可判别)。默认偏好下:Read(read,折)并入 reasoning 链(共 1 个链头);Task(subagent,不折)独立成行可见:
 
 ```dart
-testWidgets('fold scope wired from LayoutCubit default preferences', (
+testWidgets('default prefs fold read but keep subagent standalone', (
   tester,
 ) async {
-  // 消息: reasoning + Read(折) + Task(subagent,不折)
+  final prefs = await SharedPreferences.getInstance();
+  final cubit = LayoutCubit(repository: LayoutRepository(prefs));
+  await cubit.load();
+  final foldCategories = cubit.state.preferences.foldToolCallCategories;
+
   final runtime = ExternalStoreAiThreadRuntime()
     ..setMessages([
       AiMessage(
@@ -1662,20 +1657,32 @@ testWidgets('fold scope wired from LayoutCubit default preferences', (
         ],
       ),
     ]);
-  // 包裹 BlocProvider<LayoutCubit>(默认偏好)+ 既有 _harness,await cubit.load()
-  // 断言(装配后):
-  //   链头恰 1 个(Icons.psychology_outlined)
-  //   Task 独立可见(find.textContaining('Task') findsWidgets —— 子代理行含工具名)
-  //   Read 在折叠链内不可见(find.textContaining('Read') findsNothing)
+
+  // 镜像 SessionChatMessageArea 的装配:scope 谓词来自 LayoutCubit 偏好
+  final child = AiToolCallFoldScope(
+    shouldFold: (part) => foldCategories.contains(part.category),
+    child: _harness(state: readyState, runtime: runtime),
+  );
+  await tester.pumpWidget(
+    BlocProvider.value(value: cubit, child: child),
+  );
+  await tester.pumpAndSettle();
+
+  // 链头恰 1 个(reasoning + Read 折入)
+  expect(find.byIcon(Icons.psychology_outlined), findsOneWidget);
+  // Task(subagent,不折)独立成行可见
+  expect(find.textContaining('Task'), findsWidgets);
+  // Read 在折叠链内不可见
+  expect(find.textContaining('Read'), findsNothing);
 });
 ```
 
-装配前该测试失败点:Task 在链内 → `find.textContaining('Task')` findsNothing(或链内含 Task 而 Read/Task 计数与断言不符)。
+(`readyState` 用本文件既有测试的 ready 状态构造方式;`SharedPreferences` / `LayoutCubit` / `LayoutRepository` / `BlocProvider` 按本文件现有 import 风格补充。)
 
-- [ ] **Step 2: 运行确认失败**
+- [ ] **Step 2: 运行确认通过(前后都应通过)**
 
 Run: `cd client && flutter test test/pages/chat/session_history_review_messages_test.dart`
-Expected: 失败 — Task 不可见(尚未装配 scope)
+Expected: PASS(组合链路已在 Task 7-8 就绪;本测试是守卫)
 
 - [ ] **Step 3: 实现 `session_chat_message_area.dart`**
 
@@ -1698,12 +1705,12 @@ child: AiToolCallFoldScope(
 ),
 ```
 
-注意第 216 行处已有 `child: Stack(children: [...])`,直接在该 Stack 外包一层。`AiToolCallFoldScope` 是 InheritedWidget,重建开销极小且 `updateShouldNotify` 按谓词比较。
+注意第 216 行处已有 `child: Stack(children: [...])`,直接在该 Stack 外包一层。`AiToolCallFoldScope` 是 InheritedWidget,重建开销极小且 `updateShouldNotify` 按谓词比较。装配正确性由走查确认:scope 位于 message-area 根,覆盖消息线程与子代理预览 overlay;谓词与 Step 1 测试的构造完全一致。
 
 - [ ] **Step 4: 运行确认通过**
 
 Run: `cd client && flutter test test/pages/chat/session_history_review_messages_test.dart`
-Expected: PASS
+Expected: PASS(Step 3 后再次全量跑该文件,确认无回归)
 
 - [ ] **Step 5: 全量验证**
 
@@ -1732,7 +1739,8 @@ cd client/packages/ai_message_ui && flutter test
 ## 风险与备注
 
 - **loader 返回点以 worktree 内已提交版本为准**(2 处:148 缓存命中、229 新鲜;主工作区有未提交的 side-refresh 重标路径,本次不涉及——见 Task 5 备注)。
-- **Task 6 是回归守卫**:mailbox 纯文本使 seat 补标在现有数据流不可达,测试前后都通过;实现正确性靠代码走查(`_applyMessages` / `_applySoftReloadMessages` 开头有 `_loader.annotate`)。
+- **Task 6 是回归守卫**:mailbox 纯文本使 seat 补标在现有数据流不可达,测试前后都通过;实现正确性靠代码走查(`_applyMessages`(732)/ `_applySoftReloadMessages`(753)开头有 `_loader.annotate`;`_lastCli` 只在 `load()` 设置,seat CLI 稳定)。
+- **Task 10 是组合守卫**:`SessionHistoryReviewMessages` harness 树中不含 `SessionChatMessageArea` 的 Stack,测试镜像生产装配(偏好 → scope 谓词),前后都通过;消息区装配本身靠代码走查。
 - **fake registry 测试**:`fakeAiHistoryRegistry` 只注册 `AiHistoryCapability`,loader 的 category 走 fallback 默认表——这是设计内行为,不是 bug;`tool_call_category_mapping_test` 用 `CliToolRegistry.builtIn()` 覆盖全量映射。
 - **`withAtLeastOneToolVisible`**:新增偏好字段时必须同步所有显式重建 `LayoutPreferences` 的地方(共 2 处:fromJson 与该方法本身)。
 - **gen-l10n**:若 `client/lib/l10n/app_localizations_*.dart` 由生成器产出,不要手改;跑 `flutter gen-l10n` 或分析触发。
