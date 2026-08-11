@@ -525,6 +525,59 @@ void main() {
     );
   });
 
+  test('incremental load reuses message instances across appends', () async {
+    mtimeToken = 'mtime-1';
+    final session = simpleSession();
+    final ctx = launchContextFor(session);
+    final bucket = RuntimeLayout.workspaceBucketForPrimaryPath('/work/project');
+    final toolRoot = layout.sessionRuntimeToolDir(
+      'ws-1',
+      session.sessionId,
+      'claude',
+    );
+    final projects = p.join(toolRoot, 'projects', bucket);
+    await Directory(projects).create(recursive: true);
+    final transcriptPath = p.join(projects, '${session.sessionId}.jsonl');
+
+    String line(String type, String id, String text) =>
+        '{"type":"$type","uuid":"$id","message":{"id":"$id","content":"$text"},'
+        '"timestamp":"2026-08-10T00:00:00Z"}';
+
+    await File(transcriptPath).writeAsString(
+      '${line('user', 'u1', 'hello')}\n',
+    );
+    final loader = buildLoader();
+    final first = await loader.load(
+      session: session,
+      memberId: '',
+      launchContext: ctx,
+    );
+    expect(first.messages, hasLength(1));
+
+    // 追加流式分片 + 元数据行
+    await File(transcriptPath).writeAsString(
+      '${line('assistant', 'a1', 'part1 ')}\n'
+      '${line('assistant', 'a1', 'part2')}\n'
+      '{"type":"last-prompt","lastPrompt":"x"}\n',
+      mode: FileMode.append,
+    );
+    // Touch the cache token so the loader gate opens and the incremental tail
+    // refresh runs (a closed gate would return the cached list untouched).
+    mtimeToken = 'mtime-2';
+    final second = await loader.load(
+      session: session,
+      memberId: '',
+      launchContext: ctx,
+    );
+    expect(identical(second.messages, first.messages), isTrue,
+        reason: '增量路径必须复用同一消息列表实例');
+    expect(second.messages, hasLength(2));
+    expect(
+      (second.messages[1].parts.single as AiTextPart).text,
+      'part1 part2',
+    );
+  });
+
   test(
     'running subagent side transcript growth re-inflates attachments while parent mtime is frozen',
     () async {

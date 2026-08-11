@@ -17,6 +17,7 @@ import '../terminal/session_member_cli_resolver.dart';
 import 'ai_history_load_result.dart';
 import 'ai_history_locator.dart';
 import 'ai_history_watch_meta.dart';
+import 'ai_transcript_tail_reader.dart';
 import 'session_history_context.dart';
 import 'session_history_context_builder.dart';
 import 'subagent_attachment_inflater.dart';
@@ -78,6 +79,12 @@ final class AiHistoryLoader {
   final _parentPaths = <String, String>{};
   final _sideTokens = <String, String>{};
 
+  /// Incremental tail state (cacheKey → state) and per-CLI tail readers. The
+  /// state owns the live [List] that [load] hands out; the reader is stateless
+  /// per CLI (all mutable state lives in [TailReaderState]).
+  final _tailStates = <String, TailReaderState>{};
+  final _tailReaders = <String, AiTranscriptTailReader>{};
+
   /// Bundles at/above this size parse on a worker isolate; smaller ones parse
   /// in place (isolate spawn + transfer overhead would dominate).
   static const _isolateParseMinBytes = 256 * 1024;
@@ -101,6 +108,52 @@ final class AiHistoryLoader {
     _attachments.clear();
     _parentPaths.clear();
     _sideTokens.clear();
+    _tailStates.clear();
+  }
+
+  /// Per-CLI tail reader for JSONL-style transcripts. Returns null when the
+  /// capability has no [AiTranscriptLineAppend] (e.g. opencode's multi-file DB)
+  /// so the loader falls back to the full adapter parse.
+  AiTranscriptTailReader? _tailReaderFor(CliTool cli) {
+    final lineAppend = _registry
+        .capability<AiHistoryCapability>(cli)
+        ?.lineAppend;
+    if (lineAppend == null) return null;
+    return _tailReaders.putIfAbsent(
+      cli.name,
+      () => AiTranscriptTailReader(
+        lineAppend: lineAppend,
+        fallbackPrefix: switch (cli) {
+          CliTool.claude => 'claude',
+          CliTool.codex => 'codex',
+          CliTool.cursor => 'cursor',
+          _ => 'tail',
+        },
+      ),
+    );
+  }
+
+  /// Incremental path: locate → parent path → tail refresh on the state's
+  /// in-place list. Returns null when unavailable (no parent path / no
+  /// lineAppend) so [load] falls back to the full adapter parse.
+  Future<List<AiMessage>?> _tryIncrementalLoad({
+    required String cacheKey,
+    required CliTool cli,
+    required SessionHistoryContext ctx,
+    required String? parentPath,
+    bool force = false,
+  }) async {
+    if (parentPath == null || parentPath.isEmpty) return null;
+    final reader = _tailReaderFor(cli);
+    if (reader == null) return null;
+    final state = _tailStates.putIfAbsent(cacheKey, TailReaderState.new);
+    await reader.refresh(
+      fs: ctx.fs,
+      path: parentPath,
+      state: state,
+      force: force,
+    );
+    return state.messages;
   }
 
   /// Locate-only watch hints for live transcript refresh (no full parse).
@@ -197,9 +250,38 @@ final class AiHistoryLoader {
         return null; // degrade-only; never invent a path from fragment basename
       }();
       _parentPaths[cacheKey] = parentPath ?? '';
+
+      // 增量优先:JSONL 类 CLI 走 tail-anchor 增量(原地变异复用消息实例);
+      // 失败/不适配(无 path、无 lineAppend、非 JSONL 存储)回退全量 parse。
+      final incremental = await _tryIncrementalLoad(
+        cacheKey: cacheKey,
+        cli: cli,
+        ctx: ctx,
+        parentPath: parentPath,
+        force: force,
+      );
+      if (incremental != null) {
+        // Attachments: reuse the cached map across appends — only the first
+        // (inflate-less) load inflates, and only when nothing is cached yet.
+        var attachments = _attachments[cacheKey];
+        attachments ??= await const SubagentAttachmentInflater().inflate(
+          messages: incremental,
+          ctx: ctx,
+          capability: cap,
+          rootTranscriptPath: parentPath,
+        );
+        _messages[cacheKey] = incremental;
+        _attachments[cacheKey] = attachments;
+        _tokens[cacheKey] = token ?? 'changed-$cacheKey';
+        return AiHistoryLoadResult(
+          messages: incremental,
+          subagentAttachments: attachments,
+        );
+      }
+
       // Full parse through the capability's adapter: reads the whole located
       // transcript each time. The mtime token above skips the work when nothing
-      // changed. (The incremental tailer was rolled back — see git history.)
+      // changed.
       //
       // Heavy transcripts parse on a worker isolate so the UI thread never
       // spends tens of ms re-decoding a large JSONL on live refresh. Isolate
@@ -287,6 +369,7 @@ final class AiHistoryLoader {
       _attachments.remove(key);
       _parentPaths.remove(key);
       _sideTokens.remove(key);
+      _tailStates.remove(key);
       return;
     }
     final prefix = '${sessionId.trim()}\u0000';
@@ -295,6 +378,7 @@ final class AiHistoryLoader {
     _attachments.removeWhere((key, _) => key.startsWith(prefix));
     _parentPaths.removeWhere((key, _) => key.startsWith(prefix));
     _sideTokens.removeWhere((key, _) => key.startsWith(prefix));
+    _tailStates.removeWhere((key, _) => key.startsWith(prefix));
   }
 
   Future<_AiHistorySeat> _resolveSeat({
