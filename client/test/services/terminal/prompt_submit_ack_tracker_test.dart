@@ -21,11 +21,33 @@ void main() {
         onTimeout: () => false), isFalse);
   });
 
-  test('clear 后不再命中', () async {
+  test('clear 完成 future(false) 后不再命中', () async {
+    final tracker = PromptSubmitAckTracker();
+    final f = tracker.register(sessionId: 's1', memberId: 'm1', text: '1');
+    tracker.clear('s1', 'm1');
+    expect(await f, isFalse);
+    expect(tracker.tryAck(sessionId: 's1', memberId: 'm1', text: '1'), isFalse);
+  });
+
+  test('tryAck 命中记录 acked 标记，register 新一轮清除', () async {
+    final tracker = PromptSubmitAckTracker();
+    final f = tracker.register(sessionId: 's1', memberId: 'm1', text: '1');
+    expect(tracker.isAcked(sessionId: 's1', memberId: 'm1'), isFalse);
+    expect(tracker.tryAck(sessionId: 's1', memberId: 'm1', text: '1'), isTrue);
+    expect(await f, isTrue);
+    expect(tracker.isAcked(sessionId: 's1', memberId: 'm1'), isTrue);
+
+    tracker.register(sessionId: 's1', memberId: 'm1', text: '2');
+    expect(tracker.isAcked(sessionId: 's1', memberId: 'm1'), isFalse);
+  });
+
+  test('clear 清除 acked 标记', () async {
     final tracker = PromptSubmitAckTracker();
     tracker.register(sessionId: 's1', memberId: 'm1', text: '1');
+    tracker.tryAck(sessionId: 's1', memberId: 'm1', text: '1');
+    expect(tracker.isAcked(sessionId: 's1', memberId: 'm1'), isTrue);
     tracker.clear('s1', 'm1');
-    expect(tracker.tryAck(sessionId: 's1', memberId: 'm1', text: '1'), isFalse);
+    expect(tracker.isAcked(sessionId: 's1', memberId: 'm1'), isFalse);
   });
 
   test('多 seat 互不干扰', () async {

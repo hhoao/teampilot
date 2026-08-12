@@ -45,6 +45,7 @@ final class TabMemberPtyDelivery {
         ptyInject ??
         MemberPtyInjectService(
           onDeliveryRetryExhausted: _onDeliveryRetryExhausted,
+          ackTracker: _promptAckTracker,
         );
   }
 

@@ -3,6 +3,7 @@ import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import '../team_bus/team_bus.dart';
 import 'fullscreen_pty_automation.dart';
+import 'prompt_submit_ack_tracker.dart';
 import 'pty_automation_retry_queue.dart';
 import 'pty_automation_session_lock.dart';
 import 'terminal_fullscreen_pty_port.dart';
@@ -16,6 +17,7 @@ final class MemberPtyInjectService {
     PtyAutomationSessionLock? lock,
     PtyAutomationRetryQueue? retryQueue,
     this.onDeliveryRetryExhausted,
+    this.ackTracker,
   }) : _automation = automation ?? FullscreenPtyAutomation(),
        _lock = lock ?? PtyAutomationSessionLock(),
        _retryQueue =
@@ -37,6 +39,10 @@ final class MemberPtyInjectService {
     FullscreenPtyDeliveryOutcome outcome,
   )?
   onDeliveryRetryExhausted;
+
+  /// 投递 ACK 注册表：seat 已 acked 时 crStuck/pasteNotFound 不再排重试。
+  /// null 时行为与无 tracker 完全一致（grid 探针兜底）。
+  final PromptSubmitAckTracker? ackTracker;
 
   bool isBusy(String sessionId, String memberId) =>
       _lock.isBusy(sessionId, memberId);
@@ -218,6 +224,17 @@ final class MemberPtyInjectService {
         _retryQueue.clear(key);
       case FullscreenPtyDeliveryOutcome.pasteNotFound:
       case FullscreenPtyDeliveryOutcome.crStuck:
+        if (ackTracker?.isAcked(sessionId: sessionId, memberId: memberId) ??
+            false) {
+          // hook 已确认投递成功（ACK 先于探针 outcome 到达）：
+          // 探针的 crStuck/pasteNotFound 是误报，跳过重试排程，
+          // 否则 5s 后重贴会再产生一条重复用户消息。
+          appLogger.d(
+            '[team-bus] pty-automation-acked-skip-retry '
+            'member=$memberId session=$sessionId outcome=$outcome',
+          );
+          return;
+        }
         appLogger.w(
           '[team-bus] pty-automation-failed member=$memberId session=$sessionId '
           'outcome=$outcome',
