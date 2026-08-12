@@ -1,5 +1,3 @@
-import 'dart:collection';
-
 import '../cli_capability.dart';
 import 'cli_config_asset.dart';
 
@@ -12,25 +10,31 @@ import 'cli_config_asset.dart';
 /// 4. 同 id 同 scope 同 source → level（int，数值大者优先）
 /// 5. 仍相同 → 后注册覆盖先注册
 abstract class CliAssetRegistry<T> implements CliCapability {
-  final Map<String, CliConfigAsset<T>> _byId = LinkedHashMap();
+  /// 追加存储，注册不做预淘汰：同 (kind, id, scope) 的多条资产共存，
+  /// 由 [assetsFor] 合并阶段按规则链归并（遍历顺序即注册顺序）。
+  final List<CliConfigAsset<T>> _assets = [];
   final List<void Function()> _listeners = [];
 
   void register(CliConfigAsset<T> asset) {
-    _byId[asset.id] = asset;
+    _assets.add(asset);
     _notify();
   }
 
+  /// 按 id 移除该资产的全部层（kind/scope 不限），与注册 API 的 id 语义一致。
   void unregister(String id) {
-    if (_byId.remove(id) != null) _notify();
+    final before = _assets.length;
+    _assets.removeWhere((a) => a.id == id);
+    if (_assets.length != before) _notify();
   }
 
-  /// 按 seat 上下文合并四层 scope。app 层资产在 appScope 时加入；
-  /// team/workspace/session 层按上下文匹配。
+  /// 按 seat 上下文过滤（app 恒参与、作为最低优先级基底；team/workspace/session
+  /// 层按对应 id 非空匹配），再对同 (kind, id) 组按规则链归并。
   List<CliConfigAsset<T>> assetsFor(AssetSeatContext seat) {
-    final all = _byId.values.where((a) => _matchesScope(a, seat)).toList();
+    final all = _assets.where((a) => _matchesScope(a, seat)).toList();
     final result = <CliConfigAsset<T>>[];
     for (final asset in all) {
-      final i = result.indexWhere((e) => isAssetConflict(e, asset));
+      final i = result.indexWhere(
+          (e) => e.kind == asset.kind && e.id == asset.id);
       if (i < 0) {
         result.add(asset);
         continue;
@@ -78,6 +82,9 @@ abstract class CliAssetRegistry<T> implements CliCapability {
   }
 
   /// 增量重渲染指纹：资产集稳定 → 指纹稳定。
+  ///
+  /// 契约：指纹依赖 [CliConfigAsset.payload] 的 hashCode，payload 类型须提供
+  /// 值语义 hashCode（内容变化必须反映为指纹变化）。
   String fingerprint(List<CliConfigAsset<T>> assets) {
     final buffer = StringBuffer();
     for (final a in assets) {

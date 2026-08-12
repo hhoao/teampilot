@@ -1,5 +1,3 @@
-import 'cli_asset_registry.dart';
-
 /// rev 4：只建已有真实消费者的类型；agents/rules/commands 有需求再补。
 enum AssetKind { skills, mcp, plugins, hooks }
 

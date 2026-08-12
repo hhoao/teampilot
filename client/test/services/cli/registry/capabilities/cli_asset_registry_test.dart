@@ -46,6 +46,46 @@ void main() {
       expect(r.assetsFor(_seat()), isEmpty);
     });
   });
+
+  group('CliAssetRegistry 反序注册（规则链可达）', () {
+    test('session 先注册、app 后注册 → scope 链仍胜出', () {
+      final r = _TestRegistry();
+      r.register(_asset('x', AssetScope.session, payload: 'session-payload'));
+      r.register(_asset('x', AssetScope.app, payload: 'app-payload'));
+      expect(r.assetsFor(_seat()).single.payload, 'session-payload');
+    });
+
+    test('level 9 先注册、level 1 后注册 → 数值大者仍胜出', () {
+      final r = _TestRegistry();
+      r.register(_asset('x', AssetScope.app, payload: 'high', level: 9));
+      r.register(_asset('x', AssetScope.app, payload: 'low', level: 1));
+      expect(r.assetsFor(_seat()).single.payload, 'high');
+    });
+
+    test('capability 先注册、userConfig 后注册 → source 优先仍胜出', () {
+      final r = _TestRegistry();
+      r.register(
+          _asset('x', AssetScope.app, payload: 'cap', source: AssetSource.capability));
+      r.register(
+          _asset('x', AssetScope.app, payload: 'user', source: AssetSource.userConfig));
+      expect(r.assetsFor(_seat()).single.payload, 'cap');
+    });
+
+    test('全平局：后注册覆盖先注册', () {
+      final r = _TestRegistry();
+      r.register(_asset('x', AssetScope.app, payload: 'first'));
+      r.register(_asset('x', AssetScope.app, payload: 'second'));
+      expect(r.assetsFor(_seat()).single.payload, 'second');
+    });
+
+    test('unregister 移除该 id 的全部层', () {
+      final r = _TestRegistry();
+      r.register(_asset('x', AssetScope.app));
+      r.register(_asset('x', AssetScope.session));
+      r.unregister('x');
+      expect(r.assetsFor(_seat()), isEmpty);
+    });
+  });
 }
 
 class _TestRegistry extends CliAssetRegistry<String> {}
