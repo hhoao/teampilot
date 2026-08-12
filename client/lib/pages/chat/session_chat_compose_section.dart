@@ -68,6 +68,7 @@ class SessionChatComposeSection extends StatelessWidget {
     required this.isSubmitting,
     required this.isEnhancing,
     required this.workspaceRoot,
+    required this.workspaceBundle,
     required this.askCardVisible,
     required this.launchError,
     required this.onRemapDeadTarget,
@@ -97,6 +98,7 @@ class SessionChatComposeSection extends StatelessWidget {
   final bool isSubmitting;
   final bool isEnhancing;
   final String workspaceRoot;
+  final ConfigBundle workspaceBundle;
   final bool askCardVisible;
   final String? launchError;
   final VoidCallback? onRemapDeadTarget;
@@ -228,6 +230,7 @@ class SessionChatComposeSection extends StatelessWidget {
 
     final slashBundle = _slashBundle(
       workspaceRoot: workspaceRoot,
+      workspaceBundle: workspaceBundle,
       session: session,
       team: team,
       hubState: hubState,
@@ -785,6 +788,7 @@ class SessionChatComposeSection extends StatelessWidget {
 
   static ConfigBundle _slashBundle({
     required String workspaceRoot,
+    required ConfigBundle workspaceBundle,
     required AppSession session,
     required TeamProfile? team,
     required ExpertHubState? hubState,
@@ -806,7 +810,7 @@ class SessionChatComposeSection extends StatelessWidget {
     return slashBundleForLanding(
       draft: draft,
       team: team,
-      workspace: const ConfigBundle(),
+      workspace: workspaceBundle,
       hubState: hubState,
     );
   }
