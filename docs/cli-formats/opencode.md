@@ -14,7 +14,7 @@
 |---|---|
 | 位置 | 原生默认 `$XDG_DATA_HOME/opencode/opencode.db`（`config_profile.dart:307-311` 注释：opencode 只认 `OPENCODE_DB`，**没有** `OPENCODE_DATA_DIR`；实测本机 `~/.local/share/opencode/opencode.db`）；TeamPilot 会话内为 `{toolRoot}/opencode.db`（`history_context_env.dart:10` 把 `OPENCODE_DB` 设为会话 runtime 目录下的 db 路径） |
 | 数据目录 | `opencodeDataDirFromEnv` = `ctx.env['OPENCODE_DB']` 的 **dirname**（`ai_transcript.dart:119-124`）；空值或 `:memory:` → 返回 null |
-| 会话关联 | `resolveOpencodeNativeSessionId`（`native_session_id.dart:14-26`）顺序：persistedNativeId → legacy JSON 树 `storage/session/**/ses_*.json` 字典序最大 → SQLite `SELECT id FROM session ORDER BY time_updated DESC, id DESC LIMIT 1`（最新会话） |
+| 会话关联 | `resolveOpencodeNativeSessionId`（`native_session_id.dart`）顺序：persistedNativeId → SQLite `SELECT id FROM session ORDER BY time_updated DESC, id DESC LIMIT 1`（最新会话） |
 | 文件格式 | SQLite（`PRAGMA journal_mode=WAL`；open 时写 `opencode.db` + `-wal`/`-shm` 侧车）。本地只读连接可直接读 WAL、无需整库拷贝；SFTP/WSL 等 remote 后端才快照拷贝到临时目录（`native_session_id.dart:84-104, 147-223`） |
 | 解析入口 | `OpencodeAiTranscriptAdapter` / `OpencodeAiHistoryCapability`（`ai_transcript.dart` / `ai_history_capability.dart`）；读 DB 的查询在 worker isolate 上跑（`OpencodeSqliteReadHandle.read`，避免 UI isolate 阻塞） |
 | 增量能力 | **有（非 JSONL 机制）**——`lineAppend = null`（`ai_history_capability.dart:27`，注释 "multi-file DB; no single-line incremental dialect" ⇒ loader 无 tail reader，恒走全量 parse）；增量走 **sqlite 增量 locate** `locateOpencodeTranscriptIncremental(afterMessageId)`（`WHERE session_id=? AND id>?`，`ai_transcript.dart:242-303`）+ **liveCacheToken** store 级指纹驱动 loader 缓存（详见「增量 vs 全量」） |
@@ -37,7 +37,6 @@ transcript 相关表为 `session` / `message` / `part`（其余 `project`/`works
 | 布局 | 输出片段 | 说明 |
 |---|---|---|
 | SQLite（当前） | `message/{id}.json` + `part/{messageId}/{partId}.json` | 行 `data` JSON 解码后 `putIfAbsent` 回填 `id`/`sessionID`（part 回填 `messageID`）；`time` 非对象且 `time_created` 为 int 时回填 `{"created":…}`（`ai_transcript.dart:403-446`） |
-| legacy JSON 树（`storage/` 下，已废弃） | `session/{sessionId}.json`、`message/{messageId}.json`、`part/{messageID}/{partId}.json` | 与 SQLite 路径产出**相同的片段名**，adapter 单一解析器不感知来源（`ai_transcript.dart:161-236`） |
 | 排序 | message 全量 `ORDER BY time_created ASC, id ASC`；增量 `ORDER BY id ASC`；part `ORDER BY time_created ASC, id ASC`（`ai_transcript.dart:319-329, 386-391`） | adapter 内再按 `time.created` → `id` 排序消息、按 part `id` 字符串排序 parts（`ai_transcript.dart:555-566`） |
 
 ## 消息 schema

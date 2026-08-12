@@ -84,18 +84,7 @@ void main() {
   });
 
   group('OpencodeResumeStrategy', () {
-    test('captures ses_ id from the isolated data dir', () async {
-      final dir = p.join(base.path, 'storage', 'session', 'projhash');
-      await Directory(dir).create(recursive: true);
-      await File(p.join(dir, 'ses_abc123.json')).writeAsString('{}');
-
-      final got = await const OpencodeResumeStrategy().detectNativeId(
-        ctx(env: {'OPENCODE_DB': p.join(base.path, 'opencode.db')}),
-      );
-      expect(got, 'ses_abc123');
-    });
-
-    test('captures ses_ id from opencode.db when JSON storage is absent', () async {
+    test('captures ses_ id from opencode.db', () async {
       final dbPath = p.join(base.path, 'opencode.db');
       final db = sqlite3.open(dbPath);
       db.execute('''

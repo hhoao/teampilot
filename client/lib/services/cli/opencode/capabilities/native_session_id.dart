@@ -9,8 +9,7 @@ import '../../../io/local_filesystem.dart';
 
 /// Resolves OpenCode's native `ses_*` id for a per-session data dir.
 ///
-/// Order: persisted binding → legacy `storage/session/**/ses_*.json` →
-/// newest row in `opencode.db` (current OpenCode layout).
+/// Order: persisted binding → newest row in `opencode.db` (current layout).
 Future<String?> resolveOpencodeNativeSessionId({
   required Filesystem fs,
   required String dataDir,
@@ -19,34 +18,7 @@ Future<String?> resolveOpencodeNativeSessionId({
   final persisted = persistedNativeId?.trim() ?? '';
   if (persisted.isNotEmpty) return persisted;
 
-  final fromJson = await resolveOpencodeNativeSessionIdFromJson(fs, dataDir);
-  if (fromJson != null) return fromJson;
-
   return resolveOpencodeNativeSessionIdFromSqlite(fs, dataDir);
-}
-
-Future<String?> resolveOpencodeNativeSessionIdFromJson(
-  Filesystem fs,
-  String dataDir,
-) async {
-  final path = fs.pathContext;
-  final sessionDir = path.join(dataDir, 'storage', 'session');
-
-  var bestName = '';
-  try {
-    final entries = await fs.listDirRecursive(sessionDir);
-    for (final e in entries) {
-      if (e.isDirectory) continue;
-      final name = path.basename(e.name);
-      if (!name.startsWith('ses_') || !name.endsWith('.json')) continue;
-      if (e.name.compareTo(bestName) > 0) bestName = e.name;
-    }
-  } on Object {
-    return null;
-  }
-  if (bestName.isEmpty) return null;
-  final name = path.basename(bestName);
-  return name.substring(0, name.length - '.json'.length);
 }
 
 Future<String?> resolveOpencodeNativeSessionIdFromSqlite(

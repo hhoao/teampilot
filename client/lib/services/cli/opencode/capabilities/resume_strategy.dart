@@ -3,8 +3,8 @@ import '../../registry/capabilities/session_resume_capability.dart';
 
 /// `postCaptured` strategy for opencode. opencode generates `ses_*` ids; we
 /// isolate the session via absolute `OPENCODE_DB` (see the config profile), so
-/// the SQLite / legacy `storage/session/**/<id>.json` tree is unambiguous. We
-/// capture the id and resume with `--session <id>`.
+/// the SQLite store is unambiguous. We capture the id and resume with
+/// `--session <id>`.
 final class OpencodeResumeStrategy implements SessionResumeCapability {
   const OpencodeResumeStrategy();
 

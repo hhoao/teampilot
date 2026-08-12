@@ -4,9 +4,7 @@ import 'package:ai_message_core/ai_message_core.dart';
 import 'package:meta/meta.dart';
 import 'package:sqlite3/sqlite3.dart';
 
-import 'package:logger/logger.dart';
 import '../../../../../utils/logging/logger.dart';
-import '../../../../io/filesystem.dart';
 import '../../../../session/session_history_context.dart';
 import 'ai_transcript.dart';
 import '../native_session_id.dart';
@@ -77,15 +75,6 @@ final class OpencodeSideResolver implements SubagentSideResolver {
 
     final bundle = await _bundleForChild(ctx, resolvedId);
     if (bundle == null) return null;
-
-    if (childSessionId != null && childSessionId.isNotEmpty) {
-      await _logParentIdMismatchIfNeeded(
-        ctx: ctx,
-        bundle: bundle,
-        childSessionId: childSessionId,
-        parentSessionId: _parentSessionId(ctx, parentHandle),
-      );
-    }
 
     try {
       final messages = await const OpencodeAiTranscriptAdapter().parse(bundle);
@@ -175,10 +164,9 @@ final class OpencodeSideResolver implements SubagentSideResolver {
   /// it. Returns null when nothing matches (or the layout is unavailable).
   ///
   /// The scan is memoized per (dataDir, parent, toolCallId) on a cheap store
-  /// fingerprint (SQLite: `opencode.db`/WAL mtime+size; JSON: `storage/session`
-  /// listing) so the 750ms live refresh does not copy the whole database (or
-  /// re-read every session file) on every tick while a task runs — the store
-  /// only re-scan when it actually moved.
+  /// fingerprint (`opencode.db`/WAL mtime+size) so the live refresh does not
+  /// copy the whole database on every tick while a task runs — the store only
+  /// re-scans when it actually moved.
   Future<String?> _discoverRunningChildSession({
     required SessionHistoryContext ctx,
     required String? parentSessionId,
@@ -192,22 +180,6 @@ final class OpencodeSideResolver implements SubagentSideResolver {
 
     final memoKey = '$dataDir\u0000$parent\u0000$toolCallId'
         '\u0000${toolCallAt?.toUtc().millisecondsSinceEpoch ?? ''}';
-
-    final jsonFingerprint = await _jsonStorageFingerprint(ctx, dataDir);
-    if (jsonFingerprint != null) {
-      final cached = _cachedDiscovery(memoKey, jsonFingerprint);
-      if (cached != null) return cached;
-      final found = await _discoverFromJsonStorage(
-        ctx,
-        dataDir: dataDir,
-        parentSessionId: parent,
-        toolCallAt: toolCallAt,
-      );
-      if (found != null) {
-        _rememberDiscovery(memoKey, jsonFingerprint, found);
-        return found;
-      }
-    }
 
     final sqliteFingerprint = await _sqliteFingerprint(ctx, dataDir);
     if (sqliteFingerprint != null) {
@@ -226,32 +198,6 @@ final class OpencodeSideResolver implements SubagentSideResolver {
     }
 
     return null;
-  }
-
-  /// JSON storage listing token (name+size+mtime of every `ses_*.json`);
-  /// null when the legacy `storage/session` tree is absent.
-  static Future<String?> _jsonStorageFingerprint(
-    SessionHistoryContext ctx,
-    String dataDir,
-  ) async {
-    final path = ctx.fs.pathContext;
-    final sessionDir = path.join(dataDir, 'storage', 'session');
-    List<FsDirEntry> entries;
-    try {
-      entries = await ctx.fs.listDirRecursive(sessionDir);
-    } on Object {
-      return null;
-    }
-    final parts = <String>[];
-    for (final e in entries) {
-      if (e.isDirectory) continue;
-      final name = path.basename(e.name);
-      if (!name.startsWith('ses_') || !name.endsWith('.json')) continue;
-      final st = await ctx.fs.stat(path.join(sessionDir, e.name));
-      if (!st.isFile) continue;
-      parts.add('${name}|${st.size ?? 0}|${st.mtime?.toUtc().toIso8601String() ?? ''}');
-    }
-    return parts.isEmpty ? null : parts.join('\n');
   }
 
   /// SQLite store token: mtime+size of `opencode.db` plus its WAL sidecars
@@ -292,42 +238,6 @@ final class OpencodeSideResolver implements SubagentSideResolver {
       fingerprint: fingerprint,
       childId: childId,
     );
-  }
-
-  Future<String?> _discoverFromJsonStorage(
-    SessionHistoryContext ctx, {
-    required String dataDir,
-    required String parentSessionId,
-    required DateTime? toolCallAt,
-  }) async {
-    final path = ctx.fs.pathContext;
-    final sessionDir = path.join(dataDir, 'storage', 'session');
-    List<FsDirEntry> entries;
-    try {
-      entries = await ctx.fs.listDirRecursive(sessionDir);
-    } on Object {
-      return null;
-    }
-
-    final candidates = <({String id, int createdMs})>[];
-    for (final e in entries) {
-      if (e.isDirectory) continue;
-      final name = path.basename(e.name);
-      if (!name.startsWith('ses_') || !name.endsWith('.json')) continue;
-      final bytes = await ctx.fs.readBytes(path.join(sessionDir, e.name));
-      if (bytes == null) continue;
-      final obj = _tryDecodeObject(utf8.decode(bytes, allowMalformed: true));
-      if (obj == null) continue;
-      final parentOf = _parentOf(obj);
-      if (parentOf != parentSessionId) continue;
-      final created = _createdMs(obj['time']);
-      if (created <= 0) continue;
-      candidates.add((
-        id: name.substring(0, name.length - '.json'.length),
-        createdMs: created,
-      ));
-    }
-    return _pickRunningChild(candidates, toolCallAt);
   }
 
   Future<String?> _discoverFromSqlite(
@@ -477,83 +387,5 @@ String? _parentSessionId(
   }
   final persisted = ctx.persistedNativeId?.trim();
   if (persisted != null && persisted.isNotEmpty) return persisted;
-  return null;
-}
-
-Future<void> _logParentIdMismatchIfNeeded({
-  required SessionHistoryContext ctx,
-  required AiTranscriptBundle bundle,
-  required String childSessionId,
-  required String? parentSessionId,
-}) async {
-  final expectedParent = parentSessionId?.trim();
-  if (expectedParent == null || expectedParent.isEmpty) return;
-
-  final sessionMeta = await _sessionMetaFromBundle(ctx, bundle, childSessionId);
-  if (sessionMeta == null) return;
-
-  final actualParent =
-      '${sessionMeta['parent_id'] ?? sessionMeta['parentID'] ?? ''}'.trim();
-  if (actualParent.isEmpty || actualParent == expectedParent) return;
-
-  appLogger.w(
-    '[subagent-inflate] OpenCode child session parent_id mismatch '
-    'child=$childSessionId expectedParent=$expectedParent '
-    'actualParent=$actualParent',
-  );
-}
-
-Future<Map<String, dynamic>?> _sessionMetaFromBundle(
-  SessionHistoryContext ctx,
-  AiTranscriptBundle bundle,
-  String sessionId,
-) async {
-  for (final fragment in bundle.fragments) {
-    if (!fragment.name.startsWith('session/')) continue;
-    final obj = _tryDecodeObject(
-      utf8.decode(fragment.bytes, allowMalformed: true),
-    );
-    if (obj != null) return obj;
-  }
-
-  final db = ctx.env['OPENCODE_DB']?.trim() ?? '';
-  if (db.isEmpty || db == ':memory:') return null;
-  final dataDir = ctx.fs.pathContext.dirname(db);
-  final sessionPath = await _findSessionFile(ctx, dataDir, sessionId);
-  if (sessionPath == null) return null;
-
-  final bytes = await ctx.fs.readBytes(sessionPath);
-  if (bytes == null) return null;
-  return _tryDecodeObject(utf8.decode(bytes, allowMalformed: true));
-}
-
-Future<String?> _findSessionFile(
-  SessionHistoryContext ctx,
-  String dataDir,
-  String sessionId,
-) async {
-  final path = ctx.fs.pathContext;
-  final sessionDir = path.join(dataDir, 'storage', 'session');
-  try {
-    final entries = await ctx.fs.listDirRecursive(sessionDir);
-    for (final e in entries) {
-      if (e.isDirectory) continue;
-      if (path.basename(e.name) != '$sessionId.json') continue;
-      return path.join(sessionDir, e.name);
-    }
-  } on Object {
-    return null;
-  }
-  return null;
-}
-
-Map<String, dynamic>? _tryDecodeObject(String raw) {
-  try {
-    final decoded = jsonDecode(raw);
-    if (decoded is Map<String, dynamic>) return decoded;
-    if (decoded is Map) return Map<String, dynamic>.from(decoded);
-  } on FormatException {
-    return null;
-  }
   return null;
 }

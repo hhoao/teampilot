@@ -288,13 +288,11 @@ WHERE session_id = ? AND id = ?
   return bundles;
 }
 
-/// Locate OpenCode session/message/part files under the session data dir.
+/// Locate OpenCode session/message/part rows under the session data dir.
 ///
-/// Prefers the legacy JSON tree (`storage/message|part`). When that is absent
-/// (current OpenCode installs store rows in `opencode.db` with WAL), reads
-/// SQLite — copying `-wal`/`-shm` sidecars so a live writer is visible — and
-/// emits the same fragment layout so [OpencodeAiTranscriptAdapter] stays one
-/// parser.
+/// Reads the SQLite store (`opencode.db` with WAL) — copying `-wal`/`-shm`
+/// sidecars so a live writer is visible — and emits the fragment layout so
+/// [OpencodeAiTranscriptAdapter] stays one parser.
 ///
 /// Fragment names:
 /// - `session/{sessionId}.json`
@@ -390,9 +388,6 @@ Future<AiTranscriptBundle?> locateOpencodeTranscriptForSession(
   final trimmed = sessionId.trim();
   if (trimmed.isEmpty) return null;
 
-  final jsonBundle = await _locateJsonStorage(ctx, dataDir, trimmed);
-  if (jsonBundle != null) return jsonBundle;
-
   return _locateSqliteStorage(ctx, dataDir, trimmed);
 }
 
@@ -436,83 +431,6 @@ Future<String?> opencodeLiveCacheToken(SessionHistoryContext ctx) async {
     return 'oc|${parts.first['COUNT(*)']}|${parts.first['MAX(time_updated)']}'
         '|${sessions.first['COUNT(*)']}|${sessions.first['MAX(time_updated)']}';
   });
-}
-
-Future<AiTranscriptBundle?> _locateJsonStorage(
-  SessionHistoryContext ctx,
-  String dataDir,
-  String sessionId,
-) async {
-  final path = ctx.fs.pathContext;
-  final messageDir = path.join(dataDir, 'storage', 'message', sessionId);
-  final messageStat = await ctx.fs.stat(messageDir);
-  if (!messageStat.isDirectory) return null;
-
-  final messageFiles = await _listJsonFiles(ctx, messageDir);
-  if (messageFiles.isEmpty) return null;
-
-  final storageDir = path.join(dataDir, 'storage');
-  final fragments = <AiTranscriptFragment>[];
-  final readPaths = <String>[];
-
-  final sessionPath = await _findSessionFile(ctx, dataDir, sessionId);
-  if (sessionPath != null) {
-    final bytes = await ctx.fs.readBytes(sessionPath);
-    if (bytes != null) {
-      readPaths.add(sessionPath);
-      fragments.add(
-        AiTranscriptFragment(name: 'session/$sessionId.json', bytes: bytes),
-      );
-    }
-  }
-
-  for (final filePath in messageFiles) {
-    final bytes = await ctx.fs.readBytes(filePath);
-    if (bytes == null) continue;
-    readPaths.add(filePath);
-    final messageId = path.basenameWithoutExtension(filePath);
-    fragments.add(
-      AiTranscriptFragment(name: 'message/$messageId.json', bytes: bytes),
-    );
-  }
-
-  for (final filePath in messageFiles) {
-    final messageId = path.basenameWithoutExtension(filePath);
-    final partDir = path.join(dataDir, 'storage', 'part', messageId);
-    final partFiles = await _listJsonFiles(ctx, partDir);
-    for (final partPath in partFiles) {
-      final bytes = await ctx.fs.readBytes(partPath);
-      if (bytes == null) continue;
-      readPaths.add(partPath);
-      final partId = path.basenameWithoutExtension(partPath);
-      fragments.add(
-        AiTranscriptFragment(
-          name: 'part/$messageId/$partId.json',
-          bytes: bytes,
-        ),
-      );
-    }
-  }
-
-  if (fragments.where((f) => f.name.startsWith('message/')).isEmpty) {
-    return null;
-  }
-
-  final totalBytes =
-      fragments.fold<int>(0, (sum, f) => sum + f.bytes.length);
-  return AiTranscriptBundle(
-    adapterId: 'opencode',
-    fragments: fragments,
-    hints: {
-      'sessionId': sessionId,
-      'source': 'json',
-      'cacheToken': 'opencode-json|$sessionId|$totalBytes',
-      ...AiHistoryWatchMeta(
-        changeWatchRoot: storageDir,
-        cacheTokenPaths: readPaths,
-      ).toHints(),
-    },
-  );
 }
 
 /// Incremental sqlite locate: only messages with `id > [afterMessageId]`.
@@ -749,48 +667,6 @@ Future<String?> _resolveSessionId(
     dataDir: dataDir,
     persistedNativeId: ctx.persistedNativeId,
   );
-}
-
-Future<String?> _findSessionFile(
-  SessionHistoryContext ctx,
-  String dataDir,
-  String sessionId,
-) async {
-  final path = ctx.fs.pathContext;
-  final sessionDir = path.join(dataDir, 'storage', 'session');
-  try {
-    final entries = await ctx.fs.listDirRecursive(sessionDir);
-    for (final e in entries) {
-      if (e.isDirectory) continue;
-      if (path.basename(e.name) != '$sessionId.json') continue;
-      return path.join(sessionDir, e.name);
-    }
-  } on Object {
-    return null;
-  }
-  return null;
-}
-
-Future<List<String>> _listJsonFiles(
-  SessionHistoryContext ctx,
-  String dir,
-) async {
-  final stat = await ctx.fs.stat(dir);
-  if (!stat.isDirectory) return const [];
-  final path = ctx.fs.pathContext;
-  final out = <String>[];
-  try {
-    final entries = await ctx.fs.listDir(dir);
-    for (final e in entries) {
-      if (e.isDirectory) continue;
-      if (!e.name.endsWith('.json')) continue;
-      out.add(path.join(dir, e.name));
-    }
-  } on Object {
-    return const [];
-  }
-  out.sort();
-  return out;
 }
 
 /// OpenCode storage fragments → [AiMessage] with text / tool-call parts.

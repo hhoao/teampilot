@@ -36,28 +36,94 @@ void main() {
     );
   }
 
-  Future<void> copyFixtureTree() async {
-    final fixtureRoot = Directory('test/fixtures/session_history/opencode/storage');
-    await for (final entity in fixtureRoot.list(recursive: true)) {
-      if (entity is! File) continue;
-      final rel = p.relative(entity.path, from: fixtureRoot.path);
-      final dest = File(p.join(base.path, 'storage', rel));
-      await dest.parent.create(recursive: true);
-      await dest.writeAsBytes(await entity.readAsBytes());
-    }
-  }
-
   test(
     'OpencodeAiTranscriptAdapter parses messages and tool parts',
     () async {
-      await copyFixtureTree();
-      final bundle = await locateOpencodeTranscript(
-        ctx(dataDir: base.path, persistedNativeId: 'ses_demo001'),
+      // Fragments in the DB-emitted layout (message/ + part/ names), same
+      // shape the SQLite locate produces.
+      final bundle = AiTranscriptBundle(
+        adapterId: 'opencode',
+        fragments: [
+          AiTranscriptFragment(
+            name: 'session/ses_demo001.json',
+            bytes: utf8.encode(
+              jsonEncode({
+                'id': 'ses_demo001',
+                'projectID': 'proj_demo',
+                'time': {'created': 1720612800000},
+              }),
+            ),
+          ),
+          AiTranscriptFragment(
+            name: 'message/msg_user1.json',
+            bytes: utf8.encode(
+              jsonEncode({
+                'id': 'msg_user1',
+                'sessionID': 'ses_demo001',
+                'role': 'user',
+                'time': {'created': 1720612801000},
+              }),
+            ),
+          ),
+          AiTranscriptFragment(
+            name: 'message/msg_asst1.json',
+            bytes: utf8.encode(
+              jsonEncode({
+                'id': 'msg_asst1',
+                'sessionID': 'ses_demo001',
+                'role': 'assistant',
+                'time': {'created': 1720612802000},
+              }),
+            ),
+          ),
+          AiTranscriptFragment(
+            name: 'part/msg_user1/prt_text1.json',
+            bytes: utf8.encode(
+              jsonEncode({
+                'id': 'prt_text1',
+                'messageID': 'msg_user1',
+                'type': 'text',
+                'text': 'hello opencode',
+              }),
+            ),
+          ),
+          AiTranscriptFragment(
+            name: 'part/msg_asst1/prt_text2.json',
+            bytes: utf8.encode(
+              jsonEncode({
+                'id': 'prt_text2',
+                'messageID': 'msg_asst1',
+                'type': 'text',
+                'text': 'listing files',
+              }),
+            ),
+          ),
+          AiTranscriptFragment(
+            name: 'part/msg_asst1/prt_tool1.json',
+            bytes: utf8.encode(
+              jsonEncode({
+                'id': 'prt_tool1',
+                'messageID': 'msg_asst1',
+                'type': 'tool',
+                'tool': 'bash',
+                'callID': 'call_1',
+                'state': {
+                  'status': 'completed',
+                  'input': {'command': 'ls'},
+                  'output': 'a.txt\nb.txt',
+                },
+              }),
+            ),
+          ),
+          AiTranscriptFragment(
+            name: 'part/msg_asst1/prt_bad.json',
+            bytes: utf8.encode('not-json'),
+          ),
+        ],
       );
-      expect(bundle, isNotNull);
 
       final adapter = const OpencodeAiTranscriptAdapter();
-      final messages = await adapter.parse(bundle!);
+      final messages = await adapter.parse(bundle);
 
       expect(adapter.id, 'opencode');
       expect(messages, hasLength(2));
@@ -90,47 +156,6 @@ void main() {
       }
     },
   );
-
-  test('locateOpencodeTranscript packs session/message/part fragments', () async {
-    await copyFixtureTree();
-
-    final bundle = await locateOpencodeTranscript(
-      ctx(dataDir: base.path, persistedNativeId: 'ses_demo001'),
-    );
-
-    expect(bundle, isNotNull);
-    expect(bundle!.adapterId, 'opencode');
-    expect(
-      bundle.fragments.any((f) => f.name.startsWith('session/')),
-      isTrue,
-    );
-    expect(
-      bundle.fragments.any((f) => f.name.startsWith('message/')),
-      isTrue,
-    );
-    expect(
-      bundle.fragments.any((f) => f.name.startsWith('part/')),
-      isTrue,
-    );
-    expect(bundle.hints['sessionId'], 'ses_demo001');
-
-    final storageDir = p.join(base.path, 'storage');
-    final watchMeta = AiHistoryWatchMeta.fromHints(bundle.hints);
-    expect(watchMeta, isNotNull);
-    expect(watchMeta!.changeWatchRoot, storageDir);
-    expect(
-      watchMeta.cacheTokenPaths,
-      containsAll([
-        p.join(storageDir, 'session', 'proj_demo', 'ses_demo001.json'),
-        p.join(storageDir, 'message', 'ses_demo001', 'msg_user1.json'),
-        p.join(storageDir, 'message', 'ses_demo001', 'msg_asst1.json'),
-        p.join(storageDir, 'part', 'msg_user1', 'prt_text1.json'),
-        p.join(storageDir, 'part', 'msg_asst1', 'prt_text2.json'),
-        p.join(storageDir, 'part', 'msg_asst1', 'prt_tool1.json'),
-        p.join(storageDir, 'part', 'msg_asst1', 'prt_bad.json'),
-      ]),
-    );
-  });
 
   test('locateOpencodeTranscript returns null when missing', () async {
     final bundle = await locateOpencodeTranscript(ctx(dataDir: base.path));
