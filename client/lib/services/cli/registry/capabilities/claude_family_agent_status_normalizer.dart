@@ -30,6 +30,7 @@ final class ClaudeFamilyAgentStatusNormalizer
     }
 
     final toolName = readPayloadString(body, const ['tool_name', 'toolName']);
+    final prompt = readPayloadString(body, const ['prompt']);
     final askUser = isAskUserQuestionTool(toolName);
     final exitPlan = isExitPlanModeTool(toolName);
     final rawToolInput = body['tool_input'] ?? body['input'] ?? body['arguments'];
@@ -64,6 +65,7 @@ final class ClaudeFamilyAgentStatusNormalizer
           toolAgentId: toolAgentId,
           toolAgentType: toolAgentType,
           hasExplicitPrompt: explicit,
+          prompt: prompt,
           askUserQuestions: askUserQuestions,
           askRequestId: askRequestId,
           planText: planText,

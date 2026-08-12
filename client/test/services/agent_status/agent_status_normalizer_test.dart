@@ -447,5 +447,33 @@ void main() {
       );
       expect(e?.hasExplicitPrompt, isTrue);
     });
+
+    test('Claude UserPromptSubmit 携带 prompt 原文', () {
+      final e = AgentStatusNormalizer.normalize(
+        cli: CliTool.claude,
+        body: {
+          'hook_event_name': 'UserPromptSubmit',
+          'prompt': '1',
+        },
+      );
+      expect(e?.prompt, '1');
+    });
+
+    test('非 UserPromptSubmit 事件 prompt 为 null', () {
+      final e = AgentStatusNormalizer.normalize(
+        cli: CliTool.claude,
+        body: {'hook_event_name': 'Stop'},
+      );
+      expect(e?.prompt, isNull);
+    });
+
+    test('Cursor beforeSubmitPrompt 透传 prompt（payload 有则提取）', () {
+      final e = AgentStatusNormalizer.normalize(
+        cli: CliTool.cursor,
+        body: {'hook_event_name': 'beforeSubmitPrompt', 'prompt': 'hello'},
+      );
+      expect(e?.state, AgentSeatAttention.working);
+      expect(e?.prompt, 'hello');
+    });
   });
 }

@@ -17,6 +17,7 @@ final class CursorAgentStatusNormalizer
     final eventName = body['hook_event_name']?.toString();
     if (eventName == null || eventName.isEmpty) return null;
     final toolName = readPayloadString(body, const ['tool_name', 'toolName']);
+    final prompt = readPayloadString(body, const ['prompt']);
     final toolUseId = readPayloadString(body, const [
       'tool_use_id',
       'toolUseId',
@@ -26,6 +27,7 @@ final class CursorAgentStatusNormalizer
       toolName: toolName,
       hookEventName: eventName,
       toolUseId: toolUseId,
+      prompt: prompt,
     );
     return switch (eventName) {
       'preToolUse' ||
