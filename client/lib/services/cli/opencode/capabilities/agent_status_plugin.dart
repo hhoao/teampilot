@@ -68,6 +68,12 @@ export const TeampilotAgentStatus = async (input, options) => {
   };
   const isResolved = (requestId) => resolvedRequests.has(String(requestId));
 
+  // User message commit tracking: message ids whose role is "user" (learned
+  // from `message.updated`) and text part ids already forwarded, so each user
+  // submission is reported exactly once and assistant parts are never sent.
+  const userMessageIds = new Set();
+  const forwardedUserParts = new Set();
+
   // Attention TTL — keep polling until the human can still answer.
   const ASK_POLL_TTL_MS = 30 * 60 * 1000;
   const ASK_POLL_INTERVAL_MS = 400;
@@ -331,6 +337,43 @@ export const TeampilotAgentStatus = async (input, options) => {
         event.type === "session.idle"
       ) {
         await post("session.idle");
+      }
+      // User message commit: forward the submitted prompt text so the app can
+      // ACK the PTY delivery (mirror of Claude UserPromptSubmit).
+      //
+      // Event shape verified empirically against opencode 1.18.4 (server
+      // session subscribed via @opencode-ai/sdk while submitting a prompt):
+      //   - `message.updated`  → properties.info.role === "user" fires when
+      //     the user message is created, BEFORE its parts stream.
+      //   - `message.part.updated` → properties.part (type "text", text)
+      //     carries the user's submitted text; the part object has no role,
+      //     so membership is decided by the user message id set below.
+      // `session.updated` carries only session info (no parts), so it cannot
+      // be used to observe the submitted text.
+      if (event.type === "message.updated") {
+        const props = event.properties ?? event.data ?? {};
+        const info = props.info ?? {};
+        if (info.role === "user" && info.id) {
+          userMessageIds.add(String(info.id));
+        }
+        return;
+      }
+      if (event.type === "message.part.updated") {
+        const props = event.properties ?? event.data ?? {};
+        const part = props.part ?? {};
+        if (
+          part.type === "text" &&
+          !part.synthetic &&
+          part.messageID &&
+          userMessageIds.has(String(part.messageID))
+        ) {
+          const text = typeof part.text === "string" ? part.text : "";
+          if (text.trim() && !forwardedUserParts.has(String(part.id))) {
+            forwardedUserParts.add(String(part.id));
+            await post("userMessageSubmitted", { prompt: text });
+          }
+        }
+        return;
       }
     },
   };

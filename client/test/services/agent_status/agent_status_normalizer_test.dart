@@ -343,6 +343,15 @@ void main() {
       expect(e?.state, AgentSeatAttention.done);
     });
 
+    test('opencode userMessageSubmitted → working + prompt', () {
+      final e = AgentStatusNormalizer.normalize(
+        cli: CliTool.opencode,
+        body: {'event': 'userMessageSubmitted', 'prompt': '1'},
+      );
+      expect(e?.state, AgentSeatAttention.working);
+      expect(e?.prompt, '1');
+    });
+
     test('Cursor preToolUse → working with tool info', () {
       final e = AgentStatusNormalizer.normalize(
         cli: CliTool.cursor,
