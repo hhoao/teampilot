@@ -92,6 +92,9 @@ final class AiHistoryLoader {
   /// [AiTranscriptIncrementalRefresher]。
   final _incrementalStates = <String, AiTranscriptIncrementalState>{};
 
+  /// 在途 load 单飞表(cacheKey → future):并发触发合并,见 [load]。
+  final _inflightLoads = <String, Future<AiHistoryLoadResult>>{};
+
   /// Bundles at/above this size parse on a worker isolate; smaller ones parse
   /// in place (isolate spawn + transfer overhead would dominate).
   static const _isolateParseMinBytes = 256 * 1024;
@@ -122,6 +125,7 @@ final class AiHistoryLoader {
     _sideTokens.clear();
     _tailStates.clear();
     _incrementalStates.clear();
+    _inflightLoads.clear();
   }
 
   /// Per-CLI tail reader for JSONL-style transcripts. Returns null when the
@@ -273,7 +277,40 @@ final class AiHistoryLoader {
     final cli = seat.cli;
     final effectiveMemberId = seat.effectiveMemberId;
     final ctx = seat.ctx;
+    final cacheKey = _cacheKey(session.sessionId, effectiveMemberId);
 
+    // 单飞:同一 seat 的并发 load(变化信号 / stale 信号 / refreshNow 三路
+    // 触发互相不互斥)合并为一个在途 Future,不重复起跑重量级查询链——
+    // 否则多条链同时存活会同时存在多个 worker isolate。force 请求绕过
+    // 合并,保证显式刷新必然起一轮新周期。
+    final inFlight = _inflightLoads[cacheKey];
+    if (inFlight != null && !force) return inFlight;
+
+    final future = _loadOnce(
+      session: session,
+      cli: cli,
+      effectiveMemberId: effectiveMemberId,
+      ctx: ctx,
+      cacheKey: cacheKey,
+      force: force,
+    );
+    _inflightLoads[cacheKey] = future;
+    future.whenComplete(() {
+      if (identical(_inflightLoads[cacheKey], future)) {
+        _inflightLoads.remove(cacheKey);
+      }
+    }).ignore();
+    return future;
+  }
+
+  Future<AiHistoryLoadResult> _loadOnce({
+    required AppSession session,
+    required CliTool cli,
+    required String effectiveMemberId,
+    required SessionHistoryContext ctx,
+    required String cacheKey,
+    required bool force,
+  }) async {
     final cap = _registry.capability<AiHistoryCapability>(cli);
     if (cap == null) {
       appLogger.e(

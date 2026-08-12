@@ -470,6 +470,41 @@ void main() {
     await controller.stop();
   });
 
+  test('null meta retries with exponential backoff, no reload storm', () async {
+    final session = simpleSession();
+    messagesBySession[session.sessionId] = messages(1);
+    locator.emitBundle = true;
+    await cubit.load(
+      session: session,
+      memberId: '',
+      launchContext: launchCtx(session),
+    );
+    expect(cubit.state.totalMessageCount, 1);
+
+    var resolveCount = 0;
+    final controller = buildController(
+      seat: seatFor(session),
+      metaRetryInterval: const Duration(milliseconds: 20),
+      resolveWatchMeta: () async {
+        resolveCount++;
+        return null; // 会话尚无 transcript → meta 一直缺失
+      },
+    );
+    await controller.start();
+    final probesAfterStart = resolveCount; // 初始 refreshNow 的 1 次
+
+    // 旧实现:每 20ms 一轮完整 reload(locate + cache-token 查询),250ms
+    // 内 resolveCount ≈ 13,空闲会话持续产生 worker isolate。
+    // 新实现:20→40→80→160ms 指数退避,250ms 内仅 3 次轻量探测。
+    await Future<void>.delayed(const Duration(milliseconds: 250));
+    await pumpEventQueue();
+
+    expect(resolveCount, lessThan(probesAfterStart + 6));
+    expect(cubit.state.totalMessageCount, 1); // 探测不应触发软重载
+
+    await controller.stop();
+  });
+
   test('resolveWatchMeta throw keeps last meta and drains coalesced queue', () async {
     final session = simpleSession();
     messagesBySession[session.sessionId] = messages(1);

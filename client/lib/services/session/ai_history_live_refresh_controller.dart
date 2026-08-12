@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import '../../cubits/ai_history_seat.dart';
-import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import '../io/filesystem.dart';
 import 'ai_history_watch_meta.dart';
@@ -54,6 +53,10 @@ class AiHistoryLiveRefreshController {
   bool _started = false;
   bool _reloadInFlight = false;
   bool _reloadQueued = false;
+
+  /// Meta 重试的指数退避指数与"探测已发出、等待返回"标志。
+  int _metaRetryBackoff = 0;
+  bool _metaProbePending = false;
 
   /// True while [start] / [ensureStarted] has begun and [stop] has not finished.
   bool get isActive => _started;
@@ -129,23 +132,62 @@ class AiHistoryLiveRefreshController {
   void _cancelMetaRetry() {
     _metaRetryTimer?.cancel();
     _metaRetryTimer = null;
+    _metaProbePending = false;
   }
 
   void _syncMetaRetry() {
     if (!_started || _meta != null) {
+      _metaRetryBackoff = 0;
       _cancelMetaRetry();
       return;
     }
-    if (_metaRetryTimer != null) return;
-    final interval =
-        _metaRetryIntervalOverride ?? _pollIntervalFor(_fs());
-    _metaRetryTimer = Timer.periodic(interval, (_) {
-      if (!_started || _meta != null) {
-        _cancelMetaRetry();
-        return;
-      }
-      unawaited(_requestReload());
+    if (_metaRetryTimer != null || _metaProbePending) return;
+    _scheduleMetaRetry(resetBackoff: true);
+  }
+
+  /// 指数退避重试 watch meta(750ms → 1.5s → 3s → 6s → 12s 封顶)。
+  /// 旧实现是每 tick 跑一次完整的 [_requestReload](locate + cache-token
+  /// 查询),meta 一直为 null 时会无限期保持 750ms 一轮,让多个 worker
+  /// isolate 在空闲会话上常驻存活。
+  void _scheduleMetaRetry({required bool resetBackoff}) {
+    _cancelMetaRetry();
+    if (!_started || _meta != null) return;
+    if (resetBackoff) _metaRetryBackoff = 0;
+    final base = _metaRetryIntervalOverride ?? _pollIntervalFor(_fs());
+    final multiplier = 1 << _metaRetryBackoff.clamp(0, 4);
+    _metaRetryTimer = Timer(base * multiplier, () {
+      _metaRetryTimer = null;
+      if (!_started || _meta != null) return;
+      _metaRetryBackoff++;
+      _metaProbePending = true;
+      unawaited(_probeMetaOnly());
     });
+  }
+
+  /// 仅重试 meta 探测,不重跑 seat 软重载;meta 出现后再走一次正常 reload
+  /// (此时 attach 变化信号)。
+  Future<void> _probeMetaOnly() async {
+    try {
+      final next = await _resolveWatchMeta();
+      if (!_started) return;
+      if (next != null) {
+        _metaRetryBackoff = 0;
+        // 不预置 _meta:交给 _requestReload 以 previous=null 语义 rearm 信号。
+        await _requestReload(preResolvedMeta: next);
+      } else {
+        _scheduleMetaRetry(resetBackoff: false);
+      }
+    } on Object catch (e, st) {
+      appLogger.w(
+        '[ai-history-live-refresh] meta probe failed: $e',
+        error: e,
+        stackTrace: st,
+      );
+      if (!_started) return;
+      _scheduleMetaRetry(resetBackoff: false);
+    } finally {
+      _metaProbePending = false;
+    }
   }
 
   bool _metaWatchChanged(AiHistoryWatchMeta? previous, AiHistoryWatchMeta next) {
@@ -160,7 +202,10 @@ class AiHistoryLiveRefreshController {
     return false;
   }
 
-  Future<void> _requestReload({bool skipThrottle = false}) async {
+  Future<void> _requestReload({
+    bool skipThrottle = false,
+    AiHistoryWatchMeta? preResolvedMeta,
+  }) async {
     if (!_started) return;
     if (!skipThrottle) {
       final now = DateTime.now();
@@ -192,7 +237,9 @@ class AiHistoryLiveRefreshController {
         if (!_started) break;
         final previous = _meta;
         try {
-          final next = await _resolveWatchMeta();
+          // Probe 已解析出 meta 时直接复用,避免同一轮查询链跑两遍;
+          // 未预解析时照常自行解析(previous 保持 null → 触发 rearm)。
+          final next = preResolvedMeta ?? await _resolveWatchMeta();
           if (!_started) break;
           if (next != null) {
             // Rearm only when a live signal already exists and watch targets

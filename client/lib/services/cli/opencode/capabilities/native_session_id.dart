@@ -140,7 +140,7 @@ class OpencodeSqliteReadHandle {
       } finally {
         db?.dispose();
       }
-    }, debugName: 'native-session-id');
+    }, debugName: 'opencode-sqlite-read');
   }
 }
 
