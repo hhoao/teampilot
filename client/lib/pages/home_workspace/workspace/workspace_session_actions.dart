@@ -255,7 +255,7 @@ Future<void> createAndOpenWorkspaceConversation(
   );
   if (status != SessionOpenStatus.opened) return;
   // ensureTab will not override an active run/shell/file tab.
-  final sessionId = context.read<ChatCubit>().state.activeSessionId?.trim() ?? '';
+  final sessionId = context.read<ChatCubit>().activeTab?.info.id.trim() ?? '';
   if (sessionId.isNotEmpty) {
     context.read<WorkbenchCubit>().openSession(workspace.workspaceId, sessionId);
   }

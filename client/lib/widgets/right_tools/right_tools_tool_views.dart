@@ -189,16 +189,17 @@ class RightToolsChatSlice {
     this.persistedSession,
   });
 
-  factory RightToolsChatSlice.from(
-    ChatState state, {
+  factory RightToolsChatSlice.fromScope({
+    required String selectedMemberId,
+    required String? activeSessionId,
     required bool hasActiveTab,
     required bool hasTeamBus,
     AppSession? persistedSession,
   }) {
     return RightToolsChatSlice(
-      selectedMemberId: state.selectedMemberId,
+      selectedMemberId: selectedMemberId,
       hasActiveTab: hasActiveTab,
-      activeSessionId: state.activeSessionId,
+      activeSessionId: activeSessionId,
       hasTeamBus: hasTeamBus,
       persistedSession: persistedSession,
     );
@@ -346,13 +347,20 @@ class _RightToolsToolViewsState extends State<RightToolsToolViews> {
     }
 
     final workbench = context.read<WorkbenchCubit>();
+    final activeSessionId = context.select<WorkbenchCubit, String?>(
+      (w) => scopedActiveSessionId(w, widget.toolsScopeId),
+    );
     final chatSlice = context.select<ChatCubit, RightToolsChatSlice>(
-      (c) => RightToolsChatSlice.from(
-        c.state,
+      (c) => RightToolsChatSlice.fromScope(
+        selectedMemberId:
+            scopedSelectedMemberId(workbench, c, widget.toolsScopeId),
+        activeSessionId: activeSessionId,
         hasActiveTab:
             c.tabStore.tabsForWorkspace(widget.toolsScopeId).isNotEmpty,
         hasTeamBus: scopedTeamBus(workbench, c, widget.toolsScopeId) != null,
-        persistedSession: c.activeTab?.persistedSession,
+        persistedSession:
+            scopedActiveChatTab(workbench, c, widget.toolsScopeId)
+                ?.persistedSession,
       ),
     );
 

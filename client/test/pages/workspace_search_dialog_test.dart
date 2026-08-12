@@ -5,6 +5,7 @@ import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/cubits/agent_attention_cubit.dart';
 import 'package:teampilot/cubits/automation_cubit.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
+import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/workspace.dart';
@@ -40,6 +41,7 @@ Widget _host({
   required AgentAttentionCubit attentionCubit,
   required AutomationCubit automationCubit,
   required SessionRepository sessionRepo,
+  required WorkbenchCubit workbenchCubit,
 }) {
   final theme = ThemeData(useMaterial3: true);
   return MaterialApp(
@@ -62,6 +64,7 @@ Widget _host({
             BlocProvider.value(value: chatCubit),
             BlocProvider.value(value: attentionCubit),
             BlocProvider.value(value: automationCubit),
+            BlocProvider.value(value: workbenchCubit),
           ],
           child: Scaffold(
             // The real app mounts the dialog inside showTpDialog, whose Dialog /
@@ -110,6 +113,7 @@ void main() {
     final sessionRepo = SessionRepository();
     final attention = AgentAttentionCubit(pruneInterval: null);
     final automation = testAutomationCubit(sessionRepository: sessionRepo);
+    final workbench = WorkbenchCubit();
     final chatCubit = ChatCubit(
       executableResolver: () => 'claude',
       automationRepository: testAutomationRepository(),
@@ -123,6 +127,7 @@ void main() {
     addTearDown(chatCubit.close);
     addTearDown(attention.close);
     addTearDown(automation.close);
+    addTearDown(workbench.close);
 
     await _pumpDialog(
       tester,
@@ -133,6 +138,7 @@ void main() {
         attentionCubit: attention,
         automationCubit: automation,
         sessionRepo: sessionRepo,
+        workbenchCubit: workbench,
       ),
     );
 
@@ -156,6 +162,7 @@ void main() {
     final sessionRepo = SessionRepository();
     final attention = AgentAttentionCubit(pruneInterval: null);
     final automation = testAutomationCubit(sessionRepository: sessionRepo);
+    final workbench = WorkbenchCubit();
     final chatCubit = ChatCubit(
       executableResolver: () => 'claude',
       automationRepository: testAutomationRepository(),
@@ -169,6 +176,7 @@ void main() {
     addTearDown(chatCubit.close);
     addTearDown(attention.close);
     addTearDown(automation.close);
+    addTearDown(workbench.close);
 
     await _pumpDialog(
       tester,
@@ -179,6 +187,7 @@ void main() {
         attentionCubit: attention,
         automationCubit: automation,
         sessionRepo: sessionRepo,
+        workbenchCubit: workbench,
       ),
     );
 
@@ -214,6 +223,7 @@ void main() {
     final sessionRepo = SessionRepository();
     final attention = AgentAttentionCubit(pruneInterval: null);
     final automation = testAutomationCubit(sessionRepository: sessionRepo);
+    final workbench = WorkbenchCubit();
     final chatCubit = ChatCubit(
       executableResolver: () => 'claude',
       automationRepository: testAutomationRepository(),
@@ -227,6 +237,7 @@ void main() {
     addTearDown(chatCubit.close);
     addTearDown(attention.close);
     addTearDown(automation.close);
+    addTearDown(workbench.close);
 
     await _pumpDialog(
       tester,
@@ -237,6 +248,7 @@ void main() {
         attentionCubit: attention,
         automationCubit: automation,
         sessionRepo: sessionRepo,
+        workbenchCubit: workbench,
       ),
     );
 

@@ -97,7 +97,7 @@ class _ChatWorkbenchRunningTerminalState
   ({String surfaceLabel, Workspace? workspace, String tabScopeId})
   _selectionAiTarget(BuildContext context) {
     final chat = context.read<ChatCubit>();
-    final sessionId = chat.state.activeSessionId?.trim() ?? '';
+    final sessionId = chat.activeTab?.info.id.trim() ?? '';
     AppSession? appSession;
     for (final candidate in chat.state.sessions) {
       if (candidate.sessionId == sessionId) {
@@ -106,7 +106,7 @@ class _ChatWorkbenchRunningTerminalState
       }
     }
 
-    final memberId = chat.state.selectedMemberId.trim();
+    final memberId = chat.activeTab?.selectedMemberId.trim() ?? '';
     String taskId = '';
     if (appSession != null) {
       for (final binding in appSession.members) {

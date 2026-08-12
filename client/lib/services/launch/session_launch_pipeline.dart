@@ -575,8 +575,7 @@ class SessionLaunchPipeline {
     SessionRepository? repo,
   }) async {
     final r = repo ?? _host.sessionRepository;
-    final state = _state();
-    final activeId = _activeTab()?.info.id ?? state.activeSessionId ?? 'pending';
+    final activeId = _activeTab()?.info.id ?? 'pending';
     _host.beginSessionConnect(activeId);
     // Restart disconnect() nulls onProcessExited without calling it, so sticky
     // waiting would survive until TTL unless seats are cleared here.

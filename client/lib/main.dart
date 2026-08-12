@@ -126,7 +126,7 @@ ShortcutContext _liveShortcutContext(
     claimedChords: _primaryClaimedChords(),
     hasWorkspace: location.contains('/home-v2/workspace/'),
     hasOpenWorkspaceTabs: workspaceChromeCommands.openTabCount >= 1,
-    hasSessionTab: chatCubit.state.activeSessionId != null,
+    hasSessionTab: chatCubit.activeTab != null,
     floatingPanelOpen:
         floatingWorkspaceCubit.state.visibility ==
             FloatingPanelVisibility.open &&

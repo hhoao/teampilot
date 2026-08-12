@@ -74,11 +74,9 @@ ChatPageStructuralSignal chatPageStructuralSignal({
     tabIds: tabIds,
     activeTabIndex: activeId == null ? -1 : order.indexOf(activeId),
     newChatActive: bar.center.landingActive,
-    selectedMemberId: isForeground
-        ? state.selectedMemberId
-        : (activeTab?.selectedMemberId ?? ''),
+    selectedMemberId: activeTab?.selectedMemberId ?? '',
     sessionLaunchError: isForeground
-        ? state.sessionLaunchError
+        ? (activeTab?.info.launchError ?? state.sessionLaunchError)
         : activeTab?.info.launchError,
     pinnedBySessionId: _pinnedForTabIds(state, tabIds),
   );
