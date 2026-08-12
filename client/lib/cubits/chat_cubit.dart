@@ -588,14 +588,21 @@ class ChatCubit extends Cubit<ChatState>
   @override
   ChatTab? get activeTab {
     final wsId = _tabStore.activeWorkspaceId;
-    if (wsId.isNotEmpty) {
-      final tabId = _workbenchPort?.centerActiveForScope(wsId);
+    final port = _workbenchPort;
+    if (wsId.isNotEmpty && port != null) {
+      final tabId = port.centerActiveForScope(wsId);
       if (tabId != null && tabId.kind == WorkbenchTabKind.session) {
         final tab = _tabStore.openTabBySessionId(tabId.id);
         if (tab != null) return tab;
       }
+      // A non-session tab (file/diff) is center-active: no session is active
+      // in this workspace — never fall through to another workspace's tabs.
+      if (tabId != null) return null;
+      // Landing (center-active null): legacy local-tab runtimes that have not
+      // been bar-fed stay reachable within this workspace.
+      return _tabStore.tabsForWorkspace(wsId).firstOrNull;
     }
-    // Legacy local-tab fallback: pre-materialization runtimes are not bar-fed.
+    // Port unwired (tests / legacy): first open tab wins.
     return _tabStore.openTabs.firstOrNull;
   }
 
@@ -1828,11 +1835,18 @@ class ChatCubit extends Cubit<ChatState>
   void syncTeam(TeamProfile team) {
     final tab = _activeTab;
     if (team.members.isEmpty) {
-      if (tab != null) tab.selectedMemberId = '';
+      if (tab != null && tab.selectedMemberId.isNotEmpty) {
+        tab.selectedMemberId = '';
+        _bumpMemberSelection();
+      }
       return;
     }
     if (team.members.any((m) => m.id == tab?.selectedMemberId)) return;
-    tab?.selectedMemberId = _tabStore.defaultMemberId(team);
+    final next = _tabStore.defaultMemberId(team);
+    if (tab != null && tab.selectedMemberId != next) {
+      tab.selectedMemberId = next;
+      _bumpMemberSelection();
+    }
   }
 
   @override
@@ -1840,8 +1854,21 @@ class ChatCubit extends Cubit<ChatState>
     final tab = _activeTab;
     if (tab == null || tab.selectedMemberId == memberId) return;
     tab.selectedMemberId = memberId;
+    _bumpMemberSelection();
     if (tab.workbenchView == SessionWorkbenchView.terminal) {
       unawaited(ensureMemberTerminalForView(tab.info.id, memberId));
+    }
+  }
+
+  /// Emits the [ChatState.memberSelectionVersion] bump so widgets deriving the
+  /// member highlight from [ChatTab.selectedMemberId] rebuild.
+  void _bumpMemberSelection() {
+    if (!isClosed) {
+      emit(
+        state.copyWith(
+          memberSelectionVersion: state.memberSelectionVersion + 1,
+        ),
+      );
     }
   }
 

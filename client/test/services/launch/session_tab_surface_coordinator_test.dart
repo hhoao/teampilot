@@ -14,6 +14,8 @@ import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/services/launch/session_tab_surface_coordinator.dart';
 
+import '../../support/fake_terminal_session.dart';
+
 void main() {
   group('SessionTabSurfaceCoordinator.surfaceExistingTab', () {
     late ChatTabStore tabStore;
@@ -150,6 +152,33 @@ void main() {
         ),
       ]);
     });
+
+    test(
+      'reuse of a RUNNING tab pins preview: false even when not connecting',
+      () {
+        final running = FakeTerminalSession();
+        running.connect(workingDirectory: '/tmp');
+        existing.resumeSession = running;
+
+        final status = coordinator.surfaceExistingTab(
+          request: SessionOpenRequest(
+            session: session,
+            connectImmediately: false,
+          ),
+          existing: existing,
+        );
+
+        expect(status, SessionOpenStatus.opened);
+        expect(openedCalls, [
+          (
+            workspaceId: 'ws-1',
+            sessionId: 'sess-1',
+            preview: false,
+            activate: true,
+          ),
+        ]);
+      },
+    );
   });
 
   group('SessionTabSurfaceCoordinator.surfaceNewTab', () {

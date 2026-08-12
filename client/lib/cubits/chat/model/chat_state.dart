@@ -34,6 +34,7 @@ class ChatState extends Equatable {
     this.visibleSessions = const [],
     this.provisionVersion = 0,
     this.podViewVersion = 0,
+    this.memberSelectionVersion = 0,
     this.snackbarMessage,
     this.sessionLaunchError,
     this.teamConfigValidation,
@@ -53,6 +54,12 @@ class ChatState extends Equatable {
   /// Widgets that read [ChatTab.workbenchView] (or the equivalent pod view) use
   /// this to stay in sync without depending on the removed stateVersion.
   final int podViewVersion;
+
+  /// Bumped when [ChatCubit.selectMember] / [ChatCubit.syncTeam] rewrite the
+  /// active tab's selected member. Widgets that render the member highlight
+  /// from [ChatTab.selectedMemberId] (right-tools members panel) use this to
+  /// rebuild without a catch-all state version.
+  final int memberSelectionVersion;
 
   final String? snackbarMessage;
 
@@ -75,6 +82,7 @@ class ChatState extends Equatable {
     List<AppSession>? visibleSessions,
     int? provisionVersion,
     int? podViewVersion,
+    int? memberSelectionVersion,
     String? snackbarMessage,
     bool clearSnackbarMessage = false,
     String? sessionLaunchError,
@@ -90,6 +98,8 @@ class ChatState extends Equatable {
       visibleSessions: visibleSessions ?? this.visibleSessions,
       provisionVersion: provisionVersion ?? this.provisionVersion,
       podViewVersion: podViewVersion ?? this.podViewVersion,
+      memberSelectionVersion:
+          memberSelectionVersion ?? this.memberSelectionVersion,
       snackbarMessage: clearSnackbarMessage
           ? null
           : (snackbarMessage ?? this.snackbarMessage),
@@ -111,6 +121,7 @@ class ChatState extends Equatable {
     visibleSessions,
     provisionVersion,
     podViewVersion,
+    memberSelectionVersion,
     snackbarMessage,
     sessionLaunchError,
     teamConfigValidation,

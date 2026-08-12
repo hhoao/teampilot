@@ -186,6 +186,7 @@ class RightToolsChatSlice {
     required this.hasActiveTab,
     required this.activeSessionId,
     required this.hasTeamBus,
+    required this.memberSelectionVersion,
     this.persistedSession,
   });
 
@@ -194,6 +195,7 @@ class RightToolsChatSlice {
     required String? activeSessionId,
     required bool hasActiveTab,
     required bool hasTeamBus,
+    required int memberSelectionVersion,
     AppSession? persistedSession,
   }) {
     return RightToolsChatSlice(
@@ -201,6 +203,7 @@ class RightToolsChatSlice {
       hasActiveTab: hasActiveTab,
       activeSessionId: activeSessionId,
       hasTeamBus: hasTeamBus,
+      memberSelectionVersion: memberSelectionVersion,
       persistedSession: persistedSession,
     );
   }
@@ -209,6 +212,7 @@ class RightToolsChatSlice {
   final bool hasActiveTab;
   final String? activeSessionId;
   final bool hasTeamBus;
+  final int memberSelectionVersion;
   final AppSession? persistedSession;
 
   @override
@@ -218,6 +222,7 @@ class RightToolsChatSlice {
         hasActiveTab == other.hasActiveTab &&
         activeSessionId == other.activeSessionId &&
         hasTeamBus == other.hasTeamBus &&
+        memberSelectionVersion == other.memberSelectionVersion &&
         identical(persistedSession, other.persistedSession);
   }
 
@@ -227,6 +232,7 @@ class RightToolsChatSlice {
     hasActiveTab,
     activeSessionId,
     hasTeamBus,
+    memberSelectionVersion,
     persistedSession,
   );
 }
@@ -358,6 +364,7 @@ class _RightToolsToolViewsState extends State<RightToolsToolViews> {
         hasActiveTab:
             c.tabStore.tabsForWorkspace(widget.toolsScopeId).isNotEmpty,
         hasTeamBus: scopedTeamBus(workbench, c, widget.toolsScopeId) != null,
+        memberSelectionVersion: c.state.memberSelectionVersion,
         persistedSession:
             scopedActiveChatTab(workbench, c, widget.toolsScopeId)
                 ?.persistedSession,

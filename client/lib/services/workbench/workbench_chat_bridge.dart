@@ -13,11 +13,18 @@ class WorkbenchChatBridge implements WorkbenchDomainPort, ChatWorkbenchPort {
   WorkbenchChatBridge({
     required WorkbenchCubit workbench,
     required ChatCubit chat,
+    this.replacedPreviewTeardown,
   }) : _workbench = workbench,
        _chat = chat;
 
   final WorkbenchCubit _workbench;
   final ChatCubit _chat;
+
+  /// Optional domain teardown for a *non-session* tab displaced from the
+  /// preview slot (file/diff/shell/run). Sessions are handled inline; null
+  /// keeps the bridge inert in tests that only exercise session tabs.
+  final void Function(String workspaceId, WorkbenchTabId replaced)?
+      replacedPreviewTeardown;
 
   /// Session domain staged a new/reused session tab; surface it in the bar.
   void onSessionTabOpened(
@@ -32,10 +39,25 @@ class WorkbenchChatBridge implements WorkbenchDomainPort, ChatWorkbenchPort {
       preview: preview,
       activate: activate,
     );
-    // A preview slot replaced in place is no longer in the bar; tear its
-    // domain runtime down so it cannot be resurrected as an orphan.
-    if (replaced != null && replaced.kind == WorkbenchTabKind.session) {
-      unawaited(_chat.teardownSession(replaced.id));
+    if (replaced == null) return;
+    if (replaced.kind == WorkbenchTabKind.session) {
+      final replacedTab = _chat.tabStore.openTabBySessionId(replaced.id);
+      if (replacedTab?.isRunning == true) {
+        // The displaced preview is a live agent: re-pin it in the bar without
+        // stealing activation instead of tearing it down.
+        _workbench.openSession(
+          workspaceId,
+          replaced.id,
+          preview: false,
+          activate: false,
+        );
+      } else {
+        // A preview slot replaced in place is no longer in the bar; tear its
+        // domain runtime down so it cannot be resurrected as an orphan.
+        unawaited(_chat.teardownSession(replaced.id));
+      }
+    } else if (replacedPreviewTeardown != null) {
+      replacedPreviewTeardown!(workspaceId, replaced);
     }
   }
 

@@ -95,12 +95,14 @@ class SessionTabSurfaceCoordinator {
       existing.bumpLaunchGeneration();
     }
     final generation = existing.launchGeneration;
-    // The bar is the single session-identity source: reuse feeds the bar too
-    // (preview matches surfaceNewTab semantics; running tabs pin on reopen).
+    // The bar is the single session-identity source: reuse feeds the bar too.
+    // Non-running reopens surface as preview (replaceable, surfaceNewTab
+    // semantics); running tabs always pin so the next open cannot replace
+    // (and tear down) a live agent.
     onSessionTabOpened?.call(
       existing.workspaceId,
       session.sessionId,
-      preview: !request.connectImmediately,
+      preview: !request.connectImmediately && !existing.isRunning,
       activate: true,
     );
     _host.refreshActiveWorkspaceTabs();

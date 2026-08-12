@@ -6,6 +6,7 @@ import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_tab.dart';
 import 'package:teampilot/services/workbench/workbench_chat_bridge.dart';
 
+import '../../support/fake_terminal_session.dart';
 import '../../support/post_frame_test_harness.dart';
 
 const _ws = 'ws';
@@ -77,6 +78,73 @@ void main() {
       expect(chat.tabStore.openTabBySessionId('B'), isNotNull);
       // A was replaced in place by B and must not linger as an orphan runtime.
       expect(chat.tabStore.openTabBySessionId('A'), isNull);
+    });
+
+    test('running session replaced in the preview slot is re-pinned, not torn '
+        'down', () async {
+      chat.tabStore.setActiveWorkspaceId('ws-1');
+      final running = FakeTerminalSession();
+      running.connect(workingDirectory: '/tmp');
+      chat.tabStore.registerSession(
+        ChatTab(
+          info: ChatTabInfo(id: 'A', title: 'a', subtitle: ''),
+          cliTeamName: '',
+          workspaceId: 'ws-1',
+        )..resumeSession = running,
+      );
+      chat.tabStore.registerSession(
+        ChatTab(
+          info: ChatTabInfo(id: 'B', title: 'b', subtitle: ''),
+          cliTeamName: '',
+          workspaceId: 'ws-1',
+        ),
+      );
+
+      bridge.onSessionTabOpened('ws-1', 'A', preview: true);
+      bridge.onSessionTabOpened('ws-1', 'B', preview: true);
+      await pumpEventQueue();
+
+      // A is running: it must survive the preview replace and re-pin into
+      // the bar without stealing activation from B.
+      expect(chat.tabStore.openTabBySessionId('A'), isNotNull);
+      final center = cubit.state.bar('ws-1').center;
+      final aTab = WorkbenchTabId.session('A');
+      expect(center.contains(aTab), isTrue);
+      expect(center.previewIds, isNot(contains(aTab)));
+      expect(center.activeId, WorkbenchTabId.session('B'));
+    });
+  });
+
+  group('WorkbenchChatBridge.replacedPreviewTeardown', () {
+    test('fires for a replaced non-session preview', () {
+      final teardowns = <(String, WorkbenchTabId)>[];
+      final localBridge = WorkbenchChatBridge(
+        workbench: cubit,
+        chat: chat,
+        replacedPreviewTeardown: (workspaceId, replaced) {
+          teardowns.add((workspaceId, replaced));
+        },
+      );
+      cubit.openFile(_ws, '/a.txt', preview: true);
+      localBridge.onSessionTabOpened(_ws, 's1', preview: true);
+
+      expect(teardowns, [(_ws, WorkbenchTabId.file('/a.txt'))]);
+    });
+
+    test('does not fire for a replaced session preview', () async {
+      final teardowns = <WorkbenchTabId>[];
+      final localBridge = WorkbenchChatBridge(
+        workbench: cubit,
+        chat: chat,
+        replacedPreviewTeardown: (workspaceId, replaced) {
+          teardowns.add(replaced);
+        },
+      );
+      localBridge.onSessionTabOpened(_ws, 's1', preview: true);
+      localBridge.onSessionTabOpened(_ws, 's2', preview: true);
+      await pumpEventQueue();
+
+      expect(teardowns, isEmpty);
     });
   });
 }
