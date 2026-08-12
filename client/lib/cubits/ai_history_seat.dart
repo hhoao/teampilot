@@ -213,6 +213,11 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
   }) async {
     final seatChanged =
         state.sessionId != session.sessionId || state.memberId != memberId;
+    // ignore: avoid_print
+    print('[dbg-load] seat load begin session=${session.sessionId} '
+        'member=$memberId seatChanged=$seatChanged '
+        'prevStatus=${state.status} prevSessionId=${state.sessionId} '
+        'hadContent=${_allMessages.isNotEmpty}');
     // No-blank invariant: only a seat change or an empty list may clear the
     // transcript. A re-load of content that already exists refreshes in place
     // (refreshing) so the UI never blanks a conversation it is switching to.
@@ -273,6 +278,9 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
         workingDirectory: workingDirectory,
         force: force,
       );
+      // ignore: avoid_print
+      print('[dbg-load] seat load returned session=${session.sessionId} '
+          'member=$memberId messages=${result.messages.length}');
       if (gen != _loadGeneration || isClosed) return;
       _cliMessages = result.messages;
       _lastCli = result.cli;
@@ -282,6 +290,9 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
         session.sessionId,
         memberId,
       );
+      // ignore: avoid_print
+      print('[dbg-load] seat merge done session=${session.sessionId} '
+          'merged=${merged.length}');
       if (gen != _loadGeneration || isClosed) return;
       _applyMessages(merged, session.sessionId, memberId);
     } catch (e, st) {
