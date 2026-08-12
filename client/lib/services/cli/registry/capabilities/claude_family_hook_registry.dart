@@ -21,9 +21,13 @@ final class ClaudeFamilyHookRegistry extends CliAssetRegistry<CliHookSpec>
     final hooks = <String, Object?>{};
     for (final asset in assets) {
       final spec = asset.payload;
+      // 占位 spec（无 url/command，如 BusIdle 声明层）由装配点补全后再渲染；
+      // 这里跳过以免输出空条目 {'hooks': []}。
+      if (spec.url == null && spec.command == null) continue;
       final nativeEvent = eventNameMap[spec.event] ?? spec.event;
-      final entries =
-          List<Object?>.from((hooks[nativeEvent] as List?) ?? const []);
+      final entries = List<Object?>.from(
+        (hooks[nativeEvent] as List?) ?? const [],
+      );
       final entry = <String, Object?>{
         'hooks': [
           if (spec.url != null)
@@ -31,8 +35,7 @@ final class ClaudeFamilyHookRegistry extends CliAssetRegistry<CliHookSpec>
               'type': 'http',
               'url': spec.url,
               'headers': spec.headers,
-              if (spec.timeout != null)
-                'timeout': spec.timeout!.inSeconds,
+              if (spec.timeout != null) 'timeout': spec.timeout!.inSeconds,
             }
           else if (spec.command != null)
             {'type': 'command', 'command': spec.command, 'timeout': 5},
@@ -43,16 +46,16 @@ final class ClaudeFamilyHookRegistry extends CliAssetRegistry<CliHookSpec>
         (e) =>
             e is Map &&
             (e['hooks'] as List?)?.any(
-                  (h) =>
-                      h is Map &&
-                      ((h['url'] ?? h['command']) == dupKey),
+                  (h) => h is Map && ((h['url'] ?? h['command']) == dupKey),
                 ) ==
                 true,
       );
       if (!exists) entries.add(entry);
       hooks[nativeEvent] = entries;
     }
-    return {'settings.json': {'hooks': hooks}};
+    return {
+      'settings.json': {'hooks': hooks},
+    };
   }
 
   @override
@@ -66,15 +69,17 @@ final class ClaudeFamilyHookRegistry extends CliAssetRegistry<CliHookSpec>
       final spec = asset.payload;
       if (!spec.blockOnDecision || spec.command == null) continue;
       final ref = spec.command!.split(RegExp(r'\s+')).last;
-      scripts.add(GeneratedScript(
-        fileName: ref.isEmpty ? 'hook.sh' : ref,
-        content: [
-          '#!/usr/bin/env bash',
-          '# TeamPilot ${spec.event} idle hook: exit 2 = block (decision:block).',
-          spec.command!,
-          'exit 2',
-        ].join('\n'),
-      ));
+      scripts.add(
+        GeneratedScript(
+          fileName: ref.isEmpty ? 'hook.sh' : ref,
+          content: [
+            '#!/usr/bin/env bash',
+            '# TeamPilot ${spec.event} idle hook: exit 2 = block (decision:block).',
+            spec.command!,
+            'exit 2',
+          ].join('\n'),
+        ),
+      );
     }
     return scripts;
   }

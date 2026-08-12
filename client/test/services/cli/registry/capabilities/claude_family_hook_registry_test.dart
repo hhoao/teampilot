@@ -9,12 +9,15 @@ void main() {
   group('ClaudeFamilyHookRegistry.render', () {
     test('http hook 渲染为 settings.json hooks 段（幂等可合并）', () {
       final out = registry.render([
-        hookAsset('ack', CliHookSpec(
-          event: 'promptSubmit',
-          url: 'http://127.0.0.1:1/agent-status?event=promptSubmit',
-          headers: const {'X-Member': 'm1'},
-          timeout: const Duration(seconds: 5),
-        )),
+        hookAsset(
+          'ack',
+          CliHookSpec(
+            event: 'promptSubmit',
+            url: 'http://127.0.0.1:1/agent-status?event=promptSubmit',
+            headers: const {'X-Member': 'm1'},
+            timeout: const Duration(seconds: 5),
+          ),
+        ),
       ]);
       final hooks = (out['settings.json'] as Map)['hooks'] as Map;
       final entries = hooks['UserPromptSubmit'] as List;
@@ -32,13 +35,27 @@ void main() {
 
     test('command hook 生成脚本', () {
       final scripts = registry.generateScripts([
-        hookAsset('idle', CliHookSpec(
-          event: 'stop',
-          command: 'bash stop-idle.sh',
-          blockOnDecision: true,
-        )),
+        hookAsset(
+          'idle',
+          CliHookSpec(
+            event: 'stop',
+            command: 'bash stop-idle.sh',
+            blockOnDecision: true,
+          ),
+        ),
       ]);
       expect(scripts, isNotEmpty);
+    });
+
+    test('占位 spec（无 url/command）跳过渲染，不产生空条目', () {
+      final out = registry.render([
+        hookAsset(
+          'bus-idle',
+          const CliHookSpec(event: 'stop', blockOnDecision: true),
+        ),
+      ]);
+      final hooks = (out['settings.json'] as Map)['hooks'] as Map;
+      expect(hooks, isEmpty);
     });
   });
 }

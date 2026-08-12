@@ -20,13 +20,13 @@ import '../../registry/capabilities/config_profile_capability.dart';
 import '../../../provider/workspace_trust_provisioner.dart';
 import '../../../agent_status/member_agent_status_endpoint.dart';
 import '../../../team_bus/member_bus_idle_endpoint.dart';
+import '../../../team_bus/bus_idle_hooks_capability.dart';
 import '../../registry/config_profile/agent_status_hooks.dart';
 import '../../registry/config_profile/bus_idle_stop_hook.dart';
 import '../../registry/capabilities/claude_family_hook_registry.dart';
 import '../../registry/capabilities/cli_config_asset.dart';
 import '../../registry/capabilities/hook_registry.dart';
 import '../../registry/cli_tool_registry.dart';
-import 'package:logger/logger.dart';
 import '../../../../utils/logging/logger.dart';
 
 void _logClaudeContributeLaunchStep(
@@ -201,7 +201,8 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       }
     } else if (simple) {
       final member =
-          ctx.member ?? (throw StateError('Simple launch requires plan.member'));
+          ctx.member ??
+          (throw StateError('Simple launch requires plan.member'));
       final resolver = _claudeResolver(catalog);
       var providerId = member.provider.trim();
       // Expert packs / empty presets often omit provider. Without a fallback,
@@ -225,9 +226,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       claude = ClaudeLaunchExtras(
         settings: settings,
         providerId: resolvedProviderId,
-        settingsByMember: settings == null
-            ? const {}
-            : {member.id: settings},
+        settingsByMember: settings == null ? const {} : {member.id: settings},
       );
     } else {
       claude = const ClaudeLaunchExtras();
@@ -304,11 +303,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       agentStatus: ctx.agentStatus,
     );
     if (stepSw != null) {
-      _logClaudeContributeLaunchStep(
-        stepSw,
-        'writeMemberProfiles',
-        sessionId,
-      );
+      _logClaudeContributeLaunchStep(stepSw, 'writeMemberProfiles', sessionId);
     }
 
     // Credential linking is best-effort — failures must not prevent the
@@ -776,12 +771,20 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     if (agentStatus != null) {
       settings = mergeAgentStatusHooks(settings, member.id, agentStatus);
     }
-    // 迁移期：旧 merge 保留行为的同时并入 Registry 资产渲染
-    // （Task 5 移除旧 merge，改由能力声明 + ctx.hookRegistry 注入驱动）。
-    final hookRegistry =
-        CliToolRegistry.builtIn().capability<HookRegistry>(CliTool.claude);
+    // 迁移期：旧 merge 保留行为的同时并入 Registry 资产渲染。
+    // busIdle 占位资产（无 url）在装配点用运行时 endpoint 补全（依赖反转端到端）。
+    final hookRegistry = CliToolRegistry.builtIn().capability<HookRegistry>(
+      CliTool.claude,
+    );
     if (hookRegistry != null) {
-      final assets = hookRegistry.assetsFor(_seatContext(scope, member));
+      var assets = hookRegistry.assetsFor(_seatContext(scope, member));
+      if (busIdle != null) {
+        assets = completeBusIdleHooks(
+          assets,
+          idle: busIdle,
+          memberId: member.id,
+        );
+      }
       if (assets.isNotEmpty) {
         final rendered = hookRegistry.render(assets);
         settings = mergeHooksInto(
@@ -863,7 +866,10 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       catalog.basePath,
       'cli-presets.json',
     );
-    return CliPresetsRepository(fs: catalog.fs, presetsPath: presetsPath).load();
+    return CliPresetsRepository(
+      fs: catalog.fs,
+      presetsPath: presetsPath,
+    ).load();
   }
 
   static Map<String, Object?> _teamSettings(
@@ -1032,10 +1038,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     final apiKey = _apiKeyFromClaudeProviderSettings(providerSettings);
     if (apiKey.isEmpty) return;
 
-    final metadataPath = delegate.joinWork(
-      memberToolDir,
-      metadataFileName,
-    );
+    final metadataPath = delegate.joinWork(memberToolDir, metadataFileName);
     final existing = await delegate.readMetadataFile(
       metadataPath,
       defaultMetadata,
