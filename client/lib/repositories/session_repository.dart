@@ -481,7 +481,12 @@ class SessionRepository {
       previousTargetIds,
       nextTargetIds,
     );
-    final nextInitialized = (becameMixed || targetSetChanged)
+    final foldersChanged = !listEquals(nextFolders, existing.folders);
+    final mixedInvolved =
+        previousTopology == WorkspaceTopology.mixed ||
+        nextTopology == WorkspaceTopology.mixed;
+    final nextInitialized =
+        (becameMixed || targetSetChanged || (foldersChanged && mixedInvolved))
         ? <String, bool>{
             for (final teamId in existing.memberTargetsByTeam.keys)
               if (teamId.trim().isNotEmpty) teamId.trim(): false,

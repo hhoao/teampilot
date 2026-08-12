@@ -330,4 +330,44 @@ void main() {
       expect(reloaded.memberPlacementInitializedByTeam['team-a'], isTrue);
     },
   );
+
+  test(
+    'updateWorkspaceFolders resets init flags when mixed folders move between present machines',
+    () async {
+      final tmp = await Directory.systemTemp.createTemp('fs_repo_folders_');
+      addTearDown(() => tmp.deleteSync(recursive: true));
+      final repo = SessionRepository(rootDir: tmp.path);
+
+      final ws = await repo.createWorkspace([
+        const WorkspaceFolder(path: '/local'),
+        const WorkspaceFolder(path: '/a', targetId: 'ssh:p1'),
+        const WorkspaceFolder(path: '/b', targetId: 'ssh:p2'),
+        const WorkspaceFolder(path: '/c', targetId: 'ssh:p1'),
+      ]);
+      await repo.updateWorkspaceMemberPlacement(
+        ws.workspaceId,
+        'team-a',
+        targets: const {'team-lead': 'local'},
+      );
+      expect(
+        (await repo.loadWorkspaces())
+            .single
+            .memberPlacementInitializedByTeam['team-a'],
+        isTrue,
+      );
+
+      // Move /a from ssh:p1 to ssh:p2: target set {local, ssh:p1, ssh:p2}
+      // unchanged (ssh:p1 still held by /c), topology stays mixed — only the
+      // new rule resets placement.
+      await repo.updateWorkspaceFolders(ws.workspaceId, [
+        const WorkspaceFolder(path: '/local'),
+        const WorkspaceFolder(path: '/a', targetId: 'ssh:p2'),
+        const WorkspaceFolder(path: '/b', targetId: 'ssh:p2'),
+        const WorkspaceFolder(path: '/c', targetId: 'ssh:p1'),
+      ]);
+
+      final reloaded = (await repo.loadWorkspaces()).single;
+      expect(reloaded.memberPlacementInitializedByTeam['team-a'], isFalse);
+    },
+  );
 }
