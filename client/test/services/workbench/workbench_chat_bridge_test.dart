@@ -1,5 +1,6 @@
 // test/services/workbench/workbench_chat_bridge_test.dart
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/cubits/chat/model/chat_tab.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_tab.dart';
@@ -15,6 +16,7 @@ void main() {
   late ChatCubit chat;
   late WorkbenchChatBridge bridge;
   setUp(() {
+    setUpTestAppStorage();
     cubit = WorkbenchCubit();
     chat = ChatCubit(
       executableResolver: () => '/bin/true',
@@ -49,6 +51,32 @@ void main() {
       final center = cubit.state.bar(_ws).center;
       expect(center.order, [_s1]);
       expect(center.activeId, isNull);
+    });
+
+    test('tears down a preview replaced in place', () async {
+      chat.tabStore.setActiveWorkspaceId('ws-1');
+      chat.tabStore.registerSession(
+        ChatTab(
+          info: ChatTabInfo(id: 'A', title: 'a', subtitle: ''),
+          cliTeamName: '',
+          workspaceId: 'ws-1',
+        ),
+      );
+      chat.tabStore.registerSession(
+        ChatTab(
+          info: ChatTabInfo(id: 'B', title: 'b', subtitle: ''),
+          cliTeamName: '',
+          workspaceId: 'ws-1',
+        ),
+      );
+
+      bridge.onSessionTabOpened('ws-1', 'A', preview: true);
+      bridge.onSessionTabOpened('ws-1', 'B', preview: true);
+      await pumpEventQueue();
+
+      expect(chat.tabStore.openTabBySessionId('B'), isNotNull);
+      // A was replaced in place by B and must not linger as an orphan runtime.
+      expect(chat.tabStore.openTabBySessionId('A'), isNull);
     });
   });
 }

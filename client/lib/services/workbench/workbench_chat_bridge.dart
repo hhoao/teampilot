@@ -26,12 +26,17 @@ class WorkbenchChatBridge implements WorkbenchDomainPort, ChatWorkbenchPort {
     bool preview = false,
     bool activate = true,
   }) {
-    _workbench.openSession(
+    final replaced = _workbench.openSession(
       workspaceId,
       sessionId,
       preview: preview,
       activate: activate,
     );
+    // A preview slot replaced in place is no longer in the bar; tear its
+    // domain runtime down so it cannot be resurrected as an orphan.
+    if (replaced != null && replaced.kind == WorkbenchTabKind.session) {
+      unawaited(_chat.teardownSession(replaced.id));
+    }
   }
 
   // ===== ChatWorkbenchPort (domain → bar) =====
