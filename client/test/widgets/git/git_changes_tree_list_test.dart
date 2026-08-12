@@ -38,6 +38,28 @@ class _TreeStub extends GitService {
   Future<List<String>> branches(String dir) async => const ['main'];
 }
 
+class _UntrackedOnlyStub extends GitService {
+  @override
+  Future<bool> get isAvailable async => true;
+
+  @override
+  Future<GitRepoStatus> status(String dir) async => GitRepoStatus(
+    isRepository: true,
+    branch: 'main',
+    staged: const [],
+    unstaged: const [
+      GitFileChange(
+        path: 'brand_new.dart',
+        kind: GitChangeKind.untracked,
+        staged: false,
+      ),
+    ],
+  );
+
+  @override
+  Future<List<String>> branches(String dir) async => const ['main'];
+}
+
 void main() {
   Future<void> runOnDesktop(
     WidgetTester tester,
@@ -121,6 +143,25 @@ void main() {
     expect(find.text('Unversioned Files'), findsOneWidget);
     expect(find.text('new.cpp'), findsOneWidget);
   });
+
+  testWidgets(
+    'only-untracked repo hides the empty Changes section header',
+    (tester) async {
+      final cubit = GitCubit(service: _UntrackedOnlyStub());
+      addTearDown(cubit.close);
+      // Fresh clone / new project: the only status entry is an untracked file.
+      await cubit.setRepoRoot('/repo');
+      expect(cubit.state.changesTreeView.totalCount, 0);
+      expect(cubit.state.unversionedTreeView.totalCount, 1);
+
+      await tester.pumpWidget(buildTreeList(cubit: cubit));
+      await tester.pump();
+
+      expect(find.text('Changes'), findsNothing);
+      expect(find.text('Unversioned Files'), findsOneWidget);
+      expect(find.text('brand_new.dart'), findsOneWidget);
+    },
+  );
 
   testWidgets('single click on a row calls onSelect with the change path', (
     tester,

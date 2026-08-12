@@ -154,11 +154,12 @@ class _GitChangesTreeListState extends State<GitChangesTreeList> {
                     scrollCacheExtent: ScrollCacheExtent.pixels(400),
                     controller: widget.listScrollController,
                     slivers: [
-                      ..._sectionSlivers(
-                        view: widget.changesTreeView,
-                        section: GitChangesSection.changes,
-                        contentWidth: contentWidth,
-                      ),
+                      if (widget.changesTreeView.totalCount > 0)
+                        ..._sectionSlivers(
+                          view: widget.changesTreeView,
+                          section: GitChangesSection.changes,
+                          contentWidth: contentWidth,
+                        ),
                       if (widget.unversionedTreeView.totalCount > 0)
                         ..._sectionSlivers(
                           view: widget.unversionedTreeView,
@@ -176,8 +177,9 @@ class _GitChangesTreeListState extends State<GitChangesTreeList> {
     );
   }
 
-  /// Header + rows slivers for one section. Empty sections render only their
-  /// header (the caller skips the whole group when [GitChangesTreeViewData.totalCount] is 0).
+  /// Header + rows slivers for one section. Callers skip the whole group
+  /// (header included) when [GitChangesTreeViewData.totalCount] is 0, so an
+  /// empty section renders nothing at all.
   List<Widget> _sectionSlivers({
     required GitChangesTreeViewData view,
     required GitChangesSection section,
