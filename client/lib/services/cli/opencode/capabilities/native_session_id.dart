@@ -1,11 +1,11 @@
 import 'dart:io' show Directory, File;
-import 'dart:isolate';
 
 import 'package:path/path.dart' as p;
 import 'package:sqlite3/sqlite3.dart';
 
 import '../../../io/filesystem.dart';
 import '../../../io/local_filesystem.dart';
+import 'sqlite_worker_pool.dart';
 
 /// Resolves OpenCode's native `ses_*` id for a per-session data dir.
 ///
@@ -33,19 +33,7 @@ Future<String?> resolveOpencodeNativeSessionIdFromSqlite(
   );
   if (handle == null) return null;
 
-  return handle.read<String?>((db) {
-    final rows = db.select(
-      '''
-SELECT id
-FROM session
-ORDER BY time_updated DESC, id DESC
-LIMIT 1
-''',
-    );
-    if (rows.isEmpty) return null;
-    final id = '${rows.first['id']}'.trim();
-    return id.isEmpty ? null : id;
-  });
+  return handle.read<String?>(opencodeNewestSessionId);
 }
 
 Future<bool> opencodeSqliteMainExists(Filesystem fs, String dbPath) async {
@@ -89,31 +77,41 @@ class OpencodeSqliteReadHandle {
   /// copied snapshot files (remote).
   final List<String> sourcePaths;
 
-  /// Runs a read-only SQLite query **off the UI isolate**.
+  /// Runs a read-only SQLite query **off the UI isolate**, through the
+  /// per-store resident worker ([OpencodeSqliteWorkerPool]).
   ///
   /// `sqlite3` FFI calls are synchronous and block the calling isolate's
   /// thread for the whole query; on a large store (40MB+ WAL) that is
   /// hundreds of ms of UI-isolate time per live-refresh tick, during which the
-  /// isolate cannot reach a safepoint either. Running the open + query on a
-  /// worker isolate keeps the UI isolate responsive and out of native code.
+  /// isolate cannot reach a safepoint either. The worker isolate keeps the UI
+  /// isolate responsive and out of native code, and its **resident connection**
+  /// keeps the page cache warm across queries — no per-query open/spawn.
   ///
-  /// [query] must be sendable-safe: it may only capture sendable values, and
-  /// its result [T] must itself be sendable (primitive / String / List / Map /
-  /// records of those). Returns null when the open or query fails.
-  Future<T?> read<T>(T? Function(Database db) query) {
-    final dbPath = path;
-    return Isolate.run(() {
-      Database? db;
-      try {
-        db = sqlite3.open(dbPath, mode: OpenMode.readOnly);
-        return query(db);
-      } on Object {
-        return null;
-      } finally {
-        db?.dispose();
-      }
-    }, debugName: 'opencode-sqlite-read');
+  /// [query] must be a top-level function ([SqliteQueryFn]); its result [T]
+  /// must be sendable (primitive / String / List / Map / records of those).
+  /// Returns null when the open or query fails.
+  Future<T?> read<T>(SqliteQueryFn query, [Object? args]) {
+    return OpencodeSqliteWorkerPool.instance.run<T>(
+      dbPath: path,
+      query: query,
+      args: args,
+    );
   }
+}
+
+/// Newest session row — resolves the seat's native `ses_*` id from SQLite.
+String? opencodeNewestSessionId(Database db, Object? args) {
+  final rows = db.select(
+    '''
+SELECT id
+FROM session
+ORDER BY time_updated DESC, id DESC
+LIMIT 1
+''',
+  );
+  if (rows.isEmpty) return null;
+  final id = '${rows.first['id']}'.trim();
+  return id.isEmpty ? null : id;
 }
 
 /// Resolves a readable local path for the OpenCode SQLite store:

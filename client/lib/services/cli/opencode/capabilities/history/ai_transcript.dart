@@ -217,9 +217,14 @@ Future<List<_FingerprintRow>?> _readFingerprints(
   );
   if (handle == null) return null;
 
-  return handle.read<List<_FingerprintRow>?>((db) {
-    final rows = db.select(
-      '''
+  return handle.read<List<_FingerprintRow>?>(_readFingerprintsQuery, sessionId);
+}
+
+/// 行级指纹查询(worker isolate 上执行,args = sessionId)。
+List<_FingerprintRow>? _readFingerprintsQuery(Database db, Object? args) {
+  final sessionId = args as String;
+  final rows = db.select(
+    '''
 SELECT m.id AS mid, m.time_updated AS mtu,
        COUNT(p.id) AS pc, MAX(p.time_updated) AS ptu
 FROM message m
@@ -227,18 +232,17 @@ LEFT JOIN part p ON p.message_id = m.id
 WHERE m.session_id = ?
 GROUP BY m.id
 ''',
-      [sessionId],
-    );
-    return [
-      for (final row in rows)
-        (
-          messageId: '${row['mid']}',
-          partCount: row['pc'] is int ? row['pc'] as int : 0,
-          maxPartUpdated: row['ptu'] is int ? row['ptu'] as int : null,
-          updated: row['mtu'] is int ? row['mtu'] as int : null,
-        ),
-    ];
-  });
+    [sessionId],
+  );
+  return [
+    for (final row in rows)
+      (
+        messageId: '${row['mid']}',
+        partCount: row['pc'] is int ? row['pc'] as int : 0,
+        maxPartUpdated: row['ptu'] is int ? row['ptu'] as int : null,
+        updated: row['mtu'] is int ? row['mtu'] as int : null,
+      ),
+  ];
 }
 
 /// 重读 [messageIds] 的完整行(message data + 全部 part),构建单消息 bundle。
@@ -256,36 +260,44 @@ Future<List<AiTranscriptBundle>?> _loadMessageBundles(
   );
   if (handle == null) return null;
 
-  final bundles = await handle.read<List<AiTranscriptBundle>?>((
-    db,
-  ) {
-    final out = <AiTranscriptBundle>[];
-    for (final messageId in messageIds) {
-      final messageRows = db.select(
-        '''
+  final bundles = await handle.read<List<AiTranscriptBundle>?>(
+    _messageBundlesQuery,
+    {'sessionId': sessionId, 'messageIds': messageIds},
+  );
+  return bundles;
+}
+
+/// 重读 [messageIds] 的完整行(message data + 全部 part),构建单消息 bundle。
+/// (worker isolate 上执行,args = {sessionId, messageIds})。
+List<AiTranscriptBundle>? _messageBundlesQuery(Database db, Object? args) {
+  final map = args as Map<String, Object?>;
+  final sessionId = map['sessionId'] as String;
+  final messageIds = (map['messageIds'] as List).cast<String>();
+  final out = <AiTranscriptBundle>[];
+  for (final messageId in messageIds) {
+    final messageRows = db.select(
+      '''
 SELECT id, data, time_created
 FROM message
 WHERE session_id = ? AND id = ?
 ''',
-        [sessionId, messageId],
-      );
-      if (messageRows.isEmpty) continue;
-      final fragments = _buildSqliteFragments(db, sessionId, messageRows);
-      out.add(
-        AiTranscriptBundle(
-          adapterId: 'opencode',
-          fragments: _toTranscriptFragments(fragments),
-          hints: const {
-            'sessionId': '',
-            'source': 'sqlite',
-            'incremental': 'true',
-          },
-        ),
-      );
-    }
-    return out;
-  });
-  return bundles;
+      [sessionId, messageId],
+    );
+    if (messageRows.isEmpty) continue;
+    final fragments = _buildSqliteFragments(db, sessionId, messageRows);
+    out.add(
+      AiTranscriptBundle(
+        adapterId: 'opencode',
+        fragments: _toTranscriptFragments(fragments),
+        hints: const {
+          'sessionId': '',
+          'source': 'sqlite',
+          'incremental': 'true',
+        },
+      ),
+    );
+  }
+  return out;
 }
 
 /// Locate OpenCode session/message/part rows under the session data dir.
@@ -344,14 +356,18 @@ Future<String?> _seatFingerprint(
   );
   if (handle == null) return null;
 
-  return handle.read<String?>((db) {
-    final rows = db.select(
-      'SELECT COUNT(*), MAX(time_updated) FROM part WHERE session_id = ?',
-      [sessionId],
-    );
-    if (rows.isEmpty) return null;
-    return '${rows.first['COUNT(*)']}|${rows.first['MAX(time_updated)']}';
-  });
+  return handle.read<String?>(_seatFingerprintQuery, sessionId);
+}
+
+/// Seat 级聚合指纹(worker isolate 上执行,args = sessionId)。
+String? _seatFingerprintQuery(Database db, Object? args) {
+  final sessionId = args as String;
+  final rows = db.select(
+    'SELECT COUNT(*), MAX(time_updated) FROM part WHERE session_id = ?',
+    [sessionId],
+  );
+  if (rows.isEmpty) return null;
+  return '${rows.first['COUNT(*)']}|${rows.first['MAX(time_updated)']}';
 }
 
 final Map<String, _ParentBundleMemo> _parentBundles = {};
@@ -422,21 +438,66 @@ Future<String?> opencodeLiveCacheToken(SessionHistoryContext ctx) async {
   );
   if (handle == null) return null;
 
-  return handle.read<String?>((db) {
-    final parts = db.select('SELECT COUNT(*), MAX(time_updated) FROM part');
-    final sessions = db.select(
-      'SELECT COUNT(*), MAX(time_updated) FROM session',
-    );
-    if (parts.isEmpty || sessions.isEmpty) return null;
-    return 'oc|${parts.first['COUNT(*)']}|${parts.first['MAX(time_updated)']}'
-        '|${sessions.first['COUNT(*)']}|${sessions.first['MAX(time_updated)']}';
-  });
+  return handle.read<String?>(_storeCacheTokenQuery);
+}
+
+/// Store 级指纹(worker isolate 上执行,args = null)。
+String? _storeCacheTokenQuery(Database db, Object? args) {
+  final parts = db.select('SELECT COUNT(*), MAX(time_updated) FROM part');
+  final sessions = db.select(
+    'SELECT COUNT(*), MAX(time_updated) FROM session',
+  );
+  if (parts.isEmpty || sessions.isEmpty) return null;
+  return 'oc|${parts.first['COUNT(*)']}|${parts.first['MAX(time_updated)']}'
+      '|${sessions.first['COUNT(*)']}|${sessions.first['MAX(time_updated)']}';
 }
 
 /// Incremental sqlite locate: only messages with `id > [afterMessageId]`.
 ///
 /// Uses the same read path + fragment builder as [_locateSqliteStorage]
 /// so both callers share one consistent read.
+///
+/// Worker isolate 上执行,args = {sessionId, afterMessageId}。
+({List<SqliteFragmentData> fragments, String lastId})? _incrementalLocateQuery(
+  Database db,
+  Object? args,
+) {
+  final map = args as Map<String, Object?>;
+  final sessionId = map['sessionId'] as String;
+  final afterMessageId = map['afterMessageId'] as int;
+  final messageRows = db.select(
+    '''
+SELECT id, data, time_created
+FROM message
+WHERE session_id = ? AND id > ?
+ORDER BY id ASC
+''',
+    [sessionId, afterMessageId],
+  );
+  if (messageRows.isEmpty) return null;
+  final fragments = _buildSqliteFragments(db, sessionId, messageRows);
+  return (
+    fragments: fragments,
+    lastId: '${messageRows.last['id']}',
+  );
+}
+
+/// 全量 sqlite locate 查询(worker isolate 上执行,args = sessionId)。
+List<SqliteFragmentData>? _fullLocateQuery(Database db, Object? args) {
+  final sessionId = args as String;
+  final messageRows = db.select(
+    '''
+SELECT id, data, time_created
+FROM message
+WHERE session_id = ?
+ORDER BY time_created ASC, id ASC
+''',
+    [sessionId],
+  );
+  if (messageRows.isEmpty) return null;
+  return _buildSqliteFragments(db, sessionId, messageRows);
+}
+
 Future<AiTranscriptBundle?> locateOpencodeTranscriptIncremental(
   SessionHistoryContext ctx, {
   required int afterMessageId,
@@ -455,25 +516,13 @@ Future<AiTranscriptBundle?> locateOpencodeTranscriptIncremental(
   );
   if (handle == null) return null;
 
-  final read = await handle.read<({List<SqliteFragmentData> fragments, String lastId})?>(
-    (db) {
-      final messageRows = db.select(
-        '''
-SELECT id, data, time_created
-FROM message
-WHERE session_id = ? AND id > ?
-ORDER BY id ASC
-''',
-        [sessionId, afterMessageId],
-      );
-      if (messageRows.isEmpty) return null;
-      final fragments = _buildSqliteFragments(db, sessionId, messageRows);
-      return (
-        fragments: fragments,
-        lastId: '${messageRows.last['id']}',
-      );
-    },
-  );
+  final read = await handle.read<({
+    List<SqliteFragmentData> fragments,
+    String lastId,
+  })?>(_incrementalLocateQuery, {
+    'sessionId': sessionId,
+    'afterMessageId': afterMessageId,
+  });
   if (read == null) return null;
 
   final fragments = _toTranscriptFragments(read.fragments);
@@ -513,19 +562,8 @@ Future<AiTranscriptBundle?> _locateSqliteStorage(
   );
   if (handle == null) return null;
 
-  final fragmentsData = await handle.read<List<SqliteFragmentData>>((db) {
-    final messageRows = db.select(
-      '''
-SELECT id, data, time_created
-FROM message
-WHERE session_id = ?
-ORDER BY time_created ASC, id ASC
-''',
-      [sessionId],
-    );
-    if (messageRows.isEmpty) return null;
-    return _buildSqliteFragments(db, sessionId, messageRows);
-  });
+  final fragmentsData =
+      await handle.read<List<SqliteFragmentData>>(_fullLocateQuery, sessionId);
   if (fragmentsData == null) return null;
   final fragments = _toTranscriptFragments(fragmentsData);
   if (fragments.where((f) => f.name.startsWith('message/')).isEmpty) {

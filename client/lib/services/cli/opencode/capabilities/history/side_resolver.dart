@@ -147,14 +147,18 @@ final class OpencodeSideResolver implements SubagentSideResolver {
     );
     if (handle == null) return null;
 
-    return handle.read<String?>((db) {
-      final rows = db.select(
-        'SELECT COUNT(*), MAX(time_updated) FROM part WHERE session_id = ?',
-        [childId],
-      );
-      if (rows.isEmpty) return null;
-      return '${rows.first['COUNT(*)']}|${rows.first['MAX(time_updated)']}';
-    });
+    return handle.read<String?>(_childFingerprintQuery, childId);
+  }
+
+  /// Child 会话指纹查询(worker isolate 上执行,args = childId)。
+  static String? _childFingerprintQuery(Database db, Object? args) {
+    final childId = args as String;
+    final rows = db.select(
+      'SELECT COUNT(*), MAX(time_updated) FROM part WHERE session_id = ?',
+      [childId],
+    );
+    if (rows.isEmpty) return null;
+    return '${rows.first['COUNT(*)']}|${rows.first['MAX(time_updated)']}';
   }
 
   /// While a `task` sub-agent runs, OpenCode only writes the child `ses_*`
@@ -254,39 +258,49 @@ final class OpencodeSideResolver implements SubagentSideResolver {
     );
     if (handle == null) return null;
 
-    return handle.read<String?>((db) {
-      final candidates = <({String id, int createdMs})>[];
-      try {
-        // Current OpenCode layout: `parent_id` is a real column — one
-        // indexed scoped query, no full-scan + JSON decode.
-        final rows = db.select(
-          'SELECT id, time_created FROM session WHERE parent_id = ?',
-          [parentSessionId],
-        );
-        for (final row in rows) {
-          final id = '${row['id']}'.trim();
-          if (!id.startsWith('ses_')) continue;
-          final ms = _intValue(row['time_created']);
-          if (ms <= 0) continue;
-          candidates.add((id: id, createdMs: ms));
-        }
-      } on SqliteException {
-        // Legacy layout: parent linkage inside the `data` JSON blob.
-        final rows = db.select('SELECT id, data, time_created FROM session');
-        for (final row in rows) {
-          final id = '${row['id']}'.trim();
-          if (!id.startsWith('ses_')) continue;
-          final obj = _decodeRowData(row['data']);
-          if (obj == null) continue;
-          if (_parentOf(obj) != parentSessionId) continue;
-          final created = _createdMs(obj['time']);
-          final ms = created > 0 ? created : _intValue(row['time_created']);
-          if (ms <= 0) continue;
-          candidates.add((id: id, createdMs: ms));
-        }
-      }
-      return _pickRunningChild(candidates, toolCallAt);
+    return handle.read<String?>(_discoverChildQuery, {
+      'parentSessionId': parentSessionId,
+      'toolCallAt': toolCallAt,
     });
+  }
+
+  /// 子会话发现查询(worker isolate 上执行,args = {parentSessionId,
+  /// toolCallAt})。
+  static String? _discoverChildQuery(Database db, Object? args) {
+    final map = args as Map<String, Object?>;
+    final parentSessionId = map['parentSessionId'] as String;
+    final toolCallAt = map['toolCallAt'] as DateTime?;
+    final candidates = <({String id, int createdMs})>[];
+    try {
+      // Current OpenCode layout: `parent_id` is a real column — one
+      // indexed scoped query, no full-scan + JSON decode.
+      final rows = db.select(
+        'SELECT id, time_created FROM session WHERE parent_id = ?',
+        [parentSessionId],
+      );
+      for (final row in rows) {
+        final id = '${row['id']}'.trim();
+        if (!id.startsWith('ses_')) continue;
+        final ms = _intValue(row['time_created']);
+        if (ms <= 0) continue;
+        candidates.add((id: id, createdMs: ms));
+      }
+    } on SqliteException {
+      // Legacy layout: parent linkage inside the `data` JSON blob.
+      final rows = db.select('SELECT id, data, time_created FROM session');
+      for (final row in rows) {
+        final id = '${row['id']}'.trim();
+        if (!id.startsWith('ses_')) continue;
+        final obj = _decodeRowData(row['data']);
+        if (obj == null) continue;
+        if (_parentOf(obj) != parentSessionId) continue;
+        final created = _createdMs(obj['time']);
+        final ms = created > 0 ? created : _intValue(row['time_created']);
+        if (ms <= 0) continue;
+        candidates.add((id: id, createdMs: ms));
+      }
+    }
+    return OpencodeSideResolver._pickRunningChild(candidates, toolCallAt);
   }
 
   /// Prefer the child created at/after the tool call time (earliest such —
