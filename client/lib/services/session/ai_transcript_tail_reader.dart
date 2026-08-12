@@ -1,36 +1,10 @@
-import 'dart:convert';
-import 'dart:isolate';
-
 import 'package:ai_message_core/ai_message_core.dart';
 
 import '../cli/registry/capabilities/ai_history_capability.dart';
 import '../io/filesystem.dart';
+import 'jsonl_decode_worker.dart';
 
-/// 生产 decoder:worker isolate 里批量 jsonDecode。
-Future<List<Map<String, dynamic>?>> decodeJsonlLinesIsolate(
-  List<List<int>> lines,
-) {
-  return Isolate.run(() async {
-    final out = <Map<String, dynamic>?>[];
-    for (final line in lines) {
-      out.add(_tryDecode(utf8.decode(line, allowMalformed: true)));
-    }
-    return out;
-  }, debugName: 'transcript-tail-decoder');
-}
-
-Map<String, dynamic>? _tryDecode(String line) {
-  try {
-    final decoded = jsonDecode(line);
-    if (decoded is Map<String, dynamic>) return decoded;
-    if (decoded is Map) return Map<String, dynamic>.from(decoded);
-  } on FormatException {
-    return null;
-  }
-  return null;
-}
-
-/// 逐行解码注入点(测试用同步实现,生产用 [decodeJsonlLinesIsolate])。
+/// 逐行解码注入点(测试用同步实现,生产用 [decodeJsonlLines] 常驻 worker)。
 typedef EventDecoder =
     Future<List<Map<String, dynamic>?>> Function(List<List<int>> lines);
 
@@ -49,7 +23,7 @@ class AiTranscriptTailReader {
     this.fullReloadEvery = 30,
   }) : _lineAppend = lineAppend,
        _fallbackPrefix = fallbackPrefix,
-       _decodeEvents = decodeEvents ?? decodeJsonlLinesIsolate;
+       _decodeEvents = decodeEvents ?? decodeJsonlLines;
 
   final AiTranscriptLineAppend _lineAppend;
 
