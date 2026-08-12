@@ -101,6 +101,11 @@ class WorkbenchBody extends StatelessWidget {
 /// [KeepAliveSessionStack]. Each host is scoped to its own session id (per-host
 /// [ChatWorkbenchSlice]) so switching conversations changes only the active
 /// index — no remount, no history reload.
+///
+/// Each host is built once inside a [_SessionHostSlot] and cached: parent
+/// rebuilds (session added/removed elsewhere, member switches, route changes)
+/// only re-run the slot's param comparison, so N open sessions do not multiply
+/// the rebuild cost of unrelated workbench state.
 class _SessionKeepAliveHosts extends StatelessWidget {
   const _SessionKeepAliveHosts({
     required this.workspaceId,
@@ -141,8 +146,9 @@ class _SessionKeepAliveHosts extends StatelessWidget {
       activeSessionId: activeId,
       hosts: [
         for (var i = 0; i < tabs.length; i++)
-          ChatWorkbench(
+          _SessionHostSlot(
             key: ValueKey('session-host-${tabs[i].info.id}'),
+            tabSessionId: tabs[i].info.id,
             workspaceId: workspaceId,
             tabScopeId: tabScopeId,
             profileId: profileId,
@@ -156,6 +162,81 @@ class _SessionKeepAliveHosts extends StatelessWidget {
           ),
       ],
     );
+  }
+}
+
+/// Caches the built [ChatWorkbench] for one session. [build] re-creates the
+/// host only when its own [routeActive] or per-session [workbenchSlice]
+/// changes; parent-driven rebuilds otherwise short-circuit on the cached
+/// widget instance and do not touch the host subtree.
+class _SessionHostSlot extends StatefulWidget {
+  const _SessionHostSlot({
+    required this.tabSessionId,
+    required this.workspaceId,
+    required this.tabScopeId,
+    required this.profileId,
+    required this.routeActive,
+    required this.sessionId,
+    required this.isPersonalContext,
+    required this.team,
+    required this.workbenchSlice,
+    super.key,
+  });
+
+  /// The tab's own session id; identity for the cached host.
+  final String tabSessionId;
+  final String workspaceId;
+  final String tabScopeId;
+  final String? profileId;
+  final bool routeActive;
+
+  /// Route-level session id, forwarded to [ChatWorkbench].
+  final String? sessionId;
+  final bool isPersonalContext;
+  final TeamProfile? team;
+  final ChatWorkbenchSlice workbenchSlice;
+
+  @override
+  State<_SessionHostSlot> createState() => _SessionHostSlotState();
+}
+
+class _SessionHostSlotState extends State<_SessionHostSlot> {
+  Widget? _cachedChild;
+  bool? _cachedRouteActive;
+  ChatWorkbenchSlice? _cachedSlice;
+  String? _cachedProfileId;
+  bool? _cachedIsPersonal;
+  TeamProfile? _cachedTeam;
+  String? _cachedSessionId;
+
+  @override
+  Widget build(BuildContext context) {
+    if (_cachedChild == null ||
+        _cachedRouteActive != widget.routeActive ||
+        _cachedSlice != widget.workbenchSlice ||
+        _cachedProfileId != widget.profileId ||
+        _cachedIsPersonal != widget.isPersonalContext ||
+        _cachedTeam != widget.team ||
+        _cachedSessionId != widget.sessionId) {
+      _cachedChild = ChatWorkbench(
+        key: ValueKey('session-host-${widget.tabSessionId}'),
+        workspaceId: widget.workspaceId,
+        tabScopeId: widget.tabScopeId,
+        profileId: widget.profileId,
+        routeActive: widget.routeActive,
+        sessionId: widget.sessionId,
+        isPersonalContext: widget.isPersonalContext,
+        team: widget.team,
+        workbenchSlice: widget.workbenchSlice,
+      );
+      _cachedRouteActive = widget.routeActive;
+      _cachedSlice = widget.workbenchSlice;
+      _cachedProfileId = widget.profileId;
+      _cachedIsPersonal = widget.isPersonalContext;
+      _cachedTeam = widget.team;
+      _cachedSessionId = widget.sessionId;
+    }
+    return _cachedChild!;
   }
 }
 
