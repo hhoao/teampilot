@@ -32,4 +32,3 @@ migrate_working_dir/
 
 # Rust build artifacts (crate is built by native_toolchain_rust hooks)
 rust/target/
-rust/Cargo.lock
