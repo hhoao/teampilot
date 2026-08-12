@@ -5,6 +5,7 @@ import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:sqlite3/sqlite3.dart';
+import 'package:teampilot/services/cli/opencode/capabilities/history/ai_transcript.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/history/side_resolver.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/session/session_history_context.dart';
@@ -184,6 +185,68 @@ CREATE TABLE part (
     test('returns null when session id is absent', () {
       expect(opencodeChildSessionId(taskPart(result: 'no id here')), isNull);
       expect(opencodeChildSessionId(taskPart()), isNull);
+    });
+
+    test('extracts child session id from an adapter-parsed task part (G7)',
+        () async {
+      // 端到端：adapter 内联 state.output（含 <task id="ses_…"> 包裹）→
+      // opencodeChildSessionId 提取出非空子会话 id（agentId 非空语义）。
+      final messages = await const OpencodeAiTranscriptAdapter().parse(
+        AiTranscriptBundle(
+          adapterId: 'opencode',
+          fragments: [
+            AiTranscriptFragment(
+              name: 'message/msg_task.json',
+              bytes: utf8.encode(
+                jsonEncode({
+                  'id': 'msg_task',
+                  'role': 'assistant',
+                  'time': {'created': 1},
+                }),
+              ),
+            ),
+            AiTranscriptFragment(
+              name: 'part/msg_task/prt_task.json',
+              bytes: utf8.encode(
+                jsonEncode({
+                  'id': 'prt_task',
+                  'type': 'tool',
+                  'tool': 'task',
+                  'callID': 'call_task_1',
+                  'state': {
+                    'status': 'completed',
+                    'input': {'prompt': 'do work'},
+                    'output': '<task id="$childSessionId" state="completed">'
+                        '<task_result>done</task_result></task>',
+                  },
+                }),
+              ),
+            ),
+          ],
+        ),
+      );
+
+      final part = messages
+          .expand((m) => m.parts)
+          .whereType<AiToolCallPart>()
+          .single;
+      expect(part.toolName, 'task');
+      expect(part.result, isNotNull);
+      expect(opencodeChildSessionId(part), childSessionId);
+    });
+
+    test('trims whitespace-only session ids to null (G7 agentId 非空)',
+        () async {
+      expect(opencodeChildSessionId(taskPart(result: {'sessionId': '  '})),
+          isNull);
+      expect(opencodeChildSessionId(taskPart(result: {'sessionId': '\t'})),
+          isNull);
+      expect(
+        opencodeChildSessionId(
+          taskPart(result: {'metadata': {'sessionId': ' '}}),
+        ),
+        isNull,
+      );
     });
   });
 

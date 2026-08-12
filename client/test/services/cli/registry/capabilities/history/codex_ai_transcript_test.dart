@@ -80,6 +80,8 @@ void main() {
       expect(tool.toolCallId, 'call_1');
       expect(tool.toolName, 'exec_command');
       expect(tool.args, {'cmd': 'ls'});
+      // argsText 是 arguments 原始字符串的忠实副本（统一 G2 语义）。
+      expect(tool.argsText, '{"cmd":"ls"}');
       expect(tool.result, 'a.txt\nb.txt');
       expect((assistant.parts[1] as AiTextPart).text, 'Here are the files.');
 
@@ -261,7 +263,189 @@ void main() {
     );
   });
 
-  test('appendCodexJsonlEvent line-parse matches adapter (tailer dialect)', () async {
+  test(
+      'custom_tool_call String input that is JSON decodes into args, '
+      'argsText keeps the raw copy (G2)',
+      () {
+    final messages = <AiMessage>[];
+    final consumed = appendCodexJsonlEvent(
+      messages,
+      {
+        'type': 'response_item',
+        'timestamp': '2026-08-08T00:00:00.000Z',
+        'payload': {
+          'type': 'custom_tool_call',
+          'name': 'spawn_agent',
+          'call_id': 'call_custom_1',
+          'input': '{"agentId":"agent-1","task":"doc"}',
+        },
+      },
+      fallbackId: () => 'codex-0',
+    );
+    expect(consumed, isTrue);
+    final tool = (messages.single.parts.single as AiToolCallPart);
+    expect(tool.toolCallId, 'call_custom_1');
+    expect(tool.toolName, 'spawn_agent');
+    // 统一 G2 语义：字符串先 jsonDecode 成 Map args，argsText 保留原始字符串。
+    expect(tool.args, {'agentId': 'agent-1', 'task': 'doc'});
+    expect(tool.argsText, '{"agentId":"agent-1","task":"doc"}');
+  });
+
+  test(
+      'custom_tool_call non-JSON String input keeps args=null and '
+      'argsText as faithful copy (G2)',
+      () {
+    final messages = <AiMessage>[];
+    final consumed = appendCodexJsonlEvent(
+      messages,
+      {
+        'type': 'response_item',
+        'timestamp': '2026-08-08T00:00:00.000Z',
+        'payload': {
+          'type': 'custom_tool_call',
+          'name': 'apply_patch',
+          'call_id': 'call_custom_2',
+          'input': '*** Begin Patch\n+line',
+        },
+      },
+      fallbackId: () => 'codex-1',
+    );
+    expect(consumed, isTrue);
+    final tool = (messages.single.parts.single as AiToolCallPart);
+    expect(tool.args, isNull);
+    expect(tool.argsText, '*** Begin Patch\n+line');
+  });
+
+  test(
+      'custom_tool_call Map input decodes into args, argsText stays null (G2)',
+      () {
+    final messages = <AiMessage>[];
+    final consumed = appendCodexJsonlEvent(
+      messages,
+      {
+        'type': 'response_item',
+        'timestamp': '2026-08-08T00:00:00.000Z',
+        'payload': {
+          'type': 'custom_tool_call',
+          'name': 'agent',
+          'call_id': 'call_custom_3',
+          'input': {'agentId': 'agent-2'},
+        },
+      },
+      fallbackId: () => 'codex-2',
+    );
+    expect(consumed, isTrue);
+    final tool = (messages.single.parts.single as AiToolCallPart);
+    expect(tool.args, {'agentId': 'agent-2'});
+    expect(tool.argsText, isNull);
+  });
+
+  test(
+      'fallback message ids are lazy codex-{seq} and unique (G1)',
+      () async {
+    final bytes = await File(
+      'test/fixtures/session_history/codex/basic.jsonl',
+    ).readAsBytes();
+    final messages = await const CodexAiTranscriptAdapter().parse(
+      AiTranscriptBundle(
+        adapterId: 'codex',
+        fragments: [
+          AiTranscriptFragment(name: 'rollout.jsonl', bytes: bytes),
+        ],
+      ),
+    );
+    final ids = messages.map((m) => m.id).toList();
+    // 惰性 fallback：被丢弃的事件（session_meta / turn_context / 环境噪音 /
+    // token_count / task_complete）不消耗序号；function_call 与紧随的
+    // agent_message 合并后保留前者 id（codex-1）。
+    expect(ids, orderedEquals(['codex-0', 'codex-1']));
+    expect(ids.toSet().length, ids.length);
+  });
+
+  test(
+      'function_call_output / custom_tool_call_output have no error flag: '
+      'isError stays false even for failure-looking output (G6)',
+      () {
+    final messages = <AiMessage>[];
+    var seq = 0;
+    expect(
+      appendCodexJsonlEvent(
+        messages,
+        {
+          'type': 'response_item',
+          'timestamp': '2026-08-08T00:00:00.000Z',
+          'payload': {
+            'type': 'function_call',
+            'name': 'exec_command',
+            'call_id': 'call_fail1',
+            'arguments': '{"cmd":"ls /nope"}',
+          },
+        },
+        fallbackId: () => 'codex-${seq++}',
+      ),
+      isTrue,
+    );
+    expect(
+      appendCodexJsonlEvent(
+        messages,
+        {
+          'type': 'response_item',
+          'timestamp': '2026-08-08T00:00:01.000Z',
+          'payload': {
+            'type': 'function_call_output',
+            'call_id': 'call_fail1',
+            'output': 'Exit code: 1\nNo such file',
+          },
+        },
+        fallbackId: () => 'codex-${seq++}',
+      ),
+      isTrue,
+    );
+    final tool = (messages.single.parts.single as AiToolCallPart);
+    expect(tool.result, 'Exit code: 1\nNo such file');
+    expect(tool.status, AiToolCallStatus.complete);
+    // Codex rollout 的 function_call_output 只有 call_id + output（夹具与
+    // 真实 rollout 均无 is_error/error 字段；失败形态以纯文本进 result）。
+    // 故 isError 恒 false 是既定语义，不推导。
+    expect(tool.isError, isFalse);
+  });
+
+  test(
+      'empty call_id is dropped without consuming fallback seq (G4 既定语义)',
+      () {
+    // Codex rollout 的 function_call/custom_tool_call/custom_tool_call_output
+    // 均恒带非空 call_id（夹具 + 真实 rollout 实测全部非空）；空 call_id 属
+    // 损坏数据。与 cursor 不同（其 transcript 缺 id 是常态，需合成 id），codex
+    // 的 call→output 关联靠两侧独立 call_id 相等，合成单侧 id 无法恢复关联，
+    // 故丢弃事件（且不消耗 fallback 序号）是既定语义。
+    final messages = <AiMessage>[];
+    var seq = 0;
+    String fallbackId() => 'codex-${seq++}';
+
+    expect(
+      appendCodexJsonlEvent(
+        messages,
+        {
+          'type': 'response_item',
+          'timestamp': '2026-08-08T00:00:00.000Z',
+          'payload': {
+            'type': 'function_call',
+            'name': 'exec_command',
+            'call_id': '',
+            'arguments': '{"cmd":"ls"}',
+          },
+        },
+        fallbackId: fallbackId,
+      ),
+      isFalse,
+    );
+    expect(messages, isEmpty);
+    expect(seq, 0, reason: '丢弃的事件不消耗 fallback 序号');
+  });
+
+  test(
+      'appendCodexJsonlEvent line-parse matches adapter (tailer dialect)',
+      () async {
     final bytes = await File(
       'test/fixtures/session_history/codex/basic.jsonl',
     ).readAsBytes();

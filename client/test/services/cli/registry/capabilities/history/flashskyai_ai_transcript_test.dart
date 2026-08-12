@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:ai_message_core/ai_message_core.dart';
@@ -72,6 +73,53 @@ void main() {
       for (final m in messages.where((m) => m.role == AiRole.user)) {
         expect(m.parts.whereType<AiToolCallPart>(), isEmpty);
       }
+    },
+  );
+
+  test(
+    'G1: shared parser assigns flashskyai fallback ids only to consumed events',
+    () async {
+      // Same compatible_jsonl.dart parser as claude; the fallback prefix is
+      // the per-CLI adapter wiring. Full-parse fallback sequence must be
+      // strictly sequential over consumed messages (noise skipped).
+      final bytes = utf8.encode('''
+{"type":"user","message":{"role":"user","content":"first"},"timestamp":"2026-07-10T11:00:00.000Z"}
+not-json
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"second"}]},"timestamp":"2026-07-10T11:00:01.000Z"}
+{"type":"queue-operation","operation":"enqueue"}
+''');
+      final messages = await const FlashskyaiAiTranscriptAdapter().parse(
+        AiTranscriptBundle(
+          adapterId: 'flashskyai',
+          fragments: [
+            AiTranscriptFragment(name: 'fallback.jsonl', bytes: bytes),
+          ],
+        ),
+      );
+      expect(messages.map((m) => m.id).toList(), ['flashskyai-0', 'flashskyai-1']);
+    },
+  );
+
+  test(
+    'G3: encrypted thinking and id-less tool_use share claude semantics',
+    () async {
+      // Same shared parser: empty thinking discarded, id-less tool_use
+      // skipped — both must hold identically through the flashskyai adapter.
+      final bytes = utf8.encode('''
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"thinking","thinking":null},{"type":"tool_use","name":"Bash","input":{"command":"ls"}},{"type":"text","text":"ok"}]},"uuid":"a-1"}
+''');
+      final messages = await const FlashskyaiAiTranscriptAdapter().parse(
+        AiTranscriptBundle(
+          adapterId: 'flashskyai',
+          fragments: [
+            AiTranscriptFragment(name: 'shared.jsonl', bytes: bytes),
+          ],
+        ),
+      );
+      final asst = messages.single;
+      expect(asst.parts.whereType<AiReasoningPart>(), isEmpty);
+      expect(asst.parts.whereType<AiToolCallPart>(), isEmpty);
+      expect((asst.parts.single as AiTextPart).text, 'ok');
     },
   );
 

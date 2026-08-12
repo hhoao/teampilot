@@ -175,6 +175,121 @@ void main() {
     },
   );
 
+  test(
+    'message id priority is uuid -> event id -> message.id -> lazy '
+    'fallback cursor-{seq} (G1)',
+    () async {
+      // Cursor's own id policy differs from claude/flashskyai (event-level
+      // uuid/id first, message.id only as third channel). Real parent-facing
+      // transcripts carry none of these (all-message.content scan), so the
+      // chain is defensive and the contract only requires uniqueness +
+      // incremental/full consistency (same appendCursorJsonlEvent both ways,
+      // lazy fallback). Priority order is thus an established per-CLI policy.
+      const raw = '''
+{"role":"user","uuid":"uuid-wins","message":{"id":"mid","content":"a"}}
+{"role":"user","id":"evt-id","message":{"id":"mid2","content":"b"}}
+{"role":"user","message":{"id":"mid3","content":"c"}}
+{"role":"assistant","message":{"content":"[REDACTED]"}}
+{"role":"user","message":{"content":"d"}}
+''';
+      final messages = await const CursorAiTranscriptAdapter().parse(
+        AiTranscriptBundle(
+          adapterId: 'cursor',
+          fragments: [
+            AiTranscriptFragment(name: 'ids.jsonl', bytes: utf8.encode(raw)),
+          ],
+        ),
+      );
+
+      expect(messages.map((m) => m.id), [
+        'uuid-wins',
+        'evt-id',
+        'mid3',
+        'cursor-0',
+      ]);
+      // Discarded event (whole [REDACTED]) must not consume a fallback seq.
+      expect(messages.last.parts.single, isA<AiTextPart>());
+      expect((messages.last.parts.single as AiTextPart).text, 'd');
+    },
+  );
+
+  test(
+    'thinking blocks produce no reasoning part; [REDACTED] never surfaces '
+    '(G3)',
+    () async {
+      // Cursor parent-facing transcripts have no thinking blocks: a scan of
+      // 100+ real agent-transcripts found zero `type: "thinking"` — thinking
+      // is replaced by a literal `[REDACTED]` placeholder. So "no thinking ->
+      // no AiReasoningPart" is the established semantic (unlike claude's
+      // thinking -> AiReasoningPart), and [REDACTED] must never surface as
+      // user-visible text.
+      const raw = '''
+{"role":"assistant","message":{"content":[{"type":"thinking","thinking":"internal plan"},{"type":"text","text":"visible answer"}]}}
+{"role":"assistant","message":{"content":[{"type":"thinking","text":"draft"},{"type":"text","text":"[REDACTED]"}]}}
+''';
+      final messages = await const CursorAiTranscriptAdapter().parse(
+        AiTranscriptBundle(
+          adapterId: 'cursor',
+          fragments: [
+            AiTranscriptFragment(name: 'thinking.jsonl', bytes: utf8.encode(raw)),
+          ],
+        ),
+      );
+
+      expect(messages.whereType<AiMessage>().expand((m) => m.parts),
+          isNot(contains(isA<AiReasoningPart>())));
+      expect(messages, hasLength(1));
+      expect((messages.single.parts.single as AiTextPart).text,
+          'visible answer');
+    },
+  );
+
+  test(
+    'id-less tool_use gets non-empty synthetic {messageId}-tool-{seq} '
+    'toolCallId (G4)',
+    () async {
+      // Real cursor agent-transcripts omit tool_use ids (verified: zero
+      // tool_use `id` fields across real transcripts), so the synthetic id is
+      // the normal path — the contract requires a non-empty toolCallId so
+      // tool_result can still correlate.
+      const raw = '''
+{"role":"assistant","message":{"content":[{"type":"tool_use","name":"Grep","input":{}},{"type":"tool_use","id":"toolu_x","name":"Read","input":{}},{"type":"tool_use","name":"Shell","input":{}}]}}
+''';
+      final messages = await const CursorAiTranscriptAdapter().parse(
+        AiTranscriptBundle(
+          adapterId: 'cursor',
+          fragments: [
+            AiTranscriptFragment(name: 'tools.jsonl', bytes: utf8.encode(raw)),
+          ],
+        ),
+      );
+
+      final tools = messages.single.parts.cast<AiToolCallPart>();
+      expect(tools.map((t) => t.toolCallId),
+          ['cursor-0-tool-0', 'toolu_x', 'cursor-0-tool-1']);
+      expect(tools.map((t) => t.toolCallId).toSet(), hasLength(3));
+    },
+  );
+
+  test('non-Map tool input yields args null, never a bare string (G2)',
+      () async {
+    const raw = '''
+{"role":"assistant","message":{"content":[{"type":"tool_use","name":"Shell","input":"pwd"},{"type":"tool_use","name":"Read","input":{"path":"a"}}]}}
+''';
+    final messages = await const CursorAiTranscriptAdapter().parse(
+      AiTranscriptBundle(
+        adapterId: 'cursor',
+        fragments: [
+          AiTranscriptFragment(name: 'args.jsonl', bytes: utf8.encode(raw)),
+        ],
+      ),
+    );
+
+    final tools = messages.single.parts.cast<AiToolCallPart>();
+    expect(tools[0].args, isNull);
+    expect(tools[1].args, {'path': 'a'});
+  });
+
   test('locateCursorTranscript returns agent-transcripts jsonl', () async {
     await copyFixtureTree();
     final fixture = await File(
