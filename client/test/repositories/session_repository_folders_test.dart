@@ -41,13 +41,13 @@ void main() {
         const WorkspaceFolder(path: '/main'),
         const WorkspaceFolder(path: '/x'),
       ]);
-      final inherited = await repo.createSession(ws.workspaceId);
+      final inherited = (await repo.createSession(ws.workspaceId)).session;
       expect(inherited.folders.map((f) => f.path), ['/main', '/x']);
 
-      final overridden = await repo.createSession(
+      final overridden = (await repo.createSession(
         ws.workspaceId,
         workingDirectory: '/override',
-      );
+      )).session;
       expect(overridden.folders.map((f) => f.path), [
         '/override',
         '/main',
@@ -106,10 +106,10 @@ void main() {
       const WorkspaceFolder(path: '/remote', targetId: 'ssh:p1'),
     ]);
 
-    final session = await repo.createSession(
+    final session = (await repo.createSession(
       ws.workspaceId,
       workingDirectory: '/remote',
-    );
+    )).session;
     expect(session.folders.first.path, '/remote');
     expect(session.folders.last.path, '/local');
   });
@@ -194,7 +194,7 @@ void main() {
       'team-a',
       targets: const {'team-lead': 'local'},
     );
-    final session = await repo.createSession(
+    final session = (await repo.createSession(
       ws.workspaceId,
       sessionTeam: 'team-a',
       rosterMembers: const [
@@ -202,7 +202,7 @@ void main() {
       ],
 
       memberClis: const {'team-lead': CliTool.claude},
-    );
+    )).session;
     expect(session.memberTargets['team-lead'], 'local');
 
     await repo.updateWorkspaceMemberTargets(
@@ -261,7 +261,7 @@ void main() {
         targets: const {'team-lead': 'local', 'dev': 'ssh:p1'},
       );
 
-      final session = await repo.createSession(
+      final session = (await repo.createSession(
         ws.workspaceId,
         sessionTeam: 'team-a',
         rosterMembers: const [
@@ -270,7 +270,7 @@ void main() {
         ],
 
         memberClis: const {'team-lead': CliTool.claude, 'dev': CliTool.claude},
-      );
+      )).session;
       expect(session.memberTargets['team-lead'], 'local');
       expect(session.memberTargets['dev'], 'ssh:p1');
     },

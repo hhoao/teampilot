@@ -215,7 +215,7 @@ abstract final class MixedTeamTaskScenario {
           kWorkerMember.id: remote.sshTargetId,
         },
       );
-      session = await repo.createSession(
+      session = (await repo.createSession(
         workspace.workspaceId,
         sessionTeam: kItMixedClaudeTeam.id,
         rosterMembers: kItMixedClaudeTeam.members,
@@ -223,7 +223,7 @@ abstract final class MixedTeamTaskScenario {
         memberClis: {
           for (final m in kItMixedClaudeTeam.members) m.id: CliTool.claude,
         },
-      );
+      )).session;
       session = (await repo.loadSessions()).firstWhere(
         (s) => s.sessionId == session!.sessionId,
       );
@@ -321,7 +321,7 @@ abstract final class MixedTeamTaskScenario {
           kWorkerMember.id: remote.sshTargetId,
         },
       );
-      session = await repo.createSession(
+      session = (await repo.createSession(
         workspace.workspaceId,
         sessionTeam: kItMixedClaudeTeam.id,
         rosterMembers: kItMixedClaudeTeam.members,
@@ -329,7 +329,7 @@ abstract final class MixedTeamTaskScenario {
         memberClis: {
           for (final m in kItMixedClaudeTeam.members) m.id: CliTool.claude,
         },
-      );
+      )).session;
       session = (await repo.loadSessions()).firstWhere(
         (s) => s.sessionId == session!.sessionId,
       );
@@ -430,7 +430,7 @@ abstract final class MixedTeamTaskScenario {
       final workspace = await repo.createWorkspace([
         WorkspaceFolder(path: AppStorage.cwd),
       ]);
-      session = await repo.createSession(
+      session = (await repo.createSession(
         workspace.workspaceId,
         sessionTeam: kItMixedClaudeTeam.id,
         rosterMembers: kItMixedClaudeTeam.members,
@@ -438,7 +438,7 @@ abstract final class MixedTeamTaskScenario {
         memberClis: {
           for (final m in kItMixedClaudeTeam.members) m.id: CliTool.claude,
         },
-      );
+      )).session;
 
       await cubit.requestOpenSession(
         SessionOpenRequest(

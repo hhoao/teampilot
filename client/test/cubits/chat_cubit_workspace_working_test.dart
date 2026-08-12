@@ -68,7 +68,7 @@ void main() {
         final workspaceB = await repo.createWorkspace([
           WorkspaceFolder(path: '/tmp/b'),
         ]);
-        final session = await repo.createSession(workspaceA.workspaceId);
+        final session = (await repo.createSession(workspaceA.workspaceId)).session;
         await cubit.loadWorkspaceData(repo);
 
         cubit.setActiveWorkspace(workspaceA.workspaceId);

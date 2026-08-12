@@ -333,18 +333,23 @@ class WorkspaceCatalog {
       if (listEquals(merged, existing.folders) && displayOut == existing.display) {
         return existing;
       }
-      await repo.updateWorkspaceFolders(existing.workspaceId, merged);
-      await repo.updateWorkspaceMetadata(existing.workspaceId, display: displayOut);
-      final updated = existing.copyWith(
-        folders: merged,
-        display: displayOut,
-        updatedAt: DateTime.now().millisecondsSinceEpoch,
+      final foldersUpdated = await repo.updateWorkspaceFolders(
+        existing.workspaceId,
+        merged,
       );
-      patchWorkspace(updated);
-      _markIndexDirty();
-      provisionTrust(existing.workspaceId);
-      await _flushIndex();
-      return updated;
+      final metaUpdated = await repo.updateWorkspaceMetadata(
+        existing.workspaceId,
+        display: displayOut,
+      );
+      final updated = metaUpdated ?? foldersUpdated;
+      if (updated != null) {
+        patchWorkspace(updated);
+        _markIndexDirty();
+        provisionTrust(existing.workspaceId);
+        await _flushIndex();
+        return updated;
+      }
+      return existing;
     }
     final workspace = await repo.createWorkspace(normalized, display: display);
     _workspaces = [..._workspaces, workspace];
@@ -391,13 +396,21 @@ class WorkspaceCatalog {
         if (listEquals(merged, existing.folders) && displayOut == existing.display) {
           return (workspaceId: existing.workspaceId, snapshot: deriveSnapshot());
         }
-        await repo.updateWorkspaceFolders(existing.workspaceId, merged);
-        await repo.updateWorkspaceMetadata(existing.workspaceId, display: displayOut);
-        patchWorkspace(existing.copyWith(folders: merged, display: displayOut,
-            updatedAt: DateTime.now().millisecondsSinceEpoch));
-        _markIndexDirty();
-        provisionTrust(existing.workspaceId);
-        await _flushIndex();
+        final foldersUpdated = await repo.updateWorkspaceFolders(
+          existing.workspaceId,
+          merged,
+        );
+        final metaUpdated = await repo.updateWorkspaceMetadata(
+          existing.workspaceId,
+          display: displayOut,
+        );
+        final updated = metaUpdated ?? foldersUpdated;
+        if (updated != null) {
+          patchWorkspace(updated);
+          _markIndexDirty();
+          provisionTrust(existing.workspaceId);
+          await _flushIndex();
+        }
         return (workspaceId: existing.workspaceId, snapshot: deriveSnapshot());
       }
     }
@@ -415,7 +428,10 @@ class WorkspaceCatalog {
     final created = await repo.createSession(workspace.workspaceId,
         sessionTeam: sessionTeamId, rosterMembers: rosterMembers, memberClis: resolvedClis,
         knownWorkspace: workspace);
-    _sessions = [..._sessions, created];
+    _sessions = [..._sessions, created.session];
+    patchWorkspace(created.workspace.copyWith(
+      sessionIds: [...created.workspace.sessionIds, created.session.sessionId],
+    ));
     _markIndexDirty();
     provisionTrust(workspace.workspaceId);
     await _flushIndex();
@@ -440,7 +456,7 @@ class WorkspaceCatalog {
     Map<String, String>? memberTargets,
   }) async {
     final ws = workspaceById(workspaceId);
-    final session = await repo.createSession(
+    final result = await repo.createSession(
       workspaceId,
       sessionTeam: sessionTeamId,
       rosterMembers: rosterMembers,
@@ -458,21 +474,21 @@ class WorkspaceCatalog {
       memberTargets: memberTargets,
       knownWorkspace: ws,
     );
-    _sessions = [..._sessions, session];
-    if (ws != null) {
-      patchWorkspace(ws.copyWith(sessionIds: [...ws.sessionIds, session.sessionId]));
-    }
+    _sessions = [..._sessions, result.session];
+    patchWorkspace(result.workspace.copyWith(
+      sessionIds: [...result.workspace.sessionIds, result.session.sessionId],
+    ));
     _markIndexDirty();
-    return (session: session, snapshot: deriveSnapshot());
+    return (session: result.session, snapshot: deriveSnapshot());
   }
 
   Future<ChatDataSnapshot> renameSession(String sessionId, String newName) async {
     await _withSession(sessionId, (current) async {
       await repo.renameSession(sessionId, newName);
-      _sessions = [
-        for (final s in _sessions)
-          if (s.sessionId == sessionId) s.copyWith(display: newName) else s,
-      ];
+      _replaceSessionInMemory(current.copyWith(
+        display: newName,
+        updatedAt: DateTime.now().millisecondsSinceEpoch,
+      ));
     });
     _markIndexDirty();
     return deriveSnapshot();

@@ -155,8 +155,8 @@ class SessionDataStore {
     String? fixedSessionId,
     List<SessionMemberBinding>? members,
     Map<String, String>? memberTargets,
-  }) {
-    return repo.createSession(
+  }) async {
+    return (await repo.createSession(
       workspaceId,
       sessionTeam: sessionTeamId,
       rosterMembers: rosterMembers,
@@ -166,7 +166,8 @@ class SessionDataStore {
       fixedSessionId: fixedSessionId,
       members: members,
       memberTargets: memberTargets,
-    );
+    ))
+        .session;
   }
 
   ChatDataSnapshot appendSession(ChatDataSnapshot base, AppSession session) {

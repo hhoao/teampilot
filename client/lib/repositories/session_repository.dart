@@ -621,7 +621,10 @@ class SessionRepository {
     );
   }
 
-  Future<AppSession> createSession(
+  /// Creates a session record, returning it together with the workspace as
+  /// persisted by the call (member pins are written when the team plan
+  /// requires it, so callers can patch in-memory snapshots without a rescan).
+  Future<({AppSession session, Workspace workspace})> createSession(
     String workspaceId, {
     String sessionTeam = '',
     List<TeamMemberConfig> rosterMembers = const [],
@@ -778,7 +781,7 @@ class SessionRepository {
       '[session-launch] createSession done '
       'session=$sessionId ms=${total.elapsedMilliseconds}',
     );
-    return session;
+    return (session: session, workspace: workspace);
   }
 
   Future<AppSession?> _readSession(

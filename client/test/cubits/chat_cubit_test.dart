@@ -400,7 +400,7 @@ void main() {
         final workspace = await repo.createWorkspace([
           WorkspaceFolder(path: '/tmp'),
         ]);
-        final session = await repo.createSession(workspace.workspaceId);
+        final session = (await repo.createSession(workspace.workspaceId)).session;
         final cubit = ChatCubit(
           executableResolver: () => 'true',
           automationRepository: testAutomationRepository(),
@@ -479,13 +479,13 @@ void main() {
         final workspace = await repo.createWorkspace([
           const WorkspaceFolder(path: '/remote', targetId: 'ssh:host'),
         ]);
-        final session = await repo.createSession(
+        final session = (await repo.createSession(
           workspace.workspaceId,
           sessionTeam: team.id,
           rosterMembers: team.members,
 
           memberClis: {for (final m in team.members) m.id: CliTool.claude},
-        );
+        )).session;
         final postFrame = PostFrameTestHarness();
         final cubit = ChatCubit(
           executableResolver: () => 'true',
@@ -532,13 +532,13 @@ void main() {
         final workspace = await repo.createWorkspace([
           WorkspaceFolder(path: '/tmp'),
         ]);
-        final session = await repo.createSession(
+        final session = (await repo.createSession(
           workspace.workspaceId,
           sessionTeam: team.id,
           rosterMembers: team.members,
 
           memberClis: {for (final m in team.members) m.id: CliTool.claude},
-        );
+        )).session;
         final postFrame = PostFrameTestHarness();
         final cubit = ChatCubit(
           executableResolver: () => 'true',
@@ -594,20 +594,20 @@ void main() {
         final workspaceB = await repo.createWorkspace([
           WorkspaceFolder(path: '/b'),
         ]);
-        final sessionA = await repo.createSession(
+        final sessionA = (await repo.createSession(
           workspaceA.workspaceId,
           sessionTeam: team.id,
           rosterMembers: team.members,
 
           memberClis: {for (final m in team.members) m.id: CliTool.claude},
-        );
-        final sessionB = await repo.createSession(
+        )).session;
+        final sessionB = (await repo.createSession(
           workspaceB.workspaceId,
           sessionTeam: team.id,
           rosterMembers: team.members,
 
           memberClis: {for (final m in team.members) m.id: CliTool.claude},
-        );
+        )).session;
         final postFrame = PostFrameTestHarness();
         final cubit = ChatCubit(
           executableResolver: () => 'true',
@@ -671,13 +671,13 @@ void main() {
         final workspace = await repo.createWorkspace([
           WorkspaceFolder(path: '/a'),
         ]);
-        final session = await repo.createSession(
+        final session = (await repo.createSession(
           workspace.workspaceId,
           sessionTeam: team.id,
           rosterMembers: team.members,
 
           memberClis: {for (final m in team.members) m.id: CliTool.claude},
-        );
+        )).session;
         final postFrame = PostFrameTestHarness();
         final cubit = ChatCubit(
           executableResolver: () => 'true',
@@ -804,13 +804,13 @@ void main() {
         final workspace = await repo.createWorkspace([
           WorkspaceFolder(path: '/a'),
         ]);
-        final session = await repo.createSession(
+        final session = (await repo.createSession(
           workspace.workspaceId,
           sessionTeam: team.id,
           rosterMembers: team.members,
 
           memberClis: {for (final m in team.members) m.id: CliTool.claude},
-        );
+        )).session;
         final postFrame = PostFrameTestHarness();
         final cubit = ChatCubit(
           executableResolver: () => 'true',
@@ -877,11 +877,11 @@ void main() {
         final workspace = await repo.createWorkspace([
           WorkspaceFolder(path: '/a'),
         ]);
-        final session = await repo.createSession(
+        final session = (await repo.createSession(
           workspace.workspaceId,
           sessionTeam: '',
           rosterMembers: const [],
-        );
+        )).session;
         final postFrame = PostFrameTestHarness();
         final cubit = ChatCubit(
           executableResolver: () => 'true',
@@ -1009,13 +1009,13 @@ void main() {
         final workspace = await repo.createWorkspace([
           WorkspaceFolder(path: '/tmp'),
         ]);
-        final session = await repo.createSession(
+        final session = (await repo.createSession(
           workspace.workspaceId,
           sessionTeam: team.id,
           rosterMembers: team.members,
 
           memberClis: {for (final m in team.members) m.id: CliTool.claude},
-        );
+        )).session;
         final postFrame = PostFrameTestHarness();
         final cubit = ChatCubit(
           executableResolver: () => 'flashskyai',
@@ -1068,13 +1068,13 @@ void main() {
       final workspace = await repo.createWorkspace([
         WorkspaceFolder(path: '/tmp'),
       ]);
-      final session = await repo.createSession(
+      final session = (await repo.createSession(
         workspace.workspaceId,
         sessionTeam: team.id,
         rosterMembers: team.members,
 
         memberClis: {for (final m in team.members) m.id: CliTool.claude},
-      );
+      )).session;
       final postFrame = PostFrameTestHarness();
       final cubit = ChatCubit(
         executableResolver: () => 'true',
@@ -1128,13 +1128,13 @@ void main() {
         final workspace = await repo.createWorkspace([
           WorkspaceFolder(path: '/tmp'),
         ]);
-        final session = await repo.createSession(
+        final session = (await repo.createSession(
           workspace.workspaceId,
           sessionTeam: team.id,
           rosterMembers: team.members,
 
           memberClis: {for (final m in team.members) m.id: CliTool.claude},
-        );
+        )).session;
         final postFrame = PostFrameTestHarness();
         final cubit = ChatCubit(
           executableResolver: () => 'true',
@@ -1197,13 +1197,13 @@ void main() {
         final workspace = await repo.createWorkspace([
           WorkspaceFolder(path: '/tmp'),
         ]);
-        final session = await repo.createSession(
+        final session = (await repo.createSession(
           workspace.workspaceId,
           sessionTeam: team.id,
           rosterMembers: team.members,
 
           memberClis: {for (final m in team.members) m.id: CliTool.claude},
-        );
+        )).session;
         final cubit = ChatCubit(
           executableResolver: () => 'true',
           automationRepository: testAutomationRepository(),

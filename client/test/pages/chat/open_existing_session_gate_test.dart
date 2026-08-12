@@ -168,7 +168,7 @@ void main() {
         final workspace = await repo.createWorkspace([
           WorkspaceFolder(path: '/tmp'),
         ]);
-        final session = await repo.createSession(workspace.workspaceId);
+        final session = (await repo.createSession(workspace.workspaceId)).session;
         await chatCubit.loadWorkspaceData(repo);
 
         final l10n = lookupAppLocalizations(const Locale('en'));
@@ -198,7 +198,7 @@ void main() {
       final workspace = await repo.createWorkspace([
         WorkspaceFolder(path: '/tmp'),
       ]);
-      final session = await repo.createSession(workspace.workspaceId);
+      final session = (await repo.createSession(workspace.workspaceId)).session;
       await chatCubit.loadWorkspaceData(repo);
 
       final l10n = lookupAppLocalizations(const Locale('en'));
@@ -228,7 +228,7 @@ void main() {
         final workspace = await repo.createWorkspace([
           WorkspaceFolder(path: '/tmp'),
         ]);
-        final session = await repo.createSession(workspace.workspaceId);
+        final session = (await repo.createSession(workspace.workspaceId)).session;
         await chatCubit.loadWorkspaceData(repo);
 
         await chatCubit.requestOpenSession(

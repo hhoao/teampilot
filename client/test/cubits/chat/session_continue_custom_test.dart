@@ -38,14 +38,14 @@ void main() {
         final workspace = await repo.createWorkspace([
           WorkspaceFolder(path: '/w'),
         ]);
-        final session = await repo.createSession(
+        final session = (await repo.createSession(
           workspace.workspaceId,
           cli: CliTool.cursor,
           provider: 'anthropic',
           model: 'claude-sonnet',
           effort: 'high',
           presetId: 'p1',
-        );
+        )).session;
         await cubit.loadWorkspaceData(repo);
 
         final ok = await cubit.setSessionContinueCustom(
@@ -76,14 +76,14 @@ void main() {
       final workspace = await repo.createWorkspace([
         WorkspaceFolder(path: '/w'),
       ]);
-      final session = await repo.createSession(
+      final session = (await repo.createSession(
         workspace.workspaceId,
         sessionTeam: 'team-1',
         rosterMembers: const [
           TeamMemberConfig(id: 'builder-0', name: 'Builder'),
         ],
         memberClis: const {'builder-0': CliTool.claude},
-      );
+      )).session;
       await cubit.loadWorkspaceData(repo);
 
       final ok = await cubit.setSessionContinueCustom(

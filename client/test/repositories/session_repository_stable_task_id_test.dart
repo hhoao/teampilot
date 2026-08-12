@@ -31,7 +31,7 @@ void main() {
       ),
     ];
 
-    final session = await repo.createSession(
+    final session = (await repo.createSession(
       workspace.workspaceId,
       sessionTeam: 'team-1',
       rosterMembers: const [
@@ -48,7 +48,7 @@ void main() {
         'team-lead': WorkspaceFolder.localTargetId,
         'builder': WorkspaceFolder.localTargetId,
       },
-    );
+    )).session;
 
     expect(session.sessionId, 'sess-1');
     expect(session.bindingFor('team-lead')!.taskId, 'fixed-lead-task');

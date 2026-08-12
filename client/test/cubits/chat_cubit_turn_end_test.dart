@@ -30,7 +30,7 @@ void main() {
     );
 
     final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/tmp')]);
-    final session = await repo.createSession(workspace.workspaceId, cli: CliTool.cursor);
+    final session = (await repo.createSession(workspace.workspaceId, cli: CliTool.cursor)).session;
     await cubit.loadWorkspaceData(repo);
     await cubit.requestOpenSession(
       SessionOpenRequest(

@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/catalog/workspace_catalog.dart';
+import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/workspace_folder.dart';
@@ -100,5 +101,81 @@ void main() {
     final fs = await repo.fs();
     final raw = await fs.readText(fs.sessionFile(ws.workspaceId, created.session.sessionId));
     expect(jsonDecode(raw!)['display'], 'New Title');
+  });
+
+  test('createWorkspaceWithFirstSession persists team pins into catalog memory', () async {
+    final tmp = await Directory.systemTemp.createTemp('catalog_team_pins_');
+    addTearDown(() => tmp.deleteSync(recursive: true));
+    final repo = SessionRepository(rootDir: tmp.path);
+    final catalog = WorkspaceCatalog(repo);
+    await catalog.loadIndex();
+    final result = await catalog.createWorkspaceWithFirstSession(
+      [const WorkspaceFolder(path: '/teamproj')],
+      sessionTeamId: 'team-a',
+      rosterMembers: const [
+        TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
+      ],
+      memberClis: const {'team-lead': CliTool.claude},
+    );
+    expect(
+      catalog.workspaceById(result.workspaceId)?.memberTargetsByTeam['team-a'],
+      {'team-lead': 'local'},
+    );
+    final onDisk = (await repo.loadWorkspaces()).single;
+    expect(onDisk.memberTargetsByTeam['team-a'], {'team-lead': 'local'});
+  });
+
+  test('createWorkspaceWithFirstSession dedup merge resets placement init in memory', () async {
+    final tmp = await Directory.systemTemp.createTemp('catalog_mix_');
+    addTearDown(() => tmp.deleteSync(recursive: true));
+    final repo = SessionRepository(rootDir: tmp.path);
+    final catalog = WorkspaceCatalog(repo);
+    await catalog.loadIndex();
+    final ws = await repo.createWorkspace([const WorkspaceFolder(path: '/mix')]);
+    await repo.updateWorkspaceMemberTargets(
+      ws.workspaceId,
+      'team-a',
+      targets: const {'m': 'local'},
+    );
+    await repo.updateWorkspaceMemberPlacement(
+      ws.workspaceId,
+      'team-a',
+      targets: const {'m': 'local'},
+    );
+    await catalog.reload();
+    expect(
+      catalog.workspaceById(ws.workspaceId)?.memberPlacementInitializedByTeam['team-a'],
+      isTrue,
+    );
+    final result = await catalog.createWorkspaceWithFirstSession([
+      const WorkspaceFolder(path: '/mix'),
+      const WorkspaceFolder(path: '/remote', targetId: 'ssh:r1'),
+    ]);
+    expect(result.workspaceId, ws.workspaceId);
+    final merged = catalog.workspaceById(ws.workspaceId);
+    expect(merged?.folders.length, 2);
+    expect(merged?.memberPlacementInitializedByTeam['team-a'], isFalse);
+    final onDisk = (await repo.loadWorkspaces()).single;
+    expect(onDisk.memberPlacementInitializedByTeam['team-a'], isFalse);
+  });
+
+  test('renameSession bumps updatedAt in memory', () async {
+    final tmp = await Directory.systemTemp.createTemp('catalog_rename_ts_');
+    addTearDown(() => tmp.deleteSync(recursive: true));
+    final repo = SessionRepository(rootDir: tmp.path);
+    final catalog = WorkspaceCatalog(repo);
+    await catalog.loadIndex();
+    final ws = await catalog.createWorkspaceWithFirstSession([const WorkspaceFolder(path: '/p')]);
+    final created = await catalog.createSession(ws.workspaceId);
+    await Future<void>.delayed(const Duration(milliseconds: 5));
+    final before = catalog.sessionById(created.session.sessionId)!.updatedAt;
+    expect(before, isNonZero);
+    final snap = await catalog.renameSession(created.session.sessionId, 'Renamed');
+    final after = catalog.sessionById(created.session.sessionId)!.updatedAt;
+    expect(after, greaterThan(before));
+    expect(
+      snap.sessions.firstWhere((s) => s.sessionId == created.session.sessionId).updatedAt,
+      after,
+    );
   });
 }

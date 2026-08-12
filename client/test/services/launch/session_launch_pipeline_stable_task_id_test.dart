@@ -397,7 +397,7 @@ class _CapturingSessionRepository extends Fake implements SessionRepository {
   }
 
   @override
-  Future<AppSession> createSession(
+  Future<({AppSession session, Workspace workspace})> createSession(
     String workspaceId, {
     String sessionTeam = '',
     List<TeamMemberConfig> rosterMembers = const [],
@@ -423,7 +423,7 @@ class _CapturingSessionRepository extends Fake implements SessionRepository {
       ),
     );
     await createGate?.future;
-    return AppSession(
+    final session = AppSession(
       sessionId: fixedSessionId ?? 'generated',
       workspaceId: workspaceId,
       sessionTeam: sessionTeam,
@@ -431,6 +431,12 @@ class _CapturingSessionRepository extends Fake implements SessionRepository {
       memberTargets: memberTargets ?? const {},
       createdAt: 1,
       updatedAt: 1,
+    );
+    return (
+      session: session,
+      workspace:
+          knownWorkspace ??
+          Workspace(workspaceId: workspaceId, createdAt: 1),
     );
   }
 }

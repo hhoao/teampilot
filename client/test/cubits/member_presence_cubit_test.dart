@@ -463,9 +463,9 @@ void main() {
           repo.createWorkspace([WorkspaceFolder(path: '/tmp')]).then((
             workspace,
           ) async {
-            final localSession = await repo.createSession(
+            final localSession = (await repo.createSession(
               workspace.workspaceId,
-            );
+            )).session;
             await chatCubit.requestOpenSession(
               SessionOpenRequest(
                 session: localSession,

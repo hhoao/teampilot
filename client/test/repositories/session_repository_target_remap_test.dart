@@ -33,7 +33,7 @@ void main() {
     final beforeWs = (await repo.loadWorkspaces()).single;
     expect(beforeWs.memberPlacementInitializedByTeam['team-a'], isTrue);
 
-    final session = await repo.createSession(
+    final session = (await repo.createSession(
       ws.workspaceId,
       sessionTeam: 'team-a',
       rosterMembers: const [
@@ -42,7 +42,7 @@ void main() {
       ],
 
       memberClis: const {'team-lead': CliTool.claude, 'dev': CliTool.claude},
-    );
+    )).session;
     expect(session.folders.any((f) => f.targetId == 'ssh:old'), isTrue);
     expect(session.memberTargets['dev'], 'ssh:old');
 

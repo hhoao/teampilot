@@ -35,7 +35,7 @@ Future<OpenSimpleTurnResult> openSimpleTurnSession({
             RunningConnectedFakeShell(executable: executable),
   );
   final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/tmp')]);
-  final session = await repo.createSession(workspace.workspaceId, cli: cli);
+  final session = (await repo.createSession(workspace.workspaceId, cli: cli)).session;
   await cubit.loadWorkspaceData(repo);
   await cubit.requestOpenSession(
     SessionOpenRequest(

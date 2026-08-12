@@ -29,11 +29,11 @@ void main() {
       ),
     );
 
-    final session = await repo.createSession(
+    final session = (await repo.createSession(
       workspace.workspaceId,
       cli: params.cli,
       continueOverrides: params.continueOverrides,
-    );
+    )).session;
 
     expect(session.continueOverrides.dangerouslySkipPermissions, isTrue);
     expect(

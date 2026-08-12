@@ -74,12 +74,12 @@ void main() {
     final sessionIds = <String>[];
 
     Future<void> openSession() async {
-      final session = await repo.createSession(
+      final session = (await repo.createSession(
         workspaceId,
         sessionTeam: _team.id,
         rosterMembers: _team.members,
         memberClis: {for (final m in _team.members) m.id: CliTool.claude},
-      );
+      )).session;
       sessionIds.add(session.sessionId);
       await chat.requestOpenSession(
         SessionOpenRequest(
