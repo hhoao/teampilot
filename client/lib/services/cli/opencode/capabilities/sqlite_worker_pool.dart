@@ -3,6 +3,7 @@ import 'dart:isolate';
 
 import 'package:meta/meta.dart';
 import 'package:sqlite3/sqlite3.dart';
+import 'package:sqlite3_connection_pool/sqlite3_connection_pool.dart';
 
 /// opencode SQLite 查询函数签名。
 ///
@@ -165,6 +166,8 @@ class _SqliteWorker {
 
   void close() {
     _exited = true;
+    // 通知 worker 关池退出(而不是等空闲超时),再断开客户端端口。
+    _requestPort?.send(const _CloseRequest());
     _control.close();
     _responses.close();
     _failAllPending(StateError('opencode sqlite worker closed: $dbPath'), null);
@@ -215,12 +218,26 @@ class _WorkerExited {
   const _WorkerExited();
 }
 
-/// Worker 入口(顶层函数,可被 Isolate.spawn):打开一个只读连接并常驻,
-/// 处理查询请求,空闲超时后关闭退出。
+/// Worker 入口(顶层函数,可被 Isolate.spawn):连接由官方
+/// [SqliteConnectionPool] 托管(每个 dbPath 一个 Rust 全局池,连接跨查询
+/// 保持热、可并行读),本 worker 作为"非 UI isolate 宿主"执行查询块
+/// (多 SELECT + 片段拼装)与租约管理,空闲超时后关池退出。
 void _sqliteWorkerEntry(_SpawnArgs args) {
-  Database? db;
+  final SqliteConnectionPool pool;
   try {
-    db = sqlite3.open(args.dbPath, mode: OpenMode.readOnly);
+    pool = SqliteConnectionPool.open(
+      name: args.dbPath,
+      openConnections: () {
+        final writer = _openReadOnlyConnection(args.dbPath);
+        final reader = _openReadOnlyConnection(args.dbPath);
+        return PoolConnections(
+          writer,
+          [reader],
+          // 指纹/计数查询重复执行,LRU 语句缓存避免重复 prepare。
+          preparedStatementCacheSize: 16,
+        );
+      },
+    );
   } on Object catch (error, st) {
     args.control.send(_SpawnError(error, st));
     return;
@@ -235,23 +252,56 @@ void _sqliteWorkerEntry(_SpawnArgs args) {
     idleTimer = Timer(Duration(milliseconds: args.idleTimeoutMillis), () {
       args.responses.send(const _WorkerExited());
       requests.close();
-      db?.close();
-      db = null;
+      pool.close();
     });
   }
 
   armIdleTimer();
+  // 异步租约要求串行队列:同一时刻最多一个查询块在跑。
+  Future<void> chain = Future<void>.value();
   requests.listen((message) {
     if (message is _QueryRequest) {
-      armIdleTimer();
-      Object? result;
-      try {
-        result = message.query(db!, message.args);
-      } on Object {
-        // 与旧 Isolate.run 语义一致:查询失败 → null,不抛出。
-        result = null;
-      }
-      args.responses.send(_QueryResponse(message.requestId, result));
+      chain = chain.then((_) => _handleQuery(args, pool, message));
+      return;
+    }
+    if (message is _CloseRequest) {
+      pool.close();
+      requests.close();
     }
   });
+}
+
+Database _openReadOnlyConnection(String dbPath) {
+  final db = sqlite3.open(dbPath, mode: OpenMode.readOnly);
+  db.execute('PRAGMA query_only = true');
+  return db;
+}
+
+/// 在 worker isolate 上执行一个查询块:从池租连接 → 在
+/// [ConnectionLease.unsafeAccess] 临界区内同步跑 [SqliteQueryFn]
+/// (多 SELECT + 拼装)→ 还租。失败 → null。
+Future<void> _handleQuery(
+  _SpawnArgs args,
+  SqliteConnectionPool pool,
+  _QueryRequest message,
+) async {
+  Object? result;
+  ConnectionLease? lease;
+  try {
+    lease = await pool.reader();
+    result = await lease.unsafeAccess(
+      (connection) => message.query(connection.database, message.args),
+    );
+  } on Object {
+    // 与旧 Isolate.run 语义一致:查询失败 → null,不抛出。
+    result = null;
+  } finally {
+    lease?.returnLease();
+  }
+  args.responses.send(_QueryResponse(message.requestId, result));
+}
+
+/// 显式关池请求(客户端 dispose 时发送,worker 立即关池退出)。
+class _CloseRequest {
+  const _CloseRequest();
 }

@@ -81,6 +81,7 @@ dependencies:
   panes:
     path: packages/panes
   photo_view: ^0.15.0
+  sqlite3_connection_pool: ^0.2.9
 dependency_overrides:
   flutter_pty_new:
     path: packages/flutter_pty_new
