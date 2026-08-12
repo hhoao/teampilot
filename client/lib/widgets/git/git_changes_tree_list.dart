@@ -149,9 +149,9 @@ class _GitChangesTreeListState extends State<GitChangesTreeList> {
                           noneSelected: widget.treeView.noneSelected,
                           onToggleAll: () {
                             if (widget.treeView.allSelected) {
-                              unawaited(widget.cubit.selectNone());
+                              unawaited(widget.cubit.selectNone(GitChangesSection.changes));
                             } else {
-                              unawaited(widget.cubit.selectAll());
+                              unawaited(widget.cubit.selectAll(GitChangesSection.changes));
                             }
                           },
                         ),
@@ -189,8 +189,8 @@ class _GitChangesTreeListState extends State<GitChangesTreeList> {
         subtreeTotalCount: row.subtreeTotalCount,
         cubit: widget.cubit,
         hoverEnabled: _hoverEnabled,
-        onStage: () => unawaited(widget.cubit.selectFolder(row.folderPath!)),
-        onUnstage: () => unawaited(widget.cubit.deselectFolder(row.folderPath!)),
+        onStage: () => unawaited(widget.cubit.selectFolder(row.folderPath!, GitChangesSection.changes)),
+        onUnstage: () => unawaited(widget.cubit.deselectFolder(row.folderPath!, GitChangesSection.changes)),
         onDiscardFolder: () => unawaited(_confirmDiscardFolder(row.folderPath!)),
       );
     }

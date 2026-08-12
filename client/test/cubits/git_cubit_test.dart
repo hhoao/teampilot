@@ -153,8 +153,8 @@ void main() {
     );
     final cubit = GitCubit(service: service);
     await cubit.setRepoRoot('/repo');
-    await cubit.selectNone(); // clear the auto-selection first
-    await cubit.selectFolder('docs');
+    await cubit.selectNone(GitChangesSection.changes); // clear the auto-selection first
+    await cubit.selectFolder('docs', GitChangesSection.changes);
 
     expect(cubit.state.selectedPaths, {'docs/a.txt', 'docs/b.txt'});
     await cubit.close();
@@ -181,7 +181,7 @@ void main() {
     final cubit = GitCubit(service: service);
     await cubit.setRepoRoot('/repo'); // all auto-selected
 
-    await cubit.deselectFolder('docs');
+    await cubit.deselectFolder('docs', GitChangesSection.changes);
 
     expect(cubit.state.selectedPaths, {'b.txt'});
     await cubit.close();
@@ -300,12 +300,108 @@ void main() {
     await cubit.deselectPath(_unstaged.path);
     expect(cubit.state.selectedPaths, isEmpty);
 
-    // next refresh adds a NEW file c.txt (auto-checked), b.txt stays unchecked
+    // next refresh adds a NEW tracked file c.txt (auto-checked), an index-staged
+    // file staged.txt (auto-checked), and a NEW untracked file new.ts (NOT
+    // auto-checked). b.txt stays unchecked.
     service.statusToReturn = _repoWith(
-      unstaged: const [_unstaged, GitFileChange(path: 'c.txt', kind: GitChangeKind.modified, staged: false)],
+      unstaged: const [
+        _unstaged,
+        GitFileChange(
+          path: 'c.txt',
+          kind: GitChangeKind.modified,
+          staged: false,
+        ),
+        GitFileChange(
+          path: 'new.ts',
+          kind: GitChangeKind.untracked,
+          staged: false,
+        ),
+      ],
+      staged: const [
+        GitFileChange(path: 'staged.txt', kind: GitChangeKind.added, staged: true),
+      ],
     );
     await cubit.refresh();
-    expect(cubit.state.selectedPaths, {'c.txt'});
+    expect(cubit.state.selectedPaths, {'c.txt', 'staged.txt'});
+    await cubit.close();
+  });
+
+  test('untracked files are not auto-checked on first load', () async {
+    final service = _FakeGitService(
+      statusToReturn: _repoWith(
+        unstaged: const [
+          _unstaged,
+          GitFileChange(
+            path: 'new.ts',
+            kind: GitChangeKind.untracked,
+            staged: false,
+          ),
+        ],
+      ),
+    );
+    final cubit = GitCubit(service: service);
+    await cubit.setRepoRoot('/repo');
+
+    expect(cubit.state.selectedPaths, {'b.txt'}); // new.ts NOT selected
+    expect(cubit.state.unversionedTreeView.totalCount, 1);
+    expect(cubit.state.changesTreeView.totalCount, 1);
+    await cubit.close();
+  });
+
+  test('selectAll on a section only selects that section', () async {
+    final service = _FakeGitService(
+      statusToReturn: _repoWith(
+        unstaged: const [
+          _unstaged,
+          GitFileChange(
+            path: 'new.ts',
+            kind: GitChangeKind.untracked,
+            staged: false,
+          ),
+        ],
+      ),
+    );
+    final cubit = GitCubit(service: service);
+    await cubit.setRepoRoot('/repo'); // b.txt auto-selected, new.ts not
+
+    await cubit.selectNone(GitChangesSection.changes);
+    expect(cubit.state.selectedPaths, isEmpty);
+
+    await cubit.selectAll(GitChangesSection.unversioned);
+    expect(cubit.state.selectedPaths, {'new.ts'});
+
+    await cubit.selectAll(GitChangesSection.changes);
+    expect(cubit.state.selectedPaths, {'new.ts', 'b.txt'});
+    await cubit.close();
+  });
+
+  test('selectFolder is scoped to its section', () async {
+    final service = _FakeGitService(
+      statusToReturn: _repoWith(
+        unstaged: const [
+          GitFileChange(
+            path: 'docs/a.md',
+            kind: GitChangeKind.modified,
+            staged: false,
+          ),
+          GitFileChange(
+            path: 'docs/new.md',
+            kind: GitChangeKind.untracked,
+            staged: false,
+          ),
+        ],
+      ),
+    );
+    final cubit = GitCubit(service: service);
+    await cubit.setRepoRoot('/repo');
+    await cubit.selectNone(GitChangesSection.changes);
+    await cubit.selectNone(GitChangesSection.unversioned);
+
+    await cubit.selectFolder('docs', GitChangesSection.changes);
+    expect(cubit.state.selectedPaths, {'docs/a.md'});
+
+    await cubit.selectFolder('docs', GitChangesSection.unversioned);
+    expect(cubit.state.selectedPaths, {'docs/a.md', 'docs/new.md'});
     await cubit.close();
   });
 
@@ -314,7 +410,7 @@ void main() {
     final cubit = GitCubit(service: service);
     await cubit.setRepoRoot('/repo');
     cubit.setCommitMessage('msg'); // setCommitMessage 已存在（面板在用）
-    await cubit.selectAll();
+    await cubit.selectAll(GitChangesSection.changes);
     service.calls.clear();
 
     final ok = await cubit.commit();
