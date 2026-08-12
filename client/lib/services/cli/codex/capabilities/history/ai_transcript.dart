@@ -251,8 +251,10 @@ bool _appendFromResponseItem(
             AiToolCallPart(
               toolCallId: callId,
               toolName: toolName,
+              // 统一 G2 语义：input 为 Map 或 JSON 字符串 → args Map；
+              // 非 JSON 字符串 → args=null，argsText 保留原样。
               argsText: input is String ? input : null,
-              args: input is Map ? _parseArgs(input) : null,
+              args: _parseArgs(input),
             ),
           ],
           createdAt: timestamp,
