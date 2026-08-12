@@ -57,24 +57,6 @@ class AiHistoryLiveRefreshController {
   /// Meta 重试的固定周期定时器与"探测已发出、等待返回"标志。
   bool _metaProbePending = false;
 
-  /// 在途的 watch-meta 解析(locate 查询链)。probe 与 reload 共享单飞:
-  /// 任意时刻每个 controller 最多一条 locate 链,避免
-  /// `opencode-sqlite-read` 多链并发。
-  Future<AiHistoryWatchMeta?>? _metaResolveInFlight;
-
-  Future<AiHistoryWatchMeta?> _resolveMetaOnce() {
-    final existing = _metaResolveInFlight;
-    if (existing != null) return existing;
-    final future = _resolveWatchMeta();
-    _metaResolveInFlight = future;
-    future.whenComplete(() {
-      if (identical(_metaResolveInFlight, future)) {
-        _metaResolveInFlight = null;
-      }
-    }).ignore();
-    return future;
-  }
-
   /// True while [start] / [ensureStarted] has begun and [stop] has not finished.
   bool get isActive => _started;
 
@@ -157,9 +139,8 @@ class AiHistoryLiveRefreshController {
     }
     if (_metaRetryTimer != null || _metaProbePending) return;
     final interval = _metaRetryIntervalOverride ?? _pollIntervalFor(_fs());
-    // 固定节奏重试 watch meta:只做轻量探测(经 [_resolveMetaOnce] 与
-    // reload 共享同一在途 locate 链),不重跑 seat 软重载;meta 出现后
-    // 再走一次正常 reload 挂变化信号。
+    // 固定节奏重试 watch meta:只做轻量探测,不重跑 seat 软重载;meta
+    // 出现后再走一次正常 reload 挂变化信号。
     _metaRetryTimer = Timer.periodic(interval, (_) {
       if (!_started || _meta != null) {
         _cancelMetaRetry();
@@ -174,7 +155,7 @@ class AiHistoryLiveRefreshController {
   /// (此时 attach 变化信号)。
   Future<void> _probeMetaOnly() async {
     try {
-      final next = await _resolveMetaOnce();
+      final next = await _resolveWatchMeta();
       if (!_started) return;
       if (next != null) {
         // 不预置 _meta:交给 _requestReload 以 previous=null 语义 rearm 信号。
@@ -239,8 +220,8 @@ class AiHistoryLiveRefreshController {
         final previous = _meta;
         try {
           // Probe 已解析出 meta 时直接复用,避免同一轮查询链跑两遍;
-          // 未预解析时经 [_resolveMetaOnce] 单飞(probe/reload 共享)。
-          final next = preResolvedMeta ?? await _resolveMetaOnce();
+          // 未预解析时照常自行解析(previous 保持 null → 触发 rearm)。
+          final next = preResolvedMeta ?? await _resolveWatchMeta();
           if (!_started) break;
           if (next != null) {
             // Rearm only when a live signal already exists and watch targets
