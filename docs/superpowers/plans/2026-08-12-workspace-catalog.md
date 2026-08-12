@@ -97,9 +97,9 @@ git commit -m "refactor(repo): slim SessionRepository - drop full scans, dedup, 
 
 **Files:**
 - Create: `client/lib/services/catalog/workspace_catalog.dart`
-- Delete: `client/lib/cubits/chat/session_data_store.dart`（本任务内仅删除；其职责移入 catalog）
+- Modify: `client/lib/cubits/chat/session_data_store.dart`（本任务仅把 `ChatDataSnapshot` 定义迁入 catalog 文件，并改为从 catalog import；`SessionDataStore` 本体保留到 Task 5 才删除——保证每任务收尾 `flutter analyze` 全绿）
 - Create: `client/test/services/catalog/workspace_catalog_test.dart`
-- Modify: `client/test/cubits/chat/session_data_store_test.dart`（内容迁移到新测试后删除该文件）
+- Modify: `client/test/cubits/chat/session_data_store_test.dart`（内容迁移到新测试后保留原文件至 Task 5 删除，任务内先验证新测试通过即可）
 
 **Interfaces:**
 - Consumes: `SessionRepository`（Task 1 后的形态）、`ChatDataSnapshot`（`client/lib/cubits/chat/session_data_store.dart:17-37` 现定义，本任务移到 catalog 文件同目录并保留类名）、`LockPool`（`client/lib/utils/lock_pool.dart`）。
@@ -149,7 +149,7 @@ class WorkspaceCatalog {
 
 - [ ] **Step 1: 迁移 `ChatDataSnapshot` + 写失败测试**
 
-1. 把 `client/lib/cubits/chat/session_data_store.dart` 中的 `ChatDataSnapshot`（17-37）与 `SessionDataStore` 的 scope/derive 逻辑（42-102：`_scopeSessionsToSelectedTeam`、`_selectedTeamId`、`_resetSessionHydration`、`_markAllWorkspacesHydrated`、`markWorkspacesSessionsHydrated`、`sessionsLoadedForWorkspace`、`setScope`、`_computeVisibleSessions`、`_computeVisibleWorkspaces`、`deriveSnapshot`）搬到 `client/lib/services/catalog/workspace_catalog.dart`，包路径改为 `../../services/...` 相关 import。
+1. 把 `client/lib/cubits/chat/session_data_store.dart` 中的 `ChatDataSnapshot`（17-37）定义搬到 `client/lib/services/catalog/workspace_catalog.dart`；`session_data_store.dart` 改为 `import '../../services/catalog/workspace_catalog.dart' show ChatDataSnapshot;`（`SessionDataStore` 及其 scope/derive 逻辑保留原位，直到 Task 5 删除该文件）。catalog 文件本任务内也实现自己的 scope/derive（从 SessionDataStore 拷贝逻辑），新测试针对 catalog。
 2. 写测试 `client/test/services/catalog/workspace_catalog_test.dart`：
 
 ```dart
@@ -283,15 +283,14 @@ class WorkspaceCatalog {
 `cd client && flutter test test/services/catalog/workspace_catalog_test.dart`
 Expected: PASS（4 个用例）。
 
-- [ ] **Step 5: 删除旧文件**
+- [ ] **Step 5: 保持旧文件可编译**
 
-删除 `client/lib/cubits/chat/session_data_store.dart` 与 `client/test/cubits/chat/session_data_store_test.dart`。此时 `chat_cubit.dart` 等引用会编译失败——本任务不修复（Task 5 处理），只要求 `flutter analyze` 对该文件自身的报错可接受。**例外**：若 `session_data_store_test.dart` 有独有断言未迁移，先迁再删。
+`session_data_store.dart` 保留（Task 5 删除）。此时 `chat_cubit.dart` 仍用旧 `SessionDataStore`，不产生编译错误。
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add client/lib/services/catalog/workspace_catalog.dart client/test/services/catalog/workspace_catalog_test.dart
-git rm client/lib/cubits/chat/session_data_store.dart client/test/cubits/chat/session_data_store_test.dart
+git add client/lib/services/catalog/workspace_catalog.dart client/test/services/catalog/workspace_catalog_test.dart client/lib/cubits/chat/session_data_store.dart
 git commit -m "feat(catalog): WorkspaceCatalog core - memory state, scope, hydration, accessors"
 ```
 
@@ -760,6 +759,9 @@ git commit -m "feat(trust): share git-root walk across tools, parallel parent lo
 - Modify: `client/lib/cubits/chat_cubit.dart`
 - Modify: `client/lib/cubits/chat/session_launch_host.dart`
 - Modify: `client/lib/cubits/chat/session_launch_service.dart`
+- Delete: `client/lib/cubits/chat/session_data_store.dart`（ChatCubit 迁移完成后删除）
+- Delete: `client/test/cubits/chat/session_data_store_test.dart`
+- Delete: `client/test/cubits/session_data_store_personal_test.dart`（若引用旧类）
 - Modify: `client/lib/cubits/chat/model/session_create_request.dart`
 - Modify: `client/lib/cubits/chat/model/session_open_request.dart`
 - Modify: `client/lib/cubits/chat/session_continue_overrides_controller.dart`
