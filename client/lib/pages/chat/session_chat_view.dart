@@ -19,11 +19,13 @@ import '../../cubits/member_presence_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_session.dart';
 import '../../models/cli_preset.dart';
+import '../../models/config_bundle.dart';
 import '../../models/landing_launch_context.dart';
 import '../../models/member_presence.dart';
 import '../../models/team_config.dart';
 import '../../models/workspace.dart';
 import '../../models/workspace_launch_context.dart';
+import '../../repositories/workspace_project_config_repository.dart';
 import '../../services/ai/headless_ai_service.dart';
 import '../../services/cli/preset_resolver.dart';
 import '../../services/commands/key_chord.dart';
@@ -82,6 +84,7 @@ class SessionChatView extends StatefulWidget {
     this.isMailboxUnread,
     this.peekContinueChannel,
     this.routeActive = true,
+    this.projectConfigRepository,
     super.key,
   });
 
@@ -109,6 +112,9 @@ class SessionChatView extends StatefulWidget {
   /// (warm keep-alive). Task 7 plumbs this from the workspace route scope.
   final bool routeActive;
 
+  /// Injectable for tests; defaults to the app storage-backed repository.
+  final WorkspaceProjectConfigRepository? projectConfigRepository;
+
   @override
   State<SessionChatView> createState() => _SessionChatViewState();
 }
@@ -130,6 +136,12 @@ class _SessionChatViewState extends State<SessionChatView> {
   final Map<String, String> _mailboxQueuedSeats = {};
   var _mailboxQueuedClearToken = 0;
   var _enhancing = false;
+
+  /// Workspace-layer bundle (project-config.json) so the review compose slash
+  /// menu shows the same skills/plugins/MCP as the landing compose.
+  ConfigBundle _workspaceBundle = const ConfigBundle();
+  int _workspaceBundleGeneration = 0;
+  late final WorkspaceProjectConfigRepository _projectConfigRepository;
 
   /// Host-owned Timer for [historyAwaitingIdleGrace]; latch lives on the seat.
   Timer? _awaitingIdleGraceTimer;
@@ -165,8 +177,25 @@ class _SessionChatViewState extends State<SessionChatView> {
       );
     }
     _controller.addListener(_onComposeChanged);
+    _projectConfigRepository =
+        widget.projectConfigRepository ?? WorkspaceProjectConfigRepository();
     _bindSeat();
     _loadHistory();
+    unawaited(_loadWorkspaceProjectBundle());
+  }
+
+  Future<void> _loadWorkspaceProjectBundle() async {
+    final generation = ++_workspaceBundleGeneration;
+    try {
+      final config = await _projectConfigRepository.load(
+        widget.session.workspaceId,
+      );
+      if (!mounted || generation != _workspaceBundleGeneration) return;
+      setState(() => _workspaceBundle = config.bundle);
+    } on Object {
+      if (!mounted || generation != _workspaceBundleGeneration) return;
+      setState(() => _workspaceBundle = const ConfigBundle());
+    }
   }
 
   void _bindSeat() {
@@ -195,6 +224,9 @@ class _SessionChatViewState extends State<SessionChatView> {
   @override
   void didUpdateWidget(covariant SessionChatView oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.session.workspaceId != widget.session.workspaceId) {
+      unawaited(_loadWorkspaceProjectBundle());
+    }
     final seatChanged =
         oldWidget.session.sessionId != widget.session.sessionId ||
         oldWidget.selectedMemberId != widget.selectedMemberId ||
@@ -1066,6 +1098,7 @@ class _SessionChatViewState extends State<SessionChatView> {
                               isSubmitting: _isSubmitting,
                               isEnhancing: _enhancing,
                               workspaceRoot: _workspaceRoot,
+                              workspaceBundle: _workspaceBundle,
                               askCardVisible: askCardVisible,
                               launchError: widget.launchError,
                               onRemapDeadTarget: widget.onRemapDeadTarget,
