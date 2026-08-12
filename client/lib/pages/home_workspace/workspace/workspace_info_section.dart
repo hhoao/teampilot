@@ -97,7 +97,7 @@ class WorkspaceInfoSection extends StatelessWidget {
             child: WorkspaceRootSandboxEnvOptInCard(workspace: live),
           ),
           const SizedBox(height: 12),
-          WorkspaceFoldersSection(workspace: live, lockTargets: true),
+          WorkspaceFoldersSection(workspace: live, lockTargets: false),
           // Placement is configured for all topologies; section lists teams that
           // already have remembered targets (local/remote/mixed).
           const SizedBox(height: 12),
