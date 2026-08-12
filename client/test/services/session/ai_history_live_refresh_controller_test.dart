@@ -238,7 +238,7 @@ void main() {
 
     expect(lastSignal, isNotNull);
     expect(lastSignal!.started, isTrue);
-    expect(pollIntervals, [const Duration(milliseconds: 1200)]);
+    expect(pollIntervals, [const Duration(milliseconds: 2000)]);
 
     messagesBySession[session.sessionId] = messages(3);
     lastSignal!.fire();
@@ -401,7 +401,7 @@ void main() {
     expect(cubit.state.totalMessageCount, 2);
   });
 
-  test('FsWatcher poll interval is 750ms', () async {
+  test('poll interval is the fixed 2s cadence', () async {
     final session = simpleSession();
     messagesBySession[session.sessionId] = messages(1);
     locator.emitBundle = true;
@@ -418,7 +418,7 @@ void main() {
     );
     await controller.start();
 
-    expect(pollIntervals, [const Duration(milliseconds: 750)]);
+    expect(pollIntervals, [const Duration(milliseconds: 2000)]);
     await controller.stop();
   });
 

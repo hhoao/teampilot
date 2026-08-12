@@ -127,6 +127,10 @@ class _SessionChatViewState extends State<SessionChatView> {
   final _headlessAi = HeadlessAiService();
   final _subagentPreview = SubagentPreviewController();
   AiHistoryLiveRefreshController? _liveRefresh;
+
+  /// 创建 [_liveRefresh] 时的 seat 作用域标识;作用域未变时复用 controller,
+  /// 避免 working 状态翻转 / load 完成回调反复"停旧建新"。
+  String? _liveRefreshScope;
   AiHistorySeat? _seat;
   CliTaskBoardController? _taskBoardController;
 
@@ -304,6 +308,7 @@ class _SessionChatViewState extends State<SessionChatView> {
     _voice.dispose();
     final live = _liveRefresh;
     _liveRefresh = null;
+    _liveRefreshScope = null;
     unawaited(live?.stop() ?? Future<void>.value());
     _taskBoardController?.dispose();
     _taskBoardController = null;
@@ -443,6 +448,16 @@ class _SessionChatViewState extends State<SessionChatView> {
       await _liveRefresh?.stop();
       return;
     }
+    // 复用:seat 作用域未变时直接 ensureStarted(幂等),不再重建 controller。
+    // 旧实现每次调用都"停旧建新",agent 活跃期 working 状态翻转频繁,
+    // 同一时刻会并存多个 controller,且被停实例的在途查询仍会跑完。
+    final scope = '${widget.session.sessionId}|${widget.selectedMemberId}'
+        '|${widget.team?.id ?? ''}|${widget.workspace.workspaceId}';
+    if (_liveRefresh != null && _liveRefreshScope == scope) {
+      await _liveRefresh!.ensureStarted(skipInitialRefresh: true);
+      if (mounted) setState(() {});
+      return;
+    }
     try {
       final historyCubit = context.read<AiHistoryCubit>();
       final loader =
@@ -469,6 +484,7 @@ class _SessionChatViewState extends State<SessionChatView> {
         return;
       }
       await _liveRefresh?.stop();
+      _liveRefreshScope = scope;
       _liveRefresh = AiHistoryLiveRefreshController(
         seat: seat,
         fs: () => roots.filesystem,
@@ -497,6 +513,7 @@ class _SessionChatViewState extends State<SessionChatView> {
   Future<void> _stopLiveRefreshForSeatChange() async {
     final previous = _liveRefresh;
     _liveRefresh = null;
+    _liveRefreshScope = null;
     await previous?.stop();
     if (mounted) setState(() {});
   }

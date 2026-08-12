@@ -58,6 +58,24 @@ class AiHistoryLiveRefreshController {
   int _metaRetryBackoff = 0;
   bool _metaProbePending = false;
 
+  /// 在途的 watch-meta 解析(locate 查询链)。probe 与 reload 共享单飞:
+  /// 任意时刻每个 controller 最多一条 locate 链,避免
+  /// `opencode-sqlite-read` 多链并发。
+  Future<AiHistoryWatchMeta?>? _metaResolveInFlight;
+
+  Future<AiHistoryWatchMeta?> _resolveMetaOnce() {
+    final existing = _metaResolveInFlight;
+    if (existing != null) return existing;
+    final future = _resolveWatchMeta();
+    _metaResolveInFlight = future;
+    future.whenComplete(() {
+      if (identical(_metaResolveInFlight, future)) {
+        _metaResolveInFlight = null;
+      }
+    }).ignore();
+    return future;
+  }
+
   /// True while [start] / [ensureStarted] has begun and [stop] has not finished.
   bool get isActive => _started;
 
@@ -102,9 +120,7 @@ class AiHistoryLiveRefreshController {
   Future<void> refreshNow() => _requestReload();
 
   Duration _pollIntervalFor(Filesystem filesystem) {
-    return filesystem is FsWatcher
-        ? const Duration(milliseconds: 750)
-        : const Duration(milliseconds: 1200);
+    return const Duration(milliseconds: 2000);
   }
 
   Future<void> _attachSignal() async {
@@ -168,7 +184,7 @@ class AiHistoryLiveRefreshController {
   /// (此时 attach 变化信号)。
   Future<void> _probeMetaOnly() async {
     try {
-      final next = await _resolveWatchMeta();
+      final next = await _resolveMetaOnce();
       if (!_started) return;
       if (next != null) {
         _metaRetryBackoff = 0;
@@ -190,7 +206,10 @@ class AiHistoryLiveRefreshController {
     }
   }
 
-  bool _metaWatchChanged(AiHistoryWatchMeta? previous, AiHistoryWatchMeta next) {
+  bool _metaWatchChanged(
+    AiHistoryWatchMeta? previous,
+    AiHistoryWatchMeta next,
+  ) {
     if (previous == null) return true;
     if (previous.changeWatchRoot != next.changeWatchRoot) return true;
     final a = previous.cacheTokenPaths;
@@ -212,16 +231,13 @@ class AiHistoryLiveRefreshController {
       final last = _lastReloadAt;
       if (last != null && now.difference(last) < reloadMinInterval) {
         _reloadQueued = true;
-        _throttleTimer ??= Timer(
-          reloadMinInterval - now.difference(last),
-          () {
-            _throttleTimer = null;
-            if (_started && _reloadQueued) {
-              _reloadQueued = false;
-              unawaited(_requestReload());
-            }
-          },
-        );
+        _throttleTimer ??= Timer(reloadMinInterval - now.difference(last), () {
+          _throttleTimer = null;
+          if (_started && _reloadQueued) {
+            _reloadQueued = false;
+            unawaited(_requestReload());
+          }
+        });
         return;
       }
       _lastReloadAt = now;
@@ -238,8 +254,8 @@ class AiHistoryLiveRefreshController {
         final previous = _meta;
         try {
           // Probe 已解析出 meta 时直接复用,避免同一轮查询链跑两遍;
-          // 未预解析时照常自行解析(previous 保持 null → 触发 rearm)。
-          final next = preResolvedMeta ?? await _resolveWatchMeta();
+          // 未预解析时经 [_resolveMetaOnce] 单飞(probe/reload 共享)。
+          final next = preResolvedMeta ?? await _resolveMetaOnce();
           if (!_started) break;
           if (next != null) {
             // Rearm only when a live signal already exists and watch targets
