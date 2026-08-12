@@ -94,6 +94,26 @@ void main() {
         find.text(l10n.workspaceFoldersAddOnAnotherMachine),
         findsNothing,
       );
+      // The row target chip is a plain label when locked, not a TextButton.
+      expect(find.widgetWithText(TextButton, 'This device'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'no unused machine candidates hides Add-on-another-machine',
+    (tester) async {
+      final controller = await _controllerWithSshProfiles(const []);
+      await _pumpEditor(
+        tester,
+        controller: controller,
+        folders: const [WorkspaceFolder(path: '/proj')],
+      );
+
+      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+      expect(
+        find.text(l10n.workspaceFoldersAddOnAnotherMachine),
+        findsNothing,
+      );
     },
   );
 
