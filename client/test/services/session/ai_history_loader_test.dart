@@ -667,8 +667,11 @@ void main() {
       memberId: '',
       launchContext: ctx,
     );
-    expect(identical(second.messages, first.messages), isTrue,
-        reason: '增量路径必须复用同一消息列表实例');
+    expect(identical(second.messages, first.messages), isFalse,
+        reason: '增量 tail 原地变异 state 列表,必须返回新 List 实例,'
+            '否则 seat 的 identical 判定会把新内容当成没变而跳过渲染');
+    expect(identical(second.messages[0], first.messages[0]), isTrue,
+        reason: '未变化消息保持实例身份');
     expect(second.messages, hasLength(2));
     expect(
       (second.messages[1].parts.single as AiTextPart).text,

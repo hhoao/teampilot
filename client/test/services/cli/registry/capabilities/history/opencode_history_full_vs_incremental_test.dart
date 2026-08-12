@@ -364,8 +364,15 @@ void main() {
       );
       expect(
         identical(second.messages, first.messages),
+        isFalse,
+        reason: '增量路径必须返回新 List 实例:state 列表被原地变异,若复用同一'
+            '实例,seat 的 identical 判定("CLI 未变化")会把新内容当成没变而'
+            '跳过,页面永远不出现增量消息',
+      );
+      expect(
+        identical(second.messages[0], first.messages[0]),
         isTrue,
-        reason: '增量路径原地合并,复用同一 List 实例(全量路径才是新实例)',
+        reason: '未变化消息保持实例身份(附件/下游 identical 快速路径)',
       );
       expect(
         locator.lastBundle!.hints['source'],
@@ -410,8 +417,13 @@ void main() {
       );
       expect(
         identical(second.messages, first.messages),
+        isFalse,
+        reason: '原地增长也必须返回新 List 实例(同 seat identical 判定问题)',
+      );
+      expect(
+        identical(second.messages[0], first.messages[0]),
         isTrue,
-        reason: '增量原地替换消息,复用同一 List 实例',
+        reason: '未变化消息保持实例身份',
       );
     });
   });
@@ -513,8 +525,13 @@ void main() {
       expect(locator.calls, 2, reason: '重建后回到增量路径,不再全量');
       expect(
         identical(third.messages, second.messages),
+        isFalse,
+        reason: '增量 tick 返回新 List 实例,seat 才能感知变化',
+      );
+      expect(
+        identical(third.messages[0], second.messages[0]),
         isTrue,
-        reason: '增量原地合并,同一 List 实例',
+        reason: '未变化消息保持实例身份',
       );
       expect(
         third.messages.any(
@@ -554,8 +571,8 @@ void main() {
       expect(locator.calls, 1, reason: '增量路径');
       expect(
         identical(second.messages, first.messages),
-        isTrue,
-        reason: '原地合并复用同一列表实例',
+        isFalse,
+        reason: '增量 tick 必须返回新 List 实例,seat 才渲染新消息',
       );
       expect(
         second.messages,

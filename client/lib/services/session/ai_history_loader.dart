@@ -221,11 +221,18 @@ final class AiHistoryLoader {
         resolver: _categoryResolverFor(cli),
       );
     }
-    _messages[cacheKey] = annotated;
+    // 增量路径原地变异 state 的实时列表,annotate 无改动时返回的仍是
+    // 同一个实例——seat 用 identical 判定"CLI 未变化"会把这个实例当成
+    // 没变而跳过,页面永远不出现增量消息。必须包装成新实例(内部消息
+    // 实例不变,附件/下游 identical 快速路径不受影响),且缓存里存的必须
+    // 是同一个返回实例,否则缓存命中路径返回的实例与上次返回值不同,
+    // seat 会误判"变了"。
+    final result = List<AiMessage>.of(annotated);
+    _messages[cacheKey] = result;
     _attachments[cacheKey] = attachments;
     _tokens[cacheKey] = token ?? 'changed-$cacheKey';
     return AiHistoryLoadResult(
-      messages: annotated,
+      messages: result,
       cli: cli,
       subagentAttachments: attachments,
     );
