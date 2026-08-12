@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/services/cli/registry/capabilities/asset_declaring_capability.dart';
 import 'package:teampilot/services/cli/registry/capabilities/cli_asset_registry.dart';
 import 'package:teampilot/services/cli/registry/capabilities/cli_config_asset.dart';
+import 'package:teampilot/services/cli/registry/cli_capability.dart';
 
 void main() {
   group('CliAssetRegistry merge', () {
@@ -86,9 +88,30 @@ void main() {
       expect(r.assetsFor(_seat()), isEmpty);
     });
   });
+
+  group('collectDeclared', () {
+    test('从能力声明收集资产', () {
+      final r = _TestRegistry();
+      r.collectDeclared([_DeclaringCap([_asset('d', AssetScope.app)])]);
+      expect(r.assetsFor(_seat()).single.id, 'd');
+    });
+
+    test('非声明能力被跳过', () {
+      final r = _TestRegistry();
+      r.collectDeclared([_DeclaringCap([])]);
+      expect(r.assetsFor(_seat()), isEmpty);
+    });
+  });
 }
 
 class _TestRegistry extends CliAssetRegistry<String> {}
+
+class _DeclaringCap implements CliCapability, AssetDeclaringCapability {
+  const _DeclaringCap(this.assets);
+  final List<CliConfigAsset<String>> assets;
+  @override
+  List<CliConfigAsset> get declaredAssets => assets;
+}
 
 CliConfigAsset<String> _asset(
   String id,

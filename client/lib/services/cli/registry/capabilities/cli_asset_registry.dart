@@ -1,4 +1,5 @@
 import '../cli_capability.dart';
+import 'asset_declaring_capability.dart';
 import 'cli_config_asset.dart';
 
 /// 泛型核心：纯内存注册表（无 IO）。
@@ -25,6 +26,20 @@ abstract class CliAssetRegistry<T> implements CliCapability {
     final before = _assets.length;
     _assets.removeWhere((a) => a.id == id);
     if (_assets.length != before) _notify();
+  }
+
+  /// 通道 ②：从能力的声明收集。时序：必须在 registerBuiltInCliTools
+  /// 完成之后统一调用一次（能力集合启动时固定）。
+  void collectDeclared(Iterable<CliCapability> capabilities) {
+    for (final cap in capabilities) {
+      if (cap is AssetDeclaringCapability) {
+        for (final asset in cap.declaredAssets) {
+          if (asset is CliConfigAsset<T>) {
+            register(asset);
+          }
+        }
+      }
+    }
   }
 
   /// 按 seat 上下文过滤（app 恒参与、作为最低优先级基底；team/workspace/session
