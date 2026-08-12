@@ -32,7 +32,10 @@ abstract final class IndexSnapshotIsolate {
   ) {
     final override = debugWorkspacesReaderOverride;
     if (override != null) return override(indexPath);
-    return Isolate.run(() => _readWorkspacesMaps(indexPath));
+    return Isolate.run(
+      () => _readWorkspacesMaps(indexPath),
+      debugName: 'index-workspaces-reader',
+    );
   }
 
   static Future<List<Map<String, Object?>>?> readLaunchProfileMaps(
@@ -40,7 +43,10 @@ abstract final class IndexSnapshotIsolate {
   ) {
     final override = debugLaunchProfilesReaderOverride;
     if (override != null) return override(indexPath);
-    return Isolate.run(() => _readLaunchProfileMaps(indexPath));
+    return Isolate.run(
+      () => _readLaunchProfileMaps(indexPath),
+      debugName: 'index-launch-profiles-reader',
+    );
   }
 
   /// Same parse as the isolate path, but on the calling isolate (mutation-safe).

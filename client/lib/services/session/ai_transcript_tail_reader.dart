@@ -16,7 +16,7 @@ Future<List<Map<String, dynamic>?>> decodeJsonlLinesIsolate(
       out.add(_tryDecode(utf8.decode(line, allowMalformed: true)));
     }
     return out;
-  });
+  }, debugName: 'transcript-tail-decoder');
 }
 
 Map<String, dynamic>? _tryDecode(String line) {

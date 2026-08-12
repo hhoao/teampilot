@@ -92,6 +92,11 @@ final class AiHistoryLoader {
   /// in place (isolate spawn + transfer overhead would dominate).
   static const _isolateParseMinBytes = 256 * 1024;
 
+  /// Switch to disable worker-isolate parsing of heavy transcripts (everything
+  /// then parses on the caller / UI isolate). Temporarily off while
+  /// investigating isolate issues.
+  static bool enableIsolateParse = false;
+
   /// Work-plane context for the seat (live refresh binds this FS).
   Future<RuntimeContext> resolveSeatRuntime({
     required WorkspaceLaunchContext launchContext,
@@ -332,7 +337,7 @@ final class AiHistoryLoader {
           0,
           (sum, f) => sum + f.bytes.length,
         );
-        if (totalBytes >= _isolateParseMinBytes) {
+        if (enableIsolateParse && totalBytes >= _isolateParseMinBytes) {
           messages = await Isolate.run(() async {
             var parsed = await adapter.parse(bundle);
             // Bundle-only enrichers never touch ctx (guarded by
@@ -347,7 +352,7 @@ final class AiHistoryLoader {
               );
             }
             return parsed;
-          });
+          }, debugName: 'history-loader');
         } else {
           messages = await adapter.parse(bundle);
           if (_needsToolResultEnrichment(messages)) {

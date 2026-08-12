@@ -193,6 +193,7 @@ For post-frame work (`ChatCubit`), use `PostFrameTestHarness` / `runScheduledCal
 
 - `async`/`await` + `try/catch` should surface outcomes in cubits/services, not unhandled exceptions in `build`.
 - Naming: `PascalCase` types, `camelCase` members, `snake_case` files; avoid opaque abbreviations.
+- Every `Isolate.spawn` / `Isolate.run` must pass **`debugName`** (e.g. `'tree-sitter-worker'`) so DevTools, timeline events, and stack traces identify the isolate (Dart's counterpart to Java `ThreadFactory` thread names). Name it for the job it does, not the implementation; do not leave `debugName` to the default (`main-<n>`).
 - From `pages/<domain>/`: `Tp*` primitives → `import 'package:shared_ui/shared_ui.dart'`; product chrome → `import '../../widgets/...'`; same domain → `import 'foo_section.dart'`.
 
 ## Tech debt

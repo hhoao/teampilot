@@ -75,7 +75,11 @@ class _WorkerIsolate {
 
   void start() {
     _fromWorker.listen(_onMessage);
-    Isolate.spawn(_workerEntry, _fromWorker.sendPort).then(
+    Isolate.spawn(
+      _workerEntry,
+      _fromWorker.sendPort,
+      debugName: 'tree-sitter-worker',
+    ).then(
       (isolate) {
         if (_shutdownRequested) {
           isolate.kill(priority: Isolate.immediate);
