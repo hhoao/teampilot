@@ -110,6 +110,9 @@ const Map<String, AiToolCallCategory> defaultToolCallNameRules = {
   'tasklist': AiToolCallCategory.task,
   'taskoutput': AiToolCallCategory.task,
   'taskstop': AiToolCallCategory.task,
+  // other（显式化：真实工具无细分类别，落 other）
+  'question': AiToolCallCategory.other,
+  'skill': AiToolCallCategory.other,
 };
 
 const List<(String, AiToolCallCategory)> defaultToolCallPrefixRules = [

@@ -1,5 +1,6 @@
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/services/cli/opencode/capabilities/history/ai_history_capability.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/tool_call_resolvers.dart';
 
 void main() {
@@ -50,6 +51,16 @@ void main() {
       expect(target!.hunk.path, '/old.dart');
     });
 
+    test('write with snake_case file_path/content still resolves', () {
+      final target = resolvers.editResolver.resolve(toolCall('write', {
+        'file_path': '/snake_write.dart',
+        'content': 'a\nb',
+      }));
+      expect(target, isNotNull);
+      expect(target!.hunk.path, '/snake_write.dart');
+      expect(target.hunk.addedCount, 2);
+    });
+
     test('bash tool does not resolve as edit', () {
       final target =
           resolvers.editResolver.resolve(toolCall('bash', {'command': 'ls'}));
@@ -68,6 +79,27 @@ void main() {
       expect(target!.path, '/a.dart');
       expect(target.startLine, 10);
       expect(target.endLine, 14);
+    });
+
+    test('read with snake_case file_path + offset/limit still resolves', () {
+      final target = resolvers.fileResolver.resolve(toolCall('read', {
+        'file_path': '/snake_read.dart',
+        'offset': 3,
+        'limit': 2,
+      }));
+      expect(target, isNotNull);
+      expect(target!.path, '/snake_read.dart');
+      expect(target.startLine, 3);
+      expect(target.endLine, 4);
+    });
+
+    test('read with only filePath resolves without line range', () {
+      final target =
+          resolvers.fileResolver.resolve(toolCall('read', {'filePath': '/plain.dart'}));
+      expect(target, isNotNull);
+      expect(target!.path, '/plain.dart');
+      expect(target.startLine, isNull);
+      expect(target.endLine, isNull);
     });
 
     test('edit with filePath resolves to file target', () {
@@ -96,6 +128,78 @@ void main() {
           resolvers.shellResolver.resolve(toolCall('bash', {'command': 'ls -la'}));
       expect(target, isNotNull);
       expect(target!.command, 'ls -la');
+    });
+
+    test('bash with timeout/workdir (本机实测 key 集) resolves command', () {
+      final target = resolvers.shellResolver.resolve(toolCall('bash', {
+        'command': 'flutter test',
+        'timeout': 1000,
+        'workdir': '/home/user/repo',
+      }));
+      expect(target, isNotNull);
+      expect(target!.command, 'flutter test');
+    });
+
+    test('bash with description keeps description', () {
+      final target = resolvers.shellResolver.resolve(toolCall('bash', {
+        'command': 'ls',
+        'description': 'List files',
+      }));
+      expect(target, isNotNull);
+      expect(target!.description, 'List files');
+    });
+  });
+
+  group('categoryResolver', () {
+    AiToolCallPart named(String name) => toolCall(name, const {});
+
+    test('question resolves explicitly to other (矩阵 G-3)', () {
+      expect(resolvers.categoryResolver.resolve(named('question')),
+          AiToolCallCategory.other);
+    });
+
+    test('skill resolves explicitly to other (矩阵 G-3)', () {
+      expect(resolvers.categoryResolver.resolve(named('skill')),
+          AiToolCallCategory.other);
+    });
+
+    test('matrix tool set maps to their categories', () {
+      const expected = <String, AiToolCallCategory>{
+        'bash': AiToolCallCategory.command,
+        'read': AiToolCallCategory.read,
+        'write': AiToolCallCategory.write,
+        'edit': AiToolCallCategory.edit,
+        'grep': AiToolCallCategory.read,
+        'glob': AiToolCallCategory.read,
+        'task': AiToolCallCategory.subagent,
+        'todowrite': AiToolCallCategory.task,
+        'webfetch': AiToolCallCategory.search,
+      };
+      expected.forEach((name, category) {
+        expect(resolvers.categoryResolver.resolve(named(name)), category,
+            reason: name);
+      });
+    });
+
+    test('mcp__ prefix maps to mcp', () {
+      expect(resolvers.categoryResolver.resolve(named('mcp__files')),
+          AiToolCallCategory.mcp);
+    });
+
+    test('fallback tool name maps to other', () {
+      expect(resolvers.categoryResolver.resolve(named('tool')),
+          AiToolCallCategory.other);
+    });
+  });
+
+  group('subagentToolNames', () {
+    test('opencode subagent set is exactly {task}', () {
+      expect(const OpencodeAiHistoryCapability().subagentToolNames, {'task'});
+    });
+
+    test('task resolves to subagent category', () {
+      expect(resolvers.categoryResolver.resolve(toolCall('task', const {})),
+          AiToolCallCategory.subagent);
     });
   });
 }

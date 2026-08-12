@@ -43,6 +43,17 @@ void main() {
     expect(resolver.resolve(tool('execute')), AiToolCallCategory.command);
   });
 
+  test('opencode-origin tools question/skill resolve explicitly to other '
+      '(矩阵 G-3 显式化)', () {
+    for (final cli in clis) {
+      final resolver = registry.toolCallResolvers(cli)!.categoryResolver;
+      expect(resolver.resolve(tool('question')), AiToolCallCategory.other,
+          reason: '$cli');
+      expect(resolver.resolve(tool('skill')), AiToolCallCategory.other,
+          reason: '$cli');
+    }
+  });
+
   test('subagentToolNames consistency: every name resolves to subagent', () {
     for (final cli in clis) {
       final history = registry.capability<AiHistoryCapability>(cli)!;
