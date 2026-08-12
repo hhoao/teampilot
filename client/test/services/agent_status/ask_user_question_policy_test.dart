@@ -2,7 +2,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/agent_status/agent_permission_request.dart';
 import 'package:teampilot/services/agent_status/ask_user_question.dart';
 import 'package:teampilot/services/agent_status/ask_user_question_policy.dart';
+import 'package:teampilot/services/cli/cursor/capabilities/ask_user_question.dart';
+import 'package:teampilot/services/cli/opencode/capabilities/ask_user_question.dart';
 import 'package:teampilot/services/cli/registry/capabilities/ask_user_question_capability.dart';
+import 'package:teampilot/services/cli/registry/capabilities/pty_ask_user_question_capability.dart';
 
 void main() {
   const permissionRequest = AgentPermissionRequest(

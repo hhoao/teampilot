@@ -22,6 +22,8 @@ services/cli/{cli_name}/
     display.dart                    # DisplayCapability
     terminal_behavior.dart          # TerminalBehaviorCapability
     tool_call_resolvers.dart        # ToolCallResolversCapability
+    ask_user_question.dart          # AskUserQuestionCapability（opencode/cursor 各自实现）
+    resume_strategy.dart            # SessionResumeCapability
     member_agent_preset.dart        # MemberAgentPresetCapability（claude/flashskyai）
     skill_invocation_syntax.dart    # SkillInvocationSyntaxCapability（codex/opencode 覆盖）
     agent_status_normalizer.dart    # AgentStatusNormalizerCapability（cursor/opencode 各自实现）

@@ -37,6 +37,7 @@ import '../registry/capabilities/member_config_inspection_capability.dart';
 import '../registry/capabilities/provider_form_capability.dart';
 import '../registry/capabilities/resource_capability.dart';
 import '../registry/capabilities/ask_user_question_capability.dart';
+import 'capabilities/ask_user_question.dart';
 import '../registry/capabilities/exit_plan_mode_capability.dart';
 import '../registry/capabilities/turn_completion_capability.dart';
 import 'capabilities/provider_display.dart';

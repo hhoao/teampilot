@@ -7,7 +7,7 @@ import 'package:teampilot/services/cli/codex/capabilities/resume_strategy.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/resume_strategy.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/resume_strategy.dart';
-import 'package:teampilot/services/cli/registry/capabilities/resume/transcript_resume_strategy.dart';
+import 'package:teampilot/services/cli/flashskyai/capabilities/resume_strategy.dart';
 import 'package:teampilot/services/cli/registry/capabilities/session_resume_capability.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -282,7 +282,7 @@ CREATE TABLE session (
       await Directory(workspaces).create(recursive: true);
       await File(p.join(workspaces, 'task-1.jsonl')).writeAsString('{}');
 
-      final got = await const TranscriptResumeStrategy().detectNativeId(
+      final got = await const FlashskyaiResumeStrategy().detectNativeId(
         ctx(transcriptRoots: [base.path], bucket: 'home-me-proj'),
       );
       expect(got, 'task-1');
@@ -293,14 +293,14 @@ CREATE TABLE session (
       await Directory(projects).create(recursive: true);
       await File(p.join(projects, 'task-1.jsonl')).writeAsString('{}');
 
-      final got = await const TranscriptResumeStrategy().detectNativeId(
+      final got = await const FlashskyaiResumeStrategy().detectNativeId(
         ctx(transcriptRoots: [base.path], bucket: 'home-me-proj'),
       );
       expect(got, 'task-1');
     });
 
     test('returns null when no transcript exists', () async {
-      final got = await const TranscriptResumeStrategy().detectNativeId(
+      final got = await const FlashskyaiResumeStrategy().detectNativeId(
         ctx(transcriptRoots: [base.path], bucket: 'home-me-proj'),
       );
       expect(got, isNull);

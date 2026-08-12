@@ -25,7 +25,7 @@ import '../registry/capabilities/presence_capability.dart';
 import '../registry/capabilities/provider_model_capability.dart';
 import '../registry/capabilities/session_resume_capability.dart';
 import 'capabilities/history/ai_history_capability.dart';
-import '../registry/capabilities/resume/transcript_resume_strategy.dart';
+import 'capabilities/resume_strategy.dart';
 import '../registry/capabilities/headless_provision_capability.dart';
 import 'capabilities/config_profile.dart';
 import 'capabilities/headless_run.dart';
@@ -36,6 +36,7 @@ import '../registry/capabilities/member_config_inspection_capability.dart';
 import '../registry/capabilities/provider_form_capability.dart';
 import '../registry/capabilities/resource_capability.dart';
 import '../registry/capabilities/ask_user_question_capability.dart';
+import '../registry/capabilities/pty_ask_user_question_capability.dart';
 import '../registry/capabilities/exit_plan_mode_capability.dart';
 import '../registry/capabilities/turn_completion_capability.dart';
 import 'capabilities/provider_display.dart';
@@ -70,7 +71,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     this.remoteCliLocator = const DefaultRemoteCliLocator('flashskyai'),
     this.launchArgs = const FlashskyaiCliToolAdapter(),
     this.configProfile = const FlashskyaiConfigProfileCapability(),
-    this.sessionResume = const TranscriptResumeStrategy(),
+    this.sessionResume = const FlashskyaiResumeStrategy(),
     this.executableResolver = const FlashskyaiExecutableResolver(),
     this.installer = const UnsupportedInstallerCapability(),
     this.presence = const FlashskyaiPresence(),
