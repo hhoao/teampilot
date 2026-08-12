@@ -12,56 +12,50 @@ import '../../../ai_history/tool_call_resolvers.dart';
 import 'tool_call_resolver_capability.dart';
 
 /// Baseline tool-name / argument-key lists for the shared resolvers.
-/// Per-CLI resolvers reuse these and extend them (e.g. OpenCode's camelCase
-/// `filePath`), keeping CLI-specific keys out of the shared package.
+///
+/// Governance standard (tool-layer-coverage plan, Task 5): every name / key
+/// here must be genuinely shared — matrix evidence (spl@93c9991, fixtures,
+/// 本机实测, docs/cli-formats/) for at least two CLIs. Single-CLI names are
+/// sunk to the owning CLI's resolver file and appended there
+/// (e.g. Cursor's `strreplace`/`editnotebook`, OpenCode's camelCase
+/// `oldString`/`newString`); names with no emission evidence are removed.
+/// The category table (`tool_call_categories.dart`) is a separate union of
+/// all five CLIs' tool names and is not governed here.
 abstract final class SharedToolCallResolverKeys {
   static const editToolNames = {
-    'strreplace',
     'edit',
-    'editnotebook',
     'notebookedit',
   };
-  static const editPathKeys = ['file_path', 'path', 'file', 'target_file', 'notebook_path'];
-  static const editOldStringKeys = ['old_string', 'oldString'];
-  static const editNewStringKeys = ['new_string', 'newString', 'new_source'];
-  static const editStartLineKeys = ['start_line', 'startLine'];
+  static const editPathKeys = ['file_path', 'notebook_path'];
+  static const editOldStringKeys = ['old_string'];
+  static const editNewStringKeys = ['new_string', 'new_source'];
 
   static const writeToolNames = {
     'write',
-    'writefile',
-    'write_file',
-    'create',
-    'create_file',
   };
-  static const writePathKeys = ['file_path', 'path', 'file', 'target_file'];
-  static const writeContentKeys = ['content', 'contents'];
+  static const writePathKeys = ['file_path'];
+  static const writeContentKeys = ['content'];
 
+  // Diff codec family is a shared capability layer: codex (apply_patch
+  // FREEFORM) and opencode consume the same codec configuration; the
+  // freeform branch and `*** File:` header parsing live in the shared codec.
   static const diffToolNames = {'applypatch', 'apply_patch'};
   static const diffPatchKeys = ['patch', 'diff', 'input'];
 
-  static const fileReadToolNames = {'read', 'readfile', 'read_file'};
+  static const fileReadToolNames = {'read'};
   static const fileWriteToolNames = {
     'write',
-    'writefile',
-    'write_file',
-    'create',
-    'create_file',
   };
   static const fileEditToolNames = {
     'edit',
-    'strreplace',
     'applypatch',
-    'editnotebook',
     'notebookedit',
   };
 
   static const shellToolNames = {
     'bash',
-    'shell',
     'shell_command',
     'exec_command',
-    'run_shell_command',
-    'run_terminal_cmd',
   };
 }
 
@@ -75,7 +69,6 @@ class SharedToolCallResolvers implements ToolCallResolversCapability {
     pathKeys: SharedToolCallResolverKeys.editPathKeys,
     oldStringKeys: SharedToolCallResolverKeys.editOldStringKeys,
     newStringKeys: SharedToolCallResolverKeys.editNewStringKeys,
-    startLineKeys: SharedToolCallResolverKeys.editStartLineKeys,
   );
 
   static const _writeCodec = WriteEditHunkCodec(

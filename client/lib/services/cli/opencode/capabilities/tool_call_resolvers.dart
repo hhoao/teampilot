@@ -13,7 +13,8 @@ import '../../registry/capabilities/shared_tool_call_resolvers.dart';
 import '../../registry/capabilities/tool_call_resolver_capability.dart';
 
 /// OpenCode tool-call resolvers: shared baseline plus the camelCase
-/// `filePath` argument key OpenCode emits for `edit` / `write` / `read`.
+/// argument keys OpenCode emits for `edit` / `write` / `read`
+/// (`filePath`, `oldString`, `newString`; 本机实测).
 class OpencodeToolCallResolvers implements ToolCallResolversCapability {
   const OpencodeToolCallResolvers();
 
@@ -22,12 +23,21 @@ class OpencodeToolCallResolvers implements ToolCallResolversCapability {
     'filePath',
   ];
 
+  static const _oldStringKeys = [
+    ...SharedToolCallResolverKeys.editOldStringKeys,
+    'oldString',
+  ];
+
+  static const _newStringKeys = [
+    ...SharedToolCallResolverKeys.editNewStringKeys,
+    'newString',
+  ];
+
   static const _strReplaceCodec = StrReplaceEditHunkCodec(
     toolNames: SharedToolCallResolverKeys.editToolNames,
     pathKeys: _pathKeys,
-    oldStringKeys: SharedToolCallResolverKeys.editOldStringKeys,
-    newStringKeys: SharedToolCallResolverKeys.editNewStringKeys,
-    startLineKeys: SharedToolCallResolverKeys.editStartLineKeys,
+    oldStringKeys: _oldStringKeys,
+    newStringKeys: _newStringKeys,
   );
 
   static const _writeCodec = WriteEditHunkCodec(
