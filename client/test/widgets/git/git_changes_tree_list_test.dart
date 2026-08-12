@@ -26,6 +26,33 @@ class _TreeStub extends GitService {
         kind: GitChangeKind.modified,
         staged: false,
       ),
+      GitFileChange(
+        path: 'new.cpp',
+        kind: GitChangeKind.untracked,
+        staged: false,
+      ),
+    ],
+  );
+
+  @override
+  Future<List<String>> branches(String dir) async => const ['main'];
+}
+
+class _UntrackedOnlyStub extends GitService {
+  @override
+  Future<bool> get isAvailable async => true;
+
+  @override
+  Future<GitRepoStatus> status(String dir) async => GitRepoStatus(
+    isRepository: true,
+    branch: 'main',
+    staged: const [],
+    unstaged: const [
+      GitFileChange(
+        path: 'brand_new.dart',
+        kind: GitChangeKind.untracked,
+        staged: false,
+      ),
     ],
   );
 
@@ -58,7 +85,8 @@ void main() {
           value: cubit, // folder tiles read expanded state via context
           child: Scaffold(
             body: GitChangesTreeList(
-              treeView: cubit.state.changesTreeView,
+              changesTreeView: cubit.state.changesTreeView,
+              unversionedTreeView: cubit.state.unversionedTreeView,
               cubit: cubit,
               listScrollController: ScrollController(),
               horizontalScrollController: ScrollController(),
@@ -90,7 +118,8 @@ void main() {
           value: cubit, // folder tiles read expanded state via context
           child: Scaffold(
             body: GitChangesTreeList(
-              treeView: treeView,
+              changesTreeView: treeView,
+              unversionedTreeView: cubit.state.unversionedTreeView,
               cubit: cubit,
               listScrollController: ScrollController(),
               horizontalScrollController: ScrollController(),
@@ -111,7 +140,28 @@ void main() {
     // both file rows rendered
     expect(find.text('a.java'), findsOneWidget);
     expect(find.text('b.dart'), findsOneWidget);
+    expect(find.text('Unversioned Files'), findsOneWidget);
+    expect(find.text('new.cpp'), findsOneWidget);
   });
+
+  testWidgets(
+    'only-untracked repo hides the empty Changes section header',
+    (tester) async {
+      final cubit = GitCubit(service: _UntrackedOnlyStub());
+      addTearDown(cubit.close);
+      // Fresh clone / new project: the only status entry is an untracked file.
+      await cubit.setRepoRoot('/repo');
+      expect(cubit.state.changesTreeView.totalCount, 0);
+      expect(cubit.state.unversionedTreeView.totalCount, 1);
+
+      await tester.pumpWidget(buildTreeList(cubit: cubit));
+      await tester.pump();
+
+      expect(find.text('Changes'), findsNothing);
+      expect(find.text('Unversioned Files'), findsOneWidget);
+      expect(find.text('brand_new.dart'), findsOneWidget);
+    },
+  );
 
   testWidgets('single click on a row calls onSelect with the change path', (
     tester,
@@ -158,18 +208,41 @@ void main() {
     (tester) async {
       final cubit = GitCubit(service: _TreeStub());
       addTearDown(cubit.close);
-      await cubit.setRepoRoot('/repo'); // a.java + b.dart auto-selected
+      await cubit.setRepoRoot('/repo'); // a.java + b.dart auto-selected; new.cpp not
       await tester.pumpWidget(buildTreeList(cubit: cubit));
       await tester.pump();
 
-      // Root header is the first sliver, so its checkbox is first in tree order.
-      final rootCheckbox = tester.widget<Checkbox>(find.byType(Checkbox).first);
-      expect(rootCheckbox.value, isTrue);
+      final changesToggle = find.byKey(
+        const ValueKey('git-section-toggle-changes'),
+      );
+      expect(tester.widget<Checkbox>(changesToggle).value, isTrue);
 
-      await tester.tap(find.byType(Checkbox).first);
+      await tester.tap(changesToggle);
       await tester.pump();
-      // selectNone is a pure selection op now (no git), so the selection clears.
+      // selectNone(changes) is a pure selection op now, so the tracked
+      // selection clears; new.cpp was never selected.
       expect(cubit.state.selectedPaths, isEmpty);
     },
   );
+
+  testWidgets('unversioned section select-all adds unversioned files', (
+    tester,
+  ) async {
+    final cubit = GitCubit(service: _TreeStub());
+    addTearDown(cubit.close);
+    await cubit.setRepoRoot('/repo'); // new.cpp unchecked by default
+    await tester.pumpWidget(buildTreeList(cubit: cubit));
+    await tester.pump();
+
+    final unversionedToggle = find.byKey(
+      const ValueKey('git-section-toggle-unversioned'),
+    );
+    expect(tester.widget<Checkbox>(unversionedToggle).value, isFalse);
+
+    await tester.tap(unversionedToggle);
+    await tester.pump();
+    // selectAll(section) is additive: tracked a.java + b.dart stay selected,
+    // only the unversioned file is newly added.
+    expect(cubit.state.selectedPaths, {'a.java', 'b.dart', 'new.cpp'});
+  });
 }

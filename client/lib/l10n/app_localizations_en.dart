@@ -517,6 +517,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gitStagedChanges => 'Staged Changes';
 
   @override
+  String get gitUnversionedFiles => 'Unversioned Files';
+
+  @override
   String get gitChanges => 'Changes';
 
   @override

@@ -591,48 +591,51 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
           ),
           const SizedBox(height: 12),
           Expanded(
-            child:
-                BlocSelector<
-                  GitCubit,
-                  GitState,
-                  (bool, GitChangesTreeViewData)
-                >(
-                  selector: (state) =>
-                      (state.status.hasChanges, state.changesTreeView),
-                  builder: (context, data) {
-                    final (hasChanges, treeView) = data;
-                    if (!hasChanges) {
-                      final cs = Theme.of(context).colorScheme;
-                      return Center(
-                        child: Text(
-                          l10n.gitNoChanges,
-                          style: TpTextStyles.of(
-                            context,
-                          ).smColored(cs.onSurfaceVariant),
-                        ),
-                      );
-                    }
-                    if (!_changesListReady) {
-                      return const SizedBox.shrink();
-                    }
-                    return GitChangesTreeList(
-                      treeView: treeView,
-                      cubit: _cubit,
-                      listScrollController: _changesScrollController,
-                      horizontalScrollController: _horizontalScrollController,
-                      selectedPath: _selectedPath,
-                      onSelect: (path) {
-                        setState(() => _selectedPath = path);
-                        final change = _findChange(path);
-                        if (change != null) unawaited(_openDiff(change));
-                      },
-                      onOpenDiff: (change) => unawaited(_openDiff(change)),
-                      onConfirmDiscard: (change) =>
-                          unawaited(_confirmDiscard(change)),
-                      onOpenFile: _openFile,
-                    );
+            child: BlocSelector<
+              GitCubit,
+              GitState,
+              (bool, GitChangesTreeViewData, GitChangesTreeViewData)
+            >(
+              selector: (state) => (
+                state.status.hasChanges,
+                state.changesTreeView,
+                state.unversionedTreeView,
+              ),
+              builder: (context, data) {
+                final (hasChanges, changesTreeView, unversionedTreeView) = data;
+                if (!hasChanges) {
+                  final cs = Theme.of(context).colorScheme;
+                  return Center(
+                    child: Text(
+                      l10n.gitNoChanges,
+                      style: TpTextStyles.of(
+                        context,
+                      ).smColored(cs.onSurfaceVariant),
+                    ),
+                  );
+                }
+                if (!_changesListReady) {
+                  return const SizedBox.shrink();
+                }
+                return GitChangesTreeList(
+                  changesTreeView: changesTreeView,
+                  unversionedTreeView: unversionedTreeView,
+                  cubit: _cubit,
+                  listScrollController: _changesScrollController,
+                  horizontalScrollController: _horizontalScrollController,
+                  selectedPath: _selectedPath,
+                  onSelect: (path) {
+                    setState(() => _selectedPath = path);
+                    final change = _findChange(path);
+                    if (change != null) unawaited(_openDiff(change));
                   },
-                ),
+                  onOpenDiff: (change) => unawaited(_openDiff(change)),
+                  onConfirmDiscard: (change) =>
+                      unawaited(_confirmDiscard(change)),
+                  onOpenFile: _openFile,
+                );
+              },
+            ),
           ),
         ],
       ),

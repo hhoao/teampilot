@@ -171,6 +171,7 @@
   "fileTree": "文件树",
   "sourceControl": "源代码管理",
   "gitStagedChanges": "暂存的更改",
+  "gitUnversionedFiles": "未版本化的文件",
   "gitChanges": "更改",
   "gitNoChanges": "没有更改",
   "gitNotARepository": "当前文件夹不是 Git 仓库",

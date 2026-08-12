@@ -10,7 +10,7 @@ import '../services/git/git_changes_visible_rows.dart';
 import '../services/git/git_service.dart';
 
 export '../services/git/git_changes_visible_rows.dart'
-    show GitChangesTreeViewData, GitChangesVisibleRow;
+    show GitChangesTreeViewData, GitChangesVisibleRow, GitChangesSection, GitChangesSections;
 
 class GitState extends Equatable {
   const GitState({
@@ -26,6 +26,11 @@ class GitState extends Equatable {
     this.selectedPaths = const {},
     this.generatingCommitMessage = false,
     this.changesTreeView = const GitChangesTreeViewData(
+      rows: [],
+      selectedCount: 0,
+      totalCount: 0,
+    ),
+    this.unversionedTreeView = const GitChangesTreeViewData(
       rows: [],
       selectedCount: 0,
       totalCount: 0,
@@ -52,6 +57,9 @@ class GitState extends Equatable {
   /// Flattened staged/unstaged rows for the changes tree (recomputed in cubit).
   final GitChangesTreeViewData changesTreeView;
 
+  /// Flattened rows for the unversioned-files section (new/untracked paths).
+  final GitChangesTreeViewData unversionedTreeView;
+
   bool get isRepository => status.isRepository;
 
   /// True when every folder in the changes tree is expanded.
@@ -76,6 +84,7 @@ class GitState extends Equatable {
     Set<String>? selectedPaths,
     bool? generatingCommitMessage,
     GitChangesTreeViewData? changesTreeView,
+    GitChangesTreeViewData? unversionedTreeView,
     bool clearError = false,
   }) {
     return GitState(
@@ -92,6 +101,7 @@ class GitState extends Equatable {
       generatingCommitMessage:
           generatingCommitMessage ?? this.generatingCommitMessage,
       changesTreeView: changesTreeView ?? this.changesTreeView,
+      unversionedTreeView: unversionedTreeView ?? this.unversionedTreeView,
     );
   }
 
@@ -109,6 +119,7 @@ class GitState extends Equatable {
     selectedPaths,
     generatingCommitMessage,
     changesTreeView,
+    unversionedTreeView,
   ];
 }
 
@@ -140,13 +151,15 @@ class GitCubit extends Cubit<GitState> {
   void _publish(GitState next, {bool recomputeRows = true}) {
     var published = next;
     if (recomputeRows) {
+      final sections = visibleGitChangesSections(
+        staged: next.status.staged,
+        unstaged: next.status.unstaged,
+        expandedFolderPaths: next.expandedFolderPaths,
+        selectedPaths: next.selectedPaths,
+      );
       published = next.copyWith(
-        changesTreeView: visibleUnifiedGitChangesTreeView(
-          staged: next.status.staged,
-          unstaged: next.status.unstaged,
-          expandedFolderPaths: next.expandedFolderPaths,
-          selectedPaths: next.selectedPaths,
-        ),
+        changesTreeView: sections.changes,
+        unversionedTreeView: sections.unversioned,
       );
     }
     if (published == state || isClosed) return;
@@ -166,6 +179,11 @@ class GitCubit extends Cubit<GitState> {
         expandedFolderPaths: const {},
         selectedPaths: const {},
         changesTreeView: const GitChangesTreeViewData(
+          rows: [],
+          selectedCount: 0,
+          totalCount: 0,
+        ),
+        unversionedTreeView: const GitChangesTreeViewData(
           rows: [],
           selectedCount: 0,
           totalCount: 0,
@@ -270,15 +288,21 @@ class GitCubit extends Cubit<GitState> {
   }
 
   /// Keeps manual selection across refreshes: drops paths that vanished,
-  /// auto-checks newly-appeared changes, preserves everything else.
+  /// auto-checks newly-appeared tracked or index-staged changes (untracked
+  /// worktree files stay unchecked, IDEA-style), preserves everything else.
   Set<String> _reconcileSelectedPaths(GitRepoStatus status) {
     final changedNow = <String>{
       for (final c in status.staged) c.path,
       for (final c in status.unstaged) c.path,
     };
+    final autoCheckable = <String>{
+      for (final c in status.staged) c.path,
+      for (final c in status.unstaged)
+        if (c.kind != GitChangeKind.untracked) c.path,
+    };
     final next = <String>{
       ...state.selectedPaths.where(changedNow.contains),
-      ...changedNow.difference(_knownChangedPaths),
+      ...autoCheckable.difference(_knownChangedPaths),
     };
     _knownChangedPaths = changedNow;
     return next;
@@ -358,36 +382,44 @@ class GitCubit extends Cubit<GitState> {
     _publish(state.copyWith(selectedPaths: next));
   }
 
-  Future<void> selectFolder(String folderPath) async {
-    final changed = _changedPathsUnder(folderPath);
+  Future<void> selectFolder(String folderPath, GitChangesSection section) async {
+    final changed = _changedPathsUnder(folderPath, section);
     _publish(state.copyWith(selectedPaths: {...state.selectedPaths, ...changed}));
   }
 
-  Future<void> deselectFolder(String folderPath) async {
-    final changed = _changedPathsUnder(folderPath);
+  Future<void> deselectFolder(String folderPath, GitChangesSection section) async {
+    final changed = _changedPathsUnder(folderPath, section);
     final next = {...state.selectedPaths}..removeAll(changed);
     _publish(state.copyWith(selectedPaths: next));
   }
 
-  Future<void> selectAll() async {
+  Future<void> selectAll(GitChangesSection section) async {
     _publish(
-      state.copyWith(
-        selectedPaths: <String>{
-          for (final c in [...state.status.staged, ...state.status.unstaged])
-            c.path,
-        },
-      ),
+      state.copyWith(selectedPaths: {...state.selectedPaths, ..._sectionPaths(section)}),
     );
   }
 
-  Future<void> selectNone() async {
-    _publish(state.copyWith(selectedPaths: const <String>{}));
+  Future<void> selectNone(GitChangesSection section) async {
+    final next = {...state.selectedPaths}..removeAll(_sectionPaths(section));
+    _publish(state.copyWith(selectedPaths: next));
   }
 
-  Set<String> _changedPathsUnder(String folderPath) => <String>{
-    for (final c in [...state.status.staged, ...state.status.unstaged])
-      if (c.path == folderPath || c.path.startsWith('$folderPath/')) c.path,
+  /// All changed paths that belong to [section] (untracked ⇔ unversioned).
+  Set<String> _sectionPaths(GitChangesSection section) => <String>{
+    for (final c in mergeGitChangesByPath(
+      staged: state.status.staged,
+      unstaged: state.status.unstaged,
+    ))
+      if ((c.kind == GitChangeKind.untracked) ==
+          (section == GitChangesSection.unversioned))
+        c.path,
   };
+
+  Set<String> _changedPathsUnder(String folderPath, GitChangesSection section) =>
+      <String>{
+        for (final path in _sectionPaths(section))
+          if (path == folderPath || path.startsWith('$folderPath/')) path,
+      };
 
   Future<void> discard(GitFileChange change) =>
       _mutate(() => _service.discard(state.repoRoot, change));

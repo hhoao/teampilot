@@ -12,11 +12,12 @@ import 'package:shared_ui/shared_ui.dart';
 import 'git_change_folder_tile.dart';
 import 'git_change_tile.dart';
 
-/// Flattened git changes tree (staged + unstaged sections), mirroring
+/// Flattened git changes tree (Changes + Unversioned Files sections), mirroring
 /// [_FileTreeList] in [FileTreePanel].
 class GitChangesTreeList extends StatefulWidget {
   const GitChangesTreeList({
-    required this.treeView,
+    required this.changesTreeView,
+    required this.unversionedTreeView,
     required this.cubit,
     required this.listScrollController,
     required this.horizontalScrollController,
@@ -28,7 +29,8 @@ class GitChangesTreeList extends StatefulWidget {
     super.key,
   });
 
-  final GitChangesTreeViewData treeView;
+  final GitChangesTreeViewData changesTreeView;
+  final GitChangesTreeViewData unversionedTreeView;
   final GitCubit cubit;
   final ScrollController listScrollController;
   final ScrollController horizontalScrollController;
@@ -114,11 +116,21 @@ class _GitChangesTreeListState extends State<GitChangesTreeList> {
         ).smMedium;
         final contentWidth = math.max(
           constraints.maxWidth,
-          gitChangesMinContentWidth(
-            rows: widget.treeView.rows,
-            fileLabelStyle: fileLabelStyle,
-            folderLabelStyle: folderLabelStyle,
-            textScaler: MediaQuery.textScalerOf(context),
+          math.max(
+            gitChangesMinContentWidth(
+              rows: widget.changesTreeView.rows,
+              fileLabelStyle: fileLabelStyle,
+              folderLabelStyle: folderLabelStyle,
+              textScaler: MediaQuery.textScalerOf(context),
+            ),
+            widget.unversionedTreeView.rows.isEmpty
+                ? 0.0
+                : gitChangesMinContentWidth(
+                    rows: widget.unversionedTreeView.rows,
+                    fileLabelStyle: fileLabelStyle,
+                    folderLabelStyle: folderLabelStyle,
+                    textScaler: MediaQuery.textScalerOf(context),
+                  ),
           ),
         );
 
@@ -142,30 +154,17 @@ class _GitChangesTreeListState extends State<GitChangesTreeList> {
                     scrollCacheExtent: ScrollCacheExtent.pixels(400),
                     controller: widget.listScrollController,
                     slivers: [
-                      SliverToBoxAdapter(
-                        child: _GitChangesRootHeader(
-                          totalCount: widget.treeView.totalCount,
-                          allSelected: widget.treeView.allSelected,
-                          noneSelected: widget.treeView.noneSelected,
-                          onToggleAll: () {
-                            if (widget.treeView.allSelected) {
-                              unawaited(widget.cubit.selectNone());
-                            } else {
-                              unawaited(widget.cubit.selectAll());
-                            }
-                          },
+                      if (widget.changesTreeView.totalCount > 0)
+                        ..._sectionSlivers(
+                          view: widget.changesTreeView,
+                          section: GitChangesSection.changes,
+                          contentWidth: contentWidth,
                         ),
-                      ),
-                      if (widget.treeView.rows.isNotEmpty)
-                        SliverFixedExtentList(
-                          itemExtent: kGitChangesRowExtent,
-                          delegate: SliverChildBuilderDelegate(
-                            (context, index) => SizedBox(
-                              width: contentWidth,
-                              child: _buildTreeRow(widget.treeView.rows[index]),
-                            ),
-                            childCount: widget.treeView.rows.length,
-                          ),
+                      if (widget.unversionedTreeView.totalCount > 0)
+                        ..._sectionSlivers(
+                          view: widget.unversionedTreeView,
+                          section: GitChangesSection.unversioned,
+                          contentWidth: contentWidth,
                         ),
                     ],
                   ),
@@ -178,10 +177,53 @@ class _GitChangesTreeListState extends State<GitChangesTreeList> {
     );
   }
 
-  Widget _buildTreeRow(GitChangesVisibleRow row) {
+  /// Header + rows slivers for one section. Callers skip the whole group
+  /// (header included) when [GitChangesTreeViewData.totalCount] is 0, so an
+  /// empty section renders nothing at all.
+  List<Widget> _sectionSlivers({
+    required GitChangesTreeViewData view,
+    required GitChangesSection section,
+    required double contentWidth,
+  }) {
+    return [
+      SliverToBoxAdapter(
+        child: _GitChangesRootHeader(
+          section: section,
+          title: section == GitChangesSection.changes
+              ? context.l10n.gitChanges
+              : context.l10n.gitUnversionedFiles,
+          totalCount: view.totalCount,
+          allSelected: view.allSelected,
+          noneSelected: view.noneSelected,
+          onToggleAll: () {
+            if (view.allSelected) {
+              unawaited(widget.cubit.selectNone(section));
+            } else {
+              unawaited(widget.cubit.selectAll(section));
+            }
+          },
+        ),
+      ),
+      if (view.rows.isNotEmpty)
+        SliverFixedExtentList(
+          itemExtent: kGitChangesRowExtent,
+          delegate: SliverChildBuilderDelegate(
+            (context, index) => SizedBox(
+              width: contentWidth,
+              child: _buildTreeRow(view.rows[index], section),
+            ),
+            childCount: view.rows.length,
+          ),
+        ),
+    ];
+  }
+
+  Widget _buildTreeRow(GitChangesVisibleRow row, GitChangesSection section) {
+    final keyPrefix =
+        section == GitChangesSection.changes ? 'changes' : 'unversioned';
     if (row.isFolder) {
       return GitChangeFolderTile(
-        key: ValueKey('folder:${row.folderPath}'),
+        key: ValueKey('$keyPrefix:folder:${row.folderPath}'),
         folderPath: row.folderPath!,
         name: row.name!,
         depth: row.depth,
@@ -189,8 +231,12 @@ class _GitChangesTreeListState extends State<GitChangesTreeList> {
         subtreeTotalCount: row.subtreeTotalCount,
         cubit: widget.cubit,
         hoverEnabled: _hoverEnabled,
-        onStage: () => unawaited(widget.cubit.selectFolder(row.folderPath!)),
-        onUnstage: () => unawaited(widget.cubit.deselectFolder(row.folderPath!)),
+        onStage: () => unawaited(
+          widget.cubit.selectFolder(row.folderPath!, section),
+        ),
+        onUnstage: () => unawaited(
+          widget.cubit.deselectFolder(row.folderPath!, section),
+        ),
         onDiscardFolder: () => unawaited(_confirmDiscardFolder(row.folderPath!)),
       );
     }
@@ -199,7 +245,7 @@ class _GitChangesTreeListState extends State<GitChangesTreeList> {
     final canOpenFile =
         widget.onOpenFile != null && change.kind != GitChangeKind.deleted;
     return GitChangeTile(
-      key: ValueKey('file:${change.path}'),
+      key: ValueKey('$keyPrefix:file:${change.path}'),
       change: change,
       depth: row.depth,
       selected: widget.selectedPath == change.path,
@@ -218,16 +264,20 @@ class _GitChangesTreeListState extends State<GitChangesTreeList> {
 /// yet (the panel owns the selected path; unmodified call sites stay valid).
 void _noopSelect(String _) {}
 
-/// Top-level "Changes" header: a tri-state select-all checkbox plus the change
-/// count badge, rendered as the first sliver of the changes tree list.
+/// Top-level section header: a tri-state select-all checkbox plus the change
+/// count badge, rendered as the first sliver of each section group.
 class _GitChangesRootHeader extends StatelessWidget {
   const _GitChangesRootHeader({
+    required this.section,
+    required this.title,
     required this.totalCount,
     required this.allSelected,
     required this.noneSelected,
     required this.onToggleAll,
   });
 
+  final GitChangesSection section;
+  final String title;
   final int totalCount;
   final bool allSelected;
   final bool noneSelected;
@@ -251,6 +301,7 @@ class _GitChangesRootHeader extends StatelessWidget {
             width: kGitChangesCheckboxWidth,
             height: kGitChangesCheckboxWidth,
             child: Checkbox(
+              key: ValueKey('git-section-toggle-${section.name}'),
               value: triState,
               tristate: true,
               onChanged: (_) => onToggleAll(),
@@ -260,7 +311,7 @@ class _GitChangesRootHeader extends StatelessWidget {
           const SizedBox(width: 4),
           Expanded(
             child: Text(
-              context.l10n.gitChanges,
+              title,
               style: TpTextStyles.of(
                 context,
               ).xsBoldWideColored(cs.onSurfaceVariant),

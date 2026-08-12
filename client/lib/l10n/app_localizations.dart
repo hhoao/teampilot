@@ -1040,6 +1040,12 @@ abstract class AppLocalizations {
   /// **'Staged Changes'**
   String get gitStagedChanges;
 
+  /// No description provided for @gitUnversionedFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Unversioned Files'**
+  String get gitUnversionedFiles;
+
   /// No description provided for @gitChanges.
   ///
   /// In en, this message translates to:
