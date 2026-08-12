@@ -16,6 +16,13 @@ class OpencodeHistoryIncrementalState extends AiTranscriptIncrementalState {
   final Map<String, _MessageFingerprint> _seen = {};
   List<AiMessage> _messages = [];
 
+  /// seed 时解析并固定的 seat 会话 id。增量刷新全部读取固定用它,避免
+  /// 每次按"最新会话"重新解析——task 子会话活跃时最新会话会翻转到
+  /// 子会话,导致指纹/重读落在子会话上:与 seed 的父会话不一致 → 反复
+  /// 回退全量(重复解析),或父/子消息混入同一列表(同内容不同 ses_ id
+  /// → 页面出现重复气泡)。
+  String? sessionId;
+
   bool _unsupported = false;
   bool get unsupported => _unsupported;
 
@@ -69,7 +76,12 @@ class OpencodeHistoryIncrementalRefresher
     final s = state;
     s._adopt(messages);
     s._seen.clear();
-    final rows = await _readFingerprints(ctx);
+    final dataDir = opencodeDataDirFromEnv(ctx);
+    final sessionId =
+        dataDir.isEmpty ? null : await _resolveSessionId(ctx, dataDir);
+    s.sessionId = sessionId;
+    final rows =
+        sessionId == null ? null : await _readFingerprints(ctx, sessionId);
     if (rows == null) {
       // DB 尚不存在(暂态,下次 seed 重试)与 schema 不兼容(永久回退
       // 全量)都表现为 null;只有 DB 存在且查询失败才标记不可增量,避免
@@ -104,8 +116,10 @@ class OpencodeHistoryIncrementalRefresher
     final s = state;
     if (s._unsupported) return null;
     if (s._seen.isEmpty) return null; // 尚未对齐 → 让 loader 走全量。
+    final sessionId = s.sessionId;
+    if (sessionId == null) return null;
 
-    final rows = await _readFingerprints(ctx);
+    final rows = await _readFingerprints(ctx, sessionId);
     if (rows == null) return null;
 
     final rowIds = rows.map((r) => r.messageId).toSet();
@@ -131,7 +145,7 @@ class OpencodeHistoryIncrementalRefresher
       return (messages: s._messages, parentPath: _dbPath(ctx));
     }
 
-    final bundles = await _loadMessageBundles(ctx, changed);
+    final bundles = await _loadMessageBundles(ctx, sessionId, changed);
     if (bundles == null) return null;
 
     final parsed = <AiMessage>[];
@@ -204,13 +218,13 @@ typedef _FingerprintRow = ({
 });
 
 /// Session 级聚合指纹:一条索引查询,不读 data 大字段。
+/// [sessionId] 由调用方传入(增量状态 seed 时固定),不在查询内重新解析。
 Future<List<_FingerprintRow>?> _readFingerprints(
   SessionHistoryContext ctx,
+  String sessionId,
 ) async {
   final dataDir = opencodeDataDirFromEnv(ctx);
   if (dataDir.isEmpty) return null;
-  final sessionId = await _resolveSessionId(ctx, dataDir);
-  if (sessionId == null) return null;
   final handle = await resolveOpencodeSqliteReadPath(
     fs: ctx.fs,
     dbPath: ctx.fs.pathContext.join(dataDir, 'opencode.db'),
@@ -246,14 +260,14 @@ GROUP BY m.id
 }
 
 /// 重读 [messageIds] 的完整行(message data + 全部 part),构建单消息 bundle。
+/// [sessionId] 由调用方传入(增量状态 seed 时固定),不在查询内重新解析。
 Future<List<AiTranscriptBundle>?> _loadMessageBundles(
   SessionHistoryContext ctx,
+  String sessionId,
   List<String> messageIds,
 ) async {
   final dataDir = opencodeDataDirFromEnv(ctx);
   if (dataDir.isEmpty) return null;
-  final sessionId = await _resolveSessionId(ctx, dataDir);
-  if (sessionId == null) return null;
   final handle = await resolveOpencodeSqliteReadPath(
     fs: ctx.fs,
     dbPath: ctx.fs.pathContext.join(dataDir, 'opencode.db'),

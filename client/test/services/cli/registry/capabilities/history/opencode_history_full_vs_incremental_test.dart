@@ -426,6 +426,97 @@ void main() {
         reason: '未变化消息保持实例身份',
       );
     });
+
+    test('task child session becoming newest must not flip the seat transcript',
+        () async {
+      openModernDb();
+      seedConversation();
+      // 无 persisted native id → _resolveSessionId 走"最新会话"回退,
+      // 模拟未捕获绑定(或旧会话)的 seat。
+      final session = AppSession(
+        sessionId: 'sess-ui',
+        workspaceId: 'ws-1',
+        folders: const [WorkspaceFolder(path: '/work/project')],
+        cli: CliTool.opencode,
+        createdAt: 1,
+        updatedAt: 1,
+      );
+      final ctx = launchContextFor(session);
+      final loader = buildLoader();
+
+      final first = await loader.load(
+        session: session,
+        memberId: '',
+        launchContext: ctx,
+      );
+      expect(locator.calls, 1);
+      expect(first.messages, hasLength(2));
+
+      // task 子会话创建并写入:time_updated 最新 → 旧实现把"最新会话"
+      // 解析成子会话,指纹/重读全落在子会话上。
+      writer.execute(
+        'INSERT INTO session (id, time_created, time_updated) VALUES (?, ?, ?)',
+        ['ses_2', 9000, 9000],
+      );
+      writer.execute(
+        'INSERT INTO message (id, session_id, data, time_created, time_updated) '
+        'VALUES (?, ?, ?, ?, ?)',
+        [
+          10,
+          'ses_2',
+          jsonEncode({'role': 'assistant', 'time': {'created': 9000}}),
+          9000,
+          9000,
+        ],
+      );
+      writer.execute(
+        'INSERT INTO part (id, session_id, message_id, data, time_created, '
+        'time_updated) VALUES (?, ?, ?, ?, ?, ?)',
+        [
+          10,
+          'ses_2',
+          10,
+          jsonEncode({'type': 'text', 'text': 'task output'}),
+          9000,
+          9000,
+        ],
+      );
+      // 同时 seat 会话自己新增一条消息。
+      insertMessage(id: 5, role: 'assistant', created: 5000);
+      insertPart(id: 5, messageId: 5, text: 'seat grow', created: 5000);
+
+      final second = await loader.load(
+        session: session,
+        memberId: '',
+        launchContext: ctx,
+      );
+      expect(
+        locator.calls,
+        1,
+        reason: '子会话变成最新会话不得触发全量回退(旧实现每轮重复解析)',
+      );
+      expect(
+        second.messages.any(
+          (m) =>
+              m.parts.any((p) => p is AiTextPart && p.text == 'seat grow'),
+        ),
+        isTrue,
+        reason: 'seat 会话的新消息必须出现',
+      );
+      expect(
+        second.messages.any(
+          (m) =>
+              m.parts.any((p) => p is AiTextPart && p.text == 'task output'),
+        ),
+        isFalse,
+        reason: '子会话消息不得混入 seat 列表(同内容不同 id = 重复气泡)',
+      );
+      expect(
+        second.messages,
+        hasLength(2),
+        reason: '相邻 assistant 合并语义与全量 parse 一致',
+      );
+    });
   });
 
   group('legacy schema (part without time_updated)', () {
