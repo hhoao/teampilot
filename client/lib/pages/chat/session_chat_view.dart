@@ -1073,7 +1073,18 @@ class _SessionChatViewState extends State<SessionChatView> {
                 // runtime. Rebuild for chrome / overlay / awaiting flips.
                 buildWhen: (p, c) => debugBuildWhen(p, c,
                   tag: 'session_chat_view',
-                  fields: (s) => s.rebuildDebugFields,
+                  changed: {
+                    'status': p.status != c.status,
+                    'hasOlder': p.hasOlder != c.hasOlder,
+                    'isLoadingOlder': p.isLoadingOlder != c.isLoadingOlder,
+                    'softReloadError': p.softReloadError != c.softReloadError,
+                    'awaitingAssistant': p.awaitingAssistant != c.awaitingAssistant,
+                    'sessionId': p.sessionId != c.sessionId,
+                    'memberId': p.memberId != c.memberId,
+                    'subagentAttachmentEpoch':
+                        p.subagentAttachmentEpoch != c.subagentAttachmentEpoch,
+                    'errorMessage': p.errorMessage != c.errorMessage,
+                  },
                 ),
                 builder: (context, state) {
                   final historySeat = _seat;
