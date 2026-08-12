@@ -39,4 +39,16 @@ void main() {
     expect(catalog.sessionsLoadedForWorkspace('p'), true);
     expect(catalog.sessionById('nope'), isNull);
   });
+
+  test('snapshot visible lists are unmodifiable copies, not memory aliases', () {
+    final catalog = buildCatalog();
+    final snap = catalog.deriveSnapshot();
+    expect(() => snap.visibleSessions.add(AppSession(
+          sessionId: 'x',
+          workspaceId: 'p',
+          folders: [WorkspaceFolder(path: '/p')],
+          createdAt: 0,
+        )), throwsUnsupportedError);
+    expect(catalog.sessions.length, 1);
+  });
 }

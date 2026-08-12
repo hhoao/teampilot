@@ -96,8 +96,8 @@ class WorkspaceCatalog {
     return ChatDataSnapshot(
       workspaces: List.unmodifiable(_workspaces),
       sessions: List.unmodifiable(_sessions),
-      visibleWorkspaces: visP,
-      visibleSessions: visS,
+      visibleWorkspaces: List.unmodifiable(visP),
+      visibleSessions: List.unmodifiable(visS),
     );
   }
 
