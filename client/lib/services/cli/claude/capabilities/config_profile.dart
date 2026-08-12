@@ -22,6 +22,10 @@ import '../../../agent_status/member_agent_status_endpoint.dart';
 import '../../../team_bus/member_bus_idle_endpoint.dart';
 import '../../registry/config_profile/agent_status_hooks.dart';
 import '../../registry/config_profile/bus_idle_stop_hook.dart';
+import '../../registry/capabilities/claude_family_hook_registry.dart';
+import '../../registry/capabilities/cli_config_asset.dart';
+import '../../registry/capabilities/hook_registry.dart';
+import '../../registry/cli_tool_registry.dart';
 import 'package:logger/logger.dart';
 import '../../../../utils/logging/logger.dart';
 
@@ -772,6 +776,21 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     if (agentStatus != null) {
       settings = mergeAgentStatusHooks(settings, member.id, agentStatus);
     }
+    // 迁移期：旧 merge 保留行为的同时并入 Registry 资产渲染
+    // （Task 5 移除旧 merge，改由能力声明 + ctx.hookRegistry 注入驱动）。
+    final hookRegistry =
+        CliToolRegistry.builtIn().capability<HookRegistry>(CliTool.claude);
+    if (hookRegistry != null) {
+      final assets = hookRegistry.assetsFor(_seatContext(scope, member));
+      if (assets.isNotEmpty) {
+        final rendered = hookRegistry.render(assets);
+        settings = mergeHooksInto(
+          settings,
+          (rendered['settings.json'] as Map<String, Object?>?) ??
+              const <String, Object?>{},
+        );
+      }
+    }
     settings = await delegate.maybeApplyTeamLeadHooks(
       settings,
       member,
@@ -792,6 +811,17 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       providerSettings,
     );
   }
+
+  /// 装配点 seat 上下文：从 launch scope 映射（Task 5 提升为共享 seatContextFrom）。
+  static AssetSeatContext _seatContext(
+    LaunchProfileScope scope,
+    TeamMemberConfig member,
+  ) => AssetSeatContext(
+    sessionId: scope.sessionId,
+    teamId: scope.teamId,
+    workspaceId: scope.workspaceId,
+    memberId: scope.memberId ?? member.id,
+  );
 
   Future<Map<String, Map<String, Object?>>> _loadMemberProviderSettings({
     required ClaudeProviderSettingsResolver resolver,
