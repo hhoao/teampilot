@@ -259,20 +259,29 @@ void main() {
       expect(codec.encode(part), isNull);
     });
 
-    test('returns null for missing old_string', () {
-      final codec = _testCodec();
+    test('missing old_string produces pure-add hunk (NotebookEdit style)', () {
+      const codec = StrReplaceEditHunkCodec(
+        toolNames: {'notebookedit'},
+        pathKeys: ['notebook_path'],
+        oldStringKeys: _testOldStringKeys,
+        newStringKeys: ['new_source'],
+      );
       final part = _makeToolCall(
-        toolName: 'edit',
+        toolName: 'NotebookEdit',
         args: {
-          'file_path': '/f.txt',
-          'new_string': 'b',
+          'notebook_path': '/nb.ipynb',
+          'new_source': 'print(1)',
         },
       );
 
-      expect(codec.encode(part), isNull);
+      final hunk = codec.encode(part);
+      expect(hunk, isNotNull);
+      expect(hunk!.path, equals('/nb.ipynb'));
+      expect(hunk.addedCount, equals(1));
+      expect(hunk.removedCount, equals(0));
     });
 
-    test('returns null for missing new_string', () {
+    test('missing new_string produces pure-remove hunk', () {
       final codec = _testCodec();
       final part = _makeToolCall(
         toolName: 'edit',
@@ -280,6 +289,20 @@ void main() {
           'file_path': '/f.txt',
           'old_string': 'a',
         },
+      );
+
+      final hunk = codec.encode(part);
+      expect(hunk, isNotNull);
+      expect(hunk!.path, equals('/f.txt'));
+      expect(hunk.addedCount, equals(0));
+      expect(hunk.removedCount, equals(1));
+    });
+
+    test('returns null when both old_string and new_string missing', () {
+      final codec = _testCodec();
+      final part = _makeToolCall(
+        toolName: 'edit',
+        args: {'file_path': '/f.txt'},
       );
 
       expect(codec.encode(part), isNull);

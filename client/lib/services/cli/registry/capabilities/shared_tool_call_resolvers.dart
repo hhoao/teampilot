@@ -21,9 +21,9 @@ abstract final class SharedToolCallResolverKeys {
     'editnotebook',
     'notebookedit',
   };
-  static const editPathKeys = ['file_path', 'path', 'file', 'target_file'];
+  static const editPathKeys = ['file_path', 'path', 'file', 'target_file', 'notebook_path'];
   static const editOldStringKeys = ['old_string', 'oldString'];
-  static const editNewStringKeys = ['new_string', 'newString'];
+  static const editNewStringKeys = ['new_string', 'newString', 'new_source'];
   static const editStartLineKeys = ['start_line', 'startLine'];
 
   static const writeToolNames = {

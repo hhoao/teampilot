@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:ai_message_core/ai_message_core.dart';
 
 import 'tool_args.dart';
@@ -25,6 +27,11 @@ class UnifiedDiffEditHunkCodec implements AiEditHunkCodec {
 
   static final _hunkHeader = RegExp(r'@@\s*-\d+(?:,\d+)?\s*\+(\d+)');
 
+  /// Codex apply_patch freeform file header, e.g.
+  /// `*** Update File: lib/foo.dart` (spl@93c9991 codex-full.md:558-560).
+  static final _codexFileHeader =
+      RegExp(r'^\*\*\* (?:Update|Add|Delete) File:\s*(.+)$');
+
   @override
   bool matches(String toolName) =>
       toolNames.contains(toolName.toLowerCase());
@@ -34,7 +41,7 @@ class UnifiedDiffEditHunkCodec implements AiEditHunkCodec {
     if (!matches(part.toolName)) return null;
 
     final args = toolCallArgsMap(part);
-    final patch = firstNonEmptyString(args, patchKeys);
+    var patch = firstNonEmptyString(args, patchKeys) ?? _freeformPatchText(part);
     if (patch == null) return null;
 
     var path = firstNonEmptyString(args, pathKeys);
@@ -51,6 +58,11 @@ class UnifiedDiffEditHunkCodec implements AiEditHunkCodec {
             startLine = int.tryParse(match.group(1)!);
           }
         }
+        continue;
+      }
+
+      if (rawLine.startsWith('***')) {
+        path ??= _pathFromCodexHeader(rawLine);
         continue;
       }
 
@@ -102,6 +114,39 @@ class UnifiedDiffEditHunkCodec implements AiEditHunkCodec {
       removedCount: removedCount,
       startLine: startLine,
     );
+  }
+
+  /// When the tool is FREEFORM (e.g. codex `apply_patch`), the whole
+  /// `arguments` payload is the raw patch text and never parses as JSON —
+  /// the adapter stores it in [AiToolCallPart.argsText].  Use it directly
+  /// as the patch when no structured args were decoded.
+  ///
+  /// Structured args win (追加语义): when [AiToolCallPart.args] is a
+  /// non-empty map, or [AiToolCallPart.argsText] parses as JSON, no freeform
+  /// fallback happens — this keeps the JSON-args path untouched for every
+  /// CLI that always emits structured arguments.
+  static String? _freeformPatchText(AiToolCallPart part) {
+    if (part.args != null && part.args!.isNotEmpty) return null;
+    final text = part.argsText?.trim();
+    if (text == null || text.isEmpty) return null;
+    try {
+      jsonDecode(text);
+      return null;
+    } on FormatException {
+      return text;
+    }
+  }
+
+  /// Extracts a file path from a codex freeform file header line
+  /// (`*** Update File:` / `*** Add File:` / `*** Delete File:`).
+  ///
+  /// Returns null when the line is not a file header (e.g. `*** Begin Patch`,
+  /// `*** End Patch`, `*** Move to:`, `*** End of File` — those are skipped).
+  static String? _pathFromCodexHeader(String line) {
+    final match = _codexFileHeader.firstMatch(line);
+    if (match == null) return null;
+    final rest = match.group(1)!.trim();
+    return rest.isEmpty ? null : rest;
   }
 
   /// Extracts a file path from a unified-diff header line.

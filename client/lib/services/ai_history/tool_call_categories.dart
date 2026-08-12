@@ -95,6 +95,7 @@ const Map<String, AiToolCallCategory> defaultToolCallNameRules = {
   'ask_user': AiToolCallCategory.askUser,
   // plan
   'plan': AiToolCallCategory.plan,
+  'enterplanmode': AiToolCallCategory.plan,
   'exitplanmode': AiToolCallCategory.plan,
   'exit_plan_mode': AiToolCallCategory.plan,
   // task
@@ -104,6 +105,10 @@ const Map<String, AiToolCallCategory> defaultToolCallNameRules = {
   'task_create': AiToolCallCategory.task,
   'taskupdate': AiToolCallCategory.task,
   'task_update': AiToolCallCategory.task,
+  'taskget': AiToolCallCategory.task,
+  'tasklist': AiToolCallCategory.task,
+  'taskoutput': AiToolCallCategory.task,
+  'taskstop': AiToolCallCategory.task,
 };
 
 const List<(String, AiToolCallCategory)> defaultToolCallPrefixRules = [

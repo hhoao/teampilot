@@ -45,13 +45,11 @@ class StrReplaceEditHunkCodec implements AiEditHunkCodec {
     if (path == null) return null;
 
     final oldString = optionalString(args, oldStringKeys);
-    if (oldString == null) return null;
-
     final newString = optionalString(args, newStringKeys);
-    if (newString == null) return null;
+    if (oldString == null && newString == null) return null;
 
-    final oldLines = splitLines(oldString);
-    final newLines = splitLines(newString);
+    final oldLines = oldString == null ? const <String>[] : splitLines(oldString);
+    final newLines = newString == null ? const <String>[] : splitLines(newString);
     if (oldLines.isEmpty && newLines.isEmpty) return null;
 
     final startLine = firstPositiveInt(args, startLineKeys);
