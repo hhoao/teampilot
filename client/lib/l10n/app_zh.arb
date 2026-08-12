@@ -765,7 +765,6 @@
     }
   },
   "workspaceDetails": "工作区详情",
-  "workspaceDetailsTitle": "工作区详情",
   "addWorkspaceDirectory": "添加目录",
   "removeWorkspaceDirectory": "移除目录",
   "workspaceDisplayName": "显示名称",

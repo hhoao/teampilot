@@ -1702,9 +1702,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get workspaceDetails => '工作区详情';
 
   @override
-  String get workspaceDetailsTitle => '工作区详情';
-
-  @override
   String get addWorkspaceDirectory => '添加目录';
 
   @override

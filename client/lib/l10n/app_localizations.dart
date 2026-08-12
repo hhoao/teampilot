@@ -3284,12 +3284,6 @@ abstract class AppLocalizations {
   /// **'Workspace details'**
   String get workspaceDetails;
 
-  /// No description provided for @workspaceDetailsTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Workspace Details'**
-  String get workspaceDetailsTitle;
-
   /// No description provided for @addWorkspaceDirectory.
   ///
   /// In en, this message translates to:

@@ -1785,9 +1785,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get workspaceDetails => 'Workspace details';
 
   @override
-  String get workspaceDetailsTitle => 'Workspace Details';
-
-  @override
   String get addWorkspaceDirectory => 'Add directory';
 
   @override

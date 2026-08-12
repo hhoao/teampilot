@@ -790,7 +790,6 @@
     }
   },
   "workspaceDetails": "Workspace details",
-  "workspaceDetailsTitle": "Workspace Details",
   "addWorkspaceDirectory": "Add directory",
   "removeWorkspaceDirectory": "Remove directory",
   "workspaceDisplayName": "Display name",
