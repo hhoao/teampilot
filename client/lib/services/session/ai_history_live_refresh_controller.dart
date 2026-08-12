@@ -54,8 +54,7 @@ class AiHistoryLiveRefreshController {
   bool _reloadInFlight = false;
   bool _reloadQueued = false;
 
-  /// Meta 重试的指数退避指数与"探测已发出、等待返回"标志。
-  int _metaRetryBackoff = 0;
+  /// Meta 重试的固定周期定时器与"探测已发出、等待返回"标志。
   bool _metaProbePending = false;
 
   /// 在途的 watch-meta 解析(locate 查询链)。probe 与 reload 共享单飞:
@@ -153,28 +152,19 @@ class AiHistoryLiveRefreshController {
 
   void _syncMetaRetry() {
     if (!_started || _meta != null) {
-      _metaRetryBackoff = 0;
       _cancelMetaRetry();
       return;
     }
     if (_metaRetryTimer != null || _metaProbePending) return;
-    _scheduleMetaRetry(resetBackoff: true);
-  }
-
-  /// 指数退避重试 watch meta(750ms → 1.5s → 3s → 6s → 12s 封顶)。
-  /// 旧实现是每 tick 跑一次完整的 [_requestReload](locate + cache-token
-  /// 查询),meta 一直为 null 时会无限期保持 750ms 一轮,让多个 worker
-  /// isolate 在空闲会话上常驻存活。
-  void _scheduleMetaRetry({required bool resetBackoff}) {
-    _cancelMetaRetry();
-    if (!_started || _meta != null) return;
-    if (resetBackoff) _metaRetryBackoff = 0;
-    final base = _metaRetryIntervalOverride ?? _pollIntervalFor(_fs());
-    final multiplier = 1 << _metaRetryBackoff.clamp(0, 4);
-    _metaRetryTimer = Timer(base * multiplier, () {
-      _metaRetryTimer = null;
-      if (!_started || _meta != null) return;
-      _metaRetryBackoff++;
+    final interval = _metaRetryIntervalOverride ?? _pollIntervalFor(_fs());
+    // 固定节奏重试 watch meta:只做轻量探测(经 [_resolveMetaOnce] 与
+    // reload 共享同一在途 locate 链),不重跑 seat 软重载;meta 出现后
+    // 再走一次正常 reload 挂变化信号。
+    _metaRetryTimer = Timer.periodic(interval, (_) {
+      if (!_started || _meta != null) {
+        _cancelMetaRetry();
+        return;
+      }
       _metaProbePending = true;
       unawaited(_probeMetaOnly());
     });
@@ -187,11 +177,8 @@ class AiHistoryLiveRefreshController {
       final next = await _resolveMetaOnce();
       if (!_started) return;
       if (next != null) {
-        _metaRetryBackoff = 0;
         // 不预置 _meta:交给 _requestReload 以 previous=null 语义 rearm 信号。
         await _requestReload(preResolvedMeta: next);
-      } else {
-        _scheduleMetaRetry(resetBackoff: false);
       }
     } on Object catch (e, st) {
       appLogger.w(
@@ -199,8 +186,6 @@ class AiHistoryLiveRefreshController {
         error: e,
         stackTrace: st,
       );
-      if (!_started) return;
-      _scheduleMetaRetry(resetBackoff: false);
     } finally {
       _metaProbePending = false;
     }

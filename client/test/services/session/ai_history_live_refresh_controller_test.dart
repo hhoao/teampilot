@@ -470,7 +470,7 @@ void main() {
     await controller.stop();
   });
 
-  test('null meta retries with exponential backoff, no reload storm', () async {
+  test('null meta probes at fixed cadence without reload storm', () async {
     final session = simpleSession();
     messagesBySession[session.sessionId] = messages(1);
     locator.emitBundle = true;
@@ -491,16 +491,20 @@ void main() {
       },
     );
     await controller.start();
-    final probesAfterStart = resolveCount; // 初始 refreshNow 的 1 次
+    final probesAfterStart = resolveCount;
 
-    // 旧实现:每 20ms 一轮完整 reload(locate + cache-token 查询),250ms
-    // 内 resolveCount ≈ 13,空闲会话持续产生 worker isolate。
-    // 新实现:20→40→80→160ms 指数退避,250ms 内仅 3 次轻量探测。
+    // 旧实现:meta 为 null 时每个周期 tick 都会跑完整 reload(softReload
+    // → loader.load 查询链),数据变化会反映到消息列表。
+    // 新实现:只做轻量探测,不触发 seat 软重载。
+    messagesBySession[session.sessionId] = messages(3);
+
     await Future<void>.delayed(const Duration(milliseconds: 250));
     await pumpEventQueue();
 
-    expect(resolveCount, lessThan(probesAfterStart + 6));
-    expect(cubit.state.totalMessageCount, 1); // 探测不应触发软重载
+    // 固定节奏探测(20ms 周期,250ms 内 ~12 次),无退避。
+    expect(resolveCount, greaterThanOrEqualTo(probesAfterStart + 10));
+    // 探测不应触发 seat 软重载:消息列表停留在 1。
+    expect(cubit.state.totalMessageCount, 1);
 
     await controller.stop();
   });
