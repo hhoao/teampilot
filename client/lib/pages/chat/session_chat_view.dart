@@ -49,6 +49,7 @@ import '../../services/session/session_history_pagination.dart';
 import '../../services/storage/app_storage.dart';
 import '../../services/terminal/pending_user_message.dart';
 import '../../theme/app_markdown_style_sheet.dart';
+import '../../utils/debug/debug_bloc_rebuild.dart';
 import '../../utils/logging/logger.dart';
 import '../../utils/team/team_member_naming.dart';
 import 'session_chat_compose_section.dart';
@@ -1031,17 +1032,10 @@ class _SessionChatViewState extends State<SessionChatView> {
                 bloc: _seat,
                 // Skip totalMessageCount-only tip growth — thread listens to
                 // runtime. Rebuild for chrome / overlay / awaiting flips.
-                buildWhen: (previous, current) =>
-                    previous.status != current.status ||
-                    previous.hasOlder != current.hasOlder ||
-                    previous.isLoadingOlder != current.isLoadingOlder ||
-                    previous.softReloadError != current.softReloadError ||
-                    previous.awaitingAssistant != current.awaitingAssistant ||
-                    previous.sessionId != current.sessionId ||
-                    previous.memberId != current.memberId ||
-                    previous.subagentAttachmentEpoch !=
-                        current.subagentAttachmentEpoch ||
-                    previous.errorMessage != current.errorMessage,
+                buildWhen: (p, c) => debugBuildWhen(p, c,
+                  tag: 'session_chat_view',
+                  fields: (s) => s.rebuildDebugFields,
+                ),
                 builder: (context, state) {
                   final historySeat = _seat;
                   if (historySeat == null) {

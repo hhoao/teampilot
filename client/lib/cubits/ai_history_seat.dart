@@ -65,6 +65,21 @@ class AiHistoryState extends Equatable {
   /// even when message count is unchanged.
   final int subagentAttachmentEpoch;
 
+  /// Fields that drive the chat-thread chrome rebuild (see
+  /// `session_chat_view.dart` buildWhen). Deliberately excludes
+  /// [totalMessageCount] — tip growth is consumed by the thread runtime.
+  Map<String, Object?> get rebuildDebugFields => {
+    'status': status,
+    'hasOlder': hasOlder,
+    'isLoadingOlder': isLoadingOlder,
+    'softReloadError': softReloadError,
+    'awaitingAssistant': awaitingAssistant,
+    'sessionId': sessionId,
+    'memberId': memberId,
+    'subagentAttachmentEpoch': subagentAttachmentEpoch,
+    'errorMessage': errorMessage,
+  };
+
   AiHistoryState copyWith({
     AiHistoryViewStatus? status,
     int? totalMessageCount,
