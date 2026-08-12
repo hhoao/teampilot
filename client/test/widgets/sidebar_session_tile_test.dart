@@ -7,14 +7,18 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/agent_attention_cubit.dart';
 import 'package:teampilot/cubits/automation_cubit.dart';
 import 'package:teampilot/cubits/automation_state.dart';
+import 'package:teampilot/cubits/chat/model/chat_tab.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/session/session_phase.dart';
+import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
+import 'package:teampilot/cubits/workbench/workbench_tab.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/automation.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/agent_status/agent_attention_state.dart';
 import 'package:teampilot/services/agent_status/agent_status_event.dart';
+import 'package:teampilot/services/workbench/workbench_chat_bridge.dart';
 import 'package:teampilot/utils/ui/app_keys.dart';
 import 'package:teampilot/widgets/session_working_spinner.dart';
 import 'package:teampilot/widgets/sidebar_session_tile.dart';
@@ -68,7 +72,7 @@ class _RecordingChatCubit extends ChatCubit {
   @override
   void selectMember(String memberId) {
     eventOrder.add('selectMember:$memberId');
-    activeSessionAtSelectMember.add(state.activeSessionId);
+    activeSessionAtSelectMember.add(activeTab?.info.id);
     selectedMembers.add(memberId);
     super.selectMember(memberId);
   }
@@ -448,13 +452,34 @@ void main() {
       addTearDown(automationCubit.close);
       addTearDown(attention.close);
 
-      // Session A is active; waiting is on B.
-      chatCubit.emit(
-        chatCubit.state.copyWith(
-          activeSessionId: 'sess-a',
-          selectedMemberId: 'member-a',
+      // Session A is active; waiting is on B. The bar owns tab activation.
+      final workbench = WorkbenchCubit();
+      addTearDown(workbench.close);
+      final bridge = WorkbenchChatBridge(workbench: workbench, chat: chatCubit);
+      workbench.port = bridge;
+      chatCubit.workbenchPort = bridge;
+      chatCubit.tabStore.registerSession(
+        ChatTab(
+          info: const ChatTabInfo(id: 'sess-a', title: 'A', subtitle: ''),
+          cliTeamName: '',
+          workspaceId: 'ws1',
         ),
       );
+      chatCubit.tabStore.registerSession(
+        ChatTab(
+          info: ChatTabInfo(
+            id: sessionB.sessionId,
+            title: 'B',
+            subtitle: '',
+          ),
+          cliTeamName: '',
+          workspaceId: 'ws1',
+        ),
+      );
+      chatCubit.setActiveWorkspace('ws1');
+      bridge.onSessionTabOpened('ws1', 'sess-a');
+      bridge.onSessionTabOpened('ws1', sessionB.sessionId);
+      workbench.activate('ws1', WorkbenchTabId.session('sess-a'));
       attention.applyEvent(
         sessionId: sessionB.sessionId,
         memberId: 'seat-b',
@@ -474,11 +499,9 @@ void main() {
             onTap: () async {
               chatCubit.eventOrder.add('activate-start');
               await openCompleter.future;
-              chatCubit.emit(
-                chatCubit.state.copyWith(
-                  activeSessionId: sessionB.sessionId,
-                  selectedMemberId: '',
-                ),
+              workbench.activate(
+                'ws1',
+                WorkbenchTabId.session(sessionB.sessionId),
               );
               chatCubit.eventOrder.add('activate-done');
             },
@@ -493,13 +516,13 @@ void main() {
       // Still opening B — must not selectMember / switch Terminal on A yet.
       expect(chatCubit.selectedMembers, isEmpty);
       expect(chatCubit.workbenchViews, isEmpty);
-      expect(chatCubit.state.activeSessionId, 'sess-a');
+      expect(chatCubit.activeTab?.info.id, 'sess-a');
 
       openCompleter.complete();
       await tester.pump();
       await tester.pump();
 
-      expect(chatCubit.state.activeSessionId, sessionB.sessionId);
+      expect(chatCubit.activeTab?.info.id, sessionB.sessionId);
       expect(chatCubit.activeSessionAtSelectMember, [sessionB.sessionId]);
       expect(chatCubit.selectedMembers, ['seat-b']);
       expect(chatCubit.workbenchViews, [

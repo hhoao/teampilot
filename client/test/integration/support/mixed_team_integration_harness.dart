@@ -299,7 +299,7 @@ class MixedTeamIntegrationHarness {
   }) async {
     final deadline = DateTime.now().add(timeout);
     while (DateTime.now().isBefore(deadline)) {
-      final sessionId = cubit.state.activeSessionId;
+      final sessionId = cubit.activeTab?.info.id;
       if (sessionId != null &&
           memberIds.every(
             (id) => cubit.isMemberRunning(sessionId: sessionId, memberId: id),
@@ -309,7 +309,7 @@ class MixedTeamIntegrationHarness {
       await drainPendingAsyncWork();
       await Future<void>.delayed(const Duration(milliseconds: 200));
     }
-    final sessionId = cubit.state.activeSessionId;
+    final sessionId = cubit.activeTab?.info.id;
     throw StateError(
       'Timed out waiting for members to run: '
       '${memberIds.where((id) => sessionId == null || !cubit.isMemberRunning(sessionId: sessionId, memberId: id)).join(', ')}',

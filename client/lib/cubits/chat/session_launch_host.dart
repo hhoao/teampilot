@@ -216,9 +216,4 @@ abstract class ChatWorkbenchPort {
   /// a file/diff tab is active). Lets the domain derive "the active session"
   /// from the bar — the single source of truth.
   WorkbenchTabId? centerActiveForScope(String workspaceId);
-
-  /// Re-sync [ChatState.activeSessionId]/`selectedMemberId` from the bar's
-  /// center-active for the now-active workspace; called after a
-  /// foreground-workspace switch. Kept until a later task removes the mirror.
-  void syncForeground();
 }

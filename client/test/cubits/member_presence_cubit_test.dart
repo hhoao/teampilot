@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/chat/model/session_connect_request.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/member_presence_cubit.dart';
+import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
 import 'package:teampilot/models/member_presence.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace_folder.dart';
@@ -15,6 +16,7 @@ import 'package:teampilot/services/team/member_presence_service.dart';
 import 'package:teampilot/services/team_bus/bus_user_line_capture.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
+import 'package:teampilot/services/workbench/workbench_chat_bridge.dart';
 
 import '../support/post_frame_test_harness.dart';
 
@@ -486,7 +488,18 @@ void main() {
             final callsWithTeamTab = service.computeCalls;
 
             final tab1 = chatCubit.tabStore.openTabs.toList()[1];
-            chatCubit.setForegroundSession(tab1.info.id, tab1.selectedMemberId);
+            // Tab selection is the bar's job: feed + activate the shell-less
+            // tab in the bar so the active-tab resolution follows it.
+            final workbench = WorkbenchCubit();
+            addTearDown(workbench.close);
+            final bridge = WorkbenchChatBridge(
+              workbench: workbench,
+              chat: chatCubit,
+            );
+            workbench.port = bridge;
+            chatCubit.workbenchPort = bridge;
+            chatCubit.setActiveWorkspace(tab1.workspaceId);
+            bridge.onSessionTabOpened(tab1.workspaceId, tab1.info.id);
             chatCubit.pushPresenceTarget();
             async.flushMicrotasks();
             unawaited(harness.flush());

@@ -32,8 +32,6 @@ class ChatState extends Equatable {
     this.sessions = const [],
     this.visibleWorkspaces = const [],
     this.visibleSessions = const [],
-    this.activeSessionId,
-    this.selectedMemberId = '',
     this.provisionVersion = 0,
     this.podViewVersion = 0,
     this.snackbarMessage,
@@ -46,8 +44,6 @@ class ChatState extends Equatable {
   final List<AppSession> sessions;
   final List<Workspace> visibleWorkspaces;
   final List<AppSession> visibleSessions;
-  final String? activeSessionId;
-  final String selectedMemberId;
 
   /// Bumped on every remote provision progress update so the remote-provision UI
   /// (ChatWorkbench) rebuilds without a catch-all state version.
@@ -77,9 +73,6 @@ class ChatState extends Equatable {
     List<AppSession>? sessions,
     List<Workspace>? visibleWorkspaces,
     List<AppSession>? visibleSessions,
-    String? activeSessionId,
-    String? selectedMemberId,
-    bool clearActiveSessionId = false,
     int? provisionVersion,
     int? podViewVersion,
     String? snackbarMessage,
@@ -95,10 +88,6 @@ class ChatState extends Equatable {
       sessions: sessions ?? this.sessions,
       visibleWorkspaces: visibleWorkspaces ?? this.visibleWorkspaces,
       visibleSessions: visibleSessions ?? this.visibleSessions,
-      activeSessionId: clearActiveSessionId
-          ? null
-          : (activeSessionId ?? this.activeSessionId),
-      selectedMemberId: selectedMemberId ?? this.selectedMemberId,
       provisionVersion: provisionVersion ?? this.provisionVersion,
       podViewVersion: podViewVersion ?? this.podViewVersion,
       snackbarMessage: clearSnackbarMessage
@@ -120,8 +109,6 @@ class ChatState extends Equatable {
     sessions,
     visibleWorkspaces,
     visibleSessions,
-    activeSessionId,
-    selectedMemberId,
     provisionVersion,
     podViewVersion,
     snackbarMessage,

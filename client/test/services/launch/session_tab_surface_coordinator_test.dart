@@ -21,8 +21,6 @@ void main() {
     late _FakeHost host;
     late SessionTabSurfaceCoordinator coordinator;
     late AppSession session;
-    late List<({String workspaceId, String sessionId, bool preview, bool activate})>
-        openedCalls;
 
     setUp(() {
       tabStore = ChatTabStore();
@@ -42,10 +40,9 @@ void main() {
       )..persistedSession = session;
       tabStore.registerSession(existing);
       host = _FakeHost(
-        ChatState(activeSessionId: 'sess-1'),
+        const ChatState(),
         tabStore: tabStore,
       );
-      openedCalls = [];
       coordinator = SessionTabSurfaceCoordinator(
         host: host,
         tabStore: tabStore,
@@ -74,15 +71,6 @@ void main() {
               required session,
               required request,
             }) async {},
-        onSessionTabOpened:
-            (workspaceId, sessionId, {preview = false, activate = true}) {
-          openedCalls.add((
-            workspaceId: workspaceId,
-            sessionId: sessionId,
-            preview: preview,
-            activate: activate,
-          ));
-        },
       );
     });
 
@@ -123,19 +111,6 @@ void main() {
         expect(host.beginConnectIds, ['sess-1']);
       },
     );
-
-    test('does not feed onSessionTabOpened when reusing an existing tab', () {
-      final status = coordinator.surfaceExistingTab(
-        request: SessionOpenRequest(
-          session: session,
-          connectImmediately: true,
-        ),
-        existing: existing,
-      );
-
-      expect(status, SessionOpenStatus.opened);
-      expect(openedCalls, isEmpty);
-    });
   });
 
   group('SessionTabSurfaceCoordinator.surfaceNewTab', () {

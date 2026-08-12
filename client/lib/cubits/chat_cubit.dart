@@ -1260,11 +1260,9 @@ class ChatCubit extends Cubit<ChatState>
 
   /// Switches the foreground workspace in the session runtime registry. Called
   /// by the workspace page whenever the active workspace changes. Bar presence
-  /// / order / active are owned by the workbench bar; the foreground-session
-  /// mirror follows the bar via the bridge.
+  /// / order / active are owned by the workbench bar.
   void setActiveWorkspace(String workspaceId) {
     _tabStore.setActiveWorkspaceId(workspaceId);
-    _workbenchPort?.syncForeground();
   }
 
   /// Switches the foreground workspace and session visibility scope in one
@@ -1276,7 +1274,6 @@ class ChatCubit extends Cubit<ChatState>
     String? selectedTeamId,
   }) {
     _tabStore.setActiveWorkspaceId(workspaceTabKey);
-    _workbenchPort?.syncForeground();
     if (_dataStore.setScope(
       scopeSessionsToSelectedTeam: scopeSessionsToSelectedTeam,
       selectedTeamId: selectedTeamId,
@@ -1288,22 +1285,6 @@ class ChatCubit extends Cubit<ChatState>
         ),
       );
     }
-  }
-
-  /// Single writer for the foreground-session mirror, called by the bridge
-  /// ([WorkbenchChatBridge]) when the bar's center-active changes. Emits only
-  /// the mirror fields — presence/order/active live in the bar.
-  void setForegroundSession(String? sessionId, String selectedMemberId) {
-    if (isClosed) return;
-    final id = sessionId?.trim();
-    final active = (id == null || id.isEmpty) ? null : id;
-    emit(
-      state.copyWith(
-        clearActiveSessionId: active == null,
-        activeSessionId: active,
-        selectedMemberId: selectedMemberId,
-      ),
-    );
   }
 
   /// SessionLaunchHost port: bar presence/order is the strip's job — there is
@@ -1845,23 +1826,21 @@ class ChatCubit extends Cubit<ChatState>
   void dismissNewChat() {}
 
   void syncTeam(TeamProfile team) {
+    final tab = _activeTab;
     if (team.members.isEmpty) {
-      emit(state.copyWith(selectedMemberId: ''));
+      if (tab != null) tab.selectedMemberId = '';
       return;
     }
-    if (team.members.any((m) => m.id == state.selectedMemberId)) return;
-    final newId = _tabStore.defaultMemberId(team);
-    _activeTab?.selectedMemberId = newId;
-    emit(state.copyWith(selectedMemberId: newId));
+    if (team.members.any((m) => m.id == tab?.selectedMemberId)) return;
+    tab?.selectedMemberId = _tabStore.defaultMemberId(team);
   }
 
   @override
   void selectMember(String memberId) {
-    if (state.selectedMemberId == memberId) return;
-    _activeTab?.selectedMemberId = memberId;
-    emit(state.copyWith(selectedMemberId: memberId));
     final tab = _activeTab;
-    if (tab != null && tab.workbenchView == SessionWorkbenchView.terminal) {
+    if (tab == null || tab.selectedMemberId == memberId) return;
+    tab.selectedMemberId = memberId;
+    if (tab.workbenchView == SessionWorkbenchView.terminal) {
       unawaited(ensureMemberTerminalForView(tab.info.id, memberId));
     }
   }
@@ -2148,7 +2127,6 @@ class ChatCubit extends Cubit<ChatState>
         .where((s) => s.sessionId == sessionId)
         .firstOrNull;
     composeDraftCache.clearSessionDraft(sessionId);
-    final wasActive = state.activeSessionId == sessionId;
     final sessions = state.sessions
         .where((s) => s.sessionId != sessionId)
         .toList();
@@ -2158,8 +2136,7 @@ class ChatCubit extends Cubit<ChatState>
       _sessionRuntime.maybeStopIdleWatch();
       if (port != null) {
         // Bar removal fires onTabRemoved → teardownSession (removes the runtime
-        // and disposes it); the bar recomputes center-active, and the bridge
-        // fixes the foreground-session mirror.
+        // and disposes it); the bar recomputes center-active.
         port.onSessionTabClosed(tab.workspaceId, sessionId);
       } else {
         await _tearDownTab(tab);
@@ -2173,9 +2150,6 @@ class ChatCubit extends Cubit<ChatState>
         sessions: sessions,
       ),
       base: state.copyWith(
-        clearActiveSessionId: wasActive,
-        activeSessionId: wasActive ? null : state.activeSessionId,
-        selectedMemberId: wasActive ? '' : state.selectedMemberId,
         workingSessionIds: working,
       ),
     );

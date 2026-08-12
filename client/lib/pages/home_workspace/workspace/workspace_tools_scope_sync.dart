@@ -41,6 +41,7 @@ class WorkspaceToolsScopeSync extends StatefulWidget {
 class _WorkspaceToolsScopeSyncState extends State<WorkspaceToolsScopeSync> {
   String? _lastSyncKey;
   String? _lastWorktreeTargetId;
+  String? _lastBarActiveSessionId;
   bool _wasRouteActive = false;
 
   bool get _routeActive => WorkspaceRouteActiveScope.routeActiveOf(context);
@@ -143,8 +144,10 @@ class _WorkspaceToolsScopeSyncState extends State<WorkspaceToolsScopeSync> {
   bool _chatAffectsToolsPlane(ChatCubit chat, ChatState prev, ChatState next) {
     if (!_routeActive) return false;
     if (chat.tabStore.activeWorkspaceId != widget.tabScopeId) return false;
-    if (prev.activeSessionId != next.activeSessionId) return true;
-    final sessionId = next.activeSessionId;
+    final sessionId = scopedActiveSessionId(
+      context.read<WorkbenchCubit>(),
+      widget.tabScopeId,
+    );
     if (sessionId == null || sessionId.isEmpty) return false;
     return _sessionForState(prev, sessionId)?.folders !=
         _sessionForState(next, sessionId)?.folders;
@@ -197,6 +200,17 @@ class _WorkspaceToolsScopeSyncState extends State<WorkspaceToolsScopeSync> {
 
   @override
   Widget build(BuildContext context) {
+    // The bar is the single session-identity source: rebuild (and resync) when
+    // the scoped center-active session changes, so the tools plane recomputes
+    // on session switch without the removed ChatState mirror.
+    final barActiveSessionId = context.select<WorkbenchCubit, String?>(
+      (workbench) => scopedActiveSessionId(workbench, widget.tabScopeId),
+    );
+    if (barActiveSessionId != _lastBarActiveSessionId) {
+      _lastBarActiveSessionId = barActiveSessionId;
+      _scheduleSync();
+    }
+
     final scopeChild =
         BlocBuilder<WorkspaceToolsScopeCubit, WorkspaceToolsScopeState>(
           builder: (context, scopeState) =>

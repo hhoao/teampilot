@@ -189,7 +189,7 @@ void main() {
       expect(shells, isNotEmpty);
       expect(shells.first.connectCalls, 0);
       expect(
-        cubit.isSessionConnecting(cubit.state.activeSessionId!),
+        cubit.isSessionConnecting(session.sessionId),
         isFalse,
       );
       expect(cubit.tabStore.activeTabs.first.info.launchError, isNotNull);

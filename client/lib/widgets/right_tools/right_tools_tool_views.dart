@@ -637,7 +637,7 @@ class _ScopedMembersPanelState extends State<_ScopedMembersPanel> {
   }
 
   SessionWorkbenchView _activeWorkbenchView(ChatCubit chat) {
-    final sessionId = chat.state.activeSessionId;
+    final sessionId = chat.activeTab?.info.id;
     if (sessionId == null || sessionId.isEmpty) {
       return SessionWorkbenchView.chat;
     }
@@ -665,7 +665,7 @@ class _ScopedMembersPanelState extends State<_ScopedMembersPanel> {
 
   void _openMember(BuildContext context, String id) {
     final chat = context.read<ChatCubit>();
-    final sessionId = chat.state.activeSessionId;
+    final sessionId = chat.activeTab?.info.id;
     if (sessionId != null && sessionId.isNotEmpty) {
       chat.setSessionWorkbenchView(sessionId, SessionWorkbenchView.terminal);
     }
@@ -684,11 +684,10 @@ class _ScopedMembersPanelState extends State<_ScopedMembersPanel> {
     final member = widget.runtimeMembers.firstWhere((m) => m.id == id);
     final chatCubit = context.read<ChatCubit>();
     final activeTab = chatCubit.activeTab;
-    final activeSessionId = chatCubit.state.activeSessionId;
-    final activeSession = activeSessionId == null
+    final activeSession = activeTab == null
         ? null
         : chatCubit.state.sessions
-              .where((s) => s.sessionId == activeSessionId)
+              .where((s) => s.sessionId == activeTab.info.id)
               .firstOrNull;
     await showMemberDetailDialog(
       context,
@@ -706,11 +705,10 @@ class _ScopedMembersPanelState extends State<_ScopedMembersPanel> {
     final member = widget.runtimeMembers.firstWhere((m) => m.id == id);
     final chatCubit = context.read<ChatCubit>();
     final activeTab = chatCubit.activeTab;
-    final activeSessionId = chatCubit.state.activeSessionId;
-    final session = activeSessionId == null
+    final session = activeTab == null
         ? null
         : chatCubit.state.sessions
-              .where((s) => s.sessionId == activeSessionId)
+              .where((s) => s.sessionId == activeTab.info.id)
               .firstOrNull;
     if (session == null) return;
 

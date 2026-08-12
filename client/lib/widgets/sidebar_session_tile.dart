@@ -40,8 +40,8 @@ class SidebarSessionTile extends StatefulWidget {
   /// those land on the target tab, not the previously active one.
   final FutureOr<void> Function() onTap;
 
-  /// When set, selection highlight follows this id instead of the global
-  /// [ChatState.activeSessionId] (kept-alive background workspace tabs).
+  /// When set, selection highlight follows this id instead of the default
+  /// (kept-alive background workspace tabs).
   final String? highlightSessionId;
 
   /// Prefix for [throttledTap] keys (`{prefix}_{sessionId}`).

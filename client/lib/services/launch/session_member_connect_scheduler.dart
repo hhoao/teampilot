@@ -1,5 +1,4 @@
 import '../../cubits/chat/chat_tab_store.dart';
-import '../../cubits/chat/model/chat_state.dart';
 import '../../cubits/chat/model/chat_tab.dart';
 import '../../cubits/chat/session_launch_host.dart';
 import '../../models/app_session.dart';
@@ -8,7 +7,6 @@ import '../../services/cli/preset_resolver.dart';
 import '../../services/launch/connect_shell_result.dart';
 import '../../services/launch/session_shell_connector.dart';
 import '../../services/terminal/terminal_session.dart';
-import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 
 typedef ShellForLaunchFn =
@@ -31,20 +29,17 @@ class SessionMemberConnectScheduler {
     required ShellForLaunchFn shellForLaunch,
     required SessionForMemberConnectFn sessionForMemberConnect,
     required ChatTabStore tabStore,
-    required ChatState Function() state,
   }) : _host = host,
        _shellConnector = shellConnector,
        _shellForLaunch = shellForLaunch,
        _sessionForMemberConnect = sessionForMemberConnect,
-       _tabStore = tabStore,
-       _state = state;
+       _tabStore = tabStore;
 
   final SessionLaunchHost _host;
   final SessionShellConnector _shellConnector;
   final ShellForLaunchFn _shellForLaunch;
   final SessionForMemberConnectFn _sessionForMemberConnect;
   final ChatTabStore _tabStore;
-  final ChatState Function() _state;
 
   TerminalSession memberShellForConnect({
     required ChatTab tab,
@@ -92,13 +87,6 @@ class SessionMemberConnectScheduler {
       member: member,
       session: session,
     );
-    final state = _state();
-    _host.applyState(
-      state.copyWith(
-        activeSessionId: tab.info.id,
-        selectedMemberId: member.id,
-      ),
-    );
     if (shell.isRunning || shell.isConnecting) {
       appLogger.d(
         '[session-launch] scheduleMemberConnect skip '
@@ -123,8 +111,8 @@ class SessionMemberConnectScheduler {
     tab.membersPendingConnect.add(member.id);
     _tabStore.workingDirectoryAndAddDirsForTab(
       tab,
-      state.sessions,
-      workspaces: state.workspaces,
+      _host.state.sessions,
+      workspaces: _host.state.workspaces,
     );
     final ownsConnectToken = !_host.hasConnectingSession;
     if (ownsConnectToken) {
