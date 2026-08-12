@@ -14,8 +14,7 @@ import '../../models/cli_preset.dart';
 import '../../models/team_config.dart';
 import '../../services/agent_status/agent_attention_state.dart';
 import '../../services/agent_status/ask_user_question_policy.dart';
-import '../../services/agent_status/exit_plan_mode.dart';
-import '../../services/cli/preset_resolver.dart';
+import '../../services/agent_status/exit_plan_mode.dart';import '../../services/cli/preset_resolver.dart';
 import '../../services/cli/registry/capabilities/ask_user_question_capability.dart';
 import '../../services/cli/registry/capabilities/exit_plan_mode_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
@@ -26,6 +25,7 @@ import '../../services/workbench/workbench_editor_opener.dart';
 import '../../utils/ui/app_keys.dart';
 import 'ask_user_question_card.dart';
 import 'exit_plan_mode_card.dart';
+import 'opencode_permission_card.dart';
 
 /// Compact card shown just above Chat compose when the seat needs Terminal
 /// confirmation. Does not auto-switch; CTA jumps to Terminal.
@@ -68,8 +68,8 @@ class AgentPermissionAttentionBanner extends StatelessWidget {
         AgentSeatAttention.waiting;
   }
 
-  /// Whether the interactive [AskUserQuestionCard] is showing for the seat
-  /// (compose should be hidden, not merely disabled).
+  /// Whether the interactive [AskUserQuestionCard] / [OpenCodePermissionCard]
+  /// is showing for the seat (compose should be hidden, not merely disabled).
   static bool isSelectedSeatAskCard({
     required AgentAttentionCubit attention,
     required AppSession session,
@@ -92,9 +92,16 @@ class AgentPermissionAttentionBanner extends StatelessWidget {
     final capability = toolRegistry.capability<AskUserQuestionCapability>(
       seatCli,
     );
-    return shouldShowAskUserQuestionCard(
+    if (shouldShowAskUserQuestionCard(
       capability: capability,
       questions: entry.lastEvent?.askUserQuestions,
+      askRequestId: entry.lastEvent?.askRequestId,
+    )) {
+      return true;
+    }
+    return shouldShowPermissionCard(
+      capability: capability,
+      permissionRequest: entry.lastEvent?.permissionRequest,
       askRequestId: entry.lastEvent?.askRequestId,
     );
   }
@@ -142,6 +149,27 @@ class AgentPermissionAttentionBanner extends StatelessWidget {
         askRequestId: askRequestId,
         supportsMultiSelectInChat:
             capability?.supportsMultiSelectInChat ?? false,
+        onAnswerInTerminal: () => _openTerminal(
+          context,
+          sessionId: sessionId,
+          seatId: seatId,
+          selectedMemberId: selectedMemberId,
+        ),
+      );
+    }
+
+    final permissionRequest = entry.lastEvent?.permissionRequest;
+    if (shouldShowPermissionCard(
+      capability: capability,
+      permissionRequest: permissionRequest,
+      askRequestId: askRequestId,
+    ) &&
+        permissionRequest != null) {
+      return OpenCodePermissionCard(
+        session: session,
+        seatId: seatId,
+        request: permissionRequest,
+        askRequestId: askRequestId!,
         onAnswerInTerminal: () => _openTerminal(
           context,
           sessionId: sessionId,

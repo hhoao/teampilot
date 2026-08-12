@@ -228,15 +228,17 @@ class AgentAttentionCubit extends Cubit<AgentAttentionState> {
     required bool skipPermissions,
   }) {
     // Claude Code's --dangerously-skip-permissions does not skip
-    // AskUserQuestion, opencode's question tool always needs an answer, and
-    // ExitPlanMode plan approval is also an interactive prompt — these still
-    // block on the operator. Keep the seat waiting for them so the chat card
-    // stays available.
+    // AskUserQuestion, opencode's question tool always needs an answer,
+    // opencode permission prompts are also interactive, and ExitPlanMode plan
+    // approval is also an interactive prompt — these still block on the
+    // operator. Keep the seat waiting for them so the chat card stays
+    // available.
     final isInteractiveWaiting =
         event.state == AgentSeatAttention.waiting &&
         (isAskUserQuestionTool(event.toolName) ||
             isExitPlanModeTool(event.toolName) ||
-            event.hookEventName == 'question.asked');
+            event.hookEventName == 'question.asked' ||
+            event.hookEventName == 'permission.asked');
     if (skipPermissions &&
         event.state == AgentSeatAttention.waiting &&
         !isInteractiveWaiting) {
@@ -286,9 +288,12 @@ class AgentAttentionCubit extends Cubit<AgentAttentionState> {
 
     final effective = preserveExitPlanModePayload(
       previous,
-      preserveAskUserQuestionPayload(
+      preservePermissionRequestPayload(
         previous,
-        attachClaudePermissionToolUseId(previous, event),
+        preserveAskUserQuestionPayload(
+          previous,
+          attachClaudePermissionToolUseId(previous, event),
+        ),
       ),
     );
 

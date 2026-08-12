@@ -138,6 +138,22 @@ AgentStatusEvent preserveAskUserQuestionPayload(
   );
 }
 
+/// Keeps structured OpenCode permission payload when a same-id waiting echo
+/// (retry / plugin race) arrives without `permission` fields.
+AgentStatusEvent preservePermissionRequestPayload(
+  AgentStatusEvent? previous,
+  AgentStatusEvent next,
+) {
+  if (previous == null) return next;
+  if (next.permissionRequest != null) return next;
+  final prevPermission = previous.permissionRequest;
+  if (prevPermission == null) return next;
+  if (next.state != AgentSeatAttention.waiting) return next;
+  final nextId = next.askRequestId?.trim() ?? '';
+  if (nextId.isEmpty || nextId != previous.askRequestId?.trim()) return next;
+  return next.copyWith(permissionRequest: prevPermission);
+}
+
 /// Builds Claude `updatedInput.answers` from selected labels per question.
 Map<String, String> askUserAnswersMap({
   required List<AgentAskUserQuestion> questions,

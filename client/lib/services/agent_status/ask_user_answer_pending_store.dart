@@ -3,11 +3,17 @@ class AskUserAnswerPendingEntry {
     required this.requestId,
     this.answers,
     this.reject = false,
+    this.permissionReply,
   });
 
   final String requestId;
   final List<List<String>>? answers;
   final bool reject;
+
+  /// OpenCode permission reply (`once` | `always` | `reject`). Mutually
+  /// exclusive with [answers]: when set, the plugin delivers
+  /// `/permission/{id}/reply` instead of a question answer.
+  final String? permissionReply;
 }
 
 final class AskUserAnswerPendingStore {

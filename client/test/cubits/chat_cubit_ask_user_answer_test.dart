@@ -4,12 +4,14 @@ import 'package:teampilot/cubits/agent_attention_cubit.dart';
 import 'package:teampilot/cubits/chat/model/chat_tab.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/services/agent_status/agent_attention_state.dart';
+import 'package:teampilot/services/agent_status/agent_permission_request.dart';
 import 'package:teampilot/services/agent_status/agent_status_event.dart';
 import 'package:teampilot/services/agent_status/ask_user_answer_pending_store.dart';
 import 'package:teampilot/services/cli/registry/capabilities/ask_user_question_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_definition.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
+import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/team/terminal_activity_tracker.dart';
 import 'package:teampilot/services/terminal/ask_user_question_answer_service.dart';
@@ -61,6 +63,17 @@ CliToolRegistry _ptyRegistry() {
     _StubTool(
       id: CliTool.claude,
       askCap: const PtyAskUserQuestionCapability(),
+    ),
+  );
+  return registry;
+}
+
+CliToolRegistry _opencodeRegistry() {
+  final registry = CliToolRegistry();
+  registry.register(
+    _StubTool(
+      id: CliTool.opencode,
+      askCap: const OpenCodeAskUserQuestionCapability(),
     ),
   );
   return registry;
@@ -208,6 +221,132 @@ void main() {
       expect(entry?.attention, AgentSeatAttention.working);
       expect(entry?.dismissedAskRequestId, 'ask-req-1');
       expect(writes, ['\x1b']);
+    });
+  });
+
+  group('ChatCubit permission reply', () {
+    late AgentAttentionCubit attention;
+    late AskUserAnswerPendingStore store;
+
+    setUp(() {
+      attention = AgentAttentionCubit(pruneInterval: null);
+      store = AskUserAnswerPendingStore();
+    });
+
+    tearDown(() async {
+      await attention.close();
+    });
+
+    ChatCubit _buildCubit({
+      required AskUserQuestionAnswerService answerService,
+    }) {
+      return ChatCubit(
+        executableResolver: () => '/bin/true',
+        automationRepository: testAutomationRepository(),
+        agentAttentionCubit: attention,
+        askUserAnswerPendingStore: store,
+        askUserQuestionAnswerService: answerService,
+      );
+    }
+
+    void _seedWaitingPermissionTab(ChatCubit cubit, {required String sessionId}) {
+      final tab = ChatTab(
+        info: ChatTabInfo(id: sessionId, title: sessionId, subtitle: ''),
+        cliTeamName: sessionId,
+        selectedMemberId: sessionId,
+        workspaceId: 'workspace-1',
+      )..persistedSession = AppSession(
+        sessionId: sessionId,
+        workspaceId: 'workspace-1',
+        cli: CliTool.opencode,
+        createdAt: 0,
+      );
+      cubit.tabStore.registerSession(tab);
+      cubit.refreshActiveWorkspaceTabs();
+      attention.applyEvent(
+        sessionId: sessionId,
+        memberId: sessionId,
+        event: const AgentStatusEvent(
+          state: AgentSeatAttention.waiting,
+          hookEventName: 'permission.asked',
+          askRequestId: 'perm-1',
+          permissionRequest: AgentPermissionRequest(
+            id: 'perm-1',
+            description: 'Run `npm install`',
+          ),
+        ),
+        skipPermissions: false,
+      );
+    }
+
+    test('answerPermissionRequest ok stores reply and marks answered',
+        () async {
+      final answerService = AskUserQuestionAnswerService(
+        registry: _opencodeRegistry(),
+        store: store,
+      );
+      final cubit = _buildCubit(answerService: answerService);
+      addTearDown(cubit.close);
+
+      const sessionId = 'sess-perm';
+      _seedWaitingPermissionTab(cubit, sessionId: sessionId);
+
+      final result = await cubit.answerPermissionRequest(
+        sessionId: sessionId,
+        memberId: sessionId,
+        reply: 'always',
+      );
+
+      expect(result, isA<AskUserAnswerOk>());
+      final taken = store.take(
+        sessionId: sessionId,
+        memberId: sessionId,
+        requestId: 'perm-1',
+      );
+      expect(taken, isNotNull);
+      expect(taken!.permissionReply, 'always');
+      final entry = attention.state.entryFor(
+        sessionId: sessionId,
+        memberId: sessionId,
+      );
+      expect(entry?.attention, AgentSeatAttention.working);
+      expect(entry?.dismissedAskRequestId, 'perm-1');
+    });
+
+    test('answerPermissionRequest failed does not mark answered', () async {
+      // Claude registry → pluginSdkReply capability absent → unsupported.
+      final answerService = AskUserQuestionAnswerService(
+        registry: _ptyRegistry(),
+        store: store,
+      );
+      final cubit = _buildCubit(answerService: answerService);
+      addTearDown(cubit.close);
+
+      const sessionId = 'sess-perm-fail';
+      _seedWaitingPermissionTab(cubit, sessionId: sessionId);
+
+      final result = await cubit.answerPermissionRequest(
+        sessionId: sessionId,
+        memberId: sessionId,
+        reply: 'once',
+      );
+
+      expect(result, isA<AskUserAnswerFailed>());
+      expect((result as AskUserAnswerFailed).reason, 'unsupported');
+      final entry = attention.state.entryFor(
+        sessionId: sessionId,
+        memberId: sessionId,
+      );
+      expect(entry?.attention, AgentSeatAttention.waiting);
+      expect(entry?.dismissedAskRequestId, isNull);
+      expect(
+        store.take(
+          sessionId: sessionId,
+          memberId: sessionId,
+          requestId: 'perm-1',
+        ),
+        isNull,
+      );
     });
   });
 }

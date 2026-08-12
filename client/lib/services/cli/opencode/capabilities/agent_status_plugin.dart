@@ -111,7 +111,46 @@ export const TeampilotAgentStatus = async (input, options) => {
     if (!r.ok) throw new Error(`opencode question ${action} HTTP ${r.status}`);
   };
 
-  const pollAndReply = async (requestId) => {
+  // Deliver an allow/deny reply for a permission request. Prefer the v2 SDK
+  // `client.permission.reply` (flat requestID shape); fall back to the OpenCode
+  // HTTP API through the client's own request pipeline (`_client`) — same rule
+  // as deliverQuestionReply (dead serverUrl in default TUI mode).
+  const deliverPermissionReply = async (requestId, body) => {
+    const reply =
+      body.permission_reply ?? (body.reject ? "reject" : "once");
+    if (client?.permission?.reply) {
+      await client.permission.reply({ requestID: requestId, reply });
+      return;
+    }
+    const raw = client?._client;
+    if (raw?.post) {
+      const result = await raw.post({
+        url: `/permission/${encodeURIComponent(requestId)}/reply`,
+        headers: { "Content-Type": "application/json" },
+        body: { reply },
+      });
+      if (result?.error) {
+        throw new Error(
+          `opencode permission reply failed: ${JSON.stringify(result.error)}`,
+        );
+      }
+      return;
+    }
+    const serverUrl = input?.serverUrl ? String(input.serverUrl) : null;
+    if (!serverUrl) throw new Error("no opencode serverUrl");
+    const base = serverUrl.replace(/\/+$/, "");
+    const r = await fetch(
+      `${base}/permission/${encodeURIComponent(requestId)}/reply`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reply }),
+      },
+    );
+    if (!r.ok) throw new Error(`opencode permission reply HTTP ${r.status}`);
+  };
+
+  const pollAndReply = async (requestId, kind = "question") => {
     if (!requestId || !port) return;
     const deadline = Date.now() + ASK_POLL_TTL_MS;
     let replyFailureReported = false;
@@ -132,7 +171,11 @@ export const TeampilotAgentStatus = async (input, options) => {
       }
       if (status === 200 && body) {
         try {
-          await deliverQuestionReply(requestId, body);
+          if (kind === "permission") {
+            await deliverPermissionReply(requestId, body);
+          } else {
+            await deliverQuestionReply(requestId, body);
+          }
         } catch (e) {
           // Delivery failed (v1 SDK without question, server down, auth, …).
           // Signal once so the chat restores the waiting card, then keep
@@ -163,7 +206,39 @@ export const TeampilotAgentStatus = async (input, options) => {
     event: async ({ event }) => {
       if (!event || !event.type) return;
       if (event.type === "permission.asked") {
-        await post("permission.asked");
+        // Forward the permission payload so the chat can render allow/deny
+        // buttons. Path varies by opencode version: properties (SDK v1) vs
+        // data vs the raw event fields (SDK v2).
+        const props = event.properties ?? event.data ?? {};
+        const requestId =
+          props.id ?? props.request_id ?? event.id ?? event.request_id ?? null;
+        const sessionID =
+          props.sessionID ??
+          props.session_id ??
+          event.sessionID ??
+          event.session_id ??
+          null;
+        const tool = props.tool ?? event.tool ?? null;
+        await post("permission.asked", {
+          request_id: requestId,
+          session_id: sessionID,
+          permission:
+            props.permission ??
+            props.description ??
+            props.title ??
+            event.permission ??
+            null,
+          patterns:
+            props.patterns ??
+            (props.pattern
+              ? Array.isArray(props.pattern)
+                ? props.pattern
+                : [props.pattern]
+              : null),
+          always: props.always ?? event.always ?? null,
+          tool: tool,
+        });
+        if (requestId) await pollAndReply(requestId, "permission");
         return;
       }
       if (event.type === "question.asked") {

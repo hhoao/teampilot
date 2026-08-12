@@ -1,9 +1,14 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/services/agent_status/agent_permission_request.dart';
 import 'package:teampilot/services/agent_status/ask_user_question.dart';
 import 'package:teampilot/services/agent_status/ask_user_question_policy.dart';
 import 'package:teampilot/services/cli/registry/capabilities/ask_user_question_capability.dart';
 
 void main() {
+  const permissionRequest = AgentPermissionRequest(
+    id: 'perm-1',
+    description: 'Run `npm install`',
+  );
   const singleSelectQuestion = AgentAskUserQuestion(
     question: 'Pick one',
     options: [AgentAskUserOption(label: 'A')],
@@ -167,6 +172,63 @@ void main() {
         shouldShowAskUserQuestionCard(
           capability: const PtyAskUserQuestionCapability(),
           questions: const [],
+        ),
+        isFalse,
+      );
+    });
+  });
+
+  group('shouldShowPermissionCard', () {
+    test('null capability returns false', () {
+      expect(
+        shouldShowPermissionCard(
+          capability: null,
+          permissionRequest: permissionRequest,
+          askRequestId: 'perm-1',
+        ),
+        isFalse,
+      );
+    });
+
+    test('Claude / pty capability returns false', () {
+      expect(
+        shouldShowPermissionCard(
+          capability: const PtyAskUserQuestionCapability(),
+          permissionRequest: permissionRequest,
+          askRequestId: 'perm-1',
+        ),
+        isFalse,
+      );
+    });
+
+    test('OpenCode with payload and id returns true', () {
+      expect(
+        shouldShowPermissionCard(
+          capability: const OpenCodeAskUserQuestionCapability(),
+          permissionRequest: permissionRequest,
+          askRequestId: 'perm-1',
+        ),
+        isTrue,
+      );
+    });
+
+    test('OpenCode missing askRequestId returns false', () {
+      expect(
+        shouldShowPermissionCard(
+          capability: const OpenCodeAskUserQuestionCapability(),
+          permissionRequest: permissionRequest,
+          askRequestId: null,
+        ),
+        isFalse,
+      );
+    });
+
+    test('OpenCode without payload returns false', () {
+      expect(
+        shouldShowPermissionCard(
+          capability: const OpenCodeAskUserQuestionCapability(),
+          permissionRequest: null,
+          askRequestId: 'perm-1',
         ),
         isFalse,
       );

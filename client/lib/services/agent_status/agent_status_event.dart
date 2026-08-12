@@ -1,4 +1,5 @@
 import 'agent_attention_state.dart';
+import 'agent_permission_request.dart';
 import 'ask_user_question.dart';
 
 /// Normalized agent-status signal from a CLI hook / plugin payload.
@@ -19,6 +20,7 @@ class AgentStatusEvent {
     this.restoreAskWaiting = false,
     this.planText,
     this.planFilePath,
+    this.permissionRequest,
   });
 
   final AgentSeatAttention state;
@@ -66,6 +68,10 @@ class AgentStatusEvent {
   /// Claude `ExitPlanMode` plan file path (when the CLI persisted it).
   final String? planFilePath;
 
+  /// Structured OpenCode permission request (`permission.asked`) for chat
+  /// rendering / allow-deny answering.
+  final AgentPermissionRequest? permissionRequest;
+
   AgentStatusEvent copyWith({
     AgentSeatAttention? state,
     String? toolName,
@@ -82,6 +88,7 @@ class AgentStatusEvent {
     bool? restoreAskWaiting,
     String? planText,
     String? planFilePath,
+    AgentPermissionRequest? permissionRequest,
   }) => AgentStatusEvent(
     state: state ?? this.state,
     toolName: toolName ?? this.toolName,
@@ -98,6 +105,7 @@ class AgentStatusEvent {
     restoreAskWaiting: restoreAskWaiting ?? this.restoreAskWaiting,
     planText: planText ?? this.planText,
     planFilePath: planFilePath ?? this.planFilePath,
+    permissionRequest: permissionRequest ?? this.permissionRequest,
   );
 
   @override
@@ -118,7 +126,8 @@ class AgentStatusEvent {
           message == other.message &&
           restoreAskWaiting == other.restoreAskWaiting &&
           planText == other.planText &&
-          planFilePath == other.planFilePath;
+          planFilePath == other.planFilePath &&
+          permissionRequest == other.permissionRequest;
 
   @override
   int get hashCode => Object.hash(
@@ -137,6 +146,7 @@ class AgentStatusEvent {
     restoreAskWaiting,
     planText,
     planFilePath,
+    permissionRequest,
   );
 }
 

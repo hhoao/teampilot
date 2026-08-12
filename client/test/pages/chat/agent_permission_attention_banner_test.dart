@@ -7,9 +7,11 @@ import 'package:teampilot/cubits/chat/model/chat_tab.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/app_session.dart';
+import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/pages/chat/agent_permission_attention_banner.dart';
 import 'package:teampilot/services/agent_status/agent_attention_state.dart';
+import 'package:teampilot/services/agent_status/agent_permission_request.dart';
 import 'package:teampilot/services/agent_status/agent_status_event.dart';
 import 'package:teampilot/theme/app_typography_scale.dart';
 import 'package:teampilot/utils/ui/app_keys.dart';
@@ -39,13 +41,14 @@ class _RecordingChatCubit extends ChatCubit {
   }
 }
 
-AppSession _simpleSession({String id = 'sess-1'}) {
+AppSession _simpleSession({String id = 'sess-1', CliTool cli = CliTool.claude}) {
   return AppSession(
     sessionId: id,
     workspaceId: 'ws-1',
     folders: const [WorkspaceFolder(path: '/tmp')],
     createdAt: 1,
     updatedAt: 1,
+    cli: cli,
   );
 }
 
@@ -216,6 +219,54 @@ void main() {
     expect(chat.workbenchViews, [
       (session.sessionId, SessionWorkbenchView.terminal),
     ]);
+  });
+
+  testWidgets('opencode permission.asked shows permission card', (
+    tester,
+  ) async {
+    final session = _simpleSession(id: 'sess-perm', cli: CliTool.opencode);
+    final chat = _RecordingChatCubit();
+    addTearDown(chat.close);
+    chat.tabStore.setActiveWorkspaceId(session.workspaceId);
+    chat.tabStore.registerSession(
+      ChatTab(
+        info: ChatTabInfo(
+          id: session.sessionId,
+          title: 'Chat',
+          subtitle: 'simple',
+        ),
+        cliTeamName: '',
+        workbenchView: SessionWorkbenchView.chat,
+      ),
+    );
+
+    final attention = AgentAttentionCubit(pruneInterval: null);
+    addTearDown(attention.close);
+    attention.applyEvent(
+      sessionId: session.sessionId,
+      memberId: session.sessionId,
+      event: const AgentStatusEvent(
+        state: AgentSeatAttention.waiting,
+        hookEventName: 'permission.asked',
+        askRequestId: 'perm-1',
+        permissionRequest: AgentPermissionRequest(
+          id: 'perm-1',
+          description: 'Run `npm install`',
+          always: ['npm install'],
+        ),
+      ),
+      skipPermissions: false,
+    );
+
+    await tester.pumpWidget(
+      _harness(chat: chat, attention: attention, session: session),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(AppKeys.opencodePermissionCard), findsOneWidget);
+    expect(find.textContaining('npm install'), findsWidgets);
+    // Terminal banner must not double-render for the interactive card.
+    expect(find.byKey(AppKeys.agentPermissionAttentionBanner), findsNothing);
   });
 
   testWidgets('banner hidden when workbench is Terminal', (tester) async {

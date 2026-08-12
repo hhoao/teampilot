@@ -1379,6 +1379,24 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get opencodePermissionTitle => 'OpenCode 需要你的授权';
+
+  @override
+  String get opencodePermissionAllowOnce => '允许一次';
+
+  @override
+  String get opencodePermissionAllowAlways => '总是允许';
+
+  @override
+  String get opencodePermissionReject => '拒绝';
+
+  @override
+  String get opencodePermissionAnswerFailed => '无法提交你的决定。请重试或在终端中处理。';
+
+  @override
+  String get opencodePermissionAnswerInTerminal => '在终端处理';
+
+  @override
   String get sessionHistoryRetry => '重试';
 
   @override

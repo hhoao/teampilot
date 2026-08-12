@@ -138,6 +138,49 @@ void main() {
       expect(e?.state, AgentSeatAttention.waiting);
     });
 
+    test('OpenCode permission.asked parses payload for chat card', () {
+      final e = AgentStatusNormalizer.normalize(
+        cli: CliTool.opencode,
+        body: {
+          'event': 'permission.asked',
+          'request_id': 'perm-1',
+          'session_id': 'ses_abc',
+          'permission': 'Run `npm install`',
+          'patterns': ['npm'],
+          'always': ['npm', 'npm install'],
+          'tool': {'messageID': 'msg-1', 'callID': 'call-1'},
+        },
+      );
+      expect(e?.state, AgentSeatAttention.waiting);
+      expect(e?.hookEventName, 'permission.asked');
+      expect(e?.askRequestId, 'perm-1');
+      expect(e?.nativeSessionId, 'ses_abc');
+      expect(e?.permissionRequest, isNotNull);
+      final p = e!.permissionRequest!;
+      expect(p.id, 'perm-1');
+      expect(p.description, 'Run `npm install`');
+      expect(p.patterns, ['npm']);
+      expect(p.always, ['npm', 'npm install']);
+      expect(p.sessionID, 'ses_abc');
+      expect(p.toolMessageID, 'msg-1');
+      expect(p.toolCallID, 'call-1');
+    });
+
+    test('OpenCode permission.asked without id keeps waiting without card data',
+        () {
+      final e = AgentStatusNormalizer.normalize(
+        cli: CliTool.opencode,
+        body: {
+          'event': 'permission.asked',
+          'permission': 'Run tests',
+        },
+      );
+      expect(e?.state, AgentSeatAttention.waiting);
+      expect(e?.askRequestId, isNull);
+      // No correlation id → no answerable card payload.
+      expect(e?.permissionRequest, isNull);
+    });
+
     test('OpenCode question.asked → waiting', () {
       final e = AgentStatusNormalizer.normalize(
         cli: CliTool.opencode,

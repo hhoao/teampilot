@@ -1448,6 +1448,25 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get opencodePermissionTitle => 'OpenCode needs your permission';
+
+  @override
+  String get opencodePermissionAllowOnce => 'Allow once';
+
+  @override
+  String get opencodePermissionAllowAlways => 'Always allow';
+
+  @override
+  String get opencodePermissionReject => 'Reject';
+
+  @override
+  String get opencodePermissionAnswerFailed =>
+      'Couldn\'t submit your decision. Try again or answer in the Terminal.';
+
+  @override
+  String get opencodePermissionAnswerInTerminal => 'Answer in terminal';
+
+  @override
   String get sessionHistoryRetry => 'Retry';
 
   @override

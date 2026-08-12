@@ -2696,6 +2696,42 @@ abstract class AppLocalizations {
   /// **'Q{index}'**
   String agentAskQuestionTabFallback(int index);
 
+  /// No description provided for @opencodePermissionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'OpenCode needs your permission'**
+  String get opencodePermissionTitle;
+
+  /// No description provided for @opencodePermissionAllowOnce.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow once'**
+  String get opencodePermissionAllowOnce;
+
+  /// No description provided for @opencodePermissionAllowAlways.
+  ///
+  /// In en, this message translates to:
+  /// **'Always allow'**
+  String get opencodePermissionAllowAlways;
+
+  /// No description provided for @opencodePermissionReject.
+  ///
+  /// In en, this message translates to:
+  /// **'Reject'**
+  String get opencodePermissionReject;
+
+  /// No description provided for @opencodePermissionAnswerFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t submit your decision. Try again or answer in the Terminal.'**
+  String get opencodePermissionAnswerFailed;
+
+  /// No description provided for @opencodePermissionAnswerInTerminal.
+  ///
+  /// In en, this message translates to:
+  /// **'Answer in terminal'**
+  String get opencodePermissionAnswerInTerminal;
+
   /// No description provided for @sessionHistoryRetry.
   ///
   /// In en, this message translates to:

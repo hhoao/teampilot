@@ -163,6 +163,29 @@ void main() {
     );
   });
 
+  test('permission reply entry round-trips', () {
+    const entry = AskUserAnswerPendingEntry(
+      requestId: 'perm-1',
+      permissionReply: 'always',
+    );
+
+    store.put(
+      sessionId: 'sess-a',
+      memberId: 'member-1',
+      entry: entry,
+    );
+
+    final taken = store.take(
+      sessionId: 'sess-a',
+      memberId: 'member-1',
+      requestId: 'perm-1',
+    );
+    expect(taken, entry);
+    expect(taken?.permissionReply, 'always');
+    expect(taken?.answers, isNull);
+    expect(taken?.reject, isFalse);
+  });
+
   test('overwrite same requestId', () {
     store.put(
       sessionId: 'sess-a',
