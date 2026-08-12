@@ -9,6 +9,7 @@ import '../../services/team_bus/team_bus.dart';
 import '../../services/terminal/fullscreen_cr_ack_config.dart';
 import '../../services/terminal/fullscreen_pty_automation.dart';
 import '../../services/terminal/member_pty_inject_service.dart';
+import '../../services/terminal/prompt_submit_ack_tracker.dart';
 import '../../services/terminal/pty_automation_delivery_guard.dart';
 import '../../services/terminal/pty_automation_retry_queue.dart';
 import '../../services/terminal/session_member_cli_resolver.dart';
@@ -31,13 +32,15 @@ final class TabMemberPtyDelivery {
     required TabMemberCoordinationFactory coordinationFactory,
     void Function(String sessionId, String memberId)? onAfterTurnLatched,
     MemberPtyInjectService? ptyInject,
+    PromptSubmitAckTracker? promptAckTracker,
   }) : _tabStore = tabStore,
        _shellFactory = shellFactory,
        _globalPresets = globalPresets,
        _activeTeam = activeTeam,
        _isClosed = isClosed,
        _coordinationFactory = coordinationFactory,
-       _onAfterTurnLatched = onAfterTurnLatched {
+       _onAfterTurnLatched = onAfterTurnLatched,
+       _promptAckTracker = promptAckTracker ?? PromptSubmitAckTracker() {
     _ptyInject =
         ptyInject ??
         MemberPtyInjectService(
@@ -53,6 +56,7 @@ final class TabMemberPtyDelivery {
   final TabMemberCoordinationFactory _coordinationFactory;
   final void Function(String sessionId, String memberId)? _onAfterTurnLatched;
   late final MemberPtyInjectService _ptyInject;
+  final PromptSubmitAckTracker _promptAckTracker;
 
   TeamBus? busForSession(String sessionId) =>
       _tabStore.openTabBySessionId(sessionId)?.teamBus;
@@ -114,6 +118,12 @@ final class TabMemberPtyDelivery {
       if (_deferMailDoorbellIfBooting(sessionId, memberId, shell, trimmed)) {
         return;
       }
+      _trackPromptSubmitAck(
+        sessionId: sessionId,
+        memberId: memberId,
+        text: trimmed,
+        isOperatorTurn: isOperatorTurn,
+      );
       await _deliverFullScreen(
         sessionId: sessionId,
         memberId: memberId,
@@ -181,6 +191,11 @@ final class TabMemberPtyDelivery {
       sessionId,
       memberId,
       automation: true,
+    );
+    _trackPromptSubmitAck(
+      sessionId: sessionId,
+      memberId: memberId,
+      text: trimmed,
     );
     final outcome = await _ptyInject.retry(
       input: shell.input,
@@ -302,6 +317,12 @@ final class TabMemberPtyDelivery {
       }
       return;
     }
+    _trackPromptSubmitAck(
+      sessionId: tick.sessionId,
+      memberId: tick.memberId,
+      text: tick.text,
+      isOperatorTurn: !_isMailDoorbellText(tick.text),
+    );
     final outcome = await _ptyInject.retry(
       input: shell.input,
       probe: shell.probe,
@@ -375,6 +396,30 @@ final class TabMemberPtyDelivery {
     bus?.noteMailDeliveryStarted(memberId);
     return bus?.memberById(memberId)?.deliveryPhase !=
         MailboxDeliveryPhase.failed;
+  }
+
+  /// Registers a prompt-submit ACK pending before the grid probe runs. The
+  /// hook event (UserPromptSubmit) is the authoritative delivery confirmation:
+  /// when it arrives, cancel any scheduled re-paste (crStuck retry storm) and
+  /// treat the submit as success. The grid probe still runs as a fallback —
+  /// hook-channel absence keeps today's behavior unchanged.
+  void _trackPromptSubmitAck({
+    required String sessionId,
+    required String memberId,
+    required String text,
+    bool isOperatorTurn = false,
+  }) {
+    _promptAckTracker
+        .register(sessionId: sessionId, memberId: memberId, text: text)
+        .then((acked) {
+          if (acked) {
+            _ptyInject.clearPending(sessionId, memberId);
+            if (isOperatorTurn) {
+              _markMemberTurnStartedOnSubmitSuccess(sessionId, memberId);
+            }
+          }
+        })
+        .ignore();
   }
 
   bool _ptyAckAborted(

@@ -46,6 +46,7 @@ import '../services/terminal/terminal_session.dart';
 import '../services/terminal/ask_user_question_answer_service.dart';
 import '../services/terminal/exit_plan_mode_approval_service.dart';
 import '../services/terminal/member_turn_interrupt_service.dart';
+import '../services/terminal/prompt_submit_ack_tracker.dart';
 import '../services/terminal/session_member_cli_resolver.dart';
 import '../services/termux/termux_connection_gate.dart';
 import '../services/terminal/terminal_theme_for_launch.dart';
@@ -118,6 +119,7 @@ class ChatCubit extends Cubit<ChatState>
     AskUserAnswerPendingStore? askUserAnswerPendingStore,
     AskUserQuestionAnswerService? askUserQuestionAnswerService,
     ExitPlanModeApprovalService? exitPlanApprovalService,
+    PromptSubmitAckTracker? promptAckTracker,
     InMemoryFollowUpQueueStore? followUpQueueStore,
     FollowUpQueueDrainer? followUpQueueDrainer,
     Future<TeamProfile?> Function(String teamId)? teamById,
@@ -138,6 +140,7 @@ class ChatCubit extends Cubit<ChatState>
        _agentStatusSeatLookup = agentStatusSeatLookup,
        _agentAttentionCubit = agentAttentionCubit,
        _askUserAnswerPendingStore = askUserAnswerPendingStore,
+       _promptAckTracker = promptAckTracker,
        _automationRepository = automationRepository,
        _layoutCubit = layoutCubit,
        _shellFactory = ChatSessionShellFactory(
@@ -221,6 +224,7 @@ class ChatCubit extends Cubit<ChatState>
   final AgentStatusSeatLookup? _agentStatusSeatLookup;
   final AgentAttentionCubit? _agentAttentionCubit;
   final AskUserAnswerPendingStore? _askUserAnswerPendingStore;
+  final PromptSubmitAckTracker? _promptAckTracker;
   StreamSubscription<AgentAttentionState>? _agentAttentionSub;
   final AutomationRepository _automationRepository;
   final LayoutCubit? _layoutCubit;
@@ -298,6 +302,7 @@ class ChatCubit extends Cubit<ChatState>
         activeTeam: () => _activeTeam,
         isClosed: () => isClosed,
         globalPresets: () => _lifecycle.globalPresets,
+        promptAckTracker: _promptAckTracker,
         activeSessionId: () => state.activeSessionId,
         presence: () => _presenceCubit?.state.presence ?? const {},
         sessionBusyFromAttention: (sessionId) {
