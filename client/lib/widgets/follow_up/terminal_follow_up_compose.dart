@@ -101,8 +101,13 @@ class TerminalFollowUpComposeHost extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    context.select<ChatCubit, (String?, Set<String>)>(
-      (c) => (c.state.activeSessionId, c.state.workingSessionIds),
+    // Rebuild when this session working or bus presence changes. Scoped to
+    // [session.sessionId] so background sessions do not rebuild every host on
+    // unrelated working/activation changes.
+    context.select<ChatCubit, bool>(
+      (c) =>
+          c.state.activeSessionId == session.sessionId ||
+          c.state.workingSessionIds.contains(session.sessionId),
     );
     context.select<MemberPresenceCubit, Map<String, MemberPresence>>(
       (c) => c.state.presence,
