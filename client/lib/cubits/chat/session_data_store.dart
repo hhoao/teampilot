@@ -235,7 +235,6 @@ class SessionDataStore {
     final workspace = await repo.createWorkspace(
       folders,
       display: display,
-      allowDuplicate: allowDuplicate,
     );
     final trimmedTeam = sessionTeamId.trim();
     final resolvedClis = trimmedTeam.isEmpty
@@ -338,12 +337,12 @@ class SessionDataStore {
     String? display,
     List<TeamMemberConfig> rosterMembers = const [],
   }) async {
-    final workspace = await repo.cloneWorkspace(
+    final result = await repo.cloneWorkspace(
       sourceWorkspaceId,
       display: display,
       rosterMembers: rosterMembers,
     );
     final snapshot = await loadWorkspaceData(repo);
-    return (workspace: workspace, snapshot: snapshot);
+    return (workspace: result.workspace, snapshot: snapshot);
   }
 }

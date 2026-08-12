@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart' show listEquals, setEquals;
+import 'package:flutter/foundation.dart' show setEquals;
 import 'package:uuid/uuid.dart';
 
 import '../models/workspace.dart';
@@ -85,6 +85,9 @@ class SessionRepository {
     }
     return SessionRepositoryFs(teampilotRoot: AppStorage.paths.basePath);
   }
+
+  /// Public accessor for the repository filesystem binding.
+  Future<SessionRepositoryFs> fs() => _fs();
 
   Future<Workspace?> _readManifest(
     SessionRepositoryFs fs,
@@ -179,18 +182,6 @@ class SessionRepository {
       fs.manifestFile(workspace.workspaceId),
       const JsonEncoder.withIndent('  ').convert(withoutSessions.toJson()),
     );
-    await _syncWorkspaceIndexEntry(fs, workspace);
-  }
-
-  Future<void> _syncWorkspaceIndexEntry(
-    SessionRepositoryFs fs,
-    Workspace workspace,
-  ) async {
-    _invalidateWorkspacesIndexCache();
-    final sessionIds = await fs.listSessionDirectoryIds(workspace.workspaceId);
-    await WorkspaceIndexStore(
-      fs,
-    ).upsert(workspace.copyWith(sessionIds: sessionIds));
   }
 
   static bool _sameWorkspaceIds(
@@ -318,19 +309,13 @@ class SessionRepository {
     return sessions;
   }
 
-  /// Creates a workspace for [primaryPath].
+  /// Creates a new, independent workspace for [folders].
   ///
-  /// By default, an existing workspace with the same normalized [primaryPath]
-  /// is reused: its folders and [display] are merged and it is returned
-  /// instead of creating a duplicate. This keeps folder-merge
-  /// ([SessionDataStore.addWorkspaceDirectory]) and bootstrap seeding
-  /// idempotent. Pass [allowDuplicate] to skip reuse and always create a new,
-  /// independent workspace on the same directory (the explicit "New Workspace"
-  /// action) — multiple workspaces may then point at one directory.
+  /// Always writes a fresh manifest (no path-based reuse/merge — dedup and
+  /// folder merging are owned by the workspace catalog at a higher layer).
   Future<Workspace> createWorkspace(
     List<WorkspaceFolder> folders, {
     String display = '',
-    bool allowDuplicate = false,
   }) async {
     final fs = await _fs();
     final normalized = [
@@ -341,35 +326,7 @@ class SessionRepository {
     if (normalized.isEmpty) {
       throw ArgumentError('createWorkspace requires at least one folder path');
     }
-    final primary = normalized.first.path;
     final now = DateTime.now().millisecondsSinceEpoch;
-    final workspaces = await loadWorkspaces();
-    for (final existing in allowDuplicate ? const <Workspace>[] : workspaces) {
-      if (!workspacePathsEqual(existing.firstFolderPath, primary)) {
-        continue;
-      }
-      final merged = List<WorkspaceFolder>.from(existing.folders);
-      for (final f in normalized.skip(1)) {
-        if (!merged.any((e) => workspacePathsEqual(e.path, f.path))) {
-          merged.add(f);
-        }
-      }
-      final trimmedDisplay = display.trim();
-      final displayOut = trimmedDisplay.isNotEmpty
-          ? trimmedDisplay
-          : existing.display;
-      if (listEquals(merged, existing.folders) &&
-          displayOut == existing.display) {
-        return existing;
-      }
-      final updated = existing.copyWith(
-        folders: merged,
-        display: displayOut,
-        updatedAt: now,
-      );
-      await _writeManifest(fs, updated);
-      return updated;
-    }
     final workspace = Workspace(
       workspaceId: const Uuid().v4(),
       folders: normalized,
@@ -378,7 +335,6 @@ class SessionRepository {
       updatedAt: now,
     );
     await _writeManifest(fs, workspace);
-    await _provisionWorkspaceTrust(fs, workspace);
     return workspace;
   }
 
@@ -493,7 +449,6 @@ class SessionRepository {
       updatedAt: now,
     );
     await _writeManifest(fs, updated);
-    await _provisionWorkspaceTrust(fs, updated);
   }
 
   static bool _sameTargetIdSet(List<String> a, List<String> b) {
@@ -617,7 +572,6 @@ class SessionRepository {
       updatedAt: now,
     );
     await _writeManifest(fs, updated);
-    await _provisionWorkspaceTrust(fs, updated);
 
     for (final session in applied.sessions) {
       try {
@@ -635,10 +589,12 @@ class SessionRepository {
     return updated;
   }
 
-  Future<void> _provisionWorkspaceTrust(
-    SessionRepositoryFs fs,
-    Workspace workspace,
-  ) async {
+  /// Provisions trust metadata (git-root trusted projects) for [workspace].
+  ///
+  /// No longer called from mutation paths; background provisioning and the
+  /// launch trust gate are owned by the workspace catalog.
+  Future<void> provisionWorkspaceTrust(Workspace workspace) async {
+    final fs = await _fs();
     final layout = RuntimeLayout(teampilotRoot: fs.teampilotRoot, fs: fs.fs);
     await WorkspaceTrustProvisioner(
       layout: layout,
@@ -695,7 +651,7 @@ class SessionRepository {
     mark('bind-fs');
     // Launch already has the workspace snapshot; skip re-reading every
     // session.json (listSessionIdsForWorkspace) — create only needs folders /
-    // placement fields, and sync-index re-lists directory names afterward.
+    // placement fields, and directory listing happens lazily on manifest read.
     Workspace? workspace = knownWorkspace != null &&
             knownWorkspace.workspaceId == workspaceId
         ? knownWorkspace
@@ -815,8 +771,6 @@ class SessionRepository {
       jsonEncode(session.toJson()),
     );
     mark('write-session');
-    await _syncWorkspaceIndexEntry(fs, workspace);
-    mark('sync-index');
     appLogger.d(
       '[session-launch] createSession done '
       'session=$sessionId ms=${total.elapsedMilliseconds}',
@@ -1132,7 +1086,7 @@ class SessionRepository {
     });
   }
 
-  Future<Workspace> cloneWorkspace(
+  Future<({Workspace workspace, List<AppSession> sessions})> cloneWorkspace(
     String sourceWorkspaceId, {
     String? display,
     List<TeamMemberConfig> rosterMembers = const [],
@@ -1156,18 +1110,22 @@ class SessionRepository {
     );
     await _writeManifest(fs, newWorkspace);
 
+    final clonedSessions = <AppSession>[];
     for (final old in sourceSessions) {
-      await _cloneSessionRecord(
-        fs,
-        old,
-        newWorkspaceId,
-        rosterMembers: rosterMembers,
+      clonedSessions.add(
+        await _cloneSessionRecord(
+          fs,
+          old,
+          newWorkspaceId,
+          rosterMembers: rosterMembers,
+        ),
       );
     }
 
-    await _syncWorkspaceIndexEntry(fs, newWorkspace);
-
-    return (await _readManifest(fs, newWorkspaceId)) ?? newWorkspace;
+    return (
+      workspace: (await _readManifest(fs, newWorkspaceId)) ?? newWorkspace,
+      sessions: clonedSessions,
+    );
   }
 
   Future<AppSession> _cloneSessionRecord(
@@ -1242,7 +1200,5 @@ class SessionRepository {
     );
 
     await fs.deleteWorkspaceDir(workspaceId);
-    _invalidateWorkspacesIndexCache();
-    await WorkspaceIndexStore(fs).remove(workspaceId);
   }
 }

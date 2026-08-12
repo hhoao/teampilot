@@ -6,7 +6,7 @@ import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 
 void main() {
-  test('createWorkspace persists local folders and merges by path', () async {
+  test('createWorkspace persists local folders and always creates new', () async {
     final tmp = await Directory.systemTemp.createTemp('fs_repo_folders_');
     addTearDown(() => tmp.deleteSync(recursive: true));
     final repo = SessionRepository(rootDir: tmp.path);
@@ -21,12 +21,13 @@ void main() {
       isTrue,
     );
 
-    final merged = await repo.createWorkspace([
+    final second = await repo.createWorkspace([
       const WorkspaceFolder(path: '/main'),
       const WorkspaceFolder(path: '/y'),
     ]);
-    expect(merged.workspaceId, ws.workspaceId);
-    expect(merged.folders.map((f) => f.path), ['/main', '/x', '/y']);
+    expect(second.workspaceId, isNot(ws.workspaceId));
+    expect(second.folders.map((f) => f.path), ['/main', '/y']);
+    expect((await repo.loadWorkspaces()).length, 2);
   });
 
   test(
