@@ -180,6 +180,7 @@
   "fileTree": "File Tree",
   "sourceControl": "Source Control",
   "gitStagedChanges": "Staged Changes",
+  "gitUnversionedFiles": "Unversioned Files",
   "gitChanges": "Changes",
   "gitNoChanges": "No changes",
   "gitNotARepository": "This folder is not a Git repository",

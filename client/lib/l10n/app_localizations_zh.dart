@@ -493,6 +493,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get gitStagedChanges => '暂存的更改';
 
   @override
+  String get gitUnversionedFiles => '未版本化的文件';
+
+  @override
   String get gitChanges => '更改';
 
   @override
