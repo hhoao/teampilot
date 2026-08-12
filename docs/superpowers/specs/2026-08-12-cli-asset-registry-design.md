@@ -24,13 +24,14 @@ Status: Draft (brainstorming, rev 2)
 
 ## 架构
 
-**泛型注册表核心 + 按资产类型的窄特化；每个 CLI 一个实现；Capability 构造注入 Registry 注册资产；落盘收敛到统一装配点。**
+**泛型注册表核心 + 按资产类型的窄特化；每个 CLI 一个实现；能力纯声明资产、Registry 主动收集（依赖反转）；落盘收敛到统一装配点。**
 
 ```
 ┌─ 泛型核心 CliAssetRegistry<T>（implements CliCapability）──┐
 │  纯内存，无 IO：                                           │
-│  ├── register / unregister                                 │
-│  ├── assetsFor(scope)  ← scope 过滤 + 优先级合并            │
+│  ├── register / unregister  （通道①：中途动态注册）         │
+│  ├── collectDeclared(caps)  （通道②：收集能力声明）         │
+│  ├── assetsFor(scope)  ← scope 过滤 + 合并规则链            │
 │  ├── fingerprint(assets)                                   │
 │  └── 变更通知（register/unregister → notify）               │
 └────────────────────────────────────────────────────────┘
@@ -48,10 +49,11 @@ Status: Draft (brainstorming, rev 2)
 │  CursorHookRegistry / CodexHookRegistry / ...           │
 │  （一个 CLI 的多个 Registry 共享上下文对象）               │
 └────────────────────────────────────────────────────────┘
-                ▲ 构造注入（能力层）/ capability 查询（服务层）
+      ▲ collectDeclared 收集 / 服务层 capability 查询
 ┌────────────────────────────────────────────────────────┐
-│  PromptSubmitAckCapability({required HookRegistry hooks}) │
-│  → hooks.register(CliHookSpec(event: 'promptSubmit', …)) │
+│  PromptSubmitAckCapability implements                   │
+│    CliCapability, AssetDeclaringCapability              │
+│  → declaredAssets: [CliConfigAsset(hooks, promptSubmit)]│
 └────────────────────────────────────────────────────────┘
 ```
 
@@ -64,7 +66,7 @@ Status: Draft (brainstorming, rev 2)
 | command 脚本生成 | 特化内（codex/cursor/flashskyai） | 无（返回脚本内容） |
 | 落盘（materialize / 写文件） | **统一装配点**（`ConfigProfileCapability` 写配置前） | 有 |
 
-Registry **不落盘**——能力不碰文件系统，落盘统一由装配点执行。这是 rev 1 → rev 2 的关键修正（rev 1 把 materialize 放进 Registry，职责过重）。
+Registry **不落盘**——能力不碰文件系统，落盘统一由装配点执行。这是 rev 1 → rev 2 的关键修正（rev 1 把 materialize 放进 Registry，职责过重）。rev 3 修正依赖方向：能力不注入 Registry，改为纯声明 + Registry 收集（见"资产注册双通道"）。
 
 ### 资产模型
 
@@ -145,34 +147,67 @@ abstract interface class HookRegistry extends CliAssetRegistry<CliHookSpec> {
 
 其余类型（`McpRegistry` / `SkillRegistry` / `PluginRegistry`）同构，仅 payload 与 render 输出格式不同。
 
-### Registry 访问双通道
+### 资产注册双通道（依赖反转：能力声明，Registry 收集）
 
-- **能力层：构造注入**（依赖显式，能力直接持有实例并注册资产）。
-- **服务层：capability 查询**（`CliToolRegistry.capability<HookRegistry>(cli)`）。Registry 同时 `implements CliCapability` 并挂入各 `CliToolDefinition.capabilities` 列表，服务层（如 MCP fan-out、启动装配）无需持有实例即可按 CLI 查询——与现有 `capability<McpConfigWriterCapability>` 模式一致。
+**能力不持有 Registry、不主动注册**——能力通过可选接口纯声明资产，Registry 在装配时主动收集：
+
+```dart
+/// 能力侧：纯声明，无副作用、无 Registry 依赖。
+abstract interface class AssetDeclaringCapability implements CliCapability {
+  /// 惰性 getter：可依赖运行时数据（如 session 才知道的 ack endpoint）。
+  List<CliConfigAsset> get declaredAssets;
+}
+
+/// Registry 侧：主动收集 + 运行时注册（两条通道分离）。
+abstract class CliAssetRegistry<T> implements CliCapability {
+  /// 通道 ① 中途动态注册（用户配置 / 服务运行时注册）。
+  void register(CliConfigAsset<T> asset);
+  void unregister(String id);
+
+  /// 通道 ② 从能力的声明收集（装配时调用一次，能力集合启动时固定）。
+  void collectDeclared(Iterable<CliCapability> capabilities);
+
+  List<CliConfigAsset<T>> assetsFor(AssetScope scope);   // 过滤 + 合并规则链
+  String fingerprint(List<CliConfigAsset<T>> assets);    // 增量重渲染
+  void addListener(void Function() onChanged);           // 中途变更通知
+}
+```
+
+```dart
+// 能力侧：声明资产（const 构造，纯对象）
+final class PromptSubmitAckCapability
+    implements CliCapability, AssetDeclaringCapability {
+  const PromptSubmitAckCapability();
+  @override
+  List<CliConfigAsset> get declaredAssets => [
+    CliConfigAsset(
+      kind: AssetKind.hooks,
+      payload: CliHookSpec(event: 'promptSubmit', ...),
+      scope: AssetScope.app,
+      source: AssetSource.capability,
+      id: 'prompt-submit-ack',
+    ),
+  ];
+}
+
+// 装配侧：Registry 构造时从 tool 的能力列表收集声明
+cliToolRegistry.register(ClaudeCliTool(
+  promptSubmitAck: const PromptSubmitAckCapability(),  // 纯声明对象，无注入
+  hooks: ClaudeHookRegistry(ctx: claudeCtx),
+));
+// ClaudeCliTool.capabilities 含 hooks 与 promptSubmitAck；
+// ClaudeHookRegistry.collectDeclared(capabilities) → 收集 promptSubmitAck 声明的资产
+```
+
+**为什么反转**：与现有 `CliToolDefinition.capabilities` + `capability<T>` 遍历查询模式完全一致；能力变回纯对象（const、可单测、无副作用）；依赖方向正确（Registry 是 CLI 侧私有知识，不注入给能力）。
+
+**服务层查询**：`CliToolRegistry.capability<HookRegistry>(cli)`。Registry 同时 `implements CliCapability` 并挂入各 `CliToolDefinition.capabilities` 列表，服务层（如 MCP fan-out、启动装配）无需持有实例即可按 CLI 查询——与现有 `capability<McpConfigWriterCapability>` 模式一致。
 
 ```dart
 // 启动装配（app_shell.dart）
 final claudeHooks = ClaudeHookRegistry(ctx: claudeCtx);
-cliToolRegistry.register(ClaudeCliTool(hooks: claudeHooks, ...));
+cliToolRegistry.register(ClaudeCliTool(hooks: claudeHooks, promptSubmitAck: const PromptSubmitAckCapability()));
 // → ClaudeCliTool.capabilities 列表含 hooks，服务层可 capability<HookRegistry>(CliTool.claude)
-```
-
-### Capability 注入
-
-能力构造时注入所需 Registry（启动时组装，依赖显式）：
-
-```dart
-// 能力注册资产（构造时或首用懒注册）
-PromptSubmitAckCapability({required HookRegistry hooks})
-  : _hooks = hooks {
-  _hooks.register(CliConfigAsset(
-    kind: AssetKind.hooks,
-    payload: CliHookSpec(event: 'promptSubmit', url: ackEndpoint, ...),
-    scope: AssetScope.app,
-    source: AssetSource.capability,
-    id: 'prompt-submit-ack',
-  ));
-}
 ```
 
 ### 统一落盘装配点（Registry 不落盘）
