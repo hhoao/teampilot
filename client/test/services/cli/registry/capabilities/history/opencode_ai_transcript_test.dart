@@ -189,6 +189,285 @@ void main() {
     );
   });
 
+  test('message id is the fragment/db id; empty-id message skipped, no fallback (G1)',
+      () async {
+    // opencode 无 fallback id：消息 id 恒 = 片段携带的 id（JSON 树文件名 / db 行 id），
+    // 空 id 整条跳过，绝不合成 {cli}-{seq} 类 id（区别于 claude/codex/cursor 的惰性 fallback）。
+    final messages = await const OpencodeAiTranscriptAdapter().parse(
+      AiTranscriptBundle(
+        adapterId: 'opencode',
+        fragments: [
+          AiTranscriptFragment(
+            name: 'message/msg_a.json',
+            bytes: utf8.encode(
+              jsonEncode({
+                'id': 'msg_a',
+                'role': 'user',
+                'time': {'created': 1},
+              }),
+            ),
+          ),
+          AiTranscriptFragment(
+            name: 'part/msg_a/prt_a1.json',
+            bytes: utf8.encode(
+              jsonEncode({'id': 'prt_a1', 'type': 'text', 'text': 'a'}),
+            ),
+          ),
+          // 无 id 的消息：必须整条跳过（含其 parts），不消耗任何序号。
+          AiTranscriptFragment(
+            name: 'message/msg_noid.json',
+            bytes: utf8.encode(
+              jsonEncode({
+                'role': 'user',
+                'time': {'created': 2},
+              }),
+            ),
+          ),
+          AiTranscriptFragment(
+            name: 'part/msg_noid/prt_noid1.json',
+            bytes: utf8.encode(
+              jsonEncode({'id': 'prt_noid1', 'type': 'text', 'text': 'noid'}),
+            ),
+          ),
+          AiTranscriptFragment(
+            name: 'message/msg_b.json',
+            bytes: utf8.encode(
+              jsonEncode({
+                'id': 'msg_b',
+                'role': 'assistant',
+                'time': {'created': 3},
+              }),
+            ),
+          ),
+          AiTranscriptFragment(
+            name: 'part/msg_b/prt_b1.json',
+            bytes: utf8.encode(
+              jsonEncode({
+                'id': 'prt_b1',
+                'type': 'tool',
+                'tool': 'bash',
+                'callID': 'call_b',
+                'state': {'status': 'completed', 'input': {'command': 'pwd'}, 'output': '/tmp'},
+              }),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    expect(messages, hasLength(2));
+    expect(messages.map((m) => m.id), ['msg_a', 'msg_b']);
+    expect(messages.map((m) => m.id).toSet(), hasLength(2),
+        reason: 'id 必须唯一');
+    expect(
+      messages.expand((m) => m.parts).whereType<AiTextPart>(),
+      everyElement(isNot(matches('noid'))),
+    );
+    expect(
+      messages.expand((m) => m.parts).whereType<AiTextPart>(),
+      everyElement(isNot(matches(RegExp(r'^opencode-\d+$')))),
+      reason: '不允许出现 fallback 合成 id',
+    );
+  });
+
+  test('full and incremental sqlite locate share the same message ids (G1)',
+      () async {
+    final dbPath = p.join(base.path, 'opencode.db');
+    final db = sqlite3.open(dbPath);
+    db.execute('PRAGMA journal_mode=WAL;');
+    db.execute('''
+    CREATE TABLE message (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      session_id TEXT NOT NULL,
+      data TEXT NOT NULL,
+      time_created INTEGER NOT NULL
+    )''');
+    db.execute('''
+    CREATE TABLE part (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      message_id INTEGER NOT NULL,
+      data TEXT NOT NULL,
+      time_created INTEGER NOT NULL
+    )''');
+    for (var i = 1; i <= 3; i++) {
+      final role = i.isOdd ? 'user' : 'assistant';
+      db.execute(
+        'INSERT INTO message (session_id, data, time_created) VALUES (?, ?, ?)',
+        [
+          'sess-g1',
+          jsonEncode({'role': role, 'time': {'created': i * 1000}}),
+          i * 1000,
+        ],
+      );
+      db.execute(
+        'INSERT INTO part (message_id, data, time_created) VALUES (?, ?, ?)',
+        [i, jsonEncode({'type': 'text', 'text': 'm$i'}), i * 1000],
+      );
+    }
+    db.dispose();
+
+    final adapter = const OpencodeAiTranscriptAdapter();
+    final full = await locateOpencodeTranscript(
+      ctx(dataDir: base.path, persistedNativeId: 'sess-g1'),
+    );
+    expect(full, isNotNull);
+    final fullMessages = await adapter.parse(full!);
+    expect(fullMessages.map((m) => m.id), ['1', '2', '3']);
+
+    final inc = await locateOpencodeTranscriptIncremental(
+      ctx(dataDir: base.path, persistedNativeId: 'sess-g1'),
+      afterMessageId: 1,
+    );
+    expect(inc, isNotNull);
+    expect(inc!.hints['lastMessageId'], '3');
+    final incMessages = await adapter.parse(inc);
+    expect(incMessages.map((m) => m.id), ['2', '3']);
+
+    // 窗口一致性：增量产出 = 全量产出中 id 大于 afterMessageId 的子集（同源同 id）。
+    expect(
+      incMessages.map((m) => m.id),
+      fullMessages.map((m) => m.id).where((id) => id.compareTo('1') > 0),
+    );
+  });
+
+  test('non-Map tool input yields args null, never a bare string (G2)',
+      () async {
+    // _asArgs 仅接受 Map：字符串/数字等非 Map input → args=null，
+    // 绝不以裸字符串形式出现在 args 里（契约：args 必须 Map 或 null）。
+    final messages = await const OpencodeAiTranscriptAdapter().parse(
+      AiTranscriptBundle(
+        adapterId: 'opencode',
+        fragments: [
+          AiTranscriptFragment(
+            name: 'message/msg_g2.json',
+            bytes: utf8.encode(
+              jsonEncode({
+                'id': 'msg_g2',
+                'role': 'assistant',
+                'time': {'created': 1},
+              }),
+            ),
+          ),
+          AiTranscriptFragment(
+            name: 'part/msg_g2/prt_str.json',
+            bytes: utf8.encode(
+              jsonEncode({
+                'id': 'prt_str',
+                'type': 'tool',
+                'tool': 'bash',
+                'callID': 'call_str',
+                'state': {'status': 'completed', 'input': 'ls -la', 'output': 'ok'},
+              }),
+            ),
+          ),
+          AiTranscriptFragment(
+            name: 'part/msg_g2/prt_map.json',
+            bytes: utf8.encode(
+              jsonEncode({
+                'id': 'prt_map',
+                'type': 'tool',
+                'tool': 'bash',
+                'callID': 'call_map',
+                'state': {
+                  'status': 'completed',
+                  'input': {'command': 'pwd'},
+                  'output': '/tmp',
+                },
+              }),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    final tools = messages.single.parts.whereType<AiToolCallPart>().toList();
+    expect(tools, hasLength(2));
+    final strTool = tools.singleWhere((t) => t.toolCallId == 'call_str');
+    expect(strTool.args, isNull);
+    expect(strTool.result, 'ok');
+    final mapTool = tools.singleWhere((t) => t.toolCallId == 'call_map');
+    expect(mapTool.args, {'command': 'pwd'});
+  });
+
+  test('completed/error/running tool states map to contract statuses with inline result (G5)',
+      () async {
+    // result 内联在 part state：completed → state.output、error → state.error；
+    // 任何有 result 的 tool part status 都不是 running；pending/running → incomplete 且 result=null。
+    final messages = await const OpencodeAiTranscriptAdapter().parse(
+      AiTranscriptBundle(
+        adapterId: 'opencode',
+        fragments: [
+          AiTranscriptFragment(
+            name: 'message/msg_g5.json',
+            bytes: utf8.encode(
+              jsonEncode({
+                'id': 'msg_g5',
+                'role': 'assistant',
+                'time': {'created': 1},
+              }),
+            ),
+          ),
+          AiTranscriptFragment(
+            name: 'part/msg_g5/prt_done.json',
+            bytes: utf8.encode(
+              jsonEncode({
+                'id': 'prt_done',
+                'type': 'tool',
+                'tool': 'bash',
+                'callID': 'call_done',
+                'state': {'status': 'completed', 'input': {'command': 'ls'}, 'output': 'a.txt'},
+              }),
+            ),
+          ),
+          AiTranscriptFragment(
+            name: 'part/msg_g5/prt_err.json',
+            bytes: utf8.encode(
+              jsonEncode({
+                'id': 'prt_err',
+                'type': 'tool',
+                'tool': 'bash',
+                'callID': 'call_err',
+                'state': {'status': 'error', 'input': {'command': 'nope'}, 'error': 'command not found'},
+              }),
+            ),
+          ),
+          AiTranscriptFragment(
+            name: 'part/msg_g5/prt_run.json',
+            bytes: utf8.encode(
+              jsonEncode({
+                'id': 'prt_run',
+                'type': 'tool',
+                'tool': 'bash',
+                'callID': 'call_run',
+                'state': {'status': 'running', 'input': {'command': 'sleep'}},
+              }),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    final tools = messages.single.parts.whereType<AiToolCallPart>().toList();
+    expect(tools, hasLength(3));
+    final done = tools.singleWhere((t) => t.toolCallId == 'call_done');
+    expect(done.status, AiToolCallStatus.complete);
+    expect(done.result, 'a.txt');
+    expect(done.isError, isFalse);
+    final err = tools.singleWhere((t) => t.toolCallId == 'call_err');
+    expect(err.status, AiToolCallStatus.complete);
+    expect(err.isError, isTrue);
+    expect(err.result, 'command not found');
+    final run = tools.singleWhere((t) => t.toolCallId == 'call_run');
+    expect(run.status, AiToolCallStatus.incomplete);
+    expect(run.result, isNull);
+    for (final t in tools) {
+      if (t.result != null) {
+        expect(t.status, isNot(AiToolCallStatus.running),
+            reason: '有 result 的 tool part 不得是 running');
+      }
+    }
+  });
+
   test('locateOpencodeTranscript reads opencode.db when JSON tree missing',
       () async {
     // Mirrors current ~/.local/share/opencode layout (SQLite, no storage/message).

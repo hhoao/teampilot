@@ -12,7 +12,10 @@ import 'ai_transcript.dart';
 import '../native_session_id.dart';
 import '../../../registry/capabilities/history/subagent_side_resolver.dart';
 
-final _opencodeTaskIdPattern = RegExp(r'<task id="(ses_[^"]+)">');
+// Real opencode task outputs embed the child session id as
+// `<task id="ses_..." state="completed">` (plus optional extra attributes),
+// so the tag must tolerate attributes between the id and the closing `>`.
+final _opencodeTaskIdPattern = RegExp(r'<task id="(ses_[^"]+)"[^>]*>');
 
 String? opencodeChildSessionId(AiToolCallPart part) {
   final result = part.result;
