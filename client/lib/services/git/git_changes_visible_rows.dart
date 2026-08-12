@@ -208,18 +208,56 @@ Set<String> gitChangesDefaultExpandedFolders(List<GitFileChange> changes) {
 Set<String> gitChangesAllFolderPaths(List<GitFileChange> changes) =>
     gitChangesDefaultExpandedFolders(changes);
 
-GitChangesTreeViewData visibleUnifiedGitChangesTreeView({
+/// Which change group a source-control section shows.
+enum GitChangesSection { changes, unversioned }
+
+/// The two source-control sections: tracked changes and unversioned files.
+class GitChangesSections extends Equatable {
+  const GitChangesSections({required this.changes, required this.unversioned});
+
+  final GitChangesTreeViewData changes;
+  final GitChangesTreeViewData unversioned;
+
+  @override
+  List<Object?> get props => [changes, unversioned];
+}
+
+/// Builds both source-control sections from a status snapshot.
+GitChangesSections visibleGitChangesSections({
   required List<GitFileChange> staged,
   required List<GitFileChange> unstaged,
   required Set<String> expandedFolderPaths,
   required Set<String> selectedPaths,
 }) {
   final merged = mergeGitChangesByPath(staged: staged, unstaged: unstaged);
-  // UI projection: in the tree, `staged` means "selected for the next commit"
-  // (the checkbox state), NOT the git index. Merge dedup above still used the
-  // real index `staged` (staged side wins).
+  final changes = <GitFileChange>[];
+  final unversioned = <GitFileChange>[];
+  for (final c in merged) {
+    (c.kind == GitChangeKind.untracked ? unversioned : changes).add(c);
+  }
+  return GitChangesSections(
+    changes: visibleGitChangesTreeView(
+      changes: changes,
+      expandedFolderPaths: expandedFolderPaths,
+      selectedPaths: selectedPaths,
+    ),
+    unversioned: visibleGitChangesTreeView(
+      changes: unversioned,
+      expandedFolderPaths: expandedFolderPaths,
+      selectedPaths: selectedPaths,
+    ),
+  );
+}
+
+/// One section's tree: projects the checkbox state from [selectedPaths] (the
+/// UI "include in next commit" selection, not the git index).
+GitChangesTreeViewData visibleGitChangesTreeView({
+  required List<GitFileChange> changes,
+  required Set<String> expandedFolderPaths,
+  required Set<String> selectedPaths,
+}) {
   final projected = <GitFileChange>[
-    for (final c in merged) c.copyWith(staged: selectedPaths.contains(c.path)),
+    for (final c in changes) c.copyWith(staged: selectedPaths.contains(c.path)),
   ];
   var selectedCount = 0;
   for (final c in projected) {
@@ -232,7 +270,7 @@ GitChangesTreeViewData visibleUnifiedGitChangesTreeView({
   return GitChangesTreeViewData(
     rows: rows,
     selectedCount: selectedCount,
-    totalCount: merged.length,
+    totalCount: changes.length,
   );
 }
 

@@ -10,7 +10,7 @@ import '../services/git/git_changes_visible_rows.dart';
 import '../services/git/git_service.dart';
 
 export '../services/git/git_changes_visible_rows.dart'
-    show GitChangesTreeViewData, GitChangesVisibleRow;
+    show GitChangesTreeViewData, GitChangesVisibleRow, GitChangesSection, GitChangesSections;
 
 class GitState extends Equatable {
   const GitState({
@@ -140,14 +140,13 @@ class GitCubit extends Cubit<GitState> {
   void _publish(GitState next, {bool recomputeRows = true}) {
     var published = next;
     if (recomputeRows) {
-      published = next.copyWith(
-        changesTreeView: visibleUnifiedGitChangesTreeView(
-          staged: next.status.staged,
-          unstaged: next.status.unstaged,
-          expandedFolderPaths: next.expandedFolderPaths,
-          selectedPaths: next.selectedPaths,
-        ),
+      final sections = visibleGitChangesSections(
+        staged: next.status.staged,
+        unstaged: next.status.unstaged,
+        expandedFolderPaths: next.expandedFolderPaths,
+        selectedPaths: next.selectedPaths,
       );
+      published = next.copyWith(changesTreeView: sections.changes);
     }
     if (published == state || isClosed) return;
     emit(published);

@@ -24,7 +24,7 @@ void main() {
   });
 
   test('unified tree gives folder tri-state subtree counts', () {
-    final view = visibleUnifiedGitChangesTreeView(
+    final view = visibleGitChangesSections(
       staged: [
         change('domain/Foo.java', staged: true),
         change('domain/core/Bar.java', staged: true),
@@ -32,7 +32,7 @@ void main() {
       unstaged: [change('domain/Baz.java'), change('domain/core/Qux.java')],
       expandedFolderPaths: const {'domain'},
       selectedPaths: const {'domain/Foo.java', 'domain/core/Bar.java'},
-    );
+    ).changes;
     final folderRows = view.rows.where((r) => r.isFolder).toList();
     // root-level folder 'domain': 2 staged of 4 total
     final domain = folderRows.firstWhere((r) => r.folderPath == 'domain');
@@ -47,12 +47,12 @@ void main() {
   });
 
   test('files within a folder are ordered by basename', () {
-    final view = visibleUnifiedGitChangesTreeView(
+    final view = visibleGitChangesSections(
       staged: [change('b.java', staged: true)],
       unstaged: [change('a.dart'), change('c.txt')],
       expandedFolderPaths: const <String>{},
       selectedPaths: const {},
-    );
+    ).changes;
     final files = view.rows
         .where((r) => !r.isFolder)
         .map((r) => p.basename(r.change!.path))
@@ -61,12 +61,12 @@ void main() {
   });
 
   test('collapsed folders still report subtree counts', () {
-    final view = visibleUnifiedGitChangesTreeView(
+    final view = visibleGitChangesSections(
       staged: [change('a/x.java', staged: true)],
       unstaged: [change('a/y.java')],
       expandedFolderPaths: const <String>{},
       selectedPaths: const {'a/x.java'},
-    );
+    ).changes;
     final folder = view.rows.singleWhere((r) => r.isFolder);
     expect(folder.subtreeTotalCount, 2);
     expect(folder.subtreeSelectedCount, 1);
@@ -74,12 +74,12 @@ void main() {
   });
 
   test('unified tree projects staged=true for selected paths only', () {
-    final view = visibleUnifiedGitChangesTreeView(
+    final view = visibleGitChangesSections(
       staged: [change('b.txt', staged: true)],
       unstaged: [change('a.txt')],
       expandedFolderPaths: const {},
       selectedPaths: const {'a.txt'},
-    );
+    ).changes;
     final files = view.rows.where((r) => !r.isFolder).toList();
     final a = files.firstWhere((r) => r.change!.path == 'a.txt');
     final b = files.firstWhere((r) => r.change!.path == 'b.txt');
@@ -122,5 +122,53 @@ void main() {
       closeTo(kGitChangesTrailingBadgeWidth, 1), // 22 − trailing badge
     );
     expect(wFile, greaterThan(100));
+  });
+
+  test('sections split untracked files into the unversioned group', () {
+    final sections = visibleGitChangesSections(
+      staged: [change('a.txt', staged: true)],
+      unstaged: [
+        change('b.dart'),
+        change('new.ts', kind: GitChangeKind.untracked),
+      ],
+      expandedFolderPaths: const {},
+      selectedPaths: const {'b.dart'},
+    );
+    expect(
+      sections.changes.rows
+          .where((r) => !r.isFolder)
+          .map((r) => r.change!.path),
+      ['a.txt', 'b.dart'],
+    );
+    expect(
+      sections.unversioned.rows
+          .where((r) => !r.isFolder)
+          .map((r) => r.change!.path),
+      ['new.ts'],
+    );
+    expect(sections.changes.selectedCount, 1); // b.dart selected
+    expect(sections.changes.totalCount, 2);
+    expect(sections.unversioned.selectedCount, 0); // new.ts unchecked
+    expect(sections.unversioned.totalCount, 1);
+  });
+
+  test('sections project checkbox state per section from selectedPaths', () {
+    final sections = visibleGitChangesSections(
+      staged: const [],
+      unstaged: [
+        change('a.txt'),
+        change('new.ts', kind: GitChangeKind.untracked),
+      ],
+      expandedFolderPaths: const {},
+      selectedPaths: const {'a.txt', 'new.ts'}, // manual check of an unversioned file
+    );
+    final a = sections.changes.rows
+        .firstWhere((r) => !r.isFolder && r.change!.path == 'a.txt');
+    final n = sections.unversioned.rows
+        .firstWhere((r) => !r.isFolder && r.change!.path == 'new.ts');
+    expect(a.change!.staged, isTrue);
+    expect(n.change!.staged, isTrue); // manual check survives projection
+    expect(sections.changes.selectedCount, 1);
+    expect(sections.unversioned.selectedCount, 1);
   });
 }
