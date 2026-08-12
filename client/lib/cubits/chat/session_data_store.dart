@@ -1,5 +1,3 @@
-import 'package:equatable/equatable.dart';
-
 import '../../models/workspace_folder.dart';
 import '../../models/workspace.dart';
 import '../../models/app_session.dart';
@@ -9,32 +7,12 @@ import '../../models/workspace_icon_ref.dart';
 import '../../models/team_config.dart' show CliTool, TeamMemberConfig, TeamProfile;
 import '../../repositories/launch_profile_repository.dart';
 import '../../repositories/session_repository.dart';
+import '../../services/catalog/workspace_catalog.dart' show ChatDataSnapshot;
 import '../../services/session/session_member_cli_locks.dart';
-import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import '../../utils/workspace/workspace_path_utils.dart';
 
-class ChatDataSnapshot extends Equatable {
-  const ChatDataSnapshot({
-    required this.workspaces,
-    required this.sessions,
-    required this.visibleWorkspaces,
-    required this.visibleSessions,
-  });
-
-  final List<Workspace> workspaces;
-  final List<AppSession> sessions;
-  final List<Workspace> visibleWorkspaces;
-  final List<AppSession> visibleSessions;
-
-  @override
-  List<Object?> get props => [
-    workspaces,
-    sessions,
-    visibleWorkspaces,
-    visibleSessions,
-  ];
-}
+export '../../services/catalog/workspace_catalog.dart' show ChatDataSnapshot;
 
 /// Owns team-scope flags and wraps SessionRepository. Returns snapshots;
 /// ChatCubit emits them (single emit owner).
