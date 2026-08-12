@@ -102,31 +102,32 @@ void main() {
     await cubit.close();
   });
 
-  test('metrics poll while closed; close keeps timer running', () async {
+  test('no metrics poll while closed; polling only while panel open', () async {
     cubit.setWorkspace('ws-1');
-    await cubit.ensureMetricsPolling();
-    expect(metrics.collectCount, greaterThanOrEqualTo(1));
-    expect(cubit.state.isOpen, isFalse);
-    expect(cubit.state.snapshot?.totalMemory, isNotNull);
-
     await Future<void>.delayed(pollInterval * 3);
-    final whileClosed = metrics.collectCount;
-    expect(whileClosed, greaterThanOrEqualTo(2));
+    expect(metrics.collectCount, 0);
+    expect(cubit.state.isOpen, isFalse);
+    expect(cubit.state.snapshot, isNull);
 
     await cubit.openPanel();
     expect(cubit.state.isOpen, isTrue);
+    expect(metrics.collectCount, greaterThanOrEqualTo(1));
+    expect(cubit.state.snapshot?.totalMemory, isNotNull);
+
+    await Future<void>.delayed(pollInterval * 3);
+    final whileOpen = metrics.collectCount;
+    expect(whileOpen, greaterThanOrEqualTo(2));
 
     cubit.closePanel();
     expect(cubit.state.isOpen, isFalse);
     final afterClose = metrics.collectCount;
 
     await Future<void>.delayed(pollInterval * 3);
-    expect(metrics.collectCount, greaterThan(afterClose));
+    expect(metrics.collectCount, equals(afterClose));
   });
 
   test('refresh forces collect while closed', () async {
     cubit.setWorkspace('ws-1');
-    await cubit.ensureMetricsPolling();
     final afterStart = metrics.collectCount;
 
     await cubit.refresh();
@@ -144,7 +145,7 @@ void main() {
     expect(cubit.state.isOpen, isTrue);
   });
 
-  test('workspace change closes panel but keeps metrics polling', () async {
+  test('workspace change closes panel and stops polling', () async {
     cubit.setWorkspace('ws-1');
     await cubit.openPanel();
     expect(cubit.state.isOpen, isTrue);
@@ -157,7 +158,7 @@ void main() {
     final afterChange = metrics.collectCount;
 
     await Future<void>.delayed(pollInterval * 3);
-    expect(metrics.collectCount, greaterThan(afterChange));
+    expect(metrics.collectCount, equals(afterChange));
   });
 
   test('killLeaf invokes injector once per key', () async {
@@ -262,7 +263,7 @@ void main() {
     expect(identical(cubit.state.snapshot, snap), isTrue);
   });
 
-  test('onRouteActiveChanged(false) closes panel but keeps metrics polling',
+  test('onRouteActiveChanged(false) closes panel and stops polling',
       () async {
     cubit.setWorkspace('ws-1');
     await cubit.openPanel();
@@ -273,6 +274,6 @@ void main() {
     final afterInactive = metrics.collectCount;
 
     await Future<void>.delayed(pollInterval * 3);
-    expect(metrics.collectCount, greaterThan(afterInactive));
+    expect(metrics.collectCount, equals(afterInactive));
   });
 }

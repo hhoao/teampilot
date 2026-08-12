@@ -2652,10 +2652,9 @@
 
   "resourceManagerTitle": "资源管理器",
   "resourceManagerPanelTitle": "资源管理器 - 会话",
-  "resourceManagerTooltip": "资源管理器 - {memory} - {count} 个运行中会话",
+  "resourceManagerTooltip": "资源管理器 - {count} 个运行中会话",
   "@resourceManagerTooltip": {
     "placeholders": {
-      "memory": { "type": "String" },
       "count": { "type": "int" }
     }
   },

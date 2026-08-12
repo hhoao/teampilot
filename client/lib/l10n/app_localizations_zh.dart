@@ -6532,8 +6532,8 @@ class AppLocalizationsZh extends AppLocalizations {
   String get resourceManagerPanelTitle => '资源管理器 - 会话';
 
   @override
-  String resourceManagerTooltip(String memory, int count) {
-    return '资源管理器 - $memory - $count 个运行中会话';
+  String resourceManagerTooltip(int count) {
+    return '资源管理器 - $count 个运行中会话';
   }
 
   @override

@@ -60,7 +60,7 @@ ResourceTreeViewModel _treeWithNullLeaf() {
 }
 
 void main() {
-  testWidgets('pill shows terminalCount and memory label from cubit state',
+  testWidgets('pill shows terminal count only (no memory while closed)',
       (tester) async {
     const memoryBytes = 960.8 * 1024 * 1024;
     final memoryLabel = formatResourceMemory(memoryBytes);
@@ -84,8 +84,8 @@ void main() {
       ),
     );
 
-    expect(find.text(memoryLabel), findsOneWidget);
     expect(find.text('2'), findsOneWidget);
+    expect(find.text(memoryLabel), findsNothing);
   });
 
   testWidgets('panel leaf with null metrics shows em dash', (tester) async {

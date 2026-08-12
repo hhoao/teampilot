@@ -12167,8 +12167,8 @@ abstract class AppLocalizations {
   /// No description provided for @resourceManagerTooltip.
   ///
   /// In en, this message translates to:
-  /// **'Resource Manager - {memory} - {count} running sessions'**
-  String resourceManagerTooltip(String memory, int count);
+  /// **'Resource Manager - {count} running sessions'**
+  String resourceManagerTooltip(int count);
 
   /// No description provided for @resourceManagerTooltipHint.
   ///

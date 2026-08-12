@@ -3081,10 +3081,9 @@
 
   "resourceManagerTitle": "Resource Manager",
   "resourceManagerPanelTitle": "Resource Manager - Sessions",
-  "resourceManagerTooltip": "Resource Manager - {memory} - {count} running sessions",
+  "resourceManagerTooltip": "Resource Manager - {count} running sessions",
   "@resourceManagerTooltip": {
     "placeholders": {
-      "memory": { "type": "String" },
       "count": { "type": "int" }
     }
   },

@@ -7,7 +7,6 @@ import 'package:shared_ui/shared_ui.dart';
 import '../../cubits/resource_manager_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../pages/home_workspace/global_resource_manager_host.dart';
-import '../../services/resource_manager/resource_memory_format.dart';
 import '../../services/resource_manager/resource_tree_merge.dart';
 import 'resource_manager_panel.dart';
 import 'workspace_status_bar.dart';
@@ -58,10 +57,6 @@ class _ResourceUsageStatusSegmentState
     super.dispose();
   }
 
-  String _memoryLabel(ResourceManagerState state) {
-    return formatResourceMemory(state.snapshot?.totalMemory);
-  }
-
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -78,13 +73,11 @@ class _ResourceUsageStatusSegmentState
       child: BlocBuilder<ResourceManagerCubit, ResourceManagerState>(
         buildWhen: (previous, next) =>
             previous.terminalCount != next.terminalCount ||
-            previous.snapshot?.totalMemory != next.snapshot?.totalMemory ||
             previous.isOpen != next.isOpen,
         builder: (context, state) {
           final l10n = context.l10n;
-          final memoryLabel = _memoryLabel(state);
           final tooltip =
-              '${l10n.resourceManagerTooltip(memoryLabel, state.terminalCount)}\n'
+              '${l10n.resourceManagerTooltip(state.terminalCount)}\n'
               '${l10n.resourceManagerTooltipHint}';
 
           return TpActionMenuAnchor(
@@ -112,7 +105,6 @@ class _ResourceUsageStatusSegmentState
               message: tooltip,
               child: _PillButton(
                 compact: widget.compact,
-                memoryLabel: memoryLabel,
                 terminalCount: state.terminalCount,
                 selected: state.isOpen,
                 color: cs.onSurfaceVariant,
@@ -129,7 +121,6 @@ class _ResourceUsageStatusSegmentState
 class _PillButton extends StatelessWidget {
   const _PillButton({
     required this.compact,
-    required this.memoryLabel,
     required this.terminalCount,
     required this.selected,
     required this.color,
@@ -137,7 +128,6 @@ class _PillButton extends StatelessWidget {
   });
 
   final bool compact;
-  final String memoryLabel;
   final int terminalCount;
   final bool selected;
   final Color color;
@@ -147,10 +137,6 @@ class _PillButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final styles = TpTextStyles.of(context);
     final cs = Theme.of(context).colorScheme;
-    final compact = this.compact;
-    final shortMemory = memoryLabel == kResourceMetricEmDash
-        ? kResourceMetricEmDash
-        : memoryLabel.replaceAll(' MB', '');
     final fill = cs.onSurface.withValues(alpha: 0.07);
 
     return TpHover(
@@ -163,26 +149,6 @@ class _PillButton extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Icon(Icons.memory, size: 13, color: color),
-          const SizedBox(width: 4),
-          Text(
-            compact ? shortMemory : memoryLabel,
-            style: styles.xs.copyWith(
-              color: color,
-              height: 1.0,
-              fontFeatures: const [FontFeature.tabularFigures()],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 5),
-            child: Text(
-              '·',
-              style: styles.xs.copyWith(
-                color: color.withValues(alpha: 0.5),
-                height: 1.0,
-              ),
-            ),
-          ),
           Icon(Icons.terminal, size: 12, color: color),
           const SizedBox(width: 4),
           Text(

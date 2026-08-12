@@ -6799,8 +6799,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get resourceManagerPanelTitle => 'Resource Manager - Sessions';
 
   @override
-  String resourceManagerTooltip(String memory, int count) {
-    return 'Resource Manager - $memory - $count running sessions';
+  String resourceManagerTooltip(int count) {
+    return 'Resource Manager - $count running sessions';
   }
 
   @override

@@ -67,8 +67,9 @@ class ResourceManagerState extends Equatable {
       ];
 }
 
-/// Owns Resource Manager panel open state, always-on metrics polling (closed
-/// pill + open panel), registry sync from live PTY pids, and kill/refresh.
+/// Owns Resource Manager panel open state, metrics polling while the panel is
+/// open (closed pill only shows the session count from bindings), registry sync
+/// from live PTY pids, and kill/refresh.
 class ResourceManagerCubit extends Cubit<ResourceManagerState> {
   ResourceManagerCubit({
     required ProcessMetricsService metricsService,
@@ -94,6 +95,7 @@ class ResourceManagerCubit extends Cubit<ResourceManagerState> {
 
   void setWorkspace(String? workspaceId) {
     if (workspaceId == state.workspaceId) return;
+    _stopPolling();
     final bindings = _readBindings();
     final tree = mergeResourceTree(
       bindings: bindings,
@@ -112,15 +114,10 @@ class ResourceManagerCubit extends Cubit<ResourceManagerState> {
     );
   }
 
-  /// Starts the always-on metrics timer (idempotent) and runs one collect now.
+  /// Opens the panel and starts metrics polling while it stays open.
   ///
-  /// Call from the host after mount so the closed pill can show live memory
-  /// without opening the panel.
-  Future<void> ensureMetricsPolling() async {
-    _startPolling();
-    await _tick();
-  }
-
+  /// The closed pill only shows the live session count (from bindings), so no
+  /// metrics are collected until the panel is opened.
   Future<void> openPanel() async {
     if (state.isOpen) {
       await _tick();
@@ -133,7 +130,7 @@ class ResourceManagerCubit extends Cubit<ResourceManagerState> {
 
   void closePanel() {
     if (!state.isOpen) return;
-    // Keep the metrics timer running for the closed pill.
+    _stopPolling();
     emit(state.copyWith(isOpen: false));
   }
 
