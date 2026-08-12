@@ -131,6 +131,9 @@ class _SessionChatViewState extends State<SessionChatView> {
   /// 创建 [_liveRefresh] 时的 seat 作用域标识;作用域未变时复用 controller,
   /// 避免 working 状态翻转 / load 完成回调反复"停旧建新"。
   String? _liveRefreshScope;
+
+  /// [_startLiveRefresh] 的在途启动链:并发调用合并为一条,见 [_startLiveRefresh]。
+  Future<void>? _liveRefreshStartInFlight;
   AiHistorySeat? _seat;
   CliTaskBoardController? _taskBoardController;
 
@@ -432,7 +435,26 @@ class _SessionChatViewState extends State<SessionChatView> {
     unawaited(_startLiveRefresh(skipInitialRefresh: true));
   }
 
-  Future<void> _startLiveRefresh({bool skipInitialRefresh = false}) async {
+  Future<void> _startLiveRefresh({bool skipInitialRefresh = false}) {
+    // 单飞:并发调用(_loadHistory 完成回调、BlocListener working 翻转、
+    // didUpdateWidget 在同一异步窗口内触发)共享一条启动链。否则多个调用
+    // 都在 resolveSeatRuntime 的 await 前看到 _liveRefresh == null,
+    // 各自通过复用检查后各建一个 controller。
+    final inFlight = _liveRefreshStartInFlight;
+    if (inFlight != null) return inFlight;
+    final future = _startLiveRefreshImpl(skipInitialRefresh: skipInitialRefresh);
+    _liveRefreshStartInFlight = future;
+    future.whenComplete(() {
+      if (identical(_liveRefreshStartInFlight, future)) {
+        _liveRefreshStartInFlight = null;
+      }
+    }).ignore();
+    return future;
+  }
+
+  Future<void> _startLiveRefreshImpl({
+    bool skipInitialRefresh = false,
+  }) async {
     final seat = _seat;
     if (seat == null) return;
     final chat = context.read<ChatCubit>();
