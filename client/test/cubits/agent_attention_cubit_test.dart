@@ -56,76 +56,82 @@ void main() {
       expect(c.state.sessionHasWaiting('s1'), isFalse);
     });
 
-    test('skipPermissions keeps AskUserQuestion waiting (not skipped by CLI)',
-        () {
-      final c = _cubit();
-      c.applyEvent(
-        sessionId: 's1',
-        memberId: 'm1',
-        event: const AgentStatusEvent(
-          state: AgentSeatAttention.waiting,
-          hookEventName: 'PreToolUse',
-          toolName: 'AskUserQuestion',
-        ),
-        skipPermissions: true,
-      );
-      expect(
-        c.state.attentionFor(sessionId: 's1', memberId: 'm1'),
-        AgentSeatAttention.waiting,
-      );
-      expect(c.state.sessionHasWaiting('s1'), isTrue);
-    });
+    test(
+      'skipPermissions keeps AskUserQuestion waiting (not skipped by CLI)',
+      () {
+        final c = _cubit();
+        c.applyEvent(
+          sessionId: 's1',
+          memberId: 'm1',
+          event: const AgentStatusEvent(
+            state: AgentSeatAttention.waiting,
+            hookEventName: 'PreToolUse',
+            toolName: 'AskUserQuestion',
+          ),
+          skipPermissions: true,
+        );
+        expect(
+          c.state.attentionFor(sessionId: 's1', memberId: 'm1'),
+          AgentSeatAttention.waiting,
+        );
+        expect(c.state.sessionHasWaiting('s1'), isTrue);
+      },
+    );
 
-    test('skipPermissions keeps ExitPlanMode waiting (plan approval needed)',
-        () {
-      final c = _cubit();
-      c.applyEvent(
-        sessionId: 's1',
-        memberId: 'm1',
-        event: const AgentStatusEvent(
-          state: AgentSeatAttention.waiting,
-          hookEventName: 'PermissionRequest',
-          toolName: 'ExitPlanMode',
-        ),
-        skipPermissions: true,
-      );
-      expect(
-        c.state.attentionFor(sessionId: 's1', memberId: 'm1'),
-        AgentSeatAttention.waiting,
-      );
-      expect(c.state.sessionHasWaiting('s1'), isTrue);
-    });
+    test(
+      'skipPermissions keeps ExitPlanMode waiting (plan approval needed)',
+      () {
+        final c = _cubit();
+        c.applyEvent(
+          sessionId: 's1',
+          memberId: 'm1',
+          event: const AgentStatusEvent(
+            state: AgentSeatAttention.waiting,
+            hookEventName: 'PermissionRequest',
+            toolName: 'ExitPlanMode',
+          ),
+          skipPermissions: true,
+        );
+        expect(
+          c.state.attentionFor(sessionId: 's1', memberId: 'm1'),
+          AgentSeatAttention.waiting,
+        );
+        expect(c.state.sessionHasWaiting('s1'), isTrue);
+      },
+    );
 
-    test('PermissionRequest keeps ExitPlanMode plan payload from PreToolUse',
-        () {
-      final c = _cubit();
-      c.applyEvent(
-        sessionId: 's1',
-        memberId: 'm1',
-        event: const AgentStatusEvent(
-          state: AgentSeatAttention.waiting,
-          hookEventName: 'PreToolUse',
-          toolName: 'ExitPlanMode',
-          planText: 'Refactor the launcher.',
-          planFilePath: '/tmp/plan.md',
-        ),
-        skipPermissions: true,
-      );
-      c.applyEvent(
-        sessionId: 's1',
-        memberId: 'm1',
-        event: const AgentStatusEvent(
-          state: AgentSeatAttention.waiting,
-          hookEventName: 'PermissionRequest',
-          toolName: 'ExitPlanMode',
-        ),
-        skipPermissions: true,
-      );
-      final entry = c.state.entryFor(sessionId: 's1', memberId: 'm1');
-      expect(entry?.attention, AgentSeatAttention.waiting);
-      expect(entry?.lastEvent?.planText, 'Refactor the launcher.');
-      expect(entry?.lastEvent?.planFilePath, '/tmp/plan.md');
-    });
+    test(
+      'PermissionRequest keeps ExitPlanMode plan payload from PreToolUse',
+      () {
+        final c = _cubit();
+        c.applyEvent(
+          sessionId: 's1',
+          memberId: 'm1',
+          event: const AgentStatusEvent(
+            state: AgentSeatAttention.waiting,
+            hookEventName: 'PreToolUse',
+            toolName: 'ExitPlanMode',
+            planText: 'Refactor the launcher.',
+            planFilePath: '/tmp/plan.md',
+          ),
+          skipPermissions: true,
+        );
+        c.applyEvent(
+          sessionId: 's1',
+          memberId: 'm1',
+          event: const AgentStatusEvent(
+            state: AgentSeatAttention.waiting,
+            hookEventName: 'PermissionRequest',
+            toolName: 'ExitPlanMode',
+          ),
+          skipPermissions: true,
+        );
+        final entry = c.state.entryFor(sessionId: 's1', memberId: 'm1');
+        expect(entry?.attention, AgentSeatAttention.waiting);
+        expect(entry?.lastEvent?.planText, 'Refactor the launcher.');
+        expect(entry?.lastEvent?.planFilePath, '/tmp/plan.md');
+      },
+    );
 
     test('skipPermissions keeps opencode question.asked waiting', () {
       final c = _cubit();
@@ -393,7 +399,9 @@ void main() {
         skipPermissions: false,
       );
       expect(
-        c.state.seats[agentSeatKey(sessionId: 's1', memberId: 'm1')]
+        c
+            .state
+            .seats[agentSeatKey(sessionId: 's1', memberId: 'm1')]
             ?.lastEvent
             ?.toolUseId,
         'toolu-1',
@@ -639,6 +647,87 @@ void main() {
         expect(entry?.lastEvent?.askRequestId, 'ask-1');
       });
 
+      test('question.answered (TUI) dismisses waiting card with retained '
+          'lastEvent', () {
+        final c = _cubit();
+        c.applyEvent(
+          sessionId: 's1',
+          memberId: 'm1',
+          event: askWaiting,
+          skipPermissions: false,
+        );
+
+        c.applyEvent(
+          sessionId: 's1',
+          memberId: 'm1',
+          event: const AgentStatusEvent(
+            state: AgentSeatAttention.working,
+            hookEventName: 'question.answered',
+            askRequestId: 'ask-1',
+          ),
+          skipPermissions: false,
+        );
+
+        final entry = c.state.entryFor(sessionId: 's1', memberId: 'm1');
+        expect(entry?.attention, AgentSeatAttention.working);
+        expect(entry?.dismissedAskRequestId, isNull);
+        expect(entry?.askReplyError, isNull);
+        expect(entry?.lastEvent?.askUserQuestions, questions);
+        expect(entry?.lastEvent?.askRequestId, 'ask-1');
+      });
+
+      test('question.answered with different id keeps waiting', () {
+        final c = _cubit();
+        c.applyEvent(
+          sessionId: 's1',
+          memberId: 'm1',
+          event: askWaiting,
+          skipPermissions: false,
+        );
+
+        c.applyEvent(
+          sessionId: 's1',
+          memberId: 'm1',
+          event: const AgentStatusEvent(
+            state: AgentSeatAttention.working,
+            hookEventName: 'question.answered',
+            askRequestId: 'ask-2',
+          ),
+          skipPermissions: false,
+        );
+
+        final entry = c.state.entryFor(sessionId: 's1', memberId: 'm1');
+        expect(entry?.attention, AgentSeatAttention.waiting);
+        expect(entry?.lastEvent?.askRequestId, 'ask-1');
+      });
+
+      test('question.answered no-ops after optimistic chat dismiss', () {
+        final c = _cubit();
+        c.applyEvent(
+          sessionId: 's1',
+          memberId: 'm1',
+          event: askWaiting,
+          skipPermissions: false,
+        );
+        c.markAskAnswered(sessionId: 's1', memberId: 'm1');
+
+        c.applyEvent(
+          sessionId: 's1',
+          memberId: 'm1',
+          event: const AgentStatusEvent(
+            state: AgentSeatAttention.working,
+            hookEventName: 'question.answered',
+            askRequestId: 'ask-1',
+          ),
+          skipPermissions: false,
+        );
+
+        final entry = c.state.entryFor(sessionId: 's1', memberId: 'm1');
+        expect(entry?.attention, AgentSeatAttention.working);
+        expect(entry?.dismissedAskRequestId, 'ask-1');
+        expect(entry?.lastEvent, askWaiting);
+      });
+
       test('new different askRequestId waiting replaces dismissed id', () {
         final c = _cubit();
         c.applyEvent(
@@ -697,8 +786,10 @@ void main() {
         );
         final entry = c.state.entryFor(sessionId: 's1', memberId: 'm1');
         expect(entry?.attention, AgentSeatAttention.waiting);
-        expect(entry?.lastEvent?.permissionRequest?.description,
-            'Run `npm install`');
+        expect(
+          entry?.lastEvent?.permissionRequest?.description,
+          'Run `npm install`',
+        );
         expect(entry?.lastEvent?.askRequestId, 'perm-1');
       });
 
@@ -764,8 +855,7 @@ void main() {
         expect(entry?.lastEvent?.permissionRequest?.id, 'perm-1');
       });
 
-      test('same-id permission.asked without payload preserves card payload',
-          () {
+      test('permission.answered (TUI) dismisses permission card', () {
         final c = _cubit();
         c.applyEvent(
           sessionId: 's1',
@@ -777,16 +867,45 @@ void main() {
           sessionId: 's1',
           memberId: 'm1',
           event: const AgentStatusEvent(
-            state: AgentSeatAttention.waiting,
-            hookEventName: 'permission.asked',
+            state: AgentSeatAttention.working,
+            hookEventName: 'permission.answered',
             askRequestId: 'perm-1',
           ),
           skipPermissions: false,
         );
         final entry = c.state.entryFor(sessionId: 's1', memberId: 'm1');
-        expect(entry?.lastEvent?.permissionRequest?.description,
-            'Run `npm install`');
+        expect(entry?.attention, AgentSeatAttention.working);
+        expect(entry?.dismissedAskRequestId, isNull);
+        expect(entry?.lastEvent?.permissionRequest?.id, 'perm-1');
       });
+
+      test(
+        'same-id permission.asked without payload preserves card payload',
+        () {
+          final c = _cubit();
+          c.applyEvent(
+            sessionId: 's1',
+            memberId: 'm1',
+            event: permEvent,
+            skipPermissions: false,
+          );
+          c.applyEvent(
+            sessionId: 's1',
+            memberId: 'm1',
+            event: const AgentStatusEvent(
+              state: AgentSeatAttention.waiting,
+              hookEventName: 'permission.asked',
+              askRequestId: 'perm-1',
+            ),
+            skipPermissions: false,
+          );
+          final entry = c.state.entryFor(sessionId: 's1', memberId: 'm1');
+          expect(
+            entry?.lastEvent?.permissionRequest?.description,
+            'Run `npm install`',
+          );
+        },
+      );
 
       test('new different permission id replaces previous card', () {
         final c = _cubit();

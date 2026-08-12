@@ -46,8 +46,24 @@ void main() {
     expect(source, contains('deliverPermissionReply'));
     expect(source, contains('client.permission.reply'));
     expect(source, contains('body.permission_reply'));
-    expect(source, contains(r'/permission/${encodeURIComponent(requestId)}/reply'));
+    expect(
+      source,
+      contains(r'/permission/${encodeURIComponent(requestId)}/reply'),
+    );
     expect(source, contains('"reject" : "once"'));
+    // Native answers (terminal TUI / reject) publish replied/rejected; the
+    // plugin forwards them so the chat card clears immediately and the
+    // pending poll stops without posting reply_failed.
+    expect(source, contains('question.replied'));
+    expect(source, contains('question.v2.replied'));
+    expect(source, contains('question.rejected'));
+    expect(source, contains('question.v2.rejected'));
+    expect(source, contains('permission.replied'));
+    expect(source, contains('permission.v2.replied'));
+    expect(source, contains('"question.answered"'));
+    expect(source, contains('"permission.answered"'));
+    expect(source, contains('resolvedRequests'));
+    expect(source, contains('isResolved(requestId)'));
   });
 
   test('mergeOpencodeAgentStatusPlugin adds plugin entry with url', () {
@@ -158,6 +174,15 @@ void main() {
       // Poll deadline matches attention TTL (30 minutes).
       expect(source, contains('30 * 60 * 1000'));
       expect(source, contains('ask-user-answer poll timed out'));
+      // Native TUI answers / rejects are forwarded as answered events so the
+      // chat card clears immediately; the poll stops without reply_failed.
+      expect(source, contains('question.replied'));
+      expect(source, contains('question.rejected'));
+      expect(source, contains('permission.replied'));
+      expect(source, contains('"question.answered"'));
+      expect(source, contains('"permission.answered"'));
+      expect(source, contains('resolvedRequests'));
+      expect(source, contains('isResolved(requestId)'));
 
       final configPath =
           '$opencodeDir/${OpencodeConfigProfileCapability.opencodeConfigFileName}';

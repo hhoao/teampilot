@@ -59,6 +59,15 @@ export const TeampilotAgentStatus = async (input, options) => {
     }).catch(() => {});
   };
 
+  // Requests resolved outside the pending store (answered in the native TUI,
+  // rejected, HTTP API, …). The poll loop stops and never posts
+  // reply_failed once opencode itself published replied/rejected.
+  const resolvedRequests = new Set();
+  const resolveRequest = (requestId) => {
+    if (requestId) resolvedRequests.add(String(requestId));
+  };
+  const isResolved = (requestId) => resolvedRequests.has(String(requestId));
+
   // Attention TTL — keep polling until the human can still answer.
   const ASK_POLL_TTL_MS = 30 * 60 * 1000;
   const ASK_POLL_INTERVAL_MS = 400;
@@ -154,7 +163,7 @@ export const TeampilotAgentStatus = async (input, options) => {
     if (!requestId || !port) return;
     const deadline = Date.now() + ASK_POLL_TTL_MS;
     let replyFailureReported = false;
-    while (Date.now() < deadline) {
+    while (Date.now() < deadline && !isResolved(requestId)) {
       let status = 0;
       let body = null;
       try {
@@ -194,6 +203,9 @@ export const TeampilotAgentStatus = async (input, options) => {
       }
       await new Promise((res) => setTimeout(res, ASK_POLL_INTERVAL_MS));
     }
+    // Resolved natively (TUI) — the answered signal already cleared the chat
+    // card; never report a failure for a request opencode finished itself.
+    if (isResolved(requestId)) return;
     // Poll deadline exceeded: always signal so Dart can restore waiting if the
     // user already answered (optimistic working) or keep recoverable UI.
     await post("question.reply_failed", {
@@ -205,6 +217,52 @@ export const TeampilotAgentStatus = async (input, options) => {
   return {
     event: async ({ event }) => {
       if (!event || !event.type) return;
+      // OpenCode resolved the request itself (native TUI answer, reject, HTTP
+      // API, …): forward so the chat card clears immediately and the pending
+      // poll stops. `replied`/`rejected` fire regardless of who answered.
+      if (
+        event.type === "question.replied" ||
+        event.type === "question.v2.replied" ||
+        event.type === "question.rejected" ||
+        event.type === "question.v2.rejected"
+      ) {
+        const props = event.properties ?? event.data ?? {};
+        const requestId =
+          props.requestID ?? props.request_id ?? event.requestID ?? null;
+        resolveRequest(requestId);
+        if (!requestId) return;
+        await post("question.answered", {
+          request_id: requestId,
+          session_id:
+            props.sessionID ??
+            props.session_id ??
+            event.sessionID ??
+            event.session_id ??
+            null,
+          rejected: event.type.endsWith("rejected") ? true : undefined,
+        });
+        return;
+      }
+      if (
+        event.type === "permission.replied" ||
+        event.type === "permission.v2.replied"
+      ) {
+        const props = event.properties ?? event.data ?? {};
+        const requestId =
+          props.requestID ?? props.request_id ?? event.requestID ?? null;
+        resolveRequest(requestId);
+        if (!requestId) return;
+        await post("permission.answered", {
+          request_id: requestId,
+          session_id:
+            props.sessionID ??
+            props.session_id ??
+            event.sessionID ??
+            event.session_id ??
+            null,
+        });
+        return;
+      }
       if (event.type === "permission.asked") {
         // Forward the permission payload so the chat can render allow/deny
         // buttons. Path varies by opencode version: properties (SDK v1) vs

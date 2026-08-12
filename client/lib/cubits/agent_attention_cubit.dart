@@ -52,10 +52,8 @@ class AgentSeatAttentionEntry extends Equatable {
 
 /// Seat-keyed agent attention for History banner / sidebar consumers.
 class AgentAttentionState extends Equatable {
-  const AgentAttentionState({
-    this.seats = const {},
-    DateTime Function()? clock,
-  }) : _clock = clock;
+  const AgentAttentionState({this.seats = const {}, DateTime Function()? clock})
+    : _clock = clock;
 
   final Map<String, AgentSeatAttentionEntry> seats;
   final DateTime Function()? _clock;
@@ -123,9 +121,8 @@ class AgentAttentionState extends Equatable {
     return ids;
   }
 
-  AgentAttentionState copyWith({
-    Map<String, AgentSeatAttentionEntry>? seats,
-  }) => AgentAttentionState(seats: seats ?? this.seats, clock: _clock);
+  AgentAttentionState copyWith({Map<String, AgentSeatAttentionEntry>? seats}) =>
+      AgentAttentionState(seats: seats ?? this.seats, clock: _clock);
 
   /// Drop entries older than [agentAttentionStaleAfter].
   AgentAttentionState pruned([DateTime? now]) {
@@ -174,10 +171,7 @@ class AgentAttentionCubit extends Cubit<AgentAttentionState> {
   ///
   /// Reads the dismissed id from [AgentSeatAttentionEntry.lastEvent]'s
   /// [AgentStatusEvent.askRequestId] — callers do not pass an id.
-  void markAskAnswered({
-    required String sessionId,
-    required String memberId,
-  }) {
+  void markAskAnswered({required String sessionId, required String memberId}) {
     final key = agentSeatKey(sessionId: sessionId, memberId: memberId);
     final existing = state.seats[key];
     if (existing == null) return;
@@ -284,6 +278,37 @@ class AgentAttentionCubit extends Cubit<AgentAttentionState> {
         emit(AgentAttentionState(seats: seats, clock: _clock));
         return;
       }
+    }
+
+    // OpenCode answered the request natively (TUI / reject): `question.answered`
+    // / `permission.answered` fire when the CLI resolved it itself, before any
+    // `session.idle`. Dismiss the waiting card like [markAskAnswered] so the
+    // chat card clears immediately instead of lingering until the turn ends.
+    // A non-matching id (other request) never clobbers the pending ask.
+    final isAnswered =
+        event.hookEventName == 'question.answered' ||
+        event.hookEventName == 'permission.answered';
+    if (isAnswered && existingEntry != null) {
+      final eventAskId = event.askRequestId;
+      final lastAskId = existingEntry.lastEvent?.askRequestId;
+      final dismissedId = existingEntry.dismissedAskRequestId;
+      final matches =
+          eventAskId != null &&
+          (eventAskId == lastAskId || eventAskId == dismissedId);
+      if (matches && existingEntry.attention == AgentSeatAttention.waiting) {
+        final seats = Map<String, AgentSeatAttentionEntry>.of(pruned.seats);
+        seats[key] = AgentSeatAttentionEntry(
+          attention: AgentSeatAttention.working,
+          updatedAt: now,
+          lastEvent: existingEntry.lastEvent,
+          dismissedAskRequestId: null,
+          askReplyError: null,
+        );
+        emit(AgentAttentionState(seats: seats, clock: _clock));
+      }
+      // Matched but already optimistically dismissed (chat path) — keep as
+      // is; non-matching ids never clobber the pending ask card.
+      return;
     }
 
     final effective = preserveExitPlanModePayload(

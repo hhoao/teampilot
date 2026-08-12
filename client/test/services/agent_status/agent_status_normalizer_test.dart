@@ -16,10 +16,7 @@ void main() {
     test('Claude AskUserQuestion PreToolUse → waiting', () {
       final e = AgentStatusNormalizer.normalize(
         cli: CliTool.claude,
-        body: {
-          'hook_event_name': 'PreToolUse',
-          'tool_name': 'AskUserQuestion',
-        },
+        body: {'hook_event_name': 'PreToolUse', 'tool_name': 'AskUserQuestion'},
       );
       expect(e?.state, AgentSeatAttention.waiting);
     });
@@ -47,10 +44,7 @@ void main() {
     test('exit_plan_mode PreToolUse → waiting (casing variants)', () {
       final e = AgentStatusNormalizer.normalize(
         cli: CliTool.claude,
-        body: {
-          'hook_event_name': 'PreToolUse',
-          'tool_name': 'exit_plan_mode',
-        },
+        body: {'hook_event_name': 'PreToolUse', 'tool_name': 'exit_plan_mode'},
       );
       expect(e?.state, AgentSeatAttention.waiting);
     });
@@ -166,20 +160,19 @@ void main() {
       expect(p.toolCallID, 'call-1');
     });
 
-    test('OpenCode permission.asked without id keeps waiting without card data',
-        () {
-      final e = AgentStatusNormalizer.normalize(
-        cli: CliTool.opencode,
-        body: {
-          'event': 'permission.asked',
-          'permission': 'Run tests',
-        },
-      );
-      expect(e?.state, AgentSeatAttention.waiting);
-      expect(e?.askRequestId, isNull);
-      // No correlation id → no answerable card payload.
-      expect(e?.permissionRequest, isNull);
-    });
+    test(
+      'OpenCode permission.asked without id keeps waiting without card data',
+      () {
+        final e = AgentStatusNormalizer.normalize(
+          cli: CliTool.opencode,
+          body: {'event': 'permission.asked', 'permission': 'Run tests'},
+        );
+        expect(e?.state, AgentSeatAttention.waiting);
+        expect(e?.askRequestId, isNull);
+        // No correlation id → no answerable card payload.
+        expect(e?.permissionRequest, isNull);
+      },
+    );
 
     test('OpenCode question.asked → waiting', () {
       final e = AgentStatusNormalizer.normalize(
@@ -212,8 +205,10 @@ void main() {
       expect(e?.askUserQuestions, hasLength(1));
       expect(e?.askUserQuestions?.single.question, 'Which stack?');
       expect(e?.askUserQuestions?.single.options, hasLength(2));
-      expect(e?.askUserQuestions?.single.options.first.description,
-          'Cross-platform UI');
+      expect(
+        e?.askUserQuestions?.single.options.first.description,
+        'Cross-platform UI',
+      );
       expect(e?.askUserQuestions?.single.multiSelect, isFalse);
     });
 
@@ -280,10 +275,7 @@ void main() {
     test('opencode question.reply_failed without request_id skips restore', () {
       final e = AgentStatusNormalizer.normalize(
         cli: CliTool.opencode,
-        body: {
-          'event': 'question.reply_failed',
-          'message': 'missing id',
-        },
+        body: {'event': 'question.reply_failed', 'message': 'missing id'},
       );
       expect(e?.hookEventName, 'question.reply_failed');
       expect(e?.askRequestId, isNull);
@@ -292,29 +284,56 @@ void main() {
       expect(e?.state, AgentSeatAttention.waiting);
     });
 
-    test('Claude AskUserQuestion PreToolUse sets askRequestId from tool_use_id',
-        () {
+    test('opencode question.answered → working with request id', () {
       final e = AgentStatusNormalizer.normalize(
-        cli: CliTool.claude,
+        cli: CliTool.opencode,
         body: {
-          'hook_event_name': 'PreToolUse',
-          'tool_name': 'AskUserQuestion',
-          'tool_use_id': 'toolu-q1',
-          'tool_input': {
-            'questions': [
-              {
-                'question': 'OK?',
-                'options': ['Yes', 'No'],
-              },
-            ],
-          },
+          'event': 'question.answered',
+          'request_id': 'req_1',
+          'session_id': 'ses_1',
         },
       );
-      expect(e?.state, AgentSeatAttention.waiting);
-      expect(e?.toolUseId, 'toolu-q1');
-      expect(e?.askRequestId, 'toolu-q1');
-      expect(e?.askUserQuestions, isNotNull);
+      expect(e?.state, AgentSeatAttention.working);
+      expect(e?.hookEventName, 'question.answered');
+      expect(e?.askRequestId, 'req_1');
+      expect(e?.nativeSessionId, 'ses_1');
     });
+
+    test('opencode permission.answered → working with request id', () {
+      final e = AgentStatusNormalizer.normalize(
+        cli: CliTool.opencode,
+        body: {'event': 'permission.answered', 'request_id': 'per_1'},
+      );
+      expect(e?.state, AgentSeatAttention.working);
+      expect(e?.hookEventName, 'permission.answered');
+      expect(e?.askRequestId, 'per_1');
+    });
+
+    test(
+      'Claude AskUserQuestion PreToolUse sets askRequestId from tool_use_id',
+      () {
+        final e = AgentStatusNormalizer.normalize(
+          cli: CliTool.claude,
+          body: {
+            'hook_event_name': 'PreToolUse',
+            'tool_name': 'AskUserQuestion',
+            'tool_use_id': 'toolu-q1',
+            'tool_input': {
+              'questions': [
+                {
+                  'question': 'OK?',
+                  'options': ['Yes', 'No'],
+                },
+              ],
+            },
+          },
+        );
+        expect(e?.state, AgentSeatAttention.waiting);
+        expect(e?.toolUseId, 'toolu-q1');
+        expect(e?.askRequestId, 'toolu-q1');
+        expect(e?.askUserQuestions, isNotNull);
+      },
+    );
 
     test('OpenCode session.idle → done', () {
       final e = AgentStatusNormalizer.normalize(

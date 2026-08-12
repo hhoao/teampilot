@@ -15,10 +15,11 @@ final class OpencodeAgentStatusNormalizer
     final eventName = body['event']?.toString();
     if (eventName == null || eventName.isEmpty) return null;
 
-    final askRequestId = readPayloadString(
-      body,
-      const ['request_id', 'id', 'permission_id'],
-    );
+    final askRequestId = readPayloadString(body, const [
+      'request_id',
+      'id',
+      'permission_id',
+    ]);
     final nativeSessionId = readPayloadString(body, const [
       'session_id',
       'sessionID',
@@ -37,6 +38,20 @@ final class OpencodeAgentStatusNormalizer
         state: AgentSeatAttention.waiting,
         hookEventName: eventName,
         askUserQuestions: parseQuestionsList(body['questions']),
+        askRequestId: askRequestId,
+        nativeSessionId: nativeSessionId,
+      ),
+      // OpenCode resolved the request itself (native TUI answer / reject):
+      // seat moves back to working so the chat card clears immediately.
+      'question.answered' => AgentStatusEvent(
+        state: AgentSeatAttention.working,
+        hookEventName: eventName,
+        askRequestId: askRequestId,
+        nativeSessionId: nativeSessionId,
+      ),
+      'permission.answered' => AgentStatusEvent(
+        state: AgentSeatAttention.working,
+        hookEventName: eventName,
         askRequestId: askRequestId,
         nativeSessionId: nativeSessionId,
       ),
