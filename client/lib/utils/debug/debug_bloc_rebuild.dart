@@ -20,9 +20,10 @@ bool debugBuildWhen<T>(
   T current, {
   String? tag,
   required Map<String, bool> changed,
+  bool enable = true,
 }) {
   final needsRebuild = changed.containsValue(true);
-  if (kDebugMode && needsRebuild) {
+  if (kDebugMode && needsRebuild && enable) {
     final fields = changed.entries
         .where((e) => e.value)
         .map((e) => e.key)

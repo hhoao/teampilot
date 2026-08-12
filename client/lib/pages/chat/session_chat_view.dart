@@ -442,7 +442,9 @@ class _SessionChatViewState extends State<SessionChatView> {
     // 各自通过复用检查后各建一个 controller。
     final inFlight = _liveRefreshStartInFlight;
     if (inFlight != null) return inFlight;
-    final future = _startLiveRefreshImpl(skipInitialRefresh: skipInitialRefresh);
+    final future = _startLiveRefreshImpl(
+      skipInitialRefresh: skipInitialRefresh,
+    );
     _liveRefreshStartInFlight = future;
     future.whenComplete(() {
       if (identical(_liveRefreshStartInFlight, future)) {
@@ -452,9 +454,7 @@ class _SessionChatViewState extends State<SessionChatView> {
     return future;
   }
 
-  Future<void> _startLiveRefreshImpl({
-    bool skipInitialRefresh = false,
-  }) async {
+  Future<void> _startLiveRefreshImpl({bool skipInitialRefresh = false}) async {
     final seat = _seat;
     if (seat == null) return;
     final chat = context.read<ChatCubit>();
@@ -473,7 +473,8 @@ class _SessionChatViewState extends State<SessionChatView> {
     // 复用:seat 作用域未变时直接 ensureStarted(幂等),不再重建 controller。
     // 旧实现每次调用都"停旧建新",agent 活跃期 working 状态翻转频繁,
     // 同一时刻会并存多个 controller,且被停实例的在途查询仍会跑完。
-    final scope = '${widget.session.sessionId}|${widget.selectedMemberId}'
+    final scope =
+        '${widget.session.sessionId}|${widget.selectedMemberId}'
         '|${widget.team?.id ?? ''}|${widget.workspace.workspaceId}';
     if (_liveRefresh != null && _liveRefreshScope == scope) {
       await _liveRefresh!.ensureStarted(skipInitialRefresh: true);
@@ -484,11 +485,11 @@ class _SessionChatViewState extends State<SessionChatView> {
       final historyCubit = context.read<AiHistoryCubit>();
       final loader =
           context
-                  .read<ChatCubit>()
-                  .podRuntime(widget.session.sessionId)
-                  ?.history
-                  ?.loader ??
-              historyCubit.loader;
+              .read<ChatCubit>()
+              .podRuntime(widget.session.sessionId)
+              ?.history
+              ?.loader ??
+          historyCubit.loader;
       final roots = await loader.resolveSeatRuntime(
         launchContext: _launchContext,
         memberId: widget.selectedMemberId,
@@ -549,9 +550,7 @@ class _SessionChatViewState extends State<SessionChatView> {
           ? (session.presetId.trim().isEmpty ? null : session.presetId)
           : null,
       teamId: isPersonal ? null : session.sessionTeam,
-      expertKey: session.expertKey.trim().isEmpty
-          ? null
-          : session.expertKey,
+      expertKey: session.expertKey.trim().isEmpty ? null : session.expertKey,
       workingDirectoryPath: _workspaceRoot,
       cli: isPersonal ? session.cli : null,
       provider: isPersonal ? session.provider : null,
@@ -756,10 +755,10 @@ class _SessionChatViewState extends State<SessionChatView> {
     final chat = context.read<ChatCubit>();
     final permissionWaiting =
         AgentPermissionAttentionBanner.isSelectedSeatWaiting(
-      attention: context.read<AgentAttentionCubit>(),
-      session: widget.session,
-      selectedMemberId: selectedMemberId,
-    );
+          attention: context.read<AgentAttentionCubit>(),
+          session: widget.session,
+          selectedMemberId: selectedMemberId,
+        );
     final memberWorking = chat.isMemberWorking(
       widget.session.sessionId,
       _shellMemberId,
@@ -800,7 +799,9 @@ class _SessionChatViewState extends State<SessionChatView> {
     return await _deliverComposeMessage(trimmed);
   }
 
-  Future<HistoryContinueSubmitResult> _deliverComposeMessage(String text) async {
+  Future<HistoryContinueSubmitResult> _deliverComposeMessage(
+    String text,
+  ) async {
     if (text.isEmpty) return const HistoryContinueSubmitResult.failed();
     final selectedMemberId = widget.selectedMemberId;
     if (AgentPermissionAttentionBanner.isSelectedSeatWaiting(
@@ -976,7 +977,9 @@ class _SessionChatViewState extends State<SessionChatView> {
     return ShortcutFocus(
       // The chat page owns Mod+F (find bar). Claimed so the global workspace
       // search / other Mod+F global commands stay suppressed here.
-      claims: {KeyChord(key: 'f', mods: [KeyChordMod.mod])},
+      claims: {
+        KeyChord(key: 'f', mods: [KeyChordMod.mod]),
+      },
       child: Shortcuts(
         shortcuts: <ShortcutActivator, Intent>{
           // Ctrl+F (Linux/Windows) and Cmd+F (macOS) both toggle the find bar;
@@ -996,190 +999,219 @@ class _SessionChatViewState extends State<SessionChatView> {
             ),
           },
           child: MultiBlocListener(
-      listeners: [
-        BlocListener<ChatCubit, ChatState>(
-          listenWhen: (previous, current) =>
-              previous.workingSessionIds != current.workingSessionIds,
-          listener: (context, state) {
-            _syncAwaitingFromWorkingSessions(state);
-            _maybeStartLiveRefreshForRunningPty();
-            _notifyFollowUpMemberWorking(context.read<ChatCubit>());
-          },
-        ),
-        BlocListener<MemberPresenceCubit, MemberPresenceState>(
-          listenWhen: (previous, current) =>
-              previous.presence != current.presence,
-          listener: (context, _) {
-            _notifyFollowUpMemberWorking(context.read<ChatCubit>());
-          },
-        ),
-      ],
-      child: ColoredBox(
-        color: cs.surface,
-        child: BlocSelector<
-          LayoutCubit,
-          LayoutState,
-          ({
-            bool expandReasoning,
-            bool expandTools,
-            ContentDisplayMode userMessageMode,
-            ContentDisplayMode chatCodeBlockMode,
-          })
-        >(
-          selector: (s) => (
-            expandReasoning: s.preferences.cotExpandReasoningOnOpen,
-            expandTools: s.preferences.cotExpandToolsOnOpen,
-            userMessageMode: s.preferences.chatUserMessageMode,
-            chatCodeBlockMode: s.preferences.chatCodeBlockMode,
-          ),
-          builder: (context, prefs) {
-            final expandReasoning = prefs.expandReasoning;
-            final expandTools = prefs.expandTools;
-            return LayoutBuilder(
-              builder: (context, constraints) {
-                final columnWidth = resolveSessionHistoryColumnWidth(
-                  constraints.maxWidth,
-                );
-                return Theme(
-                  data: Theme.of(context).copyWith(
-                    extensions: [
-                      for (final ext in Theme.of(context).extensions.values)
-                        if (ext is! AiMessageTheme) ext,
-                      AiMessageTheme.of(context).copyWith(
-                        markdown: buildAppMarkdownTokens(
-                          Theme.of(context),
-                          MarkdownProfile.compact,
-                          // v1: window width, not chat column width.
-                          width: MediaQuery.sizeOf(context).width,
-                          mutedSurface: cs.surfaceContainerHighest
-                              .withValues(alpha: 0.55),
-                        ),
-                        userBubbleColor: cs.surfaceContainerHighest,
-                        userBubbleForeground: cs.onSurface,
-                        mutedSurface: cs.surfaceContainerHighest
-                            .withValues(alpha: 0.55),
-                        toolTriggerColor: cs.onSurfaceVariant,
-                        messageSpacing: 24,
-                        threadMaxWidth: columnWidth,
-                        threadHorizontalPadding: spacing.md,
-                        cotExpandReasoningOnOpen: expandReasoning,
-                        cotExpandToolsOnOpen: expandTools,
-                      ),
-                    ],
-                  ),
-                  child: BlocBuilder<AiHistorySeat, AiHistoryState>(
-                bloc: _seat,
-                // Skip totalMessageCount-only tip growth — thread listens to
-                // runtime. Rebuild for chrome / overlay / awaiting flips.
-                buildWhen: (p, c) => debugBuildWhen(p, c,
-                  tag: 'session_chat_view',
-                  changed: {
-                    'status': p.status != c.status,
-                    'hasOlder': p.hasOlder != c.hasOlder,
-                    'isLoadingOlder': p.isLoadingOlder != c.isLoadingOlder,
-                    'softReloadError': p.softReloadError != c.softReloadError,
-                    'awaitingAssistant': p.awaitingAssistant != c.awaitingAssistant,
-                    'sessionId': p.sessionId != c.sessionId,
-                    'memberId': p.memberId != c.memberId,
-                    'subagentAttachmentEpoch':
-                        p.subagentAttachmentEpoch != c.subagentAttachmentEpoch,
-                    'errorMessage': p.errorMessage != c.errorMessage,
-                  },
-                ),
-                builder: (context, state) {
-                  final historySeat = _seat;
-                  if (historySeat == null) {
-                    return const SizedBox.shrink();
-                  }
-                  return ListenableBuilder(
-                    listenable: _subagentPreview,
-                    builder: (context, _) {
-                      _subagentPreview.pruneToAvailable(
-                        historySeat.subagentAttachments.keys.toSet(),
-                      );
-                      final stack = _subagentPreview.stack;
-                      final top = stack.isEmpty
-                          ? null
-                          : historySeat.subagentAttachments[stack.last];
-                      final topTitle = top?.title?.trim();
-                      final previewTitle = l10n.subagentPreviewTitleAgent(
-                        (topTitle != null && topTitle.isNotEmpty)
-                            ? topTitle
-                            : 'Agent',
-                      );
-
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          SessionChatMessageArea(
-                            session: widget.session,
-                            workspace: widget.workspace,
-                            selectedMemberId: selectedMemberId,
-                            shellMemberId: _shellMemberId,
-                            isSubmitting: _isSubmitting,
-                            state: state,
-                            historySeat: historySeat,
-                            top: top,
-                            previewTitle: previewTitle,
-                            subagentPreview: _subagentPreview,
-                            taskBoardController: _taskBoardController,
-                            findVisible: _findVisible,
-                            findHighlightId: _findHighlightId,
-                            findController: _findController,
-                            findQueryController: _findQueryController,
-                            findFocusNode: _findFocusNode,
-                            revealController: _revealController,
-                            historyCap: historyCap,
-                            onRetry: () => _loadHistory(force: true),
-                            onCloseFind: _closeFind,
-                            onNavigateFind: _navigateFindTo,
-                          ),
-                          if (top == null)
-                            SessionChatComposeSection(
-                              session: session,
-                              workspace: widget.workspace,
-                              selectedMemberId: selectedMemberId,
-                              shellMemberId: _shellMemberId,
-                              composeController: _controller,
-                              composeFocusNode: _focusNode,
-                              voiceController: _voice,
-                              isSubmitting: _isSubmitting,
-                              isEnhancing: _enhancing,
-                              workspaceRoot: _workspaceRoot,
-                              workspaceBundle: _workspaceBundle,
-                              askCardVisible: askCardVisible,
-                              launchError: widget.launchError,
-                              onRemapDeadTarget: widget.onRemapDeadTarget,
-                              onRetry: widget.onRetry,
-                              sessionConnectInProgress:
-                                  widget.sessionConnectInProgress,
-                              isMailboxUnread: widget.isMailboxUnread,
-                              mailboxQueued: _mailboxQueued,
-                              mailboxQueuedSeats: _mailboxQueuedSeats,
-                              mailboxQueuedClearToken: _mailboxQueuedClearToken,
-                              onMailboxConsumed: (mailId) {
-                                if (!mounted) return;
-                                unawaited(_seat?.refreshMailboxTimeline());
-                              },
-                              onAttach: () => unawaited(_attachFiles()),
-                              onEnhance: () => unawaited(_enhancePrompt()),
-                              onPasteImage: _pasteComposeImage,
-                              onComposeChanged: () => setState(() {}),
-                              routeActive: widget.routeActive,
-                              onSubmit: _handleComposeSubmit,
-                            ),
-                        ],
-                      );
-                    },
-                  );
+            listeners: [
+              BlocListener<ChatCubit, ChatState>(
+                listenWhen: (previous, current) =>
+                    previous.workingSessionIds != current.workingSessionIds,
+                listener: (context, state) {
+                  _syncAwaitingFromWorkingSessions(state);
+                  _maybeStartLiveRefreshForRunningPty();
+                  _notifyFollowUpMemberWorking(context.read<ChatCubit>());
                 },
               ),
-                );
-              },
-            );
-          },
-        ),
-      ),
+              BlocListener<MemberPresenceCubit, MemberPresenceState>(
+                listenWhen: (previous, current) =>
+                    previous.presence != current.presence,
+                listener: (context, _) {
+                  _notifyFollowUpMemberWorking(context.read<ChatCubit>());
+                },
+              ),
+            ],
+            child: ColoredBox(
+              color: cs.surface,
+              child:
+                  BlocSelector<
+                    LayoutCubit,
+                    LayoutState,
+                    ({
+                      bool expandReasoning,
+                      bool expandTools,
+                      ContentDisplayMode userMessageMode,
+                      ContentDisplayMode chatCodeBlockMode,
+                    })
+                  >(
+                    selector: (s) => (
+                      expandReasoning: s.preferences.cotExpandReasoningOnOpen,
+                      expandTools: s.preferences.cotExpandToolsOnOpen,
+                      userMessageMode: s.preferences.chatUserMessageMode,
+                      chatCodeBlockMode: s.preferences.chatCodeBlockMode,
+                    ),
+                    builder: (context, prefs) {
+                      final expandReasoning = prefs.expandReasoning;
+                      final expandTools = prefs.expandTools;
+                      return LayoutBuilder(
+                        builder: (context, constraints) {
+                          final columnWidth = resolveSessionHistoryColumnWidth(
+                            constraints.maxWidth,
+                          );
+                          return Theme(
+                            data: Theme.of(context).copyWith(
+                              extensions: [
+                                for (final ext in Theme.of(
+                                  context,
+                                ).extensions.values)
+                                  if (ext is! AiMessageTheme) ext,
+                                AiMessageTheme.of(context).copyWith(
+                                  markdown: buildAppMarkdownTokens(
+                                    Theme.of(context),
+                                    MarkdownProfile.compact,
+                                    // v1: window width, not chat column width.
+                                    width: MediaQuery.sizeOf(context).width,
+                                    mutedSurface: cs.surfaceContainerHighest
+                                        .withValues(alpha: 0.55),
+                                  ),
+                                  userBubbleColor: cs.surfaceContainerHighest,
+                                  userBubbleForeground: cs.onSurface,
+                                  mutedSurface: cs.surfaceContainerHighest
+                                      .withValues(alpha: 0.55),
+                                  toolTriggerColor: cs.onSurfaceVariant,
+                                  messageSpacing: 24,
+                                  threadMaxWidth: columnWidth,
+                                  threadHorizontalPadding: spacing.md,
+                                  cotExpandReasoningOnOpen: expandReasoning,
+                                  cotExpandToolsOnOpen: expandTools,
+                                ),
+                              ],
+                            ),
+                            child: BlocBuilder<AiHistorySeat, AiHistoryState>(
+                              bloc: _seat,
+                              // Skip totalMessageCount-only tip growth — thread listens to
+                              // runtime. Rebuild for chrome / overlay / awaiting flips.
+                              buildWhen: (p, c) => debugBuildWhen(
+                                p,
+                                c,
+                                tag: 'session_chat_view',
+                                changed: {
+                                  'status': p.status != c.status,
+                                  'hasOlder': p.hasOlder != c.hasOlder,
+                                  'awaitingAssistant':
+                                      p.awaitingAssistant !=
+                                      c.awaitingAssistant,
+                                  'isLoadingOlder':
+                                      p.isLoadingOlder != c.isLoadingOlder,
+                                  'softReloadError':
+                                      p.softReloadError != c.softReloadError,
+                                  'sessionId': p.sessionId != c.sessionId,
+                                  'memberId': p.memberId != c.memberId,
+                                  'subagentAttachmentEpoch':
+                                      p.subagentAttachmentEpoch !=
+                                      c.subagentAttachmentEpoch,
+                                  'errorMessage':
+                                      p.errorMessage != c.errorMessage,
+                                },
+                                enable: false,
+                              ),
+                              builder: (context, state) {
+                                final historySeat = _seat;
+                                if (historySeat == null) {
+                                  return const SizedBox.shrink();
+                                }
+                                return ListenableBuilder(
+                                  listenable: _subagentPreview,
+                                  builder: (context, _) {
+                                    _subagentPreview.pruneToAvailable(
+                                      historySeat.subagentAttachments.keys
+                                          .toSet(),
+                                    );
+                                    final stack = _subagentPreview.stack;
+                                    final top = stack.isEmpty
+                                        ? null
+                                        : historySeat.subagentAttachments[stack
+                                              .last];
+                                    final topTitle = top?.title?.trim();
+                                    final previewTitle = l10n
+                                        .subagentPreviewTitleAgent(
+                                          (topTitle != null &&
+                                                  topTitle.isNotEmpty)
+                                              ? topTitle
+                                              : 'Agent',
+                                        );
+
+                                    return Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.stretch,
+                                      children: [
+                                        SessionChatMessageArea(
+                                          session: widget.session,
+                                          workspace: widget.workspace,
+                                          selectedMemberId: selectedMemberId,
+                                          shellMemberId: _shellMemberId,
+                                          isSubmitting: _isSubmitting,
+                                          state: state,
+                                          historySeat: historySeat,
+                                          top: top,
+                                          previewTitle: previewTitle,
+                                          subagentPreview: _subagentPreview,
+                                          taskBoardController:
+                                              _taskBoardController,
+                                          findVisible: _findVisible,
+                                          findHighlightId: _findHighlightId,
+                                          findController: _findController,
+                                          findQueryController:
+                                              _findQueryController,
+                                          findFocusNode: _findFocusNode,
+                                          revealController: _revealController,
+                                          historyCap: historyCap,
+                                          onRetry: () =>
+                                              _loadHistory(force: true),
+                                          onCloseFind: _closeFind,
+                                          onNavigateFind: _navigateFindTo,
+                                        ),
+                                        if (top == null)
+                                          SessionChatComposeSection(
+                                            session: session,
+                                            workspace: widget.workspace,
+                                            selectedMemberId: selectedMemberId,
+                                            shellMemberId: _shellMemberId,
+                                            composeController: _controller,
+                                            composeFocusNode: _focusNode,
+                                            voiceController: _voice,
+                                            isSubmitting: _isSubmitting,
+                                            isEnhancing: _enhancing,
+                                            workspaceRoot: _workspaceRoot,
+                                            workspaceBundle: _workspaceBundle,
+                                            askCardVisible: askCardVisible,
+                                            launchError: widget.launchError,
+                                            onRemapDeadTarget:
+                                                widget.onRemapDeadTarget,
+                                            onRetry: widget.onRetry,
+                                            sessionConnectInProgress:
+                                                widget.sessionConnectInProgress,
+                                            isMailboxUnread:
+                                                widget.isMailboxUnread,
+                                            mailboxQueued: _mailboxQueued,
+                                            mailboxQueuedSeats:
+                                                _mailboxQueuedSeats,
+                                            mailboxQueuedClearToken:
+                                                _mailboxQueuedClearToken,
+                                            onMailboxConsumed: (mailId) {
+                                              if (!mounted) return;
+                                              unawaited(
+                                                _seat?.refreshMailboxTimeline(),
+                                              );
+                                            },
+                                            onAttach: () =>
+                                                unawaited(_attachFiles()),
+                                            onEnhance: () =>
+                                                unawaited(_enhancePrompt()),
+                                            onPasteImage: _pasteComposeImage,
+                                            onComposeChanged: () =>
+                                                setState(() {}),
+                                            routeActive: widget.routeActive,
+                                            onSubmit: _handleComposeSubmit,
+                                          ),
+                                      ],
+                                    );
+                                  },
+                                );
+                              },
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+            ),
           ),
         ),
       ),
