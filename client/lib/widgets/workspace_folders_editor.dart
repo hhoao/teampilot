@@ -15,14 +15,9 @@ import 'workspace_folder_directory_row.dart';
 
 /// Hint copy for the workspace folders settings section.
 String workspaceFoldersEditorHint(
-  AppLocalizations l10n,
-  List<WorkspaceFolder> folders, {
+  AppLocalizations l10n, {
   required bool lockTargets,
 }) {
-  final topology = workspaceTopologyOf(folders);
-  if (topology == WorkspaceTopology.mixed) {
-    return l10n.workspaceFoldersMixedTargetsLockedHint;
-  }
   if (lockTargets) {
     return l10n.workspaceFoldersPersonalTargetsLockedHint;
   }

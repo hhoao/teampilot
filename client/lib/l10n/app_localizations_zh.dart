@@ -2712,10 +2712,6 @@ class AppLocalizationsZh extends AppLocalizations {
       '每个目录单独指定所在机器与路径。全部本地 = 本地工作区；全部同一远程 = 项目远程；跨机 = 混合工作区（成员远程）。';
 
   @override
-  String get workspaceFoldersMixedTargetsLockedHint =>
-      '混合工作区：各目录所在机器已固定。可在上方现有机器上添加路径；成员分配请使用下方「分配」按钮。';
-
-  @override
   String get workspaceFoldersPersonalTargetsLockedHint =>
       '个人身份下无法更改目录所在机器。请切换到团队身份配置机器与目录。';
 

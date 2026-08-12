@@ -5144,12 +5144,6 @@ abstract class AppLocalizations {
   /// **'Set machine and path per directory. All local = local workspace; all one remote = project-remote; cross-machine = mixed (member-remote).'**
   String get workspaceFoldersEditorHint;
 
-  /// No description provided for @workspaceFoldersMixedTargetsLockedHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Mixed workspace: folder machines are fixed. Add paths on existing machines above; use Assign to change member machine assignment.'**
-  String get workspaceFoldersMixedTargetsLockedHint;
-
   /// No description provided for @workspaceFoldersPersonalTargetsLockedHint.
   ///
   /// In en, this message translates to:

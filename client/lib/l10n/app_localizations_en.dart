@@ -2839,10 +2839,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'Set machine and path per directory. All local = local workspace; all one remote = project-remote; cross-machine = mixed (member-remote).';
 
   @override
-  String get workspaceFoldersMixedTargetsLockedHint =>
-      'Mixed workspace: folder machines are fixed. Add paths on existing machines above; use Assign to change member machine assignment.';
-
-  @override
   String get workspaceFoldersPersonalTargetsLockedHint =>
       'Personal identity cannot change folder machines. Switch to a team identity to configure machines and directories.';
 
