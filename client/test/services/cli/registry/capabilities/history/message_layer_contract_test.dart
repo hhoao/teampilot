@@ -42,16 +42,13 @@ void checkContract(String label, List<AiMessage> messages) {
     }
   }
   expect(toolParts, greaterThan(0), reason: '$label: 夹具应包含工具调用');
-  // 消息级 status 推导为公共缺口（finalize 只规范化 part 级 status），
-  // 待 Task 7 在 finalizeAiMessagesForHistory 补齐后恢复消息级严格断言。
+  // 消息级 status 为 app 管理的流式标志（ai_message_view.dart:86），
+  // adapter 恒 complete 是既定语义，finalize 不推导消息级 status。
+  // 见 docs/cli-formats/message-layer-audit.md Gap 清单 G6b。
   final finalized = finalizeAiMessagesForHistory(messages);
   for (final m in finalized) {
-    for (final part in m.parts) {
-      if (part is AiToolCallPart && part.status == AiToolCallStatus.running) {
-        expect(m.status, AiMessageStatus.incomplete,
-            reason: '$label: 有 running tool part 的消息不应为 complete');
-      }
-    }
+    expect(m.status, AiMessageStatus.complete,
+        reason: '$label: 消息级 status 是 app 管理的流式标志，adapter 恒 complete 为既定语义');
   }
 }
 
