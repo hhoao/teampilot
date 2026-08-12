@@ -77,6 +77,7 @@ class CliConfigAsset<T> {
   final T payload;          // 类型化内容：SkillSpec / McpServerSpec / CliHookSpec / ...
   final AssetScope scope;   // app | team | workspace | session
   final AssetSource source; // userConfig | pluginBundle | capability | hubInstall
+  final int level;          // 同 scope 同 source 内排序，数值大者优先（见合并规则链）
   final String id;          // 资产唯一 id（unregister 用）
 }
 ```
@@ -92,7 +93,29 @@ workspace  → 覆盖 team
 session    → 最高优先级（本次会话）
 ```
 
-同一 id + 同 scope 冲突：按 source 优先级 `capability > userConfig > pluginBundle`。合并逻辑放泛型基类 `assetsFor(scope)`，一次实现全类型复用。
+### scope 合并语义（定义死，不留模糊）
+
+资产注册时带 `scope`；落盘时按 bundle 既有优先级合并（team > expert > workspace）：
+
+```
+app        → 最低优先级（全局默认，被任何上层覆盖）
+team       → 覆盖 app
+workspace  → 覆盖 team
+session    → 最高优先级（本次会话）
+```
+
+### 合并规则链（一条规则，不分支）
+
+```
+1. scope 层级（session > workspace > team > app）           ← 主序
+2. source 优先级（capability > userConfig > pluginBundle）  ← 次序
+3. level（同 scope 同 source 内，int，数值大者优先）         ← 末序
+4. 注册顺序（仍相同 → 后注册覆盖先注册）                     ← 兜底
+```
+
+- `level` 为普通 `int` 字段，不设取值范围、无默认值约束；只在**同 scope 同 source** 内比较，跨 scope / 跨 source 仍由前两级决定。
+- 资产生命周期内 `level` 不变（unregister 后重新 register 不得改变相对顺序）。
+- 合并逻辑放泛型基类 `assetsFor(scope)`，一次实现全类型复用。
 
 ### Registry 接口（泛型核心 + 特化）
 
