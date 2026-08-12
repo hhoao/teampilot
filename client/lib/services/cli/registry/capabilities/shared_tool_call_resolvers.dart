@@ -11,57 +11,51 @@ import '../../../ai_history/tool_call_categories.dart';
 import '../../../ai_history/tool_call_resolvers.dart';
 import 'tool_call_resolver_capability.dart';
 
-/// Shared edit/file/shell/category configuration for all built-in CLIs.
-/// Per-CLI deltas override specific resolvers (see CursorToolCallResolvers).
-class SharedToolCallResolvers implements ToolCallResolversCapability {
-  const SharedToolCallResolvers();
+/// Baseline tool-name / argument-key lists for the shared resolvers.
+/// Per-CLI resolvers reuse these and extend them (e.g. OpenCode's camelCase
+/// `filePath`), keeping CLI-specific keys out of the shared package.
+abstract final class SharedToolCallResolverKeys {
+  static const editToolNames = {
+    'strreplace',
+    'edit',
+    'editnotebook',
+    'notebookedit',
+  };
+  static const editPathKeys = ['file_path', 'path', 'file', 'target_file'];
+  static const editOldStringKeys = ['old_string', 'oldString'];
+  static const editNewStringKeys = ['new_string', 'newString'];
+  static const editStartLineKeys = ['start_line', 'startLine'];
 
-  static const _strReplaceCodec = StrReplaceEditHunkCodec(
-    toolNames: {'strreplace', 'edit', 'editnotebook', 'notebookedit'},
-    pathKeys: ['file_path', 'path', 'file', 'target_file'],
-    oldStringKeys: ['old_string', 'oldString'],
-    newStringKeys: ['new_string', 'newString'],
-    startLineKeys: ['start_line', 'startLine'],
-  );
+  static const writeToolNames = {
+    'write',
+    'writefile',
+    'write_file',
+    'create',
+    'create_file',
+  };
+  static const writePathKeys = ['file_path', 'path', 'file', 'target_file'];
+  static const writeContentKeys = ['content', 'contents'];
 
-  static const _writeCodec = WriteEditHunkCodec(
-    toolNames: {'write', 'writefile', 'write_file', 'create', 'create_file'},
-    pathKeys: ['file_path', 'path', 'file', 'target_file'],
-    contentKeys: ['content', 'contents'],
-  );
+  static const diffToolNames = {'applypatch', 'apply_patch'};
+  static const diffPatchKeys = ['patch', 'diff', 'input'];
 
-  static const _unifiedDiffCodec = UnifiedDiffEditHunkCodec(
-    toolNames: {'applypatch', 'apply_patch'},
-    pathKeys: ['file_path', 'path', 'file', 'target_file'],
-    patchKeys: ['patch', 'diff', 'input'],
-  );
+  static const fileReadToolNames = {'read', 'readfile', 'read_file'};
+  static const fileWriteToolNames = {
+    'write',
+    'writefile',
+    'write_file',
+    'create',
+    'create_file',
+  };
+  static const fileEditToolNames = {
+    'edit',
+    'strreplace',
+    'applypatch',
+    'editnotebook',
+    'notebookedit',
+  };
 
-  static const _fileRules = <AiToolFileTargetRule>[
-    AiToolFileTargetRule(
-      toolNames: {'read', 'readfile', 'read_file'},
-      useOffsetLimit: true,
-    ),
-    AiToolFileTargetRule(
-      toolNames: {
-        'write',
-        'writefile',
-        'write_file',
-        'create',
-        'create_file',
-      },
-    ),
-    AiToolFileTargetRule(
-      toolNames: {
-        'edit',
-        'strreplace',
-        'applypatch',
-        'editnotebook',
-        'notebookedit',
-      },
-    ),
-  ];
-
-  static const _shellToolNames = {
+  static const shellToolNames = {
     'bash',
     'shell',
     'shell_command',
@@ -69,6 +63,47 @@ class SharedToolCallResolvers implements ToolCallResolversCapability {
     'run_shell_command',
     'run_terminal_cmd',
   };
+}
+
+/// Shared edit/file/shell/category configuration for all built-in CLIs.
+/// Per-CLI deltas override specific resolvers (see CursorToolCallResolvers).
+class SharedToolCallResolvers implements ToolCallResolversCapability {
+  const SharedToolCallResolvers();
+
+  static const _strReplaceCodec = StrReplaceEditHunkCodec(
+    toolNames: SharedToolCallResolverKeys.editToolNames,
+    pathKeys: SharedToolCallResolverKeys.editPathKeys,
+    oldStringKeys: SharedToolCallResolverKeys.editOldStringKeys,
+    newStringKeys: SharedToolCallResolverKeys.editNewStringKeys,
+    startLineKeys: SharedToolCallResolverKeys.editStartLineKeys,
+  );
+
+  static const _writeCodec = WriteEditHunkCodec(
+    toolNames: SharedToolCallResolverKeys.writeToolNames,
+    pathKeys: SharedToolCallResolverKeys.writePathKeys,
+    contentKeys: SharedToolCallResolverKeys.writeContentKeys,
+  );
+
+  static const _unifiedDiffCodec = UnifiedDiffEditHunkCodec(
+    toolNames: SharedToolCallResolverKeys.diffToolNames,
+    pathKeys: SharedToolCallResolverKeys.editPathKeys,
+    patchKeys: SharedToolCallResolverKeys.diffPatchKeys,
+  );
+
+  static const _fileRules = <AiToolFileTargetRule>[
+    AiToolFileTargetRule(
+      toolNames: SharedToolCallResolverKeys.fileReadToolNames,
+      useOffsetLimit: true,
+    ),
+    AiToolFileTargetRule(
+      toolNames: SharedToolCallResolverKeys.fileWriteToolNames,
+    ),
+    AiToolFileTargetRule(
+      toolNames: SharedToolCallResolverKeys.fileEditToolNames,
+    ),
+  ];
+
+  static const _shellToolNames = SharedToolCallResolverKeys.shellToolNames;
 
   @override
   AiEditToolTargetResolver get editResolver =>
