@@ -1,9 +1,13 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/catalog/workspace_catalog.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
+import 'package:teampilot/repositories/workspace_index_store.dart';
 
 void main() {
   WorkspaceCatalog buildCatalog() {
@@ -50,5 +54,51 @@ void main() {
           createdAt: 0,
         )), throwsUnsupportedError);
     expect(catalog.sessions.length, 1);
+  });
+
+  test('createWorkspaceWithFirstSession does not full-scan', () async {
+    final tmp = await Directory.systemTemp.createTemp('catalog_create_');
+    addTearDown(() => tmp.deleteSync(recursive: true));
+    final repo = SessionRepository(rootDir: tmp.path);
+    final catalog = WorkspaceCatalog(repo);
+    await catalog.loadIndex();
+    final result = await catalog.createWorkspaceWithFirstSession(
+      [const WorkspaceFolder(path: '/proj')],
+      display: 'P',
+    );
+    expect(result.workspaceId, isNotEmpty);
+    expect(catalog.workspaceById(result.workspaceId), isNotNull);
+    expect(await catalog.sessionsForWorkspace(result.workspaceId), isNotEmpty);
+    final fs = await repo.fs();
+    final index = await WorkspaceIndexStore(fs).tryRead(preferIsolate: false);
+    expect(index?.map((w) => w.workspaceId), contains(result.workspaceId));
+  });
+
+  test('createWorkspaceWithFirstSession dedups in memory when allowDuplicate false', () async {
+    final tmp = await Directory.systemTemp.createTemp('catalog_dedup_');
+    addTearDown(() => tmp.deleteSync(recursive: true));
+    final repo = SessionRepository(rootDir: tmp.path);
+    final catalog = WorkspaceCatalog(repo);
+    await catalog.loadIndex();
+    final a = await catalog.createWorkspaceWithFirstSession([const WorkspaceFolder(path: '/dup')]);
+    final b = await catalog.createWorkspaceWithFirstSession([const WorkspaceFolder(path: '/dup')]);
+    expect(a.workspaceId, b.workspaceId);
+    expect(catalog.workspaces.length, 1);
+  });
+
+  test('renameSession patches memory and disk', () async {
+    final tmp = await Directory.systemTemp.createTemp('catalog_rename_');
+    addTearDown(() => tmp.deleteSync(recursive: true));
+    final repo = SessionRepository(rootDir: tmp.path);
+    final catalog = WorkspaceCatalog(repo);
+    await catalog.loadIndex();
+    final ws = await catalog.createWorkspaceWithFirstSession([const WorkspaceFolder(path: '/p')]);
+    final created = await catalog.createSession(ws.workspaceId);
+    final snap = await catalog.renameSession(created.session.sessionId, 'New Title');
+    expect(snap.sessions.firstWhere((s) => s.sessionId == created.session.sessionId).display, 'New Title');
+    expect(catalog.sessionById(created.session.sessionId)?.display, 'New Title');
+    final fs = await repo.fs();
+    final raw = await fs.readText(fs.sessionFile(ws.workspaceId, created.session.sessionId));
+    expect(jsonDecode(raw!)['display'], 'New Title');
   });
 }

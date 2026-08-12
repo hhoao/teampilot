@@ -215,12 +215,13 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
       );
       if (to == null || !mounted) return;
 
-      final updated = await repo.remapWorkspaceTarget(
+      final updated = (await repo.remapWorkspaceTarget(
         workspace.workspaceId,
         fromTargetId: fromTargetId,
         toTargetId: to,
         liveness: liveness,
-      );
+      ))
+          .workspace;
       chat.invalidateWorkspaceProvision(updated);
       await chat.loadWorkspaceData(repo);
       chat.clearLaunchError(sessionId);

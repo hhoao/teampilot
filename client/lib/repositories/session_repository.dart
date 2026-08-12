@@ -52,10 +52,6 @@ class SessionRepository {
     return AppStorage.paths.basePath;
   }
 
-  void _invalidateWorkspacesIndexCache() {
-    _workspacesIndexByRoot.remove(_workspacesIndexCacheKey());
-  }
-
   List<Workspace> _rememberWorkspacesIndex(List<Workspace> workspaces) {
     final inferred = [
       for (final workspace in workspaces)
@@ -338,7 +334,7 @@ class SessionRepository {
     return workspace;
   }
 
-  Future<void> updateWorkspaceMetadata(
+  Future<Workspace?> updateWorkspaceMetadata(
     String workspaceId, {
     String? display,
     String? defaultProfileId,
@@ -346,7 +342,7 @@ class SessionRepository {
   }) async {
     final fs = await _fs();
     final existing = await _readManifest(fs, workspaceId);
-    if (existing == null) return;
+    if (existing == null) return null;
     final now = DateTime.now().millisecondsSinceEpoch;
     final updated = existing.copyWith(
       display: display != null ? display.trim() : existing.display,
@@ -358,15 +354,16 @@ class SessionRepository {
       updatedAt: now,
     );
     await _writeManifest(fs, updated);
+    return updated;
   }
 
-  Future<void> applyWorkspaceIcon(
+  Future<Workspace?> applyWorkspaceIcon(
     String workspaceId,
     WorkspaceIconRef icon,
   ) async {
     final fs = await _fs();
     final existing = await _readManifest(fs, workspaceId);
-    if (existing == null) return;
+    if (existing == null) return null;
     final now = DateTime.now().millisecondsSinceEpoch;
     final workspaceDir = fs.workspaceDir(workspaceId);
     final iconService = WorkspaceIconService(
@@ -378,16 +375,18 @@ class SessionRepository {
       previous: existing.icon,
       next: icon,
     );
-    await _writeManifest(fs, existing.copyWith(icon: icon, updatedAt: now));
+    final updated = existing.copyWith(icon: icon, updatedAt: now);
+    await _writeManifest(fs, updated);
+    return updated;
   }
 
-  Future<void> importCustomWorkspaceIcon(
+  Future<Workspace?> importCustomWorkspaceIcon(
     String workspaceId,
     String localSourcePath,
   ) async {
     final fs = await _fs();
     final existing = await _readManifest(fs, workspaceId);
-    if (existing == null) return;
+    if (existing == null) return null;
     final now = DateTime.now().millisecondsSinceEpoch;
     final workspaceDir = fs.workspaceDir(workspaceId);
     final iconService = WorkspaceIconService(
@@ -404,22 +403,21 @@ class SessionRepository {
       previous: existing.icon,
       next: customIcon,
     );
-    await _writeManifest(
-      fs,
-      existing.copyWith(icon: customIcon, updatedAt: now),
-    );
+    final updated = existing.copyWith(icon: customIcon, updatedAt: now);
+    await _writeManifest(fs, updated);
+    return updated;
   }
 
   /// Replace a workspace's folders wholesale (path + per-folder targetId).
   /// Used by the workspace target picker to move a workspace onto another
   /// machine (sets [WorkspaceFolder.targetId] on all folders).
-  Future<void> updateWorkspaceFolders(
+  Future<Workspace?> updateWorkspaceFolders(
     String workspaceId,
     List<WorkspaceFolder> folders,
   ) async {
     final fs = await _fs();
     final existing = await _readManifest(fs, workspaceId);
-    if (existing == null) return;
+    if (existing == null) return null;
     final now = DateTime.now().millisecondsSinceEpoch;
     final nextFolders = [
       for (final f in folders)
@@ -449,6 +447,7 @@ class SessionRepository {
       updatedAt: now,
     );
     await _writeManifest(fs, updated);
+    return updated;
   }
 
   static bool _sameTargetIdSet(List<String> a, List<String> b) {
@@ -529,7 +528,8 @@ class SessionRepository {
     return updated;
   }
 
-  Future<Workspace> remapWorkspaceTarget(
+  Future<({Workspace workspace, List<AppSession> sessions})>
+  remapWorkspaceTarget(
     String workspaceId, {
     required String fromTargetId,
     required String toTargetId,
@@ -573,9 +573,12 @@ class SessionRepository {
     );
     await _writeManifest(fs, updated);
 
+    final writtenSessions = <AppSession>[];
     for (final session in applied.sessions) {
+      final written = session.copyWith(updatedAt: now);
+      writtenSessions.add(written);
       try {
-        await _writeSession(fs, session.copyWith(updatedAt: now));
+        await _writeSession(fs, written);
       } on Object catch (error, stackTrace) {
         appLogger.e(
           '[workspace] remap session write failed '
@@ -586,7 +589,7 @@ class SessionRepository {
         rethrow;
       }
     }
-    return updated;
+    return (workspace: updated, sessions: writtenSessions);
   }
 
   /// Provisions trust metadata (git-root trusted projects) for [workspace].
