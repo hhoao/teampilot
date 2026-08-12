@@ -93,6 +93,7 @@ const Map<String, AiToolCallCategory> defaultToolCallNameRules = {
   'askuserquestion': AiToolCallCategory.askUser,
   'ask_user_question': AiToolCallCategory.askUser,
   'ask_user': AiToolCallCategory.askUser,
+  'askquestion': AiToolCallCategory.askUser,
   // plan
   'plan': AiToolCallCategory.plan,
   'enterplanmode': AiToolCallCategory.plan,
