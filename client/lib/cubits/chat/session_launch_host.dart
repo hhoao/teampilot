@@ -13,6 +13,7 @@ import '../../services/session/session_lifecycle_service.dart';
 import '../../services/agent_status/agent_status_seat_lookup.dart';
 import '../../services/agent_status/ask_user_answer_pending_store.dart';
 import '../../cubits/agent_attention_cubit.dart';
+import '../../cubits/workbench/workbench_tab.dart';
 import '../../services/team_bus/mcp/teammate_bus_mcp_gateway.dart';
 import '../../services/team_bus/remote/remote_bus_binding_resolver.dart';
 import 'chat_session_shell_factory.dart';
@@ -211,8 +212,13 @@ abstract class ChatWorkbenchPort {
   /// Close every center tab for [workspaceId] (each removal tears down).
   void closeAll(String workspaceId);
 
+  /// Bar center-active session tab id for [workspaceId] (null when landing or
+  /// a file/diff tab is active). Lets the domain derive "the active session"
+  /// from the bar — the single source of truth.
+  WorkbenchTabId? centerActiveForScope(String workspaceId);
+
   /// Re-sync [ChatState.activeSessionId]/`selectedMemberId` from the bar's
   /// center-active for the now-active workspace; called after a
-  /// foreground-workspace switch.
+  /// foreground-workspace switch. Kept until a later task removes the mirror.
   void syncForeground();
 }

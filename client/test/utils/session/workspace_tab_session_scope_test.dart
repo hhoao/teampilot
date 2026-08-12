@@ -118,4 +118,36 @@ void main() {
       expect(scopedActiveChatTab(workbench, cubit, 'tab-A'), isNull);
     });
   });
+
+  group('scopedSelectedMemberId', () {
+    late ChatCubit chat;
+
+    setUp(() {
+      setUpTestAppStorage();
+      chat = ChatCubit(
+        executableResolver: () => 'true',
+        automationRepository: testAutomationRepository(),
+      );
+    });
+
+    test('returns the active tab selectedMemberId', () {
+      final workbench = WorkbenchCubit();
+      chat.tabStore.setActiveWorkspaceId('ws-1');
+      final tab = ChatTab(
+        info: ChatTabInfo(id: 'sess-1', title: 't', subtitle: ''),
+        cliTeamName: 'team-1',
+        workspaceId: 'ws-1',
+      )..selectedMemberId = 'team-lead';
+      chat.tabStore.registerSession(tab);
+      workbench.openSession('ws-1', 'sess-1', preview: false);
+
+      expect(scopedSelectedMemberId(workbench, chat, 'ws-1'), 'team-lead');
+    });
+
+    test('returns empty when the active tab is absent', () {
+      final workbench = WorkbenchCubit();
+
+      expect(scopedSelectedMemberId(workbench, chat, 'ws-1'), '');
+    });
+  });
 }

@@ -30,3 +30,11 @@ TeamBus? scopedTeamBus(
   String tabScopeId,
 ) =>
     scopedActiveChatTab(workbench, chat, tabScopeId)?.teamBus;
+
+/// Active session's selected member id for [tabScopeId], or '' when the tab
+/// is absent. Same bar-derived source as the sidebar highlight.
+String scopedSelectedMemberId(
+  WorkbenchCubit workbench,
+  ChatCubit chat,
+  String tabScopeId,
+) => scopedActiveChatTab(workbench, chat, tabScopeId)?.selectedMemberId ?? '';

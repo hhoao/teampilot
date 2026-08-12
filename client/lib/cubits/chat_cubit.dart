@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:collection/collection.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
@@ -70,6 +71,7 @@ import 'chat/tab_session_runtime_coordinator.dart';
 import 'chat/tab_team_bus_coordinator.dart';
 import 'layout_cubit.dart';
 import 'member_presence_cubit.dart';
+import 'workbench/workbench_tab.dart';
 import 'chat/model/chat_state.dart';
 import 'chat/model/chat_tab.dart';
 import 'chat/model/session_connect_request.dart';
@@ -298,7 +300,7 @@ class ChatCubit extends Cubit<ChatState>
         activeTeam: () => _activeTeam,
         isClosed: () => isClosed,
         globalPresets: () => _lifecycle.globalPresets,
-        activeSessionId: () => state.activeSessionId,
+        activeSessionId: () => activeTab?.info.id,
         presence: () => _presenceCubit?.state.presence ?? const {},
         sessionBusyFromAttention: (sessionId) {
           final attention = _agentAttentionCubit;
@@ -459,7 +461,7 @@ class ChatCubit extends Cubit<ChatState>
 
   /// Observable state of the active session's pod (foreground tab), or null.
   SessionPodState? get activePod {
-    final id = state.activeSessionId;
+    final id = activeTab?.info.id;
     if (id == null || id.isEmpty) return null;
     return _pods[id]?.state;
   }
@@ -585,9 +587,16 @@ class ChatCubit extends Cubit<ChatState>
 
   @override
   ChatTab? get activeTab {
-    final id = state.activeSessionId;
-    if (id == null || id.isEmpty) return null;
-    return _tabStore.openTabBySessionId(id);
+    final wsId = _tabStore.activeWorkspaceId;
+    if (wsId.isNotEmpty) {
+      final tabId = _workbenchPort?.centerActiveForScope(wsId);
+      if (tabId != null && tabId.kind == WorkbenchTabKind.session) {
+        final tab = _tabStore.openTabBySessionId(tabId.id);
+        if (tab != null) return tab;
+      }
+    }
+    // Legacy local-tab fallback: pre-materialization runtimes are not bar-fed.
+    return _tabStore.openTabs.firstOrNull;
   }
 
   @override
@@ -944,7 +953,7 @@ class ChatCubit extends Cubit<ChatState>
     final sessionWorking = _sessionRuntime.sessionWorking;
     final usesPresenceSnapshot = sessionWorking.usesPresenceSnapshotForTab(
       tab: tab,
-      activeSessionId: state.activeSessionId,
+      activeSessionId: activeTab?.info.id,
       presenceNonEmpty: presence.isNotEmpty,
     );
 
@@ -963,7 +972,7 @@ class ChatCubit extends Cubit<ChatState>
     String? sessionId,
     String? memberId,
   }) async {
-    final sid = sessionId ?? state.activeSessionId;
+    final sid = sessionId ?? activeTab?.info.id;
     if (sid == null) return;
     final tab = _tabStore.openTabBySessionId(sid);
     if (tab == null) return;
@@ -1769,7 +1778,7 @@ class ChatCubit extends Cubit<ChatState>
     }
     if (view == SessionWorkbenchView.terminal) {
       final tab = _tabStore.openTabBySessionId(sessionId);
-      final memberId = tab?.selectedMemberId ?? state.selectedMemberId;
+      final memberId = tab?.selectedMemberId ?? '';
       if (memberId.trim().isNotEmpty) {
         unawaited(ensureMemberTerminalForView(sessionId, memberId));
       }
@@ -1878,8 +1887,9 @@ class ChatCubit extends Cubit<ChatState>
   );
 
   String selectedMemberName(TeamProfile team) {
+    final id = activeTab?.selectedMemberId ?? '';
     for (final m in team.members) {
-      if (m.id == state.selectedMemberId) return m.name;
+      if (m.id == id) return m.name;
     }
     return team.members.isEmpty ? 'member' : team.members.first.name;
   }
@@ -1916,7 +1926,7 @@ class ChatCubit extends Cubit<ChatState>
 
     final request = buildRetryExistingSessionConnect(
       session: session,
-      selectedMemberId: tab?.selectedMemberId ?? state.selectedMemberId,
+      selectedMemberId: tab?.selectedMemberId ?? '',
       team: team,
     );
     if (request == null) {

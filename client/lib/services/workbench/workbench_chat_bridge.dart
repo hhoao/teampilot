@@ -8,7 +8,9 @@ import '../../cubits/workbench/workbench_tab.dart';
 
 /// Domain ↔ bar handshake. Feeds the bar on session open, routes domain-driven
 /// closes and landing through the bar, and mirrors the bar's center-active
-/// session back into [ChatState.activeSessionId] / `selectedMemberId`.
+/// session back into [ChatState.activeSessionId] / `selectedMemberId` (kept
+/// until a later task removes the mirror; bar-derived reads go through
+/// [centerActiveForScope]).
 class WorkbenchChatBridge implements WorkbenchDomainPort, ChatWorkbenchPort {
   WorkbenchChatBridge({
     required WorkbenchCubit workbench,
@@ -64,6 +66,10 @@ class WorkbenchChatBridge implements WorkbenchDomainPort, ChatWorkbenchPort {
   }
 
   @override
+  WorkbenchTabId? centerActiveForScope(String workspaceId) =>
+      _workbench.centerActiveId(workspaceId);
+
+  @override
   void syncForeground() => _syncForeground();
 
   // ===== WorkbenchDomainPort (bar → domain teardown) =====
@@ -77,7 +83,7 @@ class WorkbenchChatBridge implements WorkbenchDomainPort, ChatWorkbenchPort {
     }
   }
 
-  // ===== Foreground-session mirror =====
+  // ===== Foreground-session mirror (kept until the mirror is removed) =====
 
   void _syncForeground() {
     final workspaceId = _chat.tabStore.activeWorkspaceId;
