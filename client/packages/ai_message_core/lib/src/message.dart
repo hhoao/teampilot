@@ -168,6 +168,30 @@ List<AiMessage> coalesceAdjacentAssistants(List<AiMessage> messages) {
   return out;
 }
 
+/// In-place variant of [coalesceAdjacentAssistants]: merges runs of adjacent
+/// assistant messages at the list-element level — the list instance stays the
+/// same and untouched messages keep their instance identity, so downstream
+/// `identical` fast paths survive. Incremental parses must produce the exact
+/// same message sequence as the full parse, so this must mirror
+/// [coalesceAdjacentAssistants] semantics (keep the first message's id).
+void coalesceAdjacentAssistantsInPlace(List<AiMessage> messages) {
+  if (messages.length < 2) return;
+  var write = 1;
+  for (var i = 1; i < messages.length; i++) {
+    final prev = messages[write - 1];
+    final cur = messages[i];
+    if (prev.role == AiRole.assistant && cur.role == AiRole.assistant) {
+      messages[write - 1] = prev.copyWith(
+        parts: [...prev.parts, ...cur.parts],
+      );
+    } else {
+      messages[write] = cur;
+      write++;
+    }
+  }
+  if (write < messages.length) messages.removeRange(write, messages.length);
+}
+
 /// History finalize: unpaired tools stay incomplete; completed tools with a
 /// result keep their status. Does not invent running state for disk transcripts.
 List<AiMessage> finalizeAiMessagesForHistory(List<AiMessage> messages) {

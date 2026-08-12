@@ -6,7 +6,6 @@ import '../../models/app_session.dart';
 import '../../models/cli_preset.dart';
 import '../../models/team_config.dart';
 import '../../models/workspace_launch_context.dart';
-import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import '../ai_history/tool_call_categories.dart';
 import '../ai_history/tool_call_category_annotator.dart';
@@ -88,6 +87,11 @@ final class AiHistoryLoader {
   final _tailStates = <String, TailReaderState>{};
   final _tailReaders = <String, AiTranscriptTailReader>{};
 
+  /// DB 行级增量状态(cacheKey → state,如 opencode SQLite)。与 tail 状态
+  /// 互斥:JSONL CLI 用 [AiTranscriptLineAppend],SQLite CLI 用
+  /// [AiTranscriptIncrementalRefresher]。
+  final _incrementalStates = <String, AiTranscriptIncrementalState>{};
+
   /// Bundles at/above this size parse on a worker isolate; smaller ones parse
   /// in place (isolate spawn + transfer overhead would dominate).
   static const _isolateParseMinBytes = 256 * 1024;
@@ -117,6 +121,7 @@ final class AiHistoryLoader {
     _parentPaths.clear();
     _sideTokens.clear();
     _tailStates.clear();
+    _incrementalStates.clear();
   }
 
   /// Per-CLI tail reader for JSONL-style transcripts. Returns null when the
@@ -156,6 +161,70 @@ final class AiHistoryLoader {
       force: force,
     );
     return state.messages;
+  }
+
+  /// DB 行级增量路径:刷新器只重读指纹变化的行并原地合并进 state 的实时
+  /// 列表。返回 null 时 [load] 回退全量 locate + parse。
+  Future<AiTranscriptIncrementalResult?> _tryIncrementalRefresh({
+    required String cacheKey,
+    required CliTool cli,
+    required SessionHistoryContext ctx,
+    bool force = false,
+  }) async {
+    final cap = _registry.capability<AiHistoryCapability>(cli);
+    final refresher = cap is AiTranscriptIncrementalCapability
+        ? (cap as AiTranscriptIncrementalCapability).incrementalRefresher
+        : null;
+    if (refresher == null) return null;
+    final state = _incrementalStates.putIfAbsent(
+      cacheKey,
+      refresher.createState,
+    );
+    return refresher.refresh(ctx: ctx, state: state, force: force);
+  }
+
+  /// 增量路径(JSONL tail / DB 行级)共用的收尾:注解、附件膨胀、缓存落库。
+  /// 未变化的原始消息保持实例身份,列表实例保持不变(下游 `identical`
+  /// 快速路径)。
+  Future<AiHistoryLoadResult> _finishIncremental({
+    required String cacheKey,
+    required CliTool cli,
+    required SessionHistoryContext ctx,
+    required List<AiMessage> messages,
+    required String? parentPath,
+    required String? token,
+  }) async {
+    // Incrementally added/replaced parts are unannotated → annotate now
+    // (idempotent on parts the previous load already covered).
+    final annotated = annotateToolCallCategories(
+      messages,
+      resolver: _categoryResolverFor(cli),
+    );
+    // Attachments: reuse the cached map across appends — only the first
+    // (inflate-less) load inflates, and only when nothing is cached yet.
+    // Cached maps are already annotated (we always store the annotated
+    // result); only the fresh inflate needs annotation.
+    var attachments = _attachments[cacheKey];
+    if (attachments == null) {
+      attachments = await const SubagentAttachmentInflater().inflate(
+        messages: annotated,
+        ctx: ctx,
+        capability: _registry.capability<AiHistoryCapability>(cli)!,
+        rootTranscriptPath: parentPath,
+      );
+      attachments = annotateSubagentAttachments(
+        attachments,
+        resolver: _categoryResolverFor(cli),
+      );
+    }
+    _messages[cacheKey] = annotated;
+    _attachments[cacheKey] = attachments;
+    _tokens[cacheKey] = token ?? 'changed-$cacheKey';
+    return AiHistoryLoadResult(
+      messages: annotated,
+      cli: cli,
+      subagentAttachments: attachments,
+    );
   }
 
   AiToolCallCategoryResolver _categoryResolverFor(CliTool cli) =>
@@ -257,6 +326,28 @@ final class AiHistoryLoader {
     }
 
     try {
+      // 增量优先:数据库行级增量(如 opencode SQLite)——跳过全量 locate +
+      // 全量 parse,只重读指纹变化的行并原地合并。不可增量(未对齐/计数
+      // 回退/删除/压缩/schema 不兼容)返回 null,继续走全量路径。
+      final dbDelta = await _tryIncrementalRefresh(
+        cacheKey: cacheKey,
+        cli: cli,
+        ctx: ctx,
+        force: force,
+      );
+      if (dbDelta != null) {
+        final parentPath = dbDelta.parentPath;
+        if (parentPath != null) _parentPaths[cacheKey] = parentPath;
+        return _finishIncremental(
+          cacheKey: cacheKey,
+          cli: cli,
+          ctx: ctx,
+          messages: dbDelta.messages,
+          parentPath: parentPath,
+          token: token,
+        );
+      }
+
       final bundle = await _locator.locate(ctx: ctx, cli: cli);
       final watch = bundle == null
           ? null
@@ -271,46 +362,23 @@ final class AiHistoryLoader {
       }();
       _parentPaths[cacheKey] = parentPath ?? '';
 
-      // 增量优先:JSONL 类 CLI 走 tail-anchor 增量(原地变异复用消息实例);
+      // JSONL 类 CLI 走 tail-anchor 增量(原地变异复用消息实例);
       // 失败/不适配(无 path、无 lineAppend、非 JSONL 存储)回退全量 parse。
-      var incremental = await _tryIncrementalLoad(
+      final tail = await _tryIncrementalLoad(
         cacheKey: cacheKey,
         cli: cli,
         ctx: ctx,
         parentPath: parentPath,
         force: force,
       );
-      if (incremental != null) {
-        // Tail-appended parts are unannotated → annotate now (idempotent on
-        // parts the previous load already covered).
-        incremental = annotateToolCallCategories(
-          incremental,
-          resolver: _categoryResolverFor(cli),
-        );
-        // Attachments: reuse the cached map across appends — only the first
-        // (inflate-less) load inflates, and only when nothing is cached yet.
-        // Cached maps are already annotated (we always store the annotated
-        // result); only the fresh inflate needs annotation.
-        var attachments = _attachments[cacheKey];
-        if (attachments == null) {
-          attachments = await const SubagentAttachmentInflater().inflate(
-            messages: incremental,
-            ctx: ctx,
-            capability: cap,
-            rootTranscriptPath: parentPath,
-          );
-          attachments = annotateSubagentAttachments(
-            attachments,
-            resolver: _categoryResolverFor(cli),
-          );
-        }
-        _messages[cacheKey] = incremental;
-        _attachments[cacheKey] = attachments;
-        _tokens[cacheKey] = token ?? 'changed-$cacheKey';
-        return AiHistoryLoadResult(
-          messages: incremental,
+      if (tail != null) {
+        return _finishIncremental(
+          cacheKey: cacheKey,
           cli: cli,
-          subagentAttachments: attachments,
+          ctx: ctx,
+          messages: tail,
+          parentPath: parentPath,
+          token: token,
         );
       }
 
@@ -385,6 +453,23 @@ final class AiHistoryLoader {
         resolver: _categoryResolverFor(cli),
       );
 
+      // 全量 parse 完成后对齐增量状态:让下一次 refresh 变成纯增量
+      // (只重读指纹变化的行,原地合并进 messages 同一实例)。
+      final refresher = cap is AiTranscriptIncrementalCapability
+          ? (cap as AiTranscriptIncrementalCapability).incrementalRefresher
+          : null;
+      if (refresher != null) {
+        final incrementalState = _incrementalStates.putIfAbsent(
+          cacheKey,
+          refresher.createState,
+        );
+        await refresher.seedFromFullParse(
+          ctx: ctx,
+          messages: messages,
+          state: incrementalState,
+        );
+      }
+
       _messages[cacheKey] = messages;
       _attachments[cacheKey] = attachments;
       _tokens[cacheKey] = token ?? 'changed-$cacheKey';
@@ -418,6 +503,7 @@ final class AiHistoryLoader {
       _parentPaths.remove(key);
       _sideTokens.remove(key);
       _tailStates.remove(key);
+      _incrementalStates.remove(key);
       return;
     }
     final prefix = '${sessionId.trim()}\u0000';
@@ -427,6 +513,7 @@ final class AiHistoryLoader {
     _parentPaths.removeWhere((key, _) => key.startsWith(prefix));
     _sideTokens.removeWhere((key, _) => key.startsWith(prefix));
     _tailStates.removeWhere((key, _) => key.startsWith(prefix));
+    _incrementalStates.removeWhere((key, _) => key.startsWith(prefix));
   }
 
   Future<_AiHistorySeat> _resolveSeat({

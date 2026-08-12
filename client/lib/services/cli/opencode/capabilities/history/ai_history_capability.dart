@@ -7,7 +7,8 @@ import '../../../registry/capabilities/history/tool_result_enricher.dart';
 import 'ai_transcript.dart';
 import 'side_resolver.dart';
 
-final class OpencodeAiHistoryCapability implements AiHistoryCapability {
+final class OpencodeAiHistoryCapability
+    implements AiHistoryCapability, AiTranscriptIncrementalCapability {
   const OpencodeAiHistoryCapability({
     this.subagentSideResolver = const OpencodeSideResolver(),
     this.toolResultEnricher = const NoOpToolResultEnricher(),
@@ -25,6 +26,10 @@ final class OpencodeAiHistoryCapability implements AiHistoryCapability {
 
   @override
   AiTranscriptLineAppend? get lineAppend => null; // multi-file DB; no single-line incremental dialect.
+
+  @override
+  AiTranscriptIncrementalRefresher get incrementalRefresher =>
+      const OpencodeHistoryIncrementalRefresher();
 
   @override
   String get tailFallbackPrefix => 'opencode';

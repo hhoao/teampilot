@@ -6,7 +6,287 @@ import 'package:sqlite3/sqlite3.dart';
 
 import '../../../../session/ai_history_watch_meta.dart';
 import '../../../../session/session_history_context.dart';
+import '../../../registry/capabilities/ai_history_capability.dart';
 import '../native_session_id.dart';
+
+/// 行级增量状态:每个 message 的指纹 = (part 数, MAX(part.time_updated),
+/// message.time_updated)。全量 parse 后由 [seedFromFullParse] 对齐,之后
+/// 每次 refresh 只重读指纹变化的行并原地合并进 [messages]。
+class OpencodeHistoryIncrementalState extends AiTranscriptIncrementalState {
+  final Map<String, _MessageFingerprint> _seen = {};
+  List<AiMessage> _messages = [];
+
+  bool _unsupported = false;
+  bool get unsupported => _unsupported;
+
+  @override
+  List<AiMessage> get messages => _messages;
+
+  void _adopt(List<AiMessage> messages) {
+    _messages = messages;
+  }
+}
+
+class _MessageFingerprint {
+  const _MessageFingerprint(this.partCount, this.maxPartUpdated, this.updated);
+
+  final int partCount;
+  final int? maxPartUpdated;
+  final int? updated;
+
+  @override
+  bool operator ==(Object other) =>
+      other is _MessageFingerprint &&
+      other.partCount == partCount &&
+      other.maxPartUpdated == maxPartUpdated &&
+      other.updated == updated;
+
+  @override
+  int get hashCode => Object.hash(partCount, maxPartUpdated, updated);
+}
+
+/// opencode SQLite 的行级增量刷新器。
+///
+/// 一次 refresh 只跑一个 session 级聚合查询(索引覆盖,不读 data 大字段),
+/// 指纹与上次不一致的 message 才重读行 + 单消息 parse,然后**原地**合并
+/// 进 [OpencodeHistoryIncrementalState.messages](列表实例不变)。
+/// 删除/压缩/计数回退/schema 不兼容 → 返回 null,loader 回退全量。
+class OpencodeHistoryIncrementalRefresher
+    implements AiTranscriptIncrementalRefresher {
+  const OpencodeHistoryIncrementalRefresher();
+
+  @override
+  OpencodeHistoryIncrementalState createState() =>
+      OpencodeHistoryIncrementalState();
+
+  @override
+  Future<void> seedFromFullParse({
+    required SessionHistoryContext ctx,
+    required List<AiMessage> messages,
+    required AiTranscriptIncrementalState state,
+  }) async {
+    if (state is! OpencodeHistoryIncrementalState) return;
+    final s = state;
+    s._adopt(messages);
+    s._seen.clear();
+    final rows = await _readFingerprints(ctx);
+    if (rows == null) {
+      // DB 尚不存在(暂态,下次 seed 重试)与 schema 不兼容(永久回退
+      // 全量)都表现为 null;只有 DB 存在且查询失败才标记不可增量,避免
+      // 每轮都重新尝试。
+      final dbPath = _dbPath(ctx);
+      var exists = false;
+      if (dbPath != null) {
+        final st = await ctx.fs.stat(dbPath);
+        exists = st.exists;
+      }
+      s._unsupported = exists;
+      return;
+    }
+    s._unsupported = false;
+    for (final row in rows) {
+      s._seen[row.messageId] = _MessageFingerprint(
+        row.partCount,
+        row.maxPartUpdated,
+        row.updated,
+      );
+    }
+  }
+
+  @override
+  Future<AiTranscriptIncrementalResult?> refresh({
+    required SessionHistoryContext ctx,
+    required AiTranscriptIncrementalState state,
+    bool force = false,
+  }) async {
+    if (force) return null;
+    if (state is! OpencodeHistoryIncrementalState) return null;
+    final s = state;
+    if (s._unsupported) return null;
+    if (s._seen.isEmpty) return null; // 尚未对齐 → 让 loader 走全量。
+
+    final rows = await _readFingerprints(ctx);
+    if (rows == null) return null;
+
+    final rowIds = rows.map((r) => r.messageId).toSet();
+    if (s._seen.keys.any((id) => !rowIds.contains(id))) {
+      // 消息被删除/压缩 → 增量无法表达,回退全量重建。
+      return null;
+    }
+
+    final changed = <String>[];
+    for (final row in rows) {
+      final seen = s._seen[row.messageId];
+      final fp = _MessageFingerprint(
+        row.partCount,
+        row.maxPartUpdated,
+        row.updated,
+      );
+      if (seen == null || seen != fp) {
+        changed.add(row.messageId);
+        s._seen[row.messageId] = fp;
+      }
+    }
+    if (changed.isEmpty) {
+      return (messages: s._messages, parentPath: _dbPath(ctx));
+    }
+
+    final bundles = await _loadMessageBundles(ctx, changed);
+    if (bundles == null) return null;
+
+    final parsed = <AiMessage>[];
+    final adapter = const OpencodeAiTranscriptAdapter();
+    for (final bundle in bundles) {
+      parsed.addAll(await adapter.parse(bundle));
+    }
+    _mergeInPlace(s._messages, parsed);
+    return (messages: s._messages, parentPath: _dbPath(ctx));
+  }
+
+  String? _dbPath(SessionHistoryContext ctx) {
+    final dataDir = opencodeDataDirFromEnv(ctx);
+    if (dataDir.isEmpty) return null;
+    return ctx.fs.pathContext.join(dataDir, 'opencode.db');
+  }
+}
+
+/// 把 [parsed](按 (createdMs, id) 排序的单消息 parse 结果)合并进 [target]。
+///
+/// - 新消息按 (createdMs, id) 插入正确位置;
+/// - 已存在的消息原地替换;
+/// - 最后对整个列表跑一次原地 assistant 合并,与全量
+///   [finalizeAiMessagesForHistory] 语义完全一致。
+void _mergeInPlace(List<AiMessage> target, List<AiMessage> parsed) {
+  if (parsed.isEmpty) return;
+  final byId = {for (final m in target) m.id: m};
+  for (final message in parsed) {
+    final existing = byId[message.id];
+    if (existing == null) {
+      final idx = _insertionIndex(target, message);
+      target.insert(idx, message);
+      byId[message.id] = message;
+    } else {
+      final idx = target.indexWhere((m) => m.id == message.id);
+      target[idx] = message;
+      byId[message.id] = message;
+    }
+  }
+  coalesceAdjacentAssistantsInPlace(target);
+}
+
+int _insertionIndex(List<AiMessage> target, AiMessage message) {
+  var lo = 0;
+  var hi = target.length;
+  while (lo < hi) {
+    final mid = (lo + hi) >> 1;
+    final existing = target[mid];
+    if (_compareMessageOrder(existing, message) <= 0) {
+      lo = mid + 1;
+    } else {
+      hi = mid;
+    }
+  }
+  return lo;
+}
+
+int _compareMessageOrder(AiMessage a, AiMessage b) {
+  final ta = a.createdAt?.millisecondsSinceEpoch ?? 0;
+  final tb = b.createdAt?.millisecondsSinceEpoch ?? 0;
+  if (ta != tb) return ta.compareTo(tb);
+  return a.id.compareTo(b.id);
+}
+
+typedef _FingerprintRow = ({
+  String messageId,
+  int partCount,
+  int? maxPartUpdated,
+  int? updated,
+});
+
+/// Session 级聚合指纹:一条索引查询,不读 data 大字段。
+Future<List<_FingerprintRow>?> _readFingerprints(
+  SessionHistoryContext ctx,
+) async {
+  final dataDir = opencodeDataDirFromEnv(ctx);
+  if (dataDir.isEmpty) return null;
+  final sessionId = await _resolveSessionId(ctx, dataDir);
+  if (sessionId == null) return null;
+  final handle = await resolveOpencodeSqliteReadPath(
+    fs: ctx.fs,
+    dbPath: ctx.fs.pathContext.join(dataDir, 'opencode.db'),
+  );
+  if (handle == null) return null;
+
+  return handle.read<List<_FingerprintRow>?>((db) {
+    final rows = db.select(
+      '''
+SELECT m.id AS mid, m.time_updated AS mtu,
+       COUNT(p.id) AS pc, MAX(p.time_updated) AS ptu
+FROM message m
+LEFT JOIN part p ON p.message_id = m.id
+WHERE m.session_id = ?
+GROUP BY m.id
+''',
+      [sessionId],
+    );
+    return [
+      for (final row in rows)
+        (
+          messageId: '${row['mid']}',
+          partCount: row['pc'] is int ? row['pc'] as int : 0,
+          maxPartUpdated: row['ptu'] is int ? row['ptu'] as int : null,
+          updated: row['mtu'] is int ? row['mtu'] as int : null,
+        ),
+    ];
+  });
+}
+
+/// 重读 [messageIds] 的完整行(message data + 全部 part),构建单消息 bundle。
+Future<List<AiTranscriptBundle>?> _loadMessageBundles(
+  SessionHistoryContext ctx,
+  List<String> messageIds,
+) async {
+  final dataDir = opencodeDataDirFromEnv(ctx);
+  if (dataDir.isEmpty) return null;
+  final sessionId = await _resolveSessionId(ctx, dataDir);
+  if (sessionId == null) return null;
+  final handle = await resolveOpencodeSqliteReadPath(
+    fs: ctx.fs,
+    dbPath: ctx.fs.pathContext.join(dataDir, 'opencode.db'),
+  );
+  if (handle == null) return null;
+
+  final bundles = await handle.read<List<AiTranscriptBundle>?>((
+    db,
+  ) {
+    final out = <AiTranscriptBundle>[];
+    for (final messageId in messageIds) {
+      final messageRows = db.select(
+        '''
+SELECT id, data, time_created
+FROM message
+WHERE session_id = ? AND id = ?
+''',
+        [sessionId, messageId],
+      );
+      if (messageRows.isEmpty) continue;
+      final fragments = _buildSqliteFragments(db, sessionId, messageRows);
+      out.add(
+        AiTranscriptBundle(
+          adapterId: 'opencode',
+          fragments: _toTranscriptFragments(fragments),
+          hints: const {
+            'sessionId': '',
+            'source': 'sqlite',
+            'incremental': 'true',
+          },
+        ),
+      );
+    }
+    return out;
+  });
+  return bundles;
+}
 
 /// Locate OpenCode session/message/part files under the session data dir.
 ///

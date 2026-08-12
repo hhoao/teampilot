@@ -105,7 +105,7 @@ class AiTranscriptTailReader {
       if (tail == null || tail.isEmpty) continue;
       final applied = await _consumeFromAnchor(tail, state);
       if (applied != null) {
-        _coalesceAssistantsInPlace(state.messages);
+        coalesceAdjacentAssistantsInPlace(state.messages);
         return _counted(applied, state);
       }
     }
@@ -116,7 +116,7 @@ class AiTranscriptTailReader {
     }
     final applied = await _consumeFromAnchor(whole, state);
     if (applied != null) {
-      _coalesceAssistantsInPlace(state.messages);
+      coalesceAdjacentAssistantsInPlace(state.messages);
       return _counted(applied, state);
     }
     // 全文件都找不到锚点(重写/压缩/截断)→ 全量重建。
@@ -126,30 +126,6 @@ class AiTranscriptTailReader {
   TailRefreshResult _counted(TailRefreshResult result, TailReaderState state) {
     if (result.changed) state.incrementalCount++;
     return result;
-  }
-
-  /// 与全量 adapter 的 [finalizeAiMessagesForHistory] 的 coalesce 语义等价的
-  /// **原地**版本:相邻 assistant 消息(不论 message.id)合并为一个,发生在
-  /// 列表元素级——列表实例不变,未参与合并的消息实例不变(保住下游
-  /// `identical` 快速路径)。增量解析与全量解析必须输出相同消息序列,否则
-  /// 相邻不同 id 的 assistant 分片(真实 Claude transcript 中被 user 行
-  /// 隔开、或每个 thinking 块独立 id)会在增量下拆成多条。
-  static void _coalesceAssistantsInPlace(List<AiMessage> messages) {
-    if (messages.length < 2) return;
-    var write = 1;
-    for (var i = 1; i < messages.length; i++) {
-      final prev = messages[write - 1];
-      final cur = messages[i];
-      if (prev.role == AiRole.assistant && cur.role == AiRole.assistant) {
-        messages[write - 1] = prev.copyWith(
-          parts: [...prev.parts, ...cur.parts],
-        );
-      } else {
-        messages[write] = cur;
-        write++;
-      }
-    }
-    if (write < messages.length) messages.removeRange(write, messages.length);
   }
 
   /// 尝试在 [bytes] 内找到锚点行并消费其后的新行。
@@ -238,7 +214,7 @@ class AiTranscriptTailReader {
         }
       }
     }
-    _coalesceAssistantsInPlace(messages);
+    coalesceAdjacentAssistantsInPlace(messages);
     state.messages = messages;
     state.fallbackSeq = fallbackSeq;
     state.anchorHash = anchor;
