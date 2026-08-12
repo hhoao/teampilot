@@ -97,13 +97,16 @@
 
 ### 本轮动作
 
-1. **文件迁移**：每 CLI 的 `*ToolCallResolvers` 从 `*_tool.dart` 迁出到各自 `capabilities/tool_call_resolvers.dart`（`ClaudeToolCallResolvers` 等），与约定文档目录结构完全对齐；`*_tool.dart` 只保留装配
-2. **覆盖矩阵补齐**：5 CLI × 5 解析类别矩阵逐格验证：
-   - edit tool name / path / oldString / newString key 覆盖全（Claude 的 `Edit`+`NotebookEdit`、Codex 的 `edit`/`apply_patch`、opencode 的 camelCase 追加、Cursor 的 `strreplace`、FlashskyAI 自己的命名）
-   - shell 命令、file 路径 key 是否有遗漏别名
-   - category 注解与真实工具名匹配（新增 CLI 或改名的工具易漏）
+1. **文件迁移**：~~每 CLI 的 `*ToolCallResolvers` 从 `*_tool.dart` 迁出到各自 `capabilities/tool_call_resolvers.dart`~~ **已完成**（`9ec6a935`，5 个 CLI 均已有独立 resolver 文件，`*_tool.dart` 只保留装配）
+2. **覆盖矩阵补齐**：5 CLI × 5 解析类别矩阵逐格验证，证据源为**四方**：
+   - ① adapter / resolver 源码（`capabilities/history/` + `capabilities/tool_call_resolvers.dart`）
+   - ② 测试夹具（`client/test/fixtures/session_history/<cli>/`）
+   - ③ 本机真实数据（各 CLI 数据目录扫描）
+   - ④ **外部参考：[asgeirtj/system_prompts_leaks](https://github.com/asgeirtj/system_prompts_leaks)**（CC0 许可，62k+ stars，定期更新）——各 CLI 泄露系统提示中的**工具 JSON schema** 是参数 key 的权威来源（claude/codex/opencode/cursor 四家可对照；flashskyai 闭源无）。引用时固定 `@<commit>` 或快照日期，并在 `docs/cli-formats/README.md`「外部参考」节登记
+   - 验证维度：edit tool name / path / oldString / newString key 覆盖全；shell 命令、file 路径 key 无遗漏别名；category 注解与真实工具名匹配
 3. **SharedToolCallResolvers 治理**：共享层只留真实共用的映射；CLI 特有的一律下沉到各自文件（追加而非覆盖，兼容旧会话——沿用 opencode camelCase 模式的追加语义）
 4. **对外入口**：`CliToolRegistry.toolCallResolvers(cli)` 保持为唯一查询入口，UI 不新增 `if (cli == ...)`
+5. **新 CLI 预研（可选）**：Gemini CLI / Antigravity CLI 的系统提示可作为未来接入的预研素材，产出「潜在接入点」小结
 
 ## 格式参考库
 
@@ -116,9 +119,12 @@ docs/cli-formats/
   cursor.md
   flashskyai.md
   adding-a-cli.md    # 接入新 CLI 的分步清单（含接入点）
+  message-layer-audit.md  # 消息层差异矩阵（子项目 2 产出）
+  tool-layer-coverage.md  # 工具层覆盖矩阵（子项目 3 产出）
 ```
 
 每页 md 的"工具调用 schema"表格是代码注释的权威来源——评审人看 md，改代码对照 md。
+「外部参考」：`README.md` 登记 [system_prompts_leaks](https://github.com/asgeirtj/system_prompts_leaks)（CC0）为工具 schema 的第四方证据源，引用时固定快照 commit/日期。
 
 ## 测试校验
 
