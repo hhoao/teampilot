@@ -106,18 +106,21 @@ workspace  → 覆盖 team
 session    → 最高优先级（本次会话）
 ```
 
-### 合并规则链（一条规则，不分支）
+### 合并规则链（集合语义 + 冲突定义）
+
+**资产是集合，不是键值覆盖**——同事件/同名条目共存追加（agent-status 的 8 个 hook 与 prompt-submit-ack 的 hook 都挂 `UserPromptSubmit`，**不冲突，共存**）。冲突仅当"同 kind + 同 id + 同 scope"：
 
 ```
-1. scope 层级（session > workspace > team > app）           ← 主序
-2. source 优先级（capability > userConfig > pluginBundle）  ← 次序
-3. level（同 scope 同 source 内，int，数值大者优先）         ← 末序
-4. 注册顺序（仍相同 → 后注册覆盖先注册）                     ← 兜底
+1. 不同 id → 共存追加（hooks 按事件合并成列表；mcp 按 server name 合并；skills 按 id 集合）
+2. 同 id 冲突 → scope 层级（session > workspace > team > app）  ← 主序
+3. 同 id 同 scope → source 优先级（capability > userConfig > pluginBundle）  ← 次序
+4. 同 id 同 scope 同 source → level（int，数值大者优先）  ← 末序
+5. 仍相同 → 后注册覆盖先注册  ← 兜底
 ```
 
-- `level` 为普通 `int` 字段，不设取值范围、无默认值约束；只在**同 scope 同 source** 内比较，跨 scope / 跨 source 仍由前两级决定。
+- `level` 为普通 `int` 字段，不设取值范围、无默认值约束；只在**同 id 同 scope 同 source** 内比较，其余情况由前三级决定。
 - 资产生命周期内 `level` 不变（unregister 后重新 register 不得改变相对顺序）。
-- 合并逻辑放泛型基类 `assetsFor(scope)`，一次实现全类型复用。
+- 合并逻辑放泛型基类 `assetsFor`，一次实现全类型复用。
 
 ### Registry 接口（泛型核心 + 特化）
 
@@ -126,18 +129,22 @@ session    → 最高优先级（本次会话）
 abstract class CliAssetRegistry<T> implements CliCapability {
   void register(CliConfigAsset<T> asset);
   void unregister(String id);
-  List<CliConfigAsset<T>> assetsFor(AssetScope scope);   // 过滤 + 优先级合并
+  /// 按 seat 上下文合并四层 scope（app+team+workspace+session），
+  /// 返回合并后的最终资产集。入参不是单一 scope——落盘时永远要四层。
+  List<CliConfigAsset<T>> assetsFor(AssetSeatContext seat);
   String fingerprint(List<CliConfigAsset<T>> assets);    // 增量重渲染
   void addListener(void Function() onChanged);           // 中途变更通知
 }
 
-/// hooks 特化：只加"资产 → 配置片段"。
+/// hooks 特化：只加"资产 → 文件片段"。
 abstract interface class HookRegistry extends CliAssetRegistry<CliHookSpec> {
   /// 该 CLI 支持的规范事件 → 原生事件名映射
   /// （claude: UserPromptSubmit / cursor: beforeSubmitPrompt / opencode: 插件事件）
   Map<String, String> get eventNameMap;
 
-  /// 纯函数：资产集 → 该 CLI 的 hooks 配置片段（幂等）。
+  /// 纯函数：资产集 → 该 CLI 的配置文件片段（幂等）。
+  /// 输出为文件级（Map<relativePath, content>），不假设进 settings.json——
+  /// mcp.json / hooks.json / config.toml 都是独立文件。
   Map<String, Object?> render(List<CliConfigAsset<CliHookSpec>> assets);
 
   /// command 类 hook 的脚本内容（codex/cursor/flashskyai；opencode 为插件片段）。
@@ -146,6 +153,8 @@ abstract interface class HookRegistry extends CliAssetRegistry<CliHookSpec> {
 ```
 
 其余类型（`McpRegistry` / `SkillRegistry` / `PluginRegistry`）同构，仅 payload 与 render 输出格式不同。
+
+**共享特化**：claude 与 flashskyai 的 hooks 语法相同（settings.json）——允许一个共享实现（如 `ClaudeFamilyHookRegistry`）被多个 CLI 复用，类似 `ClaudeFamilyAgentStatusNormalizer`。CLI 语法实际只有 4 种：claude-family（settings.json）/ codex（config.toml command）/ cursor（hooks.json）/ opencode（JS 插件）。
 
 ### 资产注册双通道（依赖反转：能力声明，Registry 收集）
 
@@ -164,10 +173,12 @@ abstract class CliAssetRegistry<T> implements CliCapability {
   void register(CliConfigAsset<T> asset);
   void unregister(String id);
 
-  /// 通道 ② 从能力的声明收集（装配时调用一次，能力集合启动时固定）。
+  /// 通道 ② 从能力的声明收集。**时序**：必须在 `registerBuiltInCliTools`
+  /// 完成之后统一调用一次（能力集合启动时固定）——不能在 Registry 构造时
+  /// 收集，否则会拿到尚未挂载的 capabilities 空列表。
   void collectDeclared(Iterable<CliCapability> capabilities);
 
-  List<CliConfigAsset<T>> assetsFor(AssetScope scope);   // 过滤 + 合并规则链
+  List<CliConfigAsset<T>> assetsFor(AssetSeatContext seat); // 四层合并 + 规则链
   String fingerprint(List<CliConfigAsset<T>> assets);    // 增量重渲染
   void addListener(void Function() onChanged);           // 中途变更通知
 }
@@ -212,19 +223,19 @@ cliToolRegistry.register(ClaudeCliTool(hooks: claudeHooks, promptSubmitAck: cons
 
 ### 统一落盘装配点（Registry 不落盘）
 
-每个 CLI 的 `ConfigProfileCapability` 实现内，写配置前统一收集渲染：
+每个 CLI 的 `ConfigProfileCapability` 实现内，写配置前统一收集渲染。**render 输出是文件级**（`Map<path, content>`），不假设进 settings.json：
 
 ```dart
 final hooks = _registry.capability<HookRegistry>(cli);      // 服务层查询
-final assets = hooks?.assetsFor(scope) ?? const [];
-final rendered = hooks?.render(assets);                      // 纯函数
-settings = merge(settings, rendered);                        // 片段并入 settings
-// ... mcp / skills 同构
-if (fingerprint != cached) await writeSettingsFile(...);     // 指纹 diff 增量写
+final assets = hooks?.assetsFor(seatContext) ?? const [];   // 四层 scope 合并
+final rendered = hooks?.render(assets);                     // 纯函数 → Map<path, content>
+// rendered: {'settings.json': {...hooks 段...}} | {'mcp.json': ...} | {'hooks.json': ...}
+if (fingerprint != cached) await writeFiles(rendered);      // 指纹 diff 增量写（按文件）
 ```
 
-- **materialize 时机**：launch 装配（`ConfigProfileCapability` 写配置前）+ 中途 register/unregister 变更通知触发该 seat re-materialize（复用同一装配点）。
-- **指纹缓存**：`fingerprint(assets)` 不变则跳过写盘；支持"减"（unregister → 重渲染 → 移除配置项）。
+- **materialize 时机**：launch 装配（`ConfigProfileCapability` 写配置前）+ 中途 register/unregister 变更通知触发 re-materialize（复用同一装配点）。
+- **seat 映射**：`AssetSeatCoordinator`（或复用 `CliToolRegistry` 持有 seat 注册表）维护 `seat → cli → registry` 映射；中途变更时通知**所有使用该 CLI 的活跃 seat** re-materialize——避免"谁负责重写"悬空。阶段 1 若尚无活跃 seat 的中途变更场景，可先只支持 launch 时装配 + 主动 re-materialize 调用点，coordinator 留待阶段 2 引入。
+- **指纹缓存**：按文件粒度 `fingerprint(assets)` 不变则跳过写盘；支持"减"（unregister → 重渲染 → 移除配置项）。
 
 ### 与现有代码的映射（演进而非推倒）
 
