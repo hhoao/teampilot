@@ -314,9 +314,10 @@ void main() {
     final fullMessages = await adapter.parse(full!);
     expect(fullMessages.map((m) => m.id), ['1', '2', '3']);
 
+    const afterMessageId = 1;
     final inc = await locateOpencodeTranscriptIncremental(
       ctx(dataDir: base.path, persistedNativeId: 'sess-g1'),
-      afterMessageId: 1,
+      afterMessageId: afterMessageId,
     );
     expect(inc, isNotNull);
     expect(inc!.hints['lastMessageId'], '3');
@@ -326,7 +327,9 @@ void main() {
     // 窗口一致性：增量产出 = 全量产出中 id 大于 afterMessageId 的子集（同源同 id）。
     expect(
       incMessages.map((m) => m.id),
-      fullMessages.map((m) => m.id).where((id) => id.compareTo('1') > 0),
+      fullMessages
+          .map((m) => m.id)
+          .where((id) => int.parse(id) > afterMessageId),
     );
   });
 

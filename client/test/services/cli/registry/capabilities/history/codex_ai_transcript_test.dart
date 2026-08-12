@@ -443,7 +443,10 @@ void main() {
     expect(seq, 0, reason: '丢弃的事件不消耗 fallback 序号');
   });
 
-  test('appendCodexJsonlEvent line-parse matches adapter (tailer dialect)', () async {    final bytes = await File(
+  test(
+      'appendCodexJsonlEvent line-parse matches adapter (tailer dialect)',
+      () async {
+    final bytes = await File(
       'test/fixtures/session_history/codex/basic.jsonl',
     ).readAsBytes();
     final content = String.fromCharCodes(bytes);

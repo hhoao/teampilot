@@ -253,7 +253,7 @@ bool _appendFromResponseItem(
               toolName: toolName,
               // 统一 G2 语义：input 为 Map 或 JSON 字符串 → args Map；
               // 非 JSON 字符串 → args=null，argsText 保留原样。
-              argsText: input is String ? input : null,
+              argsText: _argsText(input),
               args: _parseArgs(input),
             ),
           ],
