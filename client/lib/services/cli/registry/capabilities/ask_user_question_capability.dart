@@ -12,6 +12,9 @@ abstract interface class AskUserQuestionCapability implements CliCapability {
   /// Multiple questions in one AskUserQuestion / question.asked payload.
   bool get supportsMultiQuestionInChat;
 
+  /// OpenCode `permission.asked` allow/deny reply from the chat card.
+  bool get supportsInChatPermissionReply;
+
   AskUserAnswerKind get answerKind;
 }
 
@@ -29,6 +32,9 @@ final class PtyAskUserQuestionCapability implements AskUserQuestionCapability {
 
   @override
   bool get supportsMultiQuestionInChat => true;
+
+  @override
+  bool get supportsInChatPermissionReply => false;
 
   @override
   AskUserAnswerKind get answerKind => AskUserAnswerKind.ptyPicker;
@@ -51,6 +57,9 @@ final class OpenCodeAskUserQuestionCapability
   bool get supportsMultiQuestionInChat => true;
 
   @override
+  bool get supportsInChatPermissionReply => true;
+
+  @override
   AskUserAnswerKind get answerKind => AskUserAnswerKind.pluginSdkReply;
 }
 
@@ -68,6 +77,9 @@ final class NoAskUserQuestionCapability implements AskUserQuestionCapability {
 
   @override
   bool get supportsMultiQuestionInChat => false;
+
+  @override
+  bool get supportsInChatPermissionReply => false;
 
   @override
   AskUserAnswerKind get answerKind => AskUserAnswerKind.none;

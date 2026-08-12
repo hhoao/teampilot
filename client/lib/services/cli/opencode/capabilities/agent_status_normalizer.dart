@@ -1,4 +1,5 @@
 import '../../../agent_status/agent_attention_state.dart';
+import '../../../agent_status/agent_permission_request.dart';
 import '../../../agent_status/agent_status_event.dart';
 import '../../../agent_status/agent_status_tool_input.dart';
 import '../../../agent_status/ask_user_question.dart';
@@ -14,7 +15,10 @@ final class OpencodeAgentStatusNormalizer
     final eventName = body['event']?.toString();
     if (eventName == null || eventName.isEmpty) return null;
 
-    final askRequestId = readPayloadString(body, const ['request_id', 'id']);
+    final askRequestId = readPayloadString(
+      body,
+      const ['request_id', 'id', 'permission_id'],
+    );
     final nativeSessionId = readPayloadString(body, const [
       'session_id',
       'sessionID',
@@ -25,6 +29,9 @@ final class OpencodeAgentStatusNormalizer
       'permission.asked' => AgentStatusEvent(
         state: AgentSeatAttention.waiting,
         hookEventName: eventName,
+        askRequestId: askRequestId,
+        nativeSessionId: nativeSessionId,
+        permissionRequest: parsePermissionRequest(body),
       ),
       'question.asked' => AgentStatusEvent(
         state: AgentSeatAttention.waiting,

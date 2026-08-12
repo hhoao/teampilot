@@ -271,6 +271,107 @@ void main() {
     expect((result as AskUserAnswerFailed).reason, 'missing_request_id');
   });
 
+  test('answerPermission puts permission reply entry for opencode', () async {
+    final store = AskUserAnswerPendingStore();
+    final service = AskUserQuestionAnswerService(
+      registry: _registryWith(
+        const OpenCodeAskUserQuestionCapability(),
+        cli: CliTool.opencode,
+      ),
+      store: store,
+    );
+    final result = await service.answerPermission(
+      cli: CliTool.opencode,
+      sessionId: 'sess-a',
+      memberId: 'member-1',
+      requestId: 'perm-1',
+      reply: 'always',
+    );
+
+    expect(result, isA<AskUserAnswerOk>());
+    final taken = store.take(
+      sessionId: 'sess-a',
+      memberId: 'member-1',
+      requestId: 'perm-1',
+    );
+    expect(taken, isNotNull);
+    expect(taken!.requestId, 'perm-1');
+    expect(taken.permissionReply, 'always');
+    expect(taken.answers, isNull);
+    expect(taken.reject, isFalse);
+  });
+
+  test('answerPermission missing requestId returns failed', () async {
+    final store = AskUserAnswerPendingStore();
+    final service = AskUserQuestionAnswerService(
+      registry: _registryWith(
+        const OpenCodeAskUserQuestionCapability(),
+        cli: CliTool.opencode,
+      ),
+      store: store,
+    );
+    final result = await service.answerPermission(
+      cli: CliTool.opencode,
+      sessionId: 'sess-a',
+      memberId: 'member-1',
+      requestId: null,
+      reply: 'once',
+    );
+
+    expect(result, isA<AskUserAnswerFailed>());
+    expect((result as AskUserAnswerFailed).reason, 'missing_request_id');
+  });
+
+  test('answerPermission invalid reply returns failed', () async {
+    final store = AskUserAnswerPendingStore();
+    final service = AskUserQuestionAnswerService(
+      registry: _registryWith(
+        const OpenCodeAskUserQuestionCapability(),
+        cli: CliTool.opencode,
+      ),
+      store: store,
+    );
+    final result = await service.answerPermission(
+      cli: CliTool.opencode,
+      sessionId: 'sess-a',
+      memberId: 'member-1',
+      requestId: 'perm-1',
+      reply: 'maybe',
+    );
+
+    expect(result, isA<AskUserAnswerFailed>());
+    expect((result as AskUserAnswerFailed).reason, 'invalid_permission_reply');
+  });
+
+  test('answerPermission unsupported cli returns failed', () async {
+    final store = AskUserAnswerPendingStore();
+    final service = AskUserQuestionAnswerService(
+      registry: _registryWith(
+        const PtyAskUserQuestionCapability(),
+        cli: CliTool.claude,
+      ),
+      store: store,
+    );
+    final result = await service.answerPermission(
+      cli: CliTool.claude,
+      sessionId: 'sess-a',
+      memberId: 'member-1',
+      requestId: 'perm-1',
+      reply: 'once',
+    );
+
+    expect(result, isA<AskUserAnswerFailed>());
+    expect((result as AskUserAnswerFailed).reason, 'unsupported');
+    expect(
+      store.take(
+        sessionId: 'sess-a',
+        memberId: 'member-1',
+        requestId: 'perm-1',
+      ),
+      isNull,
+    );
+  });
+
   test('none capability returns failed', () async {
     final service = AskUserQuestionAnswerService(
       registry: _registryWith(

@@ -1097,6 +1097,53 @@ class ChatCubit extends Cubit<ChatState>
     return result;
   }
 
+  /// Answers an OpenCode permission request from the chat card via the
+  /// pending store. [reply] is `once` | `always` | `reject`.
+  ///
+  /// On [AskUserAnswerOk], optimistically dismisses the waiting card via
+  /// [AgentAttentionCubit.markAskAnswered]. Failures leave attention unchanged.
+  Future<AskUserAnswerResult> answerPermissionRequest({
+    required String sessionId,
+    required String memberId,
+    String? permissionRequestId,
+    required String reply,
+  }) async {
+    final tab = _tabStore.openTabBySessionId(sessionId);
+    if (tab == null) {
+      return const AskUserAnswerFailed('session_not_found');
+    }
+    final mid = memberId.trim();
+    if (mid.isEmpty) {
+      return const AskUserAnswerFailed('member_not_found');
+    }
+    final cli = SessionMemberCliResolver.resolve(
+      persistedSession: tab.persistedSession,
+      team: _teamForSessionTab(tab),
+      memberId: mid,
+      cliForMember: _shellFactory.cliForMember,
+      globalPresets: _lifecycle.globalPresets,
+    );
+    final resolvedRequestId = _resolveAskRequestId(
+      sessionId: sessionId,
+      memberId: mid,
+      askRequestId: permissionRequestId,
+    );
+    final result = await _askUserAnswer.answerPermission(
+      cli: cli,
+      sessionId: sessionId,
+      memberId: mid,
+      requestId: resolvedRequestId,
+      reply: reply,
+    );
+    if (result is AskUserAnswerOk) {
+      _agentAttentionCubit?.markAskAnswered(
+        sessionId: sessionId,
+        memberId: mid,
+      );
+    }
+    return result;
+  }
+
   /// Approves the pending Claude `ExitPlanMode` plan from the chat card
   /// (completes the held PreToolUse hook with allow). On success,
   /// optimistically dismisses the waiting attention.

@@ -117,6 +117,39 @@ void main() {
     expect(body.containsKey('answers'), isFalse);
   });
 
+  test('GET /ask-user-answer permission reply → 200 with permission_reply',
+      () async {
+    store.put(
+      sessionId: 'sess-a',
+      memberId: 'member-1',
+      entry: const AskUserAnswerPendingEntry(
+        requestId: 'perm-1',
+        permissionReply: 'once',
+      ),
+    );
+
+    final hit = await getAskUserAnswer(
+      sessionId: 'sess-a',
+      member: 'member-1',
+      requestId: 'perm-1',
+    );
+    expect(hit.statusCode, HttpStatus.ok);
+    final body = jsonDecode(await hit.transform(utf8.decoder).join())
+        as Map<String, Object?>;
+    expect(body['request_id'], 'perm-1');
+    expect(body['permission_reply'], 'once');
+    expect(body['reject'], false);
+    expect(body.containsKey('answers'), isFalse);
+
+    final miss = await getAskUserAnswer(
+      sessionId: 'sess-a',
+      member: 'member-1',
+      requestId: 'perm-1',
+    );
+    expect(miss.statusCode, HttpStatus.noContent);
+    await miss.drain<void>();
+  });
+
   test('GET /ask-user-answer without request_id → 204', () async {
     store.put(
       sessionId: 'sess-a',

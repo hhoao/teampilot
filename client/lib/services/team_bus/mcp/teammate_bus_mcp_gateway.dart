@@ -227,7 +227,10 @@ class TeammateBusMcpGateway {
     final body = <String, Object?>{
       'request_id': entry.requestId,
       'reject': entry.reject,
-      if (!entry.reject) 'answers': entry.answers ?? const <List<String>>[],
+      if (entry.permissionReply != null)
+        'permission_reply': entry.permissionReply,
+      if (!entry.reject && entry.permissionReply == null)
+        'answers': entry.answers ?? const <List<String>>[],
     };
     request.response
       ..statusCode = HttpStatus.ok

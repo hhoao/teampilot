@@ -588,6 +588,12 @@
       "index": { "type": "int" }
     }
   },
+  "opencodePermissionTitle": "OpenCode 需要你的授权",
+  "opencodePermissionAllowOnce": "允许一次",
+  "opencodePermissionAllowAlways": "总是允许",
+  "opencodePermissionReject": "拒绝",
+  "opencodePermissionAnswerFailed": "无法提交你的决定。请重试或在终端中处理。",
+  "opencodePermissionAnswerInTerminal": "在终端处理",
   "sessionHistoryRetry": "重试",
   "sessionHistoryToolTurn": "工具",
   "sessionHistoryRoleUser": "你",

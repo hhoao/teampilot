@@ -37,6 +37,17 @@ void main() {
     expect(source, contains('ask-user-answer poll timed out'));
     // Poll loop bound to attention TTL (30 minutes).
     expect(source, contains('30 * 60 * 1000'));
+    // permission.asked forwards the structured payload for the chat card and
+    // polls for a permission reply (accept / reject / always).
+    expect(source, contains('props.permission'));
+    expect(source, contains('props.patterns'));
+    expect(source, contains('props.always'));
+    expect(source, contains('pollAndReply(requestId, "permission")'));
+    expect(source, contains('deliverPermissionReply'));
+    expect(source, contains('client.permission.reply'));
+    expect(source, contains('body.permission_reply'));
+    expect(source, contains(r'/permission/${encodeURIComponent(requestId)}/reply'));
+    expect(source, contains('"reject" : "once"'));
   });
 
   test('mergeOpencodeAgentStatusPlugin adds plugin entry with url', () {

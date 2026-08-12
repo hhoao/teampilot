@@ -83,6 +83,19 @@ class AppKeys {
     'exit-plan-mode-open-plan-file-button',
   );
   static const exitPlanModeInlineError = Key('exit-plan-mode-inline-error');
+  static const opencodePermissionCard = Key('opencode-permission-card');
+  static const opencodePermissionAllowOnceButton = Key(
+    'opencode-permission-allow-once-button',
+  );
+  static const opencodePermissionAlwaysButton = Key(
+    'opencode-permission-always-button',
+  );
+  static const opencodePermissionRejectButton = Key(
+    'opencode-permission-reject-button',
+  );
+  static const opencodePermissionInlineError = Key(
+    'opencode-permission-inline-error',
+  );
 
   /// Option row key for a single-question AskUserQuestion card (`{index}`).
   static Key askUserQuestionOption(int index) =>

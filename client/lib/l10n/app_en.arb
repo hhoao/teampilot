@@ -613,6 +613,12 @@
       "index": { "type": "int" }
     }
   },
+  "opencodePermissionTitle": "OpenCode needs your permission",
+  "opencodePermissionAllowOnce": "Allow once",
+  "opencodePermissionAllowAlways": "Always allow",
+  "opencodePermissionReject": "Reject",
+  "opencodePermissionAnswerFailed": "Couldn't submit your decision. Try again or answer in the Terminal.",
+  "opencodePermissionAnswerInTerminal": "Answer in terminal",
   "sessionHistoryRetry": "Retry",
   "sessionHistoryToolTurn": "Tool",
   "sessionHistoryRoleUser": "You",

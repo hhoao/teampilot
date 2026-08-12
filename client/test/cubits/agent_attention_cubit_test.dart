@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/agent_attention_cubit.dart';
 import 'package:teampilot/services/agent_status/agent_attention_state.dart';
+import 'package:teampilot/services/agent_status/agent_permission_request.dart';
 import 'package:teampilot/services/agent_status/agent_status_event.dart';
 import 'package:teampilot/services/agent_status/ask_user_question.dart';
 
@@ -134,6 +135,24 @@ void main() {
         event: const AgentStatusEvent(
           state: AgentSeatAttention.waiting,
           hookEventName: 'question.asked',
+        ),
+        skipPermissions: true,
+      );
+      expect(
+        c.state.attentionFor(sessionId: 's1', memberId: 'm1'),
+        AgentSeatAttention.waiting,
+      );
+      expect(c.state.sessionHasWaiting('s1'), isTrue);
+    });
+
+    test('skipPermissions keeps opencode permission.asked waiting', () {
+      final c = _cubit();
+      c.applyEvent(
+        sessionId: 's1',
+        memberId: 'm1',
+        event: const AgentStatusEvent(
+          state: AgentSeatAttention.waiting,
+          hookEventName: 'permission.asked',
         ),
         skipPermissions: true,
       );
@@ -652,6 +671,148 @@ void main() {
         expect(entry?.attention, AgentSeatAttention.waiting);
         expect(entry?.dismissedAskRequestId, isNull);
         expect(entry?.lastEvent, nextAsk);
+      });
+    });
+
+    group('opencode permission card lifecycle', () {
+      const permEvent = AgentStatusEvent(
+        state: AgentSeatAttention.waiting,
+        hookEventName: 'permission.asked',
+        askRequestId: 'perm-1',
+        permissionRequest: AgentPermissionRequest(
+          id: 'perm-1',
+          description: 'Run `npm install`',
+          patterns: ['npm'],
+          always: ['npm install'],
+        ),
+      );
+
+      test('permission.asked keeps payload for chat card', () {
+        final c = _cubit();
+        c.applyEvent(
+          sessionId: 's1',
+          memberId: 'm1',
+          event: permEvent,
+          skipPermissions: false,
+        );
+        final entry = c.state.entryFor(sessionId: 's1', memberId: 'm1');
+        expect(entry?.attention, AgentSeatAttention.waiting);
+        expect(entry?.lastEvent?.permissionRequest?.description,
+            'Run `npm install`');
+        expect(entry?.lastEvent?.askRequestId, 'perm-1');
+      });
+
+      test('markAskAnswered dismisses permission card', () {
+        final c = _cubit();
+        c.applyEvent(
+          sessionId: 's1',
+          memberId: 'm1',
+          event: permEvent,
+          skipPermissions: false,
+        );
+        c.markAskAnswered(sessionId: 's1', memberId: 'm1');
+        final entry = c.state.entryFor(sessionId: 's1', memberId: 'm1');
+        expect(entry?.attention, AgentSeatAttention.working);
+        expect(entry?.dismissedAskRequestId, 'perm-1');
+        expect(entry?.lastEvent?.permissionRequest, isNotNull);
+      });
+
+      test('same permission.asked id after dismiss is ignored', () {
+        final c = _cubit();
+        c.applyEvent(
+          sessionId: 's1',
+          memberId: 'm1',
+          event: permEvent,
+          skipPermissions: false,
+        );
+        c.markAskAnswered(sessionId: 's1', memberId: 'm1');
+        c.applyEvent(
+          sessionId: 's1',
+          memberId: 'm1',
+          event: permEvent,
+          skipPermissions: false,
+        );
+        final entry = c.state.entryFor(sessionId: 's1', memberId: 'm1');
+        expect(entry?.attention, AgentSeatAttention.working);
+        expect(entry?.dismissedAskRequestId, 'perm-1');
+      });
+
+      test('reply_failed restores permission card with payload', () {
+        final c = _cubit();
+        c.applyEvent(
+          sessionId: 's1',
+          memberId: 'm1',
+          event: permEvent,
+          skipPermissions: false,
+        );
+        c.markAskAnswered(sessionId: 's1', memberId: 'm1');
+        c.applyEvent(
+          sessionId: 's1',
+          memberId: 'm1',
+          event: const AgentStatusEvent(
+            state: AgentSeatAttention.working,
+            hookEventName: 'question.reply_failed',
+            askRequestId: 'perm-1',
+            message: 'delivery failed',
+            restoreAskWaiting: true,
+          ),
+          skipPermissions: false,
+        );
+        final entry = c.state.entryFor(sessionId: 's1', memberId: 'm1');
+        expect(entry?.attention, AgentSeatAttention.waiting);
+        expect(entry?.askReplyError, 'delivery failed');
+        expect(entry?.lastEvent?.permissionRequest?.id, 'perm-1');
+      });
+
+      test('same-id permission.asked without payload preserves card payload',
+          () {
+        final c = _cubit();
+        c.applyEvent(
+          sessionId: 's1',
+          memberId: 'm1',
+          event: permEvent,
+          skipPermissions: false,
+        );
+        c.applyEvent(
+          sessionId: 's1',
+          memberId: 'm1',
+          event: const AgentStatusEvent(
+            state: AgentSeatAttention.waiting,
+            hookEventName: 'permission.asked',
+            askRequestId: 'perm-1',
+          ),
+          skipPermissions: false,
+        );
+        final entry = c.state.entryFor(sessionId: 's1', memberId: 'm1');
+        expect(entry?.lastEvent?.permissionRequest?.description,
+            'Run `npm install`');
+      });
+
+      test('new different permission id replaces previous card', () {
+        final c = _cubit();
+        c.applyEvent(
+          sessionId: 's1',
+          memberId: 'm1',
+          event: permEvent,
+          skipPermissions: false,
+        );
+        const nextPerm = AgentStatusEvent(
+          state: AgentSeatAttention.waiting,
+          hookEventName: 'permission.asked',
+          askRequestId: 'perm-2',
+          permissionRequest: AgentPermissionRequest(
+            id: 'perm-2',
+            description: 'Run tests',
+          ),
+        );
+        c.applyEvent(
+          sessionId: 's1',
+          memberId: 'm1',
+          event: nextPerm,
+          skipPermissions: false,
+        );
+        final entry = c.state.entryFor(sessionId: 's1', memberId: 'm1');
+        expect(entry?.lastEvent?.permissionRequest?.id, 'perm-2');
       });
     });
   });

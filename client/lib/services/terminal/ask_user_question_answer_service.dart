@@ -124,6 +124,38 @@ final class AskUserQuestionAnswerService {
     }
   }
 
+  /// Answers an OpenCode permission request via the pending store. [reply]
+  /// is `once` | `always` | `reject` — the plugin delivers it to
+  /// `POST /permission/{requestID}/reply`.
+  Future<AskUserAnswerResult> answerPermission({
+    required CliTool cli,
+    required String sessionId,
+    required String memberId,
+    required String? requestId,
+    required String reply,
+  }) async {
+    final kind = _answerKind(cli);
+    if (kind != AskUserAnswerKind.pluginSdkReply) {
+      return const AskUserAnswerFailed('unsupported');
+    }
+    final id = requestId?.trim() ?? '';
+    if (id.isEmpty) {
+      return const AskUserAnswerFailed('missing_request_id');
+    }
+    if (reply != 'once' && reply != 'always' && reply != 'reject') {
+      return const AskUserAnswerFailed('invalid_permission_reply');
+    }
+    _store.put(
+      sessionId: sessionId,
+      memberId: memberId,
+      entry: AskUserAnswerPendingEntry(
+        requestId: id,
+        permissionReply: reply,
+      ),
+    );
+    return const AskUserAnswerOk();
+  }
+
   AskUserAnswerKind _answerKind(CliTool cli) {
     return _registry.capability<AskUserQuestionCapability>(cli)?.answerKind ??
         AskUserAnswerKind.none;
