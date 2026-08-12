@@ -24,22 +24,43 @@ class CursorToolCallResolvers extends SharedToolCallResolvers {
     'editnotebook',
   };
 
+  // 本机实测（2026-08-13 复核 ~/.cursor agent-transcripts）：真实 cursor
+  // StrReplace/Write 用 `path` 键（25839 次 StrReplace / 3902 次 Write 实测
+  // 键形态 {path, old_string, new_string} / {path, contents}，`file_path`
+  // 零命中）——共享键集（file_path）之外追加，spl 散文未列 key。
+  static const _editPathKeys = [
+    ...SharedToolCallResolverKeys.editPathKeys,
+    'path',
+  ];
+
+  static const _writePathKeys = [
+    ...SharedToolCallResolverKeys.writePathKeys,
+    'path',
+  ];
+
+  // 本机实测：真实 cursor Write 用 `contents` 键（3902 次全为 contents，
+  // `content` 零命中）。
+  static const _writeContentKeys = [
+    ...SharedToolCallResolverKeys.writeContentKeys,
+    'contents',
+  ];
+
   static const _strReplaceCodec = StrReplaceEditHunkCodec(
     toolNames: _editToolNames,
-    pathKeys: SharedToolCallResolverKeys.editPathKeys,
+    pathKeys: _editPathKeys,
     oldStringKeys: SharedToolCallResolverKeys.editOldStringKeys,
     newStringKeys: SharedToolCallResolverKeys.editNewStringKeys,
   );
 
   static const _writeCodec = WriteEditHunkCodec(
     toolNames: SharedToolCallResolverKeys.writeToolNames,
-    pathKeys: SharedToolCallResolverKeys.writePathKeys,
-    contentKeys: SharedToolCallResolverKeys.writeContentKeys,
+    pathKeys: _writePathKeys,
+    contentKeys: _writeContentKeys,
   );
 
   static const _unifiedDiffCodec = UnifiedDiffEditHunkCodec(
     toolNames: SharedToolCallResolverKeys.diffToolNames,
-    pathKeys: SharedToolCallResolverKeys.editPathKeys,
+    pathKeys: _editPathKeys,
     patchKeys: SharedToolCallResolverKeys.diffPatchKeys,
   );
 

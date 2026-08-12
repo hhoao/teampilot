@@ -26,7 +26,7 @@
 |------|------|---------|
 | [asgeirtj/system_prompts_leaks](https://github.com/asgeirtj/system_prompts_leaks)（CC0） | 各 CLI 泄露系统提示中的工具 JSON schema，工具调用覆盖的第四方证据源 | 固定 commit 快照（本库引用 `@93c999115b300a6faac567830b0450a5478800cd`），禁止"最新版"表述 |
 
-工具调用覆盖的四方证据源汇总矩阵与缺口清单见 [tool-layer-coverage.md](tool-layer-coverage.md)。
+工具调用覆盖的四方证据源汇总矩阵与缺口清单见 [tool-layer-coverage.md](tool-layer-coverage.md)（**状态：完成**——5 CLI × 5 类别全部落结论，6 个缺口全部有状态：G-1/G-3/G-4 已修复、G-2/G-5 接受差异、G-6 观察项）。
 
 ## 新增 CLI
 

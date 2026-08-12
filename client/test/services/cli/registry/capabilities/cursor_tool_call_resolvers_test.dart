@@ -62,10 +62,56 @@ void main() {
     });
   });
 
-  group('file / edit（G-4 证据固化）', () {
-    // 矩阵 G-4：StrReplace/Write/EditNotebook 参数 key 仅 spl 散文级证据
-    // （spl:cursor.md:244-254），夹具无工具行——共享 codec 键集已覆盖时按
-    // 「证据不足非缺口」用断言固化可解析性（夹具增补留待 Task 6 回填）。
+  group('file / edit（G-4 重校：本机实测真实 key 形态）', () {
+    // Task 3 判定「无 key 缺口」基于 spl 散文假设键形 {file_path, content}；
+    // Task 6 必查项本机复核（2026-08-13，~/.cursor agent-transcripts 扫描：
+    // StrReplace 25839 次 / Write 3902 次）推翻了该假设——真实键形为
+    // {path, old_string, new_string} / {path, contents}，`file_path` /
+    // `content` 零命中。resolver 已追加真实键（保留共享键追加语义）。
+    test('真实键形 StrReplace{path, old_string, new_string} 解析出 hunk', () {
+      final target = cursor.editResolver.resolve(part(
+        'StrReplace',
+        args: {
+          'path': '/home/x/a.txt',
+          'old_string': 'foo',
+          'new_string': 'bar',
+        },
+      ));
+      expect(target, isNotNull, reason: 'StrReplace 真实键形应经 str-replace codec 解析');
+      expect(target!.hunk.path, '/home/x/a.txt');
+      expect(target.hunk.lines.firstWhere((l) => l.kind == AiEditLineKind.remove).text, 'foo');
+      expect(target.hunk.lines.firstWhere((l) => l.kind == AiEditLineKind.add).text, 'bar');
+    });
+
+    test('真实键形 Write{path, contents} 解析出 hunk', () {
+      final target = cursor.editResolver.resolve(part(
+        'Write',
+        args: {
+          'path': '/home/x/new.txt',
+          'contents': 'line1\nline2',
+        },
+      ));
+      expect(target, isNotNull, reason: 'Write 真实键形应经 write codec 解析');
+      expect(target!.hunk.path, '/home/x/new.txt');
+      expect(target.hunk.addedCount, 2);
+    });
+
+    test('ApplyPatch FREEFORM 字符串 input 解析出 hunk（本机实测 84 次）', () {
+      final target = cursor.editResolver.resolve(part(
+        'ApplyPatch',
+        argsText: '''*** Begin Patch
+*** Update File: lib/foo.dart
+@@ -1,2 +1,3 @@
+-removed
++added
+*** End Patch''',
+      ));
+      expect(target, isNotNull, reason: 'ApplyPatch 字符串应经 shared diff codec freeform 解析');
+      expect(target!.hunk.path, 'lib/foo.dart');
+      expect(target.hunk.addedCount, 1);
+      expect(target.hunk.removedCount, 1);
+    });
+
     test('StrReplace{file_path, old_string, new_string} 解析出 hunk', () {
       final target = cursor.editResolver.resolve(part(
         'StrReplace',

@@ -153,9 +153,9 @@ void main() {
   group('categoryResolver', () {
     AiToolCallPart named(String name) => toolCall(name, const {});
 
-    test('question resolves explicitly to other (矩阵 G-3)', () {
+    test('question resolves to askUser（Task 6 决策：跨 CLI 统一为 askUser）', () {
       expect(resolvers.categoryResolver.resolve(named('question')),
-          AiToolCallCategory.other);
+          AiToolCallCategory.askUser);
     });
 
     test('skill resolves explicitly to other (矩阵 G-3)', () {

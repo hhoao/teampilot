@@ -94,6 +94,7 @@ const Map<String, AiToolCallCategory> defaultToolCallNameRules = {
   'ask_user_question': AiToolCallCategory.askUser,
   'ask_user': AiToolCallCategory.askUser,
   'askquestion': AiToolCallCategory.askUser,
+  'question': AiToolCallCategory.askUser,
   // plan
   'plan': AiToolCallCategory.plan,
   'enterplanmode': AiToolCallCategory.plan,
@@ -111,7 +112,6 @@ const Map<String, AiToolCallCategory> defaultToolCallNameRules = {
   'taskoutput': AiToolCallCategory.task,
   'taskstop': AiToolCallCategory.task,
   // other（显式化：真实工具无细分类别，落 other）
-  'question': AiToolCallCategory.other,
   'skill': AiToolCallCategory.other,
 };
 

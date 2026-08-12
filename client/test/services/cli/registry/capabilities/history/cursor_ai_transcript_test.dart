@@ -5,6 +5,7 @@ import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/services/cli/cursor/capabilities/history/ai_transcript.dart';
+import 'package:teampilot/services/cli/cursor/capabilities/tool_call_resolvers.dart';
 import 'package:teampilot/services/session/ai_history_watch_meta.dart';
 import 'package:teampilot/services/session/session_history_context.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
@@ -289,6 +290,78 @@ void main() {
     expect(tools[0].args, isNull);
     expect(tools[1].args, {'path': 'a'});
   });
+
+  test('ApplyPatch 字符串 input 保留到 argsText（FREEFORM，Task 6 G-4 重校）',
+      () async {
+    // 本机实测（2026-08-13 ~/.cursor 扫描）：ApplyPatch 的 input 为 patch
+    // 原始文本（`*** Begin Patch` / `*** Update File:`，84 次），此前
+    // adapter 仅保留 args（非 Map → null）导致 freeform 无法解析；现
+    // argsText 保留字符串供 unified-diff codec freeform 分支使用。
+    const raw = '''
+{"role":"assistant","message":{"content":[{"type":"tool_use","name":"ApplyPatch","input":"*** Begin Patch\\n*** Update File: lib/a.dart\\n@@\\n-old\\n+new\\n*** End Patch"}]}}
+''';
+    final messages = await const CursorAiTranscriptAdapter().parse(
+      AiTranscriptBundle(
+        adapterId: 'cursor',
+        fragments: [
+          AiTranscriptFragment(name: 'patch.jsonl', bytes: utf8.encode(raw)),
+        ],
+      ),
+    );
+
+    final tool = messages.single.parts.cast<AiToolCallPart>().single;
+    expect(tool.args, isNull);
+    expect(tool.argsText, contains('*** Update File: lib/a.dart'));
+  });
+
+  test(
+    'fixture: chat-strreplace-write（真实键形 StrReplace/Write/ApplyPatch）'
+    '经 adapter + resolver 全链路解析出 hunk',
+    () async {
+      // Task 6 G-4 夹具增补：工具行来自本机实测键形（2026-08-13
+      // ~/.cursor agent-transcripts 扫描），消除 spl 散文级证据降级。
+      final bytes = await File(
+        'test/fixtures/session_history/cursor/projects/home-me-proj/'
+        'agent-transcripts/chat-strreplace-write/chat-strreplace-write.jsonl',
+      ).readAsBytes();
+      final messages = await const CursorAiTranscriptAdapter().parse(
+        AiTranscriptBundle(
+          adapterId: 'cursor',
+          fragments: [
+            AiTranscriptFragment(
+              name: 'chat-strreplace-write.jsonl',
+              bytes: bytes,
+            ),
+          ],
+        ),
+      );
+
+      final tools = messages
+          .expand((m) => m.parts)
+          .whereType<AiToolCallPart>()
+          .toList();
+      expect(tools.map((t) => t.toolName),
+          ['StrReplace', 'Write', 'ApplyPatch']);
+
+      const cursor = CursorToolCallResolvers();
+      final strTarget = cursor.editResolver.resolve(tools[0]);
+      expect(strTarget, isNotNull, reason: 'StrReplace 真实键形应解析');
+      expect(strTarget!.hunk.path, '/home/x/lib/a.dart');
+      expect(strTarget.hunk.removedCount, 1);
+      expect(strTarget.hunk.addedCount, 1);
+
+      final writeTarget = cursor.editResolver.resolve(tools[1]);
+      expect(writeTarget, isNotNull, reason: 'Write 真实键形应解析');
+      expect(writeTarget!.hunk.path, '/home/x/lib/new.dart');
+      expect(writeTarget.hunk.addedCount, 2);
+
+      final patchTarget = cursor.editResolver.resolve(tools[2]);
+      expect(patchTarget, isNotNull, reason: 'ApplyPatch freeform 应解析');
+      expect(patchTarget!.hunk.path, '/home/x/lib/b.dart');
+      expect(patchTarget.hunk.addedCount, 1);
+      expect(patchTarget.hunk.removedCount, 1);
+    },
+  );
 
   test('locateCursorTranscript returns agent-transcripts jsonl', () async {
     await copyFixtureTree();
