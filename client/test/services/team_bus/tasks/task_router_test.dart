@@ -77,25 +77,124 @@ void main() {
         stage: RoutingStage.reserved,
         escalatedAt: 0,
       );
-      expect(TaskRouter.nextStage(t, 44 * 1000, true), RoutingStage.reserved);
-      expect(TaskRouter.nextStage(t, 45 * 1000, true), RoutingStage.matched);
+      expect(
+        TaskRouter.nextStage(
+          t,
+          44 * 1000,
+          hasEligibleLiveMember: true,
+          hasEligibleEngageableMember: false,
+        ),
+        RoutingStage.reserved,
+      );
+      expect(
+        TaskRouter.nextStage(
+          t,
+          45 * 1000,
+          hasEligibleLiveMember: true,
+          hasEligibleEngageableMember: false,
+        ),
+        RoutingStage.matched,
+      );
+    });
+
+    test(
+      'reserved → matched immediately when no eligible member exists (A\')',
+      () {
+        final t = task(
+          assignee: 'd',
+          stage: RoutingStage.reserved,
+          escalatedAt: 0,
+        );
+        // No eligible live AND no engageable member: the reserve window is
+        // skipped entirely — nothing can claim it anyway.
+        expect(
+          TaskRouter.nextStage(
+            t,
+            0,
+            hasEligibleLiveMember: false,
+            hasEligibleEngageableMember: false,
+          ),
+          RoutingStage.matched,
+        );
+      },
+    );
+
+    test('reserved waits while an engageable eligible member exists', () {
+      final t = task(
+        assignee: 'd',
+        stage: RoutingStage.reserved,
+        escalatedAt: 0,
+      );
+      expect(
+        TaskRouter.nextStage(
+          t,
+          44 * 1000,
+          hasEligibleLiveMember: false,
+          hasEligibleEngageableMember: true,
+        ),
+        RoutingStage.reserved,
+      );
+      expect(
+        TaskRouter.nextStage(
+          t,
+          45 * 1000,
+          hasEligibleLiveMember: false,
+          hasEligibleEngageableMember: true,
+        ),
+        RoutingStage.matched,
+      );
     });
 
     test('matched stays while an eligible live member exists', () {
       final t = task(required: {'backend'}, escalatedAt: 0);
-      expect(TaskRouter.nextStage(t, 999 * 1000, true), RoutingStage.matched);
+      expect(
+        TaskRouter.nextStage(
+          t,
+          999 * 1000,
+          hasEligibleLiveMember: true,
+          hasEligibleEngageableMember: false,
+        ),
+        RoutingStage.matched,
+      );
     });
+
+    test(
+      'matched → widened immediately when no eligible member exists (A\')',
+      () {
+        final t = task(required: {'backend'}, escalatedAt: 0);
+        expect(
+          TaskRouter.nextStage(
+            t,
+            0,
+            hasEligibleLiveMember: false,
+            hasEligibleEngageableMember: false,
+          ),
+          RoutingStage.widened,
+        );
+      },
+    );
 
     test(
       'matched → widened after widen window with no eligible live member',
       () {
         final t = task(required: {'backend'}, escalatedAt: 0);
+        // An engageable member exists: give it the window to come up.
         expect(
-          TaskRouter.nextStage(t, 119 * 1000, false),
+          TaskRouter.nextStage(
+            t,
+            119 * 1000,
+            hasEligibleLiveMember: false,
+            hasEligibleEngageableMember: true,
+          ),
           RoutingStage.matched,
         );
         expect(
-          TaskRouter.nextStage(t, 120 * 1000, false),
+          TaskRouter.nextStage(
+            t,
+            120 * 1000,
+            hasEligibleLiveMember: false,
+            hasEligibleEngageableMember: true,
+          ),
           RoutingStage.widened,
         );
       },
@@ -103,13 +202,53 @@ void main() {
 
     test('widened → open after open window with no eligible live member', () {
       final t = task(stage: RoutingStage.widened, escalatedAt: 0);
-      expect(TaskRouter.nextStage(t, 299 * 1000, false), RoutingStage.widened);
-      expect(TaskRouter.nextStage(t, 300 * 1000, false), RoutingStage.open);
+      expect(
+        TaskRouter.nextStage(
+          t,
+          299 * 1000,
+          hasEligibleLiveMember: false,
+          hasEligibleEngageableMember: true,
+        ),
+        RoutingStage.widened,
+      );
+      expect(
+        TaskRouter.nextStage(
+          t,
+          300 * 1000,
+          hasEligibleLiveMember: false,
+          hasEligibleEngageableMember: true,
+        ),
+        RoutingStage.open,
+      );
     });
+
+    test(
+      'widened → open immediately when no eligible member exists (A\')',
+      () {
+        final t = task(stage: RoutingStage.widened, escalatedAt: 0);
+        expect(
+          TaskRouter.nextStage(
+            t,
+            0,
+            hasEligibleLiveMember: false,
+            hasEligibleEngageableMember: false,
+          ),
+          RoutingStage.open,
+        );
+      },
+    );
 
     test('open is terminal', () {
       final t = task(stage: RoutingStage.open, escalatedAt: 0);
-      expect(TaskRouter.nextStage(t, 999 * 1000, false), RoutingStage.open);
+      expect(
+        TaskRouter.nextStage(
+          t,
+          999 * 1000,
+          hasEligibleLiveMember: false,
+          hasEligibleEngageableMember: false,
+        ),
+        RoutingStage.open,
+      );
     });
   });
 }

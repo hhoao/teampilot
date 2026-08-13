@@ -62,47 +62,47 @@ void main() {
     });
   });
 
-  test('reconcileTasks opens a task when no capable member exists', () {
-    fakeAsync((async) {
-      // Inject a controllable clock shared by the bus and its queue —
-      // fakeAsync.elapse does not advance DateTime.now(), so routing windows
-      // must be driven by a manual clock.
-      var now = 1000;
-      final bus = TeamBus(
-        launcher: FakeMemberLauncher(),
-        clock: () => now,
-        taskQueue: TaskQueue(clock: () => now),
-      );
-      // Only a frontend worker exists; the task needs backend (required) and
-      // database (preferred) — fe matches neither, so even the widened stage
-      // (which relaxes to preferred) cannot match it, forcing escalation to open.
-      bus.declareMember(_declared('fe', {'frontend'}));
-      bus.addTasks('lead', [
-        const TeamTaskDraft(
-          title: 'api',
-          brief: 'b',
-          requiredCapabilities: {'backend'},
-          preferredCapabilities: {'database'},
-        ),
-      ]);
-      async.flushMicrotasks();
+  test(
+    'reconcileTasks opens a task immediately when no capable member exists',
+    () {
+      fakeAsync((async) {
+        // Inject a controllable clock shared by the bus and its queue —
+        // fakeAsync.elapse does not advance DateTime.now(), so routing windows
+        // must be driven by a manual clock.
+        var now = 1000;
+        final bus = TeamBus(
+          launcher: FakeMemberLauncher(),
+          clock: () => now,
+          taskQueue: TaskQueue(clock: () => now),
+        );
+        // Only a frontend worker exists; the task needs backend (required) and
+        // database (preferred) — fe matches neither, so even the widened stage
+        // (which relaxes to preferred) cannot match it, forcing escalation to open.
+        bus.declareMember(_declared('fe', {'frontend'}));
+        bus.addTasks('lead', [
+          const TeamTaskDraft(
+            title: 'api',
+            brief: 'b',
+            requiredCapabilities: {'backend'},
+            preferredCapabilities: {'database'},
+          ),
+        ]);
+        async.flushMicrotasks();
 
-      now += 130 * 1000; // past widen window
-      bus.reconcileTasks();
-      now += 310 * 1000; // past open window
-      bus.reconcileTasks();
+        // A': no member is eligible at ANY stage — the add_tasks reconcile
+        // chains matched → widened → open without window or tick waits.
+        expect(
+          bus.listTasks(status: TaskStatus.pending).single.routing.stage,
+          RoutingStage.open,
+        );
+        // now the frontend worker can claim it as a fungible fallback
+        final claimed = bus.claimNextTask('fe');
+        expect(claimed!.title, 'api');
 
-      expect(
-        bus.listTasks(status: TaskStatus.pending).single.routing.stage,
-        RoutingStage.open,
-      );
-      // now the frontend worker can claim it as a fungible fallback
-      final claimed = bus.claimNextTask('fe');
-      expect(claimed!.title, 'api');
-
-      bus.dispose();
-    });
-  });
+        bus.dispose();
+      });
+    },
+  );
 
   test('a member cannot claim a task routed to another type', () {
     final bus = _busWithQueue(FakeMemberLauncher());

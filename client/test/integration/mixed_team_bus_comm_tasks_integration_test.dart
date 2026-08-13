@@ -452,7 +452,7 @@ void main() {
     );
 
     test(
-      'routing opens task when no capable member exists, then fe claims',
+      'routing opens task immediately when no capable member exists, fe claims',
       () async {
         var now = 1_000_000;
         harness = await TeamBusCommTaskHarness.create(
@@ -485,12 +485,12 @@ void main() {
           },
         ]);
 
-        expect(harness.bus.claimNextTask('frontend-dev'), isNull);
-
-        now += 130 * 1000;
-        harness.bus.reconcileTasks();
-        now += 310 * 1000;
-        harness.bus.reconcileTasks();
+        // A': no member is eligible at ANY stage — matched → widened → open
+        // chains inside the add_tasks reconcile, no window/tick wait.
+        expect(
+          harness.bus.listTasks().single.routing.stage,
+          RoutingStage.open,
+        );
 
         final claimed = harness.bus.claimNextTask('frontend-dev');
         expect(claimed!.title, 'api');

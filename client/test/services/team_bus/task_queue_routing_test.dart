@@ -88,13 +88,39 @@ void main() {
     expect(q.list().single.routing.stage, RoutingStage.reserved);
 
     now += 45 * 1000;
-    final changed = q.reconcile(now, (_) => true);
+    final changed = q.reconcile(now, (_) => true, (_) => false);
     expect(changed.single.routing.stage, RoutingStage.matched);
     // now any worker can claim
     expect(q.claimNext('anyone', const {})!.title, 'a');
   });
 
-  test('reconcile widens then opens when no eligible live member exists', () {
+  test(
+    'reconcile escalates immediately when no eligible member exists (A\')',
+    () {
+      final q = makeQueue();
+      q.addTasks('lead', [
+        const TeamTaskDraft(
+          title: 'a',
+          brief: 'b',
+          requiredCapabilities: {'backend'},
+        ),
+      ]);
+
+      // No eligible live AND no engageable member: the widen/open windows are
+      // skipped entirely — no 120s/300s wait for an impossible match.
+      expect(
+        q.reconcile(now, (_) => false, (_) => false).single.routing.stage,
+        RoutingStage.widened,
+      );
+      expect(
+        q.reconcile(now, (_) => false, (_) => false).single.routing.stage,
+        RoutingStage.open,
+      );
+      expect(q.claimNext('anyone', const {})!.title, 'a'); // fungible fallback
+    },
+  );
+
+  test('reconcile waits windows while an engageable member exists', () {
     final q = makeQueue();
     q.addTasks('lead', [
       const TeamTaskDraft(
@@ -104,18 +130,14 @@ void main() {
       ),
     ]);
 
-    now += 120 * 1000;
+    // Engageable (declared) member: give it time to come up before widening.
+    now += 119 * 1000;
+    expect(q.reconcile(now, (_) => false, (_) => true), isEmpty);
+    now += 1000;
     expect(
-      q.reconcile(now, (_) => false).single.routing.stage,
+      q.reconcile(now, (_) => false, (_) => true).single.routing.stage,
       RoutingStage.widened,
     );
-
-    now += 300 * 1000;
-    expect(
-      q.reconcile(now, (_) => false).single.routing.stage,
-      RoutingStage.open,
-    );
-    expect(q.claimNext('anyone', const {})!.title, 'a'); // fungible fallback
   });
 
   test(

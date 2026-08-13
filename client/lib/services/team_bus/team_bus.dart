@@ -940,6 +940,8 @@ class TeamBus implements CoordinationView {
       // fire-and-forget：入队即返回（MCP 响应无需等 worker 就绪），engage 在后台进行，
       // 语义同 [_apply] 的 unawaited dispatch。
       unawaited(_engageWorkersForQueue(createdBy));
+      // A'：入队同步跑一轮 reconcile——无合格成员的任务立刻逐级放宽，不等 15s tick。
+      reconcileTasks();
     }
     return created;
   }
@@ -1081,14 +1083,32 @@ class TeamBus implements CoordinationView {
   }
 
   /// 推进任务路由阶段（定时 + 事件驱动）。降级后重新尝试 engage。
+  ///
+  /// A'：**链式**跑 reconcile——无合格成员的任务逐级立即放宽，一次把连续死级放完
+  /// （reserved→matched→widened→open 至多 3 跳），不再等 15s tick 逐级放行
+  /// （历史：'repo' 死锁任务卡 120s+ 才被别的成员领走）。阶段单调，循环有界。
   List<TeamTask> reconcileTasks() {
     final queue = _taskQueue;
     if (queue == null) return const [];
-    final changed = queue.reconcile(_env.clock(), _hasEligibleLiveMember);
-    if (changed.isNotEmpty) {
+    var changed = queue.reconcile(
+      _env.clock(),
+      _hasEligibleLiveMember,
+      _hasEligibleEngageableMember,
+    );
+    var all = changed;
+    var guard = 0;
+    while (changed.isNotEmpty && guard++ < RoutingStage.values.length) {
+      changed = queue.reconcile(
+        _env.clock(),
+        _hasEligibleLiveMember,
+        _hasEligibleEngageableMember,
+      );
+      all = [...all, ...changed];
+    }
+    if (all.isNotEmpty) {
       unawaited(_engageWorkersForQueue(_teamLeadMemberId() ?? ''));
     }
-    return changed;
+    return all;
   }
 
   /// 是否存在能领该任务的**在线**（running/materializing）非 leader 成员。declared
@@ -1097,6 +1117,21 @@ class TeamBus implements CoordinationView {
     for (final n in _members.values) {
       if (n.profile.isTeamLead) continue;
       if (!n.ptyRunning) continue;
+      if (TaskRouter.eligible(n.memberId, n.profile.capabilities, task)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /// 是否存在能领该任务、且**可被 engage 拉起**（declared）的非 leader 成员。
+  /// 与 [_hasEligibleLiveMember] 合起来 = 「当前有没有任何成员可能认领」——
+  /// 两者皆空时 [TaskRouter.nextStage] 跳过时间窗立即降级（死锁加速）。materializing
+  /// 算在线（engage 已在途、即将能领），不计入本回调。
+  bool _hasEligibleEngageableMember(TeamTask task) {
+    for (final n in _members.values) {
+      if (n.profile.isTeamLead) continue;
+      if (n.lifecycle != MemberLifecycle.declared) continue;
       if (TaskRouter.eligible(n.memberId, n.profile.capabilities, task)) {
         return true;
       }

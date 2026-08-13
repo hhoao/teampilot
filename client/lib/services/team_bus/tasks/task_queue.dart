@@ -160,17 +160,26 @@ class TaskQueue {
     return reclaimed;
   }
 
-  /// 推进每个 pending 任务的路由阶段（单调）。[hasEligibleLiveMember] 由调用方注入,
-  /// 表示「当前是否存在能领该任务的在线成员」——为 false 且超时才降级要求。返回阶段
-  /// 发生变化的任务,并唤醒等待者（让更宽的合格 worker 来认领）。
+  /// 推进每个 pending 任务的路由阶段（单调）。[hasEligibleLiveMember] 与
+  /// [hasEligibleEngageableMember] 由调用方注入，分别表示「当前是否存在能领该
+  /// 任务的在线(running/materializing)成员」与「是否存在能领该任务、可被 engage
+  /// 拉起的 declared 成员」。**两者皆空**时 [TaskRouter.nextStage] 跳过时间窗
+  /// 立即降级——没有成员可能认领的任务不该烧时间窗（死锁加速）。返回阶段发生
+  /// 变化的任务,并唤醒等待者（让更宽的合格 worker 来认领）。
   List<TeamTask> reconcile(
     int now,
     bool Function(TeamTask) hasEligibleLiveMember,
+    bool Function(TeamTask) hasEligibleEngageableMember,
   ) {
     final changed = <TeamTask>[];
     for (final t in _tasks.values.toList()) {
       if (t.status != TaskStatus.pending) continue;
-      final next = TaskRouter.nextStage(t, now, hasEligibleLiveMember(t));
+      final next = TaskRouter.nextStage(
+        t,
+        now,
+        hasEligibleLiveMember: hasEligibleLiveMember(t),
+        hasEligibleEngageableMember: hasEligibleEngageableMember(t),
+      );
       if (next == t.routing.stage) continue;
       final updated = t.copyWith(
         routing: t.routing.copyWith(stage: next, escalatedAt: now),
