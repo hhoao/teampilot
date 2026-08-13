@@ -73,6 +73,7 @@ import '../cubits/cli_presets_cubit.dart';
 import '../repositories/cli_presets_repository.dart';
 import '../cubits/skill_cubit.dart';
 import '../repositories/mcp_repository.dart';
+import '../services/hook/hook_repository.dart';
 import '../services/mcp/profile_mcp_linker_service.dart';
 import '../cubits/ssh_connection_cubit.dart';
 import '../cubits/ssh_profile_cubit.dart';
@@ -265,6 +266,7 @@ class AppShell {
     required this.cliPresetsCubit,
     required this.skillCubit,
     required this.mcpCubit,
+    required this.hookRepository,
     required this.teamHubCubit,
     required this.expertHubCubit,
     required this.expertCapabilityResolver,
@@ -344,6 +346,7 @@ class AppShell {
   final CliPresetsCubit cliPresetsCubit;
   final SkillCubit skillCubit;
   final McpCubit mcpCubit;
+  final HookRepository hookRepository;
   final TeamHubCubit teamHubCubit;
   final ExpertHubCubit expertHubCubit;
   final ExpertCapabilityResolver expertCapabilityResolver;
@@ -486,6 +489,7 @@ Future<AppShell> buildAppShell({
   late final CliPresetsCubit cliPresetsCubit;
   late final SkillCubit skillCubit;
   late final McpCubit mcpCubit;
+  late final HookRepository hookRepository;
   late final TeamHubCubit teamHubCubit;
   late final ExpertHubCubit expertHubCubit;
   late final ExtensionCubit extensionCubit;
@@ -893,6 +897,10 @@ Future<AppShell> buildAppShell({
             ]));
   final pluginRepository = PluginRepository();
   final mcpRepository = McpRepository();
+  hookRepository = HookRepository(
+    fs: AppStorage.fs,
+    teampilotRoot: AppStorage.paths.basePath,
+  );
   identityProvisioner = LaunchProfileProvisioner(
     repository: identityRepository,
   );
@@ -1837,6 +1845,7 @@ Future<AppShell> buildAppShell({
     cliPresetsCubit: cliPresetsCubit,
     skillCubit: skillCubit,
     mcpCubit: mcpCubit,
+    hookRepository: hookRepository,
     teamHubCubit: teamHubCubit,
     expertHubCubit: expertHubCubit,
     expertCapabilityResolver: expertCapabilityResolver,

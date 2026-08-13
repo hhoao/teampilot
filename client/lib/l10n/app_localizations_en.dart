@@ -4588,6 +4588,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mcpNavDiscovery => 'Discovery';
 
   @override
+  String get hookNavTitle => 'Hooks';
+
+  @override
+  String get hookNew => 'New hook';
+
+  @override
+  String get hooksNoInstalled => 'No hooks';
+
+  @override
+  String get hooksNoInstalledHint =>
+      'Create a hook to run commands on CLI events.';
+
+  @override
   String get mcpNavRegistries => 'Registry';
 
   @override

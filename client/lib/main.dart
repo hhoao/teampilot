@@ -32,6 +32,7 @@ import 'cubits/shortcut_cubit.dart';
 import 'l10n/l10n_extensions.dart';
 import 'repositories/app_settings_repository.dart';
 import 'repositories/launch_profile_repository.dart';
+import 'services/hook/hook_repository.dart';
 import 'repositories/session_repository.dart';
 import 'repositories/workspace_project_config_repository.dart';
 import 'repositories/ssh_credential_store.dart';
@@ -640,6 +641,9 @@ void main() async {
                 ),
                 RepositoryProvider<LaunchProfileRepository>.value(
                   value: shell.identityRepository,
+                ),
+                RepositoryProvider<HookRepository>.value(
+                  value: shell.hookRepository,
                 ),
                 RepositoryProvider<SshProfileRepository>.value(
                   value: shell.sshProfileRepo,

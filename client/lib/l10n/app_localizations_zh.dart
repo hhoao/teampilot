@@ -4415,6 +4415,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get mcpNavDiscovery => '发现';
 
   @override
+  String get hookNavTitle => 'Hooks';
+
+  @override
+  String get hookNew => '新建 hook';
+
+  @override
+  String get hooksNoInstalled => '暂无 hooks';
+
+  @override
+  String get hooksNoInstalledHint => '创建 hook，在 CLI 事件时运行命令。';
+
+  @override
   String get mcpNavRegistries => '注册中心';
 
   @override

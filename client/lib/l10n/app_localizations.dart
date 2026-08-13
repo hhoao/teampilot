@@ -8234,6 +8234,30 @@ abstract class AppLocalizations {
   /// **'Discovery'**
   String get mcpNavDiscovery;
 
+  /// No description provided for @hookNavTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Hooks'**
+  String get hookNavTitle;
+
+  /// No description provided for @hookNew.
+  ///
+  /// In en, this message translates to:
+  /// **'New hook'**
+  String get hookNew;
+
+  /// No description provided for @hooksNoInstalled.
+  ///
+  /// In en, this message translates to:
+  /// **'No hooks'**
+  String get hooksNoInstalled;
+
+  /// No description provided for @hooksNoInstalledHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a hook to run commands on CLI events.'**
+  String get hooksNoInstalledHint;
+
   /// No description provided for @mcpNavRegistries.
   ///
   /// In en, this message translates to:
