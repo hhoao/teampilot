@@ -9,6 +9,7 @@ import 'package:teampilot/services/cli/opencode/capabilities/history/ai_history_
 import 'package:teampilot/services/cli/claude/capabilities/history/compatible_tool_result_enricher.dart';
 import 'package:teampilot/services/cli/claude/capabilities/history/side_resolver.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/history/terminal_tool_result_enricher.dart';
+import 'package:teampilot/services/cli/opencode/capabilities/history/tool_output_backfill_enricher.dart';
 import 'package:teampilot/services/cli/registry/capabilities/history/tool_result_enricher.dart';
 import 'package:teampilot/services/ai_history/tool_call_resolvers.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
@@ -56,7 +57,7 @@ void main() {
     );
     expect(
       const OpencodeAiHistoryCapability().toolResultEnricher,
-      isA<NoOpToolResultEnricher>(),
+      isA<OpencodeToolOutputBackfillEnricher>(),
     );
   });
 

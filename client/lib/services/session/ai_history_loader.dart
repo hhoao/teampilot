@@ -14,6 +14,7 @@ import '../cli/registry/capabilities/ai_history_capability.dart';
 import '../cli/registry/capabilities/resume/pinned_transcript_probe.dart';
 import '../cli/registry/capabilities/tool_call_resolver_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
+import '../cli/opencode/capabilities/history/tool_output_backfill_enricher.dart';
 import '../storage/runtime_context.dart';
 import '../terminal/session_member_cli_resolver.dart';
 import 'ai_history_load_result.dart';
@@ -477,6 +478,17 @@ final class AiHistoryLoader {
             }
             return parsed;
           }, debugName: 'history-loader');
+          // Filesystem-backed enrichers cannot run on the worker isolate;
+          // apply them on the caller isolate where ctx is available.
+          if (enricher.requiresFilesystem &&
+              _needsToolResultEnrichment(messages)) {
+            messages = await enricher.enrich(
+              messages: messages,
+              ctx: ctx,
+              rootTranscriptPath: parentPath,
+              bundle: bundle,
+            );
+          }
         } else {
           messages = await adapter.parse(bundle);
           if (_needsToolResultEnrichment(messages)) {
@@ -644,13 +656,16 @@ final class AiHistoryLoader {
       '${sessionId.trim()}\u0000${memberId.trim()}';
 
   /// The Claude enricher full-reads the transcript to resolve truncated tool
-  /// results; skip it when no part carries the truncation sentinel.
+  /// results; the opencode backfill enricher reads the hint file. Skip both
+  /// when no part carries a matching truncation marker.
   static bool _needsToolResultEnrichment(List<AiMessage> messages) {
     for (final message in messages) {
       for (final part in message.parts) {
         if (part is AiToolCallPart) {
           final result = part.result;
-          if (result is String && result.contains('tool output truncated')) {
+          if (result is String &&
+              (result.contains('tool output truncated') ||
+                  opencodeCoreTruncationMarker.hasMatch(result))) {
             return true;
           }
         }
