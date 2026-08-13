@@ -4,7 +4,7 @@
 **设计:** [docs/superpowers/specs/2026-08-13-hook-management-design.md](../superpowers/specs/2026-08-13-hook-management-design.md)
 **代码:** 归一化模型 `client/lib/models/{hook_entry,hook_definition,hook_event}.dart`；能力接口
 `client/lib/services/cli/registry/capabilities/hook_writer_capability.dart`；每 CLI writer
-`services/cli/{claude,flashskyai}/…/claude_family_hook_writer.dart`（claude/flashskyai 共用）、
+`services/cli/registry/config_profile/claude_family_hook_writer.dart`（claude/flashskyai 共用）、
 `services/cli/codex/provider/codex_hook_writer.dart`、`services/cli/cursor/provider/cursor_hook_writer.dart`、
 `services/cli/opencode/capabilities/opencode_hook_writer.dart`；胶水 `services/hook/glue_script_builder.dart`；
 来源组装 `services/cli/registry/config_profile/hook_seat_context_completer.dart`；库解析
@@ -98,7 +98,7 @@ opencode 恒 bash；claude 家族按 `HostScriptRunner.dialect`，powershell 时
 
 | CLI | 配置文件 | 脚本目录 | 去重/合并 |
 |---|---|---|---|
-| claude / flashskyai | session `settings.json` `hooks` map（`mergeHooksInto` 幂等并入） | `{sessionToolDir}/hooks/`（`teampilot-hook-<id>.sh`；托管脚本 `<id>/<fileName>`） | 按 `(event, url\|command)` 去重，更新（timeout/headers）刷新 |
+| claude / flashskyai | session `settings.json` `hooks` map（`mergeHooksInto` 幂等并入） | `{sessionToolDir}/hooks/`（`teampilot-hook-<id>.sh`；托管脚本 `<id>/<fileName>`） | 按 `(event, url\|command)` 判重、append-if-absent——**保留首位（首次写入胜出）**，命中判重时 timeout/headers 不刷新 |
 | codex | `CODEX_HOME/config.toml` `[[hooks.<Event>]]`（`matcher` 在数组级；`[[hooks.<Event>.hooks]]` 条目级 `type = "http"|"command"`、`command`、`timeout`） | `CODEX_HOME/hooks/` | managed（agent-status/bus）与用户 hook 同一次 `CodexHookWriter.render`，fragment 经 `CodexTomlMerge` 并入 config.toml |
 | cursor | 成员 fake HOME `~/.cursor/hooks.json`（`{"version":1,"hooks":{<event>:[…]}}`，per-script `command` / `matcher` / `timeout` / `loop_limit`；`stop` 恒 `loop_limit: null`） | `~/.cursor/hooks/` | `mergeCursorHooksConfig` 按 `(event, command)` 去重，保留 agent-status / bus 条目 |
 | opencode | `<configDir>/opencode.json` `plugin` 数组追加 `./teampilot-user-hooks.js` | `<configDir>/hooks/` 胶水 + `<configDir>/teampilot-user-hooks.js` | `mergeOpencodePluginEntries` 按路径去重；与 `teampilot-agent-status.js` / `teampilot-idle-bus.js` 平行共存（内部托管为 opencode 特有能力，不迁移进本 writer） |
