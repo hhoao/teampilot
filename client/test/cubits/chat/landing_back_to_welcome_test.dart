@@ -71,12 +71,12 @@ void main() {
       final workspace = await repo.createWorkspace([
         WorkspaceFolder(path: '/a'),
       ]);
-      final session = await repo.createSession(
+      final session = (await repo.createSession(
         workspace.workspaceId,
         sessionTeam: team.id,
         rosterMembers: team.members,
         memberClis: {for (final m in team.members) m.id: CliTool.claude},
-      );
+      )).session;
 
       final postFrame = PostFrameTestHarness();
       final chat = ChatCubit(

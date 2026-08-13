@@ -32,7 +32,7 @@ abstract final class MixedTeamPingPongScenario {
       final workspace = await repo.createWorkspace([
         WorkspaceFolder(path: AppStorage.cwd),
       ]);
-      session = await repo.createSession(
+      session = (await repo.createSession(
         workspace.workspaceId,
         sessionTeam: kItMixedClaudeTeam.id,
         rosterMembers: kItMixedClaudeTeam.members,
@@ -40,7 +40,7 @@ abstract final class MixedTeamPingPongScenario {
         memberClis: {
           for (final m in kItMixedClaudeTeam.members) m.id: CliTool.claude,
         },
-      );
+      )).session;
 
       await cubit.requestOpenSession(
         SessionOpenRequest(
@@ -118,7 +118,7 @@ abstract final class MixedTeamPingPongScenario {
           kWorkerMember.id: remote.sshTargetId,
         },
       );
-      session = await repo.createSession(
+      session = (await repo.createSession(
         workspace.workspaceId,
         sessionTeam: kItMixedClaudeTeam.id,
         rosterMembers: kItMixedClaudeTeam.members,
@@ -126,7 +126,7 @@ abstract final class MixedTeamPingPongScenario {
         memberClis: {
           for (final m in kItMixedClaudeTeam.members) m.id: CliTool.claude,
         },
-      );
+      )).session;
       session = (await repo.loadSessions()).firstWhere(
         (s) => s.sessionId == session!.sessionId,
       );

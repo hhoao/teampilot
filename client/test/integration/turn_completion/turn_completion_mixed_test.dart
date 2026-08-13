@@ -34,14 +34,14 @@ openCursorMixedSession({
   required PostFrameTestHarness postFrame,
 }) async {
   final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/tmp')]);
-  final session = await repo.createSession(
+  final session = (await repo.createSession(
     workspace.workspaceId,
     sessionTeam: kCursorMixedTeam.id,
     rosterMembers: kCursorMixedTeam.members,
     memberClis: {
       for (final m in kCursorMixedTeam.members) m.id: CliTool.cursor,
     },
-  );
+  )).session;
   await cubit.requestOpenSession(
     SessionOpenRequest(
       session: session,

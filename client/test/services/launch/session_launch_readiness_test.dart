@@ -17,7 +17,7 @@ void main() {
         final workspace = await repo.createWorkspace([
           const WorkspaceFolder(path: '/remote/project', targetId: 'ssh:host'),
         ]);
-        final session = await repo.createSession(workspace.workspaceId);
+        final session = (await repo.createSession(workspace.workspaceId)).session;
 
         final result = await ensureSessionLaunchReady(
           workspace: workspace,

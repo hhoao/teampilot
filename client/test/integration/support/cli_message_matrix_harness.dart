@@ -420,7 +420,7 @@ final class CliMessageMatrixHarness {
     late final AppSession created;
     if (mode == CliMatrixMode.simple) {
       team = null;
-      created = await repo.createSession(
+      created = (await repo.createSession(
         ws.workspaceId,
         cli: profile.tool,
         provider: kMatrixSimpleProviderId,
@@ -429,7 +429,7 @@ final class CliMessageMatrixHarness {
         // High effort can issue multiple Anthropic calls per user message
         // (adaptive thinking), burning scripted TextTurns.
         effort: 'low',
-      );
+      )).session;
       session = created;
       final status = await chat.requestOpenSession(
         SessionOpenRequest(
@@ -455,14 +455,14 @@ final class CliMessageMatrixHarness {
             ),
       );
       team = builtTeam;
-      created = await repo.createSession(
+      created = (await repo.createSession(
         ws.workspaceId,
         sessionTeam: builtTeam.id,
         rosterMembers: builtTeam.members,
         memberClis: {
           for (final m in builtTeam.members) m.id: profile.tool,
         },
-      );
+      )).session;
       session = created;
       await chat.requestOpenSession(
         SessionOpenRequest(

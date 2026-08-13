@@ -160,13 +160,13 @@ void main() {
       final workspace = await repo.createWorkspace([
         WorkspaceFolder(path: '/tmp'),
       ]);
-      final session = await repo.createSession(
+      final session = (await repo.createSession(
         workspace.workspaceId,
         sessionTeam: team.id,
         rosterMembers: team.members,
 
         memberClis: {for (final m in team.members) m.id: CliTool.claude},
-      );
+      )).session;
       await cubit.loadWorkspaceData(repo);
 
       await cubit.requestOpenSession(

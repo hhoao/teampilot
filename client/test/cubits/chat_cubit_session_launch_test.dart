@@ -54,13 +54,13 @@ void main() {
     final workspace = await repo.createWorkspace([
       WorkspaceFolder(path: '/work/current'),
     ]);
-    final session = await repo.createSession(
+    final session = (await repo.createSession(
       workspace.workspaceId,
       sessionTeam: team.id,
       rosterMembers: team.members,
 
       memberClis: {for (final m in team.members) m.id: CliTool.claude},
-    );
+    )).session;
     final chatCubit = ChatCubit(
       executableResolver: _testExecutable,
       automationRepository: testAutomationRepository(),
@@ -444,13 +444,13 @@ void main() {
     final workspace = await repo.createWorkspace([
       WorkspaceFolder(path: '/wd'),
     ]);
-    final session = await repo.createSession(
+    final session = (await repo.createSession(
       workspace.workspaceId,
       sessionTeam: team.id,
       rosterMembers: team.members,
 
       memberClis: {for (final m in team.members) m.id: CliTool.claude},
-    );
+    )).session;
     await repo.markSessionLaunched(session.sessionId);
 
     FakeTerminalSession? captured;
@@ -497,13 +497,13 @@ void main() {
       final workspace = await repo.createWorkspace([
         WorkspaceFolder(path: '/wd'),
       ]);
-      final session = await repo.createSession(
+      final session = (await repo.createSession(
         workspace.workspaceId,
         sessionTeam: team.id,
         rosterMembers: team.members,
 
         memberClis: {for (final m in team.members) m.id: CliTool.claude},
-      );
+      )).session;
       await repo.markSessionLaunched(session.sessionId);
 
       FakeTerminalSession? captured;
@@ -606,12 +606,12 @@ void main() {
       final workspace = await repo.createWorkspace([
         const WorkspaceFolder(path: '/w'),
       ]);
-      final session = await repo.createSession(
+      final session = (await repo.createSession(
         workspace.workspaceId,
         sessionTeam: liveTeam.id,
         rosterMembers: liveTeam.members,
         memberClis: {'team-lead': CliTool.claude},
-      );
+      )).session;
       expect(session.bindingFor('team-lead')?.cli, CliTool.claude);
 
       final postFrame = PostFrameTestHarness();

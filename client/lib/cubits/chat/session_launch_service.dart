@@ -216,7 +216,7 @@ class SessionLaunchService
             globalPresets: _h.lifecycle.globalPresets,
           );
 
-    final persisted = await repo.createSession(
+    final persisted = (await repo.createSession(
       session.workspaceId,
       sessionTeam: params.sessionTeamId,
       rosterMembers: params.rosterMembers,
@@ -233,7 +233,7 @@ class SessionLaunchService
       members: session.members,
       memberTargets: session.memberTargets,
       knownWorkspace: request.workspace,
-    );
+    )).session;
     appLogger.d(
       '[session-launch] createSession '
       'session=${persisted.sessionId} ms=${sw.elapsedMilliseconds}',

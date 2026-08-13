@@ -158,7 +158,7 @@ void main() {
       final workspace = await repo.createWorkspace([
         const WorkspaceFolder(path: '/tmp'),
       ]);
-      final session = await repo.createSession(workspace.workspaceId);
+      final session = (await repo.createSession(workspace.workspaceId)).session;
       await cubit.loadWorkspaceData(repo);
       // connectImmediately:false — the harness must not attempt a real PTY
       // spawn (native lib is unavailable under `flutter test`).

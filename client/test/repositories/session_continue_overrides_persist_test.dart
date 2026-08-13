@@ -15,14 +15,14 @@ void main() {
     final workspace = await repo.createWorkspace([
       WorkspaceFolder(path: '/w'),
     ]);
-    final session = await repo.createSession(
+    final session = (await repo.createSession(
       workspace.workspaceId,
       cli: CliTool.claude,
       provider: 'anthropic',
       model: 'claude-sonnet',
       effort: 'high',
       presetId: 'preset-a',
-    );
+    )).session;
     return (repo: repo, session: session);
   }
 
@@ -81,10 +81,10 @@ void main() {
     const overrides = SessionContinueOverrides(
       dangerouslySkipPermissions: true,
     );
-    final session = await repo.createSession(
+    final session = (await repo.createSession(
       workspace.workspaceId,
       continueOverrides: overrides,
-    );
+    )).session;
 
     expect(session.continueOverrides, overrides);
     expect((await repo.loadSessions()).single.continueOverrides, overrides);

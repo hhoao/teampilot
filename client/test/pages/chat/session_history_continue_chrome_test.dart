@@ -72,14 +72,14 @@ void main() {
         final workspace = await repo.createWorkspace([
           const WorkspaceFolder(path: '/w'),
         ]);
-        final created = await repo.createSession(
+        final created = (await repo.createSession(
           workspace.workspaceId,
           cli: CliTool.claude,
           provider: 'anthropic',
           model: 'claude-sonnet',
           effort: 'high',
           presetId: 'preset-a',
-        );
+        )).session;
 
         final patched = controller.patchPreset(
           session: created,
@@ -207,13 +207,13 @@ void main() {
       final workspace = await repo.createWorkspace([
         const WorkspaceFolder(path: '/w'),
       ]);
-      final created = await repo.createSession(
+      final created = (await repo.createSession(
         workspace.workspaceId,
         cli: CliTool.claude,
         presetId: 'preset-a',
         provider: 'anthropic',
         model: 'claude-sonnet',
-      );
+      )).session;
 
       final patched = controller.patchPreset(
         session: created,
@@ -404,13 +404,13 @@ void main() {
         final workspace = await repo.createWorkspace([
           const WorkspaceFolder(path: '/w'),
         ]);
-        final session = await repo.createSession(
+        final session = (await repo.createSession(
           workspace.workspaceId,
           cli: CliTool.claude,
           provider: 'anthropic',
           model: 'claude-sonnet',
           presetId: 'preset-a',
-        );
+        )).session;
         await cubit.loadWorkspaceData(repo);
 
         expect(
@@ -465,14 +465,14 @@ void main() {
         final workspace = await repo.createWorkspace([
           const WorkspaceFolder(path: '/w'),
         ]);
-        final session = await repo.createSession(
+        final session = (await repo.createSession(
           workspace.workspaceId,
           cli: CliTool.claude,
           provider: 'anthropic',
           model: 'claude-sonnet',
           effort: 'high',
           presetId: 'preset-a',
-        );
+        )).session;
         await cubit.loadWorkspaceData(repo);
 
         expect(

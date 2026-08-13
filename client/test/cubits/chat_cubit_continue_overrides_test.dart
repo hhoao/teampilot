@@ -53,14 +53,14 @@ void main() {
         final workspace = await repo.createWorkspace([
           WorkspaceFolder(path: '/w'),
         ]);
-        final session = await repo.createSession(
+        final session = (await repo.createSession(
           workspace.workspaceId,
           cli: CliTool.claude,
           provider: 'anthropic',
           model: 'claude-sonnet',
           effort: 'high',
           presetId: 'preset-a',
-        );
+        )).session;
         await cubit.loadWorkspaceData(repo);
 
         final ok = await cubit.setSessionContinuePreset(
@@ -86,11 +86,11 @@ void main() {
       final workspace = await repo.createWorkspace([
         WorkspaceFolder(path: '/w'),
       ]);
-      final session = await repo.createSession(
+      final session = (await repo.createSession(
         workspace.workspaceId,
         cli: CliTool.claude,
         presetId: 'preset-a',
-      );
+      )).session;
       await cubit.loadWorkspaceData(repo);
 
       final ok = await cubit.setSessionContinuePreset(
@@ -108,7 +108,7 @@ void main() {
       final workspace = await repo.createWorkspace([
         WorkspaceFolder(path: '/w'),
       ]);
-      final session = await repo.createSession(
+      final session = (await repo.createSession(
         workspace.workspaceId,
         sessionTeam: 'team-1',
         rosterMembers: const [
@@ -129,7 +129,7 @@ void main() {
           'builder-0': CliTool.claude,
           'reviewer-0': CliTool.claude,
         },
-      );
+      )).session;
       await cubit.loadWorkspaceData(repo);
 
       final ok = await cubit.setSessionContinuePreset(
@@ -153,7 +153,7 @@ void main() {
       final workspace = await repo.createWorkspace([
         WorkspaceFolder(path: '/w'),
       ]);
-      final session = await repo.createSession(workspace.workspaceId);
+      final session = (await repo.createSession(workspace.workspaceId)).session;
       await cubit.loadWorkspaceData(repo);
 
       final ok = await cubit.setSessionContinuePermission(

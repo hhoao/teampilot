@@ -19,7 +19,7 @@ void main() {
       ]);
       final workspaceId = workspace.workspaceId;
 
-      final session = await repo.createSession(
+      final session = (await repo.createSession(
         workspaceId,
         sessionTeam: 'team-1',
         rosterMembers: const [
@@ -31,7 +31,7 @@ void main() {
           'team-lead': CliTool.claude,
           'builder': CliTool.claude,
         },
-      );
+      )).session;
       expect(session.members.map((b) => b.rosterMemberId), [
         'team-lead',
         'builder-0',
@@ -70,7 +70,7 @@ void main() {
       );
 
       // Profile still says replicas:1 (bug: placement wrote targets only).
-      final session = await repo.createSession(
+      final session = (await repo.createSession(
         ws.workspaceId,
         sessionTeam: 'team-a',
         rosterMembers: const [
@@ -82,7 +82,7 @@ void main() {
           'team-lead': CliTool.claude,
           'builder': CliTool.claude,
         },
-      );
+      )).session;
 
       expect(session.members.map((b) => b.rosterMemberId).toList(), [
         'team-lead',
@@ -135,13 +135,13 @@ void main() {
         ],
       );
 
-      final session = await repo.createSession(
+      final session = (await repo.createSession(
         ws.workspaceId,
         sessionTeam: 'team-a',
         rosterMembers: staleTeam.members,
 
         memberClis: {for (final m in staleTeam.members) m.id: CliTool.claude},
-      );
+      )).session;
 
       expect(session.members.map((b) => b.rosterMemberId).toList(), [
         'team-lead',
@@ -176,7 +176,7 @@ void main() {
         targets: const {'team-lead': 'local'},
       );
 
-      final session = await repo.createSession(
+      final session = (await repo.createSession(
         ws.workspaceId,
         sessionTeam: 'team-a',
         rosterMembers: const [
@@ -185,7 +185,7 @@ void main() {
         ],
 
         memberClis: const {'team-lead': CliTool.claude, 'dev': CliTool.claude},
-      );
+      )).session;
 
       expect(session.members.map((b) => b.rosterMemberId), ['team-lead']);
       expect(session.memberTargets.keys, {'team-lead'});
@@ -208,7 +208,7 @@ void main() {
         targets: const {'team-lead': 'local'},
       );
 
-      final session = await repo.createSession(
+      final session = (await repo.createSession(
         ws.workspaceId,
         sessionTeam: 'team-1',
         rosterMembers: const [
@@ -217,7 +217,7 @@ void main() {
         ],
 
         memberClis: const {'team-lead': CliTool.claude, 'dev': CliTool.claude},
-      );
+      )).session;
 
       expect(session.memberTargets, {
         'team-lead': 'local',
@@ -243,7 +243,7 @@ void main() {
         const WorkspaceFolder(path: '/local'),
       ]);
 
-      final session = await repo.createSession(
+      final session = (await repo.createSession(
         ws.workspaceId,
         sessionTeam: 'team-1',
         rosterMembers: const [
@@ -252,7 +252,7 @@ void main() {
         ],
 
         memberClis: const {'team-lead': CliTool.claude, 'dev': CliTool.claude},
-      );
+      )).session;
 
       expect(session.memberTargets, {
         'team-lead': 'local',

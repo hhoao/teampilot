@@ -108,12 +108,13 @@ class _WorkspaceFoldersSectionState extends State<WorkspaceFoldersSection> {
       );
       if (to == null || !mounted) return;
 
-      final updated = await repo.remapWorkspaceTarget(
+      final updated = (await repo.remapWorkspaceTarget(
         widget.workspace.workspaceId,
         fromTargetId: fromTargetId,
         toTargetId: to,
         liveness: liveness,
-      );
+      ))
+          .workspace;
       chat.invalidateWorkspaceProvision(updated);
       await chat.loadWorkspaceData(repo);
       _invalidateDeadTargetCache();

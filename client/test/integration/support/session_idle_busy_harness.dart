@@ -75,7 +75,7 @@ openMixedSessionWithShells({
   required PostFrameTestHarness postFrame,
 }) async {
   final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/tmp')]);
-  final session = await repo.createSession(
+  final session = (await repo.createSession(
     workspace.workspaceId,
     sessionTeam: kIdleBusyMixedTeam.id,
     rosterMembers: kIdleBusyMixedTeam.members,
@@ -83,7 +83,7 @@ openMixedSessionWithShells({
     memberClis: {
       for (final m in kIdleBusyMixedTeam.members) m.id: CliTool.claude,
     },
-  );
+  )).session;
 
   await cubit.requestOpenSession(
     SessionOpenRequest(

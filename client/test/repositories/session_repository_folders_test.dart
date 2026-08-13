@@ -6,7 +6,7 @@ import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 
 void main() {
-  test('createWorkspace persists local folders and merges by path', () async {
+  test('createWorkspace persists local folders and always creates new', () async {
     final tmp = await Directory.systemTemp.createTemp('fs_repo_folders_');
     addTearDown(() => tmp.deleteSync(recursive: true));
     final repo = SessionRepository(rootDir: tmp.path);
@@ -21,12 +21,13 @@ void main() {
       isTrue,
     );
 
-    final merged = await repo.createWorkspace([
+    final second = await repo.createWorkspace([
       const WorkspaceFolder(path: '/main'),
       const WorkspaceFolder(path: '/y'),
     ]);
-    expect(merged.workspaceId, ws.workspaceId);
-    expect(merged.folders.map((f) => f.path), ['/main', '/x', '/y']);
+    expect(second.workspaceId, isNot(ws.workspaceId));
+    expect(second.folders.map((f) => f.path), ['/main', '/y']);
+    expect((await repo.loadWorkspaces()).length, 2);
   });
 
   test(
@@ -40,13 +41,13 @@ void main() {
         const WorkspaceFolder(path: '/main'),
         const WorkspaceFolder(path: '/x'),
       ]);
-      final inherited = await repo.createSession(ws.workspaceId);
+      final inherited = (await repo.createSession(ws.workspaceId)).session;
       expect(inherited.folders.map((f) => f.path), ['/main', '/x']);
 
-      final overridden = await repo.createSession(
+      final overridden = (await repo.createSession(
         ws.workspaceId,
         workingDirectory: '/override',
-      );
+      )).session;
       expect(overridden.folders.map((f) => f.path), [
         '/override',
         '/main',
@@ -105,10 +106,10 @@ void main() {
       const WorkspaceFolder(path: '/remote', targetId: 'ssh:p1'),
     ]);
 
-    final session = await repo.createSession(
+    final session = (await repo.createSession(
       ws.workspaceId,
       workingDirectory: '/remote',
-    );
+    )).session;
     expect(session.folders.first.path, '/remote');
     expect(session.folders.last.path, '/local');
   });
@@ -193,7 +194,7 @@ void main() {
       'team-a',
       targets: const {'team-lead': 'local'},
     );
-    final session = await repo.createSession(
+    final session = (await repo.createSession(
       ws.workspaceId,
       sessionTeam: 'team-a',
       rosterMembers: const [
@@ -201,7 +202,7 @@ void main() {
       ],
 
       memberClis: const {'team-lead': CliTool.claude},
-    );
+    )).session;
     expect(session.memberTargets['team-lead'], 'local');
 
     await repo.updateWorkspaceMemberTargets(
@@ -260,7 +261,7 @@ void main() {
         targets: const {'team-lead': 'local', 'dev': 'ssh:p1'},
       );
 
-      final session = await repo.createSession(
+      final session = (await repo.createSession(
         ws.workspaceId,
         sessionTeam: 'team-a',
         rosterMembers: const [
@@ -269,7 +270,7 @@ void main() {
         ],
 
         memberClis: const {'team-lead': CliTool.claude, 'dev': CliTool.claude},
-      );
+      )).session;
       expect(session.memberTargets['team-lead'], 'local');
       expect(session.memberTargets['dev'], 'ssh:p1');
     },
