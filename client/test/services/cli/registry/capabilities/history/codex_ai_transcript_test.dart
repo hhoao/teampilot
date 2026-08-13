@@ -341,6 +341,63 @@ void main() {
   });
 
   test(
+      'custom_tool_call dual-form fixture parses end-to-end: String patch '
+      'text → argsText; Map input → args (G2)',
+      () async {
+    final bytes = await File(
+      'test/fixtures/session_history/codex/custom_tool_call_dual_form.jsonl',
+    ).readAsBytes();
+    final messages = await const CodexAiTranscriptAdapter().parse(
+      AiTranscriptBundle(
+        adapterId: 'codex',
+        fragments: [
+          AiTranscriptFragment(
+            name: 'custom_tool_call_dual_form.jsonl',
+            bytes: bytes,
+          ),
+        ],
+      ),
+    );
+
+    expect(messages, hasLength(2));
+    expect(messages[0].role, AiRole.user);
+    expect((messages[0].parts.single as AiTextPart).text, 'fix the flaky test');
+
+    final tools = messages
+        .expand((m) => m.parts)
+        .whereType<AiToolCallPart>()
+        .toList();
+    expect(tools, hasLength(2));
+
+    // 真实 codex 形态：custom_tool_call.input 是 apply_patch 补丁文本
+    // （String）→ args=null，argsText 保留原样；output 按 call_id 关联。
+    final patch = tools[0];
+    expect(patch.toolName, 'apply_patch');
+    expect(patch.toolCallId, 'call_patch1');
+    expect(patch.args, isNull);
+    expect(
+      patch.argsText,
+      '*** Begin Patch\n'
+      '*** Update File: /home/me/proj/src/app.dart\n'
+      '@@\n'
+      '-old code\n'
+      '+new code\n'
+      '*** End Patch',
+    );
+    expect(patch.result, 'Patch applied to 1 file');
+    expect(patch.status, AiToolCallStatus.complete);
+
+    // 防御形态：Map input → args Map，argsText 保持 null。
+    final agent = tools[1];
+    expect(agent.toolName, 'spawn_agent');
+    expect(agent.toolCallId, 'call_agent1');
+    expect(agent.args, {'agentId': 'agent-1', 'task': 'review the patch'});
+    expect(agent.argsText, isNull);
+    expect(agent.result, 'review passed');
+    expect(agent.status, AiToolCallStatus.complete);
+  });
+
+  test(
       'fallback message ids are lazy codex-{seq} and unique (G1)',
       () async {
     final bytes = await File(
