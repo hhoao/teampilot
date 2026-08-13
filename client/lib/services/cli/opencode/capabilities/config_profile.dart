@@ -288,6 +288,61 @@ Map<String, Object?> mergeOpencodeReasoningEffort(
   return {...config, 'provider': providers};
 }
 
+/// Merges workspace additional directories into opencode.json `permission` so
+/// tool calls touching paths outside the project root run without prompting.
+///
+/// opencode has no `--add-dir`; cross-root access is governed by the
+/// `external_directory` permission (default `ask`). Each directory becomes a
+/// `"<dir>/**": "allow"` pattern — the semantic equivalent of claude/codex
+/// `--add-dir`. Existing `permission` / `external_directory` entries are
+/// preserved and entries are idempotent.
+@visibleForTesting
+Map<String, Object?> mergeOpencodeExternalDirectories(
+  Map<String, Object?> config,
+  Iterable<String> directories,
+) {
+  final permission = <String, Object?>{
+    ...((config['permission'] as Map?)?.cast<String, Object?>() ??
+        const <String, Object?>{}),
+  };
+  final external = <String, Object?>{
+    ...((permission['external_directory'] as Map?)?.cast<String, Object?>() ??
+        const <String, Object?>{}),
+  };
+  var changed = false;
+  for (final dir in directories) {
+    final t = dir.trim();
+    if (t.isEmpty) continue;
+    final pattern = t.endsWith('/') ? '$t**' : '$t/**';    if (external[pattern] != 'allow') {
+      external[pattern] = 'allow';
+      changed = true;
+    }
+  }
+  if (!changed) return config;
+  permission['external_directory'] = external;
+  return {...config, 'permission': permission};
+}
+
+/// Composes the AGENTS.md section listing workspace additional directories.
+/// Tells the agent the directories exist and that absolute paths are required
+/// (they live outside the opencode project root).
+String composeOpencodeWorkspaceDirectoriesPrompt(Iterable<String> directories) {
+  final dirs = directories
+      .map((d) => d.trim())
+      .where((d) => d.isNotEmpty)
+      .toList(growable: false);
+  if (dirs.isEmpty) return '';
+  final body = StringBuffer(
+    '## Workspace directories\n'
+    'This session can also access the following directories outside the '
+    'project root. Read and edit them using absolute paths.\n',
+  );
+  for (final dir in dirs) {
+    body.writeln('- $dir');
+  }
+  return body.toString();
+}
+
 /// opencode CLI launch: provisions a per-session config dir (`OPENCODE_CONFIG_DIR`)
 /// holding `opencode.json` (provider credentials, member identity via `AGENTS.md`,
 /// and in mixed mode the team-bus idle plugin + teammate-bus MCP server).
@@ -408,12 +463,22 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
       changed = true;
     }
 
+    final workDirs = <String>[
+      for (final dir in ctx.additionalDirectories)
+        if (dir.trim().isNotEmpty) paths.normalizeWork(dir.trim()),
+    ];
+    if (workDirs.isNotEmpty) {
+      config = mergeOpencodeExternalDirectories(config, workDirs);
+      changed = true;
+    }
+
     if (await _writeMemberIdentity(
       paths: paths,
       opencodeDir: opencodeDir,
       member: member,
       forceTeamLeadDelegateMode: team?.forceTeamLeadDelegateMode ?? false,
       mixed: mixed,
+      additionalDirectories: workDirs,
     )) {
       changed = true;
     }
@@ -534,24 +599,34 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
       );
 
   /// Writes member identity to `AGENTS.md`; opencode auto-loads it from the
-  /// config dir as a global instruction. Returns whether anything was written.
+  /// config dir as a global instruction. Appends the workspace additional
+  /// directories section when [additionalDirectories] is non-empty. Returns
+  /// whether anything was written.
   Future<bool> _writeMemberIdentity({
     required ConfigProfileDelegate paths,
     required String opencodeDir,
     required TeamMemberConfig? member,
     required bool forceTeamLeadDelegateMode,
     required bool mixed,
+    List<String> additionalDirectories = const [],
   }) async {
-    if (member == null || !member.isValid) return false;
-    final prompt = MemberRoleProvision.composeRolePrompt(
-      member: member,
-      forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
-      mixed: mixed,
-    ).trim();
-    if (prompt.isEmpty) return false;
+    final prompt = (member != null && member.isValid)
+        ? MemberRoleProvision.composeRolePrompt(
+            member: member,
+            forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
+            mixed: mixed,
+          ).trim()
+        : '';
+    final dirsPrompt =
+        composeOpencodeWorkspaceDirectoriesPrompt(additionalDirectories);
+    final body = <String>[
+      if (prompt.isNotEmpty) prompt,
+      if (dirsPrompt.isNotEmpty) dirsPrompt.trim(),
+    ].join('\n\n');
+    if (body.isEmpty) return false;
     await paths.fs.atomicWrite(
       paths.joinWork(opencodeDir, agentsFileName),
-      '$prompt\n',
+      '$body\n',
     );
     return true;
   }
