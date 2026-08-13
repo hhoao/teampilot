@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 
@@ -13,6 +15,7 @@ import '../../pages/home_workspace/workspace/workspace_chat_landing_voice_bar.da
 import '../../services/workspace_dnd/workspace_drop_target.dart';
 import '../../services/cli/registry/capabilities/skill_invocation_syntax_capability.dart';
 import '../../services/compose/compose_at_file_refs.dart';
+import '../../services/compose/compose_clip.dart';
 import '../../utils/debounce/debounce.dart';
 import 'compose_at_file_chip_row.dart';
 import 'compose_chrome.dart';
@@ -20,6 +23,8 @@ import 'compose_file_drop_region.dart';
 import 'compose_focus_shell.dart';
 import 'compose_menu_chip.dart';
 import 'compose_model_preset_chip.dart';
+import 'compose_paste_clip_bar.dart';
+import 'compose_paste_editor_dialog.dart';
 import 'compose_permission_chip.dart';
 import 'compose_trigger_field.dart';
 
@@ -68,6 +73,7 @@ class WorkspaceComposeCard extends StatelessWidget {
     this.submitBlockedTooltip,
     this.deferFieldMount = false,
     this.onOpenAtFile,
+    this.clip,
     super.key,
   });
 
@@ -103,6 +109,10 @@ class WorkspaceComposeCard extends StatelessWidget {
   final String? submitBlockedTooltip;
   final bool deferFieldMount;
   final ValueChanged<String>? onOpenAtFile;
+
+  /// Optional paste-collapse buffer. When collapsed, a badge bar is rendered
+  /// above the field and canSubmit/submit/references account for the block.
+  final ComposeClip? clip;
 
   bool get _composeEnabled => switch (chrome) {
     BoundComposeChrome(:final composeEnabled) => composeEnabled,
@@ -177,11 +187,31 @@ class WorkspaceComposeCard extends StatelessWidget {
           children: [
             if (chrome is BoundComposeChrome)
               ..._launchErrorBanner(context, chrome, spacing),
+            if (clip != null)
+              ListenableBuilder(
+                listenable: clip!,
+                builder: (context, _) {
+                  if (!clip!.collapsed) return const SizedBox.shrink();
+                  return Padding(
+                    padding: EdgeInsets.only(bottom: spacing.md),
+                    child: ComposePasteClipBar(
+                      clip: clip!,
+                      onEdit: () =>
+                          unawaited(showComposePasteEditor(context, clip!)),
+                      onRemove: clip!.clear,
+                    ),
+                  );
+                },
+              ),
             ListenableBuilder(
-              listenable: controller,
+              listenable: Listenable.merge([
+                controller,
+                if (clip != null) clip!,
+              ]),
               builder: (context, _) {
                 final refs = parseComposeAtFileRefs(
-                  controller.text,
+                  clip?.composeMessage(controller.text) ??
+                      controller.text,
                   workspaceRoot: workspaceRoot,
                 );
                 if (refs.isEmpty) return const SizedBox.shrink();
@@ -197,9 +227,14 @@ class WorkspaceComposeCard extends StatelessWidget {
             field,
             SizedBox(height: spacing.md),
             ListenableBuilder(
-              listenable: controller,
+              listenable: Listenable.merge([
+                controller,
+                if (clip != null) clip!,
+              ]),
               builder: (context, _) {
-                final hasText = controller.text.trim().isNotEmpty;
+                final hasText =
+                    controller.text.trim().isNotEmpty ||
+                    (clip?.collapsed ?? false);
                 return Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: isVoiceListening

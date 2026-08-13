@@ -3,8 +3,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/config_bundle.dart';
+import 'package:teampilot/services/compose/compose_clip.dart';
 import 'package:teampilot/services/compose/compose_file_drop_ingestor.dart';
 import 'package:teampilot/widgets/compose/compose_at_file_chip_row.dart';
+import 'package:teampilot/widgets/compose/compose_paste_clip_bar.dart';
 import 'package:teampilot/widgets/compose/compose_chrome.dart';
 import 'package:teampilot/widgets/compose/compose_file_drop_region.dart';
 import 'package:teampilot/widgets/compose/compose_trigger_field.dart';
@@ -17,6 +19,7 @@ void main() {
     TextEditingController? controller,
     FocusNode? focusNode,
     ValueChanged<String>? onOpenAtFile,
+    ComposeClip? clip,
   }) {
     final resolvedController = controller ?? TextEditingController();
     if (controller == null) addTearDown(resolvedController.dispose);
@@ -60,6 +63,7 @@ void main() {
           slashBundle: const ConfigBundle(),
           deferFieldMount: deferFieldMount,
           onOpenAtFile: onOpenAtFile,
+          clip: clip,
         ),
       ),
     );
@@ -187,6 +191,40 @@ void main() {
 
     expect(find.byIcon(Icons.arrow_upward_rounded), findsOneWidget);
     expect(find.byIcon(Icons.mic_none_outlined), findsNothing);
+  });
+
+  testWidgets('renders paste clip bar only while clip is collapsed', (
+    tester,
+  ) async {
+    final clip = ComposeClip();
+    addTearDown(clip.dispose);
+
+    await tester.pumpWidget(
+      pumpCard(chrome: unboundChrome, clip: clip),
+    );
+    expect(find.byType(ComposePasteClipBar), findsNothing);
+
+    clip.setPasted('a\nb\nc');
+    await tester.pump();
+    expect(find.byType(ComposePasteClipBar), findsOneWidget);
+    expect(find.textContaining('3 lines'), findsOneWidget);
+
+    clip.clear();
+    await tester.pump();
+    expect(find.byType(ComposePasteClipBar), findsNothing);
+  });
+
+  testWidgets('at-file chips scan the collapsed block text', (tester) async {
+    final clip = ComposeClip();
+    addTearDown(clip.dispose);
+
+    await tester.pumpWidget(
+      pumpCard(chrome: unboundChrome, clip: clip),
+    );
+    clip.setPasted('see @lib/main.dart inside the block');
+    await tester.pump();
+
+    expect(find.byType(ComposeAtFileChipRow), findsOneWidget);
   });
 }
 
