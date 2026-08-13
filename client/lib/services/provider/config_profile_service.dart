@@ -3,6 +3,7 @@ import 'package:path/path.dart' as p;
 import '../../models/config_bundle.dart';
 import '../../models/cli_preset.dart';
 import '../../models/extension_manifest.dart';
+import '../../models/hook_entry.dart';
 import '../../models/plugin.dart';
 import '../../models/skill.dart';
 import '../../models/team_config.dart';
@@ -37,6 +38,7 @@ import '../cli/registry/capabilities/cli_config_layout_capability.dart';
 import '../cli/registry/capabilities/cli_session_lifecycle_capability.dart';
 import '../storage/app_storage.dart';
 import '../cli/preset_resolver.dart';
+import '../hook/hook_library_resolver.dart';
 import 'config_profile_infrastructure.dart';
 
 export '../cli/registry/config_profile/config_profile_context.dart';
@@ -618,6 +620,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     List<String> additionalDirectories = const [],
     MemberBusIdleEndpoint? busIdle,
     MemberAgentStatusEndpoint? agentStatus,
+    List<HookEntry> hooks = const [],
   }) async {
     final trimmedWorkspaceId = workspaceId.trim();
     final trimmedSessionId = sessionId.trim();
@@ -661,6 +664,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
           catalog: catalog,
           busIdle: busIdle,
           agentStatus: agentStatus,
+          hooks: hooks,
         ),
       );
     } on Object catch (e, st) {
@@ -725,6 +729,10 @@ class ConfigProfileService implements ConfigProfileDelegate {
       'ops=${manifest.entries.length}',
     );
     final contributeSw = Stopwatch()..start();
+    final hooksResult = await HookLibraryResolver(
+      fs: readDelegate,
+      teampilotRoot: workTeampilotRoot,
+    ).resolve(runtimeBundle.hookIds);
     final outcome = await staging.contributeSimpleSessionLaunch(
       workspaceId: workspaceId,
       sessionId: sessionId,
@@ -733,6 +741,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
       additionalDirectories: additionalDirectories,
       busIdle: busIdle,
       agentStatus: agentStatus,
+      hooks: hooksResult.entries,
     );
     appLogger.d(
       '[session-launch] stage-simple contribute '
@@ -742,7 +751,11 @@ class ConfigProfileService implements ConfigProfileDelegate {
     return (
       outcome: TeamLaunchOutcome(
         environment: outcome.environment,
-        warnings: [...fsWarnings, ...outcome.warnings],
+        warnings: [
+          ...fsWarnings,
+          ...hooksResult.warnings,
+          ...outcome.warnings,
+        ],
       ),
       manifest: manifest,
     );
@@ -914,6 +927,12 @@ class ConfigProfileService implements ConfigProfileDelegate {
       );
     }
 
+    final hooksResult = await HookLibraryResolver(
+      fs: readDelegate,
+      teampilotRoot: workTeampilotRoot,
+    ).resolve(runtimeBundle.hookIds);
+    warnings.addAll(hooksResult.warnings);
+
     ConfigProfileLaunchContribution contribution;
     try {
       contribution = await cap.contributeLaunch(
@@ -933,6 +952,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
           busIdle: busIdle,
           agentStatus: agentStatus,
           memberId: memberId,
+          hooks: hooksResult.entries,
         ),
       );
     } on Object catch (e, st) {

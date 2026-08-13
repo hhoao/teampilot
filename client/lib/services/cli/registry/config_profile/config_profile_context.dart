@@ -1,6 +1,7 @@
 import 'package:path/path.dart' as p;
 
 import '../../../../models/cli_preset.dart';
+import '../../../../models/hook_entry.dart';
 import '../../../../models/discoverable_member.dart';
 import '../../../../models/team_config.dart';
 import '../../../io/filesystem.dart';
@@ -163,6 +164,7 @@ class ConfigProfileLaunchContext {
     this.memberId,
     this.sessionExpertKey,
     this.resolvedExpert,
+    this.hooks = const [],
   });
 
   final String workspaceId;
@@ -190,6 +192,9 @@ class ConfigProfileLaunchContext {
   final String? memberId;
   final String? sessionExpertKey;
   final DiscoverableMember? resolvedExpert;
+
+  /// 该 seat 生效的用户 hook 条目（staging 按 runtimeBundle.hookIds 解析）。
+  final List<HookEntry> hooks;
 
   bool get crossMachine => configProfileCrossMachine(catalog, paths);
 
