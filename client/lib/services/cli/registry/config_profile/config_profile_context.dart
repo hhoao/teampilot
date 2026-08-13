@@ -4,6 +4,7 @@ import '../../../../models/cli_preset.dart';
 import '../../../../models/hook_entry.dart';
 import '../../../../models/discoverable_member.dart';
 import '../../../../models/team_config.dart';
+import '../../../extension/extension_provisioner.dart';
 import '../../../io/filesystem.dart';
 import '../../../host/host_execution_environment.dart';
 import '../../../provider/provider_catalog_access.dart';
@@ -94,12 +95,6 @@ abstract interface class ConfigProfileDelegate implements ConfigProfilePaths {
     String? workspaceId,
   });
 
-  Future<bool> hasEnabledExtensionSettingsHooks(
-    String tool, {
-    String? teamId,
-    String? workspaceId,
-  });
-
   Future<Map<String, Object?>> applyExtensionSettings(
     Map<String, Object?> settings,
     String? memberToolDir, {
@@ -108,8 +103,29 @@ abstract interface class ConfigProfileDelegate implements ConfigProfilePaths {
     String? workspaceId,
   });
 
+  /// Renders every enabled, ready extension's `settings-hook` effects into
+  /// [HookEntry]-backed specs (scripts provisioned under [memberToolDir]).
+  /// Consumed by the unified hook writer render at the member-profile
+  /// assembly points (Task 18 convergence).
+  Future<List<ExtensionSettingsHook>> extensionSettingsHooks(
+    String? memberToolDir, {
+    required String tool,
+    String? teamId,
+    String? workspaceId,
+  });
+
   Future<Map<String, Object?>> maybeApplyTeamLeadHooks(
     Map<String, Object?> settings,
+    TeamMemberConfig member,
+    String memberToolDir, {
+    required bool forceTeamLeadDelegateMode,
+  });
+
+  /// Provisioned team-lead delegate-only PreToolUse hook command (script
+  /// written under [memberToolDir]), or null when [member] is not the team
+  /// lead or delegate mode is off. The assembly point folds it into the
+  /// unified hook writer render (Task 18 convergence).
+  Future<String?> resolveTeamLeadDelegateHookCommand(
     TeamMemberConfig member,
     String memberToolDir, {
     required bool forceTeamLeadDelegateMode,

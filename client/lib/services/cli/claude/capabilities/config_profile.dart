@@ -771,10 +771,27 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       settings,
       mixed: mixed,
     );
-    // 收敛：内部托管 hook（agent-status / bus idle）经 HookSeatContextCompleter
-    // 组装为 managed HookEntry，与 userHooks 一起走统一 writer 渲染。
+    // 收敛：内部托管 hook（agent-status / bus idle / team-lead delegate /
+    // 扩展 settings-hook）经 HookSeatContextCompleter 组装为 HookEntry，
+    // 与 userHooks 一起走统一 writer 渲染。
     const completer = HookSeatContextCompleter();
-    final managedEntries = <HookEntry>[
+    final delegateCommand = await delegate.resolveTeamLeadDelegateHookCommand(
+      member,
+      memberToolDir,
+      forceTeamLeadDelegateMode: isLead && forceTeamLeadDelegateMode,
+    );
+    final extensionHooks = await delegate.extensionSettingsHooks(
+      memberToolDir,
+      tool: toolId,
+      teamId: simple ? null : scope.teamId,
+      workspaceId: simple ? scope.workspaceId : null,
+    );
+    // 优先级（mergeHooksInto 按 (event, url|command) 去重、保留首个）：
+    // managed → delegate → extension → user。Task 18 收敛前 delegate 在
+    // 链尾追加（maybeApplyTeamLeadHooks），扩展在写盘时前置——去重收敛后
+    // delegate/extension 前置保持其"胜出"语义（旧链中两源命令互不碰撞，
+    // 可观察行为不变；分析见 task-18-report.md）。
+    final entries = <HookEntry>[
       if (mixed && busIdle != null)
         ...completer.busIdleHooks(idle: busIdle, memberId: member.id),
       if (agentStatus != null)
@@ -782,6 +799,15 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
           endpoint: agentStatus,
           memberId: member.id,
         ),
+      if (delegateCommand != null)
+        ...completer.delegateHooks(commands: [delegateCommand]),
+      for (final hook in extensionHooks)
+        ...completer.extensionHooks(
+          events: [hook.event],
+          command: hook.command,
+          matcher: hook.matcher,
+        ),
+      ...userHooks,
     ];
     // 迁移期：旧 merge 保留行为的同时并入 Registry 资产渲染。
     // busIdle 占位资产（无 url）在装配点用运行时 endpoint 补全（依赖反转端到端）。
@@ -809,10 +835,10 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     final hookWriter = CliToolRegistry.builtIn().capability<HookWriterCapability>(
       CliTool.claude,
     );
-    if (hookWriter != null && (managedEntries.isNotEmpty || userHooks.isNotEmpty)) {
+    if (hookWriter != null && entries.isNotEmpty) {
       final hooksDir = delegate.joinWork(memberToolDir, 'hooks');
       final result = hookWriter.render(
-        entries: [...managedEntries, ...userHooks],
+        entries: entries,
         ctx: HookRenderContext(
           hooksDir: hooksDir,
           runner: delegate.hostEnvironmentForProvision().scriptRunner,

@@ -519,7 +519,15 @@ base_url = "https://api.example.com/v1"
       );
       final command =
           ((delegateEntry['hooks'] as List).first as Map)['command'] as String;
-      expect(command, contains('${TeamPilotHookScripts.teamLeadDelegate}.sh'));
+      // Task 18 收敛：delegate hook 走统一 writer（glue 包装，id 前缀）。
+      expect(
+        command,
+        contains('teampilot-hook-teampilot-team-lead-delegate.sh'),
+      );
+      expect(
+        command,
+        isNot(contains('${TeamPilotHookScripts.teamLeadDelegate}.sh')),
+      );
 
       expect(
         await File(
@@ -643,7 +651,11 @@ base_url = "https://api.example.com/v1"
       );
       final command =
           ((delegateEntry['hooks'] as List).first as Map)['command'] as String;
-      expect(command, contains('${TeamPilotHookScripts.teamLeadDelegate}.sh'));
+      // Task 18 收敛：delegate hook 走统一 writer（glue 包装，id 前缀）。
+      expect(
+        command,
+        contains('teampilot-hook-teampilot-team-lead-delegate.sh'),
+      );
     },
   );
 

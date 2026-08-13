@@ -19,7 +19,6 @@ import '../host/team_pilot_hook_scripts.dart';
 import '../io/filesystem.dart';
 import '../session/member_role_provision.dart';
 import '../storage/app_storage.dart';
-import '../team/team_lead_delegate_settings_merge.dart';
 import '../team/team_lead_settings_merge.dart';
 
 /// Claude / flashskyai global metadata key for per-project trust flags.
@@ -249,16 +248,6 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
   );
 
   @override
-  Future<bool> hasEnabledExtensionSettingsHooks(
-    String tool, {
-    String? teamId,
-    String? workspaceId,
-  }) => _extensionProvisioner(
-    teamId: teamId,
-    workspaceId: workspaceId,
-  ).hasEnabledSettingsHooksForTool(tool);
-
-  @override
   Future<Map<String, Object?>> applyExtensionSettings(
     Map<String, Object?> settings,
     String? memberToolDir, {
@@ -269,6 +258,17 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
     teamId: teamId,
     workspaceId: workspaceId,
   ).applySettings(settings, memberToolDir?.trim() ?? '', tool: tool);
+
+  @override
+  Future<List<ExtensionSettingsHook>> extensionSettingsHooks(
+    String? memberToolDir, {
+    required String tool,
+    String? teamId,
+    String? workspaceId,
+  }) => _extensionProvisioner(
+    teamId: teamId,
+    workspaceId: workspaceId,
+  ).collectSettingsHooks(memberToolDir?.trim() ?? '', tool: tool);
 
   @override
   Future<Map<String, Object?>> maybeApplyTeamLeadHooks(
@@ -283,22 +283,30 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
     final host = hostEnvironmentForProvision();
     final selfTargetProvisioner = _resolveTeamLeadHookProvisioner(host);
     final selfScriptPath = await selfTargetProvisioner.provision(memberToolDir);
-    var merged = const TeamLeadSettingsMerge().mergeIntoSettings(
+    return const TeamLeadSettingsMerge().mergeIntoSettings(
       base: settings,
       hookCommand: selfTargetProvisioner.commandForPath(selfScriptPath),
     );
-    merged = const TeamLeadDelegateSettingsMerge().stripFromSettings(merged);
-    if (forceTeamLeadDelegateMode) {
-      final delegateProvisioner = _resolveTeamLeadDelegateHookProvisioner(host);
-      final delegateScriptPath = await delegateProvisioner.provision(
-        memberToolDir,
-      );
-      merged = const TeamLeadDelegateSettingsMerge().mergeIntoSettings(
-        base: merged,
-        hookCommand: delegateProvisioner.commandForPath(delegateScriptPath),
-      );
+  }
+
+  @override
+  Future<String?> resolveTeamLeadDelegateHookCommand(
+    TeamMemberConfig member,
+    String memberToolDir, {
+    required bool forceTeamLeadDelegateMode,
+  }) async {
+    // Task 18 收敛：delegate hook 由装配点产出 managed HookEntry 并入统一
+    // writer（旧 TeamLeadDelegateSettingsMerge.merge/strip 装配逻辑删除，
+    // 纯构建函数保留给既有单测）。脚本 provision 副作用与旧流程一致。
+    if (!forceTeamLeadDelegateMode || !TeamMemberNaming.isTeamLead(member)) {
+      return null;
     }
-    return merged;
+    final host = hostEnvironmentForProvision();
+    final delegateProvisioner = _resolveTeamLeadDelegateHookProvisioner(host);
+    final delegateScriptPath = await delegateProvisioner.provision(
+      memberToolDir,
+    );
+    return delegateProvisioner.commandForPath(delegateScriptPath);
   }
 
   @override
@@ -384,13 +392,6 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
         merged['enabledPlugins'] = dirEnabled;
       }
     }
-    merged = await applyExtensionSettings(
-      merged,
-      memberToolDir,
-      tool: tool,
-      teamId: teamId,
-      workspaceId: workspaceId,
-    );
     await _fs.atomicWrite(
       path,
       const JsonEncoder.withIndent('  ').convert(merged),

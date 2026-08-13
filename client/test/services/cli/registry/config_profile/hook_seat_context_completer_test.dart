@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/hook_entry.dart';
 import 'package:teampilot/models/hook_event.dart';
+import 'package:teampilot/models/plugin.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/agent_status/member_agent_status_endpoint.dart';
 import 'package:teampilot/services/cli/registry/config_profile/hook_seat_context_completer.dart';
@@ -78,5 +79,55 @@ void main() {
       expect(http.url, idle.url);
       expect(http.headers, {'X-Member': 'm1', 'X-Session': 's', 'X-Bus-Token': 't'});
     }
+  });
+
+  test('delegate hooks become managed preToolUse entries', () {
+    final entries = completer.delegateHooks(
+      commands: ['/s/scripts/team-lead-delegate.sh'],
+    );
+    expect(entries.single.event, HookEvent.preToolUse);
+    expect(entries.single.source, HookSource.managed);
+    final cmd = entries.single.action as CommandHookAction;
+    expect(cmd.command, '/s/scripts/team-lead-delegate.sh');
+  });
+
+  test('extension settings hooks become extension entries', () {
+    final entries = completer.extensionHooks(
+      events: const ['PreToolUse', 'UserPromptSubmit'],
+      command: 'bash /s/ext-hook.sh',
+    );
+    expect(entries.map((e) => e.event), [
+      HookEvent.preToolUse,
+      HookEvent.userPromptSubmit,
+    ]);
+    expect(entries.first.source, HookSource.extension);
+    final cmd = entries.first.action as CommandHookAction;
+    expect(cmd.command, 'bash /s/ext-hook.sh');
+  });
+
+  test('plugin hooks become plugin-source entries aligned to PluginHook fields',
+      () {
+    final entries = completer.pluginHooks(
+      hooks: const [
+        PluginHook(event: 'Stop', matcher: '.*'),
+        PluginHook(event: 'PreToolUse', matcher: 'Bash|Edit'),
+        PluginHook(event: 'NotAnEvent', matcher: '.*'),
+        PluginHook(event: 'postToolUseFailure', matcher: ''),
+      ],
+      command: 'bash /s/plugin-hook.sh',
+    );
+    expect(entries.map((e) => e.event), [
+      HookEvent.stop,
+      HookEvent.preToolUse,
+      HookEvent.postToolUseFailure,
+    ]);
+    for (final entry in entries) {
+      expect(entry.source, HookSource.plugin);
+      final cmd = entry.action as CommandHookAction;
+      expect(cmd.command, 'bash /s/plugin-hook.sh');
+    }
+    expect(entries[0].matcher, '.*');
+    expect(entries[1].matcher, 'Bash|Edit');
+    expect(entries[2].matcher, isNull);
   });
 }

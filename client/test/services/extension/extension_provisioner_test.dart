@@ -156,4 +156,31 @@ void main() {
     );
     expect(await p.applySettings({}, '/member/flashskyai'), {});
   });
+
+  test('collectSettingsHooks: renders hook spec with event/matcher/command',
+      () async {
+    final fs = InMemoryFilesystem();
+    final p = _provisioner(
+      enabled: true,
+      detector: _detectorAllReady(),
+      fs: fs,
+    );
+    final hooks = await p.collectSettingsHooks('/member/flashskyai');
+    expect(hooks, hasLength(1));
+    final hook = hooks.single;
+    expect(hook.event, 'PreToolUse');
+    expect(hook.matcher, 'Bash');
+    expect(hook.command, contains('rtk-rewrite.sh'));
+    final written = await fs.stat('/member/flashskyai/hooks/rtk-rewrite.sh');
+    expect(written.exists, isTrue);
+  });
+
+  test('collectSettingsHooks: no-op when memberToolDir empty', () async {
+    final p = _provisioner(
+      enabled: true,
+      detector: _detectorAllReady(),
+      fs: InMemoryFilesystem(),
+    );
+    expect(await p.collectSettingsHooks(''), isEmpty);
+  });
 }

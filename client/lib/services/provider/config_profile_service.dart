@@ -12,6 +12,7 @@ import '../team_bus/member_bus_idle_endpoint.dart';
 import '../agent_status/member_agent_status_endpoint.dart';
 import '../storage/runtime_layout.dart';
 import '../extension/extension_detector.dart';
+import '../extension/extension_provisioner.dart';
 import '../host/host_execution_environment.dart';
 import '../host/host_script_dialect.dart';
 import '../host/script_file_hook_provisioner.dart';
@@ -1071,17 +1072,6 @@ class ConfigProfileService implements ConfigProfileDelegate {
   );
 
   @override
-  Future<bool> hasEnabledExtensionSettingsHooks(
-    String tool, {
-    String? teamId,
-    String? workspaceId,
-  }) => _infra.hasEnabledExtensionSettingsHooks(
-    tool,
-    teamId: teamId,
-    workspaceId: workspaceId,
-  );
-
-  @override
   Future<Map<String, Object?>> applyExtensionSettings(
     Map<String, Object?> settings,
     String? memberToolDir, {
@@ -1097,6 +1087,19 @@ class ConfigProfileService implements ConfigProfileDelegate {
   );
 
   @override
+  Future<List<ExtensionSettingsHook>> extensionSettingsHooks(
+    String? memberToolDir, {
+    required String tool,
+    String? teamId,
+    String? workspaceId,
+  }) => _infra.extensionSettingsHooks(
+    memberToolDir,
+    tool: tool,
+    teamId: teamId,
+    workspaceId: workspaceId,
+  );
+
+  @override
   Future<Map<String, Object?>> maybeApplyTeamLeadHooks(
     Map<String, Object?> settings,
     TeamMemberConfig member,
@@ -1104,6 +1107,17 @@ class ConfigProfileService implements ConfigProfileDelegate {
     required bool forceTeamLeadDelegateMode,
   }) => _infra.maybeApplyTeamLeadHooks(
     settings,
+    member,
+    memberToolDir,
+    forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
+  );
+
+  @override
+  Future<String?> resolveTeamLeadDelegateHookCommand(
+    TeamMemberConfig member,
+    String memberToolDir, {
+    required bool forceTeamLeadDelegateMode,
+  }) => _infra.resolveTeamLeadDelegateHookCommand(
     member,
     memberToolDir,
     forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,

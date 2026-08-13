@@ -243,18 +243,8 @@ final class FlashskyaiConfigProfileCapability
       ),
       settingsFileName,
     );
-    final memberToolDir = delegate.sessionToolDir(
-      scope.workspaceId,
-      scope.sessionId,
-      toolId,
-      memberId: scope.memberId,
-    );
     final teamDefaults = _teamSettings(effortLevel: effortLevel);
-    if (await _settingsAlreadyCurrent(delegate, file, teamDefaults) &&
-        !await delegate.hasEnabledExtensionSettingsHooks(
-          toolId,
-          teamId: scope.teamId,
-        )) {
+    if (await _settingsAlreadyCurrent(delegate, file, teamDefaults)) {
       return;
     }
     var merged = await _teamSettingsMerged(
@@ -262,12 +252,55 @@ final class FlashskyaiConfigProfileCapability
       file,
       effortLevel: effortLevel,
     );
-    merged = await delegate.applyExtensionSettings(
-      merged,
+    // Task 18 收敛：无 member 的 team settings 路径同样把扩展 settings-hook
+    // 并入统一 writer 渲染（旧 applyExtensionSettings 写盘合并已删除）。
+    final memberToolDir = delegate.sessionToolDir(
+      scope.workspaceId,
+      scope.sessionId,
+      toolId,
+      memberId: scope.memberId,
+    );
+    final extensionHooks = await delegate.extensionSettingsHooks(
       memberToolDir,
       tool: toolId,
       teamId: scope.teamId,
     );
+    const completer = HookSeatContextCompleter();
+    final entries = <HookEntry>[
+      for (final hook in extensionHooks)
+        ...completer.extensionHooks(
+          events: [hook.event],
+          command: hook.command,
+          matcher: hook.matcher,
+        ),
+    ];
+    final hookWriter = CliToolRegistry.builtIn()
+        .capability<HookWriterCapability>(CliTool.flashskyai);
+    if (hookWriter != null && entries.isNotEmpty) {
+      final hooksDir = delegate.joinWork(memberToolDir, 'hooks');
+      final result = hookWriter.render(
+        entries: entries,
+        ctx: HookRenderContext(
+          hooksDir: hooksDir,
+          runner: delegate.hostEnvironmentForProvision().scriptRunner,
+          glueBuilder: const GlueScriptBuilder(),
+        ),
+      );
+      for (final script in result.scripts) {
+        await delegate.fs.writeString(
+          delegate.joinWork(hooksDir, script.fileName),
+          script.content,
+        );
+      }
+      merged = mergeHooksInto(
+        merged,
+        (result.configFragments['settings.json'] as Map<String, Object?>?) ??
+            const <String, Object?>{},
+      );
+      for (final warning in result.warnings) {
+        appLogger.d('[hook-writer] flashskyai $warning');
+      }
+    }
     await delegate.writeJsonIfChanged(file, merged);
   }
 
@@ -318,17 +351,38 @@ final class FlashskyaiConfigProfileCapability
       );
       settings = mergeFlashskyaiStopIdleHook(settings, idleScriptPath);
     }
-    // 收敛：agent-status 内部托管 hook 经 HookSeatContextCompleter 组装为
-    // managed HookEntry，与 userHooks 一起走统一 writer 渲染。
+    // 收敛：agent-status / team-lead delegate / 扩展 settings-hook 内部托管
+    // hook 经 HookSeatContextCompleter 组装为 HookEntry，与 userHooks 一起走
+    // 统一 writer 渲染。
     // （flashskyai bus idle 仍走 command exit-2 脚本通道——HookRunner 忽略
     // http decision:block；Task 19 评估迁移。）
     const completer = HookSeatContextCompleter();
-    final managedEntries = <HookEntry>[
+    final delegateCommand = await delegate.resolveTeamLeadDelegateHookCommand(
+      member,
+      memberToolDir,
+      forceTeamLeadDelegateMode: isLead && forceTeamLeadDelegateMode,
+    );
+    final extensionHooks = await delegate.extensionSettingsHooks(
+      memberToolDir,
+      tool: toolId,
+      teamId: simple ? null : scope.teamId,
+      workspaceId: simple ? scope.workspaceId : null,
+    );
+    final entries = <HookEntry>[
       if (agentStatus != null)
         ...completer.agentStatusHooks(
           endpoint: agentStatus,
           memberId: member.id,
         ),
+      if (delegateCommand != null)
+        ...completer.delegateHooks(commands: [delegateCommand]),
+      for (final hook in extensionHooks)
+        ...completer.extensionHooks(
+          events: [hook.event],
+          command: hook.command,
+          matcher: hook.matcher,
+        ),
+      ...userHooks,
     ];
     // 阶段 1.5 接线：flashskyai 走 command 脚本通道（exit-2 语义），
     // 待 stop_idle_hook 迁移时启用（当前 FlashskyaiCliTool 未挂 HookRegistry，
@@ -348,10 +402,10 @@ final class FlashskyaiConfigProfileCapability
     }
     final hookWriter = CliToolRegistry.builtIn()
         .capability<HookWriterCapability>(CliTool.flashskyai);
-    if (hookWriter != null && (managedEntries.isNotEmpty || userHooks.isNotEmpty)) {
+    if (hookWriter != null && entries.isNotEmpty) {
       final hooksDir = delegate.joinWork(memberToolDir, 'hooks');
       final result = hookWriter.render(
-        entries: [...managedEntries, ...userHooks],
+        entries: entries,
         ctx: HookRenderContext(
           hooksDir: hooksDir,
           runner: delegate.hostEnvironmentForProvision().scriptRunner,

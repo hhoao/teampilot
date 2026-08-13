@@ -9,6 +9,7 @@ import 'package:teampilot/services/cli/session_lifecycle/cli_session_manifest.da
 import 'package:teampilot/services/cli/session_lifecycle/cli_session_manifest_store.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/session_lifecycle.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/session_lifecycle_paths.dart';
+import 'package:teampilot/services/extension/extension_provisioner.dart';
 import 'package:teampilot/services/host/host_execution_environment.dart';
 import 'package:teampilot/services/io/filesystem.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_cli_config_policy.dart';
@@ -304,14 +305,6 @@ final class _TestPaths implements ConfigProfileDelegate {
   }) async {}
 
   @override
-  Future<bool> hasEnabledExtensionSettingsHooks(
-    String tool, {
-    String? teamId,
-    String? workspaceId,
-  }) async =>
-      false;
-
-  @override
   Future<Map<String, Object?>> applyExtensionSettings(
     Map<String, Object?> settings,
     String? memberToolDir, {
@@ -322,6 +315,15 @@ final class _TestPaths implements ConfigProfileDelegate {
       settings;
 
   @override
+  Future<List<ExtensionSettingsHook>> extensionSettingsHooks(
+    String? memberToolDir, {
+    required String tool,
+    String? teamId,
+    String? workspaceId,
+  }) async =>
+      const [];
+
+  @override
   Future<Map<String, Object?>> maybeApplyTeamLeadHooks(
     Map<String, Object?> settings,
     TeamMemberConfig member,
@@ -329,6 +331,14 @@ final class _TestPaths implements ConfigProfileDelegate {
     required bool forceTeamLeadDelegateMode,
   }) async =>
       settings;
+
+  @override
+  Future<String?> resolveTeamLeadDelegateHookCommand(
+    TeamMemberConfig member,
+    String memberToolDir, {
+    required bool forceTeamLeadDelegateMode,
+  }) async =>
+      null;
 
   @override
   Future<String?> resolveAppendSystemPromptPath({

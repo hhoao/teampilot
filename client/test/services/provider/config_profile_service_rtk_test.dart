@@ -102,7 +102,12 @@ void main() {
       expect(pre, isNotEmpty);
       final command =
           ((pre.first as Map)['hooks'] as List).first['command'] as String;
-      expect(command, contains('rtk-rewrite.sh'));
+      // Task 18 收敛：扩展 settings-hook 走统一 writer（glue 包装，id 前缀）。
+      expect(
+        command,
+        contains('teampilot-hook-teampilot-extension-settings-hook-PreToolUse'
+            '.sh'),
+      );
     });
 
     test('emits warning when extension enabled but binary missing', () async {
