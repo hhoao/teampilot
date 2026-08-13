@@ -446,10 +446,22 @@ prefix
     test('isComposerRegionEmpty true when box interior blank', () {
       final lines = List<String>.filled(10, '');
       lines[7] = '                    \u2503';
-      lines[9] = '                    \u2579\u2580\u2580\u2580';
+      lines[9] = '                    \u2579\u2580\u2580\u2580\u2580';
       final grid = _FakeGrid.fromRows(lines);
       final region = locateComposerRegion(grid, opencodeSpec, scanRows: 10)!;
       expect(isComposerRegionEmpty(grid, region, opencodeSpec), isTrue);
+    });
+
+    test('isComposerRegionEmpty false when box holds staged input', () {
+      final lines = List<String>.filled(10, '');
+      lines[6] = '                    \u2503';
+      lines[7] = '                    \u2503  1';
+      lines[8] = '                    \u2503';
+      lines[9] = '                    \u2579\u2580\u2580\u2580';
+      final grid = _FakeGrid.fromRows(lines);
+      final region = locateComposerRegion(grid, opencodeSpec, scanRows: 10)!;
+      expect(isComposerRegionEmpty(grid, region, opencodeSpec), isFalse,
+          reason: 'prefix followed by staged "1" is content, not chrome');
     });
   });
 }

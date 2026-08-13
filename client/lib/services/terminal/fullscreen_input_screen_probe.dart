@@ -596,8 +596,16 @@ bool isComposerRegionEmpty(
     if (bounds == null) continue;
     final text = _logicalText(grid, r, bounds.$1, bounds.$2);
     var isChrome = false;
+    final trimmed = text.trimLeft();
     for (final p in spec.prefixes) {
-      if (text.trimLeft().startsWith(p)) isChrome = true;
+      if (trimmed.startsWith(p)) {
+        // Prefix-only row = chrome; content after the prefix = staged input.
+        if (trimmed.substring(p.length).trim().isEmpty) {
+          isChrome = true;
+          break;
+        }
+        return false;
+      }
     }
     if (isChrome) continue;
     for (final c in spec.border.left) {
