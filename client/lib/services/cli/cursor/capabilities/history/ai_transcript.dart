@@ -249,11 +249,17 @@ bool appendCursorJsonlEvent(
                 ? '${id()}-tool-${toolSeq++}'
                 : 'user-tool-${toolSeq++}';
         final name = '${blockMap['name'] ?? 'tool'}';
+        final input = blockMap['input'];
         toolParts.add(
           AiToolCallPart(
             toolCallId: toolCallId,
             toolName: name,
-            args: _asArgs(blockMap['input']),
+            args: _asArgs(input),
+            // ApplyPatch 是 FREEFORM 工具（本机实测 76 次）：input 为 patch
+            // 原始文本（`*** Begin Patch` / `*** Update File:`），adapter
+            // 保留字符串到 argsText，供 unified-diff codec freeform 分支
+            // 解析（同 codex apply_patch 路径，Task 2）。
+            argsText: input is String ? input : null,
           ),
         );
       case 'tool_result':

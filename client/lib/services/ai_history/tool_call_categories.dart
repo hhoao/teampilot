@@ -93,8 +93,11 @@ const Map<String, AiToolCallCategory> defaultToolCallNameRules = {
   'askuserquestion': AiToolCallCategory.askUser,
   'ask_user_question': AiToolCallCategory.askUser,
   'ask_user': AiToolCallCategory.askUser,
+  'askquestion': AiToolCallCategory.askUser,
+  'question': AiToolCallCategory.askUser,
   // plan
   'plan': AiToolCallCategory.plan,
+  'enterplanmode': AiToolCallCategory.plan,
   'exitplanmode': AiToolCallCategory.plan,
   'exit_plan_mode': AiToolCallCategory.plan,
   // task
@@ -104,6 +107,12 @@ const Map<String, AiToolCallCategory> defaultToolCallNameRules = {
   'task_create': AiToolCallCategory.task,
   'taskupdate': AiToolCallCategory.task,
   'task_update': AiToolCallCategory.task,
+  'taskget': AiToolCallCategory.task,
+  'tasklist': AiToolCallCategory.task,
+  'taskoutput': AiToolCallCategory.task,
+  'taskstop': AiToolCallCategory.task,
+  // other（显式化：真实工具无细分类别，落 other）
+  'skill': AiToolCallCategory.other,
 };
 
 const List<(String, AiToolCallCategory)> defaultToolCallPrefixRules = [

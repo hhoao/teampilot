@@ -84,4 +84,21 @@ void main() {
       );
     }
   });
+
+  test('every CliTool registers non-empty toolCallResolvers via the registry',
+      () {
+    final registry = CliToolRegistry.builtIn();
+    for (final cli in CliTool.values) {
+      final resolvers = registry.toolCallResolvers(cli);
+      expect(resolvers, isNotNull, reason: '$cli');
+      expect(resolvers!.editResolver, isNotNull, reason: '$cli editResolver');
+      expect(resolvers.fileResolver, isNotNull, reason: '$cli fileResolver');
+      expect(resolvers.shellResolver, isNotNull, reason: '$cli shellResolver');
+      expect(
+        resolvers.categoryResolver,
+        isNotNull,
+        reason: '$cli categoryResolver',
+      );
+    }
+  });
 }

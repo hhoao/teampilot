@@ -427,6 +427,109 @@ void main() {
       expect(hunk.addedCount, 1);
       expect(hunk.removedCount, 1);
     });
+
+    // -----------------------------------------------------------------------
+    // FREEFORM argsText (codex apply_patch)
+    // -----------------------------------------------------------------------
+    test('freeform argsText: non-JSON text used as patch (codex apply_patch)',
+        () {
+      final codec = _testCodec();
+      final hunk = codec.encode(
+        _makeToolCall(
+          toolName: 'apply_patch',
+          argsText: '''*** Begin Patch
+*** Update File: lib/foo.dart
+@@ -1,2 +1,3 @@
+-removed
++added
+*** End Patch''',
+        ),
+      );
+      expect(hunk, isNotNull);
+      expect(hunk!.path, 'lib/foo.dart');
+      expect(hunk.removedCount, 1);
+      expect(hunk.addedCount, 1);
+      expect(hunk.lines[0].kind, AiEditLineKind.remove);
+      expect(hunk.lines[0].text, 'removed');
+      expect(hunk.lines[1].kind, AiEditLineKind.add);
+      expect(hunk.lines[1].text, 'added');
+    });
+
+    test('freeform argsText: Add File header path extraction', () {
+      final codec = _testCodec();
+      final hunk = codec.encode(
+        _makeToolCall(
+          toolName: 'apply_patch',
+          argsText: '''*** Begin Patch
+*** Add File: README.md
++hello
+*** End Patch''',
+        ),
+      );
+      expect(hunk, isNotNull);
+      expect(hunk!.path, 'README.md');
+      expect(hunk.addedCount, 1);
+      expect(hunk.removedCount, 0);
+    });
+
+    test('freeform argsText: non-file *** lines (Begin/End Patch) are skipped',
+        () {
+      final codec = _testCodec();
+      final hunk = codec.encode(
+        _makeToolCall(
+          toolName: 'apply_patch',
+          argsText: '''*** Begin Patch
+*** Update File: a.dart
+- x
+*** End Patch
+*** End of File''',
+        ),
+      );
+      expect(hunk, isNotNull);
+      expect(hunk!.path, 'a.dart');
+      expect(hunk.removedCount, 1);
+      expect(hunk.lines.every((l) => l.kind == AiEditLineKind.remove), isTrue);
+    });
+
+    test('freeform argsText: structured args still win over argsText', () {
+      final codec = _testCodec();
+      final hunk = codec.encode(
+        _makeToolCall(
+          toolName: 'ApplyPatch',
+          args: {
+            'file_path': 'explicit.dart',
+            'patch': '-x\n+y',
+          },
+          argsText: '*** Begin Patch\n*** Update File: ignored.dart\n-z\n+w\n*** End Patch',
+        ),
+      );
+      expect(hunk, isNotNull);
+      expect(hunk!.path, 'explicit.dart');
+      expect(hunk.removedCount, 1);
+      expect(hunk.lines[0].text, 'x');
+    });
+
+    test('freeform argsText: JSON argsText is not treated as freeform', () {
+      final codec = _testCodec();
+      final hunk = codec.encode(
+        _makeToolCall(
+          toolName: 'apply_patch',
+          argsText: '{"file_path": "a.dart"}',
+        ),
+      );
+      expect(hunk, isNull);
+    });
+
+    test('freeform argsText: delete-only header produces no hunk', () {
+      final codec = _testCodec();
+      final hunk = codec.encode(
+        _makeToolCall(
+          toolName: 'apply_patch',
+          argsText: '*** Begin Patch\n*** Delete File: gone.dart\n*** End Patch',
+        ),
+      );
+      expect(hunk, isNull);
+    });
   });
 
   // ---------------------------------------------------------------------------
