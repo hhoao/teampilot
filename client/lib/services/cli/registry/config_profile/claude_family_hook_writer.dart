@@ -9,8 +9,9 @@ import '../capabilities/hook_writer_capability.dart';
 
 /// claude / flashskyai 共享的 hook writer：settings.json `hooks` 片段。
 ///
-/// 渲染产物与 [ClaudeFamilyHookRegistry.render] 同构（`{'hooks': {...}}`），
-/// 装配点用 `mergeHooksInto` 幂等并入（按 (event, url|command) 去重）。
+/// 渲染产物为 `{'hooks': {...}}` 片段；装配点用 `mergeHooksInto` 幂等并入
+/// （按 (event, url|command) 去重）。Task 19 后为唯一渲染路径
+/// （旧 ClaudeFamilyHookRegistry.render 资产路径已删除）。
 class ClaudeFamilyHookWriter implements HookWriterCapability {
   const ClaudeFamilyHookWriter({this.denyReason = 'TeamPilot hook policy'});
 

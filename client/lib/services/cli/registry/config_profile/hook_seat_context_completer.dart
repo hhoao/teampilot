@@ -8,8 +8,8 @@ import '../../../team_bus/member_bus_idle_endpoint.dart';
 import 'agent_status_hooks.dart';
 
 /// 把内部托管 hook 组装为 [HookEntry]（source: managed）。
-/// 装配点（各 CLI config_profile）用它替代各自的 mergeAgentStatusHooks /
-/// mergeStopIdleHook，渲染走统一 writer（收敛目标）。
+/// 装配点（各 CLI config_profile）用它组装 managed 条目，渲染走统一 writer
+/// （Task 19 后旧 mergeAgentStatusHooks / mergeStopIdleHook 通道已删除）。
 class HookSeatContextCompleter {
   const HookSeatContextCompleter();
 

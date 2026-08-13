@@ -63,7 +63,6 @@ import 'capabilities/plugin_provisioner.dart';
 import '../registry/resources/default_resource_capability.dart';
 import '../registry/config_profile/claude_family_hook_writer.dart';
 import '../registry/capabilities/hook_writer_capability.dart';
-import '../../team_bus/bus_idle_hooks_capability.dart';
 
 final class FlashskyaiCliTool implements CliToolDefinition {
   const FlashskyaiCliTool({
@@ -105,7 +104,6 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     this.remoteAppData = const NoRemoteAppData(),
     this.credentialExport = const NoCredentialExport(),
     this.toolCallResolvers = const FlashskyaiToolCallResolvers(),
-    this.busIdleHooks = const BusIdleHooksCapability(),
     this.hookWriter = const ClaudeFamilyHookWriter(),
   });
 
@@ -142,7 +140,6 @@ final class FlashskyaiCliTool implements CliToolDefinition {
   final RemoteAppDataCapability remoteAppData;
   final CredentialExportCapability credentialExport;
   final FlashskyaiToolCallResolvers toolCallResolvers;
-  final BusIdleHooksCapability busIdleHooks;
   final HookWriterCapability hookWriter;
   final AskUserQuestionCapability askUserQuestion;
   final ExitPlanModeCapability exitPlanMode;
@@ -198,7 +195,6 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     aiHistory,
     skillSyntax,
     toolCallResolvers,
-    busIdleHooks,
     hookWriter,
   ];
 }

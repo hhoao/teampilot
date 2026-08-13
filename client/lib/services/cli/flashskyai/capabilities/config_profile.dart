@@ -12,8 +12,6 @@ import '../../../agent_status/member_agent_status_endpoint.dart';
 import '../../../team_bus/member_bus_idle_endpoint.dart';
 import '../../registry/config_profile/hook_seat_context_completer.dart';
 import '../../registry/capabilities/claude_family_hook_registry.dart';
-import '../../registry/capabilities/cli_config_asset.dart';
-import '../../registry/capabilities/hook_registry.dart';
 import '../../registry/capabilities/hook_writer_capability.dart';
 import '../../registry/cli_tool_registry.dart';
 import 'stop_idle_hook.dart';
@@ -356,7 +354,7 @@ final class FlashskyaiConfigProfileCapability
     // hook 经 HookSeatContextCompleter 组装为 HookEntry，与 userHooks 一起走
     // 统一 writer 渲染。
     // （flashskyai bus idle 仍走 command exit-2 脚本通道——HookRunner 忽略
-    // http decision:block；Task 19 评估迁移。）
+    // http decision:block；Task 19 评估后保留该通道，未迁移统一 writer。）
     const completer = HookSeatContextCompleter();
     final delegateCommand = await delegate.resolveTeamLeadDelegateHookCommand(
       member,
@@ -386,22 +384,6 @@ final class FlashskyaiConfigProfileCapability
         ),
       ...userHooks,
     ];
-    // 阶段 1.5 接线：flashskyai 走 command 脚本通道（exit-2 语义），
-    // 待 stop_idle_hook 迁移时启用（当前 FlashskyaiCliTool 未挂 HookRegistry，
-    // capability<HookRegistry> 恒 null，本块惰性）。
-    final hookRegistry = CliToolRegistry.builtIn()
-        .capability<HookRegistry>(CliTool.flashskyai);
-    if (hookRegistry != null) {
-      final assets = hookRegistry.assetsFor(_seatContext(scope, member));
-      if (assets.isNotEmpty) {
-        final rendered = hookRegistry.render(assets);
-        settings = mergeHooksInto(
-          settings,
-          (rendered['settings.json'] as Map<String, Object?>?) ??
-              const <String, Object?>{},
-        );
-      }
-    }
     final hookWriter = CliToolRegistry.builtIn()
         .capability<HookWriterCapability>(CliTool.flashskyai);
     if (hookWriter != null && entries.isNotEmpty) {
@@ -444,17 +426,6 @@ final class FlashskyaiConfigProfileCapability
       workspaceId: simple ? scope.workspaceId : null,
     );
   }
-
-  /// 装配点 seat 上下文：从 launch scope 映射（Task 5 提升为共享 seatContextFrom）。
-  static AssetSeatContext _seatContext(
-    LaunchProfileScope scope,
-    TeamMemberConfig member,
-  ) => AssetSeatContext(
-    sessionId: scope.sessionId,
-    teamId: scope.teamId,
-    workspaceId: scope.workspaceId,
-    memberId: scope.memberId ?? member.id,
-  );
 
   Map<String, String> _teamLaunchEnvironment(
     ConfigProfileDelegate delegate,

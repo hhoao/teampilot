@@ -21,11 +21,8 @@ import '../../registry/capabilities/config_profile_capability.dart';
 import '../../../provider/workspace_trust_provisioner.dart';
 import '../../../agent_status/member_agent_status_endpoint.dart';
 import '../../../team_bus/member_bus_idle_endpoint.dart';
-import '../../../team_bus/bus_idle_hooks_capability.dart';
 import '../../registry/config_profile/hook_seat_context_completer.dart';
 import '../../registry/capabilities/claude_family_hook_registry.dart';
-import '../../registry/capabilities/cli_config_asset.dart';
-import '../../registry/capabilities/hook_registry.dart';
 import '../../registry/capabilities/hook_writer_capability.dart';
 import '../../registry/cli_tool_registry.dart';
 import '../../../../utils/logging/logger.dart';
@@ -810,29 +807,9 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
         ),
       ...userHooks,
     ];
-    // 迁移期：旧 merge 保留行为的同时并入 Registry 资产渲染。
-    // busIdle 占位资产（无 url）在装配点用运行时 endpoint 补全（依赖反转端到端）。
-    final hookRegistry = CliToolRegistry.builtIn().capability<HookRegistry>(
-      CliTool.claude,
-    );
-    if (hookRegistry != null) {
-      var assets = hookRegistry.assetsFor(_seatContext(scope, member));
-      if (busIdle != null) {
-        assets = completeBusIdleHooks(
-          assets,
-          idle: busIdle,
-          memberId: member.id,
-        );
-      }
-      if (assets.isNotEmpty) {
-        final rendered = hookRegistry.render(assets);
-        settings = mergeHooksInto(
-          settings,
-          (rendered['settings.json'] as Map<String, Object?>?) ??
-              const <String, Object?>{},
-        );
-      }
-    }
+    // Task 19：旧 CliHookSpec 资产注册路径已删除——managed 条目全部经上方
+    // completer 组装，统一 writer 渲染（bus idle Stop 现带 timeout 5，不再被
+    // 无 timeout 的 registry 资产 Stop 去重压掉）。
     final hookWriter = CliToolRegistry.builtIn().capability<HookWriterCapability>(
       CliTool.claude,
     );
@@ -881,17 +858,6 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       providerSettings,
     );
   }
-
-  /// 装配点 seat 上下文：从 launch scope 映射（Task 5 提升为共享 seatContextFrom）。
-  static AssetSeatContext _seatContext(
-    LaunchProfileScope scope,
-    TeamMemberConfig member,
-  ) => AssetSeatContext(
-    sessionId: scope.sessionId,
-    teamId: scope.teamId,
-    workspaceId: scope.workspaceId,
-    memberId: scope.memberId ?? member.id,
-  );
 
   Future<Map<String, Map<String, Object?>>> _loadMemberProviderSettings({
     required ClaudeProviderSettingsResolver resolver,
