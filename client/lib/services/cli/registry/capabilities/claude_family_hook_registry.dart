@@ -62,6 +62,7 @@ final class ClaudeFamilyHookRegistry extends CliAssetRegistry<CliHookSpec>
   List<GeneratedScript> generateScripts(
     List<CliConfigAsset<CliHookSpec>> assets,
   ) {
+    // 阶段 1.5 未就绪：语义待 flashskyai stop_idle_hook 迁移时重写（见 spec/ledger）。
     // blockOnDecision 的 idle 类钩子：包装 command 并在末尾 exit 2（block，
     // decision:block 语义）。文件名取自 command 引用的脚本（bash <ref>）。
     final scripts = <GeneratedScript>[];

@@ -33,20 +33,6 @@ void main() {
       expect(registry.eventNameMap['stop'], 'Stop');
     });
 
-    test('command hook 生成脚本', () {
-      final scripts = registry.generateScripts([
-        hookAsset(
-          'idle',
-          CliHookSpec(
-            event: 'stop',
-            command: 'bash stop-idle.sh',
-            blockOnDecision: true,
-          ),
-        ),
-      ]);
-      expect(scripts, isNotEmpty);
-    });
-
     test('占位 spec（无 url/command）跳过渲染，不产生空条目', () {
       final out = registry.render([
         hookAsset(

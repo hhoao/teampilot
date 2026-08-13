@@ -313,8 +313,9 @@ final class FlashskyaiConfigProfileCapability
     if (agentStatus != null) {
       settings = mergeAgentStatusHooks(settings, member.id, agentStatus);
     }
-    // 迁移期：旧 merge 保留行为的同时并入 Registry 资产渲染
-    // （Task 5 移除旧 merge，改由能力声明 + ctx.hookRegistry 注入驱动）。
+    // 阶段 1.5 接线：flashskyai 走 command 脚本通道（exit-2 语义），
+    // 待 stop_idle_hook 迁移时启用（当前 FlashskyaiCliTool 未挂 HookRegistry，
+    // capability<HookRegistry> 恒 null，本块惰性）。
     final hookRegistry = CliToolRegistry.builtIn()
         .capability<HookRegistry>(CliTool.flashskyai);
     if (hookRegistry != null) {

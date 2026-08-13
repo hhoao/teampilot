@@ -39,7 +39,3 @@ class AssetSeatContext {
   final String workspaceId;
   final String memberId;
 }
-
-/// 冲突定义：同 kind + 同 id + 同 scope。
-bool isAssetConflict<T>(CliConfigAsset<T> a, CliConfigAsset<T> b) =>
-    a.kind == b.kind && a.id == b.id && a.scope == b.scope;
