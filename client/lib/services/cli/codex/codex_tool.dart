@@ -61,7 +61,9 @@ import '../registry/capabilities/turn_interrupt_capability.dart';
 import 'capabilities/tool_call_resolvers.dart';
 import 'capabilities/mcp_config_writer.dart';
 import 'capabilities/plugin_provisioner.dart';
+import 'capabilities/prompt_provision.dart';
 import '../registry/resources/default_resource_capability.dart';
+import '../registry/capabilities/prompt_provision_capability.dart';
 
 final class CodexCliTool implements CliToolDefinition {
   CodexCliTool({
@@ -92,6 +94,7 @@ final class CodexCliTool implements CliToolDefinition {
     this.exitPlanMode = const NoExitPlanModeCapability(),
     this.aiHistory = const CodexAiHistoryCapability(),
     this.skillSyntax = const CodexSkillInvocationSyntaxCapability(),
+    this.promptProvision = const CodexPromptProvisionCapability(),
     this.turnCompletion = const CodexTurnCompletion(),
     this.waitBeforeStop = const DefaultWaitBeforeStop(),
     this.providerDisplay = const CodexProviderDisplay(),
@@ -146,6 +149,7 @@ final class CodexCliTool implements CliToolDefinition {
   final ExitPlanModeCapability exitPlanMode;
   final CodexAiHistoryCapability aiHistory;
   final SkillInvocationSyntaxCapability skillSyntax;
+  final PromptProvisionCapability promptProvision;
 
   @override
   CliTool get id => CliTool.codex;
@@ -191,6 +195,7 @@ final class CodexCliTool implements CliToolDefinition {
     exitPlanMode,
     aiHistory,
     skillSyntax,
+    promptProvision,
     toolCallResolvers,
   ];
 }

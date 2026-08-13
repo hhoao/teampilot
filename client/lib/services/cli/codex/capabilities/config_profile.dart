@@ -19,19 +19,23 @@ import '../../../launch/work_plane_paths.dart';
 import '../../../host/host_script_runner.dart';
 import '../../../io/filesystem.dart';
 import '../../../provider/workspace_trust_provisioner.dart';
-import '../../../session/member_role_provision.dart';
 import '../../../team_bus/member_bus_idle_endpoint.dart';
 import '../../../../utils/workspace/trusted_project_paths.dart';
 import '../../registry/capabilities/config_profile_capability.dart';
+import '../../registry/capabilities/prompt_provision_capability.dart';
+import 'prompt_provision.dart';
 
 /// Codex CLI launch: provisions provider `auth.json` + `config.toml` under
 /// per-member [CODEX_HOME], optional team-bus overlay in mixed mode, and
 /// member identity in `AGENTS.md`.
 final class CodexConfigProfileCapability implements ConfigProfileCapability {
-  const CodexConfigProfileCapability();
+  const CodexConfigProfileCapability({
+    this.promptProvision = const CodexPromptProvisionCapability(),
+  });
 
   static const toolId = 'codex';
-  static const agentsFileName = 'AGENTS.md';
+
+  final PromptProvisionCapability promptProvision;
 
   @override
   Future<void> ensureSessionProfile(ConfigProfileSessionContext ctx) async {}
@@ -178,18 +182,17 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
       }
     }
 
-    if (member != null && member.isValid) {
-      final prompt = MemberRoleProvision.composeRolePrompt(
+    final promptContribution = await promptProvision.provision(
+      PromptProvisionContext(
+        paths: paths,
+        scope: ctx.scope,
         member: member,
         forceTeamLeadDelegateMode: team?.forceTeamLeadDelegateMode ?? false,
         mixed: mixed,
-      ).trim();
-      if (prompt.isNotEmpty) {
-        await paths.fs.atomicWrite(
-          paths.joinWork(codexHome, agentsFileName),
-          '$prompt\n',
-        );
-      }
+      ),
+    );
+    if (promptContribution.written) {
+      // AGENTS.md written; no transport env for codex.
     }
 
     return ConfigProfileLaunchContribution(
