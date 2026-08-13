@@ -68,6 +68,8 @@ import 'capabilities/credential_binding.dart';
 import '../registry/resources/default_resource_capability.dart';
 import '../registry/capabilities/hook_registry.dart';
 import '../registry/capabilities/claude_family_hook_registry.dart';
+import '../registry/config_profile/claude_family_hook_writer.dart';
+import '../registry/capabilities/hook_writer_capability.dart';
 import '../../team_bus/bus_idle_hooks_capability.dart';
 
 final class ClaudeCliTool implements CliToolDefinition {
@@ -115,12 +117,15 @@ final class ClaudeCliTool implements CliToolDefinition {
     this.busIdleHooks = const BusIdleHooksCapability(),
     ProviderCredentialCapability? providerCredential,
     HookRegistry? hookRegistry,
+    HookWriterCapability? hookWriter,
   }) : providerCredential =
            providerCredential ?? ClaudeProviderCredentialCapability(),
-       hookRegistry = hookRegistry ?? ClaudeFamilyHookRegistry();
+       hookRegistry = hookRegistry ?? ClaudeFamilyHookRegistry(),
+       hookWriter = hookWriter ?? const ClaudeFamilyHookWriter();
 
   final ProviderCredentialCapability providerCredential;
   final HookRegistry hookRegistry;
+  final HookWriterCapability hookWriter;
   final BusIdleHooksCapability busIdleHooks;
   final ProviderFormCapability providerForm;
 
@@ -214,6 +219,7 @@ final class ClaudeCliTool implements CliToolDefinition {
     toolCallResolvers,
     credentialBinding,
     hookRegistry,
+    hookWriter,
     busIdleHooks,
   ];
 }

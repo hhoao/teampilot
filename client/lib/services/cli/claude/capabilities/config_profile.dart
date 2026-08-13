@@ -3,6 +3,7 @@ import 'dart:convert';
 import '../../../../models/credential_link_result.dart';
 import '../../../../models/cli_preset.dart';
 import '../../../../models/team_config.dart';
+import '../../../../models/hook_entry.dart';
 import '../../../../repositories/cli_presets_repository.dart';
 import '../../../../utils/team/team_member_naming.dart';
 import '../provider/claude_effort_capability.dart';
@@ -26,8 +27,10 @@ import '../../registry/config_profile/bus_idle_stop_hook.dart';
 import '../../registry/capabilities/claude_family_hook_registry.dart';
 import '../../registry/capabilities/cli_config_asset.dart';
 import '../../registry/capabilities/hook_registry.dart';
+import '../../registry/capabilities/hook_writer_capability.dart';
 import '../../registry/cli_tool_registry.dart';
 import '../../../../utils/logging/logger.dart';
+import '../../../hook/glue_script_builder.dart';
 
 void _logClaudeContributeLaunchStep(
   Stopwatch sw,
@@ -301,6 +304,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       simple: simple,
       busIdle: ctx.busIdle,
       agentStatus: ctx.agentStatus,
+      userHooks: ctx.hooks,
     );
     if (stepSw != null) {
       _logClaudeContributeLaunchStep(stepSw, 'writeMemberProfiles', sessionId);
@@ -682,6 +686,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     bool simple = false,
     MemberBusIdleEndpoint? busIdle,
     MemberAgentStatusEndpoint? agentStatus,
+    List<HookEntry> userHooks = const [],
   }) async {
     final selected = launchedMember;
     final uniqueMembers = <String, TeamMemberConfig>{};
@@ -707,6 +712,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
         simple: simple,
         busIdle: busIdle,
         agentStatus: agentStatus,
+        userHooks: userHooks,
       );
     }
   }
@@ -722,6 +728,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     bool simple = false,
     MemberBusIdleEndpoint? busIdle,
     MemberAgentStatusEndpoint? agentStatus,
+    List<HookEntry> userHooks = const [],
   }) async {
     final memberToolDir = delegate.sessionToolDir(
       scope.workspaceId,
@@ -792,6 +799,34 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
           (rendered['settings.json'] as Map<String, Object?>?) ??
               const <String, Object?>{},
         );
+      }
+    }
+    final hookWriter = CliToolRegistry.builtIn().capability<HookWriterCapability>(
+      CliTool.claude,
+    );
+    if (hookWriter != null && userHooks.isNotEmpty) {
+      final hooksDir = delegate.joinWork(memberToolDir, 'hooks');
+      final result = hookWriter.render(
+        entries: userHooks,
+        ctx: HookRenderContext(
+          hooksDir: hooksDir,
+          runner: delegate.hostEnvironmentForProvision().scriptRunner,
+          glueBuilder: const GlueScriptBuilder(),
+        ),
+      );
+      for (final script in result.scripts) {
+        await delegate.fs.writeString(
+          delegate.joinWork(hooksDir, script.fileName),
+          script.content,
+        );
+      }
+      settings = mergeHooksInto(
+        settings,
+        (result.configFragments['settings.json'] as Map<String, Object?>?) ??
+            const <String, Object?>{},
+      );
+      for (final warning in result.warnings) {
+        appLogger.d('[hook-writer] claude $warning');
       }
     }
     settings = await delegate.maybeApplyTeamLeadHooks(
