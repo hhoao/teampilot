@@ -5940,23 +5940,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get worktreeBranchLabel => 'Branch name';
 
   @override
-  String get worktreeModeNewBranch => 'New branch';
-
-  @override
-  String get worktreeModeExistingBranch => 'Existing branch';
-
-  @override
-  String get worktreeBaseRefLabel => 'Base (optional)';
-
-  @override
-  String get worktreeBaseRefHint => 'Defaults to current HEAD';
-
-  @override
   String get worktreePathLabel => 'Location';
-
-  @override
-  String get worktreeStartConversation =>
-      'Start a conversation here after creating';
 
   @override
   String get worktreeCreateAction => 'Create';

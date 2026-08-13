@@ -10628,41 +10628,11 @@ abstract class AppLocalizations {
   /// **'Branch name'**
   String get worktreeBranchLabel;
 
-  /// No description provided for @worktreeModeNewBranch.
-  ///
-  /// In en, this message translates to:
-  /// **'New branch'**
-  String get worktreeModeNewBranch;
-
-  /// No description provided for @worktreeModeExistingBranch.
-  ///
-  /// In en, this message translates to:
-  /// **'Existing branch'**
-  String get worktreeModeExistingBranch;
-
-  /// No description provided for @worktreeBaseRefLabel.
-  ///
-  /// In en, this message translates to:
-  /// **'Base (optional)'**
-  String get worktreeBaseRefLabel;
-
-  /// No description provided for @worktreeBaseRefHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Defaults to current HEAD'**
-  String get worktreeBaseRefHint;
-
   /// No description provided for @worktreePathLabel.
   ///
   /// In en, this message translates to:
   /// **'Location'**
   String get worktreePathLabel;
-
-  /// No description provided for @worktreeStartConversation.
-  ///
-  /// In en, this message translates to:
-  /// **'Start a conversation here after creating'**
-  String get worktreeStartConversation;
 
   /// No description provided for @worktreeCreateAction.
   ///
