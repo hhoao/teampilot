@@ -32,7 +32,6 @@ services/cli/{cli_name}/
     headless_provision.dart         # HeadlessProvisionCapability
     mcp_config_writer.dart          # McpConfigWriterCapability
     plugin_provisioner.dart         # PluginProvisionerCapability
-    resume_strategy.dart            # SessionResumeCapability
     provider_catalog.dart           # ProviderCatalogCapability（含 defaultOfficialProviderId）
     history/                        # AiHistoryCapability 相关
       ai_history_capability.dart    # 该 CLI 的 AiHistoryCapability 实现
@@ -61,41 +60,44 @@ ProviderForm / CredentialBinding 能力引用；不要在 `widgets/` 下散落 `
 
 ### 共享基础设施
 
-`services/cli/registry/` 目录只保留能力接口定义、解析引擎和**跨 CLI 共享基础设施**，**不包含任何 CLI 特定实现**：
+`services/cli/` 根下的共享辅助（`cli_tool_adapter.dart`、`cli_executable_discovery.dart`）与
+`services/cli/registry/` 共同构成**跨 CLI 共享基础设施**；`registry/` 只保留能力接口定义、
+解析引擎和共享子目录，**不包含任何 CLI 特定实现**：
 
 ```
-registry/
-  cli_capability.dart               # CliCapability marker 接口
-  cli_tool_definition.dart          # CliToolDefinition 抽象接口
-  cli_tool_registry.dart            # 能力解析引擎
-  built_in_cli_tools.dart           # 注册函数 + 必需能力 assert 校验
-  cli_bootstrap.dart                # 运行时服务注入（Map 驱动）
+services/cli/
   cli_tool_adapter.dart             # LaunchArgs 共享辅助（参数切分、路径归一化）
   cli_executable_discovery.dart     # 可执行文件发现（共享）
-  capabilities/                     # 所有能力接口定义
-    launch_args_capability.dart
-    config_profile_capability.dart
-    wait_before_stop_capability.dart
-    provider_display_capability.dart
-    cli_config_ui_capability.dart
-    mcp_config_writer_capability.dart
-    installer_capability.dart
-    headless_run_capability.dart
-    headless_provision_capability.dart
-    plugin_provisioner_capability.dart
-    provider_credential_capability.dart
-    provider_model_capability.dart
-    credential_binding_capability.dart
-    session_resume_capability.dart
-    bus_transport_capability.dart
-    turn_completion_capability.dart
-    ...
-  config_profile/                   # 共享：config profile 作用域 / agent 状态钩子
-  headless/                         # 共享：无头供给支撑
-  installer/                        # 共享：npm / node / termux 安装策略
-  mcp_writers/                      # 共享：MCP 元数据合并
-  plugins/                          # 共享：claude-flavor 插件注册表写入器
-  resources/                        # 共享：默认 ResourceCapability
+  registry/
+    cli_capability.dart             # CliCapability marker 接口
+    cli_tool_definition.dart        # CliToolDefinition 抽象接口
+    cli_tool_registry.dart          # 能力解析引擎
+    built_in_cli_tools.dart         # 注册函数 + 必需能力 assert 校验
+    cli_bootstrap.dart              # 运行时服务注入（Map 驱动）
+    capabilities/                   # 所有能力接口定义
+      launch_args_capability.dart
+      config_profile_capability.dart
+      wait_before_stop_capability.dart
+      provider_display_capability.dart
+      cli_config_ui_capability.dart
+      mcp_config_writer_capability.dart
+      installer_capability.dart
+      headless_run_capability.dart
+      headless_provision_capability.dart
+      plugin_provisioner_capability.dart
+      provider_credential_capability.dart
+      provider_model_capability.dart
+      credential_binding_capability.dart
+      session_resume_capability.dart
+      bus_transport_capability.dart
+      turn_completion_capability.dart
+      ...
+    config_profile/                 # 共享：config profile 作用域 / agent 状态钩子
+    headless/                       # 共享：无头供给支撑
+    installer/                      # 共享：npm / node / termux 安装策略
+    mcp_writers/                    # 共享：MCP 元数据合并
+    plugins/                        # 共享：claude-flavor 插件注册表写入器
+    resources/                      # 共享：默认 ResourceCapability
 ```
 
 共享基础设施（如被 Claude/FlashskyAI/Cursor 共用的 `plugins/claude_flavor_registry_writer.dart`）
@@ -472,6 +474,7 @@ for (final def in CliToolRegistry.builtIn().launchable)
 | `CliEffortCapability` | `registry/capabilities/cli_effort_capability.dart` | 服务 | - |
 | `ResourceCapability` | `registry/capabilities/resource_capability.dart` | 标记 | - |
 | `AiHistoryCapability` | `registry/capabilities/ai_history_capability.dart` | 服务 | - |
+| `ToolCallResolversCapability` | `registry/capabilities/tool_call_resolver_capability.dart` | 服务 | - |
 | `SkillInvocationSyntaxCapability` | `registry/capabilities/skill_invocation_syntax_capability.dart` | 标记 | - |
 | `AgentStatusNormalizerCapability` | `registry/capabilities/agent_status_normalizer_capability.dart` | 服务 | ✅ |
 | `HistoryContextEnvCapability` | `registry/capabilities/history_context_env_capability.dart` | 服务 | ✅ |
@@ -480,6 +483,63 @@ for (final def in CliToolRegistry.builtIn().launchable)
 | `CredentialExportCapability` | `registry/capabilities/credential_export_capability.dart` | 服务 | ✅ |
 | `RemoteAppDataCapability` | `registry/capabilities/remote_app_data_capability.dart` | 服务 | ✅ |
 | `CredentialBindingCapability` | `registry/capabilities/credential_binding_capability.dart` | 服务 | - |
+
+## 消息与工具调用解析接入点
+
+transcript 历史与工具气泡的解析链路按**三层职责**组织，详见
+[docs/tool-call-parsing-convention.md](tool-call-parsing-convention.md)：
+
+| 层 | 位置 | 职责 |
+|----|------|------|
+| **纯接口 + 数据** | `client/packages/ai_message_core` | `AiToolCallPart` / `AiEditHunk` / `AiEditHunkCodec` 等接口与数据类型，零实现、零 tool name 硬编码 |
+| **可配置泛型实现** | `client/lib/services/ai_history/` | `Configurable*` resolver / edit codec / 类别表，配置经构造函数注入 |
+| **每 CLI 具体配置** | `client/lib/services/cli/<cli>/capabilities/` | 各 CLI 的 resolver 配置与 history 实现（共享基线在 `registry/capabilities/`） |
+
+解析行为经两个能力接口暴露（禁止外部 `if (cli == …)` 特判）：
+
+1. **`AiHistoryCapability`**（`registry/capabilities/ai_history_capability.dart:64-88`，服务能力）
+   — transcript 定位与解析面：`locate`（:65）、`adapter`（:66）、`lineAppend`
+   （:70，逐事件增量钩子，null = 只能全量）、`tailFallbackPrefix`（:75，必须与全量
+   adapter 的 fallback id 前缀一致）、`subagentToolNames`（:78）、`subagentSideResolver`
+   （:79）、`toolResultEnricher`（:80）、`liveCacheToken`（:87，可选 live 缓存指纹）。
+   每 CLI 一个实现，位于 `<cli>/capabilities/history/ai_history_capability.dart`。
+2. **`ToolCallResolversCapability`**（`registry/capabilities/tool_call_resolver_capability.dart:12-16`，服务能力）
+   — 工具气泡解析面：`editResolver` / `fileResolver` / `shellResolver` /
+   `categoryResolver` 四个 getter，分别对应 Edit/File/Shell/Category 四类解析器。
+   共享基线 `SharedToolCallResolvers`（`registry/capabilities/shared_tool_call_resolvers.dart`）
+   覆盖绝大多数键，单 CLI 专属键在各 CLI 的
+   `<cli>/capabilities/tool_call_resolvers.dart` 以追加语义覆盖。
+
+### 截断回填机制（ToolResultEnricher）
+
+工具结果解析以 adapter 的 parse 为**第一通道**，`ToolResultEnricher` 只补缺失结果：
+
+- 接口：`registry/capabilities/history/tool_result_enricher.dart:5-28` —
+  `matchesTruncationMarker(result)`（:10，命中截断占位符才值得回填，loader 据此跳过
+  `enrich`）、`requiresFilesystem`（:18，是否必须留在主 isolate）、
+  `enrich(...)`（:22-27）。
+- 装配点：各 CLI 的 `AiHistoryCapability` 构造**默认值**注入 enricher，无需
+  `switch (cli)`：claude / flashskyai → `ClaudeCompatibleToolResultEnricher`
+  （`claude/capabilities/history/ai_history_capability.dart:15`、
+  `flashskyai/capabilities/history/ai_history_capability.dart:15`；flashskyai 复用
+  claude 目录下的同一类，`compatible_tool_result_enricher.dart:12`）、opencode →
+  `OpencodeToolOutputBackfillEnricher`（`opencode/capabilities/history/ai_history_capability.dart:15`）、
+  codex → `NoOpToolResultEnricher`（`codex/capabilities/history/ai_history_capability.dart:13`）。
+- 范例：`opencode/capabilities/history/tool_output_backfill_enricher.dart:37` —
+  按截断标记定位缺失结果并从 `tool-output/` 全量文件回填；可行性结论见
+  [docs/cli-formats/truncation-backfill-audit.md](cli-formats/truncation-backfill-audit.md)
+  （codex 不可行 / opencode 有条件可行）。
+
+### 接入指引与格式事实来源
+
+- 新增 CLI 的解析链路接入：按 **6 步清单**执行
+  [docs/cli-formats/adding-a-cli.md](cli-formats/adding-a-cli.md)（Step 0 枚举/tool 定义
+  → Step 1 history capability → Step 2 tool call resolvers → Step 3 注册 → Step 4 测试
+  → Step 5 文档），其中 history capability 与 resolvers 的接口签名、实现模式、验证命令
+  均在该文件内给出。
+- 工具调用格式的**唯一事实来源**是 [docs/cli-formats/](cli-formats/)（总览矩阵
+  `README.md` + 每 CLI 格式页 + `message-layer-audit.md` + `tool-layer-coverage.md`）：
+  评审或修改任何解析代码前先读对应 CLI 页与覆盖矩阵，行为差异需回填文档。
 
 ## 共享模型与能力归属
 
