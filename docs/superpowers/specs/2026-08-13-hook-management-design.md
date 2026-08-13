@@ -41,8 +41,8 @@
 
 | 归一化事件 | claude/flashskyai | codex | cursor | opencode(plugin 桥) |
 |---|---|---|---|---|
-| `sessionStart` | `SessionStart` | `SessionStart` | – | – |
-| `sessionEnd` | `SessionEnd` | `SessionEnd` | – | – |
+| `sessionStart` | `SessionStart` | `SessionStart` | `sessionStart` | – |
+| `sessionEnd` | `SessionEnd` | `SessionEnd` | `sessionEnd` | – |
 | `userPromptSubmit` | `UserPromptSubmit` | `UserPromptSubmit` | `beforeSubmitPrompt` | `chat.message`（≈） |
 | `preToolUse` | `PreToolUse` | `PreToolUse` | `preToolUse` | `tool.execute.before`（≈） |
 | `postToolUse` | `PostToolUse` | `PostToolUse` | `postToolUse` | `tool.execute.after`（≈） |
@@ -50,13 +50,16 @@
 | `permissionRequest` | `PermissionRequest` | `PermissionRequest` | – | `permission.asked`（≈） |
 | `stop` | `Stop` | `Stop` | `stop` | `session.idle`（≈） |
 | `stopFailure` | `StopFailure` | `StopFailure` | – | – |
-| `subagentStop` | `SubagentStop` | `SubagentStop` | – | – |
-| `preCompact` | `PreCompact` | `PreCompact` | – | – |
+| `subagentStop` | `SubagentStop` | `SubagentStop` | `subagentStop` | – |
+| `preCompact` | `PreCompact` | `PreCompact` | `preCompact` | – |
 | `notification` | `Notification` | `Notification` | – | – |
-| `shellCommandRequest` | – | `ShellCommandRequest` | – | – |
+| `shellCommandRequest` | – | `ShellCommandRequest` | `beforeShellExecution`（≈） | – |
 
 - `≈` = 近似语义，UI 能力矩阵如实标注（tooltip：近似语义说明）。
-- matcher 支持：claude/codex（工具名正则）；cursor **不支持 matcher**（writer 忽略并警告）；opencode 桥按 `tool.execute.*` 的 tool 键限定，其余事件 matcher 忽略并警告。
+- **matcher 支持**（工具名/命令正则）：claude/codex ✓；cursor ✓（per-script `matcher` 字段，preToolUse 等按工具名、beforeShellExecution 按命令文本，官方文档确认）；opencode 桥按 `tool.execute.*` 的 tool 键限定，其余事件 matcher 忽略并警告。
+- **policy 支持**（拦截类事件）：claude/flashskyai ✓（flat `{"permissionDecision":"allow"|"deny"}`）；codex ✓（同 flat 格式）；cursor ✓（preToolUse/subagentStart/beforeShellExecution 输出 `{"permission":"allow"|"deny"}`，**exit code 2 = 阻塞**，默认 fail-open）；opencode 桥 ≈（插件 hook 输出 `{"decision":"allow"|"deny"}`，实现时以 opencode 实际行为验证并记录）。
+
+**Cursor 事件集补充说明**（官方 https://cursor.com/docs/hooks）：agent hooks 全集为 `sessionStart` / `sessionEnd` / `preToolUse` / `postToolUse` / `postToolUseFailure` / `subagentStart` / `subagentStop` / `beforeShellExecution` / `afterShellExecution` / `beforeMCPExecution` / `afterMCPExecution` / `beforeReadFile` / `afterFileEdit` / `beforeSubmitPrompt` / `preCompact` / `stop` / `afterAgentResponse` / `afterAgentThought`，另有 Tab hooks 与 `workspaceOpen`（均不在本次归一化目录内；cloud agent 不跑用户级 hooks，本地 cursor-agent 不受影响）。
 
 ### 2.2 统一 HookEntry
 
@@ -76,7 +79,7 @@ class HookEntry {
 ```
 
 - `HookAction.command`：`raw`（用户命令字符串）或 `script`（托管脚本引用 → 物化时解析为 session 内稳定路径 + 该机器方言）。
-- `HookAction.http`：`url + headers`（claude/flashskyai/codex 原生支持 http 类 hook；cursor 的 hooks.json 仅 command 类、opencode 桥不支持，均忽略并警告）。
+- `HookAction.http`：`url + headers`（claude/flashskyai/codex 原生支持 http 类 hook；cursor 的 hooks.json 仅 command/prompt 类、opencode 桥不支持，均忽略并警告）。
 - `HookPolicy`：仅拦截类事件（`preToolUse` / `permissionRequest` / `shellCommandRequest`）有意义；非拦截事件 policy 必须为 `none`（UI 校验）。
 - `blockOnDecision`：内部 idle 类钩子语义（末尾 `exit 2` = decision:block），用户库 UI 不暴露。
 
@@ -123,8 +126,8 @@ abstract interface class HookWriterCapability implements CliCapability {
 `HookWriteResult = { Map<String, Object?> configFragments; List<GeneratedScript> scripts; List<String> warnings; }`。
 
 **胶水脚本生成**（所有 command 类用户 hook 统一处理，`render` 内完成）：
-1. 把用户命令包进生成的 `teampilot-hook-<id>-<event>.sh` / `.ps1`（按 `HostScriptRunner.dialect`）；
-2. 粘合脚本：设置 env（合并 hook.env）→ 跑用户命令（`timeout` 限制）→ **空 stdout** → 输出 writer 提供的该 CLI 决策 JSON（policy 非 none 时）；**非空 stdout** → 原样透传（假定已是该 CLI 响应格式）；
+1. 把用户命令包进生成的 `teampilot-hook-<id>-<event>.sh` / `.ps1`（按 `HostScriptRunner.dialect`）；**stdin 透传**（hook payload JSON 由 CLI 经 stdin 注入，用户脚本可直接 `cat` 读取）；
+2. 粘合脚本：设置 env（合并 hook.env）→ 跑用户命令（`timeout` 限制）→ **空 stdout** → 输出 writer 提供的该 CLI 决策 JSON（policy 非 none 时）；**非空 stdout** → 原样透传（假定已是该 CLI 响应格式）；exit code 透传（cursor 的 exit 2 = 阻塞语义保留）；
 3. policy 为 `none`：直接跑命令，粘合层不注入任何决策 JSON；用户命令的 stdout 原样透传（若 CLI 期望 hook 响应而命令无输出，CLI 按原生默认处理）。
 4. `blockOnDecision` 内部钩子：命令末尾追加 `exit 2`。
 
@@ -134,7 +137,7 @@ abstract interface class HookWriterCapability implements CliCapability {
 |-----|--------|------|
 | claude / flashskyai | 扩展现有 `ClaudeFamilyHookRegistry`（增补用户 HookEntry 渲染 + policy/glue 支持） | `mergeHooksInto(settings, rendered['settings.json'])`，沿用 `_writeMemberProfile` 现有链 |
 | codex | 新 `CodexHookWriter`（复用 `CodexCommandHookProvisioner` TOML 片段 + 脚本） | config.toml 经 `CodexTomlMerge` 并入；脚本落 `CODEX_HOME/hooks/` |
-| cursor | 新 `CursorHookWriter`（`{"version":1,"hooks":{...}}`，复用现有 merge 模式） | 成员 fake HOME `~/.cursor/hooks.json` |
+| cursor | 新 `CursorHookWriter`（`{"version":1,"hooks":{...}}`，per-script `command`/`matcher`/`timeout`/`loop_limit`，复用现有 merge 模式） | 成员 fake HOME `~/.cursor/hooks.json` |
 | opencode | 新 `OpencodeHookWriter`（生成 JS plugin，复用 agent_status_plugin 的 SDK 订阅模式；policy 在 JS 胶水实现） | `<configDir>/teampilot-user-hooks.js` + `opencode.json` `plugin` 数组 |
 
 ### 4.3 收敛重构（定案：做全）
