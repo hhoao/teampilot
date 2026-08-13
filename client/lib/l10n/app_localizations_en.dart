@@ -637,6 +637,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gitRefresh => 'Refresh';
 
   @override
+  String get gitAmend => 'Amend last commit';
+
+  @override
+  String get gitAmendCommit => 'Amend Commit';
+
+  @override
+  String get gitAmendConfirmTitle => 'Amend last commit?';
+
+  @override
+  String get gitAmendConfirmMessage =>
+      'This rewrites the last commit. If it was already pushed to a remote, a force push will be required afterwards.';
+
+  @override
   String get gitChangesListView => 'List view';
 
   @override

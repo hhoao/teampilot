@@ -611,6 +611,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get gitRefresh => '刷新';
 
   @override
+  String get gitAmend => '修改上一次提交';
+
+  @override
+  String get gitAmendCommit => '修改提交';
+
+  @override
+  String get gitAmendConfirmTitle => '修改上一次提交？';
+
+  @override
+  String get gitAmendConfirmMessage => '这将改写最后一次提交。如果该提交已推送到远程，之后需要强制推送。';
+
+  @override
   String get gitChangesListView => '列表视图';
 
   @override
