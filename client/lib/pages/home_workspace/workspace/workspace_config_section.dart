@@ -9,7 +9,8 @@ enum WorkspaceConfigSection implements WorkspaceSectionDescriptor {
   skills,
   plugins,
   mcp,
-  extensions;
+  extensions,
+  hooks;
 
   static const sections = values;
 
@@ -20,6 +21,7 @@ enum WorkspaceConfigSection implements WorkspaceSectionDescriptor {
     WorkspaceConfigSection.plugins => 'plugins',
     WorkspaceConfigSection.mcp => 'mcp',
     WorkspaceConfigSection.extensions => 'extensions',
+    WorkspaceConfigSection.hooks => 'hooks',
   };
 
   @override
@@ -32,6 +34,7 @@ enum WorkspaceConfigSection implements WorkspaceSectionDescriptor {
     WorkspaceConfigSection.plugins => l10n.homeWorkspaceWorkspacePlugins,
     WorkspaceConfigSection.mcp => l10n.homeWorkspaceWorkspaceMcp,
     WorkspaceConfigSection.extensions => l10n.homeWorkspaceWorkspaceExtensions,
+    WorkspaceConfigSection.hooks => l10n.homeWorkspaceWorkspaceHooks,
   };
 
   @override
@@ -54,4 +57,5 @@ IconData workspaceConfigSectionIcon(WorkspaceConfigSection section) =>
       WorkspaceConfigSection.plugins => Icons.widgets_outlined,
       WorkspaceConfigSection.mcp => Icons.hub_outlined,
       WorkspaceConfigSection.extensions => Icons.power_outlined,
+      WorkspaceConfigSection.hooks => Icons.bolt_outlined,
     };

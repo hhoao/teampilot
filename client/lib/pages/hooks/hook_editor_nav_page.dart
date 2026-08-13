@@ -12,7 +12,8 @@ import 'hook_editor_page.dart';
 
 /// `/hooks/new` / `/hooks/:id` 路由宿主：读取既有定义后构造 [HookEditorPage]。
 ///
-/// [HookEditorPage] 要求外部传入 [HookCubit]；这里负责创建/销毁 cubit 并
+/// [HookEditorPage] 要求外部传入 [HookCubit]；这里复用 app 级 cubit
+/// （[HookManagementPage] 同一实例），并
 /// 从 [HookRepository] 预加载编辑目标（hook.json 不持久化脚本正文，脚本内容
 /// 由页面经注入的 repository 读取）。
 class HookEditorNavPage extends StatefulWidget {
@@ -26,21 +27,13 @@ class HookEditorNavPage extends StatefulWidget {
 }
 
 class _HookEditorNavPageState extends State<HookEditorNavPage> {
-  late final HookCubit _cubit;
   HookDefinition? _definition;
   bool _loading = true;
 
   @override
   void initState() {
     super.initState();
-    _cubit = HookCubit(repository: context.read<HookRepository>());
     _loadDefinition();
-  }
-
-  @override
-  void dispose() {
-    _cubit.close();
-    super.dispose();
   }
 
   Future<void> _loadDefinition() async {
@@ -72,7 +65,7 @@ class _HookEditorNavPageState extends State<HookEditorNavPage> {
       );
     }
     return HookEditorPage(
-      cubit: _cubit,
+      cubit: context.read<HookCubit>(),
       definition: _definition,
       repository: context.read<HookRepository>(),
     );

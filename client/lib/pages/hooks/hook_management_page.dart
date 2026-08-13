@@ -5,7 +5,6 @@ import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/hook_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
-import '../../services/hook/hook_repository.dart';
 import '../../utils/ui/app_keys.dart';
 import '../../widgets/settings/workspace_section_host.dart';
 import '../../widgets/settings/workspace_section_nav_item.dart';
@@ -16,15 +15,11 @@ class HookManagementPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    return BlocProvider(
-      create: (context) => HookCubit(
-        repository: context.read<HookRepository>(),
-      )..load(),
-      child: WorkspaceAdaptiveSectionPage(
-        pageKey: AppKeys.hooksWorkspace,
-        title: l10n.hookNavTitle,
-        compactSectionTabs: true,
-        items: [
+    return WorkspaceAdaptiveSectionPage(
+      pageKey: AppKeys.hooksWorkspace,
+      title: l10n.hookNavTitle,
+      compactSectionTabs: true,
+      items: [
           WorkspaceSectionNavItem(
             label: l10n.hookNavTitle,
             icon: Icons.bolt_outlined,
@@ -92,7 +87,6 @@ class HookManagementPage extends StatelessWidget {
             );
           },
         ),
-      ),
     );
   }
 }

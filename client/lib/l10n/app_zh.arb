@@ -475,6 +475,7 @@
   "homeWorkspaceWorkspacePlugins": "插件",
   "homeWorkspaceWorkspaceMcp": "MCP",
   "homeWorkspaceWorkspaceExtensions": "扩展",
+  "homeWorkspaceWorkspaceHooks": "Hooks",
   "workspaceSkillsAssignedCount": "已为本工作区启用 {assigned}/{total}",
   "@workspaceSkillsAssignedCount": {
     "placeholders": {
@@ -483,6 +484,14 @@
     }
   },
   "workspaceSkillsManage": "管理 Skills",
+  "workspaceHooksAssignedCount": "已为本工作区启用 {assigned}/{total}",
+  "@workspaceHooksAssignedCount": {
+    "placeholders": {
+      "assigned": {"type": "int"},
+      "total": {"type": "int"}
+    }
+  },
+  "workspaceHooksManage": "管理 Hooks",
   "workspaceMcpAssignedCount": "已为本工作区启用 {assigned}/{total}",
   "@workspaceMcpAssignedCount": {
     "placeholders": {
@@ -1583,6 +1592,15 @@
   "teamSettingsSubtitle": "团队代理",
   "membersSubtitle": "团队代理",
   "teamSkillsNav": "Skills",
+  "teamHooksNav": "Hooks",
+  "teamHooksAssignedCount": "已启用 {assigned}/{total}",
+  "@teamHooksAssignedCount": {
+    "placeholders": {
+      "assigned": {"type": "int"},
+      "total": {"type": "int"}
+    }
+  },
+  "teamHooksManage": "管理 Hooks",
   "teamSkillsAssignedCount": "已启用 {assigned}/{total}",
   "teamSkillsManage": "全部 Skills",
   "teamPluginsNav": "插件",

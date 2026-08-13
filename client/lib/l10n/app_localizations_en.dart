@@ -1168,12 +1168,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeWorkspaceWorkspaceExtensions => 'Extensions';
 
   @override
+  String get homeWorkspaceWorkspaceHooks => 'Hooks';
+
+  @override
   String workspaceSkillsAssignedCount(int assigned, int total) {
     return '$assigned of $total enabled for this workspace';
   }
 
   @override
   String get workspaceSkillsManage => 'Manage skills';
+
+  @override
+  String workspaceHooksAssignedCount(int assigned, int total) {
+    return '$assigned of $total enabled for this workspace';
+  }
+
+  @override
+  String get workspaceHooksManage => 'Manage hooks';
 
   @override
   String workspaceMcpAssignedCount(int assigned, int total) {
@@ -3943,6 +3954,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get teamSkillsNav => 'Skills';
+
+  @override
+  String get teamHooksNav => 'Hooks';
+
+  @override
+  String teamHooksAssignedCount(int assigned, int total) {
+    return '$assigned of $total enabled';
+  }
+
+  @override
+  String get teamHooksManage => 'Manage hooks';
 
   @override
   String teamSkillsAssignedCount(int assigned, int total) {

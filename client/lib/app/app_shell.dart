@@ -65,6 +65,7 @@ import '../cubits/llm_config_cubit.dart';
 import '../cubits/session_preferences_cubit.dart';
 import '../models/session_preferences.dart';
 import '../cubits/extension_cubit.dart';
+import '../cubits/hook_cubit.dart';
 import '../cubits/mcp_cubit.dart';
 import '../cubits/plugin_cubit.dart';
 import '../repositories/launch_profile_repository.dart';
@@ -266,6 +267,7 @@ class AppShell {
     required this.cliPresetsCubit,
     required this.skillCubit,
     required this.mcpCubit,
+    required this.hookCubit,
     required this.hookRepository,
     required this.teamHubCubit,
     required this.expertHubCubit,
@@ -346,6 +348,7 @@ class AppShell {
   final CliPresetsCubit cliPresetsCubit;
   final SkillCubit skillCubit;
   final McpCubit mcpCubit;
+  final HookCubit hookCubit;
   final HookRepository hookRepository;
   final TeamHubCubit teamHubCubit;
   final ExpertHubCubit expertHubCubit;
@@ -489,6 +492,7 @@ Future<AppShell> buildAppShell({
   late final CliPresetsCubit cliPresetsCubit;
   late final SkillCubit skillCubit;
   late final McpCubit mcpCubit;
+  late final HookCubit hookCubit;
   late final HookRepository hookRepository;
   late final TeamHubCubit teamHubCubit;
   late final ExpertHubCubit expertHubCubit;
@@ -969,6 +973,7 @@ Future<AppShell> buildAppShell({
     mcpRepository,
     onMcpDeleted: teamCubit.removeMcpFromAllTeams,
   );
+  hookCubit = HookCubit(repository: hookRepository)..load();
 
   final teamHubSource = CompositeTeamHubSource.withDefaults(
     GitRegistryTeamHubSource(),
@@ -1845,6 +1850,7 @@ Future<AppShell> buildAppShell({
     cliPresetsCubit: cliPresetsCubit,
     skillCubit: skillCubit,
     mcpCubit: mcpCubit,
+    hookCubit: hookCubit,
     hookRepository: hookRepository,
     teamHubCubit: teamHubCubit,
     expertHubCubit: expertHubCubit,

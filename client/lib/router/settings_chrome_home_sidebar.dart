@@ -19,6 +19,7 @@ class SettingsChromeHomeSidebar extends StatelessWidget {
     if (path.startsWith('/mcp')) return HomeGlobalView.mcp;
     if (path.startsWith('/extensions')) return HomeGlobalView.extensions;
     if (path.startsWith('/providers')) return HomeGlobalView.providers;
+    if (path.startsWith('/hooks')) return HomeGlobalView.hooks;
     return null;
   }
 

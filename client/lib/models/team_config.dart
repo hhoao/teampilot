@@ -353,6 +353,7 @@ class TeamProfile implements LaunchProfile {
     this.skillIds = const [],
     this.pluginIds = const [],
     this.mcpServerIds = const [],
+    this.hookIds = const [],
     this.providerIdsByTool = const {},
     this.modelsByTool = const {},
     this.cli = CliTool.claude,
@@ -408,6 +409,8 @@ class TeamProfile implements LaunchProfile {
         .toList(growable: false);
   }
 
+  static List<String> decodeHookIds(Object? raw) => decodeMcpServerIds(raw);
+
   /// `--loop` for `--team` mode: `true` / `false`; otherwise returns null.
   static bool? decodeLoop(Object? raw) {
     if (raw == null) return null;
@@ -442,6 +445,7 @@ class TeamProfile implements LaunchProfile {
       skillIds: decodeSkillIds(json['skillIds']),
       pluginIds: decodePluginIds(json['pluginIds']),
       mcpServerIds: decodeMcpServerIds(json['mcpServerIds']),
+      hookIds: decodeHookIds(json['hookIds']),
       providerIdsByTool: _decodeProviderIdsByTool(json['providerIdsByTool']),
       modelsByTool: _decodeProviderIdsByTool(json['modelsByTool']),
       cli: json.containsKey('cli')
@@ -559,6 +563,9 @@ class TeamProfile implements LaunchProfile {
   /// [McpServer.id] values enabled for this team.
   final List<String> mcpServerIds;
 
+  /// Global hook library ids enabled for this team.
+  final List<String> hookIds;
+
   /// App-level provider id per tool (`flashskyai`, `codex`, `claude`).
   final Map<String, String> providerIdsByTool;
 
@@ -615,6 +622,7 @@ class TeamProfile implements LaunchProfile {
     skillIds: skillIds,
     pluginIds: pluginIds,
     mcpServerIds: mcpServerIds,
+    hookIds: hookIds,
   );
 
   bool get isValid => name.trim().isNotEmpty;
@@ -629,6 +637,7 @@ class TeamProfile implements LaunchProfile {
     List<String>? skillIds,
     List<String>? pluginIds,
     List<String>? mcpServerIds,
+    List<String>? hookIds,
     Map<String, String>? providerIdsByTool,
     Map<String, String>? modelsByTool,
     CliTool? cli,
@@ -660,6 +669,7 @@ class TeamProfile implements LaunchProfile {
       skillIds: skillIds ?? this.skillIds,
       pluginIds: pluginIds ?? this.pluginIds,
       mcpServerIds: mcpServerIds ?? this.mcpServerIds,
+      hookIds: hookIds ?? this.hookIds,
       providerIdsByTool: providerIdsByTool ?? this.providerIdsByTool,
       modelsByTool: modelsByTool ?? this.modelsByTool,
       cli: cli ?? this.cli,
@@ -697,6 +707,7 @@ class TeamProfile implements LaunchProfile {
       if (skillIds.isNotEmpty) 'skillIds': skillIds,
       if (pluginIds.isNotEmpty) 'pluginIds': pluginIds,
       if (mcpServerIds.isNotEmpty) 'mcpServerIds': mcpServerIds,
+      if (hookIds.isNotEmpty) 'hookIds': hookIds,
       if (providerIdsByTool.isNotEmpty) 'providerIdsByTool': providerIdsByTool,
       if (modelsByTool.isNotEmpty) 'modelsByTool': modelsByTool,
       'cli': cli.value,
@@ -731,6 +742,7 @@ class TeamProfile implements LaunchProfile {
             listEquals(skillIds, other.skillIds) &&
             listEquals(pluginIds, other.pluginIds) &&
             listEquals(mcpServerIds, other.mcpServerIds) &&
+            listEquals(hookIds, other.hookIds) &&
             mapEquals(providerIdsByTool, other.providerIdsByTool) &&
             mapEquals(modelsByTool, other.modelsByTool) &&
             cli == other.cli &&
@@ -758,6 +770,7 @@ class TeamProfile implements LaunchProfile {
     Object.hashAll(skillIds),
     Object.hashAll(pluginIds),
     Object.hashAll(mcpServerIds),
+    Object.hashAll(hookIds),
     Object.hash(
       Object.hashAll(providerIdsByTool.entries),
       Object.hashAll(modelsByTool.entries),

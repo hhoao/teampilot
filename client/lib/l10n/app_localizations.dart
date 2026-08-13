@@ -2198,6 +2198,12 @@ abstract class AppLocalizations {
   /// **'Extensions'**
   String get homeWorkspaceWorkspaceExtensions;
 
+  /// No description provided for @homeWorkspaceWorkspaceHooks.
+  ///
+  /// In en, this message translates to:
+  /// **'Hooks'**
+  String get homeWorkspaceWorkspaceHooks;
+
   /// No description provided for @workspaceSkillsAssignedCount.
   ///
   /// In en, this message translates to:
@@ -2209,6 +2215,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Manage skills'**
   String get workspaceSkillsManage;
+
+  /// No description provided for @workspaceHooksAssignedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{assigned} of {total} enabled for this workspace'**
+  String workspaceHooksAssignedCount(int assigned, int total);
+
+  /// No description provided for @workspaceHooksManage.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage hooks'**
+  String get workspaceHooksManage;
 
   /// No description provided for @workspaceMcpAssignedCount.
   ///
@@ -7088,6 +7106,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Skills'**
   String get teamSkillsNav;
+
+  /// No description provided for @teamHooksNav.
+  ///
+  /// In en, this message translates to:
+  /// **'Hooks'**
+  String get teamHooksNav;
+
+  /// No description provided for @teamHooksAssignedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{assigned} of {total} enabled'**
+  String teamHooksAssignedCount(int assigned, int total);
+
+  /// No description provided for @teamHooksManage.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage hooks'**
+  String get teamHooksManage;
 
   /// No description provided for @teamSkillsAssignedCount.
   ///

@@ -6,6 +6,7 @@ import '../../cubits/launch_profile_cubit.dart';
 import '../../cubits/team/launch_profile_selectors.dart';
 import '../../models/team_config.dart';
 import '../team_config/team_config_extensions_section.dart';
+import '../team_config/team_config_hooks_section.dart';
 import '../team_config/team_config_info_section.dart';
 import '../team_config/team_config_mcp_section.dart';
 import '../team_config/team_config_member_dialogs.dart';
@@ -80,6 +81,13 @@ class _HomeTeamTabState extends State<HomeTeamTab> {
         onManageGlobal: manage(HomeGlobalView.mcp),
       ),
       TeamConfigSection.extensions => TeamExtensionsSection(team: team),
+      TeamConfigSection.hooks => TeamHooksSection(
+        assignedIds: team.hookIds,
+        onAssignedChanged: (ids) => _cubit.updateSelected(
+          team.copyWith(hookIds: ids),
+        ),
+        onManageGlobal: manage(HomeGlobalView.hooks),
+      ),
       TeamConfigSection.members => const SizedBox.shrink(),
     };
 

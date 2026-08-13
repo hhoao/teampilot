@@ -45,6 +45,7 @@ class _HomeContentState extends State<HomeContent> {
     TeamConfigSection.plugins,
     TeamConfigSection.mcp,
     TeamConfigSection.extensions,
+    TeamConfigSection.hooks,
   ];
 
   late int _tabIndex = widget.initialTabIndex.clamp(0, _sections.length - 1);

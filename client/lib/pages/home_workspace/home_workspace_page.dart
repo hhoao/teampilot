@@ -259,6 +259,7 @@ class _HomeRightPaneState extends State<_HomeRightPane> {
     TeamConfigSection.plugins,
     TeamConfigSection.mcp,
     TeamConfigSection.extensions,
+    TeamConfigSection.hooks,
     TeamConfigSection.members,
     TeamConfigSection.team,
   ];

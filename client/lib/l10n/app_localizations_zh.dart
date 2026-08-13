@@ -1119,12 +1119,23 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeWorkspaceWorkspaceExtensions => '扩展';
 
   @override
+  String get homeWorkspaceWorkspaceHooks => 'Hooks';
+
+  @override
   String workspaceSkillsAssignedCount(int assigned, int total) {
     return '已为本工作区启用 $assigned/$total';
   }
 
   @override
   String get workspaceSkillsManage => '管理 Skills';
+
+  @override
+  String workspaceHooksAssignedCount(int assigned, int total) {
+    return '已为本工作区启用 $assigned/$total';
+  }
+
+  @override
+  String get workspaceHooksManage => '管理 Hooks';
 
   @override
   String workspaceMcpAssignedCount(int assigned, int total) {
@@ -3793,6 +3804,17 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get teamSkillsNav => 'Skills';
+
+  @override
+  String get teamHooksNav => 'Hooks';
+
+  @override
+  String teamHooksAssignedCount(int assigned, int total) {
+    return '已启用 $assigned/$total';
+  }
+
+  @override
+  String get teamHooksManage => '管理 Hooks';
 
   @override
   String teamSkillsAssignedCount(int assigned, int total) {

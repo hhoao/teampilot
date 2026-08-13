@@ -500,6 +500,7 @@
   "homeWorkspaceWorkspacePlugins": "Plugins",
   "homeWorkspaceWorkspaceMcp": "MCP",
   "homeWorkspaceWorkspaceExtensions": "Extensions",
+  "homeWorkspaceWorkspaceHooks": "Hooks",
   "workspaceSkillsAssignedCount": "{assigned} of {total} enabled for this workspace",
   "@workspaceSkillsAssignedCount": {
     "placeholders": {
@@ -508,6 +509,14 @@
     }
   },
   "workspaceSkillsManage": "Manage skills",
+  "workspaceHooksAssignedCount": "{assigned} of {total} enabled for this workspace",
+  "@workspaceHooksAssignedCount": {
+    "placeholders": {
+      "assigned": {"type": "int"},
+      "total": {"type": "int"}
+    }
+  },
+  "workspaceHooksManage": "Manage hooks",
   "workspaceMcpAssignedCount": "{assigned} of {total} enabled for this workspace",
   "@workspaceMcpAssignedCount": {
     "placeholders": {
@@ -1854,6 +1863,19 @@
   "teamSettingsSubtitle": "Team agents",
   "membersSubtitle": "team agents",
   "teamSkillsNav": "Skills",
+  "teamHooksNav": "Hooks",
+  "teamHooksAssignedCount": "{assigned} of {total} enabled",
+  "@teamHooksAssignedCount": {
+    "placeholders": {
+      "assigned": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "teamHooksManage": "Manage hooks",
   "teamSkillsAssignedCount": "{assigned} of {total} enabled",
   "@teamSkillsAssignedCount": {
     "placeholders": {
