@@ -81,11 +81,21 @@ class _WorktreeCreateDialogState extends State<_WorktreeCreateDialog> {
   String _selectorValue = '';
   List<WorktreeBranchOption> _branchOptions = const [];
   bool _loadingBranches = true;
+  bool _nameUserEdited = false;
+  String? _lastProgrammaticName;
 
   @override
   void initState() {
     super.initState();
-    _branch.addListener(() => setState(() {}));
+    // Baseline: the controller's initial text is not a user edit; autofocus
+    // selection notifications must not count as one.
+    _lastProgrammaticName = _branch.text;
+    _branch.addListener(() {
+      if (_lastProgrammaticName != _branch.text) {
+        _nameUserEdited = true;
+      }
+      setState(() {});
+    });
     _loadBranches();
   }
 
@@ -103,7 +113,7 @@ class _WorktreeCreateDialogState extends State<_WorktreeCreateDialog> {
         _branchOptions = list;
         _loadingBranches = false;
         if (_branch.text.trim().isEmpty && list.isNotEmpty) {
-          _branch.text = suggestWorktreeBranchName(list.first.name);
+          _setBranchName(suggestWorktreeBranchName(list.first.name));
         }
       });
     } on Object {
@@ -113,16 +123,23 @@ class _WorktreeCreateDialogState extends State<_WorktreeCreateDialog> {
 
   void _applyRandomName() {
     setState(() {
-      _branch.text = randomWorktreeBranchName(widget.existingWorktreePaths);
+      _setBranchName(randomWorktreeBranchName(widget.existingWorktreePaths));
     });
+  }
+
+  /// Programmatic name write: tracked so [TextEditingController] notifications
+  /// from it never count as a user edit.
+  void _setBranchName(String name) {
+    _lastProgrammaticName = name;
+    _branch.text = name;
   }
 
   void _onSelectorChanged(String value) {
     setState(() {
       _selectorValue = value;
       final option = worktreeOptionForLabel(_branchOptions, value);
-      if (option != null) {
-        _branch.text = option.name;
+      if (option != null && !_nameUserEdited) {
+        _setBranchName(option.name);
       }
     });
   }
@@ -213,7 +230,9 @@ class _WorktreeCreateDialogState extends State<_WorktreeCreateDialog> {
           child: Text(MaterialLocalizations.of(context).cancelButtonLabel),
         ),
         FilledButton(
-          onPressed: _branch.text.trim().isEmpty ? null : () => Navigator.of(context).pop(_buildResult()),
+          onPressed: _branch.text.trim().isEmpty
+              ? null
+              : () => Navigator.of(context).pop(_buildResult()),
           child: Text(l10n.worktreeCreateAction),
         ),
       ],
