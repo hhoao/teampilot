@@ -5,6 +5,7 @@ import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/services/cli/flashskyai/capabilities/history/ai_transcript.dart';
+import 'package:teampilot/services/cli/flashskyai/capabilities/tool_call_resolvers.dart';
 import 'package:teampilot/services/session/session_history_context.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 
@@ -192,4 +193,44 @@ not-json
     expect(tools[1].status, AiToolCallStatus.complete);
     expect(tools[2].result, 'tool output truncated');
   });
+
+  test(
+    'G-5 真实夹具：subagents Edit{file_path,old_string,new_string,replace_all} '
+    '经 adapter + resolver 全链路解析出 hunk',
+    () async {
+      // Task 6 fix round：夹具来自本机真实数据（2026-08-13 补扫
+      // ~/.flashskyai/projects/*/*/subagents/*.jsonl 共 16 条真实 Edit
+      // tool_use，键 {file_path, old_string, new_string, replace_all}——
+      // 与共享 str-replace codec 键集完全吻合；此前只扫根层漏了
+      // subagents/ 子目录）。内容取自真实事件（file_path 脱敏为
+      // /tmp/demo 风格）。
+      final bytes = await File(
+        'test/fixtures/session_history/flashskyai/edit_real.jsonl',
+      ).readAsBytes();
+      final messages = await const FlashskyaiAiTranscriptAdapter().parse(
+        AiTranscriptBundle(
+          adapterId: 'flashskyai',
+          fragments: [
+            AiTranscriptFragment(name: 'edit_real.jsonl', bytes: bytes),
+          ],
+        ),
+      );
+
+      final tools = messages
+          .expand((m) => m.parts)
+          .whereType<AiToolCallPart>()
+          .toList();
+      expect(tools.map((t) => t.toolName), ['Edit', 'Edit']);
+
+      const flashskyai = FlashskyaiToolCallResolvers();
+      for (final tool in tools) {
+        final target = flashskyai.editResolver.resolve(tool);
+        expect(target, isNotNull,
+            reason: 'flashskyai Edit 真实键形应经共享 str-replace codec 解析');
+        expect(target!.hunk.path, '/tmp/demo/session-memory/summary.md');
+        expect(target.hunk.removedCount, greaterThan(0));
+        expect(target.hunk.addedCount, greaterThan(0));
+      }
+    },
+  );
 }

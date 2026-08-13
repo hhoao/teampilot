@@ -65,9 +65,10 @@ void main() {
   group('file / edit（G-4 重校：本机实测真实 key 形态）', () {
     // Task 3 判定「无 key 缺口」基于 spl 散文假设键形 {file_path, content}；
     // Task 6 必查项本机复核（2026-08-13，~/.cursor agent-transcripts 扫描：
-    // StrReplace 25839 次 / Write 3902 次）推翻了该假设——真实键形为
-    // {path, old_string, new_string} / {path, contents}，`file_path` /
-    // `content` 零命中。resolver 已追加真实键（保留共享键追加语义）。
+    // StrReplace 25839 次（25761 带 path）/ Write 3902 次（3881 带 path））
+    // 推翻了该假设——真实键形为 {path, old_string, new_string} / {path,
+    // contents}，`file_path` / `content` 零命中。resolver 已追加真实键
+    // （保留共享键追加语义）。
     test('真实键形 StrReplace{path, old_string, new_string} 解析出 hunk', () {
       final target = cursor.editResolver.resolve(part(
         'StrReplace',
@@ -96,7 +97,7 @@ void main() {
       expect(target.hunk.addedCount, 2);
     });
 
-    test('ApplyPatch FREEFORM 字符串 input 解析出 hunk（本机实测 84 次）', () {
+    test('ApplyPatch FREEFORM 字符串 input 解析出 hunk（本机实测 76 次）', () {
       final target = cursor.editResolver.resolve(part(
         'ApplyPatch',
         argsText: '''*** Begin Patch

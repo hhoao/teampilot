@@ -294,7 +294,7 @@ void main() {
   test('ApplyPatch 字符串 input 保留到 argsText（FREEFORM，Task 6 G-4 重校）',
       () async {
     // 本机实测（2026-08-13 ~/.cursor 扫描）：ApplyPatch 的 input 为 patch
-    // 原始文本（`*** Begin Patch` / `*** Update File:`，84 次），此前
+    // 原始文本（`*** Begin Patch` / `*** Update File:`，76 次），此前
     // adapter 仅保留 args（非 Map → null）导致 freeform 无法解析；现
     // argsText 保留字符串供 unified-diff codec freeform 分支使用。
     const raw = '''

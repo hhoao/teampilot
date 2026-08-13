@@ -25,9 +25,9 @@ class CursorToolCallResolvers extends SharedToolCallResolvers {
   };
 
   // 本机实测（2026-08-13 复核 ~/.cursor agent-transcripts）：真实 cursor
-  // StrReplace/Write 用 `path` 键（25839 次 StrReplace / 3902 次 Write 实测
-  // 键形态 {path, old_string, new_string} / {path, contents}，`file_path`
-  // 零命中）——共享键集（file_path）之外追加，spl 散文未列 key。
+  // StrReplace/Write 用 `path` 键（25839 次 StrReplace 中 25761 带 path /
+  // 3902 次 Write 中 3881 带 path，键形态 {path, old_string, new_string} /
+  // {path, contents}，`file_path` 零命中）——共享键集（file_path）之外追加，spl 散文未列 key。
   static const _editPathKeys = [
     ...SharedToolCallResolverKeys.editPathKeys,
     'path',
