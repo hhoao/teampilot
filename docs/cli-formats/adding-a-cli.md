@@ -241,7 +241,7 @@ cd client && flutter analyze --no-fatal-infos --no-fatal-warnings && flutter tes
 
 1. **增量/全量 id 序列一致性**：`tailFallbackPrefix` 必须与 adapter 全量 fallback `'$prefix-${seq}'` 一致 + fallback 惰性求值（被丢弃事件不占号）——否则 UI 增量与全量出现不同消息条数（5 家断言锁定，D10 闭环）。
 2. **lineAppend 消费语义**：只消费解析成功的行（claude：user/assistant 消息、tool 块；codex：event_msg + response_item 子集），快照/元数据/环境噪音行返回 false——不推锚点、不消耗 fallback 序号（codex 的 `session_meta` / `token_count` 等）。
-3. **args 形态契约**：args 恒 Map 或 null——字符串参数先 jsonDecode（codex `_parseArgs`），非 JSON → `args=null` 且 `argsText` 保留原串（codex freeform）；`custom_tool_call.input` 双形态（String/Map）是 codex 独有坑（P3 夹具待补）。
+3. **args 形态契约**：args 恒 Map 或 null——字符串参数先 jsonDecode（codex `_parseArgs`），非 JSON → `args=null` 且 `argsText` 保留原串（codex freeform）；`custom_tool_call.input` 双形态（String/Map）是 codex 独有坑（P3 已补：Task 5 commit `75f4cd4b`，夹具 `custom_tool_call_dual_form.jsonl` String patch + Map input 双形态 + 端到端断言）。
 4. **result 回填分层**：parse 为第一通道、enricher 仅补缺失（claude 截断 sentinel / cursor `terminals/*.txt` / opencode `tool-output/` 文件回填）；codex 保持 `NoOpToolResultEnricher`——截断输出无回填机制（已调研：不可行，截断即永久）。调研结论与 opencode 实现见 [truncation-backfill-audit.md](truncation-backfill-audit.md)。
 5. **夹具纪律**：真实数据 + 脱敏（redact commit `22790cb4`）；无发射证据不捏造（G-5 教训：初判"无 Edit 证据"实为扫描范围遗漏 `subagents/` 子目录）；多 project 目录 / 子目录形态都要扫。
 6. **id 优先级各异，不得互读**：claude `message.id` → `uuid` → fallback；cursor `uuid` → `id` → `message.id` → fallback（与 Claude 相反）；opencode id = db 行 id 无 fallback——新增 CLI 先确定自己的优先级链并断言固化。

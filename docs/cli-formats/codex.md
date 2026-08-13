@@ -80,5 +80,5 @@ adapter `client/lib/services/cli/codex/capabilities/history/{ai_transcript,ai_hi
 - **多块 content**：`message.content[]` 只认 `input_text` / `output_text`，其余块类型忽略；多块文本以 `\n` 连接（同 user 事件里 AGENTS.md 与环境上下文被丢弃后只剩 `hello`）。
 - **孤儿 output**：`function_call_output` 单独成行、靠 `call_id` 关联；无匹配 tool call 时静默忽略（不报错、不产生消息）。
 - **截断回填：已调研不可行**：Codex 用 `NoOpToolResultEnricher`，工具输出截断占位不会被回填（claude 有 `ClaudeCompatibleToolResultEnricher`，codex 没有）。[truncation-backfill-audit.md](truncation-backfill-audit.md) 结论：737/37,266 条 `function_call_output` 被中段截断为 `…N tokens truncated…`，同会话无任何完整副本、无结构化标记字段——截断即永久丢失，无回填数据来源。
-- **`custom_tool_call.input` 双形态**：`input` 既可能为 String（→ argsText）也可能为 Map（→ args），源码有分支处理但夹具暂无覆盖。
+- **`custom_tool_call.input` 双形态**：`input` 既可能为 String（→ argsText）也可能为 Map（→ args）——夹具已覆盖（`custom_tool_call_dual_form.jsonl`，Task 5 commit `75f4cd4b`：String 补丁文本 → argsText 逐字保留，Map input → args）。真实语义：本机 `~/.codex/sessions` 扫描 4151 条真实 `custom_tool_call` 记录 **100% 为 String input 且全部是 `apply_patch` 补丁文本**（非 JSON），Map/JSON 形态属源码防御分支（语料未观测到）。
 - **定位是暴力递归**：`locate` 递归扫描整个 `{CODEX_HOME}/sessions` 树；`persistedNativeId` 缺失时取字典序最大（时间戳前缀）——多会话同目录时靠文件名 UUID 区分，同名 UUID 只取一个。

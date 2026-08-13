@@ -133,7 +133,7 @@ The tool call succeeded but the output was truncated. Full output saved to:
 
 ### 3.1 现状
 
-- opencode 与 codex 的 history capability 目前都挂 `NoOpToolResultEnricher`（`opencode/capabilities/history/ai_history_capability.dart:14`、`codex/capabilities/history/ai_history_capability.dart:13`）
+- opencode 与 codex 的 history capability 目前都挂 `NoOpToolResultEnricher`（`opencode/capabilities/history/ai_history_capability.dart:15`、`codex/capabilities/history/ai_history_capability.dart:13`）
 - 参考实现 `ClaudeCompatibleToolResultEnricher`（`client/lib/services/cli/claude/capabilities/history/compatible_tool_result_enricher.dart`）：对 result 含截断 sentinel（`'tool output truncated'`）的 `AiToolCallPart`，从 transcript 侧文件的 `toolUseResult` 取全文，`copyWith(result: 全文, status: complete, isError: …)` 回填
 - 挂载点：`AiHistoryCapability.toolResultEnricher` → `AiHistoryLoader` 在 parse 后调用（`ai_history_loader.dart:459-489`；`requiresFilesystem=true` 的 enricher 留在 caller isolate 且 `ctx` 可用，worker isolate 只跑 bundle-only enricher）
 
