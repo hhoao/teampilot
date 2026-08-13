@@ -1,4 +1,6 @@
 /// A local or remote-only branch choice for the worktree-create dialog.
+import 'dart:math';
+
 class WorktreeBranchOption {
   const WorktreeBranchOption.local(this.name) : remoteRef = null;
 
@@ -60,4 +62,41 @@ String suggestWorktreeBranchName(String? currentBranch) {
   final base = (currentBranch ?? '').trim();
   if (base.isEmpty) return 'worktree';
   return '$base-wt';
+}
+
+/// Random branch name `wt-<6 lowercase hex>` that avoids colliding with the
+/// basenames of [existingPaths] (worktree directories). After [maxAttempts]
+/// collisions, falls back to the first free `wt-<n>` (n from 2 upward).
+String randomWorktreeBranchName(
+  List<String> existingPaths, {
+  Random? random,
+  int maxAttempts = 20,
+}) {
+  final rng = random ?? Random();
+  final used = <String>{
+    for (final path in existingPaths) _pathBasename(path).trim().toLowerCase(),
+  }..removeWhere((e) => e.isEmpty);
+  for (var attempt = 0; attempt < maxAttempts; attempt++) {
+    final candidate = 'wt-${_randomHex(rng, 6)}';
+    if (!used.contains(candidate)) return candidate;
+  }
+  var n = 2;
+  while (used.contains('wt-$n')) {
+    n++;
+  }
+  return 'wt-$n';
+}
+
+String _randomHex(Random rng, int length) {
+  final buf = StringBuffer();
+  for (var i = 0; i < length; i++) {
+    buf.write(rng.nextInt(16).toRadixString(16));
+  }
+  return buf.toString();
+}
+
+String _pathBasename(String path) {
+  final normalized = path.replaceAll(r'\', '/');
+  final idx = normalized.lastIndexOf('/');
+  return idx == -1 ? normalized : normalized.substring(idx + 1);
 }

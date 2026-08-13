@@ -5699,22 +5699,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get worktreeBranchLabel => '分支名';
 
   @override
-  String get worktreeModeNewBranch => '新建分支';
-
-  @override
-  String get worktreeModeExistingBranch => '已有分支';
-
-  @override
-  String get worktreeBaseRefLabel => '基线（可选）';
-
-  @override
-  String get worktreeBaseRefHint => '默认当前 HEAD';
-
-  @override
   String get worktreePathLabel => '位置';
-
-  @override
-  String get worktreeStartConversation => '创建后在此开始一个会话';
 
   @override
   String get worktreeCreateAction => '创建';
@@ -5723,6 +5708,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String worktreeCreateFailed(Object error) {
     return '创建 worktree 失败：$error';
   }
+
+  @override
+  String get worktreeBaseSelectorHint => '分支或基线';
+
+  @override
+  String get worktreeRandomNameTooltip => '随机名称';
 
   @override
   String get worktreeDeleteTitle => '删除 worktree';

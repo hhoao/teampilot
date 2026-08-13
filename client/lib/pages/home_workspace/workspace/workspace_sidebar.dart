@@ -246,7 +246,9 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
       repoPath: repoPath,
       layout: layout.worktreePathFor,
       branchLoader: branchListLoaderFor(tools.context),
-      showStartConversationOption: true,
+      existingWorktreePaths: [
+        for (final wt in cubit.state.worktrees) wt.path,
+      ],
     );
     if (result == null) return;
     try {
@@ -259,14 +261,6 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
       );
       await cubit.load(repoPath, force: true);
       cubit.setCurrentWorktree(result.worktreePath);
-      if (result.startConversation && context.mounted) {
-        await showWorkspaceComposeLandingWithWorktree(
-          context,
-          widget.workspace,
-          tabScopeId: widget.tabScopeId,
-          worktreePath: result.worktreePath,
-        );
-      }
     } on Object catch (error) {
       if (!context.mounted) return;
       AppToast.show(

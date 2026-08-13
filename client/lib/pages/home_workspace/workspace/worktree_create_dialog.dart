@@ -3,37 +3,12 @@ import 'package:flutter/material.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../services/git/git_service.dart';
 import '../../../services/git/worktree_branch_options.dart';
+import '../../../services/git/worktree_create_result.dart';
 import '../../../services/storage/runtime_context.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 export '../../../services/git/worktree_branch_options.dart'
     show suggestWorktreeBranchName;
-
-/// Result of [showWorktreeCreateDialog]; null when the user cancels.
-class WorktreeCreateResult {
-  const WorktreeCreateResult({
-    required this.worktreePath,
-    required this.branch,
-    required this.baseRef,
-    required this.existingBranch,
-    required this.startConversation,
-  });
-
-  /// Absolute path where the worktree will be created.
-  final String worktreePath;
-
-  /// Branch name (new branch to create, or existing branch to check out).
-  final String branch;
-
-  /// Base ref for a new branch; null/empty means current HEAD.
-  final String? baseRef;
-
-  /// True → check out an existing branch; false → create a new branch.
-  final bool existingBranch;
-
-  /// True → open a new conversation in the worktree after creating it.
-  final bool startConversation;
-}
 
 /// Loads branch choices for the existing-branch picker (local + remote-only).
 typedef BranchListLoader =
@@ -47,7 +22,7 @@ Future<WorktreeCreateResult?> showWorktreeCreateDialog(
   required String repoPath,
   required WorktreeLayoutPathResolver layout,
   required BranchListLoader branchLoader,
-  bool showStartConversationOption = true,
+  List<String> existingWorktreePaths = const [],
 }) {
   return showDialog<WorktreeCreateResult>(
     context: context,
@@ -56,7 +31,7 @@ Future<WorktreeCreateResult?> showWorktreeCreateDialog(
       repoPath: repoPath,
       layout: layout,
       branchLoader: branchLoader,
-      showStartConversationOption: showStartConversationOption,
+      existingWorktreePaths: existingWorktreePaths,
     ),
   );
 }
@@ -88,14 +63,14 @@ class _WorktreeCreateDialog extends StatefulWidget {
     required this.repoPath,
     required this.layout,
     required this.branchLoader,
-    required this.showStartConversationOption,
+    required this.existingWorktreePaths,
   });
 
   final String repoName;
   final String repoPath;
   final WorktreeLayoutPathResolver layout;
   final BranchListLoader branchLoader;
-  final bool showStartConversationOption;
+  final List<String> existingWorktreePaths;
 
   @override
   State<_WorktreeCreateDialog> createState() => _WorktreeCreateDialogState();
@@ -103,21 +78,31 @@ class _WorktreeCreateDialog extends StatefulWidget {
 
 class _WorktreeCreateDialogState extends State<_WorktreeCreateDialog> {
   final _branch = TextEditingController();
-  final _base = TextEditingController();
-  bool _existingBranch = false;
-  bool _startConversation = true;
+  String _selectorValue = '';
   List<WorktreeBranchOption> _branchOptions = const [];
-  WorktreeBranchOption? _selectedBranch;
   bool _loadingBranches = true;
+  bool _nameUserEdited = false;
+  String? _lastProgrammaticName;
 
   @override
   void initState() {
     super.initState();
-    if (!widget.showStartConversationOption) {
-      _startConversation = false;
-    }
-    _branch.addListener(() => setState(() {}));
+    // Baseline: the controller's initial text is not a user edit; autofocus
+    // selection notifications must not count as one.
+    _lastProgrammaticName = _branch.text;
+    _branch.addListener(() {
+      if (_lastProgrammaticName != _branch.text) {
+        _nameUserEdited = true;
+      }
+      setState(() {});
+    });
     _loadBranches();
+  }
+
+  @override
+  void dispose() {
+    _branch.dispose();
+    super.dispose();
   }
 
   Future<void> _loadBranches() async {
@@ -128,73 +113,53 @@ class _WorktreeCreateDialogState extends State<_WorktreeCreateDialog> {
         _branchOptions = list;
         _loadingBranches = false;
         if (_branch.text.trim().isEmpty && list.isNotEmpty) {
-          _branch.text = suggestWorktreeBranchName(list.first.name);
+          _setBranchName(suggestWorktreeBranchName(list.first.name));
         }
-        _selectedBranch ??= list.isNotEmpty ? list.first : null;
       });
     } on Object {
       if (mounted) setState(() => _loadingBranches = false);
     }
   }
 
-  @override
-  void dispose() {
-    _branch.dispose();
-    _base.dispose();
-    super.dispose();
-  }
-
-  String get _previewBranchName {
-    if (_existingBranch && _selectedBranch != null) {
-      return _selectedBranch!.name;
-    }
-    return _branch.text.trim();
-  }
-
-  String get _previewPath => _previewBranchName.isEmpty
-      ? ''
-      : widget.layout(
-          repoName: widget.repoName,
-          branch: _previewBranchName,
-        );
-
-  bool get _canCreate =>
-      _existingBranch
-          ? _selectedBranch != null
-          : _branch.text.trim().isNotEmpty;
-
-  void _selectBranchOption(WorktreeBranchOption option) {
+  void _applyRandomName() {
     setState(() {
-      _selectedBranch = option;
-      _branch.text = option.name;
+      _setBranchName(randomWorktreeBranchName(widget.existingWorktreePaths));
     });
   }
 
-  WorktreeCreateResult _buildResult() {
-    if (_existingBranch && _selectedBranch != null) {
-      final option = _selectedBranch!;
-      return WorktreeCreateResult(
-        worktreePath: _previewPath,
-        branch: option.name,
-        baseRef: option.remoteRef,
-        existingBranch: option.isLocal,
-        startConversation: widget.showStartConversationOption
-            ? _startConversation
-            : false,
-      );
-    }
-    final branch = _branch.text.trim();
-    final base = _base.text.trim();
-    return WorktreeCreateResult(
-      worktreePath: _previewPath,
-      branch: branch,
-      baseRef: base.isEmpty ? null : base,
-      existingBranch: false,
-      startConversation: widget.showStartConversationOption
-          ? _startConversation
-          : false,
-    );
+  /// Programmatic name write: tracked so [TextEditingController] notifications
+  /// from it never count as a user edit.
+  void _setBranchName(String name) {
+    _lastProgrammaticName = name;
+    _branch.text = name;
   }
+
+  void _onSelectorChanged(String value) {
+    setState(() {
+      _selectorValue = value;
+      final option = worktreeOptionForLabel(_branchOptions, value);
+      if (option != null && !_nameUserEdited) {
+        _setBranchName(option.name);
+      }
+    });
+  }
+
+  List<String> get _selectorItems =>
+      [for (final option in _branchOptions) option.displayLabel];
+
+  String get _previewPath => _branch.text.trim().isEmpty
+      ? ''
+      : widget.layout(
+          repoName: widget.repoName,
+          branch: _branch.text.trim(),
+        );
+
+  WorktreeCreateResult _buildResult() => buildWorktreeCreateResult(
+    branch: _branch.text,
+    selectorText: _selectorValue,
+    options: _branchOptions,
+    worktreePath: _previewPath,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -208,75 +173,42 @@ class _WorktreeCreateDialogState extends State<_WorktreeCreateDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            SegmentedButton<bool>(
-              segments: [
-                ButtonSegment(
-                  value: false,
-                  label: Text(l10n.worktreeModeNewBranch),
+            TextField(
+              controller: _branch,
+              autofocus: true,
+              decoration: InputDecoration(
+                labelText: l10n.worktreeBranchLabel,
+                suffixIcon: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_loadingBranches)
+                      const Padding(
+                        padding: EdgeInsets.all(12),
+                        child: SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      ),
+                    TpIconButton(
+                      icon: Icons.casino_outlined,
+                      size: TpIconButton.kCompactSize,
+                      tooltip: l10n.worktreeRandomNameTooltip,
+                      onTap: _applyRandomName,
+                    ),
+                  ],
                 ),
-                ButtonSegment(
-                  value: true,
-                  label: Text(l10n.worktreeModeExistingBranch),
-                ),
-              ],
-              selected: {_existingBranch},
-              onSelectionChanged: (s) {
-                setState(() {
-                  _existingBranch = s.first;
-                  if (_existingBranch && _branchOptions.isNotEmpty) {
-                    final current = _selectedBranch ?? _branchOptions.first;
-                    if (!_branchOptions.contains(current)) {
-                      _selectBranchOption(_branchOptions.first);
-                    } else {
-                      _selectBranchOption(current);
-                    }
-                  }
-                });
-              },
+              ),
             ),
             const SizedBox(height: 12),
-            if (_existingBranch && _branchOptions.isNotEmpty)
-              TpSelect<WorktreeBranchOption>(
-                items: _branchOptions,
-                initialItem:
-                    _selectedBranch != null &&
-                        _branchOptions.contains(_selectedBranch)
-                    ? _selectedBranch
-                    : _branchOptions.first,
-                decoration: TpSelectDecorations.themed(context),
-                onChanged: (value) {
-                  if (value != null) _selectBranchOption(value);
-                },
-                itemLabel: (option) => option.displayLabel,
-              )
-            else
-              TextField(
-                controller: _branch,
-                autofocus: !_existingBranch,
-                decoration: InputDecoration(
-                  labelText: l10n.worktreeBranchLabel,
-                  suffixIcon: _loadingBranches
-                      ? const Padding(
-                          padding: EdgeInsets.all(12),
-                          child: SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
-                        )
-                      : null,
-                ),
-              ),
-            if (!_existingBranch) ...[
-              const SizedBox(height: 12),
-              TextField(
-                controller: _base,
-                decoration: InputDecoration(
-                  labelText: l10n.worktreeBaseRefLabel,
-                  hintText: l10n.worktreeBaseRefHint,
-                ),
-              ),
-            ],
+            TpSelectWithCustomInput(
+              value: _selectorValue,
+              items: _selectorItems,
+              onChanged: _onSelectorChanged,
+              hintText: l10n.worktreeBaseSelectorHint,
+              decoration: TpSelectDecorations.themed(context),
+              customInputTooltip: l10n.worktreeBaseSelectorHint,
+            ),
             const SizedBox(height: 12),
             if (_previewPath.isNotEmpty) ...[
               Text(l10n.worktreePathLabel, style: TpTextStyles(theme).xs),
@@ -289,15 +221,6 @@ class _WorktreeCreateDialogState extends State<_WorktreeCreateDialog> {
               ),
               const SizedBox(height: 8),
             ],
-            if (widget.showStartConversationOption)
-              CheckboxListTile(
-                contentPadding: EdgeInsets.zero,
-                controlAffinity: ListTileControlAffinity.leading,
-                value: _startConversation,
-                onChanged: (v) =>
-                    setState(() => _startConversation = v ?? false),
-                title: Text(l10n.worktreeStartConversation),
-              ),
           ],
         ),
       ),
@@ -307,9 +230,9 @@ class _WorktreeCreateDialogState extends State<_WorktreeCreateDialog> {
           child: Text(MaterialLocalizations.of(context).cancelButtonLabel),
         ),
         FilledButton(
-          onPressed: _canCreate
-              ? () => Navigator.of(context).pop(_buildResult())
-              : null,
+          onPressed: _branch.text.trim().isEmpty
+              ? null
+              : () => Navigator.of(context).pop(_buildResult()),
           child: Text(l10n.worktreeCreateAction),
         ),
       ],
