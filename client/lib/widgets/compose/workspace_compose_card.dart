@@ -111,7 +111,8 @@ class WorkspaceComposeCard extends StatelessWidget {
   final ValueChanged<String>? onOpenAtFile;
 
   /// Optional paste-collapse buffer. When collapsed, a badge bar is rendered
-  /// above the field and canSubmit/submit/references account for the block.
+  /// above the field; the at-file refs scan and the actions-row hasText account
+  /// for the block. Parents compute canSubmit/submit.
   final ComposeClip? clip;
 
   bool get _composeEnabled => switch (chrome) {
@@ -156,6 +157,7 @@ class WorkspaceComposeCard extends StatelessWidget {
       mutedColor: palette.muted,
       hintColor: palette.hint,
       onPasteImage: onPasteImage,
+      clip: clip,
     );
 
     if (deferFieldMount) {

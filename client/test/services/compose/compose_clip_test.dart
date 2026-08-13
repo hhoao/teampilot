@@ -19,6 +19,15 @@ void main() {
       expect(clip.lineCount, 3);
     });
 
+    test('second setPasted appends to the block instead of replacing it', () {
+      final clip = ComposeClip();
+      clip.setPasted('block');
+      clip.setPasted('more');
+      expect(clip.text, 'block\nmore');
+      expect(clip.lineCount, 2);
+      expect(clip.collapsed, isTrue);
+    });
+
     test('composeMessage joins block and follow-up with a blank line', () {
       final clip = ComposeClip();
       clip.setPasted('block');

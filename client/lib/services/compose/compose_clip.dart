@@ -18,14 +18,20 @@ class ComposeClip extends ChangeNotifier {
 
   /// Collapse with the whole current draft (e.g. right after an oversized
   /// paste). The caller clears the visible controller afterwards.
+  ///
+  /// A second oversized paste into the follow-up input appends to the existing
+  /// block (joined with a newline) instead of replacing it, so the block never
+  /// drops earlier pasted content and a single badge keeps a running line
+  /// count. When the clip is empty, the merge is the plain [fullText].
   void setPasted(String fullText) {
-    if (_text == fullText) return;
-    _text = fullText;
+    final merged = _text.isEmpty ? fullText : '$_text\n$fullText';
+    if (_text == merged) return;
+    _text = merged;
     notifyListeners();
   }
 
   /// Write-back from the full-screen editor. Stays collapsed; line count may
-  /// change.
+  /// change. An empty write-back clears the clip (collapsed becomes false).
   void setExpanded(String newText) {
     if (_text == newText) return;
     _text = newText;

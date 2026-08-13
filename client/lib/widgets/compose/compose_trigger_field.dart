@@ -37,6 +37,11 @@ final class ComposeTriggerSlashSuggestion extends ComposeTriggerSuggestion {
 
 /// Multiline compose field with `@` file references and `/` skill/command picks.
 class ComposeTriggerField extends StatefulWidget {
+  /// Line threshold for collapsing an oversized paste into the clip. Typing
+  /// adds at most one line per change, so only a large single insert (a paste)
+  /// crosses this.
+  static const kComposePasteCollapseLines = 25;
+
   const ComposeTriggerField({
     required this.controller,
     required this.focusNode,
@@ -83,7 +88,6 @@ class ComposeTriggerField extends StatefulWidget {
 }
 
 class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
-  static const _pasteCollapseLines = 25;
   late int _lastLineCount;
   final _fieldKey = GlobalKey();
   ComposeTriggerQuery? _trigger;
@@ -221,12 +225,13 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
   /// threshold. Undo that restores the long text re-crosses it (self-heals).
   void _maybeCollapseOversizedPaste() {
     final clip = widget.clip;
-    if (clip == null) return;
     final count = ComposeClip.countLines(widget.controller.text);
-    final crossed =
-        _lastLineCount <= _pasteCollapseLines && count > _pasteCollapseLines;
+    final crossed = _lastLineCount <= ComposeTriggerField.kComposePasteCollapseLines &&
+        count > ComposeTriggerField.kComposePasteCollapseLines;
+    // Update the running line count regardless of whether a clip is attached,
+    // so an oversized paste is still detected if the clip appears later.
     _lastLineCount = count;
-    if (!crossed) return;
+    if (clip == null || !crossed) return;
     clip.setPasted(widget.controller.text);
     widget.controller.clear();
     // Programmatic clear() does not fire TextField.onChanged, so ping the

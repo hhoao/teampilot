@@ -226,6 +226,29 @@ void main() {
 
     expect(find.byType(ComposeAtFileChipRow), findsOneWidget);
   });
+
+  testWidgets('real oversized paste collapses into the clip and shows the bar', (
+    tester,
+  ) async {
+    final controller = TextEditingController();
+    final clip = ComposeClip();
+    addTearDown(controller.dispose);
+    addTearDown(clip.dispose);
+
+    await tester.pumpWidget(
+      pumpCard(chrome: unboundChrome, controller: controller, clip: clip),
+    );
+
+    final longText = List.generate(30, (i) => 'line $i').join('\n');
+    controller.value = TextEditingValue(
+      text: longText,
+      selection: TextSelection.collapsed(offset: longText.length),
+    );
+    await tester.pump();
+
+    expect(clip.collapsed, isTrue);
+    expect(find.byType(ComposePasteClipBar), findsOneWidget);
+  });
 }
 
 void _noop(Object? _) {}

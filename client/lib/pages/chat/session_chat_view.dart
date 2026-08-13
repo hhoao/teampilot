@@ -842,6 +842,10 @@ class _SessionChatViewState extends State<SessionChatView> {
     if (!result.ok) {
       _cancelAwaitingIdleGrace();
       if (optimisticPty) seat.removePendingMatching(text);
+      // Clear the stale clip before restoring the composed text. If the
+      // restored text exceeds the paste-collapse threshold, detection in
+      // ComposeTriggerField re-collapses it into the clip — the block /
+      // follow-up split is intentionally lost on a failed submit.
       _clip.clear();
       _controller
         ..text = text
