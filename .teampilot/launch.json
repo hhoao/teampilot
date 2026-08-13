@@ -30,6 +30,21 @@
       "focusToolWindow": false,
       "interpreterPath": "/bin/bash",
       "scriptText": "dart pub global activate fastforge & fastforge package --platform linux --targets appimage"
+    },
+    {
+      "id": "run",
+      "name": "run",
+      "type": "shellScript",
+      "cwd": "${workspaceFolder}/client",
+      "execute": "scriptFile",
+      "scriptOptions": "run",
+      "interpreterOptions": "",
+      "executeInTerminal": true,
+      "allowMultipleInstances": false,
+      "activateToolWindow": true,
+      "focusToolWindow": false,
+      "interpreterPath": "/bin/bash",
+      "scriptPath": "flutter"
     }
   ]
 }

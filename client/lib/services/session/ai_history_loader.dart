@@ -102,7 +102,7 @@ final class AiHistoryLoader {
   /// Switch to disable worker-isolate parsing of heavy transcripts (everything
   /// then parses on the caller / UI isolate). Temporarily off while
   /// investigating isolate issues.
-  static bool enableIsolateParse = false;
+  static bool enableIsolateParse = true;
 
   /// Work-plane context for the seat (live refresh binds this FS).
   Future<RuntimeContext> resolveSeatRuntime({
@@ -239,15 +239,14 @@ final class AiHistoryLoader {
   }
 
   AiToolCallCategoryResolver _categoryResolverFor(CliTool cli) =>
-      _registry.capability<ToolCallResolversCapability>(cli)?.categoryResolver ??
+      _registry
+          .capability<ToolCallResolversCapability>(cli)
+          ?.categoryResolver ??
       defaultToolCallCategoryResolver;
 
   /// Defensive annotation for post-load merged lists (mailbox). Idempotent.
   List<AiMessage> annotate(List<AiMessage> messages, {required CliTool cli}) =>
-      annotateToolCallCategories(
-        messages,
-        resolver: _categoryResolverFor(cli),
-      );
+      annotateToolCallCategories(messages, resolver: _categoryResolverFor(cli));
 
   /// Locate-only watch hints for live transcript refresh (no full parse).
   Future<AiHistoryWatchMeta?> resolveWatchMeta({
@@ -328,8 +327,15 @@ final class AiHistoryLoader {
     }
 
     final cacheKey = _cacheKey(session.sessionId, effectiveMemberId);
+    // ignore: avoid_print
+    print('[dbg-load] _loadOnce begin session=${session.sessionId}');
 
-    final token = await (_resolveCacheToken ?? _defaultTokenResolverFor(cap))(ctx);
+    final token = await (_resolveCacheToken ?? _defaultTokenResolverFor(cap))(
+      ctx,
+    );
+    // ignore: avoid_print
+    print('[dbg-load] _loadOnce token done session=${session.sessionId} '
+        'token=${token == null ? 'null' : token.substring(0, token.length > 24 ? 24 : token.length)}');
     if (!force && token != null && _tokens[cacheKey] == token) {
       final cachedMessages = _messages[cacheKey] ?? const [];
       final cachedAttachments = _attachments[cacheKey] ?? const {};
@@ -379,6 +385,9 @@ final class AiHistoryLoader {
         ctx: ctx,
         force: force,
       );
+      // ignore: avoid_print
+      print('[dbg-load] _loadOnce incremental done session=${session.sessionId} '
+          'dbDelta=${dbDelta == null ? 'null' : 'delta'}');
       if (dbDelta != null) {
         final parentPath = dbDelta.parentPath;
         if (parentPath != null) _parentPaths[cacheKey] = parentPath;
@@ -393,6 +402,9 @@ final class AiHistoryLoader {
       }
 
       final bundle = await _locator.locate(ctx: ctx, cli: cli);
+      // ignore: avoid_print
+      print('[dbg-load] _loadOnce locate done session=${session.sessionId} '
+          'bundle=${bundle == null ? 'null' : 'fragments=${bundle.fragments.length}'}');
       final watch = bundle == null
           ? null
           : AiHistoryWatchMeta.fromHints(bundle.hints);
@@ -496,6 +508,9 @@ final class AiHistoryLoader {
         attachments,
         resolver: _categoryResolverFor(cli),
       );
+      // ignore: avoid_print
+      print('[dbg-load] _loadOnce inflate done session=${session.sessionId} '
+          'attachments=${attachments.length}');
 
       // 全量 parse 完成后对齐增量状态:让下一次 refresh 变成纯增量
       // (只重读指纹变化的行,原地合并进 messages 同一实例)。
@@ -522,6 +537,9 @@ final class AiHistoryLoader {
         rootTranscriptPath: parentPath,
       );
       if (sideToken != null) _sideTokens[cacheKey] = sideToken;
+      // ignore: avoid_print
+      print('[dbg-load] _loadOnce done session=${session.sessionId} '
+          'messages=${messages.length}');
       return AiHistoryLoadResult(
         messages: messages,
         cli: cli,
@@ -647,7 +665,8 @@ final class AiHistoryLoader {
   static SessionHistoryCacheTokenResolver _defaultTokenResolverFor(
     AiHistoryCapability cap,
   ) {
-    return (ctx) async => await cap.liveCacheToken(ctx) ?? _defaultCacheToken(ctx);
+    return (ctx) async =>
+        await cap.liveCacheToken(ctx) ?? _defaultCacheToken(ctx);
   }
 
   /// Best-effort transcript mtime under common Claude/flashskyai layouts.
