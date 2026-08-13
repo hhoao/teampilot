@@ -85,6 +85,7 @@ class _WorktreeCreateDialogState extends State<_WorktreeCreateDialog> {
   @override
   void initState() {
     super.initState();
+    _branch.addListener(() => setState(() {}));
     _loadBranches();
   }
 
