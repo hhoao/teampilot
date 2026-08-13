@@ -16,8 +16,10 @@ class _OpencodeSubscription {
 }
 
 /// opencode 无原生 hooks —— 生成一个 JS plugin 桥：
-/// 订阅 SDK 事件（`input.client.events.on`），对每个 hook 用 Node
-/// `child_process` 跑 glue 命令，stdout（决策 JSON）原样传回。
+/// plugin 返回函数值 hooks（仓库已验证模式，同 agent_status_plugin）：
+/// `event` 函数按 `event.type`/`event.data.type` 分发非拦截订阅；tool.execute.*
+/// 的函数式 hook 按 tool 键限定。每个 hook 用 Node `child_process` 跑 glue
+/// 命令，stdout（决策 JSON）原样传回。
 class OpencodeHookWriter implements HookWriterCapability {
   const OpencodeHookWriter({this.denyReason = 'TeamPilot hook policy'});
 
@@ -117,6 +119,17 @@ class OpencodeHookWriter implements HookWriterCapability {
   }
 
   String _buildPluginSource(Map<String, List<_OpencodeSubscription>> subscriptions) {
+    final toolHooks = <String, List<_OpencodeSubscription>>{};
+    final eventHooks = <String, List<_OpencodeSubscription>>{};
+    for (final entry in subscriptions.entries) {
+      for (final sub in entry.value) {
+        if (sub.tool != null) {
+          (toolHooks[entry.key] ??= []).add(sub);
+        } else {
+          (eventHooks[entry.key] ??= []).add(sub);
+        }
+      }
+    }
     final buffer = StringBuffer()
       ..writeln('export const TeampilotUserHooks = async (input, options) => {')
       ..writeln('  const { execFile } = require("node:child_process");')
@@ -127,34 +140,27 @@ class OpencodeHookWriter implements HookWriterCapability {
         'command.split(/\\s+/).slice(1), '
         '{ encoding: "utf8" }, (err, stdout) => resolve(stdout || null)); });',
       )
-      ..writeln('  const on = (event, handler) => {');
-    final toolHooks = <String, List<_OpencodeSubscription>>{};
-    for (final entry in subscriptions.entries) {
-      final event = entry.key.replaceAll('"', r'\"');
-      for (final sub in entry.value) {
-        if (sub.tool != null) {
-          (toolHooks[entry.key] ??= []).add(sub);
-          continue;
+      ..writeln('  return {');
+    // 非 tool.execute.* 订阅：`event` 函数按事件类型分发（仓库已验证模式）。
+    if (eventHooks.isNotEmpty) {
+      buffer.writeln('    event: async ({ event }) => {');
+      buffer.writeln('      const evt = event?.type || event?.data?.type;');
+      for (final entry in eventHooks.entries) {
+        final event = entry.key.replaceAll('"', r'\"');
+        for (final sub in entry.value) {
+          final safe = sub.command.replaceAll('"', r'\"');
+          buffer.writeln('      if (evt === "$event") {');
+          buffer.writeln('        const out = await run("$safe");');
+          buffer.writeln(
+            '        try { return out ? JSON.parse(out) : {}; } catch (_) { return {}; }',
+          );
+          buffer.writeln('      }');
         }
-        final safe = sub.command.replaceAll('"', r'\"');
-        buffer.writeln(
-          '    if (input.client?.events?.on) '
-          'input.client.events.on("$event", async () => {'
-          ' const out = await run("$safe"); return out ? JSON.parse(out) : {}; });',
-        );
       }
+      buffer.writeln('    },');
     }
-    buffer
-      ..writeln('  };')
-      ..writeln('  on();');
-    if (toolHooks.isEmpty) {
-      buffer.writeln('};');
-      return buffer.toString();
-    }
-    // tool.execute.before/after：opencode plugin 的函数式 hook（返回 hooks
-    // 对象）；按 `input.tool`（工具名）正则过滤，`{"decision":"deny"}` → throw
-    // 阻断工具调用。
-    buffer.writeln('  return {');
+    // tool.execute.before/after：函数式 hook 按 `input.tool`（工具名）正则
+    // 过滤，`{"decision":"deny"}` → throw 阻断工具调用。
     for (final entry in toolHooks.entries) {
       final event = entry.key.replaceAll('"', r'\"');
       final intercepting = entry.key == 'tool.execute.before';

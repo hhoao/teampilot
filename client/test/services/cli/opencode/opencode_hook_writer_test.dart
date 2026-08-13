@@ -93,7 +93,8 @@ void main() {
     expect(js, contains('new RegExp("bash")'));
     expect(js, contains('run("bash \'/s/hooks/teampilot-hook-h1.sh\'")'));
     expect(js, contains('d.decision === "deny"'));
-    expect(js, contains('input.client.events.on("tool.execute.before"'));
+    expect(js, contains('evt === "tool.execute.before"'));
+    expect(js, contains('event: async ({ event })'));
     expect(
       result.scripts.any((s) => s.fileName == 'teampilot-hook-h1.sh'),
       isTrue,
@@ -147,6 +148,35 @@ void main() {
         .singleWhere((s) => s.fileName == 'teampilot-user-hooks.js')
         .content;
     expect(js, isNot(contains('"tool.execute.')));
-    expect(js, contains('input.client.events.on("session.idle"'));
+    expect(js, contains('evt === "session.idle"'));
+  });
+
+  test('non-tool subscriptions use event hook filtering by event type', () {
+    const stopEntry = HookEntry(
+      id: 'h1',
+      source: HookSource.userLibrary,
+      event: HookEvent.stop,
+      action: CommandHookAction.raw('echo hi'),
+    );
+    const promptEntry = HookEntry(
+      id: 'h2',
+      source: HookSource.userLibrary,
+      event: HookEvent.userPromptSubmit,
+      action: CommandHookAction.raw('echo hi2'),
+    );
+    final result = writer.render(
+      entries: const [stopEntry, promptEntry],
+      ctx: ctx,
+    );
+    final js = result.scripts
+        .singleWhere((s) => s.fileName == 'teampilot-user-hooks.js')
+        .content;
+    expect(js, contains('event: async ({ event })'));
+    expect(js, contains('const evt = event?.type || event?.data?.type;'));
+    expect(js, contains('evt === "session.idle"'));
+    expect(js, contains('evt === "chat.message"'));
+    expect(js, contains('run("bash \'/s/hooks/teampilot-hook-h1.sh\'")'));
+    expect(js, contains('run("bash \'/s/hooks/teampilot-hook-h2.sh\'")'));
+    expect(js, isNot(contains('input.client?.events?.on')));
   });
 }

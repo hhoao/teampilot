@@ -466,8 +466,8 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
       changed = true;
     }
 
-    // User hooks bridge: generated JS plugin subscribing SDK events, plus
-    // glue scripts under `<opencodeDir>/hooks/` (paths referenced by the
+    // User hooks bridge: generated JS plugin (event hook + tool-keyed hooks),
+    // plus glue scripts under `<opencodeDir>/hooks/` (paths referenced by the
     // plugin's execFile commands). Plugin entry merges into the `plugin`
     // array, coexisting with agent-status / idle entries (dedup by path).
     if (ctx.hooks.isNotEmpty) {
@@ -481,11 +481,18 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
           glueBuilder: const GlueScriptBuilder(),
         ),
       );
-      await paths.fs.ensureDir(hooksDir);
+      // Parent dirs ensured per script: managed scripts nest under
+      // `hooks/<id>/<fileName>` — LocalFilesystem.atomicWrite creates parents
+      // but Sftp/WslFilesystem do not.
+      final ensuredDirs = <String>{};
       for (final script in result.scripts) {
         final target = script.fileName == opencodeUserHooksPluginFileName
             ? paths.joinWork(opencodeDir, script.fileName)
             : paths.joinWork(hooksDir, script.fileName);
+        final parent = paths.workPathContext.dirname(target);
+        if (ensuredDirs.add(parent)) {
+          await paths.fs.ensureDir(parent);
+        }
         await paths.fs.atomicWrite(target, script.content);
       }
       final fragment =
