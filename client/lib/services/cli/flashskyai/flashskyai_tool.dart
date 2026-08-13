@@ -27,6 +27,8 @@ import 'capabilities/history/ai_history_capability.dart';
 import 'capabilities/resume_strategy.dart';
 import '../registry/capabilities/headless_provision_capability.dart';
 import 'capabilities/config_profile.dart';
+import 'capabilities/prompt_provision.dart';
+import '../registry/capabilities/prompt_provision_capability.dart';
 import 'capabilities/headless_run.dart';
 import 'capabilities/headless_provision.dart';
 import 'provider/flashskyai_effort_capability.dart';
@@ -103,6 +105,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     this.remoteAppData = const NoRemoteAppData(),
     this.credentialExport = const NoCredentialExport(),
     this.toolCallResolvers = const FlashskyaiToolCallResolvers(),
+    this.promptProvision = const FlashskyaiPromptProvisionCapability(),
     this.busIdleHooks = const BusIdleHooksCapability(),
   });
 
@@ -139,6 +142,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
   final RemoteAppDataCapability remoteAppData;
   final CredentialExportCapability credentialExport;
   final FlashskyaiToolCallResolvers toolCallResolvers;
+  final PromptProvisionCapability promptProvision;
   final BusIdleHooksCapability busIdleHooks;
   final AskUserQuestionCapability askUserQuestion;
   final ExitPlanModeCapability exitPlanMode;
@@ -194,6 +198,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     aiHistory,
     skillSyntax,
     toolCallResolvers,
+    promptProvision,
     busIdleHooks,
   ];
 }
