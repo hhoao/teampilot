@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/config_profile.dart';
+import 'package:teampilot/services/cli/opencode/capabilities/prompt_provision.dart';
+import 'package:teampilot/services/cli/registry/capabilities/prompt_provision_capability.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
@@ -59,19 +61,67 @@ void main() {
     expect(twice, once);
   });
 
-  test('composeOpencodeWorkspaceDirectoriesPrompt lists absolute paths', () {
-    final prompt = composeOpencodeWorkspaceDirectoriesPrompt(
-      <String>['/repo/a', '/repo/b'],
-    );
-    expect(prompt, contains('## Workspace directories'));
-    expect(prompt, contains('- /repo/a'));
-    expect(prompt, contains('- /repo/b'));
-    expect(prompt, contains('absolute paths'));
-  });
+  test(
+    'OpencodePromptProvisionCapability writes role + dirs into AGENTS.md',
+    () async {
+      final base = await Directory.systemTemp.createTemp('opencode_prompt_');
+      addTearDown(() async {
+        if (await base.exists()) await base.delete(recursive: true);
+      });
+      final fs = LocalFilesystem();
+      final service = ConfigProfileService(
+        basePath: base.path,
+        fs: fs,
+        layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
+      );
+      const member = TeamMemberConfig(
+        id: 'm1',
+        name: 'Member',
+        model: 'test',
+        responsibilities: 'You are the reviewer.',
+      );
+      final scope = resolveLaunchProfileScope(
+        workspaceId: 'workspace-1',
+        teamId: 'team-a',
+        appSessionId: 'session-1',
+        cliTeamName: 'session-1',
+        memberId: 'm1',
+      );
 
-  test('composeOpencodeWorkspaceDirectoriesPrompt is empty without dirs', () {
-    expect(composeOpencodeWorkspaceDirectoriesPrompt(const []), isEmpty);
-    expect(composeOpencodeWorkspaceDirectoriesPrompt(const ['  ']), isEmpty);
+      final contribution =
+          await const OpencodePromptProvisionCapability().provision(
+            PromptProvisionContext(
+              paths: service,
+              scope: scope,
+              member: member,
+              additionalDirectories: const ['/abs/missing/repo'],
+            ),
+          );
+
+      expect(contribution.written, isTrue);
+      expect(contribution.environment, isEmpty);
+      final opencodeDir = service.sessionToolDir(
+        scope.workspaceId,
+        scope.sessionId,
+        'opencode',
+        memberId: scope.memberId,
+      );
+      final agents = await fs.readString(
+        '$opencodeDir/${OpencodePromptProvisionCapability.agentsFileName}',
+      );
+      expect(agents, isNotNull);
+      expect(agents, contains('You are the reviewer.'));
+      expect(agents, contains('## Workspace directories'));
+      expect(agents, contains('- /abs/missing/repo'));
+    },
+  );
+
+  test('OpencodePromptProvisionCapability skips without scope', () async {
+    final contribution =
+        await const OpencodePromptProvisionCapability().provision(
+          const PromptProvisionContext(),
+        );
+    expect(contribution.written, isFalse);
   });
 
   test(

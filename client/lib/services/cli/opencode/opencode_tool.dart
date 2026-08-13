@@ -62,7 +62,9 @@ import '../registry/capabilities/turn_interrupt_capability.dart';
 import 'capabilities/tool_call_resolvers.dart';
 import 'capabilities/mcp_config_writer.dart';
 import 'capabilities/plugin_provisioner.dart';
+import 'capabilities/prompt_provision.dart';
 import 'capabilities/resource.dart';
+import '../registry/capabilities/prompt_provision_capability.dart';
 
 final class OpencodeCliTool implements CliToolDefinition {
   OpencodeCliTool({
@@ -93,6 +95,7 @@ final class OpencodeCliTool implements CliToolDefinition {
     this.exitPlanMode = const NoExitPlanModeCapability(),
     this.aiHistory = const OpencodeAiHistoryCapability(),
     this.skillSyntax = const OpencodeSkillInvocationSyntaxCapability(),
+    this.promptProvision = const OpencodePromptProvisionCapability(),
     this.turnCompletion = const OpencodeTurnCompletion(),
     this.waitBeforeStop = const DefaultWaitBeforeStop(),
     this.providerDisplay = const OpencodeProviderDisplay(),
@@ -148,6 +151,7 @@ final class OpencodeCliTool implements CliToolDefinition {
   final ExitPlanModeCapability exitPlanMode;
   final OpencodeAiHistoryCapability aiHistory;
   final SkillInvocationSyntaxCapability skillSyntax;
+  final PromptProvisionCapability promptProvision;
 
   @override
   CliTool get id => CliTool.opencode;
@@ -193,6 +197,7 @@ final class OpencodeCliTool implements CliToolDefinition {
     exitPlanMode,
     aiHistory,
     skillSyntax,
+    promptProvision,
     toolCallResolvers,
   ];
 }

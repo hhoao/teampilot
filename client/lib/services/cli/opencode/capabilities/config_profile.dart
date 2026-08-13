@@ -14,15 +14,16 @@ import '../provider/opencode_data_layout.dart';
 import '../provider/opencode_provider_settings_resolver.dart';
 import '../provider/opencode_effort_capability.dart';
 import '../provider/opencode_shared_plugin_deps.dart';
-import '../../../session/member_role_provision.dart';
 import '../../../storage/runtime_context.dart';
 import '../../../storage/app_storage.dart';
 import '../../../team_bus/mcp/bus_bridge_locator.dart';
 import '../../../team_bus/mcp/teammate_bus_mcp_config.dart';
 import '../../registry/capabilities/cli_effort_capability.dart';
 import '../../registry/capabilities/config_profile_capability.dart';
+import '../../registry/capabilities/prompt_provision_capability.dart';
 import 'agent_status_plugin.dart';
 import 'idle_plugin.dart';
+import 'prompt_provision.dart';
 
 /// Parses bus idle URL (e.g. `http://127.0.0.1:12345/idle`) to the listening port.
 @visibleForTesting
@@ -323,31 +324,13 @@ Map<String, Object?> mergeOpencodeExternalDirectories(
   return {...config, 'permission': permission};
 }
 
-/// Composes the AGENTS.md section listing workspace additional directories.
-/// Tells the agent the directories exist and that absolute paths are required
-/// (they live outside the opencode project root).
-String composeOpencodeWorkspaceDirectoriesPrompt(Iterable<String> directories) {
-  final dirs = directories
-      .map((d) => d.trim())
-      .where((d) => d.isNotEmpty)
-      .toList(growable: false);
-  if (dirs.isEmpty) return '';
-  final body = StringBuffer(
-    '## Workspace directories\n'
-    'This session can also access the following directories outside the '
-    'project root. Read and edit them using absolute paths.\n',
-  );
-  for (final dir in dirs) {
-    body.writeln('- $dir');
-  }
-  return body.toString();
-}
-
 /// opencode CLI launch: provisions a per-session config dir (`OPENCODE_CONFIG_DIR`)
 /// holding `opencode.json` (provider credentials, member identity via `AGENTS.md`,
 /// and in mixed mode the team-bus idle plugin + teammate-bus MCP server).
 final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
-  const OpencodeConfigProfileCapability();
+  const OpencodeConfigProfileCapability({
+    this.promptProvision = const OpencodePromptProvisionCapability(),
+  });
 
   static const toolId = 'opencode';
   static const opencodeConfigFileName = 'opencode.json';
@@ -367,6 +350,8 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
   static const authContentEnv = 'OPENCODE_AUTH_CONTENT';
 
   static const _opencodeDataLayout = OpencodeDataLayout();
+
+  final PromptProvisionCapability promptProvision;
 
   @override
   Future<void> ensureSessionProfile(ConfigProfileSessionContext ctx) async {}
@@ -472,14 +457,17 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
       changed = true;
     }
 
-    if (await _writeMemberIdentity(
-      paths: paths,
-      opencodeDir: opencodeDir,
-      member: member,
-      forceTeamLeadDelegateMode: team?.forceTeamLeadDelegateMode ?? false,
-      mixed: mixed,
-      additionalDirectories: workDirs,
-    )) {
+    final promptContribution = await promptProvision.provision(
+      PromptProvisionContext(
+        paths: paths,
+        scope: ctx.scope,
+        member: member,
+        forceTeamLeadDelegateMode: team?.forceTeamLeadDelegateMode ?? false,
+        mixed: mixed,
+        additionalDirectories: workDirs,
+      ),
+    );
+    if (promptContribution.written) {
       changed = true;
     }
 
@@ -597,39 +585,6 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
         basePath: catalog.basePath,
         repository: providerCatalogRepository(catalog),
       );
-
-  /// Writes member identity to `AGENTS.md`; opencode auto-loads it from the
-  /// config dir as a global instruction. Appends the workspace additional
-  /// directories section when [additionalDirectories] is non-empty. Returns
-  /// whether anything was written.
-  Future<bool> _writeMemberIdentity({
-    required ConfigProfileDelegate paths,
-    required String opencodeDir,
-    required TeamMemberConfig? member,
-    required bool forceTeamLeadDelegateMode,
-    required bool mixed,
-    List<String> additionalDirectories = const [],
-  }) async {
-    final prompt = (member != null && member.isValid)
-        ? MemberRoleProvision.composeRolePrompt(
-            member: member,
-            forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
-            mixed: mixed,
-          ).trim()
-        : '';
-    final dirsPrompt =
-        composeOpencodeWorkspaceDirectoriesPrompt(additionalDirectories);
-    final body = <String>[
-      if (prompt.isNotEmpty) prompt,
-      if (dirsPrompt.isNotEmpty) dirsPrompt.trim(),
-    ].join('\n\n');
-    if (body.isEmpty) return false;
-    await paths.fs.atomicWrite(
-      paths.joinWork(opencodeDir, agentsFileName),
-      '$body\n',
-    );
-    return true;
-  }
 
   Future<void> _writeIdlePlugin({
     required ConfigProfileDelegate paths,
