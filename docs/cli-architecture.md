@@ -483,6 +483,22 @@ for (final def in CliToolRegistry.builtIn().launchable)
 | `CredentialExportCapability` | `registry/capabilities/credential_export_capability.dart` | 服务 | ✅ |
 | `RemoteAppDataCapability` | `registry/capabilities/remote_app_data_capability.dart` | 服务 | ✅ |
 | `CredentialBindingCapability` | `registry/capabilities/credential_binding_capability.dart` | 服务 | - |
+| `HookWriterCapability` | `registry/capabilities/hook_writer_capability.dart` | 服务 | - |
+
+## Hook 管线（用户可配置 hooks）
+
+用户 hook（运行时机事件 → 命令/脚本）从全局库（`/hooks`，`<root>/hooks/{id}/hook.json`）按
+scope 启用（`ConfigBundle.hookIds`，team > expert > workspace 合并），随 session 启动经
+**统一 hook 管线**物化到各 CLI 原生配置。所有来源（用户库 / 插件 `hooks/hooks.json` /
+扩展 settings-hook / 内部托管 agent-status·bus-idle·team-lead delegate）由
+`HookSeatContextCompleter` 组装为 `HookEntry`，每 CLI 一个 `HookWriterCapability` 实现
+（`HookWriteResult` = 文件级配置片段 + 生成脚本 + 警告），装配点只调自己的 writer。
+Command 类 hook 经 `GlueScriptBuilder` 包成 `teampilot-hook-<id>-<event>.sh`（stdin 透传、
+空 stdout → 决策 JSON 注入、非空 stdout 透传、exit code 透传、`timeout <t>s bash -c`、双方言）。
+
+每 CLI writer 与配置落点、事件支持矩阵、决策 JSON 契约、已知限制的**唯一事实来源**：
+[docs/cli-formats/hooks.md](cli-formats/hooks.md)（13 事件 × 5 CLI 矩阵，`HookEventCapability.matrix`
+为代码侧唯一事实源，writer 与 UI 能力矩阵共用）。修改任何 hook 行为前先读该页；行为差异需回填。
 
 ## 消息与工具调用解析接入点
 
