@@ -102,11 +102,12 @@ void main() {
       expect(pre, isNotEmpty);
       final command =
           ((pre.first as Map)['hooks'] as List).first['command'] as String;
-      // Task 18 收敛：扩展 settings-hook 走统一 writer（glue 包装，id 前缀）。
+      // Task 18 收敛：扩展 settings-hook 走统一 writer（glue 包装，id 前缀
+      // 含扩展 id，跨扩展同事件不碰撞）。
       expect(
         command,
-        contains('teampilot-hook-teampilot-extension-settings-hook-PreToolUse'
-            '.sh'),
+        contains('teampilot-hook-teampilot-extension-settings-hook-rtk-'
+            'PreToolUse.sh'),
       );
     });
 

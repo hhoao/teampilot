@@ -10,15 +10,19 @@ typedef HookProvisionerFactory =
     ScriptFileHookProvisioner Function(String scriptAsset);
 
 /// One enabled extension's `settings-hook` effect, materialized for render:
-/// event (manifest `config.event`), matcher (manifest `config.matcher`) and the
-/// provisioned hook command (script written under the member tool dir).
+/// owning extension id, event (manifest `config.event`), matcher (manifest
+/// `config.matcher`) and the provisioned hook command (script written under
+/// the member tool dir). The extension id disambiguates hook entry ids across
+/// extensions sharing an event (collision-safe glue script names).
 class ExtensionSettingsHook {
   const ExtensionSettingsHook({
+    required this.extensionId,
     required this.event,
     required this.matcher,
     required this.command,
   });
 
+  final String extensionId;
   final String event;
   final String matcher;
   final String command;
@@ -100,6 +104,7 @@ class ExtensionProvisioner {
         final command = provisioner.commandForPath(scriptPath);
         out.add(
           ExtensionSettingsHook(
+            extensionId: manifest.id,
             event: effect.hookEvent ?? 'PreToolUse',
             matcher: effect.hookMatcher ?? 'Bash',
             command: command,

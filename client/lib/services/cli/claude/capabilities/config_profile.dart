@@ -803,6 +803,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
         ...completer.delegateHooks(commands: [delegateCommand]),
       for (final hook in extensionHooks)
         ...completer.extensionHooks(
+          extensionId: hook.extensionId,
           events: [hook.event],
           command: hook.command,
           matcher: hook.matcher,

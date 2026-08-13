@@ -93,6 +93,7 @@ void main() {
 
   test('extension settings hooks become extension entries', () {
     final entries = completer.extensionHooks(
+      extensionId: 'rtk',
       events: const ['PreToolUse', 'UserPromptSubmit'],
       command: 'bash /s/ext-hook.sh',
     );
@@ -103,6 +104,29 @@ void main() {
     expect(entries.first.source, HookSource.extension);
     final cmd = entries.first.action as CommandHookAction;
     expect(cmd.command, 'bash /s/ext-hook.sh');
+  });
+
+  test('extension entries carry per-extension ids (collision-safe glue names)',
+      () {
+    final rtk = completer.extensionHooks(
+      extensionId: 'rtk',
+      events: const ['PreToolUse'],
+      command: 'bash /s/rtk.sh',
+    );
+    final other = completer.extensionHooks(
+      extensionId: 'prompt-boost',
+      events: const ['PreToolUse'],
+      command: 'bash /s/prompt-boost.sh',
+    );
+    expect(
+      rtk.single.id,
+      'teampilot-extension-settings-hook-rtk-PreToolUse',
+    );
+    expect(
+      other.single.id,
+      'teampilot-extension-settings-hook-prompt-boost-PreToolUse',
+    );
+    expect(rtk.single.id, isNot(other.single.id));
   });
 
   test('plugin hooks become plugin-source entries aligned to PluginHook fields',

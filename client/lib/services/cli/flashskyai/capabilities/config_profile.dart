@@ -269,6 +269,7 @@ final class FlashskyaiConfigProfileCapability
     final entries = <HookEntry>[
       for (final hook in extensionHooks)
         ...completer.extensionHooks(
+          extensionId: hook.extensionId,
           events: [hook.event],
           command: hook.command,
           matcher: hook.matcher,
@@ -378,6 +379,7 @@ final class FlashskyaiConfigProfileCapability
         ...completer.delegateHooks(commands: [delegateCommand]),
       for (final hook in extensionHooks)
         ...completer.extensionHooks(
+          extensionId: hook.extensionId,
           events: [hook.event],
           command: hook.command,
           matcher: hook.matcher,

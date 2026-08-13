@@ -104,10 +104,14 @@ class HookSeatContextCompleter {
 
   /// 扩展 settings-hook（manifest `config.event` + matcher + command）。
   ///
-  /// 事件名接受 camelCase（`preToolUse`）与 CLI 原生 PascalCase
-  /// （`PreToolUse`）两种拼写；`matcher` 透传（旧
+  /// entry id 带扩展 id（`teampilot-extension-settings-hook-<extensionId>-
+  /// <eventName>`）——两个扩展对同一事件配 settings-hook 时 id 仍唯一，
+  /// writer 的胶水文件名（按 entry.id 生成）不碰撞，避免后写覆盖先写、
+  /// 去重保留的条目指向被覆盖脚本。事件名接受 camelCase（`preToolUse`）
+  /// 与 CLI 原生 PascalCase（`PreToolUse`）两种拼写；`matcher` 透传（旧
   /// `SettingsHookEffectApplier` 默认 `'Bash'`，由调用方按 effect 提供）。
   List<HookEntry> extensionHooks({
+    required String extensionId,
     required List<String> events,
     required String command,
     String? matcher,
@@ -115,7 +119,7 @@ class HookSeatContextCompleter {
     for (final eventName in events)
       if (_parseEventName(eventName) != null && command.trim().isNotEmpty)
         HookEntry(
-          id: 'teampilot-extension-settings-hook-$eventName',
+          id: 'teampilot-extension-settings-hook-$extensionId-$eventName',
           source: HookSource.extension,
           event: _parseEventName(eventName)!,
           matcher: matcher,
