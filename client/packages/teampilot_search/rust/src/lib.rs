@@ -1,6 +1,6 @@
 pub mod engine;
 
-use std::ffi::{c_char, CStr, CString};
+use std::ffi::{c_char, CStr};
 use std::slice;
 use std::sync::atomic::Ordering;
 use std::sync::mpsc;
@@ -150,12 +150,9 @@ unsafe fn fill_chunk(h: &mut TpSearchHandle, chunk: &mut TpSearchChunk) {
     let mut m_idx = 0usize;
     while m_idx < m_arr.len() && !h.pending.is_empty() {
         let d = &h.pending[0];
-        let path = CString::new(d.path.as_str()).unwrap();
-        let rel = CString::new(d.relative_path.as_str()).unwrap();
-        let text = CString::new(d.line_text.as_str()).unwrap();
-        let path_len = path.as_bytes().len() + 1;
-        let rel_len = rel.as_bytes().len() + 1;
-        let text_len = text.as_bytes().len() + 1;
+        let path_len = d.path.as_bytes().len() + 1;
+        let rel_len = d.relative_path.as_bytes().len() + 1;
+        let text_len = d.line_text.as_bytes().len() + 1;
         let remaining = str_cap.saturating_sub(str_off);
 
         // Pathological case: the paths alone exceed a fresh buffer, so this

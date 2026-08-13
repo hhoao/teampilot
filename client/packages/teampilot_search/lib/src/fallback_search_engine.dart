@@ -16,6 +16,8 @@ const int kFallbackMaxLineBytes = 1024 * 1024;
 /// Mirrors [TpSearchEngine.search] semantics: case-insensitive by default,
 /// hidden entries skipped, [kFallbackIgnoredDirNames] skipped, glob
 /// include/exclude, [TpSearchOptions.maxFileSize] / [maxResults] caps.
+/// Note: [TpSearchOptions.useGitignore] is not honored by the fallback
+/// engine in v1 — SSH results may include gitignored files.
 Stream<TpSearchMatch> fallbackSearch(
   SearchFileReader reader,
   String root,

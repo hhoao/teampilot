@@ -29,11 +29,10 @@ void main() {
     final matches = await engine()
         .search(fixture.path, const TpSearchOptions(pattern: 'hello'))
         .toList();
-    expect(matches.map((m) => m.relativePath), [
-      'a.dart',
-      'a.dart',
-      'sub/c.rs',
-    ]);
+    // WalkParallel reports matches in nondeterministic order across cores:
+    // assert on the set of paths, not the sequence.
+    expect(matches.map((m) => m.relativePath).toSet(), {'a.dart', 'sub/c.rs'});
+    expect(matches.length, 3);
     final first = matches.first;
     expect(first.lineNumber, 1);
     expect(first.lineText, 'hello world\n');

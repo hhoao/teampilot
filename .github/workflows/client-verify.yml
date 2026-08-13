@@ -67,10 +67,6 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
-      - name: Install cargo-ndk for teampilot_search android cross-build
-        if: matrix.platform == 'android'
-        run: cargo install cargo-ndk --locked
-
       - name: Install Linux build dependencies
         if: matrix.install_linux_deps
         run: |
@@ -133,6 +129,10 @@ jobs:
 
       - name: Unit and widget tests
         run: flutter test --exclude-tags integration
+
+      - name: Build Android APK (debug, teampilot_search cdylib cross-compile)
+        if: matrix.platform == 'android'
+        run: flutter build apk --debug
 
   integration-linux:
     name: Linux integration (Claude PTY + Docker SSH)
