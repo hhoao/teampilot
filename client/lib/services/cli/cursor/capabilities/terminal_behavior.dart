@@ -1,5 +1,5 @@
-import '../../../terminal/fullscreen_cr_ack_config.dart';
 import '../../registry/capabilities/terminal_behavior_capability.dart';
+import '../../registry/capabilities/terminal_composer_region.dart';
 
 final class CursorTerminalBehavior implements TerminalBehaviorCapability {
   const CursorTerminalBehavior();
@@ -17,8 +17,8 @@ final class CursorTerminalBehavior implements TerminalBehaviorCapability {
   TerminalPathDropBehavior get pathDropBehavior =>
       TerminalPathDropBehavior.defaultFor(usesFullScreenInput: true);
   @override
-  FullscreenCrAckStrategy get fullscreenCrAckStrategy =>
-      FullscreenCrAckStrategy.composerMovesDown;
-  @override
-  String? get fullscreenComposerPrefix => '→';
+  FullscreenComposerRegionSpec get composerRegion => const FullscreenComposerRegionSpec(
+    submitSemantics: ComposerSubmitSemantics.regionMovedDown,
+    prefixes: ['→'],
+  );
 }
