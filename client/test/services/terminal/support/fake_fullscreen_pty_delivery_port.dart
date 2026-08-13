@@ -91,23 +91,6 @@ final class FakeFullscreenPtyDeliveryPort implements FullscreenPtyDeliveryPort {
   }
 
   @override
-  bool isComposerChromeEmpty({int scanRows = 24}) {
-    final prefix = composerRegion.prefixes.isEmpty
-        ? null
-        : composerRegion.prefixes.first;
-    if (prefix == null || prefix.isEmpty) {
-      return staged == null || staged!.trim().isEmpty;
-    }
-    if (staged == null) return true;
-    final trimmed = staged!.trimLeft();
-    if (!trimmed.startsWith(prefix)) {
-      // Staged body without prefix chrome — treat as non-empty composer body.
-      return staged!.trim().isEmpty;
-    }
-    return trimmed.substring(prefix.length).trim().isEmpty;
-  }
-
-  @override
   Future<void> clearStagedInput() async {
     clearCount++;
     staged = null;

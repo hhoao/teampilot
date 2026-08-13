@@ -369,9 +369,6 @@ final class _CursorTranscriptAfterSubmitPort
   }
 
   @override
-  bool isComposerChromeEmpty({int scanRows = 24}) => _submitted;
-
-  @override
   Future<void> clearStagedInput() async {
     _staged = null;
     _submitted = false;
@@ -467,10 +464,6 @@ final class _ComposerMovesDownStuckButCommittedPort
   @override
   bool isAtAnchor(FullscreenPromptAnchor anchor) =>
       locateNeedle(anchor.needle) != null;
-
-  @override
-  bool isComposerChromeEmpty({int scanRows = 24}) =>
-      _composerBody == null || _composerBody!.trim().isEmpty;
 
   @override
   Future<void> clearStagedInput() async {
@@ -578,10 +571,6 @@ final class _ComposerMovesDownStuckStagedThenAckPort
       staged != null && staged!.contains(anchor.needle);
 
   @override
-  bool isComposerChromeEmpty({int scanRows = 24}) =>
-      staged == null || staged!.trim().isEmpty;
-
-  @override
   Future<void> clearStagedInput() async {
     staged = null;
   }
@@ -681,10 +670,6 @@ final class _ComposerMovesDownEmptyNoNeedleThenAckPort
   @override
   bool isAtAnchor(FullscreenPromptAnchor anchor) =>
       staged != null && staged!.contains(anchor.needle);
-
-  @override
-  bool isComposerChromeEmpty({int scanRows = 24}) =>
-      staged == null || staged!.trim().isEmpty;
 
   @override
   Future<void> clearStagedInput() async {
@@ -787,9 +772,6 @@ final class _AnchorCellStuckButHookAckedPort
   @override
   bool isAtAnchor(FullscreenPromptAnchor anchor) =>
       staged != null && staged!.contains(anchor.needle);
-
-  @override
-  bool isComposerChromeEmpty({int scanRows = 24}) => !submitted;
 
   @override
   Future<void> clearStagedInput() async {

@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/cli/registry/capabilities/terminal_composer_region.dart';
-import 'package:teampilot/services/terminal/fullscreen_cr_ack_config.dart';
 import 'package:teampilot/services/terminal/fullscreen_input_screen_probe.dart';
 import 'package:teampilot/services/terminal/pty_automation_needle.dart';
 
@@ -161,45 +160,6 @@ void main() {
     expect(
       bottomComposerChromeRow(grid, '\u203a', scanRows: 8),
       6,
-    );
-  });
-
-  test('isSubmitted true for composerMovesDown when prefix row appears below', () {
-    final grid = _FakeGrid.fromRows([
-      'codex output above',
-      '› codex-probe-12345',
-      'Working…',
-      '› ',
-    ]);
-    final anchor = locateFullscreenPromptNeedle(grid, 'codex-probe-12345')!;
-    expect(isFullscreenPromptAtAnchor(grid, anchor), isTrue);
-    expect(
-      isFullscreenPromptSubmitted(
-        grid,
-        anchor,
-        strategy: FullscreenCrAckStrategy.composerMovesDown,
-        composerPrefix: '\u203a',
-        scanRows: 24,
-      ),
-      isTrue,
-    );
-  });
-
-  test('isSubmitted false for composerMovesDown when no new composer below', () {
-    final grid = _FakeGrid.fromRows([
-      'codex output above',
-      '› codex-probe-12345',
-    ]);
-    final anchor = locateFullscreenPromptNeedle(grid, 'codex-probe-12345')!;
-    expect(
-      isFullscreenPromptSubmitted(
-        grid,
-        anchor,
-        strategy: FullscreenCrAckStrategy.composerMovesDown,
-        composerPrefix: '\u203a',
-        scanRows: 24,
-      ),
-      isFalse,
     );
   });
 
