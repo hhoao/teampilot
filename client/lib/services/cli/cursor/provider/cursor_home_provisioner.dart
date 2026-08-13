@@ -1,14 +1,19 @@
 import 'dart:convert';
 
+import '../../../../models/hook_entry.dart';
 import '../../../../models/team_config.dart';
 import '../../../agent_status/member_agent_status_endpoint.dart';
+import '../../../host/host_script_runner.dart';
+import '../../../hook/glue_script_builder.dart';
 import '../../../io/filesystem.dart';
 import '../../../team_bus/member_bus_idle_endpoint.dart';
+import '../../registry/capabilities/hook_writer_capability.dart';
 import 'cursor_auth_artifacts.dart';
 import 'cursor_cli_config_policy.dart';
 import 'cursor_home_agent_status_overlay.dart';
 import 'cursor_home_bus_overlay.dart';
 import 'cursor_home_layout.dart';
+import 'cursor_hook_writer.dart';
 import 'cursor_member_home_passthrough.dart';
 import 'cursor_provider_credentials_service.dart';
 import 'cursor_role_rule_writer.dart';
@@ -288,6 +293,50 @@ final class CursorHomeProvisioner {
       ),
     );
     await _fs.atomicWrite(hooksPath, _jsonPretty(merged));
+  }
+
+  /// Writes user hooks into `~/.cursor/hooks.json`, preserving existing
+  /// entries (agent-status / bus). Glue + managed scripts land under
+  /// `~/.cursor/hooks/`.
+  Future<void> writeUserHooks({
+    required String memberHome,
+    required List<HookEntry> entries,
+    required HostScriptRunner runner,
+  }) async {
+    if (entries.isEmpty) return;
+    final hooksDir = _fs.pathContext.join(
+      _layout.cursorDir(memberHome),
+      CursorHomeLayout.hooksDirName,
+    );
+    final result = const CursorHookWriter().render(
+      entries: entries,
+      ctx: HookRenderContext(
+        hooksDir: hooksDir,
+        runner: runner,
+        glueBuilder: const GlueScriptBuilder(),
+      ),
+    );
+    for (final script in result.scripts) {
+      await _fs.atomicWrite(
+        _fs.pathContext.join(hooksDir, script.fileName),
+        script.content,
+      );
+    }
+    final hooksJsonPath = _layout.hooksConfig(memberHome);
+    final existing = await _readHooksJson(hooksJsonPath);
+    final fragment =
+        (result.configFragments['hooks.json'] as Map<String, Object?>?) ??
+        const <String, Object?>{};
+    final merged = mergeCursorHooksConfig(existing, fragment);
+    await _fs.atomicWrite(hooksJsonPath, _jsonPretty(merged));
+  }
+
+  Future<Map<String, Object?>> _readHooksJson(String path) async {
+    final raw = await _fs.readString(path);
+    if (raw == null || raw.trim().isEmpty) {
+      return const {'version': 1, 'hooks': <String, Object?>{}};
+    }
+    return (jsonDecode(raw) as Map).cast<String, Object?>();
   }
 
   Future<void> _seedMemberMcpFromBase({

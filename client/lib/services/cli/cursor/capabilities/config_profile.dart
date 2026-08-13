@@ -113,6 +113,17 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
       realHomeRoot: null,
     );
 
+    if (ctx.hooks.isNotEmpty) {
+      await CursorHomeProvisioner(
+        fs: paths.fs,
+        layout: CursorHomeLayout(pathContext: paths.fs.pathContext),
+      ).writeUserHooks(
+        memberHome: home,
+        entries: ctx.hooks,
+        runner: paths.hostEnvironmentForProvision().scriptRunner,
+      );
+    }
+
     await _provisionWorkspaceTrust(ctx: ctx, homeRoot: home);
     return ConfigProfileLaunchContribution(
       environment: CursorLaunchEnvironment.forStandalone(
@@ -228,6 +239,17 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
           memberHome: agentHome,
           memberId: memberId,
           agentStatus: agentStatus,
+        );
+      }
+
+      if (ctx.hooks.isNotEmpty) {
+        await CursorHomeProvisioner(
+          fs: ctx.paths.fs,
+          layout: CursorHomeLayout(pathContext: ctx.paths.fs.pathContext),
+        ).writeUserHooks(
+          memberHome: agentHome,
+          entries: ctx.hooks,
+          runner: ctx.paths.hostEnvironmentForProvision().scriptRunner,
         );
       }
 

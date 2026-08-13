@@ -64,6 +64,8 @@ import 'capabilities/mcp_config_writer.dart';
 import 'capabilities/plugin_provisioner.dart';
 import 'capabilities/post_manifest_flush.dart';
 import 'capabilities/resource.dart';
+import '../registry/capabilities/hook_writer_capability.dart';
+import 'provider/cursor_hook_writer.dart';
 
 /// Cursor CLI (`cursor-agent`). Standalone and mixed-mode (HOME isolation +
 /// provider auth) embedded terminal.
@@ -108,6 +110,7 @@ final class CursorCliTool implements CliToolDefinition {
     this.remoteAppData = const NoRemoteAppData(),
     this.credentialExport = const CursorCredentialExport(),
     this.toolCallResolvers = const CursorToolCallResolvers(),
+    this.hookWriter = const CursorHookWriter(),
     ProviderCredentialCapability? providerCredential,
   }) : aiHistory = aiHistory ??
            CursorAiHistoryCapability(
@@ -153,6 +156,7 @@ final class CursorCliTool implements CliToolDefinition {
   final RemoteAppDataCapability remoteAppData;
   final CredentialExportCapability credentialExport;
   final CursorToolCallResolvers toolCallResolvers;
+  final HookWriterCapability hookWriter;
   final AskUserQuestionCapability askUserQuestion;
   final ExitPlanModeCapability exitPlanMode;
   final CursorAiHistoryCapability aiHistory;
@@ -205,6 +209,7 @@ final class CursorCliTool implements CliToolDefinition {
     skillSyntax,
     postManifestFlush,
     toolCallResolvers,
+    hookWriter,
   ];
 }
 
