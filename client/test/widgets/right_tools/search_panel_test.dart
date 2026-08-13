@@ -124,7 +124,9 @@ void main() {
     expect(File('${fixture.path}/a.dart').readAsStringSync(), 'hi world\n');
   });
 
-  testWidgets('empty query clears results', (tester) async {
+  testWidgets('empty query clears results and shows the empty hint', (
+    tester,
+  ) async {
     final cubit = buildCubit();
     addTearDown(cubit.close);
     await tester.pumpWidget(wrap(cubit));
@@ -135,5 +137,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(cubit.state.files, isEmpty);
     expect(find.textContaining('hello world'), findsNothing);
+    final l10n = AppLocalizations.of(tester.element(find.byType(Scaffold)));
+    expect(find.text(l10n.workspaceSearchEmptyHint), findsOneWidget);
   });
 }

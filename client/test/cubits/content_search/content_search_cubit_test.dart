@@ -4,6 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot_search/teampilot_search.dart';
 
 import 'package:teampilot/cubits/content_search/content_search_cubit.dart';
+import 'package:teampilot/services/io/local_filesystem.dart';
+import 'package:teampilot/services/search/content_replacer.dart';
 
 class _FakeRunner {
   Stream<TpSearchMatch> Function(TpSearchOptions)? handler;
@@ -43,11 +45,8 @@ void main() {
   });
 
   test('aggregates matches by file, file header precedes its lines', () async {
-    fake.handler = (_) => _stream([
-          _m('a.dart', 1),
-          _m('b.txt', 2),
-          _m('a.dart', 3),
-        ]);
+    fake.handler = (_) =>
+        _stream([_m('a.dart', 1), _m('b.txt', 2), _m('a.dart', 3)]);
     await cubit.search(const TpSearchOptions(pattern: 'hello'));
     final st = cubit.state;
     expect(st.searching, isFalse);
@@ -65,10 +64,7 @@ void main() {
   });
 
   test('cancel stops aggregation and clears searching', () async {
-    fake.handler = (_) => _stream([
-          _m('a.dart', 1),
-          _m('b.txt', 2),
-        ]);
+    fake.handler = (_) => _stream([_m('a.dart', 1), _m('b.txt', 2)]);
     final fut = cubit.search(const TpSearchOptions(pattern: 'hello'));
     await Future<void>.delayed(const Duration(milliseconds: 10));
     cubit.cancel();
@@ -93,4 +89,53 @@ void main() {
     expect(cubit.state.searching, isFalse);
     expect(cubit.state.error, isNull);
   });
+
+  test('replaceAll skips the emit after close without throwing', () async {
+    final slow = _SlowReplacer();
+    final closed = ContentSearchCubit(
+      runnerFactory: (options) => fake.handler!(options),
+      replacerFactory: () => slow,
+    );
+    fake.handler = (_) => _stream([_m('a.dart', 1)]);
+    await closed.search(const TpSearchOptions(pattern: 'hello'));
+    final replace = closed.replaceAll('X');
+    await closed.close();
+    slow.release();
+    expect(await replace, 1);
+    expect(closed.state.replacedCount, isNull);
+  });
+
+  test('replaceSingle skips the emit after close without throwing', () async {
+    final slow = _SlowReplacer();
+    final closed = ContentSearchCubit(
+      runnerFactory: (options) => fake.handler!(options),
+      replacerFactory: () => slow,
+    );
+    fake.handler = (_) => _stream([_m('a.dart', 1)]);
+    await closed.search(const TpSearchOptions(pattern: 'hello'));
+    final replace = closed.replaceSingle('/root/a.dart', 'X');
+    await closed.close();
+    slow.release();
+    expect(await replace, 1);
+    expect(closed.state.replacedCount, isNull);
+  });
+}
+
+/// Replacer that blocks until [release] so the cubit can be closed mid-replace.
+class _SlowReplacer extends ContentReplacer {
+  _SlowReplacer() : super(fs: LocalFilesystem());
+
+  final Completer<void> _gate = Completer<void>();
+
+  void release() => _gate.complete();
+
+  @override
+  Future<int> replaceAllInFile({
+    required String path,
+    required List<TpSearchMatch> matches,
+    required String replacement,
+  }) async {
+    await _gate.future;
+    return matches.length;
+  }
 }

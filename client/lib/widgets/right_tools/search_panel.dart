@@ -297,7 +297,7 @@ class _WorkspaceSearchPanelState extends State<WorkspaceSearchPanel> {
             Expanded(
               child: SearchPanelResults(
                 files: state.files,
-                query: state.query,
+                query: _queryController.text,
                 truncated: state.truncated,
                 backendLabel: _backendLabel(),
                 replacement: _replaceController.text,

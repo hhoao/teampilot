@@ -98,7 +98,9 @@ class ContentSearchState {
       truncated: truncated ?? this.truncated,
       searching: searching ?? this.searching,
       error: clearError ? null : (error ?? this.error),
-      replacedCount: clearReplacedCount ? null : (replacedCount ?? this.replacedCount),
+      replacedCount: clearReplacedCount
+          ? null
+          : (replacedCount ?? this.replacedCount),
     );
   }
 }
@@ -108,11 +110,12 @@ class ContentSearchState {
 /// replacements through [ContentReplacer].
 class ContentSearchCubit extends Cubit<ContentSearchState> {
   ContentSearchCubit({
-    required Stream<TpSearchMatch> Function(TpSearchOptions options) runnerFactory,
+    required Stream<TpSearchMatch> Function(TpSearchOptions options)
+    runnerFactory,
     required ContentReplacer Function() replacerFactory,
-  })  : _runnerFactory = runnerFactory,
-        _replacerFactory = replacerFactory,
-        super(const ContentSearchState());
+  }) : _runnerFactory = runnerFactory,
+       _replacerFactory = replacerFactory,
+       super(const ContentSearchState());
 
   final Stream<TpSearchMatch> Function(TpSearchOptions options) _runnerFactory;
   final ContentReplacer Function() _replacerFactory;
@@ -123,19 +126,21 @@ class ContentSearchCubit extends Cubit<ContentSearchState> {
   Future<void> search(TpSearchOptions options) async {
     final seq = ++_searchSeq;
     await _sub?.cancel();
-    emit(state.copyWith(
-      query: options.pattern,
-      isRegex: options.isRegex,
-      caseSensitive: options.caseSensitive,
-      useGitignore: options.useGitignore,
-      filesToInclude: options.filesToInclude,
-      filesToExclude: options.filesToExclude,
-      searching: true,
-      error: null,
-      clearError: true,
-      replacedCount: null,
-      clearReplacedCount: true,
-    ));
+    emit(
+      state.copyWith(
+        query: options.pattern,
+        isRegex: options.isRegex,
+        caseSensitive: options.caseSensitive,
+        useGitignore: options.useGitignore,
+        filesToInclude: options.filesToInclude,
+        filesToExclude: options.filesToExclude,
+        searching: true,
+        error: null,
+        clearError: true,
+        replacedCount: null,
+        clearReplacedCount: true,
+      ),
+    );
     final groups = <String, ContentSearchFileGroup>{};
     final order = <String>[];
 
@@ -149,21 +154,25 @@ class ContentSearchCubit extends Cubit<ContentSearchState> {
           groups[m.path] = ContentSearchFileGroup(
             path: m.path,
             relativePath: m.relativePath,
-            lines: [ContentSearchLineMatch(
+            lines: [
+              ContentSearchLineMatch(
+                lineNumber: m.lineNumber,
+                lineText: m.lineText,
+                matchStart: m.matchStart,
+                matchEnd: m.matchEnd,
+              ),
+            ],
+          );
+          order.add(m.path);
+        } else {
+          group.lines.add(
+            ContentSearchLineMatch(
               lineNumber: m.lineNumber,
               lineText: m.lineText,
               matchStart: m.matchStart,
               matchEnd: m.matchEnd,
-            )],
+            ),
           );
-          order.add(m.path);
-        } else {
-          group.lines.add(ContentSearchLineMatch(
-            lineNumber: m.lineNumber,
-            lineText: m.lineText,
-            matchStart: m.matchStart,
-            matchEnd: m.matchEnd,
-          ));
         }
       }
     } on Object catch (e) {
@@ -172,11 +181,13 @@ class ContentSearchCubit extends Cubit<ContentSearchState> {
       return;
     }
     if (seq != _searchSeq) return;
-    emit(state.copyWith(
-      files: [for (final p in order) groups[p]!],
-      searching: false,
-      clearError: true,
-    ));
+    emit(
+      state.copyWith(
+        files: [for (final p in order) groups[p]!],
+        searching: false,
+        clearError: true,
+      ),
+    );
   }
 
   /// Stops the active search stream; partial results stay visible.
@@ -191,13 +202,15 @@ class ContentSearchCubit extends Cubit<ContentSearchState> {
     _searchSeq++;
     _sub?.cancel();
     _sub = null;
-    emit(state.copyWith(
-      files: const [],
-      searching: false,
-      truncated: false,
-      clearError: true,
-      clearReplacedCount: true,
-    ));
+    emit(
+      state.copyWith(
+        files: const [],
+        searching: false,
+        truncated: false,
+        clearError: true,
+        clearReplacedCount: true,
+      ),
+    );
   }
 
   void setReplaceQuery(String q) => emit(state.copyWith(replaceQuery: q));
@@ -210,6 +223,7 @@ class ContentSearchCubit extends Cubit<ContentSearchState> {
     for (final group in state.files) {
       total += await _replaceGroup(group, replacement);
     }
+    if (isClosed) return total;
     emit(state.copyWith(replacedCount: total, clearError: true));
     return total;
   }
@@ -219,11 +233,15 @@ class ContentSearchCubit extends Cubit<ContentSearchState> {
     final group = state.files.where((g) => g.path == path).firstOrNull;
     if (group == null) return 0;
     final n = await _replaceGroup(group, replacement);
+    if (isClosed) return n;
     emit(state.copyWith(replacedCount: n, clearError: true));
     return n;
   }
 
-  Future<int> _replaceGroup(ContentSearchFileGroup group, String replacement) async {
+  Future<int> _replaceGroup(
+    ContentSearchFileGroup group,
+    String replacement,
+  ) async {
     final replacer = _replacerFactory();
     final matches = <TpSearchMatch>[
       for (final line in group.lines)
