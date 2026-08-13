@@ -63,6 +63,9 @@ class CodexHookWriter implements HookWriterCapability {
         final timeout = entry.timeout?.inSeconds;
         if (!first) buffer.writeln();
         buffer.writeln('[[hooks.$native]]');
+        if (entry.matcher != null && entry.matcher!.trim().isNotEmpty) {
+          buffer.writeln('matcher = "${_escape(entry.matcher!)}"');
+        }
         buffer.writeln();
         buffer.writeln('[[hooks.$native.hooks]]');
         buffer.writeln('type = "http"');

@@ -132,5 +132,19 @@ void main() {
     expect(toml, contains('type = "command"'));
     expect(toml, contains('?event=PreToolUse'));
     expect(toml, contains('"X-Member" = "m1"'));
+    // PreToolUse keeps the 1-day AskUserQuestion hold; other events 5s.
+    final preToolUseBlock = toml.split('[[hooks.PreToolUse]]')[1];
+    expect(preToolUseBlock, contains('timeout = 86400'));
+    expect(preToolUseBlock, contains('matcher = "*"'));
+    final stopBlock = toml.split('[[hooks.Stop]]')[1];
+    expect(stopBlock, contains('timeout = 5'));
+    expect(stopBlock, contains('?event=Stop'));
+    expect(stopBlock, isNot(contains('matcher')));
+    // The 4 matcher-capable events (PermissionRequest/PreToolUse/PostToolUse/
+    // PostToolUseFailure) render `matcher = "*"`; Stop has no matcher.
+    expect(
+      'matcher = "*"'.allMatches(toml).length,
+      4,
+    );
   });
 }
