@@ -9,6 +9,8 @@ import '../../../services/cli/cursor/provider/cursor_provider_model_capability.d
 import '../../../services/cli/opencode/opencode_bootstrap_entry.dart';
 import '../../../services/cli/opencode/provider/opencode_provider_credential_capability.dart';
 import '../../../services/cli/opencode/provider/opencode_provider_model_capability.dart';
+import '../../../services/team_bus/bus_idle_hooks_capability.dart';
+import 'capabilities/cli_asset_registry.dart';
 import 'capabilities/member_agent_preset_capability.dart';
 import 'capabilities/member_config_inspection_capability.dart';
 import 'capabilities/provider_model_capability.dart';
@@ -38,7 +40,9 @@ void registerBuiltInCliTools(
 }) {
   final claudeEntry = bootstrap.entry<ClaudeBootstrapEntry>(CliTool.claude);
   final codexEntry = bootstrap.entry<CodexBootstrapEntry>(CliTool.codex);
-  final opencodeEntry = bootstrap.entry<OpencodeBootstrapEntry>(CliTool.opencode);
+  final opencodeEntry = bootstrap.entry<OpencodeBootstrapEntry>(
+    CliTool.opencode,
+  );
   final cursorEntry = bootstrap.entry<CursorBootstrapEntry>(CliTool.cursor);
 
   registry.register(
@@ -46,6 +50,7 @@ void registerBuiltInCliTools(
       providerCredential: ClaudeProviderCredentialCapability(
         credentials: claudeEntry?.credentialsService,
       ),
+      busIdleHooks: const BusIdleHooksCapability(),
     ),
   );
   registry.register(
@@ -76,7 +81,16 @@ void registerBuiltInCliTools(
     ),
   );
 
-  registry.register(const FlashskyaiCliTool());
+  registry.register(
+    FlashskyaiCliTool(busIdleHooks: const BusIdleHooksCapability()),
+  );
+
+  // 依赖反转：Registry 从能力声明收集资产（能力集合启动时固定）。
+  for (final def in registry.launchable) {
+    for (final cap in def.capabilities) {
+      if (cap is CliAssetRegistry) cap.collectDeclared(def.capabilities);
+    }
+  }
 
   assert(
     CliTool.values.every((cli) => registry.tryGet(cli) != null),

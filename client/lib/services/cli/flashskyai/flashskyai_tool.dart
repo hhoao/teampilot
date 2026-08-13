@@ -12,7 +12,6 @@ import 'capabilities/terminal_behavior.dart';
 import 'capabilities/provider_catalog.dart';
 import '../registry/capabilities/provider_catalog_capability.dart';
 import 'capabilities/member_agent_preset.dart';
-import '../registry/capabilities/member_agent_preset_capability.dart';
 import '../registry/capabilities/native_team_capability.dart';
 import '../registry/capabilities/config_profile_capability.dart';
 import '../registry/capabilities/executable_resolver_capability.dart';
@@ -62,6 +61,7 @@ import 'capabilities/tool_call_resolvers.dart';
 import '../claude/capabilities/mcp_config_writer.dart';
 import 'capabilities/plugin_provisioner.dart';
 import '../registry/resources/default_resource_capability.dart';
+import '../../team_bus/bus_idle_hooks_capability.dart';
 
 final class FlashskyaiCliTool implements CliToolDefinition {
   const FlashskyaiCliTool({
@@ -103,6 +103,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     this.remoteAppData = const NoRemoteAppData(),
     this.credentialExport = const NoCredentialExport(),
     this.toolCallResolvers = const FlashskyaiToolCallResolvers(),
+    this.busIdleHooks = const BusIdleHooksCapability(),
   });
 
   final LaunchArgsCapability launchArgs;
@@ -138,6 +139,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
   final RemoteAppDataCapability remoteAppData;
   final CredentialExportCapability credentialExport;
   final FlashskyaiToolCallResolvers toolCallResolvers;
+  final BusIdleHooksCapability busIdleHooks;
   final AskUserQuestionCapability askUserQuestion;
   final ExitPlanModeCapability exitPlanMode;
   final FlashskyaiAiHistoryCapability aiHistory;
@@ -192,6 +194,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     aiHistory,
     skillSyntax,
     toolCallResolvers,
+    busIdleHooks,
   ];
 }
 

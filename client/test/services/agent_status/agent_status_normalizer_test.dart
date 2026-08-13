@@ -343,6 +343,15 @@ void main() {
       expect(e?.state, AgentSeatAttention.done);
     });
 
+    test('opencode userMessageSubmitted → working + prompt', () {
+      final e = AgentStatusNormalizer.normalize(
+        cli: CliTool.opencode,
+        body: {'event': 'userMessageSubmitted', 'prompt': '1'},
+      );
+      expect(e?.state, AgentSeatAttention.working);
+      expect(e?.prompt, '1');
+    });
+
     test('Cursor preToolUse → working with tool info', () {
       final e = AgentStatusNormalizer.normalize(
         cli: CliTool.cursor,
@@ -446,6 +455,54 @@ void main() {
         body: {'hook_event_name': 'UserPromptSubmit'},
       );
       expect(e?.hasExplicitPrompt, isTrue);
+    });
+
+    test('Claude UserPromptSubmit 携带 prompt 原文', () {
+      final e = AgentStatusNormalizer.normalize(
+        cli: CliTool.claude,
+        body: {
+          'hook_event_name': 'UserPromptSubmit',
+          'prompt': '1',
+        },
+      );
+      expect(e?.prompt, '1');
+    });
+
+    test('非 UserPromptSubmit 事件 prompt 为 null', () {
+      final e = AgentStatusNormalizer.normalize(
+        cli: CliTool.claude,
+        body: {'hook_event_name': 'Stop'},
+      );
+      expect(e?.prompt, isNull);
+    });
+
+    test('Cursor beforeSubmitPrompt 透传 prompt（实测 payload schema）', () {
+      // 实测取证（cursor 2026.08.04，headless cursor-agent 与 GUI 一致）：
+      // executeHookForStep(beforeSubmitPrompt, {conversation_id,
+      // generation_id, model, prompt, attachments, composer_mode}) 然后
+      // {...args, hook_event_name, cursor_version, workspace_roots,
+      // user_email, transcript_path} 整体作为 stdin payload。
+      final e = AgentStatusNormalizer.normalize(
+        cli: CliTool.cursor,
+        body: {
+          'conversation_id': 'conv-1',
+          'generation_id': 'gen-1',
+          'model': 'gpt-5.6-sol',
+          'prompt': 'fix the flaky test',
+          'attachments': [
+            {'type': 'file', 'file_path': '/tmp/a.ts'},
+          ],
+          'composer_mode': 'normal',
+          'hook_event_name': 'beforeSubmitPrompt',
+          'cursor_version': '2026.08.04',
+          'workspace_roots': ['/home/user/repo'],
+          'user_email': 'u@example.com',
+        },
+      );
+      expect(e?.state, AgentSeatAttention.working);
+      expect(e?.prompt, 'fix the flaky test');
+      expect(e?.hookEventName, 'beforeSubmitPrompt');
+      expect(e?.toolName, isNull);
     });
   });
 }

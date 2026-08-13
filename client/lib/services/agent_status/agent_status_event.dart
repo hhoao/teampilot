@@ -13,6 +13,7 @@ class AgentStatusEvent {
     this.toolAgentId,
     this.toolAgentType,
     this.hasExplicitPrompt = false,
+    this.prompt,
     this.askUserQuestions,
     this.askRequestId,
     this.nativeSessionId,
@@ -43,6 +44,9 @@ class AgentStatusEvent {
 
   /// True for UserPromptSubmit-style events that must clear sticky waiting.
   final bool hasExplicitPrompt;
+
+  /// UserPromptSubmit 事件的 prompt 原文（投递 ACK 匹配用）。
+  final String? prompt;
 
   /// Structured AskUserQuestion payload for chat rendering / answering, when
   /// this event is a `PreToolUse` for the AskUserQuestion tool.
@@ -81,6 +85,7 @@ class AgentStatusEvent {
     String? toolAgentId,
     String? toolAgentType,
     bool? hasExplicitPrompt,
+    String? prompt,
     List<AgentAskUserQuestion>? askUserQuestions,
     String? askRequestId,
     String? nativeSessionId,
@@ -98,6 +103,7 @@ class AgentStatusEvent {
     toolAgentId: toolAgentId ?? this.toolAgentId,
     toolAgentType: toolAgentType ?? this.toolAgentType,
     hasExplicitPrompt: hasExplicitPrompt ?? this.hasExplicitPrompt,
+    prompt: prompt ?? this.prompt,
     askUserQuestions: askUserQuestions ?? this.askUserQuestions,
     askRequestId: askRequestId ?? this.askRequestId,
     nativeSessionId: nativeSessionId ?? this.nativeSessionId,
@@ -120,6 +126,7 @@ class AgentStatusEvent {
           toolAgentId == other.toolAgentId &&
           toolAgentType == other.toolAgentType &&
           hasExplicitPrompt == other.hasExplicitPrompt &&
+          prompt == other.prompt &&
           _sameQuestions(askUserQuestions, other.askUserQuestions) &&
           askRequestId == other.askRequestId &&
           nativeSessionId == other.nativeSessionId &&
@@ -139,6 +146,7 @@ class AgentStatusEvent {
     toolAgentId,
     toolAgentType,
     hasExplicitPrompt,
+    prompt,
     Object.hashAll(askUserQuestions ?? const []),
     askRequestId,
     nativeSessionId,

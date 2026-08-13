@@ -21,6 +21,7 @@ import '../services/agent_status/ask_user_question_hook_gate.dart';
 import '../services/agent_status/exit_plan_mode_hook_gate.dart';
 import '../services/terminal/ask_user_question_answer_service.dart';
 import '../services/terminal/exit_plan_mode_approval_service.dart';
+import '../services/terminal/prompt_submit_ack_tracker.dart';
 import '../services/team_bus/mcp/teammate_bus_mcp_gateway.dart';
 import '../services/team_bus/remote/remote_bus_binding_resolver.dart';
 import '../services/remote/local_credential_exporter.dart';
@@ -1156,6 +1157,9 @@ Future<AppShell> buildAppShell({
 
   final agentAttentionCubit = AgentAttentionCubit();
   final agentStatusSeatLookup = AgentStatusSeatLookup();
+  // Shared prompt-submit ACK registry: AgentStatusHttpHandler completes
+  // pendings, TabMemberPtyDelivery consumes them to cancel crStuck retries.
+  final promptSubmitAckTracker = PromptSubmitAckTracker();
   teammateBusMcpGateway.attachAgentStatusHandler(
     AgentStatusHttpHandler(
       attention: agentAttentionCubit,
@@ -1163,6 +1167,7 @@ Future<AppShell> buildAppShell({
       resolveSkipPermissions: agentStatusSeatLookup.resolveSkipPermissions,
       askUserHookGate: askUserQuestionHookGate,
       exitPlanModeHookGate: exitPlanModeHookGate,
+      promptAckTracker: promptSubmitAckTracker,
     ),
   );
 
@@ -1173,6 +1178,7 @@ Future<AppShell> buildAppShell({
     askUserAnswerPendingStore: askUserAnswerPendingStore,
     askUserQuestionAnswerService: askUserQuestionAnswerService,
     exitPlanApprovalService: exitPlanModeApprovalService,
+    promptAckTracker: promptSubmitAckTracker,
     sessionRepository: sessionRepo,
     lifecycleService: sessionLifecycleService,
     automationRepository: automationRepo,

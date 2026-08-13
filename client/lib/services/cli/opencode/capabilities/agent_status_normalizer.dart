@@ -63,6 +63,13 @@ final class OpencodeAgentStatusNormalizer
         // Restore only when we can correlate back to the pending ask.
         restoreAskWaiting: askRequestId != null,
       ),
+      // Plugin forwards the user's submitted message text so the app can ACK
+      // the PTY delivery (mirror of Claude UserPromptSubmit).
+      'userMessageSubmitted' => AgentStatusEvent(
+        state: AgentSeatAttention.working,
+        hookEventName: eventName,
+        prompt: readPayloadString(body, const ['prompt']),
+      ),
       'session.idle' => AgentStatusEvent(
         state: AgentSeatAttention.done,
         hookEventName: eventName,

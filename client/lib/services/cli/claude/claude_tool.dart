@@ -21,7 +21,6 @@ import 'capabilities/terminal_behavior.dart';
 import 'capabilities/provider_catalog.dart';
 import '../registry/capabilities/provider_catalog_capability.dart';
 import 'capabilities/member_agent_preset.dart';
-import '../registry/capabilities/member_agent_preset_capability.dart';
 import '../registry/capabilities/native_team_capability.dart';
 import '../registry/capabilities/config_profile_capability.dart';
 import '../registry/capabilities/executable_resolver_capability.dart';
@@ -67,6 +66,9 @@ import 'capabilities/mcp_config_writer.dart';
 import 'capabilities/plugin_provisioner.dart';
 import 'capabilities/credential_binding.dart';
 import '../registry/resources/default_resource_capability.dart';
+import '../registry/capabilities/hook_registry.dart';
+import '../registry/capabilities/claude_family_hook_registry.dart';
+import '../../team_bus/bus_idle_hooks_capability.dart';
 
 final class ClaudeCliTool implements CliToolDefinition {
   ClaudeCliTool({
@@ -110,11 +112,16 @@ final class ClaudeCliTool implements CliToolDefinition {
     this.credentialExport = const ClaudeCredentialExport(),
     this.toolCallResolvers = const ClaudeToolCallResolvers(),
     this.credentialBinding = const ClaudeCredentialBindingCapability(),
+    this.busIdleHooks = const BusIdleHooksCapability(),
     ProviderCredentialCapability? providerCredential,
+    HookRegistry? hookRegistry,
   }) : providerCredential =
-           providerCredential ?? ClaudeProviderCredentialCapability();
+           providerCredential ?? ClaudeProviderCredentialCapability(),
+       hookRegistry = hookRegistry ?? ClaudeFamilyHookRegistry();
 
   final ProviderCredentialCapability providerCredential;
+  final HookRegistry hookRegistry;
+  final BusIdleHooksCapability busIdleHooks;
   final ProviderFormCapability providerForm;
 
   final LaunchArgsCapability launchArgs;
@@ -206,6 +213,8 @@ final class ClaudeCliTool implements CliToolDefinition {
     credentialExport,
     toolCallResolvers,
     credentialBinding,
+    hookRegistry,
+    busIdleHooks,
   ];
 }
 

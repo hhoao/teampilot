@@ -24,6 +24,19 @@ void main() {
       expect(script, contains('exit 0'));
     });
 
+    test('beforeSubmitPrompt script forwards stdin payload verbatim', () {
+      final script = CursorHomeAgentStatusOverlay.scriptFor(
+        endpoint: endpoint,
+        memberId: 'm1',
+        event: 'beforeSubmitPrompt',
+      );
+      expect(script, contains('/agent-status?event=beforeSubmitPrompt'));
+      // Payload 原样透传（无字段注入）：cursor 的 stdin payload 已含 prompt
+      // 原文（实测取证），ACK 桥靠 normalizer 从 prompt 键提取。
+      expect(script, contains('-d "\$payload"'));
+      expect(script, isNot(contains('prompt')));
+    });
+
     test('mergeHooksConfig preserves existing stop and adds agent-status', () {
       final merged = CursorHomeAgentStatusOverlay.mergeHooksConfig(
         const {

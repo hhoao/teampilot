@@ -6,6 +6,8 @@ import '../../cubits/agent_attention_cubit.dart';
 import '../../models/team_config.dart';
 import '../../services/cli/registry/capabilities/exit_plan_mode_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
+import '../../utils/logging/logger.dart';
+import '../../services/terminal/prompt_submit_ack_tracker.dart';
 import 'agent_status_event.dart';
 import 'agent_status_normalizer.dart';
 import 'ask_user_question.dart';
@@ -31,6 +33,7 @@ class AgentStatusHttpHandler {
     required this.resolveSkipPermissions,
     this.askUserHookGate,
     this.exitPlanModeHookGate,
+    this.promptAckTracker,
     CliToolRegistry? registry,
   }) : registry = registry ?? CliToolRegistry.builtIn();
 
@@ -39,6 +42,7 @@ class AgentStatusHttpHandler {
   final bool Function(String sessionId, String memberId) resolveSkipPermissions;
   final AskUserQuestionHookGate? askUserHookGate;
   final ExitPlanModeHookGate? exitPlanModeHookGate;
+  final PromptSubmitAckTracker? promptAckTracker;
   final CliToolRegistry registry;
 
   Future<void> handle(
@@ -61,6 +65,18 @@ class AgentStatusHttpHandler {
               event: event,
               skipPermissions: resolveSkipPermissions(sessionId, memberId),
             );
+            final acked = promptAckTracker?.tryAck(
+              sessionId: sessionId,
+              memberId: memberId,
+              text: event.prompt ?? '',
+            ) ??
+                false;
+            if (acked) {
+              appLogger.d(
+                '[ai-history] prompt-submit acked session=$sessionId '
+                'member=$memberId',
+              );
+            }
             final answered = await _maybeAnswerAskUserQuestionHook(
               request,
               sessionId: sessionId,

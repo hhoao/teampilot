@@ -10,6 +10,10 @@ import '../../../provider/workspace_trust_provisioner.dart';
 import '../../../agent_status/member_agent_status_endpoint.dart';
 import '../../../team_bus/member_bus_idle_endpoint.dart';
 import '../../registry/config_profile/agent_status_hooks.dart';
+import '../../registry/capabilities/claude_family_hook_registry.dart';
+import '../../registry/capabilities/cli_config_asset.dart';
+import '../../registry/capabilities/hook_registry.dart';
+import '../../registry/cli_tool_registry.dart';
 import 'stop_idle_hook.dart';
 
 final class FlashskyaiConfigProfileCapability
@@ -309,6 +313,22 @@ final class FlashskyaiConfigProfileCapability
     if (agentStatus != null) {
       settings = mergeAgentStatusHooks(settings, member.id, agentStatus);
     }
+    // 阶段 1.5 接线：flashskyai 走 command 脚本通道（exit-2 语义），
+    // 待 stop_idle_hook 迁移时启用（当前 FlashskyaiCliTool 未挂 HookRegistry，
+    // capability<HookRegistry> 恒 null，本块惰性）。
+    final hookRegistry = CliToolRegistry.builtIn()
+        .capability<HookRegistry>(CliTool.flashskyai);
+    if (hookRegistry != null) {
+      final assets = hookRegistry.assetsFor(_seatContext(scope, member));
+      if (assets.isNotEmpty) {
+        final rendered = hookRegistry.render(assets);
+        settings = mergeHooksInto(
+          settings,
+          (rendered['settings.json'] as Map<String, Object?>?) ??
+              const <String, Object?>{},
+        );
+      }
+    }
     settings = await delegate.maybeApplyTeamLeadHooks(
       settings,
       member,
@@ -324,6 +344,17 @@ final class FlashskyaiConfigProfileCapability
       workspaceId: simple ? scope.workspaceId : null,
     );
   }
+
+  /// 装配点 seat 上下文：从 launch scope 映射（Task 5 提升为共享 seatContextFrom）。
+  static AssetSeatContext _seatContext(
+    LaunchProfileScope scope,
+    TeamMemberConfig member,
+  ) => AssetSeatContext(
+    sessionId: scope.sessionId,
+    teamId: scope.teamId,
+    workspaceId: scope.workspaceId,
+    memberId: scope.memberId ?? member.id,
+  );
 
   Map<String, String> _teamLaunchEnvironment(
     ConfigProfileDelegate delegate,
