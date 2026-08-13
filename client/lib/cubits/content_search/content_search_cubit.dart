@@ -1,9 +1,8 @@
-import 'dart:async';
-
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:teampilot_search/teampilot_search.dart';
 
 import '../../services/search/content_replacer.dart';
+import '../../services/search/content_search_runner.dart';
 
 /// One matching line inside a file group.
 class ContentSearchLineMatch {
@@ -110,22 +109,27 @@ class ContentSearchState {
 /// replacements through [ContentReplacer].
 class ContentSearchCubit extends Cubit<ContentSearchState> {
   ContentSearchCubit({
-    required Stream<TpSearchMatch> Function(TpSearchOptions options)
+    required ContentSearchRunner Function(TpSearchOptions options)
     runnerFactory,
     required ContentReplacer Function() replacerFactory,
   }) : _runnerFactory = runnerFactory,
        _replacerFactory = replacerFactory,
        super(const ContentSearchState());
 
-  final Stream<TpSearchMatch> Function(TpSearchOptions options) _runnerFactory;
+  final ContentSearchRunner Function(TpSearchOptions options) _runnerFactory;
   final ContentReplacer Function() _replacerFactory;
 
-  StreamSubscription<TpSearchMatch>? _sub;
+  ContentSearchRunner? _runner;
   int _searchSeq = 0;
 
   Future<void> search(TpSearchOptions options) async {
     final seq = ++_searchSeq;
-    await _sub?.cancel();
+    // Stop the previous walk at the engine level (the runner owns the active
+    // Rust handle); the sequence guard below cancels its stream subscription
+    // when this run's `await for` picks up the bump.
+    _runner?.cancel();
+    final runner = _runnerFactory(options);
+    _runner = runner;
     emit(
       state.copyWith(
         query: options.pattern,
@@ -143,12 +147,12 @@ class ContentSearchCubit extends Cubit<ContentSearchState> {
     );
     final groups = <String, ContentSearchFileGroup>{};
     final order = <String>[];
+    var totalMatches = 0;
 
     try {
-      await for (final m in _runnerFactory(options)) {
-        if (seq != _searchSeq || !isClosed) {
-          if (seq != _searchSeq) return;
-        }
+      await for (final m in runner.run(options)) {
+        if (seq != _searchSeq || isClosed) return;
+        totalMatches++;
         final group = groups[m.path];
         if (group == null) {
           groups[m.path] = ContentSearchFileGroup(
@@ -176,15 +180,20 @@ class ContentSearchCubit extends Cubit<ContentSearchState> {
         }
       }
     } on Object catch (e) {
-      if (seq != _searchSeq) return;
+      if (seq != _searchSeq || isClosed) return;
       emit(state.copyWith(searching: false, error: e));
       return;
     }
-    if (seq != _searchSeq) return;
+    if (seq != _searchSeq || isClosed) return;
     emit(
       state.copyWith(
         files: [for (final p in order) groups[p]!],
         searching: false,
+        // The package stream does not expose truncation; a run that reached
+        // the requested cap (or overshot it across walker threads) is
+        // truncated by definition.
+        truncated:
+            options.maxResults != null && totalMatches >= options.maxResults!,
         clearError: true,
       ),
     );
@@ -193,15 +202,15 @@ class ContentSearchCubit extends Cubit<ContentSearchState> {
   /// Stops the active search stream; partial results stay visible.
   void cancel() {
     _searchSeq++;
-    _sub?.cancel();
-    _sub = null;
+    _runner?.cancel();
+    _runner = null;
     emit(state.copyWith(searching: false));
   }
 
   void clear() {
     _searchSeq++;
-    _sub?.cancel();
-    _sub = null;
+    _runner?.cancel();
+    _runner = null;
     emit(
       state.copyWith(
         files: const [],
@@ -216,55 +225,68 @@ class ContentSearchCubit extends Cubit<ContentSearchState> {
   void setReplaceQuery(String q) => emit(state.copyWith(replaceQuery: q));
 
   /// Replaces every matching line across all files. Returns count applied,
-  /// or null when the replace query is empty / nothing to replace.
+  /// or null when the replace query is empty / nothing to replace / a write
+  /// failed (an error state is emitted instead of throwing).
   Future<int?> replaceAll(String replacement) async {
     if (replacement.isEmpty || state.files.isEmpty) return null;
     var total = 0;
     for (final group in state.files) {
-      total += await _replaceGroup(group, replacement);
+      final n = await _replaceGroup(group, replacement);
+      if (n == null) return null;
+      total += n;
     }
     if (isClosed) return total;
     emit(state.copyWith(replacedCount: total, clearError: true));
     return total;
   }
 
-  /// Replaces the matching lines of one file. Returns count applied.
+  /// Replaces the matching lines of one file. Returns count applied (0 when
+  /// the file is unknown or the write failed).
   Future<int> replaceSingle(String path, String replacement) async {
     final group = state.files.where((g) => g.path == path).firstOrNull;
     if (group == null) return 0;
     final n = await _replaceGroup(group, replacement);
+    if (n == null) return 0;
     if (isClosed) return n;
     emit(state.copyWith(replacedCount: n, clearError: true));
     return n;
   }
 
-  Future<int> _replaceGroup(
+  /// Applies one group's replacement; null when the write failed (an error
+  /// state is emitted instead of the exception escaping the caller).
+  Future<int?> _replaceGroup(
     ContentSearchFileGroup group,
     String replacement,
   ) async {
-    final replacer = _replacerFactory();
-    final matches = <TpSearchMatch>[
-      for (final line in group.lines)
-        if (!line.replaced)
-          TpSearchMatch(
-            path: group.path,
-            relativePath: group.relativePath,
-            lineNumber: line.lineNumber,
-            lineText: line.lineText,
-            matchStart: line.matchStart,
-            matchEnd: line.matchEnd,
-          ),
-    ];
-    final n = await replacer.replaceAllInFile(
-      path: group.path,
-      matches: matches,
-      replacement: replacement,
-    );
-    if (n > 0) {
-      for (final line in group.lines) {
-        line.replaced = true;
+    try {
+      final replacer = _replacerFactory();
+      final matches = <TpSearchMatch>[
+        for (final line in group.lines)
+          if (!line.replaced)
+            TpSearchMatch(
+              path: group.path,
+              relativePath: group.relativePath,
+              lineNumber: line.lineNumber,
+              lineText: line.lineText,
+              matchStart: line.matchStart,
+              matchEnd: line.matchEnd,
+            ),
+      ];
+      final n = await replacer.replaceAllInFile(
+        path: group.path,
+        matches: matches,
+        replacement: replacement,
+      );
+      if (n > 0) {
+        for (final line in group.lines) {
+          line.replaced = true;
+        }
       }
+      return n;
+    } on Object catch (e) {
+      if (isClosed) return null;
+      emit(state.copyWith(error: e, searching: false));
+      return null;
     }
-    return n;
   }
 }

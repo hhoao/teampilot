@@ -14,6 +14,7 @@ import '../../../models/git_worktree.dart';
 import '../../../models/workspace.dart';
 import '../../../pages/home_workspace/home_workspace_route.dart';
 import '../../../services/git/git_worktree_service.dart';
+import '../../../services/io/local_filesystem.dart';
 import '../../../services/storage/app_storage.dart';
 import '../../../services/storage/workspace_layout.dart';
 import '../../../services/workspace/workspace_tools_scope.dart';
@@ -140,6 +141,12 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
                       showWorkspaceSearchDialog(
                         context,
                         workspace: widget.workspace,
+                        // Same source as the file-tree / git panels; local
+                        // only before the tools plane has resolved.
+                        fs: WorkspaceToolsScope.maybeOf(
+                              context,
+                            )?.tools?.context.filesystem ??
+                            LocalFilesystem(),
                       ),
                     ),
                   ),

@@ -586,8 +586,7 @@ class _RightToolsToolViewsState extends State<RightToolsToolViews> {
           child: BlocProvider(
             lazy: false,
             create: (context) => ContentSearchCubit(
-              runnerFactory: (options) =>
-                  ContentSearchRunner(fs: fs, root: root).run(options),
+              runnerFactory: (_) => ContentSearchRunner(fs: fs, root: root),
               replacerFactory: () => ContentReplacer(fs: fs),
             ),
             child: WorkspaceSearchPanel(

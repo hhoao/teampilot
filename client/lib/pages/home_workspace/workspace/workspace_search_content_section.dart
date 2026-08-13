@@ -48,9 +48,17 @@ class _WorkspaceSearchContentSectionState
   /// True when [_results] hit the [_maxDialogContentResults] cap — the
   /// engines truncate silently, so this is detected by match count.
   bool _truncated = false;
+
+  /// True after a run failed (e.g. an unreadable root on a remote
+  /// filesystem); renders the error row instead of "No results".
+  bool _error = false;
   bool _isRegex = true;
   bool _caseSensitive = false;
   int _seq = 0;
+
+  /// The active engine-backed runner; cancelled on dispose and before each
+  /// new run so the Rust walker stops promptly.
+  ContentSearchRunner? _runner;
 
   @override
   void initState() {
@@ -61,6 +69,8 @@ class _WorkspaceSearchContentSectionState
   @override
   void dispose() {
     _seq++;
+    _runner?.cancel();
+    _runner = null;
     Debounces.cancel(_debounceTag);
     _controller.dispose();
     super.dispose();
@@ -75,19 +85,25 @@ class _WorkspaceSearchContentSectionState
 
   Future<void> _run() async {
     final seq = ++_seq;
+    _runner?.cancel();
     final query = _controller.text.trim();
     if (query.isEmpty) {
       setState(() {
         _results.clear();
         _truncated = false;
+        _error = false;
         _searching = false;
       });
       return;
     }
-    setState(() => _searching = true);
+    setState(() {
+      _searching = true;
+      _error = false;
+    });
     final matches = <TpSearchMatch>[];
+    final runner = ContentSearchRunner(fs: widget.fs, root: widget.root);
+    _runner = runner;
     try {
-      final runner = ContentSearchRunner(fs: widget.fs, root: widget.root);
       await for (final m in runner.run(TpSearchOptions(
         pattern: query,
         isRegex: _isRegex,
@@ -99,6 +115,15 @@ class _WorkspaceSearchContentSectionState
       }
     } on Object {
       if (seq != _seq || !mounted) return;
+      setState(() {
+        _results
+          ..clear()
+          ..addAll(matches);
+        _truncated = false;
+        _error = true;
+        _searching = false;
+      });
+      return;
     }
     if (seq != _seq || !mounted) return;
     setState(() {
@@ -106,6 +131,7 @@ class _WorkspaceSearchContentSectionState
         ..clear()
         ..addAll(matches);
       _truncated = matches.length >= _maxDialogContentResults;
+      _error = false;
       _searching = false;
     });
   }
@@ -154,6 +180,8 @@ class _WorkspaceSearchContentSectionState
           WorkspaceSearchStatusRow(label: l10n.workspaceSearchSearching)
         else if (query.isEmpty)
           WorkspaceSearchStatusRow(label: l10n.workspaceSearchEmptyHint)
+        else if (_error)
+          WorkspaceSearchStatusRow(label: l10n.workspaceSearchError)
         else if (_results.isEmpty)
           WorkspaceSearchStatusRow(label: l10n.workspaceSearchNoResults)
         else

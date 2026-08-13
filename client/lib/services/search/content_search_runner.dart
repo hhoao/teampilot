@@ -20,6 +20,11 @@ class ContentSearchRunner {
   final String _root;
   final bool _forceFallback;
 
+  /// The engine backing the last [run]; cancelled via [cancel] so the Rust
+  /// walker stops even while the Dart side is blocked in a synchronous FFI
+  /// chunk read.
+  TpSearchEngine? _engine;
+
   bool get _useFallback => _forceFallback || _fs is SftpFilesystem;
 
   /// 'rust' | 'dart-fallback' — surfaced in the panel footer.
@@ -31,6 +36,11 @@ class ContentSearchRunner {
     if (_useFallback) {
       return fallbackSearch(FilesystemSearchReader(_fs), _root, options);
     }
-    return TpSearchEngine().search(_root, options);
+    _engine = TpSearchEngine();
+    return _engine!.search(_root, options);
   }
+
+  /// Cancels the active Rust engine walk. No-op on the fallback path, where
+  /// the pure-Dart stream stops when its subscription is cancelled.
+  void cancel() => _engine?.cancel();
 }

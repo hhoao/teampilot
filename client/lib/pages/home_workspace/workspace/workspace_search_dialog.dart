@@ -10,12 +10,10 @@ import '../../../models/workspace.dart';
 import '../../../models/app_session.dart';
 import '../../../services/file_tree/workspace_file_search.dart';
 import '../../../services/io/filesystem.dart';
-import '../../../services/io/local_filesystem.dart';
 import '../../../services/search/workspace_search_indexes.dart';
 import '../../../services/session/workspace_session_content_index.dart';
 import '../../../services/workbench/workbench_editor_opener.dart';
 import '../../../services/workspace/workspace_pane_policy.dart';
-import '../../../services/workspace/workspace_tools_scope.dart';
 import '../../../utils/debounce/debounce.dart';
 import '../../../utils/session/workspace_sessions.dart';
 import '../../../widgets/sidebar_session_tile.dart';
@@ -40,15 +38,15 @@ const _maxFileResultsExpanded = 100000;
 /// [context] up front; selecting a result pops the dialog and performs the
 /// action against the still-mounted [context].
 ///
-/// [fs] backs the content filter. When null, it is resolved from the
-/// workspace tools scope's work-plane backend (same source as the file-tree /
-/// git panels), falling back to a local filesystem when no scope is present.
+/// [fs] backs the content filter and is resolved by the caller from the
+/// entry point's workspace tools scope — never derived here, so a shortcut
+/// host above the scope cannot silently fall back to a local filesystem.
 ///
 /// No-ops if a search dialog is already open (e.g. repeated shortcut presses).
 Future<void> showWorkspaceSearchDialog(
   BuildContext context, {
   required Workspace workspace,
-  Filesystem? fs,
+  required Filesystem fs,
 }) async {
   if (_workspaceSearchDialogOpen) return;
   _workspaceSearchDialogOpen = true;
@@ -69,7 +67,7 @@ Future<void> showWorkspaceSearchDialog(
         workspace: workspace,
         sessions: sessions,
         indexes: indexes,
-        fs: fs ?? _workspaceSearchDialogFilesystem(context),
+        fs: fs,
         emptyTitleFallback: fallback,
         onOpenSession: (session) async {
           Navigator.of(dialogContext).pop();
@@ -86,16 +84,6 @@ Future<void> showWorkspaceSearchDialog(
   } finally {
     _workspaceSearchDialogOpen = false;
   }
-}
-
-/// Filesystem for the search dialog's content filter. Prefers an explicitly
-/// injected [Filesystem]; otherwise the workspace tools scope's resolved
-/// work-plane backend (the same source the file-tree / git panels use), and
-/// finally [LocalFilesystem] when no scope has resolved yet (e.g. a dialog
-/// opened before the tools scope finished resolving).
-Filesystem _workspaceSearchDialogFilesystem(BuildContext context) {
-  final scoped = WorkspaceToolsScope.maybeOf(context)?.tools?.context.filesystem;
-  return scoped ?? LocalFilesystem();
 }
 
 var _workspaceSearchDialogOpen = false;
@@ -327,15 +315,19 @@ class _WorkspaceSearchDialogState extends State<WorkspaceSearchDialog> {
         MediaQuery.sizeOf(context).width <
         WorkspacePanePolicy.narrowBreakpointWidth;
 
-    final Widget field = WorkspaceSearchField(
-      controller: _controller,
-      hint: l10n.workspaceSearchHint,
-      onChanged: _onQueryChanged,
-      onClear: () {
-        _controller.clear();
-        _onQueryChanged('');
-      },
-    );
+    // The content filter owns its query input (WorkspaceSearchContentSection),
+    // so the dialog's own field is hidden in that mode.
+    final Widget field = _activeFilter == _SearchFilter.content
+        ? const SizedBox.shrink()
+        : WorkspaceSearchField(
+            controller: _controller,
+            hint: l10n.workspaceSearchHint,
+            onChanged: _onQueryChanged,
+            onClear: () {
+              _controller.clear();
+              _onQueryChanged('');
+            },
+          );
     final Widget chips = _FilterChips(
       active: _activeFilter,
       onChanged: (filter) => setState(() => _activeFilter = filter),

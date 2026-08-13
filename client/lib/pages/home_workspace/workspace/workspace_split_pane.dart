@@ -17,6 +17,7 @@ import '../../../services/commands/run_command_registrar.dart';
 import '../../../services/commands/workspace_content_search_command_registrar.dart';
 import '../../../services/commands/workspace_search_command_registrar.dart';
 import '../../../services/workspace/workspace_run_registry.dart';
+import '../../../services/io/local_filesystem.dart';
 import '../../../services/workspace/workspace_tools_scope.dart';
 import '../../../services/workspace/workspace_tools_scope_registry.dart';
 import '../../../services/workspace/workspace_worktree_registry.dart';
@@ -92,8 +93,20 @@ class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
 
   void _openSearch() {
     if (!mounted) return;
+    // This state sits above WorkspaceToolsScopeSync, so the scope has to be
+    // read from its cubit (the same one provided below); falls back to a
+    // local filesystem only when the plane has not resolved yet.
+    final scopeCubit = context.read<WorkspaceToolsScopeRegistry>().cubitFor(
+      tabScopeId: widget.tabScopeId,
+      lifecycle: context.read<ChatCubit>().lifecycle,
+    );
     unawaited(
-      showWorkspaceSearchDialog(context, workspace: widget.workspace),
+      showWorkspaceSearchDialog(
+        context,
+        workspace: widget.workspace,
+        fs:
+            scopeCubit.state.tools?.context.filesystem ?? LocalFilesystem(),
+      ),
     );
   }
 

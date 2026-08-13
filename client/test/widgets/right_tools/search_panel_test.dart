@@ -24,7 +24,7 @@ void main() {
 
   ContentSearchCubit buildCubit() => ContentSearchCubit(
     runnerFactory: (o) =>
-        ContentSearchRunner(fs: LocalFilesystem(), root: fixture.path).run(o),
+        ContentSearchRunner(fs: LocalFilesystem(), root: fixture.path),
     replacerFactory: () => ContentReplacer(fs: LocalFilesystem()),
   );
 
@@ -123,6 +123,20 @@ void main() {
     expect(find.text(l10n.workspaceSearchReplacedCount(1)), findsOneWidget);
     expect(File('${fixture.path}/a.dart').readAsStringSync(), 'hi world\n');
   });
+
+  testWidgets(
+    'results over the 2000 cap set the truncated flag',
+    (tester) async {
+      File('${fixture.path}/big.txt').writeAsStringSync(
+        List.generate(2100, (i) => 'match line $i\n').join(),
+      );
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await tester.pumpWidget(wrap(cubit));
+      await runSearch(tester, 'match');
+      expect(cubit.state.truncated, isTrue);
+    },
+  );
 
   testWidgets('empty query clears results and shows the empty hint', (
     tester,

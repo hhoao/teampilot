@@ -6,9 +6,28 @@ import 'package:teampilot_search/teampilot_search.dart';
 import 'package:teampilot/cubits/content_search/content_search_cubit.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/search/content_replacer.dart';
+import 'package:teampilot/services/search/content_search_runner.dart';
 
-class _FakeRunner {
+/// Test-double runner: the cubit now holds a [ContentSearchRunner] handle, so
+/// the fake must expose the same surface; [run] delegates to [handler] and
+/// [cancel] records that the engine-level cancel was requested.
+class _FakeRunner extends ContentSearchRunner {
+  _FakeRunner() : super(fs: LocalFilesystem(), root: '/root');
+
   Stream<TpSearchMatch> Function(TpSearchOptions)? handler;
+  int cancelCalls = 0;
+
+  @override
+  Stream<TpSearchMatch> run(TpSearchOptions options) {
+    final h = handler;
+    if (h == null) throw StateError('no handler');
+    return h(options);
+  }
+
+  @override
+  void cancel() {
+    cancelCalls++;
+  }
 }
 
 void main() {
@@ -35,11 +54,7 @@ void main() {
   setUp(() {
     fake = _FakeRunner();
     cubit = ContentSearchCubit(
-      runnerFactory: (options) {
-        final h = fake.handler;
-        if (h == null) throw StateError('no handler');
-        return h(options);
-      },
+      runnerFactory: (options) => fake,
       replacerFactory: () => throw UnimplementedError(),
     );
   });
@@ -74,6 +89,33 @@ void main() {
     // 取消后允许部分结果存在（流被终止），不再聚合新文件。
   });
 
+  test('cancel reaches the runner; a new search cancels the previous run',
+      () async {
+    final gate = Completer<void>();
+    fake.handler = (_) => Stream<TpSearchMatch>.multi((controller) async {
+      controller.add(_m('a.dart', 1));
+      await gate.future;
+      controller.add(_m('b.txt', 2));
+      controller.close();
+    });
+    final fut = cubit.search(const TpSearchOptions(pattern: 'hello'));
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+    expect(fake.cancelCalls, 0);
+    cubit.cancel();
+    expect(fake.cancelCalls, 1);
+    gate.complete();
+    await fut;
+
+    fake.handler = (_) => _stream([_m('a.dart', 1)]);
+    final first = cubit.search(const TpSearchOptions(pattern: 'first'));
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+    expect(fake.cancelCalls, 1);
+    final second = cubit.search(const TpSearchOptions(pattern: 'second'));
+    expect(fake.cancelCalls, 2);
+    await first;
+    await second;
+  });
+
   test('error surfaces in state, not thrown', () async {
     fake.handler = (_) => Stream.error(StateError('boom'));
     await cubit.search(const TpSearchOptions(pattern: 'hello'));
@@ -93,7 +135,7 @@ void main() {
   test('replaceAll skips the emit after close without throwing', () async {
     final slow = _SlowReplacer();
     final closed = ContentSearchCubit(
-      runnerFactory: (options) => fake.handler!(options),
+      runnerFactory: (options) => fake,
       replacerFactory: () => slow,
     );
     fake.handler = (_) => _stream([_m('a.dart', 1)]);
@@ -108,7 +150,7 @@ void main() {
   test('replaceSingle skips the emit after close without throwing', () async {
     final slow = _SlowReplacer();
     final closed = ContentSearchCubit(
-      runnerFactory: (options) => fake.handler!(options),
+      runnerFactory: (options) => fake,
       replacerFactory: () => slow,
     );
     fake.handler = (_) => _stream([_m('a.dart', 1)]);

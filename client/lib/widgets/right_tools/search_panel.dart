@@ -38,6 +38,11 @@ class WorkspaceSearchPanel extends StatefulWidget {
 }
 
 class _WorkspaceSearchPanelState extends State<WorkspaceSearchPanel> {
+  /// Result cap for the panel. The Rust engine stops at this cap (the
+  /// truncation footer is derived by the cubit from the cap); the lazy
+  /// [SearchPanelResults] list stays bounded.
+  static const _maxPanelResults = 2000;
+
   final _queryController = TextEditingController();
   final _replaceController = TextEditingController();
   final _includeController = TextEditingController();
@@ -104,10 +109,11 @@ class _WorkspaceSearchPanelState extends State<WorkspaceSearchPanel> {
   }
 
   TpSearchOptions get _options => TpSearchOptions(
-    pattern: _queryController.text,
+    pattern: _queryController.text.trim(),
     isRegex: _isRegex,
     caseSensitive: _caseSensitive,
     useGitignore: _useGitignore,
+    maxResults: _maxPanelResults,
     filesToInclude: _includeController.text
         .split(',')
         .map((s) => s.trim())
@@ -297,7 +303,7 @@ class _WorkspaceSearchPanelState extends State<WorkspaceSearchPanel> {
             Expanded(
               child: SearchPanelResults(
                 files: state.files,
-                query: _queryController.text,
+                query: _queryController.text.trim(),
                 truncated: state.truncated,
                 backendLabel: _backendLabel(),
                 replacement: _replaceController.text,

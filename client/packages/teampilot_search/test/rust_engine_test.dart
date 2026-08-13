@@ -40,7 +40,9 @@ void main() {
       isTrue,
       reason: 'each match path must reference its own file',
     );
-    final first = matches.first;
+    // Line order within a file is deterministic; match on the file, not the
+    // position in the cross-file stream.
+    final first = matches.firstWhere((m) => m.relativePath == 'a.dart');
     expect(first.lineNumber, 1);
     expect(first.lineText, 'hello world\n');
     expect(first.matchStart, 0);

@@ -150,14 +150,15 @@ void main() {
     expect(find.textContaining('big.txt:501'), findsNothing);
   });
 
-  testWidgets('invalid regex shows no-results instead of crashing', (
+  testWidgets('invalid regex shows the error row instead of crashing', (
     tester,
   ) async {
     await tester.pumpWidget(wrapSection(onOpenFile: (_) {}, root: fixture.path));
     final l10n = l10nOf(tester);
     await runSearch(tester, '[unclosed');
     expect(tester.takeException(), isNull);
-    expect(find.text(l10n.workspaceSearchNoResults), findsOneWidget);
+    expect(find.text(l10n.workspaceSearchError), findsOneWidget);
+    expect(find.text(l10n.workspaceSearchNoResults), findsNothing);
   });
 
   testWidgets(
