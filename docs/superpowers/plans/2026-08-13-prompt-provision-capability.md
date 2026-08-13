@@ -560,7 +560,7 @@ final class ClaudePromptProvisionCapability
       member: member,
       forceTeamLeadDelegateMode: isLead && ctx.forceTeamLeadDelegateMode,
       mixed: ctx.mixed,
-      additionalDirectories: ctx.additionalDirectories,
+      additionalDirectories: const [],
     );
     if (rolePath == null) return const PromptProvisionContribution();
     return PromptProvisionContribution(
@@ -731,7 +731,7 @@ final class FlashskyaiPromptProvisionCapability
       member: member,
       forceTeamLeadDelegateMode: isLead && ctx.forceTeamLeadDelegateMode,
       mixed: ctx.mixed,
-      additionalDirectories: ctx.additionalDirectories,
+      additionalDirectories: const [],
     );
     if (rolePath == null) return const PromptProvisionContribution();
     return PromptProvisionContribution(
@@ -1215,7 +1215,14 @@ import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 void main() {
   test('registry wiring all launch CLIs expose PromptProvisionCapability', () {
     final registry = CliToolRegistry.builtIn();
-    for (final cli in CliTool.values.where((c) => c.isLaunchSupported)) {
+    const launchClis = {
+      CliTool.claude,
+      CliTool.flashskyai,
+      CliTool.codex,
+      CliTool.opencode,
+      CliTool.cursor,
+    };
+    for (final cli in launchClis) {
       expect(
         registry.capability<PromptProvisionCapability>(cli),
         isNotNull,
@@ -1225,8 +1232,6 @@ void main() {
   });
 }
 ```
-
-注意：`CliTool` 枚举与 `isLaunchSupported` 的使用方式对齐 `test/services/cli/registry/all_cli_effort_capability_test.dart` 现有写法（若枚举有 `isLaunchSupported` getter 则直接使用，否则写死五个：claude / flashskyai / codex / opencode / cursor）。
 
 Run: `flutter test test/services/cli/registry/all_cli_prompt_provision_capability_test.dart`
 Expected: PASS。
@@ -1249,4 +1254,5 @@ git commit -m "test: assert all launch CLIs expose PromptProvisionCapability"
 
 - **Spec 覆盖**：接口（Task 1）、组合层 dirs 章节（Task 1）、五个实现（Task 2-6）、装配点收敛（Task 2-6）、`resolveAppendSystemPromptPath` 删除（Task 7）、tool definition 注册 + wiring 测试（Task 2-6 注册、Task 8 测试）、`permission.external_directory` 保留在 opencode config_profile（Task 2 不动该逻辑）。✓
 - **占位符扫描**：无 TBD/TODO；每个测试都有完整代码（Task 5 已补全实际测试代码，无"仿 Task N"引用）。
+- **预检修正（控制器裁决，依据 Global Constraints + spec 决策 #3）**：Task 3/4 代码块 `additionalDirectories: ctx.additionalDirectories` → `const []`；Task 8 wiring 测试 `CliTool.values.where(isLaunchSupported)` → 显式五 CLI 集合（`isLaunchSupported` 在 `CliToolDefinition` 上，不在枚举，仿 `all_cli_effort_capability_test.dart`）。
 - **类型一致性**：`PromptProvisionContext` / `PromptProvisionContribution` 字段在 Task 1 定义后所有任务一致引用；`composeWorkspaceDirectoriesPrompt`（Task 1 命名）与旧名 `composeOpencodeWorkspaceDirectoriesPrompt` 的对应关系已注明（Task 2 删除旧函数）；`additionalDirectories` 参数在 `composeRolePrompt` / `syncRolePromptFile` / `CursorRoleRuleWriter.sync` 三处命名与语义一致（Task 1 统一加入）。
