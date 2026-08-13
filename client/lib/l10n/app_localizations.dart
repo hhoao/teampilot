@@ -8282,6 +8282,12 @@ abstract class AppLocalizations {
   /// **'Event'**
   String get hookEvent;
 
+  /// No description provided for @hookMatcher.
+  ///
+  /// In en, this message translates to:
+  /// **'Matcher'**
+  String get hookMatcher;
+
   /// No description provided for @hookActionCommand.
   ///
   /// In en, this message translates to:
@@ -8317,6 +8323,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Save'**
   String get hookSave;
+
+  /// No description provided for @hookCapabilityMatrix.
+  ///
+  /// In en, this message translates to:
+  /// **'Capability matrix'**
+  String get hookCapabilityMatrix;
 
   /// No description provided for @mcpNavRegistries.
   ///

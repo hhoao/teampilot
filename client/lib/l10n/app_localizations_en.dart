@@ -4613,6 +4613,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get hookEvent => 'Event';
 
   @override
+  String get hookMatcher => 'Matcher';
+
+  @override
   String get hookActionCommand => 'Command';
 
   @override
@@ -4629,6 +4632,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get hookSave => 'Save';
+
+  @override
+  String get hookCapabilityMatrix => 'Capability matrix';
 
   @override
   String get mcpNavRegistries => 'Registry';

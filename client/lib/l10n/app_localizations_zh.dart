@@ -4439,6 +4439,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get hookEvent => '事件';
 
   @override
+  String get hookMatcher => '匹配器';
+
+  @override
   String get hookActionCommand => '命令';
 
   @override
@@ -4455,6 +4458,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get hookSave => '保存';
+
+  @override
+  String get hookCapabilityMatrix => '能力矩阵';
 
   @override
   String get mcpNavRegistries => '注册中心';

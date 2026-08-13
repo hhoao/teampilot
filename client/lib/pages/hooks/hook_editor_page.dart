@@ -39,13 +39,13 @@ class HookEditorPage extends StatefulWidget {
 class _HookEditorPageState extends State<HookEditorPage> {
   late final TextEditingController _name;
   late final TextEditingController _description;
+  late final TextEditingController _matcher;
   late final TextEditingController _command;
   late final TextEditingController _scriptContent;
   late final TextEditingController _timeout;
   late final TextEditingController _env;
 
   late HookEvent _event;
-  late String _matcher;
   late HookPolicy _policy;
   bool _useScript = false;
 
@@ -55,6 +55,7 @@ class _HookEditorPageState extends State<HookEditorPage> {
     final definition = widget.definition;
     _name = TextEditingController(text: definition?.name ?? '');
     _description = TextEditingController(text: definition?.description ?? '');
+    _matcher = TextEditingController(text: definition?.matcher ?? '');
     final action = definition?.action;
     final command = action is CommandHookAction ? action.command ?? '' : '';
     _command = TextEditingController(text: command);
@@ -69,7 +70,6 @@ class _HookEditorPageState extends State<HookEditorPage> {
           '',
     );
     _event = definition?.event ?? HookEvent.stop;
-    _matcher = definition?.matcher ?? '';
     _policy = definition?.policy ?? HookPolicy.none;
     _useScript = action is CommandHookAction && action.command == null;
     _loadExistingScript();
@@ -79,6 +79,7 @@ class _HookEditorPageState extends State<HookEditorPage> {
   void dispose() {
     _name.dispose();
     _description.dispose();
+    _matcher.dispose();
     _command.dispose();
     _scriptContent.dispose();
     _timeout.dispose();
@@ -120,7 +121,7 @@ class _HookEditorPageState extends State<HookEditorPage> {
       name: _name.text,
       description: _description.text,
       event: _event,
-      matcher: _matcher.trim().isEmpty ? null : _matcher.trim(),
+      matcher: _matcher.text.trim().isEmpty ? null : _matcher.text.trim(),
       action: action,
       policy: _event.isIntercepting ? _policy : HookPolicy.none,
       timeoutSec: int.tryParse(_timeout.text),
@@ -184,6 +185,11 @@ class _HookEditorPageState extends State<HookEditorPage> {
               setState(() => _event = value);
             },
             decoration: InputDecoration(labelText: l10n.hookEvent),
+          ),
+          TextField(
+            key: const Key('hook-matcher'),
+            controller: _matcher,
+            decoration: InputDecoration(labelText: l10n.hookMatcher),
           ),
           TextField(
             controller: _command,
@@ -258,10 +264,11 @@ class _CapabilityMatrix extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Capability matrix'),
+        Text(l10n.hookCapabilityMatrix, key: const Key('hook-capability-matrix')),
         const SizedBox(height: 4),
         for (final cli in CliTool.values)
           Builder(builder: (context) {

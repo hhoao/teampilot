@@ -57,7 +57,10 @@ void main() {
     final (fs, _) = await pumpEditor(tester);
 
     expect(find.text('On session start'), findsNothing);
-    expect(find.text('Capability matrix'), findsOneWidget);
+    expect(
+      find.byKey(const Key('hook-capability-matrix')),
+      findsOneWidget,
+    );
     expect(find.text('✓'), findsNWidgets(4));
     expect(find.text('≈'), findsOneWidget);
     expect(find.text('✗'), findsNothing);
@@ -69,6 +72,10 @@ void main() {
       find.byKey(const Key('hook-command')),
       'echo start',
     );
+    await tester.enterText(
+      find.byKey(const Key('hook-matcher')),
+      'rm -rf',
+    );
     await tester.tap(find.byKey(const Key('hook-save')));
     await tester.pumpAndSettle();
 
@@ -78,6 +85,7 @@ void main() {
     ).loadAll();
     expect(saved, hasLength(1));
     expect(saved.single.name, 'On session start');
+    expect(saved.single.matcher, 'rm -rf');
   });
 
   testWidgets('edit mode pre-fills fields and loads script content', (
