@@ -167,6 +167,7 @@ unsafe fn fill_chunk(h: &mut TpSearchHandle, chunk: &mut TpSearchChunk) {
             break;
         }
 
+        let path_off = str_off;
         str_off = match write_string(str_buf, str_off, &d.path) {
             Ok(o) => o,
             Err(_) => break,
@@ -198,7 +199,7 @@ unsafe fn fill_chunk(h: &mut TpSearchHandle, chunk: &mut TpSearchChunk) {
         };
         let base = chunk.string_buf as usize;
         m_arr[m_idx] = TpSearchMatch {
-            path: (base + 0) as *const c_char,
+            path: (base + path_off) as *const c_char,
             relative_path: (base + rel_off) as *const c_char,
             line_number: d.line_number,
             line_text: (base + text_off) as *const c_char,

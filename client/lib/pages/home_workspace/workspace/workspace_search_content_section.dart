@@ -34,9 +34,20 @@ class _WorkspaceSearchContentSectionState
   static const _debounceTag = 'workspace_search_dialog_content';
   static const _debounceDelay = Duration(milliseconds: 300);
 
+  /// Result cap for the dialog's content search. The rows render in a
+  /// shrink-wrapped [ListView.builder], which builds every row to compute its
+  /// extent — uncapped matches (e.g. a broad `.*` regex over a large repo)
+  /// would build thousands of rows per run. Both the Rust engine and the
+  /// Dart fallback stop at this cap; the stream completes either way.
+  static const _maxDialogContentResults = 500;
+
   final _controller = TextEditingController();
   final _results = <TpSearchMatch>[];
   bool _searching = false;
+
+  /// True when [_results] hit the [_maxDialogContentResults] cap — the
+  /// engines truncate silently, so this is detected by match count.
+  bool _truncated = false;
   bool _isRegex = true;
   bool _caseSensitive = false;
   int _seq = 0;
@@ -64,10 +75,11 @@ class _WorkspaceSearchContentSectionState
 
   Future<void> _run() async {
     final seq = ++_seq;
-    final query = _controller.text;
-    if (query.trim().isEmpty) {
+    final query = _controller.text.trim();
+    if (query.isEmpty) {
       setState(() {
         _results.clear();
+        _truncated = false;
         _searching = false;
       });
       return;
@@ -80,6 +92,7 @@ class _WorkspaceSearchContentSectionState
         pattern: query,
         isRegex: _isRegex,
         caseSensitive: _caseSensitive,
+        maxResults: _maxDialogContentResults,
       ))) {
         if (seq != _seq || !mounted) return;
         matches.add(m);
@@ -92,6 +105,7 @@ class _WorkspaceSearchContentSectionState
       _results
         ..clear()
         ..addAll(matches);
+      _truncated = matches.length >= _maxDialogContentResults;
       _searching = false;
     });
   }
@@ -99,7 +113,7 @@ class _WorkspaceSearchContentSectionState
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final query = _controller.text;
+    final query = _controller.text.trim();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
@@ -138,7 +152,7 @@ class _WorkspaceSearchContentSectionState
         const SizedBox(height: 4),
         if (_searching)
           WorkspaceSearchStatusRow(label: l10n.workspaceSearchSearching)
-        else if (query.trim().isEmpty)
+        else if (query.isEmpty)
           WorkspaceSearchStatusRow(label: l10n.workspaceSearchEmptyHint)
         else if (_results.isEmpty)
           WorkspaceSearchStatusRow(label: l10n.workspaceSearchNoResults)
@@ -146,8 +160,13 @@ class _WorkspaceSearchContentSectionState
           Flexible(
             child: ListView.builder(
               shrinkWrap: true,
-              itemCount: _results.length,
+              itemCount: _results.length + (_truncated ? 1 : 0),
               itemBuilder: (context, i) {
+                if (_truncated && i == _results.length) {
+                  return WorkspaceSearchStatusRow(
+                    label: l10n.workspaceSearchTruncated,
+                  );
+                }
                 final m = _results[i];
                 return WorkspaceSearchFileRow(
                   name: '${m.relativePath}:${m.lineNumber}',

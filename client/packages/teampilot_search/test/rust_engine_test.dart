@@ -33,6 +33,13 @@ void main() {
     // assert on the set of paths, not the sequence.
     expect(matches.map((m) => m.relativePath).toSet(), {'a.dart', 'sub/c.rs'});
     expect(matches.length, 3);
+    // Multi-match chunks pack several files' strings into one buffer: every
+    // match's path must point at its own file, not the chunk's first path.
+    expect(
+      matches.every((m) => m.path.endsWith(m.relativePath)),
+      isTrue,
+      reason: 'each match path must reference its own file',
+    );
     final first = matches.first;
     expect(first.lineNumber, 1);
     expect(first.lineText, 'hello world\n');

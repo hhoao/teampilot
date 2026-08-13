@@ -38,12 +38,17 @@ void main() {
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
+        // Expanded mirrors the dialog's bounded results area (Flexible/Expanded
+        // under the dialog shell) so the section's internal shrink-wrapped
+        // list can scroll instead of growing unbounded.
         body: Column(
           children: [
-            WorkspaceSearchContentSection(
-              root: root,
-              fs: LocalFilesystem(),
-              onOpenFile: onOpenFile,
+            Expanded(
+              child: WorkspaceSearchContentSection(
+                root: root,
+                fs: LocalFilesystem(),
+                onOpenFile: onOpenFile,
+              ),
             ),
           ],
         ),
@@ -103,6 +108,46 @@ void main() {
     await runSearch(tester, '');
     expect(find.text(l10n.workspaceSearchEmptyHint), findsOneWidget);
     expect(find.textContaining('a.dart:1'), findsNothing);
+  });
+
+  testWidgets('query with surrounding whitespace is trimmed before searching', (
+    tester,
+  ) async {
+    await tester.pumpWidget(wrapSection(onOpenFile: (_) {}, root: fixture.path));
+    await runSearch(tester, '  hello  ');
+    expect(find.textContaining('a.dart:1'), findsOneWidget);
+    expect(find.textContaining('b.txt:1'), findsOneWidget);
+  });
+
+  testWidgets('whitespace-only query shows the empty hint', (tester) async {
+    await tester.pumpWidget(wrapSection(onOpenFile: (_) {}, root: fixture.path));
+    final l10n = l10nOf(tester);
+    await runSearch(tester, '   ');
+    expect(find.text(l10n.workspaceSearchEmptyHint), findsOneWidget);
+    expect(find.byType(WorkspaceSearchFileRow), findsNothing);
+  });
+
+  testWidgets('results are capped at 500 with a truncation hint', (tester) async {
+    File('${fixture.path}/big.txt').writeAsStringSync(
+      List.generate(600, (i) => 'match line $i\n').join(),
+    );
+    await tester.pumpWidget(wrapSection(onOpenFile: (_) {}, root: fixture.path));
+    final l10n = l10nOf(tester);
+    await runSearch(tester, 'match');
+    // The lazy list only builds visible rows; the cap keeps that extent
+    // bounded. Scroll to the tail to reveal the truncation hint. The first
+    // Scrollable is the TextField's own; the results list is the last.
+    final resultsList = find.byType(Scrollable).last;
+    await tester.dragUntilVisible(
+      find.text(l10n.workspaceSearchTruncated),
+      resultsList,
+      const Offset(0, -1000),
+    );
+    expect(find.text(l10n.workspaceSearchTruncated), findsOneWidget);
+    // The engine stopped at the 500th match: the last row is big.txt:500 and
+    // no later line exists.
+    expect(find.textContaining('big.txt:500'), findsWidgets);
+    expect(find.textContaining('big.txt:501'), findsNothing);
   });
 
   testWidgets('invalid regex shows no-results instead of crashing', (
