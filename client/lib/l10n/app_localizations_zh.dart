@@ -1223,6 +1223,66 @@ class AppLocalizationsZh extends AppLocalizations {
   String get workspaceSearchNoResults => '没有匹配结果';
 
   @override
+  String get workspaceSearchPanel => '搜索';
+
+  @override
+  String get workspaceSearchQueryHint => '搜索文件';
+
+  @override
+  String get workspaceSearchRegex => '正则';
+
+  @override
+  String get workspaceSearchCaseSensitive => '大小写';
+
+  @override
+  String get workspaceSearchGitignore => '.gitignore';
+
+  @override
+  String get workspaceSearchIncludeHint => '包含 (glob，逗号分隔)';
+
+  @override
+  String get workspaceSearchExcludeHint => '排除 (glob，逗号分隔)';
+
+  @override
+  String get workspaceSearchReplaceHint => '替换为';
+
+  @override
+  String get workspaceSearchReplaceAll => '全部替换';
+
+  @override
+  String get workspaceSearchReplaceAllTitle => '全部替换？';
+
+  @override
+  String workspaceSearchReplaceAllMessage(int count) {
+    return '替换 $count 处匹配？';
+  }
+
+  @override
+  String get workspaceSearchReplace => '替换';
+
+  @override
+  String workspaceSearchReplacedCount(int count) {
+    return '已替换 $count 处';
+  }
+
+  @override
+  String get workspaceSearchCancel => '取消';
+
+  @override
+  String get workspaceSearchEmptyHint => '输入以搜索文件内容';
+
+  @override
+  String get workspaceSearchTruncated => '结果过多已截断——请细化查询';
+
+  @override
+  String workspaceSearchBackend(String backend) {
+    return '引擎：$backend';
+  }
+
+  @override
+  String get workspaceSearchError => '搜索失败——请检查正则';
+
+  @override
   String get appDropdownSearchHint => '搜索…';
 
   @override

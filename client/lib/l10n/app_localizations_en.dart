@@ -1285,6 +1285,67 @@ class AppLocalizationsEn extends AppLocalizations {
   String get workspaceSearchNoResults => 'No matches';
 
   @override
+  String get workspaceSearchPanel => 'Search';
+
+  @override
+  String get workspaceSearchQueryHint => 'Search files';
+
+  @override
+  String get workspaceSearchRegex => 'Regex';
+
+  @override
+  String get workspaceSearchCaseSensitive => 'Aa';
+
+  @override
+  String get workspaceSearchGitignore => '.gitignore';
+
+  @override
+  String get workspaceSearchIncludeHint => 'Include (glob, comma-separated)';
+
+  @override
+  String get workspaceSearchExcludeHint => 'Exclude (glob, comma-separated)';
+
+  @override
+  String get workspaceSearchReplaceHint => 'Replace with';
+
+  @override
+  String get workspaceSearchReplaceAll => 'Replace All';
+
+  @override
+  String get workspaceSearchReplaceAllTitle => 'Replace all?';
+
+  @override
+  String workspaceSearchReplaceAllMessage(int count) {
+    return 'Replace $count occurrence(s)?';
+  }
+
+  @override
+  String get workspaceSearchReplace => 'Replace';
+
+  @override
+  String workspaceSearchReplacedCount(int count) {
+    return 'Replaced $count';
+  }
+
+  @override
+  String get workspaceSearchCancel => 'Cancel';
+
+  @override
+  String get workspaceSearchEmptyHint => 'Type to search file contents';
+
+  @override
+  String get workspaceSearchTruncated =>
+      'Results truncated — refine your query';
+
+  @override
+  String workspaceSearchBackend(String backend) {
+    return 'Engine: $backend';
+  }
+
+  @override
+  String get workspaceSearchError => 'Search failed — check the pattern';
+
+  @override
   String get appDropdownSearchHint => 'Search…';
 
   @override

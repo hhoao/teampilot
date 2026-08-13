@@ -23,6 +23,18 @@ void main() {
     expect(parsed.toJson()['sidebarVisible'], isFalse);
   });
 
+  test('searchVisible defaults true and round-trips', () {
+    expect(const LayoutPreferences().searchVisible, isTrue);
+    expect(LayoutPreferences.fromJson(const {}).searchVisible, isTrue);
+    final parsed = LayoutPreferences.fromJson(const {'searchVisible': false});
+    expect(parsed.searchVisible, isFalse);
+    expect(parsed.toJson()['searchVisible'], isFalse);
+    final restored = LayoutPreferences.fromJson(
+      const LayoutPreferences(searchVisible: false).toJson(),
+    );
+    expect(restored.searchVisible, isFalse);
+  });
+
   test('locale defaults to system (empty) and maps dropdown values', () {
     expect(const LayoutPreferences().locale, isEmpty);
     expect(languagePreferenceUiValue(''), 'system');
@@ -136,7 +148,10 @@ void main() {
   test('cot expand prefs default false and round-trip', () {
     expect(const LayoutPreferences().cotExpandReasoningOnOpen, isFalse);
     expect(const LayoutPreferences().cotExpandToolsOnOpen, isFalse);
-    expect(LayoutPreferences.fromJson(const {}).cotExpandReasoningOnOpen, isFalse);
+    expect(
+      LayoutPreferences.fromJson(const {}).cotExpandReasoningOnOpen,
+      isFalse,
+    );
 
     final parsed = LayoutPreferences.fromJson(const {
       'cotExpandReasoningOnOpen': true,
@@ -249,13 +264,16 @@ void main() {
 
   test('foldToolCallCategories round-trips via JSON names', () {
     final prefs = const LayoutPreferences().copyWith(
-      foldToolCallCategories: {AiToolCallCategory.command, AiToolCallCategory.mcp},
+      foldToolCallCategories: {
+        AiToolCallCategory.command,
+        AiToolCallCategory.mcp,
+      },
     );
     final parsed = LayoutPreferences.fromJson(prefs.toJson());
-    expect(
-      parsed.foldToolCallCategories,
-      {AiToolCallCategory.command, AiToolCallCategory.mcp},
-    );
+    expect(parsed.foldToolCallCategories, {
+      AiToolCallCategory.command,
+      AiToolCallCategory.mcp,
+    });
   });
 
   test('foldToolCallCategories missing key → default; empty list → empty', () {
@@ -264,8 +282,9 @@ void main() {
       LayoutPreferences.defaultFoldToolCallCategories,
     );
     expect(
-      LayoutPreferences.fromJson(const {'foldToolCallCategories': <String>[]})
-          .foldToolCallCategories,
+      LayoutPreferences.fromJson(const {
+        'foldToolCallCategories': <String>[],
+      }).foldToolCallCategories,
       isEmpty,
     );
   });

@@ -523,6 +523,45 @@
   "workspaceSearchShowMore": "查看更多结果",
   "workspaceSearchFilesEmptyHint": "输入关键词搜索文件",
   "workspaceSearchNoResults": "没有匹配结果",
+  "workspaceSearchPanel": "搜索",
+  "workspaceSearchQueryHint": "搜索文件",
+  "workspaceSearchRegex": "正则",
+  "workspaceSearchCaseSensitive": "大小写",
+  "workspaceSearchGitignore": ".gitignore",
+  "workspaceSearchIncludeHint": "包含 (glob，逗号分隔)",
+  "workspaceSearchExcludeHint": "排除 (glob，逗号分隔)",
+  "workspaceSearchReplaceHint": "替换为",
+  "workspaceSearchReplaceAll": "全部替换",
+  "workspaceSearchReplaceAllTitle": "全部替换？",
+  "workspaceSearchReplaceAllMessage": "替换 {count} 处匹配？",
+  "@workspaceSearchReplaceAllMessage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "workspaceSearchReplace": "替换",
+  "workspaceSearchReplacedCount": "已替换 {count} 处",
+  "@workspaceSearchReplacedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "workspaceSearchCancel": "取消",
+  "workspaceSearchEmptyHint": "输入以搜索文件内容",
+  "workspaceSearchTruncated": "结果过多已截断——请细化查询",
+  "workspaceSearchBackend": "引擎：{backend}",
+  "@workspaceSearchBackend": {
+    "placeholders": {
+      "backend": {
+        "type": "String"
+      }
+    }
+  },
+  "workspaceSearchError": "搜索失败——请检查正则",
   "appDropdownSearchHint": "搜索…",
   "appDropdownSearchNoResults": "未找到结果",
   "homeWorkspaceOpenWorkspaceInNewTab": "在新标签页中打开",
