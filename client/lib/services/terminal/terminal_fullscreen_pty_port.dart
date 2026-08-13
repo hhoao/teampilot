@@ -57,7 +57,7 @@ final class TerminalFullscreenPtyPort implements FullscreenPtyDeliveryPort {
 
   @override
   bool needleAppearsOutsideRegion(
-    ComposerRegion region,
+    ComposerRegion? region,
     String needle, {
     int scanRows = 24,
   }) =>

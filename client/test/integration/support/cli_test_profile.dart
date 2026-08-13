@@ -246,7 +246,7 @@ abstract final class CliTestProfiles {
       await dismissOpencodeBootGates(session);
     },
     fullscreenDeliverNotes:
-        'Fullscreen paste; anchorCellClears CR ACK (OpencodeTerminalBehavior).',
+        'Fullscreen paste; region-cleared CR ACK (OpencodeTerminalBehavior).',
     gatewayRedirectNotes:
         'Custom provider npm=@ai-sdk/openai-compatible; OpenAI Chat '
         'Completions at gateway /v1/chat/completions (stream: true SSE).',

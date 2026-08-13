@@ -171,7 +171,7 @@ void main() {
           expect(
             outcome,
             FullscreenPtyDeliveryOutcome.submitted,
-            reason: 'opencode anchorCellClears ACK must pass at '
+            reason: 'opencode region-cleared ACK must pass at '
                 '${viewport.cols}x${viewport.rows}. Dump:\n$afterDeliver',
           );
 

@@ -22,8 +22,9 @@ abstract interface class FullscreenPtyDeliveryPort {
 
   bool isComposerRegionEmpty(ComposerRegion region);
 
+  /// Null [region] scans the whole probe window (null-region submit fallback).
   bool needleAppearsOutsideRegion(
-    ComposerRegion region,
+    ComposerRegion? region,
     String needle, {
     int scanRows = 24,
   });

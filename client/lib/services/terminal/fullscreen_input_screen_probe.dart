@@ -326,8 +326,13 @@ int _skipWideSpacers(TerminalScreenGrid grid, int row, int col) {
 }
 
 /// Advances past leading empty / space cells on a soft-wrapped continuation row.
-int _skipLeadingPadding(TerminalScreenGrid grid, int row, {String? composerPrefix}) {
-  var col = 0;
+int _skipLeadingPadding(
+  TerminalScreenGrid grid,
+  int row, {
+  int fromCol = 0,
+  String? composerPrefix,
+}) {
+  var col = fromCol;
   // OpenCode (and potentially other TUIs) repeats its composer prefix char on
   // every wrapped continuation line — skip it just like space/null padding.
   final prefixCp = (composerPrefix != null && composerPrefix.trim().isNotEmpty)
@@ -414,11 +419,17 @@ ComposerRegion? locateComposerRegion(
     for (var r = grid.rows - 1; r >= windowStart; r--) {
       final cornerCol = _cornerColumnOnRow(grid, r, border);
       if (cornerCol < 0) continue;
-      final leftCol = _leftBorderColumnAbove(grid, r, cornerCol, border.left);
+      final leftCol = _leftBorderColumnAbove(
+        grid,
+        r,
+        cornerCol,
+        border.left,
+        windowStart: windowStart,
+      );
       if (leftCol < 0) continue;
       var topRow = r;
       while (topRow - 1 >= windowStart &&
-          _rowHasChar(grid, topRow - 1, leftCol, border.left.first)) {
+          _rowHasAnyLeftBorderChar(grid, topRow - 1, leftCol, border.left)) {
         topRow--;
       }
       return ComposerRegion(
@@ -467,14 +478,27 @@ int _leftBorderColumnAbove(
   TerminalScreenGrid grid,
   int bottomRow,
   int col,
-  List<String> left,
-) {
-  for (var r = bottomRow - 1; r >= 0; r--) {
+  List<String> left, {
+  required int windowStart,
+}) {
+  for (var r = bottomRow - 1; r >= windowStart; r--) {
     for (final c in left) {
       if (_rowHasChar(grid, r, col, c)) return col;
     }
   }
   return -1;
+}
+
+bool _rowHasAnyLeftBorderChar(
+  TerminalScreenGrid grid,
+  int row,
+  int col,
+  List<String> left,
+) {
+  for (final c in left) {
+    if (_rowHasChar(grid, row, col, c)) return true;
+  }
+  return false;
 }
 
 bool _rowHasAnyPrefix(TerminalScreenGrid grid, int row, List<String> prefixes) {
@@ -503,6 +527,7 @@ bool regionContainsNeedle(
         runes,
         maxRow: region.bottomRow,
         maxCol: region.rightCol,
+        minCol: region.leftCol,
       )) {
         return true;
       }
@@ -518,20 +543,41 @@ bool _matchesNeedleAtBounded(
   List<int> needleRunes, {
   required int maxRow,
   required int maxCol,
+  int minCol = 0,
 }) {
   var r = row;
   var col = startCol;
+  // After a soft wrap, leading chrome is not paste content: continuation rows
+  // restart at the region's left edge and skip padding plus the box's left
+  // border glyph (mirrors the unbounded matcher's wrap collapse).
+  var collapseWrapSpaces = false;
   for (var i = 0; i < needleRunes.length; i++) {
     final cp = needleRunes[i];
+    var wrapped = false;
     while (true) {
       if (r > maxRow) return false;
       col = _skipWideSpacers(grid, r, col);
       if (col <= maxCol && !_rowRemainderIsPadding(grid, r, col)) break;
+      // Soft-wrap before comparing this rune.
       r += 1;
-      col = 0;
+      col = minCol;
       if (r > maxRow) return false;
       if (!_rowHasNonSpaceContent(grid, r) && cp != 0x20) return false;
+      col = _skipLeadingPadding(grid, r, fromCol: col);
+      if (minCol > 0 && col == minCol && grid.codepointAt(r, col) != 0) {
+        // Left-border glyph (opencode `┃`/`│`) is chrome, not staged content.
+        col = _skipLeadingPadding(grid, r, fromCol: col + 1);
+      }
+      wrapped = true;
     }
+    if (wrapped) collapseWrapSpaces = true;
+    if (cp == 0x20 && collapseWrapSpaces) {
+      final gridCp = col < grid.columns ? grid.codepointAt(r, col) : 0;
+      if (gridCp != 0 && gridCp != 0x20) {
+        continue;
+      }
+    }
+    collapseWrapSpaces = false;
     if (col > maxCol || grid.codepointAt(r, col) != cp) return false;
     col = _advancePastCell(grid, r, col);
   }
@@ -585,16 +631,20 @@ bool isComposerRegionEmpty(
 }
 
 /// Needle present somewhere outside the region (transcript / message box).
+///
+/// A null [region] scans the whole probe window — used as the null-region
+/// submit fallback: false means the needle left the visible window entirely.
 bool needleAppearsOutsideRegion(
   TerminalScreenGrid grid,
-  ComposerRegion region,
+  ComposerRegion? region,
   String needle, {
   int scanRows = 24,
 }) {
+  if (needle.isEmpty) return false;
   final windowStart = (grid.rows - scanRows).clamp(0, grid.rows - 1);
   final runes = needle.runes.toList();
   for (var r = windowStart; r < grid.rows; r++) {
-    if (r >= region.topRow && r <= region.bottomRow) continue;
+    if (region != null && r >= region.topRow && r <= region.bottomRow) continue;
     for (var col = 0; col < grid.columns; col++) {
       if (_isWideSpacer(grid, r, col)) continue;
       if (_matchesNeedleAtBounded(

@@ -57,7 +57,7 @@ final class TerminalScreenProbeController {
       probe.isComposerRegionEmpty(_screenGrid, region, spec);
 
   bool needleAppearsOutsideRegion(
-    probe.ComposerRegion region,
+    probe.ComposerRegion? region,
     String needle, {
     int scanRows = 24,
   }) =>

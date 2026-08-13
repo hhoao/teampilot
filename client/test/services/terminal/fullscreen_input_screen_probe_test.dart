@@ -403,6 +403,27 @@ prefix
       expect(needleAppearsOutsideRegion(grid, region, '1', scanRows: 12), isTrue);
     });
 
+    test('regionContainsNeedle matches a needle soft-wrapped inside the box',
+        () {
+      // Staged text wraps inside the opencode box: the tail continues on a
+      // row led by the `┃` border glyph + indent — that chrome must collapse
+      // so the wrapped needle still matches.
+      final lines = List<String>.filled(10, '');
+      lines[6] = '                    \u2503';
+      lines[7] = '                    \u2503  1 long_tail_';
+      lines[8] = '                    \u2503  TAIL_XYZ';
+      lines[9] = '                    \u2579\u2580\u2580\u2580\u2580';
+      final grid = _FakeGrid.fromRows(lines);
+      final region = locateComposerRegion(grid, opencodeSpec, scanRows: 10)!;
+
+      expect(
+        regionContainsNeedle(grid, region, '1 long_tail_TAIL_XYZ'),
+        isTrue,
+        reason: 'needle tail crossing a soft wrap inside the box must ACK '
+            'despite the continuation row border chrome',
+      );
+    });
+
     test('isComposerRegionEmpty true when box interior blank', () {
       final lines = List<String>.filled(10, '');
       lines[7] = '                    \u2503';

@@ -312,21 +312,39 @@ class FullscreenPtyAutomation {
     final region = port.locateComposerRegion(scanRows: scanRows);
     switch (spec.submitSemantics) {
       case ComposerSubmitSemantics.regionCleared:
-        if (region == null) return false;
+        if (region == null) {
+          // Transient region loss (composer collapsed / repainting): submitted
+          // once the needle has also left the probe window entirely.
+          return !port.needleAppearsOutsideRegion(
+            null,
+            needle,
+            scanRows: scanRows,
+          );
+        }
         return !port.regionContainsNeedle(region, needle);
       case ComposerSubmitSemantics.regionMovedDown:
-        return _hasComposerRegionBelow(port, beforeCrRegion, scanRows: scanRows);
+        return _hasComposerRegionBelow(port, beforeCrRegion, current: region, scanRows: scanRows) ||
+            (region != null && !port.regionContainsNeedle(region, needle));
       case ComposerSubmitSemantics.timed:
         return true;
     }
   }
 
+  /// regionMovedDown ACK signals:
+  /// 1. The composer repainted strictly below its pre-CR position.
+  /// 2. The staged needle left the current region (moved to transcript).
+  ///
+  /// The row comparison alone dead-locks on bottom-pinned TUIs (cursor/codex
+  /// with a full viewport): the old region's bottomRow is the last grid row,
+  /// so a repainted composer at the same bottom row never compares "below" —
+  /// fall back to "needle no longer staged inside the region".
   bool _hasComposerRegionBelow(
     FullscreenPtyDeliveryPort port,
     ComposerRegion? previous, {
+    required ComposerRegion? current,
     required int scanRows,
   }) {
-    final current = port.locateComposerRegion(scanRows: scanRows);
+    current ??= port.locateComposerRegion(scanRows: scanRows);
     if (current == null) return false;
     if (previous == null) return false;
     return current.topRow > previous.bottomRow;
