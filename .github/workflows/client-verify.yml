@@ -67,6 +67,10 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
+      - name: Install cargo-ndk for teampilot_search android cross-build
+        if: matrix.platform == 'android'
+        run: cargo install cargo-ndk --locked
+
       - name: Install Linux build dependencies
         if: matrix.install_linux_deps
         run: |
@@ -113,6 +117,18 @@ jobs:
         run: dart run tool/sync_bundled_google_fonts.dart
 
       - name: Analyze (errors only)
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+
+      - name: teampilot_search Rust tests
+        working-directory: client/packages/teampilot_search
+        run: cargo test --manifest-path rust/Cargo.toml
+
+      - name: teampilot_search Dart tests
+        working-directory: client/packages/teampilot_search
+        run: flutter test
+
+      - name: teampilot_search analyze
+        working-directory: client/packages/teampilot_search
         run: flutter analyze --no-fatal-infos --no-fatal-warnings
 
       - name: Unit and widget tests
