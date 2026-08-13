@@ -36,6 +36,15 @@ class WorkspaceWorktreeRegistry {
     return cubit;
   }
 
+  /// Returns an already-created cubit without allocating a new one.
+  WorktreeCubit? peek(String workspaceId) {
+    final ws = workspaceId.trim();
+    if (ws.isEmpty) return null;
+    final existing = _cubits[ws];
+    if (existing == null || existing.isClosed) return null;
+    return existing;
+  }
+
   void removeWorkspace(String workspaceId) {
     final ws = workspaceId.trim();
     if (ws.isEmpty) return;

@@ -11,6 +11,7 @@ import '../../models/landing_launch_context.dart';
 import '../../models/workspace.dart';
 import '../../pages/home_workspace/workspace/unbound_compose_body.dart';
 import '../../pages/home_workspace/workspace/workspace_session_actions.dart';
+import '../../services/workspace/workspace_worktree_registry.dart';
 import '../../utils/logging/logger_utils.dart';
 import '../../utils/workspace/landing_draft_resolver.dart';
 import 'selection_ai_context.dart';
@@ -30,13 +31,20 @@ abstract final class SelectionAskAi {
       // The dialog route is above WorkspaceSplitPane's provider scope, so
       // capture the workspace-scoped cubit before crossing the route boundary.
       worktreeCubit = context.read<WorktreeCubit>();
-    } on ProviderNotFoundException catch (error, stackTrace) {
-      AppLogger.instance.w(
-        'Selection Ask AI requires a workspace WorktreeCubit; dialog not opened',
-        error: error,
-        stackTrace: stackTrace,
-      );
-      return;
+    } on ProviderNotFoundException {
+      // Floating file preview is a Stack sibling of WorkspaceSplitPane, so it
+      // misses the provider scope; resolve from the app-scoped registry.
+      final peeked = context
+          .read<WorkspaceWorktreeRegistry>()
+          .peek(workspace.workspaceId);
+      if (peeked == null) {
+        AppLogger.instance.w(
+          'Selection Ask AI requires a workspace WorktreeCubit; dialog not '
+          'opened',
+        );
+        return;
+      }
+      worktreeCubit = peeked;
     }
 
     final chat = context.read<ChatCubit>();

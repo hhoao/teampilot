@@ -25,6 +25,7 @@ import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry_scope.dart';
 import 'package:teampilot/services/commands/command_bus.dart';
 import 'package:teampilot/services/selection_ai/selection_ask_ai.dart';
+import 'package:teampilot/services/workspace/workspace_worktree_registry.dart';
 import 'package:teampilot/theme/app_theme.dart';
 import 'package:teampilot/utils/ui/app_keys.dart';
 
@@ -165,6 +166,85 @@ void main() {
     await tester.tap(find.text('Open'));
     await tester.pumpAndSettle();
 
+    _expectComposeOnlyAskAiDialog();
+  });
+
+  testWidgets('dialog falls back to WorktreeCubit from registry when absent '
+      'from provider scope', (tester) async {
+    final workspace = Workspace(
+      workspaceId: 'workspace-1',
+      createdAt: 1,
+      folders: const [WorkspaceFolder(path: '/repo')],
+    );
+    final chatCubit = _MockChatCubit();
+    final cliPresetsCubit = _MockCliPresetsCubit();
+    final launchProfileCubit = _MockLaunchProfileCubit();
+    final pluginCubit = _MockPluginCubit();
+    final sessionPreferencesCubit = _MockSessionPreferencesCubit();
+    final skillCubit = _MockSkillCubit();
+    final registry = WorkspaceWorktreeRegistry();
+    addTearDown(registry.dispose);
+    registry.cubitFor(workspaceId: workspace.workspaceId, repoPath: '/repo');
+
+    _stubCubit(chatCubit, ChatState(workspaces: [workspace]));
+    final tabStore = ChatTabStore()..setActiveWorkspaceId(workspace.workspaceId);
+    when(() => chatCubit.tabStore).thenReturn(tabStore);
+    _stubCubit(cliPresetsCubit, const CliPresetsState());
+    _stubCubit(launchProfileCubit, const LaunchProfileState());
+    _stubCubit(pluginCubit, const PluginState());
+    _stubCubit(sessionPreferencesCubit, SessionPreferencesState());
+    _stubCubit(skillCubit, const SkillState());
+
+    final theme = buildDarkTheme();
+    await tester.pumpWidget(
+      MultiRepositoryProvider(
+        providers: [
+          RepositoryProvider<CommandBus>(create: (_) => CommandBus()),
+          RepositoryProvider<WorkspaceWorktreeRegistry>.value(value: registry),
+        ],
+        child: MultiBlocProvider(
+          providers: [
+            BlocProvider<ChatCubit>.value(value: chatCubit),
+            BlocProvider<CliPresetsCubit>.value(value: cliPresetsCubit),
+            BlocProvider<LaunchProfileCubit>.value(value: launchProfileCubit),
+            BlocProvider<PluginCubit>.value(value: pluginCubit),
+            BlocProvider<SessionPreferencesCubit>.value(
+              value: sessionPreferencesCubit,
+            ),
+            BlocProvider<SkillCubit>.value(value: skillCubit),
+          ],
+          child: CliToolRegistryScope(
+            registry: CliToolRegistry.builtIn(),
+            child: MaterialApp(
+              theme: theme,
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              home: TpTheme(
+                data: TpThemeData.fromColorScheme(theme.colorScheme, scale: 1),
+                child: Builder(
+                  builder: (context) => ElevatedButton(
+                    onPressed: () => unawaited(
+                      SelectionAskAi.openComposeDialog(
+                        context,
+                        aiContext: 'Selected code',
+                        workspace: workspace,
+                        tabScopeId: workspace.workspaceId,
+                      ),
+                    ),
+                    child: const Text('Open'),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Open'));
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
     _expectComposeOnlyAskAiDialog();
   });
 
