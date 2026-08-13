@@ -89,6 +89,7 @@ class GitService {
     String? upstream;
     var ahead = 0;
     var behind = 0;
+    var hasCommits = true;
     final staged = <GitFileChange>[];
     final unstaged = <GitFileChange>[];
 
@@ -98,7 +99,10 @@ class GitService {
         final header = line.substring(2);
         if (header.startsWith('branch.head ')) {
           final value = header.substring('branch.head '.length).trim();
-          branch = value == '(detached)' ? null : value;
+          if (value == '(initial)') {
+            hasCommits = false;
+          }
+          branch = value == '(detached)' || value == '(initial)' ? null : value;
         } else if (header.startsWith('branch.upstream ')) {
           upstream = header.substring('branch.upstream '.length).trim();
         } else if (header.startsWith('branch.ab ')) {
@@ -146,6 +150,7 @@ class GitService {
       upstream: upstream,
       ahead: ahead,
       behind: behind,
+      hasCommits: hasCommits,
       staged: staged,
       unstaged: unstaged,
     );
@@ -324,6 +329,22 @@ class GitService {
   ) async {
     await _run(dir, ['add', '--', ...paths]);
     await _run(dir, ['commit', '-m', message, '--', ...paths]);
+  }
+
+  /// Stages [paths] (when non-empty) then amends the HEAD commit, optionally
+  /// restricting the amend to those paths. Empty [paths] rewrites only the
+  /// commit message.
+  Future<void> commitAmend(
+    String dir,
+    String message,
+    List<String> paths,
+  ) async {
+    if (paths.isNotEmpty) {
+      await _run(dir, ['add', '--', ...paths]);
+      await _run(dir, ['commit', '--amend', '-m', message, '--', ...paths]);
+    } else {
+      await _run(dir, ['commit', '--amend', '-m', message]);
+    }
   }
 
   Future<void> push(String dir) => _run(dir, ['push']);

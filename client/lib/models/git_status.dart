@@ -57,6 +57,7 @@ class GitRepoStatus extends Equatable {
     this.upstream,
     this.ahead = 0,
     this.behind = 0,
+    this.hasCommits = true,
     this.staged = const [],
     this.unstaged = const [],
   });
@@ -64,6 +65,7 @@ class GitRepoStatus extends Equatable {
   /// Sentinel for a directory that is not inside a git work tree.
   static const GitRepoStatus notARepository = GitRepoStatus(
     isRepository: false,
+    hasCommits: false,
   );
 
   final bool isRepository;
@@ -73,6 +75,9 @@ class GitRepoStatus extends Equatable {
   final String? upstream;
   final int ahead;
   final int behind;
+
+  /// False on an unborn branch (no commits yet); amend is impossible then.
+  final bool hasCommits;
 
   /// Index-area changes (ready to commit).
   final List<GitFileChange> staged;
@@ -89,6 +94,7 @@ class GitRepoStatus extends Equatable {
     upstream,
     ahead,
     behind,
+    hasCommits,
     ...staged,
     ...unstaged,
   ];
