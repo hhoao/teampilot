@@ -1,0 +1,5 @@
+{"timestamp":"2026-08-08T00:00:00.000Z","type":"event_msg","payload":{"type":"user_message","message":"fix the flaky test"}}
+{"timestamp":"2026-08-08T00:00:01.000Z","type":"response_item","payload":{"type":"custom_tool_call","name":"apply_patch","call_id":"call_patch1","input":"*** Begin Patch\n*** Update File: /home/me/proj/src/app.dart\n@@\n-old code\n+new code\n*** End Patch"}}
+{"timestamp":"2026-08-08T00:00:02.000Z","type":"response_item","payload":{"type":"custom_tool_call_output","call_id":"call_patch1","output":"Patch applied to 1 file"}}
+{"timestamp":"2026-08-08T00:00:03.000Z","type":"response_item","payload":{"type":"custom_tool_call","name":"spawn_agent","call_id":"call_agent1","input":{"agentId":"agent-1","task":"review the patch"}}}
+{"timestamp":"2026-08-08T00:00:04.000Z","type":"response_item","payload":{"type":"custom_tool_call_output","call_id":"call_agent1","output":"review passed"}}

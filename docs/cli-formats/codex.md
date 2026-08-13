@@ -61,7 +61,7 @@ adapter `client/lib/services/cli/codex/capabilities/history/{ai_transcript,ai_hi
   - side transcript 定位：父 transcript 位于 `{CODEX_HOME}/sessions` 下时先按父目录（含直接子目录、**跳过 `subagents` 目录**）找文件名 UUID == agentId 的 rollout；否则全局递归 `{CODEX_HOME}/sessions`（跳过路径含 `subagents` 段的文件）——两种搜索都取字典序最大；
   - 解析失败返回 null → inflater 回退 `syntheticSubagentMessagesFromResult`（从工具 result 合成子代理消息）；
   - **fingerprint 恒为 null**：源码注释说明 rollout 不在 `projects/` 下、父 cache token 必然 miss，所以 live refresh 每次都重新定位解析。
-- **工具结果截断回填：无**——`toolResultEnricher = NoOpToolResultEnricher`（`ai_history_capability.dart:13`），与 claude 的 `ClaudeCompatibleToolResultEnricher` 不同。
+- **工具结果截断回填：无（已调研：不可行）**——`toolResultEnricher = NoOpToolResultEnricher`（`ai_history_capability.dart:13`）；截断占位无回填机制。已调研确认 codex 截断前完整输出从未持久化（同 `call_id` 零重复、`exec_command_end.aggregated_output` 同为头部截断版、sqlite/日志均无全文）——截断即永久，结论见 [truncation-backfill-audit.md](truncation-backfill-audit.md) §1.4。
 
 ## 增量 vs 全量
 
@@ -79,6 +79,6 @@ adapter `client/lib/services/cli/codex/capabilities/history/{ai_transcript,ai_hi
 - **环境噪音**：user 文本含 `<environment_context>` 整个丢弃；AGENTS.md 注入 / developer 噪音（`<skills_instructions>` 等）不显示（`response_item_messages.jsonl` 测试断言 `developer noise` 不存在）。
 - **多块 content**：`message.content[]` 只认 `input_text` / `output_text`，其余块类型忽略；多块文本以 `\n` 连接（同 user 事件里 AGENTS.md 与环境上下文被丢弃后只剩 `hello`）。
 - **孤儿 output**：`function_call_output` 单独成行、靠 `call_id` 关联；无匹配 tool call 时静默忽略（不报错、不产生消息）。
-- **无截断回填**：Codex 用 `NoOpToolResultEnricher`，工具输出截断占位不会被回填（claude 有 `ClaudeCompatibleToolResultEnricher`，codex 没有）。
-- **`custom_tool_call.input` 双形态**：`input` 既可能为 String（→ argsText）也可能为 Map（→ args），源码有分支处理但夹具暂无覆盖。
+- **截断回填：已调研不可行**：Codex 用 `NoOpToolResultEnricher`，工具输出截断占位不会被回填（claude 有 `ClaudeCompatibleToolResultEnricher`，codex 没有）。[truncation-backfill-audit.md](truncation-backfill-audit.md) 结论：737/37,266 条 `function_call_output` 被中段截断为 `…N tokens truncated…`，同会话无任何完整副本、无结构化标记字段——截断即永久丢失，无回填数据来源。
+- **`custom_tool_call.input` 双形态**：`input` 既可能为 String（→ argsText）也可能为 Map（→ args）——夹具已覆盖（`custom_tool_call_dual_form.jsonl`，Task 5 commit `75f4cd4b`：String 补丁文本 → argsText 逐字保留，Map input → args）。真实语义：本机 `~/.codex/sessions` 扫描 4151 条真实 `custom_tool_call` 记录 **100% 为 String input 且全部是 `apply_patch` 补丁文本**（非 JSON），Map/JSON 形态属源码防御分支（语料未观测到）。
 - **定位是暴力递归**：`locate` 递归扫描整个 `{CODEX_HOME}/sessions` 树；`persistedNativeId` 缺失时取字典序最大（时间戳前缀）——多会话同目录时靠文件名 UUID 区分，同名 UUID 只取一个。

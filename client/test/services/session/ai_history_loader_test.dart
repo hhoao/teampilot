@@ -13,6 +13,7 @@ import 'package:teampilot/models/workspace_launch_context.dart';
 import 'package:teampilot/services/cli/registry/capabilities/ai_history_capability.dart';
 import 'package:teampilot/services/cli/claude/capabilities/history/ai_transcript.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/history/ai_transcript.dart';
+import 'package:teampilot/services/cli/opencode/capabilities/history/tool_output_backfill_enricher.dart';
 import 'package:teampilot/services/cli/registry/capabilities/history/tool_result_enricher.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/session/session_history_context.dart';
@@ -512,6 +513,69 @@ void main() {
     expect(result.messages.single.id, 'enriched');
   });
 
+  test('opencode truncation marker triggers the gate and backfills from hint file',
+      () async {
+    // The opencode placeholder carries `...N bytes truncated...`, which the
+    // loader guard must also detect (not just the Claude sentinel), so the
+    // backfill enricher runs and replaces the placeholder with the file body.
+    final hintPath = p.join(base.path, 'tool-output', 'tool_abc');
+    await Directory(p.dirname(hintPath)).create(recursive: true);
+    await File(hintPath).writeAsString('full webfetch output\n第二行');
+    final registry = fakeAiHistoryRegistry(
+      cli: CliTool.opencode,
+      adapter: const _OpencodeMarkerAdapter(),
+      toolResultEnricher: const OpencodeToolOutputBackfillEnricher(),
+      locate: (_) async => AiTranscriptBundle(
+        adapterId: 'opencode',
+        fragments: [AiTranscriptFragment(name: hintPath, bytes: const [1])],
+      ),
+    );
+    final loader = buildLoader(registry: registry);
+
+    final result = await loader.load(
+      session: simpleSession().copyWith(cli: CliTool.opencode),
+      memberId: '',
+      launchContext: launchContextFor(simpleSession().copyWith(cli: CliTool.opencode)),
+    );
+    final part = result.messages.single.parts.single as AiToolCallPart;
+
+    expect(part.result, 'full webfetch output\n第二行');
+    expect(part.status, AiToolCallStatus.complete);
+  });
+
+  test('filesystem toolResultEnricher runs on caller isolate for large bundles',
+      () async {
+    // Bundles >= _isolateParseMinBytes parse on a worker isolate where ctx is
+    // unavailable; filesystem-backed enrichers must still run on the caller
+    // isolate with a non-null ctx instead of being skipped.
+    final enricher = _RecordingFsEnricher();
+    final registry = fakeAiHistoryRegistry(
+      cli: CliTool.claude,
+      adapter: _EchoAdapter(),
+      toolResultEnricher: enricher,
+      locate: (_) async => AiTranscriptBundle(
+        adapterId: 'claude',
+        fragments: [
+          AiTranscriptFragment(
+            name: 'big.jsonl',
+            bytes: List.filled(300 * 1024, 0x20),
+          ),
+        ],
+      ),
+    );
+    final loader = buildLoader(registry: registry);
+
+    final result = await loader.load(
+      session: simpleSession(),
+      memberId: '',
+      launchContext: launchContextFor(simpleSession()),
+    );
+
+    expect(enricher.calls, 1);
+    expect(enricher.sawCallerCtx, isTrue);
+    expect(result.messages.single.id, 'enriched');
+  });
+
   test('unchanged reload returns cached enriched messages, not the raw tail',
       () async {
     // The adapter emits a tool result carrying the truncation sentinel so the
@@ -807,6 +871,10 @@ class _RecordingEnricher implements ToolResultEnricher {
   bool get requiresFilesystem => false;
 
   @override
+  bool matchesTruncationMarker(String result) =>
+      result.contains('tool output truncated');
+
+  @override
   Future<List<AiMessage>> enrich({
     required List<AiMessage> messages,
     required SessionHistoryContext? ctx,
@@ -819,6 +887,68 @@ class _RecordingEnricher implements ToolResultEnricher {
         id: 'enriched',
         role: AiRole.user,
         parts: [AiTextPart(text: 'enriched')],
+      ),
+    ];
+  }
+}
+
+class _RecordingFsEnricher implements ToolResultEnricher {
+  var calls = 0;
+  var sawCallerCtx = false;
+
+  @override
+  bool get requiresFilesystem => true;
+
+  @override
+  bool matchesTruncationMarker(String result) =>
+      result.contains('tool output truncated');
+
+  @override
+  Future<List<AiMessage>> enrich({
+    required List<AiMessage> messages,
+    required SessionHistoryContext? ctx,
+    required String? rootTranscriptPath,
+    required AiTranscriptBundle? bundle,
+  }) async {
+    calls++;
+    sawCallerCtx = ctx != null;
+    return [
+      AiMessage(
+        id: 'enriched',
+        role: AiRole.user,
+        parts: [AiTextPart(text: 'enriched')],
+      ),
+    ];
+  }
+}
+
+class _OpencodeMarkerAdapter implements AiTranscriptAdapter {
+  const _OpencodeMarkerAdapter();
+
+  @override
+  String get id => 'opencode';
+
+  @override
+  Future<List<AiMessage>> parse(AiTranscriptBundle bundle) async {
+    // Carries the opencode core-truncation placeholder; the hint path is
+    // passed through the fragment name so the class stays isolate-sendable.
+    final hintPath = bundle.fragments.first.name;
+    return [
+      AiMessage(
+        id: 'parsed',
+        role: AiRole.user,
+        parts: [
+          AiToolCallPart(
+            toolCallId: 'call_0',
+            toolName: 'webfetch',
+            result: 'preview\n\n...120935 bytes truncated...\n\n'
+                'The tool call succeeded but the output was truncated. '
+                'Full output saved to:\n$hintPath\n'
+                'Use Grep to search the full content or Read with offset/limit '
+                'to view specific sections.',
+            status: AiToolCallStatus.complete,
+          ),
+        ],
       ),
     ];
   }

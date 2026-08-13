@@ -3,6 +3,12 @@ import 'package:ai_message_core/ai_message_core.dart';
 import '../../../../session/session_history_context.dart';
 
 abstract interface class ToolResultEnricher {
+  /// True when [result] carries this enricher's truncation marker — a
+  /// placeholder the enricher could backfill. The loader's enrichment guard
+  /// consults this to skip [enrich] when no part needs it; enrichers that
+  /// backfill non-marker shapes (e.g. missing results) return false.
+  bool matchesTruncationMarker(String result) => false;
+
   /// True when [enrich] touches the filesystem via [SessionHistoryContext].
   ///
   /// Enrichers that only work on the already-read [AiTranscriptBundle] can be
@@ -26,6 +32,9 @@ final class NoOpToolResultEnricher implements ToolResultEnricher {
 
   @override
   bool get requiresFilesystem => false;
+
+  @override
+  bool matchesTruncationMarker(String result) => false;
 
   @override
   Future<List<AiMessage>> enrich({

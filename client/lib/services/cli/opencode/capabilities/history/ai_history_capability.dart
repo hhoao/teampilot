@@ -6,12 +6,13 @@ import '../../../registry/capabilities/history/subagent_side_resolver.dart';
 import '../../../registry/capabilities/history/tool_result_enricher.dart';
 import 'ai_transcript.dart';
 import 'side_resolver.dart';
+import 'tool_output_backfill_enricher.dart';
 
 final class OpencodeAiHistoryCapability
     implements AiHistoryCapability, AiTranscriptIncrementalCapability {
   const OpencodeAiHistoryCapability({
     this.subagentSideResolver = const OpencodeSideResolver(),
-    this.toolResultEnricher = const NoOpToolResultEnricher(),
+    this.toolResultEnricher = const OpencodeToolOutputBackfillEnricher(),
     this.liveCacheTokenImpl = opencodeLiveCacheToken,
   });
 

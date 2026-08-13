@@ -187,4 +187,13 @@ void main() {
       expect(part.isError, isFalse);
     });
   });
+
+  group('matchesTruncationMarker', () {
+    test('matches the sentinel case-insensitively', () {
+      const enricher = ClaudeCompatibleToolResultEnricher();
+      expect(enricher.matchesTruncationMarker('tool output truncated'), isTrue);
+      expect(enricher.matchesTruncationMarker('TOOL OUTPUT TRUNCATED'), isTrue);
+      expect(enricher.matchesTruncationMarker('full output here'), isFalse);
+    });
+  });
 }
