@@ -1275,6 +1275,10 @@ class ChatCubit extends Cubit<ChatState>
   /// / order / active are owned by the workbench bar.
   void setActiveWorkspace(String workspaceId) {
     _tabStore.setActiveWorkspaceId(workspaceId);
+    // Re-push the presence target: the previous workspace's session may still
+    // be the target (connect events are workspace-agnostic), which would leave
+    // the members panel computing against the wrong shells after a switch.
+    _pushPresenceTarget();
   }
 
   /// Switches the foreground workspace and session visibility scope in one
@@ -1286,6 +1290,11 @@ class ChatCubit extends Cubit<ChatState>
     String? selectedTeamId,
   }) {
     _tabStore.setActiveWorkspaceId(workspaceTabKey);
+    // Re-push the presence target for the now-active workspace's session.
+    // Without this the target stays pinned to a session that connected while
+    // another workspace was foreground, leaving that workspace's members panel
+    // permanently offline after switching back.
+    _pushPresenceTarget();
     if (_dataStore.setScope(
       scopeSessionsToSelectedTeam: scopeSessionsToSelectedTeam,
       selectedTeamId: selectedTeamId,

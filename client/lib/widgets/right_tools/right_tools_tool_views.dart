@@ -115,16 +115,23 @@ class RightToolsPresenceTeamSync extends StatefulWidget {
 class _RightToolsPresenceTeamSyncState
     extends State<RightToolsPresenceTeamSync> {
   String? _syncedTeamId;
+  bool _tickerEnabled = true;
 
   @override
   Widget build(BuildContext context) {
-    if (!TickerMode.valuesOf(context).enabled) {
+    final enabled = TickerMode.valuesOf(context).enabled;
+    final becameEnabled = enabled && !_tickerEnabled;
+    _tickerEnabled = enabled;
+    if (!enabled) {
       return widget.child;
     }
     final team = widget.team;
     if (team != null) {
       final teamId = team.id;
-      if (teamId != _syncedTeamId) {
+      // Re-sync on workspace re-activation (TickerMode re-enable) even when the
+      // team id is unchanged: another workspace's panel may have synced a
+      // different team into the shared cubit while this workspace was inactive.
+      if (becameEnabled || teamId != _syncedTeamId) {
         _syncedTeamId = teamId;
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;

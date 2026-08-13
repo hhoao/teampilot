@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/cubits/chat/model/chat_tab.dart';
 import 'package:teampilot/cubits/chat/model/session_connect_request.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/member_presence_cubit.dart';
@@ -102,6 +103,37 @@ class _TrackingPresenceService extends MemberPresenceService {
         m.id: const MemberPresence(
           connection: MemberConnection.connected,
           availability: MemberAvailability.idle,
+        ),
+    };
+  }
+}
+
+/// Reflects the shells the tick computed with: a member is connected only when
+/// the target supplied a matching shell — so a stale target (another
+/// workspace's session) reads as offline instead of silently succeeding.
+class _ShellAwarePresenceService extends MemberPresenceService {
+  var computeCalls = 0;
+  List<TeamMemberConfig>? lastMembers;
+  Map<String, TerminalSession>? lastShells;
+
+  @override
+  Future<Map<String, MemberPresence>> compute({
+    required CliTool teamCli,
+    required List<TeamMemberConfig> members,
+    required String cliTeamName,
+    required String? memberToolConfigDir,
+    required Map<String, TerminalSession> memberShells,
+    PresenceSessionContext? session,
+  }) async {
+    computeCalls++;
+    lastMembers = members;
+    lastShells = memberShells;
+    return {
+      for (final m in members)
+        m.id: MemberPresence(
+          connection: memberShells.containsKey(m.id)
+              ? MemberConnection.connected
+              : MemberConnection.offline,
         ),
     };
   }
@@ -261,6 +293,133 @@ void main() {
           );
           expect(
             cubit.state.presence['m-lead']?.connection,
+            MemberConnection.connected,
+          );
+        });
+      },
+    );
+
+    // ── workspace round-trip: the presence target must be re-pushed for the
+    // re-activated workspace's session, or its members read as offline ──
+
+    test(
+      're-activating a workspace re-pushes the presence target for its session',
+      () {
+        fakeAsync((async) {
+          final service = _ShellAwarePresenceService();
+          final harness = PostFrameTestHarness();
+          final presenceCubit = MemberPresenceCubit(
+            memberPresenceService: service,
+          );
+          final chatCubit = ChatCubit(
+            executableResolver: () => 'true',
+            automationRepository: testAutomationRepository(),
+            postFrameScheduler: harness.scheduler,
+            terminalSessionFactory:
+                ({required String executable, int scrollbackLines = 10000}) =>
+                    _FakeTerminalSession(executable: executable),
+          );
+          addTearDown(() async {
+            await chatCubit.close();
+            await presenceCubit.close();
+          });
+          chatCubit.bindPresenceCubit(presenceCubit);
+
+          // Real bar + bridge so activeTab resolves per workspace scope.
+          final workbench = WorkbenchCubit();
+          addTearDown(workbench.close);
+          final bridge = WorkbenchChatBridge(
+            workbench: workbench,
+            chat: chatCubit,
+          );
+          workbench.port = bridge;
+          chatCubit.workbenchPort = bridge;
+
+          const team = TeamProfile(
+            id: 'team-a',
+            name: 'A',
+            members: [TeamMemberConfig(id: 'm-lead', name: 'team-lead')],
+          );
+
+          void pumpFrame() {
+            SchedulerBinding.instance.handleBeginFrame(Duration.zero);
+            SchedulerBinding.instance.handleDrawFrame();
+          }
+
+          // Workspace A: mixed team session tab with a live member shell.
+          chatCubit.setActiveWorkspace('A');
+          final tabA = ChatTab(
+            info: ChatTabInfo(id: 'a1', title: 'a1', subtitle: ''),
+            cliTeamName: 'a1',
+          );
+          tabA.memberShells['m-lead'] = _FakeTerminalSession(
+            executable: 'a',
+          );
+          chatCubit.tabStore.registerSession(tabA);
+          bridge.onSessionTabOpened('A', 'a1');
+
+          // Workspace B: personal session tab with its own shell.
+          chatCubit.setActiveWorkspace('B');
+          final tabB = ChatTab(
+            info: ChatTabInfo(id: 'b1', title: 'b1', subtitle: ''),
+            cliTeamName: 'b1',
+          );
+          tabB.memberShells['b-lead'] = _FakeTerminalSession(
+            executable: 'b',
+          );
+          chatCubit.tabStore.registerSession(tabB);
+          bridge.onSessionTabOpened('B', 'b1');
+
+          presenceCubit.attachPresenceUi();
+          presenceCubit.syncPresenceTeam(team);
+
+          // Activate A → the presence target is A's team session.
+          chatCubit.activateWorkspaceTab(
+            workspaceTabKey: 'A',
+            scopeSessionsToSelectedTeam: false,
+          );
+          pumpFrame();
+          async.elapse(const Duration(milliseconds: 80));
+          async.flushMicrotasks();
+          pumpFrame();
+          expect(service.lastShells?.keys, ['m-lead']);
+          expect(
+            presenceCubit.state.presence['m-lead']?.connection,
+            MemberConnection.connected,
+          );
+
+          // Switch to B and connect B's session — connect pushes B's tab as
+          // the presence target, exactly like finishSessionConnect does.
+          chatCubit.activateWorkspaceTab(
+            workspaceTabKey: 'B',
+            scopeSessionsToSelectedTeam: false,
+          );
+          chatCubit.onTabRunningChanged();
+          pumpFrame();
+          async.elapse(const Duration(milliseconds: 80));
+          async.flushMicrotasks();
+          pumpFrame();
+          expect(
+            service.lastShells?.keys,
+            ['b-lead'],
+            reason: 'B connect must repoint the target to B\'s session',
+          );
+
+          // Switch BACK to A: the target must be re-pushed for A's session,
+          // otherwise ticks compute A's roster against B's shells and every
+          // A member reads offline (the reported bug).
+          chatCubit.activateWorkspaceTab(
+            workspaceTabKey: 'A',
+            scopeSessionsToSelectedTeam: false,
+          );
+          pumpFrame();
+          async.elapse(const Duration(milliseconds: 80));
+          async.flushMicrotasks();
+          pumpFrame();
+
+          expect(service.lastShells?.keys, ['m-lead']);
+          expect(
+            presenceCubit.state.presence['m-lead']?.connection,
             MemberConnection.connected,
           );
         });
