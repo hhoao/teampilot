@@ -1785,9 +1785,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get workspaceDetails => 'Workspace details';
 
   @override
-  String get workspaceDetailsTitle => 'Workspace Details';
-
-  @override
   String get addWorkspaceDirectory => 'Add directory';
 
   @override
@@ -2837,10 +2834,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get workspaceFoldersEditorHint =>
       'Set machine and path per directory. All local = local workspace; all one remote = project-remote; cross-machine = mixed (member-remote).';
-
-  @override
-  String get workspaceFoldersMixedTargetsLockedHint =>
-      'Mixed workspace: folder machines are fixed. Add paths on existing machines above; use Assign to change member machine assignment.';
 
   @override
   String get workspaceFoldersPersonalTargetsLockedHint =>

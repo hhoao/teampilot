@@ -790,7 +790,6 @@
     }
   },
   "workspaceDetails": "Workspace details",
-  "workspaceDetailsTitle": "Workspace Details",
   "addWorkspaceDirectory": "Add directory",
   "removeWorkspaceDirectory": "Remove directory",
   "workspaceDisplayName": "Display name",
@@ -1229,7 +1228,6 @@
   "workspaceTargetSubtitle": "The machine this workspace's folders live and run on. Sessions launch on this target; switching does not move files.",
   "workspaceFoldersSectionTitle": "Directories & machines",
   "workspaceFoldersEditorHint": "Set machine and path per directory. All local = local workspace; all one remote = project-remote; cross-machine = mixed (member-remote).",
-  "workspaceFoldersMixedTargetsLockedHint": "Mixed workspace: folder machines are fixed. Add paths on existing machines above; use Assign to change member machine assignment.",
   "workspaceFoldersPersonalTargetsLockedHint": "Personal identity cannot change folder machines. Switch to a team identity to configure machines and directories.",
   "workspaceFoldersPickMixedTarget": "Add directory on machine",
   "workspaceTopologyLocal": "Local workspace",

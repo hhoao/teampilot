@@ -7,6 +7,7 @@ import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/launch_profile_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/runtime_target.dart';
+import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/pages/home_workspace/workspace/workspace_info_section.dart';
@@ -32,6 +33,14 @@ void main() {
       addTearDown(() => tmp.deleteSync(recursive: true));
       final fs = LocalFilesystem();
       final sshRepo = SshProfileRepository(rootDir: tmp.path, fs: fs);
+      await sshRepo.save(
+        const SshProfile(
+          id: 'p1',
+          name: 'Server A',
+          host: '10.0.0.1',
+          username: 'root',
+        ),
+      );
       final controller = HomeTargetController(
         registry: RuntimeTargetRegistry(
           repo: TargetsRepository(rootDir: tmp.path, fs: fs),
@@ -89,6 +98,7 @@ void main() {
       final l10n = await AppLocalizations.delegate.load(const Locale('en'));
       expect(find.text(l10n.workspaceFoldersSectionTitle), findsOneWidget);
       expect(find.text(l10n.rootSandboxEnvOptInTitle), findsOneWidget);
+      expect(find.text(l10n.workspaceFoldersAddOnAnotherMachine), findsOneWidget);
     });
   });
 }

@@ -165,7 +165,6 @@ class _WorkspaceFoldersSectionState extends State<WorkspaceFoldersSection> {
             title: l10n.workspaceFoldersSectionTitle,
             subtitle: workspaceFoldersEditorHint(
               l10n,
-              live.folders,
               lockTargets: widget.lockTargets,
             ),
             showDividerBelow: false,

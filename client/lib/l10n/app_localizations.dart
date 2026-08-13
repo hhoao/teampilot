@@ -3284,12 +3284,6 @@ abstract class AppLocalizations {
   /// **'Workspace details'**
   String get workspaceDetails;
 
-  /// No description provided for @workspaceDetailsTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Workspace Details'**
-  String get workspaceDetailsTitle;
-
   /// No description provided for @addWorkspaceDirectory.
   ///
   /// In en, this message translates to:
@@ -5143,12 +5137,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Set machine and path per directory. All local = local workspace; all one remote = project-remote; cross-machine = mixed (member-remote).'**
   String get workspaceFoldersEditorHint;
-
-  /// No description provided for @workspaceFoldersMixedTargetsLockedHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Mixed workspace: folder machines are fixed. Add paths on existing machines above; use Assign to change member machine assignment.'**
-  String get workspaceFoldersMixedTargetsLockedHint;
 
   /// No description provided for @workspaceFoldersPersonalTargetsLockedHint.
   ///

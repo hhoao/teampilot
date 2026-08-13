@@ -765,7 +765,6 @@
     }
   },
   "workspaceDetails": "工作区详情",
-  "workspaceDetailsTitle": "工作区详情",
   "addWorkspaceDirectory": "添加目录",
   "removeWorkspaceDirectory": "移除目录",
   "workspaceDisplayName": "显示名称",
@@ -1159,7 +1158,6 @@
   "workspaceTargetSubtitle": "该工作区的目录所在并运行的机器。会话在此 target 上启动；切换不会移动文件。",
   "workspaceFoldersSectionTitle": "工作区目录与机器",
   "workspaceFoldersEditorHint": "每个目录单独指定所在机器与路径。全部本地 = 本地工作区；全部同一远程 = 项目远程；跨机 = 混合工作区（成员远程）。",
-  "workspaceFoldersMixedTargetsLockedHint": "混合工作区：各目录所在机器已固定。可在上方现有机器上添加路径；成员分配请使用下方「分配」按钮。",
   "workspaceFoldersPersonalTargetsLockedHint": "个人身份下无法更改目录所在机器。请切换到团队身份配置机器与目录。",
   "workspaceFoldersPickMixedTarget": "添加到机器",
   "workspaceTopologyLocal": "本地工作区",
