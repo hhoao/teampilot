@@ -58,8 +58,8 @@ Root cause chain:
    by prefixes / border characters / submit semantics on the existing
    `TerminalBehaviorCapability`. opencode's box is just one region shape.
 2. **Submit semantics converge** to region semantics:
-   `regionCleared` (claude/flashskyai/cursor/opencode — was
-   `anchorCellClears`), `regionMovedDown` (codex — was `composerMovesDown`),
+   `regionCleared` (claude/flashskyai/opencode — was `anchorCellClears`),
+   `regionMovedDown` (cursor/codex — was `composerMovesDown`),
    `timed` (unused, kept as a legal value).
 3. **Primary CR ACK = original region no longer contains the needle**;
    "needle appears elsewhere" (the transcript message box) is a secondary
@@ -109,7 +109,7 @@ Per-CLI config (`terminal_behavior.dart` under each CLI capability dir):
 |-----|----------|--------|-----------|
 | claude | `['❯']` | — | regionCleared |
 | flashskyai | `['❯']` | — | regionCleared |
-| cursor | `['→']` | — | regionCleared |
+| cursor | `['→']` | — | regionMovedDown |
 | codex | `['›']` | — | regionMovedDown |
 | opencode | `['┃']` | left `['┃','│']`, bottom `['▀','─']`, corner `['╹','╰','└']` | regionCleared |
 
@@ -163,7 +163,7 @@ bool needleAppearsOutsideRegion(
 2. If a left border column exists, walk upward collecting consecutive rows
    with that column char → the region rectangle (opencode's box).
 3. Otherwise, find the lowest prefix row (`spec.prefixes`); the region is that
-   row plus consecutive prefix rows above it (claude/cursor/codex).
+   row plus consecutive prefix rows above it (claude/flashskyai/cursor/codex).
 4. No border and no prefix → return `null`; automation falls back to the
    existing whole-window needle search.
 
