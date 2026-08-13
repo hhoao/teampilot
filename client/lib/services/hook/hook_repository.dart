@@ -63,6 +63,12 @@ class HookRepository {
     await _fs.atomicWrite(_scriptPath(id, fileName), content);
   }
 
+  Future<void> deleteScript(String id, String fileName) async {
+    // Filesystem has no single-file delete primitive; removeRecursive is the
+    // established pattern for removing one file (see ssh_profile_repository).
+    await _fs.removeRecursive(_scriptPath(id, fileName));
+  }
+
   Future<String?> readScript(String id, String fileName) =>
       _fs.readString(_scriptPath(id, fileName));
 

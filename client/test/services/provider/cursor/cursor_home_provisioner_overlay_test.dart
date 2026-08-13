@@ -1,6 +1,8 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/models/hook_entry.dart';
+import 'package:teampilot/models/hook_event.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_auth_artifacts.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_cli_config_policy.dart';
@@ -154,4 +156,58 @@ void main() {
       expect((await fs.stat(layout.authJson(memberHome))).isFile, isFalse);
     });
   });
+
+  group('CursorHomeProvisioner.writeHooks', () {
+    test('ensures parent dirs for nested managed scripts', () async {
+      // Strict fs throws on writes into missing parents — mirrors
+      // Sftp/WslFilesystem whose atomicWrite does not create parents.
+      final strictFs = _ParentStrictFilesystem();
+      final strictLayout = CursorHomeLayout(pathContext: strictFs.pathContext);
+      final strictProvisioner = CursorHomeProvisioner(fs: strictFs);
+      await strictFs.ensureDir(strictLayout.cursorDir(memberHome));
+      await strictFs.ensureDir(
+        strictFs.pathContext.join(
+          strictLayout.cursorDir(memberHome),
+          CursorHomeLayout.hooksDirName,
+        ),
+      );
+
+      await strictProvisioner.writeHooks(
+        memberHome: memberHome,
+        entries: const [
+          HookEntry(
+            id: 'user-hook',
+            source: HookSource.userLibrary,
+            event: HookEvent.preToolUse,
+            action: CommandHookAction.script(
+              fileName: 'body.sh',
+              scriptContent: 'echo hi',
+            ),
+          ),
+        ],
+        runner: null,
+      );
+      final nested = strictFs.pathContext.join(
+        strictLayout.cursorDir(memberHome),
+        CursorHomeLayout.hooksDirName,
+        'user-hook',
+        'body.sh',
+      );
+      expect((await strictFs.stat(nested)).isFile, isTrue);
+      expect(await strictFs.readString(nested), 'echo hi');
+    });
+  });
+}
+
+/// In-memory fs whose writes fail when the parent directory is missing,
+/// pinning the provisioner's own parent-dir ensuring (SFTP/WSL behavior).
+class _ParentStrictFilesystem extends InMemoryFilesystem {
+  @override
+  Future<void> atomicWrite(String path, String content) async {
+    final parent = pathContext.dirname(path);
+    if (!(await stat(parent)).isDirectory) {
+      throw StateError('missing parent dir: $parent');
+    }
+    await super.atomicWrite(path, content);
+  }
 }

@@ -54,4 +54,57 @@ void main() {
     expect(removed, isTrue);
     expect(await repository.load('h1'), isNull);
   });
+
+  test('upsert with empty scripts removes stale on-disk script', () async {
+    await cubit.upsert(
+      const HookDefinition(
+        id: 'h1',
+        name: 'a',
+        event: HookEvent.stop,
+        action: CommandHookAction.script(fileName: 'hook.sh'),
+      ),
+      scripts: const {'hook.sh': 'echo hi'},
+    );
+    expect(await repository.readScript('h1', 'hook.sh'), 'echo hi');
+    final cleared = await cubit.upsert(
+      const HookDefinition(
+        id: 'h1',
+        name: 'a',
+        event: HookEvent.stop,
+        action: CommandHookAction.script(fileName: 'hook.sh'),
+      ),
+      scripts: const {},
+    );
+    expect(cleared, isTrue);
+    expect(await repository.readScript('h1', 'hook.sh'), isNull);
+    expect(await repository.scriptFileNames('h1'), isEmpty);
+  });
+
+  test('upsert keeps scripts listed in incoming map, prunes others', () async {
+    await cubit.upsert(
+      const HookDefinition(
+        id: 'h1',
+        name: 'a',
+        event: HookEvent.stop,
+        action: CommandHookAction.script(fileName: 'hook.sh'),
+      ),
+      scripts: const {
+        'hook.sh': 'echo new',
+        'extra.sh': 'echo old',
+      },
+    );
+    expect(await repository.readScript('h1', 'extra.sh'), 'echo old');
+    final ok = await cubit.upsert(
+      const HookDefinition(
+        id: 'h1',
+        name: 'a',
+        event: HookEvent.stop,
+        action: CommandHookAction.script(fileName: 'hook.sh'),
+      ),
+      scripts: const {'hook.sh': 'echo new'},
+    );
+    expect(ok, isTrue);
+    expect(await repository.readScript('h1', 'hook.sh'), 'echo new');
+    expect(await repository.readScript('h1', 'extra.sh'), isNull);
+  });
 }

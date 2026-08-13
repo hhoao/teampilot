@@ -127,4 +127,26 @@ void main() {
       'echo existing',
     );
   });
+
+  testWidgets('clearing script content removes the stale on-disk script', (
+    tester,
+  ) async {
+    final fs = InMemoryFilesystem();
+    final repository = HookRepository(fs: fs, teampilotRoot: '/root');
+    const definition = HookDefinition(
+      id: 'my-hook',
+      name: 'Existing',
+      event: HookEvent.stop,
+      action: CommandHookAction.script(fileName: 'hook.sh'),
+    );
+    await repository.save(definition);
+    await repository.writeScript('my-hook', 'hook.sh', 'echo existing');
+    await pumpEditor(tester, definition: definition, repository: repository);
+
+    await tester.enterText(find.byKey(const Key('hook-script')), '');
+    await tester.tap(find.byKey(const Key('hook-save')));
+    await tester.pumpAndSettle();
+    expect(await repository.readScript('my-hook', 'hook.sh'), isNull);
+    expect(await repository.scriptFileNames('my-hook'), isEmpty);
+  });
 }

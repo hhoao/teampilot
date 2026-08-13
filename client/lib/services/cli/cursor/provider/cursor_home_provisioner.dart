@@ -254,11 +254,17 @@ final class CursorHomeProvisioner {
         glueBuilder: const GlueScriptBuilder(),
       ),
     );
+    // Managed scripts nest under `hooks/<id>/<fileName>` — LocalFilesystem's
+    // atomicWrite creates parents but Sftp/WslFilesystem do not, so ensure
+    // each target's parent dir first (same pattern as opencode config_profile).
+    final ensuredDirs = <String>{};
     for (final script in result.scripts) {
-      await _fs.atomicWrite(
-        _fs.pathContext.join(hooksDir, script.fileName),
-        script.content,
-      );
+      final target = _fs.pathContext.join(hooksDir, script.fileName);
+      final parent = _fs.pathContext.dirname(target);
+      if (ensuredDirs.add(parent)) {
+        await _fs.ensureDir(parent);
+      }
+      await _fs.atomicWrite(target, script.content);
     }
     final hooksJsonPath = _layout.hooksConfig(memberHome);
     final existing = await _readHooksJson(hooksJsonPath);
