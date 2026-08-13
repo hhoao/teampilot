@@ -5,6 +5,9 @@
 /// `teampilot_search_bindings_generated.dart`.
 library;
 
+export 'src/fallback_search_engine.dart' show fallbackSearch, kFallbackIgnoredDirNames, kFallbackMaxLineBytes;
+export 'src/search_file_reader.dart' show SearchFileReader, SearchDirEntry;
+
 import 'dart:convert';
 import 'dart:ffi' as ffi;
 import 'dart:io';
