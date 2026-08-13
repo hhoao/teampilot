@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/services/cli/registry/capabilities/terminal_composer_region.dart';
 import 'package:teampilot/services/terminal/fullscreen_cr_ack_config.dart';
 import 'package:teampilot/services/terminal/fullscreen_input_screen_probe.dart';
 import 'package:teampilot/services/terminal/pty_automation_needle.dart';
@@ -362,6 +363,94 @@ prefix
     grid.rowsData[0] = List.filled(grid.columns, 0x20);
     grid.rowsData[1] = List.filled(grid.columns, 0x20);
     expect(isFullscreenPromptAtAnchor(grid, anchor), isFalse);
+  });
+
+  group('locateComposerRegion', () {
+    const opencodeSpec = FullscreenComposerRegionSpec(
+      submitSemantics: ComposerSubmitSemantics.regionCleared,
+      prefixes: ['\u2503'],
+      border: ComposerBorderSpec(
+        left: ['\u2503', '\u2502'],
+        bottom: ['\u2580', '\u2500'],
+        corner: ['\u2579', '\u2570', '\u2514'],
+      ),
+    );
+
+    test('finds opencode box rectangle from left border + bottom border', () {
+      final lines = List<String>.filled(10, '');
+      lines[6] = '                    \u2503';
+      lines[7] = '                    \u2503  1';
+      lines[8] = '                    \u2503  Build \u00b7 max';
+      lines[9] = '                    \u2579\u2580\u2580\u2580\u2580';
+      final grid = _FakeGrid.fromRows(lines);
+
+      final region = locateComposerRegion(grid, opencodeSpec, scanRows: 10);
+      expect(region, isNotNull);
+      expect(region!.leftCol, 20);
+      expect(region.bottomRow, 9);
+      expect(region.topRow, lessThanOrEqualTo(6));
+    });
+
+    test('finds prefix-only region for claude', () {
+      final lines = List<String>.filled(8, '');
+      lines[5] = '\u276f  hello';
+      lines[6] = '\u276f ';
+      final grid = _FakeGrid.fromRows(lines);
+      const spec = FullscreenComposerRegionSpec(
+        submitSemantics: ComposerSubmitSemantics.regionCleared,
+        prefixes: ['\u276f'],
+      );
+
+      final region = locateComposerRegion(grid, spec, scanRows: 8);
+      expect(region, isNotNull);
+      expect(region!.bottomRow, 6);
+    });
+
+    test('returns null when no prefix and no border', () {
+      final grid = _FakeGrid.fromRows(['just transcript', 'more text']);
+      const spec = FullscreenComposerRegionSpec(
+        submitSemantics: ComposerSubmitSemantics.regionCleared,
+        prefixes: ['\u276f'],
+      );
+      expect(locateComposerRegion(grid, spec, scanRows: 8), isNull);
+    });
+
+    test('regionContainsNeedle scopes a short needle inside the box', () {
+      final lines = List<String>.filled(10, '');
+      lines[6] = '                    \u2503';
+      lines[7] = '                    \u2503  1';
+      lines[8] = '                    \u2503';
+      lines[9] = '                    \u2579\u2580\u2580\u2580';
+      final grid = _FakeGrid.fromRows(lines);
+      final region = locateComposerRegion(grid, opencodeSpec, scanRows: 10)!;
+
+      expect(regionContainsNeedle(grid, region, '1'), isTrue,
+          reason: 'staged "1" inside the box must ACK');
+      expect(regionContainsNeedle(grid, region, '99'), isFalse);
+    });
+
+    test('regionContainsNeedle ignores the same digit in transcript', () {
+      final lines = List<String>.filled(12, '');
+      lines[2] = '          1          '; // transcript "1" above the box
+      lines[9] = '                    \u2503';
+      lines[10] = '                    \u2503';
+      lines[11] = '                    \u2579\u2580\u2580\u2580';
+      final grid = _FakeGrid.fromRows(lines);
+      final region = locateComposerRegion(grid, opencodeSpec, scanRows: 12)!;
+
+      expect(regionContainsNeedle(grid, region, '1'), isFalse,
+          reason: 'transcript "1" must not count as staged input');
+      expect(needleAppearsOutsideRegion(grid, region, '1', scanRows: 12), isTrue);
+    });
+
+    test('isComposerRegionEmpty true when box interior blank', () {
+      final lines = List<String>.filled(10, '');
+      lines[7] = '                    \u2503';
+      lines[9] = '                    \u2579\u2580\u2580\u2580';
+      final grid = _FakeGrid.fromRows(lines);
+      final region = locateComposerRegion(grid, opencodeSpec, scanRows: 10)!;
+      expect(isComposerRegionEmpty(grid, region, opencodeSpec), isTrue);
+    });
   });
 }
 
