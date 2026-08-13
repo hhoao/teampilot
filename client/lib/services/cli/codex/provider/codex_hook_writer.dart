@@ -121,8 +121,8 @@ class CodexHookWriter implements HookWriterCapability {
     }
 
     if (first) {
-      // 无条目时不产出空片段。
-      return const HookWriteResult(warnings: []);
+      // 无条目可渲染（含全部失败）时不产出空片段，但保留已收集的警告。
+      return HookWriteResult(warnings: warnings);
     }
     return HookWriteResult(
       configFragments: {'config.toml': buffer.toString()},

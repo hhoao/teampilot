@@ -53,16 +53,56 @@ void main() {
     expect(glue.content, contains('"permissionDecision":"deny"'));
   });
 
-  test('unsupported event is skipped with warning', () {
+  test('managed script missing data yields warning and no fragment', () {
     const entry = HookEntry(
       id: 'h1',
       source: HookSource.userLibrary,
-      event: HookEvent.notification,
+      event: HookEvent.stop,
+      action: CommandHookAction.script(
+        fileName: 'hook.sh',
+        scriptContent: null,
+      ),
+    );
+    final result = writer.render(entries: const [entry], ctx: ctx);
+    expect(result.warnings, contains('hook_script_missing_h1'));
+    expect(result.configFragments['config.toml'], isNull);
+    expect(result.scripts, isEmpty);
+  });
+
+  test('empty entries render nothing', () {
+    final result = writer.render(entries: const [], ctx: ctx);
+    expect(result.configFragments, isEmpty);
+    expect(result.scripts, isEmpty);
+    expect(result.warnings, isEmpty);
+  });
+
+  test('matcher is rendered into the TOML fragment', () {
+    const entry = HookEntry(
+      id: 'h1',
+      source: HookSource.userLibrary,
+      event: HookEvent.preToolUse,
+      matcher: 'Bash|Read',
       action: CommandHookAction.raw('echo hi'),
     );
-    // notification 是 codex 支持的事件：产物非空、无警告。
     final result = writer.render(entries: const [entry], ctx: ctx);
-    expect(result.warnings, isEmpty);
-    expect(result.configFragments['config.toml'], isNotNull);
+    final toml = result.configFragments['config.toml']! as String;
+    expect(toml, contains('matcher = "Bash|Read"'));
+    expect(toml, contains('[[hooks.PreToolUse]]'));
+  });
+
+  test('all-failed render keeps warnings without fragment', () {
+    const entry = HookEntry(
+      id: 'h1',
+      source: HookSource.userLibrary,
+      event: HookEvent.stop,
+      action: CommandHookAction.script(
+        fileName: 'hook.sh',
+        scriptContent: null,
+      ),
+    );
+    final result = writer.render(entries: const [entry], ctx: ctx);
+    expect(result.warnings, contains('hook_script_missing_h1'));
+    expect(result.configFragments, isEmpty);
+    expect(result.scripts, isEmpty);
   });
 }
