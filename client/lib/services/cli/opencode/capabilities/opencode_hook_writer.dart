@@ -15,11 +15,17 @@ class _OpencodeSubscription {
   final String? tool;
 }
 
-/// opencode 无原生 hooks —— 生成一个 JS plugin 桥：
+/// opencode 无原生 hooks，也无 http hooks —— 生成一个 JS plugin 桥：
 /// plugin 返回函数值 hooks（仓库已验证模式，同 agent_status_plugin）：
 /// `event` 函数按 `event.type`/`event.data.type` 分发非拦截订阅；tool.execute.*
 /// 的函数式 hook 按 tool 键限定。每个 hook 用 Node `child_process` 跑 glue
 /// 命令，stdout（决策 JSON）原样传回。
+///
+/// 共存说明：用户 hooks plugin（`teampilot-user-hooks.js`）与内部托管 plugin
+/// （`teampilot-agent-status.js` / `teampilot-idle.js`，事件订阅 + /agent-status
+/// POST + /idle 报告）**平行安装**于 opencode.json `plugin` 数组 —— 两者都是
+/// opencode 特有能力而非"hook 配置"，内部托管保持为专属 JS plugin，**不迁移**
+/// 进本 writer。写入时经 `mergeOpencodePluginEntries` 按路径去重合并。
 class OpencodeHookWriter implements HookWriterCapability {
   const OpencodeHookWriter({this.denyReason = 'TeamPilot hook policy'});
 

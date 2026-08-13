@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/hook_entry.dart';
 import 'package:teampilot/models/hook_event.dart';
+import 'package:teampilot/services/cli/opencode/capabilities/config_profile.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/opencode_hook_writer.dart';
 import 'package:teampilot/services/cli/registry/capabilities/hook_writer_capability.dart';
 import 'package:teampilot/services/hook/glue_script_builder.dart';
@@ -178,5 +179,14 @@ void main() {
     expect(js, contains('run("bash \'/s/hooks/teampilot-hook-h1.sh\'")'));
     expect(js, contains('run("bash \'/s/hooks/teampilot-hook-h2.sh\'")'));
     expect(js, isNot(contains('input.client?.events?.on')));
+  });
+
+  test('user hooks plugin coexists with agent-status/idle plugin entries', () {
+    var config = const <String, Object?>{'plugin': ['./teampilot-agent-status.js']};
+    config = mergeOpencodePluginEntries(config, ['./teampilot-user-hooks.js']);
+    expect(config['plugin'], [
+      './teampilot-agent-status.js',
+      './teampilot-user-hooks.js',
+    ]);
   });
 }
