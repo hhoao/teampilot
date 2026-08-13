@@ -1,5 +1,6 @@
 import 'package:flutter_alacritty/flutter_alacritty.dart';
 
+import '../cli/registry/capabilities/terminal_composer_region.dart';
 import 'fullscreen_cr_ack_config.dart';
 import 'fullscreen_input_screen_probe.dart' as probe;
 
@@ -35,6 +36,37 @@ final class TerminalScreenProbeController {
         _screenGrid,
         scanRows: scanRows,
         composerPrefix: composerPrefix,
+      );
+
+  probe.ComposerRegion? locateComposerRegion(
+    FullscreenComposerRegionSpec spec, {
+    int scanRows = 24,
+  }) =>
+      probe.locateComposerRegion(
+        _screenGrid,
+        spec,
+        scanRows: scanRows,
+      );
+
+  bool regionContainsNeedle(probe.ComposerRegion region, String needle) =>
+      probe.regionContainsNeedle(_screenGrid, region, needle);
+
+  bool isComposerRegionEmpty(
+    probe.ComposerRegion region,
+    FullscreenComposerRegionSpec spec,
+  ) =>
+      probe.isComposerRegionEmpty(_screenGrid, region, spec);
+
+  bool needleAppearsOutsideRegion(
+    probe.ComposerRegion region,
+    String needle, {
+    int scanRows = 24,
+  }) =>
+      probe.needleAppearsOutsideRegion(
+        _screenGrid,
+        region,
+        needle,
+        scanRows: scanRows,
       );
 
   bool isFullscreenPromptAtAnchor(probe.FullscreenPromptAnchor anchor, {String? composerPrefix}) =>

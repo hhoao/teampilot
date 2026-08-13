@@ -1,16 +1,32 @@
-import 'fullscreen_cr_ack_config.dart';
+import '../cli/registry/capabilities/terminal_composer_region.dart'
+    show FullscreenComposerRegionSpec;
 import 'fullscreen_input_screen_probe.dart';
 
 /// PTY + grid surface used by [FullscreenPtyAutomation] (production: terminal).
 abstract interface class FullscreenPtyDeliveryPort {
   bool get isAborted;
 
+  /// Hook-channel prompt-submit confirmation (authoritative over grid probes).
+  bool get isAcked;
+
   /// Visible viewport height in mirror-grid rows (0 when unknown).
   int get viewportRows;
 
-  FullscreenCrAckConfig get crAckConfig;
+  FullscreenComposerRegionSpec get composerRegion;
 
   Future<void> syncDisplayGrid();
+
+  ComposerRegion? locateComposerRegion({int scanRows = 24});
+
+  bool regionContainsNeedle(ComposerRegion region, String needle);
+
+  bool isComposerRegionEmpty(ComposerRegion region);
+
+  bool needleAppearsOutsideRegion(
+    ComposerRegion region,
+    String needle, {
+    int scanRows = 24,
+  });
 
   FullscreenPromptAnchor? locateNeedle(String needle, {int scanRows = 24});
 
