@@ -59,15 +59,15 @@ class GlueScriptBuilder {
     final inner = _shellQuote(innerCommand);
     final runLine = timeout == null
         ? 'out="\$(eval $inner 2>&1)"'
-        : 'out="\$(timeout ${timeout.inSeconds}s eval $inner 2>&1)"';
+        : 'out="\$(timeout ${timeout.inSeconds}s bash -c $inner 2>&1)"';
     buffer
       ..writeln(runLine)
       ..writeln('code=\$?')
       ..writeln('if [ -z "\$out" ] && [ -n "\${DECISION:-}" ]; then')
-      ..writeln('  printf \'%s\n\' "\$DECISION"')
+      ..writeln('  printf \'%s\\n\' "\$DECISION"')
       ..writeln('  exit 0')
       ..writeln('fi')
-      ..writeln('if [ -n "\$out" ]; then printf \'%s\n\' "\$out"; fi');
+      ..writeln('if [ -n "\$out" ]; then printf \'%s\\n\' "\$out"; fi');
     if (blockOnDecision) {
       buffer.writeln('exit 2');
     } else {
