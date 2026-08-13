@@ -13,6 +13,7 @@ import '../../services/storage/app_storage.dart';
 import '../../services/compose/compose_file_search.dart';
 import '../../services/file_tree/workspace_file_index.dart';
 import '../../services/search/workspace_search_indexes.dart';
+import '../../services/compose/compose_clip.dart';
 import '../../services/compose/compose_slash_catalog.dart';
 import '../../services/compose/compose_trigger_caret.dart';
 import '../../services/compose/compose_trigger_insert.dart';
@@ -52,6 +53,7 @@ class ComposeTriggerField extends StatefulWidget {
     required this.hintColor,
     this.skillSyntax,
     this.onPasteImage,
+    this.clip,
     super.key,
   });
 
@@ -71,11 +73,18 @@ class ComposeTriggerField extends StatefulWidget {
   final SkillInvocationSyntaxCapability? skillSyntax;
   final Future<bool> Function()? onPasteImage;
 
+  /// Optional paste-collapse buffer. When set and a single change pushes the
+  /// line count past [kComposePasteCollapseLines], the whole draft moves into
+  /// the clip and the visible controller is cleared.
+  final ComposeClip? clip;
+
   @override
   State<ComposeTriggerField> createState() => _ComposeTriggerFieldState();
 }
 
 class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
+  static const _pasteCollapseLines = 25;
+  late int _lastLineCount;
   final _fieldKey = GlobalKey();
   ComposeTriggerQuery? _trigger;
   List<ComposeTriggerSuggestion> _suggestions = const [];
@@ -90,6 +99,7 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
   @override
   void initState() {
     super.initState();
+    _lastLineCount = ComposeClip.countLines(widget.controller.text);
     widget.controller.addListener(_handleControllerChanged);
     widget.focusNode.addListener(_handleFocusChanged);
     HardwareKeyboard.instance.addHandler(_handleHardwareKey);
@@ -104,6 +114,7 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
     if (oldWidget.controller != widget.controller) {
       oldWidget.controller.removeListener(_handleControllerChanged);
       widget.controller.addListener(_handleControllerChanged);
+      _lastLineCount = ComposeClip.countLines(widget.controller.text);
     }
     if (oldWidget.focusNode != widget.focusNode) {
       oldWidget.focusNode.removeListener(_handleFocusChanged);
@@ -200,8 +211,27 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
   }
 
   void _handleControllerChanged() {
+    _maybeCollapseOversizedPaste();
     _refreshSuggestions();
     _scheduleMenuAnchorUpdate();
+  }
+
+  /// Collapses a single oversized insert (a paste) into the clip. Typing adds
+  /// at most one line per change, so only a large single insert crosses the
+  /// threshold. Undo that restores the long text re-crosses it (self-heals).
+  void _maybeCollapseOversizedPaste() {
+    final clip = widget.clip;
+    if (clip == null) return;
+    final count = ComposeClip.countLines(widget.controller.text);
+    final crossed =
+        _lastLineCount <= _pasteCollapseLines && count > _pasteCollapseLines;
+    _lastLineCount = count;
+    if (!crossed) return;
+    clip.setPasted(widget.controller.text);
+    widget.controller.clear();
+    // Programmatic clear() does not fire TextField.onChanged, so ping the
+    // parent's onComposeChanged (setState) so canSubmit recomputes.
+    widget.onChanged(widget.controller.text);
   }
 
   void _scheduleMenuAnchorUpdate() {

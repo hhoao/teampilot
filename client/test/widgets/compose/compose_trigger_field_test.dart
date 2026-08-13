@@ -9,6 +9,7 @@ import 'package:teampilot/services/commands/command_bus.dart';
 import 'package:teampilot/services/commands/command_catalog.dart';
 import 'package:teampilot/services/commands/shortcut_context.dart';
 import 'package:teampilot/services/commands/shortcut_dispatcher.dart';
+import 'package:teampilot/services/compose/compose_clip.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/widgets/compose/compose_trigger_field.dart';
 
@@ -242,5 +243,87 @@ void main() {
 
     expect(controller.text, 'hello after resize');
     expect(find.text('hello after resize'), findsWidgets);
+  });
+
+  group('paste collapse', () {
+    Future<void> pumpWithClip(
+      WidgetTester tester, {
+      required TextEditingController controller,
+      required FocusNode focusNode,
+      required ComposeClip clip,
+    }) async {
+      final bus = CommandBus();
+      await tester.pumpWidget(
+        RepositoryProvider<CommandBus>.value(
+          value: bus,
+          child: MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: Scaffold(
+              body: ComposeTriggerField(
+                controller: controller,
+                focusNode: focusNode,
+                hint: 'Ask anything',
+                enabled: true,
+                onChanged: (_) {},
+                onSubmit: () {},
+                canSubmit: () => true,
+                workspaceRoot: '/tmp',
+                skills: const [],
+                plugins: const [],
+                slashBundle: const ConfigBundle(),
+                mutedColor: Colors.black,
+                hintColor: Colors.grey,
+                clip: clip,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    testWidgets('oversized single insert collapses into the clip and clears',
+        (tester) async {
+      final controller = TextEditingController();
+      final focusNode = FocusNode();
+      final clip = ComposeClip();
+      addTearDown(controller.dispose);
+      addTearDown(focusNode.dispose);
+      addTearDown(clip.dispose);
+
+      await pumpWithClip(tester, controller: controller, focusNode: focusNode, clip: clip);
+
+      final longText = List.generate(30, (i) => 'line $i').join('\n');
+      // Assign text + selection as one value, exactly like a real paste at the
+      // EditableText level. A separate `controller.selection =` after
+      // `controller.text =` would run against the already-cleared controller:
+      // the collapse fires synchronously inside the change listener.
+      controller.value = TextEditingValue(
+        text: longText,
+        selection: TextSelection.collapsed(offset: longText.length),
+      );
+      await tester.pump();
+
+      expect(clip.collapsed, isTrue);
+      expect(clip.text, longText);
+      expect(controller.text, isEmpty);
+    });
+
+    testWidgets('small paste does not collapse', (tester) async {
+      final controller = TextEditingController();
+      final focusNode = FocusNode();
+      final clip = ComposeClip();
+      addTearDown(controller.dispose);
+      addTearDown(focusNode.dispose);
+      addTearDown(clip.dispose);
+
+      await pumpWithClip(tester, controller: controller, focusNode: focusNode, clip: clip);
+
+      controller.text = 'small\npaste';
+      await tester.pump();
+
+      expect(clip.collapsed, isFalse);
+      expect(controller.text, 'small\npaste');
+    });
   });
 }
