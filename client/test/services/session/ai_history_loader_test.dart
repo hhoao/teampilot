@@ -13,6 +13,8 @@ import 'package:teampilot/models/workspace_launch_context.dart';
 import 'package:teampilot/services/cli/registry/capabilities/ai_history_capability.dart';
 import 'package:teampilot/services/cli/claude/capabilities/history/ai_transcript.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/history/ai_transcript.dart';
+import 'package:teampilot/services/cli/cursor/capabilities/history/terminal_tool_result_enricher.dart';
+import 'package:teampilot/services/ai_history/tool_call_resolvers.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/history/tool_output_backfill_enricher.dart';
 import 'package:teampilot/services/cli/registry/capabilities/history/tool_result_enricher.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
@@ -513,6 +515,76 @@ void main() {
     expect(result.messages.single.id, 'enriched');
   });
 
+  test('cursor missing shell result triggers the gate and backfills from terminals',
+      () async {
+    // The cursor Shell part has no result at all (not a truncation marker) —
+    // the loader guard must still fire so the terminal enricher backfills
+    // stdout from the terminals dir. Regression for the dead-path bug where
+    // only String+marker results opened the gate.
+    final fixture = await File(
+      'test/fixtures/session_history/cursor/projects/home-me-proj/'
+      'agent-transcripts/chat-shell-missing-result/chat-shell-missing-result.jsonl',
+    ).readAsBytes();
+    final terminal = await File(
+      'test/fixtures/session_history/cursor/projects/home-me-proj/'
+      'terminals/shell-pwd.txt',
+    ).readAsString();
+
+    final rootPath = p.join(
+      base.path,
+      'proj',
+      'agent-transcripts',
+      'chat',
+      'chat.jsonl',
+    );
+    await Directory(p.dirname(rootPath)).create(recursive: true);
+    await Directory(p.join(base.path, 'proj', 'terminals')).create(
+      recursive: true,
+    );
+    await File(
+      p.join(base.path, 'proj', 'terminals', 'shell-pwd.txt'),
+    ).writeAsString(terminal);
+
+    final registry = fakeAiHistoryRegistry(
+      cli: CliTool.cursor,
+      adapter: const CursorAiTranscriptAdapter(),
+      toolResultEnricher: const CursorTerminalToolResultEnricher(
+        shellResolver: ConfigurableAiShellToolTargetResolver(
+          toolNames: {
+            'bash', 'shell', 'shell_command', 'exec_command',
+            'run_shell_command', 'run_terminal_cmd', 'execute',
+          },
+        ),
+      ),
+      locate: (_) async => AiTranscriptBundle(
+        adapterId: 'cursor',
+        fragments: [AiTranscriptFragment(name: 'chat.jsonl', bytes: fixture)],
+        hints: AiHistoryWatchMeta(
+          changeWatchRoot: p.join(base.path, 'proj'),
+          cacheTokenPaths: [rootPath],
+        ).toHints(),
+      ),
+    );
+    final loader = buildLoader(registry: registry);
+
+    final result = await loader.load(
+      session: simpleSession().copyWith(cli: CliTool.cursor),
+      memberId: '',
+      launchContext: launchContextFor(
+        simpleSession().copyWith(cli: CliTool.cursor),
+      ),
+    );
+
+    final part = result.messages
+        .expand((m) => m.parts)
+        .whereType<AiToolCallPart>()
+        .single;
+    expect(part.toolName, 'Shell');
+    expect(part.result, '/home/hhoa/proj');
+    expect(part.status, AiToolCallStatus.complete);
+    expect(part.isError, isFalse);
+  });
+
   test('opencode truncation marker triggers the gate and backfills from hint file',
       () async {
     // The opencode placeholder carries `...N bytes truncated...`, which the
@@ -875,6 +947,10 @@ class _RecordingEnricher implements ToolResultEnricher {
       result.contains('tool output truncated');
 
   @override
+  bool needsEnrichment(AiToolCallPart part) =>
+      defaultToolResultNeedsEnrichment(this, part);
+
+  @override
   Future<List<AiMessage>> enrich({
     required List<AiMessage> messages,
     required SessionHistoryContext? ctx,
@@ -902,6 +978,10 @@ class _RecordingFsEnricher implements ToolResultEnricher {
   @override
   bool matchesTruncationMarker(String result) =>
       result.contains('tool output truncated');
+
+  @override
+  bool needsEnrichment(AiToolCallPart part) =>
+      defaultToolResultNeedsEnrichment(this, part);
 
   @override
   Future<List<AiMessage>> enrich({

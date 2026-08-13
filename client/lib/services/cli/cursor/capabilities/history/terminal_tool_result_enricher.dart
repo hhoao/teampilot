@@ -19,10 +19,16 @@ final class CursorTerminalToolResultEnricher implements ToolResultEnricher {
   bool get requiresFilesystem => true;
 
   // Backfills missing (empty) results, not a truncation marker — the loader
-  // gate would never fire for it. Own marker matching (e.g. "result missing")
-  // is a separate concern, pending a gate-capable shape.
+  // gate consults [needsEnrichment] (overridden below), which fires for
+  // missing results instead of the marker shape.
   @override
   bool matchesTruncationMarker(String result) => false;
+
+  /// Part 级门控:任何 result 缺失的 part 都需要回填;loader 在调用
+  /// [enrich] 前用它判定门是否打开。
+  @override
+  bool needsEnrichment(AiToolCallPart part) =>
+      isCursorResultMissing(part.result);
 
   @override
   Future<List<AiMessage>> enrich({
@@ -57,7 +63,9 @@ final class CursorTerminalToolResultEnricher implements ToolResultEnricher {
 
         for (var j = 0; j < parts.length; j++) {
           final part = parts[j];
-          if (part is! AiToolCallPart || !_isResultMissing(part.result)) continue;
+          if (part is! AiToolCallPart || !isCursorResultMissing(part.result)) {
+            continue;
+          }
 
           final target = shellResolver.resolve(part);
           if (target == null) continue;
@@ -140,7 +148,7 @@ Future<List<_TerminalCandidate>> _loadTerminalFiles(
   return candidates;
 }
 
-bool _isResultMissing(Object? result) {
+bool isCursorResultMissing(Object? result) {
   if (result == null) return true;
   final text = result is String ? result : result.toString();
   return text.trim().isEmpty;
