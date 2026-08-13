@@ -66,4 +66,87 @@ void main() {
       ['hook_unsupported_event_h1_sessionStart'],
     );
   });
+
+  test('tool.execute matcher registers tool-keyed hook, plain falls back', () {
+    const bashEntry = HookEntry(
+      id: 'h1',
+      source: HookSource.userLibrary,
+      event: HookEvent.preToolUse,
+      matcher: 'bash',
+      action: CommandHookAction.raw('echo hi'),
+    );
+    const plainEntry = HookEntry(
+      id: 'h2',
+      source: HookSource.userLibrary,
+      event: HookEvent.preToolUse,
+      action: CommandHookAction.raw('echo hi2'),
+    );
+    final result = writer.render(
+      entries: const [bashEntry, plainEntry],
+      ctx: ctx,
+    );
+    expect(result.warnings, isEmpty);
+    final js = result.scripts
+        .singleWhere((s) => s.fileName == 'teampilot-user-hooks.js')
+        .content;
+    expect(js, contains('"tool.execute.before": async (ev, output)'));
+    expect(js, contains('new RegExp("bash")'));
+    expect(js, contains('run("bash \'/s/hooks/teampilot-hook-h1.sh\'")'));
+    expect(js, contains('d.decision === "deny"'));
+    expect(js, contains('input.client.events.on("tool.execute.before"'));
+    expect(
+      result.scripts.any((s) => s.fileName == 'teampilot-hook-h1.sh'),
+      isTrue,
+    );
+    expect(
+      result.scripts.any((s) => s.fileName == 'teampilot-hook-h2.sh'),
+      isTrue,
+    );
+  });
+
+  test('multiple tool-keyed entries on same event emit independent checks',
+      () {
+    const bashEntry = HookEntry(
+      id: 'h1',
+      source: HookSource.userLibrary,
+      event: HookEvent.preToolUse,
+      matcher: 'bash',
+      action: CommandHookAction.raw('echo a'),
+    );
+    const readEntry = HookEntry(
+      id: 'h2',
+      source: HookSource.userLibrary,
+      event: HookEvent.preToolUse,
+      matcher: 'read',
+      action: CommandHookAction.raw('echo b'),
+    );
+    final result = writer.render(
+      entries: const [bashEntry, readEntry],
+      ctx: ctx,
+    );
+    final js = result.scripts
+        .singleWhere((s) => s.fileName == 'teampilot-user-hooks.js')
+        .content;
+    expect(js, contains('new RegExp("bash")'));
+    expect(js, contains('new RegExp("read")'));
+    expect(js, contains('/s/hooks/teampilot-hook-h1.sh'));
+    expect(js, contains('/s/hooks/teampilot-hook-h2.sh'));
+  });
+
+  test('matcher on non-tool.execute event warns and is ignored', () {
+    const entry = HookEntry(
+      id: 'h1',
+      source: HookSource.userLibrary,
+      event: HookEvent.stop,
+      matcher: 'bash',
+      action: CommandHookAction.raw('echo hi'),
+    );
+    final result = writer.render(entries: const [entry], ctx: ctx);
+    expect(result.warnings, ['hook_matcher_ignored_h1_stop']);
+    final js = result.scripts
+        .singleWhere((s) => s.fileName == 'teampilot-user-hooks.js')
+        .content;
+    expect(js, isNot(contains('"tool.execute.')));
+    expect(js, contains('input.client.events.on("session.idle"'));
+  });
 }
