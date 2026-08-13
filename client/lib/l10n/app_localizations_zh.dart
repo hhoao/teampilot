@@ -367,6 +367,31 @@ class AppLocalizationsZh extends AppLocalizations {
   String get toolCategoryOther => '其他';
 
   @override
+  String get composePasteClipLabel => '粘贴文本';
+
+  @override
+  String composePasteClipLines(int lines) {
+    return '$lines 行';
+  }
+
+  @override
+  String get composePasteClipEdit => '编辑已粘贴文本';
+
+  @override
+  String get composePasteClipRemove => '移除已粘贴文本';
+
+  @override
+  String composePasteEditorTitle(int lines) {
+    return '编辑已粘贴文本 · $lines 行';
+  }
+
+  @override
+  String get composePasteEditorDone => '完成';
+
+  @override
+  String get composePasteEditorRemove => '移除';
+
+  @override
   String get contentDisplayModeSectionTitle => '内容显示';
 
   @override

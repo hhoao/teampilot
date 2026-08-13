@@ -788,6 +788,48 @@ abstract class AppLocalizations {
   /// **'Other'**
   String get toolCategoryOther;
 
+  /// No description provided for @composePasteClipLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Pasted text'**
+  String get composePasteClipLabel;
+
+  /// No description provided for @composePasteClipLines.
+  ///
+  /// In en, this message translates to:
+  /// **'{lines} lines'**
+  String composePasteClipLines(int lines);
+
+  /// No description provided for @composePasteClipEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit pasted text'**
+  String get composePasteClipEdit;
+
+  /// No description provided for @composePasteClipRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove pasted text'**
+  String get composePasteClipRemove;
+
+  /// No description provided for @composePasteEditorTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit pasted text · {lines} lines'**
+  String composePasteEditorTitle(int lines);
+
+  /// No description provided for @composePasteEditorDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get composePasteEditorDone;
+
+  /// No description provided for @composePasteEditorRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get composePasteEditorRemove;
+
   /// No description provided for @contentDisplayModeSectionTitle.
   ///
   /// In en, this message translates to:

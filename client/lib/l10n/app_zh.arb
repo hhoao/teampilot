@@ -129,6 +129,23 @@
   "toolCategoryTask": "任务与待办",
   "toolCategoryMcp": "MCP",
   "toolCategoryOther": "其他",
+  "composePasteClipLabel": "粘贴文本",
+  "composePasteClipLines": "{lines} 行",
+  "@composePasteClipLines": {
+    "placeholders": {
+      "lines": { "type": "int" }
+    }
+  },
+  "composePasteClipEdit": "编辑已粘贴文本",
+  "composePasteClipRemove": "移除已粘贴文本",
+  "composePasteEditorTitle": "编辑已粘贴文本 · {lines} 行",
+  "@composePasteEditorTitle": {
+    "placeholders": {
+      "lines": { "type": "int" }
+    }
+  },
+  "composePasteEditorDone": "完成",
+  "composePasteEditorRemove": "移除",
   "contentDisplayModeSectionTitle": "内容显示",
   "chatUserMessageModeTitle": "用户消息",
   "chatUserMessageModeDescription": "聊天中超大用户消息的呈现方式。",

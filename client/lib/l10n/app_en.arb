@@ -138,6 +138,23 @@
   "toolCategoryTask": "Tasks & todos",
   "toolCategoryMcp": "MCP",
   "toolCategoryOther": "Other",
+  "composePasteClipLabel": "Pasted text",
+  "composePasteClipLines": "{lines} lines",
+  "@composePasteClipLines": {
+    "placeholders": {
+      "lines": { "type": "int" }
+    }
+  },
+  "composePasteClipEdit": "Edit pasted text",
+  "composePasteClipRemove": "Remove pasted text",
+  "composePasteEditorTitle": "Edit pasted text · {lines} lines",
+  "@composePasteEditorTitle": {
+    "placeholders": {
+      "lines": { "type": "int" }
+    }
+  },
+  "composePasteEditorDone": "Done",
+  "composePasteEditorRemove": "Remove",
   "contentDisplayModeSectionTitle": "Content display",
   "chatUserMessageModeTitle": "User messages",
   "chatUserMessageModeDescription": "How oversized user messages render in chat.",

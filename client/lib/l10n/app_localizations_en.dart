@@ -385,6 +385,31 @@ class AppLocalizationsEn extends AppLocalizations {
   String get toolCategoryOther => 'Other';
 
   @override
+  String get composePasteClipLabel => 'Pasted text';
+
+  @override
+  String composePasteClipLines(int lines) {
+    return '$lines lines';
+  }
+
+  @override
+  String get composePasteClipEdit => 'Edit pasted text';
+
+  @override
+  String get composePasteClipRemove => 'Remove pasted text';
+
+  @override
+  String composePasteEditorTitle(int lines) {
+    return 'Edit pasted text · $lines lines';
+  }
+
+  @override
+  String get composePasteEditorDone => 'Done';
+
+  @override
+  String get composePasteEditorRemove => 'Remove';
+
+  @override
   String get contentDisplayModeSectionTitle => 'Content display';
 
   @override
