@@ -1090,17 +1090,6 @@ class ConfigProfileService implements ConfigProfileDelegate {
   );
 
   @override
-  Future<String?> resolveAppendSystemPromptPath({
-    required LaunchProfileScope scope,
-    required String tool,
-    required TeamMemberConfig member,
-  }) => _infra.resolveAppendSystemPromptPath(
-    scope: scope,
-    tool: tool,
-    member: member,
-  );
-
-  @override
   HostExecutionEnvironment hostEnvironmentForProvision() =>
       _infra.hostEnvironmentForProvision();
 }
