@@ -22,7 +22,7 @@ final class CommandHookAction extends HookAction {
 
   const CommandHookAction.script({
     required String fileName,
-    required String scriptContent,
+    String? scriptContent,
   }) : command = null,
        fileName = fileName,
        scriptContent = scriptContent;
@@ -54,6 +54,16 @@ final class HttpHookAction extends HookAction {
 
   final String url;
   final Map<String, String> headers;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is HttpHookAction &&
+          url == other.url &&
+          mapEquals(headers, other.headers);
+
+  @override
+  int get hashCode => Object.hash(url, Object.hashAll(headers.entries));
 }
 
 /// 统一 hook 表示：所有来源（用户库/插件/扩展/托管）的中间形态，
