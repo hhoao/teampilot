@@ -2,15 +2,14 @@ import 'dart:convert';
 
 import '../../../../models/hook_entry.dart';
 import '../../../../models/team_config.dart';
-import '../../../agent_status/member_agent_status_endpoint.dart';
 import '../../../host/host_script_runner.dart';
 import '../../../hook/glue_script_builder.dart';
 import '../../../io/filesystem.dart';
 import '../../../team_bus/member_bus_idle_endpoint.dart';
 import '../../registry/capabilities/hook_writer_capability.dart';
+import '../../registry/config_profile/hook_seat_context_completer.dart';
 import 'cursor_auth_artifacts.dart';
 import 'cursor_cli_config_policy.dart';
-import 'cursor_home_agent_status_overlay.dart';
 import 'cursor_home_bus_overlay.dart';
 import 'cursor_home_layout.dart';
 import 'cursor_hook_writer.dart';
@@ -40,7 +39,6 @@ final class CursorHomeProvisioner {
     required MemberBusIdleEndpoint? busIdle,
     required bool forceTeamLeadDelegateMode,
     required bool mixed,
-    MemberAgentStatusEndpoint? agentStatus,
     String? realHomeRoot,
   }) async {
     await _ensureCursorDirs(memberHome);
@@ -67,13 +65,6 @@ final class CursorHomeProvisioner {
         mixed: false,
         pushDelivery: false,
       );
-      if (agentStatus != null) {
-        await writeAgentStatusHooks(
-          memberHome: memberHome,
-          memberId: member.id,
-          agentStatus: agentStatus,
-        );
-      }
       return;
     }
 
@@ -225,28 +216,15 @@ final class CursorHomeProvisioner {
     required TeamMemberConfig member,
     required MemberBusIdleEndpoint busIdle,
   }) async {
-    final idleScriptPath = _layout.idleScript(memberHome);
-
-    await _fs.atomicWrite(
-      idleScriptPath,
-      CursorHomeBusOverlay.idleScript(memberId: member.id, idle: busIdle),
-    );
-    final hooksPath = _layout.hooksConfig(memberHome);
-    final raw = await _fs.readString(hooksPath);
-    Map<String, Object?> existing;
-    if (raw != null && raw.trim().isNotEmpty) {
-      existing = (jsonDecode(raw) as Map).cast<String, Object?>();
-    } else {
-      existing = <String, Object?>{};
-    }
-    await _fs.atomicWrite(
-      hooksPath,
-      _jsonPretty(
-        CursorHomeBusOverlay.mergeHooksConfig(
-          existing,
-          idleScriptPath: idleScriptPath,
-        ),
+    // 收敛：bus idle stop hook 经 completer + 统一 writer 落盘（与
+    // config-profile 阶段同一渲染路径，按 command 去重幂等）。
+    await writeHooks(
+      memberHome: memberHome,
+      entries: const HookSeatContextCompleter().busIdleHooks(
+        idle: busIdle,
+        memberId: member.id,
       ),
+      runner: null,
     );
     await _mergeTeamBusMcp(
       memberHome: memberHome,
@@ -255,53 +233,13 @@ final class CursorHomeProvisioner {
     );
   }
 
-  /// Writes per-event forwarding scripts and merges agent-status hooks into
-  /// `~/.cursor/hooks.json` (preserving the bus `stop` hook when present).
-  ///
-  /// Public so the config-profile phase can provision hooks into an
-  /// already-resolved mixed-mode member home.
-  Future<void> writeAgentStatusHooks({
-    required String memberHome,
-    required String memberId,
-    required MemberAgentStatusEndpoint agentStatus,
-  }) async {
-    for (final event in CursorHomeAgentStatusOverlay.statusEvents) {
-      final fileName = CursorHomeAgentStatusOverlay.scriptFileName(event);
-      await _fs.atomicWrite(
-        _layout.agentStatusScript(memberHome, fileName),
-        CursorHomeAgentStatusOverlay.scriptFor(
-          endpoint: agentStatus,
-          memberId: memberId,
-          event: event,
-        ),
-      );
-    }
-
-    final hooksPath = _layout.hooksConfig(memberHome);
-    final raw = await _fs.readString(hooksPath);
-    Map<String, Object?> existing;
-    if (raw != null && raw.trim().isNotEmpty) {
-      existing = (jsonDecode(raw) as Map).cast<String, Object?>();
-    } else {
-      existing = <String, Object?>{};
-    }
-    final merged = CursorHomeAgentStatusOverlay.mergeHooksConfig(
-      existing,
-      scriptPathFor: (event) => _layout.agentStatusScript(
-        memberHome,
-        CursorHomeAgentStatusOverlay.scriptFileName(event),
-      ),
-    );
-    await _fs.atomicWrite(hooksPath, _jsonPretty(merged));
-  }
-
-  /// Writes user hooks into `~/.cursor/hooks.json`, preserving existing
-  /// entries (agent-status / bus). Glue + managed scripts land under
-  /// `~/.cursor/hooks/`.
-  Future<void> writeUserHooks({
+  /// Writes hooks into `~/.cursor/hooks.json`, preserving existing entries.
+  /// Managed（agent-status / bus idle）与用户条目同一渲染路径；glue + 转发
+  /// 脚本落在 `~/.cursor/hooks/`。
+  Future<void> writeHooks({
     required String memberHome,
     required List<HookEntry> entries,
-    required HostScriptRunner runner,
+    required HostScriptRunner? runner,
   }) async {
     if (entries.isEmpty) return;
     final hooksDir = _fs.pathContext.join(

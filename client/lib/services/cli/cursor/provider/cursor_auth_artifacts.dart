@@ -32,7 +32,7 @@ abstract final class CursorAuthArtifacts {
   static const busGenerated = <String>[
     'rules/role.mdc',
     'hooks.json',
-    'hooks/idle.sh',
+    'hooks/teampilot-http-teampilot-bus-idle-stop-stop.sh',
     'mcp.json',
   ];
 

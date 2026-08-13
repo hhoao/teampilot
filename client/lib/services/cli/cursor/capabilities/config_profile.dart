@@ -1,6 +1,8 @@
 import '../../../../models/app_provider_config.dart';
+import '../../../../models/hook_entry.dart';
 import '../../../../models/team_config.dart';
 import '../../registry/cli_tool_registry.dart';
+import '../../registry/config_profile/hook_seat_context_completer.dart';
 import '../../../provider/cross_machine_credential_bridge.dart';
 import '../provider/cursor_home_layout.dart';
 import '../provider/cursor_home_provisioner.dart';
@@ -94,6 +96,7 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
       }
     }
 
+    final member = ctx.member ?? (throw StateError('Simple launch requires plan.member'));
     await CursorHomeProvisioner(
       fs: paths.fs,
       credentials: credentials,
@@ -101,11 +104,10 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
     ).provision(
       memberHome: home,
       providerId: providerId.isEmpty ? null : providerId,
-      member: ctx.member ?? (throw StateError('Simple launch requires plan.member')),
+      member: member,
       busIdle: null,
       forceTeamLeadDelegateMode: false,
       mixed: false,
-      agentStatus: ctx.agentStatus,
       // Always defer real-$HOME passthrough to SessionConnectOrchestrator after
       // manifest flush. Staging via ManifestFilesystem would SFTP-list the work
       // home (slow on Android SSH). Post-flush uses one remote find+ln script
@@ -113,16 +115,24 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
       realHomeRoot: null,
     );
 
-    if (ctx.hooks.isNotEmpty) {
-      await CursorHomeProvisioner(
-        fs: paths.fs,
-        layout: CursorHomeLayout(pathContext: paths.fs.pathContext),
-      ).writeUserHooks(
-        memberHome: home,
-        entries: ctx.hooks,
-        runner: paths.hostEnvironmentForProvision().scriptRunner,
-      );
-    }
+    // 收敛：内部托管 hook（agent-status）经 completer 组装为 managed
+    // HookEntry，与用户条目一次 writeHooks 落盘（同渲染 + 去重）。
+    final agentStatus = ctx.agentStatus;
+    final managed = <HookEntry>[
+      if (agentStatus != null)
+        ...const HookSeatContextCompleter().agentStatusHooks(
+          endpoint: agentStatus,
+          memberId: member.id,
+        ),
+    ];
+    await CursorHomeProvisioner(
+      fs: paths.fs,
+      layout: CursorHomeLayout(pathContext: paths.fs.pathContext),
+    ).writeHooks(
+      memberHome: home,
+      entries: [...managed, ...ctx.hooks],
+      runner: paths.hostEnvironmentForProvision().scriptRunner,
+    );
 
     await _provisionWorkspaceTrust(ctx: ctx, homeRoot: home);
     return ConfigProfileLaunchContribution(
@@ -229,29 +239,30 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
       }
 
       final agentStatus = ctx.agentStatus;
-      if (agentStatus != null && member != null && member.isValid) {
-        // Agent-status hooks are written here (config-profile phase, which has
-        // the endpoint) and preserved by the lifecycle bus overlay via merge.
-        await CursorHomeProvisioner(
-          fs: ctx.paths.fs,
-          layout: CursorHomeLayout(pathContext: ctx.paths.fs.pathContext),
-        ).writeAgentStatusHooks(
-          memberHome: agentHome,
-          memberId: memberId,
-          agentStatus: agentStatus,
-        );
-      }
-
-      if (ctx.hooks.isNotEmpty) {
-        await CursorHomeProvisioner(
-          fs: ctx.paths.fs,
-          layout: CursorHomeLayout(pathContext: ctx.paths.fs.pathContext),
-        ).writeUserHooks(
-          memberHome: agentHome,
-          entries: ctx.hooks,
-          runner: ctx.paths.hostEnvironmentForProvision().scriptRunner,
-        );
-      }
+      // 收敛：内部托管 hook（bus idle / agent-status）经 completer 组装为
+      // managed HookEntry，与用户条目一次 writeHooks 落盘（同渲染 + 去重）。
+      // cursor 不支持 stopFailure / permissionRequest 原生事件——writer 跳过
+      // 并警告（bus stop 经 completer stop 条目生效，与旧 overlay 一致）。
+      final managed = <HookEntry>[
+        if (busIdle != null && member != null && member.isValid)
+          ...const HookSeatContextCompleter().busIdleHooks(
+            idle: busIdle,
+            memberId: member.id,
+          ),
+        if (agentStatus != null && member != null && member.isValid)
+          ...const HookSeatContextCompleter().agentStatusHooks(
+            endpoint: agentStatus,
+            memberId: member.id,
+          ),
+      ];
+      await CursorHomeProvisioner(
+        fs: ctx.paths.fs,
+        layout: CursorHomeLayout(pathContext: ctx.paths.fs.pathContext),
+      ).writeHooks(
+        memberHome: agentHome,
+        entries: [...managed, ...ctx.hooks],
+        runner: ctx.paths.hostEnvironmentForProvision().scriptRunner,
+      );
 
       return ConfigProfileLaunchContribution(
         environment: CursorLaunchEnvironment.forMixed(

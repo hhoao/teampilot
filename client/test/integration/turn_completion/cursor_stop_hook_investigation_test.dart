@@ -5,21 +5,28 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/agent_status/member_agent_status_endpoint.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_home_layout.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_home_provisioner.dart';
+import 'package:teampilot/services/cli/registry/config_profile/hook_seat_context_completer.dart';
 
 import '../../support/in_memory_filesystem.dart';
 
 /// Investigative: does simple-mode cursor actually install a `stop`
 /// agent-status hook, and does the generated script POST to
-/// `/agent-status?event=stop`?
+/// `/agent-status?event=Stop`?
 ///
 /// Finding (2026-08-09): yes — simple-mode provision writes `~/.cursor/hooks.json`
-/// with a `stop` entry whose script POSTs `/agent-status?event=stop`. So the
+/// with a `stop` entry whose script POSTs `/agent-status?event=Stop`. So the
 /// `stop`→done path is wired; the unreliability in interactive mode is that
 /// cursor-agent does not emit the `stop` hook per conversation turn (it only
 /// fires when the agent loop ends, which an interactive composer session keeps
 /// open). The PTY-quiet fallback (ChatCubit._onTurnEnded) therefore remains
 /// the reliable simple-mode path, and the declared `requiresPtyFallback=true`
 /// stays correct.
+///
+/// Converged (2026-08-13): hooks are assembled through
+/// [HookSeatContextCompleter] + the unified writer (`writeHooks`); the query
+/// event name follows the claude-native identity (PascalCase). The gateway
+/// keeps the payload's own `hook_event_name` (`stop`, lowercase) when present,
+/// so cursor attention routing is unchanged.
 void main() {
   test('simple cursor provision writes a stop agent-status hook script', () async {
     final fs = InMemoryFilesystem();
@@ -28,14 +35,13 @@ void main() {
     const member = TeamMemberConfig(id: 'solo', name: 'Solo');
     const endpoint = MemberAgentStatusEndpoint(url: 'http://127.0.0.1:4321/agent-status');
 
-    await CursorHomeProvisioner(fs: fs, layout: layout).provision(
+    await CursorHomeProvisioner(fs: fs, layout: layout).writeHooks(
       memberHome: memberHome,
-      providerId: null,
-      member: member,
-      busIdle: null,
-      forceTeamLeadDelegateMode: false,
-      mixed: false,
-      agentStatus: endpoint,
+      entries: const HookSeatContextCompleter().agentStatusHooks(
+        endpoint: endpoint,
+        memberId: member.id,
+      ),
+      runner: null,
     );
 
     // hooks.json written under ~/.cursor/hooks.json and contains a `stop` entry.
@@ -47,14 +53,14 @@ void main() {
     final stopCommand = ((stopEntries!.first as Map)['command'] as String?) ?? '';
     expect(stopCommand, startsWith('bash '), reason: 'stop hook runs the forwarding script');
 
-    // The script file exists and POSTs to the /agent-status URL with event=stop.
+    // The script file exists and POSTs to the /agent-status URL with event=Stop.
     final scriptFile = stopCommand
         .replaceFirst("bash '", '')
         .replaceFirst("'", '')
         .trim();
     final script = await fs.readString(scriptFile);
     expect(script, isNotNull, reason: 'stop forwarding script must exist');
-    expect(script, contains('event=stop'), reason: 'script targets /agent-status?event=stop');
+    expect(script, contains('event=Stop'), reason: 'script targets /agent-status?event=Stop');
     expect(script, contains('127.0.0.1:4321/agent-status'), reason: 'script POSTs the endpoint');
   });
 }

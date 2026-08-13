@@ -67,15 +67,82 @@ void main() {
     expect(glue.content, contains('"permission":"deny"'));
   });
 
-  test('http action unsupported → warning', () {
+  test('http agent-status entry renders bash forwarding script', () {
     const entry = HookEntry(
+      id: 'teampilot-agent-status-stop',
+      source: HookSource.managed,
+      event: HookEvent.stop,
+      timeout: Duration(seconds: 5),
+      action: HttpHookAction(
+        url: 'http://127.0.0.1:1/agent-status?event=Stop',
+        headers: {'X-Member': 'm1'},
+      ),
+    );
+    final result = writer.render(entries: const [entry], ctx: ctx);
+    expect(result.warnings, isEmpty);
+    final script = result.scripts.singleWhere(
+      (s) => s.fileName == 'teampilot-http-teampilot-agent-status-stop-stop.sh',
+    );
+    expect(script.content, contains("curl -sS -X POST"));
+    expect(script.content, contains("'http://127.0.0.1:1/agent-status?event=Stop'"));
+    expect(script.content, contains("'X-Member: m1'"));
+    final hooksJson = result.configFragments['hooks.json']! as Map;
+    final stop = ((hooksJson['hooks'] as Map)['stop'] as List).single as Map;
+    expect(stop['command'], contains('teampilot-http-teampilot-agent-status-stop-stop.sh'));
+    expect(stop['timeout'], isNotNull);
+  });
+
+  test('bus idle hook prints followup_message on decision:block', () {
+    const entry = HookEntry(
+      id: 'teampilot-bus-idle-stop',
+      source: HookSource.managed,
+      event: HookEvent.stop,
+      blockOnDecision: true,
+      timeout: Duration(seconds: 5),
+      action: HttpHookAction(
+        url: 'http://127.0.0.1:2/idle',
+        headers: {'X-Member': 'm1'},
+      ),
+    );
+    final result = writer.render(entries: const [entry], ctx: ctx);
+    final script = result.scripts.single;
+    expect(script.content, contains('"decision":"block"'));
+    expect(script.content, contains('followup_message'));
+    expect(script.content, contains('exit 0'));
+  });
+
+  test('managed + user entries merge idempotently by command', () {
+    const agentStatus = HookEntry(
+      id: 'teampilot-agent-status-stop',
+      source: HookSource.managed,
+      event: HookEvent.stop,
+      action: HttpHookAction(url: 'http://127.0.0.1:1/agent-status?event=Stop'),
+    );
+    const userHook = HookEntry(
       id: 'h1',
       source: HookSource.userLibrary,
       event: HookEvent.stop,
-      action: HttpHookAction(url: 'http://x'),
+      action: CommandHookAction.raw('echo done'),
     );
-    final result = writer.render(entries: const [entry], ctx: ctx);
-    expect(result.warnings, contains('hook_http_unsupported_h1'));
-    expect(result.configFragments, isEmpty);
+    const ctx = HookRenderContext(
+      hooksDir: '/h/hooks',
+      runner: null,
+      glueBuilder: GlueScriptBuilder(),
+    );
+    final result = writer.render(
+      entries: const [agentStatus, userHook],
+      ctx: ctx,
+    );
+    final stop = ((result.configFragments['hooks.json'] as Map)['hooks']
+        as Map)['stop'] as List;
+    expect(stop, hasLength(2));
+    final re = writer.render(
+      entries: const [agentStatus, userHook],
+      ctx: ctx,
+    );
+    expect(
+      ((re.configFragments['hooks.json'] as Map)['hooks'] as Map)['stop'],
+      hasLength(2),
+    );
   });
 }

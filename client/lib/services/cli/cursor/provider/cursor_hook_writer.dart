@@ -1,7 +1,9 @@
+import 'dart:convert';
+
 import '../../../../models/hook_entry.dart';
 import '../../../../models/hook_event.dart';
 import '../../../../models/team_config.dart';
-import '../../../hook/glue_script_builder.dart';
+import '../../../team_bus/mcp/teammate_bus_mcp_handler.dart';
 import '../../registry/capabilities/hook_registry.dart';
 import '../../registry/capabilities/hook_writer_capability.dart';
 
@@ -22,7 +24,7 @@ class CursorHookWriter implements HookWriterCapability {
   @override
   bool get supportsMatcher => true;
   @override
-  bool get supportsHttp => false;
+  bool get supportsHttp => true;
   @override
   bool get supportsPolicy => true;
 
@@ -45,7 +47,28 @@ class CursorHookWriter implements HookWriterCapability {
         continue;
       }
       if (entry.action is HttpHookAction) {
-        warnings.add('hook_http_unsupported_${entry.id}');
+        final http = entry.action as HttpHookAction;
+        final scriptFileName =
+            'teampilot-http-${entry.id}-${entry.event.name}.sh';
+        scripts.add(
+          GeneratedScript(
+            fileName: scriptFileName,
+            content: _httpForwardScript(http, entry.blockOnDecision),
+          ),
+        );
+        final hooksList =
+            List<Object?>.from((hooks[native] as List?) ?? const []);
+        final hookJson = <String, Object?>{
+          'command': "bash '${ctx.hooksDir}/$scriptFileName'",
+          if (entry.timeout != null) 'timeout': entry.timeout!.inSeconds,
+          if (entry.event == HookEvent.stop) 'loop_limit': null,
+        };
+        if (!hooksList.any(
+          (e) => e is Map && e['command'] == hookJson['command'],
+        )) {
+          hooksList.add(hookJson);
+        }
+        hooks[native] = hooksList;
         continue;
       }
       final command = entry.action as CommandHookAction;
@@ -102,6 +125,45 @@ class CursorHookWriter implements HookWriterCapability {
       scripts: scripts,
       warnings: warnings,
     );
+  }
+
+  /// http 类 action 渲染为 bash 转发脚本（cursor hooks.json 仅 command 类）。
+  ///
+  /// `blockOnDecision=false`（agent-status）：stdin 透传 POST，best-effort，
+  /// 恒 exit 0（与旧 CursorHomeAgentStatusOverlay.scriptFor 同语义）。
+  /// `blockOnDecision=true`（bus idle stop）：POST 后响应含 `decision:block`
+  /// 时输出 followup_message（与旧 CursorHomeBusOverlay.idleScript 同语义）。
+  String _httpForwardScript(HttpHookAction http, bool blockOnDecision) {
+    final headerArgs = http.headers.entries
+        .map((e) => "-H '${e.key}: ${e.value}'")
+        .join(' ');
+    if (!blockOnDecision) {
+      return '''
+#!/usr/bin/env bash
+# TeamPilot hook glue (http forward) — do not edit.
+set -u
+payload="\$(cat)"
+[ -z "\$payload" ] && exit 0
+curl -sS -X POST '${http.url}' $headerArgs -H 'Content-Type: application/json' -d "\$payload" >/dev/null 2>&1 || true
+exit 0
+''';
+    }
+    final followup = jsonEncode({
+      'followup_message': TeammateBusMcpHandler.stopRedirectReason,
+    });
+    return '''
+#!/usr/bin/env bash
+# TeamPilot hook glue (bus idle) — do not edit.
+set -u
+cat >/dev/null 2>&1 || true
+resp="\$(curl -sS -X POST $headerArgs '${http.url}' 2>/dev/null || true)"
+case "\$resp" in
+  *'"decision":"block"'*)
+    printf '%s' '$followup'
+    ;;
+esac
+exit 0
+''';
   }
 
   String? _innerCommand(
