@@ -10,7 +10,7 @@ import '../../registry/capabilities/config_profile_capability.dart';
 import '../../../provider/workspace_trust_provisioner.dart';
 import '../../../agent_status/member_agent_status_endpoint.dart';
 import '../../../team_bus/member_bus_idle_endpoint.dart';
-import '../../registry/config_profile/agent_status_hooks.dart';
+import '../../registry/config_profile/hook_seat_context_completer.dart';
 import '../../registry/capabilities/claude_family_hook_registry.dart';
 import '../../registry/capabilities/cli_config_asset.dart';
 import '../../registry/capabilities/hook_registry.dart';
@@ -318,9 +318,18 @@ final class FlashskyaiConfigProfileCapability
       );
       settings = mergeFlashskyaiStopIdleHook(settings, idleScriptPath);
     }
-    if (agentStatus != null) {
-      settings = mergeAgentStatusHooks(settings, member.id, agentStatus);
-    }
+    // 收敛：agent-status 内部托管 hook 经 HookSeatContextCompleter 组装为
+    // managed HookEntry，与 userHooks 一起走统一 writer 渲染。
+    // （flashskyai bus idle 仍走 command exit-2 脚本通道——HookRunner 忽略
+    // http decision:block；Task 19 评估迁移。）
+    const completer = HookSeatContextCompleter();
+    final managedEntries = <HookEntry>[
+      if (agentStatus != null)
+        ...completer.agentStatusHooks(
+          endpoint: agentStatus,
+          memberId: member.id,
+        ),
+    ];
     // 阶段 1.5 接线：flashskyai 走 command 脚本通道（exit-2 语义），
     // 待 stop_idle_hook 迁移时启用（当前 FlashskyaiCliTool 未挂 HookRegistry，
     // capability<HookRegistry> 恒 null，本块惰性）。
@@ -339,10 +348,10 @@ final class FlashskyaiConfigProfileCapability
     }
     final hookWriter = CliToolRegistry.builtIn()
         .capability<HookWriterCapability>(CliTool.flashskyai);
-    if (hookWriter != null && userHooks.isNotEmpty) {
+    if (hookWriter != null && (managedEntries.isNotEmpty || userHooks.isNotEmpty)) {
       final hooksDir = delegate.joinWork(memberToolDir, 'hooks');
       final result = hookWriter.render(
-        entries: userHooks,
+        entries: [...managedEntries, ...userHooks],
         ctx: HookRenderContext(
           hooksDir: hooksDir,
           runner: delegate.hostEnvironmentForProvision().scriptRunner,

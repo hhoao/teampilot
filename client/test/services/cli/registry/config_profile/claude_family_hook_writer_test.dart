@@ -73,6 +73,27 @@ void main() {
     expect(hook['headers'], {'X-A': 'b'});
   });
 
+  test('http action with matcher renders entry-level matcher', () {
+    const entry = HookEntry(
+      id: 'h5',
+      source: HookSource.managed,
+      event: HookEvent.preToolUse,
+      matcher: '*',
+      action: HttpHookAction(
+        url: 'http://127.0.0.1:1/status?event=PreToolUse',
+        headers: {'X-Member': 'm1'},
+      ),
+    );
+    final result = writer.render(entries: const [entry], ctx: bashCtx('/s/h'));
+    final section = result.configFragments['settings.json']! as Map;
+    final pre = (section['hooks'] as Map)['PreToolUse'] as List;
+    final entryJson = pre.single as Map;
+    expect(entryJson['matcher'], '*');
+    final hook = ((entryJson['hooks'] as List).single) as Map;
+    expect(hook['type'], 'http');
+    expect(hook['url'], contains('event=PreToolUse'));
+  });
+
   test('unsupported event and script-action script file are written', () {
     const entry = HookEntry(
       id: 'h3',

@@ -22,8 +22,7 @@ import '../../../provider/workspace_trust_provisioner.dart';
 import '../../../agent_status/member_agent_status_endpoint.dart';
 import '../../../team_bus/member_bus_idle_endpoint.dart';
 import '../../../team_bus/bus_idle_hooks_capability.dart';
-import '../../registry/config_profile/agent_status_hooks.dart';
-import '../../registry/config_profile/bus_idle_stop_hook.dart';
+import '../../registry/config_profile/hook_seat_context_completer.dart';
 import '../../registry/capabilities/claude_family_hook_registry.dart';
 import '../../registry/capabilities/cli_config_asset.dart';
 import '../../registry/capabilities/hook_registry.dart';
@@ -772,12 +771,18 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       settings,
       mixed: mixed,
     );
-    if (mixed && busIdle != null) {
-      settings = mergeStopIdleHook(settings, member.id, busIdle);
-    }
-    if (agentStatus != null) {
-      settings = mergeAgentStatusHooks(settings, member.id, agentStatus);
-    }
+    // 收敛：内部托管 hook（agent-status / bus idle）经 HookSeatContextCompleter
+    // 组装为 managed HookEntry，与 userHooks 一起走统一 writer 渲染。
+    const completer = HookSeatContextCompleter();
+    final managedEntries = <HookEntry>[
+      if (mixed && busIdle != null)
+        ...completer.busIdleHooks(idle: busIdle, memberId: member.id),
+      if (agentStatus != null)
+        ...completer.agentStatusHooks(
+          endpoint: agentStatus,
+          memberId: member.id,
+        ),
+    ];
     // 迁移期：旧 merge 保留行为的同时并入 Registry 资产渲染。
     // busIdle 占位资产（无 url）在装配点用运行时 endpoint 补全（依赖反转端到端）。
     final hookRegistry = CliToolRegistry.builtIn().capability<HookRegistry>(
@@ -804,10 +809,10 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     final hookWriter = CliToolRegistry.builtIn().capability<HookWriterCapability>(
       CliTool.claude,
     );
-    if (hookWriter != null && userHooks.isNotEmpty) {
+    if (hookWriter != null && (managedEntries.isNotEmpty || userHooks.isNotEmpty)) {
       final hooksDir = delegate.joinWork(memberToolDir, 'hooks');
       final result = hookWriter.render(
-        entries: userHooks,
+        entries: [...managedEntries, ...userHooks],
         ctx: HookRenderContext(
           hooksDir: hooksDir,
           runner: delegate.hostEnvironmentForProvision().scriptRunner,

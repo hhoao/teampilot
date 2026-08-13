@@ -68,7 +68,11 @@ class ClaudeFamilyHookWriter implements HookWriterCapability {
             if (entry.timeout != null)
               'timeout': entry.timeout!.inSeconds,
           };
-          hooksList.add({'hooks': [hookJson]});
+          hooksList.add({
+            if (entry.matcher != null && entry.matcher!.trim().isNotEmpty)
+              'matcher': entry.matcher,
+            'hooks': [hookJson],
+          });
         case CommandHookAction command:
           final inner = _innerCommand(command, entry.id, ctx, scripts);
           if (inner == null) {
