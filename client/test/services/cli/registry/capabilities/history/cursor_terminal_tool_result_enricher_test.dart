@@ -283,4 +283,37 @@ $trailer''';
       expect(part.status, AiToolCallStatus.complete);
     });
   });
+
+  group('needsEnrichment gate', () {
+    const enricher = CursorTerminalToolResultEnricher(
+      shellResolver: ConfigurableAiShellToolTargetResolver(
+        toolNames: {
+          'bash', 'shell', 'shell_command', 'exec_command',
+          'run_shell_command', 'run_terminal_cmd', 'execute',
+        },
+      ),
+    );
+
+    AiToolCallPart part({Object? result}) => AiToolCallPart(
+      toolCallId: 't1',
+      toolName: 'Shell',
+      args: const {'command': 'git status'},
+      result: result,
+    );
+
+    test('true for a part with a missing result', () {
+      expect(enricher.needsEnrichment(part()), isTrue);
+    });
+
+    test('true for a part with a whitespace-only result', () {
+      expect(enricher.needsEnrichment(part(result: '  \n  ')), isTrue);
+    });
+
+    test('false for a part with a real result', () {
+      expect(
+        enricher.needsEnrichment(part(result: 'On branch main')),
+        isFalse,
+      );
+    });
+  });
 }

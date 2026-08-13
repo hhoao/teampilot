@@ -45,6 +45,10 @@ final class OpencodeToolOutputBackfillEnricher implements ToolResultEnricher {
       _coreTruncationMarker.hasMatch(result);
 
   @override
+  bool needsEnrichment(AiToolCallPart part) =>
+      defaultToolResultNeedsEnrichment(this, part);
+
+  @override
   Future<List<AiMessage>> enrich({
     required List<AiMessage> messages,
     required SessionHistoryContext? ctx,

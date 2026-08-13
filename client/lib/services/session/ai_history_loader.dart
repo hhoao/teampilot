@@ -638,20 +638,16 @@ final class AiHistoryLoader {
   static String _cacheKey(String sessionId, String memberId) =>
       '${sessionId.trim()}\u0000${memberId.trim()}';
 
-  /// Enrichers signal their own truncation markers via
-  /// [ToolResultEnricher.matchesTruncationMarker]; skip [enrich] when no part
-  /// carries a marker this enricher cares about.
+  /// Enrichers gate per-part via [ToolResultEnricher.needsEnrichment]; skip
+  /// [enrich] when no part needs it.
   static bool _needsToolResultEnrichment(
     List<AiMessage> messages,
     ToolResultEnricher enricher,
   ) {
     for (final message in messages) {
       for (final part in message.parts) {
-        if (part is AiToolCallPart) {
-          final result = part.result;
-          if (result is String && enricher.matchesTruncationMarker(result)) {
-            return true;
-          }
+        if (part is AiToolCallPart && enricher.needsEnrichment(part)) {
+          return true;
         }
       }
     }
