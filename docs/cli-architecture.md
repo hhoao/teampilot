@@ -32,7 +32,6 @@ services/cli/{cli_name}/
     headless_provision.dart         # HeadlessProvisionCapability
     mcp_config_writer.dart          # McpConfigWriterCapability
     plugin_provisioner.dart         # PluginProvisionerCapability
-    resume_strategy.dart            # SessionResumeCapability
     provider_catalog.dart           # ProviderCatalogCapability（含 defaultOfficialProviderId）
     history/                        # AiHistoryCapability 相关
       ai_history_capability.dart    # 该 CLI 的 AiHistoryCapability 实现
@@ -61,41 +60,44 @@ ProviderForm / CredentialBinding 能力引用；不要在 `widgets/` 下散落 `
 
 ### 共享基础设施
 
-`services/cli/registry/` 目录只保留能力接口定义、解析引擎和**跨 CLI 共享基础设施**，**不包含任何 CLI 特定实现**：
+`services/cli/` 根下的共享辅助（`cli_tool_adapter.dart`、`cli_executable_discovery.dart`）与
+`services/cli/registry/` 共同构成**跨 CLI 共享基础设施**；`registry/` 只保留能力接口定义、
+解析引擎和共享子目录，**不包含任何 CLI 特定实现**：
 
 ```
-registry/
-  cli_capability.dart               # CliCapability marker 接口
-  cli_tool_definition.dart          # CliToolDefinition 抽象接口
-  cli_tool_registry.dart            # 能力解析引擎
-  built_in_cli_tools.dart           # 注册函数 + 必需能力 assert 校验
-  cli_bootstrap.dart                # 运行时服务注入（Map 驱动）
+services/cli/
   cli_tool_adapter.dart             # LaunchArgs 共享辅助（参数切分、路径归一化）
   cli_executable_discovery.dart     # 可执行文件发现（共享）
-  capabilities/                     # 所有能力接口定义
-    launch_args_capability.dart
-    config_profile_capability.dart
-    wait_before_stop_capability.dart
-    provider_display_capability.dart
-    cli_config_ui_capability.dart
-    mcp_config_writer_capability.dart
-    installer_capability.dart
-    headless_run_capability.dart
-    headless_provision_capability.dart
-    plugin_provisioner_capability.dart
-    provider_credential_capability.dart
-    provider_model_capability.dart
-    credential_binding_capability.dart
-    session_resume_capability.dart
-    bus_transport_capability.dart
-    turn_completion_capability.dart
-    ...
-  config_profile/                   # 共享：config profile 作用域 / agent 状态钩子
-  headless/                         # 共享：无头供给支撑
-  installer/                        # 共享：npm / node / termux 安装策略
-  mcp_writers/                      # 共享：MCP 元数据合并
-  plugins/                          # 共享：claude-flavor 插件注册表写入器
-  resources/                        # 共享：默认 ResourceCapability
+  registry/
+    cli_capability.dart             # CliCapability marker 接口
+    cli_tool_definition.dart        # CliToolDefinition 抽象接口
+    cli_tool_registry.dart          # 能力解析引擎
+    built_in_cli_tools.dart         # 注册函数 + 必需能力 assert 校验
+    cli_bootstrap.dart              # 运行时服务注入（Map 驱动）
+    capabilities/                   # 所有能力接口定义
+      launch_args_capability.dart
+      config_profile_capability.dart
+      wait_before_stop_capability.dart
+      provider_display_capability.dart
+      cli_config_ui_capability.dart
+      mcp_config_writer_capability.dart
+      installer_capability.dart
+      headless_run_capability.dart
+      headless_provision_capability.dart
+      plugin_provisioner_capability.dart
+      provider_credential_capability.dart
+      provider_model_capability.dart
+      credential_binding_capability.dart
+      session_resume_capability.dart
+      bus_transport_capability.dart
+      turn_completion_capability.dart
+      ...
+    config_profile/                 # 共享：config profile 作用域 / agent 状态钩子
+    headless/                       # 共享：无头供给支撑
+    installer/                      # 共享：npm / node / termux 安装策略
+    mcp_writers/                    # 共享：MCP 元数据合并
+    plugins/                        # 共享：claude-flavor 插件注册表写入器
+    resources/                      # 共享：默认 ResourceCapability
 ```
 
 共享基础设施（如被 Claude/FlashskyAI/Cursor 共用的 `plugins/claude_flavor_registry_writer.dart`）
