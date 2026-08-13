@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/cli/cursor/capabilities/terminal_behavior.dart';
-import 'package:teampilot/services/terminal/fullscreen_cr_ack_config.dart';
+import 'package:teampilot/services/cli/registry/capabilities/terminal_composer_region.dart';
 import 'package:teampilot/services/terminal/fullscreen_input_screen_probe.dart';
 import 'package:teampilot/services/terminal/fullscreen_pty_automation.dart';
 import 'package:teampilot/services/terminal/fullscreen_pty_delivery_port.dart';
@@ -249,10 +248,7 @@ void main() {
     });
 
     test('anchorCellClears never skips reinject via guard', () async {
-      final port = FakeFullscreenPtyDeliveryPort(
-        crsToClear: 999,
-        composerChromeEmptyOverride: true,
-      );
+      final port = FakeFullscreenPtyDeliveryPort(crsToClear: 999);
 
       final outcome = await automation.deliverPasteAndSubmit(
         port: port,
@@ -315,13 +311,43 @@ final class _CursorTranscriptAfterSubmitPort
   int get viewportRows => 24;
 
   @override
-  FullscreenCrAckConfig get crAckConfig => FullscreenCrAckConfig(
-    strategy: const CursorTerminalBehavior().fullscreenCrAckStrategy,
-    composerPrefix: const CursorTerminalBehavior().fullscreenComposerPrefix,
-  );
+  FullscreenComposerRegionSpec get composerRegion =>
+      const FullscreenComposerRegionSpec(
+        submitSemantics: ComposerSubmitSemantics.regionMovedDown,
+        prefixes: ['→'],
+      );
+
+  @override
+  bool get isAcked => false;
 
   @override
   Future<void> syncDisplayGrid() async {}
+
+  @override
+  ComposerRegion? locateComposerRegion({int scanRows = 24}) =>
+      _submitted
+          ? const ComposerRegion(
+              topRow: 2, bottomRow: 2, leftCol: 0, rightCol: 200,
+            )
+          : const ComposerRegion(
+              topRow: 0, bottomRow: 0, leftCol: 0, rightCol: 200,
+            );
+
+  @override
+  bool regionContainsNeedle(ComposerRegion region, String needle) =>
+      _staged != null && _staged!.contains(needle);
+
+  @override
+  bool isComposerRegionEmpty(ComposerRegion region) =>
+      _staged == null || _staged!.trim().isEmpty;
+
+  @override
+  bool needleAppearsOutsideRegion(
+    ComposerRegion region,
+    String needle, {
+    int scanRows = 24,
+  }) =>
+      false;
 
   @override
   FullscreenPromptAnchor? locateNeedle(String needle, {int scanRows = 24}) {
@@ -340,17 +366,6 @@ final class _CursorTranscriptAfterSubmitPort
   @override
   bool isAtAnchor(FullscreenPromptAnchor anchor) {
     return _staged != null && _staged!.contains(anchor.needle);
-  }
-
-  @override
-  bool isSubmittedAfterCr(FullscreenPromptAnchor anchor, {int scanRows = 24}) {
-    if (!_submitted) return false;
-    return switch (crAckConfig.strategy) {
-      FullscreenCrAckStrategy.timed => true,
-      FullscreenCrAckStrategy.anchorCellClears => !isAtAnchor(anchor),
-      FullscreenCrAckStrategy.composerMovesDown =>
-        crAckConfig.composerPrefix == '→',
-    };
   }
 
   @override
@@ -400,13 +415,39 @@ final class _ComposerMovesDownStuckButCommittedPort
   int get viewportRows => 24;
 
   @override
-  FullscreenCrAckConfig get crAckConfig => FullscreenCrAckConfig(
-    strategy: FullscreenCrAckStrategy.composerMovesDown,
-    composerPrefix: '→',
-  );
+  FullscreenComposerRegionSpec get composerRegion =>
+      const FullscreenComposerRegionSpec(
+        submitSemantics: ComposerSubmitSemantics.regionMovedDown,
+        prefixes: ['→'],
+      );
+
+  @override
+  bool get isAcked => false;
 
   @override
   Future<void> syncDisplayGrid() async {}
+
+  @override
+  ComposerRegion? locateComposerRegion({int scanRows = 24}) =>
+      const ComposerRegion(
+        topRow: 0, bottomRow: 0, leftCol: 0, rightCol: 200,
+      );
+
+  @override
+  bool regionContainsNeedle(ComposerRegion region, String needle) =>
+      _composerBody != null && _composerBody!.contains(needle);
+
+  @override
+  bool isComposerRegionEmpty(ComposerRegion region) =>
+      _composerBody == null || _composerBody!.trim().isEmpty;
+
+  @override
+  bool needleAppearsOutsideRegion(
+    ComposerRegion region,
+    String needle, {
+    int scanRows = 24,
+  }) =>
+      _transcript != null && _transcript!.contains(needle);
 
   @override
   FullscreenPromptAnchor? locateNeedle(String needle, {int scanRows = 24}) {
@@ -426,10 +467,6 @@ final class _ComposerMovesDownStuckButCommittedPort
   @override
   bool isAtAnchor(FullscreenPromptAnchor anchor) =>
       locateNeedle(anchor.needle) != null;
-
-  @override
-  bool isSubmittedAfterCr(FullscreenPromptAnchor anchor, {int scanRows = 24}) =>
-      false;
 
   @override
   bool isComposerChromeEmpty({int scanRows = 24}) =>
@@ -478,13 +515,49 @@ final class _ComposerMovesDownStuckStagedThenAckPort
   int get viewportRows => 24;
 
   @override
-  FullscreenCrAckConfig get crAckConfig => FullscreenCrAckConfig(
-    strategy: FullscreenCrAckStrategy.composerMovesDown,
-    composerPrefix: '→',
-  );
+  FullscreenComposerRegionSpec get composerRegion =>
+      const FullscreenComposerRegionSpec(
+        submitSemantics: ComposerSubmitSemantics.regionMovedDown,
+        prefixes: ['→'],
+      );
+
+  @override
+  bool get isAcked => false;
 
   @override
   Future<void> syncDisplayGrid() async {}
+
+  @override
+  ComposerRegion? locateComposerRegion({int scanRows = 24}) {
+    if (staged != null) {
+      return const ComposerRegion(
+        topRow: 0, bottomRow: 0, leftCol: 0, rightCol: 200,
+      );
+    }
+    if (_round >= 1) {
+      // Committed: composer repainted below the transcript.
+      return const ComposerRegion(
+        topRow: 2, bottomRow: 2, leftCol: 0, rightCol: 200,
+      );
+    }
+    return null;
+  }
+
+  @override
+  bool regionContainsNeedle(ComposerRegion region, String needle) =>
+      staged != null && staged!.contains(needle);
+
+  @override
+  bool isComposerRegionEmpty(ComposerRegion region) =>
+      staged == null || staged!.trim().isEmpty;
+
+  @override
+  bool needleAppearsOutsideRegion(
+    ComposerRegion region,
+    String needle, {
+    int scanRows = 24,
+  }) =>
+      false;
 
   @override
   FullscreenPromptAnchor? locateNeedle(String needle, {int scanRows = 24}) {
@@ -503,12 +576,6 @@ final class _ComposerMovesDownStuckStagedThenAckPort
   @override
   bool isAtAnchor(FullscreenPromptAnchor anchor) =>
       staged != null && staged!.contains(anchor.needle);
-
-  @override
-  bool isSubmittedAfterCr(FullscreenPromptAnchor anchor, {int scanRows = 24}) {
-    // Round 0 (first paste): never ACK. After reinject paste, ACK on CR.
-    return _round >= 1 && crCount > 0 && staged == null;
-  }
 
   @override
   bool isComposerChromeEmpty({int scanRows = 24}) =>
@@ -556,13 +623,46 @@ final class _ComposerMovesDownEmptyNoNeedleThenAckPort
   int get viewportRows => 24;
 
   @override
-  FullscreenCrAckConfig get crAckConfig => FullscreenCrAckConfig(
-    strategy: FullscreenCrAckStrategy.composerMovesDown,
-    composerPrefix: '→',
-  );
+  FullscreenComposerRegionSpec get composerRegion =>
+      const FullscreenComposerRegionSpec(
+        submitSemantics: ComposerSubmitSemantics.regionMovedDown,
+        prefixes: ['→'],
+      );
+
+  @override
+  bool get isAcked => false;
 
   @override
   Future<void> syncDisplayGrid() async {}
+
+  @override
+  ComposerRegion? locateComposerRegion({int scanRows = 24}) {
+    if (staged == null && pasteCount >= 2 && crCount > 0) {
+      // Committed on the reinject round: composer repainted below.
+      return const ComposerRegion(
+        topRow: 2, bottomRow: 2, leftCol: 0, rightCol: 200,
+      );
+    }
+    return const ComposerRegion(
+      topRow: 0, bottomRow: 0, leftCol: 0, rightCol: 200,
+    );
+  }
+
+  @override
+  bool regionContainsNeedle(ComposerRegion region, String needle) =>
+      staged != null && staged!.contains(needle);
+
+  @override
+  bool isComposerRegionEmpty(ComposerRegion region) =>
+      staged == null || staged!.trim().isEmpty;
+
+  @override
+  bool needleAppearsOutsideRegion(
+    ComposerRegion region,
+    String needle, {
+    int scanRows = 24,
+  }) =>
+      false;
 
   @override
   FullscreenPromptAnchor? locateNeedle(String needle, {int scanRows = 24}) {
@@ -581,12 +681,6 @@ final class _ComposerMovesDownEmptyNoNeedleThenAckPort
   @override
   bool isAtAnchor(FullscreenPromptAnchor anchor) =>
       staged != null && staged!.contains(anchor.needle);
-
-  @override
-  bool isSubmittedAfterCr(FullscreenPromptAnchor anchor, {int scanRows = 24}) {
-    // ACK only after second paste's CR (pasteCount >= 2 and cleared).
-    return pasteCount >= 2 && staged == null && crCount > 0;
-  }
 
   @override
   bool isComposerChromeEmpty({int scanRows = 24}) =>
@@ -640,13 +734,41 @@ final class _AnchorCellStuckButHookAckedPort
   int get viewportRows => 24;
 
   @override
-  FullscreenCrAckConfig get crAckConfig => const FullscreenCrAckConfig(
-    strategy: FullscreenCrAckStrategy.anchorCellClears,
-    composerPrefix: '\u2503',
-  );
+  FullscreenComposerRegionSpec get composerRegion =>
+      const FullscreenComposerRegionSpec(
+        submitSemantics: ComposerSubmitSemantics.regionCleared,
+        prefixes: ['\u2503'],
+      );
+
+  @override
+  bool get isAcked => false;
 
   @override
   Future<void> syncDisplayGrid() async {}
+
+  @override
+  ComposerRegion? locateComposerRegion({int scanRows = 24}) =>
+      staged == null
+          ? null
+          : const ComposerRegion(
+              topRow: 0, bottomRow: 0, leftCol: 0, rightCol: 200,
+            );
+
+  @override
+  bool regionContainsNeedle(ComposerRegion region, String needle) =>
+      staged != null && staged!.contains(needle);
+
+  @override
+  bool isComposerRegionEmpty(ComposerRegion region) =>
+      staged == null || staged!.trim().isEmpty;
+
+  @override
+  bool needleAppearsOutsideRegion(
+    ComposerRegion region,
+    String needle, {
+    int scanRows = 24,
+  }) =>
+      false;
 
   @override
   FullscreenPromptAnchor? locateNeedle(String needle, {int scanRows = 24}) {
@@ -665,11 +787,6 @@ final class _AnchorCellStuckButHookAckedPort
   @override
   bool isAtAnchor(FullscreenPromptAnchor anchor) =>
       staged != null && staged!.contains(anchor.needle);
-
-  @override
-  bool isSubmittedAfterCr(FullscreenPromptAnchor anchor, {int scanRows = 24}) =>
-      // Stale mirror: never reflects the commit.
-      false;
 
   @override
   bool isComposerChromeEmpty({int scanRows = 24}) => !submitted;

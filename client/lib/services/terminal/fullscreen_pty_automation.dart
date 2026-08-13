@@ -1,4 +1,4 @@
-import 'fullscreen_cr_ack_config.dart';
+import '../cli/registry/capabilities/terminal_composer_region.dart';
 import 'fullscreen_input_screen_probe.dart';
 import 'fullscreen_pty_delivery_port.dart';
 import 'fullscreen_reinject_guard.dart';
@@ -127,6 +127,7 @@ class FullscreenPtyAutomation {
       }
 
       await port.syncDisplayGrid();
+      final beforeCrRegion = port.locateComposerRegion();
       await port.clearStagedInput();
       await Future<void>.delayed(_timing.afterClear);
       await port.pasteText(text);
@@ -138,15 +139,24 @@ class FullscreenPtyAutomation {
       );
 
       if (anchor == null) {
-        if (reinject < maxReinject) continue;
-        _logProbeMiss(port, needle, text, outcome: 'pasteNotFound');
-        return FullscreenPtyDeliveryOutcome.pasteNotFound;
+        // Region-scoped fallback: staged inside the region also ACKs.
+        await port.syncDisplayGrid();
+        final regionAck = port.locateComposerRegion();
+        if (regionAck != null &&
+            port.regionContainsNeedle(regionAck, needle)) {
+          // paste confirmed inside region — proceed to CR
+        } else {
+          if (reinject < maxReinject) continue;
+          _logProbeMiss(port, needle, text, outcome: 'pasteNotFound');
+          return FullscreenPtyDeliveryOutcome.pasteNotFound;
+        }
       }
 
-      final crOutcome = await _pollCrUntilAnchorClears(
+      final crOutcome = await _pollCrUntilSubmitted(
         port,
-        anchor,
+        needle,
         isAcked: isAcked,
+        beforeCrRegion: beforeCrRegion,
       );
       switch (crOutcome) {
         case FullscreenPtyDeliveryOutcome.submitted:
@@ -175,14 +185,16 @@ class FullscreenPtyAutomation {
   ) async {
     await port.syncDisplayGrid();
     final scanRows = _probeScanRows(port);
+    final region = port.locateComposerRegion(scanRows: scanRows);
     final skip = shouldSkipReinjectAfterCrStuck(
-      strategy: port.crAckConfig.strategy,
-      composerChromeEmpty: port.isComposerChromeEmpty(scanRows: scanRows),
+      semantics: port.composerRegion.submitSemantics,
+      composerRegionEmpty: region != null &&
+          port.isComposerRegionEmpty(region),
       needleStillVisible: port.locateNeedle(needle, scanRows: scanRows) != null,
     );
     if (skip) {
       appLogger.i(
-        '[pty] skip-reinject composerMovesDown empty+needle '
+        '[pty] skip-reinject regionMovedDown empty+needle '
         'textChars=${text.length}',
       );
     }
@@ -208,10 +220,11 @@ class FullscreenPtyAutomation {
         return FullscreenPtyDeliveryOutcome.pasteNotFound;
       }
 
-      final outcome = await _pollCrUntilAnchorClears(
+      final outcome = await _pollCrUntilSubmitted(
         port,
-        anchor,
+        needle,
         maxAttempts: 0,
+        beforeCrRegion: port.locateComposerRegion(),
       );
       switch (outcome) {
         case FullscreenPtyDeliveryOutcome.submitted:
@@ -247,13 +260,15 @@ class FullscreenPtyAutomation {
     );
   }
 
-  Future<FullscreenPtyDeliveryOutcome> _pollCrUntilAnchorClears(
+  Future<FullscreenPtyDeliveryOutcome> _pollCrUntilSubmitted(
     FullscreenPtyDeliveryPort port,
-    FullscreenPromptAnchor anchor, {
+    String needle, {
     int? maxAttempts,
     bool Function()? isAcked,
+    ComposerRegion? beforeCrRegion,
   }) async {
-    if (port.crAckConfig.strategy == FullscreenCrAckStrategy.timed) {
+    final spec = port.composerRegion;
+    if (spec.submitSemantics == ComposerSubmitSemantics.timed) {
       await port.submitCr();
       await Future<void>.delayed(_timing.afterCr);
       return FullscreenPtyDeliveryOutcome.submitted;
@@ -271,7 +286,12 @@ class FullscreenPtyAutomation {
         // reinject) instead of burning crStuck attempts on a stale mirror.
         if (isAcked?.call() ?? false) return true;
         await port.syncDisplayGrid();
-        return port.isSubmittedAfterCr(anchor, scanRows: scanRows);
+        return _regionSubmitted(
+          port,
+          needle,
+          scanRows: scanRows,
+          beforeCrRegion: beforeCrRegion,
+        );
       },
       onRetry: (_) async => port.submitCr(),
     );
@@ -280,6 +300,36 @@ class FullscreenPtyAutomation {
       PtyAckPollOutcome.aborted => FullscreenPtyDeliveryOutcome.aborted,
       PtyAckPollOutcome.exhausted => FullscreenPtyDeliveryOutcome.crStuck,
     };
+  }
+
+  bool _regionSubmitted(
+    FullscreenPtyDeliveryPort port,
+    String needle, {
+    required int scanRows,
+    ComposerRegion? beforeCrRegion,
+  }) {
+    final spec = port.composerRegion;
+    final region = port.locateComposerRegion(scanRows: scanRows);
+    switch (spec.submitSemantics) {
+      case ComposerSubmitSemantics.regionCleared:
+        if (region == null) return false;
+        return !port.regionContainsNeedle(region, needle);
+      case ComposerSubmitSemantics.regionMovedDown:
+        return _hasComposerRegionBelow(port, beforeCrRegion, scanRows: scanRows);
+      case ComposerSubmitSemantics.timed:
+        return true;
+    }
+  }
+
+  bool _hasComposerRegionBelow(
+    FullscreenPtyDeliveryPort port,
+    ComposerRegion? previous, {
+    required int scanRows,
+  }) {
+    final current = port.locateComposerRegion(scanRows: scanRows);
+    if (current == null) return false;
+    if (previous == null) return false;
+    return current.topRow > previous.bottomRow;
   }
 
   /// Polls the mirror grid after paste — PTY echo and [syncDisplayGrid] can lag

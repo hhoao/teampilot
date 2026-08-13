@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/services/cli/registry/capabilities/terminal_composer_region.dart';
 import 'package:teampilot/services/team_bus/team_bus.dart';
-import 'package:teampilot/services/terminal/fullscreen_cr_ack_config.dart';
 import 'package:teampilot/services/terminal/fullscreen_pty_automation.dart';
 import 'package:teampilot/services/terminal/fullscreen_pty_delivery_port.dart';
 import 'package:teampilot/services/terminal/member_pty_inject_service.dart';
@@ -33,7 +33,7 @@ Future<FullscreenPtyDeliveryOutcome> _deliver(
     text: '1',
     pasteSettle: Duration.zero,
     aborted: () => false,
-    crAckConfig: const FullscreenCrAckConfig.productionDefault(),
+    composerRegion: fullscreenDefaultComposerSpec,
   );
 }
 

@@ -12,7 +12,6 @@ final class FakeFullscreenPtyDeliveryPort implements FullscreenPtyDeliveryPort {
     this.visibleAfterPaste = true,
     this.collapseAsClaudePaste = false,
     this.composerRegion = fullscreenDefaultComposerSpec,
-    this.composerChromeEmptyOverride,
     this.isAckedOverride,
   });
 
@@ -23,9 +22,6 @@ final class FakeFullscreenPtyDeliveryPort implements FullscreenPtyDeliveryPort {
   final bool collapseAsClaudePaste;
   @override
   final FullscreenComposerRegionSpec composerRegion;
-
-  /// When set, [isComposerChromeEmpty] returns this value instead of inferring.
-  final bool? composerChromeEmptyOverride;
 
   final bool? isAckedOverride;
 
@@ -47,12 +43,10 @@ final class FakeFullscreenPtyDeliveryPort implements FullscreenPtyDeliveryPort {
   Future<void> syncDisplayGrid() async {}
 
   @override
-  ComposerRegion? locateComposerRegion({int scanRows = 24}) {
-    if (staged == null) return null;
-    return const ComposerRegion(
-      topRow: 0, bottomRow: 0, leftCol: 0, rightCol: 200,
-    );
-  }
+  ComposerRegion? locateComposerRegion({int scanRows = 24}) =>
+      const ComposerRegion(
+        topRow: 0, bottomRow: 0, leftCol: 0, rightCol: 200,
+      );
 
   @override
   bool regionContainsNeedle(ComposerRegion region, String needle) =>
@@ -97,17 +91,7 @@ final class FakeFullscreenPtyDeliveryPort implements FullscreenPtyDeliveryPort {
   }
 
   @override
-  bool isSubmittedAfterCr(FullscreenPromptAnchor anchor, {int scanRows = 24}) {
-    if (crCount < crsToClear) return false;
-    if (staged == null) return true;
-    return !staged!.contains(anchor.needle);
-  }
-
-  @override
   bool isComposerChromeEmpty({int scanRows = 24}) {
-    if (composerChromeEmptyOverride != null) {
-      return composerChromeEmptyOverride!;
-    }
     final prefix = composerRegion.prefixes.isEmpty
         ? null
         : composerRegion.prefixes.first;

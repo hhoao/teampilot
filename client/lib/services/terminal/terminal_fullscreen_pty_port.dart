@@ -87,21 +87,6 @@ final class TerminalFullscreenPtyPort implements FullscreenPtyDeliveryPort {
       _probe.isFullscreenPromptAtAnchor(anchor, composerPrefix: _composerPrefix);
 
   @override
-  bool isSubmittedAfterCr(FullscreenPromptAnchor anchor, {int scanRows = 24}) {
-    // Interim (Task 4): region-scoped submit check replacing the retired
-    // strategy switch — the staged needle must have left the composer region.
-    // The automation re-ACKs via region probes after Task 5; kept here for
-    // safety until that migration lands.
-    if (_composerRegion.submitSemantics == ComposerSubmitSemantics.timed) {
-      return true;
-    }
-    final region =
-        _probe.locateComposerRegion(_composerRegion, scanRows: scanRows);
-    if (region == null) return false;
-    return !_probe.regionContainsNeedle(region, anchor.needle);
-  }
-
-  @override
   bool isComposerChromeEmpty({int scanRows = 24}) {
     final prefix = _composerPrefix?.trim();
     if (prefix == null || prefix.isEmpty) return false;
