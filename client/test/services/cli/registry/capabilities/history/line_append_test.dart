@@ -29,6 +29,14 @@ const _expectedConsumed = {
     true, // assistant text (merges into previous)
     false, // turn_ended
   ],
+  CliTool.flashskyai: [
+    true, // user text
+    true, // assistant tool_use (adds msg_d32cf90b…)
+    true, // assistant tool_use (merges into previous)
+    true, // assistant tool_use (merges into previous)
+    true, // user tool_result (mutates call_01)
+    true, // user tool_result (mutates call_02)
+  ],
 };
 
 Future<String> _fixtureContent(String fixture) async {
@@ -70,6 +78,7 @@ void main() {
     (CliTool.claude, 'claude/basic.jsonl'),
     (CliTool.codex, 'codex/basic.jsonl'),
     (CliTool.cursor, 'cursor/agent_transcript_no_tool_id.jsonl'),
+    (CliTool.flashskyai, 'flashskyai/streamed_tools.jsonl'),
   ]) {
     test('$cli: lineAppend replays fixture identically to full parse', () async {
       final capability =
@@ -94,6 +103,12 @@ void main() {
         sameMessageListContent(finalizedReplay, adapterMessages),
         isTrue,
         reason: 'lineAppend replay + finalize must equal adapter.parse',
+      );
+      expect(
+        finalizedReplay.map((m) => m.id),
+        adapterMessages.map((m) => m.id),
+        reason: 'incremental lineAppend must produce the same message id '
+            'sequence as full parse',
       );
     });
 
