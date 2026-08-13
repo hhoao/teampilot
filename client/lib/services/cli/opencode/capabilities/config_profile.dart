@@ -21,8 +21,11 @@ import '../../../team_bus/mcp/bus_bridge_locator.dart';
 import '../../../team_bus/mcp/teammate_bus_mcp_config.dart';
 import '../../registry/capabilities/cli_effort_capability.dart';
 import '../../registry/capabilities/config_profile_capability.dart';
+import '../../registry/capabilities/hook_writer_capability.dart';
+import '../../../hook/glue_script_builder.dart';
 import 'agent_status_plugin.dart';
 import 'idle_plugin.dart';
+import 'opencode_hook_writer.dart';
 
 /// Parses bus idle URL (e.g. `http://127.0.0.1:12345/idle`) to the listening port.
 @visibleForTesting
@@ -461,6 +464,44 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
         sessionId: agentStatus.sessionId,
       );
       changed = true;
+    }
+
+    // User hooks bridge: generated JS plugin subscribing SDK events, plus
+    // glue scripts under `<opencodeDir>/hooks/` (paths referenced by the
+    // plugin's execFile commands). Plugin entry merges into the `plugin`
+    // array, coexisting with agent-status / idle entries (dedup by path).
+    if (ctx.hooks.isNotEmpty) {
+      final writer = const OpencodeHookWriter();
+      final hooksDir = paths.joinWork(opencodeDir, 'hooks');
+      final result = writer.render(
+        entries: ctx.hooks,
+        ctx: HookRenderContext(
+          hooksDir: hooksDir,
+          runner: paths.hostEnvironmentForProvision().scriptRunner,
+          glueBuilder: const GlueScriptBuilder(),
+        ),
+      );
+      await paths.fs.ensureDir(hooksDir);
+      for (final script in result.scripts) {
+        final target = script.fileName == opencodeUserHooksPluginFileName
+            ? paths.joinWork(opencodeDir, script.fileName)
+            : paths.joinWork(hooksDir, script.fileName);
+        await paths.fs.atomicWrite(target, script.content);
+      }
+      final fragment =
+          result.configFragments['opencode.json'] as Map<String, Object?>?;
+      if (fragment != null) {
+        config = mergeOpencodePluginEntries(
+          config,
+          ((fragment['plugin'] as List?) ?? const []).map(
+            (e) => e is String ? e : e.toString(),
+          ),
+        );
+        changed = true;
+      }
+      for (final warning in result.warnings) {
+        appLogger.d('[hook-writer] opencode $warning');
+      }
     }
 
     if (changed) {
