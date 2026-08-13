@@ -234,6 +234,59 @@ void main() {
     });
   });
 
+  group('生效映射集精确钉死（Task 2 审计补齐）', () {
+    // cursor 生效集 = 共享集 + strreplace/editnotebook/path/contents +
+    // shell 全覆写（7 名）；opencode camelCase 键（filePath/oldString/
+    // newString）不得泄漏进 cursor。
+    test('opencode camelCase 键在 cursor 不解析（StrReplace/Write/Read）', () {
+      expect(
+        cursor.editResolver.resolve(part(
+          'StrReplace',
+          args: {'filePath': 'a.txt', 'oldString': 'x', 'newString': 'y'},
+        )),
+        isNull,
+        reason: 'filePath/oldString/newString 为 opencode 特有 camelCase',
+      );
+      expect(
+        cursor.editResolver.resolve(part(
+          'Write',
+          args: {'filePath': 'a.txt', 'content': 'c'},
+        )),
+        isNull,
+        reason: 'Write 的 filePath 不在 cursor 生效键集（file_path/path）',
+      );
+      expect(
+        cursor.fileResolver.resolve(part('Read', args: {'filePath': 'a.dart'})),
+        isNull,
+        reason: 'Read 的 filePath 不在 cursor 生效键集',
+      );
+    });
+
+    test('shell 生效集恰为 7 名（共享 3 + cursor 覆写 4），越界名不解析', () {
+      for (final name in [
+        'bash',
+        'shell',
+        'execute',
+        'run_terminal_cmd',
+        'shell_command',
+        'exec_command',
+        'run_shell_command',
+      ]) {
+        final target =
+            cursor.shellResolver.resolve(part(name, args: {'command': 'pwd'}));
+        expect(target, isNotNull, reason: '$name 应在 cursor 生效集');
+        expect(target!.command, 'pwd');
+      }
+      for (final name in ['zsh', 'sh', 'pwsh']) {
+        expect(
+          cursor.shellResolver.resolve(part(name, args: {'command': 'pwd'})),
+          isNull,
+          reason: '$name 不在 cursor 生效集',
+        );
+      }
+    });
+  });
+
   group('subagent', () {
     test('agent/task 归类为 subagent', () {
       expect(

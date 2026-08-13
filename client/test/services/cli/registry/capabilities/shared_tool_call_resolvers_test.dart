@@ -185,6 +185,25 @@ void main() {
         isNull,
       );
     });
+
+    test('cursor 特有键 path/contents 不在共享层解析（G-4 下沉项）', () {
+      expect(
+        shared.editResolver.resolve(part(
+          'Edit',
+          args: {'path': 'a.txt', 'old_string': 'x', 'new_string': 'y'},
+        )),
+        isNull,
+        reason: 'path 为 cursor 特有键，共享 editPathKeys 无',
+      );
+      expect(
+        shared.editResolver.resolve(part(
+          'Write',
+          args: {'file_path': 'a.txt', 'contents': 'b'},
+        )),
+        isNull,
+        reason: 'contents 为 cursor 特有键，共享 writeContentKeys 无',
+      );
+    });
   });
 
   group('下沉项在拥有者 CLI 可解析', () {

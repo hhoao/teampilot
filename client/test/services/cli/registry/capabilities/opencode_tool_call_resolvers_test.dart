@@ -192,6 +192,61 @@ void main() {
     });
   });
 
+  group('生效映射集精确钉死（Task 2 审计补齐）', () {
+    // opencode 生效集 = 共享集 + camelCase 追加（filePath/oldString/
+    // newString）；cursor 特有键（path/contents）不得泄漏进 opencode。
+    test('edit/write/read 的 path 与 write contents 使用 cursor 特有键时不解析',
+        () {
+      expect(
+        resolvers.editResolver.resolve(toolCall('edit', {
+          'path': '/a.txt',
+          'oldString': 'x',
+          'newString': 'y',
+        })),
+        isNull,
+        reason: 'path 为 cursor 特有键（G-4），opencode 生效键集无',
+      );
+      expect(
+        resolvers.editResolver.resolve(toolCall('write', {
+          'filePath': '/a.txt',
+          'contents': 'c',
+        })),
+        isNull,
+        reason: 'contents 为 cursor 特有键（G-4），opencode 生效键集无',
+      );
+      expect(
+        resolvers.fileResolver.resolve(toolCall('read', {'path': '/a.dart'})),
+        isNull,
+        reason: 'read 的 path 不在 opencode 生效键集（file_path/filePath）',
+      );
+    });
+
+    test('shell 生效集恰为共享集 {bash, shell_command, exec_command}，'
+        'cursor 覆写名不泄漏', () {
+      for (final name in ['bash', 'shell_command', 'exec_command']) {
+        final target =
+            resolvers.shellResolver.resolve(toolCall(name, {'command': 'pwd'}));
+        expect(target, isNotNull, reason: '$name 应在 opencode 生效集');
+        expect(target!.command, 'pwd');
+      }
+      for (final name in [
+        'shell',
+        'execute',
+        'run_terminal_cmd',
+        'run_shell_command',
+        'zsh',
+        'sh',
+      ]) {
+        expect(
+          resolvers.shellResolver
+              .resolve(toolCall(name, {'command': 'pwd'})),
+          isNull,
+          reason: '$name 不在 opencode 生效集',
+        );
+      }
+    });
+  });
+
   group('subagentToolNames', () {
     test('opencode subagent set is exactly {task}', () {
       expect(const OpencodeAiHistoryCapability().subagentToolNames, {'task'});
