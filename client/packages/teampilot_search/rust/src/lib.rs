@@ -156,10 +156,20 @@ unsafe fn fill_chunk(h: &mut TpSearchHandle, chunk: &mut TpSearchChunk) {
         let path_len = path.as_bytes().len() + 1;
         let rel_len = rel.as_bytes().len() + 1;
         let text_len = text.as_bytes().len() + 1;
-        let need = path_len + rel_len + text_len;
-        if need > str_cap.saturating_sub(str_off) {
-            break; // buffer full; remainder stays pending
+        let remaining = str_cap.saturating_sub(str_off);
+
+        // Pathological case: the paths alone exceed a fresh buffer, so this
+        // match can never be serialized. Drop it instead of stalling.
+        if path_len + rel_len > str_cap {
+            h.pending.remove(0);
+            continue;
         }
+        // The head fits in a fresh buffer but not in the current remainder:
+        // the buffer is genuinely full, leave it pending for the next call.
+        if path_len + rel_len > remaining {
+            break;
+        }
+
         str_off = match write_string(str_buf, str_off, &d.path) {
             Ok(o) => o,
             Err(_) => break,
@@ -170,9 +180,24 @@ unsafe fn fill_chunk(h: &mut TpSearchHandle, chunk: &mut TpSearchChunk) {
             Err(_) => break,
         };
         let text_off = str_off;
-        str_off = match write_string(str_buf, str_off, &d.line_text) {
-            Ok(o) => o,
-            Err(_) => break,
+        let text_remaining = str_cap - str_off;
+        let (match_start, match_end) = if text_len <= text_remaining {
+            str_off = match write_string(str_buf, str_off, &d.line_text) {
+                Ok(o) => o,
+                Err(_) => break,
+            };
+            (d.match_start as u32, d.match_end as u32)
+        } else {
+            // The line text does not fit in the chunk buffer: emit a
+            // text-less placeholder (empty line_text, zeroed offsets) so
+            // the match is still reported and the head stays drainable.
+            // With no byte left, the NUL terminating relative_path already
+            // reads as an empty string.
+            if text_remaining > 0 {
+                str_buf[str_off] = 0;
+                str_off += 1;
+            }
+            (0, 0)
         };
         let base = chunk.string_buf as usize;
         m_arr[m_idx] = TpSearchMatch {
@@ -180,8 +205,8 @@ unsafe fn fill_chunk(h: &mut TpSearchHandle, chunk: &mut TpSearchChunk) {
             relative_path: (base + rel_off) as *const c_char,
             line_number: d.line_number,
             line_text: (base + text_off) as *const c_char,
-            match_start: d.match_start as u32,
-            match_end: d.match_end as u32,
+            match_start,
+            match_end,
         };
         m_idx += 1;
         h.pending.remove(0);

@@ -106,4 +106,32 @@ void main() {
       throwsA(anything),
     );
   });
+
+  test('matching line over 64KiB emits text-less placeholder and completes',
+      () async {
+    File('${fixture.path}/big_line.txt')
+        .writeAsStringSync('${'x' * (70 * 1024)} target\n');
+    final matches = await engine()
+        .search(fixture.path, const TpSearchOptions(pattern: 'target'))
+        .toList();
+    final m = matches.singleWhere((m) => m.relativePath == 'big_line.txt');
+    expect(m.lineNumber, 1);
+    expect(m.lineText, '');
+    expect(m.matchStart, 0);
+    expect(m.matchEnd, 0);
+  });
+
+  test('matching line over 1MB emits text-less placeholder with line number',
+      () async {
+    File('${fixture.path}/huge_line.txt')
+        .writeAsStringSync('start${'x' * (1024 * 1024 + 64)} target\n');
+    final matches = await engine()
+        .search(fixture.path, const TpSearchOptions(pattern: 'target'))
+        .toList();
+    final m = matches.singleWhere((m) => m.relativePath == 'huge_line.txt');
+    expect(m.lineNumber, 1);
+    expect(m.lineText, '');
+    expect(m.matchStart, 0);
+    expect(m.matchEnd, 0);
+  });
 }
