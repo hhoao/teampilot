@@ -30,6 +30,7 @@ import '../../services/cli/registry/capabilities/turn_interrupt_capability.dart'
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../services/compose/compose_at_file_refs.dart';
+import '../../services/compose/compose_clip.dart';
 import '../../services/compose/compose_file_attach.dart';
 import '../../services/compose/compose_file_drop_ingestor.dart';
 import '../../services/compose/compose_landing_bundle.dart';
@@ -66,6 +67,7 @@ class SessionChatComposeSection extends StatelessWidget {
     required this.shellMemberId,
     required this.composeController,
     required this.composeFocusNode,
+    this.composeClip,
     required this.voiceController,
     required this.isSubmitting,
     required this.isEnhancing,
@@ -96,6 +98,11 @@ class SessionChatComposeSection extends StatelessWidget {
   final String shellMemberId;
   final TextEditingController composeController;
   final FocusNode composeFocusNode;
+
+  /// Optional paste-collapse buffer. The visible controller holds only the
+  /// follow-up text while collapsed; canSubmit and the submitted message
+  /// account for the block.
+  final ComposeClip? composeClip;
   final SessionVoiceController voiceController;
   final bool isSubmitting;
   final bool isEnhancing;
@@ -163,7 +170,9 @@ class SessionChatComposeSection extends StatelessWidget {
       session.sessionId,
       shellMemberId,
     );
-    final composeTextEmpty = composeController.text.trim().isEmpty;
+    final composeTextEmpty =
+        composeController.text.trim().isEmpty &&
+        !(composeClip?.collapsed ?? false);
     final lockedCli = _lockedCli(
       session: session,
       team: team,
@@ -322,7 +331,12 @@ class SessionChatComposeSection extends StatelessWidget {
                           canSubmit: canSubmit,
                           isSubmitting: isSubmitting,
                           onSubmit: () => unawaited(
-                            onSubmit(composeController.text.trim()),
+                            onSubmit(
+                              composeClip?.composeMessage(
+                                    composeController.text.trim(),
+                                  ) ??
+                                  composeController.text.trim(),
+                            ),
                           ),
                           onChanged: (_) => onComposeChanged(),
                           chrome: BoundComposeChrome(

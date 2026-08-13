@@ -38,6 +38,7 @@ import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/terminal/session_member_cli_resolver.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../services/cli/tasks/cli_task_board_controller.dart';
+import '../../services/compose/compose_clip.dart';
 import '../../services/compose/compose_draft_cache.dart';
 import '../../services/compose/compose_file_attach.dart';
 import '../../services/compose/compose_prompt_enhance.dart';
@@ -124,6 +125,7 @@ class SessionChatView extends StatefulWidget {
 
 class _SessionChatViewState extends State<SessionChatView> {
   final _controller = TextEditingController();
+  final _clip = ComposeClip();
   late final FocusNode _focusNode;
   late final SessionVoiceController _voice;
   final _headlessAi = HeadlessAiService();
@@ -319,6 +321,7 @@ class _SessionChatViewState extends State<SessionChatView> {
     _taskBoardController = null;
     unawaited(_mailboxQueued.close());
     _subagentPreview.dispose();
+    _clip.dispose();
     _controller.dispose();
     _focusNode.dispose();
     _findQueryController.dispose();
@@ -791,6 +794,7 @@ class _SessionChatViewState extends State<SessionChatView> {
       onEnqueue: (queued) {
         chat.followUpQueue.enqueue(_followUpSeatKey, queued);
         _controller.clear();
+        _clip.clear();
         _notifyFollowUpMemberWorking(chat);
         if (mounted) setState(() {});
       },
@@ -826,6 +830,7 @@ class _SessionChatViewState extends State<SessionChatView> {
       _syncAwaitingFromWorkingSessions(context.read<ChatCubit>().state);
     }
     _controller.clear();
+    _clip.clear();
     if (mounted) setState(() {});
 
     final result = await _submitLock.run(() async {
@@ -837,6 +842,7 @@ class _SessionChatViewState extends State<SessionChatView> {
     if (!result.ok) {
       _cancelAwaitingIdleGrace();
       if (optimisticPty) seat.removePendingMatching(text);
+      _clip.clear();
       _controller
         ..text = text
         ..selection = TextSelection.collapsed(offset: text.length);
@@ -1166,6 +1172,7 @@ class _SessionChatViewState extends State<SessionChatView> {
                                             selectedMemberId: selectedMemberId,
                                             shellMemberId: _shellMemberId,
                                             composeController: _controller,
+                                            composeClip: _clip,
                                             composeFocusNode: _focusNode,
                                             voiceController: _voice,
                                             isSubmitting: _isSubmitting,
