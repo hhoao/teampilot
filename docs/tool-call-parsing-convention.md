@@ -29,7 +29,7 @@ ai_message_core/lib/src/
   tool_edit_target_resolver.dart  # AiEditToolTargetResolver 接口
   tool_file_target.dart           # AiToolFileTarget 数据 + AiToolFileTargetResolver 接口
   tool_shell_target.dart          # AiShellToolTarget 数据 + AiShellToolTargetResolver 接口
-  tool_category_resolver.dart     # AiToolCallCategory 数据 + AiToolCallCategoryResolver 接口
+  tool_category_resolver.dart     # AiToolCallCategoryResolver 接口（AiToolCallCategory 枚举在 message.dart）
   subagent_attachment.dart        # AiSubagentAttachment 等数据类型（无 tool name 列表）
 
 client/lib/services/ai_history/
@@ -40,7 +40,7 @@ client/lib/services/ai_history/
     unified_diff_edit_hunk_codec.dart     # 可配置泛型 codec（含 codex freeform 分支）
   tool_call_resolvers.dart               # Configurable* resolver 实现
   tool_call_categories.dart              # ConfigurableAiToolCallCategoryResolver + 共享类别表
-  tool_call_category_annotator.dart      # AiToolCallCategoryAnnotator 实现
+  tool_call_category_annotator.dart      # annotateToolCallCategories / annotateSubagentAttachments 顶层函数
   workspace_edit_line_highlighter.dart   # AiEditLineHighlighter 实现（UI 渲染，不属于解析层）
 
 client/lib/services/cli/registry/capabilities/
@@ -95,12 +95,12 @@ client/lib/services/cli/<cli>/capabilities/
 
 - 共享键集内**每个名字必须有 ≥2 个 CLI 的发射证据**（矩阵证据：src / fixture / 本机 / `spl@93c9991`）
 - **单 CLI 名字下沉**到该 CLI 的 resolver 文件，以**追加**语义挂在共享键集之上（不替换、不删除共享键）
-- 无发射证据的名字不进共享集（G-1..G-6 全部由此治理；零证据项已移除，如 `writefile`/`create_file`/`target_file` 等）
+- 无发射证据的名字不进共享集（G-2/G-4/G-5 由此治理；零证据项已移除，如 `writefile`/`create_file`/`target_file` 等；G-1 为 codec freeform 修复、G-3 为类别表修复、G-6 为观察项，不属共享键集治理）
 - 类别表 `tool_call_categories.dart` 是**五 CLI 工具名的并集**（union 语义），不受共享键集治理约束
 
 三种实现模式（详见 `docs/cli-formats/adding-a-cli.md:111-151`）：
 
-1. **无 delta**：`class ClaudeToolCallResolvers extends SharedToolCallResolvers`（claude / flashskyai）
+1. **无 delta**：`class ClaudeToolCallResolvers extends SharedToolCallResolvers`（claude / flashskyai / codex）
 2. **追加覆写**：extends 共享层 + 追加单 CLI 键并 override getter（cursor：`path` / `contents`）
 3. **全自定义**：`implements ToolCallResolversCapability`，共享键集仅作常量引用（opencode：camelCase 追加键）
 
@@ -209,7 +209,7 @@ AiToolFileActionsScope(
 ```
 
 （`registry.toolCallResolvers(cli)` 查询方法见 `registry/cli_tool_registry.dart:81-82`；
-Category resolver 经 `AiToolCallCategoryAnnotator` 供历史视图使用，不在 `AiToolFileActions` 内。）
+Category resolver 经 `annotateToolCallCategories` 顶层函数供历史视图使用，不在 `AiToolFileActions` 内。）
 
 ## 新增 Tool Parser 检查清单
 
