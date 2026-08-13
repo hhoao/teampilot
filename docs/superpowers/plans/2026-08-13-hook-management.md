@@ -3500,35 +3500,35 @@ git commit -m "refactor(hooks): converge codex agent-status/bus hooks into unifi
 
 ---
 
-### Task 16: 收敛 — cursor agent-status/bus 迁移
+### Task 16: 收敛 — cursor agent-status/bus 迁移（全量，按 spec §4.3）
 
 **Files:**
-- Modify: `client/lib/services/cli/cursor/capabilities/config_profile.dart`
-- Modify: `client/lib/services/cli/cursor/provider/cursor_home_provisioner.dart`（`writeAgentStatusHooks` 改为走 writer + completer）
-- Test: `client/test/services/cli/cursor/cursor_hook_writer_test.dart`（追加断言）
+- Modify: `client/lib/services/cli/cursor/provider/cursor_hook_writer.dart`（http → bash 转发脚本渲染）
+- Modify: `client/lib/services/cli/cursor/capabilities/config_profile.dart`（装配改走 completer + writer）
+- Modify: `client/lib/services/cli/cursor/provider/cursor_home_provisioner.dart`（`writeAgentStatusHooks` 删除，新增 `writeHooks({memberHome, entries, runner})` 统一入口）
+- Test: `client/test/services/cli/cursor/cursor_hook_writer_test.dart`（追加迁移断言）
 
 **Interfaces:**
-- Consumes: `HookSeatContextCompleter`。
-- Produces: cursor 的 agent-status 与 bus stop 均经 `CursorHookWriter` 渲染（http 不支持的 warning 策略：agent-status 是 http —— 需要 cursor writer 支持 http？cursor hooks.json 不支持 http。所以 cursor 的 agent-status 保留**脚本转发**形态：completer 产出 managed entries 后，cursor writer 对 managed + http 的条目回退为"生成转发脚本"模式？——不。更简单：cursor 的 agent-status/bus 不走统一 writer（保持现有 `CursorHomeAgentStatusOverlay`/`CursorHomeBusOverlay` 的 bash 转发脚本），仅用户 hooks 走 writer。**决策：cursor 内部托管保持现状，收敛不覆盖 cursor 的 http→脚本转发特例**；本任务只把 `writeUserHooks` 与现有 overlay 写入合并逻辑打通（用户 hooks.json merge 保留 agent-status/bus 条目），Task 19 死代码清理不删 cursor overlay。
+- Consumes: `HookSeatContextCompleter`（Task 14）、`mergeCursorHooksConfig`（Task 12）。
+- Produces: `CursorHookWriter` 对 **http 类 action 生成 bash 转发脚本**（cursor hooks.json 仅 command 类）：
+  - `blockOnDecision=false`（agent-status）：脚本 `cat` stdin → `curl -sS -X POST <url> <headers> -d @- >/dev/null 2>&1 || true`，恒 exit 0（best-effort，与现有 `CursorHomeAgentStatusOverlay.scriptFor` 同语义）；
+  - `blockOnDecision=true`（bus idle stop/stopFailure）：脚本 POST `<url>/idle`（headers 注入），响应含 `"decision":"block"` 时输出 `{"followup_message":"<stopRedirectReason>"}`，exit 0（与现有 `CursorHomeBusOverlay.idleScript` 同语义；`stopRedirectReason` 从 `teammate_bus_mcp_handler.dart` 读取）。
+  - 脚本文件名：`teampilot-http-<id>-<event>.sh`；hooks.json 条目 command = `bash '<hooksDir>/<name>'`。
+- 装配：`config_profile.dart` 的 simple + mixed 分支用 completer 产出 managed entries（`agentStatusHooks`/`busIdleHooks`）与 `ctx.hooks` 合并，一次 `writeHooks(memberHome, allEntries, runner)` 完成（内部条目与用户条目同一次 render + merge，按 (event, command) 去重）；删除对 `CursorHomeAgentStatusOverlay` / `CursorHomeBusOverlay` 的装配调用。
 
-- [ ] **Step 1: Write the failing test（merge 保序断言）**
+- [ ] **Step 1: Write the failing test（http 转发 + bus idle 语义）**
 
 追加到 `client/test/services/cli/cursor/cursor_hook_writer_test.dart`:
 ```dart
-  test('merge with existing agent-status hooks preserves entries', () {
-    const existing = {
-      'version': 1,
-      'hooks': {
-        'stop': [
-          {'command': "bash '/h/teampilot-agent-status-stop.sh'", 'loop_limit': null},
-        ],
-      },
-    };
+  test('http agent-status entry renders bash forwarding script', () {
     const entry = HookEntry(
-      id: 'h1',
-      source: HookSource.userLibrary,
+      id: 'teampilot-agent-status-stop',
+      source: HookSource.managed,
       event: HookEvent.stop,
-      action: CommandHookAction.raw('echo done'),
+      action: HttpHookAction(
+        url: 'http://127.0.0.1:1/agent-status?event=Stop',
+        headers: {'X-Member': 'm1'},
+      ),
     );
     final result = const CursorHookWriter().render(
       entries: const [entry],
@@ -3538,39 +3538,192 @@ git commit -m "refactor(hooks): converge codex agent-status/bus hooks into unifi
         glueBuilder: GlueScriptBuilder(),
       ),
     );
-    final fragment = result.configFragments['hooks.json']! as Map;
-    final merged = CursorHomeAgentStatusOverlay.mergeHooksConfig(
-      existing,
-      scriptPathFor: (_) => '/h/teampilot-agent-status-stop.sh',
+    expect(result.warnings, isEmpty);
+    final script = result.scripts.singleWhere(
+      (s) => s.fileName == 'teampilot-http-teampilot-agent-status-stop-stop.sh',
     );
-    final withUser = mergeCursorHooksConfig(merged, fragment);
-    final stop = ((withUser['hooks'] as Map)['stop'] as List);
+    expect(script.content, contains("curl -sS -X POST"));
+    expect(script.content, contains("'http://127.0.0.1:1/agent-status?event=Stop'"));
+    expect(script.content, contains("'X-Member: m1'"));
+    final hooksJson = result.configFragments['hooks.json']! as Map;
+    final stop = ((hooksJson['hooks'] as Map)['stop'] as List).single as Map;
+    expect(stop['command'], contains('teampilot-http-teampilot-agent-status-stop-stop.sh'));
+    expect(stop['timeout'], isNotNull);
+  });
+
+  test('bus idle hook prints followup_message on decision:block', () {
+    const entry = HookEntry(
+      id: 'teampilot-bus-idle-stop',
+      source: HookSource.managed,
+      event: HookEvent.stop,
+      blockOnDecision: true,
+      timeout: Duration(seconds: 5),
+      action: HttpHookAction(
+        url: 'http://127.0.0.1:2/idle',
+        headers: {'X-Member': 'm1'},
+      ),
+    );
+    final result = const CursorHookWriter().render(
+      entries: const [entry],
+      ctx: const HookRenderContext(
+        hooksDir: '/h/hooks',
+        runner: null,
+        glueBuilder: GlueScriptBuilder(),
+      ),
+    );
+    final script = result.scripts.single;
+    expect(script.content, contains('"decision":"block"'));
+    expect(script.content, contains('followup_message'));
+    expect(script.content, contains('exit 0'));
+  });
+
+  test('managed + user entries merge idempotently by command', () {
+    const agentStatus = HookEntry(
+      id: 'teampilot-agent-status-stop',
+      source: HookSource.managed,
+      event: HookEvent.stop,
+      action: HttpHookAction(url: 'http://127.0.0.1:1/agent-status?event=Stop'),
+    );
+    const userHook = HookEntry(
+      id: 'h1',
+      source: HookSource.userLibrary,
+      event: HookEvent.stop,
+      action: CommandHookAction.raw('echo done'),
+    );
+    final ctx = const HookRenderContext(
+      hooksDir: '/h/hooks',
+      runner: null,
+      glueBuilder: GlueScriptBuilder(),
+    );
+    final result = const CursorHookWriter().render(
+      entries: const [agentStatus, userHook],
+      ctx: ctx,
+    );
+    final stop = ((result.configFragments['hooks.json'] as Map)['hooks']
+        as Map)['stop'] as List;
     expect(stop, hasLength(2));
-    expect(stop.map((e) => (e as Map)['command']), contains(
-      "bash '/h/teampilot-agent-status-stop.sh'",
-    ));
+    final re = const CursorHookWriter().render(
+      entries: const [agentStatus, userHook],
+      ctx: ctx,
+    );
+    expect(
+      ((re.configFragments['hooks.json'] as Map)['hooks'] as Map)['stop'],
+      hasLength(2),
+    );
   });
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `cd client && flutter test test/services/cli/cursor/cursor_hook_writer_test.dart -v`
-Expected: FAIL——`mergeCursorHooksConfig` 未定义（定义于 Task 12 Step 4；本任务先写测试验证其行为）。
+Expected: FAIL——http 渲染与 `teampilot-http-*` 脚本未实现。
 
-- [ ] **Step 3: Wire provisioner + keep order**
+- [ ] **Step 3: Extend CursorHookWriter with http → bash forwarding**
 
-`client/lib/services/cli/cursor/capabilities/config_profile.dart`：`_contributeTeamLaunch` mixed 分支的 `writeAgentStatusHooks` 之后调用 `writeUserHooks`（Task 12 已有）；`CursorHomeBusOverlay.mergeHooksConfig` 由生命周期阶段（bus overlay 写入）负责保留用户条目——在 `writeUserHooks` 注释注明「用户条目先写，bus overlay 后 merge，保序」。
+在 `cursor_hook_writer.dart` 的 `render` 中，`entry.action is HttpHookAction` 分支从「warning 跳过」改为生成转发脚本：
+```dart
+      if (entry.action is HttpHookAction) {
+        final http = entry.action as HttpHookAction;
+        final scriptFileName = 'teampilot-http-${entry.id}-${entry.event.name}.sh';
+        scripts.add(
+          GeneratedScript(
+            fileName: scriptFileName,
+            content: _httpForwardScript(http, entry.blockOnDecision),
+          ),
+        );
+        final hooksList =
+            List<Object?>.from((hooks[native] as List?) ?? const []);
+        final hookJson = <String, Object?>{
+          'command': "bash '${ctx.hooksDir}/$scriptFileName'",
+          if (entry.timeout != null) 'timeout': entry.timeout!.inSeconds,
+          if (entry.event == HookEvent.stop) 'loop_limit': null,
+        };
+        if (!hooksList.any(
+          (e) => e is Map && e['command'] == hookJson['command'],
+        )) {
+          hooksList.add(hookJson);
+        }
+        hooks[native] = hooksList;
+        continue;
+      }
+```
+配套生成器（与现有 overlay 同语义）：
+```dart
+  String _httpForwardScript(HttpHookAction http, bool blockOnDecision) {
+    final headerArgs = http.headers.entries
+        .map((e) => "-H '${e.key}: ${e.value}'")
+        .join(' ');
+    if (!blockOnDecision) {
+      return '''
+#!/usr/bin/env bash
+# TeamPilot hook glue (http forward) — do not edit.
+set -u
+payload="\$(cat)"
+[ -z "\$payload" ] && exit 0
+curl -sS -X POST '$http.url' $headerArgs -H 'Content-Type: application/json' -d "\$payload" >/dev/null 2>&1 || true
+exit 0
+''';
+    }
+    // bus idle：/idle 返回 decision:block 时输出 followup_message（与
+    // CursorHomeBusOverlay.idleScript 同语义）。
+    final followup = jsonEncode({
+      'followup_message': TeammateBusMcpHandler.stopRedirectReason,
+    });
+    return '''
+#!/usr/bin/env bash
+# TeamPilot hook glue (bus idle) — do not edit.
+set -u
+cat >/dev/null 2>&1 || true
+resp="\$(curl -sS -X POST $headerArgs '${http.url}' 2>/dev/null || true)"
+case "\$resp" in
+  *'"decision":"block"'*)
+    printf '%s' '$followup'
+    ;;
+esac
+exit 0
+''';
+  }
+```
+（import：`dart:convert`、`../../../team_bus/mcp/teammate_bus_mcp_handler.dart`。）
 
-- [ ] **Step 4: Run tests + analyzer**
+- [ ] **Step 4: Rewire assembly to completer + writer**
+
+`client/lib/services/cli/cursor/capabilities/config_profile.dart`：
+- `_contributeSimpleLaunch` 与 `_contributeTeamLaunch`（mixed 分支）均改为：
+```dart
+    final completer = const HookSeatContextCompleter();
+    final managed = <HookEntry>[
+      if (busIdle != null)
+        ...completer.busIdleHooks(idle: busIdle, memberId: member.id),
+      if (agentStatus != null)
+        ...completer.agentStatusHooks(
+          endpoint: agentStatus,
+          memberId: member.id,
+        ),
+    ];
+    await CursorHomeProvisioner(
+      fs: paths.fs,
+      layout: CursorHomeLayout(pathContext: paths.fs.pathContext),
+    ).writeHooks(
+      memberHome: home,
+      entries: [...managed, ...ctx.hooks],
+      runner: paths.hostEnvironmentForProvision().scriptRunner,
+    );
+```
+  （simple 分支 busIdle 恒 null；member 为 `ctx.member`。bus idle 条目只在该 CLI 支持的事件集内生效——cursor writer 对 `stop`/`stopFailure` 原生名映射后渲染。）
+- `CursorHomeProvisioner.writeAgentStatusHooks` 删除；`CursorHomeAgentStatusOverlay` / `CursorHomeBusOverlay` 的装配调用删除（静态构建函数保留给既有单测，Task 19 评估去留）。
+- 把 Task 12 的 `writeUserHooks` 更名为 `writeHooks`（同一实现；managed 条目也经它落盘）。
+
+- [ ] **Step 5: Run tests + analyzer**
 
 Run: `cd client && flutter test test/services/cli/cursor/cursor_hook_writer_test.dart -v && flutter analyze --no-fatal-infos --no-fatal-warnings`
-Expected: PASS
+Expected: PASS。既有 cursor agent-status 相关测试若断言 `~/.cursor/hooks/teampilot-agent-status-*.sh` 文件名，迁移后文件名变化（`teampilot-http-teampilot-agent-status-<event>-<event>.sh`）——更新断言指向新文件名，语义不变（stdin 透传 + POST /agent-status）。
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add client/lib/services/cli/cursor/
-git commit -m "refactor(hooks): cursor user hooks merge preserves agent-status/bus entries"
+git commit -m "refactor(hooks): migrate cursor agent-status/bus hooks into unified writer"
 ```
 
 ---
