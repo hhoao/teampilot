@@ -4427,6 +4427,36 @@ class AppLocalizationsZh extends AppLocalizations {
   String get hooksNoInstalledHint => '创建 hook，在 CLI 事件时运行命令。';
 
   @override
+  String get hookEdit => '编辑 hook';
+
+  @override
+  String get hookName => '名称';
+
+  @override
+  String get hookDescription => '描述';
+
+  @override
+  String get hookEvent => '事件';
+
+  @override
+  String get hookActionCommand => '命令';
+
+  @override
+  String get hookActionScript => '脚本';
+
+  @override
+  String get hookPolicy => '策略';
+
+  @override
+  String get hookTimeoutSec => '超时（秒）';
+
+  @override
+  String get hookEnv => '环境变量（每行 KEY=VALUE）';
+
+  @override
+  String get hookSave => '保存';
+
+  @override
   String get mcpNavRegistries => '注册中心';
 
   @override

@@ -4601,6 +4601,36 @@ class AppLocalizationsEn extends AppLocalizations {
       'Create a hook to run commands on CLI events.';
 
   @override
+  String get hookEdit => 'Edit hook';
+
+  @override
+  String get hookName => 'Name';
+
+  @override
+  String get hookDescription => 'Description';
+
+  @override
+  String get hookEvent => 'Event';
+
+  @override
+  String get hookActionCommand => 'Command';
+
+  @override
+  String get hookActionScript => 'Script';
+
+  @override
+  String get hookPolicy => 'Policy';
+
+  @override
+  String get hookTimeoutSec => 'Timeout (seconds)';
+
+  @override
+  String get hookEnv => 'Environment (KEY=VALUE per line)';
+
+  @override
+  String get hookSave => 'Save';
+
+  @override
   String get mcpNavRegistries => 'Registry';
 
   @override

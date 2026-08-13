@@ -8258,6 +8258,66 @@ abstract class AppLocalizations {
   /// **'Create a hook to run commands on CLI events.'**
   String get hooksNoInstalledHint;
 
+  /// No description provided for @hookEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit hook'**
+  String get hookEdit;
+
+  /// No description provided for @hookName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get hookName;
+
+  /// No description provided for @hookDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Description'**
+  String get hookDescription;
+
+  /// No description provided for @hookEvent.
+  ///
+  /// In en, this message translates to:
+  /// **'Event'**
+  String get hookEvent;
+
+  /// No description provided for @hookActionCommand.
+  ///
+  /// In en, this message translates to:
+  /// **'Command'**
+  String get hookActionCommand;
+
+  /// No description provided for @hookActionScript.
+  ///
+  /// In en, this message translates to:
+  /// **'Script'**
+  String get hookActionScript;
+
+  /// No description provided for @hookPolicy.
+  ///
+  /// In en, this message translates to:
+  /// **'Policy'**
+  String get hookPolicy;
+
+  /// No description provided for @hookTimeoutSec.
+  ///
+  /// In en, this message translates to:
+  /// **'Timeout (seconds)'**
+  String get hookTimeoutSec;
+
+  /// No description provided for @hookEnv.
+  ///
+  /// In en, this message translates to:
+  /// **'Environment (KEY=VALUE per line)'**
+  String get hookEnv;
+
+  /// No description provided for @hookSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get hookSave;
+
   /// No description provided for @mcpNavRegistries.
   ///
   /// In en, this message translates to:

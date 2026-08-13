@@ -14,6 +14,7 @@ import '../pages/skills/skill_management_page.dart';
 import '../pages/plugins/plugin_management_page.dart';
 import '../pages/mcp/mcp_form_nav_page.dart';
 import '../pages/mcp/mcp_management_page.dart';
+import '../pages/hooks/hook_editor_nav_page.dart';
 import '../pages/hooks/hook_management_page.dart';
 import '../pages/onboarding/onboarding_gate.dart';
 import '../pages/startup_gate.dart';
@@ -453,6 +454,21 @@ final appRouter = GoRouter(
               path: '/hooks',
               pageBuilder: (context, state) =>
                   const NoTransitionPage(child: HookManagementPage()),
+            ),
+            GoRoute(
+              path: '/hooks/new',
+              pageBuilder: (context, state) =>
+                  const NoTransitionPage(child: HookEditorNavPage()),
+            ),
+            GoRoute(
+              path: '/hooks/:id',
+              pageBuilder: (context, state) => NoTransitionPage(
+                child: HookEditorNavPage(
+                  hookId: Uri.decodeComponent(
+                    state.pathParameters['id']!,
+                  ),
+                ),
+              ),
             ),
             GoRoute(
               path: '/ssh-profiles',
