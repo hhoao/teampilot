@@ -325,6 +325,7 @@ class SessionChatComposeSection extends StatelessWidget {
                         return WorkspaceComposeCard(
                           controller: composeController,
                           focusNode: composeFocusNode,
+                          clip: composeClip,
                           hint: memberWorking
                               ? l10n.sessionFollowUpAddPlaceholder
                               : l10n.sessionHistoryComposeHint,
