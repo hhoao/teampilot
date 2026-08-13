@@ -46,6 +46,7 @@ import '../cubits/ai_history_cubit.dart';
 import '../cubits/shortcut_cubit.dart';
 import '../cubits/editor_cubit.dart';
 import '../cubits/workbench/workbench_cubit.dart';
+import '../cubits/workbench/workbench_tab.dart';
 import '../services/workbench/workbench_chat_bridge.dart';
 import '../services/workbench/workbench_editor_opener.dart';
 import '../services/workbench/workbench_shell_launcher.dart';
@@ -1589,6 +1590,36 @@ Future<AppShell> buildAppShell({
   final workbenchChatBridge = WorkbenchChatBridge(
     workbench: workbenchCubit,
     chat: chatCubit,
+    replacedPreviewTeardown: (workspaceId, replaced) {
+      switch (replaced.kind) {
+        case WorkbenchTabKind.file:
+          editorCubit.closeFile(workspaceId, replaced.id, force: true);
+        case WorkbenchTabKind.diff:
+          editorCubit.closeDiff(workspaceId, replaced.id);
+        case WorkbenchTabKind.shell:
+          workspaceTerminalRunService.handleEntryClosed(replaced.id);
+          workspaceTerminalRegistry.groupFor(workspaceId).removeEntry(
+            replaced.id,
+          );
+        case WorkbenchTabKind.run:
+          final workspace = chatCubit.state.workspaces
+              .where((w) => w.workspaceId == workspaceId)
+              .firstOrNull;
+          if (workspace != null) {
+            unawaited(
+              workspaceRunRegistry
+                  .cubitFor(
+                    tabScopeId: workspaceId,
+                    workspaceId: workspace.workspaceId,
+                    folders: workspace.folders,
+                  )
+                  .dismissSession(replaced.id),
+            );
+          }
+        case WorkbenchTabKind.session:
+          break;
+      }
+    },
   );
   workbenchCubit.port = workbenchChatBridge;
   chatCubit.workbenchPort = workbenchChatBridge;

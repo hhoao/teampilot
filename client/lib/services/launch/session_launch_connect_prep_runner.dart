@@ -33,6 +33,11 @@ typedef RollbackStagedLaunchFn =
       required String message,
     });
 
+/// Whether an existing-tab reuse must (re)install the mixed team runtime:
+/// personal sessions never need it, and an installed bus makes it a no-op.
+bool needsTeamRuntimeOnReuse(ChatTab tab, {required bool isPersonal}) =>
+    !isPersonal && tab.teamBus == null;
+
 /// Runs async tab-connect prep for new, existing, and deferred team tabs.
 class SessionLaunchConnectPrepRunner {
   SessionLaunchConnectPrepRunner({
@@ -185,7 +190,7 @@ class SessionLaunchConnectPrepRunner {
         session: session,
         request: request,
         workspace: workspace,
-        installTeamRuntime: false,
+        installTeamRuntime: needsTeamRuntimeOnReuse(tab, isPersonal: request.isPersonal),
       );
       if (prep == null) return;
 

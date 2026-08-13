@@ -40,8 +40,8 @@ class SidebarSessionTile extends StatefulWidget {
   /// those land on the target tab, not the previously active one.
   final FutureOr<void> Function() onTap;
 
-  /// When set, selection highlight follows this id instead of the global
-  /// [ChatState.activeSessionId] (kept-alive background workspace tabs).
+  /// When set, selection highlight follows this id instead of the default
+  /// (kept-alive background workspace tabs).
   final String? highlightSessionId;
 
   /// Prefix for [throttledTap] keys (`{prefix}_{sessionId}`).
@@ -297,9 +297,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
     );
     final selected = widget.highlightSessionId != null
         ? widget.highlightSessionId == sessionId
-        : context.select<ChatCubit, bool>(
-            (cubit) => cubit.state.activeSessionId == sessionId,
-          );
+        : false;
     // Working (agent turn) OR launching (pod still provisioning/connecting) —
     // both show the sidebar spinner. Pod phase comes from the ChangeNotifier;
     // workingSessionIds still from ChatState.

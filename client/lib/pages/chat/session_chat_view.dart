@@ -16,6 +16,8 @@ import '../../cubits/cli_presets_cubit.dart';
 import '../../cubits/layout_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
 import '../../cubits/member_presence_cubit.dart';
+import '../../cubits/workbench/workbench_cubit.dart';
+import '../../cubits/workbench/workbench_tab.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_session.dart';
 import '../../models/cli_preset.dart';
@@ -942,13 +944,13 @@ class _SessionChatViewState extends State<SessionChatView> {
     final registry =
         CliToolRegistryScope.maybeOf(context) ?? CliToolRegistry.builtIn();
 
-    // Rebuild when this session working or bus presence changes (seat-level
-    // stop). Scoped to [session.sessionId] so background sessions do not
-    // rebuild every host on unrelated working/activation changes.
-    context.select<ChatCubit, bool>(
-      (c) =>
-          c.state.activeSessionId == session.sessionId ||
-          c.state.workingSessionIds.contains(session.sessionId),
+    // Rebuild when the session's workspace bar active changes (session switch)
+    // or session working changes (seat-level stop).
+    context.select<WorkbenchCubit, WorkbenchTabId?>(
+      (w) => w.centerActiveId(widget.session.workspaceId),
+    );
+    context.select<ChatCubit, Set<String>>(
+      (c) => c.state.workingSessionIds,
     );
     context.select<MemberPresenceCubit, Map<String, MemberPresence>>(
       (c) => c.state.presence,

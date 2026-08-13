@@ -154,7 +154,7 @@ void main() {
 
       strip.next();
       expect(workbench.centerActiveId(workspaceId), s1);
-      expect(chat.state.activeSessionId, sessionIds[1]);
+      expect(chat.activeTab?.info.id, sessionIds[1]);
 
       strip.next();
       expect(workbench.centerActiveId(workspaceId), diff);
@@ -178,7 +178,7 @@ void main() {
 
       strip.focusAt(1);
       expect(workbench.centerActiveId(workspaceId), s0);
-      expect(chat.state.activeSessionId, sessionIds[0]);
+      expect(chat.activeTab?.info.id, sessionIds[0]);
     });
 
     test('focusAt no-ops when ordinal is out of range', () async {
@@ -207,13 +207,13 @@ void main() {
       await openSession();
       await openSession();
       expect(chat.tabStore.openTabs, hasLength(2));
-      final closing = chat.state.activeSessionId;
+      final closing = chat.activeTab?.info.id;
       final active = workbench.centerActiveId(workspaceId);
       await workbench.close(workspaceId, active!);
       await drainPendingAsyncWork();
       await postFrame.flush();
       expect(chat.tabStore.openTabs, hasLength(1));
-      expect(chat.state.activeSessionId, isNot(closing));
+      expect(chat.activeTab?.info.id, isNot(closing));
     });
 
     test('enterLanding(activeWorkspaceId) is the session-new-tab command '

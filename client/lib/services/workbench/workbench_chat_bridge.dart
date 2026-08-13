@@ -6,30 +6,25 @@ import '../../cubits/workbench/workbench_cubit.dart';
 import '../../cubits/workbench/workbench_domain_port.dart';
 import '../../cubits/workbench/workbench_tab.dart';
 
-/// Domain ↔ bar handshake. Feeds the bar on session open, routes domain-driven
-/// closes and landing through the bar, and mirrors the bar's center-active
-/// session back into [ChatState.activeSessionId] / `selectedMemberId`.
+/// Domain ↔ bar handshake. Feeds the bar on session open and routes
+/// domain-driven closes and landing through the bar. Bar-derived reads go
+/// through [centerActiveForScope].
 class WorkbenchChatBridge implements WorkbenchDomainPort, ChatWorkbenchPort {
   WorkbenchChatBridge({
     required WorkbenchCubit workbench,
     required ChatCubit chat,
+    this.replacedPreviewTeardown,
   }) : _workbench = workbench,
-       _chat = chat {
-    // Single writer for the foreground-session mirror: the bar's center active
-    // id. Syncs after any open/close/activate/landing change.
-    _workbenchSub = _workbench.stream.listen((_) => _syncForeground());
-  }
+       _chat = chat;
 
   final WorkbenchCubit _workbench;
   final ChatCubit _chat;
-  StreamSubscription<WorkbenchState>? _workbenchSub;
 
-  /// Cancels the foreground-sync subscription. The bridge is app-lifetime in
-  /// practice, so this is only invoked on teardown.
-  void dispose() {
-    _workbenchSub?.cancel();
-    _workbenchSub = null;
-  }
+  /// Optional domain teardown for a *non-session* tab displaced from the
+  /// preview slot (file/diff/shell/run). Sessions are handled inline; null
+  /// keeps the bridge inert in tests that only exercise session tabs.
+  final void Function(String workspaceId, WorkbenchTabId replaced)?
+      replacedPreviewTeardown;
 
   /// Session domain staged a new/reused session tab; surface it in the bar.
   void onSessionTabOpened(
@@ -38,12 +33,32 @@ class WorkbenchChatBridge implements WorkbenchDomainPort, ChatWorkbenchPort {
     bool preview = false,
     bool activate = true,
   }) {
-    _workbench.openSession(
+    final replaced = _workbench.openSession(
       workspaceId,
       sessionId,
       preview: preview,
       activate: activate,
     );
+    if (replaced == null) return;
+    if (replaced.kind == WorkbenchTabKind.session) {
+      final replacedTab = _chat.tabStore.openTabBySessionId(replaced.id);
+      if (replacedTab?.isRunning == true) {
+        // The displaced preview is a live agent: re-pin it in the bar without
+        // stealing activation instead of tearing it down.
+        _workbench.openSession(
+          workspaceId,
+          replaced.id,
+          preview: false,
+          activate: false,
+        );
+      } else {
+        // A preview slot replaced in place is no longer in the bar; tear its
+        // domain runtime down so it cannot be resurrected as an orphan.
+        unawaited(_chat.teardownSession(replaced.id));
+      }
+    } else if (replacedPreviewTeardown != null) {
+      replacedPreviewTeardown!(workspaceId, replaced);
+    }
   }
 
   // ===== ChatWorkbenchPort (domain → bar) =====
@@ -64,7 +79,8 @@ class WorkbenchChatBridge implements WorkbenchDomainPort, ChatWorkbenchPort {
   }
 
   @override
-  void syncForeground() => _syncForeground();
+  WorkbenchTabId? centerActiveForScope(String workspaceId) =>
+      _workbench.centerActiveId(workspaceId);
 
   // ===== WorkbenchDomainPort (bar → domain teardown) =====
 
@@ -75,22 +91,5 @@ class WorkbenchChatBridge implements WorkbenchDomainPort, ChatWorkbenchPort {
     if (id.kind == WorkbenchTabKind.session) {
       await _chat.teardownSession(id.id);
     }
-  }
-
-  // ===== Foreground-session mirror =====
-
-  void _syncForeground() {
-    final workspaceId = _chat.tabStore.activeWorkspaceId;
-    if (workspaceId.isEmpty) {
-      _chat.setForegroundSession(null, '');
-      return;
-    }
-    final activeId = _workbench.centerActiveId(workspaceId);
-    if (activeId == null || activeId.kind != WorkbenchTabKind.session) {
-      _chat.setForegroundSession(null, '');
-      return;
-    }
-    final tab = _chat.tabStore.openTabBySessionId(activeId.id);
-    _chat.setForegroundSession(activeId.id, tab?.selectedMemberId ?? '');
   }
 }

@@ -14,6 +14,8 @@ import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/services/launch/session_tab_surface_coordinator.dart';
 
+import '../../support/fake_terminal_session.dart';
+
 void main() {
   group('SessionTabSurfaceCoordinator.surfaceExistingTab', () {
     late ChatTabStore tabStore;
@@ -21,8 +23,10 @@ void main() {
     late _FakeHost host;
     late SessionTabSurfaceCoordinator coordinator;
     late AppSession session;
-    late List<({String workspaceId, String sessionId, bool preview, bool activate})>
-        openedCalls;
+    late List<
+      ({String workspaceId, String sessionId, bool preview, bool activate})
+    >
+    openedCalls;
 
     setUp(() {
       tabStore = ChatTabStore();
@@ -41,10 +45,7 @@ void main() {
         workbenchView: SessionWorkbenchView.chat,
       )..persistedSession = session;
       tabStore.registerSession(existing);
-      host = _FakeHost(
-        ChatState(activeSessionId: 'sess-1'),
-        tabStore: tabStore,
-      );
+      host = _FakeHost(const ChatState(), tabStore: tabStore);
       openedCalls = [];
       coordinator = SessionTabSurfaceCoordinator(
         host: host,
@@ -76,13 +77,13 @@ void main() {
             }) async {},
         onSessionTabOpened:
             (workspaceId, sessionId, {preview = false, activate = true}) {
-          openedCalls.add((
-            workspaceId: workspaceId,
-            sessionId: sessionId,
-            preview: preview,
-            activate: activate,
-          ));
-        },
+              openedCalls.add((
+                workspaceId: workspaceId,
+                sessionId: sessionId,
+                preview: preview,
+                activate: activate,
+              ));
+            },
       );
     });
 
@@ -90,52 +91,94 @@ void main() {
       host.sessionRuntime.disposeIdleWatch();
     });
 
-    test(
-      'connectImmediately defaults to Terminal workbench view',
-      () {
-        final status = coordinator.surfaceExistingTab(
-          request: SessionOpenRequest(
-            session: session,
-            connectImmediately: true,
-          ),
-          existing: existing,
-        );
+    test('connectImmediately defaults to Terminal workbench view', () {
+      final status = coordinator.surfaceExistingTab(
+        request: SessionOpenRequest(session: session, connectImmediately: true),
+        existing: existing,
+      );
 
-        expect(status, SessionOpenStatus.opened);
-        expect(host.podViews['sess-1'], SessionWorkbenchView.terminal);
-      },
-    );
+      expect(status, SessionOpenStatus.opened);
+      expect(host.podViews['sess-1'], SessionWorkbenchView.terminal);
+    });
 
-    test(
-      'Chat continue connect preserves Chat when preserveWorkbenchView',
-      () {
-        final status = coordinator.surfaceExistingTab(
-          request: SessionOpenRequest(
-            session: session,
-            connectImmediately: true,
-            preserveWorkbenchView: true,
-          ),
-          existing: existing,
-        );
-
-        expect(status, SessionOpenStatus.opened);
-        expect(host.podViews['sess-1'], isNull);
-        expect(host.beginConnectIds, ['sess-1']);
-      },
-    );
-
-    test('does not feed onSessionTabOpened when reusing an existing tab', () {
+    test('Chat continue connect preserves Chat when preserveWorkbenchView', () {
       final status = coordinator.surfaceExistingTab(
         request: SessionOpenRequest(
           session: session,
           connectImmediately: true,
+          preserveWorkbenchView: true,
         ),
         existing: existing,
       );
 
       expect(status, SessionOpenStatus.opened);
-      expect(openedCalls, isEmpty);
+      expect(host.podViews['sess-1'], isNull);
+      expect(host.beginConnectIds, ['sess-1']);
     });
+
+    test('feeds onSessionTabOpened once when reusing an existing tab', () {
+      final status = coordinator.surfaceExistingTab(
+        request: SessionOpenRequest(session: session, connectImmediately: true),
+        existing: existing,
+      );
+
+      expect(status, SessionOpenStatus.opened);
+      expect(openedCalls, [
+        (
+          workspaceId: 'ws-1',
+          sessionId: 'sess-1',
+          preview: false,
+          activate: true,
+        ),
+      ]);
+    });
+
+    test('feeds preview: true when history-reviewing an existing tab', () {
+      final status = coordinator.surfaceExistingTab(
+        request: SessionOpenRequest(
+          session: session,
+          connectImmediately: false,
+        ),
+        existing: existing,
+      );
+
+      expect(status, SessionOpenStatus.opened);
+      expect(openedCalls, [
+        (
+          workspaceId: 'ws-1',
+          sessionId: 'sess-1',
+          preview: true,
+          activate: true,
+        ),
+      ]);
+    });
+
+    test(
+      'reuse of a RUNNING tab pins preview: false even when not connecting',
+      () {
+        final running = FakeTerminalSession();
+        running.connect(workingDirectory: '/tmp');
+        existing.resumeSession = running;
+
+        final status = coordinator.surfaceExistingTab(
+          request: SessionOpenRequest(
+            session: session,
+            connectImmediately: false,
+          ),
+          existing: existing,
+        );
+
+        expect(status, SessionOpenStatus.opened);
+        expect(openedCalls, [
+          (
+            workspaceId: 'ws-1',
+            sessionId: 'sess-1',
+            preview: false,
+            activate: true,
+          ),
+        ]);
+      },
+    );
   });
 
   group('SessionTabSurfaceCoordinator.surfaceNewTab', () {
@@ -144,8 +187,10 @@ void main() {
     late SessionTabSurfaceCoordinator coordinator;
     late AppSession session;
     late Workspace workspace;
-    late List<({String workspaceId, String sessionId, bool preview, bool activate})>
-        openedCalls;
+    late List<
+      ({String workspaceId, String sessionId, bool preview, bool activate})
+    >
+    openedCalls;
 
     setUp(() {
       tabStore = ChatTabStore();
@@ -194,13 +239,13 @@ void main() {
             }) async {},
         onSessionTabOpened:
             (workspaceId, sessionId, {preview = false, activate = true}) {
-          openedCalls.add((
-            workspaceId: workspaceId,
-            sessionId: sessionId,
-            preview: preview,
-            activate: activate,
-          ));
-        },
+              openedCalls.add((
+                workspaceId: workspaceId,
+                sessionId: sessionId,
+                preview: preview,
+                activate: activate,
+              ));
+            },
       );
     });
 
@@ -208,45 +253,39 @@ void main() {
       host.sessionRuntime.disposeIdleWatch();
     });
 
-    test(
-      'connectImmediately defaults to Terminal workbench view',
-      () {
-        final status = coordinator.surfaceNewTab(
-          request: SessionOpenRequest(
-            session: session,
-            workspace: workspace,
-            connectImmediately: true,
-          ),
+    test('connectImmediately defaults to Terminal workbench view', () {
+      final status = coordinator.surfaceNewTab(
+        request: SessionOpenRequest(
           session: session,
-        );
+          workspace: workspace,
+          connectImmediately: true,
+        ),
+        session: session,
+      );
 
-        expect(status, SessionOpenStatus.opened);
-        final tab = tabStore.openTabBySessionId('sess-new');
-        expect(tab, isNotNull);
-        expect(host.podViews['sess-new'], SessionWorkbenchView.terminal);
-      },
-    );
+      expect(status, SessionOpenStatus.opened);
+      final tab = tabStore.openTabBySessionId('sess-new');
+      expect(tab, isNotNull);
+      expect(host.podViews['sess-new'], SessionWorkbenchView.terminal);
+    });
 
-    test(
-      'preserveWorkbenchView keeps Chat on new-tab create',
-      () {
-        final status = coordinator.surfaceNewTab(
-          request: SessionOpenRequest(
-            session: session,
-            workspace: workspace,
-            connectImmediately: true,
-            preserveWorkbenchView: true,
-          ),
+    test('preserveWorkbenchView keeps Chat on new-tab create', () {
+      final status = coordinator.surfaceNewTab(
+        request: SessionOpenRequest(
           session: session,
-        );
+          workspace: workspace,
+          connectImmediately: true,
+          preserveWorkbenchView: true,
+        ),
+        session: session,
+      );
 
-        expect(status, SessionOpenStatus.opened);
-        final tab = tabStore.openTabBySessionId('sess-new');
-        expect(tab, isNotNull);
-        expect(host.podViews['sess-new'], isNull);
-        expect(host.beginConnectIds, ['sess-new']);
-      },
-    );
+      expect(status, SessionOpenStatus.opened);
+      final tab = tabStore.openTabBySessionId('sess-new');
+      expect(tab, isNotNull);
+      expect(host.podViews['sess-new'], isNull);
+      expect(host.beginConnectIds, ['sess-new']);
+    });
 
     test('feeds onSessionTabOpened once with the tab id and activate', () {
       final status = coordinator.surfaceNewTab(

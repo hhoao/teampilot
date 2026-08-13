@@ -68,7 +68,7 @@ class _SessionIdleNotificationListenerState
         notificationSubtitle: l10n.sessionIdleNotificationSubtitle,
         notificationBadge: l10n.sessionIdleNotificationTitle,
         systemNotificationEnabled: notifyOnSessionIdle,
-        activeSessionId: state.activeSessionId,
+        activeSessionId: context.read<ChatCubit>().activeTab?.info.id,
       ),
     );
   }

@@ -14,7 +14,6 @@ import '../../../cubits/expert_hub_cubit.dart';
 import '../../../cubits/launch_profile_cubit.dart';
 import '../../../cubits/session_preferences_cubit.dart';
 import '../../../cubits/workbench/workbench_cubit.dart';
-import '../../../cubits/workbench/workbench_tab.dart';
 import '../../../cubits/worktree_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/landing_launch_context.dart';
@@ -27,7 +26,6 @@ import '../../../repositories/session_repository.dart';
 import '../../../services/expert_hub/expert_hub_recent_store.dart';
 import '../../../services/expert_hub/expert_landing_preflight.dart';
 import '../../../services/expert_hub/expert_member_resolver.dart';
-import '../../../services/workbench/workbench_shell_actions.dart';
 import '../../../utils/workspace/landing_draft_resolver.dart';
 import '../../../utils/team/team_member_naming.dart';
 import 'package:logger/logger.dart';
@@ -126,36 +124,6 @@ Future<void> openWorkspaceSessionTab(
     blockedMixedMessage: context.l10n.mixedWorkspaceSessionLaunchBlocked,
   );
   if (status != SessionOpenStatus.opened) return;
-
-  final scopeId = tabScopeId ?? workspace.workspaceId;
-  final workbench = context.read<WorkbenchCubit>();
-  final tabId = WorkbenchTabId.session(session.sessionId);
-  final asPreview = !connectImmediately;
-  if (connectImmediately) {
-    chatCubit.setSessionWorkbenchView(
-      session.sessionId,
-      SessionWorkbenchView.terminal,
-    );
-  } else {
-    final existing = chatCubit.tabStore.openTabBySessionId(session.sessionId);
-    // Already live: focus + pin, keep whatever Chat/Terminal view the user set.
-    if (existing != null && existing.isRunning) {
-      workbench.openSession(workspace.workspaceId, tabId.id, preview: false);
-      return;
-    }
-  }
-  final replaced = workbench.openSession(
-    workspace.workspaceId,
-    tabId.id,
-    preview: asPreview,
-  );
-  if (!context.mounted) return;
-  await WorkbenchShellActions.closeReplacedPreview(
-    context: context,
-    workspaceId: workspace.workspaceId,
-    tabScopeId: scopeId,
-    replaced: replaced,
-  );
 }
 
 void _handleSessionOpenStatus(
@@ -255,9 +223,12 @@ Future<void> createAndOpenWorkspaceConversation(
   );
   if (status != SessionOpenStatus.opened) return;
   // ensureTab will not override an active run/shell/file tab.
-  final sessionId = context.read<ChatCubit>().state.activeSessionId?.trim() ?? '';
+  final sessionId = context.read<ChatCubit>().activeTab?.info.id.trim() ?? '';
   if (sessionId.isNotEmpty) {
-    context.read<WorkbenchCubit>().openSession(workspace.workspaceId, sessionId);
+    context.read<WorkbenchCubit>().openSession(
+      workspace.workspaceId,
+      sessionId,
+    );
   }
 }
 
@@ -304,11 +275,7 @@ Future<void> showWorkspaceComposeLandingWithWorktree(
     // Outside the workspace split pane — draft still carries the path.
   }
 
-  await showWorkspaceComposeLanding(
-    context,
-    workspace,
-    tabScopeId: tabScopeId,
-  );
+  await showWorkspaceComposeLanding(context, workspace, tabScopeId: tabScopeId);
 }
 
 /// Creates a conversation from Chat, connects like automation dispatch, and
@@ -568,11 +535,7 @@ Future<bool> _ensureLandingSessionConnected({
   // provisional session (empty cliTeamName) before disk persistence finishes.
   try {
     await chatCubit.memberMaterializer
-        .ensureMemberInputReady(
-          session.sessionId,
-          memberId,
-          directToPty: true,
-        )
+        .ensureMemberInputReady(session.sessionId, memberId, directToPty: true)
         .timeout(const Duration(seconds: 120));
     return true;
   } on TimeoutException {

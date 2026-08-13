@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import '../../cubits/chat/chat_tab_store.dart';
-import '../../cubits/chat/model/chat_state.dart';
 import '../../cubits/chat/model/chat_tab.dart';
 import '../../cubits/chat/model/chat_tab_info.dart';
 import '../../cubits/chat/model/session_open_request.dart';
@@ -10,7 +9,6 @@ import '../../cubits/chat/model/session_workbench_view.dart';
 import '../../cubits/chat/session_launch_host.dart';
 import '../../models/app_session.dart';
 import '../../models/workspace.dart';
-import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import '../../utils/team/team_member_naming.dart';
 
@@ -97,11 +95,15 @@ class SessionTabSurfaceCoordinator {
       existing.bumpLaunchGeneration();
     }
     final generation = existing.launchGeneration;
-    _host.applyState(
-      _host.state.copyWith(
-        activeSessionId: session.sessionId,
-        selectedMemberId: memberId.isNotEmpty ? memberId : null,
-      ),
+    // The bar is the single session-identity source: reuse feeds the bar too.
+    // Non-running reopens surface as preview (replaceable, surfaceNewTab
+    // semantics); running tabs always pin so the next open cannot replace
+    // (and tear down) a live agent.
+    onSessionTabOpened?.call(
+      existing.workspaceId,
+      session.sessionId,
+      preview: !request.connectImmediately && !existing.isRunning,
+      activate: true,
     );
     _host.refreshActiveWorkspaceTabs();
     if (!request.connectImmediately) {
@@ -171,14 +173,7 @@ class SessionTabSurfaceCoordinator {
 
     _tabStore.registerSession(tab);
     _host.sessionRuntime.ensureIdleWatch();
-    _host.applyState(
-      _host.state.copyWith(
-        activeSessionId: session.sessionId,
-        selectedMemberId: placeholderMemberId,
-      ),
-    );
-    // Feed the bar: the new tab must surface in the workbench strip. Only new
-    // tabs go through the bridge; reused tabs are already in the bar.
+    // Feed the bar: the new tab must surface in the workbench strip.
     onSessionTabOpened?.call(
       session.workspaceId,
       tab.info.id,

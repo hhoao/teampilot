@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:collection/collection.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
@@ -70,6 +71,7 @@ import 'chat/tab_session_runtime_coordinator.dart';
 import 'chat/tab_team_bus_coordinator.dart';
 import 'layout_cubit.dart';
 import 'member_presence_cubit.dart';
+import 'workbench/workbench_tab.dart';
 import 'chat/model/chat_state.dart';
 import 'chat/model/chat_tab.dart';
 import 'chat/model/session_connect_request.dart';
@@ -298,7 +300,7 @@ class ChatCubit extends Cubit<ChatState>
         activeTeam: () => _activeTeam,
         isClosed: () => isClosed,
         globalPresets: () => _lifecycle.globalPresets,
-        activeSessionId: () => state.activeSessionId,
+        activeSessionId: () => activeTab?.info.id,
         presence: () => _presenceCubit?.state.presence ?? const {},
         sessionBusyFromAttention: (sessionId) {
           final attention = _agentAttentionCubit;
@@ -459,7 +461,7 @@ class ChatCubit extends Cubit<ChatState>
 
   /// Observable state of the active session's pod (foreground tab), or null.
   SessionPodState? get activePod {
-    final id = state.activeSessionId;
+    final id = activeTab?.info.id;
     if (id == null || id.isEmpty) return null;
     return _pods[id]?.state;
   }
@@ -585,9 +587,23 @@ class ChatCubit extends Cubit<ChatState>
 
   @override
   ChatTab? get activeTab {
-    final id = state.activeSessionId;
-    if (id == null || id.isEmpty) return null;
-    return _tabStore.openTabBySessionId(id);
+    final wsId = _tabStore.activeWorkspaceId;
+    final port = _workbenchPort;
+    if (wsId.isNotEmpty && port != null) {
+      final tabId = port.centerActiveForScope(wsId);
+      if (tabId != null && tabId.kind == WorkbenchTabKind.session) {
+        final tab = _tabStore.openTabBySessionId(tabId.id);
+        if (tab != null) return tab;
+      }
+      // A non-session tab (file/diff) is center-active: no session is active
+      // in this workspace — never fall through to another workspace's tabs.
+      if (tabId != null) return null;
+      // Landing (center-active null): legacy local-tab runtimes that have not
+      // been bar-fed stay reachable within this workspace.
+      return _tabStore.tabsForWorkspace(wsId).firstOrNull;
+    }
+    // Port unwired (tests / legacy): first open tab wins.
+    return _tabStore.openTabs.firstOrNull;
   }
 
   @override
@@ -944,7 +960,7 @@ class ChatCubit extends Cubit<ChatState>
     final sessionWorking = _sessionRuntime.sessionWorking;
     final usesPresenceSnapshot = sessionWorking.usesPresenceSnapshotForTab(
       tab: tab,
-      activeSessionId: state.activeSessionId,
+      activeSessionId: activeTab?.info.id,
       presenceNonEmpty: presence.isNotEmpty,
     );
 
@@ -963,7 +979,7 @@ class ChatCubit extends Cubit<ChatState>
     String? sessionId,
     String? memberId,
   }) async {
-    final sid = sessionId ?? state.activeSessionId;
+    final sid = sessionId ?? activeTab?.info.id;
     if (sid == null) return;
     final tab = _tabStore.openTabBySessionId(sid);
     if (tab == null) return;
@@ -1251,11 +1267,9 @@ class ChatCubit extends Cubit<ChatState>
 
   /// Switches the foreground workspace in the session runtime registry. Called
   /// by the workspace page whenever the active workspace changes. Bar presence
-  /// / order / active are owned by the workbench bar; the foreground-session
-  /// mirror follows the bar via the bridge.
+  /// / order / active are owned by the workbench bar.
   void setActiveWorkspace(String workspaceId) {
     _tabStore.setActiveWorkspaceId(workspaceId);
-    _workbenchPort?.syncForeground();
   }
 
   /// Switches the foreground workspace and session visibility scope in one
@@ -1267,7 +1281,6 @@ class ChatCubit extends Cubit<ChatState>
     String? selectedTeamId,
   }) {
     _tabStore.setActiveWorkspaceId(workspaceTabKey);
-    _workbenchPort?.syncForeground();
     if (_dataStore.setScope(
       scopeSessionsToSelectedTeam: scopeSessionsToSelectedTeam,
       selectedTeamId: selectedTeamId,
@@ -1279,22 +1292,6 @@ class ChatCubit extends Cubit<ChatState>
         ),
       );
     }
-  }
-
-  /// Single writer for the foreground-session mirror, called by the bridge
-  /// ([WorkbenchChatBridge]) when the bar's center-active changes. Emits only
-  /// the mirror fields — presence/order/active live in the bar.
-  void setForegroundSession(String? sessionId, String selectedMemberId) {
-    if (isClosed) return;
-    final id = sessionId?.trim();
-    final active = (id == null || id.isEmpty) ? null : id;
-    emit(
-      state.copyWith(
-        clearActiveSessionId: active == null,
-        activeSessionId: active,
-        selectedMemberId: selectedMemberId,
-      ),
-    );
   }
 
   /// SessionLaunchHost port: bar presence/order is the strip's job — there is
@@ -1769,7 +1766,7 @@ class ChatCubit extends Cubit<ChatState>
     }
     if (view == SessionWorkbenchView.terminal) {
       final tab = _tabStore.openTabBySessionId(sessionId);
-      final memberId = tab?.selectedMemberId ?? state.selectedMemberId;
+      final memberId = tab?.selectedMemberId ?? '';
       if (memberId.trim().isNotEmpty) {
         unawaited(ensureMemberTerminalForView(sessionId, memberId));
       }
@@ -1836,24 +1833,42 @@ class ChatCubit extends Cubit<ChatState>
   void dismissNewChat() {}
 
   void syncTeam(TeamProfile team) {
+    final tab = _activeTab;
     if (team.members.isEmpty) {
-      emit(state.copyWith(selectedMemberId: ''));
+      if (tab != null && tab.selectedMemberId.isNotEmpty) {
+        tab.selectedMemberId = '';
+        _bumpMemberSelection();
+      }
       return;
     }
-    if (team.members.any((m) => m.id == state.selectedMemberId)) return;
-    final newId = _tabStore.defaultMemberId(team);
-    _activeTab?.selectedMemberId = newId;
-    emit(state.copyWith(selectedMemberId: newId));
+    if (team.members.any((m) => m.id == tab?.selectedMemberId)) return;
+    final next = _tabStore.defaultMemberId(team);
+    if (tab != null && tab.selectedMemberId != next) {
+      tab.selectedMemberId = next;
+      _bumpMemberSelection();
+    }
   }
 
   @override
   void selectMember(String memberId) {
-    if (state.selectedMemberId == memberId) return;
-    _activeTab?.selectedMemberId = memberId;
-    emit(state.copyWith(selectedMemberId: memberId));
     final tab = _activeTab;
-    if (tab != null && tab.workbenchView == SessionWorkbenchView.terminal) {
+    if (tab == null || tab.selectedMemberId == memberId) return;
+    tab.selectedMemberId = memberId;
+    _bumpMemberSelection();
+    if (tab.workbenchView == SessionWorkbenchView.terminal) {
       unawaited(ensureMemberTerminalForView(tab.info.id, memberId));
+    }
+  }
+
+  /// Emits the [ChatState.memberSelectionVersion] bump so widgets deriving the
+  /// member highlight from [ChatTab.selectedMemberId] rebuild.
+  void _bumpMemberSelection() {
+    if (!isClosed) {
+      emit(
+        state.copyWith(
+          memberSelectionVersion: state.memberSelectionVersion + 1,
+        ),
+      );
     }
   }
 
@@ -1878,8 +1893,9 @@ class ChatCubit extends Cubit<ChatState>
   );
 
   String selectedMemberName(TeamProfile team) {
+    final id = activeTab?.selectedMemberId ?? '';
     for (final m in team.members) {
-      if (m.id == state.selectedMemberId) return m.name;
+      if (m.id == id) return m.name;
     }
     return team.members.isEmpty ? 'member' : team.members.first.name;
   }
@@ -1916,7 +1932,7 @@ class ChatCubit extends Cubit<ChatState>
 
     final request = buildRetryExistingSessionConnect(
       session: session,
-      selectedMemberId: tab?.selectedMemberId ?? state.selectedMemberId,
+      selectedMemberId: tab?.selectedMemberId ?? '',
       team: team,
     );
     if (request == null) {
@@ -2138,7 +2154,6 @@ class ChatCubit extends Cubit<ChatState>
         .where((s) => s.sessionId == sessionId)
         .firstOrNull;
     composeDraftCache.clearSessionDraft(sessionId);
-    final wasActive = state.activeSessionId == sessionId;
     final sessions = state.sessions
         .where((s) => s.sessionId != sessionId)
         .toList();
@@ -2148,8 +2163,7 @@ class ChatCubit extends Cubit<ChatState>
       _sessionRuntime.maybeStopIdleWatch();
       if (port != null) {
         // Bar removal fires onTabRemoved → teardownSession (removes the runtime
-        // and disposes it); the bar recomputes center-active, and the bridge
-        // fixes the foreground-session mirror.
+        // and disposes it); the bar recomputes center-active.
         port.onSessionTabClosed(tab.workspaceId, sessionId);
       } else {
         await _tearDownTab(tab);
@@ -2163,9 +2177,6 @@ class ChatCubit extends Cubit<ChatState>
         sessions: sessions,
       ),
       base: state.copyWith(
-        clearActiveSessionId: wasActive,
-        activeSessionId: wasActive ? null : state.activeSessionId,
-        selectedMemberId: wasActive ? '' : state.selectedMemberId,
         workingSessionIds: working,
       ),
     );

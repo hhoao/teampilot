@@ -17,6 +17,7 @@ import '../../../services/workspace/workspace_run_registry.dart';
 import '../../../services/workspace/workspace_tools_scope.dart';
 import '../../../services/workspace/workspace_tools_scope_registry.dart';
 import '../../../services/workspace/workspace_worktree_registry.dart';
+import '../../../utils/session/workspace_tab_session_scope.dart';
 import '../../../utils/ui/app_keys.dart';
 import '../../../utils/workspace/workspace_active_context.dart';
 import '../../../utils/workspace/workspace_new_chat_active.dart';
@@ -216,6 +217,11 @@ class _WorkspaceRightToolsPane extends StatelessWidget {
     // composeLanding comes from the bar (single owner of landing state).
     final composeLanding = context.select<WorkbenchCubit, bool>(
       (w) => workspaceNewChatActive(w, tabScopeId),
+    );
+    // Rebuild whenever the bar's center-active session changes so the
+    // team/personal context is never stale after a direct session switch.
+    final _ = context.select<WorkbenchCubit, String?>(
+      (w) => scopedActiveSessionId(w, tabScopeId),
     );
     final active = WorkspaceActiveContext.resolve(
       workbench: context.read<WorkbenchCubit>(),

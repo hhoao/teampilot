@@ -19,6 +19,7 @@ import 'package:teampilot/cubits/member_presence_cubit.dart';
 import 'package:teampilot/cubits/plugin_cubit.dart';
 import 'package:teampilot/cubits/session_preferences_cubit.dart';
 import 'package:teampilot/cubits/skill_cubit.dart';
+import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
 import 'package:teampilot/cubits/worktree_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/app_session.dart';
@@ -163,6 +164,7 @@ void main() {
     final worktreeCubit = _MockWorktreeCubit();
     final memberPresenceCubit = _MockMemberPresenceCubit();
     final layoutCubit = _MockLayoutCubit();
+    final workbenchCubit = WorkbenchCubit();
     final lifecycle = _MockSessionLifecycleService();
     when(() => lifecycle.launchWorkTarget(
           any(),
@@ -226,6 +228,7 @@ void main() {
             value: memberPresenceCubit,
           ),
           BlocProvider<LayoutCubit>.value(value: layoutCubit),
+          BlocProvider<WorkbenchCubit>.value(value: workbenchCubit),
         ],
         child: CliToolRegistryScope(
           registry: CliToolRegistry.builtIn(),

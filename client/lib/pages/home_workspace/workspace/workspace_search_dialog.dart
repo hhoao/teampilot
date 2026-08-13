@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../../cubits/chat_cubit.dart';
+import '../../../cubits/workbench/workbench_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/workspace.dart';
 import '../../../models/app_session.dart';
@@ -15,6 +16,7 @@ import '../../../services/workbench/workbench_editor_opener.dart';
 import '../../../services/workspace/workspace_pane_policy.dart';
 import '../../../utils/debounce/debounce.dart';
 import '../../../utils/session/workspace_sessions.dart';
+import '../../../utils/session/workspace_tab_session_scope.dart';
 import '../../../widgets/sidebar_session_tile.dart';
 import 'workspace_search_widgets.dart';
 import 'workspace_session_actions.dart';
@@ -395,6 +397,10 @@ class _WorkspaceSearchDialogState extends State<WorkspaceSearchDialog> {
         for (final session in shown)
           SidebarSessionTile(
             session: session,
+            highlightSessionId: scopedActiveSessionId(
+              context.read<WorkbenchCubit>(),
+              widget.workspace.workspaceId,
+            ),
             tapThrottleKeyPrefix: 'workspace_search_recent',
             onTap: () => widget.onOpenSession(session),
           ),

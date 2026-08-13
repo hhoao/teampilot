@@ -101,9 +101,9 @@ void main() {
       tabA.selectedMemberId = memberId;
       tabB.selectedMemberId = memberId;
 
-      // Make A the active session; Resource Manager kill must still hit B.
-      cubit.setForegroundSession(sessionA.sessionId, memberId);
-      expect(cubit.state.activeSessionId, sessionA.sessionId);
+      // A is the first open tab, so the active-tab fallback resolves to A;
+      // Resource Manager kill must still hit B.
+      expect(cubit.activeTab?.info.id, sessionA.sessionId);
       expect(shellA.isRunning, isTrue);
       expect(shellB.isRunning, isTrue);
 

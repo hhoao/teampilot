@@ -14,10 +14,17 @@ class ChatWorkbenchSlice {
     required this.sessionLaunchError,
   });
 
-  factory ChatWorkbenchSlice.from(ChatState state) {
+  /// Builds a slice from the scoped bar source: [activeSessionId] and
+  /// [selectedMemberId] must come from `scopedActiveSessionId` /
+  /// `scopedSelectedMemberId` (Task 1), never from [ChatState] mirrors.
+  factory ChatWorkbenchSlice.fromScope({
+    required ChatState state,
+    required String? activeSessionId,
+    required String selectedMemberId,
+  }) {
     return ChatWorkbenchSlice(
-      activeSessionId: state.activeSessionId,
-      selectedMemberId: state.selectedMemberId,
+      activeSessionId: activeSessionId,
+      selectedMemberId: selectedMemberId,
       sessionLaunchError: state.sessionLaunchError,
     );
   }

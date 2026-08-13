@@ -186,21 +186,6 @@ abstract final class WorkbenchShellActions {
     }
   }
 
-  static Future<void> closeReplacedPreview({
-    required BuildContext context,
-    required String workspaceId,
-    required String tabScopeId,
-    required WorkbenchTabId? replaced,
-  }) async {
-    if (replaced == null) return;
-    await _closeDomainOnly(
-      context: context,
-      workspaceId: workspaceId,
-      tabScopeId: tabScopeId,
-      tab: replaced,
-    );
-  }
-
   static Future<void> _closeDomainOnly({
     required BuildContext context,
     required String workspaceId,

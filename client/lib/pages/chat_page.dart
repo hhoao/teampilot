@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../cubits/chat_cubit.dart';
+import '../cubits/workbench/workbench_cubit.dart';
 import '../widgets/workspace_terminal_panel.dart';
 import 'chat/chat_page_shell.dart';
 import 'home_workspace/workspace/workspace_route_active_scope.dart';
@@ -41,8 +41,8 @@ class ChatPage extends StatelessWidget {
   Widget build(BuildContext context) {
     // Select only activeSessionId — ChatPageShell owns its own BlocBuilder
     // with buildWhen, so this widget must not rebuild on every ChatState emit.
-    final activeSessionId = context.select<ChatCubit, String?>(
-      (c) => c.state.activeSessionId,
+    final activeSessionId = context.select<WorkbenchCubit, String?>(
+      (w) => w.centerActiveId(_tabScopeId)?.sessionId,
     );
 
     final routeActive = WorkspaceRouteActiveScope.routeActiveOf(context);

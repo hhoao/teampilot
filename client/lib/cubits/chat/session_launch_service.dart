@@ -33,7 +33,6 @@ import 'session_launch_host.dart';
 
 export 'session_launch_host.dart';
 import '../../services/terminal/terminal_session.dart';
-import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import '../../utils/team/team_member_naming.dart';
 import 'chat_tab_store.dart';
@@ -79,7 +78,6 @@ class SessionLaunchService
         shellForLaunch: _shellForLaunch,
         sessionForMemberConnect: _sessionForMemberConnect,
         tabStore: _tabStore,
-        state: () => _h.state,
       );
   late final SessionLaunchBundle _launch = SessionLaunchBundle.create(
     SessionLaunchBundleDeps(
@@ -157,10 +155,8 @@ class SessionLaunchService
       _workspaceIndex.byId(workspaceId);
 
   void _updateSelectedMember(String memberId) {
-    final tabMemberId = memberId;
-    if (_state.selectedMemberId != tabMemberId) {
-      _h.applyState(_state.copyWith(selectedMemberId: tabMemberId));
-    }
+    // Selected member lives on the ChatTab; the tab-connect prep writes
+    // tab.selectedMemberId. The bar is the single session-identity source.
   }
 
   void _onMixedPlacementNotReady({
@@ -822,16 +818,6 @@ class SessionLaunchService
 
   ChatTab _appendLocalTab(TeamProfile team, {required bool emitChange}) {
     final tab = _tabStore.appendLocalTab(team, cliTeamName: _uuid.v4());
-    if (emitChange) {
-      // Mirror only: the bar owns presence/order/active (fed via the bridge);
-      // activeSessionId/selectedMemberId are the foreground-session mirrors.
-      _h.applyState(
-        _state.copyWith(
-          activeSessionId: tab.info.id,
-          selectedMemberId: tab.selectedMemberId,
-        ),
-      );
-    }
     return tab;
   }
 

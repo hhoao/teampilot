@@ -412,7 +412,12 @@ class _ChatWorkspaceShell extends StatelessWidget {
                     sessionId: sessionId,
                     isPersonalContext: isPersonalContext,
                     team: teamConfig,
-                    workbenchSlice: ChatWorkbenchSlice.from(state),
+                    workbenchSlice: ChatWorkbenchSlice.fromScope(
+                      state: state,
+                      activeSessionId: activeId?.sessionId,
+                      selectedMemberId:
+                          tabById[activeId?.sessionId]?.selectedMemberId ?? '',
+                    ),
                   ),
                 ),
               );

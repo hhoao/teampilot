@@ -244,7 +244,7 @@ void main() {
         await drainPendingAsyncWork();
 
         expect(chatCubit.hasConnectingSession, isFalse);
-        expect(chatCubit.isSessionConnecting(chatCubit.state.activeSessionId!), isFalse);
+        expect(chatCubit.isSessionConnecting(session.sessionId), isFalse);
         expect(shells.fold<int>(0, (sum, s) => sum + s.connectCalls), 0);
       },
     );

@@ -93,7 +93,7 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
   Future<void> _openTerminalLink(String link) async {
     if (!mounted) return;
     final chatCubit = context.read<ChatCubit>();
-    final sessionId = chatCubit.state.activeSessionId?.trim() ?? '';
+    final sessionId = chatCubit.activeTab?.info.id.trim() ?? '';
     AppSession? appSession;
     if (sessionId.isNotEmpty) {
       for (final s in chatCubit.state.sessions) {
@@ -112,7 +112,7 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
       }
     }
 
-    final memberId = chatCubit.state.selectedMemberId;
+    final memberId = chatCubit.activeTab?.selectedMemberId ?? '';
     final isPersonal = appSession?.sessionTeam.trim().isEmpty ?? true;
     final historyMemberId = isPersonal ? '' : memberId;
 

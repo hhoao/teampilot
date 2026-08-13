@@ -505,14 +505,16 @@ final class CliMessageMatrixHarness {
     if (shell == null || (!shell.isRunning && !shell.isConnecting)) {
       final chat = cubit;
       final tab = chat?.activeTab;
+      final activeId = chat?.activeTab?.info.id;
+      final selected = chat?.activeTab?.selectedMemberId;
       throw StateError(
         'No TerminalSession for member=$memberId '
-        'activeSession=${chat?.state.activeSessionId} '
-        'selected=${chat?.state.selectedMemberId} '
+        'activeSession=$activeId '
+        'selected=$selected '
         'launchError=${chat?.state.sessionLaunchError} '
         'tabLaunchError=${tab?.info.launchError} '
         'shellKeys=${tab?.memberShells.keys.toList()} '
-        'isRunning=${chat == null || chat.state.activeSessionId == null ? null : chat.isMemberRunning(sessionId: chat.state.activeSessionId!, memberId: memberId)}\n'
+        'isRunning=${activeId == null ? null : chat!.isMemberRunning(sessionId: activeId, memberId: memberId)}\n'
         '${diagnosticsBundle(memberId: memberId)}',
       );
     }

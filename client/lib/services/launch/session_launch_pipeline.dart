@@ -20,7 +20,6 @@ import '../../repositories/session_repository.dart';
 import '../../services/session/session_member_cli_locks.dart';
 import '../../services/session/team_session_member_plan.dart';
 import '../../services/terminal/terminal_session.dart';
-import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import 'launch_operation.dart';
 import 'launch_outcome.dart';
@@ -575,8 +574,7 @@ class SessionLaunchPipeline {
     SessionRepository? repo,
   }) async {
     final r = repo ?? _host.sessionRepository;
-    final state = _state();
-    final activeId = _activeTab()?.info.id ?? state.activeSessionId ?? 'pending';
+    final activeId = _activeTab()?.info.id ?? 'pending';
     _host.beginSessionConnect(activeId);
     // Restart disconnect() nulls onProcessExited without calling it, so sticky
     // waiting would survive until TTL unless seats are cleared here.
@@ -608,8 +606,8 @@ class SessionLaunchPipeline {
   }
 
   String _selectedMemberIdOrDefault(TeamProfile team) {
-    final state = _state();
-    if (state.selectedMemberId.isNotEmpty) return state.selectedMemberId;
+    final selected = _activeTab()?.selectedMemberId ?? '';
+    if (selected.isNotEmpty) return selected;
     return _tabStore.defaultMemberId(team);
   }
 
