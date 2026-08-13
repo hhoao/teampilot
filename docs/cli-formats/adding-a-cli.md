@@ -91,7 +91,7 @@ typedef AiTranscriptLineAppend = bool Function(
 - **adapter**：`final class NewcliAiTranscriptAdapter implements AiTranscriptAdapter`，`adapterId: '<cli>'` 必须非空（`session_history_registration_test.dart` 断言 `cap.adapter.id` 非空）。
 - **增量/全量 id 一致性（最高优先级约束）**：`lineAppend` 只消费"解析成功"的行（快照/元数据事件返回 false、不推锚点、不消耗 fallback 序号）；fallback id 惰性求值；`tailFallbackPrefix` 必须与 adapter 全量 parse 的 `'$prefix-${seq}'` 完全一致——增量与全量（或重建）产出同一 id 序列。范例：claude `'claude'`、codex `'codex'`、cursor `'cursor'`、flashskyai `'flashskyai'`；opencode 无 fallback（id = db 行 id，天然一致，`lineAppend=null`）。
 - **subagentToolNames**：lowercase 精确匹配。范例：claude `{'agent','task','workflow'}`、codex `{'spawn_agent','agent','task'}`（真实数据为裸名，`multi_agent_v1.` 前缀零命中）、cursor `{'agent','task'}`、opencode `{'task'}`。
-- **enricher**：parse 为 result 第一通道，enricher 仅补"缺失结果"。三类范例：`ClaudeCompatibleToolResultEnricher`（截断占位回填，claude/flashskyai 共享）、`CursorTerminalToolResultEnricher`（`terminals/*.txt` 回填）、`NoOpToolResultEnricher`（codex/opencode）。
+- **enricher**：parse 为 result 第一通道，enricher 仅补"缺失结果"。四类范例：`ClaudeCompatibleToolResultEnricher`（截断占位回填，claude/flashskyai 共享）、`CursorTerminalToolResultEnricher`（`terminals/*.txt` 回填）、`OpencodeToolOutputBackfillEnricher`（`tool-output/` 全量文件回填，子项目 Task 6 实现，见 [truncation-backfill-audit.md](truncation-backfill-audit.md)）、`NoOpToolResultEnricher`（codex——已调研不可行）。
 - 实现惯例：const 类 + 构造参数注入 `subagentSideResolver` / `toolResultEnricher`（可测）；cursor 另注入 `shellResolver`。
 
 **对照文件**
@@ -242,7 +242,7 @@ cd client && flutter analyze --no-fatal-infos --no-fatal-warnings && flutter tes
 1. **增量/全量 id 序列一致性**：`tailFallbackPrefix` 必须与 adapter 全量 fallback `'$prefix-${seq}'` 一致 + fallback 惰性求值（被丢弃事件不占号）——否则 UI 增量与全量出现不同消息条数（5 家断言锁定，D10 闭环）。
 2. **lineAppend 消费语义**：只消费解析成功的行（claude：user/assistant 消息、tool 块；codex：event_msg + response_item 子集），快照/元数据/环境噪音行返回 false——不推锚点、不消耗 fallback 序号（codex 的 `session_meta` / `token_count` 等）。
 3. **args 形态契约**：args 恒 Map 或 null——字符串参数先 jsonDecode（codex `_parseArgs`），非 JSON → `args=null` 且 `argsText` 保留原串（codex freeform）；`custom_tool_call.input` 双形态（String/Map）是 codex 独有坑（P3 夹具待补）。
-4. **result 回填分层**：parse 为第一通道、enricher 仅补缺失（claude 截断 sentinel / cursor `terminals/*.txt`）；codex/opencode 为 `NoOpToolResultEnricher`——截断输出无回填机制，结论见 [truncation-backfill-audit.md](truncation-backfill-audit.md)（随本子项目 Task 4 产出）。
+4. **result 回填分层**：parse 为第一通道、enricher 仅补缺失（claude 截断 sentinel / cursor `terminals/*.txt` / opencode `tool-output/` 文件回填）；codex 保持 `NoOpToolResultEnricher`——截断输出无回填机制（已调研：不可行，截断即永久）。调研结论与 opencode 实现见 [truncation-backfill-audit.md](truncation-backfill-audit.md)。
 5. **夹具纪律**：真实数据 + 脱敏（redact commit `22790cb4`）；无发射证据不捏造（G-5 教训：初判"无 Edit 证据"实为扫描范围遗漏 `subagents/` 子目录）；多 project 目录 / 子目录形态都要扫。
 6. **id 优先级各异，不得互读**：claude `message.id` → `uuid` → fallback；cursor `uuid` → `id` → `message.id` → fallback（与 Claude 相反）；opencode id = db 行 id 无 fallback——新增 CLI 先确定自己的优先级链并断言固化。
 7. **category 跨 CLI 统一**：同语义工具跨 CLI 归类必须一致（G-3 / Task 6 裁决：`question`→`askUser` 与 cursor `AskQuestion`、claude `askuserquestion` 统一）——新增工具名先查 `tool_call_categories.dart` 共享表再决定放共享还是下沉。

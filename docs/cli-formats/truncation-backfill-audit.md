@@ -6,6 +6,8 @@
 - opencode: 个人库 `~/.local/share/opencode/opencode.db`（WAL；22,708 part / 5,671 message / 90 session；2026-07-21 ~ 2026-08-12，数据文件快照 `/tmp/opencode/live-backup.db`）、TeamPilot 会话 runtime 库 `…/sessions/3ae35a45-…/runtime/opencode/opencode.db`（10,686 part，数据文件快照 `/tmp/opencode/tp-runtime.db`）、`~/.local/share/opencode/tool-output/`（15 个完整输出文件）；安装版本 `opencode-ai 1.18.4`；源码 `~/git/opensource/opencode`（dev 分支，`f9ba23ab6`）
 - 参考实现: `client/lib/services/cli/claude/capabilities/history/compatible_tool_result_enricher.dart`（`ClaudeCompatibleToolResultEnricher`）、`client/lib/services/cli/registry/capabilities/history/tool_result_enricher.dart`（`ToolResultEnricher` 接口）
 
+**状态:** 调研结论已落地——opencode 按 §3.2 方案实现为 `OpencodeToolOutputBackfillEnricher`（子项目 Task 6，commits `f74e48c0` / `14ba676c`，挂载于 `opencode/capabilities/history/ai_history_capability.dart:15`）；codex 维持 §1.4 不可行结论（`NoOpToolResultEnricher` 不变）。§3.1「现状」为调研时点快照。
+
 ## 结论摘要
 
 | CLI | 可行性 | 依据（一句话） |

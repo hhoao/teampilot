@@ -114,7 +114,7 @@ adapter 映射（`ai_transcript.dart:638-682`）：`toolCallId = callID ?? part.
   - 解析失败返回 null → inflater 回退 `syntheticSubagentMessagesFromResult`；
   - parent_id 不符只记日志告警（`side_resolver.dart:483-504`），不阻断。
 - **fingerprint 恒为 null**（`side_resolver.dart:443-447`）：注释明确 opencode transcript 是 JSON/SQLite 树、不在 `projects/` 下，loader 的父 cache token 必 miss/move——live refresh 每次都重新定位解析（靠 store 级 liveCacheToken 变化触发，见下节）。
-- **工具结果截断回填：无**——`toolResultEnricher = NoOpToolResultEnricher`（`ai_history_capability.dart:13`），与 claude 的 `ClaudeCompatibleToolResultEnricher` 不同。
+- **工具结果截断回填：有（Task 6 实现）**——`toolResultEnricher = OpencodeToolOutputBackfillEnricher`（`tool_output_backfill_enricher.dart`，挂载于 `ai_history_capability.dart:15`）：核心截断占位（`...N bytes|lines truncated...`）含 `Full output saved to: <绝对路径>` hint 时，从该文件读全文回填（`result` 全文替换、`status=complete`）；hint 缺失或文件不可读（opencode 7 天保留期已过）→ 保持占位；read/grep 工具内自截断不回填（无副本）；**增量刷新路径不回填**（enricher 仅全量 parse 路径挂载）。设计依据与局限见 [truncation-backfill-audit.md](truncation-backfill-audit.md) §3.2。
 
 ## 增量 vs 全量
 
@@ -136,7 +136,7 @@ adapter 映射（`ai_transcript.dart:638-682`）：`toolCallId = callID ?? part.
 - **`patch`/`step-start`/`step-finish` part 被忽略**：实测各 ~3000 行的噪音；`patch` 行（write 的编辑差异）不并入任何文本 part。
 - **user 消息的 tool part 丢弃**；**非 user/assistant 的 role 整条消息丢弃**。
 - **坏 JSON part 静默跳过**（夹具 `prt_bad.json` 内容 `not-json`）。
-- **无截断回填**：`NoOpToolResultEnricher`——工具输出被截断时无占位回填机制（claude 有，opencode 没有）。
+- **截断回填（已实现，Task 6）**：核心截断由 `OpencodeToolOutputBackfillEnricher` 按 `Full output saved to:` hint 读 `tool-output/tool_<id>` 全文件回填（`ai_history_capability.dart:15`）；局限：**7 天保留期**（过期后 hint 路径缺失 → 保持占位）、**增量刷新路径不回填**（直到下次全量 parse）、read/grep **工具内自截断无副本不回填**。调研与实现见 [truncation-backfill-audit.md](truncation-backfill-audit.md)。
 - **WAL 陷阱**：open 时只拷贝 `opencode.db` 主文件读到的是空 schema（native_session_id.dart:84-104 注释 + 测试覆盖）；只读连接直读 WAL 没问题，但本地 watch 的 change 信号必须把 `-wal`/`-shm` 侧车计入（mtime 可能只在侧车上动）。
 - **旧 schema 退化**：无 `time_updated` 列或 `part.session_id` 缺失时，指纹/批量查询失败被吞 → 每次全量（正确但失去增量收益）。
 - **TEXT 主键的字典序**：真实 schema 的 `message.id` 是 `msg_…` TEXT（增量 `id > ?` 是字典序比较）；测试夹具用 INTEGER AUTOINCREMENT 主键验证窗口语义——两者对「新 id 单调增」的假设一致，但真实 id 的随机后缀不保证与创建序严格对应。

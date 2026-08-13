@@ -19,6 +19,8 @@
 
 > 注：位置列与各 CLI 页面「Transcript 存储」表语义一致（token 写法以各页定义为准，如 claude/flashskyai 的 `{root}` = CLI config 目录对应的 transcript roots）；
 > 「增量能力」= 该 CLI 的 `AiHistoryCapability.lineAppend` 是否非空（opencode 走 sqlite 增量 locate，机制见 [opencode.md](opencode.md)）。
+>
+> 工具输出**截断回填可行性**（codex 不可行 / opencode 有条件可行已实现）见 [truncation-backfill-audit.md](truncation-backfill-audit.md)；各页「已知陷阱」相应条目已同步结论。
 
 ## 外部参考
 
