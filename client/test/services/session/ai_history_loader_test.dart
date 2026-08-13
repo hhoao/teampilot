@@ -871,6 +871,10 @@ class _RecordingEnricher implements ToolResultEnricher {
   bool get requiresFilesystem => false;
 
   @override
+  bool matchesTruncationMarker(String result) =>
+      result.contains('tool output truncated');
+
+  @override
   Future<List<AiMessage>> enrich({
     required List<AiMessage> messages,
     required SessionHistoryContext? ctx,
@@ -894,6 +898,10 @@ class _RecordingFsEnricher implements ToolResultEnricher {
 
   @override
   bool get requiresFilesystem => true;
+
+  @override
+  bool matchesTruncationMarker(String result) =>
+      result.contains('tool output truncated');
 
   @override
   Future<List<AiMessage>> enrich({

@@ -172,5 +172,130 @@ void main() {
 
       expect(part.result, 'plain output');
     });
+
+    test('backfills hint path containing spaces', () async {
+      final hintPath = await writeToolOutput(
+        fs.pathContext.join('dir with spaces', 'tool_1'),
+        'full body from spaced path',
+      );
+
+      final enriched = await enrich(
+        messages: truncatedWebfetchMessage(
+          result: placeholderResult(hintPath: hintPath),
+        ),
+      );
+      final part = enriched.single.parts.single as AiToolCallPart;
+
+      expect(part.result, 'full body from spaced path');
+    });
+
+    test('keeps placeholder when hint file is empty', () async {
+      final hintPath = await writeToolOutput('tool_empty', '');
+
+      final messages = truncatedWebfetchMessage(
+        result: placeholderResult(hintPath: hintPath),
+      );
+      final enriched = await enrich(messages: messages);
+      final part = enriched.single.parts.single as AiToolCallPart;
+
+      expect(part.result, (messages.single.parts.single as AiToolCallPart).result);
+      expect(part.result, contains('...120935 bytes truncated...'));
+    });
+
+    test('skips non-string results', () async {
+      final nullMessages = [
+        AiMessage(
+          id: 'm-null',
+          role: AiRole.assistant,
+          parts: [
+            AiToolCallPart(
+              toolCallId: 't1',
+              toolName: 'webfetch',
+              result: null,
+              status: AiToolCallStatus.complete,
+            ),
+          ],
+        ),
+      ];
+      final mapMessages = [
+        AiMessage(
+          id: 'm-map',
+          role: AiRole.assistant,
+          parts: [
+            AiToolCallPart(
+              toolCallId: 't2',
+              toolName: 'webfetch',
+              result: const {'stdout': 'x'},
+              status: AiToolCallStatus.complete,
+            ),
+          ],
+        ),
+      ];
+
+      final enrichedNull = await enrich(messages: nullMessages);
+      final enrichedMap = await enrich(messages: mapMessages);
+
+      expect((enrichedNull.single.parts.single as AiToolCallPart).result, isNull);
+      expect(
+        (enrichedMap.single.parts.single as AiToolCallPart).result,
+        {'stdout': 'x'},
+      );
+    });
+
+    test('backfill forces status to complete from running', () async {
+      final hintPath = await writeToolOutput('tool_running', 'done body');
+      final messages = [
+        AiMessage(
+          id: 'm1',
+          role: AiRole.assistant,
+          parts: [
+            AiToolCallPart(
+              toolCallId: 'tool_1',
+              toolName: 'webfetch',
+              result: placeholderResult(hintPath: hintPath),
+              status: AiToolCallStatus.running,
+            ),
+          ],
+        ),
+      ];
+
+      final enriched = await enrich(messages: messages);
+      final part = enriched.single.parts.single as AiToolCallPart;
+
+      expect(part.result, 'done body');
+      expect(part.status, AiToolCallStatus.complete);
+    });
+  });
+
+  group('matchesTruncationMarker', () {
+    test('matches bytes and lines core-truncation markers', () {
+      const enricher = OpencodeToolOutputBackfillEnricher();
+      expect(
+        enricher.matchesTruncationMarker(
+          'preview\n\n...120935 bytes truncated...\n\n'
+          'Full output saved to: /data/tool-output/tool_1',
+        ),
+        isTrue,
+      );
+      expect(
+        enricher.matchesTruncationMarker('...42 lines truncated...'),
+        isTrue,
+      );
+    });
+
+    test('does not match plain output or tool-internal windowing', () {
+      const enricher = OpencodeToolOutputBackfillEnricher();
+      expect(enricher.matchesTruncationMarker('plain output'), isFalse);
+      expect(
+        enricher.matchesTruncationMarker('... (line truncated to 80 chars)'),
+        isFalse,
+      );
+      expect(
+        enricher.matchesTruncationMarker(
+          '(Results truncated: showing first 10 of 100 matches)',
+        ),
+        isFalse,
+      );
+    });
   });
 }

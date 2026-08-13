@@ -154,6 +154,7 @@ The tool call succeeded but the output was truncated. Full output saved to:
 - 7 天保留期是硬上限——回填只对"截断发生后 7 天内查看"的会话生效；旧会话保持占位（占位本身含 hint，可指导用户去文件查看）
 - hint 文本本身是给 agent 的指引（"Use Grep…/delegate to explore agent"），回填后应被全文替换而非拼接
 - 文件可能超大（实测 15.6MB）——回填时与现有 `result` 一样整体进 AiMessage，内存/渲染同现有大输出路径，无新增风险
+- **增量刷新路径不回填**：loader 的 sqlite 行级增量刷新（`OpencodeHistoryIncrementalRefresher`）只合并新增/变更行，不跑 enricher——增量期间新增的截断 part 保持占位，直到下次全量 parse 才回填（enricher 仅在全量路径挂载）
 
 ### 3.3 codex：不可行，UI 层展示策略（建议）
 

@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:ai_message_core/ai_message_core.dart';
 
-import 'package:logger/logger.dart';
 import '../../../../../utils/logging/logger.dart';
 import '../../../../io/filesystem.dart';
 import '../../../../session/session_history_context.dart';
@@ -12,13 +11,15 @@ import '../../../registry/capabilities/history/tool_result_enricher.dart';
 /// `...N lines truncated...` (see opencode `tool/truncate.ts`). Deliberately
 /// does not match tool-internal windowing (read `line truncated to N chars`,
 /// grep `Results truncated`) which has no on-disk copy to backfill from.
-final RegExp opencodeCoreTruncationMarker = RegExp(
+final _coreTruncationMarker = RegExp(
   r'\.\.\.\d+ (?:bytes|lines) truncated\.\.\.',
 );
 
 /// Hint line embedded in the truncation placeholder; the full output lives at
-/// the captured absolute path (`<data>/tool-output/tool_<id>`).
-final _savedToHint = RegExp(r'Full output saved to:\s*(\S+)');
+/// the captured absolute path (`<data>/tool-output/tool_<id>`). Line-anchored
+/// so paths containing spaces (e.g. Windows user directories) are captured
+/// whole; the path may sit on the same line or the line after the colon.
+final _savedToHint = RegExp(r'Full output saved to:\s*(.+)$', multiLine: true);
 
 /// Backfills opencode tool parts whose result carries the core-truncation
 /// placeholder by reading the full output file referenced by the
@@ -28,11 +29,20 @@ final _savedToHint = RegExp(r'Full output saved to:\s*(\S+)');
 /// (opencode retains truncated outputs for 7 days, then the hint path may be
 /// gone) and when the result carries no hint — mirroring
 /// [ClaudeCompatibleToolResultEnricher]'s fail-open semantics.
+///
+/// Known limitation: the loader's incremental (row-level sqlite) refresh
+/// merges newly-added parts without running enrichers, so a truncated part
+/// that appears during incremental refresh keeps its placeholder until the
+/// next full parse.
 final class OpencodeToolOutputBackfillEnricher implements ToolResultEnricher {
   const OpencodeToolOutputBackfillEnricher();
 
   @override
   bool get requiresFilesystem => true;
+
+  @override
+  bool matchesTruncationMarker(String result) =>
+      _coreTruncationMarker.hasMatch(result);
 
   @override
   Future<List<AiMessage>> enrich({
@@ -83,7 +93,7 @@ final class OpencodeToolOutputBackfillEnricher implements ToolResultEnricher {
 
 Future<String?> _readFullOutput(Object? result, Filesystem fs) async {
   if (result is! String) return null;
-  if (!opencodeCoreTruncationMarker.hasMatch(result)) return null;
+  if (!_coreTruncationMarker.hasMatch(result)) return null;
 
   final match = _savedToHint.firstMatch(result);
   final path = match?.group(1)?.trim();

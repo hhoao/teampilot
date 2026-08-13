@@ -16,6 +16,9 @@ final class ClaudeCompatibleToolResultEnricher implements ToolResultEnricher {
   bool get requiresFilesystem => false;
 
   @override
+  bool matchesTruncationMarker(String result) => _isTruncated(result);
+
+  @override
   Future<List<AiMessage>> enrich({
     required List<AiMessage> messages,
     required SessionHistoryContext? ctx,

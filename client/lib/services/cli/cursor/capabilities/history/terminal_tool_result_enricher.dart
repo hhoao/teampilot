@@ -18,6 +18,12 @@ final class CursorTerminalToolResultEnricher implements ToolResultEnricher {
   @override
   bool get requiresFilesystem => true;
 
+  // Backfills missing (empty) results, not a truncation marker — the loader
+  // gate would never fire for it. Own marker matching (e.g. "result missing")
+  // is a separate concern, pending a gate-capable shape.
+  @override
+  bool matchesTruncationMarker(String result) => false;
+
   @override
   Future<List<AiMessage>> enrich({
     required List<AiMessage> messages,
