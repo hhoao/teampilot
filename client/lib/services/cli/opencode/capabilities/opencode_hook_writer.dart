@@ -22,7 +22,7 @@ class _OpencodeSubscription {
 /// 命令，stdout（决策 JSON）原样传回。
 ///
 /// 共存说明：用户 hooks plugin（`teampilot-user-hooks.js`）与内部托管 plugin
-/// （`teampilot-agent-status.js` / `teampilot-idle.js`，事件订阅 + /agent-status
+/// （`teampilot-agent-status.js` / `teampilot-idle-bus.js`，事件订阅 + /agent-status
 /// POST + /idle 报告）**平行安装**于 opencode.json `plugin` 数组 —— 两者都是
 /// opencode 特有能力而非"hook 配置"，内部托管保持为专属 JS plugin，**不迁移**
 /// 进本 writer。写入时经 `mergeOpencodePluginEntries` 按路径去重合并。
