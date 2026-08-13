@@ -21,6 +21,7 @@ abstract final class LayeredConfigBundle {
         expert?.mcpServerIds,
         team?.mcpServerIds,
       ),
+      hookIds: _mergeIds(workspace.hookIds, expert?.hookIds, team?.hookIds),
     );
   }
 
