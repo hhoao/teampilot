@@ -30,4 +30,5 @@
 
 ## 新增 CLI
 
-见 [adding-a-cli.md](adding-a-cli.md)（随子项目 4 落地）。
+接入清单（6 个接入点：CliTool 定义 / history capability / tool call resolvers /
+注册 / 测试 / 文档）见 [adding-a-cli.md](adding-a-cli.md)。
