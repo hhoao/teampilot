@@ -105,6 +105,9 @@ Map<String, Object?> mergeHooksInto(
     }
     hooks[event] = existing;
   }
+  // 空合并且原 settings 无 hooks 键 → 保持"无 hooks 键"的缺席语义（占位资产
+  // 未补全时不会写入 hooks: {}）。
+  if (hooks.isEmpty && !merged.containsKey('hooks')) return merged;
   merged['hooks'] = hooks;
   return merged;
 }

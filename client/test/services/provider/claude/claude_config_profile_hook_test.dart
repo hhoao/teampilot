@@ -28,6 +28,13 @@ void main() {
     expect((hooks['Stop'] as List), hasLength(1));
     expect(merged['model'], 'x'); // 其余 settings 保留
   });
+
+  test('mergeHooksInto 空 hooks 段且原 settings 无 hooks 键 → 不写入 hooks 键', () {
+    final merged =
+        mergeHooksInto({'model': 'x'}, {'hooks': <String, Object?>{}});
+    expect(merged.containsKey('hooks'), isFalse);
+    expect(merged['model'], 'x');
+  });
 }
 
 CliConfigAsset<CliHookSpec> _asset(String id, CliHookSpec spec) =>
