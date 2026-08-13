@@ -202,8 +202,9 @@ not-json
       // ~/.flashskyai/projects/*/*/subagents/*.jsonl 共 16 条真实 Edit
       // tool_use，键 {file_path, old_string, new_string, replace_all}——
       // 与共享 str-replace codec 键集完全吻合；此前只扫根层漏了
-      // subagents/ 子目录）。内容取自真实事件（file_path 脱敏为
-      // /tmp/demo 风格）。
+      // subagents/ 子目录）。内容取自真实事件（已全量脱敏：id/slug/cwd/
+      // 会话正文 → 占位/中性文本；file_path 保持 /tmp/demo 风格，与
+      // cursor 夹具标准一致）。
       final bytes = await File(
         'test/fixtures/session_history/flashskyai/edit_real.jsonl',
       ).readAsBytes();
