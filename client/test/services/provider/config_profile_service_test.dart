@@ -398,6 +398,13 @@ base_url = "https://api.example.com/v1"
           name: 'worker',
           provider: 'p1',
         ),
+        extraMcpServers: {
+          'teammate-bus': const {
+            'type': 'http',
+            'url': 'http://127.0.0.1:59999/mcp',
+            'headers': <String, String>{'X-Member': 'worker'},
+          },
+        },
         busIdle: MemberBusIdleEndpoint(url: 'http://127.0.0.1:59999/idle'),
         runtimeBundle: const ConfigBundle(),
       );
@@ -412,6 +419,9 @@ base_url = "https://api.example.com/v1"
       expect(toml, contains('https://api.example.com/v1'));
       expect(toml, contains('[mcp_servers.teammate-bus]'));
       expect(toml, contains('http://127.0.0.1:59999/mcp'));
+      // Bus idle Stop hooks now render via the unified writer (http action).
+      expect(toml, contains('[[hooks.Stop]]'));
+      expect(toml, contains('http://127.0.0.1:59999/idle'));
     },
   );
 

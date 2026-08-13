@@ -1,6 +1,5 @@
-import 'package:flutter/foundation.dart';
-
 import '../../../../models/app_provider_config.dart';
+import '../../../../models/hook_entry.dart';
 import '../../../../models/team_config.dart';
 import '../../registry/cli_tool_registry.dart';
 import '../provider/codex_auth_artifacts.dart';
@@ -12,21 +11,17 @@ import '../provider/codex_official_provider.dart';
 import '../../../provider/cross_machine_credential_bridge.dart';
 import '../../../provider/provider_catalog_access.dart';
 import '../provider/codex_provider_settings_resolver.dart';
-import '../provider/codex_agent_status_overlay.dart';
 import '../provider/codex_managed_hook_overlay.dart';
-import '../provider/codex_team_bus_overlay.dart';
 import '../provider/codex_hook_writer.dart';
 import '../../../hook/glue_script_builder.dart';
 import '../../../../utils/logging/logger.dart';
 import '../../registry/capabilities/hook_writer_capability.dart';
 import '../../../launch/work_plane_paths.dart';
-import '../../../host/host_script_runner.dart';
-import '../../../io/filesystem.dart';
 import '../../../provider/workspace_trust_provisioner.dart';
 import '../../../session/member_role_provision.dart';
-import '../../../team_bus/member_bus_idle_endpoint.dart';
 import '../../../../utils/workspace/trusted_project_paths.dart';
 import '../../registry/capabilities/config_profile_capability.dart';
+import '../../registry/config_profile/hook_seat_context_completer.dart';
 
 /// Codex CLI launch: provisions provider `auth.json` + `config.toml` under
 /// per-member [CODEX_HOME], optional team-bus overlay in mixed mode, and
@@ -111,43 +106,28 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
           ),
         );
       }
-      if (busIdle != null && member != null && member.isValid) {
-        overlayParts.add(
-          await (busIdle.isRemote
-              ? CodexTeamBusOverlay.provisionStopHook(
-                  fs: paths.fs,
-                  runner: host.scriptRunner,
-                  codexHome: codexHome,
-                  memberId: member.id,
-                  idle: busIdle,
-                )
-              : CodexTeamBusOverlay.buildLocal(
-                  fs: paths.fs,
-                  runner: host.scriptRunner,
-                  codexHome: codexHome,
-                  memberId: member.id,
-                  idle: busIdle,
-                )),
-        );
-      }
+      // Managed hooks (team-bus Stop → /idle, agent-status lifecycle) come
+      // from the completer; rendered together with user hooks in ONE pass.
       // Agent-status hooks: simple + team whenever stamped — not mixed-gated.
       final agentStatus = ctx.agentStatus;
-      if (agentStatus != null && member != null && member.isValid) {
-        overlayParts.add(
-          await CodexAgentStatusOverlay.provision(
-            fs: paths.fs,
-            runner: host.scriptRunner,
-            codexHome: codexHome,
+      final managedEntries = <HookEntry>[
+        if (busIdle != null && member != null && member.isValid)
+          ...const HookSeatContextCompleter().busIdleHooks(
+            idle: busIdle,
             memberId: member.id,
-            endpoint: agentStatus,
           ),
-        );
-      }
-      if (ctx.hooks.isNotEmpty) {
+        if (agentStatus != null && member != null && member.isValid)
+          ...const HookSeatContextCompleter().agentStatusHooks(
+            endpoint: agentStatus,
+            memberId: member.id,
+          ),
+      ];
+      final allEntries = [...managedEntries, ...ctx.hooks];
+      if (allEntries.isNotEmpty) {
         final writer = const CodexHookWriter();
         final hooksDir = paths.joinWork(codexHome, 'hooks');
         final result = writer.render(
-          entries: ctx.hooks,
+          entries: allEntries,
           ctx: HookRenderContext(
             hooksDir: hooksDir,
             runner: host.scriptRunner,
@@ -239,22 +219,6 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
     if (providers.length == 1) return providers.first;
     return null;
   }
-
-  /// Back-compat for tests that target the team-bus overlay fragment only.
-  @visibleForTesting
-  static Future<String> buildCodexConfigToml({
-    required Filesystem fs,
-    required HostScriptRunner runner,
-    required String codexHome,
-    required String memberId,
-    required MemberBusIdleEndpoint idle,
-  }) => CodexTeamBusOverlay.buildLocal(
-    fs: fs,
-    runner: runner,
-    codexHome: codexHome,
-    memberId: memberId,
-    idle: idle,
-  );
 
   static String _resolveCodexEffort({
     required TeamProfile? team,

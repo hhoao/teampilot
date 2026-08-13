@@ -1,8 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/hook_entry.dart';
 import 'package:teampilot/models/hook_event.dart';
+import 'package:teampilot/services/agent_status/member_agent_status_endpoint.dart';
 import 'package:teampilot/services/cli/codex/provider/codex_hook_writer.dart';
 import 'package:teampilot/services/cli/registry/capabilities/hook_writer_capability.dart';
+import 'package:teampilot/services/cli/registry/config_profile/hook_seat_context_completer.dart';
 import 'package:teampilot/services/hook/glue_script_builder.dart';
 
 void main() {
@@ -104,5 +106,31 @@ void main() {
     expect(result.warnings, contains('hook_script_missing_h1'));
     expect(result.configFragments, isEmpty);
     expect(result.scripts, isEmpty);
+  });
+
+  test('agent-status managed entries render http hooks with headers', () {
+    const completer = HookSeatContextCompleter();
+    const endpoint = MemberAgentStatusEndpoint(
+      url: 'http://127.0.0.1:1/agent-status',
+      token: 't',
+      sessionId: 's',
+    );
+    final entries = [
+      ...completer.agentStatusHooks(endpoint: endpoint, memberId: 'm1'),
+      const HookEntry(
+        id: 'h1',
+        source: HookSource.userLibrary,
+        event: HookEvent.stop,
+        action: CommandHookAction.raw('echo done'),
+      ),
+    ];
+    final result = writer.render(entries: entries, ctx: ctx);
+    expect(result.warnings, isEmpty);
+    final toml = result.configFragments['config.toml']! as String;
+    expect(toml, contains('[[hooks.Stop]]'));
+    expect(toml, contains('type = "http"'));
+    expect(toml, contains('type = "command"'));
+    expect(toml, contains('?event=PreToolUse'));
+    expect(toml, contains('"X-Member" = "m1"'));
   });
 }
