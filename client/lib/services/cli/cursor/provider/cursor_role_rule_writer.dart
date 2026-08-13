@@ -37,6 +37,7 @@ final class CursorRoleRuleWriter {
     bool forceTeamLeadDelegateMode = false,
     bool mixed = false,
     bool pushDelivery = false,
+    List<String> additionalDirectories = const [],
   }) async {
     final path = _layout.roleRule(memberHome);
     final body = MemberRoleProvision.composeRolePrompt(
@@ -44,6 +45,7 @@ final class CursorRoleRuleWriter {
       forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
       mixed: mixed,
       pushDelivery: pushDelivery,
+      additionalDirectories: additionalDirectories,
     ).trim();
     final stat = await _fs.stat(path);
     if (body.isEmpty) {
