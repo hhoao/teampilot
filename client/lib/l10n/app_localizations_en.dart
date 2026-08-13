@@ -6400,6 +6400,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get shortcutsWorkspaceSearch => 'Search Workspace (double-tap Shift)';
 
   @override
+  String get shortcutsWorkspaceContentSearch => 'Find in Files';
+
+  @override
   String get shortcutsStripNextTab => 'Next Tab';
 
   @override

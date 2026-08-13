@@ -43,6 +43,7 @@ import 'services/commands/command_bus.dart';
 import 'services/commands/key_chord.dart';
 import 'services/commands/run_command_registrar.dart';
 import 'services/commands/workspace_search_command_registrar.dart';
+import 'services/commands/workspace_content_search_command_registrar.dart';
 import 'services/commands/shortcut_context.dart';
 import 'services/commands/shortcut_dispatcher.dart';
 import 'services/commands/shortcut_dispatcher_handle.dart';
@@ -710,6 +711,9 @@ void main() async {
                 ),
                 RepositoryProvider<WorkspaceSearchHost>.value(
                   value: shell.workspaceSearchHost,
+                ),
+                RepositoryProvider<WorkspaceContentSearchHost>.value(
+                  value: shell.workspaceContentSearchHost,
                 ),
                 RepositoryProvider<UiZoomBaseline>.value(
                   value: shell.uiZoomBaseline,

@@ -6150,6 +6150,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get shortcutsWorkspaceSearch => '搜索工作区（双击 Shift）';
 
   @override
+  String get shortcutsWorkspaceContentSearch => '在文件中查找';
+
+  @override
   String get shortcutsStripNextTab => '下一个标签';
 
   @override

@@ -11432,6 +11432,12 @@ abstract class AppLocalizations {
   /// **'Search Workspace (double-tap Shift)'**
   String get shortcutsWorkspaceSearch;
 
+  /// No description provided for @shortcutsWorkspaceContentSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Find in Files'**
+  String get shortcutsWorkspaceContentSearch;
+
   /// No description provided for @shortcutsStripNextTab.
   ///
   /// In en, this message translates to:

@@ -47,6 +47,29 @@ import 'search_panel.dart';
 import 'tabbed_panel.dart';
 import 'tool_view.dart';
 
+/// Index of the search tool within [_buildViews], mirroring its guards.
+/// Order: members, fileTree, git, mailbox, board, search.
+///
+/// [membersVisible] must already fold in the `team != null` condition from
+/// [_buildViews]; [showMailbox]/[showBoard] come from a
+/// [RightToolsMailboxGate] resolved with the same inputs.
+int searchToolIndex({
+  required bool isPersonalContext,
+  required bool membersVisible,
+  required bool fileTreeVisible,
+  required bool gitVisible,
+  required bool showMailbox,
+  required bool showBoard,
+}) {
+  var i = 0;
+  if (!isPersonalContext && membersVisible) i++;
+  if (fileTreeVisible) i++;
+  if (gitVisible) i++;
+  if (showMailbox) i++;
+  if (showBoard) i++;
+  return i;
+}
+
 /// Pokes the shared FS watcher when a session leaves the working set.
 class RightToolsWorkingTurnListener extends StatelessWidget {
   const RightToolsWorkingTurnListener({
@@ -247,6 +270,7 @@ class RightToolsToolViews extends StatefulWidget {
     required this.fileTreeCubit,
     required this.workContext,
     required this.scope,
+    required this.searchFocusRequest,
     super.key,
   });
 
@@ -260,6 +284,9 @@ class RightToolsToolViews extends StatefulWidget {
   final FileTreeCubit fileTreeCubit;
   final RuntimeContext workContext;
   final WorkspaceToolsScopeState scope;
+
+  /// Bumped by the Ctrl+Shift+F command host to focus the query field.
+  final ValueNotifier<int> searchFocusRequest;
 
   @override
   State<RightToolsToolViews> createState() => _RightToolsToolViewsState();
@@ -325,16 +352,6 @@ class _RightToolsViewsCacheKey {
 class _RightToolsToolViewsState extends State<RightToolsToolViews> {
   _RightToolsViewsCacheKey? _cacheKey;
   List<ToolView>? _cachedViews;
-
-  /// Task 4 lifts this to the panel host for the content-search shortcut;
-  /// bumped here to focus the query field.
-  final ValueNotifier<int> _searchFocusRequest = ValueNotifier<int>(0);
-
-  @override
-  void dispose() {
-    _searchFocusRequest.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -577,7 +594,7 @@ class _RightToolsToolViewsState extends State<RightToolsToolViews> {
               workspaceId: widget.workspaceId,
               root: root,
               fs: fs,
-              focusRequest: _searchFocusRequest,
+              focusRequest: widget.searchFocusRequest,
             ),
           ),
         ),

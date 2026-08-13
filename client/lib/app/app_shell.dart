@@ -133,6 +133,7 @@ import '../services/commands/run_command_registrar.dart';
 import '../services/commands/session_command_registrar.dart';
 import '../services/commands/shortcuts_ui_commands.dart';
 import '../services/commands/workspace_search_command_registrar.dart';
+import '../services/commands/workspace_content_search_command_registrar.dart';
 import '../services/floating_workspace/floating_maximize_insets.dart';
 import '../services/floating_workspace/floating_surface_registry.dart';
 import '../services/floating_workspace/floating_workspace_commands.dart';
@@ -288,6 +289,7 @@ class AppShell {
     required this.workspaceChromeCommands,
     required this.runCommandHost,
     required this.workspaceSearchHost,
+    required this.workspaceContentSearchHost,
     required this.uiZoomBaseline,
   });
 
@@ -365,6 +367,7 @@ class AppShell {
   final WorkspaceChromeCommands workspaceChromeCommands;
   final RunCommandHost runCommandHost;
   final WorkspaceSearchHost workspaceSearchHost;
+  final WorkspaceContentSearchHost workspaceContentSearchHost;
   final UiZoomBaseline uiZoomBaseline;
 }
 
@@ -1093,10 +1096,15 @@ Future<AppShell> buildAppShell({
   final workspaceChromeCommands = WorkspaceChromeCommands();
   final runCommandHost = RunCommandHost();
   final workspaceSearchHost = WorkspaceSearchHost();
+  final workspaceContentSearchHost = WorkspaceContentSearchHost();
   final uiZoomBaseline = UiZoomBaseline();
   registerShortcutsUiCommands(commandBus);
   registerRunCommands(commandBus, runCommandHost);
   registerWorkspaceSearchCommands(commandBus, workspaceSearchHost);
+  registerWorkspaceContentSearchCommands(
+    commandBus,
+    workspaceContentSearchHost,
+  );
 
   final transportFactory = TerminalTransportFactory(
     sshProfileRepository: sshProfileRepo,
@@ -1824,6 +1832,7 @@ Future<AppShell> buildAppShell({
     workspaceChromeCommands: workspaceChromeCommands,
     runCommandHost: runCommandHost,
     workspaceSearchHost: workspaceSearchHost,
+    workspaceContentSearchHost: workspaceContentSearchHost,
     uiZoomBaseline: uiZoomBaseline,
   );
 }

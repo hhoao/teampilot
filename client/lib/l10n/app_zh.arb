@@ -2506,6 +2506,7 @@
   "shortcutsWorkspaceCloseTab": "关闭工作区标签",
   "shortcutsWorkspaceReopenClosed": "重新打开已关闭的工作区标签",
   "shortcutsWorkspaceSearch": "搜索工作区（双击 Shift）",
+  "shortcutsWorkspaceContentSearch": "在文件中查找",
   "shortcutsStripNextTab": "下一个标签",
   "shortcutsStripPrevTab": "上一个标签",
   "shortcutsSessionNewTab": "新建会话标签",

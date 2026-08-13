@@ -2933,6 +2933,7 @@
   "shortcutsWorkspaceCloseTab": "Close Workspace Tab",
   "shortcutsWorkspaceReopenClosed": "Reopen Closed Workspace Tab",
   "shortcutsWorkspaceSearch": "Search Workspace (double-tap Shift)",
+  "shortcutsWorkspaceContentSearch": "Find in Files",
   "shortcutsStripNextTab": "Next Tab",
   "shortcutsStripPrevTab": "Previous Tab",
   "shortcutsSessionNewTab": "New Session Tab",

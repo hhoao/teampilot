@@ -93,6 +93,18 @@ void main() {
     expect(def.terminalPassthrough, isTrue);
   });
 
+  test('workspace content search defaults to Mod+Shift+F', () {
+    final def = CommandCatalog.v1.singleWhere(
+      (c) => c.id == CommandIds.workspaceContentSearch,
+    );
+    expect(def.defaultChords, [
+      KeyChord(key: 'f', mods: [KeyChordMod.mod, KeyChordMod.shift]),
+    ]);
+    expect(def.when, ShortcutWhen.hasWorkspace);
+    expect(def.terminalPassthrough, isTrue);
+    expect(def.titleL10nKey, 'shortcutsWorkspaceContentSearch');
+  });
+
   test('strip next tab defaults to explicit ctrl+tab', () {
     final def = CommandCatalog.v1.singleWhere(
       (c) => c.id == CommandIds.stripNextTab,
