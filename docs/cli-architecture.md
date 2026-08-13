@@ -491,7 +491,7 @@ transcript 历史与工具气泡的解析链路按**三层职责**组织，详�
 
 | 层 | 位置 | 职责 |
 |----|------|------|
-| **纯接口 + 数据** | `ai_message_core` | `AiToolCallPart` / `AiEditHunk` / `AiEditHunkCodec` 等接口与数据类型，零实现、零 tool name 硬编码 |
+| **纯接口 + 数据** | `client/packages/ai_message_core` | `AiToolCallPart` / `AiEditHunk` / `AiEditHunkCodec` 等接口与数据类型，零实现、零 tool name 硬编码 |
 | **可配置泛型实现** | `client/lib/services/ai_history/` | `Configurable*` resolver / edit codec / 类别表，配置经构造函数注入 |
 | **每 CLI 具体配置** | `client/lib/services/cli/<cli>/capabilities/` | 各 CLI 的 resolver 配置与 history 实现（共享基线在 `registry/capabilities/`） |
 
@@ -521,7 +521,8 @@ transcript 历史与工具气泡的解析链路按**三层职责**组织，详�
 - 装配点：各 CLI 的 `AiHistoryCapability` 构造**默认值**注入 enricher，无需
   `switch (cli)`：claude / flashskyai → `ClaudeCompatibleToolResultEnricher`
   （`claude/capabilities/history/ai_history_capability.dart:15`、
-  `flashskyai/capabilities/history/ai_history_capability.dart:15`）、opencode →
+  `flashskyai/capabilities/history/ai_history_capability.dart:15`；flashskyai 复用
+  claude 目录下的同一类，`compatible_tool_result_enricher.dart:12`）、opencode →
   `OpencodeToolOutputBackfillEnricher`（`opencode/capabilities/history/ai_history_capability.dart:15`）、
   codex → `NoOpToolResultEnricher`（`codex/capabilities/history/ai_history_capability.dart:13`）。
 - 范例：`opencode/capabilities/history/tool_output_backfill_enricher.dart:37` —

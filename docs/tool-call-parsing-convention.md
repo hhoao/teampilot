@@ -98,7 +98,7 @@ client/lib/services/cli/<cli>/capabilities/
 - 无发射证据的名字不进共享集（G-2/G-4/G-5 由此治理；零证据项已移除，如 `writefile`/`create_file`/`target_file` 等；G-1 为 codec freeform 修复、G-3 为类别表修复、G-6 为观察项，不属共享键集治理）
 - 类别表 `tool_call_categories.dart` 是**五 CLI 工具名的并集**（union 语义），不受共享键集治理约束
 
-三种实现模式（详见 `docs/cli-formats/adding-a-cli.md:111-151`）：
+三种实现模式（详见 `docs/cli-formats/adding-a-cli.md:132-135`）：
 
 1. **无 delta**：`class ClaudeToolCallResolvers extends SharedToolCallResolvers`（claude / flashskyai / codex）
 2. **追加覆写**：extends 共享层 + 追加单 CLI 键并 override getter（cursor：`path` / `contents`）
@@ -136,7 +136,7 @@ class MyHunkCodec implements AiEditHunkCodec {
 ```dart
 // 错误 — 共享键集只允许 ≥2 CLI 证据的名字
 class SharedToolCallResolverKeys {
-  static const editToolNames = {'edit', 'strreplace', 'editnotebook'};  // ❌ strreplace 仅 cursor 发射
+  static const editToolNames = {'edit', 'strreplace', 'editnotebook'};  // ❌ strreplace / editnotebook 仅 cursor 发射
 }
 // 正确 — 单 CLI 键下沉到该 CLI 的 resolver 里追加
 // （cursor: 'strreplace'/'editnotebook'；opencode: 'filePath'/'oldString'/'newString'）
