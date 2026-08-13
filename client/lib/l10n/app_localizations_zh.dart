@@ -1214,6 +1214,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get workspaceSearchFilterFiles => '文件';
 
   @override
+  String get workspaceSearchContent => '内容';
+
+  @override
   String get workspaceSearchShowMore => '查看更多结果';
 
   @override

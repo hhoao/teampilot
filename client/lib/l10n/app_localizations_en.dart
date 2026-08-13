@@ -1276,6 +1276,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get workspaceSearchFilterFiles => 'Files';
 
   @override
+  String get workspaceSearchContent => 'Content';
+
+  @override
   String get workspaceSearchShowMore => 'Show more results';
 
   @override

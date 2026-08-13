@@ -520,6 +520,7 @@
   "workspaceSearchFilterAll": "全部",
   "workspaceSearchFilterConversations": "任务",
   "workspaceSearchFilterFiles": "文件",
+  "workspaceSearchContent": "内容",
   "workspaceSearchShowMore": "查看更多结果",
   "workspaceSearchFilesEmptyHint": "输入关键词搜索文件",
   "workspaceSearchNoResults": "没有匹配结果",

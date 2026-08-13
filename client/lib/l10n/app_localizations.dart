@@ -2378,6 +2378,12 @@ abstract class AppLocalizations {
   /// **'Files'**
   String get workspaceSearchFilterFiles;
 
+  /// No description provided for @workspaceSearchContent.
+  ///
+  /// In en, this message translates to:
+  /// **'Content'**
+  String get workspaceSearchContent;
+
   /// No description provided for @workspaceSearchShowMore.
   ///
   /// In en, this message translates to:

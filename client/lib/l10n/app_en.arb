@@ -545,6 +545,7 @@
   "workspaceSearchFilterAll": "All",
   "workspaceSearchFilterConversations": "Tasks",
   "workspaceSearchFilterFiles": "Files",
+  "workspaceSearchContent": "Content",
   "workspaceSearchShowMore": "Show more results",
   "workspaceSearchFilesEmptyHint": "Type to search files",
   "workspaceSearchNoResults": "No matches",
