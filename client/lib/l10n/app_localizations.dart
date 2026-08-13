@@ -10676,6 +10676,18 @@ abstract class AppLocalizations {
   /// **'Failed to create worktree: {error}'**
   String worktreeCreateFailed(Object error);
 
+  /// No description provided for @worktreeBaseSelectorHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Branch or ref'**
+  String get worktreeBaseSelectorHint;
+
+  /// No description provided for @worktreeRandomNameTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Random name'**
+  String get worktreeRandomNameTooltip;
+
   /// No description provided for @worktreeDeleteTitle.
   ///
   /// In en, this message translates to:

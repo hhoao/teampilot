@@ -2368,6 +2368,8 @@
   "worktreeStartConversation": "创建后在此开始一个会话",
   "worktreeCreateAction": "创建",
   "worktreeCreateFailed": "创建 worktree 失败：{error}",
+  "worktreeBaseSelectorHint": "分支或基线",
+  "worktreeRandomNameTooltip": "随机名称",
   "worktreeDeleteTitle": "删除 worktree",
   "worktreeDeleteBody": "删除 {branch} 的 worktree？",
   "worktreeDeleteForce": "即使有未提交改动也强制删除",

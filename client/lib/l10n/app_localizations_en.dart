@@ -5967,6 +5967,12 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get worktreeBaseSelectorHint => 'Branch or ref';
+
+  @override
+  String get worktreeRandomNameTooltip => 'Random name';
+
+  @override
   String get worktreeDeleteTitle => 'Remove worktree';
 
   @override

@@ -5725,6 +5725,12 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get worktreeBaseSelectorHint => '分支或基线';
+
+  @override
+  String get worktreeRandomNameTooltip => '随机名称';
+
+  @override
   String get worktreeDeleteTitle => '删除 worktree';
 
   @override

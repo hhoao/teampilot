@@ -2755,6 +2755,8 @@
   "worktreeCreateAction": "Create",
   "worktreeCreateFailed": "Failed to create worktree: {error}",
   "@worktreeCreateFailed": { "placeholders": { "error": {} } },
+  "worktreeBaseSelectorHint": "Branch or ref",
+  "worktreeRandomNameTooltip": "Random name",
   "worktreeDeleteTitle": "Remove worktree",
   "worktreeDeleteBody": "Remove the worktree for {branch}?",
   "@worktreeDeleteBody": { "placeholders": { "branch": {} } },
