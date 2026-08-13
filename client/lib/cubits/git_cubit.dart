@@ -348,7 +348,8 @@ class GitCubit extends Cubit<GitState> {
     _publish(state.copyWith(commitMessage: message), recomputeRows: false);
   }
 
-  void setAmend(bool value) => _publish(state.copyWith(amend: value));
+  void setAmend(bool value) =>
+      _publish(state.copyWith(amend: value), recomputeRows: false);
 
   void toggleFolderExpanded(String folderPath) {
     final next = Set<String>.from(state.expandedFolderPaths);
@@ -439,8 +440,9 @@ class GitCubit extends Cubit<GitState> {
   Future<void> discardFolder(String folderPath) =>
       _mutate(() => _service.discardFolder(state.repoRoot, folderPath));
 
-  /// Commits the selected paths. No-op when the message is blank or nothing is
-  /// selected.
+  /// Commits the selected paths; in amend mode rewrites HEAD from the message
+  /// and selected paths. No-op when the message is blank, or when nothing is
+  /// selected outside amend mode.
   Future<bool> commit() async {
     final message = state.commitMessage.trim();
     if (message.isEmpty) return false;

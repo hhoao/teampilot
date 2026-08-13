@@ -70,7 +70,7 @@ class GitRepoStatus extends Equatable {
 
   final bool isRepository;
 
-  /// Current branch name, or null when detached HEAD.
+  /// Current branch name, or null when detached HEAD or on an unborn branch.
   final String? branch;
   final String? upstream;
   final int ahead;

@@ -853,7 +853,7 @@ class _Header extends StatelessWidget {
           compact: true,
           size: TpIconButton.kCompactSize,
           tooltip: l10n.gitGenerateCommitMessage,
-          enabled: canGenerate && !generating,
+          enabled: canGenerate,
           onTap: onGenerate,
         ),
         TpIconButton(

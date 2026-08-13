@@ -47,6 +47,26 @@ class _AmendRepoGitStub extends GitService {
   }
 }
 
+class _UnbornBranchGitStub extends GitService {
+  _UnbornBranchGitStub() : super();
+
+  @override
+  Future<bool> get isAvailable async => true;
+
+  @override
+  Future<GitRepoStatus> status(String dir) async => const GitRepoStatus(
+    isRepository: true,
+    branch: 'main',
+    hasCommits: false,
+    unstaged: [
+      GitFileChange(path: 'a.txt', kind: GitChangeKind.modified, staged: false),
+    ],
+  );
+
+  @override
+  Future<List<String>> branches(String dir) async => const ['main'];
+}
+
 void main() {
   late GitRepoStore store;
   late RuntimeContext workContext;
@@ -99,6 +119,34 @@ void main() {
       ),
     );
   }
+
+  testWidgets('amend checkbox is disabled on an unborn branch', (tester) async {
+    final aiSettingsCubit = AiFeatureSettingsCubit(
+      repository: InMemoryAppSettingsRepository(),
+    );
+    final stub = _UnbornBranchGitStub();
+    GitService.debugOverrideFactory = () => stub;
+
+    await tester.pumpWidget(
+      wrap(
+        aiSettingsCubit,
+        GitSourceControlPanel(
+          roots: const ['/repo'],
+          workContext: workContext,
+          workspaceId: 'ws-test',
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    final checkbox = tester.widget<Checkbox>(
+      find.byKey(const ValueKey('git-amend-checkbox')),
+    );
+    expect(checkbox.onChanged, isNull);
+
+    await aiSettingsCubit.close();
+  });
 
   testWidgets('amend checkbox toggles the commit button label', (tester) async {
     final aiSettingsCubit = AiFeatureSettingsCubit(
