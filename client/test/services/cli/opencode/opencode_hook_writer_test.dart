@@ -188,5 +188,8 @@ void main() {
       './teampilot-agent-status.js',
       './teampilot-user-hooks.js',
     ]);
+    final mergedAgain =
+        mergeOpencodePluginEntries(config, ['./teampilot-user-hooks.js']);
+    expect(mergedAgain['plugin'], config['plugin']);
   });
 }
