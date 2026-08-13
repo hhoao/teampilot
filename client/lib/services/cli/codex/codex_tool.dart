@@ -61,6 +61,8 @@ import '../registry/capabilities/turn_interrupt_capability.dart';
 import 'capabilities/tool_call_resolvers.dart';
 import 'capabilities/mcp_config_writer.dart';
 import 'capabilities/plugin_provisioner.dart';
+import 'provider/codex_hook_writer.dart';
+import '../registry/capabilities/hook_writer_capability.dart';
 import '../registry/resources/default_resource_capability.dart';
 
 final class CodexCliTool implements CliToolDefinition {
@@ -103,6 +105,7 @@ final class CodexCliTool implements CliToolDefinition {
     this.remoteAppData = const NoRemoteAppData(),
     this.credentialExport = const CodexCredentialExport(),
     this.toolCallResolvers = const CodexToolCallResolvers(),
+    this.hookWriter = const CodexHookWriter(),
     ProviderCredentialCapability? providerCredential,
   }) : providerCredential =
            providerCredential ?? CodexProviderCredentialCapability();
@@ -146,6 +149,7 @@ final class CodexCliTool implements CliToolDefinition {
   final ExitPlanModeCapability exitPlanMode;
   final CodexAiHistoryCapability aiHistory;
   final SkillInvocationSyntaxCapability skillSyntax;
+  final HookWriterCapability hookWriter;
 
   @override
   CliTool get id => CliTool.codex;
@@ -192,6 +196,7 @@ final class CodexCliTool implements CliToolDefinition {
     aiHistory,
     skillSyntax,
     toolCallResolvers,
+    hookWriter,
   ];
 }
 

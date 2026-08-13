@@ -15,6 +15,10 @@ import '../provider/codex_provider_settings_resolver.dart';
 import '../provider/codex_agent_status_overlay.dart';
 import '../provider/codex_managed_hook_overlay.dart';
 import '../provider/codex_team_bus_overlay.dart';
+import '../provider/codex_hook_writer.dart';
+import '../../../hook/glue_script_builder.dart';
+import '../../../../utils/logging/logger.dart';
+import '../../registry/capabilities/hook_writer_capability.dart';
 import '../../../launch/work_plane_paths.dart';
 import '../../../host/host_script_runner.dart';
 import '../../../io/filesystem.dart';
@@ -138,6 +142,31 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
             endpoint: agentStatus,
           ),
         );
+      }
+      if (ctx.hooks.isNotEmpty) {
+        final writer = const CodexHookWriter();
+        final hooksDir = paths.joinWork(codexHome, 'hooks');
+        final result = writer.render(
+          entries: ctx.hooks,
+          ctx: HookRenderContext(
+            hooksDir: hooksDir,
+            runner: host.scriptRunner,
+            glueBuilder: const GlueScriptBuilder(),
+          ),
+        );
+        for (final script in result.scripts) {
+          await paths.fs.atomicWrite(
+            paths.joinWork(hooksDir, script.fileName),
+            script.content,
+          );
+        }
+        final fragment = result.configFragments['config.toml'] as String?;
+        if (fragment != null && fragment.trim().isNotEmpty) {
+          overlayParts.add(fragment);
+        }
+        for (final warning in result.warnings) {
+          appLogger.d('[hook-writer] codex $warning');
+        }
       }
       final busOverlay =
           overlayParts.isEmpty ? null : overlayParts.join('\n\n');
