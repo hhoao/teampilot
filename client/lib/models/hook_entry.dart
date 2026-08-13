@@ -63,7 +63,11 @@ final class HttpHookAction extends HookAction {
           mapEquals(headers, other.headers);
 
   @override
-  int get hashCode => Object.hash(url, Object.hashAll(headers.entries));
+  int get hashCode => Object.hash(
+    url,
+    Object.hashAllUnordered(headers.keys),
+    Object.hashAllUnordered(headers.values),
+  );
 }
 
 /// 统一 hook 表示：所有来源（用户库/插件/扩展/托管）的中间形态，

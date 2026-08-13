@@ -146,6 +146,7 @@ class HookDefinition {
     action,
     policy,
     timeoutSec,
-    Object.hashAll(env.entries),
+    Object.hashAllUnordered(env.keys),
+    Object.hashAllUnordered(env.values),
   );
 }
