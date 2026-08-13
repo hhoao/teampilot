@@ -146,8 +146,8 @@ docs/cli-formats/
 
 1. 格式参考库：调研 5 个 CLI 原生格式 → 写 md（消息层差异矩阵 + 工具层覆盖矩阵从这产出）
 2. 消息层审计补齐：按矩阵改 adapter
-3. 工具层迁移 + 补齐：resolver 迁文件 + 覆盖矩阵逐格验证
-4. 测试校验 + 新增 CLI 清单落地
+3. 工具层迁移 + 补齐：~~resolver 迁文件~~（已完成 `9ec6a935`）+ 覆盖矩阵逐格验证（已完成，含 system_prompts_leaks 四方证据源与共享层治理）
+4. 测试校验 + 新增 CLI 清单落地：**并含已知陷阱优化**——codex/opencode 截断输出回填调研（P1/P2，先调研真实形态再决定实现/文档化）+ codex custom_tool_call.input 夹具补全（P3）
 5. 约定文档收尾
 
 ## 验证
