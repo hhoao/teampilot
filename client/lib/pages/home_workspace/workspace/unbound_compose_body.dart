@@ -25,6 +25,7 @@ import '../../../models/workspace.dart';
 import '../../../models/runtime_target.dart';
 import '../../../services/ai/headless_ai_service.dart';
 import '../../../services/compose/compose_at_file_refs.dart';
+import '../../../services/compose/compose_clip.dart';
 import '../../../services/compose/compose_draft_cache.dart';
 import '../../../services/compose/compose_file_attach.dart';
 import '../../../services/compose/compose_file_drop_ingestor.dart';
@@ -104,6 +105,7 @@ class UnboundComposeBody extends StatefulWidget {
 
 class _UnboundComposeBodyState extends State<UnboundComposeBody> {
   final _controller = TextEditingController();
+  final _clip = ComposeClip();
   late final FocusNode _focusNode;
   late final ComposeVoiceInput _voiceInput;
   final _headlessAi = HeadlessAiService();
@@ -339,6 +341,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
     _stopVoiceSessionClock();
     _voiceInput.dispose();
     _controller.removeListener(_syncComposeDraft);
+    _clip.dispose();
     _controller.dispose();
     _focusNode.dispose();
     super.dispose();
@@ -891,7 +894,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
 
   bool get _canSubmit {
     if (widget.disabled || widget.isSubmitting) return false;
-    if (_controller.text.trim().isEmpty) return false;
+    if (_controller.text.trim().isEmpty && !_clip.collapsed) return false;
     if (_launchWarningBlock is RemoteCliMissingLaunchBlock) return false;
     if (_conversationMode == _LandingConversationMode.team) {
       final teams = context.read<LaunchProfileCubit>().state.teams;
@@ -916,7 +919,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
   }
 
   Future<void> _submitAfterLaunchGate() async {
-    final text = _controller.text.trim();
+    final text = _clip.composeMessage(_controller.text.trim());
     if (text.isEmpty || widget.disabled || widget.isSubmitting) return;
 
     if (_conversationMode == _LandingConversationMode.team) {
@@ -1021,6 +1024,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
     }
 
     widget.onSubmit(text, _currentDraft());
+    _clip.clear();
   }
 
   void _setConversationMode(_LandingConversationMode mode) {
@@ -1406,6 +1410,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
 
     final composeCard = WorkspaceComposeCard(
       controller: _controller,
+      clip: _clip,
       focusNode: _focusNode,
       hint: l10n.workspaceChatLandingInputHint,
       isSubmitting: widget.isSubmitting,
