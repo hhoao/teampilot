@@ -159,7 +159,7 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
                         final repoPath = cubit.state.repoPath.trim().isNotEmpty
                             ? cubit.state.repoPath
                             : widget.workspace.firstFolderPath;
-                        unawaited(cubit.load(repoPath));
+                        unawaited(cubit.load(repoPath, force: true));
                       },
                     ),
                   ),
@@ -257,7 +257,7 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
         baseRef: result.baseRef,
         existingBranch: result.existingBranch,
       );
-      await cubit.load(repoPath);
+      await cubit.load(repoPath, force: true);
       cubit.setCurrentWorktree(result.worktreePath);
       if (result.startConversation && context.mounted) {
         await showWorkspaceComposeLandingWithWorktree(

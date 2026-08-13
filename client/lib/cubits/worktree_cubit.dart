@@ -227,8 +227,14 @@ class WorktreeCubit extends Cubit<WorktreeState> {
   /// the main worktree. Collapse state is hydrated from disk on first load.
   ///
   /// When [WorkspaceWorktreeStore] already has a snapshot for this repo
-  /// (including an empty non-git result), skips spawning `git worktree list`.
-  Future<void> load(String repoPath, {String? preferCurrentPath}) async {
+  /// (including an empty non-git result), skips spawning `git worktree list`
+  /// unless [force] is true — pass `force: true` after creating/removing a
+  /// worktree so the sidebar reflects the mutation instead of the stale cache.
+  Future<void> load(
+    String repoPath, {
+    String? preferCurrentPath,
+    bool force = false,
+  }) async {
     final lister = _lister;
     if (lister == null) {
       throw StateError(
@@ -249,7 +255,7 @@ class WorktreeCubit extends Cubit<WorktreeState> {
         ? _prefsStore.prefsFor(workspaceId)
         : Future<WorktreeUiPref?>.value(null);
 
-    final listFuture = cached != null
+    final listFuture = cached != null && !force
         ? Future<List<GitWorktree>>.value(cached.worktrees)
         : lister.list(requestedRepo);
 

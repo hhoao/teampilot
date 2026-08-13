@@ -201,7 +201,7 @@ class WorktreeGroupSection extends StatelessWidget {
         sessionsInGroup: group.sessions,
         deleteSession: (id) => chatCubit.deleteSession(repo, id),
       );
-      await cubit.load(_repoPathForGroup(cubit));
+      await cubit.load(_repoPathForGroup(cubit), force: true);
     } on Object catch (error) {
       if (!context.mounted) return;
       AppToast.show(

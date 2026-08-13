@@ -334,6 +334,27 @@ void main() {
   );
 
   test(
+    'load with force re-lists from git even when the store has a snapshot',
+    () async {
+      final store = WorkspaceWorktreeStore();
+      final lister = _FakeWorktreeService([_wt('/repo', main: true)]);
+      final cubit = WorktreeCubit(
+        lister: lister,
+        workspaceId: 'ws-1',
+        worktreeStore: store,
+      );
+      await cubit.load('/repo');
+      expect(cubit.state.worktrees, hasLength(1));
+
+      // A worktree was created on disk by git; the cached snapshot is stale.
+      lister._list = [_wt('/repo', main: true), _wt('/wt/a')];
+      await cubit.load('/repo', force: true);
+      expect(cubit.state.worktrees, hasLength(2));
+      expect(store.peek('ws-1', '/repo')!.worktrees, hasLength(2));
+    },
+  );
+
+  test(
     'selectProject still lists when switching to a different project',
     () async {
       final lister = _CountingLister((path) {
