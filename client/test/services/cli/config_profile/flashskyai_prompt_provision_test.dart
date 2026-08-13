@@ -47,4 +47,19 @@ void main() {
     expect(await fs.stat(path), isNotNull);
     expect(await fs.readString(path), contains('You are the reviewer.'));
   });
+
+  test('FlashskyaiPromptProvisionCapability skips without scope', () async {
+    const member = TeamMemberConfig(
+      id: 'm1',
+      name: 'Member',
+      model: 'test',
+      responsibilities: 'You are the reviewer.',
+    );
+    final contribution = await const FlashskyaiPromptProvisionCapability()
+        .provision(
+          const PromptProvisionContext(member: member),
+        );
+    expect(contribution.written, isFalse);
+    expect(contribution.environment, isEmpty);
+  });
 }

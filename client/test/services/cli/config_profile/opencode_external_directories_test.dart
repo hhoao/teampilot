@@ -125,6 +125,55 @@ void main() {
   });
 
   test(
+    'OpencodePromptProvisionCapability writes dirs-only AGENTS.md for '
+    'invalid member',
+    () async {
+      final base = await Directory.systemTemp.createTemp('opencode_prompt_');
+      addTearDown(() async {
+        if (await base.exists()) await base.delete(recursive: true);
+      });
+      final fs = LocalFilesystem();
+      final service = ConfigProfileService(
+        basePath: base.path,
+        fs: fs,
+        layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
+      );
+      const member = TeamMemberConfig(id: 'x', name: '');
+      final scope = resolveLaunchProfileScope(
+        workspaceId: 'workspace-1',
+        teamId: 'team-a',
+        appSessionId: 'session-1',
+        cliTeamName: 'session-1',
+        memberId: 'x',
+      );
+
+      final contribution =
+          await const OpencodePromptProvisionCapability().provision(
+            PromptProvisionContext(
+              paths: service,
+              scope: scope,
+              member: member,
+              additionalDirectories: const ['/abs/missing/repo'],
+            ),
+          );
+
+      expect(contribution.written, isTrue);
+      final opencodeDir = service.sessionToolDir(
+        scope.workspaceId,
+        scope.sessionId,
+        'opencode',
+        memberId: scope.memberId,
+      );
+      final agents = await fs.readString(
+        '$opencodeDir/${OpencodePromptProvisionCapability.agentsFileName}',
+      );
+      expect(agents, isNotNull);
+      expect(agents, contains('## Workspace directories'));
+      expect(agents, contains('- /abs/missing/repo'));
+    },
+  );
+
+  test(
     'contributeLaunch writes external_directory permission and AGENTS.md '
     'section for additional directories',
     () async {

@@ -6,10 +6,11 @@ import '../config_profile/config_profile_context.dart';
 ///
 /// 装配点（config_profile / cursor home provisioner）只调 [provision] 并合并
 /// [PromptProvisionContribution]；prompt 逻辑全部收敛到实现里。
-/// 各实现只读自己需要的 ctx 字段，并对其做非空断言：
+/// 各实现只读自己需要的 ctx 字段，必需输入缺失时返回空贡献（written: false）：
 /// - claude / flashskyai / codex / opencode：需要 [PromptProvisionContext.paths]
 ///   与 [PromptProvisionContext.scope]（sessionToolDir 定位）；
-/// - cursor：需要 [PromptProvisionContext.memberHome]。
+/// - cursor：需要 [PromptProvisionContext.memberHome]；写入源（ctx.paths 或构造
+///   注入 fs/layout）齐备才写入，仅缺写入源时抛 [StateError]。
 abstract interface class PromptProvisionCapability implements CliCapability {
   Future<PromptProvisionContribution> provision(PromptProvisionContext ctx);
 }

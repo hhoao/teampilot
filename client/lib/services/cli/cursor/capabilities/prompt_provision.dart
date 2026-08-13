@@ -30,12 +30,21 @@ final class CursorPromptProvisionCapability
         : this.layout;
     final memberHome = ctx.memberHome;
     final member = ctx.member;
-    if (fs == null ||
-        layout == null ||
-        memberHome == null ||
-        memberHome.isEmpty ||
-        member == null ||
-        !member.isValid) {
+    if (fs == null || layout == null) {
+      if (fs == null &&
+          layout == null &&
+          member != null &&
+          member.isValid &&
+          memberHome != null &&
+          memberHome.isNotEmpty) {
+        throw StateError(
+          'CursorPromptProvisionCapability: no writer source (ctx.paths or '
+          'constructor fs/layout) while member role is provisionable.',
+        );
+      }
+      return const PromptProvisionContribution();
+    }
+    if (memberHome == null || memberHome.isEmpty || member == null || !member.isValid) {
       return const PromptProvisionContribution();
     }
     final rolePath = await CursorRoleRuleWriter(fs: fs, layout: layout).sync(

@@ -182,7 +182,7 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
       }
     }
 
-    final promptContribution = await promptProvision.provision(
+    await promptProvision.provision(
       PromptProvisionContext(
         paths: paths,
         scope: ctx.scope,
@@ -191,9 +191,6 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
         mixed: mixed,
       ),
     );
-    if (promptContribution.written) {
-      // AGENTS.md written; no transport env for codex.
-    }
 
     return ConfigProfileLaunchContribution(
       environment: {

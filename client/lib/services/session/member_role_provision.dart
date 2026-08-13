@@ -244,7 +244,7 @@ This tab is **plan-and-assign only**: Bash, PowerShell, Edit, Write, NotebookEdi
     final dirsPrompt =
         composeWorkspaceDirectoriesPrompt(additionalDirectories);
     if (dirsPrompt.isNotEmpty) {
-      body.writeln();
+      if (body.isNotEmpty) body.writeln();
       body.write(dirsPrompt.trim());
     }
     return body.toString();
@@ -262,9 +262,11 @@ This tab is **plan-and-assign only**: Bash, PowerShell, Edit, Write, NotebookEdi
   }) async {
     final path = rolePromptPath(memberToolDir, member);
     final hasRoleBody = composeMemberRoleBody(member).isNotEmpty;
+    final hasDirs =
+        composeWorkspaceDirectoriesPrompt(additionalDirectories).isNotEmpty;
     final stat = await fs.stat(path);
     final isLead = TeamMemberNaming.isTeamLead(member);
-    if (!hasRoleBody && !isLead && !mixed) {
+    if (!hasRoleBody && !isLead && !mixed && !hasDirs) {
       if (stat.exists) {
         await fs.removeRecursive(path);
       }

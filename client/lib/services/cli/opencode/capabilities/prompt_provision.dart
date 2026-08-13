@@ -21,16 +21,19 @@ final class OpencodePromptProvisionCapability
       return const PromptProvisionContribution();
     }
     final member = ctx.member;
+    final roleBody = member != null && member.isValid
+        ? MemberRoleProvision.composeRolePrompt(
+            member: member,
+            forceTeamLeadDelegateMode: ctx.forceTeamLeadDelegateMode,
+            mixed: ctx.mixed,
+          ).trim()
+        : '';
+    final dirsPrompt = MemberRoleProvision.composeWorkspaceDirectoriesPrompt(
+      ctx.additionalDirectories,
+    ).trim();
     final body = <String>[
-      if (member != null && member.isValid)
-        MemberRoleProvision.composeRolePrompt(
-          member: member,
-          forceTeamLeadDelegateMode: ctx.forceTeamLeadDelegateMode,
-          mixed: ctx.mixed,
-        ).trim(),
-      MemberRoleProvision.composeWorkspaceDirectoriesPrompt(
-        ctx.additionalDirectories,
-      ).trim(),
+      if (roleBody.isNotEmpty) roleBody,
+      if (dirsPrompt.isNotEmpty) dirsPrompt,
     ].join('\n\n');
     if (body.isEmpty) return const PromptProvisionContribution();
     final opencodeDir = paths.sessionToolDir(

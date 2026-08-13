@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/session/member_role_provision.dart';
 
 void main() {
@@ -51,5 +52,37 @@ void main() {
     );
     final without = MemberRoleProvision.composeRolePrompt(member: member);
     expect(withDirs, without);
+  });
+
+  test('composeRolePrompt dirs-only body has no leading blank line', () {
+    const member = TeamMemberConfig(id: 'm1', name: 'Member');
+    final prompt = MemberRoleProvision.composeRolePrompt(
+      member: member,
+      additionalDirectories: const ['/repo/a'],
+    );
+    expect(prompt, isNot(startsWith('\n')));
+    expect(prompt.startsWith('## Workspace directories'), isTrue);
+    expect(prompt, contains('- /repo/a'));
+  });
+
+  test('syncRolePromptFile writes dirs-only role.md for empty-role member',
+      () async {
+    final fs = LocalFilesystem();
+    final root = await fs.createTempDir(prefix: 'role_dirs_');
+    try {
+      const member = TeamMemberConfig(id: 'm1', name: 'Member');
+      final path = await MemberRoleProvision.syncRolePromptFile(
+        fs: fs,
+        memberToolDir: root,
+        member: member,
+        additionalDirectories: const ['/repo/a'],
+      );
+      expect(path, isNotNull);
+      final text = (await fs.readString(path!))!;
+      expect(text.startsWith('## Workspace directories'), isTrue);
+      expect(text, contains('- /repo/a'));
+    } finally {
+      await fs.removeRecursive(root);
+    }
   });
 }
