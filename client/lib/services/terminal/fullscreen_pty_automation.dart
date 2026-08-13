@@ -101,16 +101,26 @@ class FullscreenPtyAutomation {
   /// staged input. After `--resume`, the same user text often still sits in
   /// the transcript near the composer; skipping paste then only nudges CR and
   /// the new message never reaches the prompt (retry/nudge may CR-only).
+  ///
+  /// [isAcked] (optional) is the hook-channel prompt-submit confirmation —
+  /// the authoritative "message already submitted" signal. When it flips true
+  /// mid-poll (grid probe lagging the real commit), reinject must NOT re-paste:
+  /// that is exactly how a single send becomes multiple user rows / bubbles.
   Future<FullscreenPtyDeliveryOutcome> deliverPasteAndSubmit({
     required FullscreenPtyDeliveryPort port,
     required String text,
     required Duration pasteSettle,
+    bool Function()? isAcked,
   }) async {
     final needle = PtyAutomationNeedle.forText(text);
     final maxReinject = _timing.reinjectMaxAttempts;
 
     for (var reinject = 0; reinject <= maxReinject; reinject++) {
       if (port.isAborted) return FullscreenPtyDeliveryOutcome.aborted;
+      if (isAcked?.call() ?? false) {
+        // Hook already confirmed the submit — never re-paste.
+        return FullscreenPtyDeliveryOutcome.submitted;
+      }
 
       if (reinject > 0) {
         await Future<void>.delayed(_timing.afterReinject);
@@ -133,7 +143,11 @@ class FullscreenPtyAutomation {
         return FullscreenPtyDeliveryOutcome.pasteNotFound;
       }
 
-      final crOutcome = await _pollCrUntilAnchorClears(port, anchor);
+      final crOutcome = await _pollCrUntilAnchorClears(
+        port,
+        anchor,
+        isAcked: isAcked,
+      );
       switch (crOutcome) {
         case FullscreenPtyDeliveryOutcome.submitted:
           return FullscreenPtyDeliveryOutcome.submitted;
@@ -214,16 +228,22 @@ class FullscreenPtyAutomation {
   }
 
   /// Retry always re-pastes; visible text can be transcript history after
-  /// resume, not staged input.
+  /// resume, not staged input. When [isAcked] already confirmed the submit,
+  /// skip the paste entirely — the message is committed.
   Future<FullscreenPtyDeliveryOutcome> retry({
     required FullscreenPtyDeliveryPort port,
     required String text,
     required Duration pasteSettle,
+    bool Function()? isAcked,
   }) async {
+    if (isAcked?.call() ?? false) {
+      return FullscreenPtyDeliveryOutcome.submitted;
+    }
     return deliverPasteAndSubmit(
       port: port,
       text: text,
       pasteSettle: pasteSettle,
+      isAcked: isAcked,
     );
   }
 
@@ -231,6 +251,7 @@ class FullscreenPtyAutomation {
     FullscreenPtyDeliveryPort port,
     FullscreenPromptAnchor anchor, {
     int? maxAttempts,
+    bool Function()? isAcked,
   }) async {
     if (port.crAckConfig.strategy == FullscreenCrAckStrategy.timed) {
       await port.submitCr();
@@ -245,6 +266,10 @@ class FullscreenPtyAutomation {
       maxAttempts: maxAttempts ?? _timing.crMaxAttempts,
       aborted: () => port.isAborted,
       isAcked: (_) async {
+        // Hook-channel ACK is authoritative over the lagging grid probe: once
+        // the CLI confirmed the prompt, stop polling (and let callers skip the
+        // reinject) instead of burning crStuck attempts on a stale mirror.
+        if (isAcked?.call() ?? false) return true;
         await port.syncDisplayGrid();
         return port.isSubmittedAfterCr(anchor, scanRows: scanRows);
       },

@@ -173,6 +173,26 @@ void main() {
       expect(port.clearCount, greaterThanOrEqualTo(1));
       expect(port.crCount, greaterThanOrEqualTo(1));
     });
+
+    test('skips re-paste entirely when hook already acked the submit', () async {
+      final port = FakeFullscreenPtyDeliveryPort();
+
+      final outcome = await automation.retry(
+        port: port,
+        text: TeamBus.doorbellNotice,
+        pasteSettle: Duration.zero,
+        isAcked: () => true,
+      );
+
+      expect(
+        outcome,
+        FullscreenPtyDeliveryOutcome.submitted,
+        reason: 'hook confirmed the prompt already committed; retry re-paste '
+            'would duplicate the user row',
+      );
+      expect(port.pasteCount, 0);
+      expect(port.crCount, 0);
+    });
   });
 
   test('isTextVisible uses PtyAutomationNeedle', () {
@@ -243,6 +263,42 @@ void main() {
       expect(outcome, FullscreenPtyDeliveryOutcome.crStuck);
       expect(port.pasteCount, greaterThanOrEqualTo(2));
     });
+
+    test(
+      'hook ACK during crStuck poll cancels reinject (anchorCellClears)',
+      () async {
+        // opencode shape: first CR actually commits (composer clears) but the
+        // mirror grid stays stale so the probe reports crStuck. Meanwhile the
+        // prompt-submit hook ACK (authoritative) has already arrived.
+        final port = _AnchorCellStuckButHookAckedPort(text: 'A');
+        var acked = false;
+        bool isAcked() {
+          // Hook fires right after the CLI commits the prompt (first CR).
+          if (port.crCount > 0) acked = true;
+          return acked;
+        }
+
+        final outcome = await automation.deliverPasteAndSubmit(
+          port: port,
+          text: 'A',
+          pasteSettle: Duration.zero,
+          isAcked: isAcked,
+        );
+
+        expect(
+          outcome,
+          FullscreenPtyDeliveryOutcome.submitted,
+          reason: 'ACK proves the message already committed; reinject would '
+              'create a duplicate user row (the opencode multi-bubble bug)',
+        );
+        expect(
+          port.pasteCount,
+          1,
+          reason: 'ACK arrived mid-poll — the in-loop reinject must not '
+              're-paste the same text',
+        );
+      },
+    );
   });
 }
 
@@ -561,4 +617,82 @@ final class _ComposerMovesDownEmptyNoNeedleThenAckPort
   @override
   String describeProbeWindow({int scanRows = 24}) =>
       'staged=$staged paste=$pasteCount';
+}
+
+/// First CR commits (opencode anchorCellClears) but the mirror grid stays
+/// stale, so the probe keeps reporting crStuck; the prompt-submit hook ACK
+/// ([isAcked] predicate) arrives right after the CR — the authoritative
+/// "message already submitted" signal.
+final class _AnchorCellStuckButHookAckedPort
+    implements FullscreenPtyDeliveryPort {
+  _AnchorCellStuckButHookAckedPort({required this.text});
+
+  final String text;
+  bool submitted = false;
+  int pasteCount = 0;
+  int crCount = 0;
+  String? staged;
+
+  @override
+  bool get isAborted => false;
+
+  @override
+  int get viewportRows => 24;
+
+  @override
+  FullscreenCrAckConfig get crAckConfig => const FullscreenCrAckConfig(
+    strategy: FullscreenCrAckStrategy.anchorCellClears,
+    composerPrefix: '\u2503',
+  );
+
+  @override
+  Future<void> syncDisplayGrid() async {}
+
+  @override
+  FullscreenPromptAnchor? locateNeedle(String needle, {int scanRows = 24}) {
+    if (staged == null) return null;
+    return FullscreenPromptAnchor(
+      row: 0,
+      startCol: staged!.indexOf(needle),
+      needle: needle,
+    );
+  }
+
+  @override
+  FullscreenPromptAnchor? locateCollapsedPasteNeedle({int scanRows = 24}) =>
+      null;
+
+  @override
+  bool isAtAnchor(FullscreenPromptAnchor anchor) =>
+      staged != null && staged!.contains(anchor.needle);
+
+  @override
+  bool isSubmittedAfterCr(FullscreenPromptAnchor anchor, {int scanRows = 24}) =>
+      // Stale mirror: never reflects the commit.
+      false;
+
+  @override
+  bool isComposerChromeEmpty({int scanRows = 24}) => !submitted;
+
+  @override
+  Future<void> clearStagedInput() async {
+    staged = null;
+  }
+
+  @override
+  Future<void> pasteText(String value) async {
+    pasteCount++;
+    staged = value;
+  }
+
+  @override
+  Future<void> submitCr() async {
+    crCount++;
+    // The CLI really did commit the message.
+    submitted = true;
+  }
+
+  @override
+  String describeProbeWindow({int scanRows = 24}) =>
+      'submitted=$submitted staged=$staged';
 }

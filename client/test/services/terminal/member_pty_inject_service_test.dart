@@ -16,6 +16,7 @@ final class _StuckAutomation extends FullscreenPtyAutomation {
     required FullscreenPtyDeliveryPort port,
     required String text,
     required Duration pasteSettle,
+    bool Function()? isAcked,
   }) async =>
       FullscreenPtyDeliveryOutcome.crStuck;
 }
