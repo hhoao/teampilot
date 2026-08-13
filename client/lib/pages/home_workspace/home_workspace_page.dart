@@ -254,21 +254,12 @@ class _HomeRightPaneState extends State<_HomeRightPane> {
   var _consumedTeamDeepLink = false;
   final Map<String, int> _teamTabIndexById = {};
 
-  static const _teamSections = <TeamConfigSection>[
-    TeamConfigSection.skills,
-    TeamConfigSection.plugins,
-    TeamConfigSection.mcp,
-    TeamConfigSection.extensions,
-    TeamConfigSection.hooks,
-    TeamConfigSection.members,
-    TeamConfigSection.team,
-  ];
-
+  /// Resolves a deep-linked team-config [section] to its tab index in the
+  /// rendered tab bar. Indexes are [teamHomeTabSections]-space — the same list
+  /// the tabs render from — so `?section=` always lands on the right tab.
   int _teamTabIndex(String teamId, TeamConfigSection? deepLinkSection) {
-    if (deepLinkSection != null) {
-      final index = _teamSections.indexOf(deepLinkSection);
-      if (index >= 0) return index;
-    }
+    final index = teamHomeTabIndex(deepLinkSection);
+    if (index >= 0) return index;
     return _teamTabIndexById[teamId] ?? 0;
   }
 

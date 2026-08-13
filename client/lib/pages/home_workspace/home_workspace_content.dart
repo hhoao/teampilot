@@ -9,6 +9,24 @@ import 'home_workspace_global_section.dart';
 import 'home_workspace_identity_content_shell.dart';
 import 'home_workspace_team_tab.dart';
 
+/// Canonical tab order of team-config sections in the home team pane. Also the
+/// index basis for deep-link resolution ([HomeWorkspacePage]) — keep every
+/// consumer on this single list so `?section=` lands on the rendered tab.
+const teamHomeTabSections = <TeamConfigSection>[
+  TeamConfigSection.team,
+  TeamConfigSection.members,
+  TeamConfigSection.skills,
+  TeamConfigSection.plugins,
+  TeamConfigSection.mcp,
+  TeamConfigSection.extensions,
+  TeamConfigSection.hooks,
+];
+
+/// Resolves a deep-linked [TeamConfigSection] to its tab index in
+/// [teamHomeTabSections]; null (no deep link) or unknown sections yield -1.
+int teamHomeTabIndex(TeamConfigSection? section) =>
+    section == null ? -1 : teamHomeTabSections.indexOf(section);
+
 /// Right-hand content pane: team header, config tabs (Skills / Plugins / …),
 /// and the selected team-config section.
 class HomeContent extends StatefulWidget {
@@ -37,24 +55,13 @@ class HomeContent extends StatefulWidget {
 }
 
 class _HomeContentState extends State<HomeContent> {
-  /// Mirrors personal tab order: bundle sections first, members/settings last.
-  static const _sections = <TeamConfigSection>[
-    TeamConfigSection.team,
-    TeamConfigSection.members,
-    TeamConfigSection.skills,
-    TeamConfigSection.plugins,
-    TeamConfigSection.mcp,
-    TeamConfigSection.extensions,
-    TeamConfigSection.hooks,
-  ];
-
-  late int _tabIndex = widget.initialTabIndex.clamp(0, _sections.length - 1);
+  late int _tabIndex = widget.initialTabIndex.clamp(0, teamHomeTabSections.length - 1);
 
   @override
   void didUpdateWidget(covariant HomeContent oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.team.id != oldWidget.team.id) {
-      _tabIndex = widget.initialTabIndex.clamp(0, _sections.length - 1);
+      _tabIndex = widget.initialTabIndex.clamp(0, teamHomeTabSections.length - 1);
     }
   }
 
@@ -67,8 +74,8 @@ class _HomeContentState extends State<HomeContent> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final team = widget.team;
-    final tabs = [for (final section in _sections) section.title(l10n)];
-    final activeSection = _sections[_tabIndex];
+    final tabs = [for (final section in teamHomeTabSections) section.title(l10n)];
+    final activeSection = teamHomeTabSections[_tabIndex];
 
     return HomeIdentityContentShell(
       header: HomeTeamHeader.fromTeam(team),
