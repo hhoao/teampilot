@@ -4,6 +4,8 @@ import '../../../../models/team_config.dart';
 import '../../../agent_status/member_agent_status_endpoint.dart';
 import '../../../io/filesystem.dart';
 import '../../../team_bus/member_bus_idle_endpoint.dart';
+import '../../registry/capabilities/prompt_provision_capability.dart';
+import '../capabilities/prompt_provision.dart';
 import 'cursor_auth_artifacts.dart';
 import 'cursor_cli_config_policy.dart';
 import 'cursor_home_agent_status_overlay.dart';
@@ -11,7 +13,6 @@ import 'cursor_home_bus_overlay.dart';
 import 'cursor_home_layout.dart';
 import 'cursor_member_home_passthrough.dart';
 import 'cursor_provider_credentials_service.dart';
-import 'cursor_role_rule_writer.dart';
 
 /// Merges provider auth, role rule, and mixed-mode team-bus overlay into a
 /// member fake HOME.
@@ -20,13 +21,21 @@ final class CursorHomeProvisioner {
     required Filesystem fs,
     CursorHomeLayout? layout,
     CursorProviderCredentialsService? credentials,
+    PromptProvisionCapability? promptProvision,
   }) : _fs = fs,
        _layout = layout ?? CursorHomeLayout(pathContext: fs.pathContext),
-       _credentials = credentials;
+       _credentials = credentials,
+       _promptProvision =
+           promptProvision ??
+           CursorPromptProvisionCapability(
+             fs: fs,
+             layout: layout ?? CursorHomeLayout(pathContext: fs.pathContext),
+           );
 
   final Filesystem _fs;
   final CursorHomeLayout _layout;
   final CursorProviderCredentialsService? _credentials;
+  final PromptProvisionCapability _promptProvision;
 
   Future<void> provision({
     required String memberHome,
@@ -55,12 +64,14 @@ final class CursorHomeProvisioner {
     if (!member.isValid) return;
 
     if (!mixed) {
-      await _syncRoleRule(
-        memberHome: memberHome,
-        member: member,
-        forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
-        mixed: false,
-        pushDelivery: false,
+      await _promptProvision.provision(
+        PromptProvisionContext(
+          member: member,
+          memberHome: memberHome,
+          forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
+          mixed: false,
+          pushDelivery: false,
+        ),
       );
       if (agentStatus != null) {
         await writeAgentStatusHooks(
@@ -99,12 +110,14 @@ final class CursorHomeProvisioner {
       memberHome,
       cliConfigJson: cliConfigJson,
     );
-    await _syncRoleRule(
-      memberHome: memberHome,
-      member: member,
-      forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
-      mixed: true,
-      pushDelivery: true,
+    await _promptProvision.provision(
+      PromptProvisionContext(
+        member: member,
+        memberHome: memberHome,
+        forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
+        mixed: true,
+        pushDelivery: true,
+      ),
     );
 
     if (busIdle == null) return;
@@ -117,22 +130,6 @@ final class CursorHomeProvisioner {
       memberHome: memberHome,
       member: member,
       busIdle: busIdle,
-    );
-  }
-
-  Future<void> _syncRoleRule({
-    required String memberHome,
-    required TeamMemberConfig member,
-    required bool forceTeamLeadDelegateMode,
-    required bool mixed,
-    required bool pushDelivery,
-  }) {
-    return CursorRoleRuleWriter(fs: _fs, layout: _layout).sync(
-      memberHome: memberHome,
-      member: member,
-      forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
-      mixed: mixed,
-      pushDelivery: pushDelivery,
     );
   }
 
