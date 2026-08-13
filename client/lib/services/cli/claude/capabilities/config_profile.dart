@@ -17,6 +17,8 @@ import '../provider/claude_provider_settings_resolver.dart';
 import '../../../session/member_role_provision.dart';
 import '../team_roster_service.dart';
 import '../../registry/capabilities/config_profile_capability.dart';
+import '../../registry/capabilities/prompt_provision_capability.dart';
+import 'prompt_provision.dart';
 import '../../../provider/workspace_trust_provisioner.dart';
 import '../../../agent_status/member_agent_status_endpoint.dart';
 import '../../../team_bus/member_bus_idle_endpoint.dart';
@@ -60,11 +62,15 @@ class ClaudeLaunchExtras {
 }
 
 final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
-  const ClaudeConfigProfileCapability();
+  const ClaudeConfigProfileCapability({
+    this.promptProvision = const ClaudePromptProvisionCapability(),
+  });
 
   static const toolId = 'claude';
   static const metadataFileName = '.claude.json';
   static const settingsFileEnvKey = 'TEAMPILOT_CLAUDE_SETTINGS_FILE';
+
+  final PromptProvisionCapability promptProvision;
 
   /// MCP 工具调用超时(毫秒)。team-bus 的 `wait_for_message` 是长阻塞工具,
   /// claude 默认的工具超时会在几分钟后掐断它(progress notification 不续命,
@@ -288,7 +294,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
         teammateMode: teammateMode,
       );
     }
-    await _writeMemberProfiles(
+    final appendPromptEnv = await _writeMemberProfiles(
       delegate: delegate,
       scope: scope,
       team: team,
@@ -353,24 +359,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       'MCP_TOOL_TIMEOUT': '$busToolTimeoutMs',
     };
 
-    if (member != null && member.isValid) {
-      final appendPath = await delegate.resolveAppendSystemPromptPath(
-        scope: scope,
-        tool: toolId,
-        member: member,
-      );
-      if (stepSw != null) {
-        _logClaudeContributeLaunchStep(
-          stepSw,
-          'resolveAppendSystemPrompt',
-          sessionId,
-        );
-      }
-      if (appendPath != null) {
-        environment[MemberRoleProvision.appendSystemPromptFileEnvKey] =
-            appendPath;
-      }
-    }
+    environment.addAll(appendPromptEnv);
 
     if (stepSw != null) {
       stepSw.stop();
@@ -669,7 +658,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     await rosterService.ensureInboxes(rosterDir: rosterDir, members: members);
   }
 
-  Future<void> _writeMemberProfiles({
+  Future<Map<String, String>> _writeMemberProfiles({
     required ConfigProfileDelegate delegate,
     required LaunchProfileScope scope,
     required TeamProfile? team,
@@ -694,12 +683,15 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       uniqueMembers[selected.id] = selected;
     }
 
+    final appendPromptEnv = <String, String>{};
     for (final member in uniqueMembers.values) {
       await _writeMemberProfile(
         delegate: delegate,
         scope: scope,
         team: team,
         member: member,
+        launchedMember: selected,
+        appendPromptEnv: appendPromptEnv,
         providerSettings:
             providerSettingsByMember[member.id] ?? providerSettings,
         forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
@@ -709,6 +701,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
         agentStatus: agentStatus,
       );
     }
+    return appendPromptEnv;
   }
 
   Future<void> _writeMemberProfile({
@@ -716,6 +709,8 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     required LaunchProfileScope scope,
     required TeamProfile? team,
     required TeamMemberConfig member,
+    required TeamMemberConfig? launchedMember,
+    required Map<String, String> appendPromptEnv,
     required Map<String, Object?>? providerSettings,
     required bool forceTeamLeadDelegateMode,
     required bool mixed,
@@ -732,13 +727,19 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
           : null,
     );
     final isLead = TeamMemberNaming.isTeamLead(member);
-    await MemberRoleProvision.syncRolePromptFile(
-      fs: delegate.fs,
-      memberToolDir: memberToolDir,
-      member: member,
-      forceTeamLeadDelegateMode: isLead && forceTeamLeadDelegateMode,
-      mixed: mixed,
+    final promptContribution = await promptProvision.provision(
+      PromptProvisionContext(
+        paths: delegate,
+        scope: scope,
+        member: member,
+        forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
+        mixed: mixed,
+        additionalDirectories: const [],
+      ),
     );
+    if (promptContribution.written && member.id == launchedMember?.id) {
+      appendPromptEnv.addAll(promptContribution.environment);
+    }
     final file = sessionMemberSettingsFile(
       delegate,
       scope.workspaceId,

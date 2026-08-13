@@ -65,6 +65,8 @@ import 'capabilities/tool_call_resolvers.dart';
 import 'capabilities/mcp_config_writer.dart';
 import 'capabilities/plugin_provisioner.dart';
 import 'capabilities/credential_binding.dart';
+import 'capabilities/prompt_provision.dart';
+import '../registry/capabilities/prompt_provision_capability.dart';
 import '../registry/resources/default_resource_capability.dart';
 import '../registry/capabilities/hook_registry.dart';
 import '../registry/capabilities/claude_family_hook_registry.dart';
@@ -112,6 +114,7 @@ final class ClaudeCliTool implements CliToolDefinition {
     this.credentialExport = const ClaudeCredentialExport(),
     this.toolCallResolvers = const ClaudeToolCallResolvers(),
     this.credentialBinding = const ClaudeCredentialBindingCapability(),
+    this.promptProvision = const ClaudePromptProvisionCapability(),
     this.busIdleHooks = const BusIdleHooksCapability(),
     ProviderCredentialCapability? providerCredential,
     HookRegistry? hookRegistry,
@@ -161,6 +164,7 @@ final class ClaudeCliTool implements CliToolDefinition {
   final CredentialExportCapability credentialExport;
   final ClaudeToolCallResolvers toolCallResolvers;
   final CredentialBindingCapability credentialBinding;
+  final PromptProvisionCapability promptProvision;
 
   @override
   CliTool get id => CliTool.claude;
@@ -213,6 +217,7 @@ final class ClaudeCliTool implements CliToolDefinition {
     credentialExport,
     toolCallResolvers,
     credentialBinding,
+    promptProvision,
     hookRegistry,
     busIdleHooks,
   ];
