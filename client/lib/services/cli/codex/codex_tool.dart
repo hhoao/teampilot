@@ -43,13 +43,11 @@ import 'capabilities/provider_display.dart';
 import '../registry/capabilities/provider_display_capability.dart';
 import 'capabilities/config_ui.dart';
 import '../registry/capabilities/cli_config_ui_capability.dart';
-import 'capabilities/title_attention.dart';
 import 'capabilities/marketplace_consumer.dart';
 import '../registry/capabilities/claude_family_agent_status_normalizer.dart';
 import 'capabilities/history_context_env.dart';
 import 'capabilities/remote_app_data.dart';
 import 'capabilities/credential_export.dart';
-import '../registry/capabilities/title_attention_capability.dart';
 import '../registry/capabilities/marketplace_consumer_capability.dart';
 import '../registry/capabilities/remote_app_data_capability.dart';
 import '../registry/capabilities/credential_export_capability.dart';
@@ -57,7 +55,6 @@ import '../registry/capabilities/history_context_env_capability.dart';
 import '../registry/capabilities/agent_status_normalizer_capability.dart';
 import 'capabilities/wait_before_stop.dart';
 import '../registry/capabilities/wait_before_stop_capability.dart';
-import '../registry/capabilities/turn_interrupt_capability.dart';
 import 'capabilities/tool_call_resolvers.dart';
 import 'capabilities/mcp_config_writer.dart';
 import 'capabilities/plugin_provisioner.dart';
@@ -91,7 +88,6 @@ final class CodexCliTool implements CliToolDefinition {
     this.providerForm = const CodexProviderFormCapability(),
     this.resource = const DefaultResourceCapability(),
     this.mcpConfigWriter = const CodexMcpConfigWriter(),
-    this.turnInterrupt = const CtrlCTurnInterrupt(),
     this.askUserQuestion = const PtyAskUserQuestionCapability(),
     this.exitPlanMode = const NoExitPlanModeCapability(),
     this.aiHistory = const CodexAiHistoryCapability(),
@@ -101,7 +97,6 @@ final class CodexCliTool implements CliToolDefinition {
     this.waitBeforeStop = const DefaultWaitBeforeStop(),
     this.providerDisplay = const CodexProviderDisplay(),
     this.configUi = const CodexConfigUi(),
-    this.titleAttention = const NoTitleAttention(),
     this.marketplaceConsumer = const NoMarketplaceConsumer(),
     this.agentStatusNormalizer = const ClaudeFamilyAgentStatusNormalizer(),
     this.historyContextEnv = const CodexHistoryContextEnv(),
@@ -136,12 +131,10 @@ final class CodexCliTool implements CliToolDefinition {
 
   final BusTransportCapability busTransport;
   final RemoteCliLocatorCapability remoteCliLocator;
-  final TurnInterruptCapability turnInterrupt;
   final TurnCompletionCapability turnCompletion;
   final WaitBeforeStopCapability waitBeforeStop;
   final ProviderDisplayCapability providerDisplay;
   final CliConfigUiCapability configUi;
-  final TitleAttentionCapability titleAttention;
   final MarketplaceConsumerCapability marketplaceConsumer;
   final AgentStatusNormalizerCapability agentStatusNormalizer;
   final HistoryContextEnvCapability historyContextEnv;
@@ -184,12 +177,10 @@ final class CodexCliTool implements CliToolDefinition {
     headlessProvision,
     resource,
     mcpConfigWriter,
-    turnInterrupt,
     turnCompletion,
     waitBeforeStop,
     providerDisplay,
     configUi,
-    titleAttention,
     marketplaceConsumer,
     agentStatusNormalizer,
     historyContextEnv,

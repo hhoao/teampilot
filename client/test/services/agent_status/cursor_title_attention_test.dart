@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/agent_status/agent_attention_state.dart';
-import 'package:teampilot/services/cli/cursor/capabilities/title_attention.dart';
+import 'package:teampilot/services/cli/cursor/capabilities/terminal_behavior.dart';
 
 void main() {
   group('detectCursorTitleAttention', () {

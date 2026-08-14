@@ -33,7 +33,7 @@ import '../../services/cli/preset_resolver.dart';
 import '../../services/commands/key_chord.dart';
 import '../../services/commands/shortcut_focus.dart';
 import '../../services/cli/registry/capabilities/ai_history_capability.dart';
-import '../../services/cli/registry/capabilities/turn_interrupt_capability.dart';
+import '../../services/cli/registry/capabilities/terminal_behavior_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/terminal/session_member_cli_resolver.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
@@ -777,7 +777,7 @@ class _SessionChatViewState extends State<SessionChatView> {
     );
     final supportsTurnInterrupt =
         registry
-            .capability<TurnInterruptCapability>(lockedCli)
+            .capability<TerminalBehaviorCapability>(lockedCli)
             ?.supportsTurnInterrupt ??
         false;
     final action = resolveHistoryComposeSubmitAction(
