@@ -371,6 +371,9 @@ class LayoutCubit extends Cubit<LayoutState> {
   Future<void> setCotExpandToolsOnOpen(bool value) =>
       _save(state.preferences.copyWith(cotExpandToolsOnOpen: value));
 
+  Future<void> setAutoOpenSubagentPreview(bool value) =>
+      _save(state.preferences.copyWith(autoOpenSubagentPreview: value));
+
   Future<void> setChatUserMessageMode(ContentDisplayMode value) =>
       _save(state.preferences.copyWith(chatUserMessageMode: value));
 

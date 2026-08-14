@@ -288,4 +288,21 @@ void main() {
       isEmpty,
     );
   });
+
+  test('autoOpenSubagentPreview defaults false and round-trips', () {
+    expect(const LayoutPreferences().autoOpenSubagentPreview, isFalse);
+    expect(
+      LayoutPreferences.fromJson(const {}).autoOpenSubagentPreview,
+      isFalse,
+    );
+    final parsed = LayoutPreferences.fromJson(const {
+      'autoOpenSubagentPreview': true,
+    });
+    expect(parsed.autoOpenSubagentPreview, isTrue);
+    expect(parsed.toJson()['autoOpenSubagentPreview'], isTrue);
+    final restored = LayoutPreferences.fromJson(
+      const LayoutPreferences(autoOpenSubagentPreview: true).toJson(),
+    );
+    expect(restored.autoOpenSubagentPreview, isTrue);
+  });
 }

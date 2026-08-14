@@ -72,6 +72,7 @@ class LayoutPreferences {
     this.markdownOpenMode = MarkdownOpenMode.preview,
     this.cotExpandReasoningOnOpen = false,
     this.cotExpandToolsOnOpen = false,
+    this.autoOpenSubagentPreview = false,
     this.chatUserMessageMode = ContentDisplayMode.foldFixedHeight,
     this.chatCodeBlockMode = ContentDisplayMode.foldFixedHeight,
     this.fileCodeBlockMode = ContentDisplayMode.foldFixedHeight,
@@ -158,6 +159,8 @@ class LayoutPreferences {
       cotExpandReasoningOnOpen:
           json['cotExpandReasoningOnOpen'] as bool? ?? false,
       cotExpandToolsOnOpen: json['cotExpandToolsOnOpen'] as bool? ?? false,
+      autoOpenSubagentPreview:
+          json['autoOpenSubagentPreview'] as bool? ?? false,
       chatUserMessageMode:
           _enumValue(ContentDisplayMode.values, json['chatUserMessageMode']) ??
           ContentDisplayMode.foldFixedHeight,
@@ -257,6 +260,7 @@ class LayoutPreferences {
   final MarkdownOpenMode markdownOpenMode;
   final bool cotExpandReasoningOnOpen;
   final bool cotExpandToolsOnOpen;
+  final bool autoOpenSubagentPreview;
   final ContentDisplayMode chatUserMessageMode;
   final ContentDisplayMode chatCodeBlockMode;
   final ContentDisplayMode fileCodeBlockMode;
@@ -304,6 +308,7 @@ class LayoutPreferences {
     MarkdownOpenMode? markdownOpenMode,
     bool? cotExpandReasoningOnOpen,
     bool? cotExpandToolsOnOpen,
+    bool? autoOpenSubagentPreview,
     ContentDisplayMode? chatUserMessageMode,
     ContentDisplayMode? chatCodeBlockMode,
     ContentDisplayMode? fileCodeBlockMode,
@@ -381,6 +386,8 @@ class LayoutPreferences {
       cotExpandReasoningOnOpen:
           cotExpandReasoningOnOpen ?? this.cotExpandReasoningOnOpen,
       cotExpandToolsOnOpen: cotExpandToolsOnOpen ?? this.cotExpandToolsOnOpen,
+      autoOpenSubagentPreview:
+          autoOpenSubagentPreview ?? this.autoOpenSubagentPreview,
       chatUserMessageMode: chatUserMessageMode ?? this.chatUserMessageMode,
       chatCodeBlockMode: chatCodeBlockMode ?? this.chatCodeBlockMode,
       fileCodeBlockMode: fileCodeBlockMode ?? this.fileCodeBlockMode,
@@ -436,6 +443,7 @@ class LayoutPreferences {
       markdownOpenMode: markdownOpenMode,
       cotExpandReasoningOnOpen: cotExpandReasoningOnOpen,
       cotExpandToolsOnOpen: cotExpandToolsOnOpen,
+      autoOpenSubagentPreview: autoOpenSubagentPreview,
       chatUserMessageMode: chatUserMessageMode,
       chatCodeBlockMode: chatCodeBlockMode,
       fileCodeBlockMode: fileCodeBlockMode,
@@ -485,6 +493,7 @@ class LayoutPreferences {
       'markdownOpenMode': markdownOpenMode.name,
       'cotExpandReasoningOnOpen': cotExpandReasoningOnOpen,
       'cotExpandToolsOnOpen': cotExpandToolsOnOpen,
+      'autoOpenSubagentPreview': autoOpenSubagentPreview,
       'chatUserMessageMode': chatUserMessageMode.name,
       'chatCodeBlockMode': chatCodeBlockMode.name,
       'fileCodeBlockMode': fileCodeBlockMode.name,
