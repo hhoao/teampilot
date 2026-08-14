@@ -16,7 +16,7 @@ Status: Draft (brainstorming)
   Plugin 服务 ──收集虚拟实例──▶  PluginCapability.provision()
   MCP 快照服务 ──McpServerSpec──▶  McpCapability.write()
   Hook 服务   ──HookEntry──────▶  HookCapability.render()
-  成员 prompt ──组合内容───────▶  (PromptProvision → CliSessionCapability)
+  Prompt 源   ──PromptSpec─────▶  PromptCapability.materialize()
   会话流程     ──provider 选择──▶  ProviderCapability.materializeSessionHome()
 ```
 
@@ -30,7 +30,7 @@ Status: Draft (brainstorming)
 | 工作区级(后续) | Workspace 资源绑定 | `project-config.json` 的 skills/plugins/mcp/hooks |
 | 成员级(后续) | Member 配置 | `TeamMemberConfig`(agent 预设、成员 MCP、effort) |
 
-## 目标:46 → 13 个接口
+## 目标:46 → 14 个接口
 
 ### Hub 功能契约(每 CLI 一个实现)
 
@@ -41,12 +41,13 @@ Status: Draft (brainstorming)
 | `PluginCapability` | PluginProvisioner, MarketplaceConsumer, RemoteAppData | — |
 | `McpCapability` | McpConfigWriter | — |
 | `HookCapability` | HookWriter | managed hooks(busIdle/agentStatus)编排从 5 个 config_profile 实现提取为共享流程 |
+| `PromptCapability` | PromptProvision(2026-08-13 设计升级) | 多源虚拟实例收集 + 物化(见下) |
 
 ### 基础设施(非 Hub,保留领域名)
 
 | 接口 | 吸收的旧接口 |
 |---|---|
-| `CliSessionCapability` | CliSessionLifecycle, PostManifestFlush, LaunchArgs, CliConfigLayout, PromptProvision |
+| `CliSessionCapability` | CliSessionLifecycle, PostManifestFlush, LaunchArgs, CliConfigLayout |
 | `TeamBehaviorCapability` | NativeTeam, BusTransport, TurnCompletion, WaitBeforeStop, Presence, MemberAgentPreset |
 | `ChatInteractionCapability` | AgentStatusNormalizer, AskUserQuestion, ExitPlanMode |
 | `TerminalBehaviorCapability` | TerminalBehavior(原), TurnInterrupt, TitleAttention |
@@ -64,16 +65,56 @@ Status: Draft (brainstorming)
 | provider 解析 + home 装配(auth.json/config.toml/settings.json/llm_config/metadata 脚手架) | `ProviderCapability.materializeSessionHome` |
 | managed hooks(busIdle/agentStatus)+ 用户 hooks 渲染 + 脚本落盘 | `HookCapability`(共享 managed-hooks 装配流程) |
 | 跨机凭证桥(CrossMachineCredentialBridge) | `ProviderCapability`(凭证部分) |
-| prompt 注入 | `CliSessionCapability` 内的 PromptProvision |
+| prompt 注入 | `PromptCapability`(物化器角色) |
 | workspace trust | `CliSessionCapability` 会话流程(共享工具,已是) |
 | 最终 env 贡献(CODEX_HOME 等) | `CliSessionCapability` — 由子能力结果汇总 |
 
 会话编排流程(`config_profile_service.dart` / `session_bootstrap_coordinator.dart`)保留为共享服务,调用各子能力、按序执行、汇总 env/warnings。claude 的 config_profile.dart(1100 行)随之拆解为 provider / hook / prompt 三块。
 
+## `PromptCapability`:多源 prompt 虚拟实例
+
+Prompt 是**独立的第 6 个 Hub 契约**(升级 2026-08-13 的 PromptProvisionCapability,不再并入 CliSessionCapability)。核心区别:prompt 的**源**不只有"CLI 写成员角色 prompt"——很多功能都能提供 prompt,且未来用户需要自定义 prompt。
+
+```
+PromptSpec (虚拟实例, 纯数据)
+  id/slug, 名称
+  content (markdown)
+  scope: cli / member / team / expert / workspace / global
+  合并角色: 替换 / 追加 / 章节(如 "Workspace directories")
+
+PromptCapability (一个接口, 双角色, 类似 SkillCapability)
+  // 源角色: 声明我提供哪些 prompt 虚拟实例 (纯函数, 无 IO)
+  List<PromptSpec> virtualize(PromptVirtualizeContext ctx);
+
+  // 物化器角色: 把收集合并后的 PromptSpec 列表写入 CLI 原生位置
+  Future<PromptMaterializeResult> materialize(PromptMaterializeContext ctx);
+  // 非 CLI 的源(team/expert/workspace/user)默认 no-op materialize
+```
+
+**多源收集流程**(会话启动前):
+
+```
+各作用域的注册器扫描 PromptCapability 实现
+  ├─ CLI 定义(每 CLI 的 prompt 物化器 + 成员角色 prompt)
+  ├─ TeamHub 模板(团队 prompt)
+  ├─ Expert 能力包(persona prompt)
+  ├─ Workspace 绑定(未来用户自定义, 全 Workspace / 单 Workspace)
+  └─ 其他功能(export 等)
+        ↓ 收集 List<PromptSpec>
+    按 scope 优先级合并: team > expert > workspace > user > CLI 默认
+        ↓
+    每 CLI 的 PromptCapability.materialize() 写入原生格式
+      claude: prompts/{slug}/role.md + env
+      codex/opencode: AGENTS.md
+      cursor: ~/.cursor/rules/role.mdc
+```
+
+`CliSessionCapability` 只负责收集编排(遍历各作用域 virtualize + 合并 + 调物化),不持有 prompt 语义。
+
 ## 文件组织
 
 - 接口文件:每个新接口一个 `registry/capabilities/<name>.dart`(纯接口 + 共享枚举/纯函数可同文件)
-- 每 CLI 实现:按领域收敛——`cli/{cli}/capabilities/provider.dart`、`skill.dart`、`plugin.dart`、`mcp.dart`、`hook.dart`、`session.dart`、`team_behavior.dart`、`chat_interaction.dart`、`terminal_behavior.dart`、`headless.dart`、`ai_history.dart`、`executable.dart`(不再每能力一个孤儿文件)
+- 每 CLI 实现:按领域收敛——`cli/{cli}/capabilities/provider.dart`、`skill.dart`、`plugin.dart`、`mcp.dart`、`hook.dart`、`prompt.dart`、`session.dart`、`team_behavior.dart`、`chat_interaction.dart`、`terminal_behavior.dart`、`headless.dart`、`ai_history.dart`、`executable.dart`(不再每能力一个孤儿文件)
 - 共享实现(ClaudeFamilyAgentStatusNormalizer、SharedToolCallResolvers、Default* 等)留在 registry 共享基础设施
 
 ## 测试策略
@@ -87,7 +128,7 @@ Status: Draft (brainstorming)
 ## 实施顺序(建议)
 
 1. 简单吸收组(无行为变化):TerminalBehavior、TeamBehavior、ChatInteraction、Headless、CliExecutable、AiHistory
-2. Hub 组:Skill、Plugin、Mcp、Hook
+2. Hub 组:Skill、Plugin、Mcp、Hook、Prompt(含 PromptSpec 虚拟实例 + 多源收集)
 3. ProviderCapability(8→1 + materializeSessionHome 迁移)
 4. CliSessionCapability + ConfigProfile 解散(最大改动,claude 1100 行文件拆解)
 
@@ -99,6 +140,6 @@ Status: Draft (brainstorming)
 
 ## 范围外(后续)
 
-- workspace / member 作用域的注册器落地(本文档定义模式,CLI 级先行)
+- workspace / member 作用域的注册器落地(本文档定义模式,CLI 级先行;PromptCapability 的多源收集预留 team/expert/workspace/user 源,接口先行、源后续逐个接入)
 - `MemberConfigInspectionCapability` 保持不动(已是 default + 覆盖模式);其默认实现改从 `SkillCapability` / `PluginCapability` 读取布局声明(原 `ResourceCapability.subdirFor` 随 ResourceCapability 拆分而迁移,行为不变)
-- PromptProvision 保持 CliSessionCapability 成员(2026-08-13 新设计,不推翻)
+- 2026-08-13 的 `PromptProvisionCapability` 设计被本设计**升级取代**为 `PromptCapability`(保留其写入语义,新增 virtualize 源契约)
