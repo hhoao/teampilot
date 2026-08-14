@@ -2,7 +2,6 @@ import '../../../models/team_config.dart';
 import 'capabilities/launch_args.dart';
 import '../registry/cli_capability.dart';
 import '../registry/cli_tool_definition.dart';
-import '../registry/capabilities/skill_invocation_syntax_capability.dart';
 import 'capabilities/team_behavior.dart';
 import 'capabilities/chat_interaction.dart';
 import 'capabilities/terminal_behavior.dart';
@@ -23,7 +22,7 @@ import 'provider/flashskyai_effort_capability.dart';
 import 'provider/flashskyai_provider_form_capability.dart';
 import '../registry/capabilities/member_config_inspection_capability.dart';
 import '../registry/capabilities/provider_form_capability.dart';
-import '../registry/capabilities/resource_capability.dart';
+import '../registry/capabilities/skill_capability.dart';
 import '../registry/capabilities/chat_interaction_capability.dart';
 import 'capabilities/provider_display.dart';
 import '../registry/capabilities/provider_display_capability.dart';
@@ -55,11 +54,10 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     this.effort = const FlashskyaiEffortCapability(),
     this.headless = const FlashskyaiHeadlessCapability(),
     this.providerForm = const FlashskyaiProviderFormCapability(),
-    this.resource = const DefaultResourceCapability(),
     this.mcpConfigWriter = const FlashskyaiMcpConfigWriter(),
     this.chatInteraction = const FlashskyaiChatInteraction(),
     this.aiHistory = const FlashskyaiAiHistoryCapability(),
-    this.skillSyntax = const DefaultSkillInvocationSyntaxCapability(),
+    this.skill = const DefaultSkillCapability(),
     this.providerDisplay = const FlashskyaiProviderDisplay(),
     this.marketplaceConsumer = const MarketplaceConsumer(),
     this.remoteAppData = const NoRemoteAppData(),
@@ -79,7 +77,6 @@ final class FlashskyaiCliTool implements CliToolDefinition {
   final CliEffortCapability effort;
   final HeadlessCapability headless;
   final ProviderFormCapability providerForm;
-  final ResourceCapability resource;
   final FlashskyaiMcpConfigWriter mcpConfigWriter;
 
   final TeamBehaviorCapability teamBehavior;
@@ -91,7 +88,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
   final PromptProvisionCapability promptProvision;
   final ChatInteractionCapability chatInteraction;
   final FlashskyaiAiHistoryCapability aiHistory;
-  final SkillInvocationSyntaxCapability skillSyntax;
+  final SkillCapability skill;
 
   @override
   CliTool get id => CliTool.flashskyai;
@@ -113,7 +110,6 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     providerForm,
     effort,
     headless,
-    resource,
     mcpConfigWriter,
     providerDisplay,
     marketplaceConsumer,
@@ -121,7 +117,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     credentialExport,
     chatInteraction,
     aiHistory,
-    skillSyntax,
+    skill,
     hookWriter,
     promptProvision,
   ];

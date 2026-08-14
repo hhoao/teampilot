@@ -2,8 +2,7 @@ import '../../../models/team_config.dart';
 import 'capabilities/launch_args.dart';
 import '../registry/cli_capability.dart';
 import '../registry/cli_tool_definition.dart';
-import 'capabilities/skill_invocation_syntax.dart';
-import '../registry/capabilities/skill_invocation_syntax_capability.dart';
+import 'capabilities/skill.dart';
 import 'capabilities/team_behavior.dart';
 import 'capabilities/chat_interaction.dart';
 import 'capabilities/terminal_behavior.dart';
@@ -24,7 +23,7 @@ import 'provider/codex_effort_capability.dart';
 import 'provider/codex_provider_form_capability.dart';
 import '../registry/capabilities/member_config_inspection_capability.dart';
 import '../registry/capabilities/provider_form_capability.dart';
-import '../registry/capabilities/resource_capability.dart';
+import '../registry/capabilities/skill_capability.dart';
 import '../registry/capabilities/chat_interaction_capability.dart';
 import 'capabilities/provider_display.dart';
 import '../registry/capabilities/provider_display_capability.dart';
@@ -41,7 +40,6 @@ import 'provider/codex_hook_writer.dart';
 import '../registry/capabilities/hook_writer_capability.dart';
 import 'capabilities/prompt_provision.dart';
 import 'capabilities/executable.dart';
-import '../registry/resources/default_resource_capability.dart';
 import '../registry/capabilities/prompt_provision_capability.dart';
 
 final class CodexCliTool implements CliToolDefinition {
@@ -58,11 +56,10 @@ final class CodexCliTool implements CliToolDefinition {
     this.effort = const CodexEffortCapability(),
     this.headless = const CodexHeadlessCapability(),
     this.providerForm = const CodexProviderFormCapability(),
-    this.resource = const DefaultResourceCapability(),
     this.mcpConfigWriter = const CodexMcpConfigWriter(),
     this.chatInteraction = const CodexChatInteraction(),
     this.aiHistory = const CodexAiHistoryCapability(),
-    this.skillSyntax = const CodexSkillInvocationSyntaxCapability(),
+    this.skill = const CodexSkillCapability(),
     this.promptProvision = const CodexPromptProvisionCapability(),
     this.providerDisplay = const CodexProviderDisplay(),
     this.marketplaceConsumer = const NoMarketplaceConsumer(),
@@ -86,7 +83,6 @@ final class CodexCliTool implements CliToolDefinition {
   final ProviderModelCapability providerModel;
   final CliEffortCapability effort;
   final HeadlessCapability headless;
-  final ResourceCapability resource;
   final CodexMcpConfigWriter mcpConfigWriter;
 
   final TeamBehaviorCapability teamBehavior;
@@ -96,7 +92,7 @@ final class CodexCliTool implements CliToolDefinition {
   final CredentialExportCapability credentialExport;
   final ChatInteractionCapability chatInteraction;
   final CodexAiHistoryCapability aiHistory;
-  final SkillInvocationSyntaxCapability skillSyntax;
+  final SkillCapability skill;
   final HookWriterCapability hookWriter;
   final PromptProvisionCapability promptProvision;
 
@@ -121,7 +117,6 @@ final class CodexCliTool implements CliToolDefinition {
     providerForm,
     effort,
     headless,
-    resource,
     mcpConfigWriter,
     providerDisplay,
     marketplaceConsumer,
@@ -129,7 +124,7 @@ final class CodexCliTool implements CliToolDefinition {
     credentialExport,
     chatInteraction,
     aiHistory,
-    skillSyntax,
+    skill,
     promptProvision,
     hookWriter,
   ];

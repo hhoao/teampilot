@@ -1,14 +1,15 @@
-import '../capabilities/skill_capability.dart';
+import '../../registry/capabilities/skill_capability.dart';
 
-/// Default: skills land in a `skills/` directory and are invoked as
-/// `/skill-name`. Plugin/MCP support is added by their follow-on plans.
-final class DefaultSkillCapability implements SkillCapability {
-  const DefaultSkillCapability();
+/// Cursor-agent loads skills from `<cursorConfigDir>/skills-cursor/`.
+final class CursorSkillCapability implements SkillCapability {
+  const CursorSkillCapability();
+
+  static const skillsSubdirName = 'skills-cursor';
 
   static const _syntax = DefaultSkillInvocationSyntaxCapability();
 
   @override
-  String get skillsSubdir => 'skills';
+  String get skillsSubdir => skillsSubdirName;
 
   @override
   ResourceRepresentation get skillsRepresentation =>

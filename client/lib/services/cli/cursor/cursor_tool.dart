@@ -2,7 +2,6 @@ import '../../../models/team_config.dart';
 import 'capabilities/launch_args.dart';
 import '../registry/cli_capability.dart';
 import '../registry/cli_tool_definition.dart';
-import '../registry/capabilities/skill_invocation_syntax_capability.dart';
 import 'provider/cursor_cli_config_layout.dart';
 import 'provider/cursor_provider_catalog_capability.dart';
 import '../registry/capabilities/cli_config_layout_capability.dart';
@@ -28,7 +27,7 @@ import 'capabilities/headless.dart';
 import 'provider/cursor_provider_form_capability.dart';
 import '../registry/capabilities/member_config_inspection_capability.dart';
 import '../registry/capabilities/provider_form_capability.dart';
-import '../registry/capabilities/resource_capability.dart';
+import '../registry/capabilities/skill_capability.dart';
 import '../registry/capabilities/chat_interaction_capability.dart';
 import 'capabilities/provider_display.dart';
 import '../registry/capabilities/provider_display_capability.dart';
@@ -42,7 +41,7 @@ import '../registry/capabilities/credential_export_capability.dart';
 import 'capabilities/mcp_config_writer.dart';
 import 'capabilities/plugin_provisioner.dart';
 import 'capabilities/post_manifest_flush.dart';
-import 'capabilities/resource.dart';
+import 'capabilities/skill.dart';
 import 'capabilities/executable.dart';
 import '../registry/capabilities/hook_writer_capability.dart';
 import 'provider/cursor_hook_writer.dart';
@@ -63,12 +62,11 @@ final class CursorCliTool implements CliToolDefinition {
     CursorProviderModelCapability? providerModel,
     this.headless = const CursorHeadlessCapability(),
     this.providerForm = const CursorProviderFormCapability(),
-    this.resource = const CursorResourceCapability(),
     this.configLayout = const CursorCliConfigLayout(),
     this.mcpConfigWriter = const CursorMcpConfigWriter(),
     this.chatInteraction = const CursorChatInteraction(),
     this.aiHistory = const CursorAiHistoryCapability(),
-    this.skillSyntax = const DefaultSkillInvocationSyntaxCapability(),
+    this.skill = const CursorSkillCapability(),
     this.postManifestFlush = const CursorPostManifestFlushCapability(),
     this.providerDisplay = const CursorProviderDisplay(),
     this.marketplaceConsumer = const MarketplaceConsumer(),
@@ -94,7 +92,6 @@ final class CursorCliTool implements CliToolDefinition {
   final ProviderCatalogCapability providerCatalog;
   final CursorProviderModelCapability providerModel;
   final HeadlessCapability headless;
-  final ResourceCapability resource;
   final CliConfigLayoutCapability configLayout;
   final CursorMcpConfigWriter mcpConfigWriter;
 
@@ -106,7 +103,7 @@ final class CursorCliTool implements CliToolDefinition {
   final HookWriterCapability hookWriter;
   final ChatInteractionCapability chatInteraction;
   final CursorAiHistoryCapability aiHistory;
-  final SkillInvocationSyntaxCapability skillSyntax;
+  final SkillCapability skill;
   final PostManifestFlushCapability postManifestFlush;
   final PromptProvisionCapability promptProvision;
 
@@ -131,7 +128,6 @@ final class CursorCliTool implements CliToolDefinition {
     providerCredential,
     providerForm,
     headless,
-    resource,
     configLayout,
     mcpConfigWriter,
     providerDisplay,
@@ -140,7 +136,7 @@ final class CursorCliTool implements CliToolDefinition {
     credentialExport,
     chatInteraction,
     aiHistory,
-    skillSyntax,
+    skill,
     postManifestFlush,
     promptProvision,
     hookWriter,

@@ -1,9 +1,15 @@
-import '../../registry/capabilities/skill_invocation_syntax_capability.dart';
+import '../../registry/capabilities/skill_capability.dart';
 
 /// Codex: `$superpowers:using-git-worktrees`.
-final class CodexSkillInvocationSyntaxCapability
-    implements SkillInvocationSyntaxCapability {
-  const CodexSkillInvocationSyntaxCapability();
+final class CodexSkillCapability implements SkillCapability {
+  const CodexSkillCapability();
+
+  @override
+  String get skillsSubdir => 'skills';
+
+  @override
+  ResourceRepresentation get skillsRepresentation =>
+      ResourceRepresentation.linkedDirectory;
 
   @override
   String get skillInvocationPrefix => r'$';

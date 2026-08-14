@@ -3,10 +3,9 @@ import 'dart:convert';
 import '../../../../models/mcp_server_spec.dart';
 import '../../../io/filesystem.dart';
 import '../../../plugin/cli_plugin_layout.dart';
-import '../../../resource/resource_kind.dart';
 import '../../registry/capabilities/plugin_manifest_paths.dart';
 import '../../registry/capabilities/plugin_provisioner_capability.dart';
-import '../../registry/capabilities/resource_capability.dart';
+import '../../registry/capabilities/skill_capability.dart';
 import '../../registry/cli_tool_registry.dart';
 import 'config_profile.dart';
 import 'mcp_config_writer.dart';
@@ -45,13 +44,12 @@ final class OpencodePluginProvisioner implements PluginProvisionerCapability {
     final poolStat = await ctx.fs.stat(ctx.bundlePoolDir);
     if (!poolStat.isDirectory) return;
 
-    final resource = CliToolRegistry.builtIn().capability<ResourceCapability>(
+    final skill = CliToolRegistry.builtIn().capability<SkillCapability>(
       ctx.tool,
     );
-    if (resource == null) return;
+    if (skill == null) return;
 
-    final skillSubdir = resource.subdirFor(ResourceKind.skill);
-    final skillRoot = ctx.fs.pathContext.join(ctx.configDir, skillSubdir);
+    final skillRoot = ctx.fs.pathContext.join(ctx.configDir, skill.skillsSubdir);
     final agentRoot = ctx.fs.pathContext.join(ctx.configDir, agentSubdir);
     final mcpSpecs = <McpServerSpec>[];
     final pluginEntries = <String>[];

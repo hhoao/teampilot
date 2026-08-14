@@ -1,7 +1,9 @@
 import '../cli/registry/capabilities/resource_capability.dart';
+import '../cli/registry/capabilities/skill_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../io/filesystem.dart';
 import '../../models/team_config.dart';
+import 'resource_kind.dart';
 import 'resource_materializer.dart';
 import 'resource_resolver.dart';
 import 'resource_scope.dart';
@@ -36,22 +38,34 @@ class ResourceProvisioningService {
     required String configDir,
     required ResourceCatalog catalog,
   }) async {
-    final cap = _registry.capability<ResourceCapability>(cli);
-    if (cap == null) return const ResourceProvisionResult();
-
     final effective = _resolver.resolve(scope: scope, catalog: catalog);
     final warnings = <String>[];
-    for (final kind in cap.supportedKinds) {
-      if (cap.representationFor(kind) !=
-          ResourceRepresentation.linkedDirectory) {
-        continue; // mergedJsonEntry kinds (mcp) handled by their own plan
-      }
-      final kindDir = _fs.pathContext.join(configDir, cap.subdirFor(kind));
+
+    final skill = _registry.capability<SkillCapability>(cli);
+    if (skill != null &&
+        skill.skillsRepresentation == ResourceRepresentation.linkedDirectory) {
+      final skillDir = _fs.pathContext.join(configDir, skill.skillsSubdir);
       final result = await _materializer.reconcile(
-        kindDir: kindDir,
-        desired: effective.of(kind),
+        kindDir: skillDir,
+        desired: effective.of(ResourceKind.skill),
       );
       warnings.addAll(result.errors);
+    }
+
+    final resource = _registry.capability<ResourceCapability>(cli);
+    if (resource != null) {
+      for (final kind in resource.supportedKinds) {
+        if (resource.representationFor(kind) !=
+            ResourceRepresentation.linkedDirectory) {
+          continue; // mergedJsonEntry kinds (mcp) handled by their own plan
+        }
+        final kindDir = _fs.pathContext.join(configDir, resource.subdirFor(kind));
+        final result = await _materializer.reconcile(
+          kindDir: kindDir,
+          desired: effective.of(kind),
+        );
+        warnings.addAll(result.errors);
+      }
     }
     return ResourceProvisionResult(warnings: warnings);
   }

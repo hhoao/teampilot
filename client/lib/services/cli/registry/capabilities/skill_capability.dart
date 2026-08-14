@@ -1,13 +1,19 @@
 import '../cli_capability.dart';
 
-/// How a CLI references a skill in prompt text.
-///
-/// Claude Code and friends invoke a skill as `/skill-name`; Codex uses the `$`
-/// prefix and namespaces plugin skills as `$<plugin>:<skill>` (e.g.
-/// `$superpowers:using-git-worktrees`). Each CLI declares its own syntax so
-/// skill insertion (compose `/` menu) stays free of `if (cli == …)` branching.
-abstract interface class SkillInvocationSyntaxCapability
-    implements CliCapability {
+/// How a resource kind is represented inside a CLI's CONFIG_DIR.
+enum ResourceRepresentation { linkedDirectory, mergedJsonEntry }
+
+/// SkillHub contract: how skills land in a CLI's CONFIG_DIR and how they are
+/// invoked in prompt text. Contains NO provisioning logic — the shared
+/// materializer does the work; this just describes the target shape.
+abstract interface class SkillCapability implements CliCapability {
+  /// Subdirectory (relative to the CONFIG_DIR) where skill entries live
+  /// (e.g. 'skills', 'skill', 'skills-cursor').
+  String get skillsSubdir;
+
+  /// How skills are represented inside the CLI's CONFIG_DIR.
+  ResourceRepresentation get skillsRepresentation;
+
   /// The character that prefixes a skill invocation (`/` for Claude, `$` for
   /// Codex). Also opens the compose skill menu alongside `/`.
   String get skillInvocationPrefix;
@@ -22,17 +28,13 @@ abstract interface class SkillInvocationSyntaxCapability
 /// [leadingSeparator] is prepended before the prefix when a CLI only
 /// recognizes a slash command after whitespace (opencode) — inserting
 /// ` /skill-name` keeps the `/` from gluing to the preceding text.
-class DefaultSkillInvocationSyntaxCapability
-    implements SkillInvocationSyntaxCapability {
+class DefaultSkillInvocationSyntaxCapability {
   const DefaultSkillInvocationSyntaxCapability({this.leadingSeparator = ''});
 
   final String leadingSeparator;
 
-  @override
   String get skillInvocationPrefix => '/';
 
-  @override
   String skillInvocationText(String skillName, {String? namespace}) =>
       '$leadingSeparator/$skillName';
 }
-

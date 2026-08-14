@@ -1,7 +1,7 @@
 import '../../models/plugin.dart';
 import '../../models/skill.dart';
 import '../../models/config_bundle.dart';
-import '../cli/registry/capabilities/skill_invocation_syntax_capability.dart';
+import '../cli/registry/capabilities/skill_capability.dart';
 
 enum ComposeSlashCandidateKind { skill, command }
 
@@ -24,7 +24,7 @@ List<ComposeSlashCandidate> buildComposeSlashCandidates({
   required List<Plugin> plugins,
   required ConfigBundle enabledBundle,
   required String query,
-  SkillInvocationSyntaxCapability? syntax,
+  SkillCapability? syntax,
   int limit = 20,
 }) {
   final needle = query.trim().toLowerCase();

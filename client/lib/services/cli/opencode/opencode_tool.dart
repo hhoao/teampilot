@@ -2,8 +2,6 @@ import '../../../models/team_config.dart';
 import 'capabilities/launch_args.dart';
 import '../registry/cli_capability.dart';
 import '../registry/cli_tool_definition.dart';
-import 'capabilities/skill_invocation_syntax.dart';
-import '../registry/capabilities/skill_invocation_syntax_capability.dart';
 import 'capabilities/team_behavior.dart';
 import 'capabilities/chat_interaction.dart';
 import 'capabilities/terminal_behavior.dart';
@@ -25,7 +23,7 @@ import 'provider/opencode_provider_form_capability.dart';
 import 'provider/opencode_provider_model_capability.dart';
 import '../registry/capabilities/member_config_inspection_capability.dart';
 import '../registry/capabilities/provider_form_capability.dart';
-import '../registry/capabilities/resource_capability.dart';
+import '../registry/capabilities/skill_capability.dart';
 import '../registry/capabilities/chat_interaction_capability.dart';
 import 'capabilities/provider_display.dart';
 import '../registry/capabilities/provider_display_capability.dart';
@@ -40,7 +38,7 @@ import '../registry/capabilities/hook_writer_capability.dart';
 import 'capabilities/mcp_config_writer.dart';
 import 'capabilities/plugin_provisioner.dart';
 import 'capabilities/prompt_provision.dart';
-import 'capabilities/resource.dart';
+import 'capabilities/skill.dart';
 import 'capabilities/opencode_hook_writer.dart';
 import 'capabilities/executable.dart';
 import '../registry/capabilities/prompt_provision_capability.dart';
@@ -59,11 +57,10 @@ final class OpencodeCliTool implements CliToolDefinition {
     this.effort = const OpencodeEffortCapability(),
     this.headless = const OpencodeHeadlessCapability(),
     this.providerForm = const OpencodeProviderFormCapability(),
-    this.resource = const OpencodeResourceCapability(),
     this.mcpConfigWriter = const OpencodeMcpConfigWriter(),
     this.chatInteraction = const OpencodeChatInteraction(),
     this.aiHistory = const OpencodeAiHistoryCapability(),
-    this.skillSyntax = const OpencodeSkillInvocationSyntaxCapability(),
+    this.skill = const OpencodeSkillCapability(),
     this.promptProvision = const OpencodePromptProvisionCapability(),
     this.providerDisplay = const OpencodeProviderDisplay(),
     this.marketplaceConsumer = const NoMarketplaceConsumer(),
@@ -88,7 +85,6 @@ final class OpencodeCliTool implements CliToolDefinition {
   final ProviderModelCapability providerModel;
   final CliEffortCapability effort;
   final HeadlessCapability headless;
-  final ResourceCapability resource;
   final OpencodeMcpConfigWriter mcpConfigWriter;
 
   final TeamBehaviorCapability teamBehavior;
@@ -99,7 +95,7 @@ final class OpencodeCliTool implements CliToolDefinition {
   final HookWriterCapability hookWriter;
   final ChatInteractionCapability chatInteraction;
   final OpencodeAiHistoryCapability aiHistory;
-  final SkillInvocationSyntaxCapability skillSyntax;
+  final SkillCapability skill;
   final PromptProvisionCapability promptProvision;
 
   @override
@@ -123,7 +119,6 @@ final class OpencodeCliTool implements CliToolDefinition {
     providerForm,
     effort,
     headless,
-    resource,
     mcpConfigWriter,
     providerDisplay,
     marketplaceConsumer,
@@ -131,7 +126,7 @@ final class OpencodeCliTool implements CliToolDefinition {
     credentialExport,
     chatInteraction,
     aiHistory,
-    skillSyntax,
+    skill,
     promptProvision,
     hookWriter,
   ];

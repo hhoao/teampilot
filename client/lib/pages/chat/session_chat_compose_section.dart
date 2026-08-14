@@ -25,7 +25,7 @@ import '../../models/skill.dart';
 import '../../models/team_config.dart';
 import '../../models/workspace.dart';
 import '../../services/cli/preset_resolver.dart';
-import '../../services/cli/registry/capabilities/skill_invocation_syntax_capability.dart';
+import '../../services/cli/registry/capabilities/skill_capability.dart';
 import '../../services/cli/registry/capabilities/terminal_behavior_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
@@ -190,7 +190,7 @@ class SessionChatComposeSection extends StatelessWidget {
       composeTextEmpty: composeTextEmpty,
     );
     final skillSyntax =
-        registry.capability<SkillInvocationSyntaxCapability>(lockedCli);
+        registry.capability<SkillCapability>(lockedCli);
 
     // -- Derived values --------------------------------------------------
     final canSubmit =

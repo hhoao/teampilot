@@ -6,7 +6,6 @@ import 'capabilities/remote_app_data.dart';
 import 'capabilities/credential_export.dart';
 import '../registry/cli_capability.dart';
 import '../registry/cli_tool_definition.dart';
-import '../registry/capabilities/skill_invocation_syntax_capability.dart';
 import 'capabilities/team_behavior.dart';
 import 'capabilities/terminal_behavior.dart';
 import 'capabilities/chat_interaction.dart';
@@ -28,7 +27,7 @@ import 'provider/claude_provider_form_capability.dart';
 import 'provider/claude_provider_model_capability.dart';
 import '../registry/capabilities/member_config_inspection_capability.dart';
 import '../registry/capabilities/provider_form_capability.dart';
-import '../registry/capabilities/resource_capability.dart';
+import '../registry/capabilities/skill_capability.dart';
 import '../registry/capabilities/chat_interaction_capability.dart';
 import '../registry/capabilities/provider_display_capability.dart';
 import '../registry/capabilities/credential_binding_capability.dart';
@@ -60,11 +59,10 @@ final class ClaudeCliTool implements CliToolDefinition {
     this.effort = const ClaudeEffortCapability(),
     this.headless = const ClaudeHeadlessCapability(),
     this.providerForm = const ClaudeProviderFormCapability(),
-    this.resource = const DefaultResourceCapability(),
     this.mcpConfigWriter = const ClaudeMcpConfigWriter(),
     this.chatInteraction = const ClaudeChatInteraction(),
     this.aiHistory = const ClaudeAiHistoryCapability(),
-    this.skillSyntax = const DefaultSkillInvocationSyntaxCapability(),
+    this.skill = const DefaultSkillCapability(),
     this.providerDisplay = const ClaudeProviderDisplay(),
     this.marketplaceConsumer = const MarketplaceConsumer(),
     this.remoteAppData = const NoRemoteAppData(),
@@ -91,13 +89,12 @@ final class ClaudeCliTool implements CliToolDefinition {
   final ProviderModelCapability providerModel;
   final CliEffortCapability effort;
   final HeadlessCapability headless;
-  final ResourceCapability resource;
   final ClaudeMcpConfigWriter mcpConfigWriter;
 
   final TeamBehaviorCapability teamBehavior;
   final ChatInteractionCapability chatInteraction;
   final ClaudeAiHistoryCapability aiHistory;
-  final SkillInvocationSyntaxCapability skillSyntax;
+  final SkillCapability skill;
   final ProviderDisplayCapability providerDisplay;
   final MarketplaceConsumerCapability marketplaceConsumer;
   final RemoteAppDataCapability remoteAppData;
@@ -126,11 +123,10 @@ final class ClaudeCliTool implements CliToolDefinition {
     providerForm,
     effort,
     headless,
-    resource,
     mcpConfigWriter,
     chatInteraction,
     aiHistory,
-    skillSyntax,
+    skill,
     providerDisplay,
     marketplaceConsumer,
     remoteAppData,

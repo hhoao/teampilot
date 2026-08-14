@@ -18,7 +18,7 @@ import '../../services/compose/compose_slash_catalog.dart';
 import '../../services/compose/compose_trigger_caret.dart';
 import '../../services/compose/compose_trigger_insert.dart';
 import '../../services/compose/compose_trigger_query.dart';
-import '../../services/cli/registry/capabilities/skill_invocation_syntax_capability.dart';
+import '../../services/cli/registry/capabilities/skill_capability.dart';
 import '../../services/keyboard/compose_keyboard_shortcut_handler.dart';
 import '../../services/inline_token/inline_token_palette.dart';
 import 'package:shared_ui/shared_ui.dart';
@@ -75,7 +75,7 @@ class ComposeTriggerField extends StatefulWidget {
   final ConfigBundle slashBundle;
   final Color mutedColor;
   final Color hintColor;
-  final SkillInvocationSyntaxCapability? skillSyntax;
+  final SkillCapability? skillSyntax;
   final Future<bool> Function()? onPasteImage;
 
   /// Optional paste-collapse buffer. When set and a single change pushes the
