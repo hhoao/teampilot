@@ -7,6 +7,7 @@ import 'package:teampilot/services/cli/codex/capabilities/resume_strategy.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/resume_strategy.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/resume_strategy.dart';
+import 'package:teampilot/services/cli/opencode/capabilities/sqlite_worker_pool.dart';
 import 'package:teampilot/services/cli/flashskyai/capabilities/resume_strategy.dart';
 import 'package:teampilot/services/cli/registry/capabilities/session_resume_capability.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
@@ -22,6 +23,7 @@ void main() {
     base = await Directory.systemTemp.createTemp('resume_strategy_');
   });
   tearDown(() async {
+    await OpencodeSqliteWorkerPool.instance.disposeAllAndWait();
     if (await base.exists()) await base.delete(recursive: true);
   });
 

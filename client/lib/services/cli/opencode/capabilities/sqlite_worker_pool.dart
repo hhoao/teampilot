@@ -59,6 +59,25 @@ class OpencodeSqliteWorkerPool {
     _workers.remove(dbPath)?.close();
   }
 
+  /// 显式回收并等待 worker 关闭原生连接后再返回(测试 tearDown 删除
+  /// db 文件/目录用 — Windows 上打开的句柄会阻止删除,errno=32)。
+  @visibleForTesting
+  Future<void> disposeAndWait(String dbPath) async {
+    final worker = _workers.remove(dbPath);
+    if (worker == null) return;
+    await worker.closeAndWait();
+  }
+
+  /// 回收所有 worker 并等待关闭(测试全局 tearDown 用)。
+  @visibleForTesting
+  Future<void> disposeAllAndWait() async {
+    final workers = List<_SqliteWorker>.of(_workers.values);
+    _workers.clear();
+    for (final worker in workers) {
+      await worker.closeAndWait();
+    }
+  }
+
   @visibleForTesting
   int get liveWorkerCount => _workers.length;
 }
@@ -195,6 +214,7 @@ class _SqliteWorker {
       // worker 空闲退出(连接已关闭):在途查询永远不会得到响应,
       // 必须立即失败,否则调用方永久等待。
       _exited = true;
+      _exitConfirm?.complete();
       _failAllPending(
         StateError('opencode sqlite worker exited before answering: $dbPath'),
         null,
@@ -222,6 +242,32 @@ class _SqliteWorker {
     _responses.close();
     _failAllPending(StateError('opencode sqlite worker closed: $dbPath'), null);
   }
+
+  /// 通知 worker 关闭并等待它确认已关闭原生连接(Windows 上删除 db
+  /// 文件前必须等句柄释放;空闲超时路径也会发送 [_WorkerExited])。
+  Future<void> closeAndWait() async {
+    final completer = Completer<void>();
+    _exitConfirm = completer;
+    _requestPort?.send(const _CloseRequest());
+    _failAllPending(StateError('opencode sqlite worker closed: $dbPath'), null);
+    await completer.future.timeout(
+      const Duration(seconds: 10),
+      onTimeout: () {
+        // Worker 未确认(可能卡在 FFI):尽力 kill,不阻塞测试。
+        try {
+          _isolateFuture?.then(
+            (isolate) => isolate.kill(priority: Isolate.immediate),
+          );
+        } on Object {
+          // best-effort
+        }
+      },
+    );
+    _control.close();
+    _responses.close();
+  }
+
+  Completer<void>? _exitConfirm;
 }
 
 class _SpawnArgs {
@@ -316,6 +362,7 @@ void _sqliteWorkerEntry(_SpawnArgs args) {
     }
     if (message is _CloseRequest) {
       pool.close();
+      args.responses.send(const _WorkerExited());
       requests.close();
     }
   });

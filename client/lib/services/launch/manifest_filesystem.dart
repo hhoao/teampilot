@@ -261,7 +261,7 @@ class ManifestFilesystem implements Filesystem {
     }
     // Surface entries staged during this pass so writers can read back what
     // they wrote (e.g. the plugin writer scans the pool it just materialized).
-    final prefix = '$path/';
+    final prefix = '$path${pathContext.separator}';
     for (final file in _overlayFiles.keys) {
       final rel = _directChild(prefix, file);
       if (rel != null && names.add(rel)) {
@@ -285,10 +285,10 @@ class ManifestFilesystem implements Filesystem {
   }
 
   /// Child name if [path] sits directly under [prefix], else `null`.
-  static String? _directChild(String prefix, String path) {
+  String? _directChild(String prefix, String path) {
     if (!path.startsWith(prefix) || path.length <= prefix.length) return null;
     final rel = path.substring(prefix.length);
-    return rel.contains('/') ? null : rel;
+    return rel.contains(pathContext.separator) ? null : rel;
   }
 
   @override

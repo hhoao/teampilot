@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:sqlite3/sqlite3.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/history/ai_transcript.dart';
+import 'package:teampilot/services/cli/opencode/capabilities/sqlite_worker_pool.dart';
 import 'package:teampilot/services/session/ai_history_watch_meta.dart';
 import 'package:teampilot/services/session/session_history_context.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
@@ -19,6 +20,7 @@ void main() {
   });
 
   tearDown(() async {
+    await OpencodeSqliteWorkerPool.instance.disposeAllAndWait();
     if (await base.exists()) await base.delete(recursive: true);
   });
 
