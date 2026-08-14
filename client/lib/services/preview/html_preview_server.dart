@@ -39,18 +39,19 @@ class HtmlPreviewServer {
 
   final Filesystem _fs;
   HttpServer? _server;
+  Future<HttpServer>? _serverFuture;
   final Map<String, _Mount> _mounts = {};
   int _nextId = 0;
 
   int? get port => _server?.port;
 
-  Future<HttpServer> _ensureServer() async {
-    final existing = _server;
-    if (existing != null) return existing;
-    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
-    server.listen(_handle);
-    _server = server;
-    return server;
+  Future<HttpServer> _ensureServer() {
+    return _serverFuture ??= () async {
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      server.listen(_handle);
+      _server = server;
+      return server;
+    }();
   }
 
   Future<HtmlPreviewMount?> mount({
@@ -101,9 +102,13 @@ class HtmlPreviewServer {
   Future<void> dispose() async {
     _mounts.clear();
     final server = _server;
+    final pending = _serverFuture;
     _server = null;
+    _serverFuture = null;
     if (server != null) {
       await server.close(force: true);
+    } else if (pending != null) {
+      await (await pending).close(force: true);
     }
   }
 
