@@ -1468,6 +1468,26 @@ class ChatCubit extends Cubit<ChatState>
     );
   }
 
+  /// Replaces [workspace] and its sessions from a targeted mutation (e.g.
+  /// remapWorkspaceTarget) in memory; no disk rescan.
+  void patchWorkspaceAndSessions(
+    Workspace workspace,
+    List<AppSession> sessions,
+  ) {
+    _emitSnapshot(
+      _dataStore.snapshotWithWorkspaceAndSessions(
+        ChatDataSnapshot(
+          workspaces: state.workspaces,
+          sessions: state.sessions,
+          visibleWorkspaces: state.visibleWorkspaces,
+          visibleSessions: state.visibleSessions,
+        ),
+        workspace: workspace,
+        sessions: sessions,
+      ),
+    );
+  }
+
   Future<AppSession> createSession(
     String workspaceId,
     SessionRepository repo, {
