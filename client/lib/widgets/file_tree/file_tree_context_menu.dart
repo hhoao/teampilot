@@ -195,6 +195,117 @@ abstract final class FileTreeContextMenu {
     }
   }
 
+  /// Right-click menu for the file-tree blank area (VSCode style). Actions
+  /// target [targetRootDir] — the root folder under the pointer.
+  static Future<void> showForBlankArea({
+    required BuildContext context,
+    required TapDownDetails tapDetails,
+    required FileTreeCubit cubit,
+    required String targetRootDir,
+    required String workspaceId,
+    required bool desktopShellActions,
+  }) async {
+    final l10n = context.l10n;
+    final canPaste = cubit.state.clipboard != null;
+    final showHiddenFiles = cubit.state.showHiddenFiles;
+    final specs = <TpActionMenuSpec>[
+      TpActionMenuSpec.item(
+        value: 'new_file',
+        icon: Icons.note_add_outlined,
+        label: l10n.fileTreeNewFile,
+      ),
+      TpActionMenuSpec.item(
+        value: 'new_folder',
+        icon: Icons.create_new_folder_outlined,
+        label: l10n.fileTreeNewFolder,
+      ),
+      const TpActionMenuSpec.divider(),
+      TpActionMenuSpec.item(
+        value: 'paste',
+        icon: Icons.content_paste,
+        label: l10n.fileTreePaste,
+        enabled: canPaste,
+      ),
+      const TpActionMenuSpec.divider(),
+      TpActionMenuSpec.item(
+        value: 'refresh',
+        icon: Icons.refresh,
+        label: l10n.fileTreeRefresh,
+      ),
+      TpActionMenuSpec.item(
+        value: 'collapse_all',
+        icon: Icons.unfold_less,
+        label: l10n.treeCollapseAllFolders,
+      ),
+      TpActionMenuSpec.item(
+        value: 'toggle_hidden',
+        icon: showHiddenFiles
+            ? Icons.visibility_off_outlined
+            : Icons.visibility_outlined,
+        label: showHiddenFiles ? 'Hide hidden files' : 'Show hidden files',
+      ),
+      if (desktopShellActions) ...[
+        const TpActionMenuSpec.divider(),
+        TpActionMenuSpec.item(
+          value: 'terminal',
+          icon: Icons.terminal,
+          label: l10n.fileTreeOpenInTerminal,
+        ),
+      ],
+    ];
+
+    final value = await showTpActionMenuFromSpecsAtTap<String>(
+      context: context,
+      tapDetails: tapDetails,
+      specs: specs,
+    );
+    if (!context.mounted || value == null) return;
+
+    switch (value) {
+      case 'new_file':
+        await _promptCreate(
+          context,
+          cubit: cubit,
+          parentDir: targetRootDir,
+          isFolder: false,
+          workspaceId: workspaceId,
+        );
+      case 'new_folder':
+        await _promptCreate(
+          context,
+          cubit: cubit,
+          parentDir: targetRootDir,
+          isFolder: true,
+          workspaceId: workspaceId,
+        );
+      case 'paste':
+        await _runOp(
+          context,
+          () => cubit.pasteInto(targetRootDir),
+          success: l10n.fileTreePasteDone,
+        );
+      case 'refresh':
+        unawaited(cubit.refresh());
+      case 'collapse_all':
+        cubit.collapseAllFolders();
+      case 'toggle_hidden':
+        cubit.toggleShowHidden();
+      case 'terminal':
+        final ok = await FilePathActions.openInTerminal(
+          targetPath: targetRootDir,
+          isDirectory: true,
+        );
+        if (!context.mounted) return;
+        if (!ok) {
+          AppToast.show(
+            context,
+            message: l10n.fileTreeOpenInTerminalFailed,
+            variant: TpToastVariant.error,
+          );
+        }
+    }
+  }
+
   static Future<void> _promptCreate(
     BuildContext context, {
     required FileTreeCubit cubit,
