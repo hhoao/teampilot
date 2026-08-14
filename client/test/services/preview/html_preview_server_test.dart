@@ -76,6 +76,7 @@ void main() {
         base.resolve('../secret.txt'),
         base.resolve('../../etc/passwd'),
         Uri.parse(base.toString().replaceFirst('index.html', '%2e%2e/secret.txt')),
+        base.resolve('..%2fsecret.txt'),
       ]) {
         final (status, _) = await getBody(client, attempt);
         expect(status, 404, reason: 'must reject $attempt');
