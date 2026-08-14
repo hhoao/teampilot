@@ -15,9 +15,9 @@ import '../../widgets/settings/workspace_section_host.dart';
 import '../../widgets/settings/workspace_section_nav_item.dart';
 import '../../widgets/settings/workspace_section_navigation.dart';
 import 'mcp_discovery_section.dart';
+import 'mcp_editor_dialog.dart';
 import 'mcp_installed_section.dart';
 import 'mcp_registries_section.dart';
-import 'mcp_routes.dart';
 
 IconData mcpSectionIcon(McpSection section) => switch (section) {
   McpSection.installed => Icons.dns_outlined,
@@ -49,14 +49,6 @@ enum McpSection implements WorkspaceSectionDescriptor {
 
 extension McpSectionRoute on McpSection {
   String routePath() => '/mcp/$routeSegment';
-}
-
-void navigateMcpAdd(BuildContext context) {
-  navigateWorkspaceRoute(context, mcpAddRoute());
-}
-
-void navigateMcpEdit(BuildContext context, McpServer server) {
-  navigateWorkspaceRoute(context, mcpEditRoute(server.id));
 }
 
 void navigateMcpSection(BuildContext context, McpSection target) {
@@ -104,13 +96,25 @@ class _McpManagementPageState extends State<McpManagementPage> {
     super.dispose();
   }
 
+  Future<void> _openAdd() async {
+    await showMcpEditorDialog(context, cubit: context.read<McpCubit>());
+  }
+
+  Future<void> _openEdit(McpServer server) async {
+    await showMcpEditorDialog(
+      context,
+      cubit: context.read<McpCubit>(),
+      existing: server,
+    );
+  }
+
   Future<void> _addFromListing(McpCatalogListing listing) async {
     final cubit = context.read<McpCubit>();
     final existing = cubit.state.servers
         .where((s) => s.id == listing.id)
         .toList();
     if (existing.isNotEmpty) {
-      navigateMcpEdit(context, existing.first);
+      await _openEdit(existing.first);
       return;
     }
     final now = DateTime.now().millisecondsSinceEpoch;
@@ -129,7 +133,7 @@ class _McpManagementPageState extends State<McpManagementPage> {
     final message = cubit.state.errorMessage;
     if (message != null) {
       AppToast.show(context, message: message, variant: TpToastVariant.error);
-      navigateMcpEdit(context, draft);
+      await _openEdit(draft);
     }
   }
 
@@ -253,8 +257,8 @@ class _McpManagementPageState extends State<McpManagementPage> {
           McpSection.installed => McpInstalledSection(
             state: state,
             onImport: _importFromMachine,
-            onAdd: () => navigateMcpAdd(context),
-            onEdit: (s) => navigateMcpEdit(context, s),
+            onAdd: _openAdd,
+            onEdit: _openEdit,
             onDelete: _confirmDelete,
             onGoDiscovery: () => select(McpSection.discovery),
             onOAuthConnected: () {},
