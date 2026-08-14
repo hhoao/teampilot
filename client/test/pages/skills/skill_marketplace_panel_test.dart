@@ -11,6 +11,7 @@ import 'package:teampilot/repositories/skill_repository.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/skill/marketplace/skill_marketplace_source.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 class _NoFilterSource implements SkillMarketplaceSource {
   @override
@@ -46,9 +47,13 @@ class _FilteredSource implements SkillMarketplaceSource {
     languageChoices: ['zh', 'en'],
   );
 
+  final queries = <MarketplaceSearchQuery>[];
+
   @override
-  Future<MarketplaceSearchResult> search(MarketplaceSearchQuery query) async =>
-      const MarketplaceSearchResult(skills: [], hasNext: false);
+  Future<MarketplaceSearchResult> search(MarketplaceSearchQuery query) async {
+    queries.add(query);
+    return const MarketplaceSearchResult(skills: [], hasNext: false);
+  }
 
   @override
   Future<void> setApiKey(String key) async {}
@@ -165,6 +170,42 @@ void main() {
     expect(find.text('Sort'), findsOneWidget);
     expect(find.text('Language'), findsOneWidget);
     expect(find.text('Category'), findsOneWidget);
+  });
+
+  testWidgets('selecting a filter value re-searches with that value', (
+    tester,
+  ) async {
+    final source = _FilteredSource();
+    final c = cubit([source]);
+    await tester.pumpWidget(wrap(SkillMarketplacePanel(source: source), c));
+    await tester.enterText(find.byType(TextField), 'seo');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(TpSelect<String>).first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Stars').last);
+    await tester.pumpAndSettle();
+    expect(source.queries, isNotEmpty);
+    expect(source.queries.last.sortBy, 'stars');
+  });
+
+  testWidgets('selecting Any clears the filter back to null', (tester) async {
+    final source = _FilteredSource();
+    final c = cubit([source]);
+    await tester.pumpWidget(wrap(SkillMarketplacePanel(source: source), c));
+    await tester.enterText(find.byType(TextField), 'seo');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(TpSelect<String>).at(1));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('ZH').last);
+    await tester.pumpAndSettle();
+    expect(source.queries.last.language, 'zh');
+    await tester.tap(find.byType(TpSelect<String>).at(1));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Any').last);
+    await tester.pumpAndSettle();
+    expect(source.queries.last.language, isNull);
   });
 
   testWidgets('generic search failure shows localized error label', (

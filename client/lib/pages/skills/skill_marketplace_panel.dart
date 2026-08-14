@@ -321,7 +321,7 @@ class _FilterRow extends StatelessWidget {
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         if (caps.supportsSortBy)
-          _FilterDropdown<String>(
+          _FilterDropdown(
             label: l10n.skillsFilterSortBy,
             value: sortBy,
             items: {
@@ -331,7 +331,7 @@ class _FilterRow extends StatelessWidget {
             onChanged: onSortBy,
           ),
         if (caps.supportsLanguage)
-          _FilterDropdown<String>(
+          _FilterDropdown(
             label: l10n.skillsFilterLanguage,
             value: language,
             items: {
@@ -341,7 +341,7 @@ class _FilterRow extends StatelessWidget {
             onChanged: onLanguage,
           ),
         if (caps.supportsCategory)
-          _FilterDropdown<String>(
+          _FilterDropdown(
             label: l10n.skillsFilterCategory,
             value: category,
             items: caps.categoryChoices,
@@ -349,7 +349,7 @@ class _FilterRow extends StatelessWidget {
             onChanged: onCategory,
           ),
         if (caps.supportsOccupation)
-          _FilterDropdown<String>(
+          _FilterDropdown(
             label: l10n.skillsFilterOccupation,
             value: occupation,
             items: caps.occupationChoices,
@@ -361,7 +361,7 @@ class _FilterRow extends StatelessWidget {
   }
 }
 
-class _FilterDropdown<T> extends StatelessWidget {
+class _FilterDropdown extends StatelessWidget {
   const _FilterDropdown({
     required this.label,
     required this.value,
@@ -371,14 +371,28 @@ class _FilterDropdown<T> extends StatelessWidget {
   });
 
   final String label;
-  final T? value;
-  final Map<T, String> items;
+
+  /// 当前过滤值；null 表示“全部/Any”。
+  final String? value;
+
+  /// 选项表（value -> 标签）。
+  final Map<String, String> items;
+
+  /// “全部/Any”的标签；null 则不提供该选项。
   final String? includeAny;
-  final ValueChanged<T?> onChanged;
+  final ValueChanged<String?> onChanged;
+
+  /// TpSelect 不接受 null item，用空串作为 Any 哨兵（API 层空参数等价于不传）。
+  static const _anySentinel = '';
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final selected = value ?? _anySentinel;
+    final allItems = <String, String>{
+      if (includeAny != null) _anySentinel: includeAny!,
+      ...items,
+    };
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -389,17 +403,17 @@ class _FilterDropdown<T> extends StatelessWidget {
           ).smColored(cs.onSurface.withValues(alpha: 0.7)),
         ),
         const SizedBox(width: 6),
-        DropdownButtonHideUnderline(
-          child: DropdownButton<T>(
-            value: value,
-            isDense: true,
-            items: [
-              if (includeAny != null)
-                DropdownMenuItem<T>(value: null, child: Text(includeAny!)),
-              for (final e in items.entries)
-                DropdownMenuItem<T>(value: e.key, child: Text(e.value)),
-            ],
-            onChanged: onChanged,
+        ConstrainedBox(
+          constraints: const BoxConstraints(minWidth: 140),
+          child: TpSelect<String>(
+            items: allItems.keys.toList(),
+            initialItem: allItems.containsKey(selected) ? selected : _anySentinel,
+            searchable: false,
+            itemLabel: (item) => allItems[item] ?? item,
+            decoration: TpSelectDecorations.themed(context),
+            onChanged: (item) => onChanged(
+              item == null || item.isEmpty ? null : item,
+            ),
           ),
         ),
       ],

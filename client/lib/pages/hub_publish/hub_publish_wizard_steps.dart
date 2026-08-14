@@ -155,25 +155,7 @@ class HubPublishGatesStep extends StatelessWidget {
               style: TpTextStyles.of(context).mutedSm,
             ),
             const SizedBox(height: 6),
-            DropdownButtonFormField<String>(
-              key: Key('hub-publish-remap-$localKey'),
-              // ignore: deprecated_member_use
-              value: remap[localKey],
-              decoration: InputDecoration(
-                labelText: l10n.hubPublishRemapLabel,
-              ),
-              items: [
-                for (final candidate in candidates)
-                  DropdownMenuItem(
-                    value: candidate.key,
-                    child: Text(candidate.name),
-                  ),
-              ],
-              onChanged: (value) {
-                if (value == null) return;
-                onRemapChanged(localKey, value);
-              },
-            ),
+            _buildRemapSelect(context, localKey, l10n),
             const SizedBox(height: 12),
           ],
         ],
@@ -193,6 +175,27 @@ class HubPublishGatesStep extends StatelessWidget {
         if (localExpertKeys.isEmpty && nonPortableIds.isEmpty)
           Text(l10n.hubPublishGatesClear),
       ],
+    );
+  }
+
+  Widget _buildRemapSelect(
+    BuildContext context,
+    String localKey,
+    AppLocalizations l10n,
+  ) {
+    final labels = {for (final c in candidates) c.key: c.name};
+    return TpSelect<String>(
+      key: Key('hub-publish-remap-$localKey'),
+      items: labels.keys.toList(),
+      initialItem: remap[localKey],
+      searchable: false,
+      hintText: l10n.hubPublishRemapLabel,
+      itemLabel: (k) => labels[k] ?? k,
+      decoration: TpSelectDecorations.themed(context),
+      onChanged: (value) {
+        if (value == null) return;
+        onRemapChanged(localKey, value);
+      },
     );
   }
 }
