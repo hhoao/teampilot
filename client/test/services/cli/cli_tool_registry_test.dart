@@ -1,14 +1,14 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/registry/capabilities/config_profile_capability.dart';
-import 'package:teampilot/services/cli/registry/capabilities/installer_capability.dart';
+import 'package:teampilot/services/cli/registry/capabilities/cli_executable_capability.dart';
 import 'package:teampilot/services/cli/registry/capabilities/launch_args_capability.dart';
 import 'package:teampilot/services/cli/registry/capabilities/provider_catalog_capability.dart';
 import 'package:teampilot/services/cli/registry/capabilities/provider_model_capability.dart';
-import 'package:teampilot/services/cli/claude/capabilities/installer.dart';
-import 'package:teampilot/services/cli/codex/capabilities/installer.dart';
-import 'package:teampilot/services/cli/cursor/capabilities/installer.dart';
-import 'package:teampilot/services/cli/opencode/capabilities/installer.dart';
+import 'package:teampilot/services/cli/claude/capabilities/executable.dart';
+import 'package:teampilot/services/cli/codex/capabilities/executable.dart';
+import 'package:teampilot/services/cli/cursor/capabilities/executable.dart';
+import 'package:teampilot/services/cli/opencode/capabilities/executable.dart';
 import 'package:teampilot/services/cli/registry/built_in_cli_tools.dart';
 import 'package:teampilot/services/cli/registry/capabilities/team_behavior_capability.dart';
 import 'package:teampilot/services/cli/registry/capabilities/noop_cli_session_lifecycle_capability.dart';
@@ -152,37 +152,40 @@ void main() {
     }
   });
 
-  test('claude built-in has InstallerCapability with install support', () {
+  test('claude built-in has CliExecutableCapability with install support', () {
     final registry = CliToolRegistry.builtIn();
-    final installer = registry.capability<InstallerCapability>(CliTool.claude);
-    expect(installer, isA<ClaudeInstallerCapability>());
-    expect(installer!.supportsInstaller, isTrue);
+    final executable = registry.capability<CliExecutableCapability>(
+      CliTool.claude,
+    );
+    expect(executable, isA<ClaudeExecutableCapability>());
+    expect(executable!.supportsInstaller, isTrue);
   });
 
-  test('codex built-in has npm InstallerCapability with install support', () {
+  test('codex built-in has npm executable with install support', () {
     final registry = CliToolRegistry.builtIn();
-    final installer = registry.capability<InstallerCapability>(CliTool.codex);
-    expect(installer, isA<CodexInstallerCapability>());
-    expect(installer!.supportsInstaller, isTrue);
+    final executable = registry.capability<CliExecutableCapability>(
+      CliTool.codex,
+    );
+    expect(executable, isA<CodexExecutableCapability>());
+    expect(executable!.supportsInstaller, isTrue);
   });
 
-  test(
-    'opencode built-in has npm InstallerCapability with install support',
-    () {
-      final registry = CliToolRegistry.builtIn();
-      final installer = registry.capability<InstallerCapability>(
-        CliTool.opencode,
-      );
-      expect(installer, isA<OpencodeInstallerCapability>());
-      expect(installer!.supportsInstaller, isTrue);
-    },
-  );
-
-  test('cursor built-in has curl InstallerCapability with install support', () {
+  test('opencode built-in has npm executable with install support', () {
     final registry = CliToolRegistry.builtIn();
-    final installer = registry.capability<InstallerCapability>(CliTool.cursor);
-    expect(installer, isA<CursorInstallerCapability>());
-    expect(installer!.supportsInstaller, isTrue);
+    final executable = registry.capability<CliExecutableCapability>(
+      CliTool.opencode,
+    );
+    expect(executable, isA<OpencodeExecutableCapability>());
+    expect(executable!.supportsInstaller, isTrue);
+  });
+
+  test('cursor built-in has curl executable with install support', () {
+    final registry = CliToolRegistry.builtIn();
+    final executable = registry.capability<CliExecutableCapability>(
+      CliTool.cursor,
+    );
+    expect(executable, isA<CursorExecutableCapability>());
+    expect(executable!.supportsInstaller, isTrue);
   });
 
   test('built-in launchable tools have ConfigProfileCapability', () {

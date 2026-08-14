@@ -14,7 +14,7 @@ import 'unix_node_bootstrap_strategy.dart';
 ///
 /// Remote Unix hosts use [UnixNodeBootstrapComposer] strategies (Termux pkg,
 /// then glibc tarball). Attach via [CliInstallContext.node] so any
-/// [InstallerCapability] can reuse the same version, paths, and npm resolution.
+/// [CliExecutableCapability] can reuse the same version, paths, and npm resolution.
 final class TeampilotNodeInstall {
   const TeampilotNodeInstall();
 

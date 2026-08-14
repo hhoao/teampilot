@@ -2,17 +2,12 @@ import '../../../models/team_config.dart';
 import 'capabilities/launch_args.dart';
 import '../registry/cli_capability.dart';
 import '../registry/cli_tool_definition.dart';
-import '../registry/capabilities/remote_cli_locator_capability.dart';
 import 'capabilities/skill_invocation_syntax.dart';
 import '../registry/capabilities/skill_invocation_syntax_capability.dart';
-import 'capabilities/executable_resolver.dart';
 import 'capabilities/team_behavior.dart';
 import 'capabilities/chat_interaction.dart';
-import 'capabilities/display.dart';
 import 'capabilities/terminal_behavior.dart';
 import '../registry/capabilities/config_profile_capability.dart';
-import '../registry/capabilities/executable_resolver_capability.dart';
-import '../registry/capabilities/installer_capability.dart';
 import '../registry/capabilities/launch_args_capability.dart';
 import '../registry/capabilities/team_behavior_capability.dart';
 import 'provider/opencode_provider_credential_capability.dart';
@@ -27,7 +22,6 @@ import 'capabilities/history/ai_history_capability.dart';
 import 'capabilities/resume_strategy.dart';
 import 'capabilities/config_profile.dart';
 import 'capabilities/headless.dart';
-import 'capabilities/installer.dart';
 import 'provider/opencode_effort_capability.dart';
 import 'provider/opencode_provider_form_capability.dart';
 import 'provider/opencode_provider_model_capability.dart';
@@ -37,8 +31,7 @@ import '../registry/capabilities/resource_capability.dart';
 import '../registry/capabilities/chat_interaction_capability.dart';
 import 'capabilities/provider_display.dart';
 import '../registry/capabilities/provider_display_capability.dart';
-import 'capabilities/config_ui.dart';
-import '../registry/capabilities/cli_config_ui_capability.dart';
+import '../registry/capabilities/cli_executable_capability.dart';
 import 'capabilities/marketplace_consumer.dart';
 import 'capabilities/history_context_env.dart';
 import 'capabilities/remote_app_data.dart';
@@ -54,18 +47,16 @@ import 'capabilities/plugin_provisioner.dart';
 import 'capabilities/prompt_provision.dart';
 import 'capabilities/resource.dart';
 import 'capabilities/opencode_hook_writer.dart';
+import 'capabilities/executable.dart';
 import '../registry/capabilities/prompt_provision_capability.dart';
 
 final class OpencodeCliTool implements CliToolDefinition {
   OpencodeCliTool({
     this.teamBehavior = const OpencodeTeamBehavior(),
-    this.remoteCliLocator = const DefaultRemoteCliLocator('opencode'),
     this.launchArgs = const OpencodeCliToolAdapter(),
     this.configProfile = const OpencodeConfigProfileCapability(),
     this.sessionResume = const OpencodeResumeStrategy(),
-    this.executableResolver = const OpencodeExecutableResolver(),
-    this.installer = const OpencodeInstallerCapability(),
-    this.display = const OpencodeDisplay(),
+    this.executable = const OpencodeExecutableCapability(),
     this.terminalBehavior = const OpencodeTerminalBehavior(),
     this.memberConfigInspection = const DefaultMemberConfigInspection(),
     this.pluginProvisioner = const OpencodePluginProvisioner(),
@@ -81,7 +72,6 @@ final class OpencodeCliTool implements CliToolDefinition {
     this.skillSyntax = const OpencodeSkillInvocationSyntaxCapability(),
     this.promptProvision = const OpencodePromptProvisionCapability(),
     this.providerDisplay = const OpencodeProviderDisplay(),
-    this.configUi = const OpencodeConfigUi(),
     this.marketplaceConsumer = const NoMarketplaceConsumer(),
     this.historyContextEnv = const OpencodeHistoryContextEnv(),
     this.remoteAppData = const OpencodeRemoteAppData(),
@@ -99,9 +89,7 @@ final class OpencodeCliTool implements CliToolDefinition {
   final LaunchArgsCapability launchArgs;
   final ConfigProfileCapability configProfile;
   final SessionResumeCapability sessionResume;
-  final ExecutableResolverCapability executableResolver;
-  final InstallerCapability installer;
-  final OpencodeDisplay display;
+  final CliExecutableCapability executable;
   final OpencodeTerminalBehavior terminalBehavior;
   final MemberConfigInspectionCapability memberConfigInspection;
   final OpencodePluginProvisioner pluginProvisioner;
@@ -113,9 +101,7 @@ final class OpencodeCliTool implements CliToolDefinition {
   final OpencodeMcpConfigWriter mcpConfigWriter;
 
   final TeamBehaviorCapability teamBehavior;
-  final RemoteCliLocatorCapability remoteCliLocator;
   final ProviderDisplayCapability providerDisplay;
-  final CliConfigUiCapability configUi;
   final MarketplaceConsumerCapability marketplaceConsumer;
   final HistoryContextEnvCapability historyContextEnv;
   final RemoteAppDataCapability remoteAppData;
@@ -136,13 +122,10 @@ final class OpencodeCliTool implements CliToolDefinition {
   @override
   Iterable<CliCapability> get capabilities => [
     teamBehavior,
-    remoteCliLocator,
+    executable,
     launchArgs,
     configProfile,
     sessionResume,
-    executableResolver,
-    installer,
-    display,
     terminalBehavior,
     memberConfigInspection,
     pluginProvisioner,
@@ -155,7 +138,6 @@ final class OpencodeCliTool implements CliToolDefinition {
     resource,
     mcpConfigWriter,
     providerDisplay,
-    configUi,
     marketplaceConsumer,
     historyContextEnv,
     remoteAppData,

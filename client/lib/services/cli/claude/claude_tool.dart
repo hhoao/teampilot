@@ -1,26 +1,20 @@
 import '../../../models/team_config.dart';
 import 'capabilities/launch_args.dart';
 import 'capabilities/provider_display.dart';
-import 'capabilities/config_ui.dart';
 import 'capabilities/marketplace_consumer.dart';
 import 'capabilities/history_context_env.dart';
 import 'capabilities/remote_app_data.dart';
 import 'capabilities/credential_export.dart';
 import '../registry/cli_capability.dart';
 import '../registry/cli_tool_definition.dart';
-import '../registry/capabilities/remote_cli_locator_capability.dart';
 import '../registry/capabilities/skill_invocation_syntax_capability.dart';
-import 'capabilities/executable_resolver.dart';
 import 'capabilities/team_behavior.dart';
-import 'capabilities/display.dart';
 import 'capabilities/terminal_behavior.dart';
 import 'capabilities/chat_interaction.dart';
 import 'capabilities/provider_catalog.dart';
 import '../registry/capabilities/provider_catalog_capability.dart';
 import '../registry/capabilities/team_behavior_capability.dart';
 import '../registry/capabilities/config_profile_capability.dart';
-import '../registry/capabilities/executable_resolver_capability.dart';
-import '../registry/capabilities/installer_capability.dart';
 import '../registry/capabilities/launch_args_capability.dart';
 import '../registry/capabilities/cli_effort_capability.dart';
 import '../registry/capabilities/headless_capability.dart';
@@ -31,7 +25,6 @@ import 'capabilities/history/ai_history_capability.dart';
 import 'capabilities/resume_strategy.dart';
 import 'capabilities/config_profile.dart';
 import 'capabilities/headless.dart';
-import 'capabilities/installer.dart';
 import 'provider/claude_effort_capability.dart';
 import 'provider/claude_provider_credential_capability.dart';
 import 'provider/claude_provider_form_capability.dart';
@@ -42,7 +35,7 @@ import '../registry/capabilities/resource_capability.dart';
 import '../registry/capabilities/chat_interaction_capability.dart';
 import '../registry/capabilities/provider_display_capability.dart';
 import '../registry/capabilities/credential_binding_capability.dart';
-import '../registry/capabilities/cli_config_ui_capability.dart';
+import '../registry/capabilities/cli_executable_capability.dart';
 import '../registry/capabilities/marketplace_consumer_capability.dart';
 import '../registry/capabilities/history_context_env_capability.dart';
 import '../registry/capabilities/remote_app_data_capability.dart';
@@ -52,6 +45,7 @@ import 'capabilities/mcp_config_writer.dart';
 import 'capabilities/plugin_provisioner.dart';
 import 'capabilities/credential_binding.dart';
 import 'capabilities/prompt_provision.dart';
+import 'capabilities/executable.dart';
 import '../registry/capabilities/prompt_provision_capability.dart';
 import '../registry/resources/default_resource_capability.dart';
 import '../registry/config_profile/claude_family_hook_writer.dart';
@@ -60,13 +54,10 @@ import '../registry/capabilities/hook_writer_capability.dart';
 final class ClaudeCliTool implements CliToolDefinition {
   ClaudeCliTool({
     this.teamBehavior = const ClaudeTeamBehavior(),
-    this.remoteCliLocator = const DefaultRemoteCliLocator('claude'),
     this.launchArgs = const ClaudeCodeCliToolAdapter(),
     this.configProfile = const ClaudeConfigProfileCapability(),
     this.sessionResume = const ClaudeResumeStrategy(),
-    this.executableResolver = const ClaudeExecutableResolver(),
-    this.installer = const ClaudeInstallerCapability(),
-    this.display = const ClaudeDisplay(),
+    this.executable = const ClaudeExecutableCapability(),
     this.terminalBehavior = const ClaudeTerminalBehavior(),
     this.memberConfigInspection = const DefaultMemberConfigInspection(),
     this.pluginProvisioner = const ClaudePluginProvisioner(),
@@ -81,7 +72,6 @@ final class ClaudeCliTool implements CliToolDefinition {
     this.aiHistory = const ClaudeAiHistoryCapability(),
     this.skillSyntax = const DefaultSkillInvocationSyntaxCapability(),
     this.providerDisplay = const ClaudeProviderDisplay(),
-    this.configUi = const ClaudeConfigUi(),
     this.marketplaceConsumer = const MarketplaceConsumer(),
     this.historyContextEnv = const NoHistoryContextEnv(),
     this.remoteAppData = const NoRemoteAppData(),
@@ -102,9 +92,7 @@ final class ClaudeCliTool implements CliToolDefinition {
   final LaunchArgsCapability launchArgs;
   final ConfigProfileCapability configProfile;
   final SessionResumeCapability sessionResume;
-  final ExecutableResolverCapability executableResolver;
-  final InstallerCapability installer;
-  final ClaudeDisplay display;
+  final CliExecutableCapability executable;
   final ClaudeTerminalBehavior terminalBehavior;
   final MemberConfigInspectionCapability memberConfigInspection;
   final ClaudePluginProvisioner pluginProvisioner;
@@ -116,12 +104,10 @@ final class ClaudeCliTool implements CliToolDefinition {
   final ClaudeMcpConfigWriter mcpConfigWriter;
 
   final TeamBehaviorCapability teamBehavior;
-  final RemoteCliLocatorCapability remoteCliLocator;
   final ChatInteractionCapability chatInteraction;
   final ClaudeAiHistoryCapability aiHistory;
   final SkillInvocationSyntaxCapability skillSyntax;
   final ProviderDisplayCapability providerDisplay;
-  final CliConfigUiCapability configUi;
   final MarketplaceConsumerCapability marketplaceConsumer;
   final HistoryContextEnvCapability historyContextEnv;
   final RemoteAppDataCapability remoteAppData;
@@ -139,13 +125,10 @@ final class ClaudeCliTool implements CliToolDefinition {
   @override
   Iterable<CliCapability> get capabilities => [
     teamBehavior,
-    remoteCliLocator,
+    executable,
     launchArgs,
     configProfile,
     sessionResume,
-    executableResolver,
-    installer,
-    display,
     terminalBehavior,
     memberConfigInspection,
     pluginProvisioner,
@@ -161,7 +144,6 @@ final class ClaudeCliTool implements CliToolDefinition {
     aiHistory,
     skillSyntax,
     providerDisplay,
-    configUi,
     marketplaceConsumer,
     historyContextEnv,
     remoteAppData,

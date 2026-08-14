@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/session_preferences.dart';
 import '../services/cli/cli_tool_locator.dart';
-import '../services/cli/registry/capabilities/executable_resolver_capability.dart';
+import '../services/cli/registry/capabilities/cli_executable_capability.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
 import '../models/team_config.dart';
 import '../repositories/session_preferences_repository.dart';
@@ -125,7 +125,7 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
   Future<void> setCliExecutablePathFor(CliTool cli, String value) {
     final pathKey =
         _cliToolRegistry
-            .capability<ExecutableResolverCapability>(cli)
+            .capability<CliExecutableCapability>(cli)
             ?.preferencesPathKey ??
         cli.value;
     final next = Map<String, String>.of(state.preferences.cliExecutablePaths);
@@ -150,7 +150,7 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
       if (trimmed.isEmpty) continue;
       final pathKey =
           _cliToolRegistry
-              .capability<ExecutableResolverCapability>(entry.key)
+              .capability<CliExecutableCapability>(entry.key)
               ?.preferencesPathKey ??
           entry.key.value;
       if (next[pathKey] == trimmed) continue;
@@ -270,7 +270,7 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
     if (located != null && located.isNotEmpty) {
       return CliToolLocator.resolveSpawnExecutable(located);
     }
-    final resolver = _cliToolRegistry.capability<ExecutableResolverCapability>(
+    final resolver = _cliToolRegistry.capability<CliExecutableCapability>(
       cli,
     );
     return resolver?.defaultExecutableName ?? cli.value;
@@ -279,7 +279,7 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
   String _userExecutableFor(CliTool cli) {
     final pathKey =
         _cliToolRegistry
-            .capability<ExecutableResolverCapability>(cli)
+            .capability<CliExecutableCapability>(cli)
             ?.preferencesPathKey ??
         cli.value;
     return state.preferences.cliExecutablePathFor(pathKey);

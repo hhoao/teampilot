@@ -15,7 +15,7 @@ import 'capabilities/config_profile_capability.dart';
 import 'capabilities/launch_args_capability.dart';
 import 'capabilities/team_behavior_capability.dart';
 import 'capabilities/provider_display_capability.dart';
-import 'capabilities/cli_config_ui_capability.dart';
+import 'capabilities/cli_executable_capability.dart';
 import 'capabilities/marketplace_consumer_capability.dart';
 import 'capabilities/chat_interaction_capability.dart';
 import 'capabilities/history_context_env_capability.dart';
@@ -106,7 +106,7 @@ void registerBuiltInCliTools(
   _verifyRequired<LaunchArgsCapability>(registry);
   _verifyRequired<TeamBehaviorCapability>(registry);
   _verifyRequired<ProviderDisplayCapability>(registry);
-  _verifyRequired<CliConfigUiCapability>(registry);
+  _verifyRequired<CliExecutableCapability>(registry);
   _verifyRequired<TerminalBehaviorCapability>(registry);
   _verifyRequired<MarketplaceConsumerCapability>(registry);
   _verifyRequired<ChatInteractionCapability>(registry);

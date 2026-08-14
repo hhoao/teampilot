@@ -1,10 +1,13 @@
+import '../../../../l10n/app_localizations.dart';
 import '../../installer_types.dart';
+import '../../remote_cli_locator.dart';
+import '../../registry/capabilities/cli_executable_capability.dart';
 import '../../registry/installer/installer_context.dart';
 import '../../registry/installer/npm_installer_capability.dart';
 import '../../registry/installer/teampilot_node_install.dart';
 import '../../registry/installer/termux_remote_detect.dart';
 
-/// In-app npm installer for Claude Code (`@anthropic-ai/claude-code`).
+/// Claude Code identity & binary, plus its in-app npm installer.
 ///
 /// On Termux/Android, official `@latest` skips native binaries
 /// (`process.platform === 'android'`) and leaves a stub that exits with
@@ -14,8 +17,9 @@ import '../../registry/installer/termux_remote_detect.dart';
 /// Newer Claude on Termux needs a community glibc-runner install
 /// (e.g. claude-code-android); that flow is interactive (~233 MB) and is
 /// documented in [termuxCommunityInstallHint], not run unattended over SSH.
-final class ClaudeInstallerCapability extends NpmInstallerCapability {
-  const ClaudeInstallerCapability();
+final class ClaudeExecutableCapability extends NpmInstallerCapability
+    implements CliExecutableCapability {
+  const ClaudeExecutableCapability();
 
   /// Last upstream release that still provided a usable JS entry on Android.
   /// See anthropics/claude-code#50270.
@@ -34,6 +38,34 @@ final class ClaudeInstallerCapability extends NpmInstallerCapability {
 
   @override
   String get displayName => 'Claude Code';
+
+  @override
+  String label(AppLocalizations l10n) => l10n.appProviderToolClaude;
+
+  @override
+  String get defaultExecutableName => 'claude';
+
+  @override
+  String get preferencesPathKey => 'claude';
+
+  @override
+  Future<String?> locateRemote(SshCommandRunner run) =>
+      const DefaultRemoteCliLocator('claude').locate(run);
+
+  @override
+  CliExecutablePathRowSpec get executablePathRowSpec =>
+      const CliExecutablePathRowSpec(
+        titleKey: 'claudeCliExecutablePathLabel',
+        subtitleKey: 'claudeCliExecutablePathDescription',
+        sshSubtitleKey: 'claudeCliExecutablePathDescriptionSsh',
+        fieldKey: 'claude-cli-executable-path-field',
+        browseKey: 'claude-cli-executable-path-browse-button',
+        resetKey: 'claude-cli-executable-path-reset-button',
+        debouncerTag: 'claude_cli_executable_path',
+        installKey: 'claude-cli-install-button',
+        showDividerBelow: true,
+        isCustomTitle: true,
+      );
 
   @override
   Future<CliInstallResult> install(CliInstallContext context) async {

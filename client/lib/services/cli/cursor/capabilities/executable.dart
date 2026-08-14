@@ -1,17 +1,19 @@
+import '../../../../l10n/app_localizations.dart';
 import '../../installer_types.dart';
-import '../../registry/capabilities/installer_capability.dart';
+import '../../remote_cli_locator.dart';
+import '../../registry/capabilities/cli_executable_capability.dart';
 import '../../registry/installer/installer_context.dart';
 import '../../registry/installer/npm_installer_capability.dart';
 import '../../registry/installer/termux_remote_detect.dart';
 
-/// In-app installer for Cursor CLI (`cursor-agent`).
+/// Cursor CLI (`cursor-agent`) identity & binary, plus its in-app installer.
 ///
 /// Uses the official install scripts from
 /// https://cursor.com/docs/cli/installation (curl|bash on Unix, PowerShell on
 /// Windows native). Termux/Android is rejected up front — the official script
 /// targets glibc Linux/macOS, not bionic.
-final class CursorInstallerCapability implements InstallerCapability {
-  const CursorInstallerCapability();
+final class CursorExecutableCapability implements CliExecutableCapability {
+  const CursorExecutableCapability();
 
   static const installUrl = 'https://cursor.com/install';
   static const winInstallUrl = 'https://cursor.com/install?win32=true';
@@ -22,6 +24,32 @@ final class CursorInstallerCapability implements InstallerCapability {
       'Cursor CLI install is not supported on Termux (Android). '
       'Install cursor-agent manually if you have a Termux-compatible build, '
       'then use Detect — or skip Cursor on this device.';
+
+  @override
+  String label(AppLocalizations l10n) => l10n.appProviderToolCursor;
+
+  @override
+  String get defaultExecutableName => 'cursor-agent';
+
+  @override
+  String get preferencesPathKey => 'cursor';
+
+  @override
+  Future<String?> locateRemote(SshCommandRunner run) =>
+      const DefaultRemoteCliLocator('cursor-agent').locate(run);
+
+  @override
+  CliExecutablePathRowSpec get executablePathRowSpec =>
+      const CliExecutablePathRowSpec(
+        titleKey: null,
+        subtitleKey: null,
+        fieldKey: 'cursor-cli-executable-path-field',
+        browseKey: 'cursor-cli-executable-path-browse-button',
+        resetKey: 'cursor-cli-executable-path-reset-button',
+        debouncerTag: 'cursor_cli_executable_path',
+        installKey: 'cursor-cli-install-button',
+        showDividerBelow: true,
+      );
 
   @override
   bool get supportsInstaller => true;

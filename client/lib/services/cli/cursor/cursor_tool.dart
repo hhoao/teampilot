@@ -2,22 +2,17 @@ import '../../../models/team_config.dart';
 import 'capabilities/launch_args.dart';
 import '../registry/cli_capability.dart';
 import '../registry/cli_tool_definition.dart';
-import '../registry/capabilities/remote_cli_locator_capability.dart';
 import '../registry/capabilities/skill_invocation_syntax_capability.dart';
 import 'provider/cursor_cli_config_layout.dart';
 import 'provider/cursor_provider_catalog_capability.dart';
 import '../registry/capabilities/cli_config_layout_capability.dart';
-import 'capabilities/executable_resolver.dart';
 import 'capabilities/team_behavior.dart';
 import 'capabilities/chat_interaction.dart';
-import 'capabilities/display.dart';
 import 'capabilities/terminal_behavior.dart';
 import 'capabilities/prompt_provision.dart';
 import '../registry/capabilities/prompt_provision_capability.dart';
 import '../registry/capabilities/provider_catalog_capability.dart';
 import '../registry/capabilities/config_profile_capability.dart';
-import '../registry/capabilities/executable_resolver_capability.dart';
-import '../registry/capabilities/installer_capability.dart';
 import '../registry/capabilities/launch_args_capability.dart';
 import '../registry/capabilities/team_behavior_capability.dart';
 import 'provider/cursor_provider_credential_capability.dart';
@@ -28,7 +23,6 @@ import '../registry/capabilities/session_resume_capability.dart';
 import 'capabilities/history/ai_history_capability.dart';
 import 'capabilities/history/side_resolver.dart';
 import 'capabilities/resume_strategy.dart';
-import 'capabilities/installer.dart';
 import 'capabilities/config_profile.dart';
 import 'capabilities/session_lifecycle.dart';
 import '../registry/capabilities/cli_session_lifecycle_capability.dart';
@@ -41,8 +35,7 @@ import '../registry/capabilities/resource_capability.dart';
 import '../registry/capabilities/chat_interaction_capability.dart';
 import 'capabilities/provider_display.dart';
 import '../registry/capabilities/provider_display_capability.dart';
-import 'capabilities/config_ui.dart';
-import '../registry/capabilities/cli_config_ui_capability.dart';
+import '../registry/capabilities/cli_executable_capability.dart';
 import 'capabilities/marketplace_consumer.dart';
 import 'capabilities/history_context_env.dart';
 import 'capabilities/remote_app_data.dart';
@@ -56,6 +49,7 @@ import 'capabilities/mcp_config_writer.dart';
 import 'capabilities/plugin_provisioner.dart';
 import 'capabilities/post_manifest_flush.dart';
 import 'capabilities/resource.dart';
+import 'capabilities/executable.dart';
 import '../registry/capabilities/hook_writer_capability.dart';
 import 'provider/cursor_hook_writer.dart';
 
@@ -64,14 +58,11 @@ import 'provider/cursor_hook_writer.dart';
 final class CursorCliTool implements CliToolDefinition {
   CursorCliTool({
     this.teamBehavior = const CursorTeamBehavior(),
-    this.remoteCliLocator = const DefaultRemoteCliLocator('cursor-agent'),
     this.launchArgs = const CursorCliToolAdapter(),
     this.configProfile = const CursorConfigProfileCapability(),
     this.sessionLifecycle = const CursorSessionLifecycleCapability(),
     this.sessionResume = const CursorResumeStrategy(),
-    this.executableResolver = const CursorExecutableResolver(),
-    this.installer = const CursorInstallerCapability(),
-    this.display = const CursorDisplay(),
+    this.executable = const CursorExecutableCapability(),
     this.terminalBehavior = const CursorTerminalBehavior(),
     this.memberConfigInspection = const DefaultMemberConfigInspection(),
     this.pluginProvisioner = const CursorPluginProvisioner(),
@@ -87,7 +78,6 @@ final class CursorCliTool implements CliToolDefinition {
     this.skillSyntax = const DefaultSkillInvocationSyntaxCapability(),
     this.postManifestFlush = const CursorPostManifestFlushCapability(),
     this.providerDisplay = const CursorProviderDisplay(),
-    this.configUi = const CursorConfigUi(),
     this.marketplaceConsumer = const MarketplaceConsumer(),
     this.historyContextEnv = const CursorHistoryContextEnv(),
     this.remoteAppData = const NoRemoteAppData(),
@@ -112,9 +102,7 @@ final class CursorCliTool implements CliToolDefinition {
   final ConfigProfileCapability configProfile;
   final CliSessionLifecycleCapability sessionLifecycle;
   final SessionResumeCapability sessionResume;
-  final ExecutableResolverCapability executableResolver;
-  final InstallerCapability installer;
-  final CursorDisplay display;
+  final CliExecutableCapability executable;
   final CursorTerminalBehavior terminalBehavior;
   final MemberConfigInspectionCapability memberConfigInspection;
   final CursorPluginProvisioner pluginProvisioner;
@@ -126,9 +114,7 @@ final class CursorCliTool implements CliToolDefinition {
   final CursorMcpConfigWriter mcpConfigWriter;
 
   final TeamBehaviorCapability teamBehavior;
-  final RemoteCliLocatorCapability remoteCliLocator;
   final ProviderDisplayCapability providerDisplay;
-  final CliConfigUiCapability configUi;
   final MarketplaceConsumerCapability marketplaceConsumer;
   final HistoryContextEnvCapability historyContextEnv;
   final RemoteAppDataCapability remoteAppData;
@@ -150,14 +136,11 @@ final class CursorCliTool implements CliToolDefinition {
   @override
   Iterable<CliCapability> get capabilities => [
     teamBehavior,
-    remoteCliLocator,
+    executable,
     launchArgs,
     configProfile,
     sessionLifecycle,
     sessionResume,
-    executableResolver,
-    installer,
-    display,
     terminalBehavior,
     memberConfigInspection,
     pluginProvisioner,
@@ -170,7 +153,6 @@ final class CursorCliTool implements CliToolDefinition {
     configLayout,
     mcpConfigWriter,
     providerDisplay,
-    configUi,
     marketplaceConsumer,
     historyContextEnv,
     remoteAppData,

@@ -1,6 +1,5 @@
 import '../../models/team_config.dart';
 import 'cli_tool_locator.dart';
-import 'registry/capabilities/executable_resolver_capability.dart';
 import 'registry/cli_tool_registry.dart';
 import 'remote_cli_locator.dart';
 
@@ -16,11 +15,11 @@ class CliExecutableDiscovery {
       .map((definition) => definition.id)
       .where(
         (cli) =>
-            _registry.capability<ExecutableResolverCapability>(cli) != null,
+            _registry.capability<CliExecutableCapability>(cli) != null,
       );
 
   Iterable<CliTool> get _remoteDiscoverable => _localDiscoverable.where(
-    (cli) => _registry.capability<RemoteCliLocatorCapability>(cli) != null,
+    (cli) => _registry.capability<CliExecutableCapability>(cli) != null,
   );
 
   Future<Map<CliTool, String>> locateLocal({
@@ -31,7 +30,7 @@ class CliExecutableDiscovery {
     final discoveries = await Future.wait([
       for (final cli in _localDiscoverable)
         () async {
-          final resolver = _registry.capability<ExecutableResolverCapability>(
+          final resolver = _registry.capability<CliExecutableCapability>(
             cli,
           )!;
           final path = await CliToolLocator(
@@ -55,7 +54,7 @@ class CliExecutableDiscovery {
     ProcessRunner runner = cliToolDefaultProcessRun,
     bool includeShellFallback = true,
   }) async {
-    final resolver = _registry.capability<ExecutableResolverCapability>(cli);
+    final resolver = _registry.capability<CliExecutableCapability>(cli);
     if (resolver == null) return null;
     final path = await CliToolLocator(resolver.defaultExecutableName).locate(
       runner: runner,
