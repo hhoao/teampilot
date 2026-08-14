@@ -1,4 +1,3 @@
-import 'capabilities/provider.dart';
 import '../registry/capabilities/provider_capability.dart';
 import '../../../models/team_config.dart';
 import 'capabilities/session.dart';

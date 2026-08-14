@@ -2,7 +2,6 @@ import '../../../../models/team_config.dart';
 import '../../../../models/hook_entry.dart';
 import '../../../../utils/team/team_member_naming.dart';
 import '../../../launch/work_plane_paths.dart';
-import '../../../provider/cross_machine_credential_bridge.dart';
 import 'provider.dart';
 import '../../../session/member_role_provision.dart';
 import '../../registry/capabilities/provider_capability.dart';
@@ -51,16 +50,6 @@ final class FlashskyaiConfigProfileCapability
     'mcpServers': <String, Object?>{},
   };
 
-  static String sessionMetadataFile(
-    ConfigProfileDelegate delegate,
-    String workspaceId,
-    String sessionId, {
-    String? memberId,
-  }) => delegate.joinWork(
-    delegate.sessionToolDir(workspaceId, sessionId, toolId, memberId: memberId),
-    metadataFileName,
-  );
-
   @override
   Future<void> ensureSessionProfile(ConfigProfileSessionContext ctx) async {
     final delegate = ctx.paths;
@@ -81,28 +70,20 @@ final class FlashskyaiConfigProfileCapability
     final scope = ctx.scope;
     final workingDirectory = ctx.workingDirectory ?? '';
     final warnings = <String>[];
-    if (ctx.crossMachine) {
-      final copied =
-          await CrossMachineCredentialBridge.materializeFlashskyaiLlmConfig(
-            catalog: ctx.catalog,
-            work: delegate,
-          );
-      if (!copied) {
-        warnings.add('flashskyai_llm_config_missing');
-      }
-    }
+
     await _provisionWorkspaceTrust(
       delegate: delegate,
       workspaceId: scope.workspaceId,
       workingDirectory: workingDirectory,
       additionalDirectories: ctx.additionalDirectories,
     );
-    await _writeMetadata(
-      delegate,
-      scope,
-      workingDirectory,
-      additionalDirectories: ctx.additionalDirectories,
-    );
+
+    final contribution = await const FlashskyaiProviderCapability()
+        .materializeSessionHome(
+          sessionHomeContextFromLaunch(ctx, CliTool.flashskyai),
+        );
+    warnings.addAll(contribution.warnings);
+
     final appendPromptEnv = await _writeMemberProfiles(
       delegate: delegate,
       scope: scope,
@@ -125,8 +106,10 @@ final class FlashskyaiConfigProfileCapability
       userHooks: ctx.hooks,
     );
 
-    final environment = _teamLaunchEnvironment(delegate, scope);
-    environment.addAll(appendPromptEnv);
+    final environment = <String, String>{
+      ...contribution.environment,
+      ...appendPromptEnv,
+    };
 
     return ConfigProfileLaunchContribution(
       environment: environment,
@@ -158,35 +141,6 @@ final class FlashskyaiConfigProfileCapability
     final file = delegate.joinWork(memberToolDir, metadataFileName);
     final existing = await delegate.readMetadataFile(file, defaultMetadata);
     await delegate.writeJsonIfChanged(file, {...defaultMetadata, ...existing});
-  }
-
-  Future<void> _writeMetadata(
-    ConfigProfileDelegate delegate,
-    LaunchProfileScope scope,
-    String workingDirectory, {
-    List<String> additionalDirectories = const [],
-  }) async {
-    final metadataPath = sessionMetadataFile(
-      delegate,
-      scope.workspaceId,
-      scope.sessionId,
-      memberId: scope.memberId,
-    );
-    final directories = [workingDirectory, ...additionalDirectories];
-    if (await delegate.trustedProjectsAlreadyCurrent(
-      metadataPath,
-      directories,
-      defaultMetadata: defaultMetadata,
-    )) {
-      return;
-    }
-    final metadata = await delegate.metadataWithTrustedProjects(
-      metadataPath: metadataPath,
-      defaultMetadata: defaultMetadata,
-      defaultProjectConfig: defaultProjectConfig,
-      directories: directories,
-    );
-    await delegate.writeJsonIfChanged(metadataPath, metadata);
   }
 
   Future<Map<String, String>> _writeMemberProfiles({
@@ -432,24 +386,6 @@ final class FlashskyaiConfigProfileCapability
       teamId: simple ? null : scope.teamId,
       workspaceId: simple ? scope.workspaceId : null,
     );
-  }
-
-  Map<String, String> _teamLaunchEnvironment(
-    ConfigProfileDelegate delegate,
-    LaunchProfileScope scope,
-  ) {
-    final memberDir = delegate.sessionToolDir(
-      scope.workspaceId,
-      scope.sessionId,
-      toolId,
-      memberId: scope.memberId,
-    );
-    return {
-      configDirEnvKey: memberDir,
-      sessionHomeDirEnvKey: memberDir,
-      'LLM_CONFIG_PATH': delegate.layout.appFlashskyaiLlmConfigFile,
-      'FLASHSKYAI_CODE_NO_FLICKER': '1',
-    };
   }
 
   Future<bool> _settingsAlreadyCurrent(

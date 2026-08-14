@@ -1,13 +1,19 @@
 import 'package:flutter/widgets.dart';
 
 import '../../../../models/app_provider_config.dart';
+import '../../../../models/cli_preset.dart';
 import '../../../../models/credential_action_result.dart';
 import '../../../../models/credential_probe.dart';
+import '../../../../models/discoverable_member.dart';
+import '../../../../models/hook_entry.dart';
 import '../../../../models/team_config.dart';
+import '../../../agent_status/member_agent_status_endpoint.dart';
 import '../../../io/filesystem.dart';
 import '../../../provider/credential_binding.dart';
 import '../../../remote/remote_credential_materializer.dart';
+import '../../../team_bus/member_bus_idle_endpoint.dart';
 import '../cli_capability.dart';
+import '../config_profile/config_profile_context.dart';
 
 /// Providers discovered from the user's global CLI install.
 class ProviderCatalogSnapshot {
@@ -380,6 +386,125 @@ String _providerConfiguredEffort(AppProviderConfig? provider) {
   return '';
 }
 
+/// Session-home materialization inputs, mirroring [ConfigProfileLaunchContext].
+class SessionHomeContext {
+  const SessionHomeContext({
+    required this.workspaceId,
+    required this.teamId,
+    required this.sessionId,
+    required this.scope,
+    required this.tool,
+    required this.paths,
+    required this.catalog,
+    required this.members,
+    this.team,
+    this.member,
+    this.workingDirectory = '',
+    this.additionalDirectories = const [],
+    this.leadSessionId,
+    this.busIdle,
+    this.agentStatus,
+    this.preset,
+    this.memberId,
+    this.sessionExpertKey,
+    this.resolvedExpert,
+    this.hooks = const [],
+    this.crossMachine = false,
+    this.resolvedProviderId,
+    this.credentialBasePath,
+    this.isSimple = false,
+  });
+
+  final String workspaceId;
+  final String teamId;
+  final String sessionId;
+  final LaunchProfileScope scope;
+  final CliTool tool;
+  final TeamProfile? team;
+  final TeamMemberConfig? member;
+  final List<TeamMemberConfig> members;
+  final String? workingDirectory;
+  final List<String> additionalDirectories;
+
+  /// Work-plane delegate: session runtime trees, settings writes, hooks.
+  final ConfigProfileDelegate paths;
+
+  /// Control-plane paths: provider catalog and home credential reads.
+  final ConfigProfilePaths catalog;
+  final String? leadSessionId;
+  final MemberBusIdleEndpoint? busIdle;
+
+  /// Permission / status HTTP hooks (`POST /agent-status`). Stamped at
+  /// lifecycle (Task 7); null until then — writers install only when set.
+  final MemberAgentStatusEndpoint? agentStatus;
+  final CliPreset? preset;
+  final String? memberId;
+  final String? sessionExpertKey;
+  final DiscoverableMember? resolvedExpert;
+
+  /// 该 seat 生效的用户 hook 条目(staging 按 runtimeBundle.hookIds 解析)。
+  final List<HookEntry> hooks;
+
+  /// True when the work plane is not the control plane (SSH/WSL session).
+  final bool crossMachine;
+
+  /// Provider id resolved by the orchestrator when it precedes this call.
+  final String? resolvedProviderId;
+
+  /// Control-plane base path for credential artifacts when [crossMachine].
+  final String? credentialBasePath;
+
+  /// True when launching Simple (unteamed). Team launches always pass a
+  /// non-empty [teamId] even when the [TeamProfile] object is omitted.
+  final bool isSimple;
+}
+
+/// Environment + warnings produced by [ProviderCapability.materializeSessionHome].
+class SessionHomeContribution {
+  const SessionHomeContribution({
+    this.environment = const {},
+    this.warnings = const [],
+  });
+
+  final Map<String, String> environment;
+  final List<String> warnings;
+}
+
+/// Converts a launch context into session-home inputs for [materializeSessionHome].
+SessionHomeContext sessionHomeContextFromLaunch(
+  ConfigProfileLaunchContext ctx,
+  CliTool tool, {
+  String? resolvedProviderId,
+  String? credentialBasePath,
+}) {
+  return SessionHomeContext(
+    workspaceId: ctx.workspaceId,
+    teamId: ctx.teamId,
+    sessionId: ctx.sessionId,
+    scope: ctx.scope,
+    tool: tool,
+    team: ctx.team,
+    member: ctx.member,
+    members: ctx.members,
+    workingDirectory: ctx.workingDirectory,
+    additionalDirectories: ctx.additionalDirectories,
+    paths: ctx.paths,
+    catalog: ctx.catalog,
+    leadSessionId: ctx.leadSessionId,
+    busIdle: ctx.busIdle,
+    agentStatus: ctx.agentStatus,
+    preset: ctx.preset,
+    memberId: ctx.memberId,
+    sessionExpertKey: ctx.sessionExpertKey,
+    resolvedExpert: ctx.resolvedExpert,
+    hooks: ctx.hooks,
+    crossMachine: ctx.crossMachine,
+    resolvedProviderId: resolvedProviderId,
+    credentialBasePath: credentialBasePath,
+    isSimple: ctx.isSimple,
+  );
+}
+
 /// ProviderHub 契约:该 CLI 的 provider 目录、表单、模型、凭证、effort。
 ///
 /// 一个 CLI 一个实现;consumer 用 `registry.capability<ProviderCapability>(cli)`
@@ -480,6 +605,9 @@ abstract interface class ProviderCapability implements CliCapability {
     AppProviderConfig? provider,
   });
   String defaultEffort({required String model, AppProviderConfig? provider});
+
+  // ---- Session-home materialization (from ConfigProfileCapability) ----
+  Future<SessionHomeContribution> materializeSessionHome(SessionHomeContext ctx);
 }
 
 /// Marker: this CLI's model catalog can be refreshed live
