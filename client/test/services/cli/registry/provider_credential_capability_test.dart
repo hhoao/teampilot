@@ -1,16 +1,16 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/app_provider_config.dart';
-import 'package:teampilot/services/cli/registry/capabilities/provider_credential_capability.dart';
+import 'package:teampilot/services/cli/registry/capabilities/provider_capability.dart';
 import 'package:teampilot/services/cli/claude/provider/claude_official_provider.dart';
-import 'package:teampilot/services/cli/claude/provider/claude_provider_credential_capability.dart';
+import 'package:teampilot/services/cli/claude/capabilities/provider.dart';
 import 'package:teampilot/services/cli/codex/provider/codex_official_provider.dart';
-import 'package:teampilot/services/cli/codex/provider/codex_provider_credential_capability.dart';
-import 'package:teampilot/services/cli/cursor/provider/cursor_provider_credential_capability.dart';
-import 'package:teampilot/services/cli/opencode/provider/opencode_provider_credential_capability.dart';
+import 'package:teampilot/services/cli/codex/capabilities/provider.dart';
+import 'package:teampilot/services/cli/cursor/capabilities/provider.dart';
+import 'package:teampilot/services/cli/opencode/capabilities/provider.dart';
 
 void main() {
   test('claude official provider exposes login and import actions', () {
-    final capability = ClaudeProviderCredentialCapability();
+    final capability = ClaudeProviderCapability();
     const provider = AppProviderConfig(
       id: 'anthropic',
       cli: CliTool.claude,
@@ -38,7 +38,7 @@ void main() {
   });
 
   test('cursor official provider exposes login and import actions', () {
-    final capability = CursorProviderCredentialCapability();
+    final capability = CursorProviderCapability();
     const provider = AppProviderConfig(
       id: 'cursor-account',
       cli: CliTool.cursor,
@@ -56,7 +56,7 @@ void main() {
   });
 
   test('codex openai official exposes login and import actions', () {
-    final capability = CodexProviderCredentialCapability();
+    final capability = CodexProviderCapability();
     const provider = AppProviderConfig(
       id: 'openai-official',
       cli: CliTool.codex,
@@ -75,7 +75,7 @@ void main() {
   });
 
   test('opencode official provider exposes login and import actions', () {
-    final capability = OpencodeProviderCredentialCapability();
+    final capability = OpencodeProviderCapability();
     const provider = AppProviderConfig(
       id: 'openai',
       cli: CliTool.opencode,

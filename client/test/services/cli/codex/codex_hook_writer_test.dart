@@ -3,7 +3,7 @@ import 'package:teampilot/models/hook_entry.dart';
 import 'package:teampilot/models/hook_event.dart';
 import 'package:teampilot/services/agent_status/member_agent_status_endpoint.dart';
 import 'package:teampilot/services/cli/codex/provider/codex_hook_writer.dart';
-import 'package:teampilot/services/cli/registry/capabilities/hook_writer_capability.dart';
+import 'package:teampilot/services/cli/registry/capabilities/hook_capability.dart';
 import 'package:teampilot/services/cli/registry/config_profile/hook_seat_context_completer.dart';
 import 'package:teampilot/services/hook/glue_script_builder.dart';
 

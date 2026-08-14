@@ -8,7 +8,7 @@ import '../../models/runtime_target.dart';
 import '../../models/team_config.dart';
 import '../../models/workspace_topology.dart';
 import '../../services/cli/preset_resolver.dart';
-import '../../services/cli/registry/capabilities/provider_catalog_capability.dart';
+import '../../services/cli/registry/capabilities/provider_capability.dart';
 import '../../services/cli/registry/cli_display_name.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
@@ -322,7 +322,7 @@ enum _MemberMenuAction { viewDetail, switchTo, open, openConfigDir, launchAll }
 
 CliTool _catalogCli(CliToolRegistry? registry, CliTool memberCli) {
   if (registry != null &&
-      registry.capability<ProviderCatalogCapability>(memberCli) != null) {
+      registry.capability<ProviderCapability>(memberCli) != null) {
     return memberCli;
   }
   return CliTool.claude;

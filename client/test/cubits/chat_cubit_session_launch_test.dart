@@ -9,7 +9,7 @@ import 'package:teampilot/models/session_member_binding.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
-import 'package:teampilot/services/cli/claude/capabilities/config_profile.dart';
+import 'package:teampilot/services/cli/claude/capabilities/provider.dart';
 import 'package:teampilot/services/expert_hub/expert_member_materializer.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/storage/launch_profile_provisioner.dart';
@@ -206,7 +206,7 @@ void main() {
         sessions
             .single
             .lastExtraEnvironments
-            .single?[ClaudeConfigProfileCapability.settingsFileEnvKey],
+            .single?[ClaudeProviderCapability.settingsFileEnvKey],
         p.join(claudeDir!, 'settings', 'dev.json'),
       );
     },

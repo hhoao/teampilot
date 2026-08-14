@@ -9,7 +9,7 @@ import '../provider/cursor_windows_home_junction.dart';
 import '../provider/cursor_workspace_trust.dart';
 import '../provider/cursor_workspace_warm_tier.dart';
 import '../../../storage/runtime_layout.dart';
-import 'resource.dart';
+import 'skill.dart';
 
 /// Session lifecycle disk layout for mixed-mode cursor warm tier + member overlay.
 final class CursorSessionLifecyclePaths {
@@ -176,7 +176,7 @@ final class CursorSessionLifecyclePaths {
       source: sharedSkillsCursorDir(),
       target: _ctx.join(
         cursorDir,
-        CursorResourceCapability.skillsSubdirName,
+        CursorSkillCapability.skillsSubdirName,
       ),
     );
     await _linkFile(

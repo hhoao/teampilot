@@ -9,7 +9,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/app_provider_config.dart';
 import '../../models/layout_preferences.dart';
 import '../../services/app/platform_utils.dart';
-import '../../services/cli/registry/capabilities/provider_display_capability.dart';
+import '../../services/cli/registry/capabilities/provider_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../widgets/app_provider/app_provider_detail_panel.dart';
 import '../../widgets/app_provider/app_provider_form_sheet.dart';
@@ -211,7 +211,7 @@ class _LlmProvidersRightPanel extends StatelessWidget {
             modelsProviderId != null &&
             modelsProviderId == selected.id &&
             CliToolRegistry.builtIn()
-                    .capability<ProviderDisplayCapability>(selected.cli)
+                    .capability<ProviderCapability>(selected.cli)
                     ?.hasModelPanel ==
                 true;
 

@@ -2,10 +2,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/hook_entry.dart';
 import 'package:teampilot/models/hook_event.dart';
 import 'package:teampilot/services/cli/registry/capabilities/hook_registry.dart';
-import 'package:teampilot/services/cli/registry/capabilities/hook_writer_capability.dart';
+import 'package:teampilot/services/cli/registry/capabilities/hook_capability.dart';
 import 'package:teampilot/services/hook/glue_script_builder.dart';
 
-class _FakeWriter implements HookWriterCapability {
+class _FakeWriter implements HookCapability {
   const _FakeWriter();
   @override
   String? nativeEvent(HookEvent event) =>

@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/app_provider_config.dart';
-import 'package:teampilot/services/cli/registry/capabilities/provider_model_capability.dart';
-import 'package:teampilot/services/cli/opencode/provider/opencode_provider_model_capability.dart';
+import 'package:teampilot/services/cli/registry/capabilities/provider_capability.dart';
+import 'package:teampilot/services/cli/opencode/capabilities/provider.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
-import 'package:teampilot/services/cli/claude/provider/claude_provider_model_capability.dart';
+import 'package:teampilot/services/cli/claude/capabilities/provider.dart';
 
 void main() {
   test('backgroundModelFromProvider returns the role-flagged model id', () {
@@ -25,7 +25,7 @@ void main() {
       },
     );
     expect(backgroundModelFromProvider(provider), 'cheap-model');
-    expect(const ClaudeProviderModelCapability().supportsModelTiers, isTrue);
+    expect(const ClaudeProviderCapability().supportsModelTiers, isTrue);
   });
 
   test('backgroundModelFromProvider is empty without a background role', () {
@@ -74,7 +74,7 @@ void main() {
   test(
     'claude official provider exposes catalog with aliases and full ids',
     () {
-      const capability = ClaudeProviderModelCapability();
+      const capability = ClaudeProviderCapability();
       const official = AppProviderConfig(
         id: 'claude-official',
         cli: CliTool.claude,
@@ -106,7 +106,7 @@ void main() {
   );
 
   test('claude proxy provider supports custom model entry', () {
-    const capability = ClaudeProviderModelCapability();
+    const capability = ClaudeProviderCapability();
     expect(
       capability.pickerMode(
         const AppProviderConfig(
@@ -121,7 +121,7 @@ void main() {
   });
 
   test('opencode capability exposes zen catalog and custom entry', () {
-    final capability = OpencodeProviderModelCapability();
+    final capability = OpencodeProviderCapability();
     const provider = AppProviderConfig(
       id: 'opencode',
       cli: CliTool.opencode,
@@ -143,7 +143,7 @@ void main() {
   });
 
   test('opencode catalog resolves from providerId without provider row', () {
-    final capability = OpencodeProviderModelCapability();
+    final capability = OpencodeProviderCapability();
     final models = capability.modelCandidates(
       provider: null,
       providerId: 'opencode',
@@ -156,7 +156,7 @@ void main() {
     final registry = CliToolRegistry.builtIn();
     for (final cli in CliTool.values) {
       expect(
-        registry.capability<ProviderModelCapability>(cli),
+        registry.capability<ProviderCapability>(cli),
         isNotNull,
         reason: cli.value,
       );

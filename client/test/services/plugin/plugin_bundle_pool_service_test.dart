@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/plugin.dart';
 import 'package:teampilot/services/cli/registry/capabilities/plugin_manifest_paths.dart';
-import 'package:teampilot/services/cli/registry/capabilities/plugin_provisioner_capability.dart';
+import 'package:teampilot/services/cli/registry/capabilities/plugin_capability.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/plugin/plugin_bundle_pool_service.dart';
 

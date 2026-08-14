@@ -1,5 +1,4 @@
 import '../../installer_types.dart';
-import '../capabilities/installer_capability.dart';
 import 'installer_context.dart';
 import 'teampilot_node_install.dart';
 import 'termux_remote_detect.dart';
@@ -9,7 +8,7 @@ import 'termux_remote_detect.dart';
 /// Subclasses only supply the npm [npmPackage], the resulting [executableName],
 /// and a human-readable [displayName]; the local/remote Node bootstrap, install,
 /// and executable resolution flow is identical across tools.
-abstract class NpmInstallerCapability implements InstallerCapability {
+abstract class NpmInstallerCapability {
   const NpmInstallerCapability();
 
   /// Global npm package to install (e.g. `@anthropic-ai/claude-code`).
@@ -21,10 +20,8 @@ abstract class NpmInstallerCapability implements InstallerCapability {
   /// Tool name for progress detail and result messages (e.g. `Claude Code`).
   String get displayName;
 
-  @override
   bool get supportsInstaller => true;
 
-  @override
   Future<CliInstallResult> install(CliInstallContext context) {
     return switch (context.mode) {
       CliInstallMode.local => _installLocal(context),
@@ -156,7 +153,7 @@ abstract class NpmInstallerCapability implements InstallerCapability {
     );
   }
 
-  /// Mirrors [DefaultRemoteCliLocator] probes in one remote shell script.
+  /// Mirrors the [DefaultRemoteCliLocator] probes in one remote shell script.
   static String remotePostInstallLocateScript(String executableName) =>
       '''
 ${TermuxRemoteDetect.exportPrefixPathShell}

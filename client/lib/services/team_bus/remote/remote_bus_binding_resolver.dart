@@ -1,5 +1,5 @@
 import '../../../models/team_config.dart';
-import '../../cli/registry/capabilities/bus_transport_capability.dart';
+import '../../cli/registry/capabilities/team_behavior_capability.dart';
 import '../../cli/registry/cli_tool_registry.dart';
 import 'member_bus_mcp_config.dart';
 import 'remote_bus_mount.dart';
@@ -18,7 +18,7 @@ class RemoteBusBindingResolver {
   }) async {
     final longBlocking =
         _registry
-            .capability<BusTransportCapability>(cli)
+            .capability<TeamBehaviorCapability>(cli)
             ?.longBlockingWaitForMessage ??
         true;
     return longBlocking

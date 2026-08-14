@@ -43,7 +43,7 @@ enum CliTool {
   }
 }
 
-/// 团队协调模式：native = 单 CLI 原生团队（须注册 [NativeTeamCapability]）；
+/// 团队协调模式：native = 单 CLI 原生团队（须注册 [TeamBehaviorCapability]）；
 /// mixed = 混合 CLI 走 TeamBus。
 enum TeamMode {
   native('native'),
@@ -205,7 +205,7 @@ class TeamMemberConfig {
   /// Returns whether this member should block the CLI via `wait_for_message`
   /// before stopping.
   ///
-  /// Priority: member override → [cliDefault] (from [WaitBeforeStopCapability])
+  /// Priority: member override → [cliDefault] (from [TeamBehaviorCapability])
   /// → team default.
   bool effectiveForceWaitBeforeStop(
     TeamProfile team, {
@@ -485,7 +485,7 @@ class TeamProfile implements LaunchProfile {
   }
 
   /// Team-level effort for [cli], or empty when unset (the CLI's
-  /// [CliEffortCapability.defaultEffort] supplies the launch fallback).
+  /// [ProviderCapability.defaultEffort] supplies the launch fallback).
   String effortForCli(CliTool cli) => cliEffortLevels[cli.value]?.trim() ?? '';
 
   /// App-level provider id for [cli] from team custom defaults.

@@ -8,7 +8,7 @@ import '../../models/ssh_profile.dart';
 import '../../models/team_config.dart';
 import 'cli_tool_locator.dart';
 import 'installer_types.dart';
-import 'registry/capabilities/installer_capability.dart';
+import 'registry/capabilities/cli_executable_capability.dart';
 import 'registry/cli_tool_registry.dart';
 import 'registry/installer/installer_context.dart';
 import 'registry/installer/teampilot_node_install.dart';
@@ -62,7 +62,9 @@ class CliInstallerService {
     SshProfile? sshProfile,
     CliInstallProgressCallback? onProgress,
   }) async {
-    final capability = _cliToolRegistry.capability<InstallerCapability>(cli);
+    final capability = _cliToolRegistry.capability<CliExecutableCapability>(
+      cli,
+    );
     if (capability == null || !capability.supportsInstaller) {
       return const CliInstallResult(
         success: false,

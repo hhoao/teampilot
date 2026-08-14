@@ -1,5 +1,5 @@
 import '../../models/app_provider_config.dart';
-import '../cli/registry/capabilities/credential_binding_capability.dart';
+import '../cli/registry/capabilities/provider_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 
 /// How an official-account provider resolves OAuth / credential files.
@@ -37,7 +37,7 @@ CredentialBindingKind resolveCredentialBinding(
     return CredentialBindingKind.parse(raw);
   }
   final capability = (registry ?? CliToolRegistry.builtIn())
-      .capability<CredentialBindingCapability>(provider.cli);
+      .capability<ProviderCapability>(provider.cli);
   return capability?.defaultBinding(provider) ?? CredentialBindingKind.isolated;
 }
 

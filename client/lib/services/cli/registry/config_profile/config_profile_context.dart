@@ -40,7 +40,7 @@ CliTool presetCli(CliPreset? preset, {CliTool fallback = CliTool.claude}) {
   return preset?.cli ?? fallback;
 }
 
-/// Path facade for [ConfigProfileCapability] implementations.
+/// Path facade for launch config-profile materialization.
 abstract interface class ConfigProfilePaths {
   String get basePath;
 
@@ -132,26 +132,6 @@ abstract interface class ConfigProfileDelegate implements ConfigProfilePaths {
   });
 
   HostExecutionEnvironment hostEnvironmentForProvision();
-}
-
-class ConfigProfileSessionContext {
-  const ConfigProfileSessionContext({
-    required this.workspaceId,
-    required this.teamId,
-    required this.sessionId,
-    required this.members,
-    required this.paths,
-    this.team,
-    this.memberId,
-  });
-
-  final String workspaceId;
-  final String teamId;
-  final String sessionId;
-  final List<TeamMemberConfig> members;
-  final ConfigProfileDelegate paths;
-  final TeamProfile? team;
-  final String? memberId;
 }
 
 class ConfigProfileLaunchContext {

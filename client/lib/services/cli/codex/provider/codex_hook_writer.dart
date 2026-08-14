@@ -3,10 +3,10 @@ import '../../../../models/hook_event.dart';
 import '../../../../models/team_config.dart';
 import '../../../host/host_script_dialect.dart';
 import '../../registry/capabilities/hook_registry.dart';
-import '../../registry/capabilities/hook_writer_capability.dart';
+import '../../registry/capabilities/hook_capability.dart';
 
 /// Codex hook writer：`config.toml` 的 `[[hooks.<Event>]]` 片段。
-class CodexHookWriter implements HookWriterCapability {
+class CodexHookWriter implements HookCapability {
   const CodexHookWriter({this.denyReason = 'TeamPilot hook policy'});
 
   final String denyReason;

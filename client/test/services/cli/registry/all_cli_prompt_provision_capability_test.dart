@@ -1,10 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/cli/registry/capabilities/prompt_provision_capability.dart';
+import 'package:teampilot/services/cli/registry/capabilities/prompt_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 
 void main() {
-  test('registry wiring all launch CLIs expose PromptProvisionCapability', () {
+  test('registry wiring all launch CLIs expose PromptCapability', () {
     final registry = CliToolRegistry.builtIn();
     const launchClis = {
       CliTool.claude,
@@ -15,9 +15,9 @@ void main() {
     };
     for (final cli in launchClis) {
       expect(
-        registry.capability<PromptProvisionCapability>(cli),
+        registry.capability<PromptCapability>(cli),
         isNotNull,
-        reason: '$cli must expose PromptProvisionCapability',
+        reason: '$cli must expose PromptCapability',
       );
     }
   });

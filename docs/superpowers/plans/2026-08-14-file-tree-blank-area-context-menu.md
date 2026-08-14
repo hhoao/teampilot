@@ -489,6 +489,13 @@ class _FakeFilesystem implements Filesystem {
   @override
   Future<void> ensureDir(String path) async {
     _dirs[path] ??= [];
+    final parent = pathContext.dirname(path);
+    if (parent != path &&
+        !_dirs[parent]!.any((e) => e.name == pathContext.basename(path))) {
+      _dirs[parent]!.add(
+        FsDirEntry(name: pathContext.basename(path), isDirectory: true),
+      );
+    }
   }
 
   @override
@@ -562,11 +569,14 @@ Widget _panel({
   required FileTreeCubit cubit,
   required RuntimeContext workContext,
 }) {
-  return TpTheme(
-    child: MaterialApp(
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      home: Scaffold(
+  final theme = ThemeData(useMaterial3: true);
+  return MaterialApp(
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    theme: theme,
+    home: TpTheme(
+      data: TpThemeData.fromColorScheme(theme.colorScheme, scale: 1.0),
+      child: Scaffold(
         body: BlocProvider.value(
           value: WorkbenchCubit(),
           child: BlocProvider.value(
@@ -726,13 +736,16 @@ void main() {
         contains('z'),
       );
 
+      // Drain the success-toast timer before the test ends.
+      await tester.pump(const Duration(seconds: 2));
+
       await cubit.close();
     });
   });
 }
 ```
 
-Note: `import 'package:teampilot/test/support/test_runtime_context.dart';` — the `test/` dir is importable from other test files (see `test/services/io/runtime_folder_opener_test.dart` which imports it).
+Note: the plan's Task 2 test harness carries the five environment fixes learned during Task 1 (TpTheme requires `data:` — use `TpThemeData.fromColorScheme(theme.colorScheme, scale: 1.0)`; the fake FS `ensureDir` registers the new folder in its parent's listing; drain the success-toast timer with `tester.pump(Duration(seconds: 2))` before the test ends; no bare `Future.delayed` before a pump in FakeAsync — use `tester.pump`; add `behavior: HitTestBehavior.opaque` on bare `GestureDetector` hosts that have no hit-testable child). `import 'package:teampilot/test/support/test_runtime_context.dart';` — the `test/` dir is importable from other test files (see `test/services/io/runtime_folder_opener_test.dart` which imports it).
 
 - [ ] **Step 2: Run the test to verify it fails**
 

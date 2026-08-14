@@ -10,9 +10,8 @@ import '../../repositories/app_provider_repository.dart';
 import '../../utils/logging/logger.dart';
 import '../../utils/logging/log_redaction.dart';
 import '../cli/cli_tool_locator.dart';
-import '../cli/registry/capabilities/cli_effort_capability.dart';
-import '../cli/registry/capabilities/headless_provision_capability.dart';
-import '../cli/registry/capabilities/headless_run_capability.dart';
+import '../cli/registry/capabilities/provider_capability.dart';
+import '../cli/registry/capabilities/headless_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 
 /// Thrown when a headless AI call cannot run or fails.
@@ -141,7 +140,7 @@ Future<int> headlessDefaultStreamRun(
 }
 
 /// Runs a single one-shot CLI call for AI features. Reuses the CLI registry's
-/// [HeadlessRunCapability] per tool; all IO is injectable for tests.
+/// [HeadlessCapability] per tool; all IO is injectable for tests.
 class HeadlessAiService {
   HeadlessAiService({
     CliToolRegistry? registry,
@@ -149,7 +148,7 @@ class HeadlessAiService {
     HeadlessStreamRunner streamRun = headlessDefaultStreamRun,
     HeadlessProviderResolver? resolveProvider,
     HeadlessExecutableResolver? resolveExecutable,
-    HeadlessProvisionCapability? Function(CliTool)? resolveProvisionCapability,
+    HeadlessCapability? Function(CliTool)? resolveProvisionCapability,
     Future<Directory> Function()? tempDirFactory,
   }) : _registry = registry ?? CliToolRegistry.builtIn(),
        _run = run,
@@ -169,9 +168,8 @@ class HeadlessAiService {
   final HeadlessExecutableResolver _resolveExecutable;
 
   /// Test seam to override (or disable, by returning null) per-CLI provisioning.
-  /// Defaults to the registry's [HeadlessProvisionCapability] for the CLI.
-  final HeadlessProvisionCapability? Function(CliTool)?
-  _resolveProvisionCapability;
+  /// Defaults to the CLI's [HeadlessCapability].
+  final HeadlessCapability? Function(CliTool)? _resolveProvisionCapability;
   final Future<Directory> Function() _tempDirFactory;
 
   Future<HeadlessAiResult> run({
@@ -182,7 +180,7 @@ class HeadlessAiService {
     Duration timeout = const Duration(seconds: 90),
   }) async {
     final cli = setting.cli;
-    final cap = _registry.capability<HeadlessRunCapability>(cli);
+    final cap = _registry.capability<HeadlessCapability>(cli);
     if (cap == null || !cap.isSupported) {
       throw HeadlessAiException(
         'Headless mode is not supported for ${cli.value}.',
@@ -208,7 +206,7 @@ class HeadlessAiService {
 
       final provisionCap = _resolveProvisionCapability != null
           ? _resolveProvisionCapability(cli)
-          : _registry.capability<HeadlessProvisionCapability>(cli);
+          : cap;
       final provision = provisionCap == null
           ? const HeadlessProvisionResult()
           : await provisionCap.provision(
@@ -304,7 +302,7 @@ class HeadlessAiService {
     Duration timeout = const Duration(seconds: 120),
   }) async {
     final cli = setting.cli;
-    final cap = _registry.capability<HeadlessRunCapability>(cli);
+    final cap = _registry.capability<HeadlessCapability>(cli);
     if (cap == null || !cap.isSupported) {
       throw HeadlessAiException(
         'Headless mode is not supported for ${cli.value}.',
@@ -331,7 +329,7 @@ class HeadlessAiService {
 
       final provisionCap = _resolveProvisionCapability != null
           ? _resolveProvisionCapability(cli)
-          : _registry.capability<HeadlessProvisionCapability>(cli);
+          : cap;
       final provision = provisionCap == null
           ? const HeadlessProvisionResult()
           : await provisionCap.provision(
@@ -431,7 +429,7 @@ class HeadlessAiService {
     AppProviderConfig? provider,
     String requested,
   ) {
-    final cap = _registry.capability<CliEffortCapability>(cli);
+    final cap = _registry.capability<ProviderCapability>(cli);
     if (cap == null || !cap.isApplicable(model: model)) return '';
     final r = requested.trim();
     if (r.isNotEmpty) return r;

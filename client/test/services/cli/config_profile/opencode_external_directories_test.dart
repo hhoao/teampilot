@@ -3,14 +3,22 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/cli/opencode/capabilities/config_profile.dart';
-import 'package:teampilot/services/cli/opencode/capabilities/prompt_provision.dart';
-import 'package:teampilot/services/cli/registry/capabilities/prompt_provision_capability.dart';
+import 'package:teampilot/services/cli/opencode/capabilities/provider.dart';
+import 'package:teampilot/services/cli/registry/capabilities/provider_capability.dart';
+import 'package:teampilot/services/cli/opencode/capabilities/prompt.dart';
+import 'package:teampilot/services/cli/registry/capabilities/prompt_capability.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 
 void main() {
+  Future<SessionHomeContribution> contribute(
+    OpencodeProviderCapability capability,
+    ConfigProfileLaunchContext ctx,
+  ) => capability.materializeSessionHome(
+    sessionHomeContextFromLaunch(ctx, CliTool.opencode),
+  );
+
   test('mergeOpencodeExternalDirectories adds allow patterns per directory', () {
     final merged = mergeOpencodeExternalDirectories(
       <String, Object?>{},
@@ -61,8 +69,49 @@ void main() {
     expect(twice, once);
   });
 
+  test('OpencodePromptCapability virtualizes the member role spec', () {
+    const member = TeamMemberConfig(
+      id: 'm1',
+      name: 'Member',
+      model: 'test',
+      responsibilities: 'You are the reviewer.',
+    );
+    final specs = const OpencodePromptCapability().virtualize(
+      const PromptVirtualizeContext(member: member),
+    );
+
+    expect(specs, isNotEmpty);
+    expect(specs.first.id, 'opencode-member-role');
+    expect(specs.first.title, 'Member role');
+    expect(specs.first.scope, PromptScope.member);
+    expect(specs.first.content, contains('You are the reviewer.'));
+  });
+
   test(
-    'OpencodePromptProvisionCapability writes role + dirs into AGENTS.md',
+    'OpencodePromptCapability virtualize includes workspace directories '
+    'section and mixed addenda matching materialize',
+    () async {
+      const member = TeamMemberConfig(
+        id: 'm1',
+        name: 'Member',
+        model: 'test',
+        responsibilities: 'You are the reviewer.',
+      );
+      final specs = const OpencodePromptCapability().virtualize(
+        const PromptVirtualizeContext(
+          member: member,
+          mixed: true,
+          additionalDirectories: ['/abs/missing/repo'],
+        ),
+      );
+      expect(specs.single.content, contains('## Workspace directories'));
+      expect(specs.single.content, contains('- /abs/missing/repo'));
+      expect(specs.single.content, contains('Multi-agent teammate'));
+    },
+  );
+
+  test(
+    'OpencodePromptCapability writes role + dirs into AGENTS.md',
     () async {
       final base = await Directory.systemTemp.createTemp('opencode_prompt_');
       addTearDown(() async {
@@ -89,8 +138,8 @@ void main() {
       );
 
       final contribution =
-          await const OpencodePromptProvisionCapability().provision(
-            PromptProvisionContext(
+          await const OpencodePromptCapability().materialize(
+            PromptMaterializeContext(
               paths: service,
               scope: scope,
               member: member,
@@ -107,7 +156,7 @@ void main() {
         memberId: scope.memberId,
       );
       final agents = await fs.readString(
-        '$opencodeDir/${OpencodePromptProvisionCapability.agentsFileName}',
+        '$opencodeDir/${OpencodePromptCapability.agentsFileName}',
       );
       expect(agents, isNotNull);
       expect(agents, contains('You are the reviewer.'));
@@ -116,16 +165,16 @@ void main() {
     },
   );
 
-  test('OpencodePromptProvisionCapability skips without scope', () async {
+  test('OpencodePromptCapability skips without scope', () async {
     final contribution =
-        await const OpencodePromptProvisionCapability().provision(
-          const PromptProvisionContext(),
+        await const OpencodePromptCapability().materialize(
+          const PromptMaterializeContext(),
         );
     expect(contribution.written, isFalse);
   });
 
   test(
-    'OpencodePromptProvisionCapability writes dirs-only AGENTS.md for '
+    'OpencodePromptCapability writes dirs-only AGENTS.md for '
     'invalid member',
     () async {
       final base = await Directory.systemTemp.createTemp('opencode_prompt_');
@@ -148,8 +197,8 @@ void main() {
       );
 
       final contribution =
-          await const OpencodePromptProvisionCapability().provision(
-            PromptProvisionContext(
+          await const OpencodePromptCapability().materialize(
+            PromptMaterializeContext(
               paths: service,
               scope: scope,
               member: member,
@@ -165,7 +214,7 @@ void main() {
         memberId: scope.memberId,
       );
       final agents = await fs.readString(
-        '$opencodeDir/${OpencodePromptProvisionCapability.agentsFileName}',
+        '$opencodeDir/${OpencodePromptCapability.agentsFileName}',
       );
       expect(agents, isNotNull);
       expect(agents, contains('## Workspace directories'));
@@ -208,7 +257,7 @@ void main() {
         memberId: 'm1',
       );
 
-      await const OpencodeConfigProfileCapability().contributeLaunch(
+      await contribute(const OpencodeProviderCapability(),
         ConfigProfileLaunchContext(
           workspaceId: 'workspace-1',
           teamId: 'team-a',
@@ -231,7 +280,7 @@ void main() {
       );
 
       final agents = await fs.readString(
-        '$opencodeDir/${OpencodeConfigProfileCapability.agentsFileName}',
+        '$opencodeDir/${OpencodeProviderCapability.agentsFileName}',
       );
       expect(agents, isNotNull);
       expect(agents, contains('## Workspace directories'));
@@ -239,7 +288,7 @@ void main() {
       expect(agents, isNot(contains('-  ')));
 
       final raw = await fs.readString(
-        '$opencodeDir/${OpencodeConfigProfileCapability.opencodeConfigFileName}',
+        '$opencodeDir/${OpencodeProviderCapability.opencodeConfigFileName}',
       );
       final config = jsonDecode(raw!) as Map<String, dynamic>;
       final permission = config['permission'] as Map;

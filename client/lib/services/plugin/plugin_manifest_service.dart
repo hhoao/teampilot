@@ -1,6 +1,6 @@
 import 'dart:convert';
 import '../../models/plugin.dart';
-import '../cli/registry/capabilities/plugin_provisioner_capability.dart';
+import '../cli/registry/capabilities/plugin_capability.dart';
 import '../io/filesystem.dart';
 import '../io/local_filesystem.dart';
 import 'plugin_exceptions.dart';

@@ -17,7 +17,7 @@ import 'package:teampilot/repositories/ssh_credential_store.dart';
 import 'package:teampilot/repositories/ssh_known_host_repository.dart';
 import 'package:teampilot/repositories/ssh_profile_repository.dart';
 import 'package:teampilot/services/app/connection_mode_service.dart';
-import 'package:teampilot/services/cli/registry/capabilities/installer_capability.dart';
+import 'package:teampilot/services/cli/registry/capabilities/cli_executable_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/ssh/ssh_client_factory.dart';
 import 'package:teampilot/theme/app_typography_scale.dart';
@@ -44,12 +44,12 @@ void main() {
     );
 
     expect(
-      registry.capability<InstallerCapability>(CliTool.claude)?.supportsInstaller,
+      registry.capability<CliExecutableCapability>(CliTool.claude)?.supportsInstaller,
       isTrue,
     );
     expect(
       registry
-          .capability<InstallerCapability>(CliTool.flashskyai)
+          .capability<CliExecutableCapability>(CliTool.flashskyai)
           ?.supportsInstaller,
       isFalse,
     );

@@ -1,13 +1,13 @@
 import '../../models/team_config.dart';
 import '../../utils/logging/logger.dart';
-import '../cli/registry/capabilities/turn_interrupt_capability.dart';
+import '../cli/registry/capabilities/terminal_behavior_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import 'terminal_session.dart';
 
 typedef MemberPtyWriter = void Function(TerminalSession shell, String text);
 
 /// Orchestrates per-member turn interrupt: abort pending inject, then PTY steps
-/// from [TurnInterruptCapability].
+/// from [TerminalBehaviorCapability].
 final class MemberTurnInterruptService {
   MemberTurnInterruptService({
     required CliToolRegistry cliToolRegistry,
@@ -39,7 +39,7 @@ final class MemberTurnInterruptService {
 
     _abortMemberInject(sessionId, memberId);
 
-    final cap = _cliToolRegistry.capability<TurnInterruptCapability>(cli);
+    final cap = _cliToolRegistry.capability<TerminalBehaviorCapability>(cli);
     if (cap == null || !cap.supportsTurnInterrupt) {
       appLogger.d(
         '[turn-interrupt] skip $sessionId:$memberId — no turn interrupt for $cli',

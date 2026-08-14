@@ -1,5 +1,5 @@
 import '../../models/team_config.dart';
-import '../cli/registry/capabilities/bus_transport_capability.dart';
+import '../cli/registry/capabilities/team_behavior_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../storage/app_storage.dart';
 import '../storage/runtime_context.dart';
@@ -25,7 +25,7 @@ Map<String, Object?> resolveMemberBusMcpTransportConfig({
 }) {
   final longBlocking =
       cliRegistry
-          .capability<BusTransportCapability>(cli)
+          .capability<TeamBehaviorCapability>(cli)
           ?.longBlockingWaitForMessage ??
       true;
   String? localBridge;
@@ -34,7 +34,7 @@ Map<String, Object?> resolveMemberBusMcpTransportConfig({
         !AppStorage.isInstalled ||
         AppStorage.context.mode == StorageBackendMode.native;
     final supportsBridge = cliRegistry
-            .capability<BusTransportCapability>(cli)
+            .capability<TeamBehaviorCapability>(cli)
             ?.supportsLocalStdioBridge ??
         false;
     if (supportsBridge && localNative) {

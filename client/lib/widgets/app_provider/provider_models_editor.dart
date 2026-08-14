@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_provider_config.dart';
-import '../../services/cli/registry/capabilities/provider_model_capability.dart';
+import '../../services/cli/registry/capabilities/provider_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import 'package:shared_ui/shared_ui.dart';
@@ -117,7 +117,7 @@ class ProviderModelsEditor extends StatelessWidget {
   List<String> _suggestions(BuildContext context) {
     final registry =
         CliToolRegistryScope.maybeOf(context) ?? CliToolRegistry.builtIn();
-    final capability = registry.capability<ProviderModelCapability>(cli);
+    final capability = registry.capability<ProviderCapability>(cli);
     if (capability == null) return const [];
     final draft = draftProvider();
     return capability.modelCandidates(
@@ -131,7 +131,7 @@ class ProviderModelsEditor extends StatelessWidget {
     final registry =
         CliToolRegistryScope.maybeOf(context) ?? CliToolRegistry.builtIn();
     return registry
-            .capability<ProviderModelCapability>(cli)
+            .capability<ProviderCapability>(cli)
             ?.supportsModelTiers ??
         false;
   }

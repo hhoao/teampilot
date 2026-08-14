@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
-import 'package:teampilot/services/ai_history/tool_call_resolvers.dart';
 import 'package:teampilot/services/cli/registry/capabilities/ai_history_capability.dart';
 import 'package:teampilot/services/cli/claude/capabilities/history/ai_history_capability.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/history/ai_history_capability.dart';
@@ -74,14 +73,7 @@ void main() {
   test(
     'Cursor fixture: Shell without tool_result enriches stdout from terminals',
     () async {
-      const cap = CursorAiHistoryCapability(
-        shellResolver: ConfigurableAiShellToolTargetResolver(
-          toolNames: {
-            'bash', 'shell', 'shell_command', 'exec_command',
-            'run_shell_command', 'run_terminal_cmd', 'execute',
-          },
-        ),
-      );
+      const cap = CursorAiHistoryCapability();
       const chatId = 'chat-shell-missing-result';
 
       final bundle = await locateCursorTranscript(cursorCtx(chatId: chatId));

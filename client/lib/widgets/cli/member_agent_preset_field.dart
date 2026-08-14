@@ -3,14 +3,14 @@ import 'package:flutter/material.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/team_config.dart';
 import '../../services/cli/flashskyai/agent_catalog_service.dart';
-import '../../services/cli/registry/capabilities/member_agent_preset_capability.dart';
+import '../../services/cli/registry/capabilities/team_behavior_capability.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import 'package:shared_ui/shared_ui.dart';
 import '../../pages/team_config/team_config_helpers.dart';
 
 /// Agent preset field for team members and personal workspaces.
 ///
-/// Rendered only when [cli] registers [MemberAgentPresetCapability].
+/// Rendered only when [cli] registers [TeamBehaviorCapability].
 class MemberAgentPresetField extends StatelessWidget {
   const MemberAgentPresetField({
     super.key,

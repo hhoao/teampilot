@@ -4,7 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../cubits/session_preferences_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_provider_config.dart';
-import '../../services/cli/registry/capabilities/provider_model_capability.dart';
+import '../../services/cli/registry/capabilities/provider_capability.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import 'package:shared_ui/shared_ui.dart';
 
@@ -67,7 +67,7 @@ class _ProviderModelPickerFieldState extends State<ProviderModelPickerField> {
     if (!mounted) return;
     final capability = CliToolRegistryScope.of(
       context,
-    ).capability<ProviderModelCapability>(widget.cli);
+    ).capability<ProviderCapability>(widget.cli);
     if (capability is! RefreshableProviderModelCapability) return;
 
     _refreshableCapability = capability;
@@ -94,7 +94,7 @@ class _ProviderModelPickerFieldState extends State<ProviderModelPickerField> {
   Widget build(BuildContext context) {
     final capability = CliToolRegistryScope.of(
       context,
-    ).capability<ProviderModelCapability>(widget.cli);
+    ).capability<ProviderCapability>(widget.cli);
     if (capability == null || widget.provider == null) {
       return const SizedBox.shrink();
     }

@@ -3,8 +3,8 @@ import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../models/plugin.dart';
-import '../../services/cli/registry/capabilities/display_capability.dart';
-import '../../services/cli/registry/capabilities/plugin_provisioner_capability.dart';
+import '../../services/cli/registry/capabilities/cli_executable_capability.dart';
+import '../../services/cli/registry/capabilities/plugin_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/plugin/plugin_cli_support.dart';
 
@@ -56,7 +56,7 @@ class PluginCliSupportDisclosure extends StatelessWidget {
     PluginCliSupportStatus status,
   ) {
     final cliLabel =
-        registry.capability<DisplayCapability>(status.tool)?.label(l10n) ??
+        registry.capability<CliExecutableCapability>(status.tool)?.label(l10n) ??
         status.tool.name;
     return switch (status.level) {
       PluginCliSupportLevel.fullySupported => l10n.pluginCliSupportFully(

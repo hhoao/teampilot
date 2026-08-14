@@ -39,7 +39,7 @@ import '../../../services/expert_hub/expert_hub_recent_store.dart';
 import '../../../services/expert_hub/expert_landing_preflight.dart';
 import '../../../services/expert_hub/expert_member_resolver.dart';
 import '../../../services/cli/registry/cli_tool_registry_scope.dart';
-import '../../../services/cli/registry/capabilities/skill_invocation_syntax_capability.dart';
+import '../../../services/cli/registry/capabilities/skill_capability.dart';
 import '../../../services/cli/preset_resolver.dart';
 import '../../../utils/team/team_member_naming.dart';
 import '../../../pages/home_workspace/home_workspace_route.dart';
@@ -518,7 +518,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
   /// Skill invocation syntax for the CLI that will receive the composed
   /// prompt: the selected preset's CLI (simple) or the team lead's CLI (team).
   /// Null when no CLI is determinable — the slash menu falls back to `/`.
-  SkillInvocationSyntaxCapability? _skillSyntaxForDraft(
+  SkillCapability? _skillSyntaxForDraft(
     BuildContext context, {
     required List<CliPreset> presets,
     required TeamProfile? selectedTeam,
@@ -541,7 +541,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
             );
     }
     if (cli == null) return null;
-    return registry.capability<SkillInvocationSyntaxCapability>(cli);
+    return registry.capability<SkillCapability>(cli);
   }
 
   Future<void> _loadDraft() async {

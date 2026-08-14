@@ -1,7 +1,7 @@
 import '../../models/app_provider_config.dart';
 import '../../repositories/app_provider_repository.dart';
 import '../cli/flashskyai/provider/flashskyai_provider_mirror.dart';
-import '../cli/registry/capabilities/provider_catalog_capability.dart';
+import '../cli/registry/capabilities/provider_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../storage/app_storage.dart';
 
@@ -58,7 +58,7 @@ class ProviderImportService {
     CliTool cli, {
     required bool onlyIfEmpty,
   }) async {
-    final cap = _cliRegistry.capability<ProviderCatalogCapability>(cli);
+    final cap = _cliRegistry.capability<ProviderCapability>(cli);
     if (cap == null) {
       return ProviderImportResult(cli: cli);
     }
@@ -71,7 +71,7 @@ class ProviderImportService {
   }) async {
     final results = <ProviderImportResult>[];
     for (final def
-        in _cliRegistry.withCapability<ProviderCatalogCapability>()) {
+        in _cliRegistry.withCapability<ProviderCapability>()) {
       results.add(await importForCli(def.id, onlyIfEmpty: onlyIfEmpty));
     }
     return results;

@@ -1,8 +1,8 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/cli/registry/capabilities/headless_run_capability.dart';
-import 'package:teampilot/services/cli/claude/capabilities/headless_run.dart';
+import 'package:teampilot/services/cli/registry/capabilities/headless_capability.dart';
+import 'package:teampilot/services/cli/claude/capabilities/headless.dart';
 
 HeadlessRunContext _ctx({
   String model = 'sonnet',
@@ -17,7 +17,7 @@ HeadlessRunContext _ctx({
 );
 
 void main() {
-  const cap = ClaudeHeadlessRunCapability();
+  const cap = ClaudeHeadlessCapability();
 
   test('isSupported is true', () => expect(cap.isSupported, isTrue));
 
@@ -41,7 +41,7 @@ void main() {
   });
 
   test(
-    'configFiles is empty (settings come from HeadlessProvisionCapability)',
+    'configFiles is empty (settings come from provision)',
     () {
       expect(cap.configFiles(_ctx(effort: 'high')), isEmpty);
     },

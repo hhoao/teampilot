@@ -1,5 +1,5 @@
 import 'dart:convert';
-import '../cli/registry/capabilities/plugin_provisioner_capability.dart';
+import '../cli/registry/capabilities/plugin_capability.dart';
 import '../cli/registry/capabilities/plugin_manifest_paths.dart';
 import '../io/filesystem.dart';
 

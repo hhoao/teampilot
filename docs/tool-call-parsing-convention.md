@@ -44,11 +44,12 @@ client/lib/services/ai_history/
   workspace_edit_line_highlighter.dart   # AiEditLineHighlighter 实现（UI 渲染，不属于解析层）
 
 client/lib/services/cli/registry/capabilities/
-  tool_call_resolver_capability.dart     # ToolCallResolversCapability 接口（四个 getter）
+  ai_history_capability.dart             # AiHistoryCapability（含 edit/file/shell/category 四个 resolver getter）
   shared_tool_call_resolvers.dart        # SharedToolCallResolverKeys + SharedToolCallResolvers
 
 client/lib/services/cli/<cli>/capabilities/
-  tool_call_resolvers.dart               # 每 CLI 的 resolver 配置（claude/flashskyai/codex/cursor/opencode）
+  history/ai_history_capability.dart     # 每 CLI 的 AiHistoryCapability 实现（组合 resolver 配置）
+  tool_call_resolvers.dart               # 单 CLI 的 resolver 追加配置（cursor/opencode）
 ```
 
 ## 已有的 Tool Parser 分类
@@ -61,9 +62,9 @@ client/lib/services/cli/<cli>/capabilities/
 | **Category** | `AiToolCallCategoryResolver` | `AiToolCallCategory` | 将 tool name 映射到展示类别（plan/askUser/subagent/…），驱动历史视图折叠分组 |
 | **Subagent** | `AiHistoryCapability.subagentToolNames` | `AiSubagentAttachment` | 识别 subagent spawn tool call，渲染子代理附件 |
 
-`ToolCallResolversCapability` 统一承载 Edit/File/Shell/Category 四个 resolver
-（`registry/capabilities/tool_call_resolver_capability.dart:12-16`）；Subagent 属于 history
-能力面，仍由 `AiHistoryCapability.subagentToolNames` 提供（`registry/capabilities/ai_history_capability.dart:78`）。
+`AiHistoryCapability` 统一承载 Edit/File/Shell/Category 四个 resolver getter
+（`registry/capabilities/ai_history_capability.dart:162-165`）；Subagent 属于 history
+能力面，由 `AiHistoryCapability.subagentToolNames` 提供（`ai_history_capability.dart:132`）。
 
 ## 格式事实来源
 
@@ -102,7 +103,7 @@ client/lib/services/cli/<cli>/capabilities/
 
 1. **无 delta**：`class ClaudeToolCallResolvers extends SharedToolCallResolvers`（claude / flashskyai / codex）
 2. **追加覆写**：extends 共享层 + 追加单 CLI 键并 override getter（cursor：`path` / `contents`）
-3. **全自定义**：`implements ToolCallResolversCapability`，共享键集仅作常量引用（opencode：camelCase 追加键）
+3. **全自定义**：extends 共享层 + 全套覆写 getter（opencode：`filePath`/`oldString`/`newString` camelCase 追加键）
 
 ## 反模式（禁止）
 
@@ -169,7 +170,7 @@ class StrReplaceEditHunkCodec implements AiEditHunkCodec {
 
 ```dart
 // registry/capabilities/shared_tool_call_resolvers.dart — 共享基线（治理标准见上节）
-class SharedToolCallResolvers implements ToolCallResolversCapability {
+class SharedToolCallResolvers {
   @override
   AiEditToolTargetResolver get editResolver => const ConfigurableAiEditToolTargetResolver(
     codecs: [_strReplaceCodec, _writeCodec, _unifiedDiffCodec],
@@ -184,9 +185,10 @@ class SharedToolCallResolvers implements ToolCallResolversCapability {
   AiToolCallCategoryResolver get categoryResolver => defaultToolCallCategoryResolver;
 }
 
-// cli/claude/capabilities/tool_call_resolvers.dart — 无 delta 的 CLI 配置
-class ClaudeToolCallResolvers extends SharedToolCallResolvers {
-  const ClaudeToolCallResolvers();
+// cli/claude/capabilities/history/ai_history_capability.dart — 无 delta 的 CLI 配置
+final class ClaudeAiHistoryCapability implements AiHistoryCapability {
+  static const _resolvers = SharedToolCallResolvers();
+  // editResolver/fileResolver/shellResolver/categoryResolver 直接返回 _resolvers
 }
 ```
 
@@ -198,18 +200,19 @@ final actions = AiToolFileActions.of(context);
 final editTarget = actions.editResolver.resolve(part);
 
 // client/lib — 从 registry 创建，注入 scope
-final resolvers = registry.toolCallResolvers(session.cli);
+final resolvers = registry.capability<AiHistoryCapability>(session.cli);
 AiToolFileActionsScope(
   actions: AiToolFileActions(
-    editResolver: resolvers.editResolver,
-    fileResolver: resolvers.fileResolver,
-    shellResolver: resolvers.shellResolver,
+    editResolver: resolvers?.editResolver ?? _noopEditResolver,
+    fileResolver: resolvers?.fileResolver ?? _noopFileResolver,
+    shellResolver: resolvers?.shellResolver ?? _noopShellResolver,
   ),
 );
 ```
 
-（`registry.toolCallResolvers(cli)` 查询方法见 `registry/cli_tool_registry.dart:81-82`；
-Category resolver 经 `annotateToolCallCategories` 顶层函数供历史视图使用，不在 `AiToolFileActions` 内。）
+（查询方式：`registry.capability<AiHistoryCapability>(cli)`，范例
+`pages/chat/session_chat_message_area.dart:130-133`；Category resolver 经
+`annotateToolCallCategories` 顶层函数供历史视图使用，不在 `AiToolFileActions` 内。）
 
 ## 新增 Tool Parser 检查清单
 

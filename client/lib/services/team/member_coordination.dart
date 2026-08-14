@@ -3,8 +3,7 @@ import '../../models/cli_preset.dart';
 import '../../models/member_presence.dart';
 import '../../models/team_config.dart';
 import '../cli/preset_resolver.dart';
-import '../cli/registry/capabilities/presence_capability.dart';
-import '../cli/registry/capabilities/wait_before_stop_capability.dart';
+import '../cli/registry/capabilities/team_behavior_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../team_bus/team_bus.dart';
 import '../terminal/terminal_session.dart';
@@ -70,7 +69,7 @@ sealed class MemberCoordination {
       claudeRosterWorking: claudeRosterWorking,
     );
     final registry = cliToolRegistry ?? CliToolRegistry.builtIn();
-    final presenceCap = registry.capability<PresenceCapability>(team.cli);
+    final presenceCap = registry.capability<TeamBehaviorCapability>(team.cli);
     final kind = _kindFor(
       isPersonalSession: personal,
       teamMode: teamMode,
@@ -235,7 +234,7 @@ final class MixedMemberCoordination extends MemberCoordination {
       globalPresets: scope.globalPresets,
     );
     final waitCfg = CliToolRegistry.builtIn()
-        .capability<WaitBeforeStopCapability>(launchCli)
+        .capability<TeamBehaviorCapability>(launchCli)
         ?.defaultForceWaitBeforeStop;
     if (member.effectiveForceWaitBeforeStop(scope.team, cliDefault: waitCfg) &&
         !b.isWaitingForMessage(member.id)) {

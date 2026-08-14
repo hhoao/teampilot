@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/session/launch_command_builder.dart';
-import 'package:teampilot/services/cli/registry/capabilities/provider_catalog_capability.dart';
+import 'package:teampilot/services/cli/registry/capabilities/provider_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 
 void main() {
@@ -12,7 +12,7 @@ void main() {
     expect(tool, isNotNull);
     expect(tool!.isLaunchSupported, isTrue);
     expect(
-      registry.capability<ProviderCatalogCapability>(CliTool.opencode),
+      registry.capability<ProviderCapability>(CliTool.opencode),
       isNotNull,
     );
     expect(registry.launchable.map((d) => d.id), contains(CliTool.opencode));

@@ -10,7 +10,7 @@ import '../../utils/logging/logger.dart';
 import '../../utils/terminal/osc_title_extractor.dart';
 import '../agent_status/agent_attention_state.dart';
 import '../agent_status/agent_status_event.dart';
-import '../cli/cursor/capabilities/title_attention.dart';
+import '../cli/cursor/capabilities/terminal_behavior.dart';
 import '../cli/cli_executable_validator.dart';
 import '../team/terminal_activity_tracker.dart';
 import 'terminal_startup_failure_detector.dart';

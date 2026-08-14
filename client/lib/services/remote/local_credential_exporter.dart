@@ -1,6 +1,6 @@
 import '../../models/app_provider_config.dart';
 import '../../repositories/app_provider_repository.dart';
-import '../cli/registry/capabilities/credential_export_capability.dart';
+import '../cli/registry/capabilities/provider_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../storage/app_storage.dart';
 import 'remote_credential_materializer.dart';
@@ -41,7 +41,7 @@ class LocalCredentialExporter {
     AppProviderConfig provider,
   ) async {
     final cap = CliToolRegistry.builtIn()
-        .capability<CredentialExportCapability>(cli);
+        .capability<ProviderCapability>(cli);
     if (cap == null) return null;
     return cap.exportCredential(
       fs: AppStorage.fs,
