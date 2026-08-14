@@ -34,7 +34,7 @@ import '../registry/capabilities/provider_display_capability.dart';
 import '../registry/capabilities/cli_executable_capability.dart';
 import 'capabilities/credential_export.dart';
 import '../registry/capabilities/credential_export_capability.dart';
-import 'capabilities/mcp_config_writer.dart';
+import 'capabilities/mcp.dart';
 import 'capabilities/plugin.dart';
 import '../registry/capabilities/plugin_capability.dart';
 import 'capabilities/post_manifest_flush.dart';
@@ -60,7 +60,7 @@ final class CursorCliTool implements CliToolDefinition {
     this.headless = const CursorHeadlessCapability(),
     this.providerForm = const CursorProviderFormCapability(),
     this.configLayout = const CursorCliConfigLayout(),
-    this.mcpConfigWriter = const CursorMcpConfigWriter(),
+    this.mcp = const CursorMcpCapability(),
     this.chatInteraction = const CursorChatInteraction(),
     this.aiHistory = const CursorAiHistoryCapability(),
     this.skill = const CursorSkillCapability(),
@@ -88,7 +88,7 @@ final class CursorCliTool implements CliToolDefinition {
   final CursorProviderModelCapability providerModel;
   final HeadlessCapability headless;
   final CliConfigLayoutCapability configLayout;
-  final CursorMcpConfigWriter mcpConfigWriter;
+  final CursorMcpCapability mcp;
 
   final TeamBehaviorCapability teamBehavior;
   final ProviderDisplayCapability providerDisplay;
@@ -122,7 +122,7 @@ final class CursorCliTool implements CliToolDefinition {
     providerForm,
     headless,
     configLayout,
-    mcpConfigWriter,
+    mcp,
     providerDisplay,
     credentialExport,
     chatInteraction,

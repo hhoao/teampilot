@@ -3,12 +3,12 @@ import 'dart:convert';
 import '../../../../models/mcp_server_spec.dart';
 import '../../../io/filesystem.dart';
 import '../../../mcp/mcp_credentials_store.dart';
-import '../../registry/capabilities/mcp_config_writer_capability.dart';
+import '../../registry/capabilities/mcp_capability.dart';
 import '../../claude/capabilities/mcp_shape_json.dart';
 
 /// Writes `<cursorConfigDir>/mcp.json` with Claude-shaped `mcpServers`.
-final class CursorMcpConfigWriter implements McpConfigWriterCapability {
-  const CursorMcpConfigWriter();
+final class CursorMcpCapability implements McpCapability {
+  const CursorMcpCapability();
 
   static const mcpFileName = 'mcp.json';
 

@@ -31,7 +31,7 @@ import '../registry/capabilities/provider_display_capability.dart';
 import '../registry/capabilities/credential_binding_capability.dart';
 import '../registry/capabilities/cli_executable_capability.dart';
 import '../registry/capabilities/credential_export_capability.dart';
-import 'capabilities/mcp_config_writer.dart';
+import 'capabilities/mcp.dart';
 import 'capabilities/plugin.dart';
 import 'capabilities/credential_binding.dart';
 import 'capabilities/prompt_provision.dart';
@@ -56,7 +56,7 @@ final class ClaudeCliTool implements CliToolDefinition {
     this.effort = const ClaudeEffortCapability(),
     this.headless = const ClaudeHeadlessCapability(),
     this.providerForm = const ClaudeProviderFormCapability(),
-    this.mcpConfigWriter = const ClaudeMcpConfigWriter(),
+    this.mcp = const ClaudeMcpCapability(),
     this.chatInteraction = const ClaudeChatInteraction(),
     this.aiHistory = const ClaudeAiHistoryCapability(),
     this.skill = const DefaultSkillCapability(),
@@ -84,7 +84,7 @@ final class ClaudeCliTool implements CliToolDefinition {
   final ProviderModelCapability providerModel;
   final CliEffortCapability effort;
   final HeadlessCapability headless;
-  final ClaudeMcpConfigWriter mcpConfigWriter;
+  final ClaudeMcpCapability mcp;
 
   final TeamBehaviorCapability teamBehavior;
   final ChatInteractionCapability chatInteraction;
@@ -116,7 +116,7 @@ final class ClaudeCliTool implements CliToolDefinition {
     providerForm,
     effort,
     headless,
-    mcpConfigWriter,
+    mcp,
     chatInteraction,
     aiHistory,
     skill,

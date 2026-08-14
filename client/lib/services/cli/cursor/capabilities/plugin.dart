@@ -7,7 +7,7 @@ import '../../../plugin/cli_plugin_layout.dart';
 import '../../registry/capabilities/plugin_capability.dart';
 import '../../registry/capabilities/plugin_manifest_paths.dart';
 import '../../registry/capabilities/skill_capability.dart';
-import 'mcp_config_writer.dart';
+import 'mcp.dart';
 
 /// Cursor plugin materialization + Claude-flavor registry registration.
 final class CursorPluginCapability implements PluginCapability {
@@ -132,7 +132,7 @@ final class CursorPluginCapability implements PluginCapability {
     }
     if (specs.isEmpty) return;
 
-    await const CursorMcpConfigWriter().write(
+    await const CursorMcpCapability().write(
       fs: ctx.fs,
       configDir: ctx.configDir,
       servers: specs,

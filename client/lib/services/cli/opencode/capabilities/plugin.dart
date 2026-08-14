@@ -10,7 +10,7 @@ import '../../registry/capabilities/skill_capability.dart';
 import '../../registry/cli_tool_registry.dart';
 import '../provider/opencode_shared_plugin_deps.dart';
 import 'config_profile.dart';
-import 'mcp_config_writer.dart';
+import 'mcp.dart';
 
 /// Materializes plugin bundles for opencode:
 /// - decomposes skills/agents/mcp into opencode's on-disk layout
@@ -81,7 +81,7 @@ final class OpencodePluginCapability implements PluginCapability {
     }
 
     if (mcpSpecs.isNotEmpty) {
-      await const OpencodeMcpConfigWriter().write(
+      await const OpencodeMcpCapability().write(
         fs: ctx.fs,
         configDir: ctx.configDir,
         servers: mcpSpecs,

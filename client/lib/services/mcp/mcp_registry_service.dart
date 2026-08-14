@@ -3,7 +3,7 @@ import 'dart:convert';
 import '../../models/mcp_registry_source.dart';
 import '../../models/team_config.dart';
 import '../../repositories/mcp_repository.dart';
-import '../cli/registry/capabilities/mcp_config_writer_capability.dart';
+import '../cli/registry/capabilities/mcp_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../cli/cursor/provider/cursor_workspace_warm_tier.dart';
 import '../cli/registry/capabilities/cli_config_layout_capability.dart';
@@ -100,7 +100,7 @@ class McpRegistryService {
     );
     if (specs.isEmpty) return;
 
-    final writer = _cliRegistry.capability<McpConfigWriterCapability>(
+    final writer = _cliRegistry.capability<McpCapability>(
       CliTool.cursor,
     );
     if (writer == null) return;
@@ -147,7 +147,7 @@ class McpRegistryService {
       return;
     }
 
-    final writer = _cliRegistry.capability<McpConfigWriterCapability>(
+    final writer = _cliRegistry.capability<McpCapability>(
       CliTool.cursor,
     );
     if (writer == null) return;
@@ -303,7 +303,7 @@ class McpRegistryService {
     String? teamId,
   }) async {
     for (final tool in CliTool.values) {
-      final writer = _cliRegistry.capability<McpConfigWriterCapability>(tool);
+      final writer = _cliRegistry.capability<McpCapability>(tool);
       if (writer == null) continue;
       final configDir = _sessionConfigDir(
         tool: tool,
@@ -323,7 +323,7 @@ class McpRegistryService {
     String? teamId,
   }) async {
     for (final tool in CliTool.values) {
-      final writer = _cliRegistry.capability<McpConfigWriterCapability>(tool);
+      final writer = _cliRegistry.capability<McpCapability>(tool);
       if (writer == null) continue;
       await writer.mergeAppCredentials(
         fs: _fs,

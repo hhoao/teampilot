@@ -29,7 +29,7 @@ import '../registry/capabilities/provider_display_capability.dart';
 import '../registry/capabilities/cli_executable_capability.dart';
 import 'capabilities/credential_export.dart';
 import '../registry/capabilities/credential_export_capability.dart';
-import '../claude/capabilities/mcp_config_writer.dart';
+import '../claude/capabilities/mcp.dart';
 import 'capabilities/plugin.dart';
 import '../registry/capabilities/plugin_capability.dart';
 import 'capabilities/executable.dart';
@@ -51,7 +51,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     this.effort = const FlashskyaiEffortCapability(),
     this.headless = const FlashskyaiHeadlessCapability(),
     this.providerForm = const FlashskyaiProviderFormCapability(),
-    this.mcpConfigWriter = const FlashskyaiMcpConfigWriter(),
+    this.mcp = const FlashskyaiMcpCapability(),
     this.chatInteraction = const FlashskyaiChatInteraction(),
     this.aiHistory = const FlashskyaiAiHistoryCapability(),
     this.skill = const DefaultSkillCapability(),
@@ -72,7 +72,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
   final CliEffortCapability effort;
   final HeadlessCapability headless;
   final ProviderFormCapability providerForm;
-  final FlashskyaiMcpConfigWriter mcpConfigWriter;
+  final FlashskyaiMcpCapability mcp;
 
   final TeamBehaviorCapability teamBehavior;
   final ProviderDisplayCapability providerDisplay;
@@ -103,7 +103,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     providerForm,
     effort,
     headless,
-    mcpConfigWriter,
+    mcp,
     providerDisplay,
     credentialExport,
     chatInteraction,

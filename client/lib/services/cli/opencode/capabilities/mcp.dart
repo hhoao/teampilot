@@ -3,12 +3,12 @@ import 'dart:convert';
 import '../../../../models/mcp_server_spec.dart';
 import '../../../io/filesystem.dart';
 import '../../../mcp/mcp_credentials_store.dart';
-import '../../registry/capabilities/mcp_config_writer_capability.dart';
+import '../../registry/capabilities/mcp_capability.dart';
 import 'config_profile.dart';
 
 /// Merges MCP servers into `<configDir>/opencode.json` `mcp` map.
-final class OpencodeMcpConfigWriter implements McpConfigWriterCapability {
-  const OpencodeMcpConfigWriter();
+final class OpencodeMcpCapability implements McpCapability {
+  const OpencodeMcpCapability();
 
   static const configFileName =
       OpencodeConfigProfileCapability.opencodeConfigFileName;

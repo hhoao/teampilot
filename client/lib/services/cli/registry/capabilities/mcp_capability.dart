@@ -3,7 +3,7 @@ import '../../../io/filesystem.dart';
 import '../cli_capability.dart';
 
 /// Writes neutral [McpServerSpec] lists into a CLI's native MCP config files.
-abstract interface class McpConfigWriterCapability implements CliCapability {
+abstract interface class McpCapability implements CliCapability {
   Future<void> write({
     required Filesystem fs,
     required String configDir,

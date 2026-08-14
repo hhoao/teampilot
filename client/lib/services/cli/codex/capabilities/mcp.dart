@@ -2,12 +2,12 @@ import '../../../io/filesystem.dart';
 import '../../../../models/mcp_server_spec.dart';
 import '../../../mcp/mcp_credentials_store.dart';
 import '../provider/codex_home_provisioner.dart';
-import '../../registry/capabilities/mcp_config_writer_capability.dart';
+import '../../registry/capabilities/mcp_capability.dart';
 import 'toml_merge.dart';
 
 /// Merges MCP servers into `<configDir>/config.toml` `[mcp_servers.*]`.
-final class CodexMcpConfigWriter implements McpConfigWriterCapability {
-  const CodexMcpConfigWriter();
+final class CodexMcpCapability implements McpCapability {
+  const CodexMcpCapability();
 
   static const configFileName = CodexHomeProvisioner.configFileName;
 
