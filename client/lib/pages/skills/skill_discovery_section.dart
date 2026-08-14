@@ -4,10 +4,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/skill_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../services/skill/marketplace/skill_marketplace_source.dart';
 import '../../utils/debounce/debounce.dart';
 import 'skill_discovery_helpers.dart';
 import 'skill_discovery_repos_panel.dart';
-import 'skill_discovery_skills_sh_panel.dart';
+import 'skill_marketplace_panel.dart';
 import 'skill_management_cards.dart';
 import 'skill_source_toggle.dart';
 
@@ -22,10 +23,10 @@ class SkillDiscoverySection extends StatefulWidget {
 
 class SkillDiscoverySectionState extends State<SkillDiscoverySection> {
   SkillSearchSource _source = SkillSearchSource.repos;
+  String? _marketplaceId;
   String _searchQuery = '';
   String _filterRepo = 'all';
   String _filterStatus = 'all';
-  final _skillsShCtl = TextEditingController();
 
   @override
   void initState() {
@@ -39,7 +40,6 @@ class SkillDiscoverySectionState extends State<SkillDiscoverySection> {
   @override
   void dispose() {
     Debounces.cancel('skill_discovery_search');
-    _skillsShCtl.dispose();
     super.dispose();
   }
 
@@ -66,8 +66,35 @@ class SkillDiscoverySectionState extends State<SkillDiscoverySection> {
     }
   }
 
+  void _onSourceChanged(SkillSearchSource next, String? id) {
+    setState(() {
+      _source = next;
+      if (next == SkillSearchSource.marketplace) {
+        final marketplaces = context.read<SkillCubit>().marketplaces;
+        _marketplaceId =
+            id ?? (marketplaces.isNotEmpty ? marketplaces.first.id : null);
+      } else {
+        _marketplaceId = null;
+      }
+    });
+  }
+
+  SkillMarketplaceSource? _selectedMarketplace(
+    List<SkillMarketplaceSource> all,
+  ) {
+    if (_source != SkillSearchSource.marketplace) return null;
+    final id = _marketplaceId;
+    if (id == null) return null;
+    for (final mp in all) {
+      if (mp.id == id) return mp;
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final marketplaces = context.read<SkillCubit>().marketplaces;
+    final marketplace = _selectedMarketplace(marketplaces);
     return BlocListener<SkillCubit, SkillState>(
       listenWhen: (previous, current) =>
           previous.repos != current.repos ||
@@ -82,7 +109,9 @@ class SkillDiscoverySectionState extends State<SkillDiscoverySection> {
               children: [
                 _SkillDiscoverySourceRow(
                   source: _source,
-                  onSourceChanged: (source) => setState(() => _source = source),
+                  marketplaceId: _marketplaceId,
+                  marketplaces: marketplaces,
+                  onSourceChanged: _onSourceChanged,
                 ),
                 if (_source == SkillSearchSource.repos) ...[
                   const _SkillDiscoverySyncBanner(),
@@ -95,25 +124,19 @@ class SkillDiscoverySectionState extends State<SkillDiscoverySection> {
                     onFilterStatusChanged: (v) =>
                         setState(() => _filterStatus = v),
                   ),
-                ] else ...[
-                  const SizedBox(height: 14),
-                  SkillDiscoverySkillsShSearchBar(
-                    controller: _skillsShCtl,
-                    onSearch: context.read<SkillCubit>().searchSkillsSh,
-                  ),
                 ],
               ],
             ),
           ),
           Expanded(
-            child: _source == SkillSearchSource.repos
-                ? SkillDiscoveryReposBody(
+            child: marketplace != null
+                ? SkillMarketplacePanel(source: marketplace)
+                : SkillDiscoveryReposBody(
                     filterRepo: _filterRepo,
                     filterStatus: _filterStatus,
                     searchQuery: _searchQuery,
                     onGoRepos: widget.onGoRepos,
-                  )
-                : const SkillDiscoverySkillsShBody(),
+                  ),
           ),
         ],
       ),
@@ -124,11 +147,15 @@ class SkillDiscoverySectionState extends State<SkillDiscoverySection> {
 class _SkillDiscoverySourceRow extends StatelessWidget {
   const _SkillDiscoverySourceRow({
     required this.source,
+    required this.marketplaces,
+    required this.marketplaceId,
     required this.onSourceChanged,
   });
 
   final SkillSearchSource source;
-  final ValueChanged<SkillSearchSource> onSourceChanged;
+  final List<SkillMarketplaceSource> marketplaces;
+  final String? marketplaceId;
+  final void Function(SkillSearchSource next, String? id) onSourceChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -138,14 +165,18 @@ class _SkillDiscoverySourceRow extends StatelessWidget {
         SkillSourceToggle(
           label: l10n.skillsSourceRepos,
           selected: source == SkillSearchSource.repos,
-          onTap: () => onSourceChanged(SkillSearchSource.repos),
+          onTap: () => onSourceChanged(SkillSearchSource.repos, null),
         ),
-        const SizedBox(width: 8),
-        SkillSourceToggle(
-          label: l10n.skillsSourceSkillsSh,
-          selected: source == SkillSearchSource.skillsSh,
-          onTap: () => onSourceChanged(SkillSearchSource.skillsSh),
-        ),
+        for (final mp in marketplaces) ...[
+          const SizedBox(width: 8),
+          SkillSourceToggle(
+            label: mp.label,
+            selected:
+                source == SkillSearchSource.marketplace &&
+                marketplaceId == mp.id,
+            onTap: () => onSourceChanged(SkillSearchSource.marketplace, mp.id),
+          ),
+        ],
         const Spacer(),
         if (source == SkillSearchSource.repos)
           const _SkillDiscoveryRefreshButton(),

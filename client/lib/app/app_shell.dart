@@ -188,6 +188,7 @@ import '../services/skill/skill_manifest_service.dart';
 import '../services/skill/skill_repo_disk_cache_service.dart';
 import '../services/skill/skill_repo_git_service.dart';
 import '../services/skill/skill_repo_service.dart';
+import '../services/skill/marketplace/skill_marketplace_registry.dart';
 import '../services/storage/runtime_context.dart';
 import '../services/github/github_credentials_store.dart';
 import '../services/github/github_device_flow_auth.dart';
@@ -965,6 +966,10 @@ Future<AppShell> buildAppShell({
 
   skillCubit = SkillCubit(
     skillRepo,
+    marketplaces: SkillMarketplaceRegistry.builtIn(
+      settings: appSettings,
+      skillsSh: skillRepo.skillsSh,
+    ),
     acquisitionEngine: skillAcquisitionEngine,
     onSkillUninstalled: teamCubit.removeSkillFromAllTeams,
     packAcquireActivity: packAcquireActivityAdapter,

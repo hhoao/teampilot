@@ -1,7 +1,7 @@
 import '../../l10n/app_localizations.dart';
 import '../../models/skill.dart';
 
-enum SkillSearchSource { repos, skillsSh }
+enum SkillSearchSource { repos, marketplace }
 
 Set<String> skillInstalledKeys(List<Skill> installed) {
   return installed
@@ -10,10 +10,6 @@ Set<String> skillInstalledKeys(List<Skill> installed) {
             '${s.directory.toLowerCase()}:${(s.repoOwner ?? '').toLowerCase()}:${(s.repoName ?? '').toLowerCase()}',
       )
       .toSet();
-}
-
-String skillsShInstallKey(SkillsShEntry entry) {
-  return '${entry.directory.toLowerCase()}:${entry.repoOwner.toLowerCase()}:${entry.repoName.toLowerCase()}';
 }
 
 bool sameDiscoverableSkills(

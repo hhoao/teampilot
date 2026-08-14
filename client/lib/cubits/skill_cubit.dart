@@ -9,42 +9,81 @@ import '../models/progress_activity.dart';
 import '../models/skill.dart';
 import '../repositories/skill_repository.dart';
 import '../services/progress_activity/pack_acquire_activity_adapter.dart';
+import '../services/skill/marketplace/skill_marketplace_source.dart';
 import '../services/skill/skill_acquisition_engine.dart';
 import '../services/skill/skill_repo_disk_cache_service.dart';
 import '../utils/logging/logger.dart';
 
 enum SkillLoadStatus { idle, loading, ready, error }
 
-class SkillsShSearchState extends Equatable {
-  const SkillsShSearchState({
+class MarketplaceSearchState extends Equatable {
+  const MarketplaceSearchState({
     this.query = '',
-    this.entries = const [],
-    this.totalCount = 0,
-    this.offset = 0,
+    this.page = 1,
     this.loading = false,
+    this.error,
+    this.entries = const [],
+    this.hasNext = false,
+    this.total = 0,
+    this.category,
+    this.occupation,
+    this.language,
+    this.sortBy,
   });
-  final String query;
-  final List<SkillsShEntry> entries;
-  final int totalCount;
-  final int offset;
-  final bool loading;
 
-  SkillsShSearchState copyWith({
+  final String query;
+  final int page;
+  final bool loading;
+  final String? error;
+  final List<MarketplaceSkill> entries;
+  final bool hasNext;
+  final int total;
+  final String? category;
+  final String? occupation;
+  final String? language;
+  final String? sortBy;
+
+  MarketplaceSearchState copyWith({
     String? query,
-    List<SkillsShEntry>? entries,
-    int? totalCount,
-    int? offset,
+    int? page,
     bool? loading,
-  }) => SkillsShSearchState(
+    String? error,
+    bool clearError = false,
+    List<MarketplaceSkill>? entries,
+    bool? hasNext,
+    int? total,
+    String? category,
+    String? occupation,
+    String? language,
+    String? sortBy,
+  }) => MarketplaceSearchState(
     query: query ?? this.query,
-    entries: entries ?? this.entries,
-    totalCount: totalCount ?? this.totalCount,
-    offset: offset ?? this.offset,
+    page: page ?? this.page,
     loading: loading ?? this.loading,
+    error: clearError ? null : (error ?? this.error),
+    entries: entries ?? this.entries,
+    hasNext: hasNext ?? this.hasNext,
+    total: total ?? this.total,
+    category: category ?? this.category,
+    occupation: occupation ?? this.occupation,
+    language: language ?? this.language,
+    sortBy: sortBy ?? this.sortBy,
   );
 
   @override
-  List<Object?> get props => [query, entries, totalCount, offset, loading];
+  List<Object?> get props => [
+    query,
+    page,
+    loading,
+    error,
+    entries,
+    hasNext,
+    total,
+    category,
+    occupation,
+    language,
+    sortBy,
+  ];
 }
 
 class SkillState extends Equatable {
@@ -53,9 +92,10 @@ class SkillState extends Equatable {
     this.repos = const [],
     this.discoverable = const [],
     this.updates = const [],
-    this.skillsSh = const SkillsShSearchState(),
+    this.marketplace = const {},
     this.status = SkillLoadStatus.idle,
     this.errorMessage,
+    this.noticeMessage,
     this.busyIds = const {},
     this.discoveryLoading = false,
     this.updatesLoading = false,
@@ -67,9 +107,10 @@ class SkillState extends Equatable {
   final List<SkillRepo> repos;
   final List<DiscoverableSkill> discoverable;
   final List<SkillUpdateInfo> updates;
-  final SkillsShSearchState skillsSh;
+  final Map<String, MarketplaceSearchState> marketplace;
   final SkillLoadStatus status;
   final String? errorMessage;
+  final String? noticeMessage;
   final Set<String> busyIds;
   final bool discoveryLoading;
   final bool updatesLoading;
@@ -81,10 +122,12 @@ class SkillState extends Equatable {
     List<SkillRepo>? repos,
     List<DiscoverableSkill>? discoverable,
     List<SkillUpdateInfo>? updates,
-    SkillsShSearchState? skillsSh,
+    Map<String, MarketplaceSearchState>? marketplace,
     SkillLoadStatus? status,
     String? errorMessage,
     bool clearError = false,
+    String? noticeMessage,
+    bool clearNotice = false,
     Set<String>? busyIds,
     bool? discoveryLoading,
     bool? updatesLoading,
@@ -95,9 +138,10 @@ class SkillState extends Equatable {
     repos: repos ?? this.repos,
     discoverable: discoverable ?? this.discoverable,
     updates: updates ?? this.updates,
-    skillsSh: skillsSh ?? this.skillsSh,
+    marketplace: marketplace ?? this.marketplace,
     status: status ?? this.status,
     errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
+    noticeMessage: clearNotice ? null : (noticeMessage ?? this.noticeMessage),
     busyIds: busyIds ?? this.busyIds,
     discoveryLoading: discoveryLoading ?? this.discoveryLoading,
     updatesLoading: updatesLoading ?? this.updatesLoading,
@@ -111,9 +155,10 @@ class SkillState extends Equatable {
     repos,
     discoverable,
     updates,
-    skillsSh,
+    marketplace,
     status,
     errorMessage,
+    noticeMessage,
     busyIds,
     discoveryLoading,
     updatesLoading,
@@ -127,6 +172,7 @@ typedef SkillUninstalledHandler = Future<void> Function(String skillId);
 class SkillCubit extends Cubit<SkillState> {
   SkillCubit(
     this._repo, {
+    this.marketplaces = const [],
     SkillAcquisitionEngine? acquisitionEngine,
     SkillUninstalledHandler? onSkillUninstalled,
     PackAcquireActivityAdapter? packAcquireActivity,
@@ -154,6 +200,7 @@ class SkillCubit extends Cubit<SkillState> {
   final SkillAcquisitionEngine _acquisitionEngine;
   final SkillUninstalledHandler? _onSkillUninstalled;
   final PackAcquireActivityAdapter? _packAcquireActivity;
+  final List<SkillMarketplaceSource> marketplaces;
   int _discoveryGeneration = 0;
 
   Future<void> loadAll() async {
@@ -511,21 +558,203 @@ class SkillCubit extends Cubit<SkillState> {
     }
   }
 
-  Future<void> installSkillsShEntry(
-    SkillsShEntry e, {
-    bool overwrite = false,
+  static const marketplaceRepoAddedNoticeKey = 'skillsMarketplaceRepoAdded';
+  static const _marketplacePageSize = 20;
+
+  SkillMarketplaceSource? _marketplaceById(String sourceId) {
+    for (final s in marketplaces) {
+      if (s.id == sourceId) return s;
+    }
+    return null;
+  }
+
+  Future<void> searchMarketplace(
+    String sourceId, {
+    required String query,
+    String? category,
+    String? occupation,
+    String? language,
+    String? sortBy,
   }) async {
-    final d = DiscoverableSkill(
-      key: e.key,
-      name: e.name,
-      description: '',
-      directory: e.directory,
-      readmeUrl: e.readmeUrl,
-      repoOwner: e.repoOwner,
-      repoName: e.repoName,
-      repoBranch: e.repoBranch,
+    final source = _marketplaceById(sourceId);
+    if (source == null) return;
+    if (query.trim().length < 2) return;
+    final slot = state.marketplace[sourceId] ?? const MarketplaceSearchState();
+    emit(
+      state.copyWith(
+        marketplace: {
+          ...state.marketplace,
+          sourceId: slot.copyWith(
+            loading: true,
+            query: query,
+            page: 1,
+            entries: const [],
+            hasNext: false,
+            clearError: true,
+            category: category,
+            occupation: occupation,
+            language: language,
+            sortBy: sortBy,
+          ),
+        },
+        clearError: true,
+      ),
     );
-    await installFromDiscovery(d, overwrite: overwrite);
+    try {
+      final res = await source.search(
+        MarketplaceSearchQuery(
+          query: query,
+          page: 1,
+          limit: _marketplacePageSize,
+          category: category,
+          occupation: occupation,
+          language: language,
+          sortBy: sortBy,
+        ),
+      );
+      emit(
+        state.copyWith(
+          marketplace: {
+            ...state.marketplace,
+            sourceId: MarketplaceSearchState(
+              query: query,
+              page: 1,
+              entries: res.skills,
+              hasNext: res.hasNext,
+              total: res.total,
+              category: category,
+              occupation: occupation,
+              language: language,
+              sortBy: sortBy,
+            ),
+          },
+        ),
+      );
+    } catch (e) {
+      emit(
+        state.copyWith(
+          marketplace: {
+            ...state.marketplace,
+            sourceId: slot.copyWith(
+              loading: false,
+              error: e is MarketplaceQuotaException
+                  ? marketplaceQuotaErrorKey
+                  : '$e',
+            ),
+          },
+        ),
+      );
+    }
+  }
+
+  Future<void> loadMoreMarketplace(String sourceId) async {
+    final source = _marketplaceById(sourceId);
+    if (source == null) return;
+    final slot = state.marketplace[sourceId];
+    if (slot == null || slot.loading || !slot.hasNext) return;
+    emit(
+      state.copyWith(
+        marketplace: {
+          ...state.marketplace,
+          sourceId: slot.copyWith(loading: true),
+        },
+      ),
+    );
+    try {
+      final res = await source.search(
+        MarketplaceSearchQuery(
+          query: slot.query,
+          page: slot.page + 1,
+          limit: _marketplacePageSize,
+          category: slot.category,
+          occupation: slot.occupation,
+          language: slot.language,
+          sortBy: slot.sortBy,
+        ),
+      );
+      emit(
+        state.copyWith(
+          marketplace: {
+            ...state.marketplace,
+            sourceId: slot.copyWith(
+              page: slot.page + 1,
+              entries: [...slot.entries, ...res.skills],
+              hasNext: res.hasNext,
+              total: res.total,
+              loading: false,
+            ),
+          },
+        ),
+      );
+    } catch (e) {
+      emit(
+        state.copyWith(
+          marketplace: {
+            ...state.marketplace,
+            sourceId: slot.copyWith(
+              loading: false,
+              error: e is MarketplaceQuotaException
+                  ? marketplaceQuotaErrorKey
+                  : '$e',
+            ),
+          },
+        ),
+      );
+    }
+  }
+
+  Future<void> installMarketplaceEntry(MarketplaceSkill e) async {
+    if (state.busyIds.contains(e.key)) return;
+    emit(state.copyWith(busyIds: {...state.busyIds, e.key}, clearError: true));
+    try {
+      if (e.isInstalledDirectly) {
+        await _acquisitionEngine.installGitDir(
+          DiscoverableSkill(
+            key: e.key,
+            name: e.name,
+            description: e.description,
+            directory: e.directory!,
+            readmeUrl: e.githubUrl,
+            repoOwner: e.repoOwner,
+            repoName: e.repoName,
+            repoBranch: e.repoBranch,
+          ),
+        );
+        final installed = await _repo.loadInstalled();
+        emit(state.copyWith(installed: installed));
+      } else {
+        await _repo.repos.addRepo(
+          SkillRepo(
+            owner: e.repoOwner,
+            name: e.repoName,
+            branch: e.repoBranch,
+          ),
+        );
+        emit(state.copyWith(noticeMessage: marketplaceRepoAddedNoticeKey));
+      }
+    } catch (e) {
+      emit(state.copyWith(errorMessage: '$e'));
+    } finally {
+      final next = {...state.busyIds}..remove(e.key);
+      emit(state.copyWith(busyIds: next));
+    }
+  }
+
+  Future<void> setMarketplaceApiKey(String sourceId, String key) async {
+    final source = _marketplaceById(sourceId);
+    if (source == null) return;
+    await source.setApiKey(key);
+    clearMarketplaceError(sourceId);
+  }
+
+  void clearMarketplaceError(String sourceId) {
+    final slot = state.marketplace[sourceId];
+    if (slot == null || slot.error == null) return;
+    emit(
+      state.copyWith(
+        marketplace: {...state.marketplace, sourceId: slot.copyWith(clearError: true)},
+      ),
+    );
   }
 
   Future<void> uninstall(Skill s) async {
@@ -618,71 +847,5 @@ class SkillCubit extends Cubit<SkillState> {
     }
   }
 
-  Future<void> searchSkillsSh(String query) async {
-    if (query.trim().length < 2) return;
-    emit(
-      state.copyWith(
-        skillsSh: state.skillsSh.copyWith(
-          loading: true,
-          query: query,
-          offset: 0,
-          entries: const [],
-        ),
-        clearError: true,
-      ),
-    );
-    try {
-      final res = await _repo.searchSkillsSh(query, offset: 0);
-      emit(
-        state.copyWith(
-          skillsSh: SkillsShSearchState(
-            query: query,
-            entries: res.skills,
-            totalCount: res.totalCount,
-            offset: res.skills.length,
-            loading: false,
-          ),
-        ),
-      );
-    } catch (e) {
-      emit(
-        state.copyWith(
-          skillsSh: state.skillsSh.copyWith(loading: false),
-          errorMessage: '$e',
-        ),
-      );
-    }
-  }
-
-  Future<void> loadMoreSkillsSh() async {
-    if (state.skillsSh.loading) return;
-    if (state.skillsSh.entries.length >= state.skillsSh.totalCount) return;
-    emit(state.copyWith(skillsSh: state.skillsSh.copyWith(loading: true)));
-    try {
-      final res = await _repo.searchSkillsSh(
-        state.skillsSh.query,
-        offset: state.skillsSh.offset,
-      );
-      final merged = [...state.skillsSh.entries, ...res.skills];
-      emit(
-        state.copyWith(
-          skillsSh: state.skillsSh.copyWith(
-            entries: merged,
-            offset: merged.length,
-            totalCount: res.totalCount,
-            loading: false,
-          ),
-        ),
-      );
-    } catch (e) {
-      emit(
-        state.copyWith(
-          skillsSh: state.skillsSh.copyWith(loading: false),
-          errorMessage: '$e',
-        ),
-      );
-    }
-  }
-
-  void clearError() => emit(state.copyWith(clearError: true));
+  void clearError() => emit(state.copyWith(clearError: true, clearNotice: true));
 }
