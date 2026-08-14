@@ -104,7 +104,7 @@ class HeadlessProvisionContext {
 /// Per-CLI one-shot (non-interactive) invocation support, plus credential /
 /// settings provisioning for the isolated config dir.
 ///
-/// One implementation per CLI tool, registered alongside [LaunchArgsCapability]
+/// One implementation per CLI tool, registered alongside [CliSessionCapability]
 /// on the tool definition. Pure: it returns data (files, invocation, provision
 /// result) and parses stdout; the service owns the filesystem and process
 /// execution. A CLI with no provisioning needs (e.g. cursor) returns the

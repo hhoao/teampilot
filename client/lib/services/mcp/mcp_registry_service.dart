@@ -6,7 +6,7 @@ import '../../repositories/mcp_repository.dart';
 import '../cli/registry/capabilities/mcp_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../cli/cursor/provider/cursor_workspace_warm_tier.dart';
-import '../cli/registry/capabilities/cli_config_layout_capability.dart';
+import '../cli/registry/capabilities/cli_session_capability.dart';
 import '../cli/claude/capabilities/mcp_project_cleanup.dart';
 import '../storage/runtime_layout.dart';
 import '../io/filesystem.dart';

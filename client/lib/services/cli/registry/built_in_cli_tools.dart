@@ -10,7 +10,7 @@ import '../../../services/cli/cursor/capabilities/provider.dart';
 import '../../../services/cli/opencode/capabilities/provider.dart';
 import 'capabilities/provider_capability.dart';
 import 'capabilities/config_profile_capability.dart';
-import 'capabilities/launch_args_capability.dart';
+import 'capabilities/cli_session_capability.dart';
 import 'capabilities/team_behavior_capability.dart';
 import 'capabilities/cli_executable_capability.dart';
 import 'capabilities/chat_interaction_capability.dart';
@@ -93,7 +93,7 @@ void registerBuiltInCliTools(
     'Every CliTool must register MemberConfigInspectionCapability',
   );
   _verifyRequired<ConfigProfileCapability>(registry);
-  _verifyRequired<LaunchArgsCapability>(registry);
+  _verifyRequired<CliSessionCapability>(registry);
   _verifyRequired<TeamBehaviorCapability>(registry);
   _verifyRequired<ProviderCapability>(registry);
   _verifyRequired<CliExecutableCapability>(registry);

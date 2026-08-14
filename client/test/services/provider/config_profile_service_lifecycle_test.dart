@@ -3,7 +3,8 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/registry/built_in_cli_tools.dart';
-import 'package:teampilot/services/cli/registry/capabilities/cli_session_lifecycle_capability.dart';
+import 'package:teampilot/services/cli/registry/capabilities/cli_session_capability.dart';
+import 'package:teampilot/services/cli/registry/capabilities/noop_cli_session_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_definition.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
@@ -14,7 +15,7 @@ import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/utils/team/team_member_naming.dart';
 
-class _RecordingLifecycle implements CliSessionLifecycleCapability {
+final class _RecordingLifecycle extends NoopCliSessionCapability {
   var ensurePersistedCalls = 0;
   CliSessionPersistContext? lastPersistContext;
 
@@ -26,30 +27,13 @@ class _RecordingLifecycle implements CliSessionLifecycleCapability {
     lastPersistContext = ctx;
     return const CliSessionPersistResult();
   }
-
-  @override
-  Future<CliSessionInitResult> initialize(
-    CliSessionInitContext ctx, {
-    CliSessionPhase targetPhase = CliSessionPhase.ready,
-  }) async =>
-      const CliSessionInitResult();
-
-  @override
-  Future<void> finalize(CliSessionFinalizeContext ctx) async {}
-
-  @override
-  CliSessionGateDecision gateConnect(CliSessionGateContext ctx) =>
-      const CliSessionGateDecision(allowed: true);
-
-  @override
-  CliSessionPhase? peekSessionPhase(CliSessionGateContext ctx) => null;
 }
 
 class _ToolWithLifecycleOverride implements CliToolDefinition {
   const _ToolWithLifecycleOverride(this._inner, this._lifecycle);
 
   final CliToolDefinition _inner;
-  final CliSessionLifecycleCapability _lifecycle;
+  final CliSessionCapability _lifecycle;
 
   @override
   CliTool get id => _inner.id;
@@ -60,14 +44,14 @@ class _ToolWithLifecycleOverride implements CliToolDefinition {
   @override
   Iterable<CliCapability> get capabilities => [
     for (final cap in _inner.capabilities)
-      if (cap is! CliSessionLifecycleCapability) cap,
+      if (cap is! CliSessionCapability) cap,
     _lifecycle,
   ];
 }
 
 CliToolRegistry _registryWithLifecycle(
   CliTool cli,
-  CliSessionLifecycleCapability lifecycle,
+  CliSessionCapability lifecycle,
 ) {
   final registry = CliToolRegistry();
   registerBuiltInCliTools(registry);

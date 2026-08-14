@@ -3,7 +3,7 @@ import 'dart:convert';
 import '../../../utils/lock_pool.dart';
 import '../../io/filesystem.dart';
 import '../../storage/runtime_layout.dart';
-import '../registry/capabilities/cli_session_lifecycle_capability.dart';
+import '../registry/capabilities/cli_session_capability.dart';
 import 'cli_session_manifest.dart';
 
 /// Reads and writes workspace+team `init.json` for CLI lifecycle warm tier.

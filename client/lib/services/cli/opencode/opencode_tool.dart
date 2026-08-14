@@ -1,14 +1,14 @@
 import 'capabilities/provider.dart';
 import '../registry/capabilities/provider_capability.dart';
 import '../../../models/team_config.dart';
-import 'capabilities/launch_args.dart';
+import 'capabilities/session.dart';
 import '../registry/cli_capability.dart';
 import '../registry/cli_tool_definition.dart';
 import 'capabilities/team_behavior.dart';
 import 'capabilities/chat_interaction.dart';
 import 'capabilities/terminal_behavior.dart';
 import '../registry/capabilities/config_profile_capability.dart';
-import '../registry/capabilities/launch_args_capability.dart';
+import '../registry/capabilities/cli_session_capability.dart';
 import '../registry/capabilities/team_behavior_capability.dart';
 import '../registry/capabilities/headless_capability.dart';
 import 'capabilities/history/ai_history_capability.dart';
@@ -31,7 +31,7 @@ import '../registry/capabilities/prompt_capability.dart';
 final class OpencodeCliTool implements CliToolDefinition {
   OpencodeCliTool({
     this.teamBehavior = const OpencodeTeamBehavior(),
-    this.launchArgs = const OpencodeCliToolAdapter(),
+    this.session = const OpencodeCliSessionCapability(),
     this.configProfile = const OpencodeConfigProfileCapability(),
     this.executable = const OpencodeExecutableCapability(),
     this.terminalBehavior = const OpencodeTerminalBehavior(),
@@ -49,7 +49,7 @@ final class OpencodeCliTool implements CliToolDefinition {
 
   final ProviderCapability provider;
 
-  final LaunchArgsCapability launchArgs;
+  final CliSessionCapability session;
   final ConfigProfileCapability configProfile;
   final CliExecutableCapability executable;
   final OpencodeTerminalBehavior terminalBehavior;
@@ -75,7 +75,7 @@ final class OpencodeCliTool implements CliToolDefinition {
   Iterable<CliCapability> get capabilities => [
     teamBehavior,
     executable,
-    launchArgs,
+    session,
     configProfile,
     terminalBehavior,
     memberConfigInspection,

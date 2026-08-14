@@ -1,35 +1,35 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/cli/registry/capabilities/post_manifest_flush_capability.dart';
+import 'package:teampilot/services/cli/registry/capabilities/cli_session_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
-import 'package:teampilot/services/cli/cursor/capabilities/post_manifest_flush.dart';
+import 'package:teampilot/services/cli/cursor/capabilities/session_lifecycle.dart';
 import 'package:teampilot/services/launch/work_plane_script_runner.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_home_layout.dart';
 
 import '../../../../support/in_memory_filesystem.dart';
 
 void main() {
-  test('only cursor registers PostManifestFlushCapability', () {
+  test('only cursor session capability performs post-flush work', () {
     final registry = CliToolRegistry.builtIn();
-    final withCap = {
-      for (final def
-          in registry.withCapability<PostManifestFlushCapability>())
-        def.id,
-    };
-    expect(withCap, {CliTool.cursor});
-    expect(
-      registry.capability<PostManifestFlushCapability>(CliTool.cursor),
-      isA<CursorPostManifestFlushCapability>(),
-    );
+    final cursorCap = registry.capability<CliSessionCapability>(CliTool.cursor);
+    expect(cursorCap, isA<CursorSessionLifecycleCapability>());
+    for (final cli in CliTool.values) {
+      if (cli == CliTool.cursor) continue;
+      expect(
+        registry.capability<CliSessionCapability>(cli),
+        isNot(isA<CursorSessionLifecycleCapability>()),
+        reason: cli.value,
+      );
+    }
   });
 
-  group('CursorPostManifestFlushCapability', () {
+  group('CursorSessionLifecycleCapability.afterManifestFlush', () {
     late InMemoryFilesystem fs;
-    late CursorPostManifestFlushCapability capability;
+    late CursorSessionLifecycleCapability capability;
 
     setUp(() {
       fs = InMemoryFilesystem();
-      capability = const CursorPostManifestFlushCapability();
+      capability = const CursorSessionLifecycleCapability();
     });
 
     test('local path mirrors real home into member HOME', () async {

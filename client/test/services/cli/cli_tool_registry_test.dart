@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/registry/capabilities/config_profile_capability.dart';
 import 'package:teampilot/services/cli/registry/capabilities/cli_executable_capability.dart';
-import 'package:teampilot/services/cli/registry/capabilities/launch_args_capability.dart';
+import 'package:teampilot/services/cli/registry/capabilities/cli_session_capability.dart';
 import 'package:teampilot/services/cli/registry/capabilities/provider_capability.dart';
 import 'package:teampilot/services/cli/claude/capabilities/executable.dart';
 import 'package:teampilot/services/cli/codex/capabilities/executable.dart';
@@ -10,7 +10,7 @@ import 'package:teampilot/services/cli/cursor/capabilities/executable.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/executable.dart';
 import 'package:teampilot/services/cli/registry/built_in_cli_tools.dart';
 import 'package:teampilot/services/cli/registry/capabilities/team_behavior_capability.dart';
-import 'package:teampilot/services/cli/registry/capabilities/noop_cli_session_lifecycle_capability.dart';
+import 'package:teampilot/services/cli/registry/capabilities/noop_cli_session_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_definition.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
@@ -144,10 +144,10 @@ void main() {
     }
   });
 
-  test('built-in launchable tools have LaunchArgsCapability', () {
+  test('built-in launchable tools have CliSessionCapability', () {
     final registry = CliToolRegistry.builtIn();
     for (final def in registry.launchable) {
-      expect(registry.capability<LaunchArgsCapability>(def.id), isNotNull);
+      expect(registry.capability<CliSessionCapability>(def.id), isNotNull);
     }
   });
 
@@ -209,16 +209,17 @@ void main() {
     }
   });
 
-  test('lifecycleFor returns no-op when tool has no lifecycle capability', () {
-    final registry = CliToolRegistry.builtIn();
+  test('lifecycleFor returns no-op when tool registers no session capability', () {
+    final registry = CliToolRegistry();
+    registry.register(const _FakeTool(CliTool.codex, true, []));
     expect(
-      registry.lifecycleFor(CliTool.claude),
-      isA<NoopCliSessionLifecycleCapability>(),
+      registry.lifecycleFor(CliTool.codex),
+      isA<NoopCliSessionCapability>(),
     );
   });
 
-  test('lifecycleFor returns registered lifecycle capability', () {
-    const lifecycle = NoopCliSessionLifecycleCapability();
+  test('lifecycleFor returns registered session capability', () {
+    const lifecycle = NoopCliSessionCapability();
     final registry = CliToolRegistry();
     registry.register(
       const _FakeTool(CliTool.codex, true, [lifecycle]),

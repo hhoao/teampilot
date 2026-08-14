@@ -1,22 +1,27 @@
 import 'dart:convert';
 
 import '../../../../models/team_config.dart';
+import '../../../../utils/logging/logger.dart';
+import '../../cli_tool_adapter.dart';
 import '../provider/cursor_auth_artifacts.dart';
 import '../../../io/filesystem.dart';
 import '../provider/cursor_cli_config_policy.dart';
 import '../provider/cursor_home_layout.dart';
 import '../provider/cursor_home_provisioner.dart';
+import '../provider/cursor_member_home_passthrough.dart';
 import '../provider/cursor_provider_credentials_service.dart';
 import '../provider/cursor_provider_settings_resolver.dart';
+import '../provider/cursor_session_config_dir.dart';
 import '../provider/cursor_workspace_warm_tier.dart';
 import '../provider/cursor_workspace_trust_provisioner.dart';
 import '../../../storage/runtime_layout.dart';
 import '../../../team_bus/member_bus_idle_endpoint.dart';
 import '../../registry/config_profile/config_profile_context.dart';
-import '../../registry/capabilities/cli_session_lifecycle_capability.dart';
+import '../../registry/capabilities/cli_session_capability.dart';
 import '../../session_lifecycle/cli_session_manifest.dart';
 import '../../session_lifecycle/cli_session_manifest_store.dart';
 import 'cli_config_merger.dart';
+import 'launch_args.dart';
 import 'session_lifecycle_paths.dart';
 
 typedef CursorSessionAuthSync =
@@ -28,9 +33,10 @@ typedef CursorSessionAuthSync =
 typedef CursorSessionProviderResolver =
     Future<String?> Function(CliSessionInitContext ctx);
 
-/// Cursor mixed-session lifecycle: warm tier, manifest phases, connect gate.
-final class CursorSessionLifecycleCapability
-    implements CliSessionLifecycleCapability {
+/// Cursor mixed-session lifecycle: warm tier, manifest phases, connect gate,
+/// fake-HOME passthrough after manifest flush, launch argv, and CONFIG_DIR
+/// layout.
+final class CursorSessionLifecycleCapability implements CliSessionCapability {
   const CursorSessionLifecycleCapability({
     CliSessionManifestStore? manifestStore,
     CursorSessionAuthSync? authSync,
@@ -46,6 +52,74 @@ final class CursorSessionLifecycleCapability
   final CursorSessionAuthSync? _authSync;
   final CursorSessionProviderResolver? _resolveProviderId;
   final int Function()? _clock;
+
+  static const progressDetail = 'cursor-home-passthrough';
+
+  @override
+  List<String> buildArguments(CliLaunchContext context) =>
+      const CursorCliToolAdapter().buildArguments(context);
+
+  @override
+  String sessionConfigDir(
+    RuntimeLayout layout,
+    CliTool tool, {
+    required String workspaceId,
+    required String sessionId,
+    String? memberId,
+    String? teamId,
+  }) => CursorSessionConfigDir.resolve(
+    layout,
+    workspaceId: workspaceId,
+    sessionId: sessionId,
+    memberId: memberId,
+    teamId: teamId,
+  );
+
+  @override
+  Future<void> afterManifestFlush(PostManifestFlushContext ctx) async {
+    final memberHome = ctx.environment['HOME']?.trim() ?? '';
+    final realHome = ctx.workHome.trim();
+    if (memberHome.isEmpty || realHome.isEmpty || memberHome == realHome) {
+      return;
+    }
+
+    ctx.reportDetail?.call(progressDetail);
+    final started = DateTime.now();
+    final runner = ctx.remoteRunner;
+
+    if (runner != null) {
+      final script = CursorMemberHomePassthrough.buildRemoteMirrorScript(
+        realHomeRoot: realHome,
+        memberHomeRoot: memberHome,
+      );
+      if (script.isEmpty) return;
+      appLogger.d(
+        '[session-launch] cursor home passthrough via ssh begin '
+        'realHome=$realHome',
+      );
+      await runner.runScript(
+        script,
+        operation: 'Cursor home passthrough',
+      );
+      appLogger.d(
+        '[session-launch] cursor home passthrough via ssh done '
+        'ms=${DateTime.now().difference(started).inMilliseconds}',
+      );
+      return;
+    }
+
+    appLogger.d(
+      '[session-launch] cursor home passthrough begin realHome=$realHome',
+    );
+    await CursorMemberHomePassthrough(fs: ctx.workFs).mirror(
+      realHomeRoot: realHome,
+      memberHomeRoot: memberHome,
+    );
+    appLogger.d(
+      '[session-launch] cursor home passthrough done '
+      'ms=${DateTime.now().difference(started).inMilliseconds}',
+    );
+  }
 
   CliSessionManifestStore _store(ConfigProfileDelegate paths) {
     final override = _manifestStoreOverride;

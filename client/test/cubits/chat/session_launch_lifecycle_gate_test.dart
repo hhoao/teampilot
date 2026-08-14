@@ -6,7 +6,8 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/cli/registry/built_in_cli_tools.dart';
-import 'package:teampilot/services/cli/registry/capabilities/cli_session_lifecycle_capability.dart';
+import 'package:teampilot/services/cli/registry/capabilities/cli_session_capability.dart';
+import 'package:teampilot/services/cli/registry/capabilities/noop_cli_session_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_definition.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
@@ -15,13 +16,8 @@ import 'package:teampilot/services/terminal/terminal_session.dart';
 
 import '../../support/post_frame_test_harness.dart';
 
-class _DenyGateLifecycle implements CliSessionLifecycleCapability {
+final class _DenyGateLifecycle extends NoopCliSessionCapability {
   var initializeCalls = 0;
-
-  @override
-  Future<CliSessionPersistResult> ensurePersisted(
-    CliSessionPersistContext ctx,
-  ) async => const CliSessionPersistResult();
 
   @override
   Future<CliSessionInitResult> initialize(
@@ -33,14 +29,8 @@ class _DenyGateLifecycle implements CliSessionLifecycleCapability {
   }
 
   @override
-  Future<void> finalize(CliSessionFinalizeContext ctx) async {}
-
-  @override
   CliSessionGateDecision gateConnect(CliSessionGateContext ctx) =>
       const CliSessionGateDecision(allowed: false, reason: 'test-deny');
-
-  @override
-  CliSessionPhase? peekSessionPhase(CliSessionGateContext ctx) => null;
 }
 
 class _ToolWithExtraCapability implements CliToolDefinition {
@@ -56,12 +46,16 @@ class _ToolWithExtraCapability implements CliToolDefinition {
   bool get isLaunchSupported => _inner.isLaunchSupported;
 
   @override
-  Iterable<CliCapability> get capabilities => [..._inner.capabilities, _extra];
+  Iterable<CliCapability> get capabilities => [
+    for (final cap in _inner.capabilities)
+      if (cap is! CliSessionCapability) cap,
+    _extra,
+  ];
 }
 
 CliToolRegistry _registryWithLifecycle(
   CliTool cli,
-  CliSessionLifecycleCapability lifecycle,
+  CliSessionCapability lifecycle,
 ) {
   final registry = CliToolRegistry();
   registerBuiltInCliTools(registry);

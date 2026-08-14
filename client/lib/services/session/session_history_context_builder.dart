@@ -1,5 +1,5 @@
 import '../cli/registry/capabilities/ai_history_capability.dart';
-import '../cli/registry/capabilities/cli_config_layout_capability.dart';
+import '../cli/registry/capabilities/cli_session_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 
 import '../../models/app_session.dart';
