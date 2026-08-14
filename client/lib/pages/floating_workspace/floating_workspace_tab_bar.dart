@@ -27,6 +27,10 @@ import 'floating_workspace_new_terminal_menu.dart';
       return (WorkbenchTabKind.diff, parsed?.$1);
     }(),
     'terminal' => (WorkbenchTabKind.shell, null),
+    'htmlPreview' => (
+      WorkbenchTabKind.htmlPreview,
+      tab.payload is String ? tab.payload as String : null,
+    ),
     _ => (WorkbenchTabKind.run, null),
   };
 }
@@ -127,6 +131,7 @@ class FloatingWorkspaceTabBar extends StatelessWidget {
       'terminal' => Icons.terminal_rounded,
       'filePreview' => Icons.description_outlined,
       'diffPreview' => Icons.difference_outlined,
+      'htmlPreview' => Icons.preview_outlined,
       _ => Icons.widgets_outlined,
     };
   }

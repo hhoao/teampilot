@@ -119,6 +119,9 @@ abstract final class WorkbenchShellActions {
         // Teardown handled by the port (chat.teardownSession) after the bar
         // removes the entry via [WorkbenchCubit.close].
         break;
+      case WorkbenchTabKind.htmlPreview:
+        // Floating html preview tabs close through the floating panel path.
+        break;
     }
     await workbench.close(workspaceId, tab);
   }
@@ -210,6 +213,8 @@ abstract final class WorkbenchShellActions {
         );
       case WorkbenchTabKind.run:
         await context.read<RunCubit>().dismissSession(tab.id);
+      case WorkbenchTabKind.htmlPreview:
+        break;
     }
   }
 

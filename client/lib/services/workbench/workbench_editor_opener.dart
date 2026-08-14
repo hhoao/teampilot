@@ -110,6 +110,19 @@ class WorkbenchEditorOpener {
     _chat?.dismissNewChat();
   }
 
+  /// Opens a floating rendered html preview tab (no editor bucket entry).
+  void openHtmlPreview(String workspaceId, String path) {
+    final normalized = path.trim();
+    if (normalized.isEmpty) return;
+    _floating.ensureOpen();
+    _floating.setActiveWorkspace(workspaceId);
+    _workbench.openFloating(
+      workspaceId,
+      WorkbenchTabId.htmlPreview(normalized),
+      activate: true,
+    );
+  }
+
   /// Opens HEAD-vs-working-tree diff for [absolutePath] (File↔Diff toggle).
   Future<void> openChangesDiff({
     required String workspaceId,
@@ -151,6 +164,7 @@ class WorkbenchEditorOpener {
         _editor.closeDiff(workspaceId, replaced.id);
       case WorkbenchTabKind.shell:
       case WorkbenchTabKind.run:
+      case WorkbenchTabKind.htmlPreview:
         break;
     }
   }

@@ -3216,6 +3216,7 @@
 
   "floatingWorkspaceNewTerminal": "New Terminal",
   "floatingWorkspaceOpenFile": "Open File",
+  "floatingWorkspaceOpenHtmlPreview": "Open HTML Preview",
   "floatingWorkspaceMinimize": "Minimize",
   "floatingWorkspaceMaximize": "Maximize",
   "floatingWorkspaceCloseTab": "Close tab",

@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
 
-enum WorkbenchTabKind { session, file, diff, shell, run }
+enum WorkbenchTabKind { session, file, diff, shell, run, htmlPreview }
 
 /// Floating panel surface id for [kind], or null when the kind hosts on the
 /// center strip (session) rather than the floating panel.
@@ -9,13 +9,17 @@ String? surfaceIdFor(WorkbenchTabKind kind) => switch (kind) {
   WorkbenchTabKind.run => 'run',
   WorkbenchTabKind.file => 'filePreview',
   WorkbenchTabKind.diff => 'diffPreview',
+  WorkbenchTabKind.htmlPreview => 'htmlPreview',
   WorkbenchTabKind.session => null,
 };
 
-/// Center strip tabs — shell and run live in the floating panel; file/diff may
-/// host on center or floating based on [LayoutPreferences.filePreviewHost].
+/// Center strip tabs — shell, run and htmlPreview live in the floating panel;
+/// file/diff may host on center or floating based on
+/// [LayoutPreferences.filePreviewHost].
 bool isCenterStripWorkbenchTab(WorkbenchTabKind kind) =>
-    kind != WorkbenchTabKind.shell && kind != WorkbenchTabKind.run;
+    kind == WorkbenchTabKind.session ||
+    kind == WorkbenchTabKind.file ||
+    kind == WorkbenchTabKind.diff;
 
 /// Which git diff a center-pane diff tab is showing.
 enum WorkbenchDiffSource {
@@ -65,6 +69,9 @@ class WorkbenchTabId extends Equatable {
 
   factory WorkbenchTabId.run(String runSessionId) =>
       WorkbenchTabId._(WorkbenchTabKind.run, runSessionId);
+
+  factory WorkbenchTabId.htmlPreview(String absolutePath) =>
+      WorkbenchTabId._(WorkbenchTabKind.htmlPreview, absolutePath);
 
   static String diffKey(
     String absolutePath, {

@@ -2783,6 +2783,7 @@
 
   "floatingWorkspaceNewTerminal": "新 Terminal",
   "floatingWorkspaceOpenFile": "打开文件",
+  "floatingWorkspaceOpenHtmlPreview": "打开 HTML 预览",
   "floatingWorkspaceMinimize": "最小化",
   "floatingWorkspaceMaximize": "最大化",
   "floatingWorkspaceCloseTab": "关闭标签",
