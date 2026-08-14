@@ -6,7 +6,9 @@ import 'package:teampilot/models/workspace_icon_ref.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
+import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
+import 'package:teampilot/services/storage/workspace_layout.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class _RecordingLifecycleService extends SessionLifecycleService {
@@ -486,7 +488,7 @@ void main() {
   });
 
   test(
-    'loadWorkspacesIndex writes and reads workspaces-index.json snapshot',
+    'loadWorkspacesIndex reads fresh workspaces-index.json snapshot',
     () async {
       final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
       addTearDown(() => tmp.deleteSync(recursive: true));
@@ -498,24 +500,22 @@ void main() {
       final session = (await repo.createSession(workspace.workspaceId)).session;
 
       final indexPath = '${tmp.path}/workspace/workspaces-index.json';
-      // The repository no longer writes the index on mutations; the first
-      // loadWorkspacesIndex() call rebuilds and persists the snapshot.
-      expect(File(indexPath).existsSync(), isFalse);
+      // Mutations maintain the snapshot incrementally.
+      expect(File(indexPath).existsSync(), isTrue);
 
       final fromIndex = await repo.loadWorkspacesIndex();
       expect(File(indexPath).existsSync(), isTrue);
       expect(fromIndex.single.workspaceId, workspace.workspaceId);
-      expect(fromIndex.single.sessionIds, contains(session.sessionId));
+      expect(fromIndex.single.sessionIds, [session.sessionId]);
 
       await repo.deleteSession(session.sessionId);
-      // Session deletes no longer sync the index; the remembered boot
-      // snapshot stays unchanged until the catalog re-owns index writes.
+      // Session deletes patch the snapshot incrementally.
       final afterDelete = await repo.loadWorkspacesIndex();
-      expect(afterDelete.single.sessionIds, contains(session.sessionId));
+      expect(afterDelete.single.sessionIds, isEmpty);
     },
   );
 
-  test('deleteWorkspace leaves workspaces-index.json untouched', () async {
+  test('deleteWorkspace removes entry from workspaces-index.json', () async {
     final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
     addTearDown(() => tmp.deleteSync(recursive: true));
 
@@ -524,17 +524,14 @@ void main() {
     await repo.createSession(workspace.workspaceId);
 
     final indexPath = '${tmp.path}/workspace/workspaces-index.json';
-    final indexed = await repo.loadWorkspacesIndex();
     expect(File(indexPath).existsSync(), isTrue);
-    expect(indexed.single.workspaceId, workspace.workspaceId);
 
     await repo.deleteWorkspace(workspace.workspaceId);
-    // Index maintenance moved out of the repository: the remembered boot
-    // snapshot and the on-disk file are left as-is.
-    expect(await repo.loadWorkspacesIndex(), hasLength(1));
+    // deleteWorkspace forgets the workspace in the index snapshot.
+    expect(await repo.loadWorkspacesIndex(), isEmpty);
     expect(File(indexPath).existsSync(), isTrue);
     final decoded = jsonDecode(File(indexPath).readAsStringSync());
-    expect((decoded as Map)['workspaces'], isNotEmpty);
+    expect((decoded as Map)['workspaces'], isEmpty);
   });
 
   test(
@@ -805,4 +802,42 @@ void main() {
       );
     },
   );
+
+  test('mutation keeps workspaces-index fresh for a fresh repository', () async {
+    final tmp = await Directory.systemTemp.createTemp('repo_index_test_');
+    final repo = SessionRepository(rootDir: tmp.path);
+    final ws = await repo.createWorkspace([WorkspaceFolder(path: '/p')]);
+    final created = await repo.createSession(ws.workspaceId);
+
+    // 直接断言 index 文件内容(不依赖静态内存缓存):
+    final layout = WorkspaceLayout(
+      teampilotRoot: tmp.path,
+      fs: LocalFilesystem(),
+    );
+    final raw = await File(layout.workspacesIndexFile).readAsString();
+    final decoded = jsonDecode(raw) as Map<String, Object?>;
+    final list = decoded['workspaces'] as List;
+    expect(list, hasLength(1));
+    final wsJson = list.single as Map<String, Object?>;
+    expect(wsJson['sessionIds'], [created.session.sessionId]);
+
+    // 全新实例走快路径也能读到(缓存键按 rootDir 隔离):
+    final fresh = SessionRepository(rootDir: tmp.path);
+    final index = await fresh.loadWorkspacesIndex();
+    expect(index, hasLength(1));
+    expect(index.single.sessionIds, [created.session.sessionId]);
+
+    await repo.deleteSession(created.session.sessionId);
+    final raw2 = await File(layout.workspacesIndexFile).readAsString();
+    final decoded2 = jsonDecode(raw2) as Map<String, Object?>;
+    final list2 = decoded2['workspaces'] as List;
+    // deleteSession 只移除 sessionId;workspace 本身仍在快照中(与全量扫描一致)。
+    expect(list2, hasLength(1));
+    expect((list2.single as Map<String, Object?>)['sessionIds'], isEmpty);
+
+    await repo.deleteWorkspace(ws.workspaceId);
+    final fresh2 = SessionRepository(rootDir: tmp.path);
+    expect(await fresh2.loadWorkspacesIndex(), isEmpty);
+    await tmp.delete(recursive: true);
+  });
 }

@@ -61,6 +61,37 @@ class SessionRepository {
     return remembered;
   }
 
+  /// Incremental mirror of [Workspace] into the in-memory index cache and the
+  /// workspaces-index.json snapshot. Mutations call this so the fast boot path
+  /// (loadWorkspacesIndex) never returns a stale workspace.
+  Future<void> _rememberWorkspace(Workspace workspace) async {
+    final key = _workspacesIndexCacheKey();
+    final current = _workspacesIndexByRoot[key];
+    if (current != null) {
+      _workspacesIndexByRoot[key] = List<Workspace>.unmodifiable([
+        for (final existing in current)
+          if (existing.workspaceId == workspace.workspaceId)
+            _withInferredMemberPlacementInit(workspace)
+          else
+            existing,
+      ]);
+    }
+    await WorkspaceIndexStore(await _fs()).upsert(workspace);
+  }
+
+  /// Incremental removal from the in-memory index cache and the index snapshot.
+  Future<void> _forgetWorkspace(String workspaceId) async {
+    final key = _workspacesIndexCacheKey();
+    final current = _workspacesIndexByRoot[key];
+    if (current != null) {
+      _workspacesIndexByRoot[key] = List<Workspace>.unmodifiable(
+        [for (final existing in current)
+          if (existing.workspaceId != workspaceId) existing],
+      );
+    }
+    await WorkspaceIndexStore(await _fs()).remove(workspaceId);
+  }
+
   Future<T> _withSessionFile<T>(String sessionId, Future<T> Function() fn) {
     return _sessionFileLocks.synchronized(sessionId, fn);
   }
@@ -221,7 +252,7 @@ class SessionRepository {
         '[boot] loadWorkspacesIndex rebuilding snapshot read=${readMs}ms',
       );
     }
-    final workspaces = await _loadWorkspaces(indexOnly: true);
+    final workspaces = await _loadWorkspaces(indexOnly: false);
     await store.writeAll(workspaces);
     return _rememberWorkspacesIndex(workspaces);
   }
@@ -243,7 +274,7 @@ class SessionRepository {
       'disk=${diskIds.length} index=${snapshot.length} '
       'validate=${validateMs}ms',
     );
-    final workspaces = await _loadWorkspaces(indexOnly: true);
+    final workspaces = await _loadWorkspaces(indexOnly: false);
     await store.writeAll(workspaces);
     _rememberWorkspacesIndex(workspaces);
   }
@@ -330,6 +361,7 @@ class SessionRepository {
       updatedAt: now,
     );
     await _writeManifest(fs, workspace);
+    await _rememberWorkspace(workspace);
     return workspace;
   }
 
@@ -353,6 +385,7 @@ class SessionRepository {
       updatedAt: now,
     );
     await _writeManifest(fs, updated);
+    await _rememberWorkspace(updated);
     return updated;
   }
 
@@ -376,6 +409,7 @@ class SessionRepository {
     );
     final updated = existing.copyWith(icon: icon, updatedAt: now);
     await _writeManifest(fs, updated);
+    await _rememberWorkspace(updated);
     return updated;
   }
 
@@ -404,6 +438,7 @@ class SessionRepository {
     );
     final updated = existing.copyWith(icon: customIcon, updatedAt: now);
     await _writeManifest(fs, updated);
+    await _rememberWorkspace(updated);
     return updated;
   }
 
@@ -451,6 +486,7 @@ class SessionRepository {
       updatedAt: now,
     );
     await _writeManifest(fs, updated);
+    await _rememberWorkspace(updated);
     return updated;
   }
 
@@ -529,6 +565,7 @@ class SessionRepository {
       updatedAt: now,
     );
     await _writeManifest(fs, updated);
+    await _rememberWorkspace(updated);
     return updated;
   }
 
@@ -784,6 +821,17 @@ class SessionRepository {
     appLogger.d(
       '[session-launch] createSession done '
       'session=$sessionId ms=${total.elapsedMilliseconds}',
+    );
+    // The manifest read above predates the session write, so stamp the new
+    // sessionId (newest first, createdAt desc) for the index mirror. The
+    // returned workspace keeps its pre-session sessionIds — callers append
+    // the new id themselves.
+    await _rememberWorkspace(
+      workspace.sessionIds.contains(sessionId)
+          ? workspace
+          : workspace.copyWith(
+              sessionIds: [sessionId, ...workspace.sessionIds],
+            ),
     );
     return (session: session, workspace: workspace);
   }
@@ -1092,6 +1140,25 @@ class SessionRepository {
           fs,
           workspace.copyWith(updatedAt: DateTime.now().millisecondsSinceEpoch),
         );
+        // Mirror the sessionIds change into the index snapshot.
+        final cachedList = _workspacesIndexByRoot[_workspacesIndexCacheKey()];
+        Workspace? cached;
+        for (final w in cachedList ?? const <Workspace>[]) {
+          if (w.workspaceId == workspaceId) {
+            cached = w;
+            break;
+          }
+        }
+        if (cached != null) {
+          await _rememberWorkspace(
+            cached.copyWith(
+              sessionIds: [
+                for (final id in cached.sessionIds)
+                  if (id != sessionId) id,
+              ],
+            ),
+          );
+        }
       }
     });
   }
@@ -1132,6 +1199,11 @@ class SessionRepository {
       );
     }
 
+    await _rememberWorkspace(
+      newWorkspace.copyWith(
+        sessionIds: [for (final s in clonedSessions) s.sessionId],
+      ),
+    );
     return (
       workspace: (await _readManifest(fs, newWorkspaceId)) ?? newWorkspace,
       sessions: clonedSessions,
@@ -1210,5 +1282,6 @@ class SessionRepository {
     );
 
     await fs.deleteWorkspaceDir(workspaceId);
+    await _forgetWorkspace(workspaceId);
   }
 }
