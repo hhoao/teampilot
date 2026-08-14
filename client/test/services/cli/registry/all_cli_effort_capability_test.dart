@@ -5,6 +5,7 @@ import 'package:teampilot/services/cli/registry/capabilities/provider_capability
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/config_profile.dart';
 import 'package:teampilot/services/cli/flashskyai/capabilities/provider.dart';
+import 'package:teampilot/services/cli/codex/capabilities/provider.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/provider.dart';
 
 void main() {
@@ -27,6 +28,20 @@ void main() {
     expect(cursor.teamPickerPlacement(), EffortPickerPlacement.hidden);
     expect(cursor.memberPickerPlacement(), EffortPickerPlacement.hidden);
     expect(cursor.isApplicable(model: 'gpt-5'), isFalse);
+  });
+
+  test('CodexEffortCapability uses provider placement', () {
+    const capability = CodexProviderCapability();
+    const provider = AppProviderConfig(
+      id: 'p1',
+      cli: CliTool.codex,
+      name: 'P',
+      defaultModel: 'gpt-5',
+    );
+    expect(
+      capability.providerPickerPlacement(provider),
+      EffortPickerPlacement.provider,
+    );
   });
 
   test('OpencodeEffortCapability uses provider placement', () {

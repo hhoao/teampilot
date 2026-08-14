@@ -267,6 +267,9 @@ final class ClaudeProviderCapability extends CatalogModelCapability
   }
 
   @override
+  bool get supportsCredentialBinding => true;
+
+  @override
   CredentialBindingKind defaultBinding(AppProviderConfig provider) =>
       isOfficialClaudeProvider(provider)
           ? CredentialBindingKind.linked

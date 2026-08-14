@@ -219,7 +219,9 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
     );
     final bindingCap = _registry()
         .capability<ProviderCapability>(widget.cli);
-    if (bindingCap != null && bindingCap.appliesTo(draft)) {
+    if (bindingCap != null &&
+        bindingCap.supportsCredentialBinding &&
+        bindingCap.appliesTo(draft)) {
       return draft.copyWith(
         config: bindingCap.withBinding(draft.config, _credentialBinding),
       );
@@ -571,7 +573,8 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
       context,
     ).capability<ProviderCapability>(widget.cli);
     if (capability == null) return false;
-    return capability.appliesTo(_buildNormalDraft());
+    return capability.supportsCredentialBinding &&
+        capability.appliesTo(_buildNormalDraft());
   }
 
   bool _showsProviderEffortPicker(BuildContext context) {

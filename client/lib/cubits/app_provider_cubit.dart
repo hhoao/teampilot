@@ -349,7 +349,9 @@ class AppProviderCubit extends Cubit<AppProviderState> {
   ) async {
     final capability = CliToolRegistry.builtIn()
         .capability<ProviderCapability>(provider.cli);
-    if (capability == null) return false;
+    if (capability == null || !capability.supportsCredentialBinding) {
+      return false;
+    }
     final updated = provider.copyWith(
       config: capability.withBinding(provider.config, binding),
     );

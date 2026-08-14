@@ -450,6 +450,12 @@ abstract interface class ProviderCapability implements CliCapability {
     ProviderCredentialActionInput input = const ProviderCredentialActionInput(),
   });
   bool hidesApiKeyFields(AppProviderConfig provider);
+
+  /// Whether this CLI supports the link-vs-isolated credential binding
+  /// concept (only claude). Other CLIs return false so the binding UI and
+  /// binding writes stay claude-only, matching the pre-merge capability
+  /// absence.
+  bool get supportsCredentialBinding => false;
   CredentialBindingKind defaultBinding(AppProviderConfig provider);
   Map<String, Object?> withBinding(
     Map<String, Object?> config,

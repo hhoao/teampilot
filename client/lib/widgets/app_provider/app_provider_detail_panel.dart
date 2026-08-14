@@ -366,6 +366,8 @@ ProviderCapability? _credentialCapability(
 }
 
 ProviderCapability? _bindingCapability(AppProviderConfig provider) {
-  return CliToolRegistry.builtIn()
+  final capability = CliToolRegistry.builtIn()
       .capability<ProviderCapability>(provider.cli);
+  if (capability == null || !capability.supportsCredentialBinding) return null;
+  return capability;
 }

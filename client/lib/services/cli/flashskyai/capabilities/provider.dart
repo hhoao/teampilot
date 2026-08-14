@@ -104,6 +104,10 @@ final class FlashskyaiProviderCapability extends CatalogModelCapability
   bool hidesApiKeyFields(AppProviderConfig provider) => false;
 
   @override
+  @override
+  bool get supportsCredentialBinding => false;
+
+  @override
   CredentialBindingKind defaultBinding(AppProviderConfig provider) =>
       CredentialBindingKind.isolated;
 

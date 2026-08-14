@@ -212,6 +212,9 @@ final class CursorProviderCapability extends CatalogModelCapability
     };
   }
 
+  @override
+  bool get supportsCredentialBinding => false;
+
   // ---- CredentialBindingCapability (no concept: fall back to isolated) ----
   @override
   CredentialBindingKind defaultBinding(AppProviderConfig provider) =>

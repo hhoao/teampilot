@@ -189,6 +189,9 @@ final class CodexProviderCapability extends CatalogModelCapability
     };
   }
 
+  @override
+  bool get supportsCredentialBinding => false;
+
   // ---- CredentialBindingCapability (no concept: fall back to isolated) ----
   @override
   CredentialBindingKind defaultBinding(AppProviderConfig provider) =>
@@ -230,7 +233,7 @@ final class CodexProviderCapability extends CatalogModelCapability
 
   @override
   EffortPickerPlacement providerPickerPlacement(AppProviderConfig provider) =>
-      EffortPickerPlacement.hidden;
+      EffortPickerPlacement.provider;
 
   @override
   bool isApplicable({required String model}) =>
