@@ -3736,12 +3736,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get skillsZipNoSkills => '压缩包中未发现 SKILL.md。';
 
   @override
-  String get skillsSkillsShLoadMore => '加载更多';
-
-  @override
-  String get skillsSkillsShPoweredBy => '由 skills.sh 提供';
-
-  @override
   String get skillsSkillsShSearch => '搜索';
 
   @override

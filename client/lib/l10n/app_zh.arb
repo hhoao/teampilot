@@ -1583,8 +1583,6 @@
   "skillsImportNothing": "未发现未管理的 Skill。",
   "skillsImportSelected": "导入选中 {count} 个",
   "skillsZipNoSkills": "压缩包中未发现 SKILL.md。",
-  "skillsSkillsShLoadMore": "加载更多",
-  "skillsSkillsShPoweredBy": "由 skills.sh 提供",
   "skillsSkillsShSearch": "搜索",
   "skillsDiscoveryEmpty": "未发现可用 Skill",
   "skillsDiscoveryEmptyHint": "添加仓库或试用 skills.sh 来发现 Skill。",

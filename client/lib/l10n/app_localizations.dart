@@ -6981,18 +6981,6 @@ abstract class AppLocalizations {
   /// **'No SKILL.md found in the archive.'**
   String get skillsZipNoSkills;
 
-  /// No description provided for @skillsSkillsShLoadMore.
-  ///
-  /// In en, this message translates to:
-  /// **'Load more'**
-  String get skillsSkillsShLoadMore;
-
-  /// No description provided for @skillsSkillsShPoweredBy.
-  ///
-  /// In en, this message translates to:
-  /// **'Powered by skills.sh'**
-  String get skillsSkillsShPoweredBy;
-
   /// No description provided for @skillsSkillsShSearch.
   ///
   /// In en, this message translates to:

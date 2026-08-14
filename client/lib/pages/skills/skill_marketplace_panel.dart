@@ -5,7 +5,6 @@ import 'package:shared_ui/shared_ui.dart';
 import '../../cubits/skill_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../services/skill/marketplace/skill_marketplace_source.dart';
-import '../../utils/debounce/debounce.dart';
 import 'marketplace_skill_card.dart';
 import 'skill_discovery_helpers.dart';
 import 'skill_management_cards.dart';
@@ -28,7 +27,6 @@ class _SkillMarketplacePanelState extends State<SkillMarketplacePanel> {
 
   @override
   void dispose() {
-    Debounces.cancel('skill_marketplace_search');
     _searchCtl.dispose();
     super.dispose();
   }
@@ -149,7 +147,6 @@ class _SkillMarketplacePanelState extends State<SkillMarketplacePanel> {
           _onFilterChanged();
         },
         onSetApiKey: () => _showApiKeyDialog(context),
-        sourceId: widget.source.id,
       );
     }
     if (slot.query.isEmpty) {
@@ -204,7 +201,7 @@ class _SkillMarketplacePanelState extends State<SkillMarketplacePanel> {
                             key: ValueKey('${widget.source.id}:${skill.key}'),
                             skill: skill,
                             installed: installedKeys.contains(
-                              '${(skill.directory ?? skill.repoName).toLowerCase()}:${skill.repoOwner.toLowerCase()}:${skill.repoName.toLowerCase()}',
+                              '${(skill.directory ?? skill.repoName).split('/').last.toLowerCase()}:${skill.repoOwner.toLowerCase()}:${skill.repoName.toLowerCase()}',
                             ),
                             busy: busyIds.contains(skill.key),
                             onInstall: () => context
@@ -415,13 +412,11 @@ class _ErrorState extends StatelessWidget {
     required this.error,
     required this.onRetry,
     required this.onSetApiKey,
-    required this.sourceId,
   });
 
   final String error;
   final VoidCallback onRetry;
   final VoidCallback onSetApiKey;
-  final String sourceId;
 
   @override
   Widget build(BuildContext context) {
@@ -434,7 +429,9 @@ class _ErrorState extends StatelessWidget {
           children: [
             TpEmptyState(
               icon: isQuota ? Icons.speed : Icons.error_outline,
-              title: isQuota ? l10n.skillsMpQuotaHint : error,
+              title: isQuota
+                  ? l10n.skillsMpQuotaHint
+                  : l10n.skillsMarketplaceSearchError(error),
               hint: '',
             ),
             if (isQuota) ...[

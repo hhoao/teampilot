@@ -3888,12 +3888,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get skillsZipNoSkills => 'No SKILL.md found in the archive.';
 
   @override
-  String get skillsSkillsShLoadMore => 'Load more';
-
-  @override
-  String get skillsSkillsShPoweredBy => 'Powered by skills.sh';
-
-  @override
   String get skillsSkillsShSearch => 'Search';
 
   @override

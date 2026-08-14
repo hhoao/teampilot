@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/skill_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
+import 'package:teampilot/models/skill.dart';
 import 'package:teampilot/pages/skills/skill_marketplace_panel.dart';
 import 'package:teampilot/repositories/skill_repository.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
@@ -51,6 +52,54 @@ class _FilteredSource implements SkillMarketplaceSource {
 
   @override
   Future<void> setApiKey(String key) async {}
+}
+
+class _ThrowingSource implements SkillMarketplaceSource {
+  _ThrowingSource(this.error);
+
+  final Object error;
+
+  @override
+  String get id => 'throwing';
+  @override
+  String get label => 'throwing';
+  @override
+  MarketplaceCapabilities get capabilities => const MarketplaceCapabilities();
+
+  @override
+  Future<MarketplaceSearchResult> search(MarketplaceSearchQuery query) async {
+    throw error;
+  }
+
+  @override
+  Future<void> setApiKey(String key) async {}
+}
+
+class _SingleResultSource implements SkillMarketplaceSource {
+  _SingleResultSource(this.skill);
+
+  final MarketplaceSkill skill;
+
+  @override
+  String get id => 'single';
+  @override
+  String get label => 'single';
+  @override
+  MarketplaceCapabilities get capabilities => const MarketplaceCapabilities();
+
+  @override
+  Future<MarketplaceSearchResult> search(MarketplaceSearchQuery query) async =>
+      MarketplaceSearchResult(skills: [skill], hasNext: false);
+
+  @override
+  Future<void> setApiKey(String key) async {}
+}
+
+class _TestSkillCubit extends SkillCubit {
+  _TestSkillCubit(super.repo, {super.marketplaces});
+
+  void setInstalled(List<Skill> installed) =>
+      emit(state.copyWith(installed: installed));
 }
 
 Widget wrap(Widget child, SkillCubit cubit) => MaterialApp(
@@ -116,5 +165,62 @@ void main() {
     expect(find.text('Sort'), findsOneWidget);
     expect(find.text('Language'), findsOneWidget);
     expect(find.text('Category'), findsOneWidget);
+  });
+
+  testWidgets('generic search failure shows localized error label', (
+    tester,
+  ) async {
+    final source = _ThrowingSource(MarketplaceFetchException('boom'));
+    final c = cubit([source]);
+    await tester.pumpWidget(wrap(SkillMarketplacePanel(source: source), c));
+    await tester.enterText(find.byType(TextField), 'seo');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Search failed'), findsOneWidget);
+    expect(find.textContaining('boom'), findsOneWidget);
+  });
+
+  testWidgets('quota failure keeps quota hint text', (tester) async {
+    final source = _ThrowingSource(MarketplaceQuotaException('quota boom'));
+    final c = cubit([source]);
+    await tester.pumpWidget(wrap(SkillMarketplacePanel(source: source), c));
+    await tester.enterText(find.byType(TextField), 'seo');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('anonymous quota'), findsOneWidget);
+    expect(find.textContaining('Search failed'), findsNothing);
+  });
+
+  testWidgets('shows Installed badge when basename matches installed skill', (
+    tester,
+  ) async {
+    final skill = MarketplaceSkill(
+      key: 'acme/skills-foo/skills/foo',
+      name: 'Foo Skill',
+      description: 'A foo skill.',
+      repoOwner: 'acme',
+      repoName: 'skills-foo',
+      directory: 'skills/foo',
+      githubUrl: 'https://github.com/acme/skills-foo',
+    );
+    final source = _SingleResultSource(skill);
+    final c = _TestSkillCubit(SkillRepository(), marketplaces: [source]);
+    c.setInstalled([
+      Skill(
+        id: 'foo',
+        name: 'Foo Skill',
+        description: 'A foo skill.',
+        directory: 'foo',
+        repoOwner: 'acme',
+        repoName: 'skills-foo',
+        installedAt: 1,
+        updatedAt: 1,
+      ),
+    ]);
+    await tester.pumpWidget(wrap(SkillMarketplacePanel(source: source), c));
+    await tester.enterText(find.byType(TextField), 'seo');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+    expect(find.text('Installed'), findsOneWidget);
   });
 }
