@@ -8,15 +8,29 @@ import '../../models/hook_entry.dart';
 import '../../models/hook_event.dart';
 import '../../models/team_config.dart';
 import '../../services/hook/hook_repository.dart';
-import '../../utils/ui/app_keys.dart';
-import '../../widgets/settings/workspace_section_host.dart';
-import '../../widgets/settings/workspace_section_nav_item.dart';
 
-/// 新建/编辑 hook：name、description、event（带支持徽标）、matcher、action
-/// 双模式（命令/脚本 + 脚本内容编辑）、policy（仅拦截事件）、timeoutSec、
-/// env 键值；保存走 [HookCubit.upsert]；只读能力矩阵（事件 × 5 CLI）。
-class HookEditorPage extends StatefulWidget {
-  const HookEditorPage({
+/// 打开新建/编辑 hook 对话框。返回 `true` = 保存成功；`false`/`null` = 取消。
+Future<bool?> showHookEditorDialog(
+  BuildContext context, {
+  required HookCubit cubit,
+  HookDefinition? definition,
+  HookRepository? repository,
+}) {
+  return showTpDialog<bool>(
+    context: context,
+    builder: (_) => HookEditorDialog(
+      cubit: cubit,
+      definition: definition,
+      repository: repository,
+    ),
+  );
+}
+
+/// 新建/编辑 hook 的对话框表单：name、description、event（带支持徽标）、
+/// matcher、action 双模式（命令/脚本 + 脚本内容编辑）、policy（仅拦截事件）、
+/// timeoutSec、env 键值；保存走 [HookCubit.upsert]；只读能力矩阵（事件 × 5 CLI）。
+class HookEditorDialog extends StatefulWidget {
+  const HookEditorDialog({
     required this.cubit,
     this.definition,
     this.repository,
@@ -28,15 +42,15 @@ class HookEditorPage extends StatefulWidget {
   /// 编辑目标；null = 新建。
   final HookDefinition? definition;
 
-  /// 用于编辑时加载托管脚本内容（hook.json 不持久化脚本正文）。路由构造时
-  /// 传入；为 null 时跳过脚本加载（widget 测试不需要）。
+  /// 用于编辑时加载托管脚本内容（hook.json 不持久化脚本正文）。为 null 时跳过
+  /// 脚本加载（widget 测试不需要）。
   final HookRepository? repository;
 
   @override
-  State<HookEditorPage> createState() => _HookEditorPageState();
+  State<HookEditorDialog> createState() => _HookEditorDialogState();
 }
 
-class _HookEditorPageState extends State<HookEditorPage> {
+class _HookEditorDialogState extends State<HookEditorDialog> {
   late final TextEditingController _name;
   late final TextEditingController _description;
   late final TextEditingController _matcher;
@@ -48,6 +62,7 @@ class _HookEditorPageState extends State<HookEditorPage> {
   late HookEvent _event;
   late HookPolicy _policy;
   bool _useScript = false;
+  var _saving = false;
 
   @override
   void initState() {
@@ -100,6 +115,7 @@ class _HookEditorPageState extends State<HookEditorPage> {
   }
 
   Future<void> _save() async {
+    if (_saving) return;
     final id = widget.definition?.id ?? _slugify(_name.text);
     if (id.isEmpty) return;
     final env = <String, String>{};
@@ -130,9 +146,11 @@ class _HookEditorPageState extends State<HookEditorPage> {
     final scripts = _useScript
         ? {if (_scriptContent.text.isNotEmpty) 'hook.sh': _scriptContent.text}
         : const <String, String>{};
+    setState(() => _saving = true);
     final ok = await widget.cubit.upsert(definition, scripts: scripts);
     if (!mounted) return;
-    if (ok && Navigator.of(context).canPop()) Navigator.of(context).pop();
+    setState(() => _saving = false);
+    if (ok) Navigator.of(context).pop(true);
   }
 
   String _slugify(String value) {
@@ -146,105 +164,120 @@ class _HookEditorPageState extends State<HookEditorPage> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    return WorkspaceAdaptiveSectionPage(
-      pageKey: AppKeys.hooksWorkspace,
-      title: widget.definition == null ? l10n.hookNew : l10n.hookEdit,
-      compactSectionTabs: true,
-      items: [
-        WorkspaceSectionNavItem(
-          label: l10n.hookNavTitle,
-          icon: Icons.bolt_outlined,
-          selected: true,
-          onSelect: () {},
+    return TpDialog(
+      maxWidth: 560,
+      maxHeight: 680,
+      child: TpDialogPinnedLayout(
+        header: TpDialogHeader(
+          title: widget.definition == null ? l10n.hookNew : l10n.hookEdit,
         ),
-      ],
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          TextField(
-            key: const Key('hook-name'),
-            controller: _name,
-            decoration: InputDecoration(labelText: l10n.hookName),
-          ),
-          TextField(
-            controller: _description,
-            decoration: InputDecoration(labelText: l10n.hookDescription),
-          ),
-          DropdownButtonFormField<HookEvent>(
-            key: const Key('hook-event'),
-            initialValue: _event,
-            items: [
-              for (final event in HookEvent.values)
-                DropdownMenuItem(
-                  value: event,
-                  child: Text('${event.name}${_supportBadge(event)}'),
-                ),
-            ],
-            onChanged: (value) {
-              if (value == null) return;
-              setState(() => _event = value);
-            },
-            decoration: InputDecoration(labelText: l10n.hookEvent),
-          ),
-          TextField(
-            key: const Key('hook-matcher'),
-            controller: _matcher,
-            decoration: InputDecoration(labelText: l10n.hookMatcher),
-          ),
-          TextField(
-            controller: _command,
-            enabled: !_useScript,
-            key: const Key('hook-command'),
-            decoration: InputDecoration(labelText: l10n.hookActionCommand),
-          ),
-          SwitchListTile(
-            key: const Key('hook-use-script'),
-            title: Text(l10n.hookActionScript),
-            value: _useScript,
-            onChanged: (value) => setState(() => _useScript = value),
-          ),
-          if (_useScript)
+        body: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
             TextField(
-              key: const Key('hook-script'),
-              controller: _scriptContent,
-              maxLines: 10,
-              decoration: InputDecoration(
-                labelText: 'hook.sh',
-                alignLabelWithHint: true,
-              ),
+              key: const Key('hook-name'),
+              controller: _name,
+              decoration: InputDecoration(labelText: l10n.hookName),
             ),
-          if (_event.isIntercepting)
-            DropdownButtonFormField<HookPolicy>(
-              key: const Key('hook-policy'),
-              initialValue: _policy,
+            const SizedBox(height: 12),
+            TextField(
+              controller: _description,
+              decoration: InputDecoration(labelText: l10n.hookDescription),
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<HookEvent>(
+              key: const Key('hook-event'),
+              initialValue: _event,
               items: [
-                for (final policy in HookPolicy.values)
-                  DropdownMenuItem(value: policy, child: Text(policy.name)),
+                for (final event in HookEvent.values)
+                  DropdownMenuItem(
+                    value: event,
+                    child: Text('${event.name}${_supportBadge(event)}'),
+                  ),
               ],
               onChanged: (value) {
-                if (value != null) setState(() => _policy = value);
+                if (value == null) return;
+                setState(() => _event = value);
               },
-              decoration: InputDecoration(labelText: l10n.hookPolicy),
+              decoration: InputDecoration(labelText: l10n.hookEvent),
             ),
-          TextField(
-            controller: _timeout,
-            key: const Key('hook-timeout'),
-            decoration: InputDecoration(labelText: l10n.hookTimeoutSec),
-          ),
-          TextField(
-            controller: _env,
-            maxLines: 4,
-            decoration: InputDecoration(labelText: l10n.hookEnv),
-          ),
-          const SizedBox(height: 16),
-          _CapabilityMatrix(event: _event),
-          const SizedBox(height: 16),
-          TpButton(
-            key: const Key('hook-save'),
-            onPressed: _save,
-            child: Text(l10n.hookSave),
-          ),
-        ],
+            const SizedBox(height: 12),
+            TextField(
+              key: const Key('hook-matcher'),
+              controller: _matcher,
+              decoration: InputDecoration(labelText: l10n.hookMatcher),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _command,
+              enabled: !_useScript,
+              key: const Key('hook-command'),
+              decoration: InputDecoration(labelText: l10n.hookActionCommand),
+            ),
+            SwitchListTile(
+              key: const Key('hook-use-script'),
+              contentPadding: EdgeInsets.zero,
+              title: Text(l10n.hookActionScript),
+              value: _useScript,
+              onChanged: (value) => setState(() => _useScript = value),
+            ),
+            if (_useScript)
+              TextField(
+                key: const Key('hook-script'),
+                controller: _scriptContent,
+                maxLines: 10,
+                decoration: InputDecoration(
+                  labelText: 'hook.sh',
+                  alignLabelWithHint: true,
+                ),
+              ),
+            if (_event.isIntercepting) ...[
+              const SizedBox(height: 12),
+              DropdownButtonFormField<HookPolicy>(
+                key: const Key('hook-policy'),
+                initialValue: _policy,
+                items: [
+                  for (final policy in HookPolicy.values)
+                    DropdownMenuItem(value: policy, child: Text(policy.name)),
+                ],
+                onChanged: (value) {
+                  if (value != null) setState(() => _policy = value);
+                },
+                decoration: InputDecoration(labelText: l10n.hookPolicy),
+              ),
+            ],
+            const SizedBox(height: 12),
+            TextField(
+              controller: _timeout,
+              key: const Key('hook-timeout'),
+              decoration: InputDecoration(labelText: l10n.hookTimeoutSec),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _env,
+              maxLines: 4,
+              decoration: InputDecoration(labelText: l10n.hookEnv),
+            ),
+            const SizedBox(height: 16),
+            _CapabilityMatrix(event: _event),
+          ],
+        ),
+        footer: TpDialogActions(
+          children: [
+            TextButton(
+              key: const Key('hook-cancel'),
+              onPressed: _saving
+                  ? null
+                  : () => Navigator.of(context).pop(false),
+              child: Text(l10n.cancel),
+            ),
+            FilledButton(
+              key: const Key('hook-save'),
+              onPressed: _saving ? null : _save,
+              child: Text(l10n.hookSave),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -268,7 +301,10 @@ class _CapabilityMatrix extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(l10n.hookCapabilityMatrix, key: const Key('hook-capability-matrix')),
+        Text(
+          l10n.hookCapabilityMatrix,
+          key: const Key('hook-capability-matrix'),
+        ),
         const SizedBox(height: 4),
         for (final cli in CliTool.values)
           Builder(builder: (context) {
