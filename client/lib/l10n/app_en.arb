@@ -2213,6 +2213,7 @@
   "hookTimeoutSec": "Timeout (seconds)",
   "hookEnv": "Environment (KEY=VALUE per line)",
   "hookSave": "Save",
+  "hookNameRequired": "Name is required",
   "hookCapabilityMatrix": "Capability matrix",
   "mcpNavRegistries": "Registry",
   "mcpInstalledSectionTitle": "Installed MCP servers",

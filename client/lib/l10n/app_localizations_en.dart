@@ -4740,6 +4740,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get hookSave => 'Save';
 
   @override
+  String get hookNameRequired => 'Name is required';
+
+  @override
   String get hookCapabilityMatrix => 'Capability matrix';
 
   @override

@@ -4564,6 +4564,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get hookSave => '保存';
 
   @override
+  String get hookNameRequired => '名称为必填项';
+
+  @override
   String get hookCapabilityMatrix => '能力矩阵';
 
   @override

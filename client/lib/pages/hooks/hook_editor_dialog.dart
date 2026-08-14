@@ -29,6 +29,10 @@ Future<bool?> showHookEditorDialog(
 /// 新建/编辑 hook 的对话框表单：name、description、event（带支持徽标）、
 /// matcher、action 双模式（命令/脚本 + 脚本内容编辑）、policy（仅拦截事件）、
 /// timeoutSec、env 键值；保存走 [HookCubit.upsert]；只读能力矩阵（事件 × 5 CLI）。
+///
+/// 表单遵循 app 标准表单样式：`TpForm` + `TpFormField`（label 走
+/// [TpFormFieldLayout]，不复用 InputDecoration.labelText）；选择器用 [TpSelect]
+/// 而非 Material `DropdownButtonFormField`。
 class HookEditorDialog extends StatefulWidget {
   const HookEditorDialog({
     required this.cubit,
@@ -51,6 +55,8 @@ class HookEditorDialog extends StatefulWidget {
 }
 
 class _HookEditorDialogState extends State<HookEditorDialog> {
+  final _formKey = GlobalKey<TpFormState>();
+
   late final TextEditingController _name;
   late final TextEditingController _description;
   late final TextEditingController _matcher;
@@ -114,8 +120,41 @@ class _HookEditorDialogState extends State<HookEditorDialog> {
     setState(() => _scriptContent.text = content);
   }
 
+  /// 标准表单文本字段：label 走 [TpFormFieldLayout]，TextField 只负责输入。
+  Widget _textField({
+    required Key fieldKey,
+    required TextEditingController controller,
+    required Widget label,
+    String? hint,
+    String? Function(String?)? validator,
+    int maxLines = 1,
+    bool enabled = true,
+  }) {
+    return TpFormField<String>(
+      initialValue: controller.text,
+      label: label,
+      validator: validator,
+      builder: (state) {
+        return TextField(
+          key: fieldKey,
+          controller: controller,
+          focusNode: state.focusNode,
+          enabled: enabled,
+          maxLines: maxLines,
+          onChanged: state.didChange,
+          decoration: InputDecoration(
+            hintText: hint,
+            errorText: state.hasError ? '' : null,
+            errorStyle: const TextStyle(height: 0, fontSize: 0),
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _save() async {
     if (_saving) return;
+    if (!(_formKey.currentState?.validate() ?? false)) return;
     final id = widget.definition?.id ?? _slugify(_name.text);
     if (id.isEmpty) return;
     final env = <String, String>{};
@@ -171,96 +210,105 @@ class _HookEditorDialogState extends State<HookEditorDialog> {
         header: TpDialogHeader(
           title: widget.definition == null ? l10n.hookNew : l10n.hookEdit,
         ),
-        body: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            TextField(
-              key: const Key('hook-name'),
-              controller: _name,
-              decoration: InputDecoration(labelText: l10n.hookName),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _description,
-              decoration: InputDecoration(labelText: l10n.hookDescription),
-            ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<HookEvent>(
-              key: const Key('hook-event'),
-              initialValue: _event,
-              items: [
-                for (final event in HookEvent.values)
-                  DropdownMenuItem(
-                    value: event,
-                    child: Text('${event.name}${_supportBadge(event)}'),
-                  ),
-              ],
-              onChanged: (value) {
-                if (value == null) return;
-                setState(() => _event = value);
-              },
-              decoration: InputDecoration(labelText: l10n.hookEvent),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              key: const Key('hook-matcher'),
-              controller: _matcher,
-              decoration: InputDecoration(labelText: l10n.hookMatcher),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _command,
-              enabled: !_useScript,
-              key: const Key('hook-command'),
-              decoration: InputDecoration(labelText: l10n.hookActionCommand),
-            ),
-            SwitchListTile(
-              key: const Key('hook-use-script'),
-              contentPadding: EdgeInsets.zero,
-              title: Text(l10n.hookActionScript),
-              value: _useScript,
-              onChanged: (value) => setState(() => _useScript = value),
-            ),
-            if (_useScript)
-              TextField(
-                key: const Key('hook-script'),
-                controller: _scriptContent,
-                maxLines: 10,
-                decoration: InputDecoration(
-                  labelText: 'hook.sh',
-                  alignLabelWithHint: true,
+        body: TpForm(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _textField(
+                fieldKey: const Key('hook-name'),
+                controller: _name,
+                label: Text(l10n.hookName),
+                validator: (value) => (value == null || value.trim().isEmpty)
+                    ? l10n.hookNameRequired
+                    : null,
+              ),
+              const SizedBox(height: 12),
+              _textField(
+                fieldKey: const Key('hook-description'),
+                controller: _description,
+                label: Text(l10n.hookDescription),
+              ),
+              const SizedBox(height: 12),
+              TpFormField<HookEvent>(
+                initialValue: _event,
+                label: Text(l10n.hookEvent),
+                builder: (state) => TpSelect<HookEvent>(
+                  key: const Key('hook-event'),
+                  items: HookEvent.values,
+                  initialItem: _event,
+                  searchable: false,
+                  itemLabel: (event) => '${event.name}${_supportBadge(event)}',
+                  onChanged: (value) {
+                    if (value == null) return;
+                    state.didChange(value);
+                    setState(() => _event = value);
+                  },
                 ),
               ),
-            if (_event.isIntercepting) ...[
               const SizedBox(height: 12),
-              DropdownButtonFormField<HookPolicy>(
-                key: const Key('hook-policy'),
-                initialValue: _policy,
-                items: [
-                  for (final policy in HookPolicy.values)
-                    DropdownMenuItem(value: policy, child: Text(policy.name)),
-                ],
-                onChanged: (value) {
-                  if (value != null) setState(() => _policy = value);
-                },
-                decoration: InputDecoration(labelText: l10n.hookPolicy),
+              _textField(
+                fieldKey: const Key('hook-matcher'),
+                controller: _matcher,
+                label: Text(l10n.hookMatcher),
               ),
+              const SizedBox(height: 12),
+              _textField(
+                fieldKey: const Key('hook-command'),
+                controller: _command,
+                enabled: !_useScript,
+                label: Text(l10n.hookActionCommand),
+              ),
+              SwitchListTile(
+                key: const Key('hook-use-script'),
+                contentPadding: EdgeInsets.zero,
+                title: Text(l10n.hookActionScript),
+                value: _useScript,
+                onChanged: (value) => setState(() => _useScript = value),
+              ),
+              if (_useScript)
+                _textField(
+                  fieldKey: const Key('hook-script'),
+                  controller: _scriptContent,
+                  label: Text('hook.sh'),
+                  maxLines: 10,
+                ),
+              if (_event.isIntercepting) ...[
+                const SizedBox(height: 12),
+                TpFormField<HookPolicy>(
+                  initialValue: _policy,
+                  label: Text(l10n.hookPolicy),
+                  builder: (state) => TpSelect<HookPolicy>(
+                    key: const Key('hook-policy'),
+                    items: HookPolicy.values,
+                    initialItem: _policy,
+                    searchable: false,
+                    itemLabel: (policy) => policy.name,
+                    onChanged: (value) {
+                      if (value == null) return;
+                      state.didChange(value);
+                      setState(() => _policy = value);
+                    },
+                  ),
+                ),
+              ],
+              const SizedBox(height: 12),
+              _textField(
+                fieldKey: const Key('hook-timeout'),
+                controller: _timeout,
+                label: Text(l10n.hookTimeoutSec),
+              ),
+              const SizedBox(height: 12),
+              _textField(
+                fieldKey: const Key('hook-env'),
+                controller: _env,
+                label: Text(l10n.hookEnv),
+                maxLines: 4,
+              ),
+              const SizedBox(height: 16),
+              _CapabilityMatrix(event: _event),
             ],
-            const SizedBox(height: 12),
-            TextField(
-              controller: _timeout,
-              key: const Key('hook-timeout'),
-              decoration: InputDecoration(labelText: l10n.hookTimeoutSec),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _env,
-              maxLines: 4,
-              decoration: InputDecoration(labelText: l10n.hookEnv),
-            ),
-            const SizedBox(height: 16),
-            _CapabilityMatrix(event: _event),
-          ],
+          ),
         ),
         footer: TpDialogActions(
           children: [

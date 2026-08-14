@@ -8510,6 +8510,12 @@ abstract class AppLocalizations {
   /// **'Save'**
   String get hookSave;
 
+  /// No description provided for @hookNameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Name is required'**
+  String get hookNameRequired;
+
   /// No description provided for @hookCapabilityMatrix.
   ///
   /// In en, this message translates to:
