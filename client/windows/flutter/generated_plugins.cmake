@@ -4,13 +4,16 @@
 
 list(APPEND FLUTTER_PLUGIN_LIST
   desktop_drop
+  desktop_webview_window
   flutter_secure_storage_windows
+  fullscreen_window
   native_splash_screen_windows
   pasteboard
   permission_handler_windows
   screen_retriever_windows
   speech_to_text_windows
   url_launcher_windows
+  webview_win_floating
   window_manager
 )
 
