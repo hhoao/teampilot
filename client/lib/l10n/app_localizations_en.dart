@@ -4743,6 +4743,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get hookNameRequired => 'Name is required';
 
   @override
+  String get hookSupportMatrix => 'View support matrix';
+
+  @override
   String get hookCapabilityMatrix => 'Capability matrix';
 
   @override

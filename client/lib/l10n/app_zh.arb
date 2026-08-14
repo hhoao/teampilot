@@ -1918,6 +1918,7 @@
   "hookEnv": "环境变量（每行 KEY=VALUE）",
   "hookSave": "保存",
   "hookNameRequired": "名称为必填项",
+  "hookSupportMatrix": "查看受支持程度",
   "hookCapabilityMatrix": "能力矩阵",
   "mcpNavRegistries": "注册中心",
   "mcpInstalledSectionTitle": "已安装的 MCP",

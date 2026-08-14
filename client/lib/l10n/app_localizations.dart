@@ -8516,6 +8516,12 @@ abstract class AppLocalizations {
   /// **'Name is required'**
   String get hookNameRequired;
 
+  /// No description provided for @hookSupportMatrix.
+  ///
+  /// In en, this message translates to:
+  /// **'View support matrix'**
+  String get hookSupportMatrix;
+
   /// No description provided for @hookCapabilityMatrix.
   ///
   /// In en, this message translates to:

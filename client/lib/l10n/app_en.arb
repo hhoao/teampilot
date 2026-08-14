@@ -2214,6 +2214,7 @@
   "hookEnv": "Environment (KEY=VALUE per line)",
   "hookSave": "Save",
   "hookNameRequired": "Name is required",
+  "hookSupportMatrix": "View support matrix",
   "hookCapabilityMatrix": "Capability matrix",
   "mcpNavRegistries": "Registry",
   "mcpInstalledSectionTitle": "Installed MCP servers",

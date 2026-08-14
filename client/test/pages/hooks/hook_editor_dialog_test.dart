@@ -150,4 +150,40 @@ void main() {
       'Bash',
     );
   });
+
+  testWidgets('support matrix link opens the full matrix dialog', (
+    tester,
+  ) async {
+    await pumpHost(tester);
+
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.byKey(const Key('hook-support-matrix')));
+    await tester.tap(find.byKey(const Key('hook-support-matrix')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('preToolUse'), findsOneWidget);
+    expect(find.text('shellCommandRequest'), findsOneWidget);
+    expect(find.text('claude'), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.close_rounded).last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('shellCommandRequest'), findsNothing);
+  });
+
+  testWidgets('event dropdown items carry no support badge', (tester) async {
+    await pumpHost(tester);
+
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('hook-event')));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('(5/5)'), findsNothing);
+    expect(find.textContaining('(/5)'), findsNothing);
+    expect(find.text('stop'), findsWidgets);
+  });
 }

@@ -238,12 +238,24 @@ class _HookEditorDialogState extends State<HookEditorDialog> {
                   items: HookEvent.values,
                   initialItem: _event,
                   searchable: false,
-                  itemLabel: (event) => '${event.name}${_supportBadge(event)}',
+                  itemLabel: (event) => event.name,
                   onChanged: (value) {
                     if (value == null) return;
                     state.didChange(value);
                     setState(() => _event = value);
                   },
+                ),
+              ),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  key: const Key('hook-support-matrix'),
+                  onPressed: () => showHookSupportMatrixDialog(context),
+                  icon: Icon(
+                    Icons.info_outline,
+                    size: context.tpIconSizes.sm,
+                  ),
+                  label: Text(l10n.hookSupportMatrix),
                 ),
               ),
               const SizedBox(height: 12),
@@ -305,8 +317,6 @@ class _HookEditorDialogState extends State<HookEditorDialog> {
                 label: Text(l10n.hookEnv),
                 maxLines: 4,
               ),
-              const SizedBox(height: 16),
-              _CapabilityMatrix(event: _event),
             ],
           ),
         ),
@@ -329,50 +339,99 @@ class _HookEditorDialogState extends State<HookEditorDialog> {
       ),
     );
   }
-
-  String _supportBadge(HookEvent event) {
-    final supported = CliTool.values
-        .where((cli) => HookEventCapability.supports(event, cli))
-        .length;
-    return ' ($supported/5)';
-  }
 }
 
-class _CapabilityMatrix extends StatelessWidget {
-  const _CapabilityMatrix({required this.event});
+/// 打开完整支持矩阵对话框：13 个归一化事件 × 5 个 CLI。
+Future<void> showHookSupportMatrixDialog(BuildContext context) {
+  return showTpDialog<void>(
+    context: context,
+    builder: (_) => const HookSupportMatrixDialog(),
+  );
+}
 
-  final HookEvent event;
+class HookSupportMatrixDialog extends StatelessWidget {
+  const HookSupportMatrixDialog({super.key});
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          l10n.hookCapabilityMatrix,
-          key: const Key('hook-capability-matrix'),
+    final clis = CliTool.values;
+    return TpDialog(
+      maxWidth: 640,
+      maxHeight: 560,
+      child: TpDialogPinnedLayout(
+        header: TpDialogHeader(title: l10n.hookCapabilityMatrix),
+        body: Table(
+          defaultColumnWidth: const IntrinsicColumnWidth(),
+          border: TableBorder(
+            horizontalInside: BorderSide(
+              color: Theme.of(context).colorScheme.outlineVariant.withValues(
+                alpha: 0.5,
+              ),
+            ),
+          ),
+          children: [
+            TableRow(
+              children: [
+                const SizedBox(width: 120, child: Text('')),
+                for (final cli in clis)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: Text(
+                      cli.name,
+                      style: Theme.of(context).textTheme.labelMedium,
+                    ),
+                  ),
+              ],
+            ),
+            for (final event in HookEvent.values)
+              TableRow(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: Text(
+                      event.name,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
+                  for (final cli in clis)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      child: _SupportMark(
+                        support: HookEventCapability.support(event, cli),
+                      ),
+                    ),
+                ],
+              ),
+          ],
         ),
-        const SizedBox(height: 4),
-        for (final cli in CliTool.values)
-          Builder(builder: (context) {
-            final support = HookEventCapability.support(event, cli);
-            final mark = !support.supported
-                ? '✗'
-                : support.approximate
-                ? '≈'
-                : '✓';
-            return ListTile(
-              dense: true,
-              contentPadding: EdgeInsets.zero,
-              leading: Text(mark),
-              title: Text(cli.name),
-              subtitle: support.nativeEvent == null
-                  ? null
-                  : Text(support.nativeEvent!),
-            );
-          }),
-      ],
+      ),
+    );
+  }
+}
+
+class _SupportMark extends StatelessWidget {
+  const _SupportMark({required this.support});
+
+  final HookCliSupport support;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final (mark, color) = !support.supported
+        ? ('✗', colorScheme.outline)
+        : support.approximate
+        ? ('≈', colorScheme.tertiary)
+        : ('✓', colorScheme.primary);
+    return Tooltip(
+      message: support.nativeEvent == null
+          ? ''
+          : support.nativeEvent!,
+      child: Text(
+        mark,
+        textAlign: TextAlign.center,
+        style: TextStyle(color: color, fontWeight: FontWeight.w600),
+      ),
     );
   }
 }
