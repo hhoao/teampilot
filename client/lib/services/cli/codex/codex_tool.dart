@@ -2,12 +2,11 @@ import '../../../models/team_config.dart';
 import 'capabilities/launch_args.dart';
 import '../registry/cli_capability.dart';
 import '../registry/cli_tool_definition.dart';
-import '../registry/capabilities/bus_transport_capability.dart';
 import '../registry/capabilities/remote_cli_locator_capability.dart';
 import 'capabilities/skill_invocation_syntax.dart';
 import '../registry/capabilities/skill_invocation_syntax_capability.dart';
 import 'capabilities/executable_resolver.dart';
-import 'capabilities/presence.dart';
+import 'capabilities/team_behavior.dart';
 import 'capabilities/display.dart';
 import 'capabilities/terminal_behavior.dart';
 import 'capabilities/provider_catalog.dart';
@@ -16,7 +15,7 @@ import '../registry/capabilities/config_profile_capability.dart';
 import '../registry/capabilities/executable_resolver_capability.dart';
 import '../registry/capabilities/installer_capability.dart';
 import '../registry/capabilities/launch_args_capability.dart';
-import '../registry/capabilities/presence_capability.dart';
+import '../registry/capabilities/team_behavior_capability.dart';
 import 'provider/codex_provider_credential_capability.dart';
 import '../registry/capabilities/cli_effort_capability.dart';
 import '../registry/capabilities/headless_run_capability.dart';
@@ -38,7 +37,6 @@ import '../registry/capabilities/resource_capability.dart';
 import '../registry/capabilities/ask_user_question_capability.dart';
 import '../registry/capabilities/pty_ask_user_question_capability.dart';
 import '../registry/capabilities/exit_plan_mode_capability.dart';
-import '../registry/capabilities/turn_completion_capability.dart';
 import 'capabilities/provider_display.dart';
 import '../registry/capabilities/provider_display_capability.dart';
 import 'capabilities/config_ui.dart';
@@ -53,8 +51,6 @@ import '../registry/capabilities/remote_app_data_capability.dart';
 import '../registry/capabilities/credential_export_capability.dart';
 import '../registry/capabilities/history_context_env_capability.dart';
 import '../registry/capabilities/agent_status_normalizer_capability.dart';
-import 'capabilities/wait_before_stop.dart';
-import '../registry/capabilities/wait_before_stop_capability.dart';
 import 'capabilities/tool_call_resolvers.dart';
 import 'capabilities/mcp_config_writer.dart';
 import 'capabilities/plugin_provisioner.dart';
@@ -66,16 +62,13 @@ import '../registry/capabilities/prompt_provision_capability.dart';
 
 final class CodexCliTool implements CliToolDefinition {
   CodexCliTool({
-    this.busTransport = const BusTransportCapability(
-      longBlockingWaitForMessage: true,
-    ),
+    this.teamBehavior = const CodexTeamBehavior(),
     this.remoteCliLocator = const DefaultRemoteCliLocator('codex'),
     this.launchArgs = const CodexCliToolAdapter(),
     this.configProfile = const CodexConfigProfileCapability(),
     this.sessionResume = const CodexResumeStrategy(),
     this.executableResolver = const CodexExecutableResolver(),
     this.installer = const CodexInstallerCapability(),
-    this.presence = const CodexPresence(),
     this.display = const CodexDisplay(),
     this.terminalBehavior = const CodexTerminalBehavior(),
     this.memberConfigInspection = const DefaultMemberConfigInspection(),
@@ -93,8 +86,6 @@ final class CodexCliTool implements CliToolDefinition {
     this.aiHistory = const CodexAiHistoryCapability(),
     this.skillSyntax = const CodexSkillInvocationSyntaxCapability(),
     this.promptProvision = const CodexPromptProvisionCapability(),
-    this.turnCompletion = const CodexTurnCompletion(),
-    this.waitBeforeStop = const DefaultWaitBeforeStop(),
     this.providerDisplay = const CodexProviderDisplay(),
     this.configUi = const CodexConfigUi(),
     this.marketplaceConsumer = const NoMarketplaceConsumer(),
@@ -116,7 +107,6 @@ final class CodexCliTool implements CliToolDefinition {
   final SessionResumeCapability sessionResume;
   final ExecutableResolverCapability executableResolver;
   final InstallerCapability installer;
-  final PresenceCapability presence;
   final CodexDisplay display;
   final CodexTerminalBehavior terminalBehavior;
   final MemberConfigInspectionCapability memberConfigInspection;
@@ -129,10 +119,8 @@ final class CodexCliTool implements CliToolDefinition {
   final ResourceCapability resource;
   final CodexMcpConfigWriter mcpConfigWriter;
 
-  final BusTransportCapability busTransport;
+  final TeamBehaviorCapability teamBehavior;
   final RemoteCliLocatorCapability remoteCliLocator;
-  final TurnCompletionCapability turnCompletion;
-  final WaitBeforeStopCapability waitBeforeStop;
   final ProviderDisplayCapability providerDisplay;
   final CliConfigUiCapability configUi;
   final MarketplaceConsumerCapability marketplaceConsumer;
@@ -156,14 +144,13 @@ final class CodexCliTool implements CliToolDefinition {
 
   @override
   Iterable<CliCapability> get capabilities => [
-    busTransport,
+    teamBehavior,
     remoteCliLocator,
     launchArgs,
     configProfile,
     sessionResume,
     executableResolver,
     installer,
-    presence,
     display,
     terminalBehavior,
     memberConfigInspection,
@@ -177,8 +164,6 @@ final class CodexCliTool implements CliToolDefinition {
     headlessProvision,
     resource,
     mcpConfigWriter,
-    turnCompletion,
-    waitBeforeStop,
     providerDisplay,
     configUi,
     marketplaceConsumer,
@@ -194,14 +179,4 @@ final class CodexCliTool implements CliToolDefinition {
     toolCallResolvers,
     hookWriter,
   ];
-}
-
-final class CodexTurnCompletion implements TurnCompletionCapability {
-  const CodexTurnCompletion();
-  @override
-  Set<String> get doneEventNames => const {'Stop', 'StopFailure'};
-  @override
-  bool get requiresPtyFallback => false;
-  @override
-  bool get usesDoorbellPush => false;
 }

@@ -10,8 +10,7 @@ import 'package:teampilot/services/cli/codex/capabilities/installer.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/installer.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/installer.dart';
 import 'package:teampilot/services/cli/registry/built_in_cli_tools.dart';
-import 'package:teampilot/services/cli/registry/capabilities/member_agent_preset_capability.dart';
-import 'package:teampilot/services/cli/registry/capabilities/native_team_capability.dart';
+import 'package:teampilot/services/cli/registry/capabilities/team_behavior_capability.dart';
 import 'package:teampilot/services/cli/registry/capabilities/noop_cli_session_lifecycle_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_definition.dart';
@@ -20,6 +19,30 @@ import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 class _EchoCapability implements CliCapability {
   const _EchoCapability(this.value);
   final String value;
+}
+
+class _FakeTeamBehavior implements TeamBehaviorCapability {
+  const _FakeTeamBehavior({this.supportsNativeTeam = false});
+  @override
+  final bool supportsNativeTeam;
+  @override
+  bool get longBlockingWaitForMessage => false;
+  @override
+  bool get supportsLocalStdioBridge => false;
+  @override
+  Set<String> get doneEventNames => const {};
+  @override
+  bool get requiresPtyFallback => false;
+  @override
+  bool get usesDoorbellPush => false;
+  @override
+  bool get defaultForceWaitBeforeStop => false;
+  @override
+  bool get usesClaudeRoster => false;
+  @override
+  bool get usesShellActivity => false;
+  @override
+  MemberAgentPresetStyle? get agentPresetStyle => null;
 }
 
 class _FakeTool implements CliToolDefinition {
@@ -52,14 +75,22 @@ void main() {
     expect(registry.launchable.map((d) => d.id), [CliTool.claude]);
   });
 
-  test('nativeTeamLaunchable requires NativeTeamCapability', () {
+  test('nativeTeamLaunchable requires TeamBehaviorCapability', () {
     final registry = CliToolRegistry();
     registry.register(
-      const _FakeTool(CliTool.claude, true, [NativeTeamSupport()]),
+      const _FakeTool(
+        CliTool.claude,
+        true,
+        [_FakeTeamBehavior(supportsNativeTeam: true)],
+      ),
     );
     registry.register(const _FakeTool(CliTool.codex, true, []));
     registry.register(
-      const _FakeTool(CliTool.flashskyai, true, [NativeTeamSupport()]),
+      const _FakeTool(
+        CliTool.flashskyai,
+        true,
+        [_FakeTeamBehavior(supportsNativeTeam: true)],
+      ),
     );
     expect(registry.nativeTeamLaunchable.map((d) => d.id), [
       CliTool.claude,
@@ -75,7 +106,8 @@ void main() {
     expect(registry.supportsMemberAgentPreset(CliTool.codex), isFalse);
     expect(
       registry
-          .withCapability<MemberAgentPresetCapability>()
+          .all
+          .where((d) => registry.memberAgentPresetStyle(d.id) != null)
           .map((d) => d.id)
           .toSet(),
       {CliTool.claude, CliTool.flashskyai},

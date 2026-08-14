@@ -9,12 +9,11 @@ import '../../../services/cli/cursor/provider/cursor_provider_model_capability.d
 import '../../../services/cli/opencode/opencode_bootstrap_entry.dart';
 import '../../../services/cli/opencode/provider/opencode_provider_credential_capability.dart';
 import '../../../services/cli/opencode/provider/opencode_provider_model_capability.dart';
-import 'capabilities/member_agent_preset_capability.dart';
 import 'capabilities/member_config_inspection_capability.dart';
 import 'capabilities/provider_model_capability.dart';
 import 'capabilities/config_profile_capability.dart';
 import 'capabilities/launch_args_capability.dart';
-import 'capabilities/wait_before_stop_capability.dart';
+import 'capabilities/team_behavior_capability.dart';
 import 'capabilities/provider_display_capability.dart';
 import 'capabilities/cli_config_ui_capability.dart';
 import 'capabilities/marketplace_consumer_capability.dart';
@@ -105,7 +104,7 @@ void registerBuiltInCliTools(
   );
   _verifyRequired<ConfigProfileCapability>(registry);
   _verifyRequired<LaunchArgsCapability>(registry);
-  _verifyRequired<WaitBeforeStopCapability>(registry);
+  _verifyRequired<TeamBehaviorCapability>(registry);
   _verifyRequired<ProviderDisplayCapability>(registry);
   _verifyRequired<CliConfigUiCapability>(registry);
   _verifyRequired<TerminalBehaviorCapability>(registry);
@@ -128,7 +127,8 @@ void _verifyRequired<T extends CliCapability>(CliToolRegistry registry) {
 void _verifyMemberAgentPresetRegistration(CliToolRegistry registry) {
   const allowed = {CliTool.claude, CliTool.flashskyai};
   final presetIds = {
-    for (final def in registry.withCapability<MemberAgentPresetCapability>())
+    for (final def
+        in registry.all.where((d) => registry.memberAgentPresetStyle(d.id) != null))
       def.id,
   };
   if (presetIds.length != allowed.length ||

@@ -1,6 +1,5 @@
 import '../../../models/team_config.dart';
 import 'capabilities/launch_args.dart';
-import 'capabilities/wait_before_stop.dart';
 import 'capabilities/provider_display.dart';
 import 'capabilities/config_ui.dart';
 import 'capabilities/marketplace_consumer.dart';
@@ -10,22 +9,19 @@ import 'capabilities/remote_app_data.dart';
 import 'capabilities/credential_export.dart';
 import '../registry/cli_capability.dart';
 import '../registry/cli_tool_definition.dart';
-import '../registry/capabilities/bus_transport_capability.dart';
 import '../registry/capabilities/remote_cli_locator_capability.dart';
 import '../registry/capabilities/skill_invocation_syntax_capability.dart';
 import 'capabilities/executable_resolver.dart';
-import 'capabilities/presence.dart';
+import 'capabilities/team_behavior.dart';
 import 'capabilities/display.dart';
 import 'capabilities/terminal_behavior.dart';
 import 'capabilities/provider_catalog.dart';
 import '../registry/capabilities/provider_catalog_capability.dart';
-import 'capabilities/member_agent_preset.dart';
-import '../registry/capabilities/native_team_capability.dart';
+import '../registry/capabilities/team_behavior_capability.dart';
 import '../registry/capabilities/config_profile_capability.dart';
 import '../registry/capabilities/executable_resolver_capability.dart';
 import '../registry/capabilities/installer_capability.dart';
 import '../registry/capabilities/launch_args_capability.dart';
-import '../registry/capabilities/presence_capability.dart';
 import '../registry/capabilities/cli_effort_capability.dart';
 import '../registry/capabilities/headless_run_capability.dart';
 import '../registry/capabilities/headless_provision_capability.dart';
@@ -48,8 +44,6 @@ import '../registry/capabilities/resource_capability.dart';
 import '../registry/capabilities/ask_user_question_capability.dart';
 import '../registry/capabilities/pty_ask_user_question_capability.dart';
 import '../registry/capabilities/exit_plan_mode_capability.dart';
-import '../registry/capabilities/turn_completion_capability.dart';
-import '../registry/capabilities/wait_before_stop_capability.dart';
 import '../registry/capabilities/provider_display_capability.dart';
 import '../registry/capabilities/credential_binding_capability.dart';
 import '../registry/capabilities/cli_config_ui_capability.dart';
@@ -70,17 +64,13 @@ import '../registry/capabilities/hook_writer_capability.dart';
 
 final class ClaudeCliTool implements CliToolDefinition {
   ClaudeCliTool({
-    this.busTransport = const BusTransportCapability(
-      longBlockingWaitForMessage: true,
-      supportsLocalStdioBridge: true,
-    ),
+    this.teamBehavior = const ClaudeTeamBehavior(),
     this.remoteCliLocator = const DefaultRemoteCliLocator('claude'),
     this.launchArgs = const ClaudeCodeCliToolAdapter(),
     this.configProfile = const ClaudeConfigProfileCapability(),
     this.sessionResume = const ClaudeResumeStrategy(),
     this.executableResolver = const ClaudeExecutableResolver(),
     this.installer = const ClaudeInstallerCapability(),
-    this.presence = const ClaudePresence(),
     this.display = const ClaudeDisplay(),
     this.terminalBehavior = const ClaudeTerminalBehavior(),
     this.memberConfigInspection = const DefaultMemberConfigInspection(),
@@ -97,8 +87,6 @@ final class ClaudeCliTool implements CliToolDefinition {
     this.exitPlanMode = const HookExitPlanModeCapability(),
     this.aiHistory = const ClaudeAiHistoryCapability(),
     this.skillSyntax = const DefaultSkillInvocationSyntaxCapability(),
-    this.turnCompletion = const ClaudeTurnCompletion(),
-    this.waitBeforeStop = const DefaultWaitBeforeStop(),
     this.providerDisplay = const ClaudeProviderDisplay(),
     this.configUi = const ClaudeConfigUi(),
     this.marketplaceConsumer = const MarketplaceConsumer(),
@@ -124,7 +112,6 @@ final class ClaudeCliTool implements CliToolDefinition {
   final SessionResumeCapability sessionResume;
   final ExecutableResolverCapability executableResolver;
   final InstallerCapability installer;
-  final PresenceCapability presence;
   final ClaudeDisplay display;
   final ClaudeTerminalBehavior terminalBehavior;
   final MemberConfigInspectionCapability memberConfigInspection;
@@ -137,14 +124,12 @@ final class ClaudeCliTool implements CliToolDefinition {
   final ResourceCapability resource;
   final ClaudeMcpConfigWriter mcpConfigWriter;
 
-  final BusTransportCapability busTransport;
+  final TeamBehaviorCapability teamBehavior;
   final RemoteCliLocatorCapability remoteCliLocator;
   final AskUserQuestionCapability askUserQuestion;
   final ExitPlanModeCapability exitPlanMode;
   final ClaudeAiHistoryCapability aiHistory;
   final SkillInvocationSyntaxCapability skillSyntax;
-  final TurnCompletionCapability turnCompletion;
-  final WaitBeforeStopCapability waitBeforeStop;
   final ProviderDisplayCapability providerDisplay;
   final CliConfigUiCapability configUi;
   final MarketplaceConsumerCapability marketplaceConsumer;
@@ -162,21 +147,15 @@ final class ClaudeCliTool implements CliToolDefinition {
   @override
   bool get isLaunchSupported => true;
 
-  static const _nativeTeam = NativeTeamSupport();
-  static const _memberAgentPreset = ClaudeMemberAgentPreset();
-
   @override
   Iterable<CliCapability> get capabilities => [
-    busTransport,
+    teamBehavior,
     remoteCliLocator,
-    _nativeTeam,
-    _memberAgentPreset,
     launchArgs,
     configProfile,
     sessionResume,
     executableResolver,
     installer,
-    presence,
     display,
     terminalBehavior,
     memberConfigInspection,
@@ -194,8 +173,6 @@ final class ClaudeCliTool implements CliToolDefinition {
     exitPlanMode,
     aiHistory,
     skillSyntax,
-    turnCompletion,
-    waitBeforeStop,
     providerDisplay,
     configUi,
     marketplaceConsumer,
@@ -208,14 +185,4 @@ final class ClaudeCliTool implements CliToolDefinition {
     promptProvision,
     hookWriter,
   ];
-}
-
-final class ClaudeTurnCompletion implements TurnCompletionCapability {
-  const ClaudeTurnCompletion();
-  @override
-  Set<String> get doneEventNames => const {'Stop', 'StopFailure'};
-  @override
-  bool get requiresPtyFallback => false;
-  @override
-  bool get usesDoorbellPush => false;
 }

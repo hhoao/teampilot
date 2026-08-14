@@ -1,10 +1,9 @@
 import '../../../models/team_config.dart';
 import 'built_in_cli_tools.dart';
 import 'capabilities/cli_session_lifecycle_capability.dart';
-import 'capabilities/member_agent_preset_capability.dart';
-import 'capabilities/native_team_capability.dart';
 import 'capabilities/noop_cli_session_lifecycle_capability.dart';
 import 'capabilities/provider_catalog_capability.dart';
+import 'capabilities/team_behavior_capability.dart';
 import 'capabilities/tool_call_resolver_capability.dart';
 import 'cli_bootstrap.dart';
 import 'cli_capability.dart';
@@ -56,14 +55,15 @@ class CliToolRegistry {
       _definitions.values.where((d) => d.isLaunchSupported);
 
   /// CLIs that may back [TeamMode.native] (first-party multi-agent teams).
-  Iterable<CliToolDefinition> get nativeTeamLaunchable =>
-      launchable.where((d) => capability<NativeTeamCapability>(d.id) != null);
+  Iterable<CliToolDefinition> get nativeTeamLaunchable => launchable.where(
+    (d) => capability<TeamBehaviorCapability>(d.id)?.supportsNativeTeam == true,
+  );
 
   bool supportsNativeTeam(CliTool id) =>
-      capability<NativeTeamCapability>(id) != null;
+      capability<TeamBehaviorCapability>(id)?.supportsNativeTeam == true;
 
   MemberAgentPresetStyle? memberAgentPresetStyle(CliTool id) =>
-      capability<MemberAgentPresetCapability>(id)?.style;
+      capability<TeamBehaviorCapability>(id)?.agentPresetStyle;
 
   bool supportsMemberAgentPreset(CliTool id) =>
       memberAgentPresetStyle(id) != null;

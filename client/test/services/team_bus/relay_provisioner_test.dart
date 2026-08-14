@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/cli/registry/capabilities/bus_transport_capability.dart';
+import 'package:teampilot/services/cli/registry/capabilities/team_behavior_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/runtime_target.dart';
@@ -9,12 +9,12 @@ import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/team_bus/remote/relay_provisioner.dart';
 
 void main() {
-  group('BusTransportCapability per CLI', () {
+  group('TeamBehaviorCapability per CLI', () {
     final registry = CliToolRegistry.builtIn();
 
     test('long-blocking CLIs are true, cursor (doorbell) is false', () {
       bool blocking(CliTool cli) => registry
-          .capability<BusTransportCapability>(cli)!
+          .capability<TeamBehaviorCapability>(cli)!
           .longBlockingWaitForMessage;
 
       expect(blocking(CliTool.claude), isTrue);

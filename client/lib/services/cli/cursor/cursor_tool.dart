@@ -2,14 +2,13 @@ import '../../../models/team_config.dart';
 import 'capabilities/launch_args.dart';
 import '../registry/cli_capability.dart';
 import '../registry/cli_tool_definition.dart';
-import '../registry/capabilities/bus_transport_capability.dart';
 import '../registry/capabilities/remote_cli_locator_capability.dart';
 import '../registry/capabilities/skill_invocation_syntax_capability.dart';
 import 'provider/cursor_cli_config_layout.dart';
 import 'provider/cursor_provider_catalog_capability.dart';
 import '../registry/capabilities/cli_config_layout_capability.dart';
 import 'capabilities/executable_resolver.dart';
-import 'capabilities/presence.dart';
+import 'capabilities/team_behavior.dart';
 import 'capabilities/display.dart';
 import 'capabilities/terminal_behavior.dart';
 import 'capabilities/prompt_provision.dart';
@@ -19,7 +18,7 @@ import '../registry/capabilities/config_profile_capability.dart';
 import '../registry/capabilities/executable_resolver_capability.dart';
 import '../registry/capabilities/installer_capability.dart';
 import '../registry/capabilities/launch_args_capability.dart';
-import '../registry/capabilities/presence_capability.dart';
+import '../registry/capabilities/team_behavior_capability.dart';
 import 'provider/cursor_provider_credential_capability.dart';
 import 'provider/cursor_provider_model_capability.dart';
 import '../registry/capabilities/headless_run_capability.dart';
@@ -41,7 +40,6 @@ import '../registry/capabilities/resource_capability.dart';
 import '../registry/capabilities/ask_user_question_capability.dart';
 import 'capabilities/ask_user_question.dart';
 import '../registry/capabilities/exit_plan_mode_capability.dart';
-import '../registry/capabilities/turn_completion_capability.dart';
 import 'capabilities/provider_display.dart';
 import '../registry/capabilities/provider_display_capability.dart';
 import 'capabilities/config_ui.dart';
@@ -56,8 +54,6 @@ import '../registry/capabilities/remote_app_data_capability.dart';
 import '../registry/capabilities/credential_export_capability.dart';
 import '../registry/capabilities/history_context_env_capability.dart';
 import '../registry/capabilities/agent_status_normalizer_capability.dart';
-import 'capabilities/wait_before_stop.dart';
-import '../registry/capabilities/wait_before_stop_capability.dart';
 import 'capabilities/tool_call_resolvers.dart';
 import 'capabilities/mcp_config_writer.dart';
 import 'capabilities/plugin_provisioner.dart';
@@ -70,9 +66,7 @@ import 'provider/cursor_hook_writer.dart';
 /// provider auth) embedded terminal.
 final class CursorCliTool implements CliToolDefinition {
   CursorCliTool({
-    this.busTransport = const BusTransportCapability(
-      longBlockingWaitForMessage: false,
-    ),
+    this.teamBehavior = const CursorTeamBehavior(),
     this.remoteCliLocator = const DefaultRemoteCliLocator('cursor-agent'),
     this.launchArgs = const CursorCliToolAdapter(),
     this.configProfile = const CursorConfigProfileCapability(),
@@ -80,7 +74,6 @@ final class CursorCliTool implements CliToolDefinition {
     this.sessionResume = const CursorResumeStrategy(),
     this.executableResolver = const CursorExecutableResolver(),
     this.installer = const CursorInstallerCapability(),
-    this.presence = const CursorPresence(),
     this.display = const CursorDisplay(),
     this.terminalBehavior = const CursorTerminalBehavior(),
     this.memberConfigInspection = const DefaultMemberConfigInspection(),
@@ -97,8 +90,6 @@ final class CursorCliTool implements CliToolDefinition {
     CursorAiHistoryCapability? aiHistory,
     this.skillSyntax = const DefaultSkillInvocationSyntaxCapability(),
     this.postManifestFlush = const CursorPostManifestFlushCapability(),
-    this.turnCompletion = const CursorTurnCompletion(),
-    this.waitBeforeStop = const CursorWaitBeforeStop(),
     this.providerDisplay = const CursorProviderDisplay(),
     this.configUi = const CursorConfigUi(),
     this.marketplaceConsumer = const MarketplaceConsumer(),
@@ -128,7 +119,6 @@ final class CursorCliTool implements CliToolDefinition {
   final SessionResumeCapability sessionResume;
   final ExecutableResolverCapability executableResolver;
   final InstallerCapability installer;
-  final PresenceCapability presence;
   final CursorDisplay display;
   final CursorTerminalBehavior terminalBehavior;
   final MemberConfigInspectionCapability memberConfigInspection;
@@ -140,10 +130,8 @@ final class CursorCliTool implements CliToolDefinition {
   final CliConfigLayoutCapability configLayout;
   final CursorMcpConfigWriter mcpConfigWriter;
 
-  final BusTransportCapability busTransport;
+  final TeamBehaviorCapability teamBehavior;
   final RemoteCliLocatorCapability remoteCliLocator;
-  final TurnCompletionCapability turnCompletion;
-  final WaitBeforeStopCapability waitBeforeStop;
   final ProviderDisplayCapability providerDisplay;
   final CliConfigUiCapability configUi;
   final MarketplaceConsumerCapability marketplaceConsumer;
@@ -168,7 +156,7 @@ final class CursorCliTool implements CliToolDefinition {
 
   @override
   Iterable<CliCapability> get capabilities => [
-    busTransport,
+    teamBehavior,
     remoteCliLocator,
     launchArgs,
     configProfile,
@@ -176,7 +164,6 @@ final class CursorCliTool implements CliToolDefinition {
     sessionResume,
     executableResolver,
     installer,
-    presence,
     display,
     terminalBehavior,
     memberConfigInspection,
@@ -189,8 +176,6 @@ final class CursorCliTool implements CliToolDefinition {
     resource,
     configLayout,
     mcpConfigWriter,
-    turnCompletion,
-    waitBeforeStop,
     providerDisplay,
     configUi,
     marketplaceConsumer,
@@ -207,14 +192,4 @@ final class CursorCliTool implements CliToolDefinition {
     toolCallResolvers,
     hookWriter,
   ];
-}
-
-final class CursorTurnCompletion implements TurnCompletionCapability {
-  const CursorTurnCompletion();
-  @override
-  Set<String> get doneEventNames => const {'stop'};
-  @override
-  bool get requiresPtyFallback => true;
-  @override
-  bool get usesDoorbellPush => true;
 }
