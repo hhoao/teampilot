@@ -12979,6 +12979,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Use regular expression'**
   String get chatFindUseRegex;
+
+  /// No description provided for @htmlViewToggleEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get htmlViewToggleEdit;
+
+  /// No description provided for @htmlViewTogglePreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview'**
+  String get htmlViewTogglePreview;
+
+  /// No description provided for @htmlPreviewRefresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
+  String get htmlPreviewRefresh;
+
+  /// No description provided for @htmlPreviewOpenWindow.
+  ///
+  /// In en, this message translates to:
+  /// **'Open in Window'**
+  String get htmlPreviewOpenWindow;
+
+  /// No description provided for @htmlPreviewOpenBrowser.
+  ///
+  /// In en, this message translates to:
+  /// **'Open in System Browser'**
+  String get htmlPreviewOpenBrowser;
+
+  /// No description provided for @htmlPreviewErrorTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview unavailable'**
+  String get htmlPreviewErrorTitle;
+
+  /// No description provided for @htmlPreviewErrorBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The file could not be loaded for preview.'**
+  String get htmlPreviewErrorBody;
+
+  /// No description provided for @floatingWorkspaceOpenHtmlPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Open HTML Preview'**
+  String get floatingWorkspaceOpenHtmlPreview;
 }
 
 class _AppLocalizationsDelegate
