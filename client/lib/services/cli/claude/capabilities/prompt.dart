@@ -20,7 +20,13 @@ final class ClaudePromptCapability implements PromptCapability {
         id: 'claude-member-role',
         title: 'Member role',
         scope: PromptScope.member,
-        content: MemberRoleProvision.composeRolePrompt(member: member),
+        content: MemberRoleProvision.composeRolePrompt(
+          member: member,
+          forceTeamLeadDelegateMode:
+              TeamMemberNaming.isTeamLead(member) && ctx.forceTeamLeadDelegateMode,
+          mixed: ctx.mixed,
+          additionalDirectories: const [],
+        ),
       ),
     ];
   }

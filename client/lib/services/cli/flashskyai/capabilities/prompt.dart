@@ -16,7 +16,13 @@ final class FlashskyaiPromptCapability implements PromptCapability {
         id: 'flashskyai-member-role',
         title: 'Member role',
         scope: PromptScope.member,
-        content: MemberRoleProvision.composeRolePrompt(member: member),
+        content: MemberRoleProvision.composeRolePrompt(
+          member: member,
+          forceTeamLeadDelegateMode:
+              TeamMemberNaming.isTeamLead(member) && ctx.forceTeamLeadDelegateMode,
+          mixed: ctx.mixed,
+          additionalDirectories: const [],
+        ),
       ),
     ];
   }

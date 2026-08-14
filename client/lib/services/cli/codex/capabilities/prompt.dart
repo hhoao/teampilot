@@ -18,7 +18,12 @@ final class CodexPromptCapability implements PromptCapability {
         id: 'codex-member-role',
         title: 'Member role',
         scope: PromptScope.member,
-        content: MemberRoleProvision.composeRolePrompt(member: member).trim(),
+        content: MemberRoleProvision.composeRolePrompt(
+          member: member,
+          forceTeamLeadDelegateMode: ctx.forceTeamLeadDelegateMode,
+          mixed: ctx.mixed,
+          additionalDirectories: const [],
+        ).trim(),
       ),
     ];
   }

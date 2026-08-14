@@ -27,12 +27,22 @@ class PromptVirtualizeContext {
     this.paths,
     this.scope,
     this.member,
+    this.forceTeamLeadDelegateMode = false,
+    this.mixed = false,
+    this.pushDelivery = false,
+    this.additionalDirectories = const [],
     this.memberHome,
   });
 
   final ConfigProfileDelegate? paths;
   final LaunchProfileScope? scope;
   final TeamMemberConfig? member;
+  final bool forceTeamLeadDelegateMode;
+  final bool mixed;
+  final bool pushDelivery;
+
+  /// 已 normalize 的工作面路径；只有 opencode 的实现把它拼进 prompt。
+  final List<String> additionalDirectories;
 
   /// cursor 专用：fake HOME，由装配点解析后传入。
   final String? memberHome;

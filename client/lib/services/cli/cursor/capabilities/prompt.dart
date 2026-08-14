@@ -30,7 +30,13 @@ final class CursorPromptCapability implements PromptCapability {
         title: 'Member role',
         scope: PromptScope.member,
         content: CursorRoleRuleWriter.format(
-          MemberRoleProvision.composeRolePrompt(member: member).trim(),
+          MemberRoleProvision.composeRolePrompt(
+            member: member,
+            forceTeamLeadDelegateMode: ctx.forceTeamLeadDelegateMode,
+            mixed: ctx.mixed,
+            pushDelivery: ctx.pushDelivery,
+            additionalDirectories: const [],
+          ).trim(),
         ),
       ),
     ];

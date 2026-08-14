@@ -80,6 +80,29 @@ void main() {
   });
 
   test(
+    'OpencodePromptCapability virtualize includes workspace directories '
+    'section and mixed addenda matching materialize',
+    () async {
+      const member = TeamMemberConfig(
+        id: 'm1',
+        name: 'Member',
+        model: 'test',
+        responsibilities: 'You are the reviewer.',
+      );
+      final specs = const OpencodePromptCapability().virtualize(
+        const PromptVirtualizeContext(
+          member: member,
+          mixed: true,
+          additionalDirectories: ['/abs/missing/repo'],
+        ),
+      );
+      expect(specs.single.content, contains('## Workspace directories'));
+      expect(specs.single.content, contains('- /abs/missing/repo'));
+      expect(specs.single.content, contains('Multi-agent teammate'));
+    },
+  );
+
+  test(
     'OpencodePromptCapability writes role + dirs into AGENTS.md',
     () async {
       final base = await Directory.systemTemp.createTemp('opencode_prompt_');
