@@ -192,7 +192,7 @@ pub fn spawn_search(config: &SearchConfig) -> Result<TpSearchHandle, SearchError
                     .strip_prefix(&root)
                     .unwrap_or(path)
                     .to_string_lossy()
-                    .into_owned();
+                    .replace('\\', "/");
                 let path_str = path.to_string_lossy().into_owned();
 
                 let mut searcher = SearcherBuilder::new()
