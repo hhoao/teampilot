@@ -111,4 +111,48 @@ void main() {
     await editor.close();
     await tester.runAsync(() => server.dispose());
   });
+
+  testWidgets('reloads preview after save (dirty→clean)', (tester) async {
+    final fs = InMemoryFilesystem();
+    await fs.writeString('/repo/index.html', '<p>x</p>');
+    final server = HtmlPreviewServer(fs: fs);
+    final controller = _FakeController();
+    final editor = EditorCubit(fs: fs);
+
+    await tester.pumpWidget(
+      _app(
+        editor: editor,
+        pane: HtmlPreviewPane(
+          workspaceId: 'ws1',
+          path: '/repo/index.html',
+          fs: fs,
+          sessionFactory: (dir, entry) => HtmlPreviewSession(
+            htmlDirectory: dir,
+            entryFileName: entry,
+            server: server,
+            controllerFactory: (_) => controller,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(controller.reloads, 0);
+    // DocumentSession schedules real budget timers, so drive fs/editor IO in a
+    // real-async zone and pump afterwards for the BlocListener to react.
+    await tester.runAsync(
+      () => editor.openFile('ws1', '/repo/index.html', fs: fs),
+    );
+    await tester.pump();
+    editor.controllerFor('ws1', '/repo/index.html')!.text = '<p>y</p>';
+    await tester.pump();
+    expect(editor.state.bucket('ws1').isDirty('/repo/index.html'), isTrue);
+
+    await tester.runAsync(() => editor.saveFile('ws1', '/repo/index.html'));
+    await tester.pumpAndSettle();
+
+    expect(controller.reloads, 1);
+    await editor.close();
+    await tester.runAsync(() => server.dispose());
+  });
 }

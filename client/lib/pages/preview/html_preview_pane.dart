@@ -42,6 +42,7 @@ class HtmlPreviewPane extends StatefulWidget {
 class _HtmlPreviewPaneState extends State<HtmlPreviewPane> {
   HtmlPreviewSession? _session;
   bool _failed = false;
+  bool _starting = false;
 
   @override
   void initState() {
@@ -50,26 +51,37 @@ class _HtmlPreviewPaneState extends State<HtmlPreviewPane> {
   }
 
   Future<void> _start() async {
-    final fs = widget.fs ?? AppStorage.fs;
-    final dir = fs.pathContext.dirname(widget.path);
-    final entry = p.basename(widget.path);
-    final factory =
-        widget.sessionFactory ??
-        (dir, entry) => HtmlPreviewSession(
-          htmlDirectory: dir,
-          entryFileName: entry,
-          server: HtmlPreviewServer(fs: fs),
-          controllerFactory: (_) => WebviewHtmlController(),
-        );
-    final session = factory(dir, entry);
-    _session = session;
+    if (_starting) return;
+    _starting = true;
     try {
-      final mount = await session.start();
-      if (!mounted) return;
-      setState(() => _failed = mount == null);
-    } on Object {
-      if (!mounted) return;
-      setState(() => _failed = true);
+      final old = _session;
+      if (old != null) {
+        _session = null;
+        unawaited(old.dispose());
+      }
+      final fs = widget.fs ?? AppStorage.fs;
+      final dir = fs.pathContext.dirname(widget.path);
+      final entry = p.basename(widget.path);
+      final factory =
+          widget.sessionFactory ??
+          (dir, entry) => HtmlPreviewSession(
+            htmlDirectory: dir,
+            entryFileName: entry,
+            server: HtmlPreviewServer(fs: fs),
+            controllerFactory: (_) => WebviewHtmlController(),
+          );
+      final session = factory(dir, entry);
+      _session = session;
+      try {
+        final mount = await session.start();
+        if (!mounted) return;
+        setState(() => _failed = mount == null);
+      } on Object {
+        if (!mounted) return;
+        setState(() => _failed = true);
+      }
+    } finally {
+      _starting = false;
     }
   }
 
@@ -141,7 +153,11 @@ class _HtmlPreviewPaneState extends State<HtmlPreviewPane> {
     if (uri == null) return;
     try {
       final webview = await _createDesktopWindow();
-      webview?.launch(uri.toString());
+      if (webview == null) {
+        await _openSystemBrowser();
+        return;
+      }
+      webview.launch(uri.toString());
     } on Object {
       await _openSystemBrowser();
     }
@@ -150,7 +166,12 @@ class _HtmlPreviewPaneState extends State<HtmlPreviewPane> {
   Future<void> _openSystemBrowser() async {
     final uri = _session?.mount?.entryUri;
     if (uri == null) return;
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } on Object {
+      // launchUrl can throw when no handler is installed; swallow so the
+      // fire-and-forget call sites never surface unhandled async errors.
+    }
   }
 }
 
