@@ -1553,6 +1553,12 @@ class ChatCubit extends Cubit<ChatState>
     LaunchProfileRepository? identityRepository,
   }) async {
     final result = await _dataStore.createWorkspaceWithFirstSession(
+      ChatDataSnapshot(
+        workspaces: state.workspaces,
+        sessions: state.sessions,
+        visibleWorkspaces: state.visibleWorkspaces,
+        visibleSessions: state.visibleSessions,
+      ),
       folders,
       repo,
       sessionTeamId: sessionTeamId,
@@ -1574,6 +1580,12 @@ class ChatCubit extends Cubit<ChatState>
     WorkspaceFolder folder,
   ) async {
     final snap = await _dataStore.addWorkspaceDirectory(
+      ChatDataSnapshot(
+        workspaces: state.workspaces,
+        sessions: state.sessions,
+        visibleWorkspaces: state.visibleWorkspaces,
+        visibleSessions: state.visibleSessions,
+      ),
       repo,
       workspace,
       folder,
@@ -1588,15 +1600,20 @@ class ChatCubit extends Cubit<ChatState>
     String? defaultProfileId,
     bool? rootSandboxEnvOptIn,
   }) async {
-    _emitSnapshot(
-      await _dataStore.updateWorkspaceMetadata(
-        repo,
-        workspaceId,
-        display: display,
-        defaultProfileId: defaultProfileId,
-        rootSandboxEnvOptIn: rootSandboxEnvOptIn,
+    final snap = await _dataStore.updateWorkspaceMetadata(
+      ChatDataSnapshot(
+        workspaces: state.workspaces,
+        sessions: state.sessions,
+        visibleWorkspaces: state.visibleWorkspaces,
+        visibleSessions: state.visibleSessions,
       ),
+      repo,
+      workspaceId,
+      display: display,
+      defaultProfileId: defaultProfileId,
+      rootSandboxEnvOptIn: rootSandboxEnvOptIn,
     );
+    if (snap != null) _emitSnapshot(snap);
   }
 
   Future<void> applyWorkspaceIcon(
@@ -1604,7 +1621,18 @@ class ChatCubit extends Cubit<ChatState>
     String workspaceId,
     WorkspaceIconRef icon,
   ) async {
-    _emitSnapshot(await _dataStore.applyWorkspaceIcon(repo, workspaceId, icon));
+    final snap = await _dataStore.applyWorkspaceIcon(
+      ChatDataSnapshot(
+        workspaces: state.workspaces,
+        sessions: state.sessions,
+        visibleWorkspaces: state.visibleWorkspaces,
+        visibleSessions: state.visibleSessions,
+      ),
+      repo,
+      workspaceId,
+      icon,
+    );
+    if (snap != null) _emitSnapshot(snap);
   }
 
   Future<void> importCustomWorkspaceIcon(
@@ -1612,13 +1640,18 @@ class ChatCubit extends Cubit<ChatState>
     String workspaceId,
     String localSourcePath,
   ) async {
-    _emitSnapshot(
-      await _dataStore.importCustomWorkspaceIcon(
-        repo,
-        workspaceId,
-        localSourcePath,
+    final snap = await _dataStore.importCustomWorkspaceIcon(
+      ChatDataSnapshot(
+        workspaces: state.workspaces,
+        sessions: state.sessions,
+        visibleWorkspaces: state.visibleWorkspaces,
+        visibleSessions: state.visibleSessions,
       ),
+      repo,
+      workspaceId,
+      localSourcePath,
     );
+    if (snap != null) _emitSnapshot(snap);
   }
 
   /// Opens the icon picker and applies the user's choice.
@@ -2193,7 +2226,18 @@ class ChatCubit extends Cubit<ChatState>
         workingSessionIds: working,
       ),
     );
-    _emitSnapshot(await _dataStore.deleteSessionRecord(repo, sessionId));
+    _emitSnapshot(
+      await _dataStore.deleteSessionRecord(
+        ChatDataSnapshot(
+          workspaces: state.workspaces,
+          sessions: state.sessions,
+          visibleWorkspaces: state.visibleWorkspaces,
+          visibleSessions: state.visibleSessions,
+        ),
+        repo,
+        sessionId,
+      ),
+    );
     if (session != null) {
       await _automationRepository.disableForSession(
         session.workspaceId,
@@ -2210,6 +2254,12 @@ class ChatCubit extends Cubit<ChatState>
     List<TeamMemberConfig> rosterMembers = const [],
   }) async {
     final result = await _dataStore.cloneWorkspace(
+      ChatDataSnapshot(
+        workspaces: state.workspaces,
+        sessions: state.sessions,
+        visibleWorkspaces: state.visibleWorkspaces,
+        visibleSessions: state.visibleSessions,
+      ),
       repo,
       sourceWorkspaceId,
       display: display,
@@ -2237,7 +2287,18 @@ class ChatCubit extends Cubit<ChatState>
     }
     await _automationRepository.removeWorkspace(workspaceId);
     _notifyAutomationsChanged();
-    _emitSnapshot(await _dataStore.deleteWorkspaceRecord(repo, workspaceId));
+    _emitSnapshot(
+      await _dataStore.deleteWorkspaceRecord(
+        ChatDataSnapshot(
+          workspaces: state.workspaces,
+          sessions: state.sessions,
+          visibleWorkspaces: state.visibleWorkspaces,
+          visibleSessions: state.visibleSessions,
+        ),
+        repo,
+        workspaceId,
+      ),
+    );
   }
 
   void addSystemMessage(String content) {

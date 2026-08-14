@@ -38,8 +38,10 @@ void main() {
     () async {
       const primaryPath = '/tmp/personal-workspace';
       final store = SessionDataStore();
+      final base = store.deriveSnapshot(workspaces: const [], sessions: const []);
 
       final result = await store.createWorkspaceWithFirstSession(
+        base,
         [WorkspaceFolder(path: primaryPath)],
         sessionRepo,
         sessionTeamId: '',
@@ -72,8 +74,10 @@ void main() {
     'createWorkspaceWithFirstSession creates personal session on mixed workspace',
     () async {
       final store = SessionDataStore();
+      final base = store.deriveSnapshot(workspaces: const [], sessions: const []);
 
       final result = await store.createWorkspaceWithFirstSession(
+        base,
         const [
           WorkspaceFolder(path: '/local'),
           WorkspaceFolder(path: '/remote', targetId: 'ssh:p1'),

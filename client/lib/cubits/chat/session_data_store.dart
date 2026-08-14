@@ -320,6 +320,7 @@ class SessionDataStore {
 
   Future<({String workspaceId, ChatDataSnapshot snapshot})>
   createWorkspaceWithFirstSession(
+    ChatDataSnapshot base,
     List<WorkspaceFolder> folders,
     SessionRepository repo, {
     String sessionTeamId = '',
@@ -349,17 +350,20 @@ class SessionDataStore {
         : throw ArgumentError(
             'Team session create requires memberClis or team',
           );
-    await repo.createSession(
+    var snapshot = snapshotWithWorkspace(base, workspace);
+    final created = await repo.createSession(
       workspace.workspaceId,
       sessionTeam: sessionTeamId,
       rosterMembers: rosterMembers,
       memberClis: resolvedClis,
     );
-    final snapshot = await loadWorkspaceData(repo);
+    snapshot = appendSession(snapshot, created.session);
+    snapshot = snapshotWithWorkspace(snapshot, created.workspace);
     return (workspaceId: workspace.workspaceId, snapshot: snapshot);
   }
 
   Future<ChatDataSnapshot?> addWorkspaceDirectory(
+    ChatDataSnapshot base,
     SessionRepository repo,
     Workspace workspace,
     WorkspaceFolder folder,
@@ -373,64 +377,77 @@ class SessionDataStore {
     )) {
       return null;
     }
-    await repo.updateWorkspaceFolders(workspace.workspaceId, [
+    final updated = await repo.updateWorkspaceFolders(workspace.workspaceId, [
       ...workspace.folders,
       folder.copyWith(path: normalizeWorkspacePath(folder.path)),
     ]);
-    return loadWorkspaceData(repo);
+    if (updated == null) return null;
+    return snapshotWithWorkspace(base, updated);
   }
 
-  Future<ChatDataSnapshot> updateWorkspaceMetadata(
+  Future<ChatDataSnapshot?> updateWorkspaceMetadata(
+    ChatDataSnapshot base,
     SessionRepository repo,
     String workspaceId, {
     String? display,
     String? defaultProfileId,
     bool? rootSandboxEnvOptIn,
   }) async {
-    await repo.updateWorkspaceMetadata(
+    final updated = await repo.updateWorkspaceMetadata(
       workspaceId,
       display: display,
       defaultProfileId: defaultProfileId,
       rootSandboxEnvOptIn: rootSandboxEnvOptIn,
     );
-    return loadWorkspaceData(repo);
+    if (updated == null) return null;
+    return snapshotWithWorkspace(base, updated);
   }
 
-  Future<ChatDataSnapshot> applyWorkspaceIcon(
+  Future<ChatDataSnapshot?> applyWorkspaceIcon(
+    ChatDataSnapshot base,
     SessionRepository repo,
     String workspaceId,
     WorkspaceIconRef icon,
   ) async {
-    await repo.applyWorkspaceIcon(workspaceId, icon);
-    return loadWorkspaceData(repo);
+    final updated = await repo.applyWorkspaceIcon(workspaceId, icon);
+    if (updated == null) return null;
+    return snapshotWithWorkspace(base, updated);
   }
 
-  Future<ChatDataSnapshot> importCustomWorkspaceIcon(
+  Future<ChatDataSnapshot?> importCustomWorkspaceIcon(
+    ChatDataSnapshot base,
     SessionRepository repo,
     String workspaceId,
     String localSourcePath,
   ) async {
-    await repo.importCustomWorkspaceIcon(workspaceId, localSourcePath);
-    return loadWorkspaceData(repo);
+    final updated = await repo.importCustomWorkspaceIcon(
+      workspaceId,
+      localSourcePath,
+    );
+    if (updated == null) return null;
+    return snapshotWithWorkspace(base, updated);
   }
 
   Future<ChatDataSnapshot> deleteSessionRecord(
+    ChatDataSnapshot base,
     SessionRepository repo,
     String sessionId,
   ) async {
     await repo.deleteSession(sessionId);
-    return loadWorkspaceData(repo);
+    return removeSession(base, sessionId);
   }
 
   Future<ChatDataSnapshot> deleteWorkspaceRecord(
+    ChatDataSnapshot base,
     SessionRepository repo,
     String workspaceId,
   ) async {
     await repo.deleteWorkspace(workspaceId);
-    return loadWorkspaceData(repo);
+    return snapshotWithoutWorkspace(base, workspaceId);
   }
 
   Future<({Workspace workspace, ChatDataSnapshot snapshot})> cloneWorkspace(
+    ChatDataSnapshot base,
     SessionRepository repo,
     String sourceWorkspaceId, {
     String? display,
@@ -441,7 +458,13 @@ class SessionDataStore {
       display: display,
       rosterMembers: rosterMembers,
     );
-    final snapshot = await loadWorkspaceData(repo);
-    return (workspace: result.workspace, snapshot: snapshot);
+    return (
+      workspace: result.workspace,
+      snapshot: snapshotWithWorkspaceAndSessions(
+        base,
+        workspace: result.workspace,
+        sessions: result.sessions,
+      ),
+    );
   }
 }
