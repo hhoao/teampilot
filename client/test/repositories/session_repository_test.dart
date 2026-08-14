@@ -881,4 +881,28 @@ void main() {
     expect(indexed.folders.single.targetId, 'wsl:debian');
     await tmp.delete(recursive: true);
   });
+
+  test('touchSession returns the touched session', () async {
+    final tmp = await Directory.systemTemp.createTemp('repo_touch_test_');
+    final repo = SessionRepository(rootDir: tmp.path);
+    final ws = await repo.createWorkspace([WorkspaceFolder(path: '/p')]);
+    final created = await repo.createSession(ws.workspaceId);
+    final touched = await repo.touchSession(created.session.sessionId);
+    expect(touched, isNotNull);
+    expect(touched!.sessionId, created.session.sessionId);
+    expect(touched.updatedAt, greaterThanOrEqualTo(created.session.updatedAt));
+    await tmp.delete(recursive: true);
+  });
+
+  test('toggleSessionPin flips pinned and returns the session', () async {
+    final tmp = await Directory.systemTemp.createTemp('repo_pin_test_');
+    final repo = SessionRepository(rootDir: tmp.path);
+    final ws = await repo.createWorkspace([WorkspaceFolder(path: '/p')]);
+    final created = await repo.createSession(ws.workspaceId);
+    final toggled = await repo.toggleSessionPin(created.session.sessionId);
+    expect(toggled!.pinned, isTrue);
+    final untoggled = await repo.toggleSessionPin(created.session.sessionId);
+    expect(untoggled!.pinned, isFalse);
+    await tmp.delete(recursive: true);
+  });
 }

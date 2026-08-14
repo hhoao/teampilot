@@ -1004,26 +1004,30 @@ class SessionRepository {
     });
   }
 
-  Future<void> touchSession(String sessionId) {
+  Future<AppSession?> touchSession(String sessionId) {
     return _withSessionFile(sessionId, () async {
       final fs = await _fs();
       final existing = await _findSession(fs, sessionId);
-      if (existing == null) return;
+      if (existing == null) return null;
       final now = DateTime.now().millisecondsSinceEpoch;
-      await _writeSession(fs, existing.copyWith(updatedAt: now));
+      final updated = existing.copyWith(updatedAt: now);
+      await _writeSession(fs, updated);
+      return updated;
     });
   }
 
-  Future<void> toggleSessionPin(String sessionId) {
+  Future<AppSession?> toggleSessionPin(String sessionId) {
     return _withSessionFile(sessionId, () async {
       final fs = await _fs();
       final existing = await _findSession(fs, sessionId);
-      if (existing == null) return;
+      if (existing == null) return null;
       final now = DateTime.now().millisecondsSinceEpoch;
-      await _writeSession(
-        fs,
-        existing.copyWith(pinned: !existing.pinned, updatedAt: now),
+      final updated = existing.copyWith(
+        pinned: !existing.pinned,
+        updatedAt: now,
       );
+      await _writeSession(fs, updated);
+      return updated;
     });
   }
 
