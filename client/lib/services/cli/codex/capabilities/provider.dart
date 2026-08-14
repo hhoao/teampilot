@@ -4,7 +4,6 @@ import '../../../../models/credential_action_result.dart';
 import '../../../../models/credential_probe.dart';
 import '../../../../models/hook_entry.dart';
 import '../../../../models/team_config.dart';
-import '../../../../utils/logging/logger.dart';
 import '../../../../utils/workspace/trusted_project_paths.dart';
 import '../../../hook/glue_script_builder.dart';
 import '../../../launch/work_plane_paths.dart';
@@ -20,6 +19,7 @@ import '../../registry/capabilities/provider_capability.dart';
 import '../../registry/cli_tool_registry.dart';
 import '../../registry/config_profile/config_profile_context.dart';
 import '../../registry/config_profile/hook_seat_context_completer.dart';
+import '../../registry/hook/managed_hook_provisioner.dart';
 import '../provider/codex_auth_artifacts.dart';
 import '../provider/codex_effort_catalog.dart';
 import '../provider/codex_home_provisioner.dart';
@@ -359,7 +359,13 @@ final class CodexProviderCapability extends CatalogModelCapability
       if (allEntries.isNotEmpty) {
         final writer = const CodexHookWriter();
         final hooksDir = paths.joinWork(codexHome, 'hooks');
-        final result = writer.render(
+        final result = await ManagedHookProvisioner(
+          fs: paths.fs,
+          joinWork: paths.joinWork,
+          atomicWrite: true,
+          logPrefix: '[hook-writer] codex',
+        ).provision(
+          writer: writer,
           entries: allEntries,
           ctx: HookRenderContext(
             hooksDir: hooksDir,
@@ -367,18 +373,9 @@ final class CodexProviderCapability extends CatalogModelCapability
             glueBuilder: const GlueScriptBuilder(),
           ),
         );
-        for (final script in result.scripts) {
-          await paths.fs.atomicWrite(
-            paths.joinWork(hooksDir, script.fileName),
-            script.content,
-          );
-        }
         final fragment = result.configFragments['config.toml'] as String?;
         if (fragment != null && fragment.trim().isNotEmpty) {
           overlayParts.add(fragment);
-        }
-        for (final warning in result.warnings) {
-          appLogger.d('[hook-writer] codex $warning');
         }
       }
       final busOverlay =

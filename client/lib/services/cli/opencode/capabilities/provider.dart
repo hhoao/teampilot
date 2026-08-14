@@ -24,6 +24,7 @@ import '../../registry/capabilities/provider_capability.dart';
 import '../../registry/capabilities/prompt_capability.dart';
 import '../../registry/cli_tool_registry.dart';
 import '../../registry/config_profile/config_profile_context.dart';
+import '../../registry/hook/managed_hook_provisioner.dart';
 import '../provider/opencode_auth_artifacts.dart';
 import '../provider/opencode_data_layout.dart';
 import '../provider/opencode_effort_catalog.dart';
@@ -489,7 +490,19 @@ final class OpencodeProviderCapability extends CatalogModelCapability
     if (ctx.hooks.isNotEmpty) {
       final writer = const OpencodeHookWriter();
       final hooksDir = paths.joinWork(opencodeDir, 'hooks');
-      final result = writer.render(
+      final result = await ManagedHookProvisioner(
+        fs: paths.fs,
+        joinWork: paths.joinWork,
+        pathContext: paths.workPathContext,
+        atomicWrite: true,
+        ensureParentDirs: true,
+        logPrefix: '[hook-writer] opencode',
+        targetOverride: (fileName) =>
+            fileName == opencodeUserHooksPluginFileName
+            ? paths.joinWork(opencodeDir, fileName)
+            : null,
+      ).provision(
+        writer: writer,
         entries: ctx.hooks,
         ctx: HookRenderContext(
           hooksDir: hooksDir,
@@ -497,20 +510,6 @@ final class OpencodeProviderCapability extends CatalogModelCapability
           glueBuilder: const GlueScriptBuilder(),
         ),
       );
-      // Parent dirs ensured per script: managed scripts nest under
-      // `hooks/<id>/<fileName>` — LocalFilesystem.atomicWrite creates parents
-      // but Sftp/WslFilesystem do not.
-      final ensuredDirs = <String>{};
-      for (final script in result.scripts) {
-        final target = script.fileName == opencodeUserHooksPluginFileName
-            ? paths.joinWork(opencodeDir, script.fileName)
-            : paths.joinWork(hooksDir, script.fileName);
-        final parent = paths.workPathContext.dirname(target);
-        if (ensuredDirs.add(parent)) {
-          await paths.fs.ensureDir(parent);
-        }
-        await paths.fs.atomicWrite(target, script.content);
-      }
       final fragment =
           result.configFragments['opencode.json'] as Map<String, Object?>?;
       if (fragment != null) {
@@ -521,9 +520,6 @@ final class OpencodeProviderCapability extends CatalogModelCapability
           ),
         );
         changed = true;
-      }
-      for (final warning in result.warnings) {
-        appLogger.d('[hook-writer] opencode $warning');
       }
     }
 

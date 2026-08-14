@@ -30,6 +30,7 @@ import '../../registry/capabilities/prompt_capability.dart';
 import '../../registry/cli_tool_registry.dart';
 import '../../registry/config_profile/config_profile_context.dart';
 import '../../registry/config_profile/hook_seat_context_completer.dart';
+import '../../registry/hook/managed_hook_provisioner.dart';
 import '../provider/claude_effort_catalog.dart';
 import '../provider/claude_live_import.dart';
 import '../provider/claude_model_catalog.dart';
@@ -973,7 +974,12 @@ final class ClaudeProviderCapability extends CatalogModelCapability
     );
     if (hookWriter != null && entries.isNotEmpty) {
       final hooksDir = delegate.joinWork(memberToolDir, 'hooks');
-      final result = hookWriter.render(
+      final result = await ManagedHookProvisioner(
+        fs: delegate.fs,
+        joinWork: delegate.joinWork,
+        logPrefix: '[hook-writer] claude',
+      ).provision(
+        writer: hookWriter,
         entries: entries,
         ctx: HookRenderContext(
           hooksDir: hooksDir,
@@ -981,20 +987,11 @@ final class ClaudeProviderCapability extends CatalogModelCapability
           glueBuilder: const GlueScriptBuilder(),
         ),
       );
-      for (final script in result.scripts) {
-        await delegate.fs.writeString(
-          delegate.joinWork(hooksDir, script.fileName),
-          script.content,
-        );
-      }
       settings = mergeHooksInto(
         settings,
         (result.configFragments['settings.json'] as Map<String, Object?>?) ??
             const <String, Object?>{},
       );
-      for (final warning in result.warnings) {
-        appLogger.d('[hook-writer] claude $warning');
-      }
     }
     settings = await delegate.maybeApplyTeamLeadHooks(
       settings,
