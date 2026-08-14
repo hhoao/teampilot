@@ -27,26 +27,26 @@ index 4595a4705f1..c777456282a 100644
        ),
      );
 diff --git a/packages/flutter/lib/src/rendering/paragraph.dart b/packages/flutter/lib/src/rendering/paragraph.dart
-index 97a41dafb8d..1bc5a7ab705 100644
+index 5bcc4570209..2bff8c4b75d 100644
 --- a/packages/flutter/lib/src/rendering/paragraph.dart
 +++ b/packages/flutter/lib/src/rendering/paragraph.dart
-@@ -352,6 +352,7 @@ class RenderParagraph extends RenderBox
+@@ -354,6 +354,7 @@ class RenderParagraph extends RenderBox
      ui.TextHeightBehavior? textHeightBehavior,
      List<RenderBox>? children,
      Color? selectionColor,
 +    ui.BoxHeightStyle selectionHeightStyle = ui.BoxHeightStyle.tight,
      SelectionRegistrar? registrar,
+     double devicePixelRatio = 1.0,
    }) : assert(text.debugAssertIsValid()),
-        assert(maxLines == null || maxLines > 0),
-@@ -362,6 +363,7 @@ class RenderParagraph extends RenderBox
-        _softWrap = softWrap,
+@@ -366,6 +367,7 @@ class RenderParagraph extends RenderBox
         _overflow = overflow,
+        _devicePixelRatio = devicePixelRatio,
         _selectionColor = selectionColor,
 +       _selectionHeightStyle = selectionHeightStyle,
         _textPainter = TextPainter(
           text: text,
           textAlign: textAlign,
-@@ -757,6 +759,25 @@ class RenderParagraph extends RenderBox
+@@ -780,6 +782,25 @@ class RenderParagraph extends RenderBox
      }
    }
  
@@ -72,7 +72,7 @@ index 97a41dafb8d..1bc5a7ab705 100644
    Offset _getOffsetForPosition(TextPosition position) {
      return getOffsetForCaret(position, Rect.zero) + Offset(0, getFullHeightForCaret(position));
    }
-@@ -1518,7 +1539,10 @@ class _SelectableFragment
+@@ -1563,7 +1584,10 @@ class _SelectableFragment
      final flipHandles = isReversed != (TextDirection.rtl == paragraph.textDirection);
      final selection = TextSelection(baseOffset: selectionStart, extentOffset: selectionEnd);
      final selectionRects = <Rect>[];
@@ -84,7 +84,7 @@ index 97a41dafb8d..1bc5a7ab705 100644
        selectionRects.add(textBox.toRect());
      }
      final selectionCollapsed = selectionStart == selectionEnd;
-@@ -3568,9 +3592,77 @@ class _SelectableFragment
+@@ -3634,9 +3658,77 @@ class _SelectableFragment
        final selectionPaint = Paint()
          ..style = PaintingStyle.fill
          ..color = paragraph.selectionColor!;
@@ -162,10 +162,10 @@ index 97a41dafb8d..1bc5a7ab705 100644
        }
 +      context.canvas.drawPath(highlight, selectionPaint);
      }
-     if (_startHandleLayerLink != null && value.startSelectionPoint != null) {
-       context.pushLayer(
+   }
+ 
 diff --git a/packages/flutter/lib/src/widgets/basic.dart b/packages/flutter/lib/src/widgets/basic.dart
-index 95c9ceadaf1..2327d16348b 100644
+index 6d88d75ead7..f2a95d059e1 100644
 --- a/packages/flutter/lib/src/widgets/basic.dart
 +++ b/packages/flutter/lib/src/widgets/basic.dart
 @@ -11,7 +11,13 @@ library;
@@ -183,7 +183,7 @@ index 95c9ceadaf1..2327d16348b 100644
  
  import 'package:flutter/animation.dart';
  import 'package:flutter/foundation.dart';
-@@ -6625,6 +6631,7 @@ class RichText extends MultiChildRenderObjectWidget {
+@@ -6522,6 +6528,7 @@ class RichText extends MultiChildRenderObjectWidget {
      this.textHeightBehavior,
      this.selectionRegistrar,
      this.selectionColor,
@@ -191,7 +191,7 @@ index 95c9ceadaf1..2327d16348b 100644
    }) : assert(maxLines == null || maxLines > 0),
         assert(selectionRegistrar == null || selectionColor != null),
         assert(
-@@ -6734,6 +6741,12 @@ class RichText extends MultiChildRenderObjectWidget {
+@@ -6631,6 +6638,12 @@ class RichText extends MultiChildRenderObjectWidget {
    /// widgets.
    final Color? selectionColor;
  
@@ -201,27 +201,25 @@ index 95c9ceadaf1..2327d16348b 100644
 +  /// [DefaultSelectionStyle.selectionHeightStyle].
 +  final ui.BoxHeightStyle selectionHeightStyle;
 +
-   @override
-   RenderParagraph createRenderObject(BuildContext context) {
-     assert(textDirection != null || debugCheckHasDirectionality(context));
-@@ -6751,6 +6764,7 @@ class RichText extends MultiChildRenderObjectWidget {
+   double _getDevicePixelRatio(BuildContext context) =>
+       MediaQuery.maybeDevicePixelRatioOf(context) ?? View.maybeOf(context)?.devicePixelRatio ?? 1.0;
+ 
+@@ -6651,6 +6664,7 @@ class RichText extends MultiChildRenderObjectWidget {
        locale: locale ?? Localizations.maybeLocaleOf(context),
        registrar: selectionRegistrar,
        selectionColor: selectionColor,
 +      selectionHeightStyle: selectionHeightStyle,
+       devicePixelRatio: _getDevicePixelRatio(context),
      );
    }
- 
-@@ -6770,7 +6784,8 @@ class RichText extends MultiChildRenderObjectWidget {
-       ..textHeightBehavior = textHeightBehavior
+@@ -6672,6 +6686,7 @@ class RichText extends MultiChildRenderObjectWidget {
        ..locale = locale ?? Localizations.maybeLocaleOf(context)
        ..registrar = selectionRegistrar
--      ..selectionColor = selectionColor;
-+      ..selectionColor = selectionColor
-+      ..selectionHeightStyle = selectionHeightStyle;
+       ..selectionColor = selectionColor
++      ..selectionHeightStyle = selectionHeightStyle
+       ..devicePixelRatio = _getDevicePixelRatio(context);
    }
  
-   @override
 diff --git a/packages/flutter/lib/src/widgets/default_selection_style.dart b/packages/flutter/lib/src/widgets/default_selection_style.dart
 index 9709700d312..386869eb8d0 100644
 --- a/packages/flutter/lib/src/widgets/default_selection_style.dart
@@ -309,7 +307,7 @@ index 9709700d312..386869eb8d0 100644
  }
  
 diff --git a/packages/flutter/lib/src/widgets/text.dart b/packages/flutter/lib/src/widgets/text.dart
-index a3aa5fde862..3bf4569a3e5 100644
+index a44b97eeb0b..b7c582c9a1a 100644
 --- a/packages/flutter/lib/src/widgets/text.dart
 +++ b/packages/flutter/lib/src/widgets/text.dart
 @@ -13,7 +13,7 @@
