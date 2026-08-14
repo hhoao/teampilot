@@ -12,7 +12,7 @@ import '../../../provider/provider_catalog_access.dart';
 import '../provider/opencode_auth_artifacts.dart';
 import '../provider/opencode_data_layout.dart';
 import '../provider/opencode_provider_settings_resolver.dart';
-import '../provider/opencode_effort_capability.dart';
+import 'provider.dart';
 import '../provider/opencode_shared_plugin_deps.dart';
 import '../../../storage/runtime_context.dart';
 import '../../../storage/app_storage.dart';
@@ -673,7 +673,7 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
     if (profileEffort != null && profileEffort.trim().isNotEmpty) {
       return profileEffort.trim();
     }
-    const capability = OpencodeEffortCapability();
+    const capability = OpencodeProviderCapability();
     return resolveLaunchEffort(
       capability: capability,
       cli: CliTool.opencode,

@@ -6,7 +6,7 @@ import '../../../../models/team_config.dart';
 import '../../../../models/hook_entry.dart';
 import '../../../../repositories/cli_presets_repository.dart';
 import '../../../../utils/team/team_member_naming.dart';
-import '../provider/claude_effort_capability.dart';
+import 'provider.dart';
 import '../provider/claude_official_provider.dart';
 import '../../registry/capabilities/cli_effort_capability.dart';
 import '../provider/claude_provider_credentials_service.dart';
@@ -954,7 +954,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     if (profileEffort != null && profileEffort.trim().isNotEmpty) {
       return profileEffort.trim();
     }
-    const capability = ClaudeEffortCapability();
+    const capability = ClaudeProviderCapability();
     return resolveLaunchEffort(
       capability: capability,
       cli: CliTool.claude,

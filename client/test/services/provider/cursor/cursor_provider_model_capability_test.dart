@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/services/cli/registry/capabilities/provider_model_capability.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_agent_models_service.dart';
-import 'package:teampilot/services/cli/cursor/provider/cursor_provider_model_capability.dart';
+import 'package:teampilot/services/cli/cursor/capabilities/provider.dart';
 
 import '../../../support/in_memory_filesystem.dart';
 
@@ -16,7 +16,7 @@ void main() {
         throw StateError('process should not run');
       },
     );
-    final capability = CursorProviderModelCapability(modelsService: models);
+    final capability = CursorProviderCapability(modelsService: models);
 
     const provider = AppProviderConfig(
       id: 'cursor-account',

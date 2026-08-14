@@ -15,7 +15,7 @@ import '../../services/cli/registry/capabilities/provider_form_capability.dart';
 import '../../services/cli/registry/capabilities/provider_model_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
-import '../../services/cli/codex/provider/codex_provider_form_capability.dart';
+import '../../services/cli/codex/capabilities/provider.dart';
 import '../../services/provider/credential_binding.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/debounce/debounce.dart';

@@ -4,7 +4,7 @@ import '../../../../models/team_config.dart';
 import '../../registry/cli_tool_registry.dart';
 import '../provider/codex_auth_artifacts.dart';
 import '../../../mcp/mcp_credentials_store.dart';
-import '../provider/codex_effort_capability.dart';
+import 'provider.dart';
 import '../provider/codex_home_provisioner.dart';
 import '../../registry/capabilities/cli_effort_capability.dart';
 import '../provider/codex_official_provider.dart';
@@ -229,7 +229,7 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
     if (profileEffort != null && profileEffort.trim().isNotEmpty) {
       return profileEffort.trim();
     }
-    const capability = CodexEffortCapability();
+    const capability = CodexProviderCapability();
     return resolveLaunchEffort(
       capability: capability,
       cli: CliTool.codex,

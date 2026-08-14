@@ -1,3 +1,5 @@
+import 'capabilities/provider.dart';
+import '../registry/capabilities/provider_capability.dart';
 import '../../../models/team_config.dart';
 import 'capabilities/launch_args.dart';
 import '../registry/cli_capability.dart';
@@ -5,30 +7,19 @@ import '../registry/cli_tool_definition.dart';
 import 'capabilities/team_behavior.dart';
 import 'capabilities/chat_interaction.dart';
 import 'capabilities/terminal_behavior.dart';
-import 'capabilities/provider_catalog.dart';
-import '../registry/capabilities/provider_catalog_capability.dart';
 import '../registry/capabilities/team_behavior_capability.dart';
 import '../registry/capabilities/config_profile_capability.dart';
-import '../registry/capabilities/cli_effort_capability.dart';
 import '../registry/capabilities/headless_capability.dart';
 import '../registry/capabilities/launch_args_capability.dart';
-import '../registry/capabilities/provider_model_capability.dart';
 import 'capabilities/history/ai_history_capability.dart';
 import 'capabilities/config_profile.dart';
 import 'capabilities/prompt.dart';
 import '../registry/capabilities/prompt_capability.dart';
 import 'capabilities/headless.dart';
-import 'provider/flashskyai_effort_capability.dart';
-import 'provider/flashskyai_provider_form_capability.dart';
 import '../registry/capabilities/member_config_inspection_capability.dart';
-import '../registry/capabilities/provider_form_capability.dart';
 import '../registry/capabilities/skill_capability.dart';
 import '../registry/capabilities/chat_interaction_capability.dart';
-import 'capabilities/provider_display.dart';
-import '../registry/capabilities/provider_display_capability.dart';
 import '../registry/capabilities/cli_executable_capability.dart';
-import 'capabilities/credential_export.dart';
-import '../registry/capabilities/credential_export_capability.dart';
 import '../claude/capabilities/mcp.dart';
 import 'capabilities/plugin.dart';
 import '../registry/capabilities/plugin_capability.dart';
@@ -46,20 +37,17 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     this.terminalBehavior = const FlashskyaiTerminalBehavior(),
     this.memberConfigInspection = const DefaultMemberConfigInspection(),
     this.plugin = const FlashskyaiPluginCapability(),
-    this.providerCatalog = const FlashskyaiProviderCatalogCapability(),
-    this.providerModel = const ProviderRecordModelCapability(),
-    this.effort = const FlashskyaiEffortCapability(),
+    this.provider = const FlashskyaiProviderCapability(),
     this.headless = const FlashskyaiHeadlessCapability(),
-    this.providerForm = const FlashskyaiProviderFormCapability(),
     this.mcp = const FlashskyaiMcpCapability(),
     this.chatInteraction = const FlashskyaiChatInteraction(),
     this.aiHistory = const FlashskyaiAiHistoryCapability(),
     this.skill = const DefaultSkillCapability(),
-    this.providerDisplay = const FlashskyaiProviderDisplay(),
-    this.credentialExport = const NoCredentialExport(),
     this.hookWriter = const ClaudeFamilyHookWriter(),
     this.prompt = const FlashskyaiPromptCapability(),
   });
+
+  final ProviderCapability provider;
 
   final LaunchArgsCapability launchArgs;
   final ConfigProfileCapability configProfile;
@@ -67,16 +55,10 @@ final class FlashskyaiCliTool implements CliToolDefinition {
   final FlashskyaiTerminalBehavior terminalBehavior;
   final MemberConfigInspectionCapability memberConfigInspection;
   final PluginCapability plugin;
-  final ProviderCatalogCapability providerCatalog;
-  final ProviderModelCapability providerModel;
-  final CliEffortCapability effort;
   final HeadlessCapability headless;
-  final ProviderFormCapability providerForm;
   final FlashskyaiMcpCapability mcp;
 
   final TeamBehaviorCapability teamBehavior;
-  final ProviderDisplayCapability providerDisplay;
-  final CredentialExportCapability credentialExport;
   final HookCapability hookWriter;
   final PromptCapability prompt;
   final ChatInteractionCapability chatInteraction;
@@ -98,14 +80,9 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     terminalBehavior,
     memberConfigInspection,
     plugin,
-    providerCatalog,
-    providerModel,
-    providerForm,
-    effort,
+    provider,
     headless,
     mcp,
-    providerDisplay,
-    credentialExport,
     chatInteraction,
     aiHistory,
     skill,

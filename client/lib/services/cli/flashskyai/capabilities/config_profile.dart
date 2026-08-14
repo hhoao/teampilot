@@ -3,7 +3,7 @@ import '../../../../models/hook_entry.dart';
 import '../../../../utils/team/team_member_naming.dart';
 import '../../../launch/work_plane_paths.dart';
 import '../../../provider/cross_machine_credential_bridge.dart';
-import '../provider/flashskyai_effort_capability.dart';
+import 'provider.dart';
 import '../../../session/member_role_provision.dart';
 import '../../registry/capabilities/cli_effort_capability.dart';
 import '../../registry/capabilities/config_profile_capability.dart';
@@ -505,7 +505,7 @@ final class FlashskyaiConfigProfileCapability
     if (profileEffort != null && profileEffort.trim().isNotEmpty) {
       return profileEffort.trim();
     }
-    const capability = FlashskyaiEffortCapability();
+    const capability = FlashskyaiProviderCapability();
     return resolveLaunchEffort(
       capability: capability,
       cli: CliTool.flashskyai,

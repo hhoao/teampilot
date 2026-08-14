@@ -4,8 +4,8 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/registry/capabilities/cli_effort_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/config_profile.dart';
-import 'package:teampilot/services/cli/flashskyai/provider/flashskyai_effort_capability.dart';
-import 'package:teampilot/services/cli/opencode/provider/opencode_effort_capability.dart';
+import 'package:teampilot/services/cli/flashskyai/capabilities/provider.dart';
+import 'package:teampilot/services/cli/opencode/capabilities/provider.dart';
 
 void main() {
   test('built-in registry registers effort on CLIs that support it', () {
@@ -27,7 +27,7 @@ void main() {
   });
 
   test('OpencodeEffortCapability uses provider placement', () {
-    const capability = OpencodeEffortCapability();
+    const capability = OpencodeProviderCapability();
     const provider = AppProviderConfig(
       id: 'p1',
       cli: CliTool.opencode,
@@ -64,7 +64,7 @@ void main() {
   });
 
   test('FlashskyaiEffortCapability mirrors Claude placement', () {
-    const capability = FlashskyaiEffortCapability();
+    const capability = FlashskyaiProviderCapability();
     expect(capability.teamPickerPlacement(), EffortPickerPlacement.team);
     expect(capability.memberPickerPlacement(), EffortPickerPlacement.member);
     expect(capability.isApplicable(model: 'sonnet'), isTrue);

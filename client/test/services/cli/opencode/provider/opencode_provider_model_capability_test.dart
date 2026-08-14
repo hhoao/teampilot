@@ -4,7 +4,7 @@ import 'package:http/testing.dart';
 import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/services/cli/opencode/provider/opencode_model_catalog.dart';
 import 'package:teampilot/services/cli/opencode/provider/opencode_models_service.dart';
-import 'package:teampilot/services/cli/opencode/provider/opencode_provider_model_capability.dart';
+import 'package:teampilot/services/cli/opencode/capabilities/provider.dart';
 import 'package:teampilot/services/cli/registry/capabilities/provider_model_capability.dart';
 
 import '../../../../support/in_memory_filesystem.dart';
@@ -24,7 +24,7 @@ void main() {
     await service.ensureLoaded();
 
     // service is a runtime value, so the capability cannot be const here.
-    final capability = OpencodeProviderModelCapability(modelsService: service);
+    final capability = OpencodeProviderCapability(modelsService: service);
     final models = capability.modelCandidates(
       provider: null,
       providerId: 'opencode',
@@ -34,7 +34,7 @@ void main() {
   });
 
   test('falls back to static catalog without service', () {
-    final capability = OpencodeProviderModelCapability();
+    final capability = OpencodeProviderCapability();
     final models = capability.modelCandidates(
       provider: null,
       providerId: 'opencode',
@@ -44,7 +44,7 @@ void main() {
   });
 
   test('is refreshable and exposes picker mode', () {
-    final capability = OpencodeProviderModelCapability();
+    final capability = OpencodeProviderCapability();
     expect(capability, isA<RefreshableProviderModelCapability>());
     expect(
       capability.pickerMode(
