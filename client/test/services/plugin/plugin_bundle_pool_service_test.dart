@@ -217,7 +217,12 @@ void main() {
 
     expect(second.linked, ['demo-bundle'],
         reason: 'broken pool entry must be re-linked, not fast-pathed');
-    expect(await fs.resolveSymlink(dest), p.join(sourceRoot, 'demo-bundle'));
+    expect(
+      await fs.resolveSymlink(dest),
+      // Normalize both sides: macOS /var is a symlink to /private/var and
+      // resolveSymbolicLinks() canonicalizes it.
+      await File(p.join(sourceRoot, 'demo-bundle')).resolveSymbolicLinks(),
+    );
   });
 
   test('removes stale bundles but keeps writer-managed entries', () async {
