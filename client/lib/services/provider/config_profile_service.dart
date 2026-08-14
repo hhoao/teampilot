@@ -17,7 +17,7 @@ import '../host/host_execution_environment.dart';
 import '../host/host_script_dialect.dart';
 import '../host/script_file_hook_provisioner.dart';
 import '../cli/registry/capabilities/config_profile_capability.dart';
-import '../cli/registry/capabilities/plugin_provisioner_capability.dart';
+import '../cli/registry/capabilities/plugin_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../plugin/installed_plugin_catalog.dart';
 import '../plugin/marketplace_shared_store.dart';
@@ -325,7 +325,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     await MarketplaceSharedStore(fs: fs, teampilotRoot: basePath)
         .ensureSessionMarketplacesLinked(configDir: configDir, tool: cli);
     final pluginProvisioner = _cliRegistry
-        .capability<PluginProvisionerCapability>(cli);
+        .capability<PluginCapability>(cli);
     final warmTier = CursorWorkspaceWarmTier.applies(team: team, cli: cli);
     if (pluginProvisioner != null) {
       final installedCatalog = await InstalledPluginCatalog.load(fs, basePath);
@@ -538,7 +538,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     });
 
     final pluginProvisioner = _cliRegistry
-        .capability<PluginProvisionerCapability>(cli);
+        .capability<PluginCapability>(cli);
     if (pluginProvisioner != null) {
       late final List<Plugin> installedCatalog;
       late final PluginBundlePoolResult poolResult;

@@ -1,6 +1,6 @@
 import '../../models/plugin.dart';
 import '../../models/team_config.dart';
-import '../cli/registry/capabilities/plugin_provisioner_capability.dart';
+import '../cli/registry/capabilities/plugin_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 
 enum PluginCliSupportLevel { fullySupported, partiallySupported, notApplicable }
@@ -40,7 +40,7 @@ PluginCliSupportStatus analyzePluginCliSupport({
     );
   }
 
-  final provisioner = pluginProvisionerForTool(tool, registry: registry);
+  final provisioner = pluginCapabilityForTool(tool, registry: registry);
   if (provisioner == null) {
     return PluginCliSupportStatus(
       tool: tool,

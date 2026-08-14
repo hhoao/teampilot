@@ -32,14 +32,11 @@ import '../registry/capabilities/chat_interaction_capability.dart';
 import 'capabilities/provider_display.dart';
 import '../registry/capabilities/provider_display_capability.dart';
 import '../registry/capabilities/cli_executable_capability.dart';
-import 'capabilities/marketplace_consumer.dart';
-import 'capabilities/remote_app_data.dart';
 import 'capabilities/credential_export.dart';
-import '../registry/capabilities/marketplace_consumer_capability.dart';
-import '../registry/capabilities/remote_app_data_capability.dart';
 import '../registry/capabilities/credential_export_capability.dart';
 import 'capabilities/mcp_config_writer.dart';
-import 'capabilities/plugin_provisioner.dart';
+import 'capabilities/plugin.dart';
+import '../registry/capabilities/plugin_capability.dart';
 import 'capabilities/post_manifest_flush.dart';
 import 'capabilities/skill.dart';
 import 'capabilities/executable.dart';
@@ -57,7 +54,7 @@ final class CursorCliTool implements CliToolDefinition {
     this.executable = const CursorExecutableCapability(),
     this.terminalBehavior = const CursorTerminalBehavior(),
     this.memberConfigInspection = const DefaultMemberConfigInspection(),
-    this.pluginProvisioner = const CursorPluginProvisioner(),
+    this.plugin = const CursorPluginCapability(),
     this.providerCatalog = const CursorProviderCatalogCapability(),
     CursorProviderModelCapability? providerModel,
     this.headless = const CursorHeadlessCapability(),
@@ -69,8 +66,6 @@ final class CursorCliTool implements CliToolDefinition {
     this.skill = const CursorSkillCapability(),
     this.postManifestFlush = const CursorPostManifestFlushCapability(),
     this.providerDisplay = const CursorProviderDisplay(),
-    this.marketplaceConsumer = const MarketplaceConsumer(),
-    this.remoteAppData = const NoRemoteAppData(),
     this.credentialExport = const CursorCredentialExport(),
     this.hookWriter = const CursorHookWriter(),
     this.promptProvision = const CursorPromptProvisionCapability(),
@@ -88,7 +83,7 @@ final class CursorCliTool implements CliToolDefinition {
   final CliExecutableCapability executable;
   final CursorTerminalBehavior terminalBehavior;
   final MemberConfigInspectionCapability memberConfigInspection;
-  final CursorPluginProvisioner pluginProvisioner;
+  final PluginCapability plugin;
   final ProviderCatalogCapability providerCatalog;
   final CursorProviderModelCapability providerModel;
   final HeadlessCapability headless;
@@ -97,8 +92,6 @@ final class CursorCliTool implements CliToolDefinition {
 
   final TeamBehaviorCapability teamBehavior;
   final ProviderDisplayCapability providerDisplay;
-  final MarketplaceConsumerCapability marketplaceConsumer;
-  final RemoteAppDataCapability remoteAppData;
   final CredentialExportCapability credentialExport;
   final HookWriterCapability hookWriter;
   final ChatInteractionCapability chatInteraction;
@@ -122,7 +115,7 @@ final class CursorCliTool implements CliToolDefinition {
     sessionLifecycle,
     terminalBehavior,
     memberConfigInspection,
-    pluginProvisioner,
+    plugin,
     providerCatalog,
     providerModel,
     providerCredential,
@@ -131,8 +124,6 @@ final class CursorCliTool implements CliToolDefinition {
     configLayout,
     mcpConfigWriter,
     providerDisplay,
-    marketplaceConsumer,
-    remoteAppData,
     credentialExport,
     chatInteraction,
     aiHistory,

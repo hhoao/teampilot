@@ -4,9 +4,8 @@ import '../../models/plugin.dart';
 import '../../models/team_config.dart';
 import '../../utils/lock_pool.dart';
 import '../../utils/logging/logger.dart';
-import '../cli/registry/capabilities/marketplace_consumer_capability.dart';
+import '../cli/registry/capabilities/plugin_capability.dart';
 import '../cli/registry/capabilities/plugin_manifest_paths.dart';
-import '../cli/registry/capabilities/plugin_provisioner_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../io/filesystem.dart';
 import '../storage/app_storage.dart';
@@ -19,9 +18,9 @@ import 'plugin_repo_service.dart';
 /// Tools whose plugin provisioning consumes marketplaces from the session
 /// CONFIG_DIR (`{config}/plugins/marketplaces`).
 Iterable<CliTool> get marketplaceConsumerTools => CliToolRegistry.builtIn()
-    .withCapability<MarketplaceConsumerCapability>()
+    .withCapability<PluginCapability>()
     .where((def) => CliToolRegistry.builtIn()
-        .capability<MarketplaceConsumerCapability>(def.id)
+        .capability<PluginCapability>(def.id)
         ?.consumesMarketplaces == true)
     .map((def) => def.id);
 
@@ -216,7 +215,7 @@ class MarketplaceSharedStore {
     required String configDir,
     required CliTool tool,
   }) async {
-    final paths = pluginManifestPathsForTool(tool);
+    final paths = pluginCapabilityForTool(tool)?.manifestPaths;
     if (paths == null) return;
     final markets = await PluginRepoService.loadMarketplacesFor(fs, teampilotRoot);
     for (final m in markets) {
@@ -277,7 +276,7 @@ class MarketplaceSharedStore {
       }
     }
     for (final candidate in candidates) {
-      final paths = pluginManifestPathsForTool(candidate.tool);
+      final paths = pluginCapabilityForTool(candidate.tool)?.manifestPaths;
       if (paths == null) continue;
       final shared = await ensureShared(
         tool: candidate.tool,

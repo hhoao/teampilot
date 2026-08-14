@@ -3,16 +3,17 @@ import 'dart:convert';
 import '../../../../models/plugin.dart';
 import '../../../io/filesystem.dart';
 import '../../../plugin/cli_plugin_layout.dart';
+import '../../registry/capabilities/plugin_capability.dart';
+import '../../registry/capabilities/plugin_manifest_paths.dart';
+import '../../registry/capabilities/skill_capability.dart';
 import '../provider/codex_home_provisioner.dart';
 import '../provider/codex_session_config_dir.dart';
-import '../../registry/capabilities/plugin_manifest_paths.dart';
-import '../../registry/capabilities/plugin_provisioner_capability.dart';
 import 'toml_merge.dart';
 
 /// Materializes Codex's local marketplace + plugin cache and writes
 /// `[marketplaces.local]` / `[plugins.*]` into `config.toml`.
-final class CodexPluginProvisioner implements PluginProvisionerCapability {
-  const CodexPluginProvisioner();
+final class CodexPluginCapability implements PluginCapability {
+  const CodexPluginCapability();
 
   @override
   PluginManifestPaths? get manifestPaths => codexPluginManifestPaths;
@@ -54,6 +55,22 @@ final class CodexPluginProvisioner implements PluginProvisionerCapability {
     await ctx.fs.ensureDir(ctx.configDir);
     await ctx.fs.atomicWrite(configPath, merged);
   }
+
+  @override
+  bool get consumesMarketplaces => false;
+
+  @override
+  bool get needsSharedPluginDepsBeforeReconcile => false;
+
+  @override
+  Future<void> seedSharedPluginDeps({Filesystem? homeFs, String? homeRoot}) async {}
+
+  @override
+  String get pluginsSubdir => 'plugins';
+
+  @override
+  ResourceRepresentation get pluginsRepresentation =>
+      ResourceRepresentation.linkedDirectory;
 
   static Future<List<CodexPluginEnableSpec>> _materializeAndCollectEnables(
     PluginProvisionContext ctx,

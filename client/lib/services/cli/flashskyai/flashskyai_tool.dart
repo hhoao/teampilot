@@ -27,14 +27,11 @@ import '../registry/capabilities/chat_interaction_capability.dart';
 import 'capabilities/provider_display.dart';
 import '../registry/capabilities/provider_display_capability.dart';
 import '../registry/capabilities/cli_executable_capability.dart';
-import 'capabilities/marketplace_consumer.dart';
-import 'capabilities/remote_app_data.dart';
 import 'capabilities/credential_export.dart';
-import '../registry/capabilities/marketplace_consumer_capability.dart';
-import '../registry/capabilities/remote_app_data_capability.dart';
 import '../registry/capabilities/credential_export_capability.dart';
 import '../claude/capabilities/mcp_config_writer.dart';
-import 'capabilities/plugin_provisioner.dart';
+import 'capabilities/plugin.dart';
+import '../registry/capabilities/plugin_capability.dart';
 import 'capabilities/executable.dart';
 import '../registry/resources/default_resource_capability.dart';
 import '../registry/config_profile/claude_family_hook_writer.dart';
@@ -48,7 +45,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     this.executable = const FlashskyaiExecutableCapability(),
     this.terminalBehavior = const FlashskyaiTerminalBehavior(),
     this.memberConfigInspection = const DefaultMemberConfigInspection(),
-    this.pluginProvisioner = const FlashskyaiPluginProvisioner(),
+    this.plugin = const FlashskyaiPluginCapability(),
     this.providerCatalog = const FlashskyaiProviderCatalogCapability(),
     this.providerModel = const ProviderRecordModelCapability(),
     this.effort = const FlashskyaiEffortCapability(),
@@ -59,8 +56,6 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     this.aiHistory = const FlashskyaiAiHistoryCapability(),
     this.skill = const DefaultSkillCapability(),
     this.providerDisplay = const FlashskyaiProviderDisplay(),
-    this.marketplaceConsumer = const MarketplaceConsumer(),
-    this.remoteAppData = const NoRemoteAppData(),
     this.credentialExport = const NoCredentialExport(),
     this.hookWriter = const ClaudeFamilyHookWriter(),
     this.promptProvision = const FlashskyaiPromptProvisionCapability(),
@@ -71,7 +66,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
   final CliExecutableCapability executable;
   final FlashskyaiTerminalBehavior terminalBehavior;
   final MemberConfigInspectionCapability memberConfigInspection;
-  final FlashskyaiPluginProvisioner pluginProvisioner;
+  final PluginCapability plugin;
   final ProviderCatalogCapability providerCatalog;
   final ProviderModelCapability providerModel;
   final CliEffortCapability effort;
@@ -81,8 +76,6 @@ final class FlashskyaiCliTool implements CliToolDefinition {
 
   final TeamBehaviorCapability teamBehavior;
   final ProviderDisplayCapability providerDisplay;
-  final MarketplaceConsumerCapability marketplaceConsumer;
-  final RemoteAppDataCapability remoteAppData;
   final CredentialExportCapability credentialExport;
   final HookWriterCapability hookWriter;
   final PromptProvisionCapability promptProvision;
@@ -104,7 +97,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     configProfile,
     terminalBehavior,
     memberConfigInspection,
-    pluginProvisioner,
+    plugin,
     providerCatalog,
     providerModel,
     providerForm,
@@ -112,8 +105,6 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     headless,
     mcpConfigWriter,
     providerDisplay,
-    marketplaceConsumer,
-    remoteAppData,
     credentialExport,
     chatInteraction,
     aiHistory,

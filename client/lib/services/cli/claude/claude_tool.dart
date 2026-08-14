@@ -1,8 +1,6 @@
 import '../../../models/team_config.dart';
 import 'capabilities/launch_args.dart';
 import 'capabilities/provider_display.dart';
-import 'capabilities/marketplace_consumer.dart';
-import 'capabilities/remote_app_data.dart';
 import 'capabilities/credential_export.dart';
 import '../registry/cli_capability.dart';
 import '../registry/cli_tool_definition.dart';
@@ -32,15 +30,14 @@ import '../registry/capabilities/chat_interaction_capability.dart';
 import '../registry/capabilities/provider_display_capability.dart';
 import '../registry/capabilities/credential_binding_capability.dart';
 import '../registry/capabilities/cli_executable_capability.dart';
-import '../registry/capabilities/marketplace_consumer_capability.dart';
-import '../registry/capabilities/remote_app_data_capability.dart';
 import '../registry/capabilities/credential_export_capability.dart';
 import 'capabilities/mcp_config_writer.dart';
-import 'capabilities/plugin_provisioner.dart';
+import 'capabilities/plugin.dart';
 import 'capabilities/credential_binding.dart';
 import 'capabilities/prompt_provision.dart';
 import 'capabilities/executable.dart';
 import '../registry/capabilities/prompt_provision_capability.dart';
+import '../registry/capabilities/plugin_capability.dart';
 import '../registry/resources/default_resource_capability.dart';
 import '../registry/config_profile/claude_family_hook_writer.dart';
 import '../registry/capabilities/hook_writer_capability.dart';
@@ -53,7 +50,7 @@ final class ClaudeCliTool implements CliToolDefinition {
     this.executable = const ClaudeExecutableCapability(),
     this.terminalBehavior = const ClaudeTerminalBehavior(),
     this.memberConfigInspection = const DefaultMemberConfigInspection(),
-    this.pluginProvisioner = const ClaudePluginProvisioner(),
+    this.plugin = const ClaudePluginCapability(),
     this.providerCatalog = const ClaudeProviderCatalogCapability(),
     this.providerModel = const ClaudeProviderModelCapability(),
     this.effort = const ClaudeEffortCapability(),
@@ -64,8 +61,6 @@ final class ClaudeCliTool implements CliToolDefinition {
     this.aiHistory = const ClaudeAiHistoryCapability(),
     this.skill = const DefaultSkillCapability(),
     this.providerDisplay = const ClaudeProviderDisplay(),
-    this.marketplaceConsumer = const MarketplaceConsumer(),
-    this.remoteAppData = const NoRemoteAppData(),
     this.credentialExport = const ClaudeCredentialExport(),
     this.credentialBinding = const ClaudeCredentialBindingCapability(),
     this.promptProvision = const ClaudePromptProvisionCapability(),
@@ -84,7 +79,7 @@ final class ClaudeCliTool implements CliToolDefinition {
   final CliExecutableCapability executable;
   final ClaudeTerminalBehavior terminalBehavior;
   final MemberConfigInspectionCapability memberConfigInspection;
-  final ClaudePluginProvisioner pluginProvisioner;
+  final PluginCapability plugin;
   final ProviderCatalogCapability providerCatalog;
   final ProviderModelCapability providerModel;
   final CliEffortCapability effort;
@@ -96,8 +91,6 @@ final class ClaudeCliTool implements CliToolDefinition {
   final ClaudeAiHistoryCapability aiHistory;
   final SkillCapability skill;
   final ProviderDisplayCapability providerDisplay;
-  final MarketplaceConsumerCapability marketplaceConsumer;
-  final RemoteAppDataCapability remoteAppData;
   final CredentialExportCapability credentialExport;
   final CredentialBindingCapability credentialBinding;
   final PromptProvisionCapability promptProvision;
@@ -116,7 +109,7 @@ final class ClaudeCliTool implements CliToolDefinition {
     configProfile,
     terminalBehavior,
     memberConfigInspection,
-    pluginProvisioner,
+    plugin,
     providerCatalog,
     providerModel,
     providerCredential,
@@ -128,8 +121,6 @@ final class ClaudeCliTool implements CliToolDefinition {
     aiHistory,
     skill,
     providerDisplay,
-    marketplaceConsumer,
-    remoteAppData,
     credentialExport,
     credentialBinding,
     promptProvision,

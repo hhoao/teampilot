@@ -1,10 +1,12 @@
+import '../../../io/filesystem.dart';
+import '../../registry/capabilities/plugin_capability.dart';
 import '../../registry/capabilities/plugin_manifest_paths.dart';
-import '../../registry/capabilities/plugin_provisioner_capability.dart';
-import '../../../cli/registry/plugins/claude_flavor_registry_writer.dart';
+import '../../registry/capabilities/skill_capability.dart';
+import '../../registry/plugins/claude_flavor_registry_writer.dart';
 
 /// Claude Code plugin registration (`enabledPlugins`, installed_plugins v2).
-final class ClaudePluginProvisioner implements PluginProvisionerCapability {
-  const ClaudePluginProvisioner();
+final class ClaudePluginCapability implements PluginCapability {
+  const ClaudePluginCapability();
 
   @override
   PluginManifestPaths? get manifestPaths => claudePluginManifestPaths;
@@ -36,4 +38,20 @@ final class ClaudePluginProvisioner implements PluginProvisionerCapability {
       memberProvisionJson: ctx.memberProvisionJson,
     );
   }
+
+  @override
+  bool get consumesMarketplaces => true;
+
+  @override
+  bool get needsSharedPluginDepsBeforeReconcile => false;
+
+  @override
+  Future<void> seedSharedPluginDeps({Filesystem? homeFs, String? homeRoot}) async {}
+
+  @override
+  String get pluginsSubdir => 'plugins';
+
+  @override
+  ResourceRepresentation get pluginsRepresentation =>
+      ResourceRepresentation.linkedDirectory;
 }

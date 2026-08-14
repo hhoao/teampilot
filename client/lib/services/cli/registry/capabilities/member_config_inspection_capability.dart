@@ -8,7 +8,7 @@ import '../../../io/filesystem.dart';
 import '../../member_config/member_config_detail.dart';
 import '../cli_capability.dart';
 import '../cli_tool_registry.dart';
-import 'plugin_provisioner_capability.dart';
+import 'plugin_capability.dart';
 import 'skill_capability.dart';
 
 /// Inputs for [MemberConfigInspectionCapability.inspect], resolved by
@@ -116,12 +116,13 @@ class DefaultMemberConfigInspection
     List<SectionWarning> warnings,
   ) async {
     final segments =
-        pluginProvisionerForTool(ctx.cli)?.memberPluginsSubpath ??
+        pluginCapabilityForTool(ctx.cli)?.memberPluginsSubpath ??
         const ['plugins'];
     final dir = _pc(ctx).joinAll([ctx.configDir, ...segments]);
     if (!(await ctx.fs.stat(dir)).isDirectory) return const [];
     final candidates =
-        (pluginManifestPathsForTool(ctx.cli) ?? neutralPluginManifestPaths)
+        (pluginCapabilityForTool(ctx.cli)?.manifestPaths ??
+                neutralPluginManifestPaths)
             .manifestCandidates()
             .toList();
     final out = <PluginEntry>[];

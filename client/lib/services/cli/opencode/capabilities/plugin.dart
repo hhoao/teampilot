@@ -3,10 +3,12 @@ import 'dart:convert';
 import '../../../../models/mcp_server_spec.dart';
 import '../../../io/filesystem.dart';
 import '../../../plugin/cli_plugin_layout.dart';
+import '../../../storage/runtime_layout.dart';
+import '../../registry/capabilities/plugin_capability.dart';
 import '../../registry/capabilities/plugin_manifest_paths.dart';
-import '../../registry/capabilities/plugin_provisioner_capability.dart';
 import '../../registry/capabilities/skill_capability.dart';
 import '../../registry/cli_tool_registry.dart';
+import '../provider/opencode_shared_plugin_deps.dart';
 import 'config_profile.dart';
 import 'mcp_config_writer.dart';
 
@@ -17,11 +19,11 @@ import 'mcp_config_writer.dart';
 ///   `<configDir>/plugins/<name>/` and registered in `opencode.json` `plugin`
 ///   so opencode loads them at startup (path specs resolve relative to the
 ///   config file — no npm install needed).
-final class OpencodePluginProvisioner implements PluginProvisionerCapability {
-  const OpencodePluginProvisioner();
+final class OpencodePluginCapability implements PluginCapability {
+  const OpencodePluginCapability();
 
   static const agentSubdir = 'agent';
-  static const pluginsSubdir = 'plugins';
+  static const pluginsSubdirName = 'plugins';
   static const opencodeFlavorDir = '.opencode';
   static const _opencodePluginDirs = ['plugins', 'plugin'];
 
@@ -30,7 +32,7 @@ final class OpencodePluginProvisioner implements PluginProvisionerCapability {
 
   // Materialized bundles land under `plugins/`; inspection lists them here.
   @override
-  List<String> get memberPluginsSubpath => const [pluginsSubdir];
+  List<String> get memberPluginsSubpath => const [pluginsSubdirName];
 
   @override
   Set<PluginComponentKind> get supported => const {
@@ -90,6 +92,34 @@ final class OpencodePluginProvisioner implements PluginProvisionerCapability {
     }
   }
 
+  @override
+  bool get consumesMarketplaces => false;
+
+  @override
+  bool get needsSharedPluginDepsBeforeReconcile => true;
+
+  @override
+  Future<void> seedSharedPluginDeps({
+    required Filesystem homeFs,
+    required String homeRoot,
+  }) async {
+    final homeLayout = RuntimeLayout(
+      teampilotRoot: homeRoot,
+      fs: homeFs,
+    );
+    await OpencodeSharedPluginDeps(
+      layout: homeLayout,
+      fs: homeFs,
+    ).ensureSharedInstalled();
+  }
+
+  @override
+  String get pluginsSubdir => pluginsSubdirName;
+
+  @override
+  ResourceRepresentation get pluginsRepresentation =>
+      ResourceRepresentation.linkedDirectory;
+
   /// Copies the whole bundle into `<configDir>/plugins/<name>/` when it ships
   /// an opencode plugin, returning `plugin` array entries (`./plugins/...`)
   /// for each entry file. The full tree is copied (not just the entry file)
@@ -105,7 +135,7 @@ final class OpencodePluginProvisioner implements PluginProvisionerCapability {
     if (rels.isEmpty) return const [];
 
     final ctx = fs.pathContext;
-    final destRoot = ctx.join(configDir, pluginsSubdir, poolEntryName);
+    final destRoot = ctx.join(configDir, pluginsSubdirName, poolEntryName);
     // For opencode the bundle pool dir IS `{configDir}/plugins` (the pool
     // reconcile already materialized the full bundle at the pool entry), so
     // the source sits exactly where the plugin would be copied. Linking it
@@ -122,7 +152,7 @@ final class OpencodePluginProvisioner implements PluginProvisionerCapability {
       );
     }
     return [
-      for (final rel in rels) './$pluginsSubdir/$poolEntryName/$rel',
+      for (final rel in rels) './$pluginsSubdirName/$poolEntryName/$rel',
     ];
   }
 

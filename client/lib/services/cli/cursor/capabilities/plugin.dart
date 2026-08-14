@@ -4,13 +4,14 @@ import '../../../../models/mcp_server_spec.dart';
 import '../../../io/filesystem.dart';
 import '../../../cli/registry/plugins/claude_flavor_registry_writer.dart';
 import '../../../plugin/cli_plugin_layout.dart';
+import '../../registry/capabilities/plugin_capability.dart';
 import '../../registry/capabilities/plugin_manifest_paths.dart';
-import '../../registry/capabilities/plugin_provisioner_capability.dart';
+import '../../registry/capabilities/skill_capability.dart';
 import 'mcp_config_writer.dart';
 
 /// Cursor plugin materialization + Claude-flavor registry registration.
-final class CursorPluginProvisioner implements PluginProvisionerCapability {
-  const CursorPluginProvisioner();
+final class CursorPluginCapability implements PluginCapability {
+  const CursorPluginCapability();
 
   static const localPluginsSegment = 'local';
 
@@ -56,6 +57,22 @@ final class CursorPluginProvisioner implements PluginProvisionerCapability {
       memberProvisionJson: ctx.memberProvisionJson,
     );
   }
+
+  @override
+  bool get consumesMarketplaces => true;
+
+  @override
+  bool get needsSharedPluginDepsBeforeReconcile => false;
+
+  @override
+  Future<void> seedSharedPluginDeps({Filesystem? homeFs, String? homeRoot}) async {}
+
+  @override
+  String get pluginsSubdir => 'plugins/$localPluginsSegment';
+
+  @override
+  ResourceRepresentation get pluginsRepresentation =>
+      ResourceRepresentation.linkedDirectory;
 
   static Future<void> _materializeToLocal(
     PluginProvisionContext ctx,

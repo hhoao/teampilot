@@ -16,11 +16,10 @@ import 'capabilities/launch_args_capability.dart';
 import 'capabilities/team_behavior_capability.dart';
 import 'capabilities/provider_display_capability.dart';
 import 'capabilities/cli_executable_capability.dart';
-import 'capabilities/marketplace_consumer_capability.dart';
 import 'capabilities/chat_interaction_capability.dart';
 import 'capabilities/credential_export_capability.dart';
-import 'capabilities/remote_app_data_capability.dart';
 import 'capabilities/terminal_behavior_capability.dart';
+import 'capabilities/plugin_capability.dart';
 import 'cli_bootstrap.dart';
 import 'cli_capability.dart';
 import 'cli_tool_registry.dart';
@@ -107,10 +106,9 @@ void registerBuiltInCliTools(
   _verifyRequired<ProviderDisplayCapability>(registry);
   _verifyRequired<CliExecutableCapability>(registry);
   _verifyRequired<TerminalBehaviorCapability>(registry);
-  _verifyRequired<MarketplaceConsumerCapability>(registry);
+  _verifyRequired<PluginCapability>(registry);
   _verifyRequired<ChatInteractionCapability>(registry);
   _verifyRequired<CredentialExportCapability>(registry);
-  _verifyRequired<RemoteAppDataCapability>(registry);
   _verifyNativeTeamRegistration(registry);
   _verifyMemberAgentPresetRegistration(registry);
 }

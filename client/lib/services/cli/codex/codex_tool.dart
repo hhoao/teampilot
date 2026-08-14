@@ -28,14 +28,11 @@ import '../registry/capabilities/chat_interaction_capability.dart';
 import 'capabilities/provider_display.dart';
 import '../registry/capabilities/provider_display_capability.dart';
 import '../registry/capabilities/cli_executable_capability.dart';
-import 'capabilities/marketplace_consumer.dart';
-import 'capabilities/remote_app_data.dart';
 import 'capabilities/credential_export.dart';
-import '../registry/capabilities/marketplace_consumer_capability.dart';
-import '../registry/capabilities/remote_app_data_capability.dart';
 import '../registry/capabilities/credential_export_capability.dart';
 import 'capabilities/mcp_config_writer.dart';
-import 'capabilities/plugin_provisioner.dart';
+import 'capabilities/plugin.dart';
+import '../registry/capabilities/plugin_capability.dart';
 import 'provider/codex_hook_writer.dart';
 import '../registry/capabilities/hook_writer_capability.dart';
 import 'capabilities/prompt_provision.dart';
@@ -50,7 +47,7 @@ final class CodexCliTool implements CliToolDefinition {
     this.executable = const CodexExecutableCapability(),
     this.terminalBehavior = const CodexTerminalBehavior(),
     this.memberConfigInspection = const DefaultMemberConfigInspection(),
-    this.pluginProvisioner = const CodexPluginProvisioner(),
+    this.plugin = const CodexPluginCapability(),
     this.providerCatalog = const CodexProviderCatalogCapability(),
     this.providerModel = const ProviderRecordModelCapability(),
     this.effort = const CodexEffortCapability(),
@@ -62,8 +59,6 @@ final class CodexCliTool implements CliToolDefinition {
     this.skill = const CodexSkillCapability(),
     this.promptProvision = const CodexPromptProvisionCapability(),
     this.providerDisplay = const CodexProviderDisplay(),
-    this.marketplaceConsumer = const NoMarketplaceConsumer(),
-    this.remoteAppData = const NoRemoteAppData(),
     this.credentialExport = const CodexCredentialExport(),
     this.hookWriter = const CodexHookWriter(),
     ProviderCredentialCapability? providerCredential,
@@ -78,7 +73,7 @@ final class CodexCliTool implements CliToolDefinition {
   final CliExecutableCapability executable;
   final CodexTerminalBehavior terminalBehavior;
   final MemberConfigInspectionCapability memberConfigInspection;
-  final CodexPluginProvisioner pluginProvisioner;
+  final PluginCapability plugin;
   final ProviderCatalogCapability providerCatalog;
   final ProviderModelCapability providerModel;
   final CliEffortCapability effort;
@@ -87,8 +82,6 @@ final class CodexCliTool implements CliToolDefinition {
 
   final TeamBehaviorCapability teamBehavior;
   final ProviderDisplayCapability providerDisplay;
-  final MarketplaceConsumerCapability marketplaceConsumer;
-  final RemoteAppDataCapability remoteAppData;
   final CredentialExportCapability credentialExport;
   final ChatInteractionCapability chatInteraction;
   final CodexAiHistoryCapability aiHistory;
@@ -110,7 +103,7 @@ final class CodexCliTool implements CliToolDefinition {
     configProfile,
     terminalBehavior,
     memberConfigInspection,
-    pluginProvisioner,
+    plugin,
     providerCatalog,
     providerModel,
     providerCredential,
@@ -119,8 +112,6 @@ final class CodexCliTool implements CliToolDefinition {
     headless,
     mcpConfigWriter,
     providerDisplay,
-    marketplaceConsumer,
-    remoteAppData,
     credentialExport,
     chatInteraction,
     aiHistory,

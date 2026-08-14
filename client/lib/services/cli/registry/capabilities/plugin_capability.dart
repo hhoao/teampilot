@@ -7,11 +7,12 @@ import '../../../storage/runtime_layout.dart';
 import '../cli_capability.dart';
 import '../cli_tool_registry.dart';
 import 'plugin_manifest_paths.dart';
+import 'skill_capability.dart';
 
 /// Component kinds a plugin bundle may carry.
 enum PluginComponentKind { skills, agents, commands, hooks, mcp, rules, apps }
 
-/// Inputs for [PluginProvisionerCapability.provision].
+/// Inputs for [PluginCapability.provision].
 @immutable
 class PluginProvisionContext {
   const PluginProvisionContext({
@@ -40,8 +41,9 @@ class PluginProvisionContext {
   final String? mcpConfigFileName;
 }
 
-/// Owns materialize + native registration for one CLI's plugin format.
-abstract interface class PluginProvisionerCapability implements CliCapability {
+/// PluginHub contract: plugin materialization + marketplace consumption +
+/// remote shared dep seeding.
+abstract interface class PluginCapability implements CliCapability {
   /// On-disk manifest layout this CLI reads. `null` ⇒ decomposition only.
   PluginManifestPaths? get manifestPaths;
 
@@ -54,6 +56,27 @@ abstract interface class PluginProvisionerCapability implements CliCapability {
   Set<PluginComponentKind> get supported;
 
   Future<void> provision(PluginProvisionContext ctx);
+
+  /// Whether this CLI consumes marketplace plugins from CONFIG_DIR.
+  ///
+  /// Only claude, flashskyai, and cursor consume marketplaces.
+  bool get consumesMarketplaces;
+
+  /// Whether this CLI needs shared plugin deps seeded on the remote home
+  /// before provider reconciliation.
+  bool get needsSharedPluginDepsBeforeReconcile;
+
+  Future<void> seedSharedPluginDeps({
+    required Filesystem homeFs,
+    required String homeRoot,
+  });
+
+  /// Subdirectory (relative to the CONFIG_DIR) where plugin entries live, for
+  /// `linkedDirectory` kinds (e.g. 'plugins', or cursor's 'plugins/local').
+  String get pluginsSubdir;
+
+  /// How plugins are represented inside the CLI's CONFIG_DIR.
+  ResourceRepresentation get pluginsRepresentation;
 }
 
 const neutralPluginManifestPaths = PluginManifestPaths(
@@ -71,15 +94,8 @@ const cursorPluginManifestPaths = PluginManifestPaths(
   fallbackManifestDirName: '.claude-plugin',
 );
 
-PluginManifestPaths? pluginManifestPathsForTool(
+PluginCapability? pluginCapabilityForTool(
   CliTool tool, {
   CliToolRegistry? registry,
 }) => (registry ?? CliToolRegistry.builtIn())
-    .capability<PluginProvisionerCapability>(tool)
-    ?.manifestPaths;
-
-PluginProvisionerCapability? pluginProvisionerForTool(
-  CliTool tool, {
-  CliToolRegistry? registry,
-}) => (registry ?? CliToolRegistry.builtIn())
-    .capability<PluginProvisionerCapability>(tool);
+    .capability<PluginCapability>(tool);

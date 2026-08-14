@@ -1,4 +1,4 @@
-import '../cli/registry/capabilities/resource_capability.dart';
+import '../cli/registry/capabilities/plugin_capability.dart';
 import '../cli/registry/capabilities/skill_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../io/filesystem.dart';
@@ -52,20 +52,17 @@ class ResourceProvisioningService {
       warnings.addAll(result.errors);
     }
 
-    final resource = _registry.capability<ResourceCapability>(cli);
-    if (resource != null) {
-      for (final kind in resource.supportedKinds) {
-        if (resource.representationFor(kind) !=
-            ResourceRepresentation.linkedDirectory) {
-          continue; // mergedJsonEntry kinds (mcp) handled by their own plan
-        }
-        final kindDir = _fs.pathContext.join(configDir, resource.subdirFor(kind));
-        final result = await _materializer.reconcile(
-          kindDir: kindDir,
-          desired: effective.of(kind),
-        );
-        warnings.addAll(result.errors);
-      }
+    final plugin = _registry.capability<PluginCapability>(cli);
+    if (plugin != null &&
+        plugin.pluginsRepresentation == ResourceRepresentation.linkedDirectory) {
+      final desired = effective.of(ResourceKind.plugin);
+      if (desired.isEmpty) return ResourceProvisionResult(warnings: warnings);
+      final pluginDir = _fs.pathContext.join(configDir, plugin.pluginsSubdir);
+      final result = await _materializer.reconcile(
+        kindDir: pluginDir,
+        desired: desired,
+      );
+      warnings.addAll(result.errors);
     }
     return ResourceProvisionResult(warnings: warnings);
   }
