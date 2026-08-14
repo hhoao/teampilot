@@ -710,6 +710,18 @@ abstract class AppLocalizations {
   /// **'When you open a thinking-process block, expand nested tool call details automatically.'**
   String get cotExpandToolsOnOpenDescription;
 
+  /// No description provided for @autoOpenSubagentPreviewTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-open subagent preview'**
+  String get autoOpenSubagentPreviewTitle;
+
+  /// No description provided for @autoOpenSubagentPreviewDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'When a subagent starts running, open its preview automatically and follow it live. Press Back to stop following for this session.'**
+  String get autoOpenSubagentPreviewDescription;
+
   /// No description provided for @thinkingProcessFoldSectionTitle.
   ///
   /// In en, this message translates to:

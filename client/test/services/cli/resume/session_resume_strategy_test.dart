@@ -90,14 +90,16 @@ void main() {
       db.execute('''
 CREATE TABLE session (
   id TEXT PRIMARY KEY,
-  time_updated INTEGER
+  parent_id TEXT,
+  time_updated INTEGER,
+  data TEXT
 );
 ''');
       db.execute(
-        "INSERT INTO session(id, time_updated) VALUES ('ses_old', 1)",
+        "INSERT INTO session(id, parent_id, time_updated) VALUES ('ses_old', NULL, 1)",
       );
       db.execute(
-        "INSERT INTO session(id, time_updated) VALUES ('ses_new', 2)",
+        "INSERT INTO session(id, parent_id, time_updated) VALUES ('ses_new', NULL, 2)",
       );
       db.dispose();
 

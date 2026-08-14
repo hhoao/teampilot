@@ -30,10 +30,14 @@ void main() {
     dbPath = p.join(tmp.path, 'opencode.db');
     final db = sqlite3.open(dbPath);
     try {
-      db.execute('CREATE TABLE session (id TEXT, time_updated INTEGER)');
       db.execute(
-        'INSERT INTO session VALUES (?, ?)',
-        ['ses_1', 100],
+        'CREATE TABLE session ('
+        'id TEXT, parent_id TEXT, time_updated INTEGER, data TEXT)',
+      );
+      db.execute(
+        'INSERT INTO session (id, parent_id, time_updated) '
+        'VALUES (?, ?, ?)',
+        ['ses_1', null, 100],
       );
     } finally {
       db.close();
@@ -188,5 +192,76 @@ void main() {
       pool.queryTimeout = savedTimeout;
       pool.dispose(dbPath);
     }
+  });
+
+  test('returns newest ROOT session when a task child is newest', () async {
+    final pool = OpencodeSqliteWorkerPool.instance;
+    final db = sqlite3.open(dbPath);
+    try {
+      db.execute(
+        'INSERT INTO session (id, parent_id, time_updated) VALUES (?, ?, ?)',
+        ['ses_child', 'ses_1', 200],
+      );
+      db.execute(
+        'INSERT INTO session (id, parent_id, time_updated) VALUES (?, ?, ?)',
+        ['ses_other_root', null, 50],
+      );
+    } finally {
+      db.close();
+    }
+    final result = await pool.run<String?>(
+      dbPath: dbPath,
+      query: opencodeNewestSessionId,
+    );
+    expect(result, 'ses_1'); // child 最新也不能被选中
+    pool.dispose(dbPath);
+  });
+
+  test('empty parent_id is treated as a root', () async {
+    final pool = OpencodeSqliteWorkerPool.instance;
+    final db = sqlite3.open(dbPath);
+    try {
+      db.execute(
+        'INSERT INTO session (id, parent_id, time_updated) VALUES (?, ?, ?)',
+        ['ses_2', '', 200],
+      );
+    } finally {
+      db.close();
+    }
+    final result = await pool.run<String?>(
+      dbPath: dbPath,
+      query: opencodeNewestSessionId,
+    );
+    expect(result, 'ses_2');
+    pool.dispose(dbPath);
+  });
+
+  test('legacy layout without parent_id column filters children via data JSON',
+      () async {
+    final pool = OpencodeSqliteWorkerPool.instance;
+    final legacyDir = tmp.createTempSync('legacy-');
+    final legacyDbPath = p.join(legacyDir.path, 'opencode.db');
+    final db = sqlite3.open(legacyDbPath);
+    try {
+      db.execute(
+        'CREATE TABLE session (id TEXT, data TEXT, time_updated INTEGER)',
+      );
+      db.execute(
+        'INSERT INTO session VALUES (?, ?, ?)',
+        ['ses_child', '{"parentID":"ses_p"}', 300],
+      );
+      db.execute(
+        'INSERT INTO session VALUES (?, ?, ?)',
+        ['ses_root', '{}', 100],
+      );
+    } finally {
+      db.close();
+    }
+    final result = await pool.run<String?>(
+      dbPath: legacyDbPath,
+      query: opencodeNewestSessionId,
+    );
+    expect(result, 'ses_root');
+    pool.dispose(legacyDbPath);
   });
 }

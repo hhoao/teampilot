@@ -125,6 +125,8 @@
   "cotExpandReasoningOnOpenDescription": "When you open a thinking-process block, expand nested reasoning steps automatically.",
   "cotExpandToolsOnOpenTitle": "Expand tools when opening",
   "cotExpandToolsOnOpenDescription": "When you open a thinking-process block, expand nested tool call details automatically.",
+  "autoOpenSubagentPreviewTitle": "Auto-open subagent preview",
+  "autoOpenSubagentPreviewDescription": "When a subagent starts running, open its preview automatically and follow it live. Press Back to stop following for this session.",
   "thinkingProcessFoldSectionTitle": "Fold into thinking process",
   "toolCategoryRead": "Read file",
   "toolCategoryWrite": "Write file",

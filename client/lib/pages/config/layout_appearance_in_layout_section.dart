@@ -257,6 +257,17 @@ class LayoutAppearanceInLayoutSection extends StatelessWidget {
                   ),
                   showDividerBelow: true,
                 ),
+                TpPreferenceRow(
+                  title: l10n.autoOpenSubagentPreviewTitle,
+                  subtitle: l10n.autoOpenSubagentPreviewDescription,
+                  trailing: Switch(
+                    value: context.select<LayoutCubit, bool>(
+                      (c) => c.state.preferences.autoOpenSubagentPreview,
+                    ),
+                    onChanged: controller.setAutoOpenSubagentPreview,
+                  ),
+                  showDividerBelow: true,
+                ),
                 TpSectionHeader(title: l10n.thinkingProcessFoldSectionTitle),
                 for (final category in AiToolCallCategory.values) ...[
                   TpPreferenceRow(
