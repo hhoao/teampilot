@@ -543,7 +543,11 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          BlocSelector<GitCubit, GitState, (String, int, int, bool, bool, bool, bool)>(
+          BlocSelector<
+            GitCubit,
+            GitState,
+            (String, int, int, bool, bool, bool, bool, bool, bool)
+          >(
             selector: (state) => (
               state.status.branch ?? 'HEAD',
               state.status.ahead,
@@ -552,16 +556,21 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
               state.allChangeFoldersExpanded,
               state.generatingCommitMessage,
               state.selectedPaths.isNotEmpty,
+              state.amend,
+              state.status.hasCommits,
             ),
             builder: (context, header) {
               final (branch, ahead, behind, busy, allExpanded, generating,
-                  hasSelection) = header;
+                  hasSelection, amend, hasCommits) = header;
               return _Header(
                 branch: branch,
                 ahead: ahead,
                 behind: behind,
                 busy: busy,
                 allFoldersExpanded: allExpanded,
+                amend: amend,
+                canAmend: hasCommits,
+                onAmend: _cubit.setAmend,
                 generating: generating,
                 canGenerate: hasSelection && !busy && !generating,
                 onGenerate: () async {
@@ -622,10 +631,8 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
                 controller: _commitController,
                 hint: l10n.gitCommitMessageHint(branch),
                 canCommit: amend ? (hasCommits && !busy) : (hasSelection && !busy),
-                canAmend: hasCommits,
                 amend: amend,
                 generating: generating,
-                onAmend: _cubit.setAmend,
                 onChanged: _cubit.setCommitMessage,
                 onCommit: () async {
                   if (_cubit.state.amend) {
@@ -729,6 +736,9 @@ class _Header extends StatelessWidget {
     required this.behind,
     required this.busy,
     required this.allFoldersExpanded,
+    required this.amend,
+    required this.canAmend,
+    required this.onAmend,
     required this.generating,
     required this.canGenerate,
     required this.onGenerate,
@@ -746,6 +756,9 @@ class _Header extends StatelessWidget {
   final int behind;
   final bool busy;
   final bool allFoldersExpanded;
+  final bool amend;
+  final bool canAmend;
+  final ValueChanged<bool> onAmend;
   final bool generating;
   final bool canGenerate;
   final VoidCallback onGenerate;
@@ -811,6 +824,23 @@ class _Header extends StatelessWidget {
               child: CircularProgressIndicator(strokeWidth: 2),
             ),
           ),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 24,
+              height: 24,
+              child: Checkbox(
+                key: const ValueKey('git-amend-checkbox'),
+                value: amend,
+                onChanged: canAmend ? (v) => onAmend(v ?? false) : null,
+                visualDensity: VisualDensity.compact,
+              ),
+            ),
+            const SizedBox(width: 2),
+            Text(l10n.gitAmend, style: TpTextStyles.of(context).sm),
+          ],
+        ),
         TpIconButton(
           icon: allFoldersExpanded ? Icons.unfold_less : Icons.unfold_more,
           compact: true,
@@ -887,10 +917,8 @@ class _CommitBox extends StatelessWidget {
     required this.controller,
     required this.hint,
     required this.canCommit,
-    required this.canAmend,
     required this.amend,
     required this.generating,
-    required this.onAmend,
     required this.onChanged,
     required this.onCommit,
   });
@@ -898,10 +926,8 @@ class _CommitBox extends StatelessWidget {
   final TextEditingController controller;
   final String hint;
   final bool canCommit;
-  final bool canAmend;
   final bool amend;
   final bool generating;
-  final ValueChanged<bool> onAmend;
   final ValueChanged<String> onChanged;
   final VoidCallback onCommit;
 
@@ -931,24 +957,7 @@ class _CommitBox extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 4),
-        Row(
-          children: [
-            SizedBox(
-              width: 24,
-              height: 24,
-              child: Checkbox(
-                key: const ValueKey('git-amend-checkbox'),
-                value: amend,
-                onChanged: canAmend ? (v) => onAmend(v ?? false) : null,
-                visualDensity: VisualDensity.compact,
-              ),
-            ),
-            const SizedBox(width: 4),
-            Text(l10n.gitAmend, style: TpTextStyles.of(context).sm),
-          ],
-        ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 8),
         FilledButton.icon(
           onPressed: canCommit ? onCommit : null,
           icon: Icon(amend ? Icons.edit_outlined : Icons.check, size: 16),

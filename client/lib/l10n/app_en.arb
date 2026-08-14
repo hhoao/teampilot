@@ -259,7 +259,7 @@
   "gitPush": "Push",
   "gitPull": "Pull",
   "gitRefresh": "Refresh",
-  "gitAmend": "Amend last commit",
+  "gitAmend": "Amend",
   "gitAmendCommit": "Amend Commit",
   "gitAmendConfirmTitle": "Amend last commit?",
   "gitAmendConfirmMessage": "This rewrites the last commit. If it was already pushed to a remote, a force push will be required afterwards.",

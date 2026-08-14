@@ -250,7 +250,7 @@
   "gitPush": "推送",
   "gitPull": "拉取",
   "gitRefresh": "刷新",
-  "gitAmend": "修改上一次提交",
+  "gitAmend": "修正",
   "gitAmendCommit": "修改提交",
   "gitAmendConfirmTitle": "修改上一次提交？",
   "gitAmendConfirmMessage": "这将改写最后一次提交。如果该提交已推送到远程，之后需要强制推送。",

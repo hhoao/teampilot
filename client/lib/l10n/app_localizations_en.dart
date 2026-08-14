@@ -637,7 +637,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gitRefresh => 'Refresh';
 
   @override
-  String get gitAmend => 'Amend last commit';
+  String get gitAmend => 'Amend';
 
   @override
   String get gitAmendCommit => 'Amend Commit';

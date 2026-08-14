@@ -1259,7 +1259,7 @@ abstract class AppLocalizations {
   /// No description provided for @gitAmend.
   ///
   /// In en, this message translates to:
-  /// **'Amend last commit'**
+  /// **'Amend'**
   String get gitAmend;
 
   /// No description provided for @gitAmendCommit.

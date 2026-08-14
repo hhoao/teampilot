@@ -611,7 +611,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get gitRefresh => '刷新';
 
   @override
-  String get gitAmend => '修改上一次提交';
+  String get gitAmend => '修正';
 
   @override
   String get gitAmendCommit => '修改提交';
