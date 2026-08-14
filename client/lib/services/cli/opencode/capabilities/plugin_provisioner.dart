@@ -146,7 +146,11 @@ final class OpencodePluginProvisioner implements PluginProvisionerCapability {
         for (final entry in await fs.listDir(dir)) {
           if (entry.isDirectory) continue;
           if (!_isPluginSourceFile(entry.name)) continue;
-          out.add(ctx.join(opencodeFlavorDir, dirName, entry.name));
+          // opencode.json plugin entries are POSIX-relative (the CLI runs on
+          // any host), never host-separator paths.
+          out.add(
+            '$opencodeFlavorDir/$dirName/${entry.name}',
+          );
         }
       }
     }

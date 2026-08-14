@@ -73,6 +73,9 @@ void main() {
     final fs = await repo.fs();
     final index = await WorkspaceIndexStore(fs).tryRead(preferIsolate: false);
     expect(index?.map((w) => w.workspaceId), contains(result.workspaceId));
+    // Wait out the fire-and-forget trust provision so tearDown can delete
+    // the temp root (Windows blocks deletion of open files, errno=32).
+    await catalog.trustProvisioningFor(result.workspaceId);
   });
 
   test('createWorkspaceWithFirstSession dedups in memory when allowDuplicate false', () async {
@@ -85,6 +88,7 @@ void main() {
     final b = await catalog.createWorkspaceWithFirstSession([const WorkspaceFolder(path: '/dup')]);
     expect(a.workspaceId, b.workspaceId);
     expect(catalog.workspaces.length, 1);
+    await catalog.trustProvisioningFor(a.workspaceId);
   });
 
   test('renameSession patches memory and disk', () async {
@@ -123,6 +127,7 @@ void main() {
     );
     final onDisk = (await repo.loadWorkspaces()).single;
     expect(onDisk.memberTargetsByTeam['team-a'], {'team-lead': 'local'});
+    await catalog.trustProvisioningFor(result.workspaceId);
   });
 
   test('createWorkspaceWithFirstSession dedup merge resets placement init in memory', () async {
@@ -157,6 +162,7 @@ void main() {
     expect(merged?.memberPlacementInitializedByTeam['team-a'], isFalse);
     final onDisk = (await repo.loadWorkspaces()).single;
     expect(onDisk.memberPlacementInitializedByTeam['team-a'], isFalse);
+    await catalog.trustProvisioningFor(result.workspaceId);
   });
 
   test('renameSession bumps updatedAt in memory', () async {
