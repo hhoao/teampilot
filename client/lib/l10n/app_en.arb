@@ -1690,6 +1690,43 @@
   "skillsGoDiscovery": "Go to Discovery",
   "skillsSourceRepos": "Repos",
   "skillsSourceSkillsSh": "skills.sh",
+  "skillsSourceSkillsMp": "SkillsMP",
+  "skillsMarketplaceSearchHint": "Search marketplaces (≥ 2 chars)…",
+  "skillsMarketplaceLoadMore": "Load more",
+  "skillsMarketplaceAddRepo": "Add repo",
+  "skillsMarketplaceRepoAdded": "Repo added to skill sources; install individual skills in the Repos tab",
+  "skillsFilterSortBy": "Sort",
+  "skillsFilterSortByStars": "Stars",
+  "skillsFilterSortByRecent": "Recent",
+  "skillsFilterLanguage": "Language",
+  "skillsFilterAnyLanguage": "Any",
+  "skillsFilterCategory": "Category",
+  "skillsFilterAnyCategory": "All",
+  "skillsFilterOccupation": "Occupation",
+  "skillsFilterAnyOccupation": "All",
+  "skillsCardStars": "{count} stars",
+  "@skillsCardStars": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "skillsCardUpdatedAt": "Updated {date}",
+  "@skillsCardUpdatedAt": {
+    "placeholders": {
+      "date": {"type": "String"}
+    }
+  },
+  "skillsMpQuotaHint": "SkillsMP anonymous quota (50/day) exhausted. Set a free API key to continue.",
+  "skillsMpApiKeyButton": "Set API Key",
+  "skillsMpApiKeyDialogTitle": "SkillsMP API Key",
+  "skillsMpApiKeyDialogHint": "Register for a free key at skillsmp.com/developers",
+  "skillsMpApiKeySave": "Save",
+  "skillsMarketplaceSearchError": "Search failed: {message}",
+  "@skillsMarketplaceSearchError": {
+    "placeholders": {
+      "message": {"type": "String"}
+    }
+  },
   "skillsSearchPlaceholder": "Search skills…",
   "skillsSkillsShPlaceholder": "Search skills.sh (≥ 2 chars)…",
   "skillsFilterRepoAll": "All repos",

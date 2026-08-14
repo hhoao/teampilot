@@ -1513,6 +1513,43 @@
   "skillsGoDiscovery": "前往发现",
   "skillsSourceRepos": "仓库",
   "skillsSourceSkillsSh": "skills.sh",
+  "skillsSourceSkillsMp": "SkillsMP",
+  "skillsMarketplaceSearchHint": "搜索技能市场 (≥2 字)…",
+  "skillsMarketplaceLoadMore": "加载更多",
+  "skillsMarketplaceAddRepo": "添加仓库",
+  "skillsMarketplaceRepoAdded": "已添加到仓库源，可在 Repos 页安装具体技能",
+  "skillsFilterSortBy": "排序",
+  "skillsFilterSortByStars": "星数",
+  "skillsFilterSortByRecent": "最新",
+  "skillsFilterLanguage": "语言",
+  "skillsFilterAnyLanguage": "全部",
+  "skillsFilterCategory": "分类",
+  "skillsFilterAnyCategory": "全部",
+  "skillsFilterOccupation": "职业",
+  "skillsFilterAnyOccupation": "全部",
+  "skillsCardStars": "{count} 星",
+  "@skillsCardStars": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "skillsCardUpdatedAt": "更新于 {date}",
+  "@skillsCardUpdatedAt": {
+    "placeholders": {
+      "date": {"type": "String"}
+    }
+  },
+  "skillsMpQuotaHint": "SkillsMP 匿名额度（每天 50 次）已用完。设置免费 API Key 后继续。",
+  "skillsMpApiKeyButton": "设置 API Key",
+  "skillsMpApiKeyDialogTitle": "SkillsMP API Key",
+  "skillsMpApiKeyDialogHint": "在 skillsmp.com/developers 免费注册获取",
+  "skillsMpApiKeySave": "保存",
+  "skillsMarketplaceSearchError": "搜索失败：{message}",
+  "@skillsMarketplaceSearchError": {
+    "placeholders": {
+      "message": {"type": "String"}
+    }
+  },
   "skillsSearchPlaceholder": "搜索 Skill…",
   "skillsSkillsShPlaceholder": "搜索 skills.sh (≥2 字)…",
   "skillsFilterRepoAll": "所有仓库",

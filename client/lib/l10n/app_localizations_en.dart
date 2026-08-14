@@ -3698,6 +3698,81 @@ class AppLocalizationsEn extends AppLocalizations {
   String get skillsSourceSkillsSh => 'skills.sh';
 
   @override
+  String get skillsSourceSkillsMp => 'SkillsMP';
+
+  @override
+  String get skillsMarketplaceSearchHint => 'Search marketplaces (≥ 2 chars)…';
+
+  @override
+  String get skillsMarketplaceLoadMore => 'Load more';
+
+  @override
+  String get skillsMarketplaceAddRepo => 'Add repo';
+
+  @override
+  String get skillsMarketplaceRepoAdded =>
+      'Repo added to skill sources; install individual skills in the Repos tab';
+
+  @override
+  String get skillsFilterSortBy => 'Sort';
+
+  @override
+  String get skillsFilterSortByStars => 'Stars';
+
+  @override
+  String get skillsFilterSortByRecent => 'Recent';
+
+  @override
+  String get skillsFilterLanguage => 'Language';
+
+  @override
+  String get skillsFilterAnyLanguage => 'Any';
+
+  @override
+  String get skillsFilterCategory => 'Category';
+
+  @override
+  String get skillsFilterAnyCategory => 'All';
+
+  @override
+  String get skillsFilterOccupation => 'Occupation';
+
+  @override
+  String get skillsFilterAnyOccupation => 'All';
+
+  @override
+  String skillsCardStars(int count) {
+    return '$count stars';
+  }
+
+  @override
+  String skillsCardUpdatedAt(String date) {
+    return 'Updated $date';
+  }
+
+  @override
+  String get skillsMpQuotaHint =>
+      'SkillsMP anonymous quota (50/day) exhausted. Set a free API key to continue.';
+
+  @override
+  String get skillsMpApiKeyButton => 'Set API Key';
+
+  @override
+  String get skillsMpApiKeyDialogTitle => 'SkillsMP API Key';
+
+  @override
+  String get skillsMpApiKeyDialogHint =>
+      'Register for a free key at skillsmp.com/developers';
+
+  @override
+  String get skillsMpApiKeySave => 'Save';
+
+  @override
+  String skillsMarketplaceSearchError(String message) {
+    return 'Search failed: $message';
+  }
+
+  @override
   String get skillsSearchPlaceholder => 'Search skills…';
 
   @override

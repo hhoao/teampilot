@@ -3550,6 +3550,78 @@ class AppLocalizationsZh extends AppLocalizations {
   String get skillsSourceSkillsSh => 'skills.sh';
 
   @override
+  String get skillsSourceSkillsMp => 'SkillsMP';
+
+  @override
+  String get skillsMarketplaceSearchHint => '搜索技能市场 (≥2 字)…';
+
+  @override
+  String get skillsMarketplaceLoadMore => '加载更多';
+
+  @override
+  String get skillsMarketplaceAddRepo => '添加仓库';
+
+  @override
+  String get skillsMarketplaceRepoAdded => '已添加到仓库源，可在 Repos 页安装具体技能';
+
+  @override
+  String get skillsFilterSortBy => '排序';
+
+  @override
+  String get skillsFilterSortByStars => '星数';
+
+  @override
+  String get skillsFilterSortByRecent => '最新';
+
+  @override
+  String get skillsFilterLanguage => '语言';
+
+  @override
+  String get skillsFilterAnyLanguage => '全部';
+
+  @override
+  String get skillsFilterCategory => '分类';
+
+  @override
+  String get skillsFilterAnyCategory => '全部';
+
+  @override
+  String get skillsFilterOccupation => '职业';
+
+  @override
+  String get skillsFilterAnyOccupation => '全部';
+
+  @override
+  String skillsCardStars(int count) {
+    return '$count 星';
+  }
+
+  @override
+  String skillsCardUpdatedAt(String date) {
+    return '更新于 $date';
+  }
+
+  @override
+  String get skillsMpQuotaHint => 'SkillsMP 匿名额度（每天 50 次）已用完。设置免费 API Key 后继续。';
+
+  @override
+  String get skillsMpApiKeyButton => '设置 API Key';
+
+  @override
+  String get skillsMpApiKeyDialogTitle => 'SkillsMP API Key';
+
+  @override
+  String get skillsMpApiKeyDialogHint => '在 skillsmp.com/developers 免费注册获取';
+
+  @override
+  String get skillsMpApiKeySave => '保存';
+
+  @override
+  String skillsMarketplaceSearchError(String message) {
+    return '搜索失败：$message';
+  }
+
+  @override
   String get skillsSearchPlaceholder => '搜索 Skill…';
 
   @override
