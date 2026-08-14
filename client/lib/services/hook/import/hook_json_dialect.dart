@@ -1,3 +1,6 @@
+import 'dart:collection';
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 
 import '../../../models/team_config.dart';
@@ -47,7 +50,7 @@ class RawHookEntry {
           url == other.url &&
           mapEquals(headers, other.headers) &&
           timeoutSec == other.timeoutSec &&
-          mapEquals(native, other.native) &&
+          _canonicalJson(native) == _canonicalJson(other.native) &&
           listEquals(unsupportedFields, other.unsupportedFields) &&
           listEquals(warnings, other.warnings);
 
@@ -61,11 +64,17 @@ class RawHookEntry {
     Object.hashAllUnordered(headers.keys),
     Object.hashAllUnordered(headers.values),
     timeoutSec,
-    Object.hashAllUnordered(native.keys),
-    Object.hashAllUnordered(native.values),
+    _canonicalJson(native).hashCode,
     Object.hashAllUnordered(unsupportedFields),
     Object.hashAllUnordered(warnings),
   );
+
+  /// 顶层键排序后的 JSON 序列化（标量与有序 List 确定；嵌套 Map 键序
+  /// 不敏感场景按插入序——real-world native 值均为标量/有序数组）。
+  static String _canonicalJson(Map<String, Object?> native) {
+    final sorted = SplayTreeMap<String, Object?>.from(native);
+    return jsonEncode(sorted);
+  }
 }
 
 /// 每 CLI 一个实现：把该 CLI 的 hook JSON 解析为 [RawHookEntry] 列表。
