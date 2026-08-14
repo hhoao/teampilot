@@ -3,10 +3,10 @@ import 'package:flutter/foundation.dart';
 import '../../models/cli_preset.dart';
 import '../../models/team_config.dart';
 import '../../services/cli/registry/capabilities/terminal_behavior_capability.dart';
+import '../../services/cli/registry/capabilities/terminal_composer_region.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/team_bus/mailbox_delivery.dart';
 import '../../services/team_bus/team_bus.dart';
-import '../../services/terminal/fullscreen_cr_ack_config.dart';
 import '../../services/terminal/fullscreen_pty_automation.dart';
 import '../../services/terminal/member_pty_inject_service.dart';
 import '../../services/terminal/prompt_submit_ack_tracker.dart';
@@ -225,7 +225,7 @@ final class TabMemberPtyDelivery {
       pasteSettle: settle,
       aborted: () =>
           _ptyAckAborted(shell, sessionId: sessionId, memberId: memberId),
-      crAckConfig: _crAckForMember(sessionId, memberId),
+      composerRegion: _composerSpecForMember(sessionId, memberId),
       isAcked: () =>
           _promptAckTracker.isAcked(sessionId: sessionId, memberId: memberId),
     );
@@ -379,7 +379,7 @@ final class TabMemberPtyDelivery {
         sessionId: tick.sessionId,
         memberId: tick.memberId,
       ),
-      crAckConfig: _crAckForMember(tick.sessionId, tick.memberId),
+      composerRegion: _composerSpecForMember(tick.sessionId, tick.memberId),
       isAcked: () => _promptAckTracker.isAcked(
         sessionId: tick.sessionId,
         memberId: tick.memberId,
@@ -417,7 +417,7 @@ final class TabMemberPtyDelivery {
         pasteSettle: settle,
         aborted: () =>
             _ptyAckAborted(shell, sessionId: sessionId, memberId: memberId),
-        crAckConfig: _crAckForMember(sessionId, memberId),
+        composerRegion: _composerSpecForMember(sessionId, memberId),
         isAcked: () =>
             _promptAckTracker.isAcked(sessionId: sessionId, memberId: memberId),
       );
@@ -531,16 +531,14 @@ final class TabMemberPtyDelivery {
     );
   }
 
-  FullscreenCrAckConfig _crAckForMember(String sessionId, String memberId) {
+  FullscreenComposerRegionSpec _composerSpecForMember(
+    String sessionId,
+    String memberId,
+  ) {
     final cli = _memberCli(sessionId, memberId);
     final behavior = CliToolRegistry.builtIn()
         .capability<TerminalBehaviorCapability>(cli);
-    return FullscreenCrAckConfig(
-      strategy:
-          behavior?.fullscreenCrAckStrategy ??
-          FullscreenCrAckStrategy.anchorCellClears,
-      composerPrefix: behavior?.fullscreenComposerPrefix,
-    );
+    return behavior?.composerRegion ?? fullscreenDefaultComposerSpec;
   }
 
   static String _doorbellLogPreview(String text) {

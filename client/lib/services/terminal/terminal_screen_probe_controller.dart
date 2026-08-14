@@ -1,6 +1,6 @@
 import 'package:flutter_alacritty/flutter_alacritty.dart';
 
-import 'fullscreen_cr_ack_config.dart';
+import '../cli/registry/capabilities/terminal_composer_region.dart';
 import 'fullscreen_input_screen_probe.dart' as probe;
 
 /// Read-only screen-grid probes for full-screen TUI automation ACK loops.
@@ -37,32 +37,39 @@ final class TerminalScreenProbeController {
         composerPrefix: composerPrefix,
       );
 
+  probe.ComposerRegion? locateComposerRegion(
+    FullscreenComposerRegionSpec spec, {
+    int scanRows = 24,
+  }) =>
+      probe.locateComposerRegion(
+        _screenGrid,
+        spec,
+        scanRows: scanRows,
+      );
+
+  bool regionContainsNeedle(probe.ComposerRegion region, String needle) =>
+      probe.regionContainsNeedle(_screenGrid, region, needle);
+
+  bool isComposerRegionEmpty(
+    probe.ComposerRegion region,
+    FullscreenComposerRegionSpec spec,
+  ) =>
+      probe.isComposerRegionEmpty(_screenGrid, region, spec);
+
+  bool needleAppearsOutsideRegion(
+    probe.ComposerRegion? region,
+    String needle, {
+    int scanRows = 24,
+  }) =>
+      probe.needleAppearsOutsideRegion(
+        _screenGrid,
+        region,
+        needle,
+        scanRows: scanRows,
+      );
+
   bool isFullscreenPromptAtAnchor(probe.FullscreenPromptAnchor anchor, {String? composerPrefix}) =>
       probe.isFullscreenPromptAtAnchor(_screenGrid, anchor, composerPrefix: composerPrefix);
-
-  bool isFullscreenPromptSubmitted(
-    probe.FullscreenPromptAnchor anchor, {
-    required FullscreenCrAckStrategy strategy,
-    String? composerPrefix,
-    int scanRows = 24,
-  }) =>
-      probe.isFullscreenPromptSubmitted(
-        _screenGrid,
-        anchor,
-        strategy: strategy,
-        composerPrefix: composerPrefix,
-        scanRows: scanRows,
-      );
-
-  bool isComposerChromeEmpty({
-    required String composerPrefix,
-    int scanRows = 24,
-  }) =>
-      probe.isComposerChromeEmpty(
-        _screenGrid,
-        composerPrefix: composerPrefix,
-        scanRows: scanRows,
-      );
 
   String describeProbeWindow({int scanRows = 8}) =>
       probe.describeProbeWindow(_screenGrid, scanRows: scanRows);

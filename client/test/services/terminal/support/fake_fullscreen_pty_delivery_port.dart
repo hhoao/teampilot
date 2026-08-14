@@ -1,4 +1,4 @@
-import 'package:teampilot/services/terminal/fullscreen_cr_ack_config.dart';
+import 'package:teampilot/services/cli/registry/capabilities/terminal_composer_region.dart';
 import 'package:teampilot/services/terminal/fullscreen_input_screen_probe.dart';
 import 'package:teampilot/services/terminal/fullscreen_pty_delivery_port.dart';
 import 'package:teampilot/services/terminal/pty_automation_needle.dart';
@@ -11,8 +11,8 @@ final class FakeFullscreenPtyDeliveryPort implements FullscreenPtyDeliveryPort {
     this.pastesBeforeVisible = 1,
     this.visibleAfterPaste = true,
     this.collapseAsClaudePaste = false,
-    this.crAckConfig = const FullscreenCrAckConfig.productionDefault(),
-    this.composerChromeEmptyOverride,
+    this.composerRegion = fullscreenDefaultComposerSpec,
+    this.isAckedOverride,
   });
 
   bool aborted;
@@ -21,10 +21,9 @@ final class FakeFullscreenPtyDeliveryPort implements FullscreenPtyDeliveryPort {
   final bool visibleAfterPaste;
   final bool collapseAsClaudePaste;
   @override
-  final FullscreenCrAckConfig crAckConfig;
+  final FullscreenComposerRegionSpec composerRegion;
 
-  /// When set, [isComposerChromeEmpty] returns this value instead of inferring.
-  final bool? composerChromeEmptyOverride;
+  final bool? isAckedOverride;
 
   String? staged;
   int pasteCount = 0;
@@ -35,10 +34,35 @@ final class FakeFullscreenPtyDeliveryPort implements FullscreenPtyDeliveryPort {
   bool get isAborted => aborted;
 
   @override
+  bool get isAcked => isAckedOverride ?? false;
+
+  @override
   int get viewportRows => 24;
 
   @override
   Future<void> syncDisplayGrid() async {}
+
+  @override
+  ComposerRegion? locateComposerRegion({int scanRows = 24}) =>
+      const ComposerRegion(
+        topRow: 0, bottomRow: 0, leftCol: 0, rightCol: 200,
+      );
+
+  @override
+  bool regionContainsNeedle(ComposerRegion region, String needle) =>
+      staged != null && staged!.contains(needle);
+
+  @override
+  bool isComposerRegionEmpty(ComposerRegion region) =>
+      staged == null || staged!.trim().isEmpty;
+
+  @override
+  bool needleAppearsOutsideRegion(
+    ComposerRegion? region,
+    String needle, {
+    int scanRows = 24,
+  }) =>
+      false;
 
   @override
   FullscreenPromptAnchor? locateNeedle(String needle, {int scanRows = 24}) {
@@ -64,31 +88,6 @@ final class FakeFullscreenPtyDeliveryPort implements FullscreenPtyDeliveryPort {
   bool isAtAnchor(FullscreenPromptAnchor anchor) {
     if (staged == null) return false;
     return staged!.contains(anchor.needle);
-  }
-
-  @override
-  bool isSubmittedAfterCr(FullscreenPromptAnchor anchor, {int scanRows = 24}) {
-    if (crCount < crsToClear) return false;
-    if (staged == null) return true;
-    return !staged!.contains(anchor.needle);
-  }
-
-  @override
-  bool isComposerChromeEmpty({int scanRows = 24}) {
-    if (composerChromeEmptyOverride != null) {
-      return composerChromeEmptyOverride!;
-    }
-    final prefix = crAckConfig.composerPrefix?.trim();
-    if (prefix == null || prefix.isEmpty) {
-      return staged == null || staged!.trim().isEmpty;
-    }
-    if (staged == null) return true;
-    final trimmed = staged!.trimLeft();
-    if (!trimmed.startsWith(prefix)) {
-      // Staged body without prefix chrome — treat as non-empty composer body.
-      return staged!.trim().isEmpty;
-    }
-    return trimmed.substring(prefix.length).trim().isEmpty;
   }
 
   @override

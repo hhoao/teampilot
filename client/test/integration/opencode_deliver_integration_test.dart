@@ -2,7 +2,8 @@
 @Timeout(Duration(minutes: 3))
 library;
 
-/// Production-shaped opencode PTY delivery with [FullscreenCrAckStrategy.anchorCellClears].
+/// Production-shaped opencode PTY delivery with region-cleared ACK semantics
+/// ([OpencodeTerminalBehavior.composerRegion]).
 ///
 /// Matches [OpencodeTerminalBehavior.usesFullScreenInput] (bracketed paste + CR ACK).
 ///
@@ -14,7 +15,7 @@ library;
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/terminal/fullscreen_cr_ack_config.dart';
+import 'package:teampilot/services/cli/opencode/capabilities/terminal_behavior.dart';
 import 'package:teampilot/services/terminal/fullscreen_pty_automation.dart';
 import 'package:teampilot/services/terminal/terminal_fullscreen_pty_port.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
@@ -147,10 +148,7 @@ void main() {
             input: session.input,
             probe: session.probe,
             aborted: () => false,
-            crAckConfig: const FullscreenCrAckConfig(
-              strategy: FullscreenCrAckStrategy.anchorCellClears,
-              composerPrefix: '\u2503',
-            ),
+            composerRegion: const OpencodeTerminalBehavior().composerRegion,
           );
 
           final grid = session.engine.grid;
@@ -173,8 +171,42 @@ void main() {
           expect(
             outcome,
             FullscreenPtyDeliveryOutcome.submitted,
-            reason: 'opencode anchorCellClears ACK must pass at '
+            reason: 'opencode region-cleared ACK must pass at '
                 '${viewport.cols}x${viewport.rows}. Dump:\n$afterDeliver',
+          );
+
+          // Short-text regression: a single digit must submit exactly once —
+          // the old needle probe anchored to transcript "1"s and re-pasted
+          // (duplicate user rows). Region-scoped ACK must prevent that.
+          final shortText = '1';
+          await session.probe.syncDisplayGrid();
+          final outcomeShort = await automation.deliverPasteAndSubmit(
+            port: port,
+            text: shortText,
+            pasteSettle: const Duration(milliseconds: 500),
+          );
+          await session.probe.syncDisplayGrid();
+          expect(
+            outcomeShort,
+            FullscreenPtyDeliveryOutcome.submitted,
+            reason: 'single-digit deliver must submit. '
+                'Dump:\n'
+                '${session.probe.describeProbeWindow(scanRows: viewport.rows)}',
+          );
+          await Future<void>.delayed(const Duration(seconds: 2));
+          await session.probe.syncDisplayGrid();
+          final afterShort = session.probe.describeProbeWindow(scanRows: viewport.rows);
+          // The user row "1" now sits in the message box above the composer
+          // (primary signal: original region cleared). Assert region cleared:
+          final regionAfter = port.locateComposerRegion(
+            scanRows: viewport.rows,
+          );
+          expect(
+            regionAfter == null ||
+                !port.regionContainsNeedle(regionAfter, shortText),
+            isTrue,
+            reason: 'region must no longer hold the staged digit after CR. '
+                'Dump:\n$afterShort',
           );
         },
       );

@@ -4,7 +4,7 @@
 /// Grid reads must follow [TerminalScreenProbeController.syncDisplayGrid] — PTY damage is
 /// applied on post-frame drains, so a stale mirror misses pasted CJK text even
 /// when the on-screen painter already shows it.
-import 'fullscreen_cr_ack_config.dart';
+import '../cli/registry/capabilities/terminal_composer_region.dart';
 import 'pty_automation_needle.dart';
 
 abstract interface class TerminalScreenGrid {
@@ -177,48 +177,6 @@ bool isFullscreenPromptAtAnchor(
   return _matchesNeedleAt(grid, anchor.row, anchor.startCol, needleRunes, composerPrefix: composerPrefix);
 }
 
-/// Whether a CR submit is complete per [config].
-bool isFullscreenPromptSubmitted(
-  TerminalScreenGrid grid,
-  FullscreenPromptAnchor anchor, {
-  required FullscreenCrAckStrategy strategy,
-  String? composerPrefix,
-  int scanRows = 24,
-}) {
-  switch (strategy) {
-    case FullscreenCrAckStrategy.timed:
-      return true;
-    case FullscreenCrAckStrategy.anchorCellClears:
-      return !isFullscreenPromptAtAnchor(grid, anchor, composerPrefix: composerPrefix);
-    case FullscreenCrAckStrategy.composerMovesDown:
-      if (!isFullscreenPromptAtAnchor(grid, anchor, composerPrefix: composerPrefix)) return true;
-      final prefix = composerPrefix?.trim();
-      if (prefix == null || prefix.isEmpty) return false;
-      return _hasComposerRowBelow(
-        grid,
-        anchor.row,
-        composerPrefix: prefix,
-        scanRows: scanRows,
-      );
-  }
-}
-
-bool _hasComposerRowBelow(
-  TerminalScreenGrid grid,
-  int aboveRow, {
-  required String composerPrefix,
-  int scanRows = 24,
-}) {
-  final rows = grid.rows;
-  if (rows == 0 || aboveRow >= rows - 1) return false;
-  final startRow = (rows - scanRows).clamp(0, rows - 1);
-  for (var r = rows - 1; r > aboveRow; r--) {
-    if (r < startRow) break;
-    if (_rowStartsWith(grid, r, composerPrefix)) return true;
-  }
-  return false;
-}
-
 bool _rowStartsWith(TerminalScreenGrid grid, int row, String prefix) {
   final text = _logicalRowText(grid, row).trimLeft();
   return text.startsWith(prefix);
@@ -368,8 +326,13 @@ int _skipWideSpacers(TerminalScreenGrid grid, int row, int col) {
 }
 
 /// Advances past leading empty / space cells on a soft-wrapped continuation row.
-int _skipLeadingPadding(TerminalScreenGrid grid, int row, {String? composerPrefix}) {
-  var col = 0;
+int _skipLeadingPadding(
+  TerminalScreenGrid grid,
+  int row, {
+  int fromCol = 0,
+  String? composerPrefix,
+}) {
+  var col = fromCol;
   // OpenCode (and potentially other TUIs) repeats its composer prefix char on
   // every wrapped continuation line — skip it just like space/null padding.
   final prefixCp = (composerPrefix != null && composerPrefix.trim().isNotEmpty)
@@ -411,4 +374,290 @@ final class _GridViewAdapter implements TerminalScreenGrid {
 
   @override
   int flagsAt(int row, int col) => _grid.flagsAt(row, col) as int;
+}
+
+/// Rectangular staged-input region on the mirror grid.
+final class ComposerRegion {
+  const ComposerRegion({
+    required this.topRow,
+    required this.bottomRow,
+    required this.leftCol,
+    required this.rightCol,
+  });
+
+  final int topRow;
+  final int bottomRow;
+  final int leftCol;
+  final int rightCol;
+}
+
+bool _rowHasChar(TerminalScreenGrid grid, int row, int col, String char) {
+  if (row < 0 || row >= grid.rows || col < 0 || col >= grid.columns) {
+    return false;
+  }
+  return grid.codepointAt(row, col) == char.codeUnitAt(0);
+}
+
+/// Bottom-window scan for the staged-input region declared by [spec].
+///
+/// Boxed CLIs (opencode): locate the bottom border row (a `border.corner` or
+/// `border.bottom` char whose column also carries a `border.left` char on rows
+/// above), then walk upward collecting consecutive left-border rows.
+/// Prefix CLIs (claude/cursor/codex): lowest prefix row plus consecutive
+/// prefix rows above. Returns null when neither shape is found.
+ComposerRegion? locateComposerRegion(
+  TerminalScreenGrid grid,
+  FullscreenComposerRegionSpec spec, {
+  int scanRows = 24,
+}) {
+  if (grid.rows == 0 || grid.columns == 0) return null;
+  final windowStart = (grid.rows - scanRows).clamp(0, grid.rows - 1);
+
+  // 1) Boxed shape: find the bottom border row.
+  final border = spec.border;
+  if (border.left.isNotEmpty || border.bottom.isNotEmpty) {
+    for (var r = grid.rows - 1; r >= windowStart; r--) {
+      final cornerCol = _cornerColumnOnRow(grid, r, border);
+      if (cornerCol < 0) continue;
+      final leftCol = _leftBorderColumnAbove(
+        grid,
+        r,
+        cornerCol,
+        border.left,
+        windowStart: windowStart,
+      );
+      if (leftCol < 0) continue;
+      var topRow = r;
+      while (topRow - 1 >= windowStart &&
+          _rowHasAnyLeftBorderChar(grid, topRow - 1, leftCol, border.left)) {
+        topRow--;
+      }
+      return ComposerRegion(
+        topRow: topRow,
+        bottomRow: r,
+        leftCol: leftCol,
+        rightCol: grid.columns - 1,
+      );
+    }
+  }
+
+  // 2) Prefix shape: lowest prefix row + consecutive rows above.
+  if (spec.prefixes.isNotEmpty) {
+    for (var r = grid.rows - 1; r >= windowStart; r--) {
+      if (_rowHasAnyPrefix(grid, r, spec.prefixes)) {
+        var topRow = r;
+        while (topRow - 1 >= windowStart &&
+            _rowHasAnyPrefix(grid, topRow - 1, spec.prefixes)) {
+          topRow--;
+        }
+        return ComposerRegion(
+          topRow: topRow,
+          bottomRow: r,
+          leftCol: 0,
+          rightCol: grid.columns - 1,
+        );
+      }
+    }
+  }
+  return null;
+}
+
+int _cornerColumnOnRow(TerminalScreenGrid grid, int row, ComposerBorderSpec border) {
+  for (var col = 0; col < grid.columns; col++) {
+    for (final c in border.corner) {
+      if (_rowHasChar(grid, row, col, c)) return col;
+    }
+    for (final b in border.bottom) {
+      if (_rowHasChar(grid, row, col, b)) return col;
+    }
+  }
+  return -1;
+}
+
+int _leftBorderColumnAbove(
+  TerminalScreenGrid grid,
+  int bottomRow,
+  int col,
+  List<String> left, {
+  required int windowStart,
+}) {
+  for (var r = bottomRow - 1; r >= windowStart; r--) {
+    for (final c in left) {
+      if (_rowHasChar(grid, r, col, c)) return col;
+    }
+  }
+  return -1;
+}
+
+bool _rowHasAnyLeftBorderChar(
+  TerminalScreenGrid grid,
+  int row,
+  int col,
+  List<String> left,
+) {
+  for (final c in left) {
+    if (_rowHasChar(grid, row, col, c)) return true;
+  }
+  return false;
+}
+
+bool _rowHasAnyPrefix(TerminalScreenGrid grid, int row, List<String> prefixes) {
+  final text = _logicalRowText(grid, row).trimLeft();
+  for (final p in prefixes) {
+    if (text.startsWith(p)) return true;
+  }
+  return false;
+}
+
+/// Soft-wrap-aware needle match restricted to [region]'s row/column bounds.
+bool regionContainsNeedle(
+  TerminalScreenGrid grid,
+  ComposerRegion region,
+  String needle,
+) {
+  if (needle.isEmpty) return false;
+  final runes = needle.runes.toList();
+  for (var r = region.topRow; r <= region.bottomRow; r++) {
+    for (var col = region.leftCol; col <= region.rightCol; col++) {
+      if (_isWideSpacer(grid, r, col)) continue;
+      if (_matchesNeedleAtBounded(
+        grid,
+        r,
+        col,
+        runes,
+        maxRow: region.bottomRow,
+        maxCol: region.rightCol,
+        minCol: region.leftCol,
+      )) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+bool _matchesNeedleAtBounded(
+  TerminalScreenGrid grid,
+  int row,
+  int startCol,
+  List<int> needleRunes, {
+  required int maxRow,
+  required int maxCol,
+  int minCol = 0,
+}) {
+  var r = row;
+  var col = startCol;
+  // After a soft wrap, leading chrome is not paste content: continuation rows
+  // restart at the region's left edge and skip padding plus the box's left
+  // border glyph (mirrors the unbounded matcher's wrap collapse).
+  var collapseWrapSpaces = false;
+  for (var i = 0; i < needleRunes.length; i++) {
+    final cp = needleRunes[i];
+    var wrapped = false;
+    while (true) {
+      if (r > maxRow) return false;
+      col = _skipWideSpacers(grid, r, col);
+      if (col <= maxCol && !_rowRemainderIsPadding(grid, r, col)) break;
+      // Soft-wrap before comparing this rune.
+      r += 1;
+      col = minCol;
+      if (r > maxRow) return false;
+      if (!_rowHasNonSpaceContent(grid, r) && cp != 0x20) return false;
+      col = _skipLeadingPadding(grid, r, fromCol: col);
+      if (minCol > 0 && col == minCol && grid.codepointAt(r, col) != 0) {
+        // Left-border glyph (opencode `┃`/`│`) is chrome, not staged content.
+        col = _skipLeadingPadding(grid, r, fromCol: col + 1);
+      }
+      wrapped = true;
+    }
+    if (wrapped) collapseWrapSpaces = true;
+    if (cp == 0x20 && collapseWrapSpaces) {
+      final gridCp = col < grid.columns ? grid.codepointAt(r, col) : 0;
+      if (gridCp != 0 && gridCp != 0x20) {
+        continue;
+      }
+    }
+    collapseWrapSpaces = false;
+    if (col > maxCol || grid.codepointAt(r, col) != cp) return false;
+    col = _advancePastCell(grid, r, col);
+  }
+  return true;
+}
+
+/// Region interior holds no staged input (prefix-only rows / blank box).
+bool isComposerRegionEmpty(
+  TerminalScreenGrid grid,
+  ComposerRegion region,
+  FullscreenComposerRegionSpec spec,
+) {
+  final borderGlyphs = <String>{
+    ...spec.border.corner,
+    ...spec.border.bottom,
+  };
+  for (var r = region.topRow; r <= region.bottomRow; r++) {
+    final bounds = _trimmedLogicalBounds(grid, r);
+    if (bounds == null) continue;
+    final text = _logicalText(grid, r, bounds.$1, bounds.$2);
+    var isChrome = false;
+    final trimmed = text.trimLeft();
+    for (final p in spec.prefixes) {
+      if (trimmed.startsWith(p)) {
+        // Prefix-only row = chrome; content after the prefix = staged input.
+        if (trimmed.substring(p.length).trim().isEmpty) {
+          isChrome = true;
+          break;
+        }
+        return false;
+      }
+    }
+    if (isChrome) continue;
+    for (final c in spec.border.left) {
+      if (text.trim() == c) isChrome = true;
+    }
+    if (isChrome) continue;
+    if (borderGlyphs.isNotEmpty && text.trim().isNotEmpty) {
+      var allBorderGlyphs = true;
+      for (final cp in text.trim().runes) {
+        if (!borderGlyphs.contains(String.fromCharCode(cp))) {
+          allBorderGlyphs = false;
+          break;
+        }
+      }
+      if (allBorderGlyphs) continue;
+    }
+    if (text.trim().isNotEmpty) return false;
+  }
+  return true;
+}
+
+/// Needle present somewhere outside the region (transcript / message box).
+///
+/// A null [region] scans the whole probe window — used as the null-region
+/// submit fallback: false means the needle left the visible window entirely.
+bool needleAppearsOutsideRegion(
+  TerminalScreenGrid grid,
+  ComposerRegion? region,
+  String needle, {
+  int scanRows = 24,
+}) {
+  if (needle.isEmpty) return false;
+  final windowStart = (grid.rows - scanRows).clamp(0, grid.rows - 1);
+  final runes = needle.runes.toList();
+  for (var r = windowStart; r < grid.rows; r++) {
+    if (region != null && r >= region.topRow && r <= region.bottomRow) continue;
+    for (var col = 0; col < grid.columns; col++) {
+      if (_isWideSpacer(grid, r, col)) continue;
+      if (_matchesNeedleAtBounded(
+        grid,
+        r,
+        col,
+        runes,
+        maxRow: grid.rows - 1,
+        maxCol: grid.columns - 1,
+      )) {
+        return true;
+      }
+    }
+  }
+  return false;
 }

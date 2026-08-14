@@ -1,5 +1,5 @@
-import '../../../terminal/fullscreen_cr_ack_config.dart';
 import '../../registry/capabilities/terminal_behavior_capability.dart';
+import '../../registry/capabilities/terminal_composer_region.dart';
 
 final class OpencodeTerminalBehavior implements TerminalBehaviorCapability {
   const OpencodeTerminalBehavior();
@@ -22,8 +22,13 @@ final class OpencodeTerminalBehavior implements TerminalBehaviorCapability {
   TerminalPathDropBehavior get pathDropBehavior =>
       TerminalPathDropBehavior.defaultFor(usesFullScreenInput: true);
   @override
-  FullscreenCrAckStrategy get fullscreenCrAckStrategy =>
-      FullscreenCrAckStrategy.anchorCellClears;
-  @override
-  String? get fullscreenComposerPrefix => '\u2503';
+  FullscreenComposerRegionSpec get composerRegion => const FullscreenComposerRegionSpec(
+    submitSemantics: ComposerSubmitSemantics.regionCleared,
+    prefixes: ['\u2503'],
+    border: ComposerBorderSpec(
+      left: ['\u2503', '\u2502'],
+      bottom: ['\u2580', '\u2500'],
+      corner: ['\u2579', '\u2570', '\u2514'],
+    ),
+  );
 }

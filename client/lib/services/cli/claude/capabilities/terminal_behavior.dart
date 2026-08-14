@@ -1,5 +1,5 @@
-import '../../../terminal/fullscreen_cr_ack_config.dart';
 import '../../registry/capabilities/terminal_behavior_capability.dart';
+import '../../registry/capabilities/terminal_composer_region.dart';
 
 final class ClaudeTerminalBehavior implements TerminalBehaviorCapability {
   const ClaudeTerminalBehavior();
@@ -22,8 +22,8 @@ final class ClaudeTerminalBehavior implements TerminalBehaviorCapability {
   TerminalPathDropBehavior get pathDropBehavior =>
       TerminalPathDropBehavior.defaultFor(usesFullScreenInput: true);
   @override
-  FullscreenCrAckStrategy get fullscreenCrAckStrategy =>
-      FullscreenCrAckStrategy.anchorCellClears;
-  @override
-  String? get fullscreenComposerPrefix => '\u276f';
+  FullscreenComposerRegionSpec get composerRegion => const FullscreenComposerRegionSpec(
+    submitSemantics: ComposerSubmitSemantics.regionCleared,
+    prefixes: ['\u276f'],
+  );
 }
