@@ -197,6 +197,14 @@ class SkillAcquisitionEngine {
     );
   }
 
+  /// Direct git-dir install (clone repo + register SKILL.md dir) without
+  /// instruction dispatch. Exposed for direct marketplace installs.
+  Future<Skill> installGitDir(
+    DiscoverableSkill discovery, {
+    bool overwrite = false,
+    String? idOverride,
+  }) => _installGitDir(discovery, overwrite: overwrite, idOverride: idOverride);
+
   Future<SkillAcquireResult> _runPack({
     required String packId,
     required String expectedSkillId,
