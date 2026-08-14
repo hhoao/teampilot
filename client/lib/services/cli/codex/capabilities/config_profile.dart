@@ -4,19 +4,15 @@ import '../../registry/capabilities/provider_capability.dart';
 import '../../../provider/workspace_trust_provisioner.dart';
 import '../../registry/capabilities/config_profile_capability.dart';
 import '../../registry/capabilities/prompt_capability.dart';
-import 'prompt.dart';
+import '../../registry/prompt/prompt_hub_service.dart';
 
 /// Codex CLI launch: provisions provider `auth.json` + `config.toml` under
 /// per-member [CODEX_HOME], optional team-bus overlay in mixed mode, and
 /// member identity in `AGENTS.md`.
 final class CodexConfigProfileCapability implements ConfigProfileCapability {
-  const CodexConfigProfileCapability({
-    this.promptProvision = const CodexPromptCapability(),
-  });
+  const CodexConfigProfileCapability();
 
   static const toolId = 'codex';
-
-  final PromptCapability promptProvision;
 
   @override
   Future<void> ensureSessionProfile(ConfigProfileSessionContext ctx) async {}
@@ -41,8 +37,9 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
     final member = ctx.member;
     final team = ctx.team;
     final mixed = team?.teamMode == TeamMode.mixed;
-    await promptProvision.materialize(
-      PromptMaterializeContext(
+    await const PromptHubService().provisionForCli(
+      cli: CliTool.codex,
+      ctx: PromptMaterializeContext(
         paths: ctx.paths,
         scope: ctx.scope,
         member: member,

@@ -25,6 +25,7 @@ import '../../registry/capabilities/prompt_capability.dart';
 import '../../registry/cli_tool_registry.dart';
 import '../../registry/config_profile/config_profile_context.dart';
 import '../../registry/hook/managed_hook_provisioner.dart';
+import '../../registry/prompt/prompt_hub_service.dart';
 import '../provider/opencode_auth_artifacts.dart';
 import '../provider/opencode_data_layout.dart';
 import '../provider/opencode_effort_catalog.dart';
@@ -38,7 +39,6 @@ import '../provider_presets.dart';
 import 'agent_status_plugin.dart';
 import 'idle_plugin.dart';
 import 'opencode_hook_writer.dart';
-import 'prompt.dart';
 
 abstract final class OpencodeFormExtraKeys {
   static const effort = 'effort';
@@ -424,8 +424,9 @@ final class OpencodeProviderCapability extends CatalogModelCapability
       changed = true;
     }
 
-    final promptContribution = await const OpencodePromptCapability().materialize(
-      PromptMaterializeContext(
+    final promptContribution = await const PromptHubService().provisionForCli(
+      cli: CliTool.opencode,
+      ctx: PromptMaterializeContext(
         paths: paths,
         scope: ctx.scope,
         member: member,

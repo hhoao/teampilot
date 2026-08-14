@@ -31,6 +31,7 @@ import '../../registry/cli_tool_registry.dart';
 import '../../registry/config_profile/config_profile_context.dart';
 import '../../registry/config_profile/hook_seat_context_completer.dart';
 import '../../registry/hook/managed_hook_provisioner.dart';
+import '../../registry/prompt/prompt_hub_service.dart';
 import '../provider/claude_effort_catalog.dart';
 import '../provider/claude_live_import.dart';
 import '../provider/claude_model_catalog.dart';
@@ -40,7 +41,6 @@ import '../provider/claude_provider_form_section.dart';
 import '../provider/claude_provider_settings_resolver.dart';
 import '../provider_presets.dart';
 import '../team_roster_service.dart';
-import 'prompt.dart';
 
 const _apiKeyFields = ['ANTHROPIC_AUTH_TOKEN', 'ANTHROPIC_API_KEY'];
 
@@ -888,8 +888,9 @@ final class ClaudeProviderCapability extends CatalogModelCapability
           : null,
     );
     final isLead = TeamMemberNaming.isTeamLead(member);
-    final promptContribution = await const ClaudePromptCapability().materialize(
-      PromptMaterializeContext(
+    final promptContribution = await const PromptHubService().provisionForCli(
+      cli: CliTool.claude,
+      ctx: PromptMaterializeContext(
         paths: delegate,
         scope: scope,
         member: member,
