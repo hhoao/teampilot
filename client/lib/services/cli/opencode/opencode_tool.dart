@@ -7,6 +7,7 @@ import 'capabilities/skill_invocation_syntax.dart';
 import '../registry/capabilities/skill_invocation_syntax_capability.dart';
 import 'capabilities/executable_resolver.dart';
 import 'capabilities/team_behavior.dart';
+import 'capabilities/chat_interaction.dart';
 import 'capabilities/display.dart';
 import 'capabilities/terminal_behavior.dart';
 import '../registry/capabilities/config_profile_capability.dart';
@@ -35,15 +36,12 @@ import 'provider/opencode_provider_model_capability.dart';
 import '../registry/capabilities/member_config_inspection_capability.dart';
 import '../registry/capabilities/provider_form_capability.dart';
 import '../registry/capabilities/resource_capability.dart';
-import '../registry/capabilities/ask_user_question_capability.dart';
-import 'capabilities/ask_user_question.dart';
-import '../registry/capabilities/exit_plan_mode_capability.dart';
+import '../registry/capabilities/chat_interaction_capability.dart';
 import 'capabilities/provider_display.dart';
 import '../registry/capabilities/provider_display_capability.dart';
 import 'capabilities/config_ui.dart';
 import '../registry/capabilities/cli_config_ui_capability.dart';
 import 'capabilities/marketplace_consumer.dart';
-import 'capabilities/agent_status_normalizer.dart';
 import 'capabilities/history_context_env.dart';
 import 'capabilities/remote_app_data.dart';
 import 'capabilities/credential_export.dart';
@@ -51,7 +49,6 @@ import '../registry/capabilities/marketplace_consumer_capability.dart';
 import '../registry/capabilities/remote_app_data_capability.dart';
 import '../registry/capabilities/credential_export_capability.dart';
 import '../registry/capabilities/history_context_env_capability.dart';
-import '../registry/capabilities/agent_status_normalizer_capability.dart';
 import '../registry/capabilities/hook_writer_capability.dart';
 import 'capabilities/tool_call_resolvers.dart';
 import 'capabilities/mcp_config_writer.dart';
@@ -82,15 +79,13 @@ final class OpencodeCliTool implements CliToolDefinition {
     this.providerForm = const OpencodeProviderFormCapability(),
     this.resource = const OpencodeResourceCapability(),
     this.mcpConfigWriter = const OpencodeMcpConfigWriter(),
-    this.askUserQuestion = const OpenCodeAskUserQuestionCapability(),
-    this.exitPlanMode = const NoExitPlanModeCapability(),
+    this.chatInteraction = const OpencodeChatInteraction(),
     this.aiHistory = const OpencodeAiHistoryCapability(),
     this.skillSyntax = const OpencodeSkillInvocationSyntaxCapability(),
     this.promptProvision = const OpencodePromptProvisionCapability(),
     this.providerDisplay = const OpencodeProviderDisplay(),
     this.configUi = const OpencodeConfigUi(),
     this.marketplaceConsumer = const NoMarketplaceConsumer(),
-    this.agentStatusNormalizer = const OpencodeAgentStatusNormalizer(),
     this.historyContextEnv = const OpencodeHistoryContextEnv(),
     this.remoteAppData = const OpencodeRemoteAppData(),
     this.credentialExport = const OpencodeCredentialExport(),
@@ -126,14 +121,12 @@ final class OpencodeCliTool implements CliToolDefinition {
   final ProviderDisplayCapability providerDisplay;
   final CliConfigUiCapability configUi;
   final MarketplaceConsumerCapability marketplaceConsumer;
-  final AgentStatusNormalizerCapability agentStatusNormalizer;
   final HistoryContextEnvCapability historyContextEnv;
   final RemoteAppDataCapability remoteAppData;
   final CredentialExportCapability credentialExport;
   final OpencodeToolCallResolvers toolCallResolvers;
   final HookWriterCapability hookWriter;
-  final AskUserQuestionCapability askUserQuestion;
-  final ExitPlanModeCapability exitPlanMode;
+  final ChatInteractionCapability chatInteraction;
   final OpencodeAiHistoryCapability aiHistory;
   final SkillInvocationSyntaxCapability skillSyntax;
   final PromptProvisionCapability promptProvision;
@@ -169,12 +162,10 @@ final class OpencodeCliTool implements CliToolDefinition {
     providerDisplay,
     configUi,
     marketplaceConsumer,
-    agentStatusNormalizer,
     historyContextEnv,
     remoteAppData,
     credentialExport,
-    askUserQuestion,
-    exitPlanMode,
+    chatInteraction,
     aiHistory,
     skillSyntax,
     promptProvision,

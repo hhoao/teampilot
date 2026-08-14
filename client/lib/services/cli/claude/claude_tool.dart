@@ -3,7 +3,6 @@ import 'capabilities/launch_args.dart';
 import 'capabilities/provider_display.dart';
 import 'capabilities/config_ui.dart';
 import 'capabilities/marketplace_consumer.dart';
-import '../registry/capabilities/claude_family_agent_status_normalizer.dart';
 import 'capabilities/history_context_env.dart';
 import 'capabilities/remote_app_data.dart';
 import 'capabilities/credential_export.dart';
@@ -15,6 +14,7 @@ import 'capabilities/executable_resolver.dart';
 import 'capabilities/team_behavior.dart';
 import 'capabilities/display.dart';
 import 'capabilities/terminal_behavior.dart';
+import 'capabilities/chat_interaction.dart';
 import 'capabilities/provider_catalog.dart';
 import '../registry/capabilities/provider_catalog_capability.dart';
 import '../registry/capabilities/team_behavior_capability.dart';
@@ -41,14 +41,11 @@ import 'provider/claude_provider_model_capability.dart';
 import '../registry/capabilities/member_config_inspection_capability.dart';
 import '../registry/capabilities/provider_form_capability.dart';
 import '../registry/capabilities/resource_capability.dart';
-import '../registry/capabilities/ask_user_question_capability.dart';
-import '../registry/capabilities/pty_ask_user_question_capability.dart';
-import '../registry/capabilities/exit_plan_mode_capability.dart';
+import '../registry/capabilities/chat_interaction_capability.dart';
 import '../registry/capabilities/provider_display_capability.dart';
 import '../registry/capabilities/credential_binding_capability.dart';
 import '../registry/capabilities/cli_config_ui_capability.dart';
 import '../registry/capabilities/marketplace_consumer_capability.dart';
-import '../registry/capabilities/agent_status_normalizer_capability.dart';
 import '../registry/capabilities/history_context_env_capability.dart';
 import '../registry/capabilities/remote_app_data_capability.dart';
 import '../registry/capabilities/credential_export_capability.dart';
@@ -83,14 +80,12 @@ final class ClaudeCliTool implements CliToolDefinition {
     this.providerForm = const ClaudeProviderFormCapability(),
     this.resource = const DefaultResourceCapability(),
     this.mcpConfigWriter = const ClaudeMcpConfigWriter(),
-    this.askUserQuestion = const PtyAskUserQuestionCapability(),
-    this.exitPlanMode = const HookExitPlanModeCapability(),
+    this.chatInteraction = const ClaudeChatInteraction(),
     this.aiHistory = const ClaudeAiHistoryCapability(),
     this.skillSyntax = const DefaultSkillInvocationSyntaxCapability(),
     this.providerDisplay = const ClaudeProviderDisplay(),
     this.configUi = const ClaudeConfigUi(),
     this.marketplaceConsumer = const MarketplaceConsumer(),
-    this.agentStatusNormalizer = const ClaudeFamilyAgentStatusNormalizer(),
     this.historyContextEnv = const NoHistoryContextEnv(),
     this.remoteAppData = const NoRemoteAppData(),
     this.credentialExport = const ClaudeCredentialExport(),
@@ -126,14 +121,12 @@ final class ClaudeCliTool implements CliToolDefinition {
 
   final TeamBehaviorCapability teamBehavior;
   final RemoteCliLocatorCapability remoteCliLocator;
-  final AskUserQuestionCapability askUserQuestion;
-  final ExitPlanModeCapability exitPlanMode;
+  final ChatInteractionCapability chatInteraction;
   final ClaudeAiHistoryCapability aiHistory;
   final SkillInvocationSyntaxCapability skillSyntax;
   final ProviderDisplayCapability providerDisplay;
   final CliConfigUiCapability configUi;
   final MarketplaceConsumerCapability marketplaceConsumer;
-  final AgentStatusNormalizerCapability agentStatusNormalizer;
   final HistoryContextEnvCapability historyContextEnv;
   final RemoteAppDataCapability remoteAppData;
   final CredentialExportCapability credentialExport;
@@ -169,14 +162,12 @@ final class ClaudeCliTool implements CliToolDefinition {
     headlessProvision,
     resource,
     mcpConfigWriter,
-    askUserQuestion,
-    exitPlanMode,
+    chatInteraction,
     aiHistory,
     skillSyntax,
     providerDisplay,
     configUi,
     marketplaceConsumer,
-    agentStatusNormalizer,
     historyContextEnv,
     remoteAppData,
     credentialExport,

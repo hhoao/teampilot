@@ -3,12 +3,15 @@ import '../../../agent_status/agent_permission_request.dart';
 import '../../../agent_status/agent_status_event.dart';
 import '../../../agent_status/agent_status_tool_input.dart';
 import '../../../agent_status/ask_user_question.dart';
-import '../../registry/capabilities/agent_status_normalizer_capability.dart';
+import '../../registry/capabilities/chat_interaction_capability.dart';
 
 /// OpenCode's own hook event format (`event`, `request_id`, …).
-final class OpencodeAgentStatusNormalizer
-    implements AgentStatusNormalizerCapability {
-  const OpencodeAgentStatusNormalizer();
+///
+/// OpenCode answers questions through the plugin SDK (and `permission.asked`
+/// allow/deny replies from the chat card); no in-chat ExitPlanMode approval
+/// (keeps the "Open Terminal" fallback).
+final class OpencodeChatInteraction implements ChatInteractionCapability {
+  const OpencodeChatInteraction();
 
   @override
   AgentStatusEvent? normalize(Map<String, Object?> body) {
@@ -77,4 +80,28 @@ final class OpencodeAgentStatusNormalizer
       _ => null,
     };
   }
+
+  @override
+  bool get supportsStructuredAsk => true;
+
+  @override
+  bool get supportsInChatAnswer => true;
+
+  @override
+  bool get supportsMultiSelectInChat => true;
+
+  @override
+  bool get supportsMultiQuestionInChat => true;
+
+  @override
+  bool get supportsInChatPermissionReply => true;
+
+  @override
+  AskUserAnswerKind get answerKind => AskUserAnswerKind.pluginSdkReply;
+
+  @override
+  bool get supportsInChatApproval => false;
+
+  @override
+  ExitPlanApprovalKind get approvalKind => ExitPlanApprovalKind.none;
 }

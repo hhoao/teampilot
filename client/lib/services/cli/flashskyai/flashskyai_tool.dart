@@ -6,6 +6,7 @@ import '../registry/capabilities/remote_cli_locator_capability.dart';
 import '../registry/capabilities/skill_invocation_syntax_capability.dart';
 import 'capabilities/executable_resolver.dart';
 import 'capabilities/team_behavior.dart';
+import 'capabilities/chat_interaction.dart';
 import 'capabilities/display.dart';
 import 'capabilities/terminal_behavior.dart';
 import 'capabilities/provider_catalog.dart';
@@ -33,15 +34,12 @@ import 'provider/flashskyai_provider_form_capability.dart';
 import '../registry/capabilities/member_config_inspection_capability.dart';
 import '../registry/capabilities/provider_form_capability.dart';
 import '../registry/capabilities/resource_capability.dart';
-import '../registry/capabilities/ask_user_question_capability.dart';
-import '../registry/capabilities/pty_ask_user_question_capability.dart';
-import '../registry/capabilities/exit_plan_mode_capability.dart';
+import '../registry/capabilities/chat_interaction_capability.dart';
 import 'capabilities/provider_display.dart';
 import '../registry/capabilities/provider_display_capability.dart';
 import 'capabilities/config_ui.dart';
 import '../registry/capabilities/cli_config_ui_capability.dart';
 import 'capabilities/marketplace_consumer.dart';
-import '../registry/capabilities/claude_family_agent_status_normalizer.dart';
 import 'capabilities/history_context_env.dart';
 import 'capabilities/remote_app_data.dart';
 import 'capabilities/credential_export.dart';
@@ -49,7 +47,6 @@ import '../registry/capabilities/marketplace_consumer_capability.dart';
 import '../registry/capabilities/remote_app_data_capability.dart';
 import '../registry/capabilities/credential_export_capability.dart';
 import '../registry/capabilities/history_context_env_capability.dart';
-import '../registry/capabilities/agent_status_normalizer_capability.dart';
 import 'capabilities/tool_call_resolvers.dart';
 import '../claude/capabilities/mcp_config_writer.dart';
 import 'capabilities/plugin_provisioner.dart';
@@ -78,14 +75,12 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     this.providerForm = const FlashskyaiProviderFormCapability(),
     this.resource = const DefaultResourceCapability(),
     this.mcpConfigWriter = const FlashskyaiMcpConfigWriter(),
-    this.askUserQuestion = const PtyAskUserQuestionCapability(),
-    this.exitPlanMode = const HookExitPlanModeCapability(),
+    this.chatInteraction = const FlashskyaiChatInteraction(),
     this.aiHistory = const FlashskyaiAiHistoryCapability(),
     this.skillSyntax = const DefaultSkillInvocationSyntaxCapability(),
     this.providerDisplay = const FlashskyaiProviderDisplay(),
     this.configUi = const FlashskyaiConfigUi(),
     this.marketplaceConsumer = const MarketplaceConsumer(),
-    this.agentStatusNormalizer = const ClaudeFamilyAgentStatusNormalizer(),
     this.historyContextEnv = const NoHistoryContextEnv(),
     this.remoteAppData = const NoRemoteAppData(),
     this.credentialExport = const NoCredentialExport(),
@@ -117,15 +112,13 @@ final class FlashskyaiCliTool implements CliToolDefinition {
   final ProviderDisplayCapability providerDisplay;
   final CliConfigUiCapability configUi;
   final MarketplaceConsumerCapability marketplaceConsumer;
-  final AgentStatusNormalizerCapability agentStatusNormalizer;
   final HistoryContextEnvCapability historyContextEnv;
   final RemoteAppDataCapability remoteAppData;
   final CredentialExportCapability credentialExport;
   final FlashskyaiToolCallResolvers toolCallResolvers;
   final HookWriterCapability hookWriter;
   final PromptProvisionCapability promptProvision;
-  final AskUserQuestionCapability askUserQuestion;
-  final ExitPlanModeCapability exitPlanMode;
+  final ChatInteractionCapability chatInteraction;
   final FlashskyaiAiHistoryCapability aiHistory;
   final SkillInvocationSyntaxCapability skillSyntax;
 
@@ -159,12 +152,10 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     providerDisplay,
     configUi,
     marketplaceConsumer,
-    agentStatusNormalizer,
     historyContextEnv,
     remoteAppData,
     credentialExport,
-    askUserQuestion,
-    exitPlanMode,
+    chatInteraction,
     aiHistory,
     skillSyntax,
     toolCallResolvers,

@@ -9,6 +9,7 @@ import 'provider/cursor_provider_catalog_capability.dart';
 import '../registry/capabilities/cli_config_layout_capability.dart';
 import 'capabilities/executable_resolver.dart';
 import 'capabilities/team_behavior.dart';
+import 'capabilities/chat_interaction.dart';
 import 'capabilities/display.dart';
 import 'capabilities/terminal_behavior.dart';
 import 'capabilities/prompt_provision.dart';
@@ -37,15 +38,12 @@ import 'provider/cursor_provider_form_capability.dart';
 import '../registry/capabilities/member_config_inspection_capability.dart';
 import '../registry/capabilities/provider_form_capability.dart';
 import '../registry/capabilities/resource_capability.dart';
-import '../registry/capabilities/ask_user_question_capability.dart';
-import 'capabilities/ask_user_question.dart';
-import '../registry/capabilities/exit_plan_mode_capability.dart';
+import '../registry/capabilities/chat_interaction_capability.dart';
 import 'capabilities/provider_display.dart';
 import '../registry/capabilities/provider_display_capability.dart';
 import 'capabilities/config_ui.dart';
 import '../registry/capabilities/cli_config_ui_capability.dart';
 import 'capabilities/marketplace_consumer.dart';
-import 'capabilities/agent_status_normalizer.dart';
 import 'capabilities/history_context_env.dart';
 import 'capabilities/remote_app_data.dart';
 import 'capabilities/credential_export.dart';
@@ -53,7 +51,6 @@ import '../registry/capabilities/marketplace_consumer_capability.dart';
 import '../registry/capabilities/remote_app_data_capability.dart';
 import '../registry/capabilities/credential_export_capability.dart';
 import '../registry/capabilities/history_context_env_capability.dart';
-import '../registry/capabilities/agent_status_normalizer_capability.dart';
 import 'capabilities/tool_call_resolvers.dart';
 import 'capabilities/mcp_config_writer.dart';
 import 'capabilities/plugin_provisioner.dart';
@@ -85,15 +82,13 @@ final class CursorCliTool implements CliToolDefinition {
     this.resource = const CursorResourceCapability(),
     this.configLayout = const CursorCliConfigLayout(),
     this.mcpConfigWriter = const CursorMcpConfigWriter(),
-    this.askUserQuestion = const NoAskUserQuestionCapability(),
-    this.exitPlanMode = const NoExitPlanModeCapability(),
+    this.chatInteraction = const CursorChatInteraction(),
     CursorAiHistoryCapability? aiHistory,
     this.skillSyntax = const DefaultSkillInvocationSyntaxCapability(),
     this.postManifestFlush = const CursorPostManifestFlushCapability(),
     this.providerDisplay = const CursorProviderDisplay(),
     this.configUi = const CursorConfigUi(),
     this.marketplaceConsumer = const MarketplaceConsumer(),
-    this.agentStatusNormalizer = const CursorAgentStatusNormalizer(),
     this.historyContextEnv = const CursorHistoryContextEnv(),
     this.remoteAppData = const NoRemoteAppData(),
     this.credentialExport = const CursorCredentialExport(),
@@ -135,14 +130,12 @@ final class CursorCliTool implements CliToolDefinition {
   final ProviderDisplayCapability providerDisplay;
   final CliConfigUiCapability configUi;
   final MarketplaceConsumerCapability marketplaceConsumer;
-  final AgentStatusNormalizerCapability agentStatusNormalizer;
   final HistoryContextEnvCapability historyContextEnv;
   final RemoteAppDataCapability remoteAppData;
   final CredentialExportCapability credentialExport;
   final CursorToolCallResolvers toolCallResolvers;
   final HookWriterCapability hookWriter;
-  final AskUserQuestionCapability askUserQuestion;
-  final ExitPlanModeCapability exitPlanMode;
+  final ChatInteractionCapability chatInteraction;
   final CursorAiHistoryCapability aiHistory;
   final SkillInvocationSyntaxCapability skillSyntax;
   final PostManifestFlushCapability postManifestFlush;
@@ -179,12 +172,10 @@ final class CursorCliTool implements CliToolDefinition {
     providerDisplay,
     configUi,
     marketplaceConsumer,
-    agentStatusNormalizer,
     historyContextEnv,
     remoteAppData,
     credentialExport,
-    askUserQuestion,
-    exitPlanMode,
+    chatInteraction,
     aiHistory,
     skillSyntax,
     postManifestFlush,

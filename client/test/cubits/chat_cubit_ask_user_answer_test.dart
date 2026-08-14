@@ -7,10 +7,9 @@ import 'package:teampilot/services/agent_status/agent_attention_state.dart';
 import 'package:teampilot/services/agent_status/agent_permission_request.dart';
 import 'package:teampilot/services/agent_status/agent_status_event.dart';
 import 'package:teampilot/services/agent_status/ask_user_answer_pending_store.dart';
-import 'package:teampilot/services/cli/cursor/capabilities/ask_user_question.dart';
-import 'package:teampilot/services/cli/opencode/capabilities/ask_user_question.dart';
-import 'package:teampilot/services/cli/registry/capabilities/ask_user_question_capability.dart';
-import 'package:teampilot/services/cli/registry/capabilities/pty_ask_user_question_capability.dart';
+import 'package:teampilot/services/cli/claude/capabilities/chat_interaction.dart';
+import 'package:teampilot/services/cli/opencode/capabilities/chat_interaction.dart';
+import 'package:teampilot/services/cli/registry/capabilities/chat_interaction_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_definition.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
@@ -46,15 +45,15 @@ class _FakeShell extends TerminalSession {
 }
 
 class _StubTool implements CliToolDefinition {
-  _StubTool({required this.id, required this.askCap});
+  _StubTool({required this.id, required this.chatCap});
 
   @override
   final CliTool id;
 
-  final AskUserQuestionCapability askCap;
+  final ChatInteractionCapability chatCap;
 
   @override
-  Iterable<CliCapability> get capabilities => [askCap];
+  Iterable<CliCapability> get capabilities => [chatCap];
 
   @override
   bool get isLaunchSupported => false;
@@ -65,7 +64,7 @@ CliToolRegistry _ptyRegistry() {
   registry.register(
     _StubTool(
       id: CliTool.claude,
-      askCap: const PtyAskUserQuestionCapability(),
+      chatCap: const ClaudeChatInteraction(),
     ),
   );
   return registry;
@@ -76,7 +75,7 @@ CliToolRegistry _opencodeRegistry() {
   registry.register(
     _StubTool(
       id: CliTool.opencode,
-      askCap: const OpenCodeAskUserQuestionCapability(),
+      chatCap: const OpencodeChatInteraction(),
     ),
   );
   return registry;
