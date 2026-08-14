@@ -779,16 +779,30 @@ git commit -m "refactor(cli-capability): upgrade PromptProvision to PromptCapabi
 
 ### Task 12: ProviderCapability(8→1)
 
-**Files:**
-- Create: `lib/services/cli/registry/capabilities/provider_capability.dart`
-- Delete: `provider_catalog_capability.dart`, `provider_credential_capability.dart`, `provider_display_capability.dart`, `provider_form_capability.dart`, `provider_model_capability.dart`, `cli_effort_capability.dart`, `credential_binding_capability.dart`, `credential_export_capability.dart`
-- Modify: `lib/services/cli/registry/cli_tool_registry.dart`(defaultOfficialProviderId 帮助方法)
-- Modify: 每 CLI 的 provider 目录合并为 `capabilities/provider.dart`(claude/codex 的 `provider/` 下多个文件收敛;opencode/cursor/flashskyai 同),5 个工具定义
-- Modify: 大量消费方(见 Step 3 列表)
-- Modify: `lib/services/provider/passthrough_provider_form_capability.dart`(改 implements 或改为共享默认 ProviderCapability 的一部分)
-- Modify: 测试(provider_form_registration_test / provider_credential_capability_test / provider_model_capability_test / all_cli_effort_capability_test / claude/codex provider form/model 测试等)
+> 注:本任务拆为 12a / 12b 两个可编译步骤(原始单步 dispatch 两次被中止)。
+> 12a 中每 CLI 合并类 `implements ProviderCapability` **并同时 implements 8 个旧接口**(成员相同,旧 `capability<T>` 查找仍命中),旧接口文件保留 → 全仓仍编译;12b 删除旧接口文件并切换全部消费方。
 
-**Interfaces:**
+**12a: 新接口 + 每 CLI 合并类 + 工具定义注册**
+
+**Files:**
+- Create: `lib/services/cli/registry/capabilities/provider_capability.dart`(接口 + 全部上下文类型/枚举/帮助函数原样迁入)
+- Create: 每 CLI `capabilities/provider.dart`(单个合并类,如 `ClaudeProviderCapability implements ProviderCapability, ProviderCatalogCapability, ProviderDisplayCapability, ProviderFormCapability, ProviderModelCapability, ProviderCredentialCapability, CredentialBindingCapability, CredentialExportCapability, CliEffortCapability`)
+- Modify: 5 个工具定义(`provider` 字段替换 8 个旧字段,仅注册合并类)
+- Delete: 每 CLI 被吸收的 provider 相关实现文件(credential_binding/credential_export/provider_catalog/provider_display 在 capabilities/,credential/effort/model/form/catalog 在 provider/)
+- 验证:analyze 0 errors 无新 warnings;`flutter test test/services/cli/ test/services/provider/` 通过(旧接口查找仍命中合并类)
+- 提交:`refactor(cli-capability): merge 8 provider-family capabilities into ProviderCapability`
+
+**12b: 删除旧接口 + 消费方切换**
+
+**Files:**
+- Delete: 8 个旧接口文件;合并类降级为仅 `implements ProviderCapability`
+- Modify: `passthrough_provider_form_capability.dart`(改实现 ProviderCapability + 默认成员)
+- Modify: 全部消费方(见下方原列表)+ `cli_tool_registry.dart` + `built_in_cli_tools.dart` `_verifyRequired`
+- Modify: 测试(原列表)
+- 验证:analyze + provider 相关测试
+- 提交:`refactor(cli-capability): switch provider consumers to ProviderCapability`
+
+**Interfaces(12a/12b 共用):**
 - Produces: `ProviderCapability`(成员 = 8 个旧接口成员并集,方法签名原样):
 
 ```dart
