@@ -290,7 +290,7 @@ class SessionChatMessageArea extends StatelessWidget {
                                 messages: top!.messages,
                                 emptyLabel: l10n.subagentPreviewEmpty,
                                 backTooltip: l10n.subagentPreviewBack,
-                                onBack: subagentPreview.pop,
+                                onBack: subagentPreview.popAndStopFollow,
                               ),
                             ),
                           ),
