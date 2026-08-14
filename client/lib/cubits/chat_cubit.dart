@@ -1473,15 +1473,14 @@ class ChatCubit extends Cubit<ChatState>
   /// full reload buys nothing here.
   void patchWorkspace(Workspace updated) {
     _emitSnapshot(
-      _dataStore.deriveSnapshot(
-        workspaces: [
-          for (final workspace in state.workspaces)
-            if (workspace.workspaceId == updated.workspaceId)
-              updated
-            else
-              workspace,
-        ],
-        sessions: state.sessions,
+      _dataStore.snapshotWithWorkspace(
+        ChatDataSnapshot(
+          workspaces: state.workspaces,
+          sessions: state.sessions,
+          visibleWorkspaces: state.visibleWorkspaces,
+          visibleSessions: state.visibleSessions,
+        ),
+        updated,
       ),
     );
   }

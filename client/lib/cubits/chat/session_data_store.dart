@@ -1,3 +1,5 @@
+import 'package:collection/collection.dart';
+
 import '../../models/workspace_folder.dart';
 import '../../models/workspace.dart';
 import '../../models/app_session.dart';
@@ -77,6 +79,23 @@ class SessionDataStore {
       visibleWorkspaces: visP,
       visibleSessions: visS,
     );
+  }
+
+  /// Stable createdAt-desc sort: equal createdAt keeps input order.
+  static List<String> sortedSessionIdsByCreatedAt(
+    Iterable<AppSession> sessions,
+  ) {
+    final indexed = <({AppSession session, int index})>[];
+    var index = 0;
+    for (final session in sessions) {
+      indexed.add((session: session, index: index));
+      index++;
+    }
+    indexed.sort((a, b) {
+      final byCreated = b.session.createdAt.compareTo(a.session.createdAt);
+      return byCreated != 0 ? byCreated : a.index.compareTo(b.index);
+    });
+    return [for (final e in indexed) e.session.sessionId];
   }
 
   Future<ChatDataSnapshot> loadWorkspaceIndex(SessionRepository repo) async {
@@ -172,8 +191,30 @@ class SessionDataStore {
 
   ChatDataSnapshot appendSession(ChatDataSnapshot base, AppSession session) {
     return deriveSnapshot(
-      workspaces: base.workspaces,
+      workspaces: [
+        for (final workspace in base.workspaces)
+          if (workspace.workspaceId == session.workspaceId)
+            _withInsertedSessionId(base, workspace, session)
+          else
+            workspace,
+      ],
       sessions: [...base.sessions, session],
+    );
+  }
+
+  Workspace _withInsertedSessionId(
+    ChatDataSnapshot base,
+    Workspace workspace,
+    AppSession session,
+  ) {
+    if (workspace.sessionIds.contains(session.sessionId)) return workspace;
+    final workspaceSessions = [
+      for (final s in base.sessions)
+        if (s.workspaceId == workspace.workspaceId) s,
+      session,
+    ];
+    return workspace.copyWith(
+      sessionIds: sortedSessionIdsByCreatedAt(workspaceSessions),
     );
   }
 
@@ -190,10 +231,87 @@ class SessionDataStore {
 
   ChatDataSnapshot removeSession(ChatDataSnapshot base, String sessionId) {
     return deriveSnapshot(
-      workspaces: base.workspaces,
+      workspaces: [
+        for (final workspace in base.workspaces)
+          if (workspace.sessionIds.contains(sessionId))
+            workspace.copyWith(
+              sessionIds: [
+                for (final id in workspace.sessionIds)
+                  if (id != sessionId) id,
+              ],
+            )
+          else
+            workspace,
+      ],
       sessions: [
         for (final s in base.sessions)
           if (s.sessionId != sessionId) s,
+      ],
+    );
+  }
+
+  /// Replaces [updated] in the snapshot; keeps the current snapshot's
+  /// sessionIds (in-memory maintenance is the source of truth for order).
+  ChatDataSnapshot snapshotWithWorkspace(
+    ChatDataSnapshot base,
+    Workspace updated,
+  ) {
+    final existing = base.workspaces
+        .where((w) => w.workspaceId == updated.workspaceId)
+        .firstOrNull;
+    final withIds = existing != null
+        ? updated.copyWith(sessionIds: existing.sessionIds)
+        : updated;
+    final replaced = existing == null
+        ? [...base.workspaces, withIds]
+        : [
+            for (final w in base.workspaces)
+              if (w.workspaceId == updated.workspaceId) withIds else w,
+          ];
+    return deriveSnapshot(workspaces: replaced, sessions: base.sessions);
+  }
+
+  /// Replaces [workspace] and every session it owns with [sessions];
+  /// sessionIds are rebuilt from [sessions] (createdAt desc).
+  ChatDataSnapshot snapshotWithWorkspaceAndSessions(
+    ChatDataSnapshot base, {
+    required Workspace workspace,
+    required List<AppSession> sessions,
+  }) {
+    final withIds = workspace.copyWith(
+      sessionIds: sortedSessionIdsByCreatedAt(
+        sessions.where((s) => s.workspaceId == workspace.workspaceId),
+      ),
+    );
+    final replaced = [
+      for (final w in base.workspaces)
+        if (w.workspaceId == workspace.workspaceId) withIds else w,
+    ];
+    if (!base.workspaces.any((w) => w.workspaceId == workspace.workspaceId)) {
+      replaced.add(withIds);
+    }
+    return deriveSnapshot(
+      workspaces: replaced,
+      sessions: [
+        for (final s in base.sessions)
+          if (s.workspaceId != workspace.workspaceId) s,
+        ...sessions,
+      ],
+    );
+  }
+
+  ChatDataSnapshot snapshotWithoutWorkspace(
+    ChatDataSnapshot base,
+    String workspaceId,
+  ) {
+    return deriveSnapshot(
+      workspaces: [
+        for (final w in base.workspaces)
+          if (w.workspaceId != workspaceId) w,
+      ],
+      sessions: [
+        for (final s in base.sessions)
+          if (s.workspaceId != workspaceId) s,
       ],
     );
   }
