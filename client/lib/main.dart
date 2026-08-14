@@ -33,6 +33,7 @@ import 'l10n/l10n_extensions.dart';
 import 'repositories/app_settings_repository.dart';
 import 'repositories/launch_profile_repository.dart';
 import 'services/hook/hook_repository.dart';
+import 'services/hook/import/hook_import_service.dart';
 import 'repositories/session_repository.dart';
 import 'repositories/workspace_project_config_repository.dart';
 import 'repositories/ssh_credential_store.dart';
@@ -645,6 +646,12 @@ void main() async {
                 ),
                 RepositoryProvider<HookRepository>.value(
                   value: shell.hookRepository,
+                ),
+                RepositoryProvider<HookImportParser>.value(
+                  value: shell.hookImportParser,
+                ),
+                RepositoryProvider<HookImportService>.value(
+                  value: shell.hookImportService,
                 ),
                 RepositoryProvider<SshProfileRepository>.value(
                   value: shell.sshProfileRepo,

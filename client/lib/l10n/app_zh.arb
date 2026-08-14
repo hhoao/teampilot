@@ -1920,6 +1920,18 @@
   "hookNameRequired": "名称为必填项",
   "hookSupportMatrix": "查看受支持程度",
   "hookCapabilityMatrix": "能力矩阵",
+  "hookImport": "导入",
+  "hookImportCli": "CLI",
+  "hookImportJson": "Hook JSON",
+  "hookImportJsonHint": "粘贴 settings.json hooks、hooks.json 或 hooks 片段…",
+  "hookImportParse": "解析",
+  "hookImportDone": "导入 {count} 条",
+  "@hookImportDone": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "hookImportDoneToast": "已导入 hooks",
   "mcpNavRegistries": "注册中心",
   "mcpInstalledSectionTitle": "已安装的 MCP",
   "mcpInstalledCount": "已安装 {count}",

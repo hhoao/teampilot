@@ -2216,6 +2216,18 @@
   "hookNameRequired": "Name is required",
   "hookSupportMatrix": "View support matrix",
   "hookCapabilityMatrix": "Capability matrix",
+  "hookImport": "Import",
+  "hookImportCli": "CLI",
+  "hookImportJson": "Hook JSON",
+  "hookImportJsonHint": "Paste settings.json hooks, hooks.json, or a hooks fragment…",
+  "hookImportParse": "Parse",
+  "hookImportDone": "{count, plural, =1{Import {count} hook} other{Import {count} hooks}}",
+  "@hookImportDone": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "hookImportDoneToast": "Hooks imported",
   "mcpNavRegistries": "Registry",
   "mcpInstalledSectionTitle": "Installed MCP servers",
   "mcpInstalledCount": "{count} installed",

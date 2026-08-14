@@ -8528,6 +8528,48 @@ abstract class AppLocalizations {
   /// **'Capability matrix'**
   String get hookCapabilityMatrix;
 
+  /// No description provided for @hookImport.
+  ///
+  /// In en, this message translates to:
+  /// **'Import'**
+  String get hookImport;
+
+  /// No description provided for @hookImportCli.
+  ///
+  /// In en, this message translates to:
+  /// **'CLI'**
+  String get hookImportCli;
+
+  /// No description provided for @hookImportJson.
+  ///
+  /// In en, this message translates to:
+  /// **'Hook JSON'**
+  String get hookImportJson;
+
+  /// No description provided for @hookImportJsonHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste settings.json hooks, hooks.json, or a hooks fragment…'**
+  String get hookImportJsonHint;
+
+  /// No description provided for @hookImportParse.
+  ///
+  /// In en, this message translates to:
+  /// **'Parse'**
+  String get hookImportParse;
+
+  /// No description provided for @hookImportDone.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Import {count} hook} other{Import {count} hooks}}'**
+  String hookImportDone(int count);
+
+  /// No description provided for @hookImportDoneToast.
+  ///
+  /// In en, this message translates to:
+  /// **'Hooks imported'**
+  String get hookImportDoneToast;
+
   /// No description provided for @mcpNavRegistries.
   ///
   /// In en, this message translates to:

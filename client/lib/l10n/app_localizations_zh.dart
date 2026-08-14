@@ -4573,6 +4573,30 @@ class AppLocalizationsZh extends AppLocalizations {
   String get hookCapabilityMatrix => '能力矩阵';
 
   @override
+  String get hookImport => '导入';
+
+  @override
+  String get hookImportCli => 'CLI';
+
+  @override
+  String get hookImportJson => 'Hook JSON';
+
+  @override
+  String get hookImportJsonHint =>
+      '粘贴 settings.json hooks、hooks.json 或 hooks 片段…';
+
+  @override
+  String get hookImportParse => '解析';
+
+  @override
+  String hookImportDone(int count) {
+    return '导入 $count 条';
+  }
+
+  @override
+  String get hookImportDoneToast => '已导入 hooks';
+
+  @override
   String get mcpNavRegistries => '注册中心';
 
   @override

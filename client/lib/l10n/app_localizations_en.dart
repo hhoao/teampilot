@@ -4749,6 +4749,36 @@ class AppLocalizationsEn extends AppLocalizations {
   String get hookCapabilityMatrix => 'Capability matrix';
 
   @override
+  String get hookImport => 'Import';
+
+  @override
+  String get hookImportCli => 'CLI';
+
+  @override
+  String get hookImportJson => 'Hook JSON';
+
+  @override
+  String get hookImportJsonHint =>
+      'Paste settings.json hooks, hooks.json, or a hooks fragment…';
+
+  @override
+  String get hookImportParse => 'Parse';
+
+  @override
+  String hookImportDone(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Import $count hooks',
+      one: 'Import $count hook',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get hookImportDoneToast => 'Hooks imported';
+
+  @override
   String get mcpNavRegistries => 'Registry';
 
   @override

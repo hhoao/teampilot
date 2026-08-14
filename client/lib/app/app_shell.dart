@@ -75,6 +75,7 @@ import '../repositories/cli_presets_repository.dart';
 import '../cubits/skill_cubit.dart';
 import '../repositories/mcp_repository.dart';
 import '../services/hook/hook_repository.dart';
+import '../services/hook/import/hook_import_service.dart';
 import '../services/mcp/profile_mcp_linker_service.dart';
 import '../cubits/ssh_connection_cubit.dart';
 import '../cubits/ssh_profile_cubit.dart';
@@ -269,6 +270,8 @@ class AppShell {
     required this.mcpCubit,
     required this.hookCubit,
     required this.hookRepository,
+    required this.hookImportParser,
+    required this.hookImportService,
     required this.teamHubCubit,
     required this.expertHubCubit,
     required this.expertCapabilityResolver,
@@ -351,6 +354,8 @@ class AppShell {
   final McpCubit mcpCubit;
   final HookCubit hookCubit;
   final HookRepository hookRepository;
+  final HookImportParser hookImportParser;
+  final HookImportService hookImportService;
   final TeamHubCubit teamHubCubit;
   final ExpertHubCubit expertHubCubit;
   final ExpertCapabilityResolver expertCapabilityResolver;
@@ -496,6 +501,8 @@ Future<AppShell> buildAppShell({
   late final McpCubit mcpCubit;
   late final HookCubit hookCubit;
   late final HookRepository hookRepository;
+  late final HookImportParser hookImportParser;
+  late final HookImportService hookImportService;
   late final TeamHubCubit teamHubCubit;
   late final ExpertHubCubit expertHubCubit;
   late final ExtensionCubit extensionCubit;
@@ -907,6 +914,12 @@ Future<AppShell> buildAppShell({
     fs: AppStorage.fs,
     teampilotRoot: AppStorage.paths.basePath,
   );
+  hookImportParser = HookImportParser(
+    fs: AppStorage.fs,
+    teampilotRoot: AppStorage.paths.basePath,
+    homeDir: Platform.environment['HOME'],
+  );
+  hookImportService = HookImportService(repository: hookRepository);
   identityProvisioner = LaunchProfileProvisioner(
     repository: identityRepository,
   );
@@ -1859,6 +1872,8 @@ Future<AppShell> buildAppShell({
     mcpCubit: mcpCubit,
     hookCubit: hookCubit,
     hookRepository: hookRepository,
+    hookImportParser: hookImportParser,
+    hookImportService: hookImportService,
     teamHubCubit: teamHubCubit,
     expertHubCubit: expertHubCubit,
     expertCapabilityResolver: expertCapabilityResolver,

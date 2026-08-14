@@ -14,6 +14,7 @@ import 'hook_script_extractor.dart';
 class HookImportDraft {
   const HookImportDraft({
     required this.definition,
+    this.nativeEvent,
     this.scriptFileName,
     this.scriptContent,
     this.unsupportedFields = const [],
@@ -21,6 +22,9 @@ class HookImportDraft {
   });
 
   final HookDefinition definition;
+
+  /// 原生事件名（如 `Stop`），预览标题展示用；null 时退回归一化事件名。
+  final String? nativeEvent;
 
   /// ScriptCopy 时需写入库的脚本文件名（`hooks/{id}/{fileName}`）。
   final String? scriptFileName;
@@ -133,6 +137,7 @@ class HookImportParser {
       }
       drafts.add(HookImportDraft(
         definition: definition,
+        nativeEvent: entry.nativeEvent,
         scriptFileName: scriptFileName,
         scriptContent: scriptContent,
         unsupportedFields: entry.unsupportedFields,

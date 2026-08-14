@@ -8,9 +8,11 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/hook_definition.dart';
 import '../../services/hook/hook_repository.dart';
 import '../../utils/ui/app_keys.dart';
+import '../../widgets/app_toast/app_toast.dart';
 import '../../widgets/settings/workspace_section_host.dart';
 import '../../widgets/settings/workspace_section_nav_item.dart';
 import 'hook_editor_dialog.dart';
+import 'hook_import_dialog.dart';
 
 class HookManagementPage extends StatelessWidget {
   const HookManagementPage({super.key});
@@ -55,19 +57,40 @@ class HookManagementPage extends StatelessWidget {
             children: [
               Align(
                 alignment: Alignment.centerRight,
-                child: TpButton(
-                  onPressed: () => _openEditor(
-                    context,
-                    cubit: context.read<HookCubit>(),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.add, size: context.tpIconSizes.md),
-                      const SizedBox(width: 6),
-                      Text(l10n.hookNew),
-                    ],
-                  ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    OutlinedButton.icon(
+                      key: const Key('hook-import'),
+                      onPressed: () async {
+                        final imported = await showHookImportDialog(context);
+                        if (imported == true && context.mounted) {
+                          AppToast.show(
+                            context,
+                            message: context.l10n.hookImportDoneToast,
+                            variant: TpToastVariant.success,
+                          );
+                        }
+                      },
+                      icon: const Icon(Icons.file_download_outlined),
+                      label: Text(l10n.hookImport),
+                    ),
+                    const SizedBox(width: 8),
+                    TpButton(
+                      onPressed: () => _openEditor(
+                        context,
+                        cubit: context.read<HookCubit>(),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.add, size: context.tpIconSizes.md),
+                          const SizedBox(width: 6),
+                          Text(l10n.hookNew),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 12),
