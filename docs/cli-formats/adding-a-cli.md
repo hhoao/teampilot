@@ -39,11 +39,11 @@ abstract interface class CliToolDefinition {
 ```
 
 - `final class NewcliCliTool implements CliToolDefinition`：各能力为 final 字段 + const 默认构造参数（可注入、可测），`capabilities` getter 枚举全部字段；`isLaunchSupported => true` 表示可 launch。
-- 能力组合（capability pattern）见 `docs/cli-architecture.md`；本文第 1/2 步只涉 `AiHistoryCapability` 与 `ToolCallResolversCapability` 两个。
+- 能力组合（capability pattern）见 `docs/cli-architecture.md`；本文第 1/2 步只涉 `AiHistoryCapability` 一个（四个 tool call resolver getter 已收编其中）。
 
 **对照文件**
 
-- 完整范例：`claude/claude_tool.dart`（40+ 能力：busTransport / launchArgs / configProfile / sessionResume / executableResolver / installer / presence / display / providerCatalog / providerModel / providerCredential / aiHistory / toolCallResolvers / …）。
+- 完整范例：`claude/claude_tool.dart`（14 功能域能力：provider / session / teamBehavior / chatInteraction / terminalBehavior / plugin / executable / mcp / prompt / headless / aiHistory / skill / hook / memberConfigInspection）。
 - 最简参考：`flashskyai/flashskyai_tool.dart`；其余 `codex/codex_tool.dart`、`opencode/opencode_tool.dart`、`cursor/cursor_tool.dart`。
 
 **验证命令**
@@ -113,13 +113,14 @@ cd client && flutter test test/services/cli/registry/session_history_registratio
 **文件**
 
 - 共享层：`client/lib/services/cli/registry/capabilities/shared_tool_call_resolvers.dart`
-- 实现：`client/lib/services/cli/<cli>/capabilities/tool_call_resolvers.dart`
-- 接口：`registry/capabilities/tool_call_resolver_capability.dart`
+- 实现：`client/lib/services/cli/<cli>/capabilities/tool_call_resolvers.dart`（追加配置）
+- 载体接口：`registry/capabilities/ai_history_capability.dart`
 
-**接口签名要点**
+**接口签名要点**（2026-08-14 起收编进 `AiHistoryCapability`，`ai_history_capability.dart:162-165`）
 
 ```dart
-abstract interface class ToolCallResolversCapability implements CliCapability {
+abstract interface class AiHistoryCapability implements CliCapability {
+  // ... transcript 定位/解析面 ...
   AiEditToolTargetResolver get editResolver;
   AiToolFileTargetResolver get fileResolver;
   AiShellToolTargetResolver get shellResolver;
@@ -132,7 +133,7 @@ abstract interface class ToolCallResolversCapability implements CliCapability {
 - 三种实现模式：
   1. **无 delta**：`class NewcliToolCallResolvers extends SharedToolCallResolvers`（claude / flashskyai 范例，约 6 行）。
   2. **追加覆写**：`extends SharedToolCallResolvers` + `_editToolNames = {...SharedToolCallResolverKeys.editToolNames, 'strreplace', 'editnotebook'}` 等，并 override 各 getter（cursor 范例：追加 `path` / `contents` 键）。
-  3. **全自定义**：`implements ToolCallResolversCapability`，共享键集仅作常量引用（opencode 范例：追加 camelCase `filePath` / `oldString` / `newString`）。
+  3. **全自定义**：`extends SharedToolCallResolvers` + 全套覆写 getter，共享键集仅作常量引用（opencode 范例：追加 camelCase `filePath` / `oldString` / `newString`）。
 
 **对照文件**
 
@@ -169,12 +170,12 @@ registry.register(NewcliCliTool(/* 注入参数 */));
 - 注册后由 `CliTool.values` 遍历的断言**自动覆盖完备性**（新增枚举不注册即 fail）：
   - `CliTool.values.every((cli) => registry.tryGet(cli) != null)`（`built_in_cli_tools.dart:95-98`）
   - `registry.all.length == CliTool.values.length`（不许注册多余定义）
-  - 全员必带：`ProviderModelCapability`、`MemberConfigInspectionCapability`
-  - `_verifyRequired<T>`：`ConfigProfileCapability` / `LaunchArgsCapability` / `WaitBeforeStopCapability` / `ProviderDisplayCapability` / `CliConfigUiCapability` / `TitleAttentionCapability` / `MarketplaceConsumerCapability` / `AgentStatusNormalizerCapability` / `HistoryContextEnvCapability` / `CredentialExportCapability` / `RemoteAppDataCapability`
-  - `_verifyNativeTeamRegistration` / `_verifyMemberAgentPresetRegistration`：**allowed 集 = {claude, flashskyai}**——新 CLI 不得注册 `NativeTeamCapability` / `MemberAgentPresetCapability`，除非显式加入 allowed 集（否则 `StateError`）
+  - 全员必带：`ProviderCapability`、`MemberConfigInspectionCapability`
+  - `_verifyRequired<T>`：`CliSessionCapability` / `TeamBehaviorCapability` / `ProviderCapability` / `CliExecutableCapability` / `TerminalBehaviorCapability` / `PluginCapability` / `ChatInteractionCapability`
+  - `_verifyNativeTeamRegistration` / `_verifyMemberAgentPresetRegistration`：**allowed 集 = {claude, flashskyai}**——新 CLI 不得注册 `TeamBehaviorCapability.supportsNativeTeam` / `agentPresetStyle`（原生团队 / agent 预设），除非显式加入 allowed 集（否则 `StateError`）
 - 依赖反转：launchable 定义里的 `CliAssetRegistry` 能力自动 collect（`built_in_cli_tools.dart:89-93`）。
 - Bootstrap entry 模式：`bootstrap.entry<T>(cli)`（`cli_bootstrap.dart:23`），`CliBootstrap` Map 驱动——新增 CLI 不改 `CliBootstrap` 类（`cli-architecture.md:418-425` 旧/新模式对照）。
-- 显示名：`registry/cli_display_name.dart` `cliDisplayName(def, l10n)` 经 `DisplayCapability`，fallback `CliTool.value`。
+- 显示名：`registry/cli_display_name.dart` `cliDisplayName(def, l10n)` 经 `CliExecutableCapability.label`，fallback `CliTool.value`。
 
 **对照文件**
 
@@ -246,7 +247,7 @@ cd client && flutter analyze --no-fatal-infos --no-fatal-warnings && flutter tes
 5. **夹具纪律**：真实数据 + 脱敏（redact commit `22790cb4`）；无发射证据不捏造（G-5 教训：初判"无 Edit 证据"实为扫描范围遗漏 `subagents/` 子目录）；多 project 目录 / 子目录形态都要扫。
 6. **id 优先级各异，不得互读**：claude `message.id` → `uuid` → fallback；cursor `uuid` → `id` → `message.id` → fallback（与 Claude 相反）；opencode id = db 行 id 无 fallback——新增 CLI 先确定自己的优先级链并断言固化。
 7. **category 跨 CLI 统一**：同语义工具跨 CLI 归类必须一致（G-3 / Task 6 裁决：`question`→`askUser` 与 cursor `AskQuestion`、claude `askuserquestion` 统一）——新增工具名先查 `tool_call_categories.dart` 共享表再决定放共享还是下沉。
-8. **注册 allowed 集**：`NativeTeamCapability` / `MemberAgentPresetCapability` 只允许 {claude, flashskyai}——新 CLI 不要盲加这两个能力。
+8. **注册 allowed 集**：`TeamBehaviorCapability` 的 `supportsNativeTeam` / `agentPresetStyle` 只允许 {claude, flashskyai}——新 CLI 不要盲加这两个行为。
 
 ---
 

@@ -1,7 +1,7 @@
 # CLI 能力接口合并:按功能组收敛 — 设计
 
 Date: 2026-08-14
-Status: Draft (brainstorming)
+Status: Done
 
 ## 问题
 
