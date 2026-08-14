@@ -7,6 +7,7 @@ import 'package:teampilot/cubits/chat/model/chat_tab_info.dart';
 import 'package:teampilot/cubits/chat/model/session_open_request.dart';
 import 'package:teampilot/cubits/chat/model/session_open_status.dart';
 import 'package:teampilot/cubits/chat/model/session_workbench_view.dart';
+import 'package:teampilot/cubits/chat/session_data_store.dart';
 import 'package:teampilot/cubits/chat/session_launch_host.dart';
 import 'package:teampilot/cubits/chat/tab_session_runtime_coordinator.dart';
 import 'package:teampilot/models/app_session.dart';
@@ -343,6 +344,15 @@ class _FakeHost implements SessionLaunchHost {
 
   @override
   ChatState state;
+
+  @override
+  ChatDataSnapshot stateSnapshot() => ChatDataSnapshot(
+        workspaces: state.workspaces,
+        sessions: state.sessions,
+        visibleWorkspaces: state.visibleWorkspaces,
+        visibleSessions: state.visibleSessions,
+      );
+
   final beginConnectIds = <String>[];
 
   @override

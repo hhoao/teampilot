@@ -1,3 +1,5 @@
+import 'package:collection/collection.dart';
+
 import '../../models/workspace_folder.dart';
 import '../../models/workspace.dart';
 import '../../models/app_session.dart';
@@ -77,6 +79,23 @@ class SessionDataStore {
       visibleWorkspaces: visP,
       visibleSessions: visS,
     );
+  }
+
+  /// Stable createdAt-desc sort: equal createdAt keeps input order.
+  static List<String> sortedSessionIdsByCreatedAt(
+    Iterable<AppSession> sessions,
+  ) {
+    final indexed = <({AppSession session, int index})>[];
+    var index = 0;
+    for (final session in sessions) {
+      indexed.add((session: session, index: index));
+      index++;
+    }
+    indexed.sort((a, b) {
+      final byCreated = b.session.createdAt.compareTo(a.session.createdAt);
+      return byCreated != 0 ? byCreated : a.index.compareTo(b.index);
+    });
+    return [for (final e in indexed) e.session.sessionId];
   }
 
   Future<ChatDataSnapshot> loadWorkspaceIndex(SessionRepository repo) async {
@@ -171,9 +190,33 @@ class SessionDataStore {
   }
 
   ChatDataSnapshot appendSession(ChatDataSnapshot base, AppSession session) {
+    final alreadyPresent =
+        base.sessions.any((s) => s.sessionId == session.sessionId);
     return deriveSnapshot(
-      workspaces: base.workspaces,
-      sessions: [...base.sessions, session],
+      workspaces: [
+        for (final workspace in base.workspaces)
+          if (workspace.workspaceId == session.workspaceId)
+            _withInsertedSessionId(base, workspace, session)
+          else
+            workspace,
+      ],
+      sessions: alreadyPresent ? base.sessions : [...base.sessions, session],
+    );
+  }
+
+  Workspace _withInsertedSessionId(
+    ChatDataSnapshot base,
+    Workspace workspace,
+    AppSession session,
+  ) {
+    if (workspace.sessionIds.contains(session.sessionId)) return workspace;
+    final workspaceSessions = [
+      for (final s in base.sessions)
+        if (s.workspaceId == workspace.workspaceId) s,
+      session,
+    ];
+    return workspace.copyWith(
+      sessionIds: sortedSessionIdsByCreatedAt(workspaceSessions),
     );
   }
 
@@ -190,7 +233,18 @@ class SessionDataStore {
 
   ChatDataSnapshot removeSession(ChatDataSnapshot base, String sessionId) {
     return deriveSnapshot(
-      workspaces: base.workspaces,
+      workspaces: [
+        for (final workspace in base.workspaces)
+          if (workspace.sessionIds.contains(sessionId))
+            workspace.copyWith(
+              sessionIds: [
+                for (final id in workspace.sessionIds)
+                  if (id != sessionId) id,
+              ],
+            )
+          else
+            workspace,
+      ],
       sessions: [
         for (final s in base.sessions)
           if (s.sessionId != sessionId) s,
@@ -198,8 +252,75 @@ class SessionDataStore {
     );
   }
 
+  /// Replaces [updated] in the snapshot; keeps the current snapshot's
+  /// sessionIds (in-memory maintenance is the source of truth for order).
+  ChatDataSnapshot snapshotWithWorkspace(
+    ChatDataSnapshot base,
+    Workspace updated,
+  ) {
+    final existing = base.workspaces
+        .where((w) => w.workspaceId == updated.workspaceId)
+        .firstOrNull;
+    final withIds = existing != null
+        ? updated.copyWith(sessionIds: existing.sessionIds)
+        : updated;
+    final replaced = existing == null
+        ? [...base.workspaces, withIds]
+        : [
+            for (final w in base.workspaces)
+              if (w.workspaceId == updated.workspaceId) withIds else w,
+          ];
+    return deriveSnapshot(workspaces: replaced, sessions: base.sessions);
+  }
+
+  /// Replaces [workspace] and every session it owns with [sessions];
+  /// sessionIds are rebuilt from [sessions] (createdAt desc).
+  ChatDataSnapshot snapshotWithWorkspaceAndSessions(
+    ChatDataSnapshot base, {
+    required Workspace workspace,
+    required List<AppSession> sessions,
+  }) {
+    final withIds = workspace.copyWith(
+      sessionIds: sortedSessionIdsByCreatedAt(
+        sessions.where((s) => s.workspaceId == workspace.workspaceId),
+      ),
+    );
+    final replaced = [
+      for (final w in base.workspaces)
+        if (w.workspaceId == workspace.workspaceId) withIds else w,
+    ];
+    if (!base.workspaces.any((w) => w.workspaceId == workspace.workspaceId)) {
+      replaced.add(withIds);
+    }
+    return deriveSnapshot(
+      workspaces: replaced,
+      sessions: [
+        for (final s in base.sessions)
+          if (s.workspaceId != workspace.workspaceId) s,
+        ...sessions,
+      ],
+    );
+  }
+
+  ChatDataSnapshot snapshotWithoutWorkspace(
+    ChatDataSnapshot base,
+    String workspaceId,
+  ) {
+    return deriveSnapshot(
+      workspaces: [
+        for (final w in base.workspaces)
+          if (w.workspaceId != workspaceId) w,
+      ],
+      sessions: [
+        for (final s in base.sessions)
+          if (s.workspaceId != workspaceId) s,
+      ],
+    );
+  }
+
   Future<({String workspaceId, ChatDataSnapshot snapshot})>
   createWorkspaceWithFirstSession(
+    ChatDataSnapshot base,
     List<WorkspaceFolder> folders,
     SessionRepository repo, {
     String sessionTeamId = '',
@@ -229,17 +350,20 @@ class SessionDataStore {
         : throw ArgumentError(
             'Team session create requires memberClis or team',
           );
-    await repo.createSession(
+    var snapshot = snapshotWithWorkspace(base, workspace);
+    final created = await repo.createSession(
       workspace.workspaceId,
       sessionTeam: sessionTeamId,
       rosterMembers: rosterMembers,
       memberClis: resolvedClis,
     );
-    final snapshot = await loadWorkspaceData(repo);
+    snapshot = appendSession(snapshot, created.session);
+    snapshot = snapshotWithWorkspace(snapshot, created.workspace);
     return (workspaceId: workspace.workspaceId, snapshot: snapshot);
   }
 
   Future<ChatDataSnapshot?> addWorkspaceDirectory(
+    ChatDataSnapshot base,
     SessionRepository repo,
     Workspace workspace,
     WorkspaceFolder folder,
@@ -253,64 +377,77 @@ class SessionDataStore {
     )) {
       return null;
     }
-    await repo.updateWorkspaceFolders(workspace.workspaceId, [
+    final updated = await repo.updateWorkspaceFolders(workspace.workspaceId, [
       ...workspace.folders,
       folder.copyWith(path: normalizeWorkspacePath(folder.path)),
     ]);
-    return loadWorkspaceData(repo);
+    if (updated == null) return null;
+    return snapshotWithWorkspace(base, updated);
   }
 
-  Future<ChatDataSnapshot> updateWorkspaceMetadata(
+  Future<ChatDataSnapshot?> updateWorkspaceMetadata(
+    ChatDataSnapshot base,
     SessionRepository repo,
     String workspaceId, {
     String? display,
     String? defaultProfileId,
     bool? rootSandboxEnvOptIn,
   }) async {
-    await repo.updateWorkspaceMetadata(
+    final updated = await repo.updateWorkspaceMetadata(
       workspaceId,
       display: display,
       defaultProfileId: defaultProfileId,
       rootSandboxEnvOptIn: rootSandboxEnvOptIn,
     );
-    return loadWorkspaceData(repo);
+    if (updated == null) return null;
+    return snapshotWithWorkspace(base, updated);
   }
 
-  Future<ChatDataSnapshot> applyWorkspaceIcon(
+  Future<ChatDataSnapshot?> applyWorkspaceIcon(
+    ChatDataSnapshot base,
     SessionRepository repo,
     String workspaceId,
     WorkspaceIconRef icon,
   ) async {
-    await repo.applyWorkspaceIcon(workspaceId, icon);
-    return loadWorkspaceData(repo);
+    final updated = await repo.applyWorkspaceIcon(workspaceId, icon);
+    if (updated == null) return null;
+    return snapshotWithWorkspace(base, updated);
   }
 
-  Future<ChatDataSnapshot> importCustomWorkspaceIcon(
+  Future<ChatDataSnapshot?> importCustomWorkspaceIcon(
+    ChatDataSnapshot base,
     SessionRepository repo,
     String workspaceId,
     String localSourcePath,
   ) async {
-    await repo.importCustomWorkspaceIcon(workspaceId, localSourcePath);
-    return loadWorkspaceData(repo);
+    final updated = await repo.importCustomWorkspaceIcon(
+      workspaceId,
+      localSourcePath,
+    );
+    if (updated == null) return null;
+    return snapshotWithWorkspace(base, updated);
   }
 
   Future<ChatDataSnapshot> deleteSessionRecord(
+    ChatDataSnapshot base,
     SessionRepository repo,
     String sessionId,
   ) async {
     await repo.deleteSession(sessionId);
-    return loadWorkspaceData(repo);
+    return removeSession(base, sessionId);
   }
 
   Future<ChatDataSnapshot> deleteWorkspaceRecord(
+    ChatDataSnapshot base,
     SessionRepository repo,
     String workspaceId,
   ) async {
     await repo.deleteWorkspace(workspaceId);
-    return loadWorkspaceData(repo);
+    return snapshotWithoutWorkspace(base, workspaceId);
   }
 
   Future<({Workspace workspace, ChatDataSnapshot snapshot})> cloneWorkspace(
+    ChatDataSnapshot base,
     SessionRepository repo,
     String sourceWorkspaceId, {
     String? display,
@@ -321,7 +458,13 @@ class SessionDataStore {
       display: display,
       rosterMembers: rosterMembers,
     );
-    final snapshot = await loadWorkspaceData(repo);
-    return (workspace: result.workspace, snapshot: snapshot);
+    return (
+      workspace: result.workspace,
+      snapshot: snapshotWithWorkspaceAndSessions(
+        base,
+        workspace: result.workspace,
+        sessions: result.sessions,
+      ),
+    );
   }
 }

@@ -1311,4 +1311,72 @@ void main() {
       },
     );
   });
+
+  group('touchSession/toggleSessionPin incremental patch', () {
+    test('touchSession patches the session in memory without rescan',
+        () async {
+      final tmp =
+          await Directory.systemTemp.createTemp('chat_cubit_touch_');
+      final repo = SessionRepository(rootDir: tmp.path);
+      final postFrame = PostFrameTestHarness();
+      final cubit = ChatCubit(
+        executableResolver: () => 'true',
+        automationRepository: testAutomationRepository(),
+        sessionRepository: repo,
+        postFrameScheduler: postFrame.scheduler,
+      );
+      _registerTempCubitCleanup(tmp: tmp, cubit: cubit, postFrame: postFrame);
+
+      final ws = await repo.createWorkspace([WorkspaceFolder(path: '/p')]);
+      final created = await repo.createSession(ws.workspaceId);
+      final other = await repo.createSession(ws.workspaceId);
+      await cubit.loadWorkspaceIndex(repo);
+      await cubit.ensureSessionsForWorkspace(ws.workspaceId);
+      expect(cubit.state.sessions, hasLength(2));
+
+      final otherBefore = cubit.state.sessions.firstWhere(
+        (s) => s.sessionId == other.session.sessionId,
+      );
+      await cubit.touchSession(created.session.sessionId);
+
+      final patched = cubit.state.sessions.singleWhere(
+        (s) => s.sessionId == created.session.sessionId,
+      );
+      expect(patched.updatedAt, greaterThan(created.session.updatedAt));
+      // 未 touch 的 session 保持同一实例 — 证明没有全量重扫。
+      expect(
+        cubit.state.sessions.firstWhere(
+          (s) => s.sessionId == other.session.sessionId,
+        ),
+        same(otherBefore),
+      );
+    });
+
+    test('toggleSessionPin patches pinned and updatedAt in memory', () async {
+      final tmp =
+          await Directory.systemTemp.createTemp('chat_cubit_toggle_pin_');
+      final repo = SessionRepository(rootDir: tmp.path);
+      final postFrame = PostFrameTestHarness();
+      final cubit = ChatCubit(
+        executableResolver: () => 'true',
+        automationRepository: testAutomationRepository(),
+        sessionRepository: repo,
+        postFrameScheduler: postFrame.scheduler,
+      );
+      _registerTempCubitCleanup(tmp: tmp, cubit: cubit, postFrame: postFrame);
+
+      final ws = await repo.createWorkspace([WorkspaceFolder(path: '/p')]);
+      final created = await repo.createSession(ws.workspaceId);
+      await cubit.loadWorkspaceIndex(repo);
+      await cubit.ensureSessionsForWorkspace(ws.workspaceId);
+
+      await cubit.toggleSessionPin(created.session.sessionId);
+
+      final patched = cubit.state.sessions.singleWhere(
+        (s) => s.sessionId == created.session.sessionId,
+      );
+      expect(patched.pinned, isTrue);
+      expect(patched.updatedAt, greaterThan(created.session.updatedAt));
+    });
+  });
 }

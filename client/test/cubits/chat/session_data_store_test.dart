@@ -1,8 +1,25 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/chat/session_data_store.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/workspace_folder.dart';
+import 'package:teampilot/repositories/session_repository.dart';
+
+Workspace _ws(String id, {List<String> sessionIds = const []}) => Workspace(
+      workspaceId: id,
+      folders: [WorkspaceFolder(path: '/$id')],
+      createdAt: 0,
+      sessionIds: sessionIds,
+    );
+
+AppSession _sess(String id, String wsId, {int createdAt = 0}) => AppSession(
+      sessionId: id,
+      workspaceId: wsId,
+      folders: [WorkspaceFolder(path: '/$wsId')],
+      createdAt: createdAt,
+    );
 
 void main() {
   test('unscoped snapshot exposes all', () {
@@ -110,5 +127,232 @@ void main() {
     );
     expect(snap.visibleSessions.map((s) => s.sessionId).toList(), ['solo']);
     expect(snap.visibleWorkspaces, workspaces);
+  });
+
+  test('sortedSessionIdsByCreatedAt is createdAt desc with stable ties', () {
+    final ids = SessionDataStore.sortedSessionIdsByCreatedAt([
+      _sess('old', 'p', createdAt: 1),
+      _sess('mid', 'p', createdAt: 5),
+      _sess('new', 'p', createdAt: 10),
+      _sess('tie-a', 'p', createdAt: 5),
+      _sess('tie-b', 'p', createdAt: 5),
+    ]);
+    expect(ids, ['new', 'mid', 'tie-a', 'tie-b', 'old']);
+  });
+
+  test('appendSession inserts sessionId into workspace sessionIds (createdAt order)', () {
+    final store = SessionDataStore();
+    final ws = _ws('p', sessionIds: ['old']);
+    final base = store.deriveSnapshot(
+      workspaces: [ws],
+      sessions: [_sess('old', 'p', createdAt: 1)],
+    );
+    final snap = store.appendSession(base, _sess('new', 'p', createdAt: 9));
+    expect(
+      snap.workspaces.single.sessionIds,
+      ['new', 'old'],
+    );
+    expect(snap.sessions.map((s) => s.sessionId), ['old', 'new']);
+  });
+
+  test('appendSession is idempotent for an existing session id', () {
+    final store = SessionDataStore();
+    final ws = _ws('p', sessionIds: ['s1']);
+    final base = store.deriveSnapshot(
+      workspaces: [ws],
+      sessions: [_sess('s1', 'p')],
+    );
+    final snap = store.appendSession(base, _sess('s1', 'p'));
+    expect(snap.workspaces.single.sessionIds, ['s1']);
+  });
+
+  test('appendSession twice keeps a single session entry', () {
+    final store = SessionDataStore();
+    final ws = _ws('p');
+    final base = store.deriveSnapshot(workspaces: [ws], sessions: const []);
+    final once = store.appendSession(base, _sess('s1', 'p'));
+    final twice = store.appendSession(once, _sess('s1', 'p'));
+    expect(
+      twice.sessions.where((s) => s.sessionId == 's1').length,
+      1,
+    );
+    expect(twice.workspaces.single.sessionIds, ['s1']);
+    expect(twice.visibleSessions.where((s) => s.sessionId == 's1').length, 1);
+  });
+
+  test('appendSession for unknown workspace leaves sessionIds untouched', () {
+    final store = SessionDataStore();
+    final base = store.deriveSnapshot(
+      workspaces: [_ws('p')],
+      sessions: const [],
+    );
+    final snap = store.appendSession(base, _sess('orphan', 'other'));
+    expect(snap.workspaces.single.sessionIds, isEmpty);
+    expect(snap.sessions.single.sessionId, 'orphan');
+  });
+
+  test('removeSession removes id from sessions and workspace sessionIds', () {
+    final store = SessionDataStore();
+    final ws = _ws('p', sessionIds: ['a', 'b']);
+    final base = store.deriveSnapshot(
+      workspaces: [ws],
+      sessions: [_sess('a', 'p'), _sess('b', 'p')],
+    );
+    final snap = store.removeSession(base, 'a');
+    expect(snap.workspaces.single.sessionIds, ['b']);
+    expect(snap.sessions.map((s) => s.sessionId), ['b']);
+  });
+
+  test('snapshotWithWorkspace replaces workspace but preserves sessionIds', () {
+    final store = SessionDataStore();
+    final base = store.deriveSnapshot(
+      workspaces: [_ws('p', sessionIds: ['a', 'b'])],
+      sessions: [_sess('a', 'p'), _sess('b', 'p')],
+    );
+    final updated = _ws('p').copyWith(display: 'renamed');
+    final snap = store.snapshotWithWorkspace(base, updated);
+    expect(snap.workspaces.single.display, 'renamed');
+    expect(snap.workspaces.single.sessionIds, ['a', 'b']);
+  });
+
+  test('snapshotWithWorkspace adds a brand-new workspace', () {
+    final store = SessionDataStore();
+    final base = store.deriveSnapshot(workspaces: [_ws('p')], sessions: const []);
+    final snap = store.snapshotWithWorkspace(base, _ws('q'));
+    expect(snap.workspaces.map((w) => w.workspaceId), ['p', 'q']);
+  });
+
+  test('snapshotWithWorkspaceAndSessions replaces workspace sessions and rebuilds sessionIds', () {
+    final store = SessionDataStore();
+    final base = store.deriveSnapshot(
+      workspaces: [_ws('p', sessionIds: ['old'])],
+      sessions: [_sess('old', 'p')],
+    );
+    final snap = store.snapshotWithWorkspaceAndSessions(
+      base,
+      workspace: _ws('p'),
+      sessions: [_sess('n1', 'p', createdAt: 2), _sess('n2', 'p', createdAt: 1)],
+    );
+    expect(snap.workspaces.single.sessionIds, ['n1', 'n2']);
+    expect(snap.sessions.map((s) => s.sessionId), ['n1', 'n2']);
+  });
+
+  test('snapshotWithoutWorkspace removes workspace and its sessions', () {
+    final store = SessionDataStore();
+    final base = store.deriveSnapshot(
+      workspaces: [_ws('p'), _ws('q')],
+      sessions: [_sess('a', 'p'), _sess('b', 'q')],
+    );
+    final snap = store.snapshotWithoutWorkspace(base, 'p');
+    expect(snap.workspaces.map((w) => w.workspaceId), ['q']);
+    expect(snap.sessions.map((s) => s.sessionId), ['b']);
+  });
+
+  test('updateWorkspaceMetadata patches snapshot without disk rescan', () async {
+    final tmp = await Directory.systemTemp.createTemp('sds_test_');
+    final repo = SessionRepository(rootDir: tmp.path);
+    final ws = await repo.createWorkspace([WorkspaceFolder(path: '/p')]);
+    final store = SessionDataStore();
+    var base = store.deriveSnapshot(workspaces: [ws], sessions: const []);
+    base = store.appendSession(
+      base,
+      await (await repo.createSession(ws.workspaceId)).session,
+    );
+
+    final snap = await store.updateWorkspaceMetadata(
+      base,
+      repo,
+      ws.workspaceId,
+      display: 'renamed',
+    );
+    expect(snap, isNotNull);
+    expect(snap!.workspaces.single.display, 'renamed');
+    expect(
+      snap.workspaces.single.sessionIds,
+      base.workspaces.single.sessionIds,
+      reason: 'manifest-only update must preserve sessionIds',
+    );
+    expect(snap.sessions.length, base.sessions.length);
+    await tmp.delete(recursive: true);
+  });
+
+  test('updateWorkspaceMetadata returns null when workspace missing', () async {
+    final tmp = await Directory.systemTemp.createTemp('sds_test_');
+    final repo = SessionRepository(rootDir: tmp.path);
+    final store = SessionDataStore();
+    final base = store.deriveSnapshot(workspaces: const [], sessions: const []);
+    final snap = await store.updateWorkspaceMetadata(
+      base,
+      repo,
+      'missing',
+      display: 'x',
+    );
+    expect(snap, isNull);
+    await tmp.delete(recursive: true);
+  });
+
+  test('deleteSessionRecord removes session and sessionIds incrementally', () async {
+    final tmp = await Directory.systemTemp.createTemp('sds_test_');
+    final repo = SessionRepository(rootDir: tmp.path);
+    final ws = await repo.createWorkspace([WorkspaceFolder(path: '/p')]);
+    final created = await repo.createSession(ws.workspaceId);
+    final store = SessionDataStore();
+    var base = store.deriveSnapshot(
+      workspaces: [ws.copyWith(sessionIds: [created.session.sessionId])],
+      sessions: [created.session],
+    );
+    final snap = await store.deleteSessionRecord(base, repo, created.session.sessionId);
+    expect(snap.sessions, isEmpty);
+    expect(snap.workspaces.single.sessionIds, isEmpty);
+    await tmp.delete(recursive: true);
+  });
+
+  test('deleteWorkspaceRecord removes workspace and its sessions incrementally', () async {
+    final tmp = await Directory.systemTemp.createTemp('sds_test_');
+    final repo = SessionRepository(rootDir: tmp.path);
+    final ws = await repo.createWorkspace([WorkspaceFolder(path: '/p')]);
+    final created = await repo.createSession(ws.workspaceId);
+    final store = SessionDataStore();
+    final base = store.deriveSnapshot(
+      workspaces: [ws.copyWith(sessionIds: [created.session.sessionId])],
+      sessions: [created.session],
+    );
+    final snap = await store.deleteWorkspaceRecord(base, repo, ws.workspaceId);
+    expect(snap.workspaces, isEmpty);
+    expect(snap.sessions, isEmpty);
+    await tmp.delete(recursive: true);
+  });
+
+  test('cloneWorkspace patches snapshot with cloned workspace and sessions', () async {
+    final tmp = await Directory.systemTemp.createTemp('sds_test_');
+    final repo = SessionRepository(rootDir: tmp.path);
+    final ws = await repo.createWorkspace([WorkspaceFolder(path: '/p')]);
+    final created = await repo.createSession(ws.workspaceId);
+    final store = SessionDataStore();
+    final base = store.deriveSnapshot(
+      workspaces: [ws.copyWith(sessionIds: [created.session.sessionId])],
+      sessions: [created.session],
+    );
+    final result = await store.cloneWorkspace(base, repo, ws.workspaceId);
+    expect(result.workspace.workspaceId, isNot(ws.workspaceId));
+    expect(result.snapshot.workspaces.length, 2);
+    expect(result.snapshot.workspaces.last.sessionIds, [result.workspace.sessionIds.single]);
+    expect(result.snapshot.sessions.length, 2);
+    await tmp.delete(recursive: true);
+  });
+
+  test('createWorkspaceWithFirstSession returns snapshot with new workspace and session', () async {
+    final tmp = await Directory.systemTemp.createTemp('sds_test_');
+    final repo = SessionRepository(rootDir: tmp.path);
+    final store = SessionDataStore();
+    final base = store.deriveSnapshot(workspaces: const [], sessions: const []);
+    final result = await store.createWorkspaceWithFirstSession(
+      base,
+      [WorkspaceFolder(path: '/p')],
+      repo,
+    );
+    expect(result.snapshot.workspaces.single.sessionIds, [result.snapshot.sessions.single.sessionId]);
+    expect(result.workspaceId, result.snapshot.workspaces.single.workspaceId);
+    await tmp.delete(recursive: true);
   });
 }

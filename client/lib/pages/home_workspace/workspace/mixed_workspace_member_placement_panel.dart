@@ -203,19 +203,18 @@ class _MixedWorkspaceMemberPlacementPanelState
       );
       if (to == null || !mounted) return;
 
-      final updated = (await repo.remapWorkspaceTarget(
+      final updated = await repo.remapWorkspaceTarget(
         widget.workspace.workspaceId,
         fromTargetId: fromTargetId,
         toTargetId: to,
         liveness: liveness,
-      ))
-          .workspace;
-      chat.invalidateWorkspaceProvision(updated);
-      await chat.loadWorkspaceData(repo);
+      );
+      chat.invalidateWorkspaceProvision(updated.workspace);
+      chat.patchWorkspaceAndSessions(updated.workspace, updated.sessions);
       _invalidateDeadTargetCache();
-      widget.onWorkspaceRemapped?.call(updated);
+      widget.onWorkspaceRemapped?.call(updated.workspace);
       if (!mounted) return;
-      final ids = workspaceTargetIds(updated.folders);
+      final ids = workspaceTargetIds(updated.workspace.folders);
       setState(() {
         if (!ids.contains(_selectedTargetId)) {
           _selectedTargetId = ids.first;

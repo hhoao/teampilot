@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/agent_attention_cubit.dart';
+import 'package:teampilot/cubits/chat/session_data_store.dart';
 import 'package:teampilot/cubits/chat/session_launch_host.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/agent_status/agent_attention_state.dart';
@@ -155,6 +156,14 @@ class _HostWithAgentStatus implements SessionLaunchHost {
 
   @override
   bool get hasConnectingSession => false;
+
+  @override
+  ChatDataSnapshot stateSnapshot() => const ChatDataSnapshot(
+        workspaces: [],
+        sessions: [],
+        visibleWorkspaces: [],
+        visibleSessions: [],
+      );
 
   @override
   void setMaterializingInFlight(bool value) {}

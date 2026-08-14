@@ -527,18 +527,21 @@ class ChatCubit extends Cubit<ChatState>
   void applyState(ChatState next) => emit(next);
 
   @override
+  ChatDataSnapshot stateSnapshot() => ChatDataSnapshot(
+        workspaces: state.workspaces,
+        sessions: state.sessions,
+        visibleWorkspaces: state.visibleWorkspaces,
+        visibleSessions: state.visibleSessions,
+      );
+
+  @override
   void emitSnapshot(ChatDataSnapshot snapshot) => _emitSnapshot(snapshot);
 
   @override
   void appendSessionSnapshot(AppSession session) {
     _emitSnapshot(
       _dataStore.appendSession(
-        ChatDataSnapshot(
-          workspaces: state.workspaces,
-          sessions: state.sessions,
-          visibleWorkspaces: state.visibleWorkspaces,
-          visibleSessions: state.visibleSessions,
-        ),
+        stateSnapshot(),
         session,
       ),
     );
@@ -548,12 +551,7 @@ class ChatCubit extends Cubit<ChatState>
   void replaceSessionSnapshot(AppSession session) {
     _emitSnapshot(
       _dataStore.replaceSession(
-        ChatDataSnapshot(
-          workspaces: state.workspaces,
-          sessions: state.sessions,
-          visibleWorkspaces: state.visibleWorkspaces,
-          visibleSessions: state.visibleSessions,
-        ),
+        stateSnapshot(),
         session,
       ),
     );
@@ -563,12 +561,7 @@ class ChatCubit extends Cubit<ChatState>
   void removeSessionSnapshot(String sessionId) {
     _emitSnapshot(
       _dataStore.removeSession(
-        ChatDataSnapshot(
-          workspaces: state.workspaces,
-          sessions: state.sessions,
-          visibleWorkspaces: state.visibleWorkspaces,
-          visibleSessions: state.visibleSessions,
-        ),
+        stateSnapshot(),
         sessionId,
       ),
     );
@@ -1443,12 +1436,7 @@ class ChatCubit extends Cubit<ChatState>
     if (isClosed) return;
     _emitSnapshot(
       _dataStore.mergeWorkspaceSessions(
-        current: ChatDataSnapshot(
-          workspaces: state.workspaces,
-          sessions: state.sessions,
-          visibleWorkspaces: state.visibleWorkspaces,
-          visibleSessions: state.visibleSessions,
-        ),
+        current: stateSnapshot(),
         workspaceId: workspaceId,
         workspaceSessions: sessions,
       ),
@@ -1473,15 +1461,29 @@ class ChatCubit extends Cubit<ChatState>
   /// full reload buys nothing here.
   void patchWorkspace(Workspace updated) {
     _emitSnapshot(
-      _dataStore.deriveSnapshot(
-        workspaces: [
-          for (final workspace in state.workspaces)
-            if (workspace.workspaceId == updated.workspaceId)
-              updated
-            else
-              workspace,
-        ],
-        sessions: state.sessions,
+      _dataStore.snapshotWithWorkspace(
+        stateSnapshot(),
+        updated,
+      ),
+    );
+  }
+
+  /// Replaces [workspace] and its sessions from a targeted mutation (e.g.
+  /// remapWorkspaceTarget) in memory; no disk rescan.
+  void patchWorkspaceAndSessions(
+    Workspace workspace,
+    List<AppSession> sessions,
+  ) {
+    _emitSnapshot(
+      _dataStore.snapshotWithWorkspaceAndSessions(
+        ChatDataSnapshot(
+          workspaces: state.workspaces,
+          sessions: state.sessions,
+          visibleWorkspaces: state.visibleWorkspaces,
+          visibleSessions: state.visibleSessions,
+        ),
+        workspace: workspace,
+        sessions: sessions,
       ),
     );
   }
@@ -1523,12 +1525,7 @@ class ChatCubit extends Cubit<ChatState>
     );
     _emitSnapshot(
       _dataStore.appendSession(
-        ChatDataSnapshot(
-          workspaces: state.workspaces,
-          sessions: state.sessions,
-          visibleWorkspaces: state.visibleWorkspaces,
-          visibleSessions: state.visibleSessions,
-        ),
+        stateSnapshot(),
         session,
       ),
     );
@@ -1554,6 +1551,7 @@ class ChatCubit extends Cubit<ChatState>
     LaunchProfileRepository? identityRepository,
   }) async {
     final result = await _dataStore.createWorkspaceWithFirstSession(
+      stateSnapshot(),
       folders,
       repo,
       sessionTeamId: sessionTeamId,
@@ -1575,6 +1573,7 @@ class ChatCubit extends Cubit<ChatState>
     WorkspaceFolder folder,
   ) async {
     final snap = await _dataStore.addWorkspaceDirectory(
+      stateSnapshot(),
       repo,
       workspace,
       folder,
@@ -1589,15 +1588,15 @@ class ChatCubit extends Cubit<ChatState>
     String? defaultProfileId,
     bool? rootSandboxEnvOptIn,
   }) async {
-    _emitSnapshot(
-      await _dataStore.updateWorkspaceMetadata(
-        repo,
-        workspaceId,
-        display: display,
-        defaultProfileId: defaultProfileId,
-        rootSandboxEnvOptIn: rootSandboxEnvOptIn,
-      ),
+    final snap = await _dataStore.updateWorkspaceMetadata(
+      stateSnapshot(),
+      repo,
+      workspaceId,
+      display: display,
+      defaultProfileId: defaultProfileId,
+      rootSandboxEnvOptIn: rootSandboxEnvOptIn,
     );
+    if (snap != null) _emitSnapshot(snap);
   }
 
   Future<void> applyWorkspaceIcon(
@@ -1605,7 +1604,13 @@ class ChatCubit extends Cubit<ChatState>
     String workspaceId,
     WorkspaceIconRef icon,
   ) async {
-    _emitSnapshot(await _dataStore.applyWorkspaceIcon(repo, workspaceId, icon));
+    final snap = await _dataStore.applyWorkspaceIcon(
+      stateSnapshot(),
+      repo,
+      workspaceId,
+      icon,
+    );
+    if (snap != null) _emitSnapshot(snap);
   }
 
   Future<void> importCustomWorkspaceIcon(
@@ -1613,13 +1618,13 @@ class ChatCubit extends Cubit<ChatState>
     String workspaceId,
     String localSourcePath,
   ) async {
-    _emitSnapshot(
-      await _dataStore.importCustomWorkspaceIcon(
-        repo,
-        workspaceId,
-        localSourcePath,
-      ),
+    final snap = await _dataStore.importCustomWorkspaceIcon(
+      stateSnapshot(),
+      repo,
+      workspaceId,
+      localSourcePath,
     );
+    if (snap != null) _emitSnapshot(snap);
   }
 
   /// Opens the icon picker and applies the user's choice.
@@ -2028,8 +2033,8 @@ class ChatCubit extends Cubit<ChatState>
   Future<void> touchSession(String sessionId) async {
     final repo = _sessionRepository;
     if (repo == null) return;
-    await repo.touchSession(sessionId);
-    _emitSnapshot(await _dataStore.loadWorkspaceData(repo));
+    final updated = await repo.touchSession(sessionId);
+    if (updated != null) replaceSessionSnapshot(updated);
   }
 
   /// Persists session-level or per-member continue permission overrides.
@@ -2159,8 +2164,8 @@ class ChatCubit extends Cubit<ChatState>
   Future<void> toggleSessionPin(String sessionId) async {
     final repo = _sessionRepository;
     if (repo == null) return;
-    await repo.toggleSessionPin(sessionId);
-    _emitSnapshot(await _dataStore.loadWorkspaceData(repo));
+    final updated = await repo.toggleSessionPin(sessionId);
+    if (updated != null) replaceSessionSnapshot(updated);
   }
 
   Future<void> deleteSession(SessionRepository repo, String sessionId) async {
@@ -2194,7 +2199,13 @@ class ChatCubit extends Cubit<ChatState>
         workingSessionIds: working,
       ),
     );
-    _emitSnapshot(await _dataStore.deleteSessionRecord(repo, sessionId));
+    _emitSnapshot(
+      await _dataStore.deleteSessionRecord(
+        stateSnapshot(),
+        repo,
+        sessionId,
+      ),
+    );
     if (session != null) {
       await _automationRepository.disableForSession(
         session.workspaceId,
@@ -2211,6 +2222,7 @@ class ChatCubit extends Cubit<ChatState>
     List<TeamMemberConfig> rosterMembers = const [],
   }) async {
     final result = await _dataStore.cloneWorkspace(
+      stateSnapshot(),
       repo,
       sourceWorkspaceId,
       display: display,
@@ -2238,7 +2250,13 @@ class ChatCubit extends Cubit<ChatState>
     }
     await _automationRepository.removeWorkspace(workspaceId);
     _notifyAutomationsChanged();
-    _emitSnapshot(await _dataStore.deleteWorkspaceRecord(repo, workspaceId));
+    _emitSnapshot(
+      await _dataStore.deleteWorkspaceRecord(
+        stateSnapshot(),
+        repo,
+        workspaceId,
+      ),
+    );
   }
 
   void addSystemMessage(String content) {

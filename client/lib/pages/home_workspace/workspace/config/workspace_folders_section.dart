@@ -78,11 +78,14 @@ class _WorkspaceFoldersSectionState extends State<WorkspaceFoldersSection> {
     final repo = context.read<SessionRepository>();
     final chat = context.read<ChatCubit>();
     try {
-      await repo.updateWorkspaceFolders(widget.workspace.workspaceId, valid);
-      chat.invalidateWorkspaceProvision(
-        widget.workspace.copyWith(folders: valid),
+      final updated = await repo.updateWorkspaceFolders(
+        widget.workspace.workspaceId,
+        valid,
       );
-      await chat.loadWorkspaceData(repo);
+      if (updated != null) {
+        chat.invalidateWorkspaceProvision(updated);
+        chat.patchWorkspace(updated);
+      }
       _invalidateDeadTargetCache();
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -108,15 +111,14 @@ class _WorkspaceFoldersSectionState extends State<WorkspaceFoldersSection> {
       );
       if (to == null || !mounted) return;
 
-      final updated = (await repo.remapWorkspaceTarget(
+      final updated = await repo.remapWorkspaceTarget(
         widget.workspace.workspaceId,
         fromTargetId: fromTargetId,
         toTargetId: to,
         liveness: liveness,
-      ))
-          .workspace;
-      chat.invalidateWorkspaceProvision(updated);
-      await chat.loadWorkspaceData(repo);
+      );
+      chat.invalidateWorkspaceProvision(updated.workspace);
+      chat.patchWorkspaceAndSessions(updated.workspace, updated.sessions);
       _invalidateDeadTargetCache();
     } on Object {
       if (mounted) {

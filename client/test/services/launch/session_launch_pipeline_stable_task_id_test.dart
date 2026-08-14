@@ -10,6 +10,7 @@ import 'package:teampilot/cubits/chat/model/chat_tab.dart';
 import 'package:teampilot/cubits/chat/model/session_create_request.dart';
 import 'package:teampilot/cubits/chat/model/session_workbench_view.dart';
 import 'package:teampilot/cubits/chat/model/session_open_status.dart';
+import 'package:teampilot/cubits/chat/session_data_store.dart';
 import 'package:teampilot/cubits/chat/session_launch_host.dart';
 import 'package:teampilot/cubits/chat/session_launch_service.dart';
 import 'package:teampilot/cubits/chat/tab_session_runtime_coordinator.dart';
@@ -470,6 +471,27 @@ class _CapturingHost implements SessionLaunchHost {
 
   @override
   ChatState state;
+
+  @override
+  ChatDataSnapshot stateSnapshot() => ChatDataSnapshot(
+        workspaces: state.workspaces,
+        sessions: state.sessions,
+        visibleWorkspaces: state.visibleWorkspaces,
+        visibleSessions: state.visibleSessions,
+      );
+
+  @override
+  final SessionDataStore dataStore = SessionDataStore();
+
+  @override
+  void emitSnapshot(ChatDataSnapshot snapshot) {
+    state = state.copyWith(
+      workspaces: snapshot.workspaces,
+      sessions: snapshot.sessions,
+      visibleWorkspaces: snapshot.visibleWorkspaces,
+      visibleSessions: snapshot.visibleSessions,
+    );
+  }
 
   @override
   final ChatTabStore tabStore;
