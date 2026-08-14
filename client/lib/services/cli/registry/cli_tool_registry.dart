@@ -2,7 +2,7 @@ import '../../../models/team_config.dart';
 import 'built_in_cli_tools.dart';
 import 'capabilities/cli_session_lifecycle_capability.dart';
 import 'capabilities/noop_cli_session_lifecycle_capability.dart';
-import 'capabilities/provider_catalog_capability.dart';
+import 'capabilities/provider_capability.dart';
 import 'capabilities/team_behavior_capability.dart';
 import 'cli_bootstrap.dart';
 import 'cli_capability.dart';
@@ -80,5 +80,5 @@ class CliToolRegistry {
   /// Official catalog id used when a Simple launch provider is unset (see
   /// [ProviderCatalogCapability.defaultOfficialProviderId]).
   String? defaultOfficialProviderId(CliTool cli) =>
-      capability<ProviderCatalogCapability>(cli)?.defaultOfficialProviderId;
+      capability<ProviderCapability>(cli)?.defaultOfficialProviderId;
 }

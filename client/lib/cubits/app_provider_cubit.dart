@@ -7,8 +7,7 @@ import '../models/llm_config.dart';
 import '../repositories/app_provider_repository.dart';
 import '../services/storage/app_storage.dart';
 import '../services/provider/credential_binding.dart';
-import '../services/cli/registry/capabilities/provider_credential_capability.dart';
-import '../services/cli/registry/capabilities/credential_binding_capability.dart';
+import '../services/cli/registry/capabilities/provider_capability.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
 import '../services/provider/provider_import_service.dart';
 import '../services/provider/tool_config_generator.dart';
@@ -313,7 +312,7 @@ class AppProviderCubit extends Cubit<AppProviderState> {
     String? homeDirectory,
   }) async {
     final capability = CliToolRegistry.builtIn()
-        .capability<ProviderCredentialCapability>(provider.cli);
+        .capability<ProviderCapability>(provider.cli);
     if (capability == null || !capability.appliesTo(provider)) {
       return CredentialActionResult.unsupported();
     }
@@ -349,7 +348,7 @@ class AppProviderCubit extends Cubit<AppProviderState> {
     CredentialBindingKind binding,
   ) async {
     final capability = CliToolRegistry.builtIn()
-        .capability<CredentialBindingCapability>(provider.cli);
+        .capability<ProviderCapability>(provider.cli);
     if (capability == null) return false;
     final updated = provider.copyWith(
       config: capability.withBinding(provider.config, binding),
@@ -489,7 +488,7 @@ class AppProviderCubit extends Cubit<AppProviderState> {
 
   Future<bool> _refreshCredentialStatus(CliTool cli, String providerId) async {
     final capability = CliToolRegistry.builtIn()
-        .capability<ProviderCredentialCapability>(cli);
+        .capability<ProviderCapability>(cli);
     if (capability == null) return false;
     final provider = state
         .providersFor(cli)

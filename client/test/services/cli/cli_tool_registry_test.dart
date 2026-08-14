@@ -3,8 +3,7 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/registry/capabilities/config_profile_capability.dart';
 import 'package:teampilot/services/cli/registry/capabilities/cli_executable_capability.dart';
 import 'package:teampilot/services/cli/registry/capabilities/launch_args_capability.dart';
-import 'package:teampilot/services/cli/registry/capabilities/provider_catalog_capability.dart';
-import 'package:teampilot/services/cli/registry/capabilities/provider_model_capability.dart';
+import 'package:teampilot/services/cli/registry/capabilities/provider_capability.dart';
 import 'package:teampilot/services/cli/claude/capabilities/executable.dart';
 import 'package:teampilot/services/cli/codex/capabilities/executable.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/executable.dart';
@@ -198,7 +197,7 @@ void main() {
   test('opencode has a ProviderCatalogCapability', () {
     final registry = CliToolRegistry.builtIn();
     expect(
-      registry.capability<ProviderCatalogCapability>(CliTool.opencode),
+      registry.capability<ProviderCapability>(CliTool.opencode),
       isNotNull,
     );
   });
@@ -206,7 +205,7 @@ void main() {
   test('built-in launchable tools have ProviderModelCapability', () {
     final registry = CliToolRegistry.builtIn();
     for (final def in registry.launchable) {
-      expect(registry.capability<ProviderModelCapability>(def.id), isNotNull);
+      expect(registry.capability<ProviderCapability>(def.id), isNotNull);
     }
   });
 

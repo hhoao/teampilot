@@ -10,7 +10,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/ai_feature_setting.dart';
 import '../../models/app_provider_config.dart';
 import '../../services/ai/ai_feature_setting_resolver.dart';
-import '../../services/cli/registry/capabilities/provider_model_capability.dart';
+import '../../services/cli/registry/capabilities/provider_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../widgets/app_provider/provider_brand_icon.dart';
@@ -334,7 +334,7 @@ class _AiFeatureConfigureDialogState extends State<AiFeatureConfigureDialog> {
     final nextProvider = nextProviders
         .where((p) => p.id == nextProviderId)
         .firstOrNull;
-    final modelCap = registry.capability<ProviderModelCapability>(nextCli);
+    final modelCap = registry.capability<ProviderCapability>(nextCli);
     final nextModel =
         modelCap?.defaultModel(
           provider: nextProvider,
@@ -354,7 +354,7 @@ class _AiFeatureConfigureDialogState extends State<AiFeatureConfigureDialog> {
     final appProviders = context.read<AppProviderCubit>().state;
     final providers = aiFeatureProvidersForCli(_cli, appProviders, registry);
     final nextProvider = providers.where((p) => p.id == value).firstOrNull;
-    final modelCap = registry.capability<ProviderModelCapability>(_cli);
+    final modelCap = registry.capability<ProviderCapability>(_cli);
     final nextModel =
         modelCap?.defaultModel(provider: nextProvider, providerId: value) ?? '';
     setState(() {

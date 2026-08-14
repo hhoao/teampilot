@@ -1,12 +1,11 @@
 import '../../../../models/app_provider_config.dart';
-import '../../../../services/cli/registry/capabilities/provider_catalog_capability.dart';
-import '../../../../services/cli/registry/capabilities/provider_model_capability.dart';
+import '../../../../services/cli/registry/capabilities/provider_capability.dart';
 import '../../../../services/cli/registry/cli_tool_registry.dart';
 
 bool workspaceCliSupportsProviderCatalog(
   CliTool cli,
   CliToolRegistry registry,
-) => registry.capability<ProviderCatalogCapability>(cli) != null;
+) => registry.capability<ProviderCapability>(cli) != null;
 
 List<String> workspaceCliModelCandidates({
   required CliToolRegistry registry,
@@ -15,7 +14,7 @@ List<String> workspaceCliModelCandidates({
   required AppProviderConfig? appProvider,
   required String currentModel,
 }) {
-  final capability = registry.capability<ProviderModelCapability>(cli);
+  final capability = registry.capability<ProviderCapability>(cli);
   if (capability == null) return const [];
   return capability.modelCandidates(
     provider: appProvider,
@@ -30,7 +29,7 @@ String workspaceCliDefaultModelForProvider(
   AppProviderConfig? provider, {
   required String providerId,
 }) {
-  final capability = registry.capability<ProviderModelCapability>(cli);
+  final capability = registry.capability<ProviderCapability>(cli);
   if (capability == null) return '';
   return capability.defaultModel(provider: provider, providerId: providerId);
 }
@@ -41,7 +40,7 @@ bool workspaceCliHidesModelPicker(
   AppProviderConfig? provider,
 ) {
   if (provider == null) return true;
-  final capability = registry.capability<ProviderModelCapability>(cli);
+  final capability = registry.capability<ProviderCapability>(cli);
   if (capability == null) return true;
   return capability.pickerMode(provider) == ProviderModelPickerMode.hidden;
 }

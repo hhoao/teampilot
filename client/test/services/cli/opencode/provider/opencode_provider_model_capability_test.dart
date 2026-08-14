@@ -5,7 +5,7 @@ import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/services/cli/opencode/provider/opencode_model_catalog.dart';
 import 'package:teampilot/services/cli/opencode/provider/opencode_models_service.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/provider.dart';
-import 'package:teampilot/services/cli/registry/capabilities/provider_model_capability.dart';
+import 'package:teampilot/services/cli/registry/capabilities/provider_capability.dart';
 
 import '../../../../support/in_memory_filesystem.dart';
 

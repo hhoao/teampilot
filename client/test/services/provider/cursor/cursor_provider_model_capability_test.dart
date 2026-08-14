@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/app_provider_config.dart';
-import 'package:teampilot/services/cli/registry/capabilities/provider_model_capability.dart';
+import 'package:teampilot/services/cli/registry/capabilities/provider_capability.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_agent_models_service.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/provider.dart';
 

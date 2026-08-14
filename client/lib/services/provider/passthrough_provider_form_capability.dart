@@ -1,7 +1,7 @@
 import 'package:flutter/widgets.dart';
 
 import '../../models/app_provider_config.dart';
-import '../cli/registry/capabilities/provider_form_capability.dart';
+import '../cli/registry/capabilities/provider_capability.dart';
 
 /// Default form behavior for CLIs without advanced provider fields.
 mixin PassthroughProviderFormDefaults {

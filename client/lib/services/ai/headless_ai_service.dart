@@ -10,7 +10,7 @@ import '../../repositories/app_provider_repository.dart';
 import '../../utils/logging/logger.dart';
 import '../../utils/logging/log_redaction.dart';
 import '../cli/cli_tool_locator.dart';
-import '../cli/registry/capabilities/cli_effort_capability.dart';
+import '../cli/registry/capabilities/provider_capability.dart';
 import '../cli/registry/capabilities/headless_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 
@@ -429,7 +429,7 @@ class HeadlessAiService {
     AppProviderConfig? provider,
     String requested,
   ) {
-    final cap = _registry.capability<CliEffortCapability>(cli);
+    final cap = _registry.capability<ProviderCapability>(cli);
     if (cap == null || !cap.isApplicable(model: model)) return '';
     final r = requested.trim();
     if (r.isNotEmpty) return r;

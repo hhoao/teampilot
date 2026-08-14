@@ -5,7 +5,7 @@ import '../../../launch/work_plane_paths.dart';
 import '../../../provider/cross_machine_credential_bridge.dart';
 import 'provider.dart';
 import '../../../session/member_role_provision.dart';
-import '../../registry/capabilities/cli_effort_capability.dart';
+import '../../registry/capabilities/provider_capability.dart';
 import '../../registry/capabilities/config_profile_capability.dart';
 import '../../registry/capabilities/prompt_capability.dart';
 import 'prompt.dart';

@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/app_provider_config.dart';
-import 'package:teampilot/services/cli/registry/capabilities/provider_model_capability.dart';
+import 'package:teampilot/services/cli/registry/capabilities/provider_capability.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/provider.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/claude/capabilities/provider.dart';
@@ -156,7 +156,7 @@ void main() {
     final registry = CliToolRegistry.builtIn();
     for (final cli in CliTool.values) {
       expect(
-        registry.capability<ProviderModelCapability>(cli),
+        registry.capability<ProviderCapability>(cli),
         isNotNull,
         reason: cli.value,
       );

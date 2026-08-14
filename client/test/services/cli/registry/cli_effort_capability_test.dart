@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/cli/registry/capabilities/cli_effort_capability.dart';
+import 'package:teampilot/services/cli/registry/capabilities/provider_capability.dart';
 import 'package:teampilot/services/cli/claude/capabilities/provider.dart';
 import 'package:teampilot/services/cli/codex/capabilities/provider.dart';
 

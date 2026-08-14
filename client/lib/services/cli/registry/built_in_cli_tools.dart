@@ -8,14 +8,12 @@ import '../../../services/cli/claude/capabilities/provider.dart';
 import '../../../services/cli/codex/capabilities/provider.dart';
 import '../../../services/cli/cursor/capabilities/provider.dart';
 import '../../../services/cli/opencode/capabilities/provider.dart';
-import 'capabilities/provider_model_capability.dart';
+import 'capabilities/provider_capability.dart';
 import 'capabilities/config_profile_capability.dart';
 import 'capabilities/launch_args_capability.dart';
 import 'capabilities/team_behavior_capability.dart';
-import 'capabilities/provider_display_capability.dart';
 import 'capabilities/cli_executable_capability.dart';
 import 'capabilities/chat_interaction_capability.dart';
-import 'capabilities/credential_export_capability.dart';
 import 'capabilities/terminal_behavior_capability.dart';
 import 'capabilities/plugin_capability.dart';
 import 'cli_bootstrap.dart';
@@ -83,7 +81,7 @@ void registerBuiltInCliTools(
   );
   assert(
     CliTool.values.every(
-      (cli) => registry.capability<ProviderModelCapability>(cli) != null,
+      (cli) => registry.capability<ProviderCapability>(cli) != null,
     ),
     'Every CliTool must register ProviderModelCapability',
   );
@@ -97,12 +95,12 @@ void registerBuiltInCliTools(
   _verifyRequired<ConfigProfileCapability>(registry);
   _verifyRequired<LaunchArgsCapability>(registry);
   _verifyRequired<TeamBehaviorCapability>(registry);
-  _verifyRequired<ProviderDisplayCapability>(registry);
+  _verifyRequired<ProviderCapability>(registry);
   _verifyRequired<CliExecutableCapability>(registry);
   _verifyRequired<TerminalBehaviorCapability>(registry);
   _verifyRequired<PluginCapability>(registry);
   _verifyRequired<ChatInteractionCapability>(registry);
-  _verifyRequired<CredentialExportCapability>(registry);
+  _verifyRequired<ProviderCapability>(registry);
   _verifyNativeTeamRegistration(registry);
   _verifyMemberAgentPresetRegistration(registry);
 }

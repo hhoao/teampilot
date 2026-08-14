@@ -3,43 +3,382 @@ import 'package:flutter/widgets.dart';
 import '../../../../models/app_provider_config.dart';
 import '../../../../models/credential_action_result.dart';
 import '../../../../models/credential_probe.dart';
+import '../../../../models/team_config.dart';
 import '../../../io/filesystem.dart';
 import '../../../provider/credential_binding.dart';
 import '../../../remote/remote_credential_materializer.dart';
-import 'provider_catalog_capability.dart';
-import 'provider_credential_capability.dart';
-import 'provider_form_capability.dart';
-import 'provider_model_capability.dart';
-import 'cli_effort_capability.dart';
 import '../cli_capability.dart';
 
-export 'provider_catalog_capability.dart'
-    show ProviderCatalogSnapshot, ProviderCatalogLoadContext;
-export 'provider_credential_capability.dart'
-    show
-        ProviderCredentialActionKind,
-        ProviderCredentialActionSpec,
-        ProviderCredentialActionInput;
-export 'provider_form_capability.dart'
-    show ProviderFormInput, ProviderFormSectionProps;
-export 'provider_model_capability.dart'
-    show
-        ProviderModelPickerMode,
-        ProviderModelTier,
-        backgroundModelFromProvider,
-        mergeProviderModelCandidates,
-        modelsDeclaredOnProvider,
-        providerModelCount,
-        resolveDefaultProviderModel,
-        ModelCatalogSource,
-        CatalogModelCapability,
-        ProviderRecordModelCapability;
-export 'cli_effort_capability.dart'
-    show
-        EffortPickerPlacement,
-        EffortResolveContext,
-        resolveContextModel,
-        resolveLaunchEffort;
+/// Providers discovered from the user's global CLI install.
+class ProviderCatalogSnapshot {
+  const ProviderCatalogSnapshot({
+    this.providers = const [],
+    this.sources = const [],
+    this.mirrorToFlashskyai = false,
+  });
+
+  final List<AppProviderConfig> providers;
+  final List<String> sources;
+
+  /// When true, [ProviderImportService] mirrors new ids into the flashskyai catalog.
+  final bool mirrorToFlashskyai;
+}
+
+/// Inputs for scanning live CLI config on the user's machine.
+class ProviderCatalogLoadContext {
+  const ProviderCatalogLoadContext({
+    required this.fs,
+    required this.homeDirectory,
+    this.cwd = '',
+    this.usePosixPaths = true,
+    this.flashskyaiExecutablePath,
+    this.platformEnv = const {},
+    this.now,
+  });
+
+  final Filesystem fs;
+  final String homeDirectory;
+  final String cwd;
+  final bool usePosixPaths;
+  final String? flashskyaiExecutablePath;
+
+  /// Platform env overrides (e.g. `APPDATA` for Windows live-import tests).
+  final Map<String, String> platformEnv;
+
+  /// Fixed timestamp for tests; defaults to UTC now in production.
+  final int? now;
+
+  int resolvedNow() => now ?? DateTime.now().toUtc().millisecondsSinceEpoch;
+}
+
+/// Credential actions exposed in provider add/edit/detail UI.
+enum ProviderCredentialActionKind {
+  login,
+  importGlobal,
+  importFile,
+  importDirectory,
+  revoke,
+}
+
+/// Declares which actions a CLI supports for a given provider row.
+class ProviderCredentialActionSpec {
+  const ProviderCredentialActionSpec({
+    required this.kind,
+    this.primary = false,
+    this.showWhenReady = true,
+  });
+
+  final ProviderCredentialActionKind kind;
+
+  /// Renders as [FilledButton.tonal] when true.
+  final bool primary;
+
+  /// When false, hide this action after credentials are ready (e.g. login).
+  /// When true, keep visible when ready (e.g. import, revoke / sign out).
+  final bool showWhenReady;
+}
+
+/// Optional inputs for file/directory credential imports.
+class ProviderCredentialActionInput {
+  const ProviderCredentialActionInput({
+    this.provider,
+    this.pickedPath,
+    this.replace = false,
+    this.homeDirectory,
+  });
+
+  final AppProviderConfig? provider;
+  final String? pickedPath;
+  final bool replace;
+  final String? homeDirectory;
+}
+
+/// Values collected from the provider form shell before [buildConfig].
+class ProviderFormInput {
+  const ProviderFormInput({
+    required this.baseUrl,
+    required this.defaultModel,
+    required this.apiKeyField,
+    required this.config,
+    this.extra = const {},
+  });
+
+  final String baseUrl;
+  final String defaultModel;
+  final String apiKeyField;
+  final Map<String, Object?> config;
+  final Map<String, Object?> extra;
+}
+
+/// Props for CLI-specific form sections rendered below common fields.
+class ProviderFormSectionProps {
+  const ProviderFormSectionProps({
+    required this.config,
+    required this.apiKeyField,
+    required this.baseUrl,
+    required this.defaultModel,
+    required this.extra,
+    required this.onExtraChanged,
+    required this.onApiKeyFieldChanged,
+  });
+
+  final Map<String, Object?> config;
+  final String apiKeyField;
+  final String baseUrl;
+  final String defaultModel;
+  final Map<String, Object?> extra;
+  final ValueChanged<Map<String, Object?>> onExtraChanged;
+  final ValueChanged<String> onApiKeyFieldChanged;
+}
+
+/// How member / workspace UI should collect a model id for a provider.
+enum ProviderModelPickerMode {
+  /// Provider bundles models (e.g. Claude official); no member model field.
+  hidden,
+
+  /// Pick from catalog only ([ProviderModelPickerMode.catalogDropdown]).
+  catalogDropdown,
+
+  /// Catalog dropdown plus free-form custom model id entry.
+  catalogWithCustomEntry,
+}
+
+/// Role a model plays within a tier-aware CLI's launch config.
+enum ProviderModelTier {
+  /// Serves the main tiers (Claude sonnet/opus + the primary model id).
+  standard('standard'),
+
+  /// Serves the cheap/fast background tier (Claude haiku).
+  background('background');
+
+  const ProviderModelTier(this.value);
+
+  final String value;
+
+  static ProviderModelTier fromJson(Object? raw) {
+    final s = raw?.toString().trim().toLowerCase() ?? '';
+    for (final tier in ProviderModelTier.values) {
+      if (tier.value == s) return tier;
+    }
+    return ProviderModelTier.standard;
+  }
+}
+
+/// The model id flagged as the [ProviderModelTier.background] tier in the
+/// provider's `config['models']`, or '' when none is designated.
+String backgroundModelFromProvider(AppProviderConfig? provider) {
+  if (provider == null) return '';
+  final rawModels = provider.config['models'];
+  if (rawModels is! Map) return '';
+  for (final entry in rawModels.entries) {
+    final value = entry.value;
+    if (value is! Map) continue;
+    final role = ProviderModelTier.fromJson(value['role']);
+    if (role != ProviderModelTier.background) continue;
+    final model = (value['model'] as String? ?? '').trim();
+    return model.isNotEmpty ? model : entry.key.toString().trim();
+  }
+  return '';
+}
+
+/// Merges a CLI built-in catalog with models declared on [AppProviderConfig].
+List<String> mergeProviderModelCandidates({
+  required Iterable<String> builtInCatalog,
+  required AppProviderConfig? provider,
+  required String currentModel,
+}) {
+  final names = <String>{...builtInCatalog};
+  if (provider != null) {
+    names.addAll(modelsDeclaredOnProvider(provider));
+  }
+  final trimmed = currentModel.trim();
+  if (trimmed.isNotEmpty) {
+    names.add(trimmed);
+  }
+  return names.toList()..sort();
+}
+
+/// Reads `defaultModel` and `config.models` from a saved provider row.
+List<String> modelsDeclaredOnProvider(AppProviderConfig provider) {
+  final names = <String>{};
+  final defaultModel = provider.defaultModel.trim();
+  if (defaultModel.isNotEmpty) {
+    names.add(defaultModel);
+  }
+  final rawModels = provider.config['models'];
+  if (rawModels is Map) {
+    for (final entry in rawModels.entries) {
+      final id = entry.key.toString().trim();
+      if (entry.value is Map) {
+        final modelJson = Map<String, Object?>.from(entry.value as Map);
+        final name = (modelJson['name'] as String? ?? '').trim();
+        final model = (modelJson['model'] as String? ?? '').trim();
+        if (name.isNotEmpty) names.add(name);
+        if (model.isNotEmpty) names.add(model);
+      } else if (id.isNotEmpty) {
+        names.add(id);
+      }
+    }
+  }
+  return names.toList();
+}
+
+/// Number of models declared on [provider] for list/detail badges.
+///
+/// UI gates visibility via [ProviderCapability.showModelCount] — this
+/// only counts what the provider row actually declares, with no CLI identity.
+int providerModelCount(AppProviderConfig provider) {
+  final rawModels = provider.config['models'];
+  if (rawModels is Map) return rawModels.length;
+  return provider.defaultModel.trim().isEmpty ? 0 : 1;
+}
+
+String resolveDefaultProviderModel(
+  ProviderCapability capability, {
+  required AppProviderConfig? provider,
+  required String providerId,
+}) {
+  if (provider != null &&
+      capability.pickerMode(provider) == ProviderModelPickerMode.hidden) {
+    return '';
+  }
+  final fromProvider = provider?.defaultModel.trim() ?? '';
+  if (fromProvider.isNotEmpty) return fromProvider;
+  final candidates = capability.modelCandidates(
+    provider: provider,
+    providerId: providerId,
+    currentModel: '',
+  );
+  return candidates.isNotEmpty ? candidates.first : '';
+}
+
+/// One composable source of built-in candidate model ids for a provider.
+///
+/// The provider record itself (`defaultModel` + `config['models']`) is always
+/// merged on top of these by [CatalogModelCapability], so a source only
+/// contributes the CLI's *built-in* knowledge (a fixed catalog, a brand list,
+/// or a live `cursor-agent models` fetch). Adding a CLI = declaring its
+/// [CatalogModelCapability.catalogSources].
+abstract interface class ModelCatalogSource {
+  List<String> modelsFor({
+    required AppProviderConfig? provider,
+    required String providerId,
+  });
+}
+
+/// [ProviderCapability] whose model candidates are the union of its
+/// [catalogSources] plus the provider record and the current value.
+abstract base class CatalogModelCapability implements ProviderCapability {
+  const CatalogModelCapability();
+
+  /// Built-in catalogs merged before the provider record. Order is irrelevant
+  /// (results are deduped and sorted).
+  List<ModelCatalogSource> get catalogSources;
+
+  @override
+  List<String> modelCandidates({
+    required AppProviderConfig? provider,
+    required String providerId,
+    required String currentModel,
+  }) {
+    final builtIn = <String>[];
+    for (final source in catalogSources) {
+      builtIn.addAll(
+        source.modelsFor(provider: provider, providerId: providerId),
+      );
+    }
+    return mergeProviderModelCandidates(
+      builtInCatalog: builtIn,
+      provider: provider,
+      currentModel: currentModel,
+    );
+  }
+
+  @override
+  String defaultModel({
+    required AppProviderConfig? provider,
+    required String providerId,
+  }) => resolveDefaultProviderModel(
+    this,
+    provider: provider,
+    providerId: providerId,
+  );
+}
+
+/// Where effort is configured in TeamPilot UI.
+enum EffortPickerPlacement { hidden, team, member, provider }
+
+/// Inputs for catalog filtering and launch resolution.
+class EffortResolveContext {
+  const EffortResolveContext({
+    this.team,
+    this.member,
+    this.provider,
+    this.model = '',
+  });
+
+  final TeamProfile? team;
+  final TeamMemberConfig? member;
+  final AppProviderConfig? provider;
+  final String model;
+}
+
+String resolveContextModel(EffortResolveContext context) {
+  final explicit = context.model.trim();
+  if (explicit.isNotEmpty) return explicit;
+  final memberModel = context.member?.model.trim() ?? '';
+  if (memberModel.isNotEmpty) return memberModel;
+  return context.provider?.defaultModel.trim() ?? '';
+}
+
+/// Launch precedence: member → team → provider config → capability default.
+String resolveLaunchEffort({
+  required ProviderCapability capability,
+  required CliTool cli,
+  required EffortResolveContext context,
+}) {
+  final model = resolveContextModel(context);
+  if (!capability.isApplicable(model: model)) return '';
+
+  final memberEffort = context.member?.effort.trim() ?? '';
+  if (memberEffort.isNotEmpty &&
+      capability.memberPickerPlacement(provider: context.provider) !=
+          EffortPickerPlacement.hidden) {
+    return memberEffort;
+  }
+
+  final teamEffort = context.team?.effortForCli(cli).trim() ?? '';
+  if (teamEffort.isNotEmpty &&
+      capability.teamPickerPlacement() != EffortPickerPlacement.hidden) {
+    return teamEffort;
+  }
+
+  final provider = context.provider;
+  final providerEffort = _providerConfiguredEffort(provider);
+  if (provider != null &&
+      providerEffort.isNotEmpty &&
+      capability.providerPickerPlacement(provider) !=
+          EffortPickerPlacement.hidden) {
+    return providerEffort;
+  }
+
+  return capability.defaultEffort(model: model, provider: context.provider);
+}
+
+String _providerConfiguredEffort(AppProviderConfig? provider) {
+  if (provider == null) return '';
+  final fromConfig = provider.config['model_reasoning_effort']
+      ?.toString()
+      .trim();
+  if (fromConfig != null && fromConfig.isNotEmpty) return fromConfig;
+  final reasoningEffort = provider.config['reasoningEffort']?.toString().trim();
+  if (reasoningEffort != null && reasoningEffort.isNotEmpty) {
+    return reasoningEffort;
+  }
+  final effort = provider.config['effort']?.toString().trim();
+  if (effort != null && effort.isNotEmpty) return effort;
+  return '';
+}
 
 /// ProviderHub 契约:该 CLI 的 provider 目录、表单、模型、凭证、effort。
 ///
@@ -136,6 +475,12 @@ abstract interface class ProviderCapability implements CliCapability {
   });
   String defaultEffort({required String model, AppProviderConfig? provider});
 }
+
+/// Marker: this CLI's model catalog can be refreshed live
+/// (`cursor-agent models`, models.dev). Consumers use `is` checks to gate
+/// refresh affordances; non-refreshable CLIs return no-op members.
+abstract interface class RefreshableProviderModelCapability
+    implements ProviderCapability {}
 
 final _emptyCatalogUpdates = _EmptyListenable();
 

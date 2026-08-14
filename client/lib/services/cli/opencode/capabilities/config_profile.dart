@@ -18,7 +18,7 @@ import '../../../storage/runtime_context.dart';
 import '../../../storage/app_storage.dart';
 import '../../../team_bus/mcp/bus_bridge_locator.dart';
 import '../../../team_bus/mcp/teammate_bus_mcp_config.dart';
-import '../../registry/capabilities/cli_effort_capability.dart';
+import '../../registry/capabilities/provider_capability.dart';
 import '../../registry/capabilities/config_profile_capability.dart';
 import '../../registry/capabilities/hook_capability.dart';
 import '../../registry/capabilities/prompt_capability.dart';

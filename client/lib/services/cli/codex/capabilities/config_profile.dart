@@ -6,7 +6,7 @@ import '../provider/codex_auth_artifacts.dart';
 import '../../../mcp/mcp_credentials_store.dart';
 import 'provider.dart';
 import '../provider/codex_home_provisioner.dart';
-import '../../registry/capabilities/cli_effort_capability.dart';
+import '../../registry/capabilities/provider_capability.dart';
 import '../provider/codex_official_provider.dart';
 import '../../../provider/cross_machine_credential_bridge.dart';
 import '../../../provider/provider_catalog_access.dart';

@@ -7,14 +7,7 @@ import '../../../provider/credential_binding.dart';
 import '../../../provider/passthrough_provider_form_capability.dart';
 import '../../../io/filesystem.dart';
 import '../../../remote/remote_credential_materializer.dart';
-import '../../registry/capabilities/cli_effort_capability.dart' show CliEffortCapability;
-import '../../registry/capabilities/credential_export_capability.dart' show CredentialExportCapability;
 import '../../registry/capabilities/provider_capability.dart';
-import '../../registry/capabilities/provider_catalog_capability.dart' show ProviderCatalogCapability;
-import '../../registry/capabilities/provider_credential_capability.dart' show ProviderCredentialCapability;
-import '../../registry/capabilities/provider_display_capability.dart' show ProviderDisplayCapability;
-import '../../registry/capabilities/provider_form_capability.dart' show ProviderFormCapability;
-import '../../registry/capabilities/provider_model_capability.dart' show ProviderModelCapability, RefreshableProviderModelCapability;
 import '../provider/opencode_data_layout.dart';
 import '../provider/opencode_effort_catalog.dart';
 import '../provider/opencode_live_import.dart';
@@ -49,16 +42,7 @@ final class OpencodeCatalogSource implements ModelCatalogSource {
 /// OpenCode provider 全栈:目录/表单/模型(实时 models.dev)/凭证/effort。
 final class OpencodeProviderCapability extends CatalogModelCapability
     with PassthroughProviderFormDefaults
-    implements
-        ProviderCapability,
-        ProviderCatalogCapability,
-        ProviderDisplayCapability,
-        ProviderFormCapability,
-        ProviderModelCapability,
-        RefreshableProviderModelCapability,
-        ProviderCredentialCapability,
-        CredentialExportCapability,
-        CliEffortCapability {
+    implements ProviderCapability, RefreshableProviderModelCapability {
   const OpencodeProviderCapability({
     OpencodeModelsService? modelsService,
     OpencodeProviderCredentialsService? credentials,

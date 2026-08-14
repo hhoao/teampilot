@@ -6,13 +6,7 @@ import '../../../../models/credential_action_result.dart';
 import '../../../provider/passthrough_provider_form_capability.dart';
 import '../../../io/filesystem.dart';
 import '../../../remote/remote_credential_materializer.dart';
-import '../../registry/capabilities/cli_effort_capability.dart' show CliEffortCapability;
-import '../../registry/capabilities/credential_export_capability.dart' show CredentialExportCapability;
 import '../../registry/capabilities/provider_capability.dart';
-import '../../registry/capabilities/provider_catalog_capability.dart' show ProviderCatalogCapability;
-import '../../registry/capabilities/provider_display_capability.dart' show ProviderDisplayCapability;
-import '../../registry/capabilities/provider_form_capability.dart' show ProviderFormCapability;
-import '../../registry/capabilities/provider_model_capability.dart' show ProviderModelCapability;
 import '../../claude/provider/claude_effort_catalog.dart';
 import '../provider/flashskyai_live_import.dart';
 import '../provider_presets.dart';
@@ -20,14 +14,7 @@ import '../provider_presets.dart';
 /// Flashskyai provider 全栈:目录/表单/模型/effort(无凭证概念)。
 final class FlashskyaiProviderCapability extends CatalogModelCapability
     with PassthroughProviderFormDefaults
-    implements
-        ProviderCapability,
-        ProviderCatalogCapability,
-        ProviderDisplayCapability,
-        ProviderFormCapability,
-        ProviderModelCapability,
-        CredentialExportCapability,
-        CliEffortCapability {
+    implements ProviderCapability {
   const FlashskyaiProviderCapability();
 
   // ---- ProviderCatalogCapability ----

@@ -8,7 +8,7 @@ import '../../../../repositories/cli_presets_repository.dart';
 import '../../../../utils/team/team_member_naming.dart';
 import 'provider.dart';
 import '../provider/claude_official_provider.dart';
-import '../../registry/capabilities/cli_effort_capability.dart';
+import '../../registry/capabilities/provider_capability.dart';
 import '../provider/claude_provider_credentials_service.dart';
 import '../../../provider/credential_binding.dart';
 import '../../../launch/work_plane_paths.dart';

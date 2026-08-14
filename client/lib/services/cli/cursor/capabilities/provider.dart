@@ -7,13 +7,7 @@ import '../../../provider/credential_binding.dart';
 import '../../../provider/passthrough_provider_form_capability.dart';
 import '../../../io/filesystem.dart';
 import '../../../remote/remote_credential_materializer.dart';
-import '../../registry/capabilities/credential_export_capability.dart' show CredentialExportCapability;
 import '../../registry/capabilities/provider_capability.dart';
-import '../../registry/capabilities/provider_catalog_capability.dart' show ProviderCatalogCapability;
-import '../../registry/capabilities/provider_credential_capability.dart' show ProviderCredentialCapability;
-import '../../registry/capabilities/provider_display_capability.dart' show ProviderDisplayCapability;
-import '../../registry/capabilities/provider_form_capability.dart' show ProviderFormCapability;
-import '../../registry/capabilities/provider_model_capability.dart' show ProviderModelCapability, RefreshableProviderModelCapability;
 import '../provider/cursor_agent_models_service.dart';
 import '../provider/cursor_live_import.dart';
 import '../provider/cursor_provider_credentials_service.dart';
@@ -35,15 +29,7 @@ final class CursorAgentCatalogSource implements ModelCatalogSource {
 /// Cursor provider 全栈:目录/表单/模型(实时目录)/凭证/导出。
 final class CursorProviderCapability extends CatalogModelCapability
     with PassthroughProviderFormDefaults
-    implements
-        ProviderCapability,
-        ProviderCatalogCapability,
-        ProviderDisplayCapability,
-        ProviderFormCapability,
-        ProviderModelCapability,
-        RefreshableProviderModelCapability,
-        ProviderCredentialCapability,
-        CredentialExportCapability {
+    implements ProviderCapability, RefreshableProviderModelCapability {
   const CursorProviderCapability({
     CursorAgentModelsService? modelsService,
     CursorProviderCredentialsService? credentials,

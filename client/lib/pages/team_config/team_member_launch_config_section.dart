@@ -14,7 +14,7 @@ import '../../models/cli_preset.dart';
 import '../../models/app_provider_config.dart';
 import '../../models/team_config.dart';
 import '../../services/cli/preset_resolver.dart';
-import '../../services/cli/registry/capabilities/cli_effort_capability.dart';
+import '../../services/cli/registry/capabilities/provider_capability.dart';
 import '../../services/cli/registry/cli_display_name.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../widgets/app_provider/provider_brand_icon.dart';

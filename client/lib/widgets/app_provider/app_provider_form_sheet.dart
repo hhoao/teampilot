@@ -8,11 +8,7 @@ import '../app_toast/app_toast.dart';
 import '../../cubits/app_provider_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_provider_config.dart';
-import '../../services/cli/registry/capabilities/cli_effort_capability.dart';
-import '../../services/cli/registry/capabilities/credential_binding_capability.dart';
-import '../../services/cli/registry/capabilities/provider_credential_capability.dart';
-import '../../services/cli/registry/capabilities/provider_form_capability.dart';
-import '../../services/cli/registry/capabilities/provider_model_capability.dart';
+import '../../services/cli/registry/capabilities/provider_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../services/cli/codex/capabilities/provider.dart';
@@ -76,11 +72,11 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
       (context != null ? CliToolRegistryScope.maybeOf(context) : null) ??
       CliToolRegistry.builtIn();
 
-  ProviderFormCapability _formCap([BuildContext? context]) {
+  ProviderCapability _formCap([BuildContext? context]) {
     final cap = _registry(
       context,
-    ).capability<ProviderFormCapability>(widget.cli);
-    assert(cap != null, '${widget.cli.value} missing ProviderFormCapability');
+    ).capability<ProviderCapability>(widget.cli);
+    assert(cap != null, '${widget.cli.value} missing ProviderCapability');
     return cap!;
   }
 
@@ -222,7 +218,7 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
       unknownFields: widget.existing?.unknownFields ?? const {},
     );
     final bindingCap = _registry()
-        .capability<CredentialBindingCapability>(widget.cli);
+        .capability<ProviderCapability>(widget.cli);
     if (bindingCap != null && bindingCap.appliesTo(draft)) {
       return draft.copyWith(
         config: bindingCap.withBinding(draft.config, _credentialBinding),
@@ -562,7 +558,7 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
   bool _usesCredentialSetup(BuildContext context) {
     final capability = _registry(
       context,
-    ).capability<ProviderCredentialCapability>(widget.cli);
+    ).capability<ProviderCapability>(widget.cli);
     if (capability == null) return false;
     final draft = _buildNormalDraft();
     if (capability.appliesTo(draft)) return true;
@@ -573,7 +569,7 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
   bool _showsCredentialBinding(BuildContext context) {
     final capability = _registry(
       context,
-    ).capability<CredentialBindingCapability>(widget.cli);
+    ).capability<ProviderCapability>(widget.cli);
     if (capability == null) return false;
     return capability.appliesTo(_buildNormalDraft());
   }
@@ -581,7 +577,7 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
   bool _showsProviderEffortPicker(BuildContext context) {
     final capability = _registry(
       context,
-    ).capability<CliEffortCapability>(widget.cli);
+    ).capability<ProviderCapability>(widget.cli);
     if (capability == null) return false;
     final draft = _buildNormalDraft();
     if (capability.providerPickerPlacement(draft) !=
@@ -594,7 +590,7 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
   bool _hidesApiKeyFields(BuildContext context) {
     final capability = _registry(
       context,
-    ).capability<ProviderCredentialCapability>(widget.cli);
+    ).capability<ProviderCapability>(widget.cli);
     if (capability == null) return false;
     final draft = _buildNormalDraft();
     if (capability.hidesApiKeyFields(draft)) return true;
@@ -637,7 +633,7 @@ class _DefaultModelField extends StatelessWidget {
     final draft = draftProvider();
     final registry =
         CliToolRegistryScope.maybeOf(context) ?? CliToolRegistry.builtIn();
-    final capability = registry.capability<ProviderModelCapability>(cli);
+    final capability = registry.capability<ProviderCapability>(cli);
     if (capability != null &&
         capability.pickerMode(draft) != ProviderModelPickerMode.hidden) {
       return ProviderModelPickerField(
@@ -666,7 +662,7 @@ T _effectiveItem<T>(T value, List<T> items) {
 }
 
 String _initialPresetId(
-  ProviderFormCapability formCap,
+  ProviderCapability formCap,
   AppProviderConfig? existing,
 ) {
   if (existing == null) return 'custom';

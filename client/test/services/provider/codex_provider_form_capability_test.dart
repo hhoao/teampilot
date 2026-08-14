@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/cli/registry/capabilities/provider_form_capability.dart';
+import 'package:teampilot/services/cli/registry/capabilities/provider_capability.dart';
 import 'package:teampilot/services/cli/codex/capabilities/provider.dart';
 
 void main() {

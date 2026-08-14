@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/cli/registry/capabilities/cli_effort_capability.dart';
+import 'package:teampilot/services/cli/registry/capabilities/provider_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/config_profile.dart';
 import 'package:teampilot/services/cli/flashskyai/capabilities/provider.dart';
@@ -18,12 +18,15 @@ void main() {
     };
     for (final tool in withEffort) {
       expect(
-        registry.capability<CliEffortCapability>(tool),
+        registry.capability<ProviderCapability>(tool),
         isNotNull,
         reason: tool.name,
       );
     }
-    expect(registry.capability<CliEffortCapability>(CliTool.cursor), isNull);
+    final cursor = registry.capability<ProviderCapability>(CliTool.cursor)!;
+    expect(cursor.teamPickerPlacement(), EffortPickerPlacement.hidden);
+    expect(cursor.memberPickerPlacement(), EffortPickerPlacement.hidden);
+    expect(cursor.isApplicable(model: 'gpt-5'), isFalse);
   });
 
   test('OpencodeEffortCapability uses provider placement', () {
