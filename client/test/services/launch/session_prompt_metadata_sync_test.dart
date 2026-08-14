@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/chat/model/chat_state.dart';
+import 'package:teampilot/cubits/chat/session_data_store.dart';
 import 'package:teampilot/cubits/chat/session_launch_host.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/repositories/session_repository.dart';
@@ -69,6 +70,15 @@ class _FakeRepo extends Fake implements SessionRepository {}
 class _FakeHost implements SessionLaunchHost {
   @override
   ChatState state = const ChatState();
+
+  @override
+  ChatDataSnapshot stateSnapshot() => ChatDataSnapshot(
+        workspaces: state.workspaces,
+        sessions: state.sessions,
+        visibleWorkspaces: state.visibleWorkspaces,
+        visibleSessions: state.visibleSessions,
+      );
+
   final renames = <(String, String)>[];
   final _repo = _FakeRepo();
 

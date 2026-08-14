@@ -82,7 +82,7 @@ class SessionDefaultMaterializer {
       workspace.workspaceId,
       team.id,
     );
-    session ??= (await repo.createSession(
+    final created = await repo.createSession(
       workspace.workspaceId,
       sessionTeam: team.id,
       rosterMembers: team.members,
@@ -91,9 +91,16 @@ class SessionDefaultMaterializer {
         rosterMembers: team.members,
         globalPresets: _host.lifecycle.globalPresets,
       ),
-    )).session;
+    );
+    session = created.session;
     if (_host.isClosed) return;
-    await _host.loadWorkspaceData(repo);
+    _host.emitSnapshot(
+      _host.dataStore.snapshotWithWorkspace(
+        _host.stateSnapshot(),
+        created.workspace,
+      ),
+    );
+    _host.appendSessionSnapshot(session);
     if (_host.isClosed) return;
     await _openSession(
       SessionOpenRequest(
@@ -133,9 +140,16 @@ class SessionDefaultMaterializer {
 
     final cli = cliOverride ?? CliTool.claude;
 
-    final session = (await repo.createSession(workspace.workspaceId, cli: cli)).session;
+    final created = await repo.createSession(workspace.workspaceId, cli: cli);
+    final session = created.session;
     if (_host.isClosed) return;
-    await _host.loadWorkspaceData(repo);
+    _host.emitSnapshot(
+      _host.dataStore.snapshotWithWorkspace(
+        _host.stateSnapshot(),
+        created.workspace,
+      ),
+    );
+    _host.appendSessionSnapshot(session);
     if (_host.isClosed) return;
     await _openSession(
       SessionOpenRequest(

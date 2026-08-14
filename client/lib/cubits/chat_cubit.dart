@@ -527,18 +527,21 @@ class ChatCubit extends Cubit<ChatState>
   void applyState(ChatState next) => emit(next);
 
   @override
+  ChatDataSnapshot stateSnapshot() => ChatDataSnapshot(
+        workspaces: state.workspaces,
+        sessions: state.sessions,
+        visibleWorkspaces: state.visibleWorkspaces,
+        visibleSessions: state.visibleSessions,
+      );
+
+  @override
   void emitSnapshot(ChatDataSnapshot snapshot) => _emitSnapshot(snapshot);
 
   @override
   void appendSessionSnapshot(AppSession session) {
     _emitSnapshot(
       _dataStore.appendSession(
-        ChatDataSnapshot(
-          workspaces: state.workspaces,
-          sessions: state.sessions,
-          visibleWorkspaces: state.visibleWorkspaces,
-          visibleSessions: state.visibleSessions,
-        ),
+        stateSnapshot(),
         session,
       ),
     );
@@ -548,12 +551,7 @@ class ChatCubit extends Cubit<ChatState>
   void replaceSessionSnapshot(AppSession session) {
     _emitSnapshot(
       _dataStore.replaceSession(
-        ChatDataSnapshot(
-          workspaces: state.workspaces,
-          sessions: state.sessions,
-          visibleWorkspaces: state.visibleWorkspaces,
-          visibleSessions: state.visibleSessions,
-        ),
+        stateSnapshot(),
         session,
       ),
     );
@@ -563,12 +561,7 @@ class ChatCubit extends Cubit<ChatState>
   void removeSessionSnapshot(String sessionId) {
     _emitSnapshot(
       _dataStore.removeSession(
-        ChatDataSnapshot(
-          workspaces: state.workspaces,
-          sessions: state.sessions,
-          visibleWorkspaces: state.visibleWorkspaces,
-          visibleSessions: state.visibleSessions,
-        ),
+        stateSnapshot(),
         sessionId,
       ),
     );
@@ -1443,12 +1436,7 @@ class ChatCubit extends Cubit<ChatState>
     if (isClosed) return;
     _emitSnapshot(
       _dataStore.mergeWorkspaceSessions(
-        current: ChatDataSnapshot(
-          workspaces: state.workspaces,
-          sessions: state.sessions,
-          visibleWorkspaces: state.visibleWorkspaces,
-          visibleSessions: state.visibleSessions,
-        ),
+        current: stateSnapshot(),
         workspaceId: workspaceId,
         workspaceSessions: sessions,
       ),
@@ -1474,12 +1462,7 @@ class ChatCubit extends Cubit<ChatState>
   void patchWorkspace(Workspace updated) {
     _emitSnapshot(
       _dataStore.snapshotWithWorkspace(
-        ChatDataSnapshot(
-          workspaces: state.workspaces,
-          sessions: state.sessions,
-          visibleWorkspaces: state.visibleWorkspaces,
-          visibleSessions: state.visibleSessions,
-        ),
+        stateSnapshot(),
         updated,
       ),
     );
@@ -1522,12 +1505,7 @@ class ChatCubit extends Cubit<ChatState>
     );
     _emitSnapshot(
       _dataStore.appendSession(
-        ChatDataSnapshot(
-          workspaces: state.workspaces,
-          sessions: state.sessions,
-          visibleWorkspaces: state.visibleWorkspaces,
-          visibleSessions: state.visibleSessions,
-        ),
+        stateSnapshot(),
         session,
       ),
     );
@@ -1553,12 +1531,7 @@ class ChatCubit extends Cubit<ChatState>
     LaunchProfileRepository? identityRepository,
   }) async {
     final result = await _dataStore.createWorkspaceWithFirstSession(
-      ChatDataSnapshot(
-        workspaces: state.workspaces,
-        sessions: state.sessions,
-        visibleWorkspaces: state.visibleWorkspaces,
-        visibleSessions: state.visibleSessions,
-      ),
+      stateSnapshot(),
       folders,
       repo,
       sessionTeamId: sessionTeamId,
@@ -1580,12 +1553,7 @@ class ChatCubit extends Cubit<ChatState>
     WorkspaceFolder folder,
   ) async {
     final snap = await _dataStore.addWorkspaceDirectory(
-      ChatDataSnapshot(
-        workspaces: state.workspaces,
-        sessions: state.sessions,
-        visibleWorkspaces: state.visibleWorkspaces,
-        visibleSessions: state.visibleSessions,
-      ),
+      stateSnapshot(),
       repo,
       workspace,
       folder,
@@ -1601,12 +1569,7 @@ class ChatCubit extends Cubit<ChatState>
     bool? rootSandboxEnvOptIn,
   }) async {
     final snap = await _dataStore.updateWorkspaceMetadata(
-      ChatDataSnapshot(
-        workspaces: state.workspaces,
-        sessions: state.sessions,
-        visibleWorkspaces: state.visibleWorkspaces,
-        visibleSessions: state.visibleSessions,
-      ),
+      stateSnapshot(),
       repo,
       workspaceId,
       display: display,
@@ -1622,12 +1585,7 @@ class ChatCubit extends Cubit<ChatState>
     WorkspaceIconRef icon,
   ) async {
     final snap = await _dataStore.applyWorkspaceIcon(
-      ChatDataSnapshot(
-        workspaces: state.workspaces,
-        sessions: state.sessions,
-        visibleWorkspaces: state.visibleWorkspaces,
-        visibleSessions: state.visibleSessions,
-      ),
+      stateSnapshot(),
       repo,
       workspaceId,
       icon,
@@ -1641,12 +1599,7 @@ class ChatCubit extends Cubit<ChatState>
     String localSourcePath,
   ) async {
     final snap = await _dataStore.importCustomWorkspaceIcon(
-      ChatDataSnapshot(
-        workspaces: state.workspaces,
-        sessions: state.sessions,
-        visibleWorkspaces: state.visibleWorkspaces,
-        visibleSessions: state.visibleSessions,
-      ),
+      stateSnapshot(),
       repo,
       workspaceId,
       localSourcePath,
@@ -2228,12 +2181,7 @@ class ChatCubit extends Cubit<ChatState>
     );
     _emitSnapshot(
       await _dataStore.deleteSessionRecord(
-        ChatDataSnapshot(
-          workspaces: state.workspaces,
-          sessions: state.sessions,
-          visibleWorkspaces: state.visibleWorkspaces,
-          visibleSessions: state.visibleSessions,
-        ),
+        stateSnapshot(),
         repo,
         sessionId,
       ),
@@ -2254,12 +2202,7 @@ class ChatCubit extends Cubit<ChatState>
     List<TeamMemberConfig> rosterMembers = const [],
   }) async {
     final result = await _dataStore.cloneWorkspace(
-      ChatDataSnapshot(
-        workspaces: state.workspaces,
-        sessions: state.sessions,
-        visibleWorkspaces: state.visibleWorkspaces,
-        visibleSessions: state.visibleSessions,
-      ),
+      stateSnapshot(),
       repo,
       sourceWorkspaceId,
       display: display,
@@ -2289,12 +2232,7 @@ class ChatCubit extends Cubit<ChatState>
     _notifyAutomationsChanged();
     _emitSnapshot(
       await _dataStore.deleteWorkspaceRecord(
-        ChatDataSnapshot(
-          workspaces: state.workspaces,
-          sessions: state.sessions,
-          visibleWorkspaces: state.visibleWorkspaces,
-          visibleSessions: state.visibleSessions,
-        ),
+        stateSnapshot(),
         repo,
         workspaceId,
       ),

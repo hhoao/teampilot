@@ -79,6 +79,10 @@ abstract interface class SessionLaunchHost
   ChatState get state;
   bool get isClosed;
 
+  /// Current four-tuple snapshot of [state] (workspaces / sessions / visible*).
+  /// Lets the session domain patch in-memory state without a full rescan.
+  ChatDataSnapshot stateSnapshot();
+
   /// Single emit entry point (wraps the cubit's protected emit).
   void applyState(ChatState next);
   void refreshActiveWorkspaceTabs();
