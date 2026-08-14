@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import '../cubits/launch_profile_cubit.dart';
 import '../l10n/l10n_extensions.dart';
 import '../pages/extensions/extension_section.dart';
-import '../pages/mcp/mcp_routes.dart';
 import '../pages/mcp/mcp_management_page.dart';
 import '../pages/plugins/plugin_section.dart';
 import '../pages/skills/skill_management_page.dart';
@@ -28,7 +27,6 @@ class AndroidShellChrome {
 
   @visibleForTesting
   static bool isLibrarySectionPath(String path) {
-    if (mcpPathIsForm(path)) return false;
     return path == '/skills' ||
         _isSkillsDetail(path) ||
         path == '/plugins' ||
@@ -135,10 +133,6 @@ class AndroidShellChrome {
     }
     if (_isTeamConfigDetail(path) || path == '/team-config') {
       context.go('/team-config');
-      return;
-    }
-    if (mcpPathIsForm(path)) {
-      context.go(mcpInstalledRoute);
       return;
     }
     if (isLibrarySectionPath(path)) {

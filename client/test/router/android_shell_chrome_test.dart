@@ -30,11 +30,6 @@ void main() {
       expect(AndroidShellChrome.isLibrarySectionPath('/mcp/registries'), isTrue);
     });
 
-    test('excludes MCP form paths', () {
-      expect(AndroidShellChrome.isLibrarySectionPath('/mcp/add'), isFalse);
-      expect(AndroidShellChrome.isLibrarySectionPath('/mcp/edit/server-1'), isFalse);
-    });
-
     test('excludes config and providers paths', () {
       expect(AndroidShellChrome.isLibrarySectionPath('/config/layout'), isFalse);
       expect(AndroidShellChrome.isLibrarySectionPath('/providers/claude'), isFalse);

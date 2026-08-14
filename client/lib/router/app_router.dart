@@ -12,7 +12,6 @@ import '../pages/llm_config/llm_config_workspace.dart';
 import '../pages/extensions/extension_management_page.dart';
 import '../pages/skills/skill_management_page.dart';
 import '../pages/plugins/plugin_management_page.dart';
-import '../pages/mcp/mcp_form_nav_page.dart';
 import '../pages/mcp/mcp_management_page.dart';
 import '../pages/hooks/hook_management_page.dart';
 import '../pages/onboarding/onboarding_gate.dart';
@@ -432,21 +431,6 @@ final appRouter = GoRouter(
               path: '/mcp/registries',
               pageBuilder: (context, state) => const NoTransitionPage(
                 child: McpManagementPage(section: McpSection.registries),
-              ),
-            ),
-            GoRoute(
-              path: '/mcp/add',
-              pageBuilder: (context, state) =>
-                  const NoTransitionPage(child: McpFormNavPage()),
-            ),
-            GoRoute(
-              path: '/mcp/edit/:serverId',
-              pageBuilder: (context, state) => NoTransitionPage(
-                child: McpFormNavPage(
-                  serverId: Uri.decodeComponent(
-                    state.pathParameters['serverId']!,
-                  ),
-                ),
               ),
             ),
             GoRoute(
