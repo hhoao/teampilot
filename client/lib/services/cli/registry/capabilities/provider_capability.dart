@@ -100,6 +100,7 @@ class ProviderCredentialActionInput {
 }
 
 /// Values collected from the provider form shell before [buildConfig].
+@immutable
 class ProviderFormInput {
   const ProviderFormInput({
     required this.baseUrl,
@@ -117,6 +118,7 @@ class ProviderFormInput {
 }
 
 /// Props for CLI-specific form sections rendered below common fields.
+@immutable
 class ProviderFormSectionProps {
   const ProviderFormSectionProps({
     required this.config,

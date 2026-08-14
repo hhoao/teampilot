@@ -55,7 +55,15 @@ class ResourceProvisioningService {
     final plugin = _registry.capability<PluginCapability>(cli);
     if (plugin != null &&
         plugin.pluginsRepresentation == ResourceRepresentation.linkedDirectory) {
+      // ResourceResolver only ever emits skills today, so the effective plugin
+      // set is always empty and this branch never reconciles. Reconcile with an
+      // empty set would prune `plugins/`, which holds decomposed plugin bundles
+      // — the guard below must stay (asserts are stripped in release builds).
       final desired = effective.of(ResourceKind.plugin);
+      assert(
+        desired.isEmpty,
+        'plugin resources are not emitted by ResourceResolver yet',
+      );
       if (desired.isEmpty) return ResourceProvisionResult(warnings: warnings);
       final pluginDir = _fs.pathContext.join(configDir, plugin.pluginsSubdir);
       final result = await _materializer.reconcile(

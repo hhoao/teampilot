@@ -77,7 +77,7 @@ class CliToolRegistry {
       capability<CliSessionCapability>(cli) ?? const NoopCliSessionCapability();
 
   /// Official catalog id used when a Simple launch provider is unset (see
-  /// [ProviderCatalogCapability.defaultOfficialProviderId]).
+  /// [ProviderCapability.defaultOfficialProviderId]).
   String? defaultOfficialProviderId(CliTool cli) =>
       capability<ProviderCapability>(cli)?.defaultOfficialProviderId;
 }

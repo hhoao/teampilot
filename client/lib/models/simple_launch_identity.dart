@@ -29,7 +29,7 @@ class SimpleLaunchIdentity {
 
   /// Create-time resolve: preset wins over explicit args; an empty provider is
   /// filled by [officialProviderId] when supplied (services pass the CLI's
-  /// [ProviderCatalogCapability.defaultOfficialProviderId] — the model never
+  /// [ProviderCapability.defaultOfficialProviderId] — the model never
   /// switches on [CliTool]).
   factory SimpleLaunchIdentity.resolve({
     CliTool? cli,

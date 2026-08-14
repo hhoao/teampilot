@@ -82,7 +82,7 @@ void registerBuiltInCliTools(
     CliTool.values.every(
       (cli) => registry.capability<ProviderCapability>(cli) != null,
     ),
-    'Every CliTool must register ProviderModelCapability',
+    'Every CliTool must register ProviderCapability',
   );
   assert(
     CliTool.values.every(
@@ -93,12 +93,10 @@ void registerBuiltInCliTools(
   );
   _verifyRequired<CliSessionCapability>(registry);
   _verifyRequired<TeamBehaviorCapability>(registry);
-  _verifyRequired<ProviderCapability>(registry);
   _verifyRequired<CliExecutableCapability>(registry);
   _verifyRequired<TerminalBehaviorCapability>(registry);
   _verifyRequired<PluginCapability>(registry);
   _verifyRequired<ChatInteractionCapability>(registry);
-  _verifyRequired<ProviderCapability>(registry);
   _verifyNativeTeamRegistration(registry);
   _verifyMemberAgentPresetRegistration(registry);
 }
@@ -120,7 +118,8 @@ void _verifyMemberAgentPresetRegistration(CliToolRegistry registry) {
   if (presetIds.length != allowed.length ||
       !allowed.every(presetIds.contains)) {
     throw StateError(
-      'Member agent preset is limited to CLIs with MemberAgentPresetCapability; '
+      'Member agent preset is limited to CLIs exposing an agent preset '
+      'style via TeamBehaviorCapability; '
       'got ${presetIds.map((c) => c.value).join(', ')}',
     );
   }
@@ -132,7 +131,8 @@ void _verifyNativeTeamRegistration(CliToolRegistry registry) {
   if (nativeIds.length != allowed.length ||
       !allowed.every(nativeIds.contains)) {
     throw StateError(
-      'Native team mode is limited to CLIs with NativeTeamCapability; '
+      'Native team mode is limited to CLIs exposing native team support via '
+      'TeamBehaviorCapability; '
       'got ${nativeIds.map((c) => c.value).join(', ')}',
     );
   }

@@ -1,6 +1,6 @@
 /// Built-in OpenCode model ids for TeamPilot pickers (Zen + common direct APIs).
 ///
-/// Zen ids match https://opencode.ai/docs/zen . A future [ProviderModelCapability]
+/// Zen ids match https://opencode.ai/docs/zen . A future [ProviderCapability]
 /// may replace this with a live fetch from `https://opencode.ai/zen/v1/models`.
 class OpencodeModelCatalog {
   const OpencodeModelCatalog._();

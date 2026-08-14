@@ -485,7 +485,7 @@ class TeamProfile implements LaunchProfile {
   }
 
   /// Team-level effort for [cli], or empty when unset (the CLI's
-  /// [CliEffortCapability.defaultEffort] supplies the launch fallback).
+  /// [ProviderCapability.defaultEffort] supplies the launch fallback).
   String effortForCli(CliTool cli) => cliEffortLevels[cli.value]?.trim() ?? '';
 
   /// App-level provider id for [cli] from team custom defaults.

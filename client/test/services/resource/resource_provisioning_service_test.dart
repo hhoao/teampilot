@@ -60,4 +60,35 @@ void main() {
       expect(entries.map((e) => e.name), contains('demo-skill'));
     },
   );
+
+  test(
+    'provisionForLaunch never reconciles the plugin dir while the resolver '
+    'emits only skills (stale bundles survive)',
+    () async {
+      final fs = AppStorage.fs;
+      final tmp = await fs.createTempDir(prefix: 'prov_plugin_test_');
+      final configDir = fs.pathContext.join(tmp, 'cfg', 'flashskyai');
+      final stalePlugin = fs.pathContext.join(configDir, 'plugins', 'stale-bundle');
+      await fs.ensureDir(stalePlugin);
+
+      final service = ResourceProvisioningService(
+        fs: fs,
+        registry: CliToolRegistry.builtIn(),
+      );
+
+      await service.provisionForLaunch(
+        scope: const SimpleResourceScope(bundle: ConfigBundle()),
+        cli: CliTool.flashskyai,
+        configDir: configDir,
+        catalog: ResourceCatalog(
+          skills: const [],
+          skillsRoot: fs.pathContext.join(tmp, 'skills', 'installed'),
+          pathContext: fs.pathContext,
+        ),
+      );
+
+      final plugins = await fs.listDir(fs.pathContext.join(configDir, 'plugins'));
+      expect(plugins.map((e) => e.name), contains('stale-bundle'));
+    },
+  );
 }
