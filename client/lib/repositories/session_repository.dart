@@ -641,7 +641,21 @@ class SessionRepository {
         rethrow;
       }
     }
-    return (workspace: updated, sessions: writtenSessions);
+    // Return the full session list — sessions that did not reference the
+    // from target are unchanged but must still be present, or callers that
+    // patch in-memory snapshots would drop them.
+    final writtenById = {
+      for (final s in writtenSessions) s.sessionId: s,
+    };
+    final allSessions = [
+      for (final s in sessions)
+        writtenById[s.sessionId] ?? s,
+    ]..sort((a, b) {
+      final au = a.updatedAt != 0 ? a.updatedAt : a.createdAt;
+      final bu = b.updatedAt != 0 ? b.updatedAt : b.createdAt;
+      return bu.compareTo(au);
+    });
+    return (workspace: updated, sessions: allSessions);
   }
 
   /// Provisions trust metadata (git-root trusted projects) for [workspace].
@@ -802,7 +816,7 @@ class SessionRepository {
         defaultTargetId: _lifecycleService == null
             ? null
             : WorkTargetCanonicalizer.defaultFolderTargetId(
-                _lifecycleService!.currentHome,
+                _lifecycleService.currentHome,
               ),
       ),
       display: '',
@@ -836,12 +850,23 @@ class SessionRepository {
     // The manifest read above predates the session write, so stamp the new
     // sessionId (newest first, createdAt desc) for the index mirror. The
     // returned workspace keeps its pre-session sessionIds — callers append
-    // the new id themselves.
+    // the new id themselves. Base the mirror on the cached index entry when
+    // present: its order is createdAt desc, whereas a fresh indexOnly read
+    // returns raw session-directory order (filesystem dependent).
+    final key = _workspacesIndexCacheKey();
+    Workspace? cachedWorkspace;
+    for (final w in _workspacesIndexByRoot[key] ?? const <Workspace>[]) {
+      if (w.workspaceId == workspaceId) {
+        cachedWorkspace = w;
+        break;
+      }
+    }
+    final baseIds = cachedWorkspace?.sessionIds ?? workspace.sessionIds;
     await _rememberWorkspace(
-      workspace.sessionIds.contains(sessionId)
+      baseIds.contains(sessionId)
           ? workspace
           : workspace.copyWith(
-              sessionIds: [sessionId, ...workspace.sessionIds],
+              sessionIds: [sessionId, ...baseIds],
             ),
     );
     return (session: session, workspace: workspace);

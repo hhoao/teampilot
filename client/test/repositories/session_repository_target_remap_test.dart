@@ -135,4 +135,56 @@ void main() {
       expect(unchanged.memberTargetsByTeam['team-a']?['team-lead'], 'ssh:old');
     },
   );
+
+  test(
+    'remapWorkspaceTarget returns all sessions: rewritten plus untouched',
+    () async {
+      final tmp = await Directory.systemTemp.createTemp(
+        'fs_repo_remap_partial_',
+      );
+      addTearDown(() => tmp.deleteSync(recursive: true));
+      final repo = SessionRepository(rootDir: tmp.path);
+
+      final ws = await repo.createWorkspace([
+        const WorkspaceFolder(path: '/local'),
+      ]);
+      // Untouched session: created before the ssh folder existed, so it never
+      // references ssh:old.
+      final untouched = (await repo.createSession(ws.workspaceId)).session;
+      await repo.updateWorkspaceFolders(ws.workspaceId, [
+        const WorkspaceFolder(path: '/local'),
+        const WorkspaceFolder(path: '/remote', targetId: 'ssh:old'),
+      ]);
+      await repo.updateWorkspaceMemberPlacement(
+        ws.workspaceId,
+        'team-a',
+        targets: const {'dev': 'ssh:old'},
+      );
+      final hit = (await repo.createSession(
+        ws.workspaceId,
+        sessionTeam: 'team-a',
+        rosterMembers: const [
+          TeamMemberConfig(id: 'dev', name: 'Dev'),
+        ],
+        memberClis: const {'dev': CliTool.claude},
+      )).session;
+      expect(hit.memberTargets['dev'], 'ssh:old');
+
+      final result = await repo.remapWorkspaceTarget(
+        ws.workspaceId,
+        fromTargetId: 'ssh:old',
+        toTargetId: 'ssh:new',
+        liveness: _FixedLiveness({'ssh:new', 'local', 'ssh:old'}),
+      );
+
+      final byId = {for (final s in result.sessions) s.sessionId: s};
+      expect(result.sessions, hasLength(2));
+      final rewritten = byId[hit.sessionId]!;
+      expect(rewritten.memberTargets['dev'], 'ssh:new');
+      final kept = byId[untouched.sessionId]!;
+      expect(kept.memberTargets, isEmpty);
+      expect(kept.folders.map((f) => f.targetId), ['local']);
+      expect(kept.updatedAt, untouched.updatedAt);
+    },
+  );
 }

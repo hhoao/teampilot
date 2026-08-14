@@ -103,6 +103,33 @@ void main() {
     },
   );
 
+  test(
+    'createSession index mirror keeps cached createdAt-desc order',
+    () async {
+      final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
+      addTearDown(() => tmp.deleteSync(recursive: true));
+
+      final repo = SessionRepository(rootDir: tmp.path);
+      final workspace = await repo.createWorkspace([
+        WorkspaceFolder(path: '/a'),
+      ]);
+      final s1 = (await repo.createSession(workspace.workspaceId)).session;
+      final s2 = (await repo.createSession(workspace.workspaceId)).session;
+      // Prime the index cache (boot path) before the third session.
+      expect(
+        (await repo.loadWorkspacesIndex()).single.sessionIds,
+        [s2.sessionId, s1.sessionId],
+      );
+      final s3 = (await repo.createSession(workspace.workspaceId)).session;
+
+      final indexed = (await repo.loadWorkspacesIndex()).single;
+      expect(
+        indexed.sessionIds,
+        [s3.sessionId, s2.sessionId, s1.sessionId],
+      );
+    },
+  );
+
   test('deleteWorkspace removes workspace and session files', () async {
     final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
     addTearDown(() => tmp.deleteSync(recursive: true));
