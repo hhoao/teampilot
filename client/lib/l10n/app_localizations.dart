@@ -2462,6 +2462,12 @@ abstract class AppLocalizations {
   /// **'Files'**
   String get workspaceSearchFilterFiles;
 
+  /// No description provided for @workspaceSearchContent.
+  ///
+  /// In en, this message translates to:
+  /// **'Content'**
+  String get workspaceSearchContent;
+
   /// No description provided for @workspaceSearchShowMore.
   ///
   /// In en, this message translates to:
@@ -2479,6 +2485,114 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No matches'**
   String get workspaceSearchNoResults;
+
+  /// No description provided for @workspaceSearchPanel.
+  ///
+  /// In en, this message translates to:
+  /// **'Search'**
+  String get workspaceSearchPanel;
+
+  /// No description provided for @workspaceSearchQueryHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search files'**
+  String get workspaceSearchQueryHint;
+
+  /// No description provided for @workspaceSearchRegex.
+  ///
+  /// In en, this message translates to:
+  /// **'Regex'**
+  String get workspaceSearchRegex;
+
+  /// No description provided for @workspaceSearchCaseSensitive.
+  ///
+  /// In en, this message translates to:
+  /// **'Aa'**
+  String get workspaceSearchCaseSensitive;
+
+  /// No description provided for @workspaceSearchGitignore.
+  ///
+  /// In en, this message translates to:
+  /// **'.gitignore'**
+  String get workspaceSearchGitignore;
+
+  /// No description provided for @workspaceSearchIncludeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Include (glob, comma-separated)'**
+  String get workspaceSearchIncludeHint;
+
+  /// No description provided for @workspaceSearchExcludeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Exclude (glob, comma-separated)'**
+  String get workspaceSearchExcludeHint;
+
+  /// No description provided for @workspaceSearchReplaceHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace with'**
+  String get workspaceSearchReplaceHint;
+
+  /// No description provided for @workspaceSearchReplaceAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace All'**
+  String get workspaceSearchReplaceAll;
+
+  /// No description provided for @workspaceSearchReplaceAllTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace all?'**
+  String get workspaceSearchReplaceAllTitle;
+
+  /// No description provided for @workspaceSearchReplaceAllMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace {count} occurrence(s)?'**
+  String workspaceSearchReplaceAllMessage(int count);
+
+  /// No description provided for @workspaceSearchReplace.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace'**
+  String get workspaceSearchReplace;
+
+  /// No description provided for @workspaceSearchReplacedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Replaced {count}'**
+  String workspaceSearchReplacedCount(int count);
+
+  /// No description provided for @workspaceSearchCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get workspaceSearchCancel;
+
+  /// No description provided for @workspaceSearchEmptyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Type to search file contents'**
+  String get workspaceSearchEmptyHint;
+
+  /// No description provided for @workspaceSearchTruncated.
+  ///
+  /// In en, this message translates to:
+  /// **'Results truncated — refine your query'**
+  String get workspaceSearchTruncated;
+
+  /// No description provided for @workspaceSearchBackend.
+  ///
+  /// In en, this message translates to:
+  /// **'Engine: {backend}'**
+  String workspaceSearchBackend(String backend);
+
+  /// No description provided for @workspaceSearchError.
+  ///
+  /// In en, this message translates to:
+  /// **'Search failed — check the pattern'**
+  String get workspaceSearchError;
 
   /// No description provided for @appDropdownSearchHint.
   ///
@@ -11491,6 +11605,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Search Workspace (double-tap Shift)'**
   String get shortcutsWorkspaceSearch;
+
+  /// No description provided for @shortcutsWorkspaceContentSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Find in Files'**
+  String get shortcutsWorkspaceContentSearch;
 
   /// No description provided for @shortcutsStripNextTab.
   ///

@@ -1,0 +1,12 @@
+[package]
+name = "teampilot_search_rust"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["rlib", "staticlib", "cdylib"]
+
+[dependencies]
+grep = "0.3"
+ignore = "0.4"
+regex-syntax = "0.8"

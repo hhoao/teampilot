@@ -30,6 +30,8 @@ jobs:
           ref: ${{ github.event.inputs.ref || github.ref }}
           submodules: recursive
 
+      - uses: dtolnay/rust-toolchain@stable
+
       - name: Install Linux build dependencies
         run: |
           sudo apt-get update
@@ -97,6 +99,8 @@ jobs:
           ref: ${{ github.event.inputs.ref || github.ref }}
           submodules: recursive
 
+      - uses: dtolnay/rust-toolchain@stable
+
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
@@ -147,6 +151,8 @@ jobs:
         with:
           ref: ${{ github.event.inputs.ref || github.ref }}
           submodules: recursive
+
+      - uses: dtolnay/rust-toolchain@stable
 
       - uses: subosito/flutter-action@v2
         with:
@@ -275,6 +281,8 @@ jobs:
         with:
           ref: ${{ github.event.inputs.ref || github.ref }}
           submodules: recursive
+
+      - uses: dtolnay/rust-toolchain@stable
 
       - uses: actions/setup-java@v4
         with:

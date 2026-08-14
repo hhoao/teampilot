@@ -8,12 +8,14 @@ class RightToolsToolPreferences {
   const RightToolsToolPreferences({
     required this.fileTreeVisible,
     required this.gitVisible,
+    required this.searchVisible,
     required this.membersVisible,
     required this.boardVisible,
   });
 
   final bool fileTreeVisible;
   final bool gitVisible;
+  final bool searchVisible;
   final bool membersVisible;
   final bool boardVisible;
 
@@ -28,6 +30,7 @@ class RightToolsToolPreferences {
     return RightToolsToolPreferences(
       fileTreeVisible: preferences.fileTreeVisible,
       gitVisible: preferences.gitVisible,
+      searchVisible: preferences.searchVisible,
       membersVisible: preferences.membersVisible,
       boardVisible: preferences.boardVisible,
     );
@@ -39,11 +42,17 @@ class RightToolsToolPreferences {
         other is RightToolsToolPreferences &&
             fileTreeVisible == other.fileTreeVisible &&
             gitVisible == other.gitVisible &&
+            searchVisible == other.searchVisible &&
             membersVisible == other.membersVisible &&
             boardVisible == other.boardVisible;
   }
 
   @override
-  int get hashCode =>
-      Object.hash(fileTreeVisible, gitVisible, membersVisible, boardVisible);
+  int get hashCode => Object.hash(
+    fileTreeVisible,
+    gitVisible,
+    searchVisible,
+    membersVisible,
+    boardVisible,
+  );
 }

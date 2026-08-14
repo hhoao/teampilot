@@ -7,6 +7,10 @@ abstract final class CommandIds {
   static const String workspaceReopenClosed = 'workbench.workspace.reopenClosed';
   static const String workspaceSearch = 'workbench.workspace.search';
 
+  /// Opens/focuses the right-tools content search panel.
+  static const String workspaceContentSearch =
+      'workbench.workspace.contentSearch';
+
   // Workbench strip tabs (session / file / diff / shell / run)
   static const String stripNextTab = 'workbench.strip.nextTab';
   static const String stripPrevTab = 'workbench.strip.prevTab';

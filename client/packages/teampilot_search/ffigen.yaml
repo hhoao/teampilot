@@ -1,0 +1,13 @@
+name: TeampilotSearchBindings
+description: |
+  Bindings for the Rust FFI shim in rust/include/teampilot_search.h.
+output: 'lib/teampilot_search_bindings_generated.dart'
+ffi-native:
+headers:
+  entry-points:
+    - 'rust/include/teampilot_search.h'
+  include-directives:
+    - '**/teampilot_search.h'
+comments:
+  style: any
+  length: full

@@ -10,6 +10,7 @@ import '../../../l10n/l10n_extensions.dart';
 import '../../../models/workspace.dart';
 import '../../../models/app_session.dart';
 import '../../../services/file_tree/workspace_file_search.dart';
+import '../../../services/io/filesystem.dart';
 import '../../../services/search/workspace_search_indexes.dart';
 import '../../../services/session/workspace_session_content_index.dart';
 import '../../../services/workbench/workbench_editor_opener.dart';
@@ -18,6 +19,7 @@ import '../../../utils/debounce/debounce.dart';
 import '../../../utils/session/workspace_sessions.dart';
 import '../../../utils/session/workspace_tab_session_scope.dart';
 import '../../../widgets/sidebar_session_tile.dart';
+import 'workspace_search_content_section.dart';
 import 'workspace_search_widgets.dart';
 import 'workspace_session_actions.dart';
 
@@ -32,15 +34,21 @@ const _maxRecentSessions = 8;
 const _maxFileResultsExpanded = 100000;
 
 /// Opens the workspace search dialog, which searches conversation sessions
-/// (by title and by transcript content) and workspace files by name. Reads the
+/// (by title and by transcript content), workspace files by name, and — on the
+/// `content` filter — file contents via the content-search engine. Reads the
 /// current session list, CLI fallback title, and shared search indexes from
 /// [context] up front; selecting a result pops the dialog and performs the
 /// action against the still-mounted [context].
+///
+/// [fs] backs the content filter and is resolved by the caller from the
+/// entry point's workspace tools scope — never derived here, so a shortcut
+/// host above the scope cannot silently fall back to a local filesystem.
 ///
 /// No-ops if a search dialog is already open (e.g. repeated shortcut presses).
 Future<void> showWorkspaceSearchDialog(
   BuildContext context, {
   required Workspace workspace,
+  required Filesystem fs,
 }) async {
   if (_workspaceSearchDialogOpen) return;
   _workspaceSearchDialogOpen = true;
@@ -61,6 +69,7 @@ Future<void> showWorkspaceSearchDialog(
         workspace: workspace,
         sessions: sessions,
         indexes: indexes,
+        fs: fs,
         emptyTitleFallback: fallback,
         onOpenSession: (session) async {
           Navigator.of(dialogContext).pop();
@@ -81,19 +90,23 @@ Future<void> showWorkspaceSearchDialog(
 
 var _workspaceSearchDialogOpen = false;
 
-/// Centered modal that filters sessions (title + transcript content) and
-/// workspace files for name matches, styled after the search-panel mockup: a
-/// headerless rounded search field, single-select filter chips (全部 / 任务 / 文件),
-/// a merged 对话 group (title hits + content hits deduped by session), a 文件
-/// group, and per-section "查看更多结果" links that expand the section to all
-/// matches. Pure UI: result actions are delegated to callbacks, and searches hit
-/// the shared [WorkspaceSearchIndexes] so files and transcripts are indexed once
-/// per workspace instead of re-walking on every keystroke.
+/// Centered modal that filters sessions (title + transcript content), workspace
+/// files for name matches, and — on the `content` filter — file contents,
+/// styled after the search-panel mockup: a headerless rounded search field,
+/// single-select filter chips (全部 / 任务 / 文件 / 内容), a merged 对话 group (title
+/// hits + content hits deduped by session), a 文件 group, and per-section
+/// "查看更多结果" links that expand the section to all matches. Pure UI: result
+/// actions are delegated to callbacks, and searches hit the shared
+/// [WorkspaceSearchIndexes] so files and transcripts are indexed once per
+/// workspace instead of re-walking on every keystroke. The `content` filter is
+/// an exclusive mode rendered by [WorkspaceSearchContentSection] and never
+/// merges into the `all` view.
 class WorkspaceSearchDialog extends StatefulWidget {
   const WorkspaceSearchDialog({
     required this.workspace,
     required this.sessions,
     required this.indexes,
+    required this.fs,
     required this.emptyTitleFallback,
     required this.onOpenSession,
     required this.onOpenFile,
@@ -103,6 +116,7 @@ class WorkspaceSearchDialog extends StatefulWidget {
   final Workspace workspace;
   final List<AppSession> sessions;
   final WorkspaceSearchIndexes indexes;
+  final Filesystem fs;
   final String emptyTitleFallback;
   final FutureOr<void> Function(AppSession session) onOpenSession;
   final ValueChanged<String> onOpenFile;
@@ -111,7 +125,7 @@ class WorkspaceSearchDialog extends StatefulWidget {
   State<WorkspaceSearchDialog> createState() => _WorkspaceSearchDialogState();
 }
 
-enum _SearchFilter { all, conversations, files }
+enum _SearchFilter { all, conversations, files, content }
 
 /// One merged conversation result: a session plus, when it also matched by
 /// transcript content, the snippet and member label to show under the title.
@@ -303,15 +317,19 @@ class _WorkspaceSearchDialogState extends State<WorkspaceSearchDialog> {
         MediaQuery.sizeOf(context).width <
         WorkspacePanePolicy.narrowBreakpointWidth;
 
-    final Widget field = WorkspaceSearchField(
-      controller: _controller,
-      hint: l10n.workspaceSearchHint,
-      onChanged: _onQueryChanged,
-      onClear: () {
-        _controller.clear();
-        _onQueryChanged('');
-      },
-    );
+    // The content filter owns its query input (WorkspaceSearchContentSection),
+    // so the dialog's own field is hidden in that mode.
+    final Widget field = _activeFilter == _SearchFilter.content
+        ? const SizedBox.shrink()
+        : WorkspaceSearchField(
+            controller: _controller,
+            hint: l10n.workspaceSearchHint,
+            onChanged: _onQueryChanged,
+            onClear: () {
+              _controller.clear();
+              _onQueryChanged('');
+            },
+          );
     final Widget chips = _FilterChips(
       active: _activeFilter,
       onChanged: (filter) => setState(() => _activeFilter = filter),
@@ -371,10 +389,14 @@ class _WorkspaceSearchDialogState extends State<WorkspaceSearchDialog> {
         : _buildSearchResults(shrinkWrap: shrinkWrap);
   }
 
-  /// No query: recent conversations (expandable to all sessions), or a files
-  /// hint when the 文件 filter is active.
+  /// No query: recent conversations (expandable to all sessions), a files
+  /// hint when the 文件 filter is active, or the content section (which owns
+  /// its own query input) when the 内容 filter is active.
   Widget _buildRecentResults({required bool shrinkWrap}) {
     final l10n = context.l10n;
+    if (_activeFilter == _SearchFilter.content) {
+      return _buildContentSection();
+    }
     if (_activeFilter == _SearchFilter.files) {
       return ListView(
         shrinkWrap: shrinkWrap,
@@ -414,10 +436,15 @@ class _WorkspaceSearchDialogState extends State<WorkspaceSearchDialog> {
   }
 
   /// Query results: 对话 (merged title + content) and 文件 sections, filtered by
-  /// the active chip and expandable past their initial caps. Sections with no
-  /// content are skipped so a truly empty query falls through to the empty state.
+  /// the active chip and expandable past their initial caps. The `content`
+  /// filter is exclusive — it renders only [WorkspaceSearchContentSection] and
+  /// never merges into the `all` view. Sections with no content are skipped so
+  /// a truly empty query falls through to the empty state.
   Widget _buildSearchResults({required bool shrinkWrap}) {
     final l10n = context.l10n;
+    if (_activeFilter == _SearchFilter.content) {
+      return _buildContentSection();
+    }
     final children = <Widget>[];
 
     if (_activeFilter != _SearchFilter.files) {
@@ -509,6 +536,17 @@ class _WorkspaceSearchDialogState extends State<WorkspaceSearchDialog> {
     }
     return out;
   }
+
+  /// 内容 section: the exclusive content-search mode with its own query input,
+  /// regex/case chips, and streaming file:line results. Searching roots the
+  /// first workspace folder on the dialog's injected [Filesystem].
+  Widget _buildContentSection() {
+    return WorkspaceSearchContentSection(
+      root: widget.workspace.firstFolderPath,
+      fs: widget.fs,
+      onOpenFile: widget.onOpenFile,
+    );
+  }
 }
 
 /// Sessions sorted most-recent-first (updatedAt, else createdAt). Uncapped so
@@ -523,7 +561,7 @@ List<AppSession> _recentSessions(List<AppSession> all) {
   return sorted;
 }
 
-/// Single-select filter chips row: 全部 / 任务 / 文件.
+/// Single-select filter chips row: 全部 / 任务 / 文件 / 内容.
 class _FilterChips extends StatelessWidget {
   const _FilterChips({required this.active, required this.onChanged});
 
@@ -554,6 +592,13 @@ class _FilterChips extends StatelessWidget {
           icon: Icons.description_outlined,
           active: active == _SearchFilter.files,
           onTap: () => onChanged(_SearchFilter.files),
+        ),
+        const SizedBox(width: 6),
+        WorkspaceSearchFilterChip(
+          label: l10n.workspaceSearchContent,
+          icon: Icons.find_in_page_outlined,
+          active: active == _SearchFilter.content,
+          onTap: () => onChanged(_SearchFilter.content),
         ),
       ],
     );

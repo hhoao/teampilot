@@ -7,6 +7,7 @@ void main() {
       const prefs = RightToolsToolPreferences(
         fileTreeVisible: false,
         gitVisible: false,
+        searchVisible: false,
         membersVisible: false,
         boardVisible: false,
       );
@@ -18,6 +19,7 @@ void main() {
       const membersOnly = RightToolsToolPreferences(
         fileTreeVisible: false,
         gitVisible: false,
+        searchVisible: true,
         membersVisible: true,
         boardVisible: false,
       );
@@ -27,6 +29,7 @@ void main() {
       const fileTree = RightToolsToolPreferences(
         fileTreeVisible: true,
         gitVisible: false,
+        searchVisible: true,
         membersVisible: false,
         boardVisible: false,
       );

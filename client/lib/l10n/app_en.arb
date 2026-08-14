@@ -575,9 +575,49 @@
   "workspaceSearchFilterAll": "All",
   "workspaceSearchFilterConversations": "Tasks",
   "workspaceSearchFilterFiles": "Files",
+  "workspaceSearchContent": "Content",
   "workspaceSearchShowMore": "Show more results",
   "workspaceSearchFilesEmptyHint": "Type to search files",
   "workspaceSearchNoResults": "No matches",
+  "workspaceSearchPanel": "Search",
+  "workspaceSearchQueryHint": "Search files",
+  "workspaceSearchRegex": "Regex",
+  "workspaceSearchCaseSensitive": "Aa",
+  "workspaceSearchGitignore": ".gitignore",
+  "workspaceSearchIncludeHint": "Include (glob, comma-separated)",
+  "workspaceSearchExcludeHint": "Exclude (glob, comma-separated)",
+  "workspaceSearchReplaceHint": "Replace with",
+  "workspaceSearchReplaceAll": "Replace All",
+  "workspaceSearchReplaceAllTitle": "Replace all?",
+  "workspaceSearchReplaceAllMessage": "Replace {count} occurrence(s)?",
+  "@workspaceSearchReplaceAllMessage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "workspaceSearchReplace": "Replace",
+  "workspaceSearchReplacedCount": "Replaced {count}",
+  "@workspaceSearchReplacedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "workspaceSearchCancel": "Cancel",
+  "workspaceSearchEmptyHint": "Type to search file contents",
+  "workspaceSearchTruncated": "Results truncated — refine your query",
+  "workspaceSearchBackend": "Engine: {backend}",
+  "@workspaceSearchBackend": {
+    "placeholders": {
+      "backend": {
+        "type": "String"
+      }
+    }
+  },
+  "workspaceSearchError": "Search failed — check the pattern",
   "appDropdownSearchHint": "Search…",
   "appDropdownSearchNoResults": "No results found.",
   "homeWorkspaceOpenWorkspaceInNewTab": "Open in new tab",
@@ -2948,6 +2988,7 @@
   "shortcutsWorkspaceCloseTab": "Close Workspace Tab",
   "shortcutsWorkspaceReopenClosed": "Reopen Closed Workspace Tab",
   "shortcutsWorkspaceSearch": "Search Workspace (double-tap Shift)",
+  "shortcutsWorkspaceContentSearch": "Find in Files",
   "shortcutsStripNextTab": "Next Tab",
   "shortcutsStripPrevTab": "Previous Tab",
   "shortcutsSessionNewTab": "New Session Tab",

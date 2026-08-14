@@ -1,0 +1,6 @@
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  exclude:
+    # Native Rust crate (including Rust test fixtures named *.dart).
+    - rust/**

@@ -29,9 +29,7 @@ String languagePreferenceStoredLocale(String uiValue) {
 String normalizeUiFontId(String? id) {
   final raw = id ?? '';
   if (isInstalledFontId(raw)) return raw;
-  return FontCatalog.isKnown(FontRole.ui, raw)
-      ? raw
-      : FontCatalog.defaultUiId;
+  return FontCatalog.isKnown(FontRole.ui, raw) ? raw : FontCatalog.defaultUiId;
 }
 
 String normalizeMonoFontId(String? id) {
@@ -51,6 +49,7 @@ class LayoutPreferences {
     this.membersVisible = true,
     this.fileTreeVisible = true,
     this.gitVisible = true,
+    this.searchVisible = true,
     this.boardVisible = true,
     this.rightToolsVisible = true,
     this.sidebarVisible = true,
@@ -102,6 +101,7 @@ class LayoutPreferences {
       membersVisible: json['membersVisible'] as bool? ?? true,
       fileTreeVisible: json['fileTreeVisible'] as bool? ?? true,
       gitVisible: json['gitVisible'] as bool? ?? true,
+      searchVisible: json['searchVisible'] as bool? ?? true,
       boardVisible: json['boardVisible'] as bool? ?? true,
       rightToolsVisible: json['rightToolsVisible'] as bool? ?? true,
       sidebarVisible: json['sidebarVisible'] as bool? ?? true,
@@ -172,7 +172,9 @@ class LayoutPreferences {
       floatingPanelWidth: _optionalDouble(json['floatingPanelWidth']),
       floatingPanelHeight: _optionalDouble(json['floatingPanelHeight']),
       floatingPanelRightInset: _optionalDouble(json['floatingPanelRightInset']),
-      floatingPanelBottomInset: _optionalDouble(json['floatingPanelBottomInset']),
+      floatingPanelBottomInset: _optionalDouble(
+        json['floatingPanelBottomInset'],
+      ),
       floatingToggleDx: _optionalDouble(json['floatingToggleDx']),
       floatingToggleDy: _optionalDouble(json['floatingToggleDy']),
       floatingMaximized: json['floatingMaximized'] as bool? ?? false,
@@ -226,6 +228,7 @@ class LayoutPreferences {
   final bool membersVisible;
   final bool fileTreeVisible;
   final bool gitVisible;
+  final bool searchVisible;
   final bool boardVisible;
   final bool rightToolsVisible;
   final bool sidebarVisible;
@@ -278,6 +281,7 @@ class LayoutPreferences {
     bool? membersVisible,
     bool? fileTreeVisible,
     bool? gitVisible,
+    bool? searchVisible,
     bool? boardVisible,
     bool? rightToolsVisible,
     bool? sidebarVisible,
@@ -324,6 +328,7 @@ class LayoutPreferences {
       membersVisible: membersVisible ?? this.membersVisible,
       fileTreeVisible: fileTreeVisible ?? this.fileTreeVisible,
       gitVisible: gitVisible ?? this.gitVisible,
+      searchVisible: searchVisible ?? this.searchVisible,
       boardVisible: boardVisible ?? this.boardVisible,
       rightToolsVisible: rightToolsVisible ?? this.rightToolsVisible,
       sidebarVisible: sidebarVisible ?? this.sidebarVisible,
@@ -408,6 +413,7 @@ class LayoutPreferences {
       membersVisible: true,
       fileTreeVisible: false,
       gitVisible: gitVisible,
+      searchVisible: searchVisible,
       boardVisible: boardVisible,
       rightToolsVisible: rightToolsVisible,
       sidebarVisible: sidebarVisible,
@@ -456,6 +462,7 @@ class LayoutPreferences {
       'membersVisible': membersVisible,
       'fileTreeVisible': fileTreeVisible,
       'gitVisible': gitVisible,
+      'searchVisible': searchVisible,
       'boardVisible': boardVisible,
       'rightToolsVisible': rightToolsVisible,
       'sidebarVisible': sidebarVisible,

@@ -11,6 +11,7 @@ import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/pages/home_workspace/workspace/workspace_search_dialog.dart';
 import 'package:teampilot/repositories/session_repository.dart';
+import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/search/workspace_search_indexes.dart';
 import 'package:teampilot/theme/app_typography_scale.dart';
 
@@ -74,6 +75,7 @@ Widget _host({
               workspace: workspace,
               sessions: sessions,
               indexes: WorkspaceSearchIndexes(),
+              fs: LocalFilesystem(),
               emptyTitleFallback: 'New Chat',
               onOpenSession: (_) {},
               onOpenFile: (_) {},
