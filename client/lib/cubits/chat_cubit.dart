@@ -2060,8 +2060,8 @@ class ChatCubit extends Cubit<ChatState>
   Future<void> touchSession(String sessionId) async {
     final repo = _sessionRepository;
     if (repo == null) return;
-    await repo.touchSession(sessionId);
-    _emitSnapshot(await _dataStore.loadWorkspaceData(repo));
+    final updated = await repo.touchSession(sessionId);
+    if (updated != null) replaceSessionSnapshot(updated);
   }
 
   /// Persists session-level or per-member continue permission overrides.
@@ -2191,8 +2191,8 @@ class ChatCubit extends Cubit<ChatState>
   Future<void> toggleSessionPin(String sessionId) async {
     final repo = _sessionRepository;
     if (repo == null) return;
-    await repo.toggleSessionPin(sessionId);
-    _emitSnapshot(await _dataStore.loadWorkspaceData(repo));
+    final updated = await repo.toggleSessionPin(sessionId);
+    if (updated != null) replaceSessionSnapshot(updated);
   }
 
   Future<void> deleteSession(SessionRepository repo, String sessionId) async {
