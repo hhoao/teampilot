@@ -190,6 +190,8 @@ class SessionDataStore {
   }
 
   ChatDataSnapshot appendSession(ChatDataSnapshot base, AppSession session) {
+    final alreadyPresent =
+        base.sessions.any((s) => s.sessionId == session.sessionId);
     return deriveSnapshot(
       workspaces: [
         for (final workspace in base.workspaces)
@@ -198,7 +200,7 @@ class SessionDataStore {
           else
             workspace,
       ],
-      sessions: [...base.sessions, session],
+      sessions: alreadyPresent ? base.sessions : [...base.sessions, session],
     );
   }
 

@@ -163,6 +163,20 @@ void main() {
     expect(snap.workspaces.single.sessionIds, ['s1']);
   });
 
+  test('appendSession twice keeps a single session entry', () {
+    final store = SessionDataStore();
+    final ws = _ws('p');
+    final base = store.deriveSnapshot(workspaces: [ws], sessions: const []);
+    final once = store.appendSession(base, _sess('s1', 'p'));
+    final twice = store.appendSession(once, _sess('s1', 'p'));
+    expect(
+      twice.sessions.where((s) => s.sessionId == 's1').length,
+      1,
+    );
+    expect(twice.workspaces.single.sessionIds, ['s1']);
+    expect(twice.visibleSessions.where((s) => s.sessionId == 's1').length, 1);
+  });
+
   test('appendSession for unknown workspace leaves sessionIds untouched', () {
     final store = SessionDataStore();
     final base = store.deriveSnapshot(
