@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
-import 'package:teampilot/services/cli/claude/capabilities/config_profile.dart';
+import 'package:teampilot/services/cli/claude/capabilities/provider.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/provider/config_profile_infrastructure.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
@@ -24,8 +24,8 @@ void main() {
 
     final metadata = await infra.metadataWithTrustedProjects(
       metadataPath: metadataPath,
-      defaultMetadata: ClaudeConfigProfileCapability.defaultMetadata,
-      defaultProjectConfig: ClaudeConfigProfileCapability.defaultProjectConfig,
+      defaultMetadata: ClaudeProviderCapability.defaultMetadata,
+      defaultProjectConfig: ClaudeProviderCapability.defaultProjectConfig,
       directories: const ['/workspace/new'],
     );
 

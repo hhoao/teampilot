@@ -4,14 +4,14 @@ import '../../../../models/mcp_server_spec.dart';
 import '../../../io/filesystem.dart';
 import '../../../mcp/mcp_credentials_store.dart';
 import '../../registry/capabilities/mcp_capability.dart';
-import 'config_profile.dart';
+import 'provider.dart';
 
 /// Merges MCP servers into `<configDir>/opencode.json` `mcp` map.
 final class OpencodeMcpCapability implements McpCapability {
   const OpencodeMcpCapability();
 
   static const configFileName =
-      OpencodeConfigProfileCapability.opencodeConfigFileName;
+      OpencodeProviderCapability.opencodeConfigFileName;
 
   @override
   Future<void> write({

@@ -302,7 +302,7 @@ final class OpencodeProviderCapability extends CatalogModelCapability
     return OpencodeEffortCatalog.defaultLevel;
   }
 
-  // ---- Session-home materialization (from OpencodeConfigProfileCapability) ----
+  // ---- Session-home materialization (formerly OpencodeConfigProfileCapability) ----
 
   static const toolId = 'opencode';
   static const opencodeConfigFileName = 'opencode.json';

@@ -8,7 +8,7 @@ import '../../registry/headless/headless_provision_support.dart';
 import '../provider/opencode_auth_artifacts.dart';
 import '../provider/opencode_data_layout.dart';
 import '../provider/opencode_provider_settings_resolver.dart';
-import 'config_profile.dart';
+import 'provider.dart';
 
 /// opencode one-shot via `opencode run`, plus provisioning of an isolated
 /// config dir (opencode.json + auth env).
@@ -70,7 +70,7 @@ final class OpencodeHeadlessCapability
 
     final configPath = p.join(
       ctx.configDir,
-      OpencodeConfigProfileCapability.opencodeConfigFileName,
+      OpencodeProviderCapability.opencodeConfigFileName,
     );
     var config = await readJsonMap(configPath);
     config = _mergeOpencodeProvider(config, resolved);
@@ -79,7 +79,7 @@ final class OpencodeHeadlessCapability
     final extraEnvironment = <String, String>{};
     final authContent = await _readOpencodeAuthContent(resolved);
     if (authContent != null) {
-      extraEnvironment[OpencodeConfigProfileCapability.authContentEnv] =
+      extraEnvironment[OpencodeProviderCapability.authContentEnv] =
           authContent;
     } else if (resolved.isOfficial) {
       warnings.add('opencode_credentials_missing');

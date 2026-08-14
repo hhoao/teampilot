@@ -9,7 +9,7 @@ import '../../registry/capabilities/plugin_manifest_paths.dart';
 import '../../registry/capabilities/skill_capability.dart';
 import '../../registry/cli_tool_registry.dart';
 import '../provider/opencode_shared_plugin_deps.dart';
-import 'config_profile.dart';
+import 'provider.dart';
 import 'mcp.dart';
 
 /// Materializes plugin bundles for opencode:
@@ -213,7 +213,7 @@ final class OpencodePluginCapability implements PluginCapability {
   ) async {
     final configPath = fs.pathContext.join(
       configDir,
-      OpencodeConfigProfileCapability.opencodeConfigFileName,
+      OpencodeProviderCapability.opencodeConfigFileName,
     );
     final stat = await fs.stat(configPath);
     Map<String, Object?> existing;

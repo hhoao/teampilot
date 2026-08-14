@@ -18,6 +18,7 @@ import '../../../launch/work_plane_paths.dart';
 import '../../../provider/credential_binding.dart';
 import '../../../provider/cross_machine_credential_bridge.dart';
 import '../../../provider/provider_catalog_access.dart';
+import '../../../provider/workspace_trust_provisioner.dart';
 import '../../../io/filesystem.dart';
 import '../../../remote/remote_credential_materializer.dart';
 import '../../../session/member_role_provision.dart';
@@ -361,10 +362,17 @@ final class ClaudeProviderCapability extends CatalogModelCapability
   String defaultEffort({required String model, AppProviderConfig? provider}) =>
       ClaudeEffortCatalog.defaultLevel;
 
-  // ---- Session-home materialization (from ClaudeConfigProfileCapability) ----
+  // ---- Session-home materialization (formerly ClaudeConfigProfileCapability) ----
 
   static const toolId = 'claude';
   static const metadataFileName = '.claude.json';
+  static const settingsFileEnvKey = 'TEAMPILOT_CLAUDE_SETTINGS_FILE';
+
+  /// MCP 工具调用超时(毫秒)。team-bus 的 `wait_for_message` 是长阻塞工具,
+  /// claude 默认的工具超时会在几分钟后掐断它(progress notification 不续命,
+  /// 见 MCP SDK `resetTimeoutOnProgress` 默认 false)。设大到 24h 让 claude 不
+  /// 主动超时,对齐 codex 的 `tool_timeout_sec`(那边单位是秒:86400)。
+  static const busToolTimeoutMs = 86400000; // 24h，单位 ms
 
   static const defaultMetadata = <String, Object?>{
     'hasCompletedOnboarding': true,
@@ -427,6 +435,19 @@ final class ClaudeProviderCapability extends CatalogModelCapability
         '[session-lifecycle] contributeLaunch start session=$sessionId cli=claude',
       );
     }
+
+    await _ensureSessionDefaults(
+      delegate,
+      scope.workspaceId,
+      scope.sessionId,
+      memberId: scope.memberId,
+    );
+    await _provisionWorkspaceTrust(
+      delegate: delegate,
+      workspaceId: scope.workspaceId,
+      workingDirectory: workingDirectory,
+      additionalDirectories: ctx.additionalDirectories,
+    );
 
     ClaudeLaunchExtras? claude;
     if (team != null) {
@@ -562,6 +583,19 @@ final class ClaudeProviderCapability extends CatalogModelCapability
       );
     }
 
+    if (!mixed && !simple) {
+      await _writeRoster(
+        delegate: delegate,
+        scope: scope,
+        members: ctx.members,
+        workingDirectory: workingDirectory,
+        description: team?.description ?? '',
+        leadSessionId: ctx.leadSessionId,
+        teammateMode: teammateMode,
+      );
+    }
+
+    final member = ctx.member;
     final environment = <String, String>{
       'CLAUDE_CONFIG_DIR': delegate.sessionToolDir(
         scope.workspaceId,
@@ -569,6 +603,17 @@ final class ClaudeProviderCapability extends CatalogModelCapability
         toolId,
         memberId: scope.memberId,
       ),
+      if (member != null && member.isValid)
+        settingsFileEnvKey: sessionMemberSettingsFile(
+          delegate,
+          scope.workspaceId,
+          scope.sessionId,
+          member,
+          memberId: scope.memberId,
+        ),
+      if (!mixed && !simple) 'CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS': '1',
+      'CLAUDE_CODE_NO_FLICKER': '1',
+      'MCP_TOOL_TIMEOUT': '$busToolTimeoutMs',
     };
     environment.addAll(appendPromptEnv);
 
@@ -582,6 +627,110 @@ final class ClaudeProviderCapability extends CatalogModelCapability
     return SessionHomeContribution(
       environment: environment,
       warnings: warnings,
+    );
+  }
+
+  Future<void> _ensureSessionDefaults(
+    ConfigProfileDelegate delegate,
+    String workspaceId,
+    String sessionId, {
+    String? memberId,
+  }) async {
+    await _ensureSessionDefaultsAt(
+      delegate,
+      delegate.sessionToolDir(
+        workspaceId,
+        sessionId,
+        toolId,
+        memberId: memberId,
+      ),
+    );
+  }
+
+  Future<void> _ensureSessionDefaultsAt(
+    ConfigProfileDelegate delegate,
+    String memberToolDir,
+  ) async {
+    final file = delegate.joinWork(memberToolDir, metadataFileName);
+    final existing = await delegate.readMetadataFile(file, defaultMetadata);
+    await delegate.writeJsonIfChanged(file, {...defaultMetadata, ...existing});
+  }
+
+  Future<void> _writeRoster({
+    required ConfigProfileDelegate delegate,
+    required LaunchProfileScope scope,
+    required List<TeamMemberConfig> members,
+    required String workingDirectory,
+    required String description,
+    required String teammateMode,
+    String? leadSessionId,
+  }) async {
+    final claudeDir = delegate.sessionToolDir(
+      scope.workspaceId,
+      scope.sessionId,
+      toolId,
+      memberId: scope.memberId,
+    );
+    final rosterDir = delegate.joinWork(
+      claudeDir,
+      'teams',
+      ClaudeTeamRosterService.safeClaudePathSegment(scope.cliTeamName),
+    );
+    final rosterPath = delegate.joinWork(rosterDir, 'config.json');
+
+    final cwd = ClaudeTeamRosterService.resolveWorkingDirectory(
+      workingDirectory: workingDirectory,
+      fallback: '',
+    );
+
+    Map<String, Object?>? existing;
+    if ((await delegate.fs.stat(rosterPath)).exists) {
+      final raw = await delegate.fs.readString(rosterPath);
+      if (raw != null && raw.trim().isNotEmpty) {
+        final decoded = jsonDecode(raw);
+        if (decoded is Map) {
+          existing = Map<String, Object?>.from(
+            decoded.map((k, v) => MapEntry(k.toString(), v)),
+          );
+        }
+      }
+    }
+
+    final rosterService = ClaudeTeamRosterService(fs: delegate.fs);
+    final config = rosterService.mergeConfig(
+      cliTeamName: scope.cliTeamName,
+      members: members,
+      cwd: cwd,
+      teammateMode: teammateMode,
+      description: description,
+      leadSessionId: leadSessionId,
+      existing: existing,
+    );
+
+    await delegate.fs.atomicWrite(
+      rosterPath,
+      const JsonEncoder.withIndent('  ').convert(config),
+    );
+    await rosterService.ensureInboxes(rosterDir: rosterDir, members: members);
+  }
+
+  Future<void> _provisionWorkspaceTrust({
+    required ConfigProfileDelegate delegate,
+    required String workspaceId,
+    required String workingDirectory,
+    List<String> additionalDirectories = const [],
+  }) {
+    return WorkspaceTrustProvisioner(
+      layout: delegate.layout,
+      fs: delegate.fs,
+    ).provisionWorkspace(
+      workspaceId: workspaceId,
+      directories: [
+        if (workingDirectory.trim().isNotEmpty) workingDirectory.trim(),
+        for (final directory in additionalDirectories)
+          if (directory.trim().isNotEmpty) directory.trim(),
+      ],
+      tools: const [ClaudeProviderCapability.toolId],
     );
   }
 

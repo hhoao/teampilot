@@ -8,12 +8,10 @@ import 'capabilities/chat_interaction.dart';
 import 'capabilities/terminal_behavior.dart';
 import 'capabilities/prompt.dart';
 import '../registry/capabilities/prompt_capability.dart';
-import '../registry/capabilities/config_profile_capability.dart';
 import '../registry/capabilities/cli_session_capability.dart';
 import '../registry/capabilities/team_behavior_capability.dart';
 import '../registry/capabilities/headless_capability.dart';
 import 'capabilities/history/ai_history_capability.dart';
-import 'capabilities/config_profile.dart';
 import 'capabilities/session_lifecycle.dart';
 import 'capabilities/headless.dart';
 import '../registry/capabilities/member_config_inspection_capability.dart';
@@ -34,7 +32,6 @@ final class CursorCliTool implements CliToolDefinition {
   CursorCliTool({
     this.teamBehavior = const CursorTeamBehavior(),
     this.session = const CursorSessionLifecycleCapability(),
-    this.configProfile = const CursorConfigProfileCapability(),
     this.executable = const CursorExecutableCapability(),
     this.terminalBehavior = const CursorTerminalBehavior(),
     this.memberConfigInspection = const DefaultMemberConfigInspection(),
@@ -52,7 +49,6 @@ final class CursorCliTool implements CliToolDefinition {
   final ProviderCapability provider;
 
   final CliSessionCapability session;
-  final ConfigProfileCapability configProfile;
   final CliExecutableCapability executable;
   final CursorTerminalBehavior terminalBehavior;
   final MemberConfigInspectionCapability memberConfigInspection;
@@ -78,7 +74,6 @@ final class CursorCliTool implements CliToolDefinition {
     teamBehavior,
     executable,
     session,
-    configProfile,
     terminalBehavior,
     memberConfigInspection,
     plugin,

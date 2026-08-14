@@ -6,7 +6,8 @@ import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
-import 'package:teampilot/services/cli/opencode/capabilities/config_profile.dart';
+import 'package:teampilot/services/cli/opencode/capabilities/provider.dart';
+import 'package:teampilot/services/cli/registry/capabilities/provider_capability.dart';
 import 'package:teampilot/services/team_bus/member_bus_idle_endpoint.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/idle_plugin.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
@@ -14,6 +15,17 @@ import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_config.dart';
 
 void main() {
+  Future<SessionHomeContribution> contribute(
+    OpencodeProviderCapability capability,
+    ConfigProfileLaunchContext ctx,
+  ) => capability.materializeSessionHome(
+    sessionHomeContextFromLaunch(ctx, CliTool.opencode),
+  );
+
+  Future<SessionHomeContribution> materializeOpenCode(
+    ConfigProfileLaunchContext ctx,
+  ) => contribute(const OpencodeProviderCapability(), ctx);
+
   test('idle plugin source re-prompts on decision:block', () {
     expect(opencodeIdlePluginSource, contains('session.idle'));
     expect(opencodeIdlePluginSource, contains('session.next.step.ended'));
@@ -36,7 +48,7 @@ void main() {
         fs: fs,
         layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
       );
-      const capability = OpencodeConfigProfileCapability();
+      const capability = OpencodeProviderCapability();
       const member = TeamMemberConfig(id: 'm1', name: 'Member', model: 'test');
       const team = TeamProfile(
         id: 'team-a',
@@ -53,7 +65,7 @@ void main() {
         memberId: 'm1',
       );
 
-      await capability.contributeLaunch(
+      await contribute(capability,
         ConfigProfileLaunchContext(
           workspaceId: 'workspace-1',
           teamId: 'team-a',
@@ -82,7 +94,7 @@ void main() {
       expect(await fs.readString(pluginPath), opencodeIdlePluginSource);
 
       final configPath =
-          '$opencodeDir/${OpencodeConfigProfileCapability.opencodeConfigFileName}';
+          '$opencodeDir/${OpencodeProviderCapability.opencodeConfigFileName}';
       final raw = await fs.readString(configPath);
       expect(raw, isNotNull);
       final config = jsonDecode(raw!) as Map<String, dynamic>;
@@ -211,8 +223,7 @@ void main() {
         memberId: 'm1',
       );
 
-      final contribution = await const OpencodeConfigProfileCapability()
-          .contributeLaunch(
+      final contribution = await materializeOpenCode(
             ConfigProfileLaunchContext(
               workspaceId: 'workspace-1',
               teamId: 'team-a',
@@ -245,13 +256,13 @@ void main() {
       );
 
       final agents = await fs.readString(
-        '$opencodeDir/${OpencodeConfigProfileCapability.agentsFileName}',
+        '$opencodeDir/${OpencodeProviderCapability.agentsFileName}',
       );
       expect(agents, isNotNull);
       expect(agents, contains('You are the reviewer.'));
 
       final raw = await fs.readString(
-        '$opencodeDir/${OpencodeConfigProfileCapability.opencodeConfigFileName}',
+        '$opencodeDir/${OpencodeProviderCapability.opencodeConfigFileName}',
       );
       final config = jsonDecode(raw!) as Map<String, dynamic>;
       final provider = (config['provider'] as Map)['team-openai'] as Map;

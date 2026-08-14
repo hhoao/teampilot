@@ -8,11 +8,9 @@ import 'capabilities/team_behavior.dart';
 import 'capabilities/terminal_behavior.dart';
 import 'capabilities/chat_interaction.dart';
 import '../registry/capabilities/team_behavior_capability.dart';
-import '../registry/capabilities/config_profile_capability.dart';
 import '../registry/capabilities/cli_session_capability.dart';
 import '../registry/capabilities/headless_capability.dart';
 import 'capabilities/history/ai_history_capability.dart';
-import 'capabilities/config_profile.dart';
 import 'capabilities/headless.dart';
 import '../registry/capabilities/member_config_inspection_capability.dart';
 import '../registry/capabilities/skill_capability.dart';
@@ -32,7 +30,6 @@ final class ClaudeCliTool implements CliToolDefinition {
   ClaudeCliTool({
     this.teamBehavior = const ClaudeTeamBehavior(),
     this.session = const ClaudeCliSessionCapability(),
-    this.configProfile = const ClaudeConfigProfileCapability(),
     this.executable = const ClaudeExecutableCapability(),
     this.terminalBehavior = const ClaudeTerminalBehavior(),
     this.memberConfigInspection = const DefaultMemberConfigInspection(),
@@ -58,7 +55,6 @@ final class ClaudeCliTool implements CliToolDefinition {
   final HookCapability hookWriter;
 
   final CliSessionCapability session;
-  final ConfigProfileCapability configProfile;
   final CliExecutableCapability executable;
   final ClaudeTerminalBehavior terminalBehavior;
   final MemberConfigInspectionCapability memberConfigInspection;
@@ -83,7 +79,6 @@ final class ClaudeCliTool implements CliToolDefinition {
     teamBehavior,
     executable,
     session,
-    configProfile,
     terminalBehavior,
     memberConfigInspection,
     plugin,

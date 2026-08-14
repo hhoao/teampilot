@@ -16,8 +16,8 @@ import '../extension/extension_provisioner.dart';
 import '../host/host_execution_environment.dart';
 import '../host/host_script_dialect.dart';
 import '../host/script_file_hook_provisioner.dart';
-import '../cli/registry/capabilities/config_profile_capability.dart';
 import '../cli/registry/capabilities/plugin_capability.dart';
+import '../cli/registry/capabilities/provider_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../plugin/installed_plugin_catalog.dart';
 import '../plugin/marketplace_shared_store.dart';
@@ -39,6 +39,7 @@ import '../cli/registry/capabilities/cli_session_capability.dart';
 import '../storage/app_storage.dart';
 import '../cli/preset_resolver.dart';
 import '../hook/hook_library_resolver.dart';
+import '../cli/registry/config_profile/config_profile_context.dart';
 import 'config_profile_infrastructure.dart';
 
 export '../cli/registry/config_profile/config_profile_context.dart';
@@ -369,20 +370,6 @@ class ConfigProfileService implements ConfigProfileDelegate {
         ),
       );
     }
-    final cap = _cliRegistry.capability<ConfigProfileCapability>(cli);
-    if (cap != null) {
-      await cap.ensureSessionProfile(
-        ConfigProfileSessionContext(
-          workspaceId: trimmedWorkspaceId,
-          teamId: trimmedTeamId,
-          sessionId: trimmedSessionId,
-          members: team?.members ?? const [],
-          paths: this,
-          team: team,
-          memberId: memberId,
-        ),
-      );
-    }
     await _cliRegistry.lifecycleFor(cli).ensurePersisted(
       CliSessionPersistContext(
         workspaceId: trimmedWorkspaceId,
@@ -639,7 +626,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
       cliTeamName: trimmedSessionId,
     );
 
-    final cap = _cliRegistry.capability<ConfigProfileCapability>(cli);
+    final cap = _cliRegistry.capability<ProviderCapability>(cli);
     if (cap == null) {
       return TeamLaunchOutcome(
         environment: const {},
@@ -647,24 +634,27 @@ class ConfigProfileService implements ConfigProfileDelegate {
       );
     }
 
-    ConfigProfileLaunchContribution contribution;
+    SessionHomeContribution contribution;
     try {
-      contribution = await cap.contributeLaunch(
-        ConfigProfileLaunchContext(
-          workspaceId: trimmedWorkspaceId,
-          teamId: '',
-          sessionId: trimmedSessionId,
-          scope: scope,
-          team: null,
-          member: member,
-          members: [member],
-          workingDirectory: workingDirectory,
-          additionalDirectories: additionalDirectories,
-          paths: this,
-          catalog: catalog,
-          busIdle: busIdle,
-          agentStatus: agentStatus,
-          hooks: hooks,
+      contribution = await cap.materializeSessionHome(
+        sessionHomeContextFromLaunch(
+          ConfigProfileLaunchContext(
+            workspaceId: trimmedWorkspaceId,
+            teamId: '',
+            sessionId: trimmedSessionId,
+            scope: scope,
+            team: null,
+            member: member,
+            members: [member],
+            workingDirectory: workingDirectory,
+            additionalDirectories: additionalDirectories,
+            paths: this,
+            catalog: catalog,
+            busIdle: busIdle,
+            agentStatus: agentStatus,
+            hooks: hooks,
+          ),
+          cli,
         ),
       );
     } on Object catch (e, st) {
@@ -916,7 +906,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
       ),
     );
 
-    final cap = _cliRegistry.capability<ConfigProfileCapability>(launchCli);
+    final cap = _cliRegistry.capability<ProviderCapability>(launchCli);
     if (cap == null) {
       return (
         outcome: TeamLaunchOutcome(
@@ -933,26 +923,29 @@ class ConfigProfileService implements ConfigProfileDelegate {
     ).resolve(runtimeBundle.hookIds);
     warnings.addAll(hooksResult.warnings);
 
-    ConfigProfileLaunchContribution contribution;
+    SessionHomeContribution contribution;
     try {
-      contribution = await cap.contributeLaunch(
-        ConfigProfileLaunchContext(
-          workspaceId: trimmedWorkspaceId,
-          teamId: scope.teamId,
-          sessionId: scope.sessionId,
-          scope: scope,
-          team: team,
-          member: launchMember,
-          members: launchMembers,
-          workingDirectory: workingDirectory,
-          additionalDirectories: additionalDirectories,
-          paths: staging,
-          catalog: catalog,
-          leadSessionId: leadSessionId,
-          busIdle: busIdle,
-          agentStatus: agentStatus,
-          memberId: memberId,
-          hooks: hooksResult.entries,
+      contribution = await cap.materializeSessionHome(
+        sessionHomeContextFromLaunch(
+          ConfigProfileLaunchContext(
+            workspaceId: trimmedWorkspaceId,
+            teamId: scope.teamId,
+            sessionId: scope.sessionId,
+            scope: scope,
+            team: team,
+            member: launchMember,
+            members: launchMembers,
+            workingDirectory: workingDirectory,
+            additionalDirectories: additionalDirectories,
+            paths: staging,
+            catalog: catalog,
+            leadSessionId: leadSessionId,
+            busIdle: busIdle,
+            agentStatus: agentStatus,
+            memberId: memberId,
+            hooks: hooksResult.entries,
+          ),
+          launchCli,
         ),
       );
     } on Object catch (e, st) {

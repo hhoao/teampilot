@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/cli/registry/capabilities/config_profile_capability.dart';
 import 'package:teampilot/services/cli/registry/capabilities/cli_executable_capability.dart';
 import 'package:teampilot/services/cli/registry/capabilities/cli_session_capability.dart';
 import 'package:teampilot/services/cli/registry/capabilities/provider_capability.dart';
@@ -187,10 +186,10 @@ void main() {
     expect(executable!.supportsInstaller, isTrue);
   });
 
-  test('built-in launchable tools have ConfigProfileCapability', () {
+  test('built-in launchable tools have CliSessionCapability', () {
     final registry = CliToolRegistry.builtIn();
     for (final def in registry.launchable) {
-      expect(registry.capability<ConfigProfileCapability>(def.id), isNotNull);
+      expect(registry.capability<CliSessionCapability>(def.id), isNotNull);
     }
   });
 

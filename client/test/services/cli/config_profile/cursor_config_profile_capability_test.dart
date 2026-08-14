@@ -11,7 +11,8 @@ import 'package:teampilot/services/cli/cursor/provider/cursor_workspace_trust.da
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
-import 'package:teampilot/services/cli/cursor/capabilities/config_profile.dart';
+import 'package:teampilot/services/cli/cursor/capabilities/provider.dart';
+import 'package:teampilot/services/cli/registry/capabilities/provider_capability.dart';
 import 'package:teampilot/services/team_bus/member_bus_idle_endpoint.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/cli/claude/team_roster_service.dart';
@@ -29,7 +30,14 @@ RuntimeContext _memoryContext(String dir, InMemoryFilesystem fs) =>
     );
 
 void main() {
-  const capability = CursorConfigProfileCapability();
+  Future<SessionHomeContribution> contribute(
+    CursorProviderCapability capability,
+    ConfigProfileLaunchContext ctx,
+  ) => capability.materializeSessionHome(
+    sessionHomeContextFromLaunch(ctx, CliTool.cursor),
+  );
+
+  const capability = CursorProviderCapability();
   const base = '/data/tp';
   const member = TeamMemberConfig(
     id: 'planner',
@@ -66,7 +74,7 @@ void main() {
       scope.workspaceId,
       scope.teamId,
       memberId,
-      CursorConfigProfileCapability.toolId,
+      CursorProviderCapability.toolId,
     );
     return paths.pathContext.join(cursorDir, 'home');
   }
@@ -82,12 +90,12 @@ void main() {
       final toolDir = paths.sessionToolDir(
         scope.workspaceId,
         scope.sessionId,
-        CursorConfigProfileCapability.toolId,
+        CursorProviderCapability.toolId,
         memberId: scope.memberId,
       );
       final home = paths.pathContext.join(toolDir, 'home');
 
-      final contribution = await capability.contributeLaunch(
+      final contribution = await contribute(capability,
         ConfigProfileLaunchContext(
           workspaceId: 'workspace-1',
           teamId: '',
@@ -118,7 +126,7 @@ void main() {
         final scope = mixedScope();
         final home = memberHome(scope);
 
-        final contribution = await capability.contributeLaunch(
+        final contribution = await contribute(capability,
           ConfigProfileLaunchContext(
             workspaceId: 'workspace-1',
             teamId: scope.teamId,
@@ -149,7 +157,7 @@ void main() {
         );
         final scope = mixedScope();
 
-        final contribution = await capability.contributeLaunch(
+        final contribution = await contribute(capability,
           ConfigProfileLaunchContext(
             workspaceId: 'workspace-1',
             teamId: scope.teamId,
@@ -186,7 +194,7 @@ void main() {
         );
         final scope = mixedScope();
 
-        final contribution = await capability.contributeLaunch(
+        final contribution = await contribute(capability,
           ConfigProfileLaunchContext(
             workspaceId: 'workspace-1',
             teamId: scope.teamId,
@@ -227,7 +235,7 @@ void main() {
         );
         final scope = mixedScope();
 
-        final contribution = await capability.contributeLaunch(
+        final contribution = await contribute(capability,
           ConfigProfileLaunchContext(
             workspaceId: 'workspace-1',
             teamId: scope.teamId,
@@ -262,7 +270,7 @@ void main() {
         final scope = mixedScope();
         final home = memberHome(scope);
 
-        await capability.contributeLaunch(
+        await contribute(capability,
           ConfigProfileLaunchContext(
             workspaceId: 'workspace-1',
             teamId: scope.teamId,

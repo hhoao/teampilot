@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/cli/opencode/capabilities/config_profile.dart';
+import 'package:teampilot/services/cli/opencode/capabilities/provider.dart';
 import 'package:teampilot/services/cli/registry/capabilities/plugin_capability.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/plugin.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';

@@ -28,7 +28,7 @@ import '../cli/registry/capabilities/resume/pinned_transcript_probe.dart';
 import '../cli/preset_resolver.dart';
 import '../cli/cli_tool_adapter.dart';
 import '../cli/registry/cli_tool_registry.dart';
-import '../cli/flashskyai/capabilities/config_profile.dart';
+import '../cli/flashskyai/capabilities/provider.dart';
 import '../provider/control_plane_profile_paths.dart';
 import '../provider/config_profile_service.dart';
 import '../../models/runtime_target.dart';
@@ -1625,8 +1625,8 @@ class SessionLifecycleService {
     final home = env['HOME']?.trim() ?? '';
     if (home.isNotEmpty) return home;
     return env['CLAUDE_CONFIG_DIR'] ??
-        env[FlashskyaiConfigProfileCapability.configDirEnvKey] ??
-        env[FlashskyaiConfigProfileCapability.sessionHomeDirEnvKey] ??
+        env[FlashskyaiProviderCapability.configDirEnvKey] ??
+        env[FlashskyaiProviderCapability.sessionHomeDirEnvKey] ??
         env['CODEX_HOME'] ??
         '';
   }

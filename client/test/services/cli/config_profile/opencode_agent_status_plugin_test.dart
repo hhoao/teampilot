@@ -5,12 +5,20 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/agent_status/member_agent_status_endpoint.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/agent_status_plugin.dart';
-import 'package:teampilot/services/cli/opencode/capabilities/config_profile.dart';
+import 'package:teampilot/services/cli/opencode/capabilities/provider.dart';
+import 'package:teampilot/services/cli/registry/capabilities/provider_capability.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 
 void main() {
+  Future<SessionHomeContribution> contribute(
+    OpencodeProviderCapability capability,
+    ConfigProfileLaunchContext ctx,
+  ) => capability.materializeSessionHome(
+    sessionHomeContextFromLaunch(ctx, CliTool.opencode),
+  );
+
   test('opencodeAgentStatusPluginSource polls Bus and replies via SDK', () {
     final source = opencodeAgentStatusPluginSource;
     // question.asked payload fields for Dart normalizer / chat card.
@@ -111,7 +119,7 @@ void main() {
         fs: fs,
         layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
       );
-      const capability = OpencodeConfigProfileCapability();
+      const capability = OpencodeProviderCapability();
       const member = TeamMemberConfig(id: 'm1', name: 'Member', model: 'test');
       // Native (non-mixed) team — status must still install.
       const team = TeamProfile(
@@ -129,7 +137,7 @@ void main() {
         memberId: 'm1',
       );
 
-      await capability.contributeLaunch(
+      await contribute(capability,
         ConfigProfileLaunchContext(
           workspaceId: 'workspace-1',
           teamId: 'team-a',
@@ -185,7 +193,7 @@ void main() {
       expect(source, contains('isResolved(requestId)'));
 
       final configPath =
-          '$opencodeDir/${OpencodeConfigProfileCapability.opencodeConfigFileName}';
+          '$opencodeDir/${OpencodeProviderCapability.opencodeConfigFileName}';
       final raw = await fs.readString(configPath);
       expect(raw, isNotNull);
       final config = jsonDecode(raw!) as Map<String, dynamic>;

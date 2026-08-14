@@ -5,7 +5,7 @@ import 'package:path/path.dart' as p;
 
 import '../../registry/capabilities/headless_capability.dart';
 import '../../registry/headless/headless_provision_support.dart';
-import 'config_profile.dart';
+import 'provider.dart';
 
 /// flashskyai one-shot via `-p` print mode (Claude-style CLI), plus
 /// provisioning of the isolated config dir (settings + trusted workspaces)
@@ -36,8 +36,8 @@ final class FlashskyaiHeadlessCapability
       executable: 'flashskyai',
       arguments: args,
       environment: {
-        FlashskyaiConfigProfileCapability.configDirEnvKey: ctx.configDir,
-        FlashskyaiConfigProfileCapability.sessionHomeDirEnvKey: ctx.configDir,
+        FlashskyaiProviderCapability.configDirEnvKey: ctx.configDir,
+        FlashskyaiProviderCapability.sessionHomeDirEnvKey: ctx.configDir,
       },
     );
   }
@@ -76,13 +76,13 @@ final class FlashskyaiHeadlessCapability
     if (directories.isNotEmpty) {
       final metadataPath = p.join(
         ctx.configDir,
-        FlashskyaiConfigProfileCapability.metadataFileName,
+        FlashskyaiProviderCapability.metadataFileName,
       );
       final metadata = await profileInfra.metadataWithTrustedProjects(
         metadataPath: metadataPath,
-        defaultMetadata: FlashskyaiConfigProfileCapability.defaultMetadata,
+        defaultMetadata: FlashskyaiProviderCapability.defaultMetadata,
         defaultProjectConfig:
-            FlashskyaiConfigProfileCapability.defaultProjectConfig,
+            FlashskyaiProviderCapability.defaultProjectConfig,
         directories: directories,
       );
       await writeJson(metadataPath, metadata);
@@ -98,14 +98,14 @@ final class FlashskyaiHeadlessCapability
       settings['effortLevel'] = effortLabel;
     }
     await writeJson(
-      p.join(ctx.configDir, FlashskyaiConfigProfileCapability.settingsFileName),
+      p.join(ctx.configDir, FlashskyaiProviderCapability.settingsFileName),
       settings,
     );
 
     return HeadlessProvisionResult(
       extraEnvironment: {
-        FlashskyaiConfigProfileCapability.configDirEnvKey: ctx.configDir,
-        FlashskyaiConfigProfileCapability.sessionHomeDirEnvKey: ctx.configDir,
+        FlashskyaiProviderCapability.configDirEnvKey: ctx.configDir,
+        FlashskyaiProviderCapability.sessionHomeDirEnvKey: ctx.configDir,
         'LLM_CONFIG_PATH': layout.appFlashskyaiLlmConfigFile,
         'FLASHSKYAI_CODE_NO_FLICKER': '1',
       },

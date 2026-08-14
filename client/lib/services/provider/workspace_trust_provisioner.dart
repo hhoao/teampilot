@@ -1,8 +1,8 @@
 import '../../utils/workspace/trusted_project_paths.dart';
-import '../cli/claude/capabilities/config_profile.dart';
-import '../cli/codex/capabilities/config_profile.dart';
-import '../cli/cursor/capabilities/config_profile.dart';
-import '../cli/flashskyai/capabilities/config_profile.dart';
+import '../cli/claude/capabilities/provider.dart';
+import '../cli/codex/capabilities/provider.dart';
+import '../cli/cursor/capabilities/provider.dart';
+import '../cli/flashskyai/capabilities/provider.dart';
 import '../io/filesystem.dart';
 import '../cli/codex/provider/codex_project_trust_toml.dart';
 import '../cli/cursor/provider/cursor_session_config_dir.dart';
@@ -35,10 +35,10 @@ final class WorkspaceTrustProvisioner {
     required String workspaceId,
     required Iterable<String> directories,
     Iterable<String> tools = const [
-      ClaudeConfigProfileCapability.toolId,
-      FlashskyaiConfigProfileCapability.toolId,
-      CodexConfigProfileCapability.toolId,
-      CursorConfigProfileCapability.toolId,
+      ClaudeProviderCapability.toolId,
+      FlashskyaiProviderCapability.toolId,
+      CodexProviderCapability.toolId,
+      CursorProviderCapability.toolId,
     ],
   }) async {
     final paths = [
@@ -52,38 +52,38 @@ final class WorkspaceTrustProvisioner {
         if (tool.trim().isNotEmpty) tool.trim(),
     };
     final tasks = <Future<void>>[];
-    if (toolIds.contains(ClaudeConfigProfileCapability.toolId)) {
+    if (toolIds.contains(ClaudeProviderCapability.toolId)) {
       tasks.add(
         _provisionClaudeFamilyMetadata(
           workspaceId: workspaceId,
-          tool: ClaudeConfigProfileCapability.toolId,
-          metadataFileName: ClaudeConfigProfileCapability.metadataFileName,
-          defaultMetadata: ClaudeConfigProfileCapability.defaultMetadata,
+          tool: ClaudeProviderCapability.toolId,
+          metadataFileName: ClaudeProviderCapability.metadataFileName,
+          defaultMetadata: ClaudeProviderCapability.defaultMetadata,
           defaultProjectConfig:
-              ClaudeConfigProfileCapability.defaultProjectConfig,
+              ClaudeProviderCapability.defaultProjectConfig,
           directories: paths,
         ),
       );
     }
-    if (toolIds.contains(FlashskyaiConfigProfileCapability.toolId)) {
+    if (toolIds.contains(FlashskyaiProviderCapability.toolId)) {
       tasks.add(
         _provisionClaudeFamilyMetadata(
           workspaceId: workspaceId,
-          tool: FlashskyaiConfigProfileCapability.toolId,
-          metadataFileName: FlashskyaiConfigProfileCapability.metadataFileName,
-          defaultMetadata: FlashskyaiConfigProfileCapability.defaultMetadata,
+          tool: FlashskyaiProviderCapability.toolId,
+          metadataFileName: FlashskyaiProviderCapability.metadataFileName,
+          defaultMetadata: FlashskyaiProviderCapability.defaultMetadata,
           defaultProjectConfig:
-              FlashskyaiConfigProfileCapability.defaultProjectConfig,
+              FlashskyaiProviderCapability.defaultProjectConfig,
           directories: paths,
         ),
       );
     }
-    if (toolIds.contains(CodexConfigProfileCapability.toolId)) {
+    if (toolIds.contains(CodexProviderCapability.toolId)) {
       tasks.add(
         _provisionCodexTrust(workspaceId: workspaceId, directories: paths),
       );
     }
-    if (toolIds.contains(CursorConfigProfileCapability.toolId)) {
+    if (toolIds.contains(CursorProviderCapability.toolId)) {
       tasks.add(
         _provisionCursorTrust(workspaceId: workspaceId, directories: paths),
       );
@@ -116,7 +116,7 @@ final class WorkspaceTrustProvisioner {
   }) async {
     final codexDir = _layout.workspaceConfigToolDir(
       workspaceId,
-      CodexConfigProfileCapability.toolId,
+      CodexProviderCapability.toolId,
     );
     await _fs.ensureDir(codexDir);
     final configPath = _fs.pathContext.join(codexDir, 'config.toml');
@@ -139,7 +139,7 @@ final class WorkspaceTrustProvisioner {
   }) async {
     final toolDir = _layout.workspaceConfigToolDir(
       workspaceId,
-      CursorConfigProfileCapability.toolId,
+      CursorProviderCapability.toolId,
     );
     final homeRoot = _fs.pathContext.join(
       toolDir,

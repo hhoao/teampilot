@@ -8,12 +8,10 @@ import 'capabilities/skill.dart';
 import 'capabilities/team_behavior.dart';
 import 'capabilities/chat_interaction.dart';
 import 'capabilities/terminal_behavior.dart';
-import '../registry/capabilities/config_profile_capability.dart';
 import '../registry/capabilities/cli_session_capability.dart';
 import '../registry/capabilities/team_behavior_capability.dart';
 import '../registry/capabilities/headless_capability.dart';
 import 'capabilities/history/ai_history_capability.dart';
-import 'capabilities/config_profile.dart';
 import 'capabilities/headless.dart';
 import '../registry/capabilities/member_config_inspection_capability.dart';
 import '../registry/capabilities/skill_capability.dart';
@@ -32,7 +30,6 @@ final class CodexCliTool implements CliToolDefinition {
   CodexCliTool({
     this.teamBehavior = const CodexTeamBehavior(),
     this.session = const CodexCliSessionCapability(),
-    this.configProfile = const CodexConfigProfileCapability(),
     this.executable = const CodexExecutableCapability(),
     this.terminalBehavior = const CodexTerminalBehavior(),
     this.memberConfigInspection = const DefaultMemberConfigInspection(),
@@ -50,7 +47,6 @@ final class CodexCliTool implements CliToolDefinition {
   final ProviderCapability provider;
 
   final CliSessionCapability session;
-  final ConfigProfileCapability configProfile;
   final CliExecutableCapability executable;
   final CodexTerminalBehavior terminalBehavior;
   final MemberConfigInspectionCapability memberConfigInspection;
@@ -76,7 +72,6 @@ final class CodexCliTool implements CliToolDefinition {
     teamBehavior,
     executable,
     session,
-    configProfile,
     terminalBehavior,
     memberConfigInspection,
     plugin,

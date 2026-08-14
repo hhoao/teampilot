@@ -295,7 +295,7 @@ final class CursorProviderCapability extends CatalogModelCapability
     return CredentialFile(relativePath: relative, content: content);
   }
 
-  // ---- Session-home materialization (from CursorConfigProfileCapability) ----
+  // ---- Session-home materialization (formerly CursorConfigProfileCapability) ----
 
   static const toolId = 'cursor';
 

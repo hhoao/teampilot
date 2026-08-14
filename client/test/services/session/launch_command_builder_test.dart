@@ -5,7 +5,7 @@ import 'package:teampilot/services/cli/cli_tool_adapter.dart';
 import 'package:teampilot/services/cli/registry/config_profile/config_profile_context.dart';
 import 'package:teampilot/services/session/launch_command_builder.dart';
 import 'package:teampilot/services/session/shell_launch_spec.dart';
-import 'package:teampilot/services/cli/claude/capabilities/config_profile.dart';
+import 'package:teampilot/services/cli/claude/capabilities/provider.dart';
 import 'package:teampilot/services/session/member_role_provision.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -252,7 +252,7 @@ void main() {
           launchInExternalTerminal: false,
           extraEnvironment: const {
             'CLAUDE_CONFIG_DIR': '/tmp/team/claude',
-            ClaudeConfigProfileCapability.settingsFileEnvKey:
+            ClaudeProviderCapability.settingsFileEnvKey:
                 '/tmp/team/claude/settings/planner.json',
           },
           starter:
@@ -285,7 +285,7 @@ void main() {
       expect(capturedEnv?['CLAUDE_CONFIG_DIR'], '/tmp/team/claude');
       expect(
         capturedEnv?.containsKey(
-          ClaudeConfigProfileCapability.settingsFileEnvKey,
+          ClaudeProviderCapability.settingsFileEnvKey,
         ),
         isFalse,
       );

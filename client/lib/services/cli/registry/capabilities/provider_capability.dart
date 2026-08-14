@@ -606,7 +606,7 @@ abstract interface class ProviderCapability implements CliCapability {
   });
   String defaultEffort({required String model, AppProviderConfig? provider});
 
-  // ---- Session-home materialization (from ConfigProfileCapability) ----
+  // ---- Session-home materialization (formerly ConfigProfileCapability) ----
   Future<SessionHomeContribution> materializeSessionHome(SessionHomeContext ctx);
 }
 

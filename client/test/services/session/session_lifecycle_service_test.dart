@@ -9,8 +9,8 @@ import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/models/session_member_binding.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
-import 'package:teampilot/services/cli/claude/capabilities/config_profile.dart';
-import 'package:teampilot/services/cli/flashskyai/capabilities/config_profile.dart';
+import 'package:teampilot/services/cli/claude/capabilities/provider.dart';
+import 'package:teampilot/services/cli/flashskyai/capabilities/provider.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 import '../../support/test_runtime_context.dart';
 import 'package:teampilot/services/team_bus/member_bus_idle_endpoint.dart';
@@ -132,11 +132,11 @@ void main() {
       expect(plan.cliTeamName, 'session-1');
       expect(plan.memberConfigDir, memberDir);
       expect(
-        plan.env[FlashskyaiConfigProfileCapability.configDirEnvKey],
+        plan.env[FlashskyaiProviderCapability.configDirEnvKey],
         memberDir,
       );
       expect(
-        plan.env[FlashskyaiConfigProfileCapability.sessionHomeDirEnvKey],
+        plan.env[FlashskyaiProviderCapability.sessionHomeDirEnvKey],
         memberDir,
       );
       expect(
@@ -244,7 +244,7 @@ void main() {
       expect(plan.memberConfigDir, claudeDir);
       expect(plan.env['CLAUDE_CONFIG_DIR'], claudeDir);
       expect(
-        plan.env.containsKey(FlashskyaiConfigProfileCapability.configDirEnvKey),
+        plan.env.containsKey(FlashskyaiProviderCapability.configDirEnvKey),
         isFalse,
       );
       expect(claudeDir, isNot(equals(flashskyaiDir)));
@@ -453,7 +453,7 @@ void main() {
       );
       expect(plan.env['CLAUDE_CONFIG_DIR'], plan.memberConfigDir);
       expect(
-        plan.env[ClaudeConfigProfileCapability.settingsFileEnvKey],
+        plan.env[ClaudeProviderCapability.settingsFileEnvKey],
         developerSettings,
       );
       final settingsEnv =
@@ -588,7 +588,7 @@ void main() {
       p.join(
         sessionRoot,
         'claude',
-        ClaudeConfigProfileCapability.metadataFileName,
+        ClaudeProviderCapability.metadataFileName,
       ),
     ).create(recursive: true);
 

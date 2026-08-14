@@ -11,7 +11,7 @@ import '../../registry/headless/headless_provision_support.dart';
 import '../provider/claude_official_provider.dart';
 import '../provider/claude_provider_credentials_service.dart';
 import '../provider/claude_provider_settings_resolver.dart';
-import 'config_profile.dart';
+import 'provider.dart';
 
 /// Claude one-shot via `claude -p`. Effort is expressed through a temp
 /// `settings.json` (`effortLevel`) under `CLAUDE_CONFIG_DIR`. Provisions the
@@ -144,13 +144,13 @@ final class ClaudeHeadlessCapability
     if (directories.isNotEmpty) {
       final metadataPath = p.join(
         ctx.configDir,
-        ClaudeConfigProfileCapability.metadataFileName,
+        ClaudeProviderCapability.metadataFileName,
       );
       final metadata = await profileInfra.metadataWithTrustedProjects(
         metadataPath: metadataPath,
-        defaultMetadata: ClaudeConfigProfileCapability.defaultMetadata,
+        defaultMetadata: ClaudeProviderCapability.defaultMetadata,
         defaultProjectConfig:
-            ClaudeConfigProfileCapability.defaultProjectConfig,
+            ClaudeProviderCapability.defaultProjectConfig,
         directories: directories,
       );
       await writeJson(metadataPath, metadata);

@@ -6,11 +6,19 @@ import 'package:path/path.dart' as p;
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/team_bus/member_bus_idle_endpoint.dart';
-import 'package:teampilot/services/cli/flashskyai/capabilities/config_profile.dart';
+import 'package:teampilot/services/cli/flashskyai/capabilities/provider.dart';
+import 'package:teampilot/services/cli/registry/capabilities/provider_capability.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 
 void main() {
+  Future<SessionHomeContribution> contribute(
+    FlashskyaiProviderCapability capability,
+    ConfigProfileLaunchContext ctx,
+  ) => capability.materializeSessionHome(
+    sessionHomeContextFromLaunch(ctx, CliTool.flashskyai),
+  );
+
   test(
     'contributeLaunch returns FLASHSKYAI_CONFIG_DIR for valid member',
     () async {
@@ -25,7 +33,7 @@ void main() {
         fs: fs,
         layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
       );
-      const capability = FlashskyaiConfigProfileCapability();
+      const capability = FlashskyaiProviderCapability();
       const member = TeamMemberConfig(id: 'm1', name: 'Member', model: 'test');
 
       final scope = resolveLaunchProfileScope(
@@ -35,7 +43,7 @@ void main() {
         cliTeamName: 'session-1',
       );
 
-      final contribution = await capability.contributeLaunch(
+      final contribution = await contribute(capability,
         ConfigProfileLaunchContext(
           workspaceId: 'workspace-1',
           teamId: 'team-a',
@@ -60,7 +68,7 @@ void main() {
         'flashskyai',
       );
       expect(
-        contribution.environment[FlashskyaiConfigProfileCapability
+        contribution.environment[FlashskyaiProviderCapability
             .configDirEnvKey],
         expectedDir,
       );
@@ -79,7 +87,7 @@ void main() {
       fs: fs,
       layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
     );
-    const capability = FlashskyaiConfigProfileCapability();
+    const capability = FlashskyaiProviderCapability();
     const member = TeamMemberConfig(id: 'm1', name: 'Member');
     const team = TeamProfile(
       id: 'team-a',
@@ -96,7 +104,7 @@ void main() {
       memberId: 'm1',
     );
 
-    await capability.contributeLaunch(
+    await contribute(capability,
       ConfigProfileLaunchContext(
         workspaceId: 'workspace-1',
         teamId: 'team-a',

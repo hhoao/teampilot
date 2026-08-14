@@ -10,7 +10,7 @@ import 'shell_launch_spec.dart';
 import '../cli/registry/capabilities/cli_session_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../cli/cli_invocation.dart';
-import '../cli/claude/capabilities/config_profile.dart';
+import '../cli/claude/capabilities/provider.dart';
 import 'member_role_provision.dart';
 
 typedef ProcessStarter =
@@ -443,7 +443,7 @@ class LaunchCommandBuilder {
   }
 
   static String? settingsPathFromEnvironment(Map<String, String>? environment) {
-    final value = environment?[ClaudeConfigProfileCapability.settingsFileEnvKey]
+    final value = environment?[ClaudeProviderCapability.settingsFileEnvKey]
         ?.trim();
     return value == null || value.isEmpty ? null : value;
   }
@@ -457,7 +457,7 @@ class LaunchCommandBuilder {
   }
 
   static const _launchOnlyEnvKeys = {
-    ClaudeConfigProfileCapability.settingsFileEnvKey,
+    ClaudeProviderCapability.settingsFileEnvKey,
     MemberRoleProvision.appendSystemPromptFileEnvKey,
   };
 

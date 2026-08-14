@@ -12,14 +12,17 @@ import '../../../provider/credential_binding.dart';
 import '../../../provider/cross_machine_credential_bridge.dart';
 import '../../../provider/passthrough_provider_form_capability.dart';
 import '../../../provider/provider_catalog_access.dart';
+import '../../../provider/workspace_trust_provisioner.dart';
 import '../../../io/filesystem.dart';
 import '../../../remote/remote_credential_materializer.dart';
 import '../../registry/capabilities/hook_capability.dart';
+import '../../registry/capabilities/prompt_capability.dart';
 import '../../registry/capabilities/provider_capability.dart';
 import '../../registry/cli_tool_registry.dart';
 import '../../registry/config_profile/config_profile_context.dart';
 import '../../registry/config_profile/hook_seat_context_completer.dart';
 import '../../registry/hook/managed_hook_provisioner.dart';
+import '../../registry/prompt/prompt_hub_service.dart';
 import '../provider/codex_auth_artifacts.dart';
 import '../provider/codex_effort_catalog.dart';
 import '../provider/codex_home_provisioner.dart';
@@ -270,7 +273,7 @@ final class CodexProviderCapability extends CatalogModelCapability
     return CodexEffortCatalog.defaultLevel;
   }
 
-  // ---- Session-home materialization (from CodexConfigProfileCapability) ----
+  // ---- Session-home materialization (formerly CodexConfigProfileCapability) ----
 
   static const toolId = 'codex';
 
@@ -290,6 +293,13 @@ final class CodexProviderCapability extends CatalogModelCapability
     final team = ctx.team;
     final mixed = team?.teamMode == TeamMode.mixed;
     final warnings = <String>[];
+
+    await _provisionWorkspaceTrust(
+      paths: paths,
+      workspaceId: ctx.scope.workspaceId,
+      workingDirectory: ctx.workingDirectory ?? '',
+      additionalDirectories: ctx.additionalDirectories,
+    );
 
     await paths.fs.ensureDir(codexHome);
     try {
@@ -422,9 +432,40 @@ final class CodexProviderCapability extends CatalogModelCapability
       ...await McpCredentialsStore(fs: paths.fs).readOAuthEnv(codexHome),
     };
 
+    await const PromptHubService().provisionForCli(
+      cli: CliTool.codex,
+      ctx: PromptMaterializeContext(
+        paths: paths,
+        scope: ctx.scope,
+        member: member,
+        forceTeamLeadDelegateMode: team?.forceTeamLeadDelegateMode ?? false,
+        mixed: mixed,
+      ),
+    );
+
     return SessionHomeContribution(
       environment: environment,
       warnings: warnings,
+    );
+  }
+
+  Future<void> _provisionWorkspaceTrust({
+    required ConfigProfileDelegate paths,
+    required String workspaceId,
+    required String workingDirectory,
+    List<String> additionalDirectories = const [],
+  }) {
+    return WorkspaceTrustProvisioner(
+      layout: paths.layout,
+      fs: paths.fs,
+    ).provisionWorkspace(
+      workspaceId: workspaceId,
+      directories: [
+        if (workingDirectory.trim().isNotEmpty) workingDirectory.trim(),
+        for (final directory in additionalDirectories)
+          if (directory.trim().isNotEmpty) directory.trim(),
+      ],
+      tools: const [CodexProviderCapability.toolId],
     );
   }
 

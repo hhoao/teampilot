@@ -2,8 +2,8 @@ import '../../../../models/mcp_server_spec.dart';
 import '../../../io/filesystem.dart';
 import '../../../mcp/mcp_credentials_store.dart';
 import '../../registry/capabilities/mcp_capability.dart';
-import 'config_profile.dart';
-import '../../flashskyai/capabilities/config_profile.dart';
+import 'provider.dart';
+import '../../flashskyai/capabilities/provider.dart';
 import '../../registry/mcp_writers/metadata_mcp_merge.dart';
 
 /// Merges MCP servers into `<configDir>/.claude.json` `mcpServers`.
@@ -11,7 +11,7 @@ final class ClaudeMcpCapability implements McpCapability {
   const ClaudeMcpCapability();
 
   static const metadataFileName =
-      ClaudeConfigProfileCapability.metadataFileName;
+      ClaudeProviderCapability.metadataFileName;
 
   @override
   Future<void> write({
@@ -48,7 +48,7 @@ final class FlashskyaiMcpCapability implements McpCapability {
   const FlashskyaiMcpCapability();
 
   static const metadataFileName =
-      FlashskyaiConfigProfileCapability.metadataFileName;
+      FlashskyaiProviderCapability.metadataFileName;
 
   @override
   Future<void> write({

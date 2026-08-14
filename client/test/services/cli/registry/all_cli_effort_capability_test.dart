@@ -3,7 +3,6 @@ import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/registry/capabilities/provider_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
-import 'package:teampilot/services/cli/opencode/capabilities/config_profile.dart';
 import 'package:teampilot/services/cli/flashskyai/capabilities/provider.dart';
 import 'package:teampilot/services/cli/codex/capabilities/provider.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/provider.dart';
