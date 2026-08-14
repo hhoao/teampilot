@@ -1129,14 +1129,18 @@ class _SessionChatViewState extends State<SessionChatView> {
                                       historySeat.subagentAttachments.keys
                                           .toSet(),
                                     );
+                                    final runningSubagentIds = prefs
+                                            .autoOpenSubagentPreview
+                                        ? _runningSubagentIds(
+                                            historySeat,
+                                            historyCap,
+                                          )
+                                        : const <String>[];
                                     final pendingAuto = _subagentPreview
                                         .computeAutoFollow(
                                           prefEnabled:
                                               prefs.autoOpenSubagentPreview,
-                                          runningIds: _runningSubagentIds(
-                                            historySeat,
-                                            historyCap,
-                                          ),
+                                          runningIds: runningSubagentIds,
                                           availableIds: historySeat
                                               .subagentAttachments
                                               .keys
