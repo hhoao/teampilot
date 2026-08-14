@@ -1,5 +1,6 @@
 import '../../../../services/io/filesystem.dart';
-import '../../registry/capabilities/prompt_provision_capability.dart';
+import '../../../../services/session/member_role_provision.dart';
+import '../../registry/capabilities/prompt_capability.dart';
 import '../provider/cursor_home_layout.dart';
 import '../provider/cursor_role_rule_writer.dart';
 
@@ -10,19 +11,34 @@ import '../provider/cursor_role_rule_writer.dart';
 /// 偏差说明（Task 6 控制器授权）：`CursorHomeProvisioner` 没有
 /// `ConfigProfileDelegate`，无法在 ctx 里传 paths；因此本 capability 除
 /// `ctx.paths` 外还接受构造注入的 [fs]/[layout] 兜底。装配点以
-/// `CursorPromptProvisionCapability(fs: _fs, layout: _layout)` 构造，两路径
+/// `CursorPromptCapability(fs: _fs, layout: _layout)` 构造，两路径
 /// 写同一 fs/layout，行为零漂移；`ctx.paths` 优先（config_profile 阶段测试
 /// 即走该路径）。
-final class CursorPromptProvisionCapability
-    implements PromptProvisionCapability {
-  const CursorPromptProvisionCapability({this.fs, this.layout});
+final class CursorPromptCapability implements PromptCapability {
+  const CursorPromptCapability({this.fs, this.layout});
 
   final Filesystem? fs;
   final CursorHomeLayout? layout;
 
   @override
-  Future<PromptProvisionContribution> provision(
-    PromptProvisionContext ctx,
+  List<PromptSpec> virtualize(PromptVirtualizeContext ctx) {
+    final member = ctx.member;
+    if (member == null || !member.isValid) return const [];
+    return [
+      PromptSpec(
+        id: 'cursor-member-role',
+        title: 'Member role',
+        scope: PromptScope.member,
+        content: CursorRoleRuleWriter.format(
+          MemberRoleProvision.composeRolePrompt(member: member).trim(),
+        ),
+      ),
+    ];
+  }
+
+  @override
+  Future<PromptMaterializeResult> materialize(
+    PromptMaterializeContext ctx,
   ) async {
     final fs = ctx.paths?.fs ?? this.fs;
     final layout = ctx.paths != null
@@ -38,14 +54,14 @@ final class CursorPromptProvisionCapability
           memberHome != null &&
           memberHome.isNotEmpty) {
         throw StateError(
-          'CursorPromptProvisionCapability: no writer source (ctx.paths or '
+          'CursorPromptCapability: no writer source (ctx.paths or '
           'constructor fs/layout) while member role is provisionable.',
         );
       }
-      return const PromptProvisionContribution();
+      return const PromptMaterializeResult();
     }
     if (memberHome == null || memberHome.isEmpty || member == null || !member.isValid) {
-      return const PromptProvisionContribution();
+      return const PromptMaterializeResult();
     }
     final rolePath = await CursorRoleRuleWriter(fs: fs, layout: layout).sync(
       memberHome: memberHome,
@@ -55,7 +71,7 @@ final class CursorPromptProvisionCapability
       pushDelivery: ctx.pushDelivery,
       additionalDirectories: const [],
     );
-    if (rolePath == null) return const PromptProvisionContribution();
-    return const PromptProvisionContribution(written: true);
+    if (rolePath == null) return const PromptMaterializeResult();
+    return const PromptMaterializeResult(written: true);
   }
 }

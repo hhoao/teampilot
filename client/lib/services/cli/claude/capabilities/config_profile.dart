@@ -18,8 +18,8 @@ import '../provider/claude_provider_settings_resolver.dart';
 import '../../../session/member_role_provision.dart';
 import '../team_roster_service.dart';
 import '../../registry/capabilities/config_profile_capability.dart';
-import '../../registry/capabilities/prompt_provision_capability.dart';
-import 'prompt_provision.dart';
+import '../../registry/capabilities/prompt_capability.dart';
+import 'prompt.dart';
 import '../../../provider/workspace_trust_provisioner.dart';
 import '../../../agent_status/member_agent_status_endpoint.dart';
 import '../../../team_bus/member_bus_idle_endpoint.dart';
@@ -62,14 +62,14 @@ class ClaudeLaunchExtras {
 
 final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
   const ClaudeConfigProfileCapability({
-    this.promptProvision = const ClaudePromptProvisionCapability(),
+    this.promptProvision = const ClaudePromptCapability(),
   });
 
   static const toolId = 'claude';
   static const metadataFileName = '.claude.json';
   static const settingsFileEnvKey = 'TEAMPILOT_CLAUDE_SETTINGS_FILE';
 
-  final PromptProvisionCapability promptProvision;
+  final PromptCapability promptProvision;
 
   /// MCP 工具调用超时(毫秒)。team-bus 的 `wait_for_message` 是长阻塞工具,
   /// claude 默认的工具超时会在几分钟后掐断它(progress notification 不续命,
@@ -730,8 +730,8 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
           : null,
     );
     final isLead = TeamMemberNaming.isTeamLead(member);
-    final promptContribution = await promptProvision.provision(
-      PromptProvisionContext(
+    final promptContribution = await promptProvision.materialize(
+      PromptMaterializeContext(
         paths: delegate,
         scope: scope,
         member: member,

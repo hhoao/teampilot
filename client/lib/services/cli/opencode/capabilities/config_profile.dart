@@ -21,12 +21,12 @@ import '../../../team_bus/mcp/teammate_bus_mcp_config.dart';
 import '../../registry/capabilities/cli_effort_capability.dart';
 import '../../registry/capabilities/config_profile_capability.dart';
 import '../../registry/capabilities/hook_capability.dart';
-import '../../registry/capabilities/prompt_provision_capability.dart';
+import '../../registry/capabilities/prompt_capability.dart';
 import '../../../hook/glue_script_builder.dart';
 import 'agent_status_plugin.dart';
 import 'idle_plugin.dart';
 import 'opencode_hook_writer.dart';
-import 'prompt_provision.dart';
+import 'prompt.dart';
 
 /// Parses bus idle URL (e.g. `http://127.0.0.1:12345/idle`) to the listening port.
 @visibleForTesting
@@ -332,7 +332,7 @@ Map<String, Object?> mergeOpencodeExternalDirectories(
 /// and in mixed mode the team-bus idle plugin + teammate-bus MCP server).
 final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
   const OpencodeConfigProfileCapability({
-    this.promptProvision = const OpencodePromptProvisionCapability(),
+    this.promptProvision = const OpencodePromptCapability(),
   });
 
   static const toolId = 'opencode';
@@ -354,7 +354,7 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
 
   static const _opencodeDataLayout = OpencodeDataLayout();
 
-  final PromptProvisionCapability promptProvision;
+  final PromptCapability promptProvision;
 
   @override
   Future<void> ensureSessionProfile(ConfigProfileSessionContext ctx) async {}
@@ -460,8 +460,8 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
       changed = true;
     }
 
-    final promptContribution = await promptProvision.provision(
-      PromptProvisionContext(
+    final promptContribution = await promptProvision.materialize(
+      PromptMaterializeContext(
         paths: paths,
         scope: ctx.scope,
         member: member,

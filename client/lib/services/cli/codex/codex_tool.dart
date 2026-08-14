@@ -35,9 +35,9 @@ import 'capabilities/plugin.dart';
 import '../registry/capabilities/plugin_capability.dart';
 import 'provider/codex_hook_writer.dart';
 import '../registry/capabilities/hook_capability.dart';
-import 'capabilities/prompt_provision.dart';
+import 'capabilities/prompt.dart';
 import 'capabilities/executable.dart';
-import '../registry/capabilities/prompt_provision_capability.dart';
+import '../registry/capabilities/prompt_capability.dart';
 
 final class CodexCliTool implements CliToolDefinition {
   CodexCliTool({
@@ -57,7 +57,7 @@ final class CodexCliTool implements CliToolDefinition {
     this.chatInteraction = const CodexChatInteraction(),
     this.aiHistory = const CodexAiHistoryCapability(),
     this.skill = const CodexSkillCapability(),
-    this.promptProvision = const CodexPromptProvisionCapability(),
+    this.prompt = const CodexPromptCapability(),
     this.providerDisplay = const CodexProviderDisplay(),
     this.credentialExport = const CodexCredentialExport(),
     this.hookWriter = const CodexHookWriter(),
@@ -87,7 +87,7 @@ final class CodexCliTool implements CliToolDefinition {
   final CodexAiHistoryCapability aiHistory;
   final SkillCapability skill;
   final HookCapability hookWriter;
-  final PromptProvisionCapability promptProvision;
+  final PromptCapability prompt;
 
   @override
   CliTool get id => CliTool.codex;
@@ -116,7 +116,7 @@ final class CodexCliTool implements CliToolDefinition {
     chatInteraction,
     aiHistory,
     skill,
-    promptProvision,
+    prompt,
     hookWriter,
   ];
 }

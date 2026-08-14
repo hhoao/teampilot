@@ -1,16 +1,29 @@
 import '../../../../utils/team/team_member_naming.dart';
-import '../../registry/capabilities/prompt_provision_capability.dart';
+import '../../registry/capabilities/prompt_capability.dart';
 import '../../../../services/session/member_role_provision.dart';
 
-final class FlashskyaiPromptProvisionCapability
-    implements PromptProvisionCapability {
-  const FlashskyaiPromptProvisionCapability();
+final class FlashskyaiPromptCapability implements PromptCapability {
+  const FlashskyaiPromptCapability();
 
   static const toolId = 'flashskyai';
 
   @override
-  Future<PromptProvisionContribution> provision(
-    PromptProvisionContext ctx,
+  List<PromptSpec> virtualize(PromptVirtualizeContext ctx) {
+    final member = ctx.member;
+    if (member == null || !member.isValid) return const [];
+    return [
+      PromptSpec(
+        id: 'flashskyai-member-role',
+        title: 'Member role',
+        scope: PromptScope.member,
+        content: MemberRoleProvision.composeRolePrompt(member: member),
+      ),
+    ];
+  }
+
+  @override
+  Future<PromptMaterializeResult> materialize(
+    PromptMaterializeContext ctx,
   ) async {
     final paths = ctx.paths;
     final scope = ctx.scope;
@@ -19,7 +32,7 @@ final class FlashskyaiPromptProvisionCapability
         scope == null ||
         member == null ||
         !member.isValid) {
-      return const PromptProvisionContribution();
+      return const PromptMaterializeResult();
     }
     final isLead = TeamMemberNaming.isTeamLead(member);
     final memberToolDir = paths.sessionToolDir(
@@ -36,8 +49,8 @@ final class FlashskyaiPromptProvisionCapability
       mixed: ctx.mixed,
       additionalDirectories: const [],
     );
-    if (rolePath == null) return const PromptProvisionContribution();
-    return PromptProvisionContribution(
+    if (rolePath == null) return const PromptMaterializeResult();
+    return PromptMaterializeResult(
       written: true,
       environment: {
         MemberRoleProvision.appendSystemPromptFileEnvKey: rolePath,

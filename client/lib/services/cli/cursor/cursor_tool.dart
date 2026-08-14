@@ -8,8 +8,8 @@ import '../registry/capabilities/cli_config_layout_capability.dart';
 import 'capabilities/team_behavior.dart';
 import 'capabilities/chat_interaction.dart';
 import 'capabilities/terminal_behavior.dart';
-import 'capabilities/prompt_provision.dart';
-import '../registry/capabilities/prompt_provision_capability.dart';
+import 'capabilities/prompt.dart';
+import '../registry/capabilities/prompt_capability.dart';
 import '../registry/capabilities/provider_catalog_capability.dart';
 import '../registry/capabilities/config_profile_capability.dart';
 import '../registry/capabilities/launch_args_capability.dart';
@@ -68,7 +68,7 @@ final class CursorCliTool implements CliToolDefinition {
     this.providerDisplay = const CursorProviderDisplay(),
     this.credentialExport = const CursorCredentialExport(),
     this.hookWriter = const CursorHookWriter(),
-    this.promptProvision = const CursorPromptProvisionCapability(),
+    this.prompt = const CursorPromptCapability(),
     ProviderCredentialCapability? providerCredential,
   }) : providerModel = providerModel ?? CursorProviderModelCapability(),
        providerCredential =
@@ -98,7 +98,7 @@ final class CursorCliTool implements CliToolDefinition {
   final CursorAiHistoryCapability aiHistory;
   final SkillCapability skill;
   final PostManifestFlushCapability postManifestFlush;
-  final PromptProvisionCapability promptProvision;
+  final PromptCapability prompt;
 
   @override
   CliTool get id => CliTool.cursor;
@@ -129,7 +129,7 @@ final class CursorCliTool implements CliToolDefinition {
     aiHistory,
     skill,
     postManifestFlush,
-    promptProvision,
+    prompt,
     hookWriter,
   ];
 }

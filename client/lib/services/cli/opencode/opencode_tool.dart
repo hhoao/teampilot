@@ -34,11 +34,11 @@ import '../registry/capabilities/hook_capability.dart';
 import 'capabilities/mcp.dart';
 import 'capabilities/plugin.dart';
 import '../registry/capabilities/plugin_capability.dart';
-import 'capabilities/prompt_provision.dart';
+import 'capabilities/prompt.dart';
 import 'capabilities/skill.dart';
 import 'capabilities/opencode_hook_writer.dart';
 import 'capabilities/executable.dart';
-import '../registry/capabilities/prompt_provision_capability.dart';
+import '../registry/capabilities/prompt_capability.dart';
 
 final class OpencodeCliTool implements CliToolDefinition {
   OpencodeCliTool({
@@ -58,7 +58,7 @@ final class OpencodeCliTool implements CliToolDefinition {
     this.chatInteraction = const OpencodeChatInteraction(),
     this.aiHistory = const OpencodeAiHistoryCapability(),
     this.skill = const OpencodeSkillCapability(),
-    this.promptProvision = const OpencodePromptProvisionCapability(),
+    this.prompt = const OpencodePromptCapability(),
     this.providerDisplay = const OpencodeProviderDisplay(),
     this.credentialExport = const OpencodeCredentialExport(),
     this.hookWriter = const OpencodeHookWriter(),
@@ -89,7 +89,7 @@ final class OpencodeCliTool implements CliToolDefinition {
   final ChatInteractionCapability chatInteraction;
   final OpencodeAiHistoryCapability aiHistory;
   final SkillCapability skill;
-  final PromptProvisionCapability promptProvision;
+  final PromptCapability prompt;
 
   @override
   CliTool get id => CliTool.opencode;
@@ -118,7 +118,7 @@ final class OpencodeCliTool implements CliToolDefinition {
     chatInteraction,
     aiHistory,
     skill,
-    promptProvision,
+    prompt,
     hookWriter,
   ];
 }

@@ -15,8 +15,8 @@ import '../registry/capabilities/launch_args_capability.dart';
 import '../registry/capabilities/provider_model_capability.dart';
 import 'capabilities/history/ai_history_capability.dart';
 import 'capabilities/config_profile.dart';
-import 'capabilities/prompt_provision.dart';
-import '../registry/capabilities/prompt_provision_capability.dart';
+import 'capabilities/prompt.dart';
+import '../registry/capabilities/prompt_capability.dart';
 import 'capabilities/headless.dart';
 import 'provider/flashskyai_effort_capability.dart';
 import 'provider/flashskyai_provider_form_capability.dart';
@@ -58,7 +58,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     this.providerDisplay = const FlashskyaiProviderDisplay(),
     this.credentialExport = const NoCredentialExport(),
     this.hookWriter = const ClaudeFamilyHookWriter(),
-    this.promptProvision = const FlashskyaiPromptProvisionCapability(),
+    this.prompt = const FlashskyaiPromptCapability(),
   });
 
   final LaunchArgsCapability launchArgs;
@@ -78,7 +78,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
   final ProviderDisplayCapability providerDisplay;
   final CredentialExportCapability credentialExport;
   final HookCapability hookWriter;
-  final PromptProvisionCapability promptProvision;
+  final PromptCapability prompt;
   final ChatInteractionCapability chatInteraction;
   final FlashskyaiAiHistoryCapability aiHistory;
   final SkillCapability skill;
@@ -110,6 +110,6 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     aiHistory,
     skill,
     hookWriter,
-    promptProvision,
+    prompt,
   ];
 }

@@ -7,8 +7,8 @@ import '../provider/flashskyai_effort_capability.dart';
 import '../../../session/member_role_provision.dart';
 import '../../registry/capabilities/cli_effort_capability.dart';
 import '../../registry/capabilities/config_profile_capability.dart';
-import '../../registry/capabilities/prompt_provision_capability.dart';
-import 'prompt_provision.dart';
+import '../../registry/capabilities/prompt_capability.dart';
+import 'prompt.dart';
 import '../../../provider/workspace_trust_provisioner.dart';
 import '../../../agent_status/member_agent_status_endpoint.dart';
 import '../../../team_bus/member_bus_idle_endpoint.dart';
@@ -23,7 +23,7 @@ import '../../../hook/glue_script_builder.dart';
 final class FlashskyaiConfigProfileCapability
     implements ConfigProfileCapability {
   const FlashskyaiConfigProfileCapability({
-    this.promptProvision = const FlashskyaiPromptProvisionCapability(),
+    this.promptProvision = const FlashskyaiPromptCapability(),
   });
 
   static const toolId = 'flashskyai';
@@ -32,7 +32,7 @@ final class FlashskyaiConfigProfileCapability
   static const configDirEnvKey = 'FLASHSKYAI_CONFIG_DIR';
   static const sessionHomeDirEnvKey = 'FLASHSKYAI_SESSION_HOME_DIR';
 
-  final PromptProvisionCapability promptProvision;
+  final PromptCapability promptProvision;
 
   static const defaultMetadata = <String, Object?>{
     'hasCompletedOnboarding': true,
@@ -323,8 +323,8 @@ final class FlashskyaiConfigProfileCapability
       memberId: scope.memberId,
     );
     final isLead = TeamMemberNaming.isTeamLead(member);
-    final promptContribution = await promptProvision.provision(
-      PromptProvisionContext(
+    final promptContribution = await promptProvision.materialize(
+      PromptMaterializeContext(
         paths: delegate,
         scope: scope,
         member: member,

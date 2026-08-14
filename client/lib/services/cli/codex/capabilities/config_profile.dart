@@ -20,21 +20,21 @@ import '../../../launch/work_plane_paths.dart';
 import '../../../provider/workspace_trust_provisioner.dart';
 import '../../../../utils/workspace/trusted_project_paths.dart';
 import '../../registry/capabilities/config_profile_capability.dart';
-import '../../registry/capabilities/prompt_provision_capability.dart';
+import '../../registry/capabilities/prompt_capability.dart';
 import '../../registry/config_profile/hook_seat_context_completer.dart';
-import 'prompt_provision.dart';
+import 'prompt.dart';
 
 /// Codex CLI launch: provisions provider `auth.json` + `config.toml` under
 /// per-member [CODEX_HOME], optional team-bus overlay in mixed mode, and
 /// member identity in `AGENTS.md`.
 final class CodexConfigProfileCapability implements ConfigProfileCapability {
   const CodexConfigProfileCapability({
-    this.promptProvision = const CodexPromptProvisionCapability(),
+    this.promptProvision = const CodexPromptCapability(),
   });
 
   static const toolId = 'codex';
 
-  final PromptProvisionCapability promptProvision;
+  final PromptCapability promptProvision;
 
   @override
   Future<void> ensureSessionProfile(ConfigProfileSessionContext ctx) async {}
@@ -191,8 +191,8 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
       }
     }
 
-    await promptProvision.provision(
-      PromptProvisionContext(
+    await promptProvision.materialize(
+      PromptMaterializeContext(
         paths: paths,
         scope: ctx.scope,
         member: member,
