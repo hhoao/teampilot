@@ -193,4 +193,55 @@ void main() {
     );
     expect(secondLogs, hasLength(1), reason: '相同重复指纹防刷屏，只打一次');
   });
+
+  test('unresolvable pair keeps both and logs action=kept-both once',
+      () async {
+    final before = await AppLogger.instance.getPendingLogLines();
+    holderMessages = [
+      AiMessage(
+        id: 'u1',
+        role: AiRole.user,
+        parts: const [AiTextPart(text: 'question?')],
+      ),
+      AiMessage(
+        id: 'asst-3step',
+        role: AiRole.assistant,
+        parts: [
+          const AiTextPart(text: 'same prose'),
+          _tool('call_x', result: 'o1'),
+        ],
+      ),
+      AiMessage(
+        id: 'asst-10step',
+        role: AiRole.assistant,
+        parts: [
+          const AiTextPart(text: 'same prose'),
+          _tool('call_y', result: 'o2'),
+        ],
+      ),
+    ];
+    await seat.load(session: session(), memberId: '', launchContext: ctx(session()));
+
+    expect(
+      seat.runtime.messages.map((m) => m.id),
+      ['u1', 'asst-3step', 'asst-10step'],
+      reason: '规则不命中的同文本对两条都保留',
+    );
+
+    var lines = await AppLogger.instance.getPendingLogLines();
+    final firstLogs = lines.skip(before.length).where(
+      (l) => l.contains('[ai-history] duplicate-messages'),
+    );
+    expect(firstLogs, hasLength(1), reason: 'kept-both 触发必须打日志');
+    expect(firstLogs.single, contains('action=kept-both'));
+
+    // 同指纹再次出现（soft reload 同列表）→ 不再打。
+    bumpCacheToken();
+    await seat.softReload();
+    lines = await AppLogger.instance.getPendingLogLines();
+    final secondLogs = lines.skip(before.length).where(
+      (l) => l.contains('[ai-history] duplicate-messages'),
+    );
+    expect(secondLogs, hasLength(1), reason: 'kept-both 防刷屏，只打一次');
+  });
 }

@@ -1,11 +1,20 @@
 import 'package:ai_message_core/ai_message_core.dart';
 
-/// 去重结果：去重后的消息列表 + 被丢弃的消息（按原列表顺序）。
+/// 去重结果：去重后的消息列表 + 被丢弃的消息（按原列表顺序）+ 规则无法
+/// 判定的同文本 assistant 对（kept-both，两消息都保留，仅记录取证）。
 class AiHistoryDedupResult {
-  const AiHistoryDedupResult({required this.messages, required this.removed});
+  const AiHistoryDedupResult({
+    required this.messages,
+    required this.removed,
+    this.undecidedPairs = const [],
+  });
 
   final List<AiMessage> messages;
   final List<AiMessage> removed;
+
+  /// 同文本签名且规则无法判定谁胜（[AiRole.assistant]）的 pair，按原列表
+  /// 顺序记录；两个成员最终都保留。无则空。
+  final List<(AiMessage, AiMessage)> undecidedPairs;
 }
 
 /// Live 列表兜底去重（spec 2026-08-14）：
@@ -48,6 +57,9 @@ AiHistoryDedupResult dedupeAiHistoryMessages(List<AiMessage> messages) {
     if (signature.isEmpty) continue;
     groups.putIfAbsent(signature, () => []).add(i);
   }
+  // 无法判定的候选 pair（原列表顺序）；最后再过滤掉被后续判定移除的成员，
+  // 保证 kept-both 语义（两个成员都保留）。
+  final candidates = <(int, int)>[];
   for (final group in groups.values) {
     for (var a = 0; a < group.length; a++) {
       for (var b = a + 1; b < group.length; b++) {
@@ -61,12 +73,19 @@ AiHistoryDedupResult dedupeAiHistoryMessages(List<AiMessage> messages) {
           removed.add(ib);
         } else if (winner == 2) {
           removed.add(ia);
+        } else {
+          candidates.add((ia, ib));
         }
       }
     }
   }
+  final undecidedPairs = <(AiMessage, AiMessage)>[
+    for (final (ia, ib) in candidates)
+      if (!removed.contains(ia) && !removed.contains(ib))
+        (messages[ia], messages[ib]),
+  ];
 
-  if (removed.isEmpty) {
+  if (removed.isEmpty && undecidedPairs.isEmpty) {
     return AiHistoryDedupResult(messages: messages, removed: const []);
   }
   final out = <AiMessage>[
@@ -77,7 +96,11 @@ AiHistoryDedupResult dedupeAiHistoryMessages(List<AiMessage> messages) {
     for (var i = 0; i < messages.length; i++)
       if (removed.contains(i)) messages[i],
   ];
-  return AiHistoryDedupResult(messages: out, removed: dropped);
+  return AiHistoryDedupResult(
+    messages: out,
+    removed: dropped,
+    undecidedPairs: undecidedPairs,
+  );
 }
 
 /// 0 = 无法判定（都保留）; 1 = 保留 a; 2 = 保留 b。

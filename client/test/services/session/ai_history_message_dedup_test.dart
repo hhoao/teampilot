@@ -135,4 +135,70 @@ void main() {
     expect(result.messages, hasLength(2));
     expect(result.removed, isEmpty);
   });
+
+  test('same text, equal results, no superset keeps both and reports the pair',
+      () {
+    final a = _msg(
+      'asst-a',
+      texts: ['prose'],
+      tools: [_tool('c1', result: 'o1')],
+    );
+    final b = _msg(
+      'asst-b',
+      texts: ['prose'],
+      tools: [_tool('c2', result: 'o2')],
+    );
+    final result = dedupeAiHistoryMessages([a, b]);
+
+    expect(result.messages, hasLength(2));
+    expect(result.removed, isEmpty);
+    expect(result.undecidedPairs, hasLength(1));
+    expect(
+      result.undecidedPairs.single.$1.id,
+      'asst-a',
+      reason: 'pair 按原列表顺序（前一条在 \$1）',
+    );
+    expect(result.undecidedPairs.single.$2.id, 'asst-b');
+  });
+
+  test('resolved pair reports no undecided pairs', () {
+    final pending = _msg('asst-a', texts: ['prose'], tools: [_tool('c1')]);
+    final completed = _msg(
+      'asst-b',
+      texts: ['prose'],
+      tools: [_tool('c1', result: 'answer')],
+    );
+    final result = dedupeAiHistoryMessages([pending, completed]);
+
+    expect(result.messages, hasLength(1));
+    expect(result.messages.single.id, 'asst-b');
+    expect(result.undecidedPairs, isEmpty);
+  });
+
+  test('3+ group records each undecided unordered pair once', () {
+    final a = _msg(
+      'asst-a',
+      texts: ['prose'],
+      tools: [_tool('c1', result: 'o1')],
+    );
+    final b = _msg(
+      'asst-b',
+      texts: ['prose'],
+      tools: [_tool('c2', result: 'o2')],
+    );
+    final c = _msg(
+      'asst-c',
+      texts: ['prose'],
+      tools: [_tool('c3', result: 'o3')],
+    );
+    final result = dedupeAiHistoryMessages([a, b, c]);
+
+    expect(result.messages, hasLength(3));
+    expect(result.removed, isEmpty);
+    expect(
+      result.undecidedPairs.map((p) => '${p.$1.id},${p.$2.id}').toList(),
+      ['asst-a,asst-b', 'asst-a,asst-c', 'asst-b,asst-c'],
+      reason: '每组无序对只记录一次，按原列表顺序',
+    );
+  });
 }

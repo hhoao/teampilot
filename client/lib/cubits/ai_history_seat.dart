@@ -170,9 +170,11 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
   /// CLI transcript nor the mailbox moved.
   List<LoggedMessage>? _lastMailboxRecords;
 
-  /// 最近一次重复去重日志的指纹（session|member|removed ids|kept 数），
-  /// 相同指纹不重复打日志（防刷屏）。
+  /// 最近一次去重日志的指纹（session|member|action|ids|kept 数），
+  /// 相同指纹不重复打日志（防刷屏）。按 action 独立：deduped 与 kept-both
+  /// 互不抑制。
   String? _lastDedupeLogFingerprint;
+  String? _lastKeptBothLogFingerprint;
 
   /// CLI user-turn count of the last applied snapshot. CLI user turns that
   /// newly appear past this baseline each confirm one outstanding optimistic
@@ -839,8 +841,9 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
   }
 
   /// 发布前的兜底去重 + 取证日志。规则见
-  /// [dedupeAiHistoryMessages]；命中时打一条 `w` 级日志，
-  /// 相同重复指纹只打一次。
+  /// [dedupeAiHistoryMessages]；命中 `removed` 时打 `action=deduped` 日志，
+  /// 命中规则无法判定的同文本对（`undecidedPairs`，两消息都保留）时打
+  /// `action=kept-both` 日志，均为 `w` 级；两种 action 的指纹各自防刷屏。
   List<AiMessage> _dedupeLiveMessages(
     List<AiMessage> messages, {
     required String sessionId,
@@ -848,38 +851,67 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
     required String source,
   }) {
     final result = dedupeAiHistoryMessages(messages);
-    if (result.removed.isEmpty) return messages;
-    final fingerprint = '$sessionId\u0000$memberId\u0000'
-        '${result.removed.map((m) => m.id).join(',')}\u0000'
-        '${result.messages.length}';
-    if (fingerprint == _lastDedupeLogFingerprint) return result.messages;
-    _lastDedupeLogFingerprint = fingerprint;
+    if (result.removed.isEmpty && result.undecidedPairs.isEmpty) {
+      return messages;
+    }
     final cli = _lastCli;
-    final preview = result.removed
-        .map((m) {
-          final text = m.parts
-              .whereType<AiTextPart>()
-              .map((p) => p.text)
-              .join(' ')
-              .trim();
-          final tools = m.parts
-              .whereType<AiToolCallPart>()
-              .map(
-                (t) =>
-                    '${t.toolName}(${t.result != null ? 'result' : 'pending'})',
-              )
-              .join(',');
-          final shown =
-              text.length > 80 ? '${text.substring(0, 80)}…' : text;
-          return '${m.id}[${m.role.name}] text=$shown tools=$tools';
-        })
-        .join(' | ');
-    appLogger.w(
-      '[ai-history] duplicate-messages session=$sessionId member=$memberId '
-      'cli=${cli?.name ?? '?'} source=$source '
-      'kept=${result.messages.length} removed=$preview',
-    );
+    if (result.removed.isNotEmpty) {
+      final action = 'deduped';
+      final ids = result.removed.map((m) => m.id).join(',');
+      final fingerprint = '$sessionId\u0000$memberId\u0000$action\u0000$ids'
+          '\u0000${result.messages.length}';
+      if (fingerprint != _lastDedupeLogFingerprint) {
+        _lastDedupeLogFingerprint = fingerprint;
+        final preview = result.removed
+            .map((m) => _dedupePreviewMessage(m))
+            .join(' | ');
+        appLogger.w(
+          '[ai-history] duplicate-messages session=$sessionId '
+          'member=$memberId cli=${cli?.name ?? '?'} source=$source '
+          'action=$action kept=${result.messages.length} removed=$preview',
+        );
+      }
+    }
+    if (result.undecidedPairs.isNotEmpty) {
+      final action = 'kept-both';
+      final ids = result.undecidedPairs
+          .map((p) => '${p.$1.id},${p.$2.id}')
+          .join(',');
+      final fingerprint = '$sessionId\u0000$memberId\u0000$action\u0000$ids'
+          '\u0000${result.messages.length}';
+      if (fingerprint != _lastKeptBothLogFingerprint) {
+        _lastKeptBothLogFingerprint = fingerprint;
+        final preview = result.undecidedPairs
+            .map(
+              (p) =>
+                  '${_dedupePreviewMessage(p.$1)} '
+                  'vs ${_dedupePreviewMessage(p.$2)}',
+            )
+            .join(' | ');
+        appLogger.w(
+          '[ai-history] duplicate-messages session=$sessionId '
+          'member=$memberId cli=${cli?.name ?? '?'} source=$source '
+          'action=$action kept=${result.messages.length} pairs=$preview',
+        );
+      }
+    }
     return result.messages;
+  }
+
+  String _dedupePreviewMessage(AiMessage m) {
+    final text = m.parts
+        .whereType<AiTextPart>()
+        .map((p) => p.text)
+        .join(' ')
+        .trim();
+    final tools = m.parts
+        .whereType<AiToolCallPart>()
+        .map(
+          (t) => '${t.toolName}(${t.result != null ? 'result' : 'pending'})',
+        )
+        .join(',');
+    final shown = text.length > 80 ? '${text.substring(0, 80)}…' : text;
+    return '${m.id}[${m.role.name}] text=$shown tools=$tools';
   }
 
   /// Publish transcript through the latest user turn; leave trailing non-user
