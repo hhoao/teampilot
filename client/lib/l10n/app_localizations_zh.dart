@@ -6995,4 +6995,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get floatingWorkspaceOpenHtmlPreview => '打开 HTML 预览';
+
+  @override
+  String get retry => '重试';
 }

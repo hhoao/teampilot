@@ -7274,4 +7274,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get floatingWorkspaceOpenHtmlPreview => 'Open HTML Preview';
+
+  @override
+  String get retry => 'Retry';
 }

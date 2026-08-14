@@ -2870,5 +2870,6 @@
   "htmlPreviewOpenBrowser": "在系统浏览器打开",
   "htmlPreviewErrorTitle": "预览不可用",
   "htmlPreviewErrorBody": "无法加载文件进行预览。",
-  "floatingWorkspaceOpenHtmlPreview": "打开 HTML 预览"
+  "floatingWorkspaceOpenHtmlPreview": "打开 HTML 预览",
+  "retry": "重试"
 }

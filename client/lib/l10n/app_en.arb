@@ -3308,5 +3308,6 @@
   "htmlPreviewOpenBrowser": "Open in System Browser",
   "htmlPreviewErrorTitle": "Preview unavailable",
   "htmlPreviewErrorBody": "The file could not be loaded for preview.",
-  "floatingWorkspaceOpenHtmlPreview": "Open HTML Preview"
+  "floatingWorkspaceOpenHtmlPreview": "Open HTML Preview",
+  "retry": "Retry"
 }
