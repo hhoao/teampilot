@@ -5,7 +5,6 @@ import 'package:uuid/uuid.dart';
 import '../models/cli_preset.dart';
 import '../models/team_config.dart';
 import '../repositories/cli_presets_repository.dart';
-import 'package:logger/logger.dart';
 import '../utils/logging/logger.dart';
 
 enum CliPresetsLoadStatus { idle, loading, ready, error }

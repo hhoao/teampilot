@@ -1,4 +1,3 @@
-import 'package:logger/logger.dart';
 import '../../../../utils/logging/logger.dart';
 import '../provider/cursor_member_home_passthrough.dart';
 import '../../registry/capabilities/post_manifest_flush_capability.dart';

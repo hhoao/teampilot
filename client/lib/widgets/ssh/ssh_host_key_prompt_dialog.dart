@@ -7,7 +7,6 @@ import 'package:shared_ui/shared_ui.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../router/app_router.dart';
 import '../../services/ssh/ssh_client_factory.dart';
-import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 
 /// Shows a TOFU / mismatch host-key confirmation via the root navigator.

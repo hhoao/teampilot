@@ -27,7 +27,6 @@ import '../services/workspace/workspace_target_remap.dart';
 import '../services/session/session_lifecycle_service.dart';
 import '../services/provider/workspace_trust_provisioner.dart';
 import '../utils/lock_pool.dart';
-import 'package:logger/logger.dart';
 import '../utils/logging/logger.dart';
 import '../utils/workspace/workspace_path_utils.dart';
 import '../utils/session/workspace_sessions.dart';

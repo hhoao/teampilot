@@ -3,7 +3,6 @@ import 'package:path/path.dart' as p;
 import '../../models/plugin.dart';
 import '../../models/team_config.dart';
 import '../../utils/lock_pool.dart';
-import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import '../cli/registry/capabilities/marketplace_consumer_capability.dart';
 import '../cli/registry/capabilities/plugin_manifest_paths.dart';

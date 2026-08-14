@@ -1,5 +1,4 @@
 import '../../models/team_config.dart';
-import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import '../cli/registry/capabilities/turn_interrupt_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';

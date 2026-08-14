@@ -2,7 +2,6 @@ import 'dart:async';
 
 import '../../models/runtime_target.dart';
 import '../../models/team_config.dart';
-import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import '../cli/installer_types.dart';
 import '../storage/work_target_canonicalizer.dart';

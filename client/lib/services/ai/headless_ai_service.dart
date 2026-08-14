@@ -7,7 +7,6 @@ import 'package:path/path.dart' as p;
 import '../../models/ai_feature_setting.dart';
 import '../../models/app_provider_config.dart';
 import '../../repositories/app_provider_repository.dart';
-import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import '../../utils/logging/log_redaction.dart';
 import '../cli/cli_tool_locator.dart';

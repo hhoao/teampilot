@@ -15,7 +15,6 @@ import '../../repositories/launch_profile_repository.dart';
 import '../../repositories/workspace_project_config_repository.dart';
 import '../../models/config_bundle.dart';
 import '../../utils/team/team_member_naming.dart';
-import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import '../../models/workspace_topology.dart';
 import '../../models/workspace_launch_context.dart';

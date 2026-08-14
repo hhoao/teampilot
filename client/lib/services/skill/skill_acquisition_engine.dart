@@ -6,7 +6,6 @@ import '../../models/discoverable_team.dart';
 import '../../models/skill.dart';
 import '../../models/skill_pack.dart';
 import '../../models/skill_pack_instruction.dart';
-import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import '../cli/installer_types.dart';
 import '../io/filesystem.dart';

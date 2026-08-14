@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import '../../cubits/chat/model/session_connect_request.dart';
-import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import 'history_continue_delivery.dart';
 

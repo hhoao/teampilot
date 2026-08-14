@@ -1,5 +1,4 @@
 import 'fullscreen_cr_ack_config.dart';
-import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import '../team_bus/team_bus.dart';
 import 'fullscreen_pty_automation.dart';

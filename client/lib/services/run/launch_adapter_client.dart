@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../../models/run/launch_type_contribution.dart';
-import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import 'launch_adapter_protocol.dart';
 

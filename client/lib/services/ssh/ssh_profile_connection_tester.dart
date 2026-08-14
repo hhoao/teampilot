@@ -1,5 +1,4 @@
 import '../../models/ssh_profile.dart';
-import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import 'ssh_client_factory.dart';
 import 'ssh_connection_failure.dart';

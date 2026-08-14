@@ -11,7 +11,6 @@ import '../repositories/skill_repository.dart';
 import '../services/progress_activity/pack_acquire_activity_adapter.dart';
 import '../services/skill/skill_acquisition_engine.dart';
 import '../services/skill/skill_repo_disk_cache_service.dart';
-import 'package:logger/logger.dart';
 import '../utils/logging/logger.dart';
 
 enum SkillLoadStatus { idle, loading, ready, error }

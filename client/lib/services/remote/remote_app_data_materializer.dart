@@ -1,7 +1,6 @@
 import '../cli/registry/capabilities/remote_app_data_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../../models/team_config.dart';
-import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import '../io/filesystem.dart';
 import '../cli/opencode/provider/opencode_shared_plugin_deps.dart';

@@ -211,7 +211,6 @@ import '../services/terminal/workspace_terminal_registry.dart';
 import '../services/terminal/workspace_terminal_connect_coordinator.dart';
 import '../services/terminal/workspace_terminal_run_service.dart';
 import '../services/terminal/workspace_terminal_session_ops.dart';
-import 'package:logger/logger.dart';
 import '../utils/logging/logger.dart';
 import 'ui_zoom_baseline.dart';
 

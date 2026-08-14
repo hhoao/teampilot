@@ -7,11 +7,11 @@ final class OpencodeConfigUi implements CliConfigUiCapability {
   CliExecutablePathRowSpec get executablePathRowSpec => const CliExecutablePathRowSpec(
     titleKey: null,
     subtitleKey: null,
-    fieldKey: 'opencodeCliExecutablePathField',
-    browseKey: 'opencodeCliExecutablePathBrowseButton',
-    resetKey: 'opencodeCliExecutablePathResetButton',
+    fieldKey: 'opencode-cli-executable-path-field',
+    browseKey: 'opencode-cli-executable-path-browse-button',
+    resetKey: 'opencode-cli-executable-path-reset-button',
     debouncerTag: 'opencode_cli_executable_path',
-    installKey: 'opencodeCliInstallButton',
+    installKey: 'opencode-cli-install-button',
     showDividerBelow: true,
   );
 }

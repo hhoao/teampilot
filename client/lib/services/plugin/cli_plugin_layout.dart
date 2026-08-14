@@ -114,11 +114,6 @@ class CliPluginLayout {
     if (sourceDir == null) return;
     final targetDir = ctx.join(pluginRoot, target.manifestDirName);
     if (sourceDir == targetDir) return;
-    // Already projected (common for marketplace installs that ship every flavor).
-    if ((await fs.stat(ctx.join(pluginRoot, target.manifestRelativePath)))
-        .isFile) {
-      return;
-    }
     if ((await fs.stat(targetDir)).exists) {
       await fs.removeRecursive(targetDir);
     }

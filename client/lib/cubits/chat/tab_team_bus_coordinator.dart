@@ -18,7 +18,6 @@ import '../../services/team_bus/tasks/task_log_factory.dart';
 import '../../services/team_bus/tasks/task_queue.dart';
 import '../../services/team_bus/team_bus.dart';
 import '../../services/team_bus/teammate_roster_profile.dart';
-import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import '../../utils/team/team_member_naming.dart';
 import 'chat_tab_store.dart';

@@ -4,7 +4,6 @@ import '../cli/registry/cli_tool_registry.dart';
 
 import '../../models/app_session.dart';
 import '../../models/team_config.dart';
-import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import '../io/filesystem.dart';
 import '../storage/runtime_layout.dart';

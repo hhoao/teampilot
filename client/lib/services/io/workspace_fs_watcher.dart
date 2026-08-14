@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:path/path.dart' as p;
 
-import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import 'filesystem.dart';
 

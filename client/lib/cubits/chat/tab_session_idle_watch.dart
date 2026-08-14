@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../../services/team/member_turn_idle_sync.dart';
-import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import 'chat_tab_store.dart';
 import 'tab_member_coordination_factory.dart';

@@ -7,11 +7,11 @@ final class FlashskyaiConfigUi implements CliConfigUiCapability {
   CliExecutablePathRowSpec get executablePathRowSpec => const CliExecutablePathRowSpec(
     titleKey: null,
     subtitleKey: null,
-    fieldKey: 'cliExecutablePathField',
-    browseKey: 'cliExecutablePathBrowseButton',
-    resetKey: 'cliExecutablePathResetButton',
+    fieldKey: 'cli-executable-path-field',
+    browseKey: 'cli-executable-path-browse-button',
+    resetKey: 'cli-executable-path-reset-button',
     debouncerTag: 'flashskyai_cli_executable_path',
-    installKey: 'cliInstallFlashskyaiButton',
+    installKey: 'cli-install-flashskyai-button',
     showDividerBelow: false,
   );
 }

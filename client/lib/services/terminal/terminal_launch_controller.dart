@@ -6,7 +6,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
 
 import '../../cubits/agent_attention_cubit.dart';
-import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import '../../utils/terminal/osc_title_extractor.dart';
 import '../agent_status/agent_attention_state.dart';

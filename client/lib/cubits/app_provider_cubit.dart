@@ -12,7 +12,6 @@ import '../services/cli/registry/capabilities/credential_binding_capability.dart
 import '../services/cli/registry/cli_tool_registry.dart';
 import '../services/provider/provider_import_service.dart';
 import '../services/provider/tool_config_generator.dart';
-import 'package:logger/logger.dart';
 import '../utils/logging/logger.dart';
 
 class AppProviderState extends Equatable {

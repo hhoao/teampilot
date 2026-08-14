@@ -5,7 +5,6 @@ import '../../repositories/mcp_repository.dart';
 import '../../repositories/plugin_repository.dart';
 import '../../services/mcp/profile_mcp_linker_service.dart';
 import '../../services/plugin/plugin_bundle_resolver.dart';
-import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import 'launch_profile_cubit_host.dart';
 import 'team_profile_provisioner.dart';

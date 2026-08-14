@@ -7,11 +7,11 @@ final class CursorConfigUi implements CliConfigUiCapability {
   CliExecutablePathRowSpec get executablePathRowSpec => const CliExecutablePathRowSpec(
     titleKey: null,
     subtitleKey: null,
-    fieldKey: 'cursorCliExecutablePathField',
-    browseKey: 'cursorCliExecutablePathBrowseButton',
-    resetKey: 'cursorCliExecutablePathResetButton',
+    fieldKey: 'cursor-cli-executable-path-field',
+    browseKey: 'cursor-cli-executable-path-browse-button',
+    resetKey: 'cursor-cli-executable-path-reset-button',
     debouncerTag: 'cursor_cli_executable_path',
-    installKey: 'cursorCliInstallButton',
+    installKey: 'cursor-cli-install-button',
     showDividerBelow: true,
   );
 }

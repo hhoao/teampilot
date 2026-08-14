@@ -4,7 +4,6 @@ import 'fullscreen_pty_delivery_port.dart';
 import 'fullscreen_reinject_guard.dart';
 import 'pty_automation_needle.dart';
 import 'pty_inject_ack_retry.dart';
-import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 
 /// Outcome of a full-screen paste+CR or CR-only automation pass.

@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import '../../models/mcp_catalog_listing.dart';
-import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import '../io/filesystem.dart';
 import '../storage/app_storage.dart';

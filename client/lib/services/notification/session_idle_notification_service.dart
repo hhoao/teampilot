@@ -1,7 +1,6 @@
 import '../../models/app_session.dart';
 import '../../pages/home_workspace/home_workspace_route.dart';
 import 'package:shared_ui/shared_ui.dart';
-import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import 'desktop_system_notifier.dart';
 import 'notification_recorder.dart';

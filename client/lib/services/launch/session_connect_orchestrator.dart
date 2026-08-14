@@ -17,7 +17,6 @@ import '../session/session_lifecycle_service.dart';
 import '../storage/runtime_context.dart';
 import '../team_bus/member_bus_idle_endpoint.dart';
 import '../agent_status/member_agent_status_endpoint.dart';
-import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import 'launch_manifest.dart';
 import 'launch_manifest_paths.dart';
