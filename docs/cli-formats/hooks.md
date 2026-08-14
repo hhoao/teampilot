@@ -157,8 +157,75 @@ opencode:           <configDir>/teampilot-user-hooks.js + <configDir>/hooks/ + o
 | cursor 阻塞语义 | 胶水 `exit 2` 在 `blockOnDecision` 时追加；cursor 默认 fail-open |
 | warning 键速查 | `hook_unsupported_event_<id>_<event>`（CLI 不支持事件）、`hook_http_unsupported_<id>`（opencode）、`hook_matcher_ignored_<id>_<event>`（opencode 非 tool 事件）、`hook_policy_ignored_<id>_<event>`、`hook_script_missing_<id>[_<fileName>]`、`hook_invalid_action_<id>`、`hook_missing_<id>` |
 
+## 8. 导入既有 CLI hooks（JSON 粘贴）
+
+把现有 CLI 的 hook 配置整体搬进 TeamPilot 全局库，避免逐个手建。入口：`/hooks` 全局库
+「导入」→ `HookImportDialog`。代码：`client/lib/services/hook/import/`（`HookImportParser`
+facade + `HookJsonDialect` 方言 + `HookScriptExtractor` 脚本提取）、
+`client/lib/pages/hooks/hook_import_dialog.dart`、`HookImportService`（落库）。
+
+### 8.1 支持 CLI 与输入格式
+
+| CLI | 输入 JSON | 方言 |
+|---|---|---|
+| claude / flashskyai | `settings.json` 的 `hooks` map（`{"hooks":{"<Event>":[{"matcher","hooks":[…]}]}}`），或只贴 `hooks` 段本身 | `ClaudeFamilyHooksJsonDialect`（分组内核） |
+| codex | `~/.codex/hooks.json`（分组结构，顶层允许 `description`） | `CodexHooksJsonDialect`（同一分组内核） |
+| cursor | `~/.cursor/hooks.json`（`{"version":1,"hooks":{<event>:[扁平条目]}}`，matcher 在条目上） | `CursorHooksJsonDialect`（扁平适配） |
+
+opencode 无 JSON 导入（其 hook 为 JS 插件桥，配置走 opencode.json，不在导入范围）。
+
+### 8.2 流程：CLI 选择 + JSON 粘贴 → 预览勾选 → 导入
+
+1. **输入阶段**：选目标 CLI（claude/flashskyai/codex/cursor），粘贴完整文件或只贴 hooks
+   片段，点「解析」；
+2. **预览阶段**：每条解析出的 hook 一行（原生事件名 · matcher + action 摘要），默认全选，
+   可勾选要导入的条目；解析 warning 在预览上方展示；
+3. 解析失败（JSON 非法 / 无可导入条目）停留在输入阶段并展示原始 warning 行
+   （如 `hook_import_invalid_json: <message>` / `hook_import_no_hooks`）；
+4. **导入**：`HookImportService.import` 按确定性 id 幂等 upsert（重复导入覆盖），脚本
+   内容写入 `hooks/{id}/{fileName}`。
+
+### 8.3 脚本复制进库 + 命令重写
+
+command 类条目经 `HookScriptExtractor` 启发式识别脚本引用：
+
+- 首 token 是解释器（`bash`/`sh`/`zsh`/`python3`/`python`/`node`/`powershell`/`pwsh`/
+  `ruby`/`perl`）且含路径参数，或首 token 本身是路径 → 读取脚本内容进库
+  （`hooks/{id}/{fileName}`，`fileName` 为原文件名），命令重写为
+  `<interpreter> <teampilotRoot>/hooks/<id>/<fileName>`；
+- **降级 raw**：内联命令（无脚本路径）、`bash -c` 内联、路径含占位符
+  （`${...}` / `$(...)` / `$VAR`，`~` 在无 host home 时也视为占位符）、读取失败 →
+  保留原命令字符串，不复制脚本（`reason: placeholder` / `unreadable` 供预览标注）；
+- http 条目不经提取，url/headers/timeout 直接入库。
+
+### 8.4 字段旁路保留（`native`）
+
+归一化模型只消费 `type/command/url/headers/matcher/timeout` 等已知字段；其余字段
+（如 cursor 的 `loop_limit`/`failClosed`、各 CLI 的未来扩展字段）原样保留进
+`HookDefinition.native`（零丢失旁路，writer/管线不消费），并在预览条目上以
+`⚠ <field, …>` 标注"导入后不生效"（`HookImportDraft.unsupportedFields`）。
+
+### 8.5 确定性幂等 id
+
+每条目按 `event|matcher|command|url` 计算 **FNV-1a 64 位哈希**，id =
+`import-<哈希十六进制前 12 位>`（`hookImportId`，`client/lib/services/hook/import/hook_import_parser.dart`）。
+同一来源重复导入 → 同 id → upsert 覆盖，不产生重复条目；导入后再在 UI 修改定义
+（id 不变）也不漂移。
+
+### 8.6 事件映射与丢弃
+
+- 原生事件名经 `HookEventNameMapper`（三张数据驱动表：claude-family PascalCase、
+  codex、cursor camelCase）映射到归一化事件目录（§1 矩阵）；
+- **不在目录内的事件**（如 `PostCompact`/`SubagentStart`/`afterAgentResponse`/
+  `beforeReadFile` 等）→ `hook_import_event_unsupported_<name>` warning，**条目丢弃**；
+- 其它 warning 键：`hook_import_invalid_json` / `hook_import_invalid_json_shape` /
+  `hook_import_no_hooks` / `hook_import_bad_hooks_envelope` / `hook_import_bad_group_<event>` /
+  `hook_import_bad_handler_<event>` / `hook_import_type_unsupported_<type>` /
+  `hook_import_cli_unsupported_<cli>`。
+
 验证基线：`cd client && flutter analyze --no-fatal-infos --no-fatal-warnings &&
 flutter test --exclude-tags integration`（各 writer / glue / resolver / completer 单测：
 `test/services/cli/{codex,cursor,opencode}/…hook_writer_test.dart`、
 `test/services/cli/registry/config_profile/{claude_family_hook_writer,hook_seat_context_completer}_test.dart`、
-`test/services/hook/`、`test/models/hook_{entry,event}_test.dart`）。
+`test/services/hook/`、`test/models/hook_{entry,event}_test.dart`；导入单测：
+`test/services/hook/import/`、`test/pages/hooks/hook_import_dialog_test.dart`）。
