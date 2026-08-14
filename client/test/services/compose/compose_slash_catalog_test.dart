@@ -2,14 +2,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/config_bundle.dart';
 import 'package:teampilot/models/plugin.dart';
 import 'package:teampilot/models/skill.dart';
-import 'package:teampilot/services/cli/codex/capabilities/skill_invocation_syntax.dart';
-import 'package:teampilot/services/cli/opencode/capabilities/skill_invocation_syntax.dart';
-import 'package:teampilot/services/cli/registry/capabilities/skill_invocation_syntax_capability.dart';
+import 'package:teampilot/services/cli/codex/capabilities/skill.dart';
+import 'package:teampilot/services/cli/opencode/capabilities/skill.dart';
+import 'package:teampilot/services/cli/registry/capabilities/skill_capability.dart';
 import 'package:teampilot/services/compose/compose_slash_catalog.dart';
 
 void main() {
-  const codexSyntax = CodexSkillInvocationSyntaxCapability();
-  const opencodeSyntax = OpencodeSkillInvocationSyntaxCapability();
+  const codexSyntax = CodexSkillCapability();
+  const opencodeSyntax = OpencodeSkillCapability();
 
   final standaloneSkill = Skill(
     id: 'local:using-git-worktrees',
@@ -39,7 +39,7 @@ void main() {
     pluginIds: ['superpowers'],
   );
 
-  List<ComposeSlashCandidate> build({required List<Skill> skills, required List<Plugin> plugins, SkillInvocationSyntaxCapability? syntax}) =>
+  List<ComposeSlashCandidate> build({required List<Skill> skills, required List<Plugin> plugins, SkillCapability? syntax}) =>
       buildComposeSlashCandidates(
         skills: skills,
         plugins: plugins,

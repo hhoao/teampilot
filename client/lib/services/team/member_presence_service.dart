@@ -2,7 +2,7 @@ import '../../models/app_session.dart';
 import '../../models/cli_preset.dart';
 import '../../models/member_presence.dart';
 import '../../models/team_config.dart';
-import '../cli/registry/capabilities/presence_capability.dart';
+import '../cli/registry/capabilities/team_behavior_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../io/filesystem.dart';
 import '../storage/app_storage.dart';
@@ -57,7 +57,7 @@ class MemberPresenceService {
     required Map<String, TerminalSession> memberShells,
     PresenceSessionContext? session,
   }) async {
-    final presenceCap = _cliToolRegistry.capability<PresenceCapability>(
+    final presenceCap = _cliToolRegistry.capability<TeamBehaviorCapability>(
       teamCli,
     );
     final usesClaudeRoster = presenceCap?.usesClaudeRoster ?? false;

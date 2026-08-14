@@ -2,15 +2,15 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/cli/opencode/capabilities/config_profile.dart';
-import 'package:teampilot/services/cli/registry/capabilities/plugin_provisioner_capability.dart';
-import 'package:teampilot/services/cli/opencode/capabilities/plugin_provisioner.dart';
+import 'package:teampilot/services/cli/opencode/capabilities/provider.dart';
+import 'package:teampilot/services/cli/registry/capabilities/plugin_capability.dart';
+import 'package:teampilot/services/cli/opencode/capabilities/plugin.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 
 import '../../../../support/in_memory_filesystem.dart';
 
 void main() {
-  group('OpencodePluginProvisioner', () {
+  group('OpencodePluginCapability', () {
     test(
       'decomposes skills and agents and skips existing skill names',
       () async {
@@ -282,7 +282,7 @@ Future<void> _provision(
   String configDir,
   String poolDir,
 ) {
-  return const OpencodePluginProvisioner().provision(
+  return const OpencodePluginCapability().provision(
     PluginProvisionContext(
       fs: fs,
       teampilotRoot: '/tp',

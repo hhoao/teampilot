@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/cli/registry/capabilities/provider_form_capability.dart';
-import 'package:teampilot/services/cli/claude/provider/claude_provider_form_capability.dart';
+import 'package:teampilot/services/cli/registry/capabilities/provider_capability.dart';
+import 'package:teampilot/services/cli/claude/capabilities/provider.dart';
 
 void main() {
-  const capability = ClaudeProviderFormCapability();
+  const capability = ClaudeProviderCapability();
 
   group('ClaudeProviderFormCapability', () {
     test(

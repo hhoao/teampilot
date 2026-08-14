@@ -17,7 +17,6 @@ import '../../../services/app/connection_mode_service.dart';
 import '../../../services/cli/cli_executable_discovery.dart';
 import '../../../services/cli/cli_installer_service.dart';
 import '../../../services/cli/remote_cli_locator.dart';
-import '../../../services/cli/registry/capabilities/installer_capability.dart';
 import '../../../services/cli/registry/cli_display_name.dart';
 import '../../../services/cli/registry/cli_tool_definition.dart';
 import '../../../services/cli/registry/cli_tool_registry.dart';
@@ -97,7 +96,7 @@ class _OnboardingCliStepState extends State<OnboardingCliStep> {
       _controllers.putIfAbsent(cli, TextEditingController.new);
 
   bool _supportsInstall(CliTool cli) =>
-      _registry.capability<InstallerCapability>(cli)?.supportsInstaller ?? false;
+      _registry.capability<CliExecutableCapability>(cli)?.supportsInstaller ?? false;
 
   void _syncBusy() {
     _busy.value = _detecting.value || _installingCli != null;

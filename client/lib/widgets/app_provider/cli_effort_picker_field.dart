@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/app_provider_config.dart';
 import '../../models/team_config.dart';
-import '../../services/cli/registry/capabilities/cli_effort_capability.dart';
+import '../../services/cli/registry/capabilities/provider_capability.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import 'package:shared_ui/shared_ui.dart';
 
@@ -39,7 +39,7 @@ class CliEffortPickerField extends StatelessWidget {
   Widget build(BuildContext context) {
     final capability = CliToolRegistryScope.of(
       context,
-    ).capability<CliEffortCapability>(cli);
+    ).capability<ProviderCapability>(cli);
     if (capability == null) return const SizedBox.shrink();
 
     final resolvedModel = model.trim().isNotEmpty

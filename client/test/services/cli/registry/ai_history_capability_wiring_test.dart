@@ -11,7 +11,6 @@ import 'package:teampilot/services/cli/claude/capabilities/history/side_resolver
 import 'package:teampilot/services/cli/cursor/capabilities/history/terminal_tool_result_enricher.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/history/tool_output_backfill_enricher.dart';
 import 'package:teampilot/services/cli/registry/capabilities/history/tool_result_enricher.dart';
-import 'package:teampilot/services/ai_history/tool_call_resolvers.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 
 void main() {
@@ -19,14 +18,7 @@ void main() {
     for (final cap in [
       const ClaudeAiHistoryCapability(),
       const FlashskyaiAiHistoryCapability(),
-      const CursorAiHistoryCapability(
-        shellResolver: ConfigurableAiShellToolTargetResolver(
-          toolNames: {
-            'bash', 'shell', 'shell_command', 'exec_command',
-            'run_shell_command', 'run_terminal_cmd', 'execute',
-          },
-        ),
-      ),
+      const CursorAiHistoryCapability(),
       const CodexAiHistoryCapability(),
       const OpencodeAiHistoryCapability(),
     ]) {
@@ -41,14 +33,7 @@ void main() {
       isA<ClaudeCompatibleToolResultEnricher>(),
     );
     expect(
-      const CursorAiHistoryCapability(
-        shellResolver: ConfigurableAiShellToolTargetResolver(
-          toolNames: {
-            'bash', 'shell', 'shell_command', 'exec_command',
-            'run_shell_command', 'run_terminal_cmd', 'execute',
-          },
-        ),
-      ).toolResultEnricher,
+      const CursorAiHistoryCapability().toolResultEnricher,
       isA<CursorTerminalToolResultEnricher>(),
     );
     expect(
@@ -86,17 +71,17 @@ void main() {
     }
   });
 
-  test('every CliTool registers non-empty toolCallResolvers via the registry',
+  test('every CliTool registers non-empty resolvers via AiHistoryCapability',
       () {
     final registry = CliToolRegistry.builtIn();
     for (final cli in CliTool.values) {
-      final resolvers = registry.toolCallResolvers(cli);
-      expect(resolvers, isNotNull, reason: '$cli');
-      expect(resolvers!.editResolver, isNotNull, reason: '$cli editResolver');
-      expect(resolvers.fileResolver, isNotNull, reason: '$cli fileResolver');
-      expect(resolvers.shellResolver, isNotNull, reason: '$cli shellResolver');
+      final cap = registry.capability<AiHistoryCapability>(cli);
+      expect(cap, isNotNull, reason: '$cli');
+      expect(cap!.editResolver, isNotNull, reason: '$cli editResolver');
+      expect(cap.fileResolver, isNotNull, reason: '$cli fileResolver');
+      expect(cap.shellResolver, isNotNull, reason: '$cli shellResolver');
       expect(
-        resolvers.categoryResolver,
+        cap.categoryResolver,
         isNotNull,
         reason: '$cli categoryResolver',
       );

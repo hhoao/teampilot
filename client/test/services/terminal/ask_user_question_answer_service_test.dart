@@ -2,10 +2,10 @@ import 'package:flutter_alacritty/flutter_alacritty.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/agent_status/ask_user_answer_pending_store.dart';
-import 'package:teampilot/services/cli/cursor/capabilities/ask_user_question.dart';
-import 'package:teampilot/services/cli/opencode/capabilities/ask_user_question.dart';
-import 'package:teampilot/services/cli/registry/capabilities/ask_user_question_capability.dart';
-import 'package:teampilot/services/cli/registry/capabilities/pty_ask_user_question_capability.dart';
+import 'package:teampilot/services/cli/claude/capabilities/chat_interaction.dart';
+import 'package:teampilot/services/cli/cursor/capabilities/chat_interaction.dart';
+import 'package:teampilot/services/cli/opencode/capabilities/chat_interaction.dart';
+import 'package:teampilot/services/cli/registry/capabilities/chat_interaction_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_definition.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
@@ -37,23 +37,23 @@ class _FakeShell extends TerminalSession {
 }
 
 class _StubTool implements CliToolDefinition {
-  _StubTool({required this.id, required this.askCap});
+  _StubTool({required this.id, required this.chatCap});
 
   @override
   final CliTool id;
 
-  final AskUserQuestionCapability askCap;
+  final ChatInteractionCapability chatCap;
 
   @override
-  Iterable<CliCapability> get capabilities => [askCap];
+  Iterable<CliCapability> get capabilities => [chatCap];
 
   @override
   bool get isLaunchSupported => false;
 }
 
-CliToolRegistry _registryWith(AskUserQuestionCapability cap, {CliTool cli = CliTool.claude}) {
+CliToolRegistry _registryWith(ChatInteractionCapability cap, {CliTool cli = CliTool.claude}) {
   final registry = CliToolRegistry();
-  registry.register(_StubTool(id: cli, askCap: cap));
+  registry.register(_StubTool(id: cli, chatCap: cap));
   return registry;
 }
 
@@ -64,7 +64,7 @@ void main() {
     final service = AskUserQuestionAnswerService(
       writePty: (_, text) => writes.add(text),
       delay: (d) async => gaps.add(d),
-      registry: _registryWith(const PtyAskUserQuestionCapability()),
+      registry: _registryWith(const ClaudeChatInteraction()),
       store: AskUserAnswerPendingStore(),
     );
     final result = await service.answer(
@@ -88,7 +88,7 @@ void main() {
     final service = AskUserQuestionAnswerService(
       writePty: (_, text) => writes.add(text),
       delay: (d) async => gaps.add(d),
-      registry: _registryWith(const PtyAskUserQuestionCapability()),
+      registry: _registryWith(const ClaudeChatInteraction()),
       store: AskUserAnswerPendingStore(),
     );
     final result = await service.answer(
@@ -114,7 +114,7 @@ void main() {
     final service = AskUserQuestionAnswerService(
       writePty: (_, text) => writes.add(text),
       delay: (d) async {},
-      registry: _registryWith(const PtyAskUserQuestionCapability()),
+      registry: _registryWith(const ClaudeChatInteraction()),
       store: AskUserAnswerPendingStore(),
     );
     final result = await service.answer(
@@ -142,7 +142,7 @@ void main() {
     final service = AskUserQuestionAnswerService(
       writePty: (_, text) => writes.add(text),
       delay: (d) async {},
-      registry: _registryWith(const PtyAskUserQuestionCapability()),
+      registry: _registryWith(const ClaudeChatInteraction()),
       store: AskUserAnswerPendingStore(),
     );
     final disconnected = await service.answer(
@@ -173,7 +173,7 @@ void main() {
     final writes = <String>[];
     final service = AskUserQuestionAnswerService(
       writePty: (_, text) => writes.add(text),
-      registry: _registryWith(const PtyAskUserQuestionCapability()),
+      registry: _registryWith(const ClaudeChatInteraction()),
       store: AskUserAnswerPendingStore(),
     );
     final result = await service.cancel(
@@ -191,7 +191,7 @@ void main() {
     final store = AskUserAnswerPendingStore();
     final service = AskUserQuestionAnswerService(
       registry: _registryWith(
-        const OpenCodeAskUserQuestionCapability(),
+        const OpencodeChatInteraction(),
         cli: CliTool.opencode,
       ),
       store: store,
@@ -225,7 +225,7 @@ void main() {
     final store = AskUserAnswerPendingStore();
     final service = AskUserQuestionAnswerService(
       registry: _registryWith(
-        const OpenCodeAskUserQuestionCapability(),
+        const OpencodeChatInteraction(),
         cli: CliTool.opencode,
       ),
       store: store,
@@ -254,7 +254,7 @@ void main() {
     final store = AskUserAnswerPendingStore();
     final service = AskUserQuestionAnswerService(
       registry: _registryWith(
-        const OpenCodeAskUserQuestionCapability(),
+        const OpencodeChatInteraction(),
         cli: CliTool.opencode,
       ),
       store: store,
@@ -278,7 +278,7 @@ void main() {
     final store = AskUserAnswerPendingStore();
     final service = AskUserQuestionAnswerService(
       registry: _registryWith(
-        const OpenCodeAskUserQuestionCapability(),
+        const OpencodeChatInteraction(),
         cli: CliTool.opencode,
       ),
       store: store,
@@ -308,7 +308,7 @@ void main() {
     final store = AskUserAnswerPendingStore();
     final service = AskUserQuestionAnswerService(
       registry: _registryWith(
-        const OpenCodeAskUserQuestionCapability(),
+        const OpencodeChatInteraction(),
         cli: CliTool.opencode,
       ),
       store: store,
@@ -329,7 +329,7 @@ void main() {
     final store = AskUserAnswerPendingStore();
     final service = AskUserQuestionAnswerService(
       registry: _registryWith(
-        const OpenCodeAskUserQuestionCapability(),
+        const OpencodeChatInteraction(),
         cli: CliTool.opencode,
       ),
       store: store,
@@ -350,7 +350,7 @@ void main() {
     final store = AskUserAnswerPendingStore();
     final service = AskUserQuestionAnswerService(
       registry: _registryWith(
-        const PtyAskUserQuestionCapability(),
+        const ClaudeChatInteraction(),
         cli: CliTool.claude,
       ),
       store: store,
@@ -378,7 +378,7 @@ void main() {
   test('none capability returns failed', () async {
     final service = AskUserQuestionAnswerService(
       registry: _registryWith(
-        const NoAskUserQuestionCapability(),
+        const CursorChatInteraction(),
         cli: CliTool.cursor,
       ),
       store: AskUserAnswerPendingStore(),

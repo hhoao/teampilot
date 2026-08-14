@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import '../../../../models/app_provider_config.dart';
-import '../../registry/capabilities/provider_catalog_capability.dart';
+import '../../registry/capabilities/provider_capability.dart';
 import '../../../io/filesystem.dart';
 import 'codex_cc_switch_import.dart';
 import 'codex_toml_parser.dart';

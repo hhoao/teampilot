@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/cli_executable_discovery.dart';
-import 'package:teampilot/services/cli/registry/capabilities/remote_cli_locator_capability.dart';
+import 'package:teampilot/services/cli/registry/capabilities/cli_executable_capability.dart';
 
 void main() {
   test('locateLocal discovers each launchable CLI independently', () async {

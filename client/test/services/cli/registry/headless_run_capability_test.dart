@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/cli/registry/capabilities/headless_run_capability.dart';
+import 'package:teampilot/services/cli/registry/capabilities/headless_capability.dart';
 
 void main() {
   test('HeadlessRunContext exposes its fields verbatim', () {

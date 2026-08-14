@@ -41,7 +41,7 @@ import '../services/launch/session_connect_orchestrator.dart';
 import '../services/launch/workspace_provision_coordinator.dart';
 import '../services/progress_activity/cli_provision_activity_adapter.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
-import '../services/cli/registry/capabilities/turn_completion_capability.dart';
+import '../services/cli/registry/capabilities/team_behavior_capability.dart';
 import '../services/cli/preset_resolver.dart';
 import '../services/terminal/terminal_session.dart';
 import '../services/terminal/ask_user_question_answer_service.dart';
@@ -912,7 +912,7 @@ class ChatCubit extends Cubit<ChatState>
           ),
       globalPresets: _lifecycle.globalPresets,
     );
-    final cap = cliRegistry.capability<TurnCompletionCapability>(cli);
+    final cap = cliRegistry.capability<TeamBehaviorCapability>(cli);
     if (cap == null || !cap.requiresPtyFallback) return;
     final bus = tab.teamBus;
     if (bus != null && bus.hasPendingDoorbell(memberId)) return;

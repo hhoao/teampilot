@@ -3,8 +3,7 @@ import '../../l10n/app_localizations.dart';
 import '../../models/ai_feature_setting.dart';
 import '../../models/app_provider_config.dart';
 import '../../models/cli_preset.dart';
-import '../cli/registry/capabilities/provider_catalog_capability.dart';
-import '../cli/registry/capabilities/provider_model_capability.dart';
+import '../cli/registry/capabilities/provider_capability.dart';
 import '../cli/registry/cli_display_name.dart';
 import '../cli/registry/cli_tool_registry.dart';
 
@@ -51,7 +50,7 @@ AiFeatureSetting resolveAiFeatureSetting({
       : _defaultProviderId(appProviders, catalogCli ?? cli, providers);
 
   final provider = providers.where((p) => p.id == providerId).firstOrNull;
-  final modelCap = registry.capability<ProviderModelCapability>(cli);
+  final modelCap = registry.capability<ProviderCapability>(cli);
   final storedModel = stored?.model.trim() ?? '';
   final model = storedModel.isNotEmpty
       ? storedModel
@@ -68,7 +67,7 @@ AiFeatureSetting resolveAiFeatureSetting({
 }
 
 CliTool? _catalogCli(CliToolRegistry registry, CliTool cli) {
-  return registry.capability<ProviderCatalogCapability>(cli) != null
+  return registry.capability<ProviderCapability>(cli) != null
       ? cli
       : null;
 }
@@ -126,7 +125,7 @@ bool aiFeatureIsConfigured({
   final provider = providers.where((p) => p.id == providerId).firstOrNull;
   if (provider == null) return false;
 
-  final modelCapability = registry.capability<ProviderModelCapability>(
+  final modelCapability = registry.capability<ProviderCapability>(
     stored.cli,
   );
   if (modelCapability != null &&

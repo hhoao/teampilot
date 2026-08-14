@@ -12,6 +12,18 @@ import '../../registry/capabilities/shared_tool_call_resolvers.dart';
 class CursorToolCallResolvers extends SharedToolCallResolvers {
   const CursorToolCallResolvers();
 
+  static const shellResolverInstance = ConfigurableAiShellToolTargetResolver(
+    toolNames: {
+      'bash',
+      'shell',
+      'execute',
+      'run_terminal_cmd',
+      'shell_command',
+      'exec_command',
+      'run_shell_command',
+    },
+  );
+
   static const _editToolNames = {
     ...SharedToolCallResolverKeys.editToolNames,
     'strreplace',
@@ -88,16 +100,5 @@ class CursorToolCallResolvers extends SharedToolCallResolvers {
       const ConfigurableAiToolFileTargetResolver(rules: _fileRules);
 
   @override
-  AiShellToolTargetResolver get shellResolver =>
-      const ConfigurableAiShellToolTargetResolver(
-        toolNames: {
-          'bash',
-          'shell',
-          'execute',
-          'run_terminal_cmd',
-          'shell_command',
-          'exec_command',
-          'run_shell_command',
-        },
-      );
+  AiShellToolTargetResolver get shellResolver => shellResolverInstance;
 }

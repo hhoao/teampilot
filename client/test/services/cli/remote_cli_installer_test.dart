@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/installer_types.dart';
-import 'package:teampilot/services/cli/registry/capabilities/remote_cli_locator_capability.dart';
+import 'package:teampilot/services/cli/registry/capabilities/cli_executable_capability.dart';
 import 'package:teampilot/services/cli/remote_cli_installer.dart';
 
 /// Mutable fake: the (fake) install can extend [byCommand] so the post-install

@@ -1,12 +1,12 @@
 import 'agent_permission_request.dart';
 import 'ask_user_question.dart';
-import '../cli/registry/capabilities/ask_user_question_capability.dart';
+import '../cli/registry/capabilities/chat_interaction_capability.dart';
 
 /// Whether the chat should render an OpenCode permission card (allow once /
 /// always / reject) for the given capability and parsed permission payload
 /// (vs a generic attention banner).
 bool shouldShowPermissionCard({
-  required AskUserQuestionCapability? capability,
+  required ChatInteractionCapability? capability,
   required AgentPermissionRequest? permissionRequest,
   String? askRequestId,
 }) {
@@ -29,7 +29,7 @@ bool shouldShowPermissionCard({
 /// Whether the chat should render an [AskUserQuestionCard] for the given
 /// capability and parsed questions (vs a generic attention banner).
 bool shouldShowAskUserQuestionCard({
-  required AskUserQuestionCapability? capability,
+  required ChatInteractionCapability? capability,
   required List<AgentAskUserQuestion>? questions,
   String? askRequestId,
 }) {

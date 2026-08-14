@@ -9,7 +9,6 @@ import '../../../ai_history/edit_codecs/unified_diff_edit_hunk_codec.dart';
 import '../../../ai_history/edit_codecs/write_edit_hunk_codec.dart';
 import '../../../ai_history/tool_call_categories.dart';
 import '../../../ai_history/tool_call_resolvers.dart';
-import 'tool_call_resolver_capability.dart';
 
 /// Baseline tool-name / argument-key lists for the shared resolvers.
 ///
@@ -61,7 +60,9 @@ abstract final class SharedToolCallResolverKeys {
 
 /// Shared edit/file/shell/category configuration for all built-in CLIs.
 /// Per-CLI deltas override specific resolvers (see CursorToolCallResolvers).
-class SharedToolCallResolvers implements ToolCallResolversCapability {
+/// Held as a composition member by each CLI's [AiHistoryCapability]
+/// implementation, which delegates the four resolver getters.
+class SharedToolCallResolvers {
   const SharedToolCallResolvers();
 
   static const _strReplaceCodec = StrReplaceEditHunkCodec(
@@ -98,21 +99,17 @@ class SharedToolCallResolvers implements ToolCallResolversCapability {
 
   static const _shellToolNames = SharedToolCallResolverKeys.shellToolNames;
 
-  @override
   AiEditToolTargetResolver get editResolver =>
       const ConfigurableAiEditToolTargetResolver(
         codecs: [_strReplaceCodec, _writeCodec, _unifiedDiffCodec],
       );
 
-  @override
   AiToolFileTargetResolver get fileResolver =>
       const ConfigurableAiToolFileTargetResolver(rules: _fileRules);
 
-  @override
   AiShellToolTargetResolver get shellResolver =>
       const ConfigurableAiShellToolTargetResolver(toolNames: _shellToolNames);
 
-  @override
   AiToolCallCategoryResolver get categoryResolver =>
       defaultToolCallCategoryResolver;
 }

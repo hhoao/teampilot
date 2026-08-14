@@ -6,10 +6,11 @@ import '../../../host/host_script_runner.dart';
 import '../../../hook/glue_script_builder.dart';
 import '../../../io/filesystem.dart';
 import '../../../team_bus/member_bus_idle_endpoint.dart';
-import '../../registry/capabilities/hook_writer_capability.dart';
-import '../../registry/capabilities/prompt_provision_capability.dart';
+import '../../registry/capabilities/hook_capability.dart';
+import '../../registry/capabilities/prompt_capability.dart';
 import '../../registry/config_profile/hook_seat_context_completer.dart';
-import '../capabilities/prompt_provision.dart';
+import '../../registry/hook/managed_hook_provisioner.dart';
+import '../capabilities/prompt.dart';
 import 'cursor_auth_artifacts.dart';
 import 'cursor_cli_config_policy.dart';
 import 'cursor_home_bus_overlay.dart';
@@ -25,13 +26,13 @@ final class CursorHomeProvisioner {
     required Filesystem fs,
     CursorHomeLayout? layout,
     CursorProviderCredentialsService? credentials,
-    PromptProvisionCapability? promptProvision,
+    PromptCapability? promptProvision,
   }) : _fs = fs,
        _layout = layout ?? CursorHomeLayout(pathContext: fs.pathContext),
        _credentials = credentials,
        _promptProvision =
            promptProvision ??
-           CursorPromptProvisionCapability(
+           CursorPromptCapability(
              fs: fs,
              layout: layout ?? CursorHomeLayout(pathContext: fs.pathContext),
            );
@@ -39,7 +40,7 @@ final class CursorHomeProvisioner {
   final Filesystem _fs;
   final CursorHomeLayout _layout;
   final CursorProviderCredentialsService? _credentials;
-  final PromptProvisionCapability _promptProvision;
+  final PromptCapability _promptProvision;
 
   Future<void> provision({
     required String memberHome,
@@ -67,8 +68,8 @@ final class CursorHomeProvisioner {
     if (!member.isValid) return;
 
     if (!mixed) {
-      await _promptProvision.provision(
-        PromptProvisionContext(
+      await _promptProvision.materialize(
+        PromptMaterializeContext(
           member: member,
           memberHome: memberHome,
           forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
@@ -106,8 +107,8 @@ final class CursorHomeProvisioner {
       memberHome,
       cliConfigJson: cliConfigJson,
     );
-    await _promptProvision.provision(
-      PromptProvisionContext(
+    await _promptProvision.materialize(
+      PromptMaterializeContext(
         member: member,
         memberHome: memberHome,
         forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
@@ -243,7 +244,13 @@ final class CursorHomeProvisioner {
       _layout.cursorDir(memberHome),
       CursorHomeLayout.hooksDirName,
     );
-    final result = const CursorHookWriter().render(
+    final result = await ManagedHookProvisioner(
+      fs: _fs,
+      joinWork: _fs.pathContext.join,
+      atomicWrite: true,
+      ensureParentDirs: true,
+    ).provision(
+      writer: const CursorHookWriter(),
       entries: entries,
       ctx: HookRenderContext(
         hooksDir: hooksDir,
@@ -251,18 +258,6 @@ final class CursorHomeProvisioner {
         glueBuilder: const GlueScriptBuilder(),
       ),
     );
-    // Managed scripts nest under `hooks/<id>/<fileName>` — LocalFilesystem's
-    // atomicWrite creates parents but Sftp/WslFilesystem do not, so ensure
-    // each target's parent dir first (same pattern as opencode config_profile).
-    final ensuredDirs = <String>{};
-    for (final script in result.scripts) {
-      final target = _fs.pathContext.join(hooksDir, script.fileName);
-      final parent = _fs.pathContext.dirname(target);
-      if (ensuredDirs.add(parent)) {
-        await _fs.ensureDir(parent);
-      }
-      await _fs.atomicWrite(target, script.content);
-    }
     final hooksJsonPath = _layout.hooksConfig(memberHome);
     final existing = await _readHooksJson(hooksJsonPath);
     final fragment =

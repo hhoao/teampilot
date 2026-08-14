@@ -1,7 +1,7 @@
 import '../../models/session_preferences.dart';
 import 'cli_tool_locator.dart';
 import 'git_installer.dart';
-import 'registry/capabilities/remote_cli_locator_capability.dart';
+import 'remote_cli_locator.dart';
 
 typedef GitDetect = Future<GitInstallResult> Function();
 

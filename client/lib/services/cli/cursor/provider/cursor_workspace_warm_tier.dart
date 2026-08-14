@@ -1,7 +1,7 @@
 import 'package:path/path.dart' as p;
 
 import '../../../../models/team_config.dart';
-import '../capabilities/resource.dart';
+import '../capabilities/skill.dart';
 import '../../../storage/runtime_layout.dart';
 
 /// Workspace+team scoped cursor warm tier shared across mixed-mode roster members.
@@ -76,7 +76,7 @@ abstract final class CursorWorkspaceWarmTier {
     String teamId,
   ) => p.join(
     sharedRoot(layout, workspaceId, teamId),
-    CursorResourceCapability.skillsSubdirName,
+    CursorSkillCapability.skillsSubdirName,
   );
 
   static String settingsJson(
@@ -97,7 +97,7 @@ abstract final class CursorWorkspaceWarmTier {
     return CliSessionManifestSharedPaths(
       root: root,
       pluginsLocalDir: p.join(root, pluginsDirName, localPluginsSegment),
-      skillsCursorDir: p.join(root, CursorResourceCapability.skillsSubdirName),
+      skillsCursorDir: p.join(root, CursorSkillCapability.skillsSubdirName),
       mcpBase: p.join(root, mcpBaseFileName),
       settingsJson: p.join(root, settingsFileName),
     );

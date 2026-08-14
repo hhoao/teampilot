@@ -2,14 +2,14 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/cli/registry/capabilities/plugin_provisioner_capability.dart';
-import 'package:teampilot/services/cli/cursor/capabilities/plugin_provisioner.dart';
+import 'package:teampilot/services/cli/registry/capabilities/plugin_capability.dart';
+import 'package:teampilot/services/cli/cursor/capabilities/plugin.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 
 import '../../../../support/in_memory_filesystem.dart';
 
 void main() {
-  group('CursorPluginProvisioner', () {
+  group('CursorPluginCapability', () {
     test(
       'materializes bundles under plugins/local and registers registry',
       () async {
@@ -35,7 +35,7 @@ void main() {
           }),
         );
 
-        await const CursorPluginProvisioner().provision(
+        await const CursorPluginCapability().provision(
           PluginProvisionContext(
             fs: fs,
             teampilotRoot: teampilotRoot,

@@ -5,14 +5,14 @@ import '../../../../models/hook_event.dart';
 import '../../../../models/team_config.dart';
 import '../../../team_bus/mcp/teammate_bus_mcp_handler.dart';
 import '../../registry/capabilities/hook_registry.dart';
-import '../../registry/capabilities/hook_writer_capability.dart';
+import '../../registry/capabilities/hook_capability.dart';
 
 /// Cursor hook writer：`~/.cursor/hooks.json`（`{"version":1,"hooks":{...}}`）。
 ///
 /// cursor 命令一律 bash（官方文档确认）；per-script 字段：command / matcher /
 /// timeout / loop_limit（stop 用 null）。policy 输出 `{"permission":"allow|deny"}`
 /// （preToolUse 等拦截事件；exit code 2 阻塞语义由胶水 exit 2 承担）。
-class CursorHookWriter implements HookWriterCapability {
+class CursorHookWriter implements HookCapability {
   const CursorHookWriter({this.denyReason = 'TeamPilot hook policy'});
 
   final String denyReason;

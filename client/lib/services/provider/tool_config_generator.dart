@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:toml/toml.dart';
 import '../../models/app_provider_config.dart';
 import '../../models/llm_config.dart';
-import '../cli/registry/capabilities/provider_model_capability.dart';
+import '../cli/registry/capabilities/provider_capability.dart';
 import '../storage/app_storage.dart';
 import '../io/filesystem.dart';
 

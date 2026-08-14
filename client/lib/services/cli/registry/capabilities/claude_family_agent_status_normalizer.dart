@@ -3,10 +3,9 @@ import '../../../agent_status/agent_status_event.dart';
 import '../../../agent_status/agent_status_tool_input.dart';
 import '../../../agent_status/ask_user_question.dart';
 import '../../../agent_status/exit_plan_mode.dart';
-import 'agent_status_normalizer_capability.dart';
 
 /// Claude-family hook payload grammar — claude, flashskyai, and codex share
-/// the same SSE event shape, so the three CLIs register this shared
+/// the same SSE event shape, so the three CLIs compose this shared
 /// implementation from registry shared infrastructure.
 ///
 /// Rules mirror Orca `normalizeClaudeEvent`:
@@ -15,11 +14,9 @@ import 'agent_status_normalizer_capability.dart';
 ///   UserPromptSubmit → working
 /// - Stop / StopFailure → done
 /// - SubagentStart / SubagentStop → null (do not mark primary done)
-final class ClaudeFamilyAgentStatusNormalizer
-    implements AgentStatusNormalizerCapability {
+final class ClaudeFamilyAgentStatusNormalizer {
   const ClaudeFamilyAgentStatusNormalizer();
 
-  @override
   AgentStatusEvent? normalize(Map<String, Object?> body) {
     final eventName = body['hook_event_name']?.toString();
     if (eventName == null || eventName.isEmpty) return null;

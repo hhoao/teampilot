@@ -4,7 +4,7 @@ import '../../models/runtime_target.dart';
 import '../../models/ssh_profile.dart';
 import '../../models/team_config.dart';
 import '../../services/cli/preset_resolver.dart';
-import '../../services/cli/registry/capabilities/wait_before_stop_capability.dart';
+import '../../services/cli/registry/capabilities/team_behavior_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/team_bus/agent_node.dart';
 import '../../services/team_bus/artifacts/artifact_transfer_service.dart';
@@ -107,7 +107,7 @@ class TabTeamBusCoordinator {
             globalPresets: presets,
           );
           final cliDefault = CliToolRegistry.builtIn()
-              .capability<WaitBeforeStopCapability>(launchCli)
+              .capability<TeamBehaviorCapability>(launchCli)
               ?.defaultForceWaitBeforeStop;
           return m.effectiveForceWaitBeforeStop(
             team,

@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/plugin.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/cli/registry/capabilities/plugin_provisioner_capability.dart';
+import 'package:teampilot/services/cli/registry/capabilities/plugin_capability.dart';
 import 'package:teampilot/services/plugin/plugin_cli_support.dart';
 
 void main() {

@@ -9,7 +9,8 @@ import 'package:teampilot/models/member_instance.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/services/cli/preset_resolver.dart';
-import 'package:teampilot/services/cli/claude/capabilities/config_profile.dart';
+import 'package:teampilot/services/cli/claude/capabilities/provider.dart';
+import 'package:teampilot/services/cli/registry/capabilities/provider_capability.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/provider/credential_binding.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
@@ -17,9 +18,16 @@ import 'package:teampilot/services/session/member_role_provision.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 
 void main() {
+  Future<SessionHomeContribution> contribute(
+    ClaudeProviderCapability capability,
+    ConfigProfileLaunchContext ctx,
+  ) => capability.materializeSessionHome(
+    sessionHomeContextFromLaunch(ctx, CliTool.claude),
+  );
+
   test('mergeApprovedCustomApiKeyMetadata stores last-20 suffix', () {
     final merged =
-        ClaudeConfigProfileCapability.mergeApprovedCustomApiKeyMetadata(
+        ClaudeProviderCapability.mergeApprovedCustomApiKeyMetadata(
           const {},
           'sk-ant-api03-abcdefghijklmnop',
         );
@@ -41,7 +49,7 @@ void main() {
       fs: fs,
       layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
     );
-    const capability = ClaudeConfigProfileCapability();
+    const capability = ClaudeProviderCapability();
     const member = TeamMemberConfig(id: 'm1', name: 'Member', model: 'test');
     const team = TeamProfile(id: 'team-a', name: 'agent', cli: CliTool.claude);
 
@@ -52,7 +60,7 @@ void main() {
       cliTeamName: 'session-1',
     );
 
-    final contribution = await capability.contributeLaunch(
+    final contribution = await contribute(capability,
       ConfigProfileLaunchContext(
         workspaceId: 'workspace-1',
         teamId: 'team-a',
@@ -88,7 +96,7 @@ void main() {
         fs: fs,
         layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
       );
-      const capability = ClaudeConfigProfileCapability();
+      const capability = ClaudeProviderCapability();
       const launched = TeamMemberConfig(
         id: 'm1',
         name: 'Member',
@@ -114,7 +122,7 @@ void main() {
         cliTeamName: 'session-1',
       );
 
-      final contribution = await capability.contributeLaunch(
+      final contribution = await contribute(capability,
         ConfigProfileLaunchContext(
           workspaceId: 'workspace-1',
           teamId: 'team-a',
@@ -167,7 +175,7 @@ void main() {
       fs: fs,
       layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
     );
-    const capability = ClaudeConfigProfileCapability();
+    const capability = ClaudeProviderCapability();
     const member = TeamMemberConfig(id: 'm1', name: 'Member', model: 'test');
     final repository = AppProviderRepository(basePath: base.path);
     await repository.saveProviders(CliTool.claude, [
@@ -202,7 +210,7 @@ void main() {
       memberId: 'm1',
     );
 
-    final contribution = await capability.contributeLaunch(
+    final contribution = await contribute(capability,
       ConfigProfileLaunchContext(
         workspaceId: 'workspace-1',
         teamId: 'team-a',
@@ -261,7 +269,7 @@ void main() {
       'runtime',
       'm1',
       'claude',
-      ClaudeConfigProfileCapability.metadataFileName,
+      ClaudeProviderCapability.metadataFileName,
     );
     final metadata = jsonDecode(await File(metadataPath).readAsString()) as Map;
     final approved =
@@ -282,7 +290,7 @@ void main() {
       fs: fs,
       layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
     );
-    const capability = ClaudeConfigProfileCapability();
+    const capability = ClaudeProviderCapability();
     final repository = AppProviderRepository(basePath: base.path);
     await repository.saveProviders(CliTool.claude, [
       const AppProviderConfig(
@@ -326,7 +334,7 @@ void main() {
       memberId: 'm1',
     );
 
-    await capability.contributeLaunch(
+    await contribute(capability,
       ConfigProfileLaunchContext(
         workspaceId: 'workspace-1',
         teamId: 'team-a',
@@ -380,7 +388,7 @@ void main() {
         home: home,
         layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
       );
-      const capability = ClaudeConfigProfileCapability();
+      const capability = ClaudeProviderCapability();
       final repository = AppProviderRepository(basePath: base.path, fs: fs);
       await repository.saveProviders(CliTool.claude, [
         const AppProviderConfig(
@@ -429,7 +437,7 @@ void main() {
         memberId: 'member',
       );
 
-      final contribution = await capability.contributeLaunch(
+      final contribution = await contribute(capability,
         ConfigProfileLaunchContext(
           workspaceId: 'workspace-1',
           teamId: 'team-a',
@@ -475,7 +483,7 @@ void main() {
         home: home,
         layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
       );
-      const capability = ClaudeConfigProfileCapability();
+      const capability = ClaudeProviderCapability();
       final repository = AppProviderRepository(basePath: base.path, fs: fs);
       await repository.saveProviders(CliTool.claude, [
         const AppProviderConfig(
@@ -522,7 +530,7 @@ void main() {
         cliTeamName: 'session-simple',
       );
 
-      final contribution = await capability.contributeLaunch(
+      final contribution = await contribute(capability,
         ConfigProfileLaunchContext(
           workspaceId: 'workspace-1',
           teamId: '',
@@ -725,7 +733,7 @@ void main() {
         );
         final override = launchMembers.firstWhere((m) => m.id == 'override');
 
-        const capability = ClaudeConfigProfileCapability();
+        const capability = ClaudeProviderCapability();
         const sessionId = 'session-member-preset';
         final scope = resolveLaunchProfileScope(
           workspaceId: 'workspace-1',
@@ -734,7 +742,7 @@ void main() {
           cliTeamName: sessionId,
         );
 
-        await capability.contributeLaunch(
+        await contribute(capability,
           ConfigProfileLaunchContext(
             workspaceId: 'workspace-1',
             teamId: 'team-a',
@@ -786,7 +794,7 @@ void main() {
           }
         });
 
-        const capability = ClaudeConfigProfileCapability();
+        const capability = ClaudeProviderCapability();
         const sessionId = 'session-preset-roster';
         final lead = fixture.launchMembers.firstWhere((m) => m.id == 'team-lead');
         final scope = resolveLaunchProfileScope(
@@ -796,7 +804,7 @@ void main() {
           cliTeamName: sessionId,
         );
 
-        await capability.contributeLaunch(
+        await contribute(capability,
           ConfigProfileLaunchContext(
             workspaceId: 'workspace-1',
             teamId: 'team-a',
@@ -831,7 +839,7 @@ void main() {
           }
         });
 
-        const capability = ClaudeConfigProfileCapability();
+        const capability = ClaudeProviderCapability();
         const sessionId = 'session-preset-seq';
         final dev0 = fixture.launchMembers.firstWhere((m) => m.id == 'developer-0');
         final dev1 = fixture.launchMembers.firstWhere((m) => m.id == 'developer-1');
@@ -842,7 +850,7 @@ void main() {
           cliTeamName: sessionId,
         );
 
-        await capability.contributeLaunch(
+        await contribute(capability,
           ConfigProfileLaunchContext(
             workspaceId: 'workspace-1',
             teamId: 'team-a',
@@ -857,7 +865,7 @@ void main() {
           ),
         );
 
-        await capability.contributeLaunch(
+        await contribute(capability,
           ConfigProfileLaunchContext(
             workspaceId: 'workspace-1',
             teamId: 'team-a',

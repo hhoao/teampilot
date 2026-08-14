@@ -6,8 +6,7 @@ import '../../models/cli_preset.dart';
 import '../../models/team_config.dart';
 import '../../services/cli/preset_resolver.dart';
 import '../../services/cli/flashskyai/agent_catalog_service.dart';
-import '../../services/cli/registry/capabilities/cli_effort_capability.dart';
-import '../../services/cli/registry/capabilities/provider_catalog_capability.dart';
+import '../../services/cli/registry/capabilities/provider_capability.dart';
 import '../../services/cli/registry/cli_display_name.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
@@ -16,7 +15,7 @@ import '../../widgets/cli_launch_config/team_launch_config_kind.dart';
 CliTool? catalogCliForTeam(BuildContext context, CliTool cli) {
   final registry = CliToolRegistryScope.maybeOf(context);
   if (registry == null) return null;
-  return registry.capability<ProviderCatalogCapability>(cli) != null
+  return registry.capability<ProviderCapability>(cli) != null
       ? cli
       : null;
 }
@@ -107,7 +106,7 @@ bool teamShowsEffortPicker(
 }) {
   final registry = CliToolRegistryScope.maybeOf(context);
   if (registry == null) return false;
-  final capability = registry.capability<CliEffortCapability>(cli);
+  final capability = registry.capability<ProviderCapability>(cli);
   if (capability == null) return false;
   final target = switch (placement) {
     EffortPickerPlacement.team => capability.teamPickerPlacement(),

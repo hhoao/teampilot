@@ -1,18 +1,15 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/cli/registry/capabilities/config_profile_capability.dart';
-import 'package:teampilot/services/cli/registry/capabilities/installer_capability.dart';
-import 'package:teampilot/services/cli/registry/capabilities/launch_args_capability.dart';
-import 'package:teampilot/services/cli/registry/capabilities/provider_catalog_capability.dart';
-import 'package:teampilot/services/cli/registry/capabilities/provider_model_capability.dart';
-import 'package:teampilot/services/cli/claude/capabilities/installer.dart';
-import 'package:teampilot/services/cli/codex/capabilities/installer.dart';
-import 'package:teampilot/services/cli/cursor/capabilities/installer.dart';
-import 'package:teampilot/services/cli/opencode/capabilities/installer.dart';
+import 'package:teampilot/services/cli/registry/capabilities/cli_executable_capability.dart';
+import 'package:teampilot/services/cli/registry/capabilities/cli_session_capability.dart';
+import 'package:teampilot/services/cli/registry/capabilities/provider_capability.dart';
+import 'package:teampilot/services/cli/claude/capabilities/executable.dart';
+import 'package:teampilot/services/cli/codex/capabilities/executable.dart';
+import 'package:teampilot/services/cli/cursor/capabilities/executable.dart';
+import 'package:teampilot/services/cli/opencode/capabilities/executable.dart';
 import 'package:teampilot/services/cli/registry/built_in_cli_tools.dart';
-import 'package:teampilot/services/cli/registry/capabilities/member_agent_preset_capability.dart';
-import 'package:teampilot/services/cli/registry/capabilities/native_team_capability.dart';
-import 'package:teampilot/services/cli/registry/capabilities/noop_cli_session_lifecycle_capability.dart';
+import 'package:teampilot/services/cli/registry/capabilities/team_behavior_capability.dart';
+import 'package:teampilot/services/cli/registry/capabilities/noop_cli_session_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_definition.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
@@ -20,6 +17,30 @@ import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 class _EchoCapability implements CliCapability {
   const _EchoCapability(this.value);
   final String value;
+}
+
+class _FakeTeamBehavior implements TeamBehaviorCapability {
+  const _FakeTeamBehavior({this.supportsNativeTeam = false});
+  @override
+  final bool supportsNativeTeam;
+  @override
+  bool get longBlockingWaitForMessage => false;
+  @override
+  bool get supportsLocalStdioBridge => false;
+  @override
+  Set<String> get doneEventNames => const {};
+  @override
+  bool get requiresPtyFallback => false;
+  @override
+  bool get usesDoorbellPush => false;
+  @override
+  bool get defaultForceWaitBeforeStop => false;
+  @override
+  bool get usesClaudeRoster => false;
+  @override
+  bool get usesShellActivity => false;
+  @override
+  MemberAgentPresetStyle? get agentPresetStyle => null;
 }
 
 class _FakeTool implements CliToolDefinition {
@@ -52,14 +73,22 @@ void main() {
     expect(registry.launchable.map((d) => d.id), [CliTool.claude]);
   });
 
-  test('nativeTeamLaunchable requires NativeTeamCapability', () {
+  test('nativeTeamLaunchable requires TeamBehaviorCapability', () {
     final registry = CliToolRegistry();
     registry.register(
-      const _FakeTool(CliTool.claude, true, [NativeTeamSupport()]),
+      const _FakeTool(
+        CliTool.claude,
+        true,
+        [_FakeTeamBehavior(supportsNativeTeam: true)],
+      ),
     );
     registry.register(const _FakeTool(CliTool.codex, true, []));
     registry.register(
-      const _FakeTool(CliTool.flashskyai, true, [NativeTeamSupport()]),
+      const _FakeTool(
+        CliTool.flashskyai,
+        true,
+        [_FakeTeamBehavior(supportsNativeTeam: true)],
+      ),
     );
     expect(registry.nativeTeamLaunchable.map((d) => d.id), [
       CliTool.claude,
@@ -75,7 +104,8 @@ void main() {
     expect(registry.supportsMemberAgentPreset(CliTool.codex), isFalse);
     expect(
       registry
-          .withCapability<MemberAgentPresetCapability>()
+          .all
+          .where((d) => registry.memberAgentPresetStyle(d.id) != null)
           .map((d) => d.id)
           .toSet(),
       {CliTool.claude, CliTool.flashskyai},
@@ -113,57 +143,60 @@ void main() {
     }
   });
 
-  test('built-in launchable tools have LaunchArgsCapability', () {
+  test('built-in launchable tools have CliSessionCapability', () {
     final registry = CliToolRegistry.builtIn();
     for (final def in registry.launchable) {
-      expect(registry.capability<LaunchArgsCapability>(def.id), isNotNull);
+      expect(registry.capability<CliSessionCapability>(def.id), isNotNull);
     }
   });
 
-  test('claude built-in has InstallerCapability with install support', () {
+  test('claude built-in has CliExecutableCapability with install support', () {
     final registry = CliToolRegistry.builtIn();
-    final installer = registry.capability<InstallerCapability>(CliTool.claude);
-    expect(installer, isA<ClaudeInstallerCapability>());
-    expect(installer!.supportsInstaller, isTrue);
+    final executable = registry.capability<CliExecutableCapability>(
+      CliTool.claude,
+    );
+    expect(executable, isA<ClaudeExecutableCapability>());
+    expect(executable!.supportsInstaller, isTrue);
   });
 
-  test('codex built-in has npm InstallerCapability with install support', () {
+  test('codex built-in has npm executable with install support', () {
     final registry = CliToolRegistry.builtIn();
-    final installer = registry.capability<InstallerCapability>(CliTool.codex);
-    expect(installer, isA<CodexInstallerCapability>());
-    expect(installer!.supportsInstaller, isTrue);
+    final executable = registry.capability<CliExecutableCapability>(
+      CliTool.codex,
+    );
+    expect(executable, isA<CodexExecutableCapability>());
+    expect(executable!.supportsInstaller, isTrue);
   });
 
-  test(
-    'opencode built-in has npm InstallerCapability with install support',
-    () {
-      final registry = CliToolRegistry.builtIn();
-      final installer = registry.capability<InstallerCapability>(
-        CliTool.opencode,
-      );
-      expect(installer, isA<OpencodeInstallerCapability>());
-      expect(installer!.supportsInstaller, isTrue);
-    },
-  );
-
-  test('cursor built-in has curl InstallerCapability with install support', () {
+  test('opencode built-in has npm executable with install support', () {
     final registry = CliToolRegistry.builtIn();
-    final installer = registry.capability<InstallerCapability>(CliTool.cursor);
-    expect(installer, isA<CursorInstallerCapability>());
-    expect(installer!.supportsInstaller, isTrue);
+    final executable = registry.capability<CliExecutableCapability>(
+      CliTool.opencode,
+    );
+    expect(executable, isA<OpencodeExecutableCapability>());
+    expect(executable!.supportsInstaller, isTrue);
   });
 
-  test('built-in launchable tools have ConfigProfileCapability', () {
+  test('cursor built-in has curl executable with install support', () {
+    final registry = CliToolRegistry.builtIn();
+    final executable = registry.capability<CliExecutableCapability>(
+      CliTool.cursor,
+    );
+    expect(executable, isA<CursorExecutableCapability>());
+    expect(executable!.supportsInstaller, isTrue);
+  });
+
+  test('built-in launchable tools have CliSessionCapability', () {
     final registry = CliToolRegistry.builtIn();
     for (final def in registry.launchable) {
-      expect(registry.capability<ConfigProfileCapability>(def.id), isNotNull);
+      expect(registry.capability<CliSessionCapability>(def.id), isNotNull);
     }
   });
 
   test('opencode has a ProviderCatalogCapability', () {
     final registry = CliToolRegistry.builtIn();
     expect(
-      registry.capability<ProviderCatalogCapability>(CliTool.opencode),
+      registry.capability<ProviderCapability>(CliTool.opencode),
       isNotNull,
     );
   });
@@ -171,20 +204,21 @@ void main() {
   test('built-in launchable tools have ProviderModelCapability', () {
     final registry = CliToolRegistry.builtIn();
     for (final def in registry.launchable) {
-      expect(registry.capability<ProviderModelCapability>(def.id), isNotNull);
+      expect(registry.capability<ProviderCapability>(def.id), isNotNull);
     }
   });
 
-  test('lifecycleFor returns no-op when tool has no lifecycle capability', () {
-    final registry = CliToolRegistry.builtIn();
+  test('lifecycleFor returns no-op when tool registers no session capability', () {
+    final registry = CliToolRegistry();
+    registry.register(const _FakeTool(CliTool.codex, true, []));
     expect(
-      registry.lifecycleFor(CliTool.claude),
-      isA<NoopCliSessionLifecycleCapability>(),
+      registry.lifecycleFor(CliTool.codex),
+      isA<NoopCliSessionCapability>(),
     );
   });
 
-  test('lifecycleFor returns registered lifecycle capability', () {
-    const lifecycle = NoopCliSessionLifecycleCapability();
+  test('lifecycleFor returns registered session capability', () {
+    const lifecycle = NoopCliSessionCapability();
     final registry = CliToolRegistry();
     registry.register(
       const _FakeTool(CliTool.codex, true, [lifecycle]),

@@ -4,7 +4,7 @@ import '../../models/plugin.dart';
 import '../../utils/lock_pool.dart';
 import '../../utils/logging/logger.dart';
 import '../cli/registry/capabilities/plugin_manifest_paths.dart';
-import '../cli/registry/capabilities/plugin_provisioner_capability.dart';
+import '../cli/registry/capabilities/plugin_capability.dart';
 import '../io/filesystem.dart';
 import '../storage/app_storage.dart';
 import 'cli_plugin_layout.dart';

@@ -7,7 +7,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/session_preferences.dart';
 import '../../models/team_config.dart';
 import '../../services/app/connection_mode_service.dart';
-import '../../services/cli/registry/capabilities/cli_config_ui_capability.dart';
+import '../../services/cli/registry/capabilities/cli_executable_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../utils/ui/app_keys.dart';
 import 'cli_executable_path_settings_row.dart';
@@ -141,7 +141,7 @@ Widget _buildCliRow(
 ) {
   final registry = CliToolRegistry.builtIn();
   final spec =
-      registry.capability<CliConfigUiCapability>(cli)?.executablePathRowSpec;
+      registry.capability<CliExecutableCapability>(cli)?.executablePathRowSpec;
   if (spec == null) return const SizedBox.shrink();
 
   final label = l10n.appProviderToolLabel(cli);

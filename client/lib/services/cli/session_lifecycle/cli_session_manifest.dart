@@ -1,5 +1,5 @@
 import '../cursor/provider/cursor_workspace_warm_tier.dart';
-import '../registry/capabilities/cli_session_lifecycle_capability.dart';
+import '../registry/capabilities/cli_session_capability.dart';
 
 /// Workspace-level shared warm-tier paths (relative to workspace root).
 class CliSessionManifestShared {

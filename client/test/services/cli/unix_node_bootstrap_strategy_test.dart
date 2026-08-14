@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/services/cli/installer_types.dart';
-import 'package:teampilot/services/cli/claude/capabilities/installer.dart';
-import 'package:teampilot/services/cli/cursor/capabilities/installer.dart';
+import 'package:teampilot/services/cli/claude/capabilities/executable.dart';
+import 'package:teampilot/services/cli/cursor/capabilities/executable.dart';
 import 'package:teampilot/services/cli/registry/installer/installer_context.dart';
 import 'package:teampilot/services/cli/registry/installer/termux_remote_detect.dart';
 import 'package:teampilot/services/cli/registry/installer/unix_node_bootstrap_strategy.dart';
@@ -45,10 +45,10 @@ void main() {
     });
   });
 
-  group('CursorInstallerCapability Termux', () {
+  group('CursorExecutableCapability Termux', () {
     test('skips curl install on Termux when binary missing', () async {
       final host = _FakeHost(termux: true, locatePath: null);
-      final result = await const CursorInstallerCapability().install(
+      final result = await const CursorExecutableCapability().install(
         CliInstallContext(
           mode: CliInstallMode.ssh,
           host: host,
@@ -65,7 +65,7 @@ void main() {
         ),
       );
       expect(result.success, isFalse);
-      expect(result.message, CursorInstallerCapability.termuxUnsupportedMessage);
+      expect(result.message, CursorExecutableCapability.termuxUnsupportedMessage);
       expect(host.ranCurlInstall, isFalse);
     });
 
@@ -74,7 +74,7 @@ void main() {
         termux: true,
         locatePath: '/data/data/com.termux/files/usr/bin/cursor-agent',
       );
-      final result = await const CursorInstallerCapability().install(
+      final result = await const CursorExecutableCapability().install(
         CliInstallContext(
           mode: CliInstallMode.ssh,
           host: host,
@@ -95,10 +95,10 @@ void main() {
       expect(host.ranCurlInstall, isFalse);
     });
   });
-  group('ClaudeInstallerCapability Termux', () {
+  group('ClaudeExecutableCapability Termux', () {
     test('pinned install script targets 2.1.112 and disables auto-updater', () {
-      final script = ClaudeInstallerCapability.termuxPinnedInstallScript();
-      expect(script, contains(ClaudeInstallerCapability.termuxPinnedPackage));
+      final script = ClaudeExecutableCapability.termuxPinnedInstallScript();
+      expect(script, contains(ClaudeExecutableCapability.termuxPinnedPackage));
       expect(script, contains('DISABLE_AUTOUPDATER=1'));
       expect(script, contains('npm uninstall'));
       expect(script, isNot(contains('@anthropic-ai/claude-code@latest')));
@@ -106,7 +106,7 @@ void main() {
 
     test('uses Termux pin path instead of @latest on Termux', () async {
       final host = _ClaudeFakeHost();
-      final result = await const ClaudeInstallerCapability().install(
+      final result = await const ClaudeExecutableCapability().install(
         CliInstallContext(
           mode: CliInstallMode.ssh,
           host: host,
