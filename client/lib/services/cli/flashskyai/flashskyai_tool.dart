@@ -14,9 +14,7 @@ import '../registry/capabilities/cli_effort_capability.dart';
 import '../registry/capabilities/headless_capability.dart';
 import '../registry/capabilities/launch_args_capability.dart';
 import '../registry/capabilities/provider_model_capability.dart';
-import '../registry/capabilities/session_resume_capability.dart';
 import 'capabilities/history/ai_history_capability.dart';
-import 'capabilities/resume_strategy.dart';
 import 'capabilities/config_profile.dart';
 import 'capabilities/prompt_provision.dart';
 import '../registry/capabilities/prompt_provision_capability.dart';
@@ -31,14 +29,11 @@ import 'capabilities/provider_display.dart';
 import '../registry/capabilities/provider_display_capability.dart';
 import '../registry/capabilities/cli_executable_capability.dart';
 import 'capabilities/marketplace_consumer.dart';
-import 'capabilities/history_context_env.dart';
 import 'capabilities/remote_app_data.dart';
 import 'capabilities/credential_export.dart';
 import '../registry/capabilities/marketplace_consumer_capability.dart';
 import '../registry/capabilities/remote_app_data_capability.dart';
 import '../registry/capabilities/credential_export_capability.dart';
-import '../registry/capabilities/history_context_env_capability.dart';
-import 'capabilities/tool_call_resolvers.dart';
 import '../claude/capabilities/mcp_config_writer.dart';
 import 'capabilities/plugin_provisioner.dart';
 import 'capabilities/executable.dart';
@@ -51,7 +46,6 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     this.teamBehavior = const FlashskyaiTeamBehavior(),
     this.launchArgs = const FlashskyaiCliToolAdapter(),
     this.configProfile = const FlashskyaiConfigProfileCapability(),
-    this.sessionResume = const FlashskyaiResumeStrategy(),
     this.executable = const FlashskyaiExecutableCapability(),
     this.terminalBehavior = const FlashskyaiTerminalBehavior(),
     this.memberConfigInspection = const DefaultMemberConfigInspection(),
@@ -68,17 +62,14 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     this.skillSyntax = const DefaultSkillInvocationSyntaxCapability(),
     this.providerDisplay = const FlashskyaiProviderDisplay(),
     this.marketplaceConsumer = const MarketplaceConsumer(),
-    this.historyContextEnv = const NoHistoryContextEnv(),
     this.remoteAppData = const NoRemoteAppData(),
     this.credentialExport = const NoCredentialExport(),
-    this.toolCallResolvers = const FlashskyaiToolCallResolvers(),
     this.hookWriter = const ClaudeFamilyHookWriter(),
     this.promptProvision = const FlashskyaiPromptProvisionCapability(),
   });
 
   final LaunchArgsCapability launchArgs;
   final ConfigProfileCapability configProfile;
-  final SessionResumeCapability sessionResume;
   final CliExecutableCapability executable;
   final FlashskyaiTerminalBehavior terminalBehavior;
   final MemberConfigInspectionCapability memberConfigInspection;
@@ -94,10 +85,8 @@ final class FlashskyaiCliTool implements CliToolDefinition {
   final TeamBehaviorCapability teamBehavior;
   final ProviderDisplayCapability providerDisplay;
   final MarketplaceConsumerCapability marketplaceConsumer;
-  final HistoryContextEnvCapability historyContextEnv;
   final RemoteAppDataCapability remoteAppData;
   final CredentialExportCapability credentialExport;
-  final FlashskyaiToolCallResolvers toolCallResolvers;
   final HookWriterCapability hookWriter;
   final PromptProvisionCapability promptProvision;
   final ChatInteractionCapability chatInteraction;
@@ -116,7 +105,6 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     executable,
     launchArgs,
     configProfile,
-    sessionResume,
     terminalBehavior,
     memberConfigInspection,
     pluginProvisioner,
@@ -129,13 +117,11 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     mcpConfigWriter,
     providerDisplay,
     marketplaceConsumer,
-    historyContextEnv,
     remoteAppData,
     credentialExport,
     chatInteraction,
     aiHistory,
     skillSyntax,
-    toolCallResolvers,
     hookWriter,
     promptProvision,
   ];

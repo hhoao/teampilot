@@ -1,10 +1,8 @@
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/cli/claude/capabilities/history/ai_history_capability.dart';
-import 'package:teampilot/services/cli/claude/capabilities/tool_call_resolvers.dart';
-import 'package:teampilot/services/cli/codex/capabilities/tool_call_resolvers.dart';
+import 'package:teampilot/services/cli/codex/capabilities/history/ai_history_capability.dart';
 import 'package:teampilot/services/cli/flashskyai/capabilities/history/ai_history_capability.dart';
-import 'package:teampilot/services/cli/flashskyai/capabilities/tool_call_resolvers.dart';
 
 AiToolCallPart part(String name, {String? argsText, Map<String, Object?>? args}) {
   return AiToolCallPart(
@@ -16,9 +14,9 @@ AiToolCallPart part(String name, {String? argsText, Map<String, Object?>? args})
 }
 
 void main() {
-  const claude = ClaudeToolCallResolvers();
-  const codex = CodexToolCallResolvers();
-  const flashskyai = FlashskyaiToolCallResolvers();
+  const claude = ClaudeAiHistoryCapability();
+  const codex = CodexAiHistoryCapability();
+  const flashskyai = FlashskyaiAiHistoryCapability();
 
   group('claude', () {
     // spl@93c9991: Edit{file_path,old_string,new_string,replace_all}

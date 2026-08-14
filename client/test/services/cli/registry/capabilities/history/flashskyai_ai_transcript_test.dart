@@ -4,8 +4,8 @@ import 'dart:io';
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
+import 'package:teampilot/services/cli/flashskyai/capabilities/history/ai_history_capability.dart';
 import 'package:teampilot/services/cli/flashskyai/capabilities/history/ai_transcript.dart';
-import 'package:teampilot/services/cli/flashskyai/capabilities/tool_call_resolvers.dart';
 import 'package:teampilot/services/session/session_history_context.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 
@@ -223,7 +223,7 @@ not-json
           .toList();
       expect(tools.map((t) => t.toolName), ['Edit', 'Edit']);
 
-      const flashskyai = FlashskyaiToolCallResolvers();
+      const flashskyai = FlashskyaiAiHistoryCapability();
       for (final tool in tools) {
         final target = flashskyai.editResolver.resolve(tool);
         expect(target, isNotNull,

@@ -17,9 +17,7 @@ import '../registry/capabilities/headless_capability.dart';
 import '../registry/capabilities/provider_catalog_capability.dart';
 import '../registry/capabilities/provider_credential_capability.dart';
 import '../registry/capabilities/provider_model_capability.dart';
-import '../registry/capabilities/session_resume_capability.dart';
 import 'capabilities/history/ai_history_capability.dart';
-import 'capabilities/resume_strategy.dart';
 import 'capabilities/config_profile.dart';
 import 'capabilities/headless.dart';
 import 'provider/opencode_effort_capability.dart';
@@ -33,15 +31,12 @@ import 'capabilities/provider_display.dart';
 import '../registry/capabilities/provider_display_capability.dart';
 import '../registry/capabilities/cli_executable_capability.dart';
 import 'capabilities/marketplace_consumer.dart';
-import 'capabilities/history_context_env.dart';
 import 'capabilities/remote_app_data.dart';
 import 'capabilities/credential_export.dart';
 import '../registry/capabilities/marketplace_consumer_capability.dart';
 import '../registry/capabilities/remote_app_data_capability.dart';
 import '../registry/capabilities/credential_export_capability.dart';
-import '../registry/capabilities/history_context_env_capability.dart';
 import '../registry/capabilities/hook_writer_capability.dart';
-import 'capabilities/tool_call_resolvers.dart';
 import 'capabilities/mcp_config_writer.dart';
 import 'capabilities/plugin_provisioner.dart';
 import 'capabilities/prompt_provision.dart';
@@ -55,7 +50,6 @@ final class OpencodeCliTool implements CliToolDefinition {
     this.teamBehavior = const OpencodeTeamBehavior(),
     this.launchArgs = const OpencodeCliToolAdapter(),
     this.configProfile = const OpencodeConfigProfileCapability(),
-    this.sessionResume = const OpencodeResumeStrategy(),
     this.executable = const OpencodeExecutableCapability(),
     this.terminalBehavior = const OpencodeTerminalBehavior(),
     this.memberConfigInspection = const DefaultMemberConfigInspection(),
@@ -73,10 +67,8 @@ final class OpencodeCliTool implements CliToolDefinition {
     this.promptProvision = const OpencodePromptProvisionCapability(),
     this.providerDisplay = const OpencodeProviderDisplay(),
     this.marketplaceConsumer = const NoMarketplaceConsumer(),
-    this.historyContextEnv = const OpencodeHistoryContextEnv(),
     this.remoteAppData = const OpencodeRemoteAppData(),
     this.credentialExport = const OpencodeCredentialExport(),
-    this.toolCallResolvers = const OpencodeToolCallResolvers(),
     this.hookWriter = const OpencodeHookWriter(),
     ProviderCredentialCapability? providerCredential,
   }) : providerModel = providerModel ?? OpencodeProviderModelCapability(),
@@ -88,7 +80,6 @@ final class OpencodeCliTool implements CliToolDefinition {
 
   final LaunchArgsCapability launchArgs;
   final ConfigProfileCapability configProfile;
-  final SessionResumeCapability sessionResume;
   final CliExecutableCapability executable;
   final OpencodeTerminalBehavior terminalBehavior;
   final MemberConfigInspectionCapability memberConfigInspection;
@@ -103,10 +94,8 @@ final class OpencodeCliTool implements CliToolDefinition {
   final TeamBehaviorCapability teamBehavior;
   final ProviderDisplayCapability providerDisplay;
   final MarketplaceConsumerCapability marketplaceConsumer;
-  final HistoryContextEnvCapability historyContextEnv;
   final RemoteAppDataCapability remoteAppData;
   final CredentialExportCapability credentialExport;
-  final OpencodeToolCallResolvers toolCallResolvers;
   final HookWriterCapability hookWriter;
   final ChatInteractionCapability chatInteraction;
   final OpencodeAiHistoryCapability aiHistory;
@@ -125,7 +114,6 @@ final class OpencodeCliTool implements CliToolDefinition {
     executable,
     launchArgs,
     configProfile,
-    sessionResume,
     terminalBehavior,
     memberConfigInspection,
     pluginProvisioner,
@@ -139,14 +127,12 @@ final class OpencodeCliTool implements CliToolDefinition {
     mcpConfigWriter,
     providerDisplay,
     marketplaceConsumer,
-    historyContextEnv,
     remoteAppData,
     credentialExport,
     chatInteraction,
     aiHistory,
     skillSyntax,
     promptProvision,
-    toolCallResolvers,
     hookWriter,
   ];
 }

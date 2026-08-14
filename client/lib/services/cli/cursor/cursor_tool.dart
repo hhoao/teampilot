@@ -19,10 +19,7 @@ import 'provider/cursor_provider_credential_capability.dart';
 import 'provider/cursor_provider_model_capability.dart';
 import '../registry/capabilities/headless_capability.dart';
 import '../registry/capabilities/provider_credential_capability.dart';
-import '../registry/capabilities/session_resume_capability.dart';
 import 'capabilities/history/ai_history_capability.dart';
-import 'capabilities/history/side_resolver.dart';
-import 'capabilities/resume_strategy.dart';
 import 'capabilities/config_profile.dart';
 import 'capabilities/session_lifecycle.dart';
 import '../registry/capabilities/cli_session_lifecycle_capability.dart';
@@ -37,14 +34,11 @@ import 'capabilities/provider_display.dart';
 import '../registry/capabilities/provider_display_capability.dart';
 import '../registry/capabilities/cli_executable_capability.dart';
 import 'capabilities/marketplace_consumer.dart';
-import 'capabilities/history_context_env.dart';
 import 'capabilities/remote_app_data.dart';
 import 'capabilities/credential_export.dart';
 import '../registry/capabilities/marketplace_consumer_capability.dart';
 import '../registry/capabilities/remote_app_data_capability.dart';
 import '../registry/capabilities/credential_export_capability.dart';
-import '../registry/capabilities/history_context_env_capability.dart';
-import 'capabilities/tool_call_resolvers.dart';
 import 'capabilities/mcp_config_writer.dart';
 import 'capabilities/plugin_provisioner.dart';
 import 'capabilities/post_manifest_flush.dart';
@@ -61,7 +55,6 @@ final class CursorCliTool implements CliToolDefinition {
     this.launchArgs = const CursorCliToolAdapter(),
     this.configProfile = const CursorConfigProfileCapability(),
     this.sessionLifecycle = const CursorSessionLifecycleCapability(),
-    this.sessionResume = const CursorResumeStrategy(),
     this.executable = const CursorExecutableCapability(),
     this.terminalBehavior = const CursorTerminalBehavior(),
     this.memberConfigInspection = const DefaultMemberConfigInspection(),
@@ -74,24 +67,17 @@ final class CursorCliTool implements CliToolDefinition {
     this.configLayout = const CursorCliConfigLayout(),
     this.mcpConfigWriter = const CursorMcpConfigWriter(),
     this.chatInteraction = const CursorChatInteraction(),
-    CursorAiHistoryCapability? aiHistory,
+    this.aiHistory = const CursorAiHistoryCapability(),
     this.skillSyntax = const DefaultSkillInvocationSyntaxCapability(),
     this.postManifestFlush = const CursorPostManifestFlushCapability(),
     this.providerDisplay = const CursorProviderDisplay(),
     this.marketplaceConsumer = const MarketplaceConsumer(),
-    this.historyContextEnv = const CursorHistoryContextEnv(),
     this.remoteAppData = const NoRemoteAppData(),
     this.credentialExport = const CursorCredentialExport(),
-    this.toolCallResolvers = const CursorToolCallResolvers(),
     this.hookWriter = const CursorHookWriter(),
     this.promptProvision = const CursorPromptProvisionCapability(),
     ProviderCredentialCapability? providerCredential,
-  }) : aiHistory = aiHistory ??
-           CursorAiHistoryCapability(
-             shellResolver: toolCallResolvers.shellResolver,
-             subagentSideResolver: const CursorSideResolver(),
-           ),
-       providerModel = providerModel ?? CursorProviderModelCapability(),
+  }) : providerModel = providerModel ?? CursorProviderModelCapability(),
        providerCredential =
            providerCredential ?? CursorProviderCredentialCapability();
 
@@ -101,7 +87,6 @@ final class CursorCliTool implements CliToolDefinition {
   final LaunchArgsCapability launchArgs;
   final ConfigProfileCapability configProfile;
   final CliSessionLifecycleCapability sessionLifecycle;
-  final SessionResumeCapability sessionResume;
   final CliExecutableCapability executable;
   final CursorTerminalBehavior terminalBehavior;
   final MemberConfigInspectionCapability memberConfigInspection;
@@ -116,10 +101,8 @@ final class CursorCliTool implements CliToolDefinition {
   final TeamBehaviorCapability teamBehavior;
   final ProviderDisplayCapability providerDisplay;
   final MarketplaceConsumerCapability marketplaceConsumer;
-  final HistoryContextEnvCapability historyContextEnv;
   final RemoteAppDataCapability remoteAppData;
   final CredentialExportCapability credentialExport;
-  final CursorToolCallResolvers toolCallResolvers;
   final HookWriterCapability hookWriter;
   final ChatInteractionCapability chatInteraction;
   final CursorAiHistoryCapability aiHistory;
@@ -140,7 +123,6 @@ final class CursorCliTool implements CliToolDefinition {
     launchArgs,
     configProfile,
     sessionLifecycle,
-    sessionResume,
     terminalBehavior,
     memberConfigInspection,
     pluginProvisioner,
@@ -154,7 +136,6 @@ final class CursorCliTool implements CliToolDefinition {
     mcpConfigWriter,
     providerDisplay,
     marketplaceConsumer,
-    historyContextEnv,
     remoteAppData,
     credentialExport,
     chatInteraction,
@@ -162,7 +143,6 @@ final class CursorCliTool implements CliToolDefinition {
     skillSyntax,
     postManifestFlush,
     promptProvision,
-    toolCallResolvers,
     hookWriter,
   ];
 }

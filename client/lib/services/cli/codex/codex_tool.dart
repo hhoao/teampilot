@@ -17,9 +17,7 @@ import '../registry/capabilities/cli_effort_capability.dart';
 import '../registry/capabilities/headless_capability.dart';
 import '../registry/capabilities/provider_credential_capability.dart';
 import '../registry/capabilities/provider_model_capability.dart';
-import '../registry/capabilities/session_resume_capability.dart';
 import 'capabilities/history/ai_history_capability.dart';
-import 'capabilities/resume_strategy.dart';
 import 'capabilities/config_profile.dart';
 import 'capabilities/headless.dart';
 import 'provider/codex_effort_capability.dart';
@@ -32,14 +30,11 @@ import 'capabilities/provider_display.dart';
 import '../registry/capabilities/provider_display_capability.dart';
 import '../registry/capabilities/cli_executable_capability.dart';
 import 'capabilities/marketplace_consumer.dart';
-import 'capabilities/history_context_env.dart';
 import 'capabilities/remote_app_data.dart';
 import 'capabilities/credential_export.dart';
 import '../registry/capabilities/marketplace_consumer_capability.dart';
 import '../registry/capabilities/remote_app_data_capability.dart';
 import '../registry/capabilities/credential_export_capability.dart';
-import '../registry/capabilities/history_context_env_capability.dart';
-import 'capabilities/tool_call_resolvers.dart';
 import 'capabilities/mcp_config_writer.dart';
 import 'capabilities/plugin_provisioner.dart';
 import 'provider/codex_hook_writer.dart';
@@ -54,7 +49,6 @@ final class CodexCliTool implements CliToolDefinition {
     this.teamBehavior = const CodexTeamBehavior(),
     this.launchArgs = const CodexCliToolAdapter(),
     this.configProfile = const CodexConfigProfileCapability(),
-    this.sessionResume = const CodexResumeStrategy(),
     this.executable = const CodexExecutableCapability(),
     this.terminalBehavior = const CodexTerminalBehavior(),
     this.memberConfigInspection = const DefaultMemberConfigInspection(),
@@ -72,10 +66,8 @@ final class CodexCliTool implements CliToolDefinition {
     this.promptProvision = const CodexPromptProvisionCapability(),
     this.providerDisplay = const CodexProviderDisplay(),
     this.marketplaceConsumer = const NoMarketplaceConsumer(),
-    this.historyContextEnv = const CodexHistoryContextEnv(),
     this.remoteAppData = const NoRemoteAppData(),
     this.credentialExport = const CodexCredentialExport(),
-    this.toolCallResolvers = const CodexToolCallResolvers(),
     this.hookWriter = const CodexHookWriter(),
     ProviderCredentialCapability? providerCredential,
   }) : providerCredential =
@@ -86,7 +78,6 @@ final class CodexCliTool implements CliToolDefinition {
 
   final LaunchArgsCapability launchArgs;
   final ConfigProfileCapability configProfile;
-  final SessionResumeCapability sessionResume;
   final CliExecutableCapability executable;
   final CodexTerminalBehavior terminalBehavior;
   final MemberConfigInspectionCapability memberConfigInspection;
@@ -101,10 +92,8 @@ final class CodexCliTool implements CliToolDefinition {
   final TeamBehaviorCapability teamBehavior;
   final ProviderDisplayCapability providerDisplay;
   final MarketplaceConsumerCapability marketplaceConsumer;
-  final HistoryContextEnvCapability historyContextEnv;
   final RemoteAppDataCapability remoteAppData;
   final CredentialExportCapability credentialExport;
-  final CodexToolCallResolvers toolCallResolvers;
   final ChatInteractionCapability chatInteraction;
   final CodexAiHistoryCapability aiHistory;
   final SkillInvocationSyntaxCapability skillSyntax;
@@ -123,7 +112,6 @@ final class CodexCliTool implements CliToolDefinition {
     executable,
     launchArgs,
     configProfile,
-    sessionResume,
     terminalBehavior,
     memberConfigInspection,
     pluginProvisioner,
@@ -137,14 +125,12 @@ final class CodexCliTool implements CliToolDefinition {
     mcpConfigWriter,
     providerDisplay,
     marketplaceConsumer,
-    historyContextEnv,
     remoteAppData,
     credentialExport,
     chatInteraction,
     aiHistory,
     skillSyntax,
     promptProvision,
-    toolCallResolvers,
     hookWriter,
   ];
 }

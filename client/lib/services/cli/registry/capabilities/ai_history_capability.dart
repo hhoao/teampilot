@@ -1,5 +1,6 @@
 import 'package:ai_message_core/ai_message_core.dart';
 
+import '../../../io/filesystem.dart';
 import '../../../session/session_history_context.dart';
 import '../cli_capability.dart';
 import 'history/subagent_side_resolver.dart';
@@ -54,11 +55,64 @@ abstract interface class AiTranscriptIncrementalRefresher {
   });
 }
 
-/// 持有数据库行级增量刷新器的能力标记,与 [AiHistoryCapability] 一起实现。
-/// 独立接口而非 AiHistoryCapability 成员:不强制其它 CLI(JSONL 存储)
-/// 实现。
-abstract interface class AiTranscriptIncrementalCapability {
-  AiTranscriptIncrementalRefresher get incrementalRefresher;
+/// How a CLI's native session id is bound to our session. See
+/// `docs/session-resume-architecture.md`.
+enum ResumeBinding {
+  /// We choose the id and pin it at creation (`--session-id`); native id ==
+  /// our taskId. claude (`projects/`), flashskyai (`workspaces/`).
+  clientPinned,
+
+  /// The CLI mints the id and stores it in its per-session-isolated store; we
+  /// capture it on reopen. codex, opencode, cursor.
+  postCaptured,
+}
+
+/// Everything a resume strategy needs to detect a native session id,
+/// independent of team-vs-personal mode.
+class ResumeContext {
+  const ResumeContext({
+    required this.fs,
+    required this.toolValue,
+    required this.taskId,
+    required this.env,
+    required this.transcriptRoots,
+    required this.bucket,
+    this.persistedNativeId,
+    this.workspaceId,
+    this.sessionId,
+    this.memberId,
+    this.teamId,
+    this.manifestDataRoot,
+  });
+
+  final Filesystem fs;
+  final String toolValue;
+
+  /// Our session/member UUID — the id pinned for `clientPinned` CLIs.
+  final String taskId;
+
+  /// Resolved launch environment (holds `CODEX_HOME` / `OPENCODE_DB` /
+  /// `CURSOR_CONFIG_DIR`, used to locate the per-session native store).
+  final Map<String, String> env;
+
+  /// claude-style transcript search roots (for `clientPinned` probing).
+  /// Claude stores under `projects/`; flashskyai under `workspaces/`.
+  final List<String> transcriptRoots;
+
+  /// Workspace bucket derived from the working dir (claude transcript layout).
+  final String bucket;
+
+  /// The native id already recorded on the session-member binding, if any.
+  final String? persistedNativeId;
+
+  /// Optional session scope for lifecycle manifest resume (`chatId`).
+  final String? workspaceId;
+  final String? sessionId;
+  final String? memberId;
+  final String? teamId;
+
+  /// Teampilot data root for [manifestDataRoot]-relative manifest paths.
+  final String? manifestDataRoot;
 }
 
 abstract interface class AiHistoryCapability implements CliCapability {
@@ -85,4 +139,28 @@ abstract interface class AiHistoryCapability implements CliCapability {
   /// SQLite store) return their own fingerprint so unchanged data skips the
   /// full locate + parse + subagent inflate on every live refresh.
   Future<String?> liveCacheToken(SessionHistoryContext ctx) async => null;
+
+  /// 数据库行级增量刷新器(非 JSONL 存储,如 opencode SQLite)。默认 null:
+  /// JSONL 存储的 CLI 不必覆盖,loader 走 tail 增量路径。
+  AiTranscriptIncrementalRefresher? get incrementalRefresher => null;
+
+  /// Environment variables that must be set when building session history context.
+  ///
+  /// Each CLI derives the env it needs from the on-disk session CONFIG_DIR
+  /// (resolved by the caller via [CliConfigLayoutCapability]) — the caller never
+  /// special-cases a CLI identity.
+  Map<String, String> sessionEnv({String? toolRoot});
+
+  /// Whether/how this CLI pins its native session id.
+  ResumeBinding get binding;
+
+  /// Resolve the native id of an existing resumable session, or `null` when
+  /// none exists yet. `clientPinned` probes the transcript file by our id;
+  /// `postCaptured` scans the CLI's per-session-isolated store.
+  Future<String?> detectNativeId(ResumeContext ctx);
+
+  AiEditToolTargetResolver get editResolver;
+  AiToolFileTargetResolver get fileResolver;
+  AiShellToolTargetResolver get shellResolver;
+  AiToolCallCategoryResolver get categoryResolver;
 }

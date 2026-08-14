@@ -18,7 +18,6 @@ import 'capabilities/provider_display_capability.dart';
 import 'capabilities/cli_executable_capability.dart';
 import 'capabilities/marketplace_consumer_capability.dart';
 import 'capabilities/chat_interaction_capability.dart';
-import 'capabilities/history_context_env_capability.dart';
 import 'capabilities/credential_export_capability.dart';
 import 'capabilities/remote_app_data_capability.dart';
 import 'capabilities/terminal_behavior_capability.dart';
@@ -110,7 +109,6 @@ void registerBuiltInCliTools(
   _verifyRequired<TerminalBehaviorCapability>(registry);
   _verifyRequired<MarketplaceConsumerCapability>(registry);
   _verifyRequired<ChatInteractionCapability>(registry);
-  _verifyRequired<HistoryContextEnvCapability>(registry);
   _verifyRequired<CredentialExportCapability>(registry);
   _verifyRequired<RemoteAppDataCapability>(registry);
   _verifyNativeTeamRegistration(registry);

@@ -23,8 +23,8 @@ import '../agent_status/member_agent_status_endpoint.dart';
 import '../storage/app_storage.dart';
 import '../storage/runtime_layout.dart';
 import '../storage/work_target_canonicalizer.dart';
+import '../cli/registry/capabilities/ai_history_capability.dart';
 import '../cli/registry/capabilities/resume/pinned_transcript_probe.dart';
-import '../cli/registry/capabilities/session_resume_capability.dart';
 import '../cli/preset_resolver.dart';
 import '../cli/cli_tool_adapter.dart';
 import '../cli/registry/cli_tool_registry.dart';
@@ -1471,7 +1471,7 @@ class SessionLifecycleService {
     );
   }
 
-  /// Resolves the native session id for [cli] via its [SessionResumeCapability]
+  /// Resolves the native session id for [cli] via its [AiHistoryCapability]
   /// (probe / scan / persisted / out-of-band allocate), then derives the
   /// create-vs-resume ids for the launch plan. See
   /// docs/session-resume-architecture.md.
@@ -1491,7 +1491,7 @@ class SessionLifecycleService {
   }) async {
     final cap = cli == null
         ? null
-        : _cliToolRegistry.capability<SessionResumeCapability>(cli);
+        : _cliToolRegistry.capability<AiHistoryCapability>(cli);
     if (cap == null || cli == null) return const _ResumeResolution();
 
     final ctx = ResumeContext(

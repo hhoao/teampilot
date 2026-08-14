@@ -10,12 +10,11 @@ import '../../../ai_history/edit_codecs/write_edit_hunk_codec.dart';
 import '../../../ai_history/tool_call_categories.dart';
 import '../../../ai_history/tool_call_resolvers.dart';
 import '../../registry/capabilities/shared_tool_call_resolvers.dart';
-import '../../registry/capabilities/tool_call_resolver_capability.dart';
 
 /// OpenCode tool-call resolvers: shared baseline plus the camelCase
 /// argument keys OpenCode emits for `edit` / `write` / `read`
 /// (`filePath`, `oldString`, `newString`; 本机实测).
-class OpencodeToolCallResolvers implements ToolCallResolversCapability {
+class OpencodeToolCallResolvers extends SharedToolCallResolvers {
   const OpencodeToolCallResolvers();
 
   static const _pathKeys = [
