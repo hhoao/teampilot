@@ -6,6 +6,7 @@ import '../../cubits/hook_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/hook_entry.dart';
 import '../../models/team_config.dart';
+import '../../services/hook/hook_repository.dart';
 import '../../services/hook/import/hook_import_service.dart';
 
 /// 打开 hook 导入对话框：CLI 选择 + JSON 粘贴 → 解析预览 → 勾选导入。
@@ -36,6 +37,8 @@ class _HookImportDialogState extends State<HookImportDialog> {
   CliTool _cli = CliTool.claude;
   HookImportResult? _result;
   final _selected = <String>{};
+  final _existingIds = <String>{};
+  String? _errorMessage;
   var _importing = false;
 
   @override
@@ -45,13 +48,28 @@ class _HookImportDialogState extends State<HookImportDialog> {
   }
 
   Future<void> _parse() async {
-    final result = await context.read<HookImportParser>().parseJson(
+    var result = await context.read<HookImportParser>().parseJson(
       cli: _cli,
       jsonText: _jsonController.text,
     );
+    if (result.drafts.isEmpty && result.warnings.isEmpty) {
+      // 空分组（如 `{"Stop": []}`）不产生任何 draft/warning → 静默无操作；
+      // 显式给出一条错误行，避免"点了解析什么都没发生"。
+      result = const HookImportResult(warnings: ['hook_import_no_hooks']);
+    }
+    if (!mounted) return;
+    final existing = <String>{};
+    for (final draft in result.drafts) {
+      final saved = await context.read<HookRepository>().load(draft.definition.id);
+      if (saved != null) existing.add(draft.definition.id);
+    }
     if (!mounted) return;
     setState(() {
       _result = result;
+      _existingIds
+        ..clear()
+        ..addAll(existing);
+      _errorMessage = null;
       _selected
         ..clear()
         ..addAll(result.drafts.map((d) => d.definition.id));
@@ -65,13 +83,21 @@ class _HookImportDialogState extends State<HookImportDialog> {
         .toList();
     if (drafts.isEmpty) return;
     setState(() => _importing = true);
-    final count = await context.read<HookImportService>().import(drafts);
-    if (!mounted) return;
-    setState(() => _importing = false);
-    if (count > 0) {
-      await context.read<HookCubit>().load();
+    try {
+      final count = await context.read<HookImportService>().import(drafts);
       if (!mounted) return;
-      Navigator.of(context).pop(true);
+      setState(() => _importing = false);
+      if (count > 0) {
+        await context.read<HookCubit>().load();
+        if (!mounted) return;
+        Navigator.of(context).pop(true);
+      }
+    } on Object catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _importing = false;
+        _errorMessage = e.toString();
+      });
     }
   }
 
@@ -112,7 +138,7 @@ class _HookImportDialogState extends State<HookImportDialog> {
 
   Widget _buildInput(BuildContext context, HookImportResult? result) {
     final l10n = context.l10n;
-    final errorText = _inputError(result);
+    final errorText = _inputError(result, l10n);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -176,16 +202,37 @@ class _HookImportDialogState extends State<HookImportDialog> {
     );
   }
 
-  /// 解析后无可用条目时的错误行（原始 warning，含 `hook_import_invalid_json`）。
-  String? _inputError(HookImportResult? result) {
+  /// 解析后无可用条目时的错误行：已知原始 warning 键映射为本地化文本
+  /// （诊断后缀保留在分隔符之后），其余原样展示。
+  String? _inputError(HookImportResult? result, AppLocalizations l10n) {
     if (result == null || result.drafts.isNotEmpty) return null;
-    return result.warnings.isEmpty ? null : result.warnings.join('\n');
+    if (result.warnings.isEmpty) return null;
+    return result.warnings.map((warning) {
+      if (warning == 'hook_import_no_hooks') return l10n.hookImportNoHooks;
+      if (warning.startsWith('hook_import_invalid_json')) {
+        final separator = warning.indexOf(': ');
+        final suffix = separator < 0 ? '' : warning.substring(separator + 2);
+        return suffix.isEmpty
+            ? l10n.hookImportInvalidJson
+            : '${l10n.hookImportInvalidJson}: $suffix';
+      }
+      return warning;
+    }).join('\n');
   }
 
   Widget _buildPreview(BuildContext context, HookImportResult result) {
+    final l10n = context.l10n;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (_errorMessage != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            _errorMessage!,
+            key: const Key('hook-import-error'),
+            style: TextStyle(color: Theme.of(context).colorScheme.error),
+          ),
+        ],
         for (final warning in result.warnings)
           if (!warning.startsWith('hook_import_invalid_json'))
             Text(
@@ -213,9 +260,30 @@ class _HookImportDialogState extends State<HookImportDialog> {
                     }
                   });
                 },
-                title: Text(
-                  '${draft.nativeEvent ?? draft.definition.event.name}'
-                  '${draft.definition.matcher == null ? '' : ' · ${draft.definition.matcher}'}',
+                title: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '${draft.nativeEvent ?? draft.definition.event.name}'
+                        '${draft.definition.matcher == null ? '' : ' · ${draft.definition.matcher}'}',
+                      ),
+                    ),
+                    if (_existingIds.contains(draft.definition.id))
+                      Padding(
+                        padding: const EdgeInsets.only(left: 8),
+                        child: Text(
+                          l10n.hookImportOverwrite,
+                          key: Key(
+                            'hook-import-overwrite-${draft.definition.id}',
+                          ),
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
                 subtitle: Text(
                   _draftSubtitle(draft),

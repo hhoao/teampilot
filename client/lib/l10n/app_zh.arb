@@ -1932,6 +1932,9 @@
     }
   },
   "hookImportDoneToast": "已导入 hooks",
+  "hookImportOverwrite": "将覆盖",
+  "hookImportInvalidJson": "Hook JSON 无效",
+  "hookImportNoHooks": "未找到 hooks",
   "mcpNavRegistries": "注册中心",
   "mcpInstalledSectionTitle": "已安装的 MCP",
   "mcpInstalledCount": "已安装 {count}",

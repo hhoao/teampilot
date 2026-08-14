@@ -37,11 +37,50 @@ void main() {
     expect(draft.definition.native, {'async': true});
     expect(draft.unsupportedFields, ['async']);
     final action = draft.definition.action as CommandHookAction;
-    expect(action.command, 'bash /root/hooks/${draft.definition.id}/guard.sh');
+    expect(
+      action.command,
+      'bash "/root/hooks/${draft.definition.id}/guard.sh"',
+    );
     expect(draft.scriptFileName, 'guard.sh');
     expect(draft.scriptContent, 'exit 2');
     expect(draft.definition.id, startsWith('import-'));
     expect(draft.definition.id, hasLength('import-'.length + 12));
+  });
+
+  test('script copy rewrites quoted path when teampilotRoot contains spaces', () async {
+    await fs.writeString('/x/guard.sh', 'exit 2');
+    final result = await HookImportParser(fs: fs, teampilotRoot: '/root/App Support/tp')
+        .parseJson(
+          cli: CliTool.claude,
+          jsonText: '''
+{"hooks": {"Stop": [
+  {"hooks": [{"type": "command", "command": "bash /x/guard.sh"}]}
+]}}''',
+        );
+    final draft = result.drafts.single;
+    final command = (draft.definition.action as CommandHookAction).command;
+    expect(
+      command,
+      'bash "/root/App Support/tp/hooks/${draft.definition.id}/guard.sh"',
+    );
+    // 整个路径必须是单个引号包裹的 token（不再被 shell 按空格拆词）。
+    expect(
+      RegExp(r'^bash "/root/App Support/tp/hooks/[^"]+/guard\.sh"$')
+          .hasMatch(command!),
+      isTrue,
+    );
+  });
+
+  test('script copy escapes backslashes in rewritten path', () async {
+    await fs.writeString('/x/a\\b.sh', 'exit 2');
+    final result = await HookImportParser(fs: fs, teampilotRoot: '/root').parseJson(
+      cli: CliTool.claude,
+      jsonText:
+          '{"hooks": {"Stop": [{"hooks": [{"type": "command", "command": "bash /x/a\\\\b.sh"}]}]}}',
+    );
+    final draft = result.drafts.single;
+    final command = (draft.definition.action as CommandHookAction).command;
+    expect(command, 'bash "/root/hooks/${draft.definition.id}/a\\\\b.sh"');
   });
 
   test('raw command stays raw; unsupported event dropped with warning', () async {

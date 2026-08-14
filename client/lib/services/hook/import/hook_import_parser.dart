@@ -118,7 +118,8 @@ class HookImportParser {
               event: event,
               matcher: entry.matcher,
               action: CommandHookAction.raw(
-                '${copy.interpreter} $_teampilotRoot/hooks/$id/${copy.fileName}',
+                '${copy.interpreter} '
+                '"${_quotePath('$_teampilotRoot/hooks/$id/${copy.fileName}')}"',
               ),
               timeoutSec: entry.timeoutSec,
               native: entry.native.isEmpty ? null : entry.native,
@@ -164,3 +165,9 @@ String _fnv1aHex(String input) {
   }
   return (hash & 0xFFFFFFFFFFFF).toRadixString(16).padLeft(12, '0');
 }
+
+/// shell 双引号上下文内转义路径内容（`\` 与 `"` 反斜杠转义）。
+/// 调用方负责包裹外层双引号。macOS 的 Application Support 路径含空格，
+/// 裸拼接会在 CLI 运行时被拆词，因此重写命令中的路径必须整体加引号。
+String _quotePath(String path) =>
+    path.replaceAll(r'\', r'\\').replaceAll('"', r'\"');

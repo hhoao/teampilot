@@ -1,3 +1,6 @@
+import 'dart:collection';
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'hook_entry.dart';
 import 'hook_event.dart';
@@ -153,7 +156,7 @@ class HookDefinition {
           policy == other.policy &&
           timeoutSec == other.timeoutSec &&
           mapEquals(env, other.env) &&
-          mapEquals(native ?? const {}, other.native ?? const {});
+          _canonicalJson(native) == _canonicalJson(other.native);
 
   @override
   int get hashCode => Object.hash(
@@ -167,7 +170,15 @@ class HookDefinition {
     timeoutSec,
     Object.hashAllUnordered(env.keys),
     Object.hashAllUnordered(env.values),
-    Object.hashAllUnordered(native?.keys ?? const []),
-    Object.hashAllUnordered(native?.values ?? const []),
+    _canonicalJson(native).hashCode,
   );
+
+  /// 顶层键排序后的 JSON 序列化（与 `RawHookEntry._canonicalJson` 同一约定）：
+  /// 标量与有序 List 确定；嵌套 Map 键序不敏感场景按插入序。
+  /// native 值可为 List/Map，identity 哈希会破坏 ==/hashCode 契约
+  /// （fromJson 往返产生新实例），故 ==/hashCode 统一走规范化 JSON。
+  static String _canonicalJson(Map<String, Object?>? native) {
+    if (native == null || native.isEmpty) return '';
+    return jsonEncode(SplayTreeMap<String, Object?>.from(native));
+  }
 }

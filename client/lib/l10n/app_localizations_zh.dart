@@ -4597,6 +4597,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get hookImportDoneToast => '已导入 hooks';
 
   @override
+  String get hookImportOverwrite => '将覆盖';
+
+  @override
+  String get hookImportInvalidJson => 'Hook JSON 无效';
+
+  @override
+  String get hookImportNoHooks => '未找到 hooks';
+
+  @override
   String get mcpNavRegistries => '注册中心';
 
   @override

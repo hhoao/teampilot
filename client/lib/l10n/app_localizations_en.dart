@@ -4779,6 +4779,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get hookImportDoneToast => 'Hooks imported';
 
   @override
+  String get hookImportOverwrite => 'Will overwrite';
+
+  @override
+  String get hookImportInvalidJson => 'Invalid hook JSON';
+
+  @override
+  String get hookImportNoHooks => 'No hooks found';
+
+  @override
   String get mcpNavRegistries => 'Registry';
 
   @override

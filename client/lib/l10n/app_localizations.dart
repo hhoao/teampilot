@@ -8570,6 +8570,24 @@ abstract class AppLocalizations {
   /// **'Hooks imported'**
   String get hookImportDoneToast;
 
+  /// No description provided for @hookImportOverwrite.
+  ///
+  /// In en, this message translates to:
+  /// **'Will overwrite'**
+  String get hookImportOverwrite;
+
+  /// No description provided for @hookImportInvalidJson.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid hook JSON'**
+  String get hookImportInvalidJson;
+
+  /// No description provided for @hookImportNoHooks.
+  ///
+  /// In en, this message translates to:
+  /// **'No hooks found'**
+  String get hookImportNoHooks;
+
   /// No description provided for @mcpNavRegistries.
   ///
   /// In en, this message translates to:

@@ -2228,6 +2228,9 @@
     }
   },
   "hookImportDoneToast": "Hooks imported",
+  "hookImportOverwrite": "Will overwrite",
+  "hookImportInvalidJson": "Invalid hook JSON",
+  "hookImportNoHooks": "No hooks found",
   "mcpNavRegistries": "Registry",
   "mcpInstalledSectionTitle": "Installed MCP servers",
   "mcpInstalledCount": "{count} installed",

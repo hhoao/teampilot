@@ -212,6 +212,13 @@ command 类条目经 `HookScriptExtractor` 启发式识别脚本引用：
 同一来源重复导入 → 同 id → upsert 覆盖，不产生重复条目；导入后再在 UI 修改定义
 （id 不变）也不漂移。
 
+**跨 CLI 去重是有意设计**：id 键基于**归一化**事件名（`HookEventNameMapper` 映射后），
+因此 claude `PreToolUse` 与 cursor `preToolUse` 等不同 CLI 的同义事件，在
+matcher/command 相同的情况下得到**同一个 id**——把同一条 hook 从多个 CLI 依次导入
+会映射到同一条目（upsert 覆盖，而非新增重复）。预览阶段对已存在的 id 显示
+「将覆盖」徽标（`hookImportOverwrite`，命中 `HookRepository.load` 非空），
+导入前即可感知该条会覆盖库中现有条目。
+
 ### 8.6 事件映射与丢弃
 
 - 原生事件名经 `HookEventNameMapper`（三张数据驱动表：claude-family PascalCase、
