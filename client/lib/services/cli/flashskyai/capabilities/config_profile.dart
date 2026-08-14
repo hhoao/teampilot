@@ -7,6 +7,8 @@ import '../provider/flashskyai_effort_capability.dart';
 import '../../../session/member_role_provision.dart';
 import '../../registry/capabilities/cli_effort_capability.dart';
 import '../../registry/capabilities/config_profile_capability.dart';
+import '../../registry/capabilities/prompt_provision_capability.dart';
+import 'prompt_provision.dart';
 import '../../../provider/workspace_trust_provisioner.dart';
 import '../../../agent_status/member_agent_status_endpoint.dart';
 import '../../../team_bus/member_bus_idle_endpoint.dart';
@@ -20,13 +22,17 @@ import '../../../hook/glue_script_builder.dart';
 
 final class FlashskyaiConfigProfileCapability
     implements ConfigProfileCapability {
-  const FlashskyaiConfigProfileCapability();
+  const FlashskyaiConfigProfileCapability({
+    this.promptProvision = const FlashskyaiPromptProvisionCapability(),
+  });
 
   static const toolId = 'flashskyai';
   static const metadataFileName = '.flashskyai.json';
   static const settingsFileName = 'settings.json';
   static const configDirEnvKey = 'FLASHSKYAI_CONFIG_DIR';
   static const sessionHomeDirEnvKey = 'FLASHSKYAI_SESSION_HOME_DIR';
+
+  final PromptProvisionCapability promptProvision;
 
   static const defaultMetadata = <String, Object?>{
     'hasCompletedOnboarding': true,
@@ -97,7 +103,7 @@ final class FlashskyaiConfigProfileCapability
       workingDirectory,
       additionalDirectories: ctx.additionalDirectories,
     );
-    await _writeMemberProfiles(
+    final appendPromptEnv = await _writeMemberProfiles(
       delegate: delegate,
       scope: scope,
       team: ctx.team,
@@ -120,18 +126,7 @@ final class FlashskyaiConfigProfileCapability
     );
 
     final environment = _teamLaunchEnvironment(delegate, scope);
-    final member = ctx.member;
-    if (member != null && member.isValid) {
-      final appendPath = await delegate.resolveAppendSystemPromptPath(
-        scope: scope,
-        tool: toolId,
-        member: member,
-      );
-      if (appendPath != null) {
-        environment[MemberRoleProvision.appendSystemPromptFileEnvKey] =
-            appendPath;
-      }
-    }
+    environment.addAll(appendPromptEnv);
 
     return ConfigProfileLaunchContribution(
       environment: environment,
@@ -194,7 +189,7 @@ final class FlashskyaiConfigProfileCapability
     await delegate.writeJsonIfChanged(metadataPath, metadata);
   }
 
-  Future<void> _writeMemberProfiles({
+  Future<Map<String, String>> _writeMemberProfiles({
     required ConfigProfileDelegate delegate,
     required LaunchProfileScope scope,
     required TeamProfile? team,
@@ -211,12 +206,15 @@ final class FlashskyaiConfigProfileCapability
     final selected = launchedMember;
     if (selected == null || !selected.isValid) {
       await _writeTeamSettings(delegate, scope, effortLevel: effortLevel);
-      return;
+      return const {};
     }
+    final appendPromptEnv = <String, String>{};
     await _writeMemberProfile(
       delegate: delegate,
       scope: scope,
       member: selected,
+      launchedMember: launchedMember,
+      appendPromptEnv: appendPromptEnv,
       forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
       mixed: mixed,
       simple: simple,
@@ -225,6 +223,7 @@ final class FlashskyaiConfigProfileCapability
       effortLevel: effortLevel,
       userHooks: userHooks,
     );
+    return appendPromptEnv;
   }
 
   Future<void> _writeTeamSettings(
@@ -307,6 +306,8 @@ final class FlashskyaiConfigProfileCapability
     required ConfigProfileDelegate delegate,
     required LaunchProfileScope scope,
     required TeamMemberConfig member,
+    required TeamMemberConfig? launchedMember,
+    required Map<String, String> appendPromptEnv,
     required bool forceTeamLeadDelegateMode,
     required bool mixed,
     bool simple = false,
@@ -322,13 +323,19 @@ final class FlashskyaiConfigProfileCapability
       memberId: scope.memberId,
     );
     final isLead = TeamMemberNaming.isTeamLead(member);
-    await MemberRoleProvision.syncRolePromptFile(
-      fs: delegate.fs,
-      memberToolDir: memberToolDir,
-      member: member,
-      forceTeamLeadDelegateMode: isLead && forceTeamLeadDelegateMode,
-      mixed: mixed,
+    final promptContribution = await promptProvision.provision(
+      PromptProvisionContext(
+        paths: delegate,
+        scope: scope,
+        member: member,
+        forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
+        mixed: mixed,
+        additionalDirectories: const [],
+      ),
     );
+    if (promptContribution.written && member.id == launchedMember?.id) {
+      appendPromptEnv.addAll(promptContribution.environment);
+    }
     final settingsFile = delegate.joinWork(
       memberToolDir,
       settingsFileName,

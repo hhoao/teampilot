@@ -27,6 +27,8 @@ import 'capabilities/history/ai_history_capability.dart';
 import 'capabilities/resume_strategy.dart';
 import '../registry/capabilities/headless_provision_capability.dart';
 import 'capabilities/config_profile.dart';
+import 'capabilities/prompt_provision.dart';
+import '../registry/capabilities/prompt_provision_capability.dart';
 import 'capabilities/headless_run.dart';
 import 'capabilities/headless_provision.dart';
 import 'provider/flashskyai_effort_capability.dart';
@@ -105,6 +107,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     this.credentialExport = const NoCredentialExport(),
     this.toolCallResolvers = const FlashskyaiToolCallResolvers(),
     this.hookWriter = const ClaudeFamilyHookWriter(),
+    this.promptProvision = const FlashskyaiPromptProvisionCapability(),
   });
 
   final LaunchArgsCapability launchArgs;
@@ -141,6 +144,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
   final CredentialExportCapability credentialExport;
   final FlashskyaiToolCallResolvers toolCallResolvers;
   final HookWriterCapability hookWriter;
+  final PromptProvisionCapability promptProvision;
   final AskUserQuestionCapability askUserQuestion;
   final ExitPlanModeCapability exitPlanMode;
   final FlashskyaiAiHistoryCapability aiHistory;
@@ -196,6 +200,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     skillSyntax,
     toolCallResolvers,
     hookWriter,
+    promptProvision,
   ];
 }
 

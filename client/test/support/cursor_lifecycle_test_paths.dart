@@ -116,14 +116,6 @@ final class CursorLifecycleTestPaths implements ConfigProfileDelegate {
       null;
 
   @override
-  Future<String?> resolveAppendSystemPromptPath({
-    required LaunchProfileScope scope,
-    required String tool,
-    required TeamMemberConfig member,
-  }) async =>
-      null;
-
-  @override
   HostExecutionEnvironment hostEnvironmentForProvision() =>
       HostExecutionEnvironment.resolve();
 }

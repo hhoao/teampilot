@@ -1256,6 +1256,30 @@ abstract class AppLocalizations {
   /// **'Refresh'**
   String get gitRefresh;
 
+  /// No description provided for @gitAmend.
+  ///
+  /// In en, this message translates to:
+  /// **'Amend last commit'**
+  String get gitAmend;
+
+  /// No description provided for @gitAmendCommit.
+  ///
+  /// In en, this message translates to:
+  /// **'Amend Commit'**
+  String get gitAmendCommit;
+
+  /// No description provided for @gitAmendConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Amend last commit?'**
+  String get gitAmendConfirmTitle;
+
+  /// No description provided for @gitAmendConfirmMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'This rewrites the last commit. If it was already pushed to a remote, a force push will be required afterwards.'**
+  String get gitAmendConfirmMessage;
+
   /// No description provided for @gitChangesListView.
   ///
   /// In en, this message translates to:

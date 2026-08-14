@@ -13,6 +13,7 @@ import 'package:teampilot/services/cli/claude/capabilities/config_profile.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/provider/credential_binding.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
+import 'package:teampilot/services/session/member_role_provision.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 
 void main() {
@@ -71,6 +72,88 @@ void main() {
       '1',
     );
   });
+
+  test(
+    'contributeLaunch contributes prompt env only for the launched member',
+    () async {
+      final base =
+          await Directory.systemTemp.createTemp('claude_cap_prompt_gate_');
+      addTearDown(() async {
+        if (await base.exists()) await base.delete(recursive: true);
+      });
+
+      final fs = LocalFilesystem();
+      final service = ConfigProfileService(
+        basePath: base.path,
+        fs: fs,
+        layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
+      );
+      const capability = ClaudeConfigProfileCapability();
+      const launched = TeamMemberConfig(
+        id: 'm1',
+        name: 'Member',
+        model: 'test',
+      );
+      const rosterMember = TeamMemberConfig(
+        id: 'm2',
+        name: 'Member Two',
+        model: 'test',
+        responsibilities: 'You are the second member.',
+      );
+      const team = TeamProfile(
+        id: 'team-a',
+        name: 'agent',
+        cli: CliTool.claude,
+        members: [launched, rosterMember],
+      );
+
+      final scope = resolveLaunchProfileScope(
+        workspaceId: 'workspace-1',
+        teamId: 'team-a',
+        appSessionId: 'session-1',
+        cliTeamName: 'session-1',
+      );
+
+      final contribution = await capability.contributeLaunch(
+        ConfigProfileLaunchContext(
+          workspaceId: 'workspace-1',
+          teamId: 'team-a',
+          sessionId: scope.sessionId,
+          scope: scope,
+          team: team,
+          member: launched,
+          members: const [launched, rosterMember],
+          workingDirectory: '/workspace/workspace',
+          paths: service,
+          catalog: service,
+        ),
+      );
+
+      expect(
+        contribution.environment,
+        isNot(contains(MemberRoleProvision.appendSystemPromptFileEnvKey)),
+        reason: 'roster member m2 was written but is not the launched member',
+      );
+      final m2RolePath = p.join(
+        base.path,
+        'workspace',
+        'workspaces',
+        'workspace-1',
+        'sessions',
+        'session-1',
+        'runtime',
+        'claude',
+        'prompts',
+        'm2',
+        'role.md',
+      );
+      expect(await File(m2RolePath).exists(), isTrue);
+      expect(
+        await File(m2RolePath).readAsString(),
+        contains('You are the second member.'),
+      );
+    },
+  );
 
   test('contributeLaunch omits agent-teams env in mixed mode', () async {
     final base = await Directory.systemTemp.createTemp('claude_cap_mixed_');

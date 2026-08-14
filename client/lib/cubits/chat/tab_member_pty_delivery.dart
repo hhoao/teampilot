@@ -167,6 +167,25 @@ final class TabMemberPtyDelivery {
     if (_deferMailDoorbellIfBooting(sessionId, memberId, shell, trimmed)) {
       return;
     }
+    // Hook already confirmed this prompt was submitted — re-pasting now would
+    // create a duplicate user row (the multi-bubble symptom).
+    if (_promptAckTracker.isAcked(sessionId: sessionId, memberId: memberId)) {
+      appLogger.d(
+        '[session-runtime] retry-delivery skipped prompt-already-acked '
+        'member=$memberId session=$sessionId',
+      );
+      _ptyInject.clearPending(sessionId, memberId);
+      if (isMailDoorbell) {
+        _reportMailDeliveryOutcome(
+          sessionId,
+          memberId,
+          FullscreenPtyDeliveryOutcome.submitted,
+        );
+      } else {
+        _markMemberTurnStartedOnSubmitSuccess(sessionId, memberId);
+      }
+      return;
+    }
 
     appLogger.d(
       '[session-runtime] retry-delivery member=$memberId session=$sessionId '
@@ -208,6 +227,8 @@ final class TabMemberPtyDelivery {
       aborted: () =>
           _ptyAckAborted(shell, sessionId: sessionId, memberId: memberId),
       crAckConfig: _crAckForMember(sessionId, memberId),
+      isAcked: () =>
+          _promptAckTracker.isAcked(sessionId: sessionId, memberId: memberId),
     );
     if (isMailDoorbell) {
       _reportMailDeliveryOutcome(sessionId, memberId, outcome);
@@ -300,6 +321,29 @@ final class TabMemberPtyDelivery {
     )) {
       return;
     }
+    // Hook ACK already confirmed this prompt submitted (e.g. it landed while
+    // the previous crStuck outcome was being computed) — re-pasting now would
+    // duplicate the user row, so treat the delivery as done.
+    if (_promptAckTracker.isAcked(
+      sessionId: tick.sessionId,
+      memberId: tick.memberId,
+    )) {
+      appLogger.d(
+        '[session-runtime] automation-retry-skipped prompt-already-acked '
+        'member=${tick.memberId} session=${tick.sessionId}',
+      );
+      _ptyInject.clearPending(tick.sessionId, tick.memberId);
+      if (_isMailDoorbellText(tick.text)) {
+        _reportMailDeliveryOutcome(
+          tick.sessionId,
+          tick.memberId,
+          FullscreenPtyDeliveryOutcome.submitted,
+        );
+      } else {
+        _markMemberTurnStartedOnSubmitSuccess(tick.sessionId, tick.memberId);
+      }
+      return;
+    }
     final settle = _pasteSettleForMember(
       tick.sessionId,
       tick.memberId,
@@ -337,6 +381,10 @@ final class TabMemberPtyDelivery {
         memberId: tick.memberId,
       ),
       crAckConfig: _crAckForMember(tick.sessionId, tick.memberId),
+      isAcked: () => _promptAckTracker.isAcked(
+        sessionId: tick.sessionId,
+        memberId: tick.memberId,
+      ),
     );
     if (_isMailDoorbellText(tick.text)) {
       _reportMailDeliveryOutcome(tick.sessionId, tick.memberId, outcome);
@@ -371,6 +419,8 @@ final class TabMemberPtyDelivery {
         aborted: () =>
             _ptyAckAborted(shell, sessionId: sessionId, memberId: memberId),
         crAckConfig: _crAckForMember(sessionId, memberId),
+        isAcked: () =>
+            _promptAckTracker.isAcked(sessionId: sessionId, memberId: memberId),
       );
       if (isMailDoorbell) {
         _reportMailDeliveryOutcome(sessionId, memberId, outcome);

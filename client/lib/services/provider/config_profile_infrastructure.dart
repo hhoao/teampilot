@@ -17,7 +17,6 @@ import '../host/host_script_dialect.dart';
 import '../host/script_file_hook_provisioner.dart';
 import '../host/team_pilot_hook_scripts.dart';
 import '../io/filesystem.dart';
-import '../session/member_role_provision.dart';
 import '../storage/app_storage.dart';
 import '../team/team_lead_settings_merge.dart';
 
@@ -307,28 +306,6 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
       memberToolDir,
     );
     return delegateProvisioner.commandForPath(delegateScriptPath);
-  }
-
-  @override
-  Future<String?> resolveAppendSystemPromptPath({
-    required LaunchProfileScope scope,
-    required String tool,
-    required TeamMemberConfig member,
-  }) async {
-    final path = MemberRoleProvision.rolePromptPath(
-      sessionToolDir(
-        scope.workspaceId,
-        scope.sessionId,
-        tool,
-        memberId: scope.memberId,
-      ),
-      member,
-    );
-    final stat = await _fs.stat(path);
-    if (!stat.exists) return null;
-    final raw = await _fs.readString(path);
-    if (raw == null || raw.trim().isEmpty) return null;
-    return path;
   }
 
   @override

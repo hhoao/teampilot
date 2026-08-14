@@ -12,6 +12,8 @@ import 'capabilities/executable_resolver.dart';
 import 'capabilities/presence.dart';
 import 'capabilities/display.dart';
 import 'capabilities/terminal_behavior.dart';
+import 'capabilities/prompt_provision.dart';
+import '../registry/capabilities/prompt_provision_capability.dart';
 import '../registry/capabilities/provider_catalog_capability.dart';
 import '../registry/capabilities/config_profile_capability.dart';
 import '../registry/capabilities/executable_resolver_capability.dart';
@@ -111,6 +113,7 @@ final class CursorCliTool implements CliToolDefinition {
     this.credentialExport = const CursorCredentialExport(),
     this.toolCallResolvers = const CursorToolCallResolvers(),
     this.hookWriter = const CursorHookWriter(),
+    this.promptProvision = const CursorPromptProvisionCapability(),
     ProviderCredentialCapability? providerCredential,
   }) : aiHistory = aiHistory ??
            CursorAiHistoryCapability(
@@ -162,6 +165,7 @@ final class CursorCliTool implements CliToolDefinition {
   final CursorAiHistoryCapability aiHistory;
   final SkillInvocationSyntaxCapability skillSyntax;
   final PostManifestFlushCapability postManifestFlush;
+  final PromptProvisionCapability promptProvision;
 
   @override
   CliTool get id => CliTool.cursor;
@@ -208,6 +212,7 @@ final class CursorCliTool implements CliToolDefinition {
     aiHistory,
     skillSyntax,
     postManifestFlush,
+    promptProvision,
     toolCallResolvers,
     hookWriter,
   ];

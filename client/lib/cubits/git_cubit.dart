@@ -25,6 +25,7 @@ class GitState extends Equatable {
     this.expandedFolderPaths = const {},
     this.selectedPaths = const {},
     this.generatingCommitMessage = false,
+    this.amend = false,
     this.changesTreeView = const GitChangesTreeViewData(
       rows: [],
       selectedCount: 0,
@@ -53,6 +54,10 @@ class GitState extends Equatable {
   /// = include). Pure UI state, reconciled against the status on refresh.
   final Set<String> selectedPaths;
   final bool generatingCommitMessage;
+
+  /// IDEA-style: when true the next commit amends HEAD instead of creating a
+  /// new commit (see [GitCubit.commit]).
+  final bool amend;
 
   /// Flattened staged/unstaged rows for the changes tree (recomputed in cubit).
   final GitChangesTreeViewData changesTreeView;
@@ -83,6 +88,7 @@ class GitState extends Equatable {
     Set<String>? expandedFolderPaths,
     Set<String>? selectedPaths,
     bool? generatingCommitMessage,
+    bool? amend,
     GitChangesTreeViewData? changesTreeView,
     GitChangesTreeViewData? unversionedTreeView,
     bool clearError = false,
@@ -100,6 +106,7 @@ class GitState extends Equatable {
       selectedPaths: selectedPaths ?? this.selectedPaths,
       generatingCommitMessage:
           generatingCommitMessage ?? this.generatingCommitMessage,
+      amend: amend ?? this.amend,
       changesTreeView: changesTreeView ?? this.changesTreeView,
       unversionedTreeView: unversionedTreeView ?? this.unversionedTreeView,
     );
@@ -118,6 +125,7 @@ class GitState extends Equatable {
     expandedFolderPaths,
     selectedPaths,
     generatingCommitMessage,
+    amend,
     changesTreeView,
     unversionedTreeView,
   ];
@@ -340,6 +348,9 @@ class GitCubit extends Cubit<GitState> {
     _publish(state.copyWith(commitMessage: message), recomputeRows: false);
   }
 
+  void setAmend(bool value) =>
+      _publish(state.copyWith(amend: value), recomputeRows: false);
+
   void toggleFolderExpanded(String folderPath) {
     final next = Set<String>.from(state.expandedFolderPaths);
     if (next.contains(folderPath)) {
@@ -429,14 +440,28 @@ class GitCubit extends Cubit<GitState> {
   Future<void> discardFolder(String folderPath) =>
       _mutate(() => _service.discardFolder(state.repoRoot, folderPath));
 
-  /// Commits the selected paths. No-op when the message is blank or nothing is
-  /// selected.
+  /// Commits the selected paths; in amend mode rewrites HEAD from the message
+  /// and selected paths. No-op when the message is blank, or when nothing is
+  /// selected outside amend mode.
   Future<bool> commit() async {
     final message = state.commitMessage.trim();
-    final paths = state.selectedPaths.toList();
-    if (message.isEmpty || paths.isEmpty) {
-      return false;
+    if (message.isEmpty) return false;
+    if (state.amend) {
+      if (!state.status.hasCommits) return false;
+      final ok = await _mutate(
+        () => _service.commitAmend(
+          state.repoRoot,
+          message,
+          state.selectedPaths.toList(),
+        ),
+      );
+      if (ok) {
+        _publish(state.copyWith(commitMessage: ''), recomputeRows: false);
+      }
+      return ok;
     }
+    final paths = state.selectedPaths.toList();
+    if (paths.isEmpty) return false;
     final ok = await _mutate(
       () => _service.commitSelected(state.repoRoot, message, paths),
     );

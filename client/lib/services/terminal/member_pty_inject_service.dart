@@ -79,6 +79,11 @@ final class MemberPtyInjectService {
   }
 
   /// First delivery: clear → paste → grid ACK → CR.
+  ///
+  /// [isAcked] (optional) is the hook-channel prompt-submit confirmation;
+  /// when it flips true mid-run the automation stops polling and skips any
+  /// reinject, so a lagging grid probe can never re-paste an already
+  /// committed message (duplicate user rows / bubbles).
   Future<FullscreenPtyDeliveryOutcome> deliver({
     required TerminalInputController input,
     required TerminalScreenProbeController probe,
@@ -88,6 +93,7 @@ final class MemberPtyInjectService {
     required Duration pasteSettle,
     required bool Function() aborted,
     required FullscreenCrAckConfig crAckConfig,
+    bool Function()? isAcked,
   }) {
     return _runLocked(
       input: input,
@@ -101,6 +107,7 @@ final class MemberPtyInjectService {
         port: port,
         text: text,
         pasteSettle: pasteSettle,
+        isAcked: isAcked,
       ),
     );
   }
@@ -115,6 +122,7 @@ final class MemberPtyInjectService {
     required Duration pasteSettle,
     required bool Function() aborted,
     required FullscreenCrAckConfig crAckConfig,
+    bool Function()? isAcked,
   }) {
     return _runLocked(
       input: input,
@@ -128,6 +136,7 @@ final class MemberPtyInjectService {
         port: port,
         text: text,
         pasteSettle: pasteSettle,
+        isAcked: isAcked,
       ),
     );
   }

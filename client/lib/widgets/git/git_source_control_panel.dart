@@ -392,6 +392,41 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
     }
   }
 
+  Future<bool> _confirmAmend() async {
+    final l10n = context.l10n;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => TpDialog(
+        maxWidth: 480,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TpDialogHeader(
+              title: l10n.gitAmendConfirmTitle,
+              onClose: () => Navigator.of(ctx).pop(false),
+            ),
+            const SizedBox(height: 16),
+            Text(l10n.gitAmendConfirmMessage),
+            TpDialogActions(
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(false),
+                  child: Text(MaterialLocalizations.of(ctx).cancelButtonLabel),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.of(ctx).pop(true),
+                  child: Text(l10n.confirm),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+    return ok ?? false;
+  }
+
   Future<void> _discardSelected() async {
     final path = _selectedPath;
     if (path == null) return;
@@ -508,55 +543,27 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          BlocSelector<GitCubit, GitState, (String, int, int, bool, bool)>(
+          BlocSelector<GitCubit, GitState, (String, int, int, bool, bool, bool, bool)>(
             selector: (state) => (
               state.status.branch ?? 'HEAD',
               state.status.ahead,
               state.status.behind,
               state.busy || state.isLoading,
               state.allChangeFoldersExpanded,
+              state.generatingCommitMessage,
+              state.selectedPaths.isNotEmpty,
             ),
             builder: (context, header) {
-              final (branch, ahead, behind, busy, allExpanded) = header;
+              final (branch, ahead, behind, busy, allExpanded, generating,
+                  hasSelection) = header;
               return _Header(
                 branch: branch,
                 ahead: ahead,
                 behind: behind,
                 busy: busy,
                 allFoldersExpanded: allExpanded,
-                onRefresh: () => unawaited(_cubit.refresh()),
-                onPush: () => unawaited(_cubit.push()),
-                onPull: () => unawaited(_cubit.pull()),
-                onBranch: () => unawaited(_openBranchSheet()),
-                onToggleExpandAll: _cubit.toggleExpandAllFolders,
-                onDiscardSelected: _selectedPath == null
-                    ? null
-                    : () => unawaited(_discardSelected()),
-                onDiscardAll: () => unawaited(_confirmDiscardAll()),
-              );
-            },
-          ),
-          const SizedBox(height: 10),
-          BlocSelector<GitCubit, GitState, (bool, bool, bool, String)>(
-            selector: (state) => (
-              state.selectedPaths.isNotEmpty,
-              state.busy,
-              state.generatingCommitMessage,
-              state.status.branch ?? 'HEAD',
-            ),
-            builder: (context, commit) {
-              final (hasSelection, busy, generating, branch) = commit;
-              return _CommitBox(
-                controller: _commitController,
-                hint: l10n.gitCommitMessageHint(branch),
-                canCommit: hasSelection && !busy,
-                canGenerate: hasSelection && !busy,
                 generating: generating,
-                onChanged: _cubit.setCommitMessage,
-                onCommit: () async {
-                  final ok = await _cubit.commit();
-                  if (ok) _commitController.clear();
-                },
+                canGenerate: hasSelection && !busy && !generating,
                 onGenerate: () async {
                   final stored = context
                       .read<AiFeatureSettingsCubit>()
@@ -585,6 +592,47 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
                     globalPresets: presets,
                   );
                   await _cubit.generateCommitMessage(setting);
+                },
+                onRefresh: () => unawaited(_cubit.refresh()),
+                onPush: () => unawaited(_cubit.push()),
+                onPull: () => unawaited(_cubit.pull()),
+                onBranch: () => unawaited(_openBranchSheet()),
+                onToggleExpandAll: _cubit.toggleExpandAllFolders,
+                onDiscardSelected: _selectedPath == null
+                    ? null
+                    : () => unawaited(_discardSelected()),
+                onDiscardAll: () => unawaited(_confirmDiscardAll()),
+              );
+            },
+          ),
+          const SizedBox(height: 10),
+          BlocSelector<GitCubit, GitState, (bool, bool, bool, String, bool, bool)>(
+            selector: (state) => (
+              state.selectedPaths.isNotEmpty,
+              state.busy,
+              state.generatingCommitMessage,
+              state.status.branch ?? 'HEAD',
+              state.status.hasCommits,
+              state.amend,
+            ),
+            builder: (context, commit) {
+              final (hasSelection, busy, generating, branch, hasCommits, amend) =
+                  commit;
+              return _CommitBox(
+                controller: _commitController,
+                hint: l10n.gitCommitMessageHint(branch),
+                canCommit: amend ? (hasCommits && !busy) : (hasSelection && !busy),
+                canAmend: hasCommits,
+                amend: amend,
+                generating: generating,
+                onAmend: _cubit.setAmend,
+                onChanged: _cubit.setCommitMessage,
+                onCommit: () async {
+                  if (_cubit.state.amend) {
+                    if (!await _confirmAmend()) return;
+                  }
+                  final ok = await _cubit.commit();
+                  if (ok) _commitController.clear();
                 },
               );
             },
@@ -681,6 +729,9 @@ class _Header extends StatelessWidget {
     required this.behind,
     required this.busy,
     required this.allFoldersExpanded,
+    required this.generating,
+    required this.canGenerate,
+    required this.onGenerate,
     required this.onRefresh,
     required this.onPush,
     required this.onPull,
@@ -695,6 +746,9 @@ class _Header extends StatelessWidget {
   final int behind;
   final bool busy;
   final bool allFoldersExpanded;
+  final bool generating;
+  final bool canGenerate;
+  final VoidCallback onGenerate;
   final VoidCallback onRefresh;
   final VoidCallback onPush;
   final VoidCallback onPull;
@@ -787,6 +841,22 @@ class _Header extends StatelessWidget {
           ],
         ),
         TpIconButton(
+          key: const ValueKey('git-generate-commit-button'),
+          icon: Icons.auto_awesome_outlined,
+          iconWidget: generating
+              ? const SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : null,
+          compact: true,
+          size: TpIconButton.kCompactSize,
+          tooltip: l10n.gitGenerateCommitMessage,
+          enabled: canGenerate,
+          onTap: onGenerate,
+        ),
+        TpIconButton(
           icon: Icons.download_outlined,
           compact: true,
           size: TpIconButton.kCompactSize,
@@ -817,21 +887,23 @@ class _CommitBox extends StatelessWidget {
     required this.controller,
     required this.hint,
     required this.canCommit,
-    required this.canGenerate,
+    required this.canAmend,
+    required this.amend,
     required this.generating,
+    required this.onAmend,
     required this.onChanged,
     required this.onCommit,
-    required this.onGenerate,
   });
 
   final TextEditingController controller;
   final String hint;
   final bool canCommit;
-  final bool canGenerate;
+  final bool canAmend;
+  final bool amend;
   final bool generating;
+  final ValueChanged<bool> onAmend;
   final ValueChanged<String> onChanged;
   final VoidCallback onCommit;
-  final VoidCallback onGenerate;
 
   @override
   Widget build(BuildContext context) {
@@ -851,33 +923,36 @@ class _CommitBox extends StatelessWidget {
                     minHeight: tpTextareaHeightForLines(bodyStyle, lines: 2),
                     maxHeight: tpTextareaHeightForLines(bodyStyle, lines: 6),
                     enabled: !generating,
-                    decoration:
-                        InputDecoration(hintText: hint, isDense: true),
+                    decoration: InputDecoration(hintText: hint, isDense: true),
                     onChanged: onChanged,
                   );
                 },
               ),
             ),
-            const SizedBox(width: 8),
-            IconButton(
-              key: const ValueKey('git-generate-commit-button'),
-              tooltip: l10n.gitGenerateCommitMessage,
-              onPressed: (canGenerate && !generating) ? onGenerate : null,
-              icon: generating
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : Icon(Icons.auto_awesome_outlined, size: 18),
-            ),
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 4),
+        Row(
+          children: [
+            SizedBox(
+              width: 24,
+              height: 24,
+              child: Checkbox(
+                key: const ValueKey('git-amend-checkbox'),
+                value: amend,
+                onChanged: canAmend ? (v) => onAmend(v ?? false) : null,
+                visualDensity: VisualDensity.compact,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Text(l10n.gitAmend, style: TpTextStyles.of(context).sm),
+          ],
+        ),
+        const SizedBox(height: 4),
         FilledButton.icon(
           onPressed: canCommit ? onCommit : null,
-          icon: Icon(Icons.check, size: 16),
-          label: Text(l10n.gitCommit),
+          icon: Icon(amend ? Icons.edit_outlined : Icons.check, size: 16),
+          label: Text(amend ? l10n.gitAmendCommit : l10n.gitCommit),
         ),
       ],
     );

@@ -161,6 +161,26 @@ This tab is **plan-and-assign only**: Bash, PowerShell, Edit, Write, NotebookEdi
     );
   }
 
+  /// Composes the AGENTS.md section listing workspace additional directories.
+  /// Tells the agent the directories exist and that absolute paths are required
+  /// (they live outside the opencode project root).
+  static String composeWorkspaceDirectoriesPrompt(Iterable<String> directories) {
+    final dirs = directories
+        .map((d) => d.trim())
+        .where((d) => d.isNotEmpty)
+        .toList(growable: false);
+    if (dirs.isEmpty) return '';
+    final body = StringBuffer(
+      '## Workspace directories\n'
+      'This session can also access the following directories outside the '
+      'project root. Read and edit them using absolute paths.\n',
+    );
+    for (final dir in dirs) {
+      body.writeln('- $dir');
+    }
+    return body.toString();
+  }
+
   /// Composes the user-authored role body — the two layers a roster member owns:
   /// `# Responsibilities` (member.responsibilities, WHAT the role is) and `# Working method`
   /// (member.playbook, HOW it operates). No mode addenda. Used standalone for the
@@ -193,6 +213,7 @@ This tab is **plan-and-assign only**: Bash, PowerShell, Edit, Write, NotebookEdi
     bool forceTeamLeadDelegateMode = false,
     bool mixed = false,
     bool pushDelivery = false,
+    List<String> additionalDirectories = const [],
   }) {
     final isLead = TeamMemberNaming.isTeamLead(member);
     final body = StringBuffer();
@@ -220,6 +241,12 @@ This tab is **plan-and-assign only**: Bash, PowerShell, Edit, Write, NotebookEdi
       body.writeln(mixedTeammateRoleAddendum.trim());
       body.writeln();
     }
+    final dirsPrompt =
+        composeWorkspaceDirectoriesPrompt(additionalDirectories);
+    if (dirsPrompt.isNotEmpty) {
+      if (body.isNotEmpty) body.writeln();
+      body.write(dirsPrompt.trim());
+    }
     return body.toString();
   }
 
@@ -231,12 +258,15 @@ This tab is **plan-and-assign only**: Bash, PowerShell, Edit, Write, NotebookEdi
     required TeamMemberConfig member,
     bool forceTeamLeadDelegateMode = false,
     bool mixed = false,
+    List<String> additionalDirectories = const [],
   }) async {
     final path = rolePromptPath(memberToolDir, member);
     final hasRoleBody = composeMemberRoleBody(member).isNotEmpty;
+    final hasDirs =
+        composeWorkspaceDirectoriesPrompt(additionalDirectories).isNotEmpty;
     final stat = await fs.stat(path);
     final isLead = TeamMemberNaming.isTeamLead(member);
-    if (!hasRoleBody && !isLead && !mixed) {
+    if (!hasRoleBody && !isLead && !mixed && !hasDirs) {
       if (stat.exists) {
         await fs.removeRecursive(path);
       }
@@ -247,6 +277,7 @@ This tab is **plan-and-assign only**: Bash, PowerShell, Edit, Write, NotebookEdi
       member: member,
       forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
       mixed: mixed,
+      additionalDirectories: additionalDirectories,
     );
     await fs.atomicWrite(path, body);
     return path;

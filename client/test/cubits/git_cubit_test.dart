@@ -46,6 +46,13 @@ class _FakeGitService extends GitService {
     commitSelectedCalls.add(['commit', '-m', message, '--', ...paths]);
   }
 
+  final List<List<String>> commitAmendCalls = [];
+
+  @override
+  Future<void> commitAmend(String dir, String message, List<String> paths) async {
+    commitAmendCalls.add([message, ...paths]);
+  }
+
   final List<String> discardAllCalls = [];
   final List<List<String>> discardFolderCalls = [];
 
@@ -509,6 +516,83 @@ void main() {
     final statusCalls = service.calls.where((c) => c == 'status').length;
     expect(statusCalls, 2);
 
+    await cubit.close();
+  });
+
+  test('amend with selection stages and amends those paths', () async {
+    final service = _FakeGitService(
+      statusToReturn: _repoWith(staged: const [_staged]),
+    );
+    final cubit = GitCubit(service: service);
+    await cubit.setRepoRoot('/repo'); // a.txt auto-selected
+    cubit.setAmend(true);
+    cubit.setCommitMessage('fix: amend');
+    service.statusToReturn = _repoWith(); // clean after amend
+    service.calls.clear();
+
+    final ok = await cubit.commit();
+
+    expect(ok, isTrue);
+    expect(service.commitAmendCalls, [
+      ['fix: amend', 'a.txt'],
+    ]);
+    expect(cubit.state.commitMessage, '');
+    expect(cubit.state.amend, isTrue); // sticky after success
+    await cubit.close();
+  });
+
+  test('amend without selection rewrites the message only', () async {
+    final service = _FakeGitService(statusToReturn: _repoWith());
+    final cubit = GitCubit(service: service);
+    await cubit.setRepoRoot('/repo');
+    cubit.setAmend(true);
+    cubit.setCommitMessage('fix typo');
+    service.calls.clear();
+
+    final ok = await cubit.commit();
+
+    expect(ok, isTrue);
+    expect(service.commitAmendCalls, [
+      ['fix typo'],
+    ]);
+    await cubit.close();
+  });
+
+  test('amend is a no-op when the repo has no commits yet', () async {
+    final service = _FakeGitService(
+      statusToReturn: GitRepoStatus(
+        isRepository: true,
+        branch: 'main',
+        hasCommits: false,
+        unstaged: const [_unstaged],
+      ),
+    );
+    final cubit = GitCubit(service: service);
+    await cubit.setRepoRoot('/repo');
+    cubit.setAmend(true);
+    cubit.setCommitMessage('msg');
+    service.calls.clear();
+
+    final ok = await cubit.commit();
+
+    expect(ok, isFalse);
+    expect(service.commitAmendCalls, isEmpty);
+    await cubit.close();
+  });
+
+  test('amend is a no-op when the message is blank', () async {
+    final service = _FakeGitService(
+      statusToReturn: _repoWith(staged: const [_staged]),
+    );
+    final cubit = GitCubit(service: service);
+    await cubit.setRepoRoot('/repo');
+    cubit.setAmend(true);
+    service.calls.clear();
+
+    final ok = await cubit.commit();
+
+    expect(ok, isFalse);
+    expect(service.commitAmendCalls, isEmpty);
     await cubit.close();
   });
 }

@@ -84,6 +84,7 @@ void main() {
         expect(status.upstream, 'origin/main');
         expect(status.ahead, 2);
         expect(status.behind, 1);
+        expect(status.hasCommits, isTrue);
 
         // staged: staged_mod (M.), both (MM → X=M), renamed (R.)
         expect(
@@ -127,6 +128,25 @@ void main() {
 
       expect(status.isRepository, isFalse);
     });
+
+    test('reports hasCommits=false for an unborn branch', () async {
+      const statusOut =
+          '# branch.oid abcdef\n'
+          '# branch.head (initial)\n'
+          '1 M. N... 100644 100644 100644 h h staged_mod.txt\n';
+      final runner = _FakeRunner({
+        _inRepo: _ok('true\n'),
+        'status': _ok(statusOut),
+      });
+      final service = GitService(
+        runner: LocalGitCommandRunner(runner: runner.call),
+      );
+
+      final status = await service.status('/repo');
+
+      expect(status.isRepository, isTrue);
+      expect(status.hasCommits, isFalse);
+    });
   });
 
   group('GitService mutations', () {
@@ -152,6 +172,33 @@ void main() {
       expect(runner.calls, [
         ['add', '--', 'a.txt', 'b.dart'],
         ['commit', '-m', 'feat: x', '--', 'a.txt', 'b.dart'],
+      ]);
+    });
+
+    test('commitAmend stages the paths then amends those paths', () async {
+      final runner = _FakeRunner({});
+      final service = GitService(
+        runner: LocalGitCommandRunner(runner: runner.call),
+      );
+
+      await service.commitAmend('/repo', 'feat: x', ['a.txt', 'b.dart']);
+
+      expect(runner.calls, [
+        ['add', '--', 'a.txt', 'b.dart'],
+        ['commit', '--amend', '-m', 'feat: x', '--', 'a.txt', 'b.dart'],
+      ]);
+    });
+
+    test('commitAmend with no paths amends the message only', () async {
+      final runner = _FakeRunner({});
+      final service = GitService(
+        runner: LocalGitCommandRunner(runner: runner.call),
+      );
+
+      await service.commitAmend('/repo', 'fix typo', const []);
+
+      expect(runner.calls, [
+        ['commit', '--amend', '-m', 'fix typo'],
       ]);
     });
 

@@ -131,12 +131,6 @@ abstract interface class ConfigProfileDelegate implements ConfigProfilePaths {
     required bool forceTeamLeadDelegateMode,
   });
 
-  Future<String?> resolveAppendSystemPromptPath({
-    required LaunchProfileScope scope,
-    required String tool,
-    required TeamMemberConfig member,
-  });
-
   HostExecutionEnvironment hostEnvironmentForProvision();
 }
 

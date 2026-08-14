@@ -17,6 +17,7 @@ final class _ControlledPasteNotFoundAutomation extends FullscreenPtyAutomation {
     required FullscreenPtyDeliveryPort port,
     required String text,
     required Duration pasteSettle,
+    bool Function()? isAcked,
   }) async {
     started.complete();
     await release.future;

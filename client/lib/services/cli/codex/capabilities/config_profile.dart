@@ -18,19 +18,23 @@ import '../../../../utils/logging/logger.dart';
 import '../../registry/capabilities/hook_writer_capability.dart';
 import '../../../launch/work_plane_paths.dart';
 import '../../../provider/workspace_trust_provisioner.dart';
-import '../../../session/member_role_provision.dart';
 import '../../../../utils/workspace/trusted_project_paths.dart';
 import '../../registry/capabilities/config_profile_capability.dart';
+import '../../registry/capabilities/prompt_provision_capability.dart';
 import '../../registry/config_profile/hook_seat_context_completer.dart';
+import 'prompt_provision.dart';
 
 /// Codex CLI launch: provisions provider `auth.json` + `config.toml` under
 /// per-member [CODEX_HOME], optional team-bus overlay in mixed mode, and
 /// member identity in `AGENTS.md`.
 final class CodexConfigProfileCapability implements ConfigProfileCapability {
-  const CodexConfigProfileCapability();
+  const CodexConfigProfileCapability({
+    this.promptProvision = const CodexPromptProvisionCapability(),
+  });
 
   static const toolId = 'codex';
-  static const agentsFileName = 'AGENTS.md';
+
+  final PromptProvisionCapability promptProvision;
 
   @override
   Future<void> ensureSessionProfile(ConfigProfileSessionContext ctx) async {}
@@ -187,19 +191,15 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
       }
     }
 
-    if (member != null && member.isValid) {
-      final prompt = MemberRoleProvision.composeRolePrompt(
+    await promptProvision.provision(
+      PromptProvisionContext(
+        paths: paths,
+        scope: ctx.scope,
         member: member,
         forceTeamLeadDelegateMode: team?.forceTeamLeadDelegateMode ?? false,
         mixed: mixed,
-      ).trim();
-      if (prompt.isNotEmpty) {
-        await paths.fs.atomicWrite(
-          paths.joinWork(codexHome, agentsFileName),
-          '$prompt\n',
-        );
-      }
-    }
+      ),
+    );
 
     return ConfigProfileLaunchContribution(
       environment: {
