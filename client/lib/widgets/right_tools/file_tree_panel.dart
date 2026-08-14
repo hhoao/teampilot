@@ -24,6 +24,7 @@ import '../../services/file_tree_import/import_models.dart';
 import '../../services/storage/runtime_context.dart';
 import '../../services/workspace_dnd/workspace_file_ref.dart';
 import '../../utils/ui/app_keys.dart';
+import '../file_tree/file_tree_context_menu.dart';
 import '../file_tree/file_tree_drop_region.dart';
 import '../file_tree/file_tree_import_dialogs.dart';
 import '../file_tree_node.dart';
@@ -149,6 +150,32 @@ class _FileTreePanelState extends State<FileTreePanel> {
         _cubit.clearRevealPath();
       }
     });
+  }
+
+  void _showBlankAreaMenu(TapDownDetails details) {
+    final cubit = _cubit;
+    if (!cubit.state.anyRootExists) return;
+    final contentY =
+        details.localPosition.dy +
+        (_listScrollController.hasClients ? _listScrollController.offset : 0);
+    final hit = resolveFileTreePanelDropHit(
+      contentY: contentY,
+      visibleRows: cubit.state.visibleRows,
+      rootPaths: cubit.state.rootPaths,
+      pathContextFor: (path) => cubit.fsFor(path).pathContext,
+    );
+    final destDir = hit.destDir;
+    if (destDir == null) return;
+    unawaited(
+      FileTreeContextMenu.showForBlankArea(
+        context: context,
+        tapDetails: details,
+        cubit: cubit,
+        targetRootDir: destDir,
+        workspaceId: widget.workspaceId,
+        desktopShellActions: _desktopShellActionsFor(_workContext),
+      ),
+    );
   }
 
   @override
@@ -302,27 +329,30 @@ class _FileTreePanelState extends State<FileTreePanel> {
                                     .anyRootExists) {
                                   return const SizedBox.shrink();
                                 }
-                                return _FloatingPreviewHighlight(
-                                  workspaceId: widget.workspaceId,
-                                  builder: (context, path) => _FileTreeList(
-                                    rows: rows,
-                                    cubit: _cubit,
-                                    textColor: cs.onSurface,
-                                    listScrollController:
-                                        _listScrollController,
-                                    horizontalScrollController:
-                                        _horizontalScrollController,
-                                    desktopShellActions:
-                                        _desktopShellActionsFor(
-                                          _workContext,
-                                        ),
-                                    remoteFileManagerActions:
-                                        _remoteFileManagerActionsFor(
-                                          _workContext,
-                                        ),
-                                    workContext: _workContext,
+                                return GestureDetector(
+                                  onSecondaryTapDown: _showBlankAreaMenu,
+                                  child: _FloatingPreviewHighlight(
                                     workspaceId: widget.workspaceId,
-                                    activeFloatingFilePath: path,
+                                    builder: (context, path) => _FileTreeList(
+                                      rows: rows,
+                                      cubit: _cubit,
+                                      textColor: cs.onSurface,
+                                      listScrollController:
+                                          _listScrollController,
+                                      horizontalScrollController:
+                                          _horizontalScrollController,
+                                      desktopShellActions:
+                                          _desktopShellActionsFor(
+                                            _workContext,
+                                          ),
+                                      remoteFileManagerActions:
+                                          _remoteFileManagerActionsFor(
+                                            _workContext,
+                                          ),
+                                      workContext: _workContext,
+                                      workspaceId: widget.workspaceId,
+                                      activeFloatingFilePath: path,
+                                    ),
                                   ),
                                 );
                               },

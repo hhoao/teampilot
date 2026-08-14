@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import '../models/cli_preset.dart';
 import '../services/io/filesystem.dart';
-import 'package:logger/logger.dart';
 import '../utils/logging/logger.dart';
 
 class CliPresetsRepository {

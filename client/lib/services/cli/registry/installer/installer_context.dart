@@ -4,7 +4,7 @@ import '../../../host/host_script_runner.dart';
 import '../../installer_types.dart';
 import 'teampilot_node_install.dart';
 
-/// Runtime facade for [InstallerCapability] implementations.
+/// Runtime facade for [CliExecutableCapability] implementations.
 abstract interface class CliInstallerHost {
   HostExecutionEnvironment get hostEnvironment;
 

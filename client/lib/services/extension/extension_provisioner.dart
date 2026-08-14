@@ -9,6 +9,25 @@ import 'extension_detector.dart';
 typedef HookProvisionerFactory =
     ScriptFileHookProvisioner Function(String scriptAsset);
 
+/// One enabled extension's `settings-hook` effect, materialized for render:
+/// owning extension id, event (manifest `config.event`), matcher (manifest
+/// `config.matcher`) and the provisioned hook command (script written under
+/// the member tool dir). The extension id disambiguates hook entry ids across
+/// extensions sharing an event (collision-safe glue script names).
+class ExtensionSettingsHook {
+  const ExtensionSettingsHook({
+    required this.extensionId,
+    required this.event,
+    required this.matcher,
+    required this.command,
+  });
+
+  final String extensionId;
+  final String event;
+  final String matcher;
+  final String command;
+}
+
 /// Orchestrates enabled extension manifests: surfaces readiness warnings and
 /// applies `settings-hook` effects into a settings map. The seam that replaces
 /// the former bespoke rtk logic in `ConfigProfileService`.
@@ -55,18 +74,45 @@ class ExtensionProvisioner {
     return out;
   }
 
-  /// Whether any enabled extension has a `settings-hook` for [tool].
+  /// Collects every ready, enabled extension's `settings-hook` effects as
+  /// render-ready [ExtensionSettingsHook]s (provisioning the script files,
+  /// same side effect as [applySettings]).
   ///
-  /// When [tool] is empty, returns true if any enabled extension has a hook.
-  Future<bool> hasEnabledSettingsHooksForTool(String tool) async {
+  /// When [tool] is non-empty, only effects whose `appliesTo` includes [tool]
+  /// (or lists no targets) are collected.
+  Future<List<ExtensionSettingsHook>> collectSettingsHooks(
+    String memberToolDir, {
+    String tool = '',
+  }) async {
+    if (memberToolDir.trim().isEmpty) return const [];
+    final out = <ExtensionSettingsHook>[];
     for (final manifest in _manifests) {
       if (!await _isEnabled(manifest.id)) continue;
+      final probe = await _detector.probe(manifest.detect);
+      if (!probe.isReady) continue;
       for (final effect in manifest.effects) {
         if (effect.kind != 'settings-hook') continue;
-        if (_effectAppliesToTool(effect, tool)) return true;
+        if (!_effectAppliesToTool(effect, tool)) continue;
+        final factory = _hookProvisionerFor;
+        if (factory == null) {
+          throw StateError(
+            'ExtensionProvisioner: settings-hook effect needs a hookProvisionerFor',
+          );
+        }
+        final provisioner = factory(effect.scriptAsset ?? manifest.id);
+        final scriptPath = await provisioner.provision(memberToolDir);
+        final command = provisioner.commandForPath(scriptPath);
+        out.add(
+          ExtensionSettingsHook(
+            extensionId: manifest.id,
+            event: effect.hookEvent ?? 'PreToolUse',
+            matcher: effect.hookMatcher ?? 'Bash',
+            command: command,
+          ),
+        );
       }
     }
-    return false;
+    return out;
   }
 
   /// Applies every ready, enabled extension's `settings-hook` effects to [base].

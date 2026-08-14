@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../l10n/l10n_extensions.dart';
-import 'package:logger/logger.dart';
 import '../utils/logging/logger.dart';
 import '../services/storage/remote_directory_browser.dart';
 import '../services/storage/workspace_directory_picker.dart';

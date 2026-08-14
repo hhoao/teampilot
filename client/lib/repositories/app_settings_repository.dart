@@ -21,6 +21,10 @@ abstract class AppSettingsRepository {
   Future<String?> loadSkippedUpdateVersion();
   Future<void> saveSkippedUpdateVersion(String? version);
 
+  /// SkillsMP 市场源的匿名限额升级 key（可选，空则匿名访问）。
+  Future<String?> loadSkillsMpApiKey();
+  Future<void> saveSkillsMpApiKey(String? key);
+
   Future<Map<AiFeatureId, AiFeatureSetting>> loadAiFeatureSettings();
   Future<void> saveAiFeatureSetting(AiFeatureId id, AiFeatureSetting setting);
 }
@@ -33,6 +37,7 @@ class SharedPrefsAppSettingsRepository implements AppSettingsRepository {
   static const _hasCompletedOnboardingKey = 'hasCompletedOnboarding';
   static const _autoCheckUpdatesKey = 'autoCheckUpdates';
   static const _skippedUpdateVersionKey = 'skippedUpdateVersion';
+  static const _skillsMpApiKey = 'skillsMpApiKey';
   static const _aiFeaturesKey = 'aiFeatures';
 
   final SharedPreferences _preferences;
@@ -112,6 +117,25 @@ class SharedPrefsAppSettingsRepository implements AppSettingsRepository {
   }
 
   @override
+  Future<String?> loadSkillsMpApiKey() async {
+    final value = _readMap()[_skillsMpApiKey];
+    if (value is String && value.isNotEmpty) return value;
+    return null;
+  }
+
+  @override
+  Future<void> saveSkillsMpApiKey(String? key) async {
+    final current = _readMap();
+    final trimmed = key?.trim();
+    if (trimmed == null || trimmed.isEmpty) {
+      current.remove(_skillsMpApiKey);
+    } else {
+      current[_skillsMpApiKey] = trimmed;
+    }
+    await _writeMap(current);
+  }
+
+  @override
   Future<Map<AiFeatureId, AiFeatureSetting>> loadAiFeatureSettings() async {
     final raw = _readMap()[_aiFeaturesKey];
     final result = <AiFeatureId, AiFeatureSetting>{};
@@ -170,15 +194,18 @@ class InMemoryAppSettingsRepository implements AppSettingsRepository {
     bool hasCompletedOnboarding = false,
     bool autoCheckUpdatesEnabled = true,
     String? skippedUpdateVersion,
+    String? skillsMpApiKey,
   }) : _llmConfigPathOverride = llmConfigPathOverride,
        _hasCompletedOnboarding = hasCompletedOnboarding,
        _autoCheckUpdatesEnabled = autoCheckUpdatesEnabled,
-       _skippedUpdateVersion = skippedUpdateVersion;
+       _skippedUpdateVersion = skippedUpdateVersion,
+       _skillsMpApiKey = skillsMpApiKey;
 
   String? _llmConfigPathOverride;
   bool _hasCompletedOnboarding;
   bool _autoCheckUpdatesEnabled;
   String? _skippedUpdateVersion;
+  String? _skillsMpApiKey;
 
   @override
   Future<String?> loadLlmConfigPathOverride() async => _llmConfigPathOverride;
@@ -216,6 +243,15 @@ class InMemoryAppSettingsRepository implements AppSettingsRepository {
     _skippedUpdateVersion = (trimmed == null || trimmed.isEmpty)
         ? null
         : trimmed;
+  }
+
+  @override
+  Future<String?> loadSkillsMpApiKey() async => _skillsMpApiKey;
+
+  @override
+  Future<void> saveSkillsMpApiKey(String? key) async {
+    final trimmed = key?.trim();
+    _skillsMpApiKey = (trimmed == null || trimmed.isEmpty) ? null : trimmed;
   }
 
   final Map<AiFeatureId, AiFeatureSetting> _aiFeatures = {};

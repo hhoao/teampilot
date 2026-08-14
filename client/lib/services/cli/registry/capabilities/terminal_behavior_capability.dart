@@ -35,6 +35,16 @@ class TerminalPathDropBehavior {
 }
 
 abstract interface class TerminalBehaviorCapability implements CliCapability {
+  bool get supportsTurnInterrupt;
+
+  TurnInterruptPlan get interruptPlan;
+
+  /// Whether the shell should bind a CLI-specific OSC title attention parser.
+  ///
+  /// Only Cursor returns `true` — it emits `cursor agent` via OSC title codes
+  /// to signal that agent attention is active.
+  bool get bindTitleAttention;
+
   bool get usesFullScreenInput;
 
   /// Delay between bracketed-paste content and the standalone CR in
@@ -59,4 +69,24 @@ abstract interface class TerminalBehaviorCapability implements CliCapability {
   /// Staged-input region declaration for grid automation (prefix / border /
   /// submit semantics). Replaces the old strategy + prefix pair.
   FullscreenComposerRegionSpec get composerRegion;
+}
+
+final class TurnInterruptPlan {
+  const TurnInterruptPlan({
+    required this.steps,
+    this.gapBetweenSteps = Duration.zero,
+  });
+
+  final List<String> steps;
+  final Duration gapBetweenSteps;
+}
+
+/// Default v1 plan: Ctrl+C once.
+final class CtrlCTurnInterrupt implements CliCapability {
+  const CtrlCTurnInterrupt();
+
+  bool get supportsTurnInterrupt => true;
+
+  TurnInterruptPlan get interruptPlan =>
+      const TurnInterruptPlan(steps: ['\x03']);
 }

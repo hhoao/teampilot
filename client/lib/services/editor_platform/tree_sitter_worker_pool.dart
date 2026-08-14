@@ -4,7 +4,6 @@ import 'dart:typed_data';
 
 import 'package:teampilot_tree_sitter/teampilot_tree_sitter.dart';
 
-import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import 'worker_protocol.dart';
 

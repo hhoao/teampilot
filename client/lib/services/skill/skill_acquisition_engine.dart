@@ -6,7 +6,6 @@ import '../../models/discoverable_team.dart';
 import '../../models/skill.dart';
 import '../../models/skill_pack.dart';
 import '../../models/skill_pack_instruction.dart';
-import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import '../cli/installer_types.dart';
 import '../io/filesystem.dart';
@@ -197,6 +196,14 @@ class SkillAcquisitionEngine {
       overwrite: overwrite,
     );
   }
+
+  /// Direct git-dir install (clone repo + register SKILL.md dir) without
+  /// instruction dispatch. Exposed for direct marketplace installs.
+  Future<Skill> installGitDir(
+    DiscoverableSkill discovery, {
+    bool overwrite = false,
+    String? idOverride,
+  }) => _installGitDir(discovery, overwrite: overwrite, idOverride: idOverride);
 
   Future<SkillAcquireResult> _runPack({
     required String packId,

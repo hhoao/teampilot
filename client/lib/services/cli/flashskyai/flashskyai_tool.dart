@@ -1,149 +1,65 @@
+import 'capabilities/provider.dart';
+import '../registry/capabilities/provider_capability.dart';
 import '../../../models/team_config.dart';
-import 'capabilities/launch_args.dart';
+import 'capabilities/session.dart';
 import '../registry/cli_capability.dart';
 import '../registry/cli_tool_definition.dart';
-import '../registry/capabilities/bus_transport_capability.dart';
-import '../registry/capabilities/remote_cli_locator_capability.dart';
-import '../registry/capabilities/skill_invocation_syntax_capability.dart';
-import 'capabilities/executable_resolver.dart';
-import 'capabilities/presence.dart';
-import 'capabilities/display.dart';
+import 'capabilities/team_behavior.dart';
+import 'capabilities/chat_interaction.dart';
 import 'capabilities/terminal_behavior.dart';
-import 'capabilities/provider_catalog.dart';
-import '../registry/capabilities/provider_catalog_capability.dart';
-import 'capabilities/member_agent_preset.dart';
-import '../registry/capabilities/native_team_capability.dart';
-import '../registry/capabilities/config_profile_capability.dart';
-import '../registry/capabilities/executable_resolver_capability.dart';
-import '../registry/capabilities/installer_capability.dart';
-import '../registry/capabilities/unsupported_installer_capability.dart';
-import '../registry/capabilities/cli_effort_capability.dart';
-import '../registry/capabilities/headless_run_capability.dart';
-import '../registry/capabilities/launch_args_capability.dart';
-import '../registry/capabilities/presence_capability.dart';
-import '../registry/capabilities/provider_model_capability.dart';
-import '../registry/capabilities/session_resume_capability.dart';
+import '../registry/capabilities/team_behavior_capability.dart';
+import '../registry/capabilities/cli_session_capability.dart';
+import '../registry/capabilities/headless_capability.dart';
 import 'capabilities/history/ai_history_capability.dart';
-import 'capabilities/resume_strategy.dart';
-import '../registry/capabilities/headless_provision_capability.dart';
-import 'capabilities/config_profile.dart';
-import 'capabilities/headless_run.dart';
-import 'capabilities/headless_provision.dart';
-import 'provider/flashskyai_effort_capability.dart';
-import 'provider/flashskyai_provider_form_capability.dart';
+import 'capabilities/prompt.dart';
+import '../registry/capabilities/prompt_capability.dart';
+import 'capabilities/headless.dart';
 import '../registry/capabilities/member_config_inspection_capability.dart';
-import '../registry/capabilities/provider_form_capability.dart';
-import '../registry/capabilities/resource_capability.dart';
-import '../registry/capabilities/ask_user_question_capability.dart';
-import '../registry/capabilities/pty_ask_user_question_capability.dart';
-import '../registry/capabilities/exit_plan_mode_capability.dart';
-import '../registry/capabilities/turn_completion_capability.dart';
-import 'capabilities/provider_display.dart';
-import '../registry/capabilities/provider_display_capability.dart';
-import 'capabilities/config_ui.dart';
-import '../registry/capabilities/cli_config_ui_capability.dart';
-import 'capabilities/title_attention.dart';
-import 'capabilities/marketplace_consumer.dart';
-import '../registry/capabilities/claude_family_agent_status_normalizer.dart';
-import 'capabilities/history_context_env.dart';
-import 'capabilities/remote_app_data.dart';
-import 'capabilities/credential_export.dart';
-import '../registry/capabilities/title_attention_capability.dart';
-import '../registry/capabilities/marketplace_consumer_capability.dart';
-import '../registry/capabilities/remote_app_data_capability.dart';
-import '../registry/capabilities/credential_export_capability.dart';
-import '../registry/capabilities/history_context_env_capability.dart';
-import '../registry/capabilities/agent_status_normalizer_capability.dart';
-import 'capabilities/wait_before_stop.dart';
-import '../registry/capabilities/wait_before_stop_capability.dart';
-import '../registry/capabilities/turn_interrupt_capability.dart';
-import 'capabilities/tool_call_resolvers.dart';
-import '../claude/capabilities/mcp_config_writer.dart';
-import 'capabilities/plugin_provisioner.dart';
+import '../registry/capabilities/skill_capability.dart';
+import '../registry/capabilities/chat_interaction_capability.dart';
+import '../registry/capabilities/cli_executable_capability.dart';
+import '../claude/capabilities/mcp.dart';
+import 'capabilities/plugin.dart';
+import '../registry/capabilities/plugin_capability.dart';
+import 'capabilities/executable.dart';
 import '../registry/resources/default_resource_capability.dart';
-import '../../team_bus/bus_idle_hooks_capability.dart';
+import '../registry/config_profile/claude_family_hook_writer.dart';
+import '../registry/capabilities/hook_capability.dart';
 
 final class FlashskyaiCliTool implements CliToolDefinition {
   const FlashskyaiCliTool({
-    this.busTransport = const BusTransportCapability(
-      longBlockingWaitForMessage: true,
-    ),
-    this.remoteCliLocator = const DefaultRemoteCliLocator('flashskyai'),
-    this.launchArgs = const FlashskyaiCliToolAdapter(),
-    this.configProfile = const FlashskyaiConfigProfileCapability(),
-    this.sessionResume = const FlashskyaiResumeStrategy(),
-    this.executableResolver = const FlashskyaiExecutableResolver(),
-    this.installer = const UnsupportedInstallerCapability(),
-    this.presence = const FlashskyaiPresence(),
-    this.display = const FlashskyaiDisplay(),
+    this.teamBehavior = const FlashskyaiTeamBehavior(),
+    this.session = const FlashskyaiCliSessionCapability(),
+    this.executable = const FlashskyaiExecutableCapability(),
     this.terminalBehavior = const FlashskyaiTerminalBehavior(),
     this.memberConfigInspection = const DefaultMemberConfigInspection(),
-    this.pluginProvisioner = const FlashskyaiPluginProvisioner(),
-    this.providerCatalog = const FlashskyaiProviderCatalogCapability(),
-    this.providerModel = const ProviderRecordModelCapability(),
-    this.effort = const FlashskyaiEffortCapability(),
-    this.headlessRun = const FlashskyaiHeadlessRunCapability(),
-    this.headlessProvision = const FlashskyaiHeadlessProvisionCapability(),
-    this.providerForm = const FlashskyaiProviderFormCapability(),
-    this.resource = const DefaultResourceCapability(),
-    this.mcpConfigWriter = const FlashskyaiMcpConfigWriter(),
-    this.turnInterrupt = const CtrlCTurnInterrupt(),
-    this.askUserQuestion = const PtyAskUserQuestionCapability(),
-    this.exitPlanMode = const HookExitPlanModeCapability(),
+    this.plugin = const FlashskyaiPluginCapability(),
+    this.provider = const FlashskyaiProviderCapability(),
+    this.headless = const FlashskyaiHeadlessCapability(),
+    this.mcp = const FlashskyaiMcpCapability(),
+    this.chatInteraction = const FlashskyaiChatInteraction(),
     this.aiHistory = const FlashskyaiAiHistoryCapability(),
-    this.skillSyntax = const DefaultSkillInvocationSyntaxCapability(),
-    this.turnCompletion = const FlashskyaiTurnCompletion(),
-    this.waitBeforeStop = const DefaultWaitBeforeStop(),
-    this.providerDisplay = const FlashskyaiProviderDisplay(),
-    this.configUi = const FlashskyaiConfigUi(),
-    this.titleAttention = const NoTitleAttention(),
-    this.marketplaceConsumer = const MarketplaceConsumer(),
-    this.agentStatusNormalizer = const ClaudeFamilyAgentStatusNormalizer(),
-    this.historyContextEnv = const NoHistoryContextEnv(),
-    this.remoteAppData = const NoRemoteAppData(),
-    this.credentialExport = const NoCredentialExport(),
-    this.toolCallResolvers = const FlashskyaiToolCallResolvers(),
-    this.busIdleHooks = const BusIdleHooksCapability(),
+    this.skill = const DefaultSkillCapability(),
+    this.hookWriter = const ClaudeFamilyHookWriter(),
+    this.prompt = const FlashskyaiPromptCapability(),
   });
 
-  final LaunchArgsCapability launchArgs;
-  final ConfigProfileCapability configProfile;
-  final SessionResumeCapability sessionResume;
-  final ExecutableResolverCapability executableResolver;
-  final InstallerCapability installer;
-  final PresenceCapability presence;
-  final FlashskyaiDisplay display;
+  final ProviderCapability provider;
+
+  final CliSessionCapability session;
+  final CliExecutableCapability executable;
   final FlashskyaiTerminalBehavior terminalBehavior;
   final MemberConfigInspectionCapability memberConfigInspection;
-  final FlashskyaiPluginProvisioner pluginProvisioner;
-  final ProviderCatalogCapability providerCatalog;
-  final ProviderModelCapability providerModel;
-  final CliEffortCapability effort;
-  final HeadlessRunCapability headlessRun;
-  final HeadlessProvisionCapability headlessProvision;
-  final ProviderFormCapability providerForm;
-  final ResourceCapability resource;
-  final FlashskyaiMcpConfigWriter mcpConfigWriter;
+  final PluginCapability plugin;
+  final HeadlessCapability headless;
+  final FlashskyaiMcpCapability mcp;
 
-  final BusTransportCapability busTransport;
-  final RemoteCliLocatorCapability remoteCliLocator;
-  final TurnInterruptCapability turnInterrupt;
-  final TurnCompletionCapability turnCompletion;
-  final WaitBeforeStopCapability waitBeforeStop;
-  final ProviderDisplayCapability providerDisplay;
-  final CliConfigUiCapability configUi;
-  final TitleAttentionCapability titleAttention;
-  final MarketplaceConsumerCapability marketplaceConsumer;
-  final AgentStatusNormalizerCapability agentStatusNormalizer;
-  final HistoryContextEnvCapability historyContextEnv;
-  final RemoteAppDataCapability remoteAppData;
-  final CredentialExportCapability credentialExport;
-  final FlashskyaiToolCallResolvers toolCallResolvers;
-  final BusIdleHooksCapability busIdleHooks;
-  final AskUserQuestionCapability askUserQuestion;
-  final ExitPlanModeCapability exitPlanMode;
+  final TeamBehaviorCapability teamBehavior;
+  final HookCapability hookWriter;
+  final PromptCapability prompt;
+  final ChatInteractionCapability chatInteraction;
   final FlashskyaiAiHistoryCapability aiHistory;
-  final SkillInvocationSyntaxCapability skillSyntax;
+  final SkillCapability skill;
 
   @override
   CliTool get id => CliTool.flashskyai;
@@ -151,59 +67,21 @@ final class FlashskyaiCliTool implements CliToolDefinition {
   @override
   bool get isLaunchSupported => true;
 
-  static const _nativeTeam = NativeTeamSupport();
-  static const _memberAgentPreset = FlashskyaiMemberAgentPreset();
-
   @override
   Iterable<CliCapability> get capabilities => [
-    busTransport,
-    remoteCliLocator,
-    _nativeTeam,
-    _memberAgentPreset,
-    launchArgs,
-    configProfile,
-    sessionResume,
-    executableResolver,
-    installer,
-    presence,
-    display,
+    teamBehavior,
+    executable,
+    session,
     terminalBehavior,
     memberConfigInspection,
-    pluginProvisioner,
-    providerCatalog,
-    providerModel,
-    providerForm,
-    effort,
-    headlessRun,
-    headlessProvision,
-    resource,
-    mcpConfigWriter,
-    turnInterrupt,
-    turnCompletion,
-    waitBeforeStop,
-    providerDisplay,
-    configUi,
-    titleAttention,
-    marketplaceConsumer,
-    agentStatusNormalizer,
-    historyContextEnv,
-    remoteAppData,
-    credentialExport,
-    askUserQuestion,
-    exitPlanMode,
+    plugin,
+    provider,
+    headless,
+    mcp,
+    chatInteraction,
     aiHistory,
-    skillSyntax,
-    toolCallResolvers,
-    busIdleHooks,
+    skill,
+    hookWriter,
+    prompt,
   ];
-}
-
-final class FlashskyaiTurnCompletion implements TurnCompletionCapability {
-  const FlashskyaiTurnCompletion();
-  @override
-  Set<String> get doneEventNames => const {'Stop', 'StopFailure'};
-  @override
-  bool get requiresPtyFallback => false;
-  @override
-  bool get usesDoorbellPush => false;
 }

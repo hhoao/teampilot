@@ -1,4 +1,3 @@
-import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import '../io/filesystem.dart';
 import 'link_strategy.dart';

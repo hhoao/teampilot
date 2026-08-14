@@ -13,6 +13,7 @@ import '../expert_hub/expert_team_picker_dialog.dart';
 import '../expert_hub/expert_workspace_picker_dialog.dart';
 import '../expert_hub/member_hub_add_feedback.dart';
 import '../extensions/extension_management_page.dart';
+import '../hooks/hook_management_page.dart';
 import '../mcp/mcp_management_page.dart';
 import '../plugins/plugin_management_page.dart';
 import '../skills/skill_management_page.dart';
@@ -27,6 +28,7 @@ enum HomeGlobalView {
   plugins,
   mcp,
   extensions,
+  hooks,
   myTeams,
   myExperts,
   teamHub,
@@ -40,11 +42,15 @@ enum HomeGlobalView {
   String get routeSegment => name;
 
   /// `/home-v2?global=<segment>` — opens the main workspace with this sidebar
-  /// shortcut selected.
-  String get homeLocation => Uri(
-    path: '/home-v2',
-    queryParameters: {globalQueryParam: routeSegment},
-  ).toString();
+  /// shortcut selected. Hooks are the exception: they live on a dedicated
+  /// route, so the location points there directly.
+  String get homeLocation => switch (this) {
+    HomeGlobalView.hooks => '/hooks',
+    _ => Uri(
+      path: '/home-v2',
+      queryParameters: {globalQueryParam: routeSegment},
+    ).toString(),
+  };
 
   /// Resolves [globalQueryParam] (e.g. `skills`, `mcp`) back to a view.
   static HomeGlobalView? fromSegment(String? segment) {
@@ -106,6 +112,7 @@ class _HomeGlobalSectionState extends State<HomeGlobalSection> {
         onSelectSection: (s) => setState(() => _extension = s),
         embedded: true,
       ),
+      HomeGlobalView.hooks => const HookManagementPage(),
       HomeGlobalView.myTeams => MyTeamsPage(onOpenTeam: widget.onOpenTeam),
       HomeGlobalView.myExperts => const MyExpertsPage(),
       HomeGlobalView.teamHub => const TeamHubPage(),

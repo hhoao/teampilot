@@ -1,10 +1,9 @@
-import '../cli/registry/capabilities/cli_config_layout_capability.dart';
-import '../cli/registry/capabilities/history_context_env_capability.dart';
+import '../cli/registry/capabilities/ai_history_capability.dart';
+import '../cli/registry/capabilities/cli_session_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 
 import '../../models/app_session.dart';
 import '../../models/team_config.dart';
-import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import '../io/filesystem.dart';
 import '../storage/runtime_layout.dart';
@@ -139,7 +138,7 @@ final class SessionHistoryContextBuilder {
     String? teamId,
   }) {
     final registry = CliToolRegistry.builtIn();
-    final cap = registry.capability<HistoryContextEnvCapability>(cli);
+    final cap = registry.capability<AiHistoryCapability>(cli);
     if (cap == null) return const {};
     // The session CONFIG_DIR is resolved by the CLI's layout capability
     // (cursor isolates a fake $HOME; every other CLI uses the standard

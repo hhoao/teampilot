@@ -65,6 +65,7 @@ import '../cubits/llm_config_cubit.dart';
 import '../cubits/session_preferences_cubit.dart';
 import '../models/session_preferences.dart';
 import '../cubits/extension_cubit.dart';
+import '../cubits/hook_cubit.dart';
 import '../cubits/mcp_cubit.dart';
 import '../cubits/plugin_cubit.dart';
 import '../repositories/launch_profile_repository.dart';
@@ -73,6 +74,8 @@ import '../cubits/cli_presets_cubit.dart';
 import '../repositories/cli_presets_repository.dart';
 import '../cubits/skill_cubit.dart';
 import '../repositories/mcp_repository.dart';
+import '../services/hook/hook_repository.dart';
+import '../services/hook/import/hook_import_service.dart';
 import '../services/mcp/profile_mcp_linker_service.dart';
 import '../cubits/ssh_connection_cubit.dart';
 import '../cubits/ssh_profile_cubit.dart';
@@ -135,6 +138,7 @@ import '../services/commands/run_command_registrar.dart';
 import '../services/commands/session_command_registrar.dart';
 import '../services/commands/shortcuts_ui_commands.dart';
 import '../services/commands/workspace_search_command_registrar.dart';
+import '../services/commands/workspace_content_search_command_registrar.dart';
 import '../services/floating_workspace/floating_maximize_insets.dart';
 import '../services/floating_workspace/floating_surface_registry.dart';
 import '../services/floating_workspace/floating_workspace_commands.dart';
@@ -184,6 +188,7 @@ import '../services/skill/skill_manifest_service.dart';
 import '../services/skill/skill_repo_disk_cache_service.dart';
 import '../services/skill/skill_repo_git_service.dart';
 import '../services/skill/skill_repo_service.dart';
+import '../services/skill/marketplace/skill_marketplace_registry.dart';
 import '../services/storage/runtime_context.dart';
 import '../services/github/github_credentials_store.dart';
 import '../services/github/github_device_flow_auth.dart';
@@ -209,7 +214,6 @@ import '../services/terminal/workspace_terminal_registry.dart';
 import '../services/terminal/workspace_terminal_connect_coordinator.dart';
 import '../services/terminal/workspace_terminal_run_service.dart';
 import '../services/terminal/workspace_terminal_session_ops.dart';
-import 'package:logger/logger.dart';
 import '../utils/logging/logger.dart';
 import 'ui_zoom_baseline.dart';
 
@@ -265,6 +269,10 @@ class AppShell {
     required this.cliPresetsCubit,
     required this.skillCubit,
     required this.mcpCubit,
+    required this.hookCubit,
+    required this.hookRepository,
+    required this.hookImportParser,
+    required this.hookImportService,
     required this.teamHubCubit,
     required this.expertHubCubit,
     required this.expertCapabilityResolver,
@@ -290,6 +298,7 @@ class AppShell {
     required this.workspaceChromeCommands,
     required this.runCommandHost,
     required this.workspaceSearchHost,
+    required this.workspaceContentSearchHost,
     required this.uiZoomBaseline,
   });
 
@@ -344,6 +353,10 @@ class AppShell {
   final CliPresetsCubit cliPresetsCubit;
   final SkillCubit skillCubit;
   final McpCubit mcpCubit;
+  final HookCubit hookCubit;
+  final HookRepository hookRepository;
+  final HookImportParser hookImportParser;
+  final HookImportService hookImportService;
   final TeamHubCubit teamHubCubit;
   final ExpertHubCubit expertHubCubit;
   final ExpertCapabilityResolver expertCapabilityResolver;
@@ -367,6 +380,7 @@ class AppShell {
   final WorkspaceChromeCommands workspaceChromeCommands;
   final RunCommandHost runCommandHost;
   final WorkspaceSearchHost workspaceSearchHost;
+  final WorkspaceContentSearchHost workspaceContentSearchHost;
   final UiZoomBaseline uiZoomBaseline;
 }
 
@@ -486,6 +500,10 @@ Future<AppShell> buildAppShell({
   late final CliPresetsCubit cliPresetsCubit;
   late final SkillCubit skillCubit;
   late final McpCubit mcpCubit;
+  late final HookCubit hookCubit;
+  late final HookRepository hookRepository;
+  late final HookImportParser hookImportParser;
+  late final HookImportService hookImportService;
   late final TeamHubCubit teamHubCubit;
   late final ExpertHubCubit expertHubCubit;
   late final ExtensionCubit extensionCubit;
@@ -893,6 +911,16 @@ Future<AppShell> buildAppShell({
             ]));
   final pluginRepository = PluginRepository();
   final mcpRepository = McpRepository();
+  hookRepository = HookRepository(
+    fs: AppStorage.fs,
+    teampilotRoot: AppStorage.paths.basePath,
+  );
+  hookImportParser = HookImportParser(
+    fs: AppStorage.fs,
+    teampilotRoot: AppStorage.paths.basePath,
+    homeDir: Platform.environment['HOME'],
+  );
+  hookImportService = HookImportService(repository: hookRepository);
   identityProvisioner = LaunchProfileProvisioner(
     repository: identityRepository,
   );
@@ -938,6 +966,10 @@ Future<AppShell> buildAppShell({
 
   skillCubit = SkillCubit(
     skillRepo,
+    marketplaces: SkillMarketplaceRegistry.builtIn(
+      settings: appSettings,
+      skillsSh: skillRepo.skillsSh,
+    ),
     acquisitionEngine: skillAcquisitionEngine,
     onSkillUninstalled: teamCubit.removeSkillFromAllTeams,
     packAcquireActivity: packAcquireActivityAdapter,
@@ -961,6 +993,7 @@ Future<AppShell> buildAppShell({
     mcpRepository,
     onMcpDeleted: teamCubit.removeMcpFromAllTeams,
   );
+  hookCubit = HookCubit(repository: hookRepository)..load();
 
   final teamHubSource = CompositeTeamHubSource.withDefaults(
     GitRegistryTeamHubSource(),
@@ -1095,10 +1128,15 @@ Future<AppShell> buildAppShell({
   final workspaceChromeCommands = WorkspaceChromeCommands();
   final runCommandHost = RunCommandHost();
   final workspaceSearchHost = WorkspaceSearchHost();
+  final workspaceContentSearchHost = WorkspaceContentSearchHost();
   final uiZoomBaseline = UiZoomBaseline();
   registerShortcutsUiCommands(commandBus);
   registerRunCommands(commandBus, runCommandHost);
   registerWorkspaceSearchCommands(commandBus, workspaceSearchHost);
+  registerWorkspaceContentSearchCommands(
+    commandBus,
+    workspaceContentSearchHost,
+  );
 
   final transportFactory = TerminalTransportFactory(
     sshProfileRepository: sshProfileRepo,
@@ -1837,6 +1875,10 @@ Future<AppShell> buildAppShell({
     cliPresetsCubit: cliPresetsCubit,
     skillCubit: skillCubit,
     mcpCubit: mcpCubit,
+    hookCubit: hookCubit,
+    hookRepository: hookRepository,
+    hookImportParser: hookImportParser,
+    hookImportService: hookImportService,
     teamHubCubit: teamHubCubit,
     expertHubCubit: expertHubCubit,
     expertCapabilityResolver: expertCapabilityResolver,
@@ -1861,6 +1903,7 @@ Future<AppShell> buildAppShell({
     workspaceChromeCommands: workspaceChromeCommands,
     runCommandHost: runCommandHost,
     workspaceSearchHost: workspaceSearchHost,
+    workspaceContentSearchHost: workspaceContentSearchHost,
     uiZoomBaseline: uiZoomBaseline,
   );
 }

@@ -1,5 +1,5 @@
 import '../../../../models/app_provider_config.dart';
-import '../../../../services/cli/registry/capabilities/cli_effort_capability.dart';
+import '../../../../services/cli/registry/capabilities/provider_capability.dart';
 import '../../../../services/cli/registry/cli_tool_registry.dart';
 
 /// Show effort picker when the tool exposes any effort UI for [provider]/[model].
@@ -9,7 +9,7 @@ bool workspaceCliShowsEffortPicker({
   required AppProviderConfig? provider,
   required String model,
 }) {
-  final capability = registry.capability<CliEffortCapability>(cli);
+  final capability = registry.capability<ProviderCapability>(cli);
   if (capability == null || provider == null) return false;
   if (capability.teamPickerPlacement() == EffortPickerPlacement.hidden &&
       capability.memberPickerPlacement(provider: provider) ==
@@ -30,7 +30,7 @@ List<String> workspaceCliEffortCandidates({
   required AppProviderConfig? provider,
   required String model,
 }) {
-  final capability = registry.capability<CliEffortCapability>(cli);
+  final capability = registry.capability<ProviderCapability>(cli);
   if (capability == null) return const [];
   return capability.effortCandidates(model: model, provider: provider);
 }
@@ -41,7 +41,7 @@ String workspaceCliDefaultEffort({
   required AppProviderConfig? provider,
   required String model,
 }) {
-  final capability = registry.capability<CliEffortCapability>(cli);
+  final capability = registry.capability<ProviderCapability>(cli);
   if (capability == null) return '';
   return capability.defaultEffort(model: model, provider: provider);
 }

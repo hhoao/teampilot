@@ -189,8 +189,28 @@ class SessionRepositoryFs {
   }
 
   Future<List<String>> listSessionIdsForWorkspace(String workspaceId) async {
-    final dated = <({String id, int createdAt})>[];
     final dir = sessionsDir(workspaceId);
+    // Native: one sync walk + decode, same fast path as
+    // [listSessionJsonMapsForWorkspace]. The serial async stat+read per
+    // session below costs an event-loop turnaround per await, which on a busy
+    // UI isolate (rendering terminals, debug builds) multiplies into seconds
+    // for workspaces with hundreds of sessions; sync ops sidestep that.
+    if (fs is LocalFilesystem) {
+      try {
+        final dated = <({String id, int createdAt})>[];
+        for (final map in SessionSnapshotReader.readSessionMapsSync(dir)) {
+          final id = map['sessionId'] as String?;
+          if (id == null || id.isEmpty) continue;
+          final createdAt = map['createdAt'] as int? ?? 0;
+          dated.add((id: id, createdAt: createdAt));
+        }
+        dated.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        return [for (final e in dated) e.id];
+      } on Object {
+        // Fall back to the filesystem abstraction below.
+      }
+    }
+    final dated = <({String id, int createdAt})>[];
     final stat = await fs.stat(dir);
     if (!stat.isDirectory) return const [];
     for (final entry in await fs.listDir(dir)) {

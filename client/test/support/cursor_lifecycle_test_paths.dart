@@ -1,6 +1,7 @@
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/registry/config_profile/config_profile_context.dart';
+import 'package:teampilot/services/extension/extension_provisioner.dart';
 import 'package:teampilot/services/host/host_execution_environment.dart';
 import 'package:teampilot/services/io/filesystem.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
@@ -79,14 +80,6 @@ final class CursorLifecycleTestPaths implements ConfigProfileDelegate {
   }) async {}
 
   @override
-  Future<bool> hasEnabledExtensionSettingsHooks(
-    String tool, {
-    String? teamId,
-    String? workspaceId,
-  }) async =>
-      false;
-
-  @override
   Future<Map<String, Object?>> applyExtensionSettings(
     Map<String, Object?> settings,
     String? memberToolDir, {
@@ -95,6 +88,15 @@ final class CursorLifecycleTestPaths implements ConfigProfileDelegate {
     String? workspaceId,
   }) async =>
       settings;
+
+  @override
+  Future<List<ExtensionSettingsHook>> extensionSettingsHooks(
+    String? memberToolDir, {
+    required String tool,
+    String? teamId,
+    String? workspaceId,
+  }) async =>
+      const [];
 
   @override
   Future<Map<String, Object?>> maybeApplyTeamLeadHooks(
@@ -106,10 +108,10 @@ final class CursorLifecycleTestPaths implements ConfigProfileDelegate {
       settings;
 
   @override
-  Future<String?> resolveAppendSystemPromptPath({
-    required LaunchProfileScope scope,
-    required String tool,
-    required TeamMemberConfig member,
+  Future<String?> resolveTeamLeadDelegateHookCommand(
+    TeamMemberConfig member,
+    String memberToolDir, {
+    required bool forceTeamLeadDelegateMode,
   }) async =>
       null;
 

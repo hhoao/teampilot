@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import '../host/host_one_shot_runner.dart';
 import '../host/host_one_shot_runner_for_context.dart';

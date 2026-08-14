@@ -75,6 +75,9 @@ final class CursorHomeLayout {
   String hooksConfig(String homeRoot) =>
       _pathContext.join(cursorDir(homeRoot), hooksFileName);
 
+  String hooksDir(String homeRoot) =>
+      _pathContext.join(cursorDir(homeRoot), hooksDirName);
+
   String idleScript(String homeRoot) =>
       _pathContext.join(cursorDir(homeRoot), hooksDirName, idleScriptFileName);
 

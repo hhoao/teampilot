@@ -3,12 +3,20 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/cli/opencode/capabilities/config_profile.dart';
+import 'package:teampilot/services/cli/opencode/capabilities/provider.dart';
+import 'package:teampilot/services/cli/registry/capabilities/provider_capability.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 
 void main() {
+  Future<SessionHomeContribution> contribute(
+    OpencodeProviderCapability capability,
+    ConfigProfileLaunchContext ctx,
+  ) => capability.materializeSessionHome(
+    sessionHomeContextFromLaunch(ctx, CliTool.opencode),
+  );
+
   test(
     'contributeLaunch sets OPENCODE_DB to session opencode.db',
     () async {
@@ -23,7 +31,7 @@ void main() {
         fs: fs,
         layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
       );
-      const capability = OpencodeConfigProfileCapability();
+      const capability = OpencodeProviderCapability();
       const member = TeamMemberConfig(
         id: 'solo',
         name: 'Solo',
@@ -39,7 +47,7 @@ void main() {
         memberId: '',
       );
 
-      final contribution = await capability.contributeLaunch(
+      final contribution = await contribute(capability,
         ConfigProfileLaunchContext(
           workspaceId: 'workspace-1',
           teamId: '',
@@ -62,11 +70,11 @@ void main() {
       // anomalyco/opencode: Flag.OPENCODE_DB absolute path overrides Database.Path
       // (packages/core/src/database/database.ts). There is no OPENCODE_DATA_DIR.
       expect(
-        contribution.environment[OpencodeConfigProfileCapability.configDirEnv],
+        contribution.environment[OpencodeProviderCapability.configDirEnv],
         opencodeDir,
       );
       expect(
-        contribution.environment[OpencodeConfigProfileCapability.dbPathEnv],
+        contribution.environment[OpencodeProviderCapability.dbPathEnv],
         p.join(opencodeDir, 'opencode.db'),
       );
       expect(

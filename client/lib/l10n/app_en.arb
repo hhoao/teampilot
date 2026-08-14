@@ -125,6 +125,8 @@
   "cotExpandReasoningOnOpenDescription": "When you open a thinking-process block, expand nested reasoning steps automatically.",
   "cotExpandToolsOnOpenTitle": "Expand tools when opening",
   "cotExpandToolsOnOpenDescription": "When you open a thinking-process block, expand nested tool call details automatically.",
+  "autoOpenSubagentPreviewTitle": "Auto-open subagent preview",
+  "autoOpenSubagentPreviewDescription": "When a subagent starts running, open its preview automatically and follow it live. Press Back to stop following for this session.",
   "thinkingProcessFoldSectionTitle": "Fold into thinking process",
   "toolCategoryRead": "Read file",
   "toolCategoryWrite": "Write file",
@@ -259,7 +261,7 @@
   "gitPush": "Push",
   "gitPull": "Pull",
   "gitRefresh": "Refresh",
-  "gitAmend": "Amend last commit",
+  "gitAmend": "Amend",
   "gitAmendCommit": "Amend Commit",
   "gitAmendConfirmTitle": "Amend last commit?",
   "gitAmendConfirmMessage": "This rewrites the last commit. If it was already pushed to a remote, a force push will be required afterwards.",
@@ -504,6 +506,7 @@
   "homeWorkspaceWorkspacePlugins": "Plugins",
   "homeWorkspaceWorkspaceMcp": "MCP",
   "homeWorkspaceWorkspaceExtensions": "Extensions",
+  "homeWorkspaceWorkspaceHooks": "Hooks",
   "workspaceSkillsAssignedCount": "{assigned} of {total} enabled for this workspace",
   "@workspaceSkillsAssignedCount": {
     "placeholders": {
@@ -512,6 +515,14 @@
     }
   },
   "workspaceSkillsManage": "Manage skills",
+  "workspaceHooksAssignedCount": "{assigned} of {total} enabled for this workspace",
+  "@workspaceHooksAssignedCount": {
+    "placeholders": {
+      "assigned": {"type": "int"},
+      "total": {"type": "int"}
+    }
+  },
+  "workspaceHooksManage": "Manage hooks",
   "workspaceMcpAssignedCount": "{assigned} of {total} enabled for this workspace",
   "@workspaceMcpAssignedCount": {
     "placeholders": {
@@ -566,9 +577,49 @@
   "workspaceSearchFilterAll": "All",
   "workspaceSearchFilterConversations": "Tasks",
   "workspaceSearchFilterFiles": "Files",
+  "workspaceSearchContent": "Content",
   "workspaceSearchShowMore": "Show more results",
   "workspaceSearchFilesEmptyHint": "Type to search files",
   "workspaceSearchNoResults": "No matches",
+  "workspaceSearchPanel": "Search",
+  "workspaceSearchQueryHint": "Search files",
+  "workspaceSearchRegex": "Regex",
+  "workspaceSearchCaseSensitive": "Aa",
+  "workspaceSearchGitignore": ".gitignore",
+  "workspaceSearchIncludeHint": "Include (glob, comma-separated)",
+  "workspaceSearchExcludeHint": "Exclude (glob, comma-separated)",
+  "workspaceSearchReplaceHint": "Replace with",
+  "workspaceSearchReplaceAll": "Replace All",
+  "workspaceSearchReplaceAllTitle": "Replace all?",
+  "workspaceSearchReplaceAllMessage": "Replace {count} occurrence(s)?",
+  "@workspaceSearchReplaceAllMessage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "workspaceSearchReplace": "Replace",
+  "workspaceSearchReplacedCount": "Replaced {count}",
+  "@workspaceSearchReplacedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "workspaceSearchCancel": "Cancel",
+  "workspaceSearchEmptyHint": "Type to search file contents",
+  "workspaceSearchTruncated": "Results truncated — refine your query",
+  "workspaceSearchBackend": "Engine: {backend}",
+  "@workspaceSearchBackend": {
+    "placeholders": {
+      "backend": {
+        "type": "String"
+      }
+    }
+  },
+  "workspaceSearchError": "Search failed — check the pattern",
   "appDropdownSearchHint": "Search…",
   "appDropdownSearchNoResults": "No results found.",
   "homeWorkspaceOpenWorkspaceInNewTab": "Open in new tab",
@@ -1639,6 +1690,43 @@
   "skillsGoDiscovery": "Go to Discovery",
   "skillsSourceRepos": "Repos",
   "skillsSourceSkillsSh": "skills.sh",
+  "skillsSourceSkillsMp": "SkillsMP",
+  "skillsMarketplaceSearchHint": "Search marketplaces (≥ 2 chars)…",
+  "skillsMarketplaceLoadMore": "Load more",
+  "skillsMarketplaceAddRepo": "Add repo",
+  "skillsMarketplaceRepoAdded": "Repo added to skill sources; install individual skills in the Repos tab",
+  "skillsFilterSortBy": "Sort",
+  "skillsFilterSortByStars": "Stars",
+  "skillsFilterSortByRecent": "Recent",
+  "skillsFilterLanguage": "Language",
+  "skillsFilterAnyLanguage": "Any",
+  "skillsFilterCategory": "Category",
+  "skillsFilterAnyCategory": "All",
+  "skillsFilterOccupation": "Occupation",
+  "skillsFilterAnyOccupation": "All",
+  "skillsCardStars": "{count} stars",
+  "@skillsCardStars": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "skillsCardUpdatedAt": "Updated {date}",
+  "@skillsCardUpdatedAt": {
+    "placeholders": {
+      "date": {"type": "String"}
+    }
+  },
+  "skillsMpQuotaHint": "SkillsMP anonymous quota (50/day) exhausted. Set a free API key to continue.",
+  "skillsMpApiKeyButton": "Set API Key",
+  "skillsMpApiKeyDialogTitle": "SkillsMP API Key",
+  "skillsMpApiKeyDialogHint": "Register for a free key at skillsmp.com/developers",
+  "skillsMpApiKeySave": "Save",
+  "skillsMarketplaceSearchError": "Search failed: {message}",
+  "@skillsMarketplaceSearchError": {
+    "placeholders": {
+      "message": {"type": "String"}
+    }
+  },
   "skillsSearchPlaceholder": "Search skills…",
   "skillsSkillsShPlaceholder": "Search skills.sh (≥ 2 chars)…",
   "skillsFilterRepoAll": "All repos",
@@ -1721,8 +1809,6 @@
     }
   },
   "skillsZipNoSkills": "No SKILL.md found in the archive.",
-  "skillsSkillsShLoadMore": "Load more",
-  "skillsSkillsShPoweredBy": "Powered by skills.sh",
   "skillsSkillsShSearch": "Search",
   "skillsDiscoveryEmpty": "No skills discovered",
   "skillsDiscoveryEmptyHint": "Add a repo or try skills.sh to find skills.",
@@ -1858,6 +1944,19 @@
   "teamSettingsSubtitle": "Team agents",
   "membersSubtitle": "team agents",
   "teamSkillsNav": "Skills",
+  "teamHooksNav": "Hooks",
+  "teamHooksAssignedCount": "{assigned} of {total} enabled",
+  "@teamHooksAssignedCount": {
+    "placeholders": {
+      "assigned": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "teamHooksManage": "Manage hooks",
   "teamSkillsAssignedCount": "{assigned} of {total} enabled",
   "@teamSkillsAssignedCount": {
     "placeholders": {
@@ -2134,6 +2233,39 @@
   "mcpSubtitle": "Manage MCP servers for agent sessions.",
   "mcpNavInstalled": "Installed",
   "mcpNavDiscovery": "Discovery",
+  "hookNavTitle": "Hooks",
+  "hookNew": "New hook",
+  "hooksNoInstalled": "No hooks",
+  "hooksNoInstalledHint": "Create a hook to run commands on CLI events.",
+  "hookEdit": "Edit hook",
+  "hookName": "Name",
+  "hookDescription": "Description",
+  "hookEvent": "Event",
+  "hookMatcher": "Matcher",
+  "hookActionCommand": "Command",
+  "hookActionScript": "Script",
+  "hookPolicy": "Policy",
+  "hookTimeoutSec": "Timeout (seconds)",
+  "hookEnv": "Environment (KEY=VALUE per line)",
+  "hookSave": "Save",
+  "hookNameRequired": "Name is required",
+  "hookSupportMatrix": "View support matrix",
+  "hookCapabilityMatrix": "Capability matrix",
+  "hookImport": "Import",
+  "hookImportCli": "CLI",
+  "hookImportJson": "Hook JSON",
+  "hookImportJsonHint": "Paste settings.json hooks, hooks.json, or a hooks fragment…",
+  "hookImportParse": "Parse",
+  "hookImportDone": "{count, plural, =1{Import {count} hook} other{Import {count} hooks}}",
+  "@hookImportDone": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "hookImportDoneToast": "Hooks imported",
+  "hookImportOverwrite": "Will overwrite",
+  "hookImportInvalidJson": "Invalid hook JSON",
+  "hookImportNoHooks": "No hooks found",
   "mcpNavRegistries": "Registry",
   "mcpInstalledSectionTitle": "Installed MCP servers",
   "mcpInstalledCount": "{count} installed",
@@ -2910,6 +3042,7 @@
   "shortcutsWorkspaceCloseTab": "Close Workspace Tab",
   "shortcutsWorkspaceReopenClosed": "Reopen Closed Workspace Tab",
   "shortcutsWorkspaceSearch": "Search Workspace (double-tap Shift)",
+  "shortcutsWorkspaceContentSearch": "Find in Files",
   "shortcutsStripNextTab": "Next Tab",
   "shortcutsStripPrevTab": "Previous Tab",
   "shortcutsSessionNewTab": "New Session Tab",

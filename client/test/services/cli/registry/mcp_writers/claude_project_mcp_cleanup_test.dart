@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/cli/claude/capabilities/mcp_project_cleanup.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/mcp/mcp_registry_service.dart';
-import 'package:teampilot/services/cli/claude/capabilities/config_profile.dart';
+import 'package:teampilot/services/cli/claude/capabilities/provider.dart';
 import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_config.dart';
 import 'package:path/path.dart' as p;
 
@@ -80,7 +80,7 @@ void main() {
         await Directory(projectRoot).create(recursive: true);
 
         await File(
-          p.join(memberDir, ClaudeConfigProfileCapability.metadataFileName),
+          p.join(memberDir, ClaudeProviderCapability.metadataFileName),
         ).writeAsString(jsonEncode({'hasCompletedOnboarding': true}));
 
         await File(p.join(projectRoot, '.mcp.json')).writeAsString(

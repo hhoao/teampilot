@@ -86,6 +86,13 @@ flutter test test/smoke/app_shell_smoke_test.dart
 flutter test --plain-name="test name"
 ```
 
+`teampilot_search` package (Rust engine + Dart wrapper):
+
+```bash
+cd client/packages/teampilot_search
+cargo test --manifest-path rust/Cargo.toml && flutter test
+```
+
 Linux PTY integration tests (local) — filter by secondary tag (see table below):
 
 ```bash

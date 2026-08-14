@@ -1,10 +1,8 @@
 import '../../models/runtime_target.dart';
 import '../../models/ssh_profile.dart';
 import '../../models/team_config.dart';
-import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import '../cli/installer_types.dart';
-import '../cli/registry/capabilities/installer_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../cli/remote_cli_installer.dart';
 import '../cli/remote_cli_locator.dart';
@@ -148,7 +146,7 @@ class RemoteCliReadinessService {
       );
     }
     final supportsInstaller =
-        registry.capability<InstallerCapability>(cli)?.supportsInstaller ??
+        registry.capability<CliExecutableCapability>(cli)?.supportsInstaller ??
         false;
     if (!supportsInstaller) {
       return RemoteCliFailed(

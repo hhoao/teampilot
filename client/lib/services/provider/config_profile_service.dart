@@ -3,6 +3,7 @@ import 'package:path/path.dart' as p;
 import '../../models/config_bundle.dart';
 import '../../models/cli_preset.dart';
 import '../../models/extension_manifest.dart';
+import '../../models/hook_entry.dart';
 import '../../models/plugin.dart';
 import '../../models/skill.dart';
 import '../../models/team_config.dart';
@@ -11,11 +12,12 @@ import '../team_bus/member_bus_idle_endpoint.dart';
 import '../agent_status/member_agent_status_endpoint.dart';
 import '../storage/runtime_layout.dart';
 import '../extension/extension_detector.dart';
+import '../extension/extension_provisioner.dart';
 import '../host/host_execution_environment.dart';
 import '../host/host_script_dialect.dart';
 import '../host/script_file_hook_provisioner.dart';
-import '../cli/registry/capabilities/config_profile_capability.dart';
-import '../cli/registry/capabilities/plugin_provisioner_capability.dart';
+import '../cli/registry/capabilities/plugin_capability.dart';
+import '../cli/registry/capabilities/provider_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../plugin/installed_plugin_catalog.dart';
 import '../plugin/marketplace_shared_store.dart';
@@ -33,10 +35,11 @@ import '../launch/manifest_filesystem.dart';
 import '../provider/workspace_trust_provisioner.dart';
 import '../cli/claude/team_roster_service.dart';
 import '../cli/cursor/provider/cursor_workspace_warm_tier.dart';
-import '../cli/registry/capabilities/cli_config_layout_capability.dart';
-import '../cli/registry/capabilities/cli_session_lifecycle_capability.dart';
+import '../cli/registry/capabilities/cli_session_capability.dart';
 import '../storage/app_storage.dart';
 import '../cli/preset_resolver.dart';
+import '../hook/hook_library_resolver.dart';
+import '../cli/registry/config_profile/config_profile_context.dart';
 import 'config_profile_infrastructure.dart';
 
 export '../cli/registry/config_profile/config_profile_context.dart';
@@ -322,7 +325,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     await MarketplaceSharedStore(fs: fs, teampilotRoot: basePath)
         .ensureSessionMarketplacesLinked(configDir: configDir, tool: cli);
     final pluginProvisioner = _cliRegistry
-        .capability<PluginProvisionerCapability>(cli);
+        .capability<PluginCapability>(cli);
     final warmTier = CursorWorkspaceWarmTier.applies(team: team, cli: cli);
     if (pluginProvisioner != null) {
       final installedCatalog = await InstalledPluginCatalog.load(fs, basePath);
@@ -364,20 +367,6 @@ class ConfigProfileService implements ConfigProfileDelegate {
           mcpConfigFileName: warmTier
               ? CursorWorkspaceWarmTier.mcpBaseFileName
               : null,
-        ),
-      );
-    }
-    final cap = _cliRegistry.capability<ConfigProfileCapability>(cli);
-    if (cap != null) {
-      await cap.ensureSessionProfile(
-        ConfigProfileSessionContext(
-          workspaceId: trimmedWorkspaceId,
-          teamId: trimmedTeamId,
-          sessionId: trimmedSessionId,
-          members: team?.members ?? const [],
-          paths: this,
-          team: team,
-          memberId: memberId,
         ),
       );
     }
@@ -535,7 +524,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     });
 
     final pluginProvisioner = _cliRegistry
-        .capability<PluginProvisionerCapability>(cli);
+        .capability<PluginCapability>(cli);
     if (pluginProvisioner != null) {
       late final List<Plugin> installedCatalog;
       late final PluginBundlePoolResult poolResult;
@@ -618,6 +607,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     List<String> additionalDirectories = const [],
     MemberBusIdleEndpoint? busIdle,
     MemberAgentStatusEndpoint? agentStatus,
+    List<HookEntry> hooks = const [],
   }) async {
     final trimmedWorkspaceId = workspaceId.trim();
     final trimmedSessionId = sessionId.trim();
@@ -636,7 +626,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
       cliTeamName: trimmedSessionId,
     );
 
-    final cap = _cliRegistry.capability<ConfigProfileCapability>(cli);
+    final cap = _cliRegistry.capability<ProviderCapability>(cli);
     if (cap == null) {
       return TeamLaunchOutcome(
         environment: const {},
@@ -644,23 +634,27 @@ class ConfigProfileService implements ConfigProfileDelegate {
       );
     }
 
-    ConfigProfileLaunchContribution contribution;
+    SessionHomeContribution contribution;
     try {
-      contribution = await cap.contributeLaunch(
-        ConfigProfileLaunchContext(
-          workspaceId: trimmedWorkspaceId,
-          teamId: '',
-          sessionId: trimmedSessionId,
-          scope: scope,
-          team: null,
-          member: member,
-          members: [member],
-          workingDirectory: workingDirectory,
-          additionalDirectories: additionalDirectories,
-          paths: this,
-          catalog: catalog,
-          busIdle: busIdle,
-          agentStatus: agentStatus,
+      contribution = await cap.materializeSessionHome(
+        sessionHomeContextFromLaunch(
+          ConfigProfileLaunchContext(
+            workspaceId: trimmedWorkspaceId,
+            teamId: '',
+            sessionId: trimmedSessionId,
+            scope: scope,
+            team: null,
+            member: member,
+            members: [member],
+            workingDirectory: workingDirectory,
+            additionalDirectories: additionalDirectories,
+            paths: this,
+            catalog: catalog,
+            busIdle: busIdle,
+            agentStatus: agentStatus,
+            hooks: hooks,
+          ),
+          cli,
         ),
       );
     } on Object catch (e, st) {
@@ -725,6 +719,10 @@ class ConfigProfileService implements ConfigProfileDelegate {
       'ops=${manifest.entries.length}',
     );
     final contributeSw = Stopwatch()..start();
+    final hooksResult = await HookLibraryResolver(
+      fs: readDelegate,
+      teampilotRoot: workTeampilotRoot,
+    ).resolve(runtimeBundle.hookIds);
     final outcome = await staging.contributeSimpleSessionLaunch(
       workspaceId: workspaceId,
       sessionId: sessionId,
@@ -733,6 +731,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
       additionalDirectories: additionalDirectories,
       busIdle: busIdle,
       agentStatus: agentStatus,
+      hooks: hooksResult.entries,
     );
     appLogger.d(
       '[session-launch] stage-simple contribute '
@@ -742,7 +741,11 @@ class ConfigProfileService implements ConfigProfileDelegate {
     return (
       outcome: TeamLaunchOutcome(
         environment: outcome.environment,
-        warnings: [...fsWarnings, ...outcome.warnings],
+        warnings: [
+          ...fsWarnings,
+          ...hooksResult.warnings,
+          ...outcome.warnings,
+        ],
       ),
       manifest: manifest,
     );
@@ -903,7 +906,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
       ),
     );
 
-    final cap = _cliRegistry.capability<ConfigProfileCapability>(launchCli);
+    final cap = _cliRegistry.capability<ProviderCapability>(launchCli);
     if (cap == null) {
       return (
         outcome: TeamLaunchOutcome(
@@ -914,25 +917,35 @@ class ConfigProfileService implements ConfigProfileDelegate {
       );
     }
 
-    ConfigProfileLaunchContribution contribution;
+    final hooksResult = await HookLibraryResolver(
+      fs: readDelegate,
+      teampilotRoot: workTeampilotRoot,
+    ).resolve(runtimeBundle.hookIds);
+    warnings.addAll(hooksResult.warnings);
+
+    SessionHomeContribution contribution;
     try {
-      contribution = await cap.contributeLaunch(
-        ConfigProfileLaunchContext(
-          workspaceId: trimmedWorkspaceId,
-          teamId: scope.teamId,
-          sessionId: scope.sessionId,
-          scope: scope,
-          team: team,
-          member: launchMember,
-          members: launchMembers,
-          workingDirectory: workingDirectory,
-          additionalDirectories: additionalDirectories,
-          paths: staging,
-          catalog: catalog,
-          leadSessionId: leadSessionId,
-          busIdle: busIdle,
-          agentStatus: agentStatus,
-          memberId: memberId,
+      contribution = await cap.materializeSessionHome(
+        sessionHomeContextFromLaunch(
+          ConfigProfileLaunchContext(
+            workspaceId: trimmedWorkspaceId,
+            teamId: scope.teamId,
+            sessionId: scope.sessionId,
+            scope: scope,
+            team: team,
+            member: launchMember,
+            members: launchMembers,
+            workingDirectory: workingDirectory,
+            additionalDirectories: additionalDirectories,
+            paths: staging,
+            catalog: catalog,
+            leadSessionId: leadSessionId,
+            busIdle: busIdle,
+            agentStatus: agentStatus,
+            memberId: memberId,
+            hooks: hooksResult.entries,
+          ),
+          launchCli,
         ),
       );
     } on Object catch (e, st) {
@@ -1051,17 +1064,6 @@ class ConfigProfileService implements ConfigProfileDelegate {
   );
 
   @override
-  Future<bool> hasEnabledExtensionSettingsHooks(
-    String tool, {
-    String? teamId,
-    String? workspaceId,
-  }) => _infra.hasEnabledExtensionSettingsHooks(
-    tool,
-    teamId: teamId,
-    workspaceId: workspaceId,
-  );
-
-  @override
   Future<Map<String, Object?>> applyExtensionSettings(
     Map<String, Object?> settings,
     String? memberToolDir, {
@@ -1070,6 +1072,19 @@ class ConfigProfileService implements ConfigProfileDelegate {
     String? workspaceId,
   }) => _infra.applyExtensionSettings(
     settings,
+    memberToolDir,
+    tool: tool,
+    teamId: teamId,
+    workspaceId: workspaceId,
+  );
+
+  @override
+  Future<List<ExtensionSettingsHook>> extensionSettingsHooks(
+    String? memberToolDir, {
+    required String tool,
+    String? teamId,
+    String? workspaceId,
+  }) => _infra.extensionSettingsHooks(
     memberToolDir,
     tool: tool,
     teamId: teamId,
@@ -1090,14 +1105,14 @@ class ConfigProfileService implements ConfigProfileDelegate {
   );
 
   @override
-  Future<String?> resolveAppendSystemPromptPath({
-    required LaunchProfileScope scope,
-    required String tool,
-    required TeamMemberConfig member,
-  }) => _infra.resolveAppendSystemPromptPath(
-    scope: scope,
-    tool: tool,
-    member: member,
+  Future<String?> resolveTeamLeadDelegateHookCommand(
+    TeamMemberConfig member,
+    String memberToolDir, {
+    required bool forceTeamLeadDelegateMode,
+  }) => _infra.resolveTeamLeadDelegateHookCommand(
+    member,
+    memberToolDir,
+    forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
   );
 
   @override

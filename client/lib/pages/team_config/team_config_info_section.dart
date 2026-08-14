@@ -14,9 +14,8 @@ import '../../models/cli_preset.dart';
 import '../../models/team_config.dart';
 import '../../utils/ui/app_keys.dart';
 import '../../utils/debounce/debounce.dart';
-import '../../services/cli/registry/capabilities/cli_effort_capability.dart';
+import '../../services/cli/registry/capabilities/provider_capability.dart';
 import '../../services/cli/registry/cli_display_name.dart';
-import '../../services/cli/registry/capabilities/provider_display_capability.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../widgets/app_provider/cli_effort_picker_field.dart';
 import '../../widgets/app_provider/provider_brand_icon.dart';
@@ -135,7 +134,7 @@ class TeamInfoSectionState extends State<TeamInfoSection> {
         : null;
     final showDelegateRow = catalogCli != null &&
         (CliToolRegistryScope.of(context)
-                .capability<ProviderDisplayCapability>(catalogCli)
+                .capability<ProviderCapability>(catalogCli)
                 ?.supportsDelegate ??
             false);
     // Stop-hook/bus 仅 mixed 模式接线,故此开关只在 mixed 团队出现。

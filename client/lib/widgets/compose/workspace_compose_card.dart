@@ -13,7 +13,7 @@ import '../../pages/chat/session_launch_failure_presenter.dart';
 import '../../pages/home_workspace/workspace/workspace_chat_landing_palette.dart';
 import '../../pages/home_workspace/workspace/workspace_chat_landing_voice_bar.dart';
 import '../../services/workspace_dnd/workspace_drop_target.dart';
-import '../../services/cli/registry/capabilities/skill_invocation_syntax_capability.dart';
+import '../../services/cli/registry/capabilities/skill_capability.dart';
 import '../../services/compose/compose_at_file_refs.dart';
 import '../../services/compose/compose_clip.dart';
 import '../../utils/debounce/debounce.dart';
@@ -103,7 +103,7 @@ class WorkspaceComposeCard extends StatelessWidget {
   final List<Skill> skills;
   final List<Plugin> plugins;
   final ConfigBundle slashBundle;
-  final SkillInvocationSyntaxCapability? skillSyntax;
+  final SkillCapability? skillSyntax;
   final bool isSubmitting;
   final Future<bool> Function()? onPasteImage;
   final String? submitBlockedTooltip;

@@ -171,7 +171,10 @@ void main() {
 
       expect((await fs.stat(layout.roleRule(memberHome))).isFile, isTrue);
       expect((await fs.stat(layout.hooksConfig(memberHome))).isFile, isTrue);
-      expect((await fs.stat(layout.idleScript(memberHome))).isFile, isTrue);
+      expect(
+        (await fs.stat(layout.hooksDir(memberHome))).isDirectory,
+        isTrue,
+      );
       expect((await fs.stat(layout.mcpConfig(memberHome))).isFile, isTrue);
     });
 
@@ -273,14 +276,20 @@ void main() {
           jsonDecode((await fs.readString(layout.hooksConfig(memberHome)))!)
               as Map<String, Object?>;
       final stop = (hooksJson['hooks'] as Map)['stop'] as List;
+      final busScriptPath = fs.pathContext.join(
+        layout.hooksDir(memberHome),
+        'teampilot-http-teampilot-bus-idle-stop-stop.sh',
+      );
       expect(
         (stop.single as Map)['command'],
-        "bash '${layout.idleScript(memberHome)}'",
+        "bash '$busScriptPath'",
       );
 
-      final idleScript = await fs.readString(layout.idleScript(memberHome));
-      expect(idleScript, contains('X-Member: planner'));
-      expect(idleScript, contains('http://127.0.0.1:4321/idle'));
+      final busScript = await fs.readString(busScriptPath);
+      expect(busScript, contains('X-Member: planner'));
+      expect(busScript, contains('http://127.0.0.1:4321/idle'));
+      expect(busScript, contains('"decision":"block"'));
+      expect(busScript, contains('followup_message'));
 
       final mcpJson =
           jsonDecode((await fs.readString(layout.mcpConfig(memberHome)))!)

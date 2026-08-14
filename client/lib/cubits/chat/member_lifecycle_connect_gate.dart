@@ -3,7 +3,7 @@ import '../../models/cli_preset.dart';
 import '../../models/runtime_target.dart';
 import '../../models/team_config.dart';
 import '../../services/cli/preset_resolver.dart';
-import '../../services/cli/registry/capabilities/cli_session_lifecycle_capability.dart';
+import '../../services/cli/registry/capabilities/cli_session_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/cli/registry/config_profile/config_profile_context.dart';
 import '../../services/team_bus/member_bus_idle_endpoint.dart';

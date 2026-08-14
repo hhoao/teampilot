@@ -5,7 +5,6 @@ import 'package:path/path.dart' as p;
 import '../../models/plugin.dart';
 import '../../models/plugin_external_source.dart';
 import '../../utils/async_keyed_coalescer.dart';
-import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import '../../utils/repo_disk_sync_coalescer.dart';
 import '../storage/app_storage.dart';

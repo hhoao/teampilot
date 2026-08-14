@@ -14,7 +14,7 @@ void main() {
 
   test('every launch-supported CLI exposes a categoryResolver', () {
     for (final cli in clis) {
-      final resolvers = registry.toolCallResolvers(cli);
+      final resolvers = registry.capability<AiHistoryCapability>(cli);
       expect(resolvers, isNotNull, reason: '$cli');
       expect(resolvers!.categoryResolver, isNotNull, reason: '$cli');
     }
@@ -22,7 +22,8 @@ void main() {
 
   test('core tools map identically across CLIs', () {
     for (final cli in clis) {
-      final resolver = registry.toolCallResolvers(cli)!.categoryResolver;
+      final resolver =
+          registry.capability<AiHistoryCapability>(cli)!.categoryResolver;
       expect(resolver.resolve(tool('bash')), AiToolCallCategory.command,
           reason: '$cli');
       expect(resolver.resolve(tool('read')), AiToolCallCategory.read,
@@ -39,7 +40,8 @@ void main() {
   });
 
   test('cursor maps execute to command', () {
-    final resolver = registry.toolCallResolvers(CliTool.cursor)!
+    final resolver = registry
+        .capability<AiHistoryCapability>(CliTool.cursor)!
         .categoryResolver;
     expect(resolver.resolve(tool('execute')), AiToolCallCategory.command);
   });
@@ -47,7 +49,8 @@ void main() {
   test('opencode-origin tools question resolves to askUser (Task 6 决策统一)，'
       'skill 显式 other（矩阵 G-3）', () {
     for (final cli in clis) {
-      final resolver = registry.toolCallResolvers(cli)!.categoryResolver;
+      final resolver =
+          registry.capability<AiHistoryCapability>(cli)!.categoryResolver;
       expect(resolver.resolve(tool('question')), AiToolCallCategory.askUser,
           reason: '$cli');
       expect(resolver.resolve(tool('skill')), AiToolCallCategory.other,
@@ -58,7 +61,8 @@ void main() {
   test('subagentToolNames consistency: every name resolves to subagent', () {
     for (final cli in clis) {
       final history = registry.capability<AiHistoryCapability>(cli)!;
-      final resolver = registry.toolCallResolvers(cli)!.categoryResolver;
+      final resolver =
+          registry.capability<AiHistoryCapability>(cli)!.categoryResolver;
       for (final name in history.subagentToolNames) {
         expect(resolver.resolve(tool(name)), AiToolCallCategory.subagent,
             reason: '$cli/$name');

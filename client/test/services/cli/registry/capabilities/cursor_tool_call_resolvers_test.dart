@@ -301,8 +301,7 @@ void main() {
 
     test('subagentToolNames 含 agent/task', () {
       expect(
-        CursorAiHistoryCapability(shellResolver: cursor.shellResolver)
-            .subagentToolNames,
+        const CursorAiHistoryCapability().subagentToolNames,
         containsAll(['agent', 'task']),
       );
     });

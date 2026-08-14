@@ -73,8 +73,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Fold into thinking process'), findsOneWidget);
-    // 12 categories + the existing 2 cot expand switches = 14 Switch widgets.
-    expect(find.byType(Switch), findsNWidgets(14));
+    // 12 categories + the existing 2 cot expand switches + the auto-open
+    // subagent preview switch = 15 Switch widgets.
+    expect(find.byType(Switch), findsNWidgets(15));
     final switches = tester.widgetList<Switch>(find.byType(Switch)).toList();
     // 8 categories default to folded (on); the two cot switches default off.
     final onCount = switches.where((s) => s.value).length;

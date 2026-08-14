@@ -6,7 +6,6 @@ import '../models/launch_profile.dart';
 import '../services/io/filesystem.dart';
 import '../services/session/session_lifecycle_service.dart';
 import '../services/storage/app_storage.dart';
-import 'package:logger/logger.dart';
 import '../utils/logging/logger.dart';
 import 'launch_profile_index_store.dart';
 

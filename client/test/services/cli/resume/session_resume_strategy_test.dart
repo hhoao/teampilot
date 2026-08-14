@@ -2,13 +2,14 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 import 'package:sqlite3/sqlite3.dart';
-import 'package:teampilot/services/cli/claude/capabilities/resume_strategy.dart';
-import 'package:teampilot/services/cli/codex/capabilities/resume_strategy.dart';
-import 'package:teampilot/services/cli/cursor/capabilities/resume_strategy.dart';
+import 'package:teampilot/services/cli/claude/capabilities/history/ai_history_capability.dart';
+import 'package:teampilot/services/cli/codex/capabilities/history/ai_history_capability.dart';
+import 'package:teampilot/services/cli/cursor/capabilities/history/ai_history_capability.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
-import 'package:teampilot/services/cli/opencode/capabilities/resume_strategy.dart';
-import 'package:teampilot/services/cli/flashskyai/capabilities/resume_strategy.dart';
-import 'package:teampilot/services/cli/registry/capabilities/session_resume_capability.dart';
+import 'package:teampilot/services/cli/opencode/capabilities/history/ai_history_capability.dart';
+import 'package:teampilot/services/cli/opencode/capabilities/sqlite_worker_pool.dart';
+import 'package:teampilot/services/cli/flashskyai/capabilities/history/ai_history_capability.dart';
+import 'package:teampilot/services/cli/registry/capabilities/ai_history_capability.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -22,6 +23,7 @@ void main() {
     base = await Directory.systemTemp.createTemp('resume_strategy_');
   });
   tearDown(() async {
+    await OpencodeSqliteWorkerPool.instance.disposeAllAndWait();
     if (await base.exists()) await base.delete(recursive: true);
   });
 
@@ -62,21 +64,21 @@ void main() {
         p.join(dir, 'rollout-2026-06-17T10-00-00-$id.jsonl'),
       ).writeAsString('{}');
 
-      final got = await const CodexResumeStrategy().detectNativeId(
+      final got = await const CodexAiHistoryCapability().detectNativeId(
         ctx(env: {'CODEX_HOME': base.path}),
       );
       expect(got, id);
     });
 
     test('persisted id wins without scanning', () async {
-      final got = await const CodexResumeStrategy().detectNativeId(
+      final got = await const CodexAiHistoryCapability().detectNativeId(
         ctx(env: {'CODEX_HOME': base.path}, persistedNativeId: 'kept'),
       );
       expect(got, 'kept');
     });
 
     test('returns null when nothing is stored', () async {
-      final got = await const CodexResumeStrategy().detectNativeId(
+      final got = await const CodexAiHistoryCapability().detectNativeId(
         ctx(env: {'CODEX_HOME': base.path}),
       );
       expect(got, isNull);
@@ -90,18 +92,20 @@ void main() {
       db.execute('''
 CREATE TABLE session (
   id TEXT PRIMARY KEY,
-  time_updated INTEGER
+  parent_id TEXT,
+  time_updated INTEGER,
+  data TEXT
 );
 ''');
       db.execute(
-        "INSERT INTO session(id, time_updated) VALUES ('ses_old', 1)",
+        "INSERT INTO session(id, parent_id, time_updated) VALUES ('ses_old', NULL, 1)",
       );
       db.execute(
-        "INSERT INTO session(id, time_updated) VALUES ('ses_new', 2)",
+        "INSERT INTO session(id, parent_id, time_updated) VALUES ('ses_new', NULL, 2)",
       );
       db.dispose();
 
-      final got = await const OpencodeResumeStrategy().detectNativeId(
+      final got = await const OpencodeAiHistoryCapability().detectNativeId(
         ctx(env: {'OPENCODE_DB': dbPath}),
       );
       expect(got, 'ses_new');
@@ -121,7 +125,7 @@ CREATE TABLE session (
       );
       db.dispose();
 
-      final got = await const OpencodeResumeStrategy().detectNativeId(
+      final got = await const OpencodeAiHistoryCapability().detectNativeId(
         ctx(
           env: {'OPENCODE_DB': dbPath},
           persistedNativeId: 'ses_kept',
@@ -151,7 +155,7 @@ CREATE TABLE session (
       await writeChat('real-old', hasConversation: true, updatedAtMs: 100);
       await writeChat('real-new', hasConversation: true, updatedAtMs: 150);
 
-      final got = await const CursorResumeStrategy().detectNativeId(
+      final got = await const CursorAiHistoryCapability().detectNativeId(
         ctx(env: {'CURSOR_CONFIG_DIR': base.path}),
       );
       expect(got, 'real-new');
@@ -159,14 +163,14 @@ CREATE TABLE session (
 
     test('returns null when only empty chats exist', () async {
       await writeChat('empty', hasConversation: false, updatedAtMs: 200);
-      final got = await const CursorResumeStrategy().detectNativeId(
+      final got = await const CursorAiHistoryCapability().detectNativeId(
         ctx(env: {'CURSOR_CONFIG_DIR': base.path}),
       );
       expect(got, isNull);
     });
 
     test('returns null when there is no chats dir', () async {
-      final got = await const CursorResumeStrategy().detectNativeId(
+      final got = await const CursorAiHistoryCapability().detectNativeId(
         ctx(env: {'CURSOR_CONFIG_DIR': base.path}),
       );
       expect(got, isNull);
@@ -183,7 +187,7 @@ CREATE TABLE session (
           '{"schemaVersion":1,"hasConversation":true,"updatedAtMs":300}',
         );
 
-        final got = await const CursorResumeStrategy().detectNativeId(
+        final got = await const CursorAiHistoryCapability().detectNativeId(
           ctx(env: {'HOME': home, 'USERPROFILE': home}),
         );
         expect(got, 'mixed-chat');
@@ -220,7 +224,7 @@ CREATE TABLE session (
         '"chatId":"manifest-chat"}},"sessionOverlays":{}}',
       );
 
-      final got = await const CursorResumeStrategy().detectNativeId(
+      final got = await const CursorAiHistoryCapability().detectNativeId(
         ctx(
           env: {'HOME': home, 'USERPROFILE': home},
           workspaceId: 'ws',
@@ -240,7 +244,7 @@ CREATE TABLE session (
       await Directory(projects).create(recursive: true);
       await File(p.join(projects, 'task-1.jsonl')).writeAsString('{}');
 
-      final got = await const ClaudeResumeStrategy().detectNativeId(
+      final got = await const ClaudeAiHistoryCapability().detectNativeId(
         ctx(transcriptRoots: [base.path], bucket: 'home-me-proj'),
       );
       expect(got, 'task-1');
@@ -251,14 +255,14 @@ CREATE TABLE session (
       await Directory(workspaces).create(recursive: true);
       await File(p.join(workspaces, 'task-1.jsonl')).writeAsString('{}');
 
-      final got = await const ClaudeResumeStrategy().detectNativeId(
+      final got = await const ClaudeAiHistoryCapability().detectNativeId(
         ctx(transcriptRoots: [base.path], bucket: 'home-me-proj'),
       );
       expect(got, isNull);
     });
 
     test('returns null when no transcript exists', () async {
-      final got = await const ClaudeResumeStrategy().detectNativeId(
+      final got = await const ClaudeAiHistoryCapability().detectNativeId(
         ctx(transcriptRoots: [base.path], bucket: 'home-me-proj'),
       );
       expect(got, isNull);
@@ -271,7 +275,7 @@ CREATE TABLE session (
       await Directory(workspaces).create(recursive: true);
       await File(p.join(workspaces, 'task-1.jsonl')).writeAsString('{}');
 
-      final got = await const FlashskyaiResumeStrategy().detectNativeId(
+      final got = await const FlashskyaiAiHistoryCapability().detectNativeId(
         ctx(transcriptRoots: [base.path], bucket: 'home-me-proj'),
       );
       expect(got, 'task-1');
@@ -282,14 +286,14 @@ CREATE TABLE session (
       await Directory(projects).create(recursive: true);
       await File(p.join(projects, 'task-1.jsonl')).writeAsString('{}');
 
-      final got = await const FlashskyaiResumeStrategy().detectNativeId(
+      final got = await const FlashskyaiAiHistoryCapability().detectNativeId(
         ctx(transcriptRoots: [base.path], bucket: 'home-me-proj'),
       );
       expect(got, 'task-1');
     });
 
     test('returns null when no transcript exists', () async {
-      final got = await const FlashskyaiResumeStrategy().detectNativeId(
+      final got = await const FlashskyaiAiHistoryCapability().detectNativeId(
         ctx(transcriptRoots: [base.path], bucket: 'home-me-proj'),
       );
       expect(got, isNull);

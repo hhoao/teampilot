@@ -14,7 +14,7 @@ void main() {
     id: 'm',
     name: 'planner',
     model: 'gpt-5.2',
-    dangerouslySkipPermissions: false,
+    dangerouslySkipPermissions: true,
   );
 
   test('fresh launch: --cd + -m, no resume subcommand', () {
@@ -26,6 +26,7 @@ void main() {
       '/work',
       '-m',
       'gpt-5.2',
+      '--dangerously-bypass-approvals-and-sandbox',
       '--dangerously-bypass-hook-trust',
     ]);
   });
@@ -46,6 +47,7 @@ void main() {
       '/work',
       '-m',
       'gpt-5.2',
+      '--dangerously-bypass-approvals-and-sandbox',
       '--dangerously-bypass-hook-trust',
     ]);
   });

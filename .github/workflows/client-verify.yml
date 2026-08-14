@@ -115,8 +115,24 @@ jobs:
       - name: Analyze (errors only)
         run: flutter analyze --no-fatal-infos --no-fatal-warnings
 
+      - name: teampilot_search Rust tests
+        working-directory: client/packages/teampilot_search
+        run: cargo test --manifest-path rust/Cargo.toml
+
+      - name: teampilot_search Dart tests
+        working-directory: client/packages/teampilot_search
+        run: flutter test
+
+      - name: teampilot_search analyze
+        working-directory: client/packages/teampilot_search
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+
       - name: Unit and widget tests
         run: flutter test --exclude-tags integration
+
+      - name: Build Android APK (debug, teampilot_search cdylib cross-compile)
+        if: matrix.platform == 'android'
+        run: flutter build apk --debug
 
   integration-linux:
     name: Linux integration (Claude PTY + Docker SSH)

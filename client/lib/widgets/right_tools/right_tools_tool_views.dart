@@ -8,6 +8,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../cubits/app_provider_cubit.dart';
 import '../../cubits/cli_presets_cubit.dart';
 import '../../cubits/chat_cubit.dart';
+import '../../cubits/content_search/content_search_cubit.dart';
 import '../../cubits/workbench/workbench_cubit.dart';
 import '../../cubits/chat/model/session_workbench_view.dart';
 import '../../cubits/file_tree_cubit.dart';
@@ -28,6 +29,8 @@ import '../../models/workspace_topology.dart';
 import '../../pages/home_workspace/workspace/member_detail_dialog.dart';
 import '../../pages/home_workspace/workspace/member_config_directory_opener.dart';
 import '../../services/cli/member_config/member_config_inspector.dart';
+import '../../services/search/content_replacer.dart';
+import '../../services/search/content_search_runner.dart';
 import '../../services/storage/home_target_controller.dart';
 import '../../services/storage/runtime_context.dart';
 import '../../services/workspace/workspace_tools_scope.dart';
@@ -40,8 +43,32 @@ import 'file_tree_panel.dart';
 import 'mailbox_panel.dart';
 import 'members_panel.dart';
 import 'right_tools_tool_preferences.dart';
+import 'search_panel.dart';
 import 'tabbed_panel.dart';
 import 'tool_view.dart';
+
+/// Index of the search tool within [_buildViews], mirroring its guards.
+/// Order: members, fileTree, git, mailbox, board, search.
+///
+/// [membersVisible] must already fold in the `team != null` condition from
+/// [_buildViews]; [showMailbox]/[showBoard] come from a
+/// [RightToolsMailboxGate] resolved with the same inputs.
+int searchToolIndex({
+  required bool isPersonalContext,
+  required bool membersVisible,
+  required bool fileTreeVisible,
+  required bool gitVisible,
+  required bool showMailbox,
+  required bool showBoard,
+}) {
+  var i = 0;
+  if (!isPersonalContext && membersVisible) i++;
+  if (fileTreeVisible) i++;
+  if (gitVisible) i++;
+  if (showMailbox) i++;
+  if (showBoard) i++;
+  return i;
+}
 
 /// Pokes the shared FS watcher when a session leaves the working set.
 class RightToolsWorkingTurnListener extends StatelessWidget {
@@ -257,6 +284,7 @@ class RightToolsToolViews extends StatefulWidget {
     required this.fileTreeCubit,
     required this.workContext,
     required this.scope,
+    required this.searchFocusRequest,
     super.key,
   });
 
@@ -271,6 +299,9 @@ class RightToolsToolViews extends StatefulWidget {
   final RuntimeContext workContext;
   final WorkspaceToolsScopeState scope;
 
+  /// Bumped by the Ctrl+Shift+F command host to focus the query field.
+  final ValueNotifier<int> searchFocusRequest;
+
   @override
   State<RightToolsToolViews> createState() => _RightToolsToolViewsState();
 }
@@ -284,6 +315,7 @@ class _RightToolsViewsCacheKey {
     required this.chatSlice,
     required this.mailboxGate,
     required this.scopeRoots,
+    required this.scopeTargetId,
     required this.cwd,
     required this.workspaceId,
     required this.toolsScopeId,
@@ -295,6 +327,7 @@ class _RightToolsViewsCacheKey {
   final RightToolsChatSlice chatSlice;
   final RightToolsMailboxGate mailboxGate;
   final List<String> scopeRoots;
+  final String? scopeTargetId;
   final String cwd;
   final String workspaceId;
   final String toolsScopeId;
@@ -309,6 +342,7 @@ class _RightToolsViewsCacheKey {
             chatSlice == other.chatSlice &&
             mailboxGate == other.mailboxGate &&
             listEquals(scopeRoots, other.scopeRoots) &&
+            scopeTargetId == other.scopeTargetId &&
             cwd == other.cwd &&
             workspaceId == other.workspaceId &&
             toolsScopeId == other.toolsScopeId;
@@ -322,6 +356,7 @@ class _RightToolsViewsCacheKey {
     chatSlice,
     mailboxGate,
     Object.hashAll(scopeRoots),
+    scopeTargetId,
     cwd,
     workspaceId,
     toolsScopeId,
@@ -393,6 +428,7 @@ class _RightToolsToolViewsState extends State<RightToolsToolViews> {
       chatSlice: chatSlice,
       mailboxGate: mailboxGate,
       scopeRoots: widget.scope.roots,
+      scopeTargetId: widget.scope.tools?.targetId,
       cwd: widget.cwd,
       workspaceId: widget.workspaceId,
       toolsScopeId: widget.toolsScopeId,
@@ -560,6 +596,31 @@ class _RightToolsToolViewsState extends State<RightToolsToolViews> {
       );
     }
 
+    // Search stays LAST: Task 4 shortcuts resolve the tool index by position.
+    if (widget.preferences.searchVisible) {
+      final root = widget.scope.roots.firstOrNull ?? widget.cwd;
+      final fs = widget.workContext.filesystem;
+      views.add(
+        ToolView(
+          icon: Icons.search_outlined,
+          label: l10n.workspaceSearchPanel,
+          child: BlocProvider(
+            lazy: false,
+            create: (context) => ContentSearchCubit(
+              runnerFactory: (_) => ContentSearchRunner(fs: fs, root: root),
+              replacerFactory: () => ContentReplacer(fs: fs),
+            ),
+            child: WorkspaceSearchPanel(
+              workspaceId: widget.workspaceId,
+              root: root,
+              fs: fs,
+              focusRequest: widget.searchFocusRequest,
+            ),
+          ),
+        ),
+      );
+    }
+
     return views;
   }
 }
@@ -685,11 +746,7 @@ class _ScopedMembersPanelState extends State<_ScopedMembersPanel> {
     }
     final member = widget.runtimeMembers.firstWhere((m) => m.id == id);
     unawaited(
-      chat.openMemberTab(
-        widget.team,
-        member,
-        workspaceCwd: widget.cwd,
-      ),
+      chat.openMemberTab(widget.team, member, workspaceCwd: widget.cwd),
     );
     widget.maybeDismissDrawer();
   }

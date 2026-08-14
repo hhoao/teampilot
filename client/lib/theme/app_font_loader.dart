@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:logger/logger.dart';
 import '../utils/logging/logger.dart';
 import 'system_fonts.dart';
 import 'app_font_resolver.dart';

@@ -116,6 +116,8 @@
   "cotExpandReasoningOnOpenDescription": "展开「思考过程」时，自动展开内部推理步骤。",
   "cotExpandToolsOnOpenTitle": "打开时展开工具",
   "cotExpandToolsOnOpenDescription": "展开「思考过程」时，自动展开内部工具调用详情。",
+  "autoOpenSubagentPreviewTitle": "自动打开子会话预览",
+  "autoOpenSubagentPreviewDescription": "子 agent 开始运行时自动弹出预览并实时跟随;按返回后停止本会话的跟随。",
   "thinkingProcessFoldSectionTitle": "折叠进思考过程",
   "toolCategoryRead": "读取文件",
   "toolCategoryWrite": "写入文件",
@@ -250,7 +252,7 @@
   "gitPush": "推送",
   "gitPull": "拉取",
   "gitRefresh": "刷新",
-  "gitAmend": "修改上一次提交",
+  "gitAmend": "修正",
   "gitAmendCommit": "修改提交",
   "gitAmendConfirmTitle": "修改上一次提交？",
   "gitAmendConfirmMessage": "这将改写最后一次提交。如果该提交已推送到远程，之后需要强制推送。",
@@ -479,6 +481,7 @@
   "homeWorkspaceWorkspacePlugins": "插件",
   "homeWorkspaceWorkspaceMcp": "MCP",
   "homeWorkspaceWorkspaceExtensions": "扩展",
+  "homeWorkspaceWorkspaceHooks": "Hooks",
   "workspaceSkillsAssignedCount": "已为本工作区启用 {assigned}/{total}",
   "@workspaceSkillsAssignedCount": {
     "placeholders": {
@@ -487,6 +490,14 @@
     }
   },
   "workspaceSkillsManage": "管理 Skills",
+  "workspaceHooksAssignedCount": "已为本工作区启用 {assigned}/{total}",
+  "@workspaceHooksAssignedCount": {
+    "placeholders": {
+      "assigned": {"type": "int"},
+      "total": {"type": "int"}
+    }
+  },
+  "workspaceHooksManage": "管理 Hooks",
   "workspaceMcpAssignedCount": "已为本工作区启用 {assigned}/{total}",
   "@workspaceMcpAssignedCount": {
     "placeholders": {
@@ -541,9 +552,49 @@
   "workspaceSearchFilterAll": "全部",
   "workspaceSearchFilterConversations": "任务",
   "workspaceSearchFilterFiles": "文件",
+  "workspaceSearchContent": "内容",
   "workspaceSearchShowMore": "查看更多结果",
   "workspaceSearchFilesEmptyHint": "输入关键词搜索文件",
   "workspaceSearchNoResults": "没有匹配结果",
+  "workspaceSearchPanel": "搜索",
+  "workspaceSearchQueryHint": "搜索文件",
+  "workspaceSearchRegex": "正则",
+  "workspaceSearchCaseSensitive": "大小写",
+  "workspaceSearchGitignore": ".gitignore",
+  "workspaceSearchIncludeHint": "包含 (glob，逗号分隔)",
+  "workspaceSearchExcludeHint": "排除 (glob，逗号分隔)",
+  "workspaceSearchReplaceHint": "替换为",
+  "workspaceSearchReplaceAll": "全部替换",
+  "workspaceSearchReplaceAllTitle": "全部替换？",
+  "workspaceSearchReplaceAllMessage": "替换 {count} 处匹配？",
+  "@workspaceSearchReplaceAllMessage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "workspaceSearchReplace": "替换",
+  "workspaceSearchReplacedCount": "已替换 {count} 处",
+  "@workspaceSearchReplacedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "workspaceSearchCancel": "取消",
+  "workspaceSearchEmptyHint": "输入以搜索文件内容",
+  "workspaceSearchTruncated": "结果过多已截断——请细化查询",
+  "workspaceSearchBackend": "引擎：{backend}",
+  "@workspaceSearchBackend": {
+    "placeholders": {
+      "backend": {
+        "type": "String"
+      }
+    }
+  },
+  "workspaceSearchError": "搜索失败——请检查正则",
   "appDropdownSearchHint": "搜索…",
   "appDropdownSearchNoResults": "未找到结果",
   "homeWorkspaceOpenWorkspaceInNewTab": "在新标签页中打开",
@@ -1462,6 +1513,43 @@
   "skillsGoDiscovery": "前往发现",
   "skillsSourceRepos": "仓库",
   "skillsSourceSkillsSh": "skills.sh",
+  "skillsSourceSkillsMp": "SkillsMP",
+  "skillsMarketplaceSearchHint": "搜索技能市场 (≥2 字)…",
+  "skillsMarketplaceLoadMore": "加载更多",
+  "skillsMarketplaceAddRepo": "添加仓库",
+  "skillsMarketplaceRepoAdded": "已添加到仓库源，可在 Repos 页安装具体技能",
+  "skillsFilterSortBy": "排序",
+  "skillsFilterSortByStars": "星数",
+  "skillsFilterSortByRecent": "最新",
+  "skillsFilterLanguage": "语言",
+  "skillsFilterAnyLanguage": "全部",
+  "skillsFilterCategory": "分类",
+  "skillsFilterAnyCategory": "全部",
+  "skillsFilterOccupation": "职业",
+  "skillsFilterAnyOccupation": "全部",
+  "skillsCardStars": "{count} 星",
+  "@skillsCardStars": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "skillsCardUpdatedAt": "更新于 {date}",
+  "@skillsCardUpdatedAt": {
+    "placeholders": {
+      "date": {"type": "String"}
+    }
+  },
+  "skillsMpQuotaHint": "SkillsMP 匿名额度（每天 50 次）已用完。设置免费 API Key 后继续。",
+  "skillsMpApiKeyButton": "设置 API Key",
+  "skillsMpApiKeyDialogTitle": "SkillsMP API Key",
+  "skillsMpApiKeyDialogHint": "在 skillsmp.com/developers 免费注册获取",
+  "skillsMpApiKeySave": "保存",
+  "skillsMarketplaceSearchError": "搜索失败：{message}",
+  "@skillsMarketplaceSearchError": {
+    "placeholders": {
+      "message": {"type": "String"}
+    }
+  },
   "skillsSearchPlaceholder": "搜索 Skill…",
   "skillsSkillsShPlaceholder": "搜索 skills.sh (≥2 字)…",
   "skillsFilterRepoAll": "所有仓库",
@@ -1495,8 +1583,6 @@
   "skillsImportNothing": "未发现未管理的 Skill。",
   "skillsImportSelected": "导入选中 {count} 个",
   "skillsZipNoSkills": "压缩包中未发现 SKILL.md。",
-  "skillsSkillsShLoadMore": "加载更多",
-  "skillsSkillsShPoweredBy": "由 skills.sh 提供",
   "skillsSkillsShSearch": "搜索",
   "skillsDiscoveryEmpty": "未发现可用 Skill",
   "skillsDiscoveryEmptyHint": "添加仓库或试用 skills.sh 来发现 Skill。",
@@ -1587,6 +1673,15 @@
   "teamSettingsSubtitle": "团队代理",
   "membersSubtitle": "团队代理",
   "teamSkillsNav": "Skills",
+  "teamHooksNav": "Hooks",
+  "teamHooksAssignedCount": "已启用 {assigned}/{total}",
+  "@teamHooksAssignedCount": {
+    "placeholders": {
+      "assigned": {"type": "int"},
+      "total": {"type": "int"}
+    }
+  },
+  "teamHooksManage": "管理 Hooks",
   "teamSkillsAssignedCount": "已启用 {assigned}/{total}",
   "teamSkillsManage": "全部 Skills",
   "teamPluginsNav": "插件",
@@ -1842,6 +1937,39 @@
   "mcpSubtitle": "为 Agent 会话管理 MCP 服务器配置。",
   "mcpNavInstalled": "已安装",
   "mcpNavDiscovery": "发现",
+  "hookNavTitle": "Hooks",
+  "hookNew": "新建 hook",
+  "hooksNoInstalled": "暂无 hooks",
+  "hooksNoInstalledHint": "创建 hook，在 CLI 事件时运行命令。",
+  "hookEdit": "编辑 hook",
+  "hookName": "名称",
+  "hookDescription": "描述",
+  "hookEvent": "事件",
+  "hookMatcher": "匹配器",
+  "hookActionCommand": "命令",
+  "hookActionScript": "脚本",
+  "hookPolicy": "策略",
+  "hookTimeoutSec": "超时（秒）",
+  "hookEnv": "环境变量（每行 KEY=VALUE）",
+  "hookSave": "保存",
+  "hookNameRequired": "名称为必填项",
+  "hookSupportMatrix": "查看受支持程度",
+  "hookCapabilityMatrix": "能力矩阵",
+  "hookImport": "导入",
+  "hookImportCli": "CLI",
+  "hookImportJson": "Hook JSON",
+  "hookImportJsonHint": "粘贴 settings.json hooks、hooks.json 或 hooks 片段…",
+  "hookImportParse": "解析",
+  "hookImportDone": "导入 {count} 条",
+  "@hookImportDone": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "hookImportDoneToast": "已导入 hooks",
+  "hookImportOverwrite": "将覆盖",
+  "hookImportInvalidJson": "Hook JSON 无效",
+  "hookImportNoHooks": "未找到 hooks",
   "mcpNavRegistries": "注册中心",
   "mcpInstalledSectionTitle": "已安装的 MCP",
   "mcpInstalledCount": "已安装 {count}",
@@ -2483,6 +2611,7 @@
   "shortcutsWorkspaceCloseTab": "关闭工作区标签",
   "shortcutsWorkspaceReopenClosed": "重新打开已关闭的工作区标签",
   "shortcutsWorkspaceSearch": "搜索工作区（双击 Shift）",
+  "shortcutsWorkspaceContentSearch": "在文件中查找",
   "shortcutsStripNextTab": "下一个标签",
   "shortcutsStripPrevTab": "上一个标签",
   "shortcutsSessionNewTab": "新建会话标签",

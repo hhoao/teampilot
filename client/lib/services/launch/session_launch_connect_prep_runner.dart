@@ -7,7 +7,6 @@ import '../../models/app_session.dart';
 import '../../models/team_config.dart';
 import '../../models/workspace.dart';
 import '../../services/terminal/terminal_session.dart';
-import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import 'session_tab_connect_prep.dart';
 

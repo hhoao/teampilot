@@ -7,6 +7,7 @@ import 'package:teampilot/services/cli/claude/capabilities/history/ai_transcript
 import 'package:teampilot/services/cli/claude/capabilities/history/compatible_side_resolver.dart';
 import 'package:teampilot/services/cli/registry/capabilities/history/subagent_side_resolver.dart';
 import 'package:teampilot/services/cli/registry/capabilities/history/tool_result_enricher.dart';
+import 'package:teampilot/services/cli/registry/capabilities/shared_tool_call_resolvers.dart';
 import 'package:teampilot/services/cli/claude/capabilities/history/compatible_jsonl.dart';
 import 'package:teampilot/services/io/filesystem.dart';
 import 'package:teampilot/services/session/session_history_context.dart';
@@ -49,6 +50,33 @@ class _Cap implements AiHistoryCapability {
 
   @override
   Future<String?> liveCacheToken(SessionHistoryContext ctx) async => null;
+
+  @override
+  AiTranscriptIncrementalRefresher? get incrementalRefresher => null;
+
+  @override
+  Map<String, String> sessionEnv({String? toolRoot}) => const {};
+
+  @override
+  ResumeBinding get binding => ResumeBinding.postCaptured;
+
+  @override
+  Future<String?> detectNativeId(ResumeContext ctx) async => null;
+
+  static const _resolvers = SharedToolCallResolvers();
+
+  @override
+  AiEditToolTargetResolver get editResolver => _resolvers.editResolver;
+
+  @override
+  AiToolFileTargetResolver get fileResolver => _resolvers.fileResolver;
+
+  @override
+  AiShellToolTargetResolver get shellResolver => _resolvers.shellResolver;
+
+  @override
+  AiToolCallCategoryResolver get categoryResolver =>
+      _resolvers.categoryResolver;
 }
 
 Future<Map<String, AiSubagentAttachment>> _inflate({
@@ -591,6 +619,33 @@ class _WorkflowCap implements AiHistoryCapability {
 
   @override
   Future<String?> liveCacheToken(SessionHistoryContext ctx) async => null;
+
+  @override
+  AiTranscriptIncrementalRefresher? get incrementalRefresher => null;
+
+  @override
+  Map<String, String> sessionEnv({String? toolRoot}) => const {};
+
+  @override
+  ResumeBinding get binding => ResumeBinding.postCaptured;
+
+  @override
+  Future<String?> detectNativeId(ResumeContext ctx) async => null;
+
+  static const _resolvers = SharedToolCallResolvers();
+
+  @override
+  AiEditToolTargetResolver get editResolver => _resolvers.editResolver;
+
+  @override
+  AiToolFileTargetResolver get fileResolver => _resolvers.fileResolver;
+
+  @override
+  AiShellToolTargetResolver get shellResolver => _resolvers.shellResolver;
+
+  @override
+  AiToolCallCategoryResolver get categoryResolver =>
+      _resolvers.categoryResolver;
 }
 
 class _WorkflowStubResolver implements SubagentSideResolver {

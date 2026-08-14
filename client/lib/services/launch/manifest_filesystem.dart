@@ -73,7 +73,22 @@ class ManifestFilesystem implements Filesystem {
       return const FsStat(kind: FsEntityKind.directory);
     }
     final resolved = _resolveViaOverlaySymlink(path);
-    if (resolved != null) return readDelegate.stat(resolved);
+    if (resolved != null) {
+      // The overlay symlink target may itself be a path staged during this
+      // pass (e.g. flavor projection seeded into an installed bundle that the
+      // session plugin pool symlinks to). Check the overlay maps for the
+      // resolved target before falling through to the read delegate.
+      if (_overlayFiles.containsKey(resolved)) {
+        return const FsStat(kind: FsEntityKind.file);
+      }
+      if (_overlaySymlinks.containsKey(resolved)) {
+        return const FsStat(kind: FsEntityKind.symlink);
+      }
+      if (_overlayDirs.contains(resolved)) {
+        return const FsStat(kind: FsEntityKind.directory);
+      }
+      return readDelegate.stat(resolved);
+    }
     return readDelegate.stat(path);
   }
 
@@ -147,7 +162,12 @@ class ManifestFilesystem implements Filesystem {
     final overlay = _overlayFiles[path];
     if (overlay != null) return overlay;
     final resolved = _resolveViaOverlaySymlink(path);
-    return readDelegate.readString(resolved ?? path);
+    if (resolved != null) {
+      final resolvedOverlay = _overlayFiles[resolved];
+      if (resolvedOverlay != null) return resolvedOverlay;
+      return readDelegate.readString(resolved);
+    }
+    return readDelegate.readString(path);
   }
 
   @override
@@ -156,7 +176,12 @@ class ManifestFilesystem implements Filesystem {
     final overlay = _overlayFiles[path];
     if (overlay != null) return utf8.encode(overlay);
     final resolved = _resolveViaOverlaySymlink(path);
-    return readDelegate.readBytes(resolved ?? path);
+    if (resolved != null) {
+      final resolvedOverlay = _overlayFiles[resolved];
+      if (resolvedOverlay != null) return utf8.encode(resolvedOverlay);
+      return readDelegate.readBytes(resolved);
+    }
+    return readDelegate.readBytes(path);
   }
 
   @override
@@ -236,7 +261,7 @@ class ManifestFilesystem implements Filesystem {
     }
     // Surface entries staged during this pass so writers can read back what
     // they wrote (e.g. the plugin writer scans the pool it just materialized).
-    final prefix = '$path/';
+    final prefix = '$path${pathContext.separator}';
     for (final file in _overlayFiles.keys) {
       final rel = _directChild(prefix, file);
       if (rel != null && names.add(rel)) {
@@ -260,10 +285,10 @@ class ManifestFilesystem implements Filesystem {
   }
 
   /// Child name if [path] sits directly under [prefix], else `null`.
-  static String? _directChild(String prefix, String path) {
+  String? _directChild(String prefix, String path) {
     if (!path.startsWith(prefix) || path.length <= prefix.length) return null;
     final rel = path.substring(prefix.length);
-    return rel.contains('/') ? null : rel;
+    return rel.contains(pathContext.separator) ? null : rel;
   }
 
   @override

@@ -2,10 +2,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/agent_status/agent_permission_request.dart';
 import 'package:teampilot/services/agent_status/ask_user_question.dart';
 import 'package:teampilot/services/agent_status/ask_user_question_policy.dart';
-import 'package:teampilot/services/cli/cursor/capabilities/ask_user_question.dart';
-import 'package:teampilot/services/cli/opencode/capabilities/ask_user_question.dart';
-import 'package:teampilot/services/cli/registry/capabilities/ask_user_question_capability.dart';
-import 'package:teampilot/services/cli/registry/capabilities/pty_ask_user_question_capability.dart';
+import 'package:teampilot/services/cli/claude/capabilities/chat_interaction.dart';
+import 'package:teampilot/services/cli/cursor/capabilities/chat_interaction.dart';
+import 'package:teampilot/services/cli/opencode/capabilities/chat_interaction.dart';
 
 void main() {
   const permissionRequest = AgentPermissionRequest(
@@ -45,7 +44,7 @@ void main() {
     test('Cursor / none capability returns false', () {
       expect(
         shouldShowAskUserQuestionCard(
-          capability: const NoAskUserQuestionCapability(),
+          capability: const CursorChatInteraction(),
           questions: const [singleSelectQuestion],
         ),
         isFalse,
@@ -55,7 +54,7 @@ void main() {
     test('single single-select with pty returns true', () {
       expect(
         shouldShowAskUserQuestionCard(
-          capability: const PtyAskUserQuestionCapability(),
+          capability: const ClaudeChatInteraction(),
           questions: const [singleSelectQuestion],
         ),
         isTrue,
@@ -65,7 +64,7 @@ void main() {
     test('pty allows null askRequestId for ptyPicker', () {
       expect(
         shouldShowAskUserQuestionCard(
-          capability: const PtyAskUserQuestionCapability(),
+          capability: const ClaudeChatInteraction(),
           questions: const [singleSelectQuestion],
           askRequestId: null,
         ),
@@ -76,7 +75,7 @@ void main() {
     test('multi-select with pty returns true (hook updatedInput path)', () {
       expect(
         shouldShowAskUserQuestionCard(
-          capability: const PtyAskUserQuestionCapability(),
+          capability: const ClaudeChatInteraction(),
           questions: const [multiSelectQuestion],
         ),
         isTrue,
@@ -86,7 +85,7 @@ void main() {
     test('multi-select with OpenCode returns true when askRequestId present', () {
       expect(
         shouldShowAskUserQuestionCard(
-          capability: const OpenCodeAskUserQuestionCapability(),
+          capability: const OpencodeChatInteraction(),
           questions: const [multiSelectQuestion],
           askRequestId: 'req-1',
         ),
@@ -97,7 +96,7 @@ void main() {
     test('pluginSdkReply missing askRequestId returns false', () {
       expect(
         shouldShowAskUserQuestionCard(
-          capability: const OpenCodeAskUserQuestionCapability(),
+          capability: const OpencodeChatInteraction(),
           questions: const [singleSelectQuestion],
           askRequestId: null,
         ),
@@ -108,7 +107,7 @@ void main() {
     test('empty options on single single-select returns false', () {
       expect(
         shouldShowAskUserQuestionCard(
-          capability: const PtyAskUserQuestionCapability(),
+          capability: const ClaudeChatInteraction(),
           questions: const [emptyOptionsQuestion],
         ),
         isFalse,
@@ -118,7 +117,7 @@ void main() {
     test('multiple single-select questions with pty returns true', () {
       expect(
         shouldShowAskUserQuestionCard(
-          capability: const PtyAskUserQuestionCapability(),
+          capability: const ClaudeChatInteraction(),
           questions: const [
             singleSelectQuestion,
             AgentAskUserQuestion(
@@ -135,7 +134,7 @@ void main() {
         () {
       expect(
         shouldShowAskUserQuestionCard(
-          capability: const PtyAskUserQuestionCapability(),
+          capability: const ClaudeChatInteraction(),
           questions: const [
             singleSelectQuestion,
             multiSelectQuestion,
@@ -149,7 +148,7 @@ void main() {
         () {
       expect(
         shouldShowAskUserQuestionCard(
-          capability: const OpenCodeAskUserQuestionCapability(),
+          capability: const OpencodeChatInteraction(),
           questions: const [
             singleSelectQuestion,
             AgentAskUserQuestion(
@@ -166,14 +165,14 @@ void main() {
     test('null or empty questions returns false', () {
       expect(
         shouldShowAskUserQuestionCard(
-          capability: const PtyAskUserQuestionCapability(),
+          capability: const ClaudeChatInteraction(),
           questions: null,
         ),
         isFalse,
       );
       expect(
         shouldShowAskUserQuestionCard(
-          capability: const PtyAskUserQuestionCapability(),
+          capability: const ClaudeChatInteraction(),
           questions: const [],
         ),
         isFalse,
@@ -196,7 +195,7 @@ void main() {
     test('Claude / pty capability returns false', () {
       expect(
         shouldShowPermissionCard(
-          capability: const PtyAskUserQuestionCapability(),
+          capability: const ClaudeChatInteraction(),
           permissionRequest: permissionRequest,
           askRequestId: 'perm-1',
         ),
@@ -207,7 +206,7 @@ void main() {
     test('OpenCode with payload and id returns true', () {
       expect(
         shouldShowPermissionCard(
-          capability: const OpenCodeAskUserQuestionCapability(),
+          capability: const OpencodeChatInteraction(),
           permissionRequest: permissionRequest,
           askRequestId: 'perm-1',
         ),
@@ -218,7 +217,7 @@ void main() {
     test('OpenCode missing askRequestId returns false', () {
       expect(
         shouldShowPermissionCard(
-          capability: const OpenCodeAskUserQuestionCapability(),
+          capability: const OpencodeChatInteraction(),
           permissionRequest: permissionRequest,
           askRequestId: null,
         ),
@@ -229,7 +228,7 @@ void main() {
     test('OpenCode without payload returns false', () {
       expect(
         shouldShowPermissionCard(
-          capability: const OpenCodeAskUserQuestionCapability(),
+          capability: const OpencodeChatInteraction(),
           permissionRequest: null,
           askRequestId: 'perm-1',
         ),

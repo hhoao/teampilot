@@ -346,6 +346,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'When you open a thinking-process block, expand nested tool call details automatically.';
 
   @override
+  String get autoOpenSubagentPreviewTitle => 'Auto-open subagent preview';
+
+  @override
+  String get autoOpenSubagentPreviewDescription =>
+      'When a subagent starts running, open its preview automatically and follow it live. Press Back to stop following for this session.';
+
+  @override
   String get thinkingProcessFoldSectionTitle => 'Fold into thinking process';
 
   @override
@@ -637,7 +644,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gitRefresh => 'Refresh';
 
   @override
-  String get gitAmend => 'Amend last commit';
+  String get gitAmend => 'Amend';
 
   @override
   String get gitAmendCommit => 'Amend Commit';
@@ -1181,12 +1188,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeWorkspaceWorkspaceExtensions => 'Extensions';
 
   @override
+  String get homeWorkspaceWorkspaceHooks => 'Hooks';
+
+  @override
   String workspaceSkillsAssignedCount(int assigned, int total) {
     return '$assigned of $total enabled for this workspace';
   }
 
   @override
   String get workspaceSkillsManage => 'Manage skills';
+
+  @override
+  String workspaceHooksAssignedCount(int assigned, int total) {
+    return '$assigned of $total enabled for this workspace';
+  }
+
+  @override
+  String get workspaceHooksManage => 'Manage hooks';
 
   @override
   String workspaceMcpAssignedCount(int assigned, int total) {
@@ -1314,6 +1332,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get workspaceSearchFilterFiles => 'Files';
 
   @override
+  String get workspaceSearchContent => 'Content';
+
+  @override
   String get workspaceSearchShowMore => 'Show more results';
 
   @override
@@ -1321,6 +1342,67 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get workspaceSearchNoResults => 'No matches';
+
+  @override
+  String get workspaceSearchPanel => 'Search';
+
+  @override
+  String get workspaceSearchQueryHint => 'Search files';
+
+  @override
+  String get workspaceSearchRegex => 'Regex';
+
+  @override
+  String get workspaceSearchCaseSensitive => 'Aa';
+
+  @override
+  String get workspaceSearchGitignore => '.gitignore';
+
+  @override
+  String get workspaceSearchIncludeHint => 'Include (glob, comma-separated)';
+
+  @override
+  String get workspaceSearchExcludeHint => 'Exclude (glob, comma-separated)';
+
+  @override
+  String get workspaceSearchReplaceHint => 'Replace with';
+
+  @override
+  String get workspaceSearchReplaceAll => 'Replace All';
+
+  @override
+  String get workspaceSearchReplaceAllTitle => 'Replace all?';
+
+  @override
+  String workspaceSearchReplaceAllMessage(int count) {
+    return 'Replace $count occurrence(s)?';
+  }
+
+  @override
+  String get workspaceSearchReplace => 'Replace';
+
+  @override
+  String workspaceSearchReplacedCount(int count) {
+    return 'Replaced $count';
+  }
+
+  @override
+  String get workspaceSearchCancel => 'Cancel';
+
+  @override
+  String get workspaceSearchEmptyHint => 'Type to search file contents';
+
+  @override
+  String get workspaceSearchTruncated =>
+      'Results truncated — refine your query';
+
+  @override
+  String workspaceSearchBackend(String backend) {
+    return 'Engine: $backend';
+  }
+
+  @override
+  String get workspaceSearchError => 'Search failed — check the pattern';
 
   @override
   String get appDropdownSearchHint => 'Search…';
@@ -3616,6 +3698,81 @@ class AppLocalizationsEn extends AppLocalizations {
   String get skillsSourceSkillsSh => 'skills.sh';
 
   @override
+  String get skillsSourceSkillsMp => 'SkillsMP';
+
+  @override
+  String get skillsMarketplaceSearchHint => 'Search marketplaces (≥ 2 chars)…';
+
+  @override
+  String get skillsMarketplaceLoadMore => 'Load more';
+
+  @override
+  String get skillsMarketplaceAddRepo => 'Add repo';
+
+  @override
+  String get skillsMarketplaceRepoAdded =>
+      'Repo added to skill sources; install individual skills in the Repos tab';
+
+  @override
+  String get skillsFilterSortBy => 'Sort';
+
+  @override
+  String get skillsFilterSortByStars => 'Stars';
+
+  @override
+  String get skillsFilterSortByRecent => 'Recent';
+
+  @override
+  String get skillsFilterLanguage => 'Language';
+
+  @override
+  String get skillsFilterAnyLanguage => 'Any';
+
+  @override
+  String get skillsFilterCategory => 'Category';
+
+  @override
+  String get skillsFilterAnyCategory => 'All';
+
+  @override
+  String get skillsFilterOccupation => 'Occupation';
+
+  @override
+  String get skillsFilterAnyOccupation => 'All';
+
+  @override
+  String skillsCardStars(int count) {
+    return '$count stars';
+  }
+
+  @override
+  String skillsCardUpdatedAt(String date) {
+    return 'Updated $date';
+  }
+
+  @override
+  String get skillsMpQuotaHint =>
+      'SkillsMP anonymous quota (50/day) exhausted. Set a free API key to continue.';
+
+  @override
+  String get skillsMpApiKeyButton => 'Set API Key';
+
+  @override
+  String get skillsMpApiKeyDialogTitle => 'SkillsMP API Key';
+
+  @override
+  String get skillsMpApiKeyDialogHint =>
+      'Register for a free key at skillsmp.com/developers';
+
+  @override
+  String get skillsMpApiKeySave => 'Save';
+
+  @override
+  String skillsMarketplaceSearchError(String message) {
+    return 'Search failed: $message';
+  }
+
+  @override
   String get skillsSearchPlaceholder => 'Search skills…';
 
   @override
@@ -3729,12 +3886,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get skillsZipNoSkills => 'No SKILL.md found in the archive.';
-
-  @override
-  String get skillsSkillsShLoadMore => 'Load more';
-
-  @override
-  String get skillsSkillsShPoweredBy => 'Powered by skills.sh';
 
   @override
   String get skillsSkillsShSearch => 'Search';
@@ -3956,6 +4107,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get teamSkillsNav => 'Skills';
+
+  @override
+  String get teamHooksNav => 'Hooks';
+
+  @override
+  String teamHooksAssignedCount(int assigned, int total) {
+    return '$assigned of $total enabled';
+  }
+
+  @override
+  String get teamHooksManage => 'Manage hooks';
 
   @override
   String teamSkillsAssignedCount(int assigned, int total) {
@@ -4599,6 +4761,100 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get mcpNavDiscovery => 'Discovery';
+
+  @override
+  String get hookNavTitle => 'Hooks';
+
+  @override
+  String get hookNew => 'New hook';
+
+  @override
+  String get hooksNoInstalled => 'No hooks';
+
+  @override
+  String get hooksNoInstalledHint =>
+      'Create a hook to run commands on CLI events.';
+
+  @override
+  String get hookEdit => 'Edit hook';
+
+  @override
+  String get hookName => 'Name';
+
+  @override
+  String get hookDescription => 'Description';
+
+  @override
+  String get hookEvent => 'Event';
+
+  @override
+  String get hookMatcher => 'Matcher';
+
+  @override
+  String get hookActionCommand => 'Command';
+
+  @override
+  String get hookActionScript => 'Script';
+
+  @override
+  String get hookPolicy => 'Policy';
+
+  @override
+  String get hookTimeoutSec => 'Timeout (seconds)';
+
+  @override
+  String get hookEnv => 'Environment (KEY=VALUE per line)';
+
+  @override
+  String get hookSave => 'Save';
+
+  @override
+  String get hookNameRequired => 'Name is required';
+
+  @override
+  String get hookSupportMatrix => 'View support matrix';
+
+  @override
+  String get hookCapabilityMatrix => 'Capability matrix';
+
+  @override
+  String get hookImport => 'Import';
+
+  @override
+  String get hookImportCli => 'CLI';
+
+  @override
+  String get hookImportJson => 'Hook JSON';
+
+  @override
+  String get hookImportJsonHint =>
+      'Paste settings.json hooks, hooks.json, or a hooks fragment…';
+
+  @override
+  String get hookImportParse => 'Parse';
+
+  @override
+  String hookImportDone(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Import $count hooks',
+      one: 'Import $count hook',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get hookImportDoneToast => 'Hooks imported';
+
+  @override
+  String get hookImportOverwrite => 'Will overwrite';
+
+  @override
+  String get hookImportInvalidJson => 'Invalid hook JSON';
+
+  @override
+  String get hookImportNoHooks => 'No hooks found';
 
   @override
   String get mcpNavRegistries => 'Registry';
@@ -6358,6 +6614,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get shortcutsWorkspaceSearch => 'Search Workspace (double-tap Shift)';
+
+  @override
+  String get shortcutsWorkspaceContentSearch => 'Find in Files';
 
   @override
   String get shortcutsStripNextTab => 'Next Tab';

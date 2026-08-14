@@ -15,8 +15,7 @@ import '../../models/team_config.dart';
 import '../../services/agent_status/agent_attention_state.dart';
 import '../../services/agent_status/ask_user_question_policy.dart';
 import '../../services/agent_status/exit_plan_mode.dart';import '../../services/cli/preset_resolver.dart';
-import '../../services/cli/registry/capabilities/ask_user_question_capability.dart';
-import '../../services/cli/registry/capabilities/exit_plan_mode_capability.dart';
+import '../../services/cli/registry/capabilities/chat_interaction_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../services/compose/compose_at_file_refs.dart';
@@ -89,7 +88,7 @@ class AgentPermissionAttentionBanner extends StatelessWidget {
       return false;
     }
     final toolRegistry = registry ?? CliToolRegistry.builtIn();
-    final capability = toolRegistry.capability<AskUserQuestionCapability>(
+    final capability = toolRegistry.capability<ChatInteractionCapability>(
       seatCli,
     );
     if (shouldShowAskUserQuestionCard(
@@ -133,7 +132,7 @@ class AgentPermissionAttentionBanner extends StatelessWidget {
     final lockedCli = _resolveSeatCli(context, seatId: seatId);
     final registry =
         CliToolRegistryScope.maybeOf(context) ?? CliToolRegistry.builtIn();
-    final capability = registry.capability<AskUserQuestionCapability>(
+    final capability = registry.capability<ChatInteractionCapability>(
       lockedCli,
     );
     final showAskCard = shouldShowAskUserQuestionCard(
@@ -184,7 +183,7 @@ class AgentPermissionAttentionBanner extends StatelessWidget {
     final planFilePath = lastEvent?.planFilePath?.trim() ?? '';
     if (isExitPlanModeTool(lastEvent?.toolName) &&
         (planText.isNotEmpty || planFilePath.isNotEmpty)) {
-      final exitPlanCapability = registry.capability<ExitPlanModeCapability>(
+      final exitPlanCapability = registry.capability<ChatInteractionCapability>(
         lockedCli,
       );
       final supportsInChatApproval =

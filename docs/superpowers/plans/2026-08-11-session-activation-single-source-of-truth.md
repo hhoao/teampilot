@@ -45,7 +45,7 @@ import 'package:teampilot/cubits/chat/model/chat_tab_info.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
 import 'package:teampilot/utils/session/workspace_tab_session_scope.dart';
-import '../support/post_frame_test_harness.dart';
+import '../../support/post_frame_test_harness.dart';
 
 void main() {
   group('scopedSelectedMemberId', () {
@@ -61,13 +61,13 @@ void main() {
 
     test('returns the active tab selectedMemberId', () {
       final workbench = WorkbenchCubit();
+      chat.tabStore.setActiveWorkspaceId('ws-1');
       final tab = ChatTab(
         info: ChatTabInfo(id: 'sess-1', title: 't', subtitle: ''),
         cliTeamName: 'team-1',
         workspaceId: 'ws-1',
       )..selectedMemberId = 'team-lead';
       chat.tabStore.registerSession(tab);
-      chat.tabStore.setActiveWorkspaceId('ws-1');
       workbench.openSession('ws-1', 'sess-1', preview: false);
 
       expect(
@@ -116,7 +116,7 @@ Expected: PASS。
 
 `client/lib/cubits/chat/session_launch_host.dart`:
 - 加 import: `import '../../cubits/workbench/workbench_tab.dart';`
-- `ChatWorkbenchPort` 中把 `syncForeground()` 声明替换为:
+- `ChatWorkbenchPort` 中在 `syncForeground()` **旁边**(保留,Task 3 才删除)新增:
 
 ```dart
   /// Bar center-active session tab id for [workspaceId] (null when landing or
@@ -125,10 +125,10 @@ Expected: PASS。
   WorkbenchTabId? centerActiveForScope(String workspaceId);
 ```
 
-- [ ] **Step 6: 更新 bridge**
+- [ ] **Step 6: 更新 bridge(纯增量)**
 
 `client/lib/services/workbench/workbench_chat_bridge.dart`:
-- 删除字段 `_workbenchSub`、构造器里的 `_workbench.stream.listen((_) => _syncForeground())`、方法 `_syncForeground()`、`dispose()` 中的 subscription cancel(dispose 保留空实现)。
+- 保留 `_workbenchSub` 订阅与 `_syncForeground`(Task 3 才删除 — 保持镜像在 Task 1-2 期间继续更新,避免消费方回归窗口)。
 - 新增:
 
 ```dart
@@ -550,7 +550,22 @@ git commit -m "refactor(chat): resolve session/member identity via workbench bar
 
 - `surfaceNewTab`(约 174-179 行):删除 `_host.applyState(_host.state.copyWith(activeSessionId: ...))`,保留 `onSessionTabOpened?.call(...)` 与 `_host.refreshActiveWorkspaceTabs();`
 
-- [ ] **Step 5: 适配测试中的镜像构造**
+- [ ] **Step 5: 删除 bridge 镜像同步**
+
+`client/lib/services/workbench/workbench_chat_bridge.dart`:
+- 删除 `_workbenchSub` 字段、构造器里的 `_workbench.stream.listen((_) => _syncForeground())`、私有方法 `_syncForeground()`、`dispose()` 中的 subscription cancel。
+
+`client/lib/cubits/chat/session_launch_host.dart`:
+- `ChatWorkbenchPort` 删除 `syncForeground()` 声明(仅保留 `centerActiveForScope`)。
+
+`client/lib/cubits/chat_cubit.dart`:
+- `setActiveWorkspace` / `activateWorkspaceTab` 中删除 `_workbenchPort?.syncForeground();` 调用(若 Step 2 未覆盖)。
+
+- [ ] **Step 6: 迁移 workspace_tools_scope_sync 的镜像依赖**
+
+`client/lib/pages/home_workspace/workspace/workspace_tools_scope_sync.dart`(约 146 行 `_chatAffectsToolsPlane`):`prev.activeSessionId != next.activeSessionId` 已不存在 — 该 listenWhen 改为同时观察 WorkbenchCubit bar 的 center-active 变化。若该 widget 结构上无 WorkbenchCubit 依赖,则在其 build 中加 `context.select<WorkbenchCubit, WorkbenchTabId?>`(依赖 `tabScopeId` 的 bar)作为重建触发,并把 ChatCubit 的 listenWhen 中镜像判断删除;具体以编译为准,保持"tools 平面在会话切换时重算"这一行为不变。
+
+- [ ] **Step 7: 适配测试中的镜像构造**
 
 `client/test/services/launch/session_tab_surface_coordinator_test.dart`:
 - `_FakeHost(ChatState(activeSessionId: 'sess-1'), ...)` → `_FakeHost(const ChatState(), ...)`
@@ -559,16 +574,22 @@ git commit -m "refactor(chat): resolve session/member identity via workbench bar
 
 `client/test/cubits/chat_cubit_session_launch_test.dart`:修复所有 `ChatState(...activeSessionId...)` 构造与 `state.activeSessionId` 断言(按编译器提示逐点改,必要时改为断言 `chat.activeTab?.info.id`)。
 
-- [ ] **Step 6: 删除 `ChatWorkbenchSlice.from`**
+**Task 2 发现的额外镜像消费点(编译器删除字段后会报错,必须在 Task 3 一并迁移):**
+- `client/lib/widgets/right_tools/right_tools_tool_views.dart`:`_activeWorkbenchView`(约 632)、`_openMember`(约 660)、`_viewDetail`(约 679)、`_openConfigDir`(约 701)读取 `chat.state.activeSessionId` → 改用 `chat.activeTab?.info.id`(这些是点击事件处理器,读取时派生即可)
+- `client/lib/services/launch/session_launch_pipeline.dart` `_selectedMemberIdOrDefault`(约 612):`state.selectedMemberId` → `_activeTab()?.selectedMemberId ?? ''`(空时再走 `_tabStore.defaultMemberId(team)`)
+- `client/lib/cubits/chat/session_launch_service.dart` `_updateSelectedMember`(约 161):已在 Task 3 Step 3 处理
+- `client/lib/cubits/config_cubit.dart` / `client/lib/cubits/session/session_pod.dart`:其 `selectedMemberId` 是**各自独立的 state**,与 ChatState 无关 — 勿动
+
+- [ ] **Step 8: 删除 `ChatWorkbenchSlice.from`**
 
 `client/lib/pages/chat/chat_workbench_slice.dart`:删除 `from` 工厂(所有调用方已在 Task 2 迁移)。`right_tools_tool_views.dart` 的 `RightToolsChatSlice.from` 同理删除。
 
-- [ ] **Step 7: 全量编译 + 测试**
+- [ ] **Step 9: 全量编译 + 测试**
 
 Run: `cd client && flutter analyze --no-fatal-infos --no-fatal-warnings && flutter test --exclude-tags integration`
 Expected: 编译绿;因删除测试行为导致的失败按 Task 4 的新断言处理,其余失败逐点修复。
 
-- [ ] **Step 8: 提交**
+- [ ] **Step 10: 提交**
 
 ```bash
 git add client/lib client/test

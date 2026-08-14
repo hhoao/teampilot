@@ -40,47 +40,64 @@ class SkillManagementPage extends StatelessWidget {
         : navigateSkillSection(context, target);
     return BlocListener<SkillCubit, SkillState>(
       listenWhen: (a, b) =>
-          a.errorMessage != b.errorMessage && b.errorMessage != null,
+          a.noticeMessage != b.noticeMessage && b.noticeMessage != null,
       listener: (context, state) {
         if (!context.mounted) return;
         AppToast.show(
           context,
-          message: state.errorMessage!,
-          variant: TpToastVariant.error,
+          message:
+              state.noticeMessage == SkillCubit.marketplaceRepoAddedNoticeKey
+              ? context.l10n.skillsMarketplaceRepoAdded
+              : state.noticeMessage!,
+          variant: TpToastVariant.success,
           duration: const Duration(seconds: 4),
         );
         context.read<SkillCubit>().clearError();
       },
-      child: WorkspaceAdaptiveSectionPage(
-        pageKey: AppKeys.skillsWorkspace,
-        title: context.l10n.skillsTitle,
-        subtitle: context.l10n.skillsSubtitle,
-        showSubtitle: false,
-        embedded: embedded,
-        compactSectionTabs: true,
-        items: [
-          for (final s in SkillSection.values)
-            WorkspaceSectionNavItem(
-              label: s.title(context.l10n),
-              icon: skillSectionIcon(s),
-              selected: s == section,
-              onSelect: () => select(s),
-            ),
-        ],
-        body: switch (section) {
-          SkillSection.installed => BlocBuilder<SkillCubit, SkillState>(
-            builder: (context, state) => SkillInstalledSection(
-              state: state,
-              onGoDiscovery: () => select(SkillSection.discovery),
-            ),
-          ),
-          SkillSection.discovery => SkillDiscoverySection(
-            onGoRepos: () => select(SkillSection.repos),
-          ),
-          SkillSection.repos => BlocBuilder<SkillCubit, SkillState>(
-            builder: (context, state) => SkillReposSection(state: state),
-          ),
+      child: BlocListener<SkillCubit, SkillState>(
+        listenWhen: (a, b) =>
+            a.errorMessage != b.errorMessage && b.errorMessage != null,
+        listener: (context, state) {
+          if (!context.mounted) return;
+          AppToast.show(
+            context,
+            message: state.errorMessage!,
+            variant: TpToastVariant.error,
+            duration: const Duration(seconds: 4),
+          );
+          context.read<SkillCubit>().clearError();
         },
+        child: WorkspaceAdaptiveSectionPage(
+          pageKey: AppKeys.skillsWorkspace,
+          title: context.l10n.skillsTitle,
+          subtitle: context.l10n.skillsSubtitle,
+          showSubtitle: false,
+          embedded: embedded,
+          compactSectionTabs: true,
+          items: [
+            for (final s in SkillSection.values)
+              WorkspaceSectionNavItem(
+                label: s.title(context.l10n),
+                icon: skillSectionIcon(s),
+                selected: s == section,
+                onSelect: () => select(s),
+              ),
+          ],
+          body: switch (section) {
+            SkillSection.installed => BlocBuilder<SkillCubit, SkillState>(
+              builder: (context, state) => SkillInstalledSection(
+                state: state,
+                onGoDiscovery: () => select(SkillSection.discovery),
+              ),
+            ),
+            SkillSection.discovery => SkillDiscoverySection(
+              onGoRepos: () => select(SkillSection.repos),
+            ),
+            SkillSection.repos => BlocBuilder<SkillCubit, SkillState>(
+              builder: (context, state) => SkillReposSection(state: state),
+            ),
+          },
+        ),
       ),
     );
   }

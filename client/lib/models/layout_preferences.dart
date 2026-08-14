@@ -29,9 +29,7 @@ String languagePreferenceStoredLocale(String uiValue) {
 String normalizeUiFontId(String? id) {
   final raw = id ?? '';
   if (isInstalledFontId(raw)) return raw;
-  return FontCatalog.isKnown(FontRole.ui, raw)
-      ? raw
-      : FontCatalog.defaultUiId;
+  return FontCatalog.isKnown(FontRole.ui, raw) ? raw : FontCatalog.defaultUiId;
 }
 
 String normalizeMonoFontId(String? id) {
@@ -51,6 +49,7 @@ class LayoutPreferences {
     this.membersVisible = true,
     this.fileTreeVisible = true,
     this.gitVisible = true,
+    this.searchVisible = true,
     this.boardVisible = true,
     this.rightToolsVisible = true,
     this.sidebarVisible = true,
@@ -73,6 +72,7 @@ class LayoutPreferences {
     this.markdownOpenMode = MarkdownOpenMode.preview,
     this.cotExpandReasoningOnOpen = false,
     this.cotExpandToolsOnOpen = false,
+    this.autoOpenSubagentPreview = false,
     this.chatUserMessageMode = ContentDisplayMode.foldFixedHeight,
     this.chatCodeBlockMode = ContentDisplayMode.foldFixedHeight,
     this.fileCodeBlockMode = ContentDisplayMode.foldFixedHeight,
@@ -102,6 +102,7 @@ class LayoutPreferences {
       membersVisible: json['membersVisible'] as bool? ?? true,
       fileTreeVisible: json['fileTreeVisible'] as bool? ?? true,
       gitVisible: json['gitVisible'] as bool? ?? true,
+      searchVisible: json['searchVisible'] as bool? ?? true,
       boardVisible: json['boardVisible'] as bool? ?? true,
       rightToolsVisible: json['rightToolsVisible'] as bool? ?? true,
       sidebarVisible: json['sidebarVisible'] as bool? ?? true,
@@ -158,6 +159,8 @@ class LayoutPreferences {
       cotExpandReasoningOnOpen:
           json['cotExpandReasoningOnOpen'] as bool? ?? false,
       cotExpandToolsOnOpen: json['cotExpandToolsOnOpen'] as bool? ?? false,
+      autoOpenSubagentPreview:
+          json['autoOpenSubagentPreview'] as bool? ?? false,
       chatUserMessageMode:
           _enumValue(ContentDisplayMode.values, json['chatUserMessageMode']) ??
           ContentDisplayMode.foldFixedHeight,
@@ -172,7 +175,9 @@ class LayoutPreferences {
       floatingPanelWidth: _optionalDouble(json['floatingPanelWidth']),
       floatingPanelHeight: _optionalDouble(json['floatingPanelHeight']),
       floatingPanelRightInset: _optionalDouble(json['floatingPanelRightInset']),
-      floatingPanelBottomInset: _optionalDouble(json['floatingPanelBottomInset']),
+      floatingPanelBottomInset: _optionalDouble(
+        json['floatingPanelBottomInset'],
+      ),
       floatingToggleDx: _optionalDouble(json['floatingToggleDx']),
       floatingToggleDy: _optionalDouble(json['floatingToggleDy']),
       floatingMaximized: json['floatingMaximized'] as bool? ?? false,
@@ -226,6 +231,7 @@ class LayoutPreferences {
   final bool membersVisible;
   final bool fileTreeVisible;
   final bool gitVisible;
+  final bool searchVisible;
   final bool boardVisible;
   final bool rightToolsVisible;
   final bool sidebarVisible;
@@ -254,6 +260,7 @@ class LayoutPreferences {
   final MarkdownOpenMode markdownOpenMode;
   final bool cotExpandReasoningOnOpen;
   final bool cotExpandToolsOnOpen;
+  final bool autoOpenSubagentPreview;
   final ContentDisplayMode chatUserMessageMode;
   final ContentDisplayMode chatCodeBlockMode;
   final ContentDisplayMode fileCodeBlockMode;
@@ -278,6 +285,7 @@ class LayoutPreferences {
     bool? membersVisible,
     bool? fileTreeVisible,
     bool? gitVisible,
+    bool? searchVisible,
     bool? boardVisible,
     bool? rightToolsVisible,
     bool? sidebarVisible,
@@ -300,6 +308,7 @@ class LayoutPreferences {
     MarkdownOpenMode? markdownOpenMode,
     bool? cotExpandReasoningOnOpen,
     bool? cotExpandToolsOnOpen,
+    bool? autoOpenSubagentPreview,
     ContentDisplayMode? chatUserMessageMode,
     ContentDisplayMode? chatCodeBlockMode,
     ContentDisplayMode? fileCodeBlockMode,
@@ -324,6 +333,7 @@ class LayoutPreferences {
       membersVisible: membersVisible ?? this.membersVisible,
       fileTreeVisible: fileTreeVisible ?? this.fileTreeVisible,
       gitVisible: gitVisible ?? this.gitVisible,
+      searchVisible: searchVisible ?? this.searchVisible,
       boardVisible: boardVisible ?? this.boardVisible,
       rightToolsVisible: rightToolsVisible ?? this.rightToolsVisible,
       sidebarVisible: sidebarVisible ?? this.sidebarVisible,
@@ -376,6 +386,8 @@ class LayoutPreferences {
       cotExpandReasoningOnOpen:
           cotExpandReasoningOnOpen ?? this.cotExpandReasoningOnOpen,
       cotExpandToolsOnOpen: cotExpandToolsOnOpen ?? this.cotExpandToolsOnOpen,
+      autoOpenSubagentPreview:
+          autoOpenSubagentPreview ?? this.autoOpenSubagentPreview,
       chatUserMessageMode: chatUserMessageMode ?? this.chatUserMessageMode,
       chatCodeBlockMode: chatCodeBlockMode ?? this.chatCodeBlockMode,
       fileCodeBlockMode: fileCodeBlockMode ?? this.fileCodeBlockMode,
@@ -408,6 +420,7 @@ class LayoutPreferences {
       membersVisible: true,
       fileTreeVisible: false,
       gitVisible: gitVisible,
+      searchVisible: searchVisible,
       boardVisible: boardVisible,
       rightToolsVisible: rightToolsVisible,
       sidebarVisible: sidebarVisible,
@@ -430,6 +443,7 @@ class LayoutPreferences {
       markdownOpenMode: markdownOpenMode,
       cotExpandReasoningOnOpen: cotExpandReasoningOnOpen,
       cotExpandToolsOnOpen: cotExpandToolsOnOpen,
+      autoOpenSubagentPreview: autoOpenSubagentPreview,
       chatUserMessageMode: chatUserMessageMode,
       chatCodeBlockMode: chatCodeBlockMode,
       fileCodeBlockMode: fileCodeBlockMode,
@@ -456,6 +470,7 @@ class LayoutPreferences {
       'membersVisible': membersVisible,
       'fileTreeVisible': fileTreeVisible,
       'gitVisible': gitVisible,
+      'searchVisible': searchVisible,
       'boardVisible': boardVisible,
       'rightToolsVisible': rightToolsVisible,
       'sidebarVisible': sidebarVisible,
@@ -478,6 +493,7 @@ class LayoutPreferences {
       'markdownOpenMode': markdownOpenMode.name,
       'cotExpandReasoningOnOpen': cotExpandReasoningOnOpen,
       'cotExpandToolsOnOpen': cotExpandToolsOnOpen,
+      'autoOpenSubagentPreview': autoOpenSubagentPreview,
       'chatUserMessageMode': chatUserMessageMode.name,
       'chatCodeBlockMode': chatCodeBlockMode.name,
       'fileCodeBlockMode': fileCodeBlockMode.name,

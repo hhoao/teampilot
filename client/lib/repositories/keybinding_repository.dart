@@ -6,7 +6,6 @@ import '../services/commands/command_catalog.dart';
 import '../services/commands/key_chord.dart';
 import '../services/io/filesystem.dart';
 import '../services/storage/app_storage.dart';
-import 'package:logger/logger.dart';
 import '../utils/logging/logger.dart';
 
 /// Persists user keybinding overrides at `{appDataRoot}/keybindings.json`.

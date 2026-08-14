@@ -13,7 +13,6 @@ import '../cli/preset_resolver.dart';
 import '../cli/registry/capabilities/ai_history_capability.dart';
 import '../cli/registry/capabilities/history/tool_result_enricher.dart';
 import '../cli/registry/capabilities/resume/pinned_transcript_probe.dart';
-import '../cli/registry/capabilities/tool_call_resolver_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../storage/runtime_context.dart';
 import '../terminal/session_member_cli_resolver.dart';
@@ -177,9 +176,7 @@ final class AiHistoryLoader {
     bool force = false,
   }) async {
     final cap = _registry.capability<AiHistoryCapability>(cli);
-    final refresher = cap is AiTranscriptIncrementalCapability
-        ? (cap as AiTranscriptIncrementalCapability).incrementalRefresher
-        : null;
+    final refresher = cap?.incrementalRefresher;
     if (refresher == null) return null;
     final state = _incrementalStates.putIfAbsent(
       cacheKey,
@@ -240,9 +237,7 @@ final class AiHistoryLoader {
   }
 
   AiToolCallCategoryResolver _categoryResolverFor(CliTool cli) =>
-      _registry
-          .capability<ToolCallResolversCapability>(cli)
-          ?.categoryResolver ??
+      _registry.capability<AiHistoryCapability>(cli)?.categoryResolver ??
       defaultToolCallCategoryResolver;
 
   /// Defensive annotation for post-load merged lists (mailbox). Idempotent.
@@ -512,9 +507,7 @@ final class AiHistoryLoader {
 
       // 全量 parse 完成后对齐增量状态:让下一次 refresh 变成纯增量
       // (只重读指纹变化的行,原地合并进 messages 同一实例)。
-      final refresher = cap is AiTranscriptIncrementalCapability
-          ? (cap as AiTranscriptIncrementalCapability).incrementalRefresher
-          : null;
+      final refresher = cap.incrementalRefresher;
       if (refresher != null) {
         final incrementalState = _incrementalStates.putIfAbsent(
           cacheKey,

@@ -3,8 +3,8 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/plugin.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/cli/registry/capabilities/plugin_provisioner_capability.dart';
-import 'package:teampilot/services/cli/codex/capabilities/plugin_provisioner.dart';
+import 'package:teampilot/services/cli/registry/capabilities/plugin_capability.dart';
+import 'package:teampilot/services/cli/codex/capabilities/plugin.dart';
 import 'package:teampilot/services/cli/codex/provider/codex_session_config_dir.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:toml/toml.dart';
@@ -12,7 +12,7 @@ import 'package:toml/toml.dart';
 import '../../../../support/in_memory_filesystem.dart';
 
 void main() {
-  group('CodexPluginProvisioner', () {
+  group('CodexPluginCapability', () {
     test(
       'writes cache layout and plugin enable sections into config.toml',
       () async {
@@ -33,7 +33,7 @@ void main() {
           }),
         );
 
-        await const CodexPluginProvisioner().provision(
+        await const CodexPluginCapability().provision(
           PluginProvisionContext(
             fs: fs,
             teampilotRoot: '/tp',
@@ -118,7 +118,7 @@ void main() {
         jsonEncode({'name': 'context7', 'description': 'docs'}),
       );
 
-      await const CodexPluginProvisioner().provision(
+      await const CodexPluginCapability().provision(
         PluginProvisionContext(
           fs: fs,
           teampilotRoot: '/tp',
@@ -175,7 +175,7 @@ void main() {
         }),
       );
 
-      await const CodexPluginProvisioner().provision(
+      await const CodexPluginCapability().provision(
         PluginProvisionContext(
           fs: fs,
           teampilotRoot: '/tp',

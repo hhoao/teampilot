@@ -1,5 +1,5 @@
 import '../provider_presets.dart';
-import '../../registry/capabilities/provider_catalog_capability.dart';
+import '../../registry/capabilities/provider_capability.dart';
 import 'cursor_auth_artifacts.dart';
 import 'cursor_home_layout.dart';
 

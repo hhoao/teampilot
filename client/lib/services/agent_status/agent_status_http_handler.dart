@@ -4,7 +4,7 @@ import 'dart:typed_data';
 
 import '../../cubits/agent_attention_cubit.dart';
 import '../../models/team_config.dart';
-import '../../services/cli/registry/capabilities/exit_plan_mode_capability.dart';
+import '../../services/cli/registry/capabilities/chat_interaction_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../utils/logging/logger.dart';
 import '../../services/terminal/prompt_submit_ack_tracker.dart';
@@ -178,7 +178,7 @@ class AgentStatusHttpHandler {
     if (!hasPlan) return false;
     final cli = resolveCli(sessionId, memberId);
     if (cli == null) return false;
-    final capability = registry.capability<ExitPlanModeCapability>(cli);
+    final capability = registry.capability<ChatInteractionCapability>(cli);
     if (capability == null || !capability.supportsInChatApproval) return false;
     final toolUseId = event.toolUseId?.trim() ?? '';
     if (toolUseId.isEmpty) return false;

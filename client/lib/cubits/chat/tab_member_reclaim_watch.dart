@@ -3,7 +3,6 @@ import 'dart:async';
 import '../../models/team_config.dart';
 import '../../services/terminal/terminal_reclaim_policy.dart';
 import '../../services/terminal/terminal_session.dart';
-import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import '../../utils/team/team_member_naming.dart';
 import 'chat_tab_store.dart';

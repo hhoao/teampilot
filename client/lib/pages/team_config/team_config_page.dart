@@ -12,6 +12,7 @@ import '../../utils/team/team_member_naming.dart';
 import '../../widgets/settings/workspace_hub_shell.dart';
 import '../../widgets/settings/workspace_section_host.dart';
 import 'team_config_extensions_section.dart';
+import 'team_config_hooks_section.dart';
 import 'team_config_info_section.dart';
 import 'team_config_mcp_section.dart';
 import 'team_config_member_dialogs.dart';
@@ -76,6 +77,14 @@ class TeamConfigHubPage extends StatelessWidget {
         onTap: throttledTap(
           'team_config_hub_extensions',
           () => context.push('/team-config/extensions'),
+        ),
+      ),
+      WorkspaceHubEntry(
+        title: l10n.teamHooksNav,
+        icon: Icons.bolt_outlined,
+        onTap: throttledTap(
+          'team_config_hub_hooks',
+          () => context.push('/team-config/hooks'),
         ),
       ),
       for (final member in team.members)
@@ -152,6 +161,12 @@ class TeamConfigPage extends StatelessWidget {
       ),
       TeamConfigSection.mcp => TeamMcpSection(team: team, cubit: teamCubit),
       TeamConfigSection.extensions => TeamExtensionsSection(team: team),
+      TeamConfigSection.hooks => TeamHooksSection(
+        assignedIds: team.hookIds,
+        onAssignedChanged: (ids) => teamCubit.updateSelected(
+          team.copyWith(hookIds: ids),
+        ),
+      ),
       TeamConfigSection.members => TeamMemberDetailSection(
         teamId: team.id,
         selectedMemberId: resolvedMemberId,

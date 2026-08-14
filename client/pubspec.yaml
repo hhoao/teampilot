@@ -2,7 +2,7 @@ name: teampilot
 description: "A team-oriented and easy-to-use desktop client packaged based on the terminal AI Agent"
 publish_to: 'none'
 
-version: 3.16.0
+version: 3.17.0
 
 environment:
   sdk: ^3.8.1
@@ -37,6 +37,8 @@ dependencies:
     path: packages/shared_ui
   teampilot_tree_sitter:
     path: packages/teampilot_tree_sitter
+  teampilot_search:
+    path: packages/teampilot_search
   flutter_bloc: ^9.1.0
   bloc_concurrency: ^0.3.0
   equatable: ^2.0.5

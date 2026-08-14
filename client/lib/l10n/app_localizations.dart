@@ -710,6 +710,18 @@ abstract class AppLocalizations {
   /// **'When you open a thinking-process block, expand nested tool call details automatically.'**
   String get cotExpandToolsOnOpenDescription;
 
+  /// No description provided for @autoOpenSubagentPreviewTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-open subagent preview'**
+  String get autoOpenSubagentPreviewTitle;
+
+  /// No description provided for @autoOpenSubagentPreviewDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'When a subagent starts running, open its preview automatically and follow it live. Press Back to stop following for this session.'**
+  String get autoOpenSubagentPreviewDescription;
+
   /// No description provided for @thinkingProcessFoldSectionTitle.
   ///
   /// In en, this message translates to:
@@ -1259,7 +1271,7 @@ abstract class AppLocalizations {
   /// No description provided for @gitAmend.
   ///
   /// In en, this message translates to:
-  /// **'Amend last commit'**
+  /// **'Amend'**
   String get gitAmend;
 
   /// No description provided for @gitAmendCommit.
@@ -2222,6 +2234,12 @@ abstract class AppLocalizations {
   /// **'Extensions'**
   String get homeWorkspaceWorkspaceExtensions;
 
+  /// No description provided for @homeWorkspaceWorkspaceHooks.
+  ///
+  /// In en, this message translates to:
+  /// **'Hooks'**
+  String get homeWorkspaceWorkspaceHooks;
+
   /// No description provided for @workspaceSkillsAssignedCount.
   ///
   /// In en, this message translates to:
@@ -2233,6 +2251,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Manage skills'**
   String get workspaceSkillsManage;
+
+  /// No description provided for @workspaceHooksAssignedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{assigned} of {total} enabled for this workspace'**
+  String workspaceHooksAssignedCount(int assigned, int total);
+
+  /// No description provided for @workspaceHooksManage.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage hooks'**
+  String get workspaceHooksManage;
 
   /// No description provided for @workspaceMcpAssignedCount.
   ///
@@ -2444,6 +2474,12 @@ abstract class AppLocalizations {
   /// **'Files'**
   String get workspaceSearchFilterFiles;
 
+  /// No description provided for @workspaceSearchContent.
+  ///
+  /// In en, this message translates to:
+  /// **'Content'**
+  String get workspaceSearchContent;
+
   /// No description provided for @workspaceSearchShowMore.
   ///
   /// In en, this message translates to:
@@ -2461,6 +2497,114 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No matches'**
   String get workspaceSearchNoResults;
+
+  /// No description provided for @workspaceSearchPanel.
+  ///
+  /// In en, this message translates to:
+  /// **'Search'**
+  String get workspaceSearchPanel;
+
+  /// No description provided for @workspaceSearchQueryHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search files'**
+  String get workspaceSearchQueryHint;
+
+  /// No description provided for @workspaceSearchRegex.
+  ///
+  /// In en, this message translates to:
+  /// **'Regex'**
+  String get workspaceSearchRegex;
+
+  /// No description provided for @workspaceSearchCaseSensitive.
+  ///
+  /// In en, this message translates to:
+  /// **'Aa'**
+  String get workspaceSearchCaseSensitive;
+
+  /// No description provided for @workspaceSearchGitignore.
+  ///
+  /// In en, this message translates to:
+  /// **'.gitignore'**
+  String get workspaceSearchGitignore;
+
+  /// No description provided for @workspaceSearchIncludeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Include (glob, comma-separated)'**
+  String get workspaceSearchIncludeHint;
+
+  /// No description provided for @workspaceSearchExcludeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Exclude (glob, comma-separated)'**
+  String get workspaceSearchExcludeHint;
+
+  /// No description provided for @workspaceSearchReplaceHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace with'**
+  String get workspaceSearchReplaceHint;
+
+  /// No description provided for @workspaceSearchReplaceAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace All'**
+  String get workspaceSearchReplaceAll;
+
+  /// No description provided for @workspaceSearchReplaceAllTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace all?'**
+  String get workspaceSearchReplaceAllTitle;
+
+  /// No description provided for @workspaceSearchReplaceAllMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace {count} occurrence(s)?'**
+  String workspaceSearchReplaceAllMessage(int count);
+
+  /// No description provided for @workspaceSearchReplace.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace'**
+  String get workspaceSearchReplace;
+
+  /// No description provided for @workspaceSearchReplacedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Replaced {count}'**
+  String workspaceSearchReplacedCount(int count);
+
+  /// No description provided for @workspaceSearchCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get workspaceSearchCancel;
+
+  /// No description provided for @workspaceSearchEmptyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Type to search file contents'**
+  String get workspaceSearchEmptyHint;
+
+  /// No description provided for @workspaceSearchTruncated.
+  ///
+  /// In en, this message translates to:
+  /// **'Results truncated — refine your query'**
+  String get workspaceSearchTruncated;
+
+  /// No description provided for @workspaceSearchBackend.
+  ///
+  /// In en, this message translates to:
+  /// **'Engine: {backend}'**
+  String workspaceSearchBackend(String backend);
+
+  /// No description provided for @workspaceSearchError.
+  ///
+  /// In en, this message translates to:
+  /// **'Search failed — check the pattern'**
+  String get workspaceSearchError;
 
   /// No description provided for @appDropdownSearchHint.
   ///
@@ -6507,6 +6651,138 @@ abstract class AppLocalizations {
   /// **'skills.sh'**
   String get skillsSourceSkillsSh;
 
+  /// No description provided for @skillsSourceSkillsMp.
+  ///
+  /// In en, this message translates to:
+  /// **'SkillsMP'**
+  String get skillsSourceSkillsMp;
+
+  /// No description provided for @skillsMarketplaceSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search marketplaces (≥ 2 chars)…'**
+  String get skillsMarketplaceSearchHint;
+
+  /// No description provided for @skillsMarketplaceLoadMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Load more'**
+  String get skillsMarketplaceLoadMore;
+
+  /// No description provided for @skillsMarketplaceAddRepo.
+  ///
+  /// In en, this message translates to:
+  /// **'Add repo'**
+  String get skillsMarketplaceAddRepo;
+
+  /// No description provided for @skillsMarketplaceRepoAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'Repo added to skill sources; install individual skills in the Repos tab'**
+  String get skillsMarketplaceRepoAdded;
+
+  /// No description provided for @skillsFilterSortBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Sort'**
+  String get skillsFilterSortBy;
+
+  /// No description provided for @skillsFilterSortByStars.
+  ///
+  /// In en, this message translates to:
+  /// **'Stars'**
+  String get skillsFilterSortByStars;
+
+  /// No description provided for @skillsFilterSortByRecent.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent'**
+  String get skillsFilterSortByRecent;
+
+  /// No description provided for @skillsFilterLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'Language'**
+  String get skillsFilterLanguage;
+
+  /// No description provided for @skillsFilterAnyLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'Any'**
+  String get skillsFilterAnyLanguage;
+
+  /// No description provided for @skillsFilterCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Category'**
+  String get skillsFilterCategory;
+
+  /// No description provided for @skillsFilterAnyCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get skillsFilterAnyCategory;
+
+  /// No description provided for @skillsFilterOccupation.
+  ///
+  /// In en, this message translates to:
+  /// **'Occupation'**
+  String get skillsFilterOccupation;
+
+  /// No description provided for @skillsFilterAnyOccupation.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get skillsFilterAnyOccupation;
+
+  /// No description provided for @skillsCardStars.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} stars'**
+  String skillsCardStars(int count);
+
+  /// No description provided for @skillsCardUpdatedAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Updated {date}'**
+  String skillsCardUpdatedAt(String date);
+
+  /// No description provided for @skillsMpQuotaHint.
+  ///
+  /// In en, this message translates to:
+  /// **'SkillsMP anonymous quota (50/day) exhausted. Set a free API key to continue.'**
+  String get skillsMpQuotaHint;
+
+  /// No description provided for @skillsMpApiKeyButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Set API Key'**
+  String get skillsMpApiKeyButton;
+
+  /// No description provided for @skillsMpApiKeyDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'SkillsMP API Key'**
+  String get skillsMpApiKeyDialogTitle;
+
+  /// No description provided for @skillsMpApiKeyDialogHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Register for a free key at skillsmp.com/developers'**
+  String get skillsMpApiKeyDialogHint;
+
+  /// No description provided for @skillsMpApiKeySave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get skillsMpApiKeySave;
+
+  /// No description provided for @skillsMarketplaceSearchError.
+  ///
+  /// In en, this message translates to:
+  /// **'Search failed: {message}'**
+  String skillsMarketplaceSearchError(String message);
+
   /// No description provided for @skillsSearchPlaceholder.
   ///
   /// In en, this message translates to:
@@ -6704,18 +6980,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No SKILL.md found in the archive.'**
   String get skillsZipNoSkills;
-
-  /// No description provided for @skillsSkillsShLoadMore.
-  ///
-  /// In en, this message translates to:
-  /// **'Load more'**
-  String get skillsSkillsShLoadMore;
-
-  /// No description provided for @skillsSkillsShPoweredBy.
-  ///
-  /// In en, this message translates to:
-  /// **'Powered by skills.sh'**
-  String get skillsSkillsShPoweredBy;
 
   /// No description provided for @skillsSkillsShSearch.
   ///
@@ -7112,6 +7376,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Skills'**
   String get teamSkillsNav;
+
+  /// No description provided for @teamHooksNav.
+  ///
+  /// In en, this message translates to:
+  /// **'Hooks'**
+  String get teamHooksNav;
+
+  /// No description provided for @teamHooksAssignedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{assigned} of {total} enabled'**
+  String teamHooksAssignedCount(int assigned, int total);
+
+  /// No description provided for @teamHooksManage.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage hooks'**
+  String get teamHooksManage;
 
   /// No description provided for @teamSkillsAssignedCount.
   ///
@@ -8257,6 +8539,174 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Discovery'**
   String get mcpNavDiscovery;
+
+  /// No description provided for @hookNavTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Hooks'**
+  String get hookNavTitle;
+
+  /// No description provided for @hookNew.
+  ///
+  /// In en, this message translates to:
+  /// **'New hook'**
+  String get hookNew;
+
+  /// No description provided for @hooksNoInstalled.
+  ///
+  /// In en, this message translates to:
+  /// **'No hooks'**
+  String get hooksNoInstalled;
+
+  /// No description provided for @hooksNoInstalledHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a hook to run commands on CLI events.'**
+  String get hooksNoInstalledHint;
+
+  /// No description provided for @hookEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit hook'**
+  String get hookEdit;
+
+  /// No description provided for @hookName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get hookName;
+
+  /// No description provided for @hookDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Description'**
+  String get hookDescription;
+
+  /// No description provided for @hookEvent.
+  ///
+  /// In en, this message translates to:
+  /// **'Event'**
+  String get hookEvent;
+
+  /// No description provided for @hookMatcher.
+  ///
+  /// In en, this message translates to:
+  /// **'Matcher'**
+  String get hookMatcher;
+
+  /// No description provided for @hookActionCommand.
+  ///
+  /// In en, this message translates to:
+  /// **'Command'**
+  String get hookActionCommand;
+
+  /// No description provided for @hookActionScript.
+  ///
+  /// In en, this message translates to:
+  /// **'Script'**
+  String get hookActionScript;
+
+  /// No description provided for @hookPolicy.
+  ///
+  /// In en, this message translates to:
+  /// **'Policy'**
+  String get hookPolicy;
+
+  /// No description provided for @hookTimeoutSec.
+  ///
+  /// In en, this message translates to:
+  /// **'Timeout (seconds)'**
+  String get hookTimeoutSec;
+
+  /// No description provided for @hookEnv.
+  ///
+  /// In en, this message translates to:
+  /// **'Environment (KEY=VALUE per line)'**
+  String get hookEnv;
+
+  /// No description provided for @hookSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get hookSave;
+
+  /// No description provided for @hookNameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Name is required'**
+  String get hookNameRequired;
+
+  /// No description provided for @hookSupportMatrix.
+  ///
+  /// In en, this message translates to:
+  /// **'View support matrix'**
+  String get hookSupportMatrix;
+
+  /// No description provided for @hookCapabilityMatrix.
+  ///
+  /// In en, this message translates to:
+  /// **'Capability matrix'**
+  String get hookCapabilityMatrix;
+
+  /// No description provided for @hookImport.
+  ///
+  /// In en, this message translates to:
+  /// **'Import'**
+  String get hookImport;
+
+  /// No description provided for @hookImportCli.
+  ///
+  /// In en, this message translates to:
+  /// **'CLI'**
+  String get hookImportCli;
+
+  /// No description provided for @hookImportJson.
+  ///
+  /// In en, this message translates to:
+  /// **'Hook JSON'**
+  String get hookImportJson;
+
+  /// No description provided for @hookImportJsonHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste settings.json hooks, hooks.json, or a hooks fragment…'**
+  String get hookImportJsonHint;
+
+  /// No description provided for @hookImportParse.
+  ///
+  /// In en, this message translates to:
+  /// **'Parse'**
+  String get hookImportParse;
+
+  /// No description provided for @hookImportDone.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Import {count} hook} other{Import {count} hooks}}'**
+  String hookImportDone(int count);
+
+  /// No description provided for @hookImportDoneToast.
+  ///
+  /// In en, this message translates to:
+  /// **'Hooks imported'**
+  String get hookImportDoneToast;
+
+  /// No description provided for @hookImportOverwrite.
+  ///
+  /// In en, this message translates to:
+  /// **'Will overwrite'**
+  String get hookImportOverwrite;
+
+  /// No description provided for @hookImportInvalidJson.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid hook JSON'**
+  String get hookImportInvalidJson;
+
+  /// No description provided for @hookImportNoHooks.
+  ///
+  /// In en, this message translates to:
+  /// **'No hooks found'**
+  String get hookImportNoHooks;
 
   /// No description provided for @mcpNavRegistries.
   ///
@@ -11359,6 +11809,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Search Workspace (double-tap Shift)'**
   String get shortcutsWorkspaceSearch;
+
+  /// No description provided for @shortcutsWorkspaceContentSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Find in Files'**
+  String get shortcutsWorkspaceContentSearch;
 
   /// No description provided for @shortcutsStripNextTab.
   ///

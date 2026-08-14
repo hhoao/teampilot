@@ -1,6 +1,5 @@
 import '../repositories/launch_profile_repository.dart';
 import '../repositories/session_repository.dart';
-import 'package:logger/logger.dart';
 import '../utils/logging/logger.dart';
 
 /// Warms workspace / launch-profile index caches as early as [main] allows.

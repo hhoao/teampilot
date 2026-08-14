@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:mock_model_gateway/scenarios/mixed_collab_3plus.dart';
 import 'package:mock_model_gateway/scenarios/simple_3turn.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/cli/registry/capabilities/bus_transport_capability.dart';
+import 'package:teampilot/services/cli/registry/capabilities/team_behavior_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_config.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
@@ -27,7 +27,7 @@ enum CliTestWire {
   cursor,
 }
 
-/// How the CLI consumes TeamBus (mirrors [BusTransportCapability]).
+/// How the CLI consumes TeamBus (mirrors [TeamBehaviorCapability]).
 enum CliTestBusStyle {
   /// Parks in long-blocking `wait_for_message` (claude/codex/opencode/…).
   longWait,
@@ -104,10 +104,10 @@ final class CliTestProfile {
   bool get supportsNativeTeam =>
       CliToolRegistry.builtIn().supportsNativeTeam(tool);
 
-  /// Derived from [BusTransportCapability.longBlockingWaitForMessage].
+  /// Derived from [TeamBehaviorCapability.longBlockingWaitForMessage].
   CliTestBusStyle get busStyle {
     final bus =
-        CliToolRegistry.builtIn().capability<BusTransportCapability>(tool);
+        CliToolRegistry.builtIn().capability<TeamBehaviorCapability>(tool);
     if (bus != null && !bus.longBlockingWaitForMessage) {
       return CliTestBusStyle.doorbell;
     }

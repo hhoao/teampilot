@@ -191,6 +191,13 @@ class _HomeSidebarNavScroll extends StatelessWidget {
           active: activeGlobalView == HomeGlobalView.extensions,
           onTap: () => onGlobal?.call(HomeGlobalView.extensions),
         ),
+        const SizedBox(height: 4),
+        _ShortcutRow(
+          icon: Icons.bolt_outlined,
+          label: l10n.teamHooksNav,
+          active: activeGlobalView == HomeGlobalView.hooks,
+          onTap: () => onGlobal?.call(HomeGlobalView.hooks),
+        ),
       ],
     );
   }

@@ -1,10 +1,9 @@
 import '../../models/team_config.dart';
-import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import '../agent_status/ask_user_answer_pending_store.dart';
 import '../agent_status/ask_user_question.dart';
 import '../agent_status/ask_user_question_hook_gate.dart';
-import '../cli/registry/capabilities/ask_user_question_capability.dart';
+import '../cli/registry/capabilities/chat_interaction_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import 'member_turn_interrupt_service.dart';
 import 'terminal_session.dart';
@@ -157,7 +156,7 @@ final class AskUserQuestionAnswerService {
   }
 
   AskUserAnswerKind _answerKind(CliTool cli) {
-    return _registry.capability<AskUserQuestionCapability>(cli)?.answerKind ??
+    return _registry.capability<ChatInteractionCapability>(cli)?.answerKind ??
         AskUserAnswerKind.none;
   }
 

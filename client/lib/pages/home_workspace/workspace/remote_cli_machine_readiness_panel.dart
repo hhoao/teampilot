@@ -13,7 +13,7 @@ import '../../../models/team_config.dart';
 import '../../../models/workspace.dart';
 import '../../../models/workspace_topology.dart';
 import '../../../services/cli/installer_types.dart';
-import '../../../services/cli/registry/capabilities/installer_capability.dart';
+import '../../../services/cli/registry/capabilities/cli_executable_capability.dart';
 import '../../../services/cli/registry/cli_display_name.dart';
 import '../../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../../services/cli/registry/cli_tool_registry.dart';
@@ -283,7 +283,7 @@ class _CliReadinessRow extends StatelessWidget {
         ? cliDisplayName(def, l10n, registry: registry)
         : requirement.cli.value;
     final supportsInstaller =
-        registry.capability<InstallerCapability>(requirement.cli)?.supportsInstaller ??
+        registry.capability<CliExecutableCapability>(requirement.cli)?.supportsInstaller ??
         false;
 
     final (icon, color, subtitle) = switch (readiness) {

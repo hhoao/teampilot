@@ -523,7 +523,7 @@ git commit -m "feat(git): unversioned files unchecked by default; section-scoped
 在 `client/lib/l10n/app_zh.arb` 的 `"gitStagedChanges": "暂存的更改",` 之后插入:
 
 ```json
-  "gitUnversionedFiles": "未版本化的文件",
+  "gitUnversionedFiles": "未暂存的文件",
 ```
 
 - [ ] **Step 3: 重新生成 l10n 并验证**

@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/cli/opencode/provider/opencode_data_layout.dart';
 import 'package:teampilot/services/cli/opencode/provider/opencode_live_import.dart';
-import 'package:teampilot/services/cli/registry/capabilities/provider_catalog_capability.dart';
+import 'package:teampilot/services/cli/registry/capabilities/provider_capability.dart';
 
 import '../../../support/in_memory_filesystem.dart';
 

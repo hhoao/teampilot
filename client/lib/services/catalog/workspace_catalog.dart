@@ -260,6 +260,7 @@ class WorkspaceCatalog {
       await _mutationLock.synchronized(() async {
         await WorkspaceIndexStore(await repo.fs()).writeAll(_workspaces);
       });
+      _indexDirty = false;
     } on Object catch (error, stackTrace) {
       appLogger.e('[catalog] index flush failed', error: error, stackTrace: stackTrace);
     }

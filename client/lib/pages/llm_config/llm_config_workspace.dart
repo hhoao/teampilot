@@ -1,4 +1,4 @@
-import '../../services/cli/registry/capabilities/provider_display_capability.dart';
+import '../../services/cli/registry/capabilities/provider_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -122,7 +122,7 @@ class LlmProviderConfigPage extends StatelessWidget {
               },
               onShowModels: () {
             if (CliToolRegistry.builtIn()
-                    .capability<ProviderDisplayCapability>(provider.cli)
+                    .capability<ProviderCapability>(provider.cli)
                     ?.hasModelPanel ==
                 true) {
                   context.push(llmProviderModelsRoute(cli, provider.id));

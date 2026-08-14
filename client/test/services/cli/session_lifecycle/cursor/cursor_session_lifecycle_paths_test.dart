@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/services/cli/cursor/capabilities/session_lifecycle_paths.dart';
-import 'package:teampilot/services/cli/cursor/capabilities/resource.dart';
+import 'package:teampilot/services/cli/cursor/capabilities/skill.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_home_layout.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_workspace_trust.dart';
@@ -210,7 +210,7 @@ void main() {
           await fs.readSymlinkTarget(
             fs.pathContext.join(
               cursorDir,
-              CursorResourceCapability.skillsSubdirName,
+              CursorSkillCapability.skillsSubdirName,
             ),
           ),
           paths.sharedSkillsCursorDir(),

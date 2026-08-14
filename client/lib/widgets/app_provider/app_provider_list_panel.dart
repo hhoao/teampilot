@@ -1,5 +1,4 @@
-import '../../services/cli/registry/capabilities/provider_display_capability.dart';
-import '../../services/cli/registry/capabilities/provider_model_capability.dart';
+import '../../services/cli/registry/capabilities/provider_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -377,7 +376,7 @@ class _ProviderListTile extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final styles = TpTextStyles.of(context);
     final hasModelCount = CliToolRegistry.builtIn()
-        .capability<ProviderDisplayCapability>(provider.cli)
+        .capability<ProviderCapability>(provider.cli)
         ?.showModelCount == true;
     final subtitle = hasModelCount
         ? l10n.providerListModelCount(providerModelCount(provider))

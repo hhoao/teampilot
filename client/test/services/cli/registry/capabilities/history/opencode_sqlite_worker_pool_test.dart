@@ -1,14 +1,24 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:sqlite3/sqlite3.dart';
+import 'package:sqlite3_connection_pool/sqlite3_connection_pool.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/native_session_id.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/sqlite_worker_pool.dart';
 
 /// 测试专用查询:失败路径(worker isolate 上抛错 → null)。
 String? _boomQuery(Database db, Object? args) {
   throw StateError('boom');
+}
+
+/// 测试专用查询:同步忙等 [ms] 毫秒再返回(模拟慢/阻塞查询)。
+String? _busyWaitQuery(Database db, Object? args) {
+  final ms = (args as int);
+  final end = DateTime.now().add(Duration(milliseconds: ms));
+  while (DateTime.now().isBefore(end)) {}
+  return 'done';
 }
 
 void main() {
@@ -20,10 +30,14 @@ void main() {
     dbPath = p.join(tmp.path, 'opencode.db');
     final db = sqlite3.open(dbPath);
     try {
-      db.execute('CREATE TABLE session (id TEXT, time_updated INTEGER)');
       db.execute(
-        'INSERT INTO session VALUES (?, ?)',
-        ['ses_1', 100],
+        'CREATE TABLE session ('
+        'id TEXT, parent_id TEXT, time_updated INTEGER, data TEXT)',
+      );
+      db.execute(
+        'INSERT INTO session (id, parent_id, time_updated) '
+        'VALUES (?, ?, ?)',
+        ['ses_1', null, 100],
       );
     } finally {
       db.close();
@@ -96,5 +110,158 @@ void main() {
       pool.idleTimeout = const Duration(seconds: 30);
       pool.dispose(dbPath);
     }
+  });
+
+  test(
+    'worker idle-exit while queries wait on a busy lease fails them '
+    'instead of hanging forever',
+    () async {
+      final pool = OpencodeSqliteWorkerPool.instance;
+      pool.idleTimeout = const Duration(milliseconds: 80);
+      SqliteConnectionPool? holder;
+      ConnectionLease? heldLease;
+      try {
+        // 先让 worker 把原生池建好(名字=dbPath,进程内全局共享)。
+        final first = await pool.run<String?>(
+          dbPath: dbPath,
+          query: opencodeNewestSessionId,
+        );
+        expect(first, 'ses_1');
+
+        // 测试侧挂住唯一的 reader lease:worker 的下一个查询只能排队等。
+        holder = SqliteConnectionPool.open(
+          name: dbPath,
+          openConnections: () => throw StateError('pool should already exist'),
+        );
+        heldLease = await holder.reader();
+
+        // 查询在 worker 上等 lease;worker 空闲超时退出时,挂起的查询必须
+        // 失败(而非永久等待)。
+        final pending = pool.run<String?>(
+          dbPath: dbPath,
+          query: opencodeNewestSessionId,
+        );
+        await expectLater(
+          pending.timeout(const Duration(seconds: 10)),
+          throwsA(isA<StateError>()),
+        );
+
+        // 归还 lease 后,新 worker 正常服务。
+        heldLease.returnLease();
+        heldLease = null;
+        holder.close();
+        holder = null;
+        final recovered = await pool.run<String?>(
+          dbPath: dbPath,
+          query: opencodeNewestSessionId,
+        );
+        expect(recovered, 'ses_1');
+      } finally {
+        heldLease?.returnLease();
+        holder?.close();
+        pool.idleTimeout = const Duration(seconds: 30);
+        pool.dispose(dbPath);
+      }
+    },
+  );
+
+  test('query timeout fails a stuck query and the next run recovers', () async {
+    final pool = OpencodeSqliteWorkerPool.instance;
+    final savedTimeout = pool.queryTimeout;
+    pool.queryTimeout = const Duration(milliseconds: 200);
+    try {
+      // 慢查询超过 queryTimeout:客户端必须失败,而不是无限等待。
+      await expectLater(
+        pool
+            .run<String?>(
+              dbPath: dbPath,
+              query: _busyWaitQuery,
+              args: 1500,
+            )
+            .timeout(const Duration(seconds: 10)),
+        throwsA(isA<TimeoutException>()),
+      );
+
+      // 失败后新 worker 立即可用。
+      final ok = await pool.run<String?>(
+        dbPath: dbPath,
+        query: opencodeNewestSessionId,
+      );
+      expect(ok, 'ses_1');
+    } finally {
+      pool.queryTimeout = savedTimeout;
+      pool.dispose(dbPath);
+    }
+  });
+
+  test('returns newest ROOT session when a task child is newest', () async {
+    final pool = OpencodeSqliteWorkerPool.instance;
+    final db = sqlite3.open(dbPath);
+    try {
+      db.execute(
+        'INSERT INTO session (id, parent_id, time_updated) VALUES (?, ?, ?)',
+        ['ses_child', 'ses_1', 200],
+      );
+      db.execute(
+        'INSERT INTO session (id, parent_id, time_updated) VALUES (?, ?, ?)',
+        ['ses_other_root', null, 50],
+      );
+    } finally {
+      db.close();
+    }
+    final result = await pool.run<String?>(
+      dbPath: dbPath,
+      query: opencodeNewestSessionId,
+    );
+    expect(result, 'ses_1'); // child 最新也不能被选中
+    pool.dispose(dbPath);
+  });
+
+  test('empty parent_id is treated as a root', () async {
+    final pool = OpencodeSqliteWorkerPool.instance;
+    final db = sqlite3.open(dbPath);
+    try {
+      db.execute(
+        'INSERT INTO session (id, parent_id, time_updated) VALUES (?, ?, ?)',
+        ['ses_2', '', 200],
+      );
+    } finally {
+      db.close();
+    }
+    final result = await pool.run<String?>(
+      dbPath: dbPath,
+      query: opencodeNewestSessionId,
+    );
+    expect(result, 'ses_2');
+    pool.dispose(dbPath);
+  });
+
+  test('legacy layout without parent_id column filters children via data JSON',
+      () async {
+    final pool = OpencodeSqliteWorkerPool.instance;
+    final legacyDir = tmp.createTempSync('legacy-');
+    final legacyDbPath = p.join(legacyDir.path, 'opencode.db');
+    final db = sqlite3.open(legacyDbPath);
+    try {
+      db.execute(
+        'CREATE TABLE session (id TEXT, data TEXT, time_updated INTEGER)',
+      );
+      db.execute(
+        'INSERT INTO session VALUES (?, ?, ?)',
+        ['ses_child', '{"parentID":"ses_p"}', 300],
+      );
+      db.execute(
+        'INSERT INTO session VALUES (?, ?, ?)',
+        ['ses_root', '{}', 100],
+      );
+    } finally {
+      db.close();
+    }
+    final result = await pool.run<String?>(
+      dbPath: legacyDbPath,
+      query: opencodeNewestSessionId,
+    );
+    expect(result, 'ses_root');
+    pool.dispose(legacyDbPath);
   });
 }

@@ -26,6 +26,7 @@ class RightToolsPanel extends StatefulWidget {
     this.dismissDrawerOnAction = false,
     this.isPersonalContext = false,
     this.team,
+    required this.searchFocusRequest,
     super.key,
   });
 
@@ -38,6 +39,9 @@ class RightToolsPanel extends StatefulWidget {
   final List<String> additionalPaths;
   final String workspaceId;
   final String? toolsScopeId;
+
+  /// Bumped by the Ctrl+Shift+F command host to focus the search query field.
+  final ValueNotifier<int> searchFocusRequest;
 
   String get _toolsScopeId => toolsScopeId ?? workspaceId;
 
@@ -127,6 +131,7 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
         isPersonalContext: widget.isPersonalContext,
         team: widget.team,
         dismissDrawerOnAction: widget.dismissDrawerOnAction,
+        searchFocusRequest: widget.searchFocusRequest,
       ),
     );
   }
@@ -142,6 +147,7 @@ class _RightToolsPanelBody extends StatelessWidget {
     required this.isPersonalContext,
     required this.team,
     required this.dismissDrawerOnAction,
+    required this.searchFocusRequest,
   });
 
   final Key panelKey;
@@ -152,6 +158,7 @@ class _RightToolsPanelBody extends StatelessWidget {
   final bool isPersonalContext;
   final TeamProfile? team;
   final bool dismissDrawerOnAction;
+  final ValueNotifier<int> searchFocusRequest;
 
   @override
   Widget build(BuildContext context) {
@@ -178,6 +185,7 @@ class _RightToolsPanelBody extends StatelessWidget {
               fileTreeCubit: fileTreeCubit,
               workContext: tools.context,
               scope: scope,
+              searchFocusRequest: searchFocusRequest,
             ),
           ),
         ),

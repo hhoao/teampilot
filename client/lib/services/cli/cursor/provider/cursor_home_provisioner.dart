@@ -1,17 +1,23 @@
 import 'dart:convert';
 
+import '../../../../models/hook_entry.dart';
 import '../../../../models/team_config.dart';
-import '../../../agent_status/member_agent_status_endpoint.dart';
+import '../../../host/host_script_runner.dart';
+import '../../../hook/glue_script_builder.dart';
 import '../../../io/filesystem.dart';
 import '../../../team_bus/member_bus_idle_endpoint.dart';
+import '../../registry/capabilities/hook_capability.dart';
+import '../../registry/capabilities/prompt_capability.dart';
+import '../../registry/config_profile/hook_seat_context_completer.dart';
+import '../../registry/hook/managed_hook_provisioner.dart';
+import '../capabilities/prompt.dart';
 import 'cursor_auth_artifacts.dart';
 import 'cursor_cli_config_policy.dart';
-import 'cursor_home_agent_status_overlay.dart';
 import 'cursor_home_bus_overlay.dart';
 import 'cursor_home_layout.dart';
+import 'cursor_hook_writer.dart';
 import 'cursor_member_home_passthrough.dart';
 import 'cursor_provider_credentials_service.dart';
-import 'cursor_role_rule_writer.dart';
 
 /// Merges provider auth, role rule, and mixed-mode team-bus overlay into a
 /// member fake HOME.
@@ -20,13 +26,21 @@ final class CursorHomeProvisioner {
     required Filesystem fs,
     CursorHomeLayout? layout,
     CursorProviderCredentialsService? credentials,
+    PromptCapability? promptProvision,
   }) : _fs = fs,
        _layout = layout ?? CursorHomeLayout(pathContext: fs.pathContext),
-       _credentials = credentials;
+       _credentials = credentials,
+       _promptProvision =
+           promptProvision ??
+           CursorPromptCapability(
+             fs: fs,
+             layout: layout ?? CursorHomeLayout(pathContext: fs.pathContext),
+           );
 
   final Filesystem _fs;
   final CursorHomeLayout _layout;
   final CursorProviderCredentialsService? _credentials;
+  final PromptCapability _promptProvision;
 
   Future<void> provision({
     required String memberHome,
@@ -35,7 +49,6 @@ final class CursorHomeProvisioner {
     required MemberBusIdleEndpoint? busIdle,
     required bool forceTeamLeadDelegateMode,
     required bool mixed,
-    MemberAgentStatusEndpoint? agentStatus,
     String? realHomeRoot,
   }) async {
     await _ensureCursorDirs(memberHome);
@@ -55,20 +68,15 @@ final class CursorHomeProvisioner {
     if (!member.isValid) return;
 
     if (!mixed) {
-      await _syncRoleRule(
-        memberHome: memberHome,
-        member: member,
-        forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
-        mixed: false,
-        pushDelivery: false,
-      );
-      if (agentStatus != null) {
-        await writeAgentStatusHooks(
+      await _promptProvision.materialize(
+        PromptMaterializeContext(
+          member: member,
           memberHome: memberHome,
-          memberId: member.id,
-          agentStatus: agentStatus,
-        );
-      }
+          forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
+          mixed: false,
+          pushDelivery: false,
+        ),
+      );
       return;
     }
 
@@ -99,12 +107,14 @@ final class CursorHomeProvisioner {
       memberHome,
       cliConfigJson: cliConfigJson,
     );
-    await _syncRoleRule(
-      memberHome: memberHome,
-      member: member,
-      forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
-      mixed: true,
-      pushDelivery: true,
+    await _promptProvision.materialize(
+      PromptMaterializeContext(
+        member: member,
+        memberHome: memberHome,
+        forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
+        mixed: true,
+        pushDelivery: true,
+      ),
     );
 
     if (busIdle == null) return;
@@ -117,22 +127,6 @@ final class CursorHomeProvisioner {
       memberHome: memberHome,
       member: member,
       busIdle: busIdle,
-    );
-  }
-
-  Future<void> _syncRoleRule({
-    required String memberHome,
-    required TeamMemberConfig member,
-    required bool forceTeamLeadDelegateMode,
-    required bool mixed,
-    required bool pushDelivery,
-  }) {
-    return CursorRoleRuleWriter(fs: _fs, layout: _layout).sync(
-      memberHome: memberHome,
-      member: member,
-      forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
-      mixed: mixed,
-      pushDelivery: pushDelivery,
     );
   }
 
@@ -220,28 +214,15 @@ final class CursorHomeProvisioner {
     required TeamMemberConfig member,
     required MemberBusIdleEndpoint busIdle,
   }) async {
-    final idleScriptPath = _layout.idleScript(memberHome);
-
-    await _fs.atomicWrite(
-      idleScriptPath,
-      CursorHomeBusOverlay.idleScript(memberId: member.id, idle: busIdle),
-    );
-    final hooksPath = _layout.hooksConfig(memberHome);
-    final raw = await _fs.readString(hooksPath);
-    Map<String, Object?> existing;
-    if (raw != null && raw.trim().isNotEmpty) {
-      existing = (jsonDecode(raw) as Map).cast<String, Object?>();
-    } else {
-      existing = <String, Object?>{};
-    }
-    await _fs.atomicWrite(
-      hooksPath,
-      _jsonPretty(
-        CursorHomeBusOverlay.mergeHooksConfig(
-          existing,
-          idleScriptPath: idleScriptPath,
-        ),
+    // 收敛：bus idle stop hook 经 completer + 统一 writer 落盘（与
+    // config-profile 阶段同一渲染路径，按 command 去重幂等）。
+    await writeHooks(
+      memberHome: memberHome,
+      entries: const HookSeatContextCompleter().busIdleHooks(
+        idle: busIdle,
+        memberId: member.id,
       ),
+      runner: null,
     );
     await _mergeTeamBusMcp(
       memberHome: memberHome,
@@ -250,44 +231,48 @@ final class CursorHomeProvisioner {
     );
   }
 
-  /// Writes per-event forwarding scripts and merges agent-status hooks into
-  /// `~/.cursor/hooks.json` (preserving the bus `stop` hook when present).
-  ///
-  /// Public so the config-profile phase can provision hooks into an
-  /// already-resolved mixed-mode member home.
-  Future<void> writeAgentStatusHooks({
+  /// Writes hooks into `~/.cursor/hooks.json`, preserving existing entries.
+  /// Managed（agent-status / bus idle）与用户条目同一渲染路径；glue + 转发
+  /// 脚本落在 `~/.cursor/hooks/`。
+  Future<void> writeHooks({
     required String memberHome,
-    required String memberId,
-    required MemberAgentStatusEndpoint agentStatus,
+    required List<HookEntry> entries,
+    required HostScriptRunner? runner,
   }) async {
-    for (final event in CursorHomeAgentStatusOverlay.statusEvents) {
-      final fileName = CursorHomeAgentStatusOverlay.scriptFileName(event);
-      await _fs.atomicWrite(
-        _layout.agentStatusScript(memberHome, fileName),
-        CursorHomeAgentStatusOverlay.scriptFor(
-          endpoint: agentStatus,
-          memberId: memberId,
-          event: event,
-        ),
-      );
-    }
-
-    final hooksPath = _layout.hooksConfig(memberHome);
-    final raw = await _fs.readString(hooksPath);
-    Map<String, Object?> existing;
-    if (raw != null && raw.trim().isNotEmpty) {
-      existing = (jsonDecode(raw) as Map).cast<String, Object?>();
-    } else {
-      existing = <String, Object?>{};
-    }
-    final merged = CursorHomeAgentStatusOverlay.mergeHooksConfig(
-      existing,
-      scriptPathFor: (event) => _layout.agentStatusScript(
-        memberHome,
-        CursorHomeAgentStatusOverlay.scriptFileName(event),
+    if (entries.isEmpty) return;
+    final hooksDir = _fs.pathContext.join(
+      _layout.cursorDir(memberHome),
+      CursorHomeLayout.hooksDirName,
+    );
+    final result = await ManagedHookProvisioner(
+      fs: _fs,
+      joinWork: _fs.pathContext.join,
+      atomicWrite: true,
+      ensureParentDirs: true,
+    ).provision(
+      writer: const CursorHookWriter(),
+      entries: entries,
+      ctx: HookRenderContext(
+        hooksDir: hooksDir,
+        runner: runner,
+        glueBuilder: const GlueScriptBuilder(),
       ),
     );
-    await _fs.atomicWrite(hooksPath, _jsonPretty(merged));
+    final hooksJsonPath = _layout.hooksConfig(memberHome);
+    final existing = await _readHooksJson(hooksJsonPath);
+    final fragment =
+        (result.configFragments['hooks.json'] as Map<String, Object?>?) ??
+        const <String, Object?>{};
+    final merged = mergeCursorHooksConfig(existing, fragment);
+    await _fs.atomicWrite(hooksJsonPath, _jsonPretty(merged));
+  }
+
+  Future<Map<String, Object?>> _readHooksJson(String path) async {
+    final raw = await _fs.readString(path);
+    if (raw == null || raw.trim().isEmpty) {
+      return const {'version': 1, 'hooks': <String, Object?>{}};
+    }
+    return (jsonDecode(raw) as Map).cast<String, Object?>();
   }
 
   Future<void> _seedMemberMcpFromBase({

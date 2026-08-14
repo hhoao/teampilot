@@ -7,7 +7,6 @@ import '../../models/runtime_target.dart';
 import '../../models/team_config.dart';
 import '../../models/workspace_launch_context.dart';
 import '../../services/launch/session_shell_connector.dart';
-import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import 'session_launch_workspace_index.dart';
 

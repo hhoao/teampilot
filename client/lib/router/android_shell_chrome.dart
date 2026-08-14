@@ -68,6 +68,7 @@ class AndroidShellChrome {
     if (path == '/team-config/skills') return l10n.teamSkillsNav;
     if (path == '/team-config/mcp') return l10n.teamMcpNav;
     if (path == '/mcp') return l10n.mcpNavTitle;
+    if (path == '/hooks') return l10n.hookNavTitle;
     if (path == '/mcp/add') return l10n.mcpAddTitle;
     if (path.startsWith('/mcp/edit/')) return l10n.mcpEdit;
     if (path.startsWith('/mcp/')) {

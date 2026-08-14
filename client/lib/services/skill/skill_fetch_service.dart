@@ -5,7 +5,6 @@ import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 
 import '../../models/skill.dart';
-import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import '../github/github_http.dart';
 import '../io/filesystem.dart';

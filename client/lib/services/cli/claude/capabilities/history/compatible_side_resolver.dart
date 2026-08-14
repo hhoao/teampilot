@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:ai_message_core/ai_message_core.dart';
 
-import 'package:logger/logger.dart';
 import '../../../../../utils/logging/logger.dart';
 import '../../../../io/filesystem.dart';
 import '../../../../session/session_history_context.dart';

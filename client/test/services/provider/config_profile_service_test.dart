@@ -14,8 +14,9 @@ import 'package:teampilot/services/provider/control_plane_profile_paths.dart';
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
-import 'package:teampilot/services/cli/claude/capabilities/config_profile.dart';
-import 'package:teampilot/services/cli/flashskyai/capabilities/config_profile.dart';
+import 'package:teampilot/services/cli/claude/capabilities/provider.dart';
+import 'package:teampilot/services/cli/flashskyai/capabilities/provider.dart';
+import 'package:teampilot/services/cli/registry/capabilities/provider_capability.dart';
 import 'package:teampilot/services/team_bus/member_bus_idle_endpoint.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/models/app_provider_config.dart';
@@ -263,18 +264,18 @@ void main() {
     expect(await Directory(_appFlashskyaiDirPath(base.path)).exists(), isTrue);
     expect(await Directory(memberFlashskyaiDir).exists(), isTrue);
     expect(env.keys, [
-      FlashskyaiConfigProfileCapability.configDirEnvKey,
-      FlashskyaiConfigProfileCapability.sessionHomeDirEnvKey,
+      FlashskyaiProviderCapability.configDirEnvKey,
+      FlashskyaiProviderCapability.sessionHomeDirEnvKey,
       'LLM_CONFIG_PATH',
       'FLASHSKYAI_CODE_NO_FLICKER',
     ]);
     expect(env['FLASHSKYAI_CODE_NO_FLICKER'], '1');
     expect(
-      env[FlashskyaiConfigProfileCapability.configDirEnvKey],
+      env[FlashskyaiProviderCapability.configDirEnvKey],
       memberFlashskyaiDir,
     );
     expect(
-      env[FlashskyaiConfigProfileCapability.sessionHomeDirEnvKey],
+      env[FlashskyaiProviderCapability.sessionHomeDirEnvKey],
       memberFlashskyaiDir,
     );
     expect(
@@ -285,7 +286,7 @@ void main() {
     final metadata = File(
       p.join(
         memberFlashskyaiDir,
-        FlashskyaiConfigProfileCapability.metadataFileName,
+        FlashskyaiProviderCapability.metadataFileName,
       ),
     );
     expect(await metadata.exists(), isTrue);
@@ -299,7 +300,7 @@ void main() {
     final settings = File(
       p.join(
         memberFlashskyaiDir,
-        FlashskyaiConfigProfileCapability.settingsFileName,
+        FlashskyaiProviderCapability.settingsFileName,
       ),
     );
     expect(await settings.exists(), isTrue);
@@ -398,6 +399,13 @@ base_url = "https://api.example.com/v1"
           name: 'worker',
           provider: 'p1',
         ),
+        extraMcpServers: {
+          'teammate-bus': const {
+            'type': 'http',
+            'url': 'http://127.0.0.1:59999/mcp',
+            'headers': <String, String>{'X-Member': 'worker'},
+          },
+        },
         busIdle: MemberBusIdleEndpoint(url: 'http://127.0.0.1:59999/idle'),
         runtimeBundle: const ConfigBundle(),
       );
@@ -412,6 +420,9 @@ base_url = "https://api.example.com/v1"
       expect(toml, contains('https://api.example.com/v1'));
       expect(toml, contains('[mcp_servers.teammate-bus]'));
       expect(toml, contains('http://127.0.0.1:59999/mcp'));
+      // Bus idle Stop hooks now render via the unified writer (http action).
+      expect(toml, contains('[[hooks.Stop]]'));
+      expect(toml, contains('http://127.0.0.1:59999/idle'));
     },
   );
 
@@ -442,7 +453,7 @@ base_url = "https://api.example.com/v1"
     final appendPath = env[MemberRoleProvision.appendSystemPromptFileEnvKey];
     expect(appendPath, roleFile);
 
-    final settingsPath = env[ClaudeConfigProfileCapability.settingsFileEnvKey]!;
+    final settingsPath = env[ClaudeProviderCapability.settingsFileEnvKey]!;
     final settings =
         jsonDecode(await File(settingsPath).readAsString())
             as Map<String, Object?>;
@@ -497,7 +508,7 @@ base_url = "https://api.example.com/v1"
       expect(roleText, contains('Delegate-only mode'));
 
       final settingsPath =
-          env[ClaudeConfigProfileCapability.settingsFileEnvKey]!;
+          env[ClaudeProviderCapability.settingsFileEnvKey]!;
       final settings =
           jsonDecode(await File(settingsPath).readAsString())
               as Map<String, Object?>;
@@ -509,7 +520,15 @@ base_url = "https://api.example.com/v1"
       );
       final command =
           ((delegateEntry['hooks'] as List).first as Map)['command'] as String;
-      expect(command, contains('${TeamPilotHookScripts.teamLeadDelegate}.sh'));
+      // Task 18 收敛：delegate hook 走统一 writer（glue 包装，id 前缀）。
+      expect(
+        command,
+        contains('teampilot-hook-teampilot-team-lead-delegate.sh'),
+      );
+      expect(
+        command,
+        isNot(contains('${TeamPilotHookScripts.teamLeadDelegate}.sh')),
+      );
 
       expect(
         await File(
@@ -559,7 +578,7 @@ base_url = "https://api.example.com/v1"
                 await File(
                   p.join(
                     flashskyaiDir,
-                    FlashskyaiConfigProfileCapability.settingsFileName,
+                    FlashskyaiProviderCapability.settingsFileName,
                   ),
                 ).readAsString(),
               )
@@ -620,7 +639,7 @@ base_url = "https://api.example.com/v1"
                 await File(
                   p.join(
                     flashskyaiDir,
-                    FlashskyaiConfigProfileCapability.settingsFileName,
+                    FlashskyaiProviderCapability.settingsFileName,
                   ),
                 ).readAsString(),
               )
@@ -633,7 +652,11 @@ base_url = "https://api.example.com/v1"
       );
       final command =
           ((delegateEntry['hooks'] as List).first as Map)['command'] as String;
-      expect(command, contains('${TeamPilotHookScripts.teamLeadDelegate}.sh'));
+      // Task 18 收敛：delegate hook 走统一 writer（glue 包装，id 前缀）。
+      expect(
+        command,
+        contains('teampilot-hook-teampilot-team-lead-delegate.sh'),
+      );
     },
   );
 
@@ -729,7 +752,7 @@ base_url = "https://api.example.com/v1"
               await File(
                 p.join(
                   claudeDir,
-                  ClaudeConfigProfileCapability.metadataFileName,
+                  ClaudeProviderCapability.metadataFileName,
                 ),
               ).readAsString(),
             )
@@ -861,7 +884,7 @@ base_url = "https://api.example.com/v1"
       final developerSettings = p.join(claudeDir, 'settings', 'developer.json');
       expect(env['CLAUDE_CONFIG_DIR'], claudeDir);
       expect(
-        env[ClaudeConfigProfileCapability.settingsFileEnvKey],
+        env[ClaudeProviderCapability.settingsFileEnvKey],
         developerSettings,
       );
 
@@ -1127,7 +1150,7 @@ base_url = "https://api.example.com/v1"
       const sessionId = 'sess-trust';
       final metadataPath = p.join(
         _sessionClaudeDir(base.path, sessionId),
-        ClaudeConfigProfileCapability.metadataFileName,
+        ClaudeProviderCapability.metadataFileName,
       );
       await Directory(p.dirname(metadataPath)).create(recursive: true);
       await File(metadataPath).writeAsString(
@@ -1208,7 +1231,7 @@ base_url = "https://api.example.com/v1"
 
       final metadataPath = p.join(
         _sessionClaudeDir(base.path, sessionId),
-        ClaudeConfigProfileCapability.metadataFileName,
+        ClaudeProviderCapability.metadataFileName,
       );
       final metadata =
           jsonDecode(await File(metadataPath).readAsString())
@@ -1249,7 +1272,7 @@ base_url = "https://api.example.com/v1"
 
       final metadataPath = p.join(
         _sessionFlashskyaiDir(base.path, sessionId),
-        FlashskyaiConfigProfileCapability.metadataFileName,
+        FlashskyaiProviderCapability.metadataFileName,
       );
       final metadata =
           jsonDecode(await File(metadataPath).readAsString())
@@ -1261,11 +1284,11 @@ base_url = "https://api.example.com/v1"
     },
   );
 
-  test('ensureSessionProfile for claude backfills mcp-only metadata', () async {
+  test('materializeSessionHome for claude backfills mcp-only metadata', () async {
     const sessionId = 'sess-mcp-only';
     final metadataPath = p.join(
       _sessionClaudeDir(base.path, sessionId),
-      ClaudeConfigProfileCapability.metadataFileName,
+      ClaudeProviderCapability.metadataFileName,
     );
     await Directory(p.dirname(metadataPath)).create(recursive: true);
     await File(metadataPath).writeAsString(
@@ -1276,11 +1299,26 @@ base_url = "https://api.example.com/v1"
       }),
     );
 
-    await service.ensureSessionProfile(
-      _testWorkspaceId,
-      sessionId,
-      'team-a',
-      cli: CliTool.claude,
+    const member = TeamMemberConfig(id: 'm1', name: 'Member', model: 'test');
+    await const ClaudeProviderCapability().materializeSessionHome(
+      sessionHomeContextFromLaunch(
+        ConfigProfileLaunchContext(
+          workspaceId: _testWorkspaceId,
+          teamId: 'team-a',
+          sessionId: sessionId,
+          scope: resolveLaunchProfileScope(
+            workspaceId: _testWorkspaceId,
+            teamId: 'team-a',
+            appSessionId: sessionId,
+            cliTeamName: sessionId,
+          ),
+          member: member,
+          members: const [member],
+          paths: service,
+          catalog: service,
+        ),
+        CliTool.claude,
+      ),
     );
 
     final metadata =

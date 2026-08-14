@@ -1,12 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/cli/registry/capabilities/cli_effort_capability.dart';
-import 'package:teampilot/services/cli/claude/provider/claude_effort_capability.dart';
-import 'package:teampilot/services/cli/codex/provider/codex_effort_capability.dart';
+import 'package:teampilot/services/cli/registry/capabilities/provider_capability.dart';
+import 'package:teampilot/services/cli/claude/capabilities/provider.dart';
+import 'package:teampilot/services/cli/codex/capabilities/provider.dart';
 
 void main() {
   test('resolveLaunchEffort prefers member over team', () {
-    const capability = ClaudeEffortCapability();
+    const capability = ClaudeProviderCapability();
     final team = TeamProfile(
       id: 't1',
       name: 'Team',
@@ -30,7 +30,7 @@ void main() {
   });
 
   test('resolveLaunchEffort falls back to team then default', () {
-    const capability = CodexEffortCapability();
+    const capability = CodexProviderCapability();
     final team = TeamProfile(
       id: 't1',
       name: 'Team',
@@ -62,7 +62,7 @@ void main() {
   test(
     'claude effort is map-only; unset team is "" but launch defaults high',
     () {
-      const capability = ClaudeEffortCapability();
+      const capability = ClaudeProviderCapability();
       final team = TeamProfile(
         id: 't1',
         name: 'Team',

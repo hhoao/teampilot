@@ -127,4 +127,29 @@ void main() {
       expect(await repo.loadHasCompletedOnboarding(), isTrue);
     });
   });
+
+  test('InMemory round trip and null-on-empty', () async {
+    final repo = InMemoryAppSettingsRepository();
+    expect(await repo.loadSkillsMpApiKey(), isNull);
+    await repo.saveSkillsMpApiKey('sk_abc');
+    expect(await repo.loadSkillsMpApiKey(), 'sk_abc');
+    await repo.saveSkillsMpApiKey(null);
+    expect(await repo.loadSkillsMpApiKey(), isNull);
+  });
+
+  test('InMemory constructor seed', () async {
+    final repo = InMemoryAppSettingsRepository(skillsMpApiKey: 'sk_seed');
+    expect(await repo.loadSkillsMpApiKey(), 'sk_seed');
+  });
+
+  test('SharedPrefs persists key in the settings map', () async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final repo = SharedPrefsAppSettingsRepository(prefs);
+    expect(await repo.loadSkillsMpApiKey(), isNull);
+    await repo.saveSkillsMpApiKey('sk_prefs');
+    expect(await repo.loadSkillsMpApiKey(), 'sk_prefs');
+    await repo.saveSkillsMpApiKey(null);
+    expect(await repo.loadSkillsMpApiKey(), isNull);
+  });
 }

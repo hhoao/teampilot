@@ -328,6 +328,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cotExpandToolsOnOpenDescription => '展开「思考过程」时，自动展开内部工具调用详情。';
 
   @override
+  String get autoOpenSubagentPreviewTitle => '自动打开子会话预览';
+
+  @override
+  String get autoOpenSubagentPreviewDescription =>
+      '子 agent 开始运行时自动弹出预览并实时跟随;按返回后停止本会话的跟随。';
+
+  @override
   String get thinkingProcessFoldSectionTitle => '折叠进思考过程';
 
   @override
@@ -611,7 +618,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get gitRefresh => '刷新';
 
   @override
-  String get gitAmend => '修改上一次提交';
+  String get gitAmend => '修正';
 
   @override
   String get gitAmendCommit => '修改提交';
@@ -1131,12 +1138,23 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeWorkspaceWorkspaceExtensions => '扩展';
 
   @override
+  String get homeWorkspaceWorkspaceHooks => 'Hooks';
+
+  @override
   String workspaceSkillsAssignedCount(int assigned, int total) {
     return '已为本工作区启用 $assigned/$total';
   }
 
   @override
   String get workspaceSkillsManage => '管理 Skills';
+
+  @override
+  String workspaceHooksAssignedCount(int assigned, int total) {
+    return '已为本工作区启用 $assigned/$total';
+  }
+
+  @override
+  String get workspaceHooksManage => '管理 Hooks';
 
   @override
   String workspaceMcpAssignedCount(int assigned, int total) {
@@ -1251,6 +1269,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get workspaceSearchFilterFiles => '文件';
 
   @override
+  String get workspaceSearchContent => '内容';
+
+  @override
   String get workspaceSearchShowMore => '查看更多结果';
 
   @override
@@ -1258,6 +1279,66 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get workspaceSearchNoResults => '没有匹配结果';
+
+  @override
+  String get workspaceSearchPanel => '搜索';
+
+  @override
+  String get workspaceSearchQueryHint => '搜索文件';
+
+  @override
+  String get workspaceSearchRegex => '正则';
+
+  @override
+  String get workspaceSearchCaseSensitive => '大小写';
+
+  @override
+  String get workspaceSearchGitignore => '.gitignore';
+
+  @override
+  String get workspaceSearchIncludeHint => '包含 (glob，逗号分隔)';
+
+  @override
+  String get workspaceSearchExcludeHint => '排除 (glob，逗号分隔)';
+
+  @override
+  String get workspaceSearchReplaceHint => '替换为';
+
+  @override
+  String get workspaceSearchReplaceAll => '全部替换';
+
+  @override
+  String get workspaceSearchReplaceAllTitle => '全部替换？';
+
+  @override
+  String workspaceSearchReplaceAllMessage(int count) {
+    return '替换 $count 处匹配？';
+  }
+
+  @override
+  String get workspaceSearchReplace => '替换';
+
+  @override
+  String workspaceSearchReplacedCount(int count) {
+    return '已替换 $count 处';
+  }
+
+  @override
+  String get workspaceSearchCancel => '取消';
+
+  @override
+  String get workspaceSearchEmptyHint => '输入以搜索文件内容';
+
+  @override
+  String get workspaceSearchTruncated => '结果过多已截断——请细化查询';
+
+  @override
+  String workspaceSearchBackend(String backend) {
+    return '引擎：$backend';
+  }
+
+  @override
+  String get workspaceSearchError => '搜索失败——请检查正则';
 
   @override
   String get appDropdownSearchHint => '搜索…';
@@ -3469,6 +3550,78 @@ class AppLocalizationsZh extends AppLocalizations {
   String get skillsSourceSkillsSh => 'skills.sh';
 
   @override
+  String get skillsSourceSkillsMp => 'SkillsMP';
+
+  @override
+  String get skillsMarketplaceSearchHint => '搜索技能市场 (≥2 字)…';
+
+  @override
+  String get skillsMarketplaceLoadMore => '加载更多';
+
+  @override
+  String get skillsMarketplaceAddRepo => '添加仓库';
+
+  @override
+  String get skillsMarketplaceRepoAdded => '已添加到仓库源，可在 Repos 页安装具体技能';
+
+  @override
+  String get skillsFilterSortBy => '排序';
+
+  @override
+  String get skillsFilterSortByStars => '星数';
+
+  @override
+  String get skillsFilterSortByRecent => '最新';
+
+  @override
+  String get skillsFilterLanguage => '语言';
+
+  @override
+  String get skillsFilterAnyLanguage => '全部';
+
+  @override
+  String get skillsFilterCategory => '分类';
+
+  @override
+  String get skillsFilterAnyCategory => '全部';
+
+  @override
+  String get skillsFilterOccupation => '职业';
+
+  @override
+  String get skillsFilterAnyOccupation => '全部';
+
+  @override
+  String skillsCardStars(int count) {
+    return '$count 星';
+  }
+
+  @override
+  String skillsCardUpdatedAt(String date) {
+    return '更新于 $date';
+  }
+
+  @override
+  String get skillsMpQuotaHint => 'SkillsMP 匿名额度（每天 50 次）已用完。设置免费 API Key 后继续。';
+
+  @override
+  String get skillsMpApiKeyButton => '设置 API Key';
+
+  @override
+  String get skillsMpApiKeyDialogTitle => 'SkillsMP API Key';
+
+  @override
+  String get skillsMpApiKeyDialogHint => '在 skillsmp.com/developers 免费注册获取';
+
+  @override
+  String get skillsMpApiKeySave => '保存';
+
+  @override
+  String skillsMarketplaceSearchError(String message) {
+    return '搜索失败：$message';
+  }
+
+  @override
   String get skillsSearchPlaceholder => '搜索 Skill…';
 
   @override
@@ -3581,12 +3734,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get skillsZipNoSkills => '压缩包中未发现 SKILL.md。';
-
-  @override
-  String get skillsSkillsShLoadMore => '加载更多';
-
-  @override
-  String get skillsSkillsShPoweredBy => '由 skills.sh 提供';
 
   @override
   String get skillsSkillsShSearch => '搜索';
@@ -3805,6 +3952,17 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get teamSkillsNav => 'Skills';
+
+  @override
+  String get teamHooksNav => 'Hooks';
+
+  @override
+  String teamHooksAssignedCount(int assigned, int total) {
+    return '已启用 $assigned/$total';
+  }
+
+  @override
+  String get teamHooksManage => '管理 Hooks';
 
   @override
   String teamSkillsAssignedCount(int assigned, int total) {
@@ -4425,6 +4583,93 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get mcpNavDiscovery => '发现';
+
+  @override
+  String get hookNavTitle => 'Hooks';
+
+  @override
+  String get hookNew => '新建 hook';
+
+  @override
+  String get hooksNoInstalled => '暂无 hooks';
+
+  @override
+  String get hooksNoInstalledHint => '创建 hook，在 CLI 事件时运行命令。';
+
+  @override
+  String get hookEdit => '编辑 hook';
+
+  @override
+  String get hookName => '名称';
+
+  @override
+  String get hookDescription => '描述';
+
+  @override
+  String get hookEvent => '事件';
+
+  @override
+  String get hookMatcher => '匹配器';
+
+  @override
+  String get hookActionCommand => '命令';
+
+  @override
+  String get hookActionScript => '脚本';
+
+  @override
+  String get hookPolicy => '策略';
+
+  @override
+  String get hookTimeoutSec => '超时（秒）';
+
+  @override
+  String get hookEnv => '环境变量（每行 KEY=VALUE）';
+
+  @override
+  String get hookSave => '保存';
+
+  @override
+  String get hookNameRequired => '名称为必填项';
+
+  @override
+  String get hookSupportMatrix => '查看受支持程度';
+
+  @override
+  String get hookCapabilityMatrix => '能力矩阵';
+
+  @override
+  String get hookImport => '导入';
+
+  @override
+  String get hookImportCli => 'CLI';
+
+  @override
+  String get hookImportJson => 'Hook JSON';
+
+  @override
+  String get hookImportJsonHint =>
+      '粘贴 settings.json hooks、hooks.json 或 hooks 片段…';
+
+  @override
+  String get hookImportParse => '解析';
+
+  @override
+  String hookImportDone(int count) {
+    return '导入 $count 条';
+  }
+
+  @override
+  String get hookImportDoneToast => '已导入 hooks';
+
+  @override
+  String get hookImportOverwrite => '将覆盖';
+
+  @override
+  String get hookImportInvalidJson => 'Hook JSON 无效';
+
+  @override
+  String get hookImportNoHooks => '未找到 hooks';
 
   @override
   String get mcpNavRegistries => '注册中心';
@@ -6109,6 +6354,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get shortcutsWorkspaceSearch => '搜索工作区（双击 Shift）';
+
+  @override
+  String get shortcutsWorkspaceContentSearch => '在文件中查找';
 
   @override
   String get shortcutsStripNextTab => '下一个标签';

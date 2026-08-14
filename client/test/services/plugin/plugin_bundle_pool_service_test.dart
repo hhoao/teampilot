@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/plugin.dart';
 import 'package:teampilot/services/cli/registry/capabilities/plugin_manifest_paths.dart';
-import 'package:teampilot/services/cli/registry/capabilities/plugin_provisioner_capability.dart';
+import 'package:teampilot/services/cli/registry/capabilities/plugin_capability.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/plugin/plugin_bundle_pool_service.dart';
 
@@ -217,7 +217,12 @@ void main() {
 
     expect(second.linked, ['demo-bundle'],
         reason: 'broken pool entry must be re-linked, not fast-pathed');
-    expect(await fs.resolveSymlink(dest), p.join(sourceRoot, 'demo-bundle'));
+    expect(
+      await fs.resolveSymlink(dest),
+      // Normalize both sides: macOS /var is a symlink to /private/var and
+      // resolveSymbolicLinks() canonicalizes it.
+      await File(p.join(sourceRoot, 'demo-bundle')).resolveSymbolicLinks(),
+    );
   });
 
   test('removes stale bundles but keeps writer-managed entries', () async {

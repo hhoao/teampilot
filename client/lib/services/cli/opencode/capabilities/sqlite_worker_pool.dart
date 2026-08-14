@@ -20,6 +20,11 @@ typedef SqliteQueryFn = Object? Function(Database db, Object? args);
 ///
 /// worker 空闲 [idleTimeout] 后自动关闭连接退出,下一次查询按需重拉;
 /// 也可在会话关闭时显式 [dispose]。
+///
+/// 防挂死:单条查询超过 [queryTimeout] 客户端强制失败并弃用该 worker
+/// (下次查询按需重建);worker 空闲退出时所有在途查询立即失败。二者都
+/// 保证一次瞬时卡顿只会表现为可重试的查询失败,绝不让 seat 的
+/// `正在加载对话历史` 永久停在 loading。
 class OpencodeSqliteWorkerPool {
   OpencodeSqliteWorkerPool._();
 
@@ -28,6 +33,11 @@ class OpencodeSqliteWorkerPool {
   /// worker 空闲时长(超过则关闭连接退出,下次查询按需重拉)。
   /// 测试可缩短以验证空闲回收。
   Duration idleTimeout = const Duration(seconds: 30);
+
+  /// 单条查询客户端超时:worker 不响应(原生池卡死 / FFI 阻塞 / 队列
+  /// 堆积)时强制失败,而不是无限等待。90MB 级大库全量 locate 实测
+  /// 百毫秒级,30s 对慢速磁盘/远程快照也足够宽裕。
+  Duration queryTimeout = const Duration(seconds: 30);
 
   final Map<String, _SqliteWorker> _workers = {};
 
@@ -38,7 +48,7 @@ class OpencodeSqliteWorkerPool {
   }) async {
     var worker = _workers[dbPath];
     if (worker == null || worker.isDead) {
-      worker = _SqliteWorker(dbPath, idleTimeout);
+      worker = _SqliteWorker(dbPath, idleTimeout, queryTimeout);
       _workers[dbPath] = worker;
     }
     return worker.run<T>(query, args);
@@ -49,32 +59,53 @@ class OpencodeSqliteWorkerPool {
     _workers.remove(dbPath)?.close();
   }
 
+  /// 显式回收并等待 worker 关闭原生连接后再返回(测试 tearDown 删除
+  /// db 文件/目录用 — Windows 上打开的句柄会阻止删除,errno=32)。
+  @visibleForTesting
+  Future<void> disposeAndWait(String dbPath) async {
+    final worker = _workers.remove(dbPath);
+    if (worker == null) return;
+    await worker.closeAndWait();
+  }
+
+  /// 回收所有 worker 并等待关闭(测试全局 tearDown 用)。
+  @visibleForTesting
+  Future<void> disposeAllAndWait() async {
+    final workers = List<_SqliteWorker>.of(_workers.values);
+    _workers.clear();
+    for (final worker in workers) {
+      await worker.closeAndWait();
+    }
+  }
+
   @visibleForTesting
   int get liveWorkerCount => _workers.length;
 }
 
 /// 单 dbPath 的 worker 客户端:负责 spawn 与请求/响应协议。
 class _SqliteWorker {
-  _SqliteWorker(this.dbPath, this.idleTimeout) {
+  _SqliteWorker(this.dbPath, this.idleTimeout, this.queryTimeout) {
     _init();
   }
 
   final String dbPath;
   final Duration idleTimeout;
+  final Duration queryTimeout;
 
   final _pending = <int, Completer<Object?>>{};
   final _responses = ReceivePort();
   final _control = ReceivePort();
   int _nextRequestId = 0;
   SendPort? _requestPort;
+  Future<Isolate>? _isolateFuture;
   bool _failed = false;
   bool _exited = false;
 
-  /// worker 已死(空闲退出/spawn 失败/显式关闭)→ 池中条目下次 run 时替换。
+  /// worker 已死(空闲退出/spawn 失败/显式关闭/查询超时弃用)→ 池中条目下次 run 时替换。
   bool get isDead => _failed || _exited;
 
   void _init() {
-    Isolate.spawn(
+    _isolateFuture = Isolate.spawn(
       _sqliteWorkerEntry,
       _SpawnArgs(
         dbPath: dbPath,
@@ -109,9 +140,8 @@ class _SqliteWorker {
     final deadline = DateTime.now().add(const Duration(seconds: 10));
     while (_requestPort == null && !isDead) {
       if (DateTime.now().isAfter(deadline)) {
-        _failAllPending(
+        _kill(
           TimeoutException('opencode sqlite worker not ready: $dbPath'),
-          null,
         );
         return null;
       }
@@ -125,8 +155,41 @@ class _SqliteWorker {
     final completer = Completer<Object?>();
     _pending[requestId] = completer;
     port.send(_QueryRequest(requestId: requestId, query: query, args: args));
-    final result = await completer.future;
-    return result as T?;
+    try {
+      final result = await completer.future.timeout(queryTimeout);
+      return result as T?;
+    } on TimeoutException catch (e) {
+      // 查询永久卡住(原生池/FFI 阻塞或队列堆积):失败本查询,并弃用
+      // 该 worker,让下一次查询按需重建。绝不让调用方无限等待。
+      _pending.remove(requestId);
+      _kill(e);
+      rethrow;
+    }
+  }
+
+  /// 弃用 worker:失败所有在途查询、关闭端口,并尽力关闭原生池与
+  /// isolate(被 FFI 阻塞时 kill 是尽力而为,无法打断原生调用)。
+  void _kill(Object error) {
+    if (isDead) return;
+    _failed = true;
+    _failAllPending(error);
+    _control.close();
+    _responses.close();
+    // 告知 worker 关闭原生池(优雅路径;worker 正在执行查询时会在其
+    // 结束后处理)。同名再开再关也会命中已存在的池,清理旧的原生池,
+    // 避免新 worker 重新挂到坏池上。
+    try {
+      _requestPort?.send(const _CloseRequest());
+    } on Object {
+      // best-effort
+    }
+    try {
+      _isolateFuture?.then(
+        (isolate) => isolate.kill(priority: Isolate.immediate),
+      );
+    } on Object {
+      // best-effort
+    }
   }
 
   void _onControl(Object? message) {
@@ -148,7 +211,14 @@ class _SqliteWorker {
 
   void _onResponse(Object? message) {
     if (message is _WorkerExited) {
+      // worker 空闲退出(连接已关闭):在途查询永远不会得到响应,
+      // 必须立即失败,否则调用方永久等待。
       _exited = true;
+      _exitConfirm?.complete();
+      _failAllPending(
+        StateError('opencode sqlite worker exited before answering: $dbPath'),
+        null,
+      );
       return;
     }
     final response = message as _QueryResponse;
@@ -156,7 +226,7 @@ class _SqliteWorker {
     completer?.complete(response.result);
   }
 
-  void _failAllPending(Object error, StackTrace? st) {
+  void _failAllPending(Object error, [StackTrace? st]) {
     final pending = _pending.values.toList();
     _pending.clear();
     for (final completer in pending) {
@@ -172,6 +242,32 @@ class _SqliteWorker {
     _responses.close();
     _failAllPending(StateError('opencode sqlite worker closed: $dbPath'), null);
   }
+
+  /// 通知 worker 关闭并等待它确认已关闭原生连接(Windows 上删除 db
+  /// 文件前必须等句柄释放;空闲超时路径也会发送 [_WorkerExited])。
+  Future<void> closeAndWait() async {
+    final completer = Completer<void>();
+    _exitConfirm = completer;
+    _requestPort?.send(const _CloseRequest());
+    _failAllPending(StateError('opencode sqlite worker closed: $dbPath'), null);
+    await completer.future.timeout(
+      const Duration(seconds: 10),
+      onTimeout: () {
+        // Worker 未确认(可能卡在 FFI):尽力 kill,不阻塞测试。
+        try {
+          _isolateFuture?.then(
+            (isolate) => isolate.kill(priority: Isolate.immediate),
+          );
+        } on Object {
+          // best-effort
+        }
+      },
+    );
+    _control.close();
+    _responses.close();
+  }
+
+  Completer<void>? _exitConfirm;
 }
 
 class _SpawnArgs {
@@ -266,6 +362,7 @@ void _sqliteWorkerEntry(_SpawnArgs args) {
     }
     if (message is _CloseRequest) {
       pool.close();
+      args.responses.send(const _WorkerExited());
       requests.close();
     }
   });

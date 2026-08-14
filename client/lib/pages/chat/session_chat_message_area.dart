@@ -128,7 +128,7 @@ class SessionChatMessageArea extends StatelessWidget {
 
     final registry = CliToolRegistryScope.of(context);
     final toolResolvers =
-        registry.toolCallResolvers(session.cli ?? CliTool.claude);
+        registry.capability<AiHistoryCapability>(session.cli ?? CliTool.claude);
 
     return Expanded(
       // Full-bleed scroll surface: margins beside the text
@@ -290,7 +290,7 @@ class SessionChatMessageArea extends StatelessWidget {
                                 messages: top!.messages,
                                 emptyLabel: l10n.subagentPreviewEmpty,
                                 backTooltip: l10n.subagentPreviewBack,
-                                onBack: subagentPreview.pop,
+                                onBack: subagentPreview.popAndStopFollow,
                               ),
                             ),
                           ),

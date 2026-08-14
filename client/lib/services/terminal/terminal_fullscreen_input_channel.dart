@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
-import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 
 /// Serialized bracketed-paste + CR injections for full-screen TUI CLIs.

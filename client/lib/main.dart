@@ -32,6 +32,8 @@ import 'cubits/shortcut_cubit.dart';
 import 'l10n/l10n_extensions.dart';
 import 'repositories/app_settings_repository.dart';
 import 'repositories/launch_profile_repository.dart';
+import 'services/hook/hook_repository.dart';
+import 'services/hook/import/hook_import_service.dart';
 import 'repositories/session_repository.dart';
 import 'repositories/workspace_project_config_repository.dart';
 import 'repositories/ssh_credential_store.dart';
@@ -43,6 +45,7 @@ import 'services/commands/command_bus.dart';
 import 'services/commands/key_chord.dart';
 import 'services/commands/run_command_registrar.dart';
 import 'services/commands/workspace_search_command_registrar.dart';
+import 'services/commands/workspace_content_search_command_registrar.dart';
 import 'services/commands/shortcut_context.dart';
 import 'services/commands/shortcut_dispatcher.dart';
 import 'services/commands/shortcut_dispatcher_handle.dart';
@@ -641,6 +644,15 @@ void main() async {
                 RepositoryProvider<LaunchProfileRepository>.value(
                   value: shell.identityRepository,
                 ),
+                RepositoryProvider<HookRepository>.value(
+                  value: shell.hookRepository,
+                ),
+                RepositoryProvider<HookImportParser>.value(
+                  value: shell.hookImportParser,
+                ),
+                RepositoryProvider<HookImportService>.value(
+                  value: shell.hookImportService,
+                ),
                 RepositoryProvider<SshProfileRepository>.value(
                   value: shell.sshProfileRepo,
                 ),
@@ -711,6 +723,9 @@ void main() async {
                 RepositoryProvider<WorkspaceSearchHost>.value(
                   value: shell.workspaceSearchHost,
                 ),
+                RepositoryProvider<WorkspaceContentSearchHost>.value(
+                  value: shell.workspaceContentSearchHost,
+                ),
                 RepositoryProvider<UiZoomBaseline>.value(
                   value: shell.uiZoomBaseline,
                 ),
@@ -747,6 +762,7 @@ void main() async {
                   BlocProvider.value(value: shell.skillCubit),
                   BlocProvider.value(value: shell.automationCubit),
                   BlocProvider.value(value: shell.mcpCubit),
+                  BlocProvider.value(value: shell.hookCubit),
                   BlocProvider.value(value: shell.teamHubCubit),
                   BlocProvider.value(value: shell.expertHubCubit),
                   BlocProvider.value(value: shell.extensionCubit),

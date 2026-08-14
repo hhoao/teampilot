@@ -7,7 +7,7 @@ import '../../models/team_roster_slot.dart';
 import '../../models/workspace.dart';
 import '../../utils/team/team_member_naming.dart';
 import '../cli/installer_types.dart';
-import '../cli/registry/capabilities/post_manifest_flush_capability.dart';
+import '../cli/registry/capabilities/cli_session_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../cli/claude/capabilities/mcp_project_cleanup.dart';
 import '../cli/preset_resolver.dart';
@@ -17,7 +17,6 @@ import '../session/session_lifecycle_service.dart';
 import '../storage/runtime_context.dart';
 import '../team_bus/member_bus_idle_endpoint.dart';
 import '../agent_status/member_agent_status_endpoint.dart';
-import 'package:logger/logger.dart';
 import '../../utils/logging/logger.dart';
 import 'launch_manifest.dart';
 import 'launch_manifest_paths.dart';
@@ -339,7 +338,7 @@ class SessionConnectOrchestrator {
       'ms=${DateTime.now().difference(flushStarted).inMilliseconds}',
     );
 
-    final postFlush = registry.capability<PostManifestFlushCapability>(cli);
+    final postFlush = registry.capability<CliSessionCapability>(cli);
     if (postFlush != null) {
       await postFlush.afterManifestFlush(
         PostManifestFlushContext(

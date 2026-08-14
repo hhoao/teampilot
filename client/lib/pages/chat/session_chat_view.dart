@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:ai_message_core/ai_message_core.dart';
 import 'package:ai_message_ui/ai_message_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -33,7 +34,7 @@ import '../../services/cli/preset_resolver.dart';
 import '../../services/commands/key_chord.dart';
 import '../../services/commands/shortcut_focus.dart';
 import '../../services/cli/registry/capabilities/ai_history_capability.dart';
-import '../../services/cli/registry/capabilities/turn_interrupt_capability.dart';
+import '../../services/cli/registry/capabilities/terminal_behavior_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/terminal/session_member_cli_resolver.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
@@ -777,7 +778,7 @@ class _SessionChatViewState extends State<SessionChatView> {
     );
     final supportsTurnInterrupt =
         registry
-            .capability<TurnInterruptCapability>(lockedCli)
+            .capability<TerminalBehaviorCapability>(lockedCli)
             ?.supportsTurnInterrupt ??
         false;
     final action = resolveHistoryComposeSubmitAction(
@@ -1038,6 +1039,7 @@ class _SessionChatViewState extends State<SessionChatView> {
                     ({
                       bool expandReasoning,
                       bool expandTools,
+                      bool autoOpenSubagentPreview,
                       ContentDisplayMode userMessageMode,
                       ContentDisplayMode chatCodeBlockMode,
                     })
@@ -1045,6 +1047,8 @@ class _SessionChatViewState extends State<SessionChatView> {
                     selector: (s) => (
                       expandReasoning: s.preferences.cotExpandReasoningOnOpen,
                       expandTools: s.preferences.cotExpandToolsOnOpen,
+                      autoOpenSubagentPreview:
+                          s.preferences.autoOpenSubagentPreview,
                       userMessageMode: s.preferences.chatUserMessageMode,
                       chatCodeBlockMode: s.preferences.chatCodeBlockMode,
                     ),
@@ -1125,6 +1129,32 @@ class _SessionChatViewState extends State<SessionChatView> {
                                       historySeat.subagentAttachments.keys
                                           .toSet(),
                                     );
+                                    final runningSubagentIds = prefs
+                                            .autoOpenSubagentPreview
+                                        ? _runningSubagentIds(
+                                            historySeat,
+                                            historyCap,
+                                          )
+                                        : const <String>[];
+                                    final pendingAuto = _subagentPreview
+                                        .computeAutoFollow(
+                                          prefEnabled:
+                                              prefs.autoOpenSubagentPreview,
+                                          runningIds: runningSubagentIds,
+                                          availableIds: historySeat
+                                              .subagentAttachments
+                                              .keys
+                                              .toSet(),
+                                        );
+                                    if (pendingAuto != null) {
+                                      final id = pendingAuto;
+                                      // Deferred: never notify inside build.
+                                      WidgetsBinding.instance
+                                          .addPostFrameCallback((_) {
+                                        if (!mounted) return;
+                                        _subagentPreview.autoOpen(id);
+                                      });
+                                    }
                                     final stack = _subagentPreview.stack;
                                     final top = stack.isEmpty
                                         ? null
@@ -1230,4 +1260,27 @@ class _SessionChatViewState extends State<SessionChatView> {
       ),
     );
   }
+}
+
+/// Subagent tool calls still in flight (newest-first), for auto-follow.
+/// Only ids whose attachment is inflated can be opened; [computeAutoFollow]
+/// re-checks against the attachment index.
+List<String> _runningSubagentIds(
+  AiHistorySeat seat,
+  AiHistoryCapability? cap,
+) {
+  if (cap == null) return const [];
+  final names = cap.subagentToolNames;
+  final out = <String>[];
+  final messages = seat.loadedMessages;
+  for (var i = messages.length - 1; i >= 0; i--) {
+    for (final part in messages[i].parts) {
+      if (part is! AiToolCallPart) continue;
+      if (part.status != AiToolCallStatus.incomplete) continue;
+      if (!names.contains(part.toolName.trim().toLowerCase())) continue;
+      final id = part.toolCallId.trim();
+      if (id.isNotEmpty) out.add(id);
+    }
+  }
+  return out;
 }

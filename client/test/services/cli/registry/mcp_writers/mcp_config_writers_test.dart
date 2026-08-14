@@ -2,17 +2,17 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/mcp_server_spec.dart';
-import 'package:teampilot/services/cli/claude/capabilities/mcp_config_writer.dart';
-import 'package:teampilot/services/cli/codex/capabilities/mcp_config_writer.dart';
+import 'package:teampilot/services/cli/claude/capabilities/mcp.dart';
+import 'package:teampilot/services/cli/codex/capabilities/mcp.dart';
 import 'package:teampilot/services/cli/codex/capabilities/toml_merge.dart';
-import 'package:teampilot/services/cli/cursor/capabilities/mcp_config_writer.dart';
-import 'package:teampilot/services/cli/opencode/capabilities/mcp_config_writer.dart';
+import 'package:teampilot/services/cli/cursor/capabilities/mcp.dart';
+import 'package:teampilot/services/cli/opencode/capabilities/mcp.dart';
 import 'package:toml/toml.dart';
 
 import '../../../../support/in_memory_filesystem.dart';
 
 void main() {
-  group('ClaudeMcpConfigWriter', () {
+  group('ClaudeMcpCapability', () {
     test(
       'writes stdio and remote into metadata preserving other keys',
       () async {
@@ -23,7 +23,7 @@ void main() {
           jsonEncode({'hasCompletedOnboarding': true}),
         );
 
-        await const ClaudeMcpConfigWriter().write(
+        await const ClaudeMcpCapability().write(
           fs: fs,
           configDir: configDir,
           servers: const [
@@ -50,12 +50,12 @@ void main() {
     );
   });
 
-  group('CursorMcpConfigWriter', () {
+  group('CursorMcpCapability', () {
     test('writes Claude-shaped mcp.json at cursor config root', () async {
       final fs = InMemoryFilesystem();
       const configDir = '/cfg';
 
-      await const CursorMcpConfigWriter().write(
+      await const CursorMcpCapability().write(
         fs: fs,
         configDir: configDir,
         servers: const [
@@ -193,13 +193,13 @@ http_headers = { Authorization = "Bearer inline" }
     );
   });
 
-  group('CodexMcpConfigWriter', () {
+  group('CodexMcpCapability', () {
     test('writes merged config.toml', () async {
       final fs = InMemoryFilesystem();
       const configDir = '/codex';
       await fs.writeString('$configDir/config.toml', 'model = "gpt"\n');
 
-      await const CodexMcpConfigWriter().write(
+      await const CodexMcpCapability().write(
         fs: fs,
         configDir: configDir,
         servers: const [StdioMcpServer(name: 'fetch', command: 'npx')],
@@ -234,7 +234,7 @@ http_headers = { Authorization = "Bearer inline" }
 url = "https://example.com/mcp"
 ''');
 
-        await const CodexMcpConfigWriter().mergeAppCredentials(
+        await const CodexMcpCapability().mergeAppCredentials(
           fs: fs,
           appConfigDir: appDir,
           sessionConfigDir: sessionDir,
@@ -253,7 +253,7 @@ url = "https://example.com/mcp"
     );
   });
 
-  group('OpencodeMcpConfigWriter', () {
+  group('OpencodeMcpCapability', () {
     test(
       'writes local and remote entries into opencode.json mcp map',
       () async {
@@ -261,7 +261,7 @@ url = "https://example.com/mcp"
         const configDir = '/oc';
         await fs.writeString('$configDir/opencode.json', '{"plugin":[]}');
 
-        await const OpencodeMcpConfigWriter().write(
+        await const OpencodeMcpCapability().write(
           fs: fs,
           configDir: configDir,
           servers: const [
@@ -311,7 +311,7 @@ url = "https://example.com/mcp"
           }),
         );
 
-        await const OpencodeMcpConfigWriter().mergeAppCredentials(
+        await const OpencodeMcpCapability().mergeAppCredentials(
           fs: fs,
           appConfigDir: appDir,
           sessionConfigDir: sessionDir,

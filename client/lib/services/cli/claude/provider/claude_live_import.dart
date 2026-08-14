@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import '../../../../models/app_provider_config.dart';
-import '../../registry/capabilities/provider_catalog_capability.dart';
+import '../../registry/capabilities/provider_capability.dart';
 import '../../../io/filesystem.dart';
 import '../../../provider/cc_switch_catalog_import.dart';
 import 'claude_official_provider.dart';

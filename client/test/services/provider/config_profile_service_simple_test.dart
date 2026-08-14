@@ -6,7 +6,7 @@ import 'package:teampilot/models/config_bundle.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/cli/flashskyai/capabilities/config_profile.dart';
+import 'package:teampilot/services/cli/flashskyai/capabilities/provider.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_workspace_trust.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_windows_home_junction.dart';
@@ -88,7 +88,7 @@ void main() {
       );
       expect(await Directory(flashskyaiDir).exists(), isTrue);
       expect(
-        outcome.environment[FlashskyaiConfigProfileCapability.configDirEnvKey],
+        outcome.environment[FlashskyaiProviderCapability.configDirEnvKey],
         flashskyaiDir,
       );
       expect(outcome.warnings, isEmpty);

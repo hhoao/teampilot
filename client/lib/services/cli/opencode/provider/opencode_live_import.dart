@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import '../../../../models/app_provider_config.dart';
 import '../provider_presets.dart';
-import '../../registry/capabilities/provider_catalog_capability.dart';
+import '../../registry/capabilities/provider_capability.dart';
 import '../../../io/filesystem.dart';
 import '../../codex/provider/codex_cc_switch_import.dart';
 import 'opencode_auth_artifacts.dart';

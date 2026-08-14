@@ -9,7 +9,7 @@ import '../../cubits/app_provider_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_provider_config.dart';
 import '../../models/credential_action_result.dart';
-import '../../services/cli/registry/capabilities/provider_credential_capability.dart';
+import '../../services/cli/registry/capabilities/provider_capability.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../services/storage/app_storage.dart';
 import '../../utils/debounce/debounce.dart';
@@ -37,10 +37,10 @@ class _ProviderCredentialActionBarState
     extends State<ProviderCredentialActionBar> {
   var _running = false;
 
-  ProviderCredentialCapability? _capability(BuildContext context) {
+  ProviderCapability? _capability(BuildContext context) {
     return CliToolRegistryScope.of(
       context,
-    ).capability<ProviderCredentialCapability>(widget.provider.cli);
+    ).capability<ProviderCapability>(widget.provider.cli);
   }
 
   @override
@@ -92,7 +92,7 @@ class _ProviderCredentialActionBarState
 
   Widget _actionButton(
     BuildContext context, {
-    required ProviderCredentialCapability capability,
+    required ProviderCapability capability,
     required ProviderCredentialActionSpec spec,
   }) {
     final label = _actionLabel(context.l10n, widget.provider.cli, spec.kind);
@@ -134,7 +134,7 @@ class _ProviderCredentialActionBarState
   }
 
   Future<void> _runAction(
-    ProviderCredentialCapability capability,
+    ProviderCapability capability,
     ProviderCredentialActionKind kind,
   ) async {
     if (_running) return;

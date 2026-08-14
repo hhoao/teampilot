@@ -12,6 +12,7 @@ import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/models/workspace_launch_context.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/history/ai_transcript.dart';
+import 'package:teampilot/services/cli/opencode/capabilities/sqlite_worker_pool.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/session/ai_history_locator.dart';
@@ -58,12 +59,13 @@ void main() {
     dbPath = p.join(toolRoot, 'opencode.db');
   });
 
-  tearDown(() {
+  tearDown(() async {
     try {
       writer.close();
     } on Object {
       // already closed
     }
+    await OpencodeSqliteWorkerPool.instance.disposeAllAndWait();
     if (base.existsSync()) {
       base.deleteSync(recursive: true);
     }

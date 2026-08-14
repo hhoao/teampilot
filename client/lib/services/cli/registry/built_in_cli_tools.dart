@@ -1,30 +1,20 @@
 import '../../../models/team_config.dart';
 import '../../../services/cli/claude/claude_bootstrap_entry.dart';
-import '../../../services/cli/claude/provider/claude_provider_credential_capability.dart';
 import '../../../services/cli/codex/codex_bootstrap_entry.dart';
-import '../../../services/cli/codex/provider/codex_provider_credential_capability.dart';
 import '../../../services/cli/cursor/cursor_bootstrap_entry.dart';
-import '../../../services/cli/cursor/provider/cursor_provider_credential_capability.dart';
-import '../../../services/cli/cursor/provider/cursor_provider_model_capability.dart';
 import '../../../services/cli/opencode/opencode_bootstrap_entry.dart';
-import '../../../services/cli/opencode/provider/opencode_provider_credential_capability.dart';
-import '../../../services/cli/opencode/provider/opencode_provider_model_capability.dart';
-import '../../../services/team_bus/bus_idle_hooks_capability.dart';
-import 'capabilities/cli_asset_registry.dart';
-import 'capabilities/member_agent_preset_capability.dart';
 import 'capabilities/member_config_inspection_capability.dart';
-import 'capabilities/provider_model_capability.dart';
-import 'capabilities/config_profile_capability.dart';
-import 'capabilities/launch_args_capability.dart';
-import 'capabilities/wait_before_stop_capability.dart';
-import 'capabilities/provider_display_capability.dart';
-import 'capabilities/cli_config_ui_capability.dart';
-import 'capabilities/title_attention_capability.dart';
-import 'capabilities/marketplace_consumer_capability.dart';
-import 'capabilities/agent_status_normalizer_capability.dart';
-import 'capabilities/history_context_env_capability.dart';
-import 'capabilities/credential_export_capability.dart';
-import 'capabilities/remote_app_data_capability.dart';
+import '../../../services/cli/claude/capabilities/provider.dart';
+import '../../../services/cli/codex/capabilities/provider.dart';
+import '../../../services/cli/cursor/capabilities/provider.dart';
+import '../../../services/cli/opencode/capabilities/provider.dart';
+import 'capabilities/provider_capability.dart';
+import 'capabilities/cli_session_capability.dart';
+import 'capabilities/team_behavior_capability.dart';
+import 'capabilities/cli_executable_capability.dart';
+import 'capabilities/chat_interaction_capability.dart';
+import 'capabilities/terminal_behavior_capability.dart';
+import 'capabilities/plugin_capability.dart';
 import 'cli_bootstrap.dart';
 import 'cli_capability.dart';
 import 'cli_tool_registry.dart';
@@ -47,50 +37,38 @@ void registerBuiltInCliTools(
 
   registry.register(
     ClaudeCliTool(
-      providerCredential: ClaudeProviderCredentialCapability(
+      provider: ClaudeProviderCapability(
         credentials: claudeEntry?.credentialsService,
       ),
-      busIdleHooks: const BusIdleHooksCapability(),
     ),
   );
   registry.register(
     CodexCliTool(
-      providerCredential: CodexProviderCredentialCapability(
+      provider: CodexProviderCapability(
         credentials: codexEntry?.credentialsService,
       ),
     ),
   );
   registry.register(
     OpencodeCliTool(
-      providerModel: OpencodeProviderModelCapability(
+      provider: OpencodeProviderCapability(
         modelsService: opencodeEntry?.modelsService,
-      ),
-      providerCredential: OpencodeProviderCredentialCapability(
         credentials: opencodeEntry?.credentialsService,
       ),
     ),
   );
   registry.register(
     CursorCliTool(
-      providerModel: CursorProviderModelCapability(
+      provider: CursorProviderCapability(
         modelsService: cursorEntry?.agentModelsService,
-      ),
-      providerCredential: CursorProviderCredentialCapability(
         credentials: cursorEntry?.credentialsService,
       ),
     ),
   );
 
   registry.register(
-    FlashskyaiCliTool(busIdleHooks: const BusIdleHooksCapability()),
+    FlashskyaiCliTool(),
   );
-
-  // 依赖反转：Registry 从能力声明收集资产（能力集合启动时固定）。
-  for (final def in registry.launchable) {
-    for (final cap in def.capabilities) {
-      if (cap is CliAssetRegistry) cap.collectDeclared(def.capabilities);
-    }
-  }
 
   assert(
     CliTool.values.every((cli) => registry.tryGet(cli) != null),
@@ -102,9 +80,9 @@ void registerBuiltInCliTools(
   );
   assert(
     CliTool.values.every(
-      (cli) => registry.capability<ProviderModelCapability>(cli) != null,
+      (cli) => registry.capability<ProviderCapability>(cli) != null,
     ),
-    'Every CliTool must register ProviderModelCapability',
+    'Every CliTool must register ProviderCapability',
   );
   assert(
     CliTool.values.every(
@@ -113,17 +91,12 @@ void registerBuiltInCliTools(
     ),
     'Every CliTool must register MemberConfigInspectionCapability',
   );
-  _verifyRequired<ConfigProfileCapability>(registry);
-  _verifyRequired<LaunchArgsCapability>(registry);
-  _verifyRequired<WaitBeforeStopCapability>(registry);
-  _verifyRequired<ProviderDisplayCapability>(registry);
-  _verifyRequired<CliConfigUiCapability>(registry);
-  _verifyRequired<TitleAttentionCapability>(registry);
-  _verifyRequired<MarketplaceConsumerCapability>(registry);
-  _verifyRequired<AgentStatusNormalizerCapability>(registry);
-  _verifyRequired<HistoryContextEnvCapability>(registry);
-  _verifyRequired<CredentialExportCapability>(registry);
-  _verifyRequired<RemoteAppDataCapability>(registry);
+  _verifyRequired<CliSessionCapability>(registry);
+  _verifyRequired<TeamBehaviorCapability>(registry);
+  _verifyRequired<CliExecutableCapability>(registry);
+  _verifyRequired<TerminalBehaviorCapability>(registry);
+  _verifyRequired<PluginCapability>(registry);
+  _verifyRequired<ChatInteractionCapability>(registry);
   _verifyNativeTeamRegistration(registry);
   _verifyMemberAgentPresetRegistration(registry);
 }
@@ -138,13 +111,15 @@ void _verifyRequired<T extends CliCapability>(CliToolRegistry registry) {
 void _verifyMemberAgentPresetRegistration(CliToolRegistry registry) {
   const allowed = {CliTool.claude, CliTool.flashskyai};
   final presetIds = {
-    for (final def in registry.withCapability<MemberAgentPresetCapability>())
+    for (final def
+        in registry.all.where((d) => registry.memberAgentPresetStyle(d.id) != null))
       def.id,
   };
   if (presetIds.length != allowed.length ||
       !allowed.every(presetIds.contains)) {
     throw StateError(
-      'Member agent preset is limited to CLIs with MemberAgentPresetCapability; '
+      'Member agent preset is limited to CLIs exposing an agent preset '
+      'style via TeamBehaviorCapability; '
       'got ${presetIds.map((c) => c.value).join(', ')}',
     );
   }
@@ -156,7 +131,8 @@ void _verifyNativeTeamRegistration(CliToolRegistry registry) {
   if (nativeIds.length != allowed.length ||
       !allowed.every(nativeIds.contains)) {
     throw StateError(
-      'Native team mode is limited to CLIs with NativeTeamCapability; '
+      'Native team mode is limited to CLIs exposing native team support via '
+      'TeamBehaviorCapability; '
       'got ${nativeIds.map((c) => c.value).join(', ')}',
     );
   }

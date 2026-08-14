@@ -1,8 +1,10 @@
 import 'package:path/path.dart' as p;
 
 import '../../../../models/cli_preset.dart';
+import '../../../../models/hook_entry.dart';
 import '../../../../models/discoverable_member.dart';
 import '../../../../models/team_config.dart';
+import '../../../extension/extension_provisioner.dart';
 import '../../../io/filesystem.dart';
 import '../../../host/host_execution_environment.dart';
 import '../../../provider/provider_catalog_access.dart';
@@ -38,7 +40,7 @@ CliTool presetCli(CliPreset? preset, {CliTool fallback = CliTool.claude}) {
   return preset?.cli ?? fallback;
 }
 
-/// Path facade for [ConfigProfileCapability] implementations.
+/// Path facade for launch config-profile materialization.
 abstract interface class ConfigProfilePaths {
   String get basePath;
 
@@ -93,14 +95,19 @@ abstract interface class ConfigProfileDelegate implements ConfigProfilePaths {
     String? workspaceId,
   });
 
-  Future<bool> hasEnabledExtensionSettingsHooks(
-    String tool, {
+  Future<Map<String, Object?>> applyExtensionSettings(
+    Map<String, Object?> settings,
+    String? memberToolDir, {
+    required String tool,
     String? teamId,
     String? workspaceId,
   });
 
-  Future<Map<String, Object?>> applyExtensionSettings(
-    Map<String, Object?> settings,
+  /// Renders every enabled, ready extension's `settings-hook` effects into
+  /// [HookEntry]-backed specs (scripts provisioned under [memberToolDir]).
+  /// Consumed by the unified hook writer render at the member-profile
+  /// assembly points (Task 18 convergence).
+  Future<List<ExtensionSettingsHook>> extensionSettingsHooks(
     String? memberToolDir, {
     required String tool,
     String? teamId,
@@ -114,33 +121,17 @@ abstract interface class ConfigProfileDelegate implements ConfigProfilePaths {
     required bool forceTeamLeadDelegateMode,
   });
 
-  Future<String?> resolveAppendSystemPromptPath({
-    required LaunchProfileScope scope,
-    required String tool,
-    required TeamMemberConfig member,
+  /// Provisioned team-lead delegate-only PreToolUse hook command (script
+  /// written under [memberToolDir]), or null when [member] is not the team
+  /// lead or delegate mode is off. The assembly point folds it into the
+  /// unified hook writer render (Task 18 convergence).
+  Future<String?> resolveTeamLeadDelegateHookCommand(
+    TeamMemberConfig member,
+    String memberToolDir, {
+    required bool forceTeamLeadDelegateMode,
   });
 
   HostExecutionEnvironment hostEnvironmentForProvision();
-}
-
-class ConfigProfileSessionContext {
-  const ConfigProfileSessionContext({
-    required this.workspaceId,
-    required this.teamId,
-    required this.sessionId,
-    required this.members,
-    required this.paths,
-    this.team,
-    this.memberId,
-  });
-
-  final String workspaceId;
-  final String teamId;
-  final String sessionId;
-  final List<TeamMemberConfig> members;
-  final ConfigProfileDelegate paths;
-  final TeamProfile? team;
-  final String? memberId;
 }
 
 class ConfigProfileLaunchContext {
@@ -163,6 +154,7 @@ class ConfigProfileLaunchContext {
     this.memberId,
     this.sessionExpertKey,
     this.resolvedExpert,
+    this.hooks = const [],
   });
 
   final String workspaceId;
@@ -190,6 +182,9 @@ class ConfigProfileLaunchContext {
   final String? memberId;
   final String? sessionExpertKey;
   final DiscoverableMember? resolvedExpert;
+
+  /// 该 seat 生效的用户 hook 条目（staging 按 runtimeBundle.hookIds 解析）。
+  final List<HookEntry> hooks;
 
   bool get crossMachine => configProfileCrossMachine(catalog, paths);
 

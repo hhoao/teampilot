@@ -12,6 +12,7 @@ import '../../../utils/workspace/workspace_display_name.dart';
 import '../../../widgets/settings/workspace_section_host.dart';
 import '../../../widgets/settings/workspace_section_nav_item.dart';
 import 'config/workspace_extensions_section.dart';
+import 'config/workspace_hooks_section.dart';
 import 'config/workspace_mcp_section.dart';
 import 'config/workspace_plugins_section.dart';
 import 'config/workspace_skills_section.dart';
@@ -124,6 +125,9 @@ class _ProjectConfigBody extends StatelessWidget {
         workspaceId: workspace.workspaceId,
       ),
       WorkspaceConfigSection.extensions => WorkspaceExtensionsSection(
+        workspaceId: workspace.workspaceId,
+      ),
+      WorkspaceConfigSection.hooks => WorkspaceHooksSection(
         workspaceId: workspace.workspaceId,
       ),
     };

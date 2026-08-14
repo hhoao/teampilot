@@ -7,7 +7,6 @@ import '../models/launch_profile_kind.dart';
 import '../models/team_config.dart';
 import '../services/io/filesystem.dart';
 import '../services/io/local_filesystem.dart';
-import 'package:logger/logger.dart';
 import '../utils/logging/logger.dart';
 import 'index_snapshot_isolate.dart';
 

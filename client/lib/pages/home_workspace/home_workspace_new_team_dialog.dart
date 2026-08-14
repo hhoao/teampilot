@@ -20,7 +20,7 @@ import '../../services/ai/ai_feature_setting_resolver.dart';
 import '../../services/ai/team_config_draft.dart';
 import '../../services/ai/team_config_generator.dart';
 import '../../services/ai/team_draft_roster_mapper.dart';
-import '../../services/cli/registry/capabilities/provider_catalog_capability.dart';
+import '../../services/cli/registry/capabilities/provider_capability.dart';
 import '../../services/cli/registry/cli_display_name.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../widgets/app_provider/brand_dropdown_rows.dart';
@@ -138,7 +138,7 @@ class _HomeNewTeamDialogState extends State<HomeNewTeamDialog> {
   CliTool? _providerCatalogCli(CliTool cli) {
     final registry = CliToolRegistryScope.maybeOf(context);
     if (registry == null) return null;
-    return registry.capability<ProviderCatalogCapability>(cli) != null
+    return registry.capability<ProviderCapability>(cli) != null
         ? cli
         : null;
   }
@@ -620,7 +620,7 @@ class _NativeTeamOptionsCard extends StatelessWidget {
     final nativeTeamClis = registry.nativeTeamLaunchable.toList()
       ..sort((a, b) => a.id.value.compareTo(b.id.value));
     final catalogCli =
-        registry.capability<ProviderCatalogCapability>(cli) != null
+        registry.capability<ProviderCapability>(cli) != null
         ? cli
         : null;
     final providers = catalogCli == null

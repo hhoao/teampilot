@@ -14,6 +14,7 @@ import '../pages/skills/skill_management_page.dart';
 import '../pages/plugins/plugin_management_page.dart';
 import '../pages/mcp/mcp_form_nav_page.dart';
 import '../pages/mcp/mcp_management_page.dart';
+import '../pages/hooks/hook_management_page.dart';
 import '../pages/onboarding/onboarding_gate.dart';
 import '../pages/startup_gate.dart';
 import '../pages/team_config/team_config_page.dart';
@@ -447,6 +448,11 @@ final appRouter = GoRouter(
                   ),
                 ),
               ),
+            ),
+            GoRoute(
+              path: '/hooks',
+              pageBuilder: (context, state) =>
+                  const NoTransitionPage(child: HookManagementPage()),
             ),
             GoRoute(
               path: '/ssh-profiles',
