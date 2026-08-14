@@ -346,6 +346,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'When you open a thinking-process block, expand nested tool call details automatically.';
 
   @override
+  String get autoOpenSubagentPreviewTitle => 'Auto-open subagent preview';
+
+  @override
+  String get autoOpenSubagentPreviewDescription =>
+      'When a subagent starts running, open its preview automatically and follow it live. Press Back to stop following for this session.';
+
+  @override
   String get thinkingProcessFoldSectionTitle => 'Fold into thinking process';
 
   @override

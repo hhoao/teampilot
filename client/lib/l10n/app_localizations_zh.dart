@@ -328,6 +328,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cotExpandToolsOnOpenDescription => '展开「思考过程」时，自动展开内部工具调用详情。';
 
   @override
+  String get autoOpenSubagentPreviewTitle => '自动打开子会话预览';
+
+  @override
+  String get autoOpenSubagentPreviewDescription =>
+      '子 agent 开始运行时自动弹出预览并实时跟随;按返回后停止本会话的跟随。';
+
+  @override
   String get thinkingProcessFoldSectionTitle => '折叠进思考过程';
 
   @override
