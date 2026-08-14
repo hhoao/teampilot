@@ -193,7 +193,7 @@ pub fn spawn_search(config: &SearchConfig) -> Result<TpSearchHandle, SearchError
                     .unwrap_or(path)
                     .to_string_lossy()
                     .replace('\\', "/");
-                let path_str = path.to_string_lossy().into_owned();
+                let path_str = path.to_string_lossy().replace('\\', "/");
 
                 let mut searcher = SearcherBuilder::new()
                     .binary_detection(BinaryDetection::quit(b'\x00'))
