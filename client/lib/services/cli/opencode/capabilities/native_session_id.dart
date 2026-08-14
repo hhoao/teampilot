@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io' show Directory, File;
 
 import 'package:path/path.dart' as p;
@@ -99,19 +100,61 @@ class OpencodeSqliteReadHandle {
   }
 }
 
-/// Newest session row — resolves the seat's native `ses_*` id from SQLite.
+/// Newest ROOT session row — never a task child, so the seat stays on the
+/// parent conversation while a `task` sub-agent is running.
+///
+/// Current OpenCode layout: `parent_id` is a real column — one indexed
+/// scoped query. Legacy layout (parent linkage inside the `data` JSON blob)
+/// falls back to a full scan filtering out rows with a non-empty parent.
 String? opencodeNewestSessionId(Database db, Object? args) {
-  final rows = db.select(
-    '''
+  try {
+    final rows = db.select(
+      '''
 SELECT id
 FROM session
+WHERE parent_id IS NULL OR parent_id = ''
 ORDER BY time_updated DESC, id DESC
 LIMIT 1
 ''',
-  );
-  if (rows.isEmpty) return null;
-  final id = '${rows.first['id']}'.trim();
-  return id.isEmpty ? null : id;
+    );
+    if (rows.isEmpty) return null;
+    final id = '${rows.first['id']}'.trim();
+    return id.isEmpty ? null : id;
+  } on SqliteException {
+    // Legacy layout: no parent_id column; parent linkage lives in `data`.
+    final rows = db.select(
+      '''
+SELECT id, data, time_updated
+FROM session
+ORDER BY time_updated DESC, id DESC
+''',
+    );
+    for (final row in rows) {
+      final id = '${row['id']}'.trim();
+      if (id.isEmpty) continue;
+      final obj = _decodeRowData(row['data']);
+      if (obj == null) continue;
+      final parent = '${obj['parent_id'] ?? obj['parentID'] ?? ''}'.trim();
+      if (parent.isNotEmpty) continue;
+      return id;
+    }
+    return null;
+  }
+}
+
+Map<String, dynamic>? _decodeRowData(Object? raw) {
+  try {
+    final decoded = switch (raw) {
+      final String s => jsonDecode(s),
+      final List<int> bytes => jsonDecode(utf8.decode(bytes)),
+      _ => null,
+    };
+    if (decoded is Map<String, dynamic>) return decoded;
+    if (decoded is Map) return Map<String, dynamic>.from(decoded);
+  } on Object {
+    return null;
+  }
+  return null;
 }
 
 /// Resolves a readable local path for the OpenCode SQLite store:
