@@ -19,6 +19,7 @@ class HookDefinition {
     this.policy = HookPolicy.none,
     this.timeoutSec,
     this.env = const {},
+    this.native,
   });
 
   factory HookDefinition.fromJson(Map<String, Object?> json) {
@@ -32,10 +33,10 @@ class HookDefinition {
           ? null
           : (json['matcher'] as String).trim(),
       action: action,
-      policy: HookPolicy.values.asNameMap()[json['policy']] ??
-          HookPolicy.none,
+      policy: HookPolicy.values.asNameMap()[json['policy']] ?? HookPolicy.none,
       timeoutSec: (json['timeoutSec'] as num?)?.toInt(),
       env: _decodeEnv(json['env']),
+      native: _decodeNative(json['native']),
     );
   }
 
@@ -49,6 +50,10 @@ class HookDefinition {
   final int? timeoutSec;
   final Map<String, String> env;
 
+  /// 导入时保留的原生 handler 字段（旁路，零丢失）。writer 管线不消费，
+  /// 仅持久化；未来 writer 可按需读取。
+  final Map<String, Object?>? native;
+
   HookDefinition copyWith({
     String? name,
     String? description,
@@ -58,6 +63,7 @@ class HookDefinition {
     HookPolicy? policy,
     int? timeoutSec,
     Map<String, String>? env,
+    Object? native = _unset,
   }) => HookDefinition(
     id: id,
     name: name ?? this.name,
@@ -68,7 +74,12 @@ class HookDefinition {
     policy: policy ?? this.policy,
     timeoutSec: timeoutSec ?? this.timeoutSec,
     env: env ?? this.env,
+    native: identical(native, _unset)
+        ? this.native
+        : native as Map<String, Object?>?,
   );
+
+  static const _unset = Object();
 
   Map<String, Object?> toJson() => {
     'id': id,
@@ -80,13 +91,15 @@ class HookDefinition {
     if (policy != HookPolicy.none) 'policy': policy.name,
     if (timeoutSec != null) 'timeoutSec': timeoutSec,
     if (env.isNotEmpty) 'env': env,
+    if (native != null && native!.isNotEmpty) 'native': native,
   };
 
   static Map<String, Object?> _actionToJson(HookAction action) =>
       switch (action) {
-        CommandHookAction c => c.command != null
-            ? {'type': 'raw', 'command': c.command}
-            : {'type': 'script', 'fileName': c.fileName},
+        CommandHookAction c =>
+          c.command != null
+              ? {'type': 'raw', 'command': c.command}
+              : {'type': 'script', 'fileName': c.fileName},
         HttpHookAction h => {
           'type': 'http',
           'url': h.url,
@@ -122,6 +135,11 @@ class HookDefinition {
     return Map.unmodifiable(out);
   }
 
+  static Map<String, Object?>? _decodeNative(Object? raw) {
+    if (raw is! Map || raw.isEmpty) return null;
+    return Map<String, Object?>.from(raw.cast<String, Object?>());
+  }
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -134,7 +152,8 @@ class HookDefinition {
           action == other.action &&
           policy == other.policy &&
           timeoutSec == other.timeoutSec &&
-          mapEquals(env, other.env);
+          mapEquals(env, other.env) &&
+          mapEquals(native ?? const {}, other.native ?? const {});
 
   @override
   int get hashCode => Object.hash(
@@ -148,5 +167,7 @@ class HookDefinition {
     timeoutSec,
     Object.hashAllUnordered(env.keys),
     Object.hashAllUnordered(env.values),
+    Object.hashAllUnordered(native?.keys ?? const []),
+    Object.hashAllUnordered(native?.values ?? const []),
   );
 }
