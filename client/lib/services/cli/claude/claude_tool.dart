@@ -23,16 +23,14 @@ import '../registry/capabilities/executable_resolver_capability.dart';
 import '../registry/capabilities/installer_capability.dart';
 import '../registry/capabilities/launch_args_capability.dart';
 import '../registry/capabilities/cli_effort_capability.dart';
-import '../registry/capabilities/headless_run_capability.dart';
-import '../registry/capabilities/headless_provision_capability.dart';
+import '../registry/capabilities/headless_capability.dart';
 import '../registry/capabilities/provider_credential_capability.dart';
 import '../registry/capabilities/provider_model_capability.dart';
 import '../registry/capabilities/session_resume_capability.dart';
 import 'capabilities/history/ai_history_capability.dart';
 import 'capabilities/resume_strategy.dart';
 import 'capabilities/config_profile.dart';
-import 'capabilities/headless_run.dart';
-import 'capabilities/headless_provision.dart';
+import 'capabilities/headless.dart';
 import 'capabilities/installer.dart';
 import 'provider/claude_effort_capability.dart';
 import 'provider/claude_provider_credential_capability.dart';
@@ -75,8 +73,7 @@ final class ClaudeCliTool implements CliToolDefinition {
     this.providerCatalog = const ClaudeProviderCatalogCapability(),
     this.providerModel = const ClaudeProviderModelCapability(),
     this.effort = const ClaudeEffortCapability(),
-    this.headlessRun = const ClaudeHeadlessRunCapability(),
-    this.headlessProvision = const ClaudeHeadlessProvisionCapability(),
+    this.headless = const ClaudeHeadlessCapability(),
     this.providerForm = const ClaudeProviderFormCapability(),
     this.resource = const DefaultResourceCapability(),
     this.mcpConfigWriter = const ClaudeMcpConfigWriter(),
@@ -114,8 +111,7 @@ final class ClaudeCliTool implements CliToolDefinition {
   final ProviderCatalogCapability providerCatalog;
   final ProviderModelCapability providerModel;
   final CliEffortCapability effort;
-  final HeadlessRunCapability headlessRun;
-  final HeadlessProvisionCapability headlessProvision;
+  final HeadlessCapability headless;
   final ResourceCapability resource;
   final ClaudeMcpConfigWriter mcpConfigWriter;
 
@@ -158,8 +154,7 @@ final class ClaudeCliTool implements CliToolDefinition {
     providerCredential,
     providerForm,
     effort,
-    headlessRun,
-    headlessProvision,
+    headless,
     resource,
     mcpConfigWriter,
     chatInteraction,

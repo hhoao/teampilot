@@ -1,19 +1,54 @@
+import 'dart:io';
+
 import 'package:path/path.dart' as p;
 
 import '../../../../models/app_provider_config.dart';
+import '../../registry/capabilities/headless_capability.dart';
+import '../../registry/headless/headless_provision_support.dart';
 import '../provider/codex_auth_artifacts.dart';
 import '../provider/codex_home_provisioner.dart';
 import '../provider/codex_official_provider.dart';
 import '../provider/codex_provider_settings_resolver.dart';
-import '../../registry/capabilities/headless_provision_capability.dart';
-import '../../registry/headless/headless_provision_support.dart';
 
-/// Provisions an isolated `CODEX_HOME` (config + auth) for a one-shot
-/// `codex exec` run.
-final class CodexHeadlessProvisionCapability
+/// Codex one-shot via `codex exec` (effort via `-c model_reasoning_effort=`),
+/// plus provisioning of an isolated `CODEX_HOME` (config + auth).
+final class CodexHeadlessCapability
     with HeadlessProvisionSupport
-    implements HeadlessProvisionCapability {
-  const CodexHeadlessProvisionCapability();
+    implements HeadlessCapability {
+  const CodexHeadlessCapability();
+
+  @override
+  bool get isSupported => true;
+
+  @override
+  bool get supportsStreaming => false;
+
+  @override
+  List<HeadlessConfigFile> configFiles(HeadlessRunContext ctx) => const [];
+
+  @override
+  HeadlessInvocation buildInvocation(HeadlessRunContext ctx) {
+    final args = <String>['exec'];
+    final model = ctx.model.trim();
+    if (model.isNotEmpty) args.addAll(['--model', model]);
+    final effort = ctx.effort.trim();
+    if (effort.isNotEmpty) {
+      args.addAll(['-c', 'model_reasoning_effort=$effort']);
+    }
+    args.add(ctx.prompt);
+    return HeadlessInvocation(
+      executable: 'codex',
+      arguments: args,
+      environment: {'CODEX_HOME': ctx.configDir},
+    );
+  }
+
+  @override
+  String extractText(ProcessResult result) =>
+      (result.stdout as String? ?? '').trim();
+
+  @override
+  String? streamResultText(String line) => null;
 
   @override
   Future<HeadlessProvisionResult> provision(

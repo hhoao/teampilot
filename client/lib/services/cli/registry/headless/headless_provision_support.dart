@@ -8,7 +8,7 @@ import '../../../storage/app_storage.dart';
 import '../../../storage/runtime_layout.dart';
 
 /// Shared storage-backed collaborators and JSON helpers for the per-CLI
-/// [HeadlessProvisionCapability] implementations.
+/// [HeadlessCapability] implementations.
 ///
 /// Everything is resolved lazily from [AppStorage] so the capabilities stay
 /// `const` and registering them on a tool never touches storage. They are read

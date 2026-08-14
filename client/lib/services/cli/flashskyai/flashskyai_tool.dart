@@ -17,18 +17,16 @@ import '../registry/capabilities/executable_resolver_capability.dart';
 import '../registry/capabilities/installer_capability.dart';
 import '../registry/capabilities/unsupported_installer_capability.dart';
 import '../registry/capabilities/cli_effort_capability.dart';
-import '../registry/capabilities/headless_run_capability.dart';
+import '../registry/capabilities/headless_capability.dart';
 import '../registry/capabilities/launch_args_capability.dart';
 import '../registry/capabilities/provider_model_capability.dart';
 import '../registry/capabilities/session_resume_capability.dart';
 import 'capabilities/history/ai_history_capability.dart';
 import 'capabilities/resume_strategy.dart';
-import '../registry/capabilities/headless_provision_capability.dart';
 import 'capabilities/config_profile.dart';
 import 'capabilities/prompt_provision.dart';
 import '../registry/capabilities/prompt_provision_capability.dart';
-import 'capabilities/headless_run.dart';
-import 'capabilities/headless_provision.dart';
+import 'capabilities/headless.dart';
 import 'provider/flashskyai_effort_capability.dart';
 import 'provider/flashskyai_provider_form_capability.dart';
 import '../registry/capabilities/member_config_inspection_capability.dart';
@@ -70,8 +68,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     this.providerCatalog = const FlashskyaiProviderCatalogCapability(),
     this.providerModel = const ProviderRecordModelCapability(),
     this.effort = const FlashskyaiEffortCapability(),
-    this.headlessRun = const FlashskyaiHeadlessRunCapability(),
-    this.headlessProvision = const FlashskyaiHeadlessProvisionCapability(),
+    this.headless = const FlashskyaiHeadlessCapability(),
     this.providerForm = const FlashskyaiProviderFormCapability(),
     this.resource = const DefaultResourceCapability(),
     this.mcpConfigWriter = const FlashskyaiMcpConfigWriter(),
@@ -101,8 +98,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
   final ProviderCatalogCapability providerCatalog;
   final ProviderModelCapability providerModel;
   final CliEffortCapability effort;
-  final HeadlessRunCapability headlessRun;
-  final HeadlessProvisionCapability headlessProvision;
+  final HeadlessCapability headless;
   final ProviderFormCapability providerForm;
   final ResourceCapability resource;
   final FlashskyaiMcpConfigWriter mcpConfigWriter;
@@ -145,8 +141,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     providerModel,
     providerForm,
     effort,
-    headlessRun,
-    headlessProvision,
+    headless,
     resource,
     mcpConfigWriter,
     providerDisplay,

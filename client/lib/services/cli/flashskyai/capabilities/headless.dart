@@ -1,15 +1,65 @@
+import 'dart:convert' show jsonDecode;
+import 'dart:io';
+
 import 'package:path/path.dart' as p;
 
-import '../../registry/capabilities/headless_provision_capability.dart';
-import 'config_profile.dart';
+import '../../registry/capabilities/headless_capability.dart';
 import '../../registry/headless/headless_provision_support.dart';
+import 'config_profile.dart';
 
-/// Provisions an isolated flashskyai config dir (settings + trusted workspaces)
-/// and the env it needs for a one-shot `flashskyai -p` run.
-final class FlashskyaiHeadlessProvisionCapability
+/// flashskyai one-shot via `-p` print mode (Claude-style CLI), plus
+/// provisioning of the isolated config dir (settings + trusted workspaces)
+/// and the env it needs for the run.
+final class FlashskyaiHeadlessCapability
     with HeadlessProvisionSupport
-    implements HeadlessProvisionCapability {
-  const FlashskyaiHeadlessProvisionCapability();
+    implements HeadlessCapability {
+  const FlashskyaiHeadlessCapability();
+
+  @override
+  bool get isSupported => true;
+
+  @override
+  bool get supportsStreaming => true;
+
+  @override
+  List<HeadlessConfigFile> configFiles(HeadlessRunContext ctx) => const [];
+
+  @override
+  HeadlessInvocation buildInvocation(HeadlessRunContext ctx) {
+    final args = <String>['-p', ctx.prompt];
+    final model = ctx.model.trim();
+    if (model.isNotEmpty) args.addAll(['--model', model]);
+    if (ctx.stream) {
+      args.addAll(['--output-format', 'stream-json', '--verbose']);
+    }
+    return HeadlessInvocation(
+      executable: 'flashskyai',
+      arguments: args,
+      environment: {
+        FlashskyaiConfigProfileCapability.configDirEnvKey: ctx.configDir,
+        FlashskyaiConfigProfileCapability.sessionHomeDirEnvKey: ctx.configDir,
+      },
+    );
+  }
+
+  @override
+  String extractText(ProcessResult result) =>
+      (result.stdout as String? ?? '').trim();
+
+  @override
+  String? streamResultText(String line) {
+    try {
+      final decoded = jsonDecode(line);
+      if (decoded is Map &&
+          decoded['type'] == 'result' &&
+          decoded['result'] is String) {
+        return (decoded['result'] as String).trim();
+      }
+    } on FormatException {
+      // Not a JSON event line.
+    }
+    return null;
+  }
 
   @override
   Future<HeadlessProvisionResult> provision(

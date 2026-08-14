@@ -18,17 +18,15 @@ import '../registry/capabilities/team_behavior_capability.dart';
 import 'provider/opencode_provider_credential_capability.dart';
 import 'provider/opencode_provider_catalog_capability.dart';
 import '../registry/capabilities/cli_effort_capability.dart';
-import '../registry/capabilities/headless_run_capability.dart';
+import '../registry/capabilities/headless_capability.dart';
 import '../registry/capabilities/provider_catalog_capability.dart';
 import '../registry/capabilities/provider_credential_capability.dart';
 import '../registry/capabilities/provider_model_capability.dart';
 import '../registry/capabilities/session_resume_capability.dart';
 import 'capabilities/history/ai_history_capability.dart';
 import 'capabilities/resume_strategy.dart';
-import '../registry/capabilities/headless_provision_capability.dart';
 import 'capabilities/config_profile.dart';
-import 'capabilities/headless_run.dart';
-import 'capabilities/headless_provision.dart';
+import 'capabilities/headless.dart';
 import 'capabilities/installer.dart';
 import 'provider/opencode_effort_capability.dart';
 import 'provider/opencode_provider_form_capability.dart';
@@ -74,8 +72,7 @@ final class OpencodeCliTool implements CliToolDefinition {
     this.providerCatalog = const OpencodeProviderCatalogCapability(),
     OpencodeProviderModelCapability? providerModel,
     this.effort = const OpencodeEffortCapability(),
-    this.headlessRun = const OpencodeHeadlessRunCapability(),
-    this.headlessProvision = const OpencodeHeadlessProvisionCapability(),
+    this.headless = const OpencodeHeadlessCapability(),
     this.providerForm = const OpencodeProviderFormCapability(),
     this.resource = const OpencodeResourceCapability(),
     this.mcpConfigWriter = const OpencodeMcpConfigWriter(),
@@ -111,8 +108,7 @@ final class OpencodeCliTool implements CliToolDefinition {
   final ProviderCatalogCapability providerCatalog;
   final ProviderModelCapability providerModel;
   final CliEffortCapability effort;
-  final HeadlessRunCapability headlessRun;
-  final HeadlessProvisionCapability headlessProvision;
+  final HeadlessCapability headless;
   final ResourceCapability resource;
   final OpencodeMcpConfigWriter mcpConfigWriter;
 
@@ -155,8 +151,7 @@ final class OpencodeCliTool implements CliToolDefinition {
     providerCredential,
     providerForm,
     effort,
-    headlessRun,
-    headlessProvision,
+    headless,
     resource,
     mcpConfigWriter,
     providerDisplay,

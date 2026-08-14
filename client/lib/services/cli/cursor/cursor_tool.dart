@@ -22,7 +22,7 @@ import '../registry/capabilities/launch_args_capability.dart';
 import '../registry/capabilities/team_behavior_capability.dart';
 import 'provider/cursor_provider_credential_capability.dart';
 import 'provider/cursor_provider_model_capability.dart';
-import '../registry/capabilities/headless_run_capability.dart';
+import '../registry/capabilities/headless_capability.dart';
 import '../registry/capabilities/provider_credential_capability.dart';
 import '../registry/capabilities/session_resume_capability.dart';
 import 'capabilities/history/ai_history_capability.dart';
@@ -33,7 +33,7 @@ import 'capabilities/config_profile.dart';
 import 'capabilities/session_lifecycle.dart';
 import '../registry/capabilities/cli_session_lifecycle_capability.dart';
 import '../registry/capabilities/post_manifest_flush_capability.dart';
-import 'capabilities/headless_run.dart';
+import 'capabilities/headless.dart';
 import 'provider/cursor_provider_form_capability.dart';
 import '../registry/capabilities/member_config_inspection_capability.dart';
 import '../registry/capabilities/provider_form_capability.dart';
@@ -77,7 +77,7 @@ final class CursorCliTool implements CliToolDefinition {
     this.pluginProvisioner = const CursorPluginProvisioner(),
     this.providerCatalog = const CursorProviderCatalogCapability(),
     CursorProviderModelCapability? providerModel,
-    this.headlessRun = const CursorHeadlessRunCapability(),
+    this.headless = const CursorHeadlessCapability(),
     this.providerForm = const CursorProviderFormCapability(),
     this.resource = const CursorResourceCapability(),
     this.configLayout = const CursorCliConfigLayout(),
@@ -120,7 +120,7 @@ final class CursorCliTool implements CliToolDefinition {
   final CursorPluginProvisioner pluginProvisioner;
   final ProviderCatalogCapability providerCatalog;
   final CursorProviderModelCapability providerModel;
-  final HeadlessRunCapability headlessRun;
+  final HeadlessCapability headless;
   final ResourceCapability resource;
   final CliConfigLayoutCapability configLayout;
   final CursorMcpConfigWriter mcpConfigWriter;
@@ -165,7 +165,7 @@ final class CursorCliTool implements CliToolDefinition {
     providerModel,
     providerCredential,
     providerForm,
-    headlessRun,
+    headless,
     resource,
     configLayout,
     mcpConfigWriter,

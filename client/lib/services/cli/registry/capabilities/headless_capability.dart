@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import '../../../../models/app_provider_config.dart';
 import '../cli_capability.dart';
 
 /// Inputs for building a one-shot headless CLI call.
@@ -63,12 +64,52 @@ class HeadlessInvocation {
   final Map<String, String> environment;
 }
 
-/// Per-CLI one-shot (non-interactive) invocation support.
+/// Result of materializing an isolated CLI config dir for a headless run.
+class HeadlessProvisionResult {
+  const HeadlessProvisionResult({
+    this.extraEnvironment = const {},
+    this.warnings = const [],
+    this.credentialsReady = true,
+  });
+
+  /// Extra process env entries (e.g. `OPENCODE_AUTH_CONTENT`).
+  final Map<String, String> extraEnvironment;
+
+  /// Machine-readable provisioning warnings (e.g. `claude_credentials_missing`).
+  final List<String> warnings;
+
+  /// False when OAuth credentials are required but missing for the provider.
+  final bool credentialsReady;
+}
+
+/// Inputs for provisioning a temp config dir before a one-shot CLI call.
+class HeadlessProvisionContext {
+  const HeadlessProvisionContext({
+    required this.provider,
+    required this.providerId,
+    required this.model,
+    required this.effort,
+    required this.configDir,
+    this.workingDirectory,
+  });
+
+  final AppProviderConfig? provider;
+  final String providerId;
+  final String model;
+  final String effort;
+  final String configDir;
+  final String? workingDirectory;
+}
+
+/// Per-CLI one-shot (non-interactive) invocation support, plus credential /
+/// settings provisioning for the isolated config dir.
 ///
 /// One implementation per CLI tool, registered alongside [LaunchArgsCapability]
-/// on the tool definition. Pure: it returns data (files, invocation) and parses
-/// stdout; the service owns the filesystem and process execution.
-abstract interface class HeadlessRunCapability implements CliCapability {
+/// on the tool definition. Pure: it returns data (files, invocation, provision
+/// result) and parses stdout; the service owns the filesystem and process
+/// execution. A CLI with no provisioning needs (e.g. cursor) returns the
+/// default [HeadlessProvisionResult] from [provision].
+abstract interface class HeadlessCapability implements CliCapability {
   /// Whether this CLI can run a one-shot headless call.
   bool get isSupported;
 
@@ -88,4 +129,6 @@ abstract interface class HeadlessRunCapability implements CliCapability {
   /// the terminal result event, else null. Only meaningful when
   /// [supportsStreaming] and the context requested [HeadlessRunContext.stream].
   String? streamResultText(String line);
+
+  Future<HeadlessProvisionResult> provision(HeadlessProvisionContext ctx);
 }

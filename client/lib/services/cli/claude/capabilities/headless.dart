@@ -1,22 +1,84 @@
+import 'dart:convert' show jsonDecode;
+import 'dart:io';
+
 import 'package:path/path.dart' as p;
 
 import '../../../../models/credential_link_result.dart';
-import '../provider/claude_official_provider.dart';
 import '../../../provider/credential_binding.dart';
+import '../../../storage/app_storage.dart';
+import '../../registry/capabilities/headless_capability.dart';
+import '../../registry/headless/headless_provision_support.dart';
+import '../provider/claude_official_provider.dart';
 import '../provider/claude_provider_credentials_service.dart';
 import '../provider/claude_provider_settings_resolver.dart';
-import '../../../storage/app_storage.dart';
-import '../../registry/capabilities/headless_provision_capability.dart';
 import 'config_profile.dart';
-import '../../registry/headless/headless_provision_support.dart';
 
-/// Provisions an isolated Claude config dir (settings.json + credentials) for a
-/// one-shot `claude -p` run. Mirrors the standalone launch path without
-/// persisting under `config-profiles/`.
-final class ClaudeHeadlessProvisionCapability
+/// Claude one-shot via `claude -p`. Effort is expressed through a temp
+/// `settings.json` (`effortLevel`) under `CLAUDE_CONFIG_DIR`. Provisions the
+/// isolated config dir (settings.json + credentials) for the run, mirroring
+/// the standalone launch path without persisting under `config-profiles/`.
+final class ClaudeHeadlessCapability
     with HeadlessProvisionSupport
-    implements HeadlessProvisionCapability {
-  const ClaudeHeadlessProvisionCapability();
+    implements HeadlessCapability {
+  const ClaudeHeadlessCapability();
+
+  @override
+  bool get isSupported => true;
+
+  @override
+  bool get supportsStreaming => true;
+
+  @override
+  List<HeadlessConfigFile> configFiles(HeadlessRunContext ctx) => const [];
+
+  @override
+  HeadlessInvocation buildInvocation(HeadlessRunContext ctx) {
+    final args = <String>['-p', ctx.prompt];
+    final model = ctx.model.trim();
+    if (model.isNotEmpty) {
+      args.addAll(['--model', model]);
+    }
+    if (ctx.stream) {
+      args.addAll(['--output-format', 'stream-json', '--verbose']);
+    } else if (ctx.expectJson) {
+      args.addAll(['--output-format', 'json']);
+    }
+    return HeadlessInvocation(
+      executable: 'claude',
+      arguments: args,
+      environment: {'CLAUDE_CONFIG_DIR': ctx.configDir},
+    );
+  }
+
+  @override
+  String? streamResultText(String line) {
+    try {
+      final decoded = jsonDecode(line);
+      if (decoded is Map &&
+          decoded['type'] == 'result' &&
+          decoded['result'] is String) {
+        return (decoded['result'] as String).trim();
+      }
+    } on FormatException {
+      // Not a JSON event line.
+    }
+    return null;
+  }
+
+  @override
+  String extractText(ProcessResult result) {
+    final out = (result.stdout as String? ?? '').trim();
+    if (out.isEmpty) return '';
+    try {
+      final decoded = jsonDecode(out);
+      if (decoded is Map && decoded['result'] is String) {
+        return (decoded['result'] as String).trim();
+      }
+    } on FormatException {
+      // Plain-text mode: stdout is the message itself.
+    }
+    return out;
+  }
 
   @override
   Future<HeadlessProvisionResult> provision(

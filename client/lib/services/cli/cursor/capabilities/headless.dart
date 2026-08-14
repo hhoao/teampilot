@@ -1,10 +1,10 @@
 import 'dart:io';
 
-import '../../registry/capabilities/headless_run_capability.dart';
+import '../../registry/capabilities/headless_capability.dart';
 
-/// opencode one-shot via `opencode run`.
-final class OpencodeHeadlessRunCapability implements HeadlessRunCapability {
-  const OpencodeHeadlessRunCapability();
+/// Cursor one-shot via `cursor-agent -p`.
+final class CursorHeadlessCapability implements HeadlessCapability {
+  const CursorHeadlessCapability();
 
   @override
   bool get isSupported => true;
@@ -17,14 +17,13 @@ final class OpencodeHeadlessRunCapability implements HeadlessRunCapability {
 
   @override
   HeadlessInvocation buildInvocation(HeadlessRunContext ctx) {
-    final args = <String>['run'];
+    final args = <String>['-p', ctx.prompt];
     final model = ctx.model.trim();
     if (model.isNotEmpty) args.addAll(['--model', model]);
-    args.add(ctx.prompt);
     return HeadlessInvocation(
-      executable: 'opencode',
+      executable: 'cursor-agent',
       arguments: args,
-      environment: {'OPENCODE_CONFIG_DIR': ctx.configDir},
+      environment: {'CURSOR_CONFIG_DIR': ctx.configDir},
     );
   }
 
@@ -34,4 +33,8 @@ final class OpencodeHeadlessRunCapability implements HeadlessRunCapability {
 
   @override
   String? streamResultText(String line) => null;
+
+  @override
+  Future<HeadlessProvisionResult> provision(HeadlessProvisionContext ctx) async =>
+      const HeadlessProvisionResult();
 }

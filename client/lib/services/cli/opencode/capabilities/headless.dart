@@ -1,21 +1,52 @@
+import 'dart:io';
+
 import 'package:path/path.dart' as p;
 
 import '../../../../models/app_provider_config.dart';
+import '../../registry/capabilities/headless_capability.dart';
+import '../../registry/headless/headless_provision_support.dart';
 import '../provider/opencode_auth_artifacts.dart';
 import '../provider/opencode_data_layout.dart';
 import '../provider/opencode_provider_settings_resolver.dart';
-import '../../registry/capabilities/headless_provision_capability.dart';
 import 'config_profile.dart';
-import '../../registry/headless/headless_provision_support.dart';
 
-/// Provisions an isolated opencode config dir (opencode.json + auth env) for a
-/// one-shot `opencode run`.
-final class OpencodeHeadlessProvisionCapability
+/// opencode one-shot via `opencode run`, plus provisioning of an isolated
+/// config dir (opencode.json + auth env).
+final class OpencodeHeadlessCapability
     with HeadlessProvisionSupport
-    implements HeadlessProvisionCapability {
-  const OpencodeHeadlessProvisionCapability();
+    implements HeadlessCapability {
+  const OpencodeHeadlessCapability();
 
   static const _layout = OpencodeDataLayout();
+
+  @override
+  bool get isSupported => true;
+
+  @override
+  bool get supportsStreaming => false;
+
+  @override
+  List<HeadlessConfigFile> configFiles(HeadlessRunContext ctx) => const [];
+
+  @override
+  HeadlessInvocation buildInvocation(HeadlessRunContext ctx) {
+    final args = <String>['run'];
+    final model = ctx.model.trim();
+    if (model.isNotEmpty) args.addAll(['--model', model]);
+    args.add(ctx.prompt);
+    return HeadlessInvocation(
+      executable: 'opencode',
+      arguments: args,
+      environment: {'OPENCODE_CONFIG_DIR': ctx.configDir},
+    );
+  }
+
+  @override
+  String extractText(ProcessResult result) =>
+      (result.stdout as String? ?? '').trim();
+
+  @override
+  String? streamResultText(String line) => null;
 
   @override
   Future<HeadlessProvisionResult> provision(

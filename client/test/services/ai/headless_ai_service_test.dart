@@ -4,12 +4,25 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/ai_feature_setting.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/ai/headless_ai_service.dart';
-import 'package:teampilot/services/cli/registry/capabilities/headless_provision_capability.dart';
+import 'package:teampilot/services/cli/registry/capabilities/headless_capability.dart';
 
 /// Provisioning that reports missing credentials, to exercise the service's
 /// not-ready branch without touching storage.
-class _NotReadyProvision implements HeadlessProvisionCapability {
+class _NotReadyProvision implements HeadlessCapability {
   const _NotReadyProvision();
+  @override
+  bool get isSupported => true;
+  @override
+  bool get supportsStreaming => false;
+  @override
+  List<HeadlessConfigFile> configFiles(HeadlessRunContext ctx) => const [];
+  @override
+  HeadlessInvocation buildInvocation(HeadlessRunContext ctx) =>
+      throw UnimplementedError();
+  @override
+  String extractText(ProcessResult result) => throw UnimplementedError();
+  @override
+  String? streamResultText(String line) => null;
   @override
   Future<HeadlessProvisionResult> provision(
     HeadlessProvisionContext ctx,

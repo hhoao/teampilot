@@ -19,16 +19,14 @@ import '../registry/capabilities/launch_args_capability.dart';
 import '../registry/capabilities/team_behavior_capability.dart';
 import 'provider/codex_provider_credential_capability.dart';
 import '../registry/capabilities/cli_effort_capability.dart';
-import '../registry/capabilities/headless_run_capability.dart';
+import '../registry/capabilities/headless_capability.dart';
 import '../registry/capabilities/provider_credential_capability.dart';
 import '../registry/capabilities/provider_model_capability.dart';
 import '../registry/capabilities/session_resume_capability.dart';
 import 'capabilities/history/ai_history_capability.dart';
 import 'capabilities/resume_strategy.dart';
-import '../registry/capabilities/headless_provision_capability.dart';
 import 'capabilities/config_profile.dart';
-import 'capabilities/headless_run.dart';
-import 'capabilities/headless_provision.dart';
+import 'capabilities/headless.dart';
 import 'capabilities/installer.dart';
 import 'provider/codex_effort_capability.dart';
 import 'provider/codex_provider_form_capability.dart';
@@ -73,8 +71,7 @@ final class CodexCliTool implements CliToolDefinition {
     this.providerCatalog = const CodexProviderCatalogCapability(),
     this.providerModel = const ProviderRecordModelCapability(),
     this.effort = const CodexEffortCapability(),
-    this.headlessRun = const CodexHeadlessRunCapability(),
-    this.headlessProvision = const CodexHeadlessProvisionCapability(),
+    this.headless = const CodexHeadlessCapability(),
     this.providerForm = const CodexProviderFormCapability(),
     this.resource = const DefaultResourceCapability(),
     this.mcpConfigWriter = const CodexMcpConfigWriter(),
@@ -109,8 +106,7 @@ final class CodexCliTool implements CliToolDefinition {
   final ProviderCatalogCapability providerCatalog;
   final ProviderModelCapability providerModel;
   final CliEffortCapability effort;
-  final HeadlessRunCapability headlessRun;
-  final HeadlessProvisionCapability headlessProvision;
+  final HeadlessCapability headless;
   final ResourceCapability resource;
   final CodexMcpConfigWriter mcpConfigWriter;
 
@@ -153,8 +149,7 @@ final class CodexCliTool implements CliToolDefinition {
     providerCredential,
     providerForm,
     effort,
-    headlessRun,
-    headlessProvision,
+    headless,
     resource,
     mcpConfigWriter,
     providerDisplay,
