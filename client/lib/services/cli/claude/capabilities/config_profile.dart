@@ -25,7 +25,7 @@ import '../../../agent_status/member_agent_status_endpoint.dart';
 import '../../../team_bus/member_bus_idle_endpoint.dart';
 import '../../registry/config_profile/hook_seat_context_completer.dart';
 import '../../registry/capabilities/claude_family_hook_registry.dart';
-import '../../registry/capabilities/hook_writer_capability.dart';
+import '../../registry/capabilities/hook_capability.dart';
 import '../../registry/cli_tool_registry.dart';
 import '../../../../utils/logging/logger.dart';
 import '../../../hook/glue_script_builder.dart';
@@ -811,7 +811,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     // Task 19：旧 CliHookSpec 资产注册路径已删除——managed 条目全部经上方
     // completer 组装，统一 writer 渲染（bus idle Stop 现带 timeout 5，不再被
     // 无 timeout 的 registry 资产 Stop 去重压掉）。
-    final hookWriter = CliToolRegistry.builtIn().capability<HookWriterCapability>(
+    final hookWriter = CliToolRegistry.builtIn().capability<HookCapability>(
       CliTool.claude,
     );
     if (hookWriter != null && entries.isNotEmpty) {

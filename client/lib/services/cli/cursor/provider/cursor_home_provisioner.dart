@@ -6,7 +6,7 @@ import '../../../host/host_script_runner.dart';
 import '../../../hook/glue_script_builder.dart';
 import '../../../io/filesystem.dart';
 import '../../../team_bus/member_bus_idle_endpoint.dart';
-import '../../registry/capabilities/hook_writer_capability.dart';
+import '../../registry/capabilities/hook_capability.dart';
 import '../../registry/capabilities/prompt_provision_capability.dart';
 import '../../registry/config_profile/hook_seat_context_completer.dart';
 import '../capabilities/prompt_provision.dart';

@@ -40,7 +40,7 @@ import '../registry/capabilities/plugin_capability.dart';
 import 'capabilities/post_manifest_flush.dart';
 import 'capabilities/skill.dart';
 import 'capabilities/executable.dart';
-import '../registry/capabilities/hook_writer_capability.dart';
+import '../registry/capabilities/hook_capability.dart';
 import 'provider/cursor_hook_writer.dart';
 
 /// Cursor CLI (`cursor-agent`). Standalone and mixed-mode (HOME isolation +
@@ -93,7 +93,7 @@ final class CursorCliTool implements CliToolDefinition {
   final TeamBehaviorCapability teamBehavior;
   final ProviderDisplayCapability providerDisplay;
   final CredentialExportCapability credentialExport;
-  final HookWriterCapability hookWriter;
+  final HookCapability hookWriter;
   final ChatInteractionCapability chatInteraction;
   final CursorAiHistoryCapability aiHistory;
   final SkillCapability skill;

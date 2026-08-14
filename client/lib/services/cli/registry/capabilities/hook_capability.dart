@@ -40,7 +40,7 @@ class HookWriteResult {
 /// 每 CLI 一个实现：把归一化 [HookEntry] 渲染为该 CLI 原生 hook 配置。
 /// render 必须是纯函数（无 IO）——脚本经 [HookWriteResult.scripts] 返回，
 /// 由装配点写盘。
-abstract interface class HookWriterCapability implements CliCapability {
+abstract interface class HookCapability implements CliCapability {
   String? nativeEvent(HookEvent event);
 
   bool get supportsMatcher;

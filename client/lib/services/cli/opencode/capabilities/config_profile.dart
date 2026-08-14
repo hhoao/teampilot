@@ -20,7 +20,7 @@ import '../../../team_bus/mcp/bus_bridge_locator.dart';
 import '../../../team_bus/mcp/teammate_bus_mcp_config.dart';
 import '../../registry/capabilities/cli_effort_capability.dart';
 import '../../registry/capabilities/config_profile_capability.dart';
-import '../../registry/capabilities/hook_writer_capability.dart';
+import '../../registry/capabilities/hook_capability.dart';
 import '../../registry/capabilities/prompt_provision_capability.dart';
 import '../../../hook/glue_script_builder.dart';
 import 'agent_status_plugin.dart';

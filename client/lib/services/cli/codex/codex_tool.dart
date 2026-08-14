@@ -34,7 +34,7 @@ import 'capabilities/mcp.dart';
 import 'capabilities/plugin.dart';
 import '../registry/capabilities/plugin_capability.dart';
 import 'provider/codex_hook_writer.dart';
-import '../registry/capabilities/hook_writer_capability.dart';
+import '../registry/capabilities/hook_capability.dart';
 import 'capabilities/prompt_provision.dart';
 import 'capabilities/executable.dart';
 import '../registry/capabilities/prompt_provision_capability.dart';
@@ -86,7 +86,7 @@ final class CodexCliTool implements CliToolDefinition {
   final ChatInteractionCapability chatInteraction;
   final CodexAiHistoryCapability aiHistory;
   final SkillCapability skill;
-  final HookWriterCapability hookWriter;
+  final HookCapability hookWriter;
   final PromptProvisionCapability promptProvision;
 
   @override

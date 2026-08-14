@@ -4,7 +4,7 @@ import '../../../../models/hook_entry.dart';
 import '../../../../models/hook_event.dart';
 import '../../../../models/team_config.dart';
 import '../../registry/capabilities/hook_registry.dart';
-import '../../registry/capabilities/hook_writer_capability.dart';
+import '../../registry/capabilities/hook_capability.dart';
 
 const opencodeUserHooksPluginFileName = 'teampilot-user-hooks.js';
 
@@ -29,7 +29,7 @@ class _OpencodeSubscription {
 /// POST + /idle 报告）**平行安装**于 opencode.json `plugin` 数组 —— 两者都是
 /// opencode 特有能力而非"hook 配置"，内部托管保持为专属 JS plugin，**不迁移**
 /// 进本 writer。写入时经 `mergeOpencodePluginEntries` 按路径去重合并。
-class OpencodeHookWriter implements HookWriterCapability {
+class OpencodeHookWriter implements HookCapability {
   const OpencodeHookWriter({this.denyReason = 'TeamPilot hook policy'});
 
   final String denyReason;

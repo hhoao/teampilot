@@ -40,7 +40,7 @@ import '../registry/capabilities/prompt_provision_capability.dart';
 import '../registry/capabilities/plugin_capability.dart';
 import '../registry/resources/default_resource_capability.dart';
 import '../registry/config_profile/claude_family_hook_writer.dart';
-import '../registry/capabilities/hook_writer_capability.dart';
+import '../registry/capabilities/hook_capability.dart';
 
 final class ClaudeCliTool implements CliToolDefinition {
   ClaudeCliTool({
@@ -65,13 +65,13 @@ final class ClaudeCliTool implements CliToolDefinition {
     this.credentialBinding = const ClaudeCredentialBindingCapability(),
     this.promptProvision = const ClaudePromptProvisionCapability(),
     ProviderCredentialCapability? providerCredential,
-    HookWriterCapability? hookWriter,
+    HookCapability? hookWriter,
   }) : providerCredential =
            providerCredential ?? ClaudeProviderCredentialCapability(),
        hookWriter = hookWriter ?? const ClaudeFamilyHookWriter();
 
   final ProviderCredentialCapability providerCredential;
-  final HookWriterCapability hookWriter;
+  final HookCapability hookWriter;
   final ProviderFormCapability providerForm;
 
   final LaunchArgsCapability launchArgs;

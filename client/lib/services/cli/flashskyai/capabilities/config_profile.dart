@@ -14,7 +14,7 @@ import '../../../agent_status/member_agent_status_endpoint.dart';
 import '../../../team_bus/member_bus_idle_endpoint.dart';
 import '../../registry/config_profile/hook_seat_context_completer.dart';
 import '../../registry/capabilities/claude_family_hook_registry.dart';
-import '../../registry/capabilities/hook_writer_capability.dart';
+import '../../registry/capabilities/hook_capability.dart';
 import '../../registry/cli_tool_registry.dart';
 import 'stop_idle_hook.dart';
 import '../../../../utils/logging/logger.dart';
@@ -273,7 +273,7 @@ final class FlashskyaiConfigProfileCapability
         ),
     ];
     final hookWriter = CliToolRegistry.builtIn()
-        .capability<HookWriterCapability>(CliTool.flashskyai);
+        .capability<HookCapability>(CliTool.flashskyai);
     if (hookWriter != null && entries.isNotEmpty) {
       final hooksDir = delegate.joinWork(memberToolDir, 'hooks');
       final result = hookWriter.render(
@@ -392,7 +392,7 @@ final class FlashskyaiConfigProfileCapability
       ...userHooks,
     ];
     final hookWriter = CliToolRegistry.builtIn()
-        .capability<HookWriterCapability>(CliTool.flashskyai);
+        .capability<HookCapability>(CliTool.flashskyai);
     if (hookWriter != null && entries.isNotEmpty) {
       final hooksDir = delegate.joinWork(memberToolDir, 'hooks');
       final result = hookWriter.render(

@@ -15,7 +15,7 @@ import '../provider/codex_managed_hook_overlay.dart';
 import '../provider/codex_hook_writer.dart';
 import '../../../hook/glue_script_builder.dart';
 import '../../../../utils/logging/logger.dart';
-import '../../registry/capabilities/hook_writer_capability.dart';
+import '../../registry/capabilities/hook_capability.dart';
 import '../../../launch/work_plane_paths.dart';
 import '../../../provider/workspace_trust_provisioner.dart';
 import '../../../../utils/workspace/trusted_project_paths.dart';

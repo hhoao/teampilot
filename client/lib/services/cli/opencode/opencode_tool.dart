@@ -30,7 +30,7 @@ import '../registry/capabilities/provider_display_capability.dart';
 import '../registry/capabilities/cli_executable_capability.dart';
 import 'capabilities/credential_export.dart';
 import '../registry/capabilities/credential_export_capability.dart';
-import '../registry/capabilities/hook_writer_capability.dart';
+import '../registry/capabilities/hook_capability.dart';
 import 'capabilities/mcp.dart';
 import 'capabilities/plugin.dart';
 import '../registry/capabilities/plugin_capability.dart';
@@ -85,7 +85,7 @@ final class OpencodeCliTool implements CliToolDefinition {
   final TeamBehaviorCapability teamBehavior;
   final ProviderDisplayCapability providerDisplay;
   final CredentialExportCapability credentialExport;
-  final HookWriterCapability hookWriter;
+  final HookCapability hookWriter;
   final ChatInteractionCapability chatInteraction;
   final OpencodeAiHistoryCapability aiHistory;
   final SkillCapability skill;

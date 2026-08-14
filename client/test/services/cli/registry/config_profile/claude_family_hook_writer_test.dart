@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/hook_entry.dart';
 import 'package:teampilot/models/hook_event.dart';
 import 'package:teampilot/services/cli/registry/config_profile/claude_family_hook_writer.dart';
-import 'package:teampilot/services/cli/registry/capabilities/hook_writer_capability.dart';
+import 'package:teampilot/services/cli/registry/capabilities/hook_capability.dart';
 import 'package:teampilot/services/host/host_execution_environment.dart';
 import 'package:teampilot/services/host/host_script_dialect.dart';
 import 'package:teampilot/services/host/host_script_runner.dart';
