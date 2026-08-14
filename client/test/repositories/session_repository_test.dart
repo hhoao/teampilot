@@ -9,7 +9,13 @@ import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/storage/workspace_layout.dart';
+import 'package:teampilot/services/workspace/target_liveness.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+class _AlwaysAliveLiveness implements TargetLiveness {
+  @override
+  Future<bool> isAlive(String targetId) async => true;
+}
 
 class _RecordingLifecycleService extends SessionLifecycleService {
   _RecordingLifecycleService()
@@ -838,6 +844,41 @@ void main() {
     await repo.deleteWorkspace(ws.workspaceId);
     final fresh2 = SessionRepository(rootDir: tmp.path);
     expect(await fresh2.loadWorkspacesIndex(), isEmpty);
+    await tmp.delete(recursive: true);
+  });
+
+  test('createWorkspace appends to an already-populated index cache', () async {
+    final tmp = await Directory.systemTemp.createTemp('repo_index_miss_');
+    final repo = SessionRepository(rootDir: tmp.path);
+    // Boot fills the cache with an empty workspace list.
+    expect(await repo.loadWorkspacesIndex(), isEmpty);
+
+    final ws = await repo.createWorkspace([WorkspaceFolder(path: '/p')]);
+    final index = await repo.loadWorkspacesIndex();
+    expect(index, hasLength(1));
+    expect(index.single.workspaceId, ws.workspaceId);
+    await tmp.delete(recursive: true);
+  });
+
+  test('remapWorkspaceTarget keeps index snapshot fresh', () async {
+    final tmp = await Directory.systemTemp.createTemp('repo_remap_index_');
+    final repo = SessionRepository(rootDir: tmp.path);
+    final ws = await repo.createWorkspace([
+      const WorkspaceFolder(path: '/p', targetId: 'wsl:ubuntu'),
+    ]);
+    await repo.createSession(ws.workspaceId);
+    // Warm the cache before the mutation.
+    await repo.loadWorkspacesIndex();
+
+    await repo.remapWorkspaceTarget(
+      ws.workspaceId,
+      fromTargetId: 'wsl:ubuntu',
+      toTargetId: 'wsl:debian',
+      liveness: _AlwaysAliveLiveness(),
+    );
+
+    final indexed = (await repo.loadWorkspacesIndex()).single;
+    expect(indexed.folders.single.targetId, 'wsl:debian');
     await tmp.delete(recursive: true);
   });
 }

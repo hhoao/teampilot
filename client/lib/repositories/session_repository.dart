@@ -68,13 +68,23 @@ class SessionRepository {
     final key = _workspacesIndexCacheKey();
     final current = _workspacesIndexByRoot[key];
     if (current != null) {
-      _workspacesIndexByRoot[key] = List<Workspace>.unmodifiable([
-        for (final existing in current)
-          if (existing.workspaceId == workspace.workspaceId)
-            _withInferredMemberPlacementInit(workspace)
-          else
-            existing,
-      ]);
+      final inferred = _withInferredMemberPlacementInit(workspace);
+      if (current.any((w) => w.workspaceId == workspace.workspaceId)) {
+        _workspacesIndexByRoot[key] = List<Workspace>.unmodifiable([
+          for (final existing in current)
+            if (existing.workspaceId == workspace.workspaceId)
+              inferred
+            else
+              existing,
+        ]);
+      } else {
+        // Cache populated (e.g. boot loadWorkspacesIndex) but this workspace
+        // is not in it yet — append so later fast-path reads see it.
+        _workspacesIndexByRoot[key] = List<Workspace>.unmodifiable([
+          ...current,
+          inferred,
+        ]);
+      }
     }
     await WorkspaceIndexStore(await _fs()).upsert(workspace);
   }
@@ -613,6 +623,7 @@ class SessionRepository {
       updatedAt: now,
     );
     await _writeManifest(fs, updated);
+    await _rememberWorkspace(updated);
 
     final writtenSessions = <AppSession>[];
     for (final session in applied.sessions) {
