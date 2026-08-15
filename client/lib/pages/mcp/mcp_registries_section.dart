@@ -8,7 +8,7 @@ import '../../services/mcp/mcp_registry_browse_service.dart';
 import '../../services/mcp/mcp_registry_config_service.dart';
 import '../../services/mcp/smithery_mcp_service.dart';
 import '../../theme/workspace_surface_layers.dart';
-import 'mcp_shared_widgets.dart';
+import '../../widgets/workspace_library_card.dart';
 
 /// Registry API sources (skills repos layout).
 class McpRegistriesSection extends StatefulWidget {
@@ -186,11 +186,11 @@ class _McpRegistriesSectionState extends State<McpRegistriesSection> {
     final sources = _config!.sources;
 
     return SingleChildScrollView(
-      child: McpWorkspaceCard(
+      child: WorkspaceLibraryCard(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            McpCardHeader(title: l10n.mcpNavRegistries),
+            TpCardHeader(title: l10n.mcpNavRegistries),
             const SizedBox(height: 12),
             for (final source in sources)
               _RegistryRow(

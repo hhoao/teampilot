@@ -10,6 +10,7 @@ import '../../services/skill/skill_repo_disk_cache_service.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/debounce/debounce.dart';
 import '../../utils/github/skill_repo_parse.dart';
+import '../../widgets/workspace_library_card.dart';
 import 'skill_management_cards.dart';
 
 class SkillReposSection extends StatefulWidget {
@@ -39,11 +40,11 @@ class SkillReposSectionState extends State<SkillReposSection> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SkillManagementCard(
+          WorkspaceLibraryCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                SkillCardHeader(title: l10n.skillsNavRepos),
+                TpCardHeader(title: l10n.skillsNavRepos),
                 const SizedBox(height: 12),
                 if (widget.state.repos.isEmpty)
                   TpEmptyState(
@@ -67,11 +68,11 @@ class SkillReposSectionState extends State<SkillReposSection> {
               ],
             ),
           ),
-          SkillManagementCard(
+          WorkspaceLibraryCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                SkillCardHeader(title: l10n.skillsRepoAdd),
+                TpCardHeader(title: l10n.skillsRepoAdd),
                 const SizedBox(height: 12),
                 SkillFieldLabel(text: l10n.skillsRepoUrl),
                 const SizedBox(height: 4),

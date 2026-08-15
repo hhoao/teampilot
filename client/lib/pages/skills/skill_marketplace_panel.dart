@@ -7,7 +7,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../services/skill/marketplace/skill_marketplace_source.dart';
 import 'marketplace_skill_card.dart';
 import 'skill_discovery_helpers.dart';
-import 'skill_management_cards.dart';
+import '../../widgets/workspace_library_card.dart';
 
 class SkillMarketplacePanel extends StatefulWidget {
   const SkillMarketplacePanel({super.key, required this.source});
@@ -151,7 +151,7 @@ class _SkillMarketplacePanelState extends State<SkillMarketplacePanel> {
     }
     if (slot.query.isEmpty) {
       return SingleChildScrollView(
-        child: SkillManagementCard(
+        child: WorkspaceLibraryCard(
           child: TpEmptyState(
             icon: Icons.search,
             title: l10n.skillsSkillsShPlaceholder,
@@ -162,7 +162,7 @@ class _SkillMarketplacePanelState extends State<SkillMarketplacePanel> {
     }
     if (slot.entries.isEmpty) {
       return SingleChildScrollView(
-        child: SkillManagementCard(
+        child: WorkspaceLibraryCard(
           child: TpEmptyState(
             icon: Icons.search_off,
             title: l10n.skillsDiscoveryEmpty,
@@ -437,7 +437,7 @@ class _ErrorState extends StatelessWidget {
     final l10n = context.l10n;
     final isQuota = error == marketplaceQuotaErrorKey;
     return SingleChildScrollView(
-      child: SkillManagementCard(
+      child: WorkspaceLibraryCard(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [

@@ -4857,6 +4857,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get hookImportNoHooks => 'No hooks found';
 
   @override
+  String hookInstalledCount(int count) {
+    return '$count installed';
+  }
+
+  @override
   String get mcpNavRegistries => 'Registry';
 
   @override

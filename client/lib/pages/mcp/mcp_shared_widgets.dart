@@ -7,39 +7,6 @@ import '../../models/mcp_server.dart';
 import '../../widgets/github_details_button.dart';
 import '../../theme/workspace_surface_layers.dart';
 
-class McpWorkspaceCard extends StatelessWidget {
-  const McpWorkspaceCard({required this.child, super.key});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(18),
-      decoration: workspaceCardDecoration(cs, radius: 12),
-      child: child,
-    );
-  }
-}
-
-class McpCardHeader extends StatelessWidget {
-  const McpCardHeader({required this.title, this.trailing, super.key});
-
-  final String title;
-  final Widget? trailing;
-
-  @override
-  Widget build(BuildContext context) {
-    return TpCardHeader(
-      title: title,
-      trailing: trailing,
-      crossAxisAlignment: CrossAxisAlignment.center,
-    );
-  }
-}
-
 class McpInstalledServerRow extends StatelessWidget {
   const McpInstalledServerRow({
     required this.server,

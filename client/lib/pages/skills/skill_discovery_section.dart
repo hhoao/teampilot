@@ -9,7 +9,7 @@ import '../../utils/debounce/debounce.dart';
 import 'skill_discovery_helpers.dart';
 import 'skill_discovery_repos_panel.dart';
 import 'skill_marketplace_panel.dart';
-import 'skill_management_cards.dart';
+import '../../widgets/workspace_library_card.dart';
 import 'skill_source_toggle.dart';
 
 class SkillDiscoverySection extends StatefulWidget {
@@ -103,7 +103,7 @@ class SkillDiscoverySectionState extends State<SkillDiscoverySection> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SkillManagementCard(
+          WorkspaceLibraryCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [

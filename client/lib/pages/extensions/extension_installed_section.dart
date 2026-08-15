@@ -8,7 +8,7 @@ import '../../cubits/extension_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../theme/workspace_surface_layers.dart';
 import 'package:shared_ui/shared_ui.dart';
-import '../skills/skill_management_cards.dart';
+import '../../widgets/workspace_library_card.dart';
 
 /// Global Extensions list: install/uninstall + global enable toggle for every
 /// known extension manifest. Mirrors the Skills "Installed" section styling.
@@ -46,11 +46,11 @@ class ExtensionInstalledSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SkillManagementCard(
+          WorkspaceLibraryCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                SkillCardHeader(
+                TpCardHeader(
                   title: l10n.extensionsSettingsTitle,
                   trailing: _CountBadge(count: state.rows.length),
                 ),

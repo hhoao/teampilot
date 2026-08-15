@@ -54,7 +54,7 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('On start'), findsOneWidget);
-    await tester.tap(find.byType(Checkbox).first);
+    await tester.tap(find.byType(Switch).first);
     await tester.pumpAndSettle();
     expect(projectCubit.state.config.bundle.hookIds, contains('h1'));
   });

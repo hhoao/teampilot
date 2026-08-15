@@ -9,6 +9,7 @@ import '../../../../cubits/hook_cubit.dart';
 import '../../../../cubits/workspace_project_config_cubit.dart';
 import '../../../../l10n/l10n_extensions.dart';
 import '../../../team_config/team_config_cards.dart';
+import '../../../team_config/team_config_hooks_section.dart';
 
 class WorkspaceHooksSection extends StatelessWidget {
   const WorkspaceHooksSection({required this.workspaceId, super.key});
@@ -58,17 +59,12 @@ class WorkspaceHooksSection extends StatelessWidget {
                   )
                 else
                   for (final definition in definitions)
-                    CheckboxListTile(
-                      value: hookIds.contains(definition.id),
-                      title: Text(
-                        definition.name.isEmpty
-                            ? definition.id
-                            : definition.name,
-                      ),
-                      subtitle: Text(definition.event.name),
-                      onChanged: (assigned) {
+                    TeamHookRow(
+                      definition: definition,
+                      assigned: hookIds.contains(definition.id),
+                      onAssignedChanged: (assigned) {
                         final ids = List<String>.from(hookIds);
-                        if (assigned == true) {
+                        if (assigned) {
                           if (!ids.contains(definition.id)) ids.add(definition.id);
                         } else {
                           ids.remove(definition.id);

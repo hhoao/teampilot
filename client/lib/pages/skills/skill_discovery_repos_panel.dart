@@ -7,7 +7,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../utils/github/github_source_url.dart';
 import 'skill_discover_card.dart';
 import 'skill_discovery_helpers.dart';
-import 'skill_management_cards.dart';
+import '../../widgets/workspace_library_card.dart';
 
 class SkillDiscoveryReposFilters extends StatefulWidget {
   const SkillDiscoveryReposFilters({
@@ -164,7 +164,7 @@ class SkillDiscoveryReposBody extends StatelessWidget {
 
             if (!grid.discoveryLoading && filtered.isEmpty) {
               return SingleChildScrollView(
-                child: SkillManagementCard(
+                child: WorkspaceLibraryCard(
                   child: TpEmptyState(
                     icon: Icons.travel_explore_outlined,
                     title: l10n.skillsDiscoveryEmpty,

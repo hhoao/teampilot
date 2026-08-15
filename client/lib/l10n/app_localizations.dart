@@ -8708,6 +8708,12 @@ abstract class AppLocalizations {
   /// **'No hooks found'**
   String get hookImportNoHooks;
 
+  /// No description provided for @hookInstalledCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} installed'**
+  String hookInstalledCount(int count);
+
   /// No description provided for @mcpNavRegistries.
   ///
   /// In en, this message translates to:

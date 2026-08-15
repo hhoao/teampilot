@@ -3,34 +3,6 @@ import 'package:shared_ui/shared_ui.dart';
 import '../../widgets/app_toast/app_toast.dart';
 
 import '../../l10n/l10n_extensions.dart';
-import '../../theme/workspace_surface_layers.dart';
-
-class SkillManagementCard extends StatelessWidget {
-  const SkillManagementCard({super.key, required this.child});
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(18),
-      decoration: workspaceCardDecoration(cs, radius: 12),
-      child: child,
-    );
-  }
-}
-
-class SkillCardHeader extends StatelessWidget {
-  const SkillCardHeader({super.key, required this.title, this.trailing});
-  final String title;
-  final Widget? trailing;
-
-  @override
-  Widget build(BuildContext context) {
-    return TpCardHeader(title: title, trailing: trailing);
-  }
-}
 
 class SkillFieldLabel extends StatelessWidget {
   const SkillFieldLabel({super.key, required this.text});

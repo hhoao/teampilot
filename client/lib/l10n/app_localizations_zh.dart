@@ -4672,6 +4672,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get hookImportNoHooks => '未找到 hooks';
 
   @override
+  String hookInstalledCount(int count) {
+    return '已安装 $count';
+  }
+
+  @override
   String get mcpNavRegistries => '注册中心';
 
   @override

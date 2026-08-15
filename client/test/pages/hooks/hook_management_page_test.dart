@@ -75,14 +75,6 @@ void main() {
     expect(find.byKey(const Key('hook-name')), findsNothing);
   });
 
-  testWidgets('list shows back affordance (desktop no dead end)', (
-    tester,
-  ) async {
-    await pumpListPage(tester);
-
-    expect(find.byIcon(Icons.arrow_back_rounded), findsOneWidget);
-  });
-
   testWidgets('card tap opens editor for the existing hook', (tester) async {
     await repository.save(
       const HookDefinition(

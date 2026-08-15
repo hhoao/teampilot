@@ -9,6 +9,7 @@ import '../../models/mcp_server.dart';
 import '../../services/mcp/mcp_credentials_store.dart';
 import '../../services/mcp/mcp_oauth_flow.dart';
 import 'mcp_oauth_connect_dialog.dart';
+import '../../widgets/workspace_library_card.dart';
 import 'mcp_shared_widgets.dart';
 
 class McpInstalledSection extends StatefulWidget {
@@ -98,10 +99,10 @@ class _McpInstalledSectionState extends State<McpInstalledSection> {
     final toolbarBusy = state.busyIds.isNotEmpty;
     final loading = state.status == McpLoadStatus.loading && servers.isEmpty;
 
-    return McpWorkspaceCard(
+    return WorkspaceLibraryCard(
       child: Column(
         children: [
-          McpCardHeader(
+          TpCardHeader(
             title: l10n.mcpInstalledCount(servers.length),
             trailing: TpActionRow(
               children: [

@@ -11,6 +11,7 @@ import '../../models/skill.dart';
 import '../../utils/debounce/debounce.dart';
 import '../../utils/github/github_source_url.dart';
 import '../../widgets/github_details_button.dart';
+import '../../widgets/workspace_library_card.dart';
 import 'skill_management_cards.dart';
 import '../../theme/workspace_surface_layers.dart';
 
@@ -33,11 +34,11 @@ class SkillInstalledSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SkillManagementCard(
+          WorkspaceLibraryCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                SkillCardHeader(
+                TpCardHeader(
                   title: l10n.skillsInstalledCount(state.installed.length),
                   trailing: TpActionRow(
                     children: [

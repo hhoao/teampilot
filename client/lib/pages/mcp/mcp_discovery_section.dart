@@ -10,6 +10,7 @@ import '../../models/mcp_catalog_listing.dart';
 import '../../utils/debounce/debounce.dart';
 import 'mcp_discovery_helpers.dart';
 import 'mcp_preset_listings.dart';
+import '../../widgets/workspace_library_card.dart';
 import 'mcp_shared_widgets.dart';
 
 /// Browse MCP servers from built-in presets and configured remote catalogs.
@@ -62,7 +63,7 @@ class _McpDiscoverySectionState extends State<McpDiscoverySection> {
 
   @override
   Widget build(BuildContext context) {
-    return McpWorkspaceCard(
+    return WorkspaceLibraryCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -99,7 +100,7 @@ class _McpDiscoveryHeader extends StatelessWidget {
           (source: discovery.source, loading: discovery.loading),
       builder: (context, header) {
         final canRefresh = header.source != McpDiscoverySource.builtin;
-        return McpCardHeader(
+        return TpCardHeader(
           title: l10n.mcpDiscoverySectionTitle,
           trailing: Row(
             mainAxisSize: MainAxisSize.min,

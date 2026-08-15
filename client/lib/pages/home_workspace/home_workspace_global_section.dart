@@ -112,7 +112,7 @@ class _HomeGlobalSectionState extends State<HomeGlobalSection> {
         onSelectSection: (s) => setState(() => _extension = s),
         embedded: true,
       ),
-      HomeGlobalView.hooks => const HookManagementPage(),
+      HomeGlobalView.hooks => const HookManagementPage(embedded: true),
       HomeGlobalView.myTeams => MyTeamsPage(onOpenTeam: widget.onOpenTeam),
       HomeGlobalView.myExperts => const MyExpertsPage(),
       HomeGlobalView.teamHub => const TeamHubPage(),

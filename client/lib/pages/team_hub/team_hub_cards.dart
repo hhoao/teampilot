@@ -6,7 +6,8 @@ import '../../models/discoverable_team.dart';
 import 'team_hub_visuals.dart';
 import '../../theme/workspace_surface_layers.dart';
 
-/// Bordered detail shell — matches [McpWorkspaceCard] / [SkillManagementCard].
+/// Bordered detail shell — matches [WorkspaceLibraryCard] (without the outer
+/// bottom margin, used inside hub lists rather than library pages).
 class TeamHubWorkspaceCard extends StatelessWidget {
   const TeamHubWorkspaceCard({super.key, required this.child});
 

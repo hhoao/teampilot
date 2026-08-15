@@ -2266,6 +2266,12 @@
   "hookImportOverwrite": "Will overwrite",
   "hookImportInvalidJson": "Invalid hook JSON",
   "hookImportNoHooks": "No hooks found",
+  "hookInstalledCount": "{count} installed",
+  "@hookInstalledCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
   "mcpNavRegistries": "Registry",
   "mcpInstalledSectionTitle": "Installed MCP servers",
   "mcpInstalledCount": "{count} installed",
