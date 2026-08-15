@@ -11,6 +11,14 @@ For contributors and maintainers. End-user overview: [README.md](../README.md). 
 | An agent CLI | At least one of `claude` / `codex` / `opencode` / `cursor` / `flashskyai` on **PATH** (or set in app settings) when exercising team terminals locally |
 | Targets | **Linux / macOS / Windows / Android** (same as CI) |
 
+### Linux 系统库(HTML 预览)
+
+HTML 预览(webview)依赖 WebKitGTK 4.1:
+
+```bash
+sudo apt-get install libwebkit2gtk-4.1-0 libwebkit2gtk-4.1-dev libsoup-3.0-0 libsoup-3.0-dev
+```
+
 ## First clone
 
 ```bash
