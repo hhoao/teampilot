@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -7,6 +8,7 @@ import 'package:teampilot/models/plugin.dart';
 import 'package:teampilot/services/io/filesystem.dart';
 import 'package:teampilot/services/plugin/plugin_repo_disk_cache_service.dart';
 import 'package:teampilot/services/plugin/plugin_repo_git_service.dart';
+import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/utils/async_keyed_coalescer.dart';
 
 import '../../support/post_frame_test_harness.dart';
@@ -167,10 +169,61 @@ void main() {
       expect(git.syncCheckouts, 1);
     });
   });
+
+  group('maxStaleness TTL', () {
+    setUp(setUpTestAppStorage);
+    tearDown(tearDownTestAppStorage);
+
+    test('fresh cache skips remote SHA check', () async {
+      final git = _CountingPluginGit();
+      const market = PluginMarketplace(owner: 'acme', name: 'mkt');
+      final svc = PluginRepoDiskCacheService(gitService: git);
+
+      await svc.syncMarketplace(market);
+
+      final result = await svc.syncMarketplace(
+        market,
+        maxStaleness: const Duration(hours: 24),
+      );
+
+      expect(git.syncCheckouts, 1);
+      expect(git.resolveShaCalls, 0);
+      expect(result, isNotEmpty);
+    });
+
+    test('stale cache still checks remote SHA', () async {
+      final git = _CountingPluginGit();
+      const market = PluginMarketplace(owner: 'acme', name: 'mkt');
+      final svc = PluginRepoDiskCacheService(gitService: git);
+      final dir = await svc.syncMarketplace(market);
+      final metaPath = AppStorage.fs.pathContext.join(
+        dir,
+        '.teampilot-plugin-cache-meta.json',
+      );
+      await AppStorage.fs.writeString(
+        metaPath,
+        jsonEncode({
+          'configuredBranch': 'main',
+          'resolvedBranch': 'main',
+          'commitSha': 'abc123',
+          'syncedAtMs': 1,
+        }),
+      );
+
+      await svc.syncMarketplace(
+        market,
+        maxStaleness: const Duration(hours: 24),
+      );
+
+      expect(git.resolveShaCalls, 1);
+      expect(git.syncCheckouts, 1);
+    });
+  });
 }
 
 class _CountingPluginGit extends PluginRepoGitService {
   int syncCheckouts = 0;
+  int resolveShaCalls = 0;
 
   @override
   Future<({Map<String, Uint8List> entries, String branch, String commitSha})>
@@ -199,5 +252,8 @@ class _CountingPluginGit extends PluginRepoGitService {
     String owner,
     String name,
     String configuredBranch,
-  ) async => null;
+  ) async {
+    resolveShaCalls++;
+    return null;
+  }
 }
