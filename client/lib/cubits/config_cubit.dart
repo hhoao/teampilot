@@ -11,6 +11,7 @@ enum ConfigSection {
   sshProfiles,
   github,
   downloadSources,
+  discovery,
   shortcuts,
   about,
   logs,
@@ -21,6 +22,7 @@ extension ConfigSectionRoute on ConfigSection {
     ConfigSection.aiFeatures => 'ai-features',
     ConfigSection.sshProfiles => 'ssh-profiles',
     ConfigSection.downloadSources => 'download-sources',
+    ConfigSection.discovery => 'discovery',
     _ => name,
   };
 }
@@ -42,6 +44,7 @@ class ConfigState extends Equatable {
     ConfigSection.sshProfiles => 'SSH Servers',
     ConfigSection.github => 'GitHub',
     ConfigSection.downloadSources => 'Download sources',
+    ConfigSection.discovery => 'Discovery & Marketplaces',
     ConfigSection.shortcuts => 'Keyboard Shortcuts',
     ConfigSection.about => 'About',
     ConfigSection.logs => 'Logs',
@@ -55,6 +58,7 @@ class ConfigState extends Equatable {
     ConfigSection.sshProfiles => 'Config / SSH Servers',
     ConfigSection.github => 'Config / GitHub',
     ConfigSection.downloadSources => 'Config / Download sources',
+    ConfigSection.discovery => 'Config / Discovery & Marketplaces',
     ConfigSection.shortcuts => 'Config / Keyboard Shortcuts',
     ConfigSection.about => 'Config / About',
     ConfigSection.logs => 'Config / Logs',

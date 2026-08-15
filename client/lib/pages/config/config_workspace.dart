@@ -17,6 +17,7 @@ import 'ai_features_config_section.dart';
 import 'cli_config_section.dart';
 import 'github_config_section.dart';
 import 'download_sources_config_section.dart';
+import 'discovery_config_section.dart';
 import 'layout_config_section.dart';
 import 'session_config_section.dart';
 import 'shortcuts_config_section.dart';
@@ -31,9 +32,10 @@ int _configSectionDialogIndex(ConfigSection section) {
     ConfigSection.sshProfiles => 4,
     ConfigSection.github => 5,
     ConfigSection.downloadSources => 6,
-    ConfigSection.shortcuts => 7,
-    ConfigSection.about => 8,
-    ConfigSection.logs => 8,
+    ConfigSection.discovery => 7,
+    ConfigSection.shortcuts => 8,
+    ConfigSection.about => 9,
+    ConfigSection.logs => 9,
   };
 }
 
@@ -113,6 +115,13 @@ Future<void> showWorkspaceSettingsDialog(
         subtitle: (l10n) => l10n.downloadSourcesSettingsSubtitle,
         bodyBuilder: (_) =>
             const DownloadSourcesConfigWorkspace(showHeading: false),
+      ),
+      SettingsDialogEntry(
+        icon: Icons.storefront_outlined,
+        navLabel: (l10n) => l10n.discoverySettingsTitle,
+        title: (l10n) => l10n.discoverySettingsTitle,
+        subtitle: (l10n) => l10n.discoverySettingsSubtitle,
+        bodyBuilder: (_) => const DiscoveryConfigWorkspace(showHeading: false),
       ),
       SettingsDialogEntry(
         icon: Icons.keyboard_outlined,
@@ -220,6 +229,15 @@ class ConfigSettingsHubPage extends StatelessWidget {
           }),
         ),
         WorkspaceHubEntry(
+          key: AppKeys.configDiscoverySectionButton,
+          title: l10n.discoverySettingsTitle,
+          icon: Icons.storefront_outlined,
+          onTap: throttledTap('config_hub_discovery', () {
+            context.read<ConfigCubit>().selectSection(ConfigSection.discovery);
+            context.push('/config/${ConfigSection.discovery.routeSegment}');
+          }),
+        ),
+        WorkspaceHubEntry(
           key: AppKeys.configShortcutsSectionButton,
           title: l10n.shortcutsSettingsTitle,
           icon: Icons.keyboard_outlined,
@@ -295,6 +313,9 @@ class ConfigWorkspace extends StatelessWidget {
         ),
         ConfigSection.github => GithubConfigWorkspace(showHeading: showHeading),
         ConfigSection.downloadSources => DownloadSourcesConfigWorkspace(
+          showHeading: showHeading,
+        ),
+        ConfigSection.discovery => DiscoveryConfigWorkspace(
           showHeading: showHeading,
         ),
         ConfigSection.shortcuts => ShortcutsConfigWorkspace(
@@ -391,6 +412,16 @@ class ConfigNavPanel extends StatelessWidget {
           onTap: throttledTap(
             'config_nav_download_sources',
             () => onSelectSection(ConfigSection.downloadSources),
+          ),
+        ),
+        WorkspaceHubEntry(
+          key: AppKeys.configDiscoverySectionButton,
+          title: l10n.discoverySettingsTitle,
+          icon: Icons.storefront_outlined,
+          selected: section == ConfigSection.discovery,
+          onTap: throttledTap(
+            'config_nav_discovery',
+            () => onSelectSection(ConfigSection.discovery),
           ),
         ),
         WorkspaceHubEntry(

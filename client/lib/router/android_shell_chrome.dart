@@ -58,6 +58,7 @@ class AndroidShellChrome {
     if (path == '/config/shortcuts') return l10n.shortcutsSettingsTitle;
     if (path == '/config/ai-features') return l10n.aiFeatures;
     if (path == '/config/download-sources') return l10n.downloadSourcesSettingsTitle;
+    if (path == '/config/discovery') return l10n.discoverySettingsTitle;
     if (path == '/config/about') return l10n.aboutTitle;
     if (path == '/config/logs') return l10n.logViewerTitle;
 
