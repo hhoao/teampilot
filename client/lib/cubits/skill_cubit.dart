@@ -240,8 +240,12 @@ class SkillCubit extends Cubit<SkillState> {
     if (!force && state.discoveryLoading) return;
     if (!force && state.repoSyncingKeys.isNotEmpty) return;
     if (!force && state.discoverable.isNotEmpty) return;
+    if (force) {
+      await refreshDiscoverable(force: true);
+      return;
+    }
     if (_autoRefreshEnabled()) {
-      await refreshDiscoverable(force: force);
+      await refreshDiscoverable(force: false);
       return;
     }
     await _syncMissingReposOnce();

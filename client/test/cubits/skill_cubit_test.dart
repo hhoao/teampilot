@@ -183,6 +183,22 @@ void main() {
     expect(cubit.state.discoverable, isNotEmpty);
   });
 
+  test('manual mode with force always checks remote', () async {
+    final fetch = _FakeSkillFetch();
+    final cache = SkillRepoDiskCacheService(fetch: fetch);
+    await cache.ensureSynced(_discoveryRepo);
+    final cubit = SkillCubit(
+      SkillRepository(fetch: fetch, repoCache: cache),
+    );
+    _emitRepos(cubit);
+
+    await cubit.ensureDiscoveryLoaded(force: true);
+
+    expect(fetch.shaChecks, 0);
+    expect(fetch.downloads, 2);
+    expect(cubit.state.discoverable, isNotEmpty);
+  });
+
   test('auto mode with fresh cache skips network', () async {
     final fetch = _FakeSkillFetch();
     final cache = SkillRepoDiskCacheService(fetch: fetch);
