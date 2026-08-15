@@ -11,12 +11,14 @@ import '../models/discoverable_team.dart';
 import '../models/plugin.dart';
 import '../models/progress_activity.dart';
 import '../repositories/plugin_repository.dart';
+import '../services/discovery/discovery_refresh_policy.dart';
 import '../services/progress_activity/pack_acquire_activity_adapter.dart';
 import '../services/plugin/plugin_install_service.dart';
 import '../services/plugin/plugin_external_fetch_service.dart';
 import '../services/plugin/plugin_repo_disk_cache_service.dart';
 import '../services/plugin/plugin_repo_service.dart';
 import '../utils/logging/logger.dart';
+import 'discovery_settings_cubit.dart';
 
 enum PluginLoadStatus { idle, loading, ready, error }
 
@@ -104,11 +106,13 @@ class PluginCubit extends Cubit<PluginState> {
     PluginUninstalledHandler? onPluginUninstalled,
     PluginUpdatedHandler? onPluginUpdated,
     PackAcquireActivityAdapter? packAcquireActivity,
+    DiscoverySettingsCubit? discoverySettings,
   }) : _diskCache = diskCache ?? PluginRepoDiskCacheService(),
        _externalFetch = externalFetch ?? PluginExternalFetchService(),
        _onPluginUninstalled = onPluginUninstalled,
        _onPluginUpdated = onPluginUpdated,
        _packAcquireActivity = packAcquireActivity,
+       _discoverySettings = discoverySettings,
        super(const PluginState());
 
   /// Test-only constructor that skips service wiring and accepts a pre-built
@@ -125,8 +129,8 @@ class PluginCubit extends Cubit<PluginState> {
        _externalFetch = PluginExternalFetchService(),
        _onPluginUninstalled = onPluginUninstalled,
        _onPluginUpdated = onPluginUpdated,
-       _packAcquireActivity = null;
-
+       _packAcquireActivity = null,
+       _discoverySettings = null;
   static final _dummyRepo = PluginRepository();
   static final _dummyInstallService = PluginInstallService();
   static final _dummyRepoService = PluginRepoService();
@@ -139,15 +143,54 @@ class PluginCubit extends Cubit<PluginState> {
   final PluginUninstalledHandler? _onPluginUninstalled;
   final PluginUpdatedHandler? _onPluginUpdated;
   final PackAcquireActivityAdapter? _packAcquireActivity;
+  final DiscoverySettingsCubit? _discoverySettings;
   int _discoveryGeneration = 0;
 
-  /// Loads discovery when the Discovery tab opens: disk cache first, then git sync.
-  /// Skips work when the list is already populated unless [force] is true.
+  bool _autoRefreshEnabled() =>
+      _discoverySettings?.state.autoRefreshEnabled ?? false;
+
+  /// Loads discovery when the Discovery tab opens: disk cache first; remote
+  /// sync only for first-time (no cache) marketplaces when auto-refresh is
+  /// off, or per [kDiscoveryAutoRefreshTtl] when it is on. [force] always
+  /// syncs.
   Future<void> ensureDiscoveryLoaded({bool force = false}) async {
     if (!force && state.discoveryLoading) return;
     if (!force && state.marketplaceSyncingKeys.isNotEmpty) return;
     if (!force && state.discoverable.isNotEmpty) return;
-    await refreshDiscoverable(force: force);
+    if (force) {
+      await refreshDiscoverable(force: true);
+      return;
+    }
+    if (_autoRefreshEnabled()) {
+      await refreshDiscoverable(force: false);
+      return;
+    }
+    await _syncMissingMarketplacesOnce();
+  }
+
+  /// 手动模式（默认）：只对从未同步过的 marketplace 做一次初始化同步，
+  /// 有磁盘缓存的 marketplace 不发网络请求。
+  Future<void> _syncMissingMarketplacesOnce() async {
+    final enabled = state.marketplaces.where((m) => m.enabled).toList();
+    final missing = <PluginMarketplace>[];
+    for (final m in enabled) {
+      if (!await _diskCache.hasCachedSnapshot(m)) missing.add(m);
+    }
+    if (missing.isEmpty) {
+      emit(
+        state.copyWith(
+          discoveryLoading: false,
+          marketplaceSyncingKeys: const {},
+          discoverable: await _aggregateDiscoverableFromDisk(enabled),
+        ),
+      );
+      return;
+    }
+    await _syncMarketplacesInBackground(
+      missing,
+      force: true,
+      clearError: true,
+    );
   }
 
   Future<void> load() async {
@@ -188,6 +231,9 @@ class PluginCubit extends Cubit<PluginState> {
       enabled,
       force: force,
       clearError: true,
+      maxStaleness: force
+          ? null
+          : (_autoRefreshEnabled() ? kDiscoveryAutoRefreshTtl : null),
     );
   }
 
@@ -195,6 +241,7 @@ class PluginCubit extends Cubit<PluginState> {
     List<PluginMarketplace> marketplacesToSync, {
     bool force = false,
     bool clearError = false,
+    Duration? maxStaleness,
   }) async {
     if (marketplacesToSync.isEmpty) return;
 
@@ -242,7 +289,11 @@ class PluginCubit extends Cubit<PluginState> {
       marketplacesToSync.map((m) async {
         final key = PluginRepoDiskCacheService.repoKey(m);
         try {
-          await _diskCache.syncMarketplace(m);
+          await _diskCache.syncMarketplace(
+            m,
+            force: force,
+            maxStaleness: maxStaleness,
+          );
         } catch (e) {
           appLogger.w('[plugins] sync ${m.fullName} failed: $e');
         } finally {
