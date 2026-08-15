@@ -5,16 +5,19 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/mcp_catalog_listing.dart';
 import '../models/mcp_registry_source.dart';
+import '../services/discovery/discovery_refresh_policy.dart';
 import '../services/mcp/mcp_discovery_disk_cache_service.dart';
 import '../services/mcp/mcp_registry_browse_service.dart';
 import '../services/mcp/mcp_registry_config_service.dart';
 import '../services/mcp/smithery_mcp_service.dart';
+import 'discovery_settings_cubit.dart';
 
 enum McpDiscoverySource { all, builtin, smithery, official }
 
 class _RemoteSourceSnapshot {
   List<McpCatalogListing> items = [];
   String query = '';
+  int syncedAtMs = 0;
   int smitheryPage = 1;
   int smitheryTotalPages = 1;
   String? registryCursor;
@@ -132,16 +135,22 @@ class McpDiscoveryCubit extends Cubit<McpDiscoveryState> {
     SmitheryMcpService? smithery,
     McpRegistryBrowseService? registry,
     McpDiscoveryDiskCacheService? diskCache,
+    DiscoverySettingsCubit? discoverySettings,
   }) : _registryConfig = registryConfig ?? McpRegistryConfigService(),
        _smithery = smithery ?? SmitheryMcpService(),
        _registry = registry ?? McpRegistryBrowseService(),
        _diskCache = diskCache ?? McpDiscoveryDiskCacheService(),
+       _discoverySettings = discoverySettings,
        super(const McpDiscoveryState());
 
   final McpRegistryConfigService _registryConfig;
   final SmitheryMcpService _smithery;
   final McpRegistryBrowseService _registry;
   final McpDiscoveryDiskCacheService _diskCache;
+  final DiscoverySettingsCubit? _discoverySettings;
+
+  bool _autoRefreshEnabled() =>
+      _discoverySettings?.state.autoRefreshEnabled ?? false;
 
   final Map<McpDiscoverySource, _RemoteSourceSnapshot> _remoteSnapshots = {
     McpDiscoverySource.smithery: _RemoteSourceSnapshot(),
@@ -322,6 +331,7 @@ class McpDiscoveryCubit extends Cubit<McpDiscoveryState> {
     snapshot
       ..items = List<McpCatalogListing>.from(cached.items)
       ..query = cached.query
+      ..syncedAtMs = cached.syncedAtMs
       ..smitheryPage = cached.smitheryPage
       ..smitheryTotalPages = cached.smitheryTotalPages
       ..registryCursor = cached.registryCursor
@@ -330,10 +340,9 @@ class McpDiscoveryCubit extends Cubit<McpDiscoveryState> {
 
   Future<void> _warmRemoteCaches() async {
     if (state.loading) return;
-    final needsSmithery =
-        _remoteSnapshots[McpDiscoverySource.smithery]!.items.isEmpty;
-    final needsOfficial =
-        _remoteSnapshots[McpDiscoverySource.official]!.items.isEmpty;
+    final ttl = _autoRefreshEnabled() ? kDiscoveryAutoRefreshTtl : null;
+    final needsSmithery = _needsWarm(McpDiscoverySource.smithery, ttl);
+    final needsOfficial = _needsWarm(McpDiscoverySource.official, ttl);
     if (!needsSmithery && !needsOfficial) return;
 
     emit(state.copyWith(loading: true, clearError: true));
@@ -344,6 +353,16 @@ class McpDiscoveryCubit extends Cubit<McpDiscoveryState> {
         _loadRemoteSource(McpDiscoverySource.official, reset: true),
     ]);
     emit(state.copyWith(loading: false));
+  }
+
+  /// 手动模式（ttl == null）：有缓存即不拉取；自动模式：缓存超过
+  /// TTL 才算过期。无缓存（首次）总是拉取。
+  bool _needsWarm(McpDiscoverySource source, Duration? ttl) {
+    final snapshot = _remoteSnapshots[source]!;
+    if (snapshot.items.isEmpty) return true;
+    if (ttl == null) return false;
+    return DateTime.now().millisecondsSinceEpoch - snapshot.syncedAtMs >=
+        ttl.inMilliseconds;
   }
 
   Future<void> _loadRemoteSource(
@@ -476,6 +495,7 @@ class McpDiscoveryCubit extends Cubit<McpDiscoveryState> {
     if (cacheKey == null) return;
     final snapshot = _remoteSnapshots[source]!;
     if (snapshot.query.isNotEmpty) return;
+    snapshot.syncedAtMs = DateTime.now().millisecondsSinceEpoch;
     await _diskCache.write(
       sourceKey: cacheKey,
       snapshot: McpDiscoveryDiskSnapshot(
