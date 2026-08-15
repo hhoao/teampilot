@@ -5,8 +5,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/team/terminal_activity_tracker.dart';
 
 void main() {
-  const idle = Duration(milliseconds: 40);
-  const bootQuiet = Duration(milliseconds: 40);
+  // Stamps are wall-clock based; `isWorking` re-reads DateTime.now(), so a
+  // preempted runner thread can drift past a tight window. Keep the window
+  // generous (500ms) while tests never sleep — only stamped timestamps.
+  const idle = Duration(milliseconds: 500);
+  const bootQuiet = Duration(milliseconds: 500);
 
   test('isWorking false during boot burst, true after arm', () {
     final tracker = TerminalActivityTracker(idleAfter: idle);
