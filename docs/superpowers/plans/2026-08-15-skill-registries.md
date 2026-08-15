@@ -3603,6 +3603,13 @@ class _FakeSource implements SkillRegistrySource {
   Future<void> testConnection() async {}
 }
 
+class _QuotaSource extends _FakeSource {
+  _QuotaSource(super.id);
+  @override
+  Future<SkillRegistryPage> search(SkillRegistryQuery q) async =>
+      throw MarketplaceQuotaException('quota');
+}
+
 void main() {
   late Directory tmp;
 
@@ -3661,8 +3668,11 @@ void main() {
   });
 
   testWidgets('quota error shows empty state with registries action', (tester) async {
-    // build cubit whose source throws MarketplaceQuotaException; expect
-    // empty state + 'Go to registries' style action button present.
+    final cubit = buildCubit([_QuotaSource('quota')]);
+    await tester.pumpWidget(wrap(cubit));
+    await tester.pumpAndSettle();
+    expect(find.text('No skills discovered'), findsOneWidget);
+    expect(find.text('Set API key in Registries'), findsOneWidget);
   });
 }
 ```
