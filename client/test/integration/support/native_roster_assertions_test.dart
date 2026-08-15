@@ -127,4 +127,53 @@ void main() {
       memberId: 'developer',
     );
   });
+
+  test('ClaudeInboxUnreadWatch observes a transient unread delivery', () async {
+    await writeMinimalRoster(inboxMemberIds: const ['developer-0']);
+    final inboxPath = claudeInboxPath(
+      claudeDir: claudeDir,
+      cliTeamName: cliTeamName,
+      memberId: 'developer-0',
+    );
+    final watch = ClaudeInboxUnreadWatch(
+      claudeDir: claudeDir,
+      cliTeamName: cliTeamName,
+      memberId: 'developer-0',
+      tick: const Duration(milliseconds: 5),
+    );
+    addTearDown(watch.stop);
+
+    // Simulate lead SendMessage writing an unread entry…
+    await File(inboxPath).writeAsString(jsonEncode([
+      {
+        'from': 'team-lead',
+        'message': 'Please handle the assigned task.',
+        'read': false,
+      },
+    ]));
+    // …followed by the worker consuming it ~50ms later (the real window
+    // between the lead write and the worker fs-watch consume is ≥100ms).
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    await File(inboxPath).writeAsString(jsonEncode([]));
+
+    await watch.waitForUnread(timeout: const Duration(seconds: 5));
+    expect(watch.maxUnread, greaterThanOrEqualTo(1));
+  });
+
+  test('ClaudeInboxUnreadWatch fails when the inbox never receives a message',
+      () async {
+    await writeMinimalRoster(inboxMemberIds: const ['developer-0']);
+    final watch = ClaudeInboxUnreadWatch(
+      claudeDir: claudeDir,
+      cliTeamName: cliTeamName,
+      memberId: 'developer-0',
+      tick: const Duration(milliseconds: 5),
+    );
+    addTearDown(watch.stop);
+
+    await expectLater(
+      watch.waitForUnread(timeout: const Duration(milliseconds: 200)),
+      throwsA(isA<TestFailure>()),
+    );
+  });
 }

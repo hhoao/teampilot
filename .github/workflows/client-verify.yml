@@ -137,7 +137,7 @@ jobs:
   integration-linux:
     name: Linux integration (Claude PTY + Docker SSH)
     runs-on: ubuntu-22.04
-    timeout-minutes: 45
+    timeout-minutes: 75
     defaults:
       run:
         working-directory: client

@@ -363,6 +363,16 @@ void main() {
         final leadBefore1 = harness.gateway!.requestCountFor(leadScriptApiKey);
         final workerGatewayBaseline =
             harness.gateway!.requestCountFor(workerScriptApiKey);
+        // Start the inbox watch *before* the compose: the booted worker
+        // consumes pod inbox messages within ~100ms of the lead SendMessage
+        // write (file returns to `[]`), so a post-compose poll can miss the
+        // delivery entirely.
+        final inboxWatch = ClaudeInboxUnreadWatch(
+          claudeDir: claudeDir,
+          cliTeamName: cliTeam,
+          memberId: 'developer-0',
+        );
+        addTearDown(inboxWatch.stop);
         final r1 = await harness.submitCompose(
           'matrix replica turn one coordinate',
         );
@@ -371,11 +381,7 @@ void main() {
           apiKey: leadScriptApiKey,
           minTurns: leadBefore1 + 2,
         );
-        await waitForClaudeInboxUnread(
-          claudeDir: claudeDir,
-          cliTeamName: cliTeam,
-          memberId: 'developer-0',
-        );
+        await inboxWatch.waitForUnread();
         await harness.waitForPtyMarkers(
           [markReplicaLead1],
           memberId: kMatrixLeadMemberId,

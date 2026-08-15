@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -170,6 +171,11 @@ void expectClaudeInboxUnread({
 }
 
 /// Poll until lead SendMessage lands in the pod inbox (before worker consume).
+///
+/// Note: this is inherently racy — the booted worker process consumes the
+/// message within ~100ms of the write, so the poll can start after the
+/// delivery already happened. Prefer [ClaudeInboxUnreadWatch] (started before
+/// the compose) for deterministic delivery checks.
 Future<void> waitForClaudeInboxUnread({
   required String claudeDir,
   required String cliTeamName,
@@ -197,4 +203,71 @@ Future<void> waitForClaudeInboxUnread({
     'Timed out waiting for ≥$minUnread unread inbox messages for $memberId '
     '(path=$path raw=$raw)',
   );
+}
+
+/// Tracks the peak unread count of a pod inbox while a lead dispatch is in
+/// flight.
+///
+/// Claude workers poll their own pod inbox and consume messages within ~100ms
+/// of the lead `SendMessage` write, leaving the file back at `[]`. A watcher
+/// started *before* the compose observes the transient delivery regardless of
+/// when the test next checks; [waitForUnread] then waits for the observed
+/// peak. Stop with [stop] when done (tearDown).
+class ClaudeInboxUnreadWatch {
+  ClaudeInboxUnreadWatch({
+    required this.claudeDir,
+    required this.cliTeamName,
+    required this.memberId,
+    this.tick = const Duration(milliseconds: 10),
+  }) {
+    _timer = Timer.periodic(tick, (_) => _poll());
+  }
+
+  final String claudeDir;
+  final String cliTeamName;
+  final String memberId;
+  final Duration tick;
+
+  Timer? _timer;
+  int _maxUnread = 0;
+
+  /// Highest unread count observed since the watch started.
+  int get maxUnread => _maxUnread;
+
+  void _poll() {
+    final unread = readClaudeInboxUnreadCount(
+      claudeDir: claudeDir,
+      cliTeamName: cliTeamName,
+      memberId: memberId,
+    );
+    if (unread > _maxUnread) _maxUnread = unread;
+  }
+
+  /// Awaits until the watch observed at least [minUnread] unread messages
+  /// (i.e. the lead dispatch landed in the pod inbox).
+  Future<void> waitForUnread({
+    int minUnread = 1,
+    Duration timeout = const Duration(seconds: 30),
+  }) async {
+    final deadline = DateTime.now().add(timeout);
+    while (DateTime.now().isBefore(deadline)) {
+      if (_maxUnread >= minUnread) return;
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+    }
+    final path = claudeInboxPath(
+      claudeDir: claudeDir,
+      cliTeamName: cliTeamName,
+      memberId: memberId,
+    );
+    final raw = File(path).existsSync() ? File(path).readAsStringSync() : '';
+    throw TestFailure(
+      'Timed out waiting for ≥$minUnread unread inbox messages for $memberId '
+      '(path=$path raw=$raw)',
+    );
+  }
+
+  void stop() {
+    _timer?.cancel();
+    _timer = null;
+  }
 }
