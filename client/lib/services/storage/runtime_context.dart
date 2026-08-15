@@ -83,6 +83,8 @@ class RuntimeContext {
   String get workspaceDir => AppPaths.workspaceDirForTeampilotRoot(appDataRoot);
   String get skillReposConfigPath =>
       AppPaths.skillReposConfigPathForTeampilotRoot(appDataRoot);
+  String get skillRegistriesConfigPath =>
+      AppPaths.skillRegistriesConfigPathForTeampilotRoot(appDataRoot);
   String get pluginsRoot => AppPaths.pluginsDirForTeampilotRoot(appDataRoot);
   String get pluginBackupsDir =>
       AppPaths.pluginBackupsDirForTeampilotRoot(appDataRoot);
