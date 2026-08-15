@@ -62,7 +62,12 @@ class SkillRepository {
   Future<SkillRepoSyncResult> syncRepoCache(
     SkillRepo repo, {
     bool force = false,
-  }) => repoCache.ensureSynced(repo, force: force);
+    Duration? maxStaleness,
+  }) => repoCache.ensureSynced(repo, force: force, maxStaleness: maxStaleness);
+
+  /// True when the repo was synced to disk at least once (meta.json exists).
+  Future<bool> hasCachedSnapshot(SkillRepo repo) async =>
+      (await repoCache.readMeta(repo)) != null;
 
   Future<void> deleteRepoCache(SkillRepo repo) =>
       repoCache.deleteRepoCache(repo);
