@@ -120,15 +120,35 @@ void main() {
     expect(server.isServing(a.mountId), isFalse);
   });
 
-  test('unmounted mount 404s', () async {
+  test('last unmount closes the loopback server and next mount rebinds', () async {
+    final first = await server.mount(htmlDirectory: '/repo', entryFileName: 'index.html');
+    expect(server.port, isNotNull);
+    await server.unmount(first!.mountId);
+    expect(server.port, isNull);
+
+    final second = await server.mount(htmlDirectory: '/repo', entryFileName: 'index.html');
+    expect(server.port, isNotNull);
+    expect(second!.mountId, isNot(first.mountId));
+    final client = HttpClient();
+    try {
+      final res = await client.getUrl(second.entryUri);
+      expect((await res.close()).statusCode, 200);
+    } finally {
+      client.close();
+    }
+  });
+
+  test('unmounting the last mount closes the server (no longer serving)', () async {
     final mount = await server.mount(htmlDirectory: '/repo', entryFileName: 'index.html');
     final client = HttpClient();
     try {
       final ok = await client.getUrl(mount!.entryUri);
       expect((await ok.close()).statusCode, 200);
       await server.unmount(mount.mountId);
+      expect(server.port, isNull);
+      // Loopback socket is gone: dart:io surfaces the refused connection as 502.
       final gone = await client.getUrl(mount.entryUri);
-      expect((await gone.close()).statusCode, 404);
+      expect((await gone.close()).statusCode, 502);
     } finally {
       client.close();
     }

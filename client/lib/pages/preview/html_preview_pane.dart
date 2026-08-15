@@ -43,12 +43,23 @@ class _HtmlPreviewPaneState extends State<HtmlPreviewPane> {
   HtmlPreviewSession? _session;
   bool _failed = false;
   bool _starting = false;
+  bool _started = false;
 
   @override
-  void initState() {
-    super.initState();
-    _start();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Dependencies are available here, so context.read<EditorCubit>() is safe.
+    if (!_started) {
+      _started = true;
+      _start();
+    }
   }
+
+  /// Work-plane filesystem that opened [widget.path] in [widget.workspaceId],
+  /// so SSH/WSL workspaces preview through their remote fs instead of the home
+  /// control-plane fs. Null only if the editor cubit itself has no default fs.
+  Filesystem? _defaultFs(BuildContext context) =>
+      context.read<EditorCubit>().fsFor(widget.workspaceId, widget.path);
 
   Future<void> _start() async {
     if (_starting) return;
@@ -59,7 +70,7 @@ class _HtmlPreviewPaneState extends State<HtmlPreviewPane> {
         _session = null;
         unawaited(old.dispose());
       }
-      final fs = widget.fs ?? AppStorage.fs;
+      final fs = widget.fs ?? _defaultFs(context) ?? AppStorage.fs;
       final dir = fs.pathContext.dirname(widget.path);
       final entry = p.basename(widget.path);
       final factory =

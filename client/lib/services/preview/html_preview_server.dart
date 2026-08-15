@@ -49,7 +49,13 @@ class HtmlPreviewServer {
     return _serverFuture ??= () async {
       final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
       server.listen(_handle);
-      _server = server;
+      if (_serverFuture == null) {
+        // unmount()/dispose() reset the fields while the bind was in flight;
+        // close the orphan instead of memoizing it.
+        await server.close(force: true);
+      } else {
+        _server = server;
+      }
       return server;
     }();
   }
@@ -97,6 +103,19 @@ class HtmlPreviewServer {
     mount.refs--;
     if (mount.refs > 0) return;
     _mounts.remove(mountId);
+    if (_mounts.isNotEmpty) return;
+    // Last mount gone: release the loopback port. Reset both fields so a later
+    // mount() rebinds instead of reusing the closed server (bind-race memoize
+    // residual).
+    final server = _server;
+    final pending = _serverFuture;
+    _server = null;
+    _serverFuture = null;
+    if (server != null) {
+      await server.close(force: true);
+    } else if (pending != null) {
+      await (await pending).close(force: true);
+    }
   }
 
   Future<void> dispose() async {

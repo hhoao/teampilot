@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 import 'package:teampilot/cubits/editor_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/pages/preview/html_preview_pane.dart';
@@ -152,6 +153,43 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(controller.reloads, 1);
+    await editor.close();
+    await tester.runAsync(() => server.dispose());
+  });
+
+  testWidgets('resolves work-plane fs from editor cubit when fs not provided', (tester) async {
+    // A windows-context fs makes the resolved fs observable: the session
+    // factory receives dirname('C:\\repo\\index.html') = 'C:\\repo' from the
+    // editor cubit fs, while the posix AppStorage fallback would yield '.'.
+    final fs = InMemoryFilesystem(pathContext: p.Context(style: p.Style.windows));
+    await fs.writeString(r'C:\repo\index.html', '<p>cubit fs</p>');
+    final server = HtmlPreviewServer(fs: fs);
+    final controller = _FakeController();
+    final editor = EditorCubit(fs: fs);
+    String? factoryDir;
+
+    await tester.pumpWidget(
+      _app(
+        editor: editor,
+        pane: HtmlPreviewPane(
+          workspaceId: 'ws1',
+          path: r'C:\repo\index.html',
+          sessionFactory: (dir, entry) {
+            factoryDir = dir;
+            return HtmlPreviewSession(
+              htmlDirectory: dir,
+              entryFileName: 'index.html',
+              server: server,
+              controllerFactory: (_) => controller,
+            );
+          },
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(factoryDir, r'C:\repo');
+    expect(controller.loaded, hasLength(1));
     await editor.close();
     await tester.runAsync(() => server.dispose());
   });
