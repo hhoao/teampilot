@@ -7,7 +7,7 @@ library;
 /// Mirrors the cursor-agent deliver test: boot the real codex TUI on a live PTY
 /// at both a 24-row and a tall 52-row viewport (like the embedded terminal),
 /// then run the real [FullscreenPtyAutomation] path with codex's
-/// region-moved-down ACK rule ([CodexTerminalBehavior.composerRegion]).
+/// [FullscreenCrAckStrategy.composerMovesDown] ACK rule.
 ///
 /// Run:
 ///   LD_LIBRARY_PATH=build/linux/x64/debug/bundle/lib \
@@ -17,7 +17,7 @@ library;
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/cli/codex/capabilities/terminal_behavior.dart';
+import 'package:teampilot/services/terminal/fullscreen_cr_ack_config.dart';
 import 'package:teampilot/services/terminal/fullscreen_pty_automation.dart';
 import 'package:teampilot/services/terminal/terminal_fullscreen_pty_port.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
@@ -148,7 +148,10 @@ void main() {
             input: session.input,
             probe: session.probe,
             aborted: () => false,
-            composerRegion: const CodexTerminalBehavior().composerRegion,
+            crAckConfig: const FullscreenCrAckConfig(
+              strategy: FullscreenCrAckStrategy.composerMovesDown,
+              composerPrefix: '\u203a',
+            ),
           );
           final outcome = await automation.deliverPasteAndSubmit(
             port: port,
@@ -164,7 +167,7 @@ void main() {
           expect(
             outcome,
             FullscreenPtyDeliveryOutcome.submitted,
-            reason: 'codex regionMovedDown ACK must pass at '
+            reason: 'codex composerMovesDown ACK must pass at '
                 '${viewport.cols}x${viewport.rows}. Dump:\n$afterDeliver',
           );
         },

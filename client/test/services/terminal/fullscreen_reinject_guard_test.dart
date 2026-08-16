@@ -1,14 +1,14 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/cli/registry/capabilities/terminal_composer_region.dart';
+import 'package:teampilot/services/terminal/fullscreen_cr_ack_config.dart';
 import 'package:teampilot/services/terminal/fullscreen_reinject_guard.dart';
 
 void main() {
   group('shouldSkipReinjectAfterCrStuck', () {
-    test('regionMovedDown skips only when empty and needle visible', () {
+    test('composerMovesDown skips only when empty and needle visible', () {
       expect(
         shouldSkipReinjectAfterCrStuck(
-          semantics: ComposerSubmitSemantics.regionMovedDown,
-          composerRegionEmpty: true,
+          strategy: FullscreenCrAckStrategy.composerMovesDown,
+          composerChromeEmpty: true,
           needleStillVisible: true,
         ),
         isTrue,
@@ -21,13 +21,13 @@ void main() {
       (empty: false, needle: false),
     ]) {
       test(
-        'regionMovedDown does not skip empty=${case_.empty} '
+        'composerMovesDown does not skip empty=${case_.empty} '
         'needle=${case_.needle}',
         () {
           expect(
             shouldSkipReinjectAfterCrStuck(
-              semantics: ComposerSubmitSemantics.regionMovedDown,
-              composerRegionEmpty: case_.empty,
+              strategy: FullscreenCrAckStrategy.composerMovesDown,
+              composerChromeEmpty: case_.empty,
               needleStillVisible: case_.needle,
             ),
             isFalse,
@@ -36,15 +36,15 @@ void main() {
       );
     }
 
-    for (final semantics in [
-      ComposerSubmitSemantics.regionCleared,
-      ComposerSubmitSemantics.timed,
+    for (final strategy in [
+      FullscreenCrAckStrategy.anchorCellClears,
+      FullscreenCrAckStrategy.timed,
     ]) {
-      test('$semantics never skips even when empty+needle', () {
+      test('$strategy never skips even when empty+needle', () {
         expect(
           shouldSkipReinjectAfterCrStuck(
-            semantics: semantics,
-            composerRegionEmpty: true,
+            strategy: strategy,
+            composerChromeEmpty: true,
             needleStillVisible: true,
           ),
           isFalse,

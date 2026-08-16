@@ -1,5 +1,5 @@
+import '../../../terminal/fullscreen_cr_ack_config.dart';
 import '../../registry/capabilities/terminal_behavior_capability.dart';
-import '../../registry/capabilities/terminal_composer_region.dart';
 
 final class FlashskyaiTerminalBehavior implements TerminalBehaviorCapability {
   const FlashskyaiTerminalBehavior();
@@ -23,8 +23,8 @@ final class FlashskyaiTerminalBehavior implements TerminalBehaviorCapability {
   TerminalPathDropBehavior get pathDropBehavior =>
       TerminalPathDropBehavior.defaultFor(usesFullScreenInput: true);
   @override
-  FullscreenComposerRegionSpec get composerRegion => const FullscreenComposerRegionSpec(
-    submitSemantics: ComposerSubmitSemantics.regionCleared,
-    prefixes: ['\u276f'],
-  );
+  FullscreenCrAckStrategy get fullscreenCrAckStrategy =>
+      FullscreenCrAckStrategy.anchorCellClears;
+  @override
+  String? get fullscreenComposerPrefix => '\u276f';
 }

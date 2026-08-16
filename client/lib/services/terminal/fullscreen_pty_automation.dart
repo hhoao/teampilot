@@ -1,4 +1,4 @@
-import '../cli/registry/capabilities/terminal_composer_region.dart';
+import 'fullscreen_cr_ack_config.dart';
 import 'fullscreen_input_screen_probe.dart';
 import 'fullscreen_pty_delivery_port.dart';
 import 'fullscreen_reinject_guard.dart';
@@ -126,7 +126,6 @@ class FullscreenPtyAutomation {
       }
 
       await port.syncDisplayGrid();
-      final beforeCrRegion = port.locateComposerRegion();
       await port.clearStagedInput();
       await Future<void>.delayed(_timing.afterClear);
       await port.pasteText(text);
@@ -138,24 +137,15 @@ class FullscreenPtyAutomation {
       );
 
       if (anchor == null) {
-        // Region-scoped fallback: staged inside the region also ACKs.
-        await port.syncDisplayGrid();
-        final regionAck = port.locateComposerRegion();
-        if (regionAck != null &&
-            port.regionContainsNeedle(regionAck, needle)) {
-          // paste confirmed inside region — proceed to CR
-        } else {
-          if (reinject < maxReinject) continue;
-          _logProbeMiss(port, needle, text, outcome: 'pasteNotFound');
-          return FullscreenPtyDeliveryOutcome.pasteNotFound;
-        }
+        if (reinject < maxReinject) continue;
+        _logProbeMiss(port, needle, text, outcome: 'pasteNotFound');
+        return FullscreenPtyDeliveryOutcome.pasteNotFound;
       }
 
-      final crOutcome = await _pollCrUntilSubmitted(
+      final crOutcome = await _pollCrUntilAnchorClears(
         port,
-        needle,
+        anchor,
         isAcked: isAcked,
-        beforeCrRegion: beforeCrRegion,
       );
       switch (crOutcome) {
         case FullscreenPtyDeliveryOutcome.submitted:
@@ -184,16 +174,14 @@ class FullscreenPtyAutomation {
   ) async {
     await port.syncDisplayGrid();
     final scanRows = _probeScanRows(port);
-    final region = port.locateComposerRegion(scanRows: scanRows);
     final skip = shouldSkipReinjectAfterCrStuck(
-      semantics: port.composerRegion.submitSemantics,
-      composerRegionEmpty: region != null &&
-          port.isComposerRegionEmpty(region),
+      strategy: port.crAckConfig.strategy,
+      composerChromeEmpty: port.isComposerChromeEmpty(scanRows: scanRows),
       needleStillVisible: port.locateNeedle(needle, scanRows: scanRows) != null,
     );
     if (skip) {
       appLogger.i(
-        '[pty] skip-reinject regionMovedDown empty+needle '
+        '[pty] skip-reinject composerMovesDown empty+needle '
         'textChars=${text.length}',
       );
     }
@@ -219,11 +207,10 @@ class FullscreenPtyAutomation {
         return FullscreenPtyDeliveryOutcome.pasteNotFound;
       }
 
-      final outcome = await _pollCrUntilSubmitted(
+      final outcome = await _pollCrUntilAnchorClears(
         port,
-        needle,
+        anchor,
         maxAttempts: 0,
-        beforeCrRegion: port.locateComposerRegion(),
       );
       switch (outcome) {
         case FullscreenPtyDeliveryOutcome.submitted:
@@ -259,15 +246,13 @@ class FullscreenPtyAutomation {
     );
   }
 
-  Future<FullscreenPtyDeliveryOutcome> _pollCrUntilSubmitted(
+  Future<FullscreenPtyDeliveryOutcome> _pollCrUntilAnchorClears(
     FullscreenPtyDeliveryPort port,
-    String needle, {
+    FullscreenPromptAnchor anchor, {
     int? maxAttempts,
     bool Function()? isAcked,
-    ComposerRegion? beforeCrRegion,
   }) async {
-    final spec = port.composerRegion;
-    if (spec.submitSemantics == ComposerSubmitSemantics.timed) {
+    if (port.crAckConfig.strategy == FullscreenCrAckStrategy.timed) {
       await port.submitCr();
       await Future<void>.delayed(_timing.afterCr);
       return FullscreenPtyDeliveryOutcome.submitted;
@@ -285,12 +270,7 @@ class FullscreenPtyAutomation {
         // reinject) instead of burning crStuck attempts on a stale mirror.
         if (isAcked?.call() ?? false) return true;
         await port.syncDisplayGrid();
-        return _regionSubmitted(
-          port,
-          needle,
-          scanRows: scanRows,
-          beforeCrRegion: beforeCrRegion,
-        );
+        return port.isSubmittedAfterCr(anchor, scanRows: scanRows);
       },
       onRetry: (_) async => port.submitCr(),
     );
@@ -299,54 +279,6 @@ class FullscreenPtyAutomation {
       PtyAckPollOutcome.aborted => FullscreenPtyDeliveryOutcome.aborted,
       PtyAckPollOutcome.exhausted => FullscreenPtyDeliveryOutcome.crStuck,
     };
-  }
-
-  bool _regionSubmitted(
-    FullscreenPtyDeliveryPort port,
-    String needle, {
-    required int scanRows,
-    ComposerRegion? beforeCrRegion,
-  }) {
-    final spec = port.composerRegion;
-    final region = port.locateComposerRegion(scanRows: scanRows);
-    switch (spec.submitSemantics) {
-      case ComposerSubmitSemantics.regionCleared:
-        if (region == null) {
-          // Transient region loss (composer collapsed / repainting): submitted
-          // once the needle has also left the probe window entirely.
-          return !port.needleAppearsOutsideRegion(
-            null,
-            needle,
-            scanRows: scanRows,
-          );
-        }
-        return !port.regionContainsNeedle(region, needle);
-      case ComposerSubmitSemantics.regionMovedDown:
-        return _hasComposerRegionBelow(port, beforeCrRegion, current: region, scanRows: scanRows) ||
-            (region != null && !port.regionContainsNeedle(region, needle));
-      case ComposerSubmitSemantics.timed:
-        return true;
-    }
-  }
-
-  /// regionMovedDown ACK signals:
-  /// 1. The composer repainted strictly below its pre-CR position.
-  /// 2. The staged needle left the current region (moved to transcript).
-  ///
-  /// The row comparison alone dead-locks on bottom-pinned TUIs (cursor/codex
-  /// with a full viewport): the old region's bottomRow is the last grid row,
-  /// so a repainted composer at the same bottom row never compares "below" —
-  /// fall back to "needle no longer staged inside the region".
-  bool _hasComposerRegionBelow(
-    FullscreenPtyDeliveryPort port,
-    ComposerRegion? previous, {
-    required ComposerRegion? current,
-    required int scanRows,
-  }) {
-    current ??= port.locateComposerRegion(scanRows: scanRows);
-    if (current == null) return false;
-    if (previous == null) return false;
-    return current.topRow > previous.bottomRow;
   }
 
   /// Polls the mirror grid after paste — PTY echo and [syncDisplayGrid] can lag

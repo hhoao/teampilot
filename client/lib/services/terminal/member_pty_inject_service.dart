@@ -1,4 +1,4 @@
-import '../cli/registry/capabilities/terminal_composer_region.dart';
+import 'fullscreen_cr_ack_config.dart';
 import '../../utils/logging/logger.dart';
 import '../team_bus/team_bus.dart';
 import 'fullscreen_pty_automation.dart';
@@ -91,7 +91,7 @@ final class MemberPtyInjectService {
     required String text,
     required Duration pasteSettle,
     required bool Function() aborted,
-    required FullscreenComposerRegionSpec composerRegion,
+    required FullscreenCrAckConfig crAckConfig,
     bool Function()? isAcked,
   }) {
     return _runLocked(
@@ -101,8 +101,7 @@ final class MemberPtyInjectService {
       memberId: memberId,
       text: text,
       aborted: aborted,
-      composerRegion: composerRegion,
-      isAcked: isAcked,
+      crAckConfig: crAckConfig,
       run: (port) => _automation.deliverPasteAndSubmit(
         port: port,
         text: text,
@@ -121,7 +120,7 @@ final class MemberPtyInjectService {
     required String text,
     required Duration pasteSettle,
     required bool Function() aborted,
-    required FullscreenComposerRegionSpec composerRegion,
+    required FullscreenCrAckConfig crAckConfig,
     bool Function()? isAcked,
   }) {
     return _runLocked(
@@ -131,8 +130,7 @@ final class MemberPtyInjectService {
       memberId: memberId,
       text: text,
       aborted: aborted,
-      composerRegion: composerRegion,
-      isAcked: isAcked,
+      crAckConfig: crAckConfig,
       run: (port) => _automation.retry(
         port: port,
         text: text,
@@ -173,8 +171,7 @@ final class MemberPtyInjectService {
     required String memberId,
     required String text,
     required bool Function() aborted,
-    required FullscreenComposerRegionSpec composerRegion,
-    bool Function()? isAcked,
+    required FullscreenCrAckConfig crAckConfig,
     required Future<FullscreenPtyDeliveryOutcome> Function(
       TerminalFullscreenPtyPort port,
     )
@@ -204,8 +201,7 @@ final class MemberPtyInjectService {
           if (wasAborted) abortObserved = true;
           return wasAborted;
         },
-        composerRegion: composerRegion,
-        isAcked: isAcked,
+        crAckConfig: crAckConfig,
       );
       final runOutcome = await run(port);
       if (isAbortRequested(sessionId, memberId)) {

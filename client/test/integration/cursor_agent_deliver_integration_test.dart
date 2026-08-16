@@ -16,6 +16,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/terminal_behavior.dart';
+import 'package:teampilot/services/terminal/fullscreen_cr_ack_config.dart';
 import 'package:teampilot/services/terminal/fullscreen_pty_automation.dart';
 import 'package:teampilot/services/terminal/terminal_fullscreen_pty_port.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
@@ -121,7 +122,6 @@ void main() {
             input: session.input,
             probe: session.probe,
             aborted: () => false,
-            composerRegion: const CursorTerminalBehavior().composerRegion,
           );
           final outcome = await automation.deliverPasteAndSubmit(
             port: port,
@@ -181,7 +181,11 @@ void main() {
         input: session.input,
         probe: session.probe,
         aborted: () => false,
-        composerRegion: const CursorTerminalBehavior().composerRegion,
+        crAckConfig: FullscreenCrAckConfig(
+          strategy: const CursorTerminalBehavior().fullscreenCrAckStrategy,
+          composerPrefix:
+              const CursorTerminalBehavior().fullscreenComposerPrefix,
+        ),
       );
 
       for (var i = 0; i < 2; i++) {

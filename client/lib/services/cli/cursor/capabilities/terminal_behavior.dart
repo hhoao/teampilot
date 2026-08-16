@@ -1,6 +1,6 @@
 import '../../../agent_status/agent_attention_state.dart';
+import '../../../terminal/fullscreen_cr_ack_config.dart';
 import '../../registry/capabilities/terminal_behavior_capability.dart';
-import '../../registry/capabilities/terminal_composer_region.dart';
 
 /// Classifies Cursor PTY OSC titles into permission attention.
 ///
@@ -48,8 +48,8 @@ final class CursorTerminalBehavior implements TerminalBehaviorCapability {
   TerminalPathDropBehavior get pathDropBehavior =>
       TerminalPathDropBehavior.defaultFor(usesFullScreenInput: true);
   @override
-  FullscreenComposerRegionSpec get composerRegion => const FullscreenComposerRegionSpec(
-    submitSemantics: ComposerSubmitSemantics.regionMovedDown,
-    prefixes: ['→'],
-  );
+  FullscreenCrAckStrategy get fullscreenCrAckStrategy =>
+      FullscreenCrAckStrategy.composerMovesDown;
+  @override
+  String? get fullscreenComposerPrefix => '→';
 }

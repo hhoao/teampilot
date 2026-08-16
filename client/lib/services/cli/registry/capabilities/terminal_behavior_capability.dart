@@ -1,6 +1,6 @@
 import '../../../workspace_dnd/path_reference_formatter.dart';
+import '../../../terminal/fullscreen_cr_ack_config.dart';
 import '../cli_capability.dart';
-import 'terminal_composer_region.dart';
 
 /// How a dropped file path is injected into a CLI's input box.
 enum TerminalPathDropMode {
@@ -66,9 +66,15 @@ abstract interface class TerminalBehaviorCapability implements CliCapability {
   /// How a file dropped onto this CLI's terminal is quoted and injected.
   TerminalPathDropBehavior get pathDropBehavior;
 
-  /// Staged-input region declaration for grid automation (prefix / border /
-  /// submit semantics). Replaces the old strategy + prefix pair.
-  FullscreenComposerRegionSpec get composerRegion;
+  /// How grid automation ACKs a CR after paste. Most TUIs clear the anchor
+  /// cell; codex keeps the line as history and paints a new composer below.
+  FullscreenCrAckStrategy get fullscreenCrAckStrategy;
+
+  /// Leading prefix on mirror-grid rows that identify composer chrome (`→`, `›`,
+  /// `❯`, `┃`, …). Used to scope paste needle search away from stale transcript
+  /// on tall viewports, and required for
+  /// [FullscreenCrAckStrategy.composerMovesDown] CR ACK.
+  String? get fullscreenComposerPrefix;
 }
 
 final class TurnInterruptPlan {
