@@ -815,6 +815,227 @@ void main() {
     );
   });
 
+  group('incremental subagent attachment freshness', () {
+    test(
+      'appended agent call after first load enters subagent attachments (tail path)',
+      () async {
+        mtimeToken = 'mtime-1';
+        final session = simpleSession();
+        final ctx = launchContextFor(session);
+        final bucket = RuntimeLayout.workspaceBucketForPrimaryPath(
+          '/work/project',
+        );
+        final toolRoot = layout.sessionRuntimeToolDir(
+          'ws-1',
+          session.sessionId,
+          'claude',
+        );
+        final projects = p.join(toolRoot, 'projects', bucket);
+        await Directory(projects).create(recursive: true);
+        final parentPath = p.join(projects, '${session.sessionId}.jsonl');
+        await File(parentPath).writeAsString('${_agentToolUseJsonl()}\n');
+
+        final subagentsDir = p.join(projects, session.sessionId, 'subagents');
+        await Directory(subagentsDir).create(recursive: true);
+        await File(
+          p.join(subagentsDir, 'agent-abc.meta.json'),
+        ).writeAsString(jsonEncode({'toolUseId': 'toolu_agent'}));
+        await File(
+          p.join(subagentsDir, 'agent-abc.jsonl'),
+        ).writeAsString(_sideTranscriptJsonl(lines: 1));
+
+        final loader = buildLoader();
+        final first = await loader.load(
+          session: session,
+          memberId: '',
+          launchContext: ctx,
+        );
+        expect(first.subagentAttachments.keys, contains('toolu_agent'));
+
+        // CLI 流式追加:父 transcript 新出现一条 assistant 消息,内含第二个
+        // Agent 调用。增量 tail 只追加事件,不重跑全量 parse。
+        await File(parentPath).writeAsString(
+          '${jsonEncode({
+            'type': 'assistant',
+            'message': {
+              'role': 'assistant',
+              'content': [
+                {
+                  'type': 'tool_use',
+                  'id': 'toolu_agent2',
+                  'name': 'Agent',
+                  'input': {'description': 'explore 2'},
+                },
+              ],
+            },
+            'uuid': 'a-2',
+            'timestamp': '2026-07-10T10:00:02.000Z',
+          })}\n',
+          mode: FileMode.append,
+        );
+        mtimeToken = 'mtime-2';
+        final second = await loader.load(
+          session: session,
+          memberId: '',
+          launchContext: ctx,
+        );
+
+        expect(
+          second.subagentAttachments.keys,
+          containsAll(['toolu_agent', 'toolu_agent2']),
+          reason: '增量 tick 后新出现的 agent 调用必须进入附件索引——否则点击'
+              '预览会提示"无法打开该子会话预览"(subagentPreviewUnavailable)',
+        );
+      },
+    );
+
+    test(
+      'incremental tick without task-call changes reuses the attachment map instance',
+      () async {
+        mtimeToken = 'mtime-1';
+        final session = simpleSession();
+        final ctx = launchContextFor(session);
+        final bucket = RuntimeLayout.workspaceBucketForPrimaryPath(
+          '/work/project',
+        );
+        final toolRoot = layout.sessionRuntimeToolDir(
+          'ws-1',
+          session.sessionId,
+          'claude',
+        );
+        final projects = p.join(toolRoot, 'projects', bucket);
+        await Directory(projects).create(recursive: true);
+        final parentPath = p.join(projects, '${session.sessionId}.jsonl');
+        await File(parentPath).writeAsString('${_agentToolUseJsonl()}\n');
+
+        final subagentsDir = p.join(projects, session.sessionId, 'subagents');
+        await Directory(subagentsDir).create(recursive: true);
+        await File(
+          p.join(subagentsDir, 'agent-abc.meta.json'),
+        ).writeAsString(jsonEncode({'toolUseId': 'toolu_agent'}));
+        await File(
+          p.join(subagentsDir, 'agent-abc.jsonl'),
+        ).writeAsString(_sideTranscriptJsonl(lines: 1));
+
+        final loader = buildLoader();
+        final first = await loader.load(
+          session: session,
+          memberId: '',
+          launchContext: ctx,
+        );
+        expect(first.subagentAttachments, isNotEmpty);
+
+        // 追加一条纯文本 user 行:增量路径触发,但任务调用集合没有变化。
+        await File(parentPath).writeAsString(
+          '${jsonEncode({
+            'type': 'user',
+            'message': {'role': 'user', 'content': 'follow-up'},
+            'uuid': 'u-2',
+            'timestamp': '2026-07-10T10:00:03.000Z',
+          })}\n',
+          mode: FileMode.append,
+        );
+        mtimeToken = 'mtime-2';
+        final second = await loader.load(
+          session: session,
+          memberId: '',
+          launchContext: ctx,
+        );
+
+        expect(
+          identical(second.subagentAttachments, first.subagentAttachments),
+          isTrue,
+          reason: '任务调用集合未变时增量 tick 必须复用同一附件 map 实例,'
+              '否则 seat 的 identical / 内容比较每次都要重建(性能回归)',
+        );
+      },
+    );
+
+    test(
+      'completed agent call re-resolves its attachment (result lands)',
+      () async {
+        mtimeToken = 'mtime-1';
+        final session = simpleSession();
+        final ctx = launchContextFor(session);
+        final bucket = RuntimeLayout.workspaceBucketForPrimaryPath(
+          '/work/project',
+        );
+        final toolRoot = layout.sessionRuntimeToolDir(
+          'ws-1',
+          session.sessionId,
+          'claude',
+        );
+        final projects = p.join(toolRoot, 'projects', bucket);
+        await Directory(projects).create(recursive: true);
+        final parentPath = p.join(projects, '${session.sessionId}.jsonl');
+        // 运行中的 agent:父 transcript 只有 tool_use,没有 side 数据。
+        await File(parentPath).writeAsString('${_agentToolUseJsonl()}\n');
+
+        final loader = buildLoader();
+        final first = await loader.load(
+          session: session,
+          memberId: '',
+          launchContext: ctx,
+        );
+        final degraded = first.subagentAttachments['toolu_agent'];
+        expect(degraded, isNotNull);
+        expect(
+          degraded!.source,
+          AiSubagentAttachmentSource.toolResult,
+          reason: '没有 side 数据时首次解析退化为 toolResult 占位',
+        );
+
+        // 子 agent 完成:side transcript 出现 + 父 transcript 追加
+        // tool_result(part 从 incomplete 变成 complete 且带 result)。
+        final subagentsDir = p.join(projects, session.sessionId, 'subagents');
+        await Directory(subagentsDir).create(recursive: true);
+        await File(
+          p.join(subagentsDir, 'agent-abc.meta.json'),
+        ).writeAsString(jsonEncode({'toolUseId': 'toolu_agent'}));
+        await File(
+          p.join(subagentsDir, 'agent-abc.jsonl'),
+        ).writeAsString(_sideTranscriptJsonl(lines: 1));
+        await File(parentPath).writeAsString(
+          '${jsonEncode({
+            'type': 'assistant',
+            'message': {
+              'role': 'assistant',
+              'content': [
+                {
+                  'type': 'tool_result',
+                  'tool_use_id': 'toolu_agent',
+                  'content': 'done',
+                },
+              ],
+            },
+            'uuid': 'r-1',
+            'timestamp': '2026-07-10T10:00:02.000Z',
+          })}\n',
+          mode: FileMode.append,
+        );
+        mtimeToken = 'mtime-2';
+        final second = await loader.load(
+          session: session,
+          memberId: '',
+          launchContext: ctx,
+        );
+
+        final reResolved = second.subagentAttachments['toolu_agent']!;
+        expect(
+          reResolved.source,
+          AiSubagentAttachmentSource.sideTranscript,
+          reason: '调用完成(part 状态/结果变化)后必须重新解析,不能停留在'
+              '退化占位——否则预览永远看不到真实的子会话内容',
+        );
+        expect(reResolved.messages, hasLength(1));
+        expect(
+          (reResolved.messages.single.parts.single as AiTextPart).text,
+          'progress 0',
+        );
+      },
+    );
+  });
+
   test(
     'running subagent side transcript growth re-inflates attachments while parent mtime is frozen',
     () async {
@@ -831,7 +1052,7 @@ void main() {
       final projects = p.join(toolRoot, 'projects', bucket);
       await Directory(projects).create(recursive: true);
       final parentPath = p.join(projects, '${session.sessionId}.jsonl');
-      await File(parentPath).writeAsString(_agentToolUseJsonl());
+      await File(parentPath).writeAsString('${_agentToolUseJsonl()}\n');
 
       final subagentsDir = p.join(projects, session.sessionId, 'subagents');
       await Directory(subagentsDir).create(recursive: true);

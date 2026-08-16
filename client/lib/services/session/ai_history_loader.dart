@@ -76,6 +76,11 @@ final class AiHistoryLoader {
   final _messages = <String, List<AiMessage>>{};
   final _attachments = <String, Map<String, AiSubagentAttachment>>{};
 
+  /// Per-seat 任务调用签名快照(cacheKey → toolCallId → 签名),与
+  /// [_messages] 解耦:DB 行级增量会原地变异 seat 消息列表实例,无法用
+  /// "上次的消息列表"做增量前后比较,只能用"上次 inflate 时的签名"。
+  final _attachmentSigs = <String, Map<String, String>>{};
+
   /// Per-seat located parent transcript path (for side fingerprinting) and
   /// last-observed side-transcript fingerprint.
   final _parentPaths = <String, String>{};
@@ -121,6 +126,7 @@ final class AiHistoryLoader {
     _tokens.clear();
     _messages.clear();
     _attachments.clear();
+    _attachmentSigs.clear();
     _parentPaths.clear();
     _sideTokens.clear();
     _tailStates.clear();
@@ -202,23 +208,18 @@ final class AiHistoryLoader {
       messages,
       resolver: _categoryResolverFor(cli),
     );
-    // Attachments: reuse the cached map across appends — only the first
-    // (inflate-less) load inflates, and only when nothing is cached yet.
-    // Cached maps are already annotated (we always store the annotated
-    // result); only the fresh inflate needs annotation.
-    var attachments = _attachments[cacheKey];
-    if (attachments == null) {
-      attachments = await const SubagentAttachmentInflater().inflate(
-        messages: annotated,
-        ctx: ctx,
-        capability: _registry.capability<AiHistoryCapability>(cli)!,
-        rootTranscriptPath: parentPath,
-      );
-      attachments = annotateSubagentAttachments(
-        attachments,
-        resolver: _categoryResolverFor(cli),
-      );
-    }
+    // 附件索引按需重建:任务调用集合(签名)与 side 数据都没有变化时复用
+    // 缓存 map 本身——seat 的 identical 比较直接跳过,UI isolate 零字符串
+    // 构建;新任务调用出现 / 调用完成(结果落库) / 运行中子 agent 的 side
+    // 数据移动时才重新 inflate(resolver 内部 memo 保证未变化的子会话返回
+    // 相同实例,重建代价被限制在真正变化的内容上)。
+    final attachments = await _subagentAttachmentsFor(
+      cacheKey: cacheKey,
+      cli: cli,
+      ctx: ctx,
+      messages: annotated,
+      rootTranscriptPath: parentPath,
+    );
     // 增量路径原地变异 state 的实时列表,annotate 无改动时返回的仍是
     // 同一个实例——seat 用 identical 判定"CLI 未变化"会把这个实例当成
     // 没变而跳过,页面永远不出现增量消息。必须包装成新实例(内部消息
@@ -234,6 +235,114 @@ final class AiHistoryLoader {
       cli: cli,
       subagentAttachments: attachments,
     );
+  }
+
+  /// 增量路径的附件索引刷新。
+  ///
+  /// 复用条件:缓存存在、上次消息的任务调用签名与当前一致、且 side 数据
+  /// 指纹未移动(能指纹化的 CLI,如 claude 的 `subagents/` 目录)。命中时
+  /// 返回缓存 map 本身;否则整体重新 inflate 并替换缓存。
+  Future<Map<String, AiSubagentAttachment>> _subagentAttachmentsFor({
+    required String cacheKey,
+    required CliTool cli,
+    required SessionHistoryContext ctx,
+    required List<AiMessage> messages,
+    required String? rootTranscriptPath,
+  }) async {
+    final capability = _registry.capability<AiHistoryCapability>(cli);
+    if (capability == null) return const {};
+    final cached = _attachments[cacheKey];
+    final prevSigs = _attachmentSigs[cacheKey];
+    String? sideToken;
+    if (cached != null &&
+        prevSigs != null &&
+        _sameTaskSignatures(
+          prevSigs,
+          _taskCallSignatures(messages, capability),
+        )) {
+      sideToken = await capability.subagentSideResolver.fingerprint(
+        ctx: ctx,
+        rootTranscriptPath: rootTranscriptPath,
+      );
+      if (sideToken == null || _sideTokens[cacheKey] == sideToken) {
+        return cached;
+      }
+    }
+    var attachments = await const SubagentAttachmentInflater().inflate(
+      messages: messages,
+      ctx: ctx,
+      capability: capability,
+      rootTranscriptPath: rootTranscriptPath,
+    );
+    attachments = annotateSubagentAttachments(
+      attachments,
+      resolver: _categoryResolverFor(cli),
+    );
+    _attachmentSigs[cacheKey] = _taskCallSignatures(messages, capability);
+    // 记录本次 inflate 时的 side 指纹,让后续 tick 的复用分支可比。首载走
+    // 增量 tail 路径时(全量 parse 路径在别处记录)也必须填充,否则第一次
+    // 复用判定永远误判"side 移动"。
+    sideToken ??= await capability.subagentSideResolver.fingerprint(
+      ctx: ctx,
+      rootTranscriptPath: rootTranscriptPath,
+    );
+    if (sideToken != null) _sideTokens[cacheKey] = sideToken;
+    return attachments;
+  }
+
+  /// 任务调用签名快照([_attachmentSigs])与当前签名是否一致。
+  static bool _sameTaskSignatures(
+    Map<String, String> a,
+    Map<String, String> b,
+  ) {
+    if (identical(a, b)) return true;
+    if (a.length != b.length) return false;
+    for (final entry in a.entries) {
+      if (b[entry.key] != entry.value) return false;
+    }
+    return true;
+  }
+
+  static Map<String, String> _taskCallSignatures(
+    List<AiMessage> messages,
+    AiHistoryCapability capability,
+  ) {
+    final names = capability.subagentToolNames;
+    final out = <String, String>{};
+    for (final message in messages) {
+      for (final part in message.parts) {
+        if (part is! AiToolCallPart) continue;
+        if (!names.contains(part.toolName.trim().toLowerCase())) continue;
+        final id = part.toolCallId.trim();
+        if (id.isEmpty) continue;
+        out[id] = _taskCallSignature(part);
+      }
+    }
+    return out;
+  }
+
+  /// 截断的 part 内容签名:状态 + 错误标志 + 结果(长度分量 + 头 64 字符)。
+  /// 结果不整串拼接,签名构建 O(1),避免大 tool result 每 tick 全量
+  /// 字符串化;长度分量捕获流式追加/截断,头分量捕获同长替换。
+  ///
+  /// 状态按 [finalizeAiMessagesForHistory] 语义归一:未配对调用(结果为空)
+  /// 在全量 parse 后被归一为 incomplete,而增量 tail 直接 append 时仍保持
+  /// 默认的 complete——归一后同一条调用在两条路径上的签名才可比,否则
+  /// 每次 tail 增量都会被误判为"调用变了"而白白重 inflate。
+  static String _taskCallSignature(AiToolCallPart part) {
+    final result = part.result;
+    final raw = result is String ? result : (result?.toString() ?? '');
+    final head = raw.length > 64
+        ? '${raw.length}:${raw.substring(0, 64)}'
+        : raw;
+    final status = part.status;
+    final normalizedStatus =
+        (result == null &&
+                (status == AiToolCallStatus.running ||
+                    (status == AiToolCallStatus.complete && !part.isError)))
+            ? AiToolCallStatus.incomplete
+            : status;
+    return '${normalizedStatus.name}|${part.isError}|$head';
   }
 
   AiToolCallCategoryResolver _categoryResolverFor(CliTool cli) =>
@@ -358,6 +467,10 @@ final class AiHistoryLoader {
         resolver: _categoryResolverFor(cli),
       );
       _attachments[cacheKey] = attachments;
+      _attachmentSigs[cacheKey] = _taskCallSignatures(
+        cachedMessages,
+        cap,
+      );
       _sideTokens[cacheKey] = sideToken;
       return AiHistoryLoadResult(
         messages: cachedMessages,
@@ -522,6 +635,7 @@ final class AiHistoryLoader {
 
       _messages[cacheKey] = messages;
       _attachments[cacheKey] = attachments;
+      _attachmentSigs[cacheKey] = _taskCallSignatures(messages, cap);
       _tokens[cacheKey] = token ?? 'changed-$cacheKey';
       final sideToken = await cap.subagentSideResolver.fingerprint(
         ctx: ctx,
@@ -550,6 +664,7 @@ final class AiHistoryLoader {
       _tokens.remove(key);
       _messages.remove(key);
       _attachments.remove(key);
+      _attachmentSigs.remove(key);
       _parentPaths.remove(key);
       _sideTokens.remove(key);
       _tailStates.remove(key);
@@ -560,6 +675,7 @@ final class AiHistoryLoader {
     _tokens.removeWhere((key, _) => key.startsWith(prefix));
     _messages.removeWhere((key, _) => key.startsWith(prefix));
     _attachments.removeWhere((key, _) => key.startsWith(prefix));
+    _attachmentSigs.removeWhere((key, _) => key.startsWith(prefix));
     _parentPaths.removeWhere((key, _) => key.startsWith(prefix));
     _sideTokens.removeWhere((key, _) => key.startsWith(prefix));
     _tailStates.removeWhere((key, _) => key.startsWith(prefix));

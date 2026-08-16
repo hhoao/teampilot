@@ -249,6 +249,142 @@ void main() {
     );
   }
 
+  /// 已完成 task 调用:父消息 + tool part(输出携带 `<task id="ses_…">`) +
+  /// 子会话(session/message/part 行)。
+  void insertTaskCallAndChild({
+    required int messageId,
+    required int created,
+    required String toolCallId,
+    required String childSessionId,
+    required String output,
+  }) {
+    writer.execute(
+      'INSERT INTO message (id, session_id, data, time_created, time_updated) '
+      'VALUES (?, ?, ?, ?, ?)',
+      [
+        messageId,
+        'ses_1',
+        jsonEncode({'role': 'assistant', 'time': {'created': created}}),
+        created,
+        created,
+      ],
+    );
+    writer.execute(
+      'INSERT INTO part (id, session_id, message_id, data, time_created, '
+      'time_updated) VALUES (?, ?, ?, ?, ?, ?)',
+      [
+        messageId * 1000,
+        'ses_1',
+        messageId,
+        jsonEncode({
+          'type': 'tool',
+          'tool': 'task',
+          'callID': toolCallId,
+          'state': {
+            'status': 'completed',
+            'input': {'prompt': 'x'},
+            'output': output,
+          },
+        }),
+        created,
+        created,
+      ],
+    );
+    writer.execute(
+      'INSERT INTO session (id, parent_id, time_created, time_updated) '
+      'VALUES (?, ?, ?, ?)',
+      [childSessionId, 'ses_1', created + 1, created + 1],
+    );
+    writer.execute(
+      'INSERT INTO message (id, session_id, data, time_created, time_updated) '
+      'VALUES (?, ?, ?, ?, ?)',
+      [
+        messageId * 100,
+        childSessionId,
+        jsonEncode({'role': 'user', 'time': {'created': created + 2}}),
+        created + 2,
+        created + 2,
+      ],
+    );
+    writer.execute(
+      'INSERT INTO part (id, session_id, message_id, data, time_created, '
+      'time_updated) VALUES (?, ?, ?, ?, ?, ?)',
+      [
+        messageId * 1000 + 1,
+        childSessionId,
+        messageId * 100,
+        jsonEncode({'type': 'text', 'text': 'child output $messageId'}),
+        created + 2,
+        created + 2,
+      ],
+    );
+  }
+
+  /// 运行中的 task 调用:父 part status=running、output 为空;子会话已存在。
+  void insertRunningTaskCall({
+    required int messageId,
+    required int created,
+    required String toolCallId,
+    required String childSessionId,
+  }) {
+    writer.execute(
+      'INSERT INTO message (id, session_id, data, time_created, time_updated) '
+      'VALUES (?, ?, ?, ?, ?)',
+      [
+        messageId,
+        'ses_1',
+        jsonEncode({'role': 'assistant', 'time': {'created': created}}),
+        created,
+        created,
+      ],
+    );
+    writer.execute(
+      'INSERT INTO part (id, session_id, message_id, data, time_created, '
+      'time_updated) VALUES (?, ?, ?, ?, ?, ?)',
+      [
+        messageId * 1000,
+        'ses_1',
+        messageId,
+        jsonEncode({
+          'type': 'tool',
+          'tool': 'task',
+          'callID': toolCallId,
+          'state': {'status': 'running', 'input': {'prompt': 'x'}},
+        }),
+        created,
+        created,
+      ],
+    );
+    writer.execute(
+      'INSERT INTO session (id, parent_id, time_created, time_updated) '
+      'VALUES (?, ?, ?, ?)',
+      [childSessionId, 'ses_1', created + 1, created + 1],
+    );
+    writer.execute(
+      'INSERT INTO message (id, session_id, data, time_created, time_updated) '
+      'VALUES (?, ?, ?, ?, ?)',
+      [
+        messageId * 100,
+        childSessionId,
+        jsonEncode({'role': 'user', 'time': {'created': created + 2}}),
+        created + 2,
+        created + 2,
+      ],
+    );
+    writer.execute(
+      'INSERT INTO part (id, session_id, message_id, data, time_created, '
+      'time_updated) VALUES (?, ?, ?, ?, ?, ?)',
+      [
+        messageId * 1000 + 1,
+        childSessionId,
+        messageId * 100,
+        jsonEncode({'type': 'text', 'text': 'child running $messageId'}),
+        created + 2,
+        created + 2,
+      ],
+    );
+  }
+
   /// 包裹真实 locator 的计数器:记录 locate 次数、最后一次 ctx 与每个
   /// bundle(用于 hint 断言与 seat 级 memo 的 identical 检查)。
   late _RecordingLocator locator;
@@ -380,6 +516,161 @@ void main() {
         locator.lastBundle!.hints['source'],
         'sqlite',
         reason: '首次 load 仍是全量 locate(增量从第二次 load 开始)',
+      );
+    });
+
+    test('task call appended after first load enters subagent attachments',
+        () async {
+      openModernDb();
+      seedConversation();
+      // 第一个已完成 task 调用 + 其子会话(结果字符串携带子会话 id)。
+      insertTaskCallAndChild(
+        messageId: 3,
+        created: 3000,
+        toolCallId: 'toolu_1',
+        childSessionId: 'ses_2',
+        output: '<task id="ses_2" state="completed">done 1</task>',
+      );
+      final loader = buildLoader();
+      final session = opencodeSession();
+      final ctx = launchContextFor(session);
+
+      final first = await loader.load(
+        session: session,
+        memberId: '',
+        launchContext: ctx,
+      );
+      expect(first.subagentAttachments.keys, contains('toolu_1'));
+
+      // CLI 追加第二个 task 调用 + 第二个子会话:store 级增量只重读变化的
+      // 行,不会重跑全量 parse——附件索引必须跟上新出现的调用。
+      insertTaskCallAndChild(
+        messageId: 4,
+        created: 4000,
+        toolCallId: 'toolu_2',
+        childSessionId: 'ses_3',
+        output: '<task id="ses_3" state="completed">done 2</task>',
+      );
+      final second = await loader.load(
+        session: session,
+        memberId: '',
+        launchContext: ctx,
+      );
+
+      expect(
+        second.subagentAttachments.keys,
+        containsAll(['toolu_1', 'toolu_2']),
+        reason: 'DB 增量 tick 后新出现的 task 调用必须进入附件索引——否则'
+            '点击预览会提示"无法打开该子会话预览"(subagentPreviewUnavailable)',
+      );
+    });
+
+    test('running child growth stays on the snapshot until the task completes',
+        () async {
+      openModernDb();
+      seedConversation();
+      // 运行中的 task:父 part 为 running 且 output 为空(adapter 契约:
+      // running 状态不带 result);子会话 ses_2 有一条消息(等待 discovery)。
+      insertRunningTaskCall(
+        messageId: 3,
+        created: 3000,
+        toolCallId: 'toolu_1',
+        childSessionId: 'ses_2',
+      );
+      final loader = buildLoader();
+      final session = opencodeSession();
+      final ctx = launchContextFor(session);
+
+      final first = await loader.load(
+        session: session,
+        memberId: '',
+        launchContext: ctx,
+      );
+      final firstAttachment = first.subagentAttachments['toolu_1'];
+      expect(
+        firstAttachment,
+        isNotNull,
+        reason: '运行中的 task 必须通过 discovery 找到子会话',
+      );
+      expect(
+        firstAttachment!.messages,
+        hasLength(1),
+        reason: '首次解析时子会话只有一条消息',
+      );
+
+      // 子 agent 继续输出(子会话追加消息),但父 part 冻结:签名不变 →
+      // 附件索引必须复用,不空转重解析,预览停留在快照。
+      writer.execute(
+        'INSERT INTO message (id, session_id, data, time_created, '
+        'time_updated) VALUES (?, ?, ?, ?, ?)',
+        [
+          301,
+          'ses_2',
+          jsonEncode({'role': 'assistant', 'time': {'created': 3500}}),
+          3500,
+          3500,
+        ],
+      );
+      writer.execute(
+        'INSERT INTO part (id, session_id, message_id, data, time_created, '
+        'time_updated) VALUES (?, ?, ?, ?, ?, ?)',
+        [
+          3003,
+          'ses_2',
+          301,
+          jsonEncode({'type': 'text', 'text': 'more progress'}),
+          3500,
+          3500,
+        ],
+      );
+      final middle = await loader.load(
+        session: session,
+        memberId: '',
+        launchContext: ctx,
+      );
+      expect(
+        identical(
+          middle.subagentAttachments['toolu_1']!.messages,
+          firstAttachment.messages,
+        ),
+        isTrue,
+        reason: '父 part 冻结时子会话增长不可见(签名不变 → 复用快照),'
+            '不产生无谓的重解析',
+      );
+
+      // 任务完成:父 part 更新为 completed + 输出携带子会话 id → 签名变化
+      // → 重新 inflate,预览刷新到子会话的最新完整内容。
+      writer.execute(
+        'UPDATE part SET data = ?, time_updated = 3600 WHERE id = 3000',
+        [
+          jsonEncode({
+            'type': 'tool',
+            'tool': 'task',
+            'callID': 'toolu_1',
+            'state': {
+              'status': 'completed',
+              'input': {'prompt': 'x'},
+              'output': '<task id="ses_2" state="completed">done</task>',
+            },
+          }),
+        ],
+      );
+      final second = await loader.load(
+        session: session,
+        memberId: '',
+        launchContext: ctx,
+      );
+
+      final secondAttachment = second.subagentAttachments['toolu_1']!;
+      expect(
+        secondAttachment.messages,
+        hasLength(2),
+        reason: '调用完成(part 状态/结果变化)后必须重新解析,预览跟随到'
+            '子会话的最新完整内容',
+      );
+      expect(
+        (secondAttachment.messages.last.parts.single as AiTextPart).text,
+        'more progress',
       );
     });
 

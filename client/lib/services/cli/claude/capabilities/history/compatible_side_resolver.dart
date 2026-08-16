@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:ai_message_core/ai_message_core.dart';
+import 'package:meta/meta.dart';
 
 import '../../../../../utils/logging/logger.dart';
 import '../../../../io/filesystem.dart';
@@ -40,6 +41,22 @@ final class ClaudeCompatibleSideResolver implements SubagentSideResolver {
       agentId: agentId,
       pathContext: ctx.fs.pathContext,
     );
+
+    // side 文件 memo:stat 签名(size+mtime)未变时复用同一解析结果——
+    // 消息列表实例相同,loader/seat 的 identical 快速路径生效,活跃子
+    // agent 每 tick 重 inflate 时未变化的子会话零重解析、零内容比较。
+    final stat = await ctx.fs.stat(sidePath);
+    if (!stat.isFile) return null;
+    final statSig =
+        '${stat.size ?? 0}|${stat.mtime?.toUtc().toIso8601String() ?? ''}';
+    final memo = _sideMemos[sidePath];
+    if (memo != null && memo.sig == statSig) {
+      return SubagentSideResolveResult(
+        messages: memo.messages,
+        handle: SubagentFileHandle(sidePath),
+      );
+    }
+
     try {
       final content = await ctx.fs.readString(sidePath);
       if (content == null) return null;
@@ -47,6 +64,11 @@ final class ClaudeCompatibleSideResolver implements SubagentSideResolver {
         content,
         fallbackId: () => 'subagent-$agentId-${part.toolCallId}',
       );
+      _sideMemos[sidePath] = _SideFileMemo(
+        sig: statSig,
+        messages: sideMessages,
+      );
+      _evictSideMemos();
       return SubagentSideResolveResult(
         messages: sideMessages,
         handle: SubagentFileHandle(sidePath),
@@ -75,6 +97,36 @@ final class ClaudeCompatibleSideResolver implements SubagentSideResolver {
     return null;
   }
 
+  /// 每目录 meta map memo:subagentsDir → (目录签名, toolUseId→agentId)。
+  /// 一次目录指纹走查服务同一 tick 的所有 part resolve(meta 文件很小,
+  /// 签名走查 + 一次扫描就够,未变化时 O(1) 复用)。
+  static final Map<String, _MetaMemo> _metaMemos = {};
+  static const int _metaMemoCap = 32;
+
+  static void _evictMetaMemos() {
+    if (_metaMemos.length <= _metaMemoCap) return;
+    _metaMemos.removeWhere(
+      (_, __) => _metaMemos.length > _metaMemoCap,
+    );
+  }
+
+  /// side 文件解析 memo(见 [resolve] 的注释)。
+  static final Map<String, _SideFileMemo> _sideMemos = {};
+  static const int _sideMemoCap = 128;
+
+  static void _evictSideMemos() {
+    if (_sideMemos.length <= _sideMemoCap) return;
+    _sideMemos.removeWhere(
+      (_, __) => _sideMemos.length > _sideMemoCap,
+    );
+  }
+
+  @visibleForTesting
+  static void clearMemo() {
+    _metaMemos.clear();
+    _sideMemos.clear();
+  }
+
   Future<Map<String, String>> _loadMetaMap(
     SessionHistoryContext ctx,
     String parentTranscriptPath,
@@ -83,6 +135,53 @@ final class ClaudeCompatibleSideResolver implements SubagentSideResolver {
       parentTranscriptPath,
       pathContext: ctx.fs.pathContext,
     );
+    final sig = await _metaDirSig(ctx, subagentsDir);
+    if (sig == null) return const {};
+    final memo = _metaMemos[subagentsDir];
+    if (memo != null && memo.sig == sig) return memo.map;
+
+    final map = await _scanMetaMap(ctx, subagentsDir);
+    _metaMemos[subagentsDir] = _MetaMemo(sig: sig, map: map);
+    _evictMetaMemos();
+    return map;
+  }
+
+  /// meta 文件集合的目录签名;目录缺失返回 null(与旧 listDir 抛错 →
+  /// 空 map 语义一致,但不 memo 化——缺失时每次 resolve 只做一次 stat)。
+  static Future<String?> _metaDirSig(
+    SessionHistoryContext ctx,
+    String dir,
+  ) async {
+    final stat = await ctx.fs.stat(dir);
+    if (!stat.isDirectory) return null;
+    List<FsDirEntry> entries;
+    try {
+      entries = await ctx.fs.listDir(dir);
+    } on Object {
+      return null;
+    }
+    final path = ctx.fs.pathContext;
+    final parts = <String>[];
+    for (final entry in entries) {
+      if (entry.isDirectory) continue;
+      if (!entry.name.startsWith('agent-') ||
+          !entry.name.endsWith('.meta.json')) {
+        continue;
+      }
+      final full = path.join(dir, entry.name);
+      final st = await ctx.fs.stat(full);
+      if (!st.exists) continue;
+      parts.add(
+        '${entry.name}|${st.size ?? 0}|${st.mtime?.toUtc().toIso8601String() ?? ''}',
+      );
+    }
+    return parts.join('\n');
+  }
+
+  Future<Map<String, String>> _scanMetaMap(
+    SessionHistoryContext ctx,
+    String subagentsDir,
+  ) async {
     final map = <String, String>{};
     List<FsDirEntry> entries;
     try {
@@ -188,4 +287,20 @@ final class ClaudeCompatibleSideResolver implements SubagentSideResolver {
       );
     }
   }
+}
+
+/// side 文件解析 memo:stat 签名 → 解析结果(见 resolve 注释)。
+class _SideFileMemo {
+  const _SideFileMemo({required this.sig, required this.messages});
+
+  final String sig;
+  final List<AiMessage> messages;
+}
+
+/// meta map memo:目录签名 → toolUseId→agentId。
+class _MetaMemo {
+  const _MetaMemo({required this.sig, required this.map});
+
+  final String sig;
+  final Map<String, String> map;
 }

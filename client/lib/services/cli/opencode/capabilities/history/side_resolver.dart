@@ -76,15 +76,34 @@ final class OpencodeSideResolver implements SubagentSideResolver {
         : childSessionId;
     if (resolvedId == null || resolvedId.isEmpty) return null;
 
+    // 子会话结果 memo:指纹未变时复用同一解析结果(消息列表实例相同),
+    // 让 loader/seat 的 identical 快速路径生效——活跃子 agent 每 tick 重
+    // inflate 时,未变化的子会话零重解析、零内容比较;子会话移动才重解析。
+    final fingerprint = await _childFingerprint(ctx, resolvedId);
+    if (fingerprint != null) {
+      final memo = _childResults[resolvedId];
+      if (memo != null && memo.fingerprint == fingerprint) {
+        return memo.result;
+      }
+    }
+
     final bundle = await _bundleForChild(ctx, resolvedId);
     if (bundle == null) return null;
 
     try {
       final messages = await const OpencodeAiTranscriptAdapter().parse(bundle);
-      return SubagentSideResolveResult(
+      final result = SubagentSideResolveResult(
         messages: messages,
         handle: SubagentSessionHandle(resolvedId),
       );
+      if (fingerprint != null) {
+        _childResults[resolvedId] = _ChildResultMemo(
+          fingerprint: fingerprint,
+          result: result,
+        );
+        _evictChildResults();
+      }
+      return result;
     } catch (e, st) {
       appLogger.w(
         '[subagent-inflate] OpenCode child session failed '
@@ -134,6 +153,21 @@ final class OpencodeSideResolver implements SubagentSideResolver {
 
   @visibleForTesting
   static void clearChildBundleMemo() => _childBundles.clear();
+
+  /// childId → 已解析结果(见 [resolve] 的注释):指纹未变时复用同一
+  /// 消息列表实例。与 [_childBundles] 的淘汰策略一致。
+  static final Map<String, _ChildResultMemo> _childResults = {};
+  static const int _childResultCap = 64;
+
+  static void _evictChildResults() {
+    if (_childResults.length <= _childResultCap) return;
+    _childResults.removeWhere(
+      (_, __) => _childResults.length > _childResultCap,
+    );
+  }
+
+  @visibleForTesting
+  static void clearChildResultMemo() => _childResults.clear();
 
   /// Cheap change signal for one child session: part row count + newest
   /// `time_updated` (parts are appended/updated while a task streams output).
@@ -392,6 +426,17 @@ class _ChildBundleMemo {
 
   final String fingerprint;
   final AiTranscriptBundle bundle;
+}
+
+/// 子会话解析结果 memo(见 [OpencodeSideResolver.resolve] 的注释)。
+class _ChildResultMemo {
+  const _ChildResultMemo({
+    required this.fingerprint,
+    required this.result,
+  });
+
+  final String fingerprint;
+  final SubagentSideResolveResult result;
 }
 
 String? _parentSessionId(

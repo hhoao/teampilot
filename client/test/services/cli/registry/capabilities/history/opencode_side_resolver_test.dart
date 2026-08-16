@@ -27,6 +27,7 @@ void main() {
     // fingerprints, so the memos must not leak across tests.
     OpencodeSideResolver.clearChildBundleMemo();
     OpencodeSideResolver.clearDiscoveryMemo();
+    OpencodeSideResolver.clearChildResultMemo();
   });
 
   tearDown(() async {
@@ -275,6 +276,109 @@ CREATE TABLE part (
     expect(
       (result.messages.first.parts.single as AiTextPart).text,
       'child hello',
+    );
+  });
+
+  test(
+    'unchanged child re-resolve returns the identical message list (memo)',
+    () async {
+      final db = openDb();
+      insertChildSession(
+        db,
+        sessionId: childSessionId,
+        parentId: parentSessionId,
+      );
+      final runCtx = ctx(dataDir: base.path, persistedNativeId: parentSessionId);
+
+      final first = await resolver.resolve(
+        part: taskPart(result: {'sessionId': childSessionId}),
+        ctx: runCtx,
+        parentHandle: null,
+        rootTranscriptPath: null,
+      );
+      expect(first, isNotNull);
+      final second = await resolver.resolve(
+        part: taskPart(result: {'sessionId': childSessionId}),
+        ctx: runCtx,
+        parentHandle: null,
+        rootTranscriptPath: null,
+      );
+
+      expect(
+        identical(first!.messages, second!.messages),
+        isTrue,
+        reason: '子会话未变化时重复 resolve 必须复用同一消息列表实例——'
+            'seat 的 identical 快速路径依赖它,否则每次刷新都要做内容比较'
+            '(性能回归)',
+      );
+    },
+  );
+
+  test('child growth re-parses only after the fingerprint moves', () async {
+    final db = openDb();
+    insertChildSession(
+      db,
+      sessionId: childSessionId,
+      parentId: parentSessionId,
+    );
+    final runCtx = ctx(dataDir: base.path, persistedNativeId: parentSessionId);
+
+    final first = await resolver.resolve(
+      part: taskPart(result: {'sessionId': childSessionId}),
+      ctx: runCtx,
+      parentHandle: null,
+      rootTranscriptPath: null,
+    );
+    expect(first!.messages, hasLength(1));
+
+    // 子会话追加一条 message + part → 指纹移动 → 必须重新解析出增长后的
+    // 内容(否则运行中的预览永远停留在旧快照)。
+    final msgId = 'msg_grow_$childSessionId';
+    db.execute(
+      'INSERT INTO message(id, session_id, time_created, time_updated, data) '
+      'VALUES (?, ?, ?, ?, ?)',
+      [
+        msgId,
+        childSessionId,
+        50,
+        50,
+        jsonEncode({
+          'id': msgId,
+          'sessionID': childSessionId,
+          'role': 'assistant',
+          'time': {'created': 50},
+        }),
+      ],
+    );
+    db.execute(
+      'INSERT INTO part(id, message_id, session_id, time_created, '
+      'time_updated, data) VALUES (?, ?, ?, ?, ?, ?)',
+      [
+        'prt_grow_$childSessionId',
+        msgId,
+        childSessionId,
+        50,
+        50,
+        jsonEncode({
+          'id': 'prt_grow_$childSessionId',
+          'messageID': msgId,
+          'type': 'text',
+          'text': 'more progress',
+        }),
+      ],
+    );
+
+    final second = await resolver.resolve(
+      part: taskPart(result: {'sessionId': childSessionId}),
+      ctx: runCtx,
+      parentHandle: null,
+      rootTranscriptPath: null,
+    );
+    expect(second, isNotNull);
+    expect(second!.messages, hasLength(2));
+    expect(
+      (second.messages.last.parts.single as AiTextPart).text,
+      'more progress',
     );
   });
 
