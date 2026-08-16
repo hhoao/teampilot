@@ -29,7 +29,6 @@ import 'package:teampilot/cubits/plugin_cubit.dart';
 import 'package:teampilot/cubits/progress_activity_cubit.dart';
 import 'package:teampilot/cubits/session_preferences_cubit.dart';
 import 'package:teampilot/cubits/shortcut_cubit.dart';
-import 'package:teampilot/cubits/skill_cubit.dart';
 import 'package:teampilot/cubits/floating_workspace/floating_workspace_cubit.dart';
 import 'package:teampilot/cubits/workspace_tools_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
@@ -45,7 +44,6 @@ import 'package:teampilot/repositories/app_settings_repository.dart';
 import 'package:teampilot/repositories/plugin_repository.dart';
 import 'package:teampilot/repositories/session_preferences_repository.dart';
 import 'package:teampilot/repositories/session_repository.dart';
-import 'package:teampilot/repositories/skill_repository.dart';
 import 'package:teampilot/repositories/ssh_credential_store.dart';
 import 'package:teampilot/repositories/ssh_known_host_repository.dart';
 import 'package:teampilot/repositories/ssh_profile_repository.dart';
@@ -279,7 +277,7 @@ class PerformanceScenarioApp {
             ),
             BlocProvider(create: (_) => FloatingWorkspaceCubit()),
             BlocProvider(create: (_) => ShortcutCubit()),
-            BlocProvider(create: (_) => SkillCubit(SkillRepository())),
+            BlocProvider(create: (_) => testSkillCubit()),
             BlocProvider(
               create: (_) {
                 final repo = PluginRepository();

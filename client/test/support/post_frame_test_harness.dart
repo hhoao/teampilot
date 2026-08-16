@@ -6,9 +6,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/cubits/automation_cubit.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
+import 'package:teampilot/cubits/skill_cubit.dart';
 import 'package:teampilot/repositories/automation_repository.dart';
 import 'package:teampilot/repositories/launch_profile_repository.dart';
 import 'package:teampilot/repositories/session_repository.dart';
+import 'package:teampilot/repositories/skill_repository.dart';
 import 'package:teampilot/services/automation/automation_bus_gateway.dart';
 import 'package:teampilot/services/automation/automation_dispatcher.dart';
 import 'package:teampilot/services/automation/automation_schedule_calculator.dart';
@@ -19,6 +21,9 @@ import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/io/workspace_fs_watcher.dart';
 import 'package:teampilot/services/resource_manager/process_metrics_service.dart';
 import 'package:teampilot/services/resource_manager/resource_memory_models.dart';
+import 'package:teampilot/services/skill/registry/skill_registry_config_service.dart';
+import 'package:teampilot/services/skill/registry/skill_registry_source.dart';
+import 'package:teampilot/services/skill/skill_acquisition_engine.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/storage/workspace_layout.dart';
 
@@ -88,6 +93,17 @@ void tearDownTestAppStorage() {
     unawaited(deleteTempDirBestEffort(dir));
   }
 }
+
+/// Default [SkillCubit] for tests that need the provider registered but do not
+/// exercise skill actions (empty registry config, no sources).
+SkillCubit testSkillCubit({SkillAcquisitionEngine? acquisitionEngine}) =>
+    SkillCubit(
+      SkillRepository(),
+      registryConfigService: SkillRegistryConfigService(),
+      initialSources: const <SkillRegistrySource>[],
+      rebuildSources: (config) => const <SkillRegistrySource>[],
+      acquisitionEngine: acquisitionEngine,
+    );
 
 /// Runs a post-frame callback and awaits async continuations (e.g. spawn env).
 ///

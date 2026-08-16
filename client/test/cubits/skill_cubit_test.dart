@@ -7,6 +7,7 @@ import 'package:teampilot/models/skill.dart';
 import 'package:teampilot/repositories/skill_repository.dart';
 import 'package:teampilot/services/cli/installer_types.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
+import 'package:teampilot/services/skill/registry/skill_registry_config_service.dart';
 import 'package:teampilot/services/skill/skill_acquisition_engine.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 
@@ -30,6 +31,16 @@ void main() {
     AppStorage.resetForTesting();
     if (tmp.existsSync()) tmp.deleteSync(recursive: true);
   });
+
+  SkillCubit cubitWith(SkillAcquisitionEngine engine) => SkillCubit(
+    SkillRepository(),
+    registryConfigService: SkillRegistryConfigService(
+      teampilotRoot: AppStorage.paths.basePath,
+    ),
+    initialSources: const [],
+    rebuildSources: (c) => const [],
+    acquisitionEngine: engine,
+  );
 
   test(
     'installTeamDependency uses scriptUrl sugar through acquisition engine',
@@ -71,10 +82,7 @@ void main() {
         },
       );
 
-      final cubit = SkillCubit(
-        SkillRepository(),
-        acquisitionEngine: engine,
-      );
+      final cubit = cubitWith(engine);
 
       final id = await cubit.installTeamDependency(
         const SkillDependencyRef(
@@ -111,10 +119,7 @@ void main() {
         isLocalAcquireSupported: () => true,
       );
 
-      final cubit = SkillCubit(
-        SkillRepository(),
-        acquisitionEngine: engine,
-      );
+      final cubit = cubitWith(engine);
       cubit.emit(
         cubit.state.copyWith(
           installed: const [

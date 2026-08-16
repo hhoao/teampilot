@@ -7,92 +7,34 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../models/discoverable_team.dart';
 import '../models/progress_activity.dart';
 import '../models/skill.dart';
+import '../models/skill_registry_source.dart';
+import '../models/unified_skill_entry.dart';
 import '../repositories/skill_repository.dart';
 import '../services/progress_activity/pack_acquire_activity_adapter.dart';
 import '../services/skill/marketplace/skill_marketplace_source.dart';
+import '../services/skill/registry/git_repo_registry_source.dart';
+import '../services/skill/registry/skill_registry_config_service.dart';
+import '../services/skill/registry/skill_registry_source.dart';
 import '../services/skill/skill_acquisition_engine.dart';
 import '../services/skill/skill_repo_disk_cache_service.dart';
 import '../utils/logging/logger.dart';
 
 enum SkillLoadStatus { idle, loading, ready, error }
 
-class MarketplaceSearchState extends Equatable {
-  const MarketplaceSearchState({
-    this.query = '',
-    this.page = 1,
-    this.loading = false,
-    this.error,
-    this.entries = const [],
-    this.hasNext = false,
-    this.total = 0,
-    this.category,
-    this.occupation,
-    this.language,
-    this.sortBy,
-  });
-
-  final String query;
-  final int page;
-  final bool loading;
-  final String? error;
-  final List<MarketplaceSkill> entries;
-  final bool hasNext;
-  final int total;
-  final String? category;
-  final String? occupation;
-  final String? language;
-  final String? sortBy;
-
-  MarketplaceSearchState copyWith({
-    String? query,
-    int? page,
-    bool? loading,
-    String? error,
-    bool clearError = false,
-    List<MarketplaceSkill>? entries,
-    bool? hasNext,
-    int? total,
-    String? category,
-    String? occupation,
-    String? language,
-    String? sortBy,
-  }) => MarketplaceSearchState(
-    query: query ?? this.query,
-    page: page ?? this.page,
-    loading: loading ?? this.loading,
-    error: clearError ? null : (error ?? this.error),
-    entries: entries ?? this.entries,
-    hasNext: hasNext ?? this.hasNext,
-    total: total ?? this.total,
-    category: category ?? this.category,
-    occupation: occupation ?? this.occupation,
-    language: language ?? this.language,
-    sortBy: sortBy ?? this.sortBy,
-  );
-
-  @override
-  List<Object?> get props => [
-    query,
-    page,
-    loading,
-    error,
-    entries,
-    hasNext,
-    total,
-    category,
-    occupation,
-    language,
-    sortBy,
-  ];
-}
-
 class SkillState extends Equatable {
   const SkillState({
     this.installed = const [],
-    this.repos = const [],
     this.discoverable = const [],
     this.updates = const [],
-    this.marketplace = const {},
+    this.registriesConfig = const SkillRegistriesConfig(sources: []),
+    this.sources = const [],
+    this.discoveryEntries = const [],
+    this.discoveryPages = const {},
+    this.discoveryHasNext = const {},
+    this.discoveryTotals = const {},
+    this.discoveryError,
+    this.discoveryBrowsing = false,
+    this.discoveryLastQuery,
     this.status = SkillLoadStatus.idle,
     this.errorMessage,
     this.noticeMessage,
@@ -104,10 +46,17 @@ class SkillState extends Equatable {
   });
 
   final List<Skill> installed;
-  final List<SkillRepo> repos;
   final List<DiscoverableSkill> discoverable;
   final List<SkillUpdateInfo> updates;
-  final Map<String, MarketplaceSearchState> marketplace;
+  final SkillRegistriesConfig registriesConfig;
+  final List<SkillRegistrySource> sources;
+  final List<UnifiedSkillEntry> discoveryEntries;
+  final Map<String, int> discoveryPages;
+  final Map<String, bool> discoveryHasNext;
+  final Map<String, int> discoveryTotals;
+  final String? discoveryError;
+  final bool discoveryBrowsing;
+  final SkillRegistryQuery? discoveryLastQuery;
   final SkillLoadStatus status;
   final String? errorMessage;
   final String? noticeMessage;
@@ -117,12 +66,21 @@ class SkillState extends Equatable {
   final Set<String> repoSyncingKeys;
   final bool toolbarBusy;
 
+  bool get anyDiscoveryHasNext => discoveryHasNext.values.any((v) => v);
+
   SkillState copyWith({
     List<Skill>? installed,
-    List<SkillRepo>? repos,
     List<DiscoverableSkill>? discoverable,
     List<SkillUpdateInfo>? updates,
-    Map<String, MarketplaceSearchState>? marketplace,
+    SkillRegistriesConfig? registriesConfig,
+    List<SkillRegistrySource>? sources,
+    List<UnifiedSkillEntry>? discoveryEntries,
+    Map<String, int>? discoveryPages,
+    Map<String, bool>? discoveryHasNext,
+    Map<String, int>? discoveryTotals,
+    Object? discoveryError = _discoveryErrorUnset,
+    bool? discoveryBrowsing,
+    SkillRegistryQuery? discoveryLastQuery,
     SkillLoadStatus? status,
     String? errorMessage,
     bool clearError = false,
@@ -135,10 +93,19 @@ class SkillState extends Equatable {
     bool? toolbarBusy,
   }) => SkillState(
     installed: installed ?? this.installed,
-    repos: repos ?? this.repos,
     discoverable: discoverable ?? this.discoverable,
     updates: updates ?? this.updates,
-    marketplace: marketplace ?? this.marketplace,
+    registriesConfig: registriesConfig ?? this.registriesConfig,
+    sources: sources ?? this.sources,
+    discoveryEntries: discoveryEntries ?? this.discoveryEntries,
+    discoveryPages: discoveryPages ?? this.discoveryPages,
+    discoveryHasNext: discoveryHasNext ?? this.discoveryHasNext,
+    discoveryTotals: discoveryTotals ?? this.discoveryTotals,
+    discoveryError: identical(discoveryError, _discoveryErrorUnset)
+        ? this.discoveryError
+        : discoveryError as String?,
+    discoveryBrowsing: discoveryBrowsing ?? this.discoveryBrowsing,
+    discoveryLastQuery: discoveryLastQuery ?? this.discoveryLastQuery,
     status: status ?? this.status,
     errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
     noticeMessage: clearNotice ? null : (noticeMessage ?? this.noticeMessage),
@@ -149,13 +116,22 @@ class SkillState extends Equatable {
     toolbarBusy: toolbarBusy ?? this.toolbarBusy,
   );
 
+  static const _discoveryErrorUnset = Object();
+
   @override
   List<Object?> get props => [
     installed,
-    repos,
     discoverable,
     updates,
-    marketplace,
+    registriesConfig,
+    sources,
+    discoveryEntries,
+    discoveryPages,
+    discoveryHasNext,
+    discoveryTotals,
+    discoveryError,
+    discoveryBrowsing,
+    discoveryLastQuery,
     status,
     errorMessage,
     noticeMessage,
@@ -172,11 +148,15 @@ typedef SkillUninstalledHandler = Future<void> Function(String skillId);
 class SkillCubit extends Cubit<SkillState> {
   SkillCubit(
     this._repo, {
-    this.marketplaces = const [],
+    required this.registryConfigService,
+    required List<SkillRegistrySource> initialSources,
+    required List<SkillRegistrySource> Function(SkillRegistriesConfig)
+    rebuildSources,
     SkillAcquisitionEngine? acquisitionEngine,
     SkillUninstalledHandler? onSkillUninstalled,
     PackAcquireActivityAdapter? packAcquireActivity,
-  }) : _acquisitionEngine =
+  }) : _rebuildSources = rebuildSources,
+       _acquisitionEngine =
            acquisitionEngine ??
            SkillAcquisitionEngine(
              installGitDir: (d, {bool overwrite = false, String? idOverride}) =>
@@ -194,28 +174,27 @@ class SkillCubit extends Cubit<SkillState> {
            ),
        _onSkillUninstalled = onSkillUninstalled,
        _packAcquireActivity = packAcquireActivity,
-       super(const SkillState());
+       super(SkillState(sources: initialSources));
 
   final SkillRepository _repo;
+  final SkillRegistryConfigService registryConfigService;
   final SkillAcquisitionEngine _acquisitionEngine;
   final SkillUninstalledHandler? _onSkillUninstalled;
   final PackAcquireActivityAdapter? _packAcquireActivity;
-  final List<SkillMarketplaceSource> marketplaces;
+  final List<SkillRegistrySource> Function(SkillRegistriesConfig) _rebuildSources;
   int _discoveryGeneration = 0;
 
   Future<void> loadAll() async {
     emit(state.copyWith(status: SkillLoadStatus.loading, clearError: true));
     try {
-      final results = await Future.wait([
-        _repo.loadInstalled(),
-        _repo.loadRepos(),
-      ]);
-      final installed = results[0] as List<Skill>;
-      final repos = results[1] as List<SkillRepo>;
+      final installed = await _repo.loadInstalled();
+      final config = await registryConfigService.load();
+      final sources = _rebuildSources(config);
       emit(
         state.copyWith(
           installed: installed,
-          repos: repos,
+          registriesConfig: config,
+          sources: sources,
           status: SkillLoadStatus.ready,
         ),
       );
@@ -235,7 +214,7 @@ class SkillCubit extends Cubit<SkillState> {
   }
 
   Future<void> refreshDiscoverable({bool force = false}) async {
-    final enabled = state.repos.where((r) => r.enabled).toList();
+    final enabled = _gitRepos();
     if (enabled.isEmpty) {
       emit(
         state.copyWith(
@@ -258,7 +237,7 @@ class SkillCubit extends Cubit<SkillState> {
     if (reposToSync.isEmpty) return;
 
     final generation = ++_discoveryGeneration;
-    final enabled = state.repos.where((r) => r.enabled).toList();
+    final enabled = _gitRepos();
     var syncing = {
       ...state.repoSyncingKeys,
       ...reposToSync.map(SkillRepoDiskCacheService.repoKey),
@@ -280,9 +259,7 @@ class SkillCubit extends Cubit<SkillState> {
     Future<void> onRepoSyncFinished(String key) async {
       if (generation != _discoveryGeneration) return;
       remaining.remove(key);
-      final discoverable = await _aggregateDiscoverableFromDisk(
-        state.repos.where((r) => r.enabled).toList(),
-      );
+      final discoverable = await _aggregateDiscoverableFromDisk(_gitRepos());
       if (generation != _discoveryGeneration) return;
       final repoSyncingKeys = {
         ...state.repoSyncingKeys.where((k) => !batchKeys.contains(k)),
@@ -316,9 +293,7 @@ class SkillCubit extends Cubit<SkillState> {
       state.copyWith(
         discoveryLoading: false,
         repoSyncingKeys: repoSyncingKeys,
-        discoverable: await _aggregateDiscoverableFromDisk(
-          state.repos.where((r) => r.enabled).toList(),
-        ),
+        discoverable: await _aggregateDiscoverableFromDisk(_gitRepos()),
       ),
     );
   }
@@ -372,79 +347,10 @@ class SkillCubit extends Cubit<SkillState> {
     return out;
   }
 
-  Future<void> addRepo(SkillRepo repo) async {
-    try {
-      await _repo.repos.addRepo(repo);
-      final repos = await _repo.loadRepos();
-      emit(state.copyWith(repos: repos));
-      if (repo.enabled) {
-        unawaited(_syncReposInBackground([repo]));
-      }
-    } catch (e) {
-      emit(state.copyWith(errorMessage: '$e'));
-    }
-  }
-
-  Future<void> removeRepo(String owner, String name) async {
-    try {
-      await _repo.deleteRepoCache(
-        SkillRepo(owner: owner, name: name, branch: 'main'),
-      );
-      await _repo.repos.removeRepo(owner, name);
-      final repos = await _repo.loadRepos();
-      final key = SkillRepoDiskCacheService.repoKey(
-        SkillRepo(owner: owner, name: name, branch: 'main'),
-      );
-      final discoverable = state.discoverable
-          .where((d) => d.repoOwner != owner || d.repoName != name)
-          .toList();
-      final syncing = Set.of(state.repoSyncingKeys)..remove(key);
-      emit(
-        state.copyWith(
-          repos: repos,
-          discoverable: discoverable,
-          repoSyncingKeys: syncing,
-        ),
-      );
-    } catch (e) {
-      emit(state.copyWith(errorMessage: '$e'));
-    }
-  }
-
-  Future<void> toggleRepoEnabled(SkillRepo repo, bool enabled) async {
-    try {
-      await _repo.repos.setEnabled(repo.owner, repo.name, enabled);
-      final repos = await _repo.loadRepos();
-      if (!enabled) {
-        final cacheKey = SkillRepoDiskCacheService.repoKey(repo);
-        final discoverable = state.discoverable
-            .where((d) => d.repoOwner != repo.owner || d.repoName != repo.name)
-            .toList();
-        final syncing = Set.of(state.repoSyncingKeys)..remove(cacheKey);
-        emit(
-          state.copyWith(
-            repos: repos,
-            discoverable: discoverable,
-            repoSyncingKeys: syncing,
-          ),
-        );
-        return;
-      }
-      final enabledRepos = repos.where((r) => r.enabled).toList();
-      emit(
-        state.copyWith(
-          repos: repos,
-          discoverable: await _aggregateDiscoverableFromDisk(enabledRepos),
-        ),
-      );
-      final updated = repos.firstWhere(
-        (r) => r.owner == repo.owner && r.name == repo.name,
-      );
-      unawaited(_syncReposInBackground([updated]));
-    } catch (e) {
-      emit(state.copyWith(errorMessage: '$e'));
-    }
-  }
+  List<SkillRepo> _gitRepos() => [
+    for (final s in state.sources)
+      if (s is GitRepoRegistrySource && s.enabled) s.gitRepo,
+  ];
 
   Future<void> installFromDiscovery(
     DiscoverableSkill d, {
@@ -559,175 +465,311 @@ class SkillCubit extends Cubit<SkillState> {
   }
 
   static const marketplaceRepoAddedNoticeKey = 'skillsMarketplaceRepoAdded';
-  static const _marketplacePageSize = 20;
+  static const _unifiedPageSize = 20;
 
-  SkillMarketplaceSource? _marketplaceById(String sourceId) {
-    for (final s in marketplaces) {
-      if (s.id == sourceId) return s;
-    }
-    return null;
+  List<SkillRegistrySource> get _enabledSources =>
+      state.sources.where((s) => s.enabled).toList();
+
+  Future<void> unifiedBrowse() async {
+    await unifiedSearch('', sourceId: null);
   }
 
-  Future<void> searchMarketplace(
-    String sourceId, {
-    required String query,
+  Future<void> unifiedSearch(
+    String query, {
+    String? sourceId,
     String? category,
     String? occupation,
     String? language,
     String? sortBy,
   }) async {
-    final source = _marketplaceById(sourceId);
-    if (source == null) return;
-    if (query.trim().length < 2) return;
-    final slot = state.marketplace[sourceId] ?? const MarketplaceSearchState();
-    emit(
-      state.copyWith(
-        marketplace: {
-          ...state.marketplace,
-          sourceId: slot.copyWith(
-            loading: true,
-            query: query,
-            page: 1,
-            entries: const [],
-            hasNext: false,
-            clearError: true,
-            category: category,
-            occupation: occupation,
-            language: language,
-            sortBy: sortBy,
-          ),
-        },
-        clearError: true,
-      ),
+    final q = query.trim();
+    final effectiveQ = q.length >= 2 ? q : '';
+    final sources = sourceId != null
+        ? state.sources.where((s) => s.id == sourceId && s.enabled).toList()
+        : _enabledSources;
+    if (sources.isEmpty) {
+      emit(state.copyWith(
+        discoveryEntries: const [],
+        discoveryPages: const {},
+        discoveryHasNext: const {},
+        discoveryTotals: const {},
+        discoveryError: null,
+        discoveryBrowsing: effectiveQ.isEmpty,
+        discoveryLoading: false,
+      ));
+      return;
+    }
+    emit(state.copyWith(
+      discoveryLoading: true,
+      discoveryBrowsing: effectiveQ.isEmpty,
+      discoveryError: null,
+    ));
+    final lastQuery = SkillRegistryQuery(
+      query: effectiveQ,
+      page: 1,
+      limit: _unifiedPageSize,
+      category: category,
+      occupation: occupation,
+      language: language,
+      sortBy: sortBy,
     );
-    try {
-      final res = await source.search(
-        MarketplaceSearchQuery(
-          query: query,
-          page: 1,
-          limit: _marketplacePageSize,
-          category: category,
-          occupation: occupation,
-          language: language,
-          sortBy: sortBy,
-        ),
-      );
-      emit(
-        state.copyWith(
-          marketplace: {
-            ...state.marketplace,
-            sourceId: MarketplaceSearchState(
-              query: query,
-              page: 1,
-              entries: res.skills,
-              hasNext: res.hasNext,
-              total: res.total,
-              category: category,
-              occupation: occupation,
-              language: language,
-              sortBy: sortBy,
-            ),
-          },
-        ),
-      );
-    } catch (e) {
-      emit(
-        state.copyWith(
-          marketplace: {
-            ...state.marketplace,
-            sourceId: slot.copyWith(
-              loading: false,
-              error: e is MarketplaceQuotaException
-                  ? marketplaceQuotaErrorKey
-                  : '$e',
-            ),
-          },
-        ),
-      );
+    final results = await Future.wait(sources.map((s) async {
+      try {
+        final page = await s.search(lastQuery);
+        return (source: s, page: page, error: null);
+      } catch (e) {
+        return (
+          source: s,
+          page: SkillRegistryPage(entries: const [], hasNext: false),
+          error: e is MarketplaceQuotaException
+              ? marketplaceQuotaErrorKey
+              : '$e',
+        );
+      }
+    }));
+    if (!isClosed) {
+      final merged = _mergeEntries(results);
+      emit(state.copyWith(
+        discoveryEntries: merged.entries,
+        discoveryPages: {for (final r in results) r.source.id: 1},
+        discoveryHasNext: {
+          for (final r in results) r.source.id: r.page.hasNext,
+        },
+        discoveryTotals: {
+          for (final r in results) r.source.id: r.page.total,
+        },
+        discoveryLastQuery: lastQuery,
+        discoveryError: results.any((r) => r.error != null)
+            ? results.firstWhere((r) => r.error != null).error
+            : null,
+        discoveryLoading: false,
+      ));
     }
   }
 
-  Future<void> loadMoreMarketplace(String sourceId) async {
-    final source = _marketplaceById(sourceId);
-    if (source == null) return;
-    final slot = state.marketplace[sourceId];
-    if (slot == null || slot.loading || !slot.hasNext) return;
-    emit(
-      state.copyWith(
-        marketplace: {
-          ...state.marketplace,
-          sourceId: slot.copyWith(loading: true),
-        },
-      ),
+  Future<void> unifiedLoadMore() async {
+    if (state.discoveryLoading) return;
+    if (!state.anyDiscoveryHasNext) return;
+    emit(state.copyWith(discoveryLoading: true));
+    final last = state.discoveryLastQuery ??
+        SkillRegistryQuery(page: 1, limit: _unifiedPageSize);
+    final nextPages = <String, int>{};
+    final results = await Future.wait(
+      _enabledSources.map((s) async {
+        final loaded = state.discoveryPages[s.id] ?? 0;
+        if (loaded == 0) {
+          nextPages[s.id] = 0;
+          return (
+            source: s,
+            page: SkillRegistryPage(entries: const [], hasNext: false),
+            error: null,
+          );
+        }
+        final next = loaded + 1;
+        nextPages[s.id] = next;
+        try {
+          final page = await s.search(SkillRegistryQuery(
+            query: last.query,
+            page: next,
+            limit: last.limit,
+            category: last.category,
+            occupation: last.occupation,
+            language: last.language,
+            sortBy: last.sortBy,
+          ));
+          return (source: s, page: page, error: null);
+        } catch (e) {
+          return (
+            source: s,
+            page: SkillRegistryPage(entries: const [], hasNext: false),
+            error: e is MarketplaceQuotaException
+                ? marketplaceQuotaErrorKey
+                : '$e',
+          );
+        }
+      }),
     );
-    try {
-      final res = await source.search(
-        MarketplaceSearchQuery(
-          query: slot.query,
-          page: slot.page + 1,
-          limit: _marketplacePageSize,
-          category: slot.category,
-          occupation: slot.occupation,
-          language: slot.language,
-          sortBy: slot.sortBy,
-        ),
-      );
-      emit(
-        state.copyWith(
-          marketplace: {
-            ...state.marketplace,
-            sourceId: slot.copyWith(
-              page: slot.page + 1,
-              entries: [...slot.entries, ...res.skills],
-              hasNext: res.hasNext,
-              total: res.total,
-              loading: false,
-            ),
-          },
-        ),
-      );
-    } catch (e) {
-      emit(
-        state.copyWith(
-          marketplace: {
-            ...state.marketplace,
-            sourceId: slot.copyWith(
-              loading: false,
-              error: e is MarketplaceQuotaException
-                  ? marketplaceQuotaErrorKey
-                  : '$e',
-            ),
-          },
-        ),
-      );
+    if (!isClosed) {
+      final merged = _mergeEntries(results, appendTo: state.discoveryEntries);
+      emit(state.copyWith(
+        discoveryEntries: merged.entries,
+        discoveryPages: {...state.discoveryPages, ...nextPages},
+        discoveryHasNext: {
+          ...state.discoveryHasNext,
+          for (final r in results) r.source.id: r.page.hasNext,
+        },
+        discoveryError: results.any((r) => r.error != null)
+            ? results.firstWhere((r) => r.error != null).error
+            : null,
+        discoveryLoading: false,
+      ));
     }
   }
 
-  Future<void> installMarketplaceEntry(MarketplaceSkill e) async {
-    if (state.busyIds.contains(e.key)) return;
-    emit(state.copyWith(busyIds: {...state.busyIds, e.key}, clearError: true));
+  ({List<UnifiedSkillEntry> entries}) _mergeEntries(
+    List<({SkillRegistrySource source, SkillRegistryPage page, String? error})>
+    results, {
+    List<UnifiedSkillEntry>? appendTo,
+  }) {
+    final seen = <String>{};
+    final out = <UnifiedSkillEntry>[
+      if (appendTo != null) ...appendTo.where((e) => seen.add(e.dedupeKey)),
+    ];
+    for (final r in results) {
+      for (final skill in r.page.entries) {
+        final entry = UnifiedSkillEntry(
+          skill: skill,
+          sourceId: r.source.id,
+          repoKey: r.source is GitRepoRegistrySource
+              ? SkillRepoDiskCacheService.repoKey(
+                  (r.source as GitRepoRegistrySource).gitRepo,
+                )
+              : null,
+        );
+        if (seen.add(entry.dedupeKey)) out.add(entry);
+      }
+    }
+    return (entries: out);
+  }
+
+  Future<void> unifiedSetApiKey(String sourceId, String key) async {
+    final cfg = state.registriesConfig.byId(sourceId);
+    if (cfg == null || cfg.kind != SkillRegistryKind.api) return;
+    await _applyConfig(
+      SkillRegistriesConfig(sources: [
+        for (final s in state.registriesConfig.sources)
+          s.id == sourceId
+              ? s.copyWith(
+                  clearApiToken: key.trim().isEmpty,
+                  apiToken: key.trim().isEmpty ? null : key.trim(),
+                )
+              : s,
+      ]),
+    );
+    emit(state.copyWith(discoveryError: null));
+  }
+
+  Future<bool> testRegistryConnection(String id) async {
+    SkillRegistrySource? found;
+    for (final s in state.sources) {
+      if (s.id == id) {
+        found = s;
+        break;
+      }
+    }
+    if (found == null) return false;
     try {
-      if (e.isInstalledDirectly) {
+      await found.testConnection();
+      return true;
+    } catch (e) {
+      emit(state.copyWith(errorMessage: '$e'));
+      return false;
+    }
+  }
+
+  Future<void> addRegistrySource(SkillRegistrySourceConfig cfg) async {
+    if (state.registriesConfig.byId(cfg.id) != null) return;
+    await _applyConfig(
+      SkillRegistriesConfig(sources: [...state.registriesConfig.sources, cfg]),
+    );
+    if (cfg.kind == SkillRegistryKind.gitRepo && cfg.enabled) {
+      await _syncReposInBackground([
+        SkillRepo(
+          owner: cfg.gitOwner ?? '',
+          name: cfg.gitName ?? '',
+          branch: cfg.gitBranch ?? 'main',
+        ),
+      ]);
+    }
+  }
+
+  Future<void> updateRegistrySource(SkillRegistrySourceConfig cfg) async {
+    final next = SkillRegistriesConfig(sources: [
+      for (final s in state.registriesConfig.sources)
+        s.id == cfg.id ? cfg : s,
+    ]);
+    await _applyConfig(next);
+    var oldIsGit = false;
+    for (final s in state.sources) {
+      if (s.id == cfg.id && s is GitRepoRegistrySource) {
+        oldIsGit = true;
+        break;
+      }
+    }
+    if (cfg.kind == SkillRegistryKind.gitRepo && cfg.enabled && !oldIsGit) {
+      unawaited(_syncReposInBackground([
+        SkillRepo(
+          owner: cfg.gitOwner ?? '',
+          name: cfg.gitName ?? '',
+          branch: cfg.gitBranch ?? 'main',
+        ),
+      ]));
+    }
+  }
+
+  Future<void> removeRegistrySource(String id) async {
+    final cfg = state.registriesConfig.byId(id);
+    if (cfg == null) return;
+    if (cfg.kind == SkillRegistryKind.gitRepo) {
+      await _repo.deleteRepoCache(
+        SkillRepo(
+          owner: cfg.gitOwner ?? '',
+          name: cfg.gitName ?? '',
+          branch: cfg.gitBranch ?? 'main',
+        ),
+      );
+    }
+    await _applyConfig(
+      SkillRegistriesConfig(sources: [
+        for (final s in state.registriesConfig.sources)
+          if (s.id != id) s,
+      ]),
+    );
+  }
+
+  Future<void> toggleRegistrySource(String id, bool enabled) async {
+    final cfg = state.registriesConfig.byId(id);
+    if (cfg == null) return;
+    await updateRegistrySource(cfg.copyWith(enabled: enabled));
+  }
+
+  Future<void> _applyConfig(SkillRegistriesConfig config) async {
+    await registryConfigService.save(config);
+    final sources = _rebuildSources(config);
+    if (!isClosed) {
+      emit(state.copyWith(registriesConfig: config, sources: sources));
+    }
+  }
+
+  Future<void> installUnifiedEntry(UnifiedSkillEntry e) async {
+    final skill = e.skill;
+    if (state.busyIds.contains(skill.key)) return;
+    emit(state.copyWith(busyIds: {...state.busyIds, skill.key}, clearError: true));
+    try {
+      if (skill.isInstalledDirectly) {
         await _acquisitionEngine.installGitDir(
           DiscoverableSkill(
-            key: e.key,
-            name: e.name,
-            description: e.description,
-            directory: e.directory!,
-            readmeUrl: e.githubUrl,
-            repoOwner: e.repoOwner,
-            repoName: e.repoName,
-            repoBranch: e.repoBranch,
+            key: skill.key,
+            name: skill.name,
+            description: skill.description,
+            directory: skill.directory!,
+            readmeUrl: skill.githubUrl,
+            repoOwner: skill.repoOwner,
+            repoName: skill.repoName,
+            repoBranch: skill.repoBranch,
           ),
         );
         final installed = await _repo.loadInstalled();
         emit(state.copyWith(installed: installed));
       } else {
-        await _repo.repos.addRepo(
-          SkillRepo(
-            owner: e.repoOwner,
-            name: e.repoName,
-            branch: e.repoBranch,
+        await addRegistrySource(
+          SkillRegistrySourceConfig(
+            id: 'git-${skill.repoOwner}-${skill.repoName}',
+            kind: SkillRegistryKind.gitRepo,
+            label: '${skill.repoOwner}/${skill.repoName}',
+            gitOwner: skill.repoOwner,
+            gitName: skill.repoName,
+            gitBranch: skill.repoBranch,
           ),
         );
         emit(state.copyWith(noticeMessage: marketplaceRepoAddedNoticeKey));
@@ -735,26 +777,9 @@ class SkillCubit extends Cubit<SkillState> {
     } catch (e) {
       emit(state.copyWith(errorMessage: '$e'));
     } finally {
-      final next = {...state.busyIds}..remove(e.key);
+      final next = {...state.busyIds}..remove(skill.key);
       emit(state.copyWith(busyIds: next));
     }
-  }
-
-  Future<void> setMarketplaceApiKey(String sourceId, String key) async {
-    final source = _marketplaceById(sourceId);
-    if (source == null) return;
-    await source.setApiKey(key);
-    clearMarketplaceError(sourceId);
-  }
-
-  void clearMarketplaceError(String sourceId) {
-    final slot = state.marketplace[sourceId];
-    if (slot == null || slot.error == null) return;
-    emit(
-      state.copyWith(
-        marketplace: {...state.marketplace, sourceId: slot.copyWith(clearError: true)},
-      ),
-    );
   }
 
   Future<void> uninstall(Skill s) async {
