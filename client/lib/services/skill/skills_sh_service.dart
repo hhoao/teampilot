@@ -16,16 +16,19 @@ class SkillsShResult {
 }
 
 class SkillsShService {
-  SkillsShService({http.Client? client}) : _client = client ?? http.Client();
+  SkillsShService({http.Client? client, String baseUrl = 'https://skills.sh'})
+      : _client = client ?? http.Client(),
+        _baseUrl = baseUrl;
 
   final http.Client _client;
+  final String _baseUrl;
 
   Future<SkillsShResult> search(
     String query, {
     int limit = 20,
     int offset = 0,
   }) async {
-    final uri = Uri.parse('https://skills.sh/api/search').replace(
+    final uri = Uri.parse('$_baseUrl/api/search').replace(
       queryParameters: {'q': query, 'limit': '$limit', 'offset': '$offset'},
     );
     final resp = await _client.get(uri).timeout(const Duration(seconds: 10));
