@@ -9,11 +9,13 @@ class FloatingSurfaceRegistry {
     required FloatingSurface terminal,
     FloatingSurface? diff,
     FloatingSurface? run,
+    FloatingSurface? html,
   }) => FloatingSurfaceRegistry([
     terminal,
     file,
     if (diff != null) diff,
     if (run != null) run,
+    if (html != null) html,
   ]);
 
   final Map<String, FloatingSurface> _byId;

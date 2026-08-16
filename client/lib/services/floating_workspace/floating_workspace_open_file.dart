@@ -3,6 +3,7 @@ import 'package:file_picker/file_picker.dart';
 
 import '../../cubits/floating_workspace/floating_workspace_cubit.dart';
 import '../../models/workspace.dart';
+import '../editor/file_editor_theme.dart';
 import '../workbench/workbench_editor_opener.dart';
 
 typedef FloatingWorkspaceFilePicker =
@@ -52,4 +53,44 @@ Future<void> pickAndOpenFloatingWorkspaceFile({
   if (path.isEmpty) return;
 
   await opener.openFile(workspaceId, path);
+}
+
+/// Picks an html file and opens it as a floating rendered preview tab.
+Future<void> pickAndOpenFloatingHtmlPreview({
+  required FloatingWorkspaceCubit floating,
+  required WorkbenchEditorOpener opener,
+  required List<Workspace> workspaces,
+  FloatingWorkspaceFilePicker? pickFiles,
+}) async {
+  final workspaceId = floating.state.activeWorkspaceId.trim();
+  if (workspaceId.isEmpty) return;
+  final root = workspaces
+      .where((w) => w.workspaceId == workspaceId)
+      .map((w) => w.firstFolderPath.trim())
+      .where((p) => p.isNotEmpty)
+      .firstOrNull ??
+      '';
+  final picker =
+      pickFiles ??
+      ({
+        type = FileType.any,
+        allowMultiple = false,
+        initialDirectory,
+      }) => FilePicker.platform.pickFiles(
+        type: type,
+        allowMultiple: allowMultiple,
+        initialDirectory: initialDirectory,
+      );
+  final result = await picker(
+    type: FileType.any,
+    allowMultiple: false,
+    initialDirectory: root.isEmpty ? null : root,
+  );
+  final path = result?.files.firstOrNull?.path?.trim() ?? '';
+  if (path.isEmpty) return;
+  if (!isHtmlPreviewPath(path)) {
+    await opener.openFile(workspaceId, path);
+    return;
+  }
+  opener.openHtmlPreview(workspaceId, path);
 }

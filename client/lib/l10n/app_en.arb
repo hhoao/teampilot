@@ -3358,5 +3358,14 @@
   "chatFindClose": "Close find",
   "chatFindMatchCase": "Match case",
   "chatFindWholeWord": "Match whole word",
-  "chatFindUseRegex": "Use regular expression"
+  "chatFindUseRegex": "Use regular expression",
+  "htmlViewToggleEdit": "Edit",
+  "htmlViewTogglePreview": "Preview",
+  "htmlPreviewRefresh": "Refresh",
+  "htmlPreviewOpenWindow": "Open in Window",
+  "htmlPreviewOpenBrowser": "Open in System Browser",
+  "htmlPreviewErrorTitle": "Preview unavailable",
+  "htmlPreviewErrorBody": "The file could not be loaded for preview.",
+  "floatingWorkspaceOpenHtmlPreview": "Open HTML Preview",
+  "retry": "Retry"
 }

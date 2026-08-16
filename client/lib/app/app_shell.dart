@@ -146,6 +146,7 @@ import '../services/floating_workspace/floating_workspace_open_file.dart';
 import '../services/floating_workspace/floating_workspace_persistence.dart';
 import '../services/floating_workspace/surfaces/diff_preview_floating_surface.dart';
 import '../services/floating_workspace/surfaces/file_preview_floating_surface.dart';
+import '../services/floating_workspace/surfaces/html_preview_floating_surface.dart';
 import '../services/floating_workspace/surfaces/run_floating_surface.dart';
 import '../services/floating_workspace/surfaces/terminal_floating_surface.dart';
 import '../pages/home_workspace/workspace_chrome_commands.dart';
@@ -1295,11 +1296,22 @@ Future<AppShell> buildAppShell({
     );
   }
 
+  Future<void> openFloatingHtmlPreviewPicker() async {
+    final opener = workbenchEditorOpenerRef;
+    if (opener == null) return;
+    await pickAndOpenFloatingHtmlPreview(
+      floating: floatingWorkspaceCubit,
+      opener: opener,
+      workspaces: chatCubit.state.workspaces,
+    );
+  }
+
   registerFloatingWorkspaceCommands(
     commandBus,
     floatingWorkspaceCubit,
     onNewTerminal: focusOrCreateDefaultShell,
     onOpenFile: openFloatingFilePicker,
+    onOpenHtmlPreview: openFloatingHtmlPreviewPicker,
   );
   final workbenchCubit = WorkbenchCubit();
   registerLayoutCommands(
@@ -1662,6 +1674,8 @@ Future<AppShell> buildAppShell({
           }
         case WorkbenchTabKind.session:
           break;
+        case WorkbenchTabKind.htmlPreview:
+          break;
       }
     },
   );
@@ -1709,6 +1723,7 @@ Future<AppShell> buildAppShell({
       editor: editorCubit,
       floating: floatingWorkspaceCubit,
     ),
+    html: HtmlPreviewFloatingSurface(floating: floatingWorkspaceCubit),
     run: RunFloatingSurface(
       floating: floatingWorkspaceCubit,
       resolveCubit: (tabScopeId) {

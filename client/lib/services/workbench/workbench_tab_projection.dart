@@ -51,8 +51,10 @@ List<TabInfo> projectWorkbenchTabs({
           kind: WorkbenchTabKind.diff,
           filePath: tab.diffAbsolutePath,
         ),
-        WorkbenchTabKind.shell || WorkbenchTabKind.run => throw StateError(
-          'shell/run tabs are filtered before center-strip projection',
+        WorkbenchTabKind.shell ||
+        WorkbenchTabKind.run ||
+        WorkbenchTabKind.htmlPreview => throw StateError(
+          'shell/run/htmlPreview tabs are filtered before center-strip projection',
         ),
       },
   ];

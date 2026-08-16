@@ -7,6 +7,7 @@ import '../../cubits/workbench/workbench_cubit.dart';
 import '../../cubits/workbench/workbench_tab.dart';
 import '../../models/layout_preferences.dart';
 import '../editor/file_editor_theme.dart';
+import '../editor/html_view_mode_store.dart';
 import '../editor/markdown_view_mode_store.dart';
 import '../io/filesystem.dart';
 
@@ -20,6 +21,7 @@ class WorkbenchEditorOpener {
     required WorkbenchCubit workbench,
     required FloatingWorkspaceCubit floating,
     required this.markdownViewModes,
+    HtmlViewModeStore? htmlViewModes,
     required MarkdownOpenMode Function() readMarkdownOpenMode,
     bool Function()? readFilePreviewInFloating,
     ChatCubit? chat,
@@ -29,13 +31,15 @@ class WorkbenchEditorOpener {
        _readMarkdownOpenMode = readMarkdownOpenMode,
        _readFilePreviewInFloating =
            readFilePreviewInFloating ?? (() => true),
-       _chat = chat;
+       _chat = chat,
+       htmlViewModes = htmlViewModes ?? HtmlViewModeStore();
 
   final EditorCubit _editor;
   final WorkbenchCubit _workbench;
   final FloatingWorkspaceCubit _floating;
   final ChatCubit? _chat;
   final MarkdownViewModeStore markdownViewModes;
+  final HtmlViewModeStore htmlViewModes;
   final MarkdownOpenMode Function() _readMarkdownOpenMode;
   final bool Function() _readFilePreviewInFloating;
 
@@ -106,6 +110,19 @@ class WorkbenchEditorOpener {
     _chat?.dismissNewChat();
   }
 
+  /// Opens a floating rendered html preview tab (no editor bucket entry).
+  void openHtmlPreview(String workspaceId, String path) {
+    final normalized = path.trim();
+    if (normalized.isEmpty) return;
+    _floating.ensureOpen();
+    _floating.setActiveWorkspace(workspaceId);
+    _workbench.openFloating(
+      workspaceId,
+      WorkbenchTabId.htmlPreview(normalized),
+      activate: true,
+    );
+  }
+
   /// Opens HEAD-vs-working-tree diff for [absolutePath] (File↔Diff toggle).
   Future<void> openChangesDiff({
     required String workspaceId,
@@ -147,6 +164,7 @@ class WorkbenchEditorOpener {
         _editor.closeDiff(workspaceId, replaced.id);
       case WorkbenchTabKind.shell:
       case WorkbenchTabKind.run:
+      case WorkbenchTabKind.htmlPreview:
         break;
     }
   }

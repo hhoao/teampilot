@@ -18,6 +18,32 @@ void main() {
       );
     },
   );
+
+  test('withDefaults html surface registers preview empty action + lookup', () {
+    final registry = FloatingSurfaceRegistry.withDefaults(
+      file: _FakeSurface(id: 'filePreview', emptyLabel: 'openFile'),
+      terminal: _FakeSurface(id: 'terminal', emptyLabel: 'newTerminal'),
+      html: _FakeSurface(id: 'htmlPreview', emptyLabel: 'openHtmlPreview'),
+    );
+    expect(
+      registry.emptyActions.map((a) => a.commandId).toList(),
+      [
+        'floatingWorkspace.newTerminal',
+        'floatingWorkspace.openFile',
+        'floatingWorkspace.openHtmlPreview',
+      ],
+    );
+    expect(registry['htmlPreview'], isNotNull);
+    expect(registry['htmlPreview']?.id, 'htmlPreview');
+  });
+
+  test('withDefaults omits html surface when not provided', () {
+    final registry = FloatingSurfaceRegistry.withDefaults(
+      file: _FakeSurface(id: 'filePreview', emptyLabel: 'openFile'),
+      terminal: _FakeSurface(id: 'terminal', emptyLabel: 'newTerminal'),
+    );
+    expect(registry['htmlPreview'], isNull);
+  });
 }
 
 class _FakeSurface extends FloatingSurface {

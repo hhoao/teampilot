@@ -2920,5 +2920,14 @@
   "chatFindClose": "关闭查找",
   "chatFindMatchCase": "区分大小写",
   "chatFindWholeWord": "全字匹配",
-  "chatFindUseRegex": "使用正则表达式"
+  "chatFindUseRegex": "使用正则表达式",
+  "htmlViewToggleEdit": "编辑",
+  "htmlViewTogglePreview": "预览",
+  "htmlPreviewRefresh": "刷新",
+  "htmlPreviewOpenWindow": "在独立窗口打开",
+  "htmlPreviewOpenBrowser": "在系统浏览器打开",
+  "htmlPreviewErrorTitle": "预览不可用",
+  "htmlPreviewErrorBody": "无法加载文件进行预览。",
+  "floatingWorkspaceOpenHtmlPreview": "打开 HTML 预览",
+  "retry": "重试"
 }

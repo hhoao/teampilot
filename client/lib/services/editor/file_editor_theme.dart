@@ -153,6 +153,14 @@ bool isImagePreviewPath(String filePath) {
   return ext.isNotEmpty && kEditorImageExtensions.contains(ext);
 }
 
+const kHtmlPreviewExtensions = {'html', 'htm'};
+
+/// Whether [filePath] supports the in-app rendered HTML preview (Edit|Preview).
+bool isHtmlPreviewPath(String filePath) {
+  final ext = p.extension(filePath).replaceFirst('.', '').toLowerCase();
+  return ext.isNotEmpty && kHtmlPreviewExtensions.contains(ext);
+}
+
 bool isWorkbenchOpenableFilePath(String filePath) =>
     isEditorOpenableFilePath(filePath) || isImagePreviewPath(filePath);
 

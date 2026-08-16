@@ -281,6 +281,11 @@ class EditorCubit extends Cubit<EditorState> {
 
   String _handleKey(String workspaceId, String path) => '$workspaceId\x00$path';
 
+  /// Filesystem that opened [path] in [workspaceId] (work-plane), falling back
+  /// to the editor default fs.
+  Filesystem fsFor(String workspaceId, String path) =>
+      _fsByHandle[_handleKey(workspaceId, path)] ?? _fs;
+
   CodeLineEditingController? controllerFor(String workspaceId, String path) =>
       _handles[_handleKey(workspaceId, path)]?.controller;
 

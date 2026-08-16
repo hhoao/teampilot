@@ -20,6 +20,7 @@ import '../../services/commands/shortcut_focus.dart';
 import '../../services/editor/file_editor_ai_context.dart';
 import '../../services/editor/file_editor_theme.dart';
 import '../../services/editor/file_editor_toolbar.dart';
+import '../../services/editor/html_view_mode_store.dart';
 import '../../services/editor/markdown_preview_link_handler.dart';
 import '../../services/editor/markdown_view_mode_store.dart';
 import '../../services/editor_platform/document_session.dart';
@@ -33,7 +34,9 @@ import '../../widgets/scroll_cursor_lock.dart';
 import '../../widgets/workbench/code_editor_find_panel.dart';
 import '../../widgets/workbench/file_diff_surface_toggle.dart';
 import '../../widgets/workbench/markdown_view_mode_toggle.dart';
+import '../../widgets/workbench/html_view_mode_toggle.dart';
 import 'file_editor_image_preview.dart';
+import '../preview/html_preview_pane.dart';
 
 /// Shell fill for file preview — matches floating panel / window chrome
 /// ([ColorScheme.surface]) so toolbar, code, and markdown share one plane.
@@ -248,6 +251,7 @@ class _FileEditorToolbar extends StatelessWidget {
     final name = p.basename(path);
     final canToggleDiff = gitCubitForAbsolutePath(context, path) != null;
     final isMarkdown = isMarkdownEditorPath(path);
+    final isHtml = isHtmlPreviewPath(path);
     final opener = context.read<WorkbenchEditorOpener>();
     final insets = TpWidthValueScope.of<_FileEditorInsets>(context);
     final iconColor = Theme.of(context).colorScheme.tpIconMuted;
@@ -299,6 +303,19 @@ class _FileEditorToolbar extends StatelessWidget {
                   mode: opener.markdownViewModes.modeFor(path),
                   onModeChanged: (mode) =>
                       opener.markdownViewModes.setMode(path, mode),
+                );
+              },
+            ),
+          ],
+          if (isHtml) ...[
+            const SizedBox(width: 4),
+            ListenableBuilder(
+              listenable: opener.htmlViewModes,
+              builder: (context, _) {
+                return HtmlViewModeToggle(
+                  mode: opener.htmlViewModes.modeFor(path),
+                  onModeChanged: (mode) =>
+                      opener.htmlViewModes.setMode(path, mode),
                 );
               },
             ),
@@ -366,6 +383,25 @@ class _FileEditorBody extends StatelessWidget {
     final controller = editor.controllerFor(workspaceId, path);
     if (controller == null) {
       return Center(child: Text(l10n.editorNotReady));
+    }
+
+    if (isHtmlPreviewPath(path)) {
+      final opener = context.read<WorkbenchEditorOpener>();
+      return ListenableBuilder(
+        listenable: opener.htmlViewModes,
+        builder: (context, _) {
+          final mode = opener.htmlViewModes.modeFor(path);
+          if (mode == HtmlViewMode.preview) {
+            return HtmlPreviewPane(workspaceId: workspaceId, path: path);
+          }
+          return _CodeEditorPane(
+            workspaceId: workspaceId,
+            path: path,
+            controller: controller,
+            readOnly: model.readOnly,
+          );
+        },
+      );
     }
 
     if (!isMarkdownEditorPath(path)) {

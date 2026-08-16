@@ -7081,4 +7081,31 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get chatFindUseRegex => '使用正则表达式';
+
+  @override
+  String get htmlViewToggleEdit => '编辑';
+
+  @override
+  String get htmlViewTogglePreview => '预览';
+
+  @override
+  String get htmlPreviewRefresh => '刷新';
+
+  @override
+  String get htmlPreviewOpenWindow => '在独立窗口打开';
+
+  @override
+  String get htmlPreviewOpenBrowser => '在系统浏览器打开';
+
+  @override
+  String get htmlPreviewErrorTitle => '预览不可用';
+
+  @override
+  String get htmlPreviewErrorBody => '无法加载文件进行预览。';
+
+  @override
+  String get floatingWorkspaceOpenHtmlPreview => '打开 HTML 预览';
+
+  @override
+  String get retry => '重试';
 }

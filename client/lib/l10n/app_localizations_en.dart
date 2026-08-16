@@ -7368,4 +7368,32 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get chatFindUseRegex => 'Use regular expression';
+
+  @override
+  String get htmlViewToggleEdit => 'Edit';
+
+  @override
+  String get htmlViewTogglePreview => 'Preview';
+
+  @override
+  String get htmlPreviewRefresh => 'Refresh';
+
+  @override
+  String get htmlPreviewOpenWindow => 'Open in Window';
+
+  @override
+  String get htmlPreviewOpenBrowser => 'Open in System Browser';
+
+  @override
+  String get htmlPreviewErrorTitle => 'Preview unavailable';
+
+  @override
+  String get htmlPreviewErrorBody =>
+      'The file could not be loaded for preview.';
+
+  @override
+  String get floatingWorkspaceOpenHtmlPreview => 'Open HTML Preview';
+
+  @override
+  String get retry => 'Retry';
 }
