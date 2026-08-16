@@ -557,8 +557,8 @@ class SkillCubit extends Cubit<SkillState> {
     final results = await Future.wait(
       _enabledSources.map((s) async {
         final loaded = state.discoveryPages[s.id] ?? 0;
-        if (loaded == 0) {
-          nextPages[s.id] = 0;
+        final hasNext = state.discoveryHasNext[s.id] ?? false;
+        if (loaded == 0 || !hasNext) {
           return (
             source: s,
             page: SkillRegistryPage(entries: const [], hasNext: false),
@@ -566,7 +566,6 @@ class SkillCubit extends Cubit<SkillState> {
           );
         }
         final next = loaded + 1;
-        nextPages[s.id] = next;
         try {
           final page = await s.search(SkillRegistryQuery(
             query: last.query,
@@ -577,11 +576,15 @@ class SkillCubit extends Cubit<SkillState> {
             language: last.language,
             sortBy: last.sortBy,
           ));
+          nextPages[s.id] = next;
           return (source: s, page: page, error: null);
         } catch (e) {
           return (
             source: s,
-            page: SkillRegistryPage(entries: const [], hasNext: false),
+            page: SkillRegistryPage(
+              entries: const [],
+              hasNext: state.discoveryHasNext[s.id] ?? false,
+            ),
             error: e is MarketplaceQuotaException
                 ? marketplaceQuotaErrorKey
                 : '$e',
@@ -684,18 +687,22 @@ class SkillCubit extends Cubit<SkillState> {
   }
 
   Future<void> updateRegistrySource(SkillRegistrySourceConfig cfg) async {
+    // Capture pre-update state: only sources that were ALREADY enabled git
+    // sources skip the background sync. Computed before `_applyConfig` because
+    // that rebuilds `state.sources` from the new config (post-apply it would
+    // always be a git source, making the guard dead code).
+    var oldIsGit = false;
+    for (final s in state.sources) {
+      if (s.id == cfg.id && s is GitRepoRegistrySource && s.enabled) {
+        oldIsGit = true;
+        break;
+      }
+    }
     final next = SkillRegistriesConfig(sources: [
       for (final s in state.registriesConfig.sources)
         s.id == cfg.id ? cfg : s,
     ]);
     await _applyConfig(next);
-    var oldIsGit = false;
-    for (final s in state.sources) {
-      if (s.id == cfg.id && s is GitRepoRegistrySource) {
-        oldIsGit = true;
-        break;
-      }
-    }
     if (cfg.kind == SkillRegistryKind.gitRepo && cfg.enabled && !oldIsGit) {
       unawaited(_syncReposInBackground([
         SkillRepo(
