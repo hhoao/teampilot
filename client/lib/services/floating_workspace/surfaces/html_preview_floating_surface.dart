@@ -4,7 +4,6 @@ import 'package:path/path.dart' as p;
 import '../../../cubits/floating_workspace/floating_workspace_cubit.dart';
 import '../../../models/floating_workspace_tab.dart';
 import '../../../pages/preview/html_preview_pane.dart';
-import '../../commands/command_ids.dart';
 import '../floating_surface.dart';
 
 /// Floating surface that hosts an embedded rendered html preview tab.
@@ -18,11 +17,7 @@ class HtmlPreviewFloatingSurface extends FloatingSurface {
   String get id => 'htmlPreview';
 
   @override
-  FloatingEmptyAction? get emptyAction => const FloatingEmptyAction(
-    commandId: CommandIds.floatingOpenHtmlPreview,
-    labelKey: 'openHtmlPreview',
-    icon: Icons.preview_outlined,
-  );
+  FloatingEmptyAction? get emptyAction => null;
 
   @override
   bool get allowMultipleTabs => true;

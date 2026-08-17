@@ -3361,11 +3361,9 @@
   "chatFindUseRegex": "Use regular expression",
   "htmlViewToggleEdit": "Edit",
   "htmlViewTogglePreview": "Preview",
-  "htmlPreviewRefresh": "Refresh",
-  "htmlPreviewOpenWindow": "Open in Window",
   "htmlPreviewOpenBrowser": "Open in System Browser",
   "htmlPreviewErrorTitle": "Preview unavailable",
   "htmlPreviewErrorBody": "The file could not be loaded for preview.",
-  "floatingWorkspaceOpenHtmlPreview": "Open HTML Preview",
+  "htmlPreviewOpenedInBrowser": "Preview opened in your system browser. Use this panel to open it again.",
   "retry": "Retry"
 }

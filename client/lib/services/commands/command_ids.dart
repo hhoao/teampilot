@@ -42,7 +42,6 @@ abstract final class CommandIds {
   static const String floatingMinimize = 'floatingWorkspace.minimize';
   static const String floatingNewTerminal = 'floatingWorkspace.newTerminal';
   static const String floatingOpenFile = 'floatingWorkspace.openFile';
-  static const String floatingOpenHtmlPreview = 'floatingWorkspace.openHtmlPreview';
 
   // Zoom
   static const String zoomIn = 'workbench.zoom.in';

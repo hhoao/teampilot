@@ -11,9 +11,9 @@ import '../commands/command_ids.dart';
 /// constructed (see `buildAppShell`). Handlers stay registered for the app's
 /// lifetime.
 ///
-/// [onNewTerminal] / [onOpenFile] / [onOpenHtmlPreview] are injected so
-/// shell/file/html-preview openers can be wired later (or remain null —
-/// handlers still [FloatingWorkspaceCubit.ensureOpen]).
+/// [onNewTerminal] / [onOpenFile] are injected so shell/file openers can be
+/// wired later (or remain null — handlers still
+/// [FloatingWorkspaceCubit.ensureOpen]).
 ///
 /// [CommandIds.togglePanel] stays on the layout registrar and should call the
 /// same new-terminal path (ensureOpen + shell create) — it aliases this UX.
@@ -22,7 +22,6 @@ void registerFloatingWorkspaceCommands(
   FloatingWorkspaceCubit floating, {
   Future<void> Function()? onNewTerminal,
   Future<void> Function()? onOpenFile,
-  Future<void> Function()? onOpenHtmlPreview,
 }) {
   bus.register(CommandIds.floatingToggle, floating.toggle);
   bus.register(CommandIds.floatingMaximize, () {
@@ -44,11 +43,6 @@ void registerFloatingWorkspaceCommands(
   bus.register(CommandIds.floatingOpenFile, () {
     floating.ensureOpen();
     final handler = onOpenFile;
-    if (handler != null) unawaited(handler());
-  });
-  bus.register(CommandIds.floatingOpenHtmlPreview, () {
-    floating.ensureOpen();
-    final handler = onOpenHtmlPreview;
     if (handler != null) unawaited(handler());
   });
 }

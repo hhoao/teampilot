@@ -649,7 +649,6 @@ class _PanelChromeFrameState extends State<_PanelChromeFrame> {
     return switch (labelKey) {
       'newTerminal' => l10n.floatingWorkspaceNewTerminal,
       'openFile' => l10n.floatingWorkspaceOpenFile,
-      'openHtmlPreview' => l10n.floatingWorkspaceOpenHtmlPreview,
       'minimize' => l10n.floatingWorkspaceMinimize,
       _ => labelKey,
     };

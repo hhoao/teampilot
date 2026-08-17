@@ -56,13 +56,6 @@ dependencies:
   permission_handler: ^12.0.1
   speech_to_text: ^7.0.0
   url_launcher: ^6.3.2
-  webview_flutter: ^4.13.0
-  webview_win_floating: ^3.0.0
-  desktop_webview_window: ^0.3.0
-  zikzak_inappwebview: 5.0.0
-  # Linux platform impl (vendored below); direct dep so the host can reach
-  # the Linux controller's textureId patch.
-  zikzak_inappwebview_linux: 5.0.0
   infinite_scroll_pagination: ^5.1.1
   http: ^1.6.0
   package_info_plus: ^8.3.0
@@ -98,13 +91,6 @@ dependency_overrides:
     path: packages/flutter_alacritty/packages/rust_lib_flutter_alacritty
   panes:
     path: packages/panes
-  # Vendored: upstream zikzak_inappwebview_linux has no native webview
-  # dispose path (web_views table only grows), so each preview tab leaks a
-  # permanent offscreen WebKitGTK instance and the second open freezes the
-  # app. Patch adds a 'dispose' method channel call. Keep in sync with
-  # pub.dev 5.0.0.
-  zikzak_inappwebview_linux:
-    path: packages/zikzak_inappwebview_linux
 
 dev_dependencies:
   flutter_test:

@@ -1296,22 +1296,11 @@ Future<AppShell> buildAppShell({
     );
   }
 
-  Future<void> openFloatingHtmlPreviewPicker() async {
-    final opener = workbenchEditorOpenerRef;
-    if (opener == null) return;
-    await pickAndOpenFloatingHtmlPreview(
-      floating: floatingWorkspaceCubit,
-      opener: opener,
-      workspaces: chatCubit.state.workspaces,
-    );
-  }
-
   registerFloatingWorkspaceCommands(
     commandBus,
     floatingWorkspaceCubit,
     onNewTerminal: focusOrCreateDefaultShell,
     onOpenFile: openFloatingFilePicker,
-    onOpenHtmlPreview: openFloatingHtmlPreviewPicker,
   );
   final workbenchCubit = WorkbenchCubit();
   registerLayoutCommands(

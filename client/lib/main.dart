@@ -81,7 +81,6 @@ import 'services/terminal/workspace_terminal_run_service.dart';
 import 'services/notification/desktop_system_notifier.dart';
 import 'services/notification/notification_recorder.dart';
 import 'services/notification/session_idle_notification_tap.dart';
-import 'services/preview/zikzak_webview_host.dart';
 import 'widgets/notification/session_idle_notification_listener.dart';
 import 'widgets/ssh/home_ssh_profile_binder.dart';
 import 'widgets/ssh/ssh_connection_binder.dart';
@@ -1046,19 +1045,6 @@ class _TeamPilotMaterialAppState extends State<_TeamPilotMaterialApp> {
               // frameless window can still be resized from its borders.
               if (!Platform.isAndroid) {
                 content = _DragToResizeWrapper(child: content);
-              }
-              if (Platform.isLinux) {
-                // Shared Linux preview webview: WebKitGTK cannot safely
-                // recreate webviews inside one GTK process (second recreate
-                // freezes the app), so a single app-lifetime host owns the
-                // webview and preview panes mirror its texture.
-                content = Stack(
-                  textDirection: TextDirection.ltr,
-                  children: [
-                    content,
-                    const ZikzakWebViewHost(),
-                  ],
-                );
               }
               return content;
             },

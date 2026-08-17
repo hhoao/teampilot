@@ -7089,12 +7089,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get htmlViewTogglePreview => '预览';
 
   @override
-  String get htmlPreviewRefresh => '刷新';
-
-  @override
-  String get htmlPreviewOpenWindow => '在独立窗口打开';
-
-  @override
   String get htmlPreviewOpenBrowser => '在系统浏览器打开';
 
   @override
@@ -7104,7 +7098,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get htmlPreviewErrorBody => '无法加载文件进行预览。';
 
   @override
-  String get floatingWorkspaceOpenHtmlPreview => '打开 HTML 预览';
+  String get htmlPreviewOpenedInBrowser => '预览已在系统浏览器中打开，此面板可随时重新打开。';
 
   @override
   String get retry => '重试';

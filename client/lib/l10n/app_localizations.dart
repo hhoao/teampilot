@@ -13190,18 +13190,6 @@ abstract class AppLocalizations {
   /// **'Preview'**
   String get htmlViewTogglePreview;
 
-  /// No description provided for @htmlPreviewRefresh.
-  ///
-  /// In en, this message translates to:
-  /// **'Refresh'**
-  String get htmlPreviewRefresh;
-
-  /// No description provided for @htmlPreviewOpenWindow.
-  ///
-  /// In en, this message translates to:
-  /// **'Open in Window'**
-  String get htmlPreviewOpenWindow;
-
   /// No description provided for @htmlPreviewOpenBrowser.
   ///
   /// In en, this message translates to:
@@ -13220,11 +13208,11 @@ abstract class AppLocalizations {
   /// **'The file could not be loaded for preview.'**
   String get htmlPreviewErrorBody;
 
-  /// No description provided for @floatingWorkspaceOpenHtmlPreview.
+  /// No description provided for @htmlPreviewOpenedInBrowser.
   ///
   /// In en, this message translates to:
-  /// **'Open HTML Preview'**
-  String get floatingWorkspaceOpenHtmlPreview;
+  /// **'Preview opened in your system browser. Use this panel to open it again.'**
+  String get htmlPreviewOpenedInBrowser;
 
   /// No description provided for @retry.
   ///

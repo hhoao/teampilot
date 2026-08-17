@@ -7376,12 +7376,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get htmlViewTogglePreview => 'Preview';
 
   @override
-  String get htmlPreviewRefresh => 'Refresh';
-
-  @override
-  String get htmlPreviewOpenWindow => 'Open in Window';
-
-  @override
   String get htmlPreviewOpenBrowser => 'Open in System Browser';
 
   @override
@@ -7392,7 +7386,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'The file could not be loaded for preview.';
 
   @override
-  String get floatingWorkspaceOpenHtmlPreview => 'Open HTML Preview';
+  String get htmlPreviewOpenedInBrowser =>
+      'Preview opened in your system browser. Use this panel to open it again.';
 
   @override
   String get retry => 'Retry';
