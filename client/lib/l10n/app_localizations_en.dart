@@ -3716,6 +3716,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get skillsRegistryGoSetKey => 'Set API key in Registries';
 
   @override
+  String get skillsRegistryRetry => 'Retry';
+
+  @override
+  String get skillsRegistrySourceExists =>
+      'This registry source already exists';
+
+  @override
   String get skillsRegistryEditTitle => 'Edit registry source';
 
   @override
@@ -3920,6 +3927,13 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get skillsDiscoveryEmptyHint =>
       'Add a repo or try skills.sh to find skills.';
+
+  @override
+  String get skillsDiscoveryErrorTitle => 'Discovery failed';
+
+  @override
+  String get skillsMpQuotaHint =>
+      'SkillsMP anonymous quota (50/day) exhausted. Set a free API key to continue.';
 
   @override
   String get skillsAdd => 'Add';

@@ -18,6 +18,7 @@ class _FakeSource implements SkillRegistrySource {
   _FakeSource(this.id);
   @override
   final String id;
+  int searchCount = 0;
   @override
   String get label => id;
   @override
@@ -28,21 +29,24 @@ class _FakeSource implements SkillRegistrySource {
   MarketplaceCapabilities get capabilities => const MarketplaceCapabilities();
 
   @override
-  Future<SkillRegistryPage> search(SkillRegistryQuery q) async => SkillRegistryPage(
-    entries: [
-      MarketplaceSkill(
-        key: '$id-skill-1',
-        name: '$id-skill-1',
-        description: 'd',
-        repoOwner: 'o',
-        repoName: 'r',
-        directory: '$id/1',
-        githubUrl: 'https://github.com/o/r',
-      ),
-    ],
-    hasNext: false,
-    total: 1,
-  );
+  Future<SkillRegistryPage> search(SkillRegistryQuery q) async {
+    searchCount++;
+    return SkillRegistryPage(
+      entries: [
+        MarketplaceSkill(
+          key: '$id-skill-1',
+          name: '$id-skill-1',
+          description: 'd',
+          repoOwner: 'o',
+          repoName: 'r',
+          directory: '$id/1',
+          githubUrl: 'https://github.com/o/r',
+        ),
+      ],
+      hasNext: false,
+      total: 1,
+    );
+  }
 
   @override
   Future<void> setApiKey(String key) async {}
@@ -54,8 +58,19 @@ class _FakeSource implements SkillRegistrySource {
 class _QuotaSource extends _FakeSource {
   _QuotaSource(super.id);
   @override
-  Future<SkillRegistryPage> search(SkillRegistryQuery q) async =>
-      throw MarketplaceQuotaException('quota');
+  Future<SkillRegistryPage> search(SkillRegistryQuery q) async {
+    searchCount++;
+    throw MarketplaceQuotaException('quota');
+  }
+}
+
+class _ErrorSource extends _FakeSource {
+  _ErrorSource(super.id);
+  @override
+  Future<SkillRegistryPage> search(SkillRegistryQuery q) async {
+    searchCount++;
+    throw MarketplaceFetchException('network down');
+  }
 }
 
 void main() {
@@ -115,11 +130,34 @@ void main() {
     expect(find.text('beta-skill-1'), findsOneWidget);
   });
 
-  testWidgets('quota error shows empty state with registries action', (tester) async {
-    final cubit = buildCubit([_QuotaSource('quota')]);
+  testWidgets('quota error shows error card with registries action + retry', (
+    tester,
+  ) async {
+    final source = _QuotaSource('quota');
+    final cubit = buildCubit([source]);
     await tester.pumpWidget(wrap(cubit));
     await tester.pumpAndSettle();
-    expect(find.text('No skills discovered'), findsOneWidget);
+    expect(find.text('No skills discovered'), findsNothing);
     expect(find.text('Set API key in Registries'), findsOneWidget);
+    expect(find.text('Retry'), findsOneWidget);
+    expect(source.searchCount, 1);
+
+    await tester.tap(find.text('Retry'));
+    await tester.pumpAndSettle();
+    expect(source.searchCount, 2); // retry re-issues the search
+    expect(find.text('Set API key in Registries'), findsOneWidget);
+  });
+
+  testWidgets('generic error shows error card with retry, no empty state', (
+    tester,
+  ) async {
+    final source = _ErrorSource('err');
+    final cubit = buildCubit([source]);
+    await tester.pumpWidget(wrap(cubit));
+    await tester.pumpAndSettle();
+    expect(find.text('No skills discovered'), findsNothing);
+    expect(find.text('Set API key in Registries'), findsNothing);
+    expect(find.text('Retry'), findsOneWidget);
+    expect(find.textContaining('network down'), findsOneWidget);
   });
 }

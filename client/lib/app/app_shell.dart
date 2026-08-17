@@ -964,7 +964,7 @@ Future<AppShell> buildAppShell({
   );
 
   final skillRegistryConfigService = SkillRegistryConfigService(
-    legacySkillsMpKeyReader: () async => null,
+    legacySkillsMpKeyReader: () => appSettings.loadSkillsMpApiKey(),
   );
   final skillRegistryConfig = await skillRegistryConfigService.load();
   skillCubit = SkillCubit(

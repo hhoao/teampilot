@@ -23,6 +23,10 @@ abstract class AppSettingsRepository {
 
   Future<Map<AiFeatureId, AiFeatureSetting>> loadAiFeatureSettings();
   Future<void> saveAiFeatureSetting(AiFeatureId id, AiFeatureSetting setting);
+
+  /// Legacy SkillsMP API key, kept for one-time migration to skills
+  /// registry sources. Read-only: the write path was removed.
+  Future<String?> loadSkillsMpApiKey();
 }
 
 class SharedPrefsAppSettingsRepository implements AppSettingsRepository {
@@ -34,6 +38,7 @@ class SharedPrefsAppSettingsRepository implements AppSettingsRepository {
   static const _autoCheckUpdatesKey = 'autoCheckUpdates';
   static const _skippedUpdateVersionKey = 'skippedUpdateVersion';
   static const _aiFeaturesKey = 'aiFeatures';
+  static const _skillsMpApiKey = 'skillsMpApiKey';
 
   final SharedPreferences _preferences;
 
@@ -142,6 +147,13 @@ class SharedPrefsAppSettingsRepository implements AppSettingsRepository {
     await _writeMap(current);
   }
 
+  @override
+  Future<String?> loadSkillsMpApiKey() async {
+    final value = _readMap()[_skillsMpApiKey];
+    if (value is String && value.isNotEmpty) return value;
+    return null;
+  }
+
   Future<void> _writeMap(Map<String, Object?> current) async {
     if (current.isEmpty) {
       await _preferences.remove(storageKey);
@@ -170,15 +182,18 @@ class InMemoryAppSettingsRepository implements AppSettingsRepository {
     bool hasCompletedOnboarding = false,
     bool autoCheckUpdatesEnabled = true,
     String? skippedUpdateVersion,
+    String? skillsMpApiKey,
   }) : _llmConfigPathOverride = llmConfigPathOverride,
        _hasCompletedOnboarding = hasCompletedOnboarding,
        _autoCheckUpdatesEnabled = autoCheckUpdatesEnabled,
-       _skippedUpdateVersion = skippedUpdateVersion;
+       _skippedUpdateVersion = skippedUpdateVersion,
+       _skillsMpApiKey = skillsMpApiKey;
 
   String? _llmConfigPathOverride;
   bool _hasCompletedOnboarding;
   bool _autoCheckUpdatesEnabled;
   String? _skippedUpdateVersion;
+  final String? _skillsMpApiKey;
 
   @override
   Future<String?> loadLlmConfigPathOverride() async => _llmConfigPathOverride;
@@ -231,4 +246,7 @@ class InMemoryAppSettingsRepository implements AppSettingsRepository {
   ) async {
     _aiFeatures[id] = setting;
   }
+
+  @override
+  Future<String?> loadSkillsMpApiKey() async => _skillsMpApiKey;
 }

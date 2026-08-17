@@ -8,20 +8,6 @@ import 'package:teampilot/services/skill/marketplace/skill_marketplace_source.da
 import 'package:teampilot/services/skill/registry/api_registry_source.dart';
 import 'package:teampilot/services/skill/registry/skill_registry_source.dart';
 
-ApiRegistrySource _source(SkillRegistryProtocol protocol, {String? token, String? browseQuery, String baseUrl = 'https://example.test'}) =>
-    ApiRegistrySource(
-      SkillRegistrySourceConfig(
-        id: protocol == SkillRegistryProtocol.skillsMp ? 'skillsMp' : 'skillsSh',
-        kind: SkillRegistryKind.api,
-        label: 't',
-        protocol: protocol,
-        baseUrl: baseUrl,
-        apiToken: token,
-        browseQuery: browseQuery,
-      ),
-      client: http.Client(),
-    );
-
 void main() {
   test('skillsSh protocol: browse uses browseQuery, query uses q', () async {
     final requests = <Uri>[];
@@ -59,7 +45,7 @@ void main() {
     expect(browse.entries.single.name, 'ai-sdk');
     expect(browse.entries.single.repoOwner, 'vercel');
 
-    final q = await src.search(const SkillRegistryQuery(query: 'claude', page: 2, limit: 10));
+    await src.search(const SkillRegistryQuery(query: 'claude', page: 2, limit: 10));
     expect(requests.last.queryParameters['q'], 'claude');
     expect(requests.last.queryParameters['offset'], '10');
   });

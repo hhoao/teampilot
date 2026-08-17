@@ -79,18 +79,20 @@ class _SkillRegistriesSectionState extends State<SkillRegistriesSection> {
       context: context,
       builder: (ctx) => _RegistryEditDialog(
         config: _configOf(source),
-        onTest: () async {
+        onTest: (candidate) async {
           final cubit = context.read<SkillCubit>();
-          final ok = await cubit.testRegistryConnection(source.id);
-          if (!ctx.mounted) return ok;
+          final err = await cubit.testRegistryConnection(candidate);
+          if (!ctx.mounted) return err;
           AppToast.show(
             ctx,
-            message: ok
+            message: err == null
                 ? ctx.l10n.skillsRegistryTestOk
-                : ctx.l10n.skillsRegistryTestFailed('connection'),
-            variant: ok ? TpToastVariant.success : TpToastVariant.error,
+                : ctx.l10n.skillsRegistryTestFailed(err),
+            variant: err == null
+                ? TpToastVariant.success
+                : TpToastVariant.error,
           );
-          return ok;
+          return err;
         },
       ),
     );
@@ -175,7 +177,11 @@ class _SkillRegistriesSectionState extends State<SkillRegistriesSection> {
     final parts = saved.split('/');
     final id = 'git-${parts[0]}-${parts[1]}';
     if (context.read<SkillCubit>().state.registriesConfig.byId(id) != null) {
-      AppToast.show(context, message: l10n.skillsRepoInvalidUrl, variant: TpToastVariant.error);
+      AppToast.show(
+        context,
+        message: l10n.skillsRegistrySourceExists,
+        variant: TpToastVariant.error,
+      );
       return;
     }
     await context.read<SkillCubit>().addRegistrySource(
@@ -521,7 +527,7 @@ class _RegistryRow extends StatelessWidget {
 class _RegistryEditDialog extends StatefulWidget {
   const _RegistryEditDialog({required this.config, required this.onTest});
   final SkillRegistrySourceConfig config;
-  final Future<bool> Function() onTest;
+  final Future<String?> Function(SkillRegistrySourceConfig candidate) onTest;
 
   @override
   State<_RegistryEditDialog> createState() => _RegistryEditDialogState();
@@ -563,41 +569,42 @@ class _RegistryEditDialogState extends State<_RegistryEditDialog> {
   Future<void> _test() async {
     setState(() => _testing = true);
     try {
-      await widget.onTest();
+      await widget.onTest(_buildCandidate());
     } finally {
       if (mounted) setState(() => _testing = false);
     }
   }
 
-  void _save() {
+  /// Builds the candidate config from the current form fields, sharing the
+  /// same logic as [_save] for both API and git sources.
+  SkillRegistrySourceConfig _buildCandidate() {
     if (_isApi) {
       final label = _labelCtl.text.trim();
       final url = _urlCtl.text.trim();
       final token = _tokenCtl.text.trim();
       final browse = _browseCtl.text.trim();
-      Navigator.pop(
-        context,
-        widget.config.copyWith(
-          label: label.isEmpty ? widget.config.label : label,
-          baseUrl: url,
-          clearBaseUrl: url.isEmpty,
-          apiToken: token,
-          clearApiToken: token.isEmpty,
-          browseQuery: browse,
-          clearBrowseQuery: browse.isEmpty,
-        ),
-      );
-    } else {
-      Navigator.pop(
-        context,
-        widget.config.copyWith(
-          label: _labelCtl.text.trim().isEmpty ? widget.config.label : _labelCtl.text.trim(),
-          gitOwner: _ownerCtl.text.trim(),
-          gitName: _nameCtl.text.trim(),
-          gitBranch: _branchCtl.text.trim().isEmpty ? 'main' : _branchCtl.text.trim(),
-        ),
+      return widget.config.copyWith(
+        label: label.isEmpty ? widget.config.label : label,
+        baseUrl: url,
+        clearBaseUrl: url.isEmpty,
+        apiToken: token,
+        clearApiToken: token.isEmpty,
+        browseQuery: browse,
+        clearBrowseQuery: browse.isEmpty,
       );
     }
+    return widget.config.copyWith(
+      label: _labelCtl.text.trim().isEmpty
+          ? widget.config.label
+          : _labelCtl.text.trim(),
+      gitOwner: _ownerCtl.text.trim(),
+      gitName: _nameCtl.text.trim(),
+      gitBranch: _branchCtl.text.trim().isEmpty ? 'main' : _branchCtl.text.trim(),
+    );
+  }
+
+  void _save() {
+    Navigator.pop(context, _buildCandidate());
   }
 
   @override
@@ -655,7 +662,7 @@ class _RegistryEditDialogState extends State<_RegistryEditDialog> {
                       ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
                       : Text(l10n.mcpRepoTestConnection),
                 ),
-              FilledButton(onPressed: _save, child: Text(l10n.save)),
+              FilledButton(onPressed: _testing ? null : _save, child: Text(l10n.save)),
             ],
           ),
         ],

@@ -1690,6 +1690,8 @@
     }
   },
   "skillsRegistryGoSetKey": "Set API key in Registries",
+  "skillsRegistryRetry": "Retry",
+  "skillsRegistrySourceExists": "This registry source already exists",
   "skillsRegistryEditTitle": "Edit registry source",
   "skillsRegistryRemoveTitle": "Reset registry",
   "skillsRegistryResetConfirm": "Reset {name} to defaults?",
@@ -1829,6 +1831,8 @@
   "skillsZipNoSkills": "No SKILL.md found in the archive.",
   "skillsDiscoveryEmpty": "No skills discovered",
   "skillsDiscoveryEmptyHint": "Add a repo or try skills.sh to find skills.",
+  "skillsDiscoveryErrorTitle": "Discovery failed",
+  "skillsMpQuotaHint": "SkillsMP anonymous quota (50/day) exhausted. Set a free API key to continue.",
   "skillsAdd": "Add",
   "skillsRemove": "Remove",
   "skillsEnabled": "Enabled",

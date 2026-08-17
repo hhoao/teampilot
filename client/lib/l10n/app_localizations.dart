@@ -6693,6 +6693,18 @@ abstract class AppLocalizations {
   /// **'Set API key in Registries'**
   String get skillsRegistryGoSetKey;
 
+  /// No description provided for @skillsRegistryRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get skillsRegistryRetry;
+
+  /// No description provided for @skillsRegistrySourceExists.
+  ///
+  /// In en, this message translates to:
+  /// **'This registry source already exists'**
+  String get skillsRegistrySourceExists;
+
   /// No description provided for @skillsRegistryEditTitle.
   ///
   /// In en, this message translates to:
@@ -7046,6 +7058,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Add a repo or try skills.sh to find skills.'**
   String get skillsDiscoveryEmptyHint;
+
+  /// No description provided for @skillsDiscoveryErrorTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Discovery failed'**
+  String get skillsDiscoveryErrorTitle;
+
+  /// No description provided for @skillsMpQuotaHint.
+  ///
+  /// In en, this message translates to:
+  /// **'SkillsMP anonymous quota (50/day) exhausted. Set a free API key to continue.'**
+  String get skillsMpQuotaHint;
 
   /// No description provided for @skillsAdd.
   ///

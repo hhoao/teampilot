@@ -32,9 +32,9 @@ class GitRepoRegistrySource implements SkillRegistrySource {
   MarketplaceCapabilities get capabilities => const MarketplaceCapabilities();
 
   SkillRepo get gitRepo => SkillRepo(
-    owner: (config.gitOwner as String?) ?? '',
-    name: (config.gitName as String?) ?? '',
-    branch: (config.gitBranch as String?) ?? 'main',
+    owner: config.gitOwner ?? '',
+    name: config.gitName ?? '',
+    branch: config.gitBranch ?? 'main',
     enabled: config.enabled,
   );
 

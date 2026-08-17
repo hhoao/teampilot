@@ -19,7 +19,6 @@ class _FakeRegistry implements SkillRegistrySource {
     this.total, {
     this.pageSize = 2,
     this.quota = false,
-    this.failTestConnection = false,
   });
 
   @override
@@ -27,7 +26,6 @@ class _FakeRegistry implements SkillRegistrySource {
   final int total;
   final int pageSize;
   final bool quota;
-  final bool failTestConnection;
 
   /// When true, the next `search` call throws and the flag resets.
   bool failNext = false;
@@ -72,9 +70,7 @@ class _FakeRegistry implements SkillRegistrySource {
   }
 
   @override
-  Future<void> testConnection() async {
-    if (failTestConnection) throw StateError('connection failed');
-  }
+  Future<void> testConnection() async {}
 
   @override
   Future<void> setApiKey(String key) async {}
@@ -268,9 +264,13 @@ void main() {
     expect(cubit.state.registriesConfig.byId('git-o-r')!.enabled, isTrue);
     expect(syncNowCalls, 0); // background sync goes through the repo cache
 
-    // The source's syncNow closure is wired to the connection test path.
-    expect(await cubit.testRegistryConnection('git-o-r'), isTrue);
-    expect(syncNowCalls, 1);
+    // The probe is built from the candidate config: its git syncNow goes
+    // through the repo cache (counted here), not the source closure.
+    final err = await cubit.testRegistryConnection(
+      cubit.state.registriesConfig.byId('git-o-r')!,
+    );
+    expect(err, isNull);
+    expect(cache.syncCalls, 2); // toggle sync (1) + probe sync (2)
   });
 
   test('unifiedSetApiKey persists trimmed key via config service', () async {
@@ -297,13 +297,33 @@ void main() {
     expect(cubit.state.registriesConfig.byId('missing'), isNull);
   });
 
-  test('testRegistryConnection returns bool per source', () async {
+  test('testRegistryConnection probes the candidate, not persisted state', () async {
     final a = _FakeRegistry('a', 3);
-    final b = _FakeRegistry('b', 3, failTestConnection: true);
-    final cubit = _cubit([a, b], cfg, repo);
-    expect(await cubit.testRegistryConnection('a'), isTrue);
-    expect(await cubit.testRegistryConnection('b'), isFalse);
-    expect(cubit.state.errorMessage, contains('connection failed'));
-    expect(await cubit.testRegistryConnection('nope'), isFalse);
+    final cubit = _cubit([a], cfg, repo);
+
+    // Unknown id -> short error string, no errorMessage emitted.
+    final missing = await cubit.testRegistryConnection(
+      const SkillRegistrySourceConfig(
+        id: 'nope',
+        kind: SkillRegistryKind.api,
+        label: 'nope',
+      ),
+    );
+    expect(missing, isNotNull);
+    expect(cubit.state.errorMessage, isNull);
+
+    // A real API probe against an unreachable base URL surfaces the error
+    // string back to the dialog instead of emitting errorMessage (avoids
+    // double toasts with the management-page listener).
+    final err = await cubit.testRegistryConnection(
+      const SkillRegistrySourceConfig(
+        id: 'a',
+        kind: SkillRegistryKind.api,
+        label: 'a',
+        baseUrl: 'http://127.0.0.1:1',
+      ),
+    );
+    expect(err, isNotNull);
+    expect(cubit.state.errorMessage, isNull);
   });
 }

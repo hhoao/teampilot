@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:teampilot/repositories/app_settings_repository.dart';
@@ -125,6 +127,32 @@ void main() {
 
       expect(await repo.loadLlmConfigPathOverride(), '/custom/llm.json');
       expect(await repo.loadHasCompletedOnboarding(), isTrue);
+    });
+  });
+
+  group('AppSettingsRepository.skillsMpApiKey (legacy read path)', () {
+    test('returns null when nothing is stored', () async {
+      final prefs = await SharedPreferences.getInstance();
+      final repo = SharedPrefsAppSettingsRepository(prefs);
+
+      expect(await repo.loadSkillsMpApiKey(), isNull);
+    });
+
+    test('SharedPrefs seeds the legacy key in the settings map', () async {
+      SharedPreferences.setMockInitialValues({
+        SharedPrefsAppSettingsRepository.storageKey: jsonEncode({
+          'skillsMpApiKey': 'legacy-token',
+        }),
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final repo = SharedPrefsAppSettingsRepository(prefs);
+
+      expect(await repo.loadSkillsMpApiKey(), 'legacy-token');
+    });
+
+    test('InMemory seed is readable', () async {
+      final repo = InMemoryAppSettingsRepository(skillsMpApiKey: 'sk_seed');
+      expect(await repo.loadSkillsMpApiKey(), 'sk_seed');
     });
   });
 }

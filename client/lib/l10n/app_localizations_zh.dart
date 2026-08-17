@@ -3569,6 +3569,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get skillsRegistryGoSetKey => '去注册中心设置 API Key';
 
   @override
+  String get skillsRegistryRetry => '重试';
+
+  @override
+  String get skillsRegistrySourceExists => '该注册源已存在';
+
+  @override
   String get skillsRegistryEditTitle => '编辑注册源';
 
   @override
@@ -3769,6 +3775,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get skillsDiscoveryEmptyHint => '添加仓库或试用 skills.sh 来发现 Skill。';
+
+  @override
+  String get skillsDiscoveryErrorTitle => '发现失败';
+
+  @override
+  String get skillsMpQuotaHint => 'SkillsMP 匿名额度（每天 50 次）已用完。设置免费 API Key 后继续。';
 
   @override
   String get skillsAdd => '添加';

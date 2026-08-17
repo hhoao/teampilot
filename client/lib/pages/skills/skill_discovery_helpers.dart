@@ -108,6 +108,7 @@ typedef SkillUnifiedGridSlice = ({
   bool discoveryLoading,
   bool anyHasNext,
   Set<String> busyIds,
+  String? discoveryError,
 });
 
 bool unifiedEntryMatchesStatus(

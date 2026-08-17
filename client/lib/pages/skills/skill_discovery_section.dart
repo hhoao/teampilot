@@ -4,6 +4,7 @@ import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/skill_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../services/skill/marketplace/skill_marketplace_source.dart';
 import '../../services/skill/registry/skill_registry_source.dart';
 import '../../utils/debounce/debounce.dart';
 import '../../widgets/workspace_library_card.dart';
@@ -111,6 +112,7 @@ class SkillDiscoverySectionState extends State<SkillDiscoverySection> {
             sourceFilter: _sourceFilter,
             statusFilter: _statusFilter,
             onGoRegistries: widget.onGoRegistries,
+            onRetry: _onFilterChanged,
           ),
         ),
       ],
@@ -232,12 +234,14 @@ class _ResultsBody extends StatelessWidget {
     required this.sourceFilter,
     required this.statusFilter,
     required this.onGoRegistries,
+    required this.onRetry,
   });
 
   final String query;
   final String sourceFilter;
   final String statusFilter;
   final VoidCallback onGoRegistries;
+  final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context) {
@@ -251,8 +255,17 @@ class _ResultsBody extends StatelessWidget {
             discoveryLoading: state.discoveryLoading,
             anyHasNext: state.anyDiscoveryHasNext,
             busyIds: state.busyIds,
+            discoveryError: state.discoveryError,
           ),
           builder: (context, grid) {
+            final error = grid.discoveryError;
+            if (error != null) {
+              return _ErrorBody(
+                error: error,
+                onGoRegistries: onGoRegistries,
+                onRetry: onRetry,
+              );
+            }
             if (grid.discoveryLoading && grid.entries.isEmpty) {
               return const Center(child: CircularProgressIndicator());
             }
@@ -327,6 +340,49 @@ class _ResultsBody extends StatelessWidget {
           },
         );
       },
+    );
+  }
+}
+
+class _ErrorBody extends StatelessWidget {
+  const _ErrorBody({
+    required this.error,
+    required this.onGoRegistries,
+    required this.onRetry,
+  });
+
+  final String error;
+  final VoidCallback onGoRegistries;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final isQuota = error == marketplaceQuotaErrorKey;
+    return SingleChildScrollView(
+      child: WorkspaceLibraryCard(
+        child: Column(
+          children: [
+            TpEmptyState(
+              icon: isQuota ? Icons.key_off_outlined : Icons.error_outline,
+              title: l10n.skillsDiscoveryErrorTitle,
+              hint: isQuota ? l10n.skillsMpQuotaHint : error,
+              actionLabel: isQuota ? l10n.skillsRegistryGoSetKey : null,
+              onAction: isQuota ? onGoRegistries : null,
+              centered: true,
+            ),
+            if (isQuota) const SizedBox(height: 4),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: OutlinedButton.icon(
+                onPressed: onRetry,
+                icon: const Icon(Icons.refresh, size: 18),
+                label: Text(l10n.skillsRegistryRetry),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -12,6 +12,7 @@ import '../models/unified_skill_entry.dart';
 import '../repositories/skill_repository.dart';
 import '../services/progress_activity/pack_acquire_activity_adapter.dart';
 import '../services/skill/marketplace/skill_marketplace_source.dart';
+import '../services/skill/registry/api_registry_source.dart';
 import '../services/skill/registry/git_repo_registry_source.dart';
 import '../services/skill/registry/skill_registry_config_service.dart';
 import '../services/skill/registry/skill_registry_source.dart';
@@ -652,26 +653,43 @@ class SkillCubit extends Cubit<SkillState> {
     emit(state.copyWith(discoveryError: null));
   }
 
-  Future<bool> testRegistryConnection(String id) async {
-    SkillRegistrySource? found;
-    for (final s in state.sources) {
-      if (s.id == id) {
-        found = s;
-        break;
-      }
-    }
-    if (found == null) return false;
+  /// Probes [candidate] (the in-dialog form edits, not the persisted source).
+  /// Returns `null` on success, the error string on failure. Does NOT emit
+  /// `errorMessage` — the management dialog owns the toast.
+  Future<String?> testRegistryConnection(SkillRegistrySourceConfig candidate) async {
+    final exists = state.sources.any((s) => s.id == candidate.id);
+    if (!exists) return 'source-not-found';
     try {
-      await found.testConnection();
-      return true;
+      final probe = switch (candidate.kind) {
+        SkillRegistryKind.api => ApiRegistrySource(candidate),
+        SkillRegistryKind.gitRepo => GitRepoRegistrySource(
+          candidate,
+          discoverableProvider: () => _repo.readCachedDiscoverable(SkillRepo(
+            owner: candidate.gitOwner ?? '',
+            name: candidate.gitName ?? '',
+            branch: candidate.gitBranch ?? 'main',
+          )),
+          syncNow: () async {
+            await _repo.syncRepoCache(
+              SkillRepo(
+                owner: candidate.gitOwner ?? '',
+                name: candidate.gitName ?? '',
+                branch: candidate.gitBranch ?? 'main',
+              ),
+              force: true,
+            );
+          },
+        ),
+      };
+      await probe.testConnection();
+      return null;
     } catch (e) {
-      emit(state.copyWith(errorMessage: '$e'));
-      return false;
+      return '$e';
     }
   }
 
-  Future<void> addRegistrySource(SkillRegistrySourceConfig cfg) async {
-    if (state.registriesConfig.byId(cfg.id) != null) return;
+  Future<bool> addRegistrySource(SkillRegistrySourceConfig cfg) async {
+    if (state.registriesConfig.byId(cfg.id) != null) return false;
     await _applyConfig(
       SkillRegistriesConfig(sources: [...state.registriesConfig.sources, cfg]),
     );
@@ -684,17 +702,28 @@ class SkillCubit extends Cubit<SkillState> {
         ),
       ]);
     }
+    return true;
   }
 
   Future<void> updateRegistrySource(SkillRegistrySourceConfig cfg) async {
-    // Capture pre-update state: only sources that were ALREADY enabled git
-    // sources skip the background sync. Computed before `_applyConfig` because
-    // that rebuilds `state.sources` from the new config (post-apply it would
-    // always be a git source, making the guard dead code).
+    // Capture pre-update state before `_applyConfig` (which rebuilds `state.sources`).
+    // Skip the background sync only when the source was ALREADY an enabled git
+    // source whose repo (owner/name/branch) is unchanged.
     var oldIsGit = false;
+    var repoChanged = false;
+    final newRepo = SkillRepo(
+      owner: cfg.gitOwner ?? '',
+      name: cfg.gitName ?? '',
+      branch: cfg.gitBranch ?? 'main',
+    );
     for (final s in state.sources) {
-      if (s.id == cfg.id && s is GitRepoRegistrySource && s.enabled) {
-        oldIsGit = true;
+      if (s.id == cfg.id && s is GitRepoRegistrySource) {
+        oldIsGit = s.enabled;
+        final old = s.gitRepo;
+        repoChanged =
+            old.owner != newRepo.owner ||
+            old.name != newRepo.name ||
+            old.branch != newRepo.branch;
         break;
       }
     }
@@ -703,14 +732,10 @@ class SkillCubit extends Cubit<SkillState> {
         s.id == cfg.id ? cfg : s,
     ]);
     await _applyConfig(next);
-    if (cfg.kind == SkillRegistryKind.gitRepo && cfg.enabled && !oldIsGit) {
-      unawaited(_syncReposInBackground([
-        SkillRepo(
-          owner: cfg.gitOwner ?? '',
-          name: cfg.gitName ?? '',
-          branch: cfg.gitBranch ?? 'main',
-        ),
-      ]));
+    if (cfg.kind == SkillRegistryKind.gitRepo &&
+        cfg.enabled &&
+        (!oldIsGit || repoChanged)) {
+      unawaited(_syncReposInBackground([newRepo]));
     }
   }
 
@@ -769,7 +794,7 @@ class SkillCubit extends Cubit<SkillState> {
         final installed = await _repo.loadInstalled();
         emit(state.copyWith(installed: installed));
       } else {
-        await addRegistrySource(
+        final added = await addRegistrySource(
           SkillRegistrySourceConfig(
             id: 'git-${skill.repoOwner}-${skill.repoName}',
             kind: SkillRegistryKind.gitRepo,
@@ -779,7 +804,9 @@ class SkillCubit extends Cubit<SkillState> {
             gitBranch: skill.repoBranch,
           ),
         );
-        emit(state.copyWith(noticeMessage: marketplaceRepoAddedNoticeKey));
+        if (added) {
+          emit(state.copyWith(noticeMessage: marketplaceRepoAddedNoticeKey));
+        }
       }
     } catch (e) {
       emit(state.copyWith(errorMessage: '$e'));

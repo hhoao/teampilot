@@ -1527,6 +1527,8 @@
     }
   },
   "skillsRegistryGoSetKey": "去注册中心设置 API Key",
+  "skillsRegistryRetry": "重试",
+  "skillsRegistrySourceExists": "该注册源已存在",
   "skillsRegistryEditTitle": "编辑注册源",
   "skillsRegistryRemoveTitle": "重置注册源",
   "skillsRegistryResetConfirm": "将 {name} 重置为默认值？",
@@ -1603,6 +1605,8 @@
   "skillsZipNoSkills": "压缩包中未发现 SKILL.md。",
   "skillsDiscoveryEmpty": "未发现可用 Skill",
   "skillsDiscoveryEmptyHint": "添加仓库或试用 skills.sh 来发现 Skill。",
+  "skillsDiscoveryErrorTitle": "发现失败",
+  "skillsMpQuotaHint": "SkillsMP 匿名额度（每天 50 次）已用完。设置免费 API Key 后继续。",
   "skillsAdd": "添加",
   "skillsRemove": "移除",
   "skillsEnabled": "启用",
