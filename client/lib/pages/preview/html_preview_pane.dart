@@ -14,6 +14,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../services/io/filesystem.dart';
 import '../../services/preview/html_preview_server.dart';
 import '../../services/preview/html_preview_session.dart';
+import '../../services/preview/zikzak_html_controller.dart';
 import '../../services/storage/app_storage.dart';
 
 /// Embedded rendered preview for one html file.
@@ -79,7 +80,7 @@ class _HtmlPreviewPaneState extends State<HtmlPreviewPane> {
             htmlDirectory: dir,
             entryFileName: entry,
             server: HtmlPreviewServer(fs: fs),
-            controllerFactory: (_) => WebviewHtmlController(),
+            controllerFactory: (_) => createHtmlPreviewController(),
           );
       final session = factory(dir, entry);
       _session = session;
@@ -207,6 +208,18 @@ Future<dynamic> _tryDesktopWebviewWindow() async {
 
 bool isDesktopPlatform() =>
     Platform.isLinux || Platform.isWindows || Platform.isMacOS;
+
+/// Platform-appropriate embedded controller for the preview pane.
+///
+/// Linux uses zikzak_inappwebview: its WebKitGTK implementation renders into
+/// an offscreen view presented as a Flutter texture, which neither reparents
+/// the main GTK window tree (webview_win_floating re-realizes the Flutter
+/// view and restarts the engine) nor relies on the DMA-BUF paths that render
+/// black on NVIDIA/Wayland. Other platforms keep webview_flutter.
+HtmlWebViewController createHtmlPreviewController() {
+  if (Platform.isLinux) return ZikzakHtmlController();
+  return WebviewHtmlController();
+}
 
 class _HtmlPreviewToolbar extends StatelessWidget {
   const _HtmlPreviewToolbar({

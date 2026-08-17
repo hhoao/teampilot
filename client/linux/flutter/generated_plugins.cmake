@@ -13,6 +13,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
   url_launcher_linux
   webview_win_floating
   window_manager
+  zikzak_inappwebview_linux
 )
 
 list(APPEND FLUTTER_FFI_PLUGIN_LIST

@@ -1,0 +1,361 @@
+import 'dart:core';
+
+import 'package:flutter/services.dart';
+import 'package:zikzak_inappwebview_platform_interface/zikzak_inappwebview_platform_interface.dart';
+
+class LinuxInAppWebViewController extends PlatformInAppWebViewController {
+  /// Native texture id for this webview. TeamPilot patch: upstream keeps it
+  /// private inside the widget state, but hosts need it to render the
+  /// texture in another widget tree (shared keep-alive webview).
+  int? textureId;
+
+  LinuxInAppWebViewController(
+    PlatformInAppWebViewControllerCreationParams params,
+  ) : super.implementation(params) {
+    _channel = MethodChannel('dev.zuzu/zikzak_inappwebview_${params.id}');
+    _channel.setMethodCallHandler((call) async {
+      try {
+        return await handleMethod(call);
+      } catch (e) {
+        // ignore error
+      }
+    });
+  }
+
+  LinuxInAppWebViewController.fromInAppBrowser(
+    super.params,
+    MethodChannel channel,
+  ) : super.implementation() {
+    _channel = channel;
+  }
+
+  LinuxInAppWebViewController.static()
+    : super.implementation(
+        PlatformInAppWebViewControllerCreationParams(id: 'static'),
+      );
+
+  late MethodChannel _channel;
+
+  Future<dynamic> handleMethod(MethodCall call) async {
+    final controller = params.webviewParams?.controllerFromPlatform != null
+        ? params.webviewParams!.controllerFromPlatform!(this)
+        : this;
+
+    switch (call.method) {
+      case 'onLoadStart':
+        if (params.webviewParams?.onLoadStart != null) {
+          String? url = call.arguments['url'];
+          params.webviewParams!.onLoadStart!(
+            controller,
+            url != null ? WebUri(url) : null,
+          );
+        }
+        break;
+      case 'onLoadStop':
+        if (params.webviewParams?.onLoadStop != null) {
+          String? url = call.arguments['url'];
+          params.webviewParams!.onLoadStop!(
+            controller,
+            url != null ? WebUri(url) : null,
+          );
+        }
+        break;
+      case 'onCallJsHandler':
+        final handlerName = call.arguments['handlerName'] as String?;
+        final handlerArgs =
+            (call.arguments['args'] as List?)?.cast<dynamic>() ?? const [];
+        final callback = handlerName != null
+            ? _javaScriptHandlers[handlerName]
+            : null;
+        if (callback != null) {
+          return callback(handlerArgs);
+        }
+        break;
+      case 'onReceivedError':
+        if (params.webviewParams?.onReceivedError != null) {
+          String? url = call.arguments['url'];
+          int code = call.arguments['code'];
+          String message = call.arguments['message'];
+
+          params.webviewParams!.onReceivedError!(
+            controller,
+            WebResourceRequest(url: url != null ? WebUri(url) : WebUri('')),
+            WebResourceError(
+              type: WebResourceErrorType.values.firstWhere(
+                (t) => t.name == code,
+                orElse: () => WebResourceErrorType.UNKNOWN,
+              ),
+              description: message,
+            ),
+          );
+        }
+        break;
+      case 'onProgressChanged':
+        if (params.webviewParams?.onProgressChanged != null) {
+          int progress = call.arguments['progress'];
+          params.webviewParams!.onProgressChanged!(controller, progress);
+        }
+        break;
+      case 'onUpdateVisitedHistory':
+        if (params.webviewParams?.onUpdateVisitedHistory != null) {
+          String? url = call.arguments['url'];
+          bool? isReload = call.arguments['isReload'];
+          params.webviewParams!.onUpdateVisitedHistory!(
+            controller,
+            url != null ? WebUri(url) : null,
+            isReload,
+          );
+        }
+        break;
+      case 'onTitleChanged':
+        if (params.webviewParams?.onTitleChanged != null) {
+          String? title = call.arguments['title'];
+          params.webviewParams!.onTitleChanged!(controller, title);
+        }
+        break;
+      case 'shouldOverrideUrlLoading':
+        // Linux might not support this fully yet, but we'll include it.
+        if (params.webviewParams?.shouldOverrideUrlLoading != null) {
+          Map<String, dynamic> arguments = call.arguments
+              .cast<String, dynamic>();
+          var navigationAction = NavigationAction.fromJson(
+            arguments['navigationAction'].cast<String, dynamic>(),
+          );
+          var policy = await params.webviewParams!.shouldOverrideUrlLoading!(
+            controller,
+            navigationAction,
+          );
+          return policy?.index ?? NavigationActionPolicy.CANCEL.index;
+        }
+        return NavigationActionPolicy.ALLOW.index;
+      case 'onConsoleMessage':
+        if (params.webviewParams?.onConsoleMessage != null) {
+          var consoleMessage = ConsoleMessage.fromJson(
+            call.arguments.cast<String, dynamic>(),
+          );
+          params.webviewParams!.onConsoleMessage!(controller, consoleMessage);
+        }
+        break;
+      default:
+        throw UnimplementedError("Unimplemented ${call.method} method");
+    }
+  }
+
+  @override
+  Future<WebUri?> getUrl() async {
+    final String? url = await _channel.invokeMethod<String>('getUrl');
+    return url != null ? WebUri(url) : null;
+  }
+
+  @override
+  Future<String?> getTitle() async {
+    return await _channel.invokeMethod<String>('getTitle');
+  }
+
+  @override
+  Future<int?> getProgress() async {
+    return await _channel.invokeMethod<int>('getProgress');
+  }
+
+  @override
+  Future<void> loadUrl({
+    required URLRequest urlRequest,
+    WebUri? allowingReadAccessTo,
+  }) async {
+    Map<String, dynamic> args = <String, dynamic>{};
+    args.putIfAbsent('urlRequest', () => urlRequest.toJson());
+    args.putIfAbsent(
+      'allowingReadAccessTo',
+      () => allowingReadAccessTo.toString(),
+    );
+    await _channel.invokeMethod('loadUrl', args);
+  }
+
+  @override
+  Future<void> reload() async {
+    await _channel.invokeMethod('reload');
+  }
+
+  @override
+  Future<void> goBack() async {
+    await _channel.invokeMethod('goBack');
+  }
+
+  @override
+  Future<bool> canGoBack() async {
+    return await _channel.invokeMethod<bool>('canGoBack') ?? false;
+  }
+
+  @override
+  Future<void> goForward() async {
+    await _channel.invokeMethod('goForward');
+  }
+
+  @override
+  Future<bool> canGoForward() async {
+    return await _channel.invokeMethod<bool>('canGoForward') ?? false;
+  }
+
+  @override
+  Future<bool> isLoading() async {
+    return await _channel.invokeMethod<bool>('isLoading') ?? false;
+  }
+
+  @override
+  Future<void> stopLoading() async {
+    await _channel.invokeMethod('stopLoading');
+  }
+
+  @override
+  Future<dynamic> evaluateJavascript({
+    required String source,
+    ContentWorld? contentWorld,
+  }) async {
+    Map<String, dynamic> args = <String, dynamic>{};
+    args.putIfAbsent('source', () => source);
+    args.putIfAbsent('contentWorld', () => contentWorld?.toMap());
+    return await _channel.invokeMethod('evaluateJavascript', args);
+  }
+
+  @override
+  Future<void> loadData({
+    required String data,
+    String mimeType = "text/html",
+    String encoding = "utf8",
+    WebUri? baseUrl,
+    WebUri? historyUrl,
+    WebUri? allowingReadAccessTo,
+  }) async {
+    Map<String, dynamic> args = <String, dynamic>{};
+    args.putIfAbsent('data', () => data);
+    args.putIfAbsent('baseUrl', () => baseUrl?.toString());
+    await _channel.invokeMethod('loadData', args);
+  }
+
+  final Map<String, JavaScriptHandlerCallback> _javaScriptHandlers =
+      <String, JavaScriptHandlerCallback>{};
+
+  @override
+  void addJavaScriptHandler({
+    required String handlerName,
+    required JavaScriptHandlerCallback callback,
+  }) {
+    _javaScriptHandlers[handlerName] = callback;
+    _channel
+        .invokeMethod('addJavaScriptHandler', <String, dynamic>{
+          'handlerName': handlerName,
+        })
+        .catchError((_) {});
+  }
+
+  @override
+  JavaScriptHandlerCallback? removeJavaScriptHandler({
+    required String handlerName,
+  }) {
+    final callback = _javaScriptHandlers.remove(handlerName);
+    _channel
+        .invokeMethod('removeJavaScriptHandler', <String, dynamic>{
+          'handlerName': handlerName,
+        })
+        .catchError((_) {});
+    return callback;
+  }
+
+  @override
+  Future<void> injectJavascriptFileFromUrl({
+    required WebUri urlFile,
+    ScriptHtmlTagAttributes? scriptHtmlTagAttributes,
+  }) async {
+    Map<String, dynamic> args = <String, dynamic>{};
+    args.putIfAbsent('urlFile', () => urlFile.toString());
+    args.putIfAbsent(
+      'scriptHtmlTagAttributes',
+      () => scriptHtmlTagAttributes?.toMap(),
+    );
+    await _channel.invokeMethod('injectJavascriptFileFromUrl', args);
+  }
+
+  @override
+  Future<dynamic> injectJavascriptFileFromAsset({
+    required String assetFilePath,
+  }) async {
+    Map<String, dynamic> args = <String, dynamic>{};
+    args.putIfAbsent('assetFilePath', () => assetFilePath);
+    await _channel.invokeMethod('injectJavascriptFileFromAsset', args);
+  }
+
+  @override
+  Future<void> injectCSSCode({required String source}) async {
+    Map<String, dynamic> args = <String, dynamic>{};
+    args.putIfAbsent('source', () => source);
+    await _channel.invokeMethod('injectCSSCode', args);
+  }
+
+  @override
+  Future<void> injectCSSFileFromUrl({
+    required WebUri urlFile,
+    CSSLinkHtmlTagAttributes? cssLinkHtmlTagAttributes,
+  }) async {
+    Map<String, dynamic> args = <String, dynamic>{};
+    args.putIfAbsent('urlFile', () => urlFile.toString());
+    args.putIfAbsent(
+      'cssLinkHtmlTagAttributes',
+      () => cssLinkHtmlTagAttributes?.toJson(),
+    );
+    await _channel.invokeMethod('injectCSSFileFromUrl', args);
+  }
+
+  @override
+  Future<void> injectCSSFileFromAsset({required String assetFilePath}) async {
+    Map<String, dynamic> args = <String, dynamic>{};
+    args.putIfAbsent('assetFilePath', () => assetFilePath);
+    await _channel.invokeMethod('injectCSSFileFromAsset', args);
+  }
+
+  @override
+  Future<String?> getHtml() async {
+    return await _channel.invokeMethod<String>('getHtml');
+  }
+
+  @override
+  Future<Uint8List?> takeScreenshot({
+    ScreenshotConfiguration? screenshotConfiguration,
+  }) async {
+    Map<String, dynamic> args = <String, dynamic>{};
+    args.putIfAbsent(
+      'screenshotConfiguration',
+      () => screenshotConfiguration?.toJson(),
+    );
+    return await _channel.invokeMethod<Uint8List?>('takeScreenshot', args);
+  }
+
+  @override
+  Future<void> openDevTools() async {
+    await _channel.invokeMethod('openDevTools');
+  }
+
+  @override
+  Future<Uint8List?> createPdf({PDFConfiguration? pdfConfiguration}) async {
+    Map<String, dynamic> args = <String, dynamic>{};
+    args.putIfAbsent('pdfConfiguration', () => pdfConfiguration?.toJson());
+    return await _channel.invokeMethod<Uint8List?>('createPdf', args);
+  }
+
+  @override
+  void dispose({bool isKeepAlive = false}) {
+    if (!isKeepAlive) {
+      _channel.setMethodCallHandler(null);
+      // TeamPilot patch: upstream never tears down the native webview, so
+      // every create leaks a permanent offscreen WebKitGTK instance (with
+      // a 33ms render loop) and the second open freezes the app. Notify the
+      // plugin to drop the webview; the texture registrar and channel refs
+      // release it once the widget tree is gone.
+      try {
+        const MethodChannel('zikzak_inappwebview_linux')
+            .invokeMethod('dispose', {'id': params.id});
+      } catch (_) {
+        // WebView may already be torn down.
+      }
+    }
+  }
+}
