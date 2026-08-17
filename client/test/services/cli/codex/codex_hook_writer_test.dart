@@ -6,6 +6,11 @@ import 'package:teampilot/services/cli/codex/provider/codex_hook_writer.dart';
 import 'package:teampilot/services/cli/registry/capabilities/hook_capability.dart';
 import 'package:teampilot/services/cli/registry/config_profile/hook_seat_context_completer.dart';
 import 'package:teampilot/services/hook/glue_script_builder.dart';
+import 'package:teampilot/services/host/host_execution_environment.dart';
+import 'package:teampilot/services/host/host_script_dialect.dart';
+import 'package:teampilot/services/host/host_script_runner.dart';
+import 'package:teampilot/services/storage/runtime_context.dart';
+import 'package:teampilot/services/team_bus/member_bus_idle_endpoint.dart';
 
 void main() {
   const writer = CodexHookWriter();
@@ -108,7 +113,7 @@ void main() {
     expect(result.scripts, isEmpty);
   });
 
-  test('agent-status managed entries render http hooks with headers', () {
+  test('agent-status managed entries render command-hook forward scripts', () {
     const completer = HookSeatContextCompleter();
     const endpoint = MemberAgentStatusEndpoint(
       url: 'http://127.0.0.1:1/agent-status',
@@ -128,23 +133,93 @@ void main() {
     expect(result.warnings, isEmpty);
     final toml = result.configFragments['config.toml']! as String;
     expect(toml, contains('[[hooks.Stop]]'));
-    expect(toml, contains('type = "http"'));
+    // codex 只支持 command/prompt/agent 三类 hook；http 必须渲染为 command 转发。
+    expect(toml, isNot(contains('type = "http"')));
     expect(toml, contains('type = "command"'));
-    expect(toml, contains('?event=PreToolUse'));
-    expect(toml, contains('"X-Member" = "m1"'));
+    // URL 身份 + 请求头移入转发脚本，TOML 只指向脚本路径。
+    final preToolUseScript = result.scripts.singleWhere(
+      (s) =>
+          s.fileName ==
+          'teampilot-http-teampilot-agent-status-preToolUse'
+              '-preToolUse.sh',
+    );
+    expect(preToolUseScript.content, contains('?event=PreToolUse'));
+    expect(preToolUseScript.content, contains('-H \'X-Member: m1\''));
+    expect(preToolUseScript.content, contains('-H \'X-Session: s\''));
+    expect(preToolUseScript.content, contains('-H \'X-Bus-Token: t\''));
+    final stopScript = result.scripts.singleWhere(
+      (s) =>
+          s.fileName ==
+          'teampilot-http-teampilot-agent-status-stop-stop.sh',
+    );
+    expect(stopScript.content, contains('?event=Stop'));
+    expect(stopScript.content, contains('>/dev/null'));
     // PreToolUse keeps the 1-day AskUserQuestion hold; other events 5s.
     final preToolUseBlock = toml.split('[[hooks.PreToolUse]]')[1];
     expect(preToolUseBlock, contains('timeout = 86400'));
     expect(preToolUseBlock, contains('matcher = "*"'));
+    expect(preToolUseBlock, contains('/teampilot-http-teampilot-agent-status-preToolUse-preToolUse.sh'));
     final stopBlock = toml.split('[[hooks.Stop]]')[1];
     expect(stopBlock, contains('timeout = 5'));
-    expect(stopBlock, contains('?event=Stop'));
+    expect(stopBlock, isNot(contains('?event=')));
     expect(stopBlock, isNot(contains('matcher')));
     // The 4 matcher-capable events (PermissionRequest/PreToolUse/PostToolUse/
     // PostToolUseFailure) render `matcher = "*"`; Stop has no matcher.
     expect(
       'matcher = "*"'.allMatches(toml).length,
       4,
+    );
+  });
+
+  test('bus-idle managed entries render response-to-stdout stop script', () {
+    const completer = HookSeatContextCompleter();
+    const idle = MemberBusIdleEndpoint(
+      url: 'http://127.0.0.1:1/idle',
+      token: 't',
+      sessionId: 's',
+    );
+    final entries = completer.busIdleHooks(idle: idle, memberId: 'm1');
+    final result = writer.render(entries: entries, ctx: ctx);
+    expect(result.warnings, isEmpty);
+    final toml = result.configFragments['config.toml']! as String;
+    expect(toml, isNot(contains('type = "http"')));
+    expect(toml, contains('[[hooks.Stop]]'));
+    expect(toml, contains('[[hooks.StopFailure]]'));
+    final script = result.scripts.singleWhere(
+      (s) =>
+          s.fileName ==
+          'teampilot-http-teampilot-bus-idle-stop-stop.sh',
+    );
+    // blockOnDecision: POST 响应 (followup/decision) 透传 stdout，不转发 stdin。
+    expect(script.content, contains("'http://127.0.0.1:1/idle'"));
+    expect(script.content, isNot(contains('\$payload')));
+    expect(script.content, isNot(contains('>/dev/null')));
+  });
+
+  test('http entry command wrapped by runner when runner set', () {
+    const runner = HostScriptRunner(
+      HostExecutionEnvironment(
+        dialect: HostScriptDialect.bash,
+        isWindowsHost: false,
+        storageMode: StorageBackendMode.native,
+      ),
+    );
+    const runnerCtx = HookRenderContext(
+      hooksDir: '/s/hooks',
+      runner: runner,
+      glueBuilder: GlueScriptBuilder(),
+    );
+    const endpoint = MemberAgentStatusEndpoint(url: 'http://127.0.0.1:9/a');
+    final entries = const HookSeatContextCompleter()
+        .agentStatusHooks(endpoint: endpoint, memberId: 'm1');
+    final result = writer.render(entries: entries, ctx: runnerCtx);
+    final toml = result.configFragments['config.toml']! as String;
+    expect(
+      toml,
+      contains(
+        'command = "bash \\"/s/hooks/'
+        'teampilot-http-teampilot-agent-status-preToolUse-preToolUse.sh\\""',
+      ),
     );
   });
 }

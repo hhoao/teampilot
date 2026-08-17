@@ -4,6 +4,7 @@ import '../../../../models/team_config.dart';
 import '../../../host/host_script_dialect.dart';
 import '../../registry/capabilities/hook_registry.dart';
 import '../../registry/capabilities/hook_capability.dart';
+import 'codex_http_hook_script.dart';
 
 /// Codex hook writer：`config.toml` 的 `[[hooks.<Event>]]` 片段。
 class CodexHookWriter implements HookCapability {
@@ -59,8 +60,37 @@ class CodexHookWriter implements HookCapability {
       if (command is CommandHookAction) {
         inner = _innerCommand(command, entry.id, ctx, scripts);
       } else if (command is HttpHookAction) {
-        // codex TOML 原生 http 类 hook（url + headers）在此渲染。
-        final timeout = entry.timeout?.inSeconds;
+        // codex config.toml 的 hooks 仅支持 command/prompt/agent 三类，没有
+        // 原生 http 类；http action 渲染为 curl 转发脚本 + `type = "command"`
+        // （与 cursor 的 bash 转发同法）。透传语义：
+        // - bus idle（blockOnDecision）：POST 响应（含 followup_message）
+        //   写回 stdout，供 codex 展示，失败容错；
+        // - 拦截类 + 显式 policy：POST 响应（决策 JSON）写回 stdout；
+        // - 其余（agent-status 上报）：转发 stdin payload、best-effort 丢弃。
+        final dialect = ctx.runner?.dialect ?? HostScriptDialect.bash;
+        final scriptFileName =
+            'teampilot-http-${entry.id}-${entry.event.name}'
+            '${dialect.scriptExtension}';
+        final passResponseToStdout = entry.blockOnDecision ||
+            (entry.event.isIntercepting &&
+                entry.policy != HookPolicy.none);
+        scripts.add(
+          GeneratedScript(
+            fileName: scriptFileName,
+            content: CodexHttpHookScript.build(
+              dialect: dialect,
+              url: command.url,
+              headers: command.headers,
+              forwardStdin: !entry.blockOnDecision,
+              passResponseToStdout: passResponseToStdout,
+              bestEffort: !passResponseToStdout,
+            ),
+          ),
+        );
+        final scriptPath = ctx.runner?.commandStringForScriptFile(
+              '${ctx.hooksDir}/$scriptFileName',
+            ) ??
+            '${ctx.hooksDir}/$scriptFileName';
         if (!first) buffer.writeln();
         buffer.writeln('[[hooks.$native]]');
         if (entry.matcher != null && entry.matcher!.trim().isNotEmpty) {
@@ -68,21 +98,9 @@ class CodexHookWriter implements HookCapability {
         }
         buffer.writeln();
         buffer.writeln('[[hooks.$native.hooks]]');
-        buffer.writeln('type = "http"');
-        buffer.writeln(
-          'url = "${command.url.replaceAll('\\', r'\\').replaceAll('"', r'\"')}"',
-        );
-        if (command.headers.isNotEmpty) {
-          final escapedHeaders = command.headers.entries
-              .map(
-                (e) =>
-                    '"${e.key.replaceAll('\\', r'\\').replaceAll('"', r'\"')}" = '
-                    '"${e.value.replaceAll('\\', r'\\').replaceAll('"', r'\"')}"',
-              )
-              .join(', ');
-          buffer.writeln('headers = {$escapedHeaders}');
-        }
-        if (timeout != null) buffer.writeln('timeout = $timeout');
+        buffer.writeln('type = "command"');
+        buffer.writeln('command = "${_escape(scriptPath)}"');
+        buffer.writeln('timeout = ${entry.timeout?.inSeconds ?? 5}');
         first = false;
         continue;
       } else {
