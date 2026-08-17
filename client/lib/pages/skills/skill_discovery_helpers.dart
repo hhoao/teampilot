@@ -1,7 +1,6 @@
 import '../../l10n/app_localizations.dart';
 import '../../models/skill.dart';
-
-enum SkillSearchSource { repos, marketplace }
+import '../../models/unified_skill_entry.dart';
 
 Set<String> skillInstalledKeys(List<Skill> installed) {
   return installed
@@ -102,4 +101,28 @@ List<DiscoverableSkill> filterDiscoverableSkills({
 
 String discoverableSkillInstallKey(DiscoverableSkill skill) {
   return '${skill.directory.split('/').last.toLowerCase()}:${skill.repoOwner.toLowerCase()}:${skill.repoName.toLowerCase()}';
+}
+
+typedef SkillUnifiedGridSlice = ({
+  List<UnifiedSkillEntry> entries,
+  bool discoveryLoading,
+  bool anyHasNext,
+  Set<String> busyIds,
+});
+
+bool unifiedEntryMatchesStatus(
+  UnifiedSkillEntry entry,
+  Set<String> installedKeys,
+  String filterStatus,
+) {
+  final dirLast = entry.skill.directory?.split('/').last ?? '';
+  final installKey = dirLast.isEmpty
+      ? ''
+      : '${dirLast.toLowerCase()}:'
+            '${entry.skill.repoOwner.toLowerCase()}:'
+            '${entry.skill.repoName.toLowerCase()}';
+  final installed = installedKeys.contains(installKey);
+  if (filterStatus == 'installed' && !installed) return false;
+  if (filterStatus == 'uninstalled' && installed) return false;
+  return true;
 }

@@ -91,7 +91,7 @@ class SkillManagementPage extends StatelessWidget {
               ),
             ),
             SkillSection.discovery => SkillDiscoverySection(
-              onGoRepos: () => select(SkillSection.registries),
+              onGoRegistries: () => select(SkillSection.registries),
             ),
             SkillSection.registries => const SkillRegistriesSection(),
           },
