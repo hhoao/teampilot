@@ -1,3 +1,5 @@
+import 'package:dartssh2/dartssh2.dart';
+
 import '../../models/runtime_target.dart';
 import '../../models/launch_security_policy.dart';
 import '../../models/ssh_profile.dart';
@@ -17,9 +19,22 @@ const claudeCodeSandboxEnvValue = '1';
 Future<bool?> remoteSshRunsAsRoot({
   required SshMemberSession memberSession,
 }) async {
-  final result = await memberSession.runWithResult('id -u', stderr: false);
+  final result = await _runRemoteUidProbe(memberSession);
+  if (result == null) return null;
   if (sshRunFailed(result)) return null;
-  return String.fromCharCodes(result.stdout).trim() == '0';
+  final uid = String.fromCharCodes(result.stdout).trim();
+  if (!RegExp(r'^[0-9]+$').hasMatch(uid)) return null;
+  final parsedUid = int.tryParse(uid);
+  if (parsedUid == null) return null;
+  return parsedUid == 0;
+}
+
+Future<SSHRunResult?> _runRemoteUidProbe(SshMemberSession memberSession) async {
+  try {
+    return await memberSession.runWithResult('id -u', stderr: false);
+  } catch (_) {
+    return null;
+  }
 }
 
 Future<bool> remoteSshInDockerContainer({
@@ -83,7 +98,8 @@ Future<ShellLaunchSpec> applyRemoteSshLaunchConstraints({
       cli: spec.launchContext.team.cli,
       contributionKey: 'remote-ssh-root-security',
       reason:
-          'Unable to determine the remote SSH user identity for a '
+          'Unable to determine the remote SSH user identity: the id -u '
+          'probe failed or returned invalid output for a '
           'dangerous full-access launch. Refusing to launch without a '
           'confirmed non-root or sandboxed root environment.',
     );

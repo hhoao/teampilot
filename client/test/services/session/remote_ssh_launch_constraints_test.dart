@@ -13,6 +13,66 @@ import 'package:teampilot/services/session/shell_launch_spec.dart';
 import 'package:teampilot/services/ssh/ssh_member_session.dart';
 
 void main() {
+  group('remoteSshRunsAsRoot', () {
+    test(
+      'returns true only for uid 0 and false for valid nonzero uid',
+      () async {
+        final rootSession = SshMemberSession.testing(
+          profile: const SshProfile(
+            id: 'ssh-root',
+            name: 'SSH',
+            host: 'example.com',
+            username: 'root',
+          ),
+          client: _RootBareMetalClient(idOutput: '0'),
+        );
+        final userSession = SshMemberSession.testing(
+          profile: const SshProfile(
+            id: 'ssh-user',
+            name: 'SSH',
+            host: 'example.com',
+            username: 'user',
+          ),
+          client: _RootBareMetalClient(idOutput: '1000'),
+        );
+        addTearDown(rootSession.close);
+        addTearDown(userSession.close);
+
+        expect(await remoteSshRunsAsRoot(memberSession: rootSession), isTrue);
+        expect(await remoteSshRunsAsRoot(memberSession: userSession), isFalse);
+      },
+    );
+
+    test('returns null for empty or malformed uid output', () async {
+      final emptySession = SshMemberSession.testing(
+        profile: const SshProfile(
+          id: 'ssh-empty',
+          name: 'SSH',
+          host: 'example.com',
+          username: 'unknown',
+        ),
+        client: _RootBareMetalClient(idOutput: ''),
+      );
+      final malformedSession = SshMemberSession.testing(
+        profile: const SshProfile(
+          id: 'ssh-malformed',
+          name: 'SSH',
+          host: 'example.com',
+          username: 'unknown',
+        ),
+        client: _RootBareMetalClient(idOutput: 'not-a-uid'),
+      );
+      addTearDown(emptySession.close);
+      addTearDown(malformedSession.close);
+
+      expect(await remoteSshRunsAsRoot(memberSession: emptySession), isNull);
+      expect(
+        await remoteSshRunsAsRoot(memberSession: malformedSession),
+        isNull,
+      );
+    });
+  });
+
   group('resolveRemoteRootSecurityPolicy', () {
     test('unchanged when safe policy or non-root', () {
       expect(
@@ -140,14 +200,124 @@ void main() {
         ),
       );
     });
+
+    test('empty root probe output rejects dangerous launch closed', () async {
+      const member = TeamMemberConfig(
+        id: 'member',
+        name: 'Member',
+        launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
+      );
+      final session = SshMemberSession.testing(
+        profile: const SshProfile(
+          id: 'ssh-1',
+          name: 'SSH',
+          host: 'example.com',
+          username: 'unknown',
+        ),
+        client: _RootBareMetalClient(idOutput: ''),
+      );
+      addTearDown(session.close);
+
+      await expectLater(
+        applyRemoteSshLaunchConstraints(
+          spec: ShellLaunchSpec.teamMember(
+            team: const TeamProfile(id: 'team', name: 'Team'),
+            member: member,
+          ),
+          memberTarget: RuntimeTarget.ssh('ssh-1', label: 'SSH'),
+          memberSession: session,
+          profile: session.profile,
+        ),
+        throwsA(isA<CliLaunchCapabilityException>()),
+      );
+    });
+
+    test(
+      'malformed root probe output rejects dangerous launch closed',
+      () async {
+        const member = TeamMemberConfig(
+          id: 'member',
+          name: 'Member',
+          launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
+        );
+        final session = SshMemberSession.testing(
+          profile: const SshProfile(
+            id: 'ssh-1',
+            name: 'SSH',
+            host: 'example.com',
+            username: 'unknown',
+          ),
+          client: _RootBareMetalClient(idOutput: 'not-a-uid'),
+        );
+        addTearDown(session.close);
+
+        await expectLater(
+          applyRemoteSshLaunchConstraints(
+            spec: ShellLaunchSpec.teamMember(
+              team: const TeamProfile(id: 'team', name: 'Team'),
+              member: member,
+            ),
+            memberTarget: RuntimeTarget.ssh('ssh-1', label: 'SSH'),
+            memberSession: session,
+            profile: session.profile,
+          ),
+          throwsA(isA<CliLaunchCapabilityException>()),
+        );
+      },
+    );
+
+    test(
+      'probe exception rejects dangerous launch with typed reason',
+      () async {
+        const member = TeamMemberConfig(
+          id: 'member',
+          name: 'Member',
+          launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
+        );
+        final session = SshMemberSession.testing(
+          profile: const SshProfile(
+            id: 'ssh-1',
+            name: 'SSH',
+            host: 'example.com',
+            username: 'unknown',
+          ),
+          client: _RootBareMetalClient(throwOnIdProbe: true),
+        );
+        addTearDown(session.close);
+
+        await expectLater(
+          applyRemoteSshLaunchConstraints(
+            spec: ShellLaunchSpec.teamMember(
+              team: const TeamProfile(id: 'team', name: 'Team'),
+              member: member,
+            ),
+            memberTarget: RuntimeTarget.ssh('ssh-1', label: 'SSH'),
+            memberSession: session,
+            profile: session.profile,
+          ),
+          throwsA(
+            isA<CliLaunchCapabilityException>().having(
+              (error) => error.reason,
+              'reason',
+              contains('id -u'),
+            ),
+          ),
+        );
+      },
+    );
   });
 }
 
 class _RootBareMetalClient extends SSHClient {
-  _RootBareMetalClient({this.idExitCode = 0})
-    : super(_FakeSSHSocket(), username: 'root');
+  _RootBareMetalClient({
+    this.idExitCode = 0,
+    this.idOutput = '0',
+    this.throwOnIdProbe = false,
+  }) : super(_FakeSSHSocket(), username: 'root');
 
   final int idExitCode;
+  final String idOutput;
+  final bool throwOnIdProbe;
 
   @override
   Future<void> get authenticated => Future.value();
@@ -160,7 +330,10 @@ class _RootBareMetalClient extends SSHClient {
     bool stderr = true,
     Map<String, String>? environment,
   }) async {
-    final output = command == 'id -u' ? '0' : '';
+    if (command == 'id -u' && throwOnIdProbe) {
+      throw StateError('transport disconnected');
+    }
+    final output = command == 'id -u' ? idOutput : '';
     return SSHRunResult(
       output: Uint8List.fromList(output.codeUnits),
       stdout: Uint8List.fromList(output.codeUnits),
