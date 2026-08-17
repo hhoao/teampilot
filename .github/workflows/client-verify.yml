@@ -201,3 +201,16 @@ jobs:
         env:
           LD_LIBRARY_PATH: build/linux/x64/debug/bundle/lib
         run: flutter test --tags "integration && linux-pty" --concurrency=1
+
+      # Real codex boots the session-materialized config.toml (provider +
+      # managed agent-status/bus hooks). Installed to a private prefix so the
+      # matrix bucket above never discovers codex cells (those need a signed-in
+      # or mock-provider turn flow and are tracked separately).
+      - name: Codex config materialize integration (real codex loads product TOML)
+        env:
+          LD_LIBRARY_PATH: build/linux/x64/debug/bundle/lib
+        run: |
+          npm install -g --prefix /opt/codex-cli @openai/codex
+          PATH="/opt/codex-cli/bin:$PATH" flutter test \
+            test/integration/codex_config_materialize_launch_integration_test.dart \
+            --tags "integration && linux-pty"

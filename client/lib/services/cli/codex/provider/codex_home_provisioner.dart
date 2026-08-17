@@ -6,6 +6,7 @@ import 'codex_auth_artifacts.dart';
 import 'codex_config_sidecar.dart';
 import 'codex_config_toml_composer.dart';
 import 'codex_proxy_launch_auth.dart';
+import 'codex_toml_parser.dart';
 import '../capabilities/toml_merge.dart';
 import '../../../provider/tool_config_generator.dart';
 
@@ -81,6 +82,17 @@ final class CodexHomeProvisioner {
     if (error != null) {
       throw CodexHomeProvisionException(
         'Codex config.toml invalid for ${provider.id}: $error',
+      );
+    }
+
+    // Fail fast on hook types the Codex CLI cannot parse — an unknown variant
+    // (e.g. `http`) makes codex refuse to load the entire config at startup.
+    final invalidHookTypes = CodexTomlParser.invalidHookTypes(toml);
+    if (invalidHookTypes.isNotEmpty) {
+      throw CodexHomeProvisionException(
+        'Codex config.toml has unsupported hook type(s) for ${provider.id}: '
+        '${invalidHookTypes.join(', ')} (allowed: '
+        '${CodexTomlParser.allowedHookTypes.join(', ')})',
       );
     }
 

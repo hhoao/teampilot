@@ -196,5 +196,42 @@ command = "npx"
         expect(toml, contains('[mcp_servers.time]'));
       },
     );
+
+    test(
+      'fails fast when overlay contains a hook type codex cannot parse',
+      () async {
+        const provider = AppProviderConfig(
+          id: 'p',
+          cli: CliTool.codex,
+          name: 'p',
+          config: {'configToml': 'model = "m1"\n'},
+        );
+        const brokenOverlay = '''
+[[hooks.Stop]]
+
+[[hooks.Stop.hooks]]
+type = "http"
+url = "http://127.0.0.1:1/idle"
+''';
+
+        final codexHome = p.join(root.path, 'codex-http-fail');
+        await expectLater(
+          CodexHomeProvisioner(
+            fs: LocalFilesystem(),
+          ).provision(
+            codexHome: codexHome,
+            provider: provider,
+            busOverlayToml: brokenOverlay,
+          ),
+          throwsA(
+            isA<CodexHomeProvisionException>().having(
+              (e) => e.message,
+              'message',
+              contains('unsupported hook type(s)'),
+            ),
+          ),
+        );
+      },
+    );
   });
 }

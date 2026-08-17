@@ -1,8 +1,51 @@
+import 'package:toml/toml.dart';
+
 /// Parses Codex `config.toml` snippets and detects CC Switch proxy takeover.
 class CodexTomlParser {
   const CodexTomlParser._();
 
   static const proxyManagedToken = 'PROXY_MANAGED';
+
+  /// Codex hook `type` whitelist — the CLI's hook serde only accepts these.
+  ///
+  /// Anything else (e.g. `http`) makes codex refuse to load the whole
+  /// `config.toml` at startup ("unknown variant ... in `hooks`").
+  static const Set<String> allowedHookTypes = {'command', 'prompt', 'agent'};
+
+  /// Collects every `type = "…"` under `[[hooks.*]]` tables (including
+  /// `[[hooks.*.hooks]]` rows) that is not in [allowedHookTypes], in document
+  /// order. Empty result = valid.
+  ///
+  /// Throws a [TomlException] when the document does not parse — callers
+  /// should run a syntax check first (see
+  /// [ToolConfigGenerator.validateCodexToml]).
+  static List<String> invalidHookTypes(String toml) {
+    final map = TomlDocument.parse(toml).toMap();
+    final hooks = map['hooks'];
+    if (hooks is! Map) return const [];
+    final invalid = <String>[];
+    for (final event in hooks.values) {
+      if (event is! List) continue;
+      for (final row in event) {
+        if (row is Map) _collectInvalid(row, invalid);
+      }
+    }
+    return invalid;
+  }
+
+  static void _collectInvalid(Map<dynamic, dynamic> row, List<String> out) {
+    final type = row['type'];
+    if (type != null) {
+      final text = type.toString();
+      if (!allowedHookTypes.contains(text)) out.add(text);
+    }
+    final nested = row['hooks'];
+    if (nested is List) {
+      for (final inner in nested) {
+        if (inner is Map) _collectInvalid(inner, out);
+      }
+    }
+  }
 
   static CodexTomlParts parse(String toml) {
     final model =
