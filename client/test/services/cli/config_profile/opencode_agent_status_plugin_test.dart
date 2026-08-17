@@ -105,6 +105,56 @@ void main() {
     expect(twice['plugin'], hasLength(1));
   });
 
+  test('mergeOpencodeAgentStatusPlugin replaces stale same-member entry when '
+      'the gateway port changes', () {
+    // Every connect stamps a fresh gateway port, so the old entry with the
+    // dead URL must be replaced — not appended alongside.
+    final once = mergeOpencodeAgentStatusPlugin(
+      const {},
+      'm1',
+      'http://127.0.0.1:12345/agent-status',
+      sessionId: 'session-1',
+    );
+    final twice = mergeOpencodeAgentStatusPlugin(
+      once,
+      'm1',
+      'http://127.0.0.1:23456/agent-status',
+      sessionId: 'session-1',
+    );
+    final plugin = twice['plugin'] as List;
+    expect(plugin, hasLength(1));
+    final entry = plugin.first as List;
+    expect(entry[0], './$opencodeAgentStatusPluginFileName');
+    final opts = entry[1] as Map;
+    expect(opts['url'], 'http://127.0.0.1:23456/agent-status');
+  });
+
+  test('mergeOpencodeAgentStatusPlugin preserves unrelated plugin entries and '
+      'other members', () {
+    final merged = mergeOpencodeAgentStatusPlugin(
+      <String, Object?>{
+        'plugin': <Object?>[
+          './plugins/other/plugin.js',
+          <Object?>[
+            './$opencodeAgentStatusPluginFileName',
+            <String, Object?>{
+              'member': 'm2',
+              'url': 'http://127.0.0.1:1/agent-status',
+            },
+          ],
+        ],
+      },
+      'm1',
+      'http://127.0.0.1:23456/agent-status',
+    );
+    final plugin = merged['plugin'] as List;
+    expect(plugin, hasLength(3));
+    final last = plugin.last as List;
+    final opts = last[1] as Map;
+    expect(opts['member'], 'm1');
+    expect(opts['url'], 'http://127.0.0.1:23456/agent-status');
+  });
+
   test(
     'contributeLaunch writes agent-status plugin when agentStatus is set',
     () async {

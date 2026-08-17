@@ -170,6 +170,22 @@ Future<void> _rightClickAt(WidgetTester tester, Offset point) async {
   await tester.pump(const Duration(milliseconds: 300));
 }
 
+/// Right-click that holds the button past kPressTimeout (~100ms), like a real
+/// user's click. TapGestureRecognizer's deadline fires onSecondaryTapDown on
+/// every nested recognizer without waiting for the gesture arena, so both the
+/// row handler and the panel's blank-area handler would fire.
+Future<void> _holdRightClickAt(WidgetTester tester, Offset point) async {
+  final gesture = await tester.startGesture(
+    point,
+    kind: PointerDeviceKind.mouse,
+    buttons: kSecondaryMouseButton,
+  );
+  await tester.pump(const Duration(milliseconds: 200));
+  await gesture.up();
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 300));
+}
+
 Future<void> _runOnDesktop(
   WidgetTester tester,
   Future<void> Function() body,
@@ -253,6 +269,57 @@ void main() {
 
       expect(find.text('Cut'), findsOneWidget);
       expect(find.text('Refresh'), findsNothing);
+
+      await cubit.close();
+    });
+  });
+
+  testWidgets('held right-click on a row opens only the row menu', (tester) async {
+    await _runOnDesktop(tester, () async {
+      final cubit = FileTreeCubit(
+        fs: _FakeFilesystem({
+          p.normalize('/proj'): [
+            const FsDirEntry(name: 'a.txt', isDirectory: false),
+          ],
+        }),
+      );
+      await cubit.setRoot(p.normalize('/proj'));
+      await tester.pumpWidget(_panel(cubit: cubit, workContext: testRuntimeContext('/home')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+
+      // Holding past kPressTimeout makes the panel's blank-area recognizer fire
+      // too; the blank menu must not open over the file row.
+      await _holdRightClickAt(tester, tester.getCenter(find.text('a.txt')));
+
+      expect(find.text('Cut'), findsOneWidget);
+      expect(find.text('Refresh'), findsNothing);
+
+      await cubit.close();
+    });
+  });
+
+  testWidgets('held right-click on the blank area still opens the blank menu', (
+    tester,
+  ) async {
+    await _runOnDesktop(tester, () async {
+      final cubit = FileTreeCubit(
+        fs: _FakeFilesystem({
+          p.normalize('/proj'): [
+            const FsDirEntry(name: 'a.txt', isDirectory: false),
+          ],
+        }),
+      );
+      await cubit.setRoot(p.normalize('/proj'));
+      await tester.pumpWidget(_panel(cubit: cubit, workContext: testRuntimeContext('/home')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+
+      final rect = tester.getRect(find.byKey(AppKeys.fileTreePanel));
+      await _holdRightClickAt(tester, Offset(rect.center.dx, rect.bottom - 24));
+
+      expect(find.text('Refresh'), findsOneWidget);
+      expect(find.text('Cut'), findsNothing);
 
       await cubit.close();
     });

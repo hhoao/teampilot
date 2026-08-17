@@ -158,6 +158,17 @@ class _FileTreePanelState extends State<FileTreePanel> {
     final contentY =
         details.localPosition.dy +
         (_listScrollController.hasClients ? _listScrollController.offset : 0);
+    // A real row owns the right-click: its own TpHover handler opens the file
+    // menu. The outer secondary-tap recognizer also fires when the button is
+    // held past kPressTimeout (TapGestureRecognizer deadline bypasses the
+    // arena), so guard here or the blank menu would open over the file menu.
+    final rows = cubit.state.visibleRows;
+    final rowIndex = contentY < 0 ? -1 : (contentY / kFileTreeRowExtent).floor();
+    if (rowIndex >= 0 &&
+        rowIndex < rows.length &&
+        fileTreeDropRowKind(rows[rowIndex]) != FileTreeDropRowKind.empty) {
+      return;
+    }
     final hit = resolveFileTreePanelDropHit(
       contentY: contentY,
       visibleRows: cubit.state.visibleRows,

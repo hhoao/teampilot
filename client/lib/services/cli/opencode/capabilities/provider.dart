@@ -659,6 +659,9 @@ int? parseBusPortFromIdleUrl(String? idleUrl) {
 }
 
 /// Merges opencode.json `plugin` entry for TeamBus idle reporting (mixed mode).
+///
+/// The gateway port is re-stamped on every connect, so any prior entry for the
+/// same member (stale port) is replaced — never appended alongside.
 @visibleForTesting
 Map<String, Object?> mergeOpencodeIdlePlugin(
   Map<String, Object?> config,
@@ -676,26 +679,25 @@ Map<String, Object?> mergeOpencodeIdlePlugin(
     options['token'] = token;
   }
   final entry = <Object?>[pluginPath, options];
-  final plugins = List<Object?>.from((config['plugin'] as List?) ?? const []);
-  final exists = plugins.any(
-    (e) =>
-        e is List &&
-        e.isNotEmpty &&
-        e[0] == pluginPath &&
-        e.length > 1 &&
-        e[1] is Map &&
-        (e[1] as Map)['member'] == memberId &&
-        (e[1] as Map)['port'] == port,
-  );
-  if (!exists) {
-    plugins.add(entry);
-  }
+  final plugins = List<Object?>.from((config['plugin'] as List?) ?? const [])
+    ..removeWhere(
+      (e) =>
+          e is List &&
+          e.isNotEmpty &&
+          e[0] == pluginPath &&
+          e.length > 1 &&
+          e[1] is Map &&
+          (e[1] as Map)['member'] == memberId,
+    );
+  plugins.add(entry);
   return {...config, 'plugin': plugins};
 }
 
 /// Merges opencode.json `plugin` entry for `/agent-status` reporting.
 ///
 /// Install whenever [url] is stamped (simple + team) — not gated on mixed.
+/// Every connect stamps a fresh gateway port, so a prior entry for the same
+/// member (dead URL) is replaced instead of accumulating.
 @visibleForTesting
 Map<String, Object?> mergeOpencodeAgentStatusPlugin(
   Map<String, Object?> config,
@@ -713,20 +715,17 @@ Map<String, Object?> mergeOpencodeAgentStatusPlugin(
     options['token'] = token;
   }
   final entry = <Object?>[pluginPath, options];
-  final plugins = List<Object?>.from((config['plugin'] as List?) ?? const []);
-  final exists = plugins.any(
-    (e) =>
-        e is List &&
-        e.isNotEmpty &&
-        e[0] == pluginPath &&
-        e.length > 1 &&
-        e[1] is Map &&
-        (e[1] as Map)['member'] == memberId &&
-        (e[1] as Map)['url'] == url,
-  );
-  if (!exists) {
-    plugins.add(entry);
-  }
+  final plugins = List<Object?>.from((config['plugin'] as List?) ?? const [])
+    ..removeWhere(
+      (e) =>
+          e is List &&
+          e.isNotEmpty &&
+          e[0] == pluginPath &&
+          e.length > 1 &&
+          e[1] is Map &&
+          (e[1] as Map)['member'] == memberId,
+    );
+  plugins.add(entry);
   return {...config, 'plugin': plugins};
 }
 

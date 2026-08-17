@@ -118,6 +118,19 @@ void main() {
     },
   );
 
+  test('mergeOpencodeIdlePlugin replaces stale same-member entry when the '
+      'bus port changes', () {
+    final once = mergeOpencodeIdlePlugin(const {}, 'm1', 54321);
+    final twice = mergeOpencodeIdlePlugin(once, 'm1', 65432);
+    final plugin = twice['plugin'] as List;
+    expect(plugin, hasLength(1));
+    final entry = plugin.first as List;
+    expect(entry[0], './$opencodeIdlePluginFileName');
+    final opts = entry[1] as Map;
+    expect(opts['member'], 'm1');
+    expect(opts['port'], 65432);
+  });
+
   test('mergeOpencodeTeammateBusMcp preserves existing mcp entries', () {
     final merged = mergeOpencodeTeammateBusMcp(
       <String, Object?>{
