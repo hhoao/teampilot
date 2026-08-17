@@ -7,11 +7,13 @@ import 'package:teampilot/cubits/discovery_settings_cubit.dart';
 import 'package:teampilot/cubits/skill_cubit.dart';
 import 'package:teampilot/models/discoverable_team.dart';
 import 'package:teampilot/models/skill.dart';
+import 'package:teampilot/models/skill_registry_source.dart';
 import 'package:teampilot/repositories/app_settings_repository.dart';
 import 'package:teampilot/repositories/skill_repository.dart';
 import 'package:teampilot/services/cli/installer_types.dart';
 import 'package:teampilot/services/io/filesystem.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
+import 'package:teampilot/services/skill/registry/git_repo_registry_source.dart';
 import 'package:teampilot/services/skill/registry/skill_registry_config_service.dart';
 import 'package:teampilot/services/skill/skill_acquisition_engine.dart';
 import 'package:teampilot/services/skill/skill_fetch_service.dart';
@@ -160,10 +162,7 @@ void main() {
 
   test('manual mode syncs repos without disk cache once', () async {
     final fetch = _FakeSkillFetch();
-    final cubit = SkillCubit(
-      SkillRepository(fetch: fetch),
-    );
-    _emitRepos(cubit);
+    final cubit = cubitWithRepos(SkillRepository(fetch: fetch));
 
     await cubit.ensureDiscoveryLoaded();
 
@@ -176,10 +175,7 @@ void main() {
     final cache = SkillRepoDiskCacheService(fetch: fetch);
     await cache.ensureSynced(_discoveryRepo);
     expect(fetch.downloads, 1);
-    final cubit = SkillCubit(
-      SkillRepository(fetch: fetch, repoCache: cache),
-    );
-    _emitRepos(cubit);
+    final cubit = cubitWithRepos(SkillRepository(fetch: fetch, repoCache: cache));
 
     await cubit.ensureDiscoveryLoaded();
 
@@ -192,10 +188,7 @@ void main() {
     final fetch = _FakeSkillFetch();
     final cache = SkillRepoDiskCacheService(fetch: fetch);
     await cache.ensureSynced(_discoveryRepo);
-    final cubit = SkillCubit(
-      SkillRepository(fetch: fetch, repoCache: cache),
-    );
-    _emitRepos(cubit);
+    final cubit = cubitWithRepos(SkillRepository(fetch: fetch, repoCache: cache));
 
     await cubit.ensureDiscoveryLoaded(force: true);
 
@@ -213,11 +206,10 @@ void main() {
     );
     await settings.load();
     await settings.setAutoRefreshEnabled(true);
-    final cubit = SkillCubit(
+    final cubit = cubitWithRepos(
       SkillRepository(fetch: fetch, repoCache: cache),
       discoverySettings: settings,
     );
-    _emitRepos(cubit);
 
     await cubit.ensureDiscoveryLoaded();
 
@@ -250,11 +242,10 @@ void main() {
       repository: InMemoryAppSettingsRepository(),
     );
     await settings.setAutoRefreshEnabled(true);
-    final cubit = SkillCubit(
+    final cubit = cubitWithRepos(
       SkillRepository(fetch: fetch, repoCache: cache),
       discoverySettings: settings,
     );
-    _emitRepos(cubit);
 
     await cubit.ensureDiscoveryLoaded();
 
@@ -264,6 +255,33 @@ void main() {
 }
 
 const _discoveryRepo = SkillRepo(owner: 'acme', name: 'skills', branch: 'main');
+
+SkillCubit cubitWithRepos(
+  SkillRepository repo, {
+  DiscoverySettingsCubit? discoverySettings,
+}) {
+  final gitSource = GitRepoRegistrySource(
+    SkillRegistrySourceConfig(
+      id: 'git-acme-skills',
+      kind: SkillRegistryKind.gitRepo,
+      label: 'acme/skills',
+      gitOwner: 'acme',
+      gitName: 'skills',
+      gitBranch: 'main',
+    ),
+    discoverableProvider: () => repo.readCachedDiscoverable(_discoveryRepo),
+    syncNow: () async {},
+  );
+  return SkillCubit(
+    repo,
+    registryConfigService: SkillRegistryConfigService(
+      teampilotRoot: AppStorage.paths.basePath,
+    ),
+    initialSources: [gitSource],
+    rebuildSources: (c) => [gitSource],
+    discoverySettings: discoverySettings,
+  );
+}
 
 class _FakeSkillFetch extends SkillFetchService {
   int downloads = 0;
@@ -297,8 +315,4 @@ class _FakeSkillFetch extends SkillFetchService {
       commitSha: 'abc123',
     );
   }
-}
-
-void _emitRepos(SkillCubit cubit) {
-  cubit.emit(cubit.state.copyWith(repos: const [_discoveryRepo]));
 }

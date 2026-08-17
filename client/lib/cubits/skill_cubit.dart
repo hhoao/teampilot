@@ -234,7 +234,7 @@ class SkillCubit extends Cubit<SkillState> {
   /// 手动模式（默认）：只对从未同步过的 repo 做一次初始化同步，
   /// 有磁盘缓存的 repo 不发网络请求。
   Future<void> _syncMissingReposOnce() async {
-    final enabled = state.repos.where((r) => r.enabled).toList();
+    final enabled = _gitRepos();
     final missing = <SkillRepo>[];
     for (final repo in enabled) {
       if (!await _repo.hasCachedSnapshot(repo)) missing.add(repo);

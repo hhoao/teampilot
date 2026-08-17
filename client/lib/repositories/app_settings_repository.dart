@@ -281,7 +281,4 @@ class InMemoryAppSettingsRepository implements AppSettingsRepository {
   ) async {
     _aiFeatures[id] = setting;
   }
-
-  @override
-  Future<String?> loadSkillsMpApiKey() async => _skillsMpApiKey;
 }

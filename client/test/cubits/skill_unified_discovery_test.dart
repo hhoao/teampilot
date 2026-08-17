@@ -86,6 +86,7 @@ class _CountingRepoCache extends SkillRepoDiskCacheService {
   Future<SkillRepoSyncResult> ensureSynced(
     SkillRepo repo, {
     bool force = false,
+    Duration? maxStaleness,
     List<String> requiredRelativePaths = const [],
   }) async {
     syncCalls++;
