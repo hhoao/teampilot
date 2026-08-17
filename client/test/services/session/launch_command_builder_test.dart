@@ -448,6 +448,15 @@ void main() {
     });
   });
 
+  test('static splitArgs preserves quoted and escaped token boundaries', () {
+    expect(
+      LaunchCommandBuilder.splitArgs(
+        r'''--label "two words" --path=one\ two 'quoted value' ''',
+      ),
+      ['--label', 'two words', r'--path=one two', 'quoted value'],
+    );
+  });
+
   test('workingDirectoryForProcess uses native Windows cwd for WSL PTY', () {
     if (!Platform.isWindows) return;
     final cwd = LaunchCommandBuilder.workingDirectoryForProcess(

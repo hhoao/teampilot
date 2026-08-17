@@ -9,6 +9,7 @@ import '../cli/cli_tool_adapter.dart';
 import '../cli/registry/launch/cli_launch_arg_assembler.dart';
 import '../cli/registry/launch/cli_launch_arg_provider.dart';
 import '../cli/registry/launch/cli_launch_context.dart' as launch_context;
+import '../cli/registry/launch/user_extra_args_provider.dart' as launch_args;
 import 'shell_launch_spec.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../cli/cli_invocation.dart';
@@ -179,53 +180,7 @@ class LaunchCommandBuilder {
     ].map(_quoteForPreview).join(' ');
   }
 
-  static List<String> splitArgs(String input) {
-    final args = <String>[];
-    final buffer = StringBuffer();
-    String? quote;
-    var escaping = false;
-
-    for (final rune in input.runes) {
-      final char = String.fromCharCode(rune);
-      if (escaping) {
-        buffer.write(char);
-        escaping = false;
-        continue;
-      }
-      if (char == r'\') {
-        escaping = true;
-        continue;
-      }
-      if (quote != null) {
-        if (char == quote) {
-          quote = null;
-        } else {
-          buffer.write(char);
-        }
-        continue;
-      }
-      if (char == '"' || char == "'") {
-        quote = char;
-        continue;
-      }
-      if (char.trim().isEmpty) {
-        if (buffer.isNotEmpty) {
-          args.add(buffer.toString());
-          buffer.clear();
-        }
-        continue;
-      }
-      buffer.write(char);
-    }
-
-    if (escaping) {
-      buffer.write(r'\');
-    }
-    if (buffer.isNotEmpty) {
-      args.add(buffer.toString());
-    }
-    return args;
-  }
+  static List<String> splitArgs(String input) => launch_args.splitArgs(input);
 
   static Future<void> launch(
     TeamProfile team, {
