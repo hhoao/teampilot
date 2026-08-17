@@ -3759,18 +3759,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get skillsGoDiscovery => 'Go to Discovery';
 
   @override
-  String get skillsSourceRepos => 'Repos';
-
-  @override
-  String get skillsSourceSkillsSh => 'skills.sh';
-
-  @override
-  String get skillsSourceSkillsMp => 'SkillsMP';
-
-  @override
-  String get skillsMarketplaceSearchHint => 'Search marketplaces (≥ 2 chars)…';
-
-  @override
   String get skillsMarketplaceLoadMore => 'Load more';
 
   @override
@@ -3818,32 +3806,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get skillsMpQuotaHint =>
-      'SkillsMP anonymous quota (50/day) exhausted. Set a free API key to continue.';
-
-  @override
-  String get skillsMpApiKeyButton => 'Set API Key';
-
-  @override
-  String get skillsMpApiKeyDialogTitle => 'SkillsMP API Key';
-
-  @override
-  String get skillsMpApiKeyDialogHint =>
-      'Register for a free key at skillsmp.com/developers';
-
-  @override
-  String get skillsMpApiKeySave => 'Save';
-
-  @override
-  String skillsMarketplaceSearchError(String message) {
-    return 'Search failed: $message';
-  }
-
-  @override
   String get skillsSearchPlaceholder => 'Search skills…';
-
-  @override
-  String get skillsSkillsShPlaceholder => 'Search skills.sh (≥ 2 chars)…';
 
   @override
   String get skillsFilterRepoAll => 'All repos';
@@ -3877,9 +3840,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get skillsLocal => 'local';
-
-  @override
-  String get skillsReposEmpty => 'No repos yet';
 
   @override
   String get skillsRepoAdd => 'Add repo';
@@ -3953,9 +3913,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get skillsZipNoSkills => 'No SKILL.md found in the archive.';
-
-  @override
-  String get skillsSkillsShSearch => 'Search';
 
   @override
   String get skillsDiscoveryEmpty => 'No skills discovered';

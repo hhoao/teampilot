@@ -3611,18 +3611,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get skillsGoDiscovery => '前往发现';
 
   @override
-  String get skillsSourceRepos => '仓库';
-
-  @override
-  String get skillsSourceSkillsSh => 'skills.sh';
-
-  @override
-  String get skillsSourceSkillsMp => 'SkillsMP';
-
-  @override
-  String get skillsMarketplaceSearchHint => '搜索技能市场 (≥2 字)…';
-
-  @override
   String get skillsMarketplaceLoadMore => '加载更多';
 
   @override
@@ -3669,30 +3657,7 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get skillsMpQuotaHint => 'SkillsMP 匿名额度（每天 50 次）已用完。设置免费 API Key 后继续。';
-
-  @override
-  String get skillsMpApiKeyButton => '设置 API Key';
-
-  @override
-  String get skillsMpApiKeyDialogTitle => 'SkillsMP API Key';
-
-  @override
-  String get skillsMpApiKeyDialogHint => '在 skillsmp.com/developers 免费注册获取';
-
-  @override
-  String get skillsMpApiKeySave => '保存';
-
-  @override
-  String skillsMarketplaceSearchError(String message) {
-    return '搜索失败：$message';
-  }
-
-  @override
   String get skillsSearchPlaceholder => '搜索 Skill…';
-
-  @override
-  String get skillsSkillsShPlaceholder => '搜索 skills.sh (≥2 字)…';
 
   @override
   String get skillsFilterRepoAll => '所有仓库';
@@ -3726,9 +3691,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get skillsLocal => '本地';
-
-  @override
-  String get skillsReposEmpty => '暂无仓库';
 
   @override
   String get skillsRepoAdd => '添加仓库';
@@ -3801,9 +3763,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get skillsZipNoSkills => '压缩包中未发现 SKILL.md。';
-
-  @override
-  String get skillsSkillsShSearch => '搜索';
 
   @override
   String get skillsDiscoveryEmpty => '未发现可用 Skill';

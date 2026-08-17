@@ -1546,10 +1546,6 @@
   "skillsNoInstalled": "还没有安装 Skill",
   "skillsNoInstalledHint": "打开发现页安装你的第一个 Skill。",
   "skillsGoDiscovery": "前往发现",
-  "skillsSourceRepos": "仓库",
-  "skillsSourceSkillsSh": "skills.sh",
-  "skillsSourceSkillsMp": "SkillsMP",
-  "skillsMarketplaceSearchHint": "搜索技能市场 (≥2 字)…",
   "skillsMarketplaceLoadMore": "加载更多",
   "skillsMarketplaceAddRepo": "添加仓库",
   "skillsMarketplaceRepoAdded": "已添加到仓库源，可在 Repos 页安装具体技能",
@@ -1574,19 +1570,7 @@
       "date": {"type": "String"}
     }
   },
-  "skillsMpQuotaHint": "SkillsMP 匿名额度（每天 50 次）已用完。设置免费 API Key 后继续。",
-  "skillsMpApiKeyButton": "设置 API Key",
-  "skillsMpApiKeyDialogTitle": "SkillsMP API Key",
-  "skillsMpApiKeyDialogHint": "在 skillsmp.com/developers 免费注册获取",
-  "skillsMpApiKeySave": "保存",
-  "skillsMarketplaceSearchError": "搜索失败：{message}",
-  "@skillsMarketplaceSearchError": {
-    "placeholders": {
-      "message": {"type": "String"}
-    }
-  },
   "skillsSearchPlaceholder": "搜索 Skill…",
-  "skillsSkillsShPlaceholder": "搜索 skills.sh (≥2 字)…",
   "skillsFilterRepoAll": "所有仓库",
   "skillsFilterAll": "全部",
   "skillsFilterInstalled": "已安装",
@@ -1598,7 +1582,6 @@
   "skillsCardUninstall": "卸载",
   "skillsUpdateAvailable": "有新版本",
   "skillsLocal": "本地",
-  "skillsReposEmpty": "暂无仓库",
   "skillsRepoAdd": "添加仓库",
   "skillsDiscoverySyncing": "正在后台检查仓库更新并同步 Skill…",
   "skillsRepoSyncing": "更新中",
@@ -1618,7 +1601,6 @@
   "skillsImportNothing": "未发现未管理的 Skill。",
   "skillsImportSelected": "导入选中 {count} 个",
   "skillsZipNoSkills": "压缩包中未发现 SKILL.md。",
-  "skillsSkillsShSearch": "搜索",
   "skillsDiscoveryEmpty": "未发现可用 Skill",
   "skillsDiscoveryEmptyHint": "添加仓库或试用 skills.sh 来发现 Skill。",
   "skillsAdd": "添加",

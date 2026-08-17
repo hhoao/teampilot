@@ -6765,30 +6765,6 @@ abstract class AppLocalizations {
   /// **'Go to Discovery'**
   String get skillsGoDiscovery;
 
-  /// No description provided for @skillsSourceRepos.
-  ///
-  /// In en, this message translates to:
-  /// **'Repos'**
-  String get skillsSourceRepos;
-
-  /// No description provided for @skillsSourceSkillsSh.
-  ///
-  /// In en, this message translates to:
-  /// **'skills.sh'**
-  String get skillsSourceSkillsSh;
-
-  /// No description provided for @skillsSourceSkillsMp.
-  ///
-  /// In en, this message translates to:
-  /// **'SkillsMP'**
-  String get skillsSourceSkillsMp;
-
-  /// No description provided for @skillsMarketplaceSearchHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Search marketplaces (≥ 2 chars)…'**
-  String get skillsMarketplaceSearchHint;
-
   /// No description provided for @skillsMarketplaceLoadMore.
   ///
   /// In en, this message translates to:
@@ -6873,53 +6849,11 @@ abstract class AppLocalizations {
   /// **'Updated {date}'**
   String skillsCardUpdatedAt(String date);
 
-  /// No description provided for @skillsMpQuotaHint.
-  ///
-  /// In en, this message translates to:
-  /// **'SkillsMP anonymous quota (50/day) exhausted. Set a free API key to continue.'**
-  String get skillsMpQuotaHint;
-
-  /// No description provided for @skillsMpApiKeyButton.
-  ///
-  /// In en, this message translates to:
-  /// **'Set API Key'**
-  String get skillsMpApiKeyButton;
-
-  /// No description provided for @skillsMpApiKeyDialogTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'SkillsMP API Key'**
-  String get skillsMpApiKeyDialogTitle;
-
-  /// No description provided for @skillsMpApiKeyDialogHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Register for a free key at skillsmp.com/developers'**
-  String get skillsMpApiKeyDialogHint;
-
-  /// No description provided for @skillsMpApiKeySave.
-  ///
-  /// In en, this message translates to:
-  /// **'Save'**
-  String get skillsMpApiKeySave;
-
-  /// No description provided for @skillsMarketplaceSearchError.
-  ///
-  /// In en, this message translates to:
-  /// **'Search failed: {message}'**
-  String skillsMarketplaceSearchError(String message);
-
   /// No description provided for @skillsSearchPlaceholder.
   ///
   /// In en, this message translates to:
   /// **'Search skills…'**
   String get skillsSearchPlaceholder;
-
-  /// No description provided for @skillsSkillsShPlaceholder.
-  ///
-  /// In en, this message translates to:
-  /// **'Search skills.sh (≥ 2 chars)…'**
-  String get skillsSkillsShPlaceholder;
 
   /// No description provided for @skillsFilterRepoAll.
   ///
@@ -6986,12 +6920,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'local'**
   String get skillsLocal;
-
-  /// No description provided for @skillsReposEmpty.
-  ///
-  /// In en, this message translates to:
-  /// **'No repos yet'**
-  String get skillsReposEmpty;
 
   /// No description provided for @skillsRepoAdd.
   ///
@@ -7106,12 +7034,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No SKILL.md found in the archive.'**
   String get skillsZipNoSkills;
-
-  /// No description provided for @skillsSkillsShSearch.
-  ///
-  /// In en, this message translates to:
-  /// **'Search'**
-  String get skillsSkillsShSearch;
 
   /// No description provided for @skillsDiscoveryEmpty.
   ///
