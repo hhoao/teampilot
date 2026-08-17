@@ -157,6 +157,11 @@ class AppPaths {
   static String skillReposConfigPathForTeampilotRoot(String teampilotRoot) =>
       _pathUnderTeampilotRoot(teampilotRoot, 'skills/repos.json');
 
+  /// Skill registry sources (skills/registries.json).
+  static String skillRegistriesConfigPathForTeampilotRoot(
+    String teampilotRoot,
+  ) => _pathUnderTeampilotRoot(teampilotRoot, 'skills/registries.json');
+
   /// Local disk cache for GitHub skill repos (tarball files + discovered skills).
   static String skillRepoCacheDirForTeampilotRoot(String teampilotRoot) =>
       _pathUnderTeampilotRoot(teampilotRoot, 'skills/repo-cache');
@@ -299,6 +304,9 @@ class AppPaths {
 
   String get skillReposConfigPath =>
       skillReposConfigPathForTeampilotRoot(basePath);
+
+  String get skillRegistriesConfigPath =>
+      skillRegistriesConfigPathForTeampilotRoot(basePath);
 
   String get teamHubDir => teamHubDirForTeampilotRoot(basePath);
   String get teamHubCacheDir => teamHubCacheDirForTeampilotRoot(basePath);

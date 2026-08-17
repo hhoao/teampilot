@@ -3660,6 +3660,80 @@ class AppLocalizationsEn extends AppLocalizations {
   String get skillsNavRepos => 'Repos';
 
   @override
+  String get skillsNavRegistries => 'Registries';
+
+  @override
+  String get skillsRegistryApiKeySet => 'API key set';
+
+  @override
+  String get skillsRegistryAddSource => 'Add registry source';
+
+  @override
+  String get skillsRegistrySourceKind => 'Source type';
+
+  @override
+  String get skillsRegistrySourceKindApi => 'API source';
+
+  @override
+  String get skillsRegistrySourceKindGit => 'Git repository';
+
+  @override
+  String get skillsRegistryProtocolLabel => 'Protocol';
+
+  @override
+  String get skillsRegistryProtocolSkillsSh => 'skills.sh compatible';
+
+  @override
+  String get skillsRegistryProtocolSkillsMp => 'SkillsMP compatible';
+
+  @override
+  String get skillsRegistryNameLabel => 'Display name';
+
+  @override
+  String get skillsRegistryBaseUrlLabel => 'Base URL';
+
+  @override
+  String get skillsRegistryBrowseQueryLabel => 'Default browse query';
+
+  @override
+  String get skillsRegistryTokenLabel => 'API Key';
+
+  @override
+  String get skillsRegistryOwnerLabel => 'Owner';
+
+  @override
+  String get skillsRegistryNameOfRepoLabel => 'Repository';
+
+  @override
+  String get skillsRegistryTestOk => 'Connection OK';
+
+  @override
+  String skillsRegistryTestFailed(String error) {
+    return 'Connection failed: $error';
+  }
+
+  @override
+  String get skillsRegistryGoSetKey => 'Set API key in Registries';
+
+  @override
+  String get skillsRegistryRetry => 'Retry';
+
+  @override
+  String get skillsRegistrySourceExists =>
+      'This registry source already exists';
+
+  @override
+  String get skillsRegistryEditTitle => 'Edit registry source';
+
+  @override
+  String get skillsRegistryRemoveTitle => 'Reset registry';
+
+  @override
+  String skillsRegistryResetConfirm(String name) {
+    return 'Reset $name to defaults?';
+  }
+
+  @override
   String skillsInstalledCount(int count) {
     return '$count installed';
   }
@@ -3690,18 +3764,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get skillsGoDiscovery => 'Go to Discovery';
-
-  @override
-  String get skillsSourceRepos => 'Repos';
-
-  @override
-  String get skillsSourceSkillsSh => 'skills.sh';
-
-  @override
-  String get skillsSourceSkillsMp => 'SkillsMP';
-
-  @override
-  String get skillsMarketplaceSearchHint => 'Search marketplaces (≥ 2 chars)…';
 
   @override
   String get skillsMarketplaceLoadMore => 'Load more';
@@ -3751,32 +3813,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get skillsMpQuotaHint =>
-      'SkillsMP anonymous quota (50/day) exhausted. Set a free API key to continue.';
-
-  @override
-  String get skillsMpApiKeyButton => 'Set API Key';
-
-  @override
-  String get skillsMpApiKeyDialogTitle => 'SkillsMP API Key';
-
-  @override
-  String get skillsMpApiKeyDialogHint =>
-      'Register for a free key at skillsmp.com/developers';
-
-  @override
-  String get skillsMpApiKeySave => 'Save';
-
-  @override
-  String skillsMarketplaceSearchError(String message) {
-    return 'Search failed: $message';
-  }
-
-  @override
   String get skillsSearchPlaceholder => 'Search skills…';
-
-  @override
-  String get skillsSkillsShPlaceholder => 'Search skills.sh (≥ 2 chars)…';
 
   @override
   String get skillsFilterRepoAll => 'All repos';
@@ -3810,9 +3847,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get skillsLocal => 'local';
-
-  @override
-  String get skillsReposEmpty => 'No repos yet';
 
   @override
   String get skillsRepoAdd => 'Add repo';
@@ -3888,14 +3922,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get skillsZipNoSkills => 'No SKILL.md found in the archive.';
 
   @override
-  String get skillsSkillsShSearch => 'Search';
-
-  @override
   String get skillsDiscoveryEmpty => 'No skills discovered';
 
   @override
   String get skillsDiscoveryEmptyHint =>
       'Add a repo or try skills.sh to find skills.';
+
+  @override
+  String get skillsDiscoveryErrorTitle => 'Discovery failed';
+
+  @override
+  String get skillsMpQuotaHint =>
+      'SkillsMP anonymous quota (50/day) exhausted. Set a free API key to continue.';
 
   @override
   String get skillsAdd => 'Add';

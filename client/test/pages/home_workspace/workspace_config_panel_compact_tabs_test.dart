@@ -7,7 +7,6 @@ import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/pages/home_workspace/workspace/workspace_config_section.dart';
 import 'package:teampilot/pages/home_workspace/workspace/workspace_config_workspace.dart';
-import 'package:teampilot/repositories/skill_repository.dart';
 import 'package:teampilot/repositories/workspace_project_config_repository.dart';
 import 'package:teampilot/widgets/settings/workspace_hub_shell.dart';
 import 'package:teampilot/widgets/settings/workspace_section_tab_bar.dart';
@@ -19,7 +18,7 @@ void main() {
 
   setUp(() {
     setUpTestAppStorage();
-    skillCubit = SkillCubit(SkillRepository());
+    skillCubit = testSkillCubit();
   });
 
   tearDown(() async {

@@ -1,0 +1,190 @@
+import 'dart:io';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/cubits/skill_cubit.dart';
+import 'package:teampilot/l10n/app_localizations.dart';
+import 'package:teampilot/models/skill_registry_source.dart';
+import 'package:teampilot/pages/skills/skill_registries_section.dart';
+import 'package:teampilot/repositories/skill_repository.dart';
+import 'package:teampilot/services/io/local_filesystem.dart';
+import 'package:teampilot/services/skill/registry/api_registry_source.dart';
+import 'package:teampilot/services/skill/registry/git_repo_registry_source.dart';
+import 'package:teampilot/services/skill/registry/skill_registry_config_service.dart';
+import 'package:teampilot/services/skill/registry/skill_registry_source.dart';
+import 'package:teampilot/services/storage/app_storage.dart';
+
+List<SkillRegistrySource> _rebuild(SkillRegistriesConfig c) => [
+  for (final cfg in c.sources)
+    if (cfg.kind == SkillRegistryKind.api)
+      ApiRegistrySource(cfg)
+    else
+      GitRepoRegistrySource(
+        cfg,
+        discoverableProvider: () async => const [],
+        syncNow: () async {},
+      ),
+];
+
+/// Lets pending real-async work (disk IO) spawned from FakeAsync UI callbacks
+/// make progress: real event loop turns flush IO completions, pumps drain the
+/// FakeAsync continuation queue.
+Future<void> _flushRealIo(WidgetTester tester, {int rounds = 6}) async {
+  for (var i = 0; i < rounds; i++) {
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 80)),
+    );
+    await tester.pumpAndSettle();
+  }
+}
+
+void main() {
+  late Directory tmp;
+  late AppPaths paths;
+  late SkillRegistryConfigService cfgService;
+
+  setUp(() async {
+    tmp = Directory.systemTemp.createTempSync('skill-reg-section-');
+    paths = AppPaths(tmp.path);
+    AppStorage.installForTesting(
+      filesystem: LocalFilesystem(
+        pathContext: AppPaths.pathContextForDataRoot(paths.basePath),
+      ),
+      paths: paths,
+      home: tmp.path,
+      cwd: tmp.path,
+    );
+    cfgService = SkillRegistryConfigService(teampilotRoot: paths.basePath);
+  });
+
+  tearDown(() {
+    AppStorage.resetForTesting();
+    if (tmp.existsSync()) tmp.deleteSync(recursive: true);
+  });
+
+  Widget wrap(SkillCubit cubit) => MaterialApp(
+    locale: const Locale('en'),
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    home: Scaffold(
+      body: BlocProvider<SkillCubit>.value(
+        value: cubit,
+        child: const SizedBox(height: 900, child: SkillRegistriesSection()),
+      ),
+    ),
+  );
+
+  Future<SkillCubit> buildCubit(WidgetTester tester) async {
+    final cubit = await tester.runAsync<SkillCubit>(() async {
+      final path = AppPaths.skillRegistriesConfigPathForTeampilotRoot(
+        paths.basePath,
+      );
+      final stat = await AppStorage.fs.stat(path);
+      if (!stat.isFile) {
+        await cfgService.save(SkillRegistriesConfig.defaults());
+      }
+      final c = SkillCubit(
+        SkillRepository(),
+        registryConfigService: cfgService,
+        initialSources: const [],
+        rebuildSources: _rebuild,
+      );
+      await c.loadAll();
+      return c;
+    });
+    return cubit!;
+  }
+
+  testWidgets('shows source rows with labels and switches', (tester) async {
+    final cubit = await buildCubit(tester);
+    await tester.pumpWidget(wrap(cubit));
+    await tester.pumpAndSettle();
+    expect(find.text('https://skills.sh'), findsOneWidget);
+    expect(find.text('https://skillsmp.com/api/v1'), findsOneWidget);
+    expect(find.text('@SkillsMP'), findsOneWidget);
+    expect(find.byType(Switch), findsNWidgets(6)); // 2 API + 4 default git
+  });
+
+  testWidgets('edit dialog saves display name to registries.json', (tester) async {
+    final cubit = await buildCubit(tester);
+    await tester.pumpWidget(wrap(cubit));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('https://skills.sh'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).at(0), 'My Skills');
+    await tester.tap(find.text('Save'));
+    await _flushRealIo(tester);
+    final raw = await tester.runAsync<Object?>(
+      () => AppStorage.fs.readString(
+        AppPaths.skillRegistriesConfigPathForTeampilotRoot(paths.basePath),
+      ),
+    );
+    expect(raw, contains('My Skills'));
+  });
+
+  testWidgets('add API source flow', (tester) async {
+    final cubit = await buildCubit(tester);
+    await tester.pumpWidget(wrap(cubit));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Add registry source'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('API source'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('SkillsMP compatible'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).at(0), 'My API');
+    await tester.tap(find.text('Save'));
+    await _flushRealIo(tester);
+    expect(find.text('@My API'), findsWidgets);
+  });
+
+  testWidgets('clearing token in edit dialog removes API key set subtitle', (
+    tester,
+  ) async {
+    final defaults = SkillRegistriesConfig.defaults();
+    final withToken = SkillRegistriesConfig(sources: [
+      for (final s in defaults.sources)
+        s.id == 'skillsMp' ? s.copyWith(apiToken: 'tok123') : s,
+    ]);
+    await tester.runAsync(() => cfgService.save(withToken));
+    final cubit = await buildCubit(tester);
+    await tester.pumpWidget(wrap(cubit));
+    await tester.pumpAndSettle();
+    expect(find.text('@SkillsMP · API key set'), findsOneWidget);
+    await tester.tap(find.text('https://skillsmp.com/api/v1'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).at(2), '');
+    await tester.tap(find.text('Save'));
+    await _flushRealIo(tester);
+    expect(find.text('@SkillsMP · API key set'), findsNothing);
+    expect(find.text('@SkillsMP'), findsOneWidget);
+  });
+
+  testWidgets('remove custom git source confirms and deletes', (tester) async {
+    final defaults = SkillRegistriesConfig.defaults();
+    final custom = SkillRegistrySourceConfig(
+      id: 'git-vercel-ai',
+      kind: SkillRegistryKind.gitRepo,
+      label: 'vercel/ai',
+      gitOwner: 'vercel',
+      gitName: 'ai',
+      gitBranch: 'main',
+    );
+    await tester.runAsync(() => cfgService.save(
+      SkillRegistriesConfig(sources: [...defaults.sources, custom]),
+    ));
+    final cubit = await buildCubit(tester);
+    await tester.pumpWidget(wrap(cubit));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('https://github.com/vercel/ai'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Save'));
+    await _flushRealIo(tester);
+    await tester.tap(find.byIcon(Icons.delete_outline).last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Remove'));
+    await _flushRealIo(tester);
+    expect(find.text('https://github.com/vercel/ai'), findsNothing);
+  });
+}

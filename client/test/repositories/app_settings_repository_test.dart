@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:teampilot/repositories/app_settings_repository.dart';
@@ -128,29 +130,30 @@ void main() {
     });
   });
 
-  test('InMemory round trip and null-on-empty', () async {
-    final repo = InMemoryAppSettingsRepository();
-    expect(await repo.loadSkillsMpApiKey(), isNull);
-    await repo.saveSkillsMpApiKey('sk_abc');
-    expect(await repo.loadSkillsMpApiKey(), 'sk_abc');
-    await repo.saveSkillsMpApiKey(null);
-    expect(await repo.loadSkillsMpApiKey(), isNull);
-  });
+  group('AppSettingsRepository.skillsMpApiKey (legacy read path)', () {
+    test('returns null when nothing is stored', () async {
+      final prefs = await SharedPreferences.getInstance();
+      final repo = SharedPrefsAppSettingsRepository(prefs);
 
-  test('InMemory constructor seed', () async {
-    final repo = InMemoryAppSettingsRepository(skillsMpApiKey: 'sk_seed');
-    expect(await repo.loadSkillsMpApiKey(), 'sk_seed');
-  });
+      expect(await repo.loadSkillsMpApiKey(), isNull);
+    });
 
-  test('SharedPrefs persists key in the settings map', () async {
-    SharedPreferences.setMockInitialValues({});
-    final prefs = await SharedPreferences.getInstance();
-    final repo = SharedPrefsAppSettingsRepository(prefs);
-    expect(await repo.loadSkillsMpApiKey(), isNull);
-    await repo.saveSkillsMpApiKey('sk_prefs');
-    expect(await repo.loadSkillsMpApiKey(), 'sk_prefs');
-    await repo.saveSkillsMpApiKey(null);
-    expect(await repo.loadSkillsMpApiKey(), isNull);
+    test('SharedPrefs seeds the legacy key in the settings map', () async {
+      SharedPreferences.setMockInitialValues({
+        SharedPrefsAppSettingsRepository.storageKey: jsonEncode({
+          'skillsMpApiKey': 'legacy-token',
+        }),
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final repo = SharedPrefsAppSettingsRepository(prefs);
+
+      expect(await repo.loadSkillsMpApiKey(), 'legacy-token');
+    });
+
+    test('InMemory seed is readable', () async {
+      final repo = InMemoryAppSettingsRepository(skillsMpApiKey: 'sk_seed');
+      expect(await repo.loadSkillsMpApiKey(), 'sk_seed');
+    });
   });
 
   group('AppSettingsRepository.discoveryAutoRefresh', () {

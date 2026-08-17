@@ -6,7 +6,6 @@ import 'package:teampilot/cubits/skill_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/skill.dart';
 import 'package:teampilot/pages/skills/skill_installed_section.dart';
-import 'package:teampilot/repositories/skill_repository.dart';
 
 import '../../support/post_frame_test_harness.dart';
 
@@ -15,7 +14,7 @@ void main() {
 
   setUp(() {
     setUpTestAppStorage();
-    cubit = SkillCubit(SkillRepository());
+    cubit = testSkillCubit();
   });
 
   tearDown(() async {

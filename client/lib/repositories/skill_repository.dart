@@ -5,8 +5,6 @@ import '../services/skill/skill_fetch_service.dart';
 import '../services/skill/skill_install_service.dart';
 import '../services/skill/skill_manifest_service.dart';
 import '../services/skill/skill_repo_disk_cache_service.dart';
-import '../services/skill/skill_repo_service.dart';
-import '../services/skill/skills_sh_service.dart';
 
 class SkillRepository {
   factory SkillRepository({
@@ -14,8 +12,6 @@ class SkillRepository {
     SkillFetchService? fetch,
     SkillRepoDiskCacheService? repoCache,
     SkillInstallService? install,
-    SkillRepoService? repos,
-    SkillsShService? skillsSh,
   }) {
     final resolvedFetch = fetch ?? SkillFetchService();
     final resolvedManifest = manifest ?? SkillManifestService();
@@ -32,8 +28,6 @@ class SkillRepository {
             fetch: resolvedFetch,
             repoCache: resolvedCache,
           ),
-      repos: repos ?? SkillRepoService(),
-      skillsSh: skillsSh ?? SkillsShService(),
     );
   }
 
@@ -42,19 +36,14 @@ class SkillRepository {
     required this.fetch,
     required this.repoCache,
     required this.install,
-    required this.repos,
-    required this.skillsSh,
   });
 
   final SkillManifestService manifest;
   final SkillFetchService fetch;
   final SkillRepoDiskCacheService repoCache;
   final SkillInstallService install;
-  final SkillRepoService repos;
-  final SkillsShService skillsSh;
 
   Future<List<Skill>> loadInstalled() => manifest.loadSkills();
-  Future<List<SkillRepo>> loadRepos() => repos.loadRepos();
 
   Future<List<DiscoverableSkill>> readCachedDiscoverable(SkillRepo repo) =>
       repoCache.readSkillsFromDisk(repo);
@@ -97,12 +86,6 @@ class SkillRepository {
   Future<List<UnmanagedSkill>> scanUnmanaged() => install.scanUnmanaged();
   Future<List<Skill>> importUnmanaged(List<UnmanagedSkill> us) =>
       install.importUnmanaged(us);
-
-  Future<SkillsShResult> searchSkillsSh(
-    String q, {
-    int limit = 20,
-    int offset = 0,
-  }) => skillsSh.search(q, limit: limit, offset: offset);
 
   Future<void> toggleSkillEnabled(Skill s, bool enabled) =>
       manifest.upsertSkill(

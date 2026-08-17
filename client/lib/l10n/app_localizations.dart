@@ -6585,6 +6585,144 @@ abstract class AppLocalizations {
   /// **'Repos'**
   String get skillsNavRepos;
 
+  /// No description provided for @skillsNavRegistries.
+  ///
+  /// In en, this message translates to:
+  /// **'Registries'**
+  String get skillsNavRegistries;
+
+  /// No description provided for @skillsRegistryApiKeySet.
+  ///
+  /// In en, this message translates to:
+  /// **'API key set'**
+  String get skillsRegistryApiKeySet;
+
+  /// No description provided for @skillsRegistryAddSource.
+  ///
+  /// In en, this message translates to:
+  /// **'Add registry source'**
+  String get skillsRegistryAddSource;
+
+  /// No description provided for @skillsRegistrySourceKind.
+  ///
+  /// In en, this message translates to:
+  /// **'Source type'**
+  String get skillsRegistrySourceKind;
+
+  /// No description provided for @skillsRegistrySourceKindApi.
+  ///
+  /// In en, this message translates to:
+  /// **'API source'**
+  String get skillsRegistrySourceKindApi;
+
+  /// No description provided for @skillsRegistrySourceKindGit.
+  ///
+  /// In en, this message translates to:
+  /// **'Git repository'**
+  String get skillsRegistrySourceKindGit;
+
+  /// No description provided for @skillsRegistryProtocolLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Protocol'**
+  String get skillsRegistryProtocolLabel;
+
+  /// No description provided for @skillsRegistryProtocolSkillsSh.
+  ///
+  /// In en, this message translates to:
+  /// **'skills.sh compatible'**
+  String get skillsRegistryProtocolSkillsSh;
+
+  /// No description provided for @skillsRegistryProtocolSkillsMp.
+  ///
+  /// In en, this message translates to:
+  /// **'SkillsMP compatible'**
+  String get skillsRegistryProtocolSkillsMp;
+
+  /// No description provided for @skillsRegistryNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Display name'**
+  String get skillsRegistryNameLabel;
+
+  /// No description provided for @skillsRegistryBaseUrlLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Base URL'**
+  String get skillsRegistryBaseUrlLabel;
+
+  /// No description provided for @skillsRegistryBrowseQueryLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Default browse query'**
+  String get skillsRegistryBrowseQueryLabel;
+
+  /// No description provided for @skillsRegistryTokenLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'API Key'**
+  String get skillsRegistryTokenLabel;
+
+  /// No description provided for @skillsRegistryOwnerLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Owner'**
+  String get skillsRegistryOwnerLabel;
+
+  /// No description provided for @skillsRegistryNameOfRepoLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Repository'**
+  String get skillsRegistryNameOfRepoLabel;
+
+  /// No description provided for @skillsRegistryTestOk.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection OK'**
+  String get skillsRegistryTestOk;
+
+  /// No description provided for @skillsRegistryTestFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection failed: {error}'**
+  String skillsRegistryTestFailed(String error);
+
+  /// No description provided for @skillsRegistryGoSetKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Set API key in Registries'**
+  String get skillsRegistryGoSetKey;
+
+  /// No description provided for @skillsRegistryRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get skillsRegistryRetry;
+
+  /// No description provided for @skillsRegistrySourceExists.
+  ///
+  /// In en, this message translates to:
+  /// **'This registry source already exists'**
+  String get skillsRegistrySourceExists;
+
+  /// No description provided for @skillsRegistryEditTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit registry source'**
+  String get skillsRegistryEditTitle;
+
+  /// No description provided for @skillsRegistryRemoveTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset registry'**
+  String get skillsRegistryRemoveTitle;
+
+  /// No description provided for @skillsRegistryResetConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset {name} to defaults?'**
+  String skillsRegistryResetConfirm(String name);
+
   /// No description provided for @skillsInstalledCount.
   ///
   /// In en, this message translates to:
@@ -6638,30 +6776,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Go to Discovery'**
   String get skillsGoDiscovery;
-
-  /// No description provided for @skillsSourceRepos.
-  ///
-  /// In en, this message translates to:
-  /// **'Repos'**
-  String get skillsSourceRepos;
-
-  /// No description provided for @skillsSourceSkillsSh.
-  ///
-  /// In en, this message translates to:
-  /// **'skills.sh'**
-  String get skillsSourceSkillsSh;
-
-  /// No description provided for @skillsSourceSkillsMp.
-  ///
-  /// In en, this message translates to:
-  /// **'SkillsMP'**
-  String get skillsSourceSkillsMp;
-
-  /// No description provided for @skillsMarketplaceSearchHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Search marketplaces (≥ 2 chars)…'**
-  String get skillsMarketplaceSearchHint;
 
   /// No description provided for @skillsMarketplaceLoadMore.
   ///
@@ -6747,53 +6861,11 @@ abstract class AppLocalizations {
   /// **'Updated {date}'**
   String skillsCardUpdatedAt(String date);
 
-  /// No description provided for @skillsMpQuotaHint.
-  ///
-  /// In en, this message translates to:
-  /// **'SkillsMP anonymous quota (50/day) exhausted. Set a free API key to continue.'**
-  String get skillsMpQuotaHint;
-
-  /// No description provided for @skillsMpApiKeyButton.
-  ///
-  /// In en, this message translates to:
-  /// **'Set API Key'**
-  String get skillsMpApiKeyButton;
-
-  /// No description provided for @skillsMpApiKeyDialogTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'SkillsMP API Key'**
-  String get skillsMpApiKeyDialogTitle;
-
-  /// No description provided for @skillsMpApiKeyDialogHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Register for a free key at skillsmp.com/developers'**
-  String get skillsMpApiKeyDialogHint;
-
-  /// No description provided for @skillsMpApiKeySave.
-  ///
-  /// In en, this message translates to:
-  /// **'Save'**
-  String get skillsMpApiKeySave;
-
-  /// No description provided for @skillsMarketplaceSearchError.
-  ///
-  /// In en, this message translates to:
-  /// **'Search failed: {message}'**
-  String skillsMarketplaceSearchError(String message);
-
   /// No description provided for @skillsSearchPlaceholder.
   ///
   /// In en, this message translates to:
   /// **'Search skills…'**
   String get skillsSearchPlaceholder;
-
-  /// No description provided for @skillsSkillsShPlaceholder.
-  ///
-  /// In en, this message translates to:
-  /// **'Search skills.sh (≥ 2 chars)…'**
-  String get skillsSkillsShPlaceholder;
 
   /// No description provided for @skillsFilterRepoAll.
   ///
@@ -6860,12 +6932,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'local'**
   String get skillsLocal;
-
-  /// No description provided for @skillsReposEmpty.
-  ///
-  /// In en, this message translates to:
-  /// **'No repos yet'**
-  String get skillsReposEmpty;
 
   /// No description provided for @skillsRepoAdd.
   ///
@@ -6981,12 +7047,6 @@ abstract class AppLocalizations {
   /// **'No SKILL.md found in the archive.'**
   String get skillsZipNoSkills;
 
-  /// No description provided for @skillsSkillsShSearch.
-  ///
-  /// In en, this message translates to:
-  /// **'Search'**
-  String get skillsSkillsShSearch;
-
   /// No description provided for @skillsDiscoveryEmpty.
   ///
   /// In en, this message translates to:
@@ -6998,6 +7058,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Add a repo or try skills.sh to find skills.'**
   String get skillsDiscoveryEmptyHint;
+
+  /// No description provided for @skillsDiscoveryErrorTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Discovery failed'**
+  String get skillsDiscoveryErrorTitle;
+
+  /// No description provided for @skillsMpQuotaHint.
+  ///
+  /// In en, this message translates to:
+  /// **'SkillsMP anonymous quota (50/day) exhausted. Set a free API key to continue.'**
+  String get skillsMpQuotaHint;
 
   /// No description provided for @skillsAdd.
   ///

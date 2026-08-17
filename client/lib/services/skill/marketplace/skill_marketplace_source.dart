@@ -24,7 +24,7 @@ class MarketplaceSkill {
   final String repoBranch;
 
   /// SKILL.md 所在 repo 内子目录。null 表示无法直接定位（如 SkillsMP），
-  /// 安装需降级为把整个 repo 加入仓库源。
+  /// 安装需降级为把整个 repo 加入注册中心 git 源。
   final String? directory;
   final String githubUrl;
 
@@ -68,40 +68,6 @@ class MarketplaceCapabilities {
       supportsSortBy;
 }
 
-class MarketplaceSearchQuery {
-  const MarketplaceSearchQuery({
-    required this.query,
-    this.page = 1,
-    this.limit = 20,
-    this.category,
-    this.occupation,
-    this.language,
-    this.sortBy,
-  });
-
-  final String query;
-  final int page;
-  final int limit;
-  final String? category;
-  final String? occupation;
-  final String? language;
-
-  /// 'stars' | 'recent'（SkillsMP 专有）。
-  final String? sortBy;
-}
-
-class MarketplaceSearchResult {
-  const MarketplaceSearchResult({
-    required this.skills,
-    this.hasNext = false,
-    this.total = 0,
-  });
-
-  final List<MarketplaceSkill> skills;
-  final bool hasNext;
-  final int total;
-}
-
 class MarketplaceFetchException implements Exception {
   MarketplaceFetchException(this.message, [this.cause]);
   final String message;
@@ -115,14 +81,4 @@ class MarketplaceFetchException implements Exception {
 
 class MarketplaceQuotaException extends MarketplaceFetchException {
   MarketplaceQuotaException(super.message);
-}
-
-abstract class SkillMarketplaceSource {
-  String get id;
-  String get label;
-  MarketplaceCapabilities get capabilities;
-
-  Future<MarketplaceSearchResult> search(MarketplaceSearchQuery query);
-
-  Future<void> setApiKey(String key) async {}
 }

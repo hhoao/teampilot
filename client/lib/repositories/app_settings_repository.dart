@@ -21,10 +21,6 @@ abstract class AppSettingsRepository {
   Future<String?> loadSkippedUpdateVersion();
   Future<void> saveSkippedUpdateVersion(String? version);
 
-  /// SkillsMP 市场源的匿名限额升级 key（可选，空则匿名访问）。
-  Future<String?> loadSkillsMpApiKey();
-  Future<void> saveSkillsMpApiKey(String? key);
-
   Future<Map<AiFeatureId, AiFeatureSetting>> loadAiFeatureSettings();
   Future<void> saveAiFeatureSetting(AiFeatureId id, AiFeatureSetting setting);
 
@@ -32,6 +28,10 @@ abstract class AppSettingsRepository {
   /// on open. Defaults to `false` (manual refresh only).
   Future<bool> loadDiscoveryAutoRefreshEnabled();
   Future<void> saveDiscoveryAutoRefreshEnabled(bool value);
+
+  /// Legacy SkillsMP API key, kept for one-time migration to skills
+  /// registry sources. Read-only: the write path was removed.
+  Future<String?> loadSkillsMpApiKey();
 }
 
 class SharedPrefsAppSettingsRepository implements AppSettingsRepository {
@@ -123,25 +123,6 @@ class SharedPrefsAppSettingsRepository implements AppSettingsRepository {
   }
 
   @override
-  Future<String?> loadSkillsMpApiKey() async {
-    final value = _readMap()[_skillsMpApiKey];
-    if (value is String && value.isNotEmpty) return value;
-    return null;
-  }
-
-  @override
-  Future<void> saveSkillsMpApiKey(String? key) async {
-    final current = _readMap();
-    final trimmed = key?.trim();
-    if (trimmed == null || trimmed.isEmpty) {
-      current.remove(_skillsMpApiKey);
-    } else {
-      current[_skillsMpApiKey] = trimmed;
-    }
-    await _writeMap(current);
-  }
-
-  @override
   Future<Map<AiFeatureId, AiFeatureSetting>> loadAiFeatureSettings() async {
     final raw = _readMap()[_aiFeaturesKey];
     final result = <AiFeatureId, AiFeatureSetting>{};
@@ -184,6 +165,13 @@ class SharedPrefsAppSettingsRepository implements AppSettingsRepository {
     final current = _readMap();
     current[_discoveryAutoRefreshKey] = value;
     await _writeMap(current);
+  }
+
+  @override
+  Future<String?> loadSkillsMpApiKey() async {
+    final value = _readMap()[_skillsMpApiKey];
+    if (value is String && value.isNotEmpty) return value;
+    return null;
   }
 
   Future<void> _writeMap(Map<String, Object?> current) async {
@@ -272,12 +260,6 @@ class InMemoryAppSettingsRepository implements AppSettingsRepository {
   Future<String?> loadSkillsMpApiKey() async => _skillsMpApiKey;
 
   @override
-  Future<void> saveSkillsMpApiKey(String? key) async {
-    final trimmed = key?.trim();
-    _skillsMpApiKey = (trimmed == null || trimmed.isEmpty) ? null : trimmed;
-  }
-
-  @override
   Future<bool> loadDiscoveryAutoRefreshEnabled() async =>
       _discoveryAutoRefreshEnabled;
 
@@ -299,4 +281,7 @@ class InMemoryAppSettingsRepository implements AppSettingsRepository {
   ) async {
     _aiFeatures[id] = setting;
   }
+
+  @override
+  Future<String?> loadSkillsMpApiKey() async => _skillsMpApiKey;
 }

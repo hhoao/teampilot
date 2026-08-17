@@ -16,7 +16,6 @@ import 'package:teampilot/cubits/cli_presets_cubit.dart';
 import 'package:teampilot/cubits/plugin_cubit.dart';
 import 'package:teampilot/cubits/run_cubit.dart';
 import 'package:teampilot/cubits/shortcut_cubit.dart';
-import 'package:teampilot/cubits/skill_cubit.dart';
 import 'package:teampilot/cubits/worktree_cubit.dart';
 import 'package:teampilot/cubits/workspace_landing_context_cubit.dart';
 import 'package:teampilot/cubits/workspace_tools_cubit.dart';
@@ -32,7 +31,6 @@ import 'package:teampilot/pages/chat/chat_page_shell_probe.dart';
 import 'package:teampilot/repositories/cli_presets_repository.dart';
 import 'package:teampilot/repositories/plugin_repository.dart';
 import 'package:teampilot/repositories/session_repository.dart';
-import 'package:teampilot/repositories/skill_repository.dart';
 import 'package:teampilot/repositories/launch_profile_repository.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry_scope.dart';
@@ -177,7 +175,7 @@ void main() {
       );
       addTearDown(() => runCubit.close());
 
-      final skillCubit = SkillCubit(SkillRepository());
+      final skillCubit = testSkillCubit();
       addTearDown(() => skillCubit.close());
 
       final pluginRepo = PluginRepository();
@@ -336,7 +334,7 @@ void main() {
       );
       addTearDown(() => runCubit.close());
 
-      final skillCubit = SkillCubit(SkillRepository());
+      final skillCubit = testSkillCubit();
       addTearDown(() => skillCubit.close());
 
       final pluginRepo = PluginRepository();
@@ -516,7 +514,7 @@ void main() {
     );
     addTearDown(() => runCubit.close());
 
-    final skillCubit = SkillCubit(SkillRepository());
+    final skillCubit = testSkillCubit();
     addTearDown(() => skillCubit.close());
 
     final pluginRepo = PluginRepository();
@@ -702,7 +700,7 @@ void main() {
       );
       addTearDown(() => runCubit.close());
 
-      final skillCubit = SkillCubit(SkillRepository());
+      final skillCubit = testSkillCubit();
       addTearDown(() => skillCubit.close());
 
       final pluginRepo = PluginRepository();
