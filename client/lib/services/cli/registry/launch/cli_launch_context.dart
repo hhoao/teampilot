@@ -7,7 +7,7 @@ final class CliLaunchContext {
   const CliLaunchContext({
     required this.team,
     required this.member,
-    this.launchSecurityPolicy = const LaunchSecurityPolicy(),
+    LaunchSecurityPolicy? launchSecurityPolicy,
     this.sessionTeam,
     this.workingDirectory,
     this.additionalDirectories = const [],
@@ -17,11 +17,14 @@ final class CliLaunchContext {
     this.appendSystemPromptFile,
     this.useWslPaths = false,
     this.nativeAgentTeam,
-  });
+  }) : _explicitLaunchSecurityPolicy = launchSecurityPolicy;
 
   final TeamProfile team;
   final TeamMemberConfig member;
-  final LaunchSecurityPolicy launchSecurityPolicy;
+  final LaunchSecurityPolicy? _explicitLaunchSecurityPolicy;
+
+  LaunchSecurityPolicy get launchSecurityPolicy =>
+      _explicitLaunchSecurityPolicy ?? member.launchSecurityPolicy;
   final String? sessionTeam;
   final String? workingDirectory;
   final List<String> additionalDirectories;
@@ -67,7 +70,8 @@ final class CliLaunchContext {
     return CliLaunchContext(
       team: team ?? this.team,
       member: member ?? this.member,
-      launchSecurityPolicy: launchSecurityPolicy ?? this.launchSecurityPolicy,
+      launchSecurityPolicy:
+          launchSecurityPolicy ?? _explicitLaunchSecurityPolicy,
       sessionTeam: sessionTeam ?? this.sessionTeam,
       workingDirectory: workingDirectory ?? this.workingDirectory,
       additionalDirectories:

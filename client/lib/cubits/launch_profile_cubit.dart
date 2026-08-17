@@ -729,6 +729,7 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
         replicas: overrides.replicas,
         capabilities: overrides.capabilities,
         activePresetId: TeamProfile.inheritPresetId,
+        launchSecurityPolicy: overrides.launchSecurityPolicy,
       );
     } else if (effectiveId == null) {
       nextOverrides = TeamRosterSlotOverrides(
@@ -740,6 +741,7 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
         replicas: overrides.replicas,
         capabilities: overrides.capabilities,
         activePresetId: null,
+        launchSecurityPolicy: overrides.launchSecurityPolicy,
       );
     } else {
       final syncCliFromPreset =
@@ -753,6 +755,7 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
         replicas: overrides.replicas,
         capabilities: overrides.capabilities,
         activePresetId: effectiveId,
+        launchSecurityPolicy: overrides.launchSecurityPolicy,
       );
     }
     final mutation = _rosterEditor.updateSlot(

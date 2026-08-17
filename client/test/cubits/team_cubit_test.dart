@@ -452,6 +452,61 @@ void main() {
     },
   );
 
+  test(
+    'setMemberActivePreset preserves the member launch security policy',
+    () async {
+      final base = await Directory.systemTemp.createTemp('team_member_policy_');
+      final cubit = LaunchProfileCubit(
+        repository: _repo(base),
+        sessionRepository: SessionRepository(),
+        executableResolver: () => 'flashskyai',
+        appDataBasePath: base.path,
+        configProfileService: ConfigProfileService(basePath: base.path),
+      );
+      const policy = LaunchSecurityPolicy(
+        approval: LaunchApprovalPolicy.ask,
+        sandbox: LaunchSandboxPolicy.readOnly,
+        hookTrust: LaunchHookTrustPolicy.trustedOnly,
+      );
+
+      expect(
+        await cubit.addTeam(
+          'policy-team',
+          roster: [
+            TeamRosterSlot(
+              id: TeamMemberNaming.teamLeadName,
+              expertKey: 'teampilot/builtin/team-lead',
+              overrides: TeamRosterSlotOverrides(launchSecurityPolicy: policy),
+            ),
+          ],
+        ),
+        isTrue,
+      );
+      final memberId = cubit.state.selectedTeam!.roster.single.id;
+
+      await cubit.setMemberActivePreset(memberId, 'preset-a');
+      expect(
+        cubit.state.selectedTeam!.roster.single.overrides.launchSecurityPolicy,
+        policy,
+      );
+
+      await cubit.setMemberActivePreset(memberId, TeamProfile.inheritPresetId);
+      expect(
+        cubit.state.selectedTeam!.roster.single.overrides.launchSecurityPolicy,
+        policy,
+      );
+
+      await cubit.setMemberActivePreset(memberId, null);
+      expect(
+        cubit.state.selectedTeam!.roster.single.overrides.launchSecurityPolicy,
+        policy,
+      );
+
+      await _drainAndCloseTeamCubit(cubit);
+      await deleteTempDirBestEffort(base);
+    },
+  );
+
   test('previewFor resolves executable from team cli when available', () async {
     final base = await Directory.systemTemp.createTemp('team_cli_preview_');
     final cubit = LaunchProfileCubit(

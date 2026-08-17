@@ -32,19 +32,23 @@ class SessionMemberContinueOverride {
   /// Partial policy; `cliDefault` dimensions remain inherited on merge.
   final LaunchSecurityPolicyOverride? launchSecurityPolicy;
 
+  static const Object _unset = Object();
+
   SessionMemberContinueOverride copyWith({
-    String? presetId,
-    String? provider,
-    String? model,
-    String? effort,
-    LaunchSecurityPolicyOverride? launchSecurityPolicy,
+    Object? presetId = _unset,
+    Object? provider = _unset,
+    Object? model = _unset,
+    Object? effort = _unset,
+    Object? launchSecurityPolicy = _unset,
   }) {
     return SessionMemberContinueOverride(
-      presetId: presetId ?? this.presetId,
-      provider: provider ?? this.provider,
-      model: model ?? this.model,
-      effort: effort ?? this.effort,
-      launchSecurityPolicy: launchSecurityPolicy ?? this.launchSecurityPolicy,
+      presetId: presetId == _unset ? this.presetId : presetId as String?,
+      provider: provider == _unset ? this.provider : provider as String?,
+      model: model == _unset ? this.model : model as String?,
+      effort: effort == _unset ? this.effort : effort as String?,
+      launchSecurityPolicy: launchSecurityPolicy == _unset
+          ? this.launchSecurityPolicy
+          : launchSecurityPolicy as LaunchSecurityPolicyOverride?,
     );
   }
 
@@ -107,12 +111,16 @@ class SessionContinueOverrides {
   final LaunchSecurityPolicyOverride? launchSecurityPolicy;
   final Map<String, SessionMemberContinueOverride> memberOverrides;
 
+  static const Object _unset = Object();
+
   SessionContinueOverrides copyWith({
-    LaunchSecurityPolicyOverride? launchSecurityPolicy,
+    Object? launchSecurityPolicy = _unset,
     Map<String, SessionMemberContinueOverride>? memberOverrides,
   }) {
     return SessionContinueOverrides(
-      launchSecurityPolicy: launchSecurityPolicy ?? this.launchSecurityPolicy,
+      launchSecurityPolicy: launchSecurityPolicy == _unset
+          ? this.launchSecurityPolicy
+          : launchSecurityPolicy as LaunchSecurityPolicyOverride?,
       memberOverrides: memberOverrides ?? this.memberOverrides,
     );
   }

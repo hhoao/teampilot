@@ -40,4 +40,34 @@ void main() {
       isEmpty,
     );
   });
+
+  test(
+    'copyWith preserves or clears nullable policy containers explicitly',
+    () {
+      const policy = LaunchSecurityPolicyOverride(
+        approval: LaunchApprovalPolicy.ask,
+        sandbox: LaunchSandboxPolicy.readOnly,
+        hookTrust: LaunchHookTrustPolicy.trustedOnly,
+      );
+      const member = SessionMemberContinueOverride(
+        provider: 'provider',
+        launchSecurityPolicy: policy,
+      );
+      const overrides = SessionContinueOverrides(
+        launchSecurityPolicy: policy,
+        memberOverrides: {'member': member},
+      );
+
+      expect(member.copyWith().launchSecurityPolicy, policy);
+      expect(
+        member.copyWith(launchSecurityPolicy: null).launchSecurityPolicy,
+        isNull,
+      );
+      expect(overrides.copyWith().launchSecurityPolicy, policy);
+      expect(
+        overrides.copyWith(launchSecurityPolicy: null).launchSecurityPolicy,
+        isNull,
+      );
+    },
+  );
 }

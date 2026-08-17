@@ -2,7 +2,7 @@ import '../../models/runtime_target.dart';
 import '../../models/launch_security_policy.dart';
 import '../../models/ssh_profile.dart';
 import '../../utils/logging/logger.dart';
-import '../cli/registry/launch/cli_launch_context.dart';
+import '../cli/registry/launch/cli_launch_capability_error.dart';
 import '../ssh/ssh_member_session.dart';
 import '../ssh/ssh_run_result.dart';
 import 'shell_launch_spec.dart';
@@ -39,23 +39,8 @@ enum RemoteRootSecurityPolicy {
   /// Triggered by container detection or per-target opt-in on bare-metal root.
   injectSandboxEnv,
 
-  /// Root on a non-container host: transform to a safe policy.
+  /// Root on a non-container host: reject the dangerous launch.
   dropDangerousPolicy,
-}
-
-const _safeRemoteRootSecurityPolicy = LaunchSecurityPolicy(
-  approval: LaunchApprovalPolicy.ask,
-  sandbox: LaunchSandboxPolicy.workspaceWrite,
-  hookTrust: LaunchHookTrustPolicy.trustedOnly,
-);
-
-CliLaunchContext restrictRemoteRootSecurityPolicy(CliLaunchContext context) {
-  return context.copyWith(
-    member: context.member.copyWith(
-      launchSecurityPolicy: _safeRemoteRootSecurityPolicy,
-    ),
-    launchSecurityPolicy: _safeRemoteRootSecurityPolicy,
-  );
 }
 
 RemoteRootSecurityPolicy resolveRemoteRootSecurityPolicy({
@@ -130,33 +115,15 @@ Future<ShellLaunchSpec> applyRemoteSshLaunchConstraints({
         sessionTeam: spec.sessionTeam,
       );
     }(),
-    RemoteRootSecurityPolicy.dropDangerousPolicy => () {
-      final plan = spec.plan;
-      return ShellLaunchSpec(
-        plan: LaunchPlan(
-          env: plan.env,
-          resume: plan.resume,
-          taskId: plan.taskId,
-          cliTeamName: plan.cliTeamName,
-          memberConfigDir: plan.memberConfigDir,
-          resolvedRoots: plan.resolvedRoots,
-          createSessionId: plan.createSessionId,
-          resumeSessionId: plan.resumeSessionId,
-          nativeSessionIdToPersist: plan.nativeSessionIdToPersist,
-          toolValue: plan.toolValue,
-          warnings: [
-            ...plan.warnings,
-            'remote_ssh_root_security_policy_restricted: '
-                'Claude Code rejects dangerous root execution outside a '
-                'sandbox (setup.ts); launching with safe security policy '
-                'on ${profile.hostIdentifier}. Use a non-root SSH user, a '
-                'container with IS_SANDBOX=1, or enable root sandbox env '
-                'in SSH target settings.',
-          ],
-        ),
-        launchContext: restrictRemoteRootSecurityPolicy(spec.launchContext),
-        sessionTeam: spec.sessionTeam,
-      );
-    }(),
+    RemoteRootSecurityPolicy.dropDangerousPolicy =>
+      throw CliLaunchCapabilityException(
+        cli: spec.launchContext.team.cli,
+        contributionKey: 'remote-ssh-root-security',
+        reason:
+            'Dangerous full-access SSH launches as root are unsupported '
+            'outside a container or explicit root sandbox. Use a non-root SSH '
+            'user, a container with IS_SANDBOX=1, or enable root sandbox env '
+            'in SSH target settings.',
+      ),
   };
 }

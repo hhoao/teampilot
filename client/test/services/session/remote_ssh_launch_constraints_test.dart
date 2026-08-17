@@ -1,8 +1,16 @@
+import 'dart:async';
+import 'dart:typed_data';
+
+import 'package:dartssh2/dartssh2.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/launch_security_policy.dart';
+import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/cli/registry/launch/cli_launch_context.dart';
+import 'package:teampilot/services/cli/registry/launch/cli_launch_capability_error.dart';
 import 'package:teampilot/services/session/remote_ssh_launch_constraints.dart';
+import 'package:teampilot/services/session/shell_launch_spec.dart';
+import 'package:teampilot/services/ssh/ssh_member_session.dart';
 
 void main() {
   group('resolveRemoteRootSecurityPolicy', () {
@@ -56,30 +64,120 @@ void main() {
       );
     });
 
-    test('safe transformation updates both resolved and member policies', () {
-      const requested = LaunchSecurityPolicy.fullAccess;
-      const member = TeamMemberConfig(
-        id: 'member',
-        name: 'Member',
-        launchSecurityPolicy: requested,
-      );
-      final transformed = restrictRemoteRootSecurityPolicy(
-        const CliLaunchContext(
-          team: TeamProfile(id: 'team', name: 'Team'),
-          member: member,
-          launchSecurityPolicy: requested,
-        ),
-      );
+    test(
+      'bare-metal root rejects dangerous launch before returning a spec',
+      () async {
+        const member = TeamMemberConfig(
+          id: 'member',
+          name: 'Member',
+          launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
+        );
+        final session = SshMemberSession.testing(
+          profile: const SshProfile(
+            id: 'ssh-1',
+            name: 'SSH',
+            host: 'example.com',
+            username: 'root',
+          ),
+          client: _RootBareMetalClient(),
+        );
+        addTearDown(session.close);
 
-      expect(
-        transformed.launchSecurityPolicy.requiresDangerousExecution,
-        isFalse,
-      );
-      expect(
-        transformed.member.launchSecurityPolicy.requiresDangerousExecution,
-        isFalse,
-      );
-      expect(transformed.launchSecurityPolicy, isNot(requested));
-    });
+        await expectLater(
+          applyRemoteSshLaunchConstraints(
+            spec: ShellLaunchSpec.teamMember(
+              team: const TeamProfile(id: 'team', name: 'Team'),
+              member: member,
+            ),
+            memberTarget: RuntimeTarget.ssh('ssh-1', label: 'SSH'),
+            memberSession: session,
+            profile: session.profile,
+          ),
+          throwsA(
+            isA<CliLaunchCapabilityException>().having(
+              (error) => error.contributionKey,
+              'contributionKey',
+              'remote-ssh-root-security',
+            ),
+          ),
+        );
+      },
+    );
   });
+}
+
+class _RootBareMetalClient extends SSHClient {
+  _RootBareMetalClient() : super(_FakeSSHSocket(), username: 'root');
+
+  @override
+  Future<void> get authenticated => Future.value();
+
+  @override
+  Future<SSHRunResult> runWithResult(
+    String command, {
+    bool runInPty = false,
+    bool stdout = true,
+    bool stderr = true,
+    Map<String, String>? environment,
+  }) async {
+    final output = command == 'id -u' ? '0' : '';
+    return SSHRunResult(
+      output: Uint8List.fromList(output.codeUnits),
+      stdout: Uint8List.fromList(output.codeUnits),
+      stderr: Uint8List(0),
+      exitCode: command == 'id -u' ? 0 : 1,
+      exitSignal: null,
+    );
+  }
+
+  @override
+  Future<void> ping() async {}
+}
+
+class _FakeSSHSocket implements SSHSocket {
+  final _inputController = StreamController<Uint8List>();
+  final _doneCompleter = Completer<void>();
+
+  @override
+  Stream<Uint8List> get stream => _inputController.stream;
+
+  @override
+  StreamSink<List<int>> get sink => _NoopSink();
+
+  @override
+  Future<void> get done => _doneCompleter.future;
+
+  @override
+  Future<void> flush() async {}
+
+  @override
+  Future<void> close() async {
+    if (!_doneCompleter.isCompleted) _doneCompleter.complete();
+    await _inputController.close();
+  }
+
+  @override
+  void destroy() {
+    if (!_doneCompleter.isCompleted) _doneCompleter.complete();
+    unawaited(_inputController.close());
+  }
+}
+
+class _NoopSink implements StreamSink<List<int>> {
+  @override
+  void add(List<int> data) {}
+
+  @override
+  void addError(Object error, [StackTrace? stackTrace]) {}
+
+  @override
+  Future<void> addStream(Stream<List<int>> stream) async {
+    await for (final _ in stream) {}
+  }
+
+  @override
+  Future<void> close() async {}
+
+  @override
+  Future<void> get done async {}
 }
