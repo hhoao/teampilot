@@ -108,6 +108,7 @@ final class CursorProviderCapability extends CatalogModelCapability
   @override
   Future<void> refreshModelCatalog({
     required String providerId,
+    AppProviderConfig? provider,
     String? executable,
     bool forceRefresh = false,
   }) {

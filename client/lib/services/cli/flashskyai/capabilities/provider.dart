@@ -92,6 +92,7 @@ final class FlashskyaiProviderCapability extends CatalogModelCapability
   @override
   Future<void> refreshModelCatalog({
     required String providerId,
+    AppProviderConfig? provider,
     String? executable,
     bool forceRefresh = false,
   }) async {}
@@ -671,7 +672,6 @@ final class FlashskyaiProviderCapability extends CatalogModelCapability
     };
   }
 }
-
 
 final _emptyCatalogUpdates = _EmptyListenable();
 

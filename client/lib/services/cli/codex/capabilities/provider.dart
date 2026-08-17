@@ -28,24 +28,52 @@ import '../provider/codex_effort_catalog.dart';
 import '../provider/codex_home_provisioner.dart';
 import '../provider/codex_hook_writer.dart';
 import '../provider/codex_live_import.dart';
+import '../provider/codex_model_catalog.dart';
 import '../provider/codex_managed_hook_overlay.dart';
 import '../provider/codex_official_provider.dart';
 import '../provider/codex_provider_credentials_service.dart';
 import '../provider/codex_provider_settings_resolver.dart';
+import '../../../provider/api_model_catalog_service.dart';
 import '../provider_presets.dart';
 
 abstract final class CodexFormExtraKeys {
   static const effort = 'effort';
 }
 
+/// OpenAI `/models` catalog for API-key providers, with OAuth static fallback.
+final class CodexCatalogSource implements ModelCatalogSource {
+  const CodexCatalogSource(this._modelsService);
+
+  final ApiModelCatalogService? _modelsService;
+
+  @override
+  List<String> modelsFor({
+    required AppProviderConfig? provider,
+    required String providerId,
+  }) {
+    final live = provider?.apiKey.trim().isNotEmpty == true
+        ? _modelsService?.modelIdsFor(providerId: provider?.id ?? providerId) ??
+              const []
+        : const <String>[];
+    if (live.isNotEmpty) return live;
+    return CodexModelCatalog.knownModelsForProviderId(
+      providerId,
+      provider: provider,
+    );
+  }
+}
+
 /// Codex provider 全栈:目录/表单/模型/凭证/effort。
 final class CodexProviderCapability extends CatalogModelCapability
     with PassthroughProviderFormDefaults
-    implements ProviderCapability {
+    implements ProviderCapability, RefreshableProviderModelCapability {
   const CodexProviderCapability({
+    ApiModelCatalogService? modelsService,
     CodexProviderCredentialsService? credentials,
-  }) : _credentials = credentials;
+  }) : _modelsService = modelsService,
+       _credentials = credentials;
 
+  final ApiModelCatalogService? _modelsService;
   final CodexProviderCredentialsService? _credentials;
 
   CodexProviderCredentialsService? get _service => _credentials;
@@ -112,31 +140,39 @@ final class CodexProviderCapability extends CatalogModelCapability
     return config;
   }
 
-  // ---- ProviderModelCapability (record semantics) ----
+  // ---- ProviderModelCapability (live OpenAI catalog + static fallback) ----
   @override
   bool get supportsModelTiers => false;
 
   @override
-  List<ModelCatalogSource> get catalogSources => const [];
+  List<ModelCatalogSource> get catalogSources => [
+    CodexCatalogSource(_modelsService),
+  ];
 
   @override
   ProviderModelPickerMode pickerMode(AppProviderConfig provider) {
-    if (provider.isOfficial && provider.defaultModel.trim().isEmpty) {
-      return ProviderModelPickerMode.hidden;
-    }
     return ProviderModelPickerMode.catalogWithCustomEntry;
   }
 
-  // ---- ProviderModelCapability: live-catalog no-op ----
   @override
-  Listenable get catalogUpdates => _emptyCatalogUpdates;
+  Listenable get catalogUpdates =>
+      _modelsService?.catalogUpdates ?? _emptyCatalogUpdates;
 
   @override
   Future<void> refreshModelCatalog({
     required String providerId,
+    AppProviderConfig? provider,
     String? executable,
     bool forceRefresh = false,
-  }) async {}
+  }) {
+    final service = _modelsService;
+    if (service == null || provider == null) return Future.value();
+    return service.ensureLoaded(
+      providerId: providerId,
+      provider: provider,
+      forceRefresh: forceRefresh,
+    );
+  }
 
   // ---- ProviderCredentialCapability ----
   @override

@@ -155,6 +155,7 @@ final class OpencodeProviderCapability extends CatalogModelCapability
   @override
   Future<void> refreshModelCatalog({
     required String providerId,
+    AppProviderConfig? provider,
     String? executable,
     bool forceRefresh = false,
   }) {
@@ -946,7 +947,6 @@ Map<String, Object?> mergeOpencodeExternalDirectories(
   permission['external_directory'] = external;
   return {...config, 'permission': permission};
 }
-
 
 final _emptyCatalogUpdates = _EmptyListenable();
 

@@ -163,6 +163,7 @@ import '../services/cli/claude/provider/claude_provider_credentials_service.dart
 import '../services/cli/codex/provider/codex_provider_credentials_service.dart';
 import '../services/cli/opencode/provider/opencode_provider_credentials_service.dart';
 import '../services/cli/opencode/provider/opencode_models_service.dart';
+import '../services/provider/api_model_catalog_service.dart';
 import '../services/cli/cursor/provider/cursor_agent_models_service.dart';
 import '../services/cli/cursor/provider/cursor_provider_credentials_service.dart';
 import '../services/provider/provider_credential_host_runner.dart';
@@ -770,6 +771,10 @@ Future<AppShell> buildAppShell({
     CliBootstrap({
       CliTool.claude: ClaudeBootstrapEntry(
         credentialsService: claudeCredentialsService,
+        modelsService: ApiModelCatalogService(
+          protocol: ApiModelCatalogProtocol.anthropic,
+          cacheDirectory: 'claude_models',
+        ),
       ),
       CliTool.cursor: CursorBootstrapEntry(
         credentialsService: cursorCredentialsService,
@@ -777,6 +782,10 @@ Future<AppShell> buildAppShell({
       ),
       CliTool.codex: CodexBootstrapEntry(
         credentialsService: codexCredentialsService,
+        modelsService: ApiModelCatalogService(
+          protocol: ApiModelCatalogProtocol.openAi,
+          cacheDirectory: 'codex_models',
+        ),
       ),
       CliTool.opencode: OpencodeBootstrapEntry(
         credentialsService: opencodeCredentialsService,

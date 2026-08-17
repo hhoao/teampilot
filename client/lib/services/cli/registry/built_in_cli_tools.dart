@@ -38,6 +38,7 @@ void registerBuiltInCliTools(
   registry.register(
     ClaudeCliTool(
       provider: ClaudeProviderCapability(
+        modelsService: claudeEntry?.modelsService,
         credentials: claudeEntry?.credentialsService,
       ),
     ),
@@ -45,6 +46,7 @@ void registerBuiltInCliTools(
   registry.register(
     CodexCliTool(
       provider: CodexProviderCapability(
+        modelsService: codexEntry?.modelsService,
         credentials: codexEntry?.credentialsService,
       ),
     ),

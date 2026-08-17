@@ -18,6 +18,9 @@ void main() {
     expect(models, contains('opus'));
     expect(models, contains('claude-sonnet-4-6'));
     expect(models, contains('claude-opus-4-7'));
+    expect(models, contains('claude-fable-5'));
+    expect(models, contains('claude-opus-4-8'));
+    expect(models, contains('claude-sonnet-5'));
   });
 
   test('proxy provider has no built-in catalog', () {

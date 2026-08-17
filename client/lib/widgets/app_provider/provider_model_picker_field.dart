@@ -8,6 +8,21 @@ import '../../services/cli/registry/capabilities/provider_capability.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import 'package:shared_ui/shared_ui.dart';
 
+/// Whether a provider change can affect the live model catalog.
+@visibleForTesting
+bool providerModelPickerProviderChanged(
+  AppProviderConfig? previous,
+  AppProviderConfig? current,
+) {
+  if (identical(previous, current)) return false;
+  if (previous == null || current == null) return true;
+  return previous.id != current.id ||
+      previous.cli != current.cli ||
+      previous.apiKey != current.apiKey ||
+      previous.apiKeyField != current.apiKeyField ||
+      previous.baseUrl != current.baseUrl;
+}
+
 /// Registry-driven model picker for team members and workspace CLI defaults.
 class ProviderModelPickerField extends StatefulWidget {
   const ProviderModelPickerField({
@@ -49,10 +64,18 @@ class _ProviderModelPickerFieldState extends State<ProviderModelPickerField> {
   void didUpdateWidget(ProviderModelPickerField oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.cli != widget.cli ||
-        oldWidget.providerId != widget.providerId) {
+        oldWidget.providerId != widget.providerId ||
+        providerModelPickerProviderChanged(
+          oldWidget.provider,
+          widget.provider,
+        )) {
       _detachCatalogRefresh();
+      final forceRefresh = providerModelPickerProviderChanged(
+        oldWidget.provider,
+        widget.provider,
+      );
       WidgetsBinding.instance.addPostFrameCallback(
-        (_) => _attachCatalogRefresh(),
+        (_) => _attachCatalogRefresh(forceRefresh: forceRefresh),
       );
     }
   }
@@ -63,7 +86,7 @@ class _ProviderModelPickerFieldState extends State<ProviderModelPickerField> {
     super.dispose();
   }
 
-  void _attachCatalogRefresh() {
+  void _attachCatalogRefresh({bool forceRefresh = false}) {
     if (!mounted) return;
     final capability = CliToolRegistryScope.of(
       context,
@@ -77,7 +100,9 @@ class _ProviderModelPickerFieldState extends State<ProviderModelPickerField> {
         .resolveExecutable(widget.cli);
     capability.refreshModelCatalog(
       providerId: widget.providerId,
+      provider: widget.provider,
       executable: executable,
+      forceRefresh: forceRefresh,
     );
   }
 

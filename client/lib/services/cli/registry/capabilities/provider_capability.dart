@@ -561,6 +561,7 @@ abstract interface class ProviderCapability implements CliCapability {
   /// Refreshes the live model catalog; no-op for non-refreshable CLIs.
   Future<void> refreshModelCatalog({
     required String providerId,
+    AppProviderConfig? provider,
     String? executable,
     bool forceRefresh = false,
   }) async {}

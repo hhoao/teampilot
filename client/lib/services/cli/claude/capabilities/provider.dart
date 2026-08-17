@@ -16,6 +16,7 @@ import '../../../agent_status/member_agent_status_endpoint.dart';
 import '../../../hook/glue_script_builder.dart';
 import '../../../launch/work_plane_paths.dart';
 import '../../../provider/credential_binding.dart';
+import '../../../provider/api_model_catalog_service.dart';
 import '../../../provider/cross_machine_credential_bridge.dart';
 import '../../../provider/provider_catalog_access.dart';
 import '../../../provider/workspace_trust_provisioner.dart';
@@ -47,25 +48,37 @@ const _apiKeyFields = ['ANTHROPIC_AUTH_TOKEN', 'ANTHROPIC_API_KEY'];
 
 /// Claude's built-in official aliases + frontier model ids.
 final class ClaudeCatalogSource implements ModelCatalogSource {
-  const ClaudeCatalogSource();
+  const ClaudeCatalogSource(this._modelsService);
+
+  final ApiModelCatalogService? _modelsService;
 
   @override
   List<String> modelsFor({
     required AppProviderConfig? provider,
     required String providerId,
-  }) => ClaudeModelCatalog.knownModelsForProviderId(
-    providerId,
-    provider: provider,
-  );
+  }) {
+    final live = provider?.apiKey.trim().isNotEmpty == true
+        ? _modelsService?.modelIdsFor(providerId: provider?.id ?? providerId) ??
+              const []
+        : const <String>[];
+    if (live.isNotEmpty) return live;
+    return ClaudeModelCatalog.knownModelsForProviderId(
+      providerId,
+      provider: provider,
+    );
+  }
 }
 
 /// Claude provider 全栈:目录/表单/模型/凭证/effort/home 材料化。
 final class ClaudeProviderCapability extends CatalogModelCapability
-    implements ProviderCapability {
+    implements ProviderCapability, RefreshableProviderModelCapability {
   const ClaudeProviderCapability({
+    ApiModelCatalogService? modelsService,
     ClaudeProviderCredentialsService? credentials,
-  }) : _credentials = credentials;
+  }) : _modelsService = modelsService,
+       _credentials = credentials;
 
+  final ApiModelCatalogService? _modelsService;
   final ClaudeProviderCredentialsService? _credentials;
 
   ClaudeProviderCredentialsService? get _service => _credentials;
@@ -156,7 +169,9 @@ final class ClaudeProviderCapability extends CatalogModelCapability
   bool get supportsModelTiers => true;
 
   @override
-  List<ModelCatalogSource> get catalogSources => const [ClaudeCatalogSource()];
+  List<ModelCatalogSource> get catalogSources => [
+    ClaudeCatalogSource(_modelsService),
+  ];
 
   @override
   ProviderModelPickerMode pickerMode(AppProviderConfig provider) {
@@ -183,16 +198,25 @@ final class ClaudeProviderCapability extends CatalogModelCapability
     );
   }
 
-  // ---- ProviderModelCapability: live-catalog no-op ----
   @override
-  Listenable get catalogUpdates => _emptyCatalogUpdates;
+  Listenable get catalogUpdates =>
+      _modelsService?.catalogUpdates ?? _emptyCatalogUpdates;
 
   @override
   Future<void> refreshModelCatalog({
     required String providerId,
+    AppProviderConfig? provider,
     String? executable,
     bool forceRefresh = false,
-  }) async {}
+  }) {
+    final service = _modelsService;
+    if (service == null || provider == null) return Future.value();
+    return service.ensureLoaded(
+      providerId: providerId,
+      provider: provider,
+      forceRefresh: forceRefresh,
+    );
+  }
 
   // ---- ProviderCredentialCapability + CredentialBindingCapability ----
   @override
