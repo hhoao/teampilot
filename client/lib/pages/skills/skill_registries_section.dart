@@ -571,13 +571,20 @@ class _RegistryEditDialogState extends State<_RegistryEditDialog> {
 
   void _save() {
     if (_isApi) {
+      final label = _labelCtl.text.trim();
+      final url = _urlCtl.text.trim();
+      final token = _tokenCtl.text.trim();
+      final browse = _browseCtl.text.trim();
       Navigator.pop(
         context,
         widget.config.copyWith(
-          label: _labelCtl.text.trim().isEmpty ? widget.config.label : _labelCtl.text.trim(),
-          baseUrl: _urlCtl.text.trim().isEmpty ? null : _urlCtl.text.trim(),
-          apiToken: _tokenCtl.text.trim().isEmpty ? null : _tokenCtl.text.trim(),
-          browseQuery: _browseCtl.text.trim().isEmpty ? null : _browseCtl.text.trim(),
+          label: label.isEmpty ? widget.config.label : label,
+          baseUrl: url,
+          clearBaseUrl: url.isEmpty,
+          apiToken: token,
+          clearApiToken: token.isEmpty,
+          browseQuery: browse,
+          clearBrowseQuery: browse.isEmpty,
         ),
       );
     } else {

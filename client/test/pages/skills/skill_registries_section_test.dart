@@ -140,6 +140,28 @@ void main() {
     expect(find.text('@My API'), findsWidgets);
   });
 
+  testWidgets('clearing token in edit dialog removes API key set subtitle', (
+    tester,
+  ) async {
+    final defaults = SkillRegistriesConfig.defaults();
+    final withToken = SkillRegistriesConfig(sources: [
+      for (final s in defaults.sources)
+        s.id == 'skillsMp' ? s.copyWith(apiToken: 'tok123') : s,
+    ]);
+    await tester.runAsync(() => cfgService.save(withToken));
+    final cubit = await buildCubit(tester);
+    await tester.pumpWidget(wrap(cubit));
+    await tester.pumpAndSettle();
+    expect(find.text('@SkillsMP · API key set'), findsOneWidget);
+    await tester.tap(find.text('https://skillsmp.com/api/v1'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).at(2), '');
+    await tester.tap(find.text('Save'));
+    await _flushRealIo(tester);
+    expect(find.text('@SkillsMP · API key set'), findsNothing);
+    expect(find.text('@SkillsMP'), findsOneWidget);
+  });
+
   testWidgets('remove custom git source confirms and deletes', (tester) async {
     final defaults = SkillRegistriesConfig.defaults();
     final custom = SkillRegistrySourceConfig(
