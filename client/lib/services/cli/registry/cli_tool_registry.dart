@@ -50,6 +50,12 @@ class CliToolRegistry {
     return null;
   }
 
+  Iterable<T> capabilitiesOf<T extends CliCapability>(CliTool id) {
+    final def = _definitions[id];
+    if (def == null) return <T>[];
+    return def.capabilities.whereType<T>();
+  }
+
   Iterable<CliToolDefinition> get launchable =>
       _definitions.values.where((d) => d.isLaunchSupported);
 
