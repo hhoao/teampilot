@@ -143,6 +143,24 @@ void main() {
     expect(slot.expertKey, isEmpty);
   });
 
+  test('synthesized slot preserves member launch security policy', () {
+    const policy = LaunchSecurityPolicy(
+      approval: LaunchApprovalPolicy.ask,
+      sandbox: LaunchSandboxPolicy.readOnly,
+      hookTrust: LaunchHookTrustPolicy.trustedOnly,
+    );
+    const team = TeamProfile(id: 'team-1', name: 'Team');
+    const member = TeamMemberConfig(
+      id: 'team-lead',
+      name: 'Lead',
+      launchSecurityPolicy: policy,
+    );
+
+    final slot = teamRosterSlotForMember(team, member);
+
+    expect(slot.overrides.launchSecurityPolicy, policy);
+  });
+
   test(
     'team seat with empty slot expertKey uses builtin default pack',
     () async {

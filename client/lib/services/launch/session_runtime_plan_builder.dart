@@ -34,6 +34,7 @@ TeamRosterSlot teamRosterSlotForMember(
       replicas: member.replicas,
       capabilities: member.capabilities,
       activePresetId: member.activePresetId,
+      launchSecurityPolicy: member.launchSecurityPolicy,
     ),
     joinedAt: member.joinedAt,
   );
