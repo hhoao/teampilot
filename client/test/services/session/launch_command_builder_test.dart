@@ -74,30 +74,19 @@ void main() {
 
   test('uses legacy adapters when the registered tool has no providers', () {
     final registry = CliToolRegistry()
-      ..register(const _FakeLegacyTool(CliTool.flashskyai));
+      ..register(const _FakeLegacyTool(CliTool.codex));
 
     expect(
       LaunchCommandBuilder.buildArguments(
         const TeamProfile(
           id: 'legacy-team',
           name: 'legacy-team',
-          cli: CliTool.flashskyai,
+          cli: CliTool.codex,
         ),
         member,
         cliRegistry: registry,
       ),
-      [
-        '--team',
-        'legacy-team',
-        '--member',
-        'member-1',
-        '--provider',
-        'anthropic',
-        '--model',
-        'sonnet',
-        '--agent',
-        'builder',
-      ],
+      ['-m', 'sonnet'],
     );
   });
 

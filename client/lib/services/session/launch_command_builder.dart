@@ -13,11 +13,9 @@ import '../cli/registry/launch/user_extra_args_provider.dart' as launch_args;
 import 'shell_launch_spec.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../cli/cli_invocation.dart';
-import '../cli/claude/capabilities/launch_args.dart';
 import '../cli/claude/capabilities/provider.dart';
 import '../cli/codex/capabilities/launch_args.dart';
 import '../cli/cursor/capabilities/launch_args.dart';
-import '../cli/flashskyai/capabilities/launch_args.dart';
 import '../cli/opencode/capabilities/launch_args.dart';
 import 'member_role_provision.dart';
 
@@ -119,12 +117,15 @@ class LaunchCommandBuilder {
     return _legacyLaunchAdapterFor(cli).buildArguments(context);
   }
 
-  /// Temporary bridge while launch providers are migrated into the registry.
-  /// The context itself lives in the registry launch layer; only the legacy
-  /// argv implementation remains selected here until Tasks 5-7 land.
+  /// Legacy bridge for CLI definitions that have not yet migrated to launch
+  /// argument providers. Claude and FlashskyAI are provider-only.
   static CliToolAdapter _legacyLaunchAdapterFor(CliTool cli) => switch (cli) {
-    CliTool.claude => const ClaudeCodeCliToolAdapter(),
-    CliTool.flashskyai => const FlashskyaiCliToolAdapter(),
+    CliTool.claude => throw StateError(
+      'Claude launch arguments require registered launch providers.',
+    ),
+    CliTool.flashskyai => throw StateError(
+      'FlashskyAI launch arguments require registered launch providers.',
+    ),
     CliTool.codex => const CodexCliToolAdapter(),
     CliTool.cursor => const CursorCliToolAdapter(),
     CliTool.opencode => const OpencodeCliToolAdapter(),
