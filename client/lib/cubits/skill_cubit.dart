@@ -239,7 +239,6 @@ class SkillCubit extends Cubit<SkillState> {
   Future<void> ensureDiscoveryLoaded({bool force = false}) async {
     if (!force && state.discoveryLoading) return;
     if (!force && state.repoSyncingKeys.isNotEmpty) return;
-    if (!force && state.discoverable.isNotEmpty) return;
     if (force) {
       await refreshDiscoverable(force: true);
       return;
@@ -248,6 +247,7 @@ class SkillCubit extends Cubit<SkillState> {
       await refreshDiscoverable(force: false);
       return;
     }
+    if (state.discoverable.isNotEmpty) return;
     await _syncMissingReposOnce();
   }
 

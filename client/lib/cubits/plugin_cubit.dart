@@ -156,7 +156,6 @@ class PluginCubit extends Cubit<PluginState> {
   Future<void> ensureDiscoveryLoaded({bool force = false}) async {
     if (!force && state.discoveryLoading) return;
     if (!force && state.marketplaceSyncingKeys.isNotEmpty) return;
-    if (!force && state.discoverable.isNotEmpty) return;
     if (force) {
       await refreshDiscoverable(force: true);
       return;
@@ -165,6 +164,7 @@ class PluginCubit extends Cubit<PluginState> {
       await refreshDiscoverable(force: false);
       return;
     }
+    if (state.discoverable.isNotEmpty) return;
     await _syncMissingMarketplacesOnce();
   }
 

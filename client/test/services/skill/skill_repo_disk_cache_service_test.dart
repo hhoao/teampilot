@@ -189,4 +189,36 @@ void main() {
     expect(fetch.downloads, 0);
     expect(result.updated, isFalse);
   });
+
+  test('maxStaleness is ignored when force is set', () async {
+    final fs = AppStorage.fs;
+    await _plantSnapshot(commitSha: 'deadbeef');
+    final metaPath = fs.pathContext.join(
+      AppStorage.paths.skillRepoCacheDir,
+      SkillRepoDiskCacheService.repoKey(_repo),
+      'meta.json',
+    );
+    final meta = SkillRepoCacheMeta(
+      configuredBranch: 'main',
+      resolvedBranch: 'main',
+      commitSha: 'deadbeef',
+      syncedAtMs: DateTime.now().millisecondsSinceEpoch,
+    );
+    await fs.writeString(
+      metaPath,
+      const JsonEncoder.withIndent('  ').convert(meta.toJson()),
+    );
+
+    final fetch = _CountingFetch()..remoteSha = 'deadbeef';
+    final cache = SkillRepoDiskCacheService(fetch: fetch);
+
+    await cache.ensureSynced(
+      _repo,
+      force: true,
+      maxStaleness: const Duration(hours: 24),
+    );
+
+    expect(fetch.shaChecks, 0);
+    expect(fetch.downloads, 1);
+  });
 }

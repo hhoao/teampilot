@@ -241,7 +241,7 @@ class SkillRepoDiskCacheService {
           requiredRelativePaths: requiredRelativePaths,
         );
 
-    if (maxStaleness != null && trusted) {
+    if (maxStaleness != null && !force && trusted) {
       final age = DateTime.now().millisecondsSinceEpoch - meta!.syncedAtMs;
       if (age >= 0 && age < maxStaleness.inMilliseconds) {
         return SkillRepoSyncResult(
