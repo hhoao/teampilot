@@ -91,6 +91,7 @@ class ShellLaunchSpec {
       launchContext: CliLaunchContext(
         team: team,
         member: member,
+        launchSecurityPolicy: member.launchSecurityPolicy,
         sessionTeam: runtimeTeam,
         workingDirectory: workingDirectory,
         additionalDirectories: additionalDirectories,

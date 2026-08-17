@@ -1,4 +1,5 @@
 import '../../models/cli_preset.dart';
+import '../../models/launch_security_policy.dart';
 import '../../models/team_config.dart';
 import '../cli/preset_resolver.dart';
 import '../../utils/team/team_member_naming.dart';
@@ -18,7 +19,7 @@ class TeammateRosterProfile {
     this.responsibilities = '',
     this.joinedAt = 0,
     this.isTeamLead = false,
-    this.dangerouslySkipPermissions = false,
+    this.launchSecurityPolicy = const LaunchSecurityPolicy(),
     this.taskId = '',
     this.cwd = '',
     this.backendType = '',
@@ -91,7 +92,7 @@ class TeammateRosterProfile {
       responsibilities: member.responsibilities.trim(),
       joinedAt: joinedAt,
       isTeamLead: isLead,
-      dangerouslySkipPermissions: member.dangerouslySkipPermissions,
+      launchSecurityPolicy: member.launchSecurityPolicy,
       taskId: taskId?.trim() ?? '',
       cwd: cwd.trim(),
       backendType: launch.cli.value,
@@ -114,7 +115,7 @@ class TeammateRosterProfile {
   final String responsibilities;
   final int joinedAt;
   final bool isTeamLead;
-  final bool dangerouslySkipPermissions;
+  final LaunchSecurityPolicy launchSecurityPolicy;
   final String taskId;
   final String cwd;
   final String backendType;

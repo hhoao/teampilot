@@ -1,3 +1,4 @@
+import 'package:teampilot/models/launch_security_policy.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/cli_preset.dart';
@@ -53,66 +54,63 @@ void main() {
     updatedAt: 1,
   );
 
-  test(
-    'shell launch member: continue overrides win over template preset '
-    '(provider + permission)',
-    () {
-      const base = TeamMemberConfig(
-        id: 'builder-0',
-        name: 'Builder',
-        cli: CliTool.claude,
-        provider: 'base-provider',
-        model: 'base-model',
-        dangerouslySkipPermissions: false,
-        activePresetId: 'p-template',
-      );
-      final session = AppSession(
-        sessionId: 's1',
-        workspaceId: 'w1',
-        sessionTeam: 'team',
-        createdAt: 1,
-        continueOverrides: const SessionContinueOverrides(
-          dangerouslySkipPermissions: true,
-          memberOverrides: {
-            'builder-0': SessionMemberContinueOverride(
-              provider: 'override-provider',
-              model: 'override-model',
-              dangerouslySkipPermissions: true,
-            ),
-          },
-        ),
-      );
-      final plan = SessionRuntimePlan(
-        mode: SessionRuntimeMode.team,
-        workspaceId: 'w1',
-        sessionId: 's1',
-        memberId: 'builder-0',
-        expertKey: 'builder',
-        teamId: 'team',
-        presetId: 'p-template',
-        runtimeBundle: const ConfigBundle(),
-        member: base,
-      );
+  test('shell launch member: continue overrides win over template preset '
+      '(provider + permission)', () {
+    const base = TeamMemberConfig(
+      id: 'builder-0',
+      name: 'Builder',
+      cli: CliTool.claude,
+      provider: 'base-provider',
+      model: 'base-model',
+      launchSecurityPolicy: const LaunchSecurityPolicy(),
+      activePresetId: 'p-template',
+    );
+    final session = AppSession(
+      sessionId: 's1',
+      workspaceId: 'w1',
+      sessionTeam: 'team',
+      createdAt: 1,
+      continueOverrides: const SessionContinueOverrides(
+        launchSecurityPolicy: LaunchSecurityPolicyOverride.fullAccess,
+        memberOverrides: {
+          'builder-0': SessionMemberContinueOverride(
+            provider: 'override-provider',
+            model: 'override-model',
+            launchSecurityPolicy: LaunchSecurityPolicyOverride.fullAccess,
+          ),
+        },
+      ),
+    );
+    final plan = SessionRuntimePlan(
+      mode: SessionRuntimeMode.team,
+      workspaceId: 'w1',
+      sessionId: 's1',
+      memberId: 'builder-0',
+      expertKey: 'builder',
+      teamId: 'team',
+      presetId: 'p-template',
+      runtimeBundle: const ConfigBundle(),
+      member: base,
+    );
 
-      final shellMember = resolveShellLaunchMember(
-        session: session,
-        runtimePlan: plan,
-        preset: preset,
-      );
+    final shellMember = resolveShellLaunchMember(
+      session: session,
+      runtimePlan: plan,
+      preset: preset,
+    );
 
-      // Fail if only an unused field were updated: shell member must carry
-      // override provider + permission (what CliLaunchContext.member uses).
-      expect(shellMember.provider, 'override-provider');
-      expect(shellMember.model, 'override-model');
-      expect(shellMember.dangerouslySkipPermissions, isTrue);
-      expect(shellMember.cli, CliTool.claude);
+    // Fail if only an unused field were updated: shell member must carry
+    // override provider + permission (what CliLaunchContext.member uses).
+    expect(shellMember.provider, 'override-provider');
+    expect(shellMember.model, 'override-model');
+    expect(shellMember.launchSecurityPolicy.requiresDangerousExecution, isTrue);
+    expect(shellMember.cli, CliTool.claude);
 
-      // Preset alone would have won without finalize-last:
-      final presetOnly = _memberWithPreset(base, preset);
-      expect(presetOnly.provider, 'preset-provider');
-      expect(presetOnly.provider, isNot(shellMember.provider));
-    },
-  );
+    // Preset alone would have won without finalize-last:
+    final presetOnly = _memberWithPreset(base, preset);
+    expect(presetOnly.provider, 'preset-provider');
+    expect(presetOnly.provider, isNot(shellMember.provider));
+  });
 
   test(
     'finalize then memberForLaunch keeps continue provider (team staging)',
@@ -123,7 +121,7 @@ void main() {
         cli: CliTool.claude,
         provider: 'base-provider',
         model: 'base-model',
-        dangerouslySkipPermissions: false,
+        launchSecurityPolicy: const LaunchSecurityPolicy(),
         activePresetId: 'p-template',
       );
       final session = AppSession(
@@ -137,7 +135,7 @@ void main() {
               presetId: 'p-template',
               provider: 'override-provider',
               model: 'override-model',
-              dangerouslySkipPermissions: true,
+              launchSecurityPolicy: LaunchSecurityPolicyOverride.fullAccess,
             ),
           },
         ),
@@ -169,7 +167,7 @@ void main() {
 
       expect(staged.provider, 'override-provider');
       expect(staged.model, 'override-model');
-      expect(staged.dangerouslySkipPermissions, isTrue);
+      expect(staged.launchSecurityPolicy.requiresDangerousExecution, isTrue);
 
       // Old bug: leaving activePresetId set made memberForLaunch expand the
       // template preset and wipe continue provider/model.
@@ -195,7 +193,7 @@ void main() {
         cli: CliTool.claude,
         provider: 'base',
         model: 'base-m',
-        dangerouslySkipPermissions: false,
+        launchSecurityPolicy: const LaunchSecurityPolicy(),
       );
       final session = AppSession(
         sessionId: 's1',
@@ -206,7 +204,7 @@ void main() {
           memberOverrides: {
             'builder-0': SessionMemberContinueOverride(
               provider: 'from-continue',
-              dangerouslySkipPermissions: true,
+              launchSecurityPolicy: LaunchSecurityPolicyOverride.fullAccess,
             ),
           },
         ),
@@ -222,7 +220,7 @@ void main() {
         withPreset: _memberWithPreset,
       );
       expect(staged.provider, 'from-continue');
-      expect(staged.dangerouslySkipPermissions, isTrue);
+      expect(staged.launchSecurityPolicy.requiresDangerousExecution, isTrue);
 
       // Shell path re-applies preset on already-finalized plan.member, then
       // overrides again — must not let preset wipe continue provider.
@@ -240,7 +238,10 @@ void main() {
         preset: preset,
       );
       expect(shellMember.provider, 'from-continue');
-      expect(shellMember.dangerouslySkipPermissions, isTrue);
+      expect(
+        shellMember.launchSecurityPolicy.requiresDangerousExecution,
+        isTrue,
+      );
     },
   );
 
@@ -251,7 +252,7 @@ void main() {
       cli: CliTool.codex,
       provider: 'openai',
       model: 'gpt',
-      dangerouslySkipPermissions: true,
+      launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
     );
     final session = AppSession(
       sessionId: 's1',
@@ -261,7 +262,7 @@ void main() {
       model: 'gpt',
       createdAt: 1,
       continueOverrides: const SessionContinueOverrides(
-        dangerouslySkipPermissions: false,
+        launchSecurityPolicy: LaunchSecurityPolicyOverride.cliDefault,
       ),
     );
 
@@ -278,7 +279,10 @@ void main() {
       ),
     );
 
-    expect(shellMember.dangerouslySkipPermissions, isFalse);
+    expect(
+      shellMember.launchSecurityPolicy.requiresDangerousExecution,
+      isFalse,
+    );
     expect(shellMember.provider, 'openai');
     expect(shellMember.model, 'gpt');
     expect(shellMember.cli, CliTool.codex);

@@ -16,6 +16,7 @@ import '../services/team/member_presence_service.dart';
 import '../models/workspace_icon_picker_result.dart';
 import '../models/workspace_icon_ref.dart';
 import '../models/team_config.dart';
+import '../models/launch_security_policy.dart';
 import '../models/runtime_target.dart';
 import '../repositories/launch_profile_repository.dart';
 import '../repositories/automation_repository.dart';
@@ -202,7 +203,8 @@ class ChatCubit extends Cubit<ChatState>
     String sessionId, {
     bool preview,
     bool activate,
-  })? onSessionTabOpened;
+  })?
+  onSessionTabOpened;
 
   /// Domain → bar port: routes session closes, landing, and workspace closes
   /// through the workbench bar. Wired to the [WorkbenchChatBridge] by the app
@@ -297,6 +299,7 @@ class ChatCubit extends Cubit<ChatState>
       activate: activate,
     );
   }
+
   late final TabSessionRuntimeCoordinator _sessionRuntime =
       TabSessionRuntimeCoordinator(
         tabStore: _tabStore,
@@ -528,43 +531,28 @@ class ChatCubit extends Cubit<ChatState>
 
   @override
   ChatDataSnapshot stateSnapshot() => ChatDataSnapshot(
-        workspaces: state.workspaces,
-        sessions: state.sessions,
-        visibleWorkspaces: state.visibleWorkspaces,
-        visibleSessions: state.visibleSessions,
-      );
+    workspaces: state.workspaces,
+    sessions: state.sessions,
+    visibleWorkspaces: state.visibleWorkspaces,
+    visibleSessions: state.visibleSessions,
+  );
 
   @override
   void emitSnapshot(ChatDataSnapshot snapshot) => _emitSnapshot(snapshot);
 
   @override
   void appendSessionSnapshot(AppSession session) {
-    _emitSnapshot(
-      _dataStore.appendSession(
-        stateSnapshot(),
-        session,
-      ),
-    );
+    _emitSnapshot(_dataStore.appendSession(stateSnapshot(), session));
   }
 
   @override
   void replaceSessionSnapshot(AppSession session) {
-    _emitSnapshot(
-      _dataStore.replaceSession(
-        stateSnapshot(),
-        session,
-      ),
-    );
+    _emitSnapshot(_dataStore.replaceSession(stateSnapshot(), session));
   }
 
   @override
   void removeSessionSnapshot(String sessionId) {
-    _emitSnapshot(
-      _dataStore.removeSession(
-        stateSnapshot(),
-        sessionId,
-      ),
-    );
+    _emitSnapshot(_dataStore.removeSession(stateSnapshot(), sessionId));
   }
 
   @override
@@ -896,13 +884,12 @@ class ChatCubit extends Cubit<ChatState>
       persistedSession: session,
       team: _activeTeam,
       memberId: memberId,
-      cliForMember: (team, id, {globalPresets = const []}) =>
-          memberLaunchCli(
-            team: team,
-            member: _rosterMemberFor(team, id) ??
-                TeamMemberConfig(id: id, name: id),
-            globalPresets: globalPresets,
-          ),
+      cliForMember: (team, id, {globalPresets = const []}) => memberLaunchCli(
+        team: team,
+        member:
+            _rosterMemberFor(team, id) ?? TeamMemberConfig(id: id, name: id),
+        globalPresets: globalPresets,
+      ),
       globalPresets: _lifecycle.globalPresets,
     );
     final cap = cliRegistry.capability<TeamBehaviorCapability>(cli);
@@ -1460,12 +1447,7 @@ class ChatCubit extends Cubit<ChatState>
   /// session on disk. Sessions are unaffected by manifest-only edits, so a
   /// full reload buys nothing here.
   void patchWorkspace(Workspace updated) {
-    _emitSnapshot(
-      _dataStore.snapshotWithWorkspace(
-        stateSnapshot(),
-        updated,
-      ),
-    );
+    _emitSnapshot(_dataStore.snapshotWithWorkspace(stateSnapshot(), updated));
   }
 
   /// Replaces [workspace] and its sessions from a targeted mutation (e.g.
@@ -1523,12 +1505,7 @@ class ChatCubit extends Cubit<ChatState>
       workingDirectory: workingDirectory,
       fixedSessionId: fixedSessionId,
     );
-    _emitSnapshot(
-      _dataStore.appendSession(
-        stateSnapshot(),
-        session,
-      ),
-    );
+    _emitSnapshot(_dataStore.appendSession(stateSnapshot(), session));
     return session;
   }
 
@@ -2037,12 +2014,12 @@ class ChatCubit extends Cubit<ChatState>
     if (updated != null) replaceSessionSnapshot(updated);
   }
 
-  /// Persists session-level or per-member continue permission overrides.
+  /// Persists session-level or per-member continue security-policy overrides.
   ///
   /// Returns false when the repo/session is missing or persistence fails.
-  Future<bool> setSessionContinuePermission({
+  Future<bool> setSessionContinueSecurityPolicy({
     required String sessionId,
-    required bool dangerouslySkipPermissions,
+    required LaunchSecurityPolicy launchSecurityPolicy,
     String? memberId,
   }) async {
     final repo = _sessionRepository;
@@ -2052,13 +2029,13 @@ class ChatCubit extends Cubit<ChatState>
       sessionId,
     );
     if (session == null) return false;
-    final patched = _continueOverridesController.patchPermission(
+    final patched = _continueOverridesController.patchSecurityPolicy(
       session: session,
-      dangerouslySkipPermissions: dangerouslySkipPermissions,
+      launchSecurityPolicy: launchSecurityPolicy,
       memberId: memberId,
     );
     try {
-      await _continueOverridesController.persistPermission(
+      await _continueOverridesController.persistSecurityPolicy(
         repo: repo,
         patched: patched,
       );
@@ -2195,16 +2172,10 @@ class ChatCubit extends Cubit<ChatState>
         workspaces: state.workspaces,
         sessions: sessions,
       ),
-      base: state.copyWith(
-        workingSessionIds: working,
-      ),
+      base: state.copyWith(workingSessionIds: working),
     );
     _emitSnapshot(
-      await _dataStore.deleteSessionRecord(
-        stateSnapshot(),
-        repo,
-        sessionId,
-      ),
+      await _dataStore.deleteSessionRecord(stateSnapshot(), repo, sessionId),
     );
     if (session != null) {
       await _automationRepository.disableForSession(

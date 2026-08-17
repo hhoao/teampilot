@@ -1,3 +1,4 @@
+import 'package:teampilot/models/launch_security_policy.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -971,7 +972,7 @@ void main() {
     const member = TeamMemberConfig(
       id: 'member',
       name: 'team-lead',
-      dangerouslySkipPermissions: false,
+      launchSecurityPolicy: const LaunchSecurityPolicy(),
     );
     session.connect(
       workingDirectory: r'C:\Users\haung\git\teampilot\client',

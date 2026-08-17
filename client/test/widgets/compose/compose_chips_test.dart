@@ -1,3 +1,4 @@
+import 'package:teampilot/models/launch_security_policy.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/cli_preset.dart';
@@ -111,7 +112,7 @@ void main() {
     testWidgets('shows default label and forwards bool selection', (
       tester,
     ) async {
-      bool? selected;
+      LaunchSecurityPolicy? selected;
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -122,7 +123,7 @@ void main() {
                 );
                 return ComposePermissionChip(
                   palette: palette,
-                  dangerouslySkipPermissions: false,
+                  launchSecurityPolicy: const LaunchSecurityPolicy(),
                   defaultLabel: 'Default',
                   fullAccessLabel: 'Full access',
                   onSelected: (value) => selected = value,
@@ -141,7 +142,7 @@ void main() {
       await tester.tap(find.text('Full access'));
       await tester.pumpAndSettle();
 
-      expect(selected, isTrue);
+      expect(selected, LaunchSecurityPolicy.fullAccess);
     });
   });
 }

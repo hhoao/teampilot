@@ -1,3 +1,4 @@
+import 'package:teampilot/models/launch_security_policy.dart';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -9,36 +10,53 @@ import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 
 void main() {
-  test('createSession persists landing full-access permission override', () async {
-    final tmp = await Directory.systemTemp.createTemp('landing_permission_create_');
-    addTearDown(() => tmp.deleteSync(recursive: true));
-    final repo = SessionRepository(rootDir: tmp.path);
-    final workspace = await repo.createWorkspace([
-      const WorkspaceFolder(path: '/w'),
-    ]);
+  test(
+    'createSession persists landing full-access permission override',
+    () async {
+      final tmp = await Directory.systemTemp.createTemp(
+        'landing_permission_create_',
+      );
+      addTearDown(() => tmp.deleteSync(recursive: true));
+      final repo = SessionRepository(rootDir: tmp.path);
+      final workspace = await repo.createWorkspace([
+        const WorkspaceFolder(path: '/w'),
+      ]);
 
-    const draft = LandingLaunchContext(
-      isPersonal: true,
-      dangerouslySkipPermissions: true,
-    );
-    final params = SessionPersistParams(
-      sessionTeamId: '',
-      cli: CliTool.claude,
-      continueOverrides: SessionContinueOverrides(
-        dangerouslySkipPermissions: draft.dangerouslySkipPermissions,
-      ),
-    );
+      const draft = LandingLaunchContext(
+        isPersonal: true,
+        launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
+      );
+      final params = SessionPersistParams(
+        sessionTeamId: '',
+        cli: CliTool.claude,
+        continueOverrides: SessionContinueOverrides(
+          launchSecurityPolicy: LaunchSecurityPolicyOverride.fromPolicy(
+            draft.launchSecurityPolicy,
+          ),
+        ),
+      );
 
-    final session = (await repo.createSession(
-      workspace.workspaceId,
-      cli: params.cli,
-      continueOverrides: params.continueOverrides,
-    )).session;
+      final session = (await repo.createSession(
+        workspace.workspaceId,
+        cli: params.cli,
+        continueOverrides: params.continueOverrides,
+      )).session;
 
-    expect(session.continueOverrides.dangerouslySkipPermissions, isTrue);
-    expect(
-      (await repo.loadSessions()).single.continueOverrides.dangerouslySkipPermissions,
-      isTrue,
-    );
-  });
+      expect(
+        session
+            .continueOverrides
+            .launchSecurityPolicy
+            ?.requiresDangerousExecution,
+        isTrue,
+      );
+      expect(
+        (await repo.loadSessions())
+            .single
+            .continueOverrides
+            .launchSecurityPolicy
+            ?.requiresDangerousExecution,
+        isTrue,
+      );
+    },
+  );
 }

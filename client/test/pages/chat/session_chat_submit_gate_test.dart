@@ -1,3 +1,4 @@
+import 'package:teampilot/models/launch_security_policy.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -75,10 +76,10 @@ void main() {
                 modelPresetLabel: 'Model',
                 emptyPresetHintLabel: 'No presets',
                 onPresetSelected: _noopString,
-                dangerouslySkipPermissions: false,
+                launchSecurityPolicy: const LaunchSecurityPolicy(),
                 defaultPermissionsLabel: 'Default',
                 fullAccessPermissionsLabel: 'Full access',
-                onPermissionSelected: _noopBool,
+                onPermissionSelected: _noopPolicy,
               ),
               dropTarget: ComposeFileDropIngestor(
                 workspaceRoot: '/tmp',
@@ -120,3 +121,4 @@ void main() {
 
 void _noopString(String _) {}
 void _noopBool(bool _) {}
+void _noopPolicy(LaunchSecurityPolicy _) {}

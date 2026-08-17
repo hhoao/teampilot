@@ -9,6 +9,7 @@ import '../../cubits/chat/model/session_open_status.dart';
 import '../../models/app_session.dart';
 import '../../models/automation.dart';
 import '../../models/cli_preset.dart';
+import '../../models/launch_security_policy.dart';
 import '../../models/session_continue_overrides.dart';
 import '../../models/simple_launch_identity.dart';
 import '../../models/team_config.dart';
@@ -235,7 +236,9 @@ class AutomationDispatcher {
     final SessionOpenStatus status;
     if (automation.isPersonal) {
       final presetId = automation.presetId?.trim() ?? '';
-      final preset = presetId.isEmpty ? null : _resolveCliPreset?.call(presetId);
+      final preset = presetId.isEmpty
+          ? null
+          : _resolveCliPreset?.call(presetId);
       final expertKey = resolveLandingSessionExpertKey(automation.expertKey);
       final simpleIdentity = SimpleLaunchIdentity.resolve(
         preset: preset,
@@ -252,7 +255,9 @@ class AutomationDispatcher {
           simpleIdentity: simpleIdentity,
           expertKey: expertKey,
           continueOverrides: SessionContinueOverrides(
-            dangerouslySkipPermissions: automation.dangerouslySkipPermissions,
+            launchSecurityPolicy: LaunchSecurityPolicyOverride.fromPolicy(
+              automation.launchSecurityPolicy,
+            ),
           ),
           workingDirectory: workingDirectory,
           fixedSessionId: plannedSessionId,
@@ -272,7 +277,9 @@ class AutomationDispatcher {
           member: member,
           repo: _sessionRepository,
           continueOverrides: SessionContinueOverrides(
-            dangerouslySkipPermissions: automation.dangerouslySkipPermissions,
+            launchSecurityPolicy: LaunchSecurityPolicyOverride.fromPolicy(
+              automation.launchSecurityPolicy,
+            ),
           ),
           workingDirectory: workingDirectory,
           fixedSessionId: plannedSessionId,

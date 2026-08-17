@@ -1,4 +1,5 @@
 import '../../models/runtime_target.dart';
+import '../../models/launch_security_policy.dart';
 import '../../models/ssh_profile.dart';
 import '../../utils/logging/logger.dart';
 import '../ssh/ssh_member_session.dart';
@@ -28,32 +29,32 @@ Future<bool> remoteSshInDockerContainer({
   return sshRunSucceeded(result);
 }
 
-/// How to reconcile member skip-permissions with Claude Code `setup.ts` on SSH.
-enum RemoteRootSkipPermissionsPolicy {
-  /// No change (non-root, or skip-permissions off).
+/// How to reconcile a dangerous security policy with Claude Code `setup.ts` on SSH.
+enum RemoteRootSecurityPolicy {
+  /// No change (non-root, or safe policy).
   unchanged,
 
-  /// Root with sandbox env: export `IS_SANDBOX=1`, keep the CLI flag.
+  /// Root with sandbox env: export `IS_SANDBOX=1`, keep the requested policy.
   /// Triggered by container detection or per-target opt-in on bare-metal root.
   injectSandboxEnv,
 
-  /// Root on a non-container host: drop the flag (setup.ts would exit 1).
-  dropFlag,
+  /// Root on a non-container host: transform to a safe policy.
+  dropDangerousPolicy,
 }
 
-RemoteRootSkipPermissionsPolicy resolveRemoteRootSkipPermissionsPolicy({
-  required bool skipPermissionsRequested,
+RemoteRootSecurityPolicy resolveRemoteRootSecurityPolicy({
+  required LaunchSecurityPolicy securityPolicy,
   required bool runsAsRoot,
   required bool remoteInDocker,
   bool injectRootSandboxEnv = false,
 }) {
-  if (!skipPermissionsRequested || !runsAsRoot) {
-    return RemoteRootSkipPermissionsPolicy.unchanged;
+  if (!securityPolicy.requiresDangerousExecution || !runsAsRoot) {
+    return RemoteRootSecurityPolicy.unchanged;
   }
   if (remoteInDocker || injectRootSandboxEnv) {
-    return RemoteRootSkipPermissionsPolicy.injectSandboxEnv;
+    return RemoteRootSecurityPolicy.injectSandboxEnv;
   }
-  return RemoteRootSkipPermissionsPolicy.dropFlag;
+  return RemoteRootSecurityPolicy.dropDangerousPolicy;
 }
 
 /// Applies Claude Code launch constraints for remote SSH (P3c).
@@ -70,22 +71,23 @@ Future<ShellLaunchSpec> applyRemoteSshLaunchConstraints({
     return spec;
   }
   final member = spec.launchContext.member;
-  if (!member.dangerouslySkipPermissions) return spec;
+  final securityPolicy = spec.launchContext.launchSecurityPolicy;
+  if (!securityPolicy.requiresDangerousExecution) return spec;
 
   final runsAsRoot = await remoteSshRunsAsRoot(memberSession: memberSession);
   final remoteInDocker = runsAsRoot
       ? await remoteSshInDockerContainer(memberSession: memberSession)
       : false;
-  final policy = resolveRemoteRootSkipPermissionsPolicy(
-    skipPermissionsRequested: member.dangerouslySkipPermissions,
+  final policy = resolveRemoteRootSecurityPolicy(
+    securityPolicy: securityPolicy,
     runsAsRoot: runsAsRoot,
     remoteInDocker: remoteInDocker,
     injectRootSandboxEnv: injectRootSandboxEnv,
   );
 
   return switch (policy) {
-    RemoteRootSkipPermissionsPolicy.unchanged => spec,
-    RemoteRootSkipPermissionsPolicy.injectSandboxEnv => () {
+    RemoteRootSecurityPolicy.unchanged => spec,
+    RemoteRootSecurityPolicy.injectSandboxEnv => () {
       final plan = spec.plan;
       final env = Map<String, String>.from(plan.env);
       env[claudeCodeSandboxEnvKey] = claudeCodeSandboxEnvValue;
@@ -112,7 +114,7 @@ Future<ShellLaunchSpec> applyRemoteSshLaunchConstraints({
         sessionTeam: spec.sessionTeam,
       );
     }(),
-    RemoteRootSkipPermissionsPolicy.dropFlag => () {
+    RemoteRootSecurityPolicy.dropDangerousPolicy => () {
       final plan = spec.plan;
       return ShellLaunchSpec(
         plan: LaunchPlan(
@@ -128,16 +130,22 @@ Future<ShellLaunchSpec> applyRemoteSshLaunchConstraints({
           toolValue: plan.toolValue,
           warnings: [
             ...plan.warnings,
-            'remote_ssh_root_skip_permissions_disabled: '
-                'Claude Code rejects --dangerously-skip-permissions for root '
-                'outside a sandbox (setup.ts); launching with permission prompts '
+            'remote_ssh_root_security_policy_restricted: '
+                'Claude Code rejects dangerous root execution outside a '
+                'sandbox (setup.ts); launching with safe security policy '
                 'on ${profile.hostIdentifier}. Use a non-root SSH user, a '
                 'container with IS_SANDBOX=1, or enable root sandbox env '
                 'in SSH target settings.',
           ],
         ),
         launchContext: spec.launchContext.copyWith(
-          member: member.copyWith(dangerouslySkipPermissions: false),
+          member: member.copyWith(
+            launchSecurityPolicy: const LaunchSecurityPolicy(
+              approval: LaunchApprovalPolicy.ask,
+              sandbox: LaunchSandboxPolicy.workspaceWrite,
+              hookTrust: LaunchHookTrustPolicy.trustedOnly,
+            ),
+          ),
         ),
         sessionTeam: spec.sessionTeam,
       );

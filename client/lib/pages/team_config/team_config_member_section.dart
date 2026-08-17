@@ -10,6 +10,7 @@ import '../../cubits/team/launch_profile_selectors.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/discoverable_member.dart';
 import '../../models/team_config.dart';
+import '../../models/launch_security_policy.dart';
 import '../../models/team_roster_slot.dart';
 import '../../services/cli/flashskyai/agent_catalog_service.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
@@ -507,20 +508,20 @@ class _MemberSkipPermissionsSwitch extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final skip = context.select<LaunchProfileCubit, bool?>(
+    final policy = context.select<LaunchProfileCubit, LaunchSecurityPolicy?>(
       (c) => LaunchProfileSelectors.memberDiscreteFields(
         c.state,
         teamId,
         memberId,
-      )?.dangerouslySkipPermissions,
+      )?.launchSecurityPolicy,
     );
-    if (skip == null) return const SizedBox.shrink();
+    if (policy == null) return const SizedBox.shrink();
 
     return TpPreferenceRow(
       title: l10n.memberDangerouslySkipPermissions,
       subtitle: l10n.memberDangerouslySkipPermissionsHint,
       trailing: Switch(
-        value: skip,
+        value: policy.requiresDangerousExecution,
         onChanged: (v) {
           final member = LaunchProfileSelectors.memberById(
             LaunchProfileSelectors.teamById(
@@ -530,7 +531,13 @@ class _MemberSkipPermissionsSwitch extends StatelessWidget {
             memberId,
           );
           if (member == null) return;
-          onPersist(member.copyWith(dangerouslySkipPermissions: v));
+          onPersist(
+            member.copyWith(
+              launchSecurityPolicy: v
+                  ? LaunchSecurityPolicy.fullAccess
+                  : const LaunchSecurityPolicy(),
+            ),
+          );
         },
       ),
       showDividerBelow: true,

@@ -1,3 +1,4 @@
+import 'package:teampilot/models/launch_security_policy.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/chat/session_continue_overrides_controller.dart';
 import 'package:teampilot/models/app_session.dart';
@@ -37,15 +38,18 @@ void main() {
     );
   }
 
-  group('patchPermission', () {
+  group('patchSecurityPolicy', () {
     test('writes session-level permission for Simple', () {
-      final patched = controller.patchPermission(
+      final patched = controller.patchSecurityPolicy(
         session: _simpleSession(),
-        dangerouslySkipPermissions: true,
+        launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
       );
 
       expect(
-        patched.continueOverrides.dangerouslySkipPermissions,
+        patched
+            .continueOverrides
+            .launchSecurityPolicy
+            ?.requiresDangerousExecution,
         isTrue,
       );
       expect(patched.continueOverrides.memberOverrides, isEmpty);
@@ -62,21 +66,24 @@ void main() {
               model: 'claude-sonnet',
             ),
             'reviewer-0': SessionMemberContinueOverride(
-              dangerouslySkipPermissions: true,
+              launchSecurityPolicy: LaunchSecurityPolicyOverride.fullAccess,
             ),
           },
         ),
       );
 
-      final patched = controller.patchPermission(
+      final patched = controller.patchSecurityPolicy(
         session: session,
-        dangerouslySkipPermissions: false,
+        launchSecurityPolicy: const LaunchSecurityPolicy(),
         memberId: 'builder-0',
       );
 
       expect(
-        patched.continueOverrides.memberOverrides['builder-0']
-            ?.dangerouslySkipPermissions,
+        patched
+            .continueOverrides
+            .memberOverrides['builder-0']
+            ?.launchSecurityPolicy
+            ?.requiresDangerousExecution,
         isFalse,
       );
       expect(
@@ -84,8 +91,11 @@ void main() {
         'preset-a',
       );
       expect(
-        patched.continueOverrides.memberOverrides['reviewer-0']
-            ?.dangerouslySkipPermissions,
+        patched
+            .continueOverrides
+            .memberOverrides['reviewer-0']
+            ?.launchSecurityPolicy
+            ?.requiresDangerousExecution,
         isTrue,
       );
     });
@@ -116,39 +126,41 @@ void main() {
       expect(patched, isNull);
     });
 
-    test('team member preset expands override without touching other members',
-        () {
-      final session = _simpleSession().copyWith(
-        sessionTeam: 'team-1',
-        continueOverrides: const SessionContinueOverrides(
-          memberOverrides: {
-            'reviewer-0': SessionMemberContinueOverride(
-              presetId: 'keep-me',
-              provider: 'anthropic',
-              model: 'claude-opus',
-            ),
-          },
-        ),
-      );
+    test(
+      'team member preset expands override without touching other members',
+      () {
+        final session = _simpleSession().copyWith(
+          sessionTeam: 'team-1',
+          continueOverrides: const SessionContinueOverrides(
+            memberOverrides: {
+              'reviewer-0': SessionMemberContinueOverride(
+                presetId: 'keep-me',
+                provider: 'anthropic',
+                model: 'claude-opus',
+              ),
+            },
+          ),
+        );
 
-      final patched = controller.patchPreset(
-        session: session,
-        preset: _claudePreset(),
-        memberId: 'builder-0',
-        lockedCli: CliTool.claude,
-      );
+        final patched = controller.patchPreset(
+          session: session,
+          preset: _claudePreset(),
+          memberId: 'builder-0',
+          lockedCli: CliTool.claude,
+        );
 
-      expect(patched, isNotNull);
-      final builder = patched!.continueOverrides.memberOverrides['builder-0'];
-      expect(builder?.presetId, 'preset-b');
-      expect(builder?.provider, 'openai');
-      expect(builder?.model, 'gpt-4o');
-      expect(builder?.effort, 'medium');
-      expect(
-        patched.continueOverrides.memberOverrides['reviewer-0']?.presetId,
-        'keep-me',
-      );
-    });
+        expect(patched, isNotNull);
+        final builder = patched!.continueOverrides.memberOverrides['builder-0'];
+        expect(builder?.presetId, 'preset-b');
+        expect(builder?.provider, 'openai');
+        expect(builder?.model, 'gpt-4o');
+        expect(builder?.effort, 'medium');
+        expect(
+          patched.continueOverrides.memberOverrides['reviewer-0']?.presetId,
+          'keep-me',
+        );
+      },
+    );
   });
 
   group('patchCustom', () {

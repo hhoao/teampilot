@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import 'launch_security_policy.dart';
+
 @immutable
 class SessionMemberContinueOverride {
   const SessionMemberContinueOverride({
@@ -7,7 +9,7 @@ class SessionMemberContinueOverride {
     this.provider,
     this.model,
     this.effort,
-    this.dangerouslySkipPermissions,
+    this.launchSecurityPolicy,
   });
 
   factory SessionMemberContinueOverride.fromJson(Map<String, Object?> json) {
@@ -16,7 +18,9 @@ class SessionMemberContinueOverride {
       provider: _optionalString(json['provider']),
       model: _optionalString(json['model']),
       effort: _optionalString(json['effort']),
-      dangerouslySkipPermissions: json['dangerouslySkipPermissions'] as bool?,
+      launchSecurityPolicy: json.containsKey('launchSecurityPolicy')
+          ? LaunchSecurityPolicyOverride.fromJson(json['launchSecurityPolicy'])
+          : null,
     );
   }
 
@@ -24,22 +28,23 @@ class SessionMemberContinueOverride {
   final String? provider;
   final String? model;
   final String? effort;
-  final bool? dangerouslySkipPermissions;
+
+  /// Partial policy; `cliDefault` dimensions remain inherited on merge.
+  final LaunchSecurityPolicyOverride? launchSecurityPolicy;
 
   SessionMemberContinueOverride copyWith({
     String? presetId,
     String? provider,
     String? model,
     String? effort,
-    bool? dangerouslySkipPermissions,
+    LaunchSecurityPolicyOverride? launchSecurityPolicy,
   }) {
     return SessionMemberContinueOverride(
       presetId: presetId ?? this.presetId,
       provider: provider ?? this.provider,
       model: model ?? this.model,
       effort: effort ?? this.effort,
-      dangerouslySkipPermissions:
-          dangerouslySkipPermissions ?? this.dangerouslySkipPermissions,
+      launchSecurityPolicy: launchSecurityPolicy ?? this.launchSecurityPolicy,
     );
   }
 
@@ -48,8 +53,8 @@ class SessionMemberContinueOverride {
     if (provider != null && provider!.isNotEmpty) 'provider': provider,
     if (model != null && model!.isNotEmpty) 'model': model,
     if (effort != null && effort!.isNotEmpty) 'effort': effort,
-    if (dangerouslySkipPermissions != null)
-      'dangerouslySkipPermissions': dangerouslySkipPermissions,
+    if (launchSecurityPolicy != null)
+      'launchSecurityPolicy': launchSecurityPolicy!.toJson(),
   };
 
   @override
@@ -61,23 +66,18 @@ class SessionMemberContinueOverride {
             provider == other.provider &&
             model == other.model &&
             effort == other.effort &&
-            dangerouslySkipPermissions == other.dangerouslySkipPermissions;
+            launchSecurityPolicy == other.launchSecurityPolicy;
   }
 
   @override
-  int get hashCode => Object.hash(
-    presetId,
-    provider,
-    model,
-    effort,
-    dangerouslySkipPermissions,
-  );
+  int get hashCode =>
+      Object.hash(presetId, provider, model, effort, launchSecurityPolicy);
 }
 
 @immutable
 class SessionContinueOverrides {
   const SessionContinueOverrides({
-    this.dangerouslySkipPermissions,
+    this.launchSecurityPolicy,
     this.memberOverrides = const {},
   });
 
@@ -96,28 +96,30 @@ class SessionContinueOverrides {
           }
         : const <String, SessionMemberContinueOverride>{};
     return SessionContinueOverrides(
-      dangerouslySkipPermissions: json['dangerouslySkipPermissions'] as bool?,
+      launchSecurityPolicy: json.containsKey('launchSecurityPolicy')
+          ? LaunchSecurityPolicyOverride.fromJson(json['launchSecurityPolicy'])
+          : null,
       memberOverrides: members,
     );
   }
 
-  final bool? dangerouslySkipPermissions;
+  /// Partial policy; `cliDefault` dimensions remain inherited on merge.
+  final LaunchSecurityPolicyOverride? launchSecurityPolicy;
   final Map<String, SessionMemberContinueOverride> memberOverrides;
 
   SessionContinueOverrides copyWith({
-    bool? dangerouslySkipPermissions,
+    LaunchSecurityPolicyOverride? launchSecurityPolicy,
     Map<String, SessionMemberContinueOverride>? memberOverrides,
   }) {
     return SessionContinueOverrides(
-      dangerouslySkipPermissions:
-          dangerouslySkipPermissions ?? this.dangerouslySkipPermissions,
+      launchSecurityPolicy: launchSecurityPolicy ?? this.launchSecurityPolicy,
       memberOverrides: memberOverrides ?? this.memberOverrides,
     );
   }
 
   Map<String, Object?> toJson() => {
-    if (dangerouslySkipPermissions != null)
-      'dangerouslySkipPermissions': dangerouslySkipPermissions,
+    if (launchSecurityPolicy != null)
+      'launchSecurityPolicy': launchSecurityPolicy!.toJson(),
     if (memberOverrides.isNotEmpty)
       'memberOverrides': {
         for (final e in memberOverrides.entries) e.key: e.value.toJson(),
@@ -129,17 +131,15 @@ class SessionContinueOverrides {
     return identical(this, other) ||
         other is SessionContinueOverrides &&
             runtimeType == other.runtimeType &&
-            dangerouslySkipPermissions == other.dangerouslySkipPermissions &&
+            launchSecurityPolicy == other.launchSecurityPolicy &&
             mapEquals(memberOverrides, other.memberOverrides);
   }
 
   @override
   int get hashCode => Object.hash(
-    dangerouslySkipPermissions,
+    launchSecurityPolicy,
     Object.hashAll(
-      memberOverrides.entries.map(
-        (e) => Object.hash(e.key, e.value),
-      ),
+      memberOverrides.entries.map((e) => Object.hash(e.key, e.value)),
     ),
   );
 }

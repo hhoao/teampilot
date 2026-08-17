@@ -1,3 +1,4 @@
+import 'package:teampilot/models/launch_security_policy.dart';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -149,43 +150,50 @@ void main() {
       expect(disk.memberOverrides['reviewer-0']?.presetId, 'keep-me');
     });
 
-    test('setSessionContinuePermission persists session-level bool', () async {
-      final workspace = await repo.createWorkspace([
-        WorkspaceFolder(path: '/w'),
-      ]);
-      final session = (await repo.createSession(workspace.workspaceId)).session;
-      await cubit.loadWorkspaceData(repo);
+    test(
+      'setSessionContinueSecurityPolicy persists session-level bool',
+      () async {
+        final workspace = await repo.createWorkspace([
+          WorkspaceFolder(path: '/w'),
+        ]);
+        final session = (await repo.createSession(
+          workspace.workspaceId,
+        )).session;
+        await cubit.loadWorkspaceData(repo);
 
-      final ok = await cubit.setSessionContinuePermission(
-        sessionId: session.sessionId,
-        dangerouslySkipPermissions: true,
-      );
+        final ok = await cubit.setSessionContinueSecurityPolicy(
+          sessionId: session.sessionId,
+          launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
+        );
 
-      expect(ok, isTrue);
-      expect(
-        cubit
-            .state
-            .sessions
-            .single
-            .continueOverrides
-            .dangerouslySkipPermissions,
-        isTrue,
-      );
-      expect(
-        (await repo.loadSessions())
-            .single
-            .continueOverrides
-            .dangerouslySkipPermissions,
-        isTrue,
-      );
-    });
+        expect(ok, isTrue);
+        expect(
+          cubit
+              .state
+              .sessions
+              .single
+              .continueOverrides
+              .launchSecurityPolicy
+              ?.requiresDangerousExecution,
+          isTrue,
+        );
+        expect(
+          (await repo.loadSessions())
+              .single
+              .continueOverrides
+              .launchSecurityPolicy
+              ?.requiresDangerousExecution,
+          isTrue,
+        );
+      },
+    );
 
     test(
-      'setSessionContinuePermission returns false when session missing',
+      'setSessionContinueSecurityPolicy returns false when session missing',
       () async {
-        final ok = await cubit.setSessionContinuePermission(
+        final ok = await cubit.setSessionContinueSecurityPolicy(
           sessionId: 'missing',
-          dangerouslySkipPermissions: true,
+          launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
         );
 
         expect(ok, isFalse);

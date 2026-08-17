@@ -903,6 +903,7 @@ class SessionLifecycleService {
       return CliLaunchContext(
         team: launchTeam,
         member: member,
+        launchSecurityPolicy: member.launchSecurityPolicy,
         sessionTeam: plan.cliTeamName,
         workingDirectory: personalDirs.workingDirectory,
         additionalDirectories: personalDirs.addDirs,
@@ -926,6 +927,7 @@ class SessionLifecycleService {
     return CliLaunchContext(
       team: launchTeam,
       member: member,
+      launchSecurityPolicy: member.launchSecurityPolicy,
       sessionTeam: _resolveSessionTeam(session, plan, false),
       workingDirectory: memberDirs.workingDirectory.isNotEmpty
           ? memberDirs.workingDirectory

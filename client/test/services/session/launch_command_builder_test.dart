@@ -1,3 +1,4 @@
+import 'package:teampilot/models/launch_security_policy.dart';
 import 'dart:io';
 
 import 'package:teampilot/models/workspace_agent_config.dart';
@@ -22,7 +23,7 @@ void main() {
     provider: 'anthropic',
     model: 'sonnet',
     agent: 'builder',
-    dangerouslySkipPermissions: false,
+    launchSecurityPolicy: const LaunchSecurityPolicy(),
   );
 
   test('builds required flashskyai arguments for a member', () {
@@ -149,7 +150,7 @@ void main() {
       provider: 'anthropic',
       model: 'sonnet',
       agent: 'builder',
-      dangerouslySkipPermissions: true,
+      launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
     );
 
     expect(LaunchCommandBuilder.buildArguments(team, risky), [
@@ -178,7 +179,7 @@ void main() {
       id: 'member-2',
       name: 'reviewer',
       extraArgs: '--continue --system-prompt "be careful"',
-      dangerouslySkipPermissions: false,
+      launchSecurityPolicy: const LaunchSecurityPolicy(),
     );
 
     expect(
@@ -212,7 +213,7 @@ void main() {
     const reviewer = TeamMemberConfig(
       id: 'member-2',
       name: 'code reviewer',
-      dangerouslySkipPermissions: false,
+      launchSecurityPolicy: const LaunchSecurityPolicy(),
     );
 
     expect(
@@ -226,7 +227,7 @@ void main() {
     const planner = TeamMemberConfig(
       id: 'm',
       name: 'planner',
-      dangerouslySkipPermissions: false,
+      launchSecurityPolicy: const LaunchSecurityPolicy(),
     );
 
     expect(
@@ -281,7 +282,7 @@ void main() {
       provider: 'anthropic',
       model: 'sonnet',
       agent: 'builder',
-      dangerouslySkipPermissions: false,
+      launchSecurityPolicy: const LaunchSecurityPolicy(),
     );
 
     expect(

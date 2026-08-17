@@ -1,19 +1,24 @@
 import '../../models/app_session.dart';
 import '../../models/cli_preset.dart';
+import '../../models/launch_security_policy.dart';
 import '../../models/session_continue_overrides.dart';
 import '../../models/team_config.dart';
 
-bool resolveContinueSkipPermissions({
-  required bool? sessionLevel,
-  required bool? memberLevel,
-  required bool launchDefault,
-}) =>
-    memberLevel ?? sessionLevel ?? launchDefault;
+LaunchSecurityPolicy resolveContinueSecurityPolicy({
+  required LaunchSecurityPolicy launchDefault,
+  LaunchSecurityPolicyOverride? sessionLevel,
+  LaunchSecurityPolicyOverride? memberLevel,
+}) {
+  var resolved = launchDefault;
+  if (sessionLevel != null) resolved = sessionLevel.applyTo(resolved);
+  if (memberLevel != null) resolved = memberLevel.applyTo(resolved);
+  return resolved;
+}
 
 /// Launch-member merge order: base → optional team preset → continue overrides last.
 ///
 /// [withPreset] is team-only; Simple skips preset. Overrides always win over
-/// template preset for permission / provider / model / effort / presetId.
+/// template preset for policy / provider / model / effort / presetId.
 TeamMemberConfig finalizeSessionLaunchMember({
   required AppSession session,
   required TeamMemberConfig baseMember,
@@ -33,10 +38,9 @@ TeamMemberConfig finalizeSessionLaunchMember({
   );
 }
 
-/// [isSimple]: launchDefault for permission is `false`.
-/// Team: launchDefault is [baseMember.dangerouslySkipPermissions] before override.
-/// Simple: do NOT re-apply provider/model from memberOverrides; only permission from continueOverrides.
-/// Team: apply memberOverrides[memberId] provider/model/effort/presetId + permission.
+/// Simple: do NOT re-apply provider/model from memberOverrides; only security
+/// policy from continueOverrides.
+/// Team: apply memberOverrides[memberId] provider/model/effort/presetId + policy.
 /// Never change [baseMember.cli].
 ///
 /// When concrete provider/model/effort are applied, clear [TeamMemberConfig.activePresetId]
@@ -56,32 +60,29 @@ TeamMemberConfig applySessionContinueOverrides({
     return baseMember.copyWith(
       // Seat key / X-Member for simple = session.sessionId (passed as memberId).
       id: memberId,
-      dangerouslySkipPermissions: resolveContinueSkipPermissions(
-        sessionLevel: overrides.dangerouslySkipPermissions,
+      launchSecurityPolicy: resolveContinueSecurityPolicy(
+        launchDefault: baseMember.launchSecurityPolicy,
+        sessionLevel: overrides.launchSecurityPolicy,
         memberLevel: null,
-        launchDefault: false,
       ),
     );
   }
 
   final memberOverride = overrides.memberOverrides[memberId];
-  final permission = resolveContinueSkipPermissions(
-    sessionLevel: overrides.dangerouslySkipPermissions,
-    memberLevel: memberOverride?.dangerouslySkipPermissions,
-    launchDefault: baseMember.dangerouslySkipPermissions,
+  final policy = resolveContinueSecurityPolicy(
+    sessionLevel: overrides.launchSecurityPolicy,
+    memberLevel: memberOverride?.launchSecurityPolicy,
+    launchDefault: baseMember.launchSecurityPolicy,
   );
 
   if (memberOverride == null) {
-    return baseMember.copyWith(
-      dangerouslySkipPermissions: permission,
-    );
+    return baseMember.copyWith(launchSecurityPolicy: policy);
   }
 
-  var merged = baseMember.copyWith(
-    dangerouslySkipPermissions: permission,
-  );
+  var merged = baseMember.copyWith(launchSecurityPolicy: policy);
 
-  final hasConcreteLaunchFields = memberOverride.provider != null ||
+  final hasConcreteLaunchFields =
+      memberOverride.provider != null ||
       memberOverride.model != null ||
       memberOverride.effort != null;
 
@@ -92,18 +93,12 @@ TeamMemberConfig applySessionContinueOverrides({
     merged = merged.copyWith(model: memberOverride.model);
   }
   if (memberOverride.effort != null) {
-    merged = merged.copyWith(
-      effort: memberOverride.effort,
-      updateEffort: true,
-    );
+    merged = merged.copyWith(effort: memberOverride.effort, updateEffort: true);
   }
 
   if (hasConcreteLaunchFields) {
     // Keep continue provider/model through stageTeamLaunch → memberForLaunch.
-    merged = merged.copyWith(
-      activePresetId: null,
-      updateActivePresetId: true,
-    );
+    merged = merged.copyWith(activePresetId: null, updateActivePresetId: true);
   } else if (memberOverride.presetId != null) {
     merged = merged.copyWith(
       activePresetId: memberOverride.presetId,

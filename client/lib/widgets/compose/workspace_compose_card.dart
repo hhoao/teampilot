@@ -212,8 +212,7 @@ class WorkspaceComposeCard extends StatelessWidget {
               ]),
               builder: (context, _) {
                 final refs = parseComposeAtFileRefs(
-                  clip?.composeMessage(controller.text) ??
-                      controller.text,
+                  clip?.composeMessage(controller.text) ?? controller.text,
                   workspaceRoot: workspaceRoot,
                 );
                 if (refs.isEmpty) return const SizedBox.shrink();
@@ -398,7 +397,7 @@ class WorkspaceComposeCard extends StatelessWidget {
       SizedBox(width: spacing.sm),
       ComposePermissionChip(
         palette: palette,
-        dangerouslySkipPermissions: chrome.dangerouslySkipPermissions,
+        launchSecurityPolicy: chrome.launchSecurityPolicy,
         defaultLabel: chrome.defaultPermissionsLabel,
         fullAccessLabel: chrome.fullAccessPermissionsLabel,
         onSelected: chrome.onPermissionSelected,
@@ -442,7 +441,7 @@ class WorkspaceComposeCard extends StatelessWidget {
           chrome.fullAccessPermissionsLabel != null) ...[
         ComposePermissionChip(
           palette: palette,
-          dangerouslySkipPermissions: chrome.dangerouslySkipPermissions,
+          launchSecurityPolicy: chrome.launchSecurityPolicy,
           defaultLabel: chrome.defaultPermissionsLabel!,
           fullAccessLabel: chrome.fullAccessPermissionsLabel!,
           onSelected: chrome.onPermissionSelected!,
@@ -786,11 +785,7 @@ class _VoicePrimaryButton extends StatelessWidget {
           enabled: enabled,
           onTap: enabled ? onTap : null,
           child: Center(
-            child: Icon(
-              Icons.mic_none_outlined,
-              color: color,
-              size: icons.md,
-            ),
+            child: Icon(Icons.mic_none_outlined, color: color, size: icons.md),
           ),
         ),
       ),

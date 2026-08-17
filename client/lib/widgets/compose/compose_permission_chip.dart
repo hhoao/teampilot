@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 
 import '../../pages/home_workspace/workspace/workspace_chat_landing_palette.dart';
+import '../../models/launch_security_policy.dart';
 import 'compose_menu_chip.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 /// Shared permission menu chip for Landing and History continue chrome.
 ///
-/// [dangerouslySkipPermissions] is the effective bool (full access when true).
-/// [onSelected] always receives a concrete bool — never null.
+/// The chip keeps the existing two-choice UI while storing a normalized policy.
 class ComposePermissionChip extends StatelessWidget {
   const ComposePermissionChip({
     required this.palette,
-    required this.dangerouslySkipPermissions,
+    required this.launchSecurityPolicy,
     required this.defaultLabel,
     required this.fullAccessLabel,
     required this.onSelected,
@@ -19,27 +19,28 @@ class ComposePermissionChip extends StatelessWidget {
   });
 
   final WorkspaceChatLandingPalette palette;
-  final bool dangerouslySkipPermissions;
+  final LaunchSecurityPolicy launchSecurityPolicy;
   final String defaultLabel;
   final String fullAccessLabel;
-  final ValueChanged<bool> onSelected;
+  final ValueChanged<LaunchSecurityPolicy> onSelected;
 
-  String get _chipLabel =>
-      dangerouslySkipPermissions ? fullAccessLabel : defaultLabel;
+  String get _chipLabel => launchSecurityPolicy.requiresDangerousExecution
+      ? fullAccessLabel
+      : defaultLabel;
 
   List<TpActionMenuSpec> _specs() {
     return [
       TpActionMenuSpec.item(
-        value: false,
+        value: const LaunchSecurityPolicy(),
         icon: Icons.verified_outlined,
         label: defaultLabel,
-        selected: !dangerouslySkipPermissions,
+        selected: !launchSecurityPolicy.requiresDangerousExecution,
       ),
       TpActionMenuSpec.item(
-        value: true,
+        value: LaunchSecurityPolicy.fullAccess,
         icon: Icons.lock_open_outlined,
         label: fullAccessLabel,
-        selected: dangerouslySkipPermissions,
+        selected: launchSecurityPolicy.requiresDangerousExecution,
       ),
     ];
   }
@@ -52,7 +53,7 @@ class ComposePermissionChip extends StatelessWidget {
       label: _chipLabel,
       specs: _specs(),
       onSelected: (value) {
-        if (value is bool) onSelected(value);
+        if (value is LaunchSecurityPolicy) onSelected(value);
       },
     );
   }

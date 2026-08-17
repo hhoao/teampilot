@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../models/workspace.dart';
+import '../../models/launch_security_policy.dart';
 import '../../services/automation/automation_schedule_calculator.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'automation_editor_launch_section.dart';
@@ -35,7 +36,7 @@ class AutomationEditorFormBody extends StatelessWidget {
     this.presetId,
     this.teamId,
     this.expertKey,
-    this.dangerouslySkipPermissions = false,
+    this.launchSecurityPolicy = const LaunchSecurityPolicy(),
     this.targetMemberId = 'team-lead',
     this.onIsPersonalChanged,
     this.onProjectChanged,
@@ -69,7 +70,7 @@ class AutomationEditorFormBody extends StatelessWidget {
   final String? presetId;
   final String? teamId;
   final String? expertKey;
-  final bool dangerouslySkipPermissions;
+  final LaunchSecurityPolicy launchSecurityPolicy;
   final String targetMemberId;
   final ValueChanged<bool>? onIsPersonalChanged;
   final ValueChanged<String?>? onProjectChanged;
@@ -77,7 +78,7 @@ class AutomationEditorFormBody extends StatelessWidget {
   final ValueChanged<String?>? onPresetChanged;
   final ValueChanged<String?>? onTeamChanged;
   final ValueChanged<String?>? onExpertChanged;
-  final ValueChanged<bool>? onPermissionsChanged;
+  final ValueChanged<LaunchSecurityPolicy>? onPermissionsChanged;
   final ValueChanged<String>? onTargetMemberChanged;
 
   @override
@@ -95,8 +96,7 @@ class AutomationEditorFormBody extends StatelessWidget {
           label: Text(l10n.automationsName),
           layoutStyle: TpFormFieldLayoutStyle.inline,
           labelWidth: kAutomationEditorFormLabelWidth,
-          validator: (v) =>
-              (v == null || v.trim().isEmpty)
+          validator: (v) => (v == null || v.trim().isEmpty)
               ? l10n.automationsValidationRequired
               : null,
           builder: (state) {
@@ -120,8 +120,7 @@ class AutomationEditorFormBody extends StatelessWidget {
           labelWidth: kAutomationEditorFormLabelWidth,
           minHeight: tpTextareaHeightForLines(bodyStyle, lines: 2),
           maxHeight: tpTextareaHeightForLines(bodyStyle, lines: 5),
-          validator: (v) =>
-              (v == null || v.trim().isEmpty)
+          validator: (v) => (v == null || v.trim().isEmpty)
               ? l10n.automationsValidationRequired
               : null,
         ),
@@ -135,7 +134,7 @@ class AutomationEditorFormBody extends StatelessWidget {
             presetId: presetId,
             teamId: teamId,
             expertKey: expertKey,
-            dangerouslySkipPermissions: dangerouslySkipPermissions,
+            launchSecurityPolicy: launchSecurityPolicy,
             targetMemberId: targetMemberId,
             labelWidth: kAutomationEditorFormLabelWidth,
             onProjectChanged: onProjectChanged ?? (_) {},

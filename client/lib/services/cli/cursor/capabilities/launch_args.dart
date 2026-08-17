@@ -43,7 +43,7 @@ final class CursorCliToolAdapter implements CliToolAdapter {
       args.add('--approve-mcps');
     }
 
-    if (member.dangerouslySkipPermissions) {
+    if (context.launchSecurityPolicy.requiresDangerousExecution) {
       args.add('--force');
     }
 

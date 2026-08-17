@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../models/cli_preset.dart';
+import '../../models/launch_security_policy.dart';
 
 sealed class ComposeChrome {
   const ComposeChrome();
@@ -12,7 +13,7 @@ final class UnboundComposeChrome extends ComposeChrome {
   const UnboundComposeChrome({
     required this.conversationModeLabel,
     required this.autoChipLabel,
-    required this.dangerouslySkipPermissions,
+    required this.launchSecurityPolicy,
     required this.defaultPermissionsLabel,
     required this.fullAccessPermissionsLabel,
     required this.conversationModeSpecs,
@@ -31,14 +32,14 @@ final class UnboundComposeChrome extends ComposeChrome {
 
   final String conversationModeLabel;
   final String autoChipLabel;
-  final bool dangerouslySkipPermissions;
+  final LaunchSecurityPolicy launchSecurityPolicy;
   final String defaultPermissionsLabel;
   final String fullAccessPermissionsLabel;
   final List<TpActionMenuSpec> conversationModeSpecs;
   final List<TpActionMenuSpec> autoChipSpecs;
   final ValueChanged<Object?> onConversationModeSelected;
   final ValueChanged<Object?> onAutoChipSelected;
-  final ValueChanged<bool> onPermissionSelected;
+  final ValueChanged<LaunchSecurityPolicy> onPermissionSelected;
   final Widget? autoChipLeading;
   final String? expertChipLabel;
   final List<TpActionMenuSpec> expertChipSpecs;
@@ -67,7 +68,7 @@ final class BoundComposeChrome extends ComposeChrome {
     this.customLabel,
     this.customSelected = false,
     this.onCustom,
-    this.dangerouslySkipPermissions = false,
+    this.launchSecurityPolicy = const LaunchSecurityPolicy(),
     this.defaultPermissionsLabel,
     this.fullAccessPermissionsLabel,
     this.onPermissionSelected,
@@ -99,10 +100,10 @@ final class BoundComposeChrome extends ComposeChrome {
   final bool customSelected;
   final VoidCallback? onCustom;
 
-  final bool dangerouslySkipPermissions;
+  final LaunchSecurityPolicy launchSecurityPolicy;
   final String? defaultPermissionsLabel;
   final String? fullAccessPermissionsLabel;
-  final ValueChanged<bool>? onPermissionSelected;
+  final ValueChanged<LaunchSecurityPolicy>? onPermissionSelected;
 
   final String? teamSettingsTooltip;
   final VoidCallback? onTeamSettings;

@@ -1,55 +1,56 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/models/launch_security_policy.dart';
 import 'package:teampilot/services/session/remote_ssh_launch_constraints.dart';
 
 void main() {
-  group('resolveRemoteRootSkipPermissionsPolicy', () {
-    test('unchanged when skip-permissions off or non-root', () {
+  group('resolveRemoteRootSecurityPolicy', () {
+    test('unchanged when safe policy or non-root', () {
       expect(
-        resolveRemoteRootSkipPermissionsPolicy(
-          skipPermissionsRequested: false,
+        resolveRemoteRootSecurityPolicy(
+          securityPolicy: const LaunchSecurityPolicy(),
           runsAsRoot: true,
           remoteInDocker: true,
         ),
-        RemoteRootSkipPermissionsPolicy.unchanged,
+        RemoteRootSecurityPolicy.unchanged,
       );
       expect(
-        resolveRemoteRootSkipPermissionsPolicy(
-          skipPermissionsRequested: true,
+        resolveRemoteRootSecurityPolicy(
+          securityPolicy: LaunchSecurityPolicy.fullAccess,
           runsAsRoot: false,
           remoteInDocker: false,
         ),
-        RemoteRootSkipPermissionsPolicy.unchanged,
+        RemoteRootSecurityPolicy.unchanged,
       );
     });
 
     test('container root injects IS_SANDBOX per Claude setup.ts', () {
       expect(
-        resolveRemoteRootSkipPermissionsPolicy(
-          skipPermissionsRequested: true,
+        resolveRemoteRootSecurityPolicy(
+          securityPolicy: LaunchSecurityPolicy.fullAccess,
           runsAsRoot: true,
           remoteInDocker: true,
         ),
-        RemoteRootSkipPermissionsPolicy.injectSandboxEnv,
+        RemoteRootSecurityPolicy.injectSandboxEnv,
       );
     });
 
     test('bare-metal root drops flag unless target opt-in', () {
       expect(
-        resolveRemoteRootSkipPermissionsPolicy(
-          skipPermissionsRequested: true,
+        resolveRemoteRootSecurityPolicy(
+          securityPolicy: LaunchSecurityPolicy.fullAccess,
           runsAsRoot: true,
           remoteInDocker: false,
         ),
-        RemoteRootSkipPermissionsPolicy.dropFlag,
+        RemoteRootSecurityPolicy.dropDangerousPolicy,
       );
       expect(
-        resolveRemoteRootSkipPermissionsPolicy(
-          skipPermissionsRequested: true,
+        resolveRemoteRootSecurityPolicy(
+          securityPolicy: LaunchSecurityPolicy.fullAccess,
           runsAsRoot: true,
           remoteInDocker: false,
           injectRootSandboxEnv: true,
         ),
-        RemoteRootSkipPermissionsPolicy.injectSandboxEnv,
+        RemoteRootSecurityPolicy.injectSandboxEnv,
       );
     });
   });

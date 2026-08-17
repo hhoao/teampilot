@@ -88,6 +88,7 @@ class LaunchCommandBuilder {
       launch_context.CliLaunchContext(
         team: team,
         member: member,
+        launchSecurityPolicy: member.launchSecurityPolicy,
         sessionTeam: sessionTeam,
         workingDirectory: workingDirectory,
         additionalDirectories: additionalDirectories,

@@ -32,7 +32,7 @@ final class FlashskyaiCliToolAdapter implements CliToolAdapter {
     if (member.agent.trim().isNotEmpty) {
       args.addAll(['--agent', member.agent.trim()]);
     }
-    if (member.dangerouslySkipPermissions) {
+    if (context.launchSecurityPolicy.requiresDangerousExecution) {
       args.add('--dangerously-skip-permissions');
     }
     addExtraArgs(args, context.team.extraArgs);

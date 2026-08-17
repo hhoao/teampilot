@@ -1,3 +1,4 @@
+import 'package:teampilot/models/launch_security_policy.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/claude/capabilities/launch_args.dart';
@@ -20,7 +21,7 @@ void main() {
     model: 'sonnet',
     agent: 'builder',
     extraArgs: '--continue --system-prompt "be careful"',
-    dangerouslySkipPermissions: true,
+    launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
   );
 
   const flashskyaiTeam = TeamProfile(
@@ -38,6 +39,7 @@ void main() {
         CliLaunchContext(
           team: flashskyaiTeam,
           member: member,
+          launchSecurityPolicy: member.launchSecurityPolicy,
           workingDirectory: '/home/hhoa/git/agent',
           additionalDirectories: const ['/home/hhoa/git/shared'],
           fixedSessionId: '11111111-1111-1111-1111-111111111111',
@@ -109,6 +111,7 @@ void main() {
             loop: true,
           ),
           member: member,
+          launchSecurityPolicy: member.launchSecurityPolicy,
           workingDirectory: '/home/hhoa/git/agent',
           additionalDirectories: const ['/home/hhoa/git/shared'],
           resumeSessionId: '22222222-2222-2222-2222-222222222222',
@@ -312,6 +315,7 @@ void main() {
       CliLaunchContext(
         team: mixedTeam,
         member: member,
+        launchSecurityPolicy: member.launchSecurityPolicy,
         workingDirectory: '/home/hhoa/git/agent',
       ),
     );
@@ -332,7 +336,11 @@ void main() {
     const adapter = CodexCliToolAdapter();
 
     final args = adapter.buildArguments(
-      CliLaunchContext(team: flashskyaiTeam, member: member),
+      CliLaunchContext(
+        team: flashskyaiTeam,
+        member: member,
+        launchSecurityPolicy: member.launchSecurityPolicy,
+      ),
     );
 
     // Simple/native also stamp agent-status hooks into CODEX_HOME.

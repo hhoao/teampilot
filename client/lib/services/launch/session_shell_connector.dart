@@ -420,18 +420,21 @@ class SessionShellConnector {
         return ConnectShellResult.aborted;
       }
 
-      // After SSH constraints may flip skip-permissions (root dropFlag).
+      // After SSH constraints may transform the security policy for root.
       _registerAgentStatusSeat(
         sessionId: activeSession.sessionId,
         memberId: agentStatusSeatMemberId,
         cli: launchCli,
-        skipPermissions:
-            shellLaunch.launchContext.member.dangerouslySkipPermissions,
+        skipPermissions: shellLaunch
+            .launchContext
+            .launchSecurityPolicy
+            .requiresDangerousExecution,
         agentStatus: agentStatus,
       );
-      final titleAttention = CliToolRegistry.builtIn()
-          .capability<TerminalBehaviorCapability>(launchCli)
-          ?.bindTitleAttention ??
+      final titleAttention =
+          CliToolRegistry.builtIn()
+              .capability<TerminalBehaviorCapability>(launchCli)
+              ?.bindTitleAttention ??
           false;
       if (titleAttention) {
         final attention = _host.agentAttentionCubit;

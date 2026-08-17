@@ -2,11 +2,13 @@ import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 
 export 'team_launch_config.dart';
+export 'launch_security_policy.dart';
 
 import 'team_roster_slot.dart';
 
 import '../utils/team/team_member_naming.dart';
 import 'config_bundle.dart';
+import 'launch_security_policy.dart';
 import 'launch_profile_kind.dart';
 import 'workspace_icon_ref.dart';
 import 'launch_profile.dart';
@@ -82,22 +84,13 @@ class TeamMemberConfig {
     this.responsibilities = '',
     this.playbook = '',
     this.joinedAt = 0,
-    this.dangerouslySkipPermissions = true,
+    this.launchSecurityPolicy = LaunchSecurityPolicy.fullAccess,
     this.cli,
     this.effort = '',
     this.replicas = 1,
     this.forceWaitBeforeStop,
     this.activePresetId,
   });
-
-  static bool decodeDangerouslySkipPermissions(Object? raw) {
-    if (raw == null) return true;
-    if (raw is bool) return raw;
-    if (raw is String) {
-      return raw.trim().toLowerCase() == 'true';
-    }
-    return false;
-  }
 
   factory TeamMemberConfig.fromJson(Map<String, Object?> json) {
     final name = json['name'] as String? ?? '';
@@ -123,8 +116,8 @@ class TeamMemberConfig {
       responsibilities: json['responsibilities'] as String? ?? '',
       playbook: json['playbook'] as String? ?? '',
       joinedAt: (json['joinedAt'] as num?)?.toInt() ?? 0,
-      dangerouslySkipPermissions: decodeDangerouslySkipPermissions(
-        json['dangerouslySkipPermissions'],
+      launchSecurityPolicy: LaunchSecurityPolicy.fromJson(
+        json['launchSecurityPolicy'],
       ),
       cli: CliTool.tryParse(json['cli'] as String?),
       effort: json['effort'] as String? ?? '',
@@ -160,8 +153,8 @@ class TeamMemberConfig {
 
   final int joinedAt;
 
-  /// When true, launch passes `--dangerously-skip-permissions` (CLI flag).
-  final bool dangerouslySkipPermissions;
+  /// Normalized security intent for this member's launch.
+  final LaunchSecurityPolicy launchSecurityPolicy;
 
   /// 成员 CLI 覆盖（仅 mixed 模式生效）；null 回退 [TeamProfile.cli]。
   final CliTool? cli;
@@ -207,10 +200,7 @@ class TeamMemberConfig {
   ///
   /// Priority: member override → [cliDefault] (from [TeamBehaviorCapability])
   /// → team default.
-  bool effectiveForceWaitBeforeStop(
-    TeamProfile team, {
-    bool? cliDefault,
-  }) {
+  bool effectiveForceWaitBeforeStop(TeamProfile team, {bool? cliDefault}) {
     if (forceWaitBeforeStop != null) return forceWaitBeforeStop!;
     if (cliDefault != null) return cliDefault;
     return team.forceWaitBeforeStop;
@@ -230,7 +220,7 @@ class TeamMemberConfig {
     String? responsibilities,
     String? playbook,
     int? joinedAt,
-    bool? dangerouslySkipPermissions,
+    LaunchSecurityPolicy? launchSecurityPolicy,
     CliTool? cli,
     bool updateCli = false,
     String? effort,
@@ -253,8 +243,7 @@ class TeamMemberConfig {
       responsibilities: responsibilities ?? this.responsibilities,
       playbook: playbook ?? this.playbook,
       joinedAt: joinedAt ?? this.joinedAt,
-      dangerouslySkipPermissions:
-          dangerouslySkipPermissions ?? this.dangerouslySkipPermissions,
+      launchSecurityPolicy: launchSecurityPolicy ?? this.launchSecurityPolicy,
       cli: updateCli ? cli : this.cli,
       effort: updateEffort ? (effort ?? '') : this.effort,
       replicas: replicas ?? this.replicas,
@@ -280,7 +269,7 @@ class TeamMemberConfig {
       'responsibilities': responsibilities,
       if (playbook.isNotEmpty) 'playbook': playbook,
       'joinedAt': joinedAt,
-      if (!dangerouslySkipPermissions) 'dangerouslySkipPermissions': false,
+      'launchSecurityPolicy': launchSecurityPolicy.toJson(),
       if (cli != null) 'cli': cli!.value,
       if (effort.isNotEmpty) 'effort': effort,
       if (replicas != 1) 'replicas': replicas,
@@ -307,7 +296,7 @@ class TeamMemberConfig {
             responsibilities == other.responsibilities &&
             playbook == other.playbook &&
             joinedAt == other.joinedAt &&
-            dangerouslySkipPermissions == other.dangerouslySkipPermissions &&
+            launchSecurityPolicy == other.launchSecurityPolicy &&
             cli == other.cli &&
             effort == other.effort &&
             replicas == other.replicas &&
@@ -328,7 +317,7 @@ class TeamMemberConfig {
     responsibilities,
     playbook,
     joinedAt,
-    dangerouslySkipPermissions,
+    launchSecurityPolicy,
     cli,
     effort,
     replicas,

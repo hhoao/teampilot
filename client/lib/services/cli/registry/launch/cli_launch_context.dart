@@ -1,4 +1,5 @@
 import '../../../../models/team_config.dart';
+import '../../../../models/launch_security_policy.dart';
 
 /// Semantic launch inputs shared by CLI argument capabilities and launch
 /// boundaries.
@@ -6,6 +7,7 @@ final class CliLaunchContext {
   const CliLaunchContext({
     required this.team,
     required this.member,
+    this.launchSecurityPolicy = const LaunchSecurityPolicy(),
     this.sessionTeam,
     this.workingDirectory,
     this.additionalDirectories = const [],
@@ -19,6 +21,7 @@ final class CliLaunchContext {
 
   final TeamProfile team;
   final TeamMemberConfig member;
+  final LaunchSecurityPolicy launchSecurityPolicy;
   final String? sessionTeam;
   final String? workingDirectory;
   final List<String> additionalDirectories;
@@ -50,6 +53,7 @@ final class CliLaunchContext {
   CliLaunchContext copyWith({
     TeamProfile? team,
     TeamMemberConfig? member,
+    LaunchSecurityPolicy? launchSecurityPolicy,
     String? sessionTeam,
     String? workingDirectory,
     List<String>? additionalDirectories,
@@ -63,6 +67,7 @@ final class CliLaunchContext {
     return CliLaunchContext(
       team: team ?? this.team,
       member: member ?? this.member,
+      launchSecurityPolicy: launchSecurityPolicy ?? this.launchSecurityPolicy,
       sessionTeam: sessionTeam ?? this.sessionTeam,
       workingDirectory: workingDirectory ?? this.workingDirectory,
       additionalDirectories:

@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/models/launch_security_policy.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/registry/launch/cli_launch_context.dart';
 
@@ -47,6 +48,17 @@ void main() {
     expect(copied.appendSystemPromptFile, '/prompt.txt');
     expect(copied.useWslPaths, isTrue);
     expect(copied.nativeAgentTeam, isFalse);
+  });
+
+  test('defaults and copies the resolved launch security policy', () {
+    const context = CliLaunchContext(team: nativeTeam, member: member);
+    expect(context.launchSecurityPolicy, const LaunchSecurityPolicy());
+
+    const fullAccess = LaunchSecurityPolicy.fullAccess;
+    expect(
+      context.copyWith(launchSecurityPolicy: fullAccess).launchSecurityPolicy,
+      fullAccess,
+    );
   });
 
   test(

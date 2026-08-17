@@ -19,6 +19,7 @@ import '../../models/app_session.dart';
 import '../../models/cli_preset.dart';
 import '../../models/config_bundle.dart';
 import '../../models/landing_launch_context.dart';
+import '../../models/launch_security_policy.dart';
 import '../../models/member_presence.dart';
 import '../../models/plugin.dart';
 import '../../models/skill.dart';
@@ -159,9 +160,7 @@ class SessionChatComposeSection extends StatelessWidget {
     context.select<WorkbenchCubit, WorkbenchTabId?>(
       (w) => w.centerActiveId(session.workspaceId),
     );
-    context.select<ChatCubit, Set<String>>(
-      (c) => c.state.workingSessionIds,
-    );
+    context.select<ChatCubit, Set<String>>((c) => c.state.workingSessionIds);
     context.select<MemberPresenceCubit, Map<String, MemberPresence>>(
       (c) => c.state.presence,
     );
@@ -189,12 +188,10 @@ class SessionChatComposeSection extends StatelessWidget {
       supportsTurnInterrupt: supportsTurnInterrupt,
       composeTextEmpty: composeTextEmpty,
     );
-    final skillSyntax =
-        registry.capability<SkillCapability>(lockedCli);
+    final skillSyntax = registry.capability<SkillCapability>(lockedCli);
 
     // -- Derived values --------------------------------------------------
-    final canSubmit =
-        !permissionWaiting && !composeTextEmpty && !isSubmitting;
+    final canSubmit = !permissionWaiting && !composeTextEmpty && !isSubmitting;
     final sameCliPresets = presetsForCli(presets, lockedCli);
     final selectedPresetId = _selectedPresetId(
       session: session,
@@ -232,14 +229,8 @@ class SessionChatComposeSection extends StatelessWidget {
           team: liveTeam,
         );
 
-    final followUpSeatKey = _followUpSeatKey(
-      session.sessionId,
-      shellMemberId,
-    );
-    final mailboxSeatKey = _mailboxSeatKey(
-      session.sessionId,
-      selectedMemberId,
-    );
+    final followUpSeatKey = _followUpSeatKey(session.sessionId, shellMemberId);
+    final mailboxSeatKey = _mailboxSeatKey(session.sessionId, selectedMemberId);
 
     final dropTarget = _buildDropTarget(workspaceRoot, composeController);
 
@@ -282,19 +273,15 @@ class SessionChatComposeSection extends StatelessWidget {
                       final queue = snapshot.data ?? const FollowUpQueue();
                       return FollowUpQueueStrip(
                         queue: queue,
-                        onDelete: (id) => chat.followUpQueue.remove(
-                          followUpSeatKey,
-                          id,
-                        ),
+                        onDelete: (id) =>
+                            chat.followUpQueue.remove(followUpSeatKey, id),
                         onEdit: (id, content) => chat.followUpQueue.edit(
                           followUpSeatKey,
                           id,
                           content,
                         ),
-                        onMoveUp: (id) => chat.followUpQueue.moveUp(
-                          followUpSeatKey,
-                          id,
-                        ),
+                        onMoveUp: (id) =>
+                            chat.followUpQueue.moveUp(followUpSeatKey, id),
                         onResume: () => unawaited(
                           chat.resumeFollowUpQueue(
                             session.sessionId,
@@ -345,8 +332,7 @@ class SessionChatComposeSection extends StatelessWidget {
                             launchError: launchError,
                             onRemapDeadTarget: onRemapDeadTarget,
                             onRetry: onRetry,
-                            sessionConnectInProgress:
-                                sessionConnectInProgress,
+                            sessionConnectInProgress: sessionConnectInProgress,
                             floating: true,
                             identityLabel: identityLabel,
                             identityIcon: session.isSimple
@@ -376,18 +362,17 @@ class SessionChatComposeSection extends StatelessWidget {
                                 session.presetId.trim().isEmpty,
                             onCustom: session.isSimple
                                 ? () => unawaited(
-                                      _openContinueCustomLaunchDialog(
-                                        context: context,
-                                        session: session,
-                                      ),
-                                    )
+                                    _openContinueCustomLaunchDialog(
+                                      context: context,
+                                      session: session,
+                                    ),
+                                  )
                                 : null,
-                            dangerouslySkipPermissions:
-                                _effectivePermission(
-                                  session: session,
-                                  team: team,
-                                  selectedMemberId: selectedMemberId,
-                                ),
+                            launchSecurityPolicy: _effectiveSecurityPolicy(
+                              session: session,
+                              team: team,
+                              selectedMemberId: selectedMemberId,
+                            ),
                             defaultPermissionsLabel:
                                 l10n.workspaceChatLandingDefaultPermissions,
                             fullAccessPermissionsLabel:
@@ -406,23 +391,23 @@ class SessionChatComposeSection extends StatelessWidget {
                                 : null,
                             onTeamSettings: showTeamSettings && liveTeam != null
                                 ? () => unawaited(
-                                      _openTeamSettings(
-                                        context: context,
-                                        team: liveTeam,
-                                        workspaceId: session.workspaceId,
-                                      ),
-                                    )
+                                    _openTeamSettings(
+                                      context: context,
+                                      team: liveTeam,
+                                      workspaceId: session.workspaceId,
+                                    ),
+                                  )
                                 : null,
                             showTeamSettingsAttention: teamSettingsAttention,
                             showStop: showComposeStop,
                             onStop: showComposeStop
                                 ? () => unawaited(
-                                      _handleComposeStop(
-                                        context: context,
-                                        sessionId: session.sessionId,
-                                        shellMemberId: shellMemberId,
-                                      ),
-                                    )
+                                    _handleComposeStop(
+                                      context: context,
+                                      sessionId: session.sessionId,
+                                      shellMemberId: shellMemberId,
+                                    ),
+                                  )
                                 : null,
                           ),
                           dropTarget: dropTarget,
@@ -460,14 +445,12 @@ class SessionChatComposeSection extends StatelessWidget {
                           skillSyntax: skillSyntax,
                           onOpenAtFile: (path) {
                             unawaited(
-                              context
-                                  .read<WorkbenchEditorOpener>()
-                                  .openFile(
-                                    session.workspaceId,
-                                    path,
-                                    preview: true,
-                                    fs: filesystemForComposeAtFileOpen(path),
-                                  ),
+                              context.read<WorkbenchEditorOpener>().openFile(
+                                session.workspaceId,
+                                path,
+                                preview: true,
+                                fs: filesystemForComposeAtFileOpen(path),
+                              ),
                             );
                           },
                         );
@@ -573,38 +556,36 @@ class SessionChatComposeSection extends StatelessWidget {
         '';
   }
 
-  static TeamMemberConfig? _selectedMember(
-    TeamProfile? team,
-    String memberId,
-  ) {
+  static TeamMemberConfig? _selectedMember(TeamProfile? team, String memberId) {
     if (team == null) return null;
     final mid = memberId;
     if (mid.isEmpty) return null;
     return team.members.where((m) => m.id == mid).firstOrNull;
   }
 
-  // -- Effective permission ------------------------------------------------
+  // -- Effective security policy -------------------------------------------
 
-  static bool _effectivePermission({
+  static LaunchSecurityPolicy _effectiveSecurityPolicy({
     required AppSession session,
     required TeamProfile? team,
     required String selectedMemberId,
   }) {
     final overrides = session.continueOverrides;
     if (session.isSimple) {
-      return resolveContinueSkipPermissions(
-        sessionLevel: overrides.dangerouslySkipPermissions,
+      return resolveContinueSecurityPolicy(
+        launchDefault: const LaunchSecurityPolicy(),
+        sessionLevel: overrides.launchSecurityPolicy,
         memberLevel: null,
-        launchDefault: false,
       );
     }
     final memberId = _effectiveMemberId(session, selectedMemberId, team);
     final member = _selectedMember(team, memberId);
     final memberOverride = overrides.memberOverrides[memberId];
-    return resolveContinueSkipPermissions(
-      sessionLevel: overrides.dangerouslySkipPermissions,
-      memberLevel: memberOverride?.dangerouslySkipPermissions,
-      launchDefault: member?.dangerouslySkipPermissions ?? true,
+    return resolveContinueSecurityPolicy(
+      sessionLevel: overrides.launchSecurityPolicy,
+      memberLevel: memberOverride?.launchSecurityPolicy,
+      launchDefault:
+          member?.launchSecurityPolicy ?? LaunchSecurityPolicy.fullAccess,
     );
   }
 
@@ -664,11 +645,11 @@ class SessionChatComposeSection extends StatelessWidget {
 
   Workspace _workspaceForSettings(BuildContext context) {
     return context
-        .read<ChatCubit>()
-        .state
-        .workspaces
-        .where((w) => w.workspaceId == workspace.workspaceId)
-        .firstOrNull ??
+            .read<ChatCubit>()
+            .state
+            .workspaces
+            .where((w) => w.workspaceId == workspace.workspaceId)
+            .firstOrNull ??
         workspace;
   }
 
@@ -706,7 +687,7 @@ class SessionChatComposeSection extends StatelessWidget {
 
   static Future<void> _onPermissionSelected({
     required BuildContext context,
-    required bool value,
+    required LaunchSecurityPolicy value,
     required AppSession session,
     required TeamProfile? team,
     required String selectedMemberId,
@@ -718,9 +699,9 @@ class SessionChatComposeSection extends StatelessWidget {
         : _effectiveMemberId(live, selectedMemberId, team);
     if (!live.isSimple && (memberId == null || memberId.isEmpty)) return;
     try {
-      final ok = await chatCubit.setSessionContinuePermission(
+      final ok = await chatCubit.setSessionContinueSecurityPolicy(
         sessionId: live.sessionId,
-        dangerouslySkipPermissions: value,
+        launchSecurityPolicy: value,
         memberId: memberId,
       );
       if (!ok && context.mounted) _toastContinueSaveFailed(context);
@@ -772,11 +753,7 @@ class SessionChatComposeSection extends StatelessWidget {
         .firstOrNull;
     if (ws == null) return;
     if (!context.mounted) return;
-    await showLandingTeamSettingsDialog(
-      context,
-      workspace: ws,
-      team: team,
-    );
+    await showLandingTeamSettingsDialog(context, workspace: ws, team: team);
   }
 
   static Future<void> _handleComposeStop({

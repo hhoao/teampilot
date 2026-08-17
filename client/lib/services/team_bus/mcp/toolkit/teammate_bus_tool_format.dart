@@ -32,8 +32,7 @@ abstract final class TeammateBusToolFormat {
     final caps = bus.capabilitiesOf(memberId);
     return _encode({
       'tasks': [
-        for (final t in tasks)
-          taskMap(t, memberId: memberId, memberCaps: caps),
+        for (final t in tasks) taskMap(t, memberId: memberId, memberCaps: caps),
       ],
     });
   }
@@ -53,7 +52,9 @@ abstract final class TeammateBusToolFormat {
       'status': task.status.name,
       'title': task.title,
       'assignee': task.assignee,
-      'depends_on': task.dependsOn.isEmpty ? null : List<String>.from(task.dependsOn),
+      'depends_on': task.dependsOn.isEmpty
+          ? null
+          : List<String>.from(task.dependsOn),
       'required_capabilities': task.requiredCapabilities.isEmpty
           ? null
           : task.requiredCapabilities.toList(),
@@ -74,15 +75,9 @@ abstract final class TeammateBusToolFormat {
     bool full = false,
     String? memberId,
     Set<String>? memberCaps,
-  }) =>
-      _encode(
-        taskMap(
-          task,
-          full: full,
-          memberId: memberId,
-          memberCaps: memberCaps,
-        ),
-      );
+  }) => _encode(
+    taskMap(task, full: full, memberId: memberId, memberCaps: memberCaps),
+  );
 
   static String unknownRecipientHint(TeamBus bus) {
     final roster = bus.rosterSnapshot().members;
@@ -135,13 +130,16 @@ abstract final class TeammateBusToolFormat {
   ) {
     final profile = teammate.profile;
     final role = profile.isTeamLead ? 'leader' : 'worker';
-    final agentId =
-        profile.agentId.isEmpty ? profile.memberId : profile.agentId;
-    final agentType =
-        profile.agentType.isEmpty ? profile.memberId : profile.agentType;
+    final agentId = profile.agentId.isEmpty
+        ? profile.memberId
+        : profile.agentId;
+    final agentType = profile.agentType.isEmpty
+        ? profile.memberId
+        : profile.agentType;
     final cli = profile.cli.isEmpty ? '?' : profile.cli;
-    final backendType =
-        profile.backendType.isEmpty ? profile.cli : profile.backendType;
+    final backendType = profile.backendType.isEmpty
+        ? profile.cli
+        : profile.backendType;
 
     return _omitEmpty({
       'member_id': profile.memberId,
@@ -164,7 +162,7 @@ abstract final class TeammateBusToolFormat {
       if (isSelf) 'self': true,
       'joined_at': profile.joinedAt > 0 ? profile.joinedAt : null,
       'extra_args': profile.extraArgs.isEmpty ? null : profile.extraArgs,
-      'dangerously_skip_permissions': profile.dangerouslySkipPermissions,
+      'launch_security_policy': profile.launchSecurityPolicy.toJson(),
       'responsibilities': profile.responsibilities.trim().isEmpty
           ? null
           : profile.responsibilitiesSummary(),
@@ -199,11 +197,7 @@ abstract final class TeammateBusToolFormat {
 
   static Map<String, Object?> messageMap(TeamMessage message) {
     if (message.from == TeamBus.userSenderId) {
-      return {
-        'from': 'user',
-        'kind': 'message',
-        'content': message.content,
-      };
+      return {'from': 'user', 'kind': 'message', 'content': message.content};
     }
     final idle = IdleNotification.parseTeamMessageContent(message.content);
     if (idle != null) {

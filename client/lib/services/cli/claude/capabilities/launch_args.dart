@@ -45,7 +45,7 @@ final class ClaudeCodeCliToolAdapter implements CliToolAdapter {
     if (appendFile.isNotEmpty) {
       args.addAll(['--append-system-prompt-file', appendFile]);
     }
-    if (member.dangerouslySkipPermissions) {
+    if (context.launchSecurityPolicy.requiresDangerousExecution) {
       args.add('--dangerously-skip-permissions');
     }
     addExtraArgs(args, context.team.extraArgs);

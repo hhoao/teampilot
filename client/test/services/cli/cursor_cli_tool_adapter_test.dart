@@ -1,3 +1,4 @@
+import 'package:teampilot/models/launch_security_policy.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/launch_args.dart';
@@ -12,10 +13,15 @@ void main() {
       name: 'planner',
       model: 'gpt-5.2',
       responsibilities: 'You are the planner.',
-      dangerouslySkipPermissions: true,
+      launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
     );
     final args = const CursorCliToolAdapter().buildArguments(
-      CliLaunchContext(team: team, member: member, workingDirectory: '/work'),
+      CliLaunchContext(
+        team: team,
+        member: member,
+        launchSecurityPolicy: member.launchSecurityPolicy,
+        workingDirectory: '/work',
+      ),
     );
 
     expect(args, ['--workspace', '/work', '--model', 'gpt-5.2', '--force']);
@@ -28,7 +34,7 @@ void main() {
       name: 'planner',
       model: 'gpt-5.2',
       responsibilities: 'You are the planner.',
-      dangerouslySkipPermissions: false,
+      launchSecurityPolicy: const LaunchSecurityPolicy(),
     );
     final args = const CursorCliToolAdapter().buildArguments(
       CliLaunchContext(
@@ -53,7 +59,7 @@ void main() {
     const member = TeamMemberConfig(
       id: 'm',
       name: 'planner',
-      dangerouslySkipPermissions: false,
+      launchSecurityPolicy: const LaunchSecurityPolicy(),
     );
     final args = const CursorCliToolAdapter().buildArguments(
       CliLaunchContext(team: team, member: member),
@@ -74,7 +80,7 @@ void main() {
       name: 'planner',
       model: 'gpt-5.2',
       responsibilities: 'You are the planner.',
-      dangerouslySkipPermissions: false,
+      launchSecurityPolicy: const LaunchSecurityPolicy(),
     );
     final args = const CursorCliToolAdapter().buildArguments(
       CliLaunchContext(

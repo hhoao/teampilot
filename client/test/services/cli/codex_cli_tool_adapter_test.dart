@@ -1,3 +1,4 @@
+import 'package:teampilot/models/launch_security_policy.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/codex/capabilities/launch_args.dart';
@@ -14,12 +15,17 @@ void main() {
     id: 'm',
     name: 'planner',
     model: 'gpt-5.2',
-    dangerouslySkipPermissions: true,
+    launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
   );
 
   test('fresh launch: --cd + -m, no resume subcommand', () {
     final args = const CodexCliToolAdapter().buildArguments(
-      CliLaunchContext(team: team, member: member, workingDirectory: '/work'),
+      CliLaunchContext(
+        team: team,
+        member: member,
+        launchSecurityPolicy: member.launchSecurityPolicy,
+        workingDirectory: '/work',
+      ),
     );
     expect(args, [
       '--cd',
@@ -36,6 +42,7 @@ void main() {
       CliLaunchContext(
         team: team,
         member: member,
+        launchSecurityPolicy: member.launchSecurityPolicy,
         workingDirectory: '/work',
         resumeSessionId: 'sess-42',
       ),

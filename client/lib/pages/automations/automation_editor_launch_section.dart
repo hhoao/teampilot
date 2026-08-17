@@ -6,6 +6,7 @@ import '../../cubits/expert_hub_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/team_config.dart';
+import '../../models/launch_security_policy.dart';
 import '../../models/workspace.dart';
 import '../../pages/expert_hub/expert_landing_picker_sheet.dart';
 import '../../pages/home_workspace/workspace/workspace_landing_location_fields.dart';
@@ -23,7 +24,7 @@ class AutomationEditorLaunchSection extends StatelessWidget {
     required this.presetId,
     required this.teamId,
     required this.expertKey,
-    required this.dangerouslySkipPermissions,
+    required this.launchSecurityPolicy,
     required this.targetMemberId,
     required this.labelWidth,
     required this.onProjectChanged,
@@ -44,7 +45,7 @@ class AutomationEditorLaunchSection extends StatelessWidget {
   final String? presetId;
   final String? teamId;
   final String? expertKey;
-  final bool dangerouslySkipPermissions;
+  final LaunchSecurityPolicy launchSecurityPolicy;
   final String targetMemberId;
   final double labelWidth;
   final ValueChanged<String?> onProjectChanged;
@@ -53,7 +54,7 @@ class AutomationEditorLaunchSection extends StatelessWidget {
   final ValueChanged<String?> onPresetChanged;
   final ValueChanged<String?> onTeamChanged;
   final ValueChanged<String?> onExpertChanged;
-  final ValueChanged<bool> onPermissionsChanged;
+  final ValueChanged<LaunchSecurityPolicy> onPermissionsChanged;
   final ValueChanged<String> onTargetMemberChanged;
 
   @override
@@ -110,8 +111,7 @@ class AutomationEditorLaunchSection extends StatelessWidget {
             label: Text(l10n.presetPickerTitle),
             layoutStyle: TpFormFieldLayoutStyle.inline,
             labelWidth: labelWidth,
-            validator: (v) =>
-                (v == null || v.trim().isEmpty)
+            validator: (v) => (v == null || v.trim().isEmpty)
                 ? l10n.workspaceCliPresetsEmptyHint
                 : null,
             builder: (state) {
@@ -173,9 +173,9 @@ class AutomationEditorLaunchSection extends StatelessWidget {
               if (teams.isEmpty) {
                 return Text(
                   l10n.automationsValidationRequired,
-                  style: TpTextStyles.of(context).mdColored(
-                    Theme.of(context).colorScheme.error,
-                  ),
+                  style: TpTextStyles.of(
+                    context,
+                  ).mdColored(Theme.of(context).colorScheme.error),
                 );
               }
               final initial = teams.any((t) => t.id == state.value)
@@ -219,9 +219,9 @@ class AutomationEditorLaunchSection extends StatelessWidget {
               if (teamMembers.isEmpty) {
                 return Text(
                   l10n.automationsValidationRequired,
-                  style: TpTextStyles.of(context).mdColored(
-                    Theme.of(context).colorScheme.error,
-                  ),
+                  style: TpTextStyles.of(
+                    context,
+                  ).mdColored(Theme.of(context).colorScheme.error),
                 );
               }
               final initial = teamMembers.any((m) => m.id == state.value)
@@ -247,19 +247,22 @@ class AutomationEditorLaunchSection extends StatelessWidget {
           ),
         ],
         const SizedBox(height: 12),
-        TpFormField<bool>(
-          key: ValueKey('permissions-$dangerouslySkipPermissions'),
-          id: 'dangerouslySkipPermissions',
-          initialValue: dangerouslySkipPermissions,
+        TpFormField<LaunchSecurityPolicy>(
+          key: ValueKey('permissions-$launchSecurityPolicy'),
+          id: 'launchSecurityPolicy',
+          initialValue: launchSecurityPolicy,
           label: Text(l10n.automationsPermissions),
           layoutStyle: TpFormFieldLayoutStyle.inline,
           labelWidth: labelWidth,
           builder: (state) {
-            return TpSelect<bool>(
-              items: const [false, true],
-              initialItem: state.value ?? false,
+            return TpSelect<LaunchSecurityPolicy>(
+              items: const [
+                LaunchSecurityPolicy(),
+                LaunchSecurityPolicy.fullAccess,
+              ],
+              initialItem: state.value ?? const LaunchSecurityPolicy(),
               decoration: TpSelectDecorations.themed(context),
-              itemLabel: (value) => value
+              itemLabel: (value) => value.requiresDangerousExecution
                   ? l10n.workspaceChatLandingFullAccessPermissions
                   : l10n.workspaceChatLandingDefaultPermissions,
               onChanged: (value) {

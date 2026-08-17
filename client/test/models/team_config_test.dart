@@ -88,11 +88,26 @@ void main() {
     expect(TeamProfile.decodeLoop('maybe'), isNull);
   });
 
-  test('decodeDangerouslySkipPermissions accepts bool and string', () {
-    expect(TeamMemberConfig.decodeDangerouslySkipPermissions(null), isTrue);
-    expect(TeamMemberConfig.decodeDangerouslySkipPermissions(true), isTrue);
-    expect(TeamMemberConfig.decodeDangerouslySkipPermissions('TRUE'), isTrue);
-    expect(TeamMemberConfig.decodeDangerouslySkipPermissions(false), isFalse);
+  test('member security policy serializes under its normalized object', () {
+    const member = TeamMemberConfig(
+      id: 'builder-0',
+      name: 'Builder',
+      launchSecurityPolicy: LaunchSecurityPolicy(
+        approval: LaunchApprovalPolicy.ask,
+        sandbox: LaunchSandboxPolicy.workspaceWrite,
+        hookTrust: LaunchHookTrustPolicy.trustedOnly,
+      ),
+    );
+    final json = member.toJson();
+    expect(json['launchSecurityPolicy'], isA<Map<String, Object?>>());
+    expect(json.containsKey('dangerouslySkipPermissions'), isFalse);
+    expect(
+      TeamMemberConfig.fromJson({
+        ...json,
+        'dangerouslySkipPermissions': true,
+      }).launchSecurityPolicy,
+      equals(member.launchSecurityPolicy),
+    );
   });
 
   test('decodeForceTeamLeadDelegateMode accepts bool and string', () {
