@@ -367,9 +367,9 @@ final appRouter = GoRouter(
               ),
             ),
             GoRoute(
-              path: '/skills/repos',
+              path: '/skills/registries',
               pageBuilder: (context, state) => const NoTransitionPage(
-                child: SkillManagementPage(section: SkillSection.repos),
+                child: SkillManagementPage(section: SkillSection.registries),
               ),
             ),
             GoRoute(

@@ -1502,6 +1502,41 @@
   "skillsNavInstalled": "已安装",
   "skillsNavDiscovery": "发现",
   "skillsNavRepos": "仓库",
+  "skillsNavRegistries": "注册中心",
+  "skillsRegistryApiKeySet": "已设置 API Key",
+  "skillsRegistryAddSource": "添加注册源",
+  "skillsRegistrySourceKind": "源类型",
+  "skillsRegistrySourceKindApi": "API 源",
+  "skillsRegistrySourceKindGit": "Git 仓库",
+  "skillsRegistryProtocolLabel": "协议",
+  "skillsRegistryProtocolSkillsSh": "skills.sh 兼容",
+  "skillsRegistryProtocolSkillsMp": "SkillsMP 兼容",
+  "skillsRegistryNameLabel": "显示名称",
+  "skillsRegistryBaseUrlLabel": "API 地址",
+  "skillsRegistryBrowseQueryLabel": "默认浏览词",
+  "skillsRegistryTokenLabel": "API Key",
+  "skillsRegistryOwnerLabel": "Owner",
+  "skillsRegistryNameOfRepoLabel": "仓库名",
+  "skillsRegistryTestOk": "连接成功",
+  "skillsRegistryTestFailed": "连接失败：{error}",
+  "@skillsRegistryTestFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "skillsRegistryGoSetKey": "去注册中心设置 API Key",
+  "skillsRegistryEditTitle": "编辑注册源",
+  "skillsRegistryRemoveTitle": "重置注册源",
+  "skillsRegistryResetConfirm": "将 {name} 重置为默认值？",
+  "@skillsRegistryResetConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "skillsInstalledCount": "已安装 {count}",
   "skillsCheckUpdates": "检查更新",
   "skillsCheckingUpdates": "检查中…",

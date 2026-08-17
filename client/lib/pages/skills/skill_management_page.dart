@@ -10,7 +10,7 @@ import '../../widgets/settings/workspace_section_host.dart';
 import '../../widgets/settings/workspace_section_nav_item.dart';
 import 'skill_discovery_section.dart';
 import 'skill_installed_section.dart';
-import 'skill_repos_section.dart';
+import 'skill_registries_section.dart';
 import 'skill_section.dart';
 
 export 'skill_section.dart';
@@ -91,11 +91,9 @@ class SkillManagementPage extends StatelessWidget {
               ),
             ),
             SkillSection.discovery => SkillDiscoverySection(
-              onGoRepos: () => select(SkillSection.repos),
+              onGoRepos: () => select(SkillSection.registries),
             ),
-            SkillSection.repos => BlocBuilder<SkillCubit, SkillState>(
-              builder: (context, state) => SkillReposSection(state: state),
-            ),
+            SkillSection.registries => const SkillRegistriesSection(),
           },
         ),
       ),

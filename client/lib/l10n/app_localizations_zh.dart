@@ -3513,6 +3513,73 @@ class AppLocalizationsZh extends AppLocalizations {
   String get skillsNavRepos => '仓库';
 
   @override
+  String get skillsNavRegistries => '注册中心';
+
+  @override
+  String get skillsRegistryApiKeySet => '已设置 API Key';
+
+  @override
+  String get skillsRegistryAddSource => '添加注册源';
+
+  @override
+  String get skillsRegistrySourceKind => '源类型';
+
+  @override
+  String get skillsRegistrySourceKindApi => 'API 源';
+
+  @override
+  String get skillsRegistrySourceKindGit => 'Git 仓库';
+
+  @override
+  String get skillsRegistryProtocolLabel => '协议';
+
+  @override
+  String get skillsRegistryProtocolSkillsSh => 'skills.sh 兼容';
+
+  @override
+  String get skillsRegistryProtocolSkillsMp => 'SkillsMP 兼容';
+
+  @override
+  String get skillsRegistryNameLabel => '显示名称';
+
+  @override
+  String get skillsRegistryBaseUrlLabel => 'API 地址';
+
+  @override
+  String get skillsRegistryBrowseQueryLabel => '默认浏览词';
+
+  @override
+  String get skillsRegistryTokenLabel => 'API Key';
+
+  @override
+  String get skillsRegistryOwnerLabel => 'Owner';
+
+  @override
+  String get skillsRegistryNameOfRepoLabel => '仓库名';
+
+  @override
+  String get skillsRegistryTestOk => '连接成功';
+
+  @override
+  String skillsRegistryTestFailed(String error) {
+    return '连接失败：$error';
+  }
+
+  @override
+  String get skillsRegistryGoSetKey => '去注册中心设置 API Key';
+
+  @override
+  String get skillsRegistryEditTitle => '编辑注册源';
+
+  @override
+  String get skillsRegistryRemoveTitle => '重置注册源';
+
+  @override
+  String skillsRegistryResetConfirm(String name) {
+    return '将 $name 重置为默认值？';
+  }
+
+  @override
   String skillsInstalledCount(int count) {
     return '已安装 $count';
   }

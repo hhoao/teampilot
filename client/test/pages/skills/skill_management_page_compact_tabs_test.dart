@@ -7,6 +7,7 @@ import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/pages/skills/skill_management_page.dart';
 import 'package:teampilot/pages/skills/skill_section.dart';
 import 'package:teampilot/repositories/skill_repository.dart';
+import 'package:teampilot/services/skill/registry/skill_registry_config_service.dart';
 import 'package:teampilot/widgets/settings/workspace_hub_shell.dart';
 import 'package:teampilot/widgets/settings/workspace_section_tab_bar.dart';
 
@@ -17,7 +18,12 @@ void main() {
 
   setUp(() {
     setUpTestAppStorage();
-    cubit = SkillCubit(SkillRepository());
+    cubit = SkillCubit(
+      SkillRepository(),
+      registryConfigService: SkillRegistryConfigService(),
+      initialSources: const [],
+      rebuildSources: (c) => const [],
+    );
   });
 
   tearDown(() async {
@@ -60,7 +66,7 @@ void main() {
 
     expect(find.text('Installed'), findsOneWidget);
     expect(find.text('Discovery'), findsOneWidget);
-    expect(find.text('Repos'), findsOneWidget);
+    expect(find.text('Registries'), findsOneWidget);
     expect(find.byType(WorkspaceSectionTabBar), findsOneWidget);
     expect(find.byType(WorkspaceSplitShell), findsNothing);
   });

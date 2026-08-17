@@ -7,7 +7,7 @@ import '../../widgets/settings/workspace_section_navigation.dart';
 enum SkillSection implements WorkspaceSectionDescriptor {
   installed,
   discovery,
-  repos;
+  registries;
 
   @override
   String get routeSegment => name;
@@ -19,7 +19,7 @@ enum SkillSection implements WorkspaceSectionDescriptor {
   String title(AppLocalizations l10n) => switch (this) {
     SkillSection.installed => l10n.skillsNavInstalled,
     SkillSection.discovery => l10n.skillsNavDiscovery,
-    SkillSection.repos => l10n.skillsNavRepos,
+    SkillSection.registries => l10n.skillsNavRegistries,
   };
 
   @override
@@ -33,5 +33,5 @@ void navigateSkillSection(BuildContext context, SkillSection target) {
 IconData skillSectionIcon(SkillSection section) => switch (section) {
   SkillSection.installed => Icons.inventory_2_outlined,
   SkillSection.discovery => Icons.travel_explore_outlined,
-  SkillSection.repos => Icons.source_outlined,
+  SkillSection.registries => Icons.source_outlined,
 };

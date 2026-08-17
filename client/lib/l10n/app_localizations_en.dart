@@ -3660,6 +3660,73 @@ class AppLocalizationsEn extends AppLocalizations {
   String get skillsNavRepos => 'Repos';
 
   @override
+  String get skillsNavRegistries => 'Registries';
+
+  @override
+  String get skillsRegistryApiKeySet => 'API key set';
+
+  @override
+  String get skillsRegistryAddSource => 'Add registry source';
+
+  @override
+  String get skillsRegistrySourceKind => 'Source type';
+
+  @override
+  String get skillsRegistrySourceKindApi => 'API source';
+
+  @override
+  String get skillsRegistrySourceKindGit => 'Git repository';
+
+  @override
+  String get skillsRegistryProtocolLabel => 'Protocol';
+
+  @override
+  String get skillsRegistryProtocolSkillsSh => 'skills.sh compatible';
+
+  @override
+  String get skillsRegistryProtocolSkillsMp => 'SkillsMP compatible';
+
+  @override
+  String get skillsRegistryNameLabel => 'Display name';
+
+  @override
+  String get skillsRegistryBaseUrlLabel => 'Base URL';
+
+  @override
+  String get skillsRegistryBrowseQueryLabel => 'Default browse query';
+
+  @override
+  String get skillsRegistryTokenLabel => 'API Key';
+
+  @override
+  String get skillsRegistryOwnerLabel => 'Owner';
+
+  @override
+  String get skillsRegistryNameOfRepoLabel => 'Repository';
+
+  @override
+  String get skillsRegistryTestOk => 'Connection OK';
+
+  @override
+  String skillsRegistryTestFailed(String error) {
+    return 'Connection failed: $error';
+  }
+
+  @override
+  String get skillsRegistryGoSetKey => 'Set API key in Registries';
+
+  @override
+  String get skillsRegistryEditTitle => 'Edit registry source';
+
+  @override
+  String get skillsRegistryRemoveTitle => 'Reset registry';
+
+  @override
+  String skillsRegistryResetConfirm(String name) {
+    return 'Reset $name to defaults?';
+  }
+
+  @override
   String skillsInstalledCount(int count) {
     return '$count installed';
   }
