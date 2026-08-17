@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../../../models/catalog/catalog_types.dart';
 import '../../../models/skill_registry_source.dart';
 import '../marketplace/skill_marketplace_source.dart';
 import '../skills_sh_service.dart';
@@ -73,9 +74,7 @@ class ApiRegistrySource implements SkillRegistrySource {
         'customer-service-reps': 'Customer Service',
         'researchers': 'Researchers',
       },
-      languageChoices: [
-        'zh', 'en', 'ja', 'ko', 'es', 'fr', 'de', 'pt', 'ru',
-      ],
+      languageChoices: ['zh', 'en', 'ja', 'ko', 'es', 'fr', 'de', 'pt', 'ru'],
     ),
   };
 
@@ -93,10 +92,7 @@ class ApiRegistrySource implements SkillRegistrySource {
     final q = query.query.trim().isEmpty
         ? (config.browseQuery ?? 'ai')
         : query.query;
-    final service = SkillsShService(
-      client: _client,
-      baseUrl: _baseUrl,
-    );
+    final service = SkillsShService(client: _client, baseUrl: _baseUrl);
     final res = await service.search(
       q,
       limit: query.limit,
@@ -113,9 +109,11 @@ class ApiRegistrySource implements SkillRegistrySource {
               repoName: e.repoName,
               repoBranch: e.repoBranch,
               directory: e.directory,
-              githubUrl: e.readmeUrl ??
+              githubUrl:
+                  e.readmeUrl ??
                   'https://github.com/${e.repoOwner}/${e.repoName}',
               installs: e.installs,
+              metrics: e.metrics,
             ),
           )
           .toList(),
@@ -141,11 +139,12 @@ class ApiRegistrySource implements SkillRegistrySource {
       if (query.language != null && query.language!.isNotEmpty)
         'language': query.language!,
     };
-    final uri = Uri.parse('$_baseUrl/skills/search').replace(
-      queryParameters: params,
-    );
+    final uri = Uri.parse(
+      '$_baseUrl/skills/search',
+    ).replace(queryParameters: params);
     final headers = <String, String>{
-      if (config.hasApiToken) 'Authorization': 'Bearer ${config.apiToken!.trim()}',
+      if (config.hasApiToken)
+        'Authorization': 'Bearer ${config.apiToken!.trim()}',
     };
 
     final http.Response resp;
@@ -186,6 +185,12 @@ class ApiRegistrySource implements SkillRegistrySource {
             stars: (m['stars'] as num?)?.toInt(),
             updatedAt: (m['updatedAt'] as num?)?.toInt(),
             contentLanguage: (m['contentLanguage'] as String?)?.trim(),
+            metrics: CatalogMetrics(
+              rating: (m['rating'] as num?)?.toDouble(),
+              ratingCount: (m['ratingCount'] as num?)?.toInt(),
+              updatedAtMs: _epochMilliseconds(m['updatedAt']),
+              publishedAtMs: _epochMilliseconds(m['publishedAt']),
+            ),
           ),
         );
       }
@@ -215,5 +220,14 @@ class ApiRegistrySource implements SkillRegistrySource {
   static String _repoOf(String githubUrl) {
     final parts = Uri.tryParse(githubUrl)?.pathSegments ?? const [];
     return parts.length >= 2 ? parts[1] : '';
+  }
+
+  static int? _epochMilliseconds(Object? value) {
+    final numeric = value is num ? value.toInt() : int.tryParse('$value');
+    if (numeric != null) {
+      return numeric.abs() < 100000000000 ? numeric * 1000 : numeric;
+    }
+    final parsed = DateTime.tryParse('$value');
+    return parsed?.millisecondsSinceEpoch;
   }
 }

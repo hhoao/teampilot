@@ -7164,5 +7164,82 @@ class AppLocalizationsZh extends AppLocalizations {
   String get htmlPreviewOpenedInBrowser => '预览已在系统浏览器中打开，此面板可随时重新打开。';
 
   @override
+  String get catalogSortAdoption => '采用量最高';
+
+  @override
+  String get catalogSortRating => '评分最高';
+
+  @override
+  String get catalogSortUpdated => '最近更新';
+
+  @override
+  String get catalogSortPublished => '最近发布';
+
+  @override
+  String get catalogSortName => '名称';
+
+  @override
+  String get skillsCatalogAdoption => '安装量';
+
+  @override
+  String get mcpCatalogAdoption => '使用量';
+
+  @override
+  String get pluginsCatalogAdoption => '安装量';
+
+  @override
+  String get teamsCatalogAdoption => '添加量';
+
+  @override
+  String get expertsCatalogAdoption => '添加量';
+
+  @override
+  String get catalogMetricRating => '评分';
+
+  @override
+  String get catalogMetricUpdated => '最近更新';
+
+  @override
+  String get catalogMetricPublished => '发布日期';
+
+  @override
+  String get catalogMetricName => '名称';
+
+  @override
+  String get catalogMetricMissing => '暂无数据';
+
+  @override
+  String get catalogMetricMissingTooltip => '暂无可用数据';
+
+  @override
+  String get catalogSourceWarningLabel => '部分目录源加载失败';
+
+  @override
+  String catalogSourceWarningEntry(String source, String error) {
+    return '$source：$error';
+  }
+
+  @override
+  String get catalogSortAccessibilityLabel => '排列目录条目';
+
+  @override
+  String get catalogRefreshAccessibilityLabel => '刷新目录';
+
+  @override
+  String catalogSourceWarningAccessibilityLabel(int count) {
+    return '有 $count 个目录源加载失败';
+  }
+
+  @override
+  String catalogMissingMetricAccessibilityLabel(String label) {
+    return '$label：暂无可用数据';
+  }
+
+  @override
+  String catalogCardAccessibilityLabel(String name, String source) {
+    return '$name，来源：$source';
+  }
+
+  @override
   String get retry => '重试';
 }

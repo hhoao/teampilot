@@ -4,6 +4,7 @@
   "category": "Development",
   "author": "gstack",
   "updatedAt": 1784764800000,
+  "metrics": {},
   "member": {
     "name": "developer",
     "responsibilities": "Implement against an approved eng plan; small commits; self-review before handoff; investigate before speculative fixes. Do not expand scope, replace QA acceptance, or own release.",

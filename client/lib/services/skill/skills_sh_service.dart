@@ -1,8 +1,20 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
+import '../../models/catalog/catalog_types.dart';
 import '../../models/skill.dart';
 import 'skill_fetch_service.dart';
+
+int? _asInt(Object? value) => (value as num?)?.toInt();
+
+int? _epochMilliseconds(Object? value) {
+  final numeric = value is num ? value.toInt() : int.tryParse('$value');
+  if (numeric != null) {
+    return numeric.abs() < 100000000000 ? numeric * 1000 : numeric;
+  }
+  final parsed = DateTime.tryParse('$value');
+  return parsed?.millisecondsSinceEpoch;
+}
 
 class SkillsShResult {
   const SkillsShResult({
@@ -17,8 +29,8 @@ class SkillsShResult {
 
 class SkillsShService {
   SkillsShService({http.Client? client, String baseUrl = 'https://skills.sh'})
-      : _client = client ?? http.Client(),
-        _baseUrl = baseUrl;
+    : _client = client ?? http.Client(),
+      _baseUrl = baseUrl;
 
   final http.Client _client;
   final String _baseUrl;
@@ -48,6 +60,7 @@ class SkillsShService {
       // Filter non-GitHub sources (e.g. mcp-hub.momenta.works).
       if (owner.contains('.') || repo.contains('.')) continue;
       final skillId = (m['skillId'] as String?) ?? '';
+      final installs = _asInt(m['installs']) ?? 0;
       entries.add(
         SkillsShEntry(
           key: (m['id'] as String?) ?? '$owner/$repo:$skillId',
@@ -57,7 +70,12 @@ class SkillsShService {
           repoName: repo,
           repoBranch: 'main',
           readmeUrl: 'https://github.com/$owner/$repo',
-          installs: (m['installs'] as int?) ?? 0,
+          installs: installs,
+          metrics: CatalogMetrics(
+            adoptionCount: installs,
+            updatedAtMs: _epochMilliseconds(m['updatedAt']),
+            publishedAtMs: _epochMilliseconds(m['publishedAt']),
+          ),
         ),
       );
     }

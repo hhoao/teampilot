@@ -3394,5 +3394,50 @@
   "htmlPreviewErrorTitle": "Preview unavailable",
   "htmlPreviewErrorBody": "The file could not be loaded for preview.",
   "htmlPreviewOpenedInBrowser": "Preview opened in your system browser. Use this panel to open it again.",
+  "catalogSortAdoption": "Most adopted",
+  "catalogSortRating": "Highest rated",
+  "catalogSortUpdated": "Recently updated",
+  "catalogSortPublished": "Recently published",
+  "catalogSortName": "Name",
+  "skillsCatalogAdoption": "Installs",
+  "mcpCatalogAdoption": "Uses",
+  "pluginsCatalogAdoption": "Installs",
+  "teamsCatalogAdoption": "Added",
+  "expertsCatalogAdoption": "Added",
+  "catalogMetricRating": "Rating",
+  "catalogMetricUpdated": "Updated",
+  "catalogMetricPublished": "Published",
+  "catalogMetricName": "Name",
+  "catalogMetricMissing": "No data",
+  "catalogMetricMissingTooltip": "No data available",
+  "catalogSourceWarningLabel": "Some catalog sources failed to load",
+  "catalogSourceWarningEntry": "{source}: {error}",
+  "@catalogSourceWarningEntry": {
+    "placeholders": {
+      "source": { "type": "String" },
+      "error": { "type": "String" }
+    }
+  },
+  "catalogSortAccessibilityLabel": "Sort catalog entries",
+  "catalogRefreshAccessibilityLabel": "Refresh catalog",
+  "catalogSourceWarningAccessibilityLabel": "{count} catalog source(s) failed to load",
+  "@catalogSourceWarningAccessibilityLabel": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "catalogMissingMetricAccessibilityLabel": "{label}: no data available",
+  "@catalogMissingMetricAccessibilityLabel": {
+    "placeholders": {
+      "label": { "type": "String" }
+    }
+  },
+  "catalogCardAccessibilityLabel": "{name}, from {source}",
+  "@catalogCardAccessibilityLabel": {
+    "placeholders": {
+      "name": { "type": "String" },
+      "source": { "type": "String" }
+    }
+  },
   "retry": "Retry"
 }

@@ -1,3 +1,5 @@
+import '../../../models/catalog/catalog_types.dart';
+
 const marketplaceQuotaErrorKey = 'marketplace_quota_error';
 
 class MarketplaceSkill {
@@ -10,11 +12,15 @@ class MarketplaceSkill {
     this.repoBranch = 'main',
     this.directory,
     required this.githubUrl,
-    this.installs,
-    this.stars,
-    this.updatedAt,
+    int? installs,
+    int? stars,
+    int? updatedAt,
     this.contentLanguage,
-  });
+    CatalogMetrics metrics = const CatalogMetrics(),
+  }) : _metrics = metrics,
+       _legacyInstalls = installs,
+       _legacyStars = stars,
+       _legacyUpdatedAt = updatedAt;
 
   final String key;
   final String name;
@@ -28,12 +34,30 @@ class MarketplaceSkill {
   final String? directory;
   final String githubUrl;
 
+  final CatalogMetrics _metrics;
+
+  final int? _legacyInstalls;
+  final int? _legacyStars;
+  final int? _legacyUpdatedAt;
+
+  CatalogMetrics get metrics => CatalogMetrics(
+    adoptionCount: _metrics.adoptionCount ?? _legacyInstalls,
+    rating: _metrics.rating,
+    ratingCount: _metrics.ratingCount,
+    updatedAtMs:
+        _metrics.updatedAtMs ??
+        (_legacyUpdatedAt == null ? null : _legacyUpdatedAt * 1000),
+    publishedAtMs: _metrics.publishedAtMs,
+  );
+
   /// skills.sh 源的安装次数。
-  final int? installs;
+  int? get installs => _legacyInstalls ?? metrics.adoptionCount;
 
   /// SkillsMP 源的 GitHub stars 与最近更新时间（Unix 秒）。
-  final int? stars;
-  final int? updatedAt;
+  int? get stars => _legacyStars;
+  int? get updatedAt =>
+      _legacyUpdatedAt ??
+      (metrics.updatedAtMs == null ? null : metrics.updatedAtMs! ~/ 1000);
   final String? contentLanguage;
 
   bool get isInstalledDirectly =>

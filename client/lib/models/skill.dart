@@ -1,4 +1,28 @@
+import 'catalog/catalog_types.dart';
 import 'skill_pack_instruction.dart';
+
+Map<String, Object?>? _catalogMetricsToJson(CatalogMetrics metrics) {
+  final json = <String, Object?>{
+    if (metrics.adoptionCount != null) 'adoptionCount': metrics.adoptionCount,
+    if (metrics.rating != null) 'rating': metrics.rating,
+    if (metrics.ratingCount != null) 'ratingCount': metrics.ratingCount,
+    if (metrics.updatedAtMs != null) 'updatedAtMs': metrics.updatedAtMs,
+    if (metrics.publishedAtMs != null) 'publishedAtMs': metrics.publishedAtMs,
+  };
+  return json.isEmpty ? null : json;
+}
+
+CatalogMetrics _catalogMetricsFromJson(Object? raw) {
+  if (raw is! Map) return const CatalogMetrics();
+  final json = raw.cast<String, Object?>();
+  return CatalogMetrics(
+    adoptionCount: (json['adoptionCount'] as num?)?.toInt(),
+    rating: (json['rating'] as num?)?.toDouble(),
+    ratingCount: (json['ratingCount'] as num?)?.toInt(),
+    updatedAtMs: (json['updatedAtMs'] as num?)?.toInt(),
+    publishedAtMs: (json['publishedAtMs'] as num?)?.toInt(),
+  );
+}
 
 class Skill {
   const Skill({
@@ -265,6 +289,7 @@ class SkillsShEntry {
     required this.repoName,
     required this.repoBranch,
     required this.installs,
+    this.metrics = const CatalogMetrics(),
     this.readmeUrl,
   });
 
@@ -276,6 +301,7 @@ class SkillsShEntry {
   final String repoBranch;
   final String? readmeUrl;
   final int installs;
+  final CatalogMetrics metrics;
 }
 
 class DiscoverableSkill {
@@ -292,6 +318,7 @@ class DiscoverableSkill {
     this.packId,
     this.install,
     this.scriptUrl,
+    this.metrics = const CatalogMetrics(),
   });
 
   final String key;
@@ -312,6 +339,8 @@ class DiscoverableSkill {
 
   /// HTTPS installer URL sugar (synthesizes a [ScriptInstruction]).
   final String? scriptUrl;
+
+  final CatalogMetrics metrics;
 
   String get source => '$repoOwner/$repoName';
 
@@ -362,23 +391,27 @@ class DiscoverableSkill {
     return basename.isEmpty ? 'local:unknown' : 'local:$basename';
   }
 
-  Map<String, Object?> toJson() => {
-    'key': key,
-    'name': name,
-    'description': description,
-    'directory': directory,
-    'readmeUrl': readmeUrl,
-    'repoOwner': repoOwner,
-    'repoName': repoName,
-    'repoBranch': repoBranch,
-    if (id != null && id!.isNotEmpty) 'id': id,
-    if (packId != null && packId!.isNotEmpty) 'packId': packId,
-    if (scriptUrl != null && scriptUrl!.isNotEmpty) 'scriptUrl': scriptUrl,
-    if (install != null && install!.isNotEmpty)
-      'install': [
-        for (final step in install!) _discoverableInstallToJson(step),
-      ],
-  };
+  Map<String, Object?> toJson() {
+    final metricsJson = _catalogMetricsToJson(metrics);
+    return {
+      'key': key,
+      'name': name,
+      'description': description,
+      'directory': directory,
+      'readmeUrl': readmeUrl,
+      'repoOwner': repoOwner,
+      'repoName': repoName,
+      'repoBranch': repoBranch,
+      if (id != null && id!.isNotEmpty) 'id': id,
+      if (packId != null && packId!.isNotEmpty) 'packId': packId,
+      if (scriptUrl != null && scriptUrl!.isNotEmpty) 'scriptUrl': scriptUrl,
+      if (install != null && install!.isNotEmpty)
+        'install': [
+          for (final step in install!) _discoverableInstallToJson(step),
+        ],
+      if (metricsJson != null) 'metrics': metricsJson,
+    };
+  }
 
   factory DiscoverableSkill.fromJson(Map<String, Object?> json) {
     if (json.containsKey('recipe')) {
@@ -403,6 +436,7 @@ class DiscoverableSkill {
       packId: packRaw == null || packRaw.isEmpty ? null : packRaw,
       scriptUrl: scriptRaw == null || scriptRaw.isEmpty ? null : scriptRaw,
       install: installRaw is List ? parseSkillPackInstall(installRaw) : null,
+      metrics: _catalogMetricsFromJson(json['metrics']),
     );
   }
 }

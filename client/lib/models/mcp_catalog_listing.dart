@@ -1,5 +1,30 @@
 import 'package:flutter/foundation.dart';
 
+import 'catalog/catalog_types.dart';
+
+Map<String, Object?>? _catalogMetricsToJson(CatalogMetrics metrics) {
+  final json = <String, Object?>{
+    if (metrics.adoptionCount != null) 'adoptionCount': metrics.adoptionCount,
+    if (metrics.rating != null) 'rating': metrics.rating,
+    if (metrics.ratingCount != null) 'ratingCount': metrics.ratingCount,
+    if (metrics.updatedAtMs != null) 'updatedAtMs': metrics.updatedAtMs,
+    if (metrics.publishedAtMs != null) 'publishedAtMs': metrics.publishedAtMs,
+  };
+  return json.isEmpty ? null : json;
+}
+
+CatalogMetrics _catalogMetricsFromJson(Object? raw) {
+  if (raw is! Map) return const CatalogMetrics();
+  final json = raw.cast<String, Object?>();
+  return CatalogMetrics(
+    adoptionCount: (json['adoptionCount'] as num?)?.toInt(),
+    rating: (json['rating'] as num?)?.toDouble(),
+    ratingCount: (json['ratingCount'] as num?)?.toInt(),
+    updatedAtMs: (json['updatedAtMs'] as num?)?.toInt(),
+    publishedAtMs: (json['publishedAtMs'] as num?)?.toInt(),
+  );
+}
+
 enum McpCatalogSource {
   builtin,
   smithery,
@@ -25,11 +50,12 @@ class McpCatalogListing {
     this.homepage,
     this.docs,
     this.tags = const [],
-    this.useCount,
     this.verified = false,
     this.remote = false,
     this.smitheryQualifiedName,
-  });
+    this.metrics = const CatalogMetrics(),
+    int? useCount,
+  }) : _legacyUseCount = useCount;
 
   final String id;
   final String title;
@@ -40,7 +66,9 @@ class McpCatalogListing {
   final String? homepage;
   final String? docs;
   final List<String> tags;
-  final int? useCount;
+  final CatalogMetrics metrics;
+  final int? _legacyUseCount;
+  int? get useCount => _legacyUseCount ?? metrics.adoptionCount;
   final bool verified;
   final bool remote;
 
@@ -49,25 +77,34 @@ class McpCatalogListing {
 
   bool get canInstall => serverSpec.isNotEmpty;
 
-  Map<String, Object?> toJson() => {
-    'id': id,
-    'title': title,
-    'description': description,
-    'source': source.wireValue,
-    'serverSpec': serverSpec,
-    if (iconUrl != null) 'iconUrl': iconUrl,
-    if (homepage != null) 'homepage': homepage,
-    if (docs != null) 'docs': docs,
-    if (tags.isNotEmpty) 'tags': tags,
-    if (useCount != null) 'useCount': useCount,
-    if (verified) 'verified': verified,
-    if (remote) 'remote': remote,
-    if (smitheryQualifiedName != null)
-      'smitheryQualifiedName': smitheryQualifiedName,
-  };
+  Map<String, Object?> toJson() {
+    final metricsJson = _catalogMetricsToJson(metrics);
+    return {
+      'id': id,
+      'title': title,
+      'description': description,
+      'source': source.wireValue,
+      'serverSpec': serverSpec,
+      if (iconUrl != null) 'iconUrl': iconUrl,
+      if (homepage != null) 'homepage': homepage,
+      if (docs != null) 'docs': docs,
+      if (tags.isNotEmpty) 'tags': tags,
+      if (metricsJson != null) 'metrics': metricsJson,
+      if (verified) 'verified': verified,
+      if (remote) 'remote': remote,
+      if (smitheryQualifiedName != null)
+        'smitheryQualifiedName': smitheryQualifiedName,
+    };
+  }
 
   factory McpCatalogListing.fromJson(Map<String, Object?> json) {
     final tagsRaw = json['tags'];
+    final metricsRaw = json['metrics'];
+    final metrics = _catalogMetricsFromJson(metricsRaw);
+    final legacyUseCount = (json['useCount'] as num?)?.toInt();
+    final normalizedMetrics = metricsRaw is Map
+        ? metrics
+        : CatalogMetrics(adoptionCount: legacyUseCount);
     return McpCatalogListing(
       id: json['id'] as String,
       title: json['title'] as String,
@@ -83,7 +120,8 @@ class McpCatalogListing {
       tags: tagsRaw is List
           ? tagsRaw.map((e) => e.toString()).toList()
           : const [],
-      useCount: (json['useCount'] as num?)?.toInt(),
+      metrics: normalizedMetrics,
+      useCount: legacyUseCount,
       verified: json['verified'] == true,
       remote: json['remote'] == true,
       smitheryQualifiedName: json['smitheryQualifiedName'] as String?,

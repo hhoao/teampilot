@@ -13334,6 +13334,144 @@ abstract class AppLocalizations {
   /// **'Preview opened in your system browser. Use this panel to open it again.'**
   String get htmlPreviewOpenedInBrowser;
 
+  /// No description provided for @catalogSortAdoption.
+  ///
+  /// In en, this message translates to:
+  /// **'Most adopted'**
+  String get catalogSortAdoption;
+
+  /// No description provided for @catalogSortRating.
+  ///
+  /// In en, this message translates to:
+  /// **'Highest rated'**
+  String get catalogSortRating;
+
+  /// No description provided for @catalogSortUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Recently updated'**
+  String get catalogSortUpdated;
+
+  /// No description provided for @catalogSortPublished.
+  ///
+  /// In en, this message translates to:
+  /// **'Recently published'**
+  String get catalogSortPublished;
+
+  /// No description provided for @catalogSortName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get catalogSortName;
+
+  /// No description provided for @skillsCatalogAdoption.
+  ///
+  /// In en, this message translates to:
+  /// **'Installs'**
+  String get skillsCatalogAdoption;
+
+  /// No description provided for @mcpCatalogAdoption.
+  ///
+  /// In en, this message translates to:
+  /// **'Uses'**
+  String get mcpCatalogAdoption;
+
+  /// No description provided for @pluginsCatalogAdoption.
+  ///
+  /// In en, this message translates to:
+  /// **'Installs'**
+  String get pluginsCatalogAdoption;
+
+  /// No description provided for @teamsCatalogAdoption.
+  ///
+  /// In en, this message translates to:
+  /// **'Added'**
+  String get teamsCatalogAdoption;
+
+  /// No description provided for @expertsCatalogAdoption.
+  ///
+  /// In en, this message translates to:
+  /// **'Added'**
+  String get expertsCatalogAdoption;
+
+  /// No description provided for @catalogMetricRating.
+  ///
+  /// In en, this message translates to:
+  /// **'Rating'**
+  String get catalogMetricRating;
+
+  /// No description provided for @catalogMetricUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Updated'**
+  String get catalogMetricUpdated;
+
+  /// No description provided for @catalogMetricPublished.
+  ///
+  /// In en, this message translates to:
+  /// **'Published'**
+  String get catalogMetricPublished;
+
+  /// No description provided for @catalogMetricName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get catalogMetricName;
+
+  /// No description provided for @catalogMetricMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'No data'**
+  String get catalogMetricMissing;
+
+  /// No description provided for @catalogMetricMissingTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'No data available'**
+  String get catalogMetricMissingTooltip;
+
+  /// No description provided for @catalogSourceWarningLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Some catalog sources failed to load'**
+  String get catalogSourceWarningLabel;
+
+  /// No description provided for @catalogSourceWarningEntry.
+  ///
+  /// In en, this message translates to:
+  /// **'{source}: {error}'**
+  String catalogSourceWarningEntry(String source, String error);
+
+  /// No description provided for @catalogSortAccessibilityLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Sort catalog entries'**
+  String get catalogSortAccessibilityLabel;
+
+  /// No description provided for @catalogRefreshAccessibilityLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh catalog'**
+  String get catalogRefreshAccessibilityLabel;
+
+  /// No description provided for @catalogSourceWarningAccessibilityLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} catalog source(s) failed to load'**
+  String catalogSourceWarningAccessibilityLabel(int count);
+
+  /// No description provided for @catalogMissingMetricAccessibilityLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'{label}: no data available'**
+  String catalogMissingMetricAccessibilityLabel(String label);
+
+  /// No description provided for @catalogCardAccessibilityLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'{name}, from {source}'**
+  String catalogCardAccessibilityLabel(String name, String source);
+
   /// No description provided for @retry.
   ///
   /// In en, this message translates to:

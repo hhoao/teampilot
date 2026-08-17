@@ -1,11 +1,66 @@
 import 'dart:io';
 
 import '../../config/mcp_presets.dart';
+import '../../models/catalog/catalog_types.dart';
 import '../../models/mcp_catalog_listing.dart';
 import '../../models/mcp_server.dart';
 
 /// Maps remote catalog rows into [McpCatalogListing] / draft [McpServer].
 class McpCatalogMapper {
+  static int? _asInt(Object? value) => (value as num?)?.toInt();
+
+  static double? _asDouble(Object? value) => (value as num?)?.toDouble();
+
+  static int? _epochMilliseconds(Object? value) {
+    final numeric = value is num ? value.toInt() : int.tryParse('$value');
+    if (numeric != null) {
+      return numeric.abs() < 100000000000 ? numeric * 1000 : numeric;
+    }
+    final parsed = DateTime.tryParse('$value');
+    return parsed?.millisecondsSinceEpoch;
+  }
+
+  static Object? _firstValue(List<Map<String, Object?>> sources, String key) {
+    for (final source in sources) {
+      final value = source[key];
+      if (value != null) return value;
+    }
+    return null;
+  }
+
+  static CatalogMetrics _metricsFromJson(Map<String, Object?> json) {
+    final nested = <Map<String, Object?>>[
+      json,
+      if (json['metrics'] is Map)
+        (json['metrics'] as Map).cast<String, Object?>(),
+      if (json['stats'] is Map) (json['stats'] as Map).cast<String, Object?>(),
+    ];
+    return CatalogMetrics(
+      adoptionCount:
+          _asInt(_firstValue(nested, 'useCount')) ??
+          _asInt(_firstValue(nested, 'adoptionCount')),
+      rating: _asDouble(_firstValue(nested, 'rating')),
+      ratingCount: _asInt(_firstValue(nested, 'ratingCount')),
+      updatedAtMs:
+          _epochMilliseconds(_firstValue(nested, 'updatedAt')) ??
+          _epochMilliseconds(_firstValue(nested, 'updatedAtMs')),
+      publishedAtMs:
+          _epochMilliseconds(_firstValue(nested, 'publishedAt')) ??
+          _epochMilliseconds(_firstValue(nested, 'publishedAtMs')),
+    );
+  }
+
+  static CatalogMetrics _mergeMetrics(
+    CatalogMetrics base,
+    CatalogMetrics overlay,
+  ) => CatalogMetrics(
+    adoptionCount: overlay.adoptionCount ?? base.adoptionCount,
+    rating: overlay.rating ?? base.rating,
+    ratingCount: overlay.ratingCount ?? base.ratingCount,
+    updatedAtMs: overlay.updatedAtMs ?? base.updatedAtMs,
+    publishedAtMs: overlay.publishedAtMs ?? base.publishedAtMs,
+  );
+
   static String sanitizeId(String raw) {
     return raw
         .trim()
@@ -136,7 +191,8 @@ class McpCatalogMapper {
       iconUrl: json['iconUrl']?.toString(),
       homepage: json['homepage']?.toString(),
       tags: tags,
-      useCount: (json['useCount'] as num?)?.toInt(),
+      metrics: _metricsFromJson(json),
+      useCount: _asInt(json['useCount']),
       verified: json['verified'] == true,
       remote: json['remote'] == true,
       smitheryQualifiedName: qualifiedName,
@@ -161,7 +217,8 @@ class McpCatalogMapper {
       homepage: listing.homepage ?? detail['homepage']?.toString(),
       docs: listing.docs,
       tags: listing.tags,
-      useCount: listing.useCount ?? (detail['useCount'] as num?)?.toInt(),
+      metrics: _mergeMetrics(listing.metrics, _metricsFromJson(detail)),
+      useCount: listing.useCount ?? _asInt(detail['useCount']),
       verified: listing.verified || detail['verified'] == true,
       remote: listing.remote || detail['remote'] == true,
       smitheryQualifiedName: listing.smitheryQualifiedName,
@@ -199,6 +256,11 @@ class McpCatalogMapper {
       repoUrl = repo['url']?.toString();
     }
 
+    final metrics = _mergeMetrics(
+      _metricsFromJson(entry),
+      _metricsFromJson(server),
+    );
+
     return McpCatalogListing(
       id: sanitizeId(name),
       title: title,
@@ -208,6 +270,8 @@ class McpCatalogMapper {
       homepage: server['websiteUrl']?.toString() ?? repoUrl,
       docs: repoUrl,
       tags: const ['registry'],
+      metrics: metrics,
+      useCount: _asInt(entry['useCount']) ?? _asInt(server['useCount']),
     );
   }
 

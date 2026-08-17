@@ -7456,5 +7456,82 @@ class AppLocalizationsEn extends AppLocalizations {
       'Preview opened in your system browser. Use this panel to open it again.';
 
   @override
+  String get catalogSortAdoption => 'Most adopted';
+
+  @override
+  String get catalogSortRating => 'Highest rated';
+
+  @override
+  String get catalogSortUpdated => 'Recently updated';
+
+  @override
+  String get catalogSortPublished => 'Recently published';
+
+  @override
+  String get catalogSortName => 'Name';
+
+  @override
+  String get skillsCatalogAdoption => 'Installs';
+
+  @override
+  String get mcpCatalogAdoption => 'Uses';
+
+  @override
+  String get pluginsCatalogAdoption => 'Installs';
+
+  @override
+  String get teamsCatalogAdoption => 'Added';
+
+  @override
+  String get expertsCatalogAdoption => 'Added';
+
+  @override
+  String get catalogMetricRating => 'Rating';
+
+  @override
+  String get catalogMetricUpdated => 'Updated';
+
+  @override
+  String get catalogMetricPublished => 'Published';
+
+  @override
+  String get catalogMetricName => 'Name';
+
+  @override
+  String get catalogMetricMissing => 'No data';
+
+  @override
+  String get catalogMetricMissingTooltip => 'No data available';
+
+  @override
+  String get catalogSourceWarningLabel => 'Some catalog sources failed to load';
+
+  @override
+  String catalogSourceWarningEntry(String source, String error) {
+    return '$source: $error';
+  }
+
+  @override
+  String get catalogSortAccessibilityLabel => 'Sort catalog entries';
+
+  @override
+  String get catalogRefreshAccessibilityLabel => 'Refresh catalog';
+
+  @override
+  String catalogSourceWarningAccessibilityLabel(int count) {
+    return '$count catalog source(s) failed to load';
+  }
+
+  @override
+  String catalogMissingMetricAccessibilityLabel(String label) {
+    return '$label: no data available';
+  }
+
+  @override
+  String catalogCardAccessibilityLabel(String name, String source) {
+    return '$name, from $source';
+  }
+
+  @override
   String get retry => 'Retry';
 }

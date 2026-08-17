@@ -2956,5 +2956,50 @@
   "htmlPreviewErrorTitle": "预览不可用",
   "htmlPreviewErrorBody": "无法加载文件进行预览。",
   "htmlPreviewOpenedInBrowser": "预览已在系统浏览器中打开，此面板可随时重新打开。",
+  "catalogSortAdoption": "采用量最高",
+  "catalogSortRating": "评分最高",
+  "catalogSortUpdated": "最近更新",
+  "catalogSortPublished": "最近发布",
+  "catalogSortName": "名称",
+  "skillsCatalogAdoption": "安装量",
+  "mcpCatalogAdoption": "使用量",
+  "pluginsCatalogAdoption": "安装量",
+  "teamsCatalogAdoption": "添加量",
+  "expertsCatalogAdoption": "添加量",
+  "catalogMetricRating": "评分",
+  "catalogMetricUpdated": "最近更新",
+  "catalogMetricPublished": "发布日期",
+  "catalogMetricName": "名称",
+  "catalogMetricMissing": "暂无数据",
+  "catalogMetricMissingTooltip": "暂无可用数据",
+  "catalogSourceWarningLabel": "部分目录源加载失败",
+  "catalogSourceWarningEntry": "{source}：{error}",
+  "@catalogSourceWarningEntry": {
+    "placeholders": {
+      "source": { "type": "String" },
+      "error": { "type": "String" }
+    }
+  },
+  "catalogSortAccessibilityLabel": "排列目录条目",
+  "catalogRefreshAccessibilityLabel": "刷新目录",
+  "catalogSourceWarningAccessibilityLabel": "有 {count} 个目录源加载失败",
+  "@catalogSourceWarningAccessibilityLabel": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "catalogMissingMetricAccessibilityLabel": "{label}：暂无可用数据",
+  "@catalogMissingMetricAccessibilityLabel": {
+    "placeholders": {
+      "label": { "type": "String" }
+    }
+  },
+  "catalogCardAccessibilityLabel": "{name}，来源：{source}",
+  "@catalogCardAccessibilityLabel": {
+    "placeholders": {
+      "name": { "type": "String" },
+      "source": { "type": "String" }
+    }
+  },
   "retry": "重试"
 }
