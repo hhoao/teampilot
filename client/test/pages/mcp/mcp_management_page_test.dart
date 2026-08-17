@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ui/shared_ui.dart';
+import 'package:teampilot/cubits/discovery_settings_cubit.dart';
 import 'package:teampilot/cubits/mcp_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/mcp_server.dart';
 import 'package:teampilot/pages/mcp/mcp_management_page.dart';
+import 'package:teampilot/repositories/app_settings_repository.dart';
 import 'package:teampilot/repositories/mcp_repository.dart';
 import 'package:teampilot/services/io/filesystem.dart';
 import 'package:teampilot/services/mcp/mcp_catalog_service.dart';
@@ -17,6 +19,7 @@ void main() {
   late Filesystem fs;
   late McpRepository repository;
   late McpCubit cubit;
+  late DiscoverySettingsCubit discoverySettingsCubit;
 
   setUp(setUpTestAppStorage);
   tearDown(tearDownTestAppStorage);
@@ -30,9 +33,15 @@ void main() {
       ),
     );
     cubit = McpCubit(repository);
+    discoverySettingsCubit = DiscoverySettingsCubit(
+      repository: InMemoryAppSettingsRepository(),
+    );
   });
 
-  tearDown(() => cubit.close());
+  tearDown(() {
+    cubit.close();
+    discoverySettingsCubit.close();
+  });
 
   Future<void> pumpListPage(WidgetTester tester) async {
     final scheme = ColorScheme.fromSeed(seedColor: Colors.indigo);
@@ -44,8 +53,11 @@ void main() {
           data: TpThemeData.fromColorScheme(scheme, scale: 1.0),
           child: BlocProvider<McpCubit>.value(
             value: cubit,
-            child: const Scaffold(
-              body: McpManagementPage(section: McpSection.installed),
+            child: BlocProvider<DiscoverySettingsCubit>.value(
+              value: discoverySettingsCubit,
+              child: const Scaffold(
+                body: McpManagementPage(section: McpSection.installed),
+              ),
             ),
           ),
         ),

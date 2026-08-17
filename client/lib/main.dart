@@ -777,6 +777,7 @@ void main() async {
                   ),
                   BlocProvider.value(value: shell.cliPresetsCubit),
                   BlocProvider.value(value: shell.aiFeatureSettingsCubit),
+                  BlocProvider.value(value: shell.discoverySettingsCubit),
                   BlocProvider.value(value: shell.shortcutCubit),
                 ],
                 child: CliToolRegistryScope(

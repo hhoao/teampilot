@@ -56,6 +56,7 @@ import '../services/editor/markdown_view_mode_store.dart';
 import '../services/session/ai_history_loader.dart';
 import '../services/session/session_history_context_builder.dart';
 import '../cubits/ai_feature_settings_cubit.dart';
+import '../cubits/discovery_settings_cubit.dart';
 import '../cubits/config_cubit.dart';
 import '../cubits/layout_cubit.dart';
 import '../cubits/floating_workspace/floating_workspace_cubit.dart';
@@ -287,6 +288,7 @@ class AppShell {
     required this.githubAccountCubit,
     required this.appSettings,
     required this.aiFeatureSettingsCubit,
+    required this.discoverySettingsCubit,
     required this.reinstallStorageContext,
     required this.bootstrapAppData,
     required this.cliToolRegistry,
@@ -371,6 +373,7 @@ class AppShell {
   final GithubAccountCubit githubAccountCubit;
   final AppSettingsRepository appSettings;
   final AiFeatureSettingsCubit aiFeatureSettingsCubit;
+  final DiscoverySettingsCubit discoverySettingsCubit;
   final Future<void> Function() reinstallStorageContext;
   final Future<void> Function() bootstrapAppData;
   final AutomationCubit automationCubit;
@@ -406,6 +409,9 @@ Future<AppShell> buildAppShell({
 
   final appSettings = SharedPrefsAppSettingsRepository(preferences);
   final aiFeatureSettingsCubit = AiFeatureSettingsCubit(
+    repository: appSettings,
+  );
+  final discoverySettingsCubit = DiscoverySettingsCubit(
     repository: appSettings,
   );
   final sessionPreferencesCubit = SessionPreferencesCubit(
@@ -973,6 +979,7 @@ Future<AppShell> buildAppShell({
     acquisitionEngine: skillAcquisitionEngine,
     onSkillUninstalled: teamCubit.removeSkillFromAllTeams,
     packAcquireActivity: packAcquireActivityAdapter,
+    discoverySettings: discoverySettingsCubit,
   );
   pluginCubit = PluginCubit(
     repository: pluginRepository,
@@ -982,6 +989,7 @@ Future<AppShell> buildAppShell({
     onPluginUninstalled: teamCubit.removePluginFromAllTeams,
     onPluginUpdated: teamCubit.syncTeamsUsingPlugin,
     packAcquireActivity: packAcquireActivityAdapter,
+    discoverySettings: discoverySettingsCubit,
   );
   extensionCubit = ExtensionCubit(
     extensionRepository,
@@ -1615,6 +1623,7 @@ Future<AppShell> buildAppShell({
       sshProfileCubit: sshProfileCubit,
       cliPresetsCubit: cliPresetsCubit,
       aiFeatureSettingsCubit: aiFeatureSettingsCubit,
+      discoverySettingsCubit: discoverySettingsCubit,
       homeWorkspaceUiCache: homeWorkspaceUiCache,
       workspaces: chatCubit.state.workspaces,
     );
@@ -1893,6 +1902,7 @@ Future<AppShell> buildAppShell({
     githubAccountCubit: githubAccountCubit,
     appSettings: appSettings,
     aiFeatureSettingsCubit: aiFeatureSettingsCubit,
+    discoverySettingsCubit: discoverySettingsCubit,
     reinstallStorageContext: reinstallStorageContext,
     bootstrapAppData: bootstrapAppData,
     homeWorkspaceUiCache: homeWorkspaceUiCache,
