@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../utils/team/team_member_naming.dart';
+import 'catalog/catalog_types.dart';
 import 'skill.dart';
 import 'skill_pack_instruction.dart';
 import 'team_config.dart';
@@ -133,9 +134,7 @@ class SkillDependencyRef {
     if (packId != null && packId!.isNotEmpty) 'packId': packId,
     if (scriptUrl != null && scriptUrl!.isNotEmpty) 'scriptUrl': scriptUrl,
     if (install != null && install!.isNotEmpty)
-      'install': [
-        for (final step in install!) _depInstallToJson(step),
-      ],
+      'install': [for (final step in install!) _depInstallToJson(step)],
   };
 
   @override
@@ -211,7 +210,6 @@ Map<String, Object?> _depInstallToJson(SkillPackInstruction step) {
     },
   };
 }
-
 
 /// Source descriptor for a plugin dependency (resolved at clone time).
 @immutable
@@ -446,6 +444,7 @@ class DiscoverableTeam {
     this.skillDeps = const [],
     this.pluginDeps = const [],
     this.mcpDeps = const [],
+    this.metrics = const CatalogMetrics(),
   }) : _cli = cli,
        _teamMode = teamMode;
 
@@ -477,6 +476,7 @@ class DiscoverableTeam {
   final List<SkillDependencyRef> skillDeps;
   final List<PluginDependencyRef> pluginDeps;
   final List<McpDependencyRef> mcpDeps;
+  final CatalogMetrics metrics;
 
   factory DiscoverableTeam.fromJson(Map<String, Object?> json) {
     List<T> list<T>(Object? raw, T Function(Map<String, Object?>) f) =>
@@ -500,6 +500,7 @@ class DiscoverableTeam {
       skillDeps: list(json['skillDeps'], SkillDependencyRef.fromJson),
       pluginDeps: list(json['pluginDeps'], PluginDependencyRef.fromJson),
       mcpDeps: list(json['mcpDeps'], McpDependencyRef.fromJson),
+      metrics: _catalogMetricsFromJson(json['metrics']),
     );
   }
 
@@ -510,13 +511,14 @@ class DiscoverableTeam {
     'category': category,
     if (author != null) 'author': author,
     'updatedAt': updatedAt,
-    if (_cli != null) 'cli': _cli!.value,
-    if (_teamMode != null) 'teamMode': _teamMode!.value,
+    if (_cli != null) 'cli': _cli.value,
+    if (_teamMode != null) 'teamMode': _teamMode.value,
     if (extraArgs.isNotEmpty) 'extraArgs': extraArgs,
     'roster': roster.map((s) => s.toJson()).toList(),
     'skillDeps': skillDeps.map((d) => d.toJson()).toList(),
     'pluginDeps': pluginDeps.map((d) => d.toJson()).toList(),
     'mcpDeps': mcpDeps.map((d) => d.toJson()).toList(),
+    if (_hasCatalogMetrics(metrics)) 'metrics': _catalogMetricsToJson(metrics),
   };
 
   @override
@@ -534,7 +536,8 @@ class DiscoverableTeam {
       listEquals(roster, other.roster) &&
       listEquals(skillDeps, other.skillDeps) &&
       listEquals(pluginDeps, other.pluginDeps) &&
-      listEquals(mcpDeps, other.mcpDeps);
+      listEquals(mcpDeps, other.mcpDeps) &&
+      _catalogMetricsEquals(metrics, other.metrics);
 
   @override
   int get hashCode => Object.hash(
@@ -551,5 +554,48 @@ class DiscoverableTeam {
     Object.hashAll(skillDeps),
     Object.hashAll(pluginDeps),
     Object.hashAll(mcpDeps),
+    _catalogMetricsHash(metrics),
   );
 }
+
+CatalogMetrics _catalogMetricsFromJson(Object? raw) {
+  if (raw is! Map) return const CatalogMetrics();
+  final json = raw.cast<String, Object?>();
+  return CatalogMetrics(
+    adoptionCount: (json['adoptionCount'] as num?)?.toInt(),
+    rating: (json['rating'] as num?)?.toDouble(),
+    ratingCount: (json['ratingCount'] as num?)?.toInt(),
+    updatedAtMs: (json['updatedAtMs'] as num?)?.toInt(),
+    publishedAtMs: (json['publishedAtMs'] as num?)?.toInt(),
+  );
+}
+
+Map<String, Object?> _catalogMetricsToJson(CatalogMetrics metrics) => {
+  if (metrics.adoptionCount != null) 'adoptionCount': metrics.adoptionCount,
+  if (metrics.rating != null) 'rating': metrics.rating,
+  if (metrics.ratingCount != null) 'ratingCount': metrics.ratingCount,
+  if (metrics.updatedAtMs != null) 'updatedAtMs': metrics.updatedAtMs,
+  if (metrics.publishedAtMs != null) 'publishedAtMs': metrics.publishedAtMs,
+};
+
+bool _hasCatalogMetrics(CatalogMetrics metrics) =>
+    metrics.adoptionCount != null ||
+    metrics.rating != null ||
+    metrics.ratingCount != null ||
+    metrics.updatedAtMs != null ||
+    metrics.publishedAtMs != null;
+
+bool _catalogMetricsEquals(CatalogMetrics a, CatalogMetrics b) =>
+    a.adoptionCount == b.adoptionCount &&
+    a.rating == b.rating &&
+    a.ratingCount == b.ratingCount &&
+    a.updatedAtMs == b.updatedAtMs &&
+    a.publishedAtMs == b.publishedAtMs;
+
+int _catalogMetricsHash(CatalogMetrics metrics) => Object.hash(
+  metrics.adoptionCount,
+  metrics.rating,
+  metrics.ratingCount,
+  metrics.updatedAtMs,
+  metrics.publishedAtMs,
+);

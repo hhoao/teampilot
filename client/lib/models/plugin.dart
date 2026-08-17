@@ -1,4 +1,5 @@
 import 'plugin_external_source.dart';
+import 'catalog/catalog_types.dart';
 
 class Plugin {
   const Plugin({
@@ -310,6 +311,7 @@ class PluginMarketplace {
     this.branch = 'main',
     this.enabled = true,
     this.displayName,
+    this.metrics = const CatalogMetrics(),
   });
 
   final String owner;
@@ -317,6 +319,7 @@ class PluginMarketplace {
   final String branch;
   final bool enabled;
   final String? displayName;
+  final CatalogMetrics metrics;
 
   String get fullName => '$owner/$name';
   String get githubUrl => 'https://github.com/$owner/$name';
@@ -327,6 +330,7 @@ class PluginMarketplace {
     String? branch,
     bool? enabled,
     String? displayName,
+    CatalogMetrics? metrics,
     bool clearDisplayName = false,
   }) => PluginMarketplace(
     owner: owner ?? this.owner,
@@ -334,6 +338,7 @@ class PluginMarketplace {
     branch: branch ?? this.branch,
     enabled: enabled ?? this.enabled,
     displayName: clearDisplayName ? null : (displayName ?? this.displayName),
+    metrics: metrics ?? this.metrics,
   );
 
   Map<String, Object?> toJson() => {
@@ -342,6 +347,7 @@ class PluginMarketplace {
     'branch': branch,
     'enabled': enabled,
     'displayName': displayName,
+    if (_hasCatalogMetrics(metrics)) 'metrics': _catalogMetricsToJson(metrics),
   };
 
   factory PluginMarketplace.fromJson(Map<String, Object?> json) =>
@@ -351,6 +357,7 @@ class PluginMarketplace {
         branch: json['branch'] as String? ?? 'main',
         enabled: json['enabled'] as bool? ?? true,
         displayName: json['displayName'] as String?,
+        metrics: _catalogMetricsFromJson(json['metrics']),
       );
 
   @override
@@ -362,10 +369,18 @@ class PluginMarketplace {
           name == other.name &&
           branch == other.branch &&
           enabled == other.enabled &&
-          displayName == other.displayName;
+          displayName == other.displayName &&
+          _catalogMetricsEquals(metrics, other.metrics);
 
   @override
-  int get hashCode => Object.hash(owner, name, branch, enabled, displayName);
+  int get hashCode => Object.hash(
+    owner,
+    name,
+    branch,
+    enabled,
+    displayName,
+    _catalogMetricsHash(metrics),
+  );
 }
 
 class DiscoverablePlugin {
@@ -383,6 +398,7 @@ class DiscoverablePlugin {
     this.externalSource,
     this.categories = const [],
     this.keywords = const [],
+    this.metrics = const CatalogMetrics(),
   });
 
   final String key;
@@ -404,6 +420,7 @@ class DiscoverablePlugin {
   final PluginExternalSource? externalSource;
   final List<String> categories;
   final List<String> keywords;
+  final CatalogMetrics metrics;
 
   String get marketplaceFullName => '$marketplaceOwner/$marketplaceName';
 
@@ -439,6 +456,7 @@ class DiscoverablePlugin {
       'externalSourceCloneUrl': externalSource!.cloneUrl,
     'categories': categories,
     'keywords': keywords,
+    if (_hasCatalogMetrics(metrics)) 'metrics': _catalogMetricsToJson(metrics),
   };
 
   factory DiscoverablePlugin.fromJson(Map<String, Object?> json) =>
@@ -459,6 +477,7 @@ class DiscoverablePlugin {
         keywords: (json['keywords'] as List? ?? const [])
             .whereType<String>()
             .toList(),
+        metrics: _catalogMetricsFromJson(json['metrics']),
       );
 
   DiscoverablePlugin copyWith({
@@ -475,6 +494,7 @@ class DiscoverablePlugin {
     PluginExternalSource? externalSource,
     List<String>? categories,
     List<String>? keywords,
+    CatalogMetrics? metrics,
     bool clearReadmeUrl = false,
     bool clearExternalSource = false,
   }) => DiscoverablePlugin(
@@ -493,6 +513,7 @@ class DiscoverablePlugin {
         : (externalSource ?? this.externalSource),
     categories: categories ?? this.categories,
     keywords: keywords ?? this.keywords,
+    metrics: metrics ?? this.metrics,
   );
 
   @override
@@ -512,7 +533,8 @@ class DiscoverablePlugin {
           localInstall == other.localInstall &&
           externalSource == other.externalSource &&
           _listEq(categories, other.categories) &&
-          _listEq(keywords, other.keywords);
+          _listEq(keywords, other.keywords) &&
+          _catalogMetricsEquals(metrics, other.metrics);
 
   @override
   int get hashCode => Object.hash(
@@ -529,8 +551,51 @@ class DiscoverablePlugin {
     externalSource,
     Object.hashAll(categories),
     Object.hashAll(keywords),
+    _catalogMetricsHash(metrics),
   );
 }
+
+CatalogMetrics _catalogMetricsFromJson(Object? raw) {
+  if (raw is! Map) return const CatalogMetrics();
+  final json = raw.cast<String, Object?>();
+  return CatalogMetrics(
+    adoptionCount: (json['adoptionCount'] as num?)?.toInt(),
+    rating: (json['rating'] as num?)?.toDouble(),
+    ratingCount: (json['ratingCount'] as num?)?.toInt(),
+    updatedAtMs: (json['updatedAtMs'] as num?)?.toInt(),
+    publishedAtMs: (json['publishedAtMs'] as num?)?.toInt(),
+  );
+}
+
+Map<String, Object?> _catalogMetricsToJson(CatalogMetrics metrics) => {
+  if (metrics.adoptionCount != null) 'adoptionCount': metrics.adoptionCount,
+  if (metrics.rating != null) 'rating': metrics.rating,
+  if (metrics.ratingCount != null) 'ratingCount': metrics.ratingCount,
+  if (metrics.updatedAtMs != null) 'updatedAtMs': metrics.updatedAtMs,
+  if (metrics.publishedAtMs != null) 'publishedAtMs': metrics.publishedAtMs,
+};
+
+bool _hasCatalogMetrics(CatalogMetrics metrics) =>
+    metrics.adoptionCount != null ||
+    metrics.rating != null ||
+    metrics.ratingCount != null ||
+    metrics.updatedAtMs != null ||
+    metrics.publishedAtMs != null;
+
+bool _catalogMetricsEquals(CatalogMetrics a, CatalogMetrics b) =>
+    a.adoptionCount == b.adoptionCount &&
+    a.rating == b.rating &&
+    a.ratingCount == b.ratingCount &&
+    a.updatedAtMs == b.updatedAtMs &&
+    a.publishedAtMs == b.publishedAtMs;
+
+int _catalogMetricsHash(CatalogMetrics metrics) => Object.hash(
+  metrics.adoptionCount,
+  metrics.rating,
+  metrics.ratingCount,
+  metrics.updatedAtMs,
+  metrics.publishedAtMs,
+);
 
 class PluginUpdateInfo {
   const PluginUpdateInfo({

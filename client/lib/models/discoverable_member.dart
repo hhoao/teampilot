@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import 'catalog/catalog_types.dart';
 import 'discoverable_team.dart';
 import 'team_config.dart';
 
@@ -62,11 +63,13 @@ class DiscoverableMemberLocaleText {
       name: pick('name'),
       description: pick('description'),
       category: pick('category'),
-      responsibilities: pick('responsibilities') ??
+      responsibilities:
+          pick('responsibilities') ??
           (nestedResponsibilities == null || nestedResponsibilities.isEmpty
               ? null
               : nestedResponsibilities),
-      playbook: pick('playbook') ??
+      playbook:
+          pick('playbook') ??
           (nestedPlaybook == null || nestedPlaybook.isEmpty
               ? null
               : nestedPlaybook),
@@ -117,6 +120,7 @@ class DiscoverableMember {
     this.originTeamKey,
     this.clonedAt,
     this.i18n = const {},
+    this.metrics = const CatalogMetrics(),
   });
 
   /// Unique discovery key: `owner/name/slug`, `local/{uuid}`, or `{teamKey}#{slug}`.
@@ -140,6 +144,7 @@ class DiscoverableMember {
   /// Locale overlays keyed by language code (`zh`, `ja`, …). Root fields are
   /// the default / fallback language (typically English).
   final Map<String, DiscoverableMemberLocaleText> i18n;
+  final CatalogMetrics metrics;
 
   factory DiscoverableMember.fromJson(Map<String, Object?> json) {
     List<T> list<T>(Object? raw, T Function(Map<String, Object?>) f) =>
@@ -182,6 +187,7 @@ class DiscoverableMember {
       originTeamKey: json['originTeamKey'] as String?,
       clonedAt: (json['clonedAt'] as num?)?.toInt(),
       i18n: i18n,
+      metrics: _catalogMetricsFromJson(json['metrics']),
     );
   }
 
@@ -194,7 +200,8 @@ class DiscoverableMember {
     if (updatedAt != 0) 'updatedAt': updatedAt,
     if (tags.isNotEmpty) 'tags': tags.toList(),
     'member': member.toJson(),
-    if (skillDeps.isNotEmpty) 'skillDeps': skillDeps.map((d) => d.toJson()).toList(),
+    if (skillDeps.isNotEmpty)
+      'skillDeps': skillDeps.map((d) => d.toJson()).toList(),
     if (pluginDeps.isNotEmpty)
       'pluginDeps': pluginDeps.map((d) => d.toJson()).toList(),
     if (mcpDeps.isNotEmpty) 'mcpDeps': mcpDeps.map((d) => d.toJson()).toList(),
@@ -203,9 +210,8 @@ class DiscoverableMember {
       'originTeamKey': originTeamKey,
     if (clonedAt != null && clonedAt! > 0) 'clonedAt': clonedAt,
     if (i18n.isNotEmpty)
-      'i18n': {
-        for (final e in i18n.entries) e.key: e.value.toJson(),
-      },
+      'i18n': {for (final e in i18n.entries) e.key: e.value.toJson()},
+    if (_hasCatalogMetrics(metrics)) 'metrics': _catalogMetricsToJson(metrics),
   };
 
   /// Returns a copy with display fields overlaid for [languageCode]
@@ -241,6 +247,7 @@ class DiscoverableMember {
       originTeamKey: originTeamKey,
       clonedAt: clonedAt,
       i18n: i18n,
+      metrics: metrics,
     );
   }
 
@@ -260,6 +267,7 @@ class DiscoverableMember {
     String? originTeamKey,
     int? clonedAt,
     Map<String, DiscoverableMemberLocaleText>? i18n,
+    CatalogMetrics? metrics,
   }) {
     return DiscoverableMember(
       key: key ?? this.key,
@@ -277,6 +285,7 @@ class DiscoverableMember {
       originTeamKey: originTeamKey ?? this.originTeamKey,
       clonedAt: clonedAt ?? this.clonedAt,
       i18n: i18n ?? this.i18n,
+      metrics: metrics ?? this.metrics,
     );
   }
 
@@ -293,10 +302,7 @@ class DiscoverableMember {
     final base = member.toMemberConfig(joinedAt: joinedAt);
     final displayName = name.trim().isNotEmpty ? name.trim() : base.name;
     if (idOverride == null && displayName == base.name) return base;
-    return base.copyWith(
-      id: idOverride ?? base.id,
-      name: displayName,
-    );
+    return base.copyWith(id: idOverride ?? base.id, name: displayName);
   }
 
   @override
@@ -316,7 +322,8 @@ class DiscoverableMember {
       source == other.source &&
       originTeamKey == other.originTeamKey &&
       clonedAt == other.clonedAt &&
-      mapEquals(i18n, other.i18n);
+      mapEquals(i18n, other.i18n) &&
+      _catalogMetricsEquals(metrics, other.metrics);
 
   @override
   int get hashCode => Object.hash(
@@ -335,5 +342,48 @@ class DiscoverableMember {
     originTeamKey,
     clonedAt,
     Object.hashAll(i18n.entries.map((e) => Object.hash(e.key, e.value))),
+    _catalogMetricsHash(metrics),
   );
 }
+
+CatalogMetrics _catalogMetricsFromJson(Object? raw) {
+  if (raw is! Map) return const CatalogMetrics();
+  final json = raw.cast<String, Object?>();
+  return CatalogMetrics(
+    adoptionCount: (json['adoptionCount'] as num?)?.toInt(),
+    rating: (json['rating'] as num?)?.toDouble(),
+    ratingCount: (json['ratingCount'] as num?)?.toInt(),
+    updatedAtMs: (json['updatedAtMs'] as num?)?.toInt(),
+    publishedAtMs: (json['publishedAtMs'] as num?)?.toInt(),
+  );
+}
+
+Map<String, Object?> _catalogMetricsToJson(CatalogMetrics metrics) => {
+  if (metrics.adoptionCount != null) 'adoptionCount': metrics.adoptionCount,
+  if (metrics.rating != null) 'rating': metrics.rating,
+  if (metrics.ratingCount != null) 'ratingCount': metrics.ratingCount,
+  if (metrics.updatedAtMs != null) 'updatedAtMs': metrics.updatedAtMs,
+  if (metrics.publishedAtMs != null) 'publishedAtMs': metrics.publishedAtMs,
+};
+
+bool _hasCatalogMetrics(CatalogMetrics metrics) =>
+    metrics.adoptionCount != null ||
+    metrics.rating != null ||
+    metrics.ratingCount != null ||
+    metrics.updatedAtMs != null ||
+    metrics.publishedAtMs != null;
+
+bool _catalogMetricsEquals(CatalogMetrics a, CatalogMetrics b) =>
+    a.adoptionCount == b.adoptionCount &&
+    a.rating == b.rating &&
+    a.ratingCount == b.ratingCount &&
+    a.updatedAtMs == b.updatedAtMs &&
+    a.publishedAtMs == b.publishedAtMs;
+
+int _catalogMetricsHash(CatalogMetrics metrics) => Object.hash(
+  metrics.adoptionCount,
+  metrics.rating,
+  metrics.ratingCount,
+  metrics.updatedAtMs,
+  metrics.publishedAtMs,
+);
