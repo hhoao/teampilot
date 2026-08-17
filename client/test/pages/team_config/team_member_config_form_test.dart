@@ -11,6 +11,7 @@ import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/discoverable_member.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/team_roster_slot.dart';
+import 'package:teampilot/models/launch_security_policy.dart';
 import 'package:teampilot/pages/team_config/team_config_member_section.dart';
 import 'package:teampilot/repositories/cli_presets_repository.dart';
 import 'package:teampilot/repositories/session_repository.dart';
@@ -118,7 +119,7 @@ void main() {
               roster: [
                 TeamRosterSlot(
                   id: TeamMemberNaming.teamLeadName,
-                  expertKey: '',
+                  expertKey: 'teampilot/builtin/team-lead',
                 ),
               ],
               members: [
@@ -281,4 +282,72 @@ void main() {
     expect(find.byIcon(Icons.more_vert), findsNothing);
     expect(find.text('Save as template'), findsNothing);
   });
+
+  testWidgets(
+    'turning off the member permission switch preserves an intermediate policy',
+    (tester) async {
+      const intermediate = LaunchSecurityPolicy(
+        approval: LaunchApprovalPolicy.ask,
+        sandbox: LaunchSandboxPolicy.readOnly,
+        hookTrust: LaunchHookTrustPolicy.trustedOnly,
+      );
+      final launchCubit = LaunchProfileCubit(
+        repository: testLaunchProfileRepository(
+          Directory.systemTemp.createTempSync('member_form_policy_switch_'),
+        ),
+        sessionRepository: SessionRepository(),
+        executableResolver: () => 'claude',
+      );
+      addTearDown(launchCubit.close);
+      launchCubit.applyState(
+        const LaunchProfileState(
+          isLoading: false,
+          identities: [
+            TeamProfile(
+              id: 'team-1',
+              name: 'Team',
+              cli: CliTool.claude,
+              roster: [
+                TeamRosterSlot(
+                  id: TeamMemberNaming.teamLeadName,
+                  expertKey: '',
+                ),
+              ],
+              members: [
+                TeamMemberConfig(
+                  id: TeamMemberNaming.teamLeadName,
+                  name: 'Lead',
+                  launchSecurityPolicy: intermediate,
+                ),
+              ],
+            ),
+          ],
+          selectedTeamId: 'team-1',
+        ),
+      );
+
+      await _pumpMemberForm(tester, launchCubit: launchCubit);
+
+      expect(
+        launchCubit.state.selectedTeam?.members.single.launchSecurityPolicy,
+        intermediate,
+      );
+      final permissionSwitch = tester.widget<Switch>(find.byType(Switch));
+      expect(permissionSwitch.value, isFalse);
+      permissionSwitch.onChanged!(false);
+      await tester.pumpAndSettle();
+
+      expect(
+        launchCubit
+            .state
+            .selectedTeam
+            ?.roster
+            .single
+            .overrides
+            .launchSecurityPolicy
+            ?.toJson(),
+        intermediate.toJson(),
+      );
+    },
+  );
 }

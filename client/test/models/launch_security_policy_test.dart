@@ -93,4 +93,38 @@ void main() {
       ),
     );
   });
+
+  test('override copyWith updates one dimension and preserves the others', () {
+    const override = LaunchSecurityPolicyOverride(
+      approval: LaunchApprovalPolicy.ask,
+      sandbox: LaunchSandboxPolicy.workspaceWrite,
+      hookTrust: LaunchHookTrustPolicy.trustedOnly,
+    );
+
+    expect(
+      override.copyWith(approval: LaunchApprovalPolicy.autoApprove),
+      const LaunchSecurityPolicyOverride(
+        approval: LaunchApprovalPolicy.autoApprove,
+        sandbox: LaunchSandboxPolicy.workspaceWrite,
+        hookTrust: LaunchHookTrustPolicy.trustedOnly,
+      ),
+    );
+    expect(override.copyWith(), equals(override));
+  });
+
+  test('override copyWith can clear one dimension without clearing others', () {
+    const override = LaunchSecurityPolicyOverride(
+      approval: LaunchApprovalPolicy.ask,
+      sandbox: LaunchSandboxPolicy.workspaceWrite,
+      hookTrust: LaunchHookTrustPolicy.trustedOnly,
+    );
+
+    expect(
+      override.copyWith(approval: null),
+      const LaunchSecurityPolicyOverride(
+        sandbox: LaunchSandboxPolicy.workspaceWrite,
+        hookTrust: LaunchHookTrustPolicy.trustedOnly,
+      ),
+    );
+  });
 }

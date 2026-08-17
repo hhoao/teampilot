@@ -244,6 +244,18 @@ class _LandingTeamSettingsDialogState
   void _updateMember(TeamMemberConfig updated) {
     setState(() {
       _teamDraft = _teamDraft.copyWith(
+        roster: [
+          for (final slot in _teamDraft.roster)
+            if (slot.id == updated.id)
+              slot.copyWith(
+                overrides: slot.overrides.copyWith(
+                  launchSecurityPolicy: updated.launchSecurityPolicy,
+                  updateLaunchSecurityPolicy: true,
+                ),
+              )
+            else
+              slot,
+        ],
         members: [
           for (final member in _teamDraft.members)
             if (member.id == updated.id) updated else member,
@@ -885,7 +897,10 @@ class _MemberRow extends StatelessWidget {
                     member.copyWith(
                       launchSecurityPolicy: value
                           ? LaunchSecurityPolicy.fullAccess
-                          : const LaunchSecurityPolicy(),
+                          : member.launchSecurityPolicy ==
+                                LaunchSecurityPolicy.fullAccess
+                          ? const LaunchSecurityPolicy()
+                          : member.launchSecurityPolicy,
                     ),
                   ),
                 ),

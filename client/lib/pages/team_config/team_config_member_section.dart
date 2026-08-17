@@ -535,7 +535,9 @@ class _MemberSkipPermissionsSwitch extends StatelessWidget {
             member.copyWith(
               launchSecurityPolicy: v
                   ? LaunchSecurityPolicy.fullAccess
-                  : const LaunchSecurityPolicy(),
+                  : policy == LaunchSecurityPolicy.fullAccess
+                  ? const LaunchSecurityPolicy()
+                  : policy,
             ),
           );
         },

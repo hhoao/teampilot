@@ -146,6 +146,30 @@ class LaunchSecurityPolicyOverride {
   final LaunchSandboxPolicy? sandbox;
   final LaunchHookTrustPolicy? hookTrust;
 
+  static const Object _unset = Object();
+
+  /// Updates selected dimensions while preserving omitted fields.
+  ///
+  /// Passing `null` explicitly clears a dimension; omitting it leaves the
+  /// current override in place.
+  LaunchSecurityPolicyOverride copyWith({
+    Object? approval = _unset,
+    Object? sandbox = _unset,
+    Object? hookTrust = _unset,
+  }) {
+    return LaunchSecurityPolicyOverride(
+      approval: approval == _unset
+          ? this.approval
+          : approval as LaunchApprovalPolicy?,
+      sandbox: sandbox == _unset
+          ? this.sandbox
+          : sandbox as LaunchSandboxPolicy?,
+      hookTrust: hookTrust == _unset
+          ? this.hookTrust
+          : hookTrust as LaunchHookTrustPolicy?,
+    );
+  }
+
   bool get requiresDangerousExecution =>
       approval == LaunchApprovalPolicy.never &&
       sandbox == LaunchSandboxPolicy.fullAccess &&
