@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/team_hub_cubit.dart';
+import 'package:teampilot/models/catalog/catalog_types.dart';
 import 'package:teampilot/models/discoverable_team.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/team/team_clone_service.dart';
@@ -73,8 +74,10 @@ void main() {
     expect(cubit.visibleTeams.map((t) => t.name), ['Alpha']);
   });
 
-  test('sort by name (default) and by time', () async {
+  test('sort by name and by time', () async {
     await cubit.load();
+    expect(cubit.state.sort, CatalogSortKey.adoption);
+    cubit.setSort(TeamSort.name);
     expect(cubit.visibleTeams.map((t) => t.name), ['Alpha', 'Beta', 'Gamma']);
     cubit.setSort(TeamSort.updated);
     expect(cubit.visibleTeams.map((t) => t.name), ['Beta', 'Gamma', 'Alpha']);

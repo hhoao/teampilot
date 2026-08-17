@@ -6,6 +6,10 @@ import 'package:teampilot/services/preview/html_preview_server.dart';
 
 import '../../support/in_memory_filesystem.dart';
 
+/// Hit loopback directly. Default [HttpClient] honors `http_proxy`, which
+/// turns a closed origin into a slow 502 instead of [SocketException].
+HttpClient directClient() => HttpClient()..findProxy = (_) => 'DIRECT';
+
 void main() {
   setUpAll(() {
     HttpOverrides.global = null;
@@ -37,7 +41,7 @@ void main() {
   test('mount serves entry file with html mime', () async {
     final mount = await server.mount(htmlDirectory: '/repo', entryFileName: 'index.html');
     expect(mount, isNotNull);
-    final client = HttpClient();
+    final client = directClient();
     try {
       final res = await client.getUrl(mount!.entryUri);
       final response = await res.close();
@@ -51,7 +55,7 @@ void main() {
 
   test('serves relative subresources', () async {
     final mount = await server.mount(htmlDirectory: '/repo', entryFileName: 'index.html');
-    final client = HttpClient();
+    final client = directClient();
     try {
       final css = await client.getUrl(mount!.entryUri.resolve('style.css'));
       final cssRes = await css.close();
@@ -69,7 +73,7 @@ void main() {
   test('rejects path traversal outside mount root', () async {
     await fs.writeString('/secret.txt', 'top secret');
     final mount = await server.mount(htmlDirectory: '/repo', entryFileName: 'index.html');
-    final client = HttpClient();
+    final client = directClient();
     try {
       final base = mount!.entryUri;
       for (final attempt in [
@@ -88,7 +92,7 @@ void main() {
 
   test('rejects unknown extensions (deny by default)', () async {
     final mount = await server.mount(htmlDirectory: '/repo', entryFileName: 'index.html');
-    final client = HttpClient();
+    final client = directClient();
     try {
       final res = await client.getUrl(mount!.entryUri.resolve('secret.key'));
       final response = await res.close();
@@ -100,7 +104,7 @@ void main() {
 
   test('missing file is 404', () async {
     final mount = await server.mount(htmlDirectory: '/repo', entryFileName: 'index.html');
-    final client = HttpClient();
+    final client = directClient();
     try {
       final res = await client.getUrl(mount!.entryUri.resolve('nope.html'));
       final response = await res.close();
@@ -129,7 +133,7 @@ void main() {
     final second = await server.mount(htmlDirectory: '/repo', entryFileName: 'index.html');
     expect(server.port, isNotNull);
     expect(second!.mountId, isNot(first.mountId));
-    final client = HttpClient();
+    final client = directClient();
     try {
       final res = await client.getUrl(second.entryUri);
       expect((await res.close()).statusCode, 200);
@@ -140,24 +144,32 @@ void main() {
 
   test('unmounting the last mount closes the server (no longer serving)', () async {
     final mount = await server.mount(htmlDirectory: '/repo', entryFileName: 'index.html');
-    final client = HttpClient();
+    expect(mount, isNotNull);
+    final live = mount!;
+    final client = directClient();
     try {
-      final ok = await client.getUrl(mount!.entryUri);
+      final ok = await client.getUrl(live.entryUri);
       expect((await ok.close()).statusCode, 200);
-      await server.unmount(mount.mountId);
-      expect(server.port, isNull);
-      // Loopback socket is gone: dart:io surfaces the refused connection as 502.
-      final gone = await client.getUrl(mount.entryUri);
-      expect((await gone.close()).statusCode, 502);
     } finally {
-      client.close();
+      client.close(force: true);
+    }
+    await server.unmount(live.mountId);
+    expect(server.port, isNull);
+    final probe = directClient();
+    try {
+      await expectLater(
+        probe.getUrl(live.entryUri),
+        throwsA(isA<SocketException>()),
+      );
+    } finally {
+      probe.close(force: true);
     }
   });
 
   test('reads through injected filesystem (ssh-equivalent)', () async {
     final mount = await server.mount(htmlDirectory: '/repo', entryFileName: 'index.html');
     await fs.writeString('/repo/index.html', 'updated');
-    final client = HttpClient();
+    final client = directClient();
     try {
       final res = await client.getUrl(mount!.entryUri);
       final response = await res.close();

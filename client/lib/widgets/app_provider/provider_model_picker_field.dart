@@ -51,6 +51,7 @@ class ProviderModelPickerField extends StatefulWidget {
 
 class _ProviderModelPickerFieldState extends State<ProviderModelPickerField> {
   RefreshableProviderModelCapability? _refreshableCapability;
+  bool _catalogLoading = false;
 
   @override
   void initState() {
@@ -95,15 +96,23 @@ class _ProviderModelPickerFieldState extends State<ProviderModelPickerField> {
 
     _refreshableCapability = capability;
     capability.catalogUpdates.addListener(_onCatalogUpdated);
-    final executable = context
-        .read<SessionPreferencesCubit>()
-        .resolveExecutable(widget.cli);
-    capability.refreshModelCatalog(
-      providerId: widget.providerId,
-      provider: widget.provider,
-      executable: executable,
-      forceRefresh: forceRefresh,
-    );
+    SessionPreferencesCubit? prefs;
+    try {
+      prefs = context.read<SessionPreferencesCubit>();
+    } on ProviderNotFoundException {
+      prefs = null;
+    }
+    setState(() => _catalogLoading = true);
+    capability
+        .refreshModelCatalog(
+          providerId: widget.providerId,
+          provider: widget.provider,
+          executable: prefs?.resolveExecutable(widget.cli),
+          forceRefresh: forceRefresh,
+        )
+        .whenComplete(() {
+          if (mounted) setState(() => _catalogLoading = false);
+        });
   }
 
   void _detachCatalogRefresh() {
@@ -136,8 +145,7 @@ class _ProviderModelPickerFieldState extends State<ProviderModelPickerField> {
     );
     final deco = widget.decoration ?? TpSelectDecorations.themed(context);
     final hint = widget.hintText ?? context.l10n.selectModel;
-    final isLoading =
-        capability is RefreshableProviderModelCapability && candidates.isEmpty;
+    final isLoading = _catalogLoading && candidates.isEmpty;
 
     Widget picker = switch (mode) {
       ProviderModelPickerMode.catalogDropdown => TpSelect<String>(

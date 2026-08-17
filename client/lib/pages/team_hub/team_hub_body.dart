@@ -170,7 +170,7 @@ class TeamHubBody extends StatelessWidget {
       padding: EdgeInsets.fromLTRB(inset, 4, inset, 24),
       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
         maxCrossAxisExtent: 380,
-        mainAxisExtent: 300,
+        mainAxisExtent: 420,
         crossAxisSpacing: 14,
         mainAxisSpacing: 14,
       ),

@@ -223,7 +223,7 @@ class _ExpertHubBodyState extends State<ExpertHubBody> {
       padding: EdgeInsets.fromLTRB(widget.inset, 4, widget.inset, 24),
       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
         maxCrossAxisExtent: 380,
-        mainAxisExtent: 300,
+        mainAxisExtent: 420,
         crossAxisSpacing: 14,
         mainAxisSpacing: 14,
       ),

@@ -420,9 +420,22 @@ base_url = "https://api.example.com/v1"
       expect(toml, contains('https://api.example.com/v1'));
       expect(toml, contains('[mcp_servers.teammate-bus]'));
       expect(toml, contains('http://127.0.0.1:59999/mcp'));
-      // Bus idle Stop hooks now render via the unified writer (http action).
+      // Bus idle Stop hooks render as command scripts (codex rejects type=http).
       expect(toml, contains('[[hooks.Stop]]'));
-      expect(toml, contains('http://127.0.0.1:59999/idle'));
+      expect(toml, contains('teampilot-http-teampilot-bus-idle-stop'));
+      final idleScripts = Directory(p.join(codexDir, 'hooks'))
+          .listSync()
+          .whereType<File>()
+          .where(
+            (f) => p
+                .basename(f.path)
+                .contains('teampilot-http-teampilot-bus-idle-stop'),
+          );
+      expect(idleScripts, isNotEmpty);
+      expect(
+        await idleScripts.first.readAsString(),
+        contains('http://127.0.0.1:59999/idle'),
+      );
     },
   );
 
