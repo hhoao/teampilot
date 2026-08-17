@@ -38,6 +38,8 @@ final class CliLaunchContext {
 
   String get teamName => sessionTeam ?? team.name.trim();
 
+  String get memberDisplayName => member.name.trim();
+
   /// CLI roster / `--agent-name` key ([TeamMemberConfig.id]).
   String get memberCliId => member.id.trim();
 

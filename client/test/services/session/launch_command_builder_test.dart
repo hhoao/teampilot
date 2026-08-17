@@ -71,6 +71,35 @@ void main() {
     );
   });
 
+  test('uses legacy adapters when the registered tool has no providers', () {
+    final registry = CliToolRegistry()
+      ..register(const _FakeLegacyTool(CliTool.flashskyai));
+
+    expect(
+      LaunchCommandBuilder.buildArguments(
+        const TeamProfile(
+          id: 'legacy-team',
+          name: 'legacy-team',
+          cli: CliTool.flashskyai,
+        ),
+        member,
+        cliRegistry: registry,
+      ),
+      [
+        '--team',
+        'legacy-team',
+        '--member',
+        'member-1',
+        '--provider',
+        'anthropic',
+        '--model',
+        'sonnet',
+        '--agent',
+        'builder',
+      ],
+    );
+  });
+
   test('omits --dir when workingDirectory is empty', () {
     const team = TeamProfile(id: '1', name: 'agent', cli: CliTool.flashskyai);
 
@@ -457,4 +486,17 @@ final class _FakeLaunchProvider implements CliLaunchArgProvider {
       args: ['--provider-only'],
     ),
   ];
+}
+
+final class _FakeLegacyTool implements CliToolDefinition {
+  const _FakeLegacyTool(this.id);
+
+  @override
+  final CliTool id;
+
+  @override
+  List<CliCapability> get capabilities => const [];
+
+  @override
+  bool get isLaunchSupported => true;
 }

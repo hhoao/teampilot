@@ -74,6 +74,16 @@ void main() {
     );
   });
 
+  test('memberDisplayName returns the trimmed display name', () {
+    expect(
+      const CliLaunchContext(
+        team: nativeTeam,
+        member: TeamMemberConfig(id: 'member-id', name: ' Display Name '),
+      ).memberDisplayName,
+      'Display Name',
+    );
+  });
+
   test('usesNativeAgentTeam derives from team mode and honors an override', () {
     expect(
       const CliLaunchContext(
