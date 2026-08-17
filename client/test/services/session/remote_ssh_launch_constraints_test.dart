@@ -73,6 +73,79 @@ void main() {
     });
   });
 
+  group('remoteSshInDockerContainer', () {
+    test(
+      'distinguishes confirmed container and non-container results',
+      () async {
+        final containerSession = SshMemberSession.testing(
+          profile: const SshProfile(
+            id: 'ssh-container',
+            name: 'SSH',
+            host: 'example.com',
+            username: 'root',
+          ),
+          client: _RootBareMetalClient(dockerExitCode: 0),
+        );
+        final nonContainerSession = SshMemberSession.testing(
+          profile: const SshProfile(
+            id: 'ssh-host',
+            name: 'SSH',
+            host: 'example.com',
+            username: 'root',
+          ),
+          client: _RootBareMetalClient(dockerExitCode: 1),
+        );
+        addTearDown(containerSession.close);
+        addTearDown(nonContainerSession.close);
+
+        expect(
+          await remoteSshInDockerContainer(memberSession: containerSession),
+          RemoteSshDockerStatus.confirmedContainer,
+        );
+        expect(
+          await remoteSshInDockerContainer(memberSession: nonContainerSession),
+          RemoteSshDockerStatus.confirmedNonContainer,
+        );
+      },
+    );
+
+    test('returns unknown when the Docker probe fails unexpectedly', () async {
+      final session = SshMemberSession.testing(
+        profile: const SshProfile(
+          id: 'ssh-unknown',
+          name: 'SSH',
+          host: 'example.com',
+          username: 'root',
+        ),
+        client: _RootBareMetalClient(dockerExitCode: 2),
+      );
+      addTearDown(session.close);
+
+      expect(
+        await remoteSshInDockerContainer(memberSession: session),
+        RemoteSshDockerStatus.unknown,
+      );
+    });
+
+    test('returns unknown when the Docker probe throws', () async {
+      final session = SshMemberSession.testing(
+        profile: const SshProfile(
+          id: 'ssh-error',
+          name: 'SSH',
+          host: 'example.com',
+          username: 'root',
+        ),
+        client: _RootBareMetalClient(throwOnDockerProbe: true),
+      );
+      addTearDown(session.close);
+
+      expect(
+        await remoteSshInDockerContainer(memberSession: session),
+        RemoteSshDockerStatus.unknown,
+      );
+    });
+  });
+
   group('resolveRemoteRootSecurityPolicy', () {
     test('unchanged when safe policy or non-root', () {
       expect(
@@ -305,6 +378,47 @@ void main() {
         );
       },
     );
+    test(
+      'Docker probe exception rejects dangerous root launch with typed error',
+      () async {
+        const member = TeamMemberConfig(
+          id: 'member',
+          name: 'Member',
+          launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
+        );
+        final session = SshMemberSession.testing(
+          profile: const SshProfile(
+            id: 'ssh-1',
+            name: 'SSH',
+            host: 'example.com',
+            username: 'root',
+          ),
+          client: _RootBareMetalClient(throwOnDockerProbe: true),
+        );
+        addTearDown(session.close);
+
+        await expectLater(
+          applyRemoteSshLaunchConstraints(
+            spec: ShellLaunchSpec.teamMember(
+              team: const TeamProfile(id: 'team', name: 'Team'),
+              member: member,
+            ),
+            memberTarget: RuntimeTarget.ssh('ssh-1', label: 'SSH'),
+            memberSession: session,
+            profile: session.profile,
+          ),
+          throwsA(
+            isA<CliLaunchCapabilityException>()
+                .having(
+                  (error) => error.contributionKey,
+                  'contributionKey',
+                  'remote-ssh-container-security',
+                )
+                .having((error) => error.reason, 'reason', contains('Docker')),
+          ),
+        );
+      },
+    );
   });
 }
 
@@ -313,11 +427,15 @@ class _RootBareMetalClient extends SSHClient {
     this.idExitCode = 0,
     this.idOutput = '0',
     this.throwOnIdProbe = false,
+    this.dockerExitCode = 1,
+    this.throwOnDockerProbe = false,
   }) : super(_FakeSSHSocket(), username: 'root');
 
   final int idExitCode;
   final String idOutput;
   final bool throwOnIdProbe;
+  final int dockerExitCode;
+  final bool throwOnDockerProbe;
 
   @override
   Future<void> get authenticated => Future.value();
@@ -333,12 +451,20 @@ class _RootBareMetalClient extends SSHClient {
     if (command == 'id -u' && throwOnIdProbe) {
       throw StateError('transport disconnected');
     }
+    if (command == 'test -f /.dockerenv' && throwOnDockerProbe) {
+      throw StateError('Docker probe transport disconnected');
+    }
     final output = command == 'id -u' ? idOutput : '';
+    final exitCode = switch (command) {
+      'id -u' => idExitCode,
+      'test -f /.dockerenv' => dockerExitCode,
+      _ => 1,
+    };
     return SSHRunResult(
       output: Uint8List.fromList(output.codeUnits),
       stdout: Uint8List.fromList(output.codeUnits),
       stderr: Uint8List(0),
-      exitCode: command == 'id -u' ? idExitCode : 1,
+      exitCode: exitCode,
       exitSignal: null,
     );
   }

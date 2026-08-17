@@ -60,6 +60,11 @@ class AutomationEditorLaunchSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final launchSecurityPolicyKey = [
+      launchSecurityPolicy.approval.name,
+      launchSecurityPolicy.sandbox.name,
+      launchSecurityPolicy.hookTrust.name,
+    ].join('-');
     final teams = context.watch<LaunchProfileCubit>().state.teams;
     final hubState = context.watch<ExpertHubCubit>().state;
     final team = teams.where((t) => t.id == teamId).firstOrNull;
@@ -248,7 +253,7 @@ class AutomationEditorLaunchSection extends StatelessWidget {
         ],
         const SizedBox(height: 12),
         TpFormField<LaunchSecurityPolicy>(
-          key: ValueKey('permissions-$launchSecurityPolicy'),
+          key: ValueKey('permissions-$launchSecurityPolicyKey'),
           id: 'launchSecurityPolicy',
           initialValue: launchSecurityPolicy,
           label: Text(l10n.automationsPermissions),

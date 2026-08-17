@@ -37,14 +37,29 @@ Future<SSHRunResult?> _runRemoteUidProbe(SshMemberSession memberSession) async {
   }
 }
 
-Future<bool> remoteSshInDockerContainer({
+enum RemoteSshDockerStatus {
+  confirmedContainer,
+  confirmedNonContainer,
+  unknown,
+}
+
+Future<RemoteSshDockerStatus> remoteSshInDockerContainer({
   required SshMemberSession memberSession,
 }) async {
-  final result = await memberSession.runWithResult(
-    'test -f /.dockerenv',
-    stderr: false,
-  );
-  return sshRunSucceeded(result);
+  try {
+    final result = await memberSession.runWithResult(
+      'test -f /.dockerenv',
+      stderr: false,
+    );
+    if (result.exitSignal != null) return RemoteSshDockerStatus.unknown;
+    return switch (result.exitCode) {
+      0 => RemoteSshDockerStatus.confirmedContainer,
+      1 => RemoteSshDockerStatus.confirmedNonContainer,
+      _ => RemoteSshDockerStatus.unknown,
+    };
+  } catch (_) {
+    return RemoteSshDockerStatus.unknown;
+  }
 }
 
 /// How to reconcile a dangerous security policy with Claude Code `setup.ts` on SSH.
@@ -104,9 +119,23 @@ Future<ShellLaunchSpec> applyRemoteSshLaunchConstraints({
           'confirmed non-root or sandboxed root environment.',
     );
   }
-  final remoteInDocker = runsAsRoot
+  final dockerStatus = runsAsRoot
       ? await remoteSshInDockerContainer(memberSession: memberSession)
-      : false;
+      : RemoteSshDockerStatus.confirmedNonContainer;
+  if (dockerStatus == RemoteSshDockerStatus.unknown) {
+    throw CliLaunchCapabilityException(
+      cli: spec.launchContext.team.cli,
+      contributionKey: 'remote-ssh-container-security',
+      reason:
+          'Unable to determine whether the remote SSH host is a Docker '
+          'container: '
+          'the test -f /.dockerenv probe failed or returned an unknown result '
+          'for a dangerous root launch. Refusing to launch without confirmed '
+          'container or non-container security context.',
+    );
+  }
+  final remoteInDocker =
+      dockerStatus == RemoteSshDockerStatus.confirmedContainer;
   final policy = resolveRemoteRootSecurityPolicy(
     securityPolicy: securityPolicy,
     runsAsRoot: runsAsRoot,

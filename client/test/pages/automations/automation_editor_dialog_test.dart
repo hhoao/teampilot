@@ -309,6 +309,49 @@ void main() {
     expect(find.text(l10n.hubPublishKindExpert), findsNothing);
   });
 
+  testWidgets('automation policy field key preserves intermediate dimensions', (
+    tester,
+  ) async {
+    final setup = testAutomationSetup();
+    final chatCubit = _chatCubitWithWorkspace();
+    final cliPresetsCubit = _cliPresetsCubitWithPreset();
+    final sessionPreferencesCubit = (await tester.runAsync(
+      testSessionPreferencesCubit,
+    ))!;
+    addTearDown(setup.cubit.close);
+    addTearDown(chatCubit.close);
+    addTearDown(cliPresetsCubit.close);
+    addTearDown(sessionPreferencesCubit.close);
+
+    const policy = LaunchSecurityPolicy(
+      approval: LaunchApprovalPolicy.ask,
+      sandbox: LaunchSandboxPolicy.readOnly,
+      hookTrust: LaunchHookTrustPolicy.trustedOnly,
+    );
+    await tester.pumpWidget(
+      _host(
+        cubit: setup.cubit,
+        chatCubit: chatCubit,
+        cliPresetsCubit: cliPresetsCubit,
+        sessionPreferencesCubit: sessionPreferencesCubit,
+        child: AutomationEditorDialog(
+          workspaceId: 'ws1',
+          initial: sampleAutomation(
+            id: 'intermediate-policy',
+            workspaceId: 'ws1',
+          ).copyWith(launchSecurityPolicy: policy),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(
+      find.byKey(const ValueKey('permissions-ask-readOnly-trustedOnly')),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('scheduled message editor pre-fills session defaults', (
     tester,
   ) async {
