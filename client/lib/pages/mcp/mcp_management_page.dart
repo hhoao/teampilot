@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
 import '../../widgets/app_toast/app_toast.dart';
 
+import '../../cubits/discovery_settings_cubit.dart';
 import '../../cubits/mcp_cubit.dart';
 import '../../cubits/mcp_discovery_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
@@ -84,7 +85,9 @@ class _McpManagementPageState extends State<McpManagementPage> {
   @override
   void initState() {
     super.initState();
-    _discoveryCubit = McpDiscoveryCubit();
+    _discoveryCubit = McpDiscoveryCubit(
+      discoverySettings: context.read<DiscoverySettingsCubit>(),
+    );
     _listingInstall = McpListingInstallService();
     context.read<McpCubit>().loadAll();
   }

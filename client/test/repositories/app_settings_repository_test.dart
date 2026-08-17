@@ -152,4 +152,36 @@ void main() {
     await repo.saveSkillsMpApiKey(null);
     expect(await repo.loadSkillsMpApiKey(), isNull);
   });
+
+  group('AppSettingsRepository.discoveryAutoRefresh', () {
+    test('defaults to disabled (opt-in) when nothing stored', () async {
+      final prefs = await SharedPreferences.getInstance();
+      final repo = SharedPrefsAppSettingsRepository(prefs);
+
+      expect(await repo.loadDiscoveryAutoRefreshEnabled(), isFalse);
+    });
+
+    test('round-trips enabled flag', () async {
+      final prefs = await SharedPreferences.getInstance();
+      final repo = SharedPrefsAppSettingsRepository(prefs);
+
+      await repo.saveDiscoveryAutoRefreshEnabled(true);
+      expect(await repo.loadDiscoveryAutoRefreshEnabled(), isTrue);
+
+      await repo.saveDiscoveryAutoRefreshEnabled(false);
+      expect(await repo.loadDiscoveryAutoRefreshEnabled(), isFalse);
+    });
+  });
+
+  test('InMemory discoveryAutoRefresh round trip and seed', () async {
+    final repo = InMemoryAppSettingsRepository();
+    expect(await repo.loadDiscoveryAutoRefreshEnabled(), isFalse);
+    await repo.saveDiscoveryAutoRefreshEnabled(true);
+    expect(await repo.loadDiscoveryAutoRefreshEnabled(), isTrue);
+
+    final seeded = InMemoryAppSettingsRepository(
+      discoveryAutoRefreshEnabled: true,
+    );
+    expect(await seeded.loadDiscoveryAutoRefreshEnabled(), isTrue);
+  });
 }

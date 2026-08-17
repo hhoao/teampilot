@@ -284,6 +284,12 @@ final appRouter = GoRouter(
               ),
             ),
             GoRoute(
+              path: '/config/discovery',
+              pageBuilder: (context, state) => const NoTransitionPage(
+                child: ConfigWorkspace(section: ConfigSection.discovery),
+              ),
+            ),
+            GoRoute(
               path: '/config/shortcuts',
               pageBuilder: (context, state) => const NoTransitionPage(
                 child: ConfigWorkspace(section: ConfigSection.shortcuts),

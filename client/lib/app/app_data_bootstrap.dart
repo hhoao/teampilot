@@ -4,6 +4,7 @@ import '../cubits/app_provider_cubit.dart';
 import '../cubits/ai_feature_settings_cubit.dart';
 import '../cubits/chat_cubit.dart';
 import '../cubits/cli_presets_cubit.dart';
+import '../cubits/discovery_settings_cubit.dart';
 import '../cubits/extension_cubit.dart';
 import '../cubits/launch_profile_cubit.dart';
 import '../cubits/layout_cubit.dart';
@@ -265,6 +266,7 @@ abstract final class AppDataBootstrap {
     required SshProfileCubit sshProfileCubit,
     required CliPresetsCubit cliPresetsCubit,
     required AiFeatureSettingsCubit aiFeatureSettingsCubit,
+    required DiscoverySettingsCubit discoverySettingsCubit,
     required HomeWorkspaceUiCache homeWorkspaceUiCache,
     required List<Workspace> workspaces,
   }) async {
@@ -280,6 +282,8 @@ abstract final class AppDataBootstrap {
     await _timed(boot, 'cliPresets', cliPresetsCubit.load);
     await yieldUiFrame();
     await _timed(boot, 'aiFeatureSettings', aiFeatureSettingsCubit.load);
+    await yieldUiFrame();
+    await _timed(boot, 'discoverySettings', discoverySettingsCubit.load);
     await yieldUiFrame();
     await _timed(boot, 'homeWorkspaceUi', homeWorkspaceUiCache.warm);
     await yieldUiFrame();

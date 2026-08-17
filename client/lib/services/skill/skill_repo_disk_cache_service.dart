@@ -209,6 +209,7 @@ class SkillRepoDiskCacheService {
     SkillRepo repo, {
     bool force = false,
     List<String> requiredRelativePaths = const [],
+    Duration? maxStaleness,
   }) {
     final key = RepoDiskSyncCoalescer.syncKey(_cacheRoot, repoKey(repo));
     return _coalescer.run(
@@ -217,6 +218,7 @@ class SkillRepoDiskCacheService {
         repo,
         force: force,
         requiredRelativePaths: requiredRelativePaths,
+        maxStaleness: maxStaleness,
       ),
     );
   }
@@ -225,6 +227,7 @@ class SkillRepoDiskCacheService {
     SkillRepo repo, {
     required bool force,
     required List<String> requiredRelativePaths,
+    Duration? maxStaleness,
   }) async {
     final key = repoKey(repo);
     final dirPath = _repoDirPath(repo);
@@ -237,6 +240,17 @@ class SkillRepoDiskCacheService {
           configuredBranch: repo.branch,
           requiredRelativePaths: requiredRelativePaths,
         );
+
+    if (maxStaleness != null && !force && trusted) {
+      final age = DateTime.now().millisecondsSinceEpoch - meta!.syncedAtMs;
+      if (age >= 0 && age < maxStaleness.inMilliseconds) {
+        return SkillRepoSyncResult(
+          skills: await readSkillsFromDisk(repo),
+          updated: false,
+          repoKey: key,
+        );
+      }
+    }
 
     if (!force && trusted) {
       final remoteSha = await _fetch.fetchBranchCommitSha(

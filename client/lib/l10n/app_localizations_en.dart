@@ -4246,6 +4246,20 @@ class AppLocalizationsEn extends AppLocalizations {
       'Configure mirrors for GitHub downloads (app updates, Termux APK)';
 
   @override
+  String get discoverySettingsTitle => 'Discovery & Marketplaces';
+
+  @override
+  String get discoverySettingsSubtitle =>
+      'How skills, plugins and MCP discovery content refreshes.';
+
+  @override
+  String get discoveryAutoRefreshTitle => 'Auto-refresh discovery content';
+
+  @override
+  String get discoveryAutoRefreshSubtitle =>
+      'When on, opening discovery pages checks for updates when the cache is older than 24 hours. Manual refresh always updates.';
+
+  @override
   String get downloadSourcesMirrorBaseUrl => 'Mirror base URL';
 
   @override

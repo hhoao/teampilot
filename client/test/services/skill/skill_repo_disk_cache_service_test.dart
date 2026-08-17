@@ -15,6 +15,7 @@ const _repo = SkillRepo(owner: 'acme', name: 'skills', branch: 'main');
 
 class _CountingFetch extends SkillFetchService {
   int downloads = 0;
+  int shaChecks = 0;
   String? remoteSha;
   String commitShaOnDownload = 'abc123';
 
@@ -23,7 +24,10 @@ class _CountingFetch extends SkillFetchService {
     String owner,
     String name,
     String branch,
-  ) async => remoteSha;
+  ) async {
+    shaChecks++;
+    return remoteSha;
+  }
 
   @override
   Future<({Map<String, Uint8List> entries, String branch, String commitSha})>
@@ -135,6 +139,86 @@ void main() {
 
     await cache.ensureSynced(_repo, requiredRelativePaths: const ['bin']);
 
+    expect(fetch.downloads, 1);
+  });
+
+  test('maxStaleness skips network when cache is fresh', () async {
+    final fs = AppStorage.fs;
+    await _plantSnapshot(commitSha: 'deadbeef');
+    final metaPath = fs.pathContext.join(
+      AppStorage.paths.skillRepoCacheDir,
+      SkillRepoDiskCacheService.repoKey(_repo),
+      'meta.json',
+    );
+    final meta = SkillRepoCacheMeta(
+      configuredBranch: 'main',
+      resolvedBranch: 'main',
+      commitSha: 'deadbeef',
+      syncedAtMs: DateTime.now().millisecondsSinceEpoch,
+    );
+    await fs.writeString(
+      metaPath,
+      const JsonEncoder.withIndent('  ').convert(meta.toJson()),
+    );
+
+    final fetch = _CountingFetch()..remoteSha = 'deadbeef';
+    final cache = SkillRepoDiskCacheService(fetch: fetch);
+
+    final result = await cache.ensureSynced(
+      _repo,
+      maxStaleness: const Duration(hours: 24),
+    );
+
+    expect(fetch.downloads, 0);
+    expect(fetch.shaChecks, 0);
+    expect(result.updated, isFalse);
+    expect(result.skills, isNotEmpty);
+  });
+
+  test('maxStaleness still checks remote when cache is stale', () async {
+    await _plantSnapshot(commitSha: 'deadbeef');
+    final fetch = _CountingFetch()..remoteSha = 'deadbeef';
+    final cache = SkillRepoDiskCacheService(fetch: fetch);
+
+    final result = await cache.ensureSynced(
+      _repo,
+      maxStaleness: const Duration(hours: 24),
+    );
+
+    expect(fetch.shaChecks, 1);
+    expect(fetch.downloads, 0);
+    expect(result.updated, isFalse);
+  });
+
+  test('maxStaleness is ignored when force is set', () async {
+    final fs = AppStorage.fs;
+    await _plantSnapshot(commitSha: 'deadbeef');
+    final metaPath = fs.pathContext.join(
+      AppStorage.paths.skillRepoCacheDir,
+      SkillRepoDiskCacheService.repoKey(_repo),
+      'meta.json',
+    );
+    final meta = SkillRepoCacheMeta(
+      configuredBranch: 'main',
+      resolvedBranch: 'main',
+      commitSha: 'deadbeef',
+      syncedAtMs: DateTime.now().millisecondsSinceEpoch,
+    );
+    await fs.writeString(
+      metaPath,
+      const JsonEncoder.withIndent('  ').convert(meta.toJson()),
+    );
+
+    final fetch = _CountingFetch()..remoteSha = 'deadbeef';
+    final cache = SkillRepoDiskCacheService(fetch: fetch);
+
+    await cache.ensureSynced(
+      _repo,
+      force: true,
+      maxStaleness: const Duration(hours: 24),
+    );
+
+    expect(fetch.shaChecks, 0);
     expect(fetch.downloads, 1);
   });
 }

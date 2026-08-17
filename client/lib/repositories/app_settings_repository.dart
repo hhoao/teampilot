@@ -27,6 +27,11 @@ abstract class AppSettingsRepository {
 
   Future<Map<AiFeatureId, AiFeatureSetting>> loadAiFeatureSettings();
   Future<void> saveAiFeatureSetting(AiFeatureId id, AiFeatureSetting setting);
+
+  /// Whether skills/plugins/MCP discovery pages auto-refresh remote catalogs
+  /// on open. Defaults to `false` (manual refresh only).
+  Future<bool> loadDiscoveryAutoRefreshEnabled();
+  Future<void> saveDiscoveryAutoRefreshEnabled(bool value);
 }
 
 class SharedPrefsAppSettingsRepository implements AppSettingsRepository {
@@ -39,6 +44,7 @@ class SharedPrefsAppSettingsRepository implements AppSettingsRepository {
   static const _skippedUpdateVersionKey = 'skippedUpdateVersion';
   static const _skillsMpApiKey = 'skillsMpApiKey';
   static const _aiFeaturesKey = 'aiFeatures';
+  static const _discoveryAutoRefreshKey = 'discoveryAutoRefresh';
 
   final SharedPreferences _preferences;
 
@@ -166,6 +172,20 @@ class SharedPrefsAppSettingsRepository implements AppSettingsRepository {
     await _writeMap(current);
   }
 
+  @override
+  Future<bool> loadDiscoveryAutoRefreshEnabled() async {
+    final value = _readMap()[_discoveryAutoRefreshKey];
+    // Opt-in: disabled unless explicitly turned on.
+    return value == true;
+  }
+
+  @override
+  Future<void> saveDiscoveryAutoRefreshEnabled(bool value) async {
+    final current = _readMap();
+    current[_discoveryAutoRefreshKey] = value;
+    await _writeMap(current);
+  }
+
   Future<void> _writeMap(Map<String, Object?> current) async {
     if (current.isEmpty) {
       await _preferences.remove(storageKey);
@@ -195,17 +215,20 @@ class InMemoryAppSettingsRepository implements AppSettingsRepository {
     bool autoCheckUpdatesEnabled = true,
     String? skippedUpdateVersion,
     String? skillsMpApiKey,
+    bool discoveryAutoRefreshEnabled = false,
   }) : _llmConfigPathOverride = llmConfigPathOverride,
        _hasCompletedOnboarding = hasCompletedOnboarding,
        _autoCheckUpdatesEnabled = autoCheckUpdatesEnabled,
        _skippedUpdateVersion = skippedUpdateVersion,
-       _skillsMpApiKey = skillsMpApiKey;
+       _skillsMpApiKey = skillsMpApiKey,
+       _discoveryAutoRefreshEnabled = discoveryAutoRefreshEnabled;
 
   String? _llmConfigPathOverride;
   bool _hasCompletedOnboarding;
   bool _autoCheckUpdatesEnabled;
   String? _skippedUpdateVersion;
   String? _skillsMpApiKey;
+  bool _discoveryAutoRefreshEnabled;
 
   @override
   Future<String?> loadLlmConfigPathOverride() async => _llmConfigPathOverride;
@@ -252,6 +275,15 @@ class InMemoryAppSettingsRepository implements AppSettingsRepository {
   Future<void> saveSkillsMpApiKey(String? key) async {
     final trimmed = key?.trim();
     _skillsMpApiKey = (trimmed == null || trimmed.isEmpty) ? null : trimmed;
+  }
+
+  @override
+  Future<bool> loadDiscoveryAutoRefreshEnabled() async =>
+      _discoveryAutoRefreshEnabled;
+
+  @override
+  Future<void> saveDiscoveryAutoRefreshEnabled(bool value) async {
+    _discoveryAutoRefreshEnabled = value;
   }
 
   final Map<AiFeatureId, AiFeatureSetting> _aiFeatures = {};

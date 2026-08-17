@@ -41,6 +41,7 @@ class _FakeDiskCache extends PluginRepoDiskCacheService {
   Future<String> syncMarketplace(
     PluginMarketplace marketplace, {
     bool force = false,
+    Duration? maxStaleness,
   }) async {
     syncCalls++;
     if (throwOnSync != null) throw throwOnSync!;

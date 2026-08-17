@@ -8,11 +8,13 @@ import '../models/discoverable_team.dart';
 import '../models/progress_activity.dart';
 import '../models/skill.dart';
 import '../repositories/skill_repository.dart';
+import '../services/discovery/discovery_refresh_policy.dart';
 import '../services/progress_activity/pack_acquire_activity_adapter.dart';
 import '../services/skill/marketplace/skill_marketplace_source.dart';
 import '../services/skill/skill_acquisition_engine.dart';
 import '../services/skill/skill_repo_disk_cache_service.dart';
 import '../utils/logging/logger.dart';
+import 'discovery_settings_cubit.dart';
 
 enum SkillLoadStatus { idle, loading, ready, error }
 
@@ -176,6 +178,7 @@ class SkillCubit extends Cubit<SkillState> {
     SkillAcquisitionEngine? acquisitionEngine,
     SkillUninstalledHandler? onSkillUninstalled,
     PackAcquireActivityAdapter? packAcquireActivity,
+    DiscoverySettingsCubit? discoverySettings,
   }) : _acquisitionEngine =
            acquisitionEngine ??
            SkillAcquisitionEngine(
@@ -194,14 +197,19 @@ class SkillCubit extends Cubit<SkillState> {
            ),
        _onSkillUninstalled = onSkillUninstalled,
        _packAcquireActivity = packAcquireActivity,
+       _discoverySettings = discoverySettings,
        super(const SkillState());
 
   final SkillRepository _repo;
   final SkillAcquisitionEngine _acquisitionEngine;
   final SkillUninstalledHandler? _onSkillUninstalled;
   final PackAcquireActivityAdapter? _packAcquireActivity;
+  final DiscoverySettingsCubit? _discoverySettings;
   final List<SkillMarketplaceSource> marketplaces;
   int _discoveryGeneration = 0;
+
+  bool _autoRefreshEnabled() =>
+      _discoverySettings?.state.autoRefreshEnabled ?? false;
 
   Future<void> loadAll() async {
     emit(state.copyWith(status: SkillLoadStatus.loading, clearError: true));
@@ -225,13 +233,43 @@ class SkillCubit extends Cubit<SkillState> {
     }
   }
 
-  /// Loads discovery when the Discovery tab opens: disk cache first, then git sync.
-  /// Skips work when the list is already populated unless [force] is true.
+  /// Loads discovery when the Discovery tab opens: disk cache first; remote
+  /// sync only for first-time (no cache) repos when auto-refresh is off, or
+  /// per [kDiscoveryAutoRefreshTtl] when it is on. [force] always syncs.
   Future<void> ensureDiscoveryLoaded({bool force = false}) async {
     if (!force && state.discoveryLoading) return;
     if (!force && state.repoSyncingKeys.isNotEmpty) return;
-    if (!force && state.discoverable.isNotEmpty) return;
-    await refreshDiscoverable(force: force);
+    if (force) {
+      await refreshDiscoverable(force: true);
+      return;
+    }
+    if (_autoRefreshEnabled()) {
+      await refreshDiscoverable(force: false);
+      return;
+    }
+    if (state.discoverable.isNotEmpty) return;
+    await _syncMissingReposOnce();
+  }
+
+  /// 手动模式（默认）：只对从未同步过的 repo 做一次初始化同步，
+  /// 有磁盘缓存的 repo 不发网络请求。
+  Future<void> _syncMissingReposOnce() async {
+    final enabled = state.repos.where((r) => r.enabled).toList();
+    final missing = <SkillRepo>[];
+    for (final repo in enabled) {
+      if (!await _repo.hasCachedSnapshot(repo)) missing.add(repo);
+    }
+    if (missing.isEmpty) {
+      emit(
+        state.copyWith(
+          discoveryLoading: false,
+          repoSyncingKeys: const {},
+          discoverable: await _aggregateDiscoverableFromDisk(enabled),
+        ),
+      );
+      return;
+    }
+    await _syncReposInBackground(missing, force: true, clearError: true);
   }
 
   Future<void> refreshDiscoverable({bool force = false}) async {
@@ -246,7 +284,14 @@ class SkillCubit extends Cubit<SkillState> {
       );
       return;
     }
-    await _syncReposInBackground(enabled, force: force, clearError: true);
+    await _syncReposInBackground(
+      enabled,
+      force: force,
+      clearError: true,
+      maxStaleness: force
+          ? null
+          : (_autoRefreshEnabled() ? kDiscoveryAutoRefreshTtl : null),
+    );
   }
 
   /// Syncs only [reposToSync] against GitHub; discoverable list includes all enabled repos from disk.
@@ -254,6 +299,7 @@ class SkillCubit extends Cubit<SkillState> {
     List<SkillRepo> reposToSync, {
     bool force = false,
     bool clearError = false,
+    Duration? maxStaleness,
   }) async {
     if (reposToSync.isEmpty) return;
 
@@ -299,7 +345,11 @@ class SkillCubit extends Cubit<SkillState> {
       reposToSync.map((repo) async {
         final key = SkillRepoDiskCacheService.repoKey(repo);
         try {
-          await _repo.syncRepoCache(repo, force: force);
+          await _repo.syncRepoCache(
+            repo,
+            force: force,
+            maxStaleness: maxStaleness,
+          );
         } catch (e) {
           appLogger.w('[skills] sync ${repo.fullName} failed: $e');
         } finally {

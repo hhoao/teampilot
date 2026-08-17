@@ -7605,6 +7605,30 @@ abstract class AppLocalizations {
   /// **'Configure mirrors for GitHub downloads (app updates, Termux APK)'**
   String get downloadSourcesSettingsSubtitle;
 
+  /// No description provided for @discoverySettingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Discovery & Marketplaces'**
+  String get discoverySettingsTitle;
+
+  /// No description provided for @discoverySettingsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'How skills, plugins and MCP discovery content refreshes.'**
+  String get discoverySettingsSubtitle;
+
+  /// No description provided for @discoveryAutoRefreshTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-refresh discovery content'**
+  String get discoveryAutoRefreshTitle;
+
+  /// No description provided for @discoveryAutoRefreshSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'When on, opening discovery pages checks for updates when the cache is older than 24 hours. Manual refresh always updates.'**
+  String get discoveryAutoRefreshSubtitle;
+
   /// No description provided for @downloadSourcesMirrorBaseUrl.
   ///
   /// In en, this message translates to:

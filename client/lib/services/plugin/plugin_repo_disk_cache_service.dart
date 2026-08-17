@@ -64,21 +64,34 @@ class PluginRepoDiskCacheService {
   Future<String> syncMarketplace(
     PluginMarketplace m, {
     bool force = false,
+    Duration? maxStaleness,
   }) async {
     final root = await _cacheRoot();
     final key = RepoDiskSyncCoalescer.syncKey(root, repoKey(m));
-    return _coalescer.run(key, () => _syncMarketplaceOnce(m, force: force));
+    return _coalescer.run(
+      key,
+      () => _syncMarketplaceOnce(m, force: force, maxStaleness: maxStaleness),
+    );
   }
 
   Future<String> _syncMarketplaceOnce(
     PluginMarketplace m, {
     required bool force,
+    Duration? maxStaleness,
   }) async {
     final dirPath = await _repoDirPath(m);
 
     if (!force && (await _fs.stat(dirPath)).exists) {
       final meta = await _readMeta(dirPath);
       if (meta != null && meta.configuredBranch == m.branch) {
+        if (maxStaleness != null &&
+            DateTime.now().millisecondsSinceEpoch - meta.syncedAtMs <
+                maxStaleness.inMilliseconds) {
+          appLogger.d(
+            '[PluginRepoDiskCache] skipped ${m.fullName} (fresh within TTL)',
+          );
+          return dirPath;
+        }
         final remote = await _git.resolveRemoteShaWithFallback(
           m.owner,
           m.name,
@@ -185,6 +198,13 @@ class PluginRepoDiskCacheService {
       _fs.pathContext.join(workDirPath, _metaFileName),
       const JsonEncoder.withIndent('  ').convert(meta.toJson()),
     );
+  }
+
+  /// True when a cache meta exists on disk for [m] (synced at least once).
+  Future<bool> hasCachedSnapshot(PluginMarketplace m) async {
+    final dirPath = await _repoDirPath(m);
+    if (!(await _fs.stat(dirPath)).exists) return false;
+    return (await _readMeta(dirPath)) != null;
   }
 
   /// Reads cached marketplace manifest without triggering git sync.

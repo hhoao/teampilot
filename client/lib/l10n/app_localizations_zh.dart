@@ -4086,6 +4086,19 @@ class AppLocalizationsZh extends AppLocalizations {
       '配置 GitHub 下载镜像（应用更新、Termux APK）';
 
   @override
+  String get discoverySettingsTitle => '发现与市场';
+
+  @override
+  String get discoverySettingsSubtitle => '技能、插件与 MCP 发现内容的刷新方式。';
+
+  @override
+  String get discoveryAutoRefreshTitle => '自动刷新发现内容';
+
+  @override
+  String get discoveryAutoRefreshSubtitle =>
+      '开启后，打开发现页时若缓存超过 24 小时将自动检查更新；手动刷新始终有效。';
+
+  @override
   String get downloadSourcesMirrorBaseUrl => '镜像基础 URL';
 
   @override
