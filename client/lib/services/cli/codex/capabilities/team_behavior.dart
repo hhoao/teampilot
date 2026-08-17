@@ -1,5 +1,7 @@
 import '../../registry/capabilities/team_behavior_capability.dart';
 
+/// Codex participates in TeamPilot teams through TeamBus/mixed sessions.
+/// It has no native team identity arguments to add to a startup command.
 final class CodexTeamBehavior implements TeamBehaviorCapability {
   const CodexTeamBehavior();
 

@@ -72,12 +72,12 @@ void main() {
     );
   });
 
-  test('uses legacy adapters when the registered tool has no providers', () {
+  test('rejects Codex when the registered tool has no launch providers', () {
     final registry = CliToolRegistry()
       ..register(const _FakeLegacyTool(CliTool.codex));
 
     expect(
-      LaunchCommandBuilder.buildArguments(
+      () => LaunchCommandBuilder.buildArguments(
         const TeamProfile(
           id: 'legacy-team',
           name: 'legacy-team',
@@ -86,7 +86,7 @@ void main() {
         member,
         cliRegistry: registry,
       ),
-      ['-m', 'sonnet'],
+      throwsA(isA<StateError>()),
     );
   });
 
