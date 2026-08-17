@@ -9,6 +9,7 @@ import '../services/storage/app_storage.dart';
 import '../services/provider/credential_binding.dart';
 import '../services/cli/registry/capabilities/provider_capability.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
+import '../services/provider/credential_login_progress.dart';
 import '../services/provider/provider_import_service.dart';
 import '../services/provider/tool_config_generator.dart';
 import '../utils/logging/logger.dart';
@@ -20,6 +21,9 @@ class AppProviderState extends Equatable {
     this.selectedProviderIdByCli = const {},
     this.isLoading = false,
     this.statusMessage = '',
+    this.credentialLoginProviderId,
+    this.credentialLoginDeviceCode,
+    this.credentialLoginVerificationUri,
   });
 
   final CliTool selectedCli;
@@ -27,6 +31,9 @@ class AppProviderState extends Equatable {
   final Map<CliTool, String?> selectedProviderIdByCli;
   final bool isLoading;
   final String statusMessage;
+  final String? credentialLoginProviderId;
+  final String? credentialLoginDeviceCode;
+  final String? credentialLoginVerificationUri;
 
   List<AppProviderConfig> get providers =>
       providersByCli[selectedCli] ?? const [];
@@ -51,6 +58,10 @@ class AppProviderState extends Equatable {
     Map<CliTool, String?>? selectedProviderIdByCli,
     bool? isLoading,
     String? statusMessage,
+    String? credentialLoginProviderId,
+    String? credentialLoginDeviceCode,
+    String? credentialLoginVerificationUri,
+    bool clearCredentialLogin = false,
   }) {
     return AppProviderState(
       selectedCli: selectedCli ?? this.selectedCli,
@@ -59,6 +70,16 @@ class AppProviderState extends Equatable {
           selectedProviderIdByCli ?? this.selectedProviderIdByCli,
       isLoading: isLoading ?? this.isLoading,
       statusMessage: statusMessage ?? this.statusMessage,
+      credentialLoginProviderId: clearCredentialLogin
+          ? null
+          : (credentialLoginProviderId ?? this.credentialLoginProviderId),
+      credentialLoginDeviceCode: clearCredentialLogin
+          ? null
+          : (credentialLoginDeviceCode ?? this.credentialLoginDeviceCode),
+      credentialLoginVerificationUri: clearCredentialLogin
+          ? null
+          : (credentialLoginVerificationUri ??
+                this.credentialLoginVerificationUri),
     );
   }
 
@@ -69,6 +90,9 @@ class AppProviderState extends Equatable {
     selectedProviderIdByCli,
     isLoading,
     statusMessage,
+    credentialLoginProviderId,
+    credentialLoginDeviceCode,
+    credentialLoginVerificationUri,
   ];
 }
 
@@ -79,16 +103,19 @@ class AppProviderCubit extends Cubit<AppProviderState> {
     String? Function()? flashskyaiExecutablePath,
     ToolConfigGenerator? generator,
     String? basePath,
+    Future<void> Function(Uri uri)? openCredentialLoginUrl,
   }) : _repository = repository ?? AppProviderRepository(basePath: basePath),
        _generator = generator ?? const ToolConfigGenerator(),
        _flashskyaiExecutablePath = flashskyaiExecutablePath,
        _importService = importService,
+       _openCredentialLoginUrl = openCredentialLoginUrl,
        super(const AppProviderState());
 
   final AppProviderRepository _repository;
   final ToolConfigGenerator _generator;
   final ProviderImportService? _importService;
   final String? Function()? _flashskyaiExecutablePath;
+  final Future<void> Function(Uri uri)? _openCredentialLoginUrl;
   static String _resolveBasePath(String? basePath) {
     if (basePath != null && basePath.trim().isNotEmpty) {
       return basePath.trim();
@@ -109,6 +136,35 @@ class AppProviderCubit extends Cubit<AppProviderState> {
   }
 
   String get catalogPath => AppStorage.paths.providerConfigDir;
+
+  void beginCredentialLogin(String providerId) {
+    emit(
+      state.copyWith(clearCredentialLogin: true).copyWith(
+        credentialLoginProviderId: providerId,
+      ),
+    );
+  }
+
+  void reportCredentialLoginProgress(CredentialLoginProgress progress) {
+    emit(
+      state.copyWith(
+        credentialLoginDeviceCode: progress.deviceCode,
+        credentialLoginVerificationUri: progress.verificationUri?.toString(),
+      ),
+    );
+  }
+
+  void clearCredentialLoginProgress() {
+    if (isClosed) return;
+    emit(state.copyWith(clearCredentialLogin: true));
+  }
+
+  Future<void> reopenCredentialLoginBrowser() async {
+    final raw = state.credentialLoginVerificationUri?.trim() ?? '';
+    final uri = Uri.tryParse(raw);
+    if (uri == null || _openCredentialLoginUrl == null) return;
+    await _openCredentialLoginUrl(uri);
+  }
 
   Future<void> load({bool reconcileCredentials = true}) async {
     final sw = Stopwatch()..start();
@@ -318,29 +374,37 @@ class AppProviderCubit extends Cubit<AppProviderState> {
     }
 
     await upsertProvider(provider);
-    final result = await capability.execute(
-      providerId: provider.id,
-      kind: kind,
-      input: ProviderCredentialActionInput(
-        provider: provider,
-        pickedPath: pickedPath,
-        replace: replace,
-        homeDirectory: homeDirectory ?? AppStorage.home,
-      ),
-    );
-    if (!result.ok) {
-      await _refreshCredentialStatus(provider.cli, provider.id);
-      return result;
+    final isLogin = kind == ProviderCredentialActionKind.login;
+    if (isLogin) {
+      beginCredentialLogin(provider.id);
     }
-    final refreshed = await _refreshCredentialStatus(provider.cli, provider.id);
-    if (!refreshed) {
-      return CredentialActionResult.failure(
-        const CredentialActionFailure(
-          code: CredentialActionFailureCode.statusRefreshFailed,
+    try {
+      final result = await capability.execute(
+        providerId: provider.id,
+        kind: kind,
+        input: ProviderCredentialActionInput(
+          provider: provider,
+          pickedPath: pickedPath,
+          replace: replace,
+          homeDirectory: homeDirectory ?? AppStorage.home,
         ),
       );
+      if (!result.ok) {
+        await _refreshCredentialStatus(provider.cli, provider.id);
+        return result;
+      }
+      final refreshed = await _refreshCredentialStatus(provider.cli, provider.id);
+      if (!refreshed) {
+        return CredentialActionResult.failure(
+          const CredentialActionFailure(
+            code: CredentialActionFailureCode.statusRefreshFailed,
+          ),
+        );
+      }
+      return CredentialActionResult.success;
+    } finally {
+      if (isLogin) clearCredentialLoginProgress();
     }
-    return CredentialActionResult.success;
   }
 
   Future<bool> setProviderCredentialBinding(

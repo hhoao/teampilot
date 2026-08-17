@@ -3338,6 +3338,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get providerCredentialsUnauthenticated => 'Unauthenticated';
 
   @override
+  String get providerCredentialsBrowserOpened =>
+      'Browser opened for authorization';
+
+  @override
+  String get providerCredentialsDeviceCodeTitle => 'Device code';
+
+  @override
+  String get providerCredentialsDeviceCodeHint =>
+      'Enter this one-time code in the browser (expires in 15 minutes)';
+
+  @override
+  String get providerCredentialsReopenBrowser => 'Reopen browser';
+
+  @override
   String get claudeOfficialCredentialsLogin => 'Sign in with Claude';
 
   @override

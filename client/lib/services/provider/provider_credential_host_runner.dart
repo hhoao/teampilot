@@ -9,10 +9,13 @@ import '../host/host_process_starter.dart';
 import '../host/host_process_starter_for_context.dart';
 import '../host/process_run_handle.dart';
 import '../storage/app_storage.dart';
+import 'credential_login_progress.dart';
 import 'credential_login_url_detector.dart';
 
+export 'credential_login_progress.dart';
+
 typedef CredentialOpenUrl = Future<void> Function(Uri uri);
-typedef CredentialLoginHint = void Function(String message);
+typedef CredentialLoginHint = void Function(CredentialLoginProgress progress);
 
 /// Runs provider credential login/logout CLIs on the home runtime plane.
 class ProviderCredentialHostRunner {
@@ -149,7 +152,7 @@ class ProviderCredentialHostRunner {
     if (codes != null) {
       for (final code in _urlDetector.extractDeviceCodes(text)) {
         if (!codes.add(code)) continue;
-        _announceDeviceCode(code);
+        _announceDeviceCode(code, text);
       }
     }
 
@@ -181,10 +184,15 @@ class ProviderCredentialHostRunner {
     }
   }
 
-  void _announceDeviceCode(String code) {
-    final message = 'Device code: $code';
+  void _announceDeviceCode(String code, String text) {
     AppLogger.instance.i('Credential login device code: $code');
-    _onLoginHint?.call(message);
+    final uris = _withoutUriPrefixes(_urlDetector.extractAll(text));
+    _onLoginHint?.call(
+      CredentialLoginProgress(
+        deviceCode: code,
+        verificationUri: uris.isEmpty ? null : uris.first,
+      ),
+    );
   }
 
   static bool _mightBeIncomplete(String text, int index, String key) {

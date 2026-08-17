@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/app_provider_cubit.dart';
 import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
+import 'package:teampilot/services/provider/credential_login_progress.dart';
 import 'package:teampilot/services/provider/provider_import_service.dart';
 
 class _SpyProviderImportService extends ProviderImportService {
@@ -141,5 +142,26 @@ void main() {
     final models = saved.config['models'] as Map;
     final model = models['deepseek-chat'] as Map;
     expect(model['provider'], 'deepseek');
+  });
+
+  test('reportCredentialLoginProgress stores device code for the waiting UI', () {
+    cubit.beginCredentialLogin('openai-official');
+    cubit.reportCredentialLoginProgress(
+      CredentialLoginProgress(
+        deviceCode: 'WO3M-X8OIF',
+        verificationUri: Uri.parse('https://auth.openai.com/codex/device'),
+      ),
+    );
+
+    expect(cubit.state.credentialLoginProviderId, 'openai-official');
+    expect(cubit.state.credentialLoginDeviceCode, 'WO3M-X8OIF');
+    expect(
+      cubit.state.credentialLoginVerificationUri,
+      'https://auth.openai.com/codex/device',
+    );
+
+    cubit.clearCredentialLoginProgress();
+    expect(cubit.state.credentialLoginDeviceCode, isNull);
+    expect(cubit.state.credentialLoginProviderId, isNull);
   });
 }

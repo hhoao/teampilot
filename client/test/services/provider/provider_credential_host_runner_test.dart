@@ -175,7 +175,7 @@ void main() {
     });
 
     test('announces Codex device code glued to following sentence', () async {
-      final hints = <String>[];
+      final hints = <CredentialLoginProgress>[];
       final opened = <Uri>[];
       final runner = ProviderCredentialHostRunner(
         oneShot: () => _FailOneShotRunner(),
@@ -193,7 +193,11 @@ void main() {
         const HostRunRequest(executable: 'codex', arguments: ['login']),
       );
 
-      expect(hints, ['Device code: WO3M-X8OIF']);
+      expect(hints.single.deviceCode, 'WO3M-X8OIF');
+      expect(
+        hints.single.verificationUri.toString(),
+        'https://auth.openai.com/codex/device',
+      );
       expect(opened.single.toString(), 'https://auth.openai.com/codex/device');
     });
 

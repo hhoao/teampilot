@@ -6026,6 +6026,30 @@ abstract class AppLocalizations {
   /// **'Unauthenticated'**
   String get providerCredentialsUnauthenticated;
 
+  /// No description provided for @providerCredentialsBrowserOpened.
+  ///
+  /// In en, this message translates to:
+  /// **'Browser opened for authorization'**
+  String get providerCredentialsBrowserOpened;
+
+  /// No description provided for @providerCredentialsDeviceCodeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Device code'**
+  String get providerCredentialsDeviceCodeTitle;
+
+  /// No description provided for @providerCredentialsDeviceCodeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter this one-time code in the browser (expires in 15 minutes)'**
+  String get providerCredentialsDeviceCodeHint;
+
+  /// No description provided for @providerCredentialsReopenBrowser.
+  ///
+  /// In en, this message translates to:
+  /// **'Reopen browser'**
+  String get providerCredentialsReopenBrowser;
+
   /// No description provided for @claudeOfficialCredentialsLogin.
   ///
   /// In en, this message translates to:

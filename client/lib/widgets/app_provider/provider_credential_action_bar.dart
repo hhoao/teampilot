@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -14,6 +16,7 @@ import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../services/storage/app_storage.dart';
 import '../../utils/debounce/debounce.dart';
 import 'provider_credential_messages.dart';
+import 'provider_credential_device_code_dialog.dart';
 
 /// Registry-driven login / import actions for official account providers.
 class ProviderCredentialActionBar extends StatefulWidget {
@@ -36,6 +39,7 @@ class ProviderCredentialActionBar extends StatefulWidget {
 class _ProviderCredentialActionBarState
     extends State<ProviderCredentialActionBar> {
   var _running = false;
+  var _deviceDialogOpen = false;
 
   ProviderCapability? _capability(BuildContext context) {
     return CliToolRegistryScope.of(
@@ -78,16 +82,47 @@ class _ProviderCredentialActionBarState
           ],
         ),
         const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (final spec in specs)
-              _actionButton(context, capability: capability, spec: spec),
-          ],
+        BlocListener<AppProviderCubit, AppProviderState>(
+          listenWhen: (previous, current) =>
+              previous.credentialLoginProviderId !=
+                  current.credentialLoginProviderId ||
+              previous.credentialLoginDeviceCode !=
+                  current.credentialLoginDeviceCode,
+          listener: _onCredentialLoginState,
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final spec in specs)
+                _actionButton(context, capability: capability, spec: spec),
+            ],
+          ),
         ),
       ],
     );
+  }
+
+  bool _isWaitingForDeviceCode(AppProviderState state) {
+    return state.credentialLoginProviderId == widget.provider.id &&
+        (state.credentialLoginDeviceCode ?? '').isNotEmpty;
+  }
+
+  void _onCredentialLoginState(BuildContext context, AppProviderState state) {
+    final waiting = _isWaitingForDeviceCode(state);
+    if (waiting && !_deviceDialogOpen) {
+      _deviceDialogOpen = true;
+      unawaited(_openDeviceCodeDialog(context));
+      return;
+    }
+    if (!waiting && _deviceDialogOpen && Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    }
+  }
+
+  Future<void> _openDeviceCodeDialog(BuildContext context) async {
+    final cubit = context.read<AppProviderCubit>();
+    await ProviderCredentialDeviceCodeDialog.show(context, cubit: cubit);
+    if (mounted) _deviceDialogOpen = false;
   }
 
   Widget _actionButton(

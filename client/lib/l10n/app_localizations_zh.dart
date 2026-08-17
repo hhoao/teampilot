@@ -3200,6 +3200,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get providerCredentialsUnauthenticated => '未认证';
 
   @override
+  String get providerCredentialsBrowserOpened => '已打开浏览器进行授权';
+
+  @override
+  String get providerCredentialsDeviceCodeTitle => '设备验证码';
+
+  @override
+  String get providerCredentialsDeviceCodeHint => '请在浏览器中输入此一次性验证码（15 分钟内有效）';
+
+  @override
+  String get providerCredentialsReopenBrowser => '重新打开浏览器';
+
+  @override
   String get claudeOfficialCredentialsLogin => 'Claude 登录';
 
   @override
