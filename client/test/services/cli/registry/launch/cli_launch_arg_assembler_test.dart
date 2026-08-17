@@ -17,21 +17,21 @@ void main() {
 
   test('assembles contributions by phase and stable provider order', () {
     final tool = FakeCliTool([
-      const FakeLaunchProvider(
+      FakeLaunchProvider(
         CliLaunchArgContribution(
           key: 'model',
           phase: LaunchArgPhase.model,
           args: ['--model', 'x'],
         ),
       ),
-      const FakeLaunchProvider(
+      FakeLaunchProvider(
         CliLaunchArgContribution(
           key: 'session-a',
           phase: LaunchArgPhase.session,
           args: ['--resume', 'a'],
         ),
       ),
-      const FakeLaunchProvider(
+      FakeLaunchProvider(
         CliLaunchArgContribution(
           key: 'session-b',
           phase: LaunchArgPhase.session,
@@ -52,14 +52,14 @@ void main() {
 
   test('rejects duplicate contribution keys', () {
     final tool = FakeCliTool([
-      const FakeLaunchProvider(
+      FakeLaunchProvider(
         CliLaunchArgContribution(
           key: 'session',
           phase: LaunchArgPhase.session,
           args: ['--resume', 'a'],
         ),
       ),
-      const FakeLaunchProvider(
+      FakeLaunchProvider(
         CliLaunchArgContribution(
           key: 'session',
           phase: LaunchArgPhase.session,
@@ -72,8 +72,8 @@ void main() {
       () => assembler.assemble(tool, context),
       throwsA(
         isA<CliLaunchCapabilityException>().having(
-          (error) => error.capabilityKey,
-          'capabilityKey',
+          (error) => error.contributionKey,
+          'contributionKey',
           'session',
         ),
       ),
@@ -82,7 +82,7 @@ void main() {
 
   test('rejects contributions in the same exclusive group', () {
     final tool = FakeCliTool([
-      const FakeLaunchProvider(
+      FakeLaunchProvider(
         CliLaunchArgContribution(
           key: 'resume',
           phase: LaunchArgPhase.session,
@@ -90,7 +90,7 @@ void main() {
           exclusiveGroup: 'session-selection',
         ),
       ),
-      const FakeLaunchProvider(
+      FakeLaunchProvider(
         CliLaunchArgContribution(
           key: 'fixed-session',
           phase: LaunchArgPhase.session,
@@ -103,19 +103,56 @@ void main() {
     expect(
       () => assembler.assemble(tool, context),
       throwsA(
-        isA<CliLaunchCapabilityException>().having(
-          (error) => error.exclusiveGroup,
-          'exclusiveGroup',
-          'session-selection',
-        ),
+        isA<CliLaunchCapabilityException>()
+            .having(
+              (error) => error.exclusiveGroup,
+              'exclusiveGroup',
+              'session-selection',
+            )
+            .having(
+              (error) => error.conflictingContributionKey,
+              'conflictingContributionKey',
+              'resume',
+            ),
       ),
     );
   });
 
+  test('preserves intra-provider order across a non-provider capability', () {
+    final tool = FakeCliTool([
+      MultiLaunchProvider([
+        CliLaunchArgContribution(
+          key: 'first',
+          phase: LaunchArgPhase.behavior,
+          args: ['--first'],
+        ),
+        CliLaunchArgContribution(
+          key: 'second',
+          phase: LaunchArgPhase.behavior,
+          args: ['--second'],
+        ),
+      ]),
+      OtherCapability(),
+      FakeLaunchProvider(
+        CliLaunchArgContribution(
+          key: 'third',
+          phase: LaunchArgPhase.behavior,
+          args: ['--third'],
+        ),
+      ),
+    ]);
+
+    expect(assembler.assemble(tool, context), [
+      '--first',
+      '--second',
+      '--third',
+    ]);
+  });
+
   test('ignores providers with no contributions', () {
     final tool = FakeCliTool([
-      const FakeLaunchProvider(),
-      const FakeLaunchProvider(
+      FakeLaunchProvider(),
+      FakeLaunchProvider(
         CliLaunchArgContribution(
           key: 'prompt',
           phase: LaunchArgPhase.prompt,
@@ -129,7 +166,7 @@ void main() {
 
   test('flattens contribution tokens without shell quoting', () {
     final tool = FakeCliTool([
-      const FakeLaunchProvider(
+      FakeLaunchProvider(
         CliLaunchArgContribution(
           key: 'raw',
           phase: LaunchArgPhase.user,
@@ -147,12 +184,12 @@ void main() {
   });
 
   test('contributions compare by value and expose immutable args', () {
-    const first = CliLaunchArgContribution(
+    final first = CliLaunchArgContribution(
       key: 'model',
       phase: LaunchArgPhase.model,
       args: ['--model', 'x'],
     );
-    const second = CliLaunchArgContribution(
+    final second = CliLaunchArgContribution(
       key: 'model',
       phase: LaunchArgPhase.model,
       args: ['--model', 'x'],
@@ -160,6 +197,30 @@ void main() {
 
     expect(first, second);
     expect(() => first.args.add('extra'), throwsUnsupportedError);
+  });
+
+  test('defensively copies caller args at construction', () {
+    final originalArgs = ['--model', 'before'];
+    final contribution = CliLaunchArgContribution(
+      key: 'model',
+      phase: LaunchArgPhase.model,
+      args: originalArgs,
+    );
+    final expected = CliLaunchArgContribution(
+      key: 'model',
+      phase: LaunchArgPhase.model,
+      args: ['--model', 'before'],
+    );
+    final tool = FakeCliTool([FakeLaunchProvider(contribution)]);
+    final hashCodeBeforeMutation = contribution.hashCode;
+
+    originalArgs[1] = 'after';
+    originalArgs.add('--changed');
+
+    expect(contribution, expected);
+    expect(contribution.hashCode, hashCodeBeforeMutation);
+    expect(contribution.args, ['--model', 'before']);
+    expect(assembler.assemble(tool, context), ['--model', 'before']);
   });
 }
 
@@ -177,7 +238,7 @@ final class FakeCliTool implements CliToolDefinition {
 }
 
 final class FakeLaunchProvider implements CliLaunchArgProvider {
-  const FakeLaunchProvider([this.contribution]);
+  FakeLaunchProvider([this.contribution]);
 
   final CliLaunchArgContribution? contribution;
 
@@ -188,3 +249,16 @@ final class FakeLaunchProvider implements CliLaunchArgProvider {
     if (contribution != null) yield contribution!;
   }
 }
+
+final class MultiLaunchProvider implements CliLaunchArgProvider {
+  MultiLaunchProvider(this.contributions);
+
+  final List<CliLaunchArgContribution> contributions;
+
+  @override
+  Iterable<CliLaunchArgContribution> buildLaunchArgs(
+    CliLaunchContext context,
+  ) => contributions;
+}
+
+final class OtherCapability implements CliCapability {}

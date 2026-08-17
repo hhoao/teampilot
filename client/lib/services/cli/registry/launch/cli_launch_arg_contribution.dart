@@ -16,21 +16,18 @@ enum LaunchArgPhase {
 /// Immutable semantic fragment of a CLI launch command.
 @immutable
 final class CliLaunchArgContribution {
-  const CliLaunchArgContribution({
+  CliLaunchArgContribution({
     required this.key,
     required this.phase,
     required List<String> args,
     this.exclusiveGroup,
-  }) : _args = args;
+  }) : args = List.unmodifiable(args);
 
   /// Identifies the semantic contribution, rather than an option token.
   final String key;
   final LaunchArgPhase phase;
-  final List<String> _args;
+  final List<String> args;
   final String? exclusiveGroup;
-
-  /// The contribution tokens, exposed without allowing list mutation.
-  List<String> get args => List.unmodifiable(_args);
 
   @override
   bool operator ==(Object other) {
@@ -38,12 +35,12 @@ final class CliLaunchArgContribution {
         other.key == key &&
         other.phase == phase &&
         other.exclusiveGroup == exclusiveGroup &&
-        _listEquals(other._args, _args);
+        _listEquals(other.args, args);
   }
 
   @override
   int get hashCode =>
-      Object.hash(key, phase, exclusiveGroup, Object.hashAll(_args));
+      Object.hash(key, phase, exclusiveGroup, Object.hashAll(args));
 
   @override
   String toString() {

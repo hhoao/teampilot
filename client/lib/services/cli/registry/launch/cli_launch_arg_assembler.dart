@@ -25,7 +25,7 @@ final class CliLaunchArgAssembler {
         if (previousKey != null) {
           throw CliLaunchCapabilityException(
             cli: tool.id,
-            capabilityKey: contribution.key,
+            contributionKey: contribution.key,
             reason:
                 'Duplicate launch argument contribution key '
                 "'${contribution.key}'.",
@@ -39,13 +39,13 @@ final class CliLaunchArgAssembler {
           if (previousGroup != null) {
             throw CliLaunchCapabilityException(
               cli: tool.id,
-              capabilityKey: contribution.key,
+              contributionKey: contribution.key,
               reason:
                   'Launch argument contributions '
                   "'${previousGroup.key}' and '${contribution.key}' "
                   "share exclusive group '$group'.",
               exclusiveGroup: group,
-              conflictingCapabilityKey: previousGroup.key,
+              conflictingContributionKey: previousGroup.key,
             );
           }
           byExclusiveGroup[group] = contribution;
