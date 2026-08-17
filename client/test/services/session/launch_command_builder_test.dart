@@ -2,6 +2,12 @@ import 'dart:io';
 
 import 'package:teampilot/models/workspace_agent_config.dart';
 import 'package:teampilot/services/cli/registry/config_profile/config_profile_context.dart';
+import 'package:teampilot/services/cli/registry/cli_capability.dart';
+import 'package:teampilot/services/cli/registry/cli_tool_definition.dart';
+import 'package:teampilot/services/cli/registry/launch/cli_launch_arg_contribution.dart';
+import 'package:teampilot/services/cli/registry/launch/cli_launch_arg_provider.dart';
+import 'package:teampilot/services/cli/registry/launch/cli_launch_context.dart';
+import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/session/launch_command_builder.dart';
 import 'package:teampilot/services/session/shell_launch_spec.dart';
 import 'package:teampilot/services/cli/claude/capabilities/provider.dart';
@@ -42,6 +48,26 @@ void main() {
         '--agent',
         'builder',
       ],
+    );
+  });
+
+  test('uses registered launch providers before legacy adapters', () {
+    final registry = CliToolRegistry()
+      ..register(
+        _FakeLaunchTool(CliTool.flashskyai, const _FakeLaunchProvider()),
+      );
+
+    expect(
+      LaunchCommandBuilder.buildArguments(
+        const TeamProfile(
+          id: 'provider-team',
+          name: 'provider-team',
+          cli: CliTool.flashskyai,
+        ),
+        member,
+        cliRegistry: registry,
+      ),
+      ['--provider-only'],
     );
   });
 
@@ -401,4 +427,34 @@ void main() {
     expect(cwd, isNot(startsWith('/')));
     expect(Directory(cwd).existsSync(), isTrue);
   });
+}
+
+final class _FakeLaunchTool implements CliToolDefinition {
+  const _FakeLaunchTool(this.id, this.provider);
+
+  @override
+  final CliTool id;
+
+  final CliLaunchArgProvider provider;
+
+  @override
+  List<CliCapability> get capabilities => [provider];
+
+  @override
+  bool get isLaunchSupported => true;
+}
+
+final class _FakeLaunchProvider implements CliLaunchArgProvider {
+  const _FakeLaunchProvider();
+
+  @override
+  Iterable<CliLaunchArgContribution> buildLaunchArgs(
+    CliLaunchContext context,
+  ) => [
+    CliLaunchArgContribution(
+      key: 'provider-only',
+      phase: LaunchArgPhase.behavior,
+      args: ['--provider-only'],
+    ),
+  ];
 }

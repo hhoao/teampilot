@@ -6,7 +6,9 @@ import 'package:path/path.dart' as p;
 import '../cli/preset_resolver.dart';
 import '../../models/team_config.dart';
 import '../cli/cli_tool_adapter.dart';
-import '../cli/registry/launch/cli_launch_context.dart';
+import '../cli/registry/launch/cli_launch_arg_assembler.dart';
+import '../cli/registry/launch/cli_launch_arg_provider.dart';
+import '../cli/registry/launch/cli_launch_context.dart' as launch_context;
 import 'shell_launch_spec.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../cli/cli_invocation.dart';
@@ -83,7 +85,7 @@ class LaunchCommandBuilder {
     CliToolRegistry? cliRegistry,
   }) {
     return buildArgumentsFromContext(
-      CliLaunchContext(
+      launch_context.CliLaunchContext(
         team: team,
         member: member,
         sessionTeam: sessionTeam,
@@ -100,13 +102,17 @@ class LaunchCommandBuilder {
   }
 
   static List<String> buildArgumentsFromContext(
-    CliLaunchContext context, {
+    launch_context.CliLaunchContext context, {
     CliToolRegistry? cliRegistry,
   }) {
     final registry = cliRegistry ?? _defaultCliRegistry;
     final cli = stagedMemberLaunchCli(context.team, context.member);
-    if (registry.tryGet(cli) == null) {
+    final tool = registry.tryGet(cli);
+    if (tool == null) {
       throw StateError('No CliToolDefinition for ${cli.value}');
+    }
+    if (tool.capabilities.whereType<CliLaunchArgProvider>().isNotEmpty) {
+      return const CliLaunchArgAssembler().assemble(tool, context);
     }
     return _legacyLaunchAdapterFor(cli).buildArguments(context);
   }
@@ -388,27 +394,11 @@ class LaunchCommandBuilder {
     return '"${value.replaceAll('"', r'\"')}"';
   }
 
-  static String normalizePathForCli(String path, {required bool useWslPaths}) {
-    if (!useWslPaths) return path;
-    return windowsPathToWsl(path) ?? path;
-  }
+  static String normalizePathForCli(String path, {required bool useWslPaths}) =>
+      launch_context.normalizePathForCli(path, useWslPaths: useWslPaths);
 
-  static String? windowsPathToWsl(String path) {
-    final trimmed = path.trim();
-    final uncMatch = RegExp(
-      r'^\\+(?:wsl\.localhost|wsl\$)\\[^\\]+\\(.+)$',
-      caseSensitive: false,
-    ).firstMatch(trimmed.replaceAll('/', r'\'));
-    if (uncMatch != null) {
-      return '/${uncMatch.group(1)!.replaceAll(r'\', '/')}';
-    }
-
-    final match = RegExp(r'^([a-zA-Z]):[\\/]*(.*)$').firstMatch(trimmed);
-    if (match == null) return null;
-    final drive = match.group(1)!.toLowerCase();
-    final rest = match.group(2)!.replaceAll('\\', '/');
-    return rest.isEmpty ? '/mnt/$drive' : '/mnt/$drive/$rest';
-  }
+  static String? windowsPathToWsl(String path) =>
+      launch_context.windowsPathToWsl(path);
 
   /// Inverse of [windowsPathToWsl] for `/mnt/<drive>/...` paths.
   static String? wslPathToWindows(String path) {
