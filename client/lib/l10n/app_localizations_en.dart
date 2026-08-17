@@ -1791,6 +1791,17 @@ class AppLocalizationsEn extends AppLocalizations {
       'Full access permissions';
 
   @override
+  String get workspaceChatLandingAskReadOnlyPermissions =>
+      'Ask · read-only · trusted hooks';
+
+  @override
+  String get workspaceChatLandingAutoApproveWorkspaceWritePermissions =>
+      'Auto-approve · workspace write · trusted hooks';
+
+  @override
+  String get workspaceChatLandingCustomPermissions => 'Custom security policy';
+
+  @override
   String get workspaceChatLandingSkills => 'Skills';
 
   @override
@@ -6667,6 +6678,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get automationsPermissions => 'Permissions';
+
+  @override
+  String get automationsPermissionsAskReadOnly =>
+      'Ask · read-only · trusted hooks';
+
+  @override
+  String get automationsPermissionsAutoApproveWorkspaceWrite =>
+      'Auto-approve · workspace write · trusted hooks';
+
+  @override
+  String get automationsPermissionsCustom => 'Custom security policy';
 
   @override
   String get automationsLaunchProfile => 'Launch identity';

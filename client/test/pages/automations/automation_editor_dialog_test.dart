@@ -35,7 +35,8 @@ import '../../support/stub_member_roster_service.dart';
 const _testPresetId = 'preset-test';
 
 class _FakeExpertHubSource extends CompositeExpertHubSource {
-  _FakeExpertHubSource() : super(builtIns: const [], registry: _EmptyRegistry());
+  _FakeExpertHubSource()
+    : super(builtIns: const [], registry: _EmptyRegistry());
 
   @override
   Future<List<DiscoverableMember>> fetchMembers({
@@ -155,7 +156,9 @@ Widget _host({
   final providers = <BlocProvider>[
     BlocProvider<AutomationCubit>.value(value: cubit),
     BlocProvider<ChatCubit>.value(value: resolvedChat),
-    BlocProvider<ExpertHubCubit>.value(value: expertHubCubit ?? _expertHubCubit()),
+    BlocProvider<ExpertHubCubit>.value(
+      value: expertHubCubit ?? _expertHubCubit(),
+    ),
     BlocProvider<LaunchProfileCubit>.value(
       value: launchProfileCubit ?? _emptyLaunchProfileCubit(),
     ),
@@ -229,8 +232,9 @@ void main() {
     final setup = testAutomationSetup();
     final chatCubit = _chatCubitWithWorkspace();
     final cliPresetsCubit = _cliPresetsCubitWithPreset();
-    final sessionPreferencesCubit =
-        (await tester.runAsync(testSessionPreferencesCubit))!;
+    final sessionPreferencesCubit = (await tester.runAsync(
+      testSessionPreferencesCubit,
+    ))!;
     addTearDown(setup.cubit.close);
     addTearDown(chatCubit.close);
     addTearDown(cliPresetsCubit.close);
@@ -258,6 +262,12 @@ void main() {
     expect(find.text(l10n.hubPublishKindExpert), findsOneWidget);
     expect(find.text(l10n.automationsPermissions), findsOneWidget);
     expect(find.text('Default'), findsOneWidget);
+    await tester.tap(find.byType(TpSelect<LaunchSecurityPolicy>));
+    await tester.pumpAndSettle();
+    expect(find.text(l10n.automationsPermissionsAskReadOnly), findsOneWidget);
+    await tester.tap(find.text(l10n.automationsPermissionsAskReadOnly));
+    await tester.pumpAndSettle();
+    expect(find.text(l10n.automationsPermissionsAskReadOnly), findsOneWidget);
     expect(find.text(l10n.automationsTargetMember), findsNothing);
   });
 

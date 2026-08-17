@@ -400,6 +400,10 @@ class WorkspaceComposeCard extends StatelessWidget {
         launchSecurityPolicy: chrome.launchSecurityPolicy,
         defaultLabel: chrome.defaultPermissionsLabel,
         fullAccessLabel: chrome.fullAccessPermissionsLabel,
+        askReadOnlyLabel: chrome.askReadOnlyPermissionsLabel,
+        autoApproveWorkspaceWriteLabel:
+            chrome.autoApproveWorkspaceWritePermissionsLabel,
+        customLabel: chrome.customPermissionsLabel,
         onSelected: chrome.onPermissionSelected,
       ),
       SizedBox(width: spacing.sm),
@@ -444,6 +448,10 @@ class WorkspaceComposeCard extends StatelessWidget {
           launchSecurityPolicy: chrome.launchSecurityPolicy,
           defaultLabel: chrome.defaultPermissionsLabel!,
           fullAccessLabel: chrome.fullAccessPermissionsLabel!,
+          askReadOnlyLabel: chrome.askReadOnlyPermissionsLabel,
+          autoApproveWorkspaceWriteLabel:
+              chrome.autoApproveWorkspaceWritePermissionsLabel,
+          customLabel: chrome.customPermissionsLabel,
           onSelected: chrome.onPermissionSelected!,
         ),
         SizedBox(width: spacing.sm),

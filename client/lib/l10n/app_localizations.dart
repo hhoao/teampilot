@@ -3302,6 +3302,24 @@ abstract class AppLocalizations {
   /// **'Full access permissions'**
   String get workspaceChatLandingFullAccessPermissions;
 
+  /// No description provided for @workspaceChatLandingAskReadOnlyPermissions.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask · read-only · trusted hooks'**
+  String get workspaceChatLandingAskReadOnlyPermissions;
+
+  /// No description provided for @workspaceChatLandingAutoApproveWorkspaceWritePermissions.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-approve · workspace write · trusted hooks'**
+  String get workspaceChatLandingAutoApproveWorkspaceWritePermissions;
+
+  /// No description provided for @workspaceChatLandingCustomPermissions.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom security policy'**
+  String get workspaceChatLandingCustomPermissions;
+
   /// No description provided for @workspaceChatLandingSkills.
   ///
   /// In en, this message translates to:
@@ -11899,6 +11917,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Permissions'**
   String get automationsPermissions;
+
+  /// No description provided for @automationsPermissionsAskReadOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask · read-only · trusted hooks'**
+  String get automationsPermissionsAskReadOnly;
+
+  /// No description provided for @automationsPermissionsAutoApproveWorkspaceWrite.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-approve · workspace write · trusted hooks'**
+  String get automationsPermissionsAutoApproveWorkspaceWrite;
+
+  /// No description provided for @automationsPermissionsCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom security policy'**
+  String get automationsPermissionsCustom;
 
   /// Deprecated — use automationsLaunchMode
   ///

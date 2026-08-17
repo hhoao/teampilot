@@ -377,6 +377,12 @@ class SessionChatComposeSection extends StatelessWidget {
                                 l10n.workspaceChatLandingDefaultPermissions,
                             fullAccessPermissionsLabel:
                                 l10n.workspaceChatLandingFullAccessPermissions,
+                            askReadOnlyPermissionsLabel:
+                                l10n.workspaceChatLandingAskReadOnlyPermissions,
+                            autoApproveWorkspaceWritePermissionsLabel: l10n
+                                .workspaceChatLandingAutoApproveWorkspaceWritePermissions,
+                            customPermissionsLabel:
+                                l10n.workspaceChatLandingCustomPermissions,
                             onPermissionSelected: (value) => unawaited(
                               _onPermissionSelected(
                                 context: context,

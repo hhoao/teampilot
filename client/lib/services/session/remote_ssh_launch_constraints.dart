@@ -2,6 +2,7 @@ import '../../models/runtime_target.dart';
 import '../../models/launch_security_policy.dart';
 import '../../models/ssh_profile.dart';
 import '../../utils/logging/logger.dart';
+import '../cli/registry/launch/cli_launch_context.dart';
 import '../ssh/ssh_member_session.dart';
 import '../ssh/ssh_run_result.dart';
 import 'shell_launch_spec.dart';
@@ -40,6 +41,21 @@ enum RemoteRootSecurityPolicy {
 
   /// Root on a non-container host: transform to a safe policy.
   dropDangerousPolicy,
+}
+
+const _safeRemoteRootSecurityPolicy = LaunchSecurityPolicy(
+  approval: LaunchApprovalPolicy.ask,
+  sandbox: LaunchSandboxPolicy.workspaceWrite,
+  hookTrust: LaunchHookTrustPolicy.trustedOnly,
+);
+
+CliLaunchContext restrictRemoteRootSecurityPolicy(CliLaunchContext context) {
+  return context.copyWith(
+    member: context.member.copyWith(
+      launchSecurityPolicy: _safeRemoteRootSecurityPolicy,
+    ),
+    launchSecurityPolicy: _safeRemoteRootSecurityPolicy,
+  );
 }
 
 RemoteRootSecurityPolicy resolveRemoteRootSecurityPolicy({
@@ -138,15 +154,7 @@ Future<ShellLaunchSpec> applyRemoteSshLaunchConstraints({
                 'in SSH target settings.',
           ],
         ),
-        launchContext: spec.launchContext.copyWith(
-          member: member.copyWith(
-            launchSecurityPolicy: const LaunchSecurityPolicy(
-              approval: LaunchApprovalPolicy.ask,
-              sandbox: LaunchSandboxPolicy.workspaceWrite,
-              hookTrust: LaunchHookTrustPolicy.trustedOnly,
-            ),
-          ),
-        ),
+        launchContext: restrictRemoteRootSecurityPolicy(spec.launchContext),
         sessionTeam: spec.sessionTeam,
       );
     }(),

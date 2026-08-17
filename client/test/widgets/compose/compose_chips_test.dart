@@ -144,5 +144,47 @@ void main() {
 
       expect(selected, LaunchSecurityPolicy.fullAccess);
     });
+
+    testWidgets('preserves an intermediate normalized policy', (tester) async {
+      LaunchSecurityPolicy? selected;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) {
+                final palette = WorkspaceChatLandingPalette(
+                  Theme.of(context).colorScheme,
+                );
+                return ComposePermissionChip(
+                  palette: palette,
+                  launchSecurityPolicy: LaunchSecurityPolicy.askReadOnlyTrusted,
+                  defaultLabel: 'Default',
+                  fullAccessLabel: 'Full access',
+                  askReadOnlyLabel: 'Ask / read-only / trusted hooks',
+                  autoApproveWorkspaceWriteLabel:
+                      'Auto-approve / workspace write / trusted hooks',
+                  customLabel: 'Custom policy',
+                  onSelected: (value) => selected = value,
+                );
+              },
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Ask / read-only / trusted hooks'), findsOneWidget);
+      await tester.tap(find.text('Ask / read-only / trusted hooks'));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Auto-approve / workspace write / trusted hooks'),
+        findsOneWidget,
+      );
+      await tester.tap(
+        find.text('Auto-approve / workspace write / trusted hooks'),
+      );
+      await tester.pumpAndSettle();
+
+      expect(selected, LaunchSecurityPolicy.autoApproveWorkspaceWriteTrusted);
+    });
   });
 }

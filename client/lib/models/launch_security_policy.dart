@@ -22,6 +22,21 @@ class LaunchSecurityPolicy {
     hookTrust: LaunchHookTrustPolicy.bypass,
   );
 
+  /// A cautious explicit preset for permission controls that need to show
+  /// more than the CLI default/full-access pair.
+  static const askReadOnlyTrusted = LaunchSecurityPolicy(
+    approval: LaunchApprovalPolicy.ask,
+    sandbox: LaunchSandboxPolicy.readOnly,
+    hookTrust: LaunchHookTrustPolicy.trustedOnly,
+  );
+
+  /// An explicit development preset that still retains trusted hook checks.
+  static const autoApproveWorkspaceWriteTrusted = LaunchSecurityPolicy(
+    approval: LaunchApprovalPolicy.autoApprove,
+    sandbox: LaunchSandboxPolicy.workspaceWrite,
+    hookTrust: LaunchHookTrustPolicy.trustedOnly,
+  );
+
   factory LaunchSecurityPolicy.fromJson(Object? raw) {
     if (raw is! Map) return const LaunchSecurityPolicy();
     return LaunchSecurityPolicy(
@@ -49,8 +64,8 @@ class LaunchSecurityPolicy {
 
   /// Whether this policy asks the launcher for an explicitly dangerous mode.
   bool get requiresDangerousExecution =>
-      approval == LaunchApprovalPolicy.never ||
-      sandbox == LaunchSandboxPolicy.fullAccess ||
+      approval == LaunchApprovalPolicy.never &&
+      sandbox == LaunchSandboxPolicy.fullAccess &&
       hookTrust == LaunchHookTrustPolicy.bypass;
 
   LaunchSecurityPolicy copyWith({
@@ -132,8 +147,8 @@ class LaunchSecurityPolicyOverride {
   final LaunchHookTrustPolicy? hookTrust;
 
   bool get requiresDangerousExecution =>
-      approval == LaunchApprovalPolicy.never ||
-      sandbox == LaunchSandboxPolicy.fullAccess ||
+      approval == LaunchApprovalPolicy.never &&
+      sandbox == LaunchSandboxPolicy.fullAccess &&
       hookTrust == LaunchHookTrustPolicy.bypass;
 
   LaunchSecurityPolicy applyTo(LaunchSecurityPolicy base) =>

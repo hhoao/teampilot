@@ -258,13 +258,28 @@ class AutomationEditorLaunchSection extends StatelessWidget {
             return TpSelect<LaunchSecurityPolicy>(
               items: const [
                 LaunchSecurityPolicy(),
+                LaunchSecurityPolicy.askReadOnlyTrusted,
+                LaunchSecurityPolicy.autoApproveWorkspaceWriteTrusted,
                 LaunchSecurityPolicy.fullAccess,
               ],
               initialItem: state.value ?? const LaunchSecurityPolicy(),
               decoration: TpSelectDecorations.themed(context),
-              itemLabel: (value) => value.requiresDangerousExecution
-                  ? l10n.workspaceChatLandingFullAccessPermissions
-                  : l10n.workspaceChatLandingDefaultPermissions,
+              itemLabel: (value) {
+                if (value == LaunchSecurityPolicy.fullAccess) {
+                  return l10n.workspaceChatLandingFullAccessPermissions;
+                }
+                if (value == LaunchSecurityPolicy.askReadOnlyTrusted) {
+                  return l10n.automationsPermissionsAskReadOnly;
+                }
+                if (value ==
+                    LaunchSecurityPolicy.autoApproveWorkspaceWriteTrusted) {
+                  return l10n.automationsPermissionsAutoApproveWorkspaceWrite;
+                }
+                if (value == const LaunchSecurityPolicy()) {
+                  return l10n.workspaceChatLandingDefaultPermissions;
+                }
+                return l10n.automationsPermissionsCustom;
+              },
               onChanged: (value) {
                 if (value == null) return;
                 state.didChange(value);

@@ -21,6 +21,9 @@ final class UnboundComposeChrome extends ComposeChrome {
     required this.onConversationModeSelected,
     required this.onAutoChipSelected,
     required this.onPermissionSelected,
+    this.askReadOnlyPermissionsLabel,
+    this.autoApproveWorkspaceWritePermissionsLabel,
+    this.customPermissionsLabel,
     this.autoChipLeading,
     this.expertChipLabel,
     this.expertChipSpecs = const [],
@@ -35,6 +38,9 @@ final class UnboundComposeChrome extends ComposeChrome {
   final LaunchSecurityPolicy launchSecurityPolicy;
   final String defaultPermissionsLabel;
   final String fullAccessPermissionsLabel;
+  final String? askReadOnlyPermissionsLabel;
+  final String? autoApproveWorkspaceWritePermissionsLabel;
+  final String? customPermissionsLabel;
   final List<TpActionMenuSpec> conversationModeSpecs;
   final List<TpActionMenuSpec> autoChipSpecs;
   final ValueChanged<Object?> onConversationModeSelected;
@@ -72,6 +78,9 @@ final class BoundComposeChrome extends ComposeChrome {
     this.defaultPermissionsLabel,
     this.fullAccessPermissionsLabel,
     this.onPermissionSelected,
+    this.askReadOnlyPermissionsLabel,
+    this.autoApproveWorkspaceWritePermissionsLabel,
+    this.customPermissionsLabel,
     this.teamSettingsTooltip,
     this.onTeamSettings,
     this.showTeamSettingsAttention = false,
@@ -103,6 +112,9 @@ final class BoundComposeChrome extends ComposeChrome {
   final LaunchSecurityPolicy launchSecurityPolicy;
   final String? defaultPermissionsLabel;
   final String? fullAccessPermissionsLabel;
+  final String? askReadOnlyPermissionsLabel;
+  final String? autoApproveWorkspaceWritePermissionsLabel;
+  final String? customPermissionsLabel;
   final ValueChanged<LaunchSecurityPolicy>? onPermissionSelected;
 
   final String? teamSettingsTooltip;

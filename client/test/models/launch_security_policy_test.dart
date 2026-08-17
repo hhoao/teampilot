@@ -47,4 +47,50 @@ void main() {
 
     expect(policy.requiresDangerousExecution, isTrue);
   });
+
+  test('partial dangerous dimensions do not require full-access execution', () {
+    expect(
+      const LaunchSecurityPolicy(
+        approval: LaunchApprovalPolicy.never,
+        sandbox: LaunchSandboxPolicy.workspaceWrite,
+        hookTrust: LaunchHookTrustPolicy.bypass,
+      ).requiresDangerousExecution,
+      isFalse,
+    );
+    expect(
+      const LaunchSecurityPolicy(
+        approval: LaunchApprovalPolicy.never,
+        sandbox: LaunchSandboxPolicy.fullAccess,
+        hookTrust: LaunchHookTrustPolicy.trustedOnly,
+      ).requiresDangerousExecution,
+      isFalse,
+    );
+    expect(
+      const LaunchSecurityPolicyOverride(
+        approval: LaunchApprovalPolicy.never,
+        sandbox: LaunchSandboxPolicy.fullAccess,
+        hookTrust: LaunchHookTrustPolicy.trustedOnly,
+      ).requiresDangerousExecution,
+      isFalse,
+    );
+  });
+
+  test('named intermediate policy presets retain all three dimensions', () {
+    expect(
+      LaunchSecurityPolicy.askReadOnlyTrusted,
+      const LaunchSecurityPolicy(
+        approval: LaunchApprovalPolicy.ask,
+        sandbox: LaunchSandboxPolicy.readOnly,
+        hookTrust: LaunchHookTrustPolicy.trustedOnly,
+      ),
+    );
+    expect(
+      LaunchSecurityPolicy.autoApproveWorkspaceWriteTrusted,
+      const LaunchSecurityPolicy(
+        approval: LaunchApprovalPolicy.autoApprove,
+        sandbox: LaunchSandboxPolicy.workspaceWrite,
+        hookTrust: LaunchHookTrustPolicy.trustedOnly,
+      ),
+    );
+  });
 }

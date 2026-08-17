@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/launch_security_policy.dart';
+import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/services/cli/registry/launch/cli_launch_context.dart';
 import 'package:teampilot/services/session/remote_ssh_launch_constraints.dart';
 
 void main() {
@@ -52,6 +54,32 @@ void main() {
         ),
         RemoteRootSecurityPolicy.injectSandboxEnv,
       );
+    });
+
+    test('safe transformation updates both resolved and member policies', () {
+      const requested = LaunchSecurityPolicy.fullAccess;
+      const member = TeamMemberConfig(
+        id: 'member',
+        name: 'Member',
+        launchSecurityPolicy: requested,
+      );
+      final transformed = restrictRemoteRootSecurityPolicy(
+        const CliLaunchContext(
+          team: TeamProfile(id: 'team', name: 'Team'),
+          member: member,
+          launchSecurityPolicy: requested,
+        ),
+      );
+
+      expect(
+        transformed.launchSecurityPolicy.requiresDangerousExecution,
+        isFalse,
+      );
+      expect(
+        transformed.member.launchSecurityPolicy.requiresDangerousExecution,
+        isFalse,
+      );
+      expect(transformed.launchSecurityPolicy, isNot(requested));
     });
   });
 }
