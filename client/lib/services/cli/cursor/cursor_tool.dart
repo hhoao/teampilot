@@ -4,6 +4,10 @@ import '../../../models/team_config.dart';
 import '../registry/cli_capability.dart';
 import '../registry/cli_tool_definition.dart';
 import 'capabilities/team_behavior.dart';
+import 'capabilities/session_selection_launch.dart';
+import 'capabilities/workspace_access_launch.dart';
+import 'capabilities/model_launch.dart';
+import 'capabilities/permission_launch.dart';
 import 'capabilities/chat_interaction.dart';
 import 'capabilities/terminal_behavior.dart';
 import 'capabilities/prompt.dart';
@@ -25,12 +29,18 @@ import 'capabilities/skill.dart';
 import 'capabilities/executable.dart';
 import '../registry/capabilities/hook_capability.dart';
 import 'provider/cursor_hook_writer.dart';
+import '../registry/launch/user_extra_args_provider.dart';
 
 /// Cursor CLI (`cursor-agent`). Standalone and mixed-mode (HOME isolation +
 /// provider auth) embedded terminal.
 final class CursorCliTool implements CliToolDefinition {
   CursorCliTool({
     this.teamBehavior = const CursorTeamBehavior(),
+    this.sessionSelection = const CursorSessionSelectionLaunch(),
+    this.workspaceAccess = const CursorWorkspaceAccessLaunch(),
+    this.modelLaunch = const CursorModelLaunch(),
+    this.permissionLaunch = const CursorPermissionLaunch(),
+    this.userExtraArgs = const UserExtraArgsProvider(),
     this.session = const CursorSessionLifecycleCapability(),
     this.executable = const CursorExecutableCapability(),
     this.terminalBehavior = const CursorTerminalBehavior(),
@@ -57,6 +67,11 @@ final class CursorCliTool implements CliToolDefinition {
   final CursorMcpCapability mcp;
 
   final TeamBehaviorCapability teamBehavior;
+  final CursorSessionSelectionLaunch sessionSelection;
+  final CursorWorkspaceAccessLaunch workspaceAccess;
+  final CursorModelLaunch modelLaunch;
+  final CursorPermissionLaunch permissionLaunch;
+  final UserExtraArgsProvider userExtraArgs;
   final HookCapability hookWriter;
   final ChatInteractionCapability chatInteraction;
   final CursorAiHistoryCapability aiHistory;
@@ -72,6 +87,11 @@ final class CursorCliTool implements CliToolDefinition {
   @override
   Iterable<CliCapability> get capabilities => [
     teamBehavior,
+    sessionSelection,
+    workspaceAccess,
+    modelLaunch,
+    permissionLaunch,
+    userExtraArgs,
     executable,
     session,
     terminalBehavior,

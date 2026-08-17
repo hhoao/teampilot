@@ -5,7 +5,6 @@ import 'package:path/path.dart' as p;
 
 import '../cli/preset_resolver.dart';
 import '../../models/team_config.dart';
-import '../cli/cli_tool_adapter.dart';
 import '../cli/registry/launch/cli_launch_arg_assembler.dart';
 import '../cli/registry/launch/cli_launch_arg_provider.dart';
 import '../cli/registry/launch/cli_launch_context.dart' as launch_context;
@@ -14,8 +13,6 @@ import 'shell_launch_spec.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../cli/cli_invocation.dart';
 import '../cli/claude/capabilities/provider.dart';
-import '../cli/cursor/capabilities/launch_args.dart';
-import '../cli/opencode/capabilities/launch_args.dart';
 import 'member_role_provision.dart';
 
 typedef ProcessStarter =
@@ -113,24 +110,10 @@ class LaunchCommandBuilder {
     if (tool.capabilities.whereType<CliLaunchArgProvider>().isNotEmpty) {
       return const CliLaunchArgAssembler().assemble(tool, context);
     }
-    return _legacyLaunchAdapterFor(cli).buildArguments(context);
+    throw StateError(
+      '${cli.value} launch arguments require registered launch providers.',
+    );
   }
-
-  /// Legacy bridge for CLI definitions that have not yet migrated to launch
-  /// argument providers. Codex, Claude, and FlashskyAI are provider-only.
-  static CliToolAdapter _legacyLaunchAdapterFor(CliTool cli) => switch (cli) {
-    CliTool.claude => throw StateError(
-      'Claude launch arguments require registered launch providers.',
-    ),
-    CliTool.flashskyai => throw StateError(
-      'FlashskyAI launch arguments require registered launch providers.',
-    ),
-    CliTool.codex => throw StateError(
-      'Codex launch arguments require registered launch providers.',
-    ),
-    CliTool.cursor => const CursorCliToolAdapter(),
-    CliTool.opencode => const OpencodeCliToolAdapter(),
-  };
 
   /// CLI argv for [TerminalSession.connect] after env normalization.
   static List<String> buildShellArguments(

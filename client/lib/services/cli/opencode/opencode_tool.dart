@@ -5,6 +5,10 @@ import 'capabilities/session.dart';
 import '../registry/cli_capability.dart';
 import '../registry/cli_tool_definition.dart';
 import 'capabilities/team_behavior.dart';
+import 'capabilities/session_selection_launch.dart';
+import 'capabilities/model_launch.dart';
+import 'capabilities/agent_launch.dart';
+import 'capabilities/user_extra_args_launch.dart';
 import 'capabilities/chat_interaction.dart';
 import 'capabilities/terminal_behavior.dart';
 import '../registry/capabilities/cli_session_capability.dart';
@@ -29,6 +33,10 @@ import '../registry/capabilities/prompt_capability.dart';
 final class OpencodeCliTool implements CliToolDefinition {
   OpencodeCliTool({
     this.teamBehavior = const OpencodeTeamBehavior(),
+    this.sessionSelection = const OpencodeSessionSelectionLaunch(),
+    this.modelLaunch = const OpencodeModelLaunch(),
+    this.agentLaunch = const OpencodeAgentLaunch(),
+    this.userExtraArgs = const OpencodeUserExtraArgsLaunch(),
     this.session = const OpencodeCliSessionCapability(),
     this.executable = const OpencodeExecutableCapability(),
     this.terminalBehavior = const OpencodeTerminalBehavior(),
@@ -55,6 +63,10 @@ final class OpencodeCliTool implements CliToolDefinition {
   final OpencodeMcpCapability mcp;
 
   final TeamBehaviorCapability teamBehavior;
+  final OpencodeSessionSelectionLaunch sessionSelection;
+  final OpencodeModelLaunch modelLaunch;
+  final OpencodeAgentLaunch agentLaunch;
+  final OpencodeUserExtraArgsLaunch userExtraArgs;
   final HookCapability hookWriter;
   final ChatInteractionCapability chatInteraction;
   final OpencodeAiHistoryCapability aiHistory;
@@ -70,6 +82,10 @@ final class OpencodeCliTool implements CliToolDefinition {
   @override
   Iterable<CliCapability> get capabilities => [
     teamBehavior,
+    sessionSelection,
+    modelLaunch,
+    agentLaunch,
+    userExtraArgs,
     executable,
     session,
     terminalBehavior,
