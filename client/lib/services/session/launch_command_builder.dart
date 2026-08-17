@@ -5,12 +5,17 @@ import 'package:path/path.dart' as p;
 
 import '../cli/preset_resolver.dart';
 import '../../models/team_config.dart';
-import '../cli/registry/launch/cli_launch_arg_assembler.dart';
+import '../cli/cli_tool_adapter.dart';
 import '../cli/registry/launch/cli_launch_context.dart';
 import 'shell_launch_spec.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../cli/cli_invocation.dart';
+import '../cli/claude/capabilities/launch_args.dart';
 import '../cli/claude/capabilities/provider.dart';
+import '../cli/codex/capabilities/launch_args.dart';
+import '../cli/cursor/capabilities/launch_args.dart';
+import '../cli/flashskyai/capabilities/launch_args.dart';
+import '../cli/opencode/capabilities/launch_args.dart';
 import 'member_role_provision.dart';
 
 typedef ProcessStarter =
@@ -100,12 +105,22 @@ class LaunchCommandBuilder {
   }) {
     final registry = cliRegistry ?? _defaultCliRegistry;
     final cli = stagedMemberLaunchCli(context.team, context.member);
-    final tool = registry.tryGet(cli);
-    if (tool == null) {
+    if (registry.tryGet(cli) == null) {
       throw StateError('No CliToolDefinition for ${cli.value}');
     }
-    return const CliLaunchArgAssembler().assemble(tool, context);
+    return _legacyLaunchAdapterFor(cli).buildArguments(context);
   }
+
+  /// Temporary bridge while launch providers are migrated into the registry.
+  /// The context itself lives in the registry launch layer; only the legacy
+  /// argv implementation remains selected here until Tasks 5-7 land.
+  static CliToolAdapter _legacyLaunchAdapterFor(CliTool cli) => switch (cli) {
+    CliTool.claude => const ClaudeCodeCliToolAdapter(),
+    CliTool.flashskyai => const FlashskyaiCliToolAdapter(),
+    CliTool.codex => const CodexCliToolAdapter(),
+    CliTool.cursor => const CursorCliToolAdapter(),
+    CliTool.opencode => const OpencodeCliToolAdapter(),
+  };
 
   /// CLI argv for [TerminalSession.connect] after env normalization.
   static List<String> buildShellArguments(
