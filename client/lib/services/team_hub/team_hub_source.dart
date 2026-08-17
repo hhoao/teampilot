@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 
+import '../../models/catalog/catalog_types.dart';
 import '../../models/discoverable_team.dart';
+import '../catalog/catalog_error_sanitizer.dart';
 
 /// Fetches raw text for a URI (injected so tests can fake the network).
 typedef RawContentFetcher = Future<String?> Function(Uri uri);
@@ -62,4 +64,46 @@ const kDefaultTeamHubRegistry = TeamHubRegistry(
 abstract interface class TeamHubSource {
   Future<List<DiscoverableTeam>> fetchTeams({bool forceRefresh = false});
   Future<List<String>> categories({bool forceRefresh = false});
+}
+
+/// Optional capability for sources that expose independent catalog
+/// contributions instead of one flattened list.
+abstract interface class TeamHubSourceContributions {
+  Future<List<CatalogSourceResult<DiscoverableTeam>>> fetchTeamSources({
+    bool forceRefresh = false,
+  });
+}
+
+Future<List<CatalogSourceResult<DiscoverableTeam>>> fetchTeamCatalogSources(
+  TeamHubSource source, {
+  bool forceRefresh = false,
+}) async {
+  if (source is TeamHubSourceContributions) {
+    return (source as TeamHubSourceContributions).fetchTeamSources(
+      forceRefresh: forceRefresh,
+    );
+  }
+  try {
+    final teams = await source.fetchTeams(forceRefresh: forceRefresh);
+    return [
+      CatalogSourceResult(
+        sourceId: 'team-hub',
+        sourceLabel: 'Team Hub',
+        items: teams,
+      ),
+    ];
+  } catch (error) {
+    return [
+      CatalogSourceResult(
+        sourceId: 'team-hub',
+        sourceLabel: 'Team Hub',
+        items: const [],
+        failure: CatalogSourceFailure(
+          sourceId: 'team-hub',
+          sourceLabel: 'Team Hub',
+          message: CatalogErrorSanitizer.sanitize(error.toString()),
+        ),
+      ),
+    ];
+  }
 }

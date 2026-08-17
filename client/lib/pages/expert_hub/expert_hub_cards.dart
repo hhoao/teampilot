@@ -30,11 +30,8 @@ class ExpertHubCardHeader extends StatelessWidget {
   final Widget? trailing;
 
   @override
-  Widget build(BuildContext context) => TeamHubCardHeader(
-    title: title,
-    leading: leading,
-    trailing: trailing,
-  );
+  Widget build(BuildContext context) =>
+      TeamHubCardHeader(title: title, leading: leading, trailing: trailing);
 }
 
 /// A discovery/favorites card for one public member persona.
@@ -67,7 +64,6 @@ class _ExpertHubCardState extends State<ExpertHubCard> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final styles = TpTextStyles.of(context);
     final member = widget.member.forLocale(
       Localizations.localeOf(context).languageCode,
     );
@@ -103,57 +99,49 @@ class _ExpertHubCardState extends State<ExpertHubCard> {
               : null,
         ),
         clipBehavior: Clip.antiAlias,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    TeamMonogram(seed: member.key, label: member.name),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            member.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: styles.mdSemiboldColored(cs.onSurface,),
-                          ),
-                          if (member.author != null &&
-                              member.author!.isNotEmpty) ...[
-                            const SizedBox(height: 2),
-                            Text(
-                              member.author!,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: styles.mutedXs,
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                    _FavoriteButton(
-                      favorited: widget.favorited,
-                      touchTarget: _touchTarget,
-                      onPressed: widget.onToggleFavorite,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Expanded(
-                  child: Text(
-                    member.description,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: styles.mutedMd,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Wrap(
+        child: TpCatalogCardShell(
+          title: member.name,
+          source: member.author?.trim().isNotEmpty == true
+              ? member.author!.trim()
+              : member.source.value,
+          description: member.description,
+          leading: TeamMonogram(seed: member.key, label: member.name),
+          metadata: TpCatalogMetadataRow(
+            adoption: _metric(
+              icon: Icons.download_outlined,
+              label: context.l10n.expertsCatalogAdoption,
+              value: member.metrics.adoptionCount?.toString(),
+              missing: context.l10n.catalogMetricMissingTooltip,
+            ),
+            rating: _metric(
+              icon: Icons.star_outline_rounded,
+              label: context.l10n.catalogMetricRating,
+              value: member.metrics.rating?.toStringAsFixed(1),
+              missing: context.l10n.catalogMetricMissingTooltip,
+            ),
+            updated: _metric(
+              icon: Icons.update_outlined,
+              label: context.l10n.catalogMetricUpdated,
+              value: _date(
+                member.metrics.updatedAtMs ?? _fallbackUpdatedAt(member),
+              ),
+              missing: context.l10n.catalogMetricMissingTooltip,
+            ),
+            published: _metric(
+              icon: Icons.event_outlined,
+              label: context.l10n.catalogMetricPublished,
+              value: _date(member.metrics.publishedAtMs),
+              missing: context.l10n.catalogMetricMissingTooltip,
+            ),
+          ),
+          action: TextButton(
+            onPressed: widget.busy ? null : widget.onTap,
+            child: Text(context.l10n.expertHubViewInHub),
+          ),
+          body: Row(
+            children: [
+              Expanded(
+                child: Wrap(
                   spacing: 8,
                   runSpacing: 6,
                   crossAxisAlignment: WrapCrossAlignment.center,
@@ -187,12 +175,39 @@ class _ExpertHubCardState extends State<ExpertHubCard> {
                       TeamStatChip(label: member.category, accent: accent),
                   ],
                 ),
-              ],
-            ),
+              ),
+              _FavoriteButton(
+                favorited: widget.favorited,
+                touchTarget: _touchTarget,
+                onPressed: widget.onToggleFavorite,
+              ),
+            ],
           ),
         ),
+      ),
     );
   }
+}
+
+TpCatalogMetricView _metric({
+  required IconData icon,
+  required String label,
+  required String? value,
+  required String missing,
+}) => TpCatalogMetricView(
+  icon: icon,
+  label: label,
+  value: value,
+  missingValueTooltip: missing,
+);
+
+int? _fallbackUpdatedAt(DiscoverableMember member) =>
+    member.updatedAt == 0 ? null : member.updatedAt;
+
+String? _date(int? milliseconds) {
+  if (milliseconds == null || milliseconds <= 0) return null;
+  final date = DateTime.fromMillisecondsSinceEpoch(milliseconds).toLocal();
+  return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
 }
 
 class ExpertSourceBadge extends StatelessWidget {

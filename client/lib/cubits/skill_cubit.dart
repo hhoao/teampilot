@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../models/catalog/catalog_types.dart';
 import '../models/discoverable_team.dart';
 import '../models/progress_activity.dart';
 import '../models/skill.dart';
@@ -11,6 +12,8 @@ import '../models/skill_registry_source.dart';
 import '../models/unified_skill_entry.dart';
 import '../repositories/skill_repository.dart';
 import '../services/discovery/discovery_refresh_policy.dart';
+import '../services/catalog/catalog_error_sanitizer.dart';
+import '../services/catalog/catalog_sort_comparator.dart';
 import '../services/progress_activity/pack_acquire_activity_adapter.dart';
 import '../services/skill/marketplace/skill_marketplace_source.dart';
 import '../services/skill/registry/api_registry_source.dart';
@@ -35,6 +38,8 @@ class SkillState extends Equatable {
     this.discoveryPages = const {},
     this.discoveryHasNext = const {},
     this.discoveryTotals = const {},
+    this.discoverySort = CatalogSortKey.adoption,
+    List<CatalogSourceFailure> discoveryFailures = const [],
     this.discoveryError,
     this.discoveryBrowsing = false,
     this.discoveryLastQuery,
@@ -46,7 +51,7 @@ class SkillState extends Equatable {
     this.updatesLoading = false,
     this.repoSyncingKeys = const {},
     this.toolbarBusy = false,
-  });
+  }) : _discoveryFailures = discoveryFailures;
 
   final List<Skill> installed;
   final List<DiscoverableSkill> discoverable;
@@ -57,6 +62,8 @@ class SkillState extends Equatable {
   final Map<String, int> discoveryPages;
   final Map<String, bool> discoveryHasNext;
   final Map<String, int> discoveryTotals;
+  final CatalogSortKey discoverySort;
+  final List<CatalogSourceFailure> _discoveryFailures;
   final String? discoveryError;
   final bool discoveryBrowsing;
   final SkillRegistryQuery? discoveryLastQuery;
@@ -68,6 +75,9 @@ class SkillState extends Equatable {
   final bool updatesLoading;
   final Set<String> repoSyncingKeys;
   final bool toolbarBusy;
+
+  List<CatalogSourceFailure> get discoveryFailures =>
+      List.unmodifiable(_discoveryFailures);
 
   bool get anyDiscoveryHasNext => discoveryHasNext.values.any((v) => v);
 
@@ -81,6 +91,8 @@ class SkillState extends Equatable {
     Map<String, int>? discoveryPages,
     Map<String, bool>? discoveryHasNext,
     Map<String, int>? discoveryTotals,
+    CatalogSortKey? discoverySort,
+    List<CatalogSourceFailure>? discoveryFailures,
     Object? discoveryError = _discoveryErrorUnset,
     bool? discoveryBrowsing,
     SkillRegistryQuery? discoveryLastQuery,
@@ -104,6 +116,10 @@ class SkillState extends Equatable {
     discoveryPages: discoveryPages ?? this.discoveryPages,
     discoveryHasNext: discoveryHasNext ?? this.discoveryHasNext,
     discoveryTotals: discoveryTotals ?? this.discoveryTotals,
+    discoverySort: discoverySort ?? this.discoverySort,
+    discoveryFailures: discoveryFailures == null
+        ? this.discoveryFailures
+        : List.unmodifiable(discoveryFailures),
     discoveryError: identical(discoveryError, _discoveryErrorUnset)
         ? this.discoveryError
         : discoveryError as String?,
@@ -132,6 +148,8 @@ class SkillState extends Equatable {
     discoveryPages,
     discoveryHasNext,
     discoveryTotals,
+    discoverySort,
+    discoveryFailures,
     discoveryError,
     discoveryBrowsing,
     discoveryLastQuery,
@@ -169,11 +187,10 @@ class SkillCubit extends Cubit<SkillState> {
                    overwrite: overwrite,
                    idOverride: idOverride,
                  ),
-             registerDirectory: ({required String id, required String directory}) =>
-                 _repo.install.registerInstalledDirectory(
-                   id: id,
-                   directory: directory,
-                 ),
+             registerDirectory:
+                 ({required String id, required String directory}) => _repo
+                     .install
+                     .registerInstalledDirectory(id: id, directory: directory),
              repoCache: _repo.repoCache,
            ),
        _onSkillUninstalled = onSkillUninstalled,
@@ -187,7 +204,8 @@ class SkillCubit extends Cubit<SkillState> {
   final SkillUninstalledHandler? _onSkillUninstalled;
   final PackAcquireActivityAdapter? _packAcquireActivity;
   final DiscoverySettingsCubit? _discoverySettings;
-  final List<SkillRegistrySource> Function(SkillRegistriesConfig) _rebuildSources;
+  final List<SkillRegistrySource> Function(SkillRegistriesConfig)
+  _rebuildSources;
   int _discoveryGeneration = 0;
 
   bool _autoRefreshEnabled() =>
@@ -476,9 +494,7 @@ class SkillCubit extends Cubit<SkillState> {
         await _emitInstalled();
         return ref.expectedLocalId;
       }
-      appLogger.w(
-        '[team-hub] skill dep ${ref.name} failed: ${result.message}',
-      );
+      appLogger.w('[team-hub] skill dep ${ref.name} failed: ${result.message}');
       return null;
     } catch (e) {
       if (_isAlreadyExistsMessage('$e')) {
@@ -525,6 +541,16 @@ class SkillCubit extends Cubit<SkillState> {
     await unifiedSearch('', sourceId: null);
   }
 
+  void setDiscoverySort(CatalogSortKey sort) {
+    if (sort == state.discoverySort) return;
+    emit(
+      state.copyWith(
+        discoverySort: sort,
+        discoveryEntries: _sortDiscoveryEntries(state.discoveryEntries, sort),
+      ),
+    );
+  }
+
   Future<void> unifiedSearch(
     String query, {
     String? sourceId,
@@ -539,22 +565,27 @@ class SkillCubit extends Cubit<SkillState> {
         ? state.sources.where((s) => s.id == sourceId && s.enabled).toList()
         : _enabledSources;
     if (sources.isEmpty) {
-      emit(state.copyWith(
-        discoveryEntries: const [],
-        discoveryPages: const {},
-        discoveryHasNext: const {},
-        discoveryTotals: const {},
-        discoveryError: null,
-        discoveryBrowsing: effectiveQ.isEmpty,
-        discoveryLoading: false,
-      ));
+      emit(
+        state.copyWith(
+          discoveryEntries: const [],
+          discoveryPages: const {},
+          discoveryHasNext: const {},
+          discoveryTotals: const {},
+          discoveryFailures: const [],
+          discoveryError: null,
+          discoveryBrowsing: effectiveQ.isEmpty,
+          discoveryLoading: false,
+        ),
+      );
       return;
     }
-    emit(state.copyWith(
-      discoveryLoading: true,
-      discoveryBrowsing: effectiveQ.isEmpty,
-      discoveryError: null,
-    ));
+    emit(
+      state.copyWith(
+        discoveryLoading: true,
+        discoveryBrowsing: effectiveQ.isEmpty,
+        discoveryError: null,
+      ),
+    );
     final lastQuery = SkillRegistryQuery(
       query: effectiveQ,
       page: 1,
@@ -564,37 +595,52 @@ class SkillCubit extends Cubit<SkillState> {
       language: language,
       sortBy: sortBy,
     );
-    final results = await Future.wait(sources.map((s) async {
-      try {
-        final page = await s.search(lastQuery);
-        return (source: s, page: page, error: null);
-      } catch (e) {
-        return (
-          source: s,
-          page: SkillRegistryPage(entries: const [], hasNext: false),
-          error: e is MarketplaceQuotaException
-              ? marketplaceQuotaErrorKey
-              : '$e',
-        );
-      }
-    }));
+    final results = await Future.wait(
+      sources.map((s) async {
+        try {
+          final page = await s.search(lastQuery);
+          return (source: s, page: page, failure: null);
+        } catch (e) {
+          return (
+            source: s,
+            page: SkillRegistryPage(entries: const [], hasNext: false),
+            failure: _catalogFailure(s, e),
+          );
+        }
+      }),
+    );
     if (!isClosed) {
-      final merged = _mergeEntries(results);
-      emit(state.copyWith(
-        discoveryEntries: merged.entries,
-        discoveryPages: {for (final r in results) r.source.id: 1},
-        discoveryHasNext: {
-          for (final r in results) r.source.id: r.page.hasNext,
-        },
-        discoveryTotals: {
-          for (final r in results) r.source.id: r.page.total,
-        },
-        discoveryLastQuery: lastQuery,
-        discoveryError: results.any((r) => r.error != null)
-            ? results.firstWhere((r) => r.error != null).error
-            : null,
-        discoveryLoading: false,
-      ));
+      final failures = [
+        for (final result in results)
+          if (result.failure != null) result.failure!,
+      ];
+      final failedSourceIds = failures
+          .map((failure) => failure.sourceId)
+          .toSet();
+      final retained = _sameDiscoveryQuery(state.discoveryLastQuery, lastQuery)
+          ? state.discoveryEntries
+                .where((entry) => failedSourceIds.contains(entry.sourceId))
+                .toList()
+          : null;
+      final merged = _mergeEntries(results, appendTo: retained);
+      emit(
+        state.copyWith(
+          discoveryEntries: merged.entries,
+          discoveryPages: {
+            for (final r in results) r.source.id: r.failure == null ? 1 : 0,
+          },
+          discoveryHasNext: {
+            for (final r in results) r.source.id: r.page.hasNext,
+          },
+          discoveryTotals: {for (final r in results) r.source.id: r.page.total},
+          discoveryLastQuery: lastQuery,
+          discoveryFailures: failures,
+          discoveryError: merged.entries.isEmpty && failures.isNotEmpty
+              ? failures.first.message
+              : null,
+          discoveryLoading: false,
+        ),
+      );
     }
   }
 
@@ -602,7 +648,8 @@ class SkillCubit extends Cubit<SkillState> {
     if (state.discoveryLoading) return;
     if (!state.anyDiscoveryHasNext) return;
     emit(state.copyWith(discoveryLoading: true));
-    final last = state.discoveryLastQuery ??
+    final last =
+        state.discoveryLastQuery ??
         SkillRegistryQuery(page: 1, limit: _unifiedPageSize);
     final nextPages = <String, int>{};
     final results = await Future.wait(
@@ -613,22 +660,24 @@ class SkillCubit extends Cubit<SkillState> {
           return (
             source: s,
             page: SkillRegistryPage(entries: const [], hasNext: false),
-            error: null,
+            failure: null,
           );
         }
         final next = loaded + 1;
         try {
-          final page = await s.search(SkillRegistryQuery(
-            query: last.query,
-            page: next,
-            limit: last.limit,
-            category: last.category,
-            occupation: last.occupation,
-            language: last.language,
-            sortBy: last.sortBy,
-          ));
+          final page = await s.search(
+            SkillRegistryQuery(
+              query: last.query,
+              page: next,
+              limit: last.limit,
+              category: last.category,
+              occupation: last.occupation,
+              language: last.language,
+              sortBy: last.sortBy,
+            ),
+          );
           nextPages[s.id] = next;
-          return (source: s, page: page, error: null);
+          return (source: s, page: page, failure: null);
         } catch (e) {
           return (
             source: s,
@@ -636,32 +685,41 @@ class SkillCubit extends Cubit<SkillState> {
               entries: const [],
               hasNext: state.discoveryHasNext[s.id] ?? false,
             ),
-            error: e is MarketplaceQuotaException
-                ? marketplaceQuotaErrorKey
-                : '$e',
+            failure: _catalogFailure(s, e),
           );
         }
       }),
     );
     if (!isClosed) {
       final merged = _mergeEntries(results, appendTo: state.discoveryEntries);
-      emit(state.copyWith(
-        discoveryEntries: merged.entries,
-        discoveryPages: {...state.discoveryPages, ...nextPages},
-        discoveryHasNext: {
-          ...state.discoveryHasNext,
-          for (final r in results) r.source.id: r.page.hasNext,
-        },
-        discoveryError: results.any((r) => r.error != null)
-            ? results.firstWhere((r) => r.error != null).error
-            : null,
-        discoveryLoading: false,
-      ));
+      final failures = [
+        for (final result in results)
+          if (result.failure != null) result.failure!,
+      ];
+      emit(
+        state.copyWith(
+          discoveryEntries: merged.entries,
+          discoveryPages: {...state.discoveryPages, ...nextPages},
+          discoveryHasNext: {
+            ...state.discoveryHasNext,
+            for (final r in results) r.source.id: r.page.hasNext,
+          },
+          discoveryFailures: failures,
+          discoveryError: failures.isNotEmpty ? failures.first.message : null,
+          discoveryLoading: false,
+        ),
+      );
     }
   }
 
   ({List<UnifiedSkillEntry> entries}) _mergeEntries(
-    List<({SkillRegistrySource source, SkillRegistryPage page, String? error})>
+    List<
+      ({
+        SkillRegistrySource source,
+        SkillRegistryPage page,
+        CatalogSourceFailure? failure,
+      })
+    >
     results, {
     List<UnifiedSkillEntry>? appendTo,
   }) {
@@ -683,22 +741,62 @@ class SkillCubit extends Cubit<SkillState> {
         if (seen.add(entry.dedupeKey)) out.add(entry);
       }
     }
-    return (entries: out);
+    return (entries: _sortDiscoveryEntries(out, state.discoverySort));
+  }
+
+  CatalogSourceFailure _catalogFailure(
+    SkillRegistrySource source,
+    Object error,
+  ) {
+    final message = error is MarketplaceQuotaException
+        ? marketplaceQuotaErrorKey
+        : CatalogErrorSanitizer.sanitize('$error');
+    return CatalogSourceFailure(
+      sourceId: source.id,
+      sourceLabel: source.label,
+      message: message,
+    );
+  }
+
+  bool _sameDiscoveryQuery(SkillRegistryQuery? a, SkillRegistryQuery b) {
+    return a != null &&
+        a.query == b.query &&
+        a.category == b.category &&
+        a.occupation == b.occupation &&
+        a.language == b.language &&
+        a.sortBy == b.sortBy;
+  }
+
+  List<UnifiedSkillEntry> _sortDiscoveryEntries(
+    List<UnifiedSkillEntry> entries,
+    CatalogSortKey sort,
+  ) {
+    final sorted = [...entries];
+    sorted.sort(
+      (a, b) => CatalogSortComparator.compare(
+        _UnifiedSkillCatalogEntry(a),
+        _UnifiedSkillCatalogEntry(b),
+        sort,
+      ),
+    );
+    return sorted;
   }
 
   Future<void> unifiedSetApiKey(String sourceId, String key) async {
     final cfg = state.registriesConfig.byId(sourceId);
     if (cfg == null || cfg.kind != SkillRegistryKind.api) return;
     await _applyConfig(
-      SkillRegistriesConfig(sources: [
-        for (final s in state.registriesConfig.sources)
-          s.id == sourceId
-              ? s.copyWith(
-                  clearApiToken: key.trim().isEmpty,
-                  apiToken: key.trim().isEmpty ? null : key.trim(),
-                )
-              : s,
-      ]),
+      SkillRegistriesConfig(
+        sources: [
+          for (final s in state.registriesConfig.sources)
+            s.id == sourceId
+                ? s.copyWith(
+                    clearApiToken: key.trim().isEmpty,
+                    apiToken: key.trim().isEmpty ? null : key.trim(),
+                  )
+                : s,
+        ],
+      ),
     );
     emit(state.copyWith(discoveryError: null));
   }
@@ -706,7 +804,9 @@ class SkillCubit extends Cubit<SkillState> {
   /// Probes [candidate] (the in-dialog form edits, not the persisted source).
   /// Returns `null` on success, the error string on failure. Does NOT emit
   /// `errorMessage` — the management dialog owns the toast.
-  Future<String?> testRegistryConnection(SkillRegistrySourceConfig candidate) async {
+  Future<String?> testRegistryConnection(
+    SkillRegistrySourceConfig candidate,
+  ) async {
     final exists = state.sources.any((s) => s.id == candidate.id);
     if (!exists) return 'source-not-found';
     try {
@@ -714,11 +814,13 @@ class SkillCubit extends Cubit<SkillState> {
         SkillRegistryKind.api => ApiRegistrySource(candidate),
         SkillRegistryKind.gitRepo => GitRepoRegistrySource(
           candidate,
-          discoverableProvider: () => _repo.readCachedDiscoverable(SkillRepo(
-            owner: candidate.gitOwner ?? '',
-            name: candidate.gitName ?? '',
-            branch: candidate.gitBranch ?? 'main',
-          )),
+          discoverableProvider: () => _repo.readCachedDiscoverable(
+            SkillRepo(
+              owner: candidate.gitOwner ?? '',
+              name: candidate.gitName ?? '',
+              branch: candidate.gitBranch ?? 'main',
+            ),
+          ),
           syncNow: () async {
             await _repo.syncRepoCache(
               SkillRepo(
@@ -777,10 +879,12 @@ class SkillCubit extends Cubit<SkillState> {
         break;
       }
     }
-    final next = SkillRegistriesConfig(sources: [
-      for (final s in state.registriesConfig.sources)
-        s.id == cfg.id ? cfg : s,
-    ]);
+    final next = SkillRegistriesConfig(
+      sources: [
+        for (final s in state.registriesConfig.sources)
+          s.id == cfg.id ? cfg : s,
+      ],
+    );
     await _applyConfig(next);
     if (cfg.kind == SkillRegistryKind.gitRepo &&
         cfg.enabled &&
@@ -802,10 +906,12 @@ class SkillCubit extends Cubit<SkillState> {
       );
     }
     await _applyConfig(
-      SkillRegistriesConfig(sources: [
-        for (final s in state.registriesConfig.sources)
-          if (s.id != id) s,
-      ]),
+      SkillRegistriesConfig(
+        sources: [
+          for (final s in state.registriesConfig.sources)
+            if (s.id != id) s,
+        ],
+      ),
     );
   }
 
@@ -826,7 +932,9 @@ class SkillCubit extends Cubit<SkillState> {
   Future<void> installUnifiedEntry(UnifiedSkillEntry e) async {
     final skill = e.skill;
     if (state.busyIds.contains(skill.key)) return;
-    emit(state.copyWith(busyIds: {...state.busyIds, skill.key}, clearError: true));
+    emit(
+      state.copyWith(busyIds: {...state.busyIds, skill.key}, clearError: true),
+    );
     try {
       if (skill.isInstalledDirectly) {
         await _acquisitionEngine.installGitDir(
@@ -956,5 +1064,38 @@ class SkillCubit extends Cubit<SkillState> {
     }
   }
 
-  void clearError() => emit(state.copyWith(clearError: true, clearNotice: true));
+  void clearError() =>
+      emit(state.copyWith(clearError: true, clearNotice: true));
+}
+
+class _UnifiedSkillCatalogEntry implements CatalogEntry {
+  _UnifiedSkillCatalogEntry(this.entry);
+
+  final UnifiedSkillEntry entry;
+
+  MarketplaceSkill get skill => entry.skill;
+
+  @override
+  String get id => skill.key;
+
+  @override
+  CatalogResourceKind get kind => CatalogResourceKind.skill;
+
+  @override
+  String get name => skill.name;
+
+  @override
+  String get description => skill.description;
+
+  @override
+  String? get sourceLabel => entry.sourceId;
+
+  @override
+  String? get author => skill.repoOwner;
+
+  @override
+  List<String> get tags => const [];
+
+  @override
+  CatalogMetrics get metrics => skill.metrics;
 }

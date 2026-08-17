@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/skill_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
+import 'package:teampilot/models/catalog/catalog_types.dart';
 import 'package:teampilot/models/skill_registry_source.dart';
 import 'package:teampilot/pages/skills/skill_discovery_section.dart';
 import 'package:teampilot/repositories/skill_repository.dart';
@@ -41,6 +42,12 @@ class _FakeSource implements SkillRegistrySource {
           repoName: 'r',
           directory: '$id/1',
           githubUrl: 'https://github.com/o/r',
+          metrics: const CatalogMetrics(
+            adoptionCount: 42,
+            rating: 4.5,
+            updatedAtMs: 1_700_000_000_000,
+            publishedAtMs: 1_600_000_000_000,
+          ),
         ),
       ],
       hasNext: false,
@@ -80,8 +87,12 @@ void main() {
     tmp = Directory.systemTemp.createTempSync('skill-disc-unified-');
     final paths = AppPaths(tmp.path);
     AppStorage.installForTesting(
-      filesystem: LocalFilesystem(pathContext: AppPaths.pathContextForDataRoot(paths.basePath)),
-      paths: paths, home: tmp.path, cwd: tmp.path,
+      filesystem: LocalFilesystem(
+        pathContext: AppPaths.pathContextForDataRoot(paths.basePath),
+      ),
+      paths: paths,
+      home: tmp.path,
+      cwd: tmp.path,
     );
   });
 
@@ -106,7 +117,9 @@ void main() {
   );
 
   SkillCubit buildCubit(List<SkillRegistrySource> sources) {
-    final cfg = SkillRegistryConfigService(teampilotRoot: AppStorage.paths.basePath);
+    final cfg = SkillRegistryConfigService(
+      teampilotRoot: AppStorage.paths.basePath,
+    );
     return SkillCubit(
       SkillRepository(),
       registryConfigService: cfg,
@@ -129,6 +142,26 @@ void main() {
     expect(find.text('alpha-skill-1'), findsOneWidget);
     expect(find.text('beta-skill-1'), findsOneWidget);
   });
+
+  testWidgets(
+    'partial source failure keeps cards and shows warning affordance',
+    (tester) async {
+      final cubit = buildCubit([
+        _FakeSource('healthy'),
+        _ErrorSource('broken'),
+      ]);
+      await tester.pumpWidget(wrap(cubit));
+      await tester.pumpAndSettle();
+
+      expect(find.text('healthy-skill-1'), findsOneWidget);
+      expect(find.byIcon(Icons.warning_amber_rounded), findsOneWidget);
+      expect(find.text('Installs'), findsOneWidget);
+      expect(find.text('Rating'), findsOneWidget);
+      expect(find.text('Updated'), findsOneWidget);
+      expect(find.text('Published'), findsOneWidget);
+      expect(find.text('No skills discovered'), findsNothing);
+    },
+  );
 
   testWidgets('quota error shows error card with registries action + retry', (
     tester,

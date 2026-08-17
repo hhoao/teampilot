@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:equatable/equatable.dart';
 
 import 'catalog/catalog_types.dart';
 
@@ -39,7 +40,7 @@ enum McpCatalogSource {
 
 /// One browsable MCP entry from Smithery or the official registry API.
 @immutable
-class McpCatalogListing {
+class McpCatalogListing extends Equatable {
   const McpCatalogListing({
     required this.id,
     required this.title,
@@ -76,6 +77,23 @@ class McpCatalogListing {
   final String? smitheryQualifiedName;
 
   bool get canInstall => serverSpec.isNotEmpty;
+
+  @override
+  List<Object?> get props => [
+    id,
+    title,
+    description,
+    source,
+    serverSpec,
+    iconUrl,
+    homepage,
+    docs,
+    tags,
+    metrics,
+    verified,
+    remote,
+    smitheryQualifiedName,
+  ];
 
   Map<String, Object?> toJson() {
     final metricsJson = _catalogMetricsToJson(metrics);

@@ -3,8 +3,11 @@ import 'dart:async';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../models/catalog/catalog_types.dart';
 import '../models/mcp_catalog_listing.dart';
 import '../models/mcp_registry_source.dart';
+import '../services/catalog/catalog_error_sanitizer.dart';
+import '../services/catalog/catalog_sort_comparator.dart';
 import '../services/discovery/discovery_refresh_policy.dart';
 import '../services/mcp/mcp_discovery_disk_cache_service.dart';
 import '../services/mcp/mcp_registry_browse_service.dart';
@@ -25,7 +28,7 @@ class _RemoteSourceSnapshot {
 }
 
 class McpDiscoveryState extends Equatable {
-  const McpDiscoveryState({
+  McpDiscoveryState({
     this.source = McpDiscoverySource.all,
     this.query = '',
     this.registryConfig,
@@ -38,7 +41,9 @@ class McpDiscoveryState extends Equatable {
     this.smitheryTotalPages = 1,
     this.registryCursor,
     this.registryNextCursor,
-  });
+    this.discoverySort = CatalogSortKey.adoption,
+    List<CatalogSourceFailure> discoveryFailures = const [],
+  }) : discoveryFailures = List.unmodifiable(discoveryFailures);
 
   final McpDiscoverySource source;
   final String query;
@@ -52,6 +57,8 @@ class McpDiscoveryState extends Equatable {
   final int smitheryTotalPages;
   final String? registryCursor;
   final String? registryNextCursor;
+  final CatalogSortKey discoverySort;
+  final List<CatalogSourceFailure> discoveryFailures;
 
   McpRegistrySourceConfig? remoteSourceFor(McpDiscoverySource target) {
     final config = registryConfig;
@@ -95,6 +102,8 @@ class McpDiscoveryState extends Equatable {
     String? registryCursor,
     String? registryNextCursor,
     bool clearRegistryCursor = false,
+    CatalogSortKey? discoverySort,
+    List<CatalogSourceFailure>? discoveryFailures,
   }) => McpDiscoveryState(
     source: source ?? this.source,
     query: query ?? this.query,
@@ -110,6 +119,8 @@ class McpDiscoveryState extends Equatable {
         ? null
         : (registryCursor ?? this.registryCursor),
     registryNextCursor: registryNextCursor ?? this.registryNextCursor,
+    discoverySort: discoverySort ?? this.discoverySort,
+    discoveryFailures: discoveryFailures ?? this.discoveryFailures,
   );
 
   @override
@@ -126,6 +137,8 @@ class McpDiscoveryState extends Equatable {
     smitheryTotalPages,
     registryCursor,
     registryNextCursor,
+    discoverySort,
+    discoveryFailures,
   ];
 }
 
@@ -141,7 +154,7 @@ class McpDiscoveryCubit extends Cubit<McpDiscoveryState> {
        _registry = registry ?? McpRegistryBrowseService(),
        _diskCache = diskCache ?? McpDiscoveryDiskCacheService(),
        _discoverySettings = discoverySettings,
-       super(const McpDiscoveryState());
+       super(McpDiscoveryState());
 
   final McpRegistryConfigService _registryConfig;
   final SmitheryMcpService _smithery;
@@ -169,6 +182,26 @@ class McpDiscoveryCubit extends Cubit<McpDiscoveryState> {
     emit(state.copyWith(registryConfig: config, clearError: true));
     await _hydrateFromDisk();
     await _warmRemoteCaches();
+  }
+
+  /// Changes only presentation order; sorting never starts a network request.
+  void setDiscoverySort(CatalogSortKey sort) {
+    if (sort == state.discoverySort) return;
+    for (final source in [
+      McpDiscoverySource.smithery,
+      McpDiscoverySource.official,
+    ]) {
+      final snapshot = _remoteSnapshots[source]!;
+      snapshot.items = _sortItems(snapshot.items, sort);
+    }
+    emit(
+      state.copyWith(
+        discoverySort: sort,
+        remoteItems: _sortItems(state.remoteItems, sort),
+        smitheryItems: _sortItems(state.smitheryItems, sort),
+        officialItems: _sortItems(state.officialItems, sort),
+      ),
+    );
   }
 
   void setSource(McpDiscoverySource next) {
@@ -209,7 +242,7 @@ class McpDiscoveryCubit extends Cubit<McpDiscoveryState> {
     emit(
       state.copyWith(
         source: next,
-        remoteItems: List<McpCatalogListing>.from(snapshot.items),
+        remoteItems: _sortItems(snapshot.items, state.discoverySort),
         smitheryPage: snapshot.smitheryPage,
         smitheryTotalPages: snapshot.smitheryTotalPages,
         registryCursor: snapshot.registryCursor,
@@ -234,7 +267,7 @@ class McpDiscoveryCubit extends Cubit<McpDiscoveryState> {
     if (snapshot.items.isNotEmpty && snapshot.query == value) {
       emit(
         state.copyWith(
-          remoteItems: List<McpCatalogListing>.from(snapshot.items),
+          remoteItems: _sortItems(snapshot.items, state.discoverySort),
         ),
       );
       return;
@@ -246,7 +279,7 @@ class McpDiscoveryCubit extends Cubit<McpDiscoveryState> {
         if (snapshot.items.isNotEmpty && snapshot.query.isEmpty) {
           emit(
             state.copyWith(
-              remoteItems: List<McpCatalogListing>.from(snapshot.items),
+              remoteItems: _sortItems(snapshot.items, state.discoverySort),
               smitheryPage: snapshot.smitheryPage,
               smitheryTotalPages: snapshot.smitheryTotalPages,
               registryCursor: snapshot.registryCursor,
@@ -311,11 +344,13 @@ class McpDiscoveryCubit extends Cubit<McpDiscoveryState> {
     ]);
     emit(
       state.copyWith(
-        smitheryItems: List<McpCatalogListing>.from(
+        smitheryItems: _sortItems(
           _remoteSnapshots[McpDiscoverySource.smithery]!.items,
+          state.discoverySort,
         ),
-        officialItems: List<McpCatalogListing>.from(
+        officialItems: _sortItems(
           _remoteSnapshots[McpDiscoverySource.official]!.items,
+          state.discoverySort,
         ),
       ),
     );
@@ -329,7 +364,7 @@ class McpDiscoveryCubit extends Cubit<McpDiscoveryState> {
     if (cached == null || cached.query.isNotEmpty) return;
     final snapshot = _remoteSnapshots[source]!;
     snapshot
-      ..items = List<McpCatalogListing>.from(cached.items)
+      ..items = _sortItems(cached.items, state.discoverySort)
       ..query = cached.query
       ..syncedAtMs = cached.syncedAtMs
       ..smitheryPage = cached.smitheryPage
@@ -390,7 +425,8 @@ class McpDiscoveryCubit extends Cubit<McpDiscoveryState> {
         state.copyWith(
           loading: true,
           clearError: true,
-          remoteItems: reset ? const [] : state.remoteItems,
+          // Keep the previous content visible while a refresh is in flight.
+          remoteItems: state.remoteItems,
           smitheryPage: reset && source == McpDiscoverySource.smithery
               ? 1
               : state.smitheryPage,
@@ -415,9 +451,10 @@ class McpDiscoveryCubit extends Cubit<McpDiscoveryState> {
           apiToken: registrySource.apiToken,
           page: page,
         );
-        snapshot.items = reset
-            ? result.items
-            : [...snapshot.items, ...result.items];
+        snapshot.items = _sortItems(
+          reset ? result.items : [...snapshot.items, ...result.items],
+          state.discoverySort,
+        );
         snapshot.query = query;
         snapshot.smitheryPage = result.page;
         snapshot.smitheryTotalPages = result.totalPages;
@@ -436,6 +473,7 @@ class McpDiscoveryCubit extends Cubit<McpDiscoveryState> {
             clearError: true,
           ),
         );
+        _clearSourceFailure(source);
       } else {
         final cursor = reset
             ? null
@@ -445,9 +483,10 @@ class McpDiscoveryCubit extends Cubit<McpDiscoveryState> {
           baseUrl: registrySource.baseUrl,
           cursor: cursor,
         );
-        snapshot.items = reset
-            ? result.items
-            : [...snapshot.items, ...result.items];
+        snapshot.items = _sortItems(
+          reset ? result.items : [...snapshot.items, ...result.items],
+          state.discoverySort,
+        );
         snapshot.query = query;
         snapshot.registryCursor = cursor;
         snapshot.registryNextCursor = result.nextCursor;
@@ -464,11 +503,22 @@ class McpDiscoveryCubit extends Cubit<McpDiscoveryState> {
             clearError: true,
           ),
         );
+        _clearSourceFailure(source);
       }
       await _persistSnapshotToDisk(source);
     } catch (e) {
+      _recordSourceFailure(source, e);
       if (activeView) {
-        emit(state.copyWith(loading: false, errorMessage: e.toString()));
+        final hasItems = state.remoteItems.isNotEmpty;
+        emit(
+          state.copyWith(
+            loading: false,
+            clearError: hasItems,
+            errorMessage: hasItems
+                ? null
+                : CatalogErrorSanitizer.sanitize(e.toString()),
+          ),
+        );
       }
     }
   }
@@ -480,7 +530,7 @@ class McpDiscoveryCubit extends Cubit<McpDiscoveryState> {
       return;
     }
     final snapshot = _remoteSnapshots[source]!;
-    snapshot.items = List<McpCatalogListing>.from(state.remoteItems);
+    snapshot.items = _sortItems(state.remoteItems, state.discoverySort);
     snapshot.query = state.query;
     snapshot.smitheryPage = state.smitheryPage;
     snapshot.smitheryTotalPages = state.smitheryTotalPages;
@@ -515,10 +565,10 @@ class McpDiscoveryCubit extends Cubit<McpDiscoveryState> {
     emit(
       state.copyWith(
         smitheryItems: source == McpDiscoverySource.smithery
-            ? List<McpCatalogListing>.from(snapshot.items)
+            ? _sortItems(snapshot.items, state.discoverySort)
             : state.smitheryItems,
         officialItems: source == McpDiscoverySource.official
-            ? List<McpCatalogListing>.from(snapshot.items)
+            ? _sortItems(snapshot.items, state.discoverySort)
             : state.officialItems,
       ),
     );
@@ -534,6 +584,7 @@ class McpDiscoveryCubit extends Cubit<McpDiscoveryState> {
       ..registryCursor = null
       ..registryNextCursor = null;
     _syncSnapshotToState(source);
+    _clearSourceFailure(source);
     final cacheKey = _cacheKeyFor(source);
     if (cacheKey != null) {
       unawaited(_diskCache.delete(cacheKey));
@@ -550,4 +601,86 @@ class McpDiscoveryCubit extends Cubit<McpDiscoveryState> {
     McpDiscoverySource.official => mcpDiscoveryCacheOfficial,
     McpDiscoverySource.all || McpDiscoverySource.builtin => null,
   };
+
+  List<McpCatalogListing> _sortItems(
+    Iterable<McpCatalogListing> items,
+    CatalogSortKey sort,
+  ) {
+    final sorted = List<McpCatalogListing>.from(items);
+    sorted.sort(
+      (a, b) => CatalogSortComparator.compare(
+        _McpCatalogEntry(a),
+        _McpCatalogEntry(b),
+        sort,
+      ),
+    );
+    return sorted;
+  }
+
+  void _recordSourceFailure(McpDiscoverySource source, Object error) {
+    final failure = CatalogSourceFailure(
+      sourceId: _sourceId(source),
+      sourceLabel: _sourceLabel(source),
+      message: CatalogErrorSanitizer.sanitize(error.toString()),
+    );
+    final failures = [
+      ...state.discoveryFailures.where(
+        (item) => item.sourceId != failure.sourceId,
+      ),
+      failure,
+    ];
+    emit(state.copyWith(discoveryFailures: failures));
+  }
+
+  void _clearSourceFailure(McpDiscoverySource source) {
+    final sourceId = _sourceId(source);
+    final failures = state.discoveryFailures
+        .where((item) => item.sourceId != sourceId)
+        .toList(growable: false);
+    if (failures.length == state.discoveryFailures.length) return;
+    emit(state.copyWith(discoveryFailures: failures));
+  }
+
+  String _sourceId(McpDiscoverySource source) => switch (source) {
+    McpDiscoverySource.smithery => 'smithery',
+    McpDiscoverySource.official => 'official',
+    McpDiscoverySource.all || McpDiscoverySource.builtin => source.name,
+  };
+
+  String _sourceLabel(McpDiscoverySource source) => switch (source) {
+    McpDiscoverySource.smithery => 'Smithery',
+    McpDiscoverySource.official => 'Official MCP Registry',
+    McpDiscoverySource.all => 'All MCP catalogs',
+    McpDiscoverySource.builtin => 'Built-in MCP catalog',
+  };
+}
+
+class _McpCatalogEntry implements CatalogEntry {
+  _McpCatalogEntry(this.listing);
+
+  final McpCatalogListing listing;
+
+  @override
+  String get id => listing.id;
+
+  @override
+  CatalogResourceKind get kind => CatalogResourceKind.mcp;
+
+  @override
+  String get name => listing.title;
+
+  @override
+  String get description => listing.description;
+
+  @override
+  String? get sourceLabel => listing.source.name;
+
+  @override
+  String? get author => null;
+
+  @override
+  List<String> get tags => listing.tags;
+
+  @override
+  CatalogMetrics get metrics => listing.metrics;
 }

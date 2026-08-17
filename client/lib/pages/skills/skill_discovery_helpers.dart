@@ -1,4 +1,5 @@
 import '../../l10n/app_localizations.dart';
+import '../../models/catalog/catalog_types.dart';
 import '../../models/skill.dart';
 import '../../models/unified_skill_entry.dart';
 
@@ -109,7 +110,18 @@ typedef SkillUnifiedGridSlice = ({
   bool anyHasNext,
   Set<String> busyIds,
   String? discoveryError,
+  List<CatalogSourceFailure> discoveryFailures,
 });
+
+String skillCatalogSortLabel(AppLocalizations l10n, CatalogSortKey key) {
+  return switch (key) {
+    CatalogSortKey.adoption => l10n.catalogSortAdoption,
+    CatalogSortKey.rating => l10n.catalogSortRating,
+    CatalogSortKey.updated => l10n.catalogSortUpdated,
+    CatalogSortKey.published => l10n.catalogSortPublished,
+    CatalogSortKey.name => l10n.catalogSortName,
+  };
+}
 
 bool unifiedEntryMatchesStatus(
   UnifiedSkillEntry entry,

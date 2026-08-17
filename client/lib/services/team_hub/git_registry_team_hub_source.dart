@@ -2,15 +2,18 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../../models/catalog/catalog_types.dart';
 import '../../models/discoverable_team.dart';
 import '../../utils/logging/logger.dart';
+import '../catalog/catalog_error_sanitizer.dart';
 import '../io/filesystem.dart';
 import '../storage/app_storage.dart';
 import 'team_hub_source.dart';
 
 /// Reads public teams from a git registry (`index.json` + `teams/<slug>/team.json`)
 /// and caches the parsed result under `team-hub/cache/<owner>-<name>/teams.json`.
-class GitRegistryTeamHubSource implements TeamHubSource {
+class GitRegistryTeamHubSource
+    implements TeamHubSource, TeamHubSourceContributions {
   GitRegistryTeamHubSource({
     this.registry = kDefaultTeamHubRegistry,
     RawContentFetcher? fetch,
@@ -26,6 +29,7 @@ class GitRegistryTeamHubSource implements TeamHubSource {
   final String? _cacheDirOverride;
 
   List<DiscoverableTeam>? _memory;
+  CatalogSourceFailure? _lastFailure;
 
   Filesystem get _fs => _fsOverride ?? AppStorage.fs;
 
@@ -74,9 +78,32 @@ class GitRegistryTeamHubSource implements TeamHubSource {
     return list;
   }
 
+  @override
+  Future<List<CatalogSourceResult<DiscoverableTeam>>> fetchTeamSources({
+    bool forceRefresh = false,
+  }) async {
+    _lastFailure = null;
+    final teams = await fetchTeams(forceRefresh: forceRefresh);
+    return [
+      CatalogSourceResult(
+        sourceId: 'team-registry',
+        sourceLabel: registry.fullName,
+        items: teams,
+        failure: _lastFailure,
+      ),
+    ];
+  }
+
   Future<List<DiscoverableTeam>> _fetchFromNetwork() async {
     final indexRaw = await _fetch(registry.rawUri('index.json'));
-    if (indexRaw == null) return const [];
+    if (indexRaw == null) {
+      _lastFailure = CatalogSourceFailure(
+        sourceId: 'team-registry',
+        sourceLabel: registry.fullName,
+        message: CatalogErrorSanitizer.sanitize('Registry index unavailable'),
+      );
+      return const [];
+    }
     final slugs = _parseSlugs(indexRaw);
     final out = <DiscoverableTeam>[];
     for (final slug in slugs) {

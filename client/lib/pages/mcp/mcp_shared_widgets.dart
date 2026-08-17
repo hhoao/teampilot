@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
@@ -69,8 +70,9 @@ class McpInstalledServerRow extends StatelessWidget {
                           typeLabel,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TpTextStyles.of(context).xsColored(textBase.withValues(alpha: 0.5),
-                          ),
+                          style: TpTextStyles.of(
+                            context,
+                          ).xsColored(textBase.withValues(alpha: 0.5)),
                         ),
                       ),
                       if (oauthAuthenticated == false) ...[
@@ -86,7 +88,9 @@ class McpInstalledServerRow extends StatelessWidget {
                           ),
                           child: Text(
                             l10n.mcpOAuthStatusNeedsAuth,
-                            style: TpTextStyles.of(context).xsBoldColored(const Color(0xFFB45309)),
+                            style: TpTextStyles.of(
+                              context,
+                            ).xsBoldColored(const Color(0xFFB45309)),
                           ),
                         ),
                       ],
@@ -103,7 +107,9 @@ class McpInstalledServerRow extends StatelessWidget {
                           ),
                           child: Text(
                             l10n.mcpOAuthStatusConnected,
-                            style: TpTextStyles.of(context).xsBoldColored(cs.primary),
+                            style: TpTextStyles.of(
+                              context,
+                            ).xsBoldColored(cs.primary),
                           ),
                         ),
                       ],
@@ -115,8 +121,9 @@ class McpInstalledServerRow extends StatelessWidget {
                       description,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: TpTextStyles.of(context).smColored(textBase.withValues(alpha: 0.6),
-                      ),
+                      style: TpTextStyles.of(
+                        context,
+                      ).smColored(textBase.withValues(alpha: 0.6)),
                     ),
                   ],
                 ],
@@ -196,8 +203,9 @@ class McpCatalogListingTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
-    final meta = <String>[
-      if (listing.useCount != null) '${listing.useCount} uses',
+    final metrics = listing.metrics;
+    final adoption = metrics.adoptionCount ?? listing.useCount;
+    final tags = <String>[
       if (listing.verified) l10n.mcpCatalogVerified,
       if (listing.remote) 'remote',
       ...listing.tags.take(3),
@@ -205,85 +213,59 @@ class McpCatalogListingTile extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: workspaceInsetDecoration(cs, radius: 10),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
+      child: TpCatalogCardShell(
+        title: listing.title,
+        source: _mcpCatalogSourceLabel(listing.source),
+        description: listing.description,
+        leading: _McpCatalogIcon(listing: listing),
+        body: tags.isEmpty
+            ? null
+            : Text(
+                tags.join(' · '),
+                style: TpTextStyles.of(
+                  context,
+                ).xsColored(cs.onSurface.withValues(alpha: 0.5)),
+              ),
+        metadata: TpCatalogMetadataRow(
+          adoption: TpCatalogMetricView(
+            icon: Icons.trending_up_outlined,
+            label: l10n.mcpCatalogAdoption,
+            value: adoption?.toString(),
+            missingValueTooltip: l10n.catalogMetricMissingTooltip,
+          ),
+          rating: TpCatalogMetricView(
+            icon: Icons.star_outline,
+            label: l10n.catalogMetricRating,
+            value: metrics.rating?.toStringAsFixed(1),
+            missingValueTooltip: l10n.catalogMetricMissingTooltip,
+          ),
+          updated: TpCatalogMetricView(
+            icon: Icons.update_outlined,
+            label: l10n.catalogMetricUpdated,
+            value: _formatCatalogDate(context, metrics.updatedAtMs),
+            missingValueTooltip: l10n.catalogMetricMissingTooltip,
+          ),
+          published: TpCatalogMetricView(
+            icon: Icons.event_outlined,
+            label: l10n.catalogMetricPublished,
+            value: _formatCatalogDate(context, metrics.publishedAtMs),
+            missingValueTooltip: l10n.catalogMetricMissingTooltip,
+          ),
+        ),
+        action: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            if (listing.iconUrl != null && listing.iconUrl!.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(right: 10),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.network(
-                    listing.iconUrl!,
-                    width: 36,
-                    height: 36,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Icon(
-                      Icons.hub_outlined,
-                      size: context.tpIconSizes.md,
-                      color: cs.onSurface.withValues(alpha: 0.4),
-                    ),
-                  ),
-                ),
+            if (onOpenHomepage != null)
+              IconButton(
+                tooltip: l10n.mcpOpenHomepage,
+                visualDensity: VisualDensity.compact,
+                iconSize: context.tpIconSizes.md,
+                onPressed: onOpenHomepage,
+                icon: const Icon(Icons.open_in_new),
               ),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          listing.title,
-                          style: TpTextStyles.of(context).mdSemibold,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      if (onOpenHomepage != null)
-                        IconButton(
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(
-                            minWidth: 32,
-                            minHeight: 32,
-                          ),
-                          visualDensity: VisualDensity.compact,
-                          iconSize: context.tpIconSizes.md,
-                          tooltip: l10n.mcpOpenHomepage,
-                          onPressed: onOpenHomepage,
-                          icon: Icon(Icons.open_in_new),
-                        ),
-                    ],
-                  ),
-                  if (listing.description.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      listing.description,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TpTextStyles.of(context).smColored(cs.onSurface.withValues(alpha: 0.65),
-                      ),
-                    ),
-                  ],
-                  if (meta.isNotEmpty) ...[
-                    const SizedBox(height: 6),
-                    Text(
-                      meta.join(' · '),
-                      style: TpTextStyles.of(context).xsColored(cs.onSurface.withValues(alpha: 0.5),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(width: 4),
             if (busy)
               const Padding(
-                padding: EdgeInsets.all(10),
+                padding: EdgeInsets.symmetric(horizontal: 12),
                 child: SizedBox(
                   width: 20,
                   height: 20,
@@ -308,4 +290,44 @@ class McpCatalogListingTile extends StatelessWidget {
       ),
     );
   }
+}
+
+class _McpCatalogIcon extends StatelessWidget {
+  const _McpCatalogIcon({required this.listing});
+
+  final McpCatalogListing listing;
+
+  @override
+  Widget build(BuildContext context) {
+    final fallback = Icon(
+      Icons.hub_outlined,
+      size: context.tpIconSizes.md,
+      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
+    );
+    final url = listing.iconUrl;
+    if (url == null || url.isEmpty) return fallback;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: Image.network(
+        url,
+        width: 36,
+        height: 36,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => fallback,
+      ),
+    );
+  }
+}
+
+String _mcpCatalogSourceLabel(McpCatalogSource source) => switch (source) {
+  McpCatalogSource.builtin => 'Built-in',
+  McpCatalogSource.smithery => 'Smithery',
+  McpCatalogSource.officialRegistry => 'Official MCP Registry',
+};
+
+String? _formatCatalogDate(BuildContext context, int? milliseconds) {
+  if (milliseconds == null) return null;
+  return DateFormat.yMMMd(
+    context.l10n.localeName,
+  ).format(DateTime.fromMillisecondsSinceEpoch(milliseconds));
 }

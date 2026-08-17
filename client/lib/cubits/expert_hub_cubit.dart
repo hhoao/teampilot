@@ -1,8 +1,10 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../models/catalog/catalog_types.dart';
 import '../models/discoverable_member.dart';
 import '../services/expert_hub/composite_expert_hub_source.dart';
+import '../services/catalog/catalog_source_aggregation.dart';
 import '../services/expert_hub/member_roster_service.dart';
 import '../services/progress_activity/hub_clone_activity_adapter.dart';
 import '../services/team/team_clone_service.dart';
@@ -10,6 +12,7 @@ import 'launch_profile_cubit.dart';
 
 enum ExpertHubLoadStatus { idle, loading, ready, error }
 
+@Deprecated('Use CatalogSortKey')
 enum MemberSort { name, updated }
 
 typedef FavoritesLoader = Future<Set<String>> Function();
@@ -39,7 +42,8 @@ class ExpertHubState extends Equatable {
     this.localOnly = false,
     this.teamExtractOnly = false,
     this.search = '',
-    this.sort = MemberSort.name,
+    this.sort = CatalogSortKey.adoption,
+    this.sourceFailures = const [],
     this.status = ExpertHubLoadStatus.idle,
     this.refreshing = false,
     this.errorMessage,
@@ -63,7 +67,8 @@ class ExpertHubState extends Equatable {
   /// When true, keeps only [ExpertMemberSource.teamExtract] entries.
   final bool teamExtractOnly;
   final String search;
-  final MemberSort sort;
+  final CatalogSortKey sort;
+  final List<CatalogSourceFailure> sourceFailures;
   final ExpertHubLoadStatus status;
   final bool refreshing;
   final String? errorMessage;
@@ -91,7 +96,8 @@ class ExpertHubState extends Equatable {
     bool? localOnly,
     bool? teamExtractOnly,
     String? search,
-    MemberSort? sort,
+    CatalogSortKey? sort,
+    List<CatalogSourceFailure>? sourceFailures,
     ExpertHubLoadStatus? status,
     bool? refreshing,
     String? errorMessage,
@@ -114,6 +120,9 @@ class ExpertHubState extends Equatable {
     refreshing: refreshing ?? this.refreshing,
     errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
     addingKeys: addingKeys ?? this.addingKeys,
+    sourceFailures: sourceFailures == null
+        ? this.sourceFailures
+        : List.unmodifiable(sourceFailures),
   );
 
   @override
@@ -132,6 +141,7 @@ class ExpertHubState extends Equatable {
     refreshing,
     errorMessage,
     addingKeys,
+    sourceFailures,
   ];
 }
 
@@ -172,18 +182,41 @@ class ExpertHubCubit extends Cubit<ExpertHubState> {
       ),
     );
     try {
-      final members = await _source.fetchMembers(forceRefresh: forceRefresh);
+      final sources = await _source.fetchMemberSources(
+        forceRefresh: forceRefresh,
+      );
+      final aggregate = CatalogSourceAggregator.merge(
+        sources,
+        const _MemberCatalogAdapter(),
+        state.sort,
+      );
+      final members = _sortMembers(
+        _retainPreviousOnFailure(
+          aggregate.items,
+          state.allMembers,
+          aggregate.failures.isNotEmpty,
+        ),
+        state.sort,
+      );
       final cats = _deriveCategories(members);
       final favs = await _loadFavorites();
       final installed = await _loadInstalledDepIds?.call() ?? const <String>{};
+      final blocking = members.isEmpty && aggregate.failures.isNotEmpty;
       emit(
         state.copyWith(
           allMembers: members,
           categories: cats,
           favorites: favs,
           installedDepIds: installed,
-          status: ExpertHubLoadStatus.ready,
+          status: blocking
+              ? ExpertHubLoadStatus.error
+              : ExpertHubLoadStatus.ready,
           refreshing: false,
+          sourceFailures: aggregate.failures,
+          errorMessage: blocking
+              ? aggregate.failures.map((failure) => failure.message).join('; ')
+              : null,
+          clearError: !blocking,
         ),
       );
     } catch (e) {
@@ -211,7 +244,15 @@ class ExpertHubCubit extends Cubit<ExpertHubState> {
   void setTeamExtractOnly(bool value) =>
       emit(state.copyWith(teamExtractOnly: value));
 
-  void setSort(MemberSort sort) => emit(state.copyWith(sort: sort));
+  void setSort(Object sort) {
+    final key = switch (sort) {
+      CatalogSortKey value => value,
+      MemberSort.name => CatalogSortKey.name,
+      MemberSort.updated => CatalogSortKey.updated,
+      _ => throw ArgumentError.value(sort, 'sort'),
+    };
+    emit(state.copyWith(sort: key));
+  }
 
   Future<void> toggleFavorite(String key) async {
     final nowOn = await _saveFavoriteToggle(key);
@@ -293,15 +334,17 @@ class ExpertHubCubit extends Cubit<ExpertHubState> {
           m.description.toLowerCase().contains(q) ||
           m.tags.any((t) => t.toLowerCase().contains(q));
     }).toList();
-    switch (state.sort) {
-      case MemberSort.name:
-        list.sort(
-          (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
-        );
-      case MemberSort.updated:
-        list.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
-    }
-    return list;
+    return CatalogSourceAggregator.merge(
+      [
+        CatalogSourceResult(
+          sourceId: 'visible',
+          sourceLabel: 'Visible experts',
+          items: list,
+        ),
+      ],
+      const _MemberCatalogAdapter(),
+      state.sort,
+    ).items;
   }
 
   /// Members visible on the hub page: source + favorites + category + search +
@@ -322,9 +365,11 @@ class ExpertHubCubit extends Cubit<ExpertHubState> {
       base = base.where((m) => state.favorites.contains(m.key));
     }
     if (state.localOnly) {
-      base = base.where((m) =>
-          m.source == ExpertMemberSource.local ||
-          m.source == ExpertMemberSource.clone);
+      base = base.where(
+        (m) =>
+            m.source == ExpertMemberSource.local ||
+            m.source == ExpertMemberSource.clone,
+      );
     }
     if (state.teamExtractOnly) {
       base = base.where((m) => m.source == ExpertMemberSource.teamExtract);
@@ -345,5 +390,80 @@ class ExpertHubCubit extends Cubit<ExpertHubState> {
       if (localized.isNotEmpty) return localized;
     }
     return category;
+  }
+}
+
+List<DiscoverableMember> _retainPreviousOnFailure(
+  List<DiscoverableMember> current,
+  List<DiscoverableMember> previous,
+  bool hasFailure,
+) {
+  if (!hasFailure) return current;
+  final keys = current.map((member) => member.key).toSet();
+  return [
+    ...current,
+    ...previous.where((member) => !keys.contains(member.key)),
+  ];
+}
+
+List<DiscoverableMember> _sortMembers(
+  Iterable<DiscoverableMember> members,
+  CatalogSortKey sort,
+) => CatalogSourceAggregator.merge(
+  [
+    CatalogSourceResult(
+      sourceId: 'sorted',
+      sourceLabel: 'Experts',
+      items: members.toList(growable: false),
+    ),
+  ],
+  const _MemberCatalogAdapter(),
+  sort,
+).items;
+
+class _MemberCatalogAdapter implements CatalogAdapter<DiscoverableMember> {
+  const _MemberCatalogAdapter();
+
+  @override
+  CatalogEntry adapt(DiscoverableMember member) => _MemberCatalogEntry(member);
+}
+
+class _MemberCatalogEntry implements CatalogEntry {
+  const _MemberCatalogEntry(this.member);
+
+  final DiscoverableMember member;
+
+  @override
+  String get id => member.key;
+
+  @override
+  CatalogResourceKind get kind => CatalogResourceKind.expert;
+
+  @override
+  String get name => member.name;
+
+  @override
+  String get description => member.description;
+
+  @override
+  String? get sourceLabel => member.source.value;
+
+  @override
+  String? get author => member.author;
+
+  @override
+  List<String> get tags => member.tags.toList(growable: false);
+
+  @override
+  CatalogMetrics get metrics {
+    final metrics = member.metrics;
+    if (metrics.updatedAtMs != null || member.updatedAt == 0) return metrics;
+    return CatalogMetrics(
+      adoptionCount: metrics.adoptionCount,
+      rating: metrics.rating,
+      ratingCount: metrics.ratingCount,
+      updatedAtMs: member.updatedAt,
+      publishedAtMs: metrics.publishedAtMs,
+    );
   }
 }

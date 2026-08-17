@@ -7,11 +7,14 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../models/catalog/catalog_types.dart';
 import '../models/discoverable_team.dart';
 import '../models/plugin.dart';
 import '../models/progress_activity.dart';
 import '../repositories/plugin_repository.dart';
 import '../services/discovery/discovery_refresh_policy.dart';
+import '../services/catalog/catalog_error_sanitizer.dart';
+import '../services/catalog/catalog_sort_comparator.dart';
 import '../services/progress_activity/pack_acquire_activity_adapter.dart';
 import '../services/plugin/plugin_install_service.dart';
 import '../services/plugin/plugin_external_fetch_service.dart';
@@ -35,7 +38,9 @@ class PluginState extends Equatable {
     this.updatesLoading = false,
     this.marketplaceSyncingKeys = const {},
     this.toolbarBusy = false,
-  });
+    List<CatalogSourceFailure> discoveryFailures = const [],
+    this.discoverySort = CatalogSortKey.adoption,
+  }) : _discoveryFailures = discoveryFailures;
 
   final List<Plugin> installed;
   final List<PluginMarketplace> marketplaces;
@@ -48,6 +53,11 @@ class PluginState extends Equatable {
   final bool updatesLoading;
   final Set<String> marketplaceSyncingKeys;
   final bool toolbarBusy;
+  final List<CatalogSourceFailure> _discoveryFailures;
+  final CatalogSortKey discoverySort;
+
+  List<CatalogSourceFailure> get discoveryFailures =>
+      List.unmodifiable(_discoveryFailures);
 
   PluginState copyWith({
     List<Plugin>? installed,
@@ -62,6 +72,8 @@ class PluginState extends Equatable {
     bool? updatesLoading,
     Set<String>? marketplaceSyncingKeys,
     bool? toolbarBusy,
+    List<CatalogSourceFailure>? discoveryFailures,
+    CatalogSortKey? discoverySort,
   }) => PluginState(
     installed: installed ?? this.installed,
     marketplaces: marketplaces ?? this.marketplaces,
@@ -75,6 +87,8 @@ class PluginState extends Equatable {
     marketplaceSyncingKeys:
         marketplaceSyncingKeys ?? this.marketplaceSyncingKeys,
     toolbarBusy: toolbarBusy ?? this.toolbarBusy,
+    discoveryFailures: discoveryFailures ?? this.discoveryFailures,
+    discoverySort: discoverySort ?? this.discoverySort,
   );
 
   @override
@@ -90,7 +104,57 @@ class PluginState extends Equatable {
     updatesLoading,
     marketplaceSyncingKeys,
     toolbarBusy,
+    discoveryFailures,
+    discoverySort,
   ];
+}
+
+List<DiscoverablePlugin> _sortDiscoverable(
+  Iterable<DiscoverablePlugin> items,
+  CatalogSortKey sort,
+) {
+  final sorted = items.toList();
+  final adapter = _PluginCatalogAdapter();
+  sorted.sort(
+    (a, b) =>
+        CatalogSortComparator.compare(adapter.adapt(a), adapter.adapt(b), sort),
+  );
+  return List.unmodifiable(sorted);
+}
+
+class _PluginCatalogAdapter implements CatalogAdapter<DiscoverablePlugin> {
+  @override
+  CatalogEntry adapt(DiscoverablePlugin item) => _PluginCatalogEntry(item);
+}
+
+class _PluginCatalogEntry implements CatalogEntry {
+  _PluginCatalogEntry(this.item);
+
+  final DiscoverablePlugin item;
+
+  @override
+  String get id => item.key;
+
+  @override
+  CatalogResourceKind get kind => CatalogResourceKind.plugin;
+
+  @override
+  String get name => item.name;
+
+  @override
+  String get description => item.description;
+
+  @override
+  String? get sourceLabel => item.marketplaceFullName;
+
+  @override
+  String? get author => item.marketplaceOwner;
+
+  @override
+  List<String> get tags => [...item.categories, ...item.keywords];
+
+  @override
+  CatalogMetrics get metrics => item.metrics;
 }
 
 typedef PluginUninstalledHandler = Future<void> Function(String pluginId);
@@ -119,18 +183,27 @@ class PluginCubit extends Cubit<PluginState> {
   /// state. Do not use in production.
   @visibleForTesting
   PluginCubit.test(
-    super.state, {
+    PluginState initialState, {
     PluginUninstalledHandler? onPluginUninstalled,
     PluginUpdatedHandler? onPluginUpdated,
+    PluginRepoDiskCacheService? diskCache,
   }) : repository = _dummyRepo,
        installService = _dummyInstallService,
        repoService = _dummyRepoService,
-       _diskCache = PluginRepoDiskCacheService(),
+       _diskCache = diskCache ?? PluginRepoDiskCacheService(),
        _externalFetch = PluginExternalFetchService(),
        _onPluginUninstalled = onPluginUninstalled,
        _onPluginUpdated = onPluginUpdated,
        _packAcquireActivity = null,
-       _discoverySettings = null;
+       _discoverySettings = null,
+       super(
+         initialState.copyWith(
+           discoverable: _sortDiscoverable(
+             initialState.discoverable,
+             initialState.discoverySort,
+           ),
+         ),
+       );
   static final _dummyRepo = PluginRepository();
   static final _dummyInstallService = PluginInstallService();
   static final _dummyRepoService = PluginRepoService();
@@ -148,6 +221,15 @@ class PluginCubit extends Cubit<PluginState> {
 
   bool _autoRefreshEnabled() =>
       _discoverySettings?.state.autoRefreshEnabled ?? false;
+
+  void setDiscoverySort(CatalogSortKey sort) {
+    emit(
+      state.copyWith(
+        discoverySort: sort,
+        discoverable: _sortDiscoverable(state.discoverable, sort),
+      ),
+    );
+  }
 
   /// Loads discovery when the Discovery tab opens: disk cache first; remote
   /// sync only for first-time (no cache) marketplaces when auto-refresh is
@@ -177,20 +259,26 @@ class PluginCubit extends Cubit<PluginState> {
       if (!await _diskCache.hasCachedSnapshot(m)) missing.add(m);
     }
     if (missing.isEmpty) {
+      final failures = <CatalogSourceFailure>[];
+      final discoverable = await _aggregateDiscoverableFromDisk(
+        enabled,
+        failures: failures,
+      );
       emit(
         state.copyWith(
           discoveryLoading: false,
           marketplaceSyncingKeys: const {},
-          discoverable: await _aggregateDiscoverableFromDisk(enabled),
+          discoverable: discoverable,
+          discoveryFailures: failures,
+          errorMessage: discoverable.isEmpty && failures.isNotEmpty
+              ? failures.map((failure) => failure.message).join('\n')
+              : null,
+          clearError: !(discoverable.isEmpty && failures.isNotEmpty),
         ),
       );
       return;
     }
-    await _syncMarketplacesInBackground(
-      missing,
-      force: true,
-      clearError: true,
-    );
+    await _syncMarketplacesInBackground(missing, force: true, clearError: true);
   }
 
   Future<void> load() async {
@@ -223,6 +311,8 @@ class PluginCubit extends Cubit<PluginState> {
           discoveryLoading: false,
           discoverable: const [],
           marketplaceSyncingKeys: const {},
+          discoveryFailures: const [],
+          clearError: true,
         ),
       );
       return;
@@ -247,30 +337,47 @@ class PluginCubit extends Cubit<PluginState> {
 
     final generation = ++_discoveryGeneration;
     final enabled = state.marketplaces.where((m) => m.enabled).toList();
-    var syncing = {
+    final batchKeys = marketplacesToSync
+        .map(PluginRepoDiskCacheService.repoKey)
+        .toSet();
+    final sourceItems = _groupByMarketplace(state.discoverable);
+    final failures = clearError
+        ? <CatalogSourceFailure>[]
+        : [...state.discoveryFailures];
+
+    // Load non-refreshing caches before the first paint. Existing state remains
+    // the fallback for a source that cannot be read during a refresh.
+    for (final marketplace in enabled) {
+      final key = PluginRepoDiskCacheService.repoKey(marketplace);
+      if (batchKeys.contains(key)) continue;
+      try {
+        sourceItems[key] = await _diskCache.discoverablePluginsCached(
+          marketplace,
+        );
+      } catch (e) {
+        _recordDiscoveryFailure(failures, marketplace, e);
+      }
+    }
+
+    final syncing = {
       ...state.marketplaceSyncingKeys,
       ...marketplacesToSync.map(PluginRepoDiskCacheService.repoKey),
     };
     emit(
       state.copyWith(
         discoveryLoading: true,
-        discoverable: await _aggregateDiscoverableFromDisk(enabled),
+        discoverable: _flattenMarketplaceItems(enabled, sourceItems),
         marketplaceSyncingKeys: syncing,
+        discoveryFailures: failures,
         clearError: clearError,
       ),
     );
 
-    final batchKeys = marketplacesToSync
-        .map(PluginRepoDiskCacheService.repoKey)
-        .toSet();
     final remaining = Set<String>.from(batchKeys);
 
     Future<void> onRepoSyncFinished(String key) async {
       if (generation != _discoveryGeneration) return;
       remaining.remove(key);
-      final discoverable = await _aggregateDiscoverableFromDisk(
-        state.marketplaces.where((m) => m.enabled).toList(),
-      );
       if (generation != _discoveryGeneration) return;
       final marketplaceSyncingKeys = {
         ...state.marketplaceSyncingKeys.where((k) => !batchKeys.contains(k)),
@@ -278,9 +385,10 @@ class PluginCubit extends Cubit<PluginState> {
       };
       emit(
         state.copyWith(
-          discoverable: discoverable,
+          discoverable: _flattenMarketplaceItems(enabled, sourceItems),
           discoveryLoading: marketplaceSyncingKeys.isNotEmpty,
           marketplaceSyncingKeys: marketplaceSyncingKeys,
+          discoveryFailures: failures,
         ),
       );
     }
@@ -294,8 +402,14 @@ class PluginCubit extends Cubit<PluginState> {
             force: force,
             maxStaleness: maxStaleness,
           );
+          sourceItems[key] = await _diskCache.discoverablePluginsCached(m);
+          failures.removeWhere((failure) => failure.sourceId == key);
         } catch (e) {
-          appLogger.w('[plugins] sync ${m.fullName} failed: $e');
+          appLogger.w(
+            '[plugins] sync ${m.fullName} failed: '
+            '${CatalogErrorSanitizer.sanitize(e.toString())}',
+          );
+          _recordDiscoveryFailure(failures, m, e);
         } finally {
           await onRepoSyncFinished(key);
         }
@@ -310,16 +424,24 @@ class PluginCubit extends Cubit<PluginState> {
       state.copyWith(
         discoveryLoading: false,
         marketplaceSyncingKeys: marketplaceSyncingKeys,
-        discoverable: await _aggregateDiscoverableFromDisk(
-          state.marketplaces.where((m) => m.enabled).toList(),
-        ),
+        discoverable: _flattenMarketplaceItems(enabled, sourceItems),
+        discoveryFailures: failures,
+        errorMessage:
+            sourceItems.values.every((items) => items.isEmpty) &&
+                failures.isNotEmpty
+            ? failures.map((failure) => failure.message).join('\n')
+            : null,
+        clearError:
+            !(sourceItems.values.every((items) => items.isEmpty) &&
+                failures.isNotEmpty),
       ),
     );
   }
 
   Future<List<DiscoverablePlugin>> _aggregateDiscoverableFromDisk(
-    List<PluginMarketplace> enabled,
-  ) async {
+    List<PluginMarketplace> enabled, {
+    List<CatalogSourceFailure>? failures,
+  }) async {
     final seen = <String>{};
     final out = <DiscoverablePlugin>[];
     for (final m in enabled) {
@@ -328,10 +450,57 @@ class PluginCubit extends Cubit<PluginState> {
           if (seen.add(d.key)) out.add(d);
         }
       } catch (e) {
-        appLogger.w('[plugins] read cached discoverable ${m.fullName}: $e');
+        appLogger.w(
+          '[plugins] read cached discoverable ${m.fullName}: '
+          '${CatalogErrorSanitizer.sanitize(e.toString())}',
+        );
+        if (failures != null) _recordDiscoveryFailure(failures, m, e);
       }
     }
-    return out;
+    return _sortDiscoverable(out, state.discoverySort);
+  }
+
+  Map<String, List<DiscoverablePlugin>> _groupByMarketplace(
+    Iterable<DiscoverablePlugin> items,
+  ) {
+    final grouped = <String, List<DiscoverablePlugin>>{};
+    for (final item in items) {
+      final key =
+          '${item.marketplaceOwner}/${item.marketplaceName}@${item.marketplaceBranch}';
+      grouped.putIfAbsent(key, () => []).add(item);
+    }
+    return grouped;
+  }
+
+  List<DiscoverablePlugin> _flattenMarketplaceItems(
+    List<PluginMarketplace> enabled,
+    Map<String, List<DiscoverablePlugin>> sourceItems,
+  ) {
+    final seen = <String>{};
+    final result = <DiscoverablePlugin>[];
+    for (final marketplace in enabled) {
+      final key = PluginRepoDiskCacheService.repoKey(marketplace);
+      for (final item in sourceItems[key] ?? const <DiscoverablePlugin>[]) {
+        if (seen.add(item.key)) result.add(item);
+      }
+    }
+    return _sortDiscoverable(result, state.discoverySort);
+  }
+
+  void _recordDiscoveryFailure(
+    List<CatalogSourceFailure> failures,
+    PluginMarketplace marketplace,
+    Object error,
+  ) {
+    final sourceId = PluginRepoDiskCacheService.repoKey(marketplace);
+    failures.removeWhere((failure) => failure.sourceId == sourceId);
+    failures.add(
+      CatalogSourceFailure(
+        sourceId: sourceId,
+        sourceLabel: marketplace.displayName ?? marketplace.fullName,
+        message: CatalogErrorSanitizer.sanitize('$error'),
+      ),
+    );
   }
 
   Future<void> installFromDiscovery(DiscoverablePlugin d) async {
@@ -371,9 +540,7 @@ class PluginCubit extends Cubit<PluginState> {
       final marketDir = await _diskCache.syncMarketplace(marketplace);
       sourceDir = Directory('$marketDir/${d.source}');
     } else {
-      sourceDir = await _externalFetch.fetchPluginDirectory(
-        d.externalSource!,
-      );
+      sourceDir = await _externalFetch.fetchPluginDirectory(d.externalSource!);
     }
     if (!sourceDir.existsSync()) {
       throw StateError('Plugin source directory missing: ${sourceDir.path}');

@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:teampilot/cubits/discovery_settings_cubit.dart';
 import 'package:teampilot/cubits/plugin_cubit.dart';
 import 'package:teampilot/models/plugin.dart';
+import 'package:teampilot/models/catalog/catalog_types.dart';
 import 'package:teampilot/repositories/app_settings_repository.dart';
 import 'package:teampilot/repositories/plugin_repository.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
@@ -35,6 +36,121 @@ void main() {
     AppStorage.resetForTesting();
     tmp.deleteSync(recursive: true);
   });
+
+  DiscoverablePlugin discoverable(String name, {int? adoption, int? updated}) =>
+      DiscoverablePlugin(
+        key: 'owner/marketplace/$name',
+        name: name,
+        description: 'description',
+        version: '1.0.0',
+        source: 'plugins/$name',
+        marketplaceOwner: 'owner',
+        marketplaceName: 'marketplace',
+        marketplaceBranch: 'main',
+        metrics: CatalogMetrics(adoptionCount: adoption, updatedAtMs: updated),
+      );
+
+  test(
+    'defaults discovery to adoption descending with missing values last',
+    () {
+      final cubit = PluginCubit.test(
+        PluginState(
+          discoverable: [
+            discoverable('missing'),
+            discoverable('low', adoption: 2),
+            discoverable('high', adoption: 9),
+          ],
+        ),
+      );
+
+      expect(cubit.state.discoverable.map((plugin) => plugin.name), [
+        'high',
+        'low',
+        'missing',
+      ]);
+    },
+  );
+
+  test('setDiscoverySort reorders only the plugin discovery directory', () {
+    final cubit = PluginCubit.test(
+      PluginState(
+        discoverable: [
+          discoverable('old', adoption: 9, updated: 1),
+          discoverable('new', adoption: 1, updated: 2),
+        ],
+      ),
+    );
+
+    cubit.setDiscoverySort(CatalogSortKey.updated);
+
+    expect(cubit.state.discoverySort, CatalogSortKey.updated);
+    expect(cubit.state.discoverable.map((plugin) => plugin.name), [
+      'new',
+      'old',
+    ]);
+  });
+
+  test('discovery failures are immutable and preserve successful results', () {
+    final failure = const CatalogSourceFailure(
+      sourceId: 'owner/failed@main',
+      sourceLabel: 'owner/failed',
+      message: 'network unavailable',
+    );
+    final cubit = PluginCubit.test(
+      PluginState(
+        discoverable: [discoverable('available', adoption: 3)],
+        discoveryFailures: [failure],
+      ),
+    );
+
+    expect(cubit.state.discoverable.single.name, 'available');
+    expect(cubit.state.discoveryFailures, [failure]);
+    expect(
+      () => cubit.state.discoveryFailures.add(failure),
+      throwsUnsupportedError,
+    );
+  });
+
+  test(
+    'refresh keeps successful entries and cached entries from failed sources',
+    () async {
+      final successful = PluginMarketplace(owner: 'owner', name: 'success');
+      final failed = PluginMarketplace(owner: 'owner', name: 'failed');
+      final cachedFromFailedSource = discoverable(
+        'cached',
+        adoption: 1,
+      ).copyWith(marketplaceName: failed.name);
+      final cache = _PartialPluginCache(
+        successful: successful,
+        failed: failed,
+        result: discoverable(
+          'fresh',
+          adoption: 10,
+        ).copyWith(marketplaceName: successful.name),
+        cachedFromFailedSource: cachedFromFailedSource,
+      );
+      final cubit = PluginCubit.test(
+        PluginState(
+          marketplaces: [successful, failed],
+          discoverable: [cachedFromFailedSource],
+        ),
+        diskCache: cache,
+      );
+
+      await cubit.refreshDiscoverable(force: true);
+
+      expect(cubit.state.discoverable.map((item) => item.name), [
+        'fresh',
+        'cached',
+      ]);
+      expect(cubit.state.discoveryFailures.single.sourceLabel, failed.fullName);
+      expect(cubit.state.errorMessage, isNull);
+      expect(
+        cubit.state.discoveryFailures.single.message,
+        contains('REDACTED'),
+      );
+    },
+  );
 
   test('load() populates installed + marketplaces', () async {
     final repo = PluginRepository();
@@ -264,5 +380,44 @@ class _FakePluginGit extends PluginRepoGitService {
   ) async {
     resolveShaCalls++;
     return null;
+  }
+}
+
+class _PartialPluginCache extends PluginRepoDiskCacheService {
+  _PartialPluginCache({
+    required this.successful,
+    required this.failed,
+    required this.result,
+    required this.cachedFromFailedSource,
+  });
+
+  final PluginMarketplace successful;
+  final PluginMarketplace failed;
+  final DiscoverablePlugin result;
+  final DiscoverablePlugin cachedFromFailedSource;
+
+  @override
+  Future<String> syncMarketplace(
+    PluginMarketplace marketplace, {
+    bool force = false,
+    Duration? maxStaleness,
+  }) async {
+    if (marketplace.fullName == failed.fullName) {
+      throw StateError('Bearer sk-secret-12345678 response body: private');
+    }
+    return '/tmp/${marketplace.fullName}';
+  }
+
+  @override
+  Future<List<DiscoverablePlugin>> discoverablePluginsCached(
+    PluginMarketplace marketplace,
+  ) async {
+    if (marketplace.fullName == successful.fullName) {
+      return [result];
+    }
+    if (marketplace.fullName == failed.fullName) {
+      return [cachedFromFailedSource];
+    }
+    return const [];
   }
 }

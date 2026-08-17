@@ -2,8 +2,10 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../../models/catalog/catalog_types.dart';
 import '../../models/discoverable_member.dart';
 import '../../utils/logging/logger.dart';
+import '../catalog/catalog_error_sanitizer.dart';
 import '../io/filesystem.dart';
 import '../storage/app_storage.dart';
 import 'expert_hub_source.dart';
@@ -11,7 +13,8 @@ import 'expert_hub_source.dart';
 /// Reads public members from a git registry (`index.json` +
 /// `members/<slug>/member.json`) and caches the parsed result under
 /// `member-hub/cache/<owner>-<name>/members.json`.
-class GitRegistryExpertHubSource implements ExpertHubSource {
+class GitRegistryExpertHubSource
+    implements ExpertHubSource, ExpertHubSourceContributions {
   GitRegistryExpertHubSource({
     this.registry = kDefaultExpertHubRegistry,
     RawContentFetcher? fetch,
@@ -27,6 +30,7 @@ class GitRegistryExpertHubSource implements ExpertHubSource {
   final String? _cacheDirOverride;
 
   List<DiscoverableMember>? _memory;
+  CatalogSourceFailure? _lastFailure;
 
   Filesystem get _fs => _fsOverride ?? AppStorage.fs;
 
@@ -77,9 +81,32 @@ class GitRegistryExpertHubSource implements ExpertHubSource {
     return list;
   }
 
+  @override
+  Future<List<CatalogSourceResult<DiscoverableMember>>> fetchMemberSources({
+    bool forceRefresh = false,
+  }) async {
+    _lastFailure = null;
+    final members = await fetchMembers(forceRefresh: forceRefresh);
+    return [
+      CatalogSourceResult(
+        sourceId: 'expert-registry',
+        sourceLabel: registry.fullName,
+        items: members,
+        failure: _lastFailure,
+      ),
+    ];
+  }
+
   Future<List<DiscoverableMember>> _fetchFromNetwork() async {
     final indexRaw = await _fetch(registry.rawUri('index.json'));
-    if (indexRaw == null) return const [];
+    if (indexRaw == null) {
+      _lastFailure = CatalogSourceFailure(
+        sourceId: 'expert-registry',
+        sourceLabel: registry.fullName,
+        message: CatalogErrorSanitizer.sanitize('Registry index unavailable'),
+      );
+      return const [];
+    }
     final slugs = _parseSlugs(indexRaw);
     final out = <DiscoverableMember>[];
     for (final slug in slugs) {

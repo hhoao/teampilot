@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/plugin_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../models/catalog/catalog_types.dart';
 import '../../models/plugin.dart';
 import '../../utils/github/github_source_url.dart';
 import '../../widgets/github_details_button.dart';
@@ -142,6 +143,16 @@ class PluginDiscoveryBodyState extends State<PluginDiscoveryBody> {
                     ),
                   ),
                   const SizedBox(width: 8),
+                  TpCatalogSourceWarning(
+                    failures: widget.state.discoveryFailures
+                        .map(
+                          (failure) => TpCatalogFailureView(
+                            sourceLabel: failure.sourceLabel,
+                            message: failure.message,
+                          ),
+                        )
+                        .toList(growable: false),
+                  ),
                   IconButton(
                     tooltip: l10n.pluginsCheckUpdates,
                     onPressed: widget.state.discoveryLoading
@@ -182,6 +193,18 @@ class PluginDiscoveryBodyState extends State<PluginDiscoveryBody> {
               Wrap(
                 spacing: 8,
                 children: [
+                  SizedBox(
+                    width: 180,
+                    child: TpCatalogSortControl<CatalogSortKey>(
+                      items: CatalogSortKey.values,
+                      initialItem: widget.state.discoverySort,
+                      itemLabel: (sort) => _sortLabel(l10n, sort),
+                      onChanged: (sort) {
+                        if (sort != null) cubit.setDiscoverySort(sort);
+                      },
+                      hintText: l10n.catalogSortAccessibilityLabel,
+                    ),
+                  ),
                   PluginMarketplaceDropdown(
                     marketplaces: marketplaces,
                     value: _marketplaceFilter,
@@ -211,6 +234,17 @@ class PluginDiscoveryBodyState extends State<PluginDiscoveryBody> {
 
     final filtered = _filtered();
     if (!widget.state.discoveryLoading && filtered.isEmpty) {
+      if (widget.state.discoveryFailures.isNotEmpty &&
+          widget.state.errorMessage != null) {
+        return SingleChildScrollView(
+          child: PluginManagementCard(
+            child: Text(
+              widget.state.errorMessage!,
+              style: TpTextStyles.of(context).sm,
+            ),
+          ),
+        );
+      }
       return SingleChildScrollView(
         child: PluginManagementCard(
           child: TpEmptyState(
@@ -315,67 +349,57 @@ class PluginDiscoverableCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cubit = context.read<PluginCubit>();
-    final cs = Theme.of(context).colorScheme;
-    final textBase = cs.onSurface;
+    final metrics = plugin.metrics;
+    final localizations = MaterialLocalizations.of(context);
 
-    return PluginManagementCard(
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        plugin.name,
-                        style: TpTextStyles.of(
-                          context,
-                        ).mdSemiboldColored(textBase),
-                      ),
-                    ),
-                    if (plugin.version.isNotEmpty) ...[
-                      const SizedBox(width: 8),
-                      Text(
-                        'v${plugin.version}',
-                        style: TpTextStyles.of(context).xsColored(textBase.withValues(alpha: 0.45),
-                        ),
-                      ),
-                    ],
-                  ],
+    return TpCatalogCardShell(
+      title: plugin.name,
+      source: plugin.marketplaceFullName,
+      description: plugin.description,
+      body: plugin.version.isEmpty ? null : Text('v${plugin.version}'),
+      metadata: TpCatalogMetadataRow(
+        adoption: TpCatalogMetricView(
+          icon: Icons.download_outlined,
+          label: l10n.pluginsCatalogAdoption,
+          value: metrics.adoptionCount == null
+              ? null
+              : _formatCount(metrics.adoptionCount!),
+          missingValueTooltip: l10n.catalogMetricMissingTooltip,
+        ),
+        rating: TpCatalogMetricView(
+          icon: Icons.star_outline,
+          label: l10n.catalogMetricRating,
+          value: metrics.rating?.toStringAsFixed(1),
+          missingValueTooltip: l10n.catalogMetricMissingTooltip,
+        ),
+        updated: TpCatalogMetricView(
+          icon: Icons.update_outlined,
+          label: l10n.catalogMetricUpdated,
+          value: metrics.updatedAtMs == null
+              ? null
+              : localizations.formatCompactDate(
+                  DateTime.fromMillisecondsSinceEpoch(metrics.updatedAtMs!),
                 ),
-                if (plugin.description.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    plugin.description,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TpTextStyles.of(context).smColored(textBase.withValues(alpha: 0.55),
-                    ),
-                  ),
-                ],
-                if (plugin.marketplaceFullName.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    plugin.marketplaceFullName,
-                    style: TpTextStyles.of(
-                      context,
-                    ).xsColored(textBase.withValues(alpha: 0.35)),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          if (busy)
-            const SizedBox(
+          missingValueTooltip: l10n.catalogMetricMissingTooltip,
+        ),
+        published: TpCatalogMetricView(
+          icon: Icons.event_outlined,
+          label: l10n.catalogMetricPublished,
+          value: metrics.publishedAtMs == null
+              ? null
+              : localizations.formatCompactDate(
+                  DateTime.fromMillisecondsSinceEpoch(metrics.publishedAtMs!),
+                ),
+          missingValueTooltip: l10n.catalogMetricMissingTooltip,
+        ),
+      ),
+      action: busy
+          ? const SizedBox(
               width: 14,
               height: 14,
               child: CircularProgressIndicator(strokeWidth: 2),
             )
-          else
-            Wrap(
+          : Wrap(
               spacing: 8,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
@@ -397,8 +421,27 @@ class PluginDiscoverableCard extends StatelessWidget {
                   ),
               ],
             ),
-        ],
-      ),
     );
   }
+}
+
+String _sortLabel(AppLocalizations l10n, CatalogSortKey sort) {
+  return switch (sort) {
+    CatalogSortKey.adoption => l10n.catalogSortAdoption,
+    CatalogSortKey.rating => l10n.catalogSortRating,
+    CatalogSortKey.updated => l10n.catalogSortUpdated,
+    CatalogSortKey.published => l10n.catalogSortPublished,
+    CatalogSortKey.name => l10n.catalogSortName,
+  };
+}
+
+String _formatCount(int value) {
+  final sign = value < 0 ? '-' : '';
+  final digits = value.abs().toString();
+  final groups = <String>[];
+  for (var end = digits.length; end > 0; end -= 3) {
+    final start = (end - 3).clamp(0, end);
+    groups.insert(0, digits.substring(start, end));
+  }
+  return '$sign${groups.join(',')}';
 }

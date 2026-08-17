@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 
+import '../../models/catalog/catalog_types.dart';
 import '../../models/discoverable_member.dart';
+import '../catalog/catalog_error_sanitizer.dart';
 
 /// Fetches raw text for a URI (injected so tests can fake the network).
 typedef RawContentFetcher = Future<String?> Function(Uri uri);
@@ -62,4 +64,44 @@ const kDefaultExpertHubRegistry = ExpertHubRegistry(
 abstract interface class ExpertHubSource {
   Future<List<DiscoverableMember>> fetchMembers({bool forceRefresh = false});
   Future<List<String>> categories({bool forceRefresh = false});
+}
+
+abstract interface class ExpertHubSourceContributions {
+  Future<List<CatalogSourceResult<DiscoverableMember>>> fetchMemberSources({
+    bool forceRefresh = false,
+  });
+}
+
+Future<List<CatalogSourceResult<DiscoverableMember>>> fetchExpertCatalogSources(
+  ExpertHubSource source, {
+  bool forceRefresh = false,
+}) async {
+  if (source is ExpertHubSourceContributions) {
+    return (source as ExpertHubSourceContributions).fetchMemberSources(
+      forceRefresh: forceRefresh,
+    );
+  }
+  try {
+    final members = await source.fetchMembers(forceRefresh: forceRefresh);
+    return [
+      CatalogSourceResult(
+        sourceId: 'expert-hub',
+        sourceLabel: 'Expert Hub',
+        items: members,
+      ),
+    ];
+  } catch (error) {
+    return [
+      CatalogSourceResult(
+        sourceId: 'expert-hub',
+        sourceLabel: 'Expert Hub',
+        items: const [],
+        failure: CatalogSourceFailure(
+          sourceId: 'expert-hub',
+          sourceLabel: 'Expert Hub',
+          message: CatalogErrorSanitizer.sanitize(error.toString()),
+        ),
+      ),
+    ];
+  }
 }

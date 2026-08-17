@@ -80,13 +80,13 @@ class _TeamHubCardState extends State<TeamHubCard> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final styles = TpTextStyles.of(context);
     final team = widget.team;
     final accent = teamAccentColor(team.key, Theme.of(context).brightness);
     final borderColor = _hovered
         ? accent.withValues(alpha: 0.55)
         : cs.outlineVariant;
 
+    final metrics = team.metrics;
     return TpHover(
       onTap: widget.busy ? null : widget.onTap,
       enabled: !widget.busy,
@@ -112,61 +112,49 @@ class _TeamHubCardState extends State<TeamHubCard> {
               : null,
         ),
         clipBehavior: Clip.antiAlias,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    TeamMonogram(seed: team.key, label: team.name),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            team.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: styles.mdSemiboldColored(cs.onSurface,),
-                          ),
-                          if (team.author != null &&
-                              team.author!.isNotEmpty) ...[
-                            const SizedBox(height: 2),
-                            Text(
-                              team.author!,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: styles.mutedXs,
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                    _FavoriteButton(
-                      favorited: widget.favorited,
-                      touchTarget: _touchTarget,
-                      accent: accent,
-                      onPressed: widget.onToggleFavorite,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Expanded(
-                  child: Text(
-                    team.description,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: styles.mutedMd,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Wrap(
+        child: TpCatalogCardShell(
+          title: team.name,
+          source: team.author?.trim().isNotEmpty == true
+              ? team.author!.trim()
+              : team.key,
+          description: team.description,
+          leading: TeamMonogram(seed: team.key, label: team.name),
+          metadata: TpCatalogMetadataRow(
+            adoption: _metric(
+              icon: Icons.download_outlined,
+              label: context.l10n.teamsCatalogAdoption,
+              value: metrics.adoptionCount?.toString(),
+              missing: context.l10n.catalogMetricMissingTooltip,
+            ),
+            rating: _metric(
+              icon: Icons.star_outline_rounded,
+              label: context.l10n.catalogMetricRating,
+              value: metrics.rating?.toStringAsFixed(1),
+              missing: context.l10n.catalogMetricMissingTooltip,
+            ),
+            updated: _metric(
+              icon: Icons.update_outlined,
+              label: context.l10n.catalogMetricUpdated,
+              value: _date(metrics.updatedAtMs ?? _fallbackUpdatedAt(team)),
+              missing: context.l10n.catalogMetricMissingTooltip,
+            ),
+            published: _metric(
+              icon: Icons.event_outlined,
+              label: context.l10n.catalogMetricPublished,
+              value: _date(metrics.publishedAtMs),
+              missing: context.l10n.catalogMetricMissingTooltip,
+            ),
+          ),
+          action: TextButton(
+            onPressed: widget.busy ? null : widget.onTap,
+            child: Text(context.l10n.teamHubBrowseAll),
+          ),
+          body: Row(
+            children: [
+              Expanded(
+                child: Wrap(
                   spacing: 8,
                   runSpacing: 6,
-                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     TeamStatChip(
                       icon: Icons.people_alt_outlined,
@@ -182,12 +170,40 @@ class _TeamHubCardState extends State<TeamHubCard> {
                       TeamStatChip(label: team.category, accent: accent),
                   ],
                 ),
-              ],
-            ),
+              ),
+              _FavoriteButton(
+                favorited: widget.favorited,
+                touchTarget: _touchTarget,
+                accent: accent,
+                onPressed: widget.onToggleFavorite,
+              ),
+            ],
           ),
         ),
+      ),
     );
   }
+}
+
+TpCatalogMetricView _metric({
+  required IconData icon,
+  required String label,
+  required String? value,
+  required String missing,
+}) => TpCatalogMetricView(
+  icon: icon,
+  label: label,
+  value: value,
+  missingValueTooltip: missing,
+);
+
+int? _fallbackUpdatedAt(DiscoverableTeam team) =>
+    team.updatedAt == 0 ? null : team.updatedAt;
+
+String? _date(int? milliseconds) {
+  if (milliseconds == null || milliseconds <= 0) return null;
+  final date = DateTime.fromMillisecondsSinceEpoch(milliseconds).toLocal();
+  return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
 }
 
 class _FavoriteButton extends StatelessWidget {
@@ -265,10 +281,7 @@ class TeamStatChip extends StatelessWidget {
             Icon(icon, size: 13, color: fg),
             const SizedBox(width: 4),
           ],
-          Text(
-            label,
-            style: styles.xsSemiboldColored(fg),
-          ),
+          Text(label, style: styles.xsSemiboldColored(fg)),
         ],
       ),
     );

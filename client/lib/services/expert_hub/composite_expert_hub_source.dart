@@ -1,10 +1,12 @@
 import '../../models/discoverable_member.dart';
 import '../../models/discoverable_team.dart';
+import '../../models/catalog/catalog_types.dart';
 import 'builtin_member_templates.dart';
 import 'expert_hub_source.dart';
 import 'git_registry_expert_hub_source.dart';
 import 'local_expert_store.dart';
 import 'team_member_index_source.dart';
+import '../catalog/catalog_error_sanitizer.dart';
 
 /// Stable hash of member prompt + playbook for deduping team-extracted entries
 /// against builtin/registry catalog entries.
@@ -12,14 +14,13 @@ String memberContentHash(DiscoverableTeamMember member) =>
     Object.hash(member.responsibilities, member.playbook).toString();
 
 /// Loads team templates for team-extracted member indexing (e.g. Team Hub source).
-typedef TeamIndexLoader = Future<List<DiscoverableTeam>> Function({
-  bool forceRefresh,
-});
+typedef TeamIndexLoader =
+    Future<List<DiscoverableTeam>> Function({bool forceRefresh});
 
 /// Merges builtin, registry, team-extracted, and local member templates.
 /// Built-ins are listed first; team-extracted entries whose content hash
 /// matches a builtin or registry entry are omitted (prefer catalog entry).
-class CompositeExpertHubSource {
+class CompositeExpertHubSource implements ExpertHubSourceContributions {
   CompositeExpertHubSource({
     List<DiscoverableMember> builtIns = const [],
     ExpertHubSource? registry,
@@ -57,15 +58,48 @@ class CompositeExpertHubSource {
 
   Future<List<DiscoverableMember>> fetchMembers({
     bool forceRefresh = false,
+  }) async => (await fetchMemberSources(
+    forceRefresh: forceRefresh,
+  )).expand((source) => source.items).toList(growable: false);
+
+  @override
+  Future<List<CatalogSourceResult<DiscoverableMember>>> fetchMemberSources({
+    bool forceRefresh = false,
   }) async {
     final builtIns = _builtIns;
-    final registry = await _registry.fetchMembers(forceRefresh: forceRefresh);
+    final registrySources = await fetchExpertCatalogSources(
+      _registry,
+      forceRefresh: forceRefresh,
+    );
+    final registry = registrySources.expand((source) => source.items).toList();
     final teamIndex = _teamIndex;
-    final teams = teamIndex != null
-        ? await teamIndex(forceRefresh: forceRefresh)
-        : _teams;
+    List<DiscoverableTeam> teams;
+    CatalogSourceFailure? teamFailure;
+    try {
+      teams = teamIndex != null
+          ? await teamIndex(forceRefresh: forceRefresh)
+          : _teams;
+    } catch (error) {
+      teams = const [];
+      teamFailure = CatalogSourceFailure(
+        sourceId: 'team-extract',
+        sourceLabel: 'Team templates',
+        message: CatalogErrorSanitizer.sanitize(error.toString()),
+      );
+    }
     final teamExtract = indexMembersFromTeams(teams);
-    final local = await _localStore.loadAll();
+    List<DiscoverableMember> local;
+    CatalogSourceFailure? localFailure;
+    try {
+      local = await _localStore.loadAll();
+    } catch (error) {
+      local = const [];
+      localFailure = CatalogSourceFailure(
+        sourceId: 'local',
+        sourceLabel: 'Local experts',
+        message: CatalogErrorSanitizer.sanitize(error.toString()),
+      );
+    }
 
     // A local clone (or user-created expert) shadows the catalog/builtin
     // entry with the same key, so a cloned team resolves to its clone.
@@ -75,7 +109,9 @@ class CompositeExpertHubSource {
         .where((m) => !localKeys.contains(m.key))
         .toList(growable: false);
     final registryOnly = registry
-        .where((m) => !builtinKeys.contains(m.key) && !localKeys.contains(m.key))
+        .where(
+          (m) => !builtinKeys.contains(m.key) && !localKeys.contains(m.key),
+        )
         .toList(growable: false);
 
     final preferredHashes = {
@@ -84,11 +120,46 @@ class CompositeExpertHubSource {
     };
 
     final teamExtractOnly = teamExtract
-        .where((m) =>
-            !localKeys.contains(m.key) &&
-            !preferredHashes.contains(memberContentHash(m.member)))
+        .where(
+          (m) =>
+              !localKeys.contains(m.key) &&
+              !preferredHashes.contains(memberContentHash(m.member)),
+        )
         .toList(growable: false);
 
-    return [...builtins, ...registryOnly, ...teamExtractOnly, ...local];
+    return [
+      CatalogSourceResult(
+        sourceId: 'builtin',
+        sourceLabel: 'Built-in',
+        items: builtins,
+      ),
+      ...registrySources.map(
+        (source) => CatalogSourceResult<DiscoverableMember>(
+          sourceId: source.sourceId,
+          sourceLabel: source.sourceLabel,
+          items: source.items
+              .where(
+                (member) =>
+                    !builtinKeys.contains(member.key) &&
+                    !localKeys.contains(member.key),
+              )
+              .toList(growable: false),
+          hasNext: source.hasNext,
+          failure: source.failure,
+        ),
+      ),
+      CatalogSourceResult(
+        sourceId: 'team-extract',
+        sourceLabel: 'Team templates',
+        items: teamExtractOnly,
+        failure: teamFailure,
+      ),
+      CatalogSourceResult(
+        sourceId: 'local',
+        sourceLabel: 'Local experts',
+        items: local,
+        failure: localFailure,
+      ),
+    ];
   }
 }

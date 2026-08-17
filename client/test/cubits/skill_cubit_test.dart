@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -5,6 +6,7 @@ import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/discovery_settings_cubit.dart';
 import 'package:teampilot/cubits/skill_cubit.dart';
+import 'package:teampilot/models/catalog/catalog_types.dart';
 import 'package:teampilot/models/discoverable_team.dart';
 import 'package:teampilot/models/skill.dart';
 import 'package:teampilot/models/skill_registry_source.dart';
@@ -13,6 +15,8 @@ import 'package:teampilot/repositories/skill_repository.dart';
 import 'package:teampilot/services/cli/installer_types.dart';
 import 'package:teampilot/services/io/filesystem.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
+import 'package:teampilot/services/skill/marketplace/skill_marketplace_source.dart';
+import 'package:teampilot/services/skill/registry/skill_registry_source.dart';
 import 'package:teampilot/services/skill/registry/git_repo_registry_source.dart';
 import 'package:teampilot/services/skill/registry/skill_registry_config_service.dart';
 import 'package:teampilot/services/skill/skill_acquisition_engine.dart';
@@ -80,15 +84,15 @@ void main() {
         isLocalAcquireSupported: () => true,
         registerDirectory:
             ({required String id, required String directory}) async {
-          return Skill(
-            id: id,
-            name: directory,
-            description: '',
-            directory: directory,
-            installedAt: 1,
-            updatedAt: 1,
-          );
-        },
+              return Skill(
+                id: id,
+                name: directory,
+                description: '',
+                directory: directory,
+                installedAt: 1,
+                updatedAt: 1,
+              );
+            },
       );
 
       final cubit = cubitWith(engine);
@@ -175,7 +179,9 @@ void main() {
     final cache = SkillRepoDiskCacheService(fetch: fetch);
     await cache.ensureSynced(_discoveryRepo);
     expect(fetch.downloads, 1);
-    final cubit = cubitWithRepos(SkillRepository(fetch: fetch, repoCache: cache));
+    final cubit = cubitWithRepos(
+      SkillRepository(fetch: fetch, repoCache: cache),
+    );
 
     await cubit.ensureDiscoveryLoaded();
 
@@ -188,7 +194,9 @@ void main() {
     final fetch = _FakeSkillFetch();
     final cache = SkillRepoDiskCacheService(fetch: fetch);
     await cache.ensureSynced(_discoveryRepo);
-    final cubit = cubitWithRepos(SkillRepository(fetch: fetch, repoCache: cache));
+    final cubit = cubitWithRepos(
+      SkillRepository(fetch: fetch, repoCache: cache),
+    );
 
     await cubit.ensureDiscoveryLoaded(force: true);
 
@@ -252,6 +260,214 @@ void main() {
     expect(fetch.shaChecks, 1);
     expect(fetch.downloads, 1);
   });
+
+  test(
+    'unified search keeps successful entries and records sanitized failures',
+    () async {
+      final healthy = _DiscoverySource(
+        id: 'healthy',
+        label: 'Healthy source',
+        entries: [
+          _marketplaceSkill(
+            key: 'healthy-skill',
+            name: 'Healthy skill',
+            adoptionCount: 20,
+          ),
+        ],
+      );
+      final broken = _DiscoverySource(
+        id: 'broken',
+        label: 'Broken source',
+        error: StateError(
+          'Bearer secret-token response body: private response payload',
+        ),
+      );
+      final cubit = cubitWithDiscoverySources([healthy, broken]);
+
+      await cubit.unifiedBrowse();
+
+      expect(cubit.state.discoveryEntries, hasLength(1));
+      expect(cubit.state.discoveryEntries.single.skill.key, 'healthy-skill');
+      expect(cubit.state.discoveryError, isNull);
+      expect(cubit.state.discoveryFailures, hasLength(1));
+      expect(cubit.state.discoveryFailures.single.sourceId, 'broken');
+      expect(cubit.state.discoveryFailures.single.sourceLabel, 'Broken source');
+      expect(
+        cubit.state.discoveryFailures.single.message,
+        contains('[REDACTED]'),
+      );
+      expect(
+        cubit.state.discoveryFailures.single.message,
+        isNot(contains('private response payload')),
+      );
+    },
+  );
+
+  test(
+    'refresh keeps the previous results visible while a source is pending',
+    () async {
+      final source = _DiscoverySource(
+        id: 'source',
+        label: 'Source',
+        entries: [
+          _marketplaceSkill(
+            key: 'cached-skill',
+            name: 'Cached skill',
+            adoptionCount: 1,
+          ),
+        ],
+      );
+      final cubit = cubitWithDiscoverySources([source]);
+      await cubit.unifiedBrowse();
+
+      final pending = Completer<SkillRegistryPage>();
+      source.nextResult = pending.future;
+      final refresh = cubit.unifiedBrowse();
+      await _waitForCondition(() => cubit.state.discoveryLoading);
+
+      expect(cubit.state.discoveryEntries.single.skill.key, 'cached-skill');
+
+      pending.completeError(StateError('offline'));
+      await refresh;
+
+      expect(cubit.state.discoveryEntries.single.skill.key, 'cached-skill');
+      expect(cubit.state.discoveryFailures.single.message, contains('offline'));
+    },
+  );
+
+  test('discovery sort is local and defaults to adoption descending', () async {
+    final source = _DiscoverySource(
+      id: 'source',
+      label: 'Source',
+      entries: [
+        _marketplaceSkill(key: 'missing', name: 'Zed', updatedAtMs: 300),
+        _marketplaceSkill(
+          key: 'low',
+          name: 'Low',
+          adoptionCount: 2,
+          updatedAtMs: 100,
+        ),
+        _marketplaceSkill(
+          key: 'high',
+          name: 'High',
+          adoptionCount: 10,
+          updatedAtMs: 200,
+        ),
+        _marketplaceSkill(
+          key: 'tie-new',
+          name: 'Tie new',
+          adoptionCount: 10,
+          updatedAtMs: 300,
+        ),
+      ],
+    );
+    final cubit = cubitWithDiscoverySources([source]);
+    await cubit.unifiedBrowse();
+    final searchCount = source.searchCount;
+
+    expect(cubit.state.discoverySort, CatalogSortKey.adoption);
+    expect(cubit.state.discoveryEntries.map((entry) => entry.skill.key), [
+      'tie-new',
+      'high',
+      'low',
+      'missing',
+    ]);
+
+    cubit.setDiscoverySort(CatalogSortKey.name);
+
+    expect(source.searchCount, searchCount);
+    expect(cubit.state.discoveryEntries.map((entry) => entry.skill.key), [
+      'high',
+      'low',
+      'tie-new',
+      'missing',
+    ]);
+  });
+}
+
+Future<void> _waitForCondition(bool Function() condition) async {
+  final deadline = DateTime.now().add(const Duration(seconds: 5));
+  while (!condition()) {
+    if (DateTime.now().isAfter(deadline)) {
+      fail('condition not met within timeout');
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+  }
+}
+
+SkillCubit cubitWithDiscoverySources(List<SkillRegistrySource> sources) {
+  return SkillCubit(
+    SkillRepository(),
+    registryConfigService: SkillRegistryConfigService(
+      teampilotRoot: AppStorage.paths.basePath,
+    ),
+    initialSources: sources,
+    rebuildSources: (c) => sources,
+  );
+}
+
+MarketplaceSkill _marketplaceSkill({
+  required String key,
+  required String name,
+  int? adoptionCount,
+  int? updatedAtMs,
+}) {
+  return MarketplaceSkill(
+    key: key,
+    name: name,
+    description: 'description',
+    repoOwner: 'owner',
+    repoName: 'repo',
+    directory: key,
+    githubUrl: 'https://github.com/owner/repo',
+    metrics: CatalogMetrics(
+      adoptionCount: adoptionCount,
+      updatedAtMs: updatedAtMs,
+    ),
+  );
+}
+
+class _DiscoverySource implements SkillRegistrySource {
+  _DiscoverySource({
+    required this.id,
+    required this.label,
+    this.entries = const [],
+    this.error,
+  });
+
+  @override
+  final String id;
+  @override
+  final String label;
+  final List<MarketplaceSkill> entries;
+  final Object? error;
+  Future<SkillRegistryPage>? nextResult;
+  int searchCount = 0;
+
+  @override
+  bool get enabled => true;
+
+  @override
+  SkillRegistryKind get kind => SkillRegistryKind.api;
+
+  @override
+  MarketplaceCapabilities get capabilities => const MarketplaceCapabilities();
+
+  @override
+  Future<SkillRegistryPage> search(SkillRegistryQuery query) async {
+    searchCount++;
+    final pending = nextResult;
+    nextResult = null;
+    if (pending != null) return pending;
+    if (error != null) throw error!;
+    return SkillRegistryPage(entries: entries, total: entries.length);
+  }
+
+  @override
+  Future<void> setApiKey(String key) async {}
+
+  @override
+  Future<void> testConnection() async {}
 }
 
 const _discoveryRepo = SkillRepo(owner: 'acme', name: 'skills', branch: 'main');

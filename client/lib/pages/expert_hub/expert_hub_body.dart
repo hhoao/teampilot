@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../cubits/expert_hub_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../models/catalog/catalog_types.dart';
 import '../../models/discoverable_member.dart';
 import '../../utils/debounce/debounce.dart';
 import 'package:shared_ui/shared_ui.dart';
@@ -78,15 +79,25 @@ class _ExpertHubBodyState extends State<ExpertHubBody> {
                 ),
                 onChanged: _onSearchChanged,
               );
-              final sortSelect = TpSelect<MemberSort>(
-                items: const [MemberSort.name, MemberSort.updated],
+              final sortSelect = TpCatalogSortControl<CatalogSortKey>(
+                items: const [
+                  CatalogSortKey.adoption,
+                  CatalogSortKey.rating,
+                  CatalogSortKey.updated,
+                  CatalogSortKey.published,
+                  CatalogSortKey.name,
+                ],
                 initialItem: state.sort,
                 itemLabel: (s) => switch (s) {
-                  MemberSort.name => l10n.expertHubSortName,
-                  MemberSort.updated => l10n.expertHubSortUpdated,
+                  CatalogSortKey.adoption => l10n.catalogSortAdoption,
+                  CatalogSortKey.rating => l10n.catalogSortRating,
+                  CatalogSortKey.updated => l10n.catalogSortUpdated,
+                  CatalogSortKey.published => l10n.catalogSortPublished,
+                  CatalogSortKey.name => l10n.catalogSortName,
                 },
                 onChanged: (s) => s == null ? null : widget.cubit.setSort(s),
               );
+              final sourceWarning = _sourceWarning(context, state);
               final refreshButton = IconButton(
                 key: const Key('expert-hub-refresh'),
                 tooltip: l10n.expertHubRefresh,
@@ -119,6 +130,8 @@ class _ExpertHubBodyState extends State<ExpertHubBody> {
                       children: [
                         Expanded(child: sortSelect),
                         const SizedBox(width: 4),
+                        sourceWarning,
+                        const SizedBox(width: 2),
                         refreshButton,
                         if (createButton != null) ...[
                           const SizedBox(width: 8),
@@ -135,6 +148,8 @@ class _ExpertHubBodyState extends State<ExpertHubBody> {
                   const SizedBox(width: 12),
                   SizedBox(width: 180, child: sortSelect),
                   const SizedBox(width: 4),
+                  sourceWarning,
+                  const SizedBox(width: 2),
                   refreshButton,
                   if (createButton != null) ...[
                     const SizedBox(width: 12),
@@ -151,6 +166,22 @@ class _ExpertHubBodyState extends State<ExpertHubBody> {
           languageCode: languageCode,
         ),
         Expanded(child: _grid(context, state, members)),
+      ],
+    );
+  }
+
+  Widget _sourceWarning(BuildContext context, ExpertHubState state) {
+    final l10n = context.l10n;
+    return TpCatalogSourceWarning(
+      failures: [
+        for (final failure in state.sourceFailures)
+          TpCatalogFailureView(
+            sourceLabel: failure.sourceLabel,
+            message: l10n.catalogSourceWarningEntry(
+              failure.sourceLabel,
+              failure.message,
+            ),
+          ),
       ],
     );
   }
@@ -192,7 +223,7 @@ class _ExpertHubBodyState extends State<ExpertHubBody> {
       padding: EdgeInsets.fromLTRB(widget.inset, 4, widget.inset, 24),
       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
         maxCrossAxisExtent: 380,
-        mainAxisExtent: 186,
+        mainAxisExtent: 300,
         crossAxisSpacing: 14,
         mainAxisSpacing: 14,
       ),

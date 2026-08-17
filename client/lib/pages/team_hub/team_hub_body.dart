@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../cubits/team_hub_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../models/catalog/catalog_types.dart';
 import '../../models/discoverable_team.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'team_hub_cards.dart';
@@ -45,15 +46,25 @@ class TeamHubBody extends StatelessWidget {
                 ),
                 onChanged: cubit.setSearch,
               );
-              final sortSelect = TpSelect<TeamSort>(
-                items: const [TeamSort.name, TeamSort.updated],
+              final sortSelect = TpCatalogSortControl<CatalogSortKey>(
+                items: const [
+                  CatalogSortKey.adoption,
+                  CatalogSortKey.rating,
+                  CatalogSortKey.updated,
+                  CatalogSortKey.published,
+                  CatalogSortKey.name,
+                ],
                 initialItem: state.sort,
                 itemLabel: (s) => switch (s) {
-                  TeamSort.name => l10n.teamHubSortName,
-                  TeamSort.updated => l10n.teamHubSortUpdated,
+                  CatalogSortKey.adoption => l10n.catalogSortAdoption,
+                  CatalogSortKey.rating => l10n.catalogSortRating,
+                  CatalogSortKey.updated => l10n.catalogSortUpdated,
+                  CatalogSortKey.published => l10n.catalogSortPublished,
+                  CatalogSortKey.name => l10n.catalogSortName,
                 },
                 onChanged: (s) => s == null ? null : cubit.setSort(s),
               );
+              final sourceWarning = _sourceWarning(context, state);
               final refreshButton = IconButton(
                 key: const Key('team-hub-refresh'),
                 tooltip: l10n.teamHubRefresh,
@@ -78,6 +89,8 @@ class TeamHubBody extends StatelessWidget {
                       children: [
                         Expanded(child: sortSelect),
                         const SizedBox(width: 4),
+                        sourceWarning,
+                        const SizedBox(width: 2),
                         refreshButton,
                       ],
                     ),
@@ -90,6 +103,8 @@ class TeamHubBody extends StatelessWidget {
                   const SizedBox(width: 12),
                   SizedBox(width: 180, child: sortSelect),
                   const SizedBox(width: 4),
+                  sourceWarning,
+                  const SizedBox(width: 2),
                   refreshButton,
                 ],
               );
@@ -98,6 +113,22 @@ class TeamHubBody extends StatelessWidget {
         ),
         _FilterBar(cubit: cubit, inset: inset),
         Expanded(child: _grid(context, state, teams)),
+      ],
+    );
+  }
+
+  Widget _sourceWarning(BuildContext context, TeamHubState state) {
+    final l10n = context.l10n;
+    return TpCatalogSourceWarning(
+      failures: [
+        for (final failure in state.sourceFailures)
+          TpCatalogFailureView(
+            sourceLabel: failure.sourceLabel,
+            message: l10n.catalogSourceWarningEntry(
+              failure.sourceLabel,
+              failure.message,
+            ),
+          ),
       ],
     );
   }
@@ -139,7 +170,7 @@ class TeamHubBody extends StatelessWidget {
       padding: EdgeInsets.fromLTRB(inset, 4, inset, 24),
       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
         maxCrossAxisExtent: 380,
-        mainAxisExtent: 186,
+        mainAxisExtent: 300,
         crossAxisSpacing: 14,
         mainAxisSpacing: 14,
       ),

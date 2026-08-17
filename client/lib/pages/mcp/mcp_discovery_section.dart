@@ -6,7 +6,9 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../cubits/mcp_cubit.dart';
 import '../../cubits/mcp_discovery_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../models/catalog/catalog_types.dart';
 import '../../models/mcp_catalog_listing.dart';
+import '../../services/catalog/catalog_sort_comparator.dart';
 import '../../utils/debounce/debounce.dart';
 import 'mcp_discovery_helpers.dart';
 import 'mcp_preset_listings.dart';
@@ -94,10 +96,19 @@ class _McpDiscoveryHeader extends StatelessWidget {
     return BlocSelector<
       McpDiscoveryCubit,
       McpDiscoveryState,
-      ({McpDiscoverySource source, bool loading})
+      ({
+        McpDiscoverySource source,
+        bool loading,
+        CatalogSortKey sort,
+        List<CatalogSourceFailure> failures,
+      })
     >(
-      selector: (discovery) =>
-          (source: discovery.source, loading: discovery.loading),
+      selector: (discovery) => (
+        source: discovery.source,
+        loading: discovery.loading,
+        sort: discovery.discoverySort,
+        failures: discovery.discoveryFailures,
+      ),
       builder: (context, header) {
         final canRefresh = header.source != McpDiscoverySource.builtin;
         return TpCardHeader(
@@ -106,7 +117,7 @@ class _McpDiscoveryHeader extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               SizedBox(
-                width: 200,
+                width: 180,
                 child: TpSelect<McpDiscoverySource>(
                   key: ValueKey(header.source),
                   items: mcpDiscoverySourceOrder,
@@ -118,7 +129,33 @@ class _McpDiscoveryHeader extends StatelessWidget {
                   },
                 ),
               ),
+              const SizedBox(width: 8),
+              SizedBox(
+                width: 170,
+                child: TpCatalogSortControl<CatalogSortKey>(
+                  key: ValueKey(header.sort),
+                  items: CatalogSortKey.values,
+                  initialItem: header.sort,
+                  itemLabel: (sort) => _mcpSortLabel(context, sort),
+                  onChanged: (sort) {
+                    if (sort != null) {
+                      context.read<McpDiscoveryCubit>().setDiscoverySort(sort);
+                    }
+                  },
+                ),
+              ),
+              TpCatalogSourceWarning(
+                failures: header.failures
+                    .map(
+                      (failure) => TpCatalogFailureView(
+                        sourceLabel: failure.sourceLabel,
+                        message: failure.message,
+                      ),
+                    )
+                    .toList(growable: false),
+              ),
               IconButton(
+                tooltip: context.l10n.catalogRefreshAccessibilityLabel,
                 onPressed: !canRefresh || header.loading
                     ? null
                     : () => context.read<McpDiscoveryCubit>().refreshRemote(),
@@ -190,6 +227,8 @@ typedef _McpDiscoveryCatalogSlice = ({
   String? errorMessage,
   bool hasMore,
   bool remoteDisabled,
+  CatalogSortKey sort,
+  List<CatalogSourceFailure> failures,
 });
 
 class _McpDiscoveryCatalogBody extends StatelessWidget {
@@ -218,6 +257,8 @@ class _McpDiscoveryCatalogBody extends StatelessWidget {
         errorMessage: discovery.errorMessage,
         hasMore: discovery.hasMore,
         remoteDisabled: discovery.remoteDisabled,
+        sort: discovery.discoverySort,
+        failures: discovery.discoveryFailures,
       ),
       builder: (context, catalog) {
         if (catalog.remoteDisabled) {
@@ -240,14 +281,14 @@ class _McpDiscoveryCatalogBody extends StatelessWidget {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (catalog.errorMessage != null)
+                if (catalog.errorMessage != null && items.isEmpty)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 8),
                     child: Text(
                       catalog.errorMessage!,
-                      style: TpTextStyles.of(context).mdColored(
-                        Theme.of(context).colorScheme.error,
-                      ),
+                      style: TpTextStyles.of(
+                        context,
+                      ).mdColored(Theme.of(context).colorScheme.error),
                     ),
                   ),
                 Expanded(
@@ -312,7 +353,7 @@ List<McpCatalogListing> _resolveCatalogItems(
   _McpDiscoveryCatalogSlice catalog,
   AppLocalizations l10n,
 ) {
-  return switch (catalog.source) {
+  final items = switch (catalog.source) {
     McpDiscoverySource.builtin => filterMcpBuiltinListings(
       mcpBuiltinListings(l10n),
       catalog.query,
@@ -329,6 +370,56 @@ List<McpCatalogListing> _resolveCatalogItems(
     McpDiscoverySource.smithery ||
     McpDiscoverySource.official => catalog.remoteItems,
   };
+  final sorted = List<McpCatalogListing>.from(items);
+  sorted.sort(
+    (a, b) => CatalogSortComparator.compare(
+      _McpPageCatalogEntry(a),
+      _McpPageCatalogEntry(b),
+      catalog.sort,
+    ),
+  );
+  return sorted;
+}
+
+String _mcpSortLabel(BuildContext context, CatalogSortKey sort) {
+  final l10n = context.l10n;
+  return switch (sort) {
+    CatalogSortKey.adoption => l10n.catalogSortAdoption,
+    CatalogSortKey.rating => l10n.catalogSortRating,
+    CatalogSortKey.updated => l10n.catalogSortUpdated,
+    CatalogSortKey.published => l10n.catalogSortPublished,
+    CatalogSortKey.name => l10n.catalogSortName,
+  };
+}
+
+class _McpPageCatalogEntry implements CatalogEntry {
+  _McpPageCatalogEntry(this.listing);
+
+  final McpCatalogListing listing;
+
+  @override
+  String get id => listing.id;
+
+  @override
+  CatalogResourceKind get kind => CatalogResourceKind.mcp;
+
+  @override
+  String get name => listing.title;
+
+  @override
+  String get description => listing.description;
+
+  @override
+  String? get sourceLabel => listing.source.name;
+
+  @override
+  String? get author => null;
+
+  @override
+  List<String> get tags => listing.tags;
+
+  @override
+  CatalogMetrics get metrics => listing.metrics;
 }
 
 class _McpDiscoveryDisabledHint extends StatelessWidget {

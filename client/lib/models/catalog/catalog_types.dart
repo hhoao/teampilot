@@ -1,8 +1,10 @@
+import 'package:equatable/equatable.dart';
+
 enum CatalogResourceKind { skill, mcp, plugin, team, expert }
 
 enum CatalogSortKey { adoption, rating, updated, published, name }
 
-class CatalogMetrics {
+class CatalogMetrics extends Equatable {
   const CatalogMetrics({
     this.adoptionCount,
     this.rating,
@@ -16,6 +18,15 @@ class CatalogMetrics {
   final int? ratingCount;
   final int? updatedAtMs;
   final int? publishedAtMs;
+
+  @override
+  List<Object?> get props => [
+    adoptionCount,
+    rating,
+    ratingCount,
+    updatedAtMs,
+    publishedAtMs,
+  ];
 }
 
 abstract interface class CatalogEntry {
