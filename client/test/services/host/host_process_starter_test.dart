@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/host/host_one_shot_runner.dart';
 import 'package:teampilot/services/host/host_process_starter.dart';
 import 'package:teampilot/services/host/host_process_starter_for_context.dart';
+import 'package:teampilot/services/host/host_tty_wrap.dart';
 import 'package:teampilot/services/host/process_run_handle.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
@@ -57,6 +58,42 @@ void main() {
       expect(calls.single['executable'], 'echo');
       expect(calls.single['arguments'], ['hi']);
       expect(calls.single['workingDirectory'], '/tmp');
+    });
+
+    test('wraps login in script so stdout is a TTY', () async {
+      final calls = <Map<String, Object?>>[];
+      final starter = LocalHostProcessStarter(
+        spawner:
+            ({
+              required executable,
+              required arguments,
+              workingDirectory,
+              environment,
+              includeParentEnvironment = true,
+            }) async {
+              calls.add({
+                'executable': executable,
+                'arguments': arguments,
+              });
+              return _FakeProcessRunHandle();
+            },
+        ttyFlavor: HostTtyScriptFlavor.gnu,
+      );
+
+      await starter.start(
+        const HostRunRequest(
+          executable: 'codex',
+          arguments: ['login', '--device-auth'],
+          allocateTty: true,
+        ),
+      );
+
+      expect(calls.single['executable'], 'script');
+      expect(calls.single['arguments'], [
+        '-qefc',
+        "'codex' 'login' '--device-auth'",
+        '/dev/null',
+      ]);
     });
   });
 

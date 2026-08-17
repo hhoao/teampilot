@@ -55,15 +55,18 @@ class _ScriptedStarter implements HostProcessStarter {
     List<List<int>> stderrChunks = const [],
     this.exitCode = 0,
     this.startError,
+    this.onStart,
   }) : _stderrChunks = stderrChunks;
 
   final List<List<int>> stdoutChunks;
   final List<List<int>> _stderrChunks;
   final int exitCode;
   final Object? startError;
+  final void Function(HostRunRequest request)? onStart;
 
   @override
   Future<ProcessRunHandle> start(HostRunRequest request) async {
+    onStart?.call(request);
     if (startError != null) throw startError!;
     return _ScriptedProcessHandle(
       stdoutChunks: stdoutChunks,
@@ -106,6 +109,29 @@ void main() {
   });
 
   group('ProviderCredentialHostRunner.runLogin', () {
+    test('allocates a TTY so Codex flushes the device-code banner', () async {
+      HostRunRequest? seen;
+      final runner = ProviderCredentialHostRunner(
+        oneShot: () => _FailOneShotRunner(),
+        streaming: () => _ScriptedStarter(
+          [utf8.encode('ok\n')],
+          onStart: (request) => seen = request,
+        ),
+      );
+
+      await runner.runLogin(
+        const HostRunRequest(
+          executable: 'codex',
+          arguments: ['login', '--device-auth'],
+        ),
+      );
+
+      expect(seen, isNotNull);
+      expect(seen!.allocateTty, isTrue);
+      expect(seen!.executable, 'codex');
+      expect(seen!.arguments, ['login', '--device-auth']);
+    });
+
     test('opens preferred URL once and dedupes repeats', () async {
       final opened = <Uri>[];
       final runner = ProviderCredentialHostRunner(
@@ -146,6 +172,29 @@ void main() {
 
       expect(result.exitCode, 0);
       expect(opened.single.host, 'auth.cursor.sh');
+    });
+
+    test('announces Codex device code glued to following sentence', () async {
+      final hints = <String>[];
+      final opened = <Uri>[];
+      final runner = ProviderCredentialHostRunner(
+        oneShot: () => _FailOneShotRunner(),
+        streaming: () => _ScriptedStarter([
+          utf8.encode(
+            'https://auth.openai.com/codex/deviceEnter this one-time code\n'
+            'WO3M-X8OIFContinue only if you started this login in Codex.\n',
+          ),
+        ]),
+        openUrl: (uri) async => opened.add(uri),
+        onLoginHint: hints.add,
+      );
+
+      await runner.runLogin(
+        const HostRunRequest(executable: 'codex', arguments: ['login']),
+      );
+
+      expect(hints, ['Device code: WO3M-X8OIF']);
+      expect(opened.single.toString(), 'https://auth.openai.com/codex/device');
     });
 
     test('opens URL printed only on stderr', () async {

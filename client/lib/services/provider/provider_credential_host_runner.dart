@@ -53,7 +53,16 @@ class ProviderCredentialHostRunner {
 
   /// Login: stream output, open first HTTPS URL(s) on device, return final result.
   Future<HostRunResult> runLogin(HostRunRequest request) async {
-    final handle = await _startStreaming(request);
+    final handle = await _startStreaming(
+      HostRunRequest(
+        executable: request.executable,
+        arguments: request.arguments,
+        workingDirectory: request.workingDirectory,
+        environment: request.environment,
+        includeParentEnvironment: request.includeParentEnvironment,
+        allocateTty: true,
+      ),
+    );
 
     final stdoutBuffer = StringBuffer();
     final stderrBuffer = StringBuffer();

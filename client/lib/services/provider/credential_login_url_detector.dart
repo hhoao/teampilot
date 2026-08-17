@@ -10,8 +10,16 @@ class CredentialLoginUrlDetector {
   static final RegExp _ansi = RegExp(r'\x1B\[[0-9;]*[A-Za-z]');
 
   /// Codex-style device codes (`ABCD-EFGHI`).
+  ///
+  /// Piped/TUI output often glues the code to the next sentence
+  /// (`WO3M-X8OIFContinue`), so accept a following `Continue` as a terminator.
   static final RegExp _deviceCode = RegExp(
-    r'\b([A-Z0-9]{4,5}-[A-Z0-9]{4,8})\b',
+    r'\b([A-Z0-9]{4,5}-[A-Z0-9]{4,8})(?=Continue|\b)',
+  );
+
+  static final RegExp _openaiDeviceUrl = RegExp(
+    r'https://auth\.openai\.com/codex/device',
+    caseSensitive: false,
   );
 
   static const _preferredHostHints = [
@@ -35,6 +43,10 @@ class CredentialLoginUrlDetector {
     for (final match in _httpsUrl.allMatches(cleaned)) {
       var raw = match.group(0)!;
       raw = raw.replaceFirst(RegExp(r'[)\],.;:]+$'), '');
+      final openaiDevice = _openaiDeviceUrl.firstMatch(raw);
+      if (openaiDevice != null) {
+        raw = openaiDevice.group(0)!;
+      }
       final uri = Uri.tryParse(raw);
       if (uri == null || uri.scheme.toLowerCase() != 'https') continue;
       final key = uri.toString();

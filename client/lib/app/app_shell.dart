@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 
@@ -727,7 +728,11 @@ Future<AppShell> buildAppShell({
   }
 
   void onCredentialLoginHint(String message) {
-    AppToast.showGlobal(message: message);
+    AppToast.showGlobal(
+      message: message,
+      variant: TpToastVariant.warning,
+      duration: const Duration(minutes: 15),
+    );
   }
 
   final credentialHostRunner = ProviderCredentialHostRunner(
