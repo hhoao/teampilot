@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:teampilot/models/workspace_agent_config.dart';
-import 'package:teampilot/services/cli/cli_tool_adapter.dart';
 import 'package:teampilot/services/cli/registry/config_profile/config_profile_context.dart';
 import 'package:teampilot/services/session/launch_command_builder.dart';
 import 'package:teampilot/services/session/shell_launch_spec.dart';
@@ -284,9 +283,7 @@ void main() {
       );
       expect(capturedEnv?['CLAUDE_CONFIG_DIR'], '/tmp/team/claude');
       expect(
-        capturedEnv?.containsKey(
-          ClaudeProviderCapability.settingsFileEnvKey,
-        ),
+        capturedEnv?.containsKey(ClaudeProviderCapability.settingsFileEnvKey),
         isFalse,
       );
     },
@@ -404,5 +401,4 @@ void main() {
     expect(cwd, isNot(startsWith('/')));
     expect(Directory(cwd).existsSync(), isTrue);
   });
-
 }

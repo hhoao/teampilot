@@ -26,7 +26,7 @@ import '../storage/work_target_canonicalizer.dart';
 import '../cli/registry/capabilities/ai_history_capability.dart';
 import '../cli/registry/capabilities/resume/pinned_transcript_probe.dart';
 import '../cli/preset_resolver.dart';
-import '../cli/cli_tool_adapter.dart';
+import '../cli/registry/launch/cli_launch_context.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../cli/flashskyai/capabilities/provider.dart';
 import '../provider/control_plane_profile_paths.dart';
@@ -831,8 +831,8 @@ class SessionLifecycleService {
     final leadTaskId = memberBinding?.taskId.trim() ?? '';
     final leadSessionId =
         TeamMemberNaming.isTeamLead(member) && leadTaskId.isNotEmpty
-            ? leadTaskId
-            : null;
+        ? leadTaskId
+        : null;
     final outcome = await service.prepareTeamLaunch(
       workspaceId: effectiveLaunchWorkspaceId(
         workspaceId: session.workspaceId,
@@ -943,7 +943,9 @@ class SessionLifecycleService {
       provider: preset.provider.trim().isNotEmpty
           ? preset.provider.trim()
           : member.provider,
-      model: preset.model.trim().isNotEmpty ? preset.model.trim() : member.model,
+      model: preset.model.trim().isNotEmpty
+          ? preset.model.trim()
+          : member.model,
       effort: preset.effort.trim().isNotEmpty
           ? preset.effort.trim()
           : member.effort,
@@ -1070,13 +1072,12 @@ class SessionLifecycleService {
           folders: session.folders,
           createdAt: session.createdAt,
         );
-    final launchMember =
-        member != null
-            ? (_resolveTeamMemberForLaunch(team, member) ?? member)
-            : team.members.firstWhere(
-                (m) => m.isValid,
-                orElse: () => const TeamMemberConfig(id: '', name: ''),
-              );
+    final launchMember = member != null
+        ? (_resolveTeamMemberForLaunch(team, member) ?? member)
+        : team.members.firstWhere(
+            (m) => m.isValid,
+            orElse: () => const TeamMemberConfig(id: '', name: ''),
+          );
     if (!launchMember.isValid) {
       throw StateError('prepareLaunch requires a valid team member');
     }

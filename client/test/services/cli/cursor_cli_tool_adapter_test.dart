@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/cli/cli_tool_adapter.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/launch_args.dart';
+import 'package:teampilot/services/cli/registry/launch/cli_launch_context.dart';
 
 void main() {
   const team = TeamProfile(id: 't', name: 'agent', cli: CliTool.cursor);

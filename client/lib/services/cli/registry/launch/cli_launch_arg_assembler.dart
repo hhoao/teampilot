@@ -1,4 +1,4 @@
-import '../../cli_tool_adapter.dart';
+import 'cli_launch_context.dart';
 import '../cli_tool_definition.dart';
 import 'cli_launch_arg_contribution.dart';
 import 'cli_launch_arg_provider.dart';

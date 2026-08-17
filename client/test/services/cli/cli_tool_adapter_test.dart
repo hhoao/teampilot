@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/cli/cli_tool_adapter.dart';
 import 'package:teampilot/services/cli/claude/capabilities/launch_args.dart';
 import 'package:teampilot/services/cli/claude/capabilities/session.dart';
 import 'package:teampilot/services/cli/codex/capabilities/launch_args.dart';
@@ -10,6 +9,7 @@ import 'package:teampilot/services/cli/flashskyai/capabilities/session.dart';
 import 'package:teampilot/services/cli/registry/built_in_cli_tools.dart';
 import 'package:teampilot/services/cli/registry/capabilities/cli_session_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
+import 'package:teampilot/services/cli/registry/launch/cli_launch_context.dart';
 import 'package:teampilot/services/session/member_role_provision.dart';
 
 void main() {

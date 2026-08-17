@@ -2,6 +2,7 @@ import '../../../../models/team_config.dart';
 import '../../../../utils/team/team_member_naming.dart';
 import '../../../session/member_role_provision.dart';
 import '../../cli_tool_adapter.dart';
+import '../../registry/launch/cli_launch_context.dart';
 
 final class ClaudeCodeCliToolAdapter implements CliToolAdapter {
   const ClaudeCodeCliToolAdapter();
@@ -23,10 +24,7 @@ final class ClaudeCodeCliToolAdapter implements CliToolAdapter {
           cliTeamName: context.teamName,
         ),
       ],
-      if (context.nativeAgentTeam == false) ...[
-        '--disallowedTools',
-        'Agent',
-      ],
+      if (context.nativeAgentTeam == false) ...['--disallowedTools', 'Agent'],
     ];
 
     if (mixed) {

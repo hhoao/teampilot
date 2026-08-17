@@ -1,5 +1,5 @@
-import '../../../../models/team_config.dart';
 import '../../cli_tool_adapter.dart';
+import '../../registry/launch/cli_launch_context.dart';
 
 final class CodexCliToolAdapter implements CliToolAdapter {
   const CodexCliToolAdapter();
@@ -19,7 +19,10 @@ final class CodexCliToolAdapter implements CliToolAdapter {
 
     final wd = context.workingDirectory?.trim() ?? '';
     if (wd.isNotEmpty) {
-      args.addAll(['--cd', normalizePathForCli(wd, context.useWslPaths)]);
+      args.addAll([
+        '--cd',
+        normalizePathForCli(wd, useWslPaths: context.useWslPaths),
+      ]);
     }
 
     final model = member.model.trim();

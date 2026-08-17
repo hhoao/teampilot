@@ -1,6 +1,5 @@
 import '../../../../models/team_config.dart';
 import '../../../storage/runtime_layout.dart';
-import '../../cli_tool_adapter.dart';
 import 'cli_session_capability.dart';
 
 /// Default session capability for CLIs without a tool-specific implementation.
@@ -14,15 +13,13 @@ base class NoopCliSessionCapability implements CliSessionCapability {
   @override
   Future<CliSessionPersistResult> ensurePersisted(
     CliSessionPersistContext ctx,
-  ) async =>
-      _ready;
+  ) async => _ready;
 
   @override
   Future<CliSessionInitResult> initialize(
     CliSessionInitContext ctx, {
     CliSessionPhase targetPhase = CliSessionPhase.ready,
-  }) async =>
-      _initReady;
+  }) async => _initReady;
 
   @override
   Future<void> finalize(CliSessionFinalizeContext ctx) async {}
@@ -35,9 +32,6 @@ base class NoopCliSessionCapability implements CliSessionCapability {
 
   @override
   Future<void> afterManifestFlush(PostManifestFlushContext ctx) async {}
-
-  @override
-  List<String> buildArguments(CliLaunchContext context) => const [];
 
   @override
   String sessionConfigDir(

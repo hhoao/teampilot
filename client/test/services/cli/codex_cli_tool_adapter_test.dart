@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/cli/cli_tool_adapter.dart';
 import 'package:teampilot/services/cli/codex/capabilities/launch_args.dart';
+import 'package:teampilot/services/cli/registry/launch/cli_launch_context.dart';
 
 void main() {
   const team = TeamProfile(

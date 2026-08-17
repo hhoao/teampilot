@@ -3,20 +3,12 @@ import '../../../io/filesystem.dart';
 import '../../../launch/work_plane_script_runner.dart';
 import '../../../storage/runtime_layout.dart';
 import '../../../team_bus/member_bus_idle_endpoint.dart';
-import '../../cli_tool_adapter.dart';
 import '../cli_capability.dart';
 import '../cli_tool_registry.dart';
 import '../config_profile/config_profile_context.dart';
 
 /// Phased initialization for a CLI session on the work plane.
-enum CliSessionPhase {
-  persisted,
-  auth,
-  config,
-  overlay,
-  ready,
-  degraded,
-}
+enum CliSessionPhase { persisted, auth, config, overlay, ready, degraded }
 
 class CliSessionGateDecision {
   const CliSessionGateDecision({required this.allowed, this.reason});
@@ -182,7 +174,7 @@ final class PostManifestFlushContext {
 }
 
 /// Tool-specific session persistence, phased initialization, post-flush work,
-/// launch argv, and on-disk CONFIG_DIR layout.
+/// and on-disk CONFIG_DIR layout.
 abstract interface class CliSessionCapability implements CliCapability {
   /// Create warm tier dirs, symlinks, manifest; idempotent.
   Future<CliSessionPersistResult> ensurePersisted(CliSessionPersistContext ctx);
@@ -205,9 +197,6 @@ abstract interface class CliSessionCapability implements CliCapability {
   /// Optional per-CLI work after session trees exist on the work plane.
   /// CLIs without post-flush work fall back to [NoopCliSessionCapability].
   Future<void> afterManifestFlush(PostManifestFlushContext ctx);
-
-  /// CLI argv for the PTY launch of one roster member.
-  List<String> buildArguments(CliLaunchContext context);
 
   /// Resolves the on-disk CONFIG_DIR a CLI reads for a session/member.
   ///
@@ -232,15 +221,13 @@ final class DefaultCliConfigLayout implements CliSessionCapability {
   @override
   Future<CliSessionPersistResult> ensurePersisted(
     CliSessionPersistContext ctx,
-  ) async =>
-      const CliSessionPersistResult();
+  ) async => const CliSessionPersistResult();
 
   @override
   Future<CliSessionInitResult> initialize(
     CliSessionInitContext ctx, {
     CliSessionPhase targetPhase = CliSessionPhase.ready,
-  }) async =>
-      const CliSessionInitResult();
+  }) async => const CliSessionInitResult();
 
   @override
   Future<void> finalize(CliSessionFinalizeContext ctx) async {}
@@ -254,9 +241,6 @@ final class DefaultCliConfigLayout implements CliSessionCapability {
 
   @override
   Future<void> afterManifestFlush(PostManifestFlushContext ctx) async {}
-
-  @override
-  List<String> buildArguments(CliLaunchContext context) => const [];
 
   @override
   String sessionConfigDir(
@@ -287,8 +271,9 @@ String sessionConfigDirForTool(
   CliToolRegistry? registry,
 }) {
   final cap =
-      (registry ?? CliToolRegistry.builtIn())
-          .capability<CliSessionCapability>(tool) ??
+      (registry ?? CliToolRegistry.builtIn()).capability<CliSessionCapability>(
+        tool,
+      ) ??
       const DefaultCliConfigLayout();
   return cap.sessionConfigDir(
     layout,

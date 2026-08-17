@@ -5,9 +5,9 @@ import 'package:path/path.dart' as p;
 
 import '../cli/preset_resolver.dart';
 import '../../models/team_config.dart';
-import '../cli/cli_tool_adapter.dart';
+import '../cli/registry/launch/cli_launch_arg_assembler.dart';
+import '../cli/registry/launch/cli_launch_context.dart';
 import 'shell_launch_spec.dart';
-import '../cli/registry/capabilities/cli_session_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../cli/cli_invocation.dart';
 import '../cli/claude/capabilities/provider.dart';
@@ -100,11 +100,11 @@ class LaunchCommandBuilder {
   }) {
     final registry = cliRegistry ?? _defaultCliRegistry;
     final cli = stagedMemberLaunchCli(context.team, context.member);
-    final launch = registry.capability<CliSessionCapability>(cli);
-    if (launch == null) {
-      throw StateError('No CliSessionCapability for ${cli.value}');
+    final tool = registry.tryGet(cli);
+    if (tool == null) {
+      throw StateError('No CliToolDefinition for ${cli.value}');
     }
-    return launch.buildArguments(context);
+    return const CliLaunchArgAssembler().assemble(tool, context);
   }
 
   /// CLI argv for [TerminalSession.connect] after env normalization.

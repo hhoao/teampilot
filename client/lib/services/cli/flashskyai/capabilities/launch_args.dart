@@ -1,5 +1,5 @@
-import '../../../../models/team_config.dart';
 import '../../cli_tool_adapter.dart';
+import '../../registry/launch/cli_launch_context.dart';
 
 final class FlashskyaiCliToolAdapter implements CliToolAdapter {
   const FlashskyaiCliToolAdapter();
@@ -14,10 +14,7 @@ final class FlashskyaiCliToolAdapter implements CliToolAdapter {
         '--member',
         context.memberCliId,
       ],
-      if (context.nativeAgentTeam == false) ...[
-        '--disallowedTools',
-        'Agent',
-      ],
+      if (context.nativeAgentTeam == false) ...['--disallowedTools', 'Agent'],
     ];
 
     final loop = context.team.loop;

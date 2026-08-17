@@ -1,5 +1,5 @@
 import '../../models/team_config.dart';
-import '../cli/cli_tool_adapter.dart';
+import '../cli/registry/launch/cli_launch_context.dart';
 
 class LaunchPlan {
   const LaunchPlan({

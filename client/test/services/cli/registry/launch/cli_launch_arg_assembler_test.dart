@@ -1,12 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/cli/cli_tool_adapter.dart';
 import 'package:teampilot/services/cli/registry/cli_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_definition.dart';
 import 'package:teampilot/services/cli/registry/launch/cli_launch_arg_assembler.dart';
 import 'package:teampilot/services/cli/registry/launch/cli_launch_arg_contribution.dart';
 import 'package:teampilot/services/cli/registry/launch/cli_launch_arg_provider.dart';
 import 'package:teampilot/services/cli/registry/launch/cli_launch_capability_error.dart';
+import 'package:teampilot/services/cli/registry/launch/cli_launch_context.dart';
 
 void main() {
   const assembler = CliLaunchArgAssembler();

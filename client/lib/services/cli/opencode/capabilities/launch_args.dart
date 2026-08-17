@@ -1,5 +1,6 @@
 import '../../../../models/team_config.dart';
 import '../../cli_tool_adapter.dart';
+import '../../registry/launch/cli_launch_context.dart';
 
 /// opencode TUI (bare `opencode`, default command). Working directory via
 /// process cwd; model as `provider/model`; resume via `--session`.

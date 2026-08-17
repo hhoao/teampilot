@@ -1,5 +1,6 @@
 import '../../../../models/team_config.dart';
 import '../../cli_tool_adapter.dart';
+import '../../registry/launch/cli_launch_context.dart';
 
 final class CursorCliToolAdapter implements CliToolAdapter {
   const CursorCliToolAdapter();
@@ -12,7 +13,10 @@ final class CursorCliToolAdapter implements CliToolAdapter {
 
     final wd = context.workingDirectory?.trim() ?? '';
     if (wd.isNotEmpty) {
-      args.addAll(['--workspace', normalizePathForCli(wd, context.useWslPaths)]);
+      args.addAll([
+        '--workspace',
+        normalizePathForCli(wd, useWslPaths: context.useWslPaths),
+      ]);
     }
 
     final resume = context.resumeSessionId?.trim() ?? '';
@@ -25,7 +29,7 @@ final class CursorCliToolAdapter implements CliToolAdapter {
       if (trimmed.isNotEmpty) {
         args.addAll([
           '--add-dir',
-          normalizePathForCli(trimmed, context.useWslPaths),
+          normalizePathForCli(trimmed, useWslPaths: context.useWslPaths),
         ]);
       }
     }
