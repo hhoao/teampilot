@@ -12,11 +12,13 @@ import 'shell_launch_spec.dart';
 const claudeCodeSandboxEnvKey = 'IS_SANDBOX';
 const claudeCodeSandboxEnvValue = '1';
 
-Future<bool> remoteSshRunsAsRoot({
+/// Returns `true` for confirmed root, `false` for confirmed non-root, and
+/// `null` when the remote identity probe could not be completed.
+Future<bool?> remoteSshRunsAsRoot({
   required SshMemberSession memberSession,
 }) async {
   final result = await memberSession.runWithResult('id -u', stderr: false);
-  if (sshRunFailed(result)) return false;
+  if (sshRunFailed(result)) return null;
   return String.fromCharCodes(result.stdout).trim() == '0';
 }
 
@@ -76,6 +78,16 @@ Future<ShellLaunchSpec> applyRemoteSshLaunchConstraints({
   if (!securityPolicy.requiresDangerousExecution) return spec;
 
   final runsAsRoot = await remoteSshRunsAsRoot(memberSession: memberSession);
+  if (runsAsRoot == null) {
+    throw CliLaunchCapabilityException(
+      cli: spec.launchContext.team.cli,
+      contributionKey: 'remote-ssh-root-security',
+      reason:
+          'Unable to determine the remote SSH user identity for a '
+          'dangerous full-access launch. Refusing to launch without a '
+          'confirmed non-root or sandboxed root environment.',
+    );
+  }
   final remoteInDocker = runsAsRoot
       ? await remoteSshInDockerContainer(memberSession: memberSession)
       : false;

@@ -103,11 +103,51 @@ void main() {
         );
       },
     );
+
+    test('unknown root status rejects dangerous launch closed', () async {
+      const member = TeamMemberConfig(
+        id: 'member',
+        name: 'Member',
+        launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
+      );
+      final session = SshMemberSession.testing(
+        profile: const SshProfile(
+          id: 'ssh-1',
+          name: 'SSH',
+          host: 'example.com',
+          username: 'unknown',
+        ),
+        client: _RootBareMetalClient(idExitCode: 1),
+      );
+      addTearDown(session.close);
+
+      await expectLater(
+        applyRemoteSshLaunchConstraints(
+          spec: ShellLaunchSpec.teamMember(
+            team: const TeamProfile(id: 'team', name: 'Team'),
+            member: member,
+          ),
+          memberTarget: RuntimeTarget.ssh('ssh-1', label: 'SSH'),
+          memberSession: session,
+          profile: session.profile,
+        ),
+        throwsA(
+          isA<CliLaunchCapabilityException>().having(
+            (error) => error.contributionKey,
+            'contributionKey',
+            'remote-ssh-root-security',
+          ),
+        ),
+      );
+    });
   });
 }
 
 class _RootBareMetalClient extends SSHClient {
-  _RootBareMetalClient() : super(_FakeSSHSocket(), username: 'root');
+  _RootBareMetalClient({this.idExitCode = 0})
+    : super(_FakeSSHSocket(), username: 'root');
+
+  final int idExitCode;
 
   @override
   Future<void> get authenticated => Future.value();
@@ -125,7 +165,7 @@ class _RootBareMetalClient extends SSHClient {
       output: Uint8List.fromList(output.codeUnits),
       stdout: Uint8List.fromList(output.codeUnits),
       stderr: Uint8List(0),
-      exitCode: command == 'id -u' ? 0 : 1,
+      exitCode: command == 'id -u' ? idExitCode : 1,
       exitSignal: null,
     );
   }
