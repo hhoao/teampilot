@@ -3,6 +3,7 @@ import 'package:shared_ui/shared_ui.dart';
 
 import '../../models/managed_provider.dart';
 import '../../models/provider_usage_snapshot.dart';
+import '../../l10n/l10n_extensions.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../widgets/managed_provider/managed_provider_measure_view.dart';
 
@@ -28,12 +29,12 @@ class ManagedProviderList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     if (providers.isEmpty) {
-      return const TpEmptyState(
+      return TpEmptyState(
         icon: Icons.account_balance_wallet_outlined,
-        title: 'No managed providers',
-        hint:
-            'Add a provider to track balances and quotas independently from CLI providers.',
+        title: l10n.managedProvidersEmptyTitle,
+        hint: l10n.managedProvidersEmptyHint,
       );
     }
 
@@ -94,13 +95,17 @@ class ManagedProviderList extends StatelessWidget {
                       runSpacing: 2,
                       children: [
                         TpStatusBadge(
-                          label: provider.enabled ? 'Enabled' : 'Disabled',
+                          label: provider.enabled
+                              ? l10n.managedProvidersEnabled
+                              : l10n.managedProvidersDisabled,
                           tone: provider.enabled
                               ? TpStatusBadgeTone.success
                               : TpStatusBadgeTone.neutral,
                         ),
                         IconButton(
-                          tooltip: provider.enabled ? 'Disable' : 'Enable',
+                          tooltip: provider.enabled
+                              ? l10n.managedProvidersDisable
+                              : l10n.managedProvidersEnable,
                           onPressed: () => onToggle(provider),
                           icon: Icon(
                             provider.enabled
@@ -109,12 +114,12 @@ class ManagedProviderList extends StatelessWidget {
                           ),
                         ),
                         IconButton(
-                          tooltip: 'Edit',
+                          tooltip: l10n.managedProvidersEdit,
                           onPressed: () => onEdit(provider),
                           icon: const Icon(Icons.edit_outlined),
                         ),
                         IconButton(
-                          tooltip: 'Delete',
+                          tooltip: l10n.managedProvidersDelete,
                           onPressed: () => onDelete(provider),
                           icon: Icon(Icons.delete_outline, color: cs.error),
                         ),

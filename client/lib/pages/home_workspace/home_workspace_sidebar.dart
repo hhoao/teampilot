@@ -195,7 +195,7 @@ class _HomeSidebarNavScroll extends StatelessWidget {
         const SizedBox(height: 4),
         _ShortcutRow(
           icon: Icons.account_balance_wallet_outlined,
-          label: 'Managed Providers',
+          label: l10n.managedProvidersNav,
           active: activeGlobalView == HomeGlobalView.managedProviders,
           onTap: () => onGlobal?.call(HomeGlobalView.managedProviders),
         ),

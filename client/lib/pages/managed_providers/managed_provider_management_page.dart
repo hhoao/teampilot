@@ -6,6 +6,7 @@ import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/managed_provider_cubit.dart';
 import '../../cubits/managed_provider_usage_cubit.dart';
+import '../../l10n/l10n_extensions.dart';
 import '../../models/managed_provider.dart';
 import '../../widgets/app_toast/app_toast.dart';
 import 'managed_provider_editor_page.dart';
@@ -152,16 +153,18 @@ class _ManagedProviderManagementPageState
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Delete managed provider?'),
-        content: Text('Delete “${provider.name}” and its cached usage?'),
+        title: Text(context.l10n.managedProvidersDeleteTitle),
+        content: Text(
+          context.l10n.managedProvidersDeleteContent(provider.name),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
+            child: Text(context.l10n.managedProvidersCancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Delete'),
+            child: Text(context.l10n.managedProvidersDelete),
           ),
         ],
       ),
@@ -172,7 +175,8 @@ class _ManagedProviderManagementPageState
     if (!mounted || cubit.state.errorCode == null) return;
     AppToast.show(
       context,
-      message: cubit.state.errorMessage ?? 'Unable to delete managed provider.',
+      message:
+          cubit.state.errorMessage ?? context.l10n.managedProvidersDeleteFailed,
       variant: TpToastVariant.error,
     );
   }
@@ -195,14 +199,14 @@ class _PageHeader extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Managed Providers',
+              context.l10n.managedProvidersTitle,
               style: TpTextStyles.of(
                 context,
               ).xl.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 3),
             Text(
-              'Balances and quotas independent from CLI provider configuration.',
+              context.l10n.managedProvidersSubtitle,
               style: TpTextStyles.of(
                 context,
               ).smColored(Theme.of(context).colorScheme.onSurfaceVariant),
@@ -213,12 +217,12 @@ class _PageHeader extends StatelessWidget {
       TpButton(
         key: const Key('managed-provider-add'),
         onPressed: onAdd,
-        child: const Row(
+        child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.add, size: 18),
             SizedBox(width: 6),
-            Text('Add provider'),
+            Text(context.l10n.managedProvidersAdd),
           ],
         ),
       ),
@@ -244,7 +248,7 @@ class _LoadError extends StatelessWidget {
         TpButton(
           variant: TpButtonVariant.outline,
           onPressed: onRetry,
-          child: const Text('Retry'),
+          child: Text(context.l10n.managedProvidersRetry),
         ),
       ],
     ),

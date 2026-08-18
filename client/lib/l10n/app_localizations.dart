@@ -13465,6 +13465,438 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Retry'**
   String get retry;
+
+  /// No description provided for @managedProvidersNav.
+  ///
+  /// In en, this message translates to:
+  /// **'Managed Providers'**
+  String get managedProvidersNav;
+
+  /// No description provided for @managedProvidersTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Managed Providers'**
+  String get managedProvidersTitle;
+
+  /// No description provided for @managedProvidersSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Balances and quotas independent from CLI provider configuration.'**
+  String get managedProvidersSubtitle;
+
+  /// No description provided for @managedProvidersAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add provider'**
+  String get managedProvidersAdd;
+
+  /// No description provided for @managedProvidersEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No managed providers'**
+  String get managedProvidersEmptyTitle;
+
+  /// No description provided for @managedProvidersEmptyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a provider to track balances and quotas independently from CLI providers.'**
+  String get managedProvidersEmptyHint;
+
+  /// No description provided for @managedProvidersEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Enabled'**
+  String get managedProvidersEnabled;
+
+  /// No description provided for @managedProvidersDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Disabled'**
+  String get managedProvidersDisabled;
+
+  /// No description provided for @managedProvidersEnable.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable'**
+  String get managedProvidersEnable;
+
+  /// No description provided for @managedProvidersDisable.
+  ///
+  /// In en, this message translates to:
+  /// **'Disable'**
+  String get managedProvidersDisable;
+
+  /// No description provided for @managedProvidersEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get managedProvidersEdit;
+
+  /// No description provided for @managedProvidersDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get managedProvidersDelete;
+
+  /// No description provided for @managedProvidersRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get managedProvidersRetry;
+
+  /// No description provided for @managedProvidersDeleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete managed provider?'**
+  String get managedProvidersDeleteTitle;
+
+  /// No description provided for @managedProvidersDeleteContent.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete “{name}” and its cached usage?'**
+  String managedProvidersDeleteContent(Object name);
+
+  /// No description provided for @managedProvidersCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get managedProvidersCancel;
+
+  /// No description provided for @managedProvidersNewTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'New Managed Provider'**
+  String get managedProvidersNewTitle;
+
+  /// No description provided for @managedProvidersEditTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Managed Provider'**
+  String get managedProvidersEditTitle;
+
+  /// No description provided for @managedProvidersIdentity.
+  ///
+  /// In en, this message translates to:
+  /// **'Identity'**
+  String get managedProvidersIdentity;
+
+  /// No description provided for @managedProvidersName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get managedProvidersName;
+
+  /// No description provided for @managedProvidersNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Visible name'**
+  String get managedProvidersNameHint;
+
+  /// No description provided for @managedProvidersAdapter.
+  ///
+  /// In en, this message translates to:
+  /// **'Adapter'**
+  String get managedProvidersAdapter;
+
+  /// No description provided for @managedProvidersAdapterHint.
+  ///
+  /// In en, this message translates to:
+  /// **'http-json or a registered adapter id'**
+  String get managedProvidersAdapterHint;
+
+  /// No description provided for @managedProvidersKind.
+  ///
+  /// In en, this message translates to:
+  /// **'Kind'**
+  String get managedProvidersKind;
+
+  /// No description provided for @managedProvidersEndpoint.
+  ///
+  /// In en, this message translates to:
+  /// **'Endpoint URL'**
+  String get managedProvidersEndpoint;
+
+  /// No description provided for @managedProvidersEndpointHint.
+  ///
+  /// In en, this message translates to:
+  /// **'https://…'**
+  String get managedProvidersEndpointHint;
+
+  /// No description provided for @managedProvidersMethod.
+  ///
+  /// In en, this message translates to:
+  /// **'Method'**
+  String get managedProvidersMethod;
+
+  /// No description provided for @managedProvidersResponsePath.
+  ///
+  /// In en, this message translates to:
+  /// **'Response path'**
+  String get managedProvidersResponsePath;
+
+  /// No description provided for @managedProvidersMeasuresPath.
+  ///
+  /// In en, this message translates to:
+  /// **'Measures path'**
+  String get managedProvidersMeasuresPath;
+
+  /// No description provided for @managedProvidersRequestMapping.
+  ///
+  /// In en, this message translates to:
+  /// **'Request body mapping (JSON)'**
+  String get managedProvidersRequestMapping;
+
+  /// No description provided for @managedProvidersFieldMappings.
+  ///
+  /// In en, this message translates to:
+  /// **'Response field mappings (JSON)'**
+  String get managedProvidersFieldMappings;
+
+  /// No description provided for @managedProvidersCredentials.
+  ///
+  /// In en, this message translates to:
+  /// **'Credentials'**
+  String get managedProvidersCredentials;
+
+  /// No description provided for @managedProvidersCredentialRef.
+  ///
+  /// In en, this message translates to:
+  /// **'Credential reference'**
+  String get managedProvidersCredentialRef;
+
+  /// No description provided for @managedProvidersCredentialRefHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Reference only; secret values are never shown'**
+  String get managedProvidersCredentialRefHint;
+
+  /// No description provided for @managedProvidersCredentialNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No credential configured'**
+  String get managedProvidersCredentialNone;
+
+  /// No description provided for @managedProvidersCredentialConfigured.
+  ///
+  /// In en, this message translates to:
+  /// **'Credential configured · secret is masked'**
+  String get managedProvidersCredentialConfigured;
+
+  /// No description provided for @managedProvidersCredentialName.
+  ///
+  /// In en, this message translates to:
+  /// **'Credential header/query name'**
+  String get managedProvidersCredentialName;
+
+  /// No description provided for @managedProvidersCredentialNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Authorization or api-key'**
+  String get managedProvidersCredentialNameHint;
+
+  /// No description provided for @managedProvidersCredentialField.
+  ///
+  /// In en, this message translates to:
+  /// **'Credential response field'**
+  String get managedProvidersCredentialField;
+
+  /// No description provided for @managedProvidersCredentialFieldHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional response mapping field'**
+  String get managedProvidersCredentialFieldHint;
+
+  /// No description provided for @managedProvidersCredentialPlacement.
+  ///
+  /// In en, this message translates to:
+  /// **'Credential placement'**
+  String get managedProvidersCredentialPlacement;
+
+  /// No description provided for @managedProvidersCredentialPlacementHint.
+  ///
+  /// In en, this message translates to:
+  /// **'header or query'**
+  String get managedProvidersCredentialPlacementHint;
+
+  /// No description provided for @managedProvidersDisplay.
+  ///
+  /// In en, this message translates to:
+  /// **'Display configuration'**
+  String get managedProvidersDisplay;
+
+  /// No description provided for @managedProvidersCurrency.
+  ///
+  /// In en, this message translates to:
+  /// **'Currency'**
+  String get managedProvidersCurrency;
+
+  /// No description provided for @managedProvidersUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'Unit'**
+  String get managedProvidersUnit;
+
+  /// No description provided for @managedProvidersDecimals.
+  ///
+  /// In en, this message translates to:
+  /// **'Decimals'**
+  String get managedProvidersDecimals;
+
+  /// No description provided for @managedProvidersEnabledTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Enabled'**
+  String get managedProvidersEnabledTitle;
+
+  /// No description provided for @managedProvidersEnabledSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Include this provider in refresh actions.'**
+  String get managedProvidersEnabledSubtitle;
+
+  /// No description provided for @managedProvidersShowPercent.
+  ///
+  /// In en, this message translates to:
+  /// **'Show percentage'**
+  String get managedProvidersShowPercent;
+
+  /// No description provided for @managedProvidersSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get managedProvidersSave;
+
+  /// No description provided for @managedProvidersSaving.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving…'**
+  String get managedProvidersSaving;
+
+  /// No description provided for @managedProvidersTestQuery.
+  ///
+  /// In en, this message translates to:
+  /// **'Test query'**
+  String get managedProvidersTestQuery;
+
+  /// No description provided for @managedProvidersSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Managed provider saved.'**
+  String get managedProvidersSaved;
+
+  /// No description provided for @managedProvidersQueryCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Provider query completed.'**
+  String get managedProvidersQueryCompleted;
+
+  /// No description provided for @managedProvidersQueryFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to query provider usage.'**
+  String get managedProvidersQueryFailed;
+
+  /// No description provided for @managedProvidersDeleteFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to delete managed provider.'**
+  String get managedProvidersDeleteFailed;
+
+  /// No description provided for @managedProvidersLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to load managed providers.'**
+  String get managedProvidersLoadFailed;
+
+  /// No description provided for @managedProvidersRequestMappingError.
+  ///
+  /// In en, this message translates to:
+  /// **'Request mapping must be a JSON object.'**
+  String get managedProvidersRequestMappingError;
+
+  /// No description provided for @managedProvidersFieldMappingError.
+  ///
+  /// In en, this message translates to:
+  /// **'Field mappings must be a secret-free JSON object.'**
+  String get managedProvidersFieldMappingError;
+
+  /// No description provided for @managedProvidersSecretMappingError.
+  ///
+  /// In en, this message translates to:
+  /// **'Use a credential reference instead of putting secrets in the request mapping.'**
+  String get managedProvidersSecretMappingError;
+
+  /// No description provided for @managedProvidersNameAdapterError.
+  ///
+  /// In en, this message translates to:
+  /// **'Name and adapter are required.'**
+  String get managedProvidersNameAdapterError;
+
+  /// No description provided for @managedProvidersDecimalError.
+  ///
+  /// In en, this message translates to:
+  /// **'Decimal places must be a whole number.'**
+  String get managedProvidersDecimalError;
+
+  /// No description provided for @managedProvidersEndpointError.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter an HTTPS or loopback endpoint for this HTTP adapter.'**
+  String get managedProvidersEndpointError;
+
+  /// No description provided for @managedProvidersNoUsage.
+  ///
+  /// In en, this message translates to:
+  /// **'No usage queried yet'**
+  String get managedProvidersNoUsage;
+
+  /// No description provided for @managedProvidersCachedUsage.
+  ///
+  /// In en, this message translates to:
+  /// **'Cached usage'**
+  String get managedProvidersCachedUsage;
+
+  /// No description provided for @managedProvidersCachedUsageStale.
+  ///
+  /// In en, this message translates to:
+  /// **'Cached usage · needs refresh'**
+  String get managedProvidersCachedUsageStale;
+
+  /// No description provided for @managedProvidersLastQueryFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Last query failed'**
+  String get managedProvidersLastQueryFailed;
+
+  /// No description provided for @managedProvidersLoadingUsage.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading usage'**
+  String get managedProvidersLoadingUsage;
+
+  /// No description provided for @managedProvidersQueryUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'Query unsupported'**
+  String get managedProvidersQueryUnsupported;
+
+  /// No description provided for @managedProvidersUnknownUsage.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown usage status'**
+  String get managedProvidersUnknownUsage;
+
+  /// No description provided for @managedProvidersStale.
+  ///
+  /// In en, this message translates to:
+  /// **'Stale'**
+  String get managedProvidersStale;
+
+  /// No description provided for @managedProvidersError.
+  ///
+  /// In en, this message translates to:
+  /// **'Error'**
+  String get managedProvidersError;
 }
 
 class _AppLocalizationsDelegate

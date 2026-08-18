@@ -6,6 +6,7 @@ import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/managed_provider_cubit.dart';
 import '../../cubits/managed_provider_usage_cubit.dart';
+import '../../l10n/l10n_extensions.dart';
 import '../../models/managed_provider.dart';
 import '../../models/provider_usage_snapshot.dart';
 import '../../widgets/app_toast/app_toast.dart';
@@ -27,6 +28,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
   late final TextEditingController _responsePath;
   late final TextEditingController _measuresPath;
   late final TextEditingController _requestMapping;
+  late final TextEditingController _fieldMappings;
   late final TextEditingController _currency;
   late final TextEditingController _unit;
   late final TextEditingController _decimalPlaces;
@@ -56,6 +58,9 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
     _measuresPath = TextEditingController(text: endpoint?.measuresPath ?? '');
     _requestMapping = TextEditingController(
       text: _prettyJson(endpoint?.body ?? const <String, Object?>{}),
+    );
+    _fieldMappings = TextEditingController(
+      text: _prettyJson(endpoint?.fieldMappings ?? const <String, Object?>{}),
     );
     _currency = TextEditingController(text: display?.currency ?? '');
     _unit = TextEditingController(text: display?.unit ?? '');
@@ -89,6 +94,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
       _responsePath,
       _measuresPath,
       _requestMapping,
+      _fieldMappings,
       _currency,
       _unit,
       _decimalPlaces,
@@ -105,16 +111,19 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
   @override
   Widget build(BuildContext context) {
     final provider = _provider;
+    final l10n = context.l10n;
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          provider == null ? 'New Managed Provider' : 'Edit Managed Provider',
+          provider == null
+              ? l10n.managedProvidersNewTitle
+              : l10n.managedProvidersEditTitle,
         ),
         actions: [
           if (provider != null)
             IconButton(
               key: const Key('managed-provider-delete'),
-              tooltip: 'Delete',
+              tooltip: l10n.managedProvidersDelete,
               onPressed: _saving ? null : _delete,
               icon: const Icon(Icons.delete_outline),
             ),
@@ -126,26 +135,26 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
             children: [
               if (_formError != null) _ErrorBanner(message: _formError!),
-              _sectionTitle(context, 'Identity'),
+              _sectionTitle(context, l10n.managedProvidersIdentity),
               _field(
                 context,
                 key: const Key('managed-provider-name'),
-                label: 'Name',
+                label: l10n.managedProvidersName,
                 controller: _name,
-                hint: 'Visible name',
+                hint: l10n.managedProvidersNameHint,
               ),
               const SizedBox(height: 12),
               _field(
                 context,
                 key: const Key('managed-provider-adapter'),
-                label: 'Adapter',
+                label: l10n.managedProvidersAdapter,
                 controller: _adapter,
-                hint: 'http-json or a registered adapter id',
+                hint: l10n.managedProvidersAdapterHint,
               ),
               const SizedBox(height: 12),
               _labeledControl(
                 context,
-                label: 'Kind',
+                label: l10n.managedProvidersKind,
                 child: TpSelect<ManagedProviderKind>(
                   key: const Key('managed-provider-kind'),
                   items: const [
@@ -162,19 +171,19 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
                 ),
               ),
               const SizedBox(height: 20),
-              _sectionTitle(context, 'Endpoint and request mapping'),
+              _sectionTitle(context, l10n.managedProvidersRequestMapping),
               _field(
                 context,
                 key: const Key('managed-provider-endpoint'),
-                label: 'Endpoint URL',
+                label: l10n.managedProvidersEndpoint,
                 controller: _endpoint,
-                hint: 'https://…',
+                hint: l10n.managedProvidersEndpointHint,
                 keyboardType: TextInputType.url,
               ),
               const SizedBox(height: 12),
               _labeledControl(
                 context,
-                label: 'Method',
+                label: l10n.managedProvidersMethod,
                 child: TpSelect<String>(
                   key: const Key('managed-provider-method'),
                   items: const ['GET', 'POST'],
@@ -191,7 +200,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
               _field(
                 context,
                 key: const Key('managed-provider-response-path'),
-                label: 'Response path',
+                label: l10n.managedProvidersResponsePath,
                 controller: _responsePath,
                 hint: r'$.data',
               ),
@@ -199,7 +208,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
               _field(
                 context,
                 key: const Key('managed-provider-measures-path'),
-                label: 'Measures path',
+                label: l10n.managedProvidersMeasuresPath,
                 controller: _measuresPath,
                 hint: r'$.data.measures',
               ),
@@ -207,23 +216,30 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
               _textarea(
                 context,
                 key: const Key('managed-provider-request-mapping'),
-                label: 'Request body mapping (JSON)',
+                label: l10n.managedProvidersRequestMapping,
                 controller: _requestMapping,
               ),
+              const SizedBox(height: 12),
+              _textarea(
+                context,
+                key: const Key('managed-provider-field-mappings'),
+                label: l10n.managedProvidersFieldMappings,
+                controller: _fieldMappings,
+              ),
               const SizedBox(height: 20),
-              _sectionTitle(context, 'Credentials'),
+              _sectionTitle(context, l10n.managedProvidersCredentials),
               _field(
                 context,
                 key: const Key('managed-provider-credential-ref'),
-                label: 'Credential reference',
+                label: l10n.managedProvidersCredentialRef,
                 controller: _credentialRef,
-                hint: 'Reference only; secret values are never shown',
+                hint: l10n.managedProvidersCredentialRefHint,
               ),
               const SizedBox(height: 8),
               Text(
                 _credentialRef.text.trim().isEmpty
-                    ? 'No credential configured'
-                    : 'Credential configured · secret is masked',
+                    ? l10n.managedProvidersCredentialNone
+                    : l10n.managedProvidersCredentialConfigured,
                 style: TpTextStyles.of(
                   context,
                 ).smColored(Theme.of(context).colorScheme.onSurfaceVariant),
@@ -232,48 +248,48 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
               _field(
                 context,
                 key: const Key('managed-provider-credential-name'),
-                label: 'Credential header/query name',
+                label: l10n.managedProvidersCredentialName,
                 controller: _credentialName,
-                hint: 'Authorization or api-key',
+                hint: l10n.managedProvidersCredentialNameHint,
               ),
               const SizedBox(height: 12),
               _field(
                 context,
                 key: const Key('managed-provider-credential-field'),
-                label: 'Credential response field',
+                label: l10n.managedProvidersCredentialField,
                 controller: _credentialField,
-                hint: 'Optional response mapping field',
+                hint: l10n.managedProvidersCredentialFieldHint,
               ),
               const SizedBox(height: 12),
               _field(
                 context,
                 key: const Key('managed-provider-credential-placement'),
-                label: 'Credential placement',
+                label: l10n.managedProvidersCredentialPlacement,
                 controller: _credentialPlacement,
-                hint: 'header or query',
+                hint: l10n.managedProvidersCredentialPlacementHint,
               ),
               const SizedBox(height: 20),
-              _sectionTitle(context, 'Display configuration'),
+              _sectionTitle(context, l10n.managedProvidersDisplay),
               LayoutBuilder(
                 builder: (context, constraints) {
                   final currency = _field(
                     context,
                     key: const Key('managed-provider-currency'),
-                    label: 'Currency',
+                    label: l10n.managedProvidersCurrency,
                     controller: _currency,
                     hint: 'USD',
                   );
                   final unit = _field(
                     context,
                     key: const Key('managed-provider-unit'),
-                    label: 'Unit',
+                    label: l10n.managedProvidersUnit,
                     controller: _unit,
                     hint: 'requests / tokens',
                   );
                   final decimals = _field(
                     context,
                     key: const Key('managed-provider-decimal-places'),
-                    label: 'Decimals',
+                    label: l10n.managedProvidersDecimals,
                     controller: _decimalPlaces,
                     keyboardType: TextInputType.number,
                   );
@@ -303,16 +319,14 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
               SwitchListTile.adaptive(
                 key: const Key('managed-provider-enabled'),
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Enabled'),
-                subtitle: const Text(
-                  'Include this provider in refresh actions.',
-                ),
+                title: Text(l10n.managedProvidersEnabledTitle),
+                subtitle: Text(l10n.managedProvidersEnabledSubtitle),
                 value: _enabled,
                 onChanged: (value) => _setEnabled(value),
               ),
               SwitchListTile.adaptive(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Show percentage'),
+                title: Text(l10n.managedProvidersShowPercent),
                 value: _showPercent,
                 onChanged: (value) => setState(() => _showPercent = value),
               ),
@@ -323,7 +337,11 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
                     child: TpButton(
                       key: const Key('managed-provider-save'),
                       onPressed: _saving ? null : _save,
-                      child: Text(_saving ? 'Saving…' : 'Save'),
+                      child: Text(
+                        _saving
+                            ? l10n.managedProvidersSaving
+                            : l10n.managedProvidersSave,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -332,7 +350,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
                       key: const Key('managed-provider-test-query'),
                       variant: TpButtonVariant.outline,
                       onPressed: _saving ? null : _testQuery,
-                      child: const Text('Test query'),
+                      child: Text(l10n.managedProvidersTestQuery),
                     ),
                   ),
                 ],
@@ -406,36 +424,43 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
     final adapter = _adapter.text.trim();
     final endpoint = _endpoint.text.trim();
     if (name.isEmpty || adapter.isEmpty) {
-      setState(() => _formError = 'Name and adapter are required.');
+      setState(
+        () => _formError = context.l10n.managedProvidersNameAdapterError,
+      );
       return;
     }
 
     final body = _decodeObject(_requestMapping.text);
+    final fieldMappings = _decodeObject(_fieldMappings.text);
     final decimalPlaces = int.tryParse(_decimalPlaces.text.trim());
     if (body == null ||
         _requestMapping.text.trim().isNotEmpty &&
             body.isEmpty &&
             _requestMapping.text.trim() != '{}') {
-      setState(() => _formError = 'Request mapping must be a JSON object.');
+      setState(
+        () => _formError = context.l10n.managedProvidersRequestMappingError,
+      );
       return;
     }
     if (_containsCredentialKey(body)) {
       setState(
-        () => _formError =
-            'Use a credential reference instead of putting secrets in the request mapping.',
+        () => _formError = context.l10n.managedProvidersSecretMappingError,
+      );
+      return;
+    }
+    if (fieldMappings == null || _containsCredentialKey(fieldMappings)) {
+      setState(
+        () => _formError = context.l10n.managedProvidersFieldMappingError,
       );
       return;
     }
     if (_decimalPlaces.text.trim().isNotEmpty && decimalPlaces == null) {
-      setState(() => _formError = 'Decimal places must be a whole number.');
+      setState(() => _formError = context.l10n.managedProvidersDecimalError);
       return;
     }
     if ((adapter == 'http-json' || _kind == ManagedProviderKind.customHttp) &&
         !_isAllowedEndpoint(endpoint)) {
-      setState(
-        () => _formError =
-            'Enter an HTTPS or loopback endpoint for this HTTP adapter.',
-      );
+      setState(() => _formError = context.l10n.managedProvidersEndpointError);
       return;
     }
 
@@ -463,7 +488,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
             : _measuresPath.text.trim(),
         body: body,
         headers: current?.endpointConfig.headers ?? const {},
-        fieldMappings: current?.endpointConfig.fieldMappings ?? const {},
+        fieldMappings: fieldMappings,
         unknownFields: current?.endpointConfig.unknownFields ?? const {},
         credentialName: _credentialName.text.trim().isEmpty
             ? null
@@ -476,7 +501,9 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
             : _credentialPlacement.text.trim().toLowerCase(),
         credentialPrefix: current?.endpointConfig.credentialPrefix,
       ),
-      credentialRef: current?.credentialRef,
+      credentialRef: _credentialRef.text.trim().isEmpty
+          ? null
+          : _credentialRef.text.trim(),
       displayConfig: ManagedProviderDisplayConfig(
         currency: _currency.text.trim().isEmpty ? null : _currency.text.trim(),
         unit: _unit.text.trim().isEmpty ? null : _unit.text.trim(),
@@ -501,7 +528,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
     }
     AppToast.show(
       context,
-      message: 'Managed provider saved.',
+      message: context.l10n.managedProvidersSaved,
       variant: TpToastVariant.success,
     );
     Navigator.of(context).pop();
@@ -518,7 +545,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
       setState(
         () => _formError =
             context.read<ManagedProviderCubit>().state.errorMessage ??
-            'Unable to delete managed provider.',
+            context.l10n.managedProvidersDeleteFailed,
       );
       return;
     }
@@ -534,12 +561,15 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
         .queryProvider(draft);
     if (!mounted) return;
     setState(() => _saving = false);
-    final failed = snapshot?.status == ProviderUsageStatus.error;
+    final failed =
+        snapshot?.status == ProviderUsageStatus.error ||
+        snapshot?.status == ProviderUsageStatus.unsupported;
     AppToast.show(
       context,
       message: failed
-          ? snapshot?.lastErrorMessage ?? 'Unable to query provider usage.'
-          : 'Provider query completed.',
+          ? snapshot?.lastErrorMessage ??
+                context.l10n.managedProvidersQueryFailed
+          : context.l10n.managedProvidersQueryCompleted,
       variant: failed ? TpToastVariant.error : TpToastVariant.success,
     );
   }
@@ -549,22 +579,28 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
     final adapter = _adapter.text.trim();
     final endpoint = _endpoint.text.trim();
     final body = _decodeObject(_requestMapping.text);
+    final fieldMappings = _decodeObject(_fieldMappings.text);
     if (name.isEmpty || adapter.isEmpty) {
-      setState(() => _formError = 'Name and adapter are required.');
+      setState(
+        () => _formError = context.l10n.managedProvidersNameAdapterError,
+      );
       return null;
     }
     if (body == null || _containsCredentialKey(body)) {
       setState(
-        () => _formError = 'Request mapping must be a secret-free JSON object.',
+        () => _formError = context.l10n.managedProvidersSecretMappingError,
+      );
+      return null;
+    }
+    if (fieldMappings == null || _containsCredentialKey(fieldMappings)) {
+      setState(
+        () => _formError = context.l10n.managedProvidersFieldMappingError,
       );
       return null;
     }
     if ((adapter == 'http-json' || _kind == ManagedProviderKind.customHttp) &&
         !_isAllowedEndpoint(endpoint)) {
-      setState(
-        () => _formError =
-            'Enter an HTTPS or loopback endpoint for this HTTP adapter.',
-      );
+      setState(() => _formError = context.l10n.managedProvidersEndpointError);
       return null;
     }
     final current = _provider;
@@ -584,7 +620,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
             : _measuresPath.text.trim(),
         body: body,
         headers: current?.endpointConfig.headers ?? const {},
-        fieldMappings: current?.endpointConfig.fieldMappings ?? const {},
+        fieldMappings: fieldMappings,
         credentialName: _credentialName.text.trim().isEmpty
             ? null
             : _credentialName.text.trim(),

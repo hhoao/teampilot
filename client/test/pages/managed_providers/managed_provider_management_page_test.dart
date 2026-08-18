@@ -5,6 +5,7 @@ import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/cubits/layout_cubit.dart';
 import 'package:teampilot/cubits/managed_provider_cubit.dart';
 import 'package:teampilot/cubits/managed_provider_usage_cubit.dart';
+import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/managed_provider.dart';
 import 'package:teampilot/models/provider_usage_snapshot.dart';
 import 'package:teampilot/pages/managed_providers/managed_provider_management_page.dart';
@@ -128,6 +129,8 @@ void main() {
   Future<void> pumpPage(WidgetTester tester) async {
     await tester.pumpWidget(
       MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: TpTheme(
           data: TpThemeData.fromColorScheme(
             ColorScheme.fromSeed(seedColor: Colors.indigo),

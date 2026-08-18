@@ -7237,4 +7237,222 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get retry => '重试';
+
+  @override
+  String get managedProvidersNav => '管理 Provider';
+
+  @override
+  String get managedProvidersTitle => '管理 Provider';
+
+  @override
+  String get managedProvidersSubtitle => '独立于 CLI Provider 配置查看余额和配额。';
+
+  @override
+  String get managedProvidersAdd => '添加 Provider';
+
+  @override
+  String get managedProvidersEmptyTitle => '暂无管理 Provider';
+
+  @override
+  String get managedProvidersEmptyHint => '添加 Provider 以独立跟踪余额和配额。';
+
+  @override
+  String get managedProvidersEnabled => '已启用';
+
+  @override
+  String get managedProvidersDisabled => '已禁用';
+
+  @override
+  String get managedProvidersEnable => '启用';
+
+  @override
+  String get managedProvidersDisable => '禁用';
+
+  @override
+  String get managedProvidersEdit => '编辑';
+
+  @override
+  String get managedProvidersDelete => '删除';
+
+  @override
+  String get managedProvidersRetry => '重试';
+
+  @override
+  String get managedProvidersDeleteTitle => '删除管理 Provider？';
+
+  @override
+  String managedProvidersDeleteContent(Object name) {
+    return '删除“$name”及其缓存用量？';
+  }
+
+  @override
+  String get managedProvidersCancel => '取消';
+
+  @override
+  String get managedProvidersNewTitle => '新建管理 Provider';
+
+  @override
+  String get managedProvidersEditTitle => '编辑管理 Provider';
+
+  @override
+  String get managedProvidersIdentity => '基本信息';
+
+  @override
+  String get managedProvidersName => '名称';
+
+  @override
+  String get managedProvidersNameHint => '显示名称';
+
+  @override
+  String get managedProvidersAdapter => '适配器';
+
+  @override
+  String get managedProvidersAdapterHint => 'http-json 或已注册的适配器 ID';
+
+  @override
+  String get managedProvidersKind => '类型';
+
+  @override
+  String get managedProvidersEndpoint => 'Endpoint URL';
+
+  @override
+  String get managedProvidersEndpointHint => 'https://…';
+
+  @override
+  String get managedProvidersMethod => '方法';
+
+  @override
+  String get managedProvidersResponsePath => '响应路径';
+
+  @override
+  String get managedProvidersMeasuresPath => '用量路径';
+
+  @override
+  String get managedProvidersRequestMapping => '请求体映射（JSON）';
+
+  @override
+  String get managedProvidersFieldMappings => '响应字段映射（JSON）';
+
+  @override
+  String get managedProvidersCredentials => '凭据';
+
+  @override
+  String get managedProvidersCredentialRef => '凭据引用';
+
+  @override
+  String get managedProvidersCredentialRefHint => '仅保存引用，不会显示密钥';
+
+  @override
+  String get managedProvidersCredentialNone => '未配置凭据';
+
+  @override
+  String get managedProvidersCredentialConfigured => '已配置凭据 · 密钥已隐藏';
+
+  @override
+  String get managedProvidersCredentialName => '凭据 Header/Query 名称';
+
+  @override
+  String get managedProvidersCredentialNameHint => 'Authorization 或 api-key';
+
+  @override
+  String get managedProvidersCredentialField => '凭据响应字段';
+
+  @override
+  String get managedProvidersCredentialFieldHint => '可选的响应映射字段';
+
+  @override
+  String get managedProvidersCredentialPlacement => '凭据位置';
+
+  @override
+  String get managedProvidersCredentialPlacementHint => 'header 或 query';
+
+  @override
+  String get managedProvidersDisplay => '显示配置';
+
+  @override
+  String get managedProvidersCurrency => '货币';
+
+  @override
+  String get managedProvidersUnit => '单位';
+
+  @override
+  String get managedProvidersDecimals => '小数位';
+
+  @override
+  String get managedProvidersEnabledTitle => '启用';
+
+  @override
+  String get managedProvidersEnabledSubtitle => '刷新时包含此 Provider。';
+
+  @override
+  String get managedProvidersShowPercent => '显示百分比';
+
+  @override
+  String get managedProvidersSave => '保存';
+
+  @override
+  String get managedProvidersSaving => '保存中…';
+
+  @override
+  String get managedProvidersTestQuery => '测试查询';
+
+  @override
+  String get managedProvidersSaved => '管理 Provider 已保存。';
+
+  @override
+  String get managedProvidersQueryCompleted => 'Provider 查询完成。';
+
+  @override
+  String get managedProvidersQueryFailed => '无法查询 Provider 用量。';
+
+  @override
+  String get managedProvidersDeleteFailed => '无法删除管理 Provider。';
+
+  @override
+  String get managedProvidersLoadFailed => '无法加载管理 Provider。';
+
+  @override
+  String get managedProvidersRequestMappingError => '请求映射必须是 JSON 对象。';
+
+  @override
+  String get managedProvidersFieldMappingError => '字段映射必须是无密钥的 JSON 对象。';
+
+  @override
+  String get managedProvidersSecretMappingError => '请使用凭据引用，不要将密钥放入请求映射。';
+
+  @override
+  String get managedProvidersNameAdapterError => '名称和适配器不能为空。';
+
+  @override
+  String get managedProvidersDecimalError => '小数位必须是整数。';
+
+  @override
+  String get managedProvidersEndpointError => '此 HTTP 适配器需要 HTTPS 或回环地址。';
+
+  @override
+  String get managedProvidersNoUsage => '尚未查询用量';
+
+  @override
+  String get managedProvidersCachedUsage => '缓存用量';
+
+  @override
+  String get managedProvidersCachedUsageStale => '缓存用量 · 需要刷新';
+
+  @override
+  String get managedProvidersLastQueryFailed => '上次查询失败';
+
+  @override
+  String get managedProvidersLoadingUsage => '正在加载用量';
+
+  @override
+  String get managedProvidersQueryUnsupported => '不支持查询';
+
+  @override
+  String get managedProvidersUnknownUsage => '未知用量状态';
+
+  @override
+  String get managedProvidersStale => '已过期';
+
+  @override
+  String get managedProvidersError => '错误';
 }

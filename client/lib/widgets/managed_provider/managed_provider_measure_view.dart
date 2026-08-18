@@ -3,6 +3,7 @@ import 'package:shared_ui/shared_ui.dart';
 
 import '../../models/managed_provider.dart';
 import '../../models/provider_usage_snapshot.dart';
+import '../../l10n/l10n_extensions.dart';
 
 /// Presents a cached Managed Provider usage result without performing any I/O.
 class ManagedProviderMeasureView extends StatelessWidget {
@@ -25,6 +26,7 @@ class ManagedProviderMeasureView extends StatelessWidget {
     final status = current?.status;
     final error = current?.lastErrorMessage;
     final cs = Theme.of(context).colorScheme;
+    final l10n = context.l10n;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -35,7 +37,7 @@ class ManagedProviderMeasureView extends StatelessWidget {
               child: Text(
                 current == null
                     ? 'No usage queried yet'
-                    : _statusLabel(status!),
+                    : _statusLabel(l10n, status!),
                 style: TpTextStyles.of(context).smColored(
                   status == ProviderUsageStatus.error
                       ? cs.error
@@ -44,21 +46,21 @@ class ManagedProviderMeasureView extends StatelessWidget {
               ),
             ),
             if (status == ProviderUsageStatus.stale)
-              const TpStatusBadge(
-                label: 'Stale',
+              TpStatusBadge(
+                label: l10n.managedProvidersStale,
                 icon: Icons.schedule_outlined,
                 tone: TpStatusBadgeTone.warning,
               ),
             if (status == ProviderUsageStatus.error)
-              const TpStatusBadge(
-                label: 'Error',
+              TpStatusBadge(
+                label: l10n.managedProvidersError,
                 icon: Icons.error_outline,
                 tone: TpStatusBadgeTone.warning,
               ),
             if (onRefresh != null)
               IconButton(
                 key: const Key('managed-provider-test-query'),
-                tooltip: 'Test query',
+                tooltip: l10n.managedProvidersTestQuery,
                 onPressed: refreshing ? null : onRefresh,
                 icon: refreshing
                     ? const SizedBox.square(
@@ -104,13 +106,16 @@ class ManagedProviderMeasureView extends StatelessWidget {
     );
   }
 
-  static String _statusLabel(ProviderUsageStatus status) => switch (status) {
-    ProviderUsageStatus.ready => 'Cached usage',
-    ProviderUsageStatus.stale => 'Cached usage · needs refresh',
-    ProviderUsageStatus.error => 'Last query failed',
-    ProviderUsageStatus.loading => 'Loading usage',
-    ProviderUsageStatus.unsupported => 'Query unsupported',
-    ProviderUsageStatus.unknown => 'Unknown usage status',
+  static String _statusLabel(
+    AppLocalizations l10n,
+    ProviderUsageStatus status,
+  ) => switch (status) {
+    ProviderUsageStatus.ready => l10n.managedProvidersCachedUsage,
+    ProviderUsageStatus.stale => l10n.managedProvidersCachedUsageStale,
+    ProviderUsageStatus.error => l10n.managedProvidersLastQueryFailed,
+    ProviderUsageStatus.loading => l10n.managedProvidersLoadingUsage,
+    ProviderUsageStatus.unsupported => l10n.managedProvidersQueryUnsupported,
+    ProviderUsageStatus.unknown => l10n.managedProvidersUnknownUsage,
   };
 }
 
