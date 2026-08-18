@@ -36,8 +36,7 @@ abstract final class CodexTomlMerge {
         mutate: (root) => _applyLocalMarketplace(root, configDir),
       );
 
-  /// Re-applies [plugins], [marketplaces], and [mcp_servers] from [existingToml]
-  /// onto [composedToml].
+  /// Re-applies managed tables from [existingToml] onto [composedToml].
   static String preserveManagedTables({
     required String existingToml,
     required String composedToml,
@@ -68,6 +67,13 @@ abstract final class CodexTomlMerge {
         result,
         mutate: (root) =>
             root['mcp_servers'] = Map<String, dynamic>.from(mcpServers),
+      );
+    }
+    final hooks = existingRoot['hooks'];
+    if (hooks is Map && hooks.isNotEmpty) {
+      result = _merge(
+        result,
+        mutate: (root) => root['hooks'] = Map<String, dynamic>.from(hooks),
       );
     }
     return result;

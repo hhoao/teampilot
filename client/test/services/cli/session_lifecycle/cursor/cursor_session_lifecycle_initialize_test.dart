@@ -121,10 +121,7 @@ void main() {
           'serverConfigCache': {'feature': true},
           'network': {'proxy': 'http://127.0.0.1:7890'},
           'permissions': {
-            'allow': [
-              'Shell(ls)',
-              CursorCliConfigPolicy.teamBusMcpAllowEntry,
-            ],
+            'allow': ['Shell(ls)', CursorCliConfigPolicy.teamBusMcpAllowEntry],
           },
         }),
       );
@@ -144,7 +141,10 @@ void main() {
       expect(base['network'], {'proxy': 'http://127.0.0.1:7890'});
       final allow = (base['permissions']! as Map)['allow'] as List;
       expect(allow, contains('Shell(ls)'));
-      expect(allow, isNot(contains(CursorCliConfigPolicy.teamBusMcpAllowEntry)));
+      expect(
+        allow,
+        isNot(contains(CursorCliConfigPolicy.teamBusMcpAllowEntry)),
+      );
 
       final manifest = await store.read(
         workspaceId: workspaceId,
@@ -154,27 +154,35 @@ void main() {
       expect(manifest!.phase, CliSessionPhase.ready);
     });
 
-    test('provisions overlay with teammate-bus permissions and X-Member', () async {
-      await seedPersisted();
+    test(
+      'provisions overlay with teammate-bus permissions and X-Member',
+      () async {
+        await seedPersisted();
 
-      final cap = await capability();
-      await cap.initialize(initContext());
+        final cap = await capability();
+        await cap.initialize(initContext());
 
-      final memberHome = lifecyclePaths.memberHomeRoot(TeamMemberNaming.teamLeadName);
-      final cliConfig =
-          jsonDecode((await fs.readString(homeLayout.cliConfig(memberHome)))!)
-              as Map<String, Object?>;
-      final allow = (cliConfig['permissions']! as Map)['allow'] as List;
-      expect(allow, contains(CursorCliConfigPolicy.teamBusMcpAllowEntry));
+        final memberHome = lifecyclePaths.memberHomeRoot(
+          TeamMemberNaming.teamLeadName,
+        );
+        final cliConfig =
+            jsonDecode((await fs.readString(homeLayout.cliConfig(memberHome)))!)
+                as Map<String, Object?>;
+        final allow = (cliConfig['permissions']! as Map)['allow'] as List;
+        expect(allow, contains(CursorCliConfigPolicy.teamBusMcpAllowEntry));
 
-      final mcp =
-          jsonDecode((await fs.readString(homeLayout.mcpConfig(memberHome)))!)
-              as Map<String, Object?>;
-      final busServer =
-          (mcp['mcpServers'] as Map)[teammateBusMcpServerName] as Map;
-      final headers = (busServer['headers'] as Map).cast<String, String>();
-      expect(headers[teammateBusMcpMemberHeader], TeamMemberNaming.teamLeadName);
-    });
+        final mcp =
+            jsonDecode((await fs.readString(homeLayout.mcpConfig(memberHome)))!)
+                as Map<String, Object?>;
+        final busServer =
+            (mcp['mcpServers'] as Map)[teammateBusMcpServerName] as Map;
+        final headers = (busServer['headers'] as Map).cast<String, String>();
+        expect(
+          headers[teammateBusMcpMemberHeader],
+          TeamMemberNaming.teamLeadName,
+        );
+      },
+    );
 
     test('syncs per-member auth from provider store', () async {
       await seedPersisted();
@@ -183,7 +191,9 @@ void main() {
       await cap.initialize(initContext());
 
       expect(authSync.callCount, 1);
-      final memberHome = lifecyclePaths.memberHomeRoot(TeamMemberNaming.teamLeadName);
+      final memberHome = lifecyclePaths.memberHomeRoot(
+        TeamMemberNaming.teamLeadName,
+      );
       expect(
         await fs.readString(lifecyclePaths.memberAuthFile(memberHome)),
         isNotNull,
@@ -256,23 +266,24 @@ final class _TestPaths implements ConfigProfileDelegate {
     String sessionId,
     String tool, {
     String? memberId,
-  }) =>
-      layout.sessionRuntimeToolDir(
-        workspaceId,
-        sessionId,
-        tool,
-        memberId: memberId,
-      );
+  }) => layout.sessionRuntimeToolDir(
+    workspaceId,
+    sessionId,
+    tool,
+    memberId: memberId,
+  );
 
   @override
   Future<Map<String, Object?>> readMetadataFile(
     String path,
     Map<String, Object?> defaults,
-  ) async =>
-      Map<String, Object?>.from(defaults);
+  ) async => Map<String, Object?>.from(defaults);
 
   @override
-  Future<void> writeJsonIfChanged(String path, Map<String, Object?> value) async {}
+  Future<void> writeJsonIfChanged(
+    String path,
+    Map<String, Object?> value,
+  ) async {}
 
   @override
   Future<Map<String, Object?>> metadataWithTrustedProjects({
@@ -280,16 +291,14 @@ final class _TestPaths implements ConfigProfileDelegate {
     required Map<String, Object?> defaultMetadata,
     required Map<String, Object?> defaultProjectConfig,
     required Iterable<String> directories,
-  }) async =>
-      defaultMetadata;
+  }) async => defaultMetadata;
 
   @override
   Future<bool> trustedProjectsAlreadyCurrent(
     String metadataPath,
     Iterable<String> directories, {
     required Map<String, Object?> defaultMetadata,
-  }) async =>
-      false;
+  }) async => false;
 
   @override
   Future<Map<String, Object?>> readSettingsFile(String path) async => {};
@@ -311,8 +320,7 @@ final class _TestPaths implements ConfigProfileDelegate {
     required String tool,
     String? teamId,
     String? workspaceId,
-  }) async =>
-      settings;
+  }) async => settings;
 
   @override
   Future<List<ExtensionSettingsHook>> extensionSettingsHooks(
@@ -320,8 +328,7 @@ final class _TestPaths implements ConfigProfileDelegate {
     required String tool,
     String? teamId,
     String? workspaceId,
-  }) async =>
-      const [];
+  }) async => const [];
 
   @override
   Future<Map<String, Object?>> maybeApplyTeamLeadHooks(
@@ -329,16 +336,20 @@ final class _TestPaths implements ConfigProfileDelegate {
     TeamMemberConfig member,
     String memberToolDir, {
     required bool forceTeamLeadDelegateMode,
-  }) async =>
-      settings;
+  }) async => settings;
 
   @override
   Future<String?> resolveTeamLeadDelegateHookCommand(
     TeamMemberConfig member,
     String memberToolDir, {
     required bool forceTeamLeadDelegateMode,
-  }) async =>
-      null;
+  }) async => null;
+
+  @override
+  Future<String?> resolveTeamLeadSelfHookCommand(
+    TeamMemberConfig member,
+    String memberToolDir,
+  ) async => null;
 
   @override
   HostExecutionEnvironment hostEnvironmentForProvision() =>

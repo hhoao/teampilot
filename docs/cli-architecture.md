@@ -92,7 +92,7 @@ services/cli/
     installer/                    # 共享：npm / node / termux 安装策略
     mcp_writers/                  # 共享：MCP 元数据合并
     plugins/                      # 共享：claude-flavor 插件注册表写入器
-    prompt/                       # 共享：PromptHubService（多源 prompt 收集/物化）
+    prompt/                       # 共享兼容 facade：PromptHubService
     resources/                    # 共享：默认 ResourceCapability
     launch/                       # 共享：启动上下文、参数 provider、贡献与装配器
       cli_launch_context.dart
@@ -103,6 +103,12 @@ services/cli/
       cli_headless_launch_constraint.dart
       cli_launch_arg_contribution.dart
       cli_launch_arg_assembler.dart
+  resource/                         # 运行时资源来源、装配与按 CLI 物化协调
+    providers/                      # Prompt/Skill/MCP/HookContributionProvider
+    assemblers/                     # 四类 typed Assembler
+    contribution/                   # 中立 Contribution、结果与诊断
+    resource_provider_set.dart      # registry + launch-injected Provider 组合
+    cli_resource_provisioner.dart   # 每个实际 member + CLI 的统一 staging 边界
 ```
 
 共享基础设施（如被 Claude/FlashskyAI/Cursor 共用的 `plugins/claude_flavor_registry_writer.dart`）
@@ -180,8 +186,40 @@ final cap = CliToolRegistry.builtIn()
 
 | 类型 | 示例 | 特点 |
 |------|------|------|
-| **Hub 契约（物化器）** | `ProviderCapability` / `SkillCapability` / `PluginCapability` / `McpCapability` / `HookCapability` / `PromptCapability` | 对应用户可见的 6 个功能库；注册器收集虚拟实例，启动时统一物化到 CLI 原生配置 |
+| **Hub 契约（目标侧）** | `ProviderCapability` / `SkillCapability` / `PluginCapability` / `McpCapability` / `HookCapability` / `PromptCapability` | `ProviderCapability` 负责模型、凭证与 session-home；Skill/MCP/Hook/Prompt Capability 只负责把已组装的中立结果物化为 CLI 原生配置 |
+| **资源来源契约** | `PromptContributionProvider` / `SkillContributionProvider` / `McpContributionProvider` / `HookContributionProvider` | 独立于 `CliCapability` 的来源接口；只读取或生成中立 Contribution，不写 CLI 配置、不生成脚本 |
 | **基础设施能力** | `CliSessionCapability`<br>`TerminalBehaviorCapability` | 会话/终端等行为差异；多为纯数据 + 少量方法，`const` 实例，可能经 BootstrapEntry 注入运行时服务 |
+
+### 运行时资源供给管线
+
+Prompt、Skill、MCP、Hook 的来源与 CLI 方言是两条独立轴线。启动 staging 的唯一资源边界是：
+
+```text
+ResourceProviderSet
+  → typed Contribution Providers（按 registry definition 顺序，再按注入顺序）
+  → Prompt/Skill/MCP/Hook Assembler（各自的去重、优先级、冲突和诊断规则）
+  → neutral assembled result
+  → CliResourceProvisioner（按实际 session member + CLI 协调整个阶段）
+  → selected CLI target Capability / ManagedHookProvisioner（物化中立结果）
+  → CLI-native files / environment
+```
+
+`ResourceProviderSet.fromRegistryAndInjected` 只把 CLI definition 中同时实现
+Contribution Provider 的能力与 launch 注入的动态 Provider 合并；动态 workspace、plugin、
+extension、managed 来源不注册进全局 CLI definition。`ProviderCapability` 是模型/凭证
+能力，不是上述四类资源的来源接口。
+
+`CliResourceProvisioner` 每次只处理一个实际 member 的 CLI，先运行四个 typed Assembler，
+再调用该 CLI 的 target Capability。非空资源没有对应 target Capability 时返回结构化
+unsupported diagnostic；空资源是 no-op。Provider/Assembler 结果和诊断集合均为不可变快照，
+诊断保留 CLI、资源种类、provider id 和 source id。
+
+`PromptHubService`、`McpRegistryService`、`ResourceResolver` 以及
+`HookSeatContextCompleter` 现在是兼容 facade/adapter：它们可以为非 staged 的旧调用复用
+对应 Assembler，但不能重新收集一份资源或写另一套 CLI 配置。staged launch 由
+`CliResourceProvisioner` 负责；session-home 兼容路径通过 `promptAlreadyMaterialized`、
+`mcpAlreadyMaterialized` 等边界避免重复物化。新增来源必须进入 typed Provider，不应在
+这些 facade 或 CLI ProviderCapability 中恢复 direct source assembly。
 
 ## 必需能力 vs 可选能力
 
@@ -202,10 +240,10 @@ final cap = CliToolRegistry.builtIn()
 
 | 能力 | 说明 |
 |------|------|
-| `SkillCapability` | Skill 物化（codex/opencode 覆盖；claude/flashskyai 用共享 `DefaultSkillCapability`） |
-| `McpCapability` | MCP 配置写入（claude/flashskyai 共用 `FlashskyaiMcpCapability`） |
-| `HookCapability` | 用户 hook 渲染（claude/flashskyai 共用 `ClaudeFamilyHookWriter`） |
-| `PromptCapability` | 成员 prompt 收集（`virtualize`）+ 物化（`materialize`），经 `PromptHubService` 装配 |
+| `SkillCapability` | Skill 目标物化；当前五个内置可启动 CLI 均注册（claude/flashskyai 使用共享 `DefaultSkillCapability`） |
+| `McpCapability` | MCP 目标写入；当前五个内置可启动 CLI 均注册（claude/flashskyai 共用 `FlashskyaiMcpCapability`） |
+| `HookCapability` | Hook 目标渲染；当前五个内置可启动 CLI 均注册（claude/flashskyai 共用 `ClaudeFamilyHookWriter`） |
+| `PromptCapability` | Prompt 目标物化；`PromptContributionProvider → PromptAssembler → materialize(document)`，staged launch 经 `CliResourceProvisioner` 编排，`PromptHubService` 仅作兼容 facade |
 | `HeadlessCapability` | 无头运行（一次性调用 + 供给） |
 | `AiHistoryCapability` | transcript 定位/解析、会话恢复、tool call 解析器 |
 | 团队能力细分 | `TeamBehaviorCapability.supportsNativeTeam`（仅 claude、flashskyai）、`agentPresetStyle`（agent 预设） |
@@ -596,12 +634,17 @@ Assembler 按以下顺序工作：
 ## Hook 管线（用户可配置 hooks）
 
 用户 hook（运行时机事件 → 命令/脚本）从全局库（`/hooks`，`<root>/hooks/{id}/hook.json`）按
-scope 启用（`ConfigBundle.hookIds`，team > expert > workspace 合并），随 session 启动经
-**统一 hook 管线**物化到各 CLI 原生配置。所有来源（用户库 / 插件 `hooks/hooks.json` /
-扩展 settings-hook / 内部托管 agent-status·bus-idle·team-lead delegate）由
-`HookSeatContextCompleter` 组装为 `HookEntry`，每 CLI 一个 `HookCapability` 实现
-（`HookWriteResult` = 文件级配置片段 + 生成脚本 + 警告；claude/flashskyai 共用
-`ClaudeFamilyHookWriter`），装配点经共享 `ManagedHookProvisioner` 只调自己的 writer。
+scope 启用（`ConfigBundle.hookIds`，team > expert > workspace 合并），随 session 启动进入
+**统一资源管线**：各来源先实现 `HookContributionProvider`，再由 `HookAssembler` 生成带
+诊断的中立 `HookEntry` 列表，最后由实际 CLI 的 `HookCapability` 渲染，并由
+`ManagedHookProvisioner` 写入脚本和配置片段。staged launch 的编排入口是
+`CliResourceProvisioner`，不会为其他 CLI 重复解析或写配置。来源包括用户库、插件
+`hooks/hooks.json`、扩展 settings-hook，以及内部托管 agent-status、bus-idle、team-lead
+delegate；`HookSeatContextCompleter` 只负责兼容地构造/调用 Hook Provider 与 Assembler。
+
+非 staged 的旧 session-home 调用仍可通过 `HookSeatContextCompleter` 直接接入同一个
+`HookAssembler`，这是兼容边界，不是第二套来源模型。任何新来源都应加到 typed Provider，
+而不是在 CLI `ProviderCapability` 中重新读取 hook 库或直接拼装 `HookEntry`。
 Command 类 hook 经 `GlueScriptBuilder` 包成 `teampilot-hook-<id>-<event>.sh`（stdin 透传、
 空 stdout → 决策 JSON 注入、非空 stdout 透传、exit code 透传、`timeout <t>s bash -c`、双方言）。
 

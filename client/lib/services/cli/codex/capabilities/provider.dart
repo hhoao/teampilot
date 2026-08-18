@@ -2,8 +2,6 @@ import 'package:flutter/foundation.dart';
 import '../../../../models/app_provider_config.dart';
 import '../../../../models/credential_action_result.dart';
 import '../../../../models/credential_probe.dart';
-import '../../../../models/hook_entry.dart';
-import '../../../../models/launch_security_policy.dart';
 import '../../../../models/team_config.dart';
 import '../../../../utils/workspace/trusted_project_paths.dart';
 import '../../../hook/glue_script_builder.dart';
@@ -24,6 +22,7 @@ import '../../registry/config_profile/config_profile_context.dart';
 import '../../registry/config_profile/hook_seat_context_completer.dart';
 import '../../registry/hook/managed_hook_provisioner.dart';
 import '../../registry/prompt/prompt_hub_service.dart';
+import '../../../resource/providers/endpoint_hook_contribution_provider.dart';
 import '../provider/codex_auth_artifacts.dart';
 import '../provider/codex_effort_catalog.dart';
 import '../provider/codex_home_provisioner.dart';
@@ -371,58 +370,66 @@ final class CodexProviderCapability extends CatalogModelCapability
     if (provider == null) {
       warnings.add('codex_provider_missing');
     } else {
-      final busIdle = mixed ? ctx.busIdle : null;
       final host = paths.hostEnvironmentForProvision();
       final overlayParts = <String>[];
-      final installsManagedHooks =
-          (busIdle != null || ctx.agentStatus != null) &&
-          member != null &&
-          member.isValid;
-      if (installsManagedHooks) {
-        overlayParts.add(
-          CodexManagedHookOverlay.build(
-            launchSecurityPolicy: member.launchSecurityPolicy,
-          ),
-        );
-      }
-      // Managed hooks (team-bus Stop → /idle, agent-status lifecycle) come
-      // from the completer; rendered together with user hooks in ONE pass.
-      // Agent-status hooks: simple + team whenever stamped — not mixed-gated.
-      final agentStatus = ctx.agentStatus;
-      final managedEntries = <HookEntry>[
-        if (busIdle != null && member != null && member.isValid)
-          ...const HookSeatContextCompleter().busIdleHooks(
-            idle: busIdle,
-            memberId: member.id,
-          ),
-        if (agentStatus != null && member != null && member.isValid)
-          ...const HookSeatContextCompleter().agentStatusHooks(
-            endpoint: agentStatus,
-            memberId: member.id,
-          ),
-      ];
-      final allEntries = [...managedEntries, ...ctx.hooks];
-      if (allEntries.isNotEmpty) {
-        final writer = const CodexHookWriter();
-        final hooksDir = paths.joinWork(codexHome, 'hooks');
-        final result =
-            await ManagedHookProvisioner(
-              fs: paths.fs,
-              joinWork: paths.joinWork,
-              atomicWrite: true,
-              logPrefix: '[hook-writer] codex',
-            ).provision(
-              writer: writer,
-              entries: allEntries,
-              ctx: HookRenderContext(
-                hooksDir: hooksDir,
-                runner: host.scriptRunner,
-                glueBuilder: const GlueScriptBuilder(),
+      if (!ctx.hooksAlreadyMaterialized) {
+        final busIdle = mixed ? ctx.busIdle : null;
+        final installsManagedHooks =
+            (busIdle != null || ctx.agentStatus != null) &&
+            member != null &&
+            member.isValid;
+        if (installsManagedHooks) {
+          overlayParts.add(
+            CodexManagedHookOverlay.build(
+              launchSecurityPolicy: member.launchSecurityPolicy,
+            ),
+          );
+        }
+        // Managed hooks (team-bus Stop → /idle, agent-status lifecycle) come
+        // from the completer; rendered together with user hooks in ONE pass.
+        // Agent-status hooks: simple + team whenever stamped — not mixed-gated.
+        final agentStatus = ctx.agentStatus;
+        final completer = const HookSeatContextCompleter();
+        final assembledHooks = await completer.assemble(
+          cli: CliTool.codex,
+          member: member,
+          providers: [
+            if (busIdle != null && member != null && member.isValid)
+              BusIdleHookContributionProvider(
+                endpoint: busIdle,
+                memberId: member.id,
               ),
-            );
-        final fragment = result.configFragments['config.toml'] as String?;
-        if (fragment != null && fragment.trim().isNotEmpty) {
-          overlayParts.add(fragment);
+            if (agentStatus != null && member != null && member.isValid)
+              AgentStatusHookContributionProvider(
+                endpoint: agentStatus,
+                memberId: member.id,
+              ),
+            ...sessionHomeHookProviders(ctx),
+          ],
+        );
+        final allEntries = assembledHooks.entries;
+        if (allEntries.isNotEmpty) {
+          final writer = const CodexHookWriter();
+          final hooksDir = paths.joinWork(codexHome, 'hooks');
+          final result =
+              await ManagedHookProvisioner(
+                fs: paths.fs,
+                joinWork: paths.joinWork,
+                atomicWrite: true,
+                logPrefix: '[hook-writer] codex',
+              ).provision(
+                writer: writer,
+                entries: allEntries,
+                ctx: HookRenderContext(
+                  hooksDir: hooksDir,
+                  runner: host.scriptRunner,
+                  glueBuilder: const GlueScriptBuilder(),
+                ),
+              );
+          final fragment = result.configFragments['config.toml'] as String?;
+          if (fragment != null && fragment.trim().isNotEmpty) {
+            overlayParts.add(fragment);
+          }
         }
       }
       final busOverlay = overlayParts.isEmpty
@@ -470,16 +477,18 @@ final class CodexProviderCapability extends CatalogModelCapability
       ...await McpCredentialsStore(fs: paths.fs).readOAuthEnv(codexHome),
     };
 
-    await const PromptHubService().provisionForCli(
-      cli: CliTool.codex,
-      ctx: PromptMaterializeContext(
-        paths: paths,
-        scope: ctx.scope,
-        member: member,
-        forceTeamLeadDelegateMode: team?.forceTeamLeadDelegateMode ?? false,
-        mixed: mixed,
-      ),
-    );
+    if (!ctx.promptAlreadyMaterialized) {
+      await const PromptHubService().provisionForCli(
+        cli: CliTool.codex,
+        ctx: PromptMaterializeContext(
+          paths: paths,
+          scope: ctx.scope,
+          member: member,
+          forceTeamLeadDelegateMode: team?.forceTeamLeadDelegateMode ?? false,
+          mixed: mixed,
+        ),
+      );
+    }
 
     return SessionHomeContribution(
       environment: environment,

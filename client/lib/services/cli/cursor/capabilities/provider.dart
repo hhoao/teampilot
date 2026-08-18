@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart';
 import '../../../../models/app_provider_config.dart';
 import '../../../../models/credential_action_result.dart';
 import '../../../../models/credential_probe.dart';
-import '../../../../models/hook_entry.dart';
 import '../../../../models/team_config.dart';
 import '../../../launch/work_plane_paths.dart';
 import '../../../provider/credential_binding.dart';
@@ -17,6 +16,7 @@ import '../../registry/capabilities/provider_capability.dart';
 import '../../registry/cli_tool_registry.dart';
 import '../../registry/config_profile/config_profile_context.dart';
 import '../../registry/config_profile/hook_seat_context_completer.dart';
+import '../../../resource/providers/endpoint_hook_contribution_provider.dart';
 import '../../session_lifecycle/cli_session_manifest_store.dart';
 import '../provider/cursor_agent_models_service.dart';
 import '../provider/cursor_home_layout.dart';
@@ -374,6 +374,7 @@ final class CursorProviderCapability extends CatalogModelCapability
       busIdle: null,
       forceTeamLeadDelegateMode: false,
       mixed: false,
+      promptAlreadyMaterialized: ctx.promptAlreadyMaterialized,
       // Always defer real-$HOME passthrough to SessionConnectOrchestrator after
       // manifest flush. Staging via ManifestFilesystem would SFTP-list the work
       // home (slow on Android SSH). Post-flush uses one remote find+ln script
@@ -381,24 +382,32 @@ final class CursorProviderCapability extends CatalogModelCapability
       realHomeRoot: null,
     );
 
-    // 收敛：内部托管 hook（agent-status）经 completer 组装为 managed
-    // HookEntry，与用户条目一次 writeHooks 落盘（同渲染 + 去重）。
-    final agentStatus = ctx.agentStatus;
-    final managed = <HookEntry>[
-      if (agentStatus != null)
-        ...const HookSeatContextCompleter().agentStatusHooks(
-          endpoint: agentStatus,
-          memberId: member.id,
-        ),
-    ];
-    await CursorHomeProvisioner(
-      fs: paths.fs,
-      layout: CursorHomeLayout(pathContext: paths.fs.pathContext),
-    ).writeHooks(
-      memberHome: home,
-      entries: [...managed, ...ctx.hooks],
-      runner: paths.hostEnvironmentForProvision().scriptRunner,
-    );
+    if (!ctx.hooksAlreadyMaterialized) {
+      // 收敛：内部托管 hook（agent-status）经 completer 组装为 managed
+      // HookEntry，与用户条目一次 writeHooks 落盘（同渲染 + 去重）。
+      final agentStatus = ctx.agentStatus;
+      final completer = const HookSeatContextCompleter();
+      final assembledHooks = await completer.assemble(
+        cli: CliTool.cursor,
+        member: member,
+        providers: [
+          if (agentStatus != null)
+            AgentStatusHookContributionProvider(
+              endpoint: agentStatus,
+              memberId: member.id,
+            ),
+          ...sessionHomeHookProviders(ctx),
+        ],
+      );
+      await CursorHomeProvisioner(
+        fs: paths.fs,
+        layout: CursorHomeLayout(pathContext: paths.fs.pathContext),
+      ).writeHooks(
+        memberHome: home,
+        entries: assembledHooks.entries,
+        runner: paths.hostEnvironmentForProvision().scriptRunner,
+      );
+    }
 
     await _provisionWorkspaceTrust(ctx: ctx, homeRoot: home);
     return SessionHomeContribution(
@@ -420,7 +429,8 @@ final class CursorProviderCapability extends CatalogModelCapability
     var providerId = ctx.member?.provider.trim() ?? '';
     if (providerId.isEmpty) {
       providerId =
-          CliToolRegistry.builtIn().defaultOfficialProviderId(CliTool.cursor) ?? '';
+          CliToolRegistry.builtIn().defaultOfficialProviderId(CliTool.cursor) ??
+          '';
     }
     var provider = await resolver.findById(providerId);
     if (provider != null) return provider;
@@ -505,30 +515,38 @@ final class CursorProviderCapability extends CatalogModelCapability
       }
 
       final agentStatus = ctx.agentStatus;
-      // 收敛：内部托管 hook（bus idle / agent-status）经 completer 组装为
-      // managed HookEntry，与用户条目一次 writeHooks 落盘（同渲染 + 去重）。
-      // cursor 不支持 stopFailure / permissionRequest 原生事件——writer 跳过
-      // 并警告（bus stop 经 completer stop 条目生效，与旧 overlay 一致）。
-      final managed = <HookEntry>[
-        if (busIdle != null && member != null && member.isValid)
-          ...const HookSeatContextCompleter().busIdleHooks(
-            idle: busIdle,
-            memberId: member.id,
-          ),
-        if (agentStatus != null && member != null && member.isValid)
-          ...const HookSeatContextCompleter().agentStatusHooks(
-            endpoint: agentStatus,
-            memberId: member.id,
-          ),
-      ];
-      await CursorHomeProvisioner(
-        fs: ctx.paths.fs,
-        layout: CursorHomeLayout(pathContext: ctx.paths.fs.pathContext),
-      ).writeHooks(
-        memberHome: agentHome,
-        entries: [...managed, ...ctx.hooks],
-        runner: ctx.paths.hostEnvironmentForProvision().scriptRunner,
-      );
+      if (!ctx.hooksAlreadyMaterialized) {
+        // 收敛：内部托管 hook（bus idle / agent-status）经 completer 组装为
+        // managed HookEntry，与用户条目一次 writeHooks 落盘（同渲染 + 去重）。
+        // cursor 不支持 stopFailure / permissionRequest 原生事件——writer 跳过
+        // 并警告（bus stop 经 completer stop 条目生效，与旧 overlay 一致）。
+        final completer = const HookSeatContextCompleter();
+        final assembledHooks = await completer.assemble(
+          cli: CliTool.cursor,
+          member: member,
+          providers: [
+            if (busIdle != null && member != null && member.isValid)
+              BusIdleHookContributionProvider(
+                endpoint: busIdle,
+                memberId: member.id,
+              ),
+            if (agentStatus != null && member != null && member.isValid)
+              AgentStatusHookContributionProvider(
+                endpoint: agentStatus,
+                memberId: member.id,
+              ),
+            ...sessionHomeHookProviders(ctx),
+          ],
+        );
+        await CursorHomeProvisioner(
+          fs: ctx.paths.fs,
+          layout: CursorHomeLayout(pathContext: ctx.paths.fs.pathContext),
+        ).writeHooks(
+          memberHome: agentHome,
+          entries: assembledHooks.entries,
+          runner: ctx.paths.hostEnvironmentForProvision().scriptRunner,
+        );
+      }
 
       return SessionHomeContribution(
         environment: CursorLaunchEnvironment.forMixed(
@@ -575,12 +593,9 @@ final class CursorProviderCapability extends CatalogModelCapability
       final manifest = await CliSessionManifestStore(
         fs: paths.fs,
         layout: paths.layout,
-      ).read(
-        workspaceId: workspaceId,
-        teamId: trimmedTeamId,
-        tool: toolId,
-      );
-      final homeRoot = manifest?.members[trimmedMemberId]?.homeRoot.trim() ?? '';
+      ).read(workspaceId: workspaceId, teamId: trimmedTeamId, tool: toolId);
+      final homeRoot =
+          manifest?.members[trimmedMemberId]?.homeRoot.trim() ?? '';
       if (homeRoot.isNotEmpty) {
         final workspaceDir = paths.layout.workspace.workspaceDir(workspaceId);
         return paths.fs.pathContext.normalize(

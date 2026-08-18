@@ -47,7 +47,7 @@ void main() {
       id: 'h3',
       name: 'Notify',
       event: HookEvent.notification,
-      action: const HttpHookAction(
+      action: HttpHookAction(
         url: 'http://127.0.0.1:1/hook',
         headers: {'X-A': 'b'},
       ),
@@ -57,10 +57,7 @@ void main() {
   });
 
   test('defaults on absent fields', () {
-    final definition = HookDefinition.fromJson({
-      'id': 'h4',
-      'event': 'stop',
-    });
+    final definition = HookDefinition.fromJson({'id': 'h4', 'event': 'stop'});
     expect(definition.name, '');
     expect(definition.description, '');
     expect(definition.policy, HookPolicy.none);

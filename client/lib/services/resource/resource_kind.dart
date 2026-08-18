@@ -19,6 +19,13 @@ class ResourceRef {
   /// (e.g. `<teampilotRoot>/skills/installed/<dir>`).
   final String sourceDir;
 
+  ResourceRef copyWith({String? id, String? linkName, String? sourceDir}) =>
+      ResourceRef(
+        id: id ?? this.id,
+        linkName: linkName ?? this.linkName,
+        sourceDir: sourceDir ?? this.sourceDir,
+      );
+
   @override
   bool operator ==(Object other) =>
       other is ResourceRef &&
@@ -33,6 +40,15 @@ class ResourceRef {
 /// Effective enabled resources for one launch scope, grouped by kind.
 class EffectiveResourceSet {
   const EffectiveResourceSet(this.byKind);
+
+  /// Creates a desired set with immutable per-kind lists for assembler and
+  /// materializer facades that already own their selection logic.
+  factory EffectiveResourceSet.immutable(
+    Map<ResourceKind, Iterable<ResourceRef>> byKind,
+  ) => EffectiveResourceSet({
+    for (final entry in byKind.entries)
+      entry.key: List<ResourceRef>.unmodifiable(entry.value),
+  });
 
   final Map<ResourceKind, List<ResourceRef>> byKind;
 

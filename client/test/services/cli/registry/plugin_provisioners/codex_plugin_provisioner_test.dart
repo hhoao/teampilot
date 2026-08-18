@@ -1,9 +1,11 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/models/mcp_server_spec.dart';
 import 'package:teampilot/models/plugin.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/registry/capabilities/plugin_capability.dart';
+import 'package:teampilot/services/cli/codex/capabilities/mcp.dart';
 import 'package:teampilot/services/cli/codex/capabilities/plugin.dart';
 import 'package:teampilot/services/cli/codex/provider/codex_session_config_dir.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
@@ -156,7 +158,7 @@ void main() {
       );
     });
 
-    test('reads bundled MCP names from direct .mcp.json map', () async {
+    test('assembled MCP is written by the Codex MCP capability', () async {
       final fs = InMemoryFilesystem();
       const configDir = '/cfg';
       const poolDir = '/pool';
@@ -199,14 +201,16 @@ void main() {
         ),
       );
 
+      await const CodexMcpCapability().write(
+        fs: fs,
+        configDir: configDir,
+        servers: const [StdioMcpServer(name: 'context7', command: 'npx')],
+      );
+
       final raw = await fs.readString('$configDir/config.toml');
       final doc = TomlDocument.parse(raw!).toMap();
-      final plugins = (doc['plugins'] as Map).cast<String, dynamic>();
-      final nested = (plugins['demo'] as Map).cast<String, dynamic>();
-      final bundled =
-          (nested['mcp_servers'] as Map).cast<String, dynamic>()['context7']
-              as Map;
-      expect(bundled['enabled'], isTrue);
+      final mcpServers = (doc['mcp_servers'] as Map).cast<String, dynamic>();
+      expect(mcpServers['context7'], isNotNull);
     });
   });
 }

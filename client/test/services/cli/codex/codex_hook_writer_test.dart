@@ -23,20 +23,22 @@ void main() {
 
   test('shellCommandRequest is supported by codex writer', () {
     expect(writer.supportsEvent(HookEvent.shellCommandRequest), isTrue);
-    expect(writer.nativeEvent(HookEvent.shellCommandRequest),
-        'ShellCommandRequest');
+    expect(
+      writer.nativeEvent(HookEvent.shellCommandRequest),
+      'ShellCommandRequest',
+    );
     expect(writer.supportsEvent(HookEvent.preToolUse), isTrue);
   });
 
   test('renders TOML fragment with [[hooks.Event]] and glue script', () {
-    const entry = HookEntry(
+    final entry = HookEntry(
       id: 'h1',
       source: HookSource.userLibrary,
       event: HookEvent.stop,
       matcher: null,
       action: CommandHookAction.raw('echo done'),
     );
-    final result = writer.render(entries: const [entry], ctx: ctx);
+    final result = writer.render(entries: [entry], ctx: ctx);
     expect(result.warnings, isEmpty);
     final toml = result.configFragments['config.toml']! as String;
     expect(toml, contains('[[hooks.Stop]]'));
@@ -49,20 +51,20 @@ void main() {
   });
 
   test('policy deny injects decision JSON into glue', () {
-    const entry = HookEntry(
+    final entry = HookEntry(
       id: 'h1',
       source: HookSource.userLibrary,
       event: HookEvent.preToolUse,
       policy: HookPolicy.deny,
       action: CommandHookAction.raw('echo hi'),
     );
-    final result = writer.render(entries: const [entry], ctx: ctx);
+    final result = writer.render(entries: [entry], ctx: ctx);
     final glue = result.scripts.single;
     expect(glue.content, contains('"permissionDecision":"deny"'));
   });
 
   test('managed script missing data yields warning and no fragment', () {
-    const entry = HookEntry(
+    final entry = HookEntry(
       id: 'h1',
       source: HookSource.userLibrary,
       event: HookEvent.stop,
@@ -71,7 +73,7 @@ void main() {
         scriptContent: null,
       ),
     );
-    final result = writer.render(entries: const [entry], ctx: ctx);
+    final result = writer.render(entries: [entry], ctx: ctx);
     expect(result.warnings, contains('hook_script_missing_h1'));
     expect(result.configFragments['config.toml'], isNull);
     expect(result.scripts, isEmpty);
@@ -85,21 +87,21 @@ void main() {
   });
 
   test('matcher is rendered into the TOML fragment', () {
-    const entry = HookEntry(
+    final entry = HookEntry(
       id: 'h1',
       source: HookSource.userLibrary,
       event: HookEvent.preToolUse,
       matcher: 'Bash|Read',
       action: CommandHookAction.raw('echo hi'),
     );
-    final result = writer.render(entries: const [entry], ctx: ctx);
+    final result = writer.render(entries: [entry], ctx: ctx);
     final toml = result.configFragments['config.toml']! as String;
     expect(toml, contains('matcher = "Bash|Read"'));
     expect(toml, contains('[[hooks.PreToolUse]]'));
   });
 
   test('all-failed render keeps warnings without fragment', () {
-    const entry = HookEntry(
+    final entry = HookEntry(
       id: 'h1',
       source: HookSource.userLibrary,
       event: HookEvent.stop,
@@ -108,7 +110,7 @@ void main() {
         scriptContent: null,
       ),
     );
-    final result = writer.render(entries: const [entry], ctx: ctx);
+    final result = writer.render(entries: [entry], ctx: ctx);
     expect(result.warnings, contains('hook_script_missing_h1'));
     expect(result.configFragments, isEmpty);
     expect(result.scripts, isEmpty);
@@ -123,7 +125,7 @@ void main() {
     );
     final entries = [
       ...completer.agentStatusHooks(endpoint: endpoint, memberId: 'm1'),
-      const HookEntry(
+      HookEntry(
         id: 'h1',
         source: HookSource.userLibrary,
         event: HookEvent.stop,
@@ -149,9 +151,7 @@ void main() {
     expect(preToolUseScript.content, contains('-H \'X-Session: s\''));
     expect(preToolUseScript.content, contains('-H \'X-Bus-Token: t\''));
     final stopScript = result.scripts.singleWhere(
-      (s) =>
-          s.fileName ==
-          'teampilot-http-teampilot-agent-status-stop-stop.sh',
+      (s) => s.fileName == 'teampilot-http-teampilot-agent-status-stop-stop.sh',
     );
     expect(stopScript.content, contains('?event=Stop'));
     expect(stopScript.content, contains('>/dev/null'));
@@ -159,17 +159,19 @@ void main() {
     final preToolUseBlock = toml.split('[[hooks.PreToolUse]]')[1];
     expect(preToolUseBlock, contains('timeout = 86400'));
     expect(preToolUseBlock, contains('matcher = "*"'));
-    expect(preToolUseBlock, contains('/teampilot-http-teampilot-agent-status-preToolUse-preToolUse.sh'));
+    expect(
+      preToolUseBlock,
+      contains(
+        '/teampilot-http-teampilot-agent-status-preToolUse-preToolUse.sh',
+      ),
+    );
     final stopBlock = toml.split('[[hooks.Stop]]')[1];
     expect(stopBlock, contains('timeout = 5'));
     expect(stopBlock, isNot(contains('?event=')));
     expect(stopBlock, isNot(contains('matcher')));
     // The 4 matcher-capable events (PermissionRequest/PreToolUse/PostToolUse/
     // PostToolUseFailure) render `matcher = "*"`; Stop has no matcher.
-    expect(
-      'matcher = "*"'.allMatches(toml).length,
-      4,
-    );
+    expect('matcher = "*"'.allMatches(toml).length, 4);
   });
 
   test('bus-idle managed entries render response-to-stdout stop script', () {
@@ -187,9 +189,7 @@ void main() {
     expect(toml, contains('[[hooks.Stop]]'));
     expect(toml, contains('[[hooks.StopFailure]]'));
     final script = result.scripts.singleWhere(
-      (s) =>
-          s.fileName ==
-          'teampilot-http-teampilot-bus-idle-stop-stop.sh',
+      (s) => s.fileName == 'teampilot-http-teampilot-bus-idle-stop-stop.sh',
     );
     // blockOnDecision: POST 响应 (followup/decision) 透传 stdout，不转发 stdin。
     expect(script.content, contains("'http://127.0.0.1:1/idle'"));
@@ -211,8 +211,10 @@ void main() {
       glueBuilder: GlueScriptBuilder(),
     );
     const endpoint = MemberAgentStatusEndpoint(url: 'http://127.0.0.1:9/a');
-    final entries = const HookSeatContextCompleter()
-        .agentStatusHooks(endpoint: endpoint, memberId: 'm1');
+    final entries = const HookSeatContextCompleter().agentStatusHooks(
+      endpoint: endpoint,
+      memberId: 'm1',
+    );
     final result = writer.render(entries: entries, ctx: runnerCtx);
     final toml = result.configFragments['config.toml']! as String;
     // Schema gate: everything the writer renders must be loadable by codex —

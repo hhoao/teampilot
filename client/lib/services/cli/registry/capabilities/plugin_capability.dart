@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../../../models/plugin.dart';
+import '../../../../models/mcp_server_spec.dart';
 import '../../../../models/team_config.dart';
 import '../../../io/filesystem.dart';
 import '../../../storage/runtime_layout.dart';
@@ -25,6 +26,7 @@ class PluginProvisionContext {
     required this.layout,
     required this.tool,
     this.memberProvisionJson,
+    this.assembledMcpServers = const [],
     this.mcpConfigFileName,
   });
 
@@ -37,6 +39,8 @@ class PluginProvisionContext {
   final RuntimeLayout layout;
   final CliTool tool;
   final String? memberProvisionJson;
+  final List<McpServerSpec> assembledMcpServers;
+
   /// When set, overrides the MCP config filename (e.g. `mcp.base.json`).
   final String? mcpConfigFileName;
 }
@@ -44,6 +48,8 @@ class PluginProvisionContext {
 /// PluginHub contract: plugin materialization + marketplace consumption +
 /// remote shared dep seeding.
 abstract interface class PluginCapability implements CliCapability {
+  bool get writesAssembledMcp => false;
+
   /// On-disk manifest layout this CLI reads. `null` ⇒ decomposition only.
   PluginManifestPaths? get manifestPaths;
 
@@ -97,5 +103,5 @@ const cursorPluginManifestPaths = PluginManifestPaths(
 PluginCapability? pluginCapabilityForTool(
   CliTool tool, {
   CliToolRegistry? registry,
-}) => (registry ?? CliToolRegistry.builtIn())
-    .capability<PluginCapability>(tool);
+}) =>
+    (registry ?? CliToolRegistry.builtIn()).capability<PluginCapability>(tool);

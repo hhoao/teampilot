@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/models/mcp_server_spec.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/provider.dart';
 import 'package:teampilot/services/cli/registry/capabilities/plugin_capability.dart';
@@ -53,7 +54,14 @@ void main() {
           '---\nname: shared-skill\ndescription: from catalog\n---\n',
         );
 
-        await _provision(fs, configDir, poolDir);
+        await _provision(
+          fs,
+          configDir,
+          poolDir,
+          assembledMcpServers: const [
+            StdioMcpServer(name: 'assembled', command: 'assembled-command'),
+          ],
+        );
 
         expect(
           await fs.readString('$configDir/skill/shared-skill/SKILL.md'),
@@ -73,7 +81,8 @@ void main() {
             jsonDecode((await fs.readString('$configDir/opencode.json'))!)
                 as Map;
         final mcp = opencodeJson['mcp'] as Map;
-        expect((mcp['plugin-mcp'] as Map)['type'], 'local');
+        expect((mcp['assembled'] as Map)['command'], ['assembled-command']);
+        expect(mcp.containsKey('plugin-mcp'), isFalse);
       },
     );
 
@@ -121,57 +130,53 @@ void main() {
         final opencodeJson =
             jsonDecode((await fs.readString('$configDir/opencode.json'))!)
                 as Map;
-        expect(
-          opencodeJson['plugin'],
-          ['./plugins/superpowers/.opencode/plugins/superpowers.js'],
-        );
+        expect(opencodeJson['plugin'], [
+          './plugins/superpowers/.opencode/plugins/superpowers.js',
+        ]);
       },
     );
 
-    test(
-      'does not self-link pool entry when bundle pool IS configDir/plugins '
-      '(opencode session layout)',
-      () async {
-        final fs = InMemoryFilesystem();
-        // Real opencode wiring: sessionRuntimePluginsDir(configDir, opencode)
-        // is exactly `{configDir}/plugins`, so the pool entry and the
-        // materialized destination are the same path.
-        const configDir = '/cfg';
-        const poolDir = '/cfg/plugins';
+    test('does not self-link pool entry when bundle pool IS configDir/plugins '
+        '(opencode session layout)', () async {
+      final fs = InMemoryFilesystem();
+      // Real opencode wiring: sessionRuntimePluginsDir(configDir, opencode)
+      // is exactly `{configDir}/plugins`, so the pool entry and the
+      // materialized destination are the same path.
+      const configDir = '/cfg';
+      const poolDir = '/cfg/plugins';
 
-        await fs.writeString(
-          '/installed/superpowers/.plugin/plugin.json',
-          jsonEncode({'name': 'superpowers', 'version': '6.2.0'}),
-        );
-        await fs.writeString(
-          '/installed/superpowers/skills/brainstorming/SKILL.md',
-          '---\nname: brainstorming\ndescription: x\n---\n',
-        );
-        await fs.writeString(
-          '/installed/superpowers/.opencode/plugins/superpowers.js',
-          'export const SuperpowersPlugin = async () => ({});',
-        );
-        // Pool reconcile links `{poolDir}/<name>` -> installed bundle.
-        await fs.createSymlink(
-          target: '/installed/superpowers',
-          linkPath: '$poolDir/superpowers',
-        );
+      await fs.writeString(
+        '/installed/superpowers/.plugin/plugin.json',
+        jsonEncode({'name': 'superpowers', 'version': '6.2.0'}),
+      );
+      await fs.writeString(
+        '/installed/superpowers/skills/brainstorming/SKILL.md',
+        '---\nname: brainstorming\ndescription: x\n---\n',
+      );
+      await fs.writeString(
+        '/installed/superpowers/.opencode/plugins/superpowers.js',
+        'export const SuperpowersPlugin = async () => ({});',
+      );
+      // Pool reconcile links `{poolDir}/<name>` -> installed bundle.
+      await fs.createSymlink(
+        target: '/installed/superpowers',
+        linkPath: '$poolDir/superpowers',
+      );
 
-        await _provision(fs, configDir, poolDir);
+      await _provision(fs, configDir, poolDir);
 
-        // The pool entry must still reach the bundle — no self-loop.
-        expect(
-          await fs.readSymlinkTarget('$poolDir/superpowers'),
-          '/installed/superpowers',
-        );
-        expect(
-          await fs.readString(
-            '$configDir/plugins/superpowers/.opencode/plugins/superpowers.js',
-          ),
-          contains('SuperpowersPlugin'),
-        );
-      },
-    );
+      // The pool entry must still reach the bundle — no self-loop.
+      expect(
+        await fs.readSymlinkTarget('$poolDir/superpowers'),
+        '/installed/superpowers',
+      );
+      expect(
+        await fs.readString(
+          '$configDir/plugins/superpowers/.opencode/plugins/superpowers.js',
+        ),
+        contains('SuperpowersPlugin'),
+      );
+    });
 
     test('is idempotent across repeated provisions', () async {
       final fs = InMemoryFilesystem();
@@ -191,12 +196,10 @@ void main() {
       await _provision(fs, configDir, poolDir);
 
       final opencodeJson =
-          jsonDecode((await fs.readString('$configDir/opencode.json'))!)
-              as Map;
-      expect(
-        opencodeJson['plugin'],
-        ['./plugins/superpowers/.opencode/plugins/superpowers.js'],
-      );
+          jsonDecode((await fs.readString('$configDir/opencode.json'))!) as Map;
+      expect(opencodeJson['plugin'], [
+        './plugins/superpowers/.opencode/plugins/superpowers.js',
+      ]);
       expect(
         await fs.readString(
           '$configDir/plugins/superpowers/.opencode/plugins/superpowers.js',
@@ -205,28 +208,28 @@ void main() {
       );
     });
 
-    test('leaves config untouched for bundles without opencode plugin', () async {
-      final fs = InMemoryFilesystem();
-      const configDir = '/cfg';
-      const poolDir = '/pool';
+    test(
+      'leaves config untouched for bundles without opencode plugin',
+      () async {
+        final fs = InMemoryFilesystem();
+        const configDir = '/cfg';
+        const poolDir = '/pool';
 
-      await fs.writeString(
-        '$poolDir/plain/.plugin/plugin.json',
-        jsonEncode({'name': 'plain', 'version': '1.0.0'}),
-      );
-      await fs.writeString(
-        '$poolDir/plain/skills/only-skill/SKILL.md',
-        '---\nname: only-skill\ndescription: x\n---\n',
-      );
+        await fs.writeString(
+          '$poolDir/plain/.plugin/plugin.json',
+          jsonEncode({'name': 'plain', 'version': '1.0.0'}),
+        );
+        await fs.writeString(
+          '$poolDir/plain/skills/only-skill/SKILL.md',
+          '---\nname: only-skill\ndescription: x\n---\n',
+        );
 
-      await _provision(fs, configDir, poolDir);
+        await _provision(fs, configDir, poolDir);
 
-      expect(await fs.readString('$configDir/opencode.json'), isNull);
-      expect(
-        (await fs.stat('$configDir/plugins/plain')).exists,
-        isFalse,
-      );
-    });
+        expect(await fs.readString('$configDir/opencode.json'), isNull);
+        expect((await fs.stat('$configDir/plugins/plain')).exists, isFalse);
+      },
+    );
 
     test('falls back to package.json main for opencode entry', () async {
       final fs = InMemoryFilesystem();
@@ -253,8 +256,7 @@ void main() {
         contains('Entry'),
       );
       final opencodeJson =
-          jsonDecode((await fs.readString('$configDir/opencode.json'))!)
-              as Map;
+          jsonDecode((await fs.readString('$configDir/opencode.json'))!) as Map;
       expect(opencodeJson['plugin'], ['./plugins/superpowers/plugin/entry.js']);
     });
 
@@ -262,7 +264,10 @@ void main() {
       final merged = mergeOpencodePluginEntries(
         <String, Object?>{
           'plugin': <Object?>[
-            <Object?>['./teampilot-idle-bus.js', <String, Object?>{'member': 'm1'}],
+            <Object?>[
+              './teampilot-idle-bus.js',
+              <String, Object?>{'member': 'm1'},
+            ],
             './existing.js',
           ],
         },
@@ -272,7 +277,10 @@ void main() {
       expect(plugin, hasLength(3));
       expect(plugin.first, isA<List>());
       expect((plugin.first as List).first, './teampilot-idle-bus.js');
-      expect(plugin, containsAll(<Object?>['./existing.js', './plugins/a/x.js']));
+      expect(
+        plugin,
+        containsAll(<Object?>['./existing.js', './plugins/a/x.js']),
+      );
     });
   });
 }
@@ -280,8 +288,9 @@ void main() {
 Future<void> _provision(
   InMemoryFilesystem fs,
   String configDir,
-  String poolDir,
-) {
+  String poolDir, {
+  List<McpServerSpec> assembledMcpServers = const [],
+}) {
   return const OpencodePluginCapability().provision(
     PluginProvisionContext(
       fs: fs,
@@ -292,6 +301,7 @@ Future<void> _provision(
       installedCatalog: const [],
       layout: RuntimeLayout(teampilotRoot: '/tp', fs: fs),
       tool: CliTool.opencode,
+      assembledMcpServers: assembledMcpServers,
     ),
   );
 }

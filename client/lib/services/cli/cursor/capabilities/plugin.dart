@@ -1,6 +1,3 @@
-import 'dart:convert';
-
-import '../../../../models/mcp_server_spec.dart';
 import '../../../io/filesystem.dart';
 import '../../../cli/registry/plugins/claude_flavor_registry_writer.dart';
 import '../../../plugin/cli_plugin_layout.dart';
@@ -43,7 +40,14 @@ final class CursorPluginCapability implements PluginCapability {
       localPluginsSegment,
     );
     await _materializeToLocal(ctx, localDir, paths);
-    await _writeBundledMcp(ctx, paths);
+    if (ctx.assembledMcpServers.isNotEmpty) {
+      await const CursorMcpCapability().write(
+        fs: ctx.fs,
+        configDir: ctx.configDir,
+        servers: ctx.assembledMcpServers,
+        outputBasename: ctx.mcpConfigFileName,
+      );
+    }
     await ClaudeFlavorRegistryWriter(
       fs: ctx.fs,
       teampilotRoot: ctx.teampilotRoot,
@@ -59,13 +63,19 @@ final class CursorPluginCapability implements PluginCapability {
   }
 
   @override
+  bool get writesAssembledMcp => true;
+
+  @override
   bool get consumesMarketplaces => true;
 
   @override
   bool get needsSharedPluginDepsBeforeReconcile => false;
 
   @override
-  Future<void> seedSharedPluginDeps({Filesystem? homeFs, String? homeRoot}) async {}
+  Future<void> seedSharedPluginDeps({
+    Filesystem? homeFs,
+    String? homeRoot,
+  }) async {}
 
   @override
   String get pluginsSubdir => 'plugins/$localPluginsSegment';
@@ -106,66 +116,6 @@ final class CursorPluginCapability implements PluginCapability {
       }
       await ctx.fs.copyTree(source: root, destination: dest);
       await CliPluginLayout.projectBundleToFlavor(ctx.fs, dest, paths);
-    }
-  }
-
-  static Future<void> _writeBundledMcp(
-    PluginProvisionContext ctx,
-    PluginManifestPaths paths,
-  ) async {
-    final poolStat = await ctx.fs.stat(ctx.bundlePoolDir);
-    if (!poolStat.isDirectory) return;
-
-    final specs = <McpServerSpec>[];
-    final fsCtx = ctx.fs.pathContext;
-    for (final entry in await ctx.fs.listDir(ctx.bundlePoolDir)) {
-      if (entry.name.startsWith('.')) continue;
-      final source = fsCtx.join(ctx.bundlePoolDir, entry.name);
-      if (!await CliPluginLayout.isPluginBundleEntry(ctx.fs, source)) continue;
-      final root = await CliPluginLayout.resolvePluginRoot(
-        ctx.fs,
-        source,
-        paths: paths,
-      );
-      if (root == null) continue;
-      specs.addAll(await _readBundledMcp(ctx.fs, root));
-    }
-    if (specs.isEmpty) return;
-
-    await const CursorMcpCapability().write(
-      fs: ctx.fs,
-      configDir: ctx.configDir,
-      servers: specs,
-      outputBasename: ctx.mcpConfigFileName,
-    );
-  }
-
-  static Future<List<McpServerSpec>> _readBundledMcp(
-    Filesystem fs,
-    String pluginRoot,
-  ) async {
-    final mcpPath = fs.pathContext.join(pluginRoot, '.mcp.json');
-    if (!(await fs.stat(mcpPath)).isFile) return const [];
-
-    final text = await fs.readString(mcpPath);
-    if (text == null || text.trim().isEmpty) return const [];
-
-    try {
-      final root = (jsonDecode(text) as Map).cast<String, Object?>();
-      final servers =
-          (root['mcpServers'] as Map?)?.cast<String, Object?>() ??
-          const <String, Object?>{};
-      return servers.entries
-          .map(
-            (e) => McpServerSpec.fromCatalogJson(
-              e.key,
-              (e.value as Map?)?.cast<String, Object?>() ?? const {},
-            ),
-          )
-          .whereType<McpServerSpec>()
-          .toList();
-    } catch (_) {
-      return const [];
     }
   }
 }

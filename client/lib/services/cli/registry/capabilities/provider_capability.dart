@@ -14,6 +14,9 @@ import '../../../remote/remote_credential_materializer.dart';
 import '../../../team_bus/member_bus_idle_endpoint.dart';
 import '../cli_capability.dart';
 import '../config_profile/config_profile_context.dart';
+import '../../../resource/providers/hook_contribution_provider.dart';
+import '../../../resource/providers/hook_library_contribution_provider.dart';
+import '../../../resource/resource_provider_set.dart';
 
 /// Providers discovered from the user's global CLI install.
 class ProviderCatalogSnapshot {
@@ -410,7 +413,11 @@ class SessionHomeContext {
     this.memberId,
     this.sessionExpertKey,
     this.resolvedExpert,
+    this.resourceProviders = ResourceProviderSet.empty,
+    this.promptAlreadyMaterialized = false,
+    this.hooksAlreadyMaterialized = false,
     this.hooks = const [],
+    this.hookLibraryProvider,
     this.crossMachine = false,
     this.resolvedProviderId,
     this.credentialBasePath,
@@ -444,8 +451,19 @@ class SessionHomeContext {
   final String? sessionExpertKey;
   final DiscoverableMember? resolvedExpert;
 
+  final ResourceProviderSet resourceProviders;
+
+  /// True when the staged resource coordinator already wrote this member's
+  /// prompt for the target CLI. Legacy session-home callers leave this false.
+  final bool promptAlreadyMaterialized;
+
+  /// True when the staged resource coordinator already assembled and wrote
+  /// this member's hooks. Legacy session-home callers leave this false.
+  final bool hooksAlreadyMaterialized;
+
   /// 该 seat 生效的用户 hook 条目(staging 按 runtimeBundle.hookIds 解析)。
   final List<HookEntry> hooks;
+  final HookContributionProvider? hookLibraryProvider;
 
   /// True when the work plane is not the control plane (SSH/WSL session).
   final bool crossMachine;
@@ -499,12 +517,52 @@ SessionHomeContext sessionHomeContextFromLaunch(
     memberId: ctx.memberId,
     sessionExpertKey: ctx.sessionExpertKey,
     resolvedExpert: ctx.resolvedExpert,
-    hooks: ctx.hooks,
+    resourceProviders: ctx.resourceProviders,
+    promptAlreadyMaterialized: ctx.promptAlreadyMaterialized,
+    hooksAlreadyMaterialized: ctx.hooksAlreadyMaterialized,
+    hooks: _sessionHomeHookEntries(ctx.resourceProviders),
+    hookLibraryProvider: _sessionHomeHookProvider(ctx.resourceProviders),
     crossMachine: ctx.crossMachine,
     resolvedProviderId: resolvedProviderId,
     credentialBasePath: credentialBasePath,
     isSimple: ctx.isSimple,
   );
+}
+
+List<HookEntry> _sessionHomeHookEntries(ResourceProviderSet providers) {
+  for (final provider in providers.hooks) {
+    if (provider case UserHookContributionProvider(:final entries)) {
+      return entries;
+    }
+  }
+  return const [];
+}
+
+HookContributionProvider? _sessionHomeHookProvider(
+  ResourceProviderSet providers,
+) {
+  for (final provider in providers.hooks) {
+    if (provider.providerId == 'user-library') return provider;
+  }
+  return null;
+}
+
+/// Returns every hook source injected at the launch boundary. The raw fields
+/// below remain only for older SessionHomeContext callers; new resource
+/// callers must flow through this complete provider set.
+List<HookContributionProvider> sessionHomeHookProviders(
+  SessionHomeContext context,
+) {
+  if (context.resourceProviders.hooks.isNotEmpty) {
+    return List.unmodifiable(context.resourceProviders.hooks);
+  }
+  if (context.hookLibraryProvider != null) {
+    return [context.hookLibraryProvider!];
+  }
+  if (context.hooks.isNotEmpty) {
+    return [UserHookContributionProvider(entries: context.hooks)];
+  }
+  return const [];
 }
 
 /// ProviderHub 契约:该 CLI 的 provider 目录、表单、模型、凭证、effort。
@@ -540,7 +598,10 @@ abstract interface class ProviderCapability implements CliCapability {
   Map<String, Object?> extraFromExisting(AppProviderConfig? existing);
   Map<String, Object?> extraFromPreset(AppProviderPreset preset);
   Map<String, Object?> buildConfig(ProviderFormInput input);
-  Widget buildExtraSection(BuildContext context, ProviderFormSectionProps props);
+  Widget buildExtraSection(
+    BuildContext context,
+    ProviderFormSectionProps props,
+  );
 
   // ---- ProviderModelCapability(+Refreshable) ----
   ProviderModelPickerMode pickerMode(AppProviderConfig provider);
@@ -610,7 +671,9 @@ abstract interface class ProviderCapability implements CliCapability {
   String defaultEffort({required String model, AppProviderConfig? provider});
 
   // ---- Session-home materialization (formerly ConfigProfileCapability) ----
-  Future<SessionHomeContribution> materializeSessionHome(SessionHomeContext ctx);
+  Future<SessionHomeContribution> materializeSessionHome(
+    SessionHomeContext ctx,
+  );
 }
 
 /// Marker: this CLI's model catalog can be refreshed live

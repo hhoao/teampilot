@@ -50,7 +50,8 @@ final class CommandHookAction extends HookAction {
 
 @immutable
 final class HttpHookAction extends HookAction {
-  const HttpHookAction({required this.url, this.headers = const {}});
+  HttpHookAction({required this.url, Map<String, String> headers = const {}})
+    : headers = Map.unmodifiable(Map<String, String>.from(headers));
 
   final String url;
   final Map<String, String> headers;
@@ -74,7 +75,7 @@ final class HttpHookAction extends HookAction {
 /// 各 CLI HookWriter 的唯一输入。
 @immutable
 class HookEntry {
-  const HookEntry({
+  HookEntry({
     required this.id,
     required this.source,
     required this.event,
@@ -82,9 +83,10 @@ class HookEntry {
     required this.action,
     this.policy = HookPolicy.none,
     this.timeout,
-    this.env = const {},
+    Map<String, String> env = const {},
     this.blockOnDecision = false,
-  });
+    this.scriptFileName,
+  }) : env = Map.unmodifiable(Map<String, String>.from(env));
 
   /// 身份键（用户库 id；内部托管源为稳定符号 id）。
   final String id;
@@ -101,6 +103,11 @@ class HookEntry {
   /// idle 语义：命令末尾 `exit 2`（内部托管用）。
   final bool blockOnDecision;
 
+  /// Compatibility basename for a script provisioned before hook rendering.
+  /// When set, target writers keep the raw command and do not generate a
+  /// `teampilot-hook-<id>` wrapper with a different filename.
+  final String? scriptFileName;
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -113,7 +120,8 @@ class HookEntry {
           policy == other.policy &&
           timeout == other.timeout &&
           mapEquals(env, other.env) &&
-          blockOnDecision == other.blockOnDecision;
+          blockOnDecision == other.blockOnDecision &&
+          scriptFileName == other.scriptFileName;
 
   @override
   int get hashCode => Object.hash(
@@ -127,5 +135,6 @@ class HookEntry {
     Object.hashAllUnordered(env.keys),
     Object.hashAllUnordered(env.values),
     blockOnDecision,
+    scriptFileName,
   );
 }

@@ -34,6 +34,11 @@ import '../../registry/config_profile/config_profile_context.dart';
 import '../../registry/config_profile/hook_seat_context_completer.dart';
 import '../../registry/hook/managed_hook_provisioner.dart';
 import '../../registry/prompt/prompt_hub_service.dart';
+import '../../../resource/providers/extension_hook_contribution_provider.dart';
+import '../../../resource/providers/hook_library_contribution_provider.dart';
+import '../../../resource/providers/managed_hook_contribution_provider.dart';
+import '../../../resource/providers/endpoint_hook_contribution_provider.dart';
+import '../../../resource/providers/hook_contribution_provider.dart';
 import '../provider/claude_effort_catalog.dart';
 import '../provider/claude_live_import.dart';
 import '../provider/claude_model_catalog.dart';
@@ -323,8 +328,8 @@ final class ClaudeProviderCapability extends CatalogModelCapability
   @override
   CredentialBindingKind defaultBinding(AppProviderConfig provider) =>
       isOfficialClaudeProvider(provider)
-          ? CredentialBindingKind.linked
-          : CredentialBindingKind.isolated;
+      ? CredentialBindingKind.linked
+      : CredentialBindingKind.isolated;
 
   @override
   Map<String, Object?> withBinding(
@@ -576,6 +581,10 @@ final class ClaudeProviderCapability extends CatalogModelCapability
       busIdle: ctx.busIdle,
       agentStatus: ctx.agentStatus,
       userHooks: ctx.hooks,
+      hookLibraryProvider: ctx.hookLibraryProvider,
+      resourceHookProviders: ctx.resourceProviders.hooks,
+      promptAlreadyMaterialized: ctx.promptAlreadyMaterialized,
+      hooksAlreadyMaterialized: ctx.hooksAlreadyMaterialized,
     );
     if (stepSw != null) {
       _logClaudeContributeLaunchStep(stepSw, 'writeMemberProfiles', sessionId);
@@ -1003,6 +1012,10 @@ final class ClaudeProviderCapability extends CatalogModelCapability
     MemberBusIdleEndpoint? busIdle,
     MemberAgentStatusEndpoint? agentStatus,
     List<HookEntry> userHooks = const [],
+    HookContributionProvider? hookLibraryProvider,
+    Iterable<HookContributionProvider> resourceHookProviders = const [],
+    bool promptAlreadyMaterialized = false,
+    bool hooksAlreadyMaterialized = false,
   }) async {
     final selected = launchedMember;
     final uniqueMembers = <String, TeamMemberConfig>{};
@@ -1032,6 +1045,10 @@ final class ClaudeProviderCapability extends CatalogModelCapability
         busIdle: busIdle,
         agentStatus: agentStatus,
         userHooks: userHooks,
+        hookLibraryProvider: hookLibraryProvider,
+        resourceHookProviders: resourceHookProviders,
+        promptAlreadyMaterialized: promptAlreadyMaterialized,
+        hooksAlreadyMaterialized: hooksAlreadyMaterialized,
       );
     }
     return appendPromptEnv;
@@ -1051,6 +1068,10 @@ final class ClaudeProviderCapability extends CatalogModelCapability
     MemberBusIdleEndpoint? busIdle,
     MemberAgentStatusEndpoint? agentStatus,
     List<HookEntry> userHooks = const [],
+    HookContributionProvider? hookLibraryProvider,
+    Iterable<HookContributionProvider> resourceHookProviders = const [],
+    required bool promptAlreadyMaterialized,
+    required bool hooksAlreadyMaterialized,
   }) async {
     final memberToolDir = delegate.sessionToolDir(
       scope.workspaceId,
@@ -1061,19 +1082,21 @@ final class ClaudeProviderCapability extends CatalogModelCapability
           : null,
     );
     final isLead = TeamMemberNaming.isTeamLead(member);
-    final promptContribution = await const PromptHubService().provisionForCli(
-      cli: CliTool.claude,
-      ctx: PromptMaterializeContext(
-        paths: delegate,
-        scope: scope,
-        member: member,
-        forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
-        mixed: mixed,
-        additionalDirectories: const [],
-      ),
-    );
-    if (promptContribution.written && member.id == launchedMember?.id) {
-      appendPromptEnv.addAll(promptContribution.environment);
+    if (!promptAlreadyMaterialized) {
+      final promptContribution = await const PromptHubService().provisionForCli(
+        cli: CliTool.claude,
+        ctx: PromptMaterializeContext(
+          paths: delegate,
+          scope: scope,
+          member: member,
+          forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
+          mixed: mixed,
+          additionalDirectories: const [],
+        ),
+      );
+      if (promptContribution.written && member.id == launchedMember?.id) {
+        appendPromptEnv.addAll(promptContribution.environment);
+      }
     }
     final file = sessionMemberSettingsFile(
       delegate,
@@ -1101,78 +1124,91 @@ final class ClaudeProviderCapability extends CatalogModelCapability
       settings,
       mixed: mixed,
     );
-    // 收敛：内部托管 hook（agent-status / bus idle / team-lead delegate /
-    // 扩展 settings-hook）经 HookSeatContextCompleter 组装为 HookEntry，
-    // 与 userHooks 一起走统一 writer 渲染。
-    const completer = HookSeatContextCompleter();
-    final delegateCommand = await delegate.resolveTeamLeadDelegateHookCommand(
-      member,
-      memberToolDir,
-      forceTeamLeadDelegateMode: isLead && forceTeamLeadDelegateMode,
-    );
-    final extensionHooks = await delegate.extensionSettingsHooks(
-      memberToolDir,
-      tool: toolId,
-      teamId: simple ? null : scope.teamId,
-      workspaceId: simple ? scope.workspaceId : null,
-    );
-    // 优先级（mergeHooksInto 按 (event, url|command) 去重、保留首个）：
-    // managed → delegate → extension → user。Task 18 收敛前 delegate 在
-    // 链尾追加（maybeApplyTeamLeadHooks），扩展在写盘时前置——去重收敛后
-    // delegate/extension 前置保持其"胜出"语义（旧链中两源命令互不碰撞，
-    // 可观察行为不变；分析见 task-18-report.md）。
-    final entries = <HookEntry>[
-      if (mixed && busIdle != null)
-        ...completer.busIdleHooks(idle: busIdle, memberId: member.id),
-      if (agentStatus != null)
-        ...completer.agentStatusHooks(
-          endpoint: agentStatus,
-          memberId: member.id,
-        ),
-      if (delegateCommand != null)
-        ...completer.delegateHooks(commands: [delegateCommand]),
-      for (final hook in extensionHooks)
-        ...completer.extensionHooks(
-          extensionId: hook.extensionId,
-          events: [hook.event],
-          command: hook.command,
-          matcher: hook.matcher,
-        ),
-      ...userHooks,
-    ];
-    // Task 19：旧 CliHookSpec 资产注册路径已删除——managed 条目全部经上方
-    // completer 组装，统一 writer 渲染（bus idle Stop 现带 timeout 5，不再被
-    // 无 timeout 的 registry 资产 Stop 去重压掉）。
-    final hookWriter = CliToolRegistry.builtIn().capability<HookCapability>(
-      CliTool.claude,
-    );
-    if (hookWriter != null && entries.isNotEmpty) {
-      final hooksDir = delegate.joinWork(memberToolDir, 'hooks');
-      final result = await ManagedHookProvisioner(
-        fs: delegate.fs,
-        joinWork: delegate.joinWork,
-        logPrefix: '[hook-writer] claude',
-      ).provision(
-        writer: hookWriter,
-        entries: entries,
-        ctx: HookRenderContext(
-          hooksDir: hooksDir,
-          runner: delegate.hostEnvironmentForProvision().scriptRunner,
-          glueBuilder: const GlueScriptBuilder(),
-        ),
+    if (!hooksAlreadyMaterialized) {
+      // 收敛：内部托管 hook（agent-status / bus idle / team-lead delegate /
+      // 扩展 settings-hook）经 HookSeatContextCompleter 组装为 HookEntry，
+      // 与 userHooks 一起走统一 writer 渲染。
+      const completer = HookSeatContextCompleter();
+      final delegateCommand = await delegate.resolveTeamLeadDelegateHookCommand(
+        member,
+        memberToolDir,
+        forceTeamLeadDelegateMode: isLead && forceTeamLeadDelegateMode,
       );
-      settings = mergeHooksInto(
+      final extensionHooks = await delegate.extensionSettingsHooks(
+        memberToolDir,
+        tool: toolId,
+        teamId: simple ? null : scope.teamId,
+        workspaceId: simple ? scope.workspaceId : null,
+      );
+      // 优先级（mergeHooksInto 按 (event, url|command) 去重、保留首个）：
+      // managed → delegate → extension → user。Task 18 收敛前 delegate 在
+      // 链尾追加（maybeApplyTeamLeadHooks），扩展在写盘时前置——去重收敛后
+      // delegate/extension 前置保持其"胜出"语义（旧链中两源命令互不碰撞，
+      // 可观察行为不变；分析见 task-18-report.md）。
+      final hookProviders = <HookContributionProvider>[
+        if (mixed && busIdle != null)
+          BusIdleHookContributionProvider(
+            endpoint: busIdle,
+            memberId: member.id,
+          ),
+        if (agentStatus != null)
+          AgentStatusHookContributionProvider(
+            endpoint: agentStatus,
+            memberId: member.id,
+          ),
+        if (delegateCommand != null)
+          ManagedHookContributionProvider(
+            entries: completer.delegateHooks(commands: [delegateCommand]),
+            providerId: 'team-lead-delegate',
+          ),
+        if (extensionHooks.isNotEmpty)
+          ExtensionHookContributionProvider(settingsHooks: extensionHooks),
+        ...resourceHookProviders.where(
+          (provider) => provider.providerId != 'user-library',
+        ),
+        hookLibraryProvider ?? UserHookContributionProvider(entries: userHooks),
+      ];
+      final assembledHooks = await completer.assemble(
+        cli: CliTool.claude,
+        member: member,
+        providers: hookProviders,
+      );
+      final entries = assembledHooks.entries;
+      // Task 19：旧 CliHookSpec 资产注册路径已删除——managed 条目全部经上方
+      // completer 组装，统一 writer 渲染（bus idle Stop 现带 timeout 5，不再被
+      // 无 timeout 的 registry 资产 Stop 去重压掉）。
+      final hookWriter = CliToolRegistry.builtIn().capability<HookCapability>(
+        CliTool.claude,
+      );
+      if (hookWriter != null && entries.isNotEmpty) {
+        final hooksDir = delegate.joinWork(memberToolDir, 'hooks');
+        final result =
+            await ManagedHookProvisioner(
+              fs: delegate.fs,
+              joinWork: delegate.joinWork,
+              logPrefix: '[hook-writer] claude',
+            ).provision(
+              writer: hookWriter,
+              entries: entries,
+              ctx: HookRenderContext(
+                hooksDir: hooksDir,
+                runner: delegate.hostEnvironmentForProvision().scriptRunner,
+                glueBuilder: const GlueScriptBuilder(),
+              ),
+            );
+        settings = mergeHooksInto(
+          settings,
+          (result.configFragments['settings.json'] as Map<String, Object?>?) ??
+              const <String, Object?>{},
+        );
+      }
+      settings = await delegate.maybeApplyTeamLeadHooks(
         settings,
-        (result.configFragments['settings.json'] as Map<String, Object?>?) ??
-            const <String, Object?>{},
+        member,
+        memberToolDir,
+        forceTeamLeadDelegateMode: isLead && forceTeamLeadDelegateMode,
       );
     }
-    settings = await delegate.maybeApplyTeamLeadHooks(
-      settings,
-      member,
-      memberToolDir,
-      forceTeamLeadDelegateMode: isLead && forceTeamLeadDelegateMode,
-    );
     await delegate.writeSettingsFile(
       file,
       settings,
@@ -1439,7 +1475,6 @@ void _logClaudeContributeLaunchStep(
     'elapsedMs=$elapsedMs session=$sessionId cli=claude$suffix',
   );
 }
-
 
 final _emptyCatalogUpdates = _EmptyListenable();
 

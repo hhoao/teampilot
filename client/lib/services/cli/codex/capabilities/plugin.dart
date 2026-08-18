@@ -16,6 +16,9 @@ final class CodexPluginCapability implements PluginCapability {
   const CodexPluginCapability();
 
   @override
+  bool get writesAssembledMcp => false;
+
+  @override
   PluginManifestPaths? get manifestPaths => codexPluginManifestPaths;
 
   @override
@@ -63,7 +66,10 @@ final class CodexPluginCapability implements PluginCapability {
   bool get needsSharedPluginDepsBeforeReconcile => false;
 
   @override
-  Future<void> seedSharedPluginDeps({Filesystem? homeFs, String? homeRoot}) async {}
+  Future<void> seedSharedPluginDeps({
+    Filesystem? homeFs,
+    String? homeRoot,
+  }) async {}
 
   @override
   String get pluginsSubdir => 'plugins';
@@ -140,15 +146,7 @@ final class CodexPluginCapability implements PluginCapability {
       await CliPluginLayout.projectBundleToFlavor(ctx.fs, sourceRoot, paths);
       await ctx.fs.copyTree(source: sourceRoot, destination: cacheRoot);
 
-      enables.add(
-        CodexPluginEnableSpec(
-          name: pluginName,
-          bundledMcpServerNames: await _readBundledMcpServerNames(
-            ctx.fs,
-            sourceRoot,
-          ),
-        ),
-      );
+      enables.add(CodexPluginEnableSpec(name: pluginName));
     }
 
     return enables;
@@ -217,38 +215,5 @@ final class CodexPluginCapability implements PluginCapability {
       if (plugin.directory == bundleDirName) return plugin;
     }
     return null;
-  }
-
-  static Future<List<String>> _readBundledMcpServerNames(
-    Filesystem fs,
-    String pluginRoot,
-  ) async {
-    final mcpPath = fs.pathContext.join(pluginRoot, '.mcp.json');
-    if (!(await fs.stat(mcpPath)).isFile) return const [];
-
-    final text = await fs.readString(mcpPath);
-    if (text == null || text.trim().isEmpty) return const [];
-
-    try {
-      final root = (jsonDecode(text) as Map).cast<String, Object?>();
-      final wrapped =
-          (root['mcpServers'] as Map?)?.cast<String, Object?>() ??
-          (root['mcp_servers'] as Map?)?.cast<String, Object?>();
-      if (wrapped != null && wrapped.isNotEmpty) {
-        return wrapped.keys.toList()..sort();
-      }
-
-      const reservedKeys = {'mcpServers', 'mcp_servers'};
-      final direct =
-          root.entries
-              .where((entry) => !reservedKeys.contains(entry.key))
-              .where((entry) => entry.value is Map)
-              .map((entry) => entry.key)
-              .toList()
-            ..sort();
-      return direct;
-    } catch (_) {
-      return const [];
-    }
   }
 }

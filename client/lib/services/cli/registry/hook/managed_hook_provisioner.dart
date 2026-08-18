@@ -60,10 +60,29 @@ final class ManagedHookProvisioner {
     required HookRenderContext ctx,
   }) async {
     final result = writer.render(entries: entries, ctx: ctx);
+    await writeScripts(result: result, ctx: ctx);
+    final prefix = logPrefix;
+    if (prefix != null) {
+      for (final warning in result.warnings) {
+        appLogger.d('$prefix $warning');
+      }
+    }
+    return result;
+  }
+
+  /// Writes an already-rendered result without invoking the writer again.
+  /// This keeps coordinator assembly pure while reusing the same injected
+  /// filesystem/manifest path semantics as the legacy hook stages.
+  Future<void> writeScripts({
+    required HookWriteResult result,
+    required HookRenderContext ctx,
+  }) async {
     final ensuredDirs = <String>{};
     for (final script in result.scripts) {
       final override = targetOverride?.call(script.fileName);
-      final target = override ?? joinWork(ctx.hooksDir, script.fileName);
+      final target =
+          override ??
+          joinWork(script.targetDirectory ?? ctx.hooksDir, script.fileName);
       if (ensureParentDirs) {
         final parent = (pathContext ?? fs.pathContext).dirname(target);
         if (ensuredDirs.add(parent)) {
@@ -76,12 +95,5 @@ final class ManagedHookProvisioner {
         await fs.writeString(target, script.content);
       }
     }
-    final prefix = logPrefix;
-    if (prefix != null) {
-      for (final warning in result.warnings) {
-        appLogger.d('$prefix $warning');
-      }
-    }
-    return result;
   }
 }
