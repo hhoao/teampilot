@@ -1,4 +1,6 @@
 import '../../../../models/team_config.dart';
+import '../../../resource/contribution/resource_assembly_error.dart';
+import '../../../resource/contribution/resource_assembly_result.dart';
 import '../../../resource/providers/prompt_contribution_provider.dart';
 import '../cli_capability.dart';
 import '../config_profile/config_profile_context.dart';
@@ -124,6 +126,7 @@ class PromptMaterializeResult {
   const PromptMaterializeResult({
     this.environment = const {},
     this.written = false,
+    this.assembly,
   });
 
   /// 传输 env（claude/flashskyai 的 `TEAMPILOT_APPEND_SYSTEM_PROMPT_FILE`）。
@@ -131,4 +134,11 @@ class PromptMaterializeResult {
 
   /// 是否发生了写入（装配点借此并入 changed）。
   final bool written;
+
+  /// Diagnostics produced while assembling the document consumed by the
+  /// materializer. Direct capability callers may leave this null.
+  final ResourceAssemblyResult? assembly;
+
+  List<ResourceAssemblyDiagnostic> get diagnostics =>
+      assembly?.diagnostics ?? const [];
 }

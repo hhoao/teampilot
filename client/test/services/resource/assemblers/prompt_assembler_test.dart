@@ -53,30 +53,32 @@ void main() {
     );
   });
 
-  test('same-layer replace contributions throw a conflict', () async {
-    final future = PromptAssembler().assemble(
-      context: context,
-      providers: [
-        _Provider('one', const [
-          _Contribution('same', 'one', PromptMergeRole.replace),
-        ]),
-        _Provider('two', const [
-          _Contribution('same', 'two', PromptMergeRole.replace),
-        ]),
-      ],
-    );
+  test(
+    'same-layer replace uses the later contribution and reports conflict',
+    () async {
+      final result = await PromptAssembler().assemble(
+        context: context,
+        providers: [
+          _Provider('one', const [
+            _Contribution('same', 'one', PromptMergeRole.replace),
+          ], sourceId: 'one-source'),
+          _Provider('two', const [
+            _Contribution('same', 'two', PromptMergeRole.replace),
+          ], sourceId: 'two-source'),
+        ],
+      );
 
-    await expectLater(
-      future,
-      throwsA(
-        isA<ResourceAssemblyException>().having(
-          (exception) => exception.diagnostics.single.message,
-          'message',
-          contains('same'),
-        ),
-      ),
-    );
-  });
+      expect(result.document.sections.single.content, 'two');
+      expect(result.diagnostics, hasLength(1));
+      final diagnostic = result.diagnostics.single;
+      expect(diagnostic.providerId, 'two');
+      expect(diagnostic.sourceId, 'two-source');
+      expect(diagnostic.message, contains('one'));
+      expect(diagnostic.message, contains('one-source'));
+      expect(diagnostic.message, contains('two'));
+      expect(diagnostic.message, contains('two-source'));
+    },
+  );
 
   test('higher-layer replace supersedes lower layer with a warning', () async {
     final result = await PromptAssembler().assemble(
@@ -101,9 +103,71 @@ void main() {
       ],
     );
 
-    expect(result.document.contributions.single.content, 'workspace role');
+    expect(result.document.sections.map((section) => section.content), [
+      'workspace role',
+      'global role',
+    ]);
     expect(result.warnings, hasLength(1));
+    expect(result.warnings.single.providerId, 'global');
     expect(result.warnings.single.sourceId, 'role');
+  });
+
+  test(
+    'same-layer sections merge and report both contribution origins',
+    () async {
+      final result = await PromptAssembler().assemble(
+        context: context,
+        providers: [
+          _Provider('section-one', const [
+            _Contribution('shared', 'one', PromptMergeRole.section),
+          ], sourceId: 'source-one'),
+          _Provider('section-two', const [
+            _Contribution('shared', 'two', PromptMergeRole.section),
+          ], sourceId: 'source-two'),
+        ],
+      );
+
+      expect(result.document.sections.single.content, 'one\n\ntwo');
+      expect(result.diagnostics, hasLength(1));
+      final diagnostic = result.diagnostics.single;
+      expect(diagnostic.providerId, 'section-two');
+      expect(diagnostic.sourceId, 'source-two');
+      expect(diagnostic.message, contains('section-one'));
+      expect(diagnostic.message, contains('source-one'));
+      expect(diagnostic.message, contains('section-two'));
+      expect(diagnostic.message, contains('source-two'));
+    },
+  );
+
+  test('lower-layer sections remain independent append content', () async {
+    final result = await PromptAssembler().assemble(
+      context: context,
+      providers: [
+        _Provider('high', const [
+          _Contribution(
+            'shared',
+            'high section',
+            PromptMergeRole.section,
+            scope: PromptScope.workspace,
+          ),
+        ]),
+        _Provider('low', const [
+          _Contribution(
+            'shared',
+            'low section',
+            PromptMergeRole.section,
+            scope: PromptScope.global,
+          ),
+        ]),
+      ],
+    );
+
+    expect(result.document.sections.map((section) => section.content), [
+      'high section',
+      'low section',
+    ]);
+    expect(result.warnings, hasLength(1));
+    expect(result.warnings.single.providerId, 'low');
   });
 
   test(
@@ -189,7 +253,13 @@ void main() {
 }
 
 final class _Provider implements PromptContributionProvider {
-  _Provider(this.providerId, this.contributions, {this.delay, this.error});
+  _Provider(
+    this.providerId,
+    this.contributions, {
+    this.delay,
+    this.error,
+    this.sourceId,
+  });
 
   @override
   final String providerId;
@@ -197,6 +267,7 @@ final class _Provider implements PromptContributionProvider {
   final List<_Contribution> contributions;
   final Duration? delay;
   final Object? error;
+  final String? sourceId;
 
   @override
   Future<Iterable<PromptContribution>> provide(
@@ -214,7 +285,7 @@ final class _Provider implements PromptContributionProvider {
         origin: ContributionOrigin(
           providerId: providerId,
           kind: ResourceOriginKind.cliBuiltIn,
-          sourceId: contribution.id,
+          sourceId: sourceId ?? contribution.id,
         ),
       ),
     );

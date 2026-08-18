@@ -104,18 +104,21 @@ final class PromptAssembler {
     final existing = sections[index];
     final comparison = _compareLayers(existing.scope, contribution.scope);
     if (role == PromptMergeRole.replace && comparison == 0) {
-      throw ResourceAssemblyException([
-        ResourceAssemblyError.conflict(
+      diagnostics.add(
+        ResourceAssemblyDiagnostic(
+          severity: ResourceAssemblyDiagnosticSeverity.warning,
           resourceKind: ResourceContributionKind.prompt,
           cli: cli,
           providerId: contribution.origin.providerId,
           sourceId: contribution.origin.sourceId,
           message:
-              'Prompt replace conflict for id ${contribution.id} at '
-              'scope ${contribution.scope}. Existing provider: '
-              '${existing.origin.providerId}.',
+              'Prompt replace conflict for id ${contribution.id}; '
+              'later ${_originLabel(contribution.origin)} replaced earlier '
+              '${_originLabel(existing.origin)}.',
         ),
-      ]);
+      );
+      sections[index] = _PromptSectionBuilder.single(contribution);
+      return;
     }
 
     if (comparison > 0) {
@@ -124,14 +127,16 @@ final class PromptAssembler {
           severity: ResourceAssemblyDiagnosticSeverity.warning,
           resourceKind: ResourceContributionKind.prompt,
           cli: cli,
-          providerId: contribution.origin.providerId,
-          sourceId: contribution.origin.sourceId ?? contribution.id,
+          providerId: existing.origin.providerId,
+          sourceId: existing.origin.sourceId,
           message:
-              'Higher-layer prompt ${contribution.id} superseded the '
-              'lower-layer contribution from ${existing.origin.providerId}.',
+              'Lower-layer prompt ${_originLabel(existing.origin)} was '
+              'retained as appended content after higher-layer '
+              '${_originLabel(contribution.origin)} took precedence.',
         ),
       );
       sections[index] = _PromptSectionBuilder.single(contribution);
+      sections.insert(index + 1, existing.asAppend());
       return;
     }
 
@@ -141,20 +146,41 @@ final class PromptAssembler {
           severity: ResourceAssemblyDiagnosticSeverity.warning,
           resourceKind: ResourceContributionKind.prompt,
           cli: cli,
-          providerId: existing.origin.providerId,
-          sourceId: contribution.origin.sourceId ?? contribution.id,
+          providerId: contribution.origin.providerId,
+          sourceId: contribution.origin.sourceId,
           message:
-              'Lower-layer prompt ${contribution.id} was superseded by '
-              'the higher-layer contribution.',
+              'Lower-layer prompt ${_originLabel(contribution.origin)} '
+              'was retained as appended content; higher-layer '
+              '${_originLabel(existing.origin)} remains authoritative.',
+        ),
+      );
+      sections.add(
+        _PromptSectionBuilder.single(
+          contribution,
+          role: PromptMergeRole.append,
         ),
       );
       return;
     }
 
-    // Same-layer sections are intentionally grouped by id, preserving every
-    // contribution and its origin. Replace has already failed above.
+    diagnostics.add(
+      ResourceAssemblyDiagnostic(
+        severity: ResourceAssemblyDiagnosticSeverity.warning,
+        resourceKind: ResourceContributionKind.prompt,
+        cli: cli,
+        providerId: contribution.origin.providerId,
+        sourceId: contribution.origin.sourceId,
+        message:
+            'Prompt section conflict for id ${contribution.id}; '
+            'merged ${_originLabel(contribution.origin)} with earlier '
+            '${_originLabel(existing.origin)}.',
+      ),
+    );
     existing.contributions.add(contribution);
   }
+
+  String _originLabel(ContributionOrigin origin) =>
+      '${origin.providerId}/${origin.sourceId ?? '<none>'}';
 
   int _compareLayers(PromptScope left, PromptScope right) {
     return _layer(right).compareTo(_layer(left));
@@ -183,20 +209,27 @@ final class PromptAssemblyResult {
 }
 
 final class _PromptSectionBuilder {
-  _PromptSectionBuilder({required this.contributions})
+  _PromptSectionBuilder({required this.contributions, PromptMergeRole? role})
     : id = contributions.first.id,
-      role = contributions.first.mergeRole,
+      role = role ?? contributions.first.mergeRole,
       scope = contributions.first.scope,
       origin = contributions.first.origin;
 
-  factory _PromptSectionBuilder.single(PromptContribution contribution) =>
-      _PromptSectionBuilder(contributions: [contribution]);
+  factory _PromptSectionBuilder.single(
+    PromptContribution contribution, {
+    PromptMergeRole? role,
+  }) => _PromptSectionBuilder(contributions: [contribution], role: role);
 
   final String id;
   final PromptMergeRole role;
   final PromptScope scope;
   final ContributionOrigin origin;
   final List<PromptContribution> contributions;
+
+  _PromptSectionBuilder asAppend() => _PromptSectionBuilder(
+    contributions: contributions,
+    role: PromptMergeRole.append,
+  );
 
   PromptSection build() => PromptSection(
     id: id,

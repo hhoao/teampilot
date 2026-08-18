@@ -54,6 +54,14 @@ class PromptHubService {
         ),
       ]);
     }
-    return target.materialize(ctx, document: assembly.document);
+    final materialized = await target.materialize(
+      ctx,
+      document: assembly.document,
+    );
+    return PromptMaterializeResult(
+      environment: materialized.environment,
+      written: materialized.written,
+      assembly: materialized.assembly ?? assembly.assembly,
+    );
   }
 }
