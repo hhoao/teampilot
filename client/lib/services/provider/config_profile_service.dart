@@ -150,7 +150,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     );
   }
 
-  Future<List<String>> _provisionStagedResources({
+  Future<ResourceProvisionReport> _provisionStagedResources({
     required CliResourceProvisionContext context,
   }) async {
     final report = await CliResourceProvisioner(
@@ -160,11 +160,13 @@ class ConfigProfileService implements ConfigProfileDelegate {
     if (report.hardDiagnostics.isNotEmpty) {
       throw ResourceAssemblyException(report.hardDiagnostics);
     }
-    return [
-      ...report.warnings.map((diagnostic) => diagnostic.message),
-      for (final result in report.materializations.values) ...result.warnings,
-    ];
+    return report;
   }
+
+  List<String> _resourceWarnings(ResourceProvisionReport report) => [
+    ...report.warnings.map((diagnostic) => diagnostic.message),
+    for (final result in report.materializations.values) ...result.warnings,
+  ];
 
   ResourceProviderSet _catalogResourceProviders(ResourceCatalog catalog) =>
       ResourceProviderSet(
@@ -524,6 +526,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     TeamMemberConfig? member,
     Iterable<TeamMemberConfig> members = const [],
     String? memberHome,
+    Map<String, String>? resourceEnvironment,
     String workingDirectory = '',
     Iterable<String> additionalDirectories = const [],
   }) async {
@@ -637,31 +640,33 @@ class ConfigProfileService implements ConfigProfileDelegate {
         projectRoots: projectMcpRoots,
       );
       final providers = _catalogResourceProviders(resourceCatalog);
-      warnings.addAll(
-        await _provisionStagedResources(
-          context: CliResourceProvisionContext(
-            cli: cli,
-            scope: SimpleResourceScope(bundle: runtimeBundle),
-            runtimeBundle: runtimeBundle,
-            fs: fs,
-            layout: layout,
-            configDir: configDir,
-            resourceProviders: ResourceProviderSet(
-              skills: providers.skills,
-              mcp: mcpProviders.providers.mcp,
-            ),
-            paths: promptPaths,
-            launchScope: launchScope,
-            member: member,
-            members: members,
-            workingDirectory: workingDirectory,
-            additionalDirectories: additionalDirectories,
-            memberHome: memberHome,
-            appConfigDir: mcpProviders.catalogProvider != null
-                ? layout.appToolRoot(cli.value)
-                : null,
+      final report = await _provisionStagedResources(
+        context: CliResourceProvisionContext(
+          cli: cli,
+          scope: SimpleResourceScope(bundle: runtimeBundle),
+          runtimeBundle: runtimeBundle,
+          fs: fs,
+          layout: layout,
+          configDir: configDir,
+          resourceProviders: ResourceProviderSet(
+            skills: providers.skills,
+            mcp: mcpProviders.providers.mcp,
           ),
+          paths: promptPaths,
+          launchScope: launchScope,
+          member: member,
+          members: members,
+          workingDirectory: workingDirectory,
+          additionalDirectories: additionalDirectories,
+          memberHome: memberHome,
+          appConfigDir: mcpProviders.catalogProvider != null
+              ? layout.appToolRoot(cli.value)
+              : null,
         ),
+      );
+      warnings.addAll(_resourceWarnings(report));
+      resourceEnvironment?.addAll(
+        report.promptMaterialization?.environment ?? const {},
       );
     });
 
@@ -793,6 +798,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
             'home',
           )
         : null;
+    final resourceEnvironment = <String, String>{};
     final fsSw = Stopwatch()..start();
     final fsWarnings = await staging.applySimpleSessionFilesystem(
       workspaceId: workspaceId,
@@ -805,6 +811,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
       member: member,
       members: [member],
       memberHome: simpleMemberHome,
+      resourceEnvironment: resourceEnvironment,
       workingDirectory: workingDirectory,
       additionalDirectories: additionalDirectories,
       projectMcpRoots: projectMcpRootsFromLaunch(
@@ -842,7 +849,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     );
     return (
       outcome: TeamLaunchOutcome(
-        environment: outcome.environment,
+        environment: {...resourceEnvironment, ...outcome.environment},
         warnings: [
           ...fsWarnings,
           ...hookLibraryProvider.diagnostics.map(
@@ -1017,63 +1024,62 @@ class ConfigProfileService implements ConfigProfileDelegate {
       team: team,
       cli: launchCli,
     );
-    warnings.addAll(
-      await _provisionStagedResources(
-        context: CliResourceProvisionContext(
-          cli: launchCli,
-          scope: team == null
-              ? WorkspaceResourceScope(bundle: runtimeBundle)
-              : TeamResourceScope(team: team, member: launchMember),
-          runtimeBundle: runtimeBundle,
-          fs: stagingFs,
-          layout: staging.layout,
-          configDir: resourceConfigDir,
-          resourceProviders: ResourceProviderSet(
-            skills: providers.skills,
-            mcp: mcpProviders.providers.mcp,
-          ),
-          paths: staging,
-          launchScope: scope,
-          member: launchMember,
-          members: launchMembers,
-          forceTeamLeadDelegateMode: team?.forceTeamLeadDelegateMode ?? false,
-          mixed: team?.teamMode == TeamMode.mixed,
-          pushDelivery: team?.teamMode == TeamMode.mixed,
-          workingDirectory: workingDirectory,
-          additionalDirectories: additionalDirectories,
-          memberHome: launchCli == CliTool.cursor && launchMember != null
-              ? staging.fs.pathContext.join(
-                  team?.teamMode == TeamMode.mixed && memberId != null
-                      ? staging.layout.workspaceRuntimeMemberToolDir(
-                          trimmedWorkspaceId,
-                          trimmedTeamId,
-                          memberId,
-                          launchCli.value,
-                        )
-                      : staging.sessionToolDir(
-                          trimmedWorkspaceId,
-                          trimmedSessionId,
-                          launchCli.value,
-                        ),
-                  'home',
-                )
-              : null,
-          appConfigDir: mcpProviders.catalogProvider != null
-              ? staging.layout.appToolRoot(launchCli.value)
-              : null,
-          mcpConfigDir: warmTier
-              ? CursorWorkspaceWarmTier.sharedRoot(
-                  staging.layout,
-                  trimmedWorkspaceId,
-                  trimmedTeamId,
-                )
-              : null,
-          mcpOutputBasename: warmTier
-              ? CursorWorkspaceWarmTier.mcpBaseFileName
-              : null,
+    final resourceReport = await _provisionStagedResources(
+      context: CliResourceProvisionContext(
+        cli: launchCli,
+        scope: team == null
+            ? WorkspaceResourceScope(bundle: runtimeBundle)
+            : TeamResourceScope(team: team, member: launchMember),
+        runtimeBundle: runtimeBundle,
+        fs: stagingFs,
+        layout: staging.layout,
+        configDir: resourceConfigDir,
+        resourceProviders: ResourceProviderSet(
+          skills: providers.skills,
+          mcp: mcpProviders.providers.mcp,
         ),
+        paths: staging,
+        launchScope: scope,
+        member: launchMember,
+        members: launchMembers,
+        forceTeamLeadDelegateMode: team?.forceTeamLeadDelegateMode ?? false,
+        mixed: team?.teamMode == TeamMode.mixed,
+        pushDelivery: team?.teamMode == TeamMode.mixed,
+        workingDirectory: workingDirectory,
+        additionalDirectories: additionalDirectories,
+        memberHome: launchCli == CliTool.cursor && launchMember != null
+            ? staging.fs.pathContext.join(
+                team?.teamMode == TeamMode.mixed && memberId != null
+                    ? staging.layout.workspaceRuntimeMemberToolDir(
+                        trimmedWorkspaceId,
+                        trimmedTeamId,
+                        memberId,
+                        launchCli.value,
+                      )
+                    : staging.sessionToolDir(
+                        trimmedWorkspaceId,
+                        trimmedSessionId,
+                        launchCli.value,
+                      ),
+                'home',
+              )
+            : null,
+        appConfigDir: mcpProviders.catalogProvider != null
+            ? staging.layout.appToolRoot(launchCli.value)
+            : null,
+        mcpConfigDir: warmTier
+            ? CursorWorkspaceWarmTier.sharedRoot(
+                staging.layout,
+                trimmedWorkspaceId,
+                trimmedTeamId,
+              )
+            : null,
+        mcpOutputBasename: warmTier
+            ? CursorWorkspaceWarmTier.mcpBaseFileName
+            : null,
       ),
     );
+    warnings.addAll(_resourceWarnings(resourceReport));
 
     final cap = _cliRegistry.capability<ProviderCapability>(launchCli);
     if (cap == null) {
@@ -1135,7 +1141,10 @@ class ConfigProfileService implements ConfigProfileDelegate {
 
     return (
       outcome: TeamLaunchOutcome(
-        environment: _withAgentStatusEnv(contribution.environment, agentStatus),
+        environment: {
+          ...?resourceReport.promptMaterialization?.environment,
+          ..._withAgentStatusEnv(contribution.environment, agentStatus),
+        },
         warnings: [...warnings, ...contribution.warnings],
       ),
       manifest: manifest,

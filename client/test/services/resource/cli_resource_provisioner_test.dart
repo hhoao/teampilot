@@ -445,6 +445,9 @@ void main() {
       paths.sessionToolDir('workspace', 'session', 'claude'),
       'prompts/role.md',
     );
+    expect(report.promptMaterialization?.environment, {
+      'TEAMPILOT_APPEND_SYSTEM_PROMPT_FILE': promptPath,
+    });
     expect(await fs.readString(promptPath), 'prompt');
   });
 }
@@ -766,7 +769,10 @@ final class _WritingPromptCapability implements PromptCapability {
     );
     await paths.fs.ensureDir(paths.pathContext.dirname(path));
     await paths.fs.atomicWrite(path, document.content);
-    return const PromptMaterializeResult(written: true);
+    return PromptMaterializeResult(
+      written: true,
+      environment: {'TEAMPILOT_APPEND_SYSTEM_PROMPT_FILE': path},
+    );
   }
 }
 

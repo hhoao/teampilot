@@ -69,7 +69,8 @@ final class CursorHomeProvisioner {
 
     if (!member.isValid) return;
 
-    if (!mixed && !promptAlreadyMaterialized) {
+    if (!mixed) {
+      if (promptAlreadyMaterialized) return;
       await const PromptHubService().provisionForCli(
         cli: CliTool.cursor,
         capability: _promptProvision,

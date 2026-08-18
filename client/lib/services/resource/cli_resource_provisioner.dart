@@ -114,6 +114,7 @@ class ResourceProvisionReport {
         materializations =
         const {},
     this.prompt,
+    this.promptMaterialization,
     Iterable<SkillContribution> skills = const [],
     Iterable<McpServerSpec> mcpServers = const [],
     Iterable<HookEntry> hooks = const [],
@@ -135,6 +136,7 @@ class ResourceProvisionReport {
   final Map<ResourceContributionKind, ResourceMaterializationResult>
   materializations;
   final PromptDocument? prompt;
+  final PromptMaterializeResult? promptMaterialization;
   final List<SkillContribution> skills;
   final List<McpServerSpec> mcpServers;
   final List<HookEntry> hooks;
@@ -173,6 +175,7 @@ final class CliResourceProvisioner {
     SkillAssemblyResult? skillAssembly;
     McpAssemblyResult? mcpAssembly;
     HookAssemblyResult? hookAssembly;
+    PromptMaterializeResult? promptMaterialization;
 
     // Keep all collection and assembly ahead of every target write. This is
     // deliberately sequential at the kind boundary; provider order inside
@@ -300,6 +303,7 @@ final class CliResourceProvisioner {
             ),
             document: prompt,
           );
+          promptMaterialization = result;
           warnings.addAll(result.diagnostics.where(_isWarning));
           materializations[ResourceContributionKind.prompt] =
               ResourceMaterializationResult(
@@ -477,6 +481,7 @@ final class CliResourceProvisioner {
       hardDiagnostics: hard,
       materializations: materializations,
       prompt: prompt,
+      promptMaterialization: promptMaterialization,
       skills: skills,
       mcpServers: mcpServers,
       hooks: hooks,
