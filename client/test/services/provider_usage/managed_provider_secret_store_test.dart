@@ -37,6 +37,30 @@ class _ThrowingSecureKeyValueStore implements SecureKeyValueStore {
   Future<void> write(String key, String value) async => throw error;
 }
 
+class _FailOnWriteSecureKeyValueStore implements SecureKeyValueStore {
+  _FailOnWriteSecureKeyValueStore(this.failOnWrite, this.error);
+
+  final int failOnWrite;
+  final Object error;
+  final values = <String, String>{};
+  var writeCount = 0;
+
+  @override
+  Future<void> delete(String key) async {
+    values.remove(key);
+  }
+
+  @override
+  Future<String?> read(String key) async => values[key];
+
+  @override
+  Future<void> write(String key, String value) async {
+    writeCount++;
+    if (writeCount == failOnWrite) throw error;
+    values[key] = value;
+  }
+}
+
 ManagedProvider _provider({String? credentialRef = 'managed-provider:p1'}) =>
     ManagedProvider(
       id: 'p1',
@@ -94,6 +118,21 @@ void main() {
       expect(await store.readMasked(ref), isEmpty);
     },
   );
+
+  test('asMap remains immutable and redacts values from toString', () async {
+    final backend = _FakeSecureKeyValueStore();
+    final store = ManagedProviderSecretStore(backend);
+    const secret = 'scope-map-secret';
+
+    await store.write('managed-provider:p1', {'apiKey': secret});
+    final scope = await store.read('managed-provider:p1');
+    final values = scope.asMap();
+
+    expect(values['apiKey'], secret);
+    expect(values.toString(), isNot(contains(secret)));
+    expect(scope.toString(), isNot(contains(secret)));
+    expect(() => values['apiKey'] = 'replacement', throwsUnsupportedError);
+  });
 
   test(
     'normalizes whitespace and rejects unsafe namespace components',
@@ -209,6 +248,38 @@ void main() {
     },
   );
 
+  test(
+    'delete is idempotent for a never-initialized credential reference',
+    () async {
+      final backend = _FakeSecureKeyValueStore();
+      final store = ManagedProviderSecretStore(backend);
+
+      await store.delete('never-initialized');
+
+      expect(backend.values, isEmpty);
+    },
+  );
+
+  test('rolls back secret fields when a multi-step write fails', () async {
+    const secret = 'rollback-secret';
+    final backend = _FailOnWriteSecureKeyValueStore(
+      4,
+      StateError('backend failed while handling $secret'),
+    );
+    final store = ManagedProviderSecretStore(backend);
+
+    final error = await captureException(
+      () => store.write('managed-provider:p1', {
+        'apiKey': secret,
+        'token': 'second-$secret',
+      }),
+    );
+
+    expect(error, isA<ManagedProviderCredentialError>());
+    expect(error.toString(), isNot(contains(secret)));
+    expect(backend.values, isEmpty);
+  });
+
   test('wraps backend failures without exposing backend details', () async {
     const secret = 'backend-secret-value';
     final rawError = StateError('backend failed for $secret');
@@ -280,7 +351,7 @@ void main() {
   );
 }
 
-Future<Object> captureException(Future<Object> Function() action) async {
+Future<Object> captureException<T>(Future<T> Function() action) async {
   try {
     await action();
     fail('Expected action to throw');

@@ -1,3 +1,4 @@
+import 'dart:collection';
 import 'dart:convert';
 
 import '../../models/managed_provider.dart';
@@ -11,7 +12,35 @@ abstract interface class ProviderCredentialScope {
   bool get isEmpty;
   Iterable<String> get fields;
   String? valueFor(String field);
-  Map<String, String> asMap();
+  ManagedProviderCredentialMap asMap();
+}
+
+/// An immutable map view whose diagnostics never include credential values.
+class ManagedProviderCredentialMap extends MapBase<String, String> {
+  ManagedProviderCredentialMap(Map<String, String> values)
+    : _values = Map.unmodifiable(values);
+
+  final Map<String, String> _values;
+
+  @override
+  String? operator [](Object? key) => _values[key];
+
+  @override
+  void operator []=(String key, String value) => _throwImmutable();
+
+  @override
+  void clear() => _throwImmutable();
+
+  @override
+  Iterable<String> get keys => _values.keys;
+
+  @override
+  String? remove(Object? key) => _throwImmutable();
+
+  @override
+  String toString() => 'ManagedProviderCredentialMap(<redacted>)';
+
+  Never _throwImmutable() => throw UnsupportedError('immutable');
 }
 
 class ManagedProviderCredentialScope implements ProviderCredentialScope {
@@ -30,7 +59,7 @@ class ManagedProviderCredentialScope implements ProviderCredentialScope {
   String? valueFor(String field) => _values[field];
 
   @override
-  Map<String, String> asMap() => _values;
+  ManagedProviderCredentialMap asMap() => ManagedProviderCredentialMap(_values);
 
   @override
   String toString() => 'ManagedProviderCredentialScope(<redacted>)';
@@ -105,36 +134,75 @@ class ManagedProviderSecretStore {
       if (manifest.isInitialized || normalized.isEmpty) {
         _throwManifestMissing();
       }
-      await _writeKey(_key(ref, _initializedField), '1');
-      for (final entry in normalized.entries) {
-        await _writeKey(_key(ref, entry.key), entry.value);
+      final writtenFields = <String>[];
+      var markerAttempted = false;
+      var manifestAttempted = false;
+      try {
+        markerAttempted = true;
+        await _writeKey(_key(ref, _initializedField), '1');
+        for (final entry in normalized.entries) {
+          writtenFields.add(entry.key);
+          await _writeKey(_key(ref, entry.key), entry.value);
+        }
+        manifestAttempted = true;
+        await _writeManifest(ref, normalized.keys);
+      } on Object {
+        await _rollbackNewWrite(
+          ref,
+          writtenFields,
+          markerAttempted: markerAttempted,
+          manifestAttempted: manifestAttempted,
+        );
+        rethrow;
       }
-      await _writeManifest(ref, normalized.keys);
       return;
     }
 
-    await _writeKey(_key(ref, _initializedField), '1');
+    final previousValues = <String, String?>{};
     for (final field in manifest.fields) {
-      if (!normalized.containsKey(field)) {
-        await _deleteKey(_key(ref, field));
+      previousValues[field] = await _readKey(_key(ref, field));
+    }
+    final hadInitializedMarker =
+        await _readKey(_key(ref, _initializedField)) != null;
+    final touchedFields = <String>[];
+    try {
+      await _writeKey(_key(ref, _initializedField), '1');
+      for (final field in manifest.fields) {
+        if (!normalized.containsKey(field)) {
+          touchedFields.add(field);
+          await _deleteKey(_key(ref, field));
+        }
       }
+      for (final entry in normalized.entries) {
+        touchedFields.add(entry.key);
+        await _writeKey(_key(ref, entry.key), entry.value);
+      }
+      if (normalized.isEmpty) {
+        await _deleteKey(_key(ref, _manifestField));
+        await _deleteKey(_key(ref, _initializedField));
+        return;
+      }
+      await _writeManifest(ref, normalized.keys);
+    } on Object {
+      await _rollbackReplacement(
+        ref,
+        manifest.fields,
+        previousValues,
+        touchedFields,
+        hadInitializedMarker: hadInitializedMarker,
+      );
+      rethrow;
     }
-    for (final entry in normalized.entries) {
-      await _writeKey(_key(ref, entry.key), entry.value);
-    }
-    if (normalized.isEmpty) {
-      await _deleteKey(_key(ref, _manifestField));
-      await _deleteKey(_key(ref, _initializedField));
-      return;
-    }
-    await _writeManifest(ref, normalized.keys);
   }
 
   /// Deletes every stored field associated with [credentialRef].
   Future<void> delete(String credentialRef) async {
     final ref = _requireReference(credentialRef);
     final manifest = await _readManifest(ref);
-    if (manifest.isMissing) _throwManifestMissing();
+    if (manifest.isMissing) {
+      if (manifest.isInitialized) _throwManifestMissing();
+      return;
+    }
 
     for (final field in manifest.fields) {
       await _deleteKey(_key(ref, field));
@@ -154,6 +222,71 @@ class ManagedProviderSecretStore {
   static String? mask(String value) => value.isEmpty ? null : maskedValue;
 
   String _key(String ref, String field) => '$namespace.$ref.$field';
+
+  Future<void> _rollbackNewWrite(
+    String ref,
+    List<String> writtenFields, {
+    required bool markerAttempted,
+    required bool manifestAttempted,
+  }) async {
+    if (manifestAttempted) {
+      await _tryDeleteKey(_key(ref, _manifestField));
+    }
+    for (final field in writtenFields.reversed) {
+      await _tryDeleteKey(_key(ref, field));
+    }
+    if (markerAttempted) {
+      await _tryDeleteKey(_key(ref, _initializedField));
+    }
+  }
+
+  Future<void> _rollbackReplacement(
+    String ref,
+    List<String> previousFields,
+    Map<String, String?> previousValues,
+    List<String> touchedFields, {
+    required bool hadInitializedMarker,
+  }) async {
+    final fieldsToRestore = <String>{...previousFields, ...touchedFields};
+    for (final field in fieldsToRestore) {
+      final previousValue = previousValues[field];
+      if (previousValues.containsKey(field) && previousValue != null) {
+        await _tryWriteKey(_key(ref, field), previousValue);
+      } else {
+        await _tryDeleteKey(_key(ref, field));
+      }
+    }
+    await _tryWriteManifest(ref, previousFields);
+    if (hadInitializedMarker) {
+      await _tryWriteKey(_key(ref, _initializedField), '1');
+    } else {
+      await _tryDeleteKey(_key(ref, _initializedField));
+    }
+  }
+
+  Future<void> _tryWriteManifest(String ref, Iterable<String> fields) async {
+    try {
+      await _writeManifest(ref, fields);
+    } on Object {
+      // Preserve the original secret-free operation error.
+    }
+  }
+
+  Future<void> _tryWriteKey(String key, String value) async {
+    try {
+      await _writeKey(key, value);
+    } on Object {
+      // Preserve the original secret-free operation error.
+    }
+  }
+
+  Future<void> _tryDeleteKey(String key) async {
+    try {
+      await _deleteKey(key);
+    } on Object {
+      // Preserve the original secret-free operation error.
+    }
+  }
 
   Future<_ManifestRead> _readManifest(String ref) async {
     final raw = await _readKey(_key(ref, _manifestField));
