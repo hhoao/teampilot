@@ -100,7 +100,8 @@ class ManagedProviderUsageCubit extends Cubit<ManagedProviderUsageState> {
   final coordinator.ManagedProviderUsageCoordinator _coordinator;
   final DateTime Function() _now;
   Future<void>? _loadFlight;
-  final Map<String, Future<ProviderUsageSnapshot?>> _ensureFlights = {};
+  final Map<String, _EnsureFlight> _ensureFlights = {};
+  final Map<String, int> _ensureGenerations = {};
   final Map<String, Set<int>> _refreshOperations = {};
   int _nextRefreshToken = 0;
 
@@ -227,8 +228,12 @@ class ManagedProviderUsageCubit extends Cubit<ManagedProviderUsageState> {
     await load();
     final id = providerId.trim();
     if (isClosed) return state.snapshotFor(id);
+    final generation = _ensureGenerations[id] ?? 0;
     final existing = _ensureFlights[id];
-    if (existing != null) return existing;
+    if (existing != null && existing.generation == generation) {
+      return existing.future;
+    }
+    if (existing != null) _ensureFlights.remove(id);
 
     ManagedProvider? provider;
     for (final candidate in _coordinator.providers) {
@@ -242,9 +247,13 @@ class ManagedProviderUsageCubit extends Cubit<ManagedProviderUsageState> {
     if (_isFresh(snapshot)) return snapshot;
 
     final flight = refreshOne(id);
-    _ensureFlights[id] = flight;
+    final record = _EnsureFlight(future: flight, generation: generation);
+    _ensureFlights[id] = record;
     return flight.whenComplete(() {
-      if (identical(_ensureFlights[id], flight)) _ensureFlights.remove(id);
+      if (identical(_ensureFlights[id], record) &&
+          _ensureGenerations[id] == generation) {
+        _ensureFlights.remove(id);
+      }
     });
   }
 
@@ -260,6 +269,10 @@ class ManagedProviderUsageCubit extends Cubit<ManagedProviderUsageState> {
         .where((id) => id.isNotEmpty)
         .toSet();
     if (ids.isEmpty) return;
+    for (final id in ids) {
+      _ensureGenerations[id] = (_ensureGenerations[id] ?? 0) + 1;
+      _ensureFlights.remove(id);
+    }
     _refreshOperations.removeWhere((id, _) => ids.contains(id));
     final snapshots = Map<String, ProviderUsageSnapshot>.from(state.snapshots)
       ..removeWhere((id, _) => ids.contains(id));
@@ -277,6 +290,9 @@ class ManagedProviderUsageCubit extends Cubit<ManagedProviderUsageState> {
       );
     }
     try {
+      await Future.wait([
+        for (final id in ids) _coordinator.cancelForProvider(id),
+      ]);
       final loaded = await _coordinator.load();
       if (!isClosed) _emitCoordinatorState(loaded, clearError: true);
     } on Object {
@@ -420,7 +436,15 @@ class ManagedProviderUsageCubit extends Cubit<ManagedProviderUsageState> {
   @override
   Future<void> close() {
     _ensureFlights.clear();
+    _ensureGenerations.clear();
     _refreshOperations.clear();
     return super.close();
   }
+}
+
+class _EnsureFlight {
+  const _EnsureFlight({required this.future, required this.generation});
+
+  final Future<ProviderUsageSnapshot?> future;
+  final int generation;
 }

@@ -24,12 +24,14 @@ ManagedProvider _provider({
 class _BlockingConfigReadFilesystem extends InMemoryFilesystem {
   final blocked = Completer<void>();
   bool blockNextConfigRead = false;
+  bool failBlockedRead = false;
 
   @override
   Future<String?> readString(String path) async {
     if (blockNextConfigRead && path == '/tp/providers.json') {
       blockNextConfigRead = false;
       await blocked.future;
+      if (failBlockedRead) throw StateError('stale read failure');
     }
     return super.readString(path);
   }
@@ -129,6 +131,56 @@ void main() {
     await load;
 
     expect(cubit.state.providerFor('p1')!.name, 'new');
+  });
+
+  test('a stale load failure cannot overwrite a successful mutation', () async {
+    final blockingFs = _BlockingConfigReadFilesystem();
+    final blockingRepository = ManagedProviderRepository(
+      fs: blockingFs,
+      configPath: '/tp/providers.json',
+      onProvidersDeleted: (_) async {},
+    );
+    await blockingRepository.upsert(_provider(name: 'old'));
+    final cubit = ManagedProviderCubit(repository: blockingRepository);
+    addTearDown(cubit.close);
+    blockingFs
+      ..blockNextConfigRead = true
+      ..failBlockedRead = true;
+
+    final load = cubit.load();
+    await Future<void>.delayed(Duration.zero);
+    final upsert = cubit.upsert(_provider(name: 'new'));
+    await upsert;
+    blockingFs.blocked.complete();
+    await load;
+
+    expect(cubit.state.status, ManagedProviderLoadStatus.ready);
+    expect(cubit.state.errorCode, isNull);
+    expect(cubit.state.providerFor('p1')!.name, 'new');
+  });
+
+  test('a no-op enable does not strand a concurrent load', () async {
+    await repository.upsert(_provider(enabled: true));
+    final blockingFs = _BlockingConfigReadFilesystem();
+    final blockingRepository = ManagedProviderRepository(
+      fs: blockingFs,
+      configPath: '/tp/providers.json',
+      onProvidersDeleted: (_) async {},
+    );
+    await blockingRepository.upsert(_provider(enabled: true));
+    final cubit = ManagedProviderCubit(repository: blockingRepository);
+    addTearDown(cubit.close);
+    await cubit.load();
+    blockingFs.blockNextConfigRead = true;
+
+    final load = cubit.load();
+    await Future<void>.delayed(Duration.zero);
+    await cubit.enable('p1');
+    blockingFs.blocked.complete();
+    await load;
+
+    expect(cubit.state.status, ManagedProviderLoadStatus.ready);
+    expect(cubit.state.providerFor('p1')!.enabled, isTrue);
   });
 
   test(

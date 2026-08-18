@@ -232,6 +232,36 @@ void main() {
   });
 
   test(
+    'recreated provider does not reuse an invalidated ensureFresh future',
+    () async {
+      await providers.upsert(_provider());
+      final oldGate = Completer<ProviderUsageSnapshot>();
+      adapter.result = oldGate.future;
+      final cubit = ManagedProviderUsageCubit(coordinator: coordinator);
+      addTearDown(cubit.close);
+      await cubit.load();
+
+      final oldEnsure = cubit.ensureFresh('p1');
+      await Future<void>.delayed(Duration.zero);
+      expect(adapter.calls, 1);
+
+      await providers.delete('p1');
+      await cubit.removeProviders(['p1']);
+      await providers.upsert(_provider());
+      await cubit.reload();
+      adapter.result = Future.value(_ready(amount: '2.00'));
+
+      final newEnsure = cubit.ensureFresh('p1');
+      expect(identical(newEnsure, oldEnsure), isFalse);
+      oldGate.complete(_ready(amount: '1.00'));
+
+      expect(await oldEnsure, isNull);
+      expect((await newEnsure)!.measures.single.remaining, '2.00');
+      expect(adapter.calls, 2);
+    },
+  );
+
+  test(
     'an invalidated deleted refresh does not restore its old snapshot',
     () async {
       await providers.upsert(_provider());
