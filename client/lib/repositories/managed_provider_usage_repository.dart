@@ -56,11 +56,22 @@ class ManagedProviderUsageRepository {
     if (id.isEmpty) return;
     await ManagedProviderStorageLock.run(_cachePath, () async {
       final current = await _readStore();
-      if (!current.snapshots.containsKey(id)) return;
+      final hasRawEntry = current.rawSnapshotEntries.keys.any(
+        (key) => key.trim() == id,
+      );
+      if (!current.snapshots.containsKey(id) && !hasRawEntry) return;
       final snapshots = Map<String, ProviderUsageSnapshot>.from(
         current.snapshots,
       )..remove(id);
-      await _writeStore(current.copyWith(snapshots: snapshots));
+      final rawSnapshotEntries = Map<String, Object?>.from(
+        current.rawSnapshotEntries,
+      )..removeWhere((key, _) => key.trim() == id);
+      await _writeStore(
+        current.copyWith(
+          snapshots: snapshots,
+          rawSnapshotEntries: rawSnapshotEntries,
+        ),
+      );
     });
   }
 

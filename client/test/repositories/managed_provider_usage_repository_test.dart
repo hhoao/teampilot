@@ -174,6 +174,30 @@ void main() {
       expect((await repo.load()).single.status, ProviderUsageStatus.stale);
     });
 
+    test(
+      'delete removes a malformed snapshot by normalized provider ID',
+      () async {
+        await fs.writeString(
+          path,
+          jsonEncode({
+            'schemaVersion': 1,
+            'snapshots': {
+              ' p1 ': {'providerId': 42, 'status': 'ready'},
+              'p2': _snapshot('p2').toJson(),
+            },
+          }),
+        );
+
+        await repo.delete('p1');
+
+        final snapshots =
+            (jsonDecode(await fs.readString(path) ?? '') as Map)['snapshots']
+                as Map;
+        expect(snapshots.containsKey(' p1 '), isFalse);
+        expect((await repo.load()).single.providerId, 'p2');
+      },
+    );
+
     test('preserves the existing top-level schema version on update', () async {
       await fs.writeString(
         path,

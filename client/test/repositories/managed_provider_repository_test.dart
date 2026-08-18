@@ -183,6 +183,37 @@ void main() {
       expect((await repo.load()).single.name, 'Updated');
     });
 
+    test(
+      'delete removes a malformed provider record by normalized ID and cleans up',
+      () async {
+        await fs.writeString(
+          path,
+          jsonEncode({
+            'schemaVersion': 1,
+            'providers': {
+              ' p1 ': {'name': 42},
+              'p2': _provider('p2').toJson(),
+            },
+          }),
+        );
+        final deletedIds = <String>[];
+        repo = ManagedProviderRepository(
+          fs: fs,
+          configPath: path,
+          onProviderDeleted: (id) async => deletedIds.add(id),
+        );
+
+        await repo.delete('p1');
+
+        final providers =
+            (jsonDecode(await fs.readString(path) ?? '') as Map)['providers']
+                as Map;
+        expect(deletedIds, ['p1']);
+        expect(providers.containsKey(' p1 '), isFalse);
+        expect((await repo.load()).single.id, 'p2');
+      },
+    );
+
     test('preserves the existing top-level schema version on update', () async {
       await fs.writeString(
         path,
@@ -347,6 +378,34 @@ void main() {
         expect(await fs.readString(path), before);
       },
     );
+
+    test('save cleans up omitted malformed provider records', () async {
+      await fs.writeString(
+        path,
+        jsonEncode({
+          'schemaVersion': 1,
+          'providers': {
+            ' p1 ': {'name': 42},
+            'p2': _provider('p2').toJson(),
+          },
+        }),
+      );
+      final deletedIds = <String>[];
+      repo = ManagedProviderRepository(
+        fs: fs,
+        configPath: path,
+        onProviderDeleted: (id) async => deletedIds.add(id),
+      );
+
+      await repo.save([_provider('p2')]);
+
+      final providers =
+          (jsonDecode(await fs.readString(path) ?? '') as Map)['providers']
+              as Map;
+      expect(deletedIds, ['p1']);
+      expect(providers.containsKey(' p1 '), isFalse);
+      expect(providers.containsKey('p2'), isTrue);
+    });
   });
 }
 

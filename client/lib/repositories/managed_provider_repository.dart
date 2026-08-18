@@ -47,13 +47,24 @@ class ManagedProviderRepository {
             ? normalized
             : _mergeProvider(previous, normalized);
       }
-      final removedIds =
-          current.providers.keys.where((id) => !merged.containsKey(id)).toList()
-            ..sort();
+      final removedIds = {
+        ...current.providers.keys,
+        ...current.rawProviderEntries.keys
+            .map((key) => key.trim())
+            .where((id) => id.isNotEmpty),
+      }.where((id) => !merged.containsKey(id)).toList()..sort();
       for (final id in removedIds) {
         await _onProviderDeleted(id);
       }
-      await _writeStore(current.copyWith(providers: merged));
+      final rawProviderEntries = Map<String, Object?>.from(
+        current.rawProviderEntries,
+      )..removeWhere((key, _) => removedIds.contains(key.trim()));
+      await _writeStore(
+        current.copyWith(
+          providers: merged,
+          rawProviderEntries: rawProviderEntries,
+        ),
+      );
     });
   }
 
@@ -76,11 +87,22 @@ class ManagedProviderRepository {
     if (id.isEmpty) return;
     await ManagedProviderStorageLock.run(_configPath, () async {
       final current = await _readStore();
-      if (!current.providers.containsKey(id)) return;
+      final hasRawEntry = current.rawProviderEntries.keys.any(
+        (key) => key.trim() == id,
+      );
+      if (!current.providers.containsKey(id) && !hasRawEntry) return;
       await _onProviderDeleted(id);
       final providers = Map<String, ManagedProvider>.from(current.providers)
         ..remove(id);
-      await _writeStore(current.copyWith(providers: providers));
+      final rawProviderEntries = Map<String, Object?>.from(
+        current.rawProviderEntries,
+      )..removeWhere((key, _) => key.trim() == id);
+      await _writeStore(
+        current.copyWith(
+          providers: providers,
+          rawProviderEntries: rawProviderEntries,
+        ),
+      );
     });
   }
 
