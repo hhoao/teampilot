@@ -6,6 +6,7 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/registry/cli_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_definition.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
+import 'package:teampilot/services/resource/contribution/prompt_document.dart';
 import 'package:teampilot/services/resource/providers/hook_contribution_provider.dart';
 import 'package:teampilot/services/resource/providers/mcp_contribution_provider.dart';
 import 'package:teampilot/services/resource/providers/prompt_contribution_provider.dart';
