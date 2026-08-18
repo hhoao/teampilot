@@ -39,6 +39,28 @@ class _FakeAdapter implements ManagedProviderUsageAdapter {
   }
 }
 
+class _QueuedAdapter implements ManagedProviderUsageAdapter {
+  _QueuedAdapter(this.results);
+
+  final List<Future<ProviderUsageSnapshot>> results;
+  int calls = 0;
+
+  @override
+  String get id => 'fake';
+
+  @override
+  Future<ProviderUsageSnapshot> fetch(
+    ManagedProvider provider, {
+    required ProviderCredentialResolver credentials,
+    required ProviderUsageHttpClient http,
+    required DateTime now,
+  }) {
+    final result = results[calls];
+    calls++;
+    return result;
+  }
+}
+
 ManagedProvider _provider({bool enabled = true}) => ManagedProvider(
   id: 'p1',
   name: 'P1',
@@ -197,7 +219,16 @@ void main() {
       final disabled = await coordinator.refreshAll();
       expect(disabled.single.status, ProviderUsageStatus.unsupported);
       gate.complete(_ready());
-      await pending;
+      await expectLater(
+        pending,
+        throwsA(
+          isA<ManagedProviderUsageInvalidated>().having(
+            (error) => error.code,
+            'code',
+            ManagedProviderUsageInvalidationCode.providerChanged,
+          ),
+        ),
+      );
       expect(
         coordinator.snapshotFor('p1')!.status,
         ProviderUsageStatus.unsupported,
@@ -235,11 +266,21 @@ void main() {
         _provider().copyWith(credentialRef: 'managed-provider:p1-new'),
       );
       final replacement = coordinator.refreshOne('p1');
+      final oldInvalidation = expectLater(
+        oldRequest,
+        throwsA(
+          isA<ManagedProviderUsageInvalidated>().having(
+            (error) => error.code,
+            'code',
+            ManagedProviderUsageInvalidationCode.providerChanged,
+          ),
+        ),
+      );
       await Future<void>.delayed(Duration.zero);
       expect(adapter.calls, 1);
       gate.complete(_ready(remaining: '9.25'));
       final result = await replacement;
-      await oldRequest;
+      await oldInvalidation;
       expect(result.status, ProviderUsageStatus.ready);
       expect(adapter.calls, 2);
       expect((await usage.load()).single.measures.single.remaining, '9.25');
@@ -262,18 +303,27 @@ void main() {
     final pending = coordinator.refreshOne('p1');
     await Future<void>.delayed(Duration.zero);
     await providers.delete('p1');
-    final deleted = await coordinator.refreshOne('p1');
-    expect(deleted.status, ProviderUsageStatus.unsupported);
     gate.complete(_ready());
-    await pending;
+    await expectLater(
+      pending,
+      throwsA(
+        isA<ManagedProviderUsageInvalidated>().having(
+          (error) => error.code,
+          'code',
+          ManagedProviderUsageInvalidationCode.providerDeleted,
+        ),
+      ),
+    );
+    expect(coordinator.providers, isEmpty);
     expect(coordinator.snapshotFor('p1'), isNull);
     expect(await usage.load(), isEmpty);
   });
 
-  test('cancel then refreshOne keeps the transport single-flight', () async {
+  test('cancel then refreshOne queues a committed successor', () async {
     await providers.upsert(_provider());
-    final gate = Completer<ProviderUsageSnapshot>();
-    final adapter = _FakeAdapter(gate.future);
+    final firstGate = Completer<ProviderUsageSnapshot>();
+    final secondGate = Completer<ProviderUsageSnapshot>();
+    final adapter = _QueuedAdapter([firstGate.future, secondGate.future]);
     final coordinator = ManagedProviderUsageCoordinator(
       providerRepository: providers,
       usageRepository: usage,
@@ -289,10 +339,24 @@ void main() {
     final shared = coordinator.refreshOne('p1');
     await Future<void>.delayed(Duration.zero);
     expect(adapter.calls, 1);
-    gate.complete(_ready());
-    await Future.wait([cancelled, shared]);
-    expect(coordinator.snapshotFor('p1'), isNull);
-    expect(await usage.load(), isEmpty);
+    firstGate.complete(_ready(remaining: '11.00'));
+    await expectLater(
+      cancelled,
+      throwsA(
+        isA<ManagedProviderUsageInvalidated>().having(
+          (error) => error.code,
+          'code',
+          ManagedProviderUsageInvalidationCode.refreshCancelled,
+        ),
+      ),
+    );
+    await Future<void>.delayed(Duration.zero);
+    expect(adapter.calls, 2);
+    secondGate.complete(_ready(remaining: '8.50'));
+    final result = await shared;
+    expect(result.status, ProviderUsageStatus.ready);
+    expect(coordinator.snapshotFor('p1')!.measures.single.remaining, '8.50');
+    expect((await usage.load()).single.measures.single.remaining, '8.50');
   });
 
   test(

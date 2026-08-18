@@ -5,6 +5,30 @@ import '../../repositories/managed_provider_usage_repository.dart';
 import 'managed_provider_usage_adapter.dart';
 import 'managed_provider_usage_registry.dart';
 
+enum ManagedProviderUsageInvalidationCode {
+  providerDeleted,
+  providerChanged,
+  refreshCancelled,
+}
+
+/// Secret-free outcome for a refresh invalidated by lifecycle/configuration
+/// changes. An old request for a deleted provider can never masquerade as a
+/// successful snapshot.
+class ManagedProviderUsageInvalidated implements Exception {
+  const ManagedProviderUsageInvalidated({
+    required this.providerId,
+    required this.code,
+  });
+
+  final String providerId;
+  final ManagedProviderUsageInvalidationCode code;
+
+  String get message => 'Managed provider usage refresh ${code.name}.';
+
+  @override
+  String toString() => 'ManagedProviderUsageInvalidated: $message';
+}
+
 /// Immutable view consumed by a future Cubit or status-bar presenter.
 class ManagedProviderUsageState {
   ManagedProviderUsageState({
@@ -141,9 +165,34 @@ class ManagedProviderUsageCoordinator {
     final generation = _generation;
     final current = _providers.values.toList(growable: false);
     final results = await Future.wait(
-      current.map((provider) => _refreshLoadedProvider(provider, generation)),
+      current.map((provider) => _refreshForAll(provider, generation)),
     );
-    return results;
+    return [
+      for (final result in results)
+        if (result != null) result,
+    ];
+  }
+
+  Future<ProviderUsageSnapshot?> _refreshForAll(
+    ManagedProvider provider,
+    int generation,
+  ) async {
+    try {
+      return await _refreshLoadedProvider(provider, generation);
+    } on ManagedProviderUsageInvalidated {
+      final current = _providers[provider.id];
+      if (current == null) return null;
+      if (!current.enabled) {
+        return _completeDisabledProvider(
+          current,
+          generation: _generation,
+          mutationRevision: _providerRepository.mutationRevision,
+        );
+      }
+      // A cancellation or configuration change during all-refresh is retried
+      // through the same serialized pending map, never concurrently.
+      return _refreshLoadedProvider(current, _generation);
+    }
   }
 
   /// Invalidates an in-flight provider request. Dart HTTP transports may not
@@ -155,6 +204,7 @@ class ManagedProviderUsageCoordinator {
     // Keep the tombstone until the transport Future completes. Removing it
     // here would allow the next entry point to start a second request while
     // the supposedly cancelled transport is still active.
+    _pending[id]?.cancelled = true;
   }
 
   Future<ProviderUsageSnapshot> _refreshLoadedProvider(
@@ -171,18 +221,22 @@ class ManagedProviderUsageCoordinator {
     }
     final previousPending = _pending[id];
     if (previousPending != null) {
+      if (previousPending.cancelled) {
+        return previousPending.future.then(
+          (_) => _startSuccessorAfterPending(id),
+          onError: (Object _, StackTrace __) => _startSuccessorAfterPending(id),
+        );
+      }
       if (previousPending.provider == provider) {
         return previousPending.future;
       }
       // Configuration changed while the old request was in flight. The
       // transport may not be cancellable, so wait for it before starting the
       // replacement; this preserves one underlying request per provider.
-      return previousPending.future.then((_) async {
-        await _synchronizeProviders();
-        final current = _providers[id];
-        if (current == null) return _unsupportedSnapshot(id, _snapshots[id]);
-        return _refreshLoadedProvider(current, _generation);
-      });
+      return previousPending.future.then(
+        (_) => _startSuccessorAfterPending(id),
+        onError: (Object _, StackTrace __) => _startSuccessorAfterPending(id),
+      );
     }
 
     final token = (_tokens[id] ?? 0) + 1;
@@ -209,6 +263,25 @@ class ManagedProviderUsageCoordinator {
       },
     );
     return future;
+  }
+
+  Future<ProviderUsageSnapshot> _startSuccessorAfterPending(String id) async {
+    await _synchronizeProviders();
+    final current = _providers[id];
+    if (current == null) {
+      _throwInvalidated(
+        id,
+        ManagedProviderUsageInvalidationCode.providerDeleted,
+      );
+    }
+    if (!current.enabled) {
+      return _completeDisabledProvider(
+        current,
+        generation: _generation,
+        mutationRevision: _providerRepository.mutationRevision,
+      );
+    }
+    return _refreshLoadedProvider(current, _generation);
   }
 
   Future<ProviderUsageSnapshot> _completeDisabledProvider(
@@ -300,7 +373,7 @@ class ManagedProviderUsageCoordinator {
         ? _isCurrentConfig(provider, generation, null)
         : _isCurrent(provider, generation, token);
     if (!current || requiresEnabled && !provider.enabled) {
-      return _snapshots[provider.id] ?? previous ?? result;
+      _throwInvalidated(provider.id, _invalidationCode(provider.id, token));
     }
     final committed = await _providerRepository.runIfUnchanged(
       expectedRevision: mutationRevision,
@@ -312,7 +385,7 @@ class ManagedProviderUsageCoordinator {
     );
     if (!committed) {
       await _synchronizeProviders();
-      return _snapshots[provider.id] ?? previous ?? result;
+      _throwInvalidated(provider.id, _invalidationCode(provider.id, token));
     }
     return result;
   }
@@ -354,6 +427,25 @@ class ManagedProviderUsageCoordinator {
       (token == null || token == _tokens[provider.id]) &&
       identical(_providers[provider.id], provider);
 
+  ManagedProviderUsageInvalidationCode _invalidationCode(
+    String providerId,
+    int? token,
+  ) {
+    if (token != null && token != _tokens[providerId]) {
+      return ManagedProviderUsageInvalidationCode.refreshCancelled;
+    }
+    if (!_providers.containsKey(providerId)) {
+      return ManagedProviderUsageInvalidationCode.providerDeleted;
+    }
+    return ManagedProviderUsageInvalidationCode.providerChanged;
+  }
+
+  Never _throwInvalidated(
+    String providerId,
+    ManagedProviderUsageInvalidationCode code,
+  ) =>
+      throw ManagedProviderUsageInvalidated(providerId: providerId, code: code);
+
   static ProviderUsageSnapshot _unsupportedSnapshot(
     String providerId,
     ProviderUsageSnapshot? previous,
@@ -391,7 +483,7 @@ class ManagedProviderUsageCoordinator {
 }
 
 class _PendingRefresh {
-  const _PendingRefresh({
+  _PendingRefresh({
     required this.provider,
     required this.generation,
     required this.token,
@@ -402,4 +494,5 @@ class _PendingRefresh {
   final int generation;
   final int token;
   final Future<ProviderUsageSnapshot> future;
+  bool cancelled = false;
 }
