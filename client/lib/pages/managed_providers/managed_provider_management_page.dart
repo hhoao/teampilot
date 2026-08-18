@@ -28,8 +28,14 @@ class _ManagedProviderManagementPageState
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      unawaited(context.read<ManagedProviderCubit>().load());
-      unawaited(context.read<ManagedProviderUsageCubit>().load());
+      final providers = context.read<ManagedProviderCubit>();
+      if (providers.state.status == ManagedProviderLoadStatus.initial) {
+        unawaited(providers.load());
+      }
+      final usage = context.read<ManagedProviderUsageCubit>();
+      if (usage.state.status == ManagedProviderUsageLoadStatus.initial) {
+        unawaited(usage.load());
+      }
     });
   }
 
@@ -120,7 +126,15 @@ class _ManagedProviderManagementPageState
   }) async {
     await Navigator.of(context).push<void>(
       MaterialPageRoute(
-        builder: (_) => ManagedProviderEditorPage(provider: provider),
+        builder: (_) => MultiBlocProvider(
+          providers: [
+            BlocProvider.value(value: context.read<ManagedProviderCubit>()),
+            BlocProvider.value(
+              value: context.read<ManagedProviderUsageCubit>(),
+            ),
+          ],
+          child: ManagedProviderEditorPage(provider: provider),
+        ),
       ),
     );
   }

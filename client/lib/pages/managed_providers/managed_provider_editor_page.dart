@@ -412,7 +412,9 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
         showPercent: _showPercent,
       ),
       enabled: _enabled,
-      createdAt: current?.createdAt == 0 ? now : current!.createdAt,
+      createdAt: current == null || current.createdAt == 0
+          ? now
+          : current.createdAt,
       updatedAt: now,
     );
     final cubit = context.read<ManagedProviderCubit>();
