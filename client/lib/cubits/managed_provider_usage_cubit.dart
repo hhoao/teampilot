@@ -22,16 +22,19 @@ class ManagedProviderUsageState extends Equatable {
     this.status = ManagedProviderUsageLoadStatus.initial,
     Map<String, ProviderUsageSnapshot> snapshots = const {},
     Iterable<String> refreshingProviderIds = const {},
+    Map<String, int> refreshOperationCounts = const {},
     this.isRefreshing = false,
     this.generation = 0,
     this.errorCode,
     this.errorMessage,
   }) : snapshots = Map.unmodifiable(snapshots),
-       refreshingProviderIds = Set.unmodifiable(refreshingProviderIds);
+       refreshingProviderIds = Set.unmodifiable(refreshingProviderIds),
+       refreshOperationCounts = Map.unmodifiable(refreshOperationCounts);
 
   final ManagedProviderUsageLoadStatus status;
   final Map<String, ProviderUsageSnapshot> snapshots;
   final Set<String> refreshingProviderIds;
+  final Map<String, int> refreshOperationCounts;
   final bool isRefreshing;
   final int generation;
   final ManagedProviderUsageErrorCode? errorCode;
@@ -46,10 +49,14 @@ class ManagedProviderUsageState extends Equatable {
   bool isRefreshingProvider(String providerId) =>
       refreshingProviderIds.contains(providerId.trim());
 
+  int refreshOperationCountFor(String providerId) =>
+      refreshOperationCounts[providerId.trim()] ?? 0;
+
   ManagedProviderUsageState copyWith({
     ManagedProviderUsageLoadStatus? status,
     Map<String, ProviderUsageSnapshot>? snapshots,
     Iterable<String>? refreshingProviderIds,
+    Map<String, int>? refreshOperationCounts,
     bool? isRefreshing,
     int? generation,
     ManagedProviderUsageErrorCode? errorCode,
@@ -59,6 +66,8 @@ class ManagedProviderUsageState extends Equatable {
     status: status ?? this.status,
     snapshots: snapshots ?? this.snapshots,
     refreshingProviderIds: refreshingProviderIds ?? this.refreshingProviderIds,
+    refreshOperationCounts:
+        refreshOperationCounts ?? this.refreshOperationCounts,
     isRefreshing: isRefreshing ?? this.isRefreshing,
     generation: generation ?? this.generation,
     errorCode: clearError ? null : errorCode ?? this.errorCode,
@@ -70,6 +79,7 @@ class ManagedProviderUsageState extends Equatable {
     status,
     snapshots,
     refreshingProviderIds,
+    refreshOperationCounts,
     isRefreshing,
     generation,
     errorCode,
@@ -91,8 +101,11 @@ class ManagedProviderUsageCubit extends Cubit<ManagedProviderUsageState> {
   final DateTime Function() _now;
   Future<void>? _loadFlight;
   final Map<String, Future<ProviderUsageSnapshot?>> _ensureFlights = {};
+  final Map<String, Set<int>> _refreshOperations = {};
+  int _nextRefreshToken = 0;
 
   Future<void> load() {
+    if (isClosed) return Future<void>.value();
     final existing = _loadFlight;
     if (existing != null) return existing;
     final future = _loadInternal();
@@ -136,10 +149,11 @@ class ManagedProviderUsageCubit extends Cubit<ManagedProviderUsageState> {
   Future<ProviderUsageSnapshot?> refreshOne(String providerId) async {
     await load();
     final id = providerId.trim();
+    if (isClosed) return state.snapshotFor(id);
     if (id.isEmpty || !_coordinator.providers.any((p) => p.id == id)) {
       return state.snapshotFor(id);
     }
-    _beginRefresh({id});
+    final refreshToken = _beginRefresh({id})[id]!;
     try {
       final result = await _coordinator.refreshOne(id);
       if (isClosed) return result;
@@ -159,17 +173,18 @@ class ManagedProviderUsageCubit extends Cubit<ManagedProviderUsageState> {
       _setOperationError(ManagedProviderUsageErrorCode.refreshFailed);
       return state.snapshotFor(id);
     } finally {
-      _endRefresh(id);
+      _endRefresh(id, refreshToken);
     }
   }
 
   Future<List<ProviderUsageSnapshot>> refreshAll() async {
     await load();
+    if (isClosed) return const [];
     final ids = _coordinator.providers
         .where((provider) => provider.enabled)
         .map((provider) => provider.id)
         .toSet();
-    _beginRefresh(ids);
+    final refreshTokens = _beginRefresh(ids);
     try {
       final results = await _coordinator.refreshAll();
       if (!isClosed) {
@@ -190,11 +205,12 @@ class ManagedProviderUsageCubit extends Cubit<ManagedProviderUsageState> {
       _setOperationError(ManagedProviderUsageErrorCode.refreshFailed);
       return const [];
     } finally {
-      _endRefreshes(ids);
+      _endRefreshes(refreshTokens);
     }
   }
 
   Future<void> cancelForProvider(String providerId) async {
+    if (isClosed) return;
     final id = providerId.trim();
     if (id.isEmpty) return;
     try {
@@ -203,7 +219,6 @@ class ManagedProviderUsageCubit extends Cubit<ManagedProviderUsageState> {
       _setOperationError(ManagedProviderUsageErrorCode.refreshFailed);
       return;
     }
-    _endRefresh(id);
   }
 
   /// Refreshes only an absent or expired snapshot. Calls for one Provider are
@@ -211,6 +226,7 @@ class ManagedProviderUsageCubit extends Cubit<ManagedProviderUsageState> {
   Future<ProviderUsageSnapshot?> ensureFresh(String providerId) async {
     await load();
     final id = providerId.trim();
+    if (isClosed) return state.snapshotFor(id);
     final existing = _ensureFlights[id];
     if (existing != null) return existing;
 
@@ -238,11 +254,13 @@ class ManagedProviderUsageCubit extends Cubit<ManagedProviderUsageState> {
   /// Rehydrates the coordinator after the repository's deletion cleanup has
   /// completed, ensuring removed Providers cannot remain in memory.
   Future<void> removeProviders(Iterable<String> providerIds) async {
+    if (isClosed) return;
     final ids = providerIds
         .map((id) => id.trim())
         .where((id) => id.isNotEmpty)
         .toSet();
     if (ids.isEmpty) return;
+    _refreshOperations.removeWhere((id, _) => ids.contains(id));
     final snapshots = Map<String, ProviderUsageSnapshot>.from(state.snapshots)
       ..removeWhere((id, _) => ids.contains(id));
     final refreshing = Set<String>.from(state.refreshingProviderIds)
@@ -252,6 +270,7 @@ class ManagedProviderUsageCubit extends Cubit<ManagedProviderUsageState> {
         state.copyWith(
           snapshots: snapshots,
           refreshingProviderIds: refreshing,
+          refreshOperationCounts: _refreshOperationCounts(),
           isRefreshing: refreshing.isNotEmpty,
           clearError: true,
         ),
@@ -281,31 +300,55 @@ class ManagedProviderUsageCubit extends Cubit<ManagedProviderUsageState> {
     return staleAt == null || _now().millisecondsSinceEpoch < staleAt;
   }
 
-  void _beginRefresh(Iterable<String> ids) {
+  Map<String, int> _beginRefresh(Iterable<String> ids) {
+    if (isClosed) return const {};
+    final operationTokens = <String, int>{};
+    for (final id in ids) {
+      final token = ++_nextRefreshToken;
+      (_refreshOperations[id] ??= <int>{}).add(token);
+      operationTokens[id] = token;
+    }
+    _emitRefreshState(clearError: true);
+    return operationTokens;
+  }
+
+  void _endRefresh(String id, int token) {
+    final operations = _refreshOperations[id];
+    operations?.remove(token);
+    if (operations != null && operations.isEmpty) {
+      _refreshOperations.remove(id);
+    }
+    _emitRefreshState();
+  }
+
+  void _endRefreshes(Map<String, int> operationTokens) {
+    for (final entry in operationTokens.entries) {
+      final operations = _refreshOperations[entry.key];
+      operations?.remove(entry.value);
+      if (operations != null && operations.isEmpty) {
+        _refreshOperations.remove(entry.key);
+      }
+    }
+    _emitRefreshState();
+  }
+
+  void _emitRefreshState({bool clearError = false}) {
     if (isClosed) return;
-    final refreshing = {...state.refreshingProviderIds, ...ids};
+    final refreshing = _refreshOperations.keys.toSet();
     emit(
       state.copyWith(
         refreshingProviderIds: refreshing,
+        refreshOperationCounts: _refreshOperationCounts(),
         isRefreshing: refreshing.isNotEmpty,
-        clearError: true,
+        clearError: clearError,
       ),
     );
   }
 
-  void _endRefresh(String id) => _endRefreshes([id]);
-
-  void _endRefreshes(Iterable<String> ids) {
-    if (isClosed) return;
-    final refreshing = Set<String>.from(state.refreshingProviderIds)
-      ..removeAll(ids);
-    emit(
-      state.copyWith(
-        refreshingProviderIds: refreshing,
-        isRefreshing: refreshing.isNotEmpty,
-      ),
-    );
-  }
+  Map<String, int> _refreshOperationCounts() => {
+    for (final entry in _refreshOperations.entries)
+      if (entry.value.isNotEmpty) entry.key: entry.value.length,
+  };
 
   void _emitCoordinatorState(
     coordinator.ManagedProviderUsageState source, {
@@ -371,4 +414,13 @@ class ManagedProviderUsageCubit extends Cubit<ManagedProviderUsageState> {
         ManagedProviderUsageErrorCode.invalidated =>
           'Managed provider usage was invalidated.',
       };
+
+  /// Closing is non-blocking: in-flight coordinator work may finish, but all
+  /// completion paths guard [isClosed] and never emit or surface a late error.
+  @override
+  Future<void> close() {
+    _ensureFlights.clear();
+    _refreshOperations.clear();
+    return super.close();
+  }
 }

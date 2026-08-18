@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:teampilot/cubits/managed_provider_cubit.dart';
@@ -18,6 +20,20 @@ ManagedProvider _provider({
   adapterId: 'fake',
   enabled: enabled,
 );
+
+class _BlockingConfigReadFilesystem extends InMemoryFilesystem {
+  final blocked = Completer<void>();
+  bool blockNextConfigRead = false;
+
+  @override
+  Future<String?> readString(String path) async {
+    if (blockNextConfigRead && path == '/tp/providers.json') {
+      blockNextConfigRead = false;
+      await blocked.future;
+    }
+    return super.readString(path);
+  }
+}
 
 void main() {
   late InMemoryFilesystem fs;
@@ -81,7 +97,7 @@ void main() {
       await repo.upsert(_provider());
       final cubit = ManagedProviderCubit(
         repository: repo,
-        onProvidersDeleted: (ids) async => events.add('memory:${ids.single}'),
+        onProviderDeletedState: (id) async => events.add('memory:$id'),
       );
       addTearDown(cubit.close);
       await cubit.load();
@@ -90,6 +106,45 @@ void main() {
 
       expect(events, ['cleanup:p1', 'memory:p1']);
       expect(cubit.state.providers, isEmpty);
+    },
+  );
+
+  test('a load started before upsert cannot overwrite the mutation', () async {
+    final blockingFs = _BlockingConfigReadFilesystem();
+    final blockingRepository = ManagedProviderRepository(
+      fs: blockingFs,
+      configPath: '/tp/providers.json',
+      onProvidersDeleted: (_) async {},
+    );
+    await blockingRepository.upsert(_provider(name: 'old'));
+    final cubit = ManagedProviderCubit(repository: blockingRepository);
+    addTearDown(cubit.close);
+    blockingFs.blockNextConfigRead = true;
+
+    final load = cubit.load();
+    await Future<void>.delayed(Duration.zero);
+    final upsert = cubit.upsert(_provider(name: 'new'));
+    await upsert;
+    blockingFs.blocked.complete();
+    await load;
+
+    expect(cubit.state.providerFor('p1')!.name, 'new');
+  });
+
+  test(
+    'enable queued after delete cannot resurrect the deleted provider',
+    () async {
+      await repository.upsert(_provider(enabled: false));
+      final cubit = ManagedProviderCubit(repository: repository);
+      addTearDown(cubit.close);
+      await cubit.load();
+
+      final delete = cubit.delete('p1');
+      final enable = cubit.enable('p1');
+      await Future.wait([delete, enable]);
+
+      expect(cubit.state.providerFor('p1'), isNull);
+      expect(await repository.load(), isEmpty);
     },
   );
 
@@ -108,5 +163,22 @@ void main() {
 
     expect(cubit.state.errorCode, ManagedProviderErrorCode.deleteFailed);
     expect(cubit.state.errorMessage, isNot(contains('storage path secret')));
+  });
+
+  test('closing during a blocked load does not emit or throw', () async {
+    final blockingFs = _BlockingConfigReadFilesystem();
+    final blockingRepository = ManagedProviderRepository(
+      fs: blockingFs,
+      configPath: '/tp/providers.json',
+      onProvidersDeleted: (_) async {},
+    );
+    final cubit = ManagedProviderCubit(repository: blockingRepository);
+    blockingFs.blockNextConfigRead = true;
+    final load = cubit.load();
+    await Future<void>.delayed(Duration.zero);
+    await cubit.close();
+    blockingFs.blocked.complete();
+
+    await expectLater(load, completes);
   });
 }

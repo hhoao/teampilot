@@ -57,17 +57,19 @@ class ManagedProviderState extends Equatable {
 class ManagedProviderCubit extends Cubit<ManagedProviderState> {
   ManagedProviderCubit({
     required ManagedProviderRepository repository,
-    Future<void> Function(List<String> providerIds)? onProvidersDeleted,
+    Future<void> Function(String providerId)? onProviderDeletedState,
   }) : _repository = repository,
-       _onProvidersDeleted = onProvidersDeleted,
+       _onProviderDeletedState = onProviderDeletedState,
        super(ManagedProviderState());
 
   final ManagedProviderRepository _repository;
-  final Future<void> Function(List<String> providerIds)? _onProvidersDeleted;
+  final Future<void> Function(String providerId)? _onProviderDeletedState;
   Future<void>? _loadFlight;
   Future<void> _mutationTail = Future<void>.value();
+  int _catalogRevision = 0;
 
   Future<void> load() {
+    if (isClosed) return Future<void>.value();
     final existing = _loadFlight;
     if (existing != null) return existing;
     final future = _loadInternal();
@@ -80,6 +82,9 @@ class ManagedProviderCubit extends Cubit<ManagedProviderState> {
   Future<void> reload() => load();
 
   Future<void> _loadInternal() async {
+    final revision = _catalogRevision;
+    await _mutationTail;
+    if (isClosed) return;
     emit(
       state.copyWith(
         status: ManagedProviderLoadStatus.loading,
@@ -88,7 +93,7 @@ class ManagedProviderCubit extends Cubit<ManagedProviderState> {
     );
     try {
       final providers = await _repository.load();
-      if (isClosed) return;
+      if (isClosed || revision != _catalogRevision) return;
       emit(
         state.copyWith(
           status: ManagedProviderLoadStatus.ready,
@@ -111,6 +116,7 @@ class ManagedProviderCubit extends Cubit<ManagedProviderState> {
   Future<void> add(ManagedProvider provider) => upsert(provider);
 
   Future<void> upsert(ManagedProvider provider) async {
+    if (isClosed) return;
     if (provider.id.trim().isEmpty) {
       if (!isClosed) {
         emit(
@@ -137,18 +143,28 @@ class ManagedProviderCubit extends Cubit<ManagedProviderState> {
   Future<void> disable(String providerId) => _setEnabled(providerId, false);
 
   Future<void> _setEnabled(String providerId, bool enabled) async {
-    final provider = state.providerFor(providerId);
-    if (provider == null || provider.enabled == enabled) return;
-    await upsert(provider.copyWith(enabled: enabled));
+    if (isClosed) return;
+    final id = providerId.trim();
+    if (id.isEmpty) return;
+    await _serializeMutation(() async {
+      final provider = state.providerFor(id);
+      if (provider == null || provider.enabled == enabled) return;
+      final next = provider.copyWith(enabled: enabled);
+      await _repository.upsert(next);
+      _replace(next);
+    }, errorCode: ManagedProviderErrorCode.saveFailed);
   }
 
   Future<void> delete(String providerId) async {
+    if (isClosed) return;
     final id = providerId.trim();
     if (id.isEmpty) return;
     await _serializeMutation(() async {
       await _repository.delete(id);
-      final onProvidersDeleted = _onProvidersDeleted;
-      if (onProvidersDeleted != null) await onProvidersDeleted([id]);
+      final onProviderDeletedState = _onProviderDeletedState;
+      if (onProviderDeletedState != null) {
+        await onProviderDeletedState(id);
+      }
       if (isClosed) return;
       emit(
         state.copyWith(
@@ -164,6 +180,7 @@ class ManagedProviderCubit extends Cubit<ManagedProviderState> {
     Future<void> Function() action, {
     required ManagedProviderErrorCode errorCode,
   }) async {
+    _catalogRevision++;
     final previous = _mutationTail;
     final release = Completer<void>();
     final queued = previous.then((_) => release.future);

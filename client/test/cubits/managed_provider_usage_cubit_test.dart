@@ -143,6 +143,39 @@ void main() {
     },
   );
 
+  test(
+    'overlapping refreshOne and refreshAll keep the provider refreshing',
+    () async {
+      await providers.upsert(_provider());
+      final gate = Completer<ProviderUsageSnapshot>();
+      adapter.result = gate.future;
+      final cubit = ManagedProviderUsageCubit(coordinator: coordinator);
+      addTearDown(cubit.close);
+      await cubit.load();
+      final inconsistentStates = <ManagedProviderUsageState>[];
+      final subscription = cubit.stream.listen((state) {
+        if (!state.isRefreshing && state.refreshOperationCountFor('p1') > 0) {
+          inconsistentStates.add(state);
+        }
+      });
+      addTearDown(subscription.cancel);
+
+      final one = cubit.refreshOne('p1');
+      await Future<void>.delayed(Duration.zero);
+      expect(adapter.calls, 1);
+      final all = cubit.refreshAll();
+      await Future<void>.delayed(Duration.zero);
+      expect(cubit.state.isRefreshingProvider('p1'), isTrue);
+      await Future<void>.delayed(Duration.zero);
+      expect(cubit.state.refreshOperationCountFor('p1'), 2);
+      gate.complete(_ready());
+      await Future.wait([one, all]);
+
+      expect(inconsistentStates, isEmpty);
+      expect(cubit.state.isRefreshing, isFalse);
+    },
+  );
+
   test('refreshAll excludes disabled providers from transport work', () async {
     await providers.upsert(_provider());
     await providers.upsert(_provider(id: 'disabled', enabled: false));
@@ -218,4 +251,18 @@ void main() {
       expect(cubit.state.snapshotFor('p1'), isNull);
     },
   );
+
+  test('closing during a blocked refresh does not emit or throw', () async {
+    await providers.upsert(_provider());
+    final gate = Completer<ProviderUsageSnapshot>();
+    adapter.result = gate.future;
+    final cubit = ManagedProviderUsageCubit(coordinator: coordinator);
+    await cubit.load();
+    final refresh = cubit.refreshOne('p1');
+    await Future<void>.delayed(Duration.zero);
+    await cubit.close();
+    gate.complete(_ready());
+
+    await expectLater(refresh, completes);
+  });
 }
