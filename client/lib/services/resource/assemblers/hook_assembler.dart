@@ -109,9 +109,10 @@ final class HookAssembler {
                   previousProviderId: previous.providerId,
                   previousSourceId: previous.contribution.sourceId,
                   message:
-                      'Optional hook ${_label(previous)} was skipped '
-                      'because required hook ${provider.providerId}/'
-                      '${contribution.sourceId} has the same identity.',
+                      'Optional hook ${provider.providerId}/'
+                      '${contribution.sourceId} was skipped because '
+                      '${previous.optional ? 'optional' : 'required'} hook '
+                      '${_label(previous)} has the same identity.',
                 ),
               ),
             );
@@ -121,10 +122,10 @@ final class HookAssembler {
                 _conflict(
                   context: context,
                   key: key,
-                  providerId: previous.providerId,
-                  sourceId: previous.contribution.sourceId,
-                  previousProviderId: provider.providerId,
-                  previousSourceId: contribution.sourceId,
+                  providerId: provider.providerId,
+                  sourceId: contribution.sourceId,
+                  previousProviderId: previous.providerId,
+                  previousSourceId: previous.contribution.sourceId,
                   message:
                       'Optional hook ${_label(previous)} was replaced '
                       'by required ${provider.providerId}/'

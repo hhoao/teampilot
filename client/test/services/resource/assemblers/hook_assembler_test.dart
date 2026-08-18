@@ -178,7 +178,14 @@ void main() {
     expect(result.errors, isEmpty);
     expect(result.warnings, hasLength(1));
     expect(result.warnings.single.providerId, 'plugin');
+    expect(result.warnings.single.sourceId, 'optional-source');
     expect(result.warnings.single.previousProviderId, 'required');
+    expect(result.warnings.single.previousSourceId, 'required-source');
+    expect(result.warnings.single.message, contains('Optional hook plugin/'));
+    expect(
+      result.warnings.single.message,
+      contains('required hook required/required-source'),
+    );
   });
 
   test(
@@ -217,7 +224,65 @@ void main() {
 
       expect(result.entries.single.id, 'required');
       expect(result.errors, isEmpty);
-      expect(result.warnings.single.providerId, 'extension');
+      expect(result.warnings.single.providerId, 'required');
+      expect(result.warnings.single.sourceId, 'required-source');
+      expect(result.warnings.single.previousProviderId, 'extension');
+      expect(result.warnings.single.previousSourceId, 'optional-source');
+      expect(
+        result.warnings.single.message,
+        contains('Optional hook extension/optional-source'),
+      );
+      expect(
+        result.warnings.single.message,
+        contains('required required/required-source'),
+      );
+    },
+  );
+
+  test(
+    'optional hook conflicts remain warnings with both sides locatable',
+    () async {
+      final first = _contribution(
+        HookEntry(
+          id: 'first-optional',
+          source: HookSource.extension,
+          event: HookEvent.stop,
+          action: CommandHookAction.raw('echo stop'),
+          timeout: Duration(seconds: 5),
+        ),
+        ResourceOriginKind.extension,
+        'first-source',
+      );
+      final second = _contribution(
+        HookEntry(
+          id: 'second-optional',
+          source: HookSource.plugin,
+          event: HookEvent.stop,
+          action: CommandHookAction.raw('echo stop'),
+          timeout: Duration(seconds: 10),
+        ),
+        ResourceOriginKind.plugin,
+        'second-source',
+      );
+
+      final result = await assembler.assemble(
+        context: HookProviderContext(cli: CliTool.claude),
+        providers: [
+          _Provider('extension-provider', [first], optional: true),
+          _Provider('plugin-provider', [second], optional: true),
+        ],
+      );
+
+      expect(result.entries.map((entry) => entry.id), ['first-optional']);
+      expect(result.errors, isEmpty);
+      final warning = result.warnings.single;
+      expect(warning.providerId, 'plugin-provider');
+      expect(warning.sourceId, 'second-source');
+      expect(warning.previousProviderId, 'extension-provider');
+      expect(warning.previousSourceId, 'first-source');
+      expect(warning.message, contains('Optional hook'));
+      expect(warning.message, contains('plugin-provider/second-source'));
+      expect(warning.message, contains('extension-provider/first-source'));
     },
   );
 

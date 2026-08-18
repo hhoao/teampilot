@@ -48,7 +48,7 @@ void main() {
       event: HookEvent.stop,
       action: CommandHookAction.raw('echo hi'),
     );
-    final ctx = buildCtx(hooks: const [entry]);
+    final ctx = buildCtx(hooks: [entry]);
     expect(ctx.hooks.single.id, 'h1');
   });
 }
