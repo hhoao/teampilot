@@ -7,21 +7,18 @@ import '../contribution/resource_origin.dart';
 
 /// Focused inputs needed by MCP providers.
 class McpProviderContext {
-  const McpProviderContext({
+  McpProviderContext({
     required this.cli,
     this.scope,
-    this.catalogAccess,
-    this.extraServers = const [],
-    this.credentials = const {},
-    this.layout,
-  });
+    Iterable<McpServerSpec> extraServers = const [],
+    Map<String, String> credentials = const {},
+  }) : extraServers = List.unmodifiable(extraServers),
+       credentials = Map.unmodifiable(credentials);
 
   final CliTool cli;
   final LaunchProfileScope? scope;
-  final Object? catalogAccess;
   final List<McpServerSpec> extraServers;
   final Map<String, String> credentials;
-  final Object? layout;
 }
 
 /// A target-neutral MCP server contribution.

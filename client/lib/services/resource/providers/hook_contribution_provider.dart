@@ -8,24 +8,20 @@ import '../contribution/resource_origin.dart';
 
 /// Focused inputs needed by hook providers.
 class HookProviderContext {
-  const HookProviderContext({
+  HookProviderContext({
     required this.cli,
     this.member,
-    this.endpoints = const {},
+    Map<String, String> endpoints = const {},
     this.filesystem,
     this.hooksDirectory,
-    this.extensionInputs = const [],
-    this.pluginInputs = const [],
     this.scope,
-  });
+  }) : endpoints = Map.unmodifiable(endpoints);
 
   final CliTool cli;
   final TeamMemberConfig? member;
   final Map<String, String> endpoints;
   final Filesystem? filesystem;
   final String? hooksDirectory;
-  final List<Object?> extensionInputs;
-  final List<Object?> pluginInputs;
   final LaunchProfileScope? scope;
 }
 

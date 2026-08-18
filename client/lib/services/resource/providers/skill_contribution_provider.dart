@@ -10,14 +10,12 @@ class SkillProviderContext {
   const SkillProviderContext({
     required this.cli,
     this.scope,
-    this.installedCatalog,
     this.filesystem,
     this.targetConfigDir,
   });
 
   final CliTool cli;
   final LaunchProfileScope? scope;
-  final Object? installedCatalog;
   final Filesystem? filesystem;
   final String? targetConfigDir;
 }

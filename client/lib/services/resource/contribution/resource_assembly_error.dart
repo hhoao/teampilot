@@ -35,6 +35,7 @@ class ResourceAssemblyDiagnostic {
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is ResourceAssemblyDiagnostic &&
+          runtimeType == other.runtimeType &&
           severity == other.severity &&
           resourceKind == other.resourceKind &&
           cli == other.cli &&
@@ -118,6 +119,16 @@ class ResourceAssemblyError extends ResourceAssemblyDiagnostic {
   final ResourceAssemblyErrorKind errorKind;
 
   @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ResourceAssemblyError &&
+          errorKind == other.errorKind &&
+          super == other;
+
+  @override
+  int get hashCode => Object.hash(super.hashCode, errorKind);
+
+  @override
   String toString() =>
       'ResourceAssemblyError(kind: $errorKind, ${super.toString()})';
 }
@@ -125,7 +136,7 @@ class ResourceAssemblyError extends ResourceAssemblyDiagnostic {
 /// Exception raised when one or more resource assembly errors are fatal.
 class ResourceAssemblyException implements Exception {
   ResourceAssemblyException(Iterable<ResourceAssemblyDiagnostic> diagnostics)
-    : diagnostics = List.unmodifiable(diagnostics) {
+    : diagnostics = _validateDiagnostics(diagnostics) {
     if (this.diagnostics.isEmpty) {
       throw ArgumentError.value(
         diagnostics,
@@ -135,7 +146,25 @@ class ResourceAssemblyException implements Exception {
     }
   }
 
-  final List<ResourceAssemblyDiagnostic> diagnostics;
+  final List<ResourceAssemblyError> diagnostics;
+
+  static List<ResourceAssemblyError> _validateDiagnostics(
+    Iterable<ResourceAssemblyDiagnostic> diagnostics,
+  ) {
+    final errors = <ResourceAssemblyError>[];
+    for (final diagnostic in diagnostics) {
+      if (diagnostic is! ResourceAssemblyError ||
+          diagnostic.severity != ResourceAssemblyDiagnosticSeverity.error) {
+        throw ArgumentError.value(
+          diagnostic,
+          'diagnostics',
+          'must contain only ResourceAssemblyError values',
+        );
+      }
+      errors.add(diagnostic);
+    }
+    return List.unmodifiable(errors);
+  }
 
   @override
   String toString() => 'ResourceAssemblyException(${diagnostics.join('; ')})';

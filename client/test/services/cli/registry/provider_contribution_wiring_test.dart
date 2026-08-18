@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/models/mcp_server_spec.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/registry/cli_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_definition.dart';
@@ -162,6 +163,55 @@ void main() {
     expect(registry.providersOf<_SkillProvider>(CliTool.claude), [skill]);
     expect(registry.providersOf<_McpProvider>(CliTool.claude), [mcp]);
     expect(registry.providersOf<_HookProvider>(CliTool.claude), isEmpty);
+  });
+
+  test('resource contexts copy list and map inputs into immutable views', () {
+    final additionalDirectories = ['/workspace'];
+    final extraServers = <McpServerSpec>[];
+    final credentials = <String, String>{'token': 'secret'};
+    final endpoints = <String, String>{'managed': 'http://localhost'};
+
+    final promptContext = PromptProviderContext(
+      cli: CliTool.claude,
+      additionalDirectories: additionalDirectories,
+    );
+    final mcpContext = McpProviderContext(
+      cli: CliTool.claude,
+      extraServers: extraServers,
+      credentials: credentials,
+    );
+    final hookContext = HookProviderContext(
+      cli: CliTool.claude,
+      endpoints: endpoints,
+    );
+
+    additionalDirectories.add('/late');
+    extraServers.add(const StdioMcpServer(name: 'late', command: 'server'));
+    credentials['late'] = 'value';
+    endpoints['late'] = 'value';
+
+    expect(promptContext.additionalDirectories, ['/workspace']);
+    expect(mcpContext.extraServers, isEmpty);
+    expect(mcpContext.credentials, {'token': 'secret'});
+    expect(hookContext.endpoints, {'managed': 'http://localhost'});
+    expect(
+      () => promptContext.additionalDirectories.add('/mutation'),
+      throwsUnsupportedError,
+    );
+    expect(
+      () => mcpContext.extraServers.add(
+        const StdioMcpServer(name: 'mutation', command: 'server'),
+      ),
+      throwsUnsupportedError,
+    );
+    expect(
+      () => mcpContext.credentials['mutation'] = 'value',
+      throwsUnsupportedError,
+    );
+    expect(
+      () => hookContext.endpoints['mutation'] = 'value',
+      throwsUnsupportedError,
+    );
   });
 }
 

@@ -7,16 +7,16 @@ import '../contribution/resource_origin.dart';
 
 /// Focused inputs needed by prompt providers.
 class PromptProviderContext {
-  const PromptProviderContext({
+  PromptProviderContext({
     required this.cli,
     this.scope,
     this.member,
     this.forceTeamLeadDelegateMode = false,
     this.mixed = false,
     this.pushDelivery = false,
-    this.additionalDirectories = const [],
+    Iterable<String> additionalDirectories = const [],
     this.memberHome,
-  });
+  }) : additionalDirectories = List.unmodifiable(additionalDirectories);
 
   final CliTool cli;
   final LaunchProfileScope? scope;

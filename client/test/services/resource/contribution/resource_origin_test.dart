@@ -54,6 +54,37 @@ void main() {
     expect(exception.toString(), contains('conflicting server'));
   });
 
+  test('ResourceAssemblyException rejects empty and non-error diagnostics', () {
+    const warning = ResourceAssemblyDiagnostic(
+      severity: ResourceAssemblyDiagnosticSeverity.warning,
+      resourceKind: ResourceContributionKind.skill,
+      cli: CliTool.claude,
+      providerId: 'catalog',
+      message: 'optional skill skipped',
+    );
+
+    expect(() => ResourceAssemblyException(const []), throwsArgumentError);
+    expect(() => ResourceAssemblyException([warning]), throwsArgumentError);
+  });
+
+  test('ResourceAssemblyError equality includes error kind', () {
+    const provider = ResourceAssemblyError.provider(
+      resourceKind: ResourceContributionKind.prompt,
+      cli: CliTool.claude,
+      providerId: 'provider',
+      message: 'same fields',
+    );
+    const conflict = ResourceAssemblyError.conflict(
+      resourceKind: ResourceContributionKind.prompt,
+      cli: CliTool.claude,
+      providerId: 'provider',
+      message: 'same fields',
+    );
+
+    expect(provider, isNot(conflict));
+    expect(provider.hashCode, isNot(conflict.hashCode));
+  });
+
   test(
     'ResourceAssemblyResult keeps deterministic warning and error order',
     () {
@@ -72,15 +103,14 @@ void main() {
         message: 'required hook missing',
       );
 
-      final result = ResourceAssemblyResult(
-        warnings: [warning],
-        errors: [error],
-        diagnostics: [warning, error],
-      );
+      final result = ResourceAssemblyResult(diagnostics: [warning, error]);
 
       expect(result.warnings, [warning]);
       expect(result.errors, [error]);
       expect(result.diagnostics, [warning, error]);
+      expect(() => result.warnings.add(warning), throwsUnsupportedError);
+      expect(() => result.errors.add(error), throwsUnsupportedError);
+      expect(() => result.diagnostics.add(warning), throwsUnsupportedError);
     },
   );
 }
