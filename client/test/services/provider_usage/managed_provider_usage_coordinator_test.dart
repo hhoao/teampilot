@@ -335,7 +335,7 @@ void main() {
 
     final cancelled = coordinator.refreshOne('p1');
     await Future<void>.delayed(Duration.zero);
-    coordinator.cancelForProvider('p1');
+    await coordinator.cancelForProvider('p1');
     final shared = coordinator.refreshOne('p1');
     await Future<void>.delayed(Duration.zero);
     expect(adapter.calls, 1);
@@ -357,6 +357,54 @@ void main() {
     expect(result.status, ProviderUsageStatus.ready);
     expect(coordinator.snapshotFor('p1')!.measures.single.remaining, '8.50');
     expect((await usage.load()).single.measures.single.remaining, '8.50');
+  });
+
+  test('cancellation linearizes behind a blocked commit', () async {
+    final blockingUsage = _BlockingUsageRepository(fs: fs);
+    await providers.upsert(_provider());
+    final adapter = _QueuedAdapter([
+      Future.value(_ready(remaining: '11.00')),
+      Future.value(_ready(remaining: '8.50')),
+    ]);
+    final coordinator = ManagedProviderUsageCoordinator(
+      providerRepository: providers,
+      usageRepository: blockingUsage,
+      registry: ManagedProviderUsageRegistry([adapter]),
+      credentials: _NoCredentials(),
+      http: _UnusedHttpClient(),
+      now: () => DateTime.fromMillisecondsSinceEpoch(1_700_000_000_000),
+    );
+
+    final oldResult = coordinator.refreshOne('p1');
+    await blockingUsage.saveStarted.future;
+    var cancellationCompleted = false;
+    final cancellation = coordinator.cancelForProvider('p1');
+    cancellation.then((_) => cancellationCompleted = true);
+    await Future<void>.delayed(Duration.zero);
+    expect(cancellationCompleted, isFalse);
+    final oldInvalidation = expectLater(
+      oldResult,
+      throwsA(
+        isA<ManagedProviderUsageInvalidated>().having(
+          (error) => error.code,
+          'code',
+          ManagedProviderUsageInvalidationCode.refreshCancelled,
+        ),
+      ),
+    );
+    blockingUsage.release.complete();
+    await cancellation;
+    await oldInvalidation;
+    expect(adapter.calls, 1);
+    expect(await blockingUsage.load(), isEmpty);
+
+    final successor = await coordinator.refreshOne('p1');
+    expect(successor.measures.single.remaining, '8.50');
+    expect(adapter.calls, 2);
+    expect(
+      (await blockingUsage.load()).single.measures.single.remaining,
+      '8.50',
+    );
   });
 
   test(

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import '../../models/managed_provider.dart';
 import '../../models/provider_usage_snapshot.dart';
 import '../../repositories/managed_provider_repository.dart';
@@ -71,6 +73,7 @@ class ManagedProviderUsageCoordinator {
   final Map<String, ManagedProvider> _providers = {};
   final Map<String, ProviderUsageSnapshot> _snapshots = {};
   final Map<String, _PendingRefresh> _pending = {};
+  final Map<String, _ProviderCommitGate> _commitGates = {};
   final Map<String, int> _tokens = {};
   int _generation = 0;
   bool _loaded = false;
@@ -197,14 +200,21 @@ class ManagedProviderUsageCoordinator {
 
   /// Invalidates an in-flight provider request. Dart HTTP transports may not
   /// be cancellable, so the generation/token check discards its result.
-  void cancelForProvider(String providerId) {
+  Future<void> cancelForProvider(String providerId) async {
     final id = providerId.trim();
     if (id.isEmpty) return;
+    // Record cancellation intent synchronously so a commit that is currently
+    // awaiting cache I/O can detect it when the await returns. The gate below
+    // then linearizes cancellation completion with that commit.
     _tokens[id] = (_tokens[id] ?? 0) + 1;
-    // Keep the tombstone until the transport Future completes. Removing it
-    // here would allow the next entry point to start a second request while
-    // the supposedly cancelled transport is still active.
     _pending[id]?.cancelled = true;
+    await _commitGates.putIfAbsent(id, _ProviderCommitGate.new).run<void>(
+      () async {
+        // Keep the tombstone until the transport Future completes. Removing
+        // it here would allow a second transport while cancellation is still
+        // linearizing with an in-flight commit.
+      },
+    );
   }
 
   Future<ProviderUsageSnapshot> _refreshLoadedProvider(
@@ -369,25 +379,47 @@ class ManagedProviderUsageCoordinator {
     required ProviderUsageSnapshot? previous,
     bool requiresEnabled = true,
   }) async {
-    final current = token == null
-        ? _isCurrentConfig(provider, generation, null)
-        : _isCurrent(provider, generation, token);
-    if (!current || requiresEnabled && !provider.enabled) {
-      _throwInvalidated(provider.id, _invalidationCode(provider.id, token));
-    }
-    final committed = await _providerRepository.runIfUnchanged(
-      expectedRevision: mutationRevision,
-      expectedProvider: provider,
-      action: () async {
-        await _usageRepository.save(result);
-        _snapshots[provider.id] = result;
+    return _commitGates.putIfAbsent(provider.id, _ProviderCommitGate.new).run(
+      () async {
+        final current = token == null
+            ? _isCurrentConfig(provider, generation, null)
+            : _isCurrent(provider, generation, token);
+        if (!current || requiresEnabled && !provider.enabled) {
+          _throwInvalidated(provider.id, _invalidationCode(provider.id, token));
+        }
+        final committed = await _providerRepository.runIfUnchanged(
+          expectedRevision: mutationRevision,
+          expectedProvider: provider,
+          action: () async {
+            await _usageRepository.save(result);
+            if (token != null && !_isCurrent(provider, generation, token)) {
+              await _restoreSnapshot(provider.id, previous);
+              _throwInvalidated(
+                provider.id,
+                _invalidationCode(provider.id, token),
+              );
+            }
+            _snapshots[provider.id] = result;
+          },
+        );
+        if (!committed) {
+          await _synchronizeProviders();
+          _throwInvalidated(provider.id, _invalidationCode(provider.id, token));
+        }
+        return result;
       },
     );
-    if (!committed) {
-      await _synchronizeProviders();
-      _throwInvalidated(provider.id, _invalidationCode(provider.id, token));
+  }
+
+  Future<void> _restoreSnapshot(
+    String providerId,
+    ProviderUsageSnapshot? previous,
+  ) async {
+    if (previous == null) {
+      await _usageRepository.delete(providerId);
+    } else {
+      await _usageRepository.save(previous);
     }
-    return result;
   }
 
   Future<void> _ensureLoaded() async {
@@ -495,4 +527,22 @@ class _PendingRefresh {
   final int token;
   final Future<ProviderUsageSnapshot> future;
   bool cancelled = false;
+}
+
+class _ProviderCommitGate {
+  Future<void> _tail = Future<void>.value();
+
+  Future<T> run<T>(Future<T> Function() action) async {
+    final previous = _tail;
+    final release = Completer<void>();
+    final queued = previous.then((_) => release.future);
+    _tail = queued;
+    await previous;
+    try {
+      return await action();
+    } finally {
+      if (!release.isCompleted) release.complete();
+      if (identical(_tail, queued)) _tail = Future<void>.value();
+    }
+  }
 }
