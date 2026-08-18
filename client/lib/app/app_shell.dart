@@ -678,7 +678,6 @@ Future<AppShell> buildAppShell({
     }
     return null;
   }
-
   final remoteCliReadiness = RemoteCliReadinessService(
     registry: cliToolRegistry,
     sshClientFactory: sshClientFactory,
@@ -1325,8 +1324,7 @@ Future<AppShell> buildAppShell({
           WorkspaceTerminalConnectCoordinator.termuxAware(
             connector: connector,
             termuxConnected: () => termuxGateCubit?.state.connected ?? true,
-            termuxWorkOpsBlockedMessage:
-                TermuxWorkOpsMessage.disconnectedBlocked,
+            termuxWorkOpsBlockedMessage: TermuxWorkOpsMessage.disconnectedBlocked,
           ),
     ),
   );
@@ -1385,10 +1383,8 @@ Future<AppShell> buildAppShell({
         sessionPreferencesCubit.state.preferences.autoLaunchAllMembersOnConnect,
     reclaimIdleTerminalsEnabled: () =>
         sessionPreferencesCubit.state.preferences.reclaimIdleTerminals,
-    reclaimIdleTerminalAfterSeconds: () => sessionPreferencesCubit
-        .state
-        .preferences
-        .reclaimIdleTerminalAfterSeconds,
+    reclaimIdleTerminalAfterSeconds: () =>
+        sessionPreferencesCubit.state.preferences.reclaimIdleTerminalAfterSeconds,
     executableResolver: () => sessionPreferencesCubit.resolveExecutable(),
     cliExecutableResolver: sessionPreferencesCubit.resolveExecutable,
     transportFactory: transportFactory,
@@ -1468,7 +1464,8 @@ Future<AppShell> buildAppShell({
     commandBus,
     layoutCubit,
     uiZoomBaseline: () => uiZoomBaseline.value,
-    composeLanding: () => workbenchCubit.state
+    composeLanding: () => workbenchCubit
+        .state
         .bar(chatCubit.tabStore.activeWorkspaceId)
         .center
         .landingActive,
@@ -1606,8 +1603,8 @@ Future<AppShell> buildAppShell({
   };
   chatCubit.onHistorySeatsDispose = aiHistoryCubit.disposeSeatsForSession;
   // Landing seed routing: pods own the store; these sinks are the fallback.
-  chatCubit.onSeedHistoryPending = (sid, mid, text) =>
-      aiHistoryCubit.seedPendingUser(sessionId: sid, memberId: mid, text: text);
+  chatCubit.onSeedHistoryPending = (sid, mid, text) => aiHistoryCubit
+      .seedPendingUser(sessionId: sid, memberId: mid, text: text);
   chatCubit.onCancelSeedHistoryPending = (sid, text) =>
       aiHistoryCubit.cancelSeedPendingUser(sessionId: sid, text: text);
 
@@ -1820,9 +1817,9 @@ Future<AppShell> buildAppShell({
           editorCubit.closeDiff(workspaceId, replaced.id);
         case WorkbenchTabKind.shell:
           workspaceTerminalRunService.handleEntryClosed(replaced.id);
-          workspaceTerminalRegistry
-              .groupFor(workspaceId)
-              .removeEntry(replaced.id);
+          workspaceTerminalRegistry.groupFor(workspaceId).removeEntry(
+            replaced.id,
+          );
         case WorkbenchTabKind.run:
           final workspace = chatCubit.state.workspaces
               .where((w) => w.workspaceId == workspaceId)
@@ -1855,7 +1852,8 @@ Future<AppShell> buildAppShell({
     floating: floatingWorkspaceCubit,
     chat: chatCubit,
     markdownViewModes: markdownViewModes,
-    readMarkdownOpenMode: () => layoutCubit.state.preferences.markdownOpenMode,
+    readMarkdownOpenMode: () =>
+        layoutCubit.state.preferences.markdownOpenMode,
     readFilePreviewInFloating: () =>
         layoutCubit.state.preferences.filePreviewHost ==
         FilePreviewHost.floating,
