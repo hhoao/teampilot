@@ -1,9 +1,12 @@
 import 'dart:async';
 
 import '../../../models/team_config.dart';
-import '../../cli/registry/capabilities/prompt_capability.dart';
 import '../../cli/registry/config_profile/config_profile_scope.dart';
 import '../contribution/resource_origin.dart';
+
+enum PromptScope { cli, member, team, expert, workspace, global }
+
+enum PromptMergeRole { replace, append, section }
 
 /// Focused inputs needed by prompt providers.
 class PromptProviderContext {
@@ -16,6 +19,7 @@ class PromptProviderContext {
     this.pushDelivery = false,
     Iterable<String> additionalDirectories = const [],
     this.memberHome,
+    this.sourceId,
   }) : additionalDirectories = List.unmodifiable(additionalDirectories);
 
   final CliTool cli;
@@ -26,6 +30,7 @@ class PromptProviderContext {
   final bool pushDelivery;
   final List<String> additionalDirectories;
   final String? memberHome;
+  final String? sourceId;
 }
 
 /// A target-neutral prompt contribution.

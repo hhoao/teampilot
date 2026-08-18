@@ -8,6 +8,8 @@ import '../../../io/filesystem.dart';
 import '../../../team_bus/member_bus_idle_endpoint.dart';
 import '../../registry/capabilities/hook_capability.dart';
 import '../../registry/capabilities/prompt_capability.dart';
+import '../../registry/prompt/prompt_hub_service.dart';
+import '../../../resource/providers/prompt_contribution_provider.dart';
 import '../../registry/config_profile/hook_seat_context_completer.dart';
 import '../../registry/hook/managed_hook_provisioner.dart';
 import '../capabilities/prompt.dart';
@@ -68,8 +70,11 @@ final class CursorHomeProvisioner {
     if (!member.isValid) return;
 
     if (!mixed) {
-      await _promptProvision.materialize(
-        PromptMaterializeContext(
+      await const PromptHubService().provisionForCli(
+        cli: CliTool.cursor,
+        capability: _promptProvision,
+        providers: [_promptProvision as PromptContributionProvider],
+        ctx: PromptMaterializeContext(
           member: member,
           memberHome: memberHome,
           forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
@@ -103,12 +108,12 @@ final class CursorHomeProvisioner {
 
     await _ensureOverlayDirs(memberHome);
     await _ensureAgentCommandTipSuppressed(memberHome);
-    await _mergeTeamBusPermissions(
-      memberHome,
-      cliConfigJson: cliConfigJson,
-    );
-    await _promptProvision.materialize(
-      PromptMaterializeContext(
+    await _mergeTeamBusPermissions(memberHome, cliConfigJson: cliConfigJson);
+    await const PromptHubService().provisionForCli(
+      cli: CliTool.cursor,
+      capability: _promptProvision,
+      providers: [_promptProvision as PromptContributionProvider],
+      ctx: PromptMaterializeContext(
         member: member,
         memberHome: memberHome,
         forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
@@ -136,10 +141,10 @@ final class CursorHomeProvisioner {
   }) async {
     final realHome = realHomeRoot?.trim() ?? '';
     if (realHome.isEmpty) return;
-    await CursorMemberHomePassthrough(fs: _fs, layout: _layout).mirror(
-      realHomeRoot: realHome,
-      memberHomeRoot: memberHome,
-    );
+    await CursorMemberHomePassthrough(
+      fs: _fs,
+      layout: _layout,
+    ).mirror(realHomeRoot: realHome, memberHomeRoot: memberHome);
   }
 
   Future<void> _ensureCursorDirs(String memberHome) async {
@@ -244,20 +249,21 @@ final class CursorHomeProvisioner {
       _layout.cursorDir(memberHome),
       CursorHomeLayout.hooksDirName,
     );
-    final result = await ManagedHookProvisioner(
-      fs: _fs,
-      joinWork: _fs.pathContext.join,
-      atomicWrite: true,
-      ensureParentDirs: true,
-    ).provision(
-      writer: const CursorHookWriter(),
-      entries: entries,
-      ctx: HookRenderContext(
-        hooksDir: hooksDir,
-        runner: runner,
-        glueBuilder: const GlueScriptBuilder(),
-      ),
-    );
+    final result =
+        await ManagedHookProvisioner(
+          fs: _fs,
+          joinWork: _fs.pathContext.join,
+          atomicWrite: true,
+          ensureParentDirs: true,
+        ).provision(
+          writer: const CursorHookWriter(),
+          entries: entries,
+          ctx: HookRenderContext(
+            hooksDir: hooksDir,
+            runner: runner,
+            glueBuilder: const GlueScriptBuilder(),
+          ),
+        );
     final hooksJsonPath = _layout.hooksConfig(memberHome);
     final existing = await _readHooksJson(hooksJsonPath);
     final fragment =

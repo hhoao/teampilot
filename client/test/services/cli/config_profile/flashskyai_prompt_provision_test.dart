@@ -4,32 +4,36 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/flashskyai/capabilities/prompt.dart';
 import 'package:teampilot/services/cli/registry/capabilities/prompt_capability.dart';
+import 'package:teampilot/services/resource/assemblers/prompt_assembler.dart';
+import 'package:teampilot/services/resource/providers/prompt_contribution_provider.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/session/member_role_provision.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 
 void main() {
-  test('FlashskyaiPromptCapability virtualizes the member role spec', () {
-    const member = TeamMemberConfig(
-      id: 'm1',
-      name: 'Member',
-      model: 'test',
-      responsibilities: 'You are the reviewer.',
-    );
-    final specs = const FlashskyaiPromptCapability().virtualize(
-      const PromptVirtualizeContext(member: member),
-    );
+  test(
+    'FlashskyaiPromptCapability provides the member role contribution',
+    () async {
+      const member = TeamMemberConfig(
+        id: 'm1',
+        name: 'Member',
+        model: 'test',
+        responsibilities: 'You are the reviewer.',
+      );
+      final specs = await const FlashskyaiPromptCapability().provide(
+        PromptProviderContext(cli: CliTool.flashskyai, member: member),
+      );
 
-    expect(specs, isNotEmpty);
-    expect(specs.first.id, 'flashskyai-member-role');
-    expect(specs.first.title, 'Member role');
-    expect(specs.first.scope, PromptScope.member);
-    expect(specs.first.content, contains('You are the reviewer.'));
-  });
+      expect(specs, isNotEmpty);
+      expect(specs.first.id, 'flashskyai-member-role');
+      expect(specs.first.title, 'Member role');
+      expect(specs.first.scope, PromptScope.member);
+      expect(specs.first.content, contains('You are the reviewer.'));
+    },
+  );
 
-  test('FlashskyaiPromptCapability writes role.md and returns env',
-      () async {
+  test('FlashskyaiPromptCapability writes role.md and returns env', () async {
     final base = await Directory.systemTemp.createTemp('flashskyai_prompt_');
     addTearDown(() async {
       if (await base.exists()) await base.delete(recursive: true);
@@ -54,14 +58,14 @@ void main() {
       memberId: 'm1',
     );
 
-    final contribution =
-        await const FlashskyaiPromptCapability().materialize(
-          PromptMaterializeContext(paths: service, scope: scope, member: member),
-        );
+    final contribution = await const FlashskyaiPromptCapability().materialize(
+      PromptMaterializeContext(paths: service, scope: scope, member: member),
+      document: await _document(member),
+    );
 
     expect(contribution.written, isTrue);
-    final path = contribution.environment[
-        MemberRoleProvision.appendSystemPromptFileEnvKey]!;
+    final path = contribution
+        .environment[MemberRoleProvision.appendSystemPromptFileEnvKey]!;
     expect(await fs.stat(path), isNotNull);
     expect(await fs.readString(path), contains('You are the reviewer.'));
   });
@@ -73,11 +77,18 @@ void main() {
       model: 'test',
       responsibilities: 'You are the reviewer.',
     );
-    final contribution = await const FlashskyaiPromptCapability()
-        .materialize(
-          const PromptMaterializeContext(member: member),
-        );
+    final contribution = await const FlashskyaiPromptCapability().materialize(
+      const PromptMaterializeContext(member: member),
+      document: PromptDocument.empty(),
+    );
     expect(contribution.written, isFalse);
     expect(contribution.environment, isEmpty);
   });
+}
+
+Future<PromptDocument> _document(TeamMemberConfig member) async {
+  return (await PromptAssembler().assemble(
+    context: PromptProviderContext(cli: CliTool.flashskyai, member: member),
+    providers: [const FlashskyaiPromptCapability()],
+  )).document;
 }

@@ -1,20 +1,28 @@
+import 'dart:async';
+
 import '../../registry/capabilities/prompt_capability.dart';
 import '../../../../services/session/member_role_provision.dart';
 import '../../../launch/work_plane_paths.dart';
+import '../../../resource/providers/prompt_contribution_provider.dart';
+import '../../../resource/contribution/resource_origin.dart';
 
 /// codex 把成员 prompt 写入 `$CODEX_HOME/AGENTS.md`；codex 自动加载为全局指令。
-final class CodexPromptCapability implements PromptCapability {
+final class CodexPromptCapability
+    implements PromptCapability, PromptContributionProvider {
   const CodexPromptCapability();
 
   static const toolId = 'codex';
   static const agentsFileName = 'AGENTS.md';
 
   @override
-  List<PromptSpec> virtualize(PromptVirtualizeContext ctx) {
+  String get providerId => toolId;
+
+  @override
+  FutureOr<Iterable<PromptContribution>> provide(PromptProviderContext ctx) {
     final member = ctx.member;
     if (member == null || !member.isValid) return const [];
     return [
-      PromptSpec(
+      PromptContribution(
         id: 'codex-member-role',
         title: 'Member role',
         scope: PromptScope.member,
@@ -24,29 +32,27 @@ final class CodexPromptCapability implements PromptCapability {
           mixed: ctx.mixed,
           additionalDirectories: const [],
         ).trim(),
+        origin: const ContributionOrigin(
+          providerId: toolId,
+          kind: ResourceOriginKind.cliBuiltIn,
+          sourceId: 'codex-member-role',
+        ),
       ),
     ];
   }
 
   @override
   Future<PromptMaterializeResult> materialize(
-    PromptMaterializeContext ctx,
-  ) async {
+    PromptMaterializeContext ctx, {
+    required PromptDocument document,
+  }) async {
     final paths = ctx.paths;
     final scope = ctx.scope;
     final member = ctx.member;
-    if (paths == null ||
-        scope == null ||
-        member == null ||
-        !member.isValid) {
+    if (paths == null || scope == null || member == null || !member.isValid) {
       return const PromptMaterializeResult();
     }
-    final prompt = MemberRoleProvision.composeRolePrompt(
-      member: member,
-      forceTeamLeadDelegateMode: ctx.forceTeamLeadDelegateMode,
-      mixed: ctx.mixed,
-      additionalDirectories: const [],
-    ).trim();
+    final prompt = document.content;
     if (prompt.isEmpty) return const PromptMaterializeResult();
     final codexHome = paths.sessionToolDir(
       scope.workspaceId,
