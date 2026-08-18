@@ -18,6 +18,7 @@ import '../mcp/mcp_management_page.dart';
 import '../plugins/plugin_management_page.dart';
 import '../skills/skill_management_page.dart';
 import '../llm_config/llm_config_workspace.dart';
+import '../managed_providers/managed_provider_management_page.dart';
 import '../my_experts/my_experts_page.dart';
 import '../my_teams/my_teams_page.dart';
 import '../team_hub/team_hub_page.dart';
@@ -34,6 +35,7 @@ enum HomeGlobalView {
   teamHub,
   expertHub,
   providers,
+  managedProviders,
   automations;
 
   /// Query key on `/home-v2` for deep-linking a global management pane.
@@ -68,11 +70,7 @@ enum HomeGlobalView {
 /// navigation stays local (via [onSelectSection] overrides) so it never breaks
 /// out of the home shell.
 class HomeGlobalSection extends StatefulWidget {
-  const HomeGlobalSection({
-    required this.view,
-    this.onOpenTeam,
-    super.key,
-  });
+  const HomeGlobalSection({required this.view, this.onOpenTeam, super.key});
 
   final HomeGlobalView view;
 
@@ -121,6 +119,9 @@ class _HomeGlobalSectionState extends State<HomeGlobalSection> {
         onLaunchInWorkspace: expertHubLaunchInWorkspace,
       ),
       HomeGlobalView.providers => const LlmConfigWorkspace(embedded: true),
+      HomeGlobalView.managedProviders => const ManagedProviderManagementPage(
+        embedded: true,
+      ),
       HomeGlobalView.automations => const AutomationManagementPage(),
     };
     if (MediaQuery.disableAnimationsOf(context)) return content;
@@ -160,7 +161,10 @@ Future<void> expertHubAddToTeam(
   );
 }
 
-void expertHubLaunchInWorkspace(BuildContext context, DiscoverableMember member) {
+void expertHubLaunchInWorkspace(
+  BuildContext context,
+  DiscoverableMember member,
+) {
   showExpertWorkspacePickerDialog(context).then((workspaceId) {
     if (workspaceId == null || !context.mounted) return;
     context.go(
