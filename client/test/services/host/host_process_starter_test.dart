@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/host/host_one_shot_runner.dart';
@@ -88,12 +89,18 @@ void main() {
         ),
       );
 
-      expect(calls.single['executable'], 'script');
-      expect(calls.single['arguments'], [
-        '-qefc',
-        "'codex' 'login' '--device-auth'",
-        '/dev/null',
-      ]);
+      // Native Windows has no `script(1)`; WSL/SSH still wrap via their starters.
+      if (Platform.isWindows) {
+        expect(calls.single['executable'], 'codex');
+        expect(calls.single['arguments'], ['login', '--device-auth']);
+      } else {
+        expect(calls.single['executable'], 'script');
+        expect(calls.single['arguments'], [
+          '-qefc',
+          "'codex' 'login' '--device-auth'",
+          '/dev/null',
+        ]);
+      }
     });
   });
 
