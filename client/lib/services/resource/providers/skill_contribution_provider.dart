@@ -1,9 +1,10 @@
 import 'dart:async';
 
 import '../../../models/team_config.dart';
-import '../../cli/registry/config_profile/config_profile_scope.dart';
 import '../../io/filesystem.dart';
+import '../contribution/resource_assembly_error.dart';
 import '../contribution/resource_origin.dart';
+import '../resource_scope.dart';
 
 /// Focused inputs needed by skill providers.
 class SkillProviderContext {
@@ -12,12 +13,14 @@ class SkillProviderContext {
     this.scope,
     this.filesystem,
     this.targetConfigDir,
+    this.sourceId,
   });
 
   final CliTool cli;
-  final LaunchProfileScope? scope;
+  final ResourceScope? scope;
   final Filesystem? filesystem;
   final String? targetConfigDir;
+  final String? sourceId;
 }
 
 /// Neutral source artifact for a skill contribution.
@@ -53,4 +56,13 @@ abstract interface class SkillContributionProvider {
   String get providerId;
 
   FutureOr<Iterable<SkillContribution>> provide(SkillProviderContext context);
+}
+
+/// Optional diagnostics emitted by a provider while it filters its source.
+///
+/// The base provider contract intentionally remains an iterable so existing
+/// providers stay source-compatible. Assemblers collect this optional
+/// projection immediately after the single provider invocation.
+abstract interface class SkillContributionProviderDiagnostics {
+  List<ResourceAssemblyDiagnostic> get diagnostics;
 }

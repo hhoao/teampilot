@@ -1,7 +1,9 @@
 import '../../registry/capabilities/skill_capability.dart';
 
 /// Codex: `$superpowers:using-git-worktrees`.
-final class CodexSkillCapability implements SkillCapability {
+final class CodexSkillCapability
+    with SkillCapabilityMaterializationMixin
+    implements SkillCapability {
   const CodexSkillCapability();
 
   @override
@@ -19,6 +21,7 @@ final class CodexSkillCapability implements SkillCapability {
     final ns = namespace != null && namespace.trim().isNotEmpty
         ? '$namespace:'
         : '';
-    return r'$' '$ns$skillName';
+    return r'$'
+        '$ns$skillName';
   }
 }

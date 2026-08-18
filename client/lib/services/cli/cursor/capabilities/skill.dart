@@ -1,7 +1,9 @@
 import '../../registry/capabilities/skill_capability.dart';
 
 /// Cursor-agent loads skills from `<cursorConfigDir>/skills-cursor/`.
-final class CursorSkillCapability implements SkillCapability {
+final class CursorSkillCapability
+    with SkillCapabilityMaterializationMixin
+    implements SkillCapability {
   const CursorSkillCapability();
 
   static const skillsSubdirName = 'skills-cursor';

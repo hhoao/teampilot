@@ -3,10 +3,13 @@ import '../cli/registry/capabilities/skill_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../io/filesystem.dart';
 import '../../models/team_config.dart';
-import 'resource_kind.dart';
+import 'assemblers/skill_assembler.dart';
 import 'resource_materializer.dart';
 import 'resource_resolver.dart';
 import 'resource_scope.dart';
+import 'providers/catalog_skill_contribution_provider.dart';
+import 'providers/plugin_skill_contribution_provider.dart';
+import 'providers/skill_contribution_provider.dart';
 
 class ResourceProvisionResult {
   const ResourceProvisionResult({this.warnings = const []});
@@ -24,12 +27,10 @@ class ResourceProvisioningService {
     ResourceMaterializer? materializer,
   }) : _fs = fs,
        _registry = registry,
-       _resolver = resolver,
        _materializer = materializer ?? ResourceMaterializer(fs: fs);
 
   final Filesystem _fs;
   final CliToolRegistry _registry;
-  final ResourceResolver _resolver;
   final ResourceMaterializer _materializer;
 
   Future<ResourceProvisionResult> provisionForLaunch({
@@ -38,39 +39,42 @@ class ResourceProvisioningService {
     required String configDir,
     required ResourceCatalog catalog,
   }) async {
-    final effective = _resolver.resolve(scope: scope, catalog: catalog);
     final warnings = <String>[];
 
     final skill = _registry.capability<SkillCapability>(cli);
     if (skill != null &&
         skill.skillsRepresentation == ResourceRepresentation.linkedDirectory) {
-      final skillDir = _fs.pathContext.join(configDir, skill.skillsSubdir);
-      final result = await _materializer.reconcile(
-        kindDir: skillDir,
-        desired: effective.of(ResourceKind.skill),
+      final providers = <SkillContributionProvider>[
+        CatalogSkillContributionProvider(catalog: catalog),
+        if (catalog.plugins.isNotEmpty)
+          PluginSkillContributionProvider(catalog: catalog),
+      ];
+      final assembled = await const SkillAssembler().assemble(
+        context: SkillProviderContext(cli: cli, scope: scope),
+        providers: providers,
+      );
+      warnings.addAll(
+        assembled.warnings.map((diagnostic) => diagnostic.message),
+      );
+      final result = await skill.materializeSkills(
+        fs: _fs,
+        configDir: configDir,
+        contributions: assembled.skills,
+        materializer: _materializer,
       );
       warnings.addAll(result.errors);
     }
 
     final plugin = _registry.capability<PluginCapability>(cli);
     if (plugin != null &&
-        plugin.pluginsRepresentation == ResourceRepresentation.linkedDirectory) {
+        plugin.pluginsRepresentation ==
+            ResourceRepresentation.linkedDirectory) {
       // ResourceResolver only ever emits skills today, so the effective plugin
       // set is always empty and this branch never reconciles. Reconcile with an
       // empty set would prune `plugins/`, which holds decomposed plugin bundles
       // — the guard below must stay (asserts are stripped in release builds).
-      final desired = effective.of(ResourceKind.plugin);
-      assert(
-        desired.isEmpty,
-        'plugin resources are not emitted by ResourceResolver yet',
-      );
-      if (desired.isEmpty) return ResourceProvisionResult(warnings: warnings);
-      final pluginDir = _fs.pathContext.join(configDir, plugin.pluginsSubdir);
-      final result = await _materializer.reconcile(
-        kindDir: pluginDir,
-        desired: desired,
-      );
-      warnings.addAll(result.errors);
+      // Skills are assembled above; plugin bundles remain owned by the
+      // PluginCapability pipeline until their typed provider is introduced.
     }
     return ResourceProvisionResult(warnings: warnings);
   }

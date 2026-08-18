@@ -1,4 +1,8 @@
+import '../../../io/filesystem.dart';
 import '../cli_capability.dart';
+import '../../../resource/providers/skill_contribution_provider.dart';
+import '../../../resource/resource_kind.dart';
+import '../../../resource/resource_materializer.dart';
 
 /// How a resource kind is represented inside a CLI's CONFIG_DIR.
 enum ResourceRepresentation { linkedDirectory, mergedJsonEntry }
@@ -21,6 +25,64 @@ abstract interface class SkillCapability implements CliCapability {
   /// Renders the prompt text that invokes [skillName]. [namespace] is the
   /// plugin name when the skill ships inside a plugin bundle.
   String skillInvocationText(String skillName, {String? namespace});
+
+  /// Materializes already-assembled neutral skill artifacts into this CLI's
+  /// target directory. Catalog and scope resolution do not belong here.
+  Future<MaterializeResult> materializeSkills({
+    required Filesystem fs,
+    required String configDir,
+    required Iterable<SkillContribution> contributions,
+    ResourceMaterializer? materializer,
+  });
+}
+
+/// Shared target-side implementation for linked-directory skill CLIs.
+///
+/// The capability owns only target naming and directory layout. Providers and
+/// assemblers have already selected the contributions before this is called.
+mixin SkillCapabilityMaterializationMixin {
+  String get skillsSubdir;
+
+  Future<MaterializeResult> materializeSkills({
+    required Filesystem fs,
+    required String configDir,
+    required Iterable<SkillContribution> contributions,
+    ResourceMaterializer? materializer,
+  }) {
+    final ordered = List<SkillContribution>.of(contributions);
+    final usedNames = <String>{};
+    final desired = <ResourceRef>[];
+    for (final contribution in ordered) {
+      final artifact = contribution.artifact;
+      if (artifact is! SkillDirectoryArtifact) continue;
+
+      var linkName = contribution.invocationName;
+      if (!usedNames.add(linkName)) {
+        final namespace = contribution.namespace?.trim();
+        if (namespace != null && namespace.isNotEmpty) {
+          linkName = '$namespace:$linkName';
+        }
+        var suffix = 2;
+        final base = linkName;
+        while (!usedNames.add(linkName)) {
+          linkName = '$base:$suffix';
+          suffix++;
+        }
+      }
+      desired.add(
+        ResourceRef(
+          id: contribution.id,
+          linkName: linkName,
+          sourceDir: artifact.sourceDirectory,
+        ),
+      );
+    }
+
+    return (materializer ?? ResourceMaterializer(fs: fs)).reconcile(
+      kindDir: fs.pathContext.join(configDir, skillsSubdir),
+      desired: desired,
+    );
+  }
 }
 
 /// Default: Claude-style `/skill-name` invocation, no namespace.

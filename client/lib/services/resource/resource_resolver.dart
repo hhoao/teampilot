@@ -7,19 +7,27 @@ import 'resource_scope.dart';
 class ResourceResolver {
   const ResourceResolver();
 
+  /// Returns the stable, de-duplicated skill selection for a launch scope.
+  /// Catalog enablement and source-path resolution are intentionally handled
+  /// by [CatalogSkillContributionProvider].
+  List<String> selectedSkillIds(ResourceScope scope) =>
+      _stableIds(scope.skillIds);
+
+  /// Returns the stable, de-duplicated plugin selection for a launch scope.
+  List<String> selectedPluginIds(ResourceScope scope) =>
+      _stableIds(scope.pluginIds);
+
   EffectiveResourceSet resolve({
     required ResourceScope scope,
     required ResourceCatalog catalog,
   }) {
-    return EffectiveResourceSet({ResourceKind.skill: _skills(scope, catalog)});
+    return EffectiveResourceSet.immutable({
+      ResourceKind.skill: _skills(scope, catalog),
+    });
   }
 
   List<ResourceRef> _skills(ResourceScope scope, ResourceCatalog catalog) {
-    final ids = switch (scope) {
-      SimpleResourceScope(:final bundle) => bundle.skillIds,
-      TeamResourceScope(:final team) => team.skillIds,
-      WorkspaceResourceScope(:final bundle) => bundle.skillIds,
-    };
+    final ids = selectedSkillIds(scope);
     if (ids.isEmpty) return const [];
     // Honor the global enable toggle: a skill disabled in the library is an
     // "off switch" everywhere, even if a workspace/team still lists it in skillIds.
@@ -43,5 +51,13 @@ class ResourceResolver {
       );
     }
     return refs;
+  }
+
+  List<String> _stableIds(Iterable<String> rawIds) {
+    final seen = <String>{};
+    return [
+      for (final rawId in rawIds)
+        if (rawId.trim().isNotEmpty && seen.add(rawId.trim())) rawId.trim(),
+    ];
   }
 }

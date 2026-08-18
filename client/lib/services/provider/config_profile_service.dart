@@ -141,6 +141,8 @@ class ConfigProfileService implements ConfigProfileDelegate {
       skills: skills,
       skillsRoot: AppPaths.skillsDirForTeampilotRoot(catalog.basePath),
       pathContext: fs.pathContext,
+      plugins: await InstalledPluginCatalog.load(fs, catalog.basePath),
+      pluginsRoot: AppPaths.pluginsDirForTeampilotRoot(catalog.basePath),
     );
   }
 
