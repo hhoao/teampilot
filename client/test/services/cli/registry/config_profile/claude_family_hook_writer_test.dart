@@ -73,7 +73,10 @@ void main() {
     final hookGroup = pre.single as Map;
     final hook = ((hookGroup['hooks'] as List).single) as Map;
 
-    expect(hook['command'], contains('${TeamPilotHookScripts.teamLeadSelf}.sh'));
+    expect(
+      hook['command'],
+      contains('${TeamPilotHookScripts.teamLeadSelf}.sh'),
+    );
     expect(result.scripts, isEmpty);
   });
 

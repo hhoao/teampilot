@@ -86,8 +86,10 @@ void main() {
   });
 
   test('mergeHooksInto 空 hooks 段且原 settings 无 hooks 键 → 不写入 hooks 键', () {
-    final merged =
-        mergeHooksInto({'model': 'x'}, {'hooks': <String, Object?>{}});
+    final merged = mergeHooksInto(
+      {'model': 'x'},
+      {'hooks': <String, Object?>{}},
+    );
     expect(merged.containsKey('hooks'), isFalse);
     expect(merged['model'], 'x');
   });
