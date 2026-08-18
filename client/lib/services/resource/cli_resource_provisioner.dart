@@ -508,6 +508,103 @@ final class CliResourceProvisioner {
     );
   }
 
+  /// Assembles and materializes only hooks for an additional roster member.
+  ///
+  /// Team launch staging uses this after the single full resource pass so
+  /// prompt, skill, and MCP providers are not assembled again for every
+  /// member. Hook providers remain per-member because their endpoints,
+  /// target CLI, and lead-only commands are seat-specific.
+  Future<ResourceProvisionReport> provisionHooks(
+    CliResourceProvisionContext context,
+  ) async {
+    final providers = ResourceProviderSet.fromRegistryAndInjected(
+      cli: context.cli,
+      registry: _registry,
+      injected: context.resourceProviders,
+    );
+    final warnings = <ResourceAssemblyDiagnostic>[];
+    final hard = <ResourceAssemblyError>[];
+    final materializations =
+        <ResourceContributionKind, ResourceMaterializationResult>{
+          for (final kind in ResourceContributionKind.values)
+            kind: ResourceMaterializationResult(kind: kind, attempted: false),
+        };
+
+    final hookAssembly = await _assembleHook(
+      context,
+      providers,
+      warnings,
+      hard,
+    );
+    if (hookAssembly != null && hookAssembly.entries.isNotEmpty) {
+      final capability = _registry.capability<HookCapability>(context.cli);
+      if (capability == null) {
+        final diagnostic = _unsupported(
+          ResourceContributionKind.hook,
+          context.cli,
+        );
+        hard.add(diagnostic);
+        materializations[ResourceContributionKind.hook] =
+            ResourceMaterializationResult(
+              kind: ResourceContributionKind.hook,
+              attempted: true,
+              diagnostics: [diagnostic],
+            );
+      } else {
+        try {
+          final result = capability.render(
+            entries: hookAssembly.entries,
+            ctx:
+                context.hookRenderContext ??
+                HookRenderContext(
+                  hooksDir:
+                      context.hooksDir ??
+                      _fs.pathContext.join(context.configDir, 'hooks'),
+                  runner: null,
+                  glueBuilder: const GlueScriptBuilder(),
+                ),
+          );
+          await _materializeHookResult(context: context, result: result);
+          warnings.addAll(_hookWarnings(context.cli, result.warnings));
+          materializations[ResourceContributionKind.hook] =
+              ResourceMaterializationResult(
+                kind: ResourceContributionKind.hook,
+                attempted: true,
+                materialized: true,
+                warnings: result.warnings,
+              );
+        } on Object catch (error, stackTrace) {
+          final diagnostic = _materializerFailure(
+            ResourceContributionKind.hook,
+            context.cli,
+            error,
+            stackTrace,
+          );
+          hard.add(diagnostic);
+          materializations[ResourceContributionKind.hook] =
+              ResourceMaterializationResult(
+                kind: ResourceContributionKind.hook,
+                attempted: true,
+                diagnostics: [diagnostic],
+              );
+        }
+      }
+    } else if (hookAssembly != null) {
+      materializations[ResourceContributionKind.hook] =
+          ResourceMaterializationResult(
+            kind: ResourceContributionKind.hook,
+            attempted: false,
+          );
+    }
+
+    return ResourceProvisionReport(
+      warnings: warnings,
+      hardDiagnostics: hard,
+      materializations: materializations,
+      hooks: hookAssembly?.entries ?? const <HookEntry>[],
+    );
+  }
+
   Future<void> _materializeHookResult({
     required CliResourceProvisionContext context,
     required HookWriteResult result,

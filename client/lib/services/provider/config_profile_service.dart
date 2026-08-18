@@ -178,6 +178,127 @@ class ConfigProfileService implements ConfigProfileDelegate {
     return report;
   }
 
+  Future<ResourceProvisionReport> _provisionStagedHooks({
+    required CliResourceProvisionContext context,
+  }) async {
+    final report = await CliResourceProvisioner(
+      fs: context.fs,
+      registry: _cliRegistry,
+    ).provisionHooks(context);
+    if (report.hardDiagnostics.isNotEmpty) {
+      throw ResourceAssemblyException(report.hardDiagnostics);
+    }
+    return report;
+  }
+
+  Future<void> _provisionStagedRosterHooks({
+    required ConfigProfileService staging,
+    required Filesystem stagingFs,
+    required String workspaceId,
+    required String sessionId,
+    required String teamId,
+    required String cliTeamName,
+    required TeamProfile? team,
+    required CliTool defaultCli,
+    required List<TeamMemberConfig> members,
+    required ConfigBundle runtimeBundle,
+    required String workingDirectory,
+    required List<String> additionalDirectories,
+    required MemberBusIdleEndpoint? busIdle,
+    required MemberAgentStatusEndpoint? agentStatus,
+    required List<String> hookIds,
+    required List<String> warnings,
+  }) async {
+    for (final member in members.where((member) => member.isValid)) {
+      final mixed = team?.teamMode == TeamMode.mixed;
+      final memberId = mixed
+          ? ClaudeTeamRosterService.safeClaudePathSegment(member.id)
+          : null;
+      final memberCli = team == null
+          ? defaultCli
+          : mixed
+          ? member.cli ?? team.cli
+          : team.cli;
+      final scope = resolveLaunchProfileScope(
+        workspaceId: workspaceId,
+        teamId: teamId,
+        appSessionId: sessionId,
+        cliTeamName: cliTeamName,
+        memberId: memberId,
+      );
+      final memberToolDir = staging.sessionToolDir(
+        workspaceId,
+        sessionId,
+        memberCli.value,
+        memberId: memberId,
+      );
+      final hookProviders = await staging._launchHookProviders(
+        delegate: staging,
+        cli: memberCli,
+        scope: scope,
+        team: team,
+        member: member,
+        busIdle: busIdle,
+        agentStatus: agentStatus,
+        memberToolDir: memberToolDir,
+        hookIds: hookIds,
+        simple: false,
+      );
+      final hookPaths = staging._hookMaterializationPaths(
+        cli: memberCli,
+        memberToolDir: memberToolDir,
+        member: member,
+        memberHome: memberCli == CliTool.cursor
+            ? staging.fs.pathContext.join(
+                mixed && memberId != null
+                    ? staging.layout.workspaceRuntimeMemberToolDir(
+                        workspaceId,
+                        teamId,
+                        memberId,
+                        memberCli.value,
+                      )
+                    : staging.sessionToolDir(
+                        workspaceId,
+                        sessionId,
+                        memberCli.value,
+                      ),
+                'home',
+              )
+            : null,
+      );
+      final report = await staging._provisionStagedHooks(
+        context: CliResourceProvisionContext(
+          cli: memberCli,
+          scope: team == null
+              ? WorkspaceResourceScope(bundle: runtimeBundle)
+              : TeamResourceScope(team: team, member: member),
+          runtimeBundle: runtimeBundle,
+          fs: stagingFs,
+          layout: staging.layout,
+          configDir: staging._launchResourceConfigDir(
+            cli: memberCli,
+            workspaceId: workspaceId,
+            sessionId: sessionId,
+            memberId: memberId,
+            team: team,
+          ),
+          resourceProviders: ResourceProviderSet(hooks: hookProviders.hooks),
+          paths: staging,
+          launchScope: scope,
+          member: member,
+          members: [member],
+          workingDirectory: workingDirectory,
+          additionalDirectories: additionalDirectories,
+          mixed: mixed,
+          pushDelivery: mixed,
+          hooksDir: hookPaths.hooksDir,
+          hookConfigPath: hookPaths.configPath,
+        ),
+      );
+      warnings.addAll(staging._resourceWarnings(report));
+    }
+  }
+
   List<String> _resourceWarnings(ResourceProvisionReport report) => [
     ...report.warnings.map((diagnostic) => diagnostic.message),
     for (final result in report.materializations.values) ...result.warnings,
@@ -1190,18 +1311,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
       launchCli.value,
       memberId: team?.teamMode == TeamMode.mixed ? memberId : null,
     );
-    final hookProviders = await staging._launchHookProviders(
-      delegate: staging,
-      cli: launchCli,
-      scope: scope,
-      team: team,
-      member: launchMember,
-      busIdle: busIdle,
-      agentStatus: agentStatus,
-      memberToolDir: hookMemberToolDir,
-      hookIds: runtimeBundle.hookIds,
-      simple: team == null,
-    );
+    final hookProviders = ResourceProviderSet.empty;
     final hookPaths = staging._hookMaterializationPaths(
       cli: launchCli,
       memberToolDir: hookMemberToolDir,
@@ -1276,6 +1386,26 @@ class ConfigProfileService implements ConfigProfileDelegate {
       ),
     );
     warnings.addAll(_resourceWarnings(resourceReport));
+    if (launchMembers.isNotEmpty) {
+      await staging._provisionStagedRosterHooks(
+        staging: staging,
+        stagingFs: stagingFs,
+        workspaceId: trimmedWorkspaceId,
+        sessionId: trimmedSessionId,
+        teamId: trimmedTeamId,
+        cliTeamName: cliTeamName,
+        team: team,
+        defaultCli: launchCli,
+        members: launchMembers,
+        runtimeBundle: runtimeBundle,
+        workingDirectory: workingDirectory,
+        additionalDirectories: additionalDirectories,
+        busIdle: busIdle,
+        agentStatus: agentStatus,
+        hookIds: runtimeBundle.hookIds,
+        warnings: warnings,
+      );
+    }
 
     final cap = _cliRegistry.capability<ProviderCapability>(launchCli);
     if (cap == null) {
