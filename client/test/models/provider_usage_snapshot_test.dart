@@ -168,6 +168,9 @@ void main() {
       status: ProviderUsageStatus.error,
       unknownFields: {
         'key': 'secret',
+        'X-Api-Key': 'secret',
+        'X-Auth-Token': 'secret',
+        'Bearer-Token': 'secret',
         'privateKey': 'secret',
         'credential': 'secret',
         'client secret': 'secret',
@@ -179,6 +182,9 @@ void main() {
     final json = snapshot.toJson();
 
     expect(json.containsKey('key'), isFalse);
+    expect(json.containsKey('X-Api-Key'), isFalse);
+    expect(json.containsKey('X-Auth-Token'), isFalse);
+    expect(json.containsKey('Bearer-Token'), isFalse);
     expect(json.containsKey('privateKey'), isFalse);
     expect(json.containsKey('credential'), isFalse);
     expect(json.containsKey('client secret'), isFalse);
@@ -226,6 +232,9 @@ void main() {
       'lastErrorMessage': '{"apiKey":"secret","tokenCount":2}',
       'headers': {
         'Authorization': 'Bearer header-secret',
+        'X-Api-Key': 'x-api-header-secret',
+        'X-Auth-Token': 'x-auth-header-secret',
+        'Bearer-Token': 'bearer-header-secret',
         'Accept': 'application/json',
       },
       'requestUrl': 'https://example.test/usage?apiKey=url-secret',

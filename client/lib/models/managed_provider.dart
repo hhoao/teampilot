@@ -408,10 +408,21 @@ String _normalizeKey(String key) => key
     .toLowerCase();
 
 bool _isCredentialKey(String key) =>
-    _credentialKeys.contains(_normalizeKey(key));
+    _isCredentialNormalizedKey(_normalizeKey(key));
+
+bool _isCredentialNormalizedKey(String normalized) {
+  if (_credentialKeys.contains(normalized)) return true;
+  for (final prefix in ['x', 'bearer']) {
+    if (normalized.startsWith(prefix) &&
+        _credentialKeys.contains(normalized.substring(prefix.length))) {
+      return true;
+    }
+  }
+  return false;
+}
 
 bool _containsCredentialMaterial(String value) => RegExp(
-  r'''["']?(?:api[_\-\s]?key|access[_\-\s]?token|authorization|auth[_\-\s]?token|client[_\-\s]?secret|credential|private[_\-\s]?key|password|refresh[_\-\s]?token|oauth[_\-\s]?token|\bkey\b|\btoken\b)["']?\s*(?:=|:)\s*["']?\S+|bearer\s+\S+''',
+  r'''["']?(?:x[_\-\s]?(?:api[_\-\s]?key|auth[_\-\s]?token)|bearer[_\-\s]?token|api[_\-\s]?key|access[_\-\s]?token|authorization|auth[_\-\s]?token|client[_\-\s]?secret|credential|private[_\-\s]?key|password|refresh[_\-\s]?token|oauth[_\-\s]?token|\bkey\b|\btoken\b)["']?\s*(?:=|:)\s*["']?\S+|bearer\s+\S+''',
   caseSensitive: false,
 ).hasMatch(value);
 

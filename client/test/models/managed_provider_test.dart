@@ -136,7 +136,10 @@ void main() {
         'token': 'data.token',
         'tokenCount': 'token',
         'apiKey': 'secret',
+        'X-Api-Key': 'secret',
         'Authorization': 'Bearer secret',
+        'X-Auth-Token': 'secret',
+        'Bearer-Token': 'secret',
         'client secret': 'secret',
         'json': '{"apiKey":"secret"}',
         'nested': {
@@ -167,6 +170,9 @@ void main() {
       endpointConfig: config,
       unknownFields: {
         'futureCredential': 'Bearer provider-secret',
+        'X-Api-Key': 'provider-secret',
+        'X-Auth-Token': 'provider-secret',
+        'Bearer-Token': 'provider-secret',
         'futureList': ['Bearer list-secret', 'safe'],
         'safeFuture': 'future value',
       },
@@ -193,7 +199,7 @@ void main() {
       credentialRef: 'managed-provider:p1',
       endpointConfig: ManagedProviderEndpointConfig(
         url:
-            'https://user:pass@example.test/usage?apiKey=query-secret&tokenCount=2#clientSecret=fragment-secret',
+            'https://user:pass@example.test/usage?apiKey=query-secret&X-Api-Key=query-x-secret&X-Auth-Token=query-auth-secret&Bearer-Token=query-bearer-secret&tokenCount=2#clientSecret=fragment-secret',
       ),
     );
     final safe = ManagedProviderEndpointConfig(
