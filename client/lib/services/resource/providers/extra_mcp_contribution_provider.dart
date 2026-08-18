@@ -1,0 +1,64 @@
+import 'dart:async';
+
+import '../../../models/mcp_server_spec.dart';
+import '../contribution/resource_assembly_error.dart';
+import '../contribution/resource_origin.dart';
+import 'mcp_contribution_provider.dart';
+
+/// Contributes launch-generated MCP servers such as TeamBus endpoints.
+final class ExtraMcpContributionProvider
+    implements McpContributionProvider, McpContributionProviderDiagnostics {
+  ExtraMcpContributionProvider();
+
+  List<ResourceAssemblyDiagnostic> _diagnostics = const [];
+
+  @override
+  List<ResourceAssemblyDiagnostic> get diagnostics => _diagnostics;
+
+  @override
+  String get providerId => 'extra';
+
+  @override
+  FutureOr<Iterable<McpContribution>> provide(McpProviderContext context) {
+    final diagnostics = <ResourceAssemblyDiagnostic>[];
+    final contributions = <McpContribution>[
+      for (final server in context.extraServers)
+        McpContribution(
+          sourceId: server.name,
+          server: server,
+          origin: const ContributionOrigin(
+            providerId: 'extra',
+            kind: ResourceOriginKind.managed,
+          ),
+        ),
+    ];
+    for (final entry in context.extraServerEntries.entries) {
+      final spec = McpServerSpec.fromCatalogJson(entry.key, entry.value);
+      if (spec == null) {
+        diagnostics.add(
+          ResourceAssemblyDiagnostic(
+            severity: ResourceAssemblyDiagnosticSeverity.warning,
+            resourceKind: ResourceContributionKind.mcp,
+            cli: context.cli,
+            providerId: providerId,
+            sourceId: entry.key,
+            message: 'Invalid extra MCP payload was discarded.',
+          ),
+        );
+        continue;
+      }
+      contributions.add(
+        McpContribution(
+          sourceId: entry.key,
+          server: spec,
+          origin: const ContributionOrigin(
+            providerId: 'extra',
+            kind: ResourceOriginKind.managed,
+          ),
+        ),
+      );
+    }
+    _diagnostics = List.unmodifiable(diagnostics);
+    return List.unmodifiable(contributions);
+  }
+}

@@ -3,6 +3,7 @@ import 'dart:async';
 import '../../../models/mcp_server_spec.dart';
 import '../../../models/team_config.dart';
 import '../../cli/registry/config_profile/config_profile_scope.dart';
+import '../contribution/resource_assembly_error.dart';
 import '../contribution/resource_origin.dart';
 
 /// Focused inputs needed by MCP providers.
@@ -10,15 +11,26 @@ class McpProviderContext {
   McpProviderContext({
     required this.cli,
     this.scope,
+    Iterable<String> mcpServerIds = const [],
     Iterable<McpServerSpec> extraServers = const [],
+    Map<String, Map<String, Object?>> extraServerEntries = const {},
     Map<String, String> credentials = const {},
+    this.sourceId,
   }) : extraServers = List.unmodifiable(extraServers),
-       credentials = Map.unmodifiable(credentials);
+       extraServerEntries = {
+         for (final entry in extraServerEntries.entries)
+           entry.key: Map<String, Object?>.unmodifiable(entry.value),
+       },
+       credentials = Map.unmodifiable(credentials),
+       mcpServerIds = List.unmodifiable(mcpServerIds);
 
   final CliTool cli;
   final LaunchProfileScope? scope;
+  final List<String> mcpServerIds;
   final List<McpServerSpec> extraServers;
+  final Map<String, Map<String, Object?>> extraServerEntries;
   final Map<String, String> credentials;
+  final String? sourceId;
 }
 
 /// A target-neutral MCP server contribution.
@@ -39,4 +51,9 @@ abstract interface class McpContributionProvider {
   String get providerId;
 
   FutureOr<Iterable<McpContribution>> provide(McpProviderContext context);
+}
+
+/// Optional diagnostics emitted while a provider filters or reads its source.
+abstract interface class McpContributionProviderDiagnostics {
+  List<ResourceAssemblyDiagnostic> get diagnostics;
 }

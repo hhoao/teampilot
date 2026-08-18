@@ -390,6 +390,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
         workspaceId: trimmedWorkspaceId,
         teamId: trimmedTeamId,
         extraServers: extraMcpServers,
+        pluginIds: runtimeBundle?.pluginIds ?? const [],
         projectMcpRoots: projectMcpRoots,
       );
       final trimmedMemberId = memberId?.trim() ?? '';
@@ -406,8 +407,10 @@ class ConfigProfileService implements ConfigProfileDelegate {
         workspaceId: trimmedWorkspaceId,
         teamId: trimmedTeamId,
         sessionId: trimmedSessionId,
+        cli: cli,
         memberId: memberId,
         extraServers: extraMcpServers,
+        pluginIds: runtimeBundle?.pluginIds ?? const [],
         projectMcpRoots: projectMcpRoots,
       );
     }
@@ -583,7 +586,9 @@ class ConfigProfileService implements ConfigProfileDelegate {
         workspaceId: trimmedWorkspaceId,
         sessionId: trimmedSessionId,
         mcpServerIds: runtimeBundle.mcpServerIds,
+        cli: cli,
         extraServers: extraMcpServers,
+        pluginIds: runtimeBundle.pluginIds,
         projectMcpRoots: projectMcpRoots,
       ),
     );
