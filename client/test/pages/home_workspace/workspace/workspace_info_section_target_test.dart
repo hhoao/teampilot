@@ -5,9 +5,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/launch_profile_cubit.dart';
+import 'package:teampilot/cubits/team/model/launch_profile_state.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/ssh_profile.dart';
+import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/pages/home_workspace/workspace/workspace_info_section.dart';
@@ -29,71 +31,14 @@ void main() {
     tester,
   ) async {
     await tester.runAsync(() async {
-      final tmp = await Directory.systemTemp.createTemp('ws_info_target_');
-      addTearDown(() => tmp.deleteSync(recursive: true));
-      final fs = LocalFilesystem();
-      final sshRepo = SshProfileRepository(rootDir: tmp.path, fs: fs);
-      await sshRepo.save(
-        const SshProfile(
-          id: 'p1',
-          name: 'Server A',
-          host: '10.0.0.1',
-          username: 'root',
+      await _pumpWorkspaceInfo(
+        tester,
+        workspace: Workspace(
+          workspaceId: 'w1',
+          folders: const [WorkspaceFolder(path: '/proj')],
+          createdAt: 1,
         ),
       );
-      final controller = HomeTargetController(
-        registry: RuntimeTargetRegistry(
-          repo: TargetsRepository(rootDir: tmp.path, fs: fs),
-          sshProfileRepo: sshRepo,
-          isWindows: false,
-          isAndroid: false,
-        ),
-        current: RuntimeTarget.local,
-        switchTo: (_) async {},
-      );
-      final chat = ChatCubit(
-        executableResolver: () => 'flashskyai',
-        automationRepository: testAutomationRepository(),
-      );
-      addTearDown(chat.close);
-      final launchProfiles = LaunchProfileCubit(
-        repository: testLaunchProfileRepository(tmp),
-        sessionRepository: SessionRepository(rootDir: tmp.path),
-        executableResolver: () => 'claude',
-      );
-      addTearDown(launchProfiles.close);
-      final ws = Workspace(
-        workspaceId: 'w1',
-        folders: const [WorkspaceFolder(path: '/proj')],
-        createdAt: 1,
-      );
-      chat.ingestWorkspaceSessionSnapshot(workspaces: [ws], sessions: const []);
-
-      await tester.pumpWidget(
-        MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: MultiRepositoryProvider(
-            providers: [
-              RepositoryProvider<HomeTargetController>.value(value: controller),
-              RepositoryProvider<SshProfileRepository>.value(value: sshRepo),
-              RepositoryProvider<SessionRepository>.value(
-                value: SessionRepository(rootDir: tmp.path),
-              ),
-            ],
-            child: MultiBlocProvider(
-              providers: [
-                BlocProvider<ChatCubit>.value(value: chat),
-                BlocProvider<LaunchProfileCubit>.value(value: launchProfiles),
-              ],
-              child: Scaffold(body: WorkspaceInfoSection(workspace: ws)),
-            ),
-          ),
-        ),
-      );
-      await tester.pump();
-      await Future<void>.delayed(const Duration(milliseconds: 100));
-      await tester.pump();
 
       final l10n = await AppLocalizations.delegate.load(const Locale('en'));
       expect(find.text(l10n.workspaceFoldersSectionTitle), findsOneWidget);
@@ -101,4 +46,126 @@ void main() {
       expect(find.text(l10n.workspaceFoldersAddOnAnotherMachine), findsOneWidget);
     });
   });
+
+  testWidgets(
+    'WorkspaceInfoSection does not show per-team member machine cards',
+    (tester) async {
+      await tester.runAsync(() async {
+        const team = TeamProfile(
+          id: 'team-1',
+          name: 'Alpha',
+          members: [TeamMemberConfig(id: 'team-lead', name: 'Lead')],
+        );
+        await _pumpWorkspaceInfo(
+          tester,
+          workspace: Workspace(
+            workspaceId: 'w1',
+            folders: const [WorkspaceFolder(path: '/proj')],
+            createdAt: 1,
+            memberTargetsByTeam: const {
+              'team-1': {'team-lead': 'local'},
+              'team-2': {'team-lead': 'local'},
+              'team-3': {'team-lead': 'local'},
+            },
+          ),
+          identities: const [
+            team,
+            TeamProfile(
+              id: 'team-2',
+              name: 'Beta',
+              members: [TeamMemberConfig(id: 'team-lead', name: 'Lead')],
+            ),
+            TeamProfile(
+              id: 'team-3',
+              name: 'Gamma',
+              members: [TeamMemberConfig(id: 'team-lead', name: 'Lead')],
+            ),
+          ],
+        );
+
+        expect(find.text('Member machine assignment'), findsNothing);
+        expect(find.text('成员机器分配'), findsNothing);
+      });
+    },
+  );
+}
+
+Future<void> _pumpWorkspaceInfo(
+  WidgetTester tester, {
+  required Workspace workspace,
+  List<TeamProfile> identities = const [],
+}) async {
+  final tmp = await Directory.systemTemp.createTemp('ws_info_target_');
+  addTearDown(() => tmp.deleteSync(recursive: true));
+  final fs = LocalFilesystem();
+  final sshRepo = SshProfileRepository(rootDir: tmp.path, fs: fs);
+  await sshRepo.save(
+    const SshProfile(
+      id: 'p1',
+      name: 'Server A',
+      host: '10.0.0.1',
+      username: 'root',
+    ),
+  );
+  final controller = HomeTargetController(
+    registry: RuntimeTargetRegistry(
+      repo: TargetsRepository(rootDir: tmp.path, fs: fs),
+      sshProfileRepo: sshRepo,
+      isWindows: false,
+      isAndroid: false,
+    ),
+    current: RuntimeTarget.local,
+    switchTo: (_) async {},
+  );
+  final chat = ChatCubit(
+    executableResolver: () => 'flashskyai',
+    automationRepository: testAutomationRepository(),
+  );
+  addTearDown(chat.close);
+  final launchProfiles = LaunchProfileCubit(
+    repository: testLaunchProfileRepository(tmp),
+    sessionRepository: SessionRepository(rootDir: tmp.path),
+    executableResolver: () => 'claude',
+  );
+  addTearDown(launchProfiles.close);
+  if (identities.isNotEmpty) {
+    launchProfiles.applyState(
+      LaunchProfileState(
+        isLoading: false,
+        identities: identities,
+        selectedTeamId: identities.first.id,
+      ),
+    );
+  }
+  chat.ingestWorkspaceSessionSnapshot(
+    workspaces: [workspace],
+    sessions: const [],
+  );
+
+  await tester.pumpWidget(
+    MaterialApp(
+      locale: const Locale('en'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: MultiRepositoryProvider(
+        providers: [
+          RepositoryProvider<HomeTargetController>.value(value: controller),
+          RepositoryProvider<SshProfileRepository>.value(value: sshRepo),
+          RepositoryProvider<SessionRepository>.value(
+            value: SessionRepository(rootDir: tmp.path),
+          ),
+        ],
+        child: MultiBlocProvider(
+          providers: [
+            BlocProvider<ChatCubit>.value(value: chat),
+            BlocProvider<LaunchProfileCubit>.value(value: launchProfiles),
+          ],
+          child: Scaffold(body: WorkspaceInfoSection(workspace: workspace)),
+        ),
+      ),
+    ),
+  );
+  await tester.pump();
+  await Future<void>.delayed(const Duration(milliseconds: 100));
+  await tester.pump();
 }
