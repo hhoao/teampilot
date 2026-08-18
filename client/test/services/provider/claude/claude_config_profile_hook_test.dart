@@ -60,6 +60,31 @@ void main() {
     expect((twice['hooks'] as Map)['Stop'] as List, hasLength(1));
   });
 
+  test('mergeHooksInto keeps same command hooks with different matchers', () {
+    final fragment = <String, Object?>{
+      'hooks': {
+        'PreToolUse': [
+          {
+            'matcher': 'SendMessage',
+            'hooks': [
+              {'type': 'command', 'command': 'bash /s/team-lead.sh'},
+            ],
+          },
+          {
+            'matcher': 'TaskUpdate',
+            'hooks': [
+              {'type': 'command', 'command': 'bash /s/team-lead.sh'},
+            ],
+          },
+        ],
+      },
+    };
+
+    final merged = mergeHooksInto(const {}, fragment);
+
+    expect((merged['hooks'] as Map)['PreToolUse'] as List, hasLength(2));
+  });
+
   test('mergeHooksInto 空 hooks 段且原 settings 无 hooks 键 → 不写入 hooks 键', () {
     final merged =
         mergeHooksInto({'model': 'x'}, {'hooks': <String, Object?>{}});

@@ -248,7 +248,10 @@ class ConfigProfileService implements ConfigProfileDelegate {
       if (selfCommand != null) {
         managed.add(
           ManagedHookContributionProvider(
-            entries: completer.teamLeadSelfHooks(command: selfCommand),
+            entries: completer.teamLeadSelfHooks(
+              member: member,
+              command: selfCommand,
+            ),
             providerId: 'team-lead-self',
           ),
         );

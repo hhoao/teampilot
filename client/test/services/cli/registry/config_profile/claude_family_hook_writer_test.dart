@@ -6,6 +6,7 @@ import 'package:teampilot/services/cli/registry/capabilities/hook_capability.dar
 import 'package:teampilot/services/host/host_execution_environment.dart';
 import 'package:teampilot/services/host/host_script_dialect.dart';
 import 'package:teampilot/services/host/host_script_runner.dart';
+import 'package:teampilot/services/host/team_pilot_hook_scripts.dart';
 import 'package:teampilot/services/hook/glue_script_builder.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 
@@ -53,6 +54,28 @@ void main() {
       expect(glue.content, contains('"permissionDecision":"deny"'));
     },
   );
+
+  test('compatibility basename preserves the legacy command and config', () {
+    final entry = HookEntry(
+      id: 'teampilot-team-lead-self-SendMessage',
+      source: HookSource.managed,
+      event: HookEvent.preToolUse,
+      matcher: 'SendMessage',
+      action: CommandHookAction.raw(
+        'bash "/s/hooks/${TeamPilotHookScripts.teamLeadSelf}.sh"',
+      ),
+      scriptFileName: TeamPilotHookScripts.teamLeadSelf,
+    );
+
+    final result = writer.render(entries: [entry], ctx: bashCtx('/s/hooks'));
+    final section = result.configFragments['settings.json']! as Map;
+    final pre = (section['hooks'] as Map)['PreToolUse'] as List;
+    final hookGroup = pre.single as Map;
+    final hook = ((hookGroup['hooks'] as List).single) as Map;
+
+    expect(hook['command'], contains('${TeamPilotHookScripts.teamLeadSelf}.sh'));
+    expect(result.scripts, isEmpty);
+  });
 
   test('http action renders native http hook', () {
     final entry = HookEntry(

@@ -32,5 +32,6 @@ bool _sameHookEntry(Object? a, Object? b) {
   if (ha is! List || hb is! List || ha.isEmpty || hb.isEmpty) return false;
   final fa = ha.first as Map;
   final fb = hb.first as Map;
-  return (fa['url'] ?? fa['command']) == (fb['url'] ?? fb['command']);
+  return a['matcher'] == b['matcher'] &&
+      (fa['url'] ?? fa['command']) == (fb['url'] ?? fb['command']);
 }

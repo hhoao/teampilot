@@ -50,15 +50,16 @@ class ClaudeFamilyHookWriter implements HookCapability {
       if (entry.policy != HookPolicy.none && !entry.event.isIntercepting) {
         warnings.add('hook_policy_ignored_${entry.id}_${entry.event.name}');
       }
-      final decisionJson = entry.policy == HookPolicy.none ||
-              !entry.event.isIntercepting
+      final decisionJson =
+          entry.policy == HookPolicy.none || !entry.event.isIntercepting
           ? null
           : entry.policy == HookPolicy.allow
           ? '{"permissionDecision":"allow"}'
           : '{"permissionDecision":"deny","permissionDecisionReason":'
                 '"$denyReason"}';
-      final hooksList =
-          List<Object?>.from((hooks[native] as List?) ?? const []);
+      final hooksList = List<Object?>.from(
+        (hooks[native] as List?) ?? const [],
+      );
 
       switch (entry.action) {
         case HttpHookAction http:
@@ -66,8 +67,7 @@ class ClaudeFamilyHookWriter implements HookCapability {
             'type': 'http',
             'url': http.url,
             if (http.headers.isNotEmpty) 'headers': http.headers,
-            if (entry.timeout != null)
-              'timeout': entry.timeout!.inSeconds,
+            if (entry.timeout != null) 'timeout': entry.timeout!.inSeconds,
           };
           hooksList.add({
             if (entry.matcher != null && entry.matcher!.trim().isNotEmpty)
@@ -75,40 +75,57 @@ class ClaudeFamilyHookWriter implements HookCapability {
             'hooks': [hookJson],
           });
         case CommandHookAction command:
-          final inner = _innerCommand(command, entry.id, ctx, scripts);
-          if (inner == null) {
-            warnings.add('hook_script_missing_${entry.id}');
-            continue;
+          if (entry.scriptFileName != null && command.command != null) {
+            hooksList.add({
+              if (entry.matcher != null && entry.matcher!.trim().isNotEmpty)
+                'matcher': entry.matcher,
+              'hooks': [
+                {
+                  'type': 'command',
+                  'command': command.command,
+                  'timeout': entry.timeout?.inSeconds ?? 5,
+                },
+              ],
+            });
+          } else {
+            final inner = _innerCommand(command, entry.id, ctx, scripts);
+            if (inner == null) {
+              warnings.add('hook_script_missing_${entry.id}');
+              continue;
+            }
+            final glue = ctx.glueBuilder.build(
+              policy: entry.policy,
+              innerCommand: inner,
+              decisionJson: decisionJson,
+              timeout: entry.timeout,
+              env: entry.env,
+              blockOnDecision: entry.blockOnDecision,
+              dialect: ctx.runner?.dialect.name == 'powershell'
+                  ? 'powershell'
+                  : 'bash',
+            );
+            final scriptFileName =
+                'teampilot-hook-${entry.id}'
+                '${runner?.dialect.scriptExtension ?? '.sh'}';
+            scripts.add(
+              GeneratedScript(fileName: scriptFileName, content: glue),
+            );
+            final scriptPath = runner == null
+                ? '${ctx.hooksDir}/$scriptFileName'
+                : runner.commandStringForScriptFile(
+                    '${ctx.hooksDir}/$scriptFileName',
+                  );
+            final hookJson = <String, Object?>{
+              'type': 'command',
+              'command': scriptPath,
+              'timeout': entry.timeout?.inSeconds ?? 5,
+            };
+            hooksList.add({
+              if (entry.matcher != null && entry.matcher!.trim().isNotEmpty)
+                'matcher': entry.matcher,
+              'hooks': [hookJson],
+            });
           }
-          final glue = ctx.glueBuilder.build(
-            policy: entry.policy,
-            innerCommand: inner,
-            decisionJson: decisionJson,
-            timeout: entry.timeout,
-            env: entry.env,
-            blockOnDecision: entry.blockOnDecision,
-            dialect: ctx.runner?.dialect.name == 'powershell'
-                ? 'powershell'
-                : 'bash',
-          );
-          final scriptFileName = 'teampilot-hook-${entry.id}'
-              '${runner?.dialect.scriptExtension ?? '.sh'}';
-          scripts.add(GeneratedScript(fileName: scriptFileName, content: glue));
-          final scriptPath = runner == null
-              ? '${ctx.hooksDir}/$scriptFileName'
-              : runner.commandStringForScriptFile(
-                  '${ctx.hooksDir}/$scriptFileName',
-                );
-          final hookJson = <String, Object?>{
-            'type': 'command',
-            'command': scriptPath,
-            'timeout': entry.timeout?.inSeconds ?? 5,
-          };
-          hooksList.add({
-            if (entry.matcher != null && entry.matcher!.trim().isNotEmpty)
-              'matcher': entry.matcher,
-            'hooks': [hookJson],
-          });
       }
       hooks[native] = hooksList;
     }
