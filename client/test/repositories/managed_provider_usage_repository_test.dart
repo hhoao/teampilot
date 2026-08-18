@@ -1,0 +1,143 @@
+import 'dart:convert';
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/models/provider_usage_snapshot.dart';
+import 'package:teampilot/repositories/managed_provider_usage_repository.dart';
+import 'package:teampilot/services/io/filesystem.dart';
+
+import '../support/in_memory_filesystem.dart';
+
+ProviderUsageSnapshot _snapshot(
+  String providerId, {
+  ProviderUsageStatus status = ProviderUsageStatus.ready,
+  int? fetchedAt,
+  int? staleAt,
+  Map<String, Object?> unknownFields = const {},
+}) => ProviderUsageSnapshot(
+  providerId: providerId,
+  status: status,
+  measures: [
+    ProviderUsageMeasure(
+      label: 'Balance',
+      kind: ProviderUsageMeasureKind.balance,
+      remaining: '12.50',
+      unit: 'USD',
+    ),
+  ],
+  fetchedAt: fetchedAt,
+  staleAt: staleAt,
+  unknownFields: unknownFields,
+);
+
+void main() {
+  group('ManagedProviderUsageRepository', () {
+    late InMemoryFilesystem fs;
+    late ManagedProviderUsageRepository repo;
+    const path = '/tp/providers/managed/usage-cache.json';
+
+    setUp(() {
+      fs = InMemoryFilesystem();
+      repo = ManagedProviderUsageRepository(fs: fs, cachePath: path);
+    });
+
+    test('load returns an empty list when the cache file is missing', () async {
+      expect(await repo.load(), isEmpty);
+    });
+
+    test(
+      'save creates the parent directory and round-trips a snapshot',
+      () async {
+        final snapshot = _snapshot('p1', fetchedAt: 100);
+
+        await repo.save(snapshot);
+
+        expect(
+          await fs.stat('/tp/providers/managed'),
+          isA<FsStat>().having((stat) => stat.isDirectory, 'isDirectory', true),
+        );
+        expect(await fs.readString(path), contains('"p1"'));
+        expect((await repo.load()).single, snapshot);
+      },
+    );
+
+    test('malformed top-level JSON does not make the cache throw', () async {
+      await fs.writeString(path, '[]');
+
+      expect(await repo.load(), isEmpty);
+    });
+
+    test('malformed snapshots are isolated from valid snapshots', () async {
+      await fs.writeString(
+        path,
+        jsonEncode({
+          'schemaVersion': 1,
+          'snapshots': {
+            'valid': _snapshot('valid').toJson(),
+            'broken': {'providerId': 42, 'status': 'ready'},
+          },
+        }),
+      );
+
+      final snapshots = await repo.load();
+
+      expect(snapshots.single.providerId, 'valid');
+    });
+
+    test('expired cache is returned as stale instead of discarded', () async {
+      final repo = ManagedProviderUsageRepository(
+        fs: fs,
+        cachePath: path,
+        now: () => 300,
+      );
+      await repo.save(_snapshot('p1', fetchedAt: 100, staleAt: 200));
+
+      final result = await repo.load();
+
+      expect(result.single.status, ProviderUsageStatus.stale);
+      expect(result.single.fetchedAt, 100);
+      expect(result.single.staleAt, 200);
+      expect(result.single.measures.single.remaining, '12.50');
+    });
+
+    test('save preserves unknown top-level and snapshot fields', () async {
+      await fs.writeString(
+        path,
+        jsonEncode({
+          'schemaVersion': 1,
+          'futureCacheFlag': 'keep',
+          'snapshots': {
+            'p1': {
+              ..._snapshot('p1').toJson(),
+              'futureSnapshotField': ['keep'],
+            },
+          },
+        }),
+      );
+
+      await repo.save(_snapshot('p1', status: ProviderUsageStatus.stale));
+
+      final raw = await fs.readString(path);
+      final decoded = jsonDecode(raw!) as Map;
+      expect(decoded['futureCacheFlag'], 'keep');
+      expect((decoded['snapshots'] as Map)['p1']['futureSnapshotField'], [
+        'keep',
+      ]);
+    });
+
+    test(
+      'delete removes one provider snapshot and clear removes the rest',
+      () async {
+        await repo.save(_snapshot('p1'));
+        await repo.save(_snapshot('p2'));
+
+        await repo.delete('p1');
+        expect((await repo.load()).map((snapshot) => snapshot.providerId), [
+          'p2',
+        ]);
+
+        await repo.clear();
+        expect(await repo.load(), isEmpty);
+      },
+    );
+  });
+}

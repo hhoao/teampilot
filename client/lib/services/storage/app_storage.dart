@@ -186,6 +186,23 @@ class AppPaths {
   static String notificationsJsonForTeampilotRoot(String teampilotRoot) =>
       _pathUnderTeampilotRoot(teampilotRoot, 'notifications.json');
 
+  static String managedProviderDirForTeampilotRoot(String teampilotRoot) =>
+      _pathUnderTeampilotRoot(teampilotRoot, 'providers/managed');
+
+  static String managedProviderConfigFileForTeampilotRoot(
+    String teampilotRoot,
+  ) => _pathUnderTeampilotRoot(
+    teampilotRoot,
+    'providers/managed/providers.json',
+  );
+
+  static String managedProviderUsageCacheFileForTeampilotRoot(
+    String teampilotRoot,
+  ) => _pathUnderTeampilotRoot(
+    teampilotRoot,
+    'providers/managed/usage-cache.json',
+  );
+
   static String pluginMarketplacesConfigPathForTeampilotRoot(
     String teampilotRoot,
   ) => _pathUnderTeampilotRoot(teampilotRoot, 'plugins/marketplaces.json');
@@ -363,6 +380,14 @@ class AppPaths {
 
   String get providerConfigFile =>
       _ctx.join(providerConfigDir, 'providers.json');
+
+  String get managedProviderDir => managedProviderDirForTeampilotRoot(basePath);
+
+  String get managedProviderConfigFile =>
+      managedProviderConfigFileForTeampilotRoot(basePath);
+
+  String get managedProviderUsageCacheFile =>
+      managedProviderUsageCacheFileForTeampilotRoot(basePath);
 
   String get sshProfilesDir => _ctx.join(basePath, 'ssh_profiles');
 
