@@ -35,6 +35,34 @@ class ManagedProviderIdDeletionBarrier {
     }
   }
 
+  static Future<T> runConditionalUsageMutation<T>(
+    String providerId,
+    Future<T> Function() mutation, {
+    required T blockedResult,
+  }) async {
+    final id = providerId.trim();
+    if (id.isEmpty) return blockedResult;
+    final state = _states.putIfAbsent(id, _ProviderIdState.new);
+    if (state.deleting) {
+      await state.deletionDone!.future;
+      final error = state.deletionError;
+      if (error != null) {
+        Error.throwWithStackTrace(
+          error,
+          state.deletionStack ?? StackTrace.current,
+        );
+      }
+      return blockedResult;
+    }
+    state.activeMutations++;
+    try {
+      return await mutation();
+    } finally {
+      state.activeMutations--;
+      state.completeWhenIdle();
+    }
+  }
+
   static Future<void> runDeletion(
     Iterable<String> providerIds,
     Future<void> Function() deletion,

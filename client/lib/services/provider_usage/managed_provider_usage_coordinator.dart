@@ -387,39 +387,31 @@ class ManagedProviderUsageCoordinator {
         if (!current || requiresEnabled && !provider.enabled) {
           _throwInvalidated(provider.id, _invalidationCode(provider.id, token));
         }
+        var cacheSaved = false;
         final committed = await _providerRepository.runIfUnchanged(
           expectedRevision: mutationRevision,
           expectedProvider: provider,
           action: () async {
-            await _usageRepository.save(result);
-            if (token != null && !_isCurrent(provider, generation, token)) {
-              await _restoreSnapshot(provider.id, previous);
-              _throwInvalidated(
-                provider.id,
-                _invalidationCode(provider.id, token),
-              );
-            }
-            _snapshots[provider.id] = result;
+            cacheSaved = await _usageRepository.saveIf(
+              result,
+              shouldCommit: () {
+                final stillCurrent = token == null
+                    ? _isCurrentConfig(provider, generation, null)
+                    : _isCurrent(provider, generation, token);
+                return stillCurrent &&
+                    _providerRepository.mutationRevision == mutationRevision;
+              },
+            );
+            if (cacheSaved) _snapshots[provider.id] = result;
           },
         );
-        if (!committed) {
+        if (!committed || !cacheSaved) {
           await _synchronizeProviders();
           _throwInvalidated(provider.id, _invalidationCode(provider.id, token));
         }
         return result;
       },
     );
-  }
-
-  Future<void> _restoreSnapshot(
-    String providerId,
-    ProviderUsageSnapshot? previous,
-  ) async {
-    if (previous == null) {
-      await _usageRepository.delete(providerId);
-    } else {
-      await _usageRepository.save(previous);
-    }
   }
 
   Future<void> _ensureLoaded() async {

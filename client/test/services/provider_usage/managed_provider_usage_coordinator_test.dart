@@ -453,10 +453,13 @@ class _BlockingUsageRepository extends ManagedProviderUsageRepository {
   final release = Completer<void>();
 
   @override
-  Future<void> save(ProviderUsageSnapshot snapshot) async {
+  Future<bool> saveIf(
+    ProviderUsageSnapshot snapshot, {
+    required bool Function() shouldCommit,
+  }) async {
     if (!saveStarted.isCompleted) saveStarted.complete();
     await release.future;
-    await super.save(snapshot);
+    return super.saveIf(snapshot, shouldCommit: shouldCommit);
   }
 }
 

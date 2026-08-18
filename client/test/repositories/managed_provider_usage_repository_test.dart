@@ -62,6 +62,34 @@ void main() {
       },
     );
 
+    test('saveIf skips the atomic write when the predicate is false', () async {
+      await repo.save(_snapshot('p1', fetchedAt: 100));
+      final before = await fs.readString(path);
+
+      expect(
+        await repo.saveIf(
+          _snapshot('p2', fetchedAt: 200),
+          shouldCommit: () => false,
+        ),
+        isFalse,
+      );
+      expect(await fs.readString(path), before);
+      expect((await repo.load()).map((snapshot) => snapshot.providerId), [
+        'p1',
+      ]);
+    });
+
+    test('saveIf writes after the predicate allows the commit', () async {
+      expect(
+        await repo.saveIf(
+          _snapshot('p1', fetchedAt: 100),
+          shouldCommit: () => true,
+        ),
+        isTrue,
+      );
+      expect((await repo.load()).single.providerId, 'p1');
+    });
+
     test('malformed top-level JSON does not make the cache throw', () async {
       await fs.writeString(path, '[]');
 

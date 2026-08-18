@@ -65,6 +65,43 @@ class ManagedProviderUsageRepository {
     );
   }
 
+  /// Conditionally persists a snapshot while holding the same cache lock as
+  /// [save]. The predicate is evaluated immediately before the atomic write;
+  /// false means no cache write occurred.
+  Future<bool> saveIf(
+    ProviderUsageSnapshot snapshot, {
+    required bool Function() shouldCommit,
+  }) async {
+    final normalized = _normalizeSnapshot(snapshot);
+    if (normalized == null) return false;
+    return ManagedProviderIdDeletionBarrier.runConditionalUsageMutation(
+      normalized.providerId,
+      () async {
+        return ManagedProviderStorageLock.run(_cachePath, () async {
+          final current = await _readStore();
+          final previous = current.snapshots[normalized.providerId];
+          final snapshots = Map<String, ProviderUsageSnapshot>.from(
+            current.snapshots,
+          );
+          snapshots[normalized.providerId] = previous == null
+              ? normalized
+              : _mergeSnapshot(previous, normalized);
+          final rawSnapshotEntries = Map<String, Object?>.from(
+            current.rawSnapshotEntries,
+          )..remove(normalized.providerId);
+          return _writeStore(
+            current.copyWith(
+              snapshots: snapshots,
+              rawSnapshotEntries: rawSnapshotEntries,
+            ),
+            shouldCommit: shouldCommit,
+          );
+        });
+      },
+      blockedResult: false,
+    );
+  }
+
   Future<void> delete(String providerId) => deleteMany([providerId]);
 
   Future<void> deleteMany(Iterable<String> providerIds) async {
@@ -161,7 +198,10 @@ class ManagedProviderUsageRepository {
     }
   }
 
-  Future<void> _writeStore(_ManagedProviderUsageStore store) async {
+  Future<bool> _writeStore(
+    _ManagedProviderUsageStore store, {
+    bool Function()? shouldCommit,
+  }) async {
     final path = _cachePath;
     await _fs.ensureDir(_fs.pathContext.dirname(path));
     final snapshots = <String, Object?>{...store.rawSnapshotEntries};
@@ -173,10 +213,12 @@ class ManagedProviderUsageRepository {
       'schemaVersion': store.schemaVersion,
       'snapshots': snapshots,
     };
+    if (shouldCommit != null && !shouldCommit()) return false;
     await _fs.atomicWrite(
       path,
       const JsonEncoder.withIndent('  ').convert(json),
     );
+    return true;
   }
 
   static int _epochMilliseconds() => DateTime.now().millisecondsSinceEpoch;
