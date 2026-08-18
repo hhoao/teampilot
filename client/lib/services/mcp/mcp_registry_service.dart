@@ -20,6 +20,7 @@ import '../resource/providers/extra_mcp_contribution_provider.dart';
 import '../resource/providers/mcp_contribution_provider.dart';
 import '../resource/providers/plugin_mcp_contribution_provider.dart';
 import '../resource/providers/smithery_mcp_contribution_provider.dart';
+import '../resource/resource_provider_set.dart';
 import 'mcp_registry_config_service.dart';
 
 /// Merges team MCP catalog into member CLI native MCP config files.
@@ -260,6 +261,20 @@ class McpRegistryService {
     installedPluginCatalog: installedPluginCatalog,
   );
 
+  Future<McpResourceProviders> providersForTeam({
+    required CliTool cli,
+    required String teamId,
+    Map<String, Map<String, Object?>>? extraServers,
+    Iterable<String> pluginIds = const [],
+    Iterable<Plugin>? installedPluginCatalog,
+  }) => _prepareProviders(
+    cli: cli,
+    snapshotPath: layout.identityMcpServersFile(teamId.trim()),
+    extraServers: extraServers,
+    pluginIds: pluginIds,
+    installedPluginCatalog: installedPluginCatalog,
+  );
+
   Future<McpRegistryAssembly> assembleForSimple({
     required CliTool cli,
     required Iterable<String> mcpServerIds,
@@ -274,7 +289,48 @@ class McpRegistryService {
     installedPluginCatalog: installedPluginCatalog,
   );
 
+  Future<McpResourceProviders> providersForSimple({
+    required CliTool cli,
+    required Iterable<String> mcpServerIds,
+    Map<String, Map<String, Object?>>? extraServers,
+    Iterable<String> pluginIds = const [],
+    Iterable<Plugin>? installedPluginCatalog,
+  }) => _prepareProviders(
+    cli: cli,
+    mcpServerIds: mcpServerIds,
+    extraServers: extraServers,
+    pluginIds: pluginIds,
+    installedPluginCatalog: installedPluginCatalog,
+  );
+
   Future<McpRegistryAssembly> _assemble({
+    required CliTool cli,
+    String? snapshotPath,
+    Iterable<String> mcpServerIds = const [],
+    Map<String, Map<String, Object?>>? extraServers,
+    Iterable<String> pluginIds = const [],
+    Iterable<Plugin>? installedPluginCatalog,
+  }) async {
+    final prepared = await _prepareProviders(
+      cli: cli,
+      snapshotPath: snapshotPath,
+      mcpServerIds: mcpServerIds,
+      extraServers: extraServers,
+      pluginIds: pluginIds,
+      installedPluginCatalog: installedPluginCatalog,
+    );
+    final result = await _assembler.assemble(
+      context: McpProviderContext(cli: cli),
+      providers: prepared.providers.mcp,
+    );
+    return McpRegistryAssembly(
+      result: result,
+      hasValidCatalogContribution:
+          prepared.catalogProvider?.hasValidContributions == true,
+    );
+  }
+
+  Future<McpResourceProviders> _prepareProviders({
     required CliTool cli,
     String? snapshotPath,
     Iterable<String> mcpServerIds = const [],
@@ -293,23 +349,26 @@ class McpRegistryService {
             originKind: ResourceOriginKind.team,
           );
     } else if (hasIds) {
-      catalogProvider = CatalogMcpContributionProvider(fs: _fs);
+      catalogProvider = CatalogMcpContributionProvider(
+        fs: _fs,
+        mcpServerIds: mcpServerIds,
+      );
     }
 
     final providers = <McpContributionProvider>[];
-    String? smitheryToken;
     if (catalogProvider != null) {
       final registry = await _registryConfigService.load();
-      smitheryToken = registry.byKind(McpRegistrySourceKind.smithery)?.apiToken;
       providers.add(
         SmitheryMcpContributionProvider(
           source: catalogProvider,
-          apiToken: smitheryToken,
+          apiToken: registry.byKind(McpRegistrySourceKind.smithery)?.apiToken,
         ),
       );
     }
     if (extraServers?.isNotEmpty == true) {
-      providers.add(ExtraMcpContributionProvider());
+      providers.add(
+        ExtraMcpContributionProvider(extraServerEntries: extraServers),
+      );
     }
 
     final enabledPlugins = pluginIds
@@ -330,20 +389,9 @@ class McpRegistryService {
         ),
       );
     }
-
-    final result = await _assembler.assemble(
-      context: McpProviderContext(
-        cli: cli,
-        mcpServerIds: mcpServerIds,
-        extraServerEntries: extraServers ?? const {},
-        credentials: {if (smitheryToken != null) 'smithery': smitheryToken},
-      ),
-      providers: providers,
-    );
-    return McpRegistryAssembly(
-      result: result,
-      hasValidCatalogContribution:
-          catalogProvider?.hasValidContributions == true,
+    return McpResourceProviders(
+      providers: ResourceProviderSet(mcp: providers),
+      catalogProvider: catalogProvider,
     );
   }
 
@@ -424,4 +472,14 @@ final class McpRegistryAssembly {
 
   final McpAssemblyResult result;
   final bool hasValidCatalogContribution;
+}
+
+final class McpResourceProviders {
+  const McpResourceProviders({
+    required this.providers,
+    required this.catalogProvider,
+  });
+
+  final ResourceProviderSet providers;
+  final CatalogMcpContributionProvider? catalogProvider;
 }

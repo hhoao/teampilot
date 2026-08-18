@@ -47,19 +47,14 @@ class CliResourceProvisionContext {
     this.mixed = false,
     this.pushDelivery = false,
     this.memberHome,
-    Iterable<McpServerSpec> extraServers = const [],
-    Map<String, Map<String, Object?>> extraServerEntries = const {},
-    Map<String, String> mcpCredentials = const {},
     this.appConfigDir,
     this.fallbackAppConfigDir,
+    this.mcpConfigDir,
     this.mcpOutputBasename,
     this.hooksDir,
     this.hookRenderContext,
   }) : members = List.unmodifiable(members),
-       additionalDirectories = List.unmodifiable(additionalDirectories),
-       extraServers = List.unmodifiable(extraServers),
-       extraServerEntries = Map.unmodifiable(extraServerEntries),
-       mcpCredentials = Map.unmodifiable(mcpCredentials);
+       additionalDirectories = List.unmodifiable(additionalDirectories);
 
   final CliTool cli;
   final ResourceScope scope;
@@ -81,11 +76,9 @@ class CliResourceProvisionContext {
   final bool pushDelivery;
   final String? memberHome;
 
-  final List<McpServerSpec> extraServers;
-  final Map<String, Map<String, Object?>> extraServerEntries;
-  final Map<String, String> mcpCredentials;
   final String? appConfigDir;
   final String? fallbackAppConfigDir;
+  final String? mcpConfigDir;
   final String? mcpOutputBasename;
   final String? hooksDir;
   final HookRenderContext? hookRenderContext;
@@ -99,12 +92,14 @@ class ResourceMaterializationResult {
     required this.attempted,
     this.materialized = false,
     this.warnings = const [],
+    this.diagnostics = const [],
   });
 
   final ResourceContributionKind kind;
   final bool attempted;
   final bool materialized;
   final List<String> warnings;
+  final List<ResourceAssemblyDiagnostic> diagnostics;
 }
 
 /// Unified output of one member's resource stage.
@@ -121,7 +116,13 @@ class ResourceProvisionReport {
     Iterable<HookEntry> hooks = const [],
   }) : warnings = List.unmodifiable(warnings),
        hardDiagnostics = List.unmodifiable(hardDiagnostics),
-       materializations = Map.unmodifiable(materializations),
+       materializations = Map.unmodifiable({
+         for (final kind in ResourceContributionKind.values)
+           kind:
+               materializations[kind] ??
+               ResourceMaterializationResult(kind: kind, attempted: false),
+         ...materializations,
+       }),
        skills = List.unmodifiable(skills),
        mcpServers = List.unmodifiable(mcpServers),
        hooks = List.unmodifiable(hooks);
@@ -160,7 +161,10 @@ final class CliResourceProvisioner {
     final warnings = <ResourceAssemblyDiagnostic>[];
     final hard = <ResourceAssemblyError>[];
     final materializations =
-        <ResourceContributionKind, ResourceMaterializationResult>{};
+        <ResourceContributionKind, ResourceMaterializationResult>{
+          for (final kind in ResourceContributionKind.values)
+            kind: ResourceMaterializationResult(kind: kind, attempted: false),
+        };
 
     PromptAssemblyResult? promptAssembly;
     SkillAssemblyResult? skillAssembly;
@@ -170,10 +174,38 @@ final class CliResourceProvisioner {
     // Keep all collection and assembly ahead of every target write. This is
     // deliberately sequential at the kind boundary; provider order inside
     // each assembler remains deterministic even when providers are async.
+    var hardCount = hard.length;
     promptAssembly = await _assemblePrompt(context, providers, warnings, hard);
+    _recordAssemblyFailure(
+      ResourceContributionKind.prompt,
+      materializations,
+      hard,
+      hardCount,
+    );
+    hardCount = hard.length;
     skillAssembly = await _assembleSkill(context, providers, warnings, hard);
+    _recordAssemblyFailure(
+      ResourceContributionKind.skill,
+      materializations,
+      hard,
+      hardCount,
+    );
+    hardCount = hard.length;
     mcpAssembly = await _assembleMcp(context, providers, warnings, hard);
+    _recordAssemblyFailure(
+      ResourceContributionKind.mcp,
+      materializations,
+      hard,
+      hardCount,
+    );
+    hardCount = hard.length;
     hookAssembly = await _assembleHook(context, providers, warnings, hard);
+    _recordAssemblyFailure(
+      ResourceContributionKind.hook,
+      materializations,
+      hard,
+      hardCount,
+    );
 
     final prompt = promptAssembly?.document ?? PromptDocument([]);
     final skills = skillAssembly?.skills ?? const <SkillContribution>[];
@@ -185,12 +217,22 @@ final class CliResourceProvisioner {
       if (capability == null ||
           capability.skillsRepresentation !=
               ResourceRepresentation.linkedDirectory) {
-        hard.add(_unsupported(ResourceContributionKind.skill, context.cli));
+        final diagnostic = _unsupported(
+          ResourceContributionKind.skill,
+          context.cli,
+        );
+        hard.add(diagnostic);
+        materializations[ResourceContributionKind.skill] =
+            ResourceMaterializationResult(
+              kind: ResourceContributionKind.skill,
+              attempted: true,
+              diagnostics: [diagnostic],
+            );
       } else {
         try {
           final result = await capability.materializeSkills(
             fs: _fs,
-            configDir: context.configDir,
+            configDir: context.mcpConfigDir ?? context.configDir,
             contributions: skills,
           );
           warnings.addAll(_materializeWarnings(context.cli, result.errors));
@@ -200,16 +242,22 @@ final class CliResourceProvisioner {
                 attempted: true,
                 materialized: result.errors.isEmpty,
                 warnings: result.errors,
+                diagnostics: const [],
               );
         } on Object catch (error, stackTrace) {
-          hard.add(
-            _materializerFailure(
-              ResourceContributionKind.skill,
-              context.cli,
-              error,
-              stackTrace,
-            ),
+          final diagnostic = _materializerFailure(
+            ResourceContributionKind.skill,
+            context.cli,
+            error,
+            stackTrace,
           );
+          hard.add(diagnostic);
+          materializations[ResourceContributionKind.skill] =
+              ResourceMaterializationResult(
+                kind: ResourceContributionKind.skill,
+                attempted: true,
+                diagnostics: [diagnostic],
+              );
         }
       }
     } else {
@@ -223,11 +271,16 @@ final class CliResourceProvisioner {
     if (prompt.contributions.isNotEmpty) {
       final capability = _registry.capability<PromptCapability>(context.cli);
       if (capability == null) {
-        hard.add(_unsupported(ResourceContributionKind.prompt, context.cli));
+        final diagnostic = _unsupported(
+          ResourceContributionKind.prompt,
+          context.cli,
+        );
+        hard.add(diagnostic);
         materializations[ResourceContributionKind.prompt] =
-            const ResourceMaterializationResult(
+            ResourceMaterializationResult(
               kind: ResourceContributionKind.prompt,
-              attempted: false,
+              attempted: true,
+              diagnostics: [diagnostic],
             );
       } else {
         try {
@@ -252,14 +305,19 @@ final class CliResourceProvisioner {
                 materialized: result.written,
               );
         } on Object catch (error, stackTrace) {
-          hard.add(
-            _materializerFailure(
-              ResourceContributionKind.prompt,
-              context.cli,
-              error,
-              stackTrace,
-            ),
+          final diagnostic = _materializerFailure(
+            ResourceContributionKind.prompt,
+            context.cli,
+            error,
+            stackTrace,
           );
+          hard.add(diagnostic);
+          materializations[ResourceContributionKind.prompt] =
+              ResourceMaterializationResult(
+                kind: ResourceContributionKind.prompt,
+                attempted: true,
+                diagnostics: [diagnostic],
+              );
         }
       }
     } else {
@@ -273,7 +331,17 @@ final class CliResourceProvisioner {
     if (mcpServers.isNotEmpty) {
       final capability = _registry.capability<McpCapability>(context.cli);
       if (capability == null) {
-        hard.add(_unsupported(ResourceContributionKind.mcp, context.cli));
+        final diagnostic = _unsupported(
+          ResourceContributionKind.mcp,
+          context.cli,
+        );
+        hard.add(diagnostic);
+        materializations[ResourceContributionKind.mcp] =
+            ResourceMaterializationResult(
+              kind: ResourceContributionKind.mcp,
+              attempted: true,
+              diagnostics: [diagnostic],
+            );
       } else {
         try {
           await capability.write(
@@ -289,14 +357,19 @@ final class CliResourceProvisioner {
                 materialized: true,
               );
         } on Object catch (error, stackTrace) {
-          hard.add(
-            _materializerFailure(
-              ResourceContributionKind.mcp,
-              context.cli,
-              error,
-              stackTrace,
-            ),
+          final diagnostic = _materializerFailure(
+            ResourceContributionKind.mcp,
+            context.cli,
+            error,
+            stackTrace,
           );
+          hard.add(diagnostic);
+          materializations[ResourceContributionKind.mcp] =
+              ResourceMaterializationResult(
+                kind: ResourceContributionKind.mcp,
+                attempted: true,
+                diagnostics: [diagnostic],
+              );
         }
       }
     } else {
@@ -310,7 +383,17 @@ final class CliResourceProvisioner {
     if (hooks.isNotEmpty) {
       final capability = _registry.capability<HookCapability>(context.cli);
       if (capability == null) {
-        hard.add(_unsupported(ResourceContributionKind.hook, context.cli));
+        final diagnostic = _unsupported(
+          ResourceContributionKind.hook,
+          context.cli,
+        );
+        hard.add(diagnostic);
+        materializations[ResourceContributionKind.hook] =
+            ResourceMaterializationResult(
+              kind: ResourceContributionKind.hook,
+              attempted: true,
+              diagnostics: [diagnostic],
+            );
       } else {
         try {
           final result = capability.render(
@@ -334,14 +417,19 @@ final class CliResourceProvisioner {
                 warnings: result.warnings,
               );
         } on Object catch (error, stackTrace) {
-          hard.add(
-            _materializerFailure(
-              ResourceContributionKind.hook,
-              context.cli,
-              error,
-              stackTrace,
-            ),
+          final diagnostic = _materializerFailure(
+            ResourceContributionKind.hook,
+            context.cli,
+            error,
+            stackTrace,
           );
+          hard.add(diagnostic);
+          materializations[ResourceContributionKind.hook] =
+              ResourceMaterializationResult(
+                kind: ResourceContributionKind.hook,
+                attempted: true,
+                diagnostics: [diagnostic],
+              );
         }
       }
     } else {
@@ -471,10 +559,6 @@ final class CliResourceProvisioner {
         context: McpProviderContext(
           cli: context.cli,
           scope: context.launchScope,
-          mcpServerIds: context.runtimeBundle.mcpServerIds,
-          extraServers: context.extraServers,
-          extraServerEntries: context.extraServerEntries,
-          credentials: context.mcpCredentials,
         ),
         providers: providers.mcp,
       );
@@ -529,6 +613,21 @@ final class CliResourceProvisioner {
       );
     }
     return null;
+  }
+
+  void _recordAssemblyFailure(
+    ResourceContributionKind kind,
+    Map<ResourceContributionKind, ResourceMaterializationResult> results,
+    List<ResourceAssemblyError> hard,
+    int previousHardCount,
+  ) {
+    if (hard.length == previousHardCount) return;
+    final diagnostics = hard.sublist(previousHardCount);
+    results[kind] = ResourceMaterializationResult(
+      kind: kind,
+      attempted: true,
+      diagnostics: diagnostics,
+    );
   }
 
   void _collect(

@@ -21,12 +21,17 @@ final class CatalogMcpContributionProvider
   CatalogMcpContributionProvider({
     this.catalogLoader,
     this.snapshotPath,
+    Iterable<String>? mcpServerIds,
     Filesystem? fs,
     this.originKind = ResourceOriginKind.catalog,
-  }) : _fs = fs ?? LocalFilesystem();
+  }) : _fs = fs ?? LocalFilesystem(),
+       _configuredMcpServerIds = mcpServerIds == null
+           ? null
+           : List.unmodifiable(mcpServerIds);
 
   final FutureOr<Iterable<McpServer>> Function()? catalogLoader;
   final String? snapshotPath;
+  final List<String>? _configuredMcpServerIds;
   final Filesystem _fs;
   final ResourceOriginKind originKind;
   List<ResourceAssemblyDiagnostic> _diagnostics = const [];
@@ -83,7 +88,8 @@ final class CatalogMcpContributionProvider
         ]);
       }
     }
-    if (!context.mcpServerIds.any((id) => id.trim().isNotEmpty)) {
+    final mcpServerIds = _configuredMcpServerIds ?? context.mcpServerIds;
+    if (!mcpServerIds.any((id) => id.trim().isNotEmpty)) {
       _diagnostics = const [];
       _activeSourceId = null;
       _hasValidContributions = false;
@@ -92,7 +98,7 @@ final class CatalogMcpContributionProvider
 
     _activeSourceId =
         _activeSourceId ??
-        context.mcpServerIds
+        mcpServerIds
             .map((id) => id.trim())
             .firstWhere((id) => id.isNotEmpty, orElse: () => providerId);
 
@@ -104,7 +110,7 @@ final class CatalogMcpContributionProvider
     } on Object catch (error, stackTrace) {
       final sourceId =
           context.sourceId ??
-          context.mcpServerIds
+          mcpServerIds
               .map((id) => id.trim())
               .firstWhere((id) => id.isNotEmpty, orElse: () => providerId);
       throw ResourceAssemblyException([
@@ -127,7 +133,7 @@ final class CatalogMcpContributionProvider
     final diagnostics = <ResourceAssemblyDiagnostic>[];
     final seenIds = <String>{};
     final contributions = <McpContribution>[];
-    for (final rawId in context.mcpServerIds) {
+    for (final rawId in mcpServerIds) {
       final id = rawId.trim();
       if (id.isEmpty || !seenIds.add(id)) continue;
       final server = byId[id];

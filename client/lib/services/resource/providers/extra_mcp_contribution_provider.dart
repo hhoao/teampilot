@@ -8,7 +8,18 @@ import 'mcp_contribution_provider.dart';
 /// Contributes launch-generated MCP servers such as TeamBus endpoints.
 final class ExtraMcpContributionProvider
     implements McpContributionProvider, McpContributionProviderDiagnostics {
-  ExtraMcpContributionProvider();
+  ExtraMcpContributionProvider({
+    Iterable<McpServerSpec>? extraServers,
+    Map<String, Map<String, Object?>>? extraServerEntries,
+  }) : _extraServers = extraServers == null
+           ? null
+           : List.unmodifiable(extraServers),
+       _extraServerEntries = extraServerEntries == null
+           ? null
+           : Map.unmodifiable(extraServerEntries);
+
+  final List<McpServerSpec>? _extraServers;
+  final Map<String, Map<String, Object?>>? _extraServerEntries;
 
   List<ResourceAssemblyDiagnostic> _diagnostics = const [];
 
@@ -21,8 +32,11 @@ final class ExtraMcpContributionProvider
   @override
   FutureOr<Iterable<McpContribution>> provide(McpProviderContext context) {
     final diagnostics = <ResourceAssemblyDiagnostic>[];
+    final extraServers = _extraServers ?? context.extraServers;
+    final extraServerEntries =
+        _extraServerEntries ?? context.extraServerEntries;
     final contributions = <McpContribution>[
-      for (final server in context.extraServers)
+      for (final server in extraServers)
         McpContribution(
           sourceId: server.name,
           server: server,
@@ -33,7 +47,7 @@ final class ExtraMcpContributionProvider
           ),
         ),
     ];
-    for (final entry in context.extraServerEntries.entries) {
+    for (final entry in extraServerEntries.entries) {
       final spec = McpServerSpec.fromCatalogJson(entry.key, entry.value);
       if (spec == null) {
         diagnostics.add(

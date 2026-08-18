@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/config_bundle.dart';
 import 'package:teampilot/models/hook_entry.dart';
@@ -15,12 +13,10 @@ import 'package:teampilot/services/cli/registry/cli_tool_definition.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/io/filesystem.dart';
 import 'package:teampilot/services/resource/cli_resource_provisioner.dart';
-import 'package:teampilot/services/resource/contribution/prompt_document.dart';
 import 'package:teampilot/services/resource/contribution/resource_assembly_error.dart';
 import 'package:teampilot/services/resource/contribution/resource_origin.dart';
 import 'package:teampilot/services/resource/providers/hook_contribution_provider.dart';
 import 'package:teampilot/services/resource/providers/mcp_contribution_provider.dart';
-import 'package:teampilot/services/resource/providers/prompt_contribution_provider.dart';
 import 'package:teampilot/services/resource/providers/skill_contribution_provider.dart';
 import 'package:teampilot/services/resource/resource_provider_set.dart';
 import 'package:teampilot/services/resource/resource_scope.dart';
@@ -56,7 +52,7 @@ void main() {
       final report = await CliResourceProvisioner(
         fs: fs,
         registry: registry,
-      ).provision(_context(fs: fs, registry: registry, injected: injected));
+      ).provision(_context(fs: fs, injected: injected));
 
       expect(report.hardDiagnostics, isEmpty);
       expect(events.sublist(0, 8), [
@@ -97,7 +93,6 @@ void main() {
           .provision(
             _context(
               fs: fs,
-              registry: registry,
               injected: ResourceProviderSet(
                 skills: [
                   _RecordingSkillProvider(
@@ -117,11 +112,41 @@ void main() {
         ResourceContributionKind.skill,
       );
       expect(
-        (report.hardDiagnostics.single as ResourceAssemblyError).errorKind,
+        report.hardDiagnostics.single.errorKind,
         ResourceAssemblyErrorKind.unsupported,
       );
+      final result = report.materializations[ResourceContributionKind.skill]!;
+      expect(result.attempted, isTrue);
+      expect(result.materialized, isFalse);
+      expect(result.diagnostics, hasLength(1));
     },
   );
+
+  test('all unsupported non-empty kinds retain per-kind diagnostics', () async {
+    final fs = InMemoryFilesystem();
+    final registry = _registry([]);
+    final report = await CliResourceProvisioner(fs: fs, registry: registry)
+        .provision(
+          _context(
+            fs: fs,
+            injected: ResourceProviderSet(
+              prompts: [_RecordingPromptProvider('prompt', <String>[])],
+              skills: [
+                _RecordingSkillProvider('skill', <String>[], nonEmpty: true),
+              ],
+              mcp: [_RecordingMcpProvider('mcp', <String>[])],
+              hooks: [_RecordingHookProvider('hook', <String>[])],
+            ),
+          ),
+        );
+
+    for (final kind in ResourceContributionKind.values) {
+      final result = report.materializations[kind]!;
+      expect(result.attempted, isTrue, reason: kind.name);
+      expect(result.materialized, isFalse, reason: kind.name);
+      expect(result.diagnostics, isNotEmpty, reason: kind.name);
+    }
+  });
 
   test(
     'empty unsupported resources are a no-op and do not erase unrelated config',
@@ -133,10 +158,14 @@ void main() {
       final report = await CliResourceProvisioner(
         fs: fs,
         registry: registry,
-      ).provision(_context(fs: fs, registry: registry));
+      ).provision(_context(fs: fs));
 
       expect(report.hardDiagnostics, isEmpty);
       expect(await fs.readString('/config/unrelated.json'), 'keep');
+      expect(
+        report.materializations.keys,
+        containsAll(ResourceContributionKind.values),
+      );
       expect(
         report.materializations.values.every((result) => !result.attempted),
         isTrue,
@@ -155,7 +184,7 @@ void main() {
         _RecordingSkillCapability(events),
       ]);
       final provisioner = CliResourceProvisioner(fs: fs, registry: registry);
-      final context = _context(fs: fs, registry: registry);
+      final context = _context(fs: fs);
 
       final first = await provisioner.provision(context);
       final firstEntries = await fs.listDir('/config/skills');
@@ -185,7 +214,7 @@ void main() {
       final report = await CliResourceProvisioner(
         fs: fs,
         registry: registry,
-      ).provision(_context(fs: fs, registry: registry));
+      ).provision(_context(fs: fs));
 
       expect(report.hardDiagnostics, hasLength(1));
       expect(
@@ -195,11 +224,31 @@ void main() {
       expect(report.hardDiagnostics.single.providerId, 'failing-prompt');
     },
   );
+
+  test(
+    'resolves each injected MCP source once before materialization',
+    () async {
+      final fs = InMemoryFilesystem();
+      var calls = 0;
+      final provider = _CountingMcpProvider(() => calls++);
+      final registry = _registry([_RecordingMcpCapability(<String>[])]);
+
+      final report = await CliResourceProvisioner(fs: fs, registry: registry)
+          .provision(
+            _context(
+              fs: fs,
+              injected: ResourceProviderSet(mcp: [provider]),
+            ),
+          );
+
+      expect(report.hardDiagnostics, isEmpty);
+      expect(calls, 1);
+    },
+  );
 }
 
 CliResourceProvisionContext _context({
   required InMemoryFilesystem fs,
-  required CliToolRegistry registry,
   ResourceProviderSet injected = ResourceProviderSet.empty,
 }) => CliResourceProvisionContext(
   cli: CliTool.claude,
@@ -300,6 +349,29 @@ final class _RecordingMcpProvider
       McpContribution(
         sourceId: providerId,
         server: StdioMcpServer(name: providerId, command: 'server'),
+        origin: ContributionOrigin(
+          providerId: providerId,
+          kind: ResourceOriginKind.catalog,
+        ),
+      ),
+    ];
+  }
+}
+
+final class _CountingMcpProvider implements McpContributionProvider {
+  _CountingMcpProvider(this.onProvide);
+  final void Function() onProvide;
+
+  @override
+  String get providerId => 'counting-mcp';
+
+  @override
+  Iterable<McpContribution> provide(McpProviderContext context) {
+    onProvide();
+    return [
+      McpContribution(
+        sourceId: 'counted',
+        server: StdioMcpServer(name: 'counted', command: 'server'),
         origin: ContributionOrigin(
           providerId: providerId,
           kind: ResourceOriginKind.catalog,

@@ -5,7 +5,6 @@ import '../../models/cli_preset.dart';
 import '../../models/extension_manifest.dart';
 import '../../models/hook_entry.dart';
 import '../../models/plugin.dart';
-import '../../models/mcp_server_spec.dart';
 import '../../models/skill.dart';
 import '../../models/team_config.dart';
 import '../../utils/logging/logger.dart';
@@ -32,10 +31,7 @@ import '../resource/cli_resource_provisioner.dart';
 import '../resource/resource_provider_set.dart';
 import '../resource/providers/catalog_skill_contribution_provider.dart';
 import '../resource/providers/plugin_skill_contribution_provider.dart';
-import '../resource/providers/mcp_contribution_provider.dart';
-import '../resource/contribution/resource_origin.dart';
 import '../resource/contribution/resource_assembly_error.dart';
-import '../resource/assemblers/mcp_assembler.dart';
 import '../launch/launch_manifest.dart';
 import '../launch/launch_manifest_paths.dart';
 import '../launch/manifest_executor.dart';
@@ -183,9 +179,6 @@ class ConfigProfileService implements ConfigProfileDelegate {
         ],
       );
 
-  McpContributionProvider _assembledMcpProvider(McpAssemblyResult assembly) =>
-      _AssembledMcpContributionProvider(assembly.servers);
-
   ConfigProfileService _stagingService({
     required Filesystem stagingFs,
     required String workTeampilotRoot,
@@ -324,6 +317,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     Iterable<String> projectMcpRoots = const [],
     String workingDirectory = '',
     MemberBusIdleEndpoint? busIdle,
+    bool provisionResources = true,
   }) async {
     final warnings = <String>[];
     final trimmedWorkspaceId = effectiveLaunchWorkspaceId(
@@ -387,13 +381,15 @@ class ConfigProfileService implements ConfigProfileDelegate {
         for (final id in poolResult.skippedMissingIds) 'plugin_missing_$id',
         ...poolResult.errors,
       ]);
-      mcpAssembly = await mcpRegistry.assembleForTeam(
-        cli: cli,
-        teamId: trimmedTeamId,
-        extraServers: extraMcpServers,
-        pluginIds: enabledPlugins,
-        installedPluginCatalog: installedCatalog,
-      );
+      if (provisionResources) {
+        mcpAssembly = await mcpRegistry.assembleForTeam(
+          cli: cli,
+          teamId: trimmedTeamId,
+          extraServers: extraMcpServers,
+          pluginIds: enabledPlugins,
+          installedPluginCatalog: installedCatalog,
+        );
+      }
       await pluginProvisioner.provision(
         PluginProvisionContext(
           fs: fs,
@@ -410,7 +406,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
           layout: layout,
           tool: cli,
           memberProvisionJson: poolResult.memberProvisionStampJson,
-          assembledMcpServers: mcpAssembly.result.servers,
+          assembledMcpServers: mcpAssembly?.result.servers ?? const [],
           mcpConfigFileName: warmTier
               ? CursorWorkspaceWarmTier.mcpBaseFileName
               : null,
@@ -431,6 +427,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
             workingDirectory: workingDirectory,
           ),
         );
+    if (!provisionResources) return warnings;
     mcpAssembly ??= await mcpRegistry.assembleForTeam(
       cli: cli,
       teamId: trimmedTeamId,
@@ -569,13 +566,13 @@ class ConfigProfileService implements ConfigProfileDelegate {
 
     final pluginProvisioner = _cliRegistry.capability<PluginCapability>(cli);
     final mcpRegistry = McpRegistryService(fs: fs, layout: layout);
-    McpRegistryAssembly? mcpAssembly;
+    List<Plugin>? installedCatalog;
     if (pluginProvisioner != null) {
-      late final List<Plugin> installedCatalog;
       late final PluginBundlePoolResult poolResult;
       await step('plugin-catalog', () async {
         installedCatalog = await InstalledPluginCatalog.load(fs, basePath);
       });
+      final pluginCatalog = installedCatalog!;
       await step('plugin-pool', () async {
         poolResult =
             await PluginBundlePoolService(
@@ -588,7 +585,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
                 cli.value,
               ),
               enabledPluginIds: runtimeBundle.pluginIds,
-              installedCatalog: installedCatalog,
+              installedCatalog: pluginCatalog,
               paths:
                   pluginProvisioner.manifestPaths ?? neutralPluginManifestPaths,
             );
@@ -597,13 +594,6 @@ class ConfigProfileService implements ConfigProfileDelegate {
         for (final id in poolResult.skippedMissingIds) 'plugin_missing_$id',
         ...poolResult.errors,
       ]);
-      mcpAssembly = await mcpRegistry.assembleForSimple(
-        cli: cli,
-        mcpServerIds: runtimeBundle.mcpServerIds,
-        extraServers: extraMcpServers,
-        pluginIds: runtimeBundle.pluginIds,
-        installedPluginCatalog: installedCatalog,
-      );
       await step(
         'plugin-provision',
         () => pluginProvisioner.provision(
@@ -617,23 +607,23 @@ class ConfigProfileService implements ConfigProfileDelegate {
               cli.value,
             ),
             enabledPluginIds: runtimeBundle.pluginIds,
-            installedCatalog: installedCatalog,
+            installedCatalog: pluginCatalog,
             layout: layout,
             tool: cli,
             memberProvisionJson: poolResult.memberProvisionStampJson,
-            assembledMcpServers: mcpAssembly!.result.servers,
+            assembledMcpServers: const [],
           ),
         ),
       );
     }
 
-    mcpAssembly ??= await mcpRegistry.assembleForSimple(
+    final mcpProviders = await mcpRegistry.providersForSimple(
       cli: cli,
       mcpServerIds: runtimeBundle.mcpServerIds,
       extraServers: extraMcpServers,
       pluginIds: runtimeBundle.pluginIds,
+      installedPluginCatalog: installedCatalog,
     );
-    final assembledMcp = mcpAssembly;
     final resourceCatalog = await _skillCatalog();
     await step('resources', () async {
       await maybeRemoveStaleProjectTeammateBus(
@@ -653,9 +643,9 @@ class ConfigProfileService implements ConfigProfileDelegate {
             configDir: configDir,
             resourceProviders: ResourceProviderSet(
               skills: providers.skills,
-              mcp: [_assembledMcpProvider(assembledMcp.result)],
+              mcp: mcpProviders.providers.mcp,
             ),
-            appConfigDir: assembledMcp.hasValidCatalogContribution
+            appConfigDir: mcpProviders.catalogProvider != null
                 ? layout.appToolRoot(cli.value)
                 : null,
           ),
@@ -965,32 +955,72 @@ class ConfigProfileService implements ConfigProfileDelegate {
         ),
         workingDirectory: workingDirectory,
         busIdle: busIdle,
+        provisionResources: false,
       ),
     );
 
-    if (team != null) {
-      final resourceCatalog = await _skillCatalog();
-      final providers = _catalogResourceProviders(resourceCatalog);
-      warnings.addAll(
-        await _provisionStagedResources(
-          context: CliResourceProvisionContext(
-            cli: launchCli,
-            scope: WorkspaceResourceScope(bundle: runtimeBundle),
-            runtimeBundle: runtimeBundle,
-            fs: stagingFs,
-            layout: staging.layout,
-            configDir: staging._launchResourceConfigDir(
-              cli: launchCli,
-              workspaceId: trimmedWorkspaceId,
-              sessionId: trimmedSessionId,
-              memberId: memberId,
-              team: team,
-            ),
-            resourceProviders: providers,
+    final resourceCatalog = await _skillCatalog();
+    final providers = _catalogResourceProviders(resourceCatalog);
+    final mcpRegistry = McpRegistryService(
+      fs: stagingFs,
+      layout: staging.layout,
+    );
+    final mcpProviders = await mcpRegistry.providersForTeam(
+      cli: launchCli,
+      teamId: trimmedTeamId,
+      extraServers: extraMcpServers,
+      pluginIds: runtimeBundle.pluginIds,
+    );
+    await maybeRemoveStaleProjectTeammateBus(
+      fs: stagingFs,
+      extraServers: extraMcpServers,
+      projectRoots: projectMcpRootsFromLaunch(
+        workingDirectory: workingDirectory,
+        additionalDirectories: additionalDirectories,
+      ),
+    );
+    final resourceConfigDir = staging._launchResourceConfigDir(
+      cli: launchCli,
+      workspaceId: trimmedWorkspaceId,
+      sessionId: trimmedSessionId,
+      memberId: memberId,
+      team: team,
+    );
+    final warmTier = CursorWorkspaceWarmTier.applies(
+      team: team,
+      cli: launchCli,
+    );
+    warnings.addAll(
+      await _provisionStagedResources(
+        context: CliResourceProvisionContext(
+          cli: launchCli,
+          scope: team == null
+              ? WorkspaceResourceScope(bundle: runtimeBundle)
+              : TeamResourceScope(team: team, member: launchMember),
+          runtimeBundle: runtimeBundle,
+          fs: stagingFs,
+          layout: staging.layout,
+          configDir: resourceConfigDir,
+          resourceProviders: ResourceProviderSet(
+            skills: providers.skills,
+            mcp: mcpProviders.providers.mcp,
           ),
+          appConfigDir: mcpProviders.catalogProvider != null
+              ? staging.layout.appToolRoot(launchCli.value)
+              : null,
+          mcpConfigDir: warmTier
+              ? CursorWorkspaceWarmTier.sharedRoot(
+                  staging.layout,
+                  trimmedWorkspaceId,
+                  trimmedTeamId,
+                )
+              : null,
+          mcpOutputBasename: warmTier
+              ? CursorWorkspaceWarmTier.mcpBaseFileName
+              : null,
         ),
-      );
-    }
+      ),
+    );
 
     final cap = _cliRegistry.capability<ProviderCapability>(launchCli);
     if (cap == null) {
@@ -1219,29 +1249,4 @@ Map<String, String> _withAgentStatusEnv(
 ) {
   if (agentStatus == null) return environment;
   return {...environment, agentStatusUrlEnvKey: agentStatus.url};
-}
-
-final class _AssembledMcpContributionProvider
-    implements McpContributionProvider {
-  _AssembledMcpContributionProvider(Iterable<McpServerSpec> servers)
-    : servers = List.unmodifiable(servers);
-
-  final List<McpServerSpec> servers;
-
-  @override
-  String get providerId => 'assembled-mcp';
-
-  @override
-  Iterable<McpContribution> provide(McpProviderContext context) => [
-    for (final server in servers)
-      McpContribution(
-        sourceId: server.name,
-        server: server,
-        origin: ContributionOrigin(
-          providerId: providerId,
-          kind: ResourceOriginKind.managed,
-          sourceId: server.name,
-        ),
-      ),
-  ];
 }
