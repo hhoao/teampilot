@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/models/mcp_server_spec.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/registry/capabilities/plugin_capability.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/plugin.dart';
@@ -45,6 +46,10 @@ void main() {
             installedCatalog: const [],
             layout: RuntimeLayout(teampilotRoot: teampilotRoot, fs: fs),
             tool: CliTool.cursor,
+            assembledMcpServers: const [
+              StdioMcpServer(name: 'assembled', command: 'assembled-command'),
+            ],
+            mcpConfigFileName: 'mcp.base.json',
           ),
         );
 
@@ -70,9 +75,11 @@ void main() {
         expect(enabled['demo@local'], isTrue);
 
         final mcp =
-            jsonDecode((await fs.readString('$configDir/mcp.json'))!) as Map;
-        final bundled = (mcp['mcpServers'] as Map)['bundled'] as Map;
-        expect(bundled['command'], 'echo');
+            jsonDecode((await fs.readString('$configDir/mcp.base.json'))!)
+                as Map;
+        final servers = (mcp['mcpServers'] as Map).cast<String, Object?>();
+        expect((servers['assembled'] as Map)['command'], 'assembled-command');
+        expect(servers.containsKey('bundled'), isFalse);
       },
     );
   });

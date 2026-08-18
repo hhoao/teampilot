@@ -1,4 +1,5 @@
 import '../../models/mcp_registry_source.dart';
+import '../../models/plugin.dart';
 import '../../models/mcp_server_spec.dart';
 import '../../models/team_config.dart';
 import '../cli/registry/capabilities/mcp_capability.dart';
@@ -52,6 +53,8 @@ class McpRegistryService {
     Map<String, Map<String, Object?>>? extraServers,
     Iterable<String> pluginIds = const [],
     Iterable<String> projectMcpRoots = const [],
+    McpRegistryAssembly? assembly,
+    bool mcpAlreadyMaterialized = false,
   }) async {
     final trimmedWorkspaceId = workspaceId.trim();
     final trimmedTeamId = teamId.trim();
@@ -62,28 +65,32 @@ class McpRegistryService {
       return;
     }
 
-    final assembled = await _assemble(
-      cli: cli,
-      snapshotPath: layout.identityMcpServersFile(trimmedTeamId),
-      extraServers: extraServers,
-      pluginIds: pluginIds,
-    );
+    final assembled =
+        assembly ??
+        await _assemble(
+          cli: cli,
+          snapshotPath: layout.identityMcpServersFile(trimmedTeamId),
+          extraServers: extraServers,
+          pluginIds: pluginIds,
+        );
     final specs = assembled.result.servers;
-    if (specs.isEmpty) return;
-
-    await _writeToTool(
-      tool: cli,
-      workspaceId: trimmedWorkspaceId,
-      sessionId: trimmedSessionId,
-      memberId: memberId,
-      specs: specs,
-    );
 
     await maybeRemoveStaleProjectTeammateBus(
       fs: _fs,
       extraServers: extraServers,
       projectRoots: projectMcpRoots,
     );
+    if (specs.isEmpty) return;
+
+    if (!mcpAlreadyMaterialized) {
+      await _writeToTool(
+        tool: cli,
+        workspaceId: trimmedWorkspaceId,
+        sessionId: trimmedSessionId,
+        memberId: memberId,
+        specs: specs,
+      );
+    }
 
     if (assembled.hasValidCatalogContribution) {
       await _mergeAppCredentials(
@@ -102,6 +109,8 @@ class McpRegistryService {
     Map<String, Map<String, Object?>>? extraServers,
     Iterable<String> pluginIds = const [],
     Iterable<String> projectMcpRoots = const [],
+    McpRegistryAssembly? assembly,
+    bool mcpAlreadyMaterialized = false,
   }) async {
     final trimmedWorkspaceId = workspaceId.trim();
     final trimmedTeamId = teamId.trim();
@@ -109,34 +118,38 @@ class McpRegistryService {
       return McpRegistryAssembly.empty();
     }
 
-    final assembled = await _assemble(
-      cli: CliTool.cursor,
-      snapshotPath: layout.identityMcpServersFile(trimmedTeamId),
-      extraServers: extraServers,
-      pluginIds: pluginIds,
-    );
+    final assembled =
+        assembly ??
+        await _assemble(
+          cli: CliTool.cursor,
+          snapshotPath: layout.identityMcpServersFile(trimmedTeamId),
+          extraServers: extraServers,
+          pluginIds: pluginIds,
+        );
     final specs = assembled.result.servers;
-    if (specs.isEmpty) return assembled;
-
-    final writer = _cliRegistry.capability<McpCapability>(CliTool.cursor);
-    if (writer == null) return assembled;
-
-    await writer.write(
-      fs: _fs,
-      configDir: CursorWorkspaceWarmTier.sharedRoot(
-        layout,
-        trimmedWorkspaceId,
-        trimmedTeamId,
-      ),
-      servers: specs,
-      outputBasename: CursorWorkspaceWarmTier.mcpBaseFileName,
-    );
 
     await maybeRemoveStaleProjectTeammateBus(
       fs: _fs,
       extraServers: extraServers,
       projectRoots: projectMcpRoots,
     );
+    if (specs.isEmpty) return assembled;
+
+    final writer = _cliRegistry.capability<McpCapability>(CliTool.cursor);
+    if (writer == null) return assembled;
+
+    if (!mcpAlreadyMaterialized) {
+      await writer.write(
+        fs: _fs,
+        configDir: CursorWorkspaceWarmTier.sharedRoot(
+          layout,
+          trimmedWorkspaceId,
+          trimmedTeamId,
+        ),
+        servers: specs,
+        outputBasename: CursorWorkspaceWarmTier.mcpBaseFileName,
+      );
+    }
     return assembled;
   }
 
@@ -189,6 +202,8 @@ class McpRegistryService {
     Map<String, Map<String, Object?>>? extraServers,
     Iterable<String> pluginIds = const [],
     Iterable<String> projectMcpRoots = const [],
+    McpRegistryAssembly? assembly,
+    bool mcpAlreadyMaterialized = false,
   }) async {
     final trimmedWorkspaceId = workspaceId.trim();
     final trimmedSessionId = sessionId.trim();
@@ -196,27 +211,31 @@ class McpRegistryService {
       return;
     }
 
-    final assembled = await _assemble(
-      cli: cli,
-      mcpServerIds: mcpServerIds,
-      extraServers: extraServers,
-      pluginIds: pluginIds,
-    );
+    final assembled =
+        assembly ??
+        await _assemble(
+          cli: cli,
+          mcpServerIds: mcpServerIds,
+          extraServers: extraServers,
+          pluginIds: pluginIds,
+        );
     final specs = assembled.result.servers;
-    if (specs.isEmpty) return;
-
-    await _writeToTool(
-      tool: cli,
-      workspaceId: trimmedWorkspaceId,
-      sessionId: trimmedSessionId,
-      specs: specs,
-    );
 
     await maybeRemoveStaleProjectTeammateBus(
       fs: _fs,
       extraServers: extraServers,
       projectRoots: projectMcpRoots,
     );
+    if (specs.isEmpty) return;
+
+    if (!mcpAlreadyMaterialized) {
+      await _writeToTool(
+        tool: cli,
+        workspaceId: trimmedWorkspaceId,
+        sessionId: trimmedSessionId,
+        specs: specs,
+      );
+    }
 
     if (assembled.hasValidCatalogContribution) {
       await _mergeAppCredentials(
@@ -227,12 +246,41 @@ class McpRegistryService {
     }
   }
 
+  Future<McpRegistryAssembly> assembleForTeam({
+    required CliTool cli,
+    required String teamId,
+    Map<String, Map<String, Object?>>? extraServers,
+    Iterable<String> pluginIds = const [],
+    Iterable<Plugin>? installedPluginCatalog,
+  }) => _assemble(
+    cli: cli,
+    snapshotPath: layout.identityMcpServersFile(teamId.trim()),
+    extraServers: extraServers,
+    pluginIds: pluginIds,
+    installedPluginCatalog: installedPluginCatalog,
+  );
+
+  Future<McpRegistryAssembly> assembleForSimple({
+    required CliTool cli,
+    required Iterable<String> mcpServerIds,
+    Map<String, Map<String, Object?>>? extraServers,
+    Iterable<String> pluginIds = const [],
+    Iterable<Plugin>? installedPluginCatalog,
+  }) => _assemble(
+    cli: cli,
+    mcpServerIds: mcpServerIds,
+    extraServers: extraServers,
+    pluginIds: pluginIds,
+    installedPluginCatalog: installedPluginCatalog,
+  );
+
   Future<McpRegistryAssembly> _assemble({
     required CliTool cli,
     String? snapshotPath,
     List<String> mcpServerIds = const [],
     Map<String, Map<String, Object?>>? extraServers,
     Iterable<String> pluginIds = const [],
+    Iterable<Plugin>? installedPluginCatalog,
   }) async {
     final hasIds = mcpServerIds.any((id) => id.trim().isNotEmpty);
     final trimmedSnapshot = snapshotPath?.trim() ?? '';
@@ -275,7 +323,9 @@ class McpRegistryService {
           pluginsRoot: AppPaths.pluginsDirForTeampilotRoot(
             layout.teampilotRoot,
           ),
-          catalog: await InstalledPluginCatalog.load(_fs, layout.teampilotRoot),
+          catalog:
+              installedPluginCatalog ??
+              await InstalledPluginCatalog.load(_fs, layout.teampilotRoot),
           enabledPluginIds: enabledPlugins,
         ),
       );

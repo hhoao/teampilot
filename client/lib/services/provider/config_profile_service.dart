@@ -329,8 +329,11 @@ class ConfigProfileService implements ConfigProfileDelegate {
     final pluginProvisioner = _cliRegistry
         .capability<PluginCapability>(cli);
     final warmTier = CursorWorkspaceWarmTier.applies(team: team, cli: cli);
+    final mcpRegistry = McpRegistryService(fs: fs, layout: layout);
+    McpRegistryAssembly? mcpAssembly;
+    List<Plugin>? installedCatalog;
     if (pluginProvisioner != null) {
-      final installedCatalog = await InstalledPluginCatalog.load(fs, basePath);
+      installedCatalog = await InstalledPluginCatalog.load(fs, basePath);
       final enabledPlugins = runtimeBundle?.pluginIds ?? const <String>[];
       final poolResult = await PluginBundlePoolService(
         fs: fs,
@@ -350,6 +353,13 @@ class ConfigProfileService implements ConfigProfileDelegate {
         for (final id in poolResult.skippedMissingIds) 'plugin_missing_$id',
         ...poolResult.errors,
       ]);
+      mcpAssembly = await mcpRegistry.assembleForTeam(
+        cli: cli,
+        teamId: trimmedTeamId,
+        extraServers: extraMcpServers,
+        pluginIds: enabledPlugins,
+        installedPluginCatalog: installedCatalog,
+      );
       await pluginProvisioner.provision(
         PluginProvisionContext(
           fs: fs,
@@ -366,6 +376,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
           layout: layout,
           tool: cli,
           memberProvisionJson: poolResult.memberProvisionStampJson,
+          assembledMcpServers: mcpAssembly!.result.servers,
           mcpConfigFileName: warmTier
               ? CursorWorkspaceWarmTier.mcpBaseFileName
               : null,
@@ -384,14 +395,23 @@ class ConfigProfileService implements ConfigProfileDelegate {
         workingDirectory: workingDirectory,
       ),
     );
-    final mcpRegistry = McpRegistryService(fs: fs, layout: layout);
+    mcpAssembly ??= await mcpRegistry.assembleForTeam(
+      cli: cli,
+      teamId: trimmedTeamId,
+      extraServers: extraMcpServers,
+      pluginIds: runtimeBundle?.pluginIds ?? const [],
+      installedPluginCatalog: installedCatalog,
+    );
+    final assembledMcp = mcpAssembly!;
     if (warmTier) {
-      final mcpAssembly = await mcpRegistry.writeCursorWorkspaceMcpBase(
+      await mcpRegistry.writeCursorWorkspaceMcpBase(
         workspaceId: trimmedWorkspaceId,
         teamId: trimmedTeamId,
         extraServers: extraMcpServers,
         pluginIds: runtimeBundle?.pluginIds ?? const [],
         projectMcpRoots: projectMcpRoots,
+        assembly: assembledMcp,
+        mcpAlreadyMaterialized: pluginProvisioner?.writesAssembledMcp == true,
       );
       final trimmedMemberId = memberId?.trim() ?? '';
       if (trimmedMemberId.isNotEmpty) {
@@ -400,7 +420,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
           sessionId: trimmedSessionId,
           teamId: trimmedTeamId,
           memberId: trimmedMemberId,
-          assembly: mcpAssembly,
+          assembly: assembledMcp,
         );
       }
     } else {
@@ -413,6 +433,8 @@ class ConfigProfileService implements ConfigProfileDelegate {
         extraServers: extraMcpServers,
         pluginIds: runtimeBundle?.pluginIds ?? const [],
         projectMcpRoots: projectMcpRoots,
+        assembly: assembledMcp,
+        mcpAlreadyMaterialized: pluginProvisioner?.writesAssembledMcp == true,
       );
     }
     return warnings;
@@ -531,6 +553,8 @@ class ConfigProfileService implements ConfigProfileDelegate {
 
     final pluginProvisioner = _cliRegistry
         .capability<PluginCapability>(cli);
+    final mcpRegistry = McpRegistryService(fs: fs, layout: layout);
+    McpRegistryAssembly? mcpAssembly;
     if (pluginProvisioner != null) {
       late final List<Plugin> installedCatalog;
       late final PluginBundlePoolResult poolResult;
@@ -556,6 +580,13 @@ class ConfigProfileService implements ConfigProfileDelegate {
         for (final id in poolResult.skippedMissingIds) 'plugin_missing_$id',
         ...poolResult.errors,
       ]);
+      mcpAssembly = await mcpRegistry.assembleForSimple(
+        cli: cli,
+        mcpServerIds: runtimeBundle.mcpServerIds,
+        extraServers: extraMcpServers,
+        pluginIds: runtimeBundle.pluginIds,
+        installedPluginCatalog: installedCatalog,
+      );
       await step(
         'plugin-provision',
         () => pluginProvisioner.provision(
@@ -573,17 +604,22 @@ class ConfigProfileService implements ConfigProfileDelegate {
             layout: layout,
             tool: cli,
             memberProvisionJson: poolResult.memberProvisionStampJson,
+            assembledMcpServers: mcpAssembly!.result.servers,
           ),
         ),
       );
     }
 
+    mcpAssembly ??= await mcpRegistry.assembleForSimple(
+      cli: cli,
+      mcpServerIds: runtimeBundle.mcpServerIds,
+      extraServers: extraMcpServers,
+      pluginIds: runtimeBundle.pluginIds,
+    );
+    final assembledMcp = mcpAssembly!;
     await step(
       'mcp',
-      () => McpRegistryService(
-        fs: fs,
-        layout: layout,
-      ).writeForSimpleSession(
+      () => mcpRegistry.writeForSimpleSession(
         workspaceId: trimmedWorkspaceId,
         sessionId: trimmedSessionId,
         mcpServerIds: runtimeBundle.mcpServerIds,
@@ -591,6 +627,8 @@ class ConfigProfileService implements ConfigProfileDelegate {
         extraServers: extraMcpServers,
         pluginIds: runtimeBundle.pluginIds,
         projectMcpRoots: projectMcpRoots,
+        assembly: assembledMcp,
+        mcpAlreadyMaterialized: pluginProvisioner?.writesAssembledMcp == true,
       ),
     );
 

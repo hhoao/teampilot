@@ -316,6 +316,34 @@ void main() {
       expect(config.loadCalls, 1);
     },
   );
+
+  test(
+    'empty specs still clean invalid TeamBus extra from project scope',
+    () async {
+      final projectRoot = Directory('${root.path}/project');
+      await projectRoot.create(recursive: true);
+      final projectMcp = File('${projectRoot.path}/.mcp.json');
+      await projectMcp.writeAsString(
+        jsonEncode({
+          'mcpServers': {
+            teammateBusMcpServerName: {'type': 'stdio', 'command': 'stale'},
+          },
+        }),
+      );
+
+      await McpRegistryService(layout: layout).writeForSimpleSession(
+        workspaceId: 'workspace-stale',
+        sessionId: 'session-stale',
+        mcpServerIds: const [],
+        extraServers: const {
+          teammateBusMcpServerName: {'invalid': true},
+        },
+        projectMcpRoots: [projectRoot.path],
+      );
+
+      expect(await projectMcp.exists(), isFalse);
+    },
+  );
 }
 
 final class _FailingMcpRegistryConfigService extends McpRegistryConfigService {
