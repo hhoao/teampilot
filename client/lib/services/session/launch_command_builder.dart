@@ -42,7 +42,20 @@ class LaunchCommandBuilder {
     final cli = stagedMemberLaunchCli(context.team, context.member);
     final tool = registry.tryGet(cli);
     if (tool == null) {
-      throw StateError('No CliToolDefinition for ${cli.value}');
+      throw CliLaunchCapabilityException(
+        cli: cli,
+        contributionKey: 'tool-definition',
+        reason:
+            'CLI tool ${cli.value} is not registered and cannot build launch arguments.',
+      );
+    }
+    if (!tool.isLaunchSupported) {
+      throw CliLaunchCapabilityException(
+        cli: cli,
+        contributionKey: 'tool-definition',
+        reason:
+            'CLI tool ${cli.value} is not launch-supported and cannot build launch arguments.',
+      );
     }
     if (!tool.capabilities.any(
       (capability) => capability is CliLaunchArgProvider,

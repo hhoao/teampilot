@@ -74,6 +74,77 @@ void main() {
     );
   });
 
+  test('rejects a missing tool definition with a typed capability error', () {
+    final registry = CliToolRegistry();
+
+    expect(
+      () => LaunchCommandBuilder.buildArgumentsFromContext(
+        const CliLaunchContext(
+          team: TeamProfile(
+            id: 'missing-team',
+            name: 'missing-team',
+            cli: CliTool.codex,
+          ),
+          member: member,
+        ),
+        cliRegistry: registry,
+      ),
+      throwsA(
+        isA<CliLaunchCapabilityException>()
+            .having((error) => error.cli, 'cli', CliTool.codex)
+            .having(
+              (error) => error.contributionKey,
+              'contribution key',
+              'tool-definition',
+            )
+            .having(
+              (error) => error.reason,
+              'reason',
+              contains('not registered'),
+            ),
+      ),
+    );
+  });
+
+  test('rejects a non-launchable tool definition with a typed error', () {
+    final registry = CliToolRegistry()
+      ..register(
+        const _FakeLaunchTool(
+          CliTool.codex,
+          _FakeLaunchProvider(),
+          isLaunchSupported: false,
+        ),
+      );
+
+    expect(
+      () => LaunchCommandBuilder.buildArgumentsFromContext(
+        const CliLaunchContext(
+          team: TeamProfile(
+            id: 'non-launchable-team',
+            name: 'non-launchable-team',
+            cli: CliTool.codex,
+          ),
+          member: member,
+        ),
+        cliRegistry: registry,
+      ),
+      throwsA(
+        isA<CliLaunchCapabilityException>()
+            .having((error) => error.cli, 'cli', CliTool.codex)
+            .having(
+              (error) => error.contributionKey,
+              'contribution key',
+              'tool-definition',
+            )
+            .having(
+              (error) => error.reason,
+              'reason',
+              contains('not launch-supported'),
+            ),
+      ),
+    );
+  });
+
   test('rejects a tool with no launch argument providers', () {
     final registry = CliToolRegistry()
       ..register(const _FakeLegacyTool(CliTool.codex));
@@ -547,7 +618,11 @@ void main() {
 }
 
 final class _FakeLaunchTool implements CliToolDefinition {
-  const _FakeLaunchTool(this.id, this.provider);
+  const _FakeLaunchTool(
+    this.id,
+    this.provider, {
+    this.isLaunchSupported = true,
+  });
 
   @override
   final CliTool id;
@@ -558,7 +633,7 @@ final class _FakeLaunchTool implements CliToolDefinition {
   List<CliCapability> get capabilities => [provider];
 
   @override
-  bool get isLaunchSupported => true;
+  final bool isLaunchSupported;
 }
 
 final class _FakeLaunchProvider implements CliLaunchArgProvider {
