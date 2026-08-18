@@ -519,6 +519,13 @@ class ConfigProfileService implements ConfigProfileDelegate {
     CliTool cli = CliTool.claude,
     Map<String, Map<String, Object?>>? extraMcpServers,
     Iterable<String> projectMcpRoots = const [],
+    ConfigProfileDelegate? promptPaths,
+    LaunchProfileScope? launchScope,
+    TeamMemberConfig? member,
+    Iterable<TeamMemberConfig> members = const [],
+    String? memberHome,
+    String workingDirectory = '',
+    Iterable<String> additionalDirectories = const [],
   }) async {
     final trimmedWorkspaceId = workspaceId.trim();
     final trimmedSessionId = sessionId.trim();
@@ -643,6 +650,13 @@ class ConfigProfileService implements ConfigProfileDelegate {
               skills: providers.skills,
               mcp: mcpProviders.providers.mcp,
             ),
+            paths: promptPaths,
+            launchScope: launchScope,
+            member: member,
+            members: members,
+            workingDirectory: workingDirectory,
+            additionalDirectories: additionalDirectories,
+            memberHome: memberHome,
             appConfigDir: mcpProviders.catalogProvider != null
                 ? layout.appToolRoot(cli.value)
                 : null,
@@ -766,6 +780,25 @@ class ConfigProfileService implements ConfigProfileDelegate {
     );
 
     final cli = member.cli ?? CliTool.claude;
+    final simpleScope = LaunchProfileScope(
+      workspaceId: workspaceId.trim(),
+      teamId: workspaceId.trim(),
+      sessionId: sessionId.trim(),
+      cliTeamName: sessionId.trim(),
+    );
+    final simpleMemberHome = member.cli == CliTool.cursor
+        ? stagingFs.pathContext.join(
+            staging.sessionToolDir(
+              workspaceId,
+              sessionId,
+              cli.value,
+              memberId: ClaudeTeamRosterService.safeClaudePathSegment(
+                member.id,
+              ),
+            ),
+            'home',
+          )
+        : null;
     final fsSw = Stopwatch()..start();
     final fsWarnings = await staging.applySimpleSessionFilesystem(
       workspaceId: workspaceId,
@@ -773,6 +806,13 @@ class ConfigProfileService implements ConfigProfileDelegate {
       runtimeBundle: runtimeBundle,
       cli: cli,
       extraMcpServers: extraMcpServers,
+      promptPaths: staging,
+      launchScope: simpleScope,
+      member: member,
+      members: [member],
+      memberHome: simpleMemberHome,
+      workingDirectory: workingDirectory,
+      additionalDirectories: additionalDirectories,
       projectMcpRoots: projectMcpRootsFromLaunch(
         workingDirectory: workingDirectory,
         additionalDirectories: additionalDirectories,
@@ -998,6 +1038,23 @@ class ConfigProfileService implements ConfigProfileDelegate {
             skills: providers.skills,
             mcp: mcpProviders.providers.mcp,
           ),
+          paths: staging,
+          launchScope: scope,
+          member: launchMember,
+          members: launchMembers,
+          workingDirectory: workingDirectory,
+          additionalDirectories: additionalDirectories,
+          memberHome: memberId == null
+              ? null
+              : staging.fs.pathContext.join(
+                  staging.layout.workspaceRuntimeMemberToolDir(
+                    trimmedWorkspaceId,
+                    trimmedTeamId,
+                    memberId,
+                    launchCli.value,
+                  ),
+                  'home',
+                ),
           appConfigDir: mcpProviders.catalogProvider != null
               ? staging.layout.appToolRoot(launchCli.value)
               : null,

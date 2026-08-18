@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import '../../models/config_bundle.dart';
 import '../../models/hook_entry.dart';
 import '../../models/mcp_server_spec.dart';
@@ -9,6 +11,7 @@ import '../cli/registry/capabilities/skill_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../cli/registry/config_profile/config_profile_context.dart';
 import '../hook/glue_script_builder.dart';
+import '../cli/registry/hook/managed_hook_provisioner.dart';
 import '../io/filesystem.dart';
 import '../storage/runtime_layout.dart';
 import 'assemblers/hook_assembler.dart';
@@ -232,7 +235,7 @@ final class CliResourceProvisioner {
         try {
           final result = await capability.materializeSkills(
             fs: _fs,
-            configDir: context.mcpConfigDir ?? context.configDir,
+            configDir: context.configDir,
             contributions: skills,
           );
           warnings.addAll(_materializeWarnings(context.cli, result.errors));
@@ -408,6 +411,7 @@ final class CliResourceProvisioner {
                   glueBuilder: const GlueScriptBuilder(),
                 ),
           );
+          await _materializeHookResult(context: context, result: result);
           warnings.addAll(_hookWarnings(context.cli, result.warnings));
           materializations[ResourceContributionKind.hook] =
               ResourceMaterializationResult(
@@ -444,6 +448,7 @@ final class CliResourceProvisioner {
     // a separate app/session concern and is skipped when no app path exists.
     if (context.appConfigDir != null &&
         context.appConfigDir!.trim().isNotEmpty &&
+        mcpAssembly?.hasValidCatalogContribution == true &&
         _registry.capability<McpCapability>(context.cli) != null) {
       try {
         await _registry
@@ -476,6 +481,42 @@ final class CliResourceProvisioner {
       mcpServers: mcpServers,
       hooks: hooks,
     );
+  }
+
+  Future<void> _materializeHookResult({
+    required CliResourceProvisionContext context,
+    required HookWriteResult result,
+  }) async {
+    final hooksDir =
+        context.hooksDir ?? _fs.pathContext.join(context.configDir, 'hooks');
+    final renderContext =
+        context.hookRenderContext ??
+        HookRenderContext(
+          hooksDir: hooksDir,
+          runner: null,
+          glueBuilder: const GlueScriptBuilder(),
+        );
+    await ManagedHookProvisioner(
+      fs: _fs,
+      joinWork: _fs.pathContext.join,
+      atomicWrite: true,
+      ensureParentDirs: true,
+    ).writeScripts(result: result, ctx: renderContext);
+    for (final entry in result.configFragments.entries) {
+      final target = _fs.pathContext.join(context.configDir, entry.key);
+      await _fs.ensureDir(_fs.pathContext.dirname(target));
+      final content = entry.value is String
+          ? entry.value as String
+          : const JsonEncoder.withIndent('  ').convert(entry.value);
+      if (context.paths != null && entry.value is Map<String, Object?>) {
+        await context.paths!.writeJsonIfChanged(
+          target,
+          (entry.value as Map<String, Object?>),
+        );
+      } else {
+        await _fs.atomicWrite(target, content);
+      }
+    }
   }
 
   Future<PromptAssemblyResult?> _assemblePrompt(

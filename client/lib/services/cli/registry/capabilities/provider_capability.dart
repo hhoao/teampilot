@@ -535,6 +535,24 @@ HookContributionProvider? _sessionHomeHookProvider(
   return null;
 }
 
+/// Returns every hook source injected at the launch boundary. The raw fields
+/// below remain only for older SessionHomeContext callers; new resource
+/// callers must flow through this complete provider set.
+List<HookContributionProvider> sessionHomeHookProviders(
+  SessionHomeContext context,
+) {
+  if (context.resourceProviders.hooks.isNotEmpty) {
+    return List.unmodifiable(context.resourceProviders.hooks);
+  }
+  if (context.hookLibraryProvider != null) {
+    return [context.hookLibraryProvider!];
+  }
+  if (context.hooks.isNotEmpty) {
+    return [UserHookContributionProvider(entries: context.hooks)];
+  }
+  return const [];
+}
+
 /// ProviderHub 契约:该 CLI 的 provider 目录、表单、模型、凭证、effort。
 ///
 /// 一个 CLI 一个实现;consumer 用 `registry.capability<ProviderCapability>(cli)`

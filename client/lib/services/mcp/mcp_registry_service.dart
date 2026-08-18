@@ -325,8 +325,7 @@ class McpRegistryService {
     );
     return McpRegistryAssembly(
       result: result,
-      hasValidCatalogContribution:
-          prepared.catalogProvider?.hasValidContributions == true,
+      hasValidCatalogContribution: result.hasValidCatalogContribution,
     );
   }
 

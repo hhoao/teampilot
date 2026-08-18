@@ -8,9 +8,11 @@ import 'package:teampilot/services/cli/registry/capabilities/hook_capability.dar
 import 'package:teampilot/services/cli/registry/capabilities/mcp_capability.dart';
 import 'package:teampilot/services/cli/registry/capabilities/prompt_capability.dart';
 import 'package:teampilot/services/cli/registry/capabilities/skill_capability.dart';
+import 'package:teampilot/services/cli/registry/capabilities/hook_registry.dart';
 import 'package:teampilot/services/cli/registry/cli_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_definition.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
+import 'package:teampilot/services/cli/registry/config_profile/config_profile_scope.dart';
 import 'package:teampilot/services/io/filesystem.dart';
 import 'package:teampilot/services/resource/cli_resource_provisioner.dart';
 import 'package:teampilot/services/resource/contribution/resource_assembly_error.dart';
@@ -24,6 +26,7 @@ import 'package:teampilot/services/resource/resource_materializer.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 
 import '../../support/in_memory_filesystem.dart';
+import '../../support/cursor_lifecycle_test_paths.dart';
 
 void main() {
   test(
@@ -288,6 +291,105 @@ void main() {
       expect(selected, launchable);
     },
   );
+
+  test(
+    'materializes hook fragments and generated scripts to the target',
+    () async {
+      final fs = InMemoryFilesystem();
+      final registry = _registry([_WritingHookCapability()]);
+      final report = await CliResourceProvisioner(fs: fs, registry: registry)
+          .provision(
+            _context(
+              fs: fs,
+              injected: ResourceProviderSet(
+                hooks: [_RecordingHookProvider('hook', <String>[])],
+              ),
+            ),
+          );
+
+      expect(report.hardDiagnostics, isEmpty);
+      expect(
+        report.materializations[ResourceContributionKind.hook]!.materialized,
+        isTrue,
+      );
+      expect(await fs.readString('/config/settings.json'), contains('hooks'));
+      expect(
+        await fs.readString('/config/hooks/generated.sh'),
+        'echo generated',
+      );
+    },
+  );
+
+  test('merges MCP credentials only for valid catalog contributions', () async {
+    final fs = InMemoryFilesystem();
+    final events = <String>[];
+    final registry = _registry([_RecordingMcpCapability(events)]);
+    final provisioner = CliResourceProvisioner(fs: fs, registry: registry);
+
+    await provisioner.provision(
+      _context(
+        fs: fs,
+        injected: ResourceProviderSet(mcp: [_ManagedMcpProvider()]),
+      ),
+    );
+    expect(events, isNot(contains('materialize:mcp-credentials')));
+
+    events.clear();
+    await provisioner.provision(
+      _context(
+        fs: fs,
+        injected: ResourceProviderSet(
+          mcp: [_RecordingMcpProvider('catalog', events)],
+        ),
+      ),
+    );
+    expect(events, contains('materialize:mcp-credentials'));
+  });
+
+  test('prompt materialization uses the complete target context', () async {
+    final fs = InMemoryFilesystem();
+    final paths = CursorLifecycleTestPaths(
+      fs: fs,
+      layout: RuntimeLayout(teampilotRoot: '/runtime', fs: fs),
+    );
+    final member = const TeamMemberConfig(id: 'alice', name: 'Alice');
+    final report =
+        await CliResourceProvisioner(
+          fs: fs,
+          registry: _registry([_WritingPromptCapability()]),
+        ).provision(
+          CliResourceProvisionContext(
+            cli: CliTool.claude,
+            scope: const SimpleResourceScope(bundle: ConfigBundle()),
+            runtimeBundle: const ConfigBundle(),
+            fs: fs,
+            layout: RuntimeLayout(teampilotRoot: '/runtime', fs: fs),
+            configDir: '/config',
+            paths: paths,
+            launchScope: const LaunchProfileScope(
+              workspaceId: 'workspace',
+              teamId: 'workspace',
+              sessionId: 'session',
+              cliTeamName: 'session',
+            ),
+            member: member,
+            resourceProviders: ResourceProviderSet(
+              prompts: [_RecordingPromptProvider('prompt', <String>[])],
+            ),
+          ),
+        );
+
+    expect(report.hardDiagnostics, isEmpty);
+    expect(
+      report.materializations[ResourceContributionKind.prompt]!.materialized,
+      isTrue,
+    );
+    final promptPath = paths.pathContext.join(
+      paths.sessionToolDir('workspace', 'session', 'claude'),
+      'prompts/role.md',
+    );
+    expect(await fs.readString(promptPath), 'prompt');
+  });
 }
 
 CliResourceProvisionContext _context({
@@ -449,6 +551,23 @@ final class _McpSelectionProvider implements McpContributionProvider {
   }
 }
 
+final class _ManagedMcpProvider implements McpContributionProvider {
+  @override
+  String get providerId => 'managed-mcp';
+
+  @override
+  Iterable<McpContribution> provide(McpProviderContext context) => [
+    McpContribution(
+      sourceId: 'managed',
+      server: StdioMcpServer(name: 'managed', command: 'server'),
+      origin: const ContributionOrigin(
+        providerId: 'managed-mcp',
+        kind: ResourceOriginKind.managed,
+      ),
+    ),
+  ];
+}
+
 final class _RecordingHookProvider
     implements CliCapability, HookContributionProvider {
   const _RecordingHookProvider(this.providerId, this.events);
@@ -566,4 +685,52 @@ final class _RecordingHookCapability implements HookCapability {
     events.add('materialize:hook');
     return const HookWriteResult();
   }
+}
+
+final class _WritingPromptCapability implements PromptCapability {
+  @override
+  Future<PromptMaterializeResult> materialize(
+    PromptMaterializeContext ctx, {
+    required PromptDocument document,
+  }) async {
+    final paths = ctx.paths!;
+    final path = paths.pathContext.join(
+      paths.sessionToolDir(
+        ctx.scope!.workspaceId,
+        ctx.scope!.sessionId,
+        'claude',
+      ),
+      'prompts/role.md',
+    );
+    await paths.fs.ensureDir(paths.pathContext.dirname(path));
+    await paths.fs.atomicWrite(path, document.content);
+    return const PromptMaterializeResult(written: true);
+  }
+}
+
+final class _WritingHookCapability implements HookCapability {
+  @override
+  String? nativeEvent(HookEvent event) => event.name;
+  @override
+  bool get supportsMatcher => true;
+  @override
+  bool get supportsHttp => true;
+  @override
+  bool get supportsPolicy => true;
+  @override
+  bool supportsEvent(HookEvent event) => true;
+  @override
+  HookWriteResult render({
+    required List<HookEntry> entries,
+    required HookRenderContext ctx,
+  }) => const HookWriteResult(
+    configFragments: {
+      'settings.json': {
+        'hooks': {'stop': []},
+      },
+    },
+    scripts: [
+      GeneratedScript(fileName: 'generated.sh', content: 'echo generated'),
+    ],
+  );
 }

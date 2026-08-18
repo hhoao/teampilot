@@ -91,6 +91,10 @@ final class McpAssembler {
     return McpAssemblyResult(
       servers: [for (final key in orderedKeys) selected[key]!.server],
       assembly: ResourceAssemblyResult(diagnostics: diagnostics),
+      hasValidCatalogContribution: selected.values.any(
+        (contribution) =>
+            contribution.origin.kind == ResourceOriginKind.catalog,
+      ),
     );
   }
 
@@ -187,10 +191,12 @@ final class McpAssemblyResult {
   McpAssemblyResult({
     required Iterable<McpServerSpec> servers,
     required this.assembly,
+    this.hasValidCatalogContribution = false,
   }) : servers = List.unmodifiable(servers);
 
   final List<McpServerSpec> servers;
   final ResourceAssemblyResult assembly;
+  final bool hasValidCatalogContribution;
 
   List<ResourceAssemblyDiagnostic> get diagnostics => assembly.diagnostics;
   List<ResourceAssemblyDiagnostic> get warnings => assembly.warnings;

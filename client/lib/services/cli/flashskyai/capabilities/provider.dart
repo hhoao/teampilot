@@ -273,6 +273,7 @@ final class FlashskyaiProviderCapability extends CatalogModelCapability
       ),
       userHooks: ctx.hooks,
       hookLibraryProvider: ctx.hookLibraryProvider,
+      resourceHookProviders: ctx.resourceProviders.hooks,
     );
 
     final environment = <String, String>{
@@ -345,6 +346,7 @@ final class FlashskyaiProviderCapability extends CatalogModelCapability
     required String effortLevel,
     List<HookEntry> userHooks = const [],
     HookContributionProvider? hookLibraryProvider,
+    Iterable<HookContributionProvider> resourceHookProviders = const [],
   }) async {
     final selected = launchedMember;
     if (selected == null || !selected.isValid) {
@@ -366,6 +368,7 @@ final class FlashskyaiProviderCapability extends CatalogModelCapability
       effortLevel: effortLevel,
       userHooks: userHooks,
       hookLibraryProvider: hookLibraryProvider,
+      resourceHookProviders: resourceHookProviders,
     );
     return appendPromptEnv;
   }
@@ -457,6 +460,7 @@ final class FlashskyaiProviderCapability extends CatalogModelCapability
     required String effortLevel,
     List<HookEntry> userHooks = const [],
     HookContributionProvider? hookLibraryProvider,
+    Iterable<HookContributionProvider> resourceHookProviders = const [],
   }) async {
     final memberToolDir = delegate.sessionToolDir(
       scope.workspaceId,
@@ -521,6 +525,9 @@ final class FlashskyaiProviderCapability extends CatalogModelCapability
           ),
         if (extensionHooks.isNotEmpty)
           ExtensionHookContributionProvider(settingsHooks: extensionHooks),
+        ...resourceHookProviders.where(
+          (provider) => provider.providerId != 'user-library',
+        ),
         hookLibraryProvider ?? UserHookContributionProvider(entries: userHooks),
       ],
     );

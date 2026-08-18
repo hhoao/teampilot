@@ -337,13 +337,16 @@ final class OpencodeProviderCapability extends CatalogModelCapability
     required Iterable<HookEntry> entries,
     TeamMemberConfig? member,
     HookContributionProvider? hookLibraryProvider,
+    Iterable<HookContributionProvider> resourceHookProviders = const [],
   }) async {
     final result = await const HookSeatContextCompleter().assemble(
       cli: CliTool.opencode,
       supportsHttp: false,
       member: member,
       providers: [
-        hookLibraryProvider ?? UserHookContributionProvider(entries: entries),
+        ...resourceHookProviders,
+        if (resourceHookProviders.isEmpty)
+          hookLibraryProvider ?? UserHookContributionProvider(entries: entries),
       ],
     );
     return result.entries;
@@ -526,6 +529,7 @@ final class OpencodeProviderCapability extends CatalogModelCapability
       entries: ctx.hooks,
       member: member,
       hookLibraryProvider: ctx.hookLibraryProvider,
+      resourceHookProviders: ctx.resourceProviders.hooks,
     );
     if (assembledHookEntries.isNotEmpty) {
       final writer = const OpencodeHookWriter();
