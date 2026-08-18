@@ -530,11 +530,18 @@ final class CliResourceProvisioner {
             kind: ResourceMaterializationResult(kind: kind, attempted: false),
         };
 
+    final hardCount = hard.length;
     final hookAssembly = await _assembleHook(
       context,
       providers,
       warnings,
       hard,
+    );
+    _recordAssemblyFailure(
+      ResourceContributionKind.hook,
+      materializations,
+      hard,
+      hardCount,
     );
     if (hookAssembly != null && hookAssembly.entries.isNotEmpty) {
       final capability = _registry.capability<HookCapability>(context.cli);

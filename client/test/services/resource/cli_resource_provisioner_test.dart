@@ -257,6 +257,24 @@ void main() {
   );
 
   test(
+    'provisionHooks retains attempted failed materialization state',
+    () async {
+      final fs = InMemoryFilesystem();
+      final report = await CliResourceProvisioner(
+        fs: fs,
+        registry: _registry([_FailingHookProvider()]),
+      ).provisionHooks(_context(fs: fs));
+
+      expect(report.hardDiagnostics, hasLength(1));
+      final result = report.materializations[ResourceContributionKind.hook]!;
+      expect(result.attempted, isTrue);
+      expect(result.materialized, isFalse);
+      expect(result.diagnostics, hasLength(1));
+      expect(result.diagnostics.single.providerId, 'failing-hook');
+    },
+  );
+
+  test(
     'resolves each injected MCP source once before materialization',
     () async {
       final fs = InMemoryFilesystem();
@@ -606,6 +624,16 @@ final class _FailingPromptProvider
   String get providerId => 'failing-prompt';
   @override
   Future<Iterable<PromptContribution>> provide(PromptProviderContext context) =>
+      Future.error(StateError('boom'));
+}
+
+final class _FailingHookProvider
+    implements CliCapability, HookContributionProvider {
+  @override
+  String get providerId => 'failing-hook';
+
+  @override
+  Future<Iterable<HookContribution>> provide(HookProviderContext context) =>
       Future.error(StateError('boom'));
 }
 
