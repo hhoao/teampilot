@@ -579,7 +579,7 @@ class SessionChatComposeSection extends StatelessWidget {
     final overrides = session.continueOverrides;
     if (session.isSimple) {
       return resolveContinueSecurityPolicy(
-        launchDefault: const LaunchSecurityPolicy(),
+        launchDefault: LaunchSecurityPolicy.fullAccess,
         sessionLevel: overrides.launchSecurityPolicy,
         memberLevel: null,
       );

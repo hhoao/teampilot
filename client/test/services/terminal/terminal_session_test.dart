@@ -1013,7 +1013,7 @@ void main() {
     const member = TeamMemberConfig(
       id: 'member',
       name: 'team-lead',
-      launchSecurityPolicy: const LaunchSecurityPolicy(),
+      launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
     );
     session.connect(
       workingDirectory: r'C:\Users\haung\git\teampilot\client',

@@ -62,7 +62,7 @@ class Automation {
     this.expertKey,
     this.projectFolderPath,
     this.workingDirectoryPath,
-    this.launchSecurityPolicy = const LaunchSecurityPolicy(),
+    this.launchSecurityPolicy = LaunchSecurityPolicy.fullAccess,
     this.sessionId,
     this.targetMemberId = 'team-lead',
     required this.message,

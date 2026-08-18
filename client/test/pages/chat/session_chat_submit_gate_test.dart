@@ -76,7 +76,7 @@ void main() {
                 modelPresetLabel: 'Model',
                 emptyPresetHintLabel: 'No presets',
                 onPresetSelected: _noopString,
-                launchSecurityPolicy: const LaunchSecurityPolicy(),
+                launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
                 defaultPermissionsLabel: 'Default',
                 fullAccessPermissionsLabel: 'Full access',
                 onPermissionSelected: _noopPolicy,

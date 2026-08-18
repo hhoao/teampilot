@@ -176,7 +176,7 @@ void main() {
         id: 'builder-0',
         name: 'Builder',
         cli: CliTool.claude,
-        launchSecurityPolicy: const LaunchSecurityPolicy(),
+        launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
       );
 
       final merged = applySessionContinueOverrides(
@@ -286,7 +286,7 @@ void main() {
         name: 'Builder',
         cli: CliTool.claude,
         // Template often skips; session-level must still win when set.
-        launchSecurityPolicy: const LaunchSecurityPolicy(),
+        launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
       );
 
       final merged = applySessionContinueOverrides(
@@ -536,7 +536,7 @@ void main() {
                   modelPresetLabel: 'Beta',
                   emptyPresetHintLabel: 'No presets',
                   onPresetSelected: (_) {},
-                  launchSecurityPolicy: const LaunchSecurityPolicy(),
+                  launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
                   defaultPermissionsLabel: 'Default',
                   fullAccessPermissionsLabel: 'Full access',
                   onPermissionSelected: (_) {},
@@ -613,7 +613,7 @@ void main() {
                   customLabel: 'Custom…',
                   customSelected: true,
                   onCustom: () {},
-                  launchSecurityPolicy: const LaunchSecurityPolicy(),
+                  launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
                   defaultPermissionsLabel: 'Default',
                   fullAccessPermissionsLabel: 'Full access',
                   onPermissionSelected: (_) {},

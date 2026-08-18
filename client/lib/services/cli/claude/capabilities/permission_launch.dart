@@ -10,7 +10,7 @@ final class ClaudePermissionLaunch implements CliLaunchArgProvider {
   @override
   Iterable<CliLaunchArgContribution> buildLaunchArgs(CliLaunchContext context) {
     final policy = context.launchSecurityPolicy;
-    if (policy == const LaunchSecurityPolicy()) return const [];
+    if (policy == LaunchSecurityPolicy.cliDefault) return const [];
     if (policy == LaunchSecurityPolicy.fullAccess) {
       return [
         CliLaunchArgContribution(

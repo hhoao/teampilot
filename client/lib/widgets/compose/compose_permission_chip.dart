@@ -41,7 +41,7 @@ class ComposePermissionChip extends StatelessWidget {
         LaunchSecurityPolicy.autoApproveWorkspaceWriteTrusted) {
       return autoApproveWorkspaceWriteLabel ?? customLabel ?? defaultLabel;
     }
-    if (launchSecurityPolicy == const LaunchSecurityPolicy()) {
+    if (launchSecurityPolicy == LaunchSecurityPolicy.cliDefault) {
       return defaultLabel;
     }
     return customLabel ?? defaultLabel;
@@ -50,10 +50,10 @@ class ComposePermissionChip extends StatelessWidget {
   List<TpActionMenuSpec> _specs() {
     final specs = <TpActionMenuSpec>[
       TpActionMenuSpec.item(
-        value: const LaunchSecurityPolicy(),
+        value: LaunchSecurityPolicy.cliDefault,
         icon: Icons.verified_outlined,
         label: defaultLabel,
-        selected: launchSecurityPolicy == const LaunchSecurityPolicy(),
+        selected: launchSecurityPolicy == LaunchSecurityPolicy.cliDefault,
       ),
       if (askReadOnlyLabel != null)
         TpActionMenuSpec.item(

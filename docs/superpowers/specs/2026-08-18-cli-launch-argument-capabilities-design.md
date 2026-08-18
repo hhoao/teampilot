@@ -225,10 +225,17 @@ enum LaunchHookTrustPolicy {
 
 class LaunchSecurityPolicy {
   const LaunchSecurityPolicy({
-    this.approval = LaunchApprovalPolicy.cliDefault,
-    this.sandbox = LaunchSandboxPolicy.cliDefault,
-    this.hookTrust = LaunchHookTrustPolicy.cliDefault,
+    this.approval = LaunchApprovalPolicy.never,
+    this.sandbox = LaunchSandboxPolicy.fullAccess,
+    this.hookTrust = LaunchHookTrustPolicy.bypass,
   });
+
+  static const fullAccess = LaunchSecurityPolicy();
+  static const cliDefault = LaunchSecurityPolicy(
+    approval: LaunchApprovalPolicy.cliDefault,
+    sandbox: LaunchSandboxPolicy.cliDefault,
+    hookTrust: LaunchHookTrustPolicy.cliDefault,
+  );
 
   final LaunchApprovalPolicy approval;
   final LaunchSandboxPolicy sandbox;

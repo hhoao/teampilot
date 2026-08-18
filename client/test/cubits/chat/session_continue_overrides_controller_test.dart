@@ -74,7 +74,7 @@ void main() {
 
       final patched = controller.patchSecurityPolicy(
         session: session,
-        launchSecurityPolicy: const LaunchSecurityPolicy(),
+        launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
         memberId: 'builder-0',
       );
 

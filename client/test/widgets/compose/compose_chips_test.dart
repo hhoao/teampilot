@@ -123,7 +123,7 @@ void main() {
                 );
                 return ComposePermissionChip(
                   palette: palette,
-                  launchSecurityPolicy: const LaunchSecurityPolicy(),
+                  launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
                   defaultLabel: 'Default',
                   fullAccessLabel: 'Full access',
                   onSelected: (value) => selected = value,

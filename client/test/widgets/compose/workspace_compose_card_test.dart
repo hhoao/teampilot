@@ -73,7 +73,7 @@ void main() {
   const unboundChrome = UnboundComposeChrome(
     conversationModeLabel: 'Simple',
     autoChipLabel: 'Preset',
-    launchSecurityPolicy: const LaunchSecurityPolicy(),
+    launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
     defaultPermissionsLabel: 'Default',
     fullAccessPermissionsLabel: 'Full',
     conversationModeSpecs: [],

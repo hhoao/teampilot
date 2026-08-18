@@ -899,7 +899,7 @@ class _MemberRow extends StatelessWidget {
                           ? LaunchSecurityPolicy.fullAccess
                           : member.launchSecurityPolicy ==
                                 LaunchSecurityPolicy.fullAccess
-                          ? const LaunchSecurityPolicy()
+                          ? LaunchSecurityPolicy.cliDefault
                           : member.launchSecurityPolicy,
                     ),
                   ),

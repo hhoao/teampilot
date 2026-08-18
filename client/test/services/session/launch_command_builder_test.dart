@@ -21,7 +21,7 @@ void main() {
     provider: 'anthropic',
     model: 'sonnet',
     agent: 'builder',
-    launchSecurityPolicy: const LaunchSecurityPolicy(),
+    launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
   );
 
   test('builds required flashskyai arguments for a member', () {
@@ -392,7 +392,7 @@ void main() {
       id: 'member-2',
       name: 'reviewer',
       extraArgs: '--continue --system-prompt "be careful"',
-      launchSecurityPolicy: const LaunchSecurityPolicy(),
+      launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
     );
 
     expect(
@@ -428,7 +428,7 @@ void main() {
     const reviewer = TeamMemberConfig(
       id: 'member-2',
       name: 'code reviewer',
-      launchSecurityPolicy: const LaunchSecurityPolicy(),
+      launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
     );
 
     expect(
@@ -442,7 +442,7 @@ void main() {
     const planner = TeamMemberConfig(
       id: 'm',
       name: 'planner',
-      launchSecurityPolicy: const LaunchSecurityPolicy(),
+      launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
     );
 
     expect(
@@ -501,7 +501,7 @@ void main() {
       provider: 'anthropic',
       model: 'sonnet',
       agent: 'builder',
-      launchSecurityPolicy: const LaunchSecurityPolicy(),
+      launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
     );
 
     expect(

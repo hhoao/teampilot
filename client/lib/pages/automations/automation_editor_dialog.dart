@@ -134,7 +134,7 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
     _projectFolderPath = initial?.projectFolderPath;
     _workingDirectoryPath = initial?.workingDirectoryPath;
     _launchSecurityPolicy =
-        initial?.launchSecurityPolicy ?? const LaunchSecurityPolicy();
+        initial?.launchSecurityPolicy ?? LaunchSecurityPolicy.fullAccess;
     _targetMemberId = initial?.targetMemberId ?? 'team-lead';
     _reuseSession = initial?.reuseSession ?? false;
     _enabled = initial?.enabled ?? true;

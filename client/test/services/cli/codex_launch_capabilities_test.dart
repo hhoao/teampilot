@@ -80,7 +80,7 @@ void main() {
             r'E:\repo\two',
           ],
           useWslPaths: true,
-          launchSecurityPolicy: const LaunchSecurityPolicy(),
+          launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
         ),
         [
           '--cd',
@@ -103,7 +103,7 @@ void main() {
           name: 'Member',
           model: '  gpt-5.2  ',
         ),
-        launchSecurityPolicy: const LaunchSecurityPolicy(),
+        launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
       ),
       ['-m', 'gpt-5.2'],
     );
@@ -126,7 +126,7 @@ void main() {
         _assemble(
           team: const TeamProfile(id: 'team', name: 'Team', cli: CliTool.codex),
           member: const TeamMemberConfig(id: 'member', name: 'Member'),
-          launchSecurityPolicy: const LaunchSecurityPolicy(),
+          launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
         ),
         isEmpty,
       );
@@ -166,7 +166,7 @@ void main() {
           extraArgs: "--member-flag 'member value'",
         ),
         workingDirectory: '/work',
-        launchSecurityPolicy: const LaunchSecurityPolicy(),
+        launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
       ),
       [
         '--cd',

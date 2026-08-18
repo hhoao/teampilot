@@ -62,7 +62,7 @@ void main() {
       cli: CliTool.claude,
       provider: 'base-provider',
       model: 'base-model',
-      launchSecurityPolicy: const LaunchSecurityPolicy(),
+      launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
       activePresetId: 'p-template',
     );
     final session = AppSession(
@@ -121,7 +121,7 @@ void main() {
         cli: CliTool.claude,
         provider: 'base-provider',
         model: 'base-model',
-        launchSecurityPolicy: const LaunchSecurityPolicy(),
+        launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
         activePresetId: 'p-template',
       );
       final session = AppSession(
@@ -193,7 +193,7 @@ void main() {
         cli: CliTool.claude,
         provider: 'base',
         model: 'base-m',
-        launchSecurityPolicy: const LaunchSecurityPolicy(),
+        launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
       );
       final session = AppSession(
         sessionId: 's1',

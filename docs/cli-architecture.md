@@ -562,11 +562,15 @@ Assembler 按以下顺序工作：
 （`cliDefault` / `trustedOnly` / `bypass`）。UI 文案（例如 plan、auto、manual）必须在
 进入 Provider 前映射为明确的策略组合，不能把某个文案直接当成通用 CLI flag。
 
+`LaunchSecurityPolicy()` 与 `LaunchSecurityPolicy.fullAccess` 表示应用的完全访问默认值；
+只有需要明确委托给 CLI 时才使用 `LaunchSecurityPolicy.cliDefault`。这样“应用默认权限”和
+“CLI 默认权限”不会再依赖一个含义模糊的空构造函数。
+
 当前启动参数 Provider 的映射是：
 
 | 归一化策略 | Claude / FlashskyAI | Codex | Cursor | OpenCode |
 |------------|--------------------|-------|--------|----------|
-| CLI 默认（三项均 `cliDefault`） | 不追加权限 argv | 不追加权限 argv | 不追加权限 argv | `OpencodePermissionLaunch` 显式验证；保留 CLI 默认配置 |
+| 显式 CLI 默认（三项均 `cliDefault`） | 不追加权限 argv | 不追加权限 argv | 不追加权限 argv | `OpencodePermissionLaunch` 显式验证；保留 CLI 默认配置 |
 | `ask + readOnly + trustedOnly` | `--permission-mode plan` | 不支持，抛能力异常 | 不支持，抛能力异常 | 不由启动 argv 表达 |
 | `autoApprove + workspaceWrite + trustedOnly` | `--permission-mode acceptEdits` | 不支持，抛能力异常 | 不支持，抛能力异常 | 不由启动 argv 表达 |
 | `never + fullAccess + bypass`（`fullAccess`） | `--dangerously-skip-permissions` | `--dangerously-bypass-approvals-and-sandbox` 与 `--dangerously-bypass-hook-trust` | `--force` | 不由启动 argv 表达；由 `OpencodePermissionLaunch` 校验，并由 provider 物化 `edit` / `bash` / `external_directory` |

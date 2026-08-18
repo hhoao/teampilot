@@ -50,7 +50,7 @@ class HeadlessProvisionContext {
     required this.configDir,
     this.workingDirectory,
     this.additionalDirectories = const [],
-    this.securityPolicy = const LaunchSecurityPolicy(),
+    this.securityPolicy = LaunchSecurityPolicy.fullAccess,
     this.useWslPaths = false,
   });
 

@@ -35,7 +35,7 @@ void main() {
           chrome: UnboundComposeChrome(
             conversationModeLabel: 'Simple',
             autoChipLabel: 'Preset',
-            launchSecurityPolicy: const LaunchSecurityPolicy(),
+            launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
             defaultPermissionsLabel: 'Default permissions',
             fullAccessPermissionsLabel: 'Full access',
             conversationModeSpecs: const [],

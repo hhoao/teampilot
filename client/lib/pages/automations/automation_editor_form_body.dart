@@ -36,7 +36,7 @@ class AutomationEditorFormBody extends StatelessWidget {
     this.presetId,
     this.teamId,
     this.expertKey,
-    this.launchSecurityPolicy = const LaunchSecurityPolicy(),
+    this.launchSecurityPolicy = LaunchSecurityPolicy.fullAccess,
     this.targetMemberId = 'team-lead',
     this.onIsPersonalChanged,
     this.onProjectChanged,

@@ -24,7 +24,7 @@ final class OpencodePermissionLaunch
   }
 
   void _validate(LaunchSecurityPolicy policy) {
-    if (policy == const LaunchSecurityPolicy() ||
+    if (policy == LaunchSecurityPolicy.cliDefault ||
         policy == LaunchSecurityPolicy.fullAccess)
       return;
 

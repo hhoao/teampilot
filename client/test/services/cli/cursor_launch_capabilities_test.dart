@@ -68,7 +68,7 @@ void main() {
         workingDirectory: r'C:\work\root',
         additionalDirectories: const [' ', r'D:\repo\one', '', r'E:\repo\two'],
         useWslPaths: true,
-        launchSecurityPolicy: const LaunchSecurityPolicy(),
+        launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
       ),
       [
         '--workspace',
@@ -99,7 +99,7 @@ void main() {
         member: const TeamMemberConfig(
           id: 'member',
           name: 'Member',
-          launchSecurityPolicy: LaunchSecurityPolicy(),
+          launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
         ),
       ),
       isEmpty,

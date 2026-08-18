@@ -262,12 +262,12 @@ class AutomationEditorLaunchSection extends StatelessWidget {
           builder: (state) {
             return TpSelect<LaunchSecurityPolicy>(
               items: const [
-                LaunchSecurityPolicy(),
+                LaunchSecurityPolicy.cliDefault,
                 LaunchSecurityPolicy.askReadOnlyTrusted,
                 LaunchSecurityPolicy.autoApproveWorkspaceWriteTrusted,
                 LaunchSecurityPolicy.fullAccess,
               ],
-              initialItem: state.value ?? const LaunchSecurityPolicy(),
+              initialItem: state.value ?? LaunchSecurityPolicy.fullAccess,
               decoration: TpSelectDecorations.themed(context),
               itemLabel: (value) {
                 if (value == LaunchSecurityPolicy.fullAccess) {
@@ -280,7 +280,7 @@ class AutomationEditorLaunchSection extends StatelessWidget {
                     LaunchSecurityPolicy.autoApproveWorkspaceWriteTrusted) {
                   return l10n.automationsPermissionsAutoApproveWorkspaceWrite;
                 }
-                if (value == const LaunchSecurityPolicy()) {
+                if (value == LaunchSecurityPolicy.cliDefault) {
                   return l10n.workspaceChatLandingDefaultPermissions;
                 }
                 return l10n.automationsPermissionsCustom;

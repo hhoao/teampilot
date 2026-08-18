@@ -219,7 +219,7 @@ void main() {
     test('unchanged when safe policy or non-root', () {
       expect(
         resolveRemoteRootSecurityPolicy(
-          securityPolicy: const LaunchSecurityPolicy(),
+          securityPolicy: LaunchSecurityPolicy.cliDefault,
           runsAsRoot: true,
           remoteInDocker: true,
         ),

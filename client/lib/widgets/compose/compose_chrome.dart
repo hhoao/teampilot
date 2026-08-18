@@ -74,7 +74,7 @@ final class BoundComposeChrome extends ComposeChrome {
     this.customLabel,
     this.customSelected = false,
     this.onCustom,
-    this.launchSecurityPolicy = const LaunchSecurityPolicy(),
+    this.launchSecurityPolicy = LaunchSecurityPolicy.fullAccess,
     this.defaultPermissionsLabel,
     this.fullAccessPermissionsLabel,
     this.onPermissionSelected,

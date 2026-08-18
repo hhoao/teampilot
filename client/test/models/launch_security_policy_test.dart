@@ -2,17 +2,21 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/launch_security_policy.dart';
 
 void main() {
-  test(
-    'default policy is explicit and delegates all dimensions to the CLI',
-    () {
-      const policy = LaunchSecurityPolicy();
+  test('default policy is full access', () {
+    const policy = LaunchSecurityPolicy();
 
-      expect(policy.approval, LaunchApprovalPolicy.cliDefault);
-      expect(policy.sandbox, LaunchSandboxPolicy.cliDefault);
-      expect(policy.hookTrust, LaunchHookTrustPolicy.cliDefault);
-      expect(policy.requiresDangerousExecution, isFalse);
-    },
-  );
+    expect(policy, LaunchSecurityPolicy.fullAccess);
+    expect(policy.requiresDangerousExecution, isTrue);
+  });
+
+  test('cliDefault explicitly delegates all dimensions to the CLI', () {
+    const policy = LaunchSecurityPolicy.cliDefault;
+
+    expect(policy.approval, LaunchApprovalPolicy.cliDefault);
+    expect(policy.sandbox, LaunchSandboxPolicy.cliDefault);
+    expect(policy.hookTrust, LaunchHookTrustPolicy.cliDefault);
+    expect(policy.requiresDangerousExecution, isFalse);
+  });
 
   test('policy JSON round-trips all dimensions', () {
     const policy = LaunchSecurityPolicy(

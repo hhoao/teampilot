@@ -85,7 +85,7 @@ void main() {
       );
       const draft = LandingLaunchContext(
         isPersonal: true,
-        launchSecurityPolicy: const LaunchSecurityPolicy(),
+        launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
       );
 
       await persistLandingDraft(workspace.workspaceId, draft, store: store);

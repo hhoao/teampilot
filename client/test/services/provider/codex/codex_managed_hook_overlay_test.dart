@@ -6,7 +6,7 @@ void main() {
   group('CodexManagedHookOverlay', () {
     test('enables hook network access in workspace-write sandbox', () {
       final toml = CodexManagedHookOverlay.build(
-        launchSecurityPolicy: const LaunchSecurityPolicy(),
+        launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
       );
       expect(toml, contains('[sandbox_workspace_write]'));
       expect(toml, contains('network_access = true'));

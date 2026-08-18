@@ -38,7 +38,7 @@ void main() {
 
     await store.save(
       'ws-a',
-      const LandingPrefs(launchSecurityPolicy: const LaunchSecurityPolicy()),
+      const LandingPrefs(launchSecurityPolicy: LaunchSecurityPolicy.cliDefault),
     );
 
     final raw = await fs.readString('/prefs.json');
@@ -50,14 +50,14 @@ void main() {
   });
 
   test(
-    'missing launch security policy loads the explicit landing default',
+    'missing launch security policy loads the full-access application default',
     () async {
       final fs = InMemoryFilesystem();
       await fs.writeString('/prefs.json', '{"ws-a":{"isPersonal":true}}');
       final store = LandingPrefsStore(fs: fs, pathOverride: '/prefs.json');
 
       final loaded = await store.prefsFor('ws-a');
-      expect(loaded?.launchSecurityPolicy.requiresDangerousExecution, isFalse);
+      expect(loaded?.launchSecurityPolicy.requiresDangerousExecution, isTrue);
     },
   );
 }

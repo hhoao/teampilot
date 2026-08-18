@@ -418,7 +418,7 @@ final class OpencodeProviderCapability extends CatalogModelCapability
     }
 
     final securityPolicy =
-        member?.launchSecurityPolicy ?? const LaunchSecurityPolicy();
+        member?.launchSecurityPolicy ?? LaunchSecurityPolicy.fullAccess;
     final securedConfig = mergeOpencodeSecurityPolicy(config, securityPolicy);
     if (!identical(securedConfig, config)) {
       config = securedConfig;
@@ -963,7 +963,7 @@ Map<String, Object?> mergeOpencodeSecurityPolicy(
   Map<String, Object?> config,
   LaunchSecurityPolicy policy,
 ) {
-  if (policy == const LaunchSecurityPolicy()) return config;
+  if (policy == LaunchSecurityPolicy.cliDefault) return config;
   if (policy != LaunchSecurityPolicy.fullAccess) {
     throw const CliLaunchCapabilityException(
       cli: CliTool.opencode,

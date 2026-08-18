@@ -19,7 +19,7 @@ class TeammateRosterProfile {
     this.responsibilities = '',
     this.joinedAt = 0,
     this.isTeamLead = false,
-    this.launchSecurityPolicy = const LaunchSecurityPolicy(),
+    this.launchSecurityPolicy = LaunchSecurityPolicy.fullAccess,
     this.taskId = '',
     this.cwd = '',
     this.backendType = '',

@@ -9,7 +9,7 @@ class WorkspaceAgentConfig {
     this.agentType = '',
     this.extraArgs = '',
     this.responsibilities = '',
-    this.launchSecurityPolicy = const LaunchSecurityPolicy(),
+    this.launchSecurityPolicy = LaunchSecurityPolicy.fullAccess,
   });
 
   factory WorkspaceAgentConfig.fromJson(Map<String, Object?> json) {

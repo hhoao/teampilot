@@ -10,16 +10,19 @@ enum LaunchHookTrustPolicy { cliDefault, trustedOnly, bypass }
 @immutable
 class LaunchSecurityPolicy {
   const LaunchSecurityPolicy({
-    this.approval = LaunchApprovalPolicy.cliDefault,
-    this.sandbox = LaunchSandboxPolicy.cliDefault,
-    this.hookTrust = LaunchHookTrustPolicy.cliDefault,
+    this.approval = LaunchApprovalPolicy.never,
+    this.sandbox = LaunchSandboxPolicy.fullAccess,
+    this.hookTrust = LaunchHookTrustPolicy.bypass,
   });
 
-  /// Explicit full-access policy used by legacy full-access UI choices.
-  static const fullAccess = LaunchSecurityPolicy(
-    approval: LaunchApprovalPolicy.never,
-    sandbox: LaunchSandboxPolicy.fullAccess,
-    hookTrust: LaunchHookTrustPolicy.bypass,
+  /// Explicit full-access policy used by application defaults.
+  static const fullAccess = LaunchSecurityPolicy();
+
+  /// Explicitly delegate each security dimension to the CLI.
+  static const cliDefault = LaunchSecurityPolicy(
+    approval: LaunchApprovalPolicy.cliDefault,
+    sandbox: LaunchSandboxPolicy.cliDefault,
+    hookTrust: LaunchHookTrustPolicy.cliDefault,
   );
 
   /// A cautious explicit preset for permission controls that need to show
@@ -38,22 +41,22 @@ class LaunchSecurityPolicy {
   );
 
   factory LaunchSecurityPolicy.fromJson(Object? raw) {
-    if (raw is! Map) return const LaunchSecurityPolicy();
+    if (raw is! Map) return LaunchSecurityPolicy.fullAccess;
     return LaunchSecurityPolicy(
       approval: _decodeEnum(
         LaunchApprovalPolicy.values,
         raw['approval'],
-        LaunchApprovalPolicy.cliDefault,
+        LaunchApprovalPolicy.never,
       ),
       sandbox: _decodeEnum(
         LaunchSandboxPolicy.values,
         raw['sandbox'],
-        LaunchSandboxPolicy.cliDefault,
+        LaunchSandboxPolicy.fullAccess,
       ),
       hookTrust: _decodeEnum(
         LaunchHookTrustPolicy.values,
         raw['hookTrust'],
-        LaunchHookTrustPolicy.cliDefault,
+        LaunchHookTrustPolicy.bypass,
       ),
     );
   }

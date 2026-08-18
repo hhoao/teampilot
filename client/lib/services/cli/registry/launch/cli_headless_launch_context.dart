@@ -13,7 +13,7 @@ final class CliHeadlessLaunchContext {
     this.additionalDirectories = const [],
     this.fixedSessionId,
     this.resumeSessionId,
-    this.securityPolicy = const LaunchSecurityPolicy(),
+    this.securityPolicy = LaunchSecurityPolicy.fullAccess,
     this.teamExtraArgs = '',
     this.memberExtraArgs = '',
     this.useWslPaths = false,

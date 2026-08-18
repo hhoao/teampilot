@@ -106,7 +106,7 @@ Future<LandingLaunchContext> resolveLandingDraft({
       isPersonal: true,
       launchSecurityPolicy: simpleModeDefaultFullAccess
           ? LaunchSecurityPolicy.fullAccess
-          : const LaunchSecurityPolicy(),
+          : LaunchSecurityPolicy.cliDefault,
     );
   }
   return LandingLaunchContext(
