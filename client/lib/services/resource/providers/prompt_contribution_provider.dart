@@ -2,7 +2,6 @@ import 'dart:async';
 
 import '../../../models/team_config.dart';
 import '../../cli/registry/config_profile/config_profile_scope.dart';
-import '../contribution/resource_origin.dart';
 import '../contribution/prompt_document.dart';
 
 /// Focused inputs needed by prompt providers.
