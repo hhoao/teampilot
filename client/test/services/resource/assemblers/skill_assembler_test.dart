@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/config_bundle.dart';
+import 'package:teampilot/models/plugin.dart';
 import 'package:teampilot/models/skill.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/resource/assemblers/skill_assembler.dart';
@@ -8,6 +9,7 @@ import 'package:teampilot/services/resource/contribution/resource_assembly_error
 import 'package:teampilot/services/resource/contribution/resource_origin.dart';
 import 'package:teampilot/services/resource/providers/skill_contribution_provider.dart';
 import 'package:teampilot/services/resource/providers/catalog_skill_contribution_provider.dart';
+import 'package:teampilot/services/resource/providers/plugin_skill_contribution_provider.dart';
 import 'package:teampilot/services/resource/resource_scope.dart';
 
 Skill _skill(String id, String directory, {bool enabled = true}) => Skill(
@@ -109,6 +111,115 @@ void main() {
       }),
       isTrue,
     );
+  });
+
+  test('plugin provider emits namespaced canonical skill artifacts', () async {
+    final result = await SkillAssembler().assemble(
+      context: SkillProviderContext(
+        cli: cli,
+        scope: const SimpleResourceScope(
+          bundle: ConfigBundle(pluginIds: ['acme/plugin']),
+        ),
+      ),
+      providers: [
+        PluginSkillContributionProvider(
+          catalog: ResourceCatalog(
+            skills: const [],
+            skillsRoot: '/catalog/skills',
+            pathContext: p.posix,
+            pluginsRoot: '/catalog/plugins/installed',
+            plugins: [
+              Plugin(
+                id: 'acme/plugin',
+                name: 'Plugin',
+                description: '',
+                version: '1.0.0',
+                directory: 'plugin-dir',
+                capabilities: const PluginCapabilities(
+                  skills: [PluginSkillRef(name: 'review')],
+                ),
+                installedAt: 0,
+                updatedAt: 0,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+
+    expect(result.diagnostics, isEmpty);
+    expect(result.skills.single.id, 'acme/plugin:review');
+    expect(result.skills.single.namespace, 'acme/plugin');
+    expect(
+      (result.skills.single.artifact! as SkillDirectoryArtifact)
+          .sourceDirectory,
+      '/catalog/plugins/installed/plugin-dir/skills/review',
+    );
+  });
+
+  test('catalog and plugin providers form one desired assembled set', () async {
+    final result = await SkillAssembler().assemble(
+      context: SkillProviderContext(
+        cli: cli,
+        scope: const SimpleResourceScope(
+          bundle: ConfigBundle(
+            skillIds: ['catalog-skill'],
+            pluginIds: ['acme/plugin'],
+          ),
+        ),
+      ),
+      providers: [
+        CatalogSkillContributionProvider(
+          catalog: ResourceCatalog(
+            skills: [_skill('catalog-skill', 'catalog-dir')],
+            skillsRoot: '/catalog/skills',
+            pathContext: p.posix,
+            pluginsRoot: '/catalog/plugins/installed',
+            plugins: [
+              Plugin(
+                id: 'acme/plugin',
+                name: 'Plugin',
+                description: '',
+                version: '1.0.0',
+                directory: 'plugin-dir',
+                capabilities: const PluginCapabilities(
+                  skills: [PluginSkillRef(name: 'plugin-skill')],
+                ),
+                installedAt: 0,
+                updatedAt: 0,
+              ),
+            ],
+          ),
+        ),
+        PluginSkillContributionProvider(
+          catalog: ResourceCatalog(
+            skills: const [],
+            skillsRoot: '/catalog/skills',
+            pathContext: p.posix,
+            pluginsRoot: '/catalog/plugins/installed',
+            plugins: [
+              Plugin(
+                id: 'acme/plugin',
+                name: 'Plugin',
+                description: '',
+                version: '1.0.0',
+                directory: 'plugin-dir',
+                capabilities: const PluginCapabilities(
+                  skills: [PluginSkillRef(name: 'plugin-skill')],
+                ),
+                installedAt: 0,
+                updatedAt: 0,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+
+    expect(result.skills.map((skill) => skill.id), [
+      'catalog-skill',
+      'acme/plugin:plugin-skill',
+    ]);
   });
 
   test('deduplicates duplicate stable ids deterministically', () async {

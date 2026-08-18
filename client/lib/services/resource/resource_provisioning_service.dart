@@ -3,13 +3,9 @@ import '../cli/registry/capabilities/skill_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../io/filesystem.dart';
 import '../../models/team_config.dart';
-import 'assemblers/skill_assembler.dart';
 import 'resource_materializer.dart';
 import 'resource_resolver.dart';
 import 'resource_scope.dart';
-import 'providers/catalog_skill_contribution_provider.dart';
-import 'providers/plugin_skill_contribution_provider.dart';
-import 'providers/skill_contribution_provider.dart';
 
 class ResourceProvisionResult {
   const ResourceProvisionResult({this.warnings = const []});
@@ -27,10 +23,12 @@ class ResourceProvisioningService {
     ResourceMaterializer? materializer,
   }) : _fs = fs,
        _registry = registry,
+       _resolver = resolver,
        _materializer = materializer ?? ResourceMaterializer(fs: fs);
 
   final Filesystem _fs;
   final CliToolRegistry _registry;
+  final ResourceResolver _resolver;
   final ResourceMaterializer _materializer;
 
   Future<ResourceProvisionResult> provisionForLaunch({
@@ -44,14 +42,10 @@ class ResourceProvisioningService {
     final skill = _registry.capability<SkillCapability>(cli);
     if (skill != null &&
         skill.skillsRepresentation == ResourceRepresentation.linkedDirectory) {
-      final providers = <SkillContributionProvider>[
-        CatalogSkillContributionProvider(catalog: catalog),
-        if (catalog.plugins.isNotEmpty)
-          PluginSkillContributionProvider(catalog: catalog),
-      ];
-      final assembled = await const SkillAssembler().assemble(
-        context: SkillProviderContext(cli: cli, scope: scope),
-        providers: providers,
+      final assembled = await _resolver.assemble(
+        scope: scope,
+        cli: cli,
+        catalog: catalog,
       );
       warnings.addAll(
         assembled.warnings.map((diagnostic) => diagnostic.message),
@@ -69,12 +63,9 @@ class ResourceProvisioningService {
     if (plugin != null &&
         plugin.pluginsRepresentation ==
             ResourceRepresentation.linkedDirectory) {
-      // ResourceResolver only ever emits skills today, so the effective plugin
-      // set is always empty and this branch never reconciles. Reconcile with an
-      // empty set would prune `plugins/`, which holds decomposed plugin bundles
-      // — the guard below must stay (asserts are stripped in release builds).
-      // Skills are assembled above; plugin bundles remain owned by the
-      // PluginCapability pipeline until their typed provider is introduced.
+      // Do not reconcile `plugins/` here: it contains decomposed plugin
+      // bundles owned by PluginCapability. Only the assembled skill set above
+      // is materialized by this facade.
     }
     return ResourceProvisionResult(warnings: warnings);
   }
