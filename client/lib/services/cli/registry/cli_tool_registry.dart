@@ -56,6 +56,14 @@ class CliToolRegistry {
     return def.capabilities.whereType<T>();
   }
 
+  /// Returns all definition entries implementing an unconstrained Provider
+  /// interface, preserving the definition's semantic order.
+  Iterable<T> providersOf<T>(CliTool id) {
+    final def = _definitions[id];
+    if (def == null) return <T>[];
+    return def.capabilities.whereType<T>();
+  }
+
   Iterable<CliToolDefinition> get launchable =>
       _definitions.values.where((d) => d.isLaunchSupported);
 
