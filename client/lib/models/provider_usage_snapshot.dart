@@ -53,13 +53,13 @@ class ProviderUsageMeasure extends Equatable {
     int? resetsAt,
     Map<String, Object?> unknownFields = const {},
   }) => ProviderUsageMeasure._(
-    label: label,
+    label: _sanitizeRequiredText(label),
     kind: kind,
     total: _clampPercentage(_decimalString(total, 'total'), unit),
     used: _clampPercentage(_decimalString(used, 'used'), unit),
     remaining: _clampPercentage(_decimalString(remaining, 'remaining'), unit),
-    unit: unit,
-    currency: currency,
+    unit: _sanitizeOptionalText(unit),
+    currency: _sanitizeOptionalText(currency),
     resetsAt: resetsAt,
     unknownFields: _freezeFields(unknownFields),
   );
@@ -81,12 +81,12 @@ class ProviderUsageMeasure extends Equatable {
     final unit = json['unit'];
     final currency = json['currency'];
     final resetsAt = json['resetsAt'];
+    final parsedResetsAt = _parseIntegralInt(resetsAt);
     if (label is! String || unit != null && unit is! String) {
       throw const FormatException('invalid provider usage measure');
     }
     if (currency != null && currency is! String ||
-        resetsAt != null &&
-            (resetsAt is! num || !_isIntegralFiniteTimestamp(resetsAt)) ||
+        resetsAt != null && parsedResetsAt == null ||
         json['total'] != null && json['total'] is! String ||
         json['used'] != null && json['used'] is! String ||
         json['remaining'] != null && json['remaining'] is! String) {
@@ -100,7 +100,7 @@ class ProviderUsageMeasure extends Equatable {
       remaining: json['remaining'] as String?,
       unit: unit as String?,
       currency: currency as String?,
-      resetsAt: (resetsAt as num?)?.toInt(),
+      resetsAt: parsedResetsAt,
       unknownFields: _unknownFields(json, _measureKnownKeys),
     );
   }
@@ -182,9 +182,9 @@ class ProviderUsageSnapshot extends Equatable {
     measures: List.unmodifiable(measures ?? const []),
     fetchedAt: fetchedAt,
     staleAt: staleAt,
-    lastErrorCode: lastErrorCode,
+    lastErrorCode: _sanitizeOptionalText(lastErrorCode),
     lastErrorMessage: _safeErrorMessage(lastErrorMessage),
-    adapterVersion: adapterVersion,
+    adapterVersion: _sanitizeOptionalText(adapterVersion),
     schemaVersion: schemaVersion,
     unknownFields: _freezeFields(unknownFields),
   );
@@ -222,8 +222,8 @@ class ProviderUsageSnapshot extends Equatable {
     final errorCode = json['lastErrorCode'];
     final errorMessage = json['lastErrorMessage'];
     final adapterVersion = json['adapterVersion'];
-    final fetchedAt = _parseTimestamp(json['fetchedAt'], 'fetchedAt');
-    final staleAt = _parseTimestamp(json['staleAt'], 'staleAt');
+    final fetchedAt = _parseIntegralInt(json['fetchedAt']);
+    final staleAt = _parseIntegralInt(json['staleAt']);
     if (errorCode != null && errorCode is! String ||
         errorMessage != null && errorMessage is! String ||
         adapterVersion != null && adapterVersion is! String) {
@@ -238,7 +238,7 @@ class ProviderUsageSnapshot extends Equatable {
       lastErrorCode: errorCode as String?,
       lastErrorMessage: errorMessage as String?,
       adapterVersion: adapterVersion as String?,
-      schemaVersion: (json['schemaVersion'] as num?)?.toInt() ?? 1,
+      schemaVersion: _parseIntegralInt(json['schemaVersion']) ?? 1,
       unknownFields: _unknownFields(json, _snapshotKnownKeys),
     );
   }
@@ -337,6 +337,14 @@ bool _containsCredentialMaterial(String message) => RegExp(
   r'''["']?(?:api[_\-\s]?key|access[_\-\s]?token|authorization|auth[_\-\s]?token|client[_\-\s]?secret|credential|private[_\-\s]?key|password|refresh[_\-\s]?token|oauth[_\-\s]?token|\bkey\b|\btoken\b)["']?\s*(?:=|:)\s*["']?\S+|bearer\s+\S+''',
   caseSensitive: false,
 ).hasMatch(message);
+
+String _sanitizeRequiredText(String value) =>
+    _containsCredentialMaterial(value) ? '' : value;
+
+String? _sanitizeOptionalText(String? value) {
+  if (value == null || _containsCredentialMaterial(value)) return null;
+  return value;
+}
 
 class _RedactedValue {
   const _RedactedValue();
@@ -468,15 +476,10 @@ bool _isPercentageUnit(String? unit) {
       normalized == 'percentage';
 }
 
-int? _parseTimestamp(Object? raw, String field) {
-  if (raw == null) return null;
-  if (raw is! num || !_isIntegralFiniteTimestamp(raw)) {
-    throw FormatException('invalid $field timestamp');
+int? _parseIntegralInt(Object? raw) {
+  if (raw is int) return raw;
+  if (raw is num && raw.isFinite && raw == raw.truncateToDouble()) {
+    return raw.toInt();
   }
-  return raw.toInt();
-}
-
-bool _isIntegralFiniteTimestamp(num value) {
-  if (value is int) return true;
-  return value.isFinite && value == value.truncateToDouble();
+  return null;
 }

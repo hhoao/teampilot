@@ -26,9 +26,9 @@ class ManagedProviderBrand extends Equatable {
     String? iconColor,
     Map<String, Object?> unknownFields = const {},
   }) => ManagedProviderBrand._(
-    name: name,
-    iconUrl: iconUrl,
-    iconColor: iconColor,
+    name: _sanitizeRequiredText(name),
+    iconUrl: _sanitizeOptionalUrl(iconUrl),
+    iconColor: _sanitizeOptionalText(iconColor),
     unknownFields: _freezeFields(unknownFields, rejectCli: true),
   );
 
@@ -77,7 +77,7 @@ class ManagedProviderEndpointConfig extends Equatable {
     Map<String, Object?> fieldMappings = const {},
     Map<String, Object?> unknownFields = const {},
   }) => ManagedProviderEndpointConfig._(
-    url: url,
+    url: _sanitizeUrl(url),
     method: method,
     responsePath: responsePath,
     measuresPath: measuresPath,
@@ -151,8 +151,8 @@ class ManagedProviderDisplayConfig extends Equatable {
     bool showPercent = false,
     Map<String, Object?> unknownFields = const {},
   }) => ManagedProviderDisplayConfig._(
-    currency: currency,
-    unit: unit,
+    currency: _sanitizeOptionalText(currency),
+    unit: _sanitizeOptionalText(unit),
     decimalPlaces: decimalPlaces,
     showPercent: showPercent,
     unknownFields: _freezeFields(unknownFields, rejectCli: true),
@@ -170,7 +170,7 @@ class ManagedProviderDisplayConfig extends Equatable {
       ManagedProviderDisplayConfig(
         currency: json['currency'] as String?,
         unit: json['unit'] as String?,
-        decimalPlaces: (json['decimalPlaces'] as num?)?.toInt(),
+        decimalPlaces: _parseIntegralInt(json['decimalPlaces']),
         showPercent: json['showPercent'] == true,
         unknownFields: _unknownFields(json, const {
           'currency',
@@ -223,11 +223,11 @@ class ManagedProvider extends Equatable {
     Map<String, Object?> unknownFields = const {},
   }) => ManagedProvider._(
     id: id,
-    name: name,
+    name: _sanitizeRequiredText(name),
     brand: brand ?? ManagedProviderBrand(),
-    websiteUrl: websiteUrl,
+    websiteUrl: _sanitizeUrl(websiteUrl),
     kind: kind,
-    adapterId: adapterId,
+    adapterId: _sanitizeRequiredText(adapterId),
     endpointConfig: endpointConfig ?? ManagedProviderEndpointConfig(),
     credentialRef: credentialRef,
     displayConfig: displayConfig ?? ManagedProviderDisplayConfig(),
@@ -279,9 +279,9 @@ class ManagedProvider extends Equatable {
               )
             : null,
         enabled: json['enabled'] as bool? ?? true,
-        createdAt: (json['createdAt'] as num?)?.toInt() ?? 0,
-        updatedAt: (json['updatedAt'] as num?)?.toInt() ?? 0,
-        schemaVersion: (json['schemaVersion'] as num?)?.toInt() ?? 1,
+        createdAt: _parseIntegralInt(json['createdAt']) ?? 0,
+        updatedAt: _parseIntegralInt(json['updatedAt']) ?? 0,
+        schemaVersion: _parseIntegralInt(json['schemaVersion']) ?? 1,
         unknownFields: _unknownFields(json, const {
           'id',
           'name',
@@ -418,6 +418,86 @@ bool _containsCredentialMaterial(String value) => RegExp(
 bool _isMappingCredentialKey(String key) =>
     _isCredentialKey(key) && _normalizeKey(key) != 'token';
 
+bool _isMappingForbiddenKey(String key) =>
+    _normalizeKey(key) == 'cli' || _isMappingCredentialKey(key);
+
+String _sanitizeRequiredText(String value) =>
+    _containsCredentialMaterial(value) ? '' : value;
+
+String? _sanitizeOptionalText(String? value) {
+  if (value == null || _containsCredentialMaterial(value)) return null;
+  return value;
+}
+
+String? _sanitizeOptionalUrl(String? value) {
+  if (value == null) return null;
+  final sanitized = _sanitizeUrl(value);
+  return sanitized.isEmpty && value.isNotEmpty ? null : sanitized;
+}
+
+String _sanitizeUrl(String value) {
+  if (value.isEmpty) return value;
+  late final Uri uri;
+  try {
+    uri = Uri.parse(value);
+  } on FormatException {
+    return _containsCredentialMaterial(value) || _containsUrlUserInfo(value)
+        ? ''
+        : value;
+  }
+
+  if (_containsCredentialMaterial(value) &&
+      uri.queryParameters.isEmpty &&
+      uri.fragment.isEmpty &&
+      uri.userInfo.isEmpty) {
+    return '';
+  }
+
+  var changed = uri.userInfo.isNotEmpty;
+  final safeQuery = <String, String>{};
+  for (final entry in uri.queryParameters.entries) {
+    final unsafe =
+        _isCredentialKey(entry.key) ||
+        _containsCredentialMaterial(entry.value) ||
+        _containsUrlUserInfo(entry.value);
+    if (unsafe) {
+      changed = true;
+    } else {
+      safeQuery[entry.key] = entry.value;
+    }
+  }
+  final unsafeFragment =
+      _containsCredentialMaterial(uri.fragment) ||
+      _containsUrlUserInfo(uri.fragment);
+  changed = changed || unsafeFragment;
+  if (!changed) return value;
+
+  final query = Uri(queryParameters: safeQuery).query;
+  final sanitized = uri
+      .replace(
+        userInfo: '',
+        query: query.isEmpty ? null : query,
+        fragment: unsafeFragment ? '' : null,
+      )
+      .toString();
+  return unsafeFragment && sanitized.endsWith('#')
+      ? sanitized.substring(0, sanitized.length - 1)
+      : sanitized;
+}
+
+bool _containsUrlUserInfo(String value) => RegExp(
+  r'''(?:(?:[a-z][a-z0-9+.-]*:)?//)[^/?#\s@]+(?::[^/?#\s@]*)?@''',
+  caseSensitive: false,
+).hasMatch(value);
+
+int? _parseIntegralInt(Object? raw) {
+  if (raw is int) return raw;
+  if (raw is num && raw.isFinite && raw == raw.truncateToDouble()) {
+    return raw.toInt();
+  }
+  return null;
+}
+
 class _RedactedMappingValue {
   const _RedactedMappingValue();
 }
@@ -427,7 +507,7 @@ const _redactedMappingValue = _RedactedMappingValue();
 Map<String, Object?> _freezeMappingFields(Map<String, Object?> fields) =>
     Map.unmodifiable({
       for (final entry in fields.entries)
-        if (!_isMappingCredentialKey(entry.key))
+        if (!_isMappingForbiddenKey(entry.key))
           ..._mappingEntry(entry.key, _freezeMappingValue(entry.value)),
     });
 

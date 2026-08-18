@@ -183,4 +183,87 @@ void main() {
     expect(config.fieldMappings['safe'], 'token');
     expect(config.fieldMappings.containsKey('bearer'), isFalse);
   });
+
+  test('sanitizes endpoint URL credentials while preserving safe URLs', () {
+    final unsafe = ManagedProvider(
+      id: 'p1',
+      name: 'Example',
+      kind: ManagedProviderKind.customHttp,
+      adapterId: 'adapter',
+      credentialRef: 'managed-provider:p1',
+      endpointConfig: ManagedProviderEndpointConfig(
+        url:
+            'https://user:pass@example.test/usage?apiKey=query-secret&tokenCount=2#clientSecret=fragment-secret',
+      ),
+    );
+    final safe = ManagedProviderEndpointConfig(
+      url: 'https://example.test/usage?region=us#overview',
+    );
+
+    expect(
+      unsafe.endpointConfig.url,
+      'https://example.test/usage?tokenCount=2',
+    );
+    expect(
+      (unsafe.toJson()['endpointConfig'] as Map)['url'],
+      'https://example.test/usage?tokenCount=2',
+    );
+    expect(safe.url, 'https://example.test/usage?region=us#overview');
+  });
+
+  test('sanitizes known provider strings but preserves ordinary text', () {
+    final provider = ManagedProvider(
+      id: 'p1',
+      name: 'Authorization: Bearer provider-secret',
+      kind: ManagedProviderKind.customHttp,
+      adapterId: 'adapter',
+      websiteUrl: 'https://user:pass@example.test',
+      brand: ManagedProviderBrand(
+        name: 'Bearer brand-secret',
+        iconUrl: 'Authorization: Bearer icon-secret',
+        iconColor: 'blue',
+      ),
+    );
+
+    final json = provider.toJson();
+    final encoded = jsonEncode(json);
+
+    expect(encoded, isNot(contains('secret')));
+    expect(json['name'], isEmpty);
+    expect(json['websiteUrl'], 'https://example.test');
+    expect((json['brand'] as Map)['name'], isEmpty);
+    expect((json['brand'] as Map)['iconColor'], 'blue');
+  });
+
+  test('filters nested cli mapping keys', () {
+    final config = ManagedProviderEndpointConfig(
+      fieldMappings: {
+        'nested': {'cli': 'claude', 'safe': 'data.safe'},
+      },
+    );
+
+    expect(config.toJson()['fieldMappings'], {
+      'nested': {'safe': 'data.safe'},
+    });
+  });
+
+  test('uses safe defaults for malformed provider numeric JSON', () {
+    for (final value in [double.nan, double.infinity, 1.5]) {
+      final provider = ManagedProvider.fromJson({
+        'id': 'p1',
+        'name': 'Example',
+        'kind': 'customHttp',
+        'adapterId': 'adapter',
+        'createdAt': value,
+        'updatedAt': value,
+        'schemaVersion': value,
+        'displayConfig': {'decimalPlaces': value},
+      });
+
+      expect(provider.createdAt, 0);
+      expect(provider.updatedAt, 0);
+      expect(provider.schemaVersion, 1);
+      expect(provider.displayConfig.decimalPlaces, isNull);
+    }
+  });
 }

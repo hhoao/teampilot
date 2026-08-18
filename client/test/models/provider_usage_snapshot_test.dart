@@ -243,6 +243,32 @@ void main() {
     expect(json['lastErrorMessage'], contains('tokenCount'));
   });
 
+  test('sanitizes known snapshot strings but preserves ordinary text', () {
+    final measure = ProviderUsageMeasure(
+      label: 'Authorization: Bearer label-secret',
+      kind: ProviderUsageMeasureKind.quota,
+      unit: 'credits',
+      currency: 'Bearer currency-secret',
+    );
+    final snapshot = ProviderUsageSnapshot(
+      providerId: 'p1',
+      status: ProviderUsageStatus.error,
+      measures: [measure],
+      lastErrorCode: 'Authorization: Bearer code-secret',
+      adapterVersion: 'Bearer adapter-secret',
+    );
+
+    final json = snapshot.toJson();
+    final encoded = jsonEncode(json);
+
+    expect(encoded, isNot(contains('secret')));
+    expect(json['lastErrorCode'], isNull);
+    expect(json['adapterVersion'], isNull);
+    expect((json['measures'] as List).single['label'], isEmpty);
+    expect((json['measures'] as List).single['unit'], 'credits');
+    expect((json['measures'] as List).single['currency'], isNull);
+  });
+
   test(
     'redacts standalone bearer credentials while preserving safe future text',
     () {
@@ -264,19 +290,33 @@ void main() {
     },
   );
 
-  test('rejects non-finite and fractional fetched and stale timestamps', () {
+  test('safely ignores non-finite and fractional snapshot timestamps', () {
     for (final field in ['fetchedAt', 'staleAt']) {
       for (final value in [double.nan, double.infinity, 1.5]) {
+        final snapshot = ProviderUsageSnapshot.fromJson({
+          'providerId': 'p1',
+          'status': 'ready',
+          field: value,
+        });
+
         expect(
-          () => ProviderUsageSnapshot.fromJson({
-            'providerId': 'p1',
-            'status': 'ready',
-            field: value,
-          }),
-          throwsFormatException,
+          field == 'fetchedAt' ? snapshot.fetchedAt : snapshot.staleAt,
+          isNull,
           reason: '$field=$value',
         );
       }
+    }
+  });
+
+  test('uses safe defaults for malformed snapshot schema JSON', () {
+    for (final value in [double.nan, double.infinity, 1.5]) {
+      final snapshot = ProviderUsageSnapshot.fromJson({
+        'providerId': 'p1',
+        'status': 'ready',
+        'schemaVersion': value,
+      });
+
+      expect(snapshot.schemaVersion, 1);
     }
   });
 
