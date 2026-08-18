@@ -16,6 +16,9 @@ final class CodexPluginCapability implements PluginCapability {
   const CodexPluginCapability();
 
   @override
+  bool get writesAssembledMcp => false;
+
+  @override
   PluginManifestPaths? get manifestPaths => codexPluginManifestPaths;
 
   @override

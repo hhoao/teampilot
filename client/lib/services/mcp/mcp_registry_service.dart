@@ -277,7 +277,7 @@ class McpRegistryService {
   Future<McpRegistryAssembly> _assemble({
     required CliTool cli,
     String? snapshotPath,
-    List<String> mcpServerIds = const [],
+    Iterable<String> mcpServerIds = const [],
     Map<String, Map<String, Object?>>? extraServers,
     Iterable<String> pluginIds = const [],
     Iterable<Plugin>? installedPluginCatalog,

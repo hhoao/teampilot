@@ -81,7 +81,7 @@ void main() {
             jsonDecode((await fs.readString('$configDir/opencode.json'))!)
                 as Map;
         final mcp = opencodeJson['mcp'] as Map;
-        expect((mcp['assembled'] as Map)['command'], 'assembled-command');
+        expect((mcp['assembled'] as Map)['command'], ['assembled-command']);
         expect(mcp.containsKey('plugin-mcp'), isFalse);
       },
     );
