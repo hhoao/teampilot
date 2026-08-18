@@ -67,6 +67,7 @@ void main() {
             cli: CliTool.flashskyai,
           ),
           member: member,
+          nativeAgentTeam: false,
         ),
         cliRegistry: registry,
       ),
@@ -86,6 +87,7 @@ void main() {
             cli: CliTool.codex,
           ),
           member: member,
+          nativeAgentTeam: false,
         ),
         cliRegistry: registry,
       ),
@@ -158,6 +160,7 @@ void main() {
             cli: CliTool.codex,
           ),
           member: member,
+          nativeAgentTeam: false,
         ),
         cliRegistry: registry,
       ),
@@ -175,6 +178,49 @@ void main() {
               contains('no CLI launch argument providers'),
             ),
       ),
+    );
+  });
+
+  test('rejects native teams for CLIs without native team support', () {
+    expect(
+      () => LaunchCommandBuilder.buildArgumentsFromContext(
+        const CliLaunchContext(
+          team: TeamProfile(
+            id: 'native-codex',
+            name: 'native-codex',
+            cli: CliTool.codex,
+            teamMode: TeamMode.native,
+          ),
+          member: member,
+        ),
+      ),
+      throwsA(
+        isA<CliLaunchCapabilityException>()
+            .having((error) => error.cli, 'cli', CliTool.codex)
+            .having(
+              (error) => error.contributionKey,
+              'contributionKey',
+              'team-mode',
+            ),
+      ),
+    );
+  });
+
+  test('allows simple synthetic native team when nativeAgentTeam is false', () {
+    expect(
+      LaunchCommandBuilder.buildArgumentsFromContext(
+        const CliLaunchContext(
+          team: TeamProfile(
+            id: 'simple-codex',
+            name: 'simple-codex',
+            cli: CliTool.codex,
+            teamMode: TeamMode.native,
+          ),
+          member: member,
+          nativeAgentTeam: false,
+        ),
+      ),
+      ['-m', 'sonnet'],
     );
   });
 

@@ -196,6 +196,7 @@ void main() {
     final context = CliLaunchContext(
       team: const TeamProfile(id: 'team', name: 'Team', cli: CliTool.codex),
       member: const TeamMemberConfig(id: 'member', name: 'Member'),
+      nativeAgentTeam: false,
     );
 
     expect(

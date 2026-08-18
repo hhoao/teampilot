@@ -147,6 +147,75 @@ void main() {
   });
 
   group('resolveRemoteRootSecurityPolicy', () {
+    test('dangerous SSH launch rejects a missing member session', () async {
+      const member = TeamMemberConfig(
+        id: 'member',
+        name: 'Member',
+        launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
+      );
+
+      await expectLater(
+        applyRemoteSshLaunchConstraints(
+          spec: ShellLaunchSpec.teamMember(
+            team: const TeamProfile(id: 'team', name: 'Team'),
+            member: member,
+          ),
+          memberTarget: RuntimeTarget.ssh('ssh-1', label: 'SSH'),
+          memberSession: null,
+          profile: const SshProfile(
+            id: 'ssh-1',
+            name: 'SSH',
+            host: 'example.com',
+            username: 'root',
+          ),
+        ),
+        throwsA(
+          isA<CliLaunchCapabilityException>().having(
+            (error) => error.contributionKey,
+            'contributionKey',
+            'remote-ssh-security-prerequisites',
+          ),
+        ),
+      );
+    });
+
+    test('dangerous SSH launch rejects a missing SSH profile', () async {
+      const member = TeamMemberConfig(
+        id: 'member',
+        name: 'Member',
+        launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
+      );
+      final session = SshMemberSession.testing(
+        profile: const SshProfile(
+          id: 'ssh-1',
+          name: 'SSH',
+          host: 'example.com',
+          username: 'root',
+        ),
+        client: _RootBareMetalClient(),
+      );
+      addTearDown(session.close);
+
+      await expectLater(
+        applyRemoteSshLaunchConstraints(
+          spec: ShellLaunchSpec.teamMember(
+            team: const TeamProfile(id: 'team', name: 'Team'),
+            member: member,
+          ),
+          memberTarget: RuntimeTarget.ssh('ssh-1', label: 'SSH'),
+          memberSession: session,
+          profile: null,
+        ),
+        throwsA(
+          isA<CliLaunchCapabilityException>().having(
+            (error) => error.contributionKey,
+            'contributionKey',
+            'remote-ssh-security-prerequisites',
+          ),
+        ),
+      );
+    });
+
     test('unchanged when safe policy or non-root', () {
       expect(
         resolveRemoteRootSecurityPolicy(

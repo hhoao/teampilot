@@ -52,6 +52,7 @@ void main() {
         const CliLaunchContext(
           team: team,
           member: member,
+          nativeAgentTeam: false,
           workingDirectory: '/work',
           additionalDirectories: ['/repo/a', '/repo/b'],
         ),

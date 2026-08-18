@@ -12,6 +12,7 @@ import '../cli/registry/launch/cli_launch_capability_error.dart';
 import '../cli/registry/launch/user_extra_args_provider.dart' as launch_args;
 import 'shell_launch_spec.dart';
 import '../cli/registry/cli_tool_registry.dart';
+import '../cli/registry/capabilities/team_behavior_capability.dart';
 import '../cli/cli_invocation.dart';
 import '../cli/claude/capabilities/provider.dart';
 import 'member_role_provision.dart';
@@ -55,6 +56,18 @@ class LaunchCommandBuilder {
         contributionKey: 'tool-definition',
         reason:
             'CLI tool ${cli.value} is not launch-supported and cannot build launch arguments.',
+      );
+    }
+    if (context.team.teamMode == TeamMode.native &&
+        context.nativeAgentTeam != false &&
+        registry.capability<TeamBehaviorCapability>(cli)?.supportsNativeTeam !=
+            true) {
+      throw CliLaunchCapabilityException(
+        cli: cli,
+        contributionKey: 'team-mode',
+        reason:
+            'CLI ${cli.value} does not support native team launches. Use '
+            'mixed TeamBus mode or select a CLI with native team support.',
       );
     }
     if (!tool.capabilities.any(

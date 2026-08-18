@@ -563,14 +563,15 @@ Assembler 按以下顺序工作：
 
 | 归一化策略 | Claude / FlashskyAI | Codex | Cursor | OpenCode |
 |------------|--------------------|-------|--------|----------|
-| CLI 默认（三项均 `cliDefault`） | 不追加权限 argv | 不追加权限 argv | 不追加权限 argv | 无权限 argv Provider；走其配置/交互能力 |
+| CLI 默认（三项均 `cliDefault`） | 不追加权限 argv | 不追加权限 argv | 不追加权限 argv | `OpencodePermissionLaunch` 显式验证；走其配置/交互能力 |
 | `ask + readOnly + trustedOnly` | `--permission-mode plan` | 不支持，抛能力异常 | 不支持，抛能力异常 | 不由启动 argv 表达 |
 | `autoApprove + workspaceWrite + trustedOnly` | `--permission-mode acceptEdits` | 不支持，抛能力异常 | 不支持，抛能力异常 | 不由启动 argv 表达 |
-| `never + fullAccess + bypass`（`fullAccess`） | `--dangerously-skip-permissions` | `--dangerously-bypass-approvals-and-sandbox` 与 `--dangerously-bypass-hook-trust` | `--force` | 不由启动 argv 表达 |
+| `never + fullAccess + bypass`（`fullAccess`） | `--dangerously-skip-permissions` | `--dangerously-bypass-approvals-and-sandbox` 与 `--dangerously-bypass-hook-trust` | `--force` | 不由启动 argv 表达；由 `OpencodePermissionLaunch` 显式验证当前 permissive default |
 
 如果 CLI 无法表示一个明确请求，Provider 必须返回结构化能力错误；不能悄悄使用 CLI 默认
-权限。OpenCode 的权限请求/应答属于运行时交互和配置能力，不应为了填表而伪造一个
-OpenCode 权限启动 Provider。
+权限。OpenCode 的权限请求/应答属于运行时交互和配置能力，`OpencodePermissionLaunch`
+只负责明确接受其 permissive default/full-access 语义并拒绝当前无法表达的策略组合，不伪造
+OpenCode 权限启动参数。
 
 ### 工作区目录的 CLI 差异
 

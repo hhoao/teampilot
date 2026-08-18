@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/agent_launch.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/model_launch.dart';
+import 'package:teampilot/services/cli/opencode/capabilities/permission_launch.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/session_selection_launch.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/team_behavior.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/user_extra_args_launch.dart';
@@ -116,6 +117,50 @@ void main() {
     );
   });
 
+  test('OpenCode rejects security policies it cannot represent', () {
+    expect(
+      () => _assemble(
+        team: const TeamProfile(
+          id: 'team',
+          name: 'Team',
+          cli: CliTool.opencode,
+        ),
+        member: const TeamMemberConfig(
+          id: 'member',
+          name: 'Member',
+          launchSecurityPolicy: LaunchSecurityPolicy.askReadOnlyTrusted,
+        ),
+      ),
+      throwsA(
+        isA<CliLaunchCapabilityException>()
+            .having((error) => error.cli, 'cli', CliTool.opencode)
+            .having(
+              (error) => error.contributionKey,
+              'contributionKey',
+              'opencode-permission',
+            ),
+      ),
+    );
+  });
+
+  test('OpenCode explicitly accepts its permissive full-access default', () {
+    expect(
+      _assemble(
+        team: const TeamProfile(
+          id: 'team',
+          name: 'Team',
+          cli: CliTool.opencode,
+        ),
+        member: const TeamMemberConfig(
+          id: 'member',
+          name: 'Member',
+          launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
+        ),
+      ),
+      isEmpty,
+    );
+  });
+
   test(
     'OpenCode registers session/model/agent/user providers, not workspace',
     () {
@@ -126,7 +171,8 @@ void main() {
       expect(providers, contains(isA<OpencodeModelLaunch>()));
       expect(providers, contains(isA<OpencodeAgentLaunch>()));
       expect(providers, contains(isA<OpencodeUserExtraArgsLaunch>()));
-      expect(providers, hasLength(4));
+      expect(providers, contains(isA<OpencodePermissionLaunch>()));
+      expect(providers, hasLength(5));
       expect(tool.capabilities.whereType<OpencodeTeamBehavior>(), hasLength(1));
       expect(
         tool.capabilities.whereType<TeamBehaviorCapability>(),
@@ -139,6 +185,7 @@ void main() {
     final context = CliLaunchContext(
       team: const TeamProfile(id: 'team', name: 'Team', cli: CliTool.opencode),
       member: const TeamMemberConfig(id: 'member', name: 'Member'),
+      nativeAgentTeam: false,
     );
 
     expect(

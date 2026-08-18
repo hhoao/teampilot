@@ -98,13 +98,21 @@ Future<ShellLaunchSpec> applyRemoteSshLaunchConstraints({
   required SshProfile? profile,
   bool injectRootSandboxEnv = false,
 }) async {
-  if (!usesSshTransport(memberTarget.kind) ||
-      memberSession == null ||
-      profile == null) {
+  if (!usesSshTransport(memberTarget.kind)) {
     return spec;
   }
   final securityPolicy = spec.launchContext.launchSecurityPolicy;
   if (!securityPolicy.requiresDangerousExecution) return spec;
+  if (memberSession == null || profile == null) {
+    throw CliLaunchCapabilityException(
+      cli: spec.launchContext.team.cli,
+      contributionKey: 'remote-ssh-security-prerequisites',
+      reason:
+          'A dangerous SSH launch requires both an active member session and '
+          'the resolved SSH profile so the remote security context can be '
+          'verified. Refusing to launch with missing SSH prerequisites.',
+    );
+  }
 
   final runsAsRoot = await remoteSshRunsAsRoot(memberSession: memberSession);
   if (runsAsRoot == null) {
