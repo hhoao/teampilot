@@ -4,6 +4,7 @@ import '../../../../models/plugin.dart';
 import '../../../../models/team_config.dart';
 import '../../../agent_status/member_agent_status_endpoint.dart';
 import '../../../team/team_lead_delegate_settings_merge.dart';
+import '../../../team/team_lead_settings_merge.dart';
 import '../../../team_bus/member_bus_idle_endpoint.dart';
 import '../../../resource/assemblers/hook_assembler.dart';
 import '../../../resource/providers/hook_contribution_provider.dart';
@@ -124,6 +125,19 @@ class HookSeatContextCompleter {
           source: HookSource.managed,
           event: HookEvent.preToolUse,
           matcher: TeamLeadDelegateSettingsMerge.blockedToolsMatcher,
+          action: CommandHookAction.raw(command.trim()),
+        ),
+  ];
+
+  /// Team-lead self-message guard hooks (source: managed).
+  List<HookEntry> teamLeadSelfHooks({required String command}) => [
+    for (final matcher in TeamLeadSettingsMerge.guardedTools)
+      if (command.trim().isNotEmpty)
+        HookEntry(
+          id: 'teampilot-team-lead-self-$matcher',
+          source: HookSource.managed,
+          event: HookEvent.preToolUse,
+          matcher: matcher,
           action: CommandHookAction.raw(command.trim()),
         ),
   ];

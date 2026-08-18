@@ -71,45 +71,51 @@ void main() {
   });
 
   group('CursorSessionLifecycleCapability.ensurePersisted', () {
-    test('creates manifest, shared projects, and member project links', () async {
-      await capability.ensurePersisted(persistContext());
+    test(
+      'creates manifest, shared projects, and member project links',
+      () async {
+        await capability.ensurePersisted(persistContext());
 
-      final manifest = await store.read(
-        workspaceId: workspaceId,
-        teamId: 'superpowers',
-        tool: CursorSessionLifecyclePaths.tool,
-      );
-      expect(manifest, isNotNull);
-      expect(manifest!.phase, CliSessionPhase.persisted);
-      expect(manifest.workspaceSlug, slug);
-      expect(manifest.members.keys, containsAll(['team-lead', 'architect']));
+        final manifest = await store.read(
+          workspaceId: workspaceId,
+          teamId: 'superpowers',
+          tool: CursorSessionLifecyclePaths.tool,
+        );
+        expect(manifest, isNotNull);
+        expect(manifest!.phase, CliSessionPhase.persisted);
+        expect(manifest.workspaceSlug, slug);
+        expect(manifest.members.keys, containsAll(['team-lead', 'architect']));
 
-      expect(
-        (await fs.stat(lifecyclePaths.sharedProjectsDir())).isDirectory,
-        isTrue,
-      );
+        expect(
+          (await fs.stat(lifecyclePaths.sharedProjectsDir())).isDirectory,
+          isTrue,
+        );
 
-      final sharedProjectsRoot = fs.pathContext.join(
-        lifecyclePaths.sharedRoot(),
-        CursorWorkspaceTrust.projectsDirName,
-      );
-
-      for (final memberId in ['team-lead', 'architect']) {
-        final memberHome = lifecyclePaths.memberHomeRoot(memberId);
-        final memberProjects = fs.pathContext.join(
-          homeLayout.cursorDir(memberHome),
+        final sharedProjectsRoot = fs.pathContext.join(
+          lifecyclePaths.sharedRoot(),
           CursorWorkspaceTrust.projectsDirName,
         );
-        expect(await fs.readSymlinkTarget(memberProjects), sharedProjectsRoot);
 
-        final trustPath = CursorWorkspaceTrust.trustMarkerPath(
-          memberHome,
-          workingDirectory,
-          pathContext: fs.pathContext,
-        );
-        expect((await fs.stat(trustPath)).isFile, isTrue);
-      }
-    });
+        for (final memberId in ['team-lead', 'architect']) {
+          final memberHome = lifecyclePaths.memberHomeRoot(memberId);
+          final memberProjects = fs.pathContext.join(
+            homeLayout.cursorDir(memberHome),
+            CursorWorkspaceTrust.projectsDirName,
+          );
+          expect(
+            await fs.readSymlinkTarget(memberProjects),
+            sharedProjectsRoot,
+          );
+
+          final trustPath = CursorWorkspaceTrust.trustMarkerPath(
+            memberHome,
+            workingDirectory,
+            pathContext: fs.pathContext,
+          );
+          expect((await fs.stat(trustPath)).isFile, isTrue);
+        }
+      },
+    );
 
     test('is idempotent on second call', () async {
       final ctx = persistContext();
@@ -161,10 +167,7 @@ void main() {
       );
 
       expect(second!.members.keys, containsAll(['team-lead', 'architect']));
-      expect(
-        second.members['team-lead'],
-        first!.members['team-lead'],
-      );
+      expect(second.members['team-lead'], first!.members['team-lead']);
     });
   });
 }
@@ -193,23 +196,24 @@ final class _TestPaths implements ConfigProfileDelegate {
     String sessionId,
     String tool, {
     String? memberId,
-  }) =>
-      layout.sessionRuntimeToolDir(
-        workspaceId,
-        sessionId,
-        tool,
-        memberId: memberId,
-      );
+  }) => layout.sessionRuntimeToolDir(
+    workspaceId,
+    sessionId,
+    tool,
+    memberId: memberId,
+  );
 
   @override
   Future<Map<String, Object?>> readMetadataFile(
     String path,
     Map<String, Object?> defaults,
-  ) async =>
-      Map<String, Object?>.from(defaults);
+  ) async => Map<String, Object?>.from(defaults);
 
   @override
-  Future<void> writeJsonIfChanged(String path, Map<String, Object?> value) async {}
+  Future<void> writeJsonIfChanged(
+    String path,
+    Map<String, Object?> value,
+  ) async {}
 
   @override
   Future<Map<String, Object?>> metadataWithTrustedProjects({
@@ -217,16 +221,14 @@ final class _TestPaths implements ConfigProfileDelegate {
     required Map<String, Object?> defaultMetadata,
     required Map<String, Object?> defaultProjectConfig,
     required Iterable<String> directories,
-  }) async =>
-      defaultMetadata;
+  }) async => defaultMetadata;
 
   @override
   Future<bool> trustedProjectsAlreadyCurrent(
     String metadataPath,
     Iterable<String> directories, {
     required Map<String, Object?> defaultMetadata,
-  }) async =>
-      false;
+  }) async => false;
 
   @override
   Future<Map<String, Object?>> readSettingsFile(String path) async => {};
@@ -248,8 +250,7 @@ final class _TestPaths implements ConfigProfileDelegate {
     required String tool,
     String? teamId,
     String? workspaceId,
-  }) async =>
-      settings;
+  }) async => settings;
 
   @override
   Future<List<ExtensionSettingsHook>> extensionSettingsHooks(
@@ -257,8 +258,7 @@ final class _TestPaths implements ConfigProfileDelegate {
     required String tool,
     String? teamId,
     String? workspaceId,
-  }) async =>
-      const [];
+  }) async => const [];
 
   @override
   Future<Map<String, Object?>> maybeApplyTeamLeadHooks(
@@ -266,16 +266,20 @@ final class _TestPaths implements ConfigProfileDelegate {
     TeamMemberConfig member,
     String memberToolDir, {
     required bool forceTeamLeadDelegateMode,
-  }) async =>
-      settings;
+  }) async => settings;
 
   @override
   Future<String?> resolveTeamLeadDelegateHookCommand(
     TeamMemberConfig member,
     String memberToolDir, {
     required bool forceTeamLeadDelegateMode,
-  }) async =>
-      null;
+  }) async => null;
+
+  @override
+  Future<String?> resolveTeamLeadSelfHookCommand(
+    TeamMemberConfig member,
+    String memberToolDir,
+  ) async => null;
 
   @override
   HostExecutionEnvironment hostEnvironmentForProvision() =>

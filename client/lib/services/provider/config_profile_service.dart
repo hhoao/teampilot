@@ -241,6 +241,18 @@ class ConfigProfileService implements ConfigProfileDelegate {
           ),
         );
       }
+      final selfCommand = await delegate.resolveTeamLeadSelfHookCommand(
+        member,
+        memberToolDir,
+      );
+      if (selfCommand != null) {
+        managed.add(
+          ManagedHookContributionProvider(
+            entries: completer.teamLeadSelfHooks(command: selfCommand),
+            providerId: 'team-lead-self',
+          ),
+        );
+      }
     }
 
     final extensionHooks = await delegate.extensionSettingsHooks(
@@ -1468,6 +1480,12 @@ class ConfigProfileService implements ConfigProfileDelegate {
     memberToolDir,
     forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
   );
+
+  @override
+  Future<String?> resolveTeamLeadSelfHookCommand(
+    TeamMemberConfig member,
+    String memberToolDir,
+  ) => _infra.resolveTeamLeadSelfHookCommand(member, memberToolDir);
 
   @override
   HostExecutionEnvironment hostEnvironmentForProvision() =>
