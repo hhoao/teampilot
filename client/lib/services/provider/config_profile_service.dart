@@ -376,7 +376,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
           layout: layout,
           tool: cli,
           memberProvisionJson: poolResult.memberProvisionStampJson,
-          assembledMcpServers: mcpAssembly!.result.servers,
+          assembledMcpServers: mcpAssembly.result.servers,
           mcpConfigFileName: warmTier
               ? CursorWorkspaceWarmTier.mcpBaseFileName
               : null,
@@ -402,7 +402,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
       pluginIds: runtimeBundle?.pluginIds ?? const [],
       installedPluginCatalog: installedCatalog,
     );
-    final assembledMcp = mcpAssembly!;
+    final assembledMcp = mcpAssembly;
     if (warmTier) {
       await mcpRegistry.writeCursorWorkspaceMcpBase(
         workspaceId: trimmedWorkspaceId,
@@ -616,7 +616,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
       extraServers: extraMcpServers,
       pluginIds: runtimeBundle.pluginIds,
     );
-    final assembledMcp = mcpAssembly!;
+    final assembledMcp = mcpAssembly;
     await step(
       'mcp',
       () => mcpRegistry.writeForSimpleSession(
