@@ -42,6 +42,7 @@ enum ManagedProviderCredentialErrorCode {
   storageWriteFailed,
   storageDeleteFailed,
   rollbackIncomplete,
+  recoveryPersistenceFailed,
 }
 
 /// Secret-free failures from managed-provider credential storage.
@@ -127,13 +128,13 @@ class ManagedProviderSecretStore {
         manifestAttempted = true;
         await _writeManifest(ref, normalized.keys);
       } on Object {
-        final rollbackIncomplete = await _rollbackNewWrite(
+        final rollbackResult = await _rollbackNewWrite(
           ref,
           writtenFields,
           markerAttempted: markerAttempted,
           manifestAttempted: manifestAttempted,
         );
-        if (rollbackIncomplete) _throwRollbackIncomplete();
+        _throwForRollbackResult(rollbackResult);
         rethrow;
       }
       return;
@@ -167,14 +168,14 @@ class ManagedProviderSecretStore {
       }
       await _writeManifest(ref, normalized.keys);
     } on Object {
-      final rollbackIncomplete = await _rollbackReplacement(
+      final rollbackResult = await _rollbackReplacement(
         ref,
         manifest.fields,
         previousValues,
         touchedFields,
         hadInitializedMarker: hadInitializedMarker,
       );
-      if (rollbackIncomplete) _throwRollbackIncomplete();
+      _throwForRollbackResult(rollbackResult);
       rethrow;
     }
   }
@@ -209,7 +210,7 @@ class ManagedProviderSecretStore {
 
   String _key(String ref, String field) => '$namespace.$ref.$field';
 
-  Future<bool> _rollbackNewWrite(
+  Future<_RollbackResult> _rollbackNewWrite(
     String ref,
     List<String> writtenFields, {
     required bool markerAttempted,
@@ -234,12 +235,15 @@ class ManagedProviderSecretStore {
       }
     }
     if (incomplete) {
-      await _tryWriteRecoveryState(ref, recoverableFields);
+      if (!await _tryWriteRecoveryState(ref, recoverableFields)) {
+        return _RollbackResult.recoveryPersistenceFailed;
+      }
+      return _RollbackResult.rollbackIncomplete;
     }
-    return incomplete;
+    return _RollbackResult.complete;
   }
 
-  Future<bool> _rollbackReplacement(
+  Future<_RollbackResult> _rollbackReplacement(
     String ref,
     List<String> previousFields,
     Map<String, String?> previousValues,
@@ -276,9 +280,12 @@ class ManagedProviderSecretStore {
       incomplete = true;
     }
     if (incomplete) {
-      await _tryWriteRecoveryState(ref, recoverableFields);
+      if (!await _tryWriteRecoveryState(ref, recoverableFields)) {
+        return _RollbackResult.recoveryPersistenceFailed;
+      }
+      return _RollbackResult.rollbackIncomplete;
     }
-    return incomplete;
+    return _RollbackResult.complete;
   }
 
   Future<bool> _tryWriteRecoveryState(
@@ -440,6 +447,22 @@ class ManagedProviderSecretStore {
       throw const ManagedProviderCredentialError(
         ManagedProviderCredentialErrorCode.rollbackIncomplete,
       );
+
+  static void _throwForRollbackResult(_RollbackResult result) {
+    switch (result) {
+      case _RollbackResult.complete:
+        return;
+      case _RollbackResult.rollbackIncomplete:
+        _throwRollbackIncomplete();
+      case _RollbackResult.recoveryPersistenceFailed:
+        _throwRecoveryPersistenceFailed();
+    }
+  }
+
+  static Never _throwRecoveryPersistenceFailed() =>
+      throw const ManagedProviderCredentialError(
+        ManagedProviderCredentialErrorCode.recoveryPersistenceFailed,
+      );
 }
 
 class _ManifestRead {
@@ -455,6 +478,8 @@ class _ManifestRead {
   final bool isInitialized;
   final bool isMissing;
 }
+
+enum _RollbackResult { complete, rollbackIncomplete, recoveryPersistenceFailed }
 
 class _CredentialRefLock {
   final _tails = <String, Future<void>>{};

@@ -43,11 +43,13 @@ class _FailOnWriteSecureKeyValueStore implements SecureKeyValueStore {
     this.failOnWrite,
     this.error, {
     this.failOnDeleteKey,
+    this.failOnWriteCounts = const {},
   });
 
   final int failOnWrite;
   final Object error;
   final String? failOnDeleteKey;
+  final Set<int> failOnWriteCounts;
   final values = <String, String>{};
   var writeCount = 0;
 
@@ -63,7 +65,9 @@ class _FailOnWriteSecureKeyValueStore implements SecureKeyValueStore {
   @override
   Future<void> write(String key, String value) async {
     writeCount++;
-    if (writeCount == failOnWrite) throw error;
+    if (writeCount == failOnWrite || failOnWriteCounts.contains(writeCount)) {
+      throw error;
+    }
     values[key] = value;
   }
 }
@@ -377,6 +381,39 @@ void main() {
     expect(backend.values[marker], '1');
     expect(backend.values[manifest], '["apiKey"]');
   });
+
+  test(
+    'reports recovery persistence failure when durable recovery is unavailable',
+    () async {
+      const secret = 'recovery-persistence-secret';
+      const ref = 'managed-provider:p1';
+      const apiKey = 'teampilot.managed_provider.v1.$ref.apiKey';
+      const manifest = 'teampilot.managed_provider.v1.$ref.__fields';
+      const marker = 'teampilot.managed_provider.v1.$ref.__initialized';
+      final backend = _FailOnWriteSecureKeyValueStore(
+        4,
+        StateError('backend failed while handling $secret'),
+        failOnDeleteKey: apiKey,
+        failOnWriteCounts: {4, 5, 6},
+      );
+      final store = ManagedProviderSecretStore(backend);
+
+      final error = await captureException(
+        () => store.write(ref, {'apiKey': secret, 'token': 'second-$secret'}),
+      );
+
+      expect(error, isA<ManagedProviderCredentialError>());
+      expect(
+        (error as ManagedProviderCredentialError).code,
+        ManagedProviderCredentialErrorCode.recoveryPersistenceFailed,
+      );
+      expect(error.toString(), contains('recoveryPersistenceFailed'));
+      expect(error.toString(), isNot(contains(secret)));
+      expect(backend.values[apiKey], secret);
+      expect(backend.values[marker], isNull);
+      expect(backend.values[manifest], isNull);
+    },
+  );
 
   test('serializes concurrent writes for one credential reference', () async {
     final backend = _BlockingSecureKeyValueStore();
