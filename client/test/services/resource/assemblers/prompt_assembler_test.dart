@@ -1,12 +1,9 @@
-import 'dart:async';
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/registry/capabilities/prompt_capability.dart';
 import 'package:teampilot/services/resource/assemblers/prompt_assembler.dart';
 import 'package:teampilot/services/resource/contribution/resource_assembly_error.dart';
 import 'package:teampilot/services/resource/contribution/resource_origin.dart';
-import 'package:teampilot/services/resource/providers/prompt_contribution_provider.dart';
 
 void main() {
   final context = PromptProviderContext(cli: CliTool.claude);

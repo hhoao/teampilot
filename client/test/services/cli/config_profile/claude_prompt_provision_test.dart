@@ -5,7 +5,6 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/claude/capabilities/prompt.dart';
 import 'package:teampilot/services/cli/registry/capabilities/prompt_capability.dart';
 import 'package:teampilot/services/resource/assemblers/prompt_assembler.dart';
-import 'package:teampilot/services/resource/providers/prompt_contribution_provider.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/session/member_role_provision.dart';

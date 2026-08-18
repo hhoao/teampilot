@@ -9,7 +9,6 @@ import '../../../team_bus/member_bus_idle_endpoint.dart';
 import '../../registry/capabilities/hook_capability.dart';
 import '../../registry/capabilities/prompt_capability.dart';
 import '../../registry/prompt/prompt_hub_service.dart';
-import '../../../resource/providers/prompt_contribution_provider.dart';
 import '../../registry/config_profile/hook_seat_context_completer.dart';
 import '../../registry/hook/managed_hook_provisioner.dart';
 import '../capabilities/prompt.dart';

@@ -5,7 +5,6 @@ import '../../../../services/session/member_role_provision.dart';
 import '../../registry/capabilities/prompt_capability.dart';
 import '../provider/cursor_home_layout.dart';
 import '../provider/cursor_role_rule_writer.dart';
-import '../../../resource/providers/prompt_contribution_provider.dart';
 import '../../../resource/contribution/resource_origin.dart';
 
 /// cursor 把成员 prompt 写入 fake HOME 的 `~/.cursor/rules/role.mdc`。

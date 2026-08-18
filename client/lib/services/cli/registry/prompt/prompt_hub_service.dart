@@ -1,7 +1,6 @@
 import '../../../../models/team_config.dart';
 import '../../../resource/assemblers/prompt_assembler.dart';
 import '../../../resource/contribution/resource_assembly_error.dart';
-import '../../../resource/providers/prompt_contribution_provider.dart';
 import '../capabilities/prompt_capability.dart';
 import '../cli_tool_registry.dart';
 

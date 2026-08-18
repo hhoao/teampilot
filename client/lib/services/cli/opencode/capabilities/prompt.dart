@@ -3,7 +3,6 @@ import 'dart:async';
 import '../../registry/capabilities/prompt_capability.dart';
 import '../../../../services/session/member_role_provision.dart';
 import '../../../launch/work_plane_paths.dart';
-import '../../../resource/providers/prompt_contribution_provider.dart';
 import '../../../resource/contribution/resource_origin.dart';
 
 /// opencode 把成员 prompt（role + workspace dirs 章节）写入会话配置目录的

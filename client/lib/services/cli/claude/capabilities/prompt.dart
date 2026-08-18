@@ -4,7 +4,6 @@ import '../../../../utils/team/team_member_naming.dart';
 import '../../registry/capabilities/prompt_capability.dart';
 import '../../../../services/session/member_role_provision.dart';
 import '../team_roster_service.dart';
-import '../../../resource/providers/prompt_contribution_provider.dart';
 import '../../../resource/contribution/resource_origin.dart';
 
 /// claude 把成员 prompt 写入 `{toolDir}/prompts/{slug}/role.md`，通过
