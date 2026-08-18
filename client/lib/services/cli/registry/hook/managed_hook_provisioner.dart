@@ -63,7 +63,9 @@ final class ManagedHookProvisioner {
     final ensuredDirs = <String>{};
     for (final script in result.scripts) {
       final override = targetOverride?.call(script.fileName);
-      final target = override ?? joinWork(ctx.hooksDir, script.fileName);
+      final target =
+          override ??
+          joinWork(script.targetDirectory ?? ctx.hooksDir, script.fileName);
       if (ensureParentDirs) {
         final parent = (pathContext ?? fs.pathContext).dirname(target);
         if (ensuredDirs.add(parent)) {

@@ -28,9 +28,9 @@ import 'capabilities/plugin.dart';
 import '../registry/capabilities/plugin_capability.dart';
 import 'capabilities/executable.dart';
 import '../registry/resources/default_resource_capability.dart';
-import '../registry/config_profile/claude_family_hook_writer.dart';
 import '../registry/capabilities/hook_capability.dart';
 import '../registry/launch/user_extra_args_provider.dart';
+import 'capabilities/hook_writer.dart';
 
 final class FlashskyaiCliTool implements CliToolDefinition {
   const FlashskyaiCliTool({
@@ -52,7 +52,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     this.chatInteraction = const FlashskyaiChatInteraction(),
     this.aiHistory = const FlashskyaiAiHistoryCapability(),
     this.skill = const DefaultSkillCapability(),
-    this.hookWriter = const ClaudeFamilyHookWriter(),
+    this.hookWriter = const FlashskyaiHookWriter(),
     this.prompt = const FlashskyaiPromptCapability(),
   });
 

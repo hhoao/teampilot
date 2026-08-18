@@ -16,7 +16,6 @@ import '../../../provider/workspace_trust_provisioner.dart';
 import '../../../remote/remote_credential_materializer.dart';
 import '../../../session/member_role_provision.dart';
 import '../../../team_bus/member_bus_idle_endpoint.dart';
-import 'stop_idle_hook.dart';
 import '../../claude/provider/claude_effort_catalog.dart';
 import '../../registry/capabilities/claude_family_hook_registry.dart';
 import '../../registry/capabilities/hook_capability.dart';
@@ -521,27 +520,10 @@ final class FlashskyaiProviderCapability extends CatalogModelCapability
       ],
     );
     final entries = assembledHooks.entries;
-    final busIdleEntries = entries
-        .where(_isFlashskyaiBusIdleEntry)
-        .toList(growable: false);
-    if (busIdleEntries.isNotEmpty && busIdle != null) {
-      final idleScriptPath = delegate.joinWork(
-        memberToolDir,
-        flashskyaiStopIdleScriptFileName,
-      );
-      await delegate.fs.writeString(
-        idleScriptPath,
-        flashskyaiStopIdleScript(memberId: member.id, idle: busIdle),
-      );
-      settings = mergeFlashskyaiStopIdleHook(settings, idleScriptPath);
-    }
-    final renderEntries = entries
-        .where((entry) => !_isFlashskyaiBusIdleEntry(entry))
-        .toList(growable: false);
     final hookWriter = CliToolRegistry.builtIn().capability<HookCapability>(
       CliTool.flashskyai,
     );
-    if (hookWriter != null && renderEntries.isNotEmpty) {
+    if (hookWriter != null && entries.isNotEmpty) {
       final hooksDir = delegate.joinWork(memberToolDir, 'hooks');
       final result =
           await ManagedHookProvisioner(
@@ -550,11 +532,12 @@ final class FlashskyaiProviderCapability extends CatalogModelCapability
             logPrefix: '[hook-writer] flashskyai',
           ).provision(
             writer: hookWriter,
-            entries: renderEntries,
+            entries: entries,
             ctx: HookRenderContext(
               hooksDir: hooksDir,
               runner: delegate.hostEnvironmentForProvision().scriptRunner,
               glueBuilder: const GlueScriptBuilder(),
+              generatedScriptDirectory: memberToolDir,
             ),
           );
       settings = mergeHooksInto(
@@ -578,11 +561,6 @@ final class FlashskyaiProviderCapability extends CatalogModelCapability
       workspaceId: simple ? scope.workspaceId : null,
     );
   }
-
-  static bool _isFlashskyaiBusIdleEntry(HookEntry entry) =>
-      entry.source == HookSource.managed &&
-      entry.blockOnDecision &&
-      entry.action is HttpHookAction;
 
   Future<bool> _settingsAlreadyCurrent(
     ConfigProfileDelegate delegate,
