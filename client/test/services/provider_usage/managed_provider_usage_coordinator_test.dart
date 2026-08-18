@@ -9,6 +9,7 @@ import 'package:teampilot/repositories/managed_provider_usage_repository.dart';
 import 'package:teampilot/services/provider_usage/managed_provider_usage_adapter.dart';
 import 'package:teampilot/services/provider_usage/managed_provider_usage_coordinator.dart';
 import 'package:teampilot/services/provider_usage/managed_provider_usage_registry.dart';
+import 'package:teampilot/services/storage/app_storage.dart';
 
 import '../../support/in_memory_filesystem.dart';
 
@@ -90,6 +91,8 @@ void main() {
   late ManagedProviderRepository providers;
   late ManagedProviderUsageRepository usage;
 
+  tearDown(AppStorage.resetForTesting);
+
   setUp(() {
     fs = InMemoryFilesystem();
     usage = ManagedProviderUsageRepository(
@@ -125,6 +128,58 @@ void main() {
     await Future.wait([first, second]);
     expect(coordinator.snapshotFor('p1')!.status, ProviderUsageStatus.ready);
   });
+
+  test(
+    'storage context invalidation prevents an old request from writing to the new home',
+    () async {
+      final firstFs = InMemoryFilesystem();
+      final secondFs = InMemoryFilesystem();
+      final firstPaths = const AppPaths('/managed-provider-context-one');
+      final secondPaths = const AppPaths('/managed-provider-context-two');
+      final gate = Completer<ProviderUsageSnapshot>();
+      final adapter = _FakeAdapter(gate.future);
+
+      AppStorage.installForTesting(filesystem: firstFs, paths: firstPaths);
+      final dynamicUsage = ManagedProviderUsageRepository();
+      final dynamicProviders = ManagedProviderRepository(
+        onProvidersDeleted: dynamicUsage.deleteMany,
+      );
+      await dynamicProviders.upsert(_provider());
+
+      AppStorage.installForTesting(filesystem: secondFs, paths: secondPaths);
+      await dynamicProviders.upsert(_provider());
+
+      AppStorage.installForTesting(filesystem: firstFs, paths: firstPaths);
+      final coordinator = ManagedProviderUsageCoordinator(
+        providerRepository: dynamicProviders,
+        usageRepository: dynamicUsage,
+        registry: ManagedProviderUsageRegistry([adapter]),
+        credentials: _NoCredentials(),
+        http: _UnusedHttpClient(),
+        now: () => DateTime.fromMillisecondsSinceEpoch(1_700_000_000_000),
+      );
+
+      final oldRequest = coordinator.refreshOne('p1');
+      await Future<void>.delayed(Duration.zero);
+      expect(adapter.calls, 1);
+
+      await coordinator.invalidateForStorageContextChange();
+      AppStorage.installForTesting(filesystem: secondFs, paths: secondPaths);
+      gate.complete(_ready(remaining: '1.75'));
+
+      await expectLater(
+        oldRequest,
+        throwsA(
+          isA<ManagedProviderUsageInvalidated>().having(
+            (error) => error.code,
+            'code',
+            ManagedProviderUsageInvalidationCode.refreshCancelled,
+          ),
+        ),
+      );
+      expect(await dynamicUsage.load(), isEmpty);
+    },
+  );
 
   test(
     'refresh failure preserves old measures and maps typed errors',

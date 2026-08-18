@@ -223,6 +223,19 @@ class ManagedProviderUsageCubit extends Cubit<ManagedProviderUsageState> {
     }
   }
 
+  /// Invalidates all in-flight work before the AppStorage home context is
+  /// rebound. This clears Cubit-level ensure flights as well as the
+  /// coordinator's transport/commit generation.
+  Future<void> invalidateForStorageContextChange() async {
+    if (isClosed) return;
+    for (final id in _ensureFlights.keys.toList(growable: false)) {
+      _invalidateEnsureFlight(id);
+    }
+    _refreshOperations.clear();
+    _emitRefreshState(clearError: true);
+    await _coordinator.invalidateForStorageContextChange();
+  }
+
   /// Refreshes only an absent or expired snapshot. Calls for one Provider are
   /// coalesced even before they reach the coordinator.
   Future<ProviderUsageSnapshot?> ensureFresh(String providerId) async {

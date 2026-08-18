@@ -27,6 +27,41 @@ void main() {
     expect(registry.adapterFor('official-codex-subscription'), isNotNull);
   });
 
+  test(
+    'default official adapters fail closed with typed unsupported errors',
+    () async {
+      final registry = buildDefaultManagedProviderUsageRegistry();
+      for (final adapterId in const [
+        'official-claude-subscription',
+        'official-codex-subscription',
+      ]) {
+        final adapter = registry.adapterFor(adapterId)!;
+        final provider = ManagedProvider(
+          id: adapterId,
+          name: adapterId,
+          kind: ManagedProviderKind.subscriptionQuota,
+          adapterId: adapterId,
+        );
+
+        await expectLater(
+          adapter.fetch(
+            provider,
+            credentials: _EmptyCredentials(),
+            http: _UnusedHttpClient(),
+            now: DateTime.fromMillisecondsSinceEpoch(1_700_000_000_000),
+          ),
+          throwsA(
+            isA<ManagedProviderUsageQueryError>().having(
+              (error) => error.code,
+              'code',
+              ManagedProviderUsageQueryErrorCode.unsupported,
+            ),
+          ),
+        );
+      }
+    },
+  );
+
   test('default repositories follow the current AppStorage binding', () async {
     final firstFs = InMemoryFilesystem();
     final secondFs = InMemoryFilesystem();
@@ -100,12 +135,42 @@ void main() {
       expect(providerCubit.state.providers, hasLength(1));
     },
   );
+
+  test('control-plane close is owned, ordered, and idempotent', () async {
+    final repository = _FakeManagedProviderRepository();
+    final usageCoordinator = _FakeManagedProviderUsageCoordinator();
+    final providerCubit = ManagedProviderCubit(repository: repository);
+    final usageCubit = ManagedProviderUsageCubit(coordinator: usageCoordinator);
+    var httpCloseCalls = 0;
+    final controlPlane = ManagedProviderControlPlane(
+      providerRepository: repository,
+      usageRepository: ManagedProviderUsageRepository(),
+      secretStore: ManagedProviderSecretStore(_EmptySecureStore()),
+      usageRegistry: ManagedProviderUsageRegistry(),
+      usageCoordinator: usageCoordinator,
+      providerCubit: providerCubit,
+      usageCubit: usageCubit,
+      ownsProviderCubit: true,
+      ownsUsageCubit: true,
+      ownsUsageCoordinator: true,
+      closeOwnedHttpClient: () async => httpCloseCalls++,
+    );
+
+    await controlPlane.close();
+    await controlPlane.close();
+
+    expect(usageCoordinator.closeCalls, 1);
+    expect(providerCubit.isClosed, isTrue);
+    expect(usageCubit.isClosed, isTrue);
+    expect(httpCloseCalls, 1);
+  });
 }
 
 class _FakeManagedProviderRepository extends ManagedProviderRepository {
   _FakeManagedProviderRepository() : super(onProvidersDeleted: (_) async {});
 
   int loadCalls = 0;
+  int closeCalls = 0;
 
   @override
   Future<List<ManagedProvider>> load() async {
@@ -133,6 +198,7 @@ class _FakeManagedProviderUsageCoordinator
       );
 
   int loadCalls = 0;
+  int closeCalls = 0;
 
   @override
   Future<coordinator.ManagedProviderUsageState> load() async {
@@ -143,6 +209,11 @@ class _FakeManagedProviderUsageCoordinator
       generation: loadCalls,
       isRefreshing: false,
     );
+  }
+
+  @override
+  Future<void> close() async {
+    closeCalls++;
   }
 }
 

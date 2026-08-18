@@ -245,6 +245,10 @@ class ManagedProviderControlPlane {
     required this.usageCoordinator,
     required this.providerCubit,
     required this.usageCubit,
+    this.ownsProviderCubit = false,
+    this.ownsUsageCubit = false,
+    this.ownsUsageCoordinator = false,
+    this.closeOwnedHttpClient,
   });
 
   final ManagedProviderRepository providerRepository;
@@ -254,7 +258,12 @@ class ManagedProviderControlPlane {
   final ManagedProviderUsageCoordinator usageCoordinator;
   final ManagedProviderCubit providerCubit;
   final ManagedProviderUsageCubit usageCubit;
+  final bool ownsProviderCubit;
+  final bool ownsUsageCubit;
+  final bool ownsUsageCoordinator;
+  final Future<void> Function()? closeOwnedHttpClient;
   Future<void>? _hydration;
+  bool _closed = false;
 
   Future<void> hydrate({required BootLog boot}) {
     final existing = _hydration;
@@ -274,12 +283,29 @@ class ManagedProviderControlPlane {
         managedProviderCubit: providerCubit,
         managedProviderUsageCubit: usageCubit,
       );
+
+  Future<void> invalidateForStorageContextChange() =>
+      usageCubit.invalidateForStorageContextChange();
+
+  Future<void> close() async {
+    if (_closed) return;
+    _closed = true;
+    if (ownsUsageCoordinator) await usageCoordinator.close();
+    if (ownsUsageCubit) await usageCubit.close();
+    if (ownsProviderCubit) await providerCubit.close();
+    final closeHttpClient = closeOwnedHttpClient;
+    if (closeHttpClient != null) await closeHttpClient();
+  }
 }
 
 /// Builds the CLI-independent adapter catalog used by the AppShell control
-/// plane. Official adapters receive application-owned boundaries only; the
-/// defaults intentionally report missing credentials and never inspect CLI
-/// provider files or include credential material in errors.
+/// plane. Official adapters receive application-owned boundaries only.
+///
+/// The real Claude/Codex application-auth integrations are intentionally
+/// deferred. Their default boundaries fail closed with a typed `unsupported`
+/// result and never inspect CLI provider files or include credential material
+/// in errors. Production integrations can be supplied through the injectable
+/// readers and clients below.
 ManagedProviderUsageRegistry buildDefaultManagedProviderUsageRegistry({
   OfficialSubscriptionAuthReader? claudeAuthReader,
   OfficialSubscriptionClient? claudeClient,
@@ -304,7 +330,11 @@ ManagedProviderUsageRegistry buildDefaultManagedProviderUsageRegistry({
 class _UnavailableOfficialSubscriptionAuthReader
     implements OfficialSubscriptionAuthReader {
   @override
-  Future<ProviderCredentialScope?> read(ManagedProvider provider) async => null;
+  Future<ProviderCredentialScope?> read(ManagedProvider provider) {
+    throw const ManagedProviderUsageQueryError(
+      ManagedProviderUsageQueryErrorCode.unsupported,
+    );
+  }
 }
 
 class _UnavailableOfficialSubscriptionClient
@@ -316,7 +346,7 @@ class _UnavailableOfficialSubscriptionClient
     required DateTime now,
   }) {
     throw const ManagedProviderUsageQueryError(
-      ManagedProviderUsageQueryErrorCode.missingCredential,
+      ManagedProviderUsageQueryErrorCode.unsupported,
     );
   }
 }
@@ -828,8 +858,14 @@ Future<AppShell> buildAppShell({
         codexAuthReader: managedProviderCodexAuthReader,
         codexClient: managedProviderCodexSubscriptionClient,
       );
-  final resolvedManagedProviderHttpClient =
-      managedProviderUsageHttpClient ?? _DefaultProviderUsageHttpClient();
+  final ownsManagedProviderHttpClient =
+      managedProviderUsageHttpClient == null &&
+      managedProviderUsageCoordinator == null;
+  final ProviderUsageHttpClient? resolvedManagedProviderHttpClient =
+      managedProviderUsageHttpClient ??
+      (managedProviderUsageCoordinator == null
+          ? _DefaultProviderUsageHttpClient()
+          : null);
   final resolvedManagedProviderUsageCoordinator =
       managedProviderUsageCoordinator ??
       ManagedProviderUsageCoordinator(
@@ -839,7 +875,7 @@ Future<AppShell> buildAppShell({
         credentials: ManagedProviderCredentialResolver(
           resolvedManagedProviderSecretStore,
         ),
-        http: resolvedManagedProviderHttpClient,
+        http: resolvedManagedProviderHttpClient!,
       );
   final resolvedManagedProviderUsageCubit =
       managedProviderUsageCubit ??
@@ -861,6 +897,15 @@ Future<AppShell> buildAppShell({
     usageCoordinator: resolvedManagedProviderUsageCoordinator,
     providerCubit: resolvedManagedProviderCubit,
     usageCubit: resolvedManagedProviderUsageCubit,
+    ownsProviderCubit: managedProviderCubit == null,
+    ownsUsageCubit: managedProviderUsageCubit == null,
+    ownsUsageCoordinator: managedProviderUsageCoordinator == null,
+    closeOwnedHttpClient: ownsManagedProviderHttpClient
+        ? () =>
+              (resolvedManagedProviderHttpClient!
+                      as _DefaultProviderUsageHttpClient)
+                  .close()
+        : null,
   );
 
   Future<void> persistSshHomePathCacheIfLive() async {
@@ -883,6 +928,7 @@ Future<AppShell> buildAppShell({
   // Persists the chosen home id, rebinds the registry home, and republishes it
   // on AppStorage.
   Future<void> setHomeTarget(String id) async {
+    await managedProviderControlPlane.invalidateForStorageContextChange();
     await homeTargetStore.save(id);
     homeTarget = homeTargetFromId(id);
     await runtimeContextRegistry.dispose(id);
@@ -899,6 +945,7 @@ Future<AppShell> buildAppShell({
   // Re-resolve the home context (e.g. after an ssh profile's details change):
   // drop the cached wrapper and rebuild it, but keep the live SSH storage pool.
   reinstallStorageContext = () async {
+    await managedProviderControlPlane.invalidateForStorageContextChange();
     await runtimeContextRegistry.dispose(
       defaultTargetResolver().id,
       notifyEvict: false,
@@ -1707,6 +1754,7 @@ Future<AppShell> buildAppShell({
   }
 
   reloadAllAppData = ({bool reinstallSshHome = true}) async {
+    await managedProviderControlPlane.invalidateForStorageContextChange();
     await AppDataBootstrap.reloadAll(
       boot: boot,
       sshProfileCubit: sshProfileCubit,
@@ -2156,6 +2204,8 @@ class _DefaultProviderUsageHttpClient implements ProviderUsageHttpClient {
 
   final http.Client _client;
 
+  Future<void> close() async => _client.close();
+
   @override
   Future<ProviderUsageHttpResponse> send(
     ProviderUsageHttpRequest request,
@@ -2209,19 +2259,27 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
 
   Future<void> _start() async {
     final bootSw = Stopwatch()..start();
+    AppShell? builtShell;
     try {
       appLogger.i('[boot] +0ms TeamPilotBootstrap starting buildAppShell');
-      final shell = await buildAppShell(
+      builtShell = await buildAppShell(
         preferences: widget.preferences,
         nativeAppDataPath: widget.nativeAppDataPath,
         defaultWorkspaceDirectoryFuture: widget.defaultWorkspaceDirectoryFuture,
         homeIndexPrefetchFuture: widget.homeIndexPrefetchFuture,
         bootstrapCubit: widget.bootstrapCubit,
       );
-      if (!mounted) return;
+      final shell = builtShell;
+      if (!mounted) {
+        await shell.managedProviderControlPlane.close();
+        return;
+      }
       await yieldUiFrame();
       await shell.bootstrapAppData();
-      if (!mounted) return;
+      if (!mounted) {
+        await shell.managedProviderControlPlane.close();
+        return;
+      }
       appLogger.i(
         '[boot] +${bootSw.elapsedMilliseconds}ms bootstrap complete '
         'workspaces=${shell.chatCubit.state.workspaces.length}',
@@ -2240,6 +2298,7 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
       if (!mounted) return;
       await completeBootSplashTransition();
     } on Object catch (error, stackTrace) {
+      await builtShell?.managedProviderControlPlane.close();
       appLogger.e(
         '[boot] buildAppShell failed',
         error: error,
@@ -2281,8 +2340,7 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
   void dispose() {
     final shell = _shell;
     if (shell != null) {
-      unawaited(shell.managedProviderCubit.close());
-      unawaited(shell.managedProviderUsageCubit.close());
+      unawaited(shell.managedProviderControlPlane.close());
     }
     super.dispose();
   }

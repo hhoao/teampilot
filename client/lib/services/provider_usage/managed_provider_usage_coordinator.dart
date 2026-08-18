@@ -94,7 +94,9 @@ class ManagedProviderUsageCoordinator {
   final Map<String, _ProviderCommitGate> _commitGates = {};
   final Map<String, int> _tokens = {};
   int _generation = 0;
+  int _storageContextGeneration = 0;
   bool _loaded = false;
+  bool _closed = false;
   Future<ManagedProviderUsageState>? _loadFlight;
   Future<List<ProviderUsageSnapshot>>? _refreshAllFlight;
 
@@ -115,18 +117,25 @@ class ManagedProviderUsageCoordinator {
 
   /// Loads usage cache before the provider catalog and never performs HTTP.
   Future<ManagedProviderUsageState> load() {
+    if (_closed) return Future<ManagedProviderUsageState>.value(state);
     final existing = _loadFlight;
     if (existing != null) return existing;
-    final flight = _loadCacheAndProviders();
+    final contextGeneration = _storageContextGeneration;
+    final flight = _loadCacheAndProviders(contextGeneration);
     _loadFlight = flight;
     return flight.whenComplete(() {
       if (identical(_loadFlight, flight)) _loadFlight = null;
     });
   }
 
-  Future<ManagedProviderUsageState> _loadCacheAndProviders() async {
+  Future<ManagedProviderUsageState> _loadCacheAndProviders(
+    int contextGeneration,
+  ) async {
     final cached = await _usageRepository.load();
     final configured = await _providerRepository.load();
+    if (contextGeneration != _storageContextGeneration || _closed) {
+      return state;
+    }
     _generation++;
     _providers
       ..clear()
@@ -157,17 +166,29 @@ class ManagedProviderUsageCoordinator {
   /// Refreshes one provider. Concurrent calls for the same provider share a
   /// Future, while calls for different providers run independently.
   Future<ProviderUsageSnapshot> refreshOne(String providerId) async {
+    if (_closed) return _unsupportedSnapshot(providerId.trim(), null);
+    final storageContextGeneration = _storageContextGeneration;
     await _ensureLoaded();
+    _ensureStorageContextCurrent(
+      storageContextGeneration,
+      providerId: providerId.trim(),
+    );
     await _synchronizeProviders();
+    _ensureStorageContextCurrent(storageContextGeneration);
     final id = providerId.trim();
     final provider = _providers[id];
     if (provider == null) return _unsupportedSnapshot(id, _snapshots[id]);
-    return _refreshLoadedProvider(provider, _generation);
+    return _refreshLoadedProvider(
+      provider,
+      _generation,
+      storageContextGeneration: storageContextGeneration,
+    );
   }
 
   /// Refreshes all configured providers through the same per-provider single-
   /// flight map used by targeted refreshes.
   Future<List<ProviderUsageSnapshot>> refreshAll() {
+    if (_closed) return Future<List<ProviderUsageSnapshot>>.value(const []);
     final existing = _refreshAllFlight;
     if (existing != null) return existing;
     final flight = _refreshAllInternal();
@@ -178,15 +199,21 @@ class ManagedProviderUsageCoordinator {
   }
 
   Future<List<ProviderUsageSnapshot>> _refreshAllInternal() async {
+    final storageContextGeneration = _storageContextGeneration;
     await _ensureLoaded();
+    _ensureStorageContextCurrent(storageContextGeneration);
     await _synchronizeProviders();
+    _ensureStorageContextCurrent(storageContextGeneration);
     // Do not advance the generation merely because the caller chose the
     // aggregate entry point. The per-provider pending future is shared with
     // targeted refreshes, so this must not create a duplicate request.
     final generation = _generation;
     final current = _providers.values.toList(growable: false);
     final results = await Future.wait(
-      current.map((provider) => _refreshForAll(provider, generation)),
+      current.map(
+        (provider) =>
+            _refreshForAll(provider, generation, storageContextGeneration),
+      ),
     );
     return [
       for (final result in results)
@@ -197,28 +224,40 @@ class ManagedProviderUsageCoordinator {
   Future<ProviderUsageSnapshot?> _refreshForAll(
     ManagedProvider provider,
     int generation,
+    int storageContextGeneration,
   ) async {
     try {
-      return await _refreshLoadedProvider(provider, generation);
+      return await _refreshLoadedProvider(
+        provider,
+        generation,
+        storageContextGeneration: storageContextGeneration,
+      );
     } on ManagedProviderUsageInvalidated {
+      if (storageContextGeneration != _storageContextGeneration) rethrow;
       final current = _providers[provider.id];
       if (current == null) return null;
       if (!current.enabled) {
         return _completeDisabledProvider(
           current,
           generation: _generation,
+          storageContextGeneration: storageContextGeneration,
           mutationRevision: _providerRepository.mutationRevision,
         );
       }
       // A cancellation or configuration change during all-refresh is retried
       // through the same serialized pending map, never concurrently.
-      return _refreshLoadedProvider(current, _generation);
+      return _refreshLoadedProvider(
+        current,
+        _generation,
+        storageContextGeneration: storageContextGeneration,
+      );
     }
   }
 
   /// Invalidates an in-flight provider request. Dart HTTP transports may not
   /// be cancellable, so the generation/token check discards its result.
   Future<void> cancelForProvider(String providerId) async {
+    if (_closed) return;
     final id = providerId.trim();
     if (id.isEmpty) return;
     // Record cancellation intent synchronously so a commit that is currently
@@ -235,15 +274,64 @@ class ManagedProviderUsageCoordinator {
     );
   }
 
+  /// Invalidates all refreshes and cache loads before the home storage context
+  /// is rebound. The underlying HTTP transport is intentionally not cancelled;
+  /// its result is rejected by the context generation/token checks and cannot
+  /// be written into the newly bound context.
+  Future<void> invalidateForStorageContextChange() async {
+    if (_closed) return;
+    _storageContextGeneration++;
+    _generation++;
+    _loaded = false;
+    _refreshAllFlight = null;
+    for (final entry in _pending.entries) {
+      entry.value.cancelled = true;
+      _tokens[entry.key] = (_tokens[entry.key] ?? 0) + 1;
+    }
+    _loadFlight = null;
+    final gates = [
+      for (final id in _pending.keys)
+        _commitGates
+            .putIfAbsent(id, _ProviderCommitGate.new)
+            .run<void>(() async {}),
+    ];
+    await Future.wait(gates);
+  }
+
+  /// Stops accepting new work and invalidates all in-flight results.
+  Future<void> close() async {
+    if (_closed) return;
+    _closed = true;
+    _storageContextGeneration++;
+    _generation++;
+    _loaded = false;
+    _refreshAllFlight = null;
+    _loadFlight = null;
+    for (final entry in _pending.entries) {
+      entry.value.cancelled = true;
+      _tokens[entry.key] = (_tokens[entry.key] ?? 0) + 1;
+    }
+    final gates = [
+      for (final id in _pending.keys)
+        _commitGates
+            .putIfAbsent(id, _ProviderCommitGate.new)
+            .run<void>(() async {}),
+    ];
+    await Future.wait(gates);
+  }
+
   Future<ProviderUsageSnapshot> _refreshLoadedProvider(
     ManagedProvider provider,
-    int generation,
-  ) {
+    int generation, {
+    required int storageContextGeneration,
+  }) {
     final id = provider.id;
+    _ensureStorageContextCurrent(storageContextGeneration, providerId: id);
     if (!provider.enabled) {
       return _completeDisabledProvider(
         provider,
         generation: generation,
+        storageContextGeneration: storageContextGeneration,
         mutationRevision: _providerRepository.mutationRevision,
       );
     }
@@ -251,8 +339,9 @@ class ManagedProviderUsageCoordinator {
     if (previousPending != null) {
       if (previousPending.cancelled) {
         return previousPending.future.then(
-          (_) => _startSuccessorAfterPending(id),
-          onError: (Object _, StackTrace __) => _startSuccessorAfterPending(id),
+          (_) => _startSuccessorAfterPending(id, storageContextGeneration),
+          onError: (Object _, StackTrace __) =>
+              _startSuccessorAfterPending(id, storageContextGeneration),
         );
       }
       if (previousPending.provider == provider) {
@@ -262,8 +351,9 @@ class ManagedProviderUsageCoordinator {
       // transport may not be cancellable, so wait for it before starting the
       // replacement; this preserves one underlying request per provider.
       return previousPending.future.then(
-        (_) => _startSuccessorAfterPending(id),
-        onError: (Object _, StackTrace __) => _startSuccessorAfterPending(id),
+        (_) => _startSuccessorAfterPending(id, storageContextGeneration),
+        onError: (Object _, StackTrace __) =>
+            _startSuccessorAfterPending(id, storageContextGeneration),
       );
     }
 
@@ -273,6 +363,7 @@ class ManagedProviderUsageCoordinator {
       provider,
       generation,
       token,
+      storageContextGeneration,
       _providerRepository.mutationRevision,
     );
     final pending = _PendingRefresh(
@@ -293,8 +384,13 @@ class ManagedProviderUsageCoordinator {
     return future;
   }
 
-  Future<ProviderUsageSnapshot> _startSuccessorAfterPending(String id) async {
+  Future<ProviderUsageSnapshot> _startSuccessorAfterPending(
+    String id,
+    int storageContextGeneration,
+  ) async {
+    _ensureStorageContextCurrent(storageContextGeneration);
     await _synchronizeProviders();
+    _ensureStorageContextCurrent(storageContextGeneration);
     final current = _providers[id];
     if (current == null) {
       _throwInvalidated(
@@ -306,21 +402,28 @@ class ManagedProviderUsageCoordinator {
       return _completeDisabledProvider(
         current,
         generation: _generation,
+        storageContextGeneration: storageContextGeneration,
         mutationRevision: _providerRepository.mutationRevision,
       );
     }
-    return _refreshLoadedProvider(current, _generation);
+    return _refreshLoadedProvider(
+      current,
+      _generation,
+      storageContextGeneration: storageContextGeneration,
+    );
   }
 
   Future<ProviderUsageSnapshot> _completeDisabledProvider(
     ManagedProvider provider, {
     required int generation,
+    required int storageContextGeneration,
     required int mutationRevision,
   }) async {
     final result = _unsupportedSnapshot(provider.id, _snapshots[provider.id]);
     return _commitResult(
       provider: provider,
       generation: generation,
+      storageContextGeneration: storageContextGeneration,
       mutationRevision: mutationRevision,
       result: result,
       previous: _snapshots[provider.id],
@@ -332,6 +435,7 @@ class ManagedProviderUsageCoordinator {
     ManagedProvider provider,
     int generation,
     int token,
+    int storageContextGeneration,
     int mutationRevision,
   ) async {
     final previous = _snapshots[provider.id];
@@ -341,6 +445,7 @@ class ManagedProviderUsageCoordinator {
         provider: provider,
         generation: generation,
         token: token,
+        storageContextGeneration: storageContextGeneration,
         mutationRevision: mutationRevision,
         result: result,
         previous: previous,
@@ -382,6 +487,7 @@ class ManagedProviderUsageCoordinator {
       provider: provider,
       generation: generation,
       token: token,
+      storageContextGeneration: storageContextGeneration,
       mutationRevision: mutationRevision,
       result: result,
       previous: previous,
@@ -391,6 +497,7 @@ class ManagedProviderUsageCoordinator {
   Future<ProviderUsageSnapshot> _commitResult({
     required ManagedProvider provider,
     required int generation,
+    required int storageContextGeneration,
     int? token,
     required int mutationRevision,
     required ProviderUsageSnapshot result,
@@ -403,6 +510,7 @@ class ManagedProviderUsageCoordinator {
           provider: provider,
           generation: generation,
           token: token,
+          storageContextGeneration: storageContextGeneration,
           requiresEnabled: requiresEnabled,
         )) {
           _throwInvalidated(provider.id, _invalidationCode(provider.id, token));
@@ -419,7 +527,9 @@ class ManagedProviderUsageCoordinator {
                   final stillCurrent = token == null
                       ? _isCurrentConfig(provider, generation, null)
                       : _isCurrent(provider, generation, token);
-                  return stillCurrent &&
+                  return storageContextGeneration ==
+                          _storageContextGeneration &&
+                      stillCurrent &&
                       _providerRepository.mutationRevision == mutationRevision;
                 },
               );
@@ -441,6 +551,7 @@ class ManagedProviderUsageCoordinator {
             provider: provider,
             generation: generation,
             token: token,
+            storageContextGeneration: storageContextGeneration,
             mutationRevision: mutationRevision,
             requiresEnabled: requiresEnabled,
           )) {
@@ -466,6 +577,18 @@ class ManagedProviderUsageCoordinator {
 
   Future<void> _ensureLoaded() async {
     if (!_loaded) await load();
+  }
+
+  void _ensureStorageContextCurrent(
+    int expectedGeneration, {
+    String providerId = '',
+  }) {
+    if (_closed || expectedGeneration != _storageContextGeneration) {
+      _throwInvalidated(
+        providerId,
+        ManagedProviderUsageInvalidationCode.refreshCancelled,
+      );
+    }
   }
 
   Future<void> _synchronizeProviders() async {
@@ -504,6 +627,7 @@ class ManagedProviderUsageCoordinator {
   bool _isCommitCurrent({
     required ManagedProvider provider,
     required int generation,
+    required int storageContextGeneration,
     required int? token,
     required int mutationRevision,
     required bool requiresEnabled,
@@ -511,6 +635,7 @@ class ManagedProviderUsageCoordinator {
       _isCommitLifecycleCurrent(
         provider: provider,
         generation: generation,
+        storageContextGeneration: storageContextGeneration,
         token: token,
         requiresEnabled: requiresEnabled,
       ) &&
@@ -519,13 +644,17 @@ class ManagedProviderUsageCoordinator {
   bool _isCommitLifecycleCurrent({
     required ManagedProvider provider,
     required int generation,
+    required int storageContextGeneration,
     required int? token,
     required bool requiresEnabled,
   }) {
     final current = token == null
         ? _isCurrentConfig(provider, generation, null)
         : _isCurrent(provider, generation, token);
-    return current && (!requiresEnabled || provider.enabled);
+    return !_closed &&
+        storageContextGeneration == _storageContextGeneration &&
+        current &&
+        (!requiresEnabled || provider.enabled);
   }
 
   ManagedProviderUsageInvalidationCode _invalidationCode(
