@@ -164,6 +164,63 @@ void main() {
     expect(usageCubit.isClosed, isTrue);
     expect(httpCloseCalls, 1);
   });
+
+  test('control-plane lease closes on failure and transfers on success',
+      () async {
+    final repository = _FakeManagedProviderRepository();
+    final usageCoordinator = _FakeManagedProviderUsageCoordinator();
+    final providerCubit = ManagedProviderCubit(repository: repository);
+    final usageCubit = ManagedProviderUsageCubit(coordinator: usageCoordinator);
+    var httpCloseCalls = 0;
+    final controlPlane = ManagedProviderControlPlane(
+      providerRepository: repository,
+      usageRepository: ManagedProviderUsageRepository(),
+      secretStore: ManagedProviderSecretStore(_EmptySecureStore()),
+      usageRegistry: ManagedProviderUsageRegistry(),
+      usageCoordinator: usageCoordinator,
+      providerCubit: providerCubit,
+      usageCubit: usageCubit,
+      ownsProviderCubit: true,
+      ownsUsageCubit: true,
+      ownsUsageCoordinator: true,
+      closeOwnedHttpClient: () async => httpCloseCalls++,
+    );
+    final lease = ManagedProviderControlPlaneLease(controlPlane);
+
+    await lease.closeIfOwned();
+    await lease.closeIfOwned();
+
+    expect(usageCoordinator.closeCalls, 1);
+    expect(httpCloseCalls, 1);
+
+    final transferredCoordinator = _FakeManagedProviderUsageCoordinator();
+    final transferredProviderCubit = ManagedProviderCubit(
+      repository: repository,
+    );
+    final transferredUsageCubit = ManagedProviderUsageCubit(
+      coordinator: transferredCoordinator,
+    );
+    final transferredControlPlane = ManagedProviderControlPlane(
+      providerRepository: repository,
+      usageRepository: ManagedProviderUsageRepository(),
+      secretStore: ManagedProviderSecretStore(_EmptySecureStore()),
+      usageRegistry: ManagedProviderUsageRegistry(),
+      usageCoordinator: transferredCoordinator,
+      providerCubit: transferredProviderCubit,
+      usageCubit: transferredUsageCubit,
+      ownsProviderCubit: true,
+      ownsUsageCubit: true,
+      ownsUsageCoordinator: true,
+    );
+    final transferredLease = ManagedProviderControlPlaneLease(
+      transferredControlPlane,
+    )..transferOwnership();
+
+    await transferredLease.closeIfOwned();
+    expect(transferredCoordinator.closeCalls, 0);
+    await transferredControlPlane.close();
+    expect(transferredCoordinator.closeCalls, 1);
+  });
 }
 
 class _FakeManagedProviderRepository extends ManagedProviderRepository {

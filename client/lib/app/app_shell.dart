@@ -298,6 +298,26 @@ class ManagedProviderControlPlane {
   }
 }
 
+/// Holds the control-plane resources while [buildAppShell] finishes wiring
+/// the shell. On success ownership is transferred to [AppShell]'s caller;
+/// otherwise the lease closes the resources exactly once.
+class ManagedProviderControlPlaneLease {
+  ManagedProviderControlPlaneLease(this.controlPlane);
+
+  final ManagedProviderControlPlane controlPlane;
+  bool _ownershipReleased = false;
+
+  void transferOwnership() {
+    _ownershipReleased = true;
+  }
+
+  Future<void> closeIfOwned() async {
+    if (_ownershipReleased) return;
+    _ownershipReleased = true;
+    await controlPlane.close();
+  }
+}
+
 /// Builds the CLI-independent adapter catalog used by the AppShell control
 /// plane. Official adapters receive application-owned boundaries only.
 ///
@@ -907,6 +927,10 @@ Future<AppShell> buildAppShell({
                   .close()
         : null,
   );
+  final managedProviderControlPlaneLease =
+      ManagedProviderControlPlaneLease(managedProviderControlPlane);
+
+  try {
 
   Future<void> persistSshHomePathCacheIfLive() async {
     final home = defaultTargetResolver();
@@ -2102,7 +2126,7 @@ Future<AppShell> buildAppShell({
     listTargets: () => runtimeTargetRegistry.listTargets(),
   );
 
-  return AppShell(
+  final shell = AppShell(
     cliToolRegistry: cliToolRegistry,
     homeTargetController: homeTargetController,
     directoryPicker: directoryPicker,
@@ -2193,6 +2217,12 @@ Future<AppShell> buildAppShell({
     workspaceContentSearchHost: workspaceContentSearchHost,
     uiZoomBaseline: uiZoomBaseline,
   );
+    managedProviderControlPlaneLease.transferOwnership();
+    return shell;
+  } on Object {
+    await managedProviderControlPlaneLease.closeIfOwned();
+    rethrow;
+  }
 }
 
 /// Production transport for the provider-usage adapter boundary. Keeping the
