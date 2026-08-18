@@ -104,21 +104,20 @@ final class PromptAssembler {
     final existing = sections[index];
     final comparison = _compareLayers(existing.scope, contribution.scope);
     if (role == PromptMergeRole.replace && comparison == 0) {
-      diagnostics.add(
-        ResourceAssemblyDiagnostic(
-          severity: ResourceAssemblyDiagnosticSeverity.warning,
+      throw ResourceAssemblyException([
+        ResourceAssemblyError.conflict(
           resourceKind: ResourceContributionKind.prompt,
           cli: cli,
           providerId: contribution.origin.providerId,
           sourceId: contribution.origin.sourceId,
+          previousProviderId: existing.origin.providerId,
+          previousSourceId: existing.origin.sourceId,
           message:
-              'Prompt replace conflict for id ${contribution.id}; '
-              'later ${_originLabel(contribution.origin)} replaced earlier '
-              '${_originLabel(existing.origin)}.',
+              'Prompt replace conflict for section ${contribution.id} at '
+              'the same layer; ${_originLabel(contribution.origin)} conflicts '
+              'with ${_originLabel(existing.origin)}.',
         ),
-      );
-      sections[index] = _PromptSectionBuilder.single(contribution);
-      return;
+      ]);
     }
 
     if (comparison > 0) {

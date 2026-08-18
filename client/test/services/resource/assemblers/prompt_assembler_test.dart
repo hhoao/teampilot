@@ -51,9 +51,9 @@ void main() {
   });
 
   test(
-    'same-layer replace uses the later contribution and reports conflict',
+    'same-layer replace conflicts are hard errors with both origins',
     () async {
-      final result = await PromptAssembler().assemble(
+      final future = PromptAssembler().assemble(
         context: context,
         providers: [
           _Provider('one', const [
@@ -65,15 +65,50 @@ void main() {
         ],
       );
 
-      expect(result.document.sections.single.content, 'two');
-      expect(result.diagnostics, hasLength(1));
-      final diagnostic = result.diagnostics.single;
-      expect(diagnostic.providerId, 'two');
-      expect(diagnostic.sourceId, 'two-source');
-      expect(diagnostic.message, contains('one'));
-      expect(diagnostic.message, contains('one-source'));
-      expect(diagnostic.message, contains('two'));
-      expect(diagnostic.message, contains('two-source'));
+      await expectLater(
+        future,
+        throwsA(
+          isA<ResourceAssemblyException>().having(
+            (exception) => exception.diagnostics.single,
+            'diagnostic',
+            isA<ResourceAssemblyError>()
+                .having(
+                  (diagnostic) => diagnostic.errorKind,
+                  'error kind',
+                  ResourceAssemblyErrorKind.conflict,
+                )
+                .having(
+                  (diagnostic) => diagnostic.providerId,
+                  'providerId',
+                  'two',
+                )
+                .having(
+                  (diagnostic) => diagnostic.sourceId,
+                  'sourceId',
+                  'two-source',
+                )
+                .having(
+                  (diagnostic) => diagnostic.previousProviderId,
+                  'previousProviderId',
+                  'one',
+                )
+                .having(
+                  (diagnostic) => diagnostic.previousSourceId,
+                  'previousSourceId',
+                  'one-source',
+                )
+                .having(
+                  (diagnostic) => diagnostic.message,
+                  'message',
+                  allOf(
+                    contains('same'),
+                    contains('one-source'),
+                    contains('two-source'),
+                  ),
+                ),
+          ),
+        ),
+      );
     },
   );
 
