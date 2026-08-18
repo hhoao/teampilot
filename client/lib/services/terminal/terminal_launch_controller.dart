@@ -68,6 +68,8 @@ final class TerminalLaunchController {
 
   VoidCallback? onProcessStarted;
   void Function(String message)? onProcessFailed;
+  void Function(String message)? onLaunchAttention;
+  VoidCallback? onLaunchAttentionCleared;
   VoidCallback? onProcessExited;
   void Function(String text)? writeToDisplay;
   void Function()? onConfirmedRunning;
@@ -79,6 +81,8 @@ final class TerminalLaunchController {
   bool Function()? _cursorSkipPermissions;
   OscTitleExtractor? _cursorOscTitles;
   var _cursorTitleWaiting = false;
+  var _hookTrustReviewReported = false;
+  var _startupOutput = '';
 
   bool get isDisposed => _disposed;
 
@@ -147,6 +151,8 @@ final class TerminalLaunchController {
     _startupExecutable = executable;
     _phase = TerminalLaunchPhase.spawning;
     _startFailed = false;
+    _hookTrustReviewReported = false;
+    _startupOutput = '';
     _armStartupDeadline();
   }
 
@@ -196,6 +202,10 @@ final class TerminalLaunchController {
 
   void writeToPty(Uint8List data) {
     if (transportReadyForIo && _transport != null) {
+      if (_hookTrustReviewReported) {
+        _hookTrustReviewReported = false;
+        onLaunchAttentionCleared?.call();
+      }
       _transport!.write(data);
     }
   }
@@ -397,10 +407,19 @@ final class TerminalLaunchController {
         if (data.isEmpty) return;
         feedPtyBytes(data);
         final text = utf8.decode(data, allowMalformed: true);
+        _startupOutput = TerminalStartupFailureDetector.appendOutput(
+          _startupOutput,
+          text,
+        );
+        final hookTrustReview =
+            !_hookTrustReviewReported &&
+            TerminalStartupFailureDetector.looksLikeCodexHookTrustReview(
+              _startupOutput,
+            );
         if (TerminalStartupFailureDetector.looksLikeCliStartupFailure(text)) {
           appLogger.e('[terminal] CLI error: ${text.trim()}');
         }
-        if (!_starting || _startFailed) return;
+        if (_startFailed) return;
         if (TerminalStartupFailureDetector.looksLikeCliStartupFailure(text)) {
           _handleStartFailure(
             TerminalStartupFailureDetector.launchFailureMessage(
@@ -419,7 +438,13 @@ final class TerminalLaunchController {
           );
           return;
         }
-        _confirmProcessStarted();
+        if (_starting) _confirmProcessStarted();
+        if (hookTrustReview) {
+          _hookTrustReviewReported = true;
+          onLaunchAttention?.call(
+            TerminalStartupFailureDetector.codexHookTrustReviewMessage,
+          );
+        }
       });
 
       transport.done.then((code) {
@@ -518,10 +543,13 @@ final class TerminalLaunchController {
     _outputSubscription?.cancel();
     _outputSubscription = null;
     onProcessStarted = null;
+    onLaunchAttention = null;
+    onLaunchAttentionCleared = null;
     onProcessExited = null;
     _transport?.close();
     _transport = null;
     _startupExecutable = null;
+    _startupOutput = '';
     appLogger.e('[terminal] $message', error: error, stackTrace: stackTrace);
     writeToDisplay?.call('\r\n$message\r\n');
     onProcessFailed?.call(message);
@@ -538,6 +566,8 @@ final class TerminalLaunchController {
     _phase = TerminalLaunchPhase.idle;
     _startupExecutable = null;
     onProcessStarted = null;
+    onLaunchAttention = null;
+    onLaunchAttentionCleared = null;
     activityTracker.reset();
   }
 }

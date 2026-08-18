@@ -105,6 +105,64 @@ void main() {
     expect(session.transportReadyForIo, isTrue);
   });
 
+  test('surfaces Codex hook trust review across pty output chunks', () async {
+    final handle = _FakeTransport();
+    var started = false;
+    var attentionCleared = false;
+    String? attention;
+    final session = TerminalSession(
+      executable: _ptyTestExecutable,
+      confirmFallback: const Duration(seconds: 5),
+      transportStarter:
+          (
+            executable, {
+            required arguments,
+            required workingDirectory,
+            required columns,
+            required rows,
+            environment,
+          }) {
+            return Future.value(handle);
+          },
+    );
+    addTearDown(() async {
+      session.dispose();
+      await handle.outputController.close();
+    });
+
+    session.configureLaunchAttention(
+      onAttention: (message) => attention = message,
+      onCleared: () => attentionCleared = true,
+    );
+    session.connect(
+      workingDirectory: Directory.systemTemp.path,
+      onProcessStarted: () => started = true,
+    );
+    session.onViewportResize(80, 24);
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+
+    handle.outputController.add(
+      Uint8List.fromList(utf8.encode('Hooks need re')),
+    );
+    await Future<void>.delayed(Duration.zero);
+    handle.outputController.add(
+      Uint8List.fromList(
+        utf8.encode(
+          'view\nHooks can run outside the sandbox after you trust them.\n'
+          '2. Trust all and continue\n',
+        ),
+      ),
+    );
+    await Future<void>.delayed(Duration.zero);
+
+    expect(started, isTrue);
+    expect(session.isRunning, isTrue);
+    expect(attention, contains('Hook'));
+
+    session.input.writeToPty('2');
+    expect(attentionCleared, isTrue);
+  });
+
   test('transportReadyForIo is false before connect', () {
     final session = TerminalSession(
       executable: _ptyTestExecutable,

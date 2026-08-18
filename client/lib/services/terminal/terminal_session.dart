@@ -135,6 +135,9 @@ class TerminalSession {
 
   void markUserTurnIdle() => _userTurnActive = false;
 
+  void Function(String message)? _onLaunchAttention;
+  VoidCallback? _onLaunchAttentionCleared;
+
   SshMemberSession? sshMemberSession;
 
   Map<String, String>? _extraEnvironment;
@@ -328,6 +331,8 @@ class TerminalSession {
 
     _launch.onProcessStarted = onProcessStarted;
     _launch.onProcessFailed = onProcessFailed;
+    _launch.onLaunchAttention = _onLaunchAttention;
+    _launch.onLaunchAttentionCleared = _onLaunchAttentionCleared;
     _launch.onProcessExited = onProcessExited;
     _launch.beginStartup(invocation.executable);
     _launch.spawnTransport(
@@ -353,6 +358,8 @@ class TerminalSession {
     _invalidateLinkProviders();
     _launch.onProcessStarted = onProcessStarted;
     _launch.onProcessFailed = onProcessFailed;
+    _launch.onLaunchAttention = _onLaunchAttention;
+    _launch.onLaunchAttentionCleared = _onLaunchAttentionCleared;
     _launch.onProcessExited = onProcessExited;
   }
 
@@ -425,6 +432,18 @@ class TerminalSession {
     _ptyEnvironment = null;
     _inputPipeline.clear();
     _userTurnActive = false;
+  }
+
+  /// Installs optional launch-attention reporting without expanding the
+  /// connect contract used by terminal test doubles and workspace shells.
+  void configureLaunchAttention({
+    void Function(String message)? onAttention,
+    VoidCallback? onCleared,
+  }) {
+    _onLaunchAttention = onAttention;
+    _onLaunchAttentionCleared = onCleared;
+    _launch.onLaunchAttention = onAttention;
+    _launch.onLaunchAttentionCleared = onCleared;
   }
 
   /// Cursor seats only: observe live OSC titles for permission attention.
