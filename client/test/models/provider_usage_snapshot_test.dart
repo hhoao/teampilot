@@ -72,6 +72,42 @@ void main() {
     expect(snapshot.measures.single.label, 'Balance');
   });
 
+  test('skips measures with non-finite or fractional reset timestamps', () {
+    final snapshot = ProviderUsageSnapshot.fromJson({
+      'providerId': 'p1',
+      'status': 'stale',
+      'measures': [
+        {
+          'label': 'Valid',
+          'kind': 'quota',
+          'remaining': '1.00',
+          'resetsAt': 100,
+        },
+        {
+          'label': 'NaN',
+          'kind': 'quota',
+          'remaining': '2.00',
+          'resetsAt': double.nan,
+        },
+        {
+          'label': 'Infinity',
+          'kind': 'quota',
+          'remaining': '3.00',
+          'resetsAt': double.infinity,
+        },
+        {
+          'label': 'Fractional',
+          'kind': 'quota',
+          'remaining': '4.00',
+          'resetsAt': 1.5,
+        },
+      ],
+    });
+
+    expect(snapshot.measures, hasLength(1));
+    expect(snapshot.measures.single.resetsAt, 100);
+  });
+
   test('keeps monetary decimal strings and clamps percentage values', () {
     final snapshot = ProviderUsageSnapshot.fromJson({
       'providerId': 'p1',
@@ -132,6 +168,7 @@ void main() {
         'key': 'secret',
         'privateKey': 'secret',
         'credential': 'secret',
+        'client secret': 'secret',
         'tokenCount': 3,
         'future': {'safe': true, 'tokenCount': 4},
       },
@@ -142,6 +179,7 @@ void main() {
     expect(json.containsKey('key'), isFalse);
     expect(json.containsKey('privateKey'), isFalse);
     expect(json.containsKey('credential'), isFalse);
+    expect(json.containsKey('client secret'), isFalse);
     expect(json['tokenCount'], 3);
     expect(json['future'], {'safe': true, 'tokenCount': 4});
   });
@@ -163,6 +201,20 @@ void main() {
       }).lastErrorMessage,
       isNull,
     );
+
+    final whitespaceSeparated = ProviderUsageSnapshot(
+      providerId: 'p1',
+      status: ProviderUsageStatus.error,
+      lastErrorMessage: 'request failed: client secret: super-secret',
+    );
+    final safeText = ProviderUsageSnapshot(
+      providerId: 'p1',
+      status: ProviderUsageStatus.error,
+      lastErrorMessage: 'client secret count: 2',
+    );
+
+    expect(whitespaceSeparated.lastErrorMessage, isNull);
+    expect(safeText.lastErrorMessage, 'client secret count: 2');
   });
 
   test('deep-copies and freezes measures and unknown fields', () {

@@ -83,7 +83,8 @@ class ProviderUsageMeasure extends Equatable {
       throw const FormatException('invalid provider usage measure');
     }
     if (currency != null && currency is! String ||
-        resetsAt != null && resetsAt is! num ||
+        resetsAt != null &&
+            (resetsAt is! num || !_isIntegralFiniteTimestamp(resetsAt)) ||
         json['total'] != null && json['total'] is! String ||
         json['used'] != null && json['used'] is! String ||
         json['remaining'] != null && json['remaining'] is! String) {
@@ -329,7 +330,7 @@ bool _isCredentialKey(String key) =>
     _credentialKeys.contains(_normalizeKey(key));
 
 bool _containsCredentialMaterial(String message) => RegExp(
-  r'(?:api[_-]?key|access[_-]?token|authorization|auth[_-]?token|client[_-]?secret|credential|private[_-]?key|password|refresh[_-]?token|oauth[_-]?token|\bkey\b|\btoken\b)\s*(?:=|:)\s*\S+|bearer\s+\S+',
+  r'(?:api[_\-\s]?key|access[_\-\s]?token|authorization|auth[_\-\s]?token|client[_\-\s]?secret|credential|private[_\-\s]?key|password|refresh[_\-\s]?token|oauth[_\-\s]?token|\bkey\b|\btoken\b)\s*(?:=|:)\s*\S+|bearer\s+\S+',
   caseSensitive: false,
 ).hasMatch(message);
 
@@ -430,4 +431,9 @@ bool _isPercentageUnit(String? unit) {
   return normalized == '%' ||
       normalized == 'percent' ||
       normalized == 'percentage';
+}
+
+bool _isIntegralFiniteTimestamp(num value) {
+  if (value is int) return true;
+  return value.isFinite && value == value.truncateToDouble();
 }
