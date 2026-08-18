@@ -7,11 +7,49 @@ import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/resource/assemblers/mcp_assembler.dart';
 import 'package:teampilot/services/resource/contribution/resource_assembly_error.dart';
 import 'package:teampilot/services/resource/providers/catalog_mcp_contribution_provider.dart';
+import 'package:teampilot/services/resource/providers/extra_mcp_contribution_provider.dart';
 import 'package:teampilot/services/resource/providers/mcp_contribution_provider.dart';
 import 'package:teampilot/services/resource/providers/plugin_mcp_contribution_provider.dart';
 import 'package:teampilot/services/resource/providers/smithery_mcp_contribution_provider.dart';
 
 void main() {
+  test('MCP provider context snapshots extra entry maps', () {
+    final entries = <String, Map<String, Object?>>{
+      'extra': {'type': 'stdio', 'command': 'before'},
+    };
+    final context = McpProviderContext(
+      cli: CliTool.claude,
+      extraServerEntries: entries,
+    );
+
+    entries['extra']!['command'] = 'after';
+    entries['later'] = {'type': 'stdio', 'command': 'later'};
+
+    expect(context.extraServerEntries.keys, ['extra']);
+    expect(context.extraServerEntries['extra']!['command'], 'before');
+    expect(
+      () => context.extraServerEntries['extra']!['command'] = 'mutated',
+      throwsUnsupportedError,
+    );
+    expect(
+      () => context.extraServerEntries['new'] = const {},
+      throwsUnsupportedError,
+    );
+  });
+
+  test('extra contribution origin identifies its entry source', () async {
+    final contributions = await ExtraMcpContributionProvider().provide(
+      McpProviderContext(
+        cli: CliTool.claude,
+        extraServerEntries: const {
+          'team-bus': {'type': 'stdio', 'command': 'bus'},
+        },
+      ),
+    );
+
+    expect(contributions.single.origin.sourceId, 'team-bus');
+  });
+
   test('catalog provider does not load repository for empty ids', () async {
     var loads = 0;
     final provider = CatalogMcpContributionProvider(

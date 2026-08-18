@@ -21,6 +21,7 @@ final class McpAssembler {
     ]);
 
     final providerErrors = <ResourceAssemblyError>[];
+    final assemblyErrors = <ResourceAssemblyError>[];
     final diagnostics = <ResourceAssemblyDiagnostic>[];
     final orderedKeys = <String>[];
     final selected = <String, McpContribution>{};
@@ -29,7 +30,12 @@ final class McpAssembler {
       providerErrors.addAll(batch.errors);
       diagnostics.addAll(batch.diagnostics);
       for (final contribution in batch.contributions) {
-        _validate(contribution, context.cli);
+        try {
+          _validate(contribution, context.cli);
+        } on ResourceAssemblyException catch (error) {
+          assemblyErrors.addAll(error.diagnostics);
+          continue;
+        }
         final key = _serverKey(contribution.server);
         final previous = selected[key];
         if (previous == null) {
@@ -44,7 +50,7 @@ final class McpAssembler {
           contribution.origin.kind,
         ).compareTo(_layer(previous.origin.kind));
         if (layerComparison == 0) {
-          throw ResourceAssemblyException([
+          assemblyErrors.add(
             ResourceAssemblyError.conflict(
               resourceKind: ResourceContributionKind.mcp,
               cli: context.cli,
@@ -55,7 +61,8 @@ final class McpAssembler {
                   'layer; retained ${_originLabel(previous.origin)} only '
                   'after rejecting ${_originLabel(contribution.origin)}.',
             ),
-          ]);
+          );
+          continue;
         }
 
         final higher = layerComparison > 0 ? contribution : previous;
@@ -76,8 +83,9 @@ final class McpAssembler {
       }
     }
 
-    if (providerErrors.isNotEmpty) {
-      throw ResourceAssemblyException(providerErrors);
+    final errors = [...providerErrors, ...assemblyErrors];
+    if (errors.isNotEmpty) {
+      throw ResourceAssemblyException(errors);
     }
 
     return McpAssemblyResult(

@@ -151,6 +151,76 @@ void main() {
     );
   });
 
+  test('provider errors and later conflicts are aggregated', () {
+    expect(
+      () => assembler.assemble(
+        context: context,
+        providers: [
+          _Provider.failure('provider-fails'),
+          _Provider([
+            _contribution(
+              'conflict',
+              ResourceOriginKind.workspace,
+              'one',
+              'first',
+            ),
+          ]),
+          _Provider([
+            _contribution(
+              'conflict',
+              ResourceOriginKind.workspace,
+              'two',
+              'second',
+            ),
+            const McpContribution(
+              sourceId: '',
+              server: StdioMcpServer(name: 'invalid', command: 'invalid'),
+              origin: ContributionOrigin(
+                providerId: 'invalid-provider',
+                kind: ResourceOriginKind.workspace,
+                sourceId: 'invalid-source',
+              ),
+            ),
+          ]),
+        ],
+      ),
+      throwsA(
+        isA<ResourceAssemblyException>().having(
+          (error) => error.diagnostics,
+          'diagnostics',
+          allOf(
+            hasLength(3),
+            contains(
+              isA<ResourceAssemblyError>().having(
+                (error) => error.providerId,
+                'provider',
+                'provider-fails',
+              ),
+            ),
+            contains(
+              isA<ResourceAssemblyError>()
+                  .having(
+                    (error) => error.errorKind,
+                    'kind',
+                    ResourceAssemblyErrorKind.conflict,
+                  )
+                  .having((error) => error.providerId, 'provider', 'second'),
+            ),
+            contains(
+              isA<ResourceAssemblyError>()
+                  .having(
+                    (error) => error.providerId,
+                    'provider',
+                    'invalid-provider',
+                  )
+                  .having((error) => error.sourceId, 'source', ''),
+            ),
+          ),
+        ),
+      ),
+    );
+  });
+
   test('empty input is a safe immutable no-op', () async {
     final result = await assembler.assemble(
       context: context,

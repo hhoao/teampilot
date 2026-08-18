@@ -26,9 +26,10 @@ final class ExtraMcpContributionProvider
         McpContribution(
           sourceId: server.name,
           server: server,
-          origin: const ContributionOrigin(
+          origin: ContributionOrigin(
             providerId: 'extra',
             kind: ResourceOriginKind.managed,
+            sourceId: server.name,
           ),
         ),
     ];
@@ -51,9 +52,10 @@ final class ExtraMcpContributionProvider
         McpContribution(
           sourceId: entry.key,
           server: spec,
-          origin: const ContributionOrigin(
+          origin: ContributionOrigin(
             providerId: 'extra',
             kind: ResourceOriginKind.managed,
+            sourceId: entry.key,
           ),
         ),
       );

@@ -17,10 +17,10 @@ class McpProviderContext {
     Map<String, String> credentials = const {},
     this.sourceId,
   }) : extraServers = List.unmodifiable(extraServers),
-       extraServerEntries = {
+       extraServerEntries = Map.unmodifiable({
          for (final entry in extraServerEntries.entries)
-           entry.key: Map<String, Object?>.unmodifiable(entry.value),
-       },
+           entry.key: _freezeMap(entry.value),
+       }),
        credentials = Map.unmodifiable(credentials),
        mcpServerIds = List.unmodifiable(mcpServerIds);
 
@@ -31,6 +31,22 @@ class McpProviderContext {
   final Map<String, Map<String, Object?>> extraServerEntries;
   final Map<String, String> credentials;
   final String? sourceId;
+}
+
+Map<String, Object?> _freezeMap(Map<String, Object?> value) => Map.unmodifiable(
+  {for (final entry in value.entries) entry.key: _freezeValue(entry.value)},
+);
+
+Object? _freezeValue(Object? value) {
+  if (value is Map) {
+    return Map.unmodifiable({
+      for (final entry in value.entries) entry.key: _freezeValue(entry.value),
+    });
+  }
+  if (value is Iterable) {
+    return List.unmodifiable(value.map(_freezeValue));
+  }
+  return value;
 }
 
 /// A target-neutral MCP server contribution.
