@@ -119,7 +119,7 @@ final class McpAssembler {
             resourceKind: ResourceContributionKind.mcp,
             cli: context.cli,
             providerId: provider.providerId,
-            sourceId: context.sourceId ?? provider.providerId,
+            sourceId: context.sourceId,
             message: 'MCP contribution provider failed: $error',
             cause: error,
             stackTrace: stackTrace,

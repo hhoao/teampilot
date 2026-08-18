@@ -54,58 +54,74 @@ final class PluginMcpContributionProvider
         );
         continue;
       }
-      final path = fs.pathContext.join(
-        pluginsRoot,
-        plugin.directory,
-        '.mcp.json',
-      );
-      final stat = await fs.stat(path);
-      if (!stat.isFile) {
-        if (plugin.capabilities.mcpServers.isNotEmpty) {
-          diagnostics.add(
-            _warning(
-              context.cli,
-              pluginId,
-              'Plugin MCP manifest is unavailable for $pluginId.',
-            ),
-          );
-        }
-        continue;
-      }
-      final text = await fs.readString(path);
-      if (text == null || text.trim().isEmpty) continue;
-      final root = (jsonDecode(text) as Map).cast<String, Object?>();
-      final servers =
-          (root['mcpServers'] as Map?)?.cast<String, Object?>() ?? const {};
-      for (final entry in servers.entries) {
-        final spec = McpServerSpec.fromCatalogJson(
-          entry.key,
-          entry.value is Map
-              ? (entry.value as Map).cast<String, Object?>()
-              : const {},
+      try {
+        final path = fs.pathContext.join(
+          pluginsRoot,
+          plugin.directory,
+          '.mcp.json',
         );
-        final sourceId = '$pluginId:${entry.key}';
-        if (spec == null) {
-          diagnostics.add(
-            _warning(
-              context.cli,
-              sourceId,
-              'Invalid plugin MCP payload was discarded.',
-            ),
-          );
+        final stat = await fs.stat(path);
+        if (!stat.isFile) {
+          if (plugin.capabilities.mcpServers.isNotEmpty) {
+            diagnostics.add(
+              _warning(
+                context.cli,
+                pluginId,
+                'Plugin MCP manifest is unavailable for $pluginId.',
+              ),
+            );
+          }
           continue;
         }
-        contributions.add(
-          McpContribution(
-            sourceId: sourceId,
-            server: spec,
-            origin: ContributionOrigin(
-              providerId: providerId,
-              kind: ResourceOriginKind.plugin,
+        final text = await fs.readString(path);
+        if (text == null || text.trim().isEmpty) continue;
+        final root = (jsonDecode(text) as Map).cast<String, Object?>();
+        final servers =
+            (root['mcpServers'] as Map?)?.cast<String, Object?>() ?? const {};
+        for (final entry in servers.entries) {
+          final spec = McpServerSpec.fromCatalogJson(
+            entry.key,
+            entry.value is Map
+                ? (entry.value as Map).cast<String, Object?>()
+                : const {},
+          );
+          final sourceId = '$pluginId:${entry.key}';
+          if (spec == null) {
+            diagnostics.add(
+              _warning(
+                context.cli,
+                sourceId,
+                'Invalid plugin MCP payload was discarded.',
+              ),
+            );
+            continue;
+          }
+          contributions.add(
+            McpContribution(
               sourceId: sourceId,
+              server: spec,
+              origin: ContributionOrigin(
+                providerId: providerId,
+                kind: ResourceOriginKind.plugin,
+                sourceId: sourceId,
+              ),
             ),
+          );
+        }
+      } on ResourceAssemblyException {
+        rethrow;
+      } on Object catch (error, stackTrace) {
+        throw ResourceAssemblyException([
+          ResourceAssemblyError.provider(
+            resourceKind: ResourceContributionKind.mcp,
+            cli: context.cli,
+            providerId: providerId,
+            sourceId: pluginId,
+            message: 'Plugin MCP provider failed: $error',
+            cause: error,
+            stackTrace: stackTrace,
           ),
-        );
+        ]);
       }
     }
     _diagnostics = List.unmodifiable(diagnostics);

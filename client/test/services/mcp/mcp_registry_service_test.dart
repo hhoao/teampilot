@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/mcp/mcp_registry_service.dart';
+import 'package:teampilot/services/mcp/mcp_registry_config_service.dart';
 import 'package:teampilot/models/mcp_registry_source.dart';
 import 'package:teampilot/models/mcp_server.dart';
 import 'package:teampilot/services/mcp/profile_mcp_linker_service.dart';
@@ -242,4 +243,39 @@ void main() {
       expect((bus['headers'] as Map)['X-Session'], sessionId);
     },
   );
+
+  test(
+    'empty simple MCP input is a no-op without loading catalog settings',
+    () async {
+      await McpRegistryService(
+        layout: layout,
+        registryConfigService: _FailingMcpRegistryConfigService(),
+      ).writeForSimpleSession(
+        workspaceId: 'workspace-empty',
+        sessionId: 'session-empty',
+        mcpServerIds: const [],
+      );
+    },
+  );
+
+  test('plugin-only MCP input skips catalog and Smithery providers', () async {
+    await McpRegistryService(
+      layout: layout,
+      registryConfigService: _FailingMcpRegistryConfigService(),
+    ).writeForSimpleSession(
+      workspaceId: 'workspace-plugin',
+      sessionId: 'session-plugin',
+      mcpServerIds: const [],
+      pluginIds: const ['missing-plugin'],
+    );
+  });
+}
+
+final class _FailingMcpRegistryConfigService extends McpRegistryConfigService {
+  _FailingMcpRegistryConfigService() : super();
+
+  @override
+  Future<McpRegistrySourcesConfig> load() async {
+    throw StateError('catalog settings must not be loaded');
+  }
 }

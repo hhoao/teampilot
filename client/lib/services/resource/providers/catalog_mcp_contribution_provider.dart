@@ -28,6 +28,21 @@ final class CatalogMcpContributionProvider
   final ResourceOriginKind originKind;
   List<ResourceAssemblyDiagnostic> _diagnostics = const [];
 
+  /// Creates a snapshot provider only when the snapshot file exists.
+  static Future<CatalogMcpContributionProvider?> fromSnapshotIfPresent({
+    required String snapshotPath,
+    Filesystem? fs,
+    ResourceOriginKind originKind = ResourceOriginKind.team,
+  }) async {
+    final provider = CatalogMcpContributionProvider(
+      snapshotPath: snapshotPath,
+      fs: fs,
+      originKind: originKind,
+    );
+    if (!(await provider._fs.stat(snapshotPath)).isFile) return null;
+    return provider;
+  }
+
   @override
   String get providerId => 'catalog';
 
@@ -37,9 +52,53 @@ final class CatalogMcpContributionProvider
   @override
   Future<Iterable<McpContribution>> provide(McpProviderContext context) async {
     final snapshot = snapshotPath?.trim() ?? '';
-    if (snapshot.isNotEmpty) return _fromSnapshot(context, snapshot);
+    if (snapshot.isNotEmpty) {
+      try {
+        return await _fromSnapshot(context, snapshot);
+      } on ResourceAssemblyException {
+        rethrow;
+      } on Object catch (error, stackTrace) {
+        throw ResourceAssemblyException([
+          ResourceAssemblyError.provider(
+            resourceKind: ResourceContributionKind.mcp,
+            cli: context.cli,
+            providerId: providerId,
+            sourceId: context.sourceId ?? snapshot,
+            message: 'MCP snapshot provider failed: $error',
+            cause: error,
+            stackTrace: stackTrace,
+          ),
+        ]);
+      }
+    }
+    if (!context.mcpServerIds.any((id) => id.trim().isNotEmpty)) {
+      _diagnostics = const [];
+      return const [];
+    }
 
-    final catalog = await (catalogLoader?.call() ?? McpRepository().loadAll());
+    late final Iterable<McpServer> catalog;
+    try {
+      catalog = await (catalogLoader?.call() ?? McpRepository().loadAll());
+    } on ResourceAssemblyException {
+      rethrow;
+    } on Object catch (error, stackTrace) {
+      final sourceId =
+          context.sourceId ??
+          context.mcpServerIds
+              .map((id) => id.trim())
+              .firstWhere((id) => id.isNotEmpty, orElse: () => providerId);
+      throw ResourceAssemblyException([
+        ResourceAssemblyError.provider(
+          resourceKind: ResourceContributionKind.mcp,
+          cli: context.cli,
+          providerId: providerId,
+          sourceId: sourceId,
+          message: 'MCP catalog provider failed: $error',
+          cause: error,
+          stackTrace: stackTrace,
+        ),
+      ]);
+    }
     final byId = <String, McpServer>{};
     for (final server in catalog) {
       byId.putIfAbsent(server.id, () => server);
@@ -106,52 +165,68 @@ final class CatalogMcpContributionProvider
     McpProviderContext context,
     String path,
   ) async {
-    final diagnostics = <ResourceAssemblyDiagnostic>[];
-    final stat = await _fs.stat(path);
-    if (!stat.isFile) {
-      _diagnostics = const [];
-      return const [];
-    }
-    final text = await _fs.readString(path);
-    if (text == null || text.trim().isEmpty) {
-      _diagnostics = const [];
-      return const [];
-    }
-    final root = (jsonDecode(text) as Map).cast<String, Object?>();
-    final rawServers =
-        (root['mcpServers'] as Map?)?.cast<String, Object?>() ?? const {};
-    final contributions = <McpContribution>[];
-    for (final entry in rawServers.entries) {
-      final spec = McpServerSpec.fromCatalogJson(
-        entry.key,
-        entry.value is Map
-            ? (entry.value as Map).cast<String, Object?>()
-            : const {},
-      );
-      if (spec == null) {
-        diagnostics.add(
-          _warning(
-            context.cli,
-            entry.key,
-            'Invalid MCP snapshot payload was discarded.',
+    try {
+      final diagnostics = <ResourceAssemblyDiagnostic>[];
+      final stat = await _fs.stat(path);
+      if (!stat.isFile) {
+        _diagnostics = const [];
+        return const [];
+      }
+      final text = await _fs.readString(path);
+      if (text == null || text.trim().isEmpty) {
+        _diagnostics = const [];
+        return const [];
+      }
+      final root = (jsonDecode(text) as Map).cast<String, Object?>();
+      final rawServers =
+          (root['mcpServers'] as Map?)?.cast<String, Object?>() ?? const {};
+      final contributions = <McpContribution>[];
+      for (final entry in rawServers.entries) {
+        final spec = McpServerSpec.fromCatalogJson(
+          entry.key,
+          entry.value is Map
+              ? (entry.value as Map).cast<String, Object?>()
+              : const {},
+        );
+        if (spec == null) {
+          diagnostics.add(
+            _warning(
+              context.cli,
+              entry.key,
+              'Invalid MCP snapshot payload was discarded.',
+            ),
+          );
+          continue;
+        }
+        contributions.add(
+          McpContribution(
+            sourceId: entry.key,
+            server: spec,
+            origin: ContributionOrigin(
+              providerId: providerId,
+              kind: originKind,
+              sourceId: entry.key,
+            ),
           ),
         );
-        continue;
       }
-      contributions.add(
-        McpContribution(
-          sourceId: entry.key,
-          server: spec,
-          origin: ContributionOrigin(
-            providerId: providerId,
-            kind: originKind,
-            sourceId: entry.key,
-          ),
+      _diagnostics = List.unmodifiable(diagnostics);
+      return List.unmodifiable(contributions);
+    } on ResourceAssemblyException {
+      rethrow;
+    } on Object catch (error, stackTrace) {
+      throw ResourceAssemblyException([
+        ResourceAssemblyError.provider(
+          resourceKind: ResourceContributionKind.mcp,
+          cli: context.cli,
+          providerId: providerId,
+          sourceId: context.sourceId ?? path,
+          message: 'MCP snapshot provider failed: $error',
+          cause: error,
+          stackTrace: stackTrace,
         ),
-      );
+      ]);
     }
-    _diagnostics = List.unmodifiable(diagnostics);
-    return List.unmodifiable(contributions);
   }
 
   ResourceAssemblyDiagnostic _warning(

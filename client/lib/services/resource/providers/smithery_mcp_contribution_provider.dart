@@ -23,25 +23,41 @@ final class SmitheryMcpContributionProvider
 
   @override
   Future<Iterable<McpContribution>> provide(McpProviderContext context) async {
-    final token = apiToken ?? context.credentials['smithery'];
-    final provided = await source.provide(context);
-    _diagnostics = source is McpContributionProviderDiagnostics
-        ? List.unmodifiable(
-            (source as McpContributionProviderDiagnostics).diagnostics,
-          )
-        : const [];
-    return [
-      for (final contribution in provided)
-        McpContribution(
-          sourceId: contribution.sourceId,
-          server: _apply(contribution.server, token),
-          origin: ContributionOrigin(
-            providerId: providerId,
-            kind: contribution.origin.kind,
-            sourceId: contribution.origin.sourceId,
+    try {
+      final token = apiToken ?? context.credentials['smithery'];
+      final provided = await source.provide(context);
+      _diagnostics = source is McpContributionProviderDiagnostics
+          ? List.unmodifiable(
+              (source as McpContributionProviderDiagnostics).diagnostics,
+            )
+          : const [];
+      return [
+        for (final contribution in provided)
+          McpContribution(
+            sourceId: contribution.sourceId,
+            server: _apply(contribution.server, token),
+            origin: ContributionOrigin(
+              providerId: contribution.origin.providerId,
+              kind: contribution.origin.kind,
+              sourceId: contribution.origin.sourceId,
+            ),
           ),
+      ];
+    } on ResourceAssemblyException {
+      rethrow;
+    } on Object catch (error, stackTrace) {
+      throw ResourceAssemblyException([
+        ResourceAssemblyError.provider(
+          resourceKind: ResourceContributionKind.mcp,
+          cli: context.cli,
+          providerId: source.providerId,
+          sourceId: context.sourceId ?? source.providerId,
+          message: 'Smithery MCP provider failed: $error',
+          cause: error,
+          stackTrace: stackTrace,
         ),
-    ];
+      ]);
+    }
   }
 
   McpServerSpec _apply(McpServerSpec server, String? token) {
