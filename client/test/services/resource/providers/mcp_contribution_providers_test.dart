@@ -116,6 +116,31 @@ void main() {
       ),
     );
   });
+
+  test('Smithery wrapper keeps the concrete underlying source id', () {
+    final provider = SmitheryMcpContributionProvider(
+      source: _OrdinaryFailingProvider(),
+    );
+
+    expect(
+      () => const McpAssembler().assemble(
+        context: McpProviderContext(
+          cli: CliTool.claude,
+          sourceId: 'wrong-wrapper-context',
+        ),
+        providers: [provider],
+      ),
+      throwsA(
+        isA<ResourceAssemblyException>().having(
+          (error) => error.diagnostics.single,
+          'diagnostic',
+          isA<ResourceAssemblyError>()
+              .having((error) => error.providerId, 'provider', 'catalog')
+              .having((error) => error.sourceId, 'source', 'catalog-a'),
+        ),
+      ),
+    );
+  });
 }
 
 final class _FailingProvider implements McpContributionProvider {
@@ -133,5 +158,19 @@ final class _FailingProvider implements McpContributionProvider {
         message: 'catalog failed',
       ),
     ]);
+  }
+}
+
+final class _OrdinaryFailingProvider
+    implements McpContributionProvider, McpContributionProviderSourceMetadata {
+  @override
+  String get providerId => 'catalog';
+
+  @override
+  String get activeSourceId => 'catalog-a';
+
+  @override
+  Future<Iterable<McpContribution>> provide(McpProviderContext context) {
+    throw StateError('catalog failed');
   }
 }

@@ -13,6 +13,7 @@ import '../storage/app_storage.dart';
 import '../plugin/installed_plugin_catalog.dart';
 import '../resource/assemblers/mcp_assembler.dart';
 import '../resource/contribution/resource_origin.dart';
+import '../resource/contribution/resource_assembly_result.dart';
 import '../resource/providers/catalog_mcp_contribution_provider.dart';
 import '../resource/providers/extra_mcp_contribution_provider.dart';
 import '../resource/providers/mcp_contribution_provider.dart';
@@ -84,7 +85,7 @@ class McpRegistryService {
       projectRoots: projectMcpRoots,
     );
 
-    if (assembled.hasCatalogSource) {
+    if (assembled.hasValidCatalogContribution) {
       await _mergeAppCredentials(
         tool: cli,
         workspaceId: trimmedWorkspaceId,
@@ -95,7 +96,7 @@ class McpRegistryService {
   }
 
   /// Writes team MCP catalog into the cursor workspace warm tier (`mcp.base.json`).
-  Future<void> writeCursorWorkspaceMcpBase({
+  Future<McpRegistryAssembly> writeCursorWorkspaceMcpBase({
     required String workspaceId,
     required String teamId,
     Map<String, Map<String, Object?>>? extraServers,
@@ -104,7 +105,9 @@ class McpRegistryService {
   }) async {
     final trimmedWorkspaceId = workspaceId.trim();
     final trimmedTeamId = teamId.trim();
-    if (trimmedWorkspaceId.isEmpty || trimmedTeamId.isEmpty) return;
+    if (trimmedWorkspaceId.isEmpty || trimmedTeamId.isEmpty) {
+      return McpRegistryAssembly.empty();
+    }
 
     final assembled = await _assemble(
       cli: CliTool.cursor,
@@ -113,10 +116,10 @@ class McpRegistryService {
       pluginIds: pluginIds,
     );
     final specs = assembled.result.servers;
-    if (specs.isEmpty) return;
+    if (specs.isEmpty) return assembled;
 
     final writer = _cliRegistry.capability<McpCapability>(CliTool.cursor);
-    if (writer == null) return;
+    if (writer == null) return assembled;
 
     await writer.write(
       fs: _fs,
@@ -134,6 +137,7 @@ class McpRegistryService {
       extraServers: extraServers,
       projectRoots: projectMcpRoots,
     );
+    return assembled;
   }
 
   /// Merges app MCP OAuth credentials into a mixed-mode member cursor config dir.
@@ -142,6 +146,7 @@ class McpRegistryService {
     required String sessionId,
     required String teamId,
     required String memberId,
+    required McpRegistryAssembly assembly,
   }) async {
     final trimmedWorkspaceId = workspaceId.trim();
     final trimmedSessionId = sessionId.trim();
@@ -154,11 +159,7 @@ class McpRegistryService {
       return;
     }
 
-    final assembled = await _assemble(
-      cli: CliTool.cursor,
-      snapshotPath: layout.identityMcpServersFile(trimmedTeamId),
-    );
-    if (!assembled.hasCatalogSource) {
+    if (!assembly.hasValidCatalogContribution) {
       return;
     }
 
@@ -217,7 +218,7 @@ class McpRegistryService {
       projectRoots: projectMcpRoots,
     );
 
-    if (assembled.hasCatalogSource) {
+    if (assembled.hasValidCatalogContribution) {
       await _mergeAppCredentials(
         tool: cli,
         workspaceId: trimmedWorkspaceId,
@@ -226,7 +227,7 @@ class McpRegistryService {
     }
   }
 
-  Future<_McpAssembly> _assemble({
+  Future<McpRegistryAssembly> _assemble({
     required CliTool cli,
     String? snapshotPath,
     List<String> mcpServerIds = const [],
@@ -289,9 +290,10 @@ class McpRegistryService {
       ),
       providers: providers,
     );
-    return _McpAssembly(
+    return McpRegistryAssembly(
       result: result,
-      hasCatalogSource: catalogProvider != null,
+      hasValidCatalogContribution:
+          catalogProvider?.hasValidContributions == true,
     );
   }
 
@@ -356,9 +358,20 @@ class McpRegistryService {
   }
 }
 
-final class _McpAssembly {
-  const _McpAssembly({required this.result, required this.hasCatalogSource});
+final class McpRegistryAssembly {
+  const McpRegistryAssembly({
+    required this.result,
+    required this.hasValidCatalogContribution,
+  });
+
+  factory McpRegistryAssembly.empty() => McpRegistryAssembly(
+    result: McpAssemblyResult(
+      servers: const [],
+      assembly: ResourceAssemblyResult(diagnostics: const []),
+    ),
+    hasValidCatalogContribution: false,
+  );
 
   final McpAssemblyResult result;
-  final bool hasCatalogSource;
+  final bool hasValidCatalogContribution;
 }

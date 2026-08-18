@@ -57,3 +57,12 @@ abstract interface class McpContributionProvider {
 abstract interface class McpContributionProviderDiagnostics {
   List<ResourceAssemblyDiagnostic> get diagnostics;
 }
+
+/// Exposes the concrete source currently being read by a provider wrapper.
+///
+/// This is intentionally separate from [McpContributionProvider.providerId]:
+/// a provider can wrap several catalog/source ids and failures must retain the
+/// source that was actually being accessed.
+abstract interface class McpContributionProviderSourceMetadata {
+  String? get activeSourceId;
+}

@@ -386,7 +386,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     );
     final mcpRegistry = McpRegistryService(fs: fs, layout: layout);
     if (warmTier) {
-      await mcpRegistry.writeCursorWorkspaceMcpBase(
+      final mcpAssembly = await mcpRegistry.writeCursorWorkspaceMcpBase(
         workspaceId: trimmedWorkspaceId,
         teamId: trimmedTeamId,
         extraServers: extraMcpServers,
@@ -400,6 +400,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
           sessionId: trimmedSessionId,
           teamId: trimmedTeamId,
           memberId: trimmedMemberId,
+          assembly: mcpAssembly,
         );
       }
     } else {

@@ -51,7 +51,7 @@ final class SmitheryMcpContributionProvider
           resourceKind: ResourceContributionKind.mcp,
           cli: context.cli,
           providerId: source.providerId,
-          sourceId: context.sourceId ?? source.providerId,
+          sourceId: _activeSourceId(context),
           message: 'Smithery MCP provider failed: $error',
           cause: error,
           stackTrace: stackTrace,
@@ -59,6 +59,11 @@ final class SmitheryMcpContributionProvider
       ]);
     }
   }
+
+  String? _activeSourceId(McpProviderContext context) =>
+      source is McpContributionProviderSourceMetadata
+      ? (source as McpContributionProviderSourceMetadata).activeSourceId
+      : context.sourceId;
 
   McpServerSpec _apply(McpServerSpec server, String? token) {
     if (server is! RemoteMcpServer || token == null || token.trim().isEmpty) {

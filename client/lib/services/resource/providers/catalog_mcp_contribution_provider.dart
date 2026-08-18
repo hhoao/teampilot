@@ -14,7 +14,10 @@ import 'mcp_contribution_provider.dart';
 /// Resolves enabled catalog ids or a persisted identity snapshot to neutral
 /// MCP server contributions.
 final class CatalogMcpContributionProvider
-    implements McpContributionProvider, McpContributionProviderDiagnostics {
+    implements
+        McpContributionProvider,
+        McpContributionProviderDiagnostics,
+        McpContributionProviderSourceMetadata {
   CatalogMcpContributionProvider({
     this.catalogLoader,
     this.snapshotPath,
@@ -27,6 +30,8 @@ final class CatalogMcpContributionProvider
   final Filesystem _fs;
   final ResourceOriginKind originKind;
   List<ResourceAssemblyDiagnostic> _diagnostics = const [];
+  String? _activeSourceId;
+  bool _hasValidContributions = false;
 
   /// Creates a snapshot provider only when the snapshot file exists.
   static Future<CatalogMcpContributionProvider?> fromSnapshotIfPresent({
@@ -50,9 +55,16 @@ final class CatalogMcpContributionProvider
   List<ResourceAssemblyDiagnostic> get diagnostics => _diagnostics;
 
   @override
+  String? get activeSourceId => _activeSourceId;
+
+  bool get hasValidContributions => _hasValidContributions;
+
+  @override
   Future<Iterable<McpContribution>> provide(McpProviderContext context) async {
+    _hasValidContributions = false;
     final snapshot = snapshotPath?.trim() ?? '';
     if (snapshot.isNotEmpty) {
+      _activeSourceId = context.sourceId ?? snapshot;
       try {
         return await _fromSnapshot(context, snapshot);
       } on ResourceAssemblyException {
@@ -63,7 +75,7 @@ final class CatalogMcpContributionProvider
             resourceKind: ResourceContributionKind.mcp,
             cli: context.cli,
             providerId: providerId,
-            sourceId: context.sourceId ?? snapshot,
+            sourceId: _activeSourceId ?? context.sourceId ?? snapshot,
             message: 'MCP snapshot provider failed: $error',
             cause: error,
             stackTrace: stackTrace,
@@ -73,8 +85,16 @@ final class CatalogMcpContributionProvider
     }
     if (!context.mcpServerIds.any((id) => id.trim().isNotEmpty)) {
       _diagnostics = const [];
+      _activeSourceId = null;
+      _hasValidContributions = false;
       return const [];
     }
+
+    _activeSourceId =
+        _activeSourceId ??
+        context.mcpServerIds
+            .map((id) => id.trim())
+            .firstWhere((id) => id.isNotEmpty, orElse: () => providerId);
 
     late final Iterable<McpServer> catalog;
     try {
@@ -158,6 +178,7 @@ final class CatalogMcpContributionProvider
       );
     }
     _diagnostics = List.unmodifiable(diagnostics);
+    _hasValidContributions = contributions.isNotEmpty;
     return List.unmodifiable(contributions);
   }
 
@@ -165,16 +186,19 @@ final class CatalogMcpContributionProvider
     McpProviderContext context,
     String path,
   ) async {
+    _activeSourceId = context.sourceId ?? path;
     try {
       final diagnostics = <ResourceAssemblyDiagnostic>[];
       final stat = await _fs.stat(path);
       if (!stat.isFile) {
         _diagnostics = const [];
+        _hasValidContributions = false;
         return const [];
       }
       final text = await _fs.readString(path);
       if (text == null || text.trim().isEmpty) {
         _diagnostics = const [];
+        _hasValidContributions = false;
         return const [];
       }
       final root = (jsonDecode(text) as Map).cast<String, Object?>();
@@ -211,6 +235,7 @@ final class CatalogMcpContributionProvider
         );
       }
       _diagnostics = List.unmodifiable(diagnostics);
+      _hasValidContributions = contributions.isNotEmpty;
       return List.unmodifiable(contributions);
     } on ResourceAssemblyException {
       rethrow;
@@ -220,7 +245,7 @@ final class CatalogMcpContributionProvider
           resourceKind: ResourceContributionKind.mcp,
           cli: context.cli,
           providerId: providerId,
-          sourceId: context.sourceId ?? path,
+          sourceId: _activeSourceId ?? context.sourceId ?? path,
           message: 'MCP snapshot provider failed: $error',
           cause: error,
           stackTrace: stackTrace,
