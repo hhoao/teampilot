@@ -7,19 +7,35 @@ import 'providers/skill_contribution_provider.dart';
 
 /// Ordered providers grouped by resource kind.
 class ResourceProviderSet {
-  const ResourceProviderSet({
-    this.prompts = const [],
-    this.skills = const [],
-    this.mcp = const [],
-    this.hooks = const [],
-  });
+  ResourceProviderSet({
+    Iterable<PromptContributionProvider> prompts = const [],
+    Iterable<SkillContributionProvider> skills = const [],
+    Iterable<McpContributionProvider> mcp = const [],
+    Iterable<HookContributionProvider> hooks = const [],
+  }) : prompts = _copyAndValidate(
+         prompts,
+         (provider) => provider.providerId,
+         'prompts',
+       ),
+       skills = _copyAndValidate(
+         skills,
+         (provider) => provider.providerId,
+         'skills',
+       ),
+       mcp = _copyAndValidate(mcp, (provider) => provider.providerId, 'mcp'),
+       hooks = _copyAndValidate(
+         hooks,
+         (provider) => provider.providerId,
+         'hooks',
+       );
 
-  ResourceProviderSet._composed({
-    required this.prompts,
-    required this.skills,
-    required this.mcp,
-    required this.hooks,
-  });
+  const ResourceProviderSet._empty()
+    : prompts = const [],
+      skills = const [],
+      mcp = const [],
+      hooks = const [];
+
+  static const empty = ResourceProviderSet._empty();
 
   final List<PromptContributionProvider> prompts;
   final List<SkillContributionProvider> skills;
@@ -30,32 +46,24 @@ class ResourceProviderSet {
   static ResourceProviderSet fromRegistryAndInjected({
     required CliTool cli,
     required CliToolRegistry registry,
-    ResourceProviderSet injected = const ResourceProviderSet(),
+    ResourceProviderSet injected = empty,
   }) {
-    return ResourceProviderSet._composed(
+    return ResourceProviderSet(
       prompts: _compose(
         registry.providersOf<PromptContributionProvider>(cli),
         injected.prompts,
-        (provider) => provider.providerId,
-        'prompts',
       ),
       skills: _compose(
         registry.providersOf<SkillContributionProvider>(cli),
         injected.skills,
-        (provider) => provider.providerId,
-        'skills',
       ),
       mcp: _compose(
         registry.providersOf<McpContributionProvider>(cli),
         injected.mcp,
-        (provider) => provider.providerId,
-        'mcp',
       ),
       hooks: _compose(
         registry.providersOf<HookContributionProvider>(cli),
         injected.hooks,
-        (provider) => provider.providerId,
-        'hooks',
       ),
     );
   }
@@ -63,13 +71,16 @@ class ResourceProviderSet {
   static List<T> _compose<T>(
     Iterable<T> registryProviders,
     Iterable<T> injectedProviders,
+  ) {
+    return [...registryProviders, ...injectedProviders];
+  }
+
+  static List<T> _copyAndValidate<T>(
+    Iterable<T> providers,
     String Function(T provider) providerId,
     String resourceKind,
   ) {
-    final result = List<T>.unmodifiable([
-      ...registryProviders,
-      ...injectedProviders,
-    ]);
+    final result = List<T>.unmodifiable(providers);
     final seen = <String>{};
     for (final provider in result) {
       if (!seen.add(providerId(provider))) {

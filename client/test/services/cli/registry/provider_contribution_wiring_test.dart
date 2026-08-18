@@ -55,6 +55,81 @@ void main() {
     );
   });
 
+  test('public constructor copies and freezes every provider list', () {
+    final prompts = [const _PromptProvider('prompt')];
+    final skills = [const _SkillProvider('skill')];
+    final mcp = [const _McpProvider('mcp')];
+    final hooks = [const _HookProvider('hook')];
+    final set = ResourceProviderSet(
+      prompts: prompts,
+      skills: skills,
+      mcp: mcp,
+      hooks: hooks,
+    );
+
+    prompts.add(const _PromptProvider('late-prompt'));
+    skills.add(const _SkillProvider('late-skill'));
+    mcp.add(const _McpProvider('late-mcp'));
+    hooks.add(const _HookProvider('late-hook'));
+
+    expect(set.prompts.map((provider) => provider.providerId), ['prompt']);
+    expect(set.skills.map((provider) => provider.providerId), ['skill']);
+    expect(set.mcp.map((provider) => provider.providerId), ['mcp']);
+    expect(set.hooks.map((provider) => provider.providerId), ['hook']);
+    expect(
+      () => set.prompts.add(const _PromptProvider('mutation')),
+      throwsUnsupportedError,
+    );
+    expect(
+      () => set.skills.add(const _SkillProvider('mutation')),
+      throwsUnsupportedError,
+    );
+    expect(
+      () => set.mcp.add(const _McpProvider('mutation')),
+      throwsUnsupportedError,
+    );
+    expect(
+      () => set.hooks.add(const _HookProvider('mutation')),
+      throwsUnsupportedError,
+    );
+  });
+
+  test('public constructor rejects duplicate ids in every resource kind', () {
+    expect(
+      () => ResourceProviderSet(
+        prompts: [
+          const _PromptProvider('duplicate'),
+          const _PromptProvider('duplicate'),
+        ],
+      ),
+      throwsStateError,
+    );
+    expect(
+      () => ResourceProviderSet(
+        skills: [
+          const _SkillProvider('duplicate'),
+          const _SkillProvider('duplicate'),
+        ],
+      ),
+      throwsStateError,
+    );
+    expect(
+      () => ResourceProviderSet(
+        mcp: [const _McpProvider('duplicate'), const _McpProvider('duplicate')],
+      ),
+      throwsStateError,
+    );
+    expect(
+      () => ResourceProviderSet(
+        hooks: [
+          const _HookProvider('duplicate'),
+          const _HookProvider('duplicate'),
+        ],
+      ),
+      throwsStateError,
+    );
+  });
+
   test(
     'provider set rejects duplicate provider ids within one resource kind',
     () {
