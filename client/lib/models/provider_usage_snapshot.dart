@@ -10,13 +10,11 @@ enum ProviderUsageStatus {
   unknown('unknown');
 
   const ProviderUsageStatus(this.value);
-
   final String value;
 
   static ProviderUsageStatus fromJson(Object? raw) {
-    final value = raw?.toString().trim();
     for (final status in values) {
-      if (status.value == value) return status;
+      if (status.value == raw?.toString().trim()) return status;
     }
     return ProviderUsageStatus.unknown;
   }
@@ -30,13 +28,11 @@ enum ProviderUsageMeasureKind {
   unknown('unknown');
 
   const ProviderUsageMeasureKind(this.value);
-
   final String value;
 
   static ProviderUsageMeasureKind fromJson(Object? raw) {
-    final value = raw?.toString().trim();
     for (final kind in values) {
-      if (kind.value == value) return kind;
+      if (kind.value == raw?.toString().trim()) return kind;
     }
     return ProviderUsageMeasureKind.unknown;
   }
@@ -44,7 +40,29 @@ enum ProviderUsageMeasureKind {
 
 @immutable
 class ProviderUsageMeasure extends Equatable {
-  const ProviderUsageMeasure({
+  factory ProviderUsageMeasure({
+    required String label,
+    required ProviderUsageMeasureKind kind,
+    String? total,
+    String? used,
+    String? remaining,
+    String? unit,
+    String? currency,
+    int? resetsAt,
+    Map<String, Object?> unknownFields = const {},
+  }) => ProviderUsageMeasure._(
+    label: label,
+    kind: kind,
+    total: _clampPercentage(_decimalString(total, 'total'), unit),
+    used: _clampPercentage(_decimalString(used, 'used'), unit),
+    remaining: _clampPercentage(_decimalString(remaining, 'remaining'), unit),
+    unit: unit,
+    currency: currency,
+    resetsAt: resetsAt,
+    unknownFields: _freezeFields(unknownFields),
+  );
+
+  const ProviderUsageMeasure._({
     required this.label,
     required this.kind,
     this.total,
@@ -59,46 +77,30 @@ class ProviderUsageMeasure extends Equatable {
   factory ProviderUsageMeasure.fromJson(Map<String, Object?> json) {
     final label = json['label'];
     final unit = json['unit'];
+    final currency = json['currency'];
+    final resetsAt = json['resetsAt'];
     if (label is! String || unit != null && unit is! String) {
       throw const FormatException('invalid provider usage measure');
     }
-    final unitString = unit is String ? unit : null;
-
-    final total = _decimalString(json['total'], 'total');
-    final used = _decimalString(json['used'], 'used');
-    final remaining = _decimalString(json['remaining'], 'remaining');
-    final currency = json['currency'];
-    if (currency != null && currency is! String) {
-      throw const FormatException('invalid provider usage currency');
+    if (currency != null && currency is! String ||
+        resetsAt != null && resetsAt is! num ||
+        json['total'] != null && json['total'] is! String ||
+        json['used'] != null && json['used'] is! String ||
+        json['remaining'] != null && json['remaining'] is! String) {
+      throw const FormatException('invalid provider usage measure');
     }
-    final resetsAt = json['resetsAt'];
-    if (resetsAt != null && resetsAt is! num) {
-      throw const FormatException('invalid provider usage reset time');
-    }
-
     return ProviderUsageMeasure(
       label: label,
       kind: ProviderUsageMeasureKind.fromJson(json['kind']),
-      total: _clampPercentage(total, unitString),
-      used: _clampPercentage(used, unitString),
-      remaining: _clampPercentage(remaining, unitString),
-      unit: unitString,
+      total: json['total'] as String?,
+      used: json['used'] as String?,
+      remaining: json['remaining'] as String?,
+      unit: unit as String?,
       currency: currency as String?,
       resetsAt: (resetsAt as num?)?.toInt(),
-      unknownFields: _unknownFields(json, _knownKeys),
+      unknownFields: _unknownFields(json, _measureKnownKeys),
     );
   }
-
-  static const _knownKeys = {
-    'label',
-    'kind',
-    'total',
-    'used',
-    'remaining',
-    'unit',
-    'currency',
-    'resetsAt',
-  };
 
   final String label;
   final ProviderUsageMeasureKind kind;
@@ -110,8 +112,30 @@ class ProviderUsageMeasure extends Equatable {
   final int? resetsAt;
   final Map<String, Object?> unknownFields;
 
+  ProviderUsageMeasure copyWith({
+    String? label,
+    ProviderUsageMeasureKind? kind,
+    String? total,
+    String? used,
+    String? remaining,
+    String? unit,
+    String? currency,
+    int? resetsAt,
+    Map<String, Object?>? unknownFields,
+  }) => ProviderUsageMeasure(
+    label: label ?? this.label,
+    kind: kind ?? this.kind,
+    total: total ?? this.total,
+    used: used ?? this.used,
+    remaining: remaining ?? this.remaining,
+    unit: unit ?? this.unit,
+    currency: currency ?? this.currency,
+    resetsAt: resetsAt ?? this.resetsAt,
+    unknownFields: unknownFields ?? this.unknownFields,
+  );
+
   Map<String, Object?> toJson() => {
-    ..._safeUnknownFields(unknownFields),
+    ..._thawFields(unknownFields),
     'label': label,
     'kind': kind.value,
     if (total != null) 'total': _clampPercentage(total, unit),
@@ -138,10 +162,34 @@ class ProviderUsageMeasure extends Equatable {
 
 @immutable
 class ProviderUsageSnapshot extends Equatable {
-  const ProviderUsageSnapshot({
+  factory ProviderUsageSnapshot({
+    required String providerId,
+    required ProviderUsageStatus status,
+    List<ProviderUsageMeasure>? measures,
+    int? fetchedAt,
+    int? staleAt,
+    String? lastErrorCode,
+    String? lastErrorMessage,
+    String? adapterVersion,
+    int schemaVersion = 1,
+    Map<String, Object?> unknownFields = const {},
+  }) => ProviderUsageSnapshot._(
+    providerId: providerId,
+    status: status,
+    measures: List.unmodifiable(measures ?? const []),
+    fetchedAt: fetchedAt,
+    staleAt: staleAt,
+    lastErrorCode: lastErrorCode,
+    lastErrorMessage: _safeErrorMessage(lastErrorMessage),
+    adapterVersion: adapterVersion,
+    schemaVersion: schemaVersion,
+    unknownFields: _freezeFields(unknownFields),
+  );
+
+  const ProviderUsageSnapshot._({
     required this.providerId,
     required this.status,
-    this.measures = const [],
+    required this.measures,
     this.fetchedAt,
     this.staleAt,
     this.lastErrorCode,
@@ -152,8 +200,8 @@ class ProviderUsageSnapshot extends Equatable {
   });
 
   factory ProviderUsageSnapshot.fromJson(Map<String, Object?> json) {
-    final rawMeasures = json['measures'];
     final measures = <ProviderUsageMeasure>[];
+    final rawMeasures = json['measures'];
     if (rawMeasures is List) {
       for (final raw in rawMeasures) {
         if (raw is! Map) continue;
@@ -162,47 +210,33 @@ class ProviderUsageSnapshot extends Equatable {
             ProviderUsageMeasure.fromJson(Map<String, Object?>.from(raw)),
           );
         } on FormatException {
-          // A malformed measure must not discard the other cached measures.
+          // Preserve valid cached measures when one entry is malformed.
         } on TypeError {
-          // A malformed measure must not discard the other cached measures.
+          // Preserve valid cached measures when one entry is malformed.
         }
       }
     }
-
-    final lastErrorCode = json['lastErrorCode'];
-    final lastErrorMessage = json['lastErrorMessage'];
+    final errorCode = json['lastErrorCode'];
+    final errorMessage = json['lastErrorMessage'];
     final adapterVersion = json['adapterVersion'];
-    if (lastErrorCode != null && lastErrorCode is! String ||
-        lastErrorMessage != null && lastErrorMessage is! String ||
+    if (errorCode != null && errorCode is! String ||
+        errorMessage != null && errorMessage is! String ||
         adapterVersion != null && adapterVersion is! String) {
       throw const FormatException('invalid provider usage snapshot');
     }
-
     return ProviderUsageSnapshot(
       providerId: json['providerId'] as String? ?? '',
       status: ProviderUsageStatus.fromJson(json['status']),
-      measures: List.unmodifiable(measures),
+      measures: measures,
       fetchedAt: (json['fetchedAt'] as num?)?.toInt(),
       staleAt: (json['staleAt'] as num?)?.toInt(),
-      lastErrorCode: lastErrorCode as String?,
-      lastErrorMessage: lastErrorMessage as String?,
+      lastErrorCode: errorCode as String?,
+      lastErrorMessage: errorMessage as String?,
       adapterVersion: adapterVersion as String?,
       schemaVersion: (json['schemaVersion'] as num?)?.toInt() ?? 1,
-      unknownFields: _unknownFields(json, _knownKeys),
+      unknownFields: _unknownFields(json, _snapshotKnownKeys),
     );
   }
-
-  static const _knownKeys = {
-    'providerId',
-    'status',
-    'measures',
-    'fetchedAt',
-    'staleAt',
-    'lastErrorCode',
-    'lastErrorMessage',
-    'adapterVersion',
-    'schemaVersion',
-  };
 
   final String providerId;
   final ProviderUsageStatus status;
@@ -240,7 +274,7 @@ class ProviderUsageSnapshot extends Equatable {
   );
 
   Map<String, Object?> toJson() => {
-    ..._safeUnknownFields(unknownFields),
+    ..._thawFields(unknownFields),
     'providerId': providerId,
     'status': status.value,
     'measures': measures.map((measure) => measure.toJson()).toList(),
@@ -267,68 +301,125 @@ class ProviderUsageSnapshot extends Equatable {
   ];
 }
 
-const _credentialKeyFragments = {
+const _credentialKeys = {
   'apikey',
+  'accesskey',
   'accesstoken',
   'authorization',
+  'authtoken',
   'clientsecret',
+  'credential',
+  'credentials',
+  'key',
+  'oauthtoken',
   'password',
+  'privatekey',
+  'refreshtoken',
   'secret',
+  'secretkey',
   'token',
 };
 
-bool _isCredentialKey(String key) {
-  final normalized = key.replaceAll('_', '').replaceAll('-', '').toLowerCase();
-  return _credentialKeyFragments.any(normalized.contains);
-}
+String _normalizeKey(String key) => key
+    .replaceAll('_', '')
+    .replaceAll('-', '')
+    .replaceAll(' ', '')
+    .toLowerCase();
+bool _isCredentialKey(String key) =>
+    _credentialKeys.contains(_normalizeKey(key));
+
+bool _containsCredentialMaterial(String message) => RegExp(
+  r'(?:api[_-]?key|access[_-]?token|authorization|auth[_-]?token|client[_-]?secret|credential|private[_-]?key|password|refresh[_-]?token|oauth[_-]?token|\bkey\b|\btoken\b)\s*(?:=|:)\s*\S+|bearer\s+\S+',
+  caseSensitive: false,
+).hasMatch(message);
+
+String? _safeErrorMessage(String? message) =>
+    message != null && _containsCredentialMaterial(message) ? null : message;
 
 Map<String, Object?> _unknownFields(
   Map<String, Object?> json,
   Set<String> knownKeys,
-) => {
+) => _freezeFields({
   for (final entry in json.entries)
-    if (!knownKeys.contains(entry.key) && !_isCredentialKey(entry.key))
-      entry.key: _sanitizeUnknown(entry.value),
+    if (!knownKeys.contains(entry.key)) entry.key: entry.value,
+});
+
+const _measureKnownKeys = {
+  'label',
+  'kind',
+  'total',
+  'used',
+  'remaining',
+  'unit',
+  'currency',
+  'resetsAt',
 };
 
-Map<String, Object?> _safeUnknownFields(Map<String, Object?> fields) => {
+const _snapshotKnownKeys = {
+  'providerId',
+  'status',
+  'measures',
+  'fetchedAt',
+  'staleAt',
+  'lastErrorCode',
+  'lastErrorMessage',
+  'adapterVersion',
+  'schemaVersion',
+};
+
+Map<String, Object?> _freezeFields(Map<String, Object?> fields) =>
+    Map.unmodifiable({
+      for (final entry in fields.entries)
+        if (!_isCredentialKey(entry.key)) entry.key: _freezeValue(entry.value),
+    });
+
+Object? _freezeValue(Object? value) {
+  if (value is Map) {
+    return Map.unmodifiable({
+      for (final entry in value.entries)
+        if (entry.key is String && !_isCredentialKey(entry.key as String))
+          entry.key as String: _freezeValue(entry.value),
+    });
+  }
+  if (value is List) return List.unmodifiable(value.map(_freezeValue));
+  return value;
+}
+
+Map<String, Object?> _thawFields(Map<String, Object?> fields) => {
   for (final entry in fields.entries)
-    if (!_isCredentialKey(entry.key)) entry.key: _sanitizeUnknown(entry.value),
+    if (!_isCredentialKey(entry.key)) entry.key: _thawValue(entry.value),
 };
 
-Object? _sanitizeUnknown(Object? value) {
+Object? _thawValue(Object? value) {
   if (value is Map) {
     return {
       for (final entry in value.entries)
         if (entry.key is String && !_isCredentialKey(entry.key as String))
-          entry.key as String: _sanitizeUnknown(entry.value),
+          entry.key as String: _thawValue(entry.value),
     };
   }
-  if (value is List) return value.map(_sanitizeUnknown).toList(growable: false);
+  if (value is List) return value.map(_thawValue).toList();
   return value;
 }
 
-String? _decimalString(Object? raw, String field) {
-  if (raw == null) return null;
-  if (raw is! String || !RegExp(r'^-?\d+(?:\.\d+)?$').hasMatch(raw)) {
+String? _decimalString(String? value, String field) {
+  if (value == null) return null;
+  if (!RegExp(r'^-?\d+(?:\.\d+)?$').hasMatch(value)) {
     throw FormatException('invalid decimal string for $field');
   }
-  return raw;
+  return value;
 }
 
 String? _clampPercentage(String? value, String? unit) {
   if (value == null || !_isPercentageUnit(unit)) return value;
   if (value.startsWith('-')) return '0';
-  final unsigned = value;
-  final parts = unsigned.split('.');
+  final parts = value.split('.');
   final integerPart = parts.first.replaceFirst(RegExp(r'^0+(?=\d)'), '');
   if (integerPart.length > 3 ||
-      integerPart.length == 3 && integerPart.compareTo('100') > 0) {
-    return '100';
-  }
-  if (integerPart == '100' &&
-      parts.length == 2 &&
-      RegExp(r'[1-9]').hasMatch(parts[1])) {
+      integerPart.length == 3 && integerPart.compareTo('100') > 0 ||
+      integerPart == '100' &&
+          parts.length == 2 &&
+          RegExp(r'[1-9]').hasMatch(parts[1])) {
     return '100';
   }
   return value;

@@ -3,7 +3,7 @@ import 'package:teampilot/models/managed_provider.dart';
 
 void main() {
   test('ManagedProvider round-trips without a CLI field', () {
-    const p = ManagedProvider(
+    final p = ManagedProvider(
       id: 'p1',
       name: 'Example',
       kind: ManagedProviderKind.apiBalance,
@@ -50,7 +50,7 @@ void main() {
   });
 
   test('round-trips endpoint, brand, and display configuration', () {
-    const provider = ManagedProvider(
+    final provider = ManagedProvider(
       id: 'p1',
       name: 'Example',
       brand: ManagedProviderBrand(
@@ -74,5 +74,69 @@ void main() {
     );
 
     expect(ManagedProvider.fromJson(provider.toJson()), provider);
+  });
+
+  test('deep-copies and freezes caller-provided provider collections', () {
+    final mapping = <String, Object?>{
+      'token': 'data.token',
+      'nested': <String, Object?>{'value': 1},
+    };
+    final unknown = <String, Object?>{
+      'safe': <String, Object?>{
+        'items': <Object?>[1],
+      },
+    };
+    final provider = ManagedProvider(
+      id: 'p1',
+      name: 'Example',
+      kind: ManagedProviderKind.customHttp,
+      adapterId: 'http-json',
+      endpointConfig: ManagedProviderEndpointConfig(fieldMappings: mapping),
+      unknownFields: unknown,
+    );
+
+    (mapping['nested'] as Map<String, Object?>)['value'] = 2;
+    (unknown['safe'] as Map<String, Object?>)['items'] = <Object?>[2];
+
+    expect(provider.endpointConfig.fieldMappings['nested'], {'value': 1});
+    expect(provider.unknownFields['safe'], {
+      'items': [1],
+    });
+    expect(
+      () => provider.endpointConfig.fieldMappings['new'] = 'value',
+      throwsUnsupportedError,
+    );
+    expect(
+      () => provider.unknownFields['new'] = 'value',
+      throwsUnsupportedError,
+    );
+  });
+
+  test('copyWith deep-copies replacement collections', () {
+    final unknown = <String, Object?>{
+      'future': <String, Object?>{'enabled': true},
+    };
+    final provider = ManagedProvider(
+      id: 'p1',
+      name: 'Example',
+      kind: ManagedProviderKind.apiBalance,
+      adapterId: 'adapter',
+    ).copyWith(unknownFields: unknown);
+
+    (unknown['future'] as Map<String, Object?>)['enabled'] = false;
+
+    expect(provider.unknownFields['future'], {'enabled': true});
+  });
+
+  test('preserves safe future mapping keys while avoiding a CLI field', () {
+    final config = ManagedProviderEndpointConfig(
+      fieldMappings: {'token': 'data.token', 'tokenCount': 'data.tokenCount'},
+    );
+    final json = config.toJson();
+
+    expect(json['fieldMappings'], {
+      'token': 'data.token',
+      'tokenCount': 'data.tokenCount',
+    });
   });
 }

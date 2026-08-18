@@ -3,7 +3,7 @@ import 'package:teampilot/models/provider_usage_snapshot.dart';
 
 void main() {
   test('stale snapshot retains measures and never serializes secrets', () {
-    const snapshot = ProviderUsageSnapshot(
+    final snapshot = ProviderUsageSnapshot(
       providerId: 'p1',
       status: ProviderUsageStatus.stale,
       measures: [
@@ -123,4 +123,118 @@ void main() {
     expect(json.containsKey('future'), isTrue);
     expect(json['future'], {'safe': true});
   });
+
+  test('filters credential aliases but preserves safe future fields', () {
+    final snapshot = ProviderUsageSnapshot(
+      providerId: 'p1',
+      status: ProviderUsageStatus.error,
+      unknownFields: {
+        'key': 'secret',
+        'privateKey': 'secret',
+        'credential': 'secret',
+        'tokenCount': 3,
+        'future': {'safe': true, 'tokenCount': 4},
+      },
+    );
+
+    final json = snapshot.toJson();
+
+    expect(json.containsKey('key'), isFalse);
+    expect(json.containsKey('privateKey'), isFalse);
+    expect(json.containsKey('credential'), isFalse);
+    expect(json['tokenCount'], 3);
+    expect(json['future'], {'safe': true, 'tokenCount': 4});
+  });
+
+  test('does not accept credential material in error messages', () {
+    final snapshot = ProviderUsageSnapshot(
+      providerId: 'p1',
+      status: ProviderUsageStatus.error,
+      lastErrorMessage: 'request failed: key=super-secret',
+    );
+
+    expect(snapshot.lastErrorMessage, isNull);
+    expect(snapshot.toJson().containsKey('lastErrorMessage'), isFalse);
+    expect(
+      ProviderUsageSnapshot.fromJson({
+        'providerId': 'p1',
+        'status': 'error',
+        'lastErrorMessage': 'Authorization: Bearer super-secret',
+      }).lastErrorMessage,
+      isNull,
+    );
+  });
+
+  test('deep-copies and freezes measures and unknown fields', () {
+    final measures = <ProviderUsageMeasure>[
+      ProviderUsageMeasure(
+        label: 'Balance',
+        kind: ProviderUsageMeasureKind.balance,
+        remaining: '1.00',
+      ),
+    ];
+    final unknown = <String, Object?>{
+      'future': <String, Object?>{
+        'values': <Object?>[1],
+      },
+    };
+    final snapshot = ProviderUsageSnapshot(
+      providerId: 'p1',
+      status: ProviderUsageStatus.ready,
+      measures: measures,
+      unknownFields: unknown,
+    );
+    final copy = snapshot.copyWith(measures: measures, unknownFields: unknown);
+
+    measures.clear();
+    (unknown['future'] as Map<String, Object?>)['values'] = <Object?>[2];
+
+    expect(snapshot.measures, hasLength(1));
+    expect(copy.measures, hasLength(1));
+    expect(snapshot.unknownFields['future'], {
+      'values': [1],
+    });
+    expect(
+      () => snapshot.measures.add(
+        ProviderUsageMeasure(
+          label: 'Other',
+          kind: ProviderUsageMeasureKind.quota,
+        ),
+      ),
+      throwsUnsupportedError,
+    );
+  });
+
+  test(
+    'direct measure construction validates decimals and clamps percentages',
+    () {
+      expect(
+        () => ProviderUsageMeasure(
+          label: 'Bad',
+          kind: ProviderUsageMeasureKind.balance,
+          remaining: 'NaN',
+        ),
+        throwsFormatException,
+      );
+      expect(
+        () => ProviderUsageMeasure(
+          label: 'Bad',
+          kind: ProviderUsageMeasureKind.balance,
+          remaining: '1e2',
+        ),
+        throwsFormatException,
+      );
+
+      final measure = ProviderUsageMeasure(
+        label: 'Window',
+        kind: ProviderUsageMeasureKind.quota,
+        used: '125.00',
+        unit: '%',
+      );
+      final copied = measure.copyWith(remaining: '-1.00');
+
+      expect(measure.used, '100');
+      expect(copied.remaining, '0');
+    },
+  );
 }
