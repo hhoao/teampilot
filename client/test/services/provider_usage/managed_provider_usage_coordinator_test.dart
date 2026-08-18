@@ -165,14 +165,86 @@ void main() {
       now: () => DateTime.fromMillisecondsSinceEpoch(1_700_000_000_000),
     );
 
+    final targeted = coordinator.refreshOne('p1');
     final first = coordinator.refreshAll();
     final second = coordinator.refreshAll();
     await Future<void>.delayed(Duration.zero);
     expect(adapter.calls, 1);
     gate.complete(_ready());
+    expect((await targeted).status, ProviderUsageStatus.ready);
     expect((await first).single.status, ProviderUsageStatus.ready);
     expect((await second).single.providerId, 'p1');
   });
+
+  test(
+    'a disabled provider invalidates a blocked request before commit',
+    () async {
+      await providers.upsert(_provider());
+      final gate = Completer<ProviderUsageSnapshot>();
+      final adapter = _FakeAdapter(gate.future);
+      final coordinator = ManagedProviderUsageCoordinator(
+        providerRepository: providers,
+        usageRepository: usage,
+        registry: ManagedProviderUsageRegistry([adapter]),
+        credentials: _NoCredentials(),
+        http: _UnusedHttpClient(),
+        now: () => DateTime.fromMillisecondsSinceEpoch(1_700_000_000_000),
+      );
+
+      final pending = coordinator.refreshOne('p1');
+      await Future<void>.delayed(Duration.zero);
+      await providers.upsert(_provider(enabled: false));
+      final disabled = await coordinator.refreshAll();
+      expect(disabled.single.status, ProviderUsageStatus.unsupported);
+      gate.complete(_ready());
+      await pending;
+      expect(
+        coordinator.snapshotFor('p1')!.status,
+        ProviderUsageStatus.unsupported,
+      );
+      expect(
+        (await usage.load()).single.status,
+        ProviderUsageStatus.unsupported,
+      );
+    },
+  );
+
+  test(
+    'a credential change waits for the old request, then refreshes once',
+    () async {
+      await providers.upsert(_provider());
+      final gate = Completer<ProviderUsageSnapshot>();
+      final adapter = _FakeAdapter(gate.future);
+      final coordinator = ManagedProviderUsageCoordinator(
+        providerRepository: providers,
+        usageRepository: usage,
+        registry: ManagedProviderUsageRegistry([adapter]),
+        credentials: _NoCredentials(),
+        http: _UnusedHttpClient(),
+        now: () => DateTime.fromMillisecondsSinceEpoch(1_700_000_000_000),
+      );
+
+      final oldRequest = coordinator.refreshOne('p1');
+      await Future<void>.delayed(Duration.zero);
+      final externalProviders = ManagedProviderRepository(
+        fs: fs,
+        configPath: '/tp/providers.json',
+        onProvidersDeleted: usage.deleteMany,
+      );
+      await externalProviders.upsert(
+        _provider().copyWith(credentialRef: 'managed-provider:p1-new'),
+      );
+      final replacement = coordinator.refreshOne('p1');
+      await Future<void>.delayed(Duration.zero);
+      expect(adapter.calls, 1);
+      gate.complete(_ready(remaining: '9.25'));
+      final result = await replacement;
+      await oldRequest;
+      expect(result.status, ProviderUsageStatus.ready);
+      expect(adapter.calls, 2);
+      expect((await usage.load()).single.measures.single.remaining, '9.25');
+    },
+  );
 
   test('a deleted provider cannot commit a late result', () async {
     await providers.upsert(_provider());

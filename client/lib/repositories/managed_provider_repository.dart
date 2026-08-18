@@ -32,6 +32,31 @@ class ManagedProviderRepository {
   String get _configPath =>
       _configPathOverride ?? AppStorage.paths.managedProviderConfigFile;
 
+  /// Monotonic process-local revision shared by repository instances that
+  /// address the same catalog path. Coordinators use it to reject results
+  /// produced from a configuration that changed while a request was running.
+  int get mutationRevision =>
+      _ManagedProviderMutationRevisions.current(_configPath);
+
+  /// Runs [action] while holding the catalog mutation lock, but only if the
+  /// provider still matches the revision captured before a request started.
+  /// This closes the validation-to-cache-write race for in-process writers.
+  Future<bool> runIfUnchanged({
+    required int expectedRevision,
+    required ManagedProvider expectedProvider,
+    required Future<void> Function() action,
+  }) async {
+    return ManagedProviderStorageLock.run(_configPath, () async {
+      final current = await _readStore();
+      final actual = current.providers[expectedProvider.id];
+      if (mutationRevision != expectedRevision || actual != expectedProvider) {
+        return false;
+      }
+      await action();
+      return true;
+    });
+  }
+
   Future<List<ManagedProvider>> load() async {
     final store = await _readStore();
     return store.providers.values.toList(growable: false);
@@ -197,6 +222,7 @@ class ManagedProviderRepository {
       path,
       const JsonEncoder.withIndent('  ').convert(json),
     );
+    _ManagedProviderMutationRevisions.bump(path);
   }
 
   static ManagedProvider? _normalizeProvider(ManagedProvider provider) {
@@ -273,6 +299,16 @@ class ManagedProviderRepository {
     ),
     unknownFields: {...previous.unknownFields, ...next.unknownFields},
   );
+}
+
+class _ManagedProviderMutationRevisions {
+  static final _values = <String, int>{};
+
+  static int current(String path) => _values[path] ?? 0;
+
+  static void bump(String path) {
+    _values[path] = current(path) + 1;
+  }
 }
 
 class _ManagedProviderStore {

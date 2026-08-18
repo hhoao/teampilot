@@ -135,9 +135,10 @@ class ManagedProviderUsageCoordinator {
   Future<List<ProviderUsageSnapshot>> _refreshAllInternal() async {
     await _ensureLoaded();
     await _synchronizeProviders();
-    // Every all-refresh establishes a new generation. Results from targeted
-    // requests started before this point are consequently unable to commit.
-    final generation = ++_generation;
+    // Do not advance the generation merely because the caller chose the
+    // aggregate entry point. The per-provider pending future is shared with
+    // targeted refreshes, so this must not create a duplicate request.
+    final generation = _generation;
     final current = _providers.values.toList(growable: false);
     final results = await Future.wait(
       current.map((provider) => _refreshLoadedProvider(provider, generation)),
@@ -159,15 +160,35 @@ class ManagedProviderUsageCoordinator {
     int generation,
   ) {
     final id = provider.id;
+    if (!provider.enabled) {
+      return _completeDisabledProvider(provider);
+    }
     final previousPending = _pending[id];
-    if (previousPending != null && previousPending.generation == generation) {
-      return previousPending.future;
+    if (previousPending != null) {
+      if (previousPending.provider == provider) {
+        return previousPending.future;
+      }
+      // Configuration changed while the old request was in flight. The
+      // transport may not be cancellable, so wait for it before starting the
+      // replacement; this preserves one underlying request per provider.
+      return previousPending.future.then((_) async {
+        await _synchronizeProviders();
+        final current = _providers[id];
+        if (current == null) return _unsupportedSnapshot(id, _snapshots[id]);
+        return _refreshLoadedProvider(current, _generation);
+      });
     }
 
     final token = (_tokens[id] ?? 0) + 1;
     _tokens[id] = token;
-    final future = _executeRefresh(provider, generation, token);
+    final future = _executeRefresh(
+      provider,
+      generation,
+      token,
+      _providerRepository.mutationRevision,
+    );
     final pending = _PendingRefresh(
+      provider: provider,
       generation: generation,
       token: token,
       future: future,
@@ -184,10 +205,22 @@ class ManagedProviderUsageCoordinator {
     return future;
   }
 
+  Future<ProviderUsageSnapshot> _completeDisabledProvider(
+    ManagedProvider provider,
+  ) async {
+    final result = _unsupportedSnapshot(provider.id, _snapshots[provider.id]);
+    if (_providers[provider.id] == provider) {
+      _snapshots[provider.id] = result;
+      await _usageRepository.save(result);
+    }
+    return result;
+  }
+
   Future<ProviderUsageSnapshot> _executeRefresh(
     ManagedProvider provider,
     int generation,
     int token,
+    int mutationRevision,
   ) async {
     final previous = _snapshots[provider.id];
     if (!provider.enabled) {
@@ -232,8 +265,18 @@ class ManagedProviderUsageCoordinator {
     if (!_isCurrent(provider, generation, token)) {
       return _snapshots[provider.id] ?? previous ?? result;
     }
-    _snapshots[provider.id] = result;
-    await _usageRepository.save(result);
+    final committed = await _providerRepository.runIfUnchanged(
+      expectedRevision: mutationRevision,
+      expectedProvider: provider,
+      action: () async {
+        await _usageRepository.save(result);
+        _snapshots[provider.id] = result;
+      },
+    );
+    if (!committed) {
+      await _synchronizeProviders();
+      return _snapshots[provider.id] ?? previous ?? result;
+    }
     return result;
   }
 
@@ -312,11 +355,13 @@ class ManagedProviderUsageCoordinator {
 
 class _PendingRefresh {
   const _PendingRefresh({
+    required this.provider,
     required this.generation,
     required this.token,
     required this.future,
   });
 
+  final ManagedProvider provider;
   final int generation;
   final int token;
   final Future<ProviderUsageSnapshot> future;
