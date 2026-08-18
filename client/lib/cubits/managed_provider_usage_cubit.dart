@@ -214,6 +214,7 @@ class ManagedProviderUsageCubit extends Cubit<ManagedProviderUsageState> {
     if (isClosed) return;
     final id = providerId.trim();
     if (id.isEmpty) return;
+    _invalidateEnsureFlight(id);
     try {
       await _coordinator.cancelForProvider(id);
     } on Object {
@@ -270,8 +271,7 @@ class ManagedProviderUsageCubit extends Cubit<ManagedProviderUsageState> {
         .toSet();
     if (ids.isEmpty) return;
     for (final id in ids) {
-      _ensureGenerations[id] = (_ensureGenerations[id] ?? 0) + 1;
-      _ensureFlights.remove(id);
+      _invalidateEnsureFlight(id);
     }
     _refreshOperations.removeWhere((id, _) => ids.contains(id));
     final snapshots = Map<String, ProviderUsageSnapshot>.from(state.snapshots)
@@ -366,6 +366,11 @@ class ManagedProviderUsageCubit extends Cubit<ManagedProviderUsageState> {
       if (entry.value.isNotEmpty) entry.key: entry.value.length,
   };
 
+  void _invalidateEnsureFlight(String id) {
+    _ensureGenerations[id] = (_ensureGenerations[id] ?? 0) + 1;
+    _ensureFlights.remove(id);
+  }
+
   void _emitCoordinatorState(
     coordinator.ManagedProviderUsageState source, {
     ManagedProviderUsageLoadStatus? status,
@@ -385,6 +390,13 @@ class ManagedProviderUsageCubit extends Cubit<ManagedProviderUsageState> {
   Future<void> _handleInvalidation(
     coordinator.ManagedProviderUsageInvalidated error,
   ) async {
+    if (error.code ==
+        coordinator.ManagedProviderUsageInvalidationCode.refreshCancelled) {
+      // Cancellation does not change the Provider catalog. Reloading the
+      // coordinator here could advance its generation and invalidate a
+      // successor refresh started immediately after the cancellation.
+      return;
+    }
     try {
       final loaded = await _coordinator.load();
       if (isClosed) return;

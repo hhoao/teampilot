@@ -218,6 +218,40 @@ void main() {
     },
   );
 
+  test(
+    'cancelForProvider invalidates an in-flight ensureFresh Future',
+    () async {
+      await providers.upsert(_provider());
+      final oldGate = Completer<ProviderUsageSnapshot>();
+      adapter.result = oldGate.future;
+      final cubit = ManagedProviderUsageCubit(coordinator: coordinator);
+      addTearDown(cubit.close);
+      await cubit.load();
+
+      final oldEnsure = cubit.ensureFresh('p1');
+      await Future<void>.delayed(Duration.zero);
+      expect(adapter.calls, 1);
+
+      await cubit.cancelForProvider('p1');
+      final newGate = Completer<ProviderUsageSnapshot>();
+      adapter.result = newGate.future;
+      final newEnsure = cubit.ensureFresh('p1');
+      await Future<void>.delayed(Duration.zero);
+      expect(identical(newEnsure, oldEnsure), isFalse);
+      expect(cubit.state.refreshOperationCountFor('p1'), 2);
+
+      oldGate.complete(_ready(amount: '1.00'));
+      await Future<void>.delayed(Duration.zero);
+      expect(adapter.calls, 2);
+      expect(cubit.state.refreshOperationCountFor('p1'), 1);
+
+      newGate.complete(_ready(amount: '2.00'));
+      expect(await oldEnsure, isNull);
+      expect((await newEnsure)!.measures.single.remaining, '2.00');
+      expect(cubit.state.isRefreshing, isFalse);
+    },
+  );
+
   test('removeProviders clears usage state after provider cleanup', () async {
     await providers.upsert(_provider());
     await usage.save(_ready());
