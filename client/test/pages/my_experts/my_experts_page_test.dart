@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/expert_hub_cubit.dart';
 import 'package:teampilot/cubits/launch_profile_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
+import 'package:teampilot/models/catalog/catalog_types.dart';
 import 'package:teampilot/models/discoverable_member.dart';
 import 'package:teampilot/models/discoverable_team.dart';
 import 'package:teampilot/models/team_config.dart';
@@ -27,6 +28,11 @@ class _FakeSource extends CompositeExpertHubSource {
 
   @override
   Future<List<DiscoverableMember>> fetchMembers({
+    bool forceRefresh = false,
+  }) async => const [];
+
+  @override
+  Future<List<CatalogSourceResult<DiscoverableMember>>> fetchMemberSources({
     bool forceRefresh = false,
   }) async => const [];
 }

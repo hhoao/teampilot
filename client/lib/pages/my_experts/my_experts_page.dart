@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -225,13 +227,10 @@ class _MyExpertsPageState extends State<MyExpertsPage> {
     } catch (_) {
       hub = null;
     }
-    if (hub != null) {
-      try {
-        await hub.load(forceRefresh: true);
-      } catch (_) {}
-    }
-    if (!mounted) return;
     await _reload();
+    if (hub != null) {
+      unawaited(hub.load(forceRefresh: true));
+    }
   }
 
   Future<void> _addToTeam(DiscoverableMember member) async {

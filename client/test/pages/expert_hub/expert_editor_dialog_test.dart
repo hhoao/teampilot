@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/expert_hub_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
+import 'package:teampilot/models/catalog/catalog_types.dart';
 import 'package:teampilot/models/discoverable_member.dart';
 import 'package:teampilot/models/discoverable_team.dart';
 import 'package:teampilot/models/skill.dart';
@@ -20,6 +23,11 @@ class _FakeSource extends CompositeExpertHubSource {
 
   @override
   Future<List<DiscoverableMember>> fetchMembers({
+    bool forceRefresh = false,
+  }) async => const [];
+
+  @override
+  Future<List<CatalogSourceResult<DiscoverableMember>>> fetchMemberSources({
     bool forceRefresh = false,
   }) async => const [];
 }
@@ -63,6 +71,26 @@ class _SpyHubCubit extends ExpertHubCubit {
   Future<void> load({bool forceRefresh = false}) async {
     if (forceRefresh) forceRefreshCalls++;
     await super.load(forceRefresh: forceRefresh);
+  }
+}
+
+class _HangingHubCubit extends ExpertHubCubit {
+  _HangingHubCubit()
+    : super(
+        source: _FakeSource(),
+        loadFavorites: () async => const {},
+        saveFavoriteToggle: (_) async => true,
+        memberRosterService: stubMemberRosterService(),
+        launchProfiles: () => throw UnimplementedError('not used'),
+      );
+
+  final Completer<void> _gate = Completer<void>();
+
+  @override
+  Future<void> load({bool forceRefresh = false}) => _gate.future;
+
+  void release() {
+    if (!_gate.isCompleted) _gate.complete();
   }
 }
 
@@ -627,6 +655,65 @@ void main() {
     expect(result?.name, 'New Name');
     expect(result?.member.responsibilities, 'new prompt');
     expect(writer.saved.single.key, 'local/fixed-id');
+  });
+
+  testWidgets('submit pops even when hub catalog refresh never completes', (
+    tester,
+  ) async {
+    _largeSurface(tester);
+
+    final fs = InMemoryFilesystem();
+    final writer = _SpyWriter(
+      store: LocalExpertStore(fs: fs, dirOverride: '/t'),
+    );
+    final hub = _HangingHubCubit();
+    addTearDown(() async {
+      hub.release();
+      if (!hub.isClosed) await hub.close();
+    });
+
+    DiscoverableMember? result;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: BlocProvider<ExpertHubCubit>.value(
+          value: hub,
+          child: Builder(
+            builder: (context) => Scaffold(
+              body: TextButton(
+                onPressed: () async {
+                  result = await showExpertEditorDialog(
+                    context,
+                    writer: writer,
+                  );
+                },
+                child: const Text('open'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const Key('expert-editor-name')),
+      'Closer',
+    );
+    await tester.enterText(
+      find.byKey(const Key('expert-editor-prompt')),
+      'Close the dialog.',
+    );
+    await tester.tap(find.byKey(const Key('expert-editor-submit')));
+    await tester.pumpAndSettle();
+
+    expect(result, isNotNull);
+    expect(result!.name, 'Closer');
+    expect(find.byKey(const Key('expert-editor-submit')), findsNothing);
   });
 
   testWidgets('empty name shows field error and does not save', (tester) async {

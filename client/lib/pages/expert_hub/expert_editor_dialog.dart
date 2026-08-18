@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
@@ -260,23 +262,20 @@ class _ExpertEditorDialogState extends State<ExpertEditorDialog> {
         author: initial?.author,
         originTeamKey: initial?.originTeamKey,
       );
-      final saved = await widget.writer.save(member);
-      if (!mounted) return;
       ExpertHubCubit? hub;
       try {
         hub = context.read<ExpertHubCubit>();
       } catch (_) {
         hub = null;
       }
-      if (hub != null) {
-        try {
-          await hub.load(forceRefresh: true);
-        } catch (_) {
-          // Best-effort refresh; save already succeeded.
-        }
-      }
+      final saved = await widget.writer.save(member);
       if (!mounted) return;
-      Navigator.of(context).pop(saved);
+      Navigator.of(context, rootNavigator: true).pop(saved);
+      // Catalog refresh is independent of the save; awaiting it kept the
+      // editor open when the hub source did extra I/O (or hung).
+      if (hub != null) {
+        unawaited(hub.load(forceRefresh: true));
+      }
     } catch (_) {
       if (!mounted) return;
       setState(() => _saving = false);

@@ -142,7 +142,15 @@ int readClaudeInboxUnreadCount({
   );
   final file = File(path);
   if (!file.existsSync()) return 0;
-  final decoded = jsonDecode(file.readAsStringSync());
+  final raw = file.readAsStringSync();
+  if (raw.trim().isEmpty) return 0;
+  Object? decoded;
+  try {
+    decoded = jsonDecode(raw);
+  } on FormatException {
+    // The worker truncates-then-writes; a poll can land on a partial file.
+    return 0;
+  }
   if (decoded is! List) return 0;
   var unread = 0;
   for (final item in decoded) {

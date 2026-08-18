@@ -143,7 +143,7 @@ class TeamLandingPickerCatalogBody extends StatelessWidget {
                           gridDelegate:
                               const SliverGridDelegateWithMaxCrossAxisExtent(
                             maxCrossAxisExtent: 380,
-                            mainAxisExtent: 186,
+                            mainAxisExtent: 420,
                             crossAxisSpacing: 14,
                             mainAxisSpacing: 14,
                           ),

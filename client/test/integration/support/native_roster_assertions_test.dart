@@ -160,6 +160,33 @@ void main() {
     expect(watch.maxUnread, greaterThanOrEqualTo(1));
   });
 
+  test('readClaudeInboxUnreadCount treats empty and invalid JSON as zero', () {
+    final inboxPath = claudeInboxPath(
+      claudeDir: claudeDir,
+      cliTeamName: cliTeamName,
+      memberId: 'developer-0',
+    );
+    File(inboxPath).parent.createSync(recursive: true);
+    File(inboxPath).writeAsStringSync('');
+    expect(
+      readClaudeInboxUnreadCount(
+        claudeDir: claudeDir,
+        cliTeamName: cliTeamName,
+        memberId: 'developer-0',
+      ),
+      0,
+    );
+    File(inboxPath).writeAsStringSync('{');
+    expect(
+      readClaudeInboxUnreadCount(
+        claudeDir: claudeDir,
+        cliTeamName: cliTeamName,
+        memberId: 'developer-0',
+      ),
+      0,
+    );
+  });
+
   test('ClaudeInboxUnreadWatch fails when the inbox never receives a message',
       () async {
     await writeMinimalRoster(inboxMemberIds: const ['developer-0']);
