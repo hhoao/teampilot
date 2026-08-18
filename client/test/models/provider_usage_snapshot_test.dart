@@ -243,6 +243,27 @@ void main() {
     expect(json['lastErrorMessage'], contains('tokenCount'));
   });
 
+  test(
+    'redacts standalone bearer credentials while preserving safe future text',
+    () {
+      final snapshot = ProviderUsageSnapshot.fromJson({
+        'providerId': 'p1',
+        'status': 'error',
+        'lastErrorMessage': 'Bearer snapshot-secret',
+        'futureCredential': 'Bearer unknown-secret',
+        'safeFuture': 'future value',
+      });
+
+      final json = snapshot.toJson();
+      final encoded = jsonEncode(json);
+
+      expect(encoded, isNot(contains('secret')));
+      expect(json.containsKey('lastErrorMessage'), isFalse);
+      expect(json.containsKey('futureCredential'), isFalse);
+      expect(json['safeFuture'], 'future value');
+    },
+  );
+
   test('rejects non-finite and fractional fetched and stale timestamps', () {
     for (final field in ['fetchedAt', 'staleAt']) {
       for (final value in [double.nan, double.infinity, 1.5]) {

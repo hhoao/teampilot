@@ -411,7 +411,7 @@ bool _isCredentialKey(String key) =>
     _credentialKeys.contains(_normalizeKey(key));
 
 bool _containsCredentialMaterial(String value) => RegExp(
-  r'''["']?(?:api[_\-\s]?key|access[_\-\s]?token|authorization|auth[_\-\s]?token|client[_\-\s]?secret|credential|private[_\-\s]?key|password|refresh[_\-\s]?token|oauth[_\-\s]?token|\bkey\b|\btoken\b)["']?\s*(?:=|:)\s*["']?\S+''',
+  r'''["']?(?:api[_\-\s]?key|access[_\-\s]?token|authorization|auth[_\-\s]?token|client[_\-\s]?secret|credential|private[_\-\s]?key|password|refresh[_\-\s]?token|oauth[_\-\s]?token|\bkey\b|\btoken\b)["']?\s*(?:=|:)\s*["']?\S+|bearer\s+\S+''',
   caseSensitive: false,
 ).hasMatch(value);
 
@@ -447,7 +447,8 @@ Object? _freezeMappingValue(Object? value) {
     );
   }
   if (value is String &&
-      (_isCredentialKey(value) || _containsCredentialMaterial(value))) {
+      ((_isCredentialKey(value) && _normalizeKey(value) != 'token') ||
+          _containsCredentialMaterial(value))) {
     return _redactedMappingValue;
   }
   return value;
@@ -497,10 +498,13 @@ Map<String, Object?> _freezeFields(
       rejectCli: rejectCli,
       filterCredentials: filterCredentials,
     ))
-      entry.key: _freezeValue(
-        entry.value,
-        rejectCli: rejectCli,
-        filterCredentials: filterCredentials,
+      ..._mappingEntry(
+        entry.key,
+        _freezeValue(
+          entry.value,
+          rejectCli: rejectCli,
+          filterCredentials: filterCredentials,
+        ),
       ),
 });
 
@@ -518,23 +522,30 @@ Object? _freezeValue(
               rejectCli: rejectCli,
               filterCredentials: filterCredentials,
             ))
-          entry.key as String: _freezeValue(
-            entry.value,
-            rejectCli: rejectCli,
-            filterCredentials: filterCredentials,
+          ..._mappingEntry(
+            entry.key as String,
+            _freezeValue(
+              entry.value,
+              rejectCli: rejectCli,
+              filterCredentials: filterCredentials,
+            ),
           ),
     });
   }
   if (value is List) {
     return List.unmodifiable(
-      value.map(
-        (item) => _freezeValue(
+      value.map((item) {
+        final frozen = _freezeValue(
           item,
           rejectCli: rejectCli,
           filterCredentials: filterCredentials,
-        ),
-      ),
+        );
+        return frozen == _redactedMappingValue ? null : frozen;
+      }),
     );
+  }
+  if (value is String && _containsCredentialMaterial(value)) {
+    return _redactedMappingValue;
   }
   return value;
 }

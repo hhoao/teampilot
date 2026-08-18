@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/managed_provider.dart';
 
@@ -132,7 +134,7 @@ void main() {
     final config = ManagedProviderEndpointConfig(
       fieldMappings: {
         'token': 'data.token',
-        'tokenCount': 'data.tokenCount',
+        'tokenCount': 'token',
         'apiKey': 'secret',
         'Authorization': 'Bearer secret',
         'client secret': 'secret',
@@ -148,8 +150,37 @@ void main() {
 
     expect(json['fieldMappings'], {
       'token': 'data.token',
-      'tokenCount': 'data.tokenCount',
+      'tokenCount': 'token',
       'nested': {'safe': 'data.safe'},
     });
+  });
+
+  test('redacts bearer credentials while preserving safe future values', () {
+    final config = ManagedProviderEndpointConfig(
+      fieldMappings: {'safe': 'token', 'bearer': 'Bearer mapping-secret'},
+    );
+    final provider = ManagedProvider(
+      id: 'p1',
+      name: 'Example',
+      kind: ManagedProviderKind.customHttp,
+      adapterId: 'adapter',
+      endpointConfig: config,
+      unknownFields: {
+        'futureCredential': 'Bearer provider-secret',
+        'futureList': ['Bearer list-secret', 'safe'],
+        'safeFuture': 'future value',
+      },
+    );
+
+    final json = provider.toJson();
+    final encoded = jsonEncode(json);
+
+    expect(encoded, isNot(contains('secret')));
+    expect((json['endpointConfig'] as Map)['fieldMappings'], {'safe': 'token'});
+    expect(json['safeFuture'], 'future value');
+    expect(json.containsKey('futureCredential'), isFalse);
+    expect(json['futureList'], [null, 'safe']);
+    expect(config.fieldMappings['safe'], 'token');
+    expect(config.fieldMappings.containsKey('bearer'), isFalse);
   });
 }
