@@ -62,6 +62,7 @@ import '../cubits/config_cubit.dart';
 import '../cubits/layout_cubit.dart';
 import '../cubits/floating_workspace/floating_workspace_cubit.dart';
 import '../models/layout_preferences.dart';
+import '../models/managed_provider.dart';
 import '../cubits/workspace_tools_cubit.dart';
 import '../cubits/llm_config_cubit.dart';
 import '../cubits/managed_provider_cubit.dart';
@@ -176,7 +177,10 @@ import '../services/provider_usage/managed_provider_secret_store.dart';
 import '../services/provider_usage/managed_provider_usage_adapter.dart';
 import '../services/provider_usage/managed_provider_usage_coordinator.dart';
 import '../services/provider_usage/managed_provider_usage_registry.dart';
+import '../services/provider_usage/adapters/claude_subscription_adapter.dart';
+import '../services/provider_usage/adapters/codex_subscription_adapter.dart';
 import '../services/provider_usage/adapters/http_json_mapping_adapter.dart';
+import '../services/provider_usage/adapters/official_subscription_adapter.dart';
 import '../services/app/connection_mode_service.dart';
 import '../services/cli/remote_cli_locator.dart';
 import '../services/storage/runtime_context_resolver.dart';
@@ -270,6 +274,51 @@ class ManagedProviderControlPlane {
         managedProviderCubit: providerCubit,
         managedProviderUsageCubit: usageCubit,
       );
+}
+
+/// Builds the CLI-independent adapter catalog used by the AppShell control
+/// plane. Official adapters receive application-owned boundaries only; the
+/// defaults intentionally report missing credentials and never inspect CLI
+/// provider files or include credential material in errors.
+ManagedProviderUsageRegistry buildDefaultManagedProviderUsageRegistry({
+  OfficialSubscriptionAuthReader? claudeAuthReader,
+  OfficialSubscriptionClient? claudeClient,
+  OfficialSubscriptionAuthReader? codexAuthReader,
+  OfficialSubscriptionClient? codexClient,
+}) {
+  final defaultAuthReader = _UnavailableOfficialSubscriptionAuthReader();
+  final defaultClient = _UnavailableOfficialSubscriptionClient();
+  return ManagedProviderUsageRegistry([
+    HttpJsonMappingAdapter(),
+    ClaudeSubscriptionAdapter(
+      authReader: claudeAuthReader ?? defaultAuthReader,
+      client: claudeClient ?? defaultClient,
+    ),
+    CodexSubscriptionAdapter(
+      authReader: codexAuthReader ?? defaultAuthReader,
+      client: codexClient ?? defaultClient,
+    ),
+  ]);
+}
+
+class _UnavailableOfficialSubscriptionAuthReader
+    implements OfficialSubscriptionAuthReader {
+  @override
+  Future<ProviderCredentialScope?> read(ManagedProvider provider) async => null;
+}
+
+class _UnavailableOfficialSubscriptionClient
+    implements OfficialSubscriptionClient {
+  @override
+  Future<OfficialSubscriptionResponse> fetch(
+    ManagedProvider provider, {
+    required ProviderCredentialScope credentials,
+    required DateTime now,
+  }) {
+    throw const ManagedProviderUsageQueryError(
+      ManagedProviderUsageQueryErrorCode.missingCredential,
+    );
+  }
 }
 
 /// Fully wired app dependencies produced after async bootstrap.
@@ -471,6 +520,10 @@ Future<AppShell> buildAppShell({
   ManagedProviderCubit? managedProviderCubit,
   ManagedProviderUsageCubit? managedProviderUsageCubit,
   ProviderUsageHttpClient? managedProviderUsageHttpClient,
+  OfficialSubscriptionAuthReader? managedProviderClaudeAuthReader,
+  OfficialSubscriptionClient? managedProviderClaudeSubscriptionClient,
+  OfficialSubscriptionAuthReader? managedProviderCodexAuthReader,
+  OfficialSubscriptionClient? managedProviderCodexSubscriptionClient,
 }) async {
   final bootSw = Stopwatch()..start();
   void boot(String phase) =>
@@ -761,21 +814,20 @@ Future<AppShell> buildAppShell({
       managedProviderSecretStore ??
       ManagedProviderSecretStore(const FlutterSecureKeyValueStore());
   final resolvedManagedProviderUsageRepository =
-      managedProviderUsageRepository ??
-      ManagedProviderUsageRepository(
-        fs: AppStorage.fs,
-        cachePath: AppStorage.paths.managedProviderUsageCacheFile,
-      );
+      managedProviderUsageRepository ?? ManagedProviderUsageRepository();
   final resolvedManagedProviderRepository =
       managedProviderRepository ??
       ManagedProviderRepository(
-        fs: AppStorage.fs,
-        configPath: AppStorage.paths.managedProviderConfigFile,
         onProvidersDeleted: resolvedManagedProviderUsageRepository.deleteMany,
       );
   final resolvedManagedProviderUsageRegistry =
       managedProviderUsageRegistry ??
-      ManagedProviderUsageRegistry([HttpJsonMappingAdapter()]);
+      buildDefaultManagedProviderUsageRegistry(
+        claudeAuthReader: managedProviderClaudeAuthReader,
+        claudeClient: managedProviderClaudeSubscriptionClient,
+        codexAuthReader: managedProviderCodexAuthReader,
+        codexClient: managedProviderCodexSubscriptionClient,
+      );
   final resolvedManagedProviderHttpClient =
       managedProviderUsageHttpClient ?? _DefaultProviderUsageHttpClient();
   final resolvedManagedProviderUsageCoordinator =

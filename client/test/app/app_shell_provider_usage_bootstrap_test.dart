@@ -3,6 +3,7 @@ import 'package:teampilot/app/app_shell.dart';
 import 'package:teampilot/cubits/managed_provider_cubit.dart';
 import 'package:teampilot/cubits/managed_provider_usage_cubit.dart';
 import 'package:teampilot/models/managed_provider.dart';
+import 'package:teampilot/models/provider_usage_snapshot.dart';
 import 'package:teampilot/repositories/managed_provider_repository.dart';
 import 'package:teampilot/repositories/managed_provider_usage_repository.dart';
 import 'package:teampilot/services/provider_usage/managed_provider_usage_adapter.dart';
@@ -11,8 +12,57 @@ import 'package:teampilot/services/provider_usage/managed_provider_usage_coordin
 import 'package:teampilot/services/provider_usage/managed_provider_usage_registry.dart';
 import 'package:teampilot/services/provider_usage/managed_provider_secret_store.dart';
 import 'package:teampilot/repositories/ssh_credential_store.dart';
+import 'package:teampilot/services/storage/app_storage.dart';
+
+import '../support/in_memory_filesystem.dart';
 
 void main() {
+  tearDown(AppStorage.resetForTesting);
+
+  test('default registry exposes the official subscription adapters', () {
+    final registry = buildDefaultManagedProviderUsageRegistry();
+
+    expect(registry.adapterFor('http-json'), isNotNull);
+    expect(registry.adapterFor('official-claude-subscription'), isNotNull);
+    expect(registry.adapterFor('official-codex-subscription'), isNotNull);
+  });
+
+  test('default repositories follow the current AppStorage binding', () async {
+    final firstFs = InMemoryFilesystem();
+    final secondFs = InMemoryFilesystem();
+    final firstPaths = const AppPaths('/managed-provider-home-one');
+    final secondPaths = const AppPaths('/managed-provider-home-two');
+    final provider = ManagedProvider(
+      id: 'p1',
+      name: 'One',
+      kind: ManagedProviderKind.apiBalance,
+      adapterId: 'http-json',
+    );
+    final snapshot = ProviderUsageSnapshot(
+      providerId: 'p1',
+      status: ProviderUsageStatus.ready,
+      measures: [],
+      fetchedAt: 1,
+      staleAt: 2,
+    );
+
+    AppStorage.installForTesting(filesystem: firstFs, paths: firstPaths);
+    final providerRepository = ManagedProviderRepository(
+      onProvidersDeleted: (_) async {},
+    );
+    final usageRepository = ManagedProviderUsageRepository();
+    await providerRepository.save([provider]);
+    await usageRepository.save(snapshot);
+
+    AppStorage.installForTesting(filesystem: secondFs, paths: secondPaths);
+    expect(await providerRepository.load(), isEmpty);
+    expect(await usageRepository.load(), isEmpty);
+
+    AppStorage.installForTesting(filesystem: firstFs, paths: firstPaths);
+    expect((await providerRepository.load()).single.id, 'p1');
+    expect((await usageRepository.load()).single.providerId, 'p1');
+  });
+
   test(
     'control-plane hydration is single-flight and reload reuses cubits',
     () async {
