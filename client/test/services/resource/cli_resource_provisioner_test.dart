@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/config_bundle.dart';
 import 'package:teampilot/models/hook_entry.dart';
@@ -320,6 +322,51 @@ void main() {
     },
   );
 
+  test('preserves unrelated hook config fragments and is idempotent', () async {
+    final fs = InMemoryFilesystem();
+    final settingsPath = '/config/settings.json';
+    await fs.ensureDir('/config');
+    await fs.atomicWrite(
+      settingsPath,
+      jsonEncode({
+        'permissions': {
+          'allow': ['Bash'],
+        },
+        'hooks': {
+          'existing': ['keep-me'],
+        },
+      }),
+    );
+    final provisioner = CliResourceProvisioner(
+      fs: fs,
+      registry: _registry([_WritingHookCapability()]),
+    );
+    final injected = ResourceProviderSet(
+      hooks: [_RecordingHookProvider('hook', <String>[])],
+    );
+
+    final first = await provisioner.provision(
+      _context(fs: fs, injected: injected),
+    );
+    final firstText = await fs.readString(settingsPath);
+    final settings = jsonDecode(firstText!) as Map<String, Object?>;
+    expect(settings['permissions'], {
+      'allow': ['Bash'],
+    });
+    expect((settings['hooks'] as Map)['existing'], ['keep-me']);
+    expect((settings['hooks'] as Map)['stop'], isNotNull);
+    expect(
+      first.materializations[ResourceContributionKind.hook]!.materialized,
+      isTrue,
+    );
+
+    final second = await provisioner.provision(
+      _context(fs: fs, injected: injected),
+    );
+    expect(await fs.readString(settingsPath), firstText);
+    expect(second.hardDiagnostics, isEmpty);
+  });
+
   test('merges MCP credentials only for valid catalog contributions', () async {
     final fs = InMemoryFilesystem();
     final events = <String>[];
@@ -353,10 +400,13 @@ void main() {
       layout: RuntimeLayout(teampilotRoot: '/runtime', fs: fs),
     );
     final member = const TeamMemberConfig(id: 'alice', name: 'Alice');
+    PromptMaterializeContext? observedContext;
     final report =
         await CliResourceProvisioner(
           fs: fs,
-          registry: _registry([_WritingPromptCapability()]),
+          registry: _registry([
+            _WritingPromptCapability((context) => observedContext = context),
+          ]),
         ).provision(
           CliResourceProvisionContext(
             cli: CliTool.claude,
@@ -373,6 +423,9 @@ void main() {
               cliTeamName: 'session',
             ),
             member: member,
+            forceTeamLeadDelegateMode: true,
+            mixed: true,
+            pushDelivery: true,
             resourceProviders: ResourceProviderSet(
               prompts: [_RecordingPromptProvider('prompt', <String>[])],
             ),
@@ -380,6 +433,10 @@ void main() {
         );
 
     expect(report.hardDiagnostics, isEmpty);
+    expect(observedContext?.member, member);
+    expect(observedContext?.forceTeamLeadDelegateMode, isTrue);
+    expect(observedContext?.mixed, isTrue);
+    expect(observedContext?.pushDelivery, isTrue);
     expect(
       report.materializations[ResourceContributionKind.prompt]!.materialized,
       isTrue,
@@ -688,11 +745,16 @@ final class _RecordingHookCapability implements HookCapability {
 }
 
 final class _WritingPromptCapability implements PromptCapability {
+  _WritingPromptCapability([this.onContext]);
+
+  final void Function(PromptMaterializeContext context)? onContext;
+
   @override
   Future<PromptMaterializeResult> materialize(
     PromptMaterializeContext ctx, {
     required PromptDocument document,
   }) async {
+    onContext?.call(ctx);
     final paths = ctx.paths!;
     final path = paths.pathContext.join(
       paths.sessionToolDir(

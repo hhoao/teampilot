@@ -788,14 +788,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     );
     final simpleMemberHome = member.cli == CliTool.cursor
         ? stagingFs.pathContext.join(
-            staging.sessionToolDir(
-              workspaceId,
-              sessionId,
-              cli.value,
-              memberId: ClaudeTeamRosterService.safeClaudePathSegment(
-                member.id,
-              ),
-            ),
+            staging.sessionToolDir(workspaceId, sessionId, cli.value),
             'home',
           )
         : null;
@@ -1042,19 +1035,28 @@ class ConfigProfileService implements ConfigProfileDelegate {
           launchScope: scope,
           member: launchMember,
           members: launchMembers,
+          forceTeamLeadDelegateMode: team?.forceTeamLeadDelegateMode ?? false,
+          mixed: team?.teamMode == TeamMode.mixed,
+          pushDelivery: team?.teamMode == TeamMode.mixed,
           workingDirectory: workingDirectory,
           additionalDirectories: additionalDirectories,
-          memberHome: memberId == null
-              ? null
-              : staging.fs.pathContext.join(
-                  staging.layout.workspaceRuntimeMemberToolDir(
-                    trimmedWorkspaceId,
-                    trimmedTeamId,
-                    memberId,
-                    launchCli.value,
-                  ),
+          memberHome: launchCli == CliTool.cursor && launchMember != null
+              ? staging.fs.pathContext.join(
+                  team?.teamMode == TeamMode.mixed && memberId != null
+                      ? staging.layout.workspaceRuntimeMemberToolDir(
+                          trimmedWorkspaceId,
+                          trimmedTeamId,
+                          memberId,
+                          launchCli.value,
+                        )
+                      : staging.sessionToolDir(
+                          trimmedWorkspaceId,
+                          trimmedSessionId,
+                          launchCli.value,
+                        ),
                   'home',
-                ),
+                )
+              : null,
           appConfigDir: mcpProviders.catalogProvider != null
               ? staging.layout.appToolRoot(launchCli.value)
               : null,

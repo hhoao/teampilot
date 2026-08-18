@@ -505,18 +505,77 @@ final class CliResourceProvisioner {
     for (final entry in result.configFragments.entries) {
       final target = _fs.pathContext.join(context.configDir, entry.key);
       await _fs.ensureDir(_fs.pathContext.dirname(target));
-      final content = entry.value is String
-          ? entry.value as String
-          : const JsonEncoder.withIndent('  ').convert(entry.value);
-      if (context.paths != null && entry.value is Map<String, Object?>) {
-        await context.paths!.writeJsonIfChanged(
-          target,
-          (entry.value as Map<String, Object?>),
-        );
-      } else {
-        await _fs.atomicWrite(target, content);
-      }
+      await _mergeConfigFragment(
+        context: context,
+        target: target,
+        fragment: entry.value,
+      );
     }
+  }
+
+  Future<void> _mergeConfigFragment({
+    required CliResourceProvisionContext context,
+    required String target,
+    required Object? fragment,
+  }) async {
+    final existingRaw = await _fs.readString(target);
+    final fragmentMap = _objectMap(fragment);
+    if (fragmentMap != null) {
+      final existingMap = _objectMap(
+        existingRaw == null || existingRaw.trim().isEmpty
+            ? null
+            : _tryDecodeJson(existingRaw),
+      );
+      final merged = _deepMerge(existingMap ?? const {}, fragmentMap);
+      if (context.paths != null) {
+        await context.paths!.writeJsonIfChanged(target, merged);
+      } else {
+        await _fs.atomicWrite(
+          target,
+          const JsonEncoder.withIndent('  ').convert(merged),
+        );
+      }
+      return;
+    }
+
+    final content = fragment is String
+        ? fragment
+        : const JsonEncoder.withIndent('  ').convert(fragment);
+    if (existingRaw == null || existingRaw.trim().isEmpty) {
+      await _fs.atomicWrite(target, content);
+    } else if (!existingRaw.contains(content)) {
+      await _fs.atomicWrite(target, '$existingRaw\n\n$content');
+    }
+  }
+
+  Map<String, Object?>? _objectMap(Object? value) {
+    if (value is! Map) return null;
+    return {
+      for (final entry in value.entries) entry.key.toString(): entry.value,
+    };
+  }
+
+  Object? _tryDecodeJson(String value) {
+    try {
+      return jsonDecode(value);
+    } on FormatException {
+      return null;
+    }
+  }
+
+  Map<String, Object?> _deepMerge(
+    Map<String, Object?> base,
+    Map<String, Object?> fragment,
+  ) {
+    final merged = <String, Object?>{...base};
+    for (final entry in fragment.entries) {
+      final baseMap = _objectMap(merged[entry.key]);
+      final fragmentMap = _objectMap(entry.value);
+      merged[entry.key] = baseMap != null && fragmentMap != null
+          ? _deepMerge(baseMap, fragmentMap)
+          : entry.value;
+    }
+    return merged;
   }
 
   Future<PromptAssemblyResult?> _assemblePrompt(
