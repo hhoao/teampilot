@@ -374,6 +374,7 @@ final class CursorProviderCapability extends CatalogModelCapability
       busIdle: null,
       forceTeamLeadDelegateMode: false,
       mixed: false,
+      promptAlreadyMaterialized: ctx.promptAlreadyMaterialized,
       // Always defer real-$HOME passthrough to SessionConnectOrchestrator after
       // manifest flush. Staging via ManifestFilesystem would SFTP-list the work
       // home (slow on Android SSH). Post-flush uses one remote find+ln script

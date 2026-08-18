@@ -583,6 +583,7 @@ final class ClaudeProviderCapability extends CatalogModelCapability
       userHooks: ctx.hooks,
       hookLibraryProvider: ctx.hookLibraryProvider,
       resourceHookProviders: ctx.resourceProviders.hooks,
+      promptAlreadyMaterialized: ctx.promptAlreadyMaterialized,
     );
     if (stepSw != null) {
       _logClaudeContributeLaunchStep(stepSw, 'writeMemberProfiles', sessionId);
@@ -1012,6 +1013,7 @@ final class ClaudeProviderCapability extends CatalogModelCapability
     List<HookEntry> userHooks = const [],
     HookContributionProvider? hookLibraryProvider,
     Iterable<HookContributionProvider> resourceHookProviders = const [],
+    bool promptAlreadyMaterialized = false,
   }) async {
     final selected = launchedMember;
     final uniqueMembers = <String, TeamMemberConfig>{};
@@ -1043,6 +1045,7 @@ final class ClaudeProviderCapability extends CatalogModelCapability
         userHooks: userHooks,
         hookLibraryProvider: hookLibraryProvider,
         resourceHookProviders: resourceHookProviders,
+        promptAlreadyMaterialized: promptAlreadyMaterialized,
       );
     }
     return appendPromptEnv;
@@ -1064,6 +1067,7 @@ final class ClaudeProviderCapability extends CatalogModelCapability
     List<HookEntry> userHooks = const [],
     HookContributionProvider? hookLibraryProvider,
     Iterable<HookContributionProvider> resourceHookProviders = const [],
+    required bool promptAlreadyMaterialized,
   }) async {
     final memberToolDir = delegate.sessionToolDir(
       scope.workspaceId,
@@ -1074,19 +1078,21 @@ final class ClaudeProviderCapability extends CatalogModelCapability
           : null,
     );
     final isLead = TeamMemberNaming.isTeamLead(member);
-    final promptContribution = await const PromptHubService().provisionForCli(
-      cli: CliTool.claude,
-      ctx: PromptMaterializeContext(
-        paths: delegate,
-        scope: scope,
-        member: member,
-        forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
-        mixed: mixed,
-        additionalDirectories: const [],
-      ),
-    );
-    if (promptContribution.written && member.id == launchedMember?.id) {
-      appendPromptEnv.addAll(promptContribution.environment);
+    if (!promptAlreadyMaterialized) {
+      final promptContribution = await const PromptHubService().provisionForCli(
+        cli: CliTool.claude,
+        ctx: PromptMaterializeContext(
+          paths: delegate,
+          scope: scope,
+          member: member,
+          forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
+          mixed: mixed,
+          additionalDirectories: const [],
+        ),
+      );
+      if (promptContribution.written && member.id == launchedMember?.id) {
+        appendPromptEnv.addAll(promptContribution.environment);
+      }
     }
     final file = sessionMemberSettingsFile(
       delegate,

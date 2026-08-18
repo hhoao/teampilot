@@ -414,6 +414,7 @@ class SessionHomeContext {
     this.sessionExpertKey,
     this.resolvedExpert,
     this.resourceProviders = ResourceProviderSet.empty,
+    this.promptAlreadyMaterialized = false,
     this.hooks = const [],
     this.hookLibraryProvider,
     this.crossMachine = false,
@@ -450,6 +451,10 @@ class SessionHomeContext {
   final DiscoverableMember? resolvedExpert;
 
   final ResourceProviderSet resourceProviders;
+
+  /// True when the staged resource coordinator already wrote this member's
+  /// prompt for the target CLI. Legacy session-home callers leave this false.
+  final bool promptAlreadyMaterialized;
 
   /// 该 seat 生效的用户 hook 条目(staging 按 runtimeBundle.hookIds 解析)。
   final List<HookEntry> hooks;
@@ -508,6 +513,7 @@ SessionHomeContext sessionHomeContextFromLaunch(
     sessionExpertKey: ctx.sessionExpertKey,
     resolvedExpert: ctx.resolvedExpert,
     resourceProviders: ctx.resourceProviders,
+    promptAlreadyMaterialized: ctx.promptAlreadyMaterialized,
     hooks: _sessionHomeHookEntries(ctx.resourceProviders),
     hookLibraryProvider: _sessionHomeHookProvider(ctx.resourceProviders),
     crossMachine: ctx.crossMachine,

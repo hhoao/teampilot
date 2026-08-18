@@ -50,6 +50,7 @@ final class CursorHomeProvisioner {
     required MemberBusIdleEndpoint? busIdle,
     required bool forceTeamLeadDelegateMode,
     required bool mixed,
+    bool promptAlreadyMaterialized = false,
     String? realHomeRoot,
   }) async {
     await _ensureCursorDirs(memberHome);
@@ -68,7 +69,7 @@ final class CursorHomeProvisioner {
 
     if (!member.isValid) return;
 
-    if (!mixed) {
+    if (!mixed && !promptAlreadyMaterialized) {
       await const PromptHubService().provisionForCli(
         cli: CliTool.cursor,
         capability: _promptProvision,

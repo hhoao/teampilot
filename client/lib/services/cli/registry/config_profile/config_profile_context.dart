@@ -155,6 +155,7 @@ class ConfigProfileLaunchContext {
     this.sessionExpertKey,
     this.resolvedExpert,
     this.resourceProviders = ResourceProviderSet.empty,
+    this.promptAlreadyMaterialized = false,
   });
 
   final String workspaceId;
@@ -185,6 +186,10 @@ class ConfigProfileLaunchContext {
 
   /// All launch-injected resource sources, grouped by kind and ordered.
   final ResourceProviderSet resourceProviders;
+
+  /// True when the staged resource coordinator already wrote this member's
+  /// prompt for the target CLI. Legacy session-home callers leave this false.
+  final bool promptAlreadyMaterialized;
 
   bool get crossMachine => configProfileCrossMachine(catalog, paths);
 

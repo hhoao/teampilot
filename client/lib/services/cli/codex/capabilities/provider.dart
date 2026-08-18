@@ -475,16 +475,18 @@ final class CodexProviderCapability extends CatalogModelCapability
       ...await McpCredentialsStore(fs: paths.fs).readOAuthEnv(codexHome),
     };
 
-    await const PromptHubService().provisionForCli(
-      cli: CliTool.codex,
-      ctx: PromptMaterializeContext(
-        paths: paths,
-        scope: ctx.scope,
-        member: member,
-        forceTeamLeadDelegateMode: team?.forceTeamLeadDelegateMode ?? false,
-        mixed: mixed,
-      ),
-    );
+    if (!ctx.promptAlreadyMaterialized) {
+      await const PromptHubService().provisionForCli(
+        cli: CliTool.codex,
+        ctx: PromptMaterializeContext(
+          paths: paths,
+          scope: ctx.scope,
+          member: member,
+          forceTeamLeadDelegateMode: team?.forceTeamLeadDelegateMode ?? false,
+          mixed: mixed,
+        ),
+      );
+    }
 
     return SessionHomeContribution(
       environment: environment,

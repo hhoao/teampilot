@@ -732,6 +732,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
             busIdle: busIdle,
             agentStatus: agentStatus,
             resourceProviders: resourceProviders,
+            promptAlreadyMaterialized: true,
           ),
           cli,
         ),
@@ -1115,6 +1116,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
             resourceProviders: ResourceProviderSet(
               hooks: [hookLibraryProvider],
             ),
+            promptAlreadyMaterialized: true,
           ),
           launchCli,
         ),

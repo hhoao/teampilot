@@ -18,6 +18,7 @@ void main() {
   late ConfigProfileLaunchContext Function({
     List<HookEntry>? hooks,
     List<HookContributionProvider> extraProviders,
+    bool promptAlreadyMaterialized,
   })
   buildCtx;
 
@@ -37,6 +38,7 @@ void main() {
         ({
           List<HookEntry>? hooks,
           List<HookContributionProvider> extraProviders = const [],
+          bool promptAlreadyMaterialized = false,
         }) => ConfigProfileLaunchContext(
           workspaceId: 'w',
           teamId: 't',
@@ -51,6 +53,7 @@ void main() {
               ...extraProviders,
             ],
           ),
+          promptAlreadyMaterialized: promptAlreadyMaterialized,
         );
   });
 
@@ -88,5 +91,14 @@ void main() {
       home.resourceProviders.hooks.map((provider) => provider.providerId),
       ['user-library', 'managed-injected'],
     );
+  });
+
+  test('session-home adapter carries the coordinator prompt marker', () {
+    final home = sessionHomeContextFromLaunch(
+      buildCtx(promptAlreadyMaterialized: true),
+      CliTool.claude,
+    );
+
+    expect(home.promptAlreadyMaterialized, isTrue);
   });
 }

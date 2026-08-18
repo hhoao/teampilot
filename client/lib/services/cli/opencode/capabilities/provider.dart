@@ -461,19 +461,21 @@ final class OpencodeProviderCapability extends CatalogModelCapability
       changed = true;
     }
 
-    final promptContribution = await const PromptHubService().provisionForCli(
-      cli: CliTool.opencode,
-      ctx: PromptMaterializeContext(
-        paths: paths,
-        scope: ctx.scope,
-        member: member,
-        forceTeamLeadDelegateMode: team?.forceTeamLeadDelegateMode ?? false,
-        mixed: mixed,
-        additionalDirectories: workDirs,
-      ),
-    );
-    if (promptContribution.written) {
-      changed = true;
+    if (!ctx.promptAlreadyMaterialized) {
+      final promptContribution = await const PromptHubService().provisionForCli(
+        cli: CliTool.opencode,
+        ctx: PromptMaterializeContext(
+          paths: paths,
+          scope: ctx.scope,
+          member: member,
+          forceTeamLeadDelegateMode: team?.forceTeamLeadDelegateMode ?? false,
+          mixed: mixed,
+          additionalDirectories: workDirs,
+        ),
+      );
+      if (promptContribution.written) {
+        changed = true;
+      }
     }
 
     final busIdle = ctx.busIdle;
