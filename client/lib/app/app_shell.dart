@@ -5,6 +5,7 @@ import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../cubits/app_bootstrap_cubit.dart';
 import 'app_data_bootstrap.dart';
@@ -63,6 +64,8 @@ import '../cubits/floating_workspace/floating_workspace_cubit.dart';
 import '../models/layout_preferences.dart';
 import '../cubits/workspace_tools_cubit.dart';
 import '../cubits/llm_config_cubit.dart';
+import '../cubits/managed_provider_cubit.dart';
+import '../cubits/managed_provider_usage_cubit.dart';
 import '../cubits/session_preferences_cubit.dart';
 import '../models/session_preferences.dart';
 import '../cubits/extension_cubit.dart';
@@ -106,6 +109,8 @@ import '../repositories/ssh_known_host_repository.dart';
 import '../repositories/ssh_profile_repository.dart';
 import '../repositories/extension_repository.dart';
 import '../repositories/workspace_project_config_repository.dart';
+import '../repositories/managed_provider_repository.dart';
+import '../repositories/managed_provider_usage_repository.dart';
 import '../router/app_router.dart';
 import '../services/extension/builtin_manifests.dart';
 import '../services/extension/extension_acquisition_engine.dart';
@@ -167,6 +172,11 @@ import '../services/provider/api_model_catalog_service.dart';
 import '../services/cli/cursor/provider/cursor_agent_models_service.dart';
 import '../services/cli/cursor/provider/cursor_provider_credentials_service.dart';
 import '../services/provider/provider_credential_host_runner.dart';
+import '../services/provider_usage/managed_provider_secret_store.dart';
+import '../services/provider_usage/managed_provider_usage_adapter.dart';
+import '../services/provider_usage/managed_provider_usage_coordinator.dart';
+import '../services/provider_usage/managed_provider_usage_registry.dart';
+import '../services/provider_usage/adapters/http_json_mapping_adapter.dart';
 import '../services/app/connection_mode_service.dart';
 import '../services/cli/remote_cli_locator.dart';
 import '../services/storage/runtime_context_resolver.dart';
@@ -220,6 +230,48 @@ import '../services/terminal/workspace_terminal_session_ops.dart';
 import '../utils/logging/logger.dart';
 import 'ui_zoom_baseline.dart';
 
+/// This is the control-plane owner for Managed Provider state. It is created
+/// once by [buildAppShell] and deliberately contains no workspace identity.
+class ManagedProviderControlPlane {
+  ManagedProviderControlPlane({
+    required this.providerRepository,
+    required this.usageRepository,
+    required this.secretStore,
+    required this.usageRegistry,
+    required this.usageCoordinator,
+    required this.providerCubit,
+    required this.usageCubit,
+  });
+
+  final ManagedProviderRepository providerRepository;
+  final ManagedProviderUsageRepository usageRepository;
+  final ManagedProviderSecretStore secretStore;
+  final ManagedProviderUsageRegistry usageRegistry;
+  final ManagedProviderUsageCoordinator usageCoordinator;
+  final ManagedProviderCubit providerCubit;
+  final ManagedProviderUsageCubit usageCubit;
+  Future<void>? _hydration;
+
+  Future<void> hydrate({required BootLog boot}) {
+    final existing = _hydration;
+    if (existing != null) return existing;
+    final future = AppDataBootstrap.hydrateManagedProviderData(
+      boot: boot,
+      managedProviderCubit: providerCubit,
+      managedProviderUsageCubit: usageCubit,
+    );
+    _hydration = future;
+    return future;
+  }
+
+  Future<void> reload({required BootLog boot}) =>
+      AppDataBootstrap.reloadManagedProviderData(
+        boot: boot,
+        managedProviderCubit: providerCubit,
+        managedProviderUsageCubit: usageCubit,
+      );
+}
+
 /// Fully wired app dependencies produced after async bootstrap.
 class AppShell {
   AppShell({
@@ -264,6 +316,14 @@ class AppShell {
     required this.teamCubit,
     required this.configCubit,
     required this.appProviderCubit,
+    required this.managedProviderControlPlane,
+    required this.managedProviderRepository,
+    required this.managedProviderUsageRepository,
+    required this.managedProviderSecretStore,
+    required this.managedProviderUsageRegistry,
+    required this.managedProviderUsageCoordinator,
+    required this.managedProviderCubit,
+    required this.managedProviderUsageCubit,
     required this.llmConfigCubit,
     required this.layoutCubit,
     required this.workspaceToolsCubit,
@@ -349,6 +409,14 @@ class AppShell {
   final LaunchProfileCubit teamCubit;
   final ConfigCubit configCubit;
   final AppProviderCubit appProviderCubit;
+  final ManagedProviderControlPlane managedProviderControlPlane;
+  final ManagedProviderRepository managedProviderRepository;
+  final ManagedProviderUsageRepository managedProviderUsageRepository;
+  final ManagedProviderSecretStore managedProviderSecretStore;
+  final ManagedProviderUsageRegistry managedProviderUsageRegistry;
+  final ManagedProviderUsageCoordinator managedProviderUsageCoordinator;
+  final ManagedProviderCubit managedProviderCubit;
+  final ManagedProviderUsageCubit managedProviderUsageCubit;
   final LlmConfigCubit llmConfigCubit;
   final LayoutCubit layoutCubit;
   final WorkspaceToolsCubit workspaceToolsCubit;
@@ -395,6 +463,14 @@ Future<AppShell> buildAppShell({
   Future<String>? defaultWorkspaceDirectoryFuture,
   Future<void>? homeIndexPrefetchFuture,
   AppBootstrapCubit? bootstrapCubit,
+  ManagedProviderRepository? managedProviderRepository,
+  ManagedProviderUsageRepository? managedProviderUsageRepository,
+  ManagedProviderSecretStore? managedProviderSecretStore,
+  ManagedProviderUsageRegistry? managedProviderUsageRegistry,
+  ManagedProviderUsageCoordinator? managedProviderUsageCoordinator,
+  ManagedProviderCubit? managedProviderCubit,
+  ManagedProviderUsageCubit? managedProviderUsageCubit,
+  ProviderUsageHttpClient? managedProviderUsageHttpClient,
 }) async {
   final bootSw = Stopwatch()..start();
   void boot(String phase) =>
@@ -602,6 +678,7 @@ Future<AppShell> buildAppShell({
     }
     return null;
   }
+
   final remoteCliReadiness = RemoteCliReadinessService(
     registry: cliToolRegistry,
     sshClientFactory: sshClientFactory,
@@ -676,6 +753,63 @@ Future<AppShell> buildAppShell({
     'home context installed '
     '(${AppStorage.context.mode}, home=${homeTarget.id}, '
     'root=${AppStorage.appDataRoot})',
+  );
+
+  // Managed Providers belong to the home/control plane. Construct this graph
+  // once after AppStorage is bound; workspace tabs only consume the Cubits
+  // exposed by AppShell and never create provider-specific state.
+  final resolvedManagedProviderSecretStore =
+      managedProviderSecretStore ??
+      ManagedProviderSecretStore(const FlutterSecureKeyValueStore());
+  final resolvedManagedProviderUsageRepository =
+      managedProviderUsageRepository ??
+      ManagedProviderUsageRepository(
+        fs: AppStorage.fs,
+        cachePath: AppStorage.paths.managedProviderUsageCacheFile,
+      );
+  final resolvedManagedProviderRepository =
+      managedProviderRepository ??
+      ManagedProviderRepository(
+        fs: AppStorage.fs,
+        configPath: AppStorage.paths.managedProviderConfigFile,
+        onProvidersDeleted: resolvedManagedProviderUsageRepository.deleteMany,
+      );
+  final resolvedManagedProviderUsageRegistry =
+      managedProviderUsageRegistry ??
+      ManagedProviderUsageRegistry([HttpJsonMappingAdapter()]);
+  final resolvedManagedProviderHttpClient =
+      managedProviderUsageHttpClient ?? _DefaultProviderUsageHttpClient();
+  final resolvedManagedProviderUsageCoordinator =
+      managedProviderUsageCoordinator ??
+      ManagedProviderUsageCoordinator(
+        providerRepository: resolvedManagedProviderRepository,
+        usageRepository: resolvedManagedProviderUsageRepository,
+        registry: resolvedManagedProviderUsageRegistry,
+        credentials: ManagedProviderCredentialResolver(
+          resolvedManagedProviderSecretStore,
+        ),
+        http: resolvedManagedProviderHttpClient,
+      );
+  final resolvedManagedProviderUsageCubit =
+      managedProviderUsageCubit ??
+      ManagedProviderUsageCubit(
+        coordinator: resolvedManagedProviderUsageCoordinator,
+      );
+  final resolvedManagedProviderCubit =
+      managedProviderCubit ??
+      ManagedProviderCubit(
+        repository: resolvedManagedProviderRepository,
+        onProviderDeletedState:
+            resolvedManagedProviderUsageCubit.removeProvider,
+      );
+  final managedProviderControlPlane = ManagedProviderControlPlane(
+    providerRepository: resolvedManagedProviderRepository,
+    usageRepository: resolvedManagedProviderUsageRepository,
+    secretStore: resolvedManagedProviderSecretStore,
+    usageRegistry: resolvedManagedProviderUsageRegistry,
+    usageCoordinator: resolvedManagedProviderUsageCoordinator,
+    providerCubit: resolvedManagedProviderCubit,
+    usageCubit: resolvedManagedProviderUsageCubit,
   );
 
   Future<void> persistSshHomePathCacheIfLive() async {
@@ -1191,7 +1325,8 @@ Future<AppShell> buildAppShell({
           WorkspaceTerminalConnectCoordinator.termuxAware(
             connector: connector,
             termuxConnected: () => termuxGateCubit?.state.connected ?? true,
-            termuxWorkOpsBlockedMessage: TermuxWorkOpsMessage.disconnectedBlocked,
+            termuxWorkOpsBlockedMessage:
+                TermuxWorkOpsMessage.disconnectedBlocked,
           ),
     ),
   );
@@ -1250,8 +1385,10 @@ Future<AppShell> buildAppShell({
         sessionPreferencesCubit.state.preferences.autoLaunchAllMembersOnConnect,
     reclaimIdleTerminalsEnabled: () =>
         sessionPreferencesCubit.state.preferences.reclaimIdleTerminals,
-    reclaimIdleTerminalAfterSeconds: () =>
-        sessionPreferencesCubit.state.preferences.reclaimIdleTerminalAfterSeconds,
+    reclaimIdleTerminalAfterSeconds: () => sessionPreferencesCubit
+        .state
+        .preferences
+        .reclaimIdleTerminalAfterSeconds,
     executableResolver: () => sessionPreferencesCubit.resolveExecutable(),
     cliExecutableResolver: sessionPreferencesCubit.resolveExecutable,
     transportFactory: transportFactory,
@@ -1331,8 +1468,7 @@ Future<AppShell> buildAppShell({
     commandBus,
     layoutCubit,
     uiZoomBaseline: () => uiZoomBaseline.value,
-    composeLanding: () => workbenchCubit
-        .state
+    composeLanding: () => workbenchCubit.state
         .bar(chatCubit.tabStore.activeWorkspaceId)
         .center
         .landingActive,
@@ -1470,8 +1606,8 @@ Future<AppShell> buildAppShell({
   };
   chatCubit.onHistorySeatsDispose = aiHistoryCubit.disposeSeatsForSession;
   // Landing seed routing: pods own the store; these sinks are the fallback.
-  chatCubit.onSeedHistoryPending = (sid, mid, text) => aiHistoryCubit
-      .seedPendingUser(sessionId: sid, memberId: mid, text: text);
+  chatCubit.onSeedHistoryPending = (sid, mid, text) =>
+      aiHistoryCubit.seedPendingUser(sessionId: sid, memberId: mid, text: text);
   chatCubit.onCancelSeedHistoryPending = (sid, text) =>
       aiHistoryCubit.cancelSeedPendingUser(sessionId: sid, text: text);
 
@@ -1512,6 +1648,15 @@ Future<AppShell> buildAppShell({
   bootstrapCubit?.markShellReady();
   boot('buildAppShell shell ready');
 
+  Future<void>? managedProviderHydration;
+  Future<void> hydrateManagedProviderData() {
+    final existing = managedProviderHydration;
+    if (existing != null) return existing;
+    final future = managedProviderControlPlane.hydrate(boot: boot);
+    managedProviderHydration = future;
+    return future;
+  }
+
   reloadAllAppData = ({bool reinstallSshHome = true}) async {
     await AppDataBootstrap.reloadAll(
       boot: boot,
@@ -1530,6 +1675,8 @@ Future<AppShell> buildAppShell({
       homeSshProfileId: defaultTargetResolver().sshProfileId,
       sshProfileExists: (id) => sshProfileById(id) != null,
       reinstallStorageContext: reinstallStorageContext,
+      managedProviderCubit: resolvedManagedProviderCubit,
+      managedProviderUsageCubit: resolvedManagedProviderUsageCubit,
       home: defaultTargetResolver(),
       reinstallSshHome: reinstallSshHome,
     );
@@ -1615,6 +1762,11 @@ Future<AppShell> buildAppShell({
     }
     await reconnectHomeSshIfNeeded();
     await yieldUiFrame();
+    // Managed Provider cache hydration is deliberately background work. The
+    // shell can paint while the global Cubits transition from initial to
+    // ready, and the Cubit load methods keep repeated bootstrap calls single-
+    // flight.
+    unawaited(hydrateManagedProviderData());
     boot(
       'bootstrapAppData index ready '
       'workspaces=${chatCubit.state.workspaces.length} '
@@ -1668,9 +1820,9 @@ Future<AppShell> buildAppShell({
           editorCubit.closeDiff(workspaceId, replaced.id);
         case WorkbenchTabKind.shell:
           workspaceTerminalRunService.handleEntryClosed(replaced.id);
-          workspaceTerminalRegistry.groupFor(workspaceId).removeEntry(
-            replaced.id,
-          );
+          workspaceTerminalRegistry
+              .groupFor(workspaceId)
+              .removeEntry(replaced.id);
         case WorkbenchTabKind.run:
           final workspace = chatCubit.state.workspaces
               .where((w) => w.workspaceId == workspaceId)
@@ -1703,8 +1855,7 @@ Future<AppShell> buildAppShell({
     floating: floatingWorkspaceCubit,
     chat: chatCubit,
     markdownViewModes: markdownViewModes,
-    readMarkdownOpenMode: () =>
-        layoutCubit.state.preferences.markdownOpenMode,
+    readMarkdownOpenMode: () => layoutCubit.state.preferences.markdownOpenMode,
     readFilePreviewInFloating: () =>
         layoutCubit.state.preferences.filePreviewHost ==
         FilePreviewHost.floating,
@@ -1896,6 +2047,14 @@ Future<AppShell> buildAppShell({
     teamCubit: teamCubit,
     configCubit: configCubit,
     appProviderCubit: appProviderCubit,
+    managedProviderControlPlane: managedProviderControlPlane,
+    managedProviderRepository: resolvedManagedProviderRepository,
+    managedProviderUsageRepository: resolvedManagedProviderUsageRepository,
+    managedProviderSecretStore: resolvedManagedProviderSecretStore,
+    managedProviderUsageRegistry: resolvedManagedProviderUsageRegistry,
+    managedProviderUsageCoordinator: resolvedManagedProviderUsageCoordinator,
+    managedProviderCubit: resolvedManagedProviderCubit,
+    managedProviderUsageCubit: resolvedManagedProviderUsageCubit,
     llmConfigCubit: llmConfigCubit,
     layoutCubit: layoutCubit,
     workspaceToolsCubit: workspaceToolsCubit,
@@ -1936,6 +2095,31 @@ Future<AppShell> buildAppShell({
     workspaceContentSearchHost: workspaceContentSearchHost,
     uiZoomBaseline: uiZoomBaseline,
   );
+}
+
+/// Production transport for the provider-usage adapter boundary. Keeping the
+/// `http` package behind this interface means adapters and tests never depend
+/// on a concrete client, and no UI layer can accidentally perform I/O.
+class _DefaultProviderUsageHttpClient implements ProviderUsageHttpClient {
+  _DefaultProviderUsageHttpClient({http.Client? client})
+    : _client = client ?? http.Client();
+
+  final http.Client _client;
+
+  @override
+  Future<ProviderUsageHttpResponse> send(
+    ProviderUsageHttpRequest request,
+  ) async {
+    final outgoing = http.Request(request.method.toUpperCase(), request.uri)
+      ..headers.addAll(request.headers);
+    if (request.body != null) outgoing.body = request.body!;
+    final response = await _client.send(outgoing);
+    return ProviderUsageHttpResponse(
+      statusCode: response.statusCode,
+      body: await response.stream.bytesToString(),
+      headers: response.headers,
+    );
+  }
 }
 
 class TeamPilotBootstrap extends StatefulWidget {
@@ -2043,6 +2227,16 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
     await _start();
   }
 
+  @override
+  void dispose() {
+    final shell = _shell;
+    if (shell != null) {
+      unawaited(shell.managedProviderCubit.close());
+      unawaited(shell.managedProviderUsageCubit.close());
+    }
+    super.dispose();
+  }
+
   bool get _canFallbackToNativeStorage {
     if (!Platform.isWindows || _error == null) return false;
     return runtimeKindOfId(HomeTargetStore(widget.preferences).load()) ==
@@ -2075,6 +2269,12 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
         home: const AppBootstrapLoadingPage(),
       );
     }
-    return widget.childBuilder(shell);
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider.value(value: shell.managedProviderCubit),
+        BlocProvider.value(value: shell.managedProviderUsageCubit),
+      ],
+      child: widget.childBuilder(shell),
+    );
   }
 }
