@@ -38,12 +38,16 @@ class ManagedProviderRepository {
   }
 
   Future<void> save(List<ManagedProvider> providers) async {
+    final normalizedProviders = <ManagedProvider>[];
+    for (final provider in providers) {
+      final normalized = _normalizeProvider(provider);
+      if (normalized == null) return;
+      normalizedProviders.add(normalized);
+    }
     await ManagedProviderStorageLock.run(_configPath, () async {
       final current = await _readStore();
       final merged = <String, ManagedProvider>{};
-      for (final provider in providers) {
-        final normalized = _normalizeProvider(provider);
-        if (normalized == null) continue;
+      for (final normalized in normalizedProviders) {
         final previous = current.providers[normalized.id];
         merged[normalized.id] = previous == null
             ? normalized

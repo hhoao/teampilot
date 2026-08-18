@@ -327,13 +327,44 @@ void main() {
     );
 
     test('normalizes provider IDs and never writes empty IDs', () async {
-      await repo.save([_provider(' p1 '), _provider('p1'), _provider('  ')]);
+      await repo.save([_provider(' p1 '), _provider('p1')]);
 
       expect((await repo.load()).map((provider) => provider.id), ['p1']);
       final raw = await fs.readString(path);
       expect((jsonDecode(raw!) as Map)['providers'].keys, ['p1']);
 
       await repo.delete(' p1 ');
+      expect(await repo.load(), isEmpty);
+    });
+
+    test('invalid-only save preserves the existing provider catalog', () async {
+      await repo.save([_provider('p1'), _provider('p2')]);
+
+      await repo.save([_provider('  ')]);
+
+      expect((await repo.load()).map((provider) => provider.id), ['p1', 'p2']);
+    });
+
+    test(
+      'mixed-invalid save preserves the existing provider catalog',
+      () async {
+        await repo.save([_provider('p1'), _provider('p2')]);
+
+        await repo.save([_provider('p1', name: 'Updated'), _provider('\t')]);
+
+        expect((await repo.load()).map((provider) => provider.id), [
+          'p1',
+          'p2',
+        ]);
+        expect((await repo.load()).first.name, 'Example');
+      },
+    );
+
+    test('explicit empty save clears the provider catalog', () async {
+      await repo.save([_provider('p1')]);
+
+      await repo.save([]);
+
       expect(await repo.load(), isEmpty);
     });
 
