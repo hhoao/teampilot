@@ -51,6 +51,7 @@ class TeamLaunchService {
       member: member,
       sessionId: const Uuid().v4(),
       workingDirectory: workingDirectory,
+      additionalDirectories: additionalDirectories,
     );
     return outcome.environment.isEmpty ? null : outcome.environment;
   }

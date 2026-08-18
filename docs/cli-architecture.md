@@ -103,7 +103,6 @@ services/cli/
       cli_headless_launch_constraint.dart
       cli_launch_arg_contribution.dart
       cli_launch_arg_assembler.dart
-      cli_launch_arg_assembler.dart
 ```
 
 共享基础设施（如被 Claude/FlashskyAI/Cursor 共用的 `plugins/claude_flavor_registry_writer.dart`）

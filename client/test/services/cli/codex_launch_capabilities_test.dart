@@ -192,11 +192,15 @@ void main() {
     expect(tool.teamBehavior.supportsNativeTeam, isFalse);
   });
 
-  test('Codex launch rejects a tool without launch providers', () {
+  test('Codex mixed-mode launch rejects a tool without launch providers', () {
     final context = CliLaunchContext(
-      team: const TeamProfile(id: 'team', name: 'Team', cli: CliTool.codex),
+      team: const TeamProfile(
+        id: 'team',
+        name: 'Team',
+        cli: CliTool.codex,
+        teamMode: TeamMode.mixed,
+      ),
       member: const TeamMemberConfig(id: 'member', name: 'Member'),
-      nativeAgentTeam: false,
     );
 
     expect(

@@ -163,11 +163,15 @@ void main() {
     },
   );
 
-  test('Cursor launch rejects a tool without launch providers', () {
+  test('Cursor mixed-mode launch rejects a tool without launch providers', () {
     final context = CliLaunchContext(
-      team: const TeamProfile(id: 'team', name: 'Team', cli: CliTool.cursor),
+      team: const TeamProfile(
+        id: 'team',
+        name: 'Team',
+        cli: CliTool.cursor,
+        teamMode: TeamMode.mixed,
+      ),
       member: const TeamMemberConfig(id: 'member', name: 'Member'),
-      nativeAgentTeam: false,
     );
 
     expect(
