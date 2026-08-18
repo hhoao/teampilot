@@ -119,7 +119,7 @@ void main() {
     },
   );
 
-  test('asMap remains immutable and redacts values from toString', () async {
+  test('all asMap diagnostics redact credential values', () async {
     final backend = _FakeSecureKeyValueStore();
     final store = ManagedProviderSecretStore(backend);
     const secret = 'scope-map-secret';
@@ -129,8 +129,15 @@ void main() {
     final values = scope.asMap();
 
     expect(values['apiKey'], secret);
-    expect(values.toString(), isNot(contains(secret)));
-    expect(scope.toString(), isNot(contains(secret)));
+    for (final diagnostic in [
+      values.toString(),
+      values.keys.toString(),
+      values.values.toString(),
+      values.entries.toString(),
+      scope.toString(),
+    ]) {
+      expect(diagnostic, isNot(contains(secret)));
+    }
     expect(() => values['apiKey'] = 'replacement', throwsUnsupportedError);
   });
 
@@ -247,6 +254,26 @@ void main() {
       expect(backend.values[key], 'old-secret');
     },
   );
+
+  test('rejects an initialized manifest with a missing listed field', () async {
+    final backend = _FakeSecureKeyValueStore();
+    final store = ManagedProviderSecretStore(backend);
+    const ref = 'managed-provider:p1';
+    const missingKey = 'teampilot.managed_provider.v1.$ref.token';
+    const secret = 'manifest-secret';
+
+    await store.write(ref, {'apiKey': secret, 'token': 'second-secret'});
+    backend.values.remove(missingKey);
+
+    final error = await captureException(() => store.read(ref));
+
+    expect(error, isA<ManagedProviderCredentialError>());
+    expect(
+      (error as ManagedProviderCredentialError).code,
+      ManagedProviderCredentialErrorCode.manifestCorrupt,
+    );
+    expect(error.toString(), isNot(contains(secret)));
+  });
 
   test(
     'delete is idempotent for a never-initialized credential reference',

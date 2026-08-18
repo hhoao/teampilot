@@ -32,7 +32,14 @@ class ManagedProviderCredentialMap extends MapBase<String, String> {
   void clear() => _throwImmutable();
 
   @override
-  Iterable<String> get keys => _values.keys;
+  Iterable<String> get keys => _RedactedIterable(_values.keys);
+
+  @override
+  Iterable<String> get values => _RedactedIterable(_values.values);
+
+  @override
+  Iterable<MapEntry<String, String>> get entries =>
+      _RedactedIterable(_values.entries);
 
   @override
   String? remove(Object? key) => _throwImmutable();
@@ -119,7 +126,8 @@ class ManagedProviderSecretStore {
     final values = <String, String>{};
     for (final field in manifest.fields) {
       final value = await _readKey(_key(ref, field));
-      if (value != null) values[field] = value;
+      if (value == null) _throwManifestCorrupt();
+      values[field] = value;
     }
     return ManagedProviderCredentialScope(values);
   }
@@ -417,6 +425,18 @@ class _ManifestRead {
   final List<String> fields;
   final bool isInitialized;
   final bool isMissing;
+}
+
+class _RedactedIterable<T> extends IterableBase<T> {
+  _RedactedIterable(this._source);
+
+  final Iterable<T> _source;
+
+  @override
+  Iterator<T> get iterator => _source.iterator;
+
+  @override
+  String toString() => '<redacted>';
 }
 
 /// Resolves a managed provider's reference only for the current request.
