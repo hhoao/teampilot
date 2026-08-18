@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:path/path.dart' as p;
 
 import '../../models/config_bundle.dart';
@@ -14,6 +16,7 @@ import '../storage/runtime_layout.dart';
 import '../extension/extension_detector.dart';
 import '../extension/extension_provisioner.dart';
 import '../host/host_execution_environment.dart';
+import '../host/host_one_shot_runner.dart';
 import '../host/host_script_dialect.dart';
 import '../host/script_file_hook_provisioner.dart';
 import '../cli/registry/capabilities/plugin_capability.dart';
@@ -74,6 +77,7 @@ class TeamLaunchOutcome {
 /// Orchestrates config-profile layout, MCP/plugin merge, and per-CLI capabilities.
 class ConfigProfileService implements ConfigProfileDelegate {
   static final _defaultCliRegistry = CliToolRegistry.builtIn();
+  static final _nativePluginLocks = <String, Future<void>>{};
 
   ConfigProfileService({
     required String basePath,
@@ -92,6 +96,8 @@ class ConfigProfileService implements ConfigProfileDelegate {
     Future<String> Function(HostScriptDialect dialect)?
     loadTeamLeadDelegateHookScript,
     HostExecutionEnvironment? hostEnvironment,
+    HostOneShotRunner? hostOneShotRunner,
+    String? cliExecutable,
     CliToolRegistry? cliRegistry,
     Future<List<Skill>> Function()? loadInstalledSkills,
     Future<List<CliPreset>> Function() loadGlobalPresets =
@@ -115,6 +121,8 @@ class ConfigProfileService implements ConfigProfileDelegate {
          hostEnvironment: hostEnvironment,
        ),
        _catalogOverride = catalog,
+       _hostOneShotRunner = hostOneShotRunner,
+       _cliExecutable = cliExecutable,
        _cliRegistry = cliRegistry ?? _defaultCliRegistry,
        _loadInstalledSkills = loadInstalledSkills,
        _loadGlobalPresets = loadGlobalPresets,
@@ -128,8 +136,12 @@ class ConfigProfileService implements ConfigProfileDelegate {
     Future<List<CliPreset>> Function() loadGlobalPresets =
         _defaultLoadGlobalPresets,
     WorkspaceProjectConfigRepository? projectConfigRepository,
+    HostOneShotRunner? hostOneShotRunner,
+    String? cliExecutable,
   }) : _infra = infra,
        _catalogOverride = catalog,
+       _hostOneShotRunner = hostOneShotRunner,
+       _cliExecutable = cliExecutable,
        _cliRegistry = cliRegistry ?? _defaultCliRegistry,
        _loadInstalledSkills = loadInstalledSkills,
        _loadGlobalPresets = loadGlobalPresets,
@@ -137,6 +149,8 @@ class ConfigProfileService implements ConfigProfileDelegate {
 
   final ConfigProfileInfrastructure _infra;
   final ConfigProfilePaths? _catalogOverride;
+  final HostOneShotRunner? _hostOneShotRunner;
+  final String? _cliExecutable;
   final CliToolRegistry _cliRegistry;
   final Future<List<Skill>> Function()? _loadInstalledSkills;
   final Future<List<CliPreset>> Function() _loadGlobalPresets;
@@ -479,6 +493,77 @@ class ConfigProfileService implements ConfigProfileDelegate {
   @override
   p.Context get pathContext => _infra.pathContext;
 
+  /// Runs CLI-owned plugin installation serially for each target config dir.
+  /// Native teams share one CODEX_HOME, so concurrent member connects must not
+  /// replace the marketplace while another member is installing from it.
+  Future<T> _withNativePluginLock<T>(
+    String key,
+    Future<T> Function() action,
+  ) async {
+    final previous = _nativePluginLocks[key] ?? Future<void>.value();
+    final gate = Completer<void>();
+    final queued = previous.then((_) => gate.future);
+    _nativePluginLocks[key] = queued;
+    try {
+      await previous;
+      return await action();
+    } finally {
+      if (!gate.isCompleted) gate.complete();
+      if (identical(_nativePluginLocks[key], queued)) {
+        _nativePluginLocks.remove(key);
+      }
+    }
+  }
+
+  /// Runs CLI-owned plugin installation after a launch manifest has been
+  /// flushed to the target filesystem.
+  Future<void> provisionNativePlugins({
+    required String workspaceId,
+    required String sessionId,
+    required ConfigBundle runtimeBundle,
+    required CliTool cli,
+    String? memberId,
+    TeamProfile? team,
+    String? executable,
+  }) async {
+    final pluginProvisioner = _cliRegistry.capability<PluginCapability>(cli);
+    if (pluginProvisioner == null ||
+        pluginProvisioner.runtimeOwnership != PluginRuntimeOwnership.native) {
+      return;
+    }
+    final bundlePoolDir = layout.sessionRuntimePluginPoolDir(
+      workspaceId,
+      sessionId,
+      cli.value,
+      memberId: memberId,
+    );
+    final configDir = _launchResourceConfigDir(
+      cli: cli,
+      workspaceId: workspaceId,
+      sessionId: sessionId,
+      memberId: memberId,
+      team: team,
+    );
+    final lockKey = configDir;
+    await _withNativePluginLock(lockKey, () async {
+      final installedCatalog = await InstalledPluginCatalog.load(fs, basePath);
+      await pluginProvisioner.provision(
+        PluginProvisionContext(
+          fs: fs,
+          teampilotRoot: basePath,
+          configDir: configDir,
+          bundlePoolDir: bundlePoolDir,
+          enabledPluginIds: runtimeBundle.pluginIds,
+          installedCatalog: installedCatalog,
+          layout: layout,
+          tool: cli,
+          hostOneShotRunner: _hostOneShotRunner,
+          executable: executable ?? _cliExecutable,
+        ),
+      );
+    });
+  }
+
   String get cliDefaultsDir => layout.cliDefaultsDir;
 
   String get identitiesRuntimeDir => layout.identitiesRuntimeDir;
@@ -616,17 +701,26 @@ class ConfigProfileService implements ConfigProfileDelegate {
     if (pluginProvisioner != null) {
       installedCatalog = await InstalledPluginCatalog.load(fs, basePath);
       final enabledPlugins = runtimeBundle?.pluginIds ?? const <String>[];
+      final pluginPoolDir =
+          pluginProvisioner.runtimeOwnership == PluginRuntimeOwnership.native
+          ? layout.sessionRuntimePluginPoolDir(
+              trimmedWorkspaceId,
+              trimmedSessionId,
+              cli.value,
+              memberId: memberId,
+            )
+          : layout.sessionRuntimePluginsDir(
+              trimmedWorkspaceId,
+              trimmedSessionId,
+              cli.value,
+              memberId: memberId,
+            );
       final poolResult =
           await PluginBundlePoolService(
             fs: fs,
             teampilotRoot: basePath,
           ).reconcile(
-            poolDir: layout.sessionRuntimePluginsDir(
-              trimmedWorkspaceId,
-              trimmedSessionId,
-              cli.value,
-              memberId: memberId,
-            ),
+            poolDir: pluginPoolDir,
             enabledPluginIds: enabledPlugins,
             installedCatalog: installedCatalog,
             paths:
@@ -650,12 +744,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
           fs: fs,
           teampilotRoot: basePath,
           configDir: configDir,
-          bundlePoolDir: layout.sessionRuntimePluginsDir(
-            trimmedWorkspaceId,
-            trimmedSessionId,
-            cli.value,
-            memberId: memberId,
-          ),
+          bundlePoolDir: pluginPoolDir,
           enabledPluginIds: enabledPlugins,
           installedCatalog: installedCatalog,
           layout: layout,
@@ -833,6 +922,18 @@ class ConfigProfileService implements ConfigProfileDelegate {
     final mcpRegistry = McpRegistryService(fs: fs, layout: layout);
     List<Plugin>? installedCatalog;
     if (pluginProvisioner != null) {
+      final pluginPoolDir =
+          pluginProvisioner.runtimeOwnership == PluginRuntimeOwnership.native
+          ? layout.sessionRuntimePluginPoolDir(
+              trimmedWorkspaceId,
+              trimmedSessionId,
+              cli.value,
+            )
+          : layout.sessionRuntimePluginsDir(
+              trimmedWorkspaceId,
+              trimmedSessionId,
+              cli.value,
+            );
       late final PluginBundlePoolResult poolResult;
       await step('plugin-catalog', () async {
         installedCatalog = await InstalledPluginCatalog.load(fs, basePath);
@@ -844,11 +945,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
               fs: fs,
               teampilotRoot: basePath,
             ).reconcile(
-              poolDir: layout.sessionRuntimePluginsDir(
-                trimmedWorkspaceId,
-                trimmedSessionId,
-                cli.value,
-              ),
+              poolDir: pluginPoolDir,
               enabledPluginIds: runtimeBundle.pluginIds,
               installedCatalog: pluginCatalog,
               paths:
@@ -866,11 +963,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
             fs: fs,
             teampilotRoot: basePath,
             configDir: configDir,
-            bundlePoolDir: layout.sessionRuntimePluginsDir(
-              trimmedWorkspaceId,
-              trimmedSessionId,
-              cli.value,
-            ),
+            bundlePoolDir: pluginPoolDir,
             enabledPluginIds: runtimeBundle.pluginIds,
             installedCatalog: pluginCatalog,
             layout: layout,
@@ -1173,6 +1266,12 @@ class ConfigProfileService implements ConfigProfileDelegate {
     );
     final executor = manifestExecutor ?? const ManifestExecutor();
     await executor.flush(manifest: staged.manifest, targetFs: fs, sourceFs: fs);
+    await provisionNativePlugins(
+      workspaceId: workspaceId,
+      sessionId: sessionId,
+      runtimeBundle: runtimeBundle,
+      cli: member.cli ?? CliTool.claude,
+    );
     return staged.outcome;
   }
 
@@ -1520,6 +1619,16 @@ class ConfigProfileService implements ConfigProfileDelegate {
     );
     final executor = manifestExecutor ?? const ManifestExecutor();
     await executor.flush(manifest: staged.manifest, targetFs: fs, sourceFs: fs);
+    await provisionNativePlugins(
+      workspaceId: workspaceId,
+      sessionId: sessionId,
+      runtimeBundle: runtimeBundle,
+      cli: cli,
+      memberId: team?.teamMode == TeamMode.mixed && member != null
+          ? ClaudeTeamRosterService.safeClaudePathSegment(member.id)
+          : null,
+      team: team,
+    );
     return staged.outcome;
   }
 

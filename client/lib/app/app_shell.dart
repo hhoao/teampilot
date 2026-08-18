@@ -1149,6 +1149,7 @@ Future<AppShell> buildAppShell({
       return (await extensionRepository.load(forceReload: true)).globalEnabled;
     },
     cliToolRegistry: cliToolRegistry,
+    cliExecutableResolver: sessionPreferencesCubit.resolveExecutable,
     identityRepository: identityRepository,
     loadInstalledSkills: () => skillRepo.loadInstalled(),
     cliPresetsRepository: cliPresetsRepo,

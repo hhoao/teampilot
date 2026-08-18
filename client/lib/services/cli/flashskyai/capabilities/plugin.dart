@@ -12,6 +12,10 @@ final class FlashskyaiPluginCapability implements PluginCapability {
   bool get writesAssembledMcp => false;
 
   @override
+  PluginRuntimeOwnership get runtimeOwnership =>
+      PluginRuntimeOwnership.teamPilot;
+
+  @override
   PluginManifestPaths? get manifestPaths => flashskyaiPluginManifestPaths;
 
   @override

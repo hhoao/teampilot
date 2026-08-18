@@ -10,6 +10,10 @@ import 'mcp.dart';
 final class CursorPluginCapability implements PluginCapability {
   const CursorPluginCapability();
 
+  @override
+  PluginRuntimeOwnership get runtimeOwnership =>
+      PluginRuntimeOwnership.teamPilot;
+
   static const localPluginsSegment = 'local';
 
   @override

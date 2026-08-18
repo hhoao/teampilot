@@ -21,6 +21,10 @@ import 'mcp.dart';
 final class OpencodePluginCapability implements PluginCapability {
   const OpencodePluginCapability();
 
+  @override
+  PluginRuntimeOwnership get runtimeOwnership =>
+      PluginRuntimeOwnership.teamPilot;
+
   static const agentSubdir = 'agent';
   static const pluginsSubdirName = 'plugins';
   static const opencodeFlavorDir = '.opencode';

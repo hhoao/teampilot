@@ -36,16 +36,14 @@ void main() {
       CliTool.codex,
       CliTool.opencode,
     ]) {
-      expect(
-        registry
-            .capability<PluginCapability>(cli)!
-            .memberPluginsSubpath,
-        ['plugins'],
-        reason: '$cli',
-      );
+      expect(registry.capability<PluginCapability>(cli)!.memberPluginsSubpath, [
+        'plugins',
+      ], reason: '$cli');
     }
     expect(
-      registry.capability<PluginCapability>(CliTool.cursor)!.memberPluginsSubpath,
+      registry
+          .capability<PluginCapability>(CliTool.cursor)!
+          .memberPluginsSubpath,
       ['plugins', 'local'],
     );
   });
@@ -85,6 +83,26 @@ void main() {
     }
   });
 
+  test('Codex delegates plugin ownership to the native CLI', () {
+    final registry = buildRegistry();
+    expect(
+      registry.capability<PluginCapability>(CliTool.codex)!.runtimeOwnership,
+      PluginRuntimeOwnership.native,
+    );
+    for (final cli in [
+      CliTool.claude,
+      CliTool.flashskyai,
+      CliTool.opencode,
+      CliTool.cursor,
+    ]) {
+      expect(
+        registry.capability<PluginCapability>(cli)!.runtimeOwnership,
+        PluginRuntimeOwnership.teamPilot,
+        reason: '$cli',
+      );
+    }
+  });
+
   test('only opencode seeds shared plugin deps before reconcile', () {
     final registry = buildRegistry();
     for (final cli in CliTool.values) {
@@ -99,14 +117,17 @@ void main() {
     }
   });
 
-  test('pluginCapabilityForTool resolves the same instance as the registry', () {
-    final registry = buildRegistry();
-    for (final cli in CliTool.values) {
-      expect(
-        pluginCapabilityForTool(cli, registry: registry),
-        same(registry.capability<PluginCapability>(cli)),
-        reason: '$cli',
-      );
-    }
-  });
+  test(
+    'pluginCapabilityForTool resolves the same instance as the registry',
+    () {
+      final registry = buildRegistry();
+      for (final cli in CliTool.values) {
+        expect(
+          pluginCapabilityForTool(cli, registry: registry),
+          same(registry.capability<PluginCapability>(cli)),
+          reason: '$cli',
+        );
+      }
+    },
+  );
 }

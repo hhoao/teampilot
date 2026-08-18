@@ -34,6 +34,7 @@ import '../provider/config_profile_service.dart';
 import '../../models/runtime_target.dart';
 import '../io/local_filesystem.dart';
 import '../storage/runtime_context.dart';
+import '../host/host_one_shot_runner_for_context.dart';
 import '../io/filesystem.dart';
 import '../launch/layered_config_bundle.dart';
 import '../launch/session_runtime_plan.dart';
@@ -69,6 +70,7 @@ class SessionLifecycleService {
     WorkspaceProjectConfigRepository? projectConfigRepository,
     SessionRuntimePlanBuilder? runtimePlanBuilder,
     RuntimeTarget Function()? homeTarget,
+    String Function(CliTool cli)? cliExecutableResolver,
   }) : _appDataBasePath = appDataBasePath,
        _configProfileService = configProfileService,
        _storageRootsResolver = storageRootsResolver,
@@ -82,7 +84,8 @@ class SessionLifecycleService {
        _loadPresets = loadPresets,
        _projectConfigRepository = projectConfigRepository,
        _runtimePlanBuilder = runtimePlanBuilder,
-       _homeTarget = homeTarget ?? RuntimeTarget.local;
+       _homeTarget = homeTarget ?? RuntimeTarget.local,
+       _cliExecutableResolver = cliExecutableResolver;
 
   final String? _appDataBasePath;
   final ConfigProfileService? _configProfileService;
@@ -106,6 +109,7 @@ class SessionLifecycleService {
   final List<CliPreset> Function()? _loadPresets;
   final WorkspaceProjectConfigRepository? _projectConfigRepository;
   final RuntimeTarget Function() _homeTarget;
+  final String Function(CliTool cli)? _cliExecutableResolver;
   SessionRuntimePlanBuilder? _runtimePlanBuilder;
 
   /// Current app home target (local, SSH, or WSL).
@@ -1331,6 +1335,8 @@ class SessionLifecycleService {
       cliRegistry: _cliToolRegistry,
       loadInstalledSkills: _loadInstalledSkills,
       loadGlobalPresets: () async => _loadPresets?.call() ?? const [],
+      hostOneShotRunner: hostOneShotRunnerForContext(roots),
+      cliExecutable: _cliExecutableResolver?.call(CliTool.codex),
     );
   }
 

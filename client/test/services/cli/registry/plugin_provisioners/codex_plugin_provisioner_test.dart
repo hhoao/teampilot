@@ -1,216 +1,232 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/models/mcp_server_spec.dart';
 import 'package:teampilot/models/plugin.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/cli/registry/capabilities/plugin_capability.dart';
-import 'package:teampilot/services/cli/codex/capabilities/mcp.dart';
 import 'package:teampilot/services/cli/codex/capabilities/plugin.dart';
-import 'package:teampilot/services/cli/codex/provider/codex_session_config_dir.dart';
+import 'package:teampilot/services/cli/registry/capabilities/plugin_capability.dart';
+import 'package:teampilot/services/host/host_one_shot_runner.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
-import 'package:toml/toml.dart';
 
 import '../../../../support/in_memory_filesystem.dart';
 
-void main() {
-  group('CodexPluginCapability', () {
-    test(
-      'writes cache layout and plugin enable sections into config.toml',
-      () async {
-        final fs = InMemoryFilesystem();
-        const configDir = '/cfg';
-        const poolDir = '/pool';
+final class _RecordingRunner implements HostOneShotRunner {
+  _RecordingRunner({
+    this.listJson = '{"installed":[]}',
+    this.marketplaceListJson = '{"marketplaces":[]}',
+  });
 
-        await fs.writeString(
-          '$poolDir/demo/.claude-plugin/plugin.json',
-          jsonEncode({'name': 'demo', 'version': '1.0.0'}),
-        );
-        await fs.writeString(
-          '$poolDir/demo/.mcp.json',
-          jsonEncode({
-            'mcpServers': {
-              'bundled': {'type': 'stdio', 'command': 'echo'},
-            },
-          }),
-        );
+  final String listJson;
+  final String marketplaceListJson;
+  final calls = <HostRunRequest>[];
 
-        await const CodexPluginCapability().provision(
-          PluginProvisionContext(
-            fs: fs,
-            teampilotRoot: '/tp',
-            configDir: configDir,
-            bundlePoolDir: poolDir,
-            enabledPluginIds: const ['local/demo'],
-            installedCatalog: const [
-              Plugin(
-                id: 'local/demo',
-                name: 'demo',
-                description: '',
-                version: '1.0.0',
-                directory: 'demo',
-                capabilities: PluginCapabilities(),
-                installedAt: 0,
-                updatedAt: 0,
-              ),
-            ],
-            layout: RuntimeLayout(teampilotRoot: '/tp', fs: fs),
-            tool: CliTool.codex,
-          ),
-        );
-
-        final pathCtx = fs.pathContext;
-        final cacheRoot = CodexSessionConfigDir.localPluginCacheRoot(
-          configDir,
-          'demo',
-          version: '1.0.0',
-          pathContext: pathCtx,
-        );
-        expect(
-          (await fs.stat(
-            pathCtx.join(cacheRoot, '.codex-plugin', 'plugin.json'),
-          )).isFile,
-          isTrue,
-        );
-        expect(
-          (await fs.stat(
-            pathCtx.join(
-              CodexSessionConfigDir.localPluginSourceRoot(
-                configDir,
-                'demo',
-                pathContext: pathCtx,
-              ),
-              '.codex-plugin',
-              'plugin.json',
-            ),
-          )).isFile,
-          isTrue,
-        );
-
-        final marketplaceText = await fs.readString(
-          CodexSessionConfigDir.localMarketplaceManifestPath(
-            configDir,
-            pathContext: pathCtx,
-          ),
-        );
-        final marketplace = (jsonDecode(marketplaceText!) as Map)
-            .cast<String, Object?>();
-        final entries = (marketplace['plugins'] as List).cast<Map>();
-        expect(entries.single['name'], 'demo');
-        expect((entries.single['source'] as Map)['path'], './plugins/demo');
-
-        final raw = await fs.readString('$configDir/config.toml');
-        final doc = TomlDocument.parse(raw!).toMap();
-        final plugins = (doc['plugins'] as Map).cast<String, dynamic>();
-        expect((plugins['demo@local'] as Map)['enabled'], isTrue);
-        final marketplaces = (doc['marketplaces'] as Map)
-            .cast<String, dynamic>();
-        expect((marketplaces['local'] as Map)['source_type'], 'local');
-        expect((marketplaces['local'] as Map)['source'], configDir);
-      },
-    );
-
-    test('uses local cache version when manifest omits version', () async {
-      final fs = InMemoryFilesystem();
-      const configDir = '/cfg';
-      const poolDir = '/pool';
-
-      await fs.writeString(
-        '$poolDir/context7/.codex-plugin/plugin.json',
-        jsonEncode({'name': 'context7', 'description': 'docs'}),
+  @override
+  Future<HostRunResult> run(HostRunRequest request) async {
+    calls.add(request);
+    if (request.arguments.contains('marketplace') &&
+        request.arguments.contains('list')) {
+      return HostRunResult(
+        exitCode: 0,
+        stdout: marketplaceListJson,
+        stderr: '',
       );
+    }
+    if (request.arguments.contains('list')) {
+      return HostRunResult(exitCode: 0, stdout: listJson, stderr: '');
+    }
+    return const HostRunResult(exitCode: 0, stdout: '{}', stderr: '');
+  }
+}
+
+void main() {
+  PluginProvisionContext context({
+    required InMemoryFilesystem fs,
+    required HostOneShotRunner runner,
+    List<String> enabledPluginIds = const ['local/demo'],
+  }) {
+    return PluginProvisionContext(
+      fs: fs,
+      teampilotRoot: '/tp',
+      configDir: '/cfg',
+      bundlePoolDir: '/pool',
+      enabledPluginIds: enabledPluginIds,
+      installedCatalog: const [
+        Plugin(
+          id: 'local/demo',
+          name: 'demo',
+          description: '',
+          version: '1.0.0',
+          directory: 'demo',
+          capabilities: PluginCapabilities(),
+          installedAt: 0,
+          updatedAt: 0,
+        ),
+      ],
+      layout: RuntimeLayout(teampilotRoot: '/tp', fs: fs),
+      tool: CliTool.codex,
+      hostOneShotRunner: runner,
+      executable: '/bin/codex-custom',
+    );
+  }
+
+  Future<InMemoryFilesystem> seededFs() async {
+    final fs = InMemoryFilesystem();
+    await fs.writeString(
+      '/pool/demo/.claude-plugin/plugin.json',
+      jsonEncode({'name': 'demo', 'version': '1.0.0'}),
+    );
+    await fs.writeString('/pool/demo/skills/demo/SKILL.md', '# demo');
+    return fs;
+  }
+
+  test(
+    'uses Codex native install and keeps CODEX_HOME/plugins untouched',
+    () async {
+      final fs = await seededFs();
+      final runner = _RecordingRunner();
 
       await const CodexPluginCapability().provision(
-        PluginProvisionContext(
-          fs: fs,
-          teampilotRoot: '/tp',
-          configDir: configDir,
-          bundlePoolDir: poolDir,
-          enabledPluginIds: const ['local/context7'],
-          installedCatalog: const [
-            Plugin(
-              id: 'local/context7',
-              name: 'context7',
-              description: '',
-              version: '0.0.0',
-              directory: 'context7',
-              capabilities: PluginCapabilities(),
-              installedAt: 0,
-              updatedAt: 0,
-            ),
-          ],
-          layout: RuntimeLayout(teampilotRoot: '/tp', fs: fs),
-          tool: CliTool.codex,
-        ),
+        context(fs: fs, runner: runner),
       );
 
-      final pathCtx = fs.pathContext;
-      final cacheRoot = CodexSessionConfigDir.localPluginCacheRoot(
-        configDir,
-        'context7',
-        pathContext: pathCtx,
+      expect(
+        (await fs.stat('/cfg/plugins')).exists,
+        isFalse,
+        reason: 'TeamPilot must not materialize Codex managed plugins',
       );
+      final marketplace = await fs.readString(
+        '/cfg/.teampilot/codex-marketplace/.agents/plugins/marketplace.json',
+      );
+      expect(jsonDecode(marketplace!)['name'], 'teampilot');
       expect(
         (await fs.stat(
-          pathCtx.join(cacheRoot, '.codex-plugin', 'plugin.json'),
+          '/cfg/.teampilot/codex-marketplace/plugins/demo/skills/demo/SKILL.md',
         )).isFile,
         isTrue,
       );
-    });
-
-    test('assembled MCP is written by the Codex MCP capability', () async {
-      final fs = InMemoryFilesystem();
-      const configDir = '/cfg';
-      const poolDir = '/pool';
-
-      await fs.writeString(
-        '$poolDir/demo/.codex-plugin/plugin.json',
-        jsonEncode({'name': 'demo', 'version': '1.0.0'}),
+      expect(runner.calls.map((call) => call.arguments), [
+        [
+          'plugin',
+          'marketplace',
+          'add',
+          '/cfg/.teampilot/codex-marketplace',
+          '--json',
+        ],
+        ['plugin', 'list', '--json'],
+        ['plugin', 'add', 'demo@teampilot', '--json'],
+      ]);
+      expect(
+        runner.calls.every((call) => call.environment?['CODEX_HOME'] == '/cfg'),
+        isTrue,
       );
-      await fs.writeString(
-        '$poolDir/demo/.mcp.json',
-        jsonEncode({
-          'context7': {
-            'command': 'npx',
-            'args': ['-y', '@upstash/context7-mcp'],
-          },
+      expect(
+        runner.calls.every((call) => call.executable == '/bin/codex-custom'),
+        isTrue,
+      );
+    },
+  );
+
+  test(
+    'skips native add when the matching version is already installed',
+    () async {
+      final fs = await seededFs();
+      final runner = _RecordingRunner(
+        listJson: jsonEncode({
+          'installed': [
+            {
+              'name': 'demo',
+              'marketplaceName': 'teampilot',
+              'version': '1.0.0',
+            },
+          ],
         }),
       );
 
       await const CodexPluginCapability().provision(
-        PluginProvisionContext(
-          fs: fs,
-          teampilotRoot: '/tp',
-          configDir: configDir,
-          bundlePoolDir: poolDir,
-          enabledPluginIds: const ['local/demo'],
-          installedCatalog: const [
-            Plugin(
-              id: 'local/demo',
-              name: 'demo',
-              description: '',
-              version: '1.0.0',
-              directory: 'demo',
-              capabilities: PluginCapabilities(),
-              installedAt: 0,
-              updatedAt: 0,
-            ),
+        context(fs: fs, runner: runner),
+      );
+
+      expect(runner.calls.map((call) => call.arguments), [
+        [
+          'plugin',
+          'marketplace',
+          'add',
+          '/cfg/.teampilot/codex-marketplace',
+          '--json',
+        ],
+        ['plugin', 'list', '--json'],
+      ]);
+    },
+  );
+
+  test(
+    'removes stale TeamPilot installs before adding changed plugins',
+    () async {
+      final fs = await seededFs();
+      final runner = _RecordingRunner(
+        listJson: jsonEncode({
+          'installed': [
+            {
+              'name': 'demo',
+              'marketplaceName': 'teampilot',
+              'version': '0.9.0',
+            },
+            {'name': 'old', 'marketplaceName': 'teampilot', 'version': '1.0.0'},
           ],
-          layout: RuntimeLayout(teampilotRoot: '/tp', fs: fs),
-          tool: CliTool.codex,
-        ),
+        }),
       );
 
-      await const CodexMcpCapability().write(
-        fs: fs,
-        configDir: configDir,
-        servers: const [StdioMcpServer(name: 'context7', command: 'npx')],
+      await const CodexPluginCapability().provision(
+        context(fs: fs, runner: runner),
       );
 
-      final raw = await fs.readString('$configDir/config.toml');
-      final doc = TomlDocument.parse(raw!).toMap();
-      final mcpServers = (doc['mcp_servers'] as Map).cast<String, dynamic>();
-      expect(mcpServers['context7'], isNotNull);
-    });
-  });
+      expect(runner.calls.map((call) => call.arguments), [
+        [
+          'plugin',
+          'marketplace',
+          'add',
+          '/cfg/.teampilot/codex-marketplace',
+          '--json',
+        ],
+        ['plugin', 'list', '--json'],
+        ['plugin', 'remove', 'demo@teampilot', '--json'],
+        ['plugin', 'remove', 'old@teampilot', '--json'],
+        ['plugin', 'add', 'demo@teampilot', '--json'],
+      ]);
+    },
+  );
+
+  test(
+    'removes the native marketplace when no plugins remain enabled',
+    () async {
+      final fs = InMemoryFilesystem();
+      final runner = _RecordingRunner(
+        listJson: jsonEncode({
+          'installed': [
+            {
+              'name': 'demo',
+              'marketplaceName': 'teampilot',
+              'version': '1.0.0',
+            },
+          ],
+        }),
+        marketplaceListJson: jsonEncode({
+          'marketplaces': [
+            {'name': 'teampilot'},
+          ],
+        }),
+      );
+
+      await const CodexPluginCapability().provision(
+        context(fs: fs, runner: runner, enabledPluginIds: const []),
+      );
+
+      expect(runner.calls.map((call) => call.arguments), [
+        ['plugin', 'list', '--json'],
+        ['plugin', 'remove', 'demo@teampilot', '--json'],
+        ['plugin', 'marketplace', 'list', '--json'],
+        ['plugin', 'marketplace', 'remove', 'teampilot', '--json'],
+      ]);
+    },
+  );
 }
