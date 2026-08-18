@@ -506,6 +506,9 @@ class HttpJsonMappingAdapter implements ManagedProviderUsageAdapter {
     if (!lookup.present || lookup.value == null) return null;
     final value = lookup.value;
     if (value is int) return value;
+    if (value is num && value.isFinite && value == value.truncateToDouble()) {
+      return value.toInt();
+    }
     if (value is String) {
       final integral = int.tryParse(value);
       if (integral != null) return integral;

@@ -175,6 +175,30 @@ void main() {
     );
   });
 
+  test('accepts integral finite numeric reset timestamps', () async {
+    final snapshot =
+        await HttpJsonMappingAdapter(
+          config: const HttpJsonMappingConfig(
+            method: 'GET',
+            url: 'https://example.test/usage',
+            remainingPath: r'$.remaining',
+            resetsAtPath: r'$.resetsAt',
+          ),
+        ).fetch(
+          _provider(),
+          credentials: const _Resolver(null),
+          http: FakeProviderUsageHttpClient(
+            response: const ProviderUsageHttpResponse(
+              statusCode: 200,
+              body: '{"remaining":"1.00","resetsAt":1700000000000.0}',
+            ),
+          ),
+          now: now,
+        );
+
+    expect(snapshot.measures.single.resetsAt, 1700000000000);
+  });
+
   test('requires mapped decimal JSON values to be strings', () async {
     final exactSnapshot =
         await HttpJsonMappingAdapter(
