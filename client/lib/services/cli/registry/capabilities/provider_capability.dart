@@ -15,6 +15,7 @@ import '../../../team_bus/member_bus_idle_endpoint.dart';
 import '../cli_capability.dart';
 import '../config_profile/config_profile_context.dart';
 import '../../../resource/providers/hook_contribution_provider.dart';
+import '../../../resource/resource_provider_set.dart';
 
 /// Providers discovered from the user's global CLI install.
 class ProviderCatalogSnapshot {
@@ -411,6 +412,7 @@ class SessionHomeContext {
     this.memberId,
     this.sessionExpertKey,
     this.resolvedExpert,
+    this.resourceProviders = ResourceProviderSet.empty,
     this.hooks = const [],
     this.hookLibraryProvider,
     this.crossMachine = false,
@@ -445,6 +447,8 @@ class SessionHomeContext {
   final String? memberId;
   final String? sessionExpertKey;
   final DiscoverableMember? resolvedExpert;
+
+  final ResourceProviderSet resourceProviders;
 
   /// 该 seat 生效的用户 hook 条目(staging 按 runtimeBundle.hookIds 解析)。
   final List<HookEntry> hooks;
@@ -502,6 +506,7 @@ SessionHomeContext sessionHomeContextFromLaunch(
     memberId: ctx.memberId,
     sessionExpertKey: ctx.sessionExpertKey,
     resolvedExpert: ctx.resolvedExpert,
+    resourceProviders: ctx.resourceProviders,
     hooks: ctx.hooks,
     hookLibraryProvider: ctx.hookLibraryProvider,
     crossMachine: ctx.crossMachine,

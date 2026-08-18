@@ -12,6 +12,8 @@ import '../../../storage/runtime_layout.dart';
 import '../../../agent_status/member_agent_status_endpoint.dart';
 import '../../../team_bus/member_bus_idle_endpoint.dart';
 import '../../../resource/providers/hook_contribution_provider.dart';
+import '../../../resource/providers/hook_library_contribution_provider.dart';
+import '../../../resource/resource_provider_set.dart';
 import 'config_profile_scope.dart';
 
 export 'config_profile_scope.dart';
@@ -136,7 +138,7 @@ abstract interface class ConfigProfileDelegate implements ConfigProfilePaths {
 }
 
 class ConfigProfileLaunchContext {
-  const ConfigProfileLaunchContext({
+  ConfigProfileLaunchContext({
     required this.workspaceId,
     required this.teamId,
     required this.sessionId,
@@ -155,9 +157,15 @@ class ConfigProfileLaunchContext {
     this.memberId,
     this.sessionExpertKey,
     this.resolvedExpert,
+    ResourceProviderSet resourceProviders = ResourceProviderSet.empty,
+    // Kept only as a source-compatible boundary adapter for older callers.
     this.hooks = const [],
     this.hookLibraryProvider,
-  });
+  }) : resourceProviders = _withLegacyHookProviders(
+         resourceProviders,
+         hooks: hooks,
+         hookLibraryProvider: hookLibraryProvider,
+       );
 
   final String workspaceId;
   final String teamId;
@@ -185,7 +193,12 @@ class ConfigProfileLaunchContext {
   final String? sessionExpertKey;
   final DiscoverableMember? resolvedExpert;
 
-  /// 该 seat 生效的用户 hook 条目（staging 按 runtimeBundle.hookIds 解析）。
+  /// All launch-injected resource sources, grouped by kind and ordered.
+  final ResourceProviderSet resourceProviders;
+
+  /// Legacy compatibility projection. New staging callers pass
+  /// [resourceProviders]; this boundary is removed once downstream provider
+  /// capabilities consume the grouped set directly.
   final List<HookEntry> hooks;
   final HookContributionProvider? hookLibraryProvider;
 
@@ -194,4 +207,28 @@ class ConfigProfileLaunchContext {
   /// True when launching Simple (unteamed). Team launches always pass a
   /// non-empty [teamId] even when the [TeamProfile] object is omitted.
   bool get isSimple => teamId.trim().isEmpty;
+}
+
+ResourceProviderSet _withLegacyHookProviders(
+  ResourceProviderSet providers, {
+  required List<HookEntry> hooks,
+  required HookContributionProvider? hookLibraryProvider,
+}) {
+  if (hooks.isEmpty && hookLibraryProvider == null) return providers;
+  final existingIds = providers.hooks
+      .map((provider) => provider.providerId)
+      .toSet();
+  return ResourceProviderSet(
+    prompts: providers.prompts,
+    skills: providers.skills,
+    mcp: providers.mcp,
+    hooks: [
+      ...providers.hooks,
+      if (hookLibraryProvider != null &&
+          existingIds.add(hookLibraryProvider.providerId))
+        hookLibraryProvider,
+      if (hooks.isNotEmpty && existingIds.add('user-library'))
+        UserHookContributionProvider(entries: hooks),
+    ],
+  );
 }

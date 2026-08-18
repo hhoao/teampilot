@@ -5,6 +5,7 @@ import '../../models/cli_preset.dart';
 import '../../models/extension_manifest.dart';
 import '../../models/hook_entry.dart';
 import '../../models/plugin.dart';
+import '../../models/mcp_server_spec.dart';
 import '../../models/skill.dart';
 import '../../models/team_config.dart';
 import '../../utils/logging/logger.dart';
@@ -26,8 +27,15 @@ import '../../repositories/workspace_project_config_repository.dart';
 import '../io/filesystem.dart';
 import '../cli/claude/capabilities/mcp_project_cleanup.dart';
 import '../mcp/mcp_registry_service.dart';
-import '../resource/resource_provisioning_service.dart';
 import '../resource/resource_scope.dart';
+import '../resource/cli_resource_provisioner.dart';
+import '../resource/resource_provider_set.dart';
+import '../resource/providers/catalog_skill_contribution_provider.dart';
+import '../resource/providers/plugin_skill_contribution_provider.dart';
+import '../resource/providers/mcp_contribution_provider.dart';
+import '../resource/contribution/resource_origin.dart';
+import '../resource/contribution/resource_assembly_error.dart';
+import '../resource/assemblers/mcp_assembler.dart';
 import '../launch/launch_manifest.dart';
 import '../launch/launch_manifest_paths.dart';
 import '../launch/manifest_executor.dart';
@@ -147,6 +155,36 @@ class ConfigProfileService implements ConfigProfileDelegate {
       pluginsRoot: AppPaths.pluginsDirForTeampilotRoot(catalog.basePath),
     );
   }
+
+  Future<List<String>> _provisionStagedResources({
+    required CliResourceProvisionContext context,
+  }) async {
+    final report = await CliResourceProvisioner(
+      fs: context.fs,
+      registry: _cliRegistry,
+    ).provision(context);
+    if (report.hardDiagnostics.isNotEmpty) {
+      throw ResourceAssemblyException(report.hardDiagnostics);
+    }
+    return [
+      ...report.warnings.map((diagnostic) => diagnostic.message),
+      for (final result in report.materializations.values) ...result.warnings,
+    ];
+  }
+
+  ResourceProviderSet _catalogResourceProviders(ResourceCatalog catalog) =>
+      ResourceProviderSet(
+        skills: [
+          CatalogSkillContributionProvider(catalog: catalog),
+          PluginSkillContributionProvider(
+            catalog: catalog,
+            pluginsRoot: catalog.pluginsRoot,
+          ),
+        ],
+      );
+
+  McpContributionProvider _assembledMcpProvider(McpAssemblyResult assembly) =>
+      _AssembledMcpContributionProvider(assembly.servers);
 
   ConfigProfileService _stagingService({
     required Filesystem stagingFs,
@@ -529,28 +567,6 @@ class ConfigProfileService implements ConfigProfileDelegate {
       ).ensureSessionMarketplacesLinked(configDir: configDir, tool: cli),
     );
 
-    // Catalog skills land in `skill/` BEFORE plugin bundles are decomposed:
-    // the skills materializer reconciles `skill/` to exactly the catalog set,
-    // so running it after plugin provision would prune plugin-provided skills.
-    // Plugin decompose then fills only the names the catalog does not provide.
-    await step('skills', () async {
-      final provisionResult =
-          await ResourceProvisioningService(
-            fs: fs,
-            registry: _cliRegistry,
-          ).provisionForLaunch(
-            scope: SimpleResourceScope(bundle: runtimeBundle),
-            cli: cli,
-            configDir: _launchResourceConfigDir(
-              cli: cli,
-              workspaceId: trimmedWorkspaceId,
-              sessionId: trimmedSessionId,
-            ),
-            catalog: await _skillCatalog(),
-          );
-      warnings.addAll(provisionResult.warnings);
-    });
-
     final pluginProvisioner = _cliRegistry.capability<PluginCapability>(cli);
     final mcpRegistry = McpRegistryService(fs: fs, layout: layout);
     McpRegistryAssembly? mcpAssembly;
@@ -618,20 +634,34 @@ class ConfigProfileService implements ConfigProfileDelegate {
       pluginIds: runtimeBundle.pluginIds,
     );
     final assembledMcp = mcpAssembly;
-    await step(
-      'mcp',
-      () => mcpRegistry.writeForSimpleSession(
-        workspaceId: trimmedWorkspaceId,
-        sessionId: trimmedSessionId,
-        mcpServerIds: runtimeBundle.mcpServerIds,
-        cli: cli,
+    final resourceCatalog = await _skillCatalog();
+    await step('resources', () async {
+      await maybeRemoveStaleProjectTeammateBus(
+        fs: fs,
         extraServers: extraMcpServers,
-        pluginIds: runtimeBundle.pluginIds,
-        projectMcpRoots: projectMcpRoots,
-        assembly: assembledMcp,
-        mcpAlreadyMaterialized: pluginProvisioner?.writesAssembledMcp == true,
-      ),
-    );
+        projectRoots: projectMcpRoots,
+      );
+      final providers = _catalogResourceProviders(resourceCatalog);
+      warnings.addAll(
+        await _provisionStagedResources(
+          context: CliResourceProvisionContext(
+            cli: cli,
+            scope: SimpleResourceScope(bundle: runtimeBundle),
+            runtimeBundle: runtimeBundle,
+            fs: fs,
+            layout: layout,
+            configDir: configDir,
+            resourceProviders: ResourceProviderSet(
+              skills: providers.skills,
+              mcp: [_assembledMcpProvider(assembledMcp.result)],
+            ),
+            appConfigDir: assembledMcp.hasValidCatalogContribution
+                ? layout.appToolRoot(cli.value)
+                : null,
+          ),
+        ),
+      );
+    });
 
     appLogger.d(
       '[session-launch] stage-fs done '
@@ -656,6 +686,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     MemberAgentStatusEndpoint? agentStatus,
     List<HookEntry> hooks = const [],
     HookContributionProvider? hookLibraryProvider,
+    ResourceProviderSet resourceProviders = ResourceProviderSet.empty,
   }) async {
     final trimmedWorkspaceId = workspaceId.trim();
     final trimmedSessionId = sessionId.trim();
@@ -700,6 +731,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
             catalog: catalog,
             busIdle: busIdle,
             agentStatus: agentStatus,
+            resourceProviders: resourceProviders,
             hooks: hooks,
             hookLibraryProvider: hookLibraryProvider,
           ),
@@ -784,6 +816,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
       busIdle: busIdle,
       agentStatus: agentStatus,
       hookLibraryProvider: hookLibraryProvider,
+      resourceProviders: ResourceProviderSet(hooks: [hookLibraryProvider]),
     );
     appLogger.d(
       '[session-launch] stage-simple contribute '
@@ -916,31 +949,6 @@ class ConfigProfileService implements ConfigProfileDelegate {
       workTeampilotRoot: workTeampilotRoot,
     );
 
-    // Catalog skills land in `skill/` BEFORE the session profile is staged:
-    // `ensureSessionProfile` decomposes plugin skills into the same dir, and
-    // the skills materializer would prune them if it ran afterwards. It
-    // reconciles `skill/` to exactly the catalog set, then the plugin
-    // decompose fills only the names the catalog does not provide.
-    if (team != null) {
-      final provisionResult =
-          await ResourceProvisioningService(
-            fs: stagingFs,
-            registry: _cliRegistry,
-          ).provisionForLaunch(
-            scope: WorkspaceResourceScope(bundle: runtimeBundle),
-            cli: launchCli,
-            configDir: staging._launchResourceConfigDir(
-              cli: launchCli,
-              workspaceId: trimmedWorkspaceId,
-              sessionId: trimmedSessionId,
-              memberId: memberId,
-              team: team,
-            ),
-            catalog: await _skillCatalog(),
-          );
-      warnings.addAll(provisionResult.warnings);
-    }
-
     warnings.addAll(
       await staging.ensureSessionProfile(
         trimmedWorkspaceId,
@@ -959,6 +967,30 @@ class ConfigProfileService implements ConfigProfileDelegate {
         busIdle: busIdle,
       ),
     );
+
+    if (team != null) {
+      final resourceCatalog = await _skillCatalog();
+      final providers = _catalogResourceProviders(resourceCatalog);
+      warnings.addAll(
+        await _provisionStagedResources(
+          context: CliResourceProvisionContext(
+            cli: launchCli,
+            scope: WorkspaceResourceScope(bundle: runtimeBundle),
+            runtimeBundle: runtimeBundle,
+            fs: stagingFs,
+            layout: staging.layout,
+            configDir: staging._launchResourceConfigDir(
+              cli: launchCli,
+              workspaceId: trimmedWorkspaceId,
+              sessionId: trimmedSessionId,
+              memberId: memberId,
+              team: team,
+            ),
+            resourceProviders: providers,
+          ),
+        ),
+      );
+    }
 
     final cap = _cliRegistry.capability<ProviderCapability>(launchCli);
     if (cap == null) {
@@ -998,6 +1030,9 @@ class ConfigProfileService implements ConfigProfileDelegate {
             busIdle: busIdle,
             agentStatus: agentStatus,
             memberId: memberId,
+            resourceProviders: ResourceProviderSet(
+              hooks: [hookLibraryProvider],
+            ),
             hookLibraryProvider: hookLibraryProvider,
           ),
           launchCli,
@@ -1184,4 +1219,29 @@ Map<String, String> _withAgentStatusEnv(
 ) {
   if (agentStatus == null) return environment;
   return {...environment, agentStatusUrlEnvKey: agentStatus.url};
+}
+
+final class _AssembledMcpContributionProvider
+    implements McpContributionProvider {
+  _AssembledMcpContributionProvider(Iterable<McpServerSpec> servers)
+    : servers = List.unmodifiable(servers);
+
+  final List<McpServerSpec> servers;
+
+  @override
+  String get providerId => 'assembled-mcp';
+
+  @override
+  Iterable<McpContribution> provide(McpProviderContext context) => [
+    for (final server in servers)
+      McpContribution(
+        sourceId: server.name,
+        server: server,
+        origin: ContributionOrigin(
+          providerId: providerId,
+          kind: ResourceOriginKind.managed,
+          sourceId: server.name,
+        ),
+      ),
+  ];
 }
