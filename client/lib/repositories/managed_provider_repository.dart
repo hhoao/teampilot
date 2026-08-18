@@ -245,10 +245,17 @@ class ManagedProviderRepository {
       method: next.endpointConfig.method,
       responsePath: next.endpointConfig.responsePath,
       measuresPath: next.endpointConfig.measuresPath,
+      credentialField: next.endpointConfig.credentialField,
+      credentialName: next.endpointConfig.credentialName,
+      credentialPlacement: next.endpointConfig.credentialPlacement,
+      credentialPrefix: next.endpointConfig.credentialPrefix,
+      headers: next.endpointConfig.headers,
+      body: next.endpointConfig.body,
       fieldMappings: {
         ...previous.endpointConfig.fieldMappings,
         ...next.endpointConfig.fieldMappings,
       },
+      hadUnsafeUrl: next.endpointConfig.hadUnsafeUrl,
       unknownFields: {
         ...previous.endpointConfig.unknownFields,
         ...next.endpointConfig.unknownFields,

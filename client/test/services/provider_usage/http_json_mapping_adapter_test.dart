@@ -175,6 +175,83 @@ void main() {
     );
   });
 
+  test('requires mapped decimal JSON values to be strings', () async {
+    final exactSnapshot =
+        await HttpJsonMappingAdapter(
+          config: const HttpJsonMappingConfig(
+            method: 'GET',
+            url: 'https://example.test/usage',
+            remainingPath: r'$.remaining',
+          ),
+        ).fetch(
+          _provider(),
+          credentials: const _Resolver(null),
+          http: FakeProviderUsageHttpClient(
+            response: const ProviderUsageHttpResponse(
+              statusCode: 200,
+              body: '{"remaining":"1.2300000000000000000001"}',
+            ),
+          ),
+          now: now,
+        );
+    expect(exactSnapshot.measures.single.remaining, '1.2300000000000000000001');
+
+    final error = await _capture(
+      () =>
+          HttpJsonMappingAdapter(
+            config: const HttpJsonMappingConfig(
+              method: 'GET',
+              url: 'https://example.test/usage',
+              remainingPath: r'$.remaining',
+            ),
+          ).fetch(
+            _provider(),
+            credentials: const _Resolver(null),
+            http: FakeProviderUsageHttpClient(
+              response: const ProviderUsageHttpResponse(
+                statusCode: 200,
+                body: '{"remaining":1.2300000000000000000001}',
+              ),
+            ),
+            now: now,
+          ),
+    );
+
+    expect(error, isA<ManagedProviderUsageQueryError>());
+    expect(
+      (error as ManagedProviderUsageQueryError).code,
+      ManagedProviderUsageQueryErrorCode.responseParseFailed,
+    );
+  });
+
+  test('treats explicit null label and kind as absent', () async {
+    final snapshot =
+        await HttpJsonMappingAdapter(
+          config: const HttpJsonMappingConfig(
+            method: 'GET',
+            url: 'https://example.test/usage',
+            labelPath: r'$.label',
+            kindPath: r'$.kind',
+            remainingPath: r'$.remaining',
+            defaultLabel: 'Default balance',
+            defaultKind: ProviderUsageMeasureKind.quota,
+          ),
+        ).fetch(
+          _provider(),
+          credentials: const _Resolver(null),
+          http: FakeProviderUsageHttpClient(
+            response: const ProviderUsageHttpResponse(
+              statusCode: 200,
+              body: '{"label":null,"kind":null,"remaining":"1.00"}',
+            ),
+          ),
+          now: now,
+        );
+
+    expect(snapshot.measures.single.label, 'Default balance');
+    expect(snapshot.measures.single.kind, ProviderUsageMeasureKind.quota);
+  });
+
   test('keeps a measure when an optional mapped field is absent', () async {
     final adapter = HttpJsonMappingAdapter(
       config: const HttpJsonMappingConfig(
@@ -691,6 +768,90 @@ void main() {
         );
         expect(error.toString(), isNot(contains('resolver-secret')));
       }
+    },
+  );
+
+  test(
+    'rejects control characters in request headers and credentials',
+    () async {
+      final configs = [
+        const HttpJsonMappingConfig(
+          method: 'GET',
+          url: 'https://example.test/usage',
+          headers: {'X-Test': 'safe\r\nInjected: yes'},
+        ),
+        const HttpJsonMappingConfig(
+          method: 'GET',
+          url: 'https://example.test/usage',
+          headers: {'X-Test\r\nInjected': 'safe'},
+        ),
+        const HttpJsonMappingConfig(
+          method: 'GET',
+          url: 'https://example.test/usage',
+          credential: HttpJsonCredentialConfig(
+            field: 'apiKey',
+            name: 'X-API\nKey',
+          ),
+        ),
+        const HttpJsonMappingConfig(
+          method: 'GET',
+          url: 'https://example.test/usage',
+          credential: HttpJsonCredentialConfig(
+            field: 'apiKey',
+            prefix: 'Bearer\r\n',
+          ),
+        ),
+      ];
+      for (final config in configs) {
+        final error = await _capture(
+          () => HttpJsonMappingAdapter(config: config).fetch(
+            _provider(),
+            credentials: const _Resolver(_Credentials({'apiKey': 'secret'})),
+            http: FakeProviderUsageHttpClient(
+              response: const ProviderUsageHttpResponse(
+                statusCode: 200,
+                body: '{"remaining":"1.00"}',
+              ),
+            ),
+            now: now,
+          ),
+        );
+        expect(error, isA<ManagedProviderUsageQueryError>());
+        expect(
+          (error as ManagedProviderUsageQueryError).code,
+          ManagedProviderUsageQueryErrorCode.unsupported,
+        );
+        expect(error.toString(), isNot(contains('secret')));
+      }
+
+      final valueError = await _capture(
+        () =>
+            HttpJsonMappingAdapter(
+              config: const HttpJsonMappingConfig(
+                method: 'GET',
+                url: 'https://example.test/usage',
+                credential: HttpJsonCredentialConfig(field: 'apiKey'),
+              ),
+            ).fetch(
+              _provider(),
+              credentials: const _Resolver(
+                _Credentials({'apiKey': 'secret\nInjected: yes'}),
+              ),
+              http: FakeProviderUsageHttpClient(
+                response: const ProviderUsageHttpResponse(
+                  statusCode: 200,
+                  body: '{"remaining":"1.00"}',
+                ),
+              ),
+              now: now,
+            ),
+      );
+      expect(valueError, isA<ManagedProviderUsageQueryError>());
+      expect(
+        (valueError as ManagedProviderUsageQueryError).code,
+        ManagedProviderUsageQueryErrorCode.unsupported,
+      );
+      expect(valueError.toString(), isNot(contains('secret')));
     },
   );
 

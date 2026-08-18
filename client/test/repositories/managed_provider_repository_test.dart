@@ -326,6 +326,35 @@ void main() {
       },
     );
 
+    test(
+      'preserves complete endpoint request configuration on merge',
+      () async {
+        final endpoint = ManagedProviderEndpointConfig(
+          url: 'https://example.test/usage?region=us',
+          method: 'POST',
+          responsePath: r'$.result',
+          measuresPath: r'$.data',
+          credentialField: 'apiKey',
+          credentialName: 'X-API-Key',
+          credentialPlacement: 'header',
+          credentialPrefix: 'Bearer ',
+          headers: {'X-Region': 'us'},
+          body: {'scope': 'all'},
+          fieldMappings: {'remaining': r'$.remaining'},
+          hadUnsafeUrl: true,
+        );
+        await repo.upsert(_provider('p1').copyWith(endpointConfig: endpoint));
+
+        await repo.upsert(
+          _provider('p1', name: 'Updated').copyWith(endpointConfig: endpoint),
+        );
+
+        final loaded = (await repo.load()).single;
+        expect(loaded.name, 'Updated');
+        expect(loaded.endpointConfig, endpoint);
+      },
+    );
+
     test('normalizes provider IDs and never writes empty IDs', () async {
       await repo.save([_provider(' p1 '), _provider('p1')]);
 

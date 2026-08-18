@@ -236,11 +236,20 @@ class HttpJsonMappingAdapter implements ManagedProviderUsageAdapter {
       );
     }
 
+    for (final entry in mapping.headers.entries) {
+      _validateRequestText(entry.key);
+      _validateRequestText(entry.value);
+    }
     final headers = <String, String>{...mapping.headers};
     final body = Map<String, Object?>.from(mapping.body);
     var requestUri = uri;
     final credential = mapping.credential;
     if (credential != null) {
+      _validateRequestText(credential.field);
+      _validateRequestText(credential.targetName);
+      if (credential.prefix != null) {
+        _validateRequestText(credential.prefix!);
+      }
       try {
         final scope = await _resolveCredentials(credentials, provider);
         final value = scope.valueFor(credential.field);
@@ -250,6 +259,7 @@ class HttpJsonMappingAdapter implements ManagedProviderUsageAdapter {
           );
         }
         final supplied = '${credential.prefix ?? ''}$value';
+        _validateRequestText(supplied);
         switch (credential.placement) {
           case HttpJsonCredentialPlacement.header:
             headers[credential.targetName] = supplied;
@@ -319,15 +329,18 @@ class HttpJsonMappingAdapter implements ManagedProviderUsageAdapter {
     ManagedProvider provider,
   ) {
     final labelLookup = _lookupPath(item, mapping.labelPath);
-    final label = labelLookup.present
+    final label = labelLookup.present && labelLookup.value != null
         ? _requiredString(labelLookup.value)
         : mapping.defaultLabel ?? provider.name;
     final kindLookup = _lookupPath(item, mapping.kindPath);
-    if (kindLookup.present && kindLookup.value is! String) {
+    if (kindLookup.present &&
+        kindLookup.value != null &&
+        kindLookup.value is! String) {
       throw const FormatException('invalid usage kind');
     }
-    final kind = ProviderUsageMeasureKind.fromJson(kindLookup.value);
-    final resolvedKind = mapping.kindPath == null ? mapping.defaultKind : kind;
+    final resolvedKind = kindLookup.present && kindLookup.value != null
+        ? ProviderUsageMeasureKind.fromJson(kindLookup.value)
+        : mapping.defaultKind;
     final total = _decimalValue(_lookupPath(item, mapping.totalPath));
     final used = _decimalValue(_lookupPath(item, mapping.usedPath));
     final remaining = _decimalValue(_lookupPath(item, mapping.remainingPath));
@@ -367,6 +380,8 @@ class HttpJsonMappingAdapter implements ManagedProviderUsageAdapter {
         uri.userInfo.isNotEmpty ||
         uri.fragment.isNotEmpty ||
         uri.host.isEmpty ||
+        uri.queryParameters.keys.any(_hasControlCharacters) ||
+        uri.queryParameters.values.any(_hasControlCharacters) ||
         uri.queryParameters.keys.any(_isCredentialQueryName) ||
         uri.queryParameters.values.any(_isCredentialQueryValue) ||
         uri.scheme != 'https' && !(uri.scheme == 'http' && loopback)) {
@@ -476,29 +491,21 @@ class HttpJsonMappingAdapter implements ManagedProviderUsageAdapter {
   static String? _decimalValue(_PathLookup lookup) {
     if (!lookup.present || lookup.value == null) return null;
     final value = lookup.value;
-    final result = value is String
-        ? value
-        : value is int
-        ? value.toString()
-        : value is num && value.isFinite
-        ? value.toString()
-        : null;
-    if (result == null || result.isEmpty) {
+    // jsonDecode may materialize JSON decimals as double, losing their
+    // original lexeme and precision. Require mapped amounts to be strings.
+    if (value is! String || value.isEmpty) {
       throw const FormatException('invalid decimal value');
     }
-    if (!RegExp(r'^-?\d+(?:\.\d+)?$').hasMatch(result)) {
+    if (!RegExp(r'^-?\d+(?:\.\d+)?$').hasMatch(value)) {
       throw const FormatException('invalid decimal value');
     }
-    return result;
+    return value;
   }
 
   static int? _timestampValue(_PathLookup lookup) {
     if (!lookup.present || lookup.value == null) return null;
     final value = lookup.value;
     if (value is int) return value;
-    if (value is num && value.isFinite && value == value.truncateToDouble()) {
-      return value.toInt();
-    }
     if (value is String) {
       final integral = int.tryParse(value);
       if (integral != null) return integral;
@@ -507,6 +514,17 @@ class HttpJsonMappingAdapter implements ManagedProviderUsageAdapter {
     }
     throw const FormatException('invalid reset timestamp');
   }
+
+  static void _validateRequestText(String value) {
+    if (_hasControlCharacters(value)) {
+      throw const ManagedProviderUsageQueryError(
+        ManagedProviderUsageQueryErrorCode.unsupported,
+      );
+    }
+  }
+
+  static bool _hasControlCharacters(String value) =>
+      value.codeUnits.any((unit) => unit < 0x20 || unit == 0x7f);
 
   static bool _isCredentialQueryName(String name) {
     return isManagedProviderCredentialKey(name);
