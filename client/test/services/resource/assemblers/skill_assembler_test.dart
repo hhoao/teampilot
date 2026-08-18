@@ -183,6 +183,137 @@ void main() {
     expect(result.diagnostics.single.message, contains('root'));
   });
 
+  test(
+    'plugin provider diagnoses invalid skill names and keeps valid entries',
+    () async {
+      final result = await SkillAssembler().assemble(
+        context: SkillProviderContext(
+          cli: cli,
+          scope: const SimpleResourceScope(
+            bundle: ConfigBundle(pluginIds: ['acme/plugin']),
+          ),
+        ),
+        providers: [
+          PluginSkillContributionProvider(
+            catalog: ResourceCatalog(
+              skills: const [],
+              skillsRoot: '/catalog/skills',
+              pathContext: p.posix,
+              pluginsRoot: '/catalog/plugins/installed',
+              plugins: [
+                Plugin(
+                  id: 'acme/plugin',
+                  name: 'Plugin',
+                  description: '',
+                  version: '1.0.0',
+                  directory: 'plugin-dir',
+                  capabilities: const PluginCapabilities(
+                    skills: [
+                      PluginSkillRef(name: ''),
+                      PluginSkillRef(name: '../escape'),
+                      PluginSkillRef(name: r'bad\name'),
+                      PluginSkillRef(name: 'valid'),
+                    ],
+                  ),
+                  installedAt: 0,
+                  updatedAt: 0,
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+
+      expect(result.skills.map((skill) => skill.invocationName), ['valid']);
+      expect(result.diagnostics, hasLength(3));
+      expect(
+        result.diagnostics.every(
+          (diagnostic) =>
+              diagnostic.providerId == 'plugin' &&
+              diagnostic.sourceId?.startsWith('acme/plugin:') == true,
+        ),
+        isTrue,
+      );
+    },
+  );
+
+  test(
+    'plugin provider diagnoses invalid directories and keeps other plugins',
+    () async {
+      final result = await SkillAssembler().assemble(
+        context: SkillProviderContext(
+          cli: cli,
+          scope: const SimpleResourceScope(
+            bundle: ConfigBundle(
+              pluginIds: ['empty-directory', 'path-directory', 'valid-plugin'],
+            ),
+          ),
+        ),
+        providers: [
+          PluginSkillContributionProvider(
+            catalog: ResourceCatalog(
+              skills: const [],
+              skillsRoot: '/catalog/skills',
+              pathContext: p.posix,
+              pluginsRoot: '/catalog/plugins/installed',
+              plugins: [
+                Plugin(
+                  id: 'empty-directory',
+                  name: 'Empty',
+                  description: '',
+                  version: '1.0.0',
+                  directory: '',
+                  capabilities: const PluginCapabilities(
+                    skills: [PluginSkillRef(name: 'ignored')],
+                  ),
+                  installedAt: 0,
+                  updatedAt: 0,
+                ),
+                Plugin(
+                  id: 'path-directory',
+                  name: 'Path',
+                  description: '',
+                  version: '1.0.0',
+                  directory: '../escape',
+                  capabilities: const PluginCapabilities(
+                    skills: [PluginSkillRef(name: 'ignored')],
+                  ),
+                  installedAt: 0,
+                  updatedAt: 0,
+                ),
+                Plugin(
+                  id: 'valid-plugin',
+                  name: 'Valid',
+                  description: '',
+                  version: '1.0.0',
+                  directory: 'valid-dir',
+                  capabilities: const PluginCapabilities(
+                    skills: [PluginSkillRef(name: 'kept')],
+                  ),
+                  installedAt: 0,
+                  updatedAt: 0,
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+
+      expect(result.skills.map((skill) => skill.id), ['valid-plugin:kept']);
+      expect(result.diagnostics, hasLength(2));
+      expect(result.diagnostics.map((diagnostic) => diagnostic.sourceId), [
+        'empty-directory',
+        'path-directory',
+      ]);
+      expect(
+        result.diagnostics.every(
+          (diagnostic) => diagnostic.providerId == 'plugin',
+        ),
+        isTrue,
+      );
+    },
+  );
+
   test('catalog and plugin providers form one desired assembled set', () async {
     final result = await SkillAssembler().assemble(
       context: SkillProviderContext(

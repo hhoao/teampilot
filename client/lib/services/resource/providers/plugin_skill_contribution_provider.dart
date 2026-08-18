@@ -76,6 +76,20 @@ final class PluginSkillContributionProvider
         continue;
       }
 
+      final invalidDirectory = _invalidPathSegment(plugin.directory);
+      if (invalidDirectory != null) {
+        diagnostics.add(
+          _warning(
+            cli: context.cli,
+            sourceId: plugin.id,
+            message:
+                'Plugin directory for ${plugin.id} is invalid '
+                '($invalidDirectory).',
+          ),
+        );
+        continue;
+      }
+
       if (plugin.capabilities.skills.isEmpty) {
         diagnostics.add(
           _warning(
@@ -86,9 +100,22 @@ final class PluginSkillContributionProvider
         );
       }
 
-      for (final skill in plugin.capabilities.skills) {
+      for (var index = 0; index < plugin.capabilities.skills.length; index++) {
+        final skill = plugin.capabilities.skills[index];
         final name = skill.name.trim();
-        if (name.isEmpty) continue;
+        final invalidName = _invalidPathSegment(skill.name);
+        if (invalidName != null) {
+          diagnostics.add(
+            _warning(
+              cli: context.cli,
+              sourceId: '${plugin.id}:skill[$index]',
+              message:
+                  'Plugin skill name for ${plugin.id} is invalid '
+                  '($invalidName).',
+            ),
+          );
+          continue;
+        }
         contributions.add(
           SkillContribution(
             id: '${plugin.id}:$name',
@@ -122,4 +149,17 @@ final class PluginSkillContributionProvider
     sourceId: sourceId,
     message: message,
   );
+
+  String? _invalidPathSegment(String value) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) return 'empty';
+    if (trimmed == '.' || trimmed == '..') return 'path traversal';
+    if (trimmed.contains(RegExp(r'[<>:"/\\|?*]'))) {
+      return 'contains a path separator or reserved character';
+    }
+    if (trimmed.contains(RegExp(r'[\x00-\x1F\x7F]'))) {
+      return 'contains a control character';
+    }
+    return null;
+  }
 }
