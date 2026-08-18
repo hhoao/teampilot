@@ -16,6 +16,13 @@ class ManagedProviderIdDeletionBarrier {
     final state = _states.putIfAbsent(id, _ProviderIdState.new);
     if (state.deleting) {
       await state.deletionDone!.future;
+      final error = state.deletionError;
+      if (error != null) {
+        Error.throwWithStackTrace(
+          error,
+          state.deletionStack ?? StackTrace.current,
+        );
+      }
       return false;
     }
     state.activeMutations++;
@@ -55,10 +62,18 @@ class ManagedProviderIdDeletionBarrier {
       for (final state in states) {
         state.deleting = true;
         state.deletionDone = Completer<void>();
+        state.deletionError = null;
+        state.deletionStack = null;
       }
       try {
         await Future.wait([for (final state in states) state.waitForIdle()]);
         await deletion();
+      } catch (error, stack) {
+        for (final state in states) {
+          state.deletionError = error;
+          state.deletionStack = stack;
+        }
+        rethrow;
       } finally {
         for (var i = 0; i < states.length; i++) {
           final state = states[i];
@@ -78,6 +93,8 @@ class _ProviderIdState {
   bool deleting = false;
   int activeMutations = 0;
   Completer<void>? deletionDone;
+  Object? deletionError;
+  StackTrace? deletionStack;
   Completer<void>? _idle;
 
   Future<void> waitForIdle() {

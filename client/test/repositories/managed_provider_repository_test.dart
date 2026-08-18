@@ -491,6 +491,61 @@ void main() {
       },
     );
 
+    test('queued usage save surfaces cleanup failure', () async {
+      const cachePath = '/tp/providers/managed/usage-cache.json';
+      final usageFs = InMemoryFilesystem();
+      final usageRepo = ManagedProviderUsageRepository(
+        fs: usageFs,
+        cachePath: cachePath,
+      );
+      late Future<void> saveDuringDeletion;
+      final providerRepo = ManagedProviderRepository(
+        fs: usageFs,
+        configPath: path,
+        onProvidersDeleted: (_) async {
+          saveDuringDeletion = usageRepo.save(_snapshotForTest('p1'));
+          throw StateError('cleanup failed');
+        },
+      );
+
+      await providerRepo.save([_provider('p1')]);
+      await usageRepo.save(_snapshotForTest('p1'));
+
+      await expectLater(providerRepo.delete('p1'), throwsStateError);
+      await expectLater(saveDuringDeletion, throwsStateError);
+
+      expect((await providerRepo.load()).single.id, 'p1');
+      expect((await usageRepo.load()).single.providerId, 'p1');
+    });
+
+    test('queued usage save surfaces config-write failure', () async {
+      const cachePath = '/tp/providers/managed/usage-cache.json';
+      final failingFs = _FailingConfigWriteFilesystem(path);
+      final usageRepo = ManagedProviderUsageRepository(
+        fs: failingFs,
+        cachePath: cachePath,
+      );
+      late Future<void> saveDuringDeletion;
+      final providerRepo = ManagedProviderRepository(
+        fs: failingFs,
+        configPath: path,
+        onProvidersDeleted: (ids) async {
+          await usageRepo.deleteMany(ids);
+          saveDuringDeletion = usageRepo.save(_snapshotForTest('p1'));
+        },
+      );
+
+      await providerRepo.save([_provider('p1')]);
+      await usageRepo.save(_snapshotForTest('p1'));
+      failingFs.failConfigWrites = true;
+
+      await expectLater(providerRepo.delete('p1'), throwsStateError);
+      await expectLater(saveDuringDeletion, throwsStateError);
+
+      expect((await providerRepo.load()).single.id, 'p1');
+      expect(await usageRepo.load(), isEmpty);
+    });
+
     test('cleanup failure leaves the provider config intact', () async {
       await repo.save([_provider('p1')]);
       var calls = 0;
@@ -597,5 +652,20 @@ class _BlockingCacheReadFilesystem extends InMemoryFilesystem {
       await _cacheReadRelease.future;
     }
     return super.readString(path);
+  }
+}
+
+class _FailingConfigWriteFilesystem extends InMemoryFilesystem {
+  _FailingConfigWriteFilesystem(this.configPath);
+
+  final String configPath;
+  bool failConfigWrites = false;
+
+  @override
+  Future<void> atomicWrite(String path, String content) {
+    if (failConfigWrites && path == configPath) {
+      throw StateError('config write failed');
+    }
+    return super.atomicWrite(path, content);
   }
 }
