@@ -174,7 +174,7 @@ void main() {
 
       await strictProvisioner.writeHooks(
         memberHome: memberHome,
-        entries: const [
+        entries: [
           HookEntry(
             id: 'user-hook',
             source: HookSource.userLibrary,
