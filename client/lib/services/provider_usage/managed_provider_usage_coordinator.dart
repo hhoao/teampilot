@@ -185,6 +185,50 @@ class ManagedProviderUsageCoordinator {
     );
   }
 
+  /// Queries a provider for an ephemeral validation result. Unlike
+  /// [refreshOne], this method never writes the usage cache or replaces the
+  /// coordinator's persisted snapshot. It is intended for editor "test
+  /// query" actions where a user has not saved the provider yet.
+  Future<ProviderUsageSnapshot> queryOne(String providerId) async {
+    if (_closed) return _unsupportedSnapshot(providerId.trim(), null);
+    final storageContextGeneration = _storageContextGeneration;
+    await _ensureLoaded();
+    _ensureStorageContextCurrent(storageContextGeneration);
+    await _synchronizeProviders();
+    _ensureStorageContextCurrent(storageContextGeneration);
+    final id = providerId.trim();
+    final provider = _providers[id];
+    final previous = _snapshots[id];
+    if (provider == null || !provider.enabled) {
+      return _unsupportedSnapshot(id, previous);
+    }
+
+    try {
+      final adapter = _registry.adapterFor(provider.adapterId);
+      if (adapter == null) {
+        throw const ManagedProviderUsageQueryError(
+          ManagedProviderUsageQueryErrorCode.unsupported,
+        );
+      }
+      final result = await adapter.fetch(
+        provider,
+        credentials: _credentials,
+        http: _http,
+        now: _now(),
+      );
+      _ensureStorageContextCurrent(storageContextGeneration);
+      return result.copyWith(providerId: id, status: ProviderUsageStatus.ready);
+    } on ManagedProviderUsageQueryError catch (error) {
+      return _errorSnapshot(id, previous, error.code);
+    } on Object {
+      return _errorSnapshot(
+        id,
+        previous,
+        ManagedProviderUsageQueryErrorCode.networkFailed,
+      );
+    }
+  }
+
   /// Refreshes all configured providers through the same per-provider single-
   /// flight map used by targeted refreshes.
   Future<List<ProviderUsageSnapshot>> refreshAll() {

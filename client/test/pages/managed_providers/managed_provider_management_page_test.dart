@@ -189,6 +189,10 @@ void main() {
         find.byKey(const Key('managed-provider-name')),
         'New Provider',
       );
+      await tester.enterText(
+        find.byKey(const Key('managed-provider-endpoint')),
+        'https://example.test/usage',
+      );
       await tester.drag(find.byType(ListView).last, const Offset(0, -800));
       await tester.pump();
       await tester.ensureVisible(

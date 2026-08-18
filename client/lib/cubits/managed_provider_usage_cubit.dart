@@ -178,6 +178,30 @@ class ManagedProviderUsageCubit extends Cubit<ManagedProviderUsageState> {
     }
   }
 
+  /// Runs an editor validation query without persisting its result.
+  Future<ProviderUsageSnapshot?> queryOne(String providerId) async {
+    await load();
+    final id = providerId.trim();
+    if (isClosed || id.isEmpty) return state.snapshotFor(id);
+    try {
+      final result = await _coordinator.queryOne(id);
+      if (isClosed) return result;
+      final snapshots = Map<String, ProviderUsageSnapshot>.from(state.snapshots)
+        ..[id] = result;
+      emit(
+        state.copyWith(
+          status: ManagedProviderUsageLoadStatus.ready,
+          snapshots: snapshots,
+          clearError: true,
+        ),
+      );
+      return result;
+    } on Object {
+      _setOperationError(ManagedProviderUsageErrorCode.refreshFailed);
+      return state.snapshotFor(id);
+    }
+  }
+
   Future<List<ProviderUsageSnapshot>> refreshAll() async {
     await load();
     if (isClosed) return const [];

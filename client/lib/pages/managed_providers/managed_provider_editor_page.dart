@@ -7,6 +7,7 @@ import 'package:shared_ui/shared_ui.dart';
 import '../../cubits/managed_provider_cubit.dart';
 import '../../cubits/managed_provider_usage_cubit.dart';
 import '../../models/managed_provider.dart';
+import '../../models/provider_usage_snapshot.dart';
 import '../../widgets/app_toast/app_toast.dart';
 
 class ManagedProviderEditorPage extends StatefulWidget {
@@ -30,6 +31,9 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
   late final TextEditingController _unit;
   late final TextEditingController _decimalPlaces;
   late final TextEditingController _credentialRef;
+  late final TextEditingController _credentialName;
+  late final TextEditingController _credentialField;
+  late final TextEditingController _credentialPlacement;
   late ManagedProviderKind _kind;
   late String _method;
   late bool _enabled;
@@ -59,6 +63,15 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
       text: display?.decimalPlaces?.toString() ?? '',
     );
     _credentialRef = TextEditingController(text: provider?.credentialRef ?? '');
+    _credentialName = TextEditingController(
+      text: endpoint?.credentialName ?? '',
+    );
+    _credentialField = TextEditingController(
+      text: endpoint?.credentialField ?? '',
+    );
+    _credentialPlacement = TextEditingController(
+      text: endpoint?.credentialPlacement ?? 'header',
+    );
     _kind = provider?.kind == ManagedProviderKind.unknown
         ? ManagedProviderKind.customHttp
         : provider?.kind ?? ManagedProviderKind.customHttp;
@@ -80,6 +93,9 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
       _unit,
       _decimalPlaces,
       _credentialRef,
+      _credentialName,
+      _credentialField,
+      _credentialPlacement,
     ]) {
       controller.dispose();
     }
@@ -202,7 +218,6 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
                 label: 'Credential reference',
                 controller: _credentialRef,
                 hint: 'Reference only; secret values are never shown',
-                readOnly: true,
               ),
               const SizedBox(height: 8),
               Text(
@@ -213,41 +228,77 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
                   context,
                 ).smColored(Theme.of(context).colorScheme.onSurfaceVariant),
               ),
+              const SizedBox(height: 12),
+              _field(
+                context,
+                key: const Key('managed-provider-credential-name'),
+                label: 'Credential header/query name',
+                controller: _credentialName,
+                hint: 'Authorization or api-key',
+              ),
+              const SizedBox(height: 12),
+              _field(
+                context,
+                key: const Key('managed-provider-credential-field'),
+                label: 'Credential response field',
+                controller: _credentialField,
+                hint: 'Optional response mapping field',
+              ),
+              const SizedBox(height: 12),
+              _field(
+                context,
+                key: const Key('managed-provider-credential-placement'),
+                label: 'Credential placement',
+                controller: _credentialPlacement,
+                hint: 'header or query',
+              ),
               const SizedBox(height: 20),
               _sectionTitle(context, 'Display configuration'),
-              Row(
-                children: [
-                  Expanded(
-                    child: _field(
-                      context,
-                      key: const Key('managed-provider-currency'),
-                      label: 'Currency',
-                      controller: _currency,
-                      hint: 'USD',
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _field(
-                      context,
-                      key: const Key('managed-provider-unit'),
-                      label: 'Unit',
-                      controller: _unit,
-                      hint: 'requests / tokens',
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  SizedBox(
-                    width: 120,
-                    child: _field(
-                      context,
-                      key: const Key('managed-provider-decimal-places'),
-                      label: 'Decimals',
-                      controller: _decimalPlaces,
-                      keyboardType: TextInputType.number,
-                    ),
-                  ),
-                ],
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final currency = _field(
+                    context,
+                    key: const Key('managed-provider-currency'),
+                    label: 'Currency',
+                    controller: _currency,
+                    hint: 'USD',
+                  );
+                  final unit = _field(
+                    context,
+                    key: const Key('managed-provider-unit'),
+                    label: 'Unit',
+                    controller: _unit,
+                    hint: 'requests / tokens',
+                  );
+                  final decimals = _field(
+                    context,
+                    key: const Key('managed-provider-decimal-places'),
+                    label: 'Decimals',
+                    controller: _decimalPlaces,
+                    keyboardType: TextInputType.number,
+                  );
+                  if (constraints.maxWidth < 520) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        currency,
+                        const SizedBox(height: 12),
+                        unit,
+                        const SizedBox(height: 12),
+                        decimals,
+                      ],
+                    );
+                  }
+                  return Row(
+                    children: [
+                      Expanded(child: currency),
+                      const SizedBox(width: 12),
+                      Expanded(child: unit),
+                      const SizedBox(width: 12),
+                      SizedBox(width: 120, child: decimals),
+                    ],
+                  );
+                },
               ),
               SwitchListTile.adaptive(
                 key: const Key('managed-provider-enabled'),
@@ -374,6 +425,14 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
       setState(() => _formError = 'Decimal places must be a whole number.');
       return;
     }
+    if ((adapter == 'http-json' || _kind == ManagedProviderKind.customHttp) &&
+        !_isAllowedEndpoint(endpoint)) {
+      setState(
+        () => _formError =
+            'Enter an HTTPS or loopback endpoint for this HTTP adapter.',
+      );
+      return;
+    }
 
     setState(() {
       _saving = true;
@@ -398,10 +457,18 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
             ? null
             : _measuresPath.text.trim(),
         body: body,
-        credentialName: current?.endpointConfig.credentialName,
-        credentialField: current?.endpointConfig.credentialField,
-        credentialPlacement:
-            current?.endpointConfig.credentialPlacement ?? 'header',
+        headers: current?.endpointConfig.headers ?? const {},
+        fieldMappings: current?.endpointConfig.fieldMappings ?? const {},
+        unknownFields: current?.endpointConfig.unknownFields ?? const {},
+        credentialName: _credentialName.text.trim().isEmpty
+            ? null
+            : _credentialName.text.trim(),
+        credentialField: _credentialField.text.trim().isEmpty
+            ? null
+            : _credentialField.text.trim(),
+        credentialPlacement: _credentialPlacement.text.trim().isEmpty
+            ? 'header'
+            : _credentialPlacement.text.trim().toLowerCase(),
         credentialPrefix: current?.endpointConfig.credentialPrefix,
       ),
       credentialRef: current?.credentialRef,
@@ -410,7 +477,9 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
         unit: _unit.text.trim().isEmpty ? null : _unit.text.trim(),
         decimalPlaces: decimalPlaces,
         showPercent: _showPercent,
+        unknownFields: current?.displayConfig.unknownFields ?? const {},
       ),
+      unknownFields: current?.unknownFields ?? const {},
       enabled: _enabled,
       createdAt: current == null || current.createdAt == 0
           ? now
@@ -440,19 +509,29 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
     await context.read<ManagedProviderCubit>().delete(provider.id);
     if (!mounted) return;
     setState(() => _saving = false);
+    if (context.read<ManagedProviderCubit>().state.errorCode != null) {
+      setState(
+        () => _formError =
+            context.read<ManagedProviderCubit>().state.errorMessage ??
+            'Unable to delete managed provider.',
+      );
+      return;
+    }
     Navigator.of(context).pop();
   }
 
   Future<void> _testQuery() async {
     final provider = _provider;
     if (provider == null) return;
-    await context.read<ManagedProviderUsageCubit>().refreshOne(provider.id);
+    final snapshot = await context.read<ManagedProviderUsageCubit>().queryOne(
+      provider.id,
+    );
     if (!mounted) return;
-    final state = context.read<ManagedProviderUsageCubit>().state;
-    if (state.errorCode != null) {
+    if (snapshot?.status == ProviderUsageStatus.error) {
       AppToast.show(
         context,
-        message: state.errorMessage ?? 'Unable to query provider usage.',
+        message:
+            snapshot?.lastErrorMessage ?? 'Unable to query provider usage.',
         variant: TpToastVariant.error,
       );
     } else {
@@ -491,6 +570,15 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
   static String _prettyJson(Map<String, Object?> value) {
     if (value.isEmpty) return '{}';
     return const JsonEncoder.withIndent('  ').convert(value);
+  }
+
+  static bool _isAllowedEndpoint(String value) {
+    final uri = Uri.tryParse(value);
+    if (uri == null || uri.host.isEmpty) return false;
+    if (uri.scheme == 'https') return true;
+    const loopback = {'localhost', '127.0.0.1', '::1'};
+    return loopback.contains(uri.host.toLowerCase()) &&
+        (uri.scheme == 'http' || uri.scheme == 'https');
   }
 }
 

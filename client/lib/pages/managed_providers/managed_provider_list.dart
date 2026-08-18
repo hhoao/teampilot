@@ -86,30 +86,40 @@ class ManagedProviderList extends StatelessWidget {
                       ),
                     ),
                   ),
-                  TpStatusBadge(
-                    label: provider.enabled ? 'Enabled' : 'Disabled',
-                    tone: provider.enabled
-                        ? TpStatusBadgeTone.success
-                        : TpStatusBadgeTone.neutral,
-                  ),
-                  IconButton(
-                    tooltip: provider.enabled ? 'Disable' : 'Enable',
-                    onPressed: () => onToggle(provider),
-                    icon: Icon(
-                      provider.enabled
-                          ? Icons.pause_circle_outline
-                          : Icons.play_circle_outline,
+                  Flexible(
+                    child: Wrap(
+                      alignment: WrapAlignment.end,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 2,
+                      runSpacing: 2,
+                      children: [
+                        TpStatusBadge(
+                          label: provider.enabled ? 'Enabled' : 'Disabled',
+                          tone: provider.enabled
+                              ? TpStatusBadgeTone.success
+                              : TpStatusBadgeTone.neutral,
+                        ),
+                        IconButton(
+                          tooltip: provider.enabled ? 'Disable' : 'Enable',
+                          onPressed: () => onToggle(provider),
+                          icon: Icon(
+                            provider.enabled
+                                ? Icons.pause_circle_outline
+                                : Icons.play_circle_outline,
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: 'Edit',
+                          onPressed: () => onEdit(provider),
+                          icon: const Icon(Icons.edit_outlined),
+                        ),
+                        IconButton(
+                          tooltip: 'Delete',
+                          onPressed: () => onDelete(provider),
+                          icon: Icon(Icons.delete_outline, color: cs.error),
+                        ),
+                      ],
                     ),
-                  ),
-                  IconButton(
-                    tooltip: 'Edit',
-                    onPressed: () => onEdit(provider),
-                    icon: const Icon(Icons.edit_outlined),
-                  ),
-                  IconButton(
-                    tooltip: 'Delete',
-                    onPressed: () => onDelete(provider),
-                    icon: Icon(Icons.delete_outline, color: cs.error),
                   ),
                 ],
               ),

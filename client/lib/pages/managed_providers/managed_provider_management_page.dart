@@ -149,7 +149,32 @@ class _ManagedProviderManagementPageState
   }
 
   Future<void> _delete(ManagedProvider provider) async {
-    await context.read<ManagedProviderCubit>().delete(provider.id);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete managed provider?'),
+        content: Text('Delete “${provider.name}” and its cached usage?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    final cubit = context.read<ManagedProviderCubit>();
+    await cubit.delete(provider.id);
+    if (!mounted || cubit.state.errorCode == null) return;
+    AppToast.show(
+      context,
+      message: cubit.state.errorMessage ?? 'Unable to delete managed provider.',
+      variant: TpToastVariant.error,
+    );
   }
 
   Future<void> _refresh(ManagedProvider provider) async {

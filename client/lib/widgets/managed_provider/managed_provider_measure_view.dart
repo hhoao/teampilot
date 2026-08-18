@@ -93,7 +93,10 @@ class ManagedProviderMeasureView extends StatelessWidget {
               runSpacing: 6,
               children: [
                 for (final measure in current.measures)
-                  _MeasureChip(measure: measure),
+                  _MeasureChip(
+                    measure: measure,
+                    display: provider.displayConfig,
+                  ),
               ],
             ),
           ),
@@ -112,16 +115,25 @@ class ManagedProviderMeasureView extends StatelessWidget {
 }
 
 class _MeasureChip extends StatelessWidget {
-  const _MeasureChip({required this.measure});
+  const _MeasureChip({required this.measure, required this.display});
 
   final ProviderUsageMeasure measure;
+  final ManagedProviderDisplayConfig display;
 
   @override
   Widget build(BuildContext context) {
-    final value = measure.remaining ?? measure.used ?? measure.total ?? '—';
+    var value = measure.remaining ?? measure.used ?? measure.total ?? '—';
+    final decimalPlaces = display.decimalPlaces;
+    if (decimalPlaces != null && value != '—') {
+      value = _formatDecimal(value, decimalPlaces);
+    }
     final suffix = [
       if (measure.currency?.trim().isNotEmpty == true) measure.currency!,
       if (measure.unit?.trim().isNotEmpty == true) measure.unit!,
+      if (display.showPercent &&
+          measure.currency?.trim().isNotEmpty != true &&
+          measure.unit?.trim().isNotEmpty != true)
+        '%',
     ].join(' ');
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -134,5 +146,18 @@ class _MeasureChip extends StatelessWidget {
         style: TpTextStyles.of(context).mdSemibold,
       ),
     );
+  }
+
+  static String _formatDecimal(String value, int places) {
+    if (places < 0) return value;
+    final negative = value.startsWith('-');
+    final unsigned = negative ? value.substring(1) : value;
+    final parts = unsigned.split('.');
+    final whole = parts.first;
+    final fraction = parts.length > 1 ? parts[1] : '';
+    final normalized = places == 0
+        ? whole
+        : '$whole.${fraction.padRight(places, '0').substring(0, places)}';
+    return negative ? '-$normalized' : normalized;
   }
 }
