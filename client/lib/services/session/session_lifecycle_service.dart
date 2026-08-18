@@ -207,7 +207,6 @@ class SessionLifecycleService {
         team: team,
         preset: prepared.activePreset,
       ),
-      sessionTeam: _resolveSessionTeam(session, prepared.plan, false),
     );
   }
 
@@ -259,7 +258,6 @@ class SessionLifecycleService {
       busIdle: busIdle,
       agentStatus: agentStatus,
     );
-    final isSimple = plan.mode == SessionRuntimeMode.simple;
     return ShellLaunchSpec(
       plan: prepared.plan,
       launchContext: _buildShellLaunchContextFromPlan(
@@ -270,7 +268,6 @@ class SessionLifecycleService {
         team: team,
         preset: prepared.activePreset,
       ),
-      sessionTeam: _resolveSessionTeam(session, prepared.plan, isSimple),
     );
   }
 
@@ -300,7 +297,6 @@ class SessionLifecycleService {
       busIdle: busIdle,
       agentStatus: agentStatus,
     );
-    final isSimple = plan.mode == SessionRuntimeMode.simple;
     return ShellLaunchSpec(
       plan: prepared.plan,
       launchContext: _buildShellLaunchContextFromPlan(
@@ -311,7 +307,6 @@ class SessionLifecycleService {
         team: team,
         preset: prepared.activePreset,
       ),
-      sessionTeam: _resolveSessionTeam(session, prepared.plan, isSimple),
     );
   }
 
@@ -365,7 +360,6 @@ class SessionLifecycleService {
         workspace: resolvedWorkspace,
         team: team,
       ),
-      sessionTeam: _resolveSessionTeam(session, prepared.plan, false),
     );
   }
 

@@ -146,7 +146,7 @@ void main() {
             ),
           );
 
-      expect(shellLaunch.sessionTeam, sessionId);
+      expect(shellLaunch.launchContext.sessionTeam, sessionId);
       // Simple seat key is sessionId (agent-status / X-Member), not expert id.
       expect(shellLaunch.launchContext.member.id, sessionId);
       expect(

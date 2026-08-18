@@ -108,7 +108,6 @@ class FixedResumeLifecycleService extends SessionLifecycleService {
         warnings: plan.warnings,
       ),
       launchContext: spec.launchContext,
-      sessionTeam: spec.sessionTeam,
     );
   }
 }

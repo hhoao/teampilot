@@ -1,8 +1,5 @@
-import 'package:teampilot/models/launch_security_policy.dart';
 import 'dart:io';
 
-import 'package:teampilot/models/workspace_agent_config.dart';
-import 'package:teampilot/services/cli/registry/config_profile/config_profile_context.dart';
 import 'package:teampilot/services/cli/registry/cli_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_definition.dart';
 import 'package:teampilot/services/cli/registry/launch/cli_launch_arg_contribution.dart';
@@ -52,7 +49,7 @@ void main() {
     );
   });
 
-  test('uses registered launch providers before legacy adapters', () {
+  test('uses registered launch providers', () {
     final registry = CliToolRegistry()
       ..register(
         _FakeLaunchTool(CliTool.flashskyai, const _FakeLaunchProvider()),
@@ -72,12 +69,12 @@ void main() {
     );
   });
 
-  test('rejects Codex when the registered tool has no launch providers', () {
+  test('always delegates to the assembler when the tool has no providers', () {
     final registry = CliToolRegistry()
       ..register(const _FakeLegacyTool(CliTool.codex));
 
     expect(
-      () => LaunchCommandBuilder.buildArguments(
+      LaunchCommandBuilder.buildArguments(
         const TeamProfile(
           id: 'legacy-team',
           name: 'legacy-team',
@@ -86,7 +83,54 @@ void main() {
         member,
         cliRegistry: registry,
       ),
-      throwsA(isA<StateError>()),
+      isEmpty,
+    );
+  });
+
+  test('direct context and shell context share the assembled argv', () {
+    const team = TeamProfile(
+      id: 'context-team',
+      name: 'context-team',
+      cli: CliTool.flashskyai,
+    );
+    const context = CliLaunchContext(
+      team: team,
+      member: member,
+      sessionTeam: 'runtime-team',
+      additionalDirectories: ['/work/shared'],
+      fixedSessionId: 'fixed-id',
+    );
+    final shellSpec = ShellLaunchSpec(
+      plan: const LaunchPlan(
+        env: {},
+        resume: false,
+        taskId: 'member-1',
+        cliTeamName: 'runtime-team',
+        memberConfigDir: '',
+        resolvedRoots: [],
+      ),
+      launchContext: context,
+    );
+
+    final direct = LaunchCommandBuilder.buildArgumentsFromContext(context);
+    final shell = LaunchCommandBuilder.buildShellArguments(
+      shellSpec,
+      fixedSessionId: 'fixed-id',
+    );
+
+    expect(shell, direct);
+    expect(
+      LaunchCommandBuilder.preview(
+        team,
+        member,
+        sessionTeam: 'runtime-team',
+        executable: 'flashskyai',
+        additionalDirectories: const ['/work/shared'],
+        fixedSessionId: 'fixed-id',
+      ),
+      'flashskyai --session-id fixed-id --add-dir /work/shared '
+      '--team runtime-team --member member-1 --provider anthropic '
+      '--model sonnet --agent builder',
     );
   });
 
@@ -388,54 +432,56 @@ void main() {
     },
   );
 
-  group('buildSessionPrefixArgs', () {
-    test('--resume wins over fixed session id', () {
-      expect(
-        LaunchCommandBuilder.buildSessionPrefixArgs(
-          workingDirectory: '/w',
-          additionalDirectories: const ['/a'],
-          fixedSessionId: '11111111-1111-1111-1111-111111111111',
-          resumeSessionId: '22222222-2222-2222-2222-222222222222',
-        ),
-        [
-          '--resume',
-          '22222222-2222-2222-2222-222222222222',
-          '--dir',
-          '/w',
-          '--add-dir',
-          '/a',
-        ],
+  test(
+    'external terminal fallback forwards the assembled argv unchanged',
+    () async {
+      const team = TeamProfile(
+        id: 'external-team',
+        name: 'external-team',
+        cli: CliTool.flashskyai,
       );
-    });
+      List<String>? capturedArgs;
 
-    test('first launch uses --session-id only', () {
-      expect(
-        LaunchCommandBuilder.buildSessionPrefixArgs(
-          workingDirectory: '/w',
-          additionalDirectories: const ['/extra'],
-          fixedSessionId: '33333333-3333-3333-3333-333333333333',
-          resumeSessionId: null,
-        ),
-        [
-          '--session-id',
-          '33333333-3333-3333-3333-333333333333',
-          '--dir',
-          '/w',
-          '--add-dir',
-          '/extra',
-        ],
-      );
-    });
+      try {
+        await LaunchCommandBuilder.launch(
+          team,
+          member: member,
+          executable: 'flashskyai',
+          workingDirectory: '/work/project',
+          additionalDirectories: const ['/work/shared'],
+          fixedSessionId: 'fixed-id',
+          starter:
+              (
+                executable,
+                arguments, {
+                workingDirectory,
+                runInShell = false,
+                environment,
+                includeParentEnvironment = true,
+              }) async {
+                if (executable == 'flashskyai') {
+                  capturedArgs = List<String>.from(arguments);
+                }
+                throw const ProcessException('stop', []);
+              },
+        );
+      } on ProcessException {
+        // Expected: the fake starter prevents every external terminal spawn and
+        // the final direct spawn.
+      }
 
-    test('resume-only omits session-id', () {
       expect(
-        LaunchCommandBuilder.buildSessionPrefixArgs(
-          resumeSessionId: '44444444-4444-4444-4444-444444444444',
+        capturedArgs,
+        LaunchCommandBuilder.buildArguments(
+          team,
+          member,
+          workingDirectory: '/work/project',
+          additionalDirectories: const ['/work/shared'],
+          fixedSessionId: 'fixed-id',
         ),
-        ['--resume', '44444444-4444-4444-4444-444444444444'],
       );
-    });
-  });
+    },
+  );
 
   test('static splitArgs preserves quoted and escaped token boundaries', () {
     expect(

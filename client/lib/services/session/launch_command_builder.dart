@@ -6,7 +6,6 @@ import 'package:path/path.dart' as p;
 import '../cli/preset_resolver.dart';
 import '../../models/team_config.dart';
 import '../cli/registry/launch/cli_launch_arg_assembler.dart';
-import '../cli/registry/launch/cli_launch_arg_provider.dart';
 import '../cli/registry/launch/cli_launch_context.dart' as launch_context;
 import '../cli/registry/launch/user_extra_args_provider.dart' as launch_args;
 import 'shell_launch_spec.dart';
@@ -27,39 +26,6 @@ typedef ProcessStarter =
 
 class LaunchCommandBuilder {
   const LaunchCommandBuilder._();
-
-  /// CLI flags for `--resume` / `--session-id`, `--dir`, and repeated `--add-dir`.
-  /// When [resumeSessionId] is non-empty, `--resume` wins over [fixedSessionId].
-  static List<String> buildSessionPrefixArgs({
-    String? workingDirectory,
-    List<String> additionalDirectories = const [],
-    String? fixedSessionId,
-    String? resumeSessionId,
-    bool useWslPaths = false,
-  }) {
-    final args = <String>[];
-    final resume = resumeSessionId?.trim() ?? '';
-    final fixed = fixedSessionId?.trim() ?? '';
-    if (resume.isNotEmpty) {
-      args.addAll(['--resume', resume]);
-    } else if (fixed.isNotEmpty) {
-      args.addAll(['--session-id', fixed]);
-    }
-    final wd = workingDirectory ?? '';
-    if (wd.isNotEmpty) {
-      args.addAll(['--dir', normalizePathForCli(wd, useWslPaths: useWslPaths)]);
-    }
-    for (final path in additionalDirectories) {
-      final t = path.trim();
-      if (t.isNotEmpty) {
-        args.addAll([
-          '--add-dir',
-          normalizePathForCli(t, useWslPaths: useWslPaths),
-        ]);
-      }
-    }
-    return args;
-  }
 
   static final _defaultCliRegistry = () {
     final r = CliToolRegistry.builtIn();
@@ -107,12 +73,7 @@ class LaunchCommandBuilder {
     if (tool == null) {
       throw StateError('No CliToolDefinition for ${cli.value}');
     }
-    if (tool.capabilities.whereType<CliLaunchArgProvider>().isNotEmpty) {
-      return const CliLaunchArgAssembler().assemble(tool, context);
-    }
-    throw StateError(
-      '${cli.value} launch arguments require registered launch providers.',
-    );
+    return const CliLaunchArgAssembler().assemble(tool, context);
   }
 
   /// CLI argv for [TerminalSession.connect] after env normalization.
@@ -126,7 +87,6 @@ class LaunchCommandBuilder {
   }) {
     return buildArgumentsFromContext(
       spec.launchContext.copyWith(
-        sessionTeam: spec.sessionTeam,
         fixedSessionId: fixedSessionId,
         resumeSessionId: resumeSessionId,
         settingsPath: settingsPathFromEnvironment(environment),

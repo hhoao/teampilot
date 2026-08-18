@@ -11,6 +11,7 @@ import '../cli/cli_executable_validator.dart';
 import '../cli/preset_resolver.dart';
 import '../cli/cli_invocation.dart';
 import '../cli/registry/capabilities/terminal_behavior_capability.dart';
+import '../cli/registry/launch/cli_launch_context.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../session/launch_command_builder.dart';
 import '../session/shell_launch_spec.dart';
@@ -72,8 +73,8 @@ class TerminalSession {
                  scrollbackLines: scrollbackLines,
                ),
        ),
-       activityTracker = launchController?.activityTracker ??
-           TerminalActivityTracker(),
+       activityTracker =
+           launchController?.activityTracker ?? TerminalActivityTracker(),
        _inputPipeline = inputPipeline ?? TerminalUserInputPipeline(),
        _linkProvidersHolder = linkProviders {
     _terminalTheme = terminalTheme;
@@ -161,7 +162,8 @@ class TerminalSession {
       : TerminalInputController.fullScreenSubmitDelay;
 
   List<TerminalLinkProvider> get linkProviders =>
-      (_linkProviders ??= _linkProvidersHolder ??
+      (_linkProviders ??=
+              _linkProvidersHolder ??
               TerminalSessionLinkProviders(engine: engine))
           .build(_launchCwd);
 
@@ -282,7 +284,7 @@ class TerminalSession {
             environment: normalizedEnvironment,
             useWslPaths: invocation.usesWsl,
           )
-        : LaunchCommandBuilder.buildSessionPrefixArgs(
+        : _buildWorkspaceShellArguments(
             workingDirectory: workingDirectory.isNotEmpty
                 ? workingDirectory
                 : null,
@@ -464,4 +466,40 @@ class TerminalSession {
     _linkProvidersHolder?.invalidate();
     _linkProviders = null;
   }
+}
+
+/// Builds the optional arguments used by bare workspace/test shells.
+///
+/// Agent launches always provide [ShellLaunchSpec] and therefore use the CLI
+/// capability assembler. This helper remains only for callers that use a
+/// [TerminalSession] as a generic shell without a CLI semantic context.
+List<String> _buildWorkspaceShellArguments({
+  String? workingDirectory,
+  List<String> additionalDirectories = const [],
+  String? fixedSessionId,
+  String? resumeSessionId,
+  bool useWslPaths = false,
+}) {
+  final args = <String>[];
+  final resume = resumeSessionId?.trim() ?? '';
+  final fixed = fixedSessionId?.trim() ?? '';
+  if (resume.isNotEmpty) {
+    args.addAll(['--resume', resume]);
+  } else if (fixed.isNotEmpty) {
+    args.addAll(['--session-id', fixed]);
+  }
+  final wd = workingDirectory ?? '';
+  if (wd.isNotEmpty) {
+    args.addAll(['--dir', normalizePathForCli(wd, useWslPaths: useWslPaths)]);
+  }
+  for (final path in additionalDirectories) {
+    final trimmed = path.trim();
+    if (trimmed.isNotEmpty) {
+      args.addAll([
+        '--add-dir',
+        normalizePathForCli(trimmed, useWslPaths: useWslPaths),
+      ]);
+    }
+  }
+  return args;
 }

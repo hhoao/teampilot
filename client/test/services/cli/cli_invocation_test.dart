@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/cli_invocation.dart';
+import 'package:teampilot/services/cli/registry/launch/cli_launch_context.dart';
 import 'package:teampilot/services/session/launch_command_builder.dart';
 
 void main() {
@@ -110,17 +112,29 @@ void main() {
     }
   });
 
-  test(
-    'buildArguments converts working directories when wsl mode is enabled',
-    () {
-      expect(
-        LaunchCommandBuilder.buildSessionPrefixArgs(
-          workingDirectory: r'C:\Users\hhoa\git\agent',
-          additionalDirectories: const [r'D:\data'],
-          useWslPaths: true,
+  test('assembled launch arguments convert workspace paths for WSL', () {
+    final args = LaunchCommandBuilder.buildArgumentsFromContext(
+      CliLaunchContext(
+        team: const TeamProfile(
+          id: 'team',
+          name: 'agent',
+          cli: CliTool.flashskyai,
         ),
-        ['--dir', '/mnt/c/Users/hhoa/git/agent', '--add-dir', '/mnt/d/data'],
-      );
-    },
-  );
+        member: const TeamMemberConfig(id: 'member', name: 'member'),
+        workingDirectory: r'C:\Users\hhoa\git\agent',
+        additionalDirectories: const [r'D:\data'],
+        useWslPaths: true,
+      ),
+    );
+
+    expect(
+      args,
+      containsAllInOrder([
+        '--dir',
+        '/mnt/c/Users/hhoa/git/agent',
+        '--add-dir',
+        '/mnt/d/data',
+      ]),
+    );
+  });
 }

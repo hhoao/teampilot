@@ -103,7 +103,6 @@ Future<ShellLaunchSpec> applyRemoteSshLaunchConstraints({
       profile == null) {
     return spec;
   }
-  final member = spec.launchContext.member;
   final securityPolicy = spec.launchContext.launchSecurityPolicy;
   if (!securityPolicy.requiresDangerousExecution) return spec;
 
@@ -169,7 +168,6 @@ Future<ShellLaunchSpec> applyRemoteSshLaunchConstraints({
           warnings: plan.warnings,
         ),
         launchContext: spec.launchContext,
-        sessionTeam: spec.sessionTeam,
       );
     }(),
     RemoteRootSecurityPolicy.dropDangerousPolicy =>
