@@ -21,7 +21,7 @@ void main() {
   });
 
   test('http action', () {
-    const action = HttpHookAction(
+    final action = HttpHookAction(
       url: 'http://127.0.0.1:1/hook',
       headers: {'X-Member': 'm1'},
     );
@@ -30,7 +30,7 @@ void main() {
   });
 
   test('entry value equality', () {
-    const a = HookEntry(
+    final a = HookEntry(
       id: 'h1',
       source: HookSource.userLibrary,
       event: HookEvent.preToolUse,
@@ -40,7 +40,7 @@ void main() {
       timeout: Duration(seconds: 30),
       env: {'A': 'b'},
     );
-    const b = HookEntry(
+    final b = HookEntry(
       id: 'h1',
       source: HookSource.userLibrary,
       event: HookEvent.preToolUse,
@@ -50,7 +50,7 @@ void main() {
       timeout: Duration(seconds: 30),
       env: {'A': 'b'},
     );
-    const c = HookEntry(
+    final c = HookEntry(
       id: 'h1',
       source: HookSource.userLibrary,
       event: HookEvent.preToolUse,
@@ -63,5 +63,28 @@ void main() {
     expect(a, b);
     expect(a == c, isFalse);
     expect(a.hashCode, b.hashCode);
+  });
+
+  test('entry copies and freezes env and HTTP headers', () {
+    final env = <String, String>{'A': 'one'};
+    final headers = <String, String>{'X-Test': 'one'};
+    final entry = HookEntry(
+      id: 'immutable',
+      source: HookSource.userLibrary,
+      event: HookEvent.stop,
+      action: HttpHookAction(url: 'http://127.0.0.1/hook', headers: headers),
+      env: env,
+    );
+
+    env['A'] = 'two';
+    headers['X-Test'] = 'two';
+
+    expect(entry.env, {'A': 'one'});
+    expect((entry.action as HttpHookAction).headers, {'X-Test': 'one'});
+    expect(() => entry.env['B'] = 'x', throwsUnsupportedError);
+    expect(
+      () => (entry.action as HttpHookAction).headers['X-Test'] = 'x',
+      throwsUnsupportedError,
+    );
   });
 }

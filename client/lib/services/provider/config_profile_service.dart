@@ -39,6 +39,8 @@ import '../cli/registry/capabilities/cli_session_capability.dart';
 import '../storage/app_storage.dart';
 import '../cli/preset_resolver.dart';
 import '../hook/hook_library_resolver.dart';
+import '../resource/providers/hook_contribution_provider.dart';
+import '../resource/providers/hook_library_contribution_provider.dart';
 import '../cli/registry/config_profile/config_profile_context.dart';
 import 'config_profile_infrastructure.dart';
 
@@ -241,12 +243,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     String sessionId,
     String tool, {
     String? memberId,
-  }) => _infra.sessionToolDir(
-    workspaceId,
-    sessionId,
-    tool,
-    memberId: memberId,
-  );
+  }) => _infra.sessionToolDir(workspaceId, sessionId, tool, memberId: memberId);
 
   String _launchResourceConfigDir({
     required CliTool cli,
@@ -256,11 +253,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     TeamProfile? team,
   }) {
     if (CursorWorkspaceWarmTier.applies(team: team, cli: cli)) {
-      return CursorWorkspaceWarmTier.sharedRoot(
-        layout,
-        workspaceId,
-        team!.id,
-      );
+      return CursorWorkspaceWarmTier.sharedRoot(layout, workspaceId, team!.id);
     }
     return sessionConfigDirForTool(
       cli,
@@ -324,10 +317,11 @@ class ConfigProfileService implements ConfigProfileDelegate {
     );
     // Share the persisted marketplace clone into this session's CONFIG_DIR so
     // the CLI reuses one per-tool flavor dir instead of cloning per session.
-    await MarketplaceSharedStore(fs: fs, teampilotRoot: basePath)
-        .ensureSessionMarketplacesLinked(configDir: configDir, tool: cli);
-    final pluginProvisioner = _cliRegistry
-        .capability<PluginCapability>(cli);
+    await MarketplaceSharedStore(
+      fs: fs,
+      teampilotRoot: basePath,
+    ).ensureSessionMarketplacesLinked(configDir: configDir, tool: cli);
+    final pluginProvisioner = _cliRegistry.capability<PluginCapability>(cli);
     final warmTier = CursorWorkspaceWarmTier.applies(team: team, cli: cli);
     final mcpRegistry = McpRegistryService(fs: fs, layout: layout);
     McpRegistryAssembly? mcpAssembly;
@@ -335,20 +329,22 @@ class ConfigProfileService implements ConfigProfileDelegate {
     if (pluginProvisioner != null) {
       installedCatalog = await InstalledPluginCatalog.load(fs, basePath);
       final enabledPlugins = runtimeBundle?.pluginIds ?? const <String>[];
-      final poolResult = await PluginBundlePoolService(
-        fs: fs,
-        teampilotRoot: basePath,
-      ).reconcile(
-        poolDir: layout.sessionRuntimePluginsDir(
-          trimmedWorkspaceId,
-          trimmedSessionId,
-          cli.value,
-          memberId: memberId,
-        ),
-        enabledPluginIds: enabledPlugins,
-        installedCatalog: installedCatalog,
-        paths: pluginProvisioner.manifestPaths ?? neutralPluginManifestPaths,
-      );
+      final poolResult =
+          await PluginBundlePoolService(
+            fs: fs,
+            teampilotRoot: basePath,
+          ).reconcile(
+            poolDir: layout.sessionRuntimePluginsDir(
+              trimmedWorkspaceId,
+              trimmedSessionId,
+              cli.value,
+              memberId: memberId,
+            ),
+            enabledPluginIds: enabledPlugins,
+            installedCatalog: installedCatalog,
+            paths:
+                pluginProvisioner.manifestPaths ?? neutralPluginManifestPaths,
+          );
       warnings.addAll([
         for (final id in poolResult.skippedMissingIds) 'plugin_missing_$id',
         ...poolResult.errors,
@@ -383,18 +379,20 @@ class ConfigProfileService implements ConfigProfileDelegate {
         ),
       );
     }
-    await _cliRegistry.lifecycleFor(cli).ensurePersisted(
-      CliSessionPersistContext(
-        workspaceId: trimmedWorkspaceId,
-        sessionId: trimmedSessionId,
-        memberId: memberId,
-        tool: cli,
-        paths: this,
-        team: team,
-        busIdle: busIdle,
-        workingDirectory: workingDirectory,
-      ),
-    );
+    await _cliRegistry
+        .lifecycleFor(cli)
+        .ensurePersisted(
+          CliSessionPersistContext(
+            workspaceId: trimmedWorkspaceId,
+            sessionId: trimmedSessionId,
+            memberId: memberId,
+            tool: cli,
+            paths: this,
+            team: team,
+            busIdle: busIdle,
+            workingDirectory: workingDirectory,
+          ),
+        );
     mcpAssembly ??= await mcpRegistry.assembleForTeam(
       cli: cli,
       teamId: trimmedTeamId,
@@ -525,8 +523,10 @@ class ConfigProfileService implements ConfigProfileDelegate {
     // the CLI reuses one per-tool flavor dir instead of cloning per session.
     await step(
       'marketplaces',
-      () => MarketplaceSharedStore(fs: fs, teampilotRoot: basePath)
-          .ensureSessionMarketplacesLinked(configDir: configDir, tool: cli),
+      () => MarketplaceSharedStore(
+        fs: fs,
+        teampilotRoot: basePath,
+      ).ensureSessionMarketplacesLinked(configDir: configDir, tool: cli),
     );
 
     // Catalog skills land in `skill/` BEFORE plugin bundles are decomposed:
@@ -551,8 +551,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
       warnings.addAll(provisionResult.warnings);
     });
 
-    final pluginProvisioner = _cliRegistry
-        .capability<PluginCapability>(cli);
+    final pluginProvisioner = _cliRegistry.capability<PluginCapability>(cli);
     final mcpRegistry = McpRegistryService(fs: fs, layout: layout);
     McpRegistryAssembly? mcpAssembly;
     if (pluginProvisioner != null) {
@@ -562,19 +561,21 @@ class ConfigProfileService implements ConfigProfileDelegate {
         installedCatalog = await InstalledPluginCatalog.load(fs, basePath);
       });
       await step('plugin-pool', () async {
-        poolResult = await PluginBundlePoolService(
-          fs: fs,
-          teampilotRoot: basePath,
-        ).reconcile(
-          poolDir: layout.sessionRuntimePluginsDir(
-            trimmedWorkspaceId,
-            trimmedSessionId,
-            cli.value,
-          ),
-          enabledPluginIds: runtimeBundle.pluginIds,
-          installedCatalog: installedCatalog,
-          paths: pluginProvisioner.manifestPaths ?? neutralPluginManifestPaths,
-        );
+        poolResult =
+            await PluginBundlePoolService(
+              fs: fs,
+              teampilotRoot: basePath,
+            ).reconcile(
+              poolDir: layout.sessionRuntimePluginsDir(
+                trimmedWorkspaceId,
+                trimmedSessionId,
+                cli.value,
+              ),
+              enabledPluginIds: runtimeBundle.pluginIds,
+              installedCatalog: installedCatalog,
+              paths:
+                  pluginProvisioner.manifestPaths ?? neutralPluginManifestPaths,
+            );
       });
       warnings.addAll([
         for (final id in poolResult.skippedMissingIds) 'plugin_missing_$id',
@@ -654,6 +655,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     MemberBusIdleEndpoint? busIdle,
     MemberAgentStatusEndpoint? agentStatus,
     List<HookEntry> hooks = const [],
+    HookContributionProvider? hookLibraryProvider,
   }) async {
     final trimmedWorkspaceId = workspaceId.trim();
     final trimmedSessionId = sessionId.trim();
@@ -699,6 +701,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
             busIdle: busIdle,
             agentStatus: agentStatus,
             hooks: hooks,
+            hookLibraryProvider: hookLibraryProvider,
           ),
           cli,
         ),
@@ -765,10 +768,13 @@ class ConfigProfileService implements ConfigProfileDelegate {
       'ops=${manifest.entries.length}',
     );
     final contributeSw = Stopwatch()..start();
-    final hooksResult = await HookLibraryResolver(
-      fs: readDelegate,
-      teampilotRoot: workTeampilotRoot,
-    ).resolve(runtimeBundle.hookIds);
+    final hookLibraryProvider = HookLibraryContributionProvider(
+      resolver: HookLibraryResolver(
+        fs: readDelegate,
+        teampilotRoot: workTeampilotRoot,
+      ),
+      hookIds: runtimeBundle.hookIds,
+    );
     final outcome = await staging.contributeSimpleSessionLaunch(
       workspaceId: workspaceId,
       sessionId: sessionId,
@@ -777,7 +783,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
       additionalDirectories: additionalDirectories,
       busIdle: busIdle,
       agentStatus: agentStatus,
-      hooks: hooksResult.entries,
+      hookLibraryProvider: hookLibraryProvider,
     );
     appLogger.d(
       '[session-launch] stage-simple contribute '
@@ -789,7 +795,9 @@ class ConfigProfileService implements ConfigProfileDelegate {
         environment: outcome.environment,
         warnings: [
           ...fsWarnings,
-          ...hooksResult.warnings,
+          ...hookLibraryProvider.diagnostics.map(
+            (diagnostic) => diagnostic.message,
+          ),
           ...outcome.warnings,
         ],
       ),
@@ -963,12 +971,13 @@ class ConfigProfileService implements ConfigProfileDelegate {
       );
     }
 
-    final hooksResult = await HookLibraryResolver(
-      fs: readDelegate,
-      teampilotRoot: workTeampilotRoot,
-    ).resolve(runtimeBundle.hookIds);
-    warnings.addAll(hooksResult.warnings);
-
+    final hookLibraryProvider = HookLibraryContributionProvider(
+      resolver: HookLibraryResolver(
+        fs: readDelegate,
+        teampilotRoot: workTeampilotRoot,
+      ),
+      hookIds: runtimeBundle.hookIds,
+    );
     SessionHomeContribution contribution;
     try {
       contribution = await cap.materializeSessionHome(
@@ -989,7 +998,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
             busIdle: busIdle,
             agentStatus: agentStatus,
             memberId: memberId,
-            hooks: hooksResult.entries,
+            hookLibraryProvider: hookLibraryProvider,
           ),
           launchCli,
         ),
@@ -1002,6 +1011,9 @@ class ConfigProfileService implements ConfigProfileDelegate {
       // as a proper session-connect failure.
       Error.throwWithStackTrace(e, st);
     }
+    warnings.addAll(
+      hookLibraryProvider.diagnostics.map((diagnostic) => diagnostic.message),
+    );
 
     return (
       outcome: TeamLaunchOutcome(

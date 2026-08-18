@@ -11,6 +11,7 @@ import '../../../provider/provider_catalog_access.dart';
 import '../../../storage/runtime_layout.dart';
 import '../../../agent_status/member_agent_status_endpoint.dart';
 import '../../../team_bus/member_bus_idle_endpoint.dart';
+import '../../../resource/providers/hook_contribution_provider.dart';
 import 'config_profile_scope.dart';
 
 export 'config_profile_scope.dart';
@@ -155,6 +156,7 @@ class ConfigProfileLaunchContext {
     this.sessionExpertKey,
     this.resolvedExpert,
     this.hooks = const [],
+    this.hookLibraryProvider,
   });
 
   final String workspaceId;
@@ -185,6 +187,7 @@ class ConfigProfileLaunchContext {
 
   /// 该 seat 生效的用户 hook 条目（staging 按 runtimeBundle.hookIds 解析）。
   final List<HookEntry> hooks;
+  final HookContributionProvider? hookLibraryProvider;
 
   bool get crossMachine => configProfileCrossMachine(catalog, paths);
 

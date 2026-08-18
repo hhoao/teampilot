@@ -62,11 +62,33 @@ final class HookAssembler {
           }
           continue;
         }
+        if (contribution.entry.action is HttpHookAction &&
+            !context.supportsHttp) {
+          final diagnostic = ResourceAssemblyError.unsupported(
+            resourceKind: ResourceContributionKind.hook,
+            cli: context.cli,
+            providerId: provider.providerId,
+            sourceId: contribution.sourceId,
+            message:
+                'HTTP hook ${contribution.entry.id} is unsupported by '
+                '${context.cli.value} (HookCapability.supportsHttp=false).',
+          );
+          if (_isOptional(provider, contribution)) {
+            diagnostics.add(_asWarning(diagnostic));
+          } else {
+            errors.add(diagnostic);
+          }
+          continue;
+        }
 
         final key = _identity(contribution.entry);
         final previous = selected[key];
         if (previous == null) {
-          selected[key] = _SelectedHook(contribution, provider.providerId);
+          selected[key] = _SelectedHook(
+            contribution,
+            provider.providerId,
+            optional: _isOptional(provider, contribution),
+          );
           orderedKeys.add(key);
           continue;
         }
@@ -74,18 +96,58 @@ final class HookAssembler {
             _payload(contribution.entry)) {
           continue;
         }
+        final currentOptional = _isOptional(provider, contribution);
+        if (currentOptional || previous.optional) {
+          if (currentOptional) {
+            diagnostics.add(
+              _asWarning(
+                _conflict(
+                  context: context,
+                  key: key,
+                  providerId: provider.providerId,
+                  sourceId: contribution.sourceId,
+                  previousProviderId: previous.providerId,
+                  previousSourceId: previous.contribution.sourceId,
+                  message:
+                      'Optional hook ${_label(previous)} was skipped '
+                      'because required hook ${provider.providerId}/'
+                      '${contribution.sourceId} has the same identity.',
+                ),
+              ),
+            );
+          } else {
+            diagnostics.add(
+              _asWarning(
+                _conflict(
+                  context: context,
+                  key: key,
+                  providerId: previous.providerId,
+                  sourceId: previous.contribution.sourceId,
+                  previousProviderId: provider.providerId,
+                  previousSourceId: contribution.sourceId,
+                  message:
+                      'Optional hook ${_label(previous)} was replaced '
+                      'by required ${provider.providerId}/'
+                      '${contribution.sourceId}.',
+                ),
+              ),
+            );
+            selected[key] = _SelectedHook(
+              contribution,
+              provider.providerId,
+              optional: false,
+            );
+          }
+          continue;
+        }
         errors.add(
-          ResourceAssemblyError.conflict(
-            resourceKind: ResourceContributionKind.hook,
-            cli: context.cli,
+          _conflict(
+            context: context,
+            key: key,
             providerId: provider.providerId,
             sourceId: contribution.sourceId,
             previousProviderId: previous.providerId,
             previousSourceId: previous.contribution.sourceId,
-            message:
-                'Hook identity $key has different payloads between '
-                '${_label(previous)} and '
-                '${provider.providerId}/${contribution.sourceId}.',
           ),
         );
       }
@@ -190,6 +252,27 @@ final class HookAssembler {
     stackTrace: diagnostic.stackTrace,
   );
 
+  ResourceAssemblyError _conflict({
+    required HookProviderContext context,
+    required String key,
+    required String providerId,
+    required String sourceId,
+    required String previousProviderId,
+    required String previousSourceId,
+    String? message,
+  }) => ResourceAssemblyError.conflict(
+    resourceKind: ResourceContributionKind.hook,
+    cli: context.cli,
+    providerId: providerId,
+    sourceId: sourceId,
+    previousProviderId: previousProviderId,
+    previousSourceId: previousSourceId,
+    message:
+        message ??
+        'Hook identity $key has different payloads between '
+            '$previousProviderId/$previousSourceId and $providerId/$sourceId.',
+  );
+
   String _identity(HookEntry entry) {
     final matcher = entry.matcher?.trim() ?? '';
     final action = switch (entry.action) {
@@ -234,10 +317,15 @@ final class _ProvidedHooks {
 }
 
 final class _SelectedHook {
-  const _SelectedHook(this.contribution, this.providerId);
+  const _SelectedHook(
+    this.contribution,
+    this.providerId, {
+    required this.optional,
+  });
 
   final HookContribution contribution;
   final String providerId;
+  final bool optional;
 }
 
 /// Assembled hooks plus their immutable diagnostic projection.

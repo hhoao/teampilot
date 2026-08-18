@@ -395,7 +395,8 @@ final class CursorProviderCapability extends CatalogModelCapability
             endpoint: agentStatus,
             memberId: member.id,
           ),
-        UserHookContributionProvider(entries: ctx.hooks),
+        ctx.hookLibraryProvider ??
+            UserHookContributionProvider(entries: ctx.hooks),
       ],
     );
     await CursorHomeProvisioner(
@@ -532,7 +533,8 @@ final class CursorProviderCapability extends CatalogModelCapability
               endpoint: agentStatus,
               memberId: member.id,
             ),
-          UserHookContributionProvider(entries: ctx.hooks),
+          ctx.hookLibraryProvider ??
+              UserHookContributionProvider(entries: ctx.hooks),
         ],
       );
       await CursorHomeProvisioner(

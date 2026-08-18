@@ -15,6 +15,7 @@ class HookProviderContext {
   HookProviderContext({
     required this.cli,
     this.member,
+    this.supportsHttp = true,
     Map<String, String> endpoints = const {},
     this.filesystem,
     this.hooksDirectory,
@@ -24,6 +25,7 @@ class HookProviderContext {
 
   final CliTool cli;
   final TeamMemberConfig? member;
+  final bool supportsHttp;
   final Map<String, String> endpoints;
   final Filesystem? filesystem;
   final String? hooksDirectory;

@@ -581,6 +581,7 @@ final class ClaudeProviderCapability extends CatalogModelCapability
       busIdle: ctx.busIdle,
       agentStatus: ctx.agentStatus,
       userHooks: ctx.hooks,
+      hookLibraryProvider: ctx.hookLibraryProvider,
     );
     if (stepSw != null) {
       _logClaudeContributeLaunchStep(stepSw, 'writeMemberProfiles', sessionId);
@@ -1008,6 +1009,7 @@ final class ClaudeProviderCapability extends CatalogModelCapability
     MemberBusIdleEndpoint? busIdle,
     MemberAgentStatusEndpoint? agentStatus,
     List<HookEntry> userHooks = const [],
+    HookContributionProvider? hookLibraryProvider,
   }) async {
     final selected = launchedMember;
     final uniqueMembers = <String, TeamMemberConfig>{};
@@ -1037,6 +1039,7 @@ final class ClaudeProviderCapability extends CatalogModelCapability
         busIdle: busIdle,
         agentStatus: agentStatus,
         userHooks: userHooks,
+        hookLibraryProvider: hookLibraryProvider,
       );
     }
     return appendPromptEnv;
@@ -1056,6 +1059,7 @@ final class ClaudeProviderCapability extends CatalogModelCapability
     MemberBusIdleEndpoint? busIdle,
     MemberAgentStatusEndpoint? agentStatus,
     List<HookEntry> userHooks = const [],
+    HookContributionProvider? hookLibraryProvider,
   }) async {
     final memberToolDir = delegate.sessionToolDir(
       scope.workspaceId,
@@ -1141,7 +1145,7 @@ final class ClaudeProviderCapability extends CatalogModelCapability
         ),
       if (extensionHooks.isNotEmpty)
         ExtensionHookContributionProvider(settingsHooks: extensionHooks),
-      UserHookContributionProvider(entries: userHooks),
+      hookLibraryProvider ?? UserHookContributionProvider(entries: userHooks),
     ];
     final assembledHooks = await completer.assemble(
       cli: CliTool.claude,

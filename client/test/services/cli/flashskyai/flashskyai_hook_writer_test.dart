@@ -23,7 +23,7 @@ void main() {
   });
 
   test('materializes neutral bus idle as command exit-2 hook output', () {
-    const entry = HookEntry(
+    final entry = HookEntry(
       id: 'teampilot-bus-idle-stop',
       source: HookSource.managed,
       event: HookEvent.stop,
@@ -35,7 +35,7 @@ void main() {
       blockOnDecision: true,
     );
 
-    final result = writer.render(entries: const [entry], ctx: context);
+    final result = writer.render(entries: [entry], ctx: context);
 
     expect(result.scripts.single.fileName, 'teammate-bus-stop-idle.sh');
     expect(result.scripts.single.content, contains('exit 2'));
@@ -48,7 +48,7 @@ void main() {
   });
 
   test('does not route flashskyai bus idle through Claude HTTP rendering', () {
-    const entry = HookEntry(
+    final entry = HookEntry(
       id: 'teampilot-bus-idle-stop',
       source: HookSource.managed,
       event: HookEvent.stop,
@@ -56,7 +56,7 @@ void main() {
       blockOnDecision: true,
     );
 
-    final result = writer.render(entries: const [entry], ctx: context);
+    final result = writer.render(entries: [entry], ctx: context);
     final settings = result.configFragments['settings.json']! as Map;
     final hooks = (settings['hooks'] as Map)['Stop'] as List;
     expect([

@@ -404,7 +404,8 @@ final class CodexProviderCapability extends CatalogModelCapability
               endpoint: agentStatus,
               memberId: member.id,
             ),
-          UserHookContributionProvider(entries: ctx.hooks),
+          ctx.hookLibraryProvider ??
+              UserHookContributionProvider(entries: ctx.hooks),
         ],
       );
       final allEntries = assembledHooks.entries;

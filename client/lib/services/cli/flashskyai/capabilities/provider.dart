@@ -30,6 +30,7 @@ import '../../../resource/providers/endpoint_hook_contribution_provider.dart';
 import '../../../resource/providers/extension_hook_contribution_provider.dart';
 import '../../../resource/providers/hook_library_contribution_provider.dart';
 import '../../../resource/providers/managed_hook_contribution_provider.dart';
+import '../../../resource/providers/hook_contribution_provider.dart';
 import '../provider/flashskyai_live_import.dart';
 import '../provider_presets.dart';
 
@@ -271,6 +272,7 @@ final class FlashskyaiProviderCapability extends CatalogModelCapability
         profileEffort: ctx.preset?.effort ?? '',
       ),
       userHooks: ctx.hooks,
+      hookLibraryProvider: ctx.hookLibraryProvider,
     );
 
     final environment = <String, String>{
@@ -342,6 +344,7 @@ final class FlashskyaiProviderCapability extends CatalogModelCapability
     MemberAgentStatusEndpoint? agentStatus,
     required String effortLevel,
     List<HookEntry> userHooks = const [],
+    HookContributionProvider? hookLibraryProvider,
   }) async {
     final selected = launchedMember;
     if (selected == null || !selected.isValid) {
@@ -362,6 +365,7 @@ final class FlashskyaiProviderCapability extends CatalogModelCapability
       agentStatus: agentStatus,
       effortLevel: effortLevel,
       userHooks: userHooks,
+      hookLibraryProvider: hookLibraryProvider,
     );
     return appendPromptEnv;
   }
@@ -452,6 +456,7 @@ final class FlashskyaiProviderCapability extends CatalogModelCapability
     MemberAgentStatusEndpoint? agentStatus,
     required String effortLevel,
     List<HookEntry> userHooks = const [],
+    HookContributionProvider? hookLibraryProvider,
   }) async {
     final memberToolDir = delegate.sessionToolDir(
       scope.workspaceId,
@@ -516,7 +521,7 @@ final class FlashskyaiProviderCapability extends CatalogModelCapability
           ),
         if (extensionHooks.isNotEmpty)
           ExtensionHookContributionProvider(settingsHooks: extensionHooks),
-        UserHookContributionProvider(entries: userHooks),
+        hookLibraryProvider ?? UserHookContributionProvider(entries: userHooks),
       ],
     );
     final entries = assembledHooks.entries;

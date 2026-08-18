@@ -30,10 +30,10 @@ class _FakeWriter implements HookCapability {
       }
     }
     return HookWriteResult(
-      configFragments: const {'config': {'hooks': []}},
-      scripts: const [
-        GeneratedScript(fileName: 'a.sh', content: 'echo hi'),
-      ],
+      configFragments: const {
+        'config': {'hooks': []},
+      },
+      scripts: const [GeneratedScript(fileName: 'a.sh', content: 'echo hi')],
       warnings: warnings,
     );
   }
@@ -48,14 +48,14 @@ void main() {
   });
 
   test('render is a pure function returning fragments and scripts', () {
-    const entry = HookEntry(
+    final entry = HookEntry(
       id: 'h1',
       source: HookSource.userLibrary,
       event: HookEvent.stop,
       action: CommandHookAction.raw('echo hi'),
     );
     final result = writer.render(
-      entries: const [entry],
+      entries: [entry],
       ctx: const HookRenderContext(
         hooksDir: '/x/hooks',
         runner: null,
@@ -68,14 +68,14 @@ void main() {
   });
 
   test('unsupported events produce warnings', () {
-    const entry = HookEntry(
+    final entry = HookEntry(
       id: 'h1',
       source: HookSource.userLibrary,
       event: HookEvent.preToolUse,
       action: CommandHookAction.raw('echo hi'),
     );
     final result = writer.render(
-      entries: const [entry],
+      entries: [entry],
       ctx: const HookRenderContext(
         hooksDir: '/x/hooks',
         runner: null,

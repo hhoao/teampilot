@@ -50,7 +50,8 @@ final class CommandHookAction extends HookAction {
 
 @immutable
 final class HttpHookAction extends HookAction {
-  const HttpHookAction({required this.url, this.headers = const {}});
+  HttpHookAction({required this.url, Map<String, String> headers = const {}})
+    : headers = Map.unmodifiable(Map<String, String>.from(headers));
 
   final String url;
   final Map<String, String> headers;
@@ -74,7 +75,7 @@ final class HttpHookAction extends HookAction {
 /// 各 CLI HookWriter 的唯一输入。
 @immutable
 class HookEntry {
-  const HookEntry({
+  HookEntry({
     required this.id,
     required this.source,
     required this.event,
@@ -82,9 +83,9 @@ class HookEntry {
     required this.action,
     this.policy = HookPolicy.none,
     this.timeout,
-    this.env = const {},
+    Map<String, String> env = const {},
     this.blockOnDecision = false,
-  });
+  }) : env = Map.unmodifiable(Map<String, String>.from(env));
 
   /// 身份键（用户库 id；内部托管源为稳定符号 id）。
   final String id;

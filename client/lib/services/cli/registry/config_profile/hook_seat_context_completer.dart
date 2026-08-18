@@ -20,6 +20,7 @@ class HookSeatContextCompleter {
   Future<HookAssemblyResult> assemble({
     required CliTool cli,
     required Iterable<HookContributionProvider> providers,
+    bool supportsHttp = true,
     TeamMemberConfig? member,
     Map<String, String> endpoints = const {},
     Filesystem? filesystem,
@@ -28,6 +29,7 @@ class HookSeatContextCompleter {
   }) => const HookAssembler().assemble(
     context: HookProviderContext(
       cli: cli,
+      supportsHttp: supportsHttp,
       member: member,
       endpoints: endpoints,
       filesystem: filesystem,

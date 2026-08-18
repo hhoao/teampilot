@@ -40,6 +40,7 @@ import '../provider/opencode_provider_settings_resolver.dart';
 import '../provider/opencode_shared_plugin_deps.dart';
 import '../provider_presets.dart';
 import '../../../resource/providers/hook_library_contribution_provider.dart';
+import '../../../resource/providers/hook_contribution_provider.dart';
 import 'agent_status_plugin.dart';
 import 'idle_plugin.dart';
 import 'opencode_hook_writer.dart';
@@ -335,11 +336,15 @@ final class OpencodeProviderCapability extends CatalogModelCapability
   static Future<List<HookEntry>> assembleHookEntries({
     required Iterable<HookEntry> entries,
     TeamMemberConfig? member,
+    HookContributionProvider? hookLibraryProvider,
   }) async {
     final result = await const HookSeatContextCompleter().assemble(
       cli: CliTool.opencode,
+      supportsHttp: false,
       member: member,
-      providers: [UserHookContributionProvider(entries: entries)],
+      providers: [
+        hookLibraryProvider ?? UserHookContributionProvider(entries: entries),
+      ],
     );
     return result.entries;
   }
@@ -520,6 +525,7 @@ final class OpencodeProviderCapability extends CatalogModelCapability
     final assembledHookEntries = await assembleHookEntries(
       entries: ctx.hooks,
       member: member,
+      hookLibraryProvider: ctx.hookLibraryProvider,
     );
     if (assembledHookEntries.isNotEmpty) {
       final writer = const OpencodeHookWriter();

@@ -14,6 +14,7 @@ import '../../../remote/remote_credential_materializer.dart';
 import '../../../team_bus/member_bus_idle_endpoint.dart';
 import '../cli_capability.dart';
 import '../config_profile/config_profile_context.dart';
+import '../../../resource/providers/hook_contribution_provider.dart';
 
 /// Providers discovered from the user's global CLI install.
 class ProviderCatalogSnapshot {
@@ -411,6 +412,7 @@ class SessionHomeContext {
     this.sessionExpertKey,
     this.resolvedExpert,
     this.hooks = const [],
+    this.hookLibraryProvider,
     this.crossMachine = false,
     this.resolvedProviderId,
     this.credentialBasePath,
@@ -446,6 +448,7 @@ class SessionHomeContext {
 
   /// 该 seat 生效的用户 hook 条目(staging 按 runtimeBundle.hookIds 解析)。
   final List<HookEntry> hooks;
+  final HookContributionProvider? hookLibraryProvider;
 
   /// True when the work plane is not the control plane (SSH/WSL session).
   final bool crossMachine;
@@ -500,6 +503,7 @@ SessionHomeContext sessionHomeContextFromLaunch(
     sessionExpertKey: ctx.sessionExpertKey,
     resolvedExpert: ctx.resolvedExpert,
     hooks: ctx.hooks,
+    hookLibraryProvider: ctx.hookLibraryProvider,
     crossMachine: ctx.crossMachine,
     resolvedProviderId: resolvedProviderId,
     credentialBasePath: credentialBasePath,
@@ -540,7 +544,10 @@ abstract interface class ProviderCapability implements CliCapability {
   Map<String, Object?> extraFromExisting(AppProviderConfig? existing);
   Map<String, Object?> extraFromPreset(AppProviderPreset preset);
   Map<String, Object?> buildConfig(ProviderFormInput input);
-  Widget buildExtraSection(BuildContext context, ProviderFormSectionProps props);
+  Widget buildExtraSection(
+    BuildContext context,
+    ProviderFormSectionProps props,
+  );
 
   // ---- ProviderModelCapability(+Refreshable) ----
   ProviderModelPickerMode pickerMode(AppProviderConfig provider);
@@ -610,7 +617,9 @@ abstract interface class ProviderCapability implements CliCapability {
   String defaultEffort({required String model, AppProviderConfig? provider});
 
   // ---- Session-home materialization (formerly ConfigProfileCapability) ----
-  Future<SessionHomeContribution> materializeSessionHome(SessionHomeContext ctx);
+  Future<SessionHomeContribution> materializeSessionHome(
+    SessionHomeContext ctx,
+  );
 }
 
 /// Marker: this CLI's model catalog can be refreshed live

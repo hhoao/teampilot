@@ -13,7 +13,7 @@ void main() {
   const assembler = HookAssembler();
 
   test('deduplicates identical managed and user entries', () async {
-    const entry = HookEntry(
+    final entry = HookEntry(
       id: 'user-hook',
       source: HookSource.userLibrary,
       event: HookEvent.stop,
@@ -27,7 +27,7 @@ void main() {
         ]),
         _Provider('managed', [
           _contribution(
-            const HookEntry(
+            HookEntry(
               id: 'managed-hook',
               source: HookSource.managed,
               event: HookEvent.stop,
@@ -50,7 +50,7 @@ void main() {
       providers: [
         _Provider('slow', [
           _contribution(
-            const HookEntry(
+            HookEntry(
               id: 'first',
               source: HookSource.userLibrary,
               event: HookEvent.stop,
@@ -62,7 +62,7 @@ void main() {
         ], delay: const Duration(milliseconds: 20)),
         _Provider('fast', [
           _contribution(
-            const HookEntry(
+            HookEntry(
               id: 'second',
               source: HookSource.userLibrary,
               event: HookEvent.stop,
@@ -80,7 +80,7 @@ void main() {
 
   test('reports same identity conflicts with provider and source metadata', () {
     final first = _contribution(
-      const HookEntry(
+      HookEntry(
         id: 'first',
         source: HookSource.userLibrary,
         event: HookEvent.preToolUse,
@@ -91,7 +91,7 @@ void main() {
       'first-source',
     );
     final second = _contribution(
-      const HookEntry(
+      HookEntry(
         id: 'second',
         source: HookSource.managed,
         event: HookEvent.preToolUse,
@@ -142,9 +142,88 @@ void main() {
     );
   });
 
+  test('optional hook conflict warns and required entry wins', () async {
+    final required = _contribution(
+      HookEntry(
+        id: 'required',
+        source: HookSource.userLibrary,
+        event: HookEvent.stop,
+        action: CommandHookAction.raw('echo stop'),
+        timeout: Duration(seconds: 5),
+      ),
+      ResourceOriginKind.workspace,
+      'required-source',
+    );
+    final optional = _contribution(
+      HookEntry(
+        id: 'optional',
+        source: HookSource.plugin,
+        event: HookEvent.stop,
+        action: CommandHookAction.raw('echo stop'),
+        timeout: Duration(seconds: 10),
+      ),
+      ResourceOriginKind.plugin,
+      'optional-source',
+    );
+
+    final result = await assembler.assemble(
+      context: HookProviderContext(cli: CliTool.claude),
+      providers: [
+        _Provider('required', [required]),
+        _Provider('plugin', [optional], optional: true),
+      ],
+    );
+
+    expect(result.entries.single.id, 'required');
+    expect(result.errors, isEmpty);
+    expect(result.warnings, hasLength(1));
+    expect(result.warnings.single.providerId, 'plugin');
+    expect(result.warnings.single.previousProviderId, 'required');
+  });
+
+  test(
+    'required hook replaces earlier optional conflict without fatal',
+    () async {
+      final optional = _contribution(
+        HookEntry(
+          id: 'optional',
+          source: HookSource.extension,
+          event: HookEvent.stop,
+          action: CommandHookAction.raw('echo stop'),
+          timeout: Duration(seconds: 10),
+        ),
+        ResourceOriginKind.extension,
+        'optional-source',
+      );
+      final required = _contribution(
+        HookEntry(
+          id: 'required',
+          source: HookSource.userLibrary,
+          event: HookEvent.stop,
+          action: CommandHookAction.raw('echo stop'),
+          timeout: Duration(seconds: 5),
+        ),
+        ResourceOriginKind.workspace,
+        'required-source',
+      );
+
+      final result = await assembler.assemble(
+        context: HookProviderContext(cli: CliTool.claude),
+        providers: [
+          _Provider('extension', [optional], optional: true),
+          _Provider('required', [required]),
+        ],
+      );
+
+      expect(result.entries.single.id, 'required');
+      expect(result.errors, isEmpty);
+      expect(result.warnings.single.providerId, 'extension');
+    },
+  );
+
   test('fails closed when a required event is unsupported by the CLI', () {
     final contribution = _contribution(
-      const HookEntry(
+      HookEntry(
         id: 'required',
         source: HookSource.userLibrary,
         event: HookEvent.stopFailure,
@@ -210,7 +289,7 @@ void main() {
           _Provider.failure('plugin', optional: true),
           _Provider('managed', [
             _contribution(
-              const HookEntry(
+              HookEntry(
                 id: 'managed',
                 source: HookSource.managed,
                 event: HookEvent.stop,
@@ -246,9 +325,9 @@ HookContribution _contribution(
 
 final class _Provider
     implements HookContributionProvider, HookContributionProviderOptional {
-  _Provider(this.providerId, this.entries, {this.delay})
+  _Provider(this.providerId, this.entries, {this.delay, bool optional = false})
     : failure = null,
-      optional = false;
+      optional = optional;
 
   _Provider.failure(this.providerId, {this.optional = false})
     : entries = const [],

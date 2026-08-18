@@ -42,7 +42,7 @@ void main() {
   });
 
   test('hooks are threaded through constructor', () {
-    const entry = HookEntry(
+    final entry = HookEntry(
       id: 'h1',
       source: HookSource.userLibrary,
       event: HookEvent.stop,
