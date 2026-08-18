@@ -130,13 +130,26 @@ void main() {
 
   test('preserves safe future mapping keys while avoiding a CLI field', () {
     final config = ManagedProviderEndpointConfig(
-      fieldMappings: {'token': 'data.token', 'tokenCount': 'data.tokenCount'},
+      fieldMappings: {
+        'token': 'data.token',
+        'tokenCount': 'data.tokenCount',
+        'apiKey': 'secret',
+        'Authorization': 'Bearer secret',
+        'client secret': 'secret',
+        'json': '{"apiKey":"secret"}',
+        'nested': {
+          'privateKey': 'secret',
+          'credential': 'secret',
+          'safe': 'data.safe',
+        },
+      },
     );
     final json = config.toJson();
 
     expect(json['fieldMappings'], {
       'token': 'data.token',
       'tokenCount': 'data.tokenCount',
+      'nested': {'safe': 'data.safe'},
     });
   });
 }

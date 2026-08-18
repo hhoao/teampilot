@@ -81,7 +81,7 @@ class ManagedProviderEndpointConfig extends Equatable {
     method: method,
     responsePath: responsePath,
     measuresPath: measuresPath,
-    fieldMappings: _freezeFields(fieldMappings, filterCredentials: false),
+    fieldMappings: _freezeMappingFields(fieldMappings),
     unknownFields: _freezeFields(unknownFields, rejectCli: true),
   );
 
@@ -128,7 +128,7 @@ class ManagedProviderEndpointConfig extends Equatable {
     if (responsePath != null) 'responsePath': responsePath,
     if (measuresPath != null) 'measuresPath': measuresPath,
     if (fieldMappings.isNotEmpty)
-      'fieldMappings': _thawFields(fieldMappings, filterCredentials: false),
+      'fieldMappings': _thawMappingFields(fieldMappings),
   };
 
   @override
@@ -392,7 +392,6 @@ const _credentialKeys = {
   'credential',
   'credentials',
   'key',
-  'oauth token',
   'oauthtoken',
   'password',
   'privatekey',
@@ -402,11 +401,73 @@ const _credentialKeys = {
   'token',
 };
 
-String _normalizeKey(String key) =>
-    key.replaceAll('_', '').replaceAll('-', '').toLowerCase();
+String _normalizeKey(String key) => key
+    .replaceAll('_', '')
+    .replaceAll('-', '')
+    .replaceAll(' ', '')
+    .toLowerCase();
 
 bool _isCredentialKey(String key) =>
     _credentialKeys.contains(_normalizeKey(key));
+
+bool _containsCredentialMaterial(String value) => RegExp(
+  r'''["']?(?:api[_\-\s]?key|access[_\-\s]?token|authorization|auth[_\-\s]?token|client[_\-\s]?secret|credential|private[_\-\s]?key|password|refresh[_\-\s]?token|oauth[_\-\s]?token|\bkey\b|\btoken\b)["']?\s*(?:=|:)\s*["']?\S+''',
+  caseSensitive: false,
+).hasMatch(value);
+
+bool _isMappingCredentialKey(String key) =>
+    _isCredentialKey(key) && _normalizeKey(key) != 'token';
+
+class _RedactedMappingValue {
+  const _RedactedMappingValue();
+}
+
+const _redactedMappingValue = _RedactedMappingValue();
+
+Map<String, Object?> _freezeMappingFields(Map<String, Object?> fields) =>
+    Map.unmodifiable({
+      for (final entry in fields.entries)
+        if (!_isMappingCredentialKey(entry.key))
+          ..._mappingEntry(entry.key, _freezeMappingValue(entry.value)),
+    });
+
+Map<String, Object?> _mappingEntry(String key, Object? value) =>
+    value == _redactedMappingValue ? const {} : {key: value};
+
+Object? _freezeMappingValue(Object? value) {
+  if (value is Map) {
+    return _freezeMappingFields(Map<String, Object?>.from(value));
+  }
+  if (value is List) {
+    return List.unmodifiable(
+      value.map((item) {
+        final sanitized = _freezeMappingValue(item);
+        return sanitized == _redactedMappingValue ? null : sanitized;
+      }),
+    );
+  }
+  if (value is String &&
+      (_isCredentialKey(value) || _containsCredentialMaterial(value))) {
+    return _redactedMappingValue;
+  }
+  return value;
+}
+
+Map<String, Object?> _thawMappingFields(Map<String, Object?> fields) => {
+  for (final entry in fields.entries) entry.key: _thawMappingValue(entry.value),
+};
+
+Object? _thawMappingValue(Object? value) {
+  if (value is Map) {
+    return {
+      for (final entry in value.entries)
+        if (entry.key is String)
+          entry.key as String: _thawMappingValue(entry.value),
+    };
+  }
+  if (value is List) return value.map(_thawMappingValue).toList();
+  return value;
+}
 
 bool _isForbiddenKey(
   String key, {

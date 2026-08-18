@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/provider_usage_snapshot.dart';
 
@@ -215,6 +217,46 @@ void main() {
 
     expect(whitespaceSeparated.lastErrorMessage, isNull);
     expect(safeText.lastErrorMessage, 'client secret count: 2');
+  });
+
+  test('redacts JSON, headers, URLs, and nested credential strings', () {
+    final snapshot = ProviderUsageSnapshot.fromJson({
+      'providerId': 'p1',
+      'status': 'error',
+      'lastErrorMessage': '{"apiKey":"secret","tokenCount":2}',
+      'headers': {
+        'Authorization': 'Bearer header-secret',
+        'Accept': 'application/json',
+      },
+      'requestUrl': 'https://example.test/usage?apiKey=url-secret',
+      'nested': {
+        'safe': 'tokenCount=2',
+        'credentials': {'client secret': 'nested-secret'},
+      },
+    });
+    final json = snapshot.toJson();
+    final encoded = jsonEncode(json);
+
+    expect(encoded, isNot(contains('secret')));
+    expect(json['headers'], {'Accept': 'application/json'});
+    expect(json['nested'], {'safe': 'tokenCount=2'});
+    expect(json['lastErrorMessage'], contains('tokenCount'));
+  });
+
+  test('rejects non-finite and fractional fetched and stale timestamps', () {
+    for (final field in ['fetchedAt', 'staleAt']) {
+      for (final value in [double.nan, double.infinity, 1.5]) {
+        expect(
+          () => ProviderUsageSnapshot.fromJson({
+            'providerId': 'p1',
+            'status': 'ready',
+            field: value,
+          }),
+          throwsFormatException,
+          reason: '$field=$value',
+        );
+      }
+    }
   });
 
   test('deep-copies and freezes measures and unknown fields', () {

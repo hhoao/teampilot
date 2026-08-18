@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:equatable/equatable.dart';
 
@@ -220,6 +222,8 @@ class ProviderUsageSnapshot extends Equatable {
     final errorCode = json['lastErrorCode'];
     final errorMessage = json['lastErrorMessage'];
     final adapterVersion = json['adapterVersion'];
+    final fetchedAt = _parseTimestamp(json['fetchedAt'], 'fetchedAt');
+    final staleAt = _parseTimestamp(json['staleAt'], 'staleAt');
     if (errorCode != null && errorCode is! String ||
         errorMessage != null && errorMessage is! String ||
         adapterVersion != null && adapterVersion is! String) {
@@ -229,8 +233,8 @@ class ProviderUsageSnapshot extends Equatable {
       providerId: json['providerId'] as String? ?? '',
       status: ProviderUsageStatus.fromJson(json['status']),
       measures: measures,
-      fetchedAt: (json['fetchedAt'] as num?)?.toInt(),
-      staleAt: (json['staleAt'] as num?)?.toInt(),
+      fetchedAt: fetchedAt,
+      staleAt: staleAt,
       lastErrorCode: errorCode as String?,
       lastErrorMessage: errorMessage as String?,
       adapterVersion: adapterVersion as String?,
@@ -330,12 +334,21 @@ bool _isCredentialKey(String key) =>
     _credentialKeys.contains(_normalizeKey(key));
 
 bool _containsCredentialMaterial(String message) => RegExp(
-  r'(?:api[_\-\s]?key|access[_\-\s]?token|authorization|auth[_\-\s]?token|client[_\-\s]?secret|credential|private[_\-\s]?key|password|refresh[_\-\s]?token|oauth[_\-\s]?token|\bkey\b|\btoken\b)\s*(?:=|:)\s*\S+|bearer\s+\S+',
+  r'''["']?(?:api[_\-\s]?key|access[_\-\s]?token|authorization|auth[_\-\s]?token|client[_\-\s]?secret|credential|private[_\-\s]?key|password|refresh[_\-\s]?token|oauth[_\-\s]?token|\bkey\b|\btoken\b)["']?\s*(?:=|:)\s*["']?\S+''',
   caseSensitive: false,
 ).hasMatch(message);
 
-String? _safeErrorMessage(String? message) =>
-    message != null && _containsCredentialMaterial(message) ? null : message;
+class _RedactedValue {
+  const _RedactedValue();
+}
+
+const _redactedValue = _RedactedValue();
+
+String? _safeErrorMessage(String? message) {
+  if (message == null) return null;
+  final sanitized = _sanitizeValue(message);
+  return sanitized == _redactedValue ? null : sanitized as String?;
+}
 
 Map<String, Object?> _unknownFields(
   Map<String, Object?> json,
@@ -371,18 +384,40 @@ const _snapshotKnownKeys = {
 Map<String, Object?> _freezeFields(Map<String, Object?> fields) =>
     Map.unmodifiable({
       for (final entry in fields.entries)
-        if (!_isCredentialKey(entry.key)) entry.key: _freezeValue(entry.value),
+        if (!_isCredentialKey(entry.key))
+          ..._sanitizedEntry(entry.key, _sanitizeValue(entry.value)),
     });
 
-Object? _freezeValue(Object? value) {
+Map<String, Object?> _sanitizedEntry(String key, Object? value) =>
+    value == _redactedValue ? const {} : {key: value};
+
+Object? _sanitizeValue(Object? value) {
+  if (value is String) {
+    if (!_containsCredentialMaterial(value)) return value;
+    try {
+      final decoded = jsonDecode(value);
+      final sanitized = _sanitizeValue(decoded);
+      if (sanitized == _redactedValue) return _redactedValue;
+      return jsonEncode(sanitized);
+    } on FormatException {
+      return _redactedValue;
+    }
+  }
   if (value is Map) {
     return Map.unmodifiable({
       for (final entry in value.entries)
         if (entry.key is String && !_isCredentialKey(entry.key as String))
-          entry.key as String: _freezeValue(entry.value),
+          ..._sanitizedEntry(entry.key as String, _sanitizeValue(entry.value)),
     });
   }
-  if (value is List) return List.unmodifiable(value.map(_freezeValue));
+  if (value is List) {
+    return List.unmodifiable(
+      value.map((item) {
+        final sanitized = _sanitizeValue(item);
+        return sanitized == _redactedValue ? null : sanitized;
+      }),
+    );
+  }
   return value;
 }
 
@@ -431,6 +466,14 @@ bool _isPercentageUnit(String? unit) {
   return normalized == '%' ||
       normalized == 'percent' ||
       normalized == 'percentage';
+}
+
+int? _parseTimestamp(Object? raw, String field) {
+  if (raw == null) return null;
+  if (raw is! num || !_isIntegralFiniteTimestamp(raw)) {
+    throw FormatException('invalid $field timestamp');
+  }
+  return raw.toInt();
 }
 
 bool _isIntegralFiniteTimestamp(num value) {
