@@ -397,7 +397,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
         measuresPath: _measuresPath.text.trim().isEmpty
             ? null
             : _measuresPath.text.trim(),
-        body: body ?? const {},
+        body: body,
         credentialName: current?.endpointConfig.credentialName,
         credentialField: current?.endpointConfig.credentialField,
         credentialPlacement:

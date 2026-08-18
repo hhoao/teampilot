@@ -130,7 +130,7 @@ class _MeasureChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
-        suffix.isEmpty ? '$value' : '$value $suffix',
+        suffix.isEmpty ? value : '$value $suffix',
         style: TpTextStyles.of(context).mdSemibold,
       ),
     );
