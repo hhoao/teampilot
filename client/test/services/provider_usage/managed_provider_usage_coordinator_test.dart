@@ -408,6 +408,71 @@ void main() {
   });
 
   test(
+    'save failure after cancellation intent becomes typed invalidation',
+    () async {
+      final failingUsage = _ThrowingUsageRepository(fs: fs);
+      await providers.upsert(_provider());
+      final coordinator = ManagedProviderUsageCoordinator(
+        providerRepository: providers,
+        usageRepository: failingUsage,
+        registry: ManagedProviderUsageRegistry([
+          _FakeAdapter(Future.value(_ready())),
+        ]),
+        credentials: _NoCredentials(),
+        http: _UnusedHttpClient(),
+        now: () => DateTime.fromMillisecondsSinceEpoch(1_700_000_000_000),
+      );
+
+      final oldResult = coordinator.refreshOne('p1');
+      await failingUsage.saveStarted.future;
+      final cancellation = coordinator.cancelForProvider('p1');
+      failingUsage.release.complete();
+
+      await expectLater(
+        oldResult,
+        throwsA(
+          isA<ManagedProviderUsageInvalidated>().having(
+            (error) => error.code,
+            'code',
+            ManagedProviderUsageInvalidationCode.refreshCancelled,
+          ),
+        ),
+      );
+      await cancellation;
+      expect(coordinator.snapshotFor('p1'), isNull);
+      expect(await failingUsage.load(), isEmpty);
+    },
+  );
+
+  test('ordinary save failure is a redacted typed persistence error', () async {
+    final failingUsage = _ThrowingUsageRepository(fs: fs)..release.complete();
+    await providers.upsert(_provider());
+    final coordinator = ManagedProviderUsageCoordinator(
+      providerRepository: providers,
+      usageRepository: failingUsage,
+      registry: ManagedProviderUsageRegistry([
+        _FakeAdapter(Future.value(_ready())),
+      ]),
+      credentials: _NoCredentials(),
+      http: _UnusedHttpClient(),
+      now: () => DateTime.fromMillisecondsSinceEpoch(1_700_000_000_000),
+    );
+
+    await expectLater(
+      coordinator.refreshOne('p1'),
+      throwsA(
+        isA<ManagedProviderUsagePersistenceError>().having(
+          (error) => error.message,
+          'message',
+          isNot(contains('/tp/usage-cache.json')),
+        ),
+      ),
+    );
+    expect(coordinator.snapshotFor('p1'), isNull);
+    expect(await failingUsage.load(), isEmpty);
+  });
+
+  test(
     'disabled snapshot save is serialized against re-enable mutation',
     () async {
       final blockingUsage = _BlockingUsageRepository(fs: fs);
@@ -460,6 +525,24 @@ class _BlockingUsageRepository extends ManagedProviderUsageRepository {
     if (!saveStarted.isCompleted) saveStarted.complete();
     await release.future;
     return super.saveIf(snapshot, shouldCommit: shouldCommit);
+  }
+}
+
+class _ThrowingUsageRepository extends ManagedProviderUsageRepository {
+  _ThrowingUsageRepository({required InMemoryFilesystem fs})
+    : super(fs: fs, cachePath: '/tp/usage-cache.json');
+
+  final saveStarted = Completer<void>();
+  final release = Completer<void>();
+
+  @override
+  Future<bool> saveIf(
+    ProviderUsageSnapshot snapshot, {
+    required bool Function() shouldCommit,
+  }) async {
+    if (!saveStarted.isCompleted) saveStarted.complete();
+    await release.future;
+    throw StateError('storage path and secret must not escape');
   }
 }
 

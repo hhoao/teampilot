@@ -31,6 +31,24 @@ class ManagedProviderUsageInvalidated implements Exception {
   String toString() => 'ManagedProviderUsageInvalidated: $message';
 }
 
+enum ManagedProviderUsagePersistenceErrorCode { saveFailed }
+
+/// Secret-free, typed failures while persisting a usage snapshot.
+class ManagedProviderUsagePersistenceError implements Exception {
+  const ManagedProviderUsagePersistenceError({
+    required this.providerId,
+    required this.code,
+  });
+
+  final String providerId;
+  final ManagedProviderUsagePersistenceErrorCode code;
+
+  String get message => 'Managed provider usage persistence ${code.name}.';
+
+  @override
+  String toString() => 'ManagedProviderUsagePersistenceError: $message';
+}
+
 /// Immutable view consumed by a future Cubit or status-bar presenter.
 class ManagedProviderUsageState {
   ManagedProviderUsageState({
@@ -381,35 +399,67 @@ class ManagedProviderUsageCoordinator {
   }) async {
     return _commitGates.putIfAbsent(provider.id, _ProviderCommitGate.new).run(
       () async {
-        final current = token == null
-            ? _isCurrentConfig(provider, generation, null)
-            : _isCurrent(provider, generation, token);
-        if (!current || requiresEnabled && !provider.enabled) {
+        if (!_isCommitLifecycleCurrent(
+          provider: provider,
+          generation: generation,
+          token: token,
+          requiresEnabled: requiresEnabled,
+        )) {
           _throwInvalidated(provider.id, _invalidationCode(provider.id, token));
         }
         var cacheSaved = false;
-        final committed = await _providerRepository.runIfUnchanged(
-          expectedRevision: mutationRevision,
-          expectedProvider: provider,
-          action: () async {
-            cacheSaved = await _usageRepository.saveIf(
-              result,
-              shouldCommit: () {
-                final stillCurrent = token == null
-                    ? _isCurrentConfig(provider, generation, null)
-                    : _isCurrent(provider, generation, token);
-                return stillCurrent &&
-                    _providerRepository.mutationRevision == mutationRevision;
-              },
+        try {
+          final committed = await _providerRepository.runIfUnchanged(
+            expectedRevision: mutationRevision,
+            expectedProvider: provider,
+            action: () async {
+              cacheSaved = await _usageRepository.saveIf(
+                result,
+                shouldCommit: () {
+                  final stillCurrent = token == null
+                      ? _isCurrentConfig(provider, generation, null)
+                      : _isCurrent(provider, generation, token);
+                  return stillCurrent &&
+                      _providerRepository.mutationRevision == mutationRevision;
+                },
+              );
+              if (cacheSaved) _snapshots[provider.id] = result;
+            },
+          );
+          if (!committed || !cacheSaved) {
+            await _synchronizeProviders();
+            _throwInvalidated(
+              provider.id,
+              _invalidationCode(provider.id, token),
             );
-            if (cacheSaved) _snapshots[provider.id] = result;
-          },
-        );
-        if (!committed || !cacheSaved) {
-          await _synchronizeProviders();
-          _throwInvalidated(provider.id, _invalidationCode(provider.id, token));
+          }
+          return result;
+        } on ManagedProviderUsageInvalidated {
+          rethrow;
+        } on Object {
+          if (!_isCommitCurrent(
+            provider: provider,
+            generation: generation,
+            token: token,
+            mutationRevision: mutationRevision,
+            requiresEnabled: requiresEnabled,
+          )) {
+            try {
+              await _synchronizeProviders();
+            } on Object {
+              // Preserve the typed invalidation outcome if reconciliation
+              // itself cannot read the provider catalog.
+            }
+            _throwInvalidated(
+              provider.id,
+              _invalidationCode(provider.id, token),
+            );
+          }
+          throw ManagedProviderUsagePersistenceError(
+            providerId: provider.id,
+            code: ManagedProviderUsagePersistenceErrorCode.saveFailed,
+          );
         }
-        return result;
       },
     );
   }
@@ -450,6 +500,33 @@ class ManagedProviderUsageCoordinator {
       generation == _generation &&
       (token == null || token == _tokens[provider.id]) &&
       identical(_providers[provider.id], provider);
+
+  bool _isCommitCurrent({
+    required ManagedProvider provider,
+    required int generation,
+    required int? token,
+    required int mutationRevision,
+    required bool requiresEnabled,
+  }) =>
+      _isCommitLifecycleCurrent(
+        provider: provider,
+        generation: generation,
+        token: token,
+        requiresEnabled: requiresEnabled,
+      ) &&
+      _providerRepository.mutationRevision == mutationRevision;
+
+  bool _isCommitLifecycleCurrent({
+    required ManagedProvider provider,
+    required int generation,
+    required int? token,
+    required bool requiresEnabled,
+  }) {
+    final current = token == null
+        ? _isCurrentConfig(provider, generation, null)
+        : _isCurrent(provider, generation, token);
+    return current && (!requiresEnabled || provider.enabled);
+  }
 
   ManagedProviderUsageInvalidationCode _invalidationCode(
     String providerId,
