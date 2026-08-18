@@ -131,6 +131,11 @@ abstract interface class ConfigProfileDelegate implements ConfigProfilePaths {
     required bool forceTeamLeadDelegateMode,
   });
 
+  Future<String?> resolveTeamLeadSelfHookCommand(
+    TeamMemberConfig member,
+    String memberToolDir,
+  );
+
   HostExecutionEnvironment hostEnvironmentForProvision();
 }
 
@@ -156,6 +161,7 @@ class ConfigProfileLaunchContext {
     this.resolvedExpert,
     this.resourceProviders = ResourceProviderSet.empty,
     this.promptAlreadyMaterialized = false,
+    this.hooksAlreadyMaterialized = false,
   });
 
   final String workspaceId;
@@ -190,6 +196,10 @@ class ConfigProfileLaunchContext {
   /// True when the staged resource coordinator already wrote this member's
   /// prompt for the target CLI. Legacy session-home callers leave this false.
   final bool promptAlreadyMaterialized;
+
+  /// True when the staged resource coordinator already assembled and wrote
+  /// this member's hooks. Legacy session-home callers leave this false.
+  final bool hooksAlreadyMaterialized;
 
   bool get crossMachine => configProfileCrossMachine(catalog, paths);
 

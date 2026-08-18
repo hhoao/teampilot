@@ -7,6 +7,7 @@ import '../../models/plugin.dart';
 import '../../models/skill.dart';
 import '../../models/team_config.dart';
 import '../../utils/logging/logger.dart';
+import '../../utils/team/team_member_naming.dart';
 import '../team_bus/member_bus_idle_endpoint.dart';
 import '../agent_status/member_agent_status_endpoint.dart';
 import '../storage/runtime_layout.dart';
@@ -30,6 +31,10 @@ import '../resource/cli_resource_provisioner.dart';
 import '../resource/resource_provider_set.dart';
 import '../resource/providers/catalog_skill_contribution_provider.dart';
 import '../resource/providers/plugin_skill_contribution_provider.dart';
+import '../resource/providers/endpoint_hook_contribution_provider.dart';
+import '../resource/providers/extension_hook_contribution_provider.dart';
+import '../resource/providers/managed_hook_contribution_provider.dart';
+import '../resource/providers/hook_contribution_provider.dart';
 import '../resource/contribution/resource_assembly_error.dart';
 import '../launch/launch_manifest.dart';
 import '../launch/launch_manifest_paths.dart';
@@ -38,12 +43,14 @@ import '../launch/manifest_filesystem.dart';
 import '../provider/workspace_trust_provisioner.dart';
 import '../cli/claude/team_roster_service.dart';
 import '../cli/cursor/provider/cursor_workspace_warm_tier.dart';
+import '../cli/cursor/provider/cursor_home_layout.dart';
 import '../cli/registry/capabilities/cli_session_capability.dart';
 import '../storage/app_storage.dart';
 import '../cli/preset_resolver.dart';
 import '../hook/hook_library_resolver.dart';
 import '../resource/providers/hook_library_contribution_provider.dart';
 import '../cli/registry/config_profile/config_profile_context.dart';
+import '../cli/registry/config_profile/hook_seat_context_completer.dart';
 import 'config_profile_infrastructure.dart';
 
 export '../cli/registry/config_profile/config_profile_context.dart';
@@ -160,6 +167,14 @@ class ConfigProfileService implements ConfigProfileDelegate {
     if (report.hardDiagnostics.isNotEmpty) {
       throw ResourceAssemblyException(report.hardDiagnostics);
     }
+    appLogger.d(
+      '[resource-debug] prompt=${report.prompt?.content.length} '
+      'promptMaterialized=${report.promptMaterialization?.written} '
+      'env=${report.promptMaterialization?.environment} '
+      'hooks=${report.hooks.length} '
+      'hookMaterialized=${report.materializations[ResourceContributionKind.hook]?.materialized} '
+      'hard=${report.hardDiagnostics.length}',
+    );
     return report;
   }
 
@@ -178,6 +193,79 @@ class ConfigProfileService implements ConfigProfileDelegate {
           ),
         ],
       );
+
+  Future<ResourceProviderSet> _launchHookProviders({
+    required ConfigProfileDelegate delegate,
+    required CliTool cli,
+    required LaunchProfileScope scope,
+    required TeamProfile? team,
+    required TeamMemberConfig? member,
+    required MemberBusIdleEndpoint? busIdle,
+    required MemberAgentStatusEndpoint? agentStatus,
+    required String memberToolDir,
+    required Iterable<String> hookIds,
+    required bool simple,
+    Iterable<HookContributionProvider> injected = const [],
+  }) async {
+    const completer = HookSeatContextCompleter();
+    final managed = <HookContributionProvider>[];
+    if (member != null && member.isValid) {
+      if (busIdle != null && (simple || team?.teamMode == TeamMode.mixed)) {
+        managed.add(
+          BusIdleHookContributionProvider(
+            endpoint: busIdle,
+            memberId: member.id,
+          ),
+        );
+      }
+      if (agentStatus != null) {
+        managed.add(
+          AgentStatusHookContributionProvider(
+            endpoint: agentStatus,
+            memberId: member.id,
+          ),
+        );
+      }
+      final delegateCommand = await delegate.resolveTeamLeadDelegateHookCommand(
+        member,
+        memberToolDir,
+        forceTeamLeadDelegateMode:
+            team?.forceTeamLeadDelegateMode == true &&
+            TeamMemberNaming.isTeamLead(member),
+      );
+      if (delegateCommand != null) {
+        managed.add(
+          ManagedHookContributionProvider(
+            entries: completer.delegateHooks(commands: [delegateCommand]),
+            providerId: 'team-lead-delegate',
+          ),
+        );
+      }
+    }
+
+    final extensionHooks = await delegate.extensionSettingsHooks(
+      memberToolDir,
+      tool: cli.value,
+      teamId: simple ? null : scope.teamId,
+      workspaceId: simple ? scope.workspaceId : null,
+    );
+    final user = HookLibraryContributionProvider(
+      resolver: HookLibraryResolver(
+        fs: delegate.fs,
+        teampilotRoot: delegate.basePath,
+      ),
+      hookIds: hookIds,
+    );
+    return ResourceProviderSet(
+      hooks: [
+        ...managed,
+        if (extensionHooks.isNotEmpty)
+          ExtensionHookContributionProvider(settingsHooks: extensionHooks),
+        ...injected,
+        user,
+      ],
+    );
+  }
 
   ConfigProfileService _stagingService({
     required Filesystem stagingFs,
@@ -293,6 +381,35 @@ class ConfigProfileService implements ConfigProfileDelegate {
       sessionId: sessionId,
       memberId: memberId,
       teamId: team?.id,
+    );
+  }
+
+  ({String hooksDir, String? configPath}) _hookMaterializationPaths({
+    required CliTool cli,
+    required String memberToolDir,
+    required TeamMemberConfig? member,
+    required String? memberHome,
+  }) {
+    if (cli == CliTool.cursor && memberHome != null) {
+      final cursor = CursorHomeLayout(pathContext: pathContext);
+      return (
+        hooksDir: cursor.hooksDir(memberHome),
+        configPath: cursor.hooksConfig(memberHome),
+      );
+    }
+    if (cli == CliTool.claude && member != null && member.isValid) {
+      return (
+        hooksDir: pathContext.join(memberToolDir, 'hooks'),
+        configPath: pathContext.join(
+          memberToolDir,
+          'settings',
+          '${ClaudeTeamRosterService.safeClaudePathSegment(member.id)}.json',
+        ),
+      );
+    }
+    return (
+      hooksDir: pathContext.join(memberToolDir, 'hooks'),
+      configPath: null,
     );
   }
 
@@ -525,6 +642,8 @@ class ConfigProfileService implements ConfigProfileDelegate {
     LaunchProfileScope? launchScope,
     TeamMemberConfig? member,
     Iterable<TeamMemberConfig> members = const [],
+    MemberBusIdleEndpoint? busIdle,
+    MemberAgentStatusEndpoint? agentStatus,
     String? memberHome,
     Map<String, String>? resourceEnvironment,
     String workingDirectory = '',
@@ -640,6 +759,39 @@ class ConfigProfileService implements ConfigProfileDelegate {
         projectRoots: projectMcpRoots,
       );
       final providers = _catalogResourceProviders(resourceCatalog);
+      final hookProviders = await _launchHookProviders(
+        delegate: this,
+        cli: cli,
+        scope:
+            launchScope ??
+            LaunchProfileScope(
+              workspaceId: trimmedWorkspaceId,
+              teamId: trimmedWorkspaceId,
+              sessionId: trimmedSessionId,
+              cliTeamName: trimmedSessionId,
+            ),
+        team: null,
+        member: member,
+        busIdle: busIdle,
+        agentStatus: agentStatus,
+        memberToolDir: sessionToolDir(
+          trimmedWorkspaceId,
+          trimmedSessionId,
+          cli.value,
+        ),
+        hookIds: runtimeBundle.hookIds,
+        simple: true,
+      );
+      final hookPaths = _hookMaterializationPaths(
+        cli: cli,
+        memberToolDir: sessionToolDir(
+          trimmedWorkspaceId,
+          trimmedSessionId,
+          cli.value,
+        ),
+        member: member,
+        memberHome: memberHome,
+      );
       final report = await _provisionStagedResources(
         context: CliResourceProvisionContext(
           cli: cli,
@@ -651,6 +803,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
           resourceProviders: ResourceProviderSet(
             skills: providers.skills,
             mcp: mcpProviders.providers.mcp,
+            hooks: hookProviders.hooks,
           ),
           paths: promptPaths,
           launchScope: launchScope,
@@ -659,6 +812,8 @@ class ConfigProfileService implements ConfigProfileDelegate {
           workingDirectory: workingDirectory,
           additionalDirectories: additionalDirectories,
           memberHome: memberHome,
+          hooksDir: hookPaths.hooksDir,
+          hookConfigPath: hookPaths.configPath,
           appConfigDir: mcpProviders.catalogProvider != null
               ? layout.appToolRoot(cli.value)
               : null,
@@ -738,6 +893,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
             agentStatus: agentStatus,
             resourceProviders: resourceProviders,
             promptAlreadyMaterialized: true,
+            hooksAlreadyMaterialized: true,
           ),
           cli,
         ),
@@ -810,6 +966,8 @@ class ConfigProfileService implements ConfigProfileDelegate {
       launchScope: simpleScope,
       member: member,
       members: [member],
+      busIdle: busIdle,
+      agentStatus: agentStatus,
       memberHome: simpleMemberHome,
       resourceEnvironment: resourceEnvironment,
       workingDirectory: workingDirectory,
@@ -825,13 +983,6 @@ class ConfigProfileService implements ConfigProfileDelegate {
       'ops=${manifest.entries.length}',
     );
     final contributeSw = Stopwatch()..start();
-    final hookLibraryProvider = HookLibraryContributionProvider(
-      resolver: HookLibraryResolver(
-        fs: readDelegate,
-        teampilotRoot: workTeampilotRoot,
-      ),
-      hookIds: runtimeBundle.hookIds,
-    );
     final outcome = await staging.contributeSimpleSessionLaunch(
       workspaceId: workspaceId,
       sessionId: sessionId,
@@ -840,7 +991,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
       additionalDirectories: additionalDirectories,
       busIdle: busIdle,
       agentStatus: agentStatus,
-      resourceProviders: ResourceProviderSet(hooks: [hookLibraryProvider]),
+      resourceProviders: ResourceProviderSet.empty,
     );
     appLogger.d(
       '[session-launch] stage-simple contribute '
@@ -850,13 +1001,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     return (
       outcome: TeamLaunchOutcome(
         environment: {...resourceEnvironment, ...outcome.environment},
-        warnings: [
-          ...fsWarnings,
-          ...hookLibraryProvider.diagnostics.map(
-            (diagnostic) => diagnostic.message,
-          ),
-          ...outcome.warnings,
-        ],
+        warnings: [...fsWarnings, ...outcome.warnings],
       ),
       manifest: manifest,
     );
@@ -1024,6 +1169,46 @@ class ConfigProfileService implements ConfigProfileDelegate {
       team: team,
       cli: launchCli,
     );
+    final hookMemberToolDir = staging.sessionToolDir(
+      trimmedWorkspaceId,
+      trimmedSessionId,
+      launchCli.value,
+      memberId: team?.teamMode == TeamMode.mixed ? memberId : null,
+    );
+    final hookProviders = await staging._launchHookProviders(
+      delegate: staging,
+      cli: launchCli,
+      scope: scope,
+      team: team,
+      member: launchMember,
+      busIdle: busIdle,
+      agentStatus: agentStatus,
+      memberToolDir: hookMemberToolDir,
+      hookIds: runtimeBundle.hookIds,
+      simple: team == null,
+    );
+    final hookPaths = staging._hookMaterializationPaths(
+      cli: launchCli,
+      memberToolDir: hookMemberToolDir,
+      member: launchMember,
+      memberHome: launchCli == CliTool.cursor && launchMember != null
+          ? staging.fs.pathContext.join(
+              team?.teamMode == TeamMode.mixed && memberId != null
+                  ? staging.layout.workspaceRuntimeMemberToolDir(
+                      trimmedWorkspaceId,
+                      trimmedTeamId,
+                      memberId,
+                      launchCli.value,
+                    )
+                  : staging.sessionToolDir(
+                      trimmedWorkspaceId,
+                      trimmedSessionId,
+                      launchCli.value,
+                    ),
+              'home',
+            )
+          : null,
+    );
     final resourceReport = await _provisionStagedResources(
       context: CliResourceProvisionContext(
         cli: launchCli,
@@ -1037,6 +1222,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
         resourceProviders: ResourceProviderSet(
           skills: providers.skills,
           mcp: mcpProviders.providers.mcp,
+          hooks: hookProviders.hooks,
         ),
         paths: staging,
         launchScope: scope,
@@ -1064,15 +1250,10 @@ class ConfigProfileService implements ConfigProfileDelegate {
                 'home',
               )
             : null,
+        hooksDir: hookPaths.hooksDir,
+        hookConfigPath: hookPaths.configPath,
         appConfigDir: mcpProviders.catalogProvider != null
             ? staging.layout.appToolRoot(launchCli.value)
-            : null,
-        mcpConfigDir: warmTier
-            ? CursorWorkspaceWarmTier.sharedRoot(
-                staging.layout,
-                trimmedWorkspaceId,
-                trimmedTeamId,
-              )
             : null,
         mcpOutputBasename: warmTier
             ? CursorWorkspaceWarmTier.mcpBaseFileName
@@ -1092,13 +1273,6 @@ class ConfigProfileService implements ConfigProfileDelegate {
       );
     }
 
-    final hookLibraryProvider = HookLibraryContributionProvider(
-      resolver: HookLibraryResolver(
-        fs: readDelegate,
-        teampilotRoot: workTeampilotRoot,
-      ),
-      hookIds: runtimeBundle.hookIds,
-    );
     SessionHomeContribution contribution;
     try {
       contribution = await cap.materializeSessionHome(
@@ -1119,10 +1293,9 @@ class ConfigProfileService implements ConfigProfileDelegate {
             busIdle: busIdle,
             agentStatus: agentStatus,
             memberId: memberId,
-            resourceProviders: ResourceProviderSet(
-              hooks: [hookLibraryProvider],
-            ),
+            resourceProviders: ResourceProviderSet.empty,
             promptAlreadyMaterialized: true,
+            hooksAlreadyMaterialized: true,
           ),
           launchCli,
         ),
@@ -1135,10 +1308,6 @@ class ConfigProfileService implements ConfigProfileDelegate {
       // as a proper session-connect failure.
       Error.throwWithStackTrace(e, st);
     }
-    warnings.addAll(
-      hookLibraryProvider.diagnostics.map((diagnostic) => diagnostic.message),
-    );
-
     return (
       outcome: TeamLaunchOutcome(
         environment: {

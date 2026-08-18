@@ -52,9 +52,9 @@ class CliResourceProvisionContext {
     this.memberHome,
     this.appConfigDir,
     this.fallbackAppConfigDir,
-    this.mcpConfigDir,
     this.mcpOutputBasename,
     this.hooksDir,
+    this.hookConfigPath,
     this.hookRenderContext,
   }) : members = List.unmodifiable(members),
        additionalDirectories = List.unmodifiable(additionalDirectories);
@@ -81,9 +81,14 @@ class CliResourceProvisionContext {
 
   final String? appConfigDir;
   final String? fallbackAppConfigDir;
-  final String? mcpConfigDir;
   final String? mcpOutputBasename;
   final String? hooksDir;
+
+  /// Optional target file for the single native hook config fragment.
+  ///
+  /// Some CLIs read hooks from a member-specific file or a fake HOME rather
+  /// than from [configDir].
+  final String? hookConfigPath;
   final HookRenderContext? hookRenderContext;
 }
 
@@ -233,7 +238,7 @@ final class CliResourceProvisioner {
     final mcpServers = mcpAssembly?.servers ?? const <McpServerSpec>[];
     final hooks = hookAssembly?.entries ?? const <HookEntry>[];
 
-    if (skills.isNotEmpty) {
+    if (skillAssembly != null && skills.isNotEmpty) {
       final capability = _registry.capability<SkillCapability>(context.cli);
       if (capability == null ||
           capability.skillsRepresentation !=
@@ -281,7 +286,7 @@ final class CliResourceProvisioner {
               );
         }
       }
-    } else {
+    } else if (skillAssembly != null) {
       materializations[ResourceContributionKind.skill] =
           ResourceMaterializationResult(
             kind: ResourceContributionKind.skill,
@@ -289,7 +294,7 @@ final class CliResourceProvisioner {
           );
     }
 
-    if (prompt.contributions.isNotEmpty) {
+    if (promptAssembly != null && prompt.contributions.isNotEmpty) {
       final capability = _registry.capability<PromptCapability>(context.cli);
       if (capability == null) {
         final diagnostic = _unsupported(
@@ -342,7 +347,7 @@ final class CliResourceProvisioner {
               );
         }
       }
-    } else {
+    } else if (promptAssembly != null) {
       materializations[ResourceContributionKind.prompt] =
           ResourceMaterializationResult(
             kind: ResourceContributionKind.prompt,
@@ -350,7 +355,7 @@ final class CliResourceProvisioner {
           );
     }
 
-    if (mcpServers.isNotEmpty) {
+    if (mcpAssembly != null && mcpServers.isNotEmpty) {
       final capability = _registry.capability<McpCapability>(context.cli);
       if (capability == null) {
         final diagnostic = _unsupported(
@@ -394,7 +399,7 @@ final class CliResourceProvisioner {
               );
         }
       }
-    } else {
+    } else if (mcpAssembly != null) {
       materializations[ResourceContributionKind.mcp] =
           ResourceMaterializationResult(
             kind: ResourceContributionKind.mcp,
@@ -402,7 +407,7 @@ final class CliResourceProvisioner {
           );
     }
 
-    if (hooks.isNotEmpty) {
+    if (hookAssembly != null && hooks.isNotEmpty) {
       final capability = _registry.capability<HookCapability>(context.cli);
       if (capability == null) {
         final diagnostic = _unsupported(
@@ -455,7 +460,7 @@ final class CliResourceProvisioner {
               );
         }
       }
-    } else {
+    } else if (hookAssembly != null) {
       materializations[ResourceContributionKind.hook] =
           ResourceMaterializationResult(
             kind: ResourceContributionKind.hook,
@@ -467,7 +472,7 @@ final class CliResourceProvisioner {
     // a separate app/session concern and is skipped when no app path exists.
     if (context.appConfigDir != null &&
         context.appConfigDir!.trim().isNotEmpty &&
-        mcpAssembly?.hasValidCatalogContribution == true &&
+        mcpAssembly?.hasCatalogCredentialSource == true &&
         _registry.capability<McpCapability>(context.cli) != null) {
       try {
         await _registry
@@ -523,7 +528,9 @@ final class CliResourceProvisioner {
       ensureParentDirs: true,
     ).writeScripts(result: result, ctx: renderContext);
     for (final entry in result.configFragments.entries) {
-      final target = _fs.pathContext.join(context.configDir, entry.key);
+      final target = context.hookConfigPath != null
+          ? context.hookConfigPath!
+          : _fs.pathContext.join(context.configDir, entry.key);
       await _fs.ensureDir(_fs.pathContext.dirname(target));
       await _mergeConfigFragment(
         context: context,

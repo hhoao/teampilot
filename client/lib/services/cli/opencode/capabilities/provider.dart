@@ -523,50 +523,52 @@ final class OpencodeProviderCapability extends CatalogModelCapability
       changed = true;
     }
 
-    // User hooks bridge: generated JS plugin (event hook + tool-keyed hooks),
-    // plus glue scripts under `<opencodeDir>/hooks/` (paths referenced by the
-    // plugin's execFile commands). Plugin entry merges into the `plugin`
-    // array, coexisting with agent-status / idle entries (dedup by path).
-    final assembledHookEntries = await assembleHookEntries(
-      entries: ctx.hooks,
-      member: member,
-      hookLibraryProvider: ctx.hookLibraryProvider,
-      resourceHookProviders: ctx.resourceProviders.hooks,
-    );
-    if (assembledHookEntries.isNotEmpty) {
-      final writer = const OpencodeHookWriter();
-      final hooksDir = paths.joinWork(opencodeDir, 'hooks');
-      final result =
-          await ManagedHookProvisioner(
-            fs: paths.fs,
-            joinWork: paths.joinWork,
-            pathContext: paths.workPathContext,
-            atomicWrite: true,
-            ensureParentDirs: true,
-            logPrefix: '[hook-writer] opencode',
-            targetOverride: (fileName) =>
-                fileName == opencodeUserHooksPluginFileName
-                ? paths.joinWork(opencodeDir, fileName)
-                : null,
-          ).provision(
-            writer: writer,
-            entries: assembledHookEntries,
-            ctx: HookRenderContext(
-              hooksDir: hooksDir,
-              runner: paths.hostEnvironmentForProvision().scriptRunner,
-              glueBuilder: const GlueScriptBuilder(),
+    if (!ctx.hooksAlreadyMaterialized) {
+      // User hooks bridge: generated JS plugin (event hook + tool-keyed hooks),
+      // plus glue scripts under `<opencodeDir>/hooks/` (paths referenced by the
+      // plugin's execFile commands). Plugin entry merges into the `plugin`
+      // array, coexisting with agent-status / idle entries (dedup by path).
+      final assembledHookEntries = await assembleHookEntries(
+        entries: ctx.hooks,
+        member: member,
+        hookLibraryProvider: ctx.hookLibraryProvider,
+        resourceHookProviders: ctx.resourceProviders.hooks,
+      );
+      if (assembledHookEntries.isNotEmpty) {
+        final writer = const OpencodeHookWriter();
+        final hooksDir = paths.joinWork(opencodeDir, 'hooks');
+        final result =
+            await ManagedHookProvisioner(
+              fs: paths.fs,
+              joinWork: paths.joinWork,
+              pathContext: paths.workPathContext,
+              atomicWrite: true,
+              ensureParentDirs: true,
+              logPrefix: '[hook-writer] opencode',
+              targetOverride: (fileName) =>
+                  fileName == opencodeUserHooksPluginFileName
+                  ? paths.joinWork(opencodeDir, fileName)
+                  : null,
+            ).provision(
+              writer: writer,
+              entries: assembledHookEntries,
+              ctx: HookRenderContext(
+                hooksDir: hooksDir,
+                runner: paths.hostEnvironmentForProvision().scriptRunner,
+                glueBuilder: const GlueScriptBuilder(),
+              ),
+            );
+        final fragment =
+            result.configFragments['opencode.json'] as Map<String, Object?>?;
+        if (fragment != null) {
+          config = mergeOpencodePluginEntries(
+            config,
+            ((fragment['plugin'] as List?) ?? const []).map(
+              (e) => e is String ? e : e.toString(),
             ),
           );
-      final fragment =
-          result.configFragments['opencode.json'] as Map<String, Object?>?;
-      if (fragment != null) {
-        config = mergeOpencodePluginEntries(
-          config,
-          ((fragment['plugin'] as List?) ?? const []).map(
-            (e) => e is String ? e : e.toString(),
-          ),
-        );
-        changed = true;
+          changed = true;
+        }
       }
     }
 

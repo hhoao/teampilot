@@ -370,64 +370,66 @@ final class CodexProviderCapability extends CatalogModelCapability
     if (provider == null) {
       warnings.add('codex_provider_missing');
     } else {
-      final busIdle = mixed ? ctx.busIdle : null;
       final host = paths.hostEnvironmentForProvision();
       final overlayParts = <String>[];
-      final installsManagedHooks =
-          (busIdle != null || ctx.agentStatus != null) &&
-          member != null &&
-          member.isValid;
-      if (installsManagedHooks) {
-        overlayParts.add(
-          CodexManagedHookOverlay.build(
-            launchSecurityPolicy: member.launchSecurityPolicy,
-          ),
-        );
-      }
-      // Managed hooks (team-bus Stop → /idle, agent-status lifecycle) come
-      // from the completer; rendered together with user hooks in ONE pass.
-      // Agent-status hooks: simple + team whenever stamped — not mixed-gated.
-      final agentStatus = ctx.agentStatus;
-      final completer = const HookSeatContextCompleter();
-      final assembledHooks = await completer.assemble(
-        cli: CliTool.codex,
-        member: member,
-        providers: [
-          if (busIdle != null && member != null && member.isValid)
-            BusIdleHookContributionProvider(
-              endpoint: busIdle,
-              memberId: member.id,
+      if (!ctx.hooksAlreadyMaterialized) {
+        final busIdle = mixed ? ctx.busIdle : null;
+        final installsManagedHooks =
+            (busIdle != null || ctx.agentStatus != null) &&
+            member != null &&
+            member.isValid;
+        if (installsManagedHooks) {
+          overlayParts.add(
+            CodexManagedHookOverlay.build(
+              launchSecurityPolicy: member.launchSecurityPolicy,
             ),
-          if (agentStatus != null && member != null && member.isValid)
-            AgentStatusHookContributionProvider(
-              endpoint: agentStatus,
-              memberId: member.id,
-            ),
-          ...sessionHomeHookProviders(ctx),
-        ],
-      );
-      final allEntries = assembledHooks.entries;
-      if (allEntries.isNotEmpty) {
-        final writer = const CodexHookWriter();
-        final hooksDir = paths.joinWork(codexHome, 'hooks');
-        final result =
-            await ManagedHookProvisioner(
-              fs: paths.fs,
-              joinWork: paths.joinWork,
-              atomicWrite: true,
-              logPrefix: '[hook-writer] codex',
-            ).provision(
-              writer: writer,
-              entries: allEntries,
-              ctx: HookRenderContext(
-                hooksDir: hooksDir,
-                runner: host.scriptRunner,
-                glueBuilder: const GlueScriptBuilder(),
+          );
+        }
+        // Managed hooks (team-bus Stop → /idle, agent-status lifecycle) come
+        // from the completer; rendered together with user hooks in ONE pass.
+        // Agent-status hooks: simple + team whenever stamped — not mixed-gated.
+        final agentStatus = ctx.agentStatus;
+        final completer = const HookSeatContextCompleter();
+        final assembledHooks = await completer.assemble(
+          cli: CliTool.codex,
+          member: member,
+          providers: [
+            if (busIdle != null && member != null && member.isValid)
+              BusIdleHookContributionProvider(
+                endpoint: busIdle,
+                memberId: member.id,
               ),
-            );
-        final fragment = result.configFragments['config.toml'] as String?;
-        if (fragment != null && fragment.trim().isNotEmpty) {
-          overlayParts.add(fragment);
+            if (agentStatus != null && member != null && member.isValid)
+              AgentStatusHookContributionProvider(
+                endpoint: agentStatus,
+                memberId: member.id,
+              ),
+            ...sessionHomeHookProviders(ctx),
+          ],
+        );
+        final allEntries = assembledHooks.entries;
+        if (allEntries.isNotEmpty) {
+          final writer = const CodexHookWriter();
+          final hooksDir = paths.joinWork(codexHome, 'hooks');
+          final result =
+              await ManagedHookProvisioner(
+                fs: paths.fs,
+                joinWork: paths.joinWork,
+                atomicWrite: true,
+                logPrefix: '[hook-writer] codex',
+              ).provision(
+                writer: writer,
+                entries: allEntries,
+                ctx: HookRenderContext(
+                  hooksDir: hooksDir,
+                  runner: host.scriptRunner,
+                  glueBuilder: const GlueScriptBuilder(),
+                ),
+              );
+          final fragment = result.configFragments['config.toml'] as String?;
+          if (fragment != null && fragment.trim().isNotEmpty) {
+            overlayParts.add(fragment);
+          }
         }
       }
       final busOverlay = overlayParts.isEmpty

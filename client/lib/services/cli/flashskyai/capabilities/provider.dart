@@ -275,6 +275,7 @@ final class FlashskyaiProviderCapability extends CatalogModelCapability
       hookLibraryProvider: ctx.hookLibraryProvider,
       resourceHookProviders: ctx.resourceProviders.hooks,
       promptAlreadyMaterialized: ctx.promptAlreadyMaterialized,
+      hooksAlreadyMaterialized: ctx.hooksAlreadyMaterialized,
     );
 
     final environment = <String, String>{
@@ -349,10 +350,16 @@ final class FlashskyaiProviderCapability extends CatalogModelCapability
     HookContributionProvider? hookLibraryProvider,
     Iterable<HookContributionProvider> resourceHookProviders = const [],
     bool promptAlreadyMaterialized = false,
+    bool hooksAlreadyMaterialized = false,
   }) async {
     final selected = launchedMember;
     if (selected == null || !selected.isValid) {
-      await _writeTeamSettings(delegate, scope, effortLevel: effortLevel);
+      await _writeTeamSettings(
+        delegate,
+        scope,
+        effortLevel: effortLevel,
+        hooksAlreadyMaterialized: hooksAlreadyMaterialized,
+      );
       return const {};
     }
     final appendPromptEnv = <String, String>{};
@@ -372,6 +379,7 @@ final class FlashskyaiProviderCapability extends CatalogModelCapability
       hookLibraryProvider: hookLibraryProvider,
       resourceHookProviders: resourceHookProviders,
       promptAlreadyMaterialized: promptAlreadyMaterialized,
+      hooksAlreadyMaterialized: hooksAlreadyMaterialized,
     );
     return appendPromptEnv;
   }
@@ -380,6 +388,7 @@ final class FlashskyaiProviderCapability extends CatalogModelCapability
     ConfigProfileDelegate delegate,
     LaunchProfileScope scope, {
     required String effortLevel,
+    bool hooksAlreadyMaterialized = false,
   }) async {
     final file = delegate.joinWork(
       delegate.sessionToolDir(
@@ -399,52 +408,54 @@ final class FlashskyaiProviderCapability extends CatalogModelCapability
       file,
       effortLevel: effortLevel,
     );
-    // Task 18 收敛：无 member 的 team settings 路径同样把扩展 settings-hook
-    // 并入统一 writer 渲染（旧 applyExtensionSettings 写盘合并已删除）。
-    final memberToolDir = delegate.sessionToolDir(
-      scope.workspaceId,
-      scope.sessionId,
-      toolId,
-      memberId: scope.memberId,
-    );
-    final extensionHooks = await delegate.extensionSettingsHooks(
-      memberToolDir,
-      tool: toolId,
-      teamId: scope.teamId,
-    );
-    const completer = HookSeatContextCompleter();
-    final assembledHooks = await completer.assemble(
-      cli: CliTool.flashskyai,
-      providers: [
-        if (extensionHooks.isNotEmpty)
-          ExtensionHookContributionProvider(settingsHooks: extensionHooks),
-      ],
-    );
-    final entries = assembledHooks.entries;
-    final hookWriter = CliToolRegistry.builtIn().capability<HookCapability>(
-      CliTool.flashskyai,
-    );
-    if (hookWriter != null && entries.isNotEmpty) {
-      final hooksDir = delegate.joinWork(memberToolDir, 'hooks');
-      final result =
-          await ManagedHookProvisioner(
-            fs: delegate.fs,
-            joinWork: delegate.joinWork,
-            logPrefix: '[hook-writer] flashskyai',
-          ).provision(
-            writer: hookWriter,
-            entries: entries,
-            ctx: HookRenderContext(
-              hooksDir: hooksDir,
-              runner: delegate.hostEnvironmentForProvision().scriptRunner,
-              glueBuilder: const GlueScriptBuilder(),
-            ),
-          );
-      merged = mergeHooksInto(
-        merged,
-        (result.configFragments['settings.json'] as Map<String, Object?>?) ??
-            const <String, Object?>{},
+    if (!hooksAlreadyMaterialized) {
+      // Task 18 收敛：无 member 的 team settings 路径同样把扩展 settings-hook
+      // 并入统一 writer 渲染（旧 applyExtensionSettings 写盘合并已删除）。
+      final memberToolDir = delegate.sessionToolDir(
+        scope.workspaceId,
+        scope.sessionId,
+        toolId,
+        memberId: scope.memberId,
       );
+      final extensionHooks = await delegate.extensionSettingsHooks(
+        memberToolDir,
+        tool: toolId,
+        teamId: scope.teamId,
+      );
+      const completer = HookSeatContextCompleter();
+      final assembledHooks = await completer.assemble(
+        cli: CliTool.flashskyai,
+        providers: [
+          if (extensionHooks.isNotEmpty)
+            ExtensionHookContributionProvider(settingsHooks: extensionHooks),
+        ],
+      );
+      final entries = assembledHooks.entries;
+      final hookWriter = CliToolRegistry.builtIn().capability<HookCapability>(
+        CliTool.flashskyai,
+      );
+      if (hookWriter != null && entries.isNotEmpty) {
+        final hooksDir = delegate.joinWork(memberToolDir, 'hooks');
+        final result =
+            await ManagedHookProvisioner(
+              fs: delegate.fs,
+              joinWork: delegate.joinWork,
+              logPrefix: '[hook-writer] flashskyai',
+            ).provision(
+              writer: hookWriter,
+              entries: entries,
+              ctx: HookRenderContext(
+                hooksDir: hooksDir,
+                runner: delegate.hostEnvironmentForProvision().scriptRunner,
+                glueBuilder: const GlueScriptBuilder(),
+              ),
+            );
+        merged = mergeHooksInto(
+          merged,
+          (result.configFragments['settings.json'] as Map<String, Object?>?) ??
+              const <String, Object?>{},
+        );
+      }
     }
     await delegate.writeJsonIfChanged(file, merged);
   }
@@ -465,6 +476,7 @@ final class FlashskyaiProviderCapability extends CatalogModelCapability
     HookContributionProvider? hookLibraryProvider,
     Iterable<HookContributionProvider> resourceHookProviders = const [],
     required bool promptAlreadyMaterialized,
+    required bool hooksAlreadyMaterialized,
   }) async {
     final memberToolDir = delegate.sessionToolDir(
       scope.workspaceId,
@@ -495,81 +507,84 @@ final class FlashskyaiProviderCapability extends CatalogModelCapability
       settings,
       mixed: mixed,
     );
-    // 收敛：agent-status / team-lead delegate / 扩展 settings-hook / bus idle
-    // 都先以 neutral HookEntry 进入 Provider → HookAssembler；FlashskyAI
-    // 的 bus-idle entry 随后由本 capability 还原为 exit-2 command hook。
-    const completer = HookSeatContextCompleter();
-    final delegateCommand = await delegate.resolveTeamLeadDelegateHookCommand(
-      member,
-      memberToolDir,
-      forceTeamLeadDelegateMode: isLead && forceTeamLeadDelegateMode,
-    );
-    final extensionHooks = await delegate.extensionSettingsHooks(
-      memberToolDir,
-      tool: toolId,
-      teamId: simple ? null : scope.teamId,
-      workspaceId: simple ? scope.workspaceId : null,
-    );
-    final assembledHooks = await completer.assemble(
-      cli: CliTool.flashskyai,
-      member: member,
-      providers: [
-        if (mixed && busIdle != null)
-          BusIdleHookContributionProvider(
-            endpoint: busIdle,
-            memberId: member.id,
-          ),
-        if (agentStatus != null)
-          AgentStatusHookContributionProvider(
-            endpoint: agentStatus,
-            memberId: member.id,
-          ),
-        if (delegateCommand != null)
-          ManagedHookContributionProvider(
-            entries: completer.delegateHooks(commands: [delegateCommand]),
-            providerId: 'team-lead-delegate',
-          ),
-        if (extensionHooks.isNotEmpty)
-          ExtensionHookContributionProvider(settingsHooks: extensionHooks),
-        ...resourceHookProviders.where(
-          (provider) => provider.providerId != 'user-library',
-        ),
-        hookLibraryProvider ?? UserHookContributionProvider(entries: userHooks),
-      ],
-    );
-    final entries = assembledHooks.entries;
-    final hookWriter = CliToolRegistry.builtIn().capability<HookCapability>(
-      CliTool.flashskyai,
-    );
-    if (hookWriter != null && entries.isNotEmpty) {
-      final hooksDir = delegate.joinWork(memberToolDir, 'hooks');
-      final result =
-          await ManagedHookProvisioner(
-            fs: delegate.fs,
-            joinWork: delegate.joinWork,
-            logPrefix: '[hook-writer] flashskyai',
-          ).provision(
-            writer: hookWriter,
-            entries: entries,
-            ctx: HookRenderContext(
-              hooksDir: hooksDir,
-              runner: delegate.hostEnvironmentForProvision().scriptRunner,
-              glueBuilder: const GlueScriptBuilder(),
-              generatedScriptDirectory: memberToolDir,
+    if (!hooksAlreadyMaterialized) {
+      // 收敛：agent-status / team-lead delegate / 扩展 settings-hook / bus idle
+      // 都先以 neutral HookEntry 进入 Provider → HookAssembler；FlashskyAI
+      // 的 bus-idle entry 随后由本 capability 还原为 exit-2 command hook。
+      const completer = HookSeatContextCompleter();
+      final delegateCommand = await delegate.resolveTeamLeadDelegateHookCommand(
+        member,
+        memberToolDir,
+        forceTeamLeadDelegateMode: isLead && forceTeamLeadDelegateMode,
+      );
+      final extensionHooks = await delegate.extensionSettingsHooks(
+        memberToolDir,
+        tool: toolId,
+        teamId: simple ? null : scope.teamId,
+        workspaceId: simple ? scope.workspaceId : null,
+      );
+      final assembledHooks = await completer.assemble(
+        cli: CliTool.flashskyai,
+        member: member,
+        providers: [
+          if (mixed && busIdle != null)
+            BusIdleHookContributionProvider(
+              endpoint: busIdle,
+              memberId: member.id,
             ),
-          );
-      settings = mergeHooksInto(
+          if (agentStatus != null)
+            AgentStatusHookContributionProvider(
+              endpoint: agentStatus,
+              memberId: member.id,
+            ),
+          if (delegateCommand != null)
+            ManagedHookContributionProvider(
+              entries: completer.delegateHooks(commands: [delegateCommand]),
+              providerId: 'team-lead-delegate',
+            ),
+          if (extensionHooks.isNotEmpty)
+            ExtensionHookContributionProvider(settingsHooks: extensionHooks),
+          ...resourceHookProviders.where(
+            (provider) => provider.providerId != 'user-library',
+          ),
+          hookLibraryProvider ??
+              UserHookContributionProvider(entries: userHooks),
+        ],
+      );
+      final entries = assembledHooks.entries;
+      final hookWriter = CliToolRegistry.builtIn().capability<HookCapability>(
+        CliTool.flashskyai,
+      );
+      if (hookWriter != null && entries.isNotEmpty) {
+        final hooksDir = delegate.joinWork(memberToolDir, 'hooks');
+        final result =
+            await ManagedHookProvisioner(
+              fs: delegate.fs,
+              joinWork: delegate.joinWork,
+              logPrefix: '[hook-writer] flashskyai',
+            ).provision(
+              writer: hookWriter,
+              entries: entries,
+              ctx: HookRenderContext(
+                hooksDir: hooksDir,
+                runner: delegate.hostEnvironmentForProvision().scriptRunner,
+                glueBuilder: const GlueScriptBuilder(),
+                generatedScriptDirectory: memberToolDir,
+              ),
+            );
+        settings = mergeHooksInto(
+          settings,
+          (result.configFragments['settings.json'] as Map<String, Object?>?) ??
+              const <String, Object?>{},
+        );
+      }
+      settings = await delegate.maybeApplyTeamLeadHooks(
         settings,
-        (result.configFragments['settings.json'] as Map<String, Object?>?) ??
-            const <String, Object?>{},
+        member,
+        memberToolDir,
+        forceTeamLeadDelegateMode: isLead && forceTeamLeadDelegateMode,
       );
     }
-    settings = await delegate.maybeApplyTeamLeadHooks(
-      settings,
-      member,
-      memberToolDir,
-      forceTeamLeadDelegateMode: isLead && forceTeamLeadDelegateMode,
-    );
     await delegate.writeSettingsFile(
       settingsFile,
       settings,

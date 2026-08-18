@@ -175,6 +175,7 @@ final class CatalogMcpContributionProvider
         McpContribution(
           sourceId: id,
           server: spec,
+          hasCatalogCredentialSource: true,
           origin: ContributionOrigin(
             providerId: providerId,
             kind: originKind,
@@ -232,6 +233,7 @@ final class CatalogMcpContributionProvider
           McpContribution(
             sourceId: entry.key,
             server: spec,
+            hasCatalogCredentialSource: true,
             origin: ContributionOrigin(
               providerId: providerId,
               kind: originKind,

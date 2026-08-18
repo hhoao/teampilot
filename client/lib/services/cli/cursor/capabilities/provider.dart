@@ -382,30 +382,32 @@ final class CursorProviderCapability extends CatalogModelCapability
       realHomeRoot: null,
     );
 
-    // 收敛：内部托管 hook（agent-status）经 completer 组装为 managed
-    // HookEntry，与用户条目一次 writeHooks 落盘（同渲染 + 去重）。
-    final agentStatus = ctx.agentStatus;
-    final completer = const HookSeatContextCompleter();
-    final assembledHooks = await completer.assemble(
-      cli: CliTool.cursor,
-      member: member,
-      providers: [
-        if (agentStatus != null)
-          AgentStatusHookContributionProvider(
-            endpoint: agentStatus,
-            memberId: member.id,
-          ),
-        ...sessionHomeHookProviders(ctx),
-      ],
-    );
-    await CursorHomeProvisioner(
-      fs: paths.fs,
-      layout: CursorHomeLayout(pathContext: paths.fs.pathContext),
-    ).writeHooks(
-      memberHome: home,
-      entries: assembledHooks.entries,
-      runner: paths.hostEnvironmentForProvision().scriptRunner,
-    );
+    if (!ctx.hooksAlreadyMaterialized) {
+      // 收敛：内部托管 hook（agent-status）经 completer 组装为 managed
+      // HookEntry，与用户条目一次 writeHooks 落盘（同渲染 + 去重）。
+      final agentStatus = ctx.agentStatus;
+      final completer = const HookSeatContextCompleter();
+      final assembledHooks = await completer.assemble(
+        cli: CliTool.cursor,
+        member: member,
+        providers: [
+          if (agentStatus != null)
+            AgentStatusHookContributionProvider(
+              endpoint: agentStatus,
+              memberId: member.id,
+            ),
+          ...sessionHomeHookProviders(ctx),
+        ],
+      );
+      await CursorHomeProvisioner(
+        fs: paths.fs,
+        layout: CursorHomeLayout(pathContext: paths.fs.pathContext),
+      ).writeHooks(
+        memberHome: home,
+        entries: assembledHooks.entries,
+        runner: paths.hostEnvironmentForProvision().scriptRunner,
+      );
+    }
 
     await _provisionWorkspaceTrust(ctx: ctx, homeRoot: home);
     return SessionHomeContribution(
@@ -513,36 +515,38 @@ final class CursorProviderCapability extends CatalogModelCapability
       }
 
       final agentStatus = ctx.agentStatus;
-      // 收敛：内部托管 hook（bus idle / agent-status）经 completer 组装为
-      // managed HookEntry，与用户条目一次 writeHooks 落盘（同渲染 + 去重）。
-      // cursor 不支持 stopFailure / permissionRequest 原生事件——writer 跳过
-      // 并警告（bus stop 经 completer stop 条目生效，与旧 overlay 一致）。
-      final completer = const HookSeatContextCompleter();
-      final assembledHooks = await completer.assemble(
-        cli: CliTool.cursor,
-        member: member,
-        providers: [
-          if (busIdle != null && member != null && member.isValid)
-            BusIdleHookContributionProvider(
-              endpoint: busIdle,
-              memberId: member.id,
-            ),
-          if (agentStatus != null && member != null && member.isValid)
-            AgentStatusHookContributionProvider(
-              endpoint: agentStatus,
-              memberId: member.id,
-            ),
-          ...sessionHomeHookProviders(ctx),
-        ],
-      );
-      await CursorHomeProvisioner(
-        fs: ctx.paths.fs,
-        layout: CursorHomeLayout(pathContext: ctx.paths.fs.pathContext),
-      ).writeHooks(
-        memberHome: agentHome,
-        entries: assembledHooks.entries,
-        runner: ctx.paths.hostEnvironmentForProvision().scriptRunner,
-      );
+      if (!ctx.hooksAlreadyMaterialized) {
+        // 收敛：内部托管 hook（bus idle / agent-status）经 completer 组装为
+        // managed HookEntry，与用户条目一次 writeHooks 落盘（同渲染 + 去重）。
+        // cursor 不支持 stopFailure / permissionRequest 原生事件——writer 跳过
+        // 并警告（bus stop 经 completer stop 条目生效，与旧 overlay 一致）。
+        final completer = const HookSeatContextCompleter();
+        final assembledHooks = await completer.assemble(
+          cli: CliTool.cursor,
+          member: member,
+          providers: [
+            if (busIdle != null && member != null && member.isValid)
+              BusIdleHookContributionProvider(
+                endpoint: busIdle,
+                memberId: member.id,
+              ),
+            if (agentStatus != null && member != null && member.isValid)
+              AgentStatusHookContributionProvider(
+                endpoint: agentStatus,
+                memberId: member.id,
+              ),
+            ...sessionHomeHookProviders(ctx),
+          ],
+        );
+        await CursorHomeProvisioner(
+          fs: ctx.paths.fs,
+          layout: CursorHomeLayout(pathContext: ctx.paths.fs.pathContext),
+        ).writeHooks(
+          memberHome: agentHome,
+          entries: assembledHooks.entries,
+          runner: ctx.paths.hostEnvironmentForProvision().scriptRunner,
+        );
+      }
 
       return SessionHomeContribution(
         environment: CursorLaunchEnvironment.forMixed(

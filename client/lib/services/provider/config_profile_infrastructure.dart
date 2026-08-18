@@ -309,6 +309,18 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
   }
 
   @override
+  Future<String?> resolveTeamLeadSelfHookCommand(
+    TeamMemberConfig member,
+    String memberToolDir,
+  ) async {
+    if (!TeamMemberNaming.isTeamLead(member)) return null;
+    final host = hostEnvironmentForProvision();
+    final selfProvisioner = _resolveTeamLeadHookProvisioner(host);
+    final scriptPath = await selfProvisioner.provision(memberToolDir);
+    return selfProvisioner.commandForPath(scriptPath);
+  }
+
+  @override
   HostExecutionEnvironment hostEnvironmentForProvision() {
     if (_hostEnvironment != null) return _hostEnvironment;
     if (AppStorage.isInstalled) {

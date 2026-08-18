@@ -36,6 +36,7 @@ final class SmitheryMcpContributionProvider
           McpContribution(
             sourceId: contribution.sourceId,
             server: _apply(contribution.server, token),
+            hasCatalogCredentialSource: contribution.hasCatalogCredentialSource,
             origin: ContributionOrigin(
               providerId: contribution.origin.providerId,
               kind: contribution.origin.kind,

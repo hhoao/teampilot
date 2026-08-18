@@ -55,11 +55,18 @@ class McpContribution {
     required this.sourceId,
     required this.server,
     required this.origin,
+    this.hasCatalogCredentialSource = false,
   });
 
   final String sourceId;
   final McpServerSpec server;
   final ContributionOrigin origin;
+
+  /// Whether this contribution was resolved through a catalog source that
+  /// requires the existing app-level credential merge. This is independent
+  /// from [origin.kind]: an identity snapshot is a team-layer contribution
+  /// but still originates from the MCP catalog.
+  final bool hasCatalogCredentialSource;
 }
 
 /// Supplies MCP contributions without writing target configuration.

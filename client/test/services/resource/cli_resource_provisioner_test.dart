@@ -21,6 +21,7 @@ import 'package:teampilot/services/resource/contribution/resource_assembly_error
 import 'package:teampilot/services/resource/contribution/resource_origin.dart';
 import 'package:teampilot/services/resource/providers/hook_contribution_provider.dart';
 import 'package:teampilot/services/resource/providers/mcp_contribution_provider.dart';
+import 'package:teampilot/services/resource/providers/catalog_mcp_contribution_provider.dart';
 import 'package:teampilot/services/resource/providers/skill_contribution_provider.dart';
 import 'package:teampilot/services/resource/resource_provider_set.dart';
 import 'package:teampilot/services/resource/resource_scope.dart';
@@ -231,6 +232,31 @@ void main() {
   );
 
   test(
+    'assembly failure retains attempted failed materialization state',
+    () async {
+      final fs = InMemoryFilesystem();
+      final report =
+          await CliResourceProvisioner(
+            fs: fs,
+            registry: _registry([]),
+          ).provision(
+            _context(
+              fs: fs,
+              injected: ResourceProviderSet(
+                prompts: [_FailingPromptProvider()],
+              ),
+            ),
+          );
+
+      final result = report.materializations[ResourceContributionKind.prompt]!;
+      expect(result.attempted, isTrue);
+      expect(result.materialized, isFalse);
+      expect(result.diagnostics, hasLength(1));
+      expect(result.diagnostics.single.providerId, 'failing-prompt');
+    },
+  );
+
+  test(
     'resolves each injected MCP source once before materialization',
     () async {
       final fs = InMemoryFilesystem();
@@ -322,6 +348,38 @@ void main() {
     },
   );
 
+  test(
+    'materializes hook fragments at the explicit target config path',
+    () async {
+      final fs = InMemoryFilesystem();
+      final report =
+          await CliResourceProvisioner(
+            fs: fs,
+            registry: _registry([_WritingHookCapability()]),
+          ).provision(
+            CliResourceProvisionContext(
+              cli: CliTool.claude,
+              scope: const SimpleResourceScope(bundle: ConfigBundle()),
+              runtimeBundle: const ConfigBundle(),
+              fs: fs,
+              layout: RuntimeLayout(teampilotRoot: '/runtime', fs: fs),
+              configDir: '/config',
+              hookConfigPath: '/config/settings/member.json',
+              resourceProviders: ResourceProviderSet(
+                hooks: [_RecordingHookProvider('hook', <String>[])],
+              ),
+            ),
+          );
+
+      expect(report.hardDiagnostics, isEmpty);
+      expect(
+        await fs.readString('/config/settings/member.json'),
+        contains('hooks'),
+      );
+      expect(await fs.readString('/config/settings.json'), isNull);
+    },
+  );
+
   test('preserves unrelated hook config fragments and is idempotent', () async {
     final fs = InMemoryFilesystem();
     final settingsPath = '/config/settings.json';
@@ -392,6 +450,43 @@ void main() {
     );
     expect(events, contains('materialize:mcp-credentials'));
   });
+
+  test(
+    'team identity catalog snapshots still trigger credential merge',
+    () async {
+      final fs = InMemoryFilesystem();
+      await fs.atomicWrite(
+        '/team-mcp.json',
+        jsonEncode({
+          'mcpServers': {
+            'team-catalog-server': {'command': 'server'},
+          },
+        }),
+      );
+      final events = <String>[];
+      final report =
+          await CliResourceProvisioner(
+            fs: fs,
+            registry: _registry([_RecordingMcpCapability(events)]),
+          ).provision(
+            _context(
+              fs: fs,
+              injected: ResourceProviderSet(
+                mcp: [
+                  CatalogMcpContributionProvider(
+                    fs: fs,
+                    snapshotPath: '/team-mcp.json',
+                    originKind: ResourceOriginKind.team,
+                  ),
+                ],
+              ),
+            ),
+          );
+
+      expect(report.hardDiagnostics, isEmpty);
+      expect(events, contains('materialize:mcp-credentials'));
+    },
+  );
 
   test('prompt materialization uses the complete target context', () async {
     final fs = InMemoryFilesystem();
@@ -556,6 +651,7 @@ final class _RecordingMcpProvider
       McpContribution(
         sourceId: providerId,
         server: StdioMcpServer(name: providerId, command: 'server'),
+        hasCatalogCredentialSource: true,
         origin: ContributionOrigin(
           providerId: providerId,
           kind: ResourceOriginKind.catalog,

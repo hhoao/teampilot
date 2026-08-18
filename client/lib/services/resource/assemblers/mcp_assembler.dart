@@ -91,9 +91,8 @@ final class McpAssembler {
     return McpAssemblyResult(
       servers: [for (final key in orderedKeys) selected[key]!.server],
       assembly: ResourceAssemblyResult(diagnostics: diagnostics),
-      hasValidCatalogContribution: selected.values.any(
-        (contribution) =>
-            contribution.origin.kind == ResourceOriginKind.catalog,
+      hasCatalogCredentialSource: selected.values.any(
+        (contribution) => contribution.hasCatalogCredentialSource,
       ),
     );
   }
@@ -191,12 +190,15 @@ final class McpAssemblyResult {
   McpAssemblyResult({
     required Iterable<McpServerSpec> servers,
     required this.assembly,
-    this.hasValidCatalogContribution = false,
+    this.hasCatalogCredentialSource = false,
   }) : servers = List.unmodifiable(servers);
 
   final List<McpServerSpec> servers;
   final ResourceAssemblyResult assembly;
-  final bool hasValidCatalogContribution;
+  final bool hasCatalogCredentialSource;
+
+  /// Compatibility alias for existing registry callers.
+  bool get hasValidCatalogContribution => hasCatalogCredentialSource;
 
   List<ResourceAssemblyDiagnostic> get diagnostics => assembly.diagnostics;
   List<ResourceAssemblyDiagnostic> get warnings => assembly.warnings;
