@@ -36,7 +36,7 @@ void main() {
       repo = ManagedProviderRepository(
         fs: fs,
         configPath: path,
-        onProviderDeleted: (_) async {},
+        onProvidersDeleted: (_) async {},
       );
     });
 
@@ -183,6 +183,63 @@ void main() {
       expect((await repo.load()).single.name, 'Updated');
     });
 
+    test('sanitizes secrets in preserved malformed provider records', () async {
+      await fs.writeString(
+        path,
+        jsonEncode({
+          'schemaVersion': 1,
+          'providers': {
+            'valid': _provider('valid').toJson(),
+            ' p1 ': {
+              'name': 42,
+              'apiKey': 'api-secret',
+              'token': 'token-secret',
+              'X-Api-Key': 'x-api-secret',
+              'bearerValue': 'Bearer bearer-secret',
+              'nested': {'token': 'nested-token-secret', 'safe': 'keep'},
+            },
+          },
+        }),
+      );
+
+      await repo.upsert(_provider('valid', name: 'Updated'));
+
+      final providers =
+          (jsonDecode(await fs.readString(path) ?? '') as Map)['providers']
+              as Map;
+      final rawProvider = providers['p1'] as Map;
+      expect(jsonEncode(rawProvider), isNot(contains('secret')));
+      expect((rawProvider['nested'] as Map)['safe'], 'keep');
+      expect(rawProvider.containsKey('apiKey'), isFalse);
+      expect(rawProvider.containsKey('token'), isFalse);
+      expect(rawProvider.containsKey('X-Api-Key'), isFalse);
+    });
+
+    test(
+      'drops blank raw IDs and resolves raw IDs colliding with parsed IDs',
+      () async {
+        await fs.writeString(
+          path,
+          jsonEncode({
+            'schemaVersion': 1,
+            'providers': {
+              'p1': _provider('p1').toJson(),
+              ' p1 ': {'name': 42},
+              '  ': {'apiKey': 'blank-secret'},
+            },
+          }),
+        );
+
+        await repo.upsert(_provider('p1', name: 'Updated'));
+
+        final providers =
+            (jsonDecode(await fs.readString(path) ?? '') as Map)['providers']
+                as Map;
+        expect(providers.keys, ['p1']);
+        expect((await repo.load()).single.name, 'Updated');
+      },
+    );
+
     test(
       'delete removes a malformed provider record by normalized ID and cleans up',
       () async {
@@ -200,7 +257,7 @@ void main() {
         repo = ManagedProviderRepository(
           fs: fs,
           configPath: path,
-          onProviderDeleted: (id) async => deletedIds.add(id),
+          onProvidersDeleted: (ids) async => deletedIds.addAll(ids),
         );
 
         await repo.delete('p1');
@@ -258,12 +315,12 @@ void main() {
         final first = ManagedProviderRepository(
           fs: fs,
           configPath: path,
-          onProviderDeleted: (_) async {},
+          onProvidersDeleted: (_) async {},
         );
         final second = ManagedProviderRepository(
           fs: fs,
           configPath: path,
-          onProviderDeleted: (_) async {},
+          onProvidersDeleted: (_) async {},
         );
 
         await Future.wait([
@@ -300,7 +357,7 @@ void main() {
       repo = ManagedProviderRepository(
         fs: fs,
         configPath: path,
-        onProviderDeleted: usageRepo.delete,
+        onProvidersDeleted: usageRepo.deleteMany,
       );
       await repo.save([_provider('p1')]);
       await usageRepo.save(
@@ -326,7 +383,7 @@ void main() {
         repo = ManagedProviderRepository(
           fs: fs,
           configPath: path,
-          onProviderDeleted: usageRepo.delete,
+          onProvidersDeleted: usageRepo.deleteMany,
         );
         await repo.save([_provider('p1'), _provider('p2')]);
         await usageRepo.save(_snapshotForTest('p1'));
@@ -342,13 +399,33 @@ void main() {
       },
     );
 
+    test(
+      'save invokes one batch cleanup boundary for omitted providers',
+      () async {
+        final batches = <List<String>>[];
+        repo = ManagedProviderRepository(
+          fs: fs,
+          configPath: path,
+          onProvidersDeleted: (ids) async =>
+              batches.add(List<String>.from(ids)),
+        );
+
+        await repo.save([_provider('p1'), _provider('p2'), _provider('p3')]);
+        await repo.save([_provider('p1')]);
+
+        expect(batches, [
+          ['p2', 'p3'],
+        ]);
+      },
+    );
+
     test('cleanup failure leaves the provider config intact', () async {
       await repo.save([_provider('p1')]);
       var calls = 0;
       repo = ManagedProviderRepository(
         fs: fs,
         configPath: path,
-        onProviderDeleted: (_) async {
+        onProvidersDeleted: (_) async {
           calls++;
           throw StateError('cleanup failed');
         },
@@ -367,7 +444,7 @@ void main() {
         repo = ManagedProviderRepository(
           fs: fs,
           configPath: path,
-          onProviderDeleted: (_) async => calls++,
+          onProvidersDeleted: (_) async => calls++,
         );
         await repo.save([_provider('present')]);
         final before = await fs.readString(path);
@@ -394,7 +471,7 @@ void main() {
       repo = ManagedProviderRepository(
         fs: fs,
         configPath: path,
-        onProviderDeleted: (id) async => deletedIds.add(id),
+        onProvidersDeleted: (ids) async => deletedIds.addAll(ids),
       );
 
       await repo.save([_provider('p2')]);

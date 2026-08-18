@@ -47,25 +47,40 @@ class ManagedProviderUsageRepository {
       snapshots[normalized.providerId] = previous == null
           ? normalized
           : _mergeSnapshot(previous, normalized);
-      await _writeStore(current.copyWith(snapshots: snapshots));
+      final rawSnapshotEntries = Map<String, Object?>.from(
+        current.rawSnapshotEntries,
+      )..remove(normalized.providerId);
+      await _writeStore(
+        current.copyWith(
+          snapshots: snapshots,
+          rawSnapshotEntries: rawSnapshotEntries,
+        ),
+      );
     });
   }
 
-  Future<void> delete(String providerId) async {
-    final id = providerId.trim();
-    if (id.isEmpty) return;
+  Future<void> delete(String providerId) => deleteMany([providerId]);
+
+  Future<void> deleteMany(Iterable<String> providerIds) async {
+    final ids = providerIds
+        .map((providerId) => providerId.trim())
+        .where((id) => id.isNotEmpty)
+        .toSet();
+    if (ids.isEmpty) return;
     await ManagedProviderStorageLock.run(_cachePath, () async {
       final current = await _readStore();
-      final hasRawEntry = current.rawSnapshotEntries.keys.any(
-        (key) => key.trim() == id,
+      final hasMatchingEntry = ids.any(
+        (id) =>
+            current.snapshots.containsKey(id) ||
+            current.rawSnapshotEntries.containsKey(id),
       );
-      if (!current.snapshots.containsKey(id) && !hasRawEntry) return;
+      if (!hasMatchingEntry) return;
       final snapshots = Map<String, ProviderUsageSnapshot>.from(
         current.snapshots,
-      )..remove(id);
+      )..removeWhere((id, _) => ids.contains(id));
       final rawSnapshotEntries = Map<String, Object?>.from(
         current.rawSnapshotEntries,
-      )..removeWhere((key, _) => key.trim() == id);
+      )..removeWhere((id, _) => ids.contains(id));
       await _writeStore(
         current.copyWith(
           snapshots: snapshots,
@@ -103,8 +118,9 @@ class ManagedProviderUsageRepository {
           final value = entry.value;
           if (id is! String) continue;
           final normalizedId = id.trim();
-          if (normalizedId.isEmpty || value is! Map) {
-            rawSnapshotEntries[id] = value;
+          if (normalizedId.isEmpty) continue;
+          if (value is! Map) {
+            rawSnapshotEntries[normalizedId] = _sanitizeRawEntry(value);
             continue;
           }
           final snapshotJson = Map<String, Object?>.from(value);
@@ -115,13 +131,16 @@ class ManagedProviderUsageRepository {
               providerId: normalizedId,
             );
           } on Object {
-            rawSnapshotEntries[id] = value;
+            rawSnapshotEntries[normalizedId] = _sanitizeRawEntry(value);
           }
         }
       }
       return _ManagedProviderUsageStore(
         snapshots: snapshots,
-        rawSnapshotEntries: rawSnapshotEntries,
+        rawSnapshotEntries: {
+          for (final entry in rawSnapshotEntries.entries)
+            if (!snapshots.containsKey(entry.key)) entry.key: entry.value,
+        },
         schemaVersion: json.containsKey('schemaVersion')
             ? json['schemaVersion']
             : 1,
@@ -162,6 +181,16 @@ class ManagedProviderUsageRepository {
     final providerId = snapshot.providerId.trim();
     if (providerId.isEmpty) return null;
     return snapshot.copyWith(providerId: providerId);
+  }
+
+  static Object? _sanitizeRawEntry(Object? value) {
+    const rawField = '__managedProviderUsageRawEntry';
+    final holder = ProviderUsageSnapshot(
+      providerId: rawField,
+      status: ProviderUsageStatus.unknown,
+      unknownFields: {rawField: value},
+    );
+    return holder.unknownFields[rawField];
   }
 
   static ProviderUsageSnapshot _mergeSnapshot(

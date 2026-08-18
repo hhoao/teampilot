@@ -7,23 +7,24 @@ import 'managed_provider_storage_lock.dart';
 
 /// Persists the CLI-independent managed provider catalog.
 ///
-/// Deletion cleanup is awaited before the configuration write. A cleanup
-/// failure therefore leaves the provider configuration intact. If the later
-/// atomic configuration write fails, that error is propagated; the cleanup
-/// callback cannot be rolled back, so callers should treat such a failure as
-/// requiring reconciliation.
+/// The required deletion cleanup boundary receives all IDs removed by one
+/// mutation and is awaited before the configuration write. A cleanup failure
+/// therefore leaves the provider configuration intact. If the later atomic
+/// configuration write fails, that error is propagated; cleanup cannot be
+/// rolled back, so callers should treat such a failure as requiring
+/// reconciliation.
 class ManagedProviderRepository {
   ManagedProviderRepository({
     Filesystem? fs,
     String? configPath,
-    required Future<void> Function(String providerId) onProviderDeleted,
+    required Future<void> Function(List<String> providerIds) onProvidersDeleted,
   }) : _fsOverride = fs,
        _configPathOverride = configPath,
-       _onProviderDeleted = onProviderDeleted;
+       _onProvidersDeleted = onProvidersDeleted;
 
   final Filesystem? _fsOverride;
   final String? _configPathOverride;
-  final Future<void> Function(String providerId) _onProviderDeleted;
+  final Future<void> Function(List<String> providerIds) _onProvidersDeleted;
 
   Filesystem get _fs => _fsOverride ?? AppStorage.fs;
 
@@ -53,17 +54,9 @@ class ManagedProviderRepository {
             .map((key) => key.trim())
             .where((id) => id.isNotEmpty),
       }.where((id) => !merged.containsKey(id)).toList()..sort();
-      for (final id in removedIds) {
-        await _onProviderDeleted(id);
-      }
-      final rawProviderEntries = Map<String, Object?>.from(
-        current.rawProviderEntries,
-      )..removeWhere((key, _) => removedIds.contains(key.trim()));
+      if (removedIds.isNotEmpty) await _onProvidersDeleted(removedIds);
       await _writeStore(
-        current.copyWith(
-          providers: merged,
-          rawProviderEntries: rawProviderEntries,
-        ),
+        current.copyWith(providers: merged, rawProviderEntries: {}),
       );
     });
   }
@@ -78,7 +71,15 @@ class ManagedProviderRepository {
       providers[normalized.id] = previous == null
           ? normalized
           : _mergeProvider(previous, normalized);
-      await _writeStore(current.copyWith(providers: providers));
+      final rawProviderEntries = Map<String, Object?>.from(
+        current.rawProviderEntries,
+      )..remove(normalized.id);
+      await _writeStore(
+        current.copyWith(
+          providers: providers,
+          rawProviderEntries: rawProviderEntries,
+        ),
+      );
     });
   }
 
@@ -91,7 +92,7 @@ class ManagedProviderRepository {
         (key) => key.trim() == id,
       );
       if (!current.providers.containsKey(id) && !hasRawEntry) return;
-      await _onProviderDeleted(id);
+      await _onProvidersDeleted([id]);
       final providers = Map<String, ManagedProvider>.from(current.providers)
         ..remove(id);
       final rawProviderEntries = Map<String, Object?>.from(
@@ -125,8 +126,9 @@ class ManagedProviderRepository {
           final value = entry.value;
           if (id is! String) continue;
           final normalizedId = id.trim();
-          if (normalizedId.isEmpty || value is! Map) {
-            rawProviderEntries[id] = value;
+          if (normalizedId.isEmpty) continue;
+          if (value is! Map) {
+            rawProviderEntries[normalizedId] = _sanitizeRawEntry(value);
             continue;
           }
           final providerJson = Map<String, Object?>.from(value);
@@ -135,13 +137,16 @@ class ManagedProviderRepository {
             final provider = ManagedProvider.fromJson(providerJson);
             providers[normalizedId] = provider.copyWith(id: normalizedId);
           } on Object {
-            rawProviderEntries[id] = value;
+            rawProviderEntries[normalizedId] = _sanitizeRawEntry(value);
           }
         }
       }
       return _ManagedProviderStore(
         providers: providers,
-        rawProviderEntries: rawProviderEntries,
+        rawProviderEntries: {
+          for (final entry in rawProviderEntries.entries)
+            if (!providers.containsKey(entry.key)) entry.key: entry.value,
+        },
         schemaVersion: json.containsKey('schemaVersion')
             ? json['schemaVersion']
             : 1,
@@ -178,6 +183,18 @@ class ManagedProviderRepository {
     final id = provider.id.trim();
     if (id.isEmpty) return null;
     return provider.copyWith(id: id);
+  }
+
+  static Object? _sanitizeRawEntry(Object? value) {
+    const rawField = '__managedProviderRawEntry';
+    final holder = ManagedProvider(
+      id: rawField,
+      name: rawField,
+      kind: ManagedProviderKind.unknown,
+      adapterId: rawField,
+      unknownFields: {rawField: value},
+    );
+    return holder.unknownFields[rawField];
   }
 
   static ManagedProvider _mergeProvider(

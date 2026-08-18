@@ -174,6 +174,64 @@ void main() {
       expect((await repo.load()).single.status, ProviderUsageStatus.stale);
     });
 
+    test('sanitizes secrets in preserved malformed snapshot records', () async {
+      await fs.writeString(
+        path,
+        jsonEncode({
+          'schemaVersion': 1,
+          'snapshots': {
+            'valid': _snapshot('valid').toJson(),
+            ' p1 ': {
+              'providerId': 42,
+              'status': 'ready',
+              'apiKey': 'api-secret',
+              'token': 'token-secret',
+              'X-Api-Key': 'x-api-secret',
+              'bearerValue': 'Bearer bearer-secret',
+              'nested': {'token': 'nested-token-secret', 'safe': 'keep'},
+            },
+          },
+        }),
+      );
+
+      await repo.save(_snapshot('valid', status: ProviderUsageStatus.stale));
+
+      final snapshots =
+          (jsonDecode(await fs.readString(path) ?? '') as Map)['snapshots']
+              as Map;
+      final rawSnapshot = snapshots['p1'] as Map;
+      expect(jsonEncode(rawSnapshot), isNot(contains('secret')));
+      expect((rawSnapshot['nested'] as Map)['safe'], 'keep');
+      expect(rawSnapshot.containsKey('apiKey'), isFalse);
+      expect(rawSnapshot.containsKey('token'), isFalse);
+      expect(rawSnapshot.containsKey('X-Api-Key'), isFalse);
+    });
+
+    test(
+      'drops blank raw IDs and resolves raw IDs colliding with parsed IDs',
+      () async {
+        await fs.writeString(
+          path,
+          jsonEncode({
+            'schemaVersion': 1,
+            'snapshots': {
+              'p1': _snapshot('p1').toJson(),
+              ' p1 ': {'providerId': 42, 'status': 'ready'},
+              '  ': {'token': 'blank-secret'},
+            },
+          }),
+        );
+
+        await repo.save(_snapshot('p1', status: ProviderUsageStatus.stale));
+
+        final snapshots =
+            (jsonDecode(await fs.readString(path) ?? '') as Map)['snapshots']
+                as Map;
+        expect(snapshots.keys, ['p1']);
+        expect((await repo.load()).single.status, ProviderUsageStatus.stale);
+      },
+    );
+
     test(
       'delete removes a malformed snapshot by normalized provider ID',
       () async {
@@ -272,6 +330,18 @@ void main() {
         ]);
 
         await repo.clear();
+        expect(await repo.load(), isEmpty);
+      },
+    );
+
+    test(
+      'deleteMany removes all normalized provider IDs in one boundary',
+      () async {
+        await repo.save(_snapshot('p1'));
+        await repo.save(_snapshot('p2'));
+
+        await repo.deleteMany([' p1 ', 'p2']);
+
         expect(await repo.load(), isEmpty);
       },
     );
