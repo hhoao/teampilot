@@ -622,6 +622,10 @@ final class FlashskyaiProviderCapability extends CatalogModelCapability
     if (enabledPlugins is Map && enabledPlugins.isNotEmpty) {
       merged['enabledPlugins'] = enabledPlugins;
     }
+    final hooks = existing['hooks'];
+    if (hooks is Map && hooks.isNotEmpty) {
+      merged['hooks'] = hooks;
+    }
     return merged;
   }
 

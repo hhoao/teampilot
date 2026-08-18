@@ -201,6 +201,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     required TeamProfile? team,
     required CliTool defaultCli,
     required List<TeamMemberConfig> members,
+    required String? materializedMemberId,
     required ConfigBundle runtimeBundle,
     required String workingDirectory,
     required List<String> additionalDirectories,
@@ -210,6 +211,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     required List<String> warnings,
   }) async {
     for (final member in members.where((member) => member.isValid)) {
+      if (member.id == materializedMemberId) continue;
       final mixed = team?.teamMode == TeamMode.mixed;
       final memberId = mixed
           ? ClaudeTeamRosterService.safeClaudePathSegment(member.id)
@@ -1311,7 +1313,18 @@ class ConfigProfileService implements ConfigProfileDelegate {
       launchCli.value,
       memberId: team?.teamMode == TeamMode.mixed ? memberId : null,
     );
-    final hookProviders = ResourceProviderSet.empty;
+    final hookProviders = await staging._launchHookProviders(
+      delegate: staging,
+      cli: launchCli,
+      scope: scope,
+      team: team,
+      member: launchMember,
+      busIdle: busIdle,
+      agentStatus: agentStatus,
+      memberToolDir: hookMemberToolDir,
+      hookIds: runtimeBundle.hookIds,
+      simple: team == null,
+    );
     final hookPaths = staging._hookMaterializationPaths(
       cli: launchCli,
       memberToolDir: hookMemberToolDir,
@@ -1397,6 +1410,9 @@ class ConfigProfileService implements ConfigProfileDelegate {
         team: team,
         defaultCli: launchCli,
         members: launchMembers,
+        materializedMemberId: launchMember?.isValid == true
+            ? launchMember!.id
+            : null,
         runtimeBundle: runtimeBundle,
         workingDirectory: workingDirectory,
         additionalDirectories: additionalDirectories,
