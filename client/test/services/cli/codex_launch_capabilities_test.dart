@@ -192,7 +192,7 @@ void main() {
     expect(tool.teamBehavior.supportsNativeTeam, isFalse);
   });
 
-  test('Codex launch does not use a legacy adapter fallback', () {
+  test('Codex launch rejects a tool without launch providers', () {
     final context = CliLaunchContext(
       team: const TeamProfile(id: 'team', name: 'Team', cli: CliTool.codex),
       member: const TeamMemberConfig(id: 'member', name: 'Member'),
@@ -203,7 +203,13 @@ void main() {
         context,
         cliRegistry: _registryWithEmptyCodexTool(),
       ),
-      throwsA(isA<StateError>()),
+      throwsA(
+        isA<CliLaunchCapabilityException>().having(
+          (error) => error.contributionKey,
+          'contribution key',
+          'launch-arg-provider',
+        ),
+      ),
     );
   });
 }

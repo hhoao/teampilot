@@ -135,7 +135,7 @@ void main() {
     },
   );
 
-  test('OpenCode launch does not use a legacy adapter fallback', () {
+  test('OpenCode launch rejects a tool without launch providers', () {
     final context = CliLaunchContext(
       team: const TeamProfile(id: 'team', name: 'Team', cli: CliTool.opencode),
       member: const TeamMemberConfig(id: 'member', name: 'Member'),
@@ -146,7 +146,13 @@ void main() {
         context,
         cliRegistry: _registryWithEmptyOpencodeTool(),
       ),
-      throwsA(isA<StateError>()),
+      throwsA(
+        isA<CliLaunchCapabilityException>().having(
+          (error) => error.contributionKey,
+          'contribution key',
+          'launch-arg-provider',
+        ),
+      ),
     );
   });
 }

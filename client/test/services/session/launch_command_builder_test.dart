@@ -5,6 +5,7 @@ import 'package:teampilot/services/cli/registry/cli_tool_definition.dart';
 import 'package:teampilot/services/cli/registry/launch/cli_launch_arg_contribution.dart';
 import 'package:teampilot/services/cli/registry/launch/cli_launch_arg_provider.dart';
 import 'package:teampilot/services/cli/registry/launch/cli_launch_context.dart';
+import 'package:teampilot/services/cli/registry/launch/cli_launch_capability_error.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/session/launch_command_builder.dart';
 import 'package:teampilot/services/session/shell_launch_spec.dart';
@@ -27,10 +28,12 @@ void main() {
     const team = TeamProfile(id: '1', name: 'agent', cli: CliTool.flashskyai);
 
     expect(
-      LaunchCommandBuilder.buildArguments(
-        team,
-        member,
-        workingDirectory: '/home/hhoa/git/agent',
+      LaunchCommandBuilder.buildArgumentsFromContext(
+        CliLaunchContext(
+          team: team,
+          member: member,
+          workingDirectory: '/home/hhoa/git/agent',
+        ),
       ),
       [
         '--dir',
@@ -56,34 +59,51 @@ void main() {
       );
 
     expect(
-      LaunchCommandBuilder.buildArguments(
-        const TeamProfile(
-          id: 'provider-team',
-          name: 'provider-team',
-          cli: CliTool.flashskyai,
+      LaunchCommandBuilder.buildArgumentsFromContext(
+        const CliLaunchContext(
+          team: TeamProfile(
+            id: 'provider-team',
+            name: 'provider-team',
+            cli: CliTool.flashskyai,
+          ),
+          member: member,
         ),
-        member,
         cliRegistry: registry,
       ),
       ['--provider-only'],
     );
   });
 
-  test('always delegates to the assembler when the tool has no providers', () {
+  test('rejects a tool with no launch argument providers', () {
     final registry = CliToolRegistry()
       ..register(const _FakeLegacyTool(CliTool.codex));
 
     expect(
-      LaunchCommandBuilder.buildArguments(
-        const TeamProfile(
-          id: 'legacy-team',
-          name: 'legacy-team',
-          cli: CliTool.codex,
+      () => LaunchCommandBuilder.buildArgumentsFromContext(
+        const CliLaunchContext(
+          team: TeamProfile(
+            id: 'legacy-team',
+            name: 'legacy-team',
+            cli: CliTool.codex,
+          ),
+          member: member,
         ),
-        member,
         cliRegistry: registry,
       ),
-      isEmpty,
+      throwsA(
+        isA<CliLaunchCapabilityException>()
+            .having((error) => error.cli, 'cli', CliTool.codex)
+            .having(
+              (error) => error.contributionKey,
+              'contribution key',
+              'launch-arg-provider',
+            )
+            .having(
+              (error) => error.reason,
+              'reason',
+              contains('no CLI launch argument providers'),
+            ),
+      ),
     );
   });
 
@@ -137,18 +157,23 @@ void main() {
   test('omits --dir when workingDirectory is empty', () {
     const team = TeamProfile(id: '1', name: 'agent', cli: CliTool.flashskyai);
 
-    expect(LaunchCommandBuilder.buildArguments(team, member), [
-      '--team',
-      'agent',
-      '--member',
-      'member-1',
-      '--provider',
-      'anthropic',
-      '--model',
-      'sonnet',
-      '--agent',
-      'builder',
-    ]);
+    expect(
+      LaunchCommandBuilder.buildArgumentsFromContext(
+        CliLaunchContext(team: team, member: member),
+      ),
+      [
+        '--team',
+        'agent',
+        '--member',
+        'member-1',
+        '--provider',
+        'anthropic',
+        '--model',
+        'sonnet',
+        '--agent',
+        'builder',
+      ],
+    );
   });
 
   test('adds --loop after --member when team.loop is set', () {
@@ -159,20 +184,25 @@ void main() {
       loop: false,
     );
 
-    expect(LaunchCommandBuilder.buildArguments(team, member), [
-      '--team',
-      'agent',
-      '--member',
-      'member-1',
-      '--loop',
-      'false',
-      '--provider',
-      'anthropic',
-      '--model',
-      'sonnet',
-      '--agent',
-      'builder',
-    ]);
+    expect(
+      LaunchCommandBuilder.buildArgumentsFromContext(
+        CliLaunchContext(team: team, member: member),
+      ),
+      [
+        '--team',
+        'agent',
+        '--member',
+        'member-1',
+        '--loop',
+        'false',
+        '--provider',
+        'anthropic',
+        '--model',
+        'sonnet',
+        '--agent',
+        'builder',
+      ],
+    );
   });
 
   test('adds --dangerously-skip-permissions when member requests it', () {
@@ -186,19 +216,24 @@ void main() {
       launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
     );
 
-    expect(LaunchCommandBuilder.buildArguments(team, risky), [
-      '--team',
-      'agent',
-      '--member',
-      'member-1',
-      '--provider',
-      'anthropic',
-      '--model',
-      'sonnet',
-      '--agent',
-      'builder',
-      '--dangerously-skip-permissions',
-    ]);
+    expect(
+      LaunchCommandBuilder.buildArgumentsFromContext(
+        CliLaunchContext(team: team, member: risky),
+      ),
+      [
+        '--team',
+        'agent',
+        '--member',
+        'member-1',
+        '--provider',
+        'anthropic',
+        '--model',
+        'sonnet',
+        '--agent',
+        'builder',
+        '--dangerously-skip-permissions',
+      ],
+    );
   });
 
   test('merges team and member extra arguments', () {
@@ -216,10 +251,12 @@ void main() {
     );
 
     expect(
-      LaunchCommandBuilder.buildArguments(
-        team,
-        reviewer,
-        workingDirectory: '/home/hhoa/git/agent',
+      LaunchCommandBuilder.buildArgumentsFromContext(
+        CliLaunchContext(
+          team: team,
+          member: reviewer,
+          workingDirectory: '/home/hhoa/git/agent',
+        ),
       ),
       [
         '--dir',
@@ -295,10 +332,14 @@ void main() {
     );
 
     expect(
-      LaunchCommandBuilder.buildArguments(nativeClaude, member),
+      LaunchCommandBuilder.buildArgumentsFromContext(
+        CliLaunchContext(team: nativeClaude, member: member),
+      ),
       contains('--team-name'),
     );
-    final mixedArgs = LaunchCommandBuilder.buildArguments(mixedClaude, member);
+    final mixedArgs = LaunchCommandBuilder.buildArgumentsFromContext(
+      CliLaunchContext(team: mixedClaude, member: member),
+    );
     expect(mixedArgs, isNot(contains('--team')));
     expect(mixedArgs, isNot(contains('--team-name')));
     expect(
@@ -472,12 +513,14 @@ void main() {
 
       expect(
         capturedArgs,
-        LaunchCommandBuilder.buildArguments(
-          team,
-          member,
-          workingDirectory: '/work/project',
-          additionalDirectories: const ['/work/shared'],
-          fixedSessionId: 'fixed-id',
+        LaunchCommandBuilder.buildArgumentsFromContext(
+          const CliLaunchContext(
+            team: team,
+            member: member,
+            workingDirectory: '/work/project',
+            additionalDirectories: ['/work/shared'],
+            fixedSessionId: 'fixed-id',
+          ),
         ),
       );
     },

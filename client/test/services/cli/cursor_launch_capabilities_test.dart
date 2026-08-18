@@ -163,7 +163,7 @@ void main() {
     },
   );
 
-  test('Cursor launch does not use a legacy adapter fallback', () {
+  test('Cursor launch rejects a tool without launch providers', () {
     final context = CliLaunchContext(
       team: const TeamProfile(id: 'team', name: 'Team', cli: CliTool.cursor),
       member: const TeamMemberConfig(id: 'member', name: 'Member'),
@@ -174,7 +174,13 @@ void main() {
         context,
         cliRegistry: _registryWithEmptyCursorTool(),
       ),
-      throwsA(isA<StateError>()),
+      throwsA(
+        isA<CliLaunchCapabilityException>().having(
+          (error) => error.contributionKey,
+          'contribution key',
+          'launch-arg-provider',
+        ),
+      ),
     );
   });
 }

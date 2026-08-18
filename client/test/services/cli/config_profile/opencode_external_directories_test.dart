@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/provider.dart';
+import 'package:teampilot/services/cli/registry/launch/cli_launch_context.dart';
 import 'package:teampilot/services/cli/registry/capabilities/provider_capability.dart';
 import 'package:teampilot/services/session/launch_command_builder.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/prompt.dart';
@@ -47,11 +48,13 @@ void main() {
     );
 
     expect(
-      LaunchCommandBuilder.buildArguments(
-        team,
-        member,
-        workingDirectory: '/work',
-        additionalDirectories: ['/repo/a', '/repo/b'],
+      LaunchCommandBuilder.buildArgumentsFromContext(
+        const CliLaunchContext(
+          team: team,
+          member: member,
+          workingDirectory: '/work',
+          additionalDirectories: ['/repo/a', '/repo/b'],
+        ),
       ),
       ['--model', 'anthropic/claude-sonnet-4'],
     );

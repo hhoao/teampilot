@@ -6,7 +6,9 @@ import 'package:path/path.dart' as p;
 import '../cli/preset_resolver.dart';
 import '../../models/team_config.dart';
 import '../cli/registry/launch/cli_launch_arg_assembler.dart';
+import '../cli/registry/launch/cli_launch_arg_provider.dart';
 import '../cli/registry/launch/cli_launch_context.dart' as launch_context;
+import '../cli/registry/launch/cli_launch_capability_error.dart';
 import '../cli/registry/launch/user_extra_args_provider.dart' as launch_args;
 import 'shell_launch_spec.dart';
 import '../cli/registry/cli_tool_registry.dart';
@@ -32,37 +34,6 @@ class LaunchCommandBuilder {
     return r;
   }();
 
-  static List<String> buildArguments(
-    TeamProfile team,
-    TeamMemberConfig member, {
-    String? sessionTeam,
-    String? workingDirectory,
-    List<String> additionalDirectories = const [],
-    String? fixedSessionId,
-    String? resumeSessionId,
-    String? settingsPath,
-    String? appendSystemPromptFile,
-    bool useWslPaths = false,
-    CliToolRegistry? cliRegistry,
-  }) {
-    return buildArgumentsFromContext(
-      launch_context.CliLaunchContext(
-        team: team,
-        member: member,
-        launchSecurityPolicy: member.launchSecurityPolicy,
-        sessionTeam: sessionTeam,
-        workingDirectory: workingDirectory,
-        additionalDirectories: additionalDirectories,
-        fixedSessionId: fixedSessionId,
-        resumeSessionId: resumeSessionId,
-        settingsPath: settingsPath,
-        appendSystemPromptFile: appendSystemPromptFile,
-        useWslPaths: useWslPaths,
-      ),
-      cliRegistry: cliRegistry,
-    );
-  }
-
   static List<String> buildArgumentsFromContext(
     launch_context.CliLaunchContext context, {
     CliToolRegistry? cliRegistry,
@@ -72,6 +43,16 @@ class LaunchCommandBuilder {
     final tool = registry.tryGet(cli);
     if (tool == null) {
       throw StateError('No CliToolDefinition for ${cli.value}');
+    }
+    if (!tool.capabilities.any(
+      (capability) => capability is CliLaunchArgProvider,
+    )) {
+      throw CliLaunchCapabilityException(
+        cli: tool.id,
+        contributionKey: 'launch-arg-provider',
+        reason:
+            'CLI tool ${tool.id.value} has no CLI launch argument providers.',
+      );
     }
     return const CliLaunchArgAssembler().assemble(tool, context);
   }
@@ -112,15 +93,17 @@ class LaunchCommandBuilder {
     return [
       invocation.executable,
       ...invocation.prefixArgs,
-      ...buildArguments(
-        team,
-        member,
-        sessionTeam: sessionTeam,
-        workingDirectory: '',
-        additionalDirectories: additionalDirectories,
-        fixedSessionId: fixedSessionId,
-        resumeSessionId: resumeSessionId,
-        useWslPaths: invocation.usesWsl,
+      ...buildArgumentsFromContext(
+        launch_context.CliLaunchContext(
+          team: team,
+          member: member,
+          launchSecurityPolicy: member.launchSecurityPolicy,
+          sessionTeam: sessionTeam,
+          additionalDirectories: additionalDirectories,
+          fixedSessionId: fixedSessionId,
+          resumeSessionId: resumeSessionId,
+          useWslPaths: invocation.usesWsl,
+        ),
       ),
     ].map(_quoteForPreview).join(' ');
   }
@@ -154,17 +137,20 @@ class LaunchCommandBuilder {
       normalizedEnvironment,
     );
     final env = launchEnvironmentForProcess(normalizedEnvironment);
-    final args = buildArguments(
-      team,
-      member,
-      sessionTeam: sessionTeam,
-      workingDirectory: wd,
-      additionalDirectories: additionalDirectories,
-      fixedSessionId: fixedSessionId,
-      resumeSessionId: resumeSessionId,
-      settingsPath: settingsPath,
-      appendSystemPromptFile: appendSystemPromptFile,
-      useWslPaths: invocation.usesWsl,
+    final args = buildArgumentsFromContext(
+      launch_context.CliLaunchContext(
+        team: team,
+        member: member,
+        launchSecurityPolicy: member.launchSecurityPolicy,
+        sessionTeam: sessionTeam,
+        workingDirectory: wd,
+        additionalDirectories: additionalDirectories,
+        fixedSessionId: fixedSessionId,
+        resumeSessionId: resumeSessionId,
+        settingsPath: settingsPath,
+        appendSystemPromptFile: appendSystemPromptFile,
+        useWslPaths: invocation.usesWsl,
+      ),
     );
     final launchArgs = invocation.withArgs(args, environment: env);
 
