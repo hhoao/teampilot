@@ -3,6 +3,7 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/resource/contribution/resource_assembly_error.dart';
 import 'package:teampilot/services/resource/contribution/resource_assembly_result.dart';
 import 'package:teampilot/services/resource/contribution/resource_origin.dart';
+import 'package:teampilot/services/resource/cli_resource_provisioner.dart';
 
 void main() {
   test('ContributionOrigin compares by all provenance fields', () {
@@ -120,4 +121,23 @@ void main() {
       expect(() => result.diagnostics.add(warning), throwsUnsupportedError);
     },
   );
+
+  test('ResourceMaterializationResult freezes diagnostic collections', () {
+    const diagnostic = ResourceAssemblyDiagnostic(
+      severity: ResourceAssemblyDiagnosticSeverity.warning,
+      resourceKind: ResourceContributionKind.hook,
+      cli: CliTool.cursor,
+      providerId: 'hook-materializer',
+      message: 'optional hook skipped',
+    );
+    final result = ResourceMaterializationResult(
+      kind: ResourceContributionKind.hook,
+      attempted: true,
+      warnings: ['optional hook skipped'],
+      diagnostics: [diagnostic],
+    );
+
+    expect(() => result.warnings.add('late mutation'), throwsUnsupportedError);
+    expect(() => result.diagnostics.add(diagnostic), throwsUnsupportedError);
+  });
 }

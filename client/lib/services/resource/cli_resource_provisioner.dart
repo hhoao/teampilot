@@ -90,13 +90,28 @@ class CliResourceProvisionContext {
 /// Per-kind result retained by the launch staging caller for diagnostics and
 /// observability. A kind is not attempted when its assembled set is empty.
 class ResourceMaterializationResult {
-  const ResourceMaterializationResult({
+  factory ResourceMaterializationResult({
+    required ResourceContributionKind kind,
+    required bool attempted,
+    bool materialized = false,
+    Iterable<String> warnings = const [],
+    Iterable<ResourceAssemblyDiagnostic> diagnostics = const [],
+  }) => ResourceMaterializationResult._(
+    kind: kind,
+    attempted: attempted,
+    materialized: materialized,
+    warnings: warnings,
+    diagnostics: diagnostics,
+  );
+
+  ResourceMaterializationResult._({
     required this.kind,
     required this.attempted,
-    this.materialized = false,
-    this.warnings = const [],
-    this.diagnostics = const [],
-  });
+    required this.materialized,
+    required Iterable<String> warnings,
+    required Iterable<ResourceAssemblyDiagnostic> diagnostics,
+  }) : warnings = List.unmodifiable(warnings),
+       diagnostics = List.unmodifiable(diagnostics);
 
   final ResourceContributionKind kind;
   final bool attempted;
@@ -268,7 +283,7 @@ final class CliResourceProvisioner {
       }
     } else {
       materializations[ResourceContributionKind.skill] =
-          const ResourceMaterializationResult(
+          ResourceMaterializationResult(
             kind: ResourceContributionKind.skill,
             attempted: false,
           );
@@ -329,7 +344,7 @@ final class CliResourceProvisioner {
       }
     } else {
       materializations[ResourceContributionKind.prompt] =
-          const ResourceMaterializationResult(
+          ResourceMaterializationResult(
             kind: ResourceContributionKind.prompt,
             attempted: false,
           );
@@ -358,7 +373,7 @@ final class CliResourceProvisioner {
             outputBasename: context.mcpOutputBasename,
           );
           materializations[ResourceContributionKind.mcp] =
-              const ResourceMaterializationResult(
+              ResourceMaterializationResult(
                 kind: ResourceContributionKind.mcp,
                 attempted: true,
                 materialized: true,
@@ -381,7 +396,7 @@ final class CliResourceProvisioner {
       }
     } else {
       materializations[ResourceContributionKind.mcp] =
-          const ResourceMaterializationResult(
+          ResourceMaterializationResult(
             kind: ResourceContributionKind.mcp,
             attempted: false,
           );
@@ -442,7 +457,7 @@ final class CliResourceProvisioner {
       }
     } else {
       materializations[ResourceContributionKind.hook] =
-          const ResourceMaterializationResult(
+          ResourceMaterializationResult(
             kind: ResourceContributionKind.hook,
             attempted: false,
           );

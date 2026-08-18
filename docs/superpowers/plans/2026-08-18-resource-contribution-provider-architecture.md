@@ -8,6 +8,11 @@
 
 **Tech Stack:** Dart, Flutter, flutter_test, injected Filesystem, RuntimeLayout, CliToolRegistry, LaunchManifest, existing CLI Capability registry.
 
+**Implementation status:** Tasks 1–6 are implemented by the commits from
+`9cdf8ff3d` through `1aa6ec708`. Task 7 is the final registry-contract,
+documentation, and verification closeout; compatibility session-home facades
+must reuse the typed Assemblers and must not introduce a second source merge.
+
 ## Global Constraints
 
 - Provider interfaces do not extend CliCapability; a CLI Capability may implement a Provider interface in addition to its target capability.
@@ -76,7 +81,7 @@
 - Test: `client/test/services/cli/registry/provider_contribution_wiring_test.dart`.
 
 **Interfaces:**
-- `ResourceProviderSet.fromRegistryAndInjected({required CliTool cli, required CliToolRegistry registry, ResourceProviderSet injected = const ResourceProviderSet()})`.
+- `ResourceProviderSet.fromRegistryAndInjected({required CliTool cli, required CliToolRegistry registry, ResourceProviderSet injected = ResourceProviderSet.empty})`.
 - `CliToolRegistry.providersOf<T>(CliTool id)` returns definition capabilities implementing a non-`CliCapability` Provider interface.
 - Provider interfaces expose `String get providerId` and `FutureOr<Iterable<Contribution>> provide(Context context)`.
 
@@ -184,7 +189,7 @@ Collect Providers in order. If using `Future.wait`, restore indexed result order
 
 - [ ] **Step 4: Convert each CLI prompt implementation to Provider plus materializer**
 
-Move each current `virtualize` body into `provide`. Keep CLI-specific file paths, frontmatter, environment keys, and formatting inside `materialize`. Existing tests comparing virtualized content to materialized content must compare Provider output to the materialized document.
+Move each former `virtualize` implementation body into `provide`. Keep CLI-specific file paths, frontmatter, environment keys, and formatting inside `materialize`. Existing tests comparing virtualized content to materialized content must compare Provider output to the materialized document.
 
 - [ ] **Step 5: Update PromptHubService and run focused tests**
 
@@ -357,7 +362,7 @@ Wrap `HookLibraryResolver), `HookSeatContextCompleter`, extension settings hooks
 
 - [ ] **Step 4: Route all CLI Hook rendering through assembled entries**
 
-Remove duplicated source assembly from Claude, FlashskyAI, Codex, Cursor, and OpenCode profile paths. Pass assembled entries to the existing target writer and keep glue script writing in `ManagedHookProvisioner`.
+Remove duplicated source assembly from the staged Claude, FlashskyAI, Codex, Cursor, and OpenCode paths. Pass assembled entries to the existing target writer and keep glue script writing in `ManagedHookProvisioner`. Non-staged session-home compatibility bridges may remain only when they reuse the same typed Assembler and are guarded by staging/materialization markers.
 
 - [ ] **Step 5: Run Hook tests and commit**
 
@@ -385,6 +390,7 @@ git commit -m "refactor: assemble hooks through contribution providers"
 **Files:**
 - Create `client/lib/services/resource/cli_resource_provisioner.dart`.
 - Create `client/test/services/resource/cli_resource_provisioner_test.dart`.
+- Create `client/test/services/cli/registry/resource_capability_wiring_test.dart` — real built-in registry target/provider contract.
 - Modify `client/lib/services/provider/config_profile_service.dart`.
 - Modify `client/lib/services/cli/registry/config_profile/config_profile_context.dart` to replace raw resource lists with `ResourceProviderSet`.
 - Modify `client/lib/services/launch/session_connect_orchestrator.dart` only if launch results need structured diagnostics.
@@ -409,7 +415,7 @@ Implement phases in this order: resolve context; prepare source catalogs/plugin 
 
 - [ ] **Step 3: Replace direct resource stages in ConfigProfileService**
 
-Route `applySimpleSessionFilesystem`, `stageSimpleSessionLaunch`, and `stageTeamLaunch` through the coordinator. Preserve workspace inheritance, marketplace links, plugin pool preparation, extension warnings, agent-status endpoints, team-bus idle endpoints, project MCP cleanup, and `SessionHomeContribution` behavior. Remove only duplicate prompt/skill/MCP/Hook collection.
+Route `applySimpleSessionFilesystem`, `stageSimpleSessionLaunch`, and `stageTeamLaunch` through the coordinator. Preserve workspace inheritance, marketplace links, plugin pool preparation, extension warnings, agent-status endpoints, team-bus idle endpoints, project MCP cleanup, and `SessionHomeContribution` behavior. Remove duplicate prompt/skill/MCP/Hook collection from staged paths; retain only guarded compatibility bridges for non-staged callers.
 
 - [ ] **Step 4: Replace raw Hook/resource fields in launch context**
 
@@ -444,7 +450,6 @@ git commit -m "refactor: centralize CLI resource provisioning"
 - Modify `client/test/services/cli/registry/all_cli_prompt_provision_capability_test.dart`.
 - Create `client/test/services/cli/registry/resource_capability_wiring_test.dart`.
 - Modify `docs/cli-architecture.md` sections for Hub contracts, resource provisioning, and capability registration.
-- Modify `docs/cli-formats/hooks.md` where the source-provider boundary changes.
 - Modify `client/lib/services/cli/registry/built_in_cli_tools.dart` only if target Capability assertions require it.
 
 **Interfaces:**
@@ -452,15 +457,15 @@ git commit -m "refactor: centralize CLI resource provisioning"
 - Provider wiring tests inspect CLI-owned Providers and dynamic injection.
 - Documentation distinguishes `ProviderCapability` (model/provider credentials) from `*ContributionProvider` (runtime resource source).
 
-- [ ] **Step 1: Add registry contract tests**
+- [x] **Step 1: Add registry contract tests**
 
 For every launchable CLI, assert target Capability presence or an explicit unsupported declaration. Assert Provider ids are unique per resource kind and registration order is stable. Assert a Capability may implement both target and Provider interfaces without requiring dynamic Providers to enter the registry.
 
 Run: `cd client && flutter test test/services/cli/registry/resource_capability_wiring_test.dart test/services/cli/registry/all_cli_prompt_provision_capability_test.dart`
 
-Expected: FAIL until all migrated definitions expose the new target/Provider contract.
+Expected: PASS once the built-in registry exposes the migrated target/provider contract.
 
-- [ ] **Step 2: Update architecture documentation**
+- [x] **Step 2: Update architecture documentation**
 
 Document the source-provider → assembler → materializer pipeline, four explicit contracts, precedence/failure rules, and per-member-only provisioning. Remove statements describing `PromptCapability.virtualize` as the source contract.
 
@@ -488,10 +493,10 @@ cd client && flutter test --exclude-tags integration
 
 Expected: analyzer exits 0 and the non-integration test suite exits 0. Any pre-existing unrelated failure must be recorded with exact test name and output before claiming completion.
 
-- [ ] **Step 5: Commit documentation and contract tests**
+- [ ] **Step 5: Commit documentation, contract tests, and in-scope contract fixes**
 
 ```bash
-git add client/test/services/cli/registry docs/cli-architecture.md docs/cli-formats/hooks.md client/lib/services/cli/registry/built_in_cli_tools.dart
+git add client/lib/services/resource/cli_resource_provisioner.dart client/test/services/resource/contribution/resource_origin_test.dart client/test/services/cli/registry/resource_capability_wiring_test.dart docs/cli-architecture.md docs/superpowers/specs/2026-08-18-resource-contribution-provider-architecture-design.md docs/superpowers/plans/2026-08-18-resource-contribution-provider-architecture.md client/lib/services/cli/registry/built_in_cli_tools.dart
 git commit -m "test: verify resource capability provider contracts"
 ```
 
