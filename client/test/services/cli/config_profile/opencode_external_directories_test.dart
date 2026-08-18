@@ -4,7 +4,9 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/provider.dart';
+import 'package:teampilot/services/cli/registry/launch/cli_launch_context.dart';
 import 'package:teampilot/services/cli/registry/capabilities/provider_capability.dart';
+import 'package:teampilot/services/session/launch_command_builder.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/prompt.dart';
 import 'package:teampilot/services/cli/registry/capabilities/prompt_capability.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
@@ -19,18 +21,56 @@ void main() {
     sessionHomeContextFromLaunch(ctx, CliTool.opencode),
   );
 
-  test('mergeOpencodeExternalDirectories adds allow patterns per directory', () {
-    final merged = mergeOpencodeExternalDirectories(
+  test(
+    'mergeOpencodeExternalDirectories adds allow patterns per directory',
+    () {
+      final merged = mergeOpencodeExternalDirectories(
+        <String, Object?>{},
+        <String>['/repo/a', '/repo/b'],
+      );
+      final permission = merged['permission'] as Map;
+      final external = (permission['external_directory'] as Map)
+          .cast<String, Object?>();
+      expect(external, <String, Object?>{
+        '/repo/a/**': 'allow',
+        '/repo/b/**': 'allow',
+      });
+    },
+  );
+
+  test('mergeOpencodeSecurityPolicy materializes full access permissions', () {
+    final merged = mergeOpencodeSecurityPolicy(
       <String, Object?>{},
-      <String>['/repo/a', '/repo/b'],
+      LaunchSecurityPolicy.fullAccess,
     );
-    final permission = merged['permission'] as Map;
-    final external = (permission['external_directory'] as Map)
-        .cast<String, Object?>();
-    expect(external, <String, Object?>{
-      '/repo/a/**': 'allow',
-      '/repo/b/**': 'allow',
-    });
+    final permission = (merged['permission'] as Map).cast<String, Object?>();
+    expect(permission['edit'], 'allow');
+    expect(permission['bash'], 'allow');
+    expect(permission['external_directory'], <String, Object?>{'*': 'allow'});
+  });
+
+  test('external directories remain config-only and are not argv flags', () {
+    const team = TeamProfile(id: 'team', name: 'Team', cli: CliTool.opencode);
+    const member = TeamMemberConfig(
+      id: 'member',
+      name: 'Member',
+      provider: 'anthropic',
+      model: 'claude-sonnet-4',
+    );
+
+    expect(
+      LaunchCommandBuilder.buildArgumentsFromContext(
+        const CliLaunchContext(
+          team: team,
+          member: member,
+          nativeAgentTeam: false,
+          isSimpleSynthetic: true,
+          workingDirectory: '/work',
+          additionalDirectories: ['/repo/a', '/repo/b'],
+        ),
+      ),
+      ['--model', 'anthropic/claude-sonnet-4'],
+    );
   });
 
   test(
@@ -40,9 +80,7 @@ void main() {
         <String, Object?>{
           'permission': <String, Object?>{
             'edit': 'deny',
-            'external_directory': <String, Object?>{
-              '/existing/**': 'allow',
-            },
+            'external_directory': <String, Object?>{'/existing/**': 'allow'},
           },
         },
         <String>['/repo/a'],
@@ -51,21 +89,24 @@ void main() {
       expect(permission['edit'], 'deny');
       final external = (permission['external_directory'] as Map)
           .cast<String, Object?>();
-      expect(external.keys, containsAll(<String>['/existing/**', '/repo/a/**']));
+      expect(
+        external.keys,
+        containsAll(<String>['/existing/**', '/repo/a/**']),
+      );
       expect(external['/existing/**'], 'allow');
       expect(external['/repo/a/**'], 'allow');
     },
   );
 
   test('mergeOpencodeExternalDirectories is idempotent and skips empties', () {
-    final once = mergeOpencodeExternalDirectories(
-      <String, Object?>{},
-      <String>['/repo/a', '  '],
-    );
-    final twice = mergeOpencodeExternalDirectories(
-      once,
-      <String>['/repo/a', '  '],
-    );
+    final once = mergeOpencodeExternalDirectories(<String, Object?>{}, <String>[
+      '/repo/a',
+      '  ',
+    ]);
+    final twice = mergeOpencodeExternalDirectories(once, <String>[
+      '/repo/a',
+      '  ',
+    ]);
     expect(twice, once);
   });
 
@@ -87,217 +128,209 @@ void main() {
     expect(specs.first.content, contains('You are the reviewer.'));
   });
 
-  test(
-    'OpencodePromptCapability virtualize includes workspace directories '
-    'section and mixed addenda matching materialize',
-    () async {
-      const member = TeamMemberConfig(
-        id: 'm1',
-        name: 'Member',
-        model: 'test',
-        responsibilities: 'You are the reviewer.',
-      );
-      final specs = const OpencodePromptCapability().virtualize(
-        const PromptVirtualizeContext(
-          member: member,
-          mixed: true,
-          additionalDirectories: ['/abs/missing/repo'],
-        ),
-      );
-      expect(specs.single.content, contains('## Workspace directories'));
-      expect(specs.single.content, contains('- /abs/missing/repo'));
-      expect(specs.single.content, contains('Multi-agent teammate'));
-    },
-  );
+  test('OpencodePromptCapability virtualize includes workspace directories '
+      'section and mixed addenda matching materialize', () async {
+    const member = TeamMemberConfig(
+      id: 'm1',
+      name: 'Member',
+      model: 'test',
+      responsibilities: 'You are the reviewer.',
+    );
+    final specs = const OpencodePromptCapability().virtualize(
+      const PromptVirtualizeContext(
+        member: member,
+        mixed: true,
+        additionalDirectories: ['/abs/missing/repo'],
+      ),
+    );
+    expect(specs.single.content, contains('## Workspace directories'));
+    expect(specs.single.content, contains('- /abs/missing/repo'));
+    expect(specs.single.content, contains('Multi-agent teammate'));
+  });
 
-  test(
-    'OpencodePromptCapability writes role + dirs into AGENTS.md',
-    () async {
-      final base = await Directory.systemTemp.createTemp('opencode_prompt_');
-      addTearDown(() async {
-        if (await base.exists()) await base.delete(recursive: true);
-      });
-      final fs = LocalFilesystem();
-      final service = ConfigProfileService(
-        basePath: base.path,
-        fs: fs,
-        layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
-      );
-      const member = TeamMemberConfig(
-        id: 'm1',
-        name: 'Member',
-        model: 'test',
-        responsibilities: 'You are the reviewer.',
-      );
-      final scope = resolveLaunchProfileScope(
-        workspaceId: 'workspace-1',
-        teamId: 'team-a',
-        appSessionId: 'session-1',
-        cliTeamName: 'session-1',
-        memberId: 'm1',
-      );
+  test('OpencodePromptCapability writes role + dirs into AGENTS.md', () async {
+    final base = await Directory.systemTemp.createTemp('opencode_prompt_');
+    addTearDown(() async {
+      if (await base.exists()) await base.delete(recursive: true);
+    });
+    final fs = LocalFilesystem();
+    final service = ConfigProfileService(
+      basePath: base.path,
+      fs: fs,
+      layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
+    );
+    const member = TeamMemberConfig(
+      id: 'm1',
+      name: 'Member',
+      model: 'test',
+      responsibilities: 'You are the reviewer.',
+    );
+    final scope = resolveLaunchProfileScope(
+      workspaceId: 'workspace-1',
+      teamId: 'team-a',
+      appSessionId: 'session-1',
+      cliTeamName: 'session-1',
+      memberId: 'm1',
+    );
 
-      final contribution =
-          await const OpencodePromptCapability().materialize(
-            PromptMaterializeContext(
-              paths: service,
-              scope: scope,
-              member: member,
-              additionalDirectories: const ['/abs/missing/repo'],
-            ),
-          );
+    final contribution = await const OpencodePromptCapability().materialize(
+      PromptMaterializeContext(
+        paths: service,
+        scope: scope,
+        member: member,
+        additionalDirectories: const ['/abs/missing/repo'],
+      ),
+    );
 
-      expect(contribution.written, isTrue);
-      expect(contribution.environment, isEmpty);
-      final opencodeDir = service.sessionToolDir(
-        scope.workspaceId,
-        scope.sessionId,
-        'opencode',
-        memberId: scope.memberId,
-      );
-      final agents = await fs.readString(
-        '$opencodeDir/${OpencodePromptCapability.agentsFileName}',
-      );
-      expect(agents, isNotNull);
-      expect(agents, contains('You are the reviewer.'));
-      expect(agents, contains('## Workspace directories'));
-      expect(agents, contains('- /abs/missing/repo'));
-    },
-  );
+    expect(contribution.written, isTrue);
+    expect(contribution.environment, isEmpty);
+    final opencodeDir = service.sessionToolDir(
+      scope.workspaceId,
+      scope.sessionId,
+      'opencode',
+      memberId: scope.memberId,
+    );
+    final agents = await fs.readString(
+      '$opencodeDir/${OpencodePromptCapability.agentsFileName}',
+    );
+    expect(agents, isNotNull);
+    expect(agents, contains('You are the reviewer.'));
+    expect(agents, contains('## Workspace directories'));
+    expect(agents, contains('- /abs/missing/repo'));
+  });
 
   test('OpencodePromptCapability skips without scope', () async {
-    final contribution =
-        await const OpencodePromptCapability().materialize(
-          const PromptMaterializeContext(),
-        );
+    final contribution = await const OpencodePromptCapability().materialize(
+      const PromptMaterializeContext(),
+    );
     expect(contribution.written, isFalse);
   });
 
-  test(
-    'OpencodePromptCapability writes dirs-only AGENTS.md for '
-    'invalid member',
-    () async {
-      final base = await Directory.systemTemp.createTemp('opencode_prompt_');
-      addTearDown(() async {
-        if (await base.exists()) await base.delete(recursive: true);
-      });
-      final fs = LocalFilesystem();
-      final service = ConfigProfileService(
-        basePath: base.path,
-        fs: fs,
-        layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
-      );
-      const member = TeamMemberConfig(id: 'x', name: '');
-      final scope = resolveLaunchProfileScope(
+  test('OpencodePromptCapability writes dirs-only AGENTS.md for '
+      'invalid member', () async {
+    final base = await Directory.systemTemp.createTemp('opencode_prompt_');
+    addTearDown(() async {
+      if (await base.exists()) await base.delete(recursive: true);
+    });
+    final fs = LocalFilesystem();
+    final service = ConfigProfileService(
+      basePath: base.path,
+      fs: fs,
+      layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
+    );
+    const member = TeamMemberConfig(id: 'x', name: '');
+    final scope = resolveLaunchProfileScope(
+      workspaceId: 'workspace-1',
+      teamId: 'team-a',
+      appSessionId: 'session-1',
+      cliTeamName: 'session-1',
+      memberId: 'x',
+    );
+
+    final contribution = await const OpencodePromptCapability().materialize(
+      PromptMaterializeContext(
+        paths: service,
+        scope: scope,
+        member: member,
+        additionalDirectories: const ['/abs/missing/repo'],
+      ),
+    );
+
+    expect(contribution.written, isTrue);
+    final opencodeDir = service.sessionToolDir(
+      scope.workspaceId,
+      scope.sessionId,
+      'opencode',
+      memberId: scope.memberId,
+    );
+    final agents = await fs.readString(
+      '$opencodeDir/${OpencodePromptCapability.agentsFileName}',
+    );
+    expect(agents, isNotNull);
+    expect(agents, contains('## Workspace directories'));
+    expect(agents, contains('- /abs/missing/repo'));
+  });
+
+  test('contributeLaunch writes external_directory permission and AGENTS.md '
+      'section for additional directories', () async {
+    final base = await Directory.systemTemp.createTemp('opencode_dirs_');
+    addTearDown(() async {
+      if (await base.exists()) await base.delete(recursive: true);
+    });
+    final sibling = Directory('${base.path}/sibling-repo')..createSync();
+
+    final fs = LocalFilesystem();
+    final service = ConfigProfileService(
+      basePath: base.path,
+      fs: fs,
+      layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
+    );
+
+    const member = TeamMemberConfig(
+      id: 'm1',
+      name: 'Member',
+      model: 'test',
+      launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
+    );
+    const team = TeamProfile(
+      id: 'team-a',
+      name: 'agent',
+      cli: CliTool.opencode,
+      teamMode: TeamMode.native,
+      members: [member],
+    );
+    final scope = resolveLaunchProfileScope(
+      workspaceId: 'workspace-1',
+      teamId: 'team-a',
+      appSessionId: 'session-1',
+      cliTeamName: 'session-1',
+      memberId: 'm1',
+    );
+
+    await contribute(
+      const OpencodeProviderCapability(),
+      ConfigProfileLaunchContext(
         workspaceId: 'workspace-1',
         teamId: 'team-a',
-        appSessionId: 'session-1',
-        cliTeamName: 'session-1',
-        memberId: 'x',
-      );
+        sessionId: scope.sessionId,
+        scope: scope,
+        team: team,
+        member: member,
+        members: const [member],
+        additionalDirectories: const ['/abs/missing/repo', ''],
+        paths: service,
+        catalog: service,
+      ),
+    );
 
-      final contribution =
-          await const OpencodePromptCapability().materialize(
-            PromptMaterializeContext(
-              paths: service,
-              scope: scope,
-              member: member,
-              additionalDirectories: const ['/abs/missing/repo'],
-            ),
-          );
+    final opencodeDir = service.sessionToolDir(
+      scope.workspaceId,
+      scope.sessionId,
+      'opencode',
+      memberId: scope.memberId,
+    );
 
-      expect(contribution.written, isTrue);
-      final opencodeDir = service.sessionToolDir(
-        scope.workspaceId,
-        scope.sessionId,
-        'opencode',
-        memberId: scope.memberId,
-      );
-      final agents = await fs.readString(
-        '$opencodeDir/${OpencodePromptCapability.agentsFileName}',
-      );
-      expect(agents, isNotNull);
-      expect(agents, contains('## Workspace directories'));
-      expect(agents, contains('- /abs/missing/repo'));
-    },
-  );
+    final agents = await fs.readString(
+      '$opencodeDir/${OpencodeProviderCapability.agentsFileName}',
+    );
+    expect(agents, isNotNull);
+    expect(agents, contains('## Workspace directories'));
+    expect(agents, contains('- /abs/missing/repo'));
+    expect(agents, isNot(contains('-  ')));
 
-  test(
-    'contributeLaunch writes external_directory permission and AGENTS.md '
-    'section for additional directories',
-    () async {
-      final base = await Directory.systemTemp.createTemp('opencode_dirs_');
-      addTearDown(() async {
-        if (await base.exists()) await base.delete(recursive: true);
-      });
-      final sibling = Directory(
-        '${base.path}/sibling-repo',
-      )..createSync();
-
-      final fs = LocalFilesystem();
-      final service = ConfigProfileService(
-        basePath: base.path,
-        fs: fs,
-        layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
-      );
-
-      const member = TeamMemberConfig(id: 'm1', name: 'Member', model: 'test');
-      const team = TeamProfile(
-        id: 'team-a',
-        name: 'agent',
-        cli: CliTool.opencode,
-        teamMode: TeamMode.native,
-        members: [member],
-      );
-      final scope = resolveLaunchProfileScope(
-        workspaceId: 'workspace-1',
-        teamId: 'team-a',
-        appSessionId: 'session-1',
-        cliTeamName: 'session-1',
-        memberId: 'm1',
-      );
-
-      await contribute(const OpencodeProviderCapability(),
-        ConfigProfileLaunchContext(
-          workspaceId: 'workspace-1',
-          teamId: 'team-a',
-          sessionId: scope.sessionId,
-          scope: scope,
-          team: team,
-          member: member,
-          members: const [member],
-          additionalDirectories: const ['/abs/missing/repo', ''],
-          paths: service,
-          catalog: service,
-        ),
-      );
-
-      final opencodeDir = service.sessionToolDir(
-        scope.workspaceId,
-        scope.sessionId,
-        'opencode',
-        memberId: scope.memberId,
-      );
-
-      final agents = await fs.readString(
-        '$opencodeDir/${OpencodeProviderCapability.agentsFileName}',
-      );
-      expect(agents, isNotNull);
-      expect(agents, contains('## Workspace directories'));
-      expect(agents, contains('- /abs/missing/repo'));
-      expect(agents, isNot(contains('-  ')));
-
-      final raw = await fs.readString(
-        '$opencodeDir/${OpencodeProviderCapability.opencodeConfigFileName}',
-      );
-      final config = jsonDecode(raw!) as Map<String, dynamic>;
-      final permission = config['permission'] as Map;
-      final external = (permission['external_directory'] as Map)
-          .cast<String, Object?>();
-      expect(external, <String, Object?>{
-        '/abs/missing/repo/**': 'allow',
-      });
-      expect(sibling.existsSync(), isTrue);
-    },
-  );
+    final raw = await fs.readString(
+      '$opencodeDir/${OpencodeProviderCapability.opencodeConfigFileName}',
+    );
+    final config = jsonDecode(raw!) as Map<String, dynamic>;
+    final permission = config['permission'] as Map;
+    expect(permission['edit'], 'allow');
+    expect(permission['bash'], 'allow');
+    final external = (permission['external_directory'] as Map)
+        .cast<String, Object?>();
+    expect(external, <String, Object?>{
+      '*': 'allow',
+      '/abs/missing/repo/**': 'allow',
+    });
+    expect(sibling.existsSync(), isTrue);
+  });
 }

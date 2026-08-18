@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import '../../../../models/team_config.dart';
 import '../../../../utils/logging/logger.dart';
-import '../../cli_tool_adapter.dart';
 import '../provider/cursor_auth_artifacts.dart';
 import '../../../io/filesystem.dart';
 import '../provider/cursor_cli_config_policy.dart';
@@ -21,7 +20,6 @@ import '../../registry/capabilities/cli_session_capability.dart';
 import '../../session_lifecycle/cli_session_manifest.dart';
 import '../../session_lifecycle/cli_session_manifest_store.dart';
 import 'cli_config_merger.dart';
-import 'launch_args.dart';
 import 'session_lifecycle_paths.dart';
 
 typedef CursorSessionAuthSync =
@@ -34,8 +32,7 @@ typedef CursorSessionProviderResolver =
     Future<String?> Function(CliSessionInitContext ctx);
 
 /// Cursor mixed-session lifecycle: warm tier, manifest phases, connect gate,
-/// fake-HOME passthrough after manifest flush, launch argv, and CONFIG_DIR
-/// layout.
+/// fake-HOME passthrough after manifest flush and CONFIG_DIR layout.
 final class CursorSessionLifecycleCapability implements CliSessionCapability {
   const CursorSessionLifecycleCapability({
     CliSessionManifestStore? manifestStore,
@@ -54,10 +51,6 @@ final class CursorSessionLifecycleCapability implements CliSessionCapability {
   final int Function()? _clock;
 
   static const progressDetail = 'cursor-home-passthrough';
-
-  @override
-  List<String> buildArguments(CliLaunchContext context) =>
-      const CursorCliToolAdapter().buildArguments(context);
 
   @override
   String sessionConfigDir(
@@ -97,10 +90,7 @@ final class CursorSessionLifecycleCapability implements CliSessionCapability {
         '[session-launch] cursor home passthrough via ssh begin '
         'realHome=$realHome',
       );
-      await runner.runScript(
-        script,
-        operation: 'Cursor home passthrough',
-      );
+      await runner.runScript(script, operation: 'Cursor home passthrough');
       appLogger.d(
         '[session-launch] cursor home passthrough via ssh done '
         'ms=${DateTime.now().difference(started).inMilliseconds}',
@@ -111,10 +101,9 @@ final class CursorSessionLifecycleCapability implements CliSessionCapability {
     appLogger.d(
       '[session-launch] cursor home passthrough begin realHome=$realHome',
     );
-    await CursorMemberHomePassthrough(fs: ctx.workFs).mirror(
-      realHomeRoot: realHome,
-      memberHomeRoot: memberHome,
-    );
+    await CursorMemberHomePassthrough(
+      fs: ctx.workFs,
+    ).mirror(realHomeRoot: realHome, memberHomeRoot: memberHome);
     appLogger.d(
       '[session-launch] cursor home passthrough done '
       'ms=${DateTime.now().difference(started).inMilliseconds}',
@@ -210,7 +199,9 @@ final class CursorSessionLifecycleCapability implements CliSessionCapability {
           workspaceId: ctx.workspaceId,
           absolutePath: paths.sharedRoot(),
         );
-        final warmPaths = CursorWorkspaceWarmTier.manifestPaths(sharedRootRelative);
+        final warmPaths = CursorWorkspaceWarmTier.manifestPaths(
+          sharedRootRelative,
+        );
         final shared = CliSessionManifestShared(
           root: sharedRootRelative,
           projectsDir: _workspaceRelativePath(
@@ -345,7 +336,13 @@ final class CursorSessionLifecycleCapability implements CliSessionCapability {
 
     manifest = await _runAuthPhase(ctx, paths, manifest, memberHome);
     manifest = await _runConfigPhase(ctx, paths, homeLayout, manifest);
-    manifest = await _runOverlayPhase(ctx, paths, homeLayout, manifest, memberHome);
+    manifest = await _runOverlayPhase(
+      ctx,
+      paths,
+      homeLayout,
+      manifest,
+      memberHome,
+    );
 
     if (manifest.phase != CliSessionPhase.degraded) {
       manifest = await _writeManifest(
@@ -388,7 +385,9 @@ final class CursorSessionLifecycleCapability implements CliSessionCapability {
     );
     if (chatId == null) return;
 
-    final members = Map<String, CliSessionManifestMember>.from(manifest.members);
+    final members = Map<String, CliSessionManifestMember>.from(
+      manifest.members,
+    );
     final existing = members[memberId];
     if (existing == null) return;
 
@@ -397,10 +396,7 @@ final class CursorSessionLifecycleCapability implements CliSessionCapability {
       chatId: chatId,
       resumeCapturedAtMs: _now(),
     );
-    await _writeManifest(
-      ctx.paths,
-      manifest.copyWith(members: members),
-    );
+    await _writeManifest(ctx.paths, manifest.copyWith(members: members));
   }
 
   @override
@@ -412,7 +408,9 @@ final class CursorSessionLifecycleCapability implements CliSessionCapability {
   CliSessionManifest? _peekManifest(CliSessionGateContext ctx) {
     final teamId = _teamIdOrNull(ctx.team);
     if (teamId == null) return null;
-    final store = ctx.paths != null ? _store(ctx.paths!) : _manifestStoreOverride;
+    final store = ctx.paths != null
+        ? _store(ctx.paths!)
+        : _manifestStoreOverride;
     return store?.peek(
       workspaceId: ctx.workspaceId,
       teamId: teamId,
@@ -423,7 +421,9 @@ final class CursorSessionLifecycleCapability implements CliSessionCapability {
   @override
   CliSessionGateDecision gateConnect(CliSessionGateContext ctx) {
     final teamId = _teamIdOrNull(ctx.team);
-    final store = ctx.paths != null ? _store(ctx.paths!) : _manifestStoreOverride;
+    final store = ctx.paths != null
+        ? _store(ctx.paths!)
+        : _manifestStoreOverride;
     final manifest = teamId == null
         ? null
         : store?.peek(
@@ -581,7 +581,10 @@ final class CursorSessionLifecycleCapability implements CliSessionCapability {
 
     return _writeManifest(
       ctx.paths,
-      manifest.copyWith(phase: CliSessionPhase.config, phaseUpdatedAtMs: _now()),
+      manifest.copyWith(
+        phase: CliSessionPhase.config,
+        phaseUpdatedAtMs: _now(),
+      ),
     );
   }
 
@@ -607,7 +610,10 @@ final class CursorSessionLifecycleCapability implements CliSessionCapability {
     final team = ctx.team;
     final member = _memberFor(ctx);
     if (team != null && member != null && member.isValid) {
-      final basePath = _absoluteWorkspacePath(ctx, manifest.shared.cliConfigBase);
+      final basePath = _absoluteWorkspacePath(
+        ctx,
+        manifest.shared.cliConfigBase,
+      );
       final baseJson = await ctx.paths.fs.readString(basePath);
       final mcpBasePath = _absoluteWorkspacePath(ctx, manifest.shared.mcpBase);
       final credentials = CursorProviderCredentialsService(
@@ -634,7 +640,9 @@ final class CursorSessionLifecycleCapability implements CliSessionCapability {
       workingDirectory: ctx.workingDirectory,
     );
 
-    final members = Map<String, CliSessionManifestMember>.from(manifest.members);
+    final members = Map<String, CliSessionManifestMember>.from(
+      manifest.members,
+    );
     final sessionOverlays =
         Map<String, Map<String, CliSessionManifestSessionOverlay>>.from(
           manifest.sessionOverlays,
@@ -777,7 +785,10 @@ final class CursorSessionLifecycleCapability implements CliSessionCapability {
     }
   }
 
-  String _absoluteWorkspacePath(CliSessionInitContext ctx, String relativePath) {
+  String _absoluteWorkspacePath(
+    CliSessionInitContext ctx,
+    String relativePath,
+  ) {
     final workspaceDir = ctx.paths.layout.workspace.workspaceDir(
       ctx.workspaceId,
     );
@@ -858,9 +869,8 @@ final class CursorSessionLifecycleCapability implements CliSessionCapability {
     final home = memberHome.trim();
     final workDir = workingDirectory.trim();
     if (home.isEmpty || workDir.isEmpty) return;
-    await CursorWorkspaceTrustProvisioner(fs: fs).provisionLaunchWorkspaces(
-      homeRoot: home,
-      workingDirectory: workDir,
-    );
+    await CursorWorkspaceTrustProvisioner(
+      fs: fs,
+    ).provisionLaunchWorkspaces(homeRoot: home, workingDirectory: workDir);
   }
 }

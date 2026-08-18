@@ -13,6 +13,7 @@ import '../../../l10n/l10n_extensions.dart';
 import '../../../models/app_provider_config.dart';
 import '../../../models/cli_preset.dart';
 import '../../../models/team_config.dart';
+import '../../../models/launch_security_policy.dart';
 import '../../../models/workspace.dart';
 import '../../../models/workspace_topology.dart';
 import '../../../repositories/session_repository.dart';
@@ -213,7 +214,7 @@ class _LandingTeamSettingsDialogState
     );
     if (draftMember == null) return cubitMember;
     return cubitMember.copyWith(
-      dangerouslySkipPermissions: draftMember.dangerouslySkipPermissions,
+      launchSecurityPolicy: draftMember.launchSecurityPolicy,
     );
   }
 
@@ -243,6 +244,18 @@ class _LandingTeamSettingsDialogState
   void _updateMember(TeamMemberConfig updated) {
     setState(() {
       _teamDraft = _teamDraft.copyWith(
+        roster: [
+          for (final slot in _teamDraft.roster)
+            if (slot.id == updated.id)
+              slot.copyWith(
+                overrides: slot.overrides.copyWith(
+                  launchSecurityPolicy: updated.launchSecurityPolicy,
+                  updateLaunchSecurityPolicy: true,
+                ),
+              )
+            else
+              slot,
+        ],
         members: [
           for (final member in _teamDraft.members)
             if (member.id == updated.id) updated else member,
@@ -261,15 +274,16 @@ class _LandingTeamSettingsDialogState
     if (!_canSave) return;
     setState(() => _saving = true);
     try {
-      final ok = await TeamSettingsCommitService(
-        launchProfileCubit: context.read<LaunchProfileCubit>(),
-        sessionRepository: context.read<SessionRepository>(),
-        chatCubit: context.read<ChatCubit>(),
-      ).commit(
-        workspaceId: _workspace.workspaceId,
-        teamId: widget.team.id,
-        prepared: _preparedSave,
-      );
+      final ok =
+          await TeamSettingsCommitService(
+            launchProfileCubit: context.read<LaunchProfileCubit>(),
+            sessionRepository: context.read<SessionRepository>(),
+            chatCubit: context.read<ChatCubit>(),
+          ).commit(
+            workspaceId: _workspace.workspaceId,
+            teamId: widget.team.id,
+            prepared: _preparedSave,
+          );
       if (ok && mounted) {
         Navigator.of(context).pop(true);
       }
@@ -479,10 +493,11 @@ class _TeamPane extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final catalogCli = catalogCliForTeam(context, team.cli);
-    final showDelegateRow = catalogCli != null &&
-        (CliToolRegistryScope.of(context)
-                .capability<ProviderCapability>(catalogCli)
-                ?.supportsDelegate ??
+    final showDelegateRow =
+        catalogCli != null &&
+        (CliToolRegistryScope.of(
+              context,
+            ).capability<ProviderCapability>(catalogCli)?.supportsDelegate ??
             false);
 
     return SingleChildScrollView(
@@ -841,7 +856,7 @@ class _MemberRow extends StatelessWidget {
                                 displayName,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: styles.lgColored(cs.onSurface,),
+                                style: styles.lgColored(cs.onSurface),
                               ),
                             ),
                             if (TeamMemberNaming.isTeamLead(member)) ...[
@@ -877,9 +892,16 @@ class _MemberRow extends StatelessWidget {
                 title: l10n.memberDangerouslySkipPermissions,
                 subtitle: l10n.memberDangerouslySkipPermissionsHint,
                 trailing: Switch(
-                  value: member.dangerouslySkipPermissions,
+                  value: member.launchSecurityPolicy.requiresDangerousExecution,
                   onChanged: (value) => onMemberUpdated(
-                    member.copyWith(dangerouslySkipPermissions: value),
+                    member.copyWith(
+                      launchSecurityPolicy: value
+                          ? LaunchSecurityPolicy.fullAccess
+                          : member.launchSecurityPolicy ==
+                                LaunchSecurityPolicy.fullAccess
+                          ? const LaunchSecurityPolicy()
+                          : member.launchSecurityPolicy,
+                    ),
                   ),
                 ),
                 showDividerBelow: false,

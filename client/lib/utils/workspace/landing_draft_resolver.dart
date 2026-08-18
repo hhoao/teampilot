@@ -1,5 +1,6 @@
 import '../../models/cli_preset.dart';
 import '../../models/landing_launch_context.dart';
+import '../../models/launch_security_policy.dart';
 import '../../models/simple_launch_identity.dart';
 import '../../models/team_config.dart';
 import '../../services/cli/preset_resolver.dart';
@@ -45,7 +46,6 @@ SimpleLaunchIdentity resolveLandingSimpleLaunchIdentity({
 
 String? _officialProviderId(CliTool cli) =>
     CliToolRegistry.builtIn().defaultOfficialProviderId(cli);
-
 
 /// Select a global preset and clear any custom four-tuple.
 LandingLaunchContext landingDraftSelectingPreset(
@@ -104,7 +104,9 @@ Future<LandingLaunchContext> resolveLandingDraft({
   if (prefs == null) {
     return LandingLaunchContext(
       isPersonal: true,
-      dangerouslySkipPermissions: simpleModeDefaultFullAccess,
+      launchSecurityPolicy: simpleModeDefaultFullAccess
+          ? LaunchSecurityPolicy.fullAccess
+          : const LaunchSecurityPolicy(),
     );
   }
   return LandingLaunchContext(
@@ -114,7 +116,7 @@ Future<LandingLaunchContext> resolveLandingDraft({
     projectFolderPath: prefs.projectFolderPath,
     expertKey: prefs.expertKey,
     workingDirectoryPath: prefs.workingDirectoryPath,
-    dangerouslySkipPermissions: prefs.dangerouslySkipPermissions,
+    launchSecurityPolicy: prefs.launchSecurityPolicy,
     cli: prefs.cli,
     provider: prefs.provider,
     model: prefs.model,
@@ -136,7 +138,7 @@ Future<void> persistLandingDraft(
       projectFolderPath: draft.projectFolderPath,
       expertKey: draft.expertKey,
       workingDirectoryPath: draft.workingDirectoryPath,
-      dangerouslySkipPermissions: draft.dangerouslySkipPermissions,
+      launchSecurityPolicy: draft.launchSecurityPolicy,
       cli: draft.cli,
       provider: draft.provider,
       model: draft.model,

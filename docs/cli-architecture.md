@@ -22,7 +22,7 @@ services/cli/{cli_name}/
     mcp.dart                        # McpCapability（claude/flashskyai 共用 claude/capabilities/mcp.dart）
     prompt.dart                     # PromptCapability
     headless.dart                   # HeadlessCapability（如支持无头运行）
-    launch_args.dart                # 共享 launch-args 辅助（如需要）
+    launch providers               # 启动参数能力（按语义拆分）
     history/                        # AiHistoryCapability 相关
       ai_history_capability.dart    # 该 CLI 的 AiHistoryCapability 实现（含 tool call resolvers）
       ai_transcript.dart
@@ -50,13 +50,12 @@ ProviderForm / CredentialBinding 能力引用；不要在 `widgets/` 下散落 `
 
 ### 共享基础设施
 
-`services/cli/` 根下的共享辅助（`cli_tool_adapter.dart`、`cli_executable_discovery.dart`）与
+`services/cli/` 根下的共享辅助（如 `cli_executable_discovery.dart`）与
 `services/cli/registry/` 共同构成**跨 CLI 共享基础设施**；`registry/` 只保留能力接口定义、
 解析引擎和共享子目录，**不包含任何 CLI 特定实现**：
 
 ```
 services/cli/
-  cli_tool_adapter.dart             # LaunchArgs 共享辅助（参数切分、路径归一化）
   cli_executable_discovery.dart     # 可执行文件发现（共享）
   registry/
     cli_capability.dart             # CliCapability marker 接口
@@ -95,6 +94,15 @@ services/cli/
     plugins/                      # 共享：claude-flavor 插件注册表写入器
     prompt/                       # 共享：PromptHubService（多源 prompt 收集/物化）
     resources/                    # 共享：默认 ResourceCapability
+    launch/                       # 共享：启动上下文、参数 provider、贡献与装配器
+      cli_launch_context.dart
+      cli_headless_launch_context.dart
+      cli_launch_arg_provider.dart
+      cli_headless_launch_arg_provider.dart
+      cli_launch_constraint.dart
+      cli_headless_launch_constraint.dart
+      cli_launch_arg_contribution.dart
+      cli_launch_arg_assembler.dart
 ```
 
 共享基础设施（如被 Claude/FlashskyAI/Cursor 共用的 `plugins/claude_flavor_registry_writer.dart`）
@@ -183,7 +191,7 @@ final cap = CliToolRegistry.builtIn()
 |------|------|------|
 | `ProviderCapability` | `registry/capabilities/provider_capability.dart` | Provider 目录、凭证、模型、effort、`materializeSessionHome`（session home 材料化） |
 | `MemberConfigInspectionCapability` | `registry/capabilities/member_config_inspection_capability.dart` | 成员配置检查 |
-| `CliSessionCapability` | `registry/capabilities/cli_session_capability.dart` | 会话持久化/初始化/finalize、launch args、配置目录 |
+| `CliSessionCapability` | `registry/capabilities/cli_session_capability.dart` | 会话持久化/初始化/finalize、配置目录 |
 | `TeamBehaviorCapability` | `registry/capabilities/team_behavior_capability.dart` | 团队协作行为（native team、wait-before-stop、presence、agent 预设） |
 | `ChatInteractionCapability` | `registry/capabilities/chat_interaction_capability.dart` | Agent 状态归一化 + 结构化 ask / 审批 |
 | `TerminalBehaviorCapability` | `registry/capabilities/terminal_behavior_capability.dart` | turn interrupt、标题注意力、全屏输入 |
@@ -389,12 +397,11 @@ services/cli/flashskyai/remote_flashskyai_command_builder.dart
 ### 禁止所有 CLI 代码塞在一个文件
 
 ```dart
-// ❌ 旧模式 — 5 个 adapter 在一个文件
-cli_tool_adapter.dart  // ClaudeCodeCliToolAdapter, CursorCliToolAdapter, ...
-
-// ✅ 新模式 — 每个 CLI 一个文件
-claude/capabilities/launch_args.dart    // ClaudeCodeCliToolAdapter
-cursor/capabilities/launch_args.dart    // CursorCliToolAdapter
+// ✅ 新模式 — 交互式与 headless 均由每个 CLI 的语义能力注册 Provider
+claude/capabilities/workspace_access_launch.dart
+cursor/capabilities/workspace_access_launch.dart
+claude/capabilities/headless.dart
+codex/capabilities/headless.dart
 ```
 
 ### 禁止 CliBootstrap 命名参数
@@ -449,6 +456,142 @@ for (final def in CliToolRegistry.builtIn().launchable)
 > 注：46 → 14 收敛（2026-08-14）。`ConfigProfileCapability` 已解散：其"provider 解析 +
 > home 材料化"编排归入 `ProviderCapability.materializeSessionHome`，managed hooks 归
 > `ManagedHookProvisioner`（`registry/hook/`），prompt 归 `PromptHubService`（`registry/prompt/`）。
+
+## 启动参数能力流
+
+启动参数不是由调用方拼接，也不是由某个会话能力兼任。启动边界先把语义输入收集成
+`CliLaunchContext`，再从已解析的 `CliToolDefinition` 的 `capabilities` 中发现所有
+`CliLaunchArgProvider`，最后由唯一的 `CliLaunchArgAssembler` 生成扁平的 `List<String>`：
+
+```text
+TeamProfile + TeamMemberConfig + session/runtime inputs
+                         │
+                         ▼
+                 CliLaunchContext
+                         │
+                         ▼
+              CliToolDefinition.capabilities
+                         │
+              CliLaunchArgProvider.buildLaunchArgs
+                         │
+                         ▼
+              CliLaunchArgAssembler.assemble
+           校验 → 分阶段排序 → 展平为 CLI argv
+```
+
+### 上下文、Provider 与 Contribution
+
+`CliLaunchContext` 是 CLI 无关的启动语义输入。它包含团队和成员、会话选择（resume 或
+fixed id）、主工作目录、`additionalDirectories`、模型/设置/提示文件、WSL 路径开关、
+原生团队开关，以及归一化的 `LaunchSecurityPolicy`。UI、PTY、SSH、预览和外部终端都应
+通过同一上下文进入装配流程；它们不应自行解释 CLI flag。
+
+实现某个语义区域的能力可以同时实现 `CliLaunchArgProvider`：
+
+```dart
+abstract interface class CliLaunchArgProvider implements CliCapability {
+  Iterable<CliLaunchArgContribution> buildLaunchArgs(
+    CliLaunchContext context,
+  );
+}
+```
+
+Provider 返回不可变语义片段 `CliLaunchArgContribution`，而不是修改共享 argv。每个片段
+包含：
+
+- `key`：语义贡献的稳定标识，不是单个 option token；
+- `phase`：装配阶段；
+- `args`：已经分词的原始 argv token，不做 shell quoting；
+- `exclusiveGroup`：互斥选择（例如 resume 与 fixed session、权限模式）。
+
+Provider 可以在语义未启用时返回空结果。是否存在某个 Provider 由实际的 CLI definition
+注册决定，不能因为其他 CLI 支持同一语义就假定它也存在。当前五个内置可启动 CLI 的
+注册形状如下：
+
+| CLI | 已注册的启动 Provider 语义 |
+|-----|----------------------------|
+| Claude | 原生团队身份、会话、工作区、模型/设置、权限、提示、用户额外参数 |
+| FlashskyAI | 原生团队身份、会话、工作区、模型、权限、提示、用户额外参数 |
+| Codex | 会话、工作区、模型、权限、用户额外参数；不注册原生团队身份 Provider |
+| Cursor | 团队行为、会话、工作区、模型、权限、用户额外参数 |
+| OpenCode | 会话、模型、agent、用户额外参数；工作区外部目录走配置，不注册 argv Provider |
+
+新增 CLI 时，先在该 CLI 的 `capabilities/` 中实现它实际支持的 Provider，再把实例按
+稳定语义顺序放入 `{cli_name}_tool.dart` 的 `capabilities` 列表。不要在测试或调用方为
+了凑齐一组“通用 Provider”而注册该 CLI 不支持的能力。启动契约测试会遍历
+`CliToolRegistry` 中的全部可启动 definition，检查 Provider 已注册、注册顺序稳定，并
+在相同上下文下检查贡献 key 稳定且不重复。
+
+Assembler 的公共调用入口是：
+
+```dart
+final args = const CliLaunchArgAssembler().assemble(tool, context);
+```
+
+其签名为 `List<String> assemble(CliToolDefinition tool, CliLaunchContext context)`；它接收
+definition 而不是裸的 CLI 枚举，因而只会装配该 definition 实际注册的能力。
+
+### 阶段、顺序与冲突校验
+
+`LaunchArgPhase` 的顺序就是最终 argv 的跨 Provider 主顺序：
+
+```text
+command → session → workspace → identity → model → behavior → security
+        → prompt → user
+```
+
+Assembler 按以下顺序工作：
+
+1. 按 definition 中的能力注册顺序收集每个 `CliLaunchArgProvider` 的贡献；
+2. 拒绝重复的 `key`；同一语义不能由两个 Provider 隐式覆盖；
+3. 拒绝同一 `exclusiveGroup` 中出现多个贡献，并在异常中保留冲突 key；
+4. Provider 对不支持的请求抛出带 CLI、贡献 key 和原因的
+   `CliLaunchCapabilityException`；禁止静默降级或丢弃请求；
+5. 先按 `LaunchArgPhase`，再按 Provider 注册顺序，最后按同一 Provider 内的贡献顺序
+   稳定排序；
+6. 按原始 token 展平为最终 `List<String>`。
+
+`CliSessionCapability` 只负责会话生命周期和配置目录；它不是 argv 的备用来源。启动
+调用链不能因为没有找到 Provider 就回退到另一套按 CLI 分支的参数逻辑。
+
+### 归一化安全策略映射
+
+调用方只传递 `LaunchSecurityPolicy` 的三个正交维度：
+`approval`（`cliDefault` / `ask` / `autoApprove` / `never`）、`sandbox`
+（`cliDefault` / `readOnly` / `workspaceWrite` / `fullAccess`）和 `hookTrust`
+（`cliDefault` / `trustedOnly` / `bypass`）。UI 文案（例如 plan、auto、manual）必须在
+进入 Provider 前映射为明确的策略组合，不能把某个文案直接当成通用 CLI flag。
+
+当前启动参数 Provider 的映射是：
+
+| 归一化策略 | Claude / FlashskyAI | Codex | Cursor | OpenCode |
+|------------|--------------------|-------|--------|----------|
+| CLI 默认（三项均 `cliDefault`） | 不追加权限 argv | 不追加权限 argv | 不追加权限 argv | `OpencodePermissionLaunch` 显式验证；保留 CLI 默认配置 |
+| `ask + readOnly + trustedOnly` | `--permission-mode plan` | 不支持，抛能力异常 | 不支持，抛能力异常 | 不由启动 argv 表达 |
+| `autoApprove + workspaceWrite + trustedOnly` | `--permission-mode acceptEdits` | 不支持，抛能力异常 | 不支持，抛能力异常 | 不由启动 argv 表达 |
+| `never + fullAccess + bypass`（`fullAccess`） | `--dangerously-skip-permissions` | `--dangerously-bypass-approvals-and-sandbox` 与 `--dangerously-bypass-hook-trust` | `--force` | 不由启动 argv 表达；由 `OpencodePermissionLaunch` 校验，并由 provider 物化 `edit` / `bash` / `external_directory` |
+
+如果 CLI 无法表示一个明确请求，Provider 或 Constraint 必须返回结构化能力错误；不能悄悄使用 CLI 默认
+权限。OpenCode 的权限请求/应答属于配置和运行时能力：full-access 由 provider 物化为
+`permission.edit`、`permission.bash` 与 `permission.external_directory`，其余当前无法
+完整表达的策略由 `OpencodePermissionLaunch` 拒绝。
+
+### 工作区目录的 CLI 差异
+
+`workingDirectory` 和 `additionalDirectories` 是同一份归一化语义输入，但输出由 CLI
+自己的 Provider 决定：
+
+- Claude：主目录使用 `--dir`，每个额外目录使用一对 `--add-dir <path>`；
+- FlashskyAI：主目录使用 `--dir`，额外目录同样逐个重复 `--add-dir <path>`；
+- Codex：主目录使用 `--cd`，并且对每个非空、已归一化的额外目录重复一对
+  `--add-dir <path>`。多个目录不能合并成一个参数，也不能只保留第一个；
+- Cursor：主目录使用 `--workspace`，额外目录逐个使用 `--add-dir <path>`；
+- OpenCode：进程工作目录和外部目录是配置/运行时问题。额外目录写入 OpenCode 配置的
+  `permission.external_directory`（由配置能力物化），保持配置-only，不生成
+  `--add-dir` argv。
+
+因此，新增或修复工作区支持时应修改对应 CLI 的 workspace Provider 或配置能力；不要
+给 `CliLaunchContext` 增加 CLI 专属字段，也不要在通用启动边界按 CLI 身份拼接参数。
 
 ## Hook 管线（用户可配置 hooks）
 

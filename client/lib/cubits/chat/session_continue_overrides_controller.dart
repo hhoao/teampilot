@@ -1,5 +1,6 @@
 import '../../models/app_session.dart';
 import '../../models/cli_preset.dart';
+import '../../models/launch_security_policy.dart';
 import '../../models/session_continue_overrides.dart';
 import '../../models/team_config.dart';
 import '../../repositories/session_repository.dart';
@@ -15,16 +16,18 @@ class SessionContinueOverridesController {
     return null;
   }
 
-  AppSession patchPermission({
+  AppSession patchSecurityPolicy({
     required AppSession session,
-    required bool dangerouslySkipPermissions,
+    required LaunchSecurityPolicy launchSecurityPolicy,
     String? memberId,
   }) {
     final trimmedMemberId = memberId?.trim();
     if (trimmedMemberId == null || trimmedMemberId.isEmpty) {
       return session.copyWith(
         continueOverrides: session.continueOverrides.copyWith(
-          dangerouslySkipPermissions: dangerouslySkipPermissions,
+          launchSecurityPolicy: LaunchSecurityPolicyOverride.fromPolicy(
+            launchSecurityPolicy,
+          ),
         ),
       );
     }
@@ -35,7 +38,9 @@ class SessionContinueOverridesController {
     );
     updatedMembers[trimmedMemberId] =
         (existing ?? const SessionMemberContinueOverride()).copyWith(
-          dangerouslySkipPermissions: dangerouslySkipPermissions,
+          launchSecurityPolicy: LaunchSecurityPolicyOverride.fromPolicy(
+            launchSecurityPolicy,
+          ),
         );
     return session.copyWith(
       continueOverrides: session.continueOverrides.copyWith(
@@ -72,7 +77,7 @@ class SessionContinueOverridesController {
       provider: preset.provider,
       model: preset.model,
       effort: preset.effort.isEmpty ? null : preset.effort,
-      dangerouslySkipPermissions: existing?.dangerouslySkipPermissions,
+      launchSecurityPolicy: existing?.launchSecurityPolicy,
     );
     return session.copyWith(
       continueOverrides: session.continueOverrides.copyWith(
@@ -97,7 +102,7 @@ class SessionContinueOverridesController {
     );
   }
 
-  Future<void> persistPermission({
+  Future<void> persistSecurityPolicy({
     required SessionRepository repo,
     required AppSession patched,
   }) {

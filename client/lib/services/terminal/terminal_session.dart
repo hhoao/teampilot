@@ -72,8 +72,8 @@ class TerminalSession {
                  scrollbackLines: scrollbackLines,
                ),
        ),
-       activityTracker = launchController?.activityTracker ??
-           TerminalActivityTracker(),
+       activityTracker =
+           launchController?.activityTracker ?? TerminalActivityTracker(),
        _inputPipeline = inputPipeline ?? TerminalUserInputPipeline(),
        _linkProvidersHolder = linkProviders {
     _terminalTheme = terminalTheme;
@@ -161,7 +161,8 @@ class TerminalSession {
       : TerminalInputController.fullScreenSubmitDelay;
 
   List<TerminalLinkProvider> get linkProviders =>
-      (_linkProviders ??= _linkProvidersHolder ??
+      (_linkProviders ??=
+              _linkProvidersHolder ??
               TerminalSessionLinkProviders(engine: engine))
           .build(_launchCwd);
 
@@ -282,15 +283,7 @@ class TerminalSession {
             environment: normalizedEnvironment,
             useWslPaths: invocation.usesWsl,
           )
-        : LaunchCommandBuilder.buildSessionPrefixArgs(
-            workingDirectory: workingDirectory.isNotEmpty
-                ? workingDirectory
-                : null,
-            additionalDirectories: additionalDirectories,
-            fixedSessionId: fixedSessionId,
-            resumeSessionId: resumeSessionId,
-            useWslPaths: invocation.usesWsl,
-          );
+        : const <String>[];
     final launchArgs = invocation.withArgs(
       args,
       environment: _extraEnvironment,

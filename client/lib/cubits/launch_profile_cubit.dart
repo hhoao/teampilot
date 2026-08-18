@@ -190,15 +190,35 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
 
   // ===== Launch / preview (delegated) =====
 
-  String previewFor(TeamMemberConfig member) =>
-      _launchService.previewFor(member);
+  String previewFor(
+    TeamMemberConfig member, {
+    String? workingDirectory,
+    List<String> additionalDirectories = const [],
+  }) => _launchService.previewFor(
+    member,
+    workingDirectory: workingDirectory,
+    additionalDirectories: additionalDirectories,
+  );
 
   String get selectedCommandPreview => _launchService.selectedCommandPreview;
 
-  Future<void> launchMember(String memberId) =>
-      _launchService.launchMember(memberId);
+  Future<void> launchMember(
+    String memberId, {
+    String? workingDirectory,
+    List<String> additionalDirectories = const [],
+  }) => _launchService.launchMember(
+    memberId,
+    workingDirectory: workingDirectory,
+    additionalDirectories: additionalDirectories,
+  );
 
-  Future<void> launchSelectedTeam() => _launchService.launchSelectedTeam();
+  Future<void> launchSelectedTeam({
+    String? workingDirectory,
+    List<String> additionalDirectories = const [],
+  }) => _launchService.launchSelectedTeam(
+    workingDirectory: workingDirectory,
+    additionalDirectories: additionalDirectories,
+  );
 
   // ===== Resource sync (delegated) =====
 
@@ -369,7 +389,10 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
       ),
     );
     await saveTeamProfiles(teams);
-    await _provisioner.ensureTeamProfile(materialized.id, cli: materialized.cli);
+    await _provisioner.ensureTeamProfile(
+      materialized.id,
+      cli: materialized.cli,
+    );
     unawaited(_sync.syncPluginsForSelected());
     return true;
   }
@@ -438,7 +461,10 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
       ),
     );
     await saveTeamProfiles(teams);
-    await _provisioner.ensureTeamProfile(materialized.id, cli: materialized.cli);
+    await _provisioner.ensureTeamProfile(
+      materialized.id,
+      cli: materialized.cli,
+    );
     unawaited(_sync.syncPluginsForSelected());
     return materialized.id;
   }
@@ -591,14 +617,10 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
     final normalized = _rosterEditor.normalizeTeam(updated);
     final materialized = await _materializeTeam(normalized);
     final teams = [
-      for (final t in state.teams) if (t.id == teamId) materialized else t,
+      for (final t in state.teams)
+        if (t.id == teamId) materialized else t,
     ];
-    emit(
-      state.copyWith(
-        teams: teams,
-        statusMessage: 'Added ${added.id}.',
-      ),
-    );
+    emit(state.copyWith(teams: teams, statusMessage: 'Added ${added.id}.'));
     await saveTeamProfiles(teams);
     return added;
   }
@@ -729,6 +751,7 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
         replicas: overrides.replicas,
         capabilities: overrides.capabilities,
         activePresetId: TeamProfile.inheritPresetId,
+        launchSecurityPolicy: overrides.launchSecurityPolicy,
       );
     } else if (effectiveId == null) {
       nextOverrides = TeamRosterSlotOverrides(
@@ -740,6 +763,7 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
         replicas: overrides.replicas,
         capabilities: overrides.capabilities,
         activePresetId: null,
+        launchSecurityPolicy: overrides.launchSecurityPolicy,
       );
     } else {
       final syncCliFromPreset =
@@ -753,6 +777,7 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
         replicas: overrides.replicas,
         capabilities: overrides.capabilities,
         activePresetId: effectiveId,
+        launchSecurityPolicy: overrides.launchSecurityPolicy,
       );
     }
     final mutation = _rosterEditor.updateSlot(
@@ -793,9 +818,7 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
           teamChanged = true;
           changed = true;
           roster.add(
-            slot.copyWith(
-              overrides: slot.overrides.copyWith(provider: to),
-            ),
+            slot.copyWith(overrides: slot.overrides.copyWith(provider: to)),
           );
         } else {
           roster.add(slot);
@@ -838,5 +861,4 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
       await saveTeamProfiles(teams);
     }
   }
-
 }

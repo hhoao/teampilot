@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/cli/registry/capabilities/headless_capability.dart';
 import 'package:teampilot/services/cli/claude/capabilities/headless.dart';
+import 'package:teampilot/services/cli/claude/claude_tool.dart';
+import 'package:teampilot/services/cli/registry/launch/cli_launch_arg_assembler.dart';
 
 HeadlessRunContext _ctx({
   String model = 'sonnet',
@@ -21,31 +23,34 @@ void main() {
 
   test('isSupported is true', () => expect(cap.isSupported, isTrue));
 
-  test('buildInvocation passes -p, model, json flag and CONFIG_DIR env', () {
-    final inv = cap.buildInvocation(_ctx(expectJson: true));
-    expect(inv.executable, 'claude');
-    expect(inv.arguments, [
+  test('headless assembler passes prompt, model, json flag and config env', () {
+    final ctx = _ctx(expectJson: true);
+    final args = const CliLaunchArgAssembler().assembleHeadless(
+      ClaudeCliTool(),
+      ctx,
+    );
+    expect(args, [
       '-p',
-      'Write a commit message',
       '--model',
       'sonnet',
+      'Write a commit message',
       '--output-format',
       'json',
     ]);
-    expect(inv.environment['CLAUDE_CONFIG_DIR'], '/tmp/cfg');
+    expect(cap.buildEnvironment(ctx)['CLAUDE_CONFIG_DIR'], '/tmp/cfg');
   });
 
-  test('buildInvocation omits json flag when expectJson is false', () {
-    final inv = cap.buildInvocation(_ctx());
-    expect(inv.arguments.contains('--output-format'), isFalse);
+  test('headless assembler omits json flag when expectJson is false', () {
+    final args = const CliLaunchArgAssembler().assembleHeadless(
+      ClaudeCliTool(),
+      _ctx(),
+    );
+    expect(args.contains('--output-format'), isFalse);
   });
 
-  test(
-    'configFiles is empty (settings come from provision)',
-    () {
-      expect(cap.configFiles(_ctx(effort: 'high')), isEmpty);
-    },
-  );
+  test('configFiles is empty (settings come from provision)', () {
+    expect(cap.configFiles(_ctx(effort: 'high')), isEmpty);
+  });
 
   test('extractText unwraps the JSON result field', () {
     final r = ProcessResult(0, 0, '{"result":"feat: add thing"}', '');
@@ -59,9 +64,12 @@ void main() {
 
   test('supportsStreaming and stream args', () {
     expect(cap.supportsStreaming, isTrue);
-    final inv = cap.buildInvocation(_ctx());
+    final args = const CliLaunchArgAssembler().assembleHeadless(
+      ClaudeCliTool(),
+      _ctx(),
+    );
     // non-stream ctx: no stream flags
-    expect(inv.arguments.contains('stream-json'), isFalse);
+    expect(args.contains('stream-json'), isFalse);
   });
 
   test('streamResultText extracts the terminal result event', () {
@@ -71,8 +79,9 @@ void main() {
   });
 
   test('stream ctx adds --output-format stream-json --verbose', () {
-    final inv = cap.buildInvocation(
-      const HeadlessRunContext(
+    final args = const CliLaunchArgAssembler().assembleHeadless(
+      ClaudeCliTool(),
+      const HeadlessLaunchContext(
         prompt: 'x',
         model: 'sonnet',
         effort: '',
@@ -81,7 +90,7 @@ void main() {
       ),
     );
     expect(
-      inv.arguments,
+      args,
       containsAllInOrder(['--output-format', 'stream-json', '--verbose']),
     );
   });

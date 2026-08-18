@@ -18,6 +18,7 @@ import '../../../cubits/skill_cubit.dart';
 import '../../../cubits/worktree_cubit.dart';
 import '../../../models/config_bundle.dart';
 import '../../../models/landing_launch_context.dart';
+import '../../../models/launch_security_policy.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/cli_preset.dart';
 import '../../../models/team_config.dart';
@@ -111,7 +112,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
   final _headlessAi = HeadlessAiService();
 
   var _conversationMode = _LandingConversationMode.simple;
-  var _dangerouslySkipPermissions = true;
+  var _launchSecurityPolicy = LaunchSecurityPolicy.fullAccess;
   String? _selectedPresetId;
   CliTool? _selectedCli;
   String? _selectedProvider;
@@ -526,7 +527,9 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
     final registry = CliToolRegistryScope.of(context);
     CliTool? cli;
     if (_conversationMode == _LandingConversationMode.simple) {
-      final preset = presets.where((p) => p.id == _selectedPresetId).firstOrNull;
+      final preset = presets
+          .where((p) => p.id == _selectedPresetId)
+          .firstOrNull;
       cli = preset?.cli ?? _selectedCli;
     } else if (selectedTeam != null) {
       final lead = selectedTeam.members
@@ -739,7 +742,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
         draft.workingDirectoryPath?.trim().isNotEmpty == true
         ? draft.workingDirectoryPath!.trim()
         : null;
-    _dangerouslySkipPermissions = draft.dangerouslySkipPermissions;
+    _launchSecurityPolicy = draft.launchSecurityPolicy;
 
     if ((_selectedTeamId == null || _selectedTeamId!.isEmpty) &&
         _conversationMode == _LandingConversationMode.team) {
@@ -877,7 +880,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
       workingDirectoryPath: selectedWorktreePath.trim().isEmpty
           ? null
           : selectedWorktreePath,
-      dangerouslySkipPermissions: _dangerouslySkipPermissions,
+      launchSecurityPolicy: _launchSecurityPolicy,
       // Keep custom four-tuple across Simple↔Team switches (ignored on Team submit).
       cli: _selectedCli,
       provider: _selectedProvider,
@@ -1050,9 +1053,9 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
     return true;
   }
 
-  void _setDangerouslySkipPermissions(bool value) {
-    if (_dangerouslySkipPermissions == value) return;
-    setState(() => _dangerouslySkipPermissions = value);
+  void _setLaunchSecurityPolicy(LaunchSecurityPolicy value) {
+    if (_launchSecurityPolicy == value) return;
+    setState(() => _launchSecurityPolicy = value);
     _persistDraft();
   }
 
@@ -1425,20 +1428,18 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
           presets: presets,
           teams: teams,
         ),
-        autoChipLeading: _autoChipLeading(
-          context,
-          presets: presets,
-        ),
-        dangerouslySkipPermissions: _dangerouslySkipPermissions,
+        autoChipLeading: _autoChipLeading(context, presets: presets),
+        launchSecurityPolicy: _launchSecurityPolicy,
         defaultPermissionsLabel: l10n.workspaceChatLandingDefaultPermissions,
         fullAccessPermissionsLabel:
             l10n.workspaceChatLandingFullAccessPermissions,
+        askReadOnlyPermissionsLabel:
+            l10n.workspaceChatLandingAskReadOnlyPermissions,
+        autoApproveWorkspaceWritePermissionsLabel:
+            l10n.workspaceChatLandingAutoApproveWorkspaceWritePermissions,
+        customPermissionsLabel: l10n.workspaceChatLandingCustomPermissions,
         conversationModeSpecs: _conversationModeSpecs(l10n),
-        autoChipSpecs: _autoChipSpecs(
-          l10n,
-          presets: presets,
-          teams: teams,
-        ),
+        autoChipSpecs: _autoChipSpecs(l10n, presets: presets, teams: teams),
         onConversationModeSelected: (value) {
           if (value is _LandingConversationMode) {
             _setConversationMode(value);
@@ -1460,11 +1461,9 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
           if (value is! String || value.isEmpty) return;
           _selectPreset(value);
         },
-        onPermissionSelected: _setDangerouslySkipPermissions,
+        onPermissionSelected: _setLaunchSecurityPolicy,
         expertChipLabel: isSimple ? _expertChipLabel(l10n, hubState) : null,
-        expertChipSpecs: isSimple
-            ? _expertChipSpecs(l10n, hubState)
-            : const [],
+        expertChipSpecs: isSimple ? _expertChipSpecs(l10n, hubState) : const [],
         onExpertChipSelected: isSimple ? _onExpertChipSelected : null,
         teamSettingsTooltip: selectedTeam != null ? l10n.teamSettings : null,
         onTeamSettings: selectedTeam != null

@@ -35,7 +35,8 @@ import '../../support/stub_member_roster_service.dart';
 const _testPresetId = 'preset-test';
 
 class _FakeExpertHubSource extends CompositeExpertHubSource {
-  _FakeExpertHubSource() : super(builtIns: const [], registry: _EmptyRegistry());
+  _FakeExpertHubSource()
+    : super(builtIns: const [], registry: _EmptyRegistry());
 
   @override
   Future<List<DiscoverableMember>> fetchMembers({
@@ -155,7 +156,9 @@ Widget _host({
   final providers = <BlocProvider>[
     BlocProvider<AutomationCubit>.value(value: cubit),
     BlocProvider<ChatCubit>.value(value: resolvedChat),
-    BlocProvider<ExpertHubCubit>.value(value: expertHubCubit ?? _expertHubCubit()),
+    BlocProvider<ExpertHubCubit>.value(
+      value: expertHubCubit ?? _expertHubCubit(),
+    ),
     BlocProvider<LaunchProfileCubit>.value(
       value: launchProfileCubit ?? _emptyLaunchProfileCubit(),
     ),
@@ -229,8 +232,9 @@ void main() {
     final setup = testAutomationSetup();
     final chatCubit = _chatCubitWithWorkspace();
     final cliPresetsCubit = _cliPresetsCubitWithPreset();
-    final sessionPreferencesCubit =
-        (await tester.runAsync(testSessionPreferencesCubit))!;
+    final sessionPreferencesCubit = (await tester.runAsync(
+      testSessionPreferencesCubit,
+    ))!;
     addTearDown(setup.cubit.close);
     addTearDown(chatCubit.close);
     addTearDown(cliPresetsCubit.close);
@@ -258,6 +262,12 @@ void main() {
     expect(find.text(l10n.hubPublishKindExpert), findsOneWidget);
     expect(find.text(l10n.automationsPermissions), findsOneWidget);
     expect(find.text('Default'), findsOneWidget);
+    await tester.tap(find.byType(TpSelect<LaunchSecurityPolicy>));
+    await tester.pumpAndSettle();
+    expect(find.text(l10n.automationsPermissionsAskReadOnly), findsOneWidget);
+    await tester.tap(find.text(l10n.automationsPermissionsAskReadOnly));
+    await tester.pumpAndSettle();
+    expect(find.text(l10n.automationsPermissionsAskReadOnly), findsOneWidget);
     expect(find.text(l10n.automationsTargetMember), findsNothing);
   });
 
@@ -297,6 +307,49 @@ void main() {
     expect(find.text('Lead'), findsOneWidget);
     expect(find.text(l10n.presetPickerTitle), findsNothing);
     expect(find.text(l10n.hubPublishKindExpert), findsNothing);
+  });
+
+  testWidgets('automation policy field key preserves intermediate dimensions', (
+    tester,
+  ) async {
+    final setup = testAutomationSetup();
+    final chatCubit = _chatCubitWithWorkspace();
+    final cliPresetsCubit = _cliPresetsCubitWithPreset();
+    final sessionPreferencesCubit = (await tester.runAsync(
+      testSessionPreferencesCubit,
+    ))!;
+    addTearDown(setup.cubit.close);
+    addTearDown(chatCubit.close);
+    addTearDown(cliPresetsCubit.close);
+    addTearDown(sessionPreferencesCubit.close);
+
+    const policy = LaunchSecurityPolicy(
+      approval: LaunchApprovalPolicy.ask,
+      sandbox: LaunchSandboxPolicy.readOnly,
+      hookTrust: LaunchHookTrustPolicy.trustedOnly,
+    );
+    await tester.pumpWidget(
+      _host(
+        cubit: setup.cubit,
+        chatCubit: chatCubit,
+        cliPresetsCubit: cliPresetsCubit,
+        sessionPreferencesCubit: sessionPreferencesCubit,
+        child: AutomationEditorDialog(
+          workspaceId: 'ws1',
+          initial: sampleAutomation(
+            id: 'intermediate-policy',
+            workspaceId: 'ws1',
+          ).copyWith(launchSecurityPolicy: policy),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(
+      find.byKey(const ValueKey('permissions-ask-readOnly-trustedOnly')),
+      findsOneWidget,
+    );
   });
 
   testWidgets('scheduled message editor pre-fills session defaults', (

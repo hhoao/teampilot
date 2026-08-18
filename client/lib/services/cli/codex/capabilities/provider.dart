@@ -3,6 +3,7 @@ import '../../../../models/app_provider_config.dart';
 import '../../../../models/credential_action_result.dart';
 import '../../../../models/credential_probe.dart';
 import '../../../../models/hook_entry.dart';
+import '../../../../models/launch_security_policy.dart';
 import '../../../../models/team_config.dart';
 import '../../../../utils/workspace/trusted_project_paths.dart';
 import '../../../hook/glue_script_builder.dart';
@@ -351,20 +352,19 @@ final class CodexProviderCapability extends CatalogModelCapability
     final resolver = _codexResolver(ctx.catalog);
     AppProviderConfig? provider;
     if (team != null) {
-      provider = await resolver.resolveForLaunch(
-        team: team,
-        member: member,
-      );
+      provider = await resolver.resolveForLaunch(team: team, member: member);
     } else if (ctx.isSimple) {
       final required =
           member ?? (throw StateError('Simple launch requires plan.member'));
       var fromMember = required.provider.trim();
       if (fromMember.isEmpty) {
-        fromMember = CliToolRegistry.builtIn().defaultOfficialProviderId(CliTool.codex) ?? '';
+        fromMember =
+            CliToolRegistry.builtIn().defaultOfficialProviderId(
+              CliTool.codex,
+            ) ??
+            '';
       }
-      provider = await resolver.findById(
-        fromMember,
-      );
+      provider = await resolver.findById(fromMember);
       provider ??= await _resolveSoleCodexProvider(ctx.catalog);
     }
 
@@ -381,7 +381,7 @@ final class CodexProviderCapability extends CatalogModelCapability
       if (installsManagedHooks) {
         overlayParts.add(
           CodexManagedHookOverlay.build(
-            dangerouslySkipPermissions: member.dangerouslySkipPermissions,
+            launchSecurityPolicy: member.launchSecurityPolicy,
           ),
         );
       }
@@ -405,27 +405,29 @@ final class CodexProviderCapability extends CatalogModelCapability
       if (allEntries.isNotEmpty) {
         final writer = const CodexHookWriter();
         final hooksDir = paths.joinWork(codexHome, 'hooks');
-        final result = await ManagedHookProvisioner(
-          fs: paths.fs,
-          joinWork: paths.joinWork,
-          atomicWrite: true,
-          logPrefix: '[hook-writer] codex',
-        ).provision(
-          writer: writer,
-          entries: allEntries,
-          ctx: HookRenderContext(
-            hooksDir: hooksDir,
-            runner: host.scriptRunner,
-            glueBuilder: const GlueScriptBuilder(),
-          ),
-        );
+        final result =
+            await ManagedHookProvisioner(
+              fs: paths.fs,
+              joinWork: paths.joinWork,
+              atomicWrite: true,
+              logPrefix: '[hook-writer] codex',
+            ).provision(
+              writer: writer,
+              entries: allEntries,
+              ctx: HookRenderContext(
+                hooksDir: hooksDir,
+                runner: host.scriptRunner,
+                glueBuilder: const GlueScriptBuilder(),
+              ),
+            );
         final fragment = result.configFragments['config.toml'] as String?;
         if (fragment != null && fragment.trim().isNotEmpty) {
           overlayParts.add(fragment);
         }
       }
-      final busOverlay =
-          overlayParts.isEmpty ? null : overlayParts.join('\n\n');
+      final busOverlay = overlayParts.isEmpty
+          ? null
+          : overlayParts.join('\n\n');
       final trustedDirectories = await _trustedProjectDirectories(
         paths: paths,
         workingDirectory: ctx.workingDirectory ?? '',
@@ -576,7 +578,6 @@ final class CodexProviderCapability extends CatalogModelCapability
     repository: providerCatalogRepository(catalog),
   );
 }
-
 
 final _emptyCatalogUpdates = _EmptyListenable();
 

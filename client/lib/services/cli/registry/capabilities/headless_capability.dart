@@ -1,41 +1,15 @@
 import 'dart:io';
 
 import '../../../../models/app_provider_config.dart';
+import '../../../../models/launch_security_policy.dart';
 import '../cli_capability.dart';
+import '../launch/cli_headless_launch_arg_provider.dart';
+import '../launch/cli_headless_launch_context.dart';
 
-/// Inputs for building a one-shot headless CLI call.
-class HeadlessRunContext {
-  const HeadlessRunContext({
-    required this.prompt,
-    required this.model,
-    required this.effort,
-    required this.configDir,
-    this.workingDirectory,
-    this.expectJson = false,
-    this.stream = false,
-  });
+export '../launch/cli_headless_launch_context.dart';
 
-  /// The full prompt text to send to the model.
-  final String prompt;
-
-  /// Resolved model id (may be empty to use the CLI default).
-  final String model;
-
-  /// Resolved reasoning effort (empty = not applicable / CLI default).
-  final String effort;
-
-  /// Isolated, already-created temp config dir the CLI may use.
-  final String configDir;
-
-  /// Working directory for the run (repo root for commit generation).
-  final String? workingDirectory;
-
-  /// When true, ask the CLI for machine-readable output if it supports it.
-  final bool expectJson;
-
-  /// When true, request NDJSON streaming output from CLIs that support it.
-  final bool stream;
-}
+typedef HeadlessLaunchContext = CliHeadlessLaunchContext;
+typedef HeadlessRunContext = CliHeadlessLaunchContext;
 
 /// A file the service writes into [HeadlessRunContext.configDir] before running.
 class HeadlessConfigFile {
@@ -46,22 +20,6 @@ class HeadlessConfigFile {
 
   final String relativePath;
   final String contents;
-}
-
-/// A fully-specified one-shot process invocation.
-class HeadlessInvocation {
-  const HeadlessInvocation({
-    required this.executable,
-    required this.arguments,
-    this.environment = const {},
-  });
-
-  /// Executable name (resolved to a path by the service via the locator).
-  final String executable;
-  final List<String> arguments;
-
-  /// Extra environment entries (merged onto the parent environment).
-  final Map<String, String> environment;
 }
 
 /// Result of materializing an isolated CLI config dir for a headless run.
@@ -91,6 +49,9 @@ class HeadlessProvisionContext {
     required this.effort,
     required this.configDir,
     this.workingDirectory,
+    this.additionalDirectories = const [],
+    this.securityPolicy = const LaunchSecurityPolicy(),
+    this.useWslPaths = false,
   });
 
   final AppProviderConfig? provider;
@@ -99,6 +60,9 @@ class HeadlessProvisionContext {
   final String effort;
   final String configDir;
   final String? workingDirectory;
+  final List<String> additionalDirectories;
+  final LaunchSecurityPolicy securityPolicy;
+  final bool useWslPaths;
 }
 
 /// Per-CLI one-shot (non-interactive) invocation support, plus credential /
@@ -109,18 +73,22 @@ class HeadlessProvisionContext {
 /// result) and parses stdout; the service owns the filesystem and process
 /// execution. A CLI with no provisioning needs (e.g. cursor) returns the
 /// default [HeadlessProvisionResult] from [provision].
-abstract interface class HeadlessCapability implements CliCapability {
+abstract interface class HeadlessCapability
+    implements CliCapability, CliHeadlessLaunchArgProvider {
+  /// Executable name resolved to a path by [HeadlessAiService].
+  String get executable;
+
+  /// Environment entries required for the isolated config home.
+  Map<String, String> buildEnvironment(HeadlessLaunchContext context);
+
   /// Whether this CLI can run a one-shot headless call.
   bool get isSupported;
 
   /// Whether this CLI can stream NDJSON events for a one-shot call.
   bool get supportsStreaming;
 
-  /// Config files to materialize into [HeadlessRunContext.configDir] first.
-  List<HeadlessConfigFile> configFiles(HeadlessRunContext ctx);
-
-  /// Build the executable + args + env for the one-shot call.
-  HeadlessInvocation buildInvocation(HeadlessRunContext ctx);
+  /// Config files to materialize into [HeadlessLaunchContext.configDir] first.
+  List<HeadlessConfigFile> configFiles(HeadlessLaunchContext ctx);
 
   /// Extract the model's final text from process stdout (unwrap any envelope).
   String extractText(ProcessResult result);

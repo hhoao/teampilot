@@ -1,8 +1,12 @@
 import 'dart:io';
 
-import 'package:teampilot/models/workspace_agent_config.dart';
-import 'package:teampilot/services/cli/cli_tool_adapter.dart';
-import 'package:teampilot/services/cli/registry/config_profile/config_profile_context.dart';
+import 'package:teampilot/services/cli/registry/cli_capability.dart';
+import 'package:teampilot/services/cli/registry/cli_tool_definition.dart';
+import 'package:teampilot/services/cli/registry/launch/cli_launch_arg_contribution.dart';
+import 'package:teampilot/services/cli/registry/launch/cli_launch_arg_provider.dart';
+import 'package:teampilot/services/cli/registry/launch/cli_launch_context.dart';
+import 'package:teampilot/services/cli/registry/launch/cli_launch_capability_error.dart';
+import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/session/launch_command_builder.dart';
 import 'package:teampilot/services/session/shell_launch_spec.dart';
 import 'package:teampilot/services/cli/claude/capabilities/provider.dart';
@@ -17,17 +21,19 @@ void main() {
     provider: 'anthropic',
     model: 'sonnet',
     agent: 'builder',
-    dangerouslySkipPermissions: false,
+    launchSecurityPolicy: const LaunchSecurityPolicy(),
   );
 
   test('builds required flashskyai arguments for a member', () {
     const team = TeamProfile(id: '1', name: 'agent', cli: CliTool.flashskyai);
 
     expect(
-      LaunchCommandBuilder.buildArguments(
-        team,
-        member,
-        workingDirectory: '/home/hhoa/git/agent',
+      LaunchCommandBuilder.buildArgumentsFromContext(
+        CliLaunchContext(
+          team: team,
+          member: member,
+          workingDirectory: '/home/hhoa/git/agent',
+        ),
       ),
       [
         '--dir',
@@ -46,21 +52,273 @@ void main() {
     );
   });
 
+  test('uses registered launch providers', () {
+    final registry = CliToolRegistry()
+      ..register(
+        _FakeLaunchTool(CliTool.flashskyai, const _FakeLaunchProvider()),
+      );
+
+    expect(
+      LaunchCommandBuilder.buildArgumentsFromContext(
+        const CliLaunchContext(
+          team: TeamProfile(
+            id: 'provider-team',
+            name: 'provider-team',
+            cli: CliTool.flashskyai,
+          ),
+          member: member,
+          nativeAgentTeam: false,
+          isSimpleSynthetic: true,
+        ),
+        cliRegistry: registry,
+      ),
+      ['--provider-only'],
+    );
+  });
+
+  test('rejects a missing tool definition with a typed capability error', () {
+    final registry = CliToolRegistry();
+
+    expect(
+      () => LaunchCommandBuilder.buildArgumentsFromContext(
+        const CliLaunchContext(
+          team: TeamProfile(
+            id: 'missing-team',
+            name: 'missing-team',
+            cli: CliTool.codex,
+          ),
+          member: member,
+          nativeAgentTeam: false,
+          isSimpleSynthetic: true,
+        ),
+        cliRegistry: registry,
+      ),
+      throwsA(
+        isA<CliLaunchCapabilityException>()
+            .having((error) => error.cli, 'cli', CliTool.codex)
+            .having(
+              (error) => error.contributionKey,
+              'contribution key',
+              'tool-definition',
+            )
+            .having(
+              (error) => error.reason,
+              'reason',
+              contains('not registered'),
+            ),
+      ),
+    );
+  });
+
+  test('rejects a non-launchable tool definition with a typed error', () {
+    final registry = CliToolRegistry()
+      ..register(
+        const _FakeLaunchTool(
+          CliTool.codex,
+          _FakeLaunchProvider(),
+          isLaunchSupported: false,
+        ),
+      );
+
+    expect(
+      () => LaunchCommandBuilder.buildArgumentsFromContext(
+        const CliLaunchContext(
+          team: TeamProfile(
+            id: 'non-launchable-team',
+            name: 'non-launchable-team',
+            cli: CliTool.codex,
+          ),
+          member: member,
+        ),
+        cliRegistry: registry,
+      ),
+      throwsA(
+        isA<CliLaunchCapabilityException>()
+            .having((error) => error.cli, 'cli', CliTool.codex)
+            .having(
+              (error) => error.contributionKey,
+              'contribution key',
+              'tool-definition',
+            )
+            .having(
+              (error) => error.reason,
+              'reason',
+              contains('not launch-supported'),
+            ),
+      ),
+    );
+  });
+
+  test('rejects a tool with no launch argument providers', () {
+    final registry = CliToolRegistry()
+      ..register(const _FakeLegacyTool(CliTool.codex));
+
+    expect(
+      () => LaunchCommandBuilder.buildArgumentsFromContext(
+        const CliLaunchContext(
+          team: TeamProfile(
+            id: 'legacy-team',
+            name: 'legacy-team',
+            cli: CliTool.codex,
+          ),
+          member: member,
+          nativeAgentTeam: false,
+          isSimpleSynthetic: true,
+        ),
+        cliRegistry: registry,
+      ),
+      throwsA(
+        isA<CliLaunchCapabilityException>()
+            .having((error) => error.cli, 'cli', CliTool.codex)
+            .having(
+              (error) => error.contributionKey,
+              'contribution key',
+              'launch-arg-provider',
+            )
+            .having(
+              (error) => error.reason,
+              'reason',
+              contains('no CLI launch argument providers'),
+            ),
+      ),
+    );
+  });
+
+  test('rejects native teams for CLIs without native team support', () {
+    expect(
+      () => LaunchCommandBuilder.buildArgumentsFromContext(
+        const CliLaunchContext(
+          team: TeamProfile(
+            id: 'native-codex',
+            name: 'native-codex',
+            cli: CliTool.codex,
+            teamMode: TeamMode.native,
+          ),
+          member: member,
+        ),
+      ),
+      throwsA(
+        isA<CliLaunchCapabilityException>()
+            .having((error) => error.cli, 'cli', CliTool.codex)
+            .having(
+              (error) => error.contributionKey,
+              'contributionKey',
+              'team-mode',
+            ),
+      ),
+    );
+  });
+
+  test('allows simple synthetic native team when nativeAgentTeam is false', () {
+    expect(
+      LaunchCommandBuilder.buildArgumentsFromContext(
+        const CliLaunchContext(
+          team: TeamProfile(
+            id: 'simple-codex',
+            name: 'simple-codex',
+            cli: CliTool.codex,
+            teamMode: TeamMode.native,
+          ),
+          member: member,
+          nativeAgentTeam: false,
+          isSimpleSynthetic: true,
+        ),
+      ),
+      ['-m', 'sonnet'],
+    );
+  });
+
+  test('rejects a real native team even when nativeAgentTeam is false', () {
+    expect(
+      () => LaunchCommandBuilder.buildArgumentsFromContext(
+        const CliLaunchContext(
+          team: TeamProfile(
+            id: 'native-codex-false-override',
+            name: 'native-codex-false-override',
+            cli: CliTool.codex,
+            teamMode: TeamMode.native,
+          ),
+          member: member,
+          nativeAgentTeam: false,
+        ),
+      ),
+      throwsA(
+        isA<CliLaunchCapabilityException>().having(
+          (error) => error.contributionKey,
+          'contributionKey',
+          'team-mode',
+        ),
+      ),
+    );
+  });
+
+  test('direct context and shell context share the assembled argv', () {
+    const team = TeamProfile(
+      id: 'context-team',
+      name: 'context-team',
+      cli: CliTool.flashskyai,
+    );
+    const context = CliLaunchContext(
+      team: team,
+      member: member,
+      sessionTeam: 'runtime-team',
+      additionalDirectories: ['/work/shared'],
+      fixedSessionId: 'fixed-id',
+    );
+    final shellSpec = ShellLaunchSpec(
+      plan: const LaunchPlan(
+        env: {},
+        resume: false,
+        taskId: 'member-1',
+        cliTeamName: 'runtime-team',
+        memberConfigDir: '',
+        resolvedRoots: [],
+      ),
+      launchContext: context,
+    );
+
+    final direct = LaunchCommandBuilder.buildArgumentsFromContext(context);
+    final shell = LaunchCommandBuilder.buildShellArguments(
+      shellSpec,
+      fixedSessionId: 'fixed-id',
+    );
+
+    expect(shell, direct);
+    expect(
+      LaunchCommandBuilder.preview(
+        team,
+        member,
+        sessionTeam: 'runtime-team',
+        executable: 'flashskyai',
+        additionalDirectories: const ['/work/shared'],
+        fixedSessionId: 'fixed-id',
+      ),
+      'flashskyai --session-id fixed-id --add-dir /work/shared '
+      '--team runtime-team --member member-1 --provider anthropic '
+      '--model sonnet --agent builder',
+    );
+  });
+
   test('omits --dir when workingDirectory is empty', () {
     const team = TeamProfile(id: '1', name: 'agent', cli: CliTool.flashskyai);
 
-    expect(LaunchCommandBuilder.buildArguments(team, member), [
-      '--team',
-      'agent',
-      '--member',
-      'member-1',
-      '--provider',
-      'anthropic',
-      '--model',
-      'sonnet',
-      '--agent',
-      'builder',
-    ]);
+    expect(
+      LaunchCommandBuilder.buildArgumentsFromContext(
+        CliLaunchContext(team: team, member: member),
+      ),
+      [
+        '--team',
+        'agent',
+        '--member',
+        'member-1',
+        '--provider',
+        'anthropic',
+        '--model',
+        'sonnet',
+        '--agent',
+        'builder',
+      ],
+    );
   });
 
   test('adds --loop after --member when team.loop is set', () {
@@ -71,20 +329,25 @@ void main() {
       loop: false,
     );
 
-    expect(LaunchCommandBuilder.buildArguments(team, member), [
-      '--team',
-      'agent',
-      '--member',
-      'member-1',
-      '--loop',
-      'false',
-      '--provider',
-      'anthropic',
-      '--model',
-      'sonnet',
-      '--agent',
-      'builder',
-    ]);
+    expect(
+      LaunchCommandBuilder.buildArgumentsFromContext(
+        CliLaunchContext(team: team, member: member),
+      ),
+      [
+        '--team',
+        'agent',
+        '--member',
+        'member-1',
+        '--loop',
+        'false',
+        '--provider',
+        'anthropic',
+        '--model',
+        'sonnet',
+        '--agent',
+        'builder',
+      ],
+    );
   });
 
   test('adds --dangerously-skip-permissions when member requests it', () {
@@ -95,22 +358,27 @@ void main() {
       provider: 'anthropic',
       model: 'sonnet',
       agent: 'builder',
-      dangerouslySkipPermissions: true,
+      launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
     );
 
-    expect(LaunchCommandBuilder.buildArguments(team, risky), [
-      '--team',
-      'agent',
-      '--member',
-      'member-1',
-      '--provider',
-      'anthropic',
-      '--model',
-      'sonnet',
-      '--agent',
-      'builder',
-      '--dangerously-skip-permissions',
-    ]);
+    expect(
+      LaunchCommandBuilder.buildArgumentsFromContext(
+        CliLaunchContext(team: team, member: risky),
+      ),
+      [
+        '--team',
+        'agent',
+        '--member',
+        'member-1',
+        '--provider',
+        'anthropic',
+        '--model',
+        'sonnet',
+        '--agent',
+        'builder',
+        '--dangerously-skip-permissions',
+      ],
+    );
   });
 
   test('merges team and member extra arguments', () {
@@ -124,14 +392,16 @@ void main() {
       id: 'member-2',
       name: 'reviewer',
       extraArgs: '--continue --system-prompt "be careful"',
-      dangerouslySkipPermissions: false,
+      launchSecurityPolicy: const LaunchSecurityPolicy(),
     );
 
     expect(
-      LaunchCommandBuilder.buildArguments(
-        team,
-        reviewer,
-        workingDirectory: '/home/hhoa/git/agent',
+      LaunchCommandBuilder.buildArgumentsFromContext(
+        CliLaunchContext(
+          team: team,
+          member: reviewer,
+          workingDirectory: '/home/hhoa/git/agent',
+        ),
       ),
       [
         '--dir',
@@ -158,7 +428,7 @@ void main() {
     const reviewer = TeamMemberConfig(
       id: 'member-2',
       name: 'code reviewer',
-      dangerouslySkipPermissions: false,
+      launchSecurityPolicy: const LaunchSecurityPolicy(),
     );
 
     expect(
@@ -172,7 +442,7 @@ void main() {
     const planner = TeamMemberConfig(
       id: 'm',
       name: 'planner',
-      dangerouslySkipPermissions: false,
+      launchSecurityPolicy: const LaunchSecurityPolicy(),
     );
 
     expect(
@@ -207,10 +477,14 @@ void main() {
     );
 
     expect(
-      LaunchCommandBuilder.buildArguments(nativeClaude, member),
+      LaunchCommandBuilder.buildArgumentsFromContext(
+        CliLaunchContext(team: nativeClaude, member: member),
+      ),
       contains('--team-name'),
     );
-    final mixedArgs = LaunchCommandBuilder.buildArguments(mixedClaude, member);
+    final mixedArgs = LaunchCommandBuilder.buildArgumentsFromContext(
+      CliLaunchContext(team: mixedClaude, member: member),
+    );
     expect(mixedArgs, isNot(contains('--team')));
     expect(mixedArgs, isNot(contains('--team-name')));
     expect(
@@ -227,7 +501,7 @@ void main() {
       provider: 'anthropic',
       model: 'sonnet',
       agent: 'builder',
-      dangerouslySkipPermissions: false,
+      launchSecurityPolicy: const LaunchSecurityPolicy(),
     );
 
     expect(
@@ -284,9 +558,7 @@ void main() {
       );
       expect(capturedEnv?['CLAUDE_CONFIG_DIR'], '/tmp/team/claude');
       expect(
-        capturedEnv?.containsKey(
-          ClaudeProviderCapability.settingsFileEnvKey,
-        ),
+        capturedEnv?.containsKey(ClaudeProviderCapability.settingsFileEnvKey),
         isFalse,
       );
     },
@@ -346,53 +618,66 @@ void main() {
     },
   );
 
-  group('buildSessionPrefixArgs', () {
-    test('--resume wins over fixed session id', () {
-      expect(
-        LaunchCommandBuilder.buildSessionPrefixArgs(
-          workingDirectory: '/w',
-          additionalDirectories: const ['/a'],
-          fixedSessionId: '11111111-1111-1111-1111-111111111111',
-          resumeSessionId: '22222222-2222-2222-2222-222222222222',
-        ),
-        [
-          '--resume',
-          '22222222-2222-2222-2222-222222222222',
-          '--dir',
-          '/w',
-          '--add-dir',
-          '/a',
-        ],
+  test(
+    'external terminal fallback forwards the assembled argv unchanged',
+    () async {
+      const team = TeamProfile(
+        id: 'external-team',
+        name: 'external-team',
+        cli: CliTool.flashskyai,
       );
-    });
+      List<String>? capturedArgs;
 
-    test('first launch uses --session-id only', () {
-      expect(
-        LaunchCommandBuilder.buildSessionPrefixArgs(
-          workingDirectory: '/w',
-          additionalDirectories: const ['/extra'],
-          fixedSessionId: '33333333-3333-3333-3333-333333333333',
-          resumeSessionId: null,
-        ),
-        [
-          '--session-id',
-          '33333333-3333-3333-3333-333333333333',
-          '--dir',
-          '/w',
-          '--add-dir',
-          '/extra',
-        ],
-      );
-    });
+      try {
+        await LaunchCommandBuilder.launch(
+          team,
+          member: member,
+          executable: 'flashskyai',
+          workingDirectory: '/work/project',
+          additionalDirectories: const ['/work/shared'],
+          fixedSessionId: 'fixed-id',
+          starter:
+              (
+                executable,
+                arguments, {
+                workingDirectory,
+                runInShell = false,
+                environment,
+                includeParentEnvironment = true,
+              }) async {
+                if (executable == 'flashskyai') {
+                  capturedArgs = List<String>.from(arguments);
+                }
+                throw const ProcessException('stop', []);
+              },
+        );
+      } on ProcessException {
+        // Expected: the fake starter prevents every external terminal spawn and
+        // the final direct spawn.
+      }
 
-    test('resume-only omits session-id', () {
       expect(
-        LaunchCommandBuilder.buildSessionPrefixArgs(
-          resumeSessionId: '44444444-4444-4444-4444-444444444444',
+        capturedArgs,
+        LaunchCommandBuilder.buildArgumentsFromContext(
+          const CliLaunchContext(
+            team: team,
+            member: member,
+            workingDirectory: '/work/project',
+            additionalDirectories: ['/work/shared'],
+            fixedSessionId: 'fixed-id',
+          ),
         ),
-        ['--resume', '44444444-4444-4444-4444-444444444444'],
       );
-    });
+    },
+  );
+
+  test('static splitArgs preserves quoted and escaped token boundaries', () {
+    expect(
+      LaunchCommandBuilder.splitArgs(
+        r'''--label "two words" --path=one\ two 'quoted value' ''',
+      ),
+      ['--label', 'two words', r'--path=one two', 'quoted value'],
+    );
   });
 
   test('workingDirectoryForProcess uses native Windows cwd for WSL PTY', () {
@@ -404,5 +689,51 @@ void main() {
     expect(cwd, isNot(startsWith('/')));
     expect(Directory(cwd).existsSync(), isTrue);
   });
+}
 
+final class _FakeLaunchTool implements CliToolDefinition {
+  const _FakeLaunchTool(
+    this.id,
+    this.provider, {
+    this.isLaunchSupported = true,
+  });
+
+  @override
+  final CliTool id;
+
+  final CliLaunchArgProvider provider;
+
+  @override
+  List<CliCapability> get capabilities => [provider];
+
+  @override
+  final bool isLaunchSupported;
+}
+
+final class _FakeLaunchProvider implements CliLaunchArgProvider {
+  const _FakeLaunchProvider();
+
+  @override
+  Iterable<CliLaunchArgContribution> buildLaunchArgs(
+    CliLaunchContext context,
+  ) => [
+    CliLaunchArgContribution(
+      key: 'provider-only',
+      phase: LaunchArgPhase.behavior,
+      args: ['--provider-only'],
+    ),
+  ];
+}
+
+final class _FakeLegacyTool implements CliToolDefinition {
+  const _FakeLegacyTool(this.id);
+
+  @override
+  final CliTool id;
+
+  @override
+  List<CliCapability> get capabilities => const [];
+
+  @override
+  bool get isLaunchSupported => true;
 }

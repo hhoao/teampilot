@@ -1,6 +1,11 @@
+import '../../../../models/team_config.dart';
+import '../../registry/launch/cli_launch_arg_contribution.dart';
+import '../../registry/launch/cli_launch_arg_provider.dart';
+import '../../registry/launch/cli_launch_context.dart';
 import '../../registry/capabilities/team_behavior_capability.dart';
 
-final class CursorTeamBehavior implements TeamBehaviorCapability {
+final class CursorTeamBehavior
+    implements TeamBehaviorCapability, CliLaunchArgProvider {
   const CursorTeamBehavior();
 
   @override
@@ -32,4 +37,17 @@ final class CursorTeamBehavior implements TeamBehaviorCapability {
 
   @override
   MemberAgentPresetStyle? get agentPresetStyle => null;
+
+  @override
+  Iterable<CliLaunchArgContribution> buildLaunchArgs(
+    CliLaunchContext context,
+  ) sync* {
+    if (context.team.teamMode == TeamMode.mixed) {
+      yield CliLaunchArgContribution(
+        key: 'cursor-mixed-approve-mcps',
+        phase: LaunchArgPhase.behavior,
+        args: ['--approve-mcps'],
+      );
+    }
+  }
 }

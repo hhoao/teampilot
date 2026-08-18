@@ -1,3 +1,4 @@
+import 'package:teampilot/models/launch_security_policy.dart';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -21,13 +22,19 @@ void main() {
     updatedAt: 0,
   );
 
-  test('resolveLandingDraft defaults dangerouslySkipPermissions to true', () async {
-    final draft = await resolveLandingDraft(
-      workspaceId: workspace.workspaceId,
-      store: LandingPrefsStore(fs: InMemoryFilesystem(), pathOverride: '/prefs.json'),
-    );
-    expect(draft.dangerouslySkipPermissions, isTrue);
-  });
+  test(
+    'resolveLandingDraft defaults to full access for landing compatibility',
+    () async {
+      final draft = await resolveLandingDraft(
+        workspaceId: workspace.workspaceId,
+        store: LandingPrefsStore(
+          fs: InMemoryFilesystem(),
+          pathOverride: '/prefs.json',
+        ),
+      );
+      expect(draft.launchSecurityPolicy.requiresDangerousExecution, isTrue);
+    },
+  );
 
   test(
     'resolveLandingDraft uses simpleModeDefaultFullAccess when no prefs',
@@ -40,7 +47,7 @@ void main() {
         ),
         simpleModeDefaultFullAccess: false,
       );
-      expect(draft.dangerouslySkipPermissions, isFalse);
+      expect(draft.launchSecurityPolicy.requiresDangerousExecution, isFalse);
     },
   );
 
@@ -55,7 +62,7 @@ void main() {
         workspace.workspaceId,
         const LandingLaunchContext(
           isPersonal: true,
-          dangerouslySkipPermissions: true,
+          launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
         ),
         store: store,
       );
@@ -65,47 +72,53 @@ void main() {
         store: store,
         simpleModeDefaultFullAccess: false,
       );
-      expect(draft.dangerouslySkipPermissions, isTrue);
+      expect(draft.launchSecurityPolicy.requiresDangerousExecution, isTrue);
     },
   );
 
-  test('persistLandingDraft round-trips dangerouslySkipPermissions false', () async {
-    final store = LandingPrefsStore(
-      fs: InMemoryFilesystem(),
-      pathOverride: '/prefs.json',
-    );
-    const draft = LandingLaunchContext(
-      isPersonal: true,
-      dangerouslySkipPermissions: false,
-    );
+  test(
+    'persistLandingDraft round-trips a safe launch security policy',
+    () async {
+      final store = LandingPrefsStore(
+        fs: InMemoryFilesystem(),
+        pathOverride: '/prefs.json',
+      );
+      const draft = LandingLaunchContext(
+        isPersonal: true,
+        launchSecurityPolicy: const LaunchSecurityPolicy(),
+      );
 
-    await persistLandingDraft(workspace.workspaceId, draft, store: store);
+      await persistLandingDraft(workspace.workspaceId, draft, store: store);
 
-    final resolved = await resolveLandingDraft(
-      workspaceId: workspace.workspaceId,
-      store: store,
-    );
-    expect(resolved.dangerouslySkipPermissions, isFalse);
-  });
+      final resolved = await resolveLandingDraft(
+        workspaceId: workspace.workspaceId,
+        store: store,
+      );
+      expect(resolved.launchSecurityPolicy.requiresDangerousExecution, isFalse);
+    },
+  );
 
-  test('persistLandingDraft round-trips dangerouslySkipPermissions true', () async {
-    final store = LandingPrefsStore(
-      fs: InMemoryFilesystem(),
-      pathOverride: '/prefs.json',
-    );
-    const draft = LandingLaunchContext(
-      isPersonal: true,
-      dangerouslySkipPermissions: true,
-    );
+  test(
+    'persistLandingDraft round-trips a full-access launch security policy',
+    () async {
+      final store = LandingPrefsStore(
+        fs: InMemoryFilesystem(),
+        pathOverride: '/prefs.json',
+      );
+      const draft = LandingLaunchContext(
+        isPersonal: true,
+        launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
+      );
 
-    await persistLandingDraft(workspace.workspaceId, draft, store: store);
+      await persistLandingDraft(workspace.workspaceId, draft, store: store);
 
-    final resolved = await resolveLandingDraft(
-      workspaceId: workspace.workspaceId,
-      store: store,
-    );
-    expect(resolved.dangerouslySkipPermissions, isTrue);
-  });
+      final resolved = await resolveLandingDraft(
+        workspaceId: workspace.workspaceId,
+        store: store,
+      );
+      expect(resolved.launchSecurityPolicy.requiresDangerousExecution, isTrue);
+    },
+  );
 
   test('persistLandingDraft round-trips custom four-tuple', () async {
     final store = LandingPrefsStore(
@@ -144,7 +157,8 @@ void main() {
 
     final text = fs.files['/prefs.json']!;
     final root = (jsonDecode(text) as Map).cast<String, Object?>();
-    final wsPrefs = (root[workspace.workspaceId] as Map).cast<String, Object?>();
+    final wsPrefs = (root[workspace.workspaceId] as Map)
+        .cast<String, Object?>();
     expect(wsPrefs.containsKey('cli'), isFalse);
     expect(wsPrefs.containsKey('provider'), isFalse);
     expect(wsPrefs.containsKey('model'), isFalse);
@@ -154,12 +168,14 @@ void main() {
   test('landing draft maps to session continue overrides for create', () {
     const draft = LandingLaunchContext(
       isPersonal: true,
-      dangerouslySkipPermissions: true,
+      launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
     );
     final overrides = SessionContinueOverrides(
-      dangerouslySkipPermissions: draft.dangerouslySkipPermissions,
+      launchSecurityPolicy: LaunchSecurityPolicyOverride.fromPolicy(
+        draft.launchSecurityPolicy,
+      ),
     );
-    expect(overrides.dangerouslySkipPermissions, isTrue);
+    expect(overrides.launchSecurityPolicy?.requiresDangerousExecution, isTrue);
   });
 
   group('resolveLandingSimpleLaunchIdentity', () {
@@ -249,10 +265,7 @@ void main() {
         isPersonal: true,
         presetId: 'preset-1',
       );
-      expect(
-        seedLandingDraftPresetDefault(draft, const [preset]),
-        draft,
-      );
+      expect(seedLandingDraftPresetDefault(draft, const [preset]), draft);
     });
 
     test('keeps custom launch without preset', () {
@@ -261,10 +274,7 @@ void main() {
         cli: CliTool.codex,
         provider: 'openai-official',
       );
-      expect(
-        seedLandingDraftPresetDefault(draft, const [preset]),
-        draft,
-      );
+      expect(seedLandingDraftPresetDefault(draft, const [preset]), draft);
     });
 
     test('no-op when presets empty', () {
@@ -273,14 +283,8 @@ void main() {
     });
 
     test('no-op for team draft', () {
-      const draft = LandingLaunchContext(
-        isPersonal: false,
-        teamId: 'team-1',
-      );
-      expect(
-        seedLandingDraftPresetDefault(draft, const [preset]),
-        draft,
-      );
+      const draft = LandingLaunchContext(isPersonal: false, teamId: 'team-1');
+      expect(seedLandingDraftPresetDefault(draft, const [preset]), draft);
     });
   });
 
@@ -304,10 +308,7 @@ void main() {
     });
 
     test('selecting custom clears presetId', () {
-      const base = LandingLaunchContext(
-        isPersonal: true,
-        presetId: 'preset-1',
-      );
+      const base = LandingLaunchContext(isPersonal: true, presetId: 'preset-1');
 
       final next = landingDraftSelectingCustom(
         base,

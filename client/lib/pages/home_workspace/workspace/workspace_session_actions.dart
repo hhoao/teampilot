@@ -17,6 +17,7 @@ import '../../../cubits/workbench/workbench_cubit.dart';
 import '../../../cubits/worktree_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/landing_launch_context.dart';
+import '../../../models/launch_security_policy.dart';
 import '../../../models/simple_launch_identity.dart';
 import '../../../models/workspace.dart';
 import '../../../models/app_session.dart';
@@ -357,7 +358,9 @@ Future<void> submitWorkspaceLandingMessage(
     fixedSessionId: plannedSessionId,
     expertKey: trimmedExpert.isNotEmpty ? trimmedExpert : null,
     continueOverrides: SessionContinueOverrides(
-      dangerouslySkipPermissions: launch.dangerouslySkipPermissions,
+      launchSecurityPolicy: LaunchSecurityPolicyOverride.fromPolicy(
+        launch.launchSecurityPolicy,
+      ),
     ),
     // Default preference keeps Chat; coordinator forces Terminal when false.
     preserveWorkbenchView: !switchToTerminal,

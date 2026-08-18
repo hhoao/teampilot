@@ -3,6 +3,7 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/session/launch_command_builder.dart';
 import 'package:teampilot/services/cli/registry/capabilities/provider_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
+import 'package:teampilot/services/cli/registry/launch/cli_launch_context.dart';
 
 void main() {
   test('opencode tool is registered and launch-supported', () {
@@ -28,10 +29,13 @@ void main() {
       agent: 'build',
     );
 
-    final args = LaunchCommandBuilder.buildArguments(
-      team,
-      member,
-      workingDirectory: '/work',
+    final args = LaunchCommandBuilder.buildArgumentsFromContext(
+      const CliLaunchContext(
+        team: team,
+        member: member,
+        nativeAgentTeam: false,
+        workingDirectory: '/work',
+      ),
     );
 
     expect(args, ['--model', 'anthropic/claude-sonnet-4', '--agent', 'build']);

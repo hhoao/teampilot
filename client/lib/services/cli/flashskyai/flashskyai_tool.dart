@@ -5,6 +5,11 @@ import 'capabilities/session.dart';
 import '../registry/cli_capability.dart';
 import '../registry/cli_tool_definition.dart';
 import 'capabilities/team_behavior.dart';
+import 'capabilities/session_selection_launch.dart';
+import 'capabilities/workspace_access_launch.dart';
+import 'capabilities/model_launch.dart';
+import 'capabilities/permission_launch.dart';
+import 'capabilities/prompt_launch.dart';
 import 'capabilities/chat_interaction.dart';
 import 'capabilities/terminal_behavior.dart';
 import '../registry/capabilities/team_behavior_capability.dart';
@@ -25,10 +30,17 @@ import 'capabilities/executable.dart';
 import '../registry/resources/default_resource_capability.dart';
 import '../registry/config_profile/claude_family_hook_writer.dart';
 import '../registry/capabilities/hook_capability.dart';
+import '../registry/launch/user_extra_args_provider.dart';
 
 final class FlashskyaiCliTool implements CliToolDefinition {
   const FlashskyaiCliTool({
     this.teamBehavior = const FlashskyaiTeamBehavior(),
+    this.sessionSelection = const FlashskyaiSessionSelectionLaunch(),
+    this.workspaceAccess = const FlashskyaiWorkspaceAccessLaunch(),
+    this.modelLaunch = const FlashskyaiModelLaunch(),
+    this.permissionLaunch = const FlashskyaiPermissionLaunch(),
+    this.userExtraArgs = const UserExtraArgsProvider(),
+    this.promptLaunch = const FlashskyaiPromptLaunch(),
     this.session = const FlashskyaiCliSessionCapability(),
     this.executable = const FlashskyaiExecutableCapability(),
     this.terminalBehavior = const FlashskyaiTerminalBehavior(),
@@ -55,6 +67,12 @@ final class FlashskyaiCliTool implements CliToolDefinition {
   final FlashskyaiMcpCapability mcp;
 
   final TeamBehaviorCapability teamBehavior;
+  final FlashskyaiSessionSelectionLaunch sessionSelection;
+  final FlashskyaiWorkspaceAccessLaunch workspaceAccess;
+  final FlashskyaiModelLaunch modelLaunch;
+  final FlashskyaiPermissionLaunch permissionLaunch;
+  final FlashskyaiPromptLaunch promptLaunch;
+  final UserExtraArgsProvider userExtraArgs;
   final HookCapability hookWriter;
   final PromptCapability prompt;
   final ChatInteractionCapability chatInteraction;
@@ -70,6 +88,12 @@ final class FlashskyaiCliTool implements CliToolDefinition {
   @override
   Iterable<CliCapability> get capabilities => [
     teamBehavior,
+    sessionSelection,
+    workspaceAccess,
+    modelLaunch,
+    permissionLaunch,
+    userExtraArgs,
+    promptLaunch,
     executable,
     session,
     terminalBehavior,

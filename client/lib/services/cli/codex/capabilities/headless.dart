@@ -3,8 +3,16 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 
 import '../../../../models/app_provider_config.dart';
+import '../../../../models/team_config.dart';
 import '../../registry/capabilities/headless_capability.dart';
 import '../../registry/headless/headless_provision_support.dart';
+import '../../registry/launch/cli_launch_arg_contribution.dart';
+import '../../registry/launch/cli_launch_capability_error.dart';
+import '../../registry/launch/cli_headless_launch_context.dart';
+import '../../registry/launch/headless_launch_context_adapter.dart';
+import '../../registry/launch/user_extra_args_provider.dart';
+import 'permission_launch.dart';
+import 'workspace_access_launch.dart';
 import '../provider/codex_auth_artifacts.dart';
 import '../provider/codex_home_provisioner.dart';
 import '../provider/codex_official_provider.dart';
@@ -24,23 +32,62 @@ final class CodexHeadlessCapability
   bool get supportsStreaming => false;
 
   @override
+  String get executable => 'codex';
+
+  @override
+  Map<String, String> buildEnvironment(HeadlessLaunchContext context) => {
+    'CODEX_HOME': context.configDir,
+  };
+
+  @override
   List<HeadlessConfigFile> configFiles(HeadlessRunContext ctx) => const [];
 
   @override
-  HeadlessInvocation buildInvocation(HeadlessRunContext ctx) {
-    final args = <String>['exec'];
+  Iterable<CliLaunchArgContribution> buildHeadlessLaunchArgs(
+    CliHeadlessLaunchContext ctx,
+  ) sync* {
+    final interactive = interactiveContextForHeadless(ctx, CliTool.codex);
+    final resume = ctx.resumeSessionId?.trim() ?? '';
+    final fixed = ctx.fixedSessionId?.trim() ?? '';
+    if (fixed.isNotEmpty) {
+      throw const CliLaunchCapabilityException(
+        cli: CliTool.codex,
+        contributionKey: 'codex-headless-session',
+        reason: 'Codex headless exec does not support fixed session ids.',
+      );
+    }
+    yield CliLaunchArgContribution(
+      key: 'codex-headless-command',
+      phase: LaunchArgPhase.command,
+      args: [
+        'exec',
+        if (resume.isNotEmpty) ...['resume', resume],
+      ],
+    );
     final model = ctx.model.trim();
-    if (model.isNotEmpty) args.addAll(['--model', model]);
+    if (model.isNotEmpty) {
+      yield CliLaunchArgContribution(
+        key: 'codex-headless-model',
+        phase: LaunchArgPhase.model,
+        args: ['--model', model],
+      );
+    }
     final effort = ctx.effort.trim();
     if (effort.isNotEmpty) {
-      args.addAll(['-c', 'model_reasoning_effort=$effort']);
+      yield CliLaunchArgContribution(
+        key: 'codex-headless-effort',
+        phase: LaunchArgPhase.model,
+        args: ['-c', 'model_reasoning_effort=$effort'],
+      );
     }
-    args.add(ctx.prompt);
-    return HeadlessInvocation(
-      executable: 'codex',
-      arguments: args,
-      environment: {'CODEX_HOME': ctx.configDir},
+    yield* const CodexWorkspaceAccessLaunch().buildLaunchArgs(interactive);
+    yield* const CodexPermissionLaunch().buildLaunchArgs(interactive);
+    yield CliLaunchArgContribution(
+      key: 'codex-headless-prompt',
+      phase: LaunchArgPhase.prompt,
+      args: [ctx.prompt],
     );
+    yield* const UserExtraArgsProvider().buildLaunchArgs(interactive);
   }
 
   @override

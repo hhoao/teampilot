@@ -144,6 +144,7 @@ class TeamRosterEditor {
       replicas: member.replicas,
       capabilities: member.capabilities,
       activePresetId: member.activePresetId,
+      launchSecurityPolicy: member.launchSecurityPolicy,
     );
     return MemberMutation.update(
       team.copyWith(
@@ -167,7 +168,8 @@ class TeamRosterEditor {
     return MemberMutation.update(
       team.copyWith(
         roster: [
-          for (final s in team.roster) if (s.id == memberId) updated else s,
+          for (final s in team.roster)
+            if (s.id == memberId) updated else s,
         ],
       ),
     );

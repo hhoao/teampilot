@@ -43,18 +43,31 @@ class TeamLaunchService {
   Future<Map<String, String>?> _buildLaunchEnvironment(
     TeamProfile team, {
     TeamMemberConfig? member,
+    required String workingDirectory,
+    List<String> additionalDirectories = const [],
   }) async {
     final outcome = await _lifecycle.prepareTeamLaunchEnvironment(
       team: team,
       member: member,
       sessionId: const Uuid().v4(),
-      workingDirectory: AppStorage.cwd,
+      workingDirectory: workingDirectory,
+      additionalDirectories: additionalDirectories,
     );
     return outcome.environment.isEmpty ? null : outcome.environment;
   }
 
-  Future<void> _runLaunch(TeamProfile team, TeamMemberConfig member) async {
-    final env = await _buildLaunchEnvironment(team, member: member);
+  Future<void> _runLaunch(
+    TeamProfile team,
+    TeamMemberConfig member, {
+    required String workingDirectory,
+    required List<String> additionalDirectories,
+  }) async {
+    final env = await _buildLaunchEnvironment(
+      team,
+      member: member,
+      workingDirectory: workingDirectory,
+      additionalDirectories: additionalDirectories,
+    );
     final launch =
         _launcher ??
         (t, m) => LaunchCommandBuilder.launch(
@@ -68,11 +81,17 @@ class TeamLaunchService {
             ),
           ),
           extraEnvironment: env,
+          workingDirectory: workingDirectory,
+          additionalDirectories: additionalDirectories,
         );
     await launch(team, member);
   }
 
-  String previewFor(TeamMemberConfig member) {
+  String previewFor(
+    TeamMemberConfig member, {
+    String? workingDirectory,
+    List<String> additionalDirectories = const [],
+  }) {
     final team = _h.state.selectedTeam;
     return team == null
         ? ''
@@ -86,6 +105,8 @@ class TeamLaunchService {
                 globalPresets: _lifecycle.globalPresets,
               ),
             ),
+            workingDirectory: workingDirectory ?? AppStorage.cwd,
+            additionalDirectories: additionalDirectories,
           );
   }
 
@@ -102,10 +123,15 @@ class TeamLaunchService {
           globalPresets: _lifecycle.globalPresets,
         ),
       ),
+      workingDirectory: AppStorage.cwd,
     );
   }
 
-  Future<void> launchMember(String memberId) async {
+  Future<void> launchMember(
+    String memberId, {
+    String? workingDirectory,
+    List<String> additionalDirectories = const [],
+  }) async {
     final team = _h.state.selectedTeam;
     if (team == null || team.name.trim().isEmpty) {
       _h.applyState(_h.state.copyWith(statusMessage: 'Team name is required.'));
@@ -129,7 +155,13 @@ class TeamLaunchService {
     );
     try {
       await _sync.syncPluginsForSelected();
-      await _runLaunch(team, member);
+      final launchWorkingDirectory = workingDirectory ?? AppStorage.cwd;
+      await _runLaunch(
+        team,
+        member,
+        workingDirectory: launchWorkingDirectory,
+        additionalDirectories: additionalDirectories,
+      );
       _h.applyState(
         _h.state.copyWith(
           isLaunching: false,
@@ -138,6 +170,8 @@ class TeamLaunchService {
                 team,
                 member,
                 executable: _resolveExecutableFor(memberLaunchCli(team: team, member: member, globalPresets: _lifecycle.globalPresets)),
+                workingDirectory: launchWorkingDirectory,
+                additionalDirectories: additionalDirectories,
               )}',
         ),
       );
@@ -151,7 +185,10 @@ class TeamLaunchService {
     }
   }
 
-  Future<void> launchSelectedTeam() async {
+  Future<void> launchSelectedTeam({
+    String? workingDirectory,
+    List<String> additionalDirectories = const [],
+  }) async {
     final team = _h.state.selectedTeam;
     if (team == null || team.name.trim().isEmpty) {
       _h.applyState(_h.state.copyWith(statusMessage: 'Team name is required.'));
@@ -174,8 +211,14 @@ class TeamLaunchService {
     );
     try {
       await _sync.syncPluginsForSelected();
+      final launchWorkingDirectory = workingDirectory ?? AppStorage.cwd;
       for (final member in validMembers) {
-        await _runLaunch(team, member);
+        await _runLaunch(
+          team,
+          member,
+          workingDirectory: launchWorkingDirectory,
+          additionalDirectories: additionalDirectories,
+        );
       }
       _h.applyState(
         _h.state.copyWith(

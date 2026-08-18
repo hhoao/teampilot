@@ -1,3 +1,4 @@
+import 'package:teampilot/models/launch_security_policy.dart';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -124,7 +125,7 @@ void main() {
         cli: CliTool.claude,
         provider: 'template-provider',
         model: 'template-model',
-        dangerouslySkipPermissions: true,
+        launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
       );
       final team = TeamProfile(
         id: 'team-1',
@@ -166,16 +167,16 @@ void main() {
     });
 
     test('3. Permission full access → effective skip true on merge', () {
-      final session = controller.patchPermission(
+      final session = controller.patchSecurityPolicy(
         session: simpleSession().copyWith(sessionTeam: 'team-1'),
-        dangerouslySkipPermissions: true,
+        launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
         memberId: 'builder-0',
       );
       const base = TeamMemberConfig(
         id: 'builder-0',
         name: 'Builder',
         cli: CliTool.claude,
-        dangerouslySkipPermissions: false,
+        launchSecurityPolicy: const LaunchSecurityPolicy(),
       );
 
       final merged = applySessionContinueOverrides(
@@ -184,17 +185,21 @@ void main() {
         memberId: 'builder-0',
         isSimple: false,
       );
-      expect(merged.dangerouslySkipPermissions, isTrue);
+      expect(merged.launchSecurityPolicy.requiresDangerousExecution, isTrue);
       expect(
-        resolveContinueSkipPermissions(
-          sessionLevel: session.continueOverrides.dangerouslySkipPermissions,
+        resolveContinueSecurityPolicy(
+          sessionLevel: session.continueOverrides.launchSecurityPolicy,
           memberLevel: session
               .continueOverrides
               .memberOverrides['builder-0']
-              ?.dangerouslySkipPermissions,
-          launchDefault: base.dangerouslySkipPermissions,
+              ?.launchSecurityPolicy,
+          launchDefault: base.launchSecurityPolicy,
         ),
-        isTrue,
+        const LaunchSecurityPolicy(
+          approval: LaunchApprovalPolicy.never,
+          sandbox: LaunchSandboxPolicy.fullAccess,
+          hookTrust: LaunchHookTrustPolicy.bypass,
+        ),
       );
     });
 
@@ -228,85 +233,75 @@ void main() {
       expect(disk.model, 'claude-sonnet');
     });
 
-    test(
-      '4b. Team lockedCli prefers binding.cli over live Cursor profile',
-      () {
-        final liveTeam = TeamProfile(
-          id: 't1',
-          name: 'Team',
-          cli: CliTool.cursor,
-          members: [
-            TeamMemberConfig(
-              id: 'team-lead',
-              name: 'Lead',
-              cli: CliTool.cursor,
-            ),
-          ],
-        );
-        final session = AppSession(
-          sessionId: 's1',
-          workspaceId: 'w1',
-          sessionTeam: 't1',
-          members: [
-            SessionMemberBinding(
-              rosterMemberId: 'team-lead',
-              taskId: 'task',
-              cli: CliTool.claude,
-            ),
-          ],
-          createdAt: 1,
-        );
-        final lockedCli = sessionMemberLaunchCli(
-          session: session,
-          team: liveTeam,
-          member: liveTeam.members.first,
-        );
-        expect(lockedCli, CliTool.claude);
-
-        final presets = [
-          claudePreset(id: 'claude-p'),
-          claudePreset(id: 'cursor-p').copyWith(cli: CliTool.cursor),
-        ];
-        expect(
-          presetsForCli(presets, lockedCli).map((p) => p.id),
-          ['claude-p'],
-        );
-      },
-    );
-
-    test(
-      '5. Landing session-level permission → unedited team member uses '
-      'session default (not template)',
-      () {
-        // Landing writes session-level only; no memberOverrides fan-out.
-        final session = AppSession(
-          sessionId: 's1',
-          workspaceId: 'w1',
-          sessionTeam: 'team-1',
-          createdAt: 1,
-          continueOverrides: const SessionContinueOverrides(
-            dangerouslySkipPermissions: true,
+    test('4b. Team lockedCli prefers binding.cli over live Cursor profile', () {
+      final liveTeam = TeamProfile(
+        id: 't1',
+        name: 'Team',
+        cli: CliTool.cursor,
+        members: [
+          TeamMemberConfig(id: 'team-lead', name: 'Lead', cli: CliTool.cursor),
+        ],
+      );
+      final session = AppSession(
+        sessionId: 's1',
+        workspaceId: 'w1',
+        sessionTeam: 't1',
+        members: [
+          SessionMemberBinding(
+            rosterMemberId: 'team-lead',
+            taskId: 'task',
+            cli: CliTool.claude,
           ),
-        );
-        const templateMember = TeamMemberConfig(
-          id: 'builder-0',
-          name: 'Builder',
-          cli: CliTool.claude,
-          // Template often skips; session-level must still win when set.
-          dangerouslySkipPermissions: false,
-        );
+        ],
+        createdAt: 1,
+      );
+      final lockedCli = sessionMemberLaunchCli(
+        session: session,
+        team: liveTeam,
+        member: liveTeam.members.first,
+      );
+      expect(lockedCli, CliTool.claude);
 
-        final merged = applySessionContinueOverrides(
-          baseMember: templateMember,
-          session: session,
-          memberId: 'builder-0',
-          isSimple: false,
-        );
-        expect(merged.dangerouslySkipPermissions, isTrue);
-        expect(session.continueOverrides.memberOverrides, isEmpty);
-        expect(templateMember.dangerouslySkipPermissions, isFalse);
-      },
-    );
+      final presets = [
+        claudePreset(id: 'claude-p'),
+        claudePreset(id: 'cursor-p').copyWith(cli: CliTool.cursor),
+      ];
+      expect(presetsForCli(presets, lockedCli).map((p) => p.id), ['claude-p']);
+    });
+
+    test('5. Landing session-level permission → unedited team member uses '
+        'session default (not template)', () {
+      // Landing writes session-level only; no memberOverrides fan-out.
+      final session = AppSession(
+        sessionId: 's1',
+        workspaceId: 'w1',
+        sessionTeam: 'team-1',
+        createdAt: 1,
+        continueOverrides: const SessionContinueOverrides(
+          launchSecurityPolicy: LaunchSecurityPolicyOverride.fullAccess,
+        ),
+      );
+      const templateMember = TeamMemberConfig(
+        id: 'builder-0',
+        name: 'Builder',
+        cli: CliTool.claude,
+        // Template often skips; session-level must still win when set.
+        launchSecurityPolicy: const LaunchSecurityPolicy(),
+      );
+
+      final merged = applySessionContinueOverrides(
+        baseMember: templateMember,
+        session: session,
+        memberId: 'builder-0',
+        isSimple: false,
+      );
+      expect(merged.launchSecurityPolicy.requiresDangerousExecution, isTrue);
+      expect(session.continueOverrides.memberOverrides, isEmpty);
+      expect(
+        templateMember.launchSecurityPolicy.requiresDangerousExecution,
+        isFalse,
+      );
+    });
 
     test('6. Member switch uses that member’s override map entry', () {
       final session = AppSession(
@@ -315,19 +310,19 @@ void main() {
         sessionTeam: 'team-1',
         createdAt: 1,
         continueOverrides: const SessionContinueOverrides(
-          dangerouslySkipPermissions: false,
+          launchSecurityPolicy: LaunchSecurityPolicyOverride.cliDefault,
           memberOverrides: {
             'builder-0': SessionMemberContinueOverride(
               presetId: 'preset-builder',
               provider: 'openai',
               model: 'gpt-4o',
-              dangerouslySkipPermissions: true,
+              launchSecurityPolicy: LaunchSecurityPolicyOverride.fullAccess,
             ),
             'reviewer-0': SessionMemberContinueOverride(
               presetId: 'preset-reviewer',
               provider: 'anthropic',
               model: 'claude-opus',
-              dangerouslySkipPermissions: false,
+              launchSecurityPolicy: LaunchSecurityPolicyOverride.cliDefault,
             ),
           },
         ),
@@ -338,7 +333,7 @@ void main() {
         cli: CliTool.claude,
         provider: 'template',
         model: 'template-m',
-        dangerouslySkipPermissions: true,
+        launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
       );
       const reviewer = TeamMemberConfig(
         id: 'reviewer-0',
@@ -346,7 +341,7 @@ void main() {
         cli: CliTool.claude,
         provider: 'template',
         model: 'template-m',
-        dangerouslySkipPermissions: true,
+        launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
       );
 
       final builderMerged = applySessionContinueOverrides(
@@ -364,11 +359,17 @@ void main() {
 
       expect(builderMerged.provider, 'openai');
       expect(builderMerged.model, 'gpt-4o');
-      expect(builderMerged.dangerouslySkipPermissions, isTrue);
+      expect(
+        builderMerged.launchSecurityPolicy.requiresDangerousExecution,
+        isTrue,
+      );
 
       expect(reviewerMerged.provider, 'anthropic');
       expect(reviewerMerged.model, 'claude-opus');
-      expect(reviewerMerged.dangerouslySkipPermissions, isFalse);
+      expect(
+        reviewerMerged.launchSecurityPolicy.requiresDangerousExecution,
+        isFalse,
+      );
 
       // Chip selection ids follow the selected member's override entry.
       expect(
@@ -422,9 +423,9 @@ void main() {
           isTrue,
         );
         expect(
-          await cubit.setSessionContinuePermission(
+          await cubit.setSessionContinueSecurityPolicy(
             sessionId: session.sessionId,
-            dangerouslySkipPermissions: true,
+            launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
           ),
           isTrue,
         );
@@ -443,7 +444,7 @@ void main() {
         );
         expect(merged.provider, 'openai');
         expect(merged.model, 'gpt-4o');
-        expect(merged.dangerouslySkipPermissions, isTrue);
+        expect(merged.launchSecurityPolicy.requiresDangerousExecution, isTrue);
       },
     );
 
@@ -535,7 +536,7 @@ void main() {
                   modelPresetLabel: 'Beta',
                   emptyPresetHintLabel: 'No presets',
                   onPresetSelected: (_) {},
-                  dangerouslySkipPermissions: false,
+                  launchSecurityPolicy: const LaunchSecurityPolicy(),
                   defaultPermissionsLabel: 'Default',
                   fullAccessPermissionsLabel: 'Full access',
                   onPermissionSelected: (_) {},
@@ -612,7 +613,7 @@ void main() {
                   customLabel: 'Custom…',
                   customSelected: true,
                   onCustom: () {},
-                  dangerouslySkipPermissions: false,
+                  launchSecurityPolicy: const LaunchSecurityPolicy(),
                   defaultPermissionsLabel: 'Default',
                   fullAccessPermissionsLabel: 'Full access',
                   onPermissionSelected: (_) {},

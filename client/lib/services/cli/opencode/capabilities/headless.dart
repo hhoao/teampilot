@@ -3,8 +3,17 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 
 import '../../../../models/app_provider_config.dart';
+import '../../../../models/team_config.dart';
 import '../../registry/capabilities/headless_capability.dart';
 import '../../registry/headless/headless_provision_support.dart';
+import '../../registry/launch/cli_launch_arg_contribution.dart';
+import '../../registry/launch/cli_headless_launch_context.dart';
+import '../../registry/launch/cli_launch_context.dart';
+import '../../registry/launch/headless_launch_context_adapter.dart';
+import '../../registry/launch/user_extra_args_provider.dart';
+import 'agent_launch.dart';
+import 'model_launch.dart';
+import 'session_selection_launch.dart';
 import '../provider/opencode_auth_artifacts.dart';
 import '../provider/opencode_data_layout.dart';
 import '../provider/opencode_provider_settings_resolver.dart';
@@ -26,19 +35,35 @@ final class OpencodeHeadlessCapability
   bool get supportsStreaming => false;
 
   @override
+  String get executable => 'opencode';
+
+  @override
+  Map<String, String> buildEnvironment(HeadlessLaunchContext context) => {
+    'OPENCODE_CONFIG_DIR': context.configDir,
+  };
+
+  @override
   List<HeadlessConfigFile> configFiles(HeadlessRunContext ctx) => const [];
 
   @override
-  HeadlessInvocation buildInvocation(HeadlessRunContext ctx) {
-    final args = <String>['run'];
-    final model = ctx.model.trim();
-    if (model.isNotEmpty) args.addAll(['--model', model]);
-    args.add(ctx.prompt);
-    return HeadlessInvocation(
-      executable: 'opencode',
-      arguments: args,
-      environment: {'OPENCODE_CONFIG_DIR': ctx.configDir},
+  Iterable<CliLaunchArgContribution> buildHeadlessLaunchArgs(
+    CliHeadlessLaunchContext ctx,
+  ) sync* {
+    final interactive = interactiveContextForHeadless(ctx, CliTool.opencode);
+    yield CliLaunchArgContribution(
+      key: 'opencode-headless-command',
+      phase: LaunchArgPhase.command,
+      args: ['run'],
     );
+    yield* const OpencodeSessionSelectionLaunch().buildLaunchArgs(interactive);
+    yield* const OpencodeModelLaunch().buildLaunchArgs(interactive);
+    yield* const OpencodeAgentLaunch().buildLaunchArgs(interactive);
+    yield CliLaunchArgContribution(
+      key: 'opencode-headless-prompt',
+      phase: LaunchArgPhase.prompt,
+      args: [ctx.prompt],
+    );
+    yield* const UserExtraArgsProvider().buildLaunchArgs(interactive);
   }
 
   @override
@@ -74,13 +99,21 @@ final class OpencodeHeadlessCapability
     );
     var config = await readJsonMap(configPath);
     config = _mergeOpencodeProvider(config, resolved);
+    config = mergeOpencodeSecurityPolicy(config, ctx.securityPolicy);
+    final externalDirectories = <String>[
+      for (final directory in ctx.additionalDirectories)
+        if (directory.trim().isNotEmpty)
+          normalizePathForCli(directory.trim(), useWslPaths: ctx.useWslPaths),
+    ];
+    if (externalDirectories.isNotEmpty) {
+      config = mergeOpencodeExternalDirectories(config, externalDirectories);
+    }
     await writeJson(configPath, config);
 
     final extraEnvironment = <String, String>{};
     final authContent = await _readOpencodeAuthContent(resolved);
     if (authContent != null) {
-      extraEnvironment[OpencodeProviderCapability.authContentEnv] =
-          authContent;
+      extraEnvironment[OpencodeProviderCapability.authContentEnv] = authContent;
     } else if (resolved.isOfficial) {
       warnings.add('opencode_credentials_missing');
       return HeadlessProvisionResult(

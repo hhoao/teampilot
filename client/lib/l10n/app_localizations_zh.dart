@@ -1711,6 +1711,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String get workspaceChatLandingFullAccessPermissions => '完全访问权限';
 
   @override
+  String get workspaceChatLandingAskReadOnlyPermissions => '询问 · 只读 · 仅信任钩子';
+
+  @override
+  String get workspaceChatLandingAutoApproveWorkspaceWritePermissions =>
+      '自动批准 · 工作区写入 · 仅信任钩子';
+
+  @override
+  String get workspaceChatLandingCustomPermissions => '自定义安全策略';
+
+  @override
   String get workspaceChatLandingSkills => '技能';
 
   @override
@@ -6379,6 +6389,16 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get automationsPermissions => '权限';
+
+  @override
+  String get automationsPermissionsAskReadOnly => '询问 · 只读 · 仅信任钩子';
+
+  @override
+  String get automationsPermissionsAutoApproveWorkspaceWrite =>
+      '自动批准 · 工作区写入 · 仅信任钩子';
+
+  @override
+  String get automationsPermissionsCustom => '自定义安全策略';
 
   @override
   String get automationsLaunchProfile => '启动身份';

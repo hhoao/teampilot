@@ -1,11 +1,13 @@
-import '../../models/team_config.dart';
-import '../../utils/team/team_member_naming.dart';
-import '../session/member_role_provision.dart';
+import '../../../../models/team_config.dart';
+import '../../../../models/launch_security_policy.dart';
 
-class CliLaunchContext {
+/// Semantic launch inputs shared by CLI argument capabilities and launch
+/// boundaries.
+final class CliLaunchContext {
   const CliLaunchContext({
     required this.team,
     required this.member,
+    LaunchSecurityPolicy? launchSecurityPolicy,
     this.sessionTeam,
     this.workingDirectory,
     this.additionalDirectories = const [],
@@ -15,10 +17,15 @@ class CliLaunchContext {
     this.appendSystemPromptFile,
     this.useWslPaths = false,
     this.nativeAgentTeam,
-  });
+    this.isSimpleSynthetic = false,
+  }) : _explicitLaunchSecurityPolicy = launchSecurityPolicy;
 
   final TeamProfile team;
   final TeamMemberConfig member;
+  final LaunchSecurityPolicy? _explicitLaunchSecurityPolicy;
+
+  LaunchSecurityPolicy get launchSecurityPolicy =>
+      _explicitLaunchSecurityPolicy ?? member.launchSecurityPolicy;
   final String? sessionTeam;
   final String? workingDirectory;
   final List<String> additionalDirectories;
@@ -36,7 +43,12 @@ class CliLaunchContext {
   /// [team] is not mixed.
   final bool? nativeAgentTeam;
 
+  /// True only for the synthetic one-member profile used by Simple launches.
+  /// This is a launch-boundary fact, not a Claude team flag override.
+  final bool isSimpleSynthetic;
+
   String get teamName => sessionTeam ?? team.name.trim();
+
   String get memberDisplayName => member.name.trim();
 
   /// CLI roster / `--agent-name` key ([TeamMemberConfig.id]).
@@ -49,6 +61,7 @@ class CliLaunchContext {
   CliLaunchContext copyWith({
     TeamProfile? team,
     TeamMemberConfig? member,
+    LaunchSecurityPolicy? launchSecurityPolicy,
     String? sessionTeam,
     String? workingDirectory,
     List<String>? additionalDirectories,
@@ -58,10 +71,13 @@ class CliLaunchContext {
     String? appendSystemPromptFile,
     bool? useWslPaths,
     bool? nativeAgentTeam,
+    bool? isSimpleSynthetic,
   }) {
     return CliLaunchContext(
       team: team ?? this.team,
       member: member ?? this.member,
+      launchSecurityPolicy:
+          launchSecurityPolicy ?? _explicitLaunchSecurityPolicy,
       sessionTeam: sessionTeam ?? this.sessionTeam,
       workingDirectory: workingDirectory ?? this.workingDirectory,
       additionalDirectories:
@@ -73,98 +89,12 @@ class CliLaunchContext {
           appendSystemPromptFile ?? this.appendSystemPromptFile,
       useWslPaths: useWslPaths ?? this.useWslPaths,
       nativeAgentTeam: nativeAgentTeam ?? this.nativeAgentTeam,
+      isSimpleSynthetic: isSimpleSynthetic ?? this.isSimpleSynthetic,
     );
   }
 }
 
-abstract interface class CliToolAdapter {
-  List<String> buildArguments(CliLaunchContext context);
-}
-
-List<String> buildSessionPrefixArgs(
-  CliLaunchContext context, {
-  bool includeWorkingDirectory = true,
-}) {
-  final args = <String>[];
-  final resume = context.resumeSessionId?.trim() ?? '';
-  final fixed = context.fixedSessionId?.trim() ?? '';
-  if (resume.isNotEmpty) {
-    args.addAll(['--resume', resume]);
-  } else if (fixed.isNotEmpty) {
-    args.addAll(['--session-id', fixed]);
-  }
-  final wd = context.workingDirectory ?? '';
-  if (includeWorkingDirectory && wd.isNotEmpty) {
-    args.addAll(['--dir', normalizePathForCli(wd, context.useWslPaths)]);
-  }
-  for (final path in context.additionalDirectories) {
-    final trimmed = path.trim();
-    if (trimmed.isNotEmpty) {
-      args.addAll([
-        '--add-dir',
-        normalizePathForCli(trimmed, context.useWslPaths),
-      ]);
-    }
-  }
-  return args;
-}
-
-void addExtraArgs(List<String> args, String raw) {
-  final trimmed = raw.trim();
-  if (trimmed.isNotEmpty) {
-    args.addAll(splitArgs(trimmed));
-  }
-}
-
-List<String> splitArgs(String input) {
-  final args = <String>[];
-  final buffer = StringBuffer();
-  String? quote;
-  var escaping = false;
-
-  for (final rune in input.runes) {
-    final char = String.fromCharCode(rune);
-    if (escaping) {
-      buffer.write(char);
-      escaping = false;
-      continue;
-    }
-    if (char == r'\') {
-      escaping = true;
-      continue;
-    }
-    if (quote != null) {
-      if (char == quote) {
-        quote = null;
-      } else {
-        buffer.write(char);
-      }
-      continue;
-    }
-    if (char == '"' || char == "'") {
-      quote = char;
-      continue;
-    }
-    if (char.trim().isEmpty) {
-      if (buffer.isNotEmpty) {
-        args.add(buffer.toString());
-        buffer.clear();
-      }
-      continue;
-    }
-    buffer.write(char);
-  }
-
-  if (escaping) {
-    buffer.write(r'\');
-  }
-  if (buffer.isNotEmpty) {
-    args.add(buffer.toString());
-  }
-  return args;
-}
-
-String normalizePathForCli(String path, bool useWslPaths) {
+String normalizePathForCli(String path, {required bool useWslPaths}) {
   if (!useWslPaths) return path;
   return windowsPathToWsl(path) ?? path;
 }

@@ -1,3 +1,4 @@
+import 'package:teampilot/models/launch_security_policy.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ui/shared_ui.dart';
@@ -72,14 +73,14 @@ void main() {
   const unboundChrome = UnboundComposeChrome(
     conversationModeLabel: 'Simple',
     autoChipLabel: 'Preset',
-    dangerouslySkipPermissions: false,
+    launchSecurityPolicy: const LaunchSecurityPolicy(),
     defaultPermissionsLabel: 'Default',
     fullAccessPermissionsLabel: 'Full',
     conversationModeSpecs: [],
     autoChipSpecs: [],
     onConversationModeSelected: _noop,
     onAutoChipSelected: _noop,
-    onPermissionSelected: _noopBool,
+    onPermissionSelected: _noopPolicy,
   );
 
   const boundChrome = BoundComposeChrome(
@@ -180,7 +181,9 @@ void main() {
     final controller = TextEditingController();
     addTearDown(controller.dispose);
 
-    await tester.pumpWidget(pumpCard(chrome: unboundChrome, controller: controller));
+    await tester.pumpWidget(
+      pumpCard(chrome: unboundChrome, controller: controller),
+    );
     await tester.pumpAndSettle();
 
     expect(find.byIcon(Icons.mic_none_outlined), findsOneWidget);
@@ -199,9 +202,7 @@ void main() {
     final clip = ComposeClip();
     addTearDown(clip.dispose);
 
-    await tester.pumpWidget(
-      pumpCard(chrome: unboundChrome, clip: clip),
-    );
+    await tester.pumpWidget(pumpCard(chrome: unboundChrome, clip: clip));
     expect(find.byType(ComposePasteClipBar), findsNothing);
 
     clip.setPasted('a\nb\nc');
@@ -218,39 +219,39 @@ void main() {
     final clip = ComposeClip();
     addTearDown(clip.dispose);
 
-    await tester.pumpWidget(
-      pumpCard(chrome: unboundChrome, clip: clip),
-    );
+    await tester.pumpWidget(pumpCard(chrome: unboundChrome, clip: clip));
     clip.setPasted('see @lib/main.dart inside the block');
     await tester.pump();
 
     expect(find.byType(ComposeAtFileChipRow), findsOneWidget);
   });
 
-  testWidgets('real oversized paste collapses into the clip and shows the bar', (
-    tester,
-  ) async {
-    final controller = TextEditingController();
-    final clip = ComposeClip();
-    addTearDown(controller.dispose);
-    addTearDown(clip.dispose);
+  testWidgets(
+    'real oversized paste collapses into the clip and shows the bar',
+    (tester) async {
+      final controller = TextEditingController();
+      final clip = ComposeClip();
+      addTearDown(controller.dispose);
+      addTearDown(clip.dispose);
 
-    await tester.pumpWidget(
-      pumpCard(chrome: unboundChrome, controller: controller, clip: clip),
-    );
+      await tester.pumpWidget(
+        pumpCard(chrome: unboundChrome, controller: controller, clip: clip),
+      );
 
-    final longText = List.generate(30, (i) => 'line $i').join('\n');
-    controller.value = TextEditingValue(
-      text: longText,
-      selection: TextSelection.collapsed(offset: longText.length),
-    );
-    await tester.pump();
+      final longText = List.generate(30, (i) => 'line $i').join('\n');
+      controller.value = TextEditingValue(
+        text: longText,
+        selection: TextSelection.collapsed(offset: longText.length),
+      );
+      await tester.pump();
 
-    expect(clip.collapsed, isTrue);
-    expect(find.byType(ComposePasteClipBar), findsOneWidget);
-  });
+      expect(clip.collapsed, isTrue);
+      expect(find.byType(ComposePasteClipBar), findsOneWidget);
+    },
+  );
 }
 
 void _noop(Object? _) {}
 void _noopBool(bool _) {}
 void _noopString(String _) {}
+void _noopPolicy(LaunchSecurityPolicy _) {}

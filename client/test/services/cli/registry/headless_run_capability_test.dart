@@ -19,14 +19,18 @@ void main() {
     expect(ctx.expectJson, isTrue);
   });
 
-  test('HeadlessInvocation defaults environment to empty', () {
-    const inv = HeadlessInvocation(
-      executable: 'claude',
-      arguments: ['-p', 'x'],
+  test('HeadlessLaunchContext exposes isolated launch inputs', () {
+    const ctx = HeadlessLaunchContext(
+      prompt: 'x',
+      model: 'm',
+      effort: '',
+      configDir: '/tmp/config',
+      workingDirectory: '/repo',
+      additionalDirectories: ['/repo/shared'],
+      resumeSessionId: 'session-1',
     );
-    expect(inv.executable, 'claude');
-    expect(inv.arguments, ['-p', 'x']);
-    expect(inv.environment, isEmpty);
+    expect(ctx.additionalDirectories, ['/repo/shared']);
+    expect(ctx.resumeSessionId, 'session-1');
   });
 
   test('HeadlessConfigFile holds relative path and contents', () {

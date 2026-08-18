@@ -26,7 +26,7 @@ import '../storage/work_target_canonicalizer.dart';
 import '../cli/registry/capabilities/ai_history_capability.dart';
 import '../cli/registry/capabilities/resume/pinned_transcript_probe.dart';
 import '../cli/preset_resolver.dart';
-import '../cli/cli_tool_adapter.dart';
+import '../cli/registry/launch/cli_launch_context.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../cli/flashskyai/capabilities/provider.dart';
 import '../provider/control_plane_profile_paths.dart';
@@ -207,7 +207,6 @@ class SessionLifecycleService {
         team: team,
         preset: prepared.activePreset,
       ),
-      sessionTeam: _resolveSessionTeam(session, prepared.plan, false),
     );
   }
 
@@ -259,7 +258,6 @@ class SessionLifecycleService {
       busIdle: busIdle,
       agentStatus: agentStatus,
     );
-    final isSimple = plan.mode == SessionRuntimeMode.simple;
     return ShellLaunchSpec(
       plan: prepared.plan,
       launchContext: _buildShellLaunchContextFromPlan(
@@ -270,7 +268,6 @@ class SessionLifecycleService {
         team: team,
         preset: prepared.activePreset,
       ),
-      sessionTeam: _resolveSessionTeam(session, prepared.plan, isSimple),
     );
   }
 
@@ -300,7 +297,6 @@ class SessionLifecycleService {
       busIdle: busIdle,
       agentStatus: agentStatus,
     );
-    final isSimple = plan.mode == SessionRuntimeMode.simple;
     return ShellLaunchSpec(
       plan: prepared.plan,
       launchContext: _buildShellLaunchContextFromPlan(
@@ -311,7 +307,6 @@ class SessionLifecycleService {
         team: team,
         preset: prepared.activePreset,
       ),
-      sessionTeam: _resolveSessionTeam(session, prepared.plan, isSimple),
     );
   }
 
@@ -365,7 +360,6 @@ class SessionLifecycleService {
         workspace: resolvedWorkspace,
         team: team,
       ),
-      sessionTeam: _resolveSessionTeam(session, prepared.plan, false),
     );
   }
 
@@ -379,6 +373,7 @@ class SessionLifecycleService {
     String workspaceId = '',
     String sessionId = '',
     String workingDirectory = '',
+    List<String> additionalDirectories = const [],
   }) async {
     final roots = await _resolveRoots();
     final service = await _configProfileServiceFor(roots);
@@ -419,6 +414,7 @@ class SessionLifecycleService {
       workingDirectory: workingDirectory.isNotEmpty
           ? workingDirectory
           : AppStorage.cwd,
+      additionalDirectories: additionalDirectories,
       team: team,
       runtimeBundle: runtimeBundle,
     );
@@ -831,8 +827,8 @@ class SessionLifecycleService {
     final leadTaskId = memberBinding?.taskId.trim() ?? '';
     final leadSessionId =
         TeamMemberNaming.isTeamLead(member) && leadTaskId.isNotEmpty
-            ? leadTaskId
-            : null;
+        ? leadTaskId
+        : null;
     final outcome = await service.prepareTeamLaunch(
       workspaceId: effectiveLaunchWorkspaceId(
         workspaceId: session.workspaceId,
@@ -903,12 +899,14 @@ class SessionLifecycleService {
       return CliLaunchContext(
         team: launchTeam,
         member: member,
+        launchSecurityPolicy: member.launchSecurityPolicy,
         sessionTeam: plan.cliTeamName,
         workingDirectory: personalDirs.workingDirectory,
         additionalDirectories: personalDirs.addDirs,
         // Synthetic 1-member native profile is argv plumbing only — do not
         // enable Claude agent-team "manual mode" (causes multi-call loops).
         nativeAgentTeam: false,
+        isSimpleSynthetic: true,
       );
     }
 
@@ -926,6 +924,7 @@ class SessionLifecycleService {
     return CliLaunchContext(
       team: launchTeam,
       member: member,
+      launchSecurityPolicy: member.launchSecurityPolicy,
       sessionTeam: _resolveSessionTeam(session, plan, false),
       workingDirectory: memberDirs.workingDirectory.isNotEmpty
           ? memberDirs.workingDirectory
@@ -943,7 +942,9 @@ class SessionLifecycleService {
       provider: preset.provider.trim().isNotEmpty
           ? preset.provider.trim()
           : member.provider,
-      model: preset.model.trim().isNotEmpty ? preset.model.trim() : member.model,
+      model: preset.model.trim().isNotEmpty
+          ? preset.model.trim()
+          : member.model,
       effort: preset.effort.trim().isNotEmpty
           ? preset.effort.trim()
           : member.effort,
@@ -1070,13 +1071,12 @@ class SessionLifecycleService {
           folders: session.folders,
           createdAt: session.createdAt,
         );
-    final launchMember =
-        member != null
-            ? (_resolveTeamMemberForLaunch(team, member) ?? member)
-            : team.members.firstWhere(
-                (m) => m.isValid,
-                orElse: () => const TeamMemberConfig(id: '', name: ''),
-              );
+    final launchMember = member != null
+        ? (_resolveTeamMemberForLaunch(team, member) ?? member)
+        : team.members.firstWhere(
+            (m) => m.isValid,
+            orElse: () => const TeamMemberConfig(id: '', name: ''),
+          );
     if (!launchMember.isValid) {
       throw StateError('prepareLaunch requires a valid team member');
     }

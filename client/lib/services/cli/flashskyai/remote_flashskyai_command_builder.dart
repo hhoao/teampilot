@@ -32,22 +32,6 @@ class RemoteFlashskyaiCommandBuilder {
     return useLoginShell ? wrapWithLoginShell(command) : command;
   }
 
-  String buildResumeCommand({
-    required String remoteExecutablePath,
-    required String sessionId,
-    String? workingDirectory,
-    Map<String, String>? environment,
-    bool useLoginShell = false,
-  }) {
-    return buildCommand(
-      remoteExecutablePath: remoteExecutablePath,
-      arguments: ['--resume', sessionId],
-      workingDirectory: workingDirectory,
-      environment: environment,
-      useLoginShell: useLoginShell,
-    );
-  }
-
   String wrapWithLoginShell(String command) => RemoteLoginShell.wrap(command);
 
   static String _quote(String arg) {

@@ -1,3 +1,4 @@
+import 'package:teampilot/models/launch_security_policy.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -640,6 +641,7 @@ void main() {
 
   test('connect starts pty on first terminal resize', () async {
     final starts = <({int columns, int rows})>[];
+    List<String>? startedArguments;
     final handle = _FakeTransport();
     final session = TerminalSession(
       executable: _ptyTestExecutable,
@@ -652,6 +654,7 @@ void main() {
             required rows,
             environment,
           }) {
+            startedArguments = List<String>.from(arguments);
             starts.add((columns: columns, rows: rows));
             return Future.value(handle);
           },
@@ -666,6 +669,45 @@ void main() {
     await Future<void>.delayed(const Duration(milliseconds: 300));
 
     expect(starts, [(columns: 80, rows: 24)]);
+    expect(startedArguments, isEmpty);
+    expect(session.isRunning, isTrue);
+  });
+
+  test('generic workspace shell keeps CLI session flags out of argv', () async {
+    List<String>? startedArguments;
+    String? startedWorkingDirectory;
+    final handle = _FakeTransport();
+    final session = TerminalSession(
+      executable: _ptyTestExecutable,
+      transportStarter:
+          (
+            executable, {
+            required arguments,
+            required workingDirectory,
+            required columns,
+            required rows,
+            environment,
+          }) {
+            startedArguments = List<String>.from(arguments);
+            startedWorkingDirectory = workingDirectory;
+            return Future.value(handle);
+          },
+    );
+    addTearDown(() async {
+      session.dispose();
+      await handle.outputController.close();
+    });
+
+    session.connect(
+      workingDirectory: Directory.systemTemp.path,
+      additionalDirectories: const ['/tmp/shared'],
+      fixedSessionId: 'fixed-id',
+      resumeSessionId: 'resume-id',
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+
+    expect(startedArguments, isEmpty);
+    expect(startedWorkingDirectory, Directory.systemTemp.path);
     expect(session.isRunning, isTrue);
   });
 
@@ -971,7 +1013,7 @@ void main() {
     const member = TeamMemberConfig(
       id: 'member',
       name: 'team-lead',
-      dangerouslySkipPermissions: false,
+      launchSecurityPolicy: const LaunchSecurityPolicy(),
     );
     session.connect(
       workingDirectory: r'C:\Users\haung\git\teampilot\client',

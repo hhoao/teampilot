@@ -12,6 +12,7 @@ import '../../cubits/launch_profile_cubit.dart';
 import '../../cubits/session_preferences_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/automation.dart';
+import '../../models/launch_security_policy.dart';
 import '../../models/team_config.dart';
 import '../../models/workspace.dart';
 import '../../pages/home_workspace/workspace/workspace_landing_selectors.dart';
@@ -85,7 +86,7 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
   String? _expertKey;
   String? _projectFolderPath;
   String? _workingDirectoryPath;
-  late bool _dangerouslySkipPermissions;
+  late LaunchSecurityPolicy _launchSecurityPolicy;
   late String _targetMemberId;
   var _didSeedLaunchFields = false;
 
@@ -106,7 +107,10 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
   TeamProfile? get _selectedTeam {
     final id = _teamId?.trim() ?? '';
     if (id.isEmpty) return null;
-    return context.read<LaunchProfileCubit>().state.teams
+    return context
+        .read<LaunchProfileCubit>()
+        .state
+        .teams
         .where((t) => t.id == id)
         .firstOrNull;
   }
@@ -129,7 +133,8 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
     _expertKey = initial?.expertKey;
     _projectFolderPath = initial?.projectFolderPath;
     _workingDirectoryPath = initial?.workingDirectoryPath;
-    _dangerouslySkipPermissions = initial?.dangerouslySkipPermissions ?? false;
+    _launchSecurityPolicy =
+        initial?.launchSecurityPolicy ?? const LaunchSecurityPolicy();
     _targetMemberId = initial?.targetMemberId ?? 'team-lead';
     _reuseSession = initial?.reuseSession ?? false;
     _enabled = initial?.enabled ?? true;
@@ -150,7 +155,10 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
   Workspace? get _workspace {
     final workspaceId = widget.initial?.workspaceId ?? widget.workspaceId ?? '';
     if (workspaceId.isEmpty) return null;
-    return context.read<ChatCubit>().state.workspaces
+    return context
+        .read<ChatCubit>()
+        .state
+        .workspaces
         .where((w) => w.workspaceId == workspaceId)
         .firstOrNull;
   }
@@ -183,7 +191,7 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
       _expertKey = draft.expertKey;
       _projectFolderPath = draft.projectFolderPath;
       _workingDirectoryPath = draft.workingDirectoryPath;
-      _dangerouslySkipPermissions = draft.dangerouslySkipPermissions;
+      _launchSecurityPolicy = draft.launchSecurityPolicy;
     });
     _seedTeamMemberDefault();
     _seedPresetDefault();
@@ -246,7 +254,8 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
 
   void _seedTeamMemberDefault() {
     if (_isPersonal) return;
-    final team = _selectedTeam ??
+    final team =
+        _selectedTeam ??
         context.read<LaunchProfileCubit>().state.teams.firstOrNull;
     if (team == null) return;
     if (_teamId == null || _teamId!.trim().isEmpty) {
@@ -335,7 +344,7 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
           : null,
       projectFolderPath: _isScheduledMessage ? null : projectFolderPath,
       workingDirectoryPath: _isScheduledMessage ? null : workingDirectoryPath,
-      dangerouslySkipPermissions: _dangerouslySkipPermissions,
+      launchSecurityPolicy: _launchSecurityPolicy,
       sessionId: launchSessionId,
       targetMemberId: _isPersonal ? 'team-lead' : _targetMemberId,
       message: message,
@@ -437,7 +446,7 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
                   presetId: _presetId,
                   teamId: _teamId,
                   expertKey: _expertKey,
-                  dangerouslySkipPermissions: _dangerouslySkipPermissions,
+                  launchSecurityPolicy: _launchSecurityPolicy,
                   targetMemberId: _targetMemberId,
                   onIsPersonalChanged: _onIsPersonalChanged,
                   onProjectChanged: (v) =>
@@ -448,7 +457,7 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
                   onTeamChanged: _onTeamChanged,
                   onExpertChanged: (v) => setState(() => _expertKey = v),
                   onPermissionsChanged: (v) =>
-                      setState(() => _dangerouslySkipPermissions = v),
+                      setState(() => _launchSecurityPolicy = v),
                   onTargetMemberChanged: (v) =>
                       setState(() => _targetMemberId = v),
                 ),

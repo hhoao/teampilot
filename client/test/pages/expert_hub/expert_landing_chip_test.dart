@@ -1,3 +1,4 @@
+import 'package:teampilot/models/launch_security_policy.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ui/shared_ui.dart';
@@ -34,7 +35,7 @@ void main() {
           chrome: UnboundComposeChrome(
             conversationModeLabel: 'Simple',
             autoChipLabel: 'Preset',
-            dangerouslySkipPermissions: false,
+            launchSecurityPolicy: const LaunchSecurityPolicy(),
             defaultPermissionsLabel: 'Default permissions',
             fullAccessPermissionsLabel: 'Full access',
             conversationModeSpecs: const [],
@@ -94,23 +95,19 @@ void main() {
     expect(find.byIcon(Icons.psychology_outlined), findsOneWidget);
   });
 
-  testWidgets(
-    'defers compose field behind TpDeferredMountShell',
-    (tester) async {
-      await tester.pumpWidget(pumpComposeCard(expertChipLabel: null));
+  testWidgets('defers compose field behind TpDeferredMountShell', (
+    tester,
+  ) async {
+    await tester.pumpWidget(pumpComposeCard(expertChipLabel: null));
 
-      expect(find.byType(TpDeferredMountShell), findsOneWidget);
-      // Tests mount the child immediately (FLUTTER_TEST).
-      expect(find.byType(ComposeTriggerField), findsOneWidget);
-    },
-  );
+    expect(find.byType(TpDeferredMountShell), findsOneWidget);
+    // Tests mount the child immediately (FLUTTER_TEST).
+    expect(find.byType(ComposeTriggerField), findsOneWidget);
+  });
 
   testWidgets('expert chip hidden in team mode', (tester) async {
     await tester.pumpWidget(
-      pumpComposeCard(
-        expertChipLabel: null,
-        onExpertChipSelected: null,
-      ),
+      pumpComposeCard(expertChipLabel: null, onExpertChipSelected: null),
     );
     await tester.pumpAndSettle();
 

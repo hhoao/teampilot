@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'app_session.dart';
 import 'automation_session_match.dart';
 import 'landing_launch_context.dart';
+import 'launch_security_policy.dart';
 
 enum AutomationAction { scheduledMessage, launchPrompt }
 
@@ -61,7 +62,7 @@ class Automation {
     this.expertKey,
     this.projectFolderPath,
     this.workingDirectoryPath,
-    this.dangerouslySkipPermissions = false,
+    this.launchSecurityPolicy = const LaunchSecurityPolicy(),
     this.sessionId,
     this.targetMemberId = 'team-lead',
     required this.message,
@@ -99,8 +100,9 @@ class Automation {
       expertKey: json['expertKey'] as String?,
       projectFolderPath: json['projectFolderPath'] as String?,
       workingDirectoryPath: json['workingDirectoryPath'] as String?,
-      dangerouslySkipPermissions:
-          json['dangerouslySkipPermissions'] as bool? ?? false,
+      launchSecurityPolicy: LaunchSecurityPolicy.fromJson(
+        json['launchSecurityPolicy'],
+      ),
       sessionId: json['sessionId'] as String?,
       targetMemberId: json['targetMemberId'] as String? ?? 'team-lead',
       message: json['message'] as String? ?? '',
@@ -151,8 +153,8 @@ class Automation {
   /// Launch cwd under [projectFolderPath] (worktree path when applicable).
   final String? workingDirectoryPath;
 
-  /// Session-level full-access permission for new launch-prompt sessions.
-  final bool dangerouslySkipPermissions;
+  /// Session-level security policy for new launch-prompt sessions.
+  final LaunchSecurityPolicy launchSecurityPolicy;
 
   final String? sessionId;
   final String targetMemberId;
@@ -189,7 +191,7 @@ class Automation {
     projectFolderPath: projectFolderPath,
     expertKey: expertKey,
     workingDirectoryPath: workingDirectoryPath,
-    dangerouslySkipPermissions: dangerouslySkipPermissions,
+    launchSecurityPolicy: launchSecurityPolicy,
   );
 
   bool matchesSession(AppSession session) =>
@@ -226,7 +228,9 @@ class Automation {
             throw ArgumentError('launchPrompt team mode requires teamId');
           }
           if (targetMemberId.trim().isEmpty) {
-            throw ArgumentError('launchPrompt team mode requires targetMemberId');
+            throw ArgumentError(
+              'launchPrompt team mode requires targetMemberId',
+            );
           }
         }
     }
@@ -268,7 +272,7 @@ class Automation {
     bool clearProjectFolderPath = false,
     String? workingDirectoryPath,
     bool clearWorkingDirectoryPath = false,
-    bool? dangerouslySkipPermissions,
+    LaunchSecurityPolicy? launchSecurityPolicy,
     String? sessionId,
     bool clearSessionId = false,
     String? targetMemberId,
@@ -310,8 +314,7 @@ class Automation {
       workingDirectoryPath: clearWorkingDirectoryPath
           ? null
           : (workingDirectoryPath ?? this.workingDirectoryPath),
-      dangerouslySkipPermissions:
-          dangerouslySkipPermissions ?? this.dangerouslySkipPermissions,
+      launchSecurityPolicy: launchSecurityPolicy ?? this.launchSecurityPolicy,
       sessionId: clearSessionId ? null : (sessionId ?? this.sessionId),
       targetMemberId: targetMemberId ?? this.targetMemberId,
       message: message ?? this.message,
@@ -351,7 +354,7 @@ class Automation {
           if (teamId != null && teamId!.isNotEmpty) 'teamId': teamId,
           'targetMemberId': targetMemberId,
         },
-        if (dangerouslySkipPermissions) 'dangerouslySkipPermissions': true,
+        'launchSecurityPolicy': launchSecurityPolicy.toJson(),
         if (reuseSession) 'reuseSession': reuseSession,
         if (projectFolderPath != null && projectFolderPath!.isNotEmpty)
           'projectFolderPath': projectFolderPath,
@@ -394,7 +397,7 @@ class Automation {
             expertKey == other.expertKey &&
             projectFolderPath == other.projectFolderPath &&
             workingDirectoryPath == other.workingDirectoryPath &&
-            dangerouslySkipPermissions == other.dangerouslySkipPermissions &&
+            launchSecurityPolicy == other.launchSecurityPolicy &&
             sessionId == other.sessionId &&
             targetMemberId == other.targetMemberId &&
             message == other.message &&
@@ -428,7 +431,7 @@ class Automation {
     expertKey,
     projectFolderPath,
     workingDirectoryPath,
-    dangerouslySkipPermissions,
+    launchSecurityPolicy,
     sessionId,
     targetMemberId,
     message,

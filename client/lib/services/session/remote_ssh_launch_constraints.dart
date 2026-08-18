@@ -1,6 +1,10 @@
+import 'package:dartssh2/dartssh2.dart';
+
 import '../../models/runtime_target.dart';
+import '../../models/launch_security_policy.dart';
 import '../../models/ssh_profile.dart';
 import '../../utils/logging/logger.dart';
+import '../cli/registry/launch/cli_launch_capability_error.dart';
 import '../ssh/ssh_member_session.dart';
 import '../ssh/ssh_run_result.dart';
 import 'shell_launch_spec.dart';
@@ -10,50 +14,80 @@ import 'shell_launch_spec.dart';
 const claudeCodeSandboxEnvKey = 'IS_SANDBOX';
 const claudeCodeSandboxEnvValue = '1';
 
-Future<bool> remoteSshRunsAsRoot({
+/// Returns `true` for confirmed root, `false` for confirmed non-root, and
+/// `null` when the remote identity probe could not be completed.
+Future<bool?> remoteSshRunsAsRoot({
   required SshMemberSession memberSession,
 }) async {
-  final result = await memberSession.runWithResult('id -u', stderr: false);
-  if (sshRunFailed(result)) return false;
-  return String.fromCharCodes(result.stdout).trim() == '0';
+  final result = await _runRemoteUidProbe(memberSession);
+  if (result == null) return null;
+  if (sshRunFailed(result)) return null;
+  final uid = String.fromCharCodes(result.stdout).trim();
+  if (!RegExp(r'^[0-9]+$').hasMatch(uid)) return null;
+  final parsedUid = int.tryParse(uid);
+  if (parsedUid == null) return null;
+  return parsedUid == 0;
 }
 
-Future<bool> remoteSshInDockerContainer({
+Future<SSHRunResult?> _runRemoteUidProbe(SshMemberSession memberSession) async {
+  try {
+    return await memberSession.runWithResult('id -u', stderr: false);
+  } catch (_) {
+    return null;
+  }
+}
+
+enum RemoteSshDockerStatus {
+  confirmedContainer,
+  confirmedNonContainer,
+  unknown,
+}
+
+Future<RemoteSshDockerStatus> remoteSshInDockerContainer({
   required SshMemberSession memberSession,
 }) async {
-  final result = await memberSession.runWithResult(
-    'test -f /.dockerenv',
-    stderr: false,
-  );
-  return sshRunSucceeded(result);
+  try {
+    final result = await memberSession.runWithResult(
+      'test -f /.dockerenv',
+      stderr: false,
+    );
+    if (result.exitSignal != null) return RemoteSshDockerStatus.unknown;
+    return switch (result.exitCode) {
+      0 => RemoteSshDockerStatus.confirmedContainer,
+      1 => RemoteSshDockerStatus.confirmedNonContainer,
+      _ => RemoteSshDockerStatus.unknown,
+    };
+  } catch (_) {
+    return RemoteSshDockerStatus.unknown;
+  }
 }
 
-/// How to reconcile member skip-permissions with Claude Code `setup.ts` on SSH.
-enum RemoteRootSkipPermissionsPolicy {
-  /// No change (non-root, or skip-permissions off).
+/// How to reconcile a dangerous security policy with Claude Code `setup.ts` on SSH.
+enum RemoteRootSecurityPolicy {
+  /// No change (non-root, or safe policy).
   unchanged,
 
-  /// Root with sandbox env: export `IS_SANDBOX=1`, keep the CLI flag.
+  /// Root with sandbox env: export `IS_SANDBOX=1`, keep the requested policy.
   /// Triggered by container detection or per-target opt-in on bare-metal root.
   injectSandboxEnv,
 
-  /// Root on a non-container host: drop the flag (setup.ts would exit 1).
-  dropFlag,
+  /// Root on a non-container host: reject the dangerous launch.
+  dropDangerousPolicy,
 }
 
-RemoteRootSkipPermissionsPolicy resolveRemoteRootSkipPermissionsPolicy({
-  required bool skipPermissionsRequested,
+RemoteRootSecurityPolicy resolveRemoteRootSecurityPolicy({
+  required LaunchSecurityPolicy securityPolicy,
   required bool runsAsRoot,
   required bool remoteInDocker,
   bool injectRootSandboxEnv = false,
 }) {
-  if (!skipPermissionsRequested || !runsAsRoot) {
-    return RemoteRootSkipPermissionsPolicy.unchanged;
+  if (!securityPolicy.requiresDangerousExecution || !runsAsRoot) {
+    return RemoteRootSecurityPolicy.unchanged;
   }
   if (remoteInDocker || injectRootSandboxEnv) {
-    return RemoteRootSkipPermissionsPolicy.injectSandboxEnv;
+    return RemoteRootSecurityPolicy.injectSandboxEnv;
   }
-  return RemoteRootSkipPermissionsPolicy.dropFlag;
+  return RemoteRootSecurityPolicy.dropDangerousPolicy;
 }
 
 /// Applies Claude Code launch constraints for remote SSH (P3c).
@@ -64,28 +98,61 @@ Future<ShellLaunchSpec> applyRemoteSshLaunchConstraints({
   required SshProfile? profile,
   bool injectRootSandboxEnv = false,
 }) async {
-  if (!usesSshTransport(memberTarget.kind) ||
-      memberSession == null ||
-      profile == null) {
+  if (!usesSshTransport(memberTarget.kind)) {
     return spec;
   }
-  final member = spec.launchContext.member;
-  if (!member.dangerouslySkipPermissions) return spec;
+  final securityPolicy = spec.launchContext.launchSecurityPolicy;
+  if (!securityPolicy.requiresDangerousExecution) return spec;
+  if (memberSession == null || profile == null) {
+    throw CliLaunchCapabilityException(
+      cli: spec.launchContext.team.cli,
+      contributionKey: 'remote-ssh-security-prerequisites',
+      reason:
+          'A dangerous SSH launch requires both an active member session and '
+          'the resolved SSH profile so the remote security context can be '
+          'verified. Refusing to launch with missing SSH prerequisites.',
+    );
+  }
 
   final runsAsRoot = await remoteSshRunsAsRoot(memberSession: memberSession);
-  final remoteInDocker = runsAsRoot
+  if (runsAsRoot == null) {
+    throw CliLaunchCapabilityException(
+      cli: spec.launchContext.team.cli,
+      contributionKey: 'remote-ssh-root-security',
+      reason:
+          'Unable to determine the remote SSH user identity: the id -u '
+          'probe failed or returned invalid output for a '
+          'dangerous full-access launch. Refusing to launch without a '
+          'confirmed non-root or sandboxed root environment.',
+    );
+  }
+  final dockerStatus = runsAsRoot
       ? await remoteSshInDockerContainer(memberSession: memberSession)
-      : false;
-  final policy = resolveRemoteRootSkipPermissionsPolicy(
-    skipPermissionsRequested: member.dangerouslySkipPermissions,
+      : RemoteSshDockerStatus.confirmedNonContainer;
+  if (dockerStatus == RemoteSshDockerStatus.unknown) {
+    throw CliLaunchCapabilityException(
+      cli: spec.launchContext.team.cli,
+      contributionKey: 'remote-ssh-container-security',
+      reason:
+          'Unable to determine whether the remote SSH host is a Docker '
+          'container: '
+          'the test -f /.dockerenv probe failed or returned an unknown result '
+          'for a dangerous root launch. Refusing to launch without confirmed '
+          'container or non-container security context.',
+    );
+  }
+  final remoteInDocker =
+      dockerStatus == RemoteSshDockerStatus.confirmedContainer;
+  final policy = resolveRemoteRootSecurityPolicy(
+    securityPolicy: securityPolicy,
     runsAsRoot: runsAsRoot,
     remoteInDocker: remoteInDocker,
     injectRootSandboxEnv: injectRootSandboxEnv,
   );
 
   return switch (policy) {
-    RemoteRootSkipPermissionsPolicy.unchanged => spec,
-    RemoteRootSkipPermissionsPolicy.injectSandboxEnv => () {
+    RemoteRootSecurityPolicy.unchanged => spec,
+    RemoteRootSecurityPolicy.injectSandboxEnv => () {
       final plan = spec.plan;
       final env = Map<String, String>.from(plan.env);
       env[claudeCodeSandboxEnvKey] = claudeCodeSandboxEnvValue;
@@ -109,38 +176,17 @@ Future<ShellLaunchSpec> applyRemoteSshLaunchConstraints({
           warnings: plan.warnings,
         ),
         launchContext: spec.launchContext,
-        sessionTeam: spec.sessionTeam,
       );
     }(),
-    RemoteRootSkipPermissionsPolicy.dropFlag => () {
-      final plan = spec.plan;
-      return ShellLaunchSpec(
-        plan: LaunchPlan(
-          env: plan.env,
-          resume: plan.resume,
-          taskId: plan.taskId,
-          cliTeamName: plan.cliTeamName,
-          memberConfigDir: plan.memberConfigDir,
-          resolvedRoots: plan.resolvedRoots,
-          createSessionId: plan.createSessionId,
-          resumeSessionId: plan.resumeSessionId,
-          nativeSessionIdToPersist: plan.nativeSessionIdToPersist,
-          toolValue: plan.toolValue,
-          warnings: [
-            ...plan.warnings,
-            'remote_ssh_root_skip_permissions_disabled: '
-                'Claude Code rejects --dangerously-skip-permissions for root '
-                'outside a sandbox (setup.ts); launching with permission prompts '
-                'on ${profile.hostIdentifier}. Use a non-root SSH user, a '
-                'container with IS_SANDBOX=1, or enable root sandbox env '
-                'in SSH target settings.',
-          ],
-        ),
-        launchContext: spec.launchContext.copyWith(
-          member: member.copyWith(dangerouslySkipPermissions: false),
-        ),
-        sessionTeam: spec.sessionTeam,
-      );
-    }(),
+    RemoteRootSecurityPolicy.dropDangerousPolicy =>
+      throw CliLaunchCapabilityException(
+        cli: spec.launchContext.team.cli,
+        contributionKey: 'remote-ssh-root-security',
+        reason:
+            'Dangerous full-access SSH launches as root are unsupported '
+            'outside a container or explicit root sandbox. Use a non-root SSH '
+            'user, a container with IS_SANDBOX=1, or enable root sandbox env '
+            'in SSH target settings.',
+      ),
   };
 }

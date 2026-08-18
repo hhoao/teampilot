@@ -1,5 +1,5 @@
 import '../../models/team_config.dart';
-import '../cli/cli_tool_adapter.dart';
+import '../cli/registry/launch/cli_launch_context.dart';
 
 class LaunchPlan {
   const LaunchPlan({
@@ -52,21 +52,14 @@ class LaunchPlan {
 /// Config provisioning ([plan]) plus CLI argv context for a single PTY spawn.
 ///
 /// Built by [SessionLifecycleService.prepareShellLaunch]. Personal and team
-/// sessions share this type; [launchContext] holds the adapter-facing
+/// sessions share this type; [launchContext] holds the semantic
 /// `TeamProfile` / `TeamMemberConfig` pair (standalone profiles are converted
 /// in the lifecycle layer, not at the terminal boundary).
 class ShellLaunchSpec {
-  const ShellLaunchSpec({
-    required this.plan,
-    required this.launchContext,
-    required this.sessionTeam,
-  });
+  const ShellLaunchSpec({required this.plan, required this.launchContext});
 
   final LaunchPlan plan;
   final CliLaunchContext launchContext;
-
-  /// Passed to CLI adapters as `sessionTeam` (`--team-name`, `--team`, …).
-  final String sessionTeam;
 
   /// Lightweight spec when only CLI argv matter (tests, external-terminal preview).
   factory ShellLaunchSpec.teamMember({
@@ -91,11 +84,11 @@ class ShellLaunchSpec {
       launchContext: CliLaunchContext(
         team: team,
         member: member,
+        launchSecurityPolicy: member.launchSecurityPolicy,
         sessionTeam: runtimeTeam,
         workingDirectory: workingDirectory,
         additionalDirectories: additionalDirectories,
       ),
-      sessionTeam: runtimeTeam,
     );
   }
 }

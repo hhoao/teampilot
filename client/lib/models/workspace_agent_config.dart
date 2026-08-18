@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 
-import 'team_config.dart'; // for TeamMemberConfig.decodeDangerouslySkipPermissions
+import 'launch_security_policy.dart';
 
 @immutable
 class WorkspaceAgentConfig {
@@ -9,7 +9,7 @@ class WorkspaceAgentConfig {
     this.agentType = '',
     this.extraArgs = '',
     this.responsibilities = '',
-    this.dangerouslySkipPermissions = false,
+    this.launchSecurityPolicy = const LaunchSecurityPolicy(),
   });
 
   factory WorkspaceAgentConfig.fromJson(Map<String, Object?> json) {
@@ -18,11 +18,9 @@ class WorkspaceAgentConfig {
       agentType: json['agentType'] as String? ?? '',
       extraArgs: json['extraArgs'] as String? ?? '',
       responsibilities: json['responsibilities'] as String? ?? '',
-      dangerouslySkipPermissions: json.containsKey('dangerouslySkipPermissions')
-          ? TeamMemberConfig.decodeDangerouslySkipPermissions(
-              json['dangerouslySkipPermissions'],
-            )
-          : false,
+      launchSecurityPolicy: LaunchSecurityPolicy.fromJson(
+        json['launchSecurityPolicy'],
+      ),
     );
   }
 
@@ -30,22 +28,21 @@ class WorkspaceAgentConfig {
   final String agentType;
   final String extraArgs;
   final String responsibilities;
-  final bool dangerouslySkipPermissions;
+  final LaunchSecurityPolicy launchSecurityPolicy;
 
   WorkspaceAgentConfig copyWith({
     String? agent,
     String? agentType,
     String? extraArgs,
     String? responsibilities,
-    bool? dangerouslySkipPermissions,
+    LaunchSecurityPolicy? launchSecurityPolicy,
   }) {
     return WorkspaceAgentConfig(
       agent: agent ?? this.agent,
       agentType: agentType ?? this.agentType,
       extraArgs: extraArgs ?? this.extraArgs,
       responsibilities: responsibilities ?? this.responsibilities,
-      dangerouslySkipPermissions:
-          dangerouslySkipPermissions ?? this.dangerouslySkipPermissions,
+      launchSecurityPolicy: launchSecurityPolicy ?? this.launchSecurityPolicy,
     );
   }
 
@@ -55,7 +52,7 @@ class WorkspaceAgentConfig {
       if (agentType.isNotEmpty) 'agentType': agentType,
       'extraArgs': extraArgs,
       'responsibilities': responsibilities,
-      if (dangerouslySkipPermissions) 'dangerouslySkipPermissions': true,
+      'launchSecurityPolicy': launchSecurityPolicy.toJson(),
     };
   }
 
@@ -68,7 +65,7 @@ class WorkspaceAgentConfig {
             agentType == other.agentType &&
             extraArgs == other.extraArgs &&
             responsibilities == other.responsibilities &&
-            dangerouslySkipPermissions == other.dangerouslySkipPermissions;
+            launchSecurityPolicy == other.launchSecurityPolicy;
   }
 
   @override
@@ -77,6 +74,6 @@ class WorkspaceAgentConfig {
     agentType,
     extraArgs,
     responsibilities,
-    dangerouslySkipPermissions,
+    launchSecurityPolicy,
   );
 }

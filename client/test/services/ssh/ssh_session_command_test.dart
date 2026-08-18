@@ -3,17 +3,6 @@ import 'package:teampilot/services/cli/flashskyai/remote_flashskyai_command_buil
 import 'package:teampilot/services/terminal/ssh_pty_transport.dart';
 
 void main() {
-  test('remote resume command uses flashskyai resume argument shape', () {
-    final command = const RemoteFlashskyaiCommandBuilder().buildResumeCommand(
-      remoteExecutablePath: 'flashskyai',
-      sessionId: 'session-123',
-      workingDirectory: '~/repo',
-    );
-
-    expect(command, contains("'--resume' 'session-123'"));
-    expect(command, isNot(contains('--session-id')));
-  });
-
   test('remote command can opt into bash login environment', () {
     final command = const RemoteFlashskyaiCommandBuilder().buildCommand(
       remoteExecutablePath: 'flashskyai',

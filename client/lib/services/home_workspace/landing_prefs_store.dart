@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../../models/team_config.dart';
+import '../../models/launch_security_policy.dart';
 import '../io/filesystem.dart';
 import '../storage/app_storage.dart';
 
@@ -13,7 +14,7 @@ class LandingPrefs {
     this.projectFolderPath,
     this.expertKey,
     this.workingDirectoryPath,
-    this.dangerouslySkipPermissions = true,
+    this.launchSecurityPolicy = LaunchSecurityPolicy.fullAccess,
     this.cli,
     this.provider,
     this.model,
@@ -26,7 +27,7 @@ class LandingPrefs {
   final String? projectFolderPath;
   final String? expertKey;
   final String? workingDirectoryPath;
-  final bool dangerouslySkipPermissions;
+  final LaunchSecurityPolicy launchSecurityPolicy;
   final CliTool? cli;
   final String? provider;
   final String? model;
@@ -41,7 +42,7 @@ class LandingPrefs {
     if (expertKey != null && expertKey!.isNotEmpty) 'expertKey': expertKey,
     if (workingDirectoryPath != null && workingDirectoryPath!.isNotEmpty)
       'workingDirectoryPath': workingDirectoryPath,
-    'dangerouslySkipPermissions': dangerouslySkipPermissions,
+    'launchSecurityPolicy': launchSecurityPolicy.toJson(),
     if (cli != null) 'cli': cli!.value,
     if (provider != null && provider!.isNotEmpty) 'provider': provider,
     if (model != null && model!.isNotEmpty) 'model': model,
@@ -79,8 +80,9 @@ class LandingPrefsStore {
           projectFolderPath: m['projectFolderPath'] as String?,
           expertKey: m['expertKey'] as String?,
           workingDirectoryPath: m['workingDirectoryPath'] as String?,
-          dangerouslySkipPermissions:
-              m['dangerouslySkipPermissions'] as bool? ?? true,
+          launchSecurityPolicy: LaunchSecurityPolicy.fromJson(
+            m['launchSecurityPolicy'],
+          ),
           cli: m['cli'] != null ? CliTool.parse(m['cli']) : null,
           provider: m['provider'] as String?,
           model: m['model'] as String?,

@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/automation.dart';
+import 'package:teampilot/models/launch_security_policy.dart';
 
 void main() {
   test('Automation round-trips JSON', () {
@@ -75,6 +76,43 @@ void main() {
     final back = Automation.fromJson(a.toJson());
     expect(back.presetId, 'preset-1');
     expect(back.isPersonal, isTrue);
+  });
+
+  test('launchPrompt serializes only the normalized security policy', () {
+    const policy = LaunchSecurityPolicy(
+      approval: LaunchApprovalPolicy.autoApprove,
+      sandbox: LaunchSandboxPolicy.workspaceWrite,
+      hookTrust: LaunchHookTrustPolicy.trustedOnly,
+    );
+    final automation = Automation(
+      id: 'security',
+      name: 'Secure launch',
+      action: AutomationAction.launchPrompt,
+      workspaceId: 'ws',
+      isPersonal: true,
+      presetId: 'preset-1',
+      launchSecurityPolicy: policy,
+      message: 'ping',
+      preset: AutomationSchedulePreset.daily,
+      minute: 0,
+      hourMinute: '09:00',
+      timezone: 'UTC',
+      dtstartMs: 0,
+      enabled: true,
+      createdAtMs: 0,
+      updatedAtMs: 0,
+    );
+
+    final json = automation.toJson();
+    expect(json['launchSecurityPolicy'], policy.toJson());
+    expect(json.containsKey('dangerouslySkipPermissions'), isFalse);
+    expect(
+      Automation.fromJson({
+        ...json,
+        'dangerouslySkipPermissions': true,
+      }).launchSecurityPolicy,
+      policy,
+    );
   });
 
   test('launchPrompt round-trips project and worktree paths', () {
