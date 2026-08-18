@@ -495,15 +495,6 @@ class SessionShellConnector {
       if (launchTheme != null) {
         applyShellTerminalThemeForLaunch(shell, launchTheme);
       }
-      shell.configureLaunchAttention(
-        onAttention: (message) {
-          _host.setLaunchError(tab.info.id, message);
-          _host.updateTabRunning(tab.info.id);
-        },
-        onCleared: () {
-          _host.clearLaunchError(tab.info.id);
-        },
-      );
       shell.connect(
         workingDirectory: memberWork.workingDirectory,
         additionalDirectories: memberWork.addDirs,
