@@ -472,14 +472,14 @@ String _sanitizeUrl(String value) {
   changed = changed || unsafeFragment;
   if (!changed) return value;
 
-  final query = Uri(queryParameters: safeQuery).query;
-  final sanitized = uri
+  var sanitized = uri
       .replace(
         userInfo: '',
-        query: query.isEmpty ? null : query,
+        queryParameters: safeQuery,
         fragment: unsafeFragment ? '' : null,
       )
       .toString();
+  sanitized = sanitized.replaceFirst(RegExp(r'\?(?=#|$)'), '');
   return unsafeFragment && sanitized.endsWith('#')
       ? sanitized.substring(0, sanitized.length - 1)
       : sanitized;

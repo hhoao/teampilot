@@ -199,6 +199,9 @@ void main() {
     final safe = ManagedProviderEndpointConfig(
       url: 'https://example.test/usage?region=us#overview',
     );
+    final safeFragment = ManagedProviderEndpointConfig(
+      url: 'https://example.test/usage?apiKey=query-secret#overview',
+    );
 
     expect(
       unsafe.endpointConfig.url,
@@ -209,6 +212,7 @@ void main() {
       'https://example.test/usage?tokenCount=2',
     );
     expect(safe.url, 'https://example.test/usage?region=us#overview');
+    expect(safeFragment.url, 'https://example.test/usage#overview');
   });
 
   test('sanitizes known provider strings but preserves ordinary text', () {
