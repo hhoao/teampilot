@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../../../../models/app_provider_config.dart';
 import '../../../../models/credential_action_result.dart';
 import '../../../../models/credential_probe.dart';
+import '../../../../models/hook_entry.dart';
 import '../../../../models/team_config.dart';
 import '../../../../utils/logging/logger.dart';
 import '../../../hook/glue_script_builder.dart';
@@ -24,6 +25,7 @@ import '../../registry/capabilities/provider_capability.dart';
 import '../../registry/capabilities/prompt_capability.dart';
 import '../../registry/cli_tool_registry.dart';
 import '../../registry/config_profile/config_profile_context.dart';
+import '../../registry/config_profile/hook_seat_context_completer.dart';
 import '../../registry/hook/managed_hook_provisioner.dart';
 import '../../registry/prompt/prompt_hub_service.dart';
 import '../../registry/launch/cli_launch_capability_error.dart';
@@ -37,6 +39,7 @@ import '../provider/opencode_provider_credentials_service.dart';
 import '../provider/opencode_provider_settings_resolver.dart';
 import '../provider/opencode_shared_plugin_deps.dart';
 import '../provider_presets.dart';
+import '../../../resource/providers/hook_library_contribution_provider.dart';
 import 'agent_status_plugin.dart';
 import 'idle_plugin.dart';
 import 'opencode_hook_writer.dart';
@@ -325,6 +328,22 @@ final class OpencodeProviderCapability extends CatalogModelCapability
 
   static const _opencodeDataLayout = OpencodeDataLayout();
 
+  /// Assembles profile-provided hooks before the OpenCode-specific writer.
+  /// OpenCode's endpoint plugins remain target-native because its HookCapability
+  /// has no native HTTP action; user/resource hooks still share the same
+  /// target-neutral deduplication and validation path as the other CLIs.
+  static Future<List<HookEntry>> assembleHookEntries({
+    required Iterable<HookEntry> entries,
+    TeamMemberConfig? member,
+  }) async {
+    final result = await const HookSeatContextCompleter().assemble(
+      cli: CliTool.opencode,
+      member: member,
+      providers: [UserHookContributionProvider(entries: entries)],
+    );
+    return result.entries;
+  }
+
   @override
   Future<SessionHomeContribution> materializeSessionHome(
     SessionHomeContext ctx,
@@ -498,7 +517,11 @@ final class OpencodeProviderCapability extends CatalogModelCapability
     // plus glue scripts under `<opencodeDir>/hooks/` (paths referenced by the
     // plugin's execFile commands). Plugin entry merges into the `plugin`
     // array, coexisting with agent-status / idle entries (dedup by path).
-    if (ctx.hooks.isNotEmpty) {
+    final assembledHookEntries = await assembleHookEntries(
+      entries: ctx.hooks,
+      member: member,
+    );
+    if (assembledHookEntries.isNotEmpty) {
       final writer = const OpencodeHookWriter();
       final hooksDir = paths.joinWork(opencodeDir, 'hooks');
       final result =
@@ -515,7 +538,7 @@ final class OpencodeProviderCapability extends CatalogModelCapability
                 : null,
           ).provision(
             writer: writer,
-            entries: ctx.hooks,
+            entries: assembledHookEntries,
             ctx: HookRenderContext(
               hooksDir: hooksDir,
               runner: paths.hostEnvironmentForProvision().scriptRunner,

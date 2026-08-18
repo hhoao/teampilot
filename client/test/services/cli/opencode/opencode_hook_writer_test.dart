@@ -8,6 +8,27 @@ import 'package:teampilot/services/hook/glue_script_builder.dart';
 
 void main() {
   const writer = OpencodeHookWriter();
+
+  test('OpenCode profile hook inputs are assembled before rendering', () async {
+    const first = HookEntry(
+      id: 'first',
+      source: HookSource.userLibrary,
+      event: HookEvent.stop,
+      action: CommandHookAction.raw('echo stop'),
+    );
+    const duplicate = HookEntry(
+      id: 'duplicate',
+      source: HookSource.managed,
+      event: HookEvent.stop,
+      action: CommandHookAction.raw(' echo stop '),
+    );
+
+    final assembled = await OpencodeProviderCapability.assembleHookEntries(
+      entries: const [first, duplicate],
+    );
+
+    expect(assembled.map((entry) => entry.id), ['first']);
+  });
   const ctx = HookRenderContext(
     hooksDir: '/s/hooks',
     runner: null,
@@ -62,10 +83,7 @@ void main() {
       action: CommandHookAction.raw('echo hi'),
     );
     final result = writer.render(entries: const [entry], ctx: ctx);
-    expect(
-      result.warnings,
-      ['hook_unsupported_event_h1_sessionStart'],
-    );
+    expect(result.warnings, ['hook_unsupported_event_h1_sessionStart']);
   });
 
   test('tool.execute matcher registers tool-keyed hook, plain falls back', () {
@@ -106,8 +124,7 @@ void main() {
     );
   });
 
-  test('multiple tool-keyed entries on same event emit independent checks',
-      () {
+  test('multiple tool-keyed entries on same event emit independent checks', () {
     const bashEntry = HookEntry(
       id: 'h1',
       source: HookSource.userLibrary,
@@ -205,8 +222,11 @@ void main() {
     expect(js, isNot(contains('return out ? JSON.parse(out)')));
     expect(js, contains('last = JSON.parse(out)'));
     expect(js, contains('return last || {}'));
-    expect(js.split('if (evt === "session.idle")').length - 1, 2,
-        reason: 'both subscriptions must emit an if branch');
+    expect(
+      js.split('if (evt === "session.idle")').length - 1,
+      2,
+      reason: 'both subscriptions must emit an if branch',
+    );
   });
 
   test('spaced script path renders as single argv element', () {
@@ -227,9 +247,7 @@ void main() {
         .content;
     expect(
       js,
-      contains(
-        'run(["bash","/home/John Doe/s/hooks/teampilot-hook-h1.sh"])',
-      ),
+      contains('run(["bash","/home/John Doe/s/hooks/teampilot-hook-h1.sh"])'),
     );
   });
 
@@ -249,14 +267,17 @@ void main() {
   });
 
   test('user hooks plugin coexists with agent-status/idle plugin entries', () {
-    var config = const <String, Object?>{'plugin': ['./teampilot-agent-status.js']};
+    var config = const <String, Object?>{
+      'plugin': ['./teampilot-agent-status.js'],
+    };
     config = mergeOpencodePluginEntries(config, ['./teampilot-user-hooks.js']);
     expect(config['plugin'], [
       './teampilot-agent-status.js',
       './teampilot-user-hooks.js',
     ]);
-    final mergedAgain =
-        mergeOpencodePluginEntries(config, ['./teampilot-user-hooks.js']);
+    final mergedAgain = mergeOpencodePluginEntries(config, [
+      './teampilot-user-hooks.js',
+    ]);
     expect(mergedAgain['plugin'], config['plugin']);
   });
 }
