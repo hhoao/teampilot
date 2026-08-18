@@ -22,6 +22,21 @@ class _FakeSecureKeyValueStore implements SecureKeyValueStore {
   }
 }
 
+class _ThrowingSecureKeyValueStore implements SecureKeyValueStore {
+  _ThrowingSecureKeyValueStore(this.error);
+
+  final Object error;
+
+  @override
+  Future<void> delete(String key) async => throw error;
+
+  @override
+  Future<String?> read(String key) async => throw error;
+
+  @override
+  Future<void> write(String key, String value) async => throw error;
+}
+
 ManagedProvider _provider({String? credentialRef = 'managed-provider:p1'}) =>
     ManagedProvider(
       id: 'p1',
@@ -62,7 +77,7 @@ void main() {
 
       await store.write(ref, {'apiKey': secret, 'token': 'another-secret'});
 
-      expect(await store.read(ref), {
+      expect((await store.read(ref)).asMap(), {
         'apiKey': secret,
         'token': 'another-secret',
       });
@@ -75,10 +90,140 @@ void main() {
 
       await store.delete(ref);
 
-      expect(await store.read(ref), isEmpty);
+      expect((await store.read(ref)).isEmpty, isTrue);
       expect(await store.readMasked(ref), isEmpty);
     },
   );
+
+  test(
+    'normalizes whitespace and rejects unsafe namespace components',
+    () async {
+      final backend = _FakeSecureKeyValueStore();
+      final store = ManagedProviderSecretStore(backend);
+
+      await store.write(' managed-provider:p1 ', {' apiKey ': 'secret'});
+
+      expect((await store.read('managed-provider:p1')).asMap(), {
+        'apiKey': 'secret',
+      });
+      expect(
+        backend.values.keys,
+        contains('teampilot.managed_provider.v1.managed-provider:p1.apiKey'),
+      );
+
+      for (final reference in [
+        '',
+        '  ',
+        'managed-provider/p1',
+        'managed-provider\\p1',
+        'managed-provider.p1',
+        'managed-provider\np1',
+      ]) {
+        await expectLater(
+          store.write(reference, {'apiKey': 'secret'}),
+          throwsA(isA<ManagedProviderCredentialError>()),
+        );
+      }
+
+      for (final field in [
+        '',
+        '  ',
+        'api.key',
+        'api/key',
+        'api\\key',
+        'api\nkey',
+        '__fields',
+      ]) {
+        await expectLater(
+          store.write('managed-provider:p2', {field: 'secret'}),
+          throwsA(isA<ManagedProviderCredentialError>()),
+        );
+      }
+    },
+  );
+
+  test(
+    'does not collide when references normalize to the same namespace',
+    () async {
+      final backend = _FakeSecureKeyValueStore();
+      final store = ManagedProviderSecretStore(backend);
+
+      await store.write('managed-provider:p1', {'apiKey': 'first'});
+      await store.write(' managed-provider:p1 ', {'apiKey': 'second'});
+
+      expect((await store.read('managed-provider:p1')).asMap(), {
+        'apiKey': 'second',
+      });
+      expect(
+        backend.values.keys.where((key) => key.contains('managed-provider:p1')),
+        hasLength(3),
+      );
+    },
+  );
+
+  test(
+    'fails safely when the manifest is missing during delete or replace',
+    () async {
+      final backend = _FakeSecureKeyValueStore();
+      final store = ManagedProviderSecretStore(backend);
+      const ref = 'managed-provider:p1';
+      const key = 'teampilot.managed_provider.v1.$ref.apiKey';
+      const manifest = 'teampilot.managed_provider.v1.$ref.__fields';
+
+      await store.write(ref, {'apiKey': 'old-secret'});
+      backend.values.remove(manifest);
+
+      await expectLater(
+        store.delete(ref),
+        throwsA(isA<ManagedProviderCredentialError>()),
+      );
+      await expectLater(
+        store.write(ref, {'apiKey': 'new-secret'}),
+        throwsA(isA<ManagedProviderCredentialError>()),
+      );
+      expect(backend.values[key], 'old-secret');
+    },
+  );
+
+  test(
+    'fails safely when the manifest is corrupt during delete or replace',
+    () async {
+      final backend = _FakeSecureKeyValueStore();
+      final store = ManagedProviderSecretStore(backend);
+      const ref = 'managed-provider:p1';
+      const key = 'teampilot.managed_provider.v1.$ref.apiKey';
+      const manifest = 'teampilot.managed_provider.v1.$ref.__fields';
+
+      await store.write(ref, {'apiKey': 'old-secret'});
+      backend.values[manifest] = '{not-json';
+
+      await expectLater(
+        store.delete(ref),
+        throwsA(isA<ManagedProviderCredentialError>()),
+      );
+      await expectLater(
+        store.write(ref, {'apiKey': 'new-secret'}),
+        throwsA(isA<ManagedProviderCredentialError>()),
+      );
+      expect(backend.values[key], 'old-secret');
+    },
+  );
+
+  test('wraps backend failures without exposing backend details', () async {
+    const secret = 'backend-secret-value';
+    final rawError = StateError('backend failed for $secret');
+    final store = ManagedProviderSecretStore(
+      _ThrowingSecureKeyValueStore(rawError),
+    );
+
+    final error = await captureException(
+      () => store.read('managed-provider:p1'),
+    );
+
+    expect(error, isA<ManagedProviderCredentialError>());
+    expect(error.toString(), isNot(contains(secret)));
+    expect(error.toString(), isNot(contains(rawError.toString())));
+  });
 
   test(
     'resolver returns only request-scoped credentials for a provider',
@@ -90,8 +235,11 @@ void main() {
 
       final credentials = await resolver.resolve(_provider());
 
-      expect(credentials, {'apiKey': 'request-secret'});
+      expect(credentials, isA<ManagedProviderCredentialScope>());
       expect(credentials, isNotNull);
+      expect(credentials!.valueFor('apiKey'), 'request-secret');
+      expect(credentials.toString(), isNot(contains('request-secret')));
+      expect(credentials.asMap(), {'apiKey': 'request-secret'});
     },
   );
 
@@ -111,12 +259,32 @@ void main() {
     'managed provider JSON contains the reference but never secret values',
     () {
       const secret = 'model-must-not-contain-this';
-      final json = _provider().toJson();
+      final provider = _provider().copyWith(
+        endpointConfig: ManagedProviderEndpointConfig(
+          fieldMappings: {'apiKey': secret, 'safe': 'data.safe'},
+        ),
+        unknownFields: {
+          'futureCredential': 'Bearer $secret',
+          'X-Api-Key': secret,
+        },
+      );
+      final json = provider.toJson();
+      final encoded = jsonEncode(json);
 
       expect(json['credentialRef'], 'managed-provider:p1');
-      expect(jsonEncode(json), isNot(contains(secret)));
+      expect(encoded, isNot(contains(secret)));
+      expect(encoded, isNot(contains('Bearer')));
       expect(json.keys, isNot(contains('apiKey')));
       expect(json.keys, isNot(contains('token')));
     },
   );
+}
+
+Future<Object> captureException(Future<Object> Function() action) async {
+  try {
+    await action();
+    fail('Expected action to throw');
+  } on Object catch (error) {
+    return error;
+  }
 }
