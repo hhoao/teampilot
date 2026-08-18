@@ -1,4 +1,4 @@
-import 'dart:collection';
+import 'dart:async';
 import 'dart:convert';
 
 import '../../models/managed_provider.dart';
@@ -12,42 +12,6 @@ abstract interface class ProviderCredentialScope {
   bool get isEmpty;
   Iterable<String> get fields;
   String? valueFor(String field);
-  ManagedProviderCredentialMap asMap();
-}
-
-/// An immutable map view whose diagnostics never include credential values.
-class ManagedProviderCredentialMap extends MapBase<String, String> {
-  ManagedProviderCredentialMap(Map<String, String> values)
-    : _values = Map.unmodifiable(values);
-
-  final Map<String, String> _values;
-
-  @override
-  String? operator [](Object? key) => _values[key];
-
-  @override
-  void operator []=(String key, String value) => _throwImmutable();
-
-  @override
-  void clear() => _throwImmutable();
-
-  @override
-  Iterable<String> get keys => _RedactedIterable(_values.keys);
-
-  @override
-  Iterable<String> get values => _RedactedIterable(_values.values);
-
-  @override
-  Iterable<MapEntry<String, String>> get entries =>
-      _RedactedIterable(_values.entries);
-
-  @override
-  String? remove(Object? key) => _throwImmutable();
-
-  @override
-  String toString() => 'ManagedProviderCredentialMap(<redacted>)';
-
-  Never _throwImmutable() => throw UnsupportedError('immutable');
 }
 
 class ManagedProviderCredentialScope implements ProviderCredentialScope {
@@ -66,9 +30,6 @@ class ManagedProviderCredentialScope implements ProviderCredentialScope {
   String? valueFor(String field) => _values[field];
 
   @override
-  ManagedProviderCredentialMap asMap() => ManagedProviderCredentialMap(_values);
-
-  @override
   String toString() => 'ManagedProviderCredentialScope(<redacted>)';
 }
 
@@ -80,6 +41,7 @@ enum ManagedProviderCredentialErrorCode {
   storageReadFailed,
   storageWriteFailed,
   storageDeleteFailed,
+  rollbackIncomplete,
 }
 
 /// Secret-free failures from managed-provider credential storage.
@@ -111,31 +73,41 @@ class ManagedProviderSecretStore {
   static const maskedValue = '••••••••';
   static const _manifestField = '__fields';
   static const _initializedField = '__initialized';
+  static final _credentialRefLock = _CredentialRefLock();
 
   final SecureKeyValueStore _store;
 
   /// Reads all credentials stored for [credentialRef].
   Future<ManagedProviderCredentialScope> read(String credentialRef) async {
     final ref = _requireReference(credentialRef);
-    final manifest = await _readManifest(ref);
-    if (manifest.isMissing) {
-      if (manifest.isInitialized) _throwManifestMissing();
-      return ManagedProviderCredentialScope(const {});
-    }
+    return await _credentialRefLock.run(ref, () async {
+      final manifest = await _readManifest(ref);
+      if (manifest.isMissing) {
+        if (manifest.isInitialized) _throwManifestMissing();
+        return ManagedProviderCredentialScope(const {});
+      }
 
-    final values = <String, String>{};
-    for (final field in manifest.fields) {
-      final value = await _readKey(_key(ref, field));
-      if (value == null) _throwManifestCorrupt();
-      values[field] = value;
-    }
-    return ManagedProviderCredentialScope(values);
+      final values = <String, String>{};
+      for (final field in manifest.fields) {
+        final value = await _readKey(_key(ref, field));
+        if (value == null) _throwManifestCorrupt();
+        values[field] = value;
+      }
+      return ManagedProviderCredentialScope(values);
+    });
   }
 
   /// Stores request credentials under the versioned managed-provider namespace.
   Future<void> write(String credentialRef, Map<String, String> values) async {
     final ref = _requireReference(credentialRef);
     final normalized = _normalizeValues(values);
+    await _credentialRefLock.run(ref, () => _writeUnlocked(ref, normalized));
+  }
+
+  Future<void> _writeUnlocked(
+    String ref,
+    Map<String, String> normalized,
+  ) async {
     final manifest = await _readManifest(ref);
 
     if (manifest.isMissing) {
@@ -155,12 +127,13 @@ class ManagedProviderSecretStore {
         manifestAttempted = true;
         await _writeManifest(ref, normalized.keys);
       } on Object {
-        await _rollbackNewWrite(
+        final rollbackIncomplete = await _rollbackNewWrite(
           ref,
           writtenFields,
           markerAttempted: markerAttempted,
           manifestAttempted: manifestAttempted,
         );
+        if (rollbackIncomplete) _throwRollbackIncomplete();
         rethrow;
       }
       return;
@@ -168,7 +141,9 @@ class ManagedProviderSecretStore {
 
     final previousValues = <String, String?>{};
     for (final field in manifest.fields) {
-      previousValues[field] = await _readKey(_key(ref, field));
+      final value = await _readKey(_key(ref, field));
+      if (value == null) _throwManifestCorrupt();
+      previousValues[field] = value;
     }
     final hadInitializedMarker =
         await _readKey(_key(ref, _initializedField)) != null;
@@ -192,13 +167,14 @@ class ManagedProviderSecretStore {
       }
       await _writeManifest(ref, normalized.keys);
     } on Object {
-      await _rollbackReplacement(
+      final rollbackIncomplete = await _rollbackReplacement(
         ref,
         manifest.fields,
         previousValues,
         touchedFields,
         hadInitializedMarker: hadInitializedMarker,
       );
+      if (rollbackIncomplete) _throwRollbackIncomplete();
       rethrow;
     }
   }
@@ -206,17 +182,19 @@ class ManagedProviderSecretStore {
   /// Deletes every stored field associated with [credentialRef].
   Future<void> delete(String credentialRef) async {
     final ref = _requireReference(credentialRef);
-    final manifest = await _readManifest(ref);
-    if (manifest.isMissing) {
-      if (manifest.isInitialized) _throwManifestMissing();
-      return;
-    }
+    await _credentialRefLock.run(ref, () async {
+      final manifest = await _readManifest(ref);
+      if (manifest.isMissing) {
+        if (manifest.isInitialized) _throwManifestMissing();
+        return;
+      }
 
-    for (final field in manifest.fields) {
-      await _deleteKey(_key(ref, field));
-    }
-    await _deleteKey(_key(ref, _manifestField));
-    await _deleteKey(_key(ref, _initializedField));
+      for (final field in manifest.fields) {
+        await _deleteKey(_key(ref, field));
+      }
+      await _deleteKey(_key(ref, _manifestField));
+      await _deleteKey(_key(ref, _initializedField));
+    });
   }
 
   /// Returns values suitable for UI display without exposing secret material.
@@ -231,68 +209,114 @@ class ManagedProviderSecretStore {
 
   String _key(String ref, String field) => '$namespace.$ref.$field';
 
-  Future<void> _rollbackNewWrite(
+  Future<bool> _rollbackNewWrite(
     String ref,
     List<String> writtenFields, {
     required bool markerAttempted,
     required bool manifestAttempted,
   }) async {
+    var incomplete = false;
+    final recoverableFields = <String>{};
     if (manifestAttempted) {
-      await _tryDeleteKey(_key(ref, _manifestField));
+      if (!await _tryDeleteKey(_key(ref, _manifestField))) {
+        incomplete = true;
+      }
     }
     for (final field in writtenFields.reversed) {
-      await _tryDeleteKey(_key(ref, field));
+      if (!await _tryDeleteKey(_key(ref, field))) {
+        incomplete = true;
+        recoverableFields.add(field);
+      }
     }
     if (markerAttempted) {
-      await _tryDeleteKey(_key(ref, _initializedField));
+      if (!await _tryDeleteKey(_key(ref, _initializedField))) {
+        incomplete = true;
+      }
     }
+    if (incomplete) {
+      await _tryWriteRecoveryState(ref, recoverableFields);
+    }
+    return incomplete;
   }
 
-  Future<void> _rollbackReplacement(
+  Future<bool> _rollbackReplacement(
     String ref,
     List<String> previousFields,
     Map<String, String?> previousValues,
     List<String> touchedFields, {
     required bool hadInitializedMarker,
   }) async {
+    var incomplete = false;
+    final recoverableFields = <String>{};
     final fieldsToRestore = <String>{...previousFields, ...touchedFields};
     for (final field in fieldsToRestore) {
       final previousValue = previousValues[field];
       if (previousValues.containsKey(field) && previousValue != null) {
-        await _tryWriteKey(_key(ref, field), previousValue);
+        if (await _tryWriteKey(_key(ref, field), previousValue)) {
+          recoverableFields.add(field);
+        } else {
+          incomplete = true;
+          recoverableFields.add(field);
+        }
       } else {
-        await _tryDeleteKey(_key(ref, field));
+        if (!await _tryDeleteKey(_key(ref, field))) {
+          incomplete = true;
+          recoverableFields.add(field);
+        }
       }
     }
-    await _tryWriteManifest(ref, previousFields);
-    if (hadInitializedMarker) {
-      await _tryWriteKey(_key(ref, _initializedField), '1');
-    } else {
-      await _tryDeleteKey(_key(ref, _initializedField));
+    if (!await _tryWriteManifest(ref, previousFields)) {
+      incomplete = true;
     }
+    if (hadInitializedMarker) {
+      if (!await _tryWriteKey(_key(ref, _initializedField), '1')) {
+        incomplete = true;
+      }
+    } else if (!await _tryDeleteKey(_key(ref, _initializedField))) {
+      incomplete = true;
+    }
+    if (incomplete) {
+      await _tryWriteRecoveryState(ref, recoverableFields);
+    }
+    return incomplete;
   }
 
-  Future<void> _tryWriteManifest(String ref, Iterable<String> fields) async {
+  Future<bool> _tryWriteRecoveryState(
+    String ref,
+    Iterable<String> fields,
+  ) async {
+    var success = await _tryWriteKey(_key(ref, _initializedField), '1');
+    if (!await _tryWriteManifest(ref, fields)) success = false;
+    return success;
+  }
+
+  Future<bool> _tryWriteManifest(String ref, Iterable<String> fields) async {
     try {
       await _writeManifest(ref, fields);
+      return true;
     } on Object {
       // Preserve the original secret-free operation error.
+      return false;
     }
   }
 
-  Future<void> _tryWriteKey(String key, String value) async {
+  Future<bool> _tryWriteKey(String key, String value) async {
     try {
       await _writeKey(key, value);
+      return true;
     } on Object {
       // Preserve the original secret-free operation error.
+      return false;
     }
   }
 
-  Future<void> _tryDeleteKey(String key) async {
+  Future<bool> _tryDeleteKey(String key) async {
     try {
       await _deleteKey(key);
+      return true;
     } on Object {
       // Preserve the original secret-free operation error.
+      return false;
     }
   }
 
@@ -411,6 +435,11 @@ class ManagedProviderSecretStore {
       throw const ManagedProviderCredentialError(
         ManagedProviderCredentialErrorCode.manifestCorrupt,
       );
+
+  static Never _throwRollbackIncomplete() =>
+      throw const ManagedProviderCredentialError(
+        ManagedProviderCredentialErrorCode.rollbackIncomplete,
+      );
 }
 
 class _ManifestRead {
@@ -427,16 +456,23 @@ class _ManifestRead {
   final bool isMissing;
 }
 
-class _RedactedIterable<T> extends IterableBase<T> {
-  _RedactedIterable(this._source);
+class _CredentialRefLock {
+  final _tails = <String, Future<void>>{};
 
-  final Iterable<T> _source;
+  Future<T> run<T>(String ref, Future<T> Function() action) async {
+    final previous = _tails[ref] ?? Future<void>.value();
+    final release = Completer<void>();
+    final queued = previous.then((_) => release.future);
+    _tails[ref] = queued;
 
-  @override
-  Iterator<T> get iterator => _source.iterator;
-
-  @override
-  String toString() => '<redacted>';
+    await previous;
+    try {
+      return await action();
+    } finally {
+      if (!release.isCompleted) release.complete();
+      if (identical(_tails[ref], queued)) _tails.remove(ref);
+    }
+  }
 }
 
 /// Resolves a managed provider's reference only for the current request.

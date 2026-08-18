@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -38,15 +39,21 @@ class _ThrowingSecureKeyValueStore implements SecureKeyValueStore {
 }
 
 class _FailOnWriteSecureKeyValueStore implements SecureKeyValueStore {
-  _FailOnWriteSecureKeyValueStore(this.failOnWrite, this.error);
+  _FailOnWriteSecureKeyValueStore(
+    this.failOnWrite,
+    this.error, {
+    this.failOnDeleteKey,
+  });
 
   final int failOnWrite;
   final Object error;
+  final String? failOnDeleteKey;
   final values = <String, String>{};
   var writeCount = 0;
 
   @override
   Future<void> delete(String key) async {
+    if (key == failOnDeleteKey) throw error;
     values.remove(key);
   }
 
@@ -61,6 +68,45 @@ class _FailOnWriteSecureKeyValueStore implements SecureKeyValueStore {
   }
 }
 
+class _BlockingSecureKeyValueStore implements SecureKeyValueStore {
+  final values = <String, String>{};
+  var blockApiKeyWrites = false;
+  var _hasBlockedApiKeyWrite = false;
+  Completer<void>? apiKeyWriteStarted;
+  Completer<void>? releaseApiKeyWrite;
+
+  void blockNextApiKeyWrite() {
+    blockApiKeyWrites = true;
+    _hasBlockedApiKeyWrite = false;
+    apiKeyWriteStarted = Completer<void>();
+    releaseApiKeyWrite = Completer<void>();
+  }
+
+  void releaseBlockedApiKeyWrite() {
+    releaseApiKeyWrite!.complete();
+  }
+
+  @override
+  Future<void> delete(String key) async {
+    values.remove(key);
+  }
+
+  @override
+  Future<String?> read(String key) async => values[key];
+
+  @override
+  Future<void> write(String key, String value) async {
+    if (blockApiKeyWrites &&
+        !_hasBlockedApiKeyWrite &&
+        key.endsWith('.apiKey')) {
+      _hasBlockedApiKeyWrite = true;
+      apiKeyWriteStarted!.complete();
+      await releaseApiKeyWrite!.future;
+    }
+    values[key] = value;
+  }
+}
+
 ManagedProvider _provider({String? credentialRef = 'managed-provider:p1'}) =>
     ManagedProvider(
       id: 'p1',
@@ -69,6 +115,13 @@ ManagedProvider _provider({String? credentialRef = 'managed-provider:p1'}) =>
       adapterId: 'example',
       credentialRef: credentialRef,
     );
+
+void expectScope(ProviderCredentialScope scope, Map<String, String> expected) {
+  expect(scope.fields.toSet(), expected.keys.toSet());
+  for (final entry in expected.entries) {
+    expect(scope.valueFor(entry.key), entry.value);
+  }
+}
 
 void main() {
   test('writes credentials under a managed-provider namespace', () async {
@@ -101,7 +154,7 @@ void main() {
 
       await store.write(ref, {'apiKey': secret, 'token': 'another-secret'});
 
-      expect((await store.read(ref)).asMap(), {
+      expectScope(await store.read(ref), {
         'apiKey': secret,
         'token': 'another-secret',
       });
@@ -119,26 +172,19 @@ void main() {
     },
   );
 
-  test('all asMap diagnostics redact credential values', () async {
+  test('request scope exposes only controlled redacted diagnostics', () async {
     final backend = _FakeSecureKeyValueStore();
     final store = ManagedProviderSecretStore(backend);
     const secret = 'scope-map-secret';
 
     await store.write('managed-provider:p1', {'apiKey': secret});
     final scope = await store.read('managed-provider:p1');
-    final values = scope.asMap();
 
-    expect(values['apiKey'], secret);
-    for (final diagnostic in [
-      values.toString(),
-      values.keys.toString(),
-      values.values.toString(),
-      values.entries.toString(),
-      scope.toString(),
-    ]) {
+    expect(scope, isNot(isA<Map<String, String>>()));
+    expect(scope.valueFor('apiKey'), secret);
+    for (final diagnostic in [scope.fields.toString(), scope.toString()]) {
       expect(diagnostic, isNot(contains(secret)));
     }
-    expect(() => values['apiKey'] = 'replacement', throwsUnsupportedError);
   });
 
   test(
@@ -149,7 +195,7 @@ void main() {
 
       await store.write(' managed-provider:p1 ', {' apiKey ': 'secret'});
 
-      expect((await store.read('managed-provider:p1')).asMap(), {
+      expectScope(await store.read('managed-provider:p1'), {
         'apiKey': 'secret',
       });
       expect(
@@ -197,7 +243,7 @@ void main() {
       await store.write('managed-provider:p1', {'apiKey': 'first'});
       await store.write(' managed-provider:p1 ', {'apiKey': 'second'});
 
-      expect((await store.read('managed-provider:p1')).asMap(), {
+      expectScope(await store.read('managed-provider:p1'), {
         'apiKey': 'second',
       });
       expect(
@@ -307,6 +353,74 @@ void main() {
     expect(backend.values, isEmpty);
   });
 
+  test('reports incomplete rollback and keeps recovery metadata', () async {
+    const secret = 'incomplete-rollback-secret';
+    const ref = 'managed-provider:p1';
+    const apiKey = 'teampilot.managed_provider.v1.$ref.apiKey';
+    const manifest = 'teampilot.managed_provider.v1.$ref.__fields';
+    const marker = 'teampilot.managed_provider.v1.$ref.__initialized';
+    final backend = _FailOnWriteSecureKeyValueStore(
+      4,
+      StateError('backend failed while handling $secret'),
+      failOnDeleteKey: apiKey,
+    );
+    final store = ManagedProviderSecretStore(backend);
+
+    final error = await captureException(
+      () => store.write(ref, {'apiKey': secret, 'token': 'second-$secret'}),
+    );
+
+    expect(error, isA<ManagedProviderCredentialError>());
+    expect(error.toString(), contains('rollbackIncomplete'));
+    expect(error.toString(), isNot(contains(secret)));
+    expect(backend.values[apiKey], secret);
+    expect(backend.values[marker], '1');
+    expect(backend.values[manifest], '["apiKey"]');
+  });
+
+  test('serializes concurrent writes for one credential reference', () async {
+    final backend = _BlockingSecureKeyValueStore();
+    final store = ManagedProviderSecretStore(backend);
+    const ref = 'managed-provider:p1';
+
+    await store.write(ref, {'apiKey': 'old', 'token': 'old-token'});
+    backend.blockNextApiKeyWrite();
+    final first = store.write(ref, {'apiKey': 'first'});
+    await backend.apiKeyWriteStarted!.future;
+    final second = store.write(ref, {
+      'apiKey': 'second',
+      'token': 'second-token',
+    });
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+    backend.releaseBlockedApiKeyWrite();
+    await Future.wait([first, second]);
+
+    expectScope(await store.read(ref), {
+      'apiKey': 'second',
+      'token': 'second-token',
+    });
+  });
+
+  test(
+    'serializes concurrent write and delete for one credential reference',
+    () async {
+      final backend = _BlockingSecureKeyValueStore();
+      final store = ManagedProviderSecretStore(backend);
+      const ref = 'managed-provider:p1';
+
+      await store.write(ref, {'apiKey': 'old'});
+      backend.blockNextApiKeyWrite();
+      final write = store.write(ref, {'apiKey': 'new'});
+      await backend.apiKeyWriteStarted!.future;
+      final delete = store.delete(ref);
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      backend.releaseBlockedApiKeyWrite();
+      await Future.wait([write, delete]);
+
+      expect((await store.read(ref)).isEmpty, isTrue);
+    },
+  );
+
   test('wraps backend failures without exposing backend details', () async {
     const secret = 'backend-secret-value';
     final rawError = StateError('backend failed for $secret');
@@ -337,7 +451,6 @@ void main() {
       expect(credentials, isNotNull);
       expect(credentials!.valueFor('apiKey'), 'request-secret');
       expect(credentials.toString(), isNot(contains('request-secret')));
-      expect(credentials.asMap(), {'apiKey': 'request-secret'});
     },
   );
 
