@@ -151,6 +151,29 @@ void main() {
       });
     });
 
+    test('updating a valid snapshot preserves malformed raw entries', () async {
+      await fs.writeString(
+        path,
+        jsonEncode({
+          'schemaVersion': 1,
+          'snapshots': {
+            'valid': _snapshot('valid').toJson(),
+            'broken': {'providerId': 42, 'status': 'ready'},
+            'future-record': 'preserve me',
+          },
+        }),
+      );
+
+      await repo.save(_snapshot('valid', status: ProviderUsageStatus.stale));
+
+      final snapshots =
+          (jsonDecode(await fs.readString(path) ?? '') as Map)['snapshots']
+              as Map;
+      expect(snapshots['broken'], {'providerId': 42, 'status': 'ready'});
+      expect(snapshots['future-record'], 'preserve me');
+      expect((await repo.load()).single.status, ProviderUsageStatus.stale);
+    });
+
     test('preserves the existing top-level schema version on update', () async {
       await fs.writeString(
         path,
@@ -194,6 +217,24 @@ void main() {
       await repo.delete(' p1 ');
       expect(await repo.load(), isEmpty);
     });
+
+    test(
+      'concurrent saves from separate instances do not lose updates',
+      () async {
+        final first = ManagedProviderUsageRepository(fs: fs, cachePath: path);
+        final second = ManagedProviderUsageRepository(fs: fs, cachePath: path);
+
+        await Future.wait([
+          first.save(_snapshot('p1')),
+          second.save(_snapshot('p2')),
+        ]);
+
+        expect(
+          (await repo.load()).map((snapshot) => snapshot.providerId).toSet(),
+          {'p1', 'p2'},
+        );
+      },
+    );
 
     test(
       'delete removes one provider snapshot and clear removes the rest',

@@ -160,6 +160,29 @@ void main() {
       ]);
     });
 
+    test('updating a valid provider preserves malformed raw entries', () async {
+      await fs.writeString(
+        path,
+        jsonEncode({
+          'schemaVersion': 1,
+          'providers': {
+            'valid': _provider('valid').toJson(),
+            'broken': {'name': 42},
+            'future-record': 'preserve me',
+          },
+        }),
+      );
+
+      await repo.upsert(_provider('valid', name: 'Updated'));
+
+      final providers =
+          (jsonDecode(await fs.readString(path) ?? '') as Map)['providers']
+              as Map;
+      expect(providers['broken'], {'name': 42});
+      expect(providers['future-record'], 'preserve me');
+      expect((await repo.load()).single.name, 'Updated');
+    });
+
     test('preserves the existing top-level schema version on update', () async {
       await fs.writeString(
         path,
@@ -198,6 +221,32 @@ void main() {
       expect(await repo.load(), isEmpty);
     });
 
+    test(
+      'concurrent upserts from separate instances do not lose updates',
+      () async {
+        final first = ManagedProviderRepository(
+          fs: fs,
+          configPath: path,
+          onProviderDeleted: (_) async {},
+        );
+        final second = ManagedProviderRepository(
+          fs: fs,
+          configPath: path,
+          onProviderDeleted: (_) async {},
+        );
+
+        await Future.wait([
+          first.upsert(_provider('p1')),
+          second.upsert(_provider('p2')),
+        ]);
+
+        expect((await repo.load()).map((provider) => provider.id).toSet(), {
+          'p1',
+          'p2',
+        });
+      },
+    );
+
     test('upsert replaces by id and delete cleans up that provider', () async {
       await repo.save([_provider('p1'), _provider('p2')]);
 
@@ -235,5 +284,74 @@ void main() {
       expect(await repo.load(), isEmpty);
       expect(await usageRepo.load(), isEmpty);
     });
+
+    test(
+      'save cleans up providers omitted from the replacement list',
+      () async {
+        final usageRepo = ManagedProviderUsageRepository(
+          fs: fs,
+          cachePath: '/tp/providers/managed/usage-cache.json',
+        );
+        repo = ManagedProviderRepository(
+          fs: fs,
+          configPath: path,
+          onProviderDeleted: usageRepo.delete,
+        );
+        await repo.save([_provider('p1'), _provider('p2')]);
+        await usageRepo.save(_snapshotForTest('p1'));
+        await usageRepo.save(_snapshotForTest('p2'));
+
+        await repo.save([_provider('p1')]);
+
+        expect((await repo.load()).map((provider) => provider.id), ['p1']);
+        expect(
+          (await usageRepo.load()).map((snapshot) => snapshot.providerId),
+          ['p1'],
+        );
+      },
+    );
+
+    test('cleanup failure leaves the provider config intact', () async {
+      await repo.save([_provider('p1')]);
+      var calls = 0;
+      repo = ManagedProviderRepository(
+        fs: fs,
+        configPath: path,
+        onProviderDeleted: (_) async {
+          calls++;
+          throw StateError('cleanup failed');
+        },
+      );
+
+      await expectLater(repo.delete('p1'), throwsStateError);
+
+      expect(calls, 1);
+      expect((await repo.load()).map((provider) => provider.id), ['p1']);
+    });
+
+    test(
+      'deleting an absent provider is idempotent without a write or cleanup',
+      () async {
+        var calls = 0;
+        repo = ManagedProviderRepository(
+          fs: fs,
+          configPath: path,
+          onProviderDeleted: (_) async => calls++,
+        );
+        await repo.save([_provider('present')]);
+        final before = await fs.readString(path);
+
+        await repo.delete('missing');
+
+        expect(calls, 0);
+        expect(await fs.readString(path), before);
+      },
+    );
   });
 }
+
+ProviderUsageSnapshot _snapshotForTest(String providerId) =>
+    ProviderUsageSnapshot(
+      providerId: providerId,
+      status: ProviderUsageStatus.ready,
+    );

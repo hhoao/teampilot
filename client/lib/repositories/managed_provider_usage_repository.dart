@@ -3,6 +3,7 @@ import 'dart:convert';
 import '../models/provider_usage_snapshot.dart';
 import '../services/io/filesystem.dart';
 import '../services/storage/app_storage.dart';
+import 'managed_provider_storage_lock.dart';
 
 /// Persists normalized usage snapshots independently from provider config.
 class ManagedProviderUsageRepository {
@@ -37,29 +38,39 @@ class ManagedProviderUsageRepository {
   Future<void> save(ProviderUsageSnapshot snapshot) async {
     final normalized = _normalizeSnapshot(snapshot);
     if (normalized == null) return;
-    final current = await _readStore();
-    final previous = current.snapshots[normalized.providerId];
-    final snapshots = Map<String, ProviderUsageSnapshot>.from(
-      current.snapshots,
-    );
-    snapshots[normalized.providerId] = previous == null
-        ? normalized
-        : _mergeSnapshot(previous, normalized);
-    await _writeStore(current.copyWith(snapshots: snapshots));
+    await ManagedProviderStorageLock.run(_cachePath, () async {
+      final current = await _readStore();
+      final previous = current.snapshots[normalized.providerId];
+      final snapshots = Map<String, ProviderUsageSnapshot>.from(
+        current.snapshots,
+      );
+      snapshots[normalized.providerId] = previous == null
+          ? normalized
+          : _mergeSnapshot(previous, normalized);
+      await _writeStore(current.copyWith(snapshots: snapshots));
+    });
   }
 
   Future<void> delete(String providerId) async {
     final id = providerId.trim();
     if (id.isEmpty) return;
-    final current = await _readStore();
-    final snapshots = Map<String, ProviderUsageSnapshot>.from(current.snapshots)
-      ..remove(id);
-    await _writeStore(current.copyWith(snapshots: snapshots));
+    await ManagedProviderStorageLock.run(_cachePath, () async {
+      final current = await _readStore();
+      if (!current.snapshots.containsKey(id)) return;
+      final snapshots = Map<String, ProviderUsageSnapshot>.from(
+        current.snapshots,
+      )..remove(id);
+      await _writeStore(current.copyWith(snapshots: snapshots));
+    });
   }
 
   Future<void> clear() async {
-    final current = await _readStore();
-    await _writeStore(current.copyWith(snapshots: {}));
+    await ManagedProviderStorageLock.run(_cachePath, () async {
+      final current = await _readStore();
+      await _writeStore(
+        current.copyWith(snapshots: {}, rawSnapshotEntries: {}),
+      );
+    });
   }
 
   Future<_ManagedProviderUsageStore> _readStore() async {
@@ -74,13 +85,17 @@ class ManagedProviderUsageRepository {
       final json = Map<String, Object?>.from(decoded);
       final rawSnapshots = json['snapshots'];
       final snapshots = <String, ProviderUsageSnapshot>{};
+      final rawSnapshotEntries = <String, Object?>{};
       if (rawSnapshots is Map) {
         for (final entry in rawSnapshots.entries) {
           final id = entry.key;
           final value = entry.value;
-          if (id is! String || value is! Map) continue;
+          if (id is! String) continue;
           final normalizedId = id.trim();
-          if (normalizedId.isEmpty) continue;
+          if (normalizedId.isEmpty || value is! Map) {
+            rawSnapshotEntries[id] = value;
+            continue;
+          }
           final snapshotJson = Map<String, Object?>.from(value);
           snapshotJson.putIfAbsent('providerId', () => normalizedId);
           try {
@@ -89,12 +104,13 @@ class ManagedProviderUsageRepository {
               providerId: normalizedId,
             );
           } on Object {
-            // One malformed snapshot must not hide the valid cache entries.
+            rawSnapshotEntries[id] = value;
           }
         }
       }
       return _ManagedProviderUsageStore(
         snapshots: snapshots,
+        rawSnapshotEntries: rawSnapshotEntries,
         schemaVersion: json.containsKey('schemaVersion')
             ? json['schemaVersion']
             : 1,
@@ -112,7 +128,7 @@ class ManagedProviderUsageRepository {
   Future<void> _writeStore(_ManagedProviderUsageStore store) async {
     final path = _cachePath;
     await _fs.ensureDir(_fs.pathContext.dirname(path));
-    final snapshots = <String, Object?>{};
+    final snapshots = <String, Object?>{...store.rawSnapshotEntries};
     for (final id in store.snapshots.keys.toList()..sort()) {
       snapshots[id] = store.snapshots[id]!.toJson();
     }
@@ -183,20 +199,24 @@ class ManagedProviderUsageRepository {
 class _ManagedProviderUsageStore {
   const _ManagedProviderUsageStore({
     this.snapshots = const {},
+    this.rawSnapshotEntries = const {},
     this.schemaVersion = 1,
     this.unknownFields = const {},
   });
 
   final Map<String, ProviderUsageSnapshot> snapshots;
+  final Map<String, Object?> rawSnapshotEntries;
   final Object? schemaVersion;
   final Map<String, Object?> unknownFields;
 
   _ManagedProviderUsageStore copyWith({
     Map<String, ProviderUsageSnapshot>? snapshots,
+    Map<String, Object?>? rawSnapshotEntries,
     Object? schemaVersion,
     Map<String, Object?>? unknownFields,
   }) => _ManagedProviderUsageStore(
     snapshots: snapshots ?? this.snapshots,
+    rawSnapshotEntries: rawSnapshotEntries ?? this.rawSnapshotEntries,
     schemaVersion: schemaVersion ?? this.schemaVersion,
     unknownFields: unknownFields ?? this.unknownFields,
   );
