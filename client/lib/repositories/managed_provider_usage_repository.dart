@@ -3,6 +3,7 @@ import 'dart:convert';
 import '../models/provider_usage_snapshot.dart';
 import '../services/io/filesystem.dart';
 import '../services/storage/app_storage.dart';
+import 'managed_provider_id_deletion_barrier.dart';
 import 'managed_provider_storage_lock.dart';
 
 /// Persists normalized usage snapshots independently from provider config.
@@ -38,25 +39,30 @@ class ManagedProviderUsageRepository {
   Future<void> save(ProviderUsageSnapshot snapshot) async {
     final normalized = _normalizeSnapshot(snapshot);
     if (normalized == null) return;
-    await ManagedProviderStorageLock.run(_cachePath, () async {
-      final current = await _readStore();
-      final previous = current.snapshots[normalized.providerId];
-      final snapshots = Map<String, ProviderUsageSnapshot>.from(
-        current.snapshots,
-      );
-      snapshots[normalized.providerId] = previous == null
-          ? normalized
-          : _mergeSnapshot(previous, normalized);
-      final rawSnapshotEntries = Map<String, Object?>.from(
-        current.rawSnapshotEntries,
-      )..remove(normalized.providerId);
-      await _writeStore(
-        current.copyWith(
-          snapshots: snapshots,
-          rawSnapshotEntries: rawSnapshotEntries,
-        ),
-      );
-    });
+    await ManagedProviderIdDeletionBarrier.runUsageMutation(
+      normalized.providerId,
+      () async {
+        await ManagedProviderStorageLock.run(_cachePath, () async {
+          final current = await _readStore();
+          final previous = current.snapshots[normalized.providerId];
+          final snapshots = Map<String, ProviderUsageSnapshot>.from(
+            current.snapshots,
+          );
+          snapshots[normalized.providerId] = previous == null
+              ? normalized
+              : _mergeSnapshot(previous, normalized);
+          final rawSnapshotEntries = Map<String, Object?>.from(
+            current.rawSnapshotEntries,
+          )..remove(normalized.providerId);
+          await _writeStore(
+            current.copyWith(
+              snapshots: snapshots,
+              rawSnapshotEntries: rawSnapshotEntries,
+            ),
+          );
+        });
+      },
+    );
   }
 
   Future<void> delete(String providerId) => deleteMany([providerId]);
@@ -144,11 +150,11 @@ class ManagedProviderUsageRepository {
         schemaVersion: json.containsKey('schemaVersion')
             ? json['schemaVersion']
             : 1,
-        unknownFields: {
+        unknownFields: _sanitizeDocumentFields({
           for (final entry in json.entries)
             if (entry.key != 'snapshots' && entry.key != 'schemaVersion')
               entry.key: entry.value,
-        },
+        }),
       );
     } on Object {
       return const _ManagedProviderUsageStore();
@@ -191,6 +197,13 @@ class ManagedProviderUsageRepository {
       unknownFields: {rawField: value},
     );
     return holder.unknownFields[rawField];
+  }
+
+  static Map<String, Object?> _sanitizeDocumentFields(
+    Map<String, Object?> fields,
+  ) {
+    final sanitized = _sanitizeRawEntry(fields);
+    return sanitized is Map ? Map<String, Object?>.from(sanitized) : const {};
   }
 
   static ProviderUsageSnapshot _mergeSnapshot(

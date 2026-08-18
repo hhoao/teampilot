@@ -126,6 +126,33 @@ void main() {
       ]);
     });
 
+    test('sanitizes secrets in document-level unknown fields', () async {
+      await fs.writeString(
+        path,
+        jsonEncode({
+          'schemaVersion': 1,
+          'futureCache': {
+            'apiKey': 'document-api-secret',
+            'token': 'document-token-secret',
+            'X-Api-Key': 'document-x-secret',
+            'bearerValue': 'Bearer document-bearer-secret',
+            'nested': {'token': 'nested-document-secret', 'safe': 'keep'},
+          },
+          'snapshots': {'p1': _snapshot('p1').toJson()},
+        }),
+      );
+
+      await repo.save(_snapshot('p1', status: ProviderUsageStatus.stale));
+
+      final decoded = jsonDecode(await fs.readString(path) ?? '') as Map;
+      final futureCache = decoded['futureCache'] as Map;
+      expect(jsonEncode(futureCache), isNot(contains('secret')));
+      expect((futureCache['nested'] as Map)['safe'], 'keep');
+      expect(futureCache.containsKey('apiKey'), isFalse);
+      expect(futureCache.containsKey('token'), isFalse);
+      expect(futureCache.containsKey('X-Api-Key'), isFalse);
+    });
+
     test('save preserves unknown fields on individual measures', () async {
       final original = _snapshot('p1').toJson();
       original['measures'] = [

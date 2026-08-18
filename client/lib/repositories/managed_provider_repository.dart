@@ -3,6 +3,7 @@ import 'dart:convert';
 import '../models/managed_provider.dart';
 import '../services/io/filesystem.dart';
 import '../services/storage/app_storage.dart';
+import 'managed_provider_id_deletion_barrier.dart';
 import 'managed_provider_storage_lock.dart';
 
 /// Persists the CLI-independent managed provider catalog.
@@ -54,10 +55,23 @@ class ManagedProviderRepository {
             .map((key) => key.trim())
             .where((id) => id.isNotEmpty),
       }.where((id) => !merged.containsKey(id)).toList()..sort();
-      if (removedIds.isNotEmpty) await _onProvidersDeleted(removedIds);
-      await _writeStore(
-        current.copyWith(providers: merged, rawProviderEntries: {}),
-      );
+      Future<void> write() async {
+        await _writeStore(
+          current.copyWith(providers: merged, rawProviderEntries: {}),
+        );
+      }
+
+      if (removedIds.isEmpty) {
+        await write();
+      } else {
+        await ManagedProviderIdDeletionBarrier.runDeletion(
+          removedIds,
+          () async {
+            await _onProvidersDeleted(removedIds);
+            await write();
+          },
+        );
+      }
     });
   }
 
@@ -92,18 +106,20 @@ class ManagedProviderRepository {
         (key) => key.trim() == id,
       );
       if (!current.providers.containsKey(id) && !hasRawEntry) return;
-      await _onProvidersDeleted([id]);
       final providers = Map<String, ManagedProvider>.from(current.providers)
         ..remove(id);
       final rawProviderEntries = Map<String, Object?>.from(
         current.rawProviderEntries,
       )..removeWhere((key, _) => key.trim() == id);
-      await _writeStore(
-        current.copyWith(
-          providers: providers,
-          rawProviderEntries: rawProviderEntries,
-        ),
-      );
+      await ManagedProviderIdDeletionBarrier.runDeletion([id], () async {
+        await _onProvidersDeleted([id]);
+        await _writeStore(
+          current.copyWith(
+            providers: providers,
+            rawProviderEntries: rawProviderEntries,
+          ),
+        );
+      });
     });
   }
 
@@ -150,11 +166,11 @@ class ManagedProviderRepository {
         schemaVersion: json.containsKey('schemaVersion')
             ? json['schemaVersion']
             : 1,
-        unknownFields: {
+        unknownFields: _sanitizeDocumentFields({
           for (final entry in json.entries)
             if (entry.key != 'providers' && entry.key != 'schemaVersion')
               entry.key: entry.value,
-        },
+        }),
       );
     } on Object {
       return const _ManagedProviderStore();
@@ -195,6 +211,13 @@ class ManagedProviderRepository {
       unknownFields: {rawField: value},
     );
     return holder.unknownFields[rawField];
+  }
+
+  static Map<String, Object?> _sanitizeDocumentFields(
+    Map<String, Object?> fields,
+  ) {
+    final sanitized = _sanitizeRawEntry(fields);
+    return sanitized is Map ? Map<String, Object?>.from(sanitized) : const {};
   }
 
   static ManagedProvider _mergeProvider(

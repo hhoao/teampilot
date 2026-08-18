@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -158,6 +159,33 @@ void main() {
       expect((provider['displayConfig'] as Map)['futureDisplayField'], [
         'keep',
       ]);
+    });
+
+    test('sanitizes secrets in document-level unknown fields', () async {
+      await fs.writeString(
+        path,
+        jsonEncode({
+          'schemaVersion': 1,
+          'futureConfig': {
+            'apiKey': 'document-api-secret',
+            'token': 'document-token-secret',
+            'X-Api-Key': 'document-x-secret',
+            'bearerValue': 'Bearer document-bearer-secret',
+            'nested': {'token': 'nested-document-secret', 'safe': 'keep'},
+          },
+          'providers': {'p1': _provider('p1').toJson()},
+        }),
+      );
+
+      await repo.upsert(_provider('p1', name: 'Updated'));
+
+      final decoded = jsonDecode(await fs.readString(path) ?? '') as Map;
+      final futureConfig = decoded['futureConfig'] as Map;
+      expect(jsonEncode(futureConfig), isNot(contains('secret')));
+      expect((futureConfig['nested'] as Map)['safe'], 'keep');
+      expect(futureConfig.containsKey('apiKey'), isFalse);
+      expect(futureConfig.containsKey('token'), isFalse);
+      expect(futureConfig.containsKey('X-Api-Key'), isFalse);
     });
 
     test('updating a valid provider preserves malformed raw entries', () async {
@@ -419,6 +447,50 @@ void main() {
       },
     );
 
+    test(
+      'deletion barrier orders in-flight and during-deletion usage saves',
+      () async {
+        const cachePath = '/tp/providers/managed/usage-cache.json';
+        final blockingFs = _BlockingCacheReadFilesystem(cachePath);
+        final usageRepo = ManagedProviderUsageRepository(
+          fs: blockingFs,
+          cachePath: cachePath,
+        );
+        late Future<void> saveDuringDeletion;
+        final providerRepo = ManagedProviderRepository(
+          fs: blockingFs,
+          configPath: path,
+          onProvidersDeleted: (ids) async {
+            await usageRepo.deleteMany(ids);
+            saveDuringDeletion = usageRepo.save(_snapshotForTest('p1'));
+          },
+        );
+
+        await providerRepo.save([_provider('p1')]);
+        await usageRepo.save(_snapshotForTest('p1'));
+
+        blockingFs.blockNextCacheRead();
+        final inFlightSave = usageRepo.save(
+          ProviderUsageSnapshot(
+            providerId: 'p1',
+            status: ProviderUsageStatus.stale,
+          ),
+        );
+        await blockingFs.cacheReadStarted.future;
+
+        final deletion = providerRepo.delete('p1');
+        await Future<void>.delayed(Duration.zero);
+        expect(blockingFs.cacheStatus, ProviderUsageStatus.ready.value);
+
+        blockingFs.releaseCacheRead();
+        await inFlightSave;
+        await deletion;
+        await saveDuringDeletion;
+
+        expect(await usageRepo.load(), isEmpty);
+      },
+    );
+
     test('cleanup failure leaves the provider config intact', () async {
       await repo.save([_provider('p1')]);
       var calls = 0;
@@ -491,3 +563,39 @@ ProviderUsageSnapshot _snapshotForTest(String providerId) =>
       providerId: providerId,
       status: ProviderUsageStatus.ready,
     );
+
+class _BlockingCacheReadFilesystem extends InMemoryFilesystem {
+  _BlockingCacheReadFilesystem(this.cachePath);
+
+  final String cachePath;
+  bool _blockNextRead = false;
+  Completer<void> cacheReadStarted = Completer<void>();
+  Completer<void> _cacheReadRelease = Completer<void>();
+
+  void blockNextCacheRead() {
+    _blockNextRead = true;
+    cacheReadStarted = Completer<void>();
+    _cacheReadRelease = Completer<void>();
+  }
+
+  void releaseCacheRead() {
+    if (!_cacheReadRelease.isCompleted) _cacheReadRelease.complete();
+  }
+
+  String? get cacheStatus {
+    final raw = files[cachePath];
+    if (raw == null) return null;
+    final snapshots = (jsonDecode(raw) as Map)['snapshots'] as Map;
+    return (snapshots['p1'] as Map)['status'] as String?;
+  }
+
+  @override
+  Future<String?> readString(String path) async {
+    if (path == cachePath && _blockNextRead) {
+      _blockNextRead = false;
+      cacheReadStarted.complete();
+      await _cacheReadRelease.future;
+    }
+    return super.readString(path);
+  }
+}
