@@ -2,7 +2,6 @@ import 'dart:async';
 
 import '../../registry/capabilities/prompt_capability.dart';
 import '../../../../services/session/member_role_provision.dart';
-import '../../../launch/work_plane_paths.dart';
 import '../../../resource/providers/prompt_contribution_provider.dart';
 import '../../../resource/contribution/resource_origin.dart';
 

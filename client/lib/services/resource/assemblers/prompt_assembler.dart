@@ -1,10 +1,10 @@
 import 'dart:async';
 
 import '../../../models/team_config.dart';
-import '../../cli/registry/capabilities/prompt_capability.dart';
 import '../contribution/resource_assembly_error.dart';
 import '../contribution/resource_assembly_result.dart';
 import '../contribution/resource_origin.dart';
+import '../contribution/prompt_document.dart';
 import '../providers/prompt_contribution_provider.dart';
 
 /// Assembles target-neutral prompt sections in deterministic provider order.
@@ -52,7 +52,7 @@ final class PromptAssembler {
     PromptProviderContext context,
   ) async {
     try {
-      return await provider.provide(context);
+      return List.unmodifiable(await provider.provide(context));
     } on Object catch (error, stackTrace) {
       throw ResourceAssemblyException([
         ResourceAssemblyError.provider(

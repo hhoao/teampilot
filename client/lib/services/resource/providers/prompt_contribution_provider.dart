@@ -3,10 +3,7 @@ import 'dart:async';
 import '../../../models/team_config.dart';
 import '../../cli/registry/config_profile/config_profile_scope.dart';
 import '../contribution/resource_origin.dart';
-
-enum PromptScope { cli, member, team, expert, workspace, global }
-
-enum PromptMergeRole { replace, append, section }
+import '../contribution/prompt_document.dart';
 
 /// Focused inputs needed by prompt providers.
 class PromptProviderContext {
@@ -31,25 +28,6 @@ class PromptProviderContext {
   final List<String> additionalDirectories;
   final String? memberHome;
   final String? sourceId;
-}
-
-/// A target-neutral prompt contribution.
-class PromptContribution {
-  const PromptContribution({
-    required this.id,
-    required this.title,
-    required this.content,
-    this.scope = PromptScope.cli,
-    this.mergeRole = PromptMergeRole.replace,
-    required this.origin,
-  });
-
-  final String id;
-  final String title;
-  final String content;
-  final PromptScope scope;
-  final PromptMergeRole mergeRole;
-  final ContributionOrigin origin;
 }
 
 /// Supplies prompt contributions without writing target configuration.

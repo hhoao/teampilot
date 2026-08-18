@@ -1,10 +1,11 @@
 import '../../../../models/team_config.dart';
 import '../../../resource/contribution/resource_assembly_error.dart';
 import '../../../resource/contribution/resource_assembly_result.dart';
-import '../../../resource/providers/prompt_contribution_provider.dart';
+import '../../../resource/contribution/prompt_document.dart';
 import '../cli_capability.dart';
 import '../config_profile/config_profile_context.dart';
 
+export '../../../resource/contribution/prompt_document.dart';
 export '../../../resource/providers/prompt_contribution_provider.dart';
 
 /// Compatibility context for callers that still need to construct the old
@@ -34,51 +35,6 @@ class PromptVirtualizeContext {
 
   /// cursor 专用：fake HOME，由装配点解析后传入。
   final String? memberHome;
-}
-
-/// The canonical, ordered prompt document produced by [PromptAssembler].
-class PromptDocument {
-  PromptDocument(Iterable<PromptSection> sections)
-    : sections = List.unmodifiable(sections);
-
-  const PromptDocument.empty() : sections = const [];
-
-  /// Final ordered sections. Section contributions with the same id have
-  /// already been grouped by the assembler.
-  final List<PromptSection> sections;
-
-  /// Alias used by materializers and callers that reason in contributions.
-  List<PromptContribution> get contributions => [
-    for (final section in sections) ...section.contributions,
-  ];
-
-  /// Target-neutral textual form for CLIs whose native representation is one
-  /// ordered prompt body.
-  String get content => sections
-      .map((section) => section.content.trim())
-      .where((content) => content.isNotEmpty)
-      .join('\n\n');
-}
-
-/// A final document section. Keeping the original contributions here retains
-/// provenance even when same-layer section content is grouped by id.
-class PromptSection {
-  PromptSection({
-    required this.id,
-    required this.title,
-    required this.scope,
-    required Iterable<PromptContribution> contributions,
-  }) : contributions = List.unmodifiable(contributions);
-
-  final String id;
-  final String title;
-  final PromptScope scope;
-  final List<PromptContribution> contributions;
-
-  String get content => contributions
-      .map((contribution) => contribution.content.trim())
-      .where((content) => content.isNotEmpty)
-      .join('\n\n');
 }
 
 /// Each CLI declares a target writer for an assembled prompt document.

@@ -238,6 +238,46 @@ void main() {
     },
   );
 
+  test(
+    'iterable iteration failure is wrapped with provider metadata',
+    () async {
+      final future = PromptAssembler().assemble(
+        context: PromptProviderContext(
+          cli: CliTool.claude,
+          sourceId: 'iter-source',
+        ),
+        providers: const [_IteratingFailureProvider()],
+      );
+
+      await expectLater(
+        future,
+        throwsA(
+          isA<ResourceAssemblyException>().having(
+            (exception) => exception.diagnostics.single,
+            'diagnostic',
+            isA<ResourceAssemblyError>()
+                .having(
+                  (diagnostic) => diagnostic.providerId,
+                  'providerId',
+                  'iterating-provider',
+                )
+                .having(
+                  (diagnostic) => diagnostic.sourceId,
+                  'sourceId',
+                  'iter-source',
+                )
+                .having((diagnostic) => diagnostic.cli, 'cli', CliTool.claude)
+                .having(
+                  (diagnostic) => diagnostic.resourceKind,
+                  'resourceKind',
+                  ResourceContributionKind.prompt,
+                ),
+          ),
+        ),
+      );
+    },
+  );
+
   test('empty contribution ids are rejected', () async {
     final future = PromptAssembler().assemble(
       context: context,
@@ -289,6 +329,29 @@ final class _Provider implements PromptContributionProvider {
         ),
       ),
     );
+  }
+}
+
+final class _IteratingFailureProvider implements PromptContributionProvider {
+  const _IteratingFailureProvider();
+
+  @override
+  String get providerId => 'iterating-provider';
+
+  @override
+  Iterable<PromptContribution> provide(PromptProviderContext context) sync* {
+    yield const PromptContribution(
+      id: 'before-failure',
+      title: 'Before failure',
+      content: 'before failure',
+      mergeRole: PromptMergeRole.append,
+      origin: ContributionOrigin(
+        providerId: 'iterating-provider',
+        kind: ResourceOriginKind.workspace,
+        sourceId: 'iter-source',
+      ),
+    );
+    throw StateError('iteration boom');
   }
 }
 

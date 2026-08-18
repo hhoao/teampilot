@@ -56,7 +56,6 @@ final class ClaudePromptCapability
     if (paths == null || scope == null || member == null || !member.isValid) {
       return const PromptMaterializeResult();
     }
-    final isLead = TeamMemberNaming.isTeamLead(member);
     final memberToolDir = paths.sessionToolDir(
       scope.workspaceId,
       scope.sessionId,

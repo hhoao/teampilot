@@ -180,7 +180,7 @@ final cap = CliToolRegistry.builtIn()
 
 | 类型 | 示例 | 特点 |
 |------|------|------|
-| **Hub 契约（物化器）** | `ProviderCapability` / `SkillCapability` / `PluginCapability` / `McpCapability` / `HookCapability` / `PromptCapability` | 对应用户可见的 6 个功能库；注册器收集虚拟实例，启动时统一物化到 CLI 原生配置 |
+| **Hub 契约（物化器）** | `ProviderCapability` / `SkillCapability` / `PluginCapability` / `McpCapability` / `HookCapability` / `PromptCapability` | 对应用户可见的 6 个功能库；资源 Provider 贡献经 Assembler 生成中立结果，再由目标 Capability 物化到 CLI 原生配置 |
 | **基础设施能力** | `CliSessionCapability`<br>`TerminalBehaviorCapability` | 会话/终端等行为差异；多为纯数据 + 少量方法，`const` 实例，可能经 BootstrapEntry 注入运行时服务 |
 
 ## 必需能力 vs 可选能力
@@ -205,7 +205,7 @@ final cap = CliToolRegistry.builtIn()
 | `SkillCapability` | Skill 物化（codex/opencode 覆盖；claude/flashskyai 用共享 `DefaultSkillCapability`） |
 | `McpCapability` | MCP 配置写入（claude/flashskyai 共用 `FlashskyaiMcpCapability`） |
 | `HookCapability` | 用户 hook 渲染（claude/flashskyai 共用 `ClaudeFamilyHookWriter`） |
-| `PromptCapability` | 成员 prompt 收集（`virtualize`）+ 物化（`materialize`），经 `PromptHubService` 装配 |
+| `PromptCapability` | 目标 CLI prompt 物化器；Prompt Provider → `PromptAssembler` → `materialize(document)`，经 `PromptHubService` 编排 |
 | `HeadlessCapability` | 无头运行（一次性调用 + 供给） |
 | `AiHistoryCapability` | transcript 定位/解析、会话恢复、tool call 解析器 |
 | 团队能力细分 | `TeamBehaviorCapability.supportsNativeTeam`（仅 claude、flashskyai）、`agentPresetStyle`（agent 预设） |
