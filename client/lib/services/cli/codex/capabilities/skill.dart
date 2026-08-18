@@ -1,4 +1,5 @@
 import '../../registry/capabilities/skill_capability.dart';
+import '../../../resource/skill_link_name.dart';
 
 /// Codex: `$superpowers:using-git-worktrees`.
 final class CodexSkillCapability
@@ -18,10 +19,7 @@ final class CodexSkillCapability
 
   @override
   String skillInvocationText(String skillName, {String? namespace}) {
-    final ns = namespace != null && namespace.trim().isNotEmpty
-        ? '$namespace:'
-        : '';
     return r'$'
-        '$ns$skillName';
+        '${targetSafeSkillLinkName(skillName, namespace: namespace)}';
   }
 }

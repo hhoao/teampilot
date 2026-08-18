@@ -157,6 +157,32 @@ void main() {
     );
   });
 
+  test('plugin provider diagnoses missing catalog and source root', () async {
+    final result = await SkillAssembler().assemble(
+      context: SkillProviderContext(
+        cli: cli,
+        scope: const SimpleResourceScope(
+          bundle: ConfigBundle(pluginIds: ['missing/plugin']),
+        ),
+      ),
+      providers: [
+        PluginSkillContributionProvider(
+          catalog: ResourceCatalog(
+            skills: const [],
+            skillsRoot: '/catalog/skills',
+            pathContext: p.posix,
+          ),
+        ),
+      ],
+    );
+
+    expect(result.skills, isEmpty);
+    expect(result.diagnostics, hasLength(1));
+    expect(result.diagnostics.single.providerId, 'plugin');
+    expect(result.diagnostics.single.sourceId, 'missing/plugin');
+    expect(result.diagnostics.single.message, contains('root'));
+  });
+
   test('catalog and plugin providers form one desired assembled set', () async {
     final result = await SkillAssembler().assemble(
       context: SkillProviderContext(

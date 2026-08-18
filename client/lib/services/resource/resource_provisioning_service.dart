@@ -3,6 +3,7 @@ import '../cli/registry/capabilities/skill_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../io/filesystem.dart';
 import '../../models/team_config.dart';
+import 'contribution/resource_assembly_error.dart';
 import 'resource_materializer.dart';
 import 'resource_resolver.dart';
 import 'resource_scope.dart';
@@ -39,17 +40,32 @@ class ResourceProvisioningService {
   }) async {
     final warnings = <String>[];
 
+    final assembled = await _resolver.assemble(
+      scope: scope,
+      cli: cli,
+      catalog: catalog,
+    );
+    warnings.addAll(assembled.warnings.map((diagnostic) => diagnostic.message));
+
     final skill = _registry.capability<SkillCapability>(cli);
-    if (skill != null &&
-        skill.skillsRepresentation == ResourceRepresentation.linkedDirectory) {
-      final assembled = await _resolver.assemble(
-        scope: scope,
-        cli: cli,
-        catalog: catalog,
-      );
-      warnings.addAll(
-        assembled.warnings.map((diagnostic) => diagnostic.message),
-      );
+    if (assembled.skills.isNotEmpty) {
+      if (skill == null ||
+          skill.skillsRepresentation !=
+              ResourceRepresentation.linkedDirectory) {
+        throw ResourceAssemblyException([
+          ResourceAssemblyError.unsupported(
+            resourceKind: ResourceContributionKind.skill,
+            cli: cli,
+            providerId: 'skill-capability',
+            sourceId: cli.value,
+            message: skill == null
+                ? 'CLI does not provide a skill capability.'
+                : 'CLI skill capability does not support linked-directory '
+                      'materialization.',
+          ),
+        ]);
+      }
+
       final result = await skill.materializeSkills(
         fs: _fs,
         configDir: configDir,

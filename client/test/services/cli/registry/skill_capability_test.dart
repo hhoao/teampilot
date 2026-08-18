@@ -45,9 +45,7 @@ void main() {
     final registry = buildRegistry();
     for (final cli in CliTool.values) {
       expect(
-        registry
-            .capability<SkillCapability>(cli)!
-            .skillsRepresentation,
+        registry.capability<SkillCapability>(cli)!.skillsRepresentation,
         ResourceRepresentation.linkedDirectory,
         reason: '$cli',
       );
@@ -60,32 +58,37 @@ void main() {
     const codexCap = CodexSkillCapability();
 
     test('default renders Claude-style /name', () {
-      expect(defaultCap.skillInvocationText('using-git-worktrees'),
-          '/using-git-worktrees');
-      // Namespace is ignored by slash CLIs.
+      expect(
+        defaultCap.skillInvocationText('using-git-worktrees'),
+        '/using-git-worktrees',
+      );
       expect(
         defaultCap.skillInvocationText(
           'using-git-worktrees',
           namespace: 'superpowers',
         ),
-        '/using-git-worktrees',
+        '/superpowers--using-git-worktrees',
       );
     });
 
     test('opencode prepends a space so the / is not glued to text', () {
-      expect(opencodeCap.skillInvocationText('using-git-worktrees'),
-          ' /using-git-worktrees');
+      expect(
+        opencodeCap.skillInvocationText('using-git-worktrees'),
+        ' /using-git-worktrees',
+      );
     });
 
-    test(r'codex renders $name and namespaced $plugin:name', () {
-      expect(codexCap.skillInvocationText('using-git-worktrees'),
-          r'$using-git-worktrees');
+    test(r'codex renders $name and namespaced target-safe $plugin--name', () {
+      expect(
+        codexCap.skillInvocationText('using-git-worktrees'),
+        r'$using-git-worktrees',
+      );
       expect(
         codexCap.skillInvocationText(
           'using-git-worktrees',
           namespace: 'superpowers',
         ),
-        r'$superpowers:using-git-worktrees',
+        r'$superpowers--using-git-worktrees',
       );
     });
 
@@ -132,11 +135,14 @@ void main() {
     });
 
     test('opencode tool wires the space-prefixed syntax', () {
-      final cap = CliToolRegistry.builtIn()
-          .capability<SkillCapability>(CliTool.opencode);
+      final cap = CliToolRegistry.builtIn().capability<SkillCapability>(
+        CliTool.opencode,
+      );
       expect(cap, isA<OpencodeSkillCapability>());
-      expect(cap?.skillInvocationText('using-git-worktrees'),
-          ' /using-git-worktrees');
+      expect(
+        cap?.skillInvocationText('using-git-worktrees'),
+        ' /using-git-worktrees',
+      );
     });
   });
 }

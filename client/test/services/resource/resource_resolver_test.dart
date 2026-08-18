@@ -98,7 +98,29 @@ void main() {
 
     expect(set.of(ResourceKind.skill).map((ref) => ref.linkName), [
       'skill-a',
-      'plugin-skill',
+      'acme-plugin--plugin-skill',
     ]);
   });
+
+  test(
+    'assemble runs plugin provider for selected ids without a catalog',
+    () async {
+      final result = await resolver.assemble(
+        scope: const SimpleResourceScope(
+          bundle: ConfigBundle(pluginIds: ['missing/plugin']),
+        ),
+        cli: CliTool.claude,
+        catalog: ResourceCatalog(
+          skills: const [],
+          skillsRoot: '/root/skills/installed',
+          pathContext: p.posix,
+        ),
+      );
+
+      expect(result.skills, isEmpty);
+      expect(result.diagnostics, hasLength(1));
+      expect(result.diagnostics.single.providerId, 'plugin');
+      expect(result.diagnostics.single.sourceId, 'missing/plugin');
+    },
+  );
 }

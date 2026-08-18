@@ -5,6 +5,7 @@ import 'providers/plugin_skill_contribution_provider.dart';
 import 'providers/skill_contribution_provider.dart';
 import 'resource_kind.dart';
 import 'resource_scope.dart';
+import 'skill_link_name.dart';
 
 /// Compatibility facade for the pre-contribution resource resolver API.
 ///
@@ -23,7 +24,7 @@ class ResourceResolver {
   }) {
     final providers = <SkillContributionProvider>[
       CatalogSkillContributionProvider(catalog: catalog),
-      if (catalog.plugins.isNotEmpty)
+      if (scope.pluginIds.any((id) => id.trim().isNotEmpty))
         PluginSkillContributionProvider(catalog: catalog),
     ];
     return const SkillAssembler().assemble(
@@ -44,16 +45,15 @@ class ResourceResolver {
     for (final contribution in assembled.skills) {
       final artifact = contribution.artifact;
       if (artifact is! SkillDirectoryArtifact) continue;
-      var linkName = contribution.invocationName;
+      var linkName = targetSafeSkillLinkName(
+        contribution.invocationName,
+        namespace: contribution.namespace,
+      );
       if (!usedNames.add(linkName)) {
-        final namespace = contribution.namespace?.trim();
-        if (namespace != null && namespace.isNotEmpty) {
-          linkName = '$namespace:$linkName';
-        }
         var suffix = 2;
         final base = linkName;
         while (!usedNames.add(linkName)) {
-          linkName = '$base:$suffix';
+          linkName = '$base--$suffix';
           suffix++;
         }
       }

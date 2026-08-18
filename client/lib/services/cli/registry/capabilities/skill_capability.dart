@@ -3,6 +3,7 @@ import '../cli_capability.dart';
 import '../../../resource/providers/skill_contribution_provider.dart';
 import '../../../resource/resource_kind.dart';
 import '../../../resource/resource_materializer.dart';
+import '../../../resource/skill_link_name.dart';
 
 /// How a resource kind is represented inside a CLI's CONFIG_DIR.
 enum ResourceRepresentation { linkedDirectory, mergedJsonEntry }
@@ -56,16 +57,15 @@ mixin SkillCapabilityMaterializationMixin {
       final artifact = contribution.artifact;
       if (artifact is! SkillDirectoryArtifact) continue;
 
-      var linkName = contribution.invocationName;
+      var linkName = targetSafeSkillLinkName(
+        contribution.invocationName,
+        namespace: contribution.namespace,
+      );
       if (!usedNames.add(linkName)) {
-        final namespace = contribution.namespace?.trim();
-        if (namespace != null && namespace.isNotEmpty) {
-          linkName = '$namespace:$linkName';
-        }
         var suffix = 2;
         final base = linkName;
         while (!usedNames.add(linkName)) {
-          linkName = '$base:$suffix';
+          linkName = '$base--$suffix';
           suffix++;
         }
       }
@@ -98,5 +98,5 @@ class DefaultSkillInvocationSyntaxCapability {
   String get skillInvocationPrefix => '/';
 
   String skillInvocationText(String skillName, {String? namespace}) =>
-      '$leadingSeparator/$skillName';
+      '$leadingSeparator/${targetSafeSkillLinkName(skillName, namespace: namespace)}';
 }

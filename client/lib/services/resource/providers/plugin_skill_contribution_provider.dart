@@ -28,8 +28,31 @@ final class PluginSkillContributionProvider
   FutureOr<Iterable<SkillContribution>> provide(SkillProviderContext context) {
     final scope = context.scope;
     final root = pluginsRoot ?? catalog.pluginsRoot;
-    if (scope == null || root == null || root.trim().isEmpty) {
+    if (scope == null) {
       _diagnostics = const [];
+      return const [];
+    }
+
+    final selectedPluginIds = <String>[];
+    final seenPluginIds = <String>{};
+    for (final rawId in scope.pluginIds) {
+      final pluginId = rawId.trim();
+      if (pluginId.isNotEmpty && seenPluginIds.add(pluginId)) {
+        selectedPluginIds.add(pluginId);
+      }
+    }
+    if (root == null || root.trim().isEmpty) {
+      _diagnostics = List.unmodifiable(
+        selectedPluginIds.map(
+          (pluginId) => _warning(
+            cli: context.cli,
+            sourceId: pluginId,
+            message:
+                'Plugin source root is unavailable for selected plugin id '
+                '$pluginId.',
+          ),
+        ),
+      );
       return const [];
     }
 
@@ -39,12 +62,8 @@ final class PluginSkillContributionProvider
     }
 
     final diagnostics = <ResourceAssemblyDiagnostic>[];
-    final seenPluginIds = <String>{};
     final contributions = <SkillContribution>[];
-    for (final rawId in scope.pluginIds) {
-      final pluginId = rawId.trim();
-      if (pluginId.isEmpty || !seenPluginIds.add(pluginId)) continue;
-
+    for (final pluginId in selectedPluginIds) {
       final plugin = byId[pluginId];
       if (plugin == null) {
         diagnostics.add(
@@ -55,6 +74,16 @@ final class PluginSkillContributionProvider
           ),
         );
         continue;
+      }
+
+      if (plugin.capabilities.skills.isEmpty) {
+        diagnostics.add(
+          _warning(
+            cli: context.cli,
+            sourceId: pluginId,
+            message: 'Plugin metadata for $pluginId contains no skills.',
+          ),
+        );
       }
 
       for (final skill in plugin.capabilities.skills) {
