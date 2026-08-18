@@ -3692,6 +3692,12 @@ abstract class AppLocalizations {
   /// **'Unpin conversation'**
   String get unpinConversation;
 
+  /// No description provided for @openSessionDirectory.
+  ///
+  /// In en, this message translates to:
+  /// **'Open session folder'**
+  String get openSessionDirectory;
+
   /// No description provided for @sessionSortManual.
   ///
   /// In en, this message translates to:
@@ -5426,60 +5432,6 @@ abstract class AppLocalizations {
   /// **'Start team'**
   String get mixedWorkspaceMemberAssignmentConfirm;
 
-  /// No description provided for @workspaceMemberTargetsSectionTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Member machine assignment'**
-  String get workspaceMemberTargetsSectionTitle;
-
-  /// No description provided for @workspaceMemberTargetsSectionSubtitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Default for new conversations with this team. Existing conversations keep the assignment from when they were created.'**
-  String get workspaceMemberTargetsSectionSubtitle;
-
-  /// No description provided for @workspaceMemberTargetsSave.
-  ///
-  /// In en, this message translates to:
-  /// **'Save assignment'**
-  String get workspaceMemberTargetsSave;
-
-  /// No description provided for @workspaceMemberTargetsSaved.
-  ///
-  /// In en, this message translates to:
-  /// **'Member assignment saved.'**
-  String get workspaceMemberTargetsSaved;
-
-  /// No description provided for @workspaceMemberTargetsAssignAction.
-  ///
-  /// In en, this message translates to:
-  /// **'Assign'**
-  String get workspaceMemberTargetsAssignAction;
-
-  /// No description provided for @workspaceMemberTargetsAssigned.
-  ///
-  /// In en, this message translates to:
-  /// **'Assigned'**
-  String get workspaceMemberTargetsAssigned;
-
-  /// No description provided for @workspaceMemberTargetsUnassigned.
-  ///
-  /// In en, this message translates to:
-  /// **'Not assigned'**
-  String get workspaceMemberTargetsUnassigned;
-
-  /// No description provided for @workspaceMemberTargetsNeedsConfirmation.
-  ///
-  /// In en, this message translates to:
-  /// **'Needs confirmation'**
-  String get workspaceMemberTargetsNeedsConfirmation;
-
-  /// No description provided for @workspaceMemberTargetsPartiallyAssigned.
-  ///
-  /// In en, this message translates to:
-  /// **'Partially assigned'**
-  String get workspaceMemberTargetsPartiallyAssigned;
-
   /// No description provided for @mixedWorkspaceCreateSessionBlocked.
   ///
   /// In en, this message translates to:
@@ -5537,7 +5489,7 @@ abstract class AppLocalizations {
   /// No description provided for @workspaceFoldersAddOnAnotherMachine.
   ///
   /// In en, this message translates to:
-  /// **'Add on another machine'**
+  /// **'Add other host directories'**
   String get workspaceFoldersAddOnAnotherMachine;
 
   /// No description provided for @workspaceFoldersPickTarget.

@@ -5,9 +5,7 @@ import 'package:shared_ui/shared_ui.dart';
 import '../../../widgets/app_toast/app_toast.dart';
 
 import '../../../cubits/chat_cubit.dart';
-import '../../../cubits/launch_profile_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
-import '../../../models/team_config.dart';
 import '../../../models/workspace.dart';
 import '../../../repositories/session_repository.dart';
 import '../../../models/workspace_topology.dart';
@@ -15,7 +13,6 @@ import '../../../widgets/workspace_topology_chip.dart';
 import '../../../utils/workspace/workspace_display_name.dart';
 import '../workspace_actions.dart';
 import 'config/workspace_folders_section.dart';
-import 'config/workspace_team_member_targets_section.dart';
 import 'root_sandbox_env_opt_in_tile.dart';
 import 'workspace_icon_settings_row.dart';
 
@@ -98,10 +95,6 @@ class WorkspaceInfoSection extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           WorkspaceFoldersSection(workspace: live, lockTargets: false),
-          // Placement is configured for all topologies; section lists teams that
-          // already have remembered targets (local/remote/mixed).
-          const SizedBox(height: 12),
-          _WorkspaceMemberTargetsSections(workspace: live),
           const SizedBox(height: 12),
           WorkspaceConfigDangerZone(workspace: live),
         ],
@@ -241,43 +234,6 @@ class _WorkspaceSettingsInlineRow extends StatelessWidget {
             thickness: 1,
             color: cs.outlineVariant.withValues(alpha: 0.5),
           ),
-      ],
-    );
-  }
-}
-
-class _WorkspaceMemberTargetsSections extends StatelessWidget {
-  const _WorkspaceMemberTargetsSections({required this.workspace});
-
-  final Workspace workspace;
-
-  @override
-  Widget build(BuildContext context) {
-    final launchProfiles = context.watch<LaunchProfileCubit>();
-    final teamIds = workspace.memberTargetsByTeam.keys
-        .map((id) => id.trim())
-        .where((id) => id.isNotEmpty)
-        .toList(growable: false);
-    if (teamIds.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        for (final teamId in teamIds) ...[
-          Builder(
-            builder: (context) {
-              final profile = launchProfiles.byId(teamId);
-              if (profile is! TeamProfile) return const SizedBox.shrink();
-              return WorkspaceTeamMemberTargetsSection(
-                workspace: workspace,
-                team: profile,
-              );
-            },
-          ),
-          const SizedBox(height: 12),
-        ],
       ],
     );
   }

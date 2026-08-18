@@ -1921,6 +1921,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get unpinConversation => '取消置顶';
 
   @override
+  String get openSessionDirectory => '打开会话目录';
+
+  @override
   String get sessionSortManual => '手动排序';
 
   @override
@@ -2872,34 +2875,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get mixedWorkspaceMemberAssignmentConfirm => '启动团队';
 
   @override
-  String get workspaceMemberTargetsSectionTitle => '成员机器分配';
-
-  @override
-  String get workspaceMemberTargetsSectionSubtitle =>
-      '与本团队新建对话时的默认分配。已有对话保持创建时的分配不变。';
-
-  @override
-  String get workspaceMemberTargetsSave => '保存分配';
-
-  @override
-  String get workspaceMemberTargetsSaved => '成员分配已保存。';
-
-  @override
-  String get workspaceMemberTargetsAssignAction => '分配';
-
-  @override
-  String get workspaceMemberTargetsAssigned => '已分配';
-
-  @override
-  String get workspaceMemberTargetsUnassigned => '未分配';
-
-  @override
-  String get workspaceMemberTargetsNeedsConfirmation => '需要确认';
-
-  @override
-  String get workspaceMemberTargetsPartiallyAssigned => '部分分配';
-
-  @override
   String get mixedWorkspaceCreateSessionBlocked =>
       '请先在团队设置中确认机器分配，再在此混合工作区新建对话。';
 
@@ -2933,7 +2908,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get workspaceFoldersChangeTarget => '更换';
 
   @override
-  String get workspaceFoldersAddOnAnotherMachine => '在其他机器上添加';
+  String get workspaceFoldersAddOnAnotherMachine => '添加其他主机目录';
 
   @override
   String get workspaceFoldersPickTarget => '选择机器';

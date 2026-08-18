@@ -2010,6 +2010,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get unpinConversation => 'Unpin conversation';
 
   @override
+  String get openSessionDirectory => 'Open session folder';
+
+  @override
   String get sessionSortManual => 'Manual order';
 
   @override
@@ -3002,34 +3005,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mixedWorkspaceMemberAssignmentConfirm => 'Start team';
 
   @override
-  String get workspaceMemberTargetsSectionTitle => 'Member machine assignment';
-
-  @override
-  String get workspaceMemberTargetsSectionSubtitle =>
-      'Default for new conversations with this team. Existing conversations keep the assignment from when they were created.';
-
-  @override
-  String get workspaceMemberTargetsSave => 'Save assignment';
-
-  @override
-  String get workspaceMemberTargetsSaved => 'Member assignment saved.';
-
-  @override
-  String get workspaceMemberTargetsAssignAction => 'Assign';
-
-  @override
-  String get workspaceMemberTargetsAssigned => 'Assigned';
-
-  @override
-  String get workspaceMemberTargetsUnassigned => 'Not assigned';
-
-  @override
-  String get workspaceMemberTargetsNeedsConfirmation => 'Needs confirmation';
-
-  @override
-  String get workspaceMemberTargetsPartiallyAssigned => 'Partially assigned';
-
-  @override
   String get mixedWorkspaceCreateSessionBlocked =>
       'Confirm machine assignment in Team Settings before starting a conversation in this mixed workspace.';
 
@@ -3065,7 +3040,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get workspaceFoldersChangeTarget => 'Change';
 
   @override
-  String get workspaceFoldersAddOnAnotherMachine => 'Add on another machine';
+  String get workspaceFoldersAddOnAnotherMachine =>
+      'Add other host directories';
 
   @override
   String get workspaceFoldersPickTarget => 'Choose machine';

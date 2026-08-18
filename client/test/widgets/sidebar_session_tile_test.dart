@@ -102,10 +102,7 @@ Widget _host({
         child: Scaffold(
           body:
               child ??
-              SidebarSessionTile(
-                session: _session,
-                onTap: onTap ?? () {},
-              ),
+              SidebarSessionTile(session: _session, onTap: onTap ?? () {}),
         ),
       ),
     ),
@@ -156,9 +153,7 @@ void main() {
       );
       chatCubit.applyState(
         chatCubit.state.copyWith(
-          sessions: [
-            stale.copyWith(display: 'LiveTitle'),
-          ],
+          sessions: [stale.copyWith(display: 'LiveTitle')],
         ),
       );
 
@@ -168,10 +163,7 @@ void main() {
           automationCubit: automationCubit,
           attentionCubit: attention,
           sessionRepository: SessionRepository(),
-          child: SidebarSessionTile(
-            session: stale,
-            onTap: () {},
-          ),
+          child: SidebarSessionTile(session: stale, onTap: () {}),
         ),
       );
       await tester.pump();
@@ -180,9 +172,7 @@ void main() {
 
       chatCubit.applyState(
         chatCubit.state.copyWith(
-          sessions: [
-            stale.copyWith(display: 'RenamedTitle'),
-          ],
+          sessions: [stale.copyWith(display: 'RenamedTitle')],
         ),
       );
       await tester.pump();
@@ -192,7 +182,9 @@ void main() {
     },
   );
 
-  testWidgets('pinned session shows trailing push_pin when idle', (tester) async {
+  testWidgets('pinned session shows trailing push_pin when idle', (
+    tester,
+  ) async {
     final chatCubit = testChatCubit(executableResolver: () => 'claude');
     final (attention, automationCubit) = _tileCubits();
     addTearDown(chatCubit.close);
@@ -213,10 +205,7 @@ void main() {
         automationCubit: automationCubit,
         attentionCubit: attention,
         sessionRepository: SessionRepository(),
-        child: SidebarSessionTile(
-          session: pinned,
-          onTap: () {},
-        ),
+        child: SidebarSessionTile(session: pinned, onTap: () {}),
       ),
     );
     await tester.pump();
@@ -269,6 +258,35 @@ void main() {
       tester.element(find.byType(SidebarSessionTile)),
     );
     expect(find.text(l10n.automationsSessionContextMenu), findsOneWidget);
+
+    await _dismissContextMenu(tester);
+  });
+
+  testWidgets('context menu includes open session directory action', (
+    tester,
+  ) async {
+    final chatCubit = testChatCubit(executableResolver: () => 'claude');
+    final (attention, automationCubit) = _tileCubits();
+    addTearDown(chatCubit.close);
+    addTearDown(automationCubit.close);
+    addTearDown(attention.close);
+
+    await tester.pumpWidget(
+      _host(
+        chatCubit: chatCubit,
+        automationCubit: automationCubit,
+        attentionCubit: attention,
+        sessionRepository: SessionRepository(),
+      ),
+    );
+    await tester.pump();
+
+    await _openContextMenu(tester);
+
+    final l10n = AppLocalizations.of(
+      tester.element(find.byType(SidebarSessionTile)),
+    );
+    expect(find.text(l10n.openSessionDirectory), findsOneWidget);
 
     await _dismissContextMenu(tester);
   });
@@ -437,103 +455,98 @@ void main() {
     ]);
   });
 
-  testWidgets(
-    'cross-session waiting jump awaits open before seat/Terminal',
-    (tester) async {
-      final sessionB = AppSession(
-        sessionId: 'sess-b',
+  testWidgets('cross-session waiting jump awaits open before seat/Terminal', (
+    tester,
+  ) async {
+    final sessionB = AppSession(
+      sessionId: 'sess-b',
+      workspaceId: 'ws1',
+      createdAt: 1,
+      updatedAt: 1,
+    );
+    final chatCubit = _RecordingChatCubit();
+    final (attention, automationCubit) = _tileCubits();
+    addTearDown(chatCubit.close);
+    addTearDown(automationCubit.close);
+    addTearDown(attention.close);
+
+    // Session A is active; waiting is on B. The bar owns tab activation.
+    final workbench = WorkbenchCubit();
+    addTearDown(workbench.close);
+    final bridge = WorkbenchChatBridge(workbench: workbench, chat: chatCubit);
+    workbench.port = bridge;
+    chatCubit.workbenchPort = bridge;
+    chatCubit.tabStore.registerSession(
+      ChatTab(
+        info: const ChatTabInfo(id: 'sess-a', title: 'A', subtitle: ''),
+        cliTeamName: '',
         workspaceId: 'ws1',
-        createdAt: 1,
-        updatedAt: 1,
-      );
-      final chatCubit = _RecordingChatCubit();
-      final (attention, automationCubit) = _tileCubits();
-      addTearDown(chatCubit.close);
-      addTearDown(automationCubit.close);
-      addTearDown(attention.close);
+      ),
+    );
+    chatCubit.tabStore.registerSession(
+      ChatTab(
+        info: ChatTabInfo(id: sessionB.sessionId, title: 'B', subtitle: ''),
+        cliTeamName: '',
+        workspaceId: 'ws1',
+      ),
+    );
+    chatCubit.setActiveWorkspace('ws1');
+    bridge.onSessionTabOpened('ws1', 'sess-a');
+    bridge.onSessionTabOpened('ws1', sessionB.sessionId);
+    workbench.activate('ws1', WorkbenchTabId.session('sess-a'));
+    attention.applyEvent(
+      sessionId: sessionB.sessionId,
+      memberId: 'seat-b',
+      event: const AgentStatusEvent(state: AgentSeatAttention.waiting),
+      skipPermissions: false,
+    );
 
-      // Session A is active; waiting is on B. The bar owns tab activation.
-      final workbench = WorkbenchCubit();
-      addTearDown(workbench.close);
-      final bridge = WorkbenchChatBridge(workbench: workbench, chat: chatCubit);
-      workbench.port = bridge;
-      chatCubit.workbenchPort = bridge;
-      chatCubit.tabStore.registerSession(
-        ChatTab(
-          info: const ChatTabInfo(id: 'sess-a', title: 'A', subtitle: ''),
-          cliTeamName: '',
-          workspaceId: 'ws1',
+    final openCompleter = Completer<void>();
+    await tester.pumpWidget(
+      _host(
+        chatCubit: chatCubit,
+        automationCubit: automationCubit,
+        sessionRepository: SessionRepository(),
+        attentionCubit: attention,
+        child: SidebarSessionTile(
+          session: sessionB,
+          onTap: () async {
+            chatCubit.eventOrder.add('activate-start');
+            await openCompleter.future;
+            workbench.activate(
+              'ws1',
+              WorkbenchTabId.session(sessionB.sessionId),
+            );
+            chatCubit.eventOrder.add('activate-done');
+          },
         ),
-      );
-      chatCubit.tabStore.registerSession(
-        ChatTab(
-          info: ChatTabInfo(
-            id: sessionB.sessionId,
-            title: 'B',
-            subtitle: '',
-          ),
-          cliTeamName: '',
-          workspaceId: 'ws1',
-        ),
-      );
-      chatCubit.setActiveWorkspace('ws1');
-      bridge.onSessionTabOpened('ws1', 'sess-a');
-      bridge.onSessionTabOpened('ws1', sessionB.sessionId);
-      workbench.activate('ws1', WorkbenchTabId.session('sess-a'));
-      attention.applyEvent(
-        sessionId: sessionB.sessionId,
-        memberId: 'seat-b',
-        event: const AgentStatusEvent(state: AgentSeatAttention.waiting),
-        skipPermissions: false,
-      );
+      ),
+    );
+    await tester.pump();
 
-      final openCompleter = Completer<void>();
-      await tester.pumpWidget(
-        _host(
-          chatCubit: chatCubit,
-          automationCubit: automationCubit,
-          sessionRepository: SessionRepository(),
-          attentionCubit: attention,
-          child: SidebarSessionTile(
-            session: sessionB,
-            onTap: () async {
-              chatCubit.eventOrder.add('activate-start');
-              await openCompleter.future;
-              workbench.activate(
-                'ws1',
-                WorkbenchTabId.session(sessionB.sessionId),
-              );
-              chatCubit.eventOrder.add('activate-done');
-            },
-          ),
-        ),
-      );
-      await tester.pump();
+    await tester.tap(find.byType(SidebarSessionTile));
+    await tester.pump();
 
-      await tester.tap(find.byType(SidebarSessionTile));
-      await tester.pump();
+    // Still opening B — must not selectMember / switch Terminal on A yet.
+    expect(chatCubit.selectedMembers, isEmpty);
+    expect(chatCubit.workbenchViews, isEmpty);
+    expect(chatCubit.activeTab?.info.id, 'sess-a');
 
-      // Still opening B — must not selectMember / switch Terminal on A yet.
-      expect(chatCubit.selectedMembers, isEmpty);
-      expect(chatCubit.workbenchViews, isEmpty);
-      expect(chatCubit.activeTab?.info.id, 'sess-a');
+    openCompleter.complete();
+    await tester.pump();
+    await tester.pump();
 
-      openCompleter.complete();
-      await tester.pump();
-      await tester.pump();
-
-      expect(chatCubit.activeTab?.info.id, sessionB.sessionId);
-      expect(chatCubit.activeSessionAtSelectMember, [sessionB.sessionId]);
-      expect(chatCubit.selectedMembers, ['seat-b']);
-      expect(chatCubit.workbenchViews, [
-        (sessionB.sessionId, SessionWorkbenchView.terminal),
-      ]);
-      expect(chatCubit.eventOrder, [
-        'activate-start',
-        'activate-done',
-        'selectMember:seat-b',
-        'workbench:sess-b',
-      ]);
-    },
-  );
+    expect(chatCubit.activeTab?.info.id, sessionB.sessionId);
+    expect(chatCubit.activeSessionAtSelectMember, [sessionB.sessionId]);
+    expect(chatCubit.selectedMembers, ['seat-b']);
+    expect(chatCubit.workbenchViews, [
+      (sessionB.sessionId, SessionWorkbenchView.terminal),
+    ]);
+    expect(chatCubit.eventOrder, [
+      'activate-start',
+      'activate-done',
+      'selectMember:seat-b',
+      'workbench:sess-b',
+    ]);
+  });
 }

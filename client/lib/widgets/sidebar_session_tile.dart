@@ -15,6 +15,9 @@ import '../pages/automations/automation_editor_dialog.dart';
 import '../pages/automations/automations_dialog.dart';
 import '../pages/home_workspace/workspace/workspace_sidebar_row_metrics.dart';
 import '../repositories/session_repository.dart';
+import '../services/io/file_path_actions.dart';
+import '../services/storage/app_storage.dart';
+import '../services/storage/runtime_context.dart';
 import '../utils/session/session_row_content.dart';
 import '../utils/ui/coarse_relative_time.dart';
 import '../utils/debounce/debounce.dart';
@@ -153,12 +156,23 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
         icon: session.pinned ? Icons.push_pin : Icons.push_pin_outlined,
         label: session.pinned ? l10n.unpinConversation : l10n.pinConversation,
       ),
+    ];
+    if (_canOpenSessionDirectory) {
+      items.add(
+        TpActionMenuPopupItem(
+          value: 'open_directory',
+          icon: Icons.folder_open_outlined,
+          label: l10n.openSessionDirectory,
+        ),
+      );
+    }
+    items.add(
       TpActionMenuPopupItem(
         value: 'schedule',
         icon: Icons.schedule_rounded,
         label: l10n.automationsSessionContextMenu,
       ),
-    ];
+    );
     if (_sessionAutomationCount > 0) {
       items.add(
         TpActionMenuPopupItem(
@@ -186,6 +200,8 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
         await _showRenameDialog(context, session, l10n);
       case 'pin':
         await _chatCubit?.toggleSessionPin(session.sessionId);
+      case 'open_directory':
+        await _openSessionDirectory(session);
       case 'schedule':
         final title = session.resolveDisplayTitle(
           l10n.defaultNewChatSessionTitle,
@@ -256,6 +272,25 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
     setState(() => _menuOpen = false);
     if (selected == null) return;
     await _handleContextAction(selected, session);
+  }
+
+  bool get _canOpenSessionDirectory => !Platform.isAndroid;
+
+  Future<void> _openSessionDirectory(AppSession session) async {
+    final repo = _repo;
+    if (repo == null) return;
+    final sessionFs = await repo.fs();
+    await sessionFs.ensureSessionDir(session.workspaceId, session.sessionId);
+    final dir = sessionFs.sessionDir(session.workspaceId, session.sessionId);
+    final home = AppStorage.isInstalled ? AppStorage.context : null;
+    await FilePathActions.revealInFileManager(
+      targetPath: dir,
+      isDirectory: true,
+      remoteFileManagerActions:
+          home?.mode == StorageBackendMode.wsl ||
+          home?.mode == StorageBackendMode.ssh,
+      workContext: home,
+    );
   }
 
   void _showSessionContextMenuAtCenter() {
@@ -378,8 +413,8 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
 
     // Trailing: coarse relative time + pin mark (idle), or delete + overflow (hover).
     final int activityMs = rowContent.timestampMsForPaint;
-    final Widget? idleTrailing = (!_showSessionActions &&
-            (activityMs > 0 || session.pinned))
+    final Widget? idleTrailing =
+        (!_showSessionActions && (activityMs > 0 || session.pinned))
         ? Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -463,12 +498,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
         forceShowTrailing: _menuOpen || _deleteArmed,
         forceHover: _menuOpen,
         showTrailingOnMobile: true,
-        padding: EdgeInsets.fromLTRB(
-          8 + widget.contentLeftInset,
-          6,
-          8,
-          6,
-        ),
+        padding: EdgeInsets.fromLTRB(8 + widget.contentLeftInset, 6, 8, 6),
         backgroundColor: idleFill,
         hoverColor: hoverFill,
         onHoverChanged: (hovered) => setState(() => _hovered = hovered),
@@ -477,7 +507,9 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
           _onSessionTap,
         ),
         onSecondaryTapDown: _showSessionContextMenuFromTap,
-        onLongPress: Platform.isAndroid ? _showSessionContextMenuAtCenter : null,
+        onLongPress: Platform.isAndroid
+            ? _showSessionContextMenuAtCenter
+            : null,
         trailing: actionTrailing,
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
