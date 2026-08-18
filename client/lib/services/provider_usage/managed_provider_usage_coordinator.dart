@@ -91,6 +91,7 @@ class ManagedProviderUsageCoordinator {
   final Map<String, ManagedProvider> _providers = {};
   final Map<String, ProviderUsageSnapshot> _snapshots = {};
   final Map<String, _PendingRefresh> _pending = {};
+  final Map<String, Future<ProviderUsageSnapshot>> _transientQueries = {};
   final Map<String, _ProviderCommitGate> _commitGates = {};
   final Map<String, int> _tokens = {};
   int _generation = 0;
@@ -198,10 +199,51 @@ class ManagedProviderUsageCoordinator {
     _ensureStorageContextCurrent(storageContextGeneration);
     final id = providerId.trim();
     final provider = _providers[id];
-    final previous = _snapshots[id];
     if (provider == null || !provider.enabled) {
-      return _unsupportedSnapshot(id, previous);
+      return _unsupportedSnapshot(id, _snapshots[id]);
     }
+    return queryProvider(provider);
+  }
+
+  /// Queries an in-memory Provider draft without reading or writing the
+  /// persisted catalog/cache. Calls for the same Provider are coalesced and
+  /// serialized with ordinary refresh work.
+  Future<ProviderUsageSnapshot> queryProvider(ManagedProvider provider) {
+    final id = provider.id.trim();
+    final existing = _transientQueries[id];
+    if (existing != null) return existing;
+    final pendingRefresh = _pending[id];
+    if (pendingRefresh != null) {
+      return pendingRefresh.future.then(
+        (_) => queryProvider(provider),
+        onError: (Object _, StackTrace __) => queryProvider(provider),
+      );
+    }
+    final contextGeneration = _storageContextGeneration;
+    final future = _queryProviderInternal(provider, contextGeneration);
+    _transientQueries[id] = future;
+    future.then<void>(
+      (_) {
+        if (identical(_transientQueries[id], future)) {
+          _transientQueries.remove(id);
+        }
+      },
+      onError: (Object _, StackTrace __) {
+        if (identical(_transientQueries[id], future)) {
+          _transientQueries.remove(id);
+        }
+      },
+    );
+    return future;
+  }
+
+  Future<ProviderUsageSnapshot> _queryProviderInternal(
+    ManagedProvider provider,
+    int storageContextGeneration,
+  ) async {
+    final id = provider.id.trim();
+    final previous = _snapshots[id];
+    if (!provider.enabled) return _unsupportedSnapshot(id, previous);
 
     try {
       final adapter = _registry.adapterFor(provider.adapterId);
@@ -220,6 +262,8 @@ class ManagedProviderUsageCoordinator {
       return result.copyWith(providerId: id, status: ProviderUsageStatus.ready);
     } on ManagedProviderUsageQueryError catch (error) {
       return _errorSnapshot(id, previous, error.code);
+    } on ManagedProviderUsageInvalidated {
+      rethrow;
     } on Object {
       return _errorSnapshot(
         id,
@@ -328,6 +372,7 @@ class ManagedProviderUsageCoordinator {
     _generation++;
     _loaded = false;
     _refreshAllFlight = null;
+    _transientQueries.clear();
     for (final entry in _pending.entries) {
       entry.value.cancelled = true;
       _tokens[entry.key] = (_tokens[entry.key] ?? 0) + 1;
@@ -350,6 +395,7 @@ class ManagedProviderUsageCoordinator {
     _generation++;
     _loaded = false;
     _refreshAllFlight = null;
+    _transientQueries.clear();
     _loadFlight = null;
     for (final entry in _pending.entries) {
       entry.value.cancelled = true;
@@ -377,6 +423,21 @@ class ManagedProviderUsageCoordinator {
         generation: generation,
         storageContextGeneration: storageContextGeneration,
         mutationRevision: _providerRepository.mutationRevision,
+      );
+    }
+    final transientQuery = _transientQueries[id];
+    if (transientQuery != null) {
+      return transientQuery.then(
+        (_) => _refreshLoadedProvider(
+          provider,
+          generation,
+          storageContextGeneration: storageContextGeneration,
+        ),
+        onError: (Object _, StackTrace __) => _refreshLoadedProvider(
+          provider,
+          generation,
+          storageContextGeneration: storageContextGeneration,
+        ),
       );
     }
     final previousPending = _pending[id];

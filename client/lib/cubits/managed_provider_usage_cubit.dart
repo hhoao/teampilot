@@ -202,6 +202,28 @@ class ManagedProviderUsageCubit extends Cubit<ManagedProviderUsageState> {
     }
   }
 
+  Future<ProviderUsageSnapshot?> queryProvider(ManagedProvider provider) async {
+    await load();
+    if (isClosed) return state.snapshotFor(provider.id);
+    try {
+      final result = await _coordinator.queryProvider(provider);
+      if (isClosed) return result;
+      final snapshots = Map<String, ProviderUsageSnapshot>.from(state.snapshots)
+        ..[provider.id] = result;
+      emit(
+        state.copyWith(
+          status: ManagedProviderUsageLoadStatus.ready,
+          snapshots: snapshots,
+          clearError: true,
+        ),
+      );
+      return result;
+    } on Object {
+      _setOperationError(ManagedProviderUsageErrorCode.refreshFailed);
+      return state.snapshotFor(provider.id);
+    }
+  }
+
   Future<List<ProviderUsageSnapshot>> refreshAll() async {
     await load();
     if (isClosed) return const [];

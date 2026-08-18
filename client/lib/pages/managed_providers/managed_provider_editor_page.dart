@@ -326,17 +326,15 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
                       child: Text(_saving ? 'Saving…' : 'Save'),
                     ),
                   ),
-                  if (provider != null) ...[
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: TpButton(
-                        key: const Key('managed-provider-test-query'),
-                        variant: TpButtonVariant.outline,
-                        onPressed: _saving ? null : _testQuery,
-                        child: const Text('Test query'),
-                      ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: TpButton(
+                      key: const Key('managed-provider-test-query'),
+                      variant: TpButtonVariant.outline,
+                      onPressed: _saving ? null : _testQuery,
+                      child: const Text('Test query'),
                     ),
-                  ],
+                  ),
                 ],
               ),
             ],
@@ -379,7 +377,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
       controller: controller,
       minHeight: 90,
       maxHeight: 180,
-      decoration: const InputDecoration(hintText: '{"api_key": "…"}'),
+      decoration: const InputDecoration(hintText: '{"region": "us"}'),
     ),
   );
 
@@ -419,6 +417,13 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
             body.isEmpty &&
             _requestMapping.text.trim() != '{}') {
       setState(() => _formError = 'Request mapping must be a JSON object.');
+      return;
+    }
+    if (_containsCredentialKey(body)) {
+      setState(
+        () => _formError =
+            'Use a credential reference instead of putting secrets in the request mapping.',
+      );
       return;
     }
     if (_decimalPlaces.text.trim().isNotEmpty && decimalPlaces == null) {
@@ -521,26 +526,82 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
   }
 
   Future<void> _testQuery() async {
-    final provider = _provider;
-    if (provider == null) return;
-    final snapshot = await context.read<ManagedProviderUsageCubit>().queryOne(
-      provider.id,
-    );
+    final draft = _draftProviderForQuery();
+    if (draft == null) return;
+    setState(() => _saving = true);
+    final snapshot = await context
+        .read<ManagedProviderUsageCubit>()
+        .queryProvider(draft);
     if (!mounted) return;
-    if (snapshot?.status == ProviderUsageStatus.error) {
-      AppToast.show(
-        context,
-        message:
-            snapshot?.lastErrorMessage ?? 'Unable to query provider usage.',
-        variant: TpToastVariant.error,
-      );
-    } else {
-      AppToast.show(
-        context,
-        message: 'Provider query completed.',
-        variant: TpToastVariant.success,
-      );
+    setState(() => _saving = false);
+    final failed = snapshot?.status == ProviderUsageStatus.error;
+    AppToast.show(
+      context,
+      message: failed
+          ? snapshot?.lastErrorMessage ?? 'Unable to query provider usage.'
+          : 'Provider query completed.',
+      variant: failed ? TpToastVariant.error : TpToastVariant.success,
+    );
+  }
+
+  ManagedProvider? _draftProviderForQuery() {
+    final name = _name.text.trim();
+    final adapter = _adapter.text.trim();
+    final endpoint = _endpoint.text.trim();
+    final body = _decodeObject(_requestMapping.text);
+    if (name.isEmpty || adapter.isEmpty) {
+      setState(() => _formError = 'Name and adapter are required.');
+      return null;
     }
+    if (body == null || _containsCredentialKey(body)) {
+      setState(
+        () => _formError = 'Request mapping must be a secret-free JSON object.',
+      );
+      return null;
+    }
+    if ((adapter == 'http-json' || _kind == ManagedProviderKind.customHttp) &&
+        !_isAllowedEndpoint(endpoint)) {
+      setState(
+        () => _formError =
+            'Enter an HTTPS or loopback endpoint for this HTTP adapter.',
+      );
+      return null;
+    }
+    final current = _provider;
+    return ManagedProvider(
+      id: current?.id ?? 'managed-query',
+      name: name,
+      kind: _kind,
+      adapterId: adapter,
+      endpointConfig: ManagedProviderEndpointConfig(
+        url: endpoint,
+        method: _method,
+        responsePath: _responsePath.text.trim().isEmpty
+            ? null
+            : _responsePath.text.trim(),
+        measuresPath: _measuresPath.text.trim().isEmpty
+            ? null
+            : _measuresPath.text.trim(),
+        body: body,
+        headers: current?.endpointConfig.headers ?? const {},
+        fieldMappings: current?.endpointConfig.fieldMappings ?? const {},
+        credentialName: _credentialName.text.trim().isEmpty
+            ? null
+            : _credentialName.text.trim(),
+        credentialField: _credentialField.text.trim().isEmpty
+            ? null
+            : _credentialField.text.trim(),
+        credentialPlacement: _credentialPlacement.text.trim().isEmpty
+            ? 'header'
+            : _credentialPlacement.text.trim().toLowerCase(),
+        credentialPrefix: current?.endpointConfig.credentialPrefix,
+      ),
+      credentialRef: _credentialRef.text.trim().isEmpty
+          ? null
+          : _credentialRef.text.trim(),
+      displayConfig: current?.displayConfig,
+      enabled: _enabled,
+    );
   }
 
   Future<void> _setEnabled(bool value) async {
@@ -579,6 +640,26 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
     const loopback = {'localhost', '127.0.0.1', '::1'};
     return loopback.contains(uri.host.toLowerCase()) &&
         (uri.scheme == 'http' || uri.scheme == 'https');
+  }
+
+  static bool _containsCredentialKey(Map<String, Object?> value) {
+    for (final entry in value.entries) {
+      if (isManagedProviderCredentialKey(entry.key)) return true;
+      final nested = entry.value;
+      if (nested is Map &&
+          _containsCredentialKey(Map<String, Object?>.from(nested))) {
+        return true;
+      }
+      if (nested is List) {
+        for (final item in nested) {
+          if (item is Map &&
+              _containsCredentialKey(Map<String, Object?>.from(item))) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
   }
 }
 
