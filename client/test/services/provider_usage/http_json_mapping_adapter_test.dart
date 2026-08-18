@@ -90,6 +90,51 @@ void main() {
     },
   );
 
+  test(
+    'places credentials in explicitly configured headers and query params',
+    () async {
+      for (final placement in [
+        HttpJsonCredentialPlacement.header,
+        HttpJsonCredentialPlacement.query,
+      ]) {
+        final fakeHttp = FakeProviderUsageHttpClient(
+          response: const ProviderUsageHttpResponse(
+            statusCode: 200,
+            body: '{"remaining":"3.25"}',
+          ),
+        );
+        final adapter = HttpJsonMappingAdapter(
+          config: HttpJsonMappingConfig(
+            method: 'GET',
+            url: 'https://example.test/usage?region=us',
+            credential: HttpJsonCredentialConfig(
+              field: 'apiKey',
+              name: 'X-API-Key',
+              placement: placement,
+            ),
+            remainingPath: r'$.remaining',
+          ),
+        );
+
+        await adapter.fetch(
+          _provider(),
+          credentials: const _Resolver(_Credentials({'apiKey': 'secret-key'})),
+          http: fakeHttp,
+          now: now,
+        );
+
+        final request = fakeHttp.requests.single;
+        if (placement == HttpJsonCredentialPlacement.header) {
+          expect(request.headers['X-API-Key'], 'secret-key');
+          expect(request.uri.query, 'region=us');
+        } else {
+          expect(request.headers.containsKey('X-API-Key'), isFalse);
+          expect(request.uri.queryParameters['X-API-Key'], 'secret-key');
+        }
+      }
+    },
+  );
+
   test('supports scalar paths, unit, currency, and reset timestamps', () async {
     final adapter = HttpJsonMappingAdapter(
       config: const HttpJsonMappingConfig(
@@ -188,6 +233,192 @@ void main() {
     expect(fakeHttp.requests, isEmpty);
   });
 
+  test('rejects endpoint userinfo and credential-bearing query data', () async {
+    for (final url in [
+      'https://user:pass@example.test/usage',
+      'https://example.test/usage?apiKey=query-secret',
+      'https://example.test/usage?value=Bearer%20query-secret',
+    ]) {
+      final fakeHttp = FakeProviderUsageHttpClient(
+        response: const ProviderUsageHttpResponse(statusCode: 200, body: '{}'),
+      );
+      final error = await _capture(
+        () =>
+            HttpJsonMappingAdapter(
+              config: HttpJsonMappingConfig(
+                method: 'GET',
+                url: url,
+                remainingPath: r'$.remaining',
+              ),
+            ).fetch(
+              _provider(),
+              credentials: const _Resolver(null),
+              http: fakeHttp,
+              now: now,
+            ),
+      );
+
+      expect(error, isA<ManagedProviderUsageQueryError>());
+      expect(
+        (error as ManagedProviderUsageQueryError).code,
+        ManagedProviderUsageQueryErrorCode.unsupported,
+      );
+      expect(error.toString(), isNot(contains('query-secret')));
+      expect(fakeHttp.requests, isEmpty);
+    }
+  });
+
+  test('rejects persisted providers whose unsafe URL was sanitized', () async {
+    final provider = _provider().copyWith(
+      endpointConfig: ManagedProviderEndpointConfig(
+        url: 'https://example.test/usage?apiKey=query-secret',
+        fieldMappings: {'remaining': r'$.remaining'},
+      ),
+    );
+    final fakeHttp = FakeProviderUsageHttpClient(
+      response: const ProviderUsageHttpResponse(
+        statusCode: 200,
+        body: '{"remaining":"1.00"}',
+      ),
+    );
+
+    expect(provider.endpointConfig.hadUnsafeUrl, isTrue);
+    final error = await _capture(
+      () => HttpJsonMappingAdapter().fetch(
+        provider,
+        credentials: const _Resolver(null),
+        http: fakeHttp,
+        now: now,
+      ),
+    );
+
+    expect(error, isA<ManagedProviderUsageQueryError>());
+    expect(
+      (error as ManagedProviderUsageQueryError).code,
+      ManagedProviderUsageQueryErrorCode.unsupported,
+    );
+    expect(fakeHttp.requests, isEmpty);
+  });
+
+  test('accepts parsed loopback IP variants for HTTP endpoints', () async {
+    for (final url in [
+      'http://127.0.0.2/usage',
+      'http://[::1]/usage',
+      'http://[0:0:0:0:0:0:0:1]/usage',
+      'http://localhost./usage',
+    ]) {
+      final fakeHttp = FakeProviderUsageHttpClient(
+        response: const ProviderUsageHttpResponse(
+          statusCode: 200,
+          body: '{"remaining":"1.00"}',
+        ),
+      );
+      await HttpJsonMappingAdapter(
+        config: HttpJsonMappingConfig(
+          method: 'GET',
+          url: url,
+          remainingPath: r'$.remaining',
+        ),
+      ).fetch(
+        _provider(),
+        credentials: const _Resolver(null),
+        http: fakeHttp,
+        now: now,
+      );
+      expect(fakeHttp.requests, hasLength(1));
+    }
+  });
+
+  test('maps malformed configured paths to typed unsupported errors', () async {
+    final fakeHttp = FakeProviderUsageHttpClient(
+      response: const ProviderUsageHttpResponse(
+        statusCode: 200,
+        body: '{"data":[{"remaining":"1.00"}]}',
+      ),
+    );
+    final error = await _capture(
+      () =>
+          HttpJsonMappingAdapter(
+            config: const HttpJsonMappingConfig(
+              method: 'GET',
+              url: 'https://example.test/usage',
+              measuresPath: r'$.data[0]junk',
+              remainingPath: r'$.remaining',
+            ),
+          ).fetch(
+            _provider(),
+            credentials: const _Resolver(null),
+            http: fakeHttp,
+            now: now,
+          ),
+    );
+
+    expect(error, isA<ManagedProviderUsageQueryError>());
+    expect(
+      (error as ManagedProviderUsageQueryError).code,
+      ManagedProviderUsageQueryErrorCode.unsupported,
+    );
+    expect(fakeHttp.requests, isEmpty);
+  });
+
+  test(
+    'maps present malformed mapped values to response parse errors',
+    () async {
+      final cases = <HttpJsonMappingConfig>[
+        const HttpJsonMappingConfig(
+          method: 'GET',
+          url: 'https://example.test/usage',
+          remainingPath: r'$.remaining',
+        ),
+        const HttpJsonMappingConfig(
+          method: 'GET',
+          url: 'https://example.test/usage',
+          remainingPath: r'$.remaining',
+          unitPath: r'$.unit',
+        ),
+        const HttpJsonMappingConfig(
+          method: 'GET',
+          url: 'https://example.test/usage',
+          remainingPath: r'$.remaining',
+          currencyPath: r'$.currency',
+        ),
+        const HttpJsonMappingConfig(
+          method: 'GET',
+          url: 'https://example.test/usage',
+          remainingPath: r'$.remaining',
+          resetsAtPath: r'$.resetsAt',
+        ),
+      ];
+      final bodies = [
+        '{"remaining":"not-decimal"}',
+        '{"remaining":"1.00","unit":42}',
+        '{"remaining":"1.00","currency":[]}',
+        '{"remaining":"1.00","resetsAt":"not-a-date"}',
+      ];
+
+      for (var i = 0; i < cases.length; i++) {
+        final error = await _capture(
+          () => HttpJsonMappingAdapter(config: cases[i]).fetch(
+            _provider(),
+            credentials: const _Resolver(null),
+            http: FakeProviderUsageHttpClient(
+              response: ProviderUsageHttpResponse(
+                statusCode: 200,
+                body: bodies[i],
+              ),
+            ),
+            now: now,
+          ),
+        );
+        expect(error, isA<ManagedProviderUsageQueryError>());
+        expect(
+          (error as ManagedProviderUsageQueryError).code,
+          ManagedProviderUsageQueryErrorCode.responseParseFailed,
+        );
+      }
+    },
+  );
+
   test('maps missing credentials to a typed redacted error', () async {
     final adapter = HttpJsonMappingAdapter(
       config: const HttpJsonMappingConfig(
@@ -279,6 +510,109 @@ void main() {
     },
   );
 
+  test(
+    'maps resolver and request-body construction failures to redacted errors',
+    () async {
+      final resolverError = await _capture(
+        () =>
+            HttpJsonMappingAdapter(
+              config: const HttpJsonMappingConfig(
+                method: 'GET',
+                url: 'https://example.test/usage',
+                credential: HttpJsonCredentialConfig(field: 'apiKey'),
+                remainingPath: r'$.remaining',
+              ),
+            ).fetch(
+              _provider(),
+              credentials: const _ThrowingResolver(),
+              http: FakeProviderUsageHttpClient(
+                response: const ProviderUsageHttpResponse(
+                  statusCode: 200,
+                  body: '{"remaining":"1.00"}',
+                ),
+              ),
+              now: now,
+            ),
+      );
+      expect(resolverError, isA<ManagedProviderUsageQueryError>());
+      expect(
+        (resolverError as ManagedProviderUsageQueryError).code,
+        ManagedProviderUsageQueryErrorCode.missingCredential,
+      );
+      expect(resolverError.toString(), isNot(contains('resolver-secret')));
+
+      final bodyError = await _capture(
+        () =>
+            HttpJsonMappingAdapter(
+              config: HttpJsonMappingConfig(
+                method: 'POST',
+                url: 'https://example.test/usage',
+                body: {'unsupported': _NonJsonValue()},
+                remainingPath: r'$.remaining',
+              ),
+            ).fetch(
+              _provider(),
+              credentials: const _Resolver(null),
+              http: FakeProviderUsageHttpClient(
+                response: const ProviderUsageHttpResponse(
+                  statusCode: 200,
+                  body: '{"remaining":"1.00"}',
+                ),
+              ),
+              now: now,
+            ),
+      );
+      expect(bodyError, isA<ManagedProviderUsageQueryError>());
+      expect(
+        (bodyError as ManagedProviderUsageQueryError).code,
+        ManagedProviderUsageQueryErrorCode.unsupported,
+      );
+      expect(bodyError.toString(), isNot(contains('body-secret')));
+    },
+  );
+
+  test(
+    'fromProvider preserves and consumes safe request configuration',
+    () async {
+      final provider = _provider().copyWith(
+        credentialRef: 'managed-provider:p1',
+        endpointConfig: ManagedProviderEndpointConfig(
+          url: 'https://example.test/usage?region=us',
+          method: 'POST',
+          credentialField: 'apiKey',
+          credentialName: 'X-API-Key',
+          credentialPlacement: 'header',
+          credentialPrefix: 'Bearer ',
+          headers: {'X-Region': 'us'},
+          body: {'scope': 'all'},
+          fieldMappings: {'remaining': r'$.remaining'},
+        ),
+      );
+      final fakeHttp = FakeProviderUsageHttpClient(
+        response: const ProviderUsageHttpResponse(
+          statusCode: 200,
+          body: '{"remaining":"1.20"}',
+        ),
+      );
+
+      final snapshot = await HttpJsonMappingAdapter().fetch(
+        provider,
+        credentials: const _Resolver(_Credentials({'apiKey': 'secret-key'})),
+        http: fakeHttp,
+        now: now,
+      );
+
+      expect(snapshot.measures.single.remaining, '1.20');
+      expect(fakeHttp.requests.single.method, 'POST');
+      expect(fakeHttp.requests.single.headers['X-Region'], 'us');
+      expect(
+        fakeHttp.requests.single.headers['X-API-Key'],
+        'Bearer secret-key',
+      );
+      expect(fakeHttp.requests.single.body, contains('"scope":"all"'));
+    },
+  );
+
   test('registry rejects duplicate IDs and exposes registered adapters', () {
     final first = _Adapter('http-json');
     final second = _Adapter('http-json');
@@ -286,6 +620,7 @@ void main() {
 
     expect(registry.adapterFor('http-json'), same(first));
     expect(registry.all, [first]);
+    expect(() => registry.all.add(second), throwsUnsupportedError);
     expect(() => registry.register(second), throwsStateError);
   });
 }
@@ -346,6 +681,20 @@ class _Resolver implements ProviderCredentialResolver {
   @override
   Future<ProviderCredentialScope?> resolve(ManagedProvider provider) async =>
       scope;
+}
+
+class _ThrowingResolver implements ProviderCredentialResolver {
+  const _ThrowingResolver();
+
+  @override
+  Future<ProviderCredentialScope?> resolve(ManagedProvider provider) {
+    throw StateError('resolver-secret');
+  }
+}
+
+class _NonJsonValue {
+  @override
+  String toString() => 'body-secret';
 }
 
 class _Adapter implements ManagedProviderUsageAdapter {

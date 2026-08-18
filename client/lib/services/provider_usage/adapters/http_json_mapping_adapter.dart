@@ -1,10 +1,11 @@
 import 'dart:convert';
+import 'dart:io';
 
 import '../../../models/managed_provider.dart';
 import '../../../models/provider_usage_snapshot.dart';
 import '../managed_provider_usage_adapter.dart';
 
-enum HttpJsonCredentialPlacement { header, query, jsonBody }
+enum HttpJsonCredentialPlacement { header, query, jsonBody, unsupported }
 
 class HttpJsonCredentialConfig {
   const HttpJsonCredentialConfig({
@@ -78,7 +79,7 @@ class HttpJsonMappingConfig {
         mappings[key] is String ? mappings[key] as String : null;
     return HttpJsonMappingConfig(
       method: endpoint.method,
-      url: endpoint.url,
+      url: endpoint.hadUnsafeUrl ? '' : endpoint.url,
       responsePath: endpoint.responsePath,
       measuresPath: endpoint.measuresPath,
       labelPath: mapping('label'),
@@ -91,8 +92,26 @@ class HttpJsonMappingConfig {
       resetsAtPath: mapping('resetsAt'),
       defaultUnit: provider.displayConfig.unit,
       defaultCurrency: provider.displayConfig.currency,
+      credential: endpoint.credentialField == null
+          ? null
+          : HttpJsonCredentialConfig(
+              field: endpoint.credentialField!,
+              name: endpoint.credentialName,
+              placement: _credentialPlacement(endpoint.credentialPlacement),
+              prefix: endpoint.credentialPrefix,
+            ),
+      headers: endpoint.headers,
+      body: endpoint.body,
     );
   }
+
+  static HttpJsonCredentialPlacement _credentialPlacement(String raw) =>
+      switch (raw.trim().toLowerCase()) {
+        'header' => HttpJsonCredentialPlacement.header,
+        'query' => HttpJsonCredentialPlacement.query,
+        'jsonbody' || 'body' => HttpJsonCredentialPlacement.jsonBody,
+        _ => HttpJsonCredentialPlacement.unsupported,
+      };
 }
 
 class HttpJsonMappingAdapter implements ManagedProviderUsageAdapter {
@@ -111,8 +130,18 @@ class HttpJsonMappingAdapter implements ManagedProviderUsageAdapter {
     required DateTime now,
   }) async {
     final mapping = config ?? HttpJsonMappingConfig.fromProvider(provider);
+    _validatePaths(mapping);
     final uri = _validatedUri(mapping.url);
-    final request = await _buildRequest(mapping, provider, credentials, uri);
+    late final ProviderUsageHttpRequest request;
+    try {
+      request = await _buildRequest(mapping, provider, credentials, uri);
+    } on ManagedProviderUsageQueryError {
+      rethrow;
+    } on Object {
+      throw const ManagedProviderUsageQueryError(
+        ManagedProviderUsageQueryErrorCode.unsupported,
+      );
+    }
 
     late final ProviderUsageHttpResponse response;
     try {
@@ -133,20 +162,24 @@ class HttpJsonMappingAdapter implements ManagedProviderUsageAdapter {
     }
 
     final decoded = _decode(response.body);
-    final responseRoot = _readPath(decoded, mapping.responsePath);
-    if (responseRoot == null) {
+    final responseRoot = mapping.responsePath == null
+        ? _PathLookup.presentValue(decoded)
+        : _lookupPath(decoded, mapping.responsePath);
+    if (!responseRoot.present || responseRoot.value == null) {
       throw const ManagedProviderUsageQueryError(
         ManagedProviderUsageQueryErrorCode.responseParseFailed,
       );
     }
-    final measuresRoot = _readPath(responseRoot, mapping.measuresPath);
+    final measuresRoot = mapping.measuresPath == null
+        ? _PathLookup.presentValue(responseRoot.value)
+        : _lookupPath(responseRoot.value, mapping.measuresPath);
     final items = mapping.measuresPath == null
-        ? [responseRoot]
-        : measuresRoot is List
-        ? measuresRoot
-        : measuresRoot == null
+        ? [responseRoot.value]
+        : measuresRoot.present && measuresRoot.value is List
+        ? measuresRoot.value as List<Object?>
+        : !measuresRoot.present || measuresRoot.value == null
         ? const []
-        : [measuresRoot];
+        : [measuresRoot.value];
     if (items.isEmpty) {
       throw const ManagedProviderUsageQueryError(
         ManagedProviderUsageQueryErrorCode.responseParseFailed,
@@ -163,6 +196,10 @@ class HttpJsonMappingAdapter implements ManagedProviderUsageAdapter {
         ManagedProviderUsageQueryErrorCode.responseParseFailed,
       );
     } on TypeError {
+      throw const ManagedProviderUsageQueryError(
+        ManagedProviderUsageQueryErrorCode.responseParseFailed,
+      );
+    } on Object {
       throw const ManagedProviderUsageQueryError(
         ManagedProviderUsageQueryErrorCode.responseParseFailed,
       );
@@ -191,26 +228,38 @@ class HttpJsonMappingAdapter implements ManagedProviderUsageAdapter {
     var requestUri = uri;
     final credential = mapping.credential;
     if (credential != null) {
-      final scope = await _resolveCredentials(credentials, provider);
-      final value = scope.valueFor(credential.field);
-      if (value == null || value.isEmpty || credential.targetName.isEmpty) {
+      try {
+        final scope = await _resolveCredentials(credentials, provider);
+        final value = scope.valueFor(credential.field);
+        if (value == null || value.isEmpty || credential.targetName.isEmpty) {
+          throw const ManagedProviderUsageQueryError(
+            ManagedProviderUsageQueryErrorCode.missingCredential,
+          );
+        }
+        final supplied = '${credential.prefix ?? ''}$value';
+        switch (credential.placement) {
+          case HttpJsonCredentialPlacement.header:
+            headers[credential.targetName] = supplied;
+          case HttpJsonCredentialPlacement.query:
+            requestUri = requestUri.replace(
+              queryParameters: {
+                ...requestUri.queryParameters,
+                credential.targetName: supplied,
+              },
+            );
+          case HttpJsonCredentialPlacement.jsonBody:
+            body[credential.targetName] = supplied;
+          case HttpJsonCredentialPlacement.unsupported:
+            throw const ManagedProviderUsageQueryError(
+              ManagedProviderUsageQueryErrorCode.unsupported,
+            );
+        }
+      } on ManagedProviderUsageQueryError {
+        rethrow;
+      } on Object {
         throw const ManagedProviderUsageQueryError(
           ManagedProviderUsageQueryErrorCode.missingCredential,
         );
-      }
-      final supplied = '${credential.prefix ?? ''}$value';
-      switch (credential.placement) {
-        case HttpJsonCredentialPlacement.header:
-          headers[credential.targetName] = supplied;
-        case HttpJsonCredentialPlacement.query:
-          requestUri = requestUri.replace(
-            queryParameters: {
-              ...requestUri.queryParameters,
-              credential.targetName: supplied,
-            },
-          );
-        case HttpJsonCredentialPlacement.jsonBody:
-          body[credential.targetName] = supplied;
       }
     }
 
@@ -222,12 +271,18 @@ class HttpJsonMappingAdapter implements ManagedProviderUsageAdapter {
     }
     final hasBody = method == 'POST' || body.isNotEmpty;
     if (hasBody) headers.putIfAbsent('content-type', () => 'application/json');
-    return ProviderUsageHttpRequest(
-      method: method,
-      uri: requestUri,
-      headers: headers,
-      body: hasBody ? jsonEncode(body) : null,
-    );
+    try {
+      return ProviderUsageHttpRequest(
+        method: method,
+        uri: requestUri,
+        headers: headers,
+        body: hasBody ? jsonEncode(body) : null,
+      );
+    } on Object {
+      throw const ManagedProviderUsageQueryError(
+        ManagedProviderUsageQueryErrorCode.unsupported,
+      );
+    }
   }
 
   Future<ProviderCredentialScope> _resolveCredentials(
@@ -256,23 +311,28 @@ class HttpJsonMappingAdapter implements ManagedProviderUsageAdapter {
     HttpJsonMappingConfig mapping,
     ManagedProvider provider,
   ) {
-    final label =
-        _stringValue(_readPath(item, mapping.labelPath)) ??
-        mapping.defaultLabel ??
-        provider.name;
-    final kind = ProviderUsageMeasureKind.fromJson(
-      _readPath(item, mapping.kindPath),
-    );
+    final labelLookup = _lookupPath(item, mapping.labelPath);
+    final label = labelLookup.present
+        ? _requiredString(labelLookup.value)
+        : mapping.defaultLabel ?? provider.name;
+    final kindLookup = _lookupPath(item, mapping.kindPath);
+    if (kindLookup.present && kindLookup.value is! String) {
+      throw const FormatException('invalid usage kind');
+    }
+    final kind = ProviderUsageMeasureKind.fromJson(kindLookup.value);
     final resolvedKind = mapping.kindPath == null ? mapping.defaultKind : kind;
-    final total = _decimalValue(_readPath(item, mapping.totalPath));
-    final used = _decimalValue(_readPath(item, mapping.usedPath));
-    final remaining = _decimalValue(_readPath(item, mapping.remainingPath));
-    final unit =
-        _stringValue(_readPath(item, mapping.unitPath)) ?? mapping.defaultUnit;
-    final currency =
-        _stringValue(_readPath(item, mapping.currencyPath)) ??
-        mapping.defaultCurrency;
-    final resetsAt = _timestampValue(_readPath(item, mapping.resetsAtPath));
+    final total = _decimalValue(_lookupPath(item, mapping.totalPath));
+    final used = _decimalValue(_lookupPath(item, mapping.usedPath));
+    final remaining = _decimalValue(_lookupPath(item, mapping.remainingPath));
+    final unitLookup = _lookupPath(item, mapping.unitPath);
+    final unit = unitLookup.present
+        ? _requiredString(unitLookup.value)
+        : mapping.defaultUnit;
+    final currencyLookup = _lookupPath(item, mapping.currencyPath);
+    final currency = currencyLookup.present
+        ? _requiredString(currencyLookup.value)
+        : mapping.defaultCurrency;
+    final resetsAt = _timestampValue(_lookupPath(item, mapping.resetsAtPath));
     if (total == null && used == null && remaining == null) {
       throw const FormatException('usage measure has no numeric fields');
     }
@@ -291,15 +351,17 @@ class HttpJsonMappingAdapter implements ManagedProviderUsageAdapter {
   static Uri _validatedUri(String raw) {
     final uri = Uri.tryParse(raw.trim());
     final host = uri?.host.toLowerCase();
+    final parsedAddress = host == null ? null : InternetAddress.tryParse(host);
     final loopback =
         host == 'localhost' ||
-        host == '127.0.0.1' ||
-        host == '::1' ||
-        host == '[::1]';
+        host == 'localhost.' ||
+        parsedAddress?.isLoopback == true;
     if (uri == null ||
         uri.userInfo.isNotEmpty ||
         uri.fragment.isNotEmpty ||
         uri.host.isEmpty ||
+        uri.queryParameters.keys.any(_isCredentialQueryName) ||
+        uri.queryParameters.values.any(_isCredentialQueryValue) ||
         uri.scheme != 'https' && !(uri.scheme == 'http' && loopback)) {
       throw const ManagedProviderUsageQueryError(
         ManagedProviderUsageQueryErrorCode.unsupported,
@@ -318,61 +380,114 @@ class HttpJsonMappingAdapter implements ManagedProviderUsageAdapter {
     }
   }
 
-  static Object? _readPath(Object? root, String? path) {
-    if (path == null || path.trim().isEmpty || path.trim() == r'$') {
-      return root;
+  static void _validatePaths(HttpJsonMappingConfig config) {
+    for (final path in [
+      config.responsePath,
+      config.measuresPath,
+      config.labelPath,
+      config.kindPath,
+      config.totalPath,
+      config.usedPath,
+      config.remainingPath,
+      config.unitPath,
+      config.currencyPath,
+      config.resetsAtPath,
+    ]) {
+      _parsePath(path);
     }
-    var remaining = path.trim();
-    if (remaining.startsWith(r'$')) remaining = remaining.substring(1);
-    if (remaining.startsWith('.')) remaining = remaining.substring(1);
-    Object? current = root;
+  }
+
+  static List<_PathToken> _parsePath(String? path) {
+    if (path == null) return const [];
+    final trimmed = path.trim();
+    if (trimmed.isEmpty || trimmed != path) _throwUnsupported();
+    if (trimmed == r'$') return const [];
+    var remaining = trimmed;
+    if (remaining.startsWith(r'$')) {
+      remaining = remaining.substring(1);
+      if (remaining.startsWith('.')) {
+        remaining = remaining.substring(1);
+      } else if (!remaining.startsWith('[')) {
+        _throwUnsupported();
+      }
+    }
+    if (remaining.isEmpty) _throwUnsupported();
+    final tokens = <_PathToken>[];
     for (final segment in remaining.split('.')) {
-      if (segment.isEmpty) return null;
-      var key = segment;
-      final indexes = <int>[];
-      final bracketStart = segment.indexOf('[');
-      if (bracketStart >= 0) {
-        key = segment.substring(0, bracketStart);
-        var cursor = bracketStart;
+      if (segment.isEmpty) _throwUnsupported();
+      var cursor = 0;
+      final bracket = segment.indexOf('[');
+      final key = bracket < 0 ? segment : segment.substring(0, bracket);
+      if (key.isNotEmpty && !RegExp(r'^[^\s.\[\]]+$').hasMatch(key)) {
+        _throwUnsupported();
+      }
+      if (key.isNotEmpty) tokens.add(_PathToken.key(key));
+      if (bracket >= 0) {
+        cursor = bracket;
         while (cursor < segment.length) {
-          final open = segment.indexOf('[', cursor);
-          final close = segment.indexOf(']', open + 1);
-          if (open < 0 || close < 0) return null;
-          final index = int.tryParse(segment.substring(open + 1, close));
-          if (index == null || index < 0) return null;
-          indexes.add(index);
+          if (segment[cursor] != '[') _throwUnsupported();
+          final close = segment.indexOf(']', cursor + 1);
+          if (close < 0 || close == cursor + 1) _throwUnsupported();
+          final index = int.tryParse(segment.substring(cursor + 1, close));
+          if (index == null || index < 0) _throwUnsupported();
+          tokens.add(_PathToken.index(index));
           cursor = close + 1;
         }
       }
-      if (key.isNotEmpty) {
-        if (current is! Map || !current.containsKey(key)) return null;
-        current = current[key];
-      }
-      for (final index in indexes) {
-        if (current is! List || index >= current.length) return null;
+    }
+    return tokens;
+  }
+
+  static _PathLookup _lookupPath(Object? root, String? path) {
+    if (path == null) return const _PathLookup.absent();
+    final tokens = _parsePath(path);
+    Object? current = root;
+    for (final token in tokens) {
+      if (token.key != null) {
+        if (current is! Map || !current.containsKey(token.key)) {
+          return const _PathLookup.absent();
+        }
+        current = current[token.key];
+      } else {
+        final index = token.index!;
+        if (current is! List || index >= current.length) {
+          return const _PathLookup.absent();
+        }
         current = current[index];
       }
     }
-    return current;
+    return _PathLookup.presentValue(current);
   }
 
-  static String? _stringValue(Object? value) {
-    if (value == null) return null;
-    if (value is String) return value;
-    if (value is num && value.isFinite) return value.toString();
-    return null;
+  static String _requiredString(Object? value) {
+    if (value is! String || value.isEmpty) {
+      throw const FormatException('invalid mapped string');
+    }
+    return value;
   }
 
-  static String? _decimalValue(Object? value) {
-    final result = _stringValue(value);
-    if (result == null || result.isEmpty) return null;
+  static String? _decimalValue(_PathLookup lookup) {
+    if (!lookup.present) return null;
+    final value = lookup.value;
+    final result = value is String
+        ? value
+        : value is int
+        ? value.toString()
+        : value is num && value.isFinite
+        ? value.toString()
+        : null;
+    if (result == null || result.isEmpty) {
+      throw const FormatException('invalid decimal value');
+    }
     if (!RegExp(r'^-?\d+(?:\.\d+)?$').hasMatch(result)) {
       throw const FormatException('invalid decimal value');
     }
     return result;
   }
 
-  static int? _timestampValue(Object? value) {
+  static int? _timestampValue(_PathLookup lookup) {
+    if (!lookup.present) return null;
+    final value = lookup.value;
     if (value is int) return value;
     if (value is num && value.isFinite && value == value.truncateToDouble()) {
       return value.toInt();
@@ -380,8 +495,60 @@ class HttpJsonMappingAdapter implements ManagedProviderUsageAdapter {
     if (value is String) {
       final integral = int.tryParse(value);
       if (integral != null) return integral;
-      return DateTime.tryParse(value)?.millisecondsSinceEpoch;
+      final parsed = DateTime.tryParse(value);
+      if (parsed != null) return parsed.millisecondsSinceEpoch;
     }
-    return null;
+    throw const FormatException('invalid reset timestamp');
   }
+
+  static bool _isCredentialQueryName(String name) {
+    final normalized = name
+        .replaceAll(RegExp(r'[^a-zA-Z0-9]'), '')
+        .toLowerCase();
+    return normalized.contains('apikey') ||
+        normalized.contains('token') ||
+        normalized.contains('secret') ||
+        normalized.contains('password') ||
+        normalized.contains('credential') ||
+        normalized.contains('authorization') ||
+        normalized.contains('privatekey');
+  }
+
+  static bool _isCredentialQueryValue(String value) {
+    final normalized = value
+        .replaceAll(RegExp(r'[^a-zA-Z0-9]'), '')
+        .toLowerCase();
+    return RegExp(
+          r'''bearer\s+\S+|basic\s+\S+|(?:api[_-]?key|token|secret|password|authorization)\s*[:=]\s*\S+''',
+          caseSensitive: false,
+        ).hasMatch(value) ||
+        normalized.contains('apikey') ||
+        normalized.contains('accesstoken') ||
+        normalized.contains('clientsecret') ||
+        normalized.contains('privatekey') ||
+        normalized.contains('password') ||
+        normalized.contains('secret') ||
+        normalized.contains('credential');
+  }
+
+  static Never _throwUnsupported() =>
+      throw const ManagedProviderUsageQueryError(
+        ManagedProviderUsageQueryErrorCode.unsupported,
+      );
+}
+
+class _PathToken {
+  const _PathToken.key(this.key) : index = null;
+  const _PathToken.index(this.index) : key = null;
+
+  final String? key;
+  final int? index;
+}
+
+class _PathLookup {
+  const _PathLookup.absent() : present = false, value = null;
+  const _PathLookup.presentValue(this.value) : present = true;
+
+  final bool present;
+  final Object? value;
 }

@@ -78,6 +78,39 @@ void main() {
     expect(ManagedProvider.fromJson(provider.toJson()), provider);
   });
 
+  test('round-trips safe HTTP request mapping without credential values', () {
+    final provider = ManagedProvider(
+      id: 'p1',
+      name: 'Example',
+      kind: ManagedProviderKind.customHttp,
+      adapterId: 'http-json',
+      endpointConfig: ManagedProviderEndpointConfig(
+        url: 'https://example.test/usage?region=us',
+        method: 'POST',
+        responsePath: r'$.result',
+        measuresPath: r'$.plans',
+        credentialField: 'apiKey',
+        credentialName: 'X-API-Key',
+        credentialPlacement: 'header',
+        credentialPrefix: 'Bearer ',
+        headers: {'X-Region': 'us', 'Authorization': 'Bearer header-secret'},
+        body: {'scope': 'all', 'apiKey': 'body-secret'},
+        fieldMappings: {'label': r'$.name', 'remaining': r'$.remaining'},
+      ),
+    );
+
+    final encoded = jsonEncode(provider.toJson());
+
+    expect(ManagedProvider.fromJson(provider.toJson()), provider);
+    expect(encoded, isNot(contains('secret')));
+    expect((provider.toJson()['endpointConfig'] as Map)['headers'], {
+      'X-Region': 'us',
+    });
+    expect((provider.toJson()['endpointConfig'] as Map)['body'], {
+      'scope': 'all',
+    });
+  });
+
   test('deep-copies and freezes caller-provided provider collections', () {
     final mapping = <String, Object?>{
       'token': 'data.token',
@@ -219,6 +252,13 @@ void main() {
     );
     expect(safe.url, 'https://example.test/usage?region=us#overview');
     expect(safeFragment.url, 'https://example.test/usage#overview');
+    expect(
+      ManagedProviderEndpointConfig.fromJson(
+        Map<String, Object?>.from(unsafe.toJson()['endpointConfig'] as Map),
+      ),
+      unsafe.endpointConfig,
+    );
+    expect(unsafe.endpointConfig.hadUnsafeUrl, isTrue);
   });
 
   test('sanitizes known provider strings but preserves ordinary text', () {

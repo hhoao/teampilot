@@ -74,14 +74,28 @@ class ManagedProviderEndpointConfig extends Equatable {
     String method = 'GET',
     String? responsePath,
     String? measuresPath,
+    String? credentialField,
+    String? credentialName,
+    String credentialPlacement = 'header',
+    String? credentialPrefix,
+    Map<String, String> headers = const {},
+    Map<String, Object?> body = const {},
     Map<String, Object?> fieldMappings = const {},
+    bool hadUnsafeUrl = false,
     Map<String, Object?> unknownFields = const {},
   }) => ManagedProviderEndpointConfig._(
     url: _sanitizeUrl(url),
     method: method,
     responsePath: responsePath,
     measuresPath: measuresPath,
+    credentialField: _sanitizeOptionalText(credentialField),
+    credentialName: _sanitizeOptionalText(credentialName),
+    credentialPlacement: credentialPlacement.trim().toLowerCase(),
+    credentialPrefix: _sanitizeOptionalText(credentialPrefix),
+    headers: _freezeRequestHeaders(headers),
+    body: _freezeFields(body, rejectCli: true),
     fieldMappings: _freezeMappingFields(fieldMappings),
+    hadUnsafeUrl: hadUnsafeUrl || _hasUnsafeUrlParts(url),
     unknownFields: _freezeFields(unknownFields, rejectCli: true),
   );
 
@@ -90,6 +104,13 @@ class ManagedProviderEndpointConfig extends Equatable {
     required this.method,
     this.responsePath,
     this.measuresPath,
+    this.credentialField,
+    this.credentialName,
+    required this.credentialPlacement,
+    this.credentialPrefix,
+    this.headers = const {},
+    this.body = const {},
+    required this.hadUnsafeUrl,
     this.fieldMappings = const {},
     this.unknownFields = const {},
   });
@@ -101,15 +122,29 @@ class ManagedProviderEndpointConfig extends Equatable {
       method: json['method'] as String? ?? 'GET',
       responsePath: json['responsePath'] as String?,
       measuresPath: json['measuresPath'] as String?,
+      credentialField: json['credentialField'] as String?,
+      credentialName: json['credentialName'] as String?,
+      credentialPlacement: json['credentialPlacement'] as String? ?? 'header',
+      credentialPrefix: json['credentialPrefix'] as String?,
+      headers: _parseStringMap(json['headers']),
+      body: _parseObjectMap(json['body']),
       fieldMappings: mappings is Map
           ? Map<String, Object?>.from(mappings)
           : const {},
+      hadUnsafeUrl: json['hadUnsafeUrl'] == true,
       unknownFields: _unknownFields(json, const {
         'url',
         'method',
         'responsePath',
         'measuresPath',
+        'credentialField',
+        'credentialName',
+        'credentialPlacement',
+        'credentialPrefix',
+        'headers',
+        'body',
         'fieldMappings',
+        'hadUnsafeUrl',
       }, rejectCli: true),
     );
   }
@@ -118,6 +153,13 @@ class ManagedProviderEndpointConfig extends Equatable {
   final String method;
   final String? responsePath;
   final String? measuresPath;
+  final String? credentialField;
+  final String? credentialName;
+  final String credentialPlacement;
+  final String? credentialPrefix;
+  final Map<String, String> headers;
+  final Map<String, Object?> body;
+  final bool hadUnsafeUrl;
   final Map<String, Object?> fieldMappings;
   final Map<String, Object?> unknownFields;
 
@@ -127,6 +169,13 @@ class ManagedProviderEndpointConfig extends Equatable {
     'method': method,
     if (responsePath != null) 'responsePath': responsePath,
     if (measuresPath != null) 'measuresPath': measuresPath,
+    if (credentialField != null) 'credentialField': credentialField,
+    if (credentialName != null) 'credentialName': credentialName,
+    'credentialPlacement': credentialPlacement,
+    if (credentialPrefix != null) 'credentialPrefix': credentialPrefix,
+    if (headers.isNotEmpty) 'headers': Map<String, String>.from(headers),
+    if (body.isNotEmpty) 'body': _thawFields(body, rejectCli: true),
+    if (hadUnsafeUrl) 'hadUnsafeUrl': true,
     if (fieldMappings.isNotEmpty)
       'fieldMappings': _thawMappingFields(fieldMappings),
   };
@@ -137,6 +186,13 @@ class ManagedProviderEndpointConfig extends Equatable {
     method,
     responsePath,
     measuresPath,
+    credentialField,
+    credentialName,
+    credentialPlacement,
+    credentialPrefix,
+    headers,
+    body,
+    hadUnsafeUrl,
     fieldMappings,
     unknownFields,
   ];
@@ -446,6 +502,20 @@ String? _sanitizeOptionalUrl(String? value) {
   return sanitized.isEmpty && value.isNotEmpty ? null : sanitized;
 }
 
+bool _hasUnsafeUrlParts(String value) {
+  if (value.isEmpty) return false;
+  final uri = Uri.tryParse(value);
+  if (uri == null) {
+    return _containsCredentialMaterial(value) || _containsUrlUserInfo(value);
+  }
+  return uri.userInfo.isNotEmpty ||
+      uri.queryParameters.keys.any(_isCredentialKey) ||
+      uri.queryParameters.values.any(_containsCredentialMaterial) ||
+      uri.queryParameters.values.any(_containsUrlUserInfo) ||
+      _containsCredentialMaterial(uri.fragment) ||
+      _containsUrlUserInfo(uri.fragment);
+}
+
 String _sanitizeUrl(String value) {
   if (value.isEmpty) return value;
   late final Uri uri;
@@ -508,6 +578,32 @@ int? _parseIntegralInt(Object? raw) {
   }
   return null;
 }
+
+Map<String, String> _parseStringMap(Object? raw) {
+  if (raw is! Map) return const {};
+  return _freezeRequestHeaders({
+    for (final entry in raw.entries)
+      if (entry.key is String && entry.value is String)
+        entry.key as String: entry.value as String,
+  });
+}
+
+Map<String, Object?> _parseObjectMap(Object? raw) {
+  if (raw is! Map) return const {};
+  return _freezeFields({
+    for (final entry in raw.entries)
+      if (entry.key is String) entry.key as String: entry.value,
+  }, rejectCli: true);
+}
+
+Map<String, String> _freezeRequestHeaders(Map<String, String> headers) =>
+    Map.unmodifiable({
+      for (final entry in headers.entries)
+        if (entry.key.trim().isNotEmpty &&
+            !_isCredentialKey(entry.key) &&
+            !_containsCredentialMaterial(entry.value))
+          entry.key: entry.value,
+    });
 
 class _RedactedMappingValue {
   const _RedactedMappingValue();
