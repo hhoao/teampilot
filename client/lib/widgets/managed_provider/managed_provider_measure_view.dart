@@ -36,7 +36,7 @@ class ManagedProviderMeasureView extends StatelessWidget {
             Expanded(
               child: Text(
                 current == null
-                    ? 'No usage queried yet'
+                    ? l10n.managedProvidersNoUsage
                     : _statusLabel(l10n, status!),
                 style: TpTextStyles.of(context).smColored(
                   status == ProviderUsageStatus.error
@@ -83,7 +83,7 @@ class ManagedProviderMeasureView extends StatelessWidget {
             child: Text(
               error?.trim().isNotEmpty == true
                   ? error!
-                  : 'Unable to query provider usage.',
+                  : l10n.managedProvidersQueryFailed,
               style: TpTextStyles.of(context).smColored(cs.onErrorContainer),
             ),
           ),

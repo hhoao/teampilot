@@ -16,7 +16,12 @@ abstract class WorkspaceStatusBarItem {
 /// Compact mode kicks in when the bar width is under 720 logical pixels so
 /// items can drop labels (Resource Manager pill, etc.).
 class WorkspaceStatusBar extends StatelessWidget {
-  const WorkspaceStatusBar({required this.items, super.key});
+  const WorkspaceStatusBar({
+    this.items = const [],
+    this.leadingItems = const [],
+    this.trailingItems,
+    super.key,
+  });
 
   /// Content row height (excluding [verticalInset]).
   static const double height = 24;
@@ -29,7 +34,14 @@ class WorkspaceStatusBar extends StatelessWidget {
 
   static const double compactBreakpoint = 720;
 
+  /// Legacy trailing group. Existing callers can continue to pass [items].
   final List<WorkspaceStatusBarItem> items;
+
+  /// Items pinned to the lower-left edge of the shell.
+  final List<WorkspaceStatusBarItem> leadingItems;
+
+  /// Explicit trailing group. When omitted, [items] is used.
+  final List<WorkspaceStatusBarItem>? trailingItems;
 
   @override
   Widget build(BuildContext context) {
@@ -49,9 +61,17 @@ class WorkspaceStatusBar extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  for (var i = 0; i < items.length; i++) ...[
+                  for (var i = 0; i < leadingItems.length; i++) ...[
                     if (i > 0) const SizedBox(width: 4),
-                    items[i].buildSegment(context, compact: compact),
+                    leadingItems[i].buildSegment(context, compact: compact),
+                  ],
+                  if (leadingItems.isNotEmpty) const Spacer(),
+                  for (var i = 0; i < (trailingItems ?? items).length; i++) ...[
+                    if (i > 0) const SizedBox(width: 4),
+                    (trailingItems ?? items)[i].buildSegment(
+                      context,
+                      compact: compact,
+                    ),
                   ],
                 ],
               );

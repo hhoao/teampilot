@@ -355,6 +355,33 @@ void main() {
       },
     );
 
+    test(
+      'clears response field mappings when an update submits an empty map',
+      () async {
+        await repo.upsert(
+          _provider('p1').copyWith(
+            endpointConfig: ManagedProviderEndpointConfig(
+              url: 'https://example.test/usage',
+              fieldMappings: {'remaining': r'$.remaining'},
+            ),
+          ),
+        );
+
+        await repo.upsert(
+          _provider('p1').copyWith(
+            endpointConfig: ManagedProviderEndpointConfig(
+              url: 'https://example.test/usage',
+            ),
+          ),
+        );
+
+        expect(
+          (await repo.load()).single.endpointConfig.fieldMappings,
+          isEmpty,
+        );
+      },
+    );
+
     test('normalizes provider IDs and never writes empty IDs', () async {
       await repo.save([_provider(' p1 '), _provider('p1')]);
 

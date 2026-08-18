@@ -10,6 +10,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/managed_provider.dart';
 import '../../models/provider_usage_snapshot.dart';
 import '../../widgets/app_toast/app_toast.dart';
+import 'managed_provider_error_message.dart';
 
 class ManagedProviderEditorPage extends StatefulWidget {
   const ManagedProviderEditorPage({this.provider, super.key});
@@ -523,7 +524,13 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
     if (!mounted) return;
     setState(() => _saving = false);
     if (cubit.state.errorCode != null) {
-      setState(() => _formError = cubit.state.errorMessage);
+      setState(
+        () => _formError = managedProviderErrorMessage(
+          context.l10n,
+          providerCode: cubit.state.errorCode,
+          detail: cubit.state.errorMessage,
+        ),
+      );
       return;
     }
     AppToast.show(
@@ -543,9 +550,11 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
     setState(() => _saving = false);
     if (context.read<ManagedProviderCubit>().state.errorCode != null) {
       setState(
-        () => _formError =
-            context.read<ManagedProviderCubit>().state.errorMessage ??
-            context.l10n.managedProvidersDeleteFailed,
+        () => _formError = managedProviderErrorMessage(
+          context.l10n,
+          providerCode: context.read<ManagedProviderCubit>().state.errorCode,
+          detail: context.read<ManagedProviderCubit>().state.errorMessage,
+        ),
       );
       return;
     }
@@ -567,8 +576,10 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
     AppToast.show(
       context,
       message: failed
-          ? snapshot?.lastErrorMessage ??
-                context.l10n.managedProvidersQueryFailed
+          ? snapshot?.status == ProviderUsageStatus.unsupported
+                ? context.l10n.managedProvidersQueryUnsupported
+                : snapshot?.lastErrorMessage ??
+                      context.l10n.managedProvidersQueryFailed
           : context.l10n.managedProvidersQueryCompleted,
       variant: failed ? TpToastVariant.error : TpToastVariant.success,
     );

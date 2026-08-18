@@ -10,6 +10,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/managed_provider.dart';
 import '../../widgets/app_toast/app_toast.dart';
 import 'managed_provider_editor_page.dart';
+import 'managed_provider_error_message.dart';
 import 'managed_provider_list.dart';
 
 class ManagedProviderManagementPage extends StatefulWidget {
@@ -46,24 +47,32 @@ class _ManagedProviderManagementPageState
       listeners: [
         BlocListener<ManagedProviderCubit, ManagedProviderState>(
           listenWhen: (previous, current) =>
-              previous.errorMessage != current.errorMessage &&
-              current.errorMessage != null,
+              previous.errorCode != current.errorCode &&
+              current.errorCode != null,
           listener: (context, state) {
             AppToast.show(
               context,
-              message: state.errorMessage!,
+              message: managedProviderErrorMessage(
+                context.l10n,
+                providerCode: state.errorCode,
+                detail: state.errorMessage,
+              ),
               variant: TpToastVariant.error,
             );
           },
         ),
         BlocListener<ManagedProviderUsageCubit, ManagedProviderUsageState>(
           listenWhen: (previous, current) =>
-              previous.errorMessage != current.errorMessage &&
-              current.errorMessage != null,
+              previous.errorCode != current.errorCode &&
+              current.errorCode != null,
           listener: (context, state) {
             AppToast.show(
               context,
-              message: state.errorMessage!,
+              message: managedProviderErrorMessage(
+                context.l10n,
+                usageCode: state.errorCode,
+                detail: state.errorMessage,
+              ),
               variant: TpToastVariant.error,
             );
           },
@@ -85,9 +94,11 @@ class _ManagedProviderManagementPageState
                 if (providerState.status == ManagedProviderLoadStatus.error &&
                     providerState.providers.isEmpty) {
                   return _LoadError(
-                    message:
-                        providerState.errorMessage ??
-                        'Unable to load managed providers.',
+                    message: managedProviderErrorMessage(
+                      context.l10n,
+                      providerCode: providerState.errorCode,
+                      detail: providerState.errorMessage,
+                    ),
                     onRetry: () => context.read<ManagedProviderCubit>().load(),
                   );
                 }
@@ -175,8 +186,11 @@ class _ManagedProviderManagementPageState
     if (!mounted || cubit.state.errorCode == null) return;
     AppToast.show(
       context,
-      message:
-          cubit.state.errorMessage ?? context.l10n.managedProvidersDeleteFailed,
+      message: managedProviderErrorMessage(
+        context.l10n,
+        providerCode: cubit.state.errorCode,
+        detail: cubit.state.errorMessage,
+      ),
       variant: TpToastVariant.error,
     );
   }

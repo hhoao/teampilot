@@ -7708,11 +7708,30 @@ class AppLocalizationsEn extends AppLocalizations {
   String get managedProvidersQueryFailed => 'Unable to query provider usage.';
 
   @override
+  String get managedProvidersSaveFailed => 'Unable to save managed provider.';
+
+  @override
   String get managedProvidersDeleteFailed =>
       'Unable to delete managed provider.';
 
   @override
   String get managedProvidersLoadFailed => 'Unable to load managed providers.';
+
+  @override
+  String get managedProvidersUsageLoadFailed =>
+      'Unable to load provider usage.';
+
+  @override
+  String get managedProvidersRefreshFailed =>
+      'Unable to refresh provider usage.';
+
+  @override
+  String get managedProvidersUsagePersistenceFailed =>
+      'Unable to save provider usage.';
+
+  @override
+  String get managedProvidersUsageInvalidated =>
+      'Provider usage was invalidated.';
 
   @override
   String get managedProvidersRequestMappingError =>

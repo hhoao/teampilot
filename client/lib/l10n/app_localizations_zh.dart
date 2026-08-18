@@ -7406,10 +7406,25 @@ class AppLocalizationsZh extends AppLocalizations {
   String get managedProvidersQueryFailed => '无法查询 Provider 用量。';
 
   @override
+  String get managedProvidersSaveFailed => '无法保存管理 Provider。';
+
+  @override
   String get managedProvidersDeleteFailed => '无法删除管理 Provider。';
 
   @override
   String get managedProvidersLoadFailed => '无法加载管理 Provider。';
+
+  @override
+  String get managedProvidersUsageLoadFailed => '无法加载 Provider 用量。';
+
+  @override
+  String get managedProvidersRefreshFailed => '无法刷新 Provider 用量。';
+
+  @override
+  String get managedProvidersUsagePersistenceFailed => '无法保存 Provider 用量。';
+
+  @override
+  String get managedProvidersUsageInvalidated => 'Provider 用量已失效。';
 
   @override
   String get managedProvidersRequestMappingError => '请求映射必须是 JSON 对象。';

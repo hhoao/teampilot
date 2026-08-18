@@ -13796,6 +13796,12 @@ abstract class AppLocalizations {
   /// **'Unable to query provider usage.'**
   String get managedProvidersQueryFailed;
 
+  /// No description provided for @managedProvidersSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to save managed provider.'**
+  String get managedProvidersSaveFailed;
+
   /// No description provided for @managedProvidersDeleteFailed.
   ///
   /// In en, this message translates to:
@@ -13807,6 +13813,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Unable to load managed providers.'**
   String get managedProvidersLoadFailed;
+
+  /// No description provided for @managedProvidersUsageLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to load provider usage.'**
+  String get managedProvidersUsageLoadFailed;
+
+  /// No description provided for @managedProvidersRefreshFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to refresh provider usage.'**
+  String get managedProvidersRefreshFailed;
+
+  /// No description provided for @managedProvidersUsagePersistenceFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to save provider usage.'**
+  String get managedProvidersUsagePersistenceFailed;
+
+  /// No description provided for @managedProvidersUsageInvalidated.
+  ///
+  /// In en, this message translates to:
+  /// **'Provider usage was invalidated.'**
+  String get managedProvidersUsageInvalidated;
 
   /// No description provided for @managedProvidersRequestMappingError.
   ///
