@@ -2,8 +2,6 @@ import 'package:flutter/foundation.dart';
 import '../../../../models/app_provider_config.dart';
 import '../../../../models/credential_action_result.dart';
 import '../../../../models/credential_probe.dart';
-import '../../../../models/hook_entry.dart';
-import '../../../../models/launch_security_policy.dart';
 import '../../../../models/team_config.dart';
 import '../../../../utils/workspace/trusted_project_paths.dart';
 import '../../../hook/glue_script_builder.dart';
@@ -24,6 +22,8 @@ import '../../registry/config_profile/config_profile_context.dart';
 import '../../registry/config_profile/hook_seat_context_completer.dart';
 import '../../registry/hook/managed_hook_provisioner.dart';
 import '../../registry/prompt/prompt_hub_service.dart';
+import '../../../resource/providers/endpoint_hook_contribution_provider.dart';
+import '../../../resource/providers/hook_library_contribution_provider.dart';
 import '../provider/codex_auth_artifacts.dart';
 import '../provider/codex_effort_catalog.dart';
 import '../provider/codex_home_provisioner.dart';
@@ -389,19 +389,25 @@ final class CodexProviderCapability extends CatalogModelCapability
       // from the completer; rendered together with user hooks in ONE pass.
       // Agent-status hooks: simple + team whenever stamped — not mixed-gated.
       final agentStatus = ctx.agentStatus;
-      final managedEntries = <HookEntry>[
-        if (busIdle != null && member != null && member.isValid)
-          ...const HookSeatContextCompleter().busIdleHooks(
-            idle: busIdle,
-            memberId: member.id,
-          ),
-        if (agentStatus != null && member != null && member.isValid)
-          ...const HookSeatContextCompleter().agentStatusHooks(
-            endpoint: agentStatus,
-            memberId: member.id,
-          ),
-      ];
-      final allEntries = [...managedEntries, ...ctx.hooks];
+      final completer = const HookSeatContextCompleter();
+      final assembledHooks = await completer.assemble(
+        cli: CliTool.codex,
+        member: member,
+        providers: [
+          if (busIdle != null && member != null && member.isValid)
+            BusIdleHookContributionProvider(
+              endpoint: busIdle,
+              memberId: member.id,
+            ),
+          if (agentStatus != null && member != null && member.isValid)
+            AgentStatusHookContributionProvider(
+              endpoint: agentStatus,
+              memberId: member.id,
+            ),
+          UserHookContributionProvider(entries: ctx.hooks),
+        ],
+      );
+      final allEntries = assembledHooks.entries;
       if (allEntries.isNotEmpty) {
         final writer = const CodexHookWriter();
         final hooksDir = paths.joinWork(codexHome, 'hooks');

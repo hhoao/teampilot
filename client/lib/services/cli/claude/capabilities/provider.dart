@@ -34,6 +34,11 @@ import '../../registry/config_profile/config_profile_context.dart';
 import '../../registry/config_profile/hook_seat_context_completer.dart';
 import '../../registry/hook/managed_hook_provisioner.dart';
 import '../../registry/prompt/prompt_hub_service.dart';
+import '../../../resource/providers/extension_hook_contribution_provider.dart';
+import '../../../resource/providers/hook_library_contribution_provider.dart';
+import '../../../resource/providers/managed_hook_contribution_provider.dart';
+import '../../../resource/providers/endpoint_hook_contribution_provider.dart';
+import '../../../resource/providers/hook_contribution_provider.dart';
 import '../provider/claude_effort_catalog.dart';
 import '../provider/claude_live_import.dart';
 import '../provider/claude_model_catalog.dart';
@@ -323,8 +328,8 @@ final class ClaudeProviderCapability extends CatalogModelCapability
   @override
   CredentialBindingKind defaultBinding(AppProviderConfig provider) =>
       isOfficialClaudeProvider(provider)
-          ? CredentialBindingKind.linked
-          : CredentialBindingKind.isolated;
+      ? CredentialBindingKind.linked
+      : CredentialBindingKind.isolated;
 
   @override
   Map<String, Object?> withBinding(
@@ -1121,25 +1126,29 @@ final class ClaudeProviderCapability extends CatalogModelCapability
     // 链尾追加（maybeApplyTeamLeadHooks），扩展在写盘时前置——去重收敛后
     // delegate/extension 前置保持其"胜出"语义（旧链中两源命令互不碰撞，
     // 可观察行为不变；分析见 task-18-report.md）。
-    final entries = <HookEntry>[
+    final hookProviders = <HookContributionProvider>[
       if (mixed && busIdle != null)
-        ...completer.busIdleHooks(idle: busIdle, memberId: member.id),
+        BusIdleHookContributionProvider(endpoint: busIdle, memberId: member.id),
       if (agentStatus != null)
-        ...completer.agentStatusHooks(
+        AgentStatusHookContributionProvider(
           endpoint: agentStatus,
           memberId: member.id,
         ),
       if (delegateCommand != null)
-        ...completer.delegateHooks(commands: [delegateCommand]),
-      for (final hook in extensionHooks)
-        ...completer.extensionHooks(
-          extensionId: hook.extensionId,
-          events: [hook.event],
-          command: hook.command,
-          matcher: hook.matcher,
+        ManagedHookContributionProvider(
+          entries: completer.delegateHooks(commands: [delegateCommand]),
+          providerId: 'team-lead-delegate',
         ),
-      ...userHooks,
+      if (extensionHooks.isNotEmpty)
+        ExtensionHookContributionProvider(settingsHooks: extensionHooks),
+      UserHookContributionProvider(entries: userHooks),
     ];
+    final assembledHooks = await completer.assemble(
+      cli: CliTool.claude,
+      member: member,
+      providers: hookProviders,
+    );
+    final entries = assembledHooks.entries;
     // Task 19：旧 CliHookSpec 资产注册路径已删除——managed 条目全部经上方
     // completer 组装，统一 writer 渲染（bus idle Stop 现带 timeout 5，不再被
     // 无 timeout 的 registry 资产 Stop 去重压掉）。
@@ -1148,19 +1157,20 @@ final class ClaudeProviderCapability extends CatalogModelCapability
     );
     if (hookWriter != null && entries.isNotEmpty) {
       final hooksDir = delegate.joinWork(memberToolDir, 'hooks');
-      final result = await ManagedHookProvisioner(
-        fs: delegate.fs,
-        joinWork: delegate.joinWork,
-        logPrefix: '[hook-writer] claude',
-      ).provision(
-        writer: hookWriter,
-        entries: entries,
-        ctx: HookRenderContext(
-          hooksDir: hooksDir,
-          runner: delegate.hostEnvironmentForProvision().scriptRunner,
-          glueBuilder: const GlueScriptBuilder(),
-        ),
-      );
+      final result =
+          await ManagedHookProvisioner(
+            fs: delegate.fs,
+            joinWork: delegate.joinWork,
+            logPrefix: '[hook-writer] claude',
+          ).provision(
+            writer: hookWriter,
+            entries: entries,
+            ctx: HookRenderContext(
+              hooksDir: hooksDir,
+              runner: delegate.hostEnvironmentForProvision().scriptRunner,
+              glueBuilder: const GlueScriptBuilder(),
+            ),
+          );
       settings = mergeHooksInto(
         settings,
         (result.configFragments['settings.json'] as Map<String, Object?>?) ??
@@ -1439,7 +1449,6 @@ void _logClaudeContributeLaunchStep(
     'elapsedMs=$elapsedMs session=$sessionId cli=claude$suffix',
   );
 }
-
 
 final _emptyCatalogUpdates = _EmptyListenable();
 
