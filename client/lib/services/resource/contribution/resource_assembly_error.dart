@@ -135,7 +135,7 @@ class ResourceAssemblyError extends ResourceAssemblyDiagnostic {
 
 /// Exception raised when one or more resource assembly errors are fatal.
 class ResourceAssemblyException implements Exception {
-  ResourceAssemblyException(Iterable<ResourceAssemblyDiagnostic> diagnostics)
+  ResourceAssemblyException(Iterable<ResourceAssemblyError> diagnostics)
     : diagnostics = _validateDiagnostics(diagnostics) {
     if (this.diagnostics.isEmpty) {
       throw ArgumentError.value(
@@ -149,21 +149,9 @@ class ResourceAssemblyException implements Exception {
   final List<ResourceAssemblyError> diagnostics;
 
   static List<ResourceAssemblyError> _validateDiagnostics(
-    Iterable<ResourceAssemblyDiagnostic> diagnostics,
+    Iterable<ResourceAssemblyError> diagnostics,
   ) {
-    final errors = <ResourceAssemblyError>[];
-    for (final diagnostic in diagnostics) {
-      if (diagnostic is! ResourceAssemblyError ||
-          diagnostic.severity != ResourceAssemblyDiagnosticSeverity.error) {
-        throw ArgumentError.value(
-          diagnostic,
-          'diagnostics',
-          'must contain only ResourceAssemblyError values',
-        );
-      }
-      errors.add(diagnostic);
-    }
-    return List.unmodifiable(errors);
+    return List.unmodifiable(diagnostics);
   }
 
   @override

@@ -54,17 +54,24 @@ void main() {
     expect(exception.toString(), contains('conflicting server'));
   });
 
-  test('ResourceAssemblyException rejects empty and non-error diagnostics', () {
-    const warning = ResourceAssemblyDiagnostic(
-      severity: ResourceAssemblyDiagnosticSeverity.warning,
-      resourceKind: ResourceContributionKind.skill,
-      cli: CliTool.claude,
-      providerId: 'catalog',
-      message: 'optional skill skipped',
-    );
+  test('ResourceAssemblyException exposes only typed error diagnostics', () {
+    const errors = <ResourceAssemblyError>[
+      ResourceAssemblyError.unsupported(
+        resourceKind: ResourceContributionKind.skill,
+        cli: CliTool.claude,
+        providerId: 'catalog',
+        message: 'skill unsupported',
+      ),
+    ];
 
-    expect(() => ResourceAssemblyException(const []), throwsArgumentError);
-    expect(() => ResourceAssemblyException([warning]), throwsArgumentError);
+    final exception = ResourceAssemblyException(errors);
+    final List<ResourceAssemblyError> typedDiagnostics = exception.diagnostics;
+
+    expect(typedDiagnostics, errors);
+    expect(
+      () => ResourceAssemblyException(const <ResourceAssemblyError>[]),
+      throwsArgumentError,
+    );
   });
 
   test('ResourceAssemblyError equality includes error kind', () {
