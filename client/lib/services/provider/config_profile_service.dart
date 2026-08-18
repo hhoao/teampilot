@@ -3,7 +3,6 @@ import 'package:path/path.dart' as p;
 import '../../models/config_bundle.dart';
 import '../../models/cli_preset.dart';
 import '../../models/extension_manifest.dart';
-import '../../models/hook_entry.dart';
 import '../../models/plugin.dart';
 import '../../models/skill.dart';
 import '../../models/team_config.dart';
@@ -43,7 +42,6 @@ import '../cli/registry/capabilities/cli_session_capability.dart';
 import '../storage/app_storage.dart';
 import '../cli/preset_resolver.dart';
 import '../hook/hook_library_resolver.dart';
-import '../resource/providers/hook_contribution_provider.dart';
 import '../resource/providers/hook_library_contribution_provider.dart';
 import '../cli/registry/config_profile/config_profile_context.dart';
 import 'config_profile_infrastructure.dart';
@@ -674,8 +672,6 @@ class ConfigProfileService implements ConfigProfileDelegate {
     List<String> additionalDirectories = const [],
     MemberBusIdleEndpoint? busIdle,
     MemberAgentStatusEndpoint? agentStatus,
-    List<HookEntry> hooks = const [],
-    HookContributionProvider? hookLibraryProvider,
     ResourceProviderSet resourceProviders = ResourceProviderSet.empty,
   }) async {
     final trimmedWorkspaceId = workspaceId.trim();
@@ -722,8 +718,6 @@ class ConfigProfileService implements ConfigProfileDelegate {
             busIdle: busIdle,
             agentStatus: agentStatus,
             resourceProviders: resourceProviders,
-            hooks: hooks,
-            hookLibraryProvider: hookLibraryProvider,
           ),
           cli,
         ),
@@ -805,7 +799,6 @@ class ConfigProfileService implements ConfigProfileDelegate {
       additionalDirectories: additionalDirectories,
       busIdle: busIdle,
       agentStatus: agentStatus,
-      hookLibraryProvider: hookLibraryProvider,
       resourceProviders: ResourceProviderSet(hooks: [hookLibraryProvider]),
     );
     appLogger.d(
@@ -1063,7 +1056,6 @@ class ConfigProfileService implements ConfigProfileDelegate {
             resourceProviders: ResourceProviderSet(
               hooks: [hookLibraryProvider],
             ),
-            hookLibraryProvider: hookLibraryProvider,
           ),
           launchCli,
         ),

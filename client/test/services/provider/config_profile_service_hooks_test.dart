@@ -3,6 +3,8 @@ import 'package:teampilot/models/hook_entry.dart';
 import 'package:teampilot/models/hook_event.dart';
 import 'package:teampilot/services/cli/registry/config_profile/config_profile_context.dart';
 import 'package:teampilot/services/io/filesystem.dart';
+import 'package:teampilot/services/resource/providers/hook_library_contribution_provider.dart';
+import 'package:teampilot/services/resource/resource_provider_set.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 
 import '../../support/cursor_lifecycle_test_paths.dart';
@@ -32,13 +34,16 @@ void main() {
       members: const [],
       paths: paths,
       catalog: paths,
-      hooks: hooks ?? const [],
+      resourceProviders: ResourceProviderSet(
+        hooks: [UserHookContributionProvider(entries: hooks ?? const [])],
+      ),
     );
   });
 
-  test('ConfigProfileLaunchContext carries hooks with empty default', () {
+  test('ConfigProfileLaunchContext carries a single resource provider set', () {
     final ctx = buildCtx();
-    expect(ctx.hooks, isEmpty);
+    expect(ctx.resourceProviders.hooks, hasLength(1));
+    expect(ctx.resourceProviders.hooks.single.providerId, 'user-library');
   });
 
   test('hooks are threaded through constructor', () {
@@ -49,6 +54,8 @@ void main() {
       action: CommandHookAction.raw('echo hi'),
     );
     final ctx = buildCtx(hooks: [entry]);
-    expect(ctx.hooks.single.id, 'h1');
+    final provider =
+        ctx.resourceProviders.hooks.single as UserHookContributionProvider;
+    expect(provider.entries.single.id, 'h1');
   });
 }

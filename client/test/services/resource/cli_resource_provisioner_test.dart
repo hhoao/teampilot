@@ -245,18 +245,63 @@ void main() {
       expect(calls, 1);
     },
   );
+
+  test(
+    'uses the requested real CLI capability for every launchable CLI',
+    () async {
+      final registry = CliToolRegistry.builtIn();
+      const launchable = [
+        CliTool.claude,
+        CliTool.flashskyai,
+        CliTool.codex,
+        CliTool.opencode,
+        CliTool.cursor,
+      ];
+      final selected = <CliTool>[];
+
+      for (final cli in launchable) {
+        final fs = InMemoryFilesystem();
+        final report = await CliResourceProvisioner(fs: fs, registry: registry)
+            .provision(
+              _context(
+                fs: fs,
+                cli: cli,
+                configDir: '/config-${cli.value}',
+                injected: ResourceProviderSet(
+                  mcp: [
+                    _McpSelectionProvider(
+                      (selectedCli) => selected.add(selectedCli),
+                    ),
+                  ],
+                ),
+              ),
+            );
+
+        expect(report.hardDiagnostics, isEmpty, reason: cli.value);
+        expect(
+          report.materializations[ResourceContributionKind.mcp]!.materialized,
+          isTrue,
+          reason: cli.value,
+        );
+      }
+
+      expect(selected, launchable);
+    },
+  );
 }
 
 CliResourceProvisionContext _context({
   required InMemoryFilesystem fs,
+  CliTool cli = CliTool.claude,
+  String configDir = '/config',
   ResourceProviderSet injected = ResourceProviderSet.empty,
 }) => CliResourceProvisionContext(
-  cli: CliTool.claude,
+  cli: cli,
   scope: const SimpleResourceScope(bundle: ConfigBundle()),
   runtimeBundle: const ConfigBundle(),
   fs: fs,
   layout: RuntimeLayout(teampilotRoot: '/runtime', fs: fs),
-  configDir: '/config',
+  configDir: configDir,
   appConfigDir: '/app',
   resourceProviders: injected,
 );
@@ -375,6 +420,29 @@ final class _CountingMcpProvider implements McpContributionProvider {
         origin: ContributionOrigin(
           providerId: providerId,
           kind: ResourceOriginKind.catalog,
+        ),
+      ),
+    ];
+  }
+}
+
+final class _McpSelectionProvider implements McpContributionProvider {
+  _McpSelectionProvider(this.onSelected);
+  final void Function(CliTool cli) onSelected;
+
+  @override
+  String get providerId => 'actual-cli-mcp';
+
+  @override
+  Iterable<McpContribution> provide(McpProviderContext context) {
+    onSelected(context.cli);
+    return [
+      McpContribution(
+        sourceId: context.cli.value,
+        server: StdioMcpServer(name: context.cli.value, command: 'server'),
+        origin: ContributionOrigin(
+          providerId: providerId,
+          kind: ResourceOriginKind.managed,
         ),
       ),
     ];

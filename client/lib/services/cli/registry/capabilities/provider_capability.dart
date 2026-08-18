@@ -15,6 +15,7 @@ import '../../../team_bus/member_bus_idle_endpoint.dart';
 import '../cli_capability.dart';
 import '../config_profile/config_profile_context.dart';
 import '../../../resource/providers/hook_contribution_provider.dart';
+import '../../../resource/providers/hook_library_contribution_provider.dart';
 import '../../../resource/resource_provider_set.dart';
 
 /// Providers discovered from the user's global CLI install.
@@ -507,13 +508,31 @@ SessionHomeContext sessionHomeContextFromLaunch(
     sessionExpertKey: ctx.sessionExpertKey,
     resolvedExpert: ctx.resolvedExpert,
     resourceProviders: ctx.resourceProviders,
-    hooks: ctx.hooks,
-    hookLibraryProvider: ctx.hookLibraryProvider,
+    hooks: _sessionHomeHookEntries(ctx.resourceProviders),
+    hookLibraryProvider: _sessionHomeHookProvider(ctx.resourceProviders),
     crossMachine: ctx.crossMachine,
     resolvedProviderId: resolvedProviderId,
     credentialBasePath: credentialBasePath,
     isSimple: ctx.isSimple,
   );
+}
+
+List<HookEntry> _sessionHomeHookEntries(ResourceProviderSet providers) {
+  for (final provider in providers.hooks) {
+    if (provider case UserHookContributionProvider(:final entries)) {
+      return entries;
+    }
+  }
+  return const [];
+}
+
+HookContributionProvider? _sessionHomeHookProvider(
+  ResourceProviderSet providers,
+) {
+  for (final provider in providers.hooks) {
+    if (provider.providerId == 'user-library') return provider;
+  }
+  return null;
 }
 
 /// ProviderHub 契约:该 CLI 的 provider 目录、表单、模型、凭证、effort。

@@ -1,7 +1,6 @@
 import 'package:path/path.dart' as p;
 
 import '../../../../models/cli_preset.dart';
-import '../../../../models/hook_entry.dart';
 import '../../../../models/discoverable_member.dart';
 import '../../../../models/team_config.dart';
 import '../../../extension/extension_provisioner.dart';
@@ -11,8 +10,6 @@ import '../../../provider/provider_catalog_access.dart';
 import '../../../storage/runtime_layout.dart';
 import '../../../agent_status/member_agent_status_endpoint.dart';
 import '../../../team_bus/member_bus_idle_endpoint.dart';
-import '../../../resource/providers/hook_contribution_provider.dart';
-import '../../../resource/providers/hook_library_contribution_provider.dart';
 import '../../../resource/resource_provider_set.dart';
 import 'config_profile_scope.dart';
 
@@ -107,7 +104,7 @@ abstract interface class ConfigProfileDelegate implements ConfigProfilePaths {
   });
 
   /// Renders every enabled, ready extension's `settings-hook` effects into
-  /// [HookEntry]-backed specs (scripts provisioned under [memberToolDir]).
+  /// hook specs (scripts provisioned under [memberToolDir]).
   /// Consumed by the unified hook writer render at the member-profile
   /// assembly points (Task 18 convergence).
   Future<List<ExtensionSettingsHook>> extensionSettingsHooks(
@@ -157,15 +154,8 @@ class ConfigProfileLaunchContext {
     this.memberId,
     this.sessionExpertKey,
     this.resolvedExpert,
-    ResourceProviderSet resourceProviders = ResourceProviderSet.empty,
-    // Kept only as a source-compatible boundary adapter for older callers.
-    this.hooks = const [],
-    this.hookLibraryProvider,
-  }) : resourceProviders = _withLegacyHookProviders(
-         resourceProviders,
-         hooks: hooks,
-         hookLibraryProvider: hookLibraryProvider,
-       );
+    this.resourceProviders = ResourceProviderSet.empty,
+  });
 
   final String workspaceId;
   final String teamId;
@@ -196,39 +186,9 @@ class ConfigProfileLaunchContext {
   /// All launch-injected resource sources, grouped by kind and ordered.
   final ResourceProviderSet resourceProviders;
 
-  /// Legacy compatibility projection. New staging callers pass
-  /// [resourceProviders]; this boundary is removed once downstream provider
-  /// capabilities consume the grouped set directly.
-  final List<HookEntry> hooks;
-  final HookContributionProvider? hookLibraryProvider;
-
   bool get crossMachine => configProfileCrossMachine(catalog, paths);
 
   /// True when launching Simple (unteamed). Team launches always pass a
   /// non-empty [teamId] even when the [TeamProfile] object is omitted.
   bool get isSimple => teamId.trim().isEmpty;
-}
-
-ResourceProviderSet _withLegacyHookProviders(
-  ResourceProviderSet providers, {
-  required List<HookEntry> hooks,
-  required HookContributionProvider? hookLibraryProvider,
-}) {
-  if (hooks.isEmpty && hookLibraryProvider == null) return providers;
-  final existingIds = providers.hooks
-      .map((provider) => provider.providerId)
-      .toSet();
-  return ResourceProviderSet(
-    prompts: providers.prompts,
-    skills: providers.skills,
-    mcp: providers.mcp,
-    hooks: [
-      ...providers.hooks,
-      if (hookLibraryProvider != null &&
-          existingIds.add(hookLibraryProvider.providerId))
-        hookLibraryProvider,
-      if (hooks.isNotEmpty && existingIds.add('user-library'))
-        UserHookContributionProvider(entries: hooks),
-    ],
-  );
 }
