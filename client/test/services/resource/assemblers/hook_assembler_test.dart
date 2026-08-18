@@ -6,6 +6,8 @@ import 'package:teampilot/services/resource/assemblers/hook_assembler.dart';
 import 'package:teampilot/services/resource/contribution/resource_assembly_error.dart';
 import 'package:teampilot/services/resource/contribution/resource_origin.dart';
 import 'package:teampilot/services/resource/providers/hook_contribution_provider.dart';
+import 'package:teampilot/services/resource/providers/endpoint_hook_contribution_provider.dart';
+import 'package:teampilot/services/team_bus/member_bus_idle_endpoint.dart';
 
 void main() {
   const assembler = HookAssembler();
@@ -124,7 +126,17 @@ void main() {
                 'provider',
                 'managed-provider',
               )
-              .having((error) => error.sourceId, 'source', 'managed-source'),
+              .having((error) => error.sourceId, 'source', 'managed-source')
+              .having(
+                (error) => error.previousProviderId,
+                'previous provider',
+                'user-provider',
+              )
+              .having(
+                (error) => error.previousSourceId,
+                'previous source',
+                'first-source',
+              ),
         ),
       ),
     );
@@ -157,6 +169,20 @@ void main() {
         ),
       ),
     );
+  });
+
+  test('filters unsupported managed endpoint events for Cursor', () async {
+    final result = await assembler.assemble(
+      context: HookProviderContext(cli: CliTool.cursor),
+      providers: [
+        BusIdleHookContributionProvider(
+          endpoint: const MemberBusIdleEndpoint(url: 'http://127.0.0.1:1/idle'),
+          memberId: 'm1',
+        ),
+      ],
+    );
+
+    expect(result.entries.map((entry) => entry.event), [HookEvent.stop]);
   });
 
   test('managed provider failure is fail closed', () {

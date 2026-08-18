@@ -17,6 +17,8 @@ class ResourceAssemblyDiagnostic {
     required this.cli,
     required this.providerId,
     this.sourceId,
+    this.previousProviderId,
+    this.previousSourceId,
     required this.message,
     this.cause,
     this.stackTrace,
@@ -27,6 +29,11 @@ class ResourceAssemblyDiagnostic {
   final CliTool cli;
   final String providerId;
   final String? sourceId;
+
+  /// The earlier contribution involved in a structured conflict. The current
+  /// contribution is represented by [providerId] and [sourceId].
+  final String? previousProviderId;
+  final String? previousSourceId;
   final String message;
   final Object? cause;
   final StackTrace? stackTrace;
@@ -41,17 +48,29 @@ class ResourceAssemblyDiagnostic {
           cli == other.cli &&
           providerId == other.providerId &&
           sourceId == other.sourceId &&
+          previousProviderId == other.previousProviderId &&
+          previousSourceId == other.previousSourceId &&
           message == other.message;
 
   @override
-  int get hashCode =>
-      Object.hash(severity, resourceKind, cli, providerId, sourceId, message);
+  int get hashCode => Object.hash(
+    severity,
+    resourceKind,
+    cli,
+    providerId,
+    sourceId,
+    previousProviderId,
+    previousSourceId,
+    message,
+  );
 
   @override
   String toString() =>
       'ResourceAssemblyDiagnostic(severity: $severity, '
       'resourceKind: $resourceKind, cli: ${cli.value}, '
-      'providerId: $providerId, sourceId: $sourceId, message: $message)';
+      'providerId: $providerId, sourceId: $sourceId, '
+      'previousProviderId: $previousProviderId, '
+      'previousSourceId: $previousSourceId, message: $message)';
 }
 
 /// An error diagnostic with a specific failure category.
@@ -62,6 +81,8 @@ class ResourceAssemblyError extends ResourceAssemblyDiagnostic {
     required super.cli,
     required super.providerId,
     super.sourceId,
+    super.previousProviderId,
+    super.previousSourceId,
     required super.message,
     super.cause,
     super.stackTrace,
@@ -91,6 +112,8 @@ class ResourceAssemblyError extends ResourceAssemblyDiagnostic {
     required CliTool cli,
     required String providerId,
     String? sourceId,
+    String? previousProviderId,
+    String? previousSourceId,
     required String message,
   }) : this._(
          errorKind: ResourceAssemblyErrorKind.conflict,
@@ -98,6 +121,8 @@ class ResourceAssemblyError extends ResourceAssemblyDiagnostic {
          cli: cli,
          providerId: providerId,
          sourceId: sourceId,
+         previousProviderId: previousProviderId,
+         previousSourceId: previousSourceId,
          message: message,
        );
 

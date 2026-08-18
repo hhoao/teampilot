@@ -1,4 +1,5 @@
 import '../../../models/hook_entry.dart';
+import '../../../models/hook_event.dart';
 import '../../agent_status/member_agent_status_endpoint.dart';
 import '../../cli/registry/config_profile/hook_seat_context_completer.dart';
 import '../../team_bus/member_bus_idle_endpoint.dart';
@@ -20,15 +21,16 @@ class EndpointHookContributionProvider implements HookContributionProvider {
   @override
   Iterable<HookContribution> provide(HookProviderContext context) => [
     for (final entry in entries)
-      HookContribution(
-        sourceId: entry.id,
-        entry: entry,
-        origin: ContributionOrigin(
-          providerId: providerId,
-          kind: ResourceOriginKind.managed,
+      if (HookEventCapability.supports(entry.event, context.cli))
+        HookContribution(
           sourceId: entry.id,
+          entry: entry,
+          origin: ContributionOrigin(
+            providerId: providerId,
+            kind: ResourceOriginKind.managed,
+            sourceId: entry.id,
+          ),
         ),
-      ),
   ];
 }
 

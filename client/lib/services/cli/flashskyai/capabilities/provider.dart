@@ -16,6 +16,7 @@ import '../../../provider/workspace_trust_provisioner.dart';
 import '../../../remote/remote_credential_materializer.dart';
 import '../../../session/member_role_provision.dart';
 import '../../../team_bus/member_bus_idle_endpoint.dart';
+import 'stop_idle_hook.dart';
 import '../../claude/provider/claude_effort_catalog.dart';
 import '../../registry/capabilities/claude_family_hook_registry.dart';
 import '../../registry/capabilities/hook_capability.dart';
@@ -480,11 +481,9 @@ final class FlashskyaiProviderCapability extends CatalogModelCapability
       settings,
       mixed: mixed,
     );
-    // 收敛：agent-status / team-lead delegate / 扩展 settings-hook 内部托管
-    // hook 经 HookSeatContextCompleter 组装为 HookEntry，与 userHooks 一起走
-    // 统一 writer 渲染。
-    // （flashskyai bus idle 仍走 command exit-2 脚本通道——HookRunner 忽略
-    // http decision:block；Task 19 评估后保留该通道，未迁移统一 writer。）
+    // 收敛：agent-status / team-lead delegate / 扩展 settings-hook / bus idle
+    // 都先以 neutral HookEntry 进入 Provider → HookAssembler；FlashskyAI
+    // 的 bus-idle entry 随后由本 capability 还原为 exit-2 command hook。
     const completer = HookSeatContextCompleter();
     final delegateCommand = await delegate.resolveTeamLeadDelegateHookCommand(
       member,
@@ -522,10 +521,27 @@ final class FlashskyaiProviderCapability extends CatalogModelCapability
       ],
     );
     final entries = assembledHooks.entries;
+    final busIdleEntries = entries
+        .where(_isFlashskyaiBusIdleEntry)
+        .toList(growable: false);
+    if (busIdleEntries.isNotEmpty && busIdle != null) {
+      final idleScriptPath = delegate.joinWork(
+        memberToolDir,
+        flashskyaiStopIdleScriptFileName,
+      );
+      await delegate.fs.writeString(
+        idleScriptPath,
+        flashskyaiStopIdleScript(memberId: member.id, idle: busIdle),
+      );
+      settings = mergeFlashskyaiStopIdleHook(settings, idleScriptPath);
+    }
+    final renderEntries = entries
+        .where((entry) => !_isFlashskyaiBusIdleEntry(entry))
+        .toList(growable: false);
     final hookWriter = CliToolRegistry.builtIn().capability<HookCapability>(
       CliTool.flashskyai,
     );
-    if (hookWriter != null && entries.isNotEmpty) {
+    if (hookWriter != null && renderEntries.isNotEmpty) {
       final hooksDir = delegate.joinWork(memberToolDir, 'hooks');
       final result =
           await ManagedHookProvisioner(
@@ -534,7 +550,7 @@ final class FlashskyaiProviderCapability extends CatalogModelCapability
             logPrefix: '[hook-writer] flashskyai',
           ).provision(
             writer: hookWriter,
-            entries: entries,
+            entries: renderEntries,
             ctx: HookRenderContext(
               hooksDir: hooksDir,
               runner: delegate.hostEnvironmentForProvision().scriptRunner,
@@ -562,6 +578,11 @@ final class FlashskyaiProviderCapability extends CatalogModelCapability
       workspaceId: simple ? scope.workspaceId : null,
     );
   }
+
+  static bool _isFlashskyaiBusIdleEntry(HookEntry entry) =>
+      entry.source == HookSource.managed &&
+      entry.blockOnDecision &&
+      entry.action is HttpHookAction;
 
   Future<bool> _settingsAlreadyCurrent(
     ConfigProfileDelegate delegate,

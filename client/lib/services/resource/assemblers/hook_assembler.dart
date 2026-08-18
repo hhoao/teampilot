@@ -80,10 +80,12 @@ final class HookAssembler {
             cli: context.cli,
             providerId: provider.providerId,
             sourceId: contribution.sourceId,
+            previousProviderId: previous.providerId,
+            previousSourceId: previous.contribution.sourceId,
             message:
                 'Hook identity $key has different payloads between '
-                '${_label(previous.contribution)} and '
-                '${_label(contribution)}.',
+                '${_label(previous)} and '
+                '${provider.providerId}/${contribution.sourceId}.',
           ),
         );
       }
@@ -181,6 +183,8 @@ final class HookAssembler {
     cli: diagnostic.cli,
     providerId: diagnostic.providerId,
     sourceId: diagnostic.sourceId,
+    previousProviderId: diagnostic.previousProviderId,
+    previousSourceId: diagnostic.previousSourceId,
     message: diagnostic.message,
     cause: diagnostic.cause,
     stackTrace: diagnostic.stackTrace,
@@ -213,8 +217,8 @@ final class HookAssembler {
     return entries.map((entry) => '${entry.key}=${entry.value}').join('\u0001');
   }
 
-  String _label(HookContribution contribution) =>
-      '${contribution.origin.providerId}/${contribution.sourceId}';
+  String _label(_SelectedHook selected) =>
+      '${selected.providerId}/${selected.contribution.sourceId}';
 }
 
 final class _ProvidedHooks {
