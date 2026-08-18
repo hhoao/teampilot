@@ -7242,6 +7242,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get managedProvidersNav => '管理 Provider';
 
   @override
+  String get managedProvidersUsageNav => '余额与用量';
+
+  @override
   String get managedProvidersTitle => '管理 Provider';
 
   @override
@@ -7404,6 +7407,21 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get managedProvidersQueryFailed => '无法查询 Provider 用量。';
+
+  @override
+  String get managedProvidersMissingCredential => 'Provider 凭据缺失。';
+
+  @override
+  String get managedProvidersAuthenticationFailed => 'Provider 身份验证失败。';
+
+  @override
+  String get managedProvidersNetworkFailed => 'Provider 网络请求失败。';
+
+  @override
+  String get managedProvidersHttpFailed => 'Provider 服务返回错误。';
+
+  @override
+  String get managedProvidersResponseParseFailed => '无法解析 Provider 响应。';
 
   @override
   String get managedProvidersSaveFailed => '无法保存管理 Provider。';

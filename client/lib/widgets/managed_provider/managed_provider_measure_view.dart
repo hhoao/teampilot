@@ -4,6 +4,7 @@ import 'package:shared_ui/shared_ui.dart';
 import '../../models/managed_provider.dart';
 import '../../models/provider_usage_snapshot.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../utils/managed_provider_error_localization.dart';
 
 /// Presents a cached Managed Provider usage result without performing any I/O.
 class ManagedProviderMeasureView extends StatelessWidget {
@@ -24,7 +25,6 @@ class ManagedProviderMeasureView extends StatelessWidget {
   Widget build(BuildContext context) {
     final current = snapshot;
     final status = current?.status;
-    final error = current?.lastErrorMessage;
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
 
@@ -81,9 +81,7 @@ class ManagedProviderMeasureView extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
-              error?.trim().isNotEmpty == true
-                  ? error!
-                  : l10n.managedProvidersQueryFailed,
+              managedProviderSnapshotErrorMessage(l10n, current!),
               style: TpTextStyles.of(context).smColored(cs.onErrorContainer),
             ),
           ),

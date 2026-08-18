@@ -10,7 +10,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/managed_provider.dart';
 import '../../widgets/app_toast/app_toast.dart';
 import 'managed_provider_editor_page.dart';
-import 'managed_provider_error_message.dart';
+import '../../utils/managed_provider_error_localization.dart';
 import 'managed_provider_list.dart';
 
 class ManagedProviderManagementPage extends StatefulWidget {

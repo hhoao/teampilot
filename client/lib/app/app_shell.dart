@@ -908,6 +908,12 @@ Future<AppShell> buildAppShell({
         repository: resolvedManagedProviderRepository,
         onProviderDeletedState:
             resolvedManagedProviderUsageCubit.removeProvider,
+        onProviderDeletedCredentialCleanup: (provider) async {
+          final ref = provider.credentialRef?.trim();
+          if (ref != null && ref.isNotEmpty) {
+            await resolvedManagedProviderSecretStore.delete(ref);
+          }
+        },
       );
   final managedProviderControlPlane = ManagedProviderControlPlane(
     providerRepository: resolvedManagedProviderRepository,
@@ -2243,7 +2249,9 @@ class _DefaultProviderUsageHttpClient implements ProviderUsageHttpClient {
     final outgoing = http.Request(request.method.toUpperCase(), request.uri)
       ..headers.addAll(request.headers);
     if (request.body != null) outgoing.body = request.body!;
-    final response = await _client.send(outgoing);
+    final response = await _client
+        .send(outgoing)
+        .timeout(ManagedProviderUsageCoordinator.queryTimeout);
     return ProviderUsageHttpResponse(
       statusCode: response.statusCode,
       body: await response.stream.bytesToString(),
@@ -2274,7 +2282,8 @@ class TeamPilotBootstrap extends StatefulWidget {
   State<TeamPilotBootstrap> createState() => _TeamPilotBootstrapState();
 }
 
-class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
+class _TeamPilotBootstrapState extends State<TeamPilotBootstrap>
+    with WidgetsBindingObserver {
   AppShell? _shell;
   Object? _error;
   var _retrying = false;
@@ -2282,6 +2291,7 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(_start());
     });
@@ -2350,6 +2360,22 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
     await _start();
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_refreshExpiredManagedProviders(_shell));
+    }
+  }
+
+  Future<void> _refreshExpiredManagedProviders(AppShell? shell) async {
+    if (shell == null) return;
+    final usage = shell.managedProviderUsageCubit;
+    await Future.wait([
+      for (final provider in shell.managedProviderCubit.state.enabledProviders)
+        usage.ensureFresh(provider.id),
+    ]);
+  }
+
   Future<void> _chooseWorkEnvironmentAndRetry() async {
     if (_retrying) return;
     setState(() => _retrying = true);
@@ -2368,6 +2394,7 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     final shell = _shell;
     if (shell != null) {
       unawaited(shell.managedProviderControlPlane.close());

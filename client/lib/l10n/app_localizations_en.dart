@@ -7537,6 +7537,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get managedProvidersNav => 'Managed Providers';
 
   @override
+  String get managedProvidersUsageNav => 'Balances & usage';
+
+  @override
   String get managedProvidersTitle => 'Managed Providers';
 
   @override
@@ -7706,6 +7709,26 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get managedProvidersQueryFailed => 'Unable to query provider usage.';
+
+  @override
+  String get managedProvidersMissingCredential =>
+      'Provider credentials are missing.';
+
+  @override
+  String get managedProvidersAuthenticationFailed =>
+      'Provider authentication failed.';
+
+  @override
+  String get managedProvidersNetworkFailed =>
+      'Provider network request failed.';
+
+  @override
+  String get managedProvidersHttpFailed =>
+      'Provider service returned an error.';
+
+  @override
+  String get managedProvidersResponseParseFailed =>
+      'Provider response could not be parsed.';
 
   @override
   String get managedProvidersSaveFailed => 'Unable to save managed provider.';

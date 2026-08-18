@@ -13472,6 +13472,12 @@ abstract class AppLocalizations {
   /// **'Managed Providers'**
   String get managedProvidersNav;
 
+  /// No description provided for @managedProvidersUsageNav.
+  ///
+  /// In en, this message translates to:
+  /// **'Balances & usage'**
+  String get managedProvidersUsageNav;
+
   /// No description provided for @managedProvidersTitle.
   ///
   /// In en, this message translates to:
@@ -13795,6 +13801,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Unable to query provider usage.'**
   String get managedProvidersQueryFailed;
+
+  /// No description provided for @managedProvidersMissingCredential.
+  ///
+  /// In en, this message translates to:
+  /// **'Provider credentials are missing.'**
+  String get managedProvidersMissingCredential;
+
+  /// No description provided for @managedProvidersAuthenticationFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Provider authentication failed.'**
+  String get managedProvidersAuthenticationFailed;
+
+  /// No description provided for @managedProvidersNetworkFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Provider network request failed.'**
+  String get managedProvidersNetworkFailed;
+
+  /// No description provided for @managedProvidersHttpFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Provider service returned an error.'**
+  String get managedProvidersHttpFailed;
+
+  /// No description provided for @managedProvidersResponseParseFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Provider response could not be parsed.'**
+  String get managedProvidersResponseParseFailed;
 
   /// No description provided for @managedProvidersSaveFailed.
   ///

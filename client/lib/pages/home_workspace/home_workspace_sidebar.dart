@@ -18,6 +18,7 @@ class HomeSidebar extends StatelessWidget {
     this.activeLibraryView,
     this.allWorkspacesActive = false,
     this.onSelectAllWorkspaces,
+    this.onShowManagedProviderUsage,
     this.onSelectGlobalView,
     this.onSelectLibraryView,
     super.key,
@@ -28,6 +29,7 @@ class HomeSidebar extends StatelessWidget {
   final HomeLibraryView? activeLibraryView;
   final bool allWorkspacesActive;
   final VoidCallback? onSelectAllWorkspaces;
+  final VoidCallback? onShowManagedProviderUsage;
   final ValueChanged<HomeGlobalView>? onSelectGlobalView;
   final ValueChanged<HomeLibraryView>? onSelectLibraryView;
 
@@ -91,6 +93,7 @@ class HomeSidebar extends StatelessWidget {
             child: _HomeSidebarNavScroll(
               activeGlobalView: activeGlobalView,
               onGlobal: onGlobal,
+              onShowManagedProviderUsage: onShowManagedProviderUsage,
             ),
           ),
           Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
@@ -111,10 +114,12 @@ class _HomeSidebarNavScroll extends StatelessWidget {
   const _HomeSidebarNavScroll({
     required this.activeGlobalView,
     required this.onGlobal,
+    required this.onShowManagedProviderUsage,
   });
 
   final HomeGlobalView? activeGlobalView;
   final ValueChanged<HomeGlobalView>? onGlobal;
+  final VoidCallback? onShowManagedProviderUsage;
 
   @override
   Widget build(BuildContext context) {
@@ -122,6 +127,7 @@ class _HomeSidebarNavScroll extends StatelessWidget {
     final l10n = context.l10n;
     final onGlobal = this.onGlobal;
     final activeGlobalView = this.activeGlobalView;
+    final onShowManagedProviderUsage = this.onShowManagedProviderUsage;
 
     return ListView(
       padding: EdgeInsets.zero,
@@ -195,9 +201,11 @@ class _HomeSidebarNavScroll extends StatelessWidget {
         const SizedBox(height: 4),
         _ShortcutRow(
           icon: Icons.account_balance_wallet_outlined,
-          label: l10n.managedProvidersNav,
+          label: l10n.managedProvidersUsageNav,
           active: activeGlobalView == HomeGlobalView.managedProviders,
-          onTap: () => onGlobal?.call(HomeGlobalView.managedProviders),
+          onTap:
+              onShowManagedProviderUsage ??
+              () => onGlobal?.call(HomeGlobalView.managedProviders),
         ),
       ],
     );

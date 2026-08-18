@@ -7,6 +7,7 @@ import '../../cubits/managed_provider_usage_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/managed_provider.dart';
 import '../../models/provider_usage_snapshot.dart';
+import '../../utils/managed_provider_error_localization.dart';
 
 /// Cached Managed Provider usage popover content.
 ///
@@ -297,7 +298,10 @@ class _ProviderUsageRow extends StatelessWidget {
                   if (status == ProviderUsageStatus.error &&
                       snapshot?.lastErrorMessage?.trim().isNotEmpty == true)
                     Text(
-                      snapshot!.lastErrorMessage!,
+                      managedProviderSnapshotErrorMessage(
+                        context.l10n,
+                        snapshot!,
+                      ),
                       key: const Key('managed-provider-usage-error'),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,

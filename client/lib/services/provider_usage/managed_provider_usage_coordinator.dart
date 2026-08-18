@@ -67,6 +67,8 @@ class ManagedProviderUsageState {
 
 /// Coordinates cached usage and network refreshes independently of any UI.
 class ManagedProviderUsageCoordinator {
+  static const queryTimeout = Duration(seconds: 30);
+
   ManagedProviderUsageCoordinator({
     required ManagedProviderRepository providerRepository,
     required ManagedProviderUsageRepository usageRepository,
@@ -210,6 +212,15 @@ class ManagedProviderUsageCoordinator {
   /// serialized with ordinary refresh work.
   Future<ProviderUsageSnapshot> queryProvider(ManagedProvider provider) {
     final id = provider.id.trim();
+    if (_closed) {
+      return Future<ProviderUsageSnapshot>.value(
+        _errorSnapshot(
+          id,
+          _snapshots[id],
+          ManagedProviderUsageQueryErrorCode.networkFailed,
+        ),
+      );
+    }
     final existing = _transientQueries[id];
     if (existing != null) return existing;
     final pendingRefresh = _pending[id];
@@ -252,12 +263,9 @@ class ManagedProviderUsageCoordinator {
           ManagedProviderUsageQueryErrorCode.unsupported,
         );
       }
-      final result = await adapter.fetch(
-        provider,
-        credentials: _credentials,
-        http: _http,
-        now: _now(),
-      );
+      final result = await adapter
+          .fetch(provider, credentials: _credentials, http: _http, now: _now())
+          .timeout(queryTimeout);
       _ensureStorageContextCurrent(storageContextGeneration);
       return result.copyWith(providerId: id, status: ProviderUsageStatus.ready);
     } on ManagedProviderUsageQueryError catch (error) {

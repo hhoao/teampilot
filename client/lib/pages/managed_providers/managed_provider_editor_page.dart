@@ -10,7 +10,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/managed_provider.dart';
 import '../../models/provider_usage_snapshot.dart';
 import '../../widgets/app_toast/app_toast.dart';
-import 'managed_provider_error_message.dart';
+import '../../utils/managed_provider_error_localization.dart';
 
 class ManagedProviderEditorPage extends StatefulWidget {
   const ManagedProviderEditorPage({this.provider, super.key});
@@ -578,8 +578,9 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
       message: failed
           ? snapshot?.status == ProviderUsageStatus.unsupported
                 ? context.l10n.managedProvidersQueryUnsupported
-                : snapshot?.lastErrorMessage ??
-                      context.l10n.managedProvidersQueryFailed
+                : snapshot == null
+                ? context.l10n.managedProvidersQueryFailed
+                : managedProviderSnapshotErrorMessage(context.l10n, snapshot)
           : context.l10n.managedProvidersQueryCompleted,
       variant: failed ? TpToastVariant.error : TpToastVariant.success,
     );

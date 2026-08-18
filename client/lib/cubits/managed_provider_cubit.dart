@@ -58,12 +58,17 @@ class ManagedProviderCubit extends Cubit<ManagedProviderState> {
   ManagedProviderCubit({
     required ManagedProviderRepository repository,
     Future<void> Function(String providerId)? onProviderDeletedState,
+    Future<void> Function(ManagedProvider provider)?
+    onProviderDeletedCredentialCleanup,
   }) : _repository = repository,
        _onProviderDeletedState = onProviderDeletedState,
+       _onProviderDeletedCredentialCleanup = onProviderDeletedCredentialCleanup,
        super(ManagedProviderState());
 
   final ManagedProviderRepository _repository;
   final Future<void> Function(String providerId)? _onProviderDeletedState;
+  final Future<void> Function(ManagedProvider provider)?
+  _onProviderDeletedCredentialCleanup;
   Future<void>? _loadFlight;
   Future<void> _mutationTail = Future<void>.value();
   int _catalogRevision = 0;
@@ -165,7 +170,12 @@ class ManagedProviderCubit extends Cubit<ManagedProviderState> {
     final id = providerId.trim();
     if (id.isEmpty) return;
     await _serializeMutation(() async {
+      final provider = state.providerFor(id);
       await _repository.delete(id);
+      final cleanupCredentials = _onProviderDeletedCredentialCleanup;
+      if (provider != null && cleanupCredentials != null) {
+        await cleanupCredentials(provider);
+      }
       final onProviderDeletedState = _onProviderDeletedState;
       if (onProviderDeletedState != null) {
         await onProviderDeletedState(id);

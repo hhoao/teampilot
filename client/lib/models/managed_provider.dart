@@ -442,6 +442,7 @@ const _credentialKeys = {
   'apikey',
   'accesskey',
   'accesstoken',
+  'auth',
   'authorization',
   'authtoken',
   'clientsecret',
