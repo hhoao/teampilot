@@ -171,6 +171,9 @@ class ManagedProviderUsageRepository {
       );
     }
     return next.copyWith(
+      schemaVersion: previous.schemaVersion >= next.schemaVersion
+          ? previous.schemaVersion
+          : next.schemaVersion,
       measures: measures,
       unknownFields: {...previous.unknownFields, ...next.unknownFields},
     );

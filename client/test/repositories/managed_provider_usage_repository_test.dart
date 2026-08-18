@@ -12,6 +12,7 @@ ProviderUsageSnapshot _snapshot(
   ProviderUsageStatus status = ProviderUsageStatus.ready,
   int? fetchedAt,
   int? staleAt,
+  int schemaVersion = 1,
   Map<String, Object?> unknownFields = const {},
 }) => ProviderUsageSnapshot(
   providerId: providerId,
@@ -26,6 +27,7 @@ ProviderUsageSnapshot _snapshot(
   ],
   fetchedAt: fetchedAt,
   staleAt: staleAt,
+  schemaVersion: schemaVersion,
   unknownFields: unknownFields,
 );
 
@@ -160,6 +162,23 @@ void main() {
       final raw = await fs.readString(path);
       expect((jsonDecode(raw!) as Map)['schemaVersion'], 9);
     });
+
+    test(
+      'preserves the newer snapshot entity schema version on merge',
+      () async {
+        await repo.save(_snapshot('p1', schemaVersion: 4));
+
+        await repo.save(
+          _snapshot('p1', status: ProviderUsageStatus.stale, schemaVersion: 2),
+        );
+        var loaded = (await repo.load()).single;
+        expect(loaded.schemaVersion, 4);
+
+        await repo.save(_snapshot('p1', schemaVersion: 5));
+        loaded = (await repo.load()).single;
+        expect(loaded.schemaVersion, 5);
+      },
+    );
 
     test('normalizes snapshot IDs and never writes empty IDs', () async {
       await repo.save(_snapshot(' p1 '));

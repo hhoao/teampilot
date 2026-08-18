@@ -13,6 +13,7 @@ import '../support/in_memory_filesystem.dart';
 ManagedProvider _provider(
   String id, {
   String name = 'Example',
+  int schemaVersion = 1,
   Map<String, Object?> unknownFields = const {},
 }) => ManagedProvider(
   id: id,
@@ -20,6 +21,7 @@ ManagedProvider _provider(
   kind: ManagedProviderKind.apiBalance,
   adapterId: 'http-json',
   endpointConfig: ManagedProviderEndpointConfig(url: 'https://example.test'),
+  schemaVersion: schemaVersion,
   unknownFields: unknownFields,
 );
 
@@ -31,7 +33,11 @@ void main() {
 
     setUp(() {
       fs = InMemoryFilesystem();
-      repo = ManagedProviderRepository(fs: fs, configPath: path);
+      repo = ManagedProviderRepository(
+        fs: fs,
+        configPath: path,
+        onProviderDeleted: (_) async {},
+      );
     });
 
     test('AppPaths exposes managed provider files below providers/managed', () {
@@ -165,6 +171,21 @@ void main() {
       final raw = await fs.readString(path);
       expect((jsonDecode(raw!) as Map)['schemaVersion'], 7);
     });
+
+    test(
+      'preserves the newer provider entity schema version on merge',
+      () async {
+        await repo.save([_provider('p1', schemaVersion: 4)]);
+
+        await repo.upsert(_provider('p1', name: 'Older', schemaVersion: 2));
+        var loaded = (await repo.load()).single;
+        expect(loaded.schemaVersion, 4);
+
+        await repo.upsert(_provider('p1', name: 'Newer', schemaVersion: 5));
+        loaded = (await repo.load()).single;
+        expect(loaded.schemaVersion, 5);
+      },
+    );
 
     test('normalizes provider IDs and never writes empty IDs', () async {
       await repo.save([_provider(' p1 '), _provider('p1'), _provider('  ')]);

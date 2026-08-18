@@ -9,14 +9,14 @@ class ManagedProviderRepository {
   ManagedProviderRepository({
     Filesystem? fs,
     String? configPath,
-    Future<void> Function(String providerId)? onProviderDeleted,
+    required Future<void> Function(String providerId) onProviderDeleted,
   }) : _fsOverride = fs,
        _configPathOverride = configPath,
        _onProviderDeleted = onProviderDeleted;
 
   final Filesystem? _fsOverride;
   final String? _configPathOverride;
-  final Future<void> Function(String providerId)? _onProviderDeleted;
+  final Future<void> Function(String providerId) _onProviderDeleted;
 
   Filesystem get _fs => _fsOverride ?? AppStorage.fs;
 
@@ -61,7 +61,7 @@ class ManagedProviderRepository {
     final providers = Map<String, ManagedProvider>.from(current.providers)
       ..remove(id);
     await _writeStore(current.copyWith(providers: providers));
-    await _onProviderDeleted?.call(id);
+    await _onProviderDeleted(id);
   }
 
   Future<_ManagedProviderStore> _readStore() async {
@@ -137,6 +137,9 @@ class ManagedProviderRepository {
     ManagedProvider previous,
     ManagedProvider next,
   ) => next.copyWith(
+    schemaVersion: previous.schemaVersion >= next.schemaVersion
+        ? previous.schemaVersion
+        : next.schemaVersion,
     brand: ManagedProviderBrand(
       name: next.brand.name,
       iconUrl: next.brand.iconUrl,
