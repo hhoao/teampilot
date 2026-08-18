@@ -466,6 +466,9 @@ String _normalizeKey(String key) => key
 bool _isCredentialKey(String key) =>
     _isCredentialNormalizedKey(_normalizeKey(key));
 
+/// Returns whether [key] is reserved for provider credential material.
+bool isManagedProviderCredentialKey(String key) => _isCredentialKey(key);
+
 bool _isCredentialNormalizedKey(String normalized) {
   if (_credentialKeys.contains(normalized)) return true;
   for (final prefix in ['x', 'bearer']) {

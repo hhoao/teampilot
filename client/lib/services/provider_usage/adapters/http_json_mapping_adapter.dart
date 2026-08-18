@@ -223,6 +223,19 @@ class HttpJsonMappingAdapter implements ManagedProviderUsageAdapter {
     ProviderCredentialResolver credentials,
     Uri uri,
   ) async {
+    final method = mapping.method.trim().toUpperCase();
+    if (method != 'GET' && method != 'POST') {
+      throw const ManagedProviderUsageQueryError(
+        ManagedProviderUsageQueryErrorCode.unsupported,
+      );
+    }
+    if (mapping.credential?.placement ==
+        HttpJsonCredentialPlacement.unsupported) {
+      throw const ManagedProviderUsageQueryError(
+        ManagedProviderUsageQueryErrorCode.unsupported,
+      );
+    }
+
     final headers = <String, String>{...mapping.headers};
     final body = Map<String, Object?>.from(mapping.body);
     var requestUri = uri;
@@ -263,12 +276,6 @@ class HttpJsonMappingAdapter implements ManagedProviderUsageAdapter {
       }
     }
 
-    final method = mapping.method.trim().toUpperCase();
-    if (method != 'GET' && method != 'POST') {
-      throw const ManagedProviderUsageQueryError(
-        ManagedProviderUsageQueryErrorCode.unsupported,
-      );
-    }
     final hasBody = method == 'POST' || body.isNotEmpty;
     if (hasBody) headers.putIfAbsent('content-type', () => 'application/json');
     try {
@@ -325,11 +332,11 @@ class HttpJsonMappingAdapter implements ManagedProviderUsageAdapter {
     final used = _decimalValue(_lookupPath(item, mapping.usedPath));
     final remaining = _decimalValue(_lookupPath(item, mapping.remainingPath));
     final unitLookup = _lookupPath(item, mapping.unitPath);
-    final unit = unitLookup.present
+    final unit = unitLookup.present && unitLookup.value != null
         ? _requiredString(unitLookup.value)
         : mapping.defaultUnit;
     final currencyLookup = _lookupPath(item, mapping.currencyPath);
-    final currency = currencyLookup.present
+    final currency = currencyLookup.present && currencyLookup.value != null
         ? _requiredString(currencyLookup.value)
         : mapping.defaultCurrency;
     final resetsAt = _timestampValue(_lookupPath(item, mapping.resetsAtPath));
@@ -467,7 +474,7 @@ class HttpJsonMappingAdapter implements ManagedProviderUsageAdapter {
   }
 
   static String? _decimalValue(_PathLookup lookup) {
-    if (!lookup.present) return null;
+    if (!lookup.present || lookup.value == null) return null;
     final value = lookup.value;
     final result = value is String
         ? value
@@ -486,7 +493,7 @@ class HttpJsonMappingAdapter implements ManagedProviderUsageAdapter {
   }
 
   static int? _timestampValue(_PathLookup lookup) {
-    if (!lookup.present) return null;
+    if (!lookup.present || lookup.value == null) return null;
     final value = lookup.value;
     if (value is int) return value;
     if (value is num && value.isFinite && value == value.truncateToDouble()) {
@@ -502,16 +509,7 @@ class HttpJsonMappingAdapter implements ManagedProviderUsageAdapter {
   }
 
   static bool _isCredentialQueryName(String name) {
-    final normalized = name
-        .replaceAll(RegExp(r'[^a-zA-Z0-9]'), '')
-        .toLowerCase();
-    return normalized.contains('apikey') ||
-        normalized.contains('token') ||
-        normalized.contains('secret') ||
-        normalized.contains('password') ||
-        normalized.contains('credential') ||
-        normalized.contains('authorization') ||
-        normalized.contains('privatekey');
+    return isManagedProviderCredentialKey(name);
   }
 
   static bool _isCredentialQueryValue(String value) {
