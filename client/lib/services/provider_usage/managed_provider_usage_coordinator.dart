@@ -152,7 +152,9 @@ class ManagedProviderUsageCoordinator {
     final id = providerId.trim();
     if (id.isEmpty) return;
     _tokens[id] = (_tokens[id] ?? 0) + 1;
-    _pending.remove(id);
+    // Keep the tombstone until the transport Future completes. Removing it
+    // here would allow the next entry point to start a second request while
+    // the supposedly cancelled transport is still active.
   }
 
   Future<ProviderUsageSnapshot> _refreshLoadedProvider(
@@ -161,7 +163,11 @@ class ManagedProviderUsageCoordinator {
   ) {
     final id = provider.id;
     if (!provider.enabled) {
-      return _completeDisabledProvider(provider);
+      return _completeDisabledProvider(
+        provider,
+        generation: generation,
+        mutationRevision: _providerRepository.mutationRevision,
+      );
     }
     final previousPending = _pending[id];
     if (previousPending != null) {
@@ -206,14 +212,19 @@ class ManagedProviderUsageCoordinator {
   }
 
   Future<ProviderUsageSnapshot> _completeDisabledProvider(
-    ManagedProvider provider,
-  ) async {
+    ManagedProvider provider, {
+    required int generation,
+    required int mutationRevision,
+  }) async {
     final result = _unsupportedSnapshot(provider.id, _snapshots[provider.id]);
-    if (_providers[provider.id] == provider) {
-      _snapshots[provider.id] = result;
-      await _usageRepository.save(result);
-    }
-    return result;
+    return _commitResult(
+      provider: provider,
+      generation: generation,
+      mutationRevision: mutationRevision,
+      result: result,
+      previous: _snapshots[provider.id],
+      requiresEnabled: false,
+    );
   }
 
   Future<ProviderUsageSnapshot> _executeRefresh(
@@ -225,11 +236,15 @@ class ManagedProviderUsageCoordinator {
     final previous = _snapshots[provider.id];
     if (!provider.enabled) {
       final result = _unsupportedSnapshot(provider.id, previous);
-      if (_isCurrentConfig(provider, generation, token)) {
-        _snapshots[provider.id] = result;
-        await _usageRepository.save(result);
-      }
-      return result;
+      return _commitResult(
+        provider: provider,
+        generation: generation,
+        token: token,
+        mutationRevision: mutationRevision,
+        result: result,
+        previous: previous,
+        requiresEnabled: false,
+      );
     }
 
     ProviderUsageSnapshot result;
@@ -262,7 +277,29 @@ class ManagedProviderUsageCoordinator {
       );
     }
 
-    if (!_isCurrent(provider, generation, token)) {
+    return _commitResult(
+      provider: provider,
+      generation: generation,
+      token: token,
+      mutationRevision: mutationRevision,
+      result: result,
+      previous: previous,
+    );
+  }
+
+  Future<ProviderUsageSnapshot> _commitResult({
+    required ManagedProvider provider,
+    required int generation,
+    int? token,
+    required int mutationRevision,
+    required ProviderUsageSnapshot result,
+    required ProviderUsageSnapshot? previous,
+    bool requiresEnabled = true,
+  }) async {
+    final current = token == null
+        ? _isCurrentConfig(provider, generation, null)
+        : _isCurrent(provider, generation, token);
+    if (!current || requiresEnabled && !provider.enabled) {
       return _snapshots[provider.id] ?? previous ?? result;
     }
     final committed = await _providerRepository.runIfUnchanged(
@@ -312,9 +349,9 @@ class ManagedProviderUsageCoordinator {
   bool _isCurrent(ManagedProvider provider, int generation, int token) =>
       _isCurrentConfig(provider, generation, token) && provider.enabled;
 
-  bool _isCurrentConfig(ManagedProvider provider, int generation, int token) =>
+  bool _isCurrentConfig(ManagedProvider provider, int generation, int? token) =>
       generation == _generation &&
-      token == _tokens[provider.id] &&
+      (token == null || token == _tokens[provider.id]) &&
       identical(_providers[provider.id], provider);
 
   static ProviderUsageSnapshot _unsupportedSnapshot(

@@ -269,6 +269,83 @@ void main() {
     expect(coordinator.snapshotFor('p1'), isNull);
     expect(await usage.load(), isEmpty);
   });
+
+  test('cancel then refreshOne keeps the transport single-flight', () async {
+    await providers.upsert(_provider());
+    final gate = Completer<ProviderUsageSnapshot>();
+    final adapter = _FakeAdapter(gate.future);
+    final coordinator = ManagedProviderUsageCoordinator(
+      providerRepository: providers,
+      usageRepository: usage,
+      registry: ManagedProviderUsageRegistry([adapter]),
+      credentials: _NoCredentials(),
+      http: _UnusedHttpClient(),
+      now: () => DateTime.fromMillisecondsSinceEpoch(1_700_000_000_000),
+    );
+
+    final cancelled = coordinator.refreshOne('p1');
+    await Future<void>.delayed(Duration.zero);
+    coordinator.cancelForProvider('p1');
+    final shared = coordinator.refreshOne('p1');
+    await Future<void>.delayed(Duration.zero);
+    expect(adapter.calls, 1);
+    gate.complete(_ready());
+    await Future.wait([cancelled, shared]);
+    expect(coordinator.snapshotFor('p1'), isNull);
+    expect(await usage.load(), isEmpty);
+  });
+
+  test(
+    'disabled snapshot save is serialized against re-enable mutation',
+    () async {
+      final blockingUsage = _BlockingUsageRepository(fs: fs);
+      final disabledProviders = ManagedProviderRepository(
+        fs: fs,
+        configPath: '/tp/providers.json',
+        onProvidersDeleted: blockingUsage.deleteMany,
+      );
+      await disabledProviders.upsert(_provider(enabled: false));
+      final coordinator = ManagedProviderUsageCoordinator(
+        providerRepository: disabledProviders,
+        usageRepository: blockingUsage,
+        registry: ManagedProviderUsageRegistry(),
+        credentials: _NoCredentials(),
+        http: _UnusedHttpClient(),
+        now: () => DateTime.fromMillisecondsSinceEpoch(1_700_000_000_000),
+      );
+
+      final refresh = coordinator.refreshAll();
+      await blockingUsage.saveStarted.future;
+      var reenableCompleted = false;
+      final reenable = disabledProviders.upsert(_provider());
+      reenable.then((_) => reenableCompleted = true);
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      expect(reenableCompleted, isFalse);
+      blockingUsage.release.complete();
+      await refresh;
+      await reenable;
+      expect((await disabledProviders.load()).single.enabled, isTrue);
+      expect(
+        (await blockingUsage.load()).single.status,
+        ProviderUsageStatus.unsupported,
+      );
+    },
+  );
+}
+
+class _BlockingUsageRepository extends ManagedProviderUsageRepository {
+  _BlockingUsageRepository({required InMemoryFilesystem fs})
+    : super(fs: fs, cachePath: '/tp/usage-cache.json');
+
+  final saveStarted = Completer<void>();
+  final release = Completer<void>();
+
+  @override
+  Future<void> save(ProviderUsageSnapshot snapshot) async {
+    if (!saveStarted.isCompleted) saveStarted.complete();
+    await release.future;
+    await super.save(snapshot);
+  }
 }
 
 class _NoCredentials implements ProviderCredentialResolver {
