@@ -2,7 +2,9 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/managed_provider.dart';
+import 'package:teampilot/models/provider_usage_snapshot.dart';
 import 'package:teampilot/repositories/managed_provider_repository.dart';
+import 'package:teampilot/repositories/managed_provider_usage_repository.dart';
 import 'package:teampilot/services/io/filesystem.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 
@@ -117,6 +119,64 @@ void main() {
       expect((await repo.load()).single.name, 'Renamed');
     });
 
+    test('upsert preserves nested unknown provider fields', () async {
+      final original = _provider('p1').toJson();
+      original['brand'] = {
+        ...(original['brand'] as Map),
+        'futureBrandField': 'keep',
+      };
+      original['endpointConfig'] = {
+        ...(original['endpointConfig'] as Map),
+        'futureEndpointField': {'keep': true},
+      };
+      original['displayConfig'] = {
+        ...(original['displayConfig'] as Map),
+        'futureDisplayField': ['keep'],
+      };
+      await fs.writeString(
+        path,
+        jsonEncode({
+          'schemaVersion': 7,
+          'providers': {'p1': original},
+        }),
+      );
+
+      await repo.upsert(_provider('p1', name: 'Updated'));
+
+      final raw = await fs.readString(path);
+      final provider = (jsonDecode(raw!) as Map)['providers']['p1'] as Map;
+      expect((provider['brand'] as Map)['futureBrandField'], 'keep');
+      expect((provider['endpointConfig'] as Map)['futureEndpointField'], {
+        'keep': true,
+      });
+      expect((provider['displayConfig'] as Map)['futureDisplayField'], [
+        'keep',
+      ]);
+    });
+
+    test('preserves the existing top-level schema version on update', () async {
+      await fs.writeString(
+        path,
+        jsonEncode({'schemaVersion': 7, 'providers': {}}),
+      );
+
+      await repo.upsert(_provider('p1'));
+
+      final raw = await fs.readString(path);
+      expect((jsonDecode(raw!) as Map)['schemaVersion'], 7);
+    });
+
+    test('normalizes provider IDs and never writes empty IDs', () async {
+      await repo.save([_provider(' p1 '), _provider('p1'), _provider('  ')]);
+
+      expect((await repo.load()).map((provider) => provider.id), ['p1']);
+      final raw = await fs.readString(path);
+      expect((jsonDecode(raw!) as Map)['providers'].keys, ['p1']);
+
+      await repo.delete(' p1 ');
+      expect(await repo.load(), isEmpty);
+    });
+
     test('upsert replaces by id and delete cleans up that provider', () async {
       await repo.save([_provider('p1'), _provider('p2')]);
 
@@ -129,6 +189,30 @@ void main() {
       await repo.delete('p1');
 
       expect((await repo.load()).map((provider) => provider.id), ['p2']);
+    });
+
+    test('deleting a provider invokes the cache cleanup boundary', () async {
+      final usageRepo = ManagedProviderUsageRepository(
+        fs: fs,
+        cachePath: '/tp/providers/managed/usage-cache.json',
+      );
+      repo = ManagedProviderRepository(
+        fs: fs,
+        configPath: path,
+        onProviderDeleted: usageRepo.delete,
+      );
+      await repo.save([_provider('p1')]);
+      await usageRepo.save(
+        ProviderUsageSnapshot(
+          providerId: 'p1',
+          status: ProviderUsageStatus.ready,
+        ),
+      );
+
+      await repo.delete(' p1 ');
+
+      expect(await repo.load(), isEmpty);
+      expect(await usageRepo.load(), isEmpty);
     });
   });
 }

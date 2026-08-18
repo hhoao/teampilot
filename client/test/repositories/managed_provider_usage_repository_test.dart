@@ -124,6 +124,58 @@ void main() {
       ]);
     });
 
+    test('save preserves unknown fields on individual measures', () async {
+      final original = _snapshot('p1').toJson();
+      original['measures'] = [
+        {
+          ...(original['measures'] as List).single as Map,
+          'futureMeasureField': {'keep': true},
+        },
+      ];
+      await fs.writeString(
+        path,
+        jsonEncode({
+          'schemaVersion': 9,
+          'snapshots': {'p1': original},
+        }),
+      );
+
+      await repo.save(_snapshot('p1', status: ProviderUsageStatus.stale));
+
+      final raw = await fs.readString(path);
+      final snapshot = (jsonDecode(raw!) as Map)['snapshots']['p1'] as Map;
+      expect((snapshot['measures'] as List).single['futureMeasureField'], {
+        'keep': true,
+      });
+    });
+
+    test('preserves the existing top-level schema version on update', () async {
+      await fs.writeString(
+        path,
+        jsonEncode({'schemaVersion': 9, 'snapshots': {}}),
+      );
+
+      await repo.save(_snapshot('p1'));
+
+      final raw = await fs.readString(path);
+      expect((jsonDecode(raw!) as Map)['schemaVersion'], 9);
+    });
+
+    test('normalizes snapshot IDs and never writes empty IDs', () async {
+      await repo.save(_snapshot(' p1 '));
+      await repo.save(_snapshot('p1'));
+      await repo.save(_snapshot('  '));
+
+      expect((await repo.load()).map((snapshot) => snapshot.providerId), [
+        'p1',
+      ]);
+      final raw = await fs.readString(path);
+      expect((jsonDecode(raw!) as Map)['snapshots'].keys, ['p1']);
+
+      await repo.delete(' p1 ');
+      expect(await repo.load(), isEmpty);
+    });
+
     test(
       'delete removes one provider snapshot and clear removes the rest',
       () async {

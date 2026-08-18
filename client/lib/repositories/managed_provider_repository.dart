@@ -6,12 +6,17 @@ import '../services/storage/app_storage.dart';
 
 /// Persists the CLI-independent managed provider catalog.
 class ManagedProviderRepository {
-  ManagedProviderRepository({Filesystem? fs, String? configPath})
-    : _fsOverride = fs,
-      _configPathOverride = configPath;
+  ManagedProviderRepository({
+    Filesystem? fs,
+    String? configPath,
+    Future<void> Function(String providerId)? onProviderDeleted,
+  }) : _fsOverride = fs,
+       _configPathOverride = configPath,
+       _onProviderDeleted = onProviderDeleted;
 
   final Filesystem? _fsOverride;
   final String? _configPathOverride;
+  final Future<void> Function(String providerId)? _onProviderDeleted;
 
   Filesystem get _fs => _fsOverride ?? AppStorage.fs;
 
@@ -27,31 +32,25 @@ class ManagedProviderRepository {
     final current = await _readStore();
     final merged = <String, ManagedProvider>{};
     for (final provider in providers) {
-      final previous = current.providers[provider.id];
-      merged[provider.id] = previous == null
-          ? provider
-          : provider.copyWith(
-              unknownFields: {
-                ...previous.unknownFields,
-                ...provider.unknownFields,
-              },
-            );
+      final normalized = _normalizeProvider(provider);
+      if (normalized == null) continue;
+      final previous = current.providers[normalized.id];
+      merged[normalized.id] = previous == null
+          ? normalized
+          : _mergeProvider(previous, normalized);
     }
     await _writeStore(current.copyWith(providers: merged));
   }
 
   Future<void> upsert(ManagedProvider provider) async {
+    final normalized = _normalizeProvider(provider);
+    if (normalized == null) return;
     final current = await _readStore();
-    final previous = current.providers[provider.id];
+    final previous = current.providers[normalized.id];
     final providers = Map<String, ManagedProvider>.from(current.providers);
-    providers[provider.id] = previous == null
-        ? provider
-        : provider.copyWith(
-            unknownFields: {
-              ...previous.unknownFields,
-              ...provider.unknownFields,
-            },
-          );
+    providers[normalized.id] = previous == null
+        ? normalized
+        : _mergeProvider(previous, normalized);
     await _writeStore(current.copyWith(providers: providers));
   }
 
@@ -62,6 +61,7 @@ class ManagedProviderRepository {
     final providers = Map<String, ManagedProvider>.from(current.providers)
       ..remove(id);
     await _writeStore(current.copyWith(providers: providers));
+    await _onProviderDeleted?.call(id);
   }
 
   Future<_ManagedProviderStore> _readStore() async {
@@ -81,13 +81,13 @@ class ManagedProviderRepository {
           final id = entry.key;
           final value = entry.value;
           if (id is! String || value is! Map) continue;
+          final normalizedId = id.trim();
+          if (normalizedId.isEmpty) continue;
           final providerJson = Map<String, Object?>.from(value);
-          providerJson.putIfAbsent('id', () => id);
+          providerJson.putIfAbsent('id', () => normalizedId);
           try {
             final provider = ManagedProvider.fromJson(providerJson);
-            if (provider.id.trim().isNotEmpty) {
-              providers[provider.id] = provider;
-            }
+            providers[normalizedId] = provider.copyWith(id: normalizedId);
           } on Object {
             // One malformed provider must not hide the valid catalog entries.
           }
@@ -95,6 +95,9 @@ class ManagedProviderRepository {
       }
       return _ManagedProviderStore(
         providers: providers,
+        schemaVersion: json.containsKey('schemaVersion')
+            ? json['schemaVersion']
+            : 1,
         unknownFields: {
           for (final entry in json.entries)
             if (entry.key != 'providers' && entry.key != 'schemaVersion')
@@ -115,7 +118,7 @@ class ManagedProviderRepository {
     }
     final json = <String, Object?>{
       ...store.unknownFields,
-      'schemaVersion': 1,
+      'schemaVersion': store.schemaVersion,
       'providers': providers,
     };
     await _fs.atomicWrite(
@@ -123,22 +126,72 @@ class ManagedProviderRepository {
       const JsonEncoder.withIndent('  ').convert(json),
     );
   }
+
+  static ManagedProvider? _normalizeProvider(ManagedProvider provider) {
+    final id = provider.id.trim();
+    if (id.isEmpty) return null;
+    return provider.copyWith(id: id);
+  }
+
+  static ManagedProvider _mergeProvider(
+    ManagedProvider previous,
+    ManagedProvider next,
+  ) => next.copyWith(
+    brand: ManagedProviderBrand(
+      name: next.brand.name,
+      iconUrl: next.brand.iconUrl,
+      iconColor: next.brand.iconColor,
+      unknownFields: {
+        ...previous.brand.unknownFields,
+        ...next.brand.unknownFields,
+      },
+    ),
+    endpointConfig: ManagedProviderEndpointConfig(
+      url: next.endpointConfig.url,
+      method: next.endpointConfig.method,
+      responsePath: next.endpointConfig.responsePath,
+      measuresPath: next.endpointConfig.measuresPath,
+      fieldMappings: {
+        ...previous.endpointConfig.fieldMappings,
+        ...next.endpointConfig.fieldMappings,
+      },
+      unknownFields: {
+        ...previous.endpointConfig.unknownFields,
+        ...next.endpointConfig.unknownFields,
+      },
+    ),
+    displayConfig: ManagedProviderDisplayConfig(
+      currency: next.displayConfig.currency,
+      unit: next.displayConfig.unit,
+      decimalPlaces: next.displayConfig.decimalPlaces,
+      showPercent: next.displayConfig.showPercent,
+      unknownFields: {
+        ...previous.displayConfig.unknownFields,
+        ...next.displayConfig.unknownFields,
+      },
+    ),
+    unknownFields: {...previous.unknownFields, ...next.unknownFields},
+  );
 }
 
 class _ManagedProviderStore {
   const _ManagedProviderStore({
     this.providers = const {},
+    this.schemaVersion = 1,
     this.unknownFields = const {},
   });
 
   final Map<String, ManagedProvider> providers;
+  final Object? schemaVersion;
   final Map<String, Object?> unknownFields;
 
   _ManagedProviderStore copyWith({
     Map<String, ManagedProvider>? providers,
+    Object? schemaVersion,
     Map<String, Object?>? unknownFields,
   }) => _ManagedProviderStore(
     providers: providers ?? this.providers,
+    schemaVersion: schemaVersion ?? this.schemaVersion,
     unknownFields: unknownFields ?? this.unknownFields,
   );
 }
