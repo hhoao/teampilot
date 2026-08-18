@@ -1,30 +1,73 @@
+import '../../../../models/team_config.dart';
+import '../cli_capability.dart';
 import 'cli_launch_context.dart';
+import 'cli_headless_launch_arg_provider.dart';
+import 'cli_headless_launch_context.dart';
 import '../cli_tool_definition.dart';
 import 'cli_launch_arg_contribution.dart';
 import 'cli_launch_arg_provider.dart';
 import 'cli_launch_capability_error.dart';
+import 'cli_launch_constraint.dart';
+import 'cli_headless_launch_constraint.dart';
 
 /// Collects, validates, orders, and flattens launch argument contributions.
 final class CliLaunchArgAssembler {
   const CliLaunchArgAssembler();
 
   List<String> assemble(CliToolDefinition tool, CliLaunchContext context) {
+    return _assemble(
+      cli: tool.id,
+      capabilities: tool.capabilities,
+      validate: (capability) {
+        if (capability case final CliLaunchConstraint constraint) {
+          constraint.validateLaunch(context);
+        }
+      },
+      contributions: (capability) => capability is CliLaunchArgProvider
+          ? capability.buildLaunchArgs(context)
+          : const [],
+    );
+  }
+
+  List<String> assembleHeadless(
+    CliToolDefinition tool,
+    CliHeadlessLaunchContext context,
+  ) {
+    return _assemble(
+      cli: tool.id,
+      capabilities: tool.capabilities,
+      validate: (capability) {
+        if (capability case final CliHeadlessLaunchConstraint constraint) {
+          constraint.validateHeadlessLaunch(context);
+        }
+      },
+      contributions: (capability) => capability is CliHeadlessLaunchArgProvider
+          ? capability.buildHeadlessLaunchArgs(context)
+          : const [],
+    );
+  }
+
+  List<String> _assemble({
+    required CliTool cli,
+    required Iterable<CliCapability> capabilities,
+    required void Function(CliCapability) validate,
+    required Iterable<CliLaunchArgContribution> Function(CliCapability)
+    contributions,
+  }) {
     final collected = <_CollectedContribution>[];
     final byKey = <String, CliLaunchArgContribution>{};
     final byExclusiveGroup = <String, CliLaunchArgContribution>{};
 
     var providerIndex = 0;
-    for (final capability in tool.capabilities) {
-      if (capability is! CliLaunchArgProvider) {
-        continue;
-      }
+    for (final capability in capabilities) {
+      validate(capability);
 
       var contributionIndex = 0;
-      for (final contribution in capability.buildLaunchArgs(context)) {
+      for (final contribution in contributions(capability)) {
         final previousKey = byKey[contribution.key];
         if (previousKey != null) {
           throw CliLaunchCapabilityException(
-            cli: tool.id,
+            cli: cli,
             contributionKey: contribution.key,
             reason:
                 'Duplicate launch argument contribution key '
@@ -38,7 +81,7 @@ final class CliLaunchArgAssembler {
           final previousGroup = byExclusiveGroup[group];
           if (previousGroup != null) {
             throw CliLaunchCapabilityException(
-              cli: tool.id,
+              cli: cli,
               contributionKey: contribution.key,
               reason:
                   'Launch argument contributions '
@@ -60,7 +103,10 @@ final class CliLaunchArgAssembler {
         );
         contributionIndex++;
       }
-      providerIndex++;
+      if (capability is CliLaunchArgProvider ||
+          capability is CliHeadlessLaunchArgProvider) {
+        providerIndex++;
+      }
     }
 
     collected.sort((left, right) {

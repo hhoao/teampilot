@@ -1,10 +1,19 @@
 import 'dart:convert' show jsonDecode;
 import 'dart:io';
 
+import '../../../../models/launch_security_policy.dart';
+import '../../../../models/team_config.dart';
 import 'package:path/path.dart' as p;
 
 import '../../registry/capabilities/headless_capability.dart';
 import '../../registry/headless/headless_provision_support.dart';
+import '../../registry/launch/cli_launch_arg_contribution.dart';
+import '../../registry/launch/headless_launch_context_adapter.dart';
+import '../../registry/launch/user_extra_args_provider.dart';
+import 'model_launch.dart';
+import 'permission_launch.dart';
+import 'session_selection_launch.dart';
+import 'workspace_access_launch.dart';
 import 'provider.dart';
 
 /// flashskyai one-shot via `-p` print mode (Claude-style CLI), plus
@@ -22,24 +31,46 @@ final class FlashskyaiHeadlessCapability
   bool get supportsStreaming => true;
 
   @override
+  String get executable => 'flashskyai';
+
+  @override
+  Map<String, String> buildEnvironment(HeadlessLaunchContext context) => {
+    FlashskyaiProviderCapability.configDirEnvKey: context.configDir,
+    FlashskyaiProviderCapability.sessionHomeDirEnvKey: context.configDir,
+  };
+
+  @override
   List<HeadlessConfigFile> configFiles(HeadlessRunContext ctx) => const [];
 
   @override
-  HeadlessInvocation buildInvocation(HeadlessRunContext ctx) {
-    final args = <String>['-p', ctx.prompt];
-    final model = ctx.model.trim();
-    if (model.isNotEmpty) args.addAll(['--model', model]);
-    if (ctx.stream) {
-      args.addAll(['--output-format', 'stream-json', '--verbose']);
-    }
-    return HeadlessInvocation(
-      executable: 'flashskyai',
-      arguments: args,
-      environment: {
-        FlashskyaiProviderCapability.configDirEnvKey: ctx.configDir,
-        FlashskyaiProviderCapability.sessionHomeDirEnvKey: ctx.configDir,
-      },
+  Iterable<CliLaunchArgContribution> buildHeadlessLaunchArgs(
+    CliHeadlessLaunchContext ctx,
+  ) sync* {
+    final interactive = interactiveContextForHeadless(ctx, CliTool.flashskyai);
+    yield CliLaunchArgContribution(
+      key: 'flashskyai-headless-command',
+      phase: LaunchArgPhase.command,
+      args: ['-p'],
     );
+    yield* const FlashskyaiSessionSelectionLaunch().buildLaunchArgs(
+      interactive,
+    );
+    yield* const FlashskyaiWorkspaceAccessLaunch().buildLaunchArgs(interactive);
+    yield* const FlashskyaiModelLaunch().buildLaunchArgs(interactive);
+    yield* const FlashskyaiPermissionLaunch().buildLaunchArgs(interactive);
+    yield CliLaunchArgContribution(
+      key: 'flashskyai-headless-prompt',
+      phase: LaunchArgPhase.prompt,
+      args: [ctx.prompt],
+    );
+    if (ctx.stream) {
+      yield CliLaunchArgContribution(
+        key: 'flashskyai-headless-stream-format',
+        phase: LaunchArgPhase.prompt,
+        args: ['--output-format', 'stream-json', '--verbose'],
+      );
+    }
+    yield* const UserExtraArgsProvider().buildLaunchArgs(interactive);
   }
 
   @override
@@ -81,8 +112,7 @@ final class FlashskyaiHeadlessCapability
       final metadata = await profileInfra.metadataWithTrustedProjects(
         metadataPath: metadataPath,
         defaultMetadata: FlashskyaiProviderCapability.defaultMetadata,
-        defaultProjectConfig:
-            FlashskyaiProviderCapability.defaultProjectConfig,
+        defaultProjectConfig: FlashskyaiProviderCapability.defaultProjectConfig,
         directories: directories,
       );
       await writeJson(metadataPath, metadata);
@@ -90,9 +120,10 @@ final class FlashskyaiHeadlessCapability
 
     // flashskyai is a Claude-style CLI, so reasoning effort is carried via
     // settings.json `effortLevel` (mirrors the Claude provisioner).
-    final settings = <String, Object?>{
-      'skipDangerousModePermissionPrompt': true,
-    };
+    final settings = <String, Object?>{};
+    if (ctx.securityPolicy == LaunchSecurityPolicy.fullAccess) {
+      settings['skipDangerousModePermissionPrompt'] = true;
+    }
     final effortLabel = ctx.effort.trim();
     if (effortLabel.isNotEmpty) {
       settings['effortLevel'] = effortLabel;

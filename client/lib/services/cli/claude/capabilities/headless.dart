@@ -4,10 +4,20 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 
 import '../../../../models/credential_link_result.dart';
+import '../../../../models/team_config.dart';
+import '../../../../models/launch_security_policy.dart';
 import '../../../provider/credential_binding.dart';
 import '../../../storage/app_storage.dart';
 import '../../registry/capabilities/headless_capability.dart';
 import '../../registry/headless/headless_provision_support.dart';
+import '../../registry/launch/headless_launch_context_adapter.dart';
+import '../../registry/launch/cli_launch_arg_contribution.dart';
+import '../../registry/launch/cli_launch_arg_provider.dart';
+import '../capabilities/model_launch.dart';
+import 'permission_launch.dart';
+import 'session_selection_launch.dart';
+import 'workspace_access_launch.dart';
+import '../../registry/launch/user_extra_args_provider.dart';
 import '../provider/claude_official_provider.dart';
 import '../provider/claude_provider_credentials_service.dart';
 import '../provider/claude_provider_settings_resolver.dart';
@@ -29,25 +39,49 @@ final class ClaudeHeadlessCapability
   bool get supportsStreaming => true;
 
   @override
+  String get executable => 'claude';
+
+  @override
+  Map<String, String> buildEnvironment(HeadlessLaunchContext context) => {
+    'CLAUDE_CONFIG_DIR': context.configDir,
+  };
+
+  @override
   List<HeadlessConfigFile> configFiles(HeadlessRunContext ctx) => const [];
 
   @override
-  HeadlessInvocation buildInvocation(HeadlessRunContext ctx) {
-    final args = <String>['-p', ctx.prompt];
-    final model = ctx.model.trim();
-    if (model.isNotEmpty) {
-      args.addAll(['--model', model]);
-    }
-    if (ctx.stream) {
-      args.addAll(['--output-format', 'stream-json', '--verbose']);
-    } else if (ctx.expectJson) {
-      args.addAll(['--output-format', 'json']);
-    }
-    return HeadlessInvocation(
-      executable: 'claude',
-      arguments: args,
-      environment: {'CLAUDE_CONFIG_DIR': ctx.configDir},
+  Iterable<CliLaunchArgContribution> buildHeadlessLaunchArgs(
+    CliHeadlessLaunchContext ctx,
+  ) sync* {
+    final interactive = interactiveContextForHeadless(ctx, CliTool.claude);
+    yield CliLaunchArgContribution(
+      key: 'claude-headless-command',
+      phase: LaunchArgPhase.command,
+      args: ['-p'],
     );
+    yield* const ClaudeSessionSelectionLaunch().buildLaunchArgs(interactive);
+    yield* const ClaudeWorkspaceAccessLaunch().buildLaunchArgs(interactive);
+    yield* const ClaudeModelLaunch().buildLaunchArgs(interactive);
+    yield* const ClaudePermissionLaunch().buildLaunchArgs(interactive);
+    yield CliLaunchArgContribution(
+      key: 'claude-headless-prompt',
+      phase: LaunchArgPhase.prompt,
+      args: [ctx.prompt],
+    );
+    if (ctx.stream) {
+      yield CliLaunchArgContribution(
+        key: 'claude-headless-stream-format',
+        phase: LaunchArgPhase.prompt,
+        args: ['--output-format', 'stream-json', '--verbose'],
+      );
+    } else if (ctx.expectJson) {
+      yield CliLaunchArgContribution(
+        key: 'claude-headless-json-format',
+        phase: LaunchArgPhase.prompt,
+        args: ['--output-format', 'json'],
+      );
+    }
+    yield* const UserExtraArgsProvider().buildLaunchArgs(interactive);
   }
 
   @override
@@ -131,7 +165,9 @@ final class ClaudeHeadlessCapability
     if (effortLabel.isNotEmpty) {
       settings['effortLevel'] = effortLabel;
     }
-    settings['skipDangerousModePermissionPrompt'] = true;
+    if (ctx.securityPolicy == LaunchSecurityPolicy.fullAccess) {
+      settings['skipDangerousModePermissionPrompt'] = true;
+    }
     settings.remove('teammateMode');
 
     await writeJson(p.join(ctx.configDir, 'settings.json'), settings);
@@ -149,8 +185,7 @@ final class ClaudeHeadlessCapability
       final metadata = await profileInfra.metadataWithTrustedProjects(
         metadataPath: metadataPath,
         defaultMetadata: ClaudeProviderCapability.defaultMetadata,
-        defaultProjectConfig:
-            ClaudeProviderCapability.defaultProjectConfig,
+        defaultProjectConfig: ClaudeProviderCapability.defaultProjectConfig,
         directories: directories,
       );
       await writeJson(metadataPath, metadata);

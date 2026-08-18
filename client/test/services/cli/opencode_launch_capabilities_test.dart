@@ -13,6 +13,7 @@ import 'package:teampilot/services/cli/registry/cli_tool_definition.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/registry/launch/cli_launch_arg_assembler.dart';
 import 'package:teampilot/services/cli/registry/launch/cli_launch_arg_provider.dart';
+import 'package:teampilot/services/cli/registry/launch/cli_launch_constraint.dart';
 import 'package:teampilot/services/cli/registry/launch/cli_launch_capability_error.dart';
 import 'package:teampilot/services/cli/registry/launch/cli_launch_context.dart';
 import 'package:teampilot/services/session/launch_command_builder.dart';
@@ -171,8 +172,11 @@ void main() {
       expect(providers, contains(isA<OpencodeModelLaunch>()));
       expect(providers, contains(isA<OpencodeAgentLaunch>()));
       expect(providers, contains(isA<OpencodeUserExtraArgsLaunch>()));
-      expect(providers, contains(isA<OpencodePermissionLaunch>()));
-      expect(providers, hasLength(5));
+      expect(
+        tool.capabilities.whereType<CliLaunchConstraint>(),
+        contains(isA<OpencodePermissionLaunch>()),
+      );
+      expect(providers, hasLength(4));
       expect(tool.capabilities.whereType<OpencodeTeamBehavior>(), hasLength(1));
       expect(
         tool.capabilities.whereType<TeamBehaviorCapability>(),
@@ -186,6 +190,7 @@ void main() {
       team: const TeamProfile(id: 'team', name: 'Team', cli: CliTool.opencode),
       member: const TeamMemberConfig(id: 'member', name: 'Member'),
       nativeAgentTeam: false,
+      isSimpleSynthetic: true,
     );
 
     expect(

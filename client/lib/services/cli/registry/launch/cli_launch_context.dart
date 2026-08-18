@@ -17,6 +17,7 @@ final class CliLaunchContext {
     this.appendSystemPromptFile,
     this.useWslPaths = false,
     this.nativeAgentTeam,
+    this.isSimpleSynthetic = false,
   }) : _explicitLaunchSecurityPolicy = launchSecurityPolicy;
 
   final TeamProfile team;
@@ -42,6 +43,10 @@ final class CliLaunchContext {
   /// [team] is not mixed.
   final bool? nativeAgentTeam;
 
+  /// True only for the synthetic one-member profile used by Simple launches.
+  /// This is a launch-boundary fact, not a Claude team flag override.
+  final bool isSimpleSynthetic;
+
   String get teamName => sessionTeam ?? team.name.trim();
 
   String get memberDisplayName => member.name.trim();
@@ -66,6 +71,7 @@ final class CliLaunchContext {
     String? appendSystemPromptFile,
     bool? useWslPaths,
     bool? nativeAgentTeam,
+    bool? isSimpleSynthetic,
   }) {
     return CliLaunchContext(
       team: team ?? this.team,
@@ -83,6 +89,7 @@ final class CliLaunchContext {
           appendSystemPromptFile ?? this.appendSystemPromptFile,
       useWslPaths: useWslPaths ?? this.useWslPaths,
       nativeAgentTeam: nativeAgentTeam ?? this.nativeAgentTeam,
+      isSimpleSynthetic: isSimpleSynthetic ?? this.isSimpleSynthetic,
     );
   }
 }

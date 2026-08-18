@@ -373,6 +373,7 @@ class SessionLifecycleService {
     String workspaceId = '',
     String sessionId = '',
     String workingDirectory = '',
+    List<String> additionalDirectories = const [],
   }) async {
     final roots = await _resolveRoots();
     final service = await _configProfileServiceFor(roots);
@@ -413,6 +414,7 @@ class SessionLifecycleService {
       workingDirectory: workingDirectory.isNotEmpty
           ? workingDirectory
           : AppStorage.cwd,
+      additionalDirectories: additionalDirectories,
       team: team,
       runtimeBundle: runtimeBundle,
     );
@@ -904,6 +906,7 @@ class SessionLifecycleService {
         // Synthetic 1-member native profile is argv plumbing only — do not
         // enable Claude agent-team "manual mode" (causes multi-call loops).
         nativeAgentTeam: false,
+        isSimpleSynthetic: true,
       );
     }
 

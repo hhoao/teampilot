@@ -22,7 +22,7 @@ services/cli/{cli_name}/
     mcp.dart                        # McpCapability（claude/flashskyai 共用 claude/capabilities/mcp.dart）
     prompt.dart                     # PromptCapability
     headless.dart                   # HeadlessCapability（如支持无头运行）
-    launch_args.dart                # 共享 launch-args 辅助（如需要）
+    launch providers               # 启动参数能力（按语义拆分）
     history/                        # AiHistoryCapability 相关
       ai_history_capability.dart    # 该 CLI 的 AiHistoryCapability 实现（含 tool call resolvers）
       ai_transcript.dart
@@ -96,8 +96,13 @@ services/cli/
     resources/                    # 共享：默认 ResourceCapability
     launch/                       # 共享：启动上下文、参数 provider、贡献与装配器
       cli_launch_context.dart
+      cli_headless_launch_context.dart
       cli_launch_arg_provider.dart
+      cli_headless_launch_arg_provider.dart
+      cli_launch_constraint.dart
+      cli_headless_launch_constraint.dart
       cli_launch_arg_contribution.dart
+      cli_launch_arg_assembler.dart
       cli_launch_arg_assembler.dart
 ```
 
@@ -187,7 +192,7 @@ final cap = CliToolRegistry.builtIn()
 |------|------|------|
 | `ProviderCapability` | `registry/capabilities/provider_capability.dart` | Provider 目录、凭证、模型、effort、`materializeSessionHome`（session home 材料化） |
 | `MemberConfigInspectionCapability` | `registry/capabilities/member_config_inspection_capability.dart` | 成员配置检查 |
-| `CliSessionCapability` | `registry/capabilities/cli_session_capability.dart` | 会话持久化/初始化/finalize、launch args、配置目录 |
+| `CliSessionCapability` | `registry/capabilities/cli_session_capability.dart` | 会话持久化/初始化/finalize、配置目录 |
 | `TeamBehaviorCapability` | `registry/capabilities/team_behavior_capability.dart` | 团队协作行为（native team、wait-before-stop、presence、agent 预设） |
 | `ChatInteractionCapability` | `registry/capabilities/chat_interaction_capability.dart` | Agent 状态归一化 + 结构化 ask / 审批 |
 | `TerminalBehaviorCapability` | `registry/capabilities/terminal_behavior_capability.dart` | turn interrupt、标题注意力、全屏输入 |
@@ -393,12 +398,11 @@ services/cli/flashskyai/remote_flashskyai_command_builder.dart
 ### 禁止所有 CLI 代码塞在一个文件
 
 ```dart
-// ❌ 旧模式 — 一个共享文件集中包含所有 CLI 的 flag 分支
-shared_launch_arguments.dart  // 按 CLI 身份拼接完整 argv
-
-// ✅ 新模式 — 每个 CLI 的语义能力各自注册 Provider
+// ✅ 新模式 — 交互式与 headless 均由每个 CLI 的语义能力注册 Provider
 claude/capabilities/workspace_access_launch.dart
 cursor/capabilities/workspace_access_launch.dart
+claude/capabilities/headless.dart
+codex/capabilities/headless.dart
 ```
 
 ### 禁止 CliBootstrap 命名参数
@@ -563,15 +567,15 @@ Assembler 按以下顺序工作：
 
 | 归一化策略 | Claude / FlashskyAI | Codex | Cursor | OpenCode |
 |------------|--------------------|-------|--------|----------|
-| CLI 默认（三项均 `cliDefault`） | 不追加权限 argv | 不追加权限 argv | 不追加权限 argv | `OpencodePermissionLaunch` 显式验证；走其配置/交互能力 |
+| CLI 默认（三项均 `cliDefault`） | 不追加权限 argv | 不追加权限 argv | 不追加权限 argv | `OpencodePermissionLaunch` 显式验证；保留 CLI 默认配置 |
 | `ask + readOnly + trustedOnly` | `--permission-mode plan` | 不支持，抛能力异常 | 不支持，抛能力异常 | 不由启动 argv 表达 |
 | `autoApprove + workspaceWrite + trustedOnly` | `--permission-mode acceptEdits` | 不支持，抛能力异常 | 不支持，抛能力异常 | 不由启动 argv 表达 |
-| `never + fullAccess + bypass`（`fullAccess`） | `--dangerously-skip-permissions` | `--dangerously-bypass-approvals-and-sandbox` 与 `--dangerously-bypass-hook-trust` | `--force` | 不由启动 argv 表达；由 `OpencodePermissionLaunch` 显式验证当前 permissive default |
+| `never + fullAccess + bypass`（`fullAccess`） | `--dangerously-skip-permissions` | `--dangerously-bypass-approvals-and-sandbox` 与 `--dangerously-bypass-hook-trust` | `--force` | 不由启动 argv 表达；由 `OpencodePermissionLaunch` 校验，并由 provider 物化 `edit` / `bash` / `external_directory` |
 
-如果 CLI 无法表示一个明确请求，Provider 必须返回结构化能力错误；不能悄悄使用 CLI 默认
-权限。OpenCode 的权限请求/应答属于运行时交互和配置能力，`OpencodePermissionLaunch`
-只负责明确接受其 permissive default/full-access 语义并拒绝当前无法表达的策略组合，不伪造
-OpenCode 权限启动参数。
+如果 CLI 无法表示一个明确请求，Provider 或 Constraint 必须返回结构化能力错误；不能悄悄使用 CLI 默认
+权限。OpenCode 的权限请求/应答属于配置和运行时能力：full-access 由 provider 物化为
+`permission.edit`、`permission.bash` 与 `permission.external_directory`，其余当前无法
+完整表达的策略由 `OpencodePermissionLaunch` 拒绝。
 
 ### 工作区目录的 CLI 差异
 

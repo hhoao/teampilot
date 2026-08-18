@@ -59,7 +59,7 @@ class LaunchCommandBuilder {
       );
     }
     if (context.team.teamMode == TeamMode.native &&
-        context.nativeAgentTeam != false &&
+        !context.isSimpleSynthetic &&
         registry.capability<TeamBehaviorCapability>(cli)?.supportsNativeTeam !=
             true) {
       throw CliLaunchCapabilityException(
@@ -111,6 +111,7 @@ class LaunchCommandBuilder {
     TeamMemberConfig member, {
     String? sessionTeam,
     required String executable,
+    String? workingDirectory,
     List<String> additionalDirectories = const [],
     String? fixedSessionId,
     String? resumeSessionId,
@@ -125,6 +126,7 @@ class LaunchCommandBuilder {
           member: member,
           launchSecurityPolicy: member.launchSecurityPolicy,
           sessionTeam: sessionTeam,
+          workingDirectory: workingDirectory,
           additionalDirectories: additionalDirectories,
           fixedSessionId: fixedSessionId,
           resumeSessionId: resumeSessionId,

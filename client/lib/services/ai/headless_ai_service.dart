@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 
 import '../../models/ai_feature_setting.dart';
 import '../../models/app_provider_config.dart';
+import '../../models/launch_security_policy.dart';
 import '../../repositories/app_provider_repository.dart';
 import '../../utils/logging/logger.dart';
 import '../../utils/logging/log_redaction.dart';
@@ -13,6 +14,7 @@ import '../cli/cli_tool_locator.dart';
 import '../cli/registry/capabilities/provider_capability.dart';
 import '../cli/registry/capabilities/headless_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
+import '../cli/registry/launch/cli_launch_arg_assembler.dart';
 
 /// Thrown when a headless AI call cannot run or fails.
 class HeadlessAiException implements Exception {
@@ -177,6 +179,13 @@ class HeadlessAiService {
     required String prompt,
     bool expectJson = false,
     String? workingDirectory,
+    List<String> additionalDirectories = const [],
+    String? fixedSessionId,
+    String? resumeSessionId,
+    LaunchSecurityPolicy securityPolicy = LaunchSecurityPolicy.fullAccess,
+    String teamExtraArgs = '',
+    String memberExtraArgs = '',
+    bool useWslPaths = false,
     Duration timeout = const Duration(seconds: 90),
   }) async {
     final cli = setting.cli;
@@ -195,12 +204,20 @@ class HeadlessAiService {
 
     final dir = await _tempDirFactory();
     try {
-      final ctx = HeadlessRunContext(
+      final ctx = HeadlessLaunchContext(
         prompt: prompt,
         model: model,
         effort: effort,
         configDir: dir.path,
+        providerId: setting.providerId,
         workingDirectory: workingDirectory,
+        additionalDirectories: additionalDirectories,
+        fixedSessionId: fixedSessionId,
+        resumeSessionId: resumeSessionId,
+        securityPolicy: securityPolicy,
+        teamExtraArgs: teamExtraArgs,
+        memberExtraArgs: memberExtraArgs,
+        useWslPaths: useWslPaths,
         expectJson: expectJson,
       );
 
@@ -217,6 +234,9 @@ class HeadlessAiService {
                 effort: effort,
                 configDir: dir.path,
                 workingDirectory: workingDirectory,
+                additionalDirectories: additionalDirectories,
+                securityPolicy: securityPolicy,
+                useWslPaths: useWslPaths,
               ),
             );
       if (!provision.credentialsReady) {
@@ -229,9 +249,18 @@ class HeadlessAiService {
         await out.writeAsString(file.contents);
       }
 
-      final inv = cap.buildInvocation(ctx);
+      final tool = _registry.tryGet(cli);
+      if (tool == null || !tool.isLaunchSupported) {
+        throw HeadlessAiException(
+          'CLI definition is unavailable for ${cli.value}.',
+        );
+      }
+      final arguments = const CliLaunchArgAssembler().assembleHeadless(
+        tool,
+        ctx,
+      );
       final environment = <String, String>{
-        ...inv.environment,
+        ...cap.buildEnvironment(ctx),
         ...provision.extraEnvironment,
       };
       // Values are redacted in logs (e.g. OPENCODE_AUTH_CONTENT).
@@ -239,22 +268,22 @@ class HeadlessAiService {
         '--------------------------------\n'
         'Starting headless run:\n'
         '--------------------------------\n'
-        'Executable: ${inv.executable},\n'
-        'Arguments: ${inv.arguments.join(' ')},\n'
+        'Executable: ${cap.executable},\n'
+        'Arguments: ${arguments.join(' ')},\n'
         'WorkingDirectory: ${ctx.workingDirectory},\n'
         'Environment: ${stringifyEnvironmentForLog(environment)}\n'
         '--------------------------------\n',
       );
-      final exe = await _resolveExecutable(inv.executable);
+      final exe = await _resolveExecutable(cap.executable);
       if (exe == null) {
-        throw HeadlessAiException('${inv.executable} not found on PATH.');
+        throw HeadlessAiException('${cap.executable} not found on PATH.');
       }
 
       final ProcessResult result;
       try {
         result = await _run(
           exe,
-          inv.arguments,
+          arguments,
           environment: environment.isEmpty ? null : environment,
           workingDirectory: ctx.workingDirectory,
           timeout: timeout,
@@ -299,6 +328,13 @@ class HeadlessAiService {
     required String prompt,
     required void Function(String line) onEvent,
     String? workingDirectory,
+    List<String> additionalDirectories = const [],
+    String? fixedSessionId,
+    String? resumeSessionId,
+    LaunchSecurityPolicy securityPolicy = LaunchSecurityPolicy.fullAccess,
+    String teamExtraArgs = '',
+    String memberExtraArgs = '',
+    bool useWslPaths = false,
     Duration timeout = const Duration(seconds: 120),
   }) async {
     final cli = setting.cli;
@@ -317,12 +353,20 @@ class HeadlessAiService {
 
     final dir = await _tempDirFactory();
     try {
-      final ctx = HeadlessRunContext(
+      final ctx = HeadlessLaunchContext(
         prompt: prompt,
         model: model,
         effort: effort,
         configDir: dir.path,
+        providerId: setting.providerId,
         workingDirectory: workingDirectory,
+        additionalDirectories: additionalDirectories,
+        fixedSessionId: fixedSessionId,
+        resumeSessionId: resumeSessionId,
+        securityPolicy: securityPolicy,
+        teamExtraArgs: teamExtraArgs,
+        memberExtraArgs: memberExtraArgs,
+        useWslPaths: useWslPaths,
         expectJson: true,
         stream: cap.supportsStreaming,
       );
@@ -340,6 +384,9 @@ class HeadlessAiService {
                 effort: effort,
                 configDir: dir.path,
                 workingDirectory: workingDirectory,
+                additionalDirectories: additionalDirectories,
+                securityPolicy: securityPolicy,
+                useWslPaths: useWslPaths,
               ),
             );
       if (!provision.credentialsReady) {
@@ -352,14 +399,23 @@ class HeadlessAiService {
         await out.writeAsString(file.contents);
       }
 
-      final inv = cap.buildInvocation(ctx);
+      final tool = _registry.tryGet(cli);
+      if (tool == null || !tool.isLaunchSupported) {
+        throw HeadlessAiException(
+          'CLI definition is unavailable for ${cli.value}.',
+        );
+      }
+      final arguments = const CliLaunchArgAssembler().assembleHeadless(
+        tool,
+        ctx,
+      );
       final environment = <String, String>{
-        ...inv.environment,
+        ...cap.buildEnvironment(ctx),
         ...provision.extraEnvironment,
       };
-      final exe = await _resolveExecutable(inv.executable);
+      final exe = await _resolveExecutable(cap.executable);
       if (exe == null) {
-        throw HeadlessAiException('${inv.executable} not found on PATH.');
+        throw HeadlessAiException('${cap.executable} not found on PATH.');
       }
 
       final buf = StringBuffer();
@@ -368,7 +424,7 @@ class HeadlessAiService {
       try {
         exitCode = await _streamRun(
           exe,
-          inv.arguments,
+          arguments,
           environment: environment.isEmpty ? null : environment,
           workingDirectory: ctx.workingDirectory,
           timeout: timeout,

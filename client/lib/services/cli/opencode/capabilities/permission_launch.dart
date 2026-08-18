@@ -1,27 +1,32 @@
 import '../../../../models/team_config.dart';
-import '../../registry/launch/cli_launch_arg_contribution.dart';
-import '../../registry/launch/cli_launch_arg_provider.dart';
 import '../../registry/launch/cli_launch_capability_error.dart';
 import '../../registry/launch/cli_launch_context.dart';
+import '../../registry/launch/cli_launch_constraint.dart';
+import '../../registry/launch/cli_headless_launch_constraint.dart';
+import '../../registry/launch/cli_headless_launch_context.dart';
 
-/// Validates OpenCode's security policy boundary.
-///
-/// OpenCode has no permission/security launch argv that maps the normalized
-/// policy dimensions. Its current permissive defaults, together with the
-/// existing session-home config materialization for external directories,
-/// explicitly cover [LaunchSecurityPolicy.fullAccess]; OpenCode has no
-/// separate hook-trust gate to bypass. Other policy tuples must fail instead
-/// of silently falling back to OpenCode defaults.
-final class OpencodePermissionLaunch implements CliLaunchArgProvider {
+/// Validates OpenCode's config-backed permission mapping. The actual full
+/// access materialization is performed by the provider capability, while
+/// this constraint prevents argv assembly from silently accepting policies
+/// that OpenCode's config schema cannot express.
+final class OpencodePermissionLaunch
+    implements CliLaunchConstraint, CliHeadlessLaunchConstraint {
   const OpencodePermissionLaunch();
 
   @override
-  Iterable<CliLaunchArgContribution> buildLaunchArgs(CliLaunchContext context) {
-    final policy = context.launchSecurityPolicy;
+  void validateLaunch(CliLaunchContext context) {
+    _validate(context.launchSecurityPolicy);
+  }
+
+  @override
+  void validateHeadlessLaunch(CliHeadlessLaunchContext context) {
+    _validate(context.securityPolicy);
+  }
+
+  void _validate(LaunchSecurityPolicy policy) {
     if (policy == const LaunchSecurityPolicy() ||
-        policy == LaunchSecurityPolicy.fullAccess) {
-      return const [];
-    }
+        policy == LaunchSecurityPolicy.fullAccess)
+      return;
 
     throw const CliLaunchCapabilityException(
       cli: CliTool.opencode,

@@ -26,6 +26,7 @@ import '../../registry/cli_tool_registry.dart';
 import '../../registry/config_profile/config_profile_context.dart';
 import '../../registry/hook/managed_hook_provisioner.dart';
 import '../../registry/prompt/prompt_hub_service.dart';
+import '../../registry/launch/cli_launch_capability_error.dart';
 import '../provider/opencode_auth_artifacts.dart';
 import '../provider/opencode_data_layout.dart';
 import '../provider/opencode_effort_catalog.dart';
@@ -369,10 +370,7 @@ final class OpencodeProviderCapability extends CatalogModelCapability
       warnings.add('opencode_plugin_deps: $e');
     }
 
-    final configPath = paths.joinWork(
-      opencodeDir,
-      opencodeConfigFileName,
-    );
+    final configPath = paths.joinWork(opencodeDir, opencodeConfigFileName);
     var config = await paths.readSettingsFile(configPath);
     var changed = false;
     AppProviderConfig? launchProvider;
@@ -391,7 +389,10 @@ final class OpencodeProviderCapability extends CatalogModelCapability
       var fromMember = required.provider.trim();
       if (fromMember.isEmpty) {
         fromMember =
-            CliToolRegistry.builtIn().defaultOfficialProviderId(CliTool.opencode) ?? '';
+            CliToolRegistry.builtIn().defaultOfficialProviderId(
+              CliTool.opencode,
+            ) ??
+            '';
       }
       launchProvider = await resolver.findById(fromMember);
       launchProvider ??= await resolver.resolveSole();
@@ -413,6 +414,14 @@ final class OpencodeProviderCapability extends CatalogModelCapability
           memberModel: member?.model,
         );
       }
+      changed = true;
+    }
+
+    final securityPolicy =
+        member?.launchSecurityPolicy ?? const LaunchSecurityPolicy();
+    final securedConfig = mergeOpencodeSecurityPolicy(config, securityPolicy);
+    if (!identical(securedConfig, config)) {
+      config = securedConfig;
       changed = true;
     }
 
@@ -492,26 +501,27 @@ final class OpencodeProviderCapability extends CatalogModelCapability
     if (ctx.hooks.isNotEmpty) {
       final writer = const OpencodeHookWriter();
       final hooksDir = paths.joinWork(opencodeDir, 'hooks');
-      final result = await ManagedHookProvisioner(
-        fs: paths.fs,
-        joinWork: paths.joinWork,
-        pathContext: paths.workPathContext,
-        atomicWrite: true,
-        ensureParentDirs: true,
-        logPrefix: '[hook-writer] opencode',
-        targetOverride: (fileName) =>
-            fileName == opencodeUserHooksPluginFileName
-            ? paths.joinWork(opencodeDir, fileName)
-            : null,
-      ).provision(
-        writer: writer,
-        entries: ctx.hooks,
-        ctx: HookRenderContext(
-          hooksDir: hooksDir,
-          runner: paths.hostEnvironmentForProvision().scriptRunner,
-          glueBuilder: const GlueScriptBuilder(),
-        ),
-      );
+      final result =
+          await ManagedHookProvisioner(
+            fs: paths.fs,
+            joinWork: paths.joinWork,
+            pathContext: paths.workPathContext,
+            atomicWrite: true,
+            ensureParentDirs: true,
+            logPrefix: '[hook-writer] opencode',
+            targetOverride: (fileName) =>
+                fileName == opencodeUserHooksPluginFileName
+                ? paths.joinWork(opencodeDir, fileName)
+                : null,
+          ).provision(
+            writer: writer,
+            entries: ctx.hooks,
+            ctx: HookRenderContext(
+              hooksDir: hooksDir,
+              runner: paths.hostEnvironmentForProvision().scriptRunner,
+              glueBuilder: const GlueScriptBuilder(),
+            ),
+          );
       final fragment =
           result.configFragments['opencode.json'] as Map<String, Object?>?;
       if (fragment != null) {
@@ -599,10 +609,7 @@ final class OpencodeProviderCapability extends CatalogModelCapability
     required ConfigProfileDelegate paths,
     required String opencodeDir,
   }) async {
-    final pluginPath = paths.joinWork(
-      opencodeDir,
-      opencodeIdlePluginFileName,
-    );
+    final pluginPath = paths.joinWork(opencodeDir, opencodeIdlePluginFileName);
     final existing = await paths.fs.readString(pluginPath);
     if (existing == opencodeIdlePluginSource) {
       return;
@@ -742,10 +749,7 @@ Map<String, Object?> mergeOpencodePluginEntries(
   final plugins = List<Object?>.from((config['plugin'] as List?) ?? const []);
   final present = <Object?>{
     for (final e in plugins)
-      if (e is String)
-        e
-      else if (e is List && e.isNotEmpty)
-        e.first,
+      if (e is String) e else if (e is List && e.isNotEmpty) e.first,
   };
   var changed = false;
   for (final path in entryPaths) {
@@ -938,12 +942,50 @@ Map<String, Object?> mergeOpencodeExternalDirectories(
   for (final dir in directories) {
     final t = dir.trim();
     if (t.isEmpty) continue;
-    final pattern = t.endsWith('/') ? '$t**' : '$t/**';    if (external[pattern] != 'allow') {
+    final pattern = t.endsWith('/') ? '$t**' : '$t/**';
+    if (external[pattern] != 'allow') {
       external[pattern] = 'allow';
       changed = true;
     }
   }
   if (!changed) return config;
+  permission['external_directory'] = external;
+  return {...config, 'permission': permission};
+}
+
+/// Materializes the normalized launch security policy into OpenCode's V1
+/// `permission` object. OpenCode has no hook-trust dimension, but it can
+/// express the full-access tuple through edit, bash, and external-directory
+/// permissions. Policies that cannot be represented are rejected by the
+/// launch capability instead of inheriting OpenCode's permissive defaults.
+@visibleForTesting
+Map<String, Object?> mergeOpencodeSecurityPolicy(
+  Map<String, Object?> config,
+  LaunchSecurityPolicy policy,
+) {
+  if (policy == const LaunchSecurityPolicy()) return config;
+  if (policy != LaunchSecurityPolicy.fullAccess) {
+    throw const CliLaunchCapabilityException(
+      cli: CliTool.opencode,
+      contributionKey: 'opencode-permission',
+      reason:
+          'OpenCode cannot represent this launch security policy through its '
+          'current permission config schema.',
+      exclusiveGroup: 'opencode-permission-mode',
+    );
+  }
+
+  final permission = <String, Object?>{
+    ...((config['permission'] as Map?)?.cast<String, Object?>() ??
+        const <String, Object?>{}),
+  };
+  final external = <String, Object?>{
+    ...((permission['external_directory'] as Map?)?.cast<String, Object?>() ??
+        const <String, Object?>{}),
+    '*': 'allow',
+  };
+  permission['edit'] = 'allow';
+  permission['bash'] = 'allow';
   permission['external_directory'] = external;
   return {...config, 'permission': permission};
 }

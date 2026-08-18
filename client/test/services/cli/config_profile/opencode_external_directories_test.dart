@@ -38,6 +38,17 @@ void main() {
     },
   );
 
+  test('mergeOpencodeSecurityPolicy materializes full access permissions', () {
+    final merged = mergeOpencodeSecurityPolicy(
+      <String, Object?>{},
+      LaunchSecurityPolicy.fullAccess,
+    );
+    final permission = (merged['permission'] as Map).cast<String, Object?>();
+    expect(permission['edit'], 'allow');
+    expect(permission['bash'], 'allow');
+    expect(permission['external_directory'], <String, Object?>{'*': 'allow'});
+  });
+
   test('external directories remain config-only and are not argv flags', () {
     const team = TeamProfile(id: 'team', name: 'Team', cli: CliTool.opencode);
     const member = TeamMemberConfig(
@@ -53,6 +64,7 @@ void main() {
           team: team,
           member: member,
           nativeAgentTeam: false,
+          isSimpleSynthetic: true,
           workingDirectory: '/work',
           additionalDirectories: ['/repo/a', '/repo/b'],
         ),
@@ -254,7 +266,12 @@ void main() {
       layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
     );
 
-    const member = TeamMemberConfig(id: 'm1', name: 'Member', model: 'test');
+    const member = TeamMemberConfig(
+      id: 'm1',
+      name: 'Member',
+      model: 'test',
+      launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
+    );
     const team = TeamProfile(
       id: 'team-a',
       name: 'agent',
@@ -306,9 +323,14 @@ void main() {
     );
     final config = jsonDecode(raw!) as Map<String, dynamic>;
     final permission = config['permission'] as Map;
+    expect(permission['edit'], 'allow');
+    expect(permission['bash'], 'allow');
     final external = (permission['external_directory'] as Map)
         .cast<String, Object?>();
-    expect(external, <String, Object?>{'/abs/missing/repo/**': 'allow'});
+    expect(external, <String, Object?>{
+      '*': 'allow',
+      '/abs/missing/repo/**': 'allow',
+    });
     expect(sibling.existsSync(), isTrue);
   });
 }

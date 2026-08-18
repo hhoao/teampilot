@@ -68,6 +68,7 @@ void main() {
           ),
           member: member,
           nativeAgentTeam: false,
+          isSimpleSynthetic: true,
         ),
         cliRegistry: registry,
       ),
@@ -88,6 +89,7 @@ void main() {
           ),
           member: member,
           nativeAgentTeam: false,
+          isSimpleSynthetic: true,
         ),
         cliRegistry: registry,
       ),
@@ -161,6 +163,7 @@ void main() {
           ),
           member: member,
           nativeAgentTeam: false,
+          isSimpleSynthetic: true,
         ),
         cliRegistry: registry,
       ),
@@ -218,9 +221,34 @@ void main() {
           ),
           member: member,
           nativeAgentTeam: false,
+          isSimpleSynthetic: true,
         ),
       ),
       ['-m', 'sonnet'],
+    );
+  });
+
+  test('rejects a real native team even when nativeAgentTeam is false', () {
+    expect(
+      () => LaunchCommandBuilder.buildArgumentsFromContext(
+        const CliLaunchContext(
+          team: TeamProfile(
+            id: 'native-codex-false-override',
+            name: 'native-codex-false-override',
+            cli: CliTool.codex,
+            teamMode: TeamMode.native,
+          ),
+          member: member,
+          nativeAgentTeam: false,
+        ),
+      ),
+      throwsA(
+        isA<CliLaunchCapabilityException>().having(
+          (error) => error.contributionKey,
+          'contributionKey',
+          'team-mode',
+        ),
+      ),
     );
   });
 
