@@ -38,6 +38,7 @@ import '../../../resource/providers/extension_hook_contribution_provider.dart';
 import '../../../resource/providers/hook_library_contribution_provider.dart';
 import '../../../resource/providers/managed_hook_contribution_provider.dart';
 import '../../../resource/providers/endpoint_hook_contribution_provider.dart';
+import '../../../resource/providers/bus_awareness_hook_contribution_provider.dart';
 import '../../../resource/providers/hook_contribution_provider.dart';
 import '../provider/claude_effort_catalog.dart';
 import '../provider/claude_live_import.dart';
@@ -1146,6 +1147,7 @@ final class ClaudeProviderCapability extends CatalogModelCapability
       // delegate/extension 前置保持其"胜出"语义（旧链中两源命令互不碰撞，
       // 可观察行为不变；分析见 task-18-report.md）。
       final hookProviders = <HookContributionProvider>[
+        if (mixed) const BusAwarenessHookContributionProvider(),
         if (mixed && busIdle != null)
           BusIdleHookContributionProvider(
             endpoint: busIdle,

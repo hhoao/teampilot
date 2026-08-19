@@ -5,6 +5,7 @@ import '../../../../models/team_config.dart';
 import '../../../agent_status/member_agent_status_endpoint.dart';
 import '../../../team/team_lead_delegate_settings_merge.dart';
 import '../../../team/team_lead_settings_merge.dart';
+import '../../../team_bus/bus_awareness_prompt.dart';
 import '../../../team_bus/member_bus_idle_endpoint.dart';
 import '../../../../utils/team/team_member_naming.dart';
 import '../../../resource/assemblers/hook_assembler.dart';
@@ -111,6 +112,37 @@ class HookSeatContextCompleter {
           timeout: const Duration(seconds: 5),
           blockOnDecision: true,
         ),
+    ];
+  }
+
+  /// Mixed TeamBus SessionStart awareness (Superpowers-style additionalContext).
+  /// Empty when [cli] has no native `sessionStart` (OpenCode uses a plugin).
+  List<HookEntry> busAwarenessHooks({
+    required TeamMemberConfig member,
+    required CliTool cli,
+    required bool pushDelivery,
+  }) {
+    if (!HookEventCapability.supports(HookEvent.sessionStart, cli)) {
+      return const [];
+    }
+    final context = BusAwarenessPrompt.additionalContext(
+      member: member,
+      pushDelivery: pushDelivery,
+    );
+    return [
+      HookEntry(
+        id: 'teampilot-bus-awareness-sessionStart',
+        source: HookSource.managed,
+        event: HookEvent.sessionStart,
+        action: CommandHookAction.script(
+          fileName: 'hook.sh',
+          scriptContent: BusAwarenessPrompt.sessionStartScript(
+            cli: cli,
+            additionalContext: context,
+          ),
+        ),
+        timeout: const Duration(seconds: 5),
+      ),
     ];
   }
 

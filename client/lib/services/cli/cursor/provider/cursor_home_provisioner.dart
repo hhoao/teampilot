@@ -224,10 +224,17 @@ final class CursorHomeProvisioner {
     // config-profile 阶段同一渲染路径，按 command 去重幂等）。
     await writeHooks(
       memberHome: memberHome,
-      entries: const HookSeatContextCompleter().busIdleHooks(
-        idle: busIdle,
-        memberId: member.id,
-      ),
+      entries: [
+        ...const HookSeatContextCompleter().busAwarenessHooks(
+          member: member,
+          cli: CliTool.cursor,
+          pushDelivery: true,
+        ),
+        ...const HookSeatContextCompleter().busIdleHooks(
+          idle: busIdle,
+          memberId: member.id,
+        ),
+      ],
       runner: null,
     );
     await _mergeTeamBusMcp(

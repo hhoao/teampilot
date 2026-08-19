@@ -9,6 +9,7 @@ import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/provider.dart';
 import 'package:teampilot/services/cli/registry/capabilities/provider_capability.dart';
 import 'package:teampilot/services/team_bus/member_bus_idle_endpoint.dart';
+import 'package:teampilot/services/cli/opencode/capabilities/awareness_plugin.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/idle_plugin.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
@@ -103,10 +104,18 @@ void main() {
       expect(raw, isNotNull);
       final config = jsonDecode(raw!) as Map<String, dynamic>;
       final plugin = config['plugin'] as List;
-      expect(plugin, hasLength(1));
-      final entry = plugin.first as List;
-      expect(entry[0], './$opencodeIdlePluginFileName');
-      final opts = entry[1] as Map;
+      expect(
+        plugin.map((e) => (e as List).first),
+        containsAll(<String>[
+          './$opencodeIdlePluginFileName',
+          './$opencodeAwarenessPluginFileName',
+        ]),
+      );
+      final idleEntry = plugin.firstWhere(
+        (e) => (e as List).first == './$opencodeIdlePluginFileName',
+      ) as List;
+      expect(idleEntry[0], './$opencodeIdlePluginFileName');
+      final opts = idleEntry[1] as Map;
       expect(opts['member'], 'm1');
       expect(opts['port'], 54321);
       expect(opts['session'], 'session-1');

@@ -42,6 +42,7 @@ import '../provider_presets.dart';
 import '../../../resource/providers/hook_library_contribution_provider.dart';
 import '../../../resource/providers/hook_contribution_provider.dart';
 import 'agent_status_plugin.dart';
+import 'awareness_plugin.dart';
 import 'idle_plugin.dart';
 import 'opencode_hook_writer.dart';
 
@@ -478,6 +479,15 @@ final class OpencodeProviderCapability extends CatalogModelCapability
       }
     }
 
+    if (mixed && member != null && member.isValid) {
+      await _writeAwarenessPlugin(paths: paths, opencodeDir: opencodeDir);
+      config = mergeOpencodeBusAwarenessPlugin(
+        config,
+        opencodeBusAwarenessPrompt(member: member),
+      );
+      changed = true;
+    }
+
     final busIdle = ctx.busIdle;
     if (mixed && busIdle != null && member != null && member.isValid) {
       final port = busIdle.port;
@@ -652,6 +662,21 @@ final class OpencodeProviderCapability extends CatalogModelCapability
       return;
     }
     await paths.fs.atomicWrite(pluginPath, opencodeIdlePluginSource);
+  }
+
+  Future<void> _writeAwarenessPlugin({
+    required ConfigProfileDelegate paths,
+    required String opencodeDir,
+  }) async {
+    final pluginPath = paths.joinWork(
+      opencodeDir,
+      opencodeAwarenessPluginFileName,
+    );
+    final existing = await paths.fs.readString(pluginPath);
+    if (existing == opencodeAwarenessPluginSource) {
+      return;
+    }
+    await paths.fs.atomicWrite(pluginPath, opencodeAwarenessPluginSource);
   }
 
   Future<void> _writeAgentStatusPlugin({

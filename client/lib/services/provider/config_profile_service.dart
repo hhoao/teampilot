@@ -35,6 +35,7 @@ import '../resource/resource_provider_set.dart';
 import '../resource/providers/catalog_skill_contribution_provider.dart';
 import '../resource/providers/plugin_skill_contribution_provider.dart';
 import '../resource/providers/endpoint_hook_contribution_provider.dart';
+import '../resource/providers/bus_awareness_hook_contribution_provider.dart';
 import '../resource/providers/extension_hook_contribution_provider.dart';
 import '../resource/providers/managed_hook_contribution_provider.dart';
 import '../resource/providers/hook_contribution_provider.dart';
@@ -359,6 +360,9 @@ class ConfigProfileService implements ConfigProfileDelegate {
     const completer = HookSeatContextCompleter();
     final managed = <HookContributionProvider>[];
     if (member != null && member.isValid) {
+      if (team?.teamMode == TeamMode.mixed) {
+        managed.add(const BusAwarenessHookContributionProvider());
+      }
       if (busIdle != null && (simple || team?.teamMode == TeamMode.mixed)) {
         managed.add(
           BusIdleHookContributionProvider(

@@ -110,6 +110,7 @@ opencode 恒 bash；claude 家族按 `HostScriptRunner.dialect`，powershell 时
 | 用户全局库 | `HookLibraryResolver.resolve(runtimeBundle.hookIds)` | `HookEntry(source: userLibrary)`；未知 id（库中已删）跳过 + `hook_missing_<id>` warning |
 | agent-status | `completer.agentStatusHooks` | http action，事件集 `permissionRequest/preToolUse/postToolUse/postToolUseFailure/stop/stopFailure/userPromptSubmit`；`preToolUse` matcher `*` + timeout 86400（AskUserQuestion 挂起） |
 | team-bus idle | `completer.busIdleHooks` | `stop`/`stopFailure` http，`blockOnDecision: true`，timeout 5 |
+| team-bus awareness | `completer.busAwarenessHooks` | mixed `sessionStart` command，stdout `additionalContext`（cursor 为 `additional_context`）；OpenCode 无该事件，改走 `teampilot-bus-awareness.js` |
 | team-lead delegate | `completer.delegateHooks` | `preToolUse` command，matcher = `TeamLeadDelegateSettingsMerge.blockedToolsMatcher` |
 | 扩展 settings-hook | `completer.extensionHooks` | id `teampilot-extension-settings-hook-<extensionId>-<eventName>`（碰撞安全） |
 | 插件 `hooks/hooks.json` | `completer.pluginHooks` | 事件名接受 camelCase 与 PascalCase 双拼写 |

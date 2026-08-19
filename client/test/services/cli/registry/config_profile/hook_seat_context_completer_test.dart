@@ -7,6 +7,7 @@ import 'package:teampilot/services/agent_status/member_agent_status_endpoint.dar
 import 'package:teampilot/services/cli/registry/config_profile/hook_seat_context_completer.dart';
 import 'package:teampilot/services/host/team_pilot_hook_scripts.dart';
 import 'package:teampilot/services/team/team_lead_settings_merge.dart';
+import 'package:teampilot/services/team_bus/bus_awareness_prompt.dart';
 import 'package:teampilot/services/team_bus/member_bus_idle_endpoint.dart';
 
 void main() {
@@ -82,6 +83,47 @@ void main() {
         'X-Bus-Token': 't',
       });
     }
+  });
+
+  test('bus awareness is a sessionStart command hook with protocol JSON', () {
+    const worker = TeamMemberConfig(id: 'implementer', name: 'Implementer');
+    final entries = completer.busAwarenessHooks(
+      member: worker,
+      cli: CliTool.claude,
+      pushDelivery: false,
+    );
+    expect(entries, hasLength(1));
+    final entry = entries.single;
+    expect(entry.id, 'teampilot-bus-awareness-sessionStart');
+    expect(entry.source, HookSource.managed);
+    expect(entry.event, HookEvent.sessionStart);
+    expect(entry.matcher, isNull);
+    expect(entry.blockOnDecision, isFalse);
+    expect(entry.timeout, const Duration(seconds: 5));
+    final action = entry.action as CommandHookAction;
+    expect(action.fileName, 'hook.sh');
+    expect(
+      action.scriptContent,
+      BusAwarenessPrompt.sessionStartScript(
+        cli: CliTool.claude,
+        additionalContext: BusAwarenessPrompt.additionalContext(
+          member: worker,
+          pushDelivery: false,
+        ),
+      ),
+    );
+  });
+
+  test('bus awareness is empty when the CLI has no sessionStart', () {
+    const worker = TeamMemberConfig(id: 'implementer', name: 'Implementer');
+    expect(
+      completer.busAwarenessHooks(
+        member: worker,
+        cli: CliTool.opencode,
+        pushDelivery: false,
+      ),
+      isEmpty,
+    );
   });
 
   test('delegate hooks become managed preToolUse entries', () {

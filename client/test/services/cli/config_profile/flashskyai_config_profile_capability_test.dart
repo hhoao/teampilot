@@ -169,5 +169,12 @@ void main() {
     final script = await File(scriptPath).readAsString();
     expect(script, contains('http://127.0.0.1:54321/idle'));
     expect(script, contains('exit 2'));
+
+    final sessionStart = (settings['hooks'] as Map)['SessionStart'] as List;
+    expect(sessionStart, isNotEmpty);
+    expect(
+      jsonEncode(sessionStart),
+      contains('teampilot-bus-awareness-sessionStart'),
+    );
   });
 }

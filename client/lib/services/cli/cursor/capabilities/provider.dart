@@ -17,6 +17,7 @@ import '../../registry/cli_tool_registry.dart';
 import '../../registry/config_profile/config_profile_context.dart';
 import '../../registry/config_profile/hook_seat_context_completer.dart';
 import '../../../resource/providers/endpoint_hook_contribution_provider.dart';
+import '../../../resource/providers/bus_awareness_hook_contribution_provider.dart';
 import '../../session_lifecycle/cli_session_manifest_store.dart';
 import '../provider/cursor_agent_models_service.dart';
 import '../provider/cursor_home_layout.dart';
@@ -525,6 +526,7 @@ final class CursorProviderCapability extends CatalogModelCapability
           cli: CliTool.cursor,
           member: member,
           providers: [
+            if (mixed) const BusAwarenessHookContributionProvider(),
             if (busIdle != null && member != null && member.isValid)
               BusIdleHookContributionProvider(
                 endpoint: busIdle,

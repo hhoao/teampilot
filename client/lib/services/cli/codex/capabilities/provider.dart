@@ -23,6 +23,7 @@ import '../../registry/config_profile/hook_seat_context_completer.dart';
 import '../../registry/hook/managed_hook_provisioner.dart';
 import '../../registry/prompt/prompt_hub_service.dart';
 import '../../../resource/providers/endpoint_hook_contribution_provider.dart';
+import '../../../resource/providers/bus_awareness_hook_contribution_provider.dart';
 import '../provider/codex_auth_artifacts.dart';
 import '../provider/codex_effort_catalog.dart';
 import '../provider/codex_home_provisioner.dart';
@@ -394,6 +395,7 @@ final class CodexProviderCapability extends CatalogModelCapability
           cli: CliTool.codex,
           member: member,
           providers: [
+            if (mixed) const BusAwarenessHookContributionProvider(),
             if (busIdle != null && member != null && member.isValid)
               BusIdleHookContributionProvider(
                 endpoint: busIdle,

@@ -1,7 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/hook_entry.dart';
 import 'package:teampilot/models/hook_event.dart';
+import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/registry/config_profile/claude_family_hook_writer.dart';
+import 'package:teampilot/services/cli/registry/config_profile/hook_seat_context_completer.dart';
 import 'package:teampilot/services/cli/registry/capabilities/hook_capability.dart';
 import 'package:teampilot/services/host/host_execution_environment.dart';
 import 'package:teampilot/services/host/host_script_dialect.dart';
@@ -118,6 +120,26 @@ void main() {
     final hook = ((entryJson['hooks'] as List).single) as Map;
     expect(hook['type'], 'http');
     expect(hook['url'], contains('event=PreToolUse'));
+  });
+
+  test('bus awareness sessionStart renders command glue', () {
+    const worker = TeamMemberConfig(id: 'implementer', name: 'Implementer');
+    final entries = const HookSeatContextCompleter().busAwarenessHooks(
+      member: worker,
+      cli: CliTool.claude,
+      pushDelivery: false,
+    );
+    final result = writer.render(entries: entries, ctx: bashCtx('/s/hooks'));
+    expect(result.warnings, isEmpty);
+    final section = result.configFragments['settings.json']! as Map;
+    final start = (section['hooks'] as Map)['SessionStart'] as List;
+    expect(start, isNotEmpty);
+    expect(
+      result.scripts.any(
+        (s) => s.fileName.contains('teampilot-bus-awareness-sessionStart'),
+      ),
+      isTrue,
+    );
   });
 
   test('unsupported event and script-action script file are written', () {

@@ -8,6 +8,7 @@ import 'package:teampilot/services/resource/contribution/resource_origin.dart';
 import 'package:teampilot/services/resource/providers/hook_contribution_provider.dart';
 import 'package:teampilot/services/agent_status/member_agent_status_endpoint.dart';
 import 'package:teampilot/services/resource/providers/endpoint_hook_contribution_provider.dart';
+import 'package:teampilot/services/resource/providers/bus_awareness_hook_contribution_provider.dart';
 import 'package:teampilot/services/team_bus/member_bus_idle_endpoint.dart';
 
 void main() {
@@ -314,6 +315,30 @@ void main() {
         ),
       ),
     );
+  });
+
+  test('bus awareness contributes sessionStart for Claude', () async {
+    const member = TeamMemberConfig(id: 'implementer', name: 'Implementer');
+    final result = await assembler.assemble(
+      context: HookProviderContext(cli: CliTool.claude, member: member),
+      providers: [BusAwarenessHookContributionProvider()],
+    );
+    expect(result.entries.map((entry) => entry.event), [HookEvent.sessionStart]);
+    expect(result.entries.single.id, 'teampilot-bus-awareness-sessionStart');
+  });
+
+  test('bus awareness contributes nothing for OpenCode', () async {
+    const member = TeamMemberConfig(id: 'implementer', name: 'Implementer');
+    final result = await assembler.assemble(
+      context: HookProviderContext(
+        cli: CliTool.opencode,
+        member: member,
+        supportsHttp: false,
+      ),
+      providers: [BusAwarenessHookContributionProvider()],
+    );
+    expect(result.entries, isEmpty);
+    expect(result.assembly.errors, isEmpty);
   });
 
   test('filters unsupported managed endpoint events for Cursor', () async {

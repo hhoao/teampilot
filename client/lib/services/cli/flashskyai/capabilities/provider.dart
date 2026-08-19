@@ -27,6 +27,7 @@ import '../../registry/config_profile/hook_seat_context_completer.dart';
 import '../../registry/hook/managed_hook_provisioner.dart';
 import '../../registry/prompt/prompt_hub_service.dart';
 import '../../../resource/providers/endpoint_hook_contribution_provider.dart';
+import '../../../resource/providers/bus_awareness_hook_contribution_provider.dart';
 import '../../../resource/providers/extension_hook_contribution_provider.dart';
 import '../../../resource/providers/hook_library_contribution_provider.dart';
 import '../../../resource/providers/managed_hook_contribution_provider.dart';
@@ -527,6 +528,7 @@ final class FlashskyaiProviderCapability extends CatalogModelCapability
         cli: CliTool.flashskyai,
         member: member,
         providers: [
+          if (mixed) const BusAwarenessHookContributionProvider(),
           if (mixed && busIdle != null)
             BusIdleHookContributionProvider(
               endpoint: busIdle,

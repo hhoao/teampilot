@@ -298,6 +298,13 @@ void main() {
       );
       expect((stop.single as Map)['command'], "bash '$busScriptPath'");
 
+      final sessionStart = (hooksJson['hooks'] as Map)['sessionStart'] as List;
+      expect(sessionStart, isNotEmpty);
+      expect(
+        (sessionStart.single as Map)['command'],
+        contains('teampilot-hook-teampilot-bus-awareness-sessionStart.sh'),
+      );
+
       final busScript = await fs.readString(busScriptPath);
       expect(busScript, contains('X-Member: planner'));
       expect(busScript, contains('http://127.0.0.1:4321/idle'));
