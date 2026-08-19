@@ -1,5 +1,3 @@
-import 'package:flutter/foundation.dart';
-
 import '../../models/cli_preset.dart';
 import '../../models/team_config.dart';
 import '../../services/cli/registry/capabilities/terminal_behavior_capability.dart';
@@ -62,6 +60,7 @@ final class TabMemberPtyDelivery {
   late final MemberPtyInjectService _ptyInject;
   final PromptSubmitAckTracker _promptAckTracker;
   final Map<String, DateTime> _lastBootGateNudge = {};
+  final Map<String, FullscreenInputSurfaceWatch> _surfaceWatches = {};
 
   TeamBus? busForSession(String sessionId) =>
       _tabStore.openTabBySessionId(sessionId)?.teamBus;
@@ -92,7 +91,12 @@ final class TabMemberPtyDelivery {
       return false;
     }
     final window = shell.probe.describeProbeWindow(scanRows: _composerProbeRows);
-    return isTerminalInputSurfaceReady(
+    final key = '$sessionId:$memberId';
+    final watch = _surfaceWatches.putIfAbsent(
+      key,
+      () => FullscreenInputSurfaceWatch(),
+    );
+    return watch.observe(
       readiness: _behaviorFor(sessionId, memberId)?.inputReadiness,
       probeWindow: window,
     );
@@ -105,6 +109,7 @@ final class TabMemberPtyDelivery {
     final readiness = _behaviorFor(sessionId, memberId)?.inputReadiness;
     if (readiness == null || !readiness.waitsForSurface) return;
     final window = shell.probe.describeProbeWindow(scanRows: _composerProbeRows);
+    if (readiness.isReady(window)) return;
     if (!readiness.needsBootGateNudge(window)) return;
     final key = '$sessionId:$memberId';
     final now = DateTime.now();

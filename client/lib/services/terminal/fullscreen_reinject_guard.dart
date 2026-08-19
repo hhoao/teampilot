@@ -11,7 +11,9 @@ bool shouldSkipReinjectAfterCrStuck({
   required FullscreenCrAckStrategy strategy,
   required bool composerChromeEmpty,
   required bool needleStillVisible,
+  bool needleStagedInComposer = false,
 }) {
   if (strategy != FullscreenCrAckStrategy.composerMovesDown) return false;
+  if (needleStagedInComposer) return false;
   return composerChromeEmpty && needleStillVisible;
 }

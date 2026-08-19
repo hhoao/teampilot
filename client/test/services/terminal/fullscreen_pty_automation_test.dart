@@ -371,6 +371,10 @@ final class _TimestampedPastePort implements FullscreenPtyDeliveryPort {
       _inner.isComposerChromeEmpty(scanRows: scanRows);
 
   @override
+  bool isNeedleStagedInComposer(String needle, {int scanRows = 24}) =>
+      _inner.isNeedleStagedInComposer(needle, scanRows: scanRows);
+
+  @override
   Future<void> clearStagedInput() => _inner.clearStagedInput();
 
   @override
@@ -440,6 +444,10 @@ final class _CursorTranscriptAfterSubmitPort
 
   @override
   bool isComposerChromeEmpty({int scanRows = 24}) => _submitted;
+
+  @override
+  bool isNeedleStagedInComposer(String needle, {int scanRows = 24}) =>
+      !_submitted && _staged != null && _staged!.contains(needle);
 
   @override
   Future<void> clearStagedInput() async {
@@ -521,6 +529,10 @@ final class _ComposerMovesDownStuckButCommittedPort
       _composerBody == null || _composerBody!.trim().isEmpty;
 
   @override
+  bool isNeedleStagedInComposer(String needle, {int scanRows = 24}) =>
+      _composerBody != null && _composerBody!.contains(needle);
+
+  @override
   Future<void> clearStagedInput() async {
     _composerBody = null;
   }
@@ -600,6 +612,10 @@ final class _ComposerMovesDownStuckStagedThenAckPort
       staged == null || staged!.trim().isEmpty;
 
   @override
+  bool isNeedleStagedInComposer(String needle, {int scanRows = 24}) =>
+      staged != null && staged!.contains(needle);
+
+  @override
   Future<void> clearStagedInput() async {
     staged = null;
   }
@@ -676,6 +692,10 @@ final class _ComposerMovesDownEmptyNoNeedleThenAckPort
   @override
   bool isComposerChromeEmpty({int scanRows = 24}) =>
       staged == null || staged!.trim().isEmpty;
+
+  @override
+  bool isNeedleStagedInComposer(String needle, {int scanRows = 24}) =>
+      staged != null && staged!.contains(needle);
 
   @override
   Future<void> clearStagedInput() async {
@@ -758,6 +778,10 @@ final class _AnchorCellStuckButHookAckedPort
 
   @override
   bool isComposerChromeEmpty({int scanRows = 24}) => !submitted;
+
+  @override
+  bool isNeedleStagedInComposer(String needle, {int scanRows = 24}) =>
+      !submitted && staged != null && staged!.contains(needle);
 
   @override
   Future<void> clearStagedInput() async {

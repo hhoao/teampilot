@@ -60,13 +60,20 @@ void main() {
         isFalse);
   });
 
-  test('Codex composer chrome marks the input surface ready', () async {
+  test('Codex composer chrome is not ready until dwell elapses', () async {
     final harness = await _ComposerHarness.connect(cli: CliTool.codex);
     addTearDown(harness.dispose);
 
     await harness.paintComposer();
-    expect(harness.delivery.isMemberComposerSurfaceReady(_sessionId, _memberId),
-        isTrue);
+    expect(
+      harness.delivery.isMemberComposerSurfaceReady(_sessionId, _memberId),
+      isFalse,
+    );
+    await Future<void>.delayed(const Duration(seconds: 1));
+    expect(
+      harness.delivery.isMemberComposerSurfaceReady(_sessionId, _memberId),
+      isTrue,
+    );
   });
 
   test('Claude boot frame is enough without composer chrome', () async {

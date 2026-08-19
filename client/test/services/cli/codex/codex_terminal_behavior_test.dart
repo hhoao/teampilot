@@ -41,6 +41,10 @@ void main() {
       expect(behavior.inputReadiness.isReady('› '), isTrue);
     });
 
+    test('composer chrome must dwell before submit, matching real PTY boot', () {
+      expect(behavior.inputReadiness.readyDwell, const Duration(seconds: 1));
+    });
+
     test('boot-gate needles match Codex first-run screens', () {
       expect(
         behavior.inputReadiness.needsBootGateNudge(

@@ -92,6 +92,12 @@ final class FakeFullscreenPtyDeliveryPort implements FullscreenPtyDeliveryPort {
   }
 
   @override
+  bool isNeedleStagedInComposer(String needle, {int scanRows = 24}) {
+    if (staged == null || needle.isEmpty) return false;
+    return staged!.contains(needle);
+  }
+
+  @override
   Future<void> clearStagedInput() async {
     clearCount++;
     staged = null;

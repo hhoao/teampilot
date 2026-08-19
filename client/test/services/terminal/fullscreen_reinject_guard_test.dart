@@ -4,7 +4,7 @@ import 'package:teampilot/services/terminal/fullscreen_reinject_guard.dart';
 
 void main() {
   group('shouldSkipReinjectAfterCrStuck', () {
-    test('composerMovesDown skips only when empty and needle visible', () {
+    test('composerMovesDown skips only when empty, needle visible, not staged', () {
       expect(
         shouldSkipReinjectAfterCrStuck(
           strategy: FullscreenCrAckStrategy.composerMovesDown,
@@ -12,6 +12,18 @@ void main() {
           needleStillVisible: true,
         ),
         isTrue,
+      );
+    });
+
+    test('composerMovesDown does not skip when needle still staged in composer', () {
+      expect(
+        shouldSkipReinjectAfterCrStuck(
+          strategy: FullscreenCrAckStrategy.composerMovesDown,
+          composerChromeEmpty: true,
+          needleStillVisible: true,
+          needleStagedInComposer: true,
+        ),
+        isFalse,
       );
     });
 

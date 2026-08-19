@@ -181,7 +181,40 @@ bool isFullscreenPromptAtAnchor(
   return _matchesNeedleAt(grid, anchor.row, anchor.startCol, needleRunes, composerPrefix: composerPrefix);
 }
 
-/// Whether a CR submit is complete per [config].
+/// True when [needle] is still the body of a composer-prefixed row.
+///
+/// Distinguishes a live input box (`› hello`) from transcript residual
+/// (`hello` without composer chrome). An extra empty `›` below staged text
+/// is a TUI relayout, not a submit.
+bool isNeedleStagedInComposer(
+  TerminalScreenGrid grid,
+  String needle, {
+  required String composerPrefix,
+  int scanRows = 24,
+}) {
+  final prefix = composerPrefix.trim();
+  if (prefix.isEmpty || needle.isEmpty) return false;
+  final rows = grid.rows;
+  if (rows == 0 || grid.columns == 0) return false;
+  final needleRunes = needle.runes.toList();
+  final startRow = (rows - scanRows).clamp(0, rows - 1);
+  for (var r = rows - 1; r >= startRow; r--) {
+    if (!_rowStartsWith(grid, r, prefix)) continue;
+    final body = _logicalRowText(grid, r).trimLeft();
+    if (body.length <= prefix.length) continue;
+    if (_findNeedleStartCol(
+          grid,
+          r,
+          needleRunes,
+          composerPrefix: prefix,
+        ) >=
+        0) {
+      return true;
+    }
+  }
+  return false;
+}
+
 bool isFullscreenPromptSubmitted(
   TerminalScreenGrid grid,
   FullscreenPromptAnchor anchor, {
@@ -195,8 +228,20 @@ bool isFullscreenPromptSubmitted(
     case FullscreenCrAckStrategy.anchorCellClears:
       return !isFullscreenPromptAtAnchor(grid, anchor, composerPrefix: composerPrefix);
     case FullscreenCrAckStrategy.composerMovesDown:
-      if (!isFullscreenPromptAtAnchor(grid, anchor, composerPrefix: composerPrefix)) return true;
       final prefix = composerPrefix?.trim();
+      if (prefix != null &&
+          prefix.isNotEmpty &&
+          isNeedleStagedInComposer(
+            grid,
+            anchor.needle,
+            composerPrefix: prefix,
+            scanRows: scanRows,
+          )) {
+        return false;
+      }
+      if (!isFullscreenPromptAtAnchor(grid, anchor, composerPrefix: composerPrefix)) {
+        return true;
+      }
       if (prefix == null || prefix.isEmpty) return false;
       return _hasComposerRowBelow(
         grid,

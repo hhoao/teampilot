@@ -36,5 +36,6 @@ final class CodexTerminalBehavior implements TerminalBehaviorCapability {
       'Yes, continue',
       'Sign in with ChatGPT',
     ],
+    readyDwell: Duration(seconds: 1),
   );
 }

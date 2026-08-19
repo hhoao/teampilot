@@ -64,6 +64,18 @@ final class TerminalScreenProbeController {
         scanRows: scanRows,
       );
 
+  bool isNeedleStagedInComposer(
+    String needle, {
+    required String composerPrefix,
+    int scanRows = 24,
+  }) =>
+      probe.isNeedleStagedInComposer(
+        _screenGrid,
+        needle,
+        composerPrefix: composerPrefix,
+        scanRows: scanRows,
+      );
+
   String describeProbeWindow({int scanRows = 8}) =>
       probe.describeProbeWindow(_screenGrid, scanRows: scanRows);
 

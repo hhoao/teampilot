@@ -25,6 +25,9 @@ abstract interface class FullscreenPtyDeliveryPort {
   /// Whether the bottommost composer chrome row is prefix-only (no staged body).
   bool isComposerChromeEmpty({int scanRows = 24});
 
+  /// Whether [needle] is still the body of a composer-prefixed input row.
+  bool isNeedleStagedInComposer(String needle, {int scanRows = 24});
+
   Future<void> clearStagedInput();
 
   Future<void> pasteText(String text);

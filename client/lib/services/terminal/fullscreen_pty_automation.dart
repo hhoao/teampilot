@@ -187,6 +187,10 @@ class FullscreenPtyAutomation {
       strategy: port.crAckConfig.strategy,
       composerChromeEmpty: port.isComposerChromeEmpty(scanRows: scanRows),
       needleStillVisible: port.locateNeedle(needle, scanRows: scanRows) != null,
+      needleStagedInComposer: port.isNeedleStagedInComposer(
+        needle,
+        scanRows: scanRows,
+      ),
     );
     if (skip) {
       appLogger.i(

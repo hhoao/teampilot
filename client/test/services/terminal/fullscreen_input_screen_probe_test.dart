@@ -183,15 +183,70 @@ void main() {
     );
   });
 
-  test('isSubmitted true for composerMovesDown when prefix row appears below', () {
+  test('isSubmitted false for composerMovesDown when original composer still holds needle', () {
     final grid = _FakeGrid.fromRows([
       'codex output above',
       '› codex-probe-12345',
-      'Working…',
       '› ',
     ]);
     final anchor = locateFullscreenPromptNeedle(grid, 'codex-probe-12345')!;
     expect(isFullscreenPromptAtAnchor(grid, anchor), isTrue);
+    expect(
+      isFullscreenPromptSubmitted(
+        grid,
+        anchor,
+        strategy: FullscreenCrAckStrategy.composerMovesDown,
+        composerPrefix: '\u203a',
+        scanRows: 24,
+      ),
+      isFalse,
+      reason: 'empty › below a still-staged composer is a relayout, not submit',
+    );
+  });
+
+  test('isSubmitted false for composerMovesDown when needle moved with live composer', () {
+    final grid = _FakeGrid.fromRows([
+      'codex output above',
+      'status footer default · /tmp',
+      '› codex-probe-12345',
+    ]);
+    const anchor = FullscreenPromptAnchor(
+      row: 1,
+      startCol: 2,
+      needle: 'codex-probe-12345',
+    );
+    expect(isFullscreenPromptAtAnchor(grid, anchor), isFalse);
+    expect(
+      isFullscreenPromptSubmitted(
+        grid,
+        anchor,
+        strategy: FullscreenCrAckStrategy.composerMovesDown,
+        composerPrefix: '\u203a',
+        scanRows: 24,
+      ),
+      isFalse,
+      reason: 'composer shifted down with the staged body still in the input box',
+    );
+  });
+
+  test('isSubmitted true for composerMovesDown when needle left composer', () {
+    final grid = _FakeGrid.fromRows([
+      'codex output above',
+      'codex-probe-12345',
+      'Working…',
+      '› ',
+    ]);
+    const anchor = FullscreenPromptAnchor(
+      row: 1,
+      startCol: 0,
+      needle: 'codex-probe-12345',
+    );
+    expect(isNeedleStagedInComposer(
+      grid,
+      'codex-probe-12345',
+      composerPrefix: '\u203a',
+      scanRows: 24,
+    ), isFalse);
     expect(
       isFullscreenPromptSubmitted(
         grid,
