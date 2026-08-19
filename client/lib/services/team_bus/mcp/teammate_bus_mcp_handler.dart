@@ -4,6 +4,7 @@ import '../../../utils/logging/logger.dart';
 import '../artifacts/artifact_transfer_service.dart';
 import '../cancellation.dart';
 import '../team_bus.dart';
+import '../teambus_prompt.dart';
 import 'jsonrpc.dart';
 import 'mcp_method.dart';
 import 'toolkit/mcp_tool_response.dart';
@@ -93,11 +94,16 @@ class TeammateBusMcpHandler {
   void notifyIdle(String memberId) => _bus.onMemberIdle(memberId);
 
   /// Stop-hook 拦截语：把成员推回 `wait_for_message`，不让它结束 turn。
-  static const stopRedirectReason =
-      '[teammate-bus] Do not stop. Call wait_for_message — it blocks until you '
+  static const _stopRedirectReasonBody =
+      'Do not stop. Call wait_for_message — it blocks until you '
       'have something to do and returns either teammate/operator messages or a '
       'task claimed for you from the work queue. You coordinate through the '
       'bus, not by ending your turn.';
+
+  static String get stopRedirectReason => TeamBusPrompt.format(
+    type: 'stop_reason',
+    content: _stopRedirectReasonBody,
+  );
 
   /// Stop hook 的 JSON 响应体：默认永远回 `decision:block`，把成员一直推回
   /// `wait_for_message`（永不主动结束 turn）。仅当该成员连续 idle 超过
