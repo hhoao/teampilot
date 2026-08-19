@@ -88,36 +88,70 @@ void main() {
     }
   });
 
-  test('ensureSessionProfile invokes lifecycle ensurePersisted for cursor', () async {
-    const workspaceId = 'workspace-1';
-    const sessionId = 'session-1';
-    const teamId = 'team-cursor';
-    const memberId = 'team-lead';
+  test(
+    'ensureSessionProfile invokes lifecycle ensurePersisted for cursor',
+    () async {
+      const workspaceId = 'workspace-1';
+      const sessionId = 'session-1';
+      const teamId = 'team-cursor';
+      const memberId = 'team-lead';
 
-    await service.ensureSessionProfile(
-      workspaceId,
-      sessionId,
-      teamId,
-      cli: CliTool.cursor,
-      team: TeamProfile(
-        id: teamId,
-        name: 'Cursor Team',
+      await service.ensureSessionProfile(
+        workspaceId,
+        sessionId,
+        teamId,
         cli: CliTool.cursor,
-        teamMode: TeamMode.mixed,
-        members: const [
-          TeamMemberConfig(
-            id: TeamMemberNaming.teamLeadName,
-            name: 'Team Lead',
-          ),
-        ],
-      ),
-      memberId: memberId,
-    );
+        team: TeamProfile(
+          id: teamId,
+          name: 'Cursor Team',
+          cli: CliTool.cursor,
+          teamMode: TeamMode.mixed,
+          members: const [
+            TeamMemberConfig(
+              id: TeamMemberNaming.teamLeadName,
+              name: 'Team Lead',
+            ),
+          ],
+        ),
+        memberId: memberId,
+      );
 
-    expect(recording.ensurePersistedCalls, 1);
-    expect(recording.lastPersistContext?.workspaceId, workspaceId);
-    expect(recording.lastPersistContext?.sessionId, sessionId);
-    expect(recording.lastPersistContext?.memberId, memberId);
-    expect(recording.lastPersistContext?.tool, CliTool.cursor);
-  });
+      expect(recording.ensurePersistedCalls, 1);
+      expect(recording.lastPersistContext?.workspaceId, workspaceId);
+      expect(recording.lastPersistContext?.sessionId, sessionId);
+      expect(recording.lastPersistContext?.memberId, memberId);
+      expect(recording.lastPersistContext?.tool, CliTool.cursor);
+    },
+  );
+
+  test(
+    'ensureSessionProfile forwards additionalDirectories to persist',
+    () async {
+      const extra = '/workspace/extra';
+      await service.ensureSessionProfile(
+        'workspace-1',
+        'session-1',
+        'team-cursor',
+        cli: CliTool.cursor,
+        team: TeamProfile(
+          id: 'team-cursor',
+          name: 'Cursor Team',
+          cli: CliTool.cursor,
+          teamMode: TeamMode.mixed,
+          members: const [
+            TeamMemberConfig(
+              id: TeamMemberNaming.teamLeadName,
+              name: 'Team Lead',
+            ),
+          ],
+        ),
+        memberId: 'team-lead',
+        workingDirectory: '/workspace/cwd',
+        additionalDirectories: const [extra],
+      );
+
+      expect(recording.lastPersistContext?.workingDirectory, '/workspace/cwd');
+      expect(recording.lastPersistContext?.additionalDirectories, [extra]);
+    },
+  );
 }

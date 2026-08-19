@@ -27,6 +27,7 @@ class CliSessionPersistContext {
     this.team,
     this.busIdle,
     this.workingDirectory = '',
+    this.additionalDirectories = const [],
     this.crossMachine = false,
   });
 
@@ -38,6 +39,7 @@ class CliSessionPersistContext {
   final TeamProfile? team;
   final MemberBusIdleEndpoint? busIdle;
   final String workingDirectory;
+  final List<String> additionalDirectories;
   final bool crossMachine;
 }
 
@@ -51,6 +53,7 @@ class CliSessionInitContext {
     this.team,
     this.busIdle,
     this.workingDirectory = '',
+    this.additionalDirectories = const [],
     this.crossMachine = false,
     this.resolvedProviderId,
     this.credentialBasePath,
@@ -64,6 +67,7 @@ class CliSessionInitContext {
   final TeamProfile? team;
   final MemberBusIdleEndpoint? busIdle;
   final String workingDirectory;
+  final List<String> additionalDirectories;
   final bool crossMachine;
 
   /// Launch-resolved Cursor provider id (preset / member / team), when known.

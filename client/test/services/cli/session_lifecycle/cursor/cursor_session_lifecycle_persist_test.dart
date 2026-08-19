@@ -21,6 +21,7 @@ void main() {
   const workspaceId = 'ws';
   const sessionId = 'sess';
   const workingDirectory = '/home/hhoa/git/hhoa/teampilot';
+  const additionalDirectory = '/home/hhoa/git/shared';
   const slug = 'home-hhoa-git-hhoa-teampilot';
 
   late InMemoryFilesystem fs;
@@ -42,7 +43,10 @@ void main() {
     ],
   );
 
-  CliSessionPersistContext persistContext({TeamProfile? team}) {
+  CliSessionPersistContext persistContext({
+    TeamProfile? team,
+    List<String> additionalDirectories = const [],
+  }) {
     return CliSessionPersistContext(
       workspaceId: workspaceId,
       sessionId: sessionId,
@@ -50,6 +54,7 @@ void main() {
       paths: pathsDelegate,
       team: team ?? mixedCursorTeam(),
       workingDirectory: workingDirectory,
+      additionalDirectories: additionalDirectories,
     );
   }
 
@@ -116,6 +121,24 @@ void main() {
         }
       },
     );
+
+    test('writes trust markers for additional directories', () async {
+      await capability.ensurePersisted(
+        persistContext(additionalDirectories: const [additionalDirectory]),
+      );
+
+      for (final memberId in ['team-lead', 'architect']) {
+        final memberHome = lifecyclePaths.memberHomeRoot(memberId);
+        for (final directory in [workingDirectory, additionalDirectory]) {
+          final trustPath = CursorWorkspaceTrust.trustMarkerPath(
+            memberHome,
+            directory,
+            pathContext: fs.pathContext,
+          );
+          expect((await fs.stat(trustPath)).isFile, isTrue);
+        }
+      }
+    });
 
     test('is idempotent on second call', () async {
       final ctx = persistContext();

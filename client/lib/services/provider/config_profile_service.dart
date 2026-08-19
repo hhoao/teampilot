@@ -679,6 +679,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     Map<String, Map<String, Object?>>? extraMcpServers,
     Iterable<String> projectMcpRoots = const [],
     String workingDirectory = '',
+    List<String> additionalDirectories = const [],
     MemberBusIdleEndpoint? busIdle,
     bool provisionResources = true,
   }) async {
@@ -792,6 +793,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
             team: team,
             busIdle: busIdle,
             workingDirectory: workingDirectory,
+            additionalDirectories: additionalDirectories,
           ),
         );
     if (!provisionResources) return warnings;
@@ -1393,6 +1395,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
           additionalDirectories: additionalDirectories,
         ),
         workingDirectory: workingDirectory,
+        additionalDirectories: additionalDirectories,
         busIdle: busIdle,
         provisionResources: false,
       ),

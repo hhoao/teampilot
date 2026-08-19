@@ -165,6 +165,7 @@ final class CursorSessionLifecycleCapability implements CliSessionCapability {
         fs: ctx.paths.fs,
         memberHome: agentHome,
         workingDirectory: ctx.workingDirectory,
+        additionalDirectories: ctx.additionalDirectories,
       );
     }
 
@@ -268,6 +269,7 @@ final class CursorSessionLifecycleCapability implements CliSessionCapability {
           team: ctx.team,
           busIdle: ctx.busIdle,
           workingDirectory: ctx.workingDirectory,
+          additionalDirectories: ctx.additionalDirectories,
           crossMachine: ctx.crossMachine,
         ),
       );
@@ -305,6 +307,7 @@ final class CursorSessionLifecycleCapability implements CliSessionCapability {
           fs: ctx.paths.fs,
           memberHome: memberHome,
           workingDirectory: ctx.workingDirectory,
+          additionalDirectories: ctx.additionalDirectories,
         );
         return CliSessionInitResult(phase: manifest.phase, warnings: warnings);
       }
@@ -638,6 +641,7 @@ final class CursorSessionLifecycleCapability implements CliSessionCapability {
       fs: ctx.paths.fs,
       memberHome: memberHome,
       workingDirectory: ctx.workingDirectory,
+      additionalDirectories: ctx.additionalDirectories,
     );
 
     final members = Map<String, CliSessionManifestMember>.from(
@@ -865,12 +869,15 @@ final class CursorSessionLifecycleCapability implements CliSessionCapability {
     required Filesystem fs,
     required String memberHome,
     required String workingDirectory,
+    List<String> additionalDirectories = const [],
   }) async {
     final home = memberHome.trim();
     final workDir = workingDirectory.trim();
     if (home.isEmpty || workDir.isEmpty) return;
-    await CursorWorkspaceTrustProvisioner(
-      fs: fs,
-    ).provisionLaunchWorkspaces(homeRoot: home, workingDirectory: workDir);
+    await CursorWorkspaceTrustProvisioner(fs: fs).provisionLaunchWorkspaces(
+      homeRoot: home,
+      workingDirectory: workDir,
+      additionalDirectories: additionalDirectories,
+    );
   }
 }

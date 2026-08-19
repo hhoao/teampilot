@@ -95,7 +95,8 @@ void main() {
       );
       final home = paths.pathContext.join(toolDir, 'home');
 
-      final contribution = await contribute(capability,
+      final contribution = await contribute(
+        capability,
         ConfigProfileLaunchContext(
           workspaceId: 'workspace-1',
           teamId: '',
@@ -126,7 +127,8 @@ void main() {
         final scope = mixedScope();
         final home = memberHome(scope);
 
-        final contribution = await contribute(capability,
+        final contribution = await contribute(
+          capability,
           ConfigProfileLaunchContext(
             workspaceId: 'workspace-1',
             teamId: scope.teamId,
@@ -157,7 +159,8 @@ void main() {
         );
         final scope = mixedScope();
 
-        final contribution = await contribute(capability,
+        final contribution = await contribute(
+          capability,
           ConfigProfileLaunchContext(
             workspaceId: 'workspace-1',
             teamId: scope.teamId,
@@ -194,7 +197,8 @@ void main() {
         );
         final scope = mixedScope();
 
-        final contribution = await contribute(capability,
+        final contribution = await contribute(
+          capability,
           ConfigProfileLaunchContext(
             workspaceId: 'workspace-1',
             teamId: scope.teamId,
@@ -235,7 +239,8 @@ void main() {
         );
         final scope = mixedScope();
 
-        final contribution = await contribute(capability,
+        final contribution = await contribute(
+          capability,
           ConfigProfileLaunchContext(
             workspaceId: 'workspace-1',
             teamId: scope.teamId,
@@ -270,7 +275,8 @@ void main() {
         final scope = mixedScope();
         final home = memberHome(scope);
 
-        await contribute(capability,
+        await contribute(
+          capability,
           ConfigProfileLaunchContext(
             workspaceId: 'workspace-1',
             teamId: scope.teamId,
@@ -287,6 +293,49 @@ void main() {
 
         expect((await fs.stat(layout.roleRule(home))).exists, isFalse);
         expect((await fs.stat(layout.mcpConfig(home))).exists, isFalse);
+      },
+    );
+
+    test(
+      'mixed contributeLaunch writes trust markers for additional directories',
+      () async {
+        const cwd = '/workspace/cwd';
+        const extra = '/workspace/extra';
+        const team = TeamProfile(
+          id: 'team-a',
+          name: 'agent',
+          cli: CliTool.cursor,
+          teamMode: TeamMode.mixed,
+        );
+        final scope = mixedScope();
+        final home = memberHome(scope);
+
+        await contribute(
+          capability,
+          ConfigProfileLaunchContext(
+            workspaceId: 'workspace-1',
+            teamId: scope.teamId,
+            sessionId: scope.sessionId,
+            scope: scope,
+            team: team,
+            member: member,
+            members: const [member],
+            workingDirectory: cwd,
+            additionalDirectories: const [extra],
+            paths: paths,
+            catalog: paths,
+            busIdle: MemberBusIdleEndpoint(url: 'http://127.0.0.1:4321/idle'),
+          ),
+        );
+
+        for (final directory in [cwd, extra]) {
+          final trustPath = CursorWorkspaceTrust.trustMarkerPath(
+            home,
+            directory,
+            pathContext: fs.pathContext,
+          );
+          expect((await fs.stat(trustPath)).isFile, isTrue);
+        }
       },
     );
   });

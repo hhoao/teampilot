@@ -550,6 +550,7 @@ final class CursorProviderCapability extends CatalogModelCapability
         );
       }
 
+      await _provisionWorkspaceTrust(ctx: ctx, homeRoot: agentHome);
       return SessionHomeContribution(
         environment: CursorLaunchEnvironment.forMixed(
           homeRoot: agentHome,

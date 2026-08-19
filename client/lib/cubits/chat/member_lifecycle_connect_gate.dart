@@ -128,8 +128,8 @@ final class MemberLifecycleConnectGate {
     final resolvedProviderId = stagedMember.provider.trim();
     final launchTarget = launchWorkTarget(session, memberId: member.id);
     final memberWork = memberWorkDirs(session, member.id);
-    final busIdle = team.teamMode == TeamMode.mixed &&
-            !usesSshTransport(launchTarget.kind)
+    final busIdle =
+        team.teamMode == TeamMode.mixed && !usesSshTransport(launchTarget.kind)
         ? MemberBusIdleEndpoint.local(
             teammateBusMcpGateway,
             sessionId: session.sessionId,
@@ -146,6 +146,7 @@ final class MemberLifecycleConnectGate {
         team: team,
         busIdle: busIdle,
         workingDirectory: memberWork.workingDirectory,
+        additionalDirectories: memberWork.addDirs,
         crossMachine: usesSshTransport(launchTarget.kind),
       ),
     );
@@ -160,9 +161,11 @@ final class MemberLifecycleConnectGate {
         team: team,
         busIdle: busIdle,
         workingDirectory: memberWork.workingDirectory,
+        additionalDirectories: memberWork.addDirs,
         crossMachine: usesSshTransport(launchTarget.kind),
-        resolvedProviderId:
-            resolvedProviderId.isNotEmpty ? resolvedProviderId : null,
+        resolvedProviderId: resolvedProviderId.isNotEmpty
+            ? resolvedProviderId
+            : null,
         credentialBasePath: paths.basePath,
       ),
     );
@@ -218,8 +221,8 @@ final class MemberLifecycleConnectGate {
     final paths = await resolvePaths(session, member.id);
     final launchTarget = launchWorkTarget(session, memberId: member.id);
     final memberWork = memberWorkDirs(session, member.id);
-    final busIdle = team.teamMode == TeamMode.mixed &&
-            !usesSshTransport(launchTarget.kind)
+    final busIdle =
+        team.teamMode == TeamMode.mixed && !usesSshTransport(launchTarget.kind)
         ? MemberBusIdleEndpoint.local(
             teammateBusMcpGateway,
             sessionId: session.sessionId,
