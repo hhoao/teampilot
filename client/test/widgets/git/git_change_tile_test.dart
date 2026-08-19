@@ -3,6 +3,7 @@ import 'package:flutter/gestures.dart'
     show PointerDeviceKind, kSecondaryMouseButton;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/git_status.dart';
 import 'package:teampilot/widgets/git/git_change_tile.dart';
@@ -226,4 +227,61 @@ void main() {
       expect(find.text('M'), findsOneWidget);
     });
   });
+
+  testWidgets(
+    'selected row keeps secondaryContainer on hover instead of dropping it',
+    (tester) async {
+      final scheme = ColorScheme.fromSeed(
+        seedColor: Colors.teal,
+        brightness: Brightness.dark,
+      );
+      await runOnDesktop(tester, () async {
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: ThemeData(colorScheme: scheme, useMaterial3: true),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: Scaffold(
+              body: SizedBox(
+                width: 400,
+                height: 36,
+                child: tile(
+                  change: const GitFileChange(
+                    path: 'main.dart',
+                    kind: GitChangeKind.modified,
+                    staged: false,
+                  ),
+                  selected: true,
+                ),
+              ),
+            ),
+          ),
+        );
+        final gesture = await tester.createGesture(
+          kind: PointerDeviceKind.mouse,
+        );
+        await gesture.addPointer(location: Offset.zero);
+        addTearDown(gesture.removePointer);
+        await tester.pump();
+        await gesture.moveTo(tester.getCenter(find.byType(GitChangeTile)));
+        await tester.pumpAndSettle();
+        final box = tester.widget<AnimatedContainer>(
+          find.descendant(
+            of: find.byType(GitChangeTile),
+            matching: find.byType(AnimatedContainer),
+          ),
+        );
+        final hovered = (box.decoration! as BoxDecoration).color!;
+        expect(
+          hovered,
+          Color.alphaBlend(
+            TpHover.defaultHoverColor(
+              tester.element(find.byType(GitChangeTile)),
+            ),
+            scheme.secondaryContainer,
+          ),
+        );
+      });
+    },
+  );
 }
