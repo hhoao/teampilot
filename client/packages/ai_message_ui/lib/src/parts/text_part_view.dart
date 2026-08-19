@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:tp_markdown/tp_markdown.dart';
 
 import '../history_render_scope.dart';
+import '../markdown_link_actions.dart';
 import '../message_role_scope.dart';
 import '../message_streaming_scope.dart';
 import '../strings.dart';
@@ -174,22 +175,31 @@ class _AiTextPartViewState extends State<AiTextPartView> {
 
   @override
   Widget build(BuildContext context) {
+    final onTapLink = widget.onTapLink ?? _scopedTapLink(context);
     final scope = AiHistoryRenderScope.maybeOf(context);
     if (scope == null) {
       return _ChatMarkdownView(
         document: _document,
-        onTapLink: widget.onTapLink,
+        onTapLink: onTapLink,
       );
     }
     return _ExpandableHistoryMarkdown(
       document: _document,
       fullText: widget.text,
       clipped: _compiledClip,
-      onTapLink: widget.onTapLink,
+      onTapLink: onTapLink,
       budget: scope.contentBudget,
       streaming: AiMessageStreamingScope.of(context),
     );
   }
+}
+
+MarkdownTapLinkCallback? _scopedTapLink(BuildContext context) {
+  final tap = AiMarkdownLinkActions.of(context).onLinkTap;
+  if (tap == null) return null;
+  return (_, href, __) {
+    if (href != null && href.isNotEmpty) tap(href);
+  };
 }
 
 MarkdownResolvers _chatResolvers(MarkdownTapLinkCallback? onTapLink) {
