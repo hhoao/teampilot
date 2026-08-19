@@ -108,4 +108,71 @@ void main() {
       expect(legacyHttp.hasField('endpointConfig.url'), isTrue);
     },
   );
+
+  test('derived schema preserves credential reference default value', () {
+    final schema = ManagedProviderEditorSchema.fromProvider(
+      ManagedProvider(
+        id: 'p1',
+        name: 'Custom',
+        kind: ManagedProviderKind.customHttp,
+        adapterId: 'http-json',
+        credentialRef: 'managed-provider:p1',
+      ),
+    );
+
+    expect(field(schema, 'credentialRef').defaultValue, 'managed-provider:p1');
+  });
+
+  test('official subscriptions hide default HTTP credential metadata', () {
+    final official = ManagedProviderEditorSchema.fromProvider(
+      ManagedProvider(
+        id: 'codex',
+        name: 'Codex',
+        kind: ManagedProviderKind.subscriptionQuota,
+        adapterId: 'official-codex-subscription',
+        credentialRef: 'managed-provider:codex',
+      ),
+    );
+
+    expect(
+      field(official, 'credentialRef').defaultValue,
+      'managed-provider:codex',
+    );
+    expect(official.hasField('endpointConfig.credentialName'), isFalse);
+    expect(official.hasField('endpointConfig.credentialField'), isFalse);
+    expect(official.hasField('endpointConfig.credentialPlacement'), isFalse);
+    expect(official.hasField('endpointConfig.credentialPrefix'), isFalse);
+
+    final legacyOfficial = ManagedProviderEditorSchema.fromProvider(
+      ManagedProvider(
+        id: 'claude',
+        name: 'Claude',
+        kind: ManagedProviderKind.subscriptionQuota,
+        adapterId: 'official-claude-subscription',
+        endpointConfig: ManagedProviderEndpointConfig(
+          credentialName: 'Authorization',
+          credentialField: 'apiKey',
+          credentialPlacement: 'query',
+          credentialPrefix: 'Bearer ',
+        ),
+      ),
+    );
+
+    expect(
+      field(legacyOfficial, 'endpointConfig.credentialName').defaultValue,
+      'Authorization',
+    );
+    expect(
+      field(legacyOfficial, 'endpointConfig.credentialField').defaultValue,
+      'apiKey',
+    );
+    expect(
+      field(legacyOfficial, 'endpointConfig.credentialPlacement').defaultValue,
+      'query',
+    );
+    expect(
+      field(legacyOfficial, 'endpointConfig.credentialPrefix').defaultValue,
+      'Bearer ',
+    );
+  });
 }

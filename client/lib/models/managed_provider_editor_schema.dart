@@ -53,9 +53,9 @@ class ManagedProviderEditorSchema extends Equatable {
   bool hasField(String key) => fields.any((field) => field.key == key);
 
   static ManagedProviderEditorSchema fromProvider(ManagedProvider provider) {
+    final usesHttpEditor = _usesHttpEditor(provider);
     final hasQuery =
-        _usesHttpEditor(provider) ||
-        _hasEndpointDeclaration(provider.endpointConfig);
+        usesHttpEditor || _hasEndpointDeclaration(provider.endpointConfig);
     final sections = <ManagedProviderEditorSection>{
       ManagedProviderEditorSection.basics,
       if (hasQuery) ManagedProviderEditorSection.query,
@@ -84,7 +84,10 @@ class ManagedProviderEditorSchema extends Equatable {
         readOnly: _isOfficialSubscriptionAdapter(provider.adapterId),
       ),
       if (hasQuery) ..._queryFields(provider.endpointConfig),
-      ..._credentialFields(provider.endpointConfig),
+      ..._credentialFields(
+        provider,
+        exposeHttpCredentialMetadata: usesHttpEditor,
+      ),
       ..._displayFields(provider.displayConfig),
       ManagedProviderEditorField(
         key: 'enabled',
@@ -162,44 +165,75 @@ List<ManagedProviderEditorField> _queryFields(
 }
 
 List<ManagedProviderEditorField> _credentialFields(
-  ManagedProviderEndpointConfig endpoint,
-) => [
-  if (endpoint.credentialField != null && endpoint.credentialField!.isNotEmpty)
+  ManagedProvider provider, {
+  required bool exposeHttpCredentialMetadata,
+}) {
+  final endpoint = provider.endpointConfig;
+  final fields = <ManagedProviderEditorField>[
     ManagedProviderEditorField(
-      key: endpoint.credentialField!,
-      kind: ManagedProviderEditorFieldKind.secret,
-      required: true,
+      key: 'credentialRef',
+      kind: ManagedProviderEditorFieldKind.text,
+      required: false,
+      defaultValue: _defaultText(provider.credentialRef),
     ),
-  ManagedProviderEditorField(
-    key: 'credentialRef',
-    kind: ManagedProviderEditorFieldKind.text,
-    required: false,
-  ),
-  ManagedProviderEditorField(
-    key: 'endpointConfig.credentialName',
-    kind: ManagedProviderEditorFieldKind.text,
-    required: false,
-    defaultValue: _defaultText(endpoint.credentialName),
-  ),
-  ManagedProviderEditorField(
-    key: 'endpointConfig.credentialField',
-    kind: ManagedProviderEditorFieldKind.text,
-    required: false,
-    defaultValue: _defaultText(endpoint.credentialField),
-  ),
-  ManagedProviderEditorField(
-    key: 'endpointConfig.credentialPlacement',
-    kind: ManagedProviderEditorFieldKind.text,
-    required: false,
-    defaultValue: _defaultText(endpoint.credentialPlacement),
-  ),
-  ManagedProviderEditorField(
-    key: 'endpointConfig.credentialPrefix',
-    kind: ManagedProviderEditorFieldKind.text,
-    required: false,
-    defaultValue: _defaultText(endpoint.credentialPrefix),
-  ),
-];
+  ];
+  final includeSecretField =
+      endpoint.credentialField != null && endpoint.credentialField!.isNotEmpty;
+  if (includeSecretField) {
+    fields.add(
+      ManagedProviderEditorField(
+        key: endpoint.credentialField!,
+        kind: ManagedProviderEditorFieldKind.secret,
+        required: true,
+      ),
+    );
+  }
+  final includeAllMetadata = exposeHttpCredentialMetadata;
+  if (includeAllMetadata ||
+      endpoint.credentialName != null && endpoint.credentialName!.isNotEmpty) {
+    fields.add(
+      ManagedProviderEditorField(
+        key: 'endpointConfig.credentialName',
+        kind: ManagedProviderEditorFieldKind.text,
+        required: false,
+        defaultValue: _defaultText(endpoint.credentialName),
+      ),
+    );
+  }
+  if (includeAllMetadata || includeSecretField) {
+    fields.add(
+      ManagedProviderEditorField(
+        key: 'endpointConfig.credentialField',
+        kind: ManagedProviderEditorFieldKind.text,
+        required: false,
+        defaultValue: _defaultText(endpoint.credentialField),
+      ),
+    );
+  }
+  if (includeAllMetadata || endpoint.credentialPlacement != 'header') {
+    fields.add(
+      ManagedProviderEditorField(
+        key: 'endpointConfig.credentialPlacement',
+        kind: ManagedProviderEditorFieldKind.text,
+        required: false,
+        defaultValue: _defaultText(endpoint.credentialPlacement),
+      ),
+    );
+  }
+  if (includeAllMetadata ||
+      endpoint.credentialPrefix != null &&
+          endpoint.credentialPrefix!.isNotEmpty) {
+    fields.add(
+      ManagedProviderEditorField(
+        key: 'endpointConfig.credentialPrefix',
+        kind: ManagedProviderEditorFieldKind.text,
+        required: false,
+        defaultValue: _defaultText(endpoint.credentialPrefix),
+      ),
+    );
+  }
+  return fields;
+}
 
 List<ManagedProviderEditorField> _displayFields(
   ManagedProviderDisplayConfig display,
