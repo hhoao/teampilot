@@ -234,9 +234,15 @@ class ManifestExecutor {
             ..writeln(delimiter);
         case ManifestSymlink(:final linkPath, :final target):
           final dir = _shellQuote(_dirname(linkPath));
+          // Replace leftover files/dirs at the link path. GNU `ln -sf` will
+          // otherwise create `dest/$(basename target)` when dest is a
+          // directory, then fail with "cannot overwrite directory".
           buffer
             ..writeln('mkdir -p $dir')
-            ..writeln('ln -sf ${_shellQuote(target)} ${_shellQuote(linkPath)}');
+            ..writeln('rm -rf -- ${_shellQuote(linkPath)}')
+            ..writeln(
+              'ln -sfn -- ${_shellQuote(target)} ${_shellQuote(linkPath)}',
+            );
         case ManifestRemoveRecursive(:final path):
           buffer.writeln('rm -rf ${_shellQuote(path)}');
         case ManifestRename(:final from, :final to):

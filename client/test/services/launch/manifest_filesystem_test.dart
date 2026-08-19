@@ -265,7 +265,11 @@ void main() {
         );
 
       final script = ManifestExecutor.debugBuildApplyScript(manifest);
-      expect(script, contains("ln -sf '/root/.cache' '/session/home/.cache'"));
+      expect(script, contains("rm -rf -- '/session/home/.cache'"));
+      expect(
+        script,
+        contains("ln -sfn -- '/root/.cache' '/session/home/.cache'"),
+      );
       expect(
         script,
         contains("cp -R -- '/cli-defaults/cursor/.' '/session/cursor'"),

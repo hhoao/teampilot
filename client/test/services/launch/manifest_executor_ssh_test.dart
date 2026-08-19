@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:dartssh2/dartssh2.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/repositories/ssh_credential_store.dart';
 import 'package:teampilot/repositories/ssh_known_host_repository.dart';
@@ -90,9 +92,68 @@ void main() {
 
     expect(ranScript, isNotNull);
     expect(ranScript, contains("cp -R -- '/src/tree/.' '/dst/tree'"));
-    expect(ranScript, contains("ln -sf '/root/.npm' '/dst/home/.npm'"));
+    expect(
+      ranScript,
+      contains("rm -rf -- '/dst/home/.npm'"),
+    );
+    expect(
+      ranScript,
+      contains("ln -sfn -- '/root/.npm' '/dst/home/.npm'"),
+    );
     expect(ranScript, isNot(contains('cat >')));
   });
+
+  test(
+    'ssh symlink apply replaces leftover Codex plugins directory',
+    () async {
+      if (Platform.isWindows) return;
+
+      final tmp = await Directory.systemTemp.createTemp('tp_manifest_ln_');
+      addTearDown(() async {
+        if (await tmp.exists()) await tmp.delete(recursive: true);
+      });
+
+      final sharedPlugins = p.join(
+        tmp.path,
+        'cli-defaults',
+        'codex',
+        '.tmp',
+        'plugins',
+      );
+      final sessionPlugins = p.join(
+        tmp.path,
+        'workspace',
+        'sessions',
+        's1',
+        'runtime',
+        'codex',
+        '.tmp',
+        'plugins',
+      );
+      await Directory(sharedPlugins).create(recursive: true);
+      await File(p.join(sharedPlugins, 'stamp')).writeAsString('shared');
+      // Previous copyTree / nested `ln -sf` left a real dir at the link path
+      // and another `plugins` dir inside it — GNU ln then errors with
+      // "cannot overwrite directory".
+      await Directory(p.join(sessionPlugins, 'plugins')).create(recursive: true);
+
+      final script = ManifestExecutor.debugBuildApplyScript(
+        LaunchManifest()
+          ..symlink(linkPath: sessionPlugins, target: sharedPlugins),
+      );
+      final result = await Process.run('bash', ['-c', script]);
+      expect(
+        result.exitCode,
+        0,
+        reason: 'stderr=${result.stderr}\nstdout=${result.stdout}',
+      );
+      expect(
+        FileSystemEntity.typeSync(sessionPlugins, followLinks: false),
+        FileSystemEntityType.link,
+      );
+      expect(Link(sessionPlugins).targetSync(), sharedPlugins);
+    },
+  );
 }
 
 class _RunnableClient extends SSHClient {
