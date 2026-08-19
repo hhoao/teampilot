@@ -5,6 +5,7 @@ import 'package:teampilot/models/mcp_server_spec.dart';
 import 'package:teampilot/services/cli/claude/capabilities/mcp.dart';
 import 'package:teampilot/services/cli/codex/capabilities/mcp.dart';
 import 'package:teampilot/services/cli/codex/capabilities/toml_merge.dart';
+import 'package:teampilot/services/cli/codex/provider/codex_toml_parser.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/mcp.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/mcp.dart';
 import 'package:toml/toml.dart';
@@ -172,6 +173,104 @@ model = "deepseek"
 
       expect(merged, contains("[plugins.'demo@local']"));
       expect(merged, contains('[mcp_servers.time]'));
+    });
+
+    test(
+      'preserveManagedTables drops leftover http hooks and keeps command hooks',
+      () {
+        const existing = '''
+[plugins."superpowers@local"]
+enabled = true
+
+[hooks]
+
+[[hooks.Stop]]
+
+[[hooks.Stop.hooks]]
+type = "http"
+url = "http://127.0.0.1:1/agent-status?event=Stop"
+timeout = 5
+
+[[hooks.Stop.hooks]]
+type = "command"
+command = "/s/hooks/teampilot-http-stop.sh"
+timeout = 5
+''';
+
+        const composed = '''
+model = "gpt-5.5"
+''';
+
+        final merged = CodexTomlMerge.preserveManagedTables(
+          existingToml: existing,
+          composedToml: composed,
+        );
+
+        expect(merged, contains("model = 'gpt-5.5'"));
+        expect(merged, contains("[plugins.'superpowers@local']"));
+        expect(merged, contains('type = \'command\''));
+        expect(merged, isNot(contains('type = \'http\'')));
+        expect(merged, isNot(contains('type = "http"')));
+        expect(CodexTomlParser.invalidHookTypes(merged), isEmpty);
+      },
+    );
+
+    test(
+      'preserveManagedTables does not replace composed command hooks with leftover http',
+      () {
+        const existing = '''
+[[hooks.Stop]]
+
+[[hooks.Stop.hooks]]
+type = "http"
+url = "http://127.0.0.1:1/agent-status?event=Stop"
+''';
+
+        const composed = '''
+model = "gpt-5.5"
+
+[[hooks.Stop]]
+
+[[hooks.Stop.hooks]]
+type = "command"
+command = "/s/hooks/teampilot-http-stop.sh"
+timeout = 5
+''';
+
+        final merged = CodexTomlMerge.preserveManagedTables(
+          existingToml: existing,
+          composedToml: composed,
+        );
+
+        expect(merged, contains('teampilot-http-stop.sh'));
+        expect(merged, isNot(contains('type = \'http\'')));
+        expect(merged, isNot(contains('type = "http"')));
+        expect(CodexTomlParser.invalidHookTypes(merged), isEmpty);
+      },
+    );
+
+    test('mergeMcpServers strips leftover http hook rows', () {
+      const existing = '''
+[[hooks.Stop]]
+
+[[hooks.Stop.hooks]]
+type = "http"
+url = "http://127.0.0.1:1/agent-status?event=Stop"
+
+[[hooks.Stop.hooks]]
+type = "command"
+command = "/s/hooks/teampilot-http-stop.sh"
+''';
+
+      final merged = CodexTomlMerge.mergeMcpServers(existing, const [
+        StdioMcpServer(name: 'time', command: 'npx'),
+      ]);
+
+      expect(merged, contains('[mcp_servers.time]'));
+      expect(merged, contains('teampilot-http-stop.sh'));
+      expect(merged, isNot(contains('type = \'http\'')));
+      expect(merged, isNot(contains('type = "http"')));
+      expect(CodexTomlParser.invalidHookTypes(merged), isEmpty);
     });
     test(
       'applyBearerTokenEnvVars sets bearer_token_env_var and strips auth header',

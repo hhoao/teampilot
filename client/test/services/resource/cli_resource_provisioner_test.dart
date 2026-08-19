@@ -6,7 +6,10 @@ import 'package:teampilot/models/hook_entry.dart';
 import 'package:teampilot/models/hook_event.dart';
 import 'package:teampilot/models/mcp_server_spec.dart';
 import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/services/agent_status/member_agent_status_endpoint.dart';
+import 'package:teampilot/services/cli/codex/provider/codex_hook_writer.dart';
 import 'package:teampilot/services/cli/registry/capabilities/hook_capability.dart';
+import 'package:teampilot/services/resource/providers/endpoint_hook_contribution_provider.dart';
 import 'package:teampilot/services/cli/registry/capabilities/mcp_capability.dart';
 import 'package:teampilot/services/cli/registry/capabilities/prompt_capability.dart';
 import 'package:teampilot/services/cli/registry/capabilities/skill_capability.dart';
@@ -339,6 +342,47 @@ void main() {
   );
 
   test(
+    'codex agent-status hooks wrap scripts with bash so they do not need +x',
+    () async {
+      final fs = InMemoryFilesystem();
+      final registry = _registry(
+        [const CodexHookWriter()],
+        id: CliTool.codex,
+      );
+      final report = await CliResourceProvisioner(fs: fs, registry: registry)
+          .provision(
+            _context(
+              fs: fs,
+              cli: CliTool.codex,
+              injected: ResourceProviderSet(
+                hooks: [
+                  AgentStatusHookContributionProvider(
+                    endpoint: const MemberAgentStatusEndpoint(
+                      url: 'http://127.0.0.1:9/agent-status',
+                    ),
+                    memberId: 'm1',
+                  ),
+                ],
+              ),
+            ),
+          );
+
+      expect(report.hardDiagnostics, isEmpty);
+      final toml = await fs.readString('/config/config.toml');
+      expect(toml, isNotNull);
+      expect(toml, contains('bash '));
+      expect(
+        toml,
+        contains('teampilot-http-teampilot-agent-status-preToolUse'),
+      );
+      expect(
+        toml,
+        isNot(contains(RegExp(r'command = "/config/hooks/[^"]+\.sh"'))),
+      );
+    },
+  );
+
+  test(
     'materializes hook fragments and generated scripts to the target',
     () async {
       final fs = InMemoryFilesystem();
@@ -581,15 +625,17 @@ CliResourceProvisionContext _context({
   resourceProviders: injected,
 );
 
-CliToolRegistry _registry(List<CliCapability> capabilities) =>
-    CliToolRegistry()..register(_Tool(capabilities));
+CliToolRegistry _registry(
+  List<CliCapability> capabilities, {
+  CliTool id = CliTool.claude,
+}) => CliToolRegistry()..register(_Tool(capabilities, id: id));
 
 final class _Tool implements CliToolDefinition {
-  const _Tool(this.capabilities);
+  const _Tool(this.capabilities, {this.id = CliTool.claude});
   @override
   final List<CliCapability> capabilities;
   @override
-  CliTool get id => CliTool.claude;
+  final CliTool id;
   @override
   bool get isLaunchSupported => true;
 }

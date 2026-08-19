@@ -67,6 +67,20 @@ final class CodexHomeProvisioner {
     final configPath = store.pathContext.join(codexHome, configFileName);
     final existingToml = await store.readString(configPath) ?? '';
 
+    // Fail closed on a newly generated overlay Codex cannot parse. Leftover
+    // `http` rows in an existing session file are stripped during merge.
+    final overlay = busOverlayToml?.trim() ?? '';
+    if (overlay.isNotEmpty) {
+      final invalidOverlay = CodexTomlParser.invalidHookTypes(overlay);
+      if (invalidOverlay.isNotEmpty) {
+        throw CodexHomeProvisionException(
+          'Codex config.toml has unsupported hook type(s) for ${provider.id}: '
+          '${invalidOverlay.join(', ')} (allowed: '
+          '${CodexTomlParser.allowedHookTypes.join(', ')})',
+        );
+      }
+    }
+
     var toml = _composer.compose(
       provider: provider,
       busOverlayToml: busOverlayToml,
@@ -77,6 +91,7 @@ final class CodexHomeProvisioner {
       existingToml: existingToml,
       composedToml: toml,
     );
+    toml = CodexTomlMerge.stripInvalidHookTypes(toml);
 
     final error = _generator.validateCodexToml(toml);
     if (error != null) {

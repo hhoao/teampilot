@@ -1,6 +1,7 @@
 import 'package:toml/toml.dart';
 
 import '../../../../models/mcp_server_spec.dart';
+import '../provider/codex_toml_parser.dart';
 
 /// Round-trip merge for Codex `config.toml` — only `[mcp_servers.*]` and
 /// `[plugins.*]` tables are mutated; unrelated keys survive.
@@ -69,14 +70,35 @@ abstract final class CodexTomlMerge {
             root['mcp_servers'] = Map<String, dynamic>.from(mcpServers),
       );
     }
-    final hooks = existingRoot['hooks'];
-    if (hooks is Map && hooks.isNotEmpty) {
-      result = _merge(
-        result,
-        mutate: (root) => root['hooks'] = Map<String, dynamic>.from(hooks),
-      );
+    // Fresh composed hooks (session overlay) win over leftover session rows.
+    // When compose did not stamp hooks, keep existing ones after stripping
+    // types Codex cannot parse (e.g. native `http` from older writers).
+    if (!_hasHooksTable(composedToml)) {
+      final hooks = existingRoot['hooks'];
+      if (hooks is Map && hooks.isNotEmpty) {
+        result = _merge(
+          result,
+          mutate: (root) => root['hooks'] = Map<String, dynamic>.from(hooks),
+        );
+      }
     }
-    return result;
+    return stripInvalidHookTypes(result);
+  }
+
+  /// Drops hook handlers whose `type` Codex cannot deserialize.
+  ///
+  /// No-op when the document already has no invalid hook types so quote
+  /// style and unrelated tables are left untouched.
+  static String stripInvalidHookTypes(String toml) {
+    if (toml.trim().isEmpty) return toml;
+    if (CodexTomlParser.invalidHookTypes(toml).isEmpty) return toml;
+    return _merge(toml, mutate: (_) {});
+  }
+
+  static bool _hasHooksTable(String toml) {
+    if (toml.trim().isEmpty) return false;
+    final hooks = TomlDocument.parse(toml).toMap()['hooks'];
+    return hooks is Map && hooks.isNotEmpty;
   }
 
   static String _merge(
@@ -87,6 +109,7 @@ abstract final class CodexTomlMerge {
         ? <String, dynamic>{}
         : Map<String, dynamic>.from(TomlDocument.parse(existingToml).toMap());
     mutate(root);
+    CodexTomlParser.removeInvalidHooks(root);
     if (root.isEmpty) return '';
     return '${TomlDocument.fromMap(root)}\n';
   }

@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/cli/codex/provider/codex_toml_parser.dart';
+import 'package:toml/toml.dart';
 
 void main() {
   group('CodexTomlParser.invalidHookTypes', () {
@@ -83,6 +84,40 @@ command = "bash '/s/hooks/teampilot-http-teampilot-agent-status-preToolUse-preTo
 timeout = 86400
 ''';
       expect(CodexTomlParser.invalidHookTypes(toml), isEmpty);
+    });
+  });
+
+  group('CodexTomlParser.removeInvalidHooks', () {
+    test('drops http handlers and empty event groups, keeps command', () {
+      const toml = '''
+[[hooks.Stop]]
+
+[[hooks.Stop.hooks]]
+type = "http"
+url = "http://127.0.0.1:1/idle"
+
+[[hooks.Stop.hooks]]
+type = "command"
+command = "/s/hooks/a.sh"
+
+[[hooks.PreToolUse]]
+
+[[hooks.PreToolUse.hooks]]
+type = "webhook"
+url = "http://127.0.0.1:2/x"
+''';
+      final root = Map<String, dynamic>.from(
+        TomlDocument.parse(toml).toMap(),
+      );
+      CodexTomlParser.removeInvalidHooks(root);
+      expect(
+        CodexTomlParser.invalidHookTypes('${TomlDocument.fromMap(root)}\n'),
+        isEmpty,
+      );
+      final stop = (root['hooks'] as Map)['Stop'] as List;
+      expect(stop, hasLength(1));
+      expect(((stop.first as Map)['hooks'] as List).single['type'], 'command');
+      expect((root['hooks'] as Map).containsKey('PreToolUse'), isFalse);
     });
   });
 }

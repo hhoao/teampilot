@@ -33,6 +33,59 @@ class CodexTomlParser {
     return invalid;
   }
 
+  /// Drops hook handlers whose `type` is not in [allowedHookTypes].
+  ///
+  /// Used when rewriting `config.toml` so leftover native `http` rows from
+  /// older TeamPilot writers cannot make Codex refuse to load the file.
+  static void removeInvalidHooks(Map<String, dynamic> root) {
+    final hooks = root['hooks'];
+    if (hooks is! Map) return;
+    final cleaned = <String, dynamic>{};
+    for (final entry in hooks.entries) {
+      final key = entry.key.toString();
+      final event = entry.value;
+      if (event is! List) {
+        cleaned[key] = event;
+        continue;
+      }
+      final kept = <dynamic>[];
+      for (final row in event) {
+        if (row is! Map) {
+          kept.add(row);
+          continue;
+        }
+        final cleanedRow = _cleanedHookRow(Map<dynamic, dynamic>.from(row));
+        if (cleanedRow != null) kept.add(cleanedRow);
+      }
+      if (kept.isNotEmpty) cleaned[key] = kept;
+    }
+    if (cleaned.isEmpty) {
+      root.remove('hooks');
+    } else {
+      root['hooks'] = cleaned;
+    }
+  }
+
+  static Map<dynamic, dynamic>? _cleanedHookRow(Map<dynamic, dynamic> row) {
+    final type = row['type'];
+    if (type != null && !allowedHookTypes.contains(type.toString())) {
+      return null;
+    }
+    final nested = row['hooks'];
+    if (nested is! List) return row;
+    final kept = <dynamic>[];
+    for (final inner in nested) {
+      if (inner is! Map) {
+        kept.add(inner);
+        continue;
+      }
+      final cleanedInner = _cleanedHookRow(Map<dynamic, dynamic>.from(inner));
+      if (cleanedInner != null) kept.add(cleanedInner);
+    }
+    if (kept.isEmpty && type == null) return null;
+    return Map<dynamic, dynamic>.from(row)..['hooks'] = kept;
+  }
+
   static void _collectInvalid(Map<dynamic, dynamic> row, List<String> out) {
     final type = row['type'];
     if (type != null) {

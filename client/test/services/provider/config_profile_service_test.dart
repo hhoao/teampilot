@@ -428,6 +428,7 @@ base_url = "https://api.example.com/v1"
       // Bus idle Stop hooks render as command scripts (codex rejects type=http).
       expect(toml, contains('[[hooks.Stop]]'));
       expect(toml, contains('teampilot-http-teampilot-bus-idle-stop'));
+      expect(toml, contains('bash '));
       final idleScripts = Directory(p.join(codexDir, 'hooks'))
           .listSync()
           .whereType<File>()

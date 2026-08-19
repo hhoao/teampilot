@@ -7,6 +7,7 @@ import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/services/host/host_execution_environment.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/cli/codex/provider/codex_home_provisioner.dart';
+import 'package:teampilot/services/cli/codex/provider/codex_toml_parser.dart';
 import 'package:teampilot/services/cli/codex/provider/codex_proxy_launch_auth.dart';
 import 'package:teampilot/services/cli/codex/provider/codex_team_bus_overlay.dart';
 import 'package:teampilot/services/team_bus/member_bus_idle_endpoint.dart';
@@ -194,6 +195,59 @@ command = "npx"
         expect(toml, contains("model = 'm1'"));
         expect(toml, contains("[plugins.'demo@local']"));
         expect(toml, contains('[mcp_servers.time]'));
+      },
+    );
+
+    test(
+      'rewrites leftover native http hooks so plugin commands can load config',
+      () async {
+        const provider = AppProviderConfig(
+          id: 'p',
+          cli: CliTool.codex,
+          name: 'p',
+          config: {'configToml': 'model = "m1"\n'},
+        );
+
+        final codexHome = p.join(root.path, 'codex-stale-http');
+        final configPath = p.join(codexHome, 'config.toml');
+        await Directory(codexHome).create(recursive: true);
+        // Shape seen in production: an older writer stamped type=http, then
+        // the current writer appended type=command. Codex rejects `http`.
+        await File(configPath).writeAsString('''
+model = 'm1'
+
+[plugins.'superpowers@local']
+enabled = true
+
+[hooks]
+
+[[hooks.Stop]]
+
+[[hooks.Stop.hooks]]
+type = 'http'
+url = 'http://127.0.0.1:46697/agent-status?event=Stop'
+timeout = 5
+
+# TeamPilot user hooks — do not edit.
+[[hooks.Stop]]
+
+[[hooks.Stop.hooks]]
+type = "command"
+command = "/tmp/teampilot-http-stop.sh"
+timeout = 5
+''');
+
+        await CodexHomeProvisioner(
+          fs: LocalFilesystem(),
+        ).provision(codexHome: codexHome, provider: provider);
+
+        final toml = await File(configPath).readAsString();
+        expect(toml, contains("model = 'm1'"));
+        expect(toml, contains("[plugins.'superpowers@local']"));
+        expect(toml, contains('teampilot-http-stop.sh'));
+        expect(toml, isNot(contains("type = 'http'")));
+        expect(toml, isNot(contains('type = "http"')));
+        expect(CodexTomlParser.invalidHookTypes(toml), isEmpty);
       },
     );
 

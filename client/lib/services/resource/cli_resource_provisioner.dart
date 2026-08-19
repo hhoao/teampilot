@@ -11,6 +11,7 @@ import '../cli/registry/capabilities/skill_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../cli/registry/config_profile/config_profile_context.dart';
 import '../hook/glue_script_builder.dart';
+import '../host/host_execution_environment.dart';
 import '../cli/registry/hook/managed_hook_provisioner.dart';
 import '../io/filesystem.dart';
 import '../storage/runtime_layout.dart';
@@ -425,15 +426,7 @@ final class CliResourceProvisioner {
         try {
           final result = capability.render(
             entries: hooks,
-            ctx:
-                context.hookRenderContext ??
-                HookRenderContext(
-                  hooksDir:
-                      context.hooksDir ??
-                      _fs.pathContext.join(context.configDir, 'hooks'),
-                  runner: null,
-                  glueBuilder: const GlueScriptBuilder(),
-                ),
+            ctx: _hookRenderContext(context),
           );
           await _materializeHookResult(context: context, result: result);
           warnings.addAll(_hookWarnings(context.cli, result.warnings));
@@ -561,15 +554,7 @@ final class CliResourceProvisioner {
         try {
           final result = capability.render(
             entries: hookAssembly.entries,
-            ctx:
-                context.hookRenderContext ??
-                HookRenderContext(
-                  hooksDir:
-                      context.hooksDir ??
-                      _fs.pathContext.join(context.configDir, 'hooks'),
-                  runner: null,
-                  glueBuilder: const GlueScriptBuilder(),
-                ),
+            ctx: _hookRenderContext(context),
           );
           await _materializeHookResult(context: context, result: result);
           warnings.addAll(_hookWarnings(context.cli, result.warnings));
@@ -616,15 +601,7 @@ final class CliResourceProvisioner {
     required CliResourceProvisionContext context,
     required HookWriteResult result,
   }) async {
-    final hooksDir =
-        context.hooksDir ?? _fs.pathContext.join(context.configDir, 'hooks');
-    final renderContext =
-        context.hookRenderContext ??
-        HookRenderContext(
-          hooksDir: hooksDir,
-          runner: null,
-          glueBuilder: const GlueScriptBuilder(),
-        );
+    final renderContext = _hookRenderContext(context);
     await ManagedHookProvisioner(
       fs: _fs,
       joinWork: _fs.pathContext.join,
@@ -707,6 +684,20 @@ final class CliResourceProvisioner {
           : entry.value;
     }
     return merged;
+  }
+
+  HookRenderContext _hookRenderContext(CliResourceProvisionContext context) {
+    final existing = context.hookRenderContext;
+    if (existing != null) return existing;
+    return HookRenderContext(
+      hooksDir:
+          context.hooksDir ??
+          _fs.pathContext.join(context.configDir, 'hooks'),
+      runner:
+          context.paths?.hostEnvironmentForProvision().scriptRunner ??
+          HostExecutionEnvironment.resolve().scriptRunner,
+      glueBuilder: const GlueScriptBuilder(),
+    );
   }
 
   Future<PromptAssemblyResult?> _assemblePrompt(
