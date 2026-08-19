@@ -84,14 +84,19 @@ Unit and widget tests (default; excludes the `integration` tag):
 
 ```bash
 cd client
-flutter test --exclude-tags integration
+dart run tool/run_tests.dart
 ```
+
+The project test entry point caps Flutter test concurrency at 4, which avoids
+overloading the Flutter tester, PTY, and shell-process resources on machines
+with many CPU cores. Pass a file, name, or other Flutter test options through
+the same entry point; an explicit `-j` / `--concurrency` value is preserved.
 
 Single file or by name:
 
 ```bash
-flutter test test/smoke/app_shell_smoke_test.dart
-flutter test --plain-name="test name"
+dart run tool/run_tests.dart test/smoke/app_shell_smoke_test.dart
+dart run tool/run_tests.dart --plain-name="test name"
 ```
 
 `teampilot_search` package (Rust engine + Dart wrapper):

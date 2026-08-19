@@ -9,7 +9,7 @@ Before merge, from `client/` (same as [Client Build Verify](../.github/workflows
 ```bash
 cd client
 flutter analyze --no-fatal-infos --no-fatal-warnings
-flutter test --exclude-tags integration
+dart run tool/run_tests.dart
 ```
 
 Run these commands and confirm success before claiming work is done.
@@ -152,7 +152,7 @@ Shared pieces for multiple sections on the **same** screen (e.g. `mcp_shared_wid
 ### Default (CI)
 
 ```bash
-flutter test --exclude-tags integration
+dart run tool/run_tests.dart
 ```
 
 New features: unit-test `services/`, `repositories/`, `cubits/` first.

@@ -190,6 +190,33 @@ Future<void> pumpUntil(
   }
 }
 
+/// Pumps until Flutter reports no scheduled frames, with a bounded deadline.
+///
+/// This is the safe replacement for [WidgetTester.pumpAndSettle] in tests
+/// where a background animation, timer, or stream may keep scheduling frames.
+Future<void> pumpUntilSettled(
+  WidgetTester tester, {
+  Duration timeout = const Duration(seconds: 5),
+  Duration step = const Duration(milliseconds: 100),
+}) async {
+  if (timeout < Duration.zero) {
+    throw ArgumentError.value(timeout, 'timeout', 'must not be negative');
+  }
+  if (step <= Duration.zero) {
+    throw ArgumentError.value(step, 'step', 'must be positive');
+  }
+
+  var elapsed = Duration.zero;
+  while (true) {
+    await tester.pump(step);
+    elapsed += step;
+    if (!tester.binding.hasScheduledFrame) return;
+    if (elapsed >= timeout) {
+      throw TestFailure('Timed out waiting for widget tree to settle');
+    }
+  }
+}
+
 /// Best-effort temp dir cleanup (Windows CI may still hold profile files briefly).
 Future<void> deleteTempDirBestEffort(Directory dir) async {
   for (var attempt = 0; attempt < 12; attempt++) {

@@ -17,6 +17,7 @@ import 'package:teampilot/services/expert_hub/local_expert_store.dart';
 import '../../support/stub_member_roster_service.dart';
 
 import '../../support/in_memory_filesystem.dart';
+import '../../support/post_frame_test_harness.dart';
 
 class _FakeSource extends CompositeExpertHubSource {
   _FakeSource() : super(builtIns: const [], registry: _EmptyRegistry());
@@ -142,10 +143,10 @@ void main() {
         ),
       ),
     );
-    await tester.pumpAndSettle();
+    await pumpUntilSettled(tester);
 
     await tester.tap(find.text('open'));
-    await tester.pumpAndSettle();
+    await pumpUntilSettled(tester);
 
     await tester.enterText(
       find.byKey(const Key('expert-editor-name')),
@@ -173,7 +174,7 @@ void main() {
     );
 
     await tester.tap(find.byKey(const Key('expert-editor-submit')));
-    await tester.pumpAndSettle();
+    await pumpUntilSettled(tester);
 
     expect(writer.saved, hasLength(1));
     expect(result, isNotNull);
@@ -230,9 +231,9 @@ void main() {
         ),
       ),
     );
-    await tester.pumpAndSettle();
+    await pumpUntilSettled(tester);
     await tester.tap(find.text('open'));
-    await tester.pumpAndSettle();
+    await pumpUntilSettled(tester);
 
     await tester.enterText(
       find.byKey(const Key('expert-editor-name')),
@@ -244,7 +245,7 @@ void main() {
     );
 
     await tester.tap(find.byKey(const Key('expert-editor-configure-skills')));
-    await tester.pumpAndSettle();
+    await pumpUntilSettled(tester);
 
     final switchFinder = find.descendant(
       of: find.byKey(Key('expert-editor-skill-${skill.id}')),
@@ -252,13 +253,13 @@ void main() {
     );
     await tester.ensureVisible(switchFinder);
     await tester.tap(switchFinder);
-    await tester.pumpAndSettle();
+    await pumpUntilSettled(tester);
 
     await tester.tap(find.byKey(const Key('expert-editor-dep-picker-done')));
-    await tester.pumpAndSettle();
+    await pumpUntilSettled(tester);
 
     await tester.tap(find.byKey(const Key('expert-editor-submit')));
-    await tester.pumpAndSettle();
+    await pumpUntilSettled(tester);
 
     expect(result, isNotNull);
     expect(result!.skillDeps, hasLength(1));
@@ -308,9 +309,9 @@ void main() {
         ),
       ),
     );
-    await tester.pumpAndSettle();
+    await pumpUntilSettled(tester);
     await tester.tap(find.text('open'));
-    await tester.pumpAndSettle();
+    await pumpUntilSettled(tester);
 
     expect(find.byKey(Key('expert-editor-skill-${skill.id}')), findsNothing);
     expect(find.byKey(const Key('expert-editor-plugin-p1')), findsNothing);
@@ -390,9 +391,9 @@ void main() {
         ),
       ),
     );
-    await tester.pumpAndSettle();
+    await pumpUntilSettled(tester);
     await tester.tap(find.text('open'));
-    await tester.pumpAndSettle();
+    await pumpUntilSettled(tester);
 
     expect(
       find.descendant(
@@ -403,12 +404,12 @@ void main() {
     );
 
     await tester.tap(find.byKey(const Key('expert-editor-configure-skills')));
-    await tester.pumpAndSettle();
+    await pumpUntilSettled(tester);
 
     await tester.tap(find.widgetWithText(TextButton, 'Remove'));
-    await tester.pumpAndSettle();
+    await pumpUntilSettled(tester);
     await tester.tap(find.byKey(const Key('expert-editor-dep-picker-done')));
-    await tester.pumpAndSettle();
+    await pumpUntilSettled(tester);
 
     expect(
       find.descendant(
@@ -464,12 +465,12 @@ void main() {
         ),
       ),
     );
-    await tester.pumpAndSettle();
+    await pumpUntilSettled(tester);
     await tester.tap(find.text('open'));
-    await tester.pumpAndSettle();
+    await pumpUntilSettled(tester);
 
     await tester.tap(find.byKey(const Key('expert-editor-configure-skills')));
-    await tester.pumpAndSettle();
+    await pumpUntilSettled(tester);
 
     final switchFinder = find.descendant(
       of: find.byKey(Key('expert-editor-skill-${skill.id}')),
@@ -477,10 +478,10 @@ void main() {
     );
     await tester.ensureVisible(switchFinder);
     await tester.tap(switchFinder);
-    await tester.pumpAndSettle();
+    await pumpUntilSettled(tester);
 
     await tester.tap(find.byKey(const Key('expert-editor-dep-picker-done')));
-    await tester.pumpAndSettle();
+    await pumpUntilSettled(tester);
 
     expect(
       find.descendant(
@@ -499,7 +500,7 @@ void main() {
       'Plan carefully.',
     );
     await tester.tap(find.byKey(const Key('expert-editor-submit')));
-    await tester.pumpAndSettle();
+    await pumpUntilSettled(tester);
 
     expect(result, isNotNull);
     expect(result!.skillDeps, hasLength(1));
@@ -552,12 +553,12 @@ void main() {
         ),
       ),
     );
-    await tester.pumpAndSettle();
+    await pumpUntilSettled(tester);
     await tester.tap(find.text('open'));
-    await tester.pumpAndSettle();
+    await pumpUntilSettled(tester);
 
     await tester.tap(find.byKey(const Key('expert-editor-configure-skills')));
-    await tester.pumpAndSettle();
+    await pumpUntilSettled(tester);
 
     final switchFinder = find.descendant(
       of: find.byKey(Key('expert-editor-skill-${skill.id}')),
@@ -565,10 +566,10 @@ void main() {
     );
     await tester.ensureVisible(switchFinder);
     await tester.tap(switchFinder);
-    await tester.pumpAndSettle();
+    await pumpUntilSettled(tester);
 
     await tester.tap(find.byKey(const Key('expert-editor-dep-picker-cancel')));
-    await tester.pumpAndSettle();
+    await pumpUntilSettled(tester);
 
     expect(
       find.descendant(
@@ -581,7 +582,7 @@ void main() {
     await tester.enterText(find.byKey(const Key('expert-editor-name')), 'X');
     await tester.enterText(find.byKey(const Key('expert-editor-prompt')), 'Y');
     await tester.tap(find.byKey(const Key('expert-editor-submit')));
-    await tester.pumpAndSettle();
+    await pumpUntilSettled(tester);
     expect(result!.skillDeps, isEmpty);
   });
 
@@ -633,10 +634,10 @@ void main() {
         ),
       ),
     );
-    await tester.pumpAndSettle();
+    await pumpUntilSettled(tester);
 
     await tester.tap(find.text('open'));
-    await tester.pumpAndSettle();
+    await pumpUntilSettled(tester);
 
     expect(find.text('Old Name'), findsWidgets);
 
@@ -649,7 +650,7 @@ void main() {
       'new prompt',
     );
     await tester.tap(find.byKey(const Key('expert-editor-submit')));
-    await tester.pumpAndSettle();
+    await pumpUntilSettled(tester);
 
     expect(result?.key, 'local/fixed-id');
     expect(result?.name, 'New Name');
@@ -696,9 +697,9 @@ void main() {
         ),
       ),
     );
-    await tester.pumpAndSettle();
+    await pumpUntilSettled(tester);
     await tester.tap(find.text('open'));
-    await tester.pumpAndSettle();
+    await pumpUntilSettled(tester);
 
     await tester.enterText(
       find.byKey(const Key('expert-editor-name')),
@@ -709,7 +710,7 @@ void main() {
       'Close the dialog.',
     );
     await tester.tap(find.byKey(const Key('expert-editor-submit')));
-    await tester.pumpAndSettle();
+    await pumpUntilSettled(tester);
 
     expect(result, isNotNull);
     expect(result!.name, 'Closer');
@@ -746,16 +747,16 @@ void main() {
         ),
       ),
     );
-    await tester.pumpAndSettle();
+    await pumpUntilSettled(tester);
     await tester.tap(find.text('open'));
-    await tester.pumpAndSettle();
+    await pumpUntilSettled(tester);
 
     await tester.enterText(
       find.byKey(const Key('expert-editor-prompt')),
       'Only prompt',
     );
     await tester.tap(find.byKey(const Key('expert-editor-submit')));
-    await tester.pumpAndSettle();
+    await pumpUntilSettled(tester);
 
     expect(find.text('Name is required.'), findsOneWidget);
     expect(writer.saved, isEmpty);

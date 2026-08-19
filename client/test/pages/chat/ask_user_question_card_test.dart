@@ -201,7 +201,7 @@ void main() {
           questions: const [singleQuestion],
         ),
       );
-      await tester.pumpAndSettle();
+      await pumpUntilSettled(tester);
 
       expect(find.byKey(AppKeys.askUserQuestionCard), findsOneWidget);
       expect(find.text('Pick color?'), findsOneWidget);
@@ -216,14 +216,14 @@ void main() {
           AppKeys.askUserQuestionOptionAt(questionIndex: 0, optionIndex: 1),
         ),
       );
-      await tester.pumpAndSettle();
+      await pumpUntilSettled(tester);
 
       final submit = find.byKey(AppKeys.askUserQuestionSubmitButton);
       expect(submit, findsOneWidget);
       expect(tester.widget<TpButton>(submit).onPressed, isNotNull);
 
       await tester.tap(submit);
-      await tester.pumpAndSettle();
+      await pumpUntilSettled(tester);
 
       expect(chat.answers, hasLength(1));
       expect(chat.answers.single['answers'], [
@@ -248,7 +248,7 @@ void main() {
           questions: const [singleQuestion],
         ),
       );
-      await tester.pumpAndSettle();
+      await pumpUntilSettled(tester);
 
       await tester.enterText(
         find.byKey(
@@ -256,10 +256,10 @@ void main() {
         ),
         'Custom purple',
       );
-      await tester.pumpAndSettle();
+      await pumpUntilSettled(tester);
 
       await tester.tap(find.byKey(AppKeys.askUserQuestionSubmitButton));
-      await tester.pumpAndSettle();
+      await pumpUntilSettled(tester);
 
       expect(chat.answers, hasLength(1));
       expect(chat.answers.single['answers'], [
@@ -283,7 +283,7 @@ void main() {
           questions: multiQuestions,
         ),
       );
-      await tester.pumpAndSettle();
+      await pumpUntilSettled(tester);
 
       expect(find.text('1 / 2'), findsOneWidget);
       expect(find.text('Pick color?'), findsOneWidget);
@@ -294,7 +294,7 @@ void main() {
           AppKeys.askUserQuestionOptionAt(questionIndex: 0, optionIndex: 0),
         ),
       );
-      await tester.pumpAndSettle();
+      await pumpUntilSettled(tester);
 
       // Single-select auto-advances to the next question.
       expect(find.text('2 / 2'), findsOneWidget);
@@ -303,9 +303,7 @@ void main() {
       // Current page unanswered — Continue still enabled so users can skip.
       expect(
         tester
-            .widget<TpButton>(
-              find.byKey(AppKeys.askUserQuestionContinueButton),
-            )
+            .widget<TpButton>(find.byKey(AppKeys.askUserQuestionContinueButton))
             .onPressed,
         isNotNull,
       );
@@ -315,18 +313,15 @@ void main() {
           AppKeys.askUserQuestionOptionAt(questionIndex: 1, optionIndex: 1),
         ),
       );
-      await tester.pumpAndSettle();
+      await pumpUntilSettled(tester);
 
       final submit = find.byKey(AppKeys.askUserQuestionSubmitButton);
       expect(submit, findsOneWidget);
       expect(tester.widget<TpButton>(submit).onPressed, isNotNull);
-      expect(
-        tester.widget<TpButton>(submit).variant,
-        TpButtonVariant.primary,
-      );
+      expect(tester.widget<TpButton>(submit).variant, TpButtonVariant.primary);
 
       await tester.tap(submit);
-      await tester.pumpAndSettle();
+      await pumpUntilSettled(tester);
 
       expect(chat.answers.single['answers'], [
         ['Red'],
@@ -352,19 +347,19 @@ void main() {
           questions: multiQuestions,
         ),
       );
-      await tester.pumpAndSettle();
+      await pumpUntilSettled(tester);
 
       await tester.tap(
         find.byKey(
           AppKeys.askUserQuestionOptionAt(questionIndex: 0, optionIndex: 0),
         ),
       );
-      await tester.pumpAndSettle();
+      await pumpUntilSettled(tester);
       expect(find.text('2 / 2'), findsOneWidget);
 
       // Jump back to the already-answered first question.
       await tester.tap(find.byIcon(Icons.chevron_left_rounded));
-      await tester.pumpAndSettle();
+      await pumpUntilSettled(tester);
       expect(find.text('1 / 2'), findsOneWidget);
       expect(find.text('Continue'), findsOneWidget);
 
@@ -372,7 +367,7 @@ void main() {
       expect(tester.widget<TpButton>(continueBtn).onPressed, isNotNull);
 
       await tester.tap(continueBtn);
-      await tester.pumpAndSettle();
+      await pumpUntilSettled(tester);
       expect(find.text('2 / 2'), findsOneWidget);
       expect(find.text('Pick size?'), findsOneWidget);
     });
@@ -392,10 +387,10 @@ void main() {
           questions: const [singleQuestion],
         ),
       );
-      await tester.pumpAndSettle();
+      await pumpUntilSettled(tester);
 
       await tester.tap(find.text('Ignore'));
-      await tester.pumpAndSettle();
+      await pumpUntilSettled(tester);
 
       expect(chat.cancels, hasLength(1));
       expect(chat.cancels.single['askRequestId'], 'toolu-1');
@@ -417,16 +412,16 @@ void main() {
           questions: const [singleQuestion],
         ),
       );
-      await tester.pumpAndSettle();
+      await pumpUntilSettled(tester);
 
       await tester.tap(
         find.byKey(
           AppKeys.askUserQuestionOptionAt(questionIndex: 0, optionIndex: 0),
         ),
       );
-      await tester.pumpAndSettle();
+      await pumpUntilSettled(tester);
       await tester.tap(find.byKey(AppKeys.askUserQuestionSubmitButton));
-      await tester.pumpAndSettle();
+      await pumpUntilSettled(tester);
 
       expect(find.byKey(AppKeys.askUserQuestionInlineError), findsOneWidget);
     });
@@ -469,7 +464,7 @@ void main() {
       await tester.pumpWidget(
         _bannerHarness(chat: chat, attention: attention, session: session),
       );
-      await tester.pumpAndSettle();
+      await pumpUntilSettled(tester);
 
       expect(find.byKey(AppKeys.askUserQuestionCard), findsOneWidget);
       expect(find.byKey(AppKeys.agentPermissionAttentionBanner), findsNothing);
@@ -522,10 +517,13 @@ void main() {
       await tester.pumpWidget(
         _bannerHarness(chat: chat, attention: attention, session: session),
       );
-      await tester.pumpAndSettle();
+      await pumpUntilSettled(tester);
 
       expect(find.byKey(AppKeys.askUserQuestionCard), findsNothing);
-      expect(find.byKey(AppKeys.agentPermissionAttentionBanner), findsOneWidget);
+      expect(
+        find.byKey(AppKeys.agentPermissionAttentionBanner),
+        findsOneWidget,
+      );
       expect(
         AgentPermissionAttentionBanner.isSelectedSeatAskCard(
           attention: attention,
