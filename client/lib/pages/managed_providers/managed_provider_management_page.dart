@@ -25,6 +25,9 @@ class ManagedProviderManagementPage extends StatefulWidget {
 
 class _ManagedProviderManagementPageState
     extends State<ManagedProviderManagementPage> {
+  ManagedProvider? _editingProvider;
+  bool _isEditing = false;
+
   @override
   void initState() {
     super.initState();
@@ -78,49 +81,68 @@ class _ManagedProviderManagementPageState
           },
         ),
       ],
-      child: Column(
+      child: KeyedSubtree(
         key: const Key('managed-provider-management-page'),
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _PageHeader(onAdd: () => _openEditor(context)),
-          const SizedBox(height: 12),
-          Expanded(
-            child: BlocBuilder<ManagedProviderCubit, ManagedProviderState>(
-              builder: (context, providerState) {
-                if (providerState.status == ManagedProviderLoadStatus.loading &&
-                    providerState.providers.isEmpty) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (providerState.status == ManagedProviderLoadStatus.error &&
-                    providerState.providers.isEmpty) {
-                  return _LoadError(
-                    message: managedProviderErrorMessage(
-                      context.l10n,
-                      providerCode: providerState.errorCode,
-                      detail: providerState.errorMessage,
-                    ),
-                    onRetry: () => context.read<ManagedProviderCubit>().load(),
-                  );
-                }
-                return BlocBuilder<
-                  ManagedProviderUsageCubit,
-                  ManagedProviderUsageState
-                >(
-                  builder: (context, usageState) => ManagedProviderList(
-                    providers: providerState.providers,
-                    snapshots: usageState.snapshots,
-                    isRefreshing: usageState.isRefreshingProvider,
-                    onEdit: (provider) =>
-                        _openEditor(context, provider: provider),
-                    onToggle: _toggle,
-                    onDelete: _delete,
-                    onRefresh: _refresh,
+        child: _isEditing
+            ? ManagedProviderEditorPage(
+                key: const Key('managed-provider-editor-page'),
+                provider: _editingProvider,
+                embedded: true,
+                onBack: _closeEditor,
+              )
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _PageHeader(onAdd: () => _openEditor(context)),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child:
+                        BlocBuilder<ManagedProviderCubit, ManagedProviderState>(
+                          builder: (context, providerState) {
+                            if (providerState.status ==
+                                    ManagedProviderLoadStatus.loading &&
+                                providerState.providers.isEmpty) {
+                              return const Center(
+                                child: CircularProgressIndicator(),
+                              );
+                            }
+                            if (providerState.status ==
+                                    ManagedProviderLoadStatus.error &&
+                                providerState.providers.isEmpty) {
+                              return _LoadError(
+                                message: managedProviderErrorMessage(
+                                  context.l10n,
+                                  providerCode: providerState.errorCode,
+                                  detail: providerState.errorMessage,
+                                ),
+                                onRetry: () =>
+                                    context.read<ManagedProviderCubit>().load(),
+                              );
+                            }
+                            return BlocBuilder<
+                              ManagedProviderUsageCubit,
+                              ManagedProviderUsageState
+                            >(
+                              builder: (context, usageState) =>
+                                  ManagedProviderList(
+                                    providers: providerState.providers,
+                                    snapshots: usageState.snapshots,
+                                    isRefreshing:
+                                        usageState.isRefreshingProvider,
+                                    onEdit: (provider) => _openEditor(
+                                      context,
+                                      provider: provider,
+                                    ),
+                                    onToggle: _toggle,
+                                    onDelete: _delete,
+                                    onRefresh: _refresh,
+                                  ),
+                            );
+                          },
+                        ),
                   ),
-                );
-              },
-            ),
-          ),
-        ],
+                ],
+              ),
       ),
     );
 
@@ -132,23 +154,35 @@ class _ManagedProviderManagementPageState
     );
   }
 
-  Future<void> _openEditor(
-    BuildContext context, {
-    ManagedProvider? provider,
-  }) async {
-    await Navigator.of(context).push<void>(
-      MaterialPageRoute(
-        builder: (_) => MultiBlocProvider(
-          providers: [
-            BlocProvider.value(value: context.read<ManagedProviderCubit>()),
-            BlocProvider.value(
-              value: context.read<ManagedProviderUsageCubit>(),
-            ),
-          ],
-          child: ManagedProviderEditorPage(provider: provider),
+  void _openEditor(BuildContext context, {ManagedProvider? provider}) {
+    if (!widget.embedded) {
+      Navigator.of(context).push<void>(
+        MaterialPageRoute(
+          builder: (_) => MultiBlocProvider(
+            providers: [
+              BlocProvider.value(value: context.read<ManagedProviderCubit>()),
+              BlocProvider.value(
+                value: context.read<ManagedProviderUsageCubit>(),
+              ),
+            ],
+            child: ManagedProviderEditorPage(provider: provider),
+          ),
         ),
-      ),
-    );
+      );
+      return;
+    }
+    setState(() {
+      _editingProvider = provider;
+      _isEditing = true;
+    });
+  }
+
+  void _closeEditor() {
+    if (!mounted) return;
+    setState(() {
+      _editingProvider = null;
+      _isEditing = false;
+    });
   }
 
   Future<void> _toggle(ManagedProvider provider) async {

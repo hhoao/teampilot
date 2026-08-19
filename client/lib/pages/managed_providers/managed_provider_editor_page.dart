@@ -13,9 +13,16 @@ import '../../widgets/app_toast/app_toast.dart';
 import '../../utils/managed_provider_error_localization.dart';
 
 class ManagedProviderEditorPage extends StatefulWidget {
-  const ManagedProviderEditorPage({this.provider, super.key});
+  const ManagedProviderEditorPage({
+    this.provider,
+    this.embedded = false,
+    this.onBack,
+    super.key,
+  });
 
   final ManagedProvider? provider;
+  final bool embedded;
+  final VoidCallback? onBack;
 
   @override
   State<ManagedProviderEditorPage> createState() =>
@@ -113,6 +120,252 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
   Widget build(BuildContext context) {
     final provider = _provider;
     final l10n = context.l10n;
+    final form = SafeArea(
+      child: Form(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+          children: [
+            if (_formError != null) _ErrorBanner(message: _formError!),
+            _sectionTitle(context, l10n.managedProvidersIdentity),
+            _field(
+              context,
+              key: const Key('managed-provider-name'),
+              label: l10n.managedProvidersName,
+              controller: _name,
+              hint: l10n.managedProvidersNameHint,
+            ),
+            const SizedBox(height: 12),
+            _field(
+              context,
+              key: const Key('managed-provider-adapter'),
+              label: l10n.managedProvidersAdapter,
+              controller: _adapter,
+              hint: l10n.managedProvidersAdapterHint,
+            ),
+            const SizedBox(height: 12),
+            _labeledControl(
+              context,
+              label: l10n.managedProvidersKind,
+              child: TpSelect<ManagedProviderKind>(
+                key: const Key('managed-provider-kind'),
+                items: const [
+                  ManagedProviderKind.apiBalance,
+                  ManagedProviderKind.subscriptionQuota,
+                  ManagedProviderKind.customHttp,
+                ],
+                initialItem: _kind,
+                itemLabel: (kind) => kind.value,
+                onChanged: (value) {
+                  if (value != null) setState(() => _kind = value);
+                },
+                decoration: TpSelectDecorations.themed(context),
+              ),
+            ),
+            const SizedBox(height: 20),
+            _sectionTitle(context, l10n.managedProvidersRequestMapping),
+            _field(
+              context,
+              key: const Key('managed-provider-endpoint'),
+              label: l10n.managedProvidersEndpoint,
+              controller: _endpoint,
+              hint: l10n.managedProvidersEndpointHint,
+              keyboardType: TextInputType.url,
+            ),
+            const SizedBox(height: 12),
+            _labeledControl(
+              context,
+              label: l10n.managedProvidersMethod,
+              child: TpSelect<String>(
+                key: const Key('managed-provider-method'),
+                items: const ['GET', 'POST'],
+                initialItem: _method,
+                itemLabel: (method) => method,
+                onChanged: (value) {
+                  if (value != null) setState(() => _method = value);
+                },
+                decoration: TpSelectDecorations.themed(context),
+                searchable: false,
+              ),
+            ),
+            const SizedBox(height: 12),
+            _field(
+              context,
+              key: const Key('managed-provider-response-path'),
+              label: l10n.managedProvidersResponsePath,
+              controller: _responsePath,
+              hint: r'$.data',
+            ),
+            const SizedBox(height: 12),
+            _field(
+              context,
+              key: const Key('managed-provider-measures-path'),
+              label: l10n.managedProvidersMeasuresPath,
+              controller: _measuresPath,
+              hint: r'$.data.measures',
+            ),
+            const SizedBox(height: 12),
+            _textarea(
+              context,
+              key: const Key('managed-provider-request-mapping'),
+              label: l10n.managedProvidersRequestMapping,
+              controller: _requestMapping,
+            ),
+            const SizedBox(height: 12),
+            _textarea(
+              context,
+              key: const Key('managed-provider-field-mappings'),
+              label: l10n.managedProvidersFieldMappings,
+              controller: _fieldMappings,
+            ),
+            const SizedBox(height: 20),
+            _sectionTitle(context, l10n.managedProvidersCredentials),
+            _field(
+              context,
+              key: const Key('managed-provider-credential-ref'),
+              label: l10n.managedProvidersCredentialRef,
+              controller: _credentialRef,
+              hint: l10n.managedProvidersCredentialRefHint,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _credentialRef.text.trim().isEmpty
+                  ? l10n.managedProvidersCredentialNone
+                  : l10n.managedProvidersCredentialConfigured,
+              style: TpTextStyles.of(
+                context,
+              ).smColored(Theme.of(context).colorScheme.onSurfaceVariant),
+            ),
+            const SizedBox(height: 12),
+            _field(
+              context,
+              key: const Key('managed-provider-credential-name'),
+              label: l10n.managedProvidersCredentialName,
+              controller: _credentialName,
+              hint: l10n.managedProvidersCredentialNameHint,
+            ),
+            const SizedBox(height: 12),
+            _field(
+              context,
+              key: const Key('managed-provider-credential-field'),
+              label: l10n.managedProvidersCredentialField,
+              controller: _credentialField,
+              hint: l10n.managedProvidersCredentialFieldHint,
+            ),
+            const SizedBox(height: 12),
+            _field(
+              context,
+              key: const Key('managed-provider-credential-placement'),
+              label: l10n.managedProvidersCredentialPlacement,
+              controller: _credentialPlacement,
+              hint: l10n.managedProvidersCredentialPlacementHint,
+            ),
+            const SizedBox(height: 20),
+            _sectionTitle(context, l10n.managedProvidersDisplay),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final currency = _field(
+                  context,
+                  key: const Key('managed-provider-currency'),
+                  label: l10n.managedProvidersCurrency,
+                  controller: _currency,
+                  hint: 'USD',
+                );
+                final unit = _field(
+                  context,
+                  key: const Key('managed-provider-unit'),
+                  label: l10n.managedProvidersUnit,
+                  controller: _unit,
+                  hint: 'requests / tokens',
+                );
+                final decimals = _field(
+                  context,
+                  key: const Key('managed-provider-decimal-places'),
+                  label: l10n.managedProvidersDecimals,
+                  controller: _decimalPlaces,
+                  keyboardType: TextInputType.number,
+                );
+                if (constraints.maxWidth < 520) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      currency,
+                      const SizedBox(height: 12),
+                      unit,
+                      const SizedBox(height: 12),
+                      decimals,
+                    ],
+                  );
+                }
+                return Row(
+                  children: [
+                    Expanded(child: currency),
+                    const SizedBox(width: 12),
+                    Expanded(child: unit),
+                    const SizedBox(width: 12),
+                    SizedBox(width: 120, child: decimals),
+                  ],
+                );
+              },
+            ),
+            SwitchListTile.adaptive(
+              key: const Key('managed-provider-enabled'),
+              contentPadding: EdgeInsets.zero,
+              title: Text(l10n.managedProvidersEnabledTitle),
+              subtitle: Text(l10n.managedProvidersEnabledSubtitle),
+              value: _enabled,
+              onChanged: (value) => _setEnabled(value),
+            ),
+            SwitchListTile.adaptive(
+              contentPadding: EdgeInsets.zero,
+              title: Text(l10n.managedProvidersShowPercent),
+              value: _showPercent,
+              onChanged: (value) => setState(() => _showPercent = value),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: TpButton(
+                    key: const Key('managed-provider-save'),
+                    onPressed: _saving ? null : _save,
+                    child: Text(
+                      _saving
+                          ? l10n.managedProvidersSaving
+                          : l10n.managedProvidersSave,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: TpButton(
+                    key: const Key('managed-provider-test-query'),
+                    variant: TpButtonVariant.outline,
+                    onPressed: _saving ? null : _testQuery,
+                    child: Text(l10n.managedProvidersTestQuery),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+    if (widget.embedded) {
+      return Column(
+        children: [
+          _EmbeddedEditorHeader(
+            title: provider == null
+                ? l10n.managedProvidersNewTitle
+                : l10n.managedProvidersEditTitle,
+            showDelete: provider != null,
+            deleteEnabled: !_saving,
+            onBack: _handleBack,
+            onDelete: _delete,
+          ),
+          Expanded(child: form),
+        ],
+      );
+    }
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -130,237 +383,17 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
             ),
         ],
       ),
-      body: SafeArea(
-        child: Form(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
-            children: [
-              if (_formError != null) _ErrorBanner(message: _formError!),
-              _sectionTitle(context, l10n.managedProvidersIdentity),
-              _field(
-                context,
-                key: const Key('managed-provider-name'),
-                label: l10n.managedProvidersName,
-                controller: _name,
-                hint: l10n.managedProvidersNameHint,
-              ),
-              const SizedBox(height: 12),
-              _field(
-                context,
-                key: const Key('managed-provider-adapter'),
-                label: l10n.managedProvidersAdapter,
-                controller: _adapter,
-                hint: l10n.managedProvidersAdapterHint,
-              ),
-              const SizedBox(height: 12),
-              _labeledControl(
-                context,
-                label: l10n.managedProvidersKind,
-                child: TpSelect<ManagedProviderKind>(
-                  key: const Key('managed-provider-kind'),
-                  items: const [
-                    ManagedProviderKind.apiBalance,
-                    ManagedProviderKind.subscriptionQuota,
-                    ManagedProviderKind.customHttp,
-                  ],
-                  initialItem: _kind,
-                  itemLabel: (kind) => kind.value,
-                  onChanged: (value) {
-                    if (value != null) setState(() => _kind = value);
-                  },
-                  decoration: TpSelectDecorations.themed(context),
-                ),
-              ),
-              const SizedBox(height: 20),
-              _sectionTitle(context, l10n.managedProvidersRequestMapping),
-              _field(
-                context,
-                key: const Key('managed-provider-endpoint'),
-                label: l10n.managedProvidersEndpoint,
-                controller: _endpoint,
-                hint: l10n.managedProvidersEndpointHint,
-                keyboardType: TextInputType.url,
-              ),
-              const SizedBox(height: 12),
-              _labeledControl(
-                context,
-                label: l10n.managedProvidersMethod,
-                child: TpSelect<String>(
-                  key: const Key('managed-provider-method'),
-                  items: const ['GET', 'POST'],
-                  initialItem: _method,
-                  itemLabel: (method) => method,
-                  onChanged: (value) {
-                    if (value != null) setState(() => _method = value);
-                  },
-                  decoration: TpSelectDecorations.themed(context),
-                  searchable: false,
-                ),
-              ),
-              const SizedBox(height: 12),
-              _field(
-                context,
-                key: const Key('managed-provider-response-path'),
-                label: l10n.managedProvidersResponsePath,
-                controller: _responsePath,
-                hint: r'$.data',
-              ),
-              const SizedBox(height: 12),
-              _field(
-                context,
-                key: const Key('managed-provider-measures-path'),
-                label: l10n.managedProvidersMeasuresPath,
-                controller: _measuresPath,
-                hint: r'$.data.measures',
-              ),
-              const SizedBox(height: 12),
-              _textarea(
-                context,
-                key: const Key('managed-provider-request-mapping'),
-                label: l10n.managedProvidersRequestMapping,
-                controller: _requestMapping,
-              ),
-              const SizedBox(height: 12),
-              _textarea(
-                context,
-                key: const Key('managed-provider-field-mappings'),
-                label: l10n.managedProvidersFieldMappings,
-                controller: _fieldMappings,
-              ),
-              const SizedBox(height: 20),
-              _sectionTitle(context, l10n.managedProvidersCredentials),
-              _field(
-                context,
-                key: const Key('managed-provider-credential-ref'),
-                label: l10n.managedProvidersCredentialRef,
-                controller: _credentialRef,
-                hint: l10n.managedProvidersCredentialRefHint,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                _credentialRef.text.trim().isEmpty
-                    ? l10n.managedProvidersCredentialNone
-                    : l10n.managedProvidersCredentialConfigured,
-                style: TpTextStyles.of(
-                  context,
-                ).smColored(Theme.of(context).colorScheme.onSurfaceVariant),
-              ),
-              const SizedBox(height: 12),
-              _field(
-                context,
-                key: const Key('managed-provider-credential-name'),
-                label: l10n.managedProvidersCredentialName,
-                controller: _credentialName,
-                hint: l10n.managedProvidersCredentialNameHint,
-              ),
-              const SizedBox(height: 12),
-              _field(
-                context,
-                key: const Key('managed-provider-credential-field'),
-                label: l10n.managedProvidersCredentialField,
-                controller: _credentialField,
-                hint: l10n.managedProvidersCredentialFieldHint,
-              ),
-              const SizedBox(height: 12),
-              _field(
-                context,
-                key: const Key('managed-provider-credential-placement'),
-                label: l10n.managedProvidersCredentialPlacement,
-                controller: _credentialPlacement,
-                hint: l10n.managedProvidersCredentialPlacementHint,
-              ),
-              const SizedBox(height: 20),
-              _sectionTitle(context, l10n.managedProvidersDisplay),
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final currency = _field(
-                    context,
-                    key: const Key('managed-provider-currency'),
-                    label: l10n.managedProvidersCurrency,
-                    controller: _currency,
-                    hint: 'USD',
-                  );
-                  final unit = _field(
-                    context,
-                    key: const Key('managed-provider-unit'),
-                    label: l10n.managedProvidersUnit,
-                    controller: _unit,
-                    hint: 'requests / tokens',
-                  );
-                  final decimals = _field(
-                    context,
-                    key: const Key('managed-provider-decimal-places'),
-                    label: l10n.managedProvidersDecimals,
-                    controller: _decimalPlaces,
-                    keyboardType: TextInputType.number,
-                  );
-                  if (constraints.maxWidth < 520) {
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        currency,
-                        const SizedBox(height: 12),
-                        unit,
-                        const SizedBox(height: 12),
-                        decimals,
-                      ],
-                    );
-                  }
-                  return Row(
-                    children: [
-                      Expanded(child: currency),
-                      const SizedBox(width: 12),
-                      Expanded(child: unit),
-                      const SizedBox(width: 12),
-                      SizedBox(width: 120, child: decimals),
-                    ],
-                  );
-                },
-              ),
-              SwitchListTile.adaptive(
-                key: const Key('managed-provider-enabled'),
-                contentPadding: EdgeInsets.zero,
-                title: Text(l10n.managedProvidersEnabledTitle),
-                subtitle: Text(l10n.managedProvidersEnabledSubtitle),
-                value: _enabled,
-                onChanged: (value) => _setEnabled(value),
-              ),
-              SwitchListTile.adaptive(
-                contentPadding: EdgeInsets.zero,
-                title: Text(l10n.managedProvidersShowPercent),
-                value: _showPercent,
-                onChanged: (value) => setState(() => _showPercent = value),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: TpButton(
-                      key: const Key('managed-provider-save'),
-                      onPressed: _saving ? null : _save,
-                      child: Text(
-                        _saving
-                            ? l10n.managedProvidersSaving
-                            : l10n.managedProvidersSave,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: TpButton(
-                      key: const Key('managed-provider-test-query'),
-                      variant: TpButtonVariant.outline,
-                      onPressed: _saving ? null : _testQuery,
-                      child: Text(l10n.managedProvidersTestQuery),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
+      body: form,
     );
+  }
+
+  void _handleBack() {
+    final onBack = widget.onBack;
+    if (onBack != null) {
+      onBack();
+      return;
+    }
+    Navigator.of(context).pop();
   }
 
   Widget _field(
@@ -538,7 +571,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
       message: context.l10n.managedProvidersSaved,
       variant: TpToastVariant.success,
     );
-    Navigator.of(context).pop();
+    _handleBack();
   }
 
   Future<void> _delete() async {
@@ -558,7 +591,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
       );
       return;
     }
-    Navigator.of(context).pop();
+    _handleBack();
   }
 
   Future<void> _testQuery() async {
@@ -709,6 +742,50 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
     }
     return false;
   }
+}
+
+class _EmbeddedEditorHeader extends StatelessWidget {
+  const _EmbeddedEditorHeader({
+    required this.title,
+    required this.showDelete,
+    required this.deleteEnabled,
+    required this.onBack,
+    required this.onDelete,
+  });
+
+  final String title;
+  final bool showDelete;
+  final bool deleteEnabled;
+  final VoidCallback onBack;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    height: kToolbarHeight,
+    decoration: BoxDecoration(
+      border: Border(bottom: BorderSide(color: Theme.of(context).dividerColor)),
+    ),
+    child: Row(
+      children: [
+        IconButton(
+          key: const Key('managed-provider-editor-back'),
+          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+          onPressed: onBack,
+          icon: const Icon(Icons.arrow_back),
+        ),
+        Expanded(
+          child: Text(title, style: TpTextStyles.of(context).lgSemibold),
+        ),
+        if (showDelete)
+          IconButton(
+            key: const Key('managed-provider-delete'),
+            tooltip: context.l10n.managedProvidersDelete,
+            onPressed: deleteEnabled ? onDelete : null,
+            icon: const Icon(Icons.delete_outline),
+          ),
+      ],
+    ),
+  );
 }
 
 class _ErrorBanner extends StatelessWidget {

@@ -88,6 +88,16 @@ class _NoHttp implements ProviderUsageHttpClient {
   }
 }
 
+class _RecordingNavigatorObserver extends NavigatorObserver {
+  int pushes = 0;
+
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    pushes++;
+    super.didPush(route, previousRoute);
+  }
+}
+
 void main() {
   late InMemoryFilesystem fs;
   late ManagedProviderRepository providerRepository;
@@ -95,6 +105,7 @@ void main() {
   late ManagedProviderCubit providerCubit;
   late ManagedProviderUsageCubit usageCubit;
   late _Adapter adapter;
+  late _RecordingNavigatorObserver navigatorObserver;
 
   setUp(() async {
     fs = InMemoryFilesystem();
@@ -109,6 +120,7 @@ void main() {
       onProvidersDeleted: usageRepository.deleteMany,
     );
     adapter = _Adapter(Future.value(_snapshot()));
+    navigatorObserver = _RecordingNavigatorObserver();
     final coordinator = ManagedProviderUsageCoordinator(
       providerRepository: providerRepository,
       usageRepository: usageRepository,
@@ -131,6 +143,7 @@ void main() {
       MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
+        navigatorObservers: [navigatorObserver],
         home: TpTheme(
           data: TpThemeData.fromColorScheme(
             ColorScheme.fromSeed(seedColor: Colors.indigo),
@@ -174,6 +187,45 @@ void main() {
     expect(find.text('12.50 USD'), findsOneWidget);
     expect(adapter.calls, 0);
   });
+
+  testWidgets(
+    'embedded editor stays in the body and back returns to the provider list',
+    (tester) async {
+      providerCubit.emit(
+        ManagedProviderState(status: ManagedProviderLoadStatus.ready),
+      );
+      usageCubit.emit(
+        ManagedProviderUsageState(status: ManagedProviderUsageLoadStatus.ready),
+      );
+      await pumpPage(tester);
+      final initialPushes = navigatorObserver.pushes;
+
+      await tester.tap(find.byKey(const Key('managed-provider-add')));
+      await tester.pumpAndSettle();
+
+      expect(navigatorObserver.pushes, initialPushes);
+      expect(
+        find.byKey(const Key('managed-provider-management-page')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('managed-provider-editor-page')),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byKey(const Key('managed-provider-editor-back')));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const Key('managed-provider-editor-page')),
+        findsNothing,
+      );
+      expect(
+        find.byKey(const Key('managed-provider-management-page')),
+        findsOneWidget,
+      );
+    },
+  );
 
   testWidgets(
     'CRUD actions are dispatched through the managed provider cubit',
