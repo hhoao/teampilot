@@ -56,6 +56,7 @@ final class CodexPluginCapability implements PluginCapability {
           arguments: args,
           workingDirectory: ctx.configDir,
           environment: env,
+          pathPrepend: ctx.pathPrepend,
         ),
       );
       if (!result.succeeded) {

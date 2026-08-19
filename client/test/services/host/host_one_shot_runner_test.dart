@@ -48,6 +48,39 @@ void main() {
       expect(result.stdout, 'ok\n');
       expect(calls.single, ['echo', 'hi']);
     });
+
+    test('prepends target CLI paths without dropping inherited PATH', () async {
+      Map<String, String>? capturedEnvironment;
+      final runner = LocalHostOneShotRunner(
+        processRunner:
+            (
+              exe,
+              args, {
+              workingDirectory,
+              environment,
+              includeParentEnvironment = true,
+              stdoutEncoding,
+              stderrEncoding,
+            }) async {
+              capturedEnvironment = environment;
+              return ProcessResult(0, 0, '', '');
+            },
+      );
+
+      await runner.run(
+        const HostRunRequest(
+          executable: 'codex',
+          environment: {'PATH': '/inherited'},
+          pathPrepend: ['/tp/node/bin', '/tp/bin'],
+        ),
+      );
+
+      expect(
+        capturedEnvironment?['PATH'],
+        '/tp/node/bin${Platform.isWindows ? ';' : ':'}/tp/bin'
+        '${Platform.isWindows ? ';' : ':'}/inherited',
+      );
+    });
   });
 
   group('WslHostOneShotRunner', () {
@@ -131,6 +164,44 @@ void main() {
         ]),
       );
     });
+
+    test('prepends paths inside the WSL runtime shell', () async {
+      final calls = <List<String>>[];
+      final runner = WslHostOneShotRunner(
+        distro: 'Ubuntu',
+        processRunner:
+            (
+              exe,
+              args, {
+              workingDirectory,
+              environment,
+              includeParentEnvironment = true,
+              stdoutEncoding,
+              stderrEncoding,
+            }) async {
+              calls.add([exe, ...args]);
+              return ProcessResult(0, 0, '', '');
+            },
+      );
+
+      await runner.run(
+        const HostRunRequest(
+          executable: 'codex',
+          arguments: ['plugin', 'list', '--json'],
+          pathPrepend: ['/tp/node/bin', '/tp/bin'],
+        ),
+      );
+
+      expect(calls.single, [
+        'wsl.exe',
+        '-d',
+        'Ubuntu',
+        'sh',
+        '-lc',
+        'export PATH=\'/tp/node/bin:/tp/bin:\'"\$PATH" '
+            '&& exec \'codex\' \'plugin\' \'list\' \'--json\'',
+      ]);
+    });
   });
 
   group('RemoteHostOneShotRunner', () {
@@ -153,6 +224,29 @@ void main() {
       expect(result.succeeded, isTrue);
       expect(commands.single, contains("'-C' '/repo/with spaces'"));
       expect(commands.single, endsWith("'status'"));
+    });
+
+    test('exports target CLI paths while preserving remote PATH', () async {
+      final commands = <String>[];
+      final runner = RemoteHostOneShotRunner(
+        execShell: (cmd) async {
+          commands.add(cmd);
+          return _sshOk('done\n');
+        },
+      );
+
+      await runner.run(
+        const HostRunRequest(
+          executable: 'codex',
+          pathPrepend: ['/tp/node/bin', '/tp/bin'],
+        ),
+      );
+
+      expect(
+        commands.single,
+        contains("export PATH='/tp/node/bin:/tp/bin:'\"\$PATH\""),
+      );
+      expect(commands.single, endsWith("'codex'"));
     });
   });
 

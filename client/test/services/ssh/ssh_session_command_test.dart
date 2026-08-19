@@ -19,6 +19,20 @@ void main() {
     expect(command, contains('session-123'));
   });
 
+  test('remote CLI command exposes TeamPilot Node and npm bin paths', () {
+    final command = const RemoteFlashskyaiCommandBuilder().buildCommand(
+      remoteExecutablePath: '/root/.local/bin/codex',
+      arguments: ['plugin', 'list', '--json'],
+    );
+
+    expect(
+      command,
+      contains(
+        r'export PATH="$HOME/.local/share/com.hhoa.teampilot/toolchain/node/current/bin:$HOME/.local/bin:$PATH"',
+      ),
+    );
+  });
+
   test('SSH pty uses prebuilt command without adding a second exec', () {
     final remoteCommand = const RemoteFlashskyaiCommandBuilder().buildCommand(
       remoteExecutablePath: '/opt/flash sky/flashskyai',

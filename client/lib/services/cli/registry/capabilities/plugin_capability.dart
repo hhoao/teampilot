@@ -34,6 +34,7 @@ class PluginProvisionContext {
     this.mcpConfigFileName,
     this.hostOneShotRunner,
     this.executable,
+    this.pathPrepend = const [],
   });
 
   final Filesystem fs;
@@ -52,6 +53,10 @@ class PluginProvisionContext {
 
   /// Resolved executable for the target host, when native installation is used.
   final String? executable;
+
+  /// Target-runtime paths required by native CLI shims, such as Node's bin
+  /// directory for npm-installed commands.
+  final List<String> pathPrepend;
 
   /// When set, overrides the MCP config filename (e.g. `mcp.base.json`).
   final String? mcpConfigFileName;

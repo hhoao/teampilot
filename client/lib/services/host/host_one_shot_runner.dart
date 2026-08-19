@@ -56,14 +56,33 @@ class LocalHostOneShotRunner implements HostOneShotRunner {
 
   @override
   Future<HostRunResult> run(HostRunRequest request) async {
+    final environment = _localEnvironment(request);
     final result = await _processRunner(
       request.executable,
       request.arguments,
       workingDirectory: request.workingDirectory,
-      environment: request.environment,
+      environment: environment,
       includeParentEnvironment: request.includeParentEnvironment,
     );
     return HostRunResult.fromProcess(result);
+  }
+
+  static Map<String, String>? _localEnvironment(HostRunRequest request) {
+    if (request.pathPrepend.isEmpty) return request.environment;
+
+    final environment = <String, String>{...?request.environment};
+    final existingPath =
+        environment['PATH'] ??
+        environment['Path'] ??
+        Platform.environment['PATH'] ??
+        Platform.environment['Path'] ??
+        '';
+    final separator = Platform.isWindows ? ';' : ':';
+    environment['PATH'] = [
+      ...request.pathPrepend,
+      if (existingPath.isNotEmpty) existingPath,
+    ].join(separator);
+    return environment;
   }
 }
 
@@ -79,8 +98,11 @@ class WslHostOneShotRunner implements HostOneShotRunner {
   @override
   Future<HostRunResult> run(HostRunRequest request) async {
     final env = request.environment;
-    final executable = env != null && env.isNotEmpty ? 'env' : request.executable;
-    final arguments = env != null && env.isNotEmpty
+    final useShell = request.pathPrepend.isNotEmpty;
+    final executable = !useShell && env != null && env.isNotEmpty
+        ? 'env'
+        : request.executable;
+    final arguments = !useShell && env != null && env.isNotEmpty
         ? [
             ...env.entries.map((e) => '${e.key}=${e.value}'),
             request.executable,
@@ -92,6 +114,8 @@ class WslHostOneShotRunner implements HostOneShotRunner {
       workingDirectory: request.workingDirectory,
       executable: executable,
       arguments: arguments,
+      environment: useShell ? env : null,
+      pathPrepend: useShell ? request.pathPrepend : const [],
     );
     final result = await _processRunner(
       'wsl.exe',
@@ -116,6 +140,7 @@ class RemoteHostOneShotRunner implements HostOneShotRunner {
       arguments: request.arguments,
       workingDirectory: request.workingDirectory,
       environment: request.environment,
+      pathPrepend: request.pathPrepend,
     );
     final result = await _execShell(command);
     return HostRunResult.fromSsh(result);

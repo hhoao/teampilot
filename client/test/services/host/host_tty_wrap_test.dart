@@ -8,13 +8,11 @@ void main() {
       executable: 'codex',
       arguments: ['login', '--device-auth'],
       environment: {'CODEX_HOME': '/tmp/codex home'},
+      pathPrepend: ['/tmp/node/bin'],
       allocateTty: true,
     );
 
-    final wrapped = HostTtyWrap.apply(
-      request,
-      flavor: HostTtyScriptFlavor.gnu,
-    );
+    final wrapped = HostTtyWrap.apply(request, flavor: HostTtyScriptFlavor.gnu);
 
     expect(wrapped.executable, 'script');
     expect(wrapped.arguments, [
@@ -23,6 +21,7 @@ void main() {
       '/dev/null',
     ]);
     expect(wrapped.environment, request.environment);
+    expect(wrapped.pathPrepend, request.pathPrepend);
   });
 
   test('does not wrap when allocateTty is false', () {

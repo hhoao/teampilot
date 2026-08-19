@@ -43,6 +43,7 @@ void main() {
     required InMemoryFilesystem fs,
     required HostOneShotRunner runner,
     List<String> enabledPluginIds = const ['local/demo'],
+    List<String> pathPrepend = const [],
   }) {
     return PluginProvisionContext(
       fs: fs,
@@ -66,6 +67,7 @@ void main() {
       tool: CliTool.codex,
       hostOneShotRunner: runner,
       executable: '/bin/codex-custom',
+      pathPrepend: pathPrepend,
     );
   }
 
@@ -125,6 +127,24 @@ void main() {
       );
     },
   );
+
+  test('passes target CLI paths to every native Codex command', () async {
+    final fs = await seededFs();
+    final runner = _RecordingRunner();
+    const pathPrepend = [
+      '/tp/toolchain/node/current/bin',
+      '/home/u/.local/bin',
+    ];
+
+    await const CodexPluginCapability().provision(
+      context(fs: fs, runner: runner, pathPrepend: pathPrepend),
+    );
+
+    expect(
+      runner.calls.map((call) => call.pathPrepend),
+      everyElement(pathPrepend),
+    );
+  });
 
   test(
     'skips native add when the matching version is already installed',

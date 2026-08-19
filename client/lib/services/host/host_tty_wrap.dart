@@ -26,6 +26,7 @@ abstract final class HostTtyWrap {
       arguments: ['-qefc', inner, '/dev/null'],
       workingDirectory: request.workingDirectory,
       environment: request.environment,
+      pathPrepend: request.pathPrepend,
       includeParentEnvironment: request.includeParentEnvironment,
     );
   }
@@ -36,6 +37,7 @@ abstract final class HostTtyWrap {
       arguments: ['-q', '/dev/null', request.executable, ...request.arguments],
       workingDirectory: request.workingDirectory,
       environment: request.environment,
+      pathPrepend: request.pathPrepend,
       includeParentEnvironment: request.includeParentEnvironment,
     );
   }

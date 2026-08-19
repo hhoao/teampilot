@@ -156,6 +156,18 @@ class ConfigProfileService implements ConfigProfileDelegate {
   final Future<List<CliPreset>> Function() _loadGlobalPresets;
   final WorkspaceProjectConfigRepository? _projectConfigRepository;
 
+  List<String> get _nativeCliPathPrepend {
+    final path = _infra.pathContext;
+    final prefixes = <String>[
+      path.join(_infra.basePath, 'toolchain', 'node', 'current', 'bin'),
+    ];
+    final home = _infra.home.trim();
+    if (home.isNotEmpty) {
+      prefixes.add(path.join(home, '.local', 'bin'));
+    }
+    return prefixes;
+  }
+
   /// Control-plane paths for provider catalog reads (home when work != home).
   ConfigProfilePaths get catalog => _catalogOverride ?? _infra;
 
@@ -559,6 +571,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
           tool: cli,
           hostOneShotRunner: _hostOneShotRunner,
           executable: executable ?? _cliExecutable,
+          pathPrepend: _nativeCliPathPrepend,
         ),
       );
     });

@@ -10,6 +10,7 @@ abstract final class HostShellArgv {
     required List<String> arguments,
     String? workingDirectory,
     Map<String, String>? environment,
+    List<String> pathPrepend = const [],
   }) {
     final parts = <String>[];
     final cwd = workingDirectory?.trim() ?? '';
@@ -23,6 +24,12 @@ abstract final class HostShellArgv {
           '${RemoteFileStore.shellSingleQuote(entry.value)}',
         );
       }
+    }
+    if (pathPrepend.isNotEmpty) {
+      final prefix = RemoteFileStore.shellSingleQuote(
+        '${pathPrepend.join(':')}:',
+      );
+      parts.add('export PATH=$prefix"\$PATH"');
     }
     final argv = [
       executable,
