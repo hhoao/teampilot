@@ -43,7 +43,8 @@ void main() {
         cliTeamName: 'session-1',
       );
 
-      final contribution = await contribute(capability,
+      final contribution = await contribute(
+        capability,
         ConfigProfileLaunchContext(
           workspaceId: 'workspace-1',
           teamId: 'team-a',
@@ -68,8 +69,7 @@ void main() {
         'flashskyai',
       );
       expect(
-        contribution.environment[FlashskyaiProviderCapability
-            .configDirEnvKey],
+        contribution.environment[FlashskyaiProviderCapability.configDirEnvKey],
         expectedDir,
       );
     },
@@ -104,7 +104,8 @@ void main() {
       memberId: 'm1',
     );
 
-    await contribute(capability,
+    await contribute(
+      capability,
       ConfigProfileLaunchContext(
         workspaceId: 'workspace-1',
         teamId: 'team-a',
@@ -139,6 +140,15 @@ void main() {
         for (final h in (entry as Map)['hooks'] as List)
           if ((h as Map)['type'] == 'command') h['command'],
     ];
+    expect(
+      [
+        for (final entry in stop)
+          for (final h in (entry as Map)['hooks'] as List)
+            if ((h as Map)['type'] == 'http') h,
+      ],
+      isEmpty,
+      reason: 'flashskyai must materialize bus idle as a command hook',
+    );
     expect(
       commands.single,
       contains('teammate-bus-stop-idle.sh'),

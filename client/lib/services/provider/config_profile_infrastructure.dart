@@ -8,6 +8,7 @@ import '../../utils/workspace/trusted_project_paths.dart';
 import '../../utils/team/team_member_naming.dart';
 import '../storage/runtime_layout.dart';
 import '../cli/registry/config_profile/config_profile_context.dart';
+import '../cli/registry/capabilities/claude_family_hook_registry.dart';
 import '../extension/builtin_manifests.dart';
 import '../extension/extension_detector.dart';
 import '../extension/extension_provisioner.dart';
@@ -309,6 +310,18 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
   }
 
   @override
+  Future<String?> resolveTeamLeadSelfHookCommand(
+    TeamMemberConfig member,
+    String memberToolDir,
+  ) async {
+    if (!TeamMemberNaming.isTeamLead(member)) return null;
+    final host = hostEnvironmentForProvision();
+    final selfProvisioner = _resolveTeamLeadHookProvisioner(host);
+    final scriptPath = await selfProvisioner.provision(memberToolDir);
+    return selfProvisioner.commandForPath(scriptPath);
+  }
+
+  @override
   HostExecutionEnvironment hostEnvironmentForProvision() {
     if (_hostEnvironment != null) return _hostEnvironment;
     if (AppStorage.isInstalled) {
@@ -353,6 +366,12 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
     final existing = await _readSettingsFile(path);
     final enabledPlugins = existing['enabledPlugins'];
     var merged = Map<String, Object?>.from(settings);
+    final existingHooks = existing['hooks'];
+    if (existingHooks is Map && existingHooks.isNotEmpty) {
+      merged = mergeHooksInto(merged, {
+        'hooks': existingHooks.cast<String, Object?>(),
+      });
+    }
     if (enabledPlugins is Map && enabledPlugins.isNotEmpty) {
       merged['enabledPlugins'] = enabledPlugins;
     } else if (memberToolDir != null && memberToolDir.trim().isNotEmpty) {

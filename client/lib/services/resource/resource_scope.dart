@@ -1,6 +1,7 @@
 import 'package:path/path.dart' as p;
 
 import '../../models/config_bundle.dart';
+import '../../models/plugin.dart';
 import '../../models/skill.dart';
 import '../../models/team_config.dart';
 
@@ -8,6 +9,10 @@ import '../../models/team_config.dart';
 /// enable lists are authoritative for it. Mode lives here and nowhere else.
 sealed class ResourceScope {
   const ResourceScope();
+
+  List<String> get skillIds;
+
+  List<String> get pluginIds;
 }
 
 /// Simple / unteamed mode: enable lists come from a merged [ConfigBundle]
@@ -15,6 +20,12 @@ sealed class ResourceScope {
 class SimpleResourceScope extends ResourceScope {
   const SimpleResourceScope({required this.bundle});
   final ConfigBundle bundle;
+
+  @override
+  List<String> get skillIds => bundle.skillIds;
+
+  @override
+  List<String> get pluginIds => bundle.pluginIds;
 }
 
 /// Native or mixed team mode: enable lists come from [TeamProfile].
@@ -24,24 +35,39 @@ class TeamResourceScope extends ResourceScope {
   const TeamResourceScope({required this.team, this.member});
   final TeamProfile team;
   final TeamMemberConfig? member;
+
+  @override
+  List<String> get skillIds => team.skillIds;
+
+  @override
+  List<String> get pluginIds => team.pluginIds;
 }
 
 /// Workspace project bindings from `project-config.json`.
 class WorkspaceResourceScope extends ResourceScope {
   const WorkspaceResourceScope({required this.bundle});
   final ConfigBundle bundle;
+
+  @override
+  List<String> get skillIds => bundle.skillIds;
+
+  @override
+  List<String> get pluginIds => bundle.pluginIds;
 }
 
-/// Installed catalogs + source roots needed to turn enabled ids into refs.
-/// Skills only for now; plugin/mcp fields are added by their follow-on plans.
+/// Installed catalogs + source roots needed by resource contribution providers.
 class ResourceCatalog {
   const ResourceCatalog({
     required this.skills,
     required this.skillsRoot,
     required this.pathContext,
+    this.plugins = const [],
+    this.pluginsRoot,
   });
 
   final List<Skill> skills;
   final String skillsRoot;
   final p.Context pathContext;
+  final List<Plugin> plugins;
+  final String? pluginsRoot;
 }

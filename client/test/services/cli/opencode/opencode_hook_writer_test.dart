@@ -5,9 +5,51 @@ import 'package:teampilot/services/cli/opencode/capabilities/provider.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/opencode_hook_writer.dart';
 import 'package:teampilot/services/cli/registry/capabilities/hook_capability.dart';
 import 'package:teampilot/services/hook/glue_script_builder.dart';
+import 'package:teampilot/services/resource/contribution/resource_assembly_error.dart';
 
 void main() {
   const writer = OpencodeHookWriter();
+
+  test('OpenCode profile hook inputs are assembled before rendering', () async {
+    final first = HookEntry(
+      id: 'first',
+      source: HookSource.userLibrary,
+      event: HookEvent.stop,
+      action: CommandHookAction.raw('echo stop'),
+    );
+    final duplicate = HookEntry(
+      id: 'duplicate',
+      source: HookSource.managed,
+      event: HookEvent.stop,
+      action: CommandHookAction.raw(' echo stop '),
+    );
+
+    final assembled = await OpencodeProviderCapability.assembleHookEntries(
+      entries: [first, duplicate],
+    );
+
+    expect(assembled.map((entry) => entry.id), ['first']);
+  });
+
+  test('required HTTP hook fails during OpenCode assembly', () {
+    final http = HookEntry(
+      id: 'required-http',
+      source: HookSource.userLibrary,
+      event: HookEvent.stop,
+      action: HttpHookAction(url: 'http://127.0.0.1/hook'),
+    );
+
+    expect(
+      () => OpencodeProviderCapability.assembleHookEntries(entries: [http]),
+      throwsA(
+        isA<ResourceAssemblyException>().having(
+          (error) => error.diagnostics.single.message,
+          'message',
+          contains('HTTP'),
+        ),
+      ),
+    );
+  });
   const ctx = HookRenderContext(
     hooksDir: '/s/hooks',
     runner: null,
@@ -21,14 +63,14 @@ void main() {
   });
 
   test('renders plugin entry + JS source with event subscriptions', () {
-    const entry = HookEntry(
+    final entry = HookEntry(
       id: 'h1',
       source: HookSource.userLibrary,
       event: HookEvent.preToolUse,
       matcher: 'bash',
       action: CommandHookAction.raw('echo hi'),
     );
-    final result = writer.render(entries: const [entry], ctx: ctx);
+    final result = writer.render(entries: [entry], ctx: ctx);
     expect(result.warnings, isEmpty);
     final opencodeJson = result.configFragments['opencode.json']! as Map;
     expect(opencodeJson['plugin'], ['./teampilot-user-hooks.js']);
@@ -40,14 +82,14 @@ void main() {
   });
 
   test('policy deny injects decision bridge contract', () {
-    const entry = HookEntry(
+    final entry = HookEntry(
       id: 'h1',
       source: HookSource.userLibrary,
       event: HookEvent.permissionRequest,
       policy: HookPolicy.deny,
       action: CommandHookAction.raw('echo hi'),
     );
-    final result = writer.render(entries: const [entry], ctx: ctx);
+    final result = writer.render(entries: [entry], ctx: ctx);
     final glue = result.scripts.singleWhere(
       (s) => s.fileName == 'teampilot-hook-h1.sh',
     );
@@ -55,37 +97,31 @@ void main() {
   });
 
   test('unsupported events warn', () {
-    const entry = HookEntry(
+    final entry = HookEntry(
       id: 'h1',
       source: HookSource.userLibrary,
       event: HookEvent.sessionStart,
       action: CommandHookAction.raw('echo hi'),
     );
-    final result = writer.render(entries: const [entry], ctx: ctx);
-    expect(
-      result.warnings,
-      ['hook_unsupported_event_h1_sessionStart'],
-    );
+    final result = writer.render(entries: [entry], ctx: ctx);
+    expect(result.warnings, ['hook_unsupported_event_h1_sessionStart']);
   });
 
   test('tool.execute matcher registers tool-keyed hook, plain falls back', () {
-    const bashEntry = HookEntry(
+    final bashEntry = HookEntry(
       id: 'h1',
       source: HookSource.userLibrary,
       event: HookEvent.preToolUse,
       matcher: 'bash',
       action: CommandHookAction.raw('echo hi'),
     );
-    const plainEntry = HookEntry(
+    final plainEntry = HookEntry(
       id: 'h2',
       source: HookSource.userLibrary,
       event: HookEvent.preToolUse,
       action: CommandHookAction.raw('echo hi2'),
     );
-    final result = writer.render(
-      entries: const [bashEntry, plainEntry],
-      ctx: ctx,
-    );
+    final result = writer.render(entries: [bashEntry, plainEntry], ctx: ctx);
     expect(result.warnings, isEmpty);
     final js = result.scripts
         .singleWhere((s) => s.fileName == 'teampilot-user-hooks.js')
@@ -106,26 +142,22 @@ void main() {
     );
   });
 
-  test('multiple tool-keyed entries on same event emit independent checks',
-      () {
-    const bashEntry = HookEntry(
+  test('multiple tool-keyed entries on same event emit independent checks', () {
+    final bashEntry = HookEntry(
       id: 'h1',
       source: HookSource.userLibrary,
       event: HookEvent.preToolUse,
       matcher: 'bash',
       action: CommandHookAction.raw('echo a'),
     );
-    const readEntry = HookEntry(
+    final readEntry = HookEntry(
       id: 'h2',
       source: HookSource.userLibrary,
       event: HookEvent.preToolUse,
       matcher: 'read',
       action: CommandHookAction.raw('echo b'),
     );
-    final result = writer.render(
-      entries: const [bashEntry, readEntry],
-      ctx: ctx,
-    );
+    final result = writer.render(entries: [bashEntry, readEntry], ctx: ctx);
     final js = result.scripts
         .singleWhere((s) => s.fileName == 'teampilot-user-hooks.js')
         .content;
@@ -136,14 +168,14 @@ void main() {
   });
 
   test('matcher on non-tool.execute event warns and is ignored', () {
-    const entry = HookEntry(
+    final entry = HookEntry(
       id: 'h1',
       source: HookSource.userLibrary,
       event: HookEvent.stop,
       matcher: 'bash',
       action: CommandHookAction.raw('echo hi'),
     );
-    final result = writer.render(entries: const [entry], ctx: ctx);
+    final result = writer.render(entries: [entry], ctx: ctx);
     expect(result.warnings, ['hook_matcher_ignored_h1_stop']);
     final js = result.scripts
         .singleWhere((s) => s.fileName == 'teampilot-user-hooks.js')
@@ -153,22 +185,19 @@ void main() {
   });
 
   test('non-tool subscriptions use event hook filtering by event type', () {
-    const stopEntry = HookEntry(
+    final stopEntry = HookEntry(
       id: 'h1',
       source: HookSource.userLibrary,
       event: HookEvent.stop,
       action: CommandHookAction.raw('echo hi'),
     );
-    const promptEntry = HookEntry(
+    final promptEntry = HookEntry(
       id: 'h2',
       source: HookSource.userLibrary,
       event: HookEvent.userPromptSubmit,
       action: CommandHookAction.raw('echo hi2'),
     );
-    final result = writer.render(
-      entries: const [stopEntry, promptEntry],
-      ctx: ctx,
-    );
+    final result = writer.render(entries: [stopEntry, promptEntry], ctx: ctx);
     final js = result.scripts
         .singleWhere((s) => s.fileName == 'teampilot-user-hooks.js')
         .content;
@@ -182,19 +211,19 @@ void main() {
   });
 
   test('multiple hooks on same native event all fire, no early return', () {
-    const first = HookEntry(
+    final first = HookEntry(
       id: 'h1',
       source: HookSource.userLibrary,
       event: HookEvent.stop,
       action: CommandHookAction.raw('echo a'),
     );
-    const second = HookEntry(
+    final second = HookEntry(
       id: 'h2',
       source: HookSource.userLibrary,
       event: HookEvent.stop,
       action: CommandHookAction.raw('echo b'),
     );
-    final result = writer.render(entries: const [first, second], ctx: ctx);
+    final result = writer.render(entries: [first, second], ctx: ctx);
     final js = result.scripts
         .singleWhere((s) => s.fileName == 'teampilot-user-hooks.js')
         .content;
@@ -205,8 +234,11 @@ void main() {
     expect(js, isNot(contains('return out ? JSON.parse(out)')));
     expect(js, contains('last = JSON.parse(out)'));
     expect(js, contains('return last || {}'));
-    expect(js.split('if (evt === "session.idle")').length - 1, 2,
-        reason: 'both subscriptions must emit an if branch');
+    expect(
+      js.split('if (evt === "session.idle")').length - 1,
+      2,
+      reason: 'both subscriptions must emit an if branch',
+    );
   });
 
   test('spaced script path renders as single argv element', () {
@@ -215,33 +247,31 @@ void main() {
       runner: null,
       glueBuilder: GlueScriptBuilder(),
     );
-    const entry = HookEntry(
+    final entry = HookEntry(
       id: 'h1',
       source: HookSource.userLibrary,
       event: HookEvent.userPromptSubmit,
       action: CommandHookAction.raw('echo hi'),
     );
-    final result = writer.render(entries: const [entry], ctx: spacedCtx);
+    final result = writer.render(entries: [entry], ctx: spacedCtx);
     final js = result.scripts
         .singleWhere((s) => s.fileName == 'teampilot-user-hooks.js')
         .content;
     expect(
       js,
-      contains(
-        'run(["bash","/home/John Doe/s/hooks/teampilot-hook-h1.sh"])',
-      ),
+      contains('run(["bash","/home/John Doe/s/hooks/teampilot-hook-h1.sh"])'),
     );
   });
 
   test('matcher regex escapes backslashes before quotes', () {
-    const entry = HookEntry(
+    final entry = HookEntry(
       id: 'h1',
       source: HookSource.userLibrary,
       event: HookEvent.preToolUse,
       matcher: r'\b(rm|mv)\b',
       action: CommandHookAction.raw('echo hi'),
     );
-    final result = writer.render(entries: const [entry], ctx: ctx);
+    final result = writer.render(entries: [entry], ctx: ctx);
     final js = result.scripts
         .singleWhere((s) => s.fileName == 'teampilot-user-hooks.js')
         .content;
@@ -249,14 +279,17 @@ void main() {
   });
 
   test('user hooks plugin coexists with agent-status/idle plugin entries', () {
-    var config = const <String, Object?>{'plugin': ['./teampilot-agent-status.js']};
+    var config = const <String, Object?>{
+      'plugin': ['./teampilot-agent-status.js'],
+    };
     config = mergeOpencodePluginEntries(config, ['./teampilot-user-hooks.js']);
     expect(config['plugin'], [
       './teampilot-agent-status.js',
       './teampilot-user-hooks.js',
     ]);
-    final mergedAgain =
-        mergeOpencodePluginEntries(config, ['./teampilot-user-hooks.js']);
+    final mergedAgain = mergeOpencodePluginEntries(config, [
+      './teampilot-user-hooks.js',
+    ]);
     expect(mergedAgain['plugin'], config['plugin']);
   });
 }

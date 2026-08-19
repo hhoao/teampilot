@@ -27,6 +27,7 @@ abstract final class CodexSessionConfigDir {
   }
 
   static const localMarketplaceName = 'local';
+  static const teampilotMarketplaceName = 'teampilot';
 
   /// Personal marketplace manifest: `.agents/plugins/marketplace.json`.
   static String localMarketplaceManifestPath(

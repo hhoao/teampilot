@@ -106,6 +106,28 @@ void main() {
     });
 
     test(
+      'provision preserves a prompt already written by the coordinator',
+      () async {
+        const memberHome = '/data/tp/members/planner/cursor/home';
+        final roleRule = layout.roleRule(memberHome);
+        await fs.ensureDir(fs.pathContext.dirname(roleRule));
+        await fs.writeString(roleRule, 'coordinator prompt');
+
+        await provisioner.provision(
+          memberHome: memberHome,
+          providerId: null,
+          member: member,
+          busIdle: null,
+          forceTeamLeadDelegateMode: false,
+          mixed: false,
+          promptAlreadyMaterialized: true,
+        );
+
+        expect(await fs.readString(roleRule), 'coordinator prompt');
+      },
+    );
+
+    test(
       'provision seeds hasShownAgentCommandTip in isolated agent-cli-state',
       () async {
         const memberHome = '/data/tp/members/planner/cursor/home';
@@ -134,10 +156,7 @@ void main() {
         await fs.ensureDir(layout.cursorDir(memberHome));
         await fs.writeString(
           layout.agentCliState(memberHome),
-          jsonEncode({
-            'version': 1,
-            'hasClearedLegacyStatsigFields': true,
-          }),
+          jsonEncode({'version': 1, 'hasClearedLegacyStatsigFields': true}),
         );
 
         await provisioner.provision(
@@ -171,10 +190,7 @@ void main() {
 
       expect((await fs.stat(layout.roleRule(memberHome))).isFile, isTrue);
       expect((await fs.stat(layout.hooksConfig(memberHome))).isFile, isTrue);
-      expect(
-        (await fs.stat(layout.hooksDir(memberHome))).isDirectory,
-        isTrue,
-      );
+      expect((await fs.stat(layout.hooksDir(memberHome))).isDirectory, isTrue);
       expect((await fs.stat(layout.mcpConfig(memberHome))).isFile, isTrue);
     });
 
@@ -280,10 +296,7 @@ void main() {
         layout.hooksDir(memberHome),
         'teampilot-http-teampilot-bus-idle-stop-stop.sh',
       );
-      expect(
-        (stop.single as Map)['command'],
-        "bash '$busScriptPath'",
-      );
+      expect((stop.single as Map)['command'], "bash '$busScriptPath'");
 
       final busScript = await fs.readString(busScriptPath);
       expect(busScript, contains('X-Member: planner'));

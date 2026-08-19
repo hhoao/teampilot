@@ -8,11 +8,9 @@ import 'cursor_home_layout.dart';
 /// Cursor has no `--system-prompt` flag; persona lives in an always-applied
 /// rule under the session fake HOME (simple and mixed).
 final class CursorRoleRuleWriter {
-  CursorRoleRuleWriter({
-    required Filesystem fs,
-    CursorHomeLayout? layout,
-  }) : _fs = fs,
-       _layout = layout ?? CursorHomeLayout(pathContext: fs.pathContext);
+  CursorRoleRuleWriter({required Filesystem fs, CursorHomeLayout? layout})
+    : _fs = fs,
+      _layout = layout ?? CursorHomeLayout(pathContext: fs.pathContext);
 
   final Filesystem _fs;
   final CursorHomeLayout _layout;
@@ -39,7 +37,6 @@ final class CursorRoleRuleWriter {
     bool pushDelivery = false,
     List<String> additionalDirectories = const [],
   }) async {
-    final path = _layout.roleRule(memberHome);
     final body = MemberRoleProvision.composeRolePrompt(
       member: member,
       forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
@@ -47,15 +44,25 @@ final class CursorRoleRuleWriter {
       pushDelivery: pushDelivery,
       additionalDirectories: additionalDirectories,
     ).trim();
+    return syncContent(memberHome: memberHome, body: body);
+  }
+
+  /// Syncs an already assembled, target-neutral prompt body.
+  Future<String?> syncContent({
+    required String memberHome,
+    required String body,
+  }) async {
+    final path = _layout.roleRule(memberHome);
     final stat = await _fs.stat(path);
-    if (body.isEmpty) {
+    final trimmedBody = body.trim();
+    if (trimmedBody.isEmpty) {
       if (stat.exists) {
         await _fs.removeRecursive(path);
       }
       return null;
     }
     await _fs.ensureDir(_fs.pathContext.dirname(path));
-    await _fs.atomicWrite(path, format(body));
+    await _fs.atomicWrite(path, format(trimmedBody));
     return path;
   }
 }

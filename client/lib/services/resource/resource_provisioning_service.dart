@@ -3,7 +3,7 @@ import '../cli/registry/capabilities/skill_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../io/filesystem.dart';
 import '../../models/team_config.dart';
-import 'resource_kind.dart';
+import 'contribution/resource_assembly_error.dart';
 import 'resource_materializer.dart';
 import 'resource_resolver.dart';
 import 'resource_scope.dart';
@@ -38,39 +38,50 @@ class ResourceProvisioningService {
     required String configDir,
     required ResourceCatalog catalog,
   }) async {
-    final effective = _resolver.resolve(scope: scope, catalog: catalog);
     final warnings = <String>[];
 
+    final assembled = await _resolver.assemble(
+      scope: scope,
+      cli: cli,
+      catalog: catalog,
+    );
+    warnings.addAll(assembled.warnings.map((diagnostic) => diagnostic.message));
+
     final skill = _registry.capability<SkillCapability>(cli);
-    if (skill != null &&
-        skill.skillsRepresentation == ResourceRepresentation.linkedDirectory) {
-      final skillDir = _fs.pathContext.join(configDir, skill.skillsSubdir);
-      final result = await _materializer.reconcile(
-        kindDir: skillDir,
-        desired: effective.of(ResourceKind.skill),
+    if (assembled.skills.isNotEmpty) {
+      if (skill == null ||
+          skill.skillsRepresentation !=
+              ResourceRepresentation.linkedDirectory) {
+        throw ResourceAssemblyException([
+          ResourceAssemblyError.unsupported(
+            resourceKind: ResourceContributionKind.skill,
+            cli: cli,
+            providerId: 'skill-capability',
+            sourceId: cli.value,
+            message: skill == null
+                ? 'CLI does not provide a skill capability.'
+                : 'CLI skill capability does not support linked-directory '
+                      'materialization.',
+          ),
+        ]);
+      }
+
+      final result = await skill.materializeSkills(
+        fs: _fs,
+        configDir: configDir,
+        contributions: assembled.skills,
+        materializer: _materializer,
       );
       warnings.addAll(result.errors);
     }
 
     final plugin = _registry.capability<PluginCapability>(cli);
     if (plugin != null &&
-        plugin.pluginsRepresentation == ResourceRepresentation.linkedDirectory) {
-      // ResourceResolver only ever emits skills today, so the effective plugin
-      // set is always empty and this branch never reconciles. Reconcile with an
-      // empty set would prune `plugins/`, which holds decomposed plugin bundles
-      // — the guard below must stay (asserts are stripped in release builds).
-      final desired = effective.of(ResourceKind.plugin);
-      assert(
-        desired.isEmpty,
-        'plugin resources are not emitted by ResourceResolver yet',
-      );
-      if (desired.isEmpty) return ResourceProvisionResult(warnings: warnings);
-      final pluginDir = _fs.pathContext.join(configDir, plugin.pluginsSubdir);
-      final result = await _materializer.reconcile(
-        kindDir: pluginDir,
-        desired: desired,
-      );
-      warnings.addAll(result.errors);
+        plugin.pluginsRepresentation ==
+            ResourceRepresentation.linkedDirectory) {
+      // Do not reconcile `plugins/` here: it contains decomposed plugin
+      // bundles owned by PluginCapability. Only the assembled skill set above
+      // is materialized by this facade.
     }
     return ResourceProvisionResult(warnings: warnings);
   }

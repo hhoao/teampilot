@@ -1,7 +1,7 @@
 # Resource Contribution Provider Architecture
 
 **Date:** 2026-08-18  
-**Status:** Design approved in conversation; implementation not started
+**Status:** Design implemented through Task 6; Task 7 contract/documentation closeout
 
 ## Summary
 
@@ -25,10 +25,10 @@ Capability contract.
 ## Problem
 
 `CliLaunchArgProvider` already gives launch arguments a composable contribution
-model. Prompt, skill, MCP, and hook support currently has only the consumer
-side of that model:
+model. Before this migration, Prompt, skill, MCP, and hook support had only the
+consumer side of that model:
 
-- `PromptCapability` virtualizes and materializes prompt content;
+- `PromptCapability` virtualized and materialized prompt content;
 - `SkillCapability` describes the target skill directory and invocation syntax;
 - `McpCapability` writes neutral MCP server specs;
 - `HookCapability` renders neutral hook entries.
@@ -196,7 +196,8 @@ The existing capabilities remain the target-side contracts:
   `HookWriteResult`; `ManagedHookProvisioner` remains responsible for script
   writes.
 
-`PromptCapability.virtualize` moves to the Provider side. A CLI prompt class
+The former `PromptCapability.virtualize` source contract moves to the Provider
+side. A CLI prompt class
 may implement both `PromptCapability` and `PromptContributionProvider`, but
 the final `PromptCapability.materialize` receives the assembled document rather
 than collecting sources itself.
@@ -295,13 +296,19 @@ The same assembled MCP result can be materialized into the session config and
 Cursor's workspace warm tier using different materialization contexts. The
 source resolution is not repeated and does not fan out to unrelated CLIs.
 
+The staged launch path is the normative path. Older session-home entry points
+remain compatibility adapters for callers that do not stage resources first;
+their materialization markers must prevent a second prompt/MCP write, and their
+hook bridge must invoke the same HookAssembler rather than reintroducing a
+source-specific merge model.
+
 ## Migration mapping
 
 | Current code | New ownership |
 |---|---|
 | `ResourceResolver` + `ResourceCatalog` | `CatalogSkillContributionProvider` + `SkillAssembler` |
 | `ResourceMaterializer` | shared implementation used by `SkillCapability` |
-| `PromptCapability.virtualize` | CLI built-in `PromptContributionProvider` implementation |
+| Former `PromptCapability.virtualize` source method | CLI built-in `PromptContributionProvider` implementation |
 | `PromptHubService` | `PromptAssembler` facade/coordinator integration |
 | `McpRegistryService` source resolution | catalog, Smithery, extra-server, and plugin MCP Providers |
 | `McpCapability.write` | unchanged target-side materializer contract |
@@ -313,9 +320,13 @@ source resolution is not repeated and does not fan out to unrelated CLIs.
 | `ProviderCapability.materializeSessionHome` | remains model/provider session setup; resource contributions are separate interfaces |
 | `PluginCapability.provision` | remains plugin installation/decomposition; plugin resource extraction may additionally implement typed Providers |
 
-The raw `hooks` and ad hoc resource lists in launch contexts should eventually
-be replaced by a typed `ResourceProviderSet`. This prevents each new resource
-source from adding another field to `ConfigProfileLaunchContext`.
+The raw `hooks` and ad hoc resource lists in launch contexts are replaced at
+the new launch boundary by a typed `ResourceProviderSet`. The runtime sequence
+is Provider → Assembler → neutral result → `CliResourceProvisioner` → the
+selected CLI Materializer (`Capability`/`ManagedHookProvisioner`). Compatibility
+fields and session-home adapters may remain for non-staged callers, but they
+must delegate to the same typed Providers/Assemblers and must not collect or
+materialize a second copy of the resource set.
 
 ## Testing contract
 

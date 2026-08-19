@@ -1,0 +1,731 @@
+import 'dart:async';
+import 'dart:convert';
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/models/managed_provider.dart';
+import 'package:teampilot/models/provider_usage_snapshot.dart';
+import 'package:teampilot/repositories/managed_provider_repository.dart';
+import 'package:teampilot/repositories/managed_provider_usage_repository.dart';
+import 'package:teampilot/services/io/filesystem.dart';
+import 'package:teampilot/services/storage/app_storage.dart';
+
+import '../support/in_memory_filesystem.dart';
+
+ManagedProvider _provider(
+  String id, {
+  String name = 'Example',
+  int schemaVersion = 1,
+  Map<String, Object?> unknownFields = const {},
+}) => ManagedProvider(
+  id: id,
+  name: name,
+  kind: ManagedProviderKind.apiBalance,
+  adapterId: 'http-json',
+  endpointConfig: ManagedProviderEndpointConfig(url: 'https://example.test'),
+  schemaVersion: schemaVersion,
+  unknownFields: unknownFields,
+);
+
+void main() {
+  group('ManagedProviderRepository', () {
+    late InMemoryFilesystem fs;
+    late ManagedProviderRepository repo;
+    const path = '/tp/providers/managed/providers.json';
+
+    setUp(() {
+      fs = InMemoryFilesystem();
+      repo = ManagedProviderRepository(
+        fs: fs,
+        configPath: path,
+        onProvidersDeleted: (_) async {},
+      );
+    });
+
+    test('AppPaths exposes managed provider files below providers/managed', () {
+      final paths = AppPaths('/tp');
+      expect(paths.managedProviderConfigFile, path);
+      expect(
+        paths.managedProviderUsageCacheFile,
+        '/tp/providers/managed/usage-cache.json',
+      );
+    });
+
+    test(
+      'load returns an empty list when the config file is missing',
+      () async {
+        expect(await repo.load(), isEmpty);
+      },
+    );
+
+    test('save creates the parent directory with an atomic write', () async {
+      final provider = _provider('p1');
+
+      await repo.save([provider]);
+
+      expect(
+        await fs.stat('/tp/providers/managed'),
+        isA<FsStat>().having((stat) => stat.isDirectory, 'isDirectory', true),
+      );
+      expect(await fs.readString(path), contains('"p1"'));
+      expect(await repo.load(), [provider]);
+    });
+
+    test('malformed top-level JSON does not prevent a later save', () async {
+      await fs.writeString(path, '{not valid');
+
+      expect(await repo.load(), isEmpty);
+      await repo.save([_provider('p1')]);
+
+      expect((await repo.load()).single.id, 'p1');
+    });
+
+    test(
+      'malformed provider entries are isolated from valid entries',
+      () async {
+        final valid = _provider('valid').toJson();
+        await fs.writeString(
+          path,
+          jsonEncode({
+            'schemaVersion': 1,
+            'providers': {
+              'valid': valid,
+              'broken': {'name': 42},
+            },
+          }),
+        );
+
+        final providers = await repo.load();
+
+        expect(providers, [_provider('valid')]);
+      },
+    );
+
+    test('upsert preserves unknown top-level and provider fields', () async {
+      await fs.writeString(
+        path,
+        jsonEncode({
+          'schemaVersion': 1,
+          'futureCatalogFlag': true,
+          'providers': {
+            'p1': {
+              ..._provider('p1').toJson(),
+              'futureProviderField': {'enabled': true},
+            },
+          },
+        }),
+      );
+
+      await repo.upsert(_provider('p1', name: 'Renamed'));
+
+      final raw = await fs.readString(path);
+      final decoded = jsonDecode(raw!) as Map;
+      expect(decoded['futureCatalogFlag'], true);
+      expect((decoded['providers'] as Map)['p1']['futureProviderField'], {
+        'enabled': true,
+      });
+      expect((await repo.load()).single.name, 'Renamed');
+    });
+
+    test('upsert preserves nested unknown provider fields', () async {
+      final original = _provider('p1').toJson();
+      original['brand'] = {
+        ...(original['brand'] as Map),
+        'futureBrandField': 'keep',
+      };
+      original['endpointConfig'] = {
+        ...(original['endpointConfig'] as Map),
+        'futureEndpointField': {'keep': true},
+      };
+      original['displayConfig'] = {
+        ...(original['displayConfig'] as Map),
+        'futureDisplayField': ['keep'],
+      };
+      await fs.writeString(
+        path,
+        jsonEncode({
+          'schemaVersion': 7,
+          'providers': {'p1': original},
+        }),
+      );
+
+      await repo.upsert(_provider('p1', name: 'Updated'));
+
+      final raw = await fs.readString(path);
+      final provider = (jsonDecode(raw!) as Map)['providers']['p1'] as Map;
+      expect((provider['brand'] as Map)['futureBrandField'], 'keep');
+      expect((provider['endpointConfig'] as Map)['futureEndpointField'], {
+        'keep': true,
+      });
+      expect((provider['displayConfig'] as Map)['futureDisplayField'], [
+        'keep',
+      ]);
+    });
+
+    test('sanitizes secrets in document-level unknown fields', () async {
+      await fs.writeString(
+        path,
+        jsonEncode({
+          'schemaVersion': 1,
+          'futureConfig': {
+            'apiKey': 'document-api-secret',
+            'token': 'document-token-secret',
+            'X-Api-Key': 'document-x-secret',
+            'bearerValue': 'Bearer document-bearer-secret',
+            'nested': {'token': 'nested-document-secret', 'safe': 'keep'},
+          },
+          'providers': {'p1': _provider('p1').toJson()},
+        }),
+      );
+
+      await repo.upsert(_provider('p1', name: 'Updated'));
+
+      final decoded = jsonDecode(await fs.readString(path) ?? '') as Map;
+      final futureConfig = decoded['futureConfig'] as Map;
+      expect(jsonEncode(futureConfig), isNot(contains('secret')));
+      expect((futureConfig['nested'] as Map)['safe'], 'keep');
+      expect(futureConfig.containsKey('apiKey'), isFalse);
+      expect(futureConfig.containsKey('token'), isFalse);
+      expect(futureConfig.containsKey('X-Api-Key'), isFalse);
+    });
+
+    test('updating a valid provider preserves malformed raw entries', () async {
+      await fs.writeString(
+        path,
+        jsonEncode({
+          'schemaVersion': 1,
+          'providers': {
+            'valid': _provider('valid').toJson(),
+            'broken': {'name': 42},
+            'future-record': 'preserve me',
+          },
+        }),
+      );
+
+      await repo.upsert(_provider('valid', name: 'Updated'));
+
+      final providers =
+          (jsonDecode(await fs.readString(path) ?? '') as Map)['providers']
+              as Map;
+      expect(providers['broken'], {'name': 42});
+      expect(providers['future-record'], 'preserve me');
+      expect((await repo.load()).single.name, 'Updated');
+    });
+
+    test('sanitizes secrets in preserved malformed provider records', () async {
+      await fs.writeString(
+        path,
+        jsonEncode({
+          'schemaVersion': 1,
+          'providers': {
+            'valid': _provider('valid').toJson(),
+            ' p1 ': {
+              'name': 42,
+              'apiKey': 'api-secret',
+              'token': 'token-secret',
+              'X-Api-Key': 'x-api-secret',
+              'bearerValue': 'Bearer bearer-secret',
+              'nested': {'token': 'nested-token-secret', 'safe': 'keep'},
+            },
+          },
+        }),
+      );
+
+      await repo.upsert(_provider('valid', name: 'Updated'));
+
+      final providers =
+          (jsonDecode(await fs.readString(path) ?? '') as Map)['providers']
+              as Map;
+      final rawProvider = providers['p1'] as Map;
+      expect(jsonEncode(rawProvider), isNot(contains('secret')));
+      expect((rawProvider['nested'] as Map)['safe'], 'keep');
+      expect(rawProvider.containsKey('apiKey'), isFalse);
+      expect(rawProvider.containsKey('token'), isFalse);
+      expect(rawProvider.containsKey('X-Api-Key'), isFalse);
+    });
+
+    test(
+      'drops blank raw IDs and resolves raw IDs colliding with parsed IDs',
+      () async {
+        await fs.writeString(
+          path,
+          jsonEncode({
+            'schemaVersion': 1,
+            'providers': {
+              'p1': _provider('p1').toJson(),
+              ' p1 ': {'name': 42},
+              '  ': {'apiKey': 'blank-secret'},
+            },
+          }),
+        );
+
+        await repo.upsert(_provider('p1', name: 'Updated'));
+
+        final providers =
+            (jsonDecode(await fs.readString(path) ?? '') as Map)['providers']
+                as Map;
+        expect(providers.keys, ['p1']);
+        expect((await repo.load()).single.name, 'Updated');
+      },
+    );
+
+    test(
+      'delete removes a malformed provider record by normalized ID and cleans up',
+      () async {
+        await fs.writeString(
+          path,
+          jsonEncode({
+            'schemaVersion': 1,
+            'providers': {
+              ' p1 ': {'name': 42},
+              'p2': _provider('p2').toJson(),
+            },
+          }),
+        );
+        final deletedIds = <String>[];
+        repo = ManagedProviderRepository(
+          fs: fs,
+          configPath: path,
+          onProvidersDeleted: (ids) async => deletedIds.addAll(ids),
+        );
+
+        await repo.delete('p1');
+
+        final providers =
+            (jsonDecode(await fs.readString(path) ?? '') as Map)['providers']
+                as Map;
+        expect(deletedIds, ['p1']);
+        expect(providers.containsKey(' p1 '), isFalse);
+        expect((await repo.load()).single.id, 'p2');
+      },
+    );
+
+    test('preserves the existing top-level schema version on update', () async {
+      await fs.writeString(
+        path,
+        jsonEncode({'schemaVersion': 7, 'providers': {}}),
+      );
+
+      await repo.upsert(_provider('p1'));
+
+      final raw = await fs.readString(path);
+      expect((jsonDecode(raw!) as Map)['schemaVersion'], 7);
+    });
+
+    test(
+      'preserves the newer provider entity schema version on merge',
+      () async {
+        await repo.save([_provider('p1', schemaVersion: 4)]);
+
+        await repo.upsert(_provider('p1', name: 'Older', schemaVersion: 2));
+        var loaded = (await repo.load()).single;
+        expect(loaded.schemaVersion, 4);
+
+        await repo.upsert(_provider('p1', name: 'Newer', schemaVersion: 5));
+        loaded = (await repo.load()).single;
+        expect(loaded.schemaVersion, 5);
+      },
+    );
+
+    test(
+      'preserves complete endpoint request configuration on merge',
+      () async {
+        final endpoint = ManagedProviderEndpointConfig(
+          url: 'https://example.test/usage?region=us',
+          method: 'POST',
+          responsePath: r'$.result',
+          measuresPath: r'$.data',
+          credentialField: 'apiKey',
+          credentialName: 'X-API-Key',
+          credentialPlacement: 'header',
+          credentialPrefix: 'Bearer ',
+          headers: {'X-Region': 'us'},
+          body: {'scope': 'all'},
+          fieldMappings: {'remaining': r'$.remaining'},
+          hadUnsafeUrl: true,
+        );
+        await repo.upsert(_provider('p1').copyWith(endpointConfig: endpoint));
+
+        await repo.upsert(
+          _provider('p1', name: 'Updated').copyWith(endpointConfig: endpoint),
+        );
+
+        final loaded = (await repo.load()).single;
+        expect(loaded.name, 'Updated');
+        expect(loaded.endpointConfig, endpoint);
+      },
+    );
+
+    test('normalizes provider IDs and never writes empty IDs', () async {
+      await repo.save([_provider(' p1 '), _provider('p1')]);
+
+      expect((await repo.load()).map((provider) => provider.id), ['p1']);
+      final raw = await fs.readString(path);
+      expect((jsonDecode(raw!) as Map)['providers'].keys, ['p1']);
+
+      await repo.delete(' p1 ');
+      expect(await repo.load(), isEmpty);
+    });
+
+    test('invalid-only save preserves the existing provider catalog', () async {
+      await repo.save([_provider('p1'), _provider('p2')]);
+
+      await repo.save([_provider('  ')]);
+
+      expect((await repo.load()).map((provider) => provider.id), ['p1', 'p2']);
+    });
+
+    test(
+      'mixed-invalid save preserves the existing provider catalog',
+      () async {
+        await repo.save([_provider('p1'), _provider('p2')]);
+
+        await repo.save([_provider('p1', name: 'Updated'), _provider('\t')]);
+
+        expect((await repo.load()).map((provider) => provider.id), [
+          'p1',
+          'p2',
+        ]);
+        expect((await repo.load()).first.name, 'Example');
+      },
+    );
+
+    test('explicit empty save clears the provider catalog', () async {
+      await repo.save([_provider('p1')]);
+
+      await repo.save([]);
+
+      expect(await repo.load(), isEmpty);
+    });
+
+    test(
+      'concurrent upserts from separate instances do not lose updates',
+      () async {
+        final first = ManagedProviderRepository(
+          fs: fs,
+          configPath: path,
+          onProvidersDeleted: (_) async {},
+        );
+        final second = ManagedProviderRepository(
+          fs: fs,
+          configPath: path,
+          onProvidersDeleted: (_) async {},
+        );
+
+        await Future.wait([
+          first.upsert(_provider('p1')),
+          second.upsert(_provider('p2')),
+        ]);
+
+        expect((await repo.load()).map((provider) => provider.id).toSet(), {
+          'p1',
+          'p2',
+        });
+      },
+    );
+
+    test('upsert replaces by id and delete cleans up that provider', () async {
+      await repo.save([_provider('p1'), _provider('p2')]);
+
+      await repo.upsert(_provider('p1', name: 'Updated'));
+      expect((await repo.load()).map((provider) => provider.name), [
+        'Updated',
+        'Example',
+      ]);
+
+      await repo.delete('p1');
+
+      expect((await repo.load()).map((provider) => provider.id), ['p2']);
+    });
+
+    test('deleting a provider invokes the cache cleanup boundary', () async {
+      final usageRepo = ManagedProviderUsageRepository(
+        fs: fs,
+        cachePath: '/tp/providers/managed/usage-cache.json',
+      );
+      repo = ManagedProviderRepository(
+        fs: fs,
+        configPath: path,
+        onProvidersDeleted: usageRepo.deleteMany,
+      );
+      await repo.save([_provider('p1')]);
+      await usageRepo.save(
+        ProviderUsageSnapshot(
+          providerId: 'p1',
+          status: ProviderUsageStatus.ready,
+        ),
+      );
+
+      await repo.delete(' p1 ');
+
+      expect(await repo.load(), isEmpty);
+      expect(await usageRepo.load(), isEmpty);
+    });
+
+    test(
+      'save cleans up providers omitted from the replacement list',
+      () async {
+        final usageRepo = ManagedProviderUsageRepository(
+          fs: fs,
+          cachePath: '/tp/providers/managed/usage-cache.json',
+        );
+        repo = ManagedProviderRepository(
+          fs: fs,
+          configPath: path,
+          onProvidersDeleted: usageRepo.deleteMany,
+        );
+        await repo.save([_provider('p1'), _provider('p2')]);
+        await usageRepo.save(_snapshotForTest('p1'));
+        await usageRepo.save(_snapshotForTest('p2'));
+
+        await repo.save([_provider('p1')]);
+
+        expect((await repo.load()).map((provider) => provider.id), ['p1']);
+        expect(
+          (await usageRepo.load()).map((snapshot) => snapshot.providerId),
+          ['p1'],
+        );
+      },
+    );
+
+    test(
+      'save invokes one batch cleanup boundary for omitted providers',
+      () async {
+        final batches = <List<String>>[];
+        repo = ManagedProviderRepository(
+          fs: fs,
+          configPath: path,
+          onProvidersDeleted: (ids) async =>
+              batches.add(List<String>.from(ids)),
+        );
+
+        await repo.save([_provider('p1'), _provider('p2'), _provider('p3')]);
+        await repo.save([_provider('p1')]);
+
+        expect(batches, [
+          ['p2', 'p3'],
+        ]);
+      },
+    );
+
+    test(
+      'deletion barrier orders in-flight and during-deletion usage saves',
+      () async {
+        const cachePath = '/tp/providers/managed/usage-cache.json';
+        final blockingFs = _BlockingCacheReadFilesystem(cachePath);
+        final usageRepo = ManagedProviderUsageRepository(
+          fs: blockingFs,
+          cachePath: cachePath,
+        );
+        late Future<void> saveDuringDeletion;
+        final providerRepo = ManagedProviderRepository(
+          fs: blockingFs,
+          configPath: path,
+          onProvidersDeleted: (ids) async {
+            await usageRepo.deleteMany(ids);
+            saveDuringDeletion = usageRepo.save(_snapshotForTest('p1'));
+          },
+        );
+
+        await providerRepo.save([_provider('p1')]);
+        await usageRepo.save(_snapshotForTest('p1'));
+
+        blockingFs.blockNextCacheRead();
+        final inFlightSave = usageRepo.save(
+          ProviderUsageSnapshot(
+            providerId: 'p1',
+            status: ProviderUsageStatus.stale,
+          ),
+        );
+        await blockingFs.cacheReadStarted.future;
+
+        final deletion = providerRepo.delete('p1');
+        await Future<void>.delayed(Duration.zero);
+        expect(blockingFs.cacheStatus, ProviderUsageStatus.ready.value);
+
+        blockingFs.releaseCacheRead();
+        await inFlightSave;
+        await deletion;
+        await saveDuringDeletion;
+
+        expect(await usageRepo.load(), isEmpty);
+      },
+    );
+
+    test('queued usage save surfaces cleanup failure', () async {
+      const cachePath = '/tp/providers/managed/usage-cache.json';
+      final usageFs = InMemoryFilesystem();
+      final usageRepo = ManagedProviderUsageRepository(
+        fs: usageFs,
+        cachePath: cachePath,
+      );
+      late Future<void> saveDuringDeletion;
+      final providerRepo = ManagedProviderRepository(
+        fs: usageFs,
+        configPath: path,
+        onProvidersDeleted: (_) async {
+          saveDuringDeletion = usageRepo.save(_snapshotForTest('p1'));
+          throw StateError('cleanup failed');
+        },
+      );
+
+      await providerRepo.save([_provider('p1')]);
+      await usageRepo.save(_snapshotForTest('p1'));
+
+      await expectLater(providerRepo.delete('p1'), throwsStateError);
+      await expectLater(saveDuringDeletion, throwsStateError);
+
+      expect((await providerRepo.load()).single.id, 'p1');
+      expect((await usageRepo.load()).single.providerId, 'p1');
+    });
+
+    test('queued usage save surfaces config-write failure', () async {
+      const cachePath = '/tp/providers/managed/usage-cache.json';
+      final failingFs = _FailingConfigWriteFilesystem(path);
+      final usageRepo = ManagedProviderUsageRepository(
+        fs: failingFs,
+        cachePath: cachePath,
+      );
+      late Future<void> saveDuringDeletion;
+      final providerRepo = ManagedProviderRepository(
+        fs: failingFs,
+        configPath: path,
+        onProvidersDeleted: (ids) async {
+          await usageRepo.deleteMany(ids);
+          saveDuringDeletion = usageRepo.save(_snapshotForTest('p1'));
+        },
+      );
+
+      await providerRepo.save([_provider('p1')]);
+      await usageRepo.save(_snapshotForTest('p1'));
+      failingFs.failConfigWrites = true;
+
+      await expectLater(providerRepo.delete('p1'), throwsStateError);
+      await expectLater(saveDuringDeletion, throwsStateError);
+
+      expect((await providerRepo.load()).single.id, 'p1');
+      expect(await usageRepo.load(), isEmpty);
+    });
+
+    test('cleanup failure leaves the provider config intact', () async {
+      await repo.save([_provider('p1')]);
+      var calls = 0;
+      repo = ManagedProviderRepository(
+        fs: fs,
+        configPath: path,
+        onProvidersDeleted: (_) async {
+          calls++;
+          throw StateError('cleanup failed');
+        },
+      );
+
+      await expectLater(repo.delete('p1'), throwsStateError);
+
+      expect(calls, 1);
+      expect((await repo.load()).map((provider) => provider.id), ['p1']);
+    });
+
+    test(
+      'deleting an absent provider is idempotent without a write or cleanup',
+      () async {
+        var calls = 0;
+        repo = ManagedProviderRepository(
+          fs: fs,
+          configPath: path,
+          onProvidersDeleted: (_) async => calls++,
+        );
+        await repo.save([_provider('present')]);
+        final before = await fs.readString(path);
+
+        await repo.delete('missing');
+
+        expect(calls, 0);
+        expect(await fs.readString(path), before);
+      },
+    );
+
+    test('save cleans up omitted malformed provider records', () async {
+      await fs.writeString(
+        path,
+        jsonEncode({
+          'schemaVersion': 1,
+          'providers': {
+            ' p1 ': {'name': 42},
+            'p2': _provider('p2').toJson(),
+          },
+        }),
+      );
+      final deletedIds = <String>[];
+      repo = ManagedProviderRepository(
+        fs: fs,
+        configPath: path,
+        onProvidersDeleted: (ids) async => deletedIds.addAll(ids),
+      );
+
+      await repo.save([_provider('p2')]);
+
+      final providers =
+          (jsonDecode(await fs.readString(path) ?? '') as Map)['providers']
+              as Map;
+      expect(deletedIds, ['p1']);
+      expect(providers.containsKey(' p1 '), isFalse);
+      expect(providers.containsKey('p2'), isTrue);
+    });
+  });
+}
+
+ProviderUsageSnapshot _snapshotForTest(String providerId) =>
+    ProviderUsageSnapshot(
+      providerId: providerId,
+      status: ProviderUsageStatus.ready,
+    );
+
+class _BlockingCacheReadFilesystem extends InMemoryFilesystem {
+  _BlockingCacheReadFilesystem(this.cachePath);
+
+  final String cachePath;
+  bool _blockNextRead = false;
+  Completer<void> cacheReadStarted = Completer<void>();
+  Completer<void> _cacheReadRelease = Completer<void>();
+
+  void blockNextCacheRead() {
+    _blockNextRead = true;
+    cacheReadStarted = Completer<void>();
+    _cacheReadRelease = Completer<void>();
+  }
+
+  void releaseCacheRead() {
+    if (!_cacheReadRelease.isCompleted) _cacheReadRelease.complete();
+  }
+
+  String? get cacheStatus {
+    final raw = files[cachePath];
+    if (raw == null) return null;
+    final snapshots = (jsonDecode(raw) as Map)['snapshots'] as Map;
+    return (snapshots['p1'] as Map)['status'] as String?;
+  }
+
+  @override
+  Future<String?> readString(String path) async {
+    if (path == cachePath && _blockNextRead) {
+      _blockNextRead = false;
+      cacheReadStarted.complete();
+      await _cacheReadRelease.future;
+    }
+    return super.readString(path);
+  }
+}
+
+class _FailingConfigWriteFilesystem extends InMemoryFilesystem {
+  _FailingConfigWriteFilesystem(this.configPath);
+
+  final String configPath;
+  bool failConfigWrites = false;
+
+  @override
+  Future<void> atomicWrite(String path, String content) {
+    if (failConfigWrites && path == configPath) {
+      throw StateError('config write failed');
+    }
+    return super.atomicWrite(path, content);
+  }
+}

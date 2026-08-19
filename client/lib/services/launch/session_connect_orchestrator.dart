@@ -9,6 +9,7 @@ import '../../utils/team/team_member_naming.dart';
 import '../cli/installer_types.dart';
 import '../cli/registry/capabilities/cli_session_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
+import '../cli/claude/team_roster_service.dart';
 import '../cli/claude/capabilities/mcp_project_cleanup.dart';
 import '../cli/preset_resolver.dart';
 import '../provider/config_profile_service.dart';
@@ -220,13 +221,12 @@ class SessionConnectOrchestrator {
     }
 
     void report(CliInstallPhase phase, {String? detail}) {
-      onProvisionProgress?.call(CliInstallProgress(phase: phase, detail: detail));
+      onProvisionProgress?.call(
+        CliInstallProgress(phase: phase, detail: detail),
+      );
     }
 
-    report(
-      CliInstallPhase.syncingRemoteWorkspace,
-      detail: 'stage-session',
-    );
+    report(CliInstallPhase.syncingRemoteWorkspace, detail: 'stage-session');
     appLogger.d(
       '[session-launch] stage-session begin '
       'session=${session.sessionId} cli=${cli.value} offHome=$offHome',
@@ -314,10 +314,7 @@ class SessionConnectOrchestrator {
       'session=${session.sessionId} ops=${staged.manifest.entries.length}',
     );
 
-    report(
-      CliInstallPhase.syncingRemoteWorkspace,
-      detail: 'manifest-flush',
-    );
+    report(CliInstallPhase.syncingRemoteWorkspace, detail: 'manifest-flush');
     final flushStarted = DateTime.now();
     // SSH/Termux work plane (including Android home-on-SSH): batch via one
     // remote script. Local/WSL keep per-op apply. Off-home still expands
@@ -330,6 +327,29 @@ class SessionConnectOrchestrator {
       sshProfileId: (workSshProfileId != null && workSshProfileId.isNotEmpty)
           ? workSshProfileId
           : null,
+    );
+
+    // The normal connect path stages through ManifestFilesystem and flushes
+    // here, rather than calling ConfigProfileService.prepare*. Native CLI
+    // plugin installation must happen after that flush so Codex can see the
+    // marketplace source on the target machine.
+    final postFlushProfile = await configProfileFor(workContext);
+    final nativeMemberId = !isSimple && team?.teamMode == TeamMode.mixed
+        ? ClaudeTeamRosterService.safeClaudePathSegment(member.id)
+        : null;
+    await postFlushProfile.provisionNativePlugins(
+      workspaceId: isSimple
+          ? workspace.workspaceId
+          : effectiveLaunchWorkspaceId(
+              workspaceId: workspace.workspaceId,
+              teamId: team?.id ?? '',
+            ),
+      sessionId: session.sessionId,
+      runtimeBundle: plan.runtimeBundle,
+      cli: cli,
+      memberId: nativeMemberId,
+      team: team,
+      executable: remoteCliPath,
     );
     appLogger.d(
       '[session-launch] manifest-flush done '
@@ -351,10 +371,7 @@ class SessionConnectOrchestrator {
             profileById: manifestExecutor.profileById,
           ),
           reportDetail: (detail) {
-            report(
-              CliInstallPhase.syncingRemoteWorkspace,
-              detail: detail,
-            );
+            report(CliInstallPhase.syncingRemoteWorkspace, detail: detail);
           },
         ),
       );

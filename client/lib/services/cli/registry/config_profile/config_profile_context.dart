@@ -1,7 +1,6 @@
 import 'package:path/path.dart' as p;
 
 import '../../../../models/cli_preset.dart';
-import '../../../../models/hook_entry.dart';
 import '../../../../models/discoverable_member.dart';
 import '../../../../models/team_config.dart';
 import '../../../extension/extension_provisioner.dart';
@@ -11,6 +10,7 @@ import '../../../provider/provider_catalog_access.dart';
 import '../../../storage/runtime_layout.dart';
 import '../../../agent_status/member_agent_status_endpoint.dart';
 import '../../../team_bus/member_bus_idle_endpoint.dart';
+import '../../../resource/resource_provider_set.dart';
 import 'config_profile_scope.dart';
 
 export 'config_profile_scope.dart';
@@ -104,7 +104,7 @@ abstract interface class ConfigProfileDelegate implements ConfigProfilePaths {
   });
 
   /// Renders every enabled, ready extension's `settings-hook` effects into
-  /// [HookEntry]-backed specs (scripts provisioned under [memberToolDir]).
+  /// hook specs (scripts provisioned under [memberToolDir]).
   /// Consumed by the unified hook writer render at the member-profile
   /// assembly points (Task 18 convergence).
   Future<List<ExtensionSettingsHook>> extensionSettingsHooks(
@@ -131,11 +131,16 @@ abstract interface class ConfigProfileDelegate implements ConfigProfilePaths {
     required bool forceTeamLeadDelegateMode,
   });
 
+  Future<String?> resolveTeamLeadSelfHookCommand(
+    TeamMemberConfig member,
+    String memberToolDir,
+  );
+
   HostExecutionEnvironment hostEnvironmentForProvision();
 }
 
 class ConfigProfileLaunchContext {
-  const ConfigProfileLaunchContext({
+  ConfigProfileLaunchContext({
     required this.workspaceId,
     required this.teamId,
     required this.sessionId,
@@ -154,7 +159,9 @@ class ConfigProfileLaunchContext {
     this.memberId,
     this.sessionExpertKey,
     this.resolvedExpert,
-    this.hooks = const [],
+    this.resourceProviders = ResourceProviderSet.empty,
+    this.promptAlreadyMaterialized = false,
+    this.hooksAlreadyMaterialized = false,
   });
 
   final String workspaceId;
@@ -183,8 +190,16 @@ class ConfigProfileLaunchContext {
   final String? sessionExpertKey;
   final DiscoverableMember? resolvedExpert;
 
-  /// 该 seat 生效的用户 hook 条目（staging 按 runtimeBundle.hookIds 解析）。
-  final List<HookEntry> hooks;
+  /// All launch-injected resource sources, grouped by kind and ordered.
+  final ResourceProviderSet resourceProviders;
+
+  /// True when the staged resource coordinator already wrote this member's
+  /// prompt for the target CLI. Legacy session-home callers leave this false.
+  final bool promptAlreadyMaterialized;
+
+  /// True when the staged resource coordinator already assembled and wrote
+  /// this member's hooks. Legacy session-home callers leave this false.
+  final bool hooksAlreadyMaterialized;
 
   bool get crossMachine => configProfileCrossMachine(catalog, paths);
 

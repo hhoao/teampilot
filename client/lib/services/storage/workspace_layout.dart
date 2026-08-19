@@ -166,6 +166,23 @@ class WorkspaceLayout {
     'plugins',
   );
 
+  /// TeamPilot-owned staging area for CLIs that install plugins themselves.
+  String sessionRuntimePluginPoolDir(
+    String workspaceId,
+    String sessionId,
+    String tool, {
+    String? memberId,
+  }) {
+    final trimmedMember = memberId?.trim() ?? '';
+    final root = _ctx.join(
+      sessionRuntimeDir(workspaceId, sessionId),
+      '.teampilot',
+    );
+    return trimmedMember.isEmpty
+        ? _ctx.join(root, tool.trim(), 'plugins')
+        : _ctx.join(root, trimmedMember, tool.trim(), 'plugins');
+  }
+
   /// App-managed location for a created git worktree:
   /// `<teampilotRoot>/worktrees/<repoName>/<branch>`. Branch slashes become
   /// nested directories (git accepts the path verbatim).

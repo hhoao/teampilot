@@ -11,6 +11,7 @@ class HookRenderContext {
     required this.hooksDir,
     required this.runner,
     required this.glueBuilder,
+    this.generatedScriptDirectory,
   });
 
   /// session 内脚本目录（绝对路径，work-plane 路径即机器路径）。
@@ -20,6 +21,9 @@ class HookRenderContext {
   final HostScriptRunner? runner;
 
   final GlueScriptBuilder glueBuilder;
+
+  /// Optional directory for a renderer's target-native generated scripts.
+  final String? generatedScriptDirectory;
 }
 
 /// 一次 render 的输出：文件级配置片段 + 生成的脚本 + 警告。

@@ -201,11 +201,7 @@ void main() {
         ),
       );
 
-      final opencodeDir = _sessionToolDir(
-        base.path,
-        'simple-1',
-        'opencode',
-      );
+      final opencodeDir = _sessionToolDir(base.path, 'simple-1', 'opencode');
       // The skill materializer must not prune the plugin-decomposed skill
       // (it runs before the plugin decompose now, so nothing to prune).
       expect(
@@ -216,7 +212,9 @@ void main() {
       );
       // Plugin entry registered and reachable (no self-loop in the pool).
       final opencodeJson =
-          jsonDecode((await fs.readString(p.join(opencodeDir, 'opencode.json')))!)
+          jsonDecode(
+                (await fs.readString(p.join(opencodeDir, 'opencode.json')))!,
+              )
               as Map<String, Object?>;
       expect(
         opencodeJson['plugin'],
@@ -224,7 +222,14 @@ void main() {
       );
       expect(
         await fs.readString(
-          p.join(opencodeDir, 'plugins', 'demo-plugin', '.opencode', 'plugins', 'demo.js'),
+          p.join(
+            opencodeDir,
+            'plugins',
+            'demo-plugin',
+            '.opencode',
+            'plugins',
+            'demo.js',
+          ),
         ),
         contains('Demo'),
       );
@@ -520,8 +525,7 @@ base_url = "https://api.example.com/v1"
       ).readAsString();
       expect(roleText, contains('Delegate-only mode'));
 
-      final settingsPath =
-          env[ClaudeProviderCapability.settingsFileEnvKey]!;
+      final settingsPath = env[ClaudeProviderCapability.settingsFileEnvKey]!;
       final settings =
           jsonDecode(await File(settingsPath).readAsString())
               as Map<String, Object?>;
@@ -694,6 +698,7 @@ base_url = "https://api.example.com/v1"
 
       final claudeDir = _sessionClaudeDir(base.path, sessionId);
       final devSettingsPath = p.join(claudeDir, 'settings', 'developer.json');
+      expect(await File(devSettingsPath).exists(), isTrue);
       final settings =
           jsonDecode(await File(devSettingsPath).readAsString())
               as Map<String, Object?>;
@@ -703,6 +708,7 @@ base_url = "https://api.example.com/v1"
       expect(settings['hooks'], isNull);
 
       final leadSettingsPath = p.join(claudeDir, 'settings', 'team-lead.json');
+      expect(await File(leadSettingsPath).exists(), isTrue);
       final leadSettings =
           jsonDecode(await File(leadSettingsPath).readAsString())
               as Map<String, Object?>;
@@ -763,10 +769,7 @@ base_url = "https://api.example.com/v1"
     final metadata =
         jsonDecode(
               await File(
-                p.join(
-                  claudeDir,
-                  ClaudeProviderCapability.metadataFileName,
-                ),
+                p.join(claudeDir, ClaudeProviderCapability.metadataFileName),
               ).readAsString(),
             )
             as Map<String, Object?>;
@@ -1297,52 +1300,55 @@ base_url = "https://api.example.com/v1"
     },
   );
 
-  test('materializeSessionHome for claude backfills mcp-only metadata', () async {
-    const sessionId = 'sess-mcp-only';
-    final metadataPath = p.join(
-      _sessionClaudeDir(base.path, sessionId),
-      ClaudeProviderCapability.metadataFileName,
-    );
-    await Directory(p.dirname(metadataPath)).create(recursive: true);
-    await File(metadataPath).writeAsString(
-      jsonEncode({
-        'mcpServers': {
-          'github': {'type': 'http', 'url': 'https://github.run.tools'},
-        },
-      }),
-    );
+  test(
+    'materializeSessionHome for claude backfills mcp-only metadata',
+    () async {
+      const sessionId = 'sess-mcp-only';
+      final metadataPath = p.join(
+        _sessionClaudeDir(base.path, sessionId),
+        ClaudeProviderCapability.metadataFileName,
+      );
+      await Directory(p.dirname(metadataPath)).create(recursive: true);
+      await File(metadataPath).writeAsString(
+        jsonEncode({
+          'mcpServers': {
+            'github': {'type': 'http', 'url': 'https://github.run.tools'},
+          },
+        }),
+      );
 
-    const member = TeamMemberConfig(id: 'm1', name: 'Member', model: 'test');
-    await const ClaudeProviderCapability().materializeSessionHome(
-      sessionHomeContextFromLaunch(
-        ConfigProfileLaunchContext(
-          workspaceId: _testWorkspaceId,
-          teamId: 'team-a',
-          sessionId: sessionId,
-          scope: resolveLaunchProfileScope(
+      const member = TeamMemberConfig(id: 'm1', name: 'Member', model: 'test');
+      await const ClaudeProviderCapability().materializeSessionHome(
+        sessionHomeContextFromLaunch(
+          ConfigProfileLaunchContext(
             workspaceId: _testWorkspaceId,
             teamId: 'team-a',
-            appSessionId: sessionId,
-            cliTeamName: sessionId,
+            sessionId: sessionId,
+            scope: resolveLaunchProfileScope(
+              workspaceId: _testWorkspaceId,
+              teamId: 'team-a',
+              appSessionId: sessionId,
+              cliTeamName: sessionId,
+            ),
+            member: member,
+            members: const [member],
+            paths: service,
+            catalog: service,
           ),
-          member: member,
-          members: const [member],
-          paths: service,
-          catalog: service,
+          CliTool.claude,
         ),
-        CliTool.claude,
-      ),
-    );
+      );
 
-    final metadata =
-        jsonDecode(await File(metadataPath).readAsString())
-            as Map<String, Object?>;
-    expect(metadata['hasCompletedOnboarding'], isTrue);
-    expect(
-      metadata['theme'],
-      'auto',
-      reason: 'seeds auto so the TUI follows the terminal out of the box',
-    );
-    expect((metadata['mcpServers'] as Map)['github'], isNotNull);
-  });
+      final metadata =
+          jsonDecode(await File(metadataPath).readAsString())
+              as Map<String, Object?>;
+      expect(metadata['hasCompletedOnboarding'], isTrue);
+      expect(
+        metadata['theme'],
+        'auto',
+        reason: 'seeds auto so the TUI follows the terminal out of the box',
+      );
+      expect((metadata['mcpServers'] as Map)['github'], isNotNull);
+    },
+  );
 }

@@ -140,10 +140,7 @@ class _HomeSidebarNavScroll extends StatelessWidget {
           onTap: () => onGlobal?.call(HomeGlobalView.myExperts),
         ),
         const SizedBox(height: 8),
-        Divider(
-          height: 1,
-          color: cs.outlineVariant.withValues(alpha: 0.5),
-        ),
+        Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
         const SizedBox(height: 8),
         _ShortcutRow(
           icon: Icons.travel_explore_outlined,
@@ -159,10 +156,7 @@ class _HomeSidebarNavScroll extends StatelessWidget {
           onTap: () => onGlobal?.call(HomeGlobalView.expertHub),
         ),
         const SizedBox(height: 8),
-        Divider(
-          height: 1,
-          color: cs.outlineVariant.withValues(alpha: 0.5),
-        ),
+        Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
         const SizedBox(height: 8),
         _ShortcutRow(
           icon: Icons.extension_outlined,
@@ -197,6 +191,13 @@ class _HomeSidebarNavScroll extends StatelessWidget {
           label: l10n.teamHooksNav,
           active: activeGlobalView == HomeGlobalView.hooks,
           onTap: () => onGlobal?.call(HomeGlobalView.hooks),
+        ),
+        const SizedBox(height: 4),
+        _ShortcutRow(
+          icon: Icons.account_balance_wallet_outlined,
+          label: 'Managed Providers',
+          active: activeGlobalView == HomeGlobalView.managedProviders,
+          onTap: () => onGlobal?.call(HomeGlobalView.managedProviders),
         ),
       ],
     );
@@ -244,28 +245,28 @@ class _ShortcutRowState extends State<_ShortcutRow> {
       padding: const EdgeInsets.symmetric(vertical: 1),
       child: RepaintBoundary(
         child: TpHover(
-        onTap: widget.onTap,
-        backgroundColor: idleFill,
-        hoverColor: hoverFill,
-        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 10),
-        child: Row(
-          children: [
-            Icon(
-              widget.icon,
-              size: iconSize,
-              color: active ? cs.primary : cs.onSurfaceVariant,
-            ),
-            const SizedBox(width: 8),
-            Flexible(
-              child: Text(
-                widget.label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: labelStyle,
+          onTap: widget.onTap,
+          backgroundColor: idleFill,
+          hoverColor: hoverFill,
+          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 10),
+          child: Row(
+            children: [
+              Icon(
+                widget.icon,
+                size: iconSize,
+                color: active ? cs.primary : cs.onSurfaceVariant,
               ),
-            ),
-          ],
-        ),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  widget.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: labelStyle,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -335,10 +336,7 @@ class _ProvidersButtonState extends State<_ProvidersButton> {
               color: active ? cs.primary : cs.onSurfaceVariant,
             ),
             const SizedBox(width: 8),
-            Text(
-              widget.label,
-              style: labelStyle,
-            ),
+            Text(widget.label, style: labelStyle),
           ],
         ),
       ),

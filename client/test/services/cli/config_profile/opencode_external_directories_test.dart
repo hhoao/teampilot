@@ -9,6 +9,7 @@ import 'package:teampilot/services/cli/registry/capabilities/provider_capability
 import 'package:teampilot/services/session/launch_command_builder.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/prompt.dart';
 import 'package:teampilot/services/cli/registry/capabilities/prompt_capability.dart';
+import 'package:teampilot/services/resource/assemblers/prompt_assembler.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
@@ -110,25 +111,28 @@ void main() {
     expect(twice, once);
   });
 
-  test('OpencodePromptCapability virtualizes the member role spec', () {
-    const member = TeamMemberConfig(
-      id: 'm1',
-      name: 'Member',
-      model: 'test',
-      responsibilities: 'You are the reviewer.',
-    );
-    final specs = const OpencodePromptCapability().virtualize(
-      const PromptVirtualizeContext(member: member),
-    );
+  test(
+    'OpencodePromptCapability provides the member role contribution',
+    () async {
+      const member = TeamMemberConfig(
+        id: 'm1',
+        name: 'Member',
+        model: 'test',
+        responsibilities: 'You are the reviewer.',
+      );
+      final specs = await const OpencodePromptCapability().provide(
+        PromptProviderContext(cli: CliTool.opencode, member: member),
+      );
 
-    expect(specs, isNotEmpty);
-    expect(specs.first.id, 'opencode-member-role');
-    expect(specs.first.title, 'Member role');
-    expect(specs.first.scope, PromptScope.member);
-    expect(specs.first.content, contains('You are the reviewer.'));
-  });
+      expect(specs, isNotEmpty);
+      expect(specs.first.id, 'opencode-member-role');
+      expect(specs.first.title, 'Member role');
+      expect(specs.first.scope, PromptScope.member);
+      expect(specs.first.content, contains('You are the reviewer.'));
+    },
+  );
 
-  test('OpencodePromptCapability virtualize includes workspace directories '
+  test('OpencodePromptCapability provider includes workspace directories '
       'section and mixed addenda matching materialize', () async {
     const member = TeamMemberConfig(
       id: 'm1',
@@ -136,8 +140,9 @@ void main() {
       model: 'test',
       responsibilities: 'You are the reviewer.',
     );
-    final specs = const OpencodePromptCapability().virtualize(
-      const PromptVirtualizeContext(
+    final specs = await const OpencodePromptCapability().provide(
+      PromptProviderContext(
+        cli: CliTool.opencode,
         member: member,
         mixed: true,
         additionalDirectories: ['/abs/missing/repo'],
@@ -180,6 +185,10 @@ void main() {
         member: member,
         additionalDirectories: const ['/abs/missing/repo'],
       ),
+      document: await _document(
+        member: member,
+        additionalDirectories: const ['/abs/missing/repo'],
+      ),
     );
 
     expect(contribution.written, isTrue);
@@ -202,6 +211,7 @@ void main() {
   test('OpencodePromptCapability skips without scope', () async {
     final contribution = await const OpencodePromptCapability().materialize(
       const PromptMaterializeContext(),
+      document: PromptDocument.empty(),
     );
     expect(contribution.written, isFalse);
   });
@@ -231,6 +241,10 @@ void main() {
       PromptMaterializeContext(
         paths: service,
         scope: scope,
+        member: member,
+        additionalDirectories: const ['/abs/missing/repo'],
+      ),
+      document: await _document(
         member: member,
         additionalDirectories: const ['/abs/missing/repo'],
       ),
@@ -333,4 +347,20 @@ void main() {
     });
     expect(sibling.existsSync(), isTrue);
   });
+}
+
+Future<PromptDocument> _document({
+  TeamMemberConfig? member,
+  List<String> additionalDirectories = const [],
+  bool mixed = false,
+}) async {
+  return (await PromptAssembler().assemble(
+    context: PromptProviderContext(
+      cli: CliTool.opencode,
+      member: member,
+      mixed: mixed,
+      additionalDirectories: additionalDirectories,
+    ),
+    providers: [const OpencodePromptCapability()],
+  )).document;
 }

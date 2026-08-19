@@ -87,6 +87,18 @@ class RuntimeLayout {
     memberId: memberId,
   );
 
+  String sessionRuntimePluginPoolDir(
+    String workspaceId,
+    String sessionId,
+    String tool, {
+    String? memberId,
+  }) => workspace.sessionRuntimePluginPoolDir(
+    workspaceId,
+    sessionId,
+    tool,
+    memberId: memberId,
+  );
+
   String workspaceTeamRuntimeDir(String workspaceId, String teamId) =>
       workspace.workspaceTeamRuntimeDir(workspaceId, teamId);
 
@@ -446,10 +458,7 @@ class RuntimeLayout {
     if ((await _fs.stat(target)).exists) {
       await _fs.removeRecursive(target);
     }
-    final linked = await _fs.createSymlink(
-      target: source,
-      linkPath: target,
-    );
+    final linked = await _fs.createSymlink(target: source, linkPath: target);
     if (!linked) {
       await _fs.copyFile(source, target);
     }

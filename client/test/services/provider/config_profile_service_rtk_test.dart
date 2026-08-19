@@ -20,9 +20,11 @@ void main() {
   group('ConfigProfileService extension settings hooks', () {
     late Directory base;
     late ConfigProfileService service;
+    late int rtkScriptLoads;
 
     setUp(() async {
       base = await Directory.systemTemp.createTemp('cfg_profile_rtk_');
+      rtkScriptLoads = 0;
       AppPathsBootstrapper.setCurrentForTesting(AppPaths(base.path));
       final fs = LocalFilesystem();
       service = ConfigProfileService(
@@ -57,7 +59,10 @@ void main() {
               storageMode: StorageBackendMode.native,
             ).scriptRunner,
             baseFileName: 'rtk-rewrite',
-            loadScript: (_) async => '#!/bin/bash\n# rtk-hook-version: 3\n',
+            loadScript: (_) async {
+              rtkScriptLoads += 1;
+              return '#!/bin/bash\n# rtk-hook-version: 3\n';
+            },
           ),
         },
       );
@@ -106,9 +111,36 @@ void main() {
       // 含扩展 id，跨扩展同事件不碰撞）。
       expect(
         command,
-        contains('teampilot-hook-teampilot-extension-settings-hook-rtk-'
-            'PreToolUse.sh'),
+        contains(
+          'teampilot-hook-teampilot-extension-settings-hook-rtk-'
+          'PreToolUse.sh',
+        ),
       );
+    });
+
+    test('does not collect RTK hooks twice for the launch member', () async {
+      const member = TeamMemberConfig(id: 'developer', name: 'Developer');
+      const team = TeamProfile(
+        id: 'team-a',
+        name: 'Team A',
+        cli: CliTool.flashskyai,
+        members: [member],
+        forceTeamLeadDelegateMode: false,
+      );
+
+      await service.prepareTeamLaunch(
+        workspaceId: _testWorkspaceId,
+        sessionId: configProfileAdhocSessionId,
+        teamId: team.id,
+        cliTeamName: team.id,
+        cli: team.cli,
+        members: team.members,
+        member: member,
+        team: team,
+        runtimeBundle: const ConfigBundle(),
+      );
+
+      expect(rtkScriptLoads, 1);
     });
 
     test('emits warning when extension enabled but binary missing', () async {

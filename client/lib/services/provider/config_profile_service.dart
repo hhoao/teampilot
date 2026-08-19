@@ -1,19 +1,22 @@
+import 'dart:async';
+
 import 'package:path/path.dart' as p;
 
 import '../../models/config_bundle.dart';
 import '../../models/cli_preset.dart';
 import '../../models/extension_manifest.dart';
-import '../../models/hook_entry.dart';
 import '../../models/plugin.dart';
 import '../../models/skill.dart';
 import '../../models/team_config.dart';
 import '../../utils/logging/logger.dart';
+import '../../utils/team/team_member_naming.dart';
 import '../team_bus/member_bus_idle_endpoint.dart';
 import '../agent_status/member_agent_status_endpoint.dart';
 import '../storage/runtime_layout.dart';
 import '../extension/extension_detector.dart';
 import '../extension/extension_provisioner.dart';
 import '../host/host_execution_environment.dart';
+import '../host/host_one_shot_runner.dart';
 import '../host/host_script_dialect.dart';
 import '../host/script_file_hook_provisioner.dart';
 import '../cli/registry/capabilities/plugin_capability.dart';
@@ -26,8 +29,16 @@ import '../../repositories/workspace_project_config_repository.dart';
 import '../io/filesystem.dart';
 import '../cli/claude/capabilities/mcp_project_cleanup.dart';
 import '../mcp/mcp_registry_service.dart';
-import '../resource/resource_provisioning_service.dart';
 import '../resource/resource_scope.dart';
+import '../resource/cli_resource_provisioner.dart';
+import '../resource/resource_provider_set.dart';
+import '../resource/providers/catalog_skill_contribution_provider.dart';
+import '../resource/providers/plugin_skill_contribution_provider.dart';
+import '../resource/providers/endpoint_hook_contribution_provider.dart';
+import '../resource/providers/extension_hook_contribution_provider.dart';
+import '../resource/providers/managed_hook_contribution_provider.dart';
+import '../resource/providers/hook_contribution_provider.dart';
+import '../resource/contribution/resource_assembly_error.dart';
 import '../launch/launch_manifest.dart';
 import '../launch/launch_manifest_paths.dart';
 import '../launch/manifest_executor.dart';
@@ -35,11 +46,14 @@ import '../launch/manifest_filesystem.dart';
 import '../provider/workspace_trust_provisioner.dart';
 import '../cli/claude/team_roster_service.dart';
 import '../cli/cursor/provider/cursor_workspace_warm_tier.dart';
+import '../cli/cursor/provider/cursor_home_layout.dart';
 import '../cli/registry/capabilities/cli_session_capability.dart';
 import '../storage/app_storage.dart';
 import '../cli/preset_resolver.dart';
 import '../hook/hook_library_resolver.dart';
+import '../resource/providers/hook_library_contribution_provider.dart';
 import '../cli/registry/config_profile/config_profile_context.dart';
+import '../cli/registry/config_profile/hook_seat_context_completer.dart';
 import 'config_profile_infrastructure.dart';
 
 export '../cli/registry/config_profile/config_profile_context.dart';
@@ -63,6 +77,7 @@ class TeamLaunchOutcome {
 /// Orchestrates config-profile layout, MCP/plugin merge, and per-CLI capabilities.
 class ConfigProfileService implements ConfigProfileDelegate {
   static final _defaultCliRegistry = CliToolRegistry.builtIn();
+  static final _nativePluginLocks = <String, Future<void>>{};
 
   ConfigProfileService({
     required String basePath,
@@ -81,6 +96,8 @@ class ConfigProfileService implements ConfigProfileDelegate {
     Future<String> Function(HostScriptDialect dialect)?
     loadTeamLeadDelegateHookScript,
     HostExecutionEnvironment? hostEnvironment,
+    HostOneShotRunner? hostOneShotRunner,
+    String? cliExecutable,
     CliToolRegistry? cliRegistry,
     Future<List<Skill>> Function()? loadInstalledSkills,
     Future<List<CliPreset>> Function() loadGlobalPresets =
@@ -104,6 +121,8 @@ class ConfigProfileService implements ConfigProfileDelegate {
          hostEnvironment: hostEnvironment,
        ),
        _catalogOverride = catalog,
+       _hostOneShotRunner = hostOneShotRunner,
+       _cliExecutable = cliExecutable,
        _cliRegistry = cliRegistry ?? _defaultCliRegistry,
        _loadInstalledSkills = loadInstalledSkills,
        _loadGlobalPresets = loadGlobalPresets,
@@ -117,8 +136,12 @@ class ConfigProfileService implements ConfigProfileDelegate {
     Future<List<CliPreset>> Function() loadGlobalPresets =
         _defaultLoadGlobalPresets,
     WorkspaceProjectConfigRepository? projectConfigRepository,
+    HostOneShotRunner? hostOneShotRunner,
+    String? cliExecutable,
   }) : _infra = infra,
        _catalogOverride = catalog,
+       _hostOneShotRunner = hostOneShotRunner,
+       _cliExecutable = cliExecutable,
        _cliRegistry = cliRegistry ?? _defaultCliRegistry,
        _loadInstalledSkills = loadInstalledSkills,
        _loadGlobalPresets = loadGlobalPresets,
@@ -126,6 +149,8 @@ class ConfigProfileService implements ConfigProfileDelegate {
 
   final ConfigProfileInfrastructure _infra;
   final ConfigProfilePaths? _catalogOverride;
+  final HostOneShotRunner? _hostOneShotRunner;
+  final String? _cliExecutable;
   final CliToolRegistry _cliRegistry;
   final Future<List<Skill>> Function()? _loadInstalledSkills;
   final Future<List<CliPreset>> Function() _loadGlobalPresets;
@@ -141,6 +166,256 @@ class ConfigProfileService implements ConfigProfileDelegate {
       skills: skills,
       skillsRoot: AppPaths.skillsDirForTeampilotRoot(catalog.basePath),
       pathContext: fs.pathContext,
+      plugins: await InstalledPluginCatalog.load(fs, catalog.basePath),
+      pluginsRoot: AppPaths.pluginsDirForTeampilotRoot(catalog.basePath),
+    );
+  }
+
+  Future<ResourceProvisionReport> _provisionStagedResources({
+    required CliResourceProvisionContext context,
+  }) async {
+    final report = await CliResourceProvisioner(
+      fs: context.fs,
+      registry: _cliRegistry,
+    ).provision(context);
+    if (report.hardDiagnostics.isNotEmpty) {
+      throw ResourceAssemblyException(report.hardDiagnostics);
+    }
+    appLogger.d(
+      '[resource-debug] prompt=${report.prompt?.content.length} '
+      'promptMaterialized=${report.promptMaterialization?.written} '
+      'env=${report.promptMaterialization?.environment} '
+      'hooks=${report.hooks.length} '
+      'hookMaterialized=${report.materializations[ResourceContributionKind.hook]?.materialized} '
+      'hard=${report.hardDiagnostics.length}',
+    );
+    return report;
+  }
+
+  Future<ResourceProvisionReport> _provisionStagedHooks({
+    required CliResourceProvisionContext context,
+  }) async {
+    final report = await CliResourceProvisioner(
+      fs: context.fs,
+      registry: _cliRegistry,
+    ).provisionHooks(context);
+    if (report.hardDiagnostics.isNotEmpty) {
+      throw ResourceAssemblyException(report.hardDiagnostics);
+    }
+    return report;
+  }
+
+  Future<void> _provisionStagedRosterHooks({
+    required ConfigProfileService staging,
+    required Filesystem stagingFs,
+    required String workspaceId,
+    required String sessionId,
+    required String teamId,
+    required String cliTeamName,
+    required TeamProfile? team,
+    required CliTool defaultCli,
+    required List<TeamMemberConfig> members,
+    required String? materializedMemberId,
+    required ConfigBundle runtimeBundle,
+    required String workingDirectory,
+    required List<String> additionalDirectories,
+    required MemberBusIdleEndpoint? busIdle,
+    required MemberAgentStatusEndpoint? agentStatus,
+    required List<String> hookIds,
+    required List<String> warnings,
+  }) async {
+    for (final member in members.where((member) => member.isValid)) {
+      if (member.id == materializedMemberId) continue;
+      final mixed = team?.teamMode == TeamMode.mixed;
+      final memberId = mixed
+          ? ClaudeTeamRosterService.safeClaudePathSegment(member.id)
+          : null;
+      final memberCli = team == null
+          ? defaultCli
+          : mixed
+          ? member.cli ?? team.cli
+          : team.cli;
+      final scope = resolveLaunchProfileScope(
+        workspaceId: workspaceId,
+        teamId: teamId,
+        appSessionId: sessionId,
+        cliTeamName: cliTeamName,
+        memberId: memberId,
+      );
+      final memberToolDir = staging.sessionToolDir(
+        workspaceId,
+        sessionId,
+        memberCli.value,
+        memberId: memberId,
+      );
+      final hookProviders = await staging._launchHookProviders(
+        delegate: staging,
+        cli: memberCli,
+        scope: scope,
+        team: team,
+        member: member,
+        busIdle: busIdle,
+        agentStatus: agentStatus,
+        memberToolDir: memberToolDir,
+        hookIds: hookIds,
+        simple: false,
+      );
+      final hookPaths = staging._hookMaterializationPaths(
+        cli: memberCli,
+        memberToolDir: memberToolDir,
+        member: member,
+        memberHome: memberCli == CliTool.cursor
+            ? staging.fs.pathContext.join(
+                mixed && memberId != null
+                    ? staging.layout.workspaceRuntimeMemberToolDir(
+                        workspaceId,
+                        teamId,
+                        memberId,
+                        memberCli.value,
+                      )
+                    : staging.sessionToolDir(
+                        workspaceId,
+                        sessionId,
+                        memberCli.value,
+                      ),
+                'home',
+              )
+            : null,
+      );
+      final report = await staging._provisionStagedHooks(
+        context: CliResourceProvisionContext(
+          cli: memberCli,
+          scope: team == null
+              ? WorkspaceResourceScope(bundle: runtimeBundle)
+              : TeamResourceScope(team: team, member: member),
+          runtimeBundle: runtimeBundle,
+          fs: stagingFs,
+          layout: staging.layout,
+          configDir: staging._launchResourceConfigDir(
+            cli: memberCli,
+            workspaceId: workspaceId,
+            sessionId: sessionId,
+            memberId: memberId,
+            team: team,
+          ),
+          resourceProviders: ResourceProviderSet(hooks: hookProviders.hooks),
+          paths: staging,
+          launchScope: scope,
+          member: member,
+          members: [member],
+          workingDirectory: workingDirectory,
+          additionalDirectories: additionalDirectories,
+          mixed: mixed,
+          pushDelivery: mixed,
+          hooksDir: hookPaths.hooksDir,
+          hookConfigPath: hookPaths.configPath,
+        ),
+      );
+      warnings.addAll(staging._resourceWarnings(report));
+    }
+  }
+
+  List<String> _resourceWarnings(ResourceProvisionReport report) => [
+    ...report.warnings.map((diagnostic) => diagnostic.message),
+    for (final result in report.materializations.values) ...result.warnings,
+  ];
+
+  ResourceProviderSet _catalogResourceProviders(ResourceCatalog catalog) =>
+      ResourceProviderSet(
+        skills: [
+          CatalogSkillContributionProvider(catalog: catalog),
+          PluginSkillContributionProvider(
+            catalog: catalog,
+            pluginsRoot: catalog.pluginsRoot,
+          ),
+        ],
+      );
+
+  Future<ResourceProviderSet> _launchHookProviders({
+    required ConfigProfileDelegate delegate,
+    required CliTool cli,
+    required LaunchProfileScope scope,
+    required TeamProfile? team,
+    required TeamMemberConfig? member,
+    required MemberBusIdleEndpoint? busIdle,
+    required MemberAgentStatusEndpoint? agentStatus,
+    required String memberToolDir,
+    required Iterable<String> hookIds,
+    required bool simple,
+    Iterable<HookContributionProvider> injected = const [],
+  }) async {
+    const completer = HookSeatContextCompleter();
+    final managed = <HookContributionProvider>[];
+    if (member != null && member.isValid) {
+      if (busIdle != null && (simple || team?.teamMode == TeamMode.mixed)) {
+        managed.add(
+          BusIdleHookContributionProvider(
+            endpoint: busIdle,
+            memberId: member.id,
+          ),
+        );
+      }
+      if (agentStatus != null) {
+        managed.add(
+          AgentStatusHookContributionProvider(
+            endpoint: agentStatus,
+            memberId: member.id,
+          ),
+        );
+      }
+      final delegateCommand = await delegate.resolveTeamLeadDelegateHookCommand(
+        member,
+        memberToolDir,
+        forceTeamLeadDelegateMode:
+            team?.forceTeamLeadDelegateMode == true &&
+            TeamMemberNaming.isTeamLead(member),
+      );
+      if (delegateCommand != null) {
+        managed.add(
+          ManagedHookContributionProvider(
+            entries: completer.delegateHooks(commands: [delegateCommand]),
+            providerId: 'team-lead-delegate',
+          ),
+        );
+      }
+      final selfCommand = await delegate.resolveTeamLeadSelfHookCommand(
+        member,
+        memberToolDir,
+      );
+      if (selfCommand != null) {
+        managed.add(
+          ManagedHookContributionProvider(
+            entries: completer.teamLeadSelfHooks(
+              member: member,
+              command: selfCommand,
+            ),
+            providerId: 'team-lead-self',
+          ),
+        );
+      }
+    }
+
+    final extensionHooks = await delegate.extensionSettingsHooks(
+      memberToolDir,
+      tool: cli.value,
+      teamId: simple ? null : scope.teamId,
+      workspaceId: simple ? scope.workspaceId : null,
+    );
+    final user = HookLibraryContributionProvider(
+      resolver: HookLibraryResolver(
+        fs: delegate.fs,
+        teampilotRoot: delegate.basePath,
+      ),
+      hookIds: hookIds,
+    );
+    return ResourceProviderSet(
+      hooks: [
+        ...managed,
+        if (extensionHooks.isNotEmpty)
+          ExtensionHookContributionProvider(settingsHooks: extensionHooks),
+        ...injected,
+        user,
+      ],
     );
   }
 
@@ -218,6 +493,77 @@ class ConfigProfileService implements ConfigProfileDelegate {
   @override
   p.Context get pathContext => _infra.pathContext;
 
+  /// Runs CLI-owned plugin installation serially for each target config dir.
+  /// Native teams share one CODEX_HOME, so concurrent member connects must not
+  /// replace the marketplace while another member is installing from it.
+  Future<T> _withNativePluginLock<T>(
+    String key,
+    Future<T> Function() action,
+  ) async {
+    final previous = _nativePluginLocks[key] ?? Future<void>.value();
+    final gate = Completer<void>();
+    final queued = previous.then((_) => gate.future);
+    _nativePluginLocks[key] = queued;
+    try {
+      await previous;
+      return await action();
+    } finally {
+      if (!gate.isCompleted) gate.complete();
+      if (identical(_nativePluginLocks[key], queued)) {
+        _nativePluginLocks.remove(key);
+      }
+    }
+  }
+
+  /// Runs CLI-owned plugin installation after a launch manifest has been
+  /// flushed to the target filesystem.
+  Future<void> provisionNativePlugins({
+    required String workspaceId,
+    required String sessionId,
+    required ConfigBundle runtimeBundle,
+    required CliTool cli,
+    String? memberId,
+    TeamProfile? team,
+    String? executable,
+  }) async {
+    final pluginProvisioner = _cliRegistry.capability<PluginCapability>(cli);
+    if (pluginProvisioner == null ||
+        pluginProvisioner.runtimeOwnership != PluginRuntimeOwnership.native) {
+      return;
+    }
+    final bundlePoolDir = layout.sessionRuntimePluginPoolDir(
+      workspaceId,
+      sessionId,
+      cli.value,
+      memberId: memberId,
+    );
+    final configDir = _launchResourceConfigDir(
+      cli: cli,
+      workspaceId: workspaceId,
+      sessionId: sessionId,
+      memberId: memberId,
+      team: team,
+    );
+    final lockKey = configDir;
+    await _withNativePluginLock(lockKey, () async {
+      final installedCatalog = await InstalledPluginCatalog.load(fs, basePath);
+      await pluginProvisioner.provision(
+        PluginProvisionContext(
+          fs: fs,
+          teampilotRoot: basePath,
+          configDir: configDir,
+          bundlePoolDir: bundlePoolDir,
+          enabledPluginIds: runtimeBundle.pluginIds,
+          installedCatalog: installedCatalog,
+          layout: layout,
+          tool: cli,
+          hostOneShotRunner: _hostOneShotRunner,
+          executable: executable ?? _cliExecutable,
+        ),
+      );
+    });
+  }
+
   String get cliDefaultsDir => layout.cliDefaultsDir;
 
   String get identitiesRuntimeDir => layout.identitiesRuntimeDir;
@@ -239,12 +585,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     String sessionId,
     String tool, {
     String? memberId,
-  }) => _infra.sessionToolDir(
-    workspaceId,
-    sessionId,
-    tool,
-    memberId: memberId,
-  );
+  }) => _infra.sessionToolDir(workspaceId, sessionId, tool, memberId: memberId);
 
   String _launchResourceConfigDir({
     required CliTool cli,
@@ -254,11 +595,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     TeamProfile? team,
   }) {
     if (CursorWorkspaceWarmTier.applies(team: team, cli: cli)) {
-      return CursorWorkspaceWarmTier.sharedRoot(
-        layout,
-        workspaceId,
-        team!.id,
-      );
+      return CursorWorkspaceWarmTier.sharedRoot(layout, workspaceId, team!.id);
     }
     return sessionConfigDirForTool(
       cli,
@@ -267,6 +604,35 @@ class ConfigProfileService implements ConfigProfileDelegate {
       sessionId: sessionId,
       memberId: memberId,
       teamId: team?.id,
+    );
+  }
+
+  ({String hooksDir, String? configPath}) _hookMaterializationPaths({
+    required CliTool cli,
+    required String memberToolDir,
+    required TeamMemberConfig? member,
+    required String? memberHome,
+  }) {
+    if (cli == CliTool.cursor && memberHome != null) {
+      final cursor = CursorHomeLayout(pathContext: pathContext);
+      return (
+        hooksDir: cursor.hooksDir(memberHome),
+        configPath: cursor.hooksConfig(memberHome),
+      );
+    }
+    if (cli == CliTool.claude && member != null && member.isValid) {
+      return (
+        hooksDir: pathContext.join(memberToolDir, 'hooks'),
+        configPath: pathContext.join(
+          memberToolDir,
+          'settings',
+          '${ClaudeTeamRosterService.safeClaudePathSegment(member.id)}.json',
+        ),
+      );
+    }
+    return (
+      hooksDir: pathContext.join(memberToolDir, 'hooks'),
+      configPath: null,
     );
   }
 
@@ -291,6 +657,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     Iterable<String> projectMcpRoots = const [],
     String workingDirectory = '',
     MemberBusIdleEndpoint? busIdle,
+    bool provisionResources = true,
   }) async {
     final warnings = <String>[];
     final trimmedWorkspaceId = effectiveLaunchWorkspaceId(
@@ -322,73 +689,106 @@ class ConfigProfileService implements ConfigProfileDelegate {
     );
     // Share the persisted marketplace clone into this session's CONFIG_DIR so
     // the CLI reuses one per-tool flavor dir instead of cloning per session.
-    await MarketplaceSharedStore(fs: fs, teampilotRoot: basePath)
-        .ensureSessionMarketplacesLinked(configDir: configDir, tool: cli);
-    final pluginProvisioner = _cliRegistry
-        .capability<PluginCapability>(cli);
+    await MarketplaceSharedStore(
+      fs: fs,
+      teampilotRoot: basePath,
+    ).ensureSessionMarketplacesLinked(configDir: configDir, tool: cli);
+    final pluginProvisioner = _cliRegistry.capability<PluginCapability>(cli);
     final warmTier = CursorWorkspaceWarmTier.applies(team: team, cli: cli);
+    final mcpRegistry = McpRegistryService(fs: fs, layout: layout);
+    McpRegistryAssembly? mcpAssembly;
+    List<Plugin>? installedCatalog;
     if (pluginProvisioner != null) {
-      final installedCatalog = await InstalledPluginCatalog.load(fs, basePath);
+      installedCatalog = await InstalledPluginCatalog.load(fs, basePath);
       final enabledPlugins = runtimeBundle?.pluginIds ?? const <String>[];
-      final poolResult = await PluginBundlePoolService(
-        fs: fs,
-        teampilotRoot: basePath,
-      ).reconcile(
-        poolDir: layout.sessionRuntimePluginsDir(
-          trimmedWorkspaceId,
-          trimmedSessionId,
-          cli.value,
-          memberId: memberId,
-        ),
-        enabledPluginIds: enabledPlugins,
-        installedCatalog: installedCatalog,
-        paths: pluginProvisioner.manifestPaths ?? neutralPluginManifestPaths,
-      );
+      final pluginPoolDir =
+          pluginProvisioner.runtimeOwnership == PluginRuntimeOwnership.native
+          ? layout.sessionRuntimePluginPoolDir(
+              trimmedWorkspaceId,
+              trimmedSessionId,
+              cli.value,
+              memberId: memberId,
+            )
+          : layout.sessionRuntimePluginsDir(
+              trimmedWorkspaceId,
+              trimmedSessionId,
+              cli.value,
+              memberId: memberId,
+            );
+      final poolResult =
+          await PluginBundlePoolService(
+            fs: fs,
+            teampilotRoot: basePath,
+          ).reconcile(
+            poolDir: pluginPoolDir,
+            enabledPluginIds: enabledPlugins,
+            installedCatalog: installedCatalog,
+            paths:
+                pluginProvisioner.manifestPaths ?? neutralPluginManifestPaths,
+          );
       warnings.addAll([
         for (final id in poolResult.skippedMissingIds) 'plugin_missing_$id',
         ...poolResult.errors,
       ]);
+      if (provisionResources) {
+        mcpAssembly = await mcpRegistry.assembleForTeam(
+          cli: cli,
+          teamId: trimmedTeamId,
+          extraServers: extraMcpServers,
+          pluginIds: enabledPlugins,
+          installedPluginCatalog: installedCatalog,
+        );
+      }
       await pluginProvisioner.provision(
         PluginProvisionContext(
           fs: fs,
           teampilotRoot: basePath,
           configDir: configDir,
-          bundlePoolDir: layout.sessionRuntimePluginsDir(
-            trimmedWorkspaceId,
-            trimmedSessionId,
-            cli.value,
-            memberId: memberId,
-          ),
+          bundlePoolDir: pluginPoolDir,
           enabledPluginIds: enabledPlugins,
           installedCatalog: installedCatalog,
           layout: layout,
           tool: cli,
           memberProvisionJson: poolResult.memberProvisionStampJson,
+          assembledMcpServers: mcpAssembly?.result.servers ?? const [],
           mcpConfigFileName: warmTier
               ? CursorWorkspaceWarmTier.mcpBaseFileName
               : null,
         ),
       );
     }
-    await _cliRegistry.lifecycleFor(cli).ensurePersisted(
-      CliSessionPersistContext(
-        workspaceId: trimmedWorkspaceId,
-        sessionId: trimmedSessionId,
-        memberId: memberId,
-        tool: cli,
-        paths: this,
-        team: team,
-        busIdle: busIdle,
-        workingDirectory: workingDirectory,
-      ),
+    await _cliRegistry
+        .lifecycleFor(cli)
+        .ensurePersisted(
+          CliSessionPersistContext(
+            workspaceId: trimmedWorkspaceId,
+            sessionId: trimmedSessionId,
+            memberId: memberId,
+            tool: cli,
+            paths: this,
+            team: team,
+            busIdle: busIdle,
+            workingDirectory: workingDirectory,
+          ),
+        );
+    if (!provisionResources) return warnings;
+    mcpAssembly ??= await mcpRegistry.assembleForTeam(
+      cli: cli,
+      teamId: trimmedTeamId,
+      extraServers: extraMcpServers,
+      pluginIds: runtimeBundle?.pluginIds ?? const [],
+      installedPluginCatalog: installedCatalog,
     );
-    final mcpRegistry = McpRegistryService(fs: fs, layout: layout);
+    final assembledMcp = mcpAssembly;
     if (warmTier) {
       await mcpRegistry.writeCursorWorkspaceMcpBase(
         workspaceId: trimmedWorkspaceId,
         teamId: trimmedTeamId,
         extraServers: extraMcpServers,
+        pluginIds: runtimeBundle?.pluginIds ?? const [],
         projectMcpRoots: projectMcpRoots,
+        assembly: assembledMcp,
+        mcpAlreadyMaterialized: pluginProvisioner?.writesAssembledMcp == true,
       );
       final trimmedMemberId = memberId?.trim() ?? '';
       if (trimmedMemberId.isNotEmpty) {
@@ -397,6 +797,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
           sessionId: trimmedSessionId,
           teamId: trimmedTeamId,
           memberId: trimmedMemberId,
+          assembly: assembledMcp,
         );
       }
     } else {
@@ -404,9 +805,13 @@ class ConfigProfileService implements ConfigProfileDelegate {
         workspaceId: trimmedWorkspaceId,
         teamId: trimmedTeamId,
         sessionId: trimmedSessionId,
+        cli: cli,
         memberId: memberId,
         extraServers: extraMcpServers,
+        pluginIds: runtimeBundle?.pluginIds ?? const [],
         projectMcpRoots: projectMcpRoots,
+        assembly: assembledMcp,
+        mcpAlreadyMaterialized: pluginProvisioner?.writesAssembledMcp == true,
       );
     }
     return warnings;
@@ -460,6 +865,16 @@ class ConfigProfileService implements ConfigProfileDelegate {
     CliTool cli = CliTool.claude,
     Map<String, Map<String, Object?>>? extraMcpServers,
     Iterable<String> projectMcpRoots = const [],
+    ConfigProfileDelegate? promptPaths,
+    LaunchProfileScope? launchScope,
+    TeamMemberConfig? member,
+    Iterable<TeamMemberConfig> members = const [],
+    MemberBusIdleEndpoint? busIdle,
+    MemberAgentStatusEndpoint? agentStatus,
+    String? memberHome,
+    Map<String, String>? resourceEnvironment,
+    String workingDirectory = '',
+    Iterable<String> additionalDirectories = const [],
   }) async {
     final trimmedWorkspaceId = workspaceId.trim();
     final trimmedSessionId = sessionId.trim();
@@ -497,54 +912,45 @@ class ConfigProfileService implements ConfigProfileDelegate {
     // the CLI reuses one per-tool flavor dir instead of cloning per session.
     await step(
       'marketplaces',
-      () => MarketplaceSharedStore(fs: fs, teampilotRoot: basePath)
-          .ensureSessionMarketplacesLinked(configDir: configDir, tool: cli),
+      () => MarketplaceSharedStore(
+        fs: fs,
+        teampilotRoot: basePath,
+      ).ensureSessionMarketplacesLinked(configDir: configDir, tool: cli),
     );
 
-    // Catalog skills land in `skill/` BEFORE plugin bundles are decomposed:
-    // the skills materializer reconciles `skill/` to exactly the catalog set,
-    // so running it after plugin provision would prune plugin-provided skills.
-    // Plugin decompose then fills only the names the catalog does not provide.
-    await step('skills', () async {
-      final provisionResult =
-          await ResourceProvisioningService(
-            fs: fs,
-            registry: _cliRegistry,
-          ).provisionForLaunch(
-            scope: SimpleResourceScope(bundle: runtimeBundle),
-            cli: cli,
-            configDir: _launchResourceConfigDir(
-              cli: cli,
-              workspaceId: trimmedWorkspaceId,
-              sessionId: trimmedSessionId,
-            ),
-            catalog: await _skillCatalog(),
-          );
-      warnings.addAll(provisionResult.warnings);
-    });
-
-    final pluginProvisioner = _cliRegistry
-        .capability<PluginCapability>(cli);
+    final pluginProvisioner = _cliRegistry.capability<PluginCapability>(cli);
+    final mcpRegistry = McpRegistryService(fs: fs, layout: layout);
+    List<Plugin>? installedCatalog;
     if (pluginProvisioner != null) {
-      late final List<Plugin> installedCatalog;
+      final pluginPoolDir =
+          pluginProvisioner.runtimeOwnership == PluginRuntimeOwnership.native
+          ? layout.sessionRuntimePluginPoolDir(
+              trimmedWorkspaceId,
+              trimmedSessionId,
+              cli.value,
+            )
+          : layout.sessionRuntimePluginsDir(
+              trimmedWorkspaceId,
+              trimmedSessionId,
+              cli.value,
+            );
       late final PluginBundlePoolResult poolResult;
       await step('plugin-catalog', () async {
         installedCatalog = await InstalledPluginCatalog.load(fs, basePath);
       });
+      final pluginCatalog = installedCatalog!;
       await step('plugin-pool', () async {
-        poolResult = await PluginBundlePoolService(
-          fs: fs,
-          teampilotRoot: basePath,
-        ).reconcile(
-          poolDir: layout.sessionRuntimePluginsDir(
-            trimmedWorkspaceId,
-            trimmedSessionId,
-            cli.value,
-          ),
-          enabledPluginIds: runtimeBundle.pluginIds,
-          installedCatalog: installedCatalog,
-          paths: pluginProvisioner.manifestPaths ?? neutralPluginManifestPaths,
-        );
+        poolResult =
+            await PluginBundlePoolService(
+              fs: fs,
+              teampilotRoot: basePath,
+            ).reconcile(
+              poolDir: pluginPoolDir,
+              enabledPluginIds: runtimeBundle.pluginIds,
+              installedCatalog: pluginCatalog,
+              paths:
+                  pluginProvisioner.manifestPaths ?? neutralPluginManifestPaths,
+            );
       });
       warnings.addAll([
         for (final id in poolResult.skippedMissingIds) 'plugin_missing_$id',
@@ -557,34 +963,98 @@ class ConfigProfileService implements ConfigProfileDelegate {
             fs: fs,
             teampilotRoot: basePath,
             configDir: configDir,
-            bundlePoolDir: layout.sessionRuntimePluginsDir(
-              trimmedWorkspaceId,
-              trimmedSessionId,
-              cli.value,
-            ),
+            bundlePoolDir: pluginPoolDir,
             enabledPluginIds: runtimeBundle.pluginIds,
-            installedCatalog: installedCatalog,
+            installedCatalog: pluginCatalog,
             layout: layout,
             tool: cli,
             memberProvisionJson: poolResult.memberProvisionStampJson,
+            assembledMcpServers: const [],
           ),
         ),
       );
     }
 
-    await step(
-      'mcp',
-      () => McpRegistryService(
-        fs: fs,
-        layout: layout,
-      ).writeForSimpleSession(
-        workspaceId: trimmedWorkspaceId,
-        sessionId: trimmedSessionId,
-        mcpServerIds: runtimeBundle.mcpServerIds,
-        extraServers: extraMcpServers,
-        projectMcpRoots: projectMcpRoots,
-      ),
+    final mcpProviders = await mcpRegistry.providersForSimple(
+      cli: cli,
+      mcpServerIds: runtimeBundle.mcpServerIds,
+      extraServers: extraMcpServers,
+      pluginIds: runtimeBundle.pluginIds,
+      installedPluginCatalog: installedCatalog,
     );
+    final resourceCatalog = await _skillCatalog();
+    await step('resources', () async {
+      await maybeRemoveStaleProjectTeammateBus(
+        fs: fs,
+        extraServers: extraMcpServers,
+        projectRoots: projectMcpRoots,
+      );
+      final providers = _catalogResourceProviders(resourceCatalog);
+      final hookProviders = await _launchHookProviders(
+        delegate: this,
+        cli: cli,
+        scope:
+            launchScope ??
+            LaunchProfileScope(
+              workspaceId: trimmedWorkspaceId,
+              teamId: trimmedWorkspaceId,
+              sessionId: trimmedSessionId,
+              cliTeamName: trimmedSessionId,
+            ),
+        team: null,
+        member: member,
+        busIdle: busIdle,
+        agentStatus: agentStatus,
+        memberToolDir: sessionToolDir(
+          trimmedWorkspaceId,
+          trimmedSessionId,
+          cli.value,
+        ),
+        hookIds: runtimeBundle.hookIds,
+        simple: true,
+      );
+      final hookPaths = _hookMaterializationPaths(
+        cli: cli,
+        memberToolDir: sessionToolDir(
+          trimmedWorkspaceId,
+          trimmedSessionId,
+          cli.value,
+        ),
+        member: member,
+        memberHome: memberHome,
+      );
+      final report = await _provisionStagedResources(
+        context: CliResourceProvisionContext(
+          cli: cli,
+          scope: SimpleResourceScope(bundle: runtimeBundle),
+          runtimeBundle: runtimeBundle,
+          fs: fs,
+          layout: layout,
+          configDir: configDir,
+          resourceProviders: ResourceProviderSet(
+            skills: providers.skills,
+            mcp: mcpProviders.providers.mcp,
+            hooks: hookProviders.hooks,
+          ),
+          paths: promptPaths,
+          launchScope: launchScope,
+          member: member,
+          members: members,
+          workingDirectory: workingDirectory,
+          additionalDirectories: additionalDirectories,
+          memberHome: memberHome,
+          hooksDir: hookPaths.hooksDir,
+          hookConfigPath: hookPaths.configPath,
+          appConfigDir: mcpProviders.catalogProvider != null
+              ? layout.appToolRoot(cli.value)
+              : null,
+        ),
+      );
+      warnings.addAll(_resourceWarnings(report));
+      resourceEnvironment?.addAll(
+        report.promptMaterialization?.environment ?? const {},
+      );
+    });
 
     appLogger.d(
       '[session-launch] stage-fs done '
@@ -607,7 +1077,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     List<String> additionalDirectories = const [],
     MemberBusIdleEndpoint? busIdle,
     MemberAgentStatusEndpoint? agentStatus,
-    List<HookEntry> hooks = const [],
+    ResourceProviderSet resourceProviders = ResourceProviderSet.empty,
   }) async {
     final trimmedWorkspaceId = workspaceId.trim();
     final trimmedSessionId = sessionId.trim();
@@ -652,7 +1122,9 @@ class ConfigProfileService implements ConfigProfileDelegate {
             catalog: catalog,
             busIdle: busIdle,
             agentStatus: agentStatus,
-            hooks: hooks,
+            resourceProviders: resourceProviders,
+            promptAlreadyMaterialized: true,
+            hooksAlreadyMaterialized: true,
           ),
           cli,
         ),
@@ -701,6 +1173,19 @@ class ConfigProfileService implements ConfigProfileDelegate {
     );
 
     final cli = member.cli ?? CliTool.claude;
+    final simpleScope = LaunchProfileScope(
+      workspaceId: workspaceId.trim(),
+      teamId: workspaceId.trim(),
+      sessionId: sessionId.trim(),
+      cliTeamName: sessionId.trim(),
+    );
+    final simpleMemberHome = member.cli == CliTool.cursor
+        ? stagingFs.pathContext.join(
+            staging.sessionToolDir(workspaceId, sessionId, cli.value),
+            'home',
+          )
+        : null;
+    final resourceEnvironment = <String, String>{};
     final fsSw = Stopwatch()..start();
     final fsWarnings = await staging.applySimpleSessionFilesystem(
       workspaceId: workspaceId,
@@ -708,6 +1193,16 @@ class ConfigProfileService implements ConfigProfileDelegate {
       runtimeBundle: runtimeBundle,
       cli: cli,
       extraMcpServers: extraMcpServers,
+      promptPaths: staging,
+      launchScope: simpleScope,
+      member: member,
+      members: [member],
+      busIdle: busIdle,
+      agentStatus: agentStatus,
+      memberHome: simpleMemberHome,
+      resourceEnvironment: resourceEnvironment,
+      workingDirectory: workingDirectory,
+      additionalDirectories: additionalDirectories,
       projectMcpRoots: projectMcpRootsFromLaunch(
         workingDirectory: workingDirectory,
         additionalDirectories: additionalDirectories,
@@ -719,10 +1214,6 @@ class ConfigProfileService implements ConfigProfileDelegate {
       'ops=${manifest.entries.length}',
     );
     final contributeSw = Stopwatch()..start();
-    final hooksResult = await HookLibraryResolver(
-      fs: readDelegate,
-      teampilotRoot: workTeampilotRoot,
-    ).resolve(runtimeBundle.hookIds);
     final outcome = await staging.contributeSimpleSessionLaunch(
       workspaceId: workspaceId,
       sessionId: sessionId,
@@ -731,7 +1222,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
       additionalDirectories: additionalDirectories,
       busIdle: busIdle,
       agentStatus: agentStatus,
-      hooks: hooksResult.entries,
+      resourceProviders: ResourceProviderSet.empty,
     );
     appLogger.d(
       '[session-launch] stage-simple contribute '
@@ -740,12 +1231,8 @@ class ConfigProfileService implements ConfigProfileDelegate {
     );
     return (
       outcome: TeamLaunchOutcome(
-        environment: outcome.environment,
-        warnings: [
-          ...fsWarnings,
-          ...hooksResult.warnings,
-          ...outcome.warnings,
-        ],
+        environment: {...resourceEnvironment, ...outcome.environment},
+        warnings: [...fsWarnings, ...outcome.warnings],
       ),
       manifest: manifest,
     );
@@ -779,6 +1266,12 @@ class ConfigProfileService implements ConfigProfileDelegate {
     );
     final executor = manifestExecutor ?? const ManifestExecutor();
     await executor.flush(manifest: staged.manifest, targetFs: fs, sourceFs: fs);
+    await provisionNativePlugins(
+      workspaceId: workspaceId,
+      sessionId: sessionId,
+      runtimeBundle: runtimeBundle,
+      cli: member.cli ?? CliTool.claude,
+    );
     return staged.outcome;
   }
 
@@ -862,31 +1355,6 @@ class ConfigProfileService implements ConfigProfileDelegate {
       workTeampilotRoot: workTeampilotRoot,
     );
 
-    // Catalog skills land in `skill/` BEFORE the session profile is staged:
-    // `ensureSessionProfile` decomposes plugin skills into the same dir, and
-    // the skills materializer would prune them if it ran afterwards. It
-    // reconciles `skill/` to exactly the catalog set, then the plugin
-    // decompose fills only the names the catalog does not provide.
-    if (team != null) {
-      final provisionResult =
-          await ResourceProvisioningService(
-            fs: stagingFs,
-            registry: _cliRegistry,
-          ).provisionForLaunch(
-            scope: WorkspaceResourceScope(bundle: runtimeBundle),
-            cli: launchCli,
-            configDir: staging._launchResourceConfigDir(
-              cli: launchCli,
-              workspaceId: trimmedWorkspaceId,
-              sessionId: trimmedSessionId,
-              memberId: memberId,
-              team: team,
-            ),
-            catalog: await _skillCatalog(),
-          );
-      warnings.addAll(provisionResult.warnings);
-    }
-
     warnings.addAll(
       await staging.ensureSessionProfile(
         trimmedWorkspaceId,
@@ -903,8 +1371,156 @@ class ConfigProfileService implements ConfigProfileDelegate {
         ),
         workingDirectory: workingDirectory,
         busIdle: busIdle,
+        provisionResources: false,
       ),
     );
+
+    final resourceCatalog = await _skillCatalog();
+    final providers = _catalogResourceProviders(resourceCatalog);
+    final mcpRegistry = McpRegistryService(
+      fs: stagingFs,
+      layout: staging.layout,
+    );
+    final mcpProviders = await mcpRegistry.providersForTeam(
+      cli: launchCli,
+      teamId: trimmedTeamId,
+      extraServers: extraMcpServers,
+      pluginIds: runtimeBundle.pluginIds,
+    );
+    await maybeRemoveStaleProjectTeammateBus(
+      fs: stagingFs,
+      extraServers: extraMcpServers,
+      projectRoots: projectMcpRootsFromLaunch(
+        workingDirectory: workingDirectory,
+        additionalDirectories: additionalDirectories,
+      ),
+    );
+    final resourceConfigDir = staging._launchResourceConfigDir(
+      cli: launchCli,
+      workspaceId: trimmedWorkspaceId,
+      sessionId: trimmedSessionId,
+      memberId: memberId,
+      team: team,
+    );
+    final warmTier = CursorWorkspaceWarmTier.applies(
+      team: team,
+      cli: launchCli,
+    );
+    final hookMemberToolDir = staging.sessionToolDir(
+      trimmedWorkspaceId,
+      trimmedSessionId,
+      launchCli.value,
+      memberId: team?.teamMode == TeamMode.mixed ? memberId : null,
+    );
+    final hookProviders = await staging._launchHookProviders(
+      delegate: staging,
+      cli: launchCli,
+      scope: scope,
+      team: team,
+      member: launchMember,
+      busIdle: busIdle,
+      agentStatus: agentStatus,
+      memberToolDir: hookMemberToolDir,
+      hookIds: runtimeBundle.hookIds,
+      simple: team == null,
+    );
+    final hookPaths = staging._hookMaterializationPaths(
+      cli: launchCli,
+      memberToolDir: hookMemberToolDir,
+      member: launchMember,
+      memberHome: launchCli == CliTool.cursor && launchMember != null
+          ? staging.fs.pathContext.join(
+              team?.teamMode == TeamMode.mixed && memberId != null
+                  ? staging.layout.workspaceRuntimeMemberToolDir(
+                      trimmedWorkspaceId,
+                      trimmedTeamId,
+                      memberId,
+                      launchCli.value,
+                    )
+                  : staging.sessionToolDir(
+                      trimmedWorkspaceId,
+                      trimmedSessionId,
+                      launchCli.value,
+                    ),
+              'home',
+            )
+          : null,
+    );
+    final resourceReport = await _provisionStagedResources(
+      context: CliResourceProvisionContext(
+        cli: launchCli,
+        scope: team == null
+            ? WorkspaceResourceScope(bundle: runtimeBundle)
+            : TeamResourceScope(team: team, member: launchMember),
+        runtimeBundle: runtimeBundle,
+        fs: stagingFs,
+        layout: staging.layout,
+        configDir: resourceConfigDir,
+        resourceProviders: ResourceProviderSet(
+          skills: providers.skills,
+          mcp: mcpProviders.providers.mcp,
+          hooks: hookProviders.hooks,
+        ),
+        paths: staging,
+        launchScope: scope,
+        member: launchMember,
+        members: launchMembers,
+        forceTeamLeadDelegateMode: team?.forceTeamLeadDelegateMode ?? false,
+        mixed: team?.teamMode == TeamMode.mixed,
+        pushDelivery: team?.teamMode == TeamMode.mixed,
+        workingDirectory: workingDirectory,
+        additionalDirectories: additionalDirectories,
+        memberHome: launchCli == CliTool.cursor && launchMember != null
+            ? staging.fs.pathContext.join(
+                team?.teamMode == TeamMode.mixed && memberId != null
+                    ? staging.layout.workspaceRuntimeMemberToolDir(
+                        trimmedWorkspaceId,
+                        trimmedTeamId,
+                        memberId,
+                        launchCli.value,
+                      )
+                    : staging.sessionToolDir(
+                        trimmedWorkspaceId,
+                        trimmedSessionId,
+                        launchCli.value,
+                      ),
+                'home',
+              )
+            : null,
+        hooksDir: hookPaths.hooksDir,
+        hookConfigPath: hookPaths.configPath,
+        appConfigDir: mcpProviders.catalogProvider != null
+            ? staging.layout.appToolRoot(launchCli.value)
+            : null,
+        mcpOutputBasename: warmTier
+            ? CursorWorkspaceWarmTier.mcpBaseFileName
+            : null,
+      ),
+    );
+    warnings.addAll(_resourceWarnings(resourceReport));
+    if (launchMembers.isNotEmpty) {
+      await staging._provisionStagedRosterHooks(
+        staging: staging,
+        stagingFs: stagingFs,
+        workspaceId: trimmedWorkspaceId,
+        sessionId: trimmedSessionId,
+        teamId: trimmedTeamId,
+        cliTeamName: cliTeamName,
+        team: team,
+        defaultCli: launchCli,
+        members: launchMembers,
+        materializedMemberId: launchMember?.isValid == true
+            ? launchMember!.id
+            : null,
+        runtimeBundle: runtimeBundle,
+        workingDirectory: workingDirectory,
+        additionalDirectories: additionalDirectories,
+        busIdle: busIdle,
+        agentStatus: agentStatus,
+        hookIds: runtimeBundle.hookIds,
+        warnings: warnings,
+      );
+    }
 
     final cap = _cliRegistry.capability<ProviderCapability>(launchCli);
     if (cap == null) {
@@ -916,12 +1532,6 @@ class ConfigProfileService implements ConfigProfileDelegate {
         manifest: manifest,
       );
     }
-
-    final hooksResult = await HookLibraryResolver(
-      fs: readDelegate,
-      teampilotRoot: workTeampilotRoot,
-    ).resolve(runtimeBundle.hookIds);
-    warnings.addAll(hooksResult.warnings);
 
     SessionHomeContribution contribution;
     try {
@@ -943,7 +1553,9 @@ class ConfigProfileService implements ConfigProfileDelegate {
             busIdle: busIdle,
             agentStatus: agentStatus,
             memberId: memberId,
-            hooks: hooksResult.entries,
+            resourceProviders: ResourceProviderSet.empty,
+            promptAlreadyMaterialized: true,
+            hooksAlreadyMaterialized: true,
           ),
           launchCli,
         ),
@@ -956,10 +1568,12 @@ class ConfigProfileService implements ConfigProfileDelegate {
       // as a proper session-connect failure.
       Error.throwWithStackTrace(e, st);
     }
-
     return (
       outcome: TeamLaunchOutcome(
-        environment: _withAgentStatusEnv(contribution.environment, agentStatus),
+        environment: {
+          ...?resourceReport.promptMaterialization?.environment,
+          ..._withAgentStatusEnv(contribution.environment, agentStatus),
+        },
         warnings: [...warnings, ...contribution.warnings],
       ),
       manifest: manifest,
@@ -1005,6 +1619,16 @@ class ConfigProfileService implements ConfigProfileDelegate {
     );
     final executor = manifestExecutor ?? const ManifestExecutor();
     await executor.flush(manifest: staged.manifest, targetFs: fs, sourceFs: fs);
+    await provisionNativePlugins(
+      workspaceId: workspaceId,
+      sessionId: sessionId,
+      runtimeBundle: runtimeBundle,
+      cli: cli,
+      memberId: team?.teamMode == TeamMode.mixed && member != null
+          ? ClaudeTeamRosterService.safeClaudePathSegment(member.id)
+          : null,
+      team: team,
+    );
     return staged.outcome;
   }
 
@@ -1114,6 +1738,12 @@ class ConfigProfileService implements ConfigProfileDelegate {
     memberToolDir,
     forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
   );
+
+  @override
+  Future<String?> resolveTeamLeadSelfHookCommand(
+    TeamMemberConfig member,
+    String memberToolDir,
+  ) => _infra.resolveTeamLeadSelfHookCommand(member, memberToolDir);
 
   @override
   HostExecutionEnvironment hostEnvironmentForProvision() =>

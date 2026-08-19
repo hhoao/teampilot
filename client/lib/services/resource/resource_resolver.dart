@@ -1,47 +1,70 @@
+import '../../models/team_config.dart';
+import 'assemblers/skill_assembler.dart';
+import 'providers/catalog_skill_contribution_provider.dart';
+import 'providers/plugin_skill_contribution_provider.dart';
+import 'providers/skill_contribution_provider.dart';
 import 'resource_kind.dart';
 import 'resource_scope.dart';
+import 'skill_link_name.dart';
 
-/// Computes the effective enabled resource set for a scope, purely in memory.
-/// No filesystem access — inheritance/selection is just reading the right
-/// stored enable list and filtering against the installed catalog.
+/// Compatibility facade for the pre-contribution resource resolver API.
+///
+/// Resource selection, catalog filtering, source-path resolution, and stable
+/// ordering live in providers and [SkillAssembler]. This class only delegates
+/// to that pipeline and projects the neutral result back to [ResourceRef] for
+/// callers that still consume the old result shape.
 class ResourceResolver {
   const ResourceResolver();
 
-  EffectiveResourceSet resolve({
+  /// Delegates one neutral skill assembly for a launch.
+  Future<SkillAssemblyResult> assemble({
     required ResourceScope scope,
+    required CliTool cli,
     required ResourceCatalog catalog,
   }) {
-    return EffectiveResourceSet({ResourceKind.skill: _skills(scope, catalog)});
+    final providers = <SkillContributionProvider>[
+      CatalogSkillContributionProvider(catalog: catalog),
+      if (scope.pluginIds.any((id) => id.trim().isNotEmpty))
+        PluginSkillContributionProvider(catalog: catalog),
+    ];
+    return const SkillAssembler().assemble(
+      context: SkillProviderContext(cli: cli, scope: scope),
+      providers: providers,
+    );
   }
 
-  List<ResourceRef> _skills(ResourceScope scope, ResourceCatalog catalog) {
-    final ids = switch (scope) {
-      SimpleResourceScope(:final bundle) => bundle.skillIds,
-      TeamResourceScope(:final team) => team.skillIds,
-      WorkspaceResourceScope(:final bundle) => bundle.skillIds,
-    };
-    if (ids.isEmpty) return const [];
-    // Honor the global enable toggle: a skill disabled in the library is an
-    // "off switch" everywhere, even if a workspace/team still lists it in skillIds.
-    final byId = {
-      for (final s in catalog.skills)
-        if (s.enabled) s.id: s,
-    };
+  /// Projects the delegated neutral result into the old resource-ref shape.
+  Future<EffectiveResourceSet> resolve({
+    required ResourceScope scope,
+    required ResourceCatalog catalog,
+    CliTool cli = CliTool.claude,
+  }) async {
+    final assembled = await assemble(scope: scope, cli: cli, catalog: catalog);
     final refs = <ResourceRef>[];
-    for (final id in ids) {
-      final skill = byId[id];
-      if (skill == null) continue; // unknown / uninstalled / disabled — dropped
+    final usedNames = <String>{};
+    for (final contribution in assembled.skills) {
+      final artifact = contribution.artifact;
+      if (artifact is! SkillDirectoryArtifact) continue;
+      var linkName = targetSafeSkillLinkName(
+        contribution.invocationName,
+        namespace: contribution.namespace,
+      );
+      if (!usedNames.add(linkName)) {
+        var suffix = 2;
+        final base = linkName;
+        while (!usedNames.add(linkName)) {
+          linkName = '$base--$suffix';
+          suffix++;
+        }
+      }
       refs.add(
         ResourceRef(
-          id: skill.id,
-          linkName: skill.directory,
-          sourceDir: catalog.pathContext.join(
-            catalog.skillsRoot,
-            skill.directory,
-          ),
+          id: contribution.id,
+          linkName: linkName,
+          sourceDir: artifact.sourceDirectory,
         ),
       );
     }
-    return refs;
+    return EffectiveResourceSet.immutable({ResourceKind.skill: refs});
   }
 }

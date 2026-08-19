@@ -4,20 +4,21 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/codex/capabilities/prompt.dart';
 import 'package:teampilot/services/cli/registry/capabilities/prompt_capability.dart';
+import 'package:teampilot/services/resource/assemblers/prompt_assembler.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 
 void main() {
-  test('CodexPromptCapability virtualizes the member role spec', () {
+  test('CodexPromptCapability provides the member role contribution', () async {
     const member = TeamMemberConfig(
       id: 'm1',
       name: 'Member',
       model: 'test',
       responsibilities: 'You are the reviewer.',
     );
-    final specs = const CodexPromptCapability().virtualize(
-      const PromptVirtualizeContext(member: member),
+    final specs = await const CodexPromptCapability().provide(
+      PromptProviderContext(cli: CliTool.codex, member: member),
     );
 
     expect(specs, isNotEmpty);
@@ -27,8 +28,7 @@ void main() {
     expect(specs.first.content, contains('You are the reviewer.'));
   });
 
-  test('CodexPromptCapability writes AGENTS.md under CODEX_HOME',
-      () async {
+  test('CodexPromptCapability writes AGENTS.md under CODEX_HOME', () async {
     final base = await Directory.systemTemp.createTemp('codex_prompt_');
     addTearDown(() async {
       if (await base.exists()) await base.delete(recursive: true);
@@ -55,6 +55,7 @@ void main() {
 
     final contribution = await const CodexPromptCapability().materialize(
       PromptMaterializeContext(paths: service, scope: scope, member: member),
+      document: await _document(member),
     );
 
     expect(contribution.written, isTrue);
@@ -81,7 +82,15 @@ void main() {
     );
     final contribution = await const CodexPromptCapability().materialize(
       const PromptMaterializeContext(member: member),
+      document: PromptDocument.empty(),
     );
     expect(contribution.written, isFalse);
   });
+}
+
+Future<PromptDocument> _document(TeamMemberConfig member) async {
+  return (await PromptAssembler().assemble(
+    context: PromptProviderContext(cli: CliTool.codex, member: member),
+    providers: [const CodexPromptCapability()],
+  )).document;
 }

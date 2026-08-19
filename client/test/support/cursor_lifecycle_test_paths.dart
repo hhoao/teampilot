@@ -31,23 +31,24 @@ final class CursorLifecycleTestPaths implements ConfigProfileDelegate {
     String sessionId,
     String tool, {
     String? memberId,
-  }) =>
-      layout.sessionRuntimeToolDir(
-        workspaceId,
-        sessionId,
-        tool,
-        memberId: memberId,
-      );
+  }) => layout.sessionRuntimeToolDir(
+    workspaceId,
+    sessionId,
+    tool,
+    memberId: memberId,
+  );
 
   @override
   Future<Map<String, Object?>> readMetadataFile(
     String path,
     Map<String, Object?> defaults,
-  ) async =>
-      Map<String, Object?>.from(defaults);
+  ) async => Map<String, Object?>.from(defaults);
 
   @override
-  Future<void> writeJsonIfChanged(String path, Map<String, Object?> value) async {}
+  Future<void> writeJsonIfChanged(
+    String path,
+    Map<String, Object?> value,
+  ) async {}
 
   @override
   Future<Map<String, Object?>> metadataWithTrustedProjects({
@@ -55,16 +56,14 @@ final class CursorLifecycleTestPaths implements ConfigProfileDelegate {
     required Map<String, Object?> defaultMetadata,
     required Map<String, Object?> defaultProjectConfig,
     required Iterable<String> directories,
-  }) async =>
-      defaultMetadata;
+  }) async => defaultMetadata;
 
   @override
   Future<bool> trustedProjectsAlreadyCurrent(
     String metadataPath,
     Iterable<String> directories, {
     required Map<String, Object?> defaultMetadata,
-  }) async =>
-      false;
+  }) async => false;
 
   @override
   Future<Map<String, Object?>> readSettingsFile(String path) async => {};
@@ -86,8 +85,7 @@ final class CursorLifecycleTestPaths implements ConfigProfileDelegate {
     required String tool,
     String? teamId,
     String? workspaceId,
-  }) async =>
-      settings;
+  }) async => settings;
 
   @override
   Future<List<ExtensionSettingsHook>> extensionSettingsHooks(
@@ -95,8 +93,7 @@ final class CursorLifecycleTestPaths implements ConfigProfileDelegate {
     required String tool,
     String? teamId,
     String? workspaceId,
-  }) async =>
-      const [];
+  }) async => const [];
 
   @override
   Future<Map<String, Object?>> maybeApplyTeamLeadHooks(
@@ -104,16 +101,20 @@ final class CursorLifecycleTestPaths implements ConfigProfileDelegate {
     TeamMemberConfig member,
     String memberToolDir, {
     required bool forceTeamLeadDelegateMode,
-  }) async =>
-      settings;
+  }) async => settings;
 
   @override
   Future<String?> resolveTeamLeadDelegateHookCommand(
     TeamMemberConfig member,
     String memberToolDir, {
     required bool forceTeamLeadDelegateMode,
-  }) async =>
-      null;
+  }) async => null;
+
+  @override
+  Future<String?> resolveTeamLeadSelfHookCommand(
+    TeamMemberConfig member,
+    String memberToolDir,
+  ) async => null;
 
   @override
   HostExecutionEnvironment hostEnvironmentForProvision() =>

@@ -4,7 +4,14 @@ import '../../../../models/plugin.dart';
 import '../../../../models/team_config.dart';
 import '../../../agent_status/member_agent_status_endpoint.dart';
 import '../../../team/team_lead_delegate_settings_merge.dart';
+import '../../../team/team_lead_settings_merge.dart';
 import '../../../team_bus/member_bus_idle_endpoint.dart';
+import '../../../../utils/team/team_member_naming.dart';
+import '../../../resource/assemblers/hook_assembler.dart';
+import '../../../resource/providers/hook_contribution_provider.dart';
+import '../../../io/filesystem.dart';
+import '../../../host/team_pilot_hook_scripts.dart';
+import 'config_profile_scope.dart';
 import 'agent_status_hooks.dart';
 
 /// 把内部托管 hook 组装为 [HookEntry]（source: managed）。
@@ -12,6 +19,28 @@ import 'agent_status_hooks.dart';
 /// （Task 19 后旧 mergeAgentStatusHooks / mergeStopIdleHook 通道已删除）。
 class HookSeatContextCompleter {
   const HookSeatContextCompleter();
+
+  Future<HookAssemblyResult> assemble({
+    required CliTool cli,
+    required Iterable<HookContributionProvider> providers,
+    bool supportsHttp = true,
+    TeamMemberConfig? member,
+    Map<String, String> endpoints = const {},
+    Filesystem? filesystem,
+    String? hooksDirectory,
+    LaunchProfileScope? scope,
+  }) => const HookAssembler().assemble(
+    context: HookProviderContext(
+      cli: cli,
+      supportsHttp: supportsHttp,
+      member: member,
+      endpoints: endpoints,
+      filesystem: filesystem,
+      hooksDirectory: hooksDirectory,
+      scope: scope,
+    ),
+    providers: providers,
+  );
 
   /// agent-status 全事件集（与 agent_status_hooks.dart 常量一致）。
   static const List<HookEvent> agentStatusEvents = [
@@ -101,6 +130,27 @@ class HookSeatContextCompleter {
           action: CommandHookAction.raw(command.trim()),
         ),
   ];
+
+  /// Team-lead self-message guard hooks (source: managed).
+  List<HookEntry> teamLeadSelfHooks({
+    required TeamMemberConfig member,
+    required String command,
+  }) {
+    if (!TeamMemberNaming.isTeamLead(member) || command.trim().isEmpty) {
+      return const [];
+    }
+    return [
+      for (final matcher in TeamLeadSettingsMerge.guardedTools)
+        HookEntry(
+          id: 'teampilot-team-lead-self-$matcher',
+          source: HookSource.managed,
+          event: HookEvent.preToolUse,
+          matcher: matcher,
+          action: CommandHookAction.raw(command.trim()),
+          scriptFileName: TeamPilotHookScripts.teamLeadSelf,
+        ),
+    ];
+  }
 
   /// 扩展 settings-hook（manifest `config.event` + matcher + command）。
   ///

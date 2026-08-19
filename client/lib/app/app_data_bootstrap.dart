@@ -9,6 +9,8 @@ import '../cubits/extension_cubit.dart';
 import '../cubits/launch_profile_cubit.dart';
 import '../cubits/layout_cubit.dart';
 import '../cubits/llm_config_cubit.dart';
+import '../cubits/managed_provider_cubit.dart';
+import '../cubits/managed_provider_usage_cubit.dart';
 import '../cubits/mcp_cubit.dart';
 import '../cubits/plugin_cubit.dart';
 import '../cubits/skill_cubit.dart';
@@ -31,6 +33,50 @@ typedef BootLog = void Function(String message);
 /// Orchestrates app-data loading: workspace index first, everything else warm.
 abstract final class AppDataBootstrap {
   AppDataBootstrap._();
+
+  /// Hydrates the control-plane managed-provider catalog and its cached usage.
+  ///
+  /// This is intentionally a separate, non-fatal phase. Managed Provider
+  /// state is useful as soon as it is available, but a corrupt/unavailable
+  /// usage cache must never prevent the rest of the application from booting.
+  static Future<void> hydrateManagedProviderData({
+    required BootLog boot,
+    required ManagedProviderCubit managedProviderCubit,
+    required ManagedProviderUsageCubit managedProviderUsageCubit,
+  }) async {
+    final phaseSw = Stopwatch()..start();
+    boot('managedProviderUsage hydration start');
+    try {
+      await managedProviderCubit.load();
+      await managedProviderUsageCubit.load();
+      boot(
+        'managedProviderUsage hydration complete '
+        '+${phaseSw.elapsedMilliseconds}ms',
+      );
+    } on Object catch (error, stackTrace) {
+      appLogger.w(
+        '[boot] managedProviderUsage hydration failed',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  /// Reloads control-plane managed-provider state after a home-context switch.
+  /// The Cubit instances are deliberately supplied by the caller and are
+  /// never recreated during a reload.
+  static Future<void> reloadManagedProviderData({
+    required BootLog boot,
+    required ManagedProviderCubit managedProviderCubit,
+    required ManagedProviderUsageCubit managedProviderUsageCubit,
+  }) async {
+    await _timed(boot, 'managedProviders', managedProviderCubit.reload);
+    await _timed(
+      boot,
+      'managedProviderUsage',
+      managedProviderUsageCubit.reload,
+    );
+  }
 
   /// Hydrates launch profiles + workspace index before the home shell is shown.
   static Future<void> hydrateNativeHomeIndex({
@@ -321,6 +367,8 @@ abstract final class AppDataBootstrap {
     required String? homeSshProfileId,
     required bool Function(String id) sshProfileExists,
     required Future<void> Function() reinstallStorageContext,
+    ManagedProviderCubit? managedProviderCubit,
+    ManagedProviderUsageCubit? managedProviderUsageCubit,
     RuntimeTarget? home,
     bool reinstallSshHome = true,
   }) async {
@@ -355,6 +403,15 @@ abstract final class AppDataBootstrap {
       'loadWorkspaceData',
       () => chatCubit.loadWorkspaceData(sessionRepo),
     );
+    final managedProviders = managedProviderCubit;
+    final managedUsage = managedProviderUsageCubit;
+    if (managedProviders != null && managedUsage != null) {
+      await reloadManagedProviderData(
+        boot: boot,
+        managedProviderCubit: managedProviders,
+        managedProviderUsageCubit: managedUsage,
+      );
+    }
   }
 
   static Future<T> _timed<T>(

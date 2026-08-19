@@ -9,6 +9,13 @@ final class FlashskyaiPluginCapability implements PluginCapability {
   const FlashskyaiPluginCapability();
 
   @override
+  bool get writesAssembledMcp => false;
+
+  @override
+  PluginRuntimeOwnership get runtimeOwnership =>
+      PluginRuntimeOwnership.teamPilot;
+
+  @override
   PluginManifestPaths? get manifestPaths => flashskyaiPluginManifestPaths;
 
   @override
@@ -46,7 +53,10 @@ final class FlashskyaiPluginCapability implements PluginCapability {
   bool get needsSharedPluginDepsBeforeReconcile => false;
 
   @override
-  Future<void> seedSharedPluginDeps({Filesystem? homeFs, String? homeRoot}) async {}
+  Future<void> seedSharedPluginDeps({
+    Filesystem? homeFs,
+    String? homeRoot,
+  }) async {}
 
   @override
   String get pluginsSubdir => 'plugins';

@@ -4,7 +4,11 @@ import '../io/filesystem.dart';
 import 'hook_repository.dart';
 
 class ResolvedHooks {
-  const ResolvedHooks({this.entries = const [], this.warnings = const []});
+  ResolvedHooks({
+    Iterable<HookEntry> entries = const [],
+    Iterable<String> warnings = const [],
+  }) : entries = List.unmodifiable(entries),
+       warnings = List.unmodifiable(warnings);
 
   final List<HookEntry> entries;
   final List<String> warnings;
@@ -39,11 +43,13 @@ class HookLibraryResolver {
       if (action == null) continue;
       entries.add(_toEntry(definition, action));
     }
-    return ResolvedHooks(
-      entries: List.unmodifiable(entries),
-      warnings: List.unmodifiable(warnings),
-    );
+    return ResolvedHooks(entries: entries, warnings: warnings);
   }
+
+  /// Provider-facing read boundary. This intentionally resolves only neutral
+  /// [HookEntry] values and diagnostics; CLI configuration is a writer concern.
+  Future<ResolvedHooks> resolveForProvider(Iterable<String> hookIds) =>
+      resolve(List<String>.of(hookIds));
 
   Future<HookAction?> _resolveAction(
     HookDefinition definition,
@@ -70,17 +76,16 @@ class HookLibraryResolver {
     return null;
   }
 
-  HookEntry _toEntry(HookDefinition definition, HookAction action) =>
-      HookEntry(
-        id: definition.id,
-        source: HookSource.userLibrary,
-        event: definition.event,
-        matcher: definition.matcher,
-        action: action,
-        policy: definition.policy,
-        timeout: definition.timeoutSec == null
-            ? null
-            : Duration(seconds: definition.timeoutSec!),
-        env: definition.env,
-      );
+  HookEntry _toEntry(HookDefinition definition, HookAction action) => HookEntry(
+    id: definition.id,
+    source: HookSource.userLibrary,
+    event: definition.event,
+    matcher: definition.matcher,
+    action: action,
+    policy: definition.policy,
+    timeout: definition.timeoutSec == null
+        ? null
+        : Duration(seconds: definition.timeoutSec!),
+    env: definition.env,
+  );
 }

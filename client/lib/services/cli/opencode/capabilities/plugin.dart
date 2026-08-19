@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import '../../../../models/mcp_server_spec.dart';
 import '../../../io/filesystem.dart';
 import '../../../plugin/cli_plugin_layout.dart';
 import '../../../storage/runtime_layout.dart';
@@ -21,6 +20,10 @@ import 'mcp.dart';
 ///   config file — no npm install needed).
 final class OpencodePluginCapability implements PluginCapability {
   const OpencodePluginCapability();
+
+  @override
+  PluginRuntimeOwnership get runtimeOwnership =>
+      PluginRuntimeOwnership.teamPilot;
 
   static const agentSubdir = 'agent';
   static const pluginsSubdirName = 'plugins';
@@ -51,9 +54,11 @@ final class OpencodePluginCapability implements PluginCapability {
     );
     if (skill == null) return;
 
-    final skillRoot = ctx.fs.pathContext.join(ctx.configDir, skill.skillsSubdir);
+    final skillRoot = ctx.fs.pathContext.join(
+      ctx.configDir,
+      skill.skillsSubdir,
+    );
     final agentRoot = ctx.fs.pathContext.join(ctx.configDir, agentSubdir);
-    final mcpSpecs = <McpServerSpec>[];
     final pluginEntries = <String>[];
 
     for (final entry in await ctx.fs.listDir(ctx.bundlePoolDir)) {
@@ -69,7 +74,6 @@ final class OpencodePluginCapability implements PluginCapability {
 
       await _decomposeSkills(ctx.fs, root, skillRoot);
       await _decomposeAgents(ctx.fs, root, agentRoot);
-      mcpSpecs.addAll(await _readBundledMcp(ctx.fs, root));
       pluginEntries.addAll(
         await _materializeOpencodePlugin(
           ctx.fs,
@@ -80,17 +84,20 @@ final class OpencodePluginCapability implements PluginCapability {
       );
     }
 
-    if (mcpSpecs.isNotEmpty) {
+    if (ctx.assembledMcpServers.isNotEmpty) {
       await const OpencodeMcpCapability().write(
         fs: ctx.fs,
         configDir: ctx.configDir,
-        servers: mcpSpecs,
+        servers: ctx.assembledMcpServers,
       );
     }
     if (pluginEntries.isNotEmpty) {
       await _mergePluginEntries(ctx.fs, ctx.configDir, pluginEntries);
     }
   }
+
+  @override
+  bool get writesAssembledMcp => true;
 
   @override
   bool get consumesMarketplaces => false;
@@ -103,10 +110,7 @@ final class OpencodePluginCapability implements PluginCapability {
     required Filesystem homeFs,
     required String homeRoot,
   }) async {
-    final homeLayout = RuntimeLayout(
-      teampilotRoot: homeRoot,
-      fs: homeFs,
-    );
+    final homeLayout = RuntimeLayout(teampilotRoot: homeRoot, fs: homeFs);
     await OpencodeSharedPluginDeps(
       layout: homeLayout,
       fs: homeFs,
@@ -142,8 +146,7 @@ final class OpencodePluginCapability implements PluginCapability {
     // onto itself would replace the pool entry with a self-referencing
     // symlink loop and break both the plugin JS and decomposed skills.
     final alreadyInPlace =
-        ctx.equals(destRoot, pluginRoot) ||
-        ctx.isWithin(destRoot, pluginRoot);
+        ctx.equals(destRoot, pluginRoot) || ctx.isWithin(destRoot, pluginRoot);
     if (!alreadyInPlace) {
       await CliPluginLayout.linkOrCopyTree(
         fs: fs,
@@ -151,9 +154,7 @@ final class OpencodePluginCapability implements PluginCapability {
         destination: destRoot,
       );
     }
-    return [
-      for (final rel in rels) './$pluginsSubdirName/$poolEntryName/$rel',
-    ];
+    return [for (final rel in rels) './$pluginsSubdirName/$poolEntryName/$rel'];
   }
 
   /// Discovers opencode plugin entry files under [pluginRoot], mirroring
@@ -176,9 +177,7 @@ final class OpencodePluginCapability implements PluginCapability {
           if (!_isPluginSourceFile(entry.name)) continue;
           // opencode.json plugin entries are POSIX-relative (the CLI runs on
           // any host), never host-separator paths.
-          out.add(
-            '$opencodeFlavorDir/$dirName/${entry.name}',
-          );
+          out.add('$opencodeFlavorDir/$dirName/${entry.name}');
         }
       }
     }
@@ -285,35 +284,6 @@ final class OpencodePluginCapability implements PluginCapability {
       final content = await fs.readString(source);
       if (content == null) continue;
       await fs.atomicWrite(dest, content);
-    }
-  }
-
-  static Future<List<McpServerSpec>> _readBundledMcp(
-    Filesystem fs,
-    String pluginRoot,
-  ) async {
-    final mcpPath = fs.pathContext.join(pluginRoot, '.mcp.json');
-    if (!(await fs.stat(mcpPath)).isFile) return const [];
-
-    final text = await fs.readString(mcpPath);
-    if (text == null || text.trim().isEmpty) return const [];
-
-    try {
-      final root = (jsonDecode(text) as Map).cast<String, Object?>();
-      final servers =
-          (root['mcpServers'] as Map?)?.cast<String, Object?>() ??
-          const <String, Object?>{};
-      return servers.entries
-          .map(
-            (e) => McpServerSpec.fromCatalogJson(
-              e.key,
-              (e.value as Map?)?.cast<String, Object?>() ?? const {},
-            ),
-          )
-          .whereType<McpServerSpec>()
-          .toList();
-    } catch (_) {
-      return const [];
     }
   }
 }
