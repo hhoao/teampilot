@@ -326,6 +326,7 @@ class ChatCubit extends Cubit<ChatState>
         },
         onAfterIdleWatchTick: () => unawaited(_onIdleWatchTick()),
         onAfterTurnLatched: _onOperatorTurnLatched,
+        onUserActivity: _launchService.touchOnUserActivity,
         onAfterTurnEnded: _onTurnEnded,
         reclaimEnabled: () => _reclaimIdleTerminalsEnabled?.call() ?? false,
         reclaimIdleAfterSeconds: () =>

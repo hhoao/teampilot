@@ -816,6 +816,9 @@ class SessionLaunchService
   Future<void> applyFirstPromptTitle(String sessionId, String firstPrompt) =>
       _promptMetadata.applyFirstPromptTitle(sessionId, firstPrompt);
 
+  void touchOnUserActivity(String sessionId) =>
+      _promptMetadata.touchOnUserActivity(sessionId);
+
   ChatTab _appendLocalTab(TeamProfile team, {required bool emitChange}) {
     final tab = _tabStore.appendLocalTab(team, cliTeamName: _uuid.v4());
     return tab;

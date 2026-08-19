@@ -37,6 +37,7 @@ class TabSessionRuntimeCoordinator {
     TabWorkingAggregator? workingAggregator,
     VoidCallback? onAfterIdleWatchTick,
     void Function(String sessionId, String memberId)? onAfterTurnLatched,
+    void Function(String sessionId)? onUserActivity,
     void Function(String sessionId, String memberId)? onAfterTurnEnded,
     String? Function()? activeSessionId,
     Map<String, MemberPresence> Function()? presence,
@@ -64,6 +65,7 @@ class TabSessionRuntimeCoordinator {
           isClosed: isClosed,
           coordinationFactory: coordination,
           onAfterTurnLatched: onAfterTurnLatched,
+          onUserActivity: onUserActivity,
           promptAckTracker: promptAckTracker,
         );
     final idle =

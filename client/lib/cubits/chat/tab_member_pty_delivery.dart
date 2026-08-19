@@ -30,6 +30,7 @@ final class TabMemberPtyDelivery {
     required bool Function() isClosed,
     required TabMemberCoordinationFactory coordinationFactory,
     void Function(String sessionId, String memberId)? onAfterTurnLatched,
+    void Function(String sessionId)? onUserActivity,
     MemberPtyInjectService? ptyInject,
     PromptSubmitAckTracker? promptAckTracker,
   }) : _tabStore = tabStore,
@@ -39,6 +40,7 @@ final class TabMemberPtyDelivery {
        _isClosed = isClosed,
        _coordinationFactory = coordinationFactory,
        _onAfterTurnLatched = onAfterTurnLatched,
+       _onUserActivity = onUserActivity,
        _promptAckTracker = promptAckTracker ?? PromptSubmitAckTracker() {
     _ptyInject =
         ptyInject ??
@@ -55,6 +57,7 @@ final class TabMemberPtyDelivery {
   final bool Function() _isClosed;
   final TabMemberCoordinationFactory _coordinationFactory;
   final void Function(String sessionId, String memberId)? _onAfterTurnLatched;
+  final void Function(String sessionId)? _onUserActivity;
   late final MemberPtyInjectService _ptyInject;
   final PromptSubmitAckTracker _promptAckTracker;
 
@@ -246,6 +249,8 @@ final class TabMemberPtyDelivery {
     String message, {
     bool directToPty = false,
   }) async {
+    if (message.trim().isEmpty) return null;
+    _onUserActivity?.call(sessionId);
     if (!directToPty) {
       final bus = busForSession(sessionId);
       if (bus == null) return null;

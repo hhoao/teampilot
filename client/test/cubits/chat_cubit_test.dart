@@ -1395,5 +1395,41 @@ void main() {
       expect(patched.pinned, isTrue);
       expect(patched.updatedAt, greaterThan(created.session.updatedAt));
     });
+
+    test(
+      'compose inject bumps session updatedAt without keyboard capture',
+      () async {
+        final tmp = await Directory.systemTemp.createTemp(
+          'chat_cubit_inject_touch_',
+        );
+        final repo = SessionRepository(rootDir: tmp.path);
+        final postFrame = PostFrameTestHarness();
+        final cubit = ChatCubit(
+          executableResolver: () => 'true',
+          automationRepository: testAutomationRepository(),
+          sessionRepository: repo,
+          postFrameScheduler: postFrame.scheduler,
+        );
+        _registerTempCubitCleanup(tmp: tmp, cubit: cubit, postFrame: postFrame);
+
+        final ws = await repo.createWorkspace([WorkspaceFolder(path: '/p')]);
+        final created = await repo.createSession(ws.workspaceId);
+        await cubit.loadWorkspaceIndex(repo);
+        await cubit.ensureSessionsForWorkspace(ws.workspaceId);
+
+        await cubit.sessionRuntime.deliverUserCommandToMember(
+          created.session.sessionId,
+          'member-1',
+          'hello from compose',
+          directToPty: true,
+        );
+        await drainPendingAsyncWork();
+
+        final patched = cubit.state.sessions.singleWhere(
+          (s) => s.sessionId == created.session.sessionId,
+        );
+        expect(patched.updatedAt, greaterThan(created.session.updatedAt));
+      },
+    );
   });
 }
