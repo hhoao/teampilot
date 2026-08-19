@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/repositories/ssh_credential_store.dart';
 import 'package:teampilot/services/provider_usage/managed_provider_credential_transaction.dart';
@@ -8,6 +10,7 @@ class _MemorySecureKeyValueStore implements SecureKeyValueStore {
   var reads = 0;
   var writes = 0;
   var deletes = 0;
+  void Function(String key, String value)? afterWrite;
 
   @override
   Future<void> delete(String key) async {
@@ -25,6 +28,7 @@ class _MemorySecureKeyValueStore implements SecureKeyValueStore {
   Future<void> write(String key, String value) async {
     writes++;
     values[key] = value;
+    afterWrite?.call(key, value);
   }
 }
 
@@ -98,6 +102,58 @@ void main() {
 
       expect((await store.read(ref)).isEmpty, isTrue);
       expect(backend.values.toString(), isNot(contains('new-secret')));
+    },
+  );
+
+  test(
+    'rollback cannot overwrite a concurrent successful transaction',
+    () async {
+      final backend = _MemorySecureKeyValueStore();
+      final store = ManagedProviderSecretStore(backend);
+      const ref = 'managed-provider:p1';
+      await store.write(ref, {'apiKey': 'old-secret'});
+      final transaction = ManagedProviderCredentialTransaction(store);
+      final firstWriteCompleted = Completer<void>();
+      final secondWriteCompleted = Completer<void>();
+      final releaseFirstFailure = Completer<void>();
+      backend.afterWrite = (key, value) {
+        if (!key.endsWith('.apiKey')) return;
+        if (value == 'first-secret' && !firstWriteCompleted.isCompleted) {
+          firstWriteCompleted.complete();
+        }
+        if (value == 'second-secret' && !secondWriteCompleted.isCompleted) {
+          secondWriteCompleted.complete();
+        }
+      };
+
+      final failing = transaction.run<void>(
+        credentialRef: ref,
+        nextValues: const {'apiKey': 'first-secret'},
+        persistProvider: () async {
+          await releaseFirstFailure.future;
+          throw StateError('first save failed');
+        },
+      );
+      await firstWriteCompleted.future.timeout(const Duration(seconds: 1));
+
+      final succeeding = transaction.run<String>(
+        credentialRef: ref,
+        nextValues: const {'apiKey': 'second-secret'},
+        persistProvider: () async => 'second saved',
+      );
+      await Future.any<void>([
+        secondWriteCompleted.future,
+        Future<void>.delayed(const Duration(milliseconds: 50)),
+      ]);
+      releaseFirstFailure.complete();
+
+      await expectLater(failing, throwsA(isA<StateError>()));
+      expect(
+        await succeeding.timeout(const Duration(seconds: 1)),
+        'second saved',
+      );
+      expectScope(await store.read(ref), {'apiKey': 'second-secret'});
+      expect(backend.values.toString(), isNot(contains('first-secret')));
     },
   );
 }

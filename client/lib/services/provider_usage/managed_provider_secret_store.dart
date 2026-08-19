@@ -81,21 +81,7 @@ class ManagedProviderSecretStore {
   /// Reads all credentials stored for [credentialRef].
   Future<ManagedProviderCredentialScope> read(String credentialRef) async {
     final ref = _requireReference(credentialRef);
-    return await _credentialRefLock.run(ref, () async {
-      final manifest = await _readManifest(ref);
-      if (manifest.isMissing) {
-        if (manifest.isInitialized) _throwManifestMissing();
-        return ManagedProviderCredentialScope(const {});
-      }
-
-      final values = <String, String>{};
-      for (final field in manifest.fields) {
-        final value = await _readKey(_key(ref, field));
-        if (value == null) _throwManifestCorrupt();
-        values[field] = value;
-      }
-      return ManagedProviderCredentialScope(values);
-    });
+    return await _credentialRefLock.run(ref, () => _readUnlocked(ref));
   }
 
   /// Stores request credentials under the versioned managed-provider namespace.
@@ -180,22 +166,51 @@ class ManagedProviderSecretStore {
     }
   }
 
+  /// Updates credentials and persists the matching Provider under one ref lock.
+  ///
+  /// If [persistProvider] fails, the previous credential state is restored
+  /// before the error is rethrown. Empty credential values intentionally bypass
+  /// storage so callers can preserve existing secrets by submitting a blank
+  /// secret field.
+  Future<T> runCredentialTransaction<T>({
+    required String credentialRef,
+    required Map<String, String> nextValues,
+    required Future<T> Function() persistProvider,
+  }) async {
+    final values = {
+      for (final entry in nextValues.entries)
+        if (entry.value.isNotEmpty) entry.key: entry.value,
+    };
+    if (values.isEmpty) return persistProvider();
+
+    final ref = _requireReference(credentialRef);
+    final normalized = _normalizeValues(values);
+    return await _credentialRefLock.run(ref, () async {
+      final previous = await _readUnlocked(ref);
+      final previousValues = {
+        for (final field in previous.fields)
+          if (previous.valueFor(field) != null)
+            field: previous.valueFor(field)!,
+      };
+
+      await _writeUnlocked(ref, normalized);
+      try {
+        return await persistProvider();
+      } on Object {
+        if (previousValues.isEmpty) {
+          await _deleteUnlocked(ref);
+        } else {
+          await _writeUnlocked(ref, previousValues);
+        }
+        rethrow;
+      }
+    });
+  }
+
   /// Deletes every stored field associated with [credentialRef].
   Future<void> delete(String credentialRef) async {
     final ref = _requireReference(credentialRef);
-    await _credentialRefLock.run(ref, () async {
-      final manifest = await _readManifest(ref);
-      if (manifest.isMissing) {
-        if (manifest.isInitialized) _throwManifestMissing();
-        return;
-      }
-
-      for (final field in manifest.fields) {
-        await _deleteKey(_key(ref, field));
-      }
-      await _deleteKey(_key(ref, _manifestField));
-      await _deleteKey(_key(ref, _initializedField));
-    });
+    await _credentialRefLock.run(ref, () => _deleteUnlocked(ref));
   }
 
   /// Returns values suitable for UI display without exposing secret material.
@@ -209,6 +224,36 @@ class ManagedProviderSecretStore {
   static String? mask(String value) => value.isEmpty ? null : maskedValue;
 
   String _key(String ref, String field) => '$namespace.$ref.$field';
+
+  Future<ManagedProviderCredentialScope> _readUnlocked(String ref) async {
+    final manifest = await _readManifest(ref);
+    if (manifest.isMissing) {
+      if (manifest.isInitialized) _throwManifestMissing();
+      return ManagedProviderCredentialScope(const {});
+    }
+
+    final values = <String, String>{};
+    for (final field in manifest.fields) {
+      final value = await _readKey(_key(ref, field));
+      if (value == null) _throwManifestCorrupt();
+      values[field] = value;
+    }
+    return ManagedProviderCredentialScope(values);
+  }
+
+  Future<void> _deleteUnlocked(String ref) async {
+    final manifest = await _readManifest(ref);
+    if (manifest.isMissing) {
+      if (manifest.isInitialized) _throwManifestMissing();
+      return;
+    }
+
+    for (final field in manifest.fields) {
+      await _deleteKey(_key(ref, field));
+    }
+    await _deleteKey(_key(ref, _manifestField));
+    await _deleteKey(_key(ref, _initializedField));
+  }
 
   Future<_RollbackResult> _rollbackNewWrite(
     String ref,

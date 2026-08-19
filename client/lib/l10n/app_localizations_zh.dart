@@ -7308,14 +7308,14 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get managedProvidersQuickPresetCodexHint =>
-      '使用官方 Codex 订阅适配器；请登录或补充凭据。';
+      '使用官方 Codex 订阅适配器；请在 Providers 设置中登录。';
 
   @override
   String get managedProvidersQuickPresetClaudeCode => 'Claude Code';
 
   @override
   String get managedProvidersQuickPresetClaudeCodeHint =>
-      '使用官方 Claude Code 订阅适配器；请登录或补充凭据。';
+      '使用官方 Claude Code 订阅适配器；请在 Providers 设置中登录。';
 
   @override
   String get managedProvidersQuickPresetDeepSeek => 'DeepSeek';

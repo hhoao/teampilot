@@ -189,6 +189,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
                 credentialFieldController: _credentialField,
                 credentialPlacementController: _credentialPlacement,
                 credentialConfigured: _credentialRef.text.trim().isNotEmpty,
+                onCredentialFieldChanged: _handleCredentialFieldChanged,
               ),
             ),
             const SizedBox(height: 12),
@@ -344,6 +345,16 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
     });
   }
 
+  void _handleCredentialFieldChanged(String _) {
+    if (_selectedPreset?.schema != null) return;
+    final next = ManagedProviderEditorSchema.fromProvider(_draftProvider());
+    if (next == _schema) return;
+    setState(() {
+      _schema = next;
+      if (!_schemaRequiresSecret(next)) _credentialSecret.clear();
+    });
+  }
+
   ManagedProvider _draftProvider() => ManagedProvider(
     id: _provider?.id ?? '',
     name: _name.text.trim(),
@@ -492,6 +503,8 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
     var credentialRef = _credentialRef.text.trim();
     final credentialSecret = _credentialSecret.text.trim();
     var credentialValues = const <String, String>{};
+    final requiredSecretFields = _requiredSecretFields(_schema);
+    var requiredSecretsToKeep = requiredSecretFields;
     if (credentialSecret.isNotEmpty) {
       if (credentialField.isEmpty) {
         setState(() {
@@ -504,6 +517,25 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
           ? 'managed-provider:$providerId'
           : credentialRef;
       credentialValues = {credentialField: credentialSecret};
+      requiredSecretsToKeep = requiredSecretFields
+          .where((field) => field != credentialField)
+          .toSet();
+    }
+    if (requiredSecretsToKeep.isNotEmpty) {
+      final hasExisting = await _existingCredentialHasRequiredSecrets(
+        store: secretStore,
+        current: current,
+        credentialRef: credentialRef,
+        fields: requiredSecretsToKeep,
+      );
+      if (!mounted) return;
+      if (!hasExisting) {
+        setState(() {
+          _saving = false;
+          _formError = context.l10n.managedProvidersMissingCredential;
+        });
+        return;
+      }
     }
     final next = ManagedProvider(
       id: providerId,
@@ -777,6 +809,31 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
 
 class _ManagedProviderEditorPersistenceFailed implements Exception {
   const _ManagedProviderEditorPersistenceFailed();
+}
+
+Set<String> _requiredSecretFields(ManagedProviderEditorSchema schema) => {
+  for (final field in schema.fields)
+    if (field.kind == ManagedProviderEditorFieldKind.secret && field.required)
+      field.key,
+};
+
+Future<bool> _existingCredentialHasRequiredSecrets({
+  required ManagedProviderSecretStore store,
+  required ManagedProvider? current,
+  required String credentialRef,
+  required Set<String> fields,
+}) async {
+  final currentRef = current?.credentialRef?.trim() ?? '';
+  if (fields.isEmpty) return true;
+  if (current == null || credentialRef.isEmpty || credentialRef != currentRef) {
+    return false;
+  }
+  try {
+    final scope = await store.read(credentialRef);
+    return fields.every((field) => scope.valueFor(field)?.isNotEmpty ?? false);
+  } on Object {
+    return false;
+  }
 }
 
 class _EmbeddedEditorHeader extends StatelessWidget {

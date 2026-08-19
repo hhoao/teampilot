@@ -13601,7 +13601,7 @@ abstract class AppLocalizations {
   /// No description provided for @managedProvidersQuickPresetCodexHint.
   ///
   /// In en, this message translates to:
-  /// **'Uses the official Codex subscription adapter; sign in or add its credential.'**
+  /// **'Uses the official Codex subscription adapter; sign in from Providers settings.'**
   String get managedProvidersQuickPresetCodexHint;
 
   /// No description provided for @managedProvidersQuickPresetClaudeCode.
@@ -13613,7 +13613,7 @@ abstract class AppLocalizations {
   /// No description provided for @managedProvidersQuickPresetClaudeCodeHint.
   ///
   /// In en, this message translates to:
-  /// **'Uses the official Claude Code subscription adapter; sign in or add its credential.'**
+  /// **'Uses the official Claude Code subscription adapter; sign in from Providers settings.'**
   String get managedProvidersQuickPresetClaudeCodeHint;
 
   /// No description provided for @managedProvidersQuickPresetDeepSeek.

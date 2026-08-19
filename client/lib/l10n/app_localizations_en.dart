@@ -7606,14 +7606,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get managedProvidersQuickPresetCodexHint =>
-      'Uses the official Codex subscription adapter; sign in or add its credential.';
+      'Uses the official Codex subscription adapter; sign in from Providers settings.';
 
   @override
   String get managedProvidersQuickPresetClaudeCode => 'Claude Code';
 
   @override
   String get managedProvidersQuickPresetClaudeCodeHint =>
-      'Uses the official Claude Code subscription adapter; sign in or add its credential.';
+      'Uses the official Claude Code subscription adapter; sign in from Providers settings.';
 
   @override
   String get managedProvidersQuickPresetDeepSeek => 'DeepSeek';

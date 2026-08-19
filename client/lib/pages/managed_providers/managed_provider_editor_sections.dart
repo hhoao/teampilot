@@ -211,6 +211,7 @@ class ManagedProviderCredentialsSection extends StatelessWidget {
     required this.credentialFieldController,
     required this.credentialPlacementController,
     required this.credentialConfigured,
+    this.onCredentialFieldChanged,
     super.key,
   });
 
@@ -219,6 +220,7 @@ class ManagedProviderCredentialsSection extends StatelessWidget {
   final TextEditingController credentialFieldController;
   final TextEditingController credentialPlacementController;
   final bool credentialConfigured;
+  final ValueChanged<String>? onCredentialFieldChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -253,6 +255,7 @@ class ManagedProviderCredentialsSection extends StatelessWidget {
             label: l10n.managedProvidersCredentialField,
             controller: credentialFieldController,
             hint: l10n.managedProvidersCredentialFieldHint,
+            onChanged: onCredentialFieldChanged,
           ),
         ],
         if (schema.hasField('endpointConfig.credentialPlacement')) ...[
@@ -367,6 +370,7 @@ class ManagedProviderAdvancedSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final adapterField = _fieldFor(schema, 'adapterId');
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -395,7 +399,7 @@ class ManagedProviderAdvancedSection extends StatelessWidget {
             label: l10n.managedProvidersAdapter,
             controller: adapterController,
             hint: l10n.managedProvidersAdapterHint,
-            readOnly: true,
+            readOnly: adapterField?.readOnly ?? false,
           ),
         ],
         if (schema.hasField('credentialRef')) ...[
@@ -431,6 +435,7 @@ class _ManagedProviderTextField extends StatelessWidget {
     this.keyboardType,
     this.readOnly = false,
     this.obscureText = false,
+    this.onChanged,
   });
 
   final Key fieldKey;
@@ -440,6 +445,7 @@ class _ManagedProviderTextField extends StatelessWidget {
   final TextInputType? keyboardType;
   final bool readOnly;
   final bool obscureText;
+  final ValueChanged<String>? onChanged;
 
   @override
   Widget build(BuildContext context) => _LabeledControl(
@@ -451,6 +457,7 @@ class _ManagedProviderTextField extends StatelessWidget {
       keyboardType: keyboardType,
       readOnly: readOnly,
       obscureText: obscureText,
+      onChanged: onChanged,
     ),
   );
 }
@@ -520,3 +527,13 @@ bool _hasRequiredSecret(ManagedProviderEditorSchema schema) =>
       (field) =>
           field.kind == ManagedProviderEditorFieldKind.secret && field.required,
     );
+
+ManagedProviderEditorField? _fieldFor(
+  ManagedProviderEditorSchema schema,
+  String key,
+) {
+  for (final field in schema.fields) {
+    if (field.key == key) return field;
+  }
+  return null;
+}
