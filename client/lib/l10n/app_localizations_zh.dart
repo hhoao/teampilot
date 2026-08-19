@@ -7332,6 +7332,45 @@ class AppLocalizationsZh extends AppLocalizations {
       '不假设通用余额接口；请补充你所用 Provider 的 endpoint。';
 
   @override
+  String get managedProvidersBasicsSectionTitle => '基本信息';
+
+  @override
+  String get managedProvidersBasicsSectionSubtitle => '先填写身份信息和必要密钥。';
+
+  @override
+  String get managedProvidersBasicsSummary => '选择预设、命名 Provider，并在需要时填写必要密钥。';
+
+  @override
+  String get managedProvidersQuerySectionTitle => '查询';
+
+  @override
+  String get managedProvidersQuerySectionSubtitle =>
+      'HTTP 用量查询使用的 Endpoint 和 JSON 映射。';
+
+  @override
+  String get managedProvidersCredentialsSectionTitle => '凭据详情';
+
+  @override
+  String get managedProvidersCredentialsSectionSubtitle =>
+      '发送已存凭据时使用的 Header 或 Query 元数据。';
+
+  @override
+  String get managedProvidersDisplaySectionTitle => '显示';
+
+  @override
+  String get managedProvidersDisplaySectionSubtitle => '余额与配额的格式 fallback。';
+
+  @override
+  String get managedProvidersAdvancedSectionTitle => '高级';
+
+  @override
+  String get managedProvidersAdvancedSectionSubtitle =>
+      '适配器身份、Provider 类型和已保存引用。';
+
+  @override
+  String get managedProvidersSectionConfiguredBadge => '已配置';
+
+  @override
   String get managedProvidersIdentity => '基本信息';
 
   @override
@@ -7393,6 +7432,9 @@ class AppLocalizationsZh extends AppLocalizations {
       '填入 Provider 的 API Key 或 Token';
 
   @override
+  String get managedProvidersCredentialSecretExistingHint => '留空以保留已保存密钥';
+
+  @override
   String get managedProvidersCredentialSecretHelper => '仅保存到安全存储；留空可保留已有密钥。';
 
   @override
@@ -7436,6 +7478,9 @@ class AppLocalizationsZh extends AppLocalizations {
       '配置响应映射后将动态读取货币；下方货币和单位仍可作为可编辑的 fallback。';
 
   @override
+  String get managedProvidersDynamicCurrencyHelper => '货币将从已配置的响应映射中动态读取。';
+
+  @override
   String get managedProvidersEnabledTitle => '启用';
 
   @override
@@ -7448,10 +7493,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String get managedProvidersSave => '保存';
 
   @override
+  String get managedProvidersSaveProvider => '保存 Provider';
+
+  @override
   String get managedProvidersSaving => '保存中…';
 
   @override
   String get managedProvidersTestQuery => '测试查询';
+
+  @override
+  String get managedProvidersTestProviderQuery => '测试 Provider 查询';
 
   @override
   String get managedProvidersSaved => '管理 Provider 已保存。';

@@ -13640,6 +13640,78 @@ abstract class AppLocalizations {
   /// **'No universal balance endpoint is assumed; add the endpoint for your provider.'**
   String get managedProvidersQuickPresetOpenCodeHint;
 
+  /// No description provided for @managedProvidersBasicsSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Basics'**
+  String get managedProvidersBasicsSectionTitle;
+
+  /// No description provided for @managedProvidersBasicsSectionSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Start with identity and any required secret.'**
+  String get managedProvidersBasicsSectionSubtitle;
+
+  /// No description provided for @managedProvidersBasicsSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a preset, name the provider, and add the required secret when this provider needs one.'**
+  String get managedProvidersBasicsSummary;
+
+  /// No description provided for @managedProvidersQuerySectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Query'**
+  String get managedProvidersQuerySectionTitle;
+
+  /// No description provided for @managedProvidersQuerySectionSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Endpoint and JSON mappings used by HTTP-based usage checks.'**
+  String get managedProvidersQuerySectionSubtitle;
+
+  /// No description provided for @managedProvidersCredentialsSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Credential details'**
+  String get managedProvidersCredentialsSectionTitle;
+
+  /// No description provided for @managedProvidersCredentialsSectionSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Header or query metadata for sending stored credentials.'**
+  String get managedProvidersCredentialsSectionSubtitle;
+
+  /// No description provided for @managedProvidersDisplaySectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Display'**
+  String get managedProvidersDisplaySectionTitle;
+
+  /// No description provided for @managedProvidersDisplaySectionSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Formatting fallbacks for balances and quotas.'**
+  String get managedProvidersDisplaySectionSubtitle;
+
+  /// No description provided for @managedProvidersAdvancedSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Advanced'**
+  String get managedProvidersAdvancedSectionTitle;
+
+  /// No description provided for @managedProvidersAdvancedSectionSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Adapter identity, provider kind, and stored reference details.'**
+  String get managedProvidersAdvancedSectionSubtitle;
+
+  /// No description provided for @managedProvidersSectionConfiguredBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Configured'**
+  String get managedProvidersSectionConfiguredBadge;
+
   /// No description provided for @managedProvidersIdentity.
   ///
   /// In en, this message translates to:
@@ -13760,6 +13832,12 @@ abstract class AppLocalizations {
   /// **'Paste the provider API key or token'**
   String get managedProvidersCredentialSecretHint;
 
+  /// No description provided for @managedProvidersCredentialSecretExistingHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave blank to keep the stored secret'**
+  String get managedProvidersCredentialSecretExistingHint;
+
   /// No description provided for @managedProvidersCredentialSecretHelper.
   ///
   /// In en, this message translates to:
@@ -13844,6 +13922,12 @@ abstract class AppLocalizations {
   /// **'Currency is read from the response mapping when configured; the currency and unit below remain editable fallbacks.'**
   String get managedProvidersCurrencyMappingHelper;
 
+  /// No description provided for @managedProvidersDynamicCurrencyHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Currency will be read dynamically from the configured response mapping.'**
+  String get managedProvidersDynamicCurrencyHelper;
+
   /// No description provided for @managedProvidersEnabledTitle.
   ///
   /// In en, this message translates to:
@@ -13868,6 +13952,12 @@ abstract class AppLocalizations {
   /// **'Save'**
   String get managedProvidersSave;
 
+  /// No description provided for @managedProvidersSaveProvider.
+  ///
+  /// In en, this message translates to:
+  /// **'Save provider'**
+  String get managedProvidersSaveProvider;
+
   /// No description provided for @managedProvidersSaving.
   ///
   /// In en, this message translates to:
@@ -13879,6 +13969,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Test query'**
   String get managedProvidersTestQuery;
+
+  /// No description provided for @managedProvidersTestProviderQuery.
+  ///
+  /// In en, this message translates to:
+  /// **'Test provider query'**
+  String get managedProvidersTestProviderQuery;
 
   /// No description provided for @managedProvidersSaved.
   ///

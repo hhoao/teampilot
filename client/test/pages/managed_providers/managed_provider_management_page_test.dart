@@ -216,6 +216,18 @@ void main() {
     await tester.pump(const Duration(milliseconds: 200));
   }
 
+  Future<void> openNewEditor(WidgetTester tester) async {
+    await tester.tap(find.byKey(const Key('managed-provider-add')));
+    await tester.pumpAndSettle();
+  }
+
+  Future<void> applyPreset(WidgetTester tester, String label) async {
+    await tester.tap(find.byKey(const Key('managed-provider-quick-preset')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(label).last);
+    await tester.pumpAndSettle();
+  }
+
   testWidgets('renders cached usage without starting a network query', (
     tester,
   ) async {
@@ -288,24 +300,31 @@ void main() {
       );
       await pumpPage(tester);
 
-      await tester.tap(find.byKey(const Key('managed-provider-add')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('managed-provider-quick-preset')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('DeepSeek').last);
-      await tester.pumpAndSettle();
+      await openNewEditor(tester);
+      await applyPreset(tester, 'DeepSeek');
 
       final nameInput = tester.widget<TpInput>(
         find.byKey(const Key('managed-provider-name')),
       );
+      expect(nameInput.controller!.text, 'DeepSeek');
+      await tester.tap(find.byKey(const Key('managed-provider-section-query')));
+      await tester.pumpAndSettle();
       final endpointInput = tester.widget<TpInput>(
         find.byKey(const Key('managed-provider-endpoint')),
       );
-      expect(nameInput.controller!.text, 'DeepSeek');
       expect(
         endpointInput.controller!.text,
         'https://api.deepseek.com/user/balance',
       );
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('managed-provider-section-display')),
+        500,
+        scrollable: _verticalScrollable(),
+      );
+      await tester.tap(
+        find.byKey(const Key('managed-provider-section-display')),
+      );
+      await tester.pumpAndSettle();
       await tester.scrollUntilVisible(
         find.byKey(const Key('managed-provider-decimal-places')),
         500,
@@ -325,6 +344,16 @@ void main() {
         fieldMappings.controller!.text,
         contains(r'"currency": "$.currency"'),
       );
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('managed-provider-section-advanced')),
+        500,
+        scrollable: _verticalScrollable(),
+      );
+      await tester.tap(
+        find.byKey(const Key('managed-provider-section-advanced')),
+        warnIfMissed: false,
+      );
+      await tester.pumpAndSettle();
       final credentialRefInput = tester.widget<TpInput>(
         find.byKey(
           const Key('managed-provider-credential-ref'),
@@ -334,6 +363,99 @@ void main() {
       expect(credentialRefInput.controller!.text, isEmpty);
     },
   );
+
+  testWidgets('preset schema controls visible editor sections', (tester) async {
+    providerCubit.emit(
+      ManagedProviderState(status: ManagedProviderLoadStatus.ready),
+    );
+    usageCubit.emit(
+      ManagedProviderUsageState(status: ManagedProviderUsageLoadStatus.ready),
+    );
+    await pumpPage(tester);
+
+    await openNewEditor(tester);
+    await applyPreset(tester, 'Codex');
+
+    expect(
+      find.byKey(const Key('managed-provider-section-basics')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('managed-provider-section-query')),
+      findsNothing,
+    );
+    expect(find.byKey(const Key('managed-provider-endpoint')), findsNothing);
+    expect(
+      find.byKey(const Key('managed-provider-section-credentials')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('managed-provider-section-display')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('managed-provider-section-advanced')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('DeepSeek preset starts with only required basics expanded', (
+    tester,
+  ) async {
+    providerCubit.emit(
+      ManagedProviderState(status: ManagedProviderLoadStatus.ready),
+    );
+    usageCubit.emit(
+      ManagedProviderUsageState(status: ManagedProviderUsageLoadStatus.ready),
+    );
+    await pumpPage(tester);
+
+    await openNewEditor(tester);
+    await applyPreset(tester, 'DeepSeek');
+
+    expect(
+      find.byKey(const Key('managed-provider-section-basics')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('managed-provider-credential-secret')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('managed-provider-endpoint')), findsNothing);
+    expect(
+      find.byKey(const Key('managed-provider-field-mappings')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const Key('managed-provider-credential-ref')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const Key('managed-provider-decimal-places')),
+      findsNothing,
+    );
+  });
+
+  testWidgets('custom HTTP presets expand query setup by default', (
+    tester,
+  ) async {
+    providerCubit.emit(
+      ManagedProviderState(status: ManagedProviderLoadStatus.ready),
+    );
+    usageCubit.emit(
+      ManagedProviderUsageState(status: ManagedProviderUsageLoadStatus.ready),
+    );
+    await pumpPage(tester);
+
+    await openNewEditor(tester);
+    await applyPreset(tester, 'OpenCode');
+
+    expect(
+      find.byKey(const Key('managed-provider-section-query')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('managed-provider-endpoint')), findsOneWidget);
+  });
 
   testWidgets('new provider stores API key in secure storage only', (
     tester,
@@ -346,17 +468,8 @@ void main() {
     );
     await pumpPage(tester);
 
-    await tester.tap(find.byKey(const Key('managed-provider-add')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('managed-provider-quick-preset')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('DeepSeek').last);
-    await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(
-      find.byKey(const Key('managed-provider-credential-secret')),
-      500,
-      scrollable: _verticalScrollable(),
-    );
+    await openNewEditor(tester);
+    await applyPreset(tester, 'DeepSeek');
     await tester.enterText(
       find.byKey(const Key('managed-provider-credential-secret')),
       'sk-test-secret',

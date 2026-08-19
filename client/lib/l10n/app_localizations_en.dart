@@ -7630,6 +7630,48 @@ class AppLocalizationsEn extends AppLocalizations {
       'No universal balance endpoint is assumed; add the endpoint for your provider.';
 
   @override
+  String get managedProvidersBasicsSectionTitle => 'Basics';
+
+  @override
+  String get managedProvidersBasicsSectionSubtitle =>
+      'Start with identity and any required secret.';
+
+  @override
+  String get managedProvidersBasicsSummary =>
+      'Choose a preset, name the provider, and add the required secret when this provider needs one.';
+
+  @override
+  String get managedProvidersQuerySectionTitle => 'Query';
+
+  @override
+  String get managedProvidersQuerySectionSubtitle =>
+      'Endpoint and JSON mappings used by HTTP-based usage checks.';
+
+  @override
+  String get managedProvidersCredentialsSectionTitle => 'Credential details';
+
+  @override
+  String get managedProvidersCredentialsSectionSubtitle =>
+      'Header or query metadata for sending stored credentials.';
+
+  @override
+  String get managedProvidersDisplaySectionTitle => 'Display';
+
+  @override
+  String get managedProvidersDisplaySectionSubtitle =>
+      'Formatting fallbacks for balances and quotas.';
+
+  @override
+  String get managedProvidersAdvancedSectionTitle => 'Advanced';
+
+  @override
+  String get managedProvidersAdvancedSectionSubtitle =>
+      'Adapter identity, provider kind, and stored reference details.';
+
+  @override
+  String get managedProvidersSectionConfiguredBadge => 'Configured';
+
+  @override
   String get managedProvidersIdentity => 'Identity';
 
   @override
@@ -7694,6 +7736,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Paste the provider API key or token';
 
   @override
+  String get managedProvidersCredentialSecretExistingHint =>
+      'Leave blank to keep the stored secret';
+
+  @override
   String get managedProvidersCredentialSecretHelper =>
       'Saved only in secure storage; leave blank to keep the existing secret.';
 
@@ -7741,6 +7787,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Currency is read from the response mapping when configured; the currency and unit below remain editable fallbacks.';
 
   @override
+  String get managedProvidersDynamicCurrencyHelper =>
+      'Currency will be read dynamically from the configured response mapping.';
+
+  @override
   String get managedProvidersEnabledTitle => 'Enabled';
 
   @override
@@ -7754,10 +7804,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get managedProvidersSave => 'Save';
 
   @override
+  String get managedProvidersSaveProvider => 'Save provider';
+
+  @override
   String get managedProvidersSaving => 'Saving…';
 
   @override
   String get managedProvidersTestQuery => 'Test query';
+
+  @override
+  String get managedProvidersTestProviderQuery => 'Test provider query';
 
   @override
   String get managedProvidersSaved => 'Managed provider saved.';
