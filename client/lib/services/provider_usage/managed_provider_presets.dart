@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:equatable/equatable.dart';
 
 import '../../models/managed_provider.dart';
+import '../../models/managed_provider_editor_schema.dart';
 
 @immutable
 class ManagedProviderPreset extends Equatable {
@@ -10,16 +11,159 @@ class ManagedProviderPreset extends Equatable {
     required this.labelId,
     required this.hintId,
     required this.template,
+    this.schema,
   });
 
   final String id;
   final String labelId;
   final String hintId;
   final ManagedProvider template;
+  final ManagedProviderEditorSchema? schema;
 
   @override
-  List<Object?> get props => [id, labelId, hintId, template];
+  List<Object?> get props => [id, labelId, hintId, template, schema];
 }
+
+const _deepSeekEditorSchema = ManagedProviderEditorSchema(
+  sections: {
+    ManagedProviderEditorSection.basics,
+    ManagedProviderEditorSection.query,
+    ManagedProviderEditorSection.credentials,
+    ManagedProviderEditorSection.display,
+    ManagedProviderEditorSection.advanced,
+  },
+  fields: [
+    ManagedProviderEditorField(
+      key: 'name',
+      kind: ManagedProviderEditorFieldKind.text,
+      required: true,
+      defaultValue: 'DeepSeek',
+    ),
+    ManagedProviderEditorField(
+      key: 'kind',
+      kind: ManagedProviderEditorFieldKind.text,
+      required: true,
+      defaultValue: 'apiBalance',
+    ),
+    ManagedProviderEditorField(
+      key: 'adapterId',
+      kind: ManagedProviderEditorFieldKind.text,
+      required: true,
+      defaultValue: 'http-json',
+    ),
+    ManagedProviderEditorField(
+      key: 'endpointConfig.url',
+      kind: ManagedProviderEditorFieldKind.url,
+      required: true,
+      defaultValue: 'https://api.deepseek.com/user/balance',
+    ),
+    ManagedProviderEditorField(
+      key: 'endpointConfig.method',
+      kind: ManagedProviderEditorFieldKind.text,
+      required: true,
+      defaultValue: 'GET',
+    ),
+    ManagedProviderEditorField(
+      key: 'endpointConfig.measuresPath',
+      kind: ManagedProviderEditorFieldKind.text,
+      required: false,
+      defaultValue: r'$.balance_infos',
+    ),
+    ManagedProviderEditorField(
+      key: 'endpointConfig.body',
+      kind: ManagedProviderEditorFieldKind.json,
+      required: false,
+    ),
+    ManagedProviderEditorField(
+      key: 'endpointConfig.fieldMappings',
+      kind: ManagedProviderEditorFieldKind.json,
+      required: false,
+      defaultValue:
+          r'{"label":"$.currency","remaining":"$.total_balance","currency":"$.currency"}',
+    ),
+    ManagedProviderEditorField(
+      key: 'endpointConfig.fieldMappings.label',
+      kind: ManagedProviderEditorFieldKind.text,
+      required: false,
+      defaultValue: r'$.currency',
+    ),
+    ManagedProviderEditorField(
+      key: 'endpointConfig.fieldMappings.remaining',
+      kind: ManagedProviderEditorFieldKind.text,
+      required: false,
+      defaultValue: r'$.total_balance',
+    ),
+    ManagedProviderEditorField(
+      key: 'endpointConfig.fieldMappings.currency',
+      kind: ManagedProviderEditorFieldKind.text,
+      required: false,
+      defaultValue: r'$.currency',
+    ),
+    ManagedProviderEditorField(
+      key: 'apiKey',
+      kind: ManagedProviderEditorFieldKind.secret,
+      required: true,
+    ),
+    ManagedProviderEditorField(
+      key: 'credentialRef',
+      kind: ManagedProviderEditorFieldKind.text,
+      required: false,
+    ),
+    ManagedProviderEditorField(
+      key: 'endpointConfig.credentialName',
+      kind: ManagedProviderEditorFieldKind.text,
+      required: false,
+      defaultValue: 'Authorization',
+    ),
+    ManagedProviderEditorField(
+      key: 'endpointConfig.credentialField',
+      kind: ManagedProviderEditorFieldKind.text,
+      required: false,
+      defaultValue: 'apiKey',
+    ),
+    ManagedProviderEditorField(
+      key: 'endpointConfig.credentialPlacement',
+      kind: ManagedProviderEditorFieldKind.text,
+      required: false,
+      defaultValue: 'header',
+    ),
+    ManagedProviderEditorField(
+      key: 'endpointConfig.credentialPrefix',
+      kind: ManagedProviderEditorFieldKind.text,
+      required: false,
+      defaultValue: 'Bearer ',
+    ),
+    ManagedProviderEditorField(
+      key: 'displayConfig.currency',
+      kind: ManagedProviderEditorFieldKind.text,
+      required: false,
+    ),
+    ManagedProviderEditorField(
+      key: 'displayConfig.unit',
+      kind: ManagedProviderEditorFieldKind.text,
+      required: false,
+    ),
+    ManagedProviderEditorField(
+      key: 'displayConfig.decimalPlaces',
+      kind: ManagedProviderEditorFieldKind.integer,
+      required: false,
+      defaultValue: '2',
+    ),
+    ManagedProviderEditorField(
+      key: 'displayConfig.showPercent',
+      kind: ManagedProviderEditorFieldKind.toggle,
+      required: false,
+      defaultValue: 'false',
+    ),
+    ManagedProviderEditorField(
+      key: 'enabled',
+      kind: ManagedProviderEditorFieldKind.toggle,
+      required: false,
+      defaultValue: 'true',
+    ),
+  ],
+  firstQuery: true,
+);
 
 final List<ManagedProviderPreset> builtInManagedProviderPresets =
     List.unmodifiable([
@@ -70,6 +214,7 @@ final List<ManagedProviderPreset> builtInManagedProviderPresets =
           ),
           displayConfig: ManagedProviderDisplayConfig(decimalPlaces: 2),
         ),
+        schema: _deepSeekEditorSchema,
       ),
       ManagedProviderPreset(
         id: 'opencode',
