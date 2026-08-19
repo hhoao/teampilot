@@ -4,7 +4,9 @@ import 'dart:io';
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
+import 'package:teampilot/services/cli/codex/capabilities/history/ai_history_capability.dart';
 import 'package:teampilot/services/cli/codex/capabilities/history/ai_transcript.dart';
+import 'package:teampilot/services/cli/registry/capabilities/ai_history_capability.dart';
 import 'package:teampilot/services/session/session_history_context.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 
@@ -134,6 +136,83 @@ void main() {
     final bundle = await locateCodexTranscript(ctx(codexHome: base.path));
     expect(bundle, isNull);
   });
+
+  test(
+    'locateCodexTranscript stays on the root rollout when a newer '
+    'spawn_agent child exists',
+    () async {
+      await _writeParentAndChildRollouts(base.path);
+
+      final bundle = await locateCodexTranscript(ctx(codexHome: base.path));
+
+      expect(bundle, isNotNull);
+      expect(
+        bundle!.fragments.single.name,
+        'rollout-2026-07-10T12-00-00-aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee.jsonl',
+      );
+    },
+  );
+
+  test(
+    'locateCodexTranscript ignores a persisted child uuid and keeps the root',
+    () async {
+      await _writeParentAndChildRollouts(base.path);
+
+      final bundle = await locateCodexTranscript(
+        ctx(
+          codexHome: base.path,
+          persistedNativeId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+        ),
+      );
+
+      expect(bundle, isNotNull);
+      expect(
+        bundle!.fragments.single.name,
+        'rollout-2026-07-10T12-00-00-aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee.jsonl',
+      );
+    },
+  );
+
+  test(
+    'detectNativeId captures the root uuid when a newer spawn_agent child exists',
+    () async {
+      await _writeParentAndChildRollouts(base.path);
+
+      final got = await const CodexAiHistoryCapability().detectNativeId(
+        ResumeContext(
+          fs: fs,
+          toolValue: 'codex',
+          taskId: 'task-1',
+          env: {'CODEX_HOME': base.path},
+          transcriptRoots: const [],
+          bucket: '',
+        ),
+      );
+
+      expect(got, 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee');
+    },
+  );
+
+  test(
+    'detectNativeId ignores a persisted child uuid and captures the root',
+    () async {
+      await _writeParentAndChildRollouts(base.path);
+
+      final got = await const CodexAiHistoryCapability().detectNativeId(
+        ResumeContext(
+          fs: fs,
+          toolValue: 'codex',
+          taskId: 'task-1',
+          env: {'CODEX_HOME': base.path},
+          transcriptRoots: const [],
+          bucket: '',
+          persistedNativeId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+        ),
+      );
+
+      expect(got, 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee');
+    },
+  );
 
   test(
       'parses user/assistant text from response_item.message (codex >=0.147 '
@@ -560,4 +639,45 @@ Map<String, dynamic>? _tryDecode(String line) {
   } on FormatException {
     return null;
   }
+}
+
+/// Parent + a lexicographically newer spawn_agent child in the same day dir.
+/// Current locate (newest filename) binds the child; the seat must stay on
+/// the root (`source=cli`, no `parent_thread_id`).
+Future<void> _writeParentAndChildRollouts(String codexHome) async {
+  final dayDir = p.join(codexHome, 'sessions', '2026', '07', '10');
+  await Directory(dayDir).create(recursive: true);
+  final fixture = await File(
+    'test/fixtures/session_history/codex/basic.jsonl',
+  ).readAsBytes();
+  await File(
+    p.join(
+      dayDir,
+      'rollout-2026-07-10T12-00-00-aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee.jsonl',
+    ),
+  ).writeAsBytes(fixture);
+  await File(
+    p.join(
+      dayDir,
+      'rollout-2026-07-10T13-00-00-bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb.jsonl',
+    ),
+  ).writeAsString(
+    jsonEncode({
+      'timestamp': '2026-07-10T13:00:00.000Z',
+      'type': 'session_meta',
+      'payload': {
+        'id': 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+        'parent_thread_id': 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+        'source': {
+          'subagent': {
+            'thread_spawn': {
+              'parent_thread_id': 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+              'depth': 1,
+            },
+          },
+        },
+        'thread_source': 'subagent',
+      },
+    }),
+  );
 }

@@ -6,6 +6,7 @@ import '../../../registry/capabilities/history/subagent_side_resolver.dart';
 import '../../../registry/capabilities/history/tool_result_enricher.dart';
 import '../../../registry/capabilities/shared_tool_call_resolvers.dart';
 import 'ai_transcript.dart';
+import 'root_rollout.dart';
 import 'side_resolver.dart';
 
 final class CodexAiHistoryCapability implements AiHistoryCapability {
@@ -15,11 +16,6 @@ final class CodexAiHistoryCapability implements AiHistoryCapability {
   });
 
   static const _resolvers = SharedToolCallResolvers();
-
-  static final _rolloutId = RegExp(
-    r'rollout-.*-([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}'
-    r'-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})\.jsonl$',
-  );
 
   @override
   Future<AiTranscriptBundle?> locate(SessionHistoryContext ctx) =>
@@ -57,38 +53,27 @@ final class CodexAiHistoryCapability implements AiHistoryCapability {
 
   /// `postCaptured`: codex generates its own session id and cannot be told
   /// ours, but `$CODEX_HOME` is isolated per session, so its
-  /// `sessions/**/rollout-*.jsonl` tree holds exactly this session's rollout.
-  /// We capture the uuid embedded in the rollout filename and resume with
-  /// `codex resume <uuid>`.
+  /// `sessions/**/rollout-*.jsonl` tree holds this session's parent plus any
+  /// spawn_agent children. Capture the **root** uuid (never a child) and
+  /// resume with `codex resume <uuid>`.
   @override
   ResumeBinding get binding => ResumeBinding.postCaptured;
 
   @override
   Future<String?> detectNativeId(ResumeContext ctx) async {
-    // A previously captured id is authoritative.
-    final persisted = ctx.persistedNativeId?.trim() ?? '';
-    if (persisted.isNotEmpty) return persisted;
-
     final home = ctx.env['CODEX_HOME']?.trim() ?? '';
-    if (home.isEmpty) return null;
-    final sessionsDir = ctx.fs.pathContext.join(home, 'sessions');
-    final basename = ctx.fs.pathContext.basename;
+    final persisted = ctx.persistedNativeId?.trim() ?? '';
+    if (home.isEmpty) return persisted.isEmpty ? null : persisted;
 
-    var bestName = '';
-    try {
-      final entries = await ctx.fs.listDirRecursive(sessionsDir);
-      for (final e in entries) {
-        if (e.isDirectory) continue;
-        if (!_rolloutId.hasMatch(basename(e.name))) continue;
-        // Lexicographic max over timestamp-prefixed names == newest. The
-        // isolated home normally holds a single rollout anyway.
-        if (e.name.compareTo(bestName) > 0) bestName = e.name;
-      }
-    } on Object {
-      return null;
-    }
-    if (bestName.isEmpty) return null;
-    return _rolloutId.firstMatch(basename(bestName))?.group(1);
+    final hit = await pickCodexRootRollout(
+      fs: ctx.fs,
+      codexHome: home,
+      persistedNativeId: ctx.persistedNativeId,
+    );
+    if (hit != null) return hit.uuid;
+    // Empty store (first launch) or unreadable tree: keep a previously
+    // captured id so resume still has something to pass through.
+    return persisted.isEmpty ? null : persisted;
   }
 
   @override

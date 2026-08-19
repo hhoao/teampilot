@@ -10,7 +10,7 @@ adapter `client/lib/services/cli/codex/capabilities/history/{ai_transcript,ai_hi
 | 项目 | 值 |
 |---|---|
 | 位置 | `$CODEX_HOME/sessions/**/rollout-*.jsonl`——`locateCodexTranscript` 对 `{CODEX_HOME}/sessions` **递归**扫描；实测目录为日期分层：测试写入 `sessions/2026/07/10/rollout-2026-07-10T12-00-00-<uuid>.jsonl`（`codex_ai_transcript_test.dart`） |
-| 会话关联 | `_rolloutId` 正则 `rollout-.*-<uuid8>-<uuid4>-<uuid4>-<uuid4>-<uuid12>\.jsonl$` 提取文件名尾部 UUID；与 `ctx.persistedNativeId` 相等才候选（`ai_transcript.dart:68`）；`persistedNativeId` 为空时按全路径**字典序取最大**（时间戳前缀 ⇒ 最新） |
+| 会话关联 | `pickCodexRootRollout`：文件名 UUID 正则同前；`persistedNativeId` 命中**根** rollout 时用之，否则在根会话中按全路径字典序取最大（时间戳前缀 ⇒ 最新）。**永不绑定 spawn_agent 子会话**——子 rollout 的首行 `session_meta` 带 `parent_thread_id` / `thread_source=subagent` / `source.subagent`（与 OpenCode `parent_id IS NULL` 同语义）。已持久化的子 uuid 会被忽略并回退到根。扫描跳过路径含 `subagents` 段的文件 |
 | 文件格式 | JSONL（每行一个事件，UTF-8，`utf8.decode` allowMalformed） |
 | 解析入口 | `CodexAiTranscriptAdapter` / `CodexAiHistoryCapability`（`ai_transcript.dart` / `ai_history_capability.dart`） |
 | 增量能力 | **有**——`lineAppend = appendCodexJsonlEvent`（全量 parse 与增量 tailer 共用同一逐事件函数，零分叉）；`tailFallbackPrefix = 'codex'`；`liveCacheToken` 返回 null（无活动缓存 token） |
@@ -59,6 +59,7 @@ adapter `client/lib/services/cli/codex/capabilities/history/{ai_transcript,ai_hi
   - 工具名集合 `subagentToolNames = {'spawn_agent', 'agent', 'task'}`（`ai_history_capability.dart:30`）；
   - agent id 只能从 part args/result 的 `agentId` / `agent_id` 取（`subagentAgentIdFromPart`）——没有目录级指纹；
   - side transcript 定位：父 transcript 位于 `{CODEX_HOME}/sessions` 下时先按父目录（含直接子目录、**跳过 `subagents` 目录**）找文件名 UUID == agentId 的 rollout；否则全局递归 `{CODEX_HOME}/sessions`（跳过路径含 `subagents` 段的文件）——两种搜索都取字典序最大；
+  - **座位 / resume 永不落到子 rollout**：`pickCodexRootRollout`（`root_rollout.dart`）供 `locateCodexTranscript` 与 `detectNativeId` 共用；
   - 解析失败返回 null → inflater 回退 `syntheticSubagentMessagesFromResult`（从工具 result 合成子代理消息）；
   - **fingerprint 恒为 null**：源码注释说明 rollout 不在 `projects/` 下、父 cache token 必然 miss，所以 live refresh 每次都重新定位解析。
 - **工具结果截断回填：无（已调研：不可行）**——`toolResultEnricher = NoOpToolResultEnricher`（`ai_history_capability.dart:13`）；截断占位无回填机制。已调研确认 codex 截断前完整输出从未持久化（同 `call_id` 零重复、`exec_command_end.aggregated_output` 同为头部截断版、sqlite/日志均无全文）——截断即永久，结论见 [truncation-backfill-audit.md](truncation-backfill-audit.md) §1.4。
@@ -81,4 +82,4 @@ adapter `client/lib/services/cli/codex/capabilities/history/{ai_transcript,ai_hi
 - **孤儿 output**：`function_call_output` 单独成行、靠 `call_id` 关联；无匹配 tool call 时静默忽略（不报错、不产生消息）。
 - **截断回填：已调研不可行**：Codex 用 `NoOpToolResultEnricher`，工具输出截断占位不会被回填（claude 有 `ClaudeCompatibleToolResultEnricher`，codex 没有）。[truncation-backfill-audit.md](truncation-backfill-audit.md) 结论：737/37,266 条 `function_call_output` 被中段截断为 `…N tokens truncated…`，同会话无任何完整副本、无结构化标记字段——截断即永久丢失，无回填数据来源。
 - **`custom_tool_call.input` 双形态**：`input` 既可能为 String（→ argsText）也可能为 Map（→ args）——夹具已覆盖（`custom_tool_call_dual_form.jsonl`，Task 5 commit `75f4cd4b`：String 补丁文本 → argsText 逐字保留，Map input → args）。真实语义：本机 `~/.codex/sessions` 扫描 4151 条真实 `custom_tool_call` 记录 **100% 为 String input 且全部是 `apply_patch` 补丁文本**（非 JSON），Map/JSON 形态属源码防御分支（语料未观测到）。
-- **定位是暴力递归**：`locate` 递归扫描整个 `{CODEX_HOME}/sessions` 树；`persistedNativeId` 缺失时取字典序最大（时间戳前缀）——多会话同目录时靠文件名 UUID 区分，同名 UUID 只取一个。
+- **定位只认根会话**：`pickCodexRootRollout` 递归扫描 `{CODEX_HOME}/sessions`，跳过 `subagents/` 路径段，并用首行 `session_meta` 排除 spawn_agent 子 rollout（`parent_thread_id` / `thread_source=subagent` / `source.subagent`）。`persistedNativeId` 命中根 uuid 时用之；为空或指向子会话时，在根 rollout 中取字典序最大。隔离 `$CODEX_HOME` 里父/子是同一日期目录下的兄弟文件，取「最新文件」会把座位绑到正在跑的子 agent（与 OpenCode 取最新 `session` 行同类）。

@@ -5,6 +5,7 @@ import 'package:ai_message_core/ai_message_core.dart';
 import '../../../../session/ai_history_cache_token.dart';
 import '../../../../session/ai_history_watch_meta.dart';
 import '../../../../session/session_history_context.dart';
+import 'root_rollout.dart';
 
 /// Locate Codex rollout JSONL under `$CODEX_HOME/sessions/**/rollout-*.jsonl`.
 Future<AiTranscriptBundle?> locateCodexTranscript(
@@ -42,33 +43,13 @@ Future<AiTranscriptBundle?> locateCodexTranscript(
 Future<String?> _locateRollout(SessionHistoryContext ctx) async {
   final home = ctx.env['CODEX_HOME']?.trim() ?? '';
   if (home.isEmpty) return null;
-  final path = ctx.fs.pathContext;
-  final sessionsDir = path.join(home, 'sessions');
-  final wanted = ctx.persistedNativeId?.trim() ?? '';
-
-  var bestRel = '';
-  try {
-    final entries = await ctx.fs.listDirRecursive(sessionsDir);
-    for (final e in entries) {
-      if (e.isDirectory) continue;
-      final name = path.basename(e.name);
-      final match = _rolloutId.firstMatch(name);
-      if (match == null) continue;
-      if (wanted.isNotEmpty && match.group(1) != wanted) continue;
-      // Lexicographic max over timestamp-prefixed names == newest.
-      if (e.name.compareTo(bestRel) > 0) bestRel = e.name;
-    }
-  } on Object {
-    return null;
-  }
-  if (bestRel.isEmpty) return null;
-  return path.join(sessionsDir, bestRel);
+  final hit = await pickCodexRootRollout(
+    fs: ctx.fs,
+    codexHome: home,
+    persistedNativeId: ctx.persistedNativeId,
+  );
+  return hit?.path;
 }
-
-final _rolloutId = RegExp(
-  r'rollout-.*-([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}'
-  r'-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})\.jsonl$',
-);
 
 /// Codex rollout JSONL → [AiMessage] with text / tool-call parts.
 final class CodexAiTranscriptAdapter implements AiTranscriptAdapter {
