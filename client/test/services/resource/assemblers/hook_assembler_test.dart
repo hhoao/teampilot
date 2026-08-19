@@ -6,6 +6,7 @@ import 'package:teampilot/services/resource/assemblers/hook_assembler.dart';
 import 'package:teampilot/services/resource/contribution/resource_assembly_error.dart';
 import 'package:teampilot/services/resource/contribution/resource_origin.dart';
 import 'package:teampilot/services/resource/providers/hook_contribution_provider.dart';
+import 'package:teampilot/services/agent_status/member_agent_status_endpoint.dart';
 import 'package:teampilot/services/resource/providers/endpoint_hook_contribution_provider.dart';
 import 'package:teampilot/services/team_bus/member_bus_idle_endpoint.dart';
 
@@ -328,6 +329,35 @@ void main() {
 
     expect(result.entries.map((entry) => entry.event), [HookEvent.stop]);
   });
+
+  test(
+    'skips managed HTTP endpoint hooks when the CLI does not support HTTP',
+    () async {
+      final result = await assembler.assemble(
+        context: HookProviderContext(
+          cli: CliTool.opencode,
+          supportsHttp: false,
+        ),
+        providers: [
+          AgentStatusHookContributionProvider(
+            endpoint: const MemberAgentStatusEndpoint(
+              url: 'http://127.0.0.1:1/agent-status',
+            ),
+            memberId: 'm1',
+          ),
+          BusIdleHookContributionProvider(
+            endpoint: const MemberBusIdleEndpoint(
+              url: 'http://127.0.0.1:1/idle',
+            ),
+            memberId: 'm1',
+          ),
+        ],
+      );
+
+      expect(result.entries, isEmpty);
+      expect(result.assembly.errors, isEmpty);
+    },
+  );
 
   test('managed provider failure is fail closed', () {
     expect(

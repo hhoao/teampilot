@@ -7,6 +7,10 @@ import '../contribution/resource_origin.dart';
 import 'hook_contribution_provider.dart';
 
 /// Generic managed endpoint-backed hook provider for already-built entries.
+///
+/// HTTP endpoint hooks (agent-status / bus-idle) are skipped when the CLI
+/// [HookProviderContext.supportsHttp] is false. Those CLIs keep a native
+/// plugin path instead of failing closed in the shared assembler.
 class EndpointHookContributionProvider implements HookContributionProvider {
   EndpointHookContributionProvider({
     required Iterable<HookEntry> entries,
@@ -21,7 +25,7 @@ class EndpointHookContributionProvider implements HookContributionProvider {
   @override
   Iterable<HookContribution> provide(HookProviderContext context) => [
     for (final entry in entries)
-      if (HookEventCapability.supports(entry.event, context.cli))
+      if (_isSupported(entry, context))
         HookContribution(
           sourceId: entry.id,
           entry: entry,
@@ -32,6 +36,13 @@ class EndpointHookContributionProvider implements HookContributionProvider {
           ),
         ),
   ];
+
+  bool _isSupported(HookEntry entry, HookProviderContext context) {
+    if (!HookEventCapability.supports(entry.event, context.cli)) {
+      return false;
+    }
+    return entry.action is! HttpHookAction || context.supportsHttp;
+  }
 }
 
 /// Agent-status endpoint provider; hook construction stays in the completer.

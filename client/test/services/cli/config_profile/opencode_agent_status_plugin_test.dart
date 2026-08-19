@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/models/config_bundle.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/agent_status/member_agent_status_endpoint.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/agent_status_plugin.dart';
@@ -255,6 +256,61 @@ void main() {
       expect(opts['member'], 'm1');
       expect(opts['url'], 'http://127.0.0.1:12345/agent-status');
       expect(opts['session'], 'session-1');
+    },
+  );
+
+  test(
+    'prepareSimpleSessionLaunch with agentStatus writes the JS plugin '
+    'instead of assembling HTTP hooks',
+    () async {
+      final base = await Directory.systemTemp.createTemp('opencode_status_fs_');
+      addTearDown(() async {
+        if (await base.exists()) await base.delete(recursive: true);
+      });
+
+      final fs = LocalFilesystem();
+      final service = ConfigProfileService(
+        basePath: base.path,
+        fs: fs,
+        layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
+      );
+      const workspaceId = 'workspace-1';
+      const sessionId = 'session-1';
+      const member = TeamMemberConfig(
+        id: sessionId,
+        name: 'Solo',
+        cli: CliTool.opencode,
+      );
+
+      await service.prepareSimpleSessionLaunch(
+        workspaceId: workspaceId,
+        sessionId: sessionId,
+        runtimeBundle: const ConfigBundle(),
+        member: member,
+        agentStatus: const MemberAgentStatusEndpoint(
+          url: 'http://127.0.0.1:12345/agent-status',
+          sessionId: sessionId,
+        ),
+      );
+
+      final opencodeDir = service.sessionToolDir(
+        workspaceId,
+        sessionId,
+        'opencode',
+      );
+      final pluginPath = '$opencodeDir/$opencodeAgentStatusPluginFileName';
+      expect(await fs.stat(pluginPath), isNotNull);
+      final configPath =
+          '$opencodeDir/${OpencodeProviderCapability.opencodeConfigFileName}';
+      final raw = await fs.readString(configPath);
+      expect(raw, isNotNull);
+      final config = jsonDecode(raw!) as Map<String, dynamic>;
+      final plugin = config['plugin'] as List;
+      expect(plugin, isNotEmpty);
+      final entry = plugin.first as List;
+      expect(entry[0], './$opencodeAgentStatusPluginFileName');
+      final opts = entry[1] as Map;
+      expect(opts['url'], 'http://127.0.0.1:12345/agent-status');
     },
   );
 }

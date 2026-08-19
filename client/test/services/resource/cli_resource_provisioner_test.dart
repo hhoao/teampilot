@@ -8,6 +8,7 @@ import 'package:teampilot/models/mcp_server_spec.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/agent_status/member_agent_status_endpoint.dart';
 import 'package:teampilot/services/cli/codex/provider/codex_hook_writer.dart';
+import 'package:teampilot/services/cli/opencode/capabilities/opencode_hook_writer.dart';
 import 'package:teampilot/services/cli/registry/capabilities/hook_capability.dart';
 import 'package:teampilot/services/resource/providers/endpoint_hook_contribution_provider.dart';
 import 'package:teampilot/services/cli/registry/capabilities/mcp_capability.dart';
@@ -338,6 +339,37 @@ void main() {
       }
 
       expect(selected, launchable);
+    },
+  );
+
+  test(
+    'opencode skips managed HTTP agent-status hooks instead of failing closed',
+    () async {
+      final fs = InMemoryFilesystem();
+      final registry = _registry(
+        [const OpencodeHookWriter()],
+        id: CliTool.opencode,
+      );
+      final report = await CliResourceProvisioner(fs: fs, registry: registry)
+          .provision(
+            _context(
+              fs: fs,
+              cli: CliTool.opencode,
+              injected: ResourceProviderSet(
+                hooks: [
+                  AgentStatusHookContributionProvider(
+                    endpoint: const MemberAgentStatusEndpoint(
+                      url: 'http://127.0.0.1:9/agent-status',
+                    ),
+                    memberId: 'm1',
+                  ),
+                ],
+              ),
+            ),
+          );
+
+      expect(report.hardDiagnostics, isEmpty);
+      expect(report.hooks, isEmpty);
     },
   );
 
