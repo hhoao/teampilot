@@ -78,7 +78,7 @@ void main() {
       );
     });
 
-    test(r'codex renders $name and namespaced target-safe $plugin--name', () {
+    test(r'codex renders $name and namespaced $plugin:name', () {
       expect(
         codexCap.skillInvocationText('using-git-worktrees'),
         r'$using-git-worktrees',
@@ -88,7 +88,7 @@ void main() {
           'using-git-worktrees',
           namespace: 'superpowers',
         ),
-        r'$superpowers--using-git-worktrees',
+        r'$superpowers:using-git-worktrees',
       );
     });
 

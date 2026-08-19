@@ -1,5 +1,5 @@
-/// Returns the canonical target-safe directory and invocation name for a
-/// neutral skill contribution.
+/// Returns the canonical target-safe directory name for a neutral skill
+/// contribution.
 ///
 /// Names are deliberately restricted to a portable subset shared by POSIX
 /// and Windows filesystems. A namespace is separated with `--`, never `/` or

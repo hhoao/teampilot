@@ -19,7 +19,12 @@ final class CodexSkillCapability
 
   @override
   String skillInvocationText(String skillName, {String? namespace}) {
-    return r'$'
-        '${targetSafeSkillLinkName(skillName, namespace: namespace)}';
+    final safeSkillName = targetSafeSkillLinkName(skillName);
+    final trimmedNamespace = namespace?.trim();
+    if (trimmedNamespace == null || trimmedNamespace.isEmpty) {
+      return '\$$safeSkillName';
+    }
+    final safeNamespace = targetSafeSkillLinkName(trimmedNamespace);
+    return '\$$safeNamespace:$safeSkillName';
   }
 }
