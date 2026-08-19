@@ -231,7 +231,7 @@ matcher/command 相同的情况下得到**同一个 id**——把同一条 hook 
   `hook_import_cli_unsupported_<cli>`。
 
 验证基线：`cd client && flutter analyze --no-fatal-infos --no-fatal-warnings &&
-flutter test --exclude-tags integration`（各 writer / glue / resolver / completer 单测：
+dart run tool/run_tests.dart`（各 writer / glue / resolver / completer 单测：
 `test/services/cli/{codex,cursor,opencode}/…hook_writer_test.dart`、
 `test/services/cli/registry/config_profile/{claude_family_hook_writer,hook_seat_context_completer}_test.dart`、
 `test/services/hook/`、`test/models/hook_{entry,event}_test.dart`；导入单测：

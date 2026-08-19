@@ -11,7 +11,7 @@
 ## Global Constraints
 
 - Preserve all existing user modifications and submodule states.
-- Keep `flutter test --exclude-tags integration` as the default unit/widget boundary.
+- Keep `dart run tool/run_tests.dart` as the default unit/widget test entry point; it excludes `integration` by default.
 - Do not change product behavior or integration-test tags.
 - Use `apply_patch` for source edits.
 - Run focused verification after each task and full relevant verification before completion.
@@ -289,7 +289,7 @@ Run:
 
 ```bash
 cd client
-flutter test --exclude-tags integration --concurrency=4 --reporter failures-only
+dart run tool/run_tests.dart --reporter failures-only
 ```
 
 Expected: exit code 0, with no integration tests included. If the full suite exceeds the execution window, record the last completed count and use the documented sharding command rather than claiming completion.

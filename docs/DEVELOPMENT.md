@@ -99,6 +99,11 @@ dart run tool/run_tests.dart test/smoke/app_shell_smoke_test.dart
 dart run tool/run_tests.dart --plain-name="test name"
 ```
 
+The wrapper excludes the `integration` tag by default and caps concurrency at 4
+for every invocation, including single-file and coverage runs. Pass
+`--tags` or `--exclude-tags` explicitly when you need a different test
+selection; integration tests should be selected deliberately.
+
 `teampilot_search` package (Rust engine + Dart wrapper):
 
 ```bash
@@ -215,7 +220,7 @@ Not required in CI; locally:
 
 ```bash
 cd client
-flutter test --exclude-tags integration --coverage
+dart run tool/run_tests.dart --coverage
 # with lcov: genhtml coverage/lcov.info -o coverage/html
 ```
 
@@ -242,7 +247,7 @@ You can still run `git tag vX.Y.Z && git push origin vX.Y.Z` (a local push trigg
 
 Changes under `client/` trigger [Client Build Verify](../.github/workflows/client-verify.yml):
 
-- **Four platforms** (Linux, Windows, macOS, Android): `flutter analyze` and `flutter test --exclude-tags integration`.
+- **Four platforms** (Linux, Windows, macOS, Android): `flutter analyze` and `dart run tool/run_tests.dart`.
 - **Linux integration** (`integration-linux` job): L2 + L3 via `flutter test --tags "integration && linux-pty"` after `flutter build linux --debug`, global `claude` CLI, and a cached `Dockerfile.mixed` image.
 
 ### Local packaging examples

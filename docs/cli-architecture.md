@@ -388,7 +388,7 @@ cliToolRegistry.configure(CliBootstrap({
 ```bash
 cd client
 flutter analyze --no-fatal-infos --no-fatal-warnings
-flutter test --exclude-tags integration
+dart run tool/run_tests.dart
 ```
 
 ## 反模式（禁止）

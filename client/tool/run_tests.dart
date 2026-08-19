@@ -4,25 +4,28 @@ const defaultTestConcurrency = 4;
 
 /// Builds arguments for the project's stable Flutter test entry point.
 ///
-/// With no arguments this runs the default non-integration suite. When a
-/// path, name, tag, or other Flutter test option is supplied, it is preserved
-/// and only the safe concurrency cap is added when the caller did not choose
-/// one explicitly.
+/// By default this runs the non-integration suite and caps concurrency. When
+/// a path, name, or other Flutter test option is supplied, it is preserved.
+/// Explicit tag and concurrency options take precedence over the defaults.
 List<String> buildFlutterTestArgs(List<String> args) {
-  if (args.isEmpty) {
-    return [
-      'test',
-      '--exclude-tags',
-      'integration',
-      '--concurrency=$defaultTestConcurrency',
-    ];
-  }
-
   return [
     'test',
+    if (!_hasExplicitTags(args)) ...['--exclude-tags', 'integration'],
     if (!_hasExplicitConcurrency(args)) '--concurrency=$defaultTestConcurrency',
     ...args,
   ];
+}
+
+bool _hasExplicitTags(List<String> args) {
+  return args.any(
+    (arg) =>
+        arg == '-t' ||
+        arg == '--tags' ||
+        arg == '-x' ||
+        arg == '--exclude-tags' ||
+        arg.startsWith('--tags=') ||
+        arg.startsWith('--exclude-tags='),
+  );
 }
 
 bool _hasExplicitConcurrency(List<String> args) {

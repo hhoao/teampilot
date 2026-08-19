@@ -129,7 +129,7 @@ jobs:
         run: flutter analyze --no-fatal-infos --no-fatal-warnings
 
       - name: Unit and widget tests
-        run: flutter test --exclude-tags integration
+        run: dart run tool/run_tests.dart
 
       - name: Build Android APK (debug, teampilot_search cdylib cross-compile)
         if: matrix.platform == 'android'

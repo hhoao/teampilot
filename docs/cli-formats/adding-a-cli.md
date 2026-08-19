@@ -231,7 +231,7 @@ cd client && flutter test test/services/cli/registry/
 **验证命令**
 
 ```bash
-cd client && flutter analyze --no-fatal-infos --no-fatal-warnings && flutter test --exclude-tags integration
+cd client && flutter analyze --no-fatal-infos --no-fatal-warnings && dart run tool/run_tests.dart
 ```
 
 ---
@@ -255,7 +255,7 @@ cd client && flutter analyze --no-fatal-infos --no-fatal-warnings && flutter tes
 
 ```bash
 cd client && flutter analyze --no-fatal-infos --no-fatal-warnings
-cd client && flutter test --exclude-tags integration
+cd client && dart run tool/run_tests.dart
 ```
 
 接入清单对应的验收依据：6 个接入点全部有真实文件路径 + 接口签名（grep 可回验）；文档矩阵与测试断言同步更新。

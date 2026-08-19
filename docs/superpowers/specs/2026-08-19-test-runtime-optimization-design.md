@@ -83,5 +83,5 @@ Flutter test process 的内存成本叠加到机器上。
 1. managed provider 页面测试单文件运行，确认全部通过且失败不再拖到测试进程超时。
 2. 一个纯测试文件运行，确认不再执行全局 Rust 初始化；一个终端相关测试文件运行，确认显式初始化后仍通过。
 3. 高风险 widget 测试文件定向运行，确认没有 `pumpAndSettle` 超时。
-4. 受影响测试集合运行：`flutter test --exclude-tags integration` 的定向子集及必要的
+4. 受影响测试集合运行：`dart run tool/run_tests.dart` 的定向子集及必要的
    `flutter analyze --no-fatal-infos --no-fatal-warnings`。
