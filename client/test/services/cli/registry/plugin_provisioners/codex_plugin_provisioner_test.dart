@@ -19,15 +19,22 @@ final class _RecordingRunner implements HostOneShotRunner {
   final String listJson;
   final String marketplaceListJson;
   final calls = <HostRunRequest>[];
+  var marketplaceWasAdded = false;
 
   @override
   Future<HostRunResult> run(HostRunRequest request) async {
     calls.add(request);
     if (request.arguments.contains('marketplace') &&
+        request.arguments.contains('add')) {
+      marketplaceWasAdded = true;
+    }
+    if (request.arguments.contains('marketplace') &&
         request.arguments.contains('list')) {
       return HostRunResult(
         exitCode: 0,
-        stdout: marketplaceListJson,
+        stdout: marketplaceWasAdded
+            ? '{"marketplaces":[{"name":"teampilot"}]}'
+            : marketplaceListJson,
         stderr: '',
       );
     }
@@ -74,7 +81,7 @@ void main() {
   Future<InMemoryFilesystem> seededFs() async {
     final fs = InMemoryFilesystem();
     await fs.writeString(
-      '/pool/demo/.claude-plugin/plugin.json',
+      '/pool/demo/.codex-plugin/plugin.json',
       jsonEncode({'name': 'demo', 'version': '1.0.0'}),
     );
     await fs.writeString('/pool/demo/skills/demo/SKILL.md', '# demo');
@@ -106,7 +113,15 @@ void main() {
         )).isFile,
         isTrue,
       );
+      expect(
+        await fs.readSymlinkTarget(
+          '/cfg/.teampilot/codex-marketplace/plugins/demo',
+        ),
+        '/pool/demo',
+        reason: 'Codex marketplace sources must link to the reconciled pool',
+      );
       expect(runner.calls.map((call) => call.arguments), [
+        ['plugin', 'marketplace', 'list', '--json'],
         [
           'plugin',
           'marketplace',
@@ -127,6 +142,26 @@ void main() {
       );
     },
   );
+
+  test('does not rebuild the same native marketplace source twice', () async {
+    final fs = await seededFs();
+    final runner = _RecordingRunner();
+    final provisionContext = context(fs: fs, runner: runner);
+
+    await const CodexPluginCapability().provision(provisionContext);
+    await const CodexPluginCapability().provision(provisionContext);
+
+    expect(
+      runner.calls
+          .where(
+            (call) =>
+                call.arguments.contains('marketplace') &&
+                call.arguments.contains('add'),
+          )
+          .length,
+      1,
+    );
+  });
 
   test('passes target CLI paths to every native Codex command', () async {
     final fs = await seededFs();
@@ -167,6 +202,7 @@ void main() {
       );
 
       expect(runner.calls.map((call) => call.arguments), [
+        ['plugin', 'marketplace', 'list', '--json'],
         [
           'plugin',
           'marketplace',
@@ -201,6 +237,7 @@ void main() {
       );
 
       expect(runner.calls.map((call) => call.arguments), [
+        ['plugin', 'marketplace', 'list', '--json'],
         [
           'plugin',
           'marketplace',

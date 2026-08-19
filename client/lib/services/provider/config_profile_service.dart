@@ -559,6 +559,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     final lockKey = configDir;
     await _withNativePluginLock(lockKey, () async {
       final installedCatalog = await InstalledPluginCatalog.load(fs, basePath);
+      final started = Stopwatch()..start();
       await pluginProvisioner.provision(
         PluginProvisionContext(
           fs: fs,
@@ -573,6 +574,11 @@ class ConfigProfileService implements ConfigProfileDelegate {
           executable: executable ?? _cliExecutable,
           pathPrepend: _nativeCliPathPrepend,
         ),
+      );
+      appLogger.d(
+        '[session-launch] native-plugin-provision done '
+        'session=$sessionId cli=${cli.value} '
+        'ms=${started.elapsedMilliseconds}',
       );
     });
   }

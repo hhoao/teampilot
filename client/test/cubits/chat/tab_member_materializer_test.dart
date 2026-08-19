@@ -33,79 +33,149 @@ void main() {
   setUp(setUpTestAppStorage);
   tearDown(tearDownTestAppStorage);
 
-  test('mixed materialize waits without duplicate connect while bus boots', () async {
-    final store = ChatTabStore();
-    store.setActiveWorkspaceId('ws-1');
-    final tab = ChatTab(
-      info: const ChatTabInfo(id: 'sess-1', title: 't', subtitle: ''),
-      workspaceId: 'ws-1',
-      cliTeamName: 'team-runtime',
-    )..persistedSession = AppSession(
-        sessionId: 'sess-1',
-        workspaceId: 'ws-1',
-        sessionTeam: 'team-1',
-        cliTeamName: 'team-runtime',
-        createdAt: 0,
+  test(
+    'mixed materialize waits without duplicate connect while bus boots',
+    () async {
+      final store = ChatTabStore();
+      store.setActiveWorkspaceId('ws-1');
+      final tab =
+          ChatTab(
+              info: const ChatTabInfo(id: 'sess-1', title: 't', subtitle: ''),
+              workspaceId: 'ws-1',
+              cliTeamName: 'team-runtime',
+            )
+            ..persistedSession = AppSession(
+              sessionId: 'sess-1',
+              workspaceId: 'ws-1',
+              sessionTeam: 'team-1',
+              cliTeamName: 'team-runtime',
+              createdAt: 0,
+            );
+      store.registerSession(tab);
+
+      const team = TeamProfile(
+        id: 'team-1',
+        name: 'Team',
+        cli: CliTool.cursor,
+        teamMode: TeamMode.mixed,
+        members: [TeamMemberConfig(id: 'team-lead', name: 'Lead')],
       );
-    store.registerSession(tab);
 
-    const team = TeamProfile(
-      id: 'team-1',
-      name: 'Team',
-      cli: CliTool.cursor,
-      teamMode: TeamMode.mixed,
-      members: [TeamMemberConfig(id: 'team-lead', name: 'Lead')],
-    );
-
-    final connector = _RecordingConnector();
-    final materializer = TabMemberMaterializer(
-      runtime: TabSessionRuntimeCoordinator(
+      final connector = _RecordingConnector();
+      final materializer = TabMemberMaterializer(
+        runtime: TabSessionRuntimeCoordinator(
+          tabStore: store,
+          shellFactory: ChatSessionShellFactory(
+            executableResolver: () => 'true',
+          ),
+          globalPresets: () => const [],
+          activeTeam: () => team,
+          isClosed: () => false,
+        ),
         tabStore: store,
-        shellFactory: ChatSessionShellFactory(executableResolver: () => 'true'),
-        globalPresets: () => const [],
+        connector: connector,
         activeTeam: () => team,
         isClosed: () => false,
-      ),
-      tabStore: store,
-      connector: connector,
-      activeTeam: () => team,
-      isClosed: () => false,
-      isMixedBusRegistered: (_) => false,
-      isMemberConnectOwnedElsewhere: (_, _) => true,
-    );
+        isMixedBusRegistered: (_) => false,
+        isMemberConnectOwnedElsewhere: (_, _) => true,
+      );
 
-    final pending = materializer.materializeMember('sess-1', 'team-lead', '');
-    await Future<void>.delayed(const Duration(milliseconds: 150));
-    expect(connector.scheduleCalls, 0);
+      final pending = materializer.materializeMember('sess-1', 'team-lead', '');
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+      expect(connector.scheduleCalls, 0);
 
-    materializer.markMemberReady('sess-1', 'team-lead');
-    await pending;
-  });
+      materializer.markMemberReady('sess-1', 'team-lead');
+      await pending;
+    },
+  );
+
+  test(
+    'materialize exits when its tab is removed while awaiting connect',
+    () async {
+      final store = ChatTabStore();
+      store.setActiveWorkspaceId('ws-1');
+      final tab =
+          ChatTab(
+              info: const ChatTabInfo(
+                id: 'sess-removed',
+                title: 't',
+                subtitle: '',
+              ),
+              workspaceId: 'ws-1',
+              cliTeamName: 'team-runtime',
+            )
+            ..persistedSession = AppSession(
+              sessionId: 'sess-removed',
+              workspaceId: 'ws-1',
+              sessionTeam: 'team-1',
+              cliTeamName: 'team-runtime',
+              createdAt: 0,
+            );
+      store.registerSession(tab);
+
+      const team = TeamProfile(
+        id: 'team-1',
+        name: 'Team',
+        cli: CliTool.claude,
+        teamMode: TeamMode.native,
+        members: [TeamMemberConfig(id: 'team-lead', name: 'Lead')],
+      );
+      final materializer = TabMemberMaterializer(
+        runtime: TabSessionRuntimeCoordinator(
+          tabStore: store,
+          shellFactory: ChatSessionShellFactory(
+            executableResolver: () => 'true',
+          ),
+          globalPresets: () => const [],
+          activeTeam: () => team,
+          isClosed: () => false,
+        ),
+        tabStore: store,
+        connector: _RecordingConnector(),
+        activeTeam: () => team,
+        isClosed: () => false,
+        isMixedBusRegistered: (_) => true,
+        isMemberConnectOwnedElsewhere: (_, _) => true,
+      );
+
+      final pending = materializer.materializeMember(
+        'sess-removed',
+        'team-lead',
+        '',
+      );
+      await Future<void>.delayed(Duration.zero);
+      store.removeSession('sess-removed');
+
+      await pending.timeout(const Duration(milliseconds: 300));
+    },
+  );
 
   test(
     'materialize resolves numbered instance ids from session roster',
     () async {
       final store = ChatTabStore();
       store.setActiveWorkspaceId('ws-1');
-      final tab = ChatTab(
-        info: const ChatTabInfo(id: 'sess-1', title: 't', subtitle: ''),
-        workspaceId: 'ws-1',
-        cliTeamName: 'team-runtime',
-      )..persistedSession = AppSession(
-          sessionId: 'sess-1',
-          workspaceId: 'ws-1',
-          sessionTeam: 'team-1',
-          cliTeamName: 'team-runtime',
-          createdAt: 0,
-          members: const [
-            SessionMemberBinding(rosterMemberId: 'team-lead', taskId: 't1'),
-            SessionMemberBinding(
-              rosterMemberId: 'builder-1',
-              taskId: 't2',
-              typeId: 'builder',
-            ),
-          ],
-        );
+      final tab =
+          ChatTab(
+              info: const ChatTabInfo(id: 'sess-1', title: 't', subtitle: ''),
+              workspaceId: 'ws-1',
+              cliTeamName: 'team-runtime',
+            )
+            ..persistedSession = AppSession(
+              sessionId: 'sess-1',
+              workspaceId: 'ws-1',
+              sessionTeam: 'team-1',
+              cliTeamName: 'team-runtime',
+              createdAt: 0,
+              members: const [
+                SessionMemberBinding(rosterMemberId: 'team-lead', taskId: 't1'),
+                SessionMemberBinding(
+                  rosterMemberId: 'builder-1',
+                  taskId: 't2',
+                  typeId: 'builder',
+                ),
+              ],
+            );
       store.registerSession(tab);
 
       // In-memory team still has type ids only (replicas may even be stale).
@@ -155,22 +225,26 @@ void main() {
     () async {
       final store = ChatTabStore();
       store.setActiveWorkspaceId('ws-1');
-      final tab = ChatTab(
-        info: const ChatTabInfo(id: 'sess-1', title: 't', subtitle: ''),
-        workspaceId: 'ws-1',
-        cliTeamName: '',
-      )..persistedSession = AppSession(
-          sessionId: 'sess-1',
-          workspaceId: 'ws-1',
-          sessionTeam: '',
-          createdAt: 0,
-        );
+      final tab =
+          ChatTab(
+              info: const ChatTabInfo(id: 'sess-1', title: 't', subtitle: ''),
+              workspaceId: 'ws-1',
+              cliTeamName: '',
+            )
+            ..persistedSession = AppSession(
+              sessionId: 'sess-1',
+              workspaceId: 'ws-1',
+              sessionTeam: '',
+              createdAt: 0,
+            );
       store.registerSession(tab);
 
       final materializer = TabMemberMaterializer(
         runtime: TabSessionRuntimeCoordinator(
           tabStore: store,
-          shellFactory: ChatSessionShellFactory(executableResolver: () => 'true'),
+          shellFactory: ChatSessionShellFactory(
+            executableResolver: () => 'true',
+          ),
           globalPresets: () => const [],
           activeTeam: () => null,
           isClosed: () => false,
@@ -195,4 +269,31 @@ void main() {
       expect(completed, isTrue);
     },
   );
+
+  test('input readiness exits when the session tab no longer exists', () async {
+    final store = ChatTabStore();
+    store.setActiveWorkspaceId('ws-1');
+    final materializer = TabMemberMaterializer(
+      runtime: TabSessionRuntimeCoordinator(
+        tabStore: store,
+        shellFactory: ChatSessionShellFactory(executableResolver: () => 'true'),
+        globalPresets: () => const [],
+        activeTeam: () => null,
+        isClosed: () => false,
+      ),
+      tabStore: store,
+      connector: _RecordingConnector(),
+      activeTeam: () => null,
+      isClosed: () => false,
+      isMixedBusRegistered: (_) => false,
+      isMemberConnectOwnedElsewhere: (_, _) => false,
+    );
+
+    await expectLater(
+      materializer
+          .ensureMemberInputReady('missing-session', 'missing-member')
+          .timeout(const Duration(milliseconds: 200)),
+      completes,
+    );
+  });
 }

@@ -315,7 +315,7 @@ class SessionConnectOrchestrator {
     );
 
     report(CliInstallPhase.syncingRemoteWorkspace, detail: 'manifest-flush');
-    final flushStarted = DateTime.now();
+    final flushStarted = Stopwatch()..start();
     // SSH/Termux work plane (including Android home-on-SSH): batch via one
     // remote script. Local/WSL keep per-op apply. Off-home still expands
     // control-plane copies first inside ManifestExecutor.
@@ -328,6 +328,12 @@ class SessionConnectOrchestrator {
           ? workSshProfileId
           : null,
     );
+    appLogger.d(
+      '[session-launch] manifest-flush done '
+      'session=${session.sessionId} ops=${staged.manifest.entries.length} '
+      'sshBatch=${workSshProfileId != null && workSshProfileId.isNotEmpty} '
+      'ms=${flushStarted.elapsedMilliseconds}',
+    );
 
     // The normal connect path stages through ManifestFilesystem and flushes
     // here, rather than calling ConfigProfileService.prepare*. Native CLI
@@ -337,6 +343,7 @@ class SessionConnectOrchestrator {
     final nativeMemberId = !isSimple && team?.teamMode == TeamMode.mixed
         ? ClaudeTeamRosterService.safeClaudePathSegment(member.id)
         : null;
+    final nativePluginStarted = Stopwatch()..start();
     await postFlushProfile.provisionNativePlugins(
       workspaceId: isSimple
           ? workspace.workspaceId
@@ -352,10 +359,9 @@ class SessionConnectOrchestrator {
       executable: remoteCliPath,
     );
     appLogger.d(
-      '[session-launch] manifest-flush done '
-      'session=${session.sessionId} ops=${staged.manifest.entries.length} '
-      'sshBatch=${workSshProfileId != null && workSshProfileId.isNotEmpty} '
-      'ms=${DateTime.now().difference(flushStarted).inMilliseconds}',
+      '[session-launch] native-plugin-install done '
+      'session=${session.sessionId} cli=${cli.value} '
+      'ms=${nativePluginStarted.elapsedMilliseconds}',
     );
 
     final postFlush = registry.capability<CliSessionCapability>(cli);

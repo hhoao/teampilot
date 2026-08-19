@@ -73,8 +73,22 @@ class TabMemberMaterializer implements MemberMaterializer {
       'session=$sessionId '
       '${_inputReadyGateSummary(sessionId, memberId)}',
     );
+    if (_tabStore.openTabBySessionId(sessionId) == null) {
+      appLogger.d(
+        '[member-materializer] input-ready cancelled no-tab '
+        'member=$memberId session=$sessionId',
+      );
+      return;
+    }
     var waitTicks = 0;
     while (!_isClosed()) {
+      if (_tabStore.openTabBySessionId(sessionId) == null) {
+        appLogger.d(
+          '[member-materializer] input-ready cancelled no-tab '
+          'member=$memberId session=$sessionId ticks=$waitTicks',
+        );
+        return;
+      }
       final shellReady = _runtime.isMemberReadyForAutomationInput(
         sessionId,
         memberId,
@@ -163,7 +177,7 @@ class TabMemberMaterializer implements MemberMaterializer {
           'selected=${tab.selectedMemberId}',
         );
       }
-      await ready.future;
+      await _awaitMemberReady(sessionId, memberId, ready);
       return;
     }
 
@@ -197,18 +211,24 @@ class TabMemberMaterializer implements MemberMaterializer {
         'member=$memberId session=$sessionId owned_elsewhere=true '
         'shellRunning=${shell?.isRunning}',
       );
-      await ready.future;
+      await _awaitMemberReady(sessionId, memberId, ready);
       return;
     }
 
     if (team.teamMode == TeamMode.mixed) {
       await _awaitMixedBusReady(sessionId, tab);
+      if (_tabStore.openTabBySessionId(sessionId) == null) {
+        if (identical(_memberReady[(sessionId, memberId)], ready)) {
+          _memberReady.remove((sessionId, memberId));
+        }
+        return;
+      }
     }
 
     final shell = tab.memberShells[memberId];
     if (shell != null && shell.isRunning) {
       markMemberReady(sessionId, memberId);
-      await ready.future;
+      await _awaitMemberReady(sessionId, memberId, ready);
       return;
     }
 
@@ -217,7 +237,7 @@ class TabMemberMaterializer implements MemberMaterializer {
         '[member-materializer] materialize await-connect '
         'member=$memberId session=$sessionId connecting=true',
       );
-      await ready.future;
+      await _awaitMemberReady(sessionId, memberId, ready);
       return;
     }
 
@@ -226,14 +246,39 @@ class TabMemberMaterializer implements MemberMaterializer {
       'member=$memberId session=$sessionId',
     );
     _connector.scheduleMemberConnect(team, member, tab);
-    await ready.future;
+    await _awaitMemberReady(sessionId, memberId, ready);
   }
 
   Future<void> _awaitMixedBusReady(String sessionId, ChatTab tab) async {
     while (!_isClosed()) {
+      if (_tabStore.openTabBySessionId(sessionId) == null) return;
       if (tab.teamBus != null && _isMixedBusRegistered(sessionId)) return;
       await Future<void>.delayed(const Duration(milliseconds: 50));
     }
+  }
+
+  Future<void> _awaitMemberReady(
+    String sessionId,
+    String memberId,
+    Completer<void> ready,
+  ) async {
+    final key = (sessionId, memberId);
+    while (!_isClosed()) {
+      if (_tabStore.openTabBySessionId(sessionId) == null) {
+        if (identical(_memberReady[key], ready)) _memberReady.remove(key);
+        appLogger.d(
+          '[member-materializer] materialize cancelled no-tab '
+          'member=$memberId session=$sessionId',
+        );
+        return;
+      }
+      final completed = await Future.any<bool>([
+        ready.future.then((_) => true),
+        Future<bool>.delayed(const Duration(milliseconds: 100), () => false),
+      ]);
+      if (completed) return;
+    }
+    if (identical(_memberReady[key], ready)) _memberReady.remove(key);
   }
 
   TeamMemberConfig? _resolveMemberForMaterialize(
