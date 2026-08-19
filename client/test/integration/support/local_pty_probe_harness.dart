@@ -138,7 +138,7 @@ abstract final class LocalPtyProbeHarness {
   }) async {
     IntegrationPrerequisites.skipUnlessNativePty();
     // The bare PTY must launch with exactly the caller's arguments.
-    // TerminalSession.connect() synthesizes CLI session args (`--dir …`) that
+    // TerminalSession.connect() synthesizes CLI session args that
     // plain shells / fixtures reject — the closure param would shadow these in.
     final callerArguments = arguments;
     final session = TerminalSession(

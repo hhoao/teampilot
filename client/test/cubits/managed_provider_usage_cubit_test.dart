@@ -144,6 +144,34 @@ void main() {
   );
 
   test(
+    'testQuery updates only in-memory state with a secret-free typed error',
+    () async {
+      await providers.upsert(_provider());
+      await usage.save(_ready());
+      final cacheBefore = fs.files['/tp/usage-cache.json'];
+      adapter.error = const ManagedProviderUsageQueryError(
+        ManagedProviderUsageQueryErrorCode.missingCredential,
+      );
+      final cubit = ManagedProviderUsageCubit(coordinator: coordinator);
+      addTearDown(cubit.close);
+      await cubit.load();
+
+      await cubit.testQuery('p1');
+
+      expect(cubit.state.status, ManagedProviderUsageLoadStatus.error);
+      expect(cubit.state.errorCode, ManagedProviderUsageErrorCode.queryFailed);
+      expect(
+        cubit.state.queryErrorCode,
+        ManagedProviderUsageQueryErrorCode.missingCredential,
+      );
+      expect(cubit.state.errorMessage, isNot(contains('token')));
+      expect(cubit.state.snapshotFor('p1')!.status, ProviderUsageStatus.error);
+      expect(fs.files['/tp/usage-cache.json'], cacheBefore);
+      expect((await usage.load()).single.status, ProviderUsageStatus.ready);
+    },
+  );
+
+  test(
     'overlapping refreshOne and refreshAll keep the provider refreshing',
     () async {
       await providers.upsert(_provider());

@@ -78,9 +78,13 @@ class _AiChainOfThoughtViewState extends State<AiChainOfThoughtView> {
                           color: triggerColor,
                         ),
                         const SizedBox(width: 8),
-                        Text(
-                          label,
-                          style: markdown.toolTrigger(triggerColor),
+                        Flexible(
+                          child: Text(
+                            label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: markdown.toolTrigger(triggerColor),
+                          ),
                         ),
                         const SizedBox(width: 4),
                         Transform.rotate(

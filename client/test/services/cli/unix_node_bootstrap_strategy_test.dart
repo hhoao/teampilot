@@ -95,6 +95,67 @@ void main() {
       expect(host.ranCurlInstall, isFalse);
     });
   });
+
+  group('CursorExecutableCapability glibc', () {
+    test('skips curl install when remote glibc is below 2.28', () async {
+      final host = _FakeHost(
+        termux: false,
+        locatePath: null,
+        glibc: '2.17',
+      );
+      final result = await const CursorExecutableCapability().install(
+        CliInstallContext(
+          mode: CliInstallMode.ssh,
+          host: host,
+          hostEnvironment: HostExecutionEnvironment.resolve(
+            isWindowsHost: false,
+            storageMode: StorageBackendMode.native,
+          ),
+          sshProfile: const SshProfile(
+            id: 'centos7',
+            name: 'CentOS 7',
+            host: '10.0.0.8',
+            username: 'root',
+          ),
+        ),
+      );
+      expect(result.success, isFalse);
+      expect(result.message, contains('glibc'));
+      expect(result.message, contains('2.17'));
+      expect(result.message, contains('2.28'));
+      expect(host.ranCurlInstall, isFalse);
+      expect(host.ranGlibcProbe, isTrue);
+    });
+
+    test('installs via curl when remote glibc is 2.28+', () async {
+      final host = _FakeHost(
+        termux: false,
+        locatePath: '/root/.local/bin/cursor-agent',
+        glibc: '2.28',
+      );
+      final result = await const CursorExecutableCapability().install(
+        CliInstallContext(
+          mode: CliInstallMode.ssh,
+          host: host,
+          hostEnvironment: HostExecutionEnvironment.resolve(
+            isWindowsHost: false,
+            storageMode: StorageBackendMode.native,
+          ),
+          sshProfile: const SshProfile(
+            id: 'ubuntu',
+            name: 'Ubuntu',
+            host: '10.0.0.9',
+            username: 'root',
+          ),
+        ),
+      );
+      expect(result.success, isTrue, reason: result.message);
+      expect(result.executablePath, '/root/.local/bin/cursor-agent');
+      expect(host.ranGlibcProbe, isTrue);
+      expect(host.ranCurlInstall, isTrue);
+    });
+  });
+
   group('ClaudeExecutableCapability Termux', () {
     test('pinned install script targets 2.1.112 and disables auto-updater', () {
       final script = ClaudeExecutableCapability.termuxPinnedInstallScript();
@@ -139,11 +200,13 @@ final class _FakeBootstrap implements UnixNodeBootstrapStrategy {
 }
 
 final class _FakeHost implements CliInstallerHost {
-  _FakeHost({required this.termux, required this.locatePath});
+  _FakeHost({required this.termux, required this.locatePath, this.glibc});
 
   final bool termux;
   final String? locatePath;
+  final String? glibc;
   var ranCurlInstall = false;
+  var ranGlibcProbe = false;
 
   @override
   HostExecutionEnvironment get hostEnvironment => HostExecutionEnvironment.resolve(
@@ -177,6 +240,14 @@ final class _FakeHost implements CliInstallerHost {
       return CliInstallerCommandResult(
         exitCode: 0,
         stdout: termux ? 'TERMUX=1\n' : 'TERMUX=0\n',
+      );
+    }
+    if (line.contains('ldd --version') && line.contains('GLIBC=')) {
+      ranGlibcProbe = true;
+      final version = glibc ?? '2.31';
+      return CliInstallerCommandResult(
+        exitCode: 0,
+        stdout: 'GLIBC=$version\n',
       );
     }
     if (line.contains('curl') && line.contains('cursor.com/install')) {

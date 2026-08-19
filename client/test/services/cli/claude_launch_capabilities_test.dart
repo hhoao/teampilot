@@ -42,8 +42,6 @@ void main() {
       [
         '--resume',
         '22222222-2222-2222-2222-222222222222',
-        '--dir',
-        '/home/hhoa/git/agent',
         '--add-dir',
         '/home/hhoa/git/shared',
         '--team-name',
@@ -108,22 +106,31 @@ void main() {
     expect(simpleArgs, containsAllInOrder(['--disallowedTools', 'Agent']));
   });
 
+  test('Claude omits --dir and keeps the primary workspace as process cwd', () {
+    final args = _assemble(
+      team: const TeamProfile(id: 'team-1', name: 'agent', cli: CliTool.claude),
+      member: member,
+      workingDirectory: '/home/hhoa/git/agent',
+    );
+
+    expect(args, isNot(contains('--dir')));
+    expect(args, isNot(contains('/home/hhoa/git/agent')));
+  });
+
   test('Claude normalizes WSL paths and repeats additional directories', () {
+    final args = _assemble(
+      team: const TeamProfile(id: 'team-1', name: 'agent', cli: CliTool.claude),
+      member: member,
+      workingDirectory: r'C:\work\agent',
+      additionalDirectories: const [r'D:\repo\a', '', r'D:\repo\b'],
+      useWslPaths: true,
+    );
+
+    expect(args, isNot(contains('--dir')));
+    expect(args, isNot(contains('/mnt/c/work/agent')));
     expect(
-      _assemble(
-        team: const TeamProfile(
-          id: 'team-1',
-          name: 'agent',
-          cli: CliTool.claude,
-        ),
-        member: member,
-        workingDirectory: r'C:\work\agent',
-        additionalDirectories: const [r'D:\repo\a', '', r'D:\repo\b'],
-        useWslPaths: true,
-      ),
+      args,
       containsAllInOrder([
-        '--dir',
-        '/mnt/c/work/agent',
         '--add-dir',
         '/mnt/d/repo/a',
         '--add-dir',

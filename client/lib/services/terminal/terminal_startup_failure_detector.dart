@@ -1,4 +1,5 @@
 import '../cli/cli_executable_validator.dart';
+import '../cli/registry/installer/linux_glibc_probe.dart';
 
 /// Pure startup-failure heuristics for PTY stderr/stdout during launch.
 abstract final class TerminalStartupFailureDetector {
@@ -14,6 +15,27 @@ abstract final class TerminalStartupFailureDetector {
     return text.contains('matches no known tool') ||
         text.contains('cannot be used with root/sudo privileges') ||
         text.contains('Permission deny rule');
+  }
+
+  static bool looksLikeGlibcIncompatibility(String text) =>
+      LinuxGlibcProbe.looksLikeDynamicLinkerVersionError(text);
+
+  /// Classifies PTY output collected before the process is confirmed running.
+  static String? classifyStartupFailure(
+    String text, {
+    required String executable,
+    required bool validateLaunch,
+  }) {
+    if (looksLikeGlibcIncompatibility(text)) {
+      return LinuxGlibcProbe.launchFailureMessage();
+    }
+    if (looksLikeCliStartupFailure(text) || looksLikeExecFailure(text)) {
+      return launchFailureMessage(
+        executable,
+        validateLaunch: validateLaunch,
+      );
+    }
+    return null;
   }
 
   static String launchFailureMessage(

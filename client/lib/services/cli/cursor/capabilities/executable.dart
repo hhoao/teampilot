@@ -3,6 +3,7 @@ import '../../installer_types.dart';
 import '../../remote_cli_locator.dart';
 import '../../registry/capabilities/cli_executable_capability.dart';
 import '../../registry/installer/installer_context.dart';
+import '../../registry/installer/linux_glibc_probe.dart';
 import '../../registry/installer/npm_installer_capability.dart';
 import '../../registry/installer/termux_remote_detect.dart';
 
@@ -11,7 +12,9 @@ import '../../registry/installer/termux_remote_detect.dart';
 /// Uses the official install scripts from
 /// https://cursor.com/docs/cli/installation (curl|bash on Unix, PowerShell on
 /// Windows native). Termux/Android is rejected up front — the official script
-/// targets glibc Linux/macOS, not bionic.
+/// targets glibc Linux/macOS, not bionic. Remote hosts with glibc &lt; 2.28
+/// (CentOS 7 / RHEL 7) are rejected — cursor-agent is a native ELF with no
+/// glibc-2.17 build, unlike Node/npm CLIs.
 final class CursorExecutableCapability implements CliExecutableCapability {
   const CursorExecutableCapability();
 
@@ -139,6 +142,21 @@ final class CursorExecutableCapability implements CliExecutableCapability {
       return const CliInstallResult(
         success: false,
         message: termuxUnsupportedMessage,
+      );
+    }
+
+    host.report(CliInstallPhase.installingCli, detail: 'Checking host glibc');
+    final glibcProbe = await host.runSsh(
+      profile,
+      CliInstallerCommand.unixShellScript(LinuxGlibcProbe.probeScript()),
+    );
+    if (LinuxGlibcProbe.isBelowCursorMinimum(glibcProbe.stdout)) {
+      return CliInstallResult(
+        success: false,
+        message: LinuxGlibcProbe.cursorUnsupportedMessage(
+          hostId: profile.hostIdentifier,
+          detected: LinuxGlibcProbe.formatVersion(glibcProbe.stdout),
+        ),
       );
     }
 

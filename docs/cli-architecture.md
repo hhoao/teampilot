@@ -623,7 +623,8 @@ Assembler 按以下顺序工作：
 `workingDirectory` 和 `additionalDirectories` 是同一份归一化语义输入，但输出由 CLI
 自己的 Provider 决定：
 
-- Claude：主目录使用 `--dir`，每个额外目录使用一对 `--add-dir <path>`；
+- Claude：主目录是进程 cwd（Claude Code 没有 `--dir`），每个额外目录使用一对
+  `--add-dir <path>`；
 - FlashskyAI：主目录使用 `--dir`，额外目录同样逐个重复 `--add-dir <path>`；
 - Codex：主目录使用 `--cd`，并且对每个非空、已归一化的额外目录重复一对
   `--add-dir <path>`。多个目录不能合并成一个参数，也不能只保留第一个；

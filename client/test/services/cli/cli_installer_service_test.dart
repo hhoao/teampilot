@@ -21,6 +21,11 @@ bool _isTermuxProbe(String line) =>
     line.contains('TERMUX=1') &&
     line.contains('TERMUX=0');
 
+bool _isGlibcProbe(String line) =>
+    line.startsWith('sh -c') &&
+    line.contains('ldd --version') &&
+    line.contains('GLIBC=');
+
 bool _isPrefixAwareNpmLocate(String line) =>
     line.startsWith('sh -c') &&
     line.contains('export PATH=') &&
@@ -658,6 +663,12 @@ void main() {
         if (_isTermuxProbe(command.commandLine)) {
           return _termuxProbeNotTermux();
         }
+        if (_isGlibcProbe(command.commandLine)) {
+          return const CliInstallerCommandResult(
+            exitCode: 0,
+            stdout: 'GLIBC=2.31\n',
+          );
+        }
         if (command.commandLine.contains(
           'curl https://cursor.com/install -fsS | bash',
         )) {
@@ -682,10 +693,11 @@ void main() {
 
     expect(result.success, isTrue, reason: result.message);
     expect(result.executablePath, '/home/alice/.local/bin/cursor-agent');
-    expect(commands.length, 3);
+    expect(commands.length, 4);
     expect(_isTermuxProbe(commands[0]), isTrue);
-    expect(commands[1], contains('curl https://cursor.com/install'));
-    expect(commands[2], startsWith('sh -c'));
+    expect(_isGlibcProbe(commands[1]), isTrue);
+    expect(commands[2], contains('curl https://cursor.com/install'));
+    expect(commands[3], startsWith('sh -c'));
   });
 }
 

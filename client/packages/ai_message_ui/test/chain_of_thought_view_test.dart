@@ -5,6 +5,26 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   testWidgets(
+    'Cot trigger does not overflow in a narrow parent',
+    (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 80,
+              child: AiChainOfThoughtView(
+                parts: [AiReasoningPart(text: 'secret plan')],
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
     'Cot expand keeps nested reasoning/tools collapsed by default',
     (tester) async {
       await tester.pumpWidget(

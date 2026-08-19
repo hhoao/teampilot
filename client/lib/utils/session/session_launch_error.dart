@@ -1,3 +1,5 @@
+import '../../services/terminal/terminal_startup_failure_detector.dart';
+
 /// Formats raw terminal / launch errors for the session placeholder (P0).
 String formatSessionLaunchError(String raw) {
   var text = raw.trim();
@@ -6,6 +8,15 @@ String formatSessionLaunchError(String raw) {
   if (text == 'mixed_workspace_member_placement_uninitialized' ||
       text == 'lead_placement_invalid') {
     return 'Member placement is not ready for this mixed workspace.';
+  }
+
+  if (TerminalStartupFailureDetector.looksLikeGlibcIncompatibility(text)) {
+    return TerminalStartupFailureDetector.classifyStartupFailure(
+          text,
+          executable: '',
+          validateLaunch: false,
+        ) ??
+        text;
   }
 
   if (text.startsWith('[') && text.endsWith(']')) {

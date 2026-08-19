@@ -6,6 +6,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 import 'package:teampilot/services/terminal/terminal_transport.dart';
 
+import '../../support/rust_lib_test_init.dart';
+
 /// B2: an off-home member's launch uses the CLI path preflight located on the
 /// work machine — TerminalSession.connect(executableOverride:) is the seam the
 /// launch passes `PreflightResult.remoteCliPath` through. Home members pass null
@@ -38,6 +40,7 @@ String _validExecutable(List<String> candidates) {
 }
 
 void main() {
+  setUpAll(initRustLibForTests);
   final base = _validExecutable(['/bin/sh', '/usr/bin/true', '/bin/true']);
   final remote = _validExecutable(['/usr/bin/true', '/bin/true', '/bin/sh']);
 

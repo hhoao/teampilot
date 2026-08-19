@@ -57,6 +57,7 @@ final class TerminalLaunchController {
   var _transportStartGeneration = 0;
   var _disposed = false;
   String? _startupExecutable;
+  final _startupOutput = StringBuffer();
   Timer? _confirmFallbackTimer;
   Timer? _startupDeadlineTimer;
   StreamSubscription<Uint8List>? _outputSubscription;
@@ -145,6 +146,7 @@ final class TerminalLaunchController {
 
   void beginStartup(String executable) {
     _startupExecutable = executable;
+    _startupOutput.clear();
     _phase = TerminalLaunchPhase.spawning;
     _startFailed = false;
     _armStartupDeadline();
@@ -397,28 +399,22 @@ final class TerminalLaunchController {
         if (data.isEmpty) return;
         feedPtyBytes(data);
         final text = utf8.decode(data, allowMalformed: true);
-        if (TerminalStartupFailureDetector.looksLikeCliStartupFailure(text)) {
+        if (_starting && !_startFailed) {
+          _startupOutput.write(text);
+        }
+        final classified = TerminalStartupFailureDetector.classifyStartupFailure(
+          _starting ? _startupOutput.toString() : text,
+          executable: executable,
+          validateLaunch: validateLaunch,
+        );
+        if (classified != null) {
           appLogger.e('[terminal] CLI error: ${text.trim()}');
+          if (_starting && !_startFailed) {
+            _handleStartFailure(classified);
+          }
+          return;
         }
         if (!_starting || _startFailed) return;
-        if (TerminalStartupFailureDetector.looksLikeCliStartupFailure(text)) {
-          _handleStartFailure(
-            TerminalStartupFailureDetector.launchFailureMessage(
-              executable,
-              validateLaunch: validateLaunch,
-            ),
-          );
-          return;
-        }
-        if (TerminalStartupFailureDetector.looksLikeExecFailure(text)) {
-          _handleStartFailure(
-            TerminalStartupFailureDetector.launchFailureMessage(
-              executable,
-              validateLaunch: validateLaunch,
-            ),
-          );
-          return;
-        }
         _confirmProcessStarted();
       });
 
@@ -429,10 +425,17 @@ final class TerminalLaunchController {
           return;
         }
         if (_starting && !_startFailed) {
+          final classified =
+              TerminalStartupFailureDetector.classifyStartupFailure(
+                _startupOutput.toString(),
+                executable: _startupExecutable ?? executable,
+                validateLaunch: validateLaunch,
+              );
           _handleStartFailure(
-            code == 0
-                ? '[process exited unexpectedly during startup]'
-                : '[process exited with code $code during startup]',
+            classified ??
+                (code == 0
+                    ? '[process exited unexpectedly during startup]'
+                    : '[process exited with code $code during startup]'),
           );
           return;
         }
@@ -522,6 +525,7 @@ final class TerminalLaunchController {
     _transport?.close();
     _transport = null;
     _startupExecutable = null;
+    _startupOutput.clear();
     appLogger.e('[terminal] $message', error: error, stackTrace: stackTrace);
     writeToDisplay?.call('\r\n$message\r\n');
     onProcessFailed?.call(message);
@@ -537,6 +541,7 @@ final class TerminalLaunchController {
     _outputSubscription = null;
     _phase = TerminalLaunchPhase.idle;
     _startupExecutable = null;
+    _startupOutput.clear();
     onProcessStarted = null;
     activityTracker.reset();
   }

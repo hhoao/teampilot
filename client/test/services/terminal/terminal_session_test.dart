@@ -463,6 +463,52 @@ void main() {
     expect(session.isRunning, isFalse);
   });
 
+  test('glibc linker error fails launch instead of marking running', () async {
+    final handle = _FakeTransport();
+    String? failedMessage;
+    final session = TerminalSession(
+      executable: '/root/.local/bin/cursor-agent',
+      validateLaunch: false,
+      confirmFallback: const Duration(seconds: 5),
+      transportStarter:
+          (
+            executable, {
+            required arguments,
+            required workingDirectory,
+            required columns,
+            required rows,
+            environment,
+          }) {
+            return Future.value(handle);
+          },
+    );
+    addTearDown(() async {
+      session.dispose();
+      await handle.outputController.close();
+    });
+
+    session.connect(
+      workingDirectory: Directory.systemTemp.path,
+      onProcessFailed: (message) => failedMessage = message,
+    );
+    session.onViewportResize(80, 24);
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    handle.outputController.add(
+      Uint8List.fromList(
+        utf8.encode(
+          '/root/.local/bin/cursor-agent: /lib64/libc.so.6: version '
+          "`GLIBC_2.28' not found (required by /root/.local/bin/cursor-agent)\r\n",
+        ),
+      ),
+    );
+    await Future<void>.delayed(Duration.zero);
+
+    expect(failedMessage, isNotNull);
+    expect(failedMessage, contains('glibc'));
+    expect(failedMessage, contains('2.28'));
+    expect(session.isRunning, isFalse);
+  });
+
   test(
     'independent Claude sessions spawn concurrently with distinct agent args',
     () async {

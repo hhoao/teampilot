@@ -210,6 +210,35 @@ void main() {
   );
 
   test(
+    'queryOne normalizes transient results without changing the usage cache',
+    () async {
+      await providers.upsert(_provider());
+      await usage.save(_ready());
+      final cacheBefore = fs.files['/tp/usage-cache.json'];
+      final adapter = _FakeAdapter(
+        Future.value(_ready(remaining: '99.999999999999')),
+      );
+      final coordinator = ManagedProviderUsageCoordinator(
+        providerRepository: providers,
+        usageRepository: usage,
+        registry: ManagedProviderUsageRegistry([adapter]),
+        credentials: _NoCredentials(),
+        http: _UnusedHttpClient(),
+        now: () => DateTime.fromMillisecondsSinceEpoch(1_700_000_000_000),
+      );
+
+      final result = await coordinator.queryOne('p1');
+
+      expect(result.status, ProviderUsageStatus.ready);
+      expect(result.providerId, 'p1');
+      expect(result.measures.single.remaining, '99.999999999999');
+      expect(coordinator.snapshotFor('p1')!.measures.single.remaining, '12.50');
+      expect(fs.files['/tp/usage-cache.json'], cacheBefore);
+      expect((await usage.load()).single.measures.single.remaining, '12.50');
+    },
+  );
+
+  test(
     'disabled providers are not queried and receive unsupported state',
     () async {
       await providers.upsert(_provider(enabled: false));

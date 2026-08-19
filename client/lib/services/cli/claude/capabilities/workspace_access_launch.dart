@@ -10,14 +10,18 @@ final class ClaudeWorkspaceAccessLaunch extends WorkspaceAccessArgProvider {
     CliLaunchContext context,
     WorkspaceAccess access,
   ) {
-    final args = <String>[];
-    final workingDirectory = access.workingDirectory;
-    if (workingDirectory != null) {
-      args.addAll(['--dir', workingDirectory]);
+    // Claude Code has no `--dir`. The primary workspace is process cwd
+    // (set by TerminalSession / LaunchCommandBuilder). `--add-dir` is only
+    // for additional directories.
+    if (access.additionalDirectories.isEmpty) {
+      return const [];
     }
-    for (final directory in access.additionalDirectories) {
-      args.addAll(['--add-dir', directory]);
-    }
+    final args = <String>[
+      for (final directory in access.additionalDirectories) ...[
+        '--add-dir',
+        directory,
+      ],
+    ];
     return [
       CliLaunchArgContribution(
         key: 'claude-workspace-access',

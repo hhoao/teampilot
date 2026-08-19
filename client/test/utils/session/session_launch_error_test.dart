@@ -16,6 +16,16 @@ void main() {
     );
   });
 
+  test('formatSessionLaunchError rewrites glibc linker errors', () {
+    const raw =
+        "/root/.local/bin/cursor-agent: /lib64/libc.so.6: version `GLIBC_2.28' "
+        'not found (required by /root/.local/bin/cursor-agent)';
+    final formatted = formatSessionLaunchError(raw);
+    expect(formatted, contains('glibc'));
+    expect(formatted, contains('2.28'));
+    expect(formatted, isNot(contains('version `GLIBC_2.28\'')));
+  });
+
   test('formatSessionLaunchError truncates long messages', () {
     final raw = List<String>.generate(6, (i) => 'line $i').join('\n');
     final formatted = formatSessionLaunchError(raw);
