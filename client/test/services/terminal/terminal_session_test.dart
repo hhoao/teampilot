@@ -15,6 +15,7 @@ import 'package:teampilot/services/session/shell_launch_spec.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/flush_terminal_engine.dart';
+import '../../support/rust_lib_test_init.dart';
 
 class _FakeTransport implements TerminalTransport {
   final outputController = StreamController<Uint8List>();
@@ -66,6 +67,7 @@ String get _ptyTestExecutable {
 }
 
 void main() {
+  setUpAll(initRustLibForTests);
   test('confirms on first pty output before fallback timer', () async {
     final handle = _FakeTransport();
     var started = false;

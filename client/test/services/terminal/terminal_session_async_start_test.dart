@@ -5,6 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 import 'package:teampilot/services/terminal/terminal_transport.dart';
 
+import '../../support/rust_lib_test_init.dart';
+
 class _FakeTransport implements TerminalTransport {
   final outputController = StreamController<Uint8List>();
   final doneCompleter = Completer<int>();
@@ -35,6 +37,7 @@ class _FakeTransport implements TerminalTransport {
 }
 
 void main() {
+  setUpAll(initRustLibForTests);
   test(
     'remote sessions skip local executable and working directory validation',
     () async {

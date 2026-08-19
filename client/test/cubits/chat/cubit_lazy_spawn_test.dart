@@ -8,8 +8,10 @@ import 'package:teampilot/repositories/session_repository.dart';
 import '../../integration/support/session_idle_busy_harness.dart';
 import '../../support/fake_terminal_session.dart';
 import '../../support/post_frame_test_harness.dart';
+import '../../support/rust_lib_test_init.dart';
 
 void main() {
+  setUpAll(initRustLibForTests);
   setUp(setUpTestAppStorage);
   tearDown(tearDownTestAppStorage);
 
@@ -46,45 +48,64 @@ void main() {
     await deleteTempDirBestEffort(tmp);
   });
 
-  test('selecting a declared member with terminal view shown spawns it', () async {
-    final opened = await openMixedSessionWithShells(
-      cubit: cubit,
-      repo: repo,
-      postFrame: postFrame,
-    );
-    final tab = cubit.activeTab!;
-    // Model a reclaimed/declared worker: no live shell.
-    tab.memberShells.remove('worker-1');
-    tab.reclaimedMemberIds.add('worker-1');
-    tab.workbenchView = SessionWorkbenchView.terminal;
-    tab.persistedSession = (await repo.loadSessions())
-        .firstWhere((s) => s.sessionId == opened.sessionId);
+  test(
+    'selecting a declared member with terminal view shown spawns it',
+    () async {
+      final opened = await openMixedSessionWithShells(
+        cubit: cubit,
+        repo: repo,
+        postFrame: postFrame,
+      );
+      final tab = cubit.activeTab!;
+      // Model a reclaimed/declared worker: no live shell.
+      tab.memberShells.remove('worker-1');
+      tab.reclaimedMemberIds.add('worker-1');
+      tab.workbenchView = SessionWorkbenchView.terminal;
+      tab.persistedSession = (await repo.loadSessions()).firstWhere(
+        (s) => s.sessionId == opened.sessionId,
+      );
 
-    cubit.selectMember('worker-1');
-    await drainPendingAsyncWork();
+      cubit.selectMember('worker-1');
+      await drainPendingAsyncWork();
 
-    expect(tab.membersPendingConnect, contains('worker-1'),
-      reason: 'selecting a non-running member in the terminal view must spawn it');
-  });
+      expect(
+        tab.membersPendingConnect,
+        contains('worker-1'),
+        reason:
+            'selecting a non-running member in the terminal view must spawn it',
+      );
+    },
+  );
 
-  test('setSessionWorkbenchView(terminal) spawns the selected member', () async {
-    final opened = await openMixedSessionWithShells(
-      cubit: cubit,
-      repo: repo,
-      postFrame: postFrame,
-    );
-    final tab = cubit.activeTab!;
-    tab.memberShells.remove('team-lead');
-    tab.reclaimedMemberIds.add('team-lead');
-    tab.workbenchView = SessionWorkbenchView.chat;
-    tab.selectedMemberId = 'team-lead';
-    tab.persistedSession = (await repo.loadSessions())
-        .firstWhere((s) => s.sessionId == opened.sessionId);
+  test(
+    'setSessionWorkbenchView(terminal) spawns the selected member',
+    () async {
+      final opened = await openMixedSessionWithShells(
+        cubit: cubit,
+        repo: repo,
+        postFrame: postFrame,
+      );
+      final tab = cubit.activeTab!;
+      tab.memberShells.remove('team-lead');
+      tab.reclaimedMemberIds.add('team-lead');
+      tab.workbenchView = SessionWorkbenchView.chat;
+      tab.selectedMemberId = 'team-lead';
+      tab.persistedSession = (await repo.loadSessions()).firstWhere(
+        (s) => s.sessionId == opened.sessionId,
+      );
 
-    cubit.setSessionWorkbenchView(opened.sessionId, SessionWorkbenchView.terminal);
-    await drainPendingAsyncWork();
+      cubit.setSessionWorkbenchView(
+        opened.sessionId,
+        SessionWorkbenchView.terminal,
+      );
+      await drainPendingAsyncWork();
 
-    expect(tab.membersPendingConnect, contains('team-lead'),
-      reason: 'switching to terminal view for a non-running member must spawn it');
-  });
+      expect(
+        tab.membersPendingConnect,
+        contains('team-lead'),
+        reason:
+            'switching to terminal view for a non-running member must spawn it',
+      );
+    },
+  );
 }

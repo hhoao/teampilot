@@ -10,6 +10,7 @@ import 'package:teampilot/services/terminal/pty_launch_environment.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 import 'package:teampilot/services/terminal/terminal_theme_for_launch.dart';
 import 'package:teampilot/services/terminal/terminal_transport.dart';
+import '../../support/rust_lib_test_init.dart';
 
 class _FakeTransport implements TerminalTransport {
   final outputController = StreamController<Uint8List>();
@@ -48,15 +49,19 @@ String get _ptyTestExecutable {
 }
 
 void main() {
-  test('resolveTerminalThemeFromLayout light mode yields light COLORFGBG bg', () {
-    final theme = resolveTerminalThemeFromLayout(
-      preferences: const LayoutPreferences(themeMode: 'light'),
-      platformBrightness: Brightness.dark,
-    );
-    final env = <String, String>{};
-    PtyLaunchEnvironment.applyColorScheme(env, background: theme.background);
-    expect(env['COLORFGBG'], '0;15');
-  });
+  setUpAll(initRustLibForTests);
+  test(
+    'resolveTerminalThemeFromLayout light mode yields light COLORFGBG bg',
+    () {
+      final theme = resolveTerminalThemeFromLayout(
+        preferences: const LayoutPreferences(themeMode: 'light'),
+        platformBrightness: Brightness.dark,
+      );
+      final env = <String, String>{};
+      PtyLaunchEnvironment.applyColorScheme(env, background: theme.background);
+      expect(env['COLORFGBG'], '0;15');
+    },
+  );
 
   test('resolveTerminalThemeFromLayout dark mode yields dark COLORFGBG bg', () {
     final theme = resolveTerminalThemeFromLayout(

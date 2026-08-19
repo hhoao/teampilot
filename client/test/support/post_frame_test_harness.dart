@@ -160,6 +160,36 @@ Future<void> waitUntil(
   }
 }
 
+/// Pumps frames until [predicate] is true, with a fake-async-safe deadline.
+///
+/// Unlike [WidgetTester.pumpAndSettle], this cannot wait indefinitely when a
+/// widget keeps an animation, timer, or stream alive. The elapsed duration is
+/// accumulated from the requested pump steps so the deadline remains
+/// deterministic under Flutter test's fake clock.
+Future<void> pumpUntil(
+  WidgetTester tester,
+  bool Function() predicate, {
+  String description = 'widget condition',
+  Duration timeout = const Duration(seconds: 2),
+  Duration step = const Duration(milliseconds: 16),
+}) async {
+  if (timeout < Duration.zero) {
+    throw ArgumentError.value(timeout, 'timeout', 'must not be negative');
+  }
+  if (step <= Duration.zero) {
+    throw ArgumentError.value(step, 'step', 'must be positive');
+  }
+
+  var elapsed = Duration.zero;
+  while (!predicate()) {
+    if (elapsed >= timeout) {
+      throw TestFailure('Timed out waiting for $description');
+    }
+    await tester.pump(step);
+    elapsed += step;
+  }
+}
+
 /// Best-effort temp dir cleanup (Windows CI may still hold profile files briefly).
 Future<void> deleteTempDirBestEffort(Directory dir) async {
   for (var attempt = 0; attempt < 12; attempt++) {

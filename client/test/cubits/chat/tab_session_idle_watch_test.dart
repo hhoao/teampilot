@@ -9,8 +9,10 @@ import 'package:teampilot/cubits/chat/tab_session_idle_watch.dart';
 import 'package:teampilot/services/team/session_working_resolver.dart';
 
 import '../../integration/support/connected_recording_shell.dart';
+import '../../support/rust_lib_test_init.dart';
 
 void main() {
+  setUpAll(initRustLibForTests);
   test('onAfterTurnEnded fires on PTY-quiet turn end', () async {
     final store = ChatTabStore();
     final tab = ChatTab(

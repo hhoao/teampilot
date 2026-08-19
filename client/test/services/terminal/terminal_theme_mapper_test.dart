@@ -3,8 +3,10 @@ import 'package:flutter_alacritty/flutter_alacritty.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/terminal/terminal_theme_mapper.dart';
 import 'package:teampilot/theme/workspace_surface_layers.dart';
+import '../../support/rust_lib_test_init.dart';
 
 void main() {
+  setUpAll(initRustLibForTests);
   test('terminalColorsFromTheme maps palette fields', () {
     const theme = TerminalTheme(
       background: 0x0A0C10,

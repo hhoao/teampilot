@@ -8,7 +8,19 @@ import 'package:flutter_test/flutter_test.dart';
 /// Uses [rust.resolveRustLibPath] (local build → cargo → precompiled download)
 /// but [TestWidgetsFlutterBinding] — not [WidgetsFlutterBinding] — because
 /// [flutter_test_config] runs before individual test files.
-Future<void> initRustLibForTests() async {
+Future<void>? _rustLibInit;
+
+Future<void> initRustLibForTests() {
+  final existing = _rustLibInit;
+  if (existing != null) {
+    return existing;
+  }
+  final future = _initRustLibForTests();
+  _rustLibInit = future;
+  return future;
+}
+
+Future<void> _initRustLibForTests() async {
   TestWidgetsFlutterBinding.ensureInitialized();
   final lib = await rust.resolveRustLibPath(
     checkoutRelativeRustDir: _checkoutRustDir,

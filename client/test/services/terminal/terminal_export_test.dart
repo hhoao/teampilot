@@ -5,8 +5,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/terminal/terminal_export.dart';
 
 import '../../support/flush_terminal_engine.dart';
+import '../../support/rust_lib_test_init.dart';
 
 void main() {
+  setUpAll(initRustLibForTests);
   test('exportTerminalScrollback returns viewport text', () async {
     final engine = TerminalEngine(config: TerminalConfig.defaults());
     engine.resize(columns: 40, rows: 5);

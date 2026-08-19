@@ -20,9 +20,11 @@ import 'package:teampilot/utils/ui/app_keys.dart';
 import '../support/desktop_app_harness.dart';
 import '../support/fake_terminal_session.dart';
 import '../support/post_frame_test_harness.dart';
+import '../support/rust_lib_test_init.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 void main() {
+  setUpAll(initRustLibForTests);
   GoogleFonts.config.allowRuntimeFetching = false;
   setUpAll(setUpDesktopAppHarness);
   tearDownAll(tearDownDesktopAppHarness);
@@ -105,10 +107,7 @@ void main() {
       ).dockRight,
       isFalse,
     );
-    expect(
-      find.byKey(AppKeys.rightToolsPanel).hitTestable(),
-      findsNothing,
-    );
+    expect(find.byKey(AppKeys.rightToolsPanel).hitTestable(), findsNothing);
 
     chatCubit.setActiveWorkspace(workspace.workspaceId);
     // Real repository I/O must run inside runAsync in widget tests.
@@ -124,8 +123,17 @@ void main() {
     });
     await tester.pump();
     expect(chatCubit.tabStore.openTabs.length, 1);
-    expect(chatCubit.tabStore.openTabs.single.info.id.startsWith('local-'), isFalse);
-    expect(chatCubit.isMemberRunning(sessionId: chatCubit.tabStore.openTabs.single.info.id, memberId: 'team-lead'), isTrue);
+    expect(
+      chatCubit.tabStore.openTabs.single.info.id.startsWith('local-'),
+      isFalse,
+    );
+    expect(
+      chatCubit.isMemberRunning(
+        sessionId: chatCubit.tabStore.openTabs.single.info.id,
+        memberId: 'team-lead',
+      ),
+      isTrue,
+    );
     await pumpPhaseTransitions(tester);
     // Session exits compose: prefs dock restored. Prefer key mount over
     // hitTestable — pane size sync can lag TpDeferredMountShell in smoke.
@@ -238,5 +246,4 @@ void main() {
       'claude': '/opt/bin/claude',
     });
   });
-
 }

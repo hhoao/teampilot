@@ -13,6 +13,7 @@ import 'package:teampilot/services/team/terminal_activity_tracker.dart';
 import 'package:teampilot/services/terminal/ask_user_question_answer_service.dart';
 import 'package:teampilot/services/terminal/terminal_launch_controller.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
+import '../../support/rust_lib_test_init.dart';
 
 class _FakeShell extends TerminalSession {
   _FakeShell({required this.connected})
@@ -51,13 +52,17 @@ class _StubTool implements CliToolDefinition {
   bool get isLaunchSupported => false;
 }
 
-CliToolRegistry _registryWith(ChatInteractionCapability cap, {CliTool cli = CliTool.claude}) {
+CliToolRegistry _registryWith(
+  ChatInteractionCapability cap, {
+  CliTool cli = CliTool.claude,
+}) {
   final registry = CliToolRegistry();
   registry.register(_StubTool(id: cli, chatCap: cap));
   return registry;
 }
 
 void main() {
+  setUpAll(initRustLibForTests);
   test('ptyPicker answer writes selection digit, waits, then Enter', () async {
     final writes = <String>[];
     final gaps = <Duration>[];
@@ -154,7 +159,10 @@ void main() {
       optionIndex: 1,
     );
     expect(disconnected, isA<AskUserAnswerFailed>());
-    expect((disconnected as AskUserAnswerFailed).reason, 'terminal_disconnected');
+    expect(
+      (disconnected as AskUserAnswerFailed).reason,
+      'terminal_disconnected',
+    );
     expect(writes, isEmpty);
 
     final nullShell = await service.answer(

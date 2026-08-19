@@ -20,6 +20,7 @@ import 'package:teampilot/services/terminal/workspace_terminal_session_ops.dart'
 import 'package:teampilot/services/workbench/workbench_shell_launcher.dart';
 
 import '../../support/post_frame_test_harness.dart';
+import '../../support/rust_lib_test_init.dart';
 
 TerminalSession _testSession() => TerminalSession(
   executable: '/bin/bash',
@@ -94,16 +95,14 @@ WorkbenchShellLauncher _launcher({
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  setUpAll(initRustLibForTests);
   setUp(setUpTestAppStorage);
   tearDown(tearDownTestAppStorage);
 
   group('resolveMostRecentFloatingShell', () {
     test('prefers active terminal tab payload', () {
       final shell = resolveMostRecentFloatingShell(
-        order: [
-          WorkbenchTabId.shell('e1'),
-          WorkbenchTabId.shell('e2'),
-        ],
+        order: [WorkbenchTabId.shell('e1'), WorkbenchTabId.shell('e2')],
         activeId: WorkbenchTabId.shell('e1'),
       );
       expect(shell, WorkbenchTabId.shell('e1'));
@@ -189,36 +188,40 @@ void main() {
       registry.disposeAll();
     });
 
-    test('creates registry entry and floating tab, not workbench shell', () async {
-      final launcher = _launcher(
-        chat: chat,
-        workbench: workbench,
-        floating: floating,
-        registry: registry,
-      );
+    test(
+      'creates registry entry and floating tab, not workbench shell',
+      () async {
+        final launcher = _launcher(
+          chat: chat,
+          workbench: workbench,
+          floating: floating,
+          registry: registry,
+        );
 
-      final entry = await launcher.openAndSelect(
-        workspaceId: 'ws',
-        tabScopeId: 'ws',
-        cwd: '/tmp/proj',
-        spec: const WorkspaceTerminalLocalSpec('/bin/bash'),
-      );
+        final entry = await launcher.openAndSelect(
+          workspaceId: 'ws',
+          tabScopeId: 'ws',
+          cwd: '/tmp/proj',
+          spec: const WorkspaceTerminalLocalSpec('/bin/bash'),
+        );
 
-      expect(entry, isNotNull);
-      expect(registry.groupFor('ws').entries.map((e) => e.id), [entry!.id]);
-      expect(floating.state.visibility, FloatingPanelVisibility.open);
-      expect(floating.state.activeWorkspaceId, 'ws');
-      expect(
-        workbench.state.bar('ws').floating.order,
-        [WorkbenchTabId.shell(entry.id)],
-      );
-      expect(
-        workbench.state.bar('ws').center.order.where(
-          (t) => t.kind == WorkbenchTabKind.shell,
-        ),
-        isEmpty,
-      );
-    });
+        expect(entry, isNotNull);
+        expect(registry.groupFor('ws').entries.map((e) => e.id), [entry!.id]);
+        expect(floating.state.visibility, FloatingPanelVisibility.open);
+        expect(floating.state.activeWorkspaceId, 'ws');
+        expect(workbench.state.bar('ws').floating.order, [
+          WorkbenchTabId.shell(entry.id),
+        ]);
+        expect(
+          workbench.state
+              .bar('ws')
+              .center
+              .order
+              .where((t) => t.kind == WorkbenchTabKind.shell),
+          isEmpty,
+        );
+      },
+    );
   });
 
   group('WorkbenchShellLauncher.focusOrCreateDefaultShell', () {
@@ -258,12 +261,16 @@ void main() {
       await launcher.focusOrCreateDefaultShell();
 
       expect(floating.state.visibility, FloatingPanelVisibility.open);
-      expect(workbench.state.bar('ws').floating.activeId,
-          WorkbenchTabId.shell('e1'));
       expect(
-        workbench.state.bar('ws').center.order.where(
-          (t) => t.kind == WorkbenchTabKind.shell,
-        ),
+        workbench.state.bar('ws').floating.activeId,
+        WorkbenchTabId.shell('e1'),
+      );
+      expect(
+        workbench.state
+            .bar('ws')
+            .center
+            .order
+            .where((t) => t.kind == WorkbenchTabKind.shell),
         isEmpty,
       );
       expect(registry.groupFor('ws').entries, isEmpty);

@@ -7,8 +7,10 @@ import 'package:teampilot/cubits/agent_attention_cubit.dart';
 import 'package:teampilot/services/agent_status/agent_attention_state.dart';
 import 'package:teampilot/services/team/terminal_activity_tracker.dart';
 import 'package:teampilot/services/terminal/terminal_launch_controller.dart';
+import '../../support/rust_lib_test_init.dart';
 
 void main() {
+  setUpAll(initRustLibForTests);
   late TerminalEngine engine;
   late AgentAttentionCubit attention;
   late TerminalLaunchController controller;

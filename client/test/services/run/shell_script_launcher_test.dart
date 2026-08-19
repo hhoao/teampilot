@@ -23,6 +23,7 @@ import 'package:teampilot/services/terminal/workspace_terminal_connect_coordinat
 import 'package:teampilot/services/terminal/workspace_terminal_registry.dart';
 import 'package:teampilot/services/terminal/workspace_terminal_run_service.dart';
 import 'package:teampilot/services/terminal/workspace_terminal_session_ops.dart';
+import '../../support/rust_lib_test_init.dart';
 
 const _folder = WorkspaceFolder(path: '/proj');
 
@@ -161,6 +162,7 @@ class _RecordingProcessHandle implements ProcessRunHandle {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  setUpAll(initRustLibForTests);
 
   late WorkspaceTerminalRegistry registry;
   late _RecordingConnector connector;
@@ -278,7 +280,9 @@ void main() {
     'terminal branch forwards preferTerminalEntryId to openForRun',
     () async {
       if (Platform.isWindows) {
-        markTestSkipped('POSIX interpreter /bin/bash is not present on Windows');
+        markTestSkipped(
+          'POSIX interpreter /bin/bash is not present on Windows',
+        );
         return;
       }
       final launcher = RunShellScriptLauncher(

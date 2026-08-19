@@ -118,9 +118,17 @@ class _ManagedProviderManagementPageState
     BuildContext context, {
     ManagedProvider? provider,
   }) async {
+    final providerCubit = context.read<ManagedProviderCubit>();
+    final usageCubit = context.read<ManagedProviderUsageCubit>();
     await Navigator.of(context).push<void>(
       MaterialPageRoute(
-        builder: (_) => ManagedProviderEditorPage(provider: provider),
+        builder: (_) => MultiBlocProvider(
+          providers: [
+            BlocProvider.value(value: providerCubit),
+            BlocProvider.value(value: usageCubit),
+          ],
+          child: ManagedProviderEditorPage(provider: provider),
+        ),
       ),
     );
   }

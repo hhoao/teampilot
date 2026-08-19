@@ -53,65 +53,12 @@ class ManagedProviderList extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Row(
-                children: [
-                  CircleAvatar(
-                    radius: 17,
-                    backgroundColor: cs.primary.withValues(alpha: 0.12),
-                    child: Icon(
-                      Icons.account_balance_wallet_outlined,
-                      size: 18,
-                      color: cs.primary,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: InkWell(
-                      onTap: () => onEdit(provider),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            provider.name,
-                            style: TpTextStyles.of(context).mdBold,
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '${provider.kind.value} · ${provider.adapterId}',
-                            style: TpTextStyles.of(
-                              context,
-                            ).smColored(cs.onSurfaceVariant),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  TpStatusBadge(
-                    label: provider.enabled ? 'Enabled' : 'Disabled',
-                    tone: provider.enabled
-                        ? TpStatusBadgeTone.success
-                        : TpStatusBadgeTone.neutral,
-                  ),
-                  IconButton(
-                    tooltip: provider.enabled ? 'Disable' : 'Enable',
-                    onPressed: () => onToggle(provider),
-                    icon: Icon(
-                      provider.enabled
-                          ? Icons.pause_circle_outline
-                          : Icons.play_circle_outline,
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: 'Edit',
-                    onPressed: () => onEdit(provider),
-                    icon: const Icon(Icons.edit_outlined),
-                  ),
-                  IconButton(
-                    tooltip: 'Delete',
-                    onPressed: () => onDelete(provider),
-                    icon: Icon(Icons.delete_outline, color: cs.error),
-                  ),
-                ],
+              _ProviderHeader(
+                provider: provider,
+                colorScheme: cs,
+                onEdit: onEdit,
+                onToggle: onToggle,
+                onDelete: onDelete,
               ),
               const SizedBox(height: 10),
               ManagedProviderMeasureView(
@@ -126,4 +73,111 @@ class ManagedProviderList extends StatelessWidget {
       },
     );
   }
+}
+
+class _ProviderHeader extends StatelessWidget {
+  const _ProviderHeader({
+    required this.provider,
+    required this.colorScheme,
+    required this.onEdit,
+    required this.onToggle,
+    required this.onDelete,
+  });
+
+  final ManagedProvider provider;
+  final ColorScheme colorScheme;
+  final ValueChanged<ManagedProvider> onEdit;
+  final ValueChanged<ManagedProvider> onToggle;
+  final ValueChanged<ManagedProvider> onDelete;
+
+  Widget _identity(BuildContext context) => InkWell(
+    onTap: () => onEdit(provider),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(provider.name, style: TpTextStyles.of(context).mdBold),
+        const SizedBox(height: 2),
+        Text(
+          '${provider.kind.value} · ${provider.adapterId}',
+          style: TpTextStyles.of(
+            context,
+          ).smColored(colorScheme.onSurfaceVariant),
+        ),
+      ],
+    ),
+  );
+
+  Widget _avatar() => CircleAvatar(
+    radius: 17,
+    backgroundColor: colorScheme.primary.withValues(alpha: 0.12),
+    child: Icon(
+      Icons.account_balance_wallet_outlined,
+      size: 18,
+      color: colorScheme.primary,
+    ),
+  );
+
+  Widget _status() => TpStatusBadge(
+    label: provider.enabled ? 'Enabled' : 'Disabled',
+    tone: provider.enabled
+        ? TpStatusBadgeTone.success
+        : TpStatusBadgeTone.neutral,
+  );
+
+  Widget _actions() => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      IconButton(
+        tooltip: provider.enabled ? 'Disable' : 'Enable',
+        onPressed: () => onToggle(provider),
+        icon: Icon(
+          provider.enabled
+              ? Icons.pause_circle_outline
+              : Icons.play_circle_outline,
+        ),
+      ),
+      IconButton(
+        tooltip: 'Edit',
+        onPressed: () => onEdit(provider),
+        icon: const Icon(Icons.edit_outlined),
+      ),
+      IconButton(
+        tooltip: 'Delete',
+        onPressed: () => onDelete(provider),
+        icon: Icon(Icons.delete_outline, color: colorScheme.error),
+      ),
+    ],
+  );
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      final compact = constraints.maxWidth < 520;
+      if (compact) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                _avatar(),
+                const SizedBox(width: 10),
+                Expanded(child: _identity(context)),
+                _status(),
+              ],
+            ),
+            Align(alignment: Alignment.centerRight, child: _actions()),
+          ],
+        );
+      }
+      return Row(
+        children: [
+          _avatar(),
+          const SizedBox(width: 10),
+          Expanded(child: _identity(context)),
+          _status(),
+          _actions(),
+        ],
+      );
+    },
+  );
 }

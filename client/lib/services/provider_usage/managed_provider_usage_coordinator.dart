@@ -7,6 +7,9 @@ import '../../repositories/managed_provider_usage_repository.dart';
 import 'managed_provider_usage_adapter.dart';
 import 'managed_provider_usage_registry.dart';
 
+export 'managed_provider_usage_adapter.dart'
+    show ManagedProviderUsageQueryErrorCode;
+
 enum ManagedProviderUsageInvalidationCode {
   providerDeleted,
   providerChanged,
@@ -183,6 +186,32 @@ class ManagedProviderUsageCoordinator {
       _generation,
       storageContextGeneration: storageContextGeneration,
     );
+  }
+
+  /// Queries one provider without changing the usage cache or the
+  /// coordinator's persisted-snapshot view. This is intended for editor
+  /// "Test query" actions; callers that want cache persistence must use
+  /// [refreshOne].
+  Future<ProviderUsageSnapshot> queryOne(String providerId) =>
+      queryTransient(providerId);
+
+  /// Transient adapter query seam. Configuration is read and the adapter
+  /// response is normalized into a secret-free snapshot, but no usage
+  /// repository method is called and [_snapshots] is left untouched.
+  Future<ProviderUsageSnapshot> queryTransient(String providerId) async {
+    if (_closed) return _unsupportedSnapshot(providerId.trim(), null);
+    final storageContextGeneration = _storageContextGeneration;
+    await _ensureLoaded();
+    _ensureStorageContextCurrent(
+      storageContextGeneration,
+      providerId: providerId.trim(),
+    );
+    await _synchronizeProviders();
+    _ensureStorageContextCurrent(storageContextGeneration);
+    final id = providerId.trim();
+    final provider = _providers[id];
+    if (provider == null) return _unsupportedSnapshot(id, _snapshots[id]);
+    return _executeTransientQuery(provider, storageContextGeneration);
   }
 
   /// Refreshes all configured providers through the same per-provider single-
@@ -494,6 +523,52 @@ class ManagedProviderUsageCoordinator {
     );
   }
 
+  Future<ProviderUsageSnapshot> _executeTransientQuery(
+    ManagedProvider provider,
+    int storageContextGeneration,
+  ) async {
+    _ensureStorageContextCurrent(
+      storageContextGeneration,
+      providerId: provider.id,
+    );
+    final previous = _snapshots[provider.id];
+    if (!provider.enabled) return _unsupportedSnapshot(provider.id, previous);
+
+    try {
+      final adapter = _registry.adapterFor(provider.adapterId);
+      if (adapter == null) {
+        throw const ManagedProviderUsageQueryError(
+          ManagedProviderUsageQueryErrorCode.unsupported,
+        );
+      }
+      final result = await adapter.fetch(
+        provider,
+        credentials: _credentials,
+        http: _http,
+        now: _now(),
+      );
+      _ensureStorageContextCurrent(
+        storageContextGeneration,
+        providerId: provider.id,
+      );
+      return result.copyWith(
+        providerId: provider.id,
+        status: ProviderUsageStatus.ready,
+      );
+    } on ManagedProviderUsageInvalidated {
+      rethrow;
+    } on ManagedProviderUsageQueryError catch (error) {
+      return _errorSnapshot(provider.id, previous, error.code);
+    } on Object {
+      // Keep transient query errors typed and secret-free just like refresh.
+      return _errorSnapshot(
+        provider.id,
+        previous,
+        ManagedProviderUsageQueryErrorCode.networkFailed,
+      );
+    }
+  }
+
   Future<ProviderUsageSnapshot> _commitResult({
     required ManagedProvider provider,
     required int generation,
@@ -708,7 +783,7 @@ class ManagedProviderUsageCoordinator {
             providerId: providerId,
             status: ProviderUsageStatus.error,
             lastErrorCode: code.name,
-            lastErrorMessage: ManagedProviderUsageQueryError(code).message,
+            lastErrorMessage: 'Unable to query provider usage.',
           );
 }
 

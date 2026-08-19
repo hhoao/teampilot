@@ -7,6 +7,7 @@ import 'package:teampilot/widgets/find/find_bar_widgets.dart';
 /// `assets/icons/` directory entry is not recursive), so a missing entry here
 /// silently renders empty icons instead of failing.
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   test('all find-widget svg icons are bundled and non-empty', () async {
     const icons = [
       FindBarIcons.caseSensitive,

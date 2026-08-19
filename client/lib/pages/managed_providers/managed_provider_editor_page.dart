@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
+import 'package:teampilot/models/provider_usage_snapshot.dart';
 
 import '../../cubits/managed_provider_cubit.dart';
 import '../../cubits/managed_provider_usage_cubit.dart';
@@ -30,6 +31,8 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
   late final TextEditingController _unit;
   late final TextEditingController _decimalPlaces;
   late final TextEditingController _credentialRef;
+  late final TextEditingController _credentialName;
+  late final TextEditingController _credentialField;
   late ManagedProviderKind _kind;
   late String _method;
   late bool _enabled;
@@ -59,6 +62,12 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
       text: display?.decimalPlaces?.toString() ?? '',
     );
     _credentialRef = TextEditingController(text: provider?.credentialRef ?? '');
+    _credentialName = TextEditingController(
+      text: endpoint?.credentialName ?? '',
+    );
+    _credentialField = TextEditingController(
+      text: endpoint?.credentialField ?? '',
+    );
     _kind = provider?.kind == ManagedProviderKind.unknown
         ? ManagedProviderKind.customHttp
         : provider?.kind ?? ManagedProviderKind.customHttp;
@@ -80,6 +89,8 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
       _unit,
       _decimalPlaces,
       _credentialRef,
+      _credentialName,
+      _credentialField,
     ]) {
       controller.dispose();
     }
@@ -202,7 +213,6 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
                 label: 'Credential reference',
                 controller: _credentialRef,
                 hint: 'Reference only; secret values are never shown',
-                readOnly: true,
               ),
               const SizedBox(height: 8),
               Text(
@@ -212,6 +222,22 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
                 style: TpTextStyles.of(
                   context,
                 ).smColored(Theme.of(context).colorScheme.onSurfaceVariant),
+              ),
+              const SizedBox(height: 12),
+              _field(
+                context,
+                key: const Key('managed-provider-credential-name'),
+                label: 'Credential header name',
+                controller: _credentialName,
+                hint: 'Authorization',
+              ),
+              const SizedBox(height: 12),
+              _field(
+                context,
+                key: const Key('managed-provider-credential-field'),
+                label: 'Credential field',
+                controller: _credentialField,
+                hint: 'accessToken',
               ),
               const SizedBox(height: 20),
               _sectionTitle(context, 'Display configuration'),
@@ -360,6 +386,27 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
       setState(() => _formError = 'Name and adapter are required.');
       return;
     }
+    if (adapter == 'http-json') {
+      if (endpoint.isEmpty) {
+        setState(
+          () =>
+              _formError = 'Endpoint URL is required for HTTP JSON providers.',
+        );
+        return;
+      }
+      final uri = Uri.tryParse(endpoint);
+      final loopbackHttp =
+          uri?.scheme == 'http' && _isLoopbackHost(uri?.host ?? '');
+      if (uri == null ||
+          uri.host.isEmpty ||
+          uri.scheme != 'https' && !loopbackHttp) {
+        setState(
+          () => _formError =
+              'Use an HTTPS endpoint, or an HTTP loopback endpoint.',
+        );
+        return;
+      }
+    }
 
     final body = _decodeObject(_requestMapping.text);
     final decimalPlaces = int.tryParse(_decimalPlaces.text.trim());
@@ -397,14 +444,23 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
         measuresPath: _measuresPath.text.trim().isEmpty
             ? null
             : _measuresPath.text.trim(),
-        body: body ?? const {},
-        credentialName: current?.endpointConfig.credentialName,
-        credentialField: current?.endpointConfig.credentialField,
+        body: body,
+        credentialName: _credentialName.text.trim().isEmpty
+            ? null
+            : _credentialName.text.trim(),
+        credentialField: _credentialField.text.trim().isEmpty
+            ? null
+            : _credentialField.text.trim(),
         credentialPlacement:
             current?.endpointConfig.credentialPlacement ?? 'header',
         credentialPrefix: current?.endpointConfig.credentialPrefix,
+        headers: current?.endpointConfig.headers ?? const {},
+        fieldMappings: current?.endpointConfig.fieldMappings ?? const {},
+        unknownFields: current?.endpointConfig.unknownFields ?? const {},
       ),
-      credentialRef: current?.credentialRef,
+      credentialRef: _credentialRef.text.trim().isEmpty
+          ? null
+          : _credentialRef.text.trim(),
       displayConfig: ManagedProviderDisplayConfig(
         currency: _currency.text.trim().isEmpty ? null : _currency.text.trim(),
         unit: _unit.text.trim().isEmpty ? null : _unit.text.trim(),
@@ -412,7 +468,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
         showPercent: _showPercent,
       ),
       enabled: _enabled,
-      createdAt: current?.createdAt == 0 ? now : current!.createdAt,
+      createdAt: current?.createdAt ?? now,
       updatedAt: now,
     );
     final cubit = context.read<ManagedProviderCubit>();
@@ -444,13 +500,15 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
   Future<void> _testQuery() async {
     final provider = _provider;
     if (provider == null) return;
-    await context.read<ManagedProviderUsageCubit>().refreshOne(provider.id);
+    final snapshot = await context.read<ManagedProviderUsageCubit>().queryOne(
+      provider.id,
+    );
     if (!mounted) return;
-    final state = context.read<ManagedProviderUsageCubit>().state;
-    if (state.errorCode != null) {
+    if (snapshot?.status == ProviderUsageStatus.error) {
       AppToast.show(
         context,
-        message: state.errorMessage ?? 'Unable to query provider usage.',
+        message:
+            snapshot?.lastErrorMessage ?? 'Unable to query provider usage.',
         variant: TpToastVariant.error,
       );
     } else {
@@ -490,6 +548,9 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
     if (value.isEmpty) return '{}';
     return const JsonEncoder.withIndent('  ').convert(value);
   }
+
+  static bool _isLoopbackHost(String host) =>
+      host == 'localhost' || host == '127.0.0.1' || host == '::1';
 }
 
 class _ErrorBanner extends StatelessWidget {

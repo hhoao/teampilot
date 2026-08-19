@@ -6,6 +6,7 @@ import 'package:teampilot/services/team/terminal_activity_tracker.dart';
 import 'package:teampilot/services/terminal/member_turn_interrupt_service.dart';
 import 'package:teampilot/services/terminal/terminal_launch_controller.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
+import '../../support/rust_lib_test_init.dart';
 
 class _FakeShell extends TerminalSession {
   _FakeShell({required this.connected})
@@ -30,6 +31,7 @@ class _FakeShell extends TerminalSession {
 }
 
 void main() {
+  setUpAll(initRustLibForTests);
   test('writes Ctrl+C and aborts inject first', () async {
     final aborted = <String>[];
     final writes = <String>[];

@@ -21,6 +21,7 @@ import 'package:teampilot/services/terminal/terminal_launch_controller.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 
 import '../support/post_frame_test_harness.dart';
+import '../support/rust_lib_test_init.dart';
 
 class _FakeShell extends TerminalSession {
   _FakeShell({required this.connected})
@@ -62,10 +63,7 @@ class _StubTool implements CliToolDefinition {
 CliToolRegistry _ptyRegistry() {
   final registry = CliToolRegistry();
   registry.register(
-    _StubTool(
-      id: CliTool.claude,
-      chatCap: const ClaudeChatInteraction(),
-    ),
+    _StubTool(id: CliTool.claude, chatCap: const ClaudeChatInteraction()),
   );
   return registry;
 }
@@ -73,15 +71,13 @@ CliToolRegistry _ptyRegistry() {
 CliToolRegistry _opencodeRegistry() {
   final registry = CliToolRegistry();
   registry.register(
-    _StubTool(
-      id: CliTool.opencode,
-      chatCap: const OpencodeChatInteraction(),
-    ),
+    _StubTool(id: CliTool.opencode, chatCap: const OpencodeChatInteraction()),
   );
   return registry;
 }
 
 void main() {
+  setUpAll(initRustLibForTests);
   setUp(setUpTestAppStorage);
   tearDown(tearDownTestAppStorage);
 
@@ -251,18 +247,23 @@ void main() {
       );
     }
 
-    void _seedWaitingPermissionTab(ChatCubit cubit, {required String sessionId}) {
-      final tab = ChatTab(
-        info: ChatTabInfo(id: sessionId, title: sessionId, subtitle: ''),
-        cliTeamName: sessionId,
-        selectedMemberId: sessionId,
-        workspaceId: 'workspace-1',
-      )..persistedSession = AppSession(
-        sessionId: sessionId,
-        workspaceId: 'workspace-1',
-        cli: CliTool.opencode,
-        createdAt: 0,
-      );
+    void _seedWaitingPermissionTab(
+      ChatCubit cubit, {
+      required String sessionId,
+    }) {
+      final tab =
+          ChatTab(
+              info: ChatTabInfo(id: sessionId, title: sessionId, subtitle: ''),
+              cliTeamName: sessionId,
+              selectedMemberId: sessionId,
+              workspaceId: 'workspace-1',
+            )
+            ..persistedSession = AppSession(
+              sessionId: sessionId,
+              workspaceId: 'workspace-1',
+              cli: CliTool.opencode,
+              createdAt: 0,
+            );
       cubit.tabStore.registerSession(tab);
       cubit.refreshActiveWorkspaceTabs();
       attention.applyEvent(
@@ -281,39 +282,41 @@ void main() {
       );
     }
 
-    test('answerPermissionRequest ok stores reply and marks answered',
-        () async {
-      final answerService = AskUserQuestionAnswerService(
-        registry: _opencodeRegistry(),
-        store: store,
-      );
-      final cubit = _buildCubit(answerService: answerService);
-      addTearDown(cubit.close);
+    test(
+      'answerPermissionRequest ok stores reply and marks answered',
+      () async {
+        final answerService = AskUserQuestionAnswerService(
+          registry: _opencodeRegistry(),
+          store: store,
+        );
+        final cubit = _buildCubit(answerService: answerService);
+        addTearDown(cubit.close);
 
-      const sessionId = 'sess-perm';
-      _seedWaitingPermissionTab(cubit, sessionId: sessionId);
+        const sessionId = 'sess-perm';
+        _seedWaitingPermissionTab(cubit, sessionId: sessionId);
 
-      final result = await cubit.answerPermissionRequest(
-        sessionId: sessionId,
-        memberId: sessionId,
-        reply: 'always',
-      );
+        final result = await cubit.answerPermissionRequest(
+          sessionId: sessionId,
+          memberId: sessionId,
+          reply: 'always',
+        );
 
-      expect(result, isA<AskUserAnswerOk>());
-      final taken = store.take(
-        sessionId: sessionId,
-        memberId: sessionId,
-        requestId: 'perm-1',
-      );
-      expect(taken, isNotNull);
-      expect(taken!.permissionReply, 'always');
-      final entry = attention.state.entryFor(
-        sessionId: sessionId,
-        memberId: sessionId,
-      );
-      expect(entry?.attention, AgentSeatAttention.working);
-      expect(entry?.dismissedAskRequestId, 'perm-1');
-    });
+        expect(result, isA<AskUserAnswerOk>());
+        final taken = store.take(
+          sessionId: sessionId,
+          memberId: sessionId,
+          requestId: 'perm-1',
+        );
+        expect(taken, isNotNull);
+        expect(taken!.permissionReply, 'always');
+        final entry = attention.state.entryFor(
+          sessionId: sessionId,
+          memberId: sessionId,
+        );
+        expect(entry?.attention, AgentSeatAttention.working);
+        expect(entry?.dismissedAskRequestId, 'perm-1');
+      },
+    );
 
     test('answerPermissionRequest failed does not mark answered', () async {
       // Claude registry → pluginSdkReply capability absent → unsupported.
