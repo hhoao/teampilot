@@ -115,6 +115,36 @@ void main() {
     expect(state.messages, hasLength(2));
   });
 
+  test('complete JSON at EOF without newline is consumed', () async {
+    await fs.writeString(path, '${userLine('u1', 'hi')}\n');
+    final reader = _reader();
+    final state = TailReaderState();
+    await reader.refresh(fs: fs, path: path, state: state);
+
+    await fs.appendString(path, assistantLine('a1', 'final'));
+    final result = await reader.refresh(fs: fs, path: path, state: state);
+    expect(result.changed, isTrue);
+    expect(
+      state.messages.map((m) => (m.parts.single as AiTextPart).text).toList(),
+      ['hi', 'final'],
+    );
+  });
+
+  test('newline after consumed EOF remainder does not duplicate', () async {
+    await fs.writeString(path, '${userLine('u1', 'hi')}\n');
+    final reader = _reader();
+    final state = TailReaderState();
+    await reader.refresh(fs: fs, path: path, state: state);
+
+    await fs.appendString(path, assistantLine('a1', 'final'));
+    await reader.refresh(fs: fs, path: path, state: state);
+    await fs.appendString(path, '\n');
+    final result = await reader.refresh(fs: fs, path: path, state: state);
+    expect(result.changed, isFalse);
+    expect(state.messages, hasLength(2));
+    expect((state.messages[1].parts.single as AiTextPart).text, 'final');
+  });
+
   test('file shrink resets state', () async {
     await fs.writeString(path, '${userLine('u1', 'hi')}\n');
     final reader = _reader();

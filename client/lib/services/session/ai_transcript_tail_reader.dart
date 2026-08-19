@@ -14,6 +14,8 @@ typedef EventDecoder =
 /// 整行字节 hash。每次 refresh 读尾部窗口,从锚点行之后逐事件
 /// [AiTranscriptLineAppend] 合并进 [TailReaderState.messages](原地变异)。
 /// 锚点找不到(重写/压缩/截断)→ 全量重建。
+/// EOF 无 `\n` 的残留若能解码为完整 JSON 对象则当一行消费(与全量 parse
+/// 一致);半行仍推迟到下次补全。
 class AiTranscriptTailReader {
   AiTranscriptTailReader({
     required AiTranscriptLineAppend lineAppend,
@@ -116,7 +118,8 @@ class AiTranscriptTailReader {
         start = i + 1;
       }
     }
-    // 最后一段若以 \n 结尾则无残留,否则是半行(本轮忽略,下轮补全)。
+    // Suffix windows always end at EOF. A remainder without `\n` is a
+    // complete event when it decodes; otherwise it is still mid-write.
 
     var anchorIndex = -1;
     for (var i = 0; i < lines.length; i++) {
@@ -127,13 +130,16 @@ class AiTranscriptTailReader {
     }
     if (anchorIndex < 0) return null;
 
-    final newLines = lines.sublist(anchorIndex + 1);
-    if (newLines.isEmpty) {
+    final tail = <List<int>>[...lines.sublist(anchorIndex + 1)];
+    if (start < bytes.length) {
+      tail.add(bytes.sublist(start));
+    }
+    if (tail.isEmpty) {
       return const TailRefreshResult(changed: false, rebuilt: false);
     }
-    final events = await _decodeEvents(newLines);
+    final events = await _decodeEvents(tail);
     var consumedAny = false;
-    for (var i = 0; i < newLines.length; i++) {
+    for (var i = 0; i < tail.length; i++) {
       final event = events[i];
       if (event == null) continue;
       final before = state.fallbackSeq;
@@ -143,7 +149,7 @@ class AiTranscriptTailReader {
         fallbackId: () => '$_fallbackPrefix-${state.fallbackSeq++}',
       );
       if (ok) {
-        state.anchorHash = _lineHash(newLines[i]);
+        state.anchorHash = _lineHash(tail[i]);
         consumedAny = true;
       } else {
         state.fallbackSeq = before; // 未消费则不消耗序号
