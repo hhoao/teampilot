@@ -65,6 +65,15 @@ void main() {
     expect(prompt, contains('- /repo/a'));
   });
 
+  test('mixed role prompt documents the TeamBus XML envelope', () {
+    const member = TeamMemberConfig(id: 'm1', name: 'Member');
+    final prompt = MemberRoleProvision.composeRolePrompt(
+      member: member,
+      mixed: true,
+    );
+    expect(prompt, contains('<teambus type="...">...</teambus>'));
+  });
+
   test('syncRolePromptFile writes dirs-only role.md for empty-role member',
       () async {
     final fs = LocalFilesystem();

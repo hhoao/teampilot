@@ -32,6 +32,10 @@ void main() {
     expect(opencodeIdlePluginSource, contains('"decision":"block"'));
     expect(opencodeIdlePluginSource, contains('client.session.prompt'));
     expect(opencodeIdlePluginSource, contains('wait_for_message'));
+    expect(
+      opencodeIdlePluginSource,
+      contains('<teambus type=\\"stop_reason\\">'),
+    );
   });
 
   test(

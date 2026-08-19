@@ -4,10 +4,20 @@ import 'package:teampilot/services/team_bus/idle_notification.dart';
 import 'package:teampilot/services/team_bus/persistence/in_memory_bus_message_log.dart';
 import 'package:teampilot/services/team_bus/teammate_roster_profile.dart';
 import 'package:teampilot/services/team_bus/team_bus.dart';
+import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_handler.dart';
 
 import 'support/fake_member_launcher.dart';
 
 void main() {
+  test('runtime control prompts use TeamBus XML wrappers', () {
+    expect(TeamBus.doorbellNotice, startsWith('<teambus type="mail">'));
+    expect(TeamBus.taskDoorbellNotice, startsWith('<teambus type="task">'));
+    expect(
+      TeammateBusMcpHandler.stopRedirectReason,
+      startsWith('<teambus type="stop_reason">'),
+    );
+  });
+
   test('IdleNotification round-trips JSON', () {
     final n = IdleNotification.fromWorker(
       memberId: 'developer',
@@ -19,6 +29,10 @@ void main() {
     expect(parsed.displayName, 'Developer');
     expect(parsed.idleReason, IdleReason.available);
     expect(parsed.summary, 'done step 1');
+    expect(
+      parsed.formatForLeader(),
+      startsWith('<teambus type="idle_notification"'),
+    );
     expect(parsed.formatForLeader(), contains('IDLE NOTIFICATION'));
   });
 

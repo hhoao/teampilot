@@ -26,6 +26,7 @@ import 'tasks/team_task.dart';
 import 'team_message.dart';
 import 'teammate_roster_profile.dart';
 import 'teammate_snapshot.dart';
+import 'teambus_prompt.dart';
 
 /// 进程内消息总线：路由 + 每成员信箱 + 纯函数状态机（[PresenceReducer]）+ 效果即
 /// 数据（[BusEffect]）+ 可插拔协调策略（[CoordinationPolicy]）+ 惰性物化。
@@ -70,17 +71,23 @@ class TeamBus implements CoordinationView {
   /// 门铃：信箱有积压时提示 pull。只对 idle-at-prompt 成员注入(parked 成员直收，
   /// 永不响门铃)，故用**非阻塞**的 read_messages —— cursor 等 push 成员被唤醒后
   /// 不能去调会超时的 wait_for_message；read_messages 秒回并抽干信箱。
-  static const String doorbellNotice =
-      '[teammate-bus] You have unread teammate messages — call '
+  static const _doorbellNoticeBody =
+      'You have unread teammate messages — call '
       'read_messages(mark_read: true) to read them now, then handle them. '
       '(From the bus, not your operator.)';
+
+  static String get doorbellNotice =>
+      TeamBusPrompt.format(type: 'mail', content: _doorbellNoticeBody);
 
   /// 队列有可认领任务、要敲一个 idle-at-prompt 的 worker 开工时注入的提示。与
   /// [doorbellNotice]（邮件→read_messages）区分：这里要 worker 去 `wait_for_message`，
   /// 它会原子认领下一个队列任务。
-  static const String taskDoorbellNotice =
-      '[teammate-bus] Queued work is available — call wait_for_message now to '
+  static const _taskDoorbellNoticeBody =
+      'Queued work is available — call wait_for_message now to '
       'claim and start your next task. (From the bus, not your operator.)';
+
+  static String get taskDoorbellNotice =>
+      TeamBusPrompt.format(type: 'task', content: _taskDoorbellNoticeBody);
 
   /// [TeamMessage.from] when the human operator submits while the member waits.
   static const String userSenderId = 'user';

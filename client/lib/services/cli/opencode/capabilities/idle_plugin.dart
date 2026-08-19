@@ -18,10 +18,10 @@ export const TeampilotIdleBus = async (input, options) => {
   if (session) headers["X-Session"] = String(session);
   if (token) headers["X-Bus-Token"] = String(token);
   const redirect =
-    "[teammate-bus] Do not stop. Call wait_for_message — it blocks until you " +
+    "<teambus type=\"stop_reason\">Do not stop. Call wait_for_message — it blocks until you " +
     "have something to do and returns either teammate/operator messages or a " +
     "task claimed for you from the work queue. You coordinate through the " +
-    "bus, not by ending your turn.";
+    "bus, not by ending your turn.</teambus>";
 
   const sessionIdOf = (event) =>
     event?.properties?.sessionID ??

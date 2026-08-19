@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'teambus_prompt.dart';
+
 /// 对齐 Claude Code `IdleNotificationMessage`（worker turn 结束 → leader inbox）。
 enum IdleReason {
   available('available'),
@@ -148,6 +150,6 @@ class IdleNotification {
       'send_message, call read_messages to see their reply; if there is no '
       'result yet, send_message to ask for status or assign the next task.)',
     );
-    return buffer.toString();
+    return TeamBusPrompt.format(type: type, content: buffer.toString());
   }
 }
