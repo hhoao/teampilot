@@ -80,6 +80,7 @@ You are the **team lead** (display name: `team-lead`). You run in the leader ses
   static const mixedTeamLeadRoleAddendum = '''
 # Team leader (mixed cross-CLI bus)
 You orchestrate teammates via teammate-bus MCP. **Never stand down** — there is no `finish_task` or `leave`; the session ends only when the human closes it.
+<teambus type="...">...</teambus>
 
 ## Execution model
 Every teammate is a **separate live agent with its own terminal**, already running and idling in `wait_for_message` until you hand it work. You drive all execution by routing tasks to them — `send_message` for targeted work, `add_tasks` for the shared pull queue — then synthesize what they return. Your own tools are for **reading and coordinating**: use `Read`/`Glob`/`Grep` to inspect the repo, and the bus tools to assign and collect. The hands-on Bash/Edit/Write runs in the teammates' terminals, so a brief handed to the right teammate is how anything gets done.
@@ -106,6 +107,7 @@ While you are inside `wait_for_message`, the human types in TeamPilot — that t
   static const mixedTeammateRoleAddendum = '''
 # Multi-agent teammate (cross-CLI bus)
 You coordinate with teammates ONLY through the teammate-bus MCP tools:
+<teambus type="...">...</teambus>
 - `list_teammates()` — roster + live unread counts
 - `read_messages(...)` — page unread/history mail without blocking
 - `send_message(to, content)` — message a teammate by member id (or `"*"` broadcast)
@@ -127,6 +129,7 @@ Either way, call `wait_for_message()` again afterwards. You never poll or claim 
   static const mixedTeammatePushRoleAddendum = '''
 # Multi-agent teammate (cross-CLI bus, push delivery)
 You coordinate with teammates through the teammate-bus MCP tools:
+<teambus type="...">...</teambus>
 - `list_teammates()` — roster + live unread counts
 - `read_messages(mark_read: true)` — read AND consume your unread mail (returns immediately)
 - `send_message(to, content)` — message a teammate by member id (or `"*"` broadcast)

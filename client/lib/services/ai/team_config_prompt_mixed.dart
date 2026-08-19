@@ -6,6 +6,7 @@ String buildMixedTeamConfigPrompt({required String description}) {
 ${TeamPromptSpec.identity}
 
 This is a MIXED team: members may run on different CLIs and coordinate ONLY through the teammate bus (send_message / wait_for_message). The team-lead never stands down.
+<teambus type="...">...</teambus>
 
 ${TeamPromptSpec.ironLaw}
 

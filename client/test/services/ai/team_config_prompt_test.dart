@@ -32,6 +32,7 @@ void main() {
     );
     expect(p, contains('MIXED team'));
     expect(p, contains('teammate bus'));
+    expect(p, contains('<teambus type="...">...</teambus>'));
     expect(p.contains('"cli"'), isFalse);
     expect(p.contains('"model"'), isFalse);
     expect(p.contains('"effort"'), isFalse);
