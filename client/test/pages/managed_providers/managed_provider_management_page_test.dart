@@ -53,14 +53,15 @@ ProviderUsageSnapshot _snapshot({
 );
 
 class _Adapter implements ManagedProviderUsageAdapter {
-  _Adapter(this.result);
+  _Adapter(this.result, {this.adapterId = 'fake'});
 
   Future<ProviderUsageSnapshot> result;
+  final String adapterId;
   Object? error;
   int calls = 0;
 
   @override
-  String get id => 'fake';
+  String get id => adapterId;
 
   @override
   Future<ProviderUsageSnapshot> fetch(
@@ -140,6 +141,7 @@ void main() {
   late ManagedProviderCubit providerCubit;
   late ManagedProviderUsageCubit usageCubit;
   late _Adapter adapter;
+  late _Adapter httpJsonAdapter;
   late _RecordingNavigatorObserver navigatorObserver;
   late _MemorySecureKeyValueStore secureStore;
 
@@ -156,12 +158,16 @@ void main() {
       onProvidersDeleted: usageRepository.deleteMany,
     );
     adapter = _Adapter(Future.value(_snapshot()));
+    httpJsonAdapter = _Adapter(
+      Future.value(_snapshot()),
+      adapterId: 'http-json',
+    );
     navigatorObserver = _RecordingNavigatorObserver();
     secureStore = _MemorySecureKeyValueStore();
     final coordinator = ManagedProviderUsageCoordinator(
       providerRepository: providerRepository,
       usageRepository: usageRepository,
-      registry: ManagedProviderUsageRegistry([adapter]),
+      registry: ManagedProviderUsageRegistry([adapter, httpJsonAdapter]),
       credentials: _NoCredentials(),
       http: _NoHttp(),
       now: () => DateTime.fromMillisecondsSinceEpoch(100),
@@ -492,6 +498,84 @@ void main() {
     ).read(provider.credentialRef!);
     expect(scope.valueFor('apiKey'), 'sk-test-secret');
   });
+
+  testWidgets('first query runs after saving a new first-query preset', (
+    tester,
+  ) async {
+    providerCubit.emit(
+      ManagedProviderState(status: ManagedProviderLoadStatus.ready),
+    );
+    usageCubit.emit(
+      ManagedProviderUsageState(status: ManagedProviderUsageLoadStatus.ready),
+    );
+    await pumpPage(tester);
+
+    await openNewEditor(tester);
+    await applyPreset(tester, 'DeepSeek');
+    await tester.enterText(
+      find.byKey(const Key('managed-provider-credential-secret')),
+      'sk-test-secret',
+    );
+    await _scrollToEditorBottom(tester);
+    await tester.runAsync(() async {
+      tester
+          .widget<TpButton>(find.byKey(const Key('managed-provider-save')))
+          .onPressed!
+          .call();
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    });
+    await tester.pumpAndSettle();
+
+    expect(httpJsonAdapter.calls, 1);
+    expect(find.byKey(const Key('managed-provider-editor-page')), findsNothing);
+    expect(find.text('12.50 USD'), findsOneWidget);
+  });
+
+  testWidgets(
+    'first query failure preserves the saved provider and shows list error',
+    (tester) async {
+      providerCubit.emit(
+        ManagedProviderState(status: ManagedProviderLoadStatus.ready),
+      );
+      usageCubit.emit(
+        ManagedProviderUsageState(status: ManagedProviderUsageLoadStatus.ready),
+      );
+      httpJsonAdapter.error = const ManagedProviderUsageQueryError(
+        ManagedProviderUsageQueryErrorCode.networkFailed,
+      );
+      await pumpPage(tester);
+
+      await openNewEditor(tester);
+      await applyPreset(tester, 'DeepSeek');
+      await tester.enterText(
+        find.byKey(const Key('managed-provider-credential-secret')),
+        'sk-test-secret',
+      );
+      await _scrollToEditorBottom(tester);
+      await tester.runAsync(() async {
+        tester
+            .widget<TpButton>(find.byKey(const Key('managed-provider-save')))
+            .onPressed!
+            .call();
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+      });
+      await tester.pumpAndSettle();
+
+      expect(httpJsonAdapter.calls, 1);
+      expect(providerCubit.state.providers, hasLength(1));
+      expect(providerCubit.state.providers.single.name, 'DeepSeek');
+      expect(
+        find.byKey(const Key('managed-provider-query-error')),
+        findsOneWidget,
+      );
+      expect(find.text('Provider network request failed.'), findsOneWidget);
+      final provider = providerCubit.state.providers.single;
+      final scope = await ManagedProviderSecretStore(
+        secureStore,
+      ).read(provider.credentialRef!);
+      expect(scope.valueFor('apiKey'), 'sk-test-secret');
+    },
+  );
 
   testWidgets('editing with an empty API key preserves the existing secret', (
     tester,

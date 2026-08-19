@@ -10,6 +10,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/managed_provider.dart';
 import '../../models/managed_provider_editor_schema.dart';
 import '../../models/provider_usage_snapshot.dart';
+import '../../services/provider_usage/managed_provider_credential_transaction.dart';
 import '../../services/provider_usage/managed_provider_presets.dart';
 import '../../services/provider_usage/managed_provider_secret_store.dart';
 import '../../widgets/app_toast/app_toast.dart';
@@ -480,12 +481,17 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
     });
     final cubit = context.read<ManagedProviderCubit>();
     final secretStore = context.read<ManagedProviderSecretStore>();
+    final credentialTransaction = ManagedProviderCredentialTransaction(
+      secretStore,
+    );
     final now = DateTime.now().millisecondsSinceEpoch;
     final current = _provider;
+    final shouldRunFirstQuery = current == null && _schema.firstQuery;
     final providerId = current?.id ?? 'managed-$now';
     final credentialField = _credentialField.text.trim();
     var credentialRef = _credentialRef.text.trim();
     final credentialSecret = _credentialSecret.text.trim();
+    var credentialValues = const <String, String>{};
     if (credentialSecret.isNotEmpty) {
       if (credentialField.isEmpty) {
         setState(() {
@@ -497,18 +503,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
       credentialRef = credentialRef.isEmpty
           ? 'managed-provider:$providerId'
           : credentialRef;
-      try {
-        await secretStore.write(credentialRef, {
-          credentialField: credentialSecret,
-        });
-      } on Object {
-        if (!mounted) return;
-        setState(() {
-          _saving = false;
-          _formError = context.l10n.managedProvidersCredentialSaveFailed;
-        });
-        return;
-      }
+      credentialValues = {credentialField: credentialSecret};
     }
     final next = ManagedProvider(
       id: providerId,
@@ -556,8 +551,41 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
           : current.createdAt,
       updatedAt: now,
     );
-    await cubit.upsert(next);
+    try {
+      await credentialTransaction.run<void>(
+        credentialRef: credentialRef,
+        nextValues: credentialValues,
+        persistProvider: () async {
+          await cubit.upsert(next);
+          if (cubit.state.errorCode != null) {
+            throw const _ManagedProviderEditorPersistenceFailed();
+          }
+        },
+      );
+    } on _ManagedProviderEditorPersistenceFailed {
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _formError = managedProviderErrorMessage(
+          context.l10n,
+          providerCode: cubit.state.errorCode,
+          detail: cubit.state.errorMessage,
+        );
+      });
+      return;
+    } on Object {
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _formError = context.l10n.managedProvidersCredentialSaveFailed;
+      });
+      return;
+    }
     if (!mounted) return;
+    if (shouldRunFirstQuery) {
+      await context.read<ManagedProviderUsageCubit>().queryProvider(next);
+      if (!mounted) return;
+    }
     setState(() => _saving = false);
     if (cubit.state.errorCode != null) {
       setState(
@@ -745,6 +773,10 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
     }
     return false;
   }
+}
+
+class _ManagedProviderEditorPersistenceFailed implements Exception {
+  const _ManagedProviderEditorPersistenceFailed();
 }
 
 class _EmbeddedEditorHeader extends StatelessWidget {
