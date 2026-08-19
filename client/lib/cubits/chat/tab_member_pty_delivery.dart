@@ -7,6 +7,7 @@ import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/team_bus/mailbox_delivery.dart';
 import '../../services/team_bus/team_bus.dart';
 import '../../services/terminal/fullscreen_cr_ack_config.dart';
+import '../../services/terminal/fullscreen_input_readiness.dart';
 import '../../services/terminal/fullscreen_pty_automation.dart';
 import '../../services/terminal/member_pty_inject_service.dart';
 import '../../services/terminal/prompt_submit_ack_tracker.dart';
@@ -60,12 +61,61 @@ final class TabMemberPtyDelivery {
   final void Function(String sessionId)? _onUserActivity;
   late final MemberPtyInjectService _ptyInject;
   final PromptSubmitAckTracker _promptAckTracker;
+  final Map<String, DateTime> _lastBootGateNudge = {};
 
   TeamBus? busForSession(String sessionId) =>
       _tabStore.openTabBySessionId(sessionId)?.teamBus;
 
   bool hasPendingRetry(String sessionId, String memberId) =>
       _ptyInject.hasPendingRetry(sessionId, memberId);
+
+  static const _composerProbeRows = 52;
+  static const _bootGateNudgeGap = Duration(milliseconds: 600);
+
+  TerminalBehaviorCapability? _behaviorFor(String sessionId, String memberId) {
+    return CliToolRegistry.builtIn().capability<TerminalBehaviorCapability>(
+      _memberCli(sessionId, memberId),
+    );
+  }
+
+  Future<void> syncMemberInputSurface(String sessionId, String memberId) async {
+    final shell =
+        _tabStore.openTabBySessionId(sessionId)?.memberShells[memberId];
+    if (shell == null) return;
+    await shell.probe.syncDisplayGrid();
+  }
+
+  bool isMemberComposerSurfaceReady(String sessionId, String memberId) {
+    final shell =
+        _tabStore.openTabBySessionId(sessionId)?.memberShells[memberId];
+    if (shell == null || !shell.activityTracker.isBootFrameReady) {
+      return false;
+    }
+    final window = shell.probe.describeProbeWindow(scanRows: _composerProbeRows);
+    return isTerminalInputSurfaceReady(
+      readiness: _behaviorFor(sessionId, memberId)?.inputReadiness,
+      probeWindow: window,
+    );
+  }
+
+  void maybeNudgeMemberBootGate(String sessionId, String memberId) {
+    final shell =
+        _tabStore.openTabBySessionId(sessionId)?.memberShells[memberId];
+    if (shell == null) return;
+    final readiness = _behaviorFor(sessionId, memberId)?.inputReadiness;
+    if (readiness == null || !readiness.waitsForSurface) return;
+    final window = shell.probe.describeProbeWindow(scanRows: _composerProbeRows);
+    if (!readiness.needsBootGateNudge(window)) return;
+    final key = '$sessionId:$memberId';
+    final now = DateTime.now();
+    final last = _lastBootGateNudge[key];
+    if (last != null && now.difference(last) < _bootGateNudgeGap) return;
+    _lastBootGateNudge[key] = now;
+    appLogger.d(
+      '[session-runtime] boot-gate nudge member=$memberId session=$sessionId',
+    );
+    shell.input.writeToPty('\r');
+  }
 
   bool isBusy(String sessionId, String memberId) =>
       _ptyInject.isBusy(sessionId, memberId);
@@ -118,6 +168,9 @@ final class TabMemberPtyDelivery {
       'preview=${_doorbellLogPreview(trimmed)}',
     );
     if (usesFullScreen) {
+      if (isMailDoorbell) {
+        await shell.probe.syncDisplayGrid();
+      }
       if (_deferMailDoorbellIfBooting(sessionId, memberId, shell, trimmed)) {
         return;
       }
@@ -166,6 +219,9 @@ final class TabMemberPtyDelivery {
     if (trimmed.isEmpty) return;
     final isMailDoorbell = _isMailDoorbellText(trimmed);
     if (isMailDoorbell && !_beginMailDelivery(sessionId, memberId)) return;
+    if (isMailDoorbell) {
+      await shell.probe.syncDisplayGrid();
+    }
     if (_deferMailDoorbellIfBooting(sessionId, memberId, shell, trimmed)) {
       return;
     }
@@ -559,7 +615,7 @@ final class TabMemberPtyDelivery {
 
   /// 门铃投递的 boot 门控:全屏 TUI 未就绪时推迟到重试 tick,避免盲粘启动屏。
   /// 返回 true 表示已推迟(调用方应 return)。只对邮件门铃生效——operator 直投
-  /// 已由 [ensureMemberInputReady] 等过 boot frame。
+  /// 已由 [ensureMemberInputReady] 等过 composer 表面。
   bool _deferMailDoorbellIfBooting(
     String sessionId,
     String memberId,
@@ -567,10 +623,13 @@ final class TabMemberPtyDelivery {
     String text,
   ) {
     if (!_isMailDoorbellText(text)) return false;
-    if (shell.activityTracker.isBootFrameReady) return false;
+    if (isMemberComposerSurfaceReady(sessionId, memberId)) return false;
+    if (shell.activityTracker.isBootFrameReady) {
+      maybeNudgeMemberBootGate(sessionId, memberId);
+    }
     appLogger.d(
-      '[session-runtime] doorbell deferred (boot) member=$memberId '
-      'session=$sessionId',
+      '[session-runtime] doorbell deferred (surface) member=$memberId '
+      'session=$sessionId boot=${shell.activityTracker.isBootFrameReady}',
     );
     _ptyInject.deferForBoot(sessionId, memberId, text);
     return true;

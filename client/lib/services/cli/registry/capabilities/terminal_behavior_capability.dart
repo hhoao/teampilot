@@ -1,5 +1,6 @@
 import '../../../workspace_dnd/path_reference_formatter.dart';
 import '../../../terminal/fullscreen_cr_ack_config.dart';
+import '../../../terminal/fullscreen_input_readiness.dart';
 import '../cli_capability.dart';
 
 /// How a dropped file path is injected into a CLI's input box.
@@ -75,6 +76,9 @@ abstract interface class TerminalBehaviorCapability implements CliCapability {
   /// on tall viewports, and required for
   /// [FullscreenCrAckStrategy.composerMovesDown] CR ACK.
   String? get fullscreenComposerPrefix;
+
+  /// When the TUI is ready for paste+CR. Default is boot-frame-only.
+  FullscreenInputReadiness get inputReadiness;
 }
 
 final class TurnInterruptPlan {

@@ -114,6 +114,26 @@ void main() {
     expect(anchor.row, 7);
   });
 
+  test('locateNeedle does not treat splash text as paste when composer is absent', () {
+    final grid = _FakeGrid.fromRows([
+      'Welcome to Codex',
+      'hello',
+      'Press enter to continue',
+    ]);
+
+    expect(
+      locateFullscreenPromptNeedle(
+        grid,
+        'hello',
+        scanRows: 24,
+        composerPrefix: '\u203a',
+      ),
+      isNull,
+      reason:
+          'without a › composer row, splash/MOTD text must not ACK a Codex paste',
+    );
+  });
+
   test('locateNeedle ignores stale transcript above composer slack window', () {
     final lines = List<String>.filled(24, '');
     lines[2] = '[teammate-bus] stale delivery in transcript';

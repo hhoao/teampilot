@@ -70,6 +70,7 @@ FullscreenPromptAnchor? locateFullscreenPromptNeedle(
     composerPrefix: composerPrefix,
     composerAboveSlack: composerAboveSlack,
   );
+  if (searchStart == null) return null;
   for (var r = rows - 1; r >= searchStart; r--) {
     final startCol = _findNeedleStartCol(grid, r, needleRunes, composerPrefix: composerPrefix);
     if (startCol >= 0) {
@@ -100,6 +101,7 @@ FullscreenPromptAnchor? locateCollapsedPasteNeedle(
     composerPrefix: composerPrefix,
     composerAboveSlack: composerAboveSlack,
   );
+  if (searchStart == null) return null;
   for (var r = rows - 1; r >= searchStart; r--) {
     final rowText = _logicalRowText(grid, r);
     final marker = PtyAutomationNeedle.collapsedPasteNeedle(rowText);
@@ -147,7 +149,9 @@ bool isComposerChromeEmpty(
   return text.substring(prefix.length).trim().isEmpty;
 }
 
-int _composerLocateStartRow(
+/// Start row for composer-scoped search, or `null` when [composerPrefix] is
+/// set but no composer chrome exists yet (splash / MOTD / trust screens).
+int? _composerLocateStartRow(
   TerminalScreenGrid grid, {
   required int windowStart,
   required int scanRows,
@@ -161,7 +165,7 @@ int _composerLocateStartRow(
     prefix,
     scanRows: scanRows,
   );
-  if (composerRow == null) return windowStart;
+  if (composerRow == null) return null;
   return (composerRow - composerAboveSlack).clamp(windowStart, grid.rows - 1);
 }
 

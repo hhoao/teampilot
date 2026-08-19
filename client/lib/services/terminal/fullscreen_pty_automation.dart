@@ -34,6 +34,7 @@ class PtyAutomationTiming {
     required this.scanRows,
     this.pollTimeout = const Duration(seconds: 3),
     this.pollInterval = const Duration(milliseconds: 100),
+    this.afterPasteAck = Duration.zero,
   });
 
   factory PtyAutomationTiming.production() => const PtyAutomationTiming(
@@ -47,6 +48,7 @@ class PtyAutomationTiming {
     scanRows: 24,
     pollTimeout: Duration(seconds: 3),
     pollInterval: Duration(milliseconds: 100),
+    afterPasteAck: Duration(milliseconds: 800),
   );
 
   factory PtyAutomationTiming.instant() => const PtyAutomationTiming(
@@ -72,6 +74,11 @@ class PtyAutomationTiming {
   final int scanRows;
   final Duration pollTimeout;
   final Duration pollInterval;
+
+  /// Extra pause after the paste needle is visible, before CR. Needed when
+  /// the TUI paints staged text while still inside bracketed-paste (Codex /
+  /// Cursor over SSH); a CR in that window becomes a newline, not submit.
+  final Duration afterPasteAck;
 }
 
 /// Content-based full-screen PTY delivery: paste → grid ACK → CR → anchor ACK.
@@ -141,6 +148,8 @@ class FullscreenPtyAutomation {
         _logProbeMiss(port, needle, text, outcome: 'pasteNotFound');
         return FullscreenPtyDeliveryOutcome.pasteNotFound;
       }
+
+      await _settleAfterPasteAck(port, pasteSettle);
 
       final crOutcome = await _pollCrUntilAnchorClears(
         port,
@@ -279,6 +288,20 @@ class FullscreenPtyAutomation {
       PtyAckPollOutcome.aborted => FullscreenPtyDeliveryOutcome.aborted,
       PtyAckPollOutcome.exhausted => FullscreenPtyDeliveryOutcome.crStuck,
     };
+  }
+
+  Future<void> _settleAfterPasteAck(
+    FullscreenPtyDeliveryPort port,
+    Duration pasteSettle,
+  ) async {
+    if (port.crAckConfig.strategy != FullscreenCrAckStrategy.composerMovesDown) {
+      return;
+    }
+    final extra = _timing.afterPasteAck > pasteSettle
+        ? _timing.afterPasteAck
+        : pasteSettle;
+    if (extra <= Duration.zero) return;
+    await Future<void>.delayed(extra);
   }
 
   /// Polls the mirror grid after paste — PTY echo and [syncDisplayGrid] can lag

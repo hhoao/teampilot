@@ -152,6 +152,15 @@ class TabSessionRuntimeCoordinator {
     return coordination.isReadyForAutomationInput(directToPty: directToPty);
   }
 
+  Future<void> syncMemberInputSurface(String sessionId, String memberId) =>
+      _delivery.syncMemberInputSurface(sessionId, memberId);
+
+  bool isMemberComposerSurfaceReady(String sessionId, String memberId) =>
+      _delivery.isMemberComposerSurfaceReady(sessionId, memberId);
+
+  void maybeNudgeMemberBootGate(String sessionId, String memberId) =>
+      _delivery.maybeNudgeMemberBootGate(sessionId, memberId);
+
   Future<void> deliverMemberStdin(
     String sessionId,
     String memberId,

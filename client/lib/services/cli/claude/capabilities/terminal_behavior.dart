@@ -1,4 +1,5 @@
 import '../../../terminal/fullscreen_cr_ack_config.dart';
+import '../../../terminal/fullscreen_input_readiness.dart';
 import '../../registry/capabilities/terminal_behavior_capability.dart';
 
 final class ClaudeTerminalBehavior implements TerminalBehaviorCapability {
@@ -26,4 +27,7 @@ final class ClaudeTerminalBehavior implements TerminalBehaviorCapability {
       FullscreenCrAckStrategy.anchorCellClears;
   @override
   String? get fullscreenComposerPrefix => '\u276f';
+  @override
+  FullscreenInputReadiness get inputReadiness =>
+      FullscreenInputReadiness.bootFrameOnly;
 }

@@ -1,5 +1,6 @@
 import '../../../agent_status/agent_attention_state.dart';
 import '../../../terminal/fullscreen_cr_ack_config.dart';
+import '../../../terminal/fullscreen_input_readiness.dart';
 import '../../registry/capabilities/terminal_behavior_capability.dart';
 
 /// Classifies Cursor PTY OSC titles into permission attention.
@@ -52,4 +53,8 @@ final class CursorTerminalBehavior implements TerminalBehaviorCapability {
       FullscreenCrAckStrategy.composerMovesDown;
   @override
   String? get fullscreenComposerPrefix => '→';
+  @override
+  FullscreenInputReadiness get inputReadiness => const FullscreenInputReadiness(
+    readyNeedles: ['→'],
+  );
 }

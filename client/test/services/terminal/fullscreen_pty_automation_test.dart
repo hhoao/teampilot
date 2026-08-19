@@ -116,6 +116,27 @@ void main() {
       );
       expect(port.clearCount, greaterThanOrEqualTo(1));
     });
+
+    test('composerMovesDown waits pasteSettle after needle before CR', () async {
+      final port = _TimestampedPastePort();
+      final delay = FullscreenPtyAutomation(timing: PtyAutomationTiming.instant());
+
+      await delay.deliverPasteAndSubmit(
+        port: port,
+        text: 'hello',
+        pasteSettle: const Duration(milliseconds: 80),
+      );
+
+      expect(port.needleSeenAt, isNotNull);
+      expect(port.crAt, isNotNull);
+      expect(
+        port.crAt!.difference(port.needleSeenAt!).inMilliseconds,
+        greaterThanOrEqualTo(80),
+        reason:
+            'Codex/Cursor still in bracketed-paste when the needle first '
+            'paints; CR before paste-end becomes a newline, not submit',
+      );
+    });
   });
 
   group('nudgeCrUntilClear', () {
@@ -300,6 +321,70 @@ void main() {
       },
     );
   });
+}
+
+final class _TimestampedPastePort implements FullscreenPtyDeliveryPort {
+  _TimestampedPastePort()
+    : _inner = FakeFullscreenPtyDeliveryPort(
+        crAckConfig: const FullscreenCrAckConfig(
+          strategy: FullscreenCrAckStrategy.composerMovesDown,
+          composerPrefix: '\u203a',
+        ),
+      );
+
+  final FakeFullscreenPtyDeliveryPort _inner;
+  DateTime? needleSeenAt;
+  DateTime? crAt;
+
+  @override
+  bool get isAborted => _inner.isAborted;
+
+  @override
+  int get viewportRows => _inner.viewportRows;
+
+  @override
+  FullscreenCrAckConfig get crAckConfig => _inner.crAckConfig;
+
+  @override
+  Future<void> syncDisplayGrid() => _inner.syncDisplayGrid();
+
+  @override
+  FullscreenPromptAnchor? locateNeedle(String needle, {int scanRows = 24}) {
+    final anchor = _inner.locateNeedle(needle, scanRows: scanRows);
+    if (anchor != null) needleSeenAt ??= DateTime.now();
+    return anchor;
+  }
+
+  @override
+  FullscreenPromptAnchor? locateCollapsedPasteNeedle({int scanRows = 24}) =>
+      _inner.locateCollapsedPasteNeedle(scanRows: scanRows);
+
+  @override
+  bool isAtAnchor(FullscreenPromptAnchor anchor) => _inner.isAtAnchor(anchor);
+
+  @override
+  bool isSubmittedAfterCr(FullscreenPromptAnchor anchor, {int scanRows = 24}) =>
+      _inner.isSubmittedAfterCr(anchor, scanRows: scanRows);
+
+  @override
+  bool isComposerChromeEmpty({int scanRows = 24}) =>
+      _inner.isComposerChromeEmpty(scanRows: scanRows);
+
+  @override
+  Future<void> clearStagedInput() => _inner.clearStagedInput();
+
+  @override
+  Future<void> pasteText(String text) => _inner.pasteText(text);
+
+  @override
+  Future<void> submitCr() async {
+    crAt ??= DateTime.now();
+    await _inner.submitCr();
+  }
+
+  @override
+  String describeProbeWindow({int scanRows = 24}) =>
+      _inner.describeProbeWindow(scanRows: scanRows);
 }
 
 final class _CursorTranscriptAfterSubmitPort

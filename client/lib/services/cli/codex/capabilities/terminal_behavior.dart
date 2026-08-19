@@ -1,4 +1,5 @@
 import '../../../terminal/fullscreen_cr_ack_config.dart';
+import '../../../terminal/fullscreen_input_readiness.dart';
 import '../../registry/capabilities/terminal_behavior_capability.dart';
 
 final class CodexTerminalBehavior implements TerminalBehaviorCapability {
@@ -13,7 +14,7 @@ final class CodexTerminalBehavior implements TerminalBehaviorCapability {
   @override
   bool get usesFullScreenInput => true;
   @override
-  Duration get fullScreenPasteSettleDelay => const Duration(milliseconds: 10);
+  Duration get fullScreenPasteSettleDelay => const Duration(milliseconds: 150);
   @override
   bool get usesGridPasteAck => true;
   @override
@@ -26,4 +27,14 @@ final class CodexTerminalBehavior implements TerminalBehaviorCapability {
       FullscreenCrAckStrategy.composerMovesDown;
   @override
   String? get fullscreenComposerPrefix => '\u203a';
+  @override
+  FullscreenInputReadiness get inputReadiness => const FullscreenInputReadiness(
+    readyNeedles: ['default \u00b7', '\u203a'],
+    bootGateNeedles: [
+      'Press enter',
+      'trust',
+      'Yes, continue',
+      'Sign in with ChatGPT',
+    ],
+  );
 }

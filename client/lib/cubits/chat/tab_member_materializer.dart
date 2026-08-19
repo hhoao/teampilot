@@ -55,8 +55,9 @@ class TabMemberMaterializer implements MemberMaterializer {
 
   /// PTY connect + TUI/agent startup complete — used before automation inject.
   ///
-  /// [directToPty]: compose-landing operator input — boot frame only, inject at
-  /// the TUI prompt (never wait for bus `wait_for_message`).
+  /// [directToPty]: compose-landing operator input — wait until the CLI's input
+  /// surface is ready (boot frame, plus composer chrome when the CLI declares
+  /// it), then inject at the TUI prompt (never wait for bus `wait_for_message`).
   Future<void> ensureMemberInputReady(
     String sessionId,
     String memberId, {
@@ -110,6 +111,20 @@ class TabMemberMaterializer implements MemberMaterializer {
             await Future<void>.delayed(const Duration(milliseconds: 100));
             continue;
           }
+          await _runtime.syncMemberInputSurface(sessionId, memberId);
+          if (!_runtime.isMemberComposerSurfaceReady(sessionId, memberId)) {
+            _runtime.maybeNudgeMemberBootGate(sessionId, memberId);
+            waitTicks++;
+            if (waitTicks == 1 || waitTicks % 50 == 0) {
+              appLogger.d(
+                '[member-materializer] input-ready blocked composer '
+                'member=$memberId session=$sessionId ticks=$waitTicks '
+                '${_inputReadyGateSummary(sessionId, memberId)}',
+              );
+            }
+            await Future<void>.delayed(const Duration(milliseconds: 100));
+            continue;
+          }
         }
         appLogger.d(
           '[member-materializer] input-ready member=$memberId '
@@ -148,6 +163,7 @@ class TabMemberMaterializer implements MemberMaterializer {
         'shellConnecting=${shell.isConnecting} '
         'boot=${shell.activityTracker.bootFrameDebugSummary} '
         'automationReady=$coord '
+        'composer=${_runtime.isMemberComposerSurfaceReady(sessionId, memberId)} '
         'selected=${tab.selectedMemberId}';
   }
 
