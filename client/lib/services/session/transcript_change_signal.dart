@@ -5,8 +5,10 @@ import 'ai_history_cache_token.dart';
 
 /// Emits when on-disk transcript content may have changed.
 ///
-/// Prefer native [FsWatcher.watchTree] when available and [watchRoot] is known;
-/// otherwise poll [cacheTokenPaths] via [Filesystem.stat] tokens.
+/// Prefer native [FsWatcher.watchTree] on the parent directory of each
+/// [cacheTokenPaths] file (Linux [Directory.watch] is not recursive — a
+/// too-high [watchRoot] would miss nested JSONL appends). Fall back to
+/// [watchRoot], then to polling [cacheTokenPaths] via [Filesystem.stat].
 class TranscriptChangeSignal {
   TranscriptChangeSignal({
     required Filesystem fs,
@@ -30,8 +32,8 @@ class TranscriptChangeSignal {
   final Duration _pollInterval;
 
   bool _started = false;
-  FsTreeWatch? _treeWatch;
-  StreamSubscription<FsChangeEvent>? _watchSub;
+  final List<FsTreeWatch> _treeWatches = [];
+  final List<StreamSubscription<FsChangeEvent>> _watchSubs = [];
   Timer? _debounceTimer;
   Timer? _pollTimer;
   String? _lastToken;
@@ -57,42 +59,73 @@ class TranscriptChangeSignal {
 
   Future<void> _arm() async {
     if (!_started) return;
-    final root = _watchRoot()?.trim();
-    if (_fs is FsWatcher && root != null && root.isNotEmpty) {
-      await _startWatch(root);
-      return;
+    if (_fs is FsWatcher) {
+      final dirs = _watchDirs();
+      if (dirs.isNotEmpty) {
+        await _startWatches(dirs);
+        return;
+      }
     }
     _startPoll();
   }
 
-  Future<void> _startWatch(String root) async {
-    if (_treeWatch != null || _watchSub != null) {
-      await _stopWatch();
-      if (!_started) return;
+  /// Directories that Linux inotify can actually see file appends in: parents
+  /// of located transcript files first, then the coarse [watchRoot].
+  List<String> _watchDirs() {
+    final List<String> paths;
+    try {
+      paths = _cacheTokenPaths();
+    } on Object {
+      return const [];
     }
+    final dirs = <String>{};
+    for (final path in paths) {
+      final trimmed = path.trim();
+      if (trimmed.isEmpty) continue;
+      final dir = _fs.pathContext.dirname(trimmed).trim();
+      if (dir.isNotEmpty) dirs.add(dir);
+    }
+    if (dirs.isNotEmpty) return dirs.toList(growable: false);
+    final root = _watchRoot()?.trim() ?? '';
+    if (root.isNotEmpty) return [root];
+    return const [];
+  }
+
+  Future<void> _startWatches(List<String> dirs) async {
+    await _stopWatch();
+    if (!_started) return;
     final watcher = _fs as FsWatcher;
     try {
-      final treeWatch = watcher.watchTree(root);
-      _treeWatch = treeWatch;
-      _watchSub = treeWatch.events.listen(
-        (_) => _scheduleDebouncedNotify(),
-        cancelOnError: false,
-      );
+      for (final dir in dirs) {
+        final treeWatch = watcher.watchTree(dir);
+        _treeWatches.add(treeWatch);
+        _watchSubs.add(
+          treeWatch.events.listen(
+            (_) => _scheduleDebouncedNotify(),
+            cancelOnError: false,
+          ),
+        );
+      }
+      if (_treeWatches.isEmpty) _startPoll();
     } on Object {
-      // Fall back to polling when watch setup fails.
+      await _stopWatch();
       _startPoll();
     }
   }
 
   Future<void> _stopWatch() async {
-    final sub = _watchSub;
-    _watchSub = null;
-    final treeWatch = _treeWatch;
-    _treeWatch = null;
+    final watches = List<FsTreeWatch>.of(_treeWatches);
+    _treeWatches.clear();
+    final subs = List<StreamSubscription<FsChangeEvent>>.of(_watchSubs);
+    _watchSubs.clear();
     // Close the tree watch before awaiting subscription cancel so teardown
     // still completes under fake_async when cancel yields oddly.
-    await treeWatch?.close();
-    await sub?.cancel();
+    for (final treeWatch in watches) {
+      await treeWatch.close();
+    }
+    for (final sub in subs) {
+      await sub.cancel();
+    }
   }
 
   void _scheduleDebouncedNotify() {
@@ -119,12 +152,14 @@ class TranscriptChangeSignal {
   Future<void> _pollTick() async {
     if (!_started) return;
 
-    final root = _watchRoot()?.trim();
-    if (_fs is FsWatcher && root != null && root.isNotEmpty) {
-      _pollTimer?.cancel();
-      _pollTimer = null;
-      await _startWatch(root);
-      return;
+    if (_fs is FsWatcher) {
+      final dirs = _watchDirs();
+      if (dirs.isNotEmpty) {
+        _pollTimer?.cancel();
+        _pollTimer = null;
+        await _startWatches(dirs);
+        return;
+      }
     }
 
     final token = await _computeToken();

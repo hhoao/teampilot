@@ -1,8 +1,11 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 import 'package:teampilot/services/io/filesystem.dart';
+import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/session/transcript_change_signal.dart';
 
 import '../../support/in_memory_filesystem.dart';
@@ -55,6 +58,35 @@ void main() {
         expect(notifies, 0);
 
         async.elapse(const Duration(milliseconds: 1));
+        async.flushMicrotasks();
+        expect(notifies, 1);
+
+        unawaited(signal.stop());
+        async.flushMicrotasks();
+      });
+    });
+
+    test('FsWatcher watches cacheTokenPath parent, not a too-high watchRoot', () {
+      fakeAsync((async) {
+        final fs = _WatchableFs();
+        var notifies = 0;
+        final signal = TranscriptChangeSignal(
+          fs: fs,
+          watchRoot: () => '/proj',
+          cacheTokenPaths: () => const [
+            '/proj/agent-transcripts/chat/chat.jsonl',
+          ],
+          onChanged: () => notifies++,
+          watchDebounce: const Duration(milliseconds: 150),
+        );
+
+        unawaited(signal.start());
+        async.flushMicrotasks();
+        expect(fs.watchTreeCallCount, 1);
+        expect(fs.lastWatchRoot, '/proj/agent-transcripts/chat');
+
+        fs.emit(FsChangeType.modified, '/proj/agent-transcripts/chat/chat.jsonl');
+        async.elapse(const Duration(milliseconds: 150));
         async.flushMicrotasks();
         expect(notifies, 1);
 
@@ -208,7 +240,34 @@ void main() {
       });
     });
 
-    test('FsWatcher with null watchRoot falls back to poll', () {
+    test('FsWatcher watches cacheTokenPath parent even when watchRoot is null', () {
+      fakeAsync((async) {
+        final fs = _WatchableFs();
+        var notifies = 0;
+        final signal = TranscriptChangeSignal(
+          fs: fs,
+          watchRoot: () => null,
+          cacheTokenPaths: () => const ['/proj/a.jsonl'],
+          onChanged: () => notifies++,
+          watchDebounce: const Duration(milliseconds: 150),
+        );
+
+        unawaited(signal.start());
+        async.flushMicrotasks();
+        expect(fs.watchTreeCallCount, 1);
+        expect(fs.lastWatchRoot, '/proj');
+
+        fs.emit(FsChangeType.modified, '/proj/a.jsonl');
+        async.elapse(const Duration(milliseconds: 150));
+        async.flushMicrotasks();
+        expect(notifies, 1);
+
+        unawaited(signal.stop());
+        async.flushMicrotasks();
+      });
+    });
+
+    test('FsWatcher with null watchRoot and empty paths falls back to poll', () {
       fakeAsync((async) {
         final fs = _WatchableFs();
         unawaited(fs.writeString('/proj/a.jsonl', 'a'));
@@ -219,7 +278,7 @@ void main() {
         final signal = TranscriptChangeSignal(
           fs: fs,
           watchRoot: () => root,
-          cacheTokenPaths: () => const ['/proj/a.jsonl'],
+          cacheTokenPaths: () => const [],
           onChanged: () => notifies++,
           pollInterval: const Duration(milliseconds: 750),
           watchDebounce: const Duration(milliseconds: 150),
@@ -231,9 +290,8 @@ void main() {
 
         async.elapse(const Duration(milliseconds: 750));
         async.flushMicrotasks();
-        expect(notifies, 1);
+        expect(notifies, 0);
 
-        // Late root enables watch upgrade.
         root = '/proj';
         async.elapse(const Duration(milliseconds: 750));
         async.flushMicrotasks();
@@ -242,7 +300,7 @@ void main() {
         fs.emit(FsChangeType.modified, '/proj/a.jsonl');
         async.elapse(const Duration(milliseconds: 150));
         async.flushMicrotasks();
-        expect(notifies, 2);
+        expect(notifies, 1);
 
         unawaited(signal.stop());
         async.flushMicrotasks();
@@ -281,6 +339,39 @@ void main() {
         unawaited(signal.stop());
         async.flushMicrotasks();
       });
+    });
+
+    test('nested jsonl append notifies via cacheTokenPath parent watch', () async {
+      final dir = await Directory.systemTemp.createTemp('tp-nested-jsonl-');
+      addTearDown(() => dir.delete(recursive: true));
+      final projectRoot = p.join(dir.path, 'projects', 'proj');
+      final jsonl = p.join(
+        projectRoot,
+        'agent-transcripts',
+        'chat-1',
+        'chat-1.jsonl',
+      );
+      await File(jsonl).create(recursive: true);
+      await File(jsonl).writeAsString('{"role":"user"}\n');
+
+      var notifies = 0;
+      final signal = TranscriptChangeSignal(
+        fs: LocalFilesystem(),
+        watchRoot: () => projectRoot,
+        cacheTokenPaths: () => [jsonl],
+        onChanged: () => notifies++,
+        watchDebounce: const Duration(milliseconds: 20),
+      );
+      await signal.start();
+      addTearDown(signal.stop);
+
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      await File(jsonl).writeAsString(
+        '{"role":"assistant"}\n',
+        mode: FileMode.append,
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 400));
+      expect(notifies, greaterThan(0));
     });
   });
 }

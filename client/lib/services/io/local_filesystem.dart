@@ -502,6 +502,11 @@ class LocalFilesystem implements Filesystem, FsWatcher {
 
   /// Recursive directory watch via `Directory.watch`.
   ///
+  /// Linux ignores [Directory.watch]'s `recursive` flag (inotify is
+  /// per-directory); callers that need nested-file appends must watch the
+  /// file's parent, not an ancestor. We still pass `recursive: true` so
+  /// Windows/macOS keep tree events for [WorkspaceFsWatcher].
+  ///
   /// We intentionally avoid `package:watcher`'s recursive backend on Windows:
   /// it synchronously walks the entire tree with [listSync] on startup (one
   /// [DirectoryTree] node per subdirectory), which freezes the UI on large
