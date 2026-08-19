@@ -95,6 +95,17 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
   }
 
+  testWidgets('shows search as a standalone tile below new conversation', (
+    tester,
+  ) async {
+    await pumpSidebar(tester);
+
+    final newChat = tester.getTopLeft(find.byKey(AppKeys.newChatSidebarTile));
+    final search = tester.getTopLeft(find.byKey(AppKeys.searchSidebarTile));
+    expect(find.byKey(AppKeys.searchSidebarTile), findsOneWidget);
+    expect(search.dy, greaterThan(newChat.dy));
+  });
+
   testWidgets('shows workspace management tile when embedFooter is true', (
     tester,
   ) async {

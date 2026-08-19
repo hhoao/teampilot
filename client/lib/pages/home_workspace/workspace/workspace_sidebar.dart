@@ -50,10 +50,7 @@ void openWorkspaceManagementRoute(BuildContext context, Workspace workspace) {
   context.go(
     Uri(
       path: '/home-v2/workspace/${workspace.workspaceId}',
-      queryParameters: {
-        'profile': profileId,
-        'view': 'manage',
-      },
+      queryParameters: {'profile': profileId, 'view': 'manage'},
     ).toString(),
   );
 }
@@ -109,6 +106,17 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
               () => _startNewConversation(context),
             ),
           ),
+          const SizedBox(height: 4),
+          _SidebarActionTile(
+            key: AppKeys.searchSidebarTile,
+            icon: Icons.search_outlined,
+            label: l10n.workspaceSearchTitle,
+            enabled: true,
+            onTap: throttledTap(
+              'workspace_sidebar_search',
+              () => _openWorkspaceSearch(context),
+            ),
+          ),
           const SizedBox(height: 14),
           _RunningSessionsHost(
             workspace: widget.workspace,
@@ -128,28 +136,6 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
                 _SessionSortButton(
                   sort: _sessionSort,
                   onChanged: (s) => setState(() => _sessionSort = s),
-                ),
-                const SizedBox(width: 2),
-                TpIconButton(
-                  icon: Icons.search_rounded,
-                  compact: true,
-                  size: TpIconButton.kCompactSize,
-                  tooltip: l10n.workspaceSearchTitle,
-                  onTap: throttledTap(
-                    'workspace_sidebar_search',
-                    () => unawaited(
-                      showWorkspaceSearchDialog(
-                        context,
-                        workspace: widget.workspace,
-                        // Same source as the file-tree / git panels; local
-                        // only before the tools plane has resolved.
-                        fs: WorkspaceToolsScope.maybeOf(
-                              context,
-                            )?.tools?.context.filesystem ??
-                            LocalFilesystem(),
-                      ),
-                    ),
-                  ),
                 ),
                 if (toolsContext != null &&
                     worktreeManagementEnabled(toolsContext)) ...[
@@ -197,8 +183,9 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
             const SizedBox(height: 8),
             Divider(
               height: 1,
-              color: Theme.of(context).colorScheme.outlineVariant
-                  .withValues(alpha: 0.5),
+              color: Theme.of(
+                context,
+              ).colorScheme.outlineVariant.withValues(alpha: 0.5),
             ),
             const SizedBox(height: 4),
             _SidebarActionTile(
@@ -218,6 +205,20 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
 
   void _openWorkspaceManagement(BuildContext context) {
     openWorkspaceManagementRoute(context, widget.workspace);
+  }
+
+  void _openWorkspaceSearch(BuildContext context) {
+    unawaited(
+      showWorkspaceSearchDialog(
+        context,
+        workspace: widget.workspace,
+        // Same source as the file-tree / git panels; local only before
+        // the tools plane has resolved.
+        fs:
+            WorkspaceToolsScope.maybeOf(context)?.tools?.context.filesystem ??
+            LocalFilesystem(),
+      ),
+    );
   }
 
   /// Drag always available; dropping stamps [AppSession.sortOrder] and switches
@@ -253,9 +254,7 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
       repoPath: repoPath,
       layout: layout.worktreePathFor,
       branchLoader: branchListLoaderFor(tools.context),
-      existingWorktreePaths: [
-        for (final wt in cubit.state.worktrees) wt.path,
-      ],
+      existingWorktreePaths: [for (final wt in cubit.state.worktrees) wt.path],
     );
     if (result == null) return;
     try {
@@ -374,7 +373,11 @@ class _ConversationListHost extends StatelessWidget {
       (c) => WorktreeSidebarView.from(c.state),
     );
     final chatState = context.read<ChatCubit>().state;
-    final sortedSessions = _sessionsForStructure(chatState, structure, workspace);
+    final sortedSessions = _sessionsForStructure(
+      chatState,
+      structure,
+      workspace,
+    );
 
     return SidebarRebuildProbe(
       key: const Key('workspace-sidebar-conversation-list-probe'),
@@ -643,11 +646,7 @@ class _SidebarActionTileState extends State<_SidebarActionTile> {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       child: Row(
         children: [
-          Icon(
-            widget.icon,
-            size: context.tpIconSizes.md,
-            color: foreground,
-          ),
+          Icon(widget.icon, size: context.tpIconSizes.md, color: foreground),
           const SizedBox(width: 10),
           Expanded(child: Text(widget.label, style: styles.lg)),
         ],

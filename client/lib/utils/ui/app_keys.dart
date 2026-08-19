@@ -230,13 +230,16 @@ class AppKeys {
     'llm-config-open-session-settings-button',
   );
   static const newChatSidebarTile = Key('new-chat-sidebar-tile');
+  static const searchSidebarTile = Key('search-sidebar-tile');
   static const workspaceTabRowNewChatButton = Key('workspace-tab-row-new-chat');
   static const newChatCliMenuButton = Key('new-chat-cli-menu-button');
   static const homeWorkspaceWorkspaceManagementTile = Key(
     'home-workspace-workspace-management-tile',
   );
   static const mobileHomeSidebarScrim = Key('mobile-home-sidebar-scrim');
-  static const mobileWorkspaceDrawerScrim = Key('mobile-workspace-drawer-scrim');
+  static const mobileWorkspaceDrawerScrim = Key(
+    'mobile-workspace-drawer-scrim',
+  );
   static const mobileWorkspaceDrawerModeSwitch = Key(
     'mobile-workspace-drawer-mode-switch',
   );
