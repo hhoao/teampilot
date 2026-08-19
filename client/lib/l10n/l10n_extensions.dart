@@ -50,6 +50,22 @@ extension AppLocalizationsX on AppLocalizations {
       _ => value,
     };
   }
+
+  String managedProviderPresetLabel(String id) => switch (id) {
+    'codex' => managedProvidersQuickPresetCodex,
+    'claude-code' => managedProvidersQuickPresetClaudeCode,
+    'deepseek' => managedProvidersQuickPresetDeepSeek,
+    'opencode' => managedProvidersQuickPresetOpenCode,
+    _ => id,
+  };
+
+  String managedProviderPresetHint(String id) => switch (id) {
+    'codex' => managedProvidersQuickPresetCodexHint,
+    'claude-code' => managedProvidersQuickPresetClaudeCodeHint,
+    'deepseek' => managedProvidersQuickPresetDeepSeekHint,
+    'opencode' => managedProvidersQuickPresetOpenCodeHint,
+    _ => '',
+  };
 }
 
 extension BuildContextL10n on BuildContext {

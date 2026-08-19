@@ -9,6 +9,7 @@ import '../../cubits/managed_provider_usage_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/managed_provider.dart';
 import '../../models/provider_usage_snapshot.dart';
+import '../../services/provider_usage/managed_provider_presets.dart';
 import '../../widgets/app_toast/app_toast.dart';
 import '../../utils/managed_provider_error_localization.dart';
 
@@ -48,6 +49,8 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
   late String _method;
   late bool _enabled;
   late bool _showPercent;
+  String? _credentialPrefix;
+  ManagedProviderPreset? _selectedPreset;
   String? _formError;
   bool _saving = false;
 
@@ -85,6 +88,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
     _credentialPlacement = TextEditingController(
       text: endpoint?.credentialPlacement ?? 'header',
     );
+    _credentialPrefix = endpoint?.credentialPrefix;
     _kind = provider?.kind == ManagedProviderKind.unknown
         ? ManagedProviderKind.customHttp
         : provider?.kind ?? ManagedProviderKind.customHttp;
@@ -126,6 +130,42 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
           children: [
             if (_formError != null) _ErrorBanner(message: _formError!),
+            if (provider == null) ...[
+              _labeledControl(
+                context,
+                label: l10n.managedProvidersQuickPresetTitle,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    TpSelect<ManagedProviderPreset>(
+                      key: const Key('managed-provider-quick-preset'),
+                      items: builtInManagedProviderPresets,
+                      initialItem: _selectedPreset,
+                      itemLabel: (preset) =>
+                          l10n.managedProviderPresetLabel(preset.labelId),
+                      listItemKey: (preset) =>
+                          Key('managed-provider-quick-preset-${preset.id}'),
+                      onChanged: (preset) {
+                        if (preset != null) _applyPreset(preset);
+                      },
+                      decoration: TpSelectDecorations.themed(context),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      _selectedPreset == null
+                          ? l10n.managedProvidersQuickPresetHint
+                          : l10n.managedProviderPresetHint(
+                              _selectedPreset!.hintId,
+                            ),
+                      style: TpTextStyles.of(context).smColored(
+                        Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+            ],
             _sectionTitle(context, l10n.managedProvidersIdentity),
             _field(
               context,
@@ -387,6 +427,35 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
     );
   }
 
+  void _applyPreset(ManagedProviderPreset preset) {
+    final template = preset.template;
+    final endpoint = template.endpointConfig;
+    final display = template.displayConfig;
+    setState(() {
+      _selectedPreset = preset;
+      _name.text = template.name;
+      _adapter.text = template.adapterId;
+      _endpoint.text = endpoint.url;
+      _responsePath.text = endpoint.responsePath ?? '';
+      _measuresPath.text = endpoint.measuresPath ?? '';
+      _requestMapping.text = _prettyJson(endpoint.body);
+      _fieldMappings.text = _prettyJson(endpoint.fieldMappings);
+      _kind = template.kind;
+      _method = endpoint.method.toUpperCase();
+      _credentialRef.clear();
+      _credentialName.text = endpoint.credentialName ?? '';
+      _credentialField.text = endpoint.credentialField ?? '';
+      _credentialPlacement.text = endpoint.credentialPlacement;
+      _credentialPrefix = endpoint.credentialPrefix;
+      _currency.text = display.currency ?? '';
+      _unit.text = display.unit ?? '';
+      _decimalPlaces.text = display.decimalPlaces?.toString() ?? '';
+      _enabled = template.enabled;
+      _showPercent = display.showPercent;
+      _formError = null;
+    });
+  }
+
   void _handleBack() {
     final onBack = widget.onBack;
     if (onBack != null) {
@@ -533,7 +602,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
         credentialPlacement: _credentialPlacement.text.trim().isEmpty
             ? 'header'
             : _credentialPlacement.text.trim().toLowerCase(),
-        credentialPrefix: current?.endpointConfig.credentialPrefix,
+        credentialPrefix: _credentialPrefix,
       ),
       credentialRef: _credentialRef.text.trim().isEmpty
           ? null
@@ -675,7 +744,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
         credentialPlacement: _credentialPlacement.text.trim().isEmpty
             ? 'header'
             : _credentialPlacement.text.trim().toLowerCase(),
-        credentialPrefix: current?.endpointConfig.credentialPrefix,
+        credentialPrefix: _credentialPrefix,
       ),
       credentialRef: _credentialRef.text.trim().isEmpty
           ? null

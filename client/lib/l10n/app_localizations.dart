@@ -13580,6 +13580,66 @@ abstract class AppLocalizations {
   /// **'Edit Managed Provider'**
   String get managedProvidersEditTitle;
 
+  /// No description provided for @managedProvidersQuickPresetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick preset'**
+  String get managedProvidersQuickPresetTitle;
+
+  /// No description provided for @managedProvidersQuickPresetHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Starts with safe defaults; add your credential before querying.'**
+  String get managedProvidersQuickPresetHint;
+
+  /// No description provided for @managedProvidersQuickPresetCodex.
+  ///
+  /// In en, this message translates to:
+  /// **'Codex'**
+  String get managedProvidersQuickPresetCodex;
+
+  /// No description provided for @managedProvidersQuickPresetCodexHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Uses the official Codex subscription adapter; sign in or add its credential.'**
+  String get managedProvidersQuickPresetCodexHint;
+
+  /// No description provided for @managedProvidersQuickPresetClaudeCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Claude Code'**
+  String get managedProvidersQuickPresetClaudeCode;
+
+  /// No description provided for @managedProvidersQuickPresetClaudeCodeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Uses the official Claude Code subscription adapter; sign in or add its credential.'**
+  String get managedProvidersQuickPresetClaudeCodeHint;
+
+  /// No description provided for @managedProvidersQuickPresetDeepSeek.
+  ///
+  /// In en, this message translates to:
+  /// **'DeepSeek'**
+  String get managedProvidersQuickPresetDeepSeek;
+
+  /// No description provided for @managedProvidersQuickPresetDeepSeekHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Preconfigured for the balance API; add an API key credential.'**
+  String get managedProvidersQuickPresetDeepSeekHint;
+
+  /// No description provided for @managedProvidersQuickPresetOpenCode.
+  ///
+  /// In en, this message translates to:
+  /// **'OpenCode'**
+  String get managedProvidersQuickPresetOpenCode;
+
+  /// No description provided for @managedProvidersQuickPresetOpenCodeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'No universal balance endpoint is assumed; add the endpoint for your provider.'**
+  String get managedProvidersQuickPresetOpenCodeHint;
+
   /// No description provided for @managedProvidersIdentity.
   ///
   /// In en, this message translates to:

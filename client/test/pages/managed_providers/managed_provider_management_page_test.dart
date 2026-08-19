@@ -228,6 +228,44 @@ void main() {
   );
 
   testWidgets(
+    'new editor applies the DeepSeek preset without inventing credentials',
+    (tester) async {
+      providerCubit.emit(
+        ManagedProviderState(status: ManagedProviderLoadStatus.ready),
+      );
+      usageCubit.emit(
+        ManagedProviderUsageState(status: ManagedProviderUsageLoadStatus.ready),
+      );
+      await pumpPage(tester);
+
+      await tester.tap(find.byKey(const Key('managed-provider-add')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('managed-provider-quick-preset')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('DeepSeek').last);
+      await tester.pumpAndSettle();
+
+      final nameInput = tester.widget<TpInput>(
+        find.byKey(const Key('managed-provider-name')),
+      );
+      final endpointInput = tester.widget<TpInput>(
+        find.byKey(const Key('managed-provider-endpoint')),
+      );
+      expect(nameInput.controller!.text, 'DeepSeek');
+      expect(
+        endpointInput.controller!.text,
+        'https://api.deepseek.com/user/balance',
+      );
+      await tester.drag(find.byType(ListView).last, const Offset(0, -800));
+      await tester.pump();
+      final credentialRefInput = tester.widget<TpInput>(
+        find.byKey(const Key('managed-provider-credential-ref')),
+      );
+      expect(credentialRefInput.controller!.text, isEmpty);
+    },
+  );
+
+  testWidgets(
     'CRUD actions are dispatched through the managed provider cubit',
     (tester) async {
       providerCubit.emit(

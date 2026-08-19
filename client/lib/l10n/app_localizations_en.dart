@@ -7595,6 +7595,41 @@ class AppLocalizationsEn extends AppLocalizations {
   String get managedProvidersEditTitle => 'Edit Managed Provider';
 
   @override
+  String get managedProvidersQuickPresetTitle => 'Quick preset';
+
+  @override
+  String get managedProvidersQuickPresetHint =>
+      'Starts with safe defaults; add your credential before querying.';
+
+  @override
+  String get managedProvidersQuickPresetCodex => 'Codex';
+
+  @override
+  String get managedProvidersQuickPresetCodexHint =>
+      'Uses the official Codex subscription adapter; sign in or add its credential.';
+
+  @override
+  String get managedProvidersQuickPresetClaudeCode => 'Claude Code';
+
+  @override
+  String get managedProvidersQuickPresetClaudeCodeHint =>
+      'Uses the official Claude Code subscription adapter; sign in or add its credential.';
+
+  @override
+  String get managedProvidersQuickPresetDeepSeek => 'DeepSeek';
+
+  @override
+  String get managedProvidersQuickPresetDeepSeekHint =>
+      'Preconfigured for the balance API; add an API key credential.';
+
+  @override
+  String get managedProvidersQuickPresetOpenCode => 'OpenCode';
+
+  @override
+  String get managedProvidersQuickPresetOpenCodeHint =>
+      'No universal balance endpoint is assumed; add the endpoint for your provider.';
+
+  @override
   String get managedProvidersIdentity => 'Identity';
 
   @override

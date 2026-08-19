@@ -7298,6 +7298,40 @@ class AppLocalizationsZh extends AppLocalizations {
   String get managedProvidersEditTitle => '编辑管理 Provider';
 
   @override
+  String get managedProvidersQuickPresetTitle => '快速预设';
+
+  @override
+  String get managedProvidersQuickPresetHint => '使用安全默认值开始；查询前请补充凭据。';
+
+  @override
+  String get managedProvidersQuickPresetCodex => 'Codex';
+
+  @override
+  String get managedProvidersQuickPresetCodexHint =>
+      '使用官方 Codex 订阅适配器；请登录或补充凭据。';
+
+  @override
+  String get managedProvidersQuickPresetClaudeCode => 'Claude Code';
+
+  @override
+  String get managedProvidersQuickPresetClaudeCodeHint =>
+      '使用官方 Claude Code 订阅适配器；请登录或补充凭据。';
+
+  @override
+  String get managedProvidersQuickPresetDeepSeek => 'DeepSeek';
+
+  @override
+  String get managedProvidersQuickPresetDeepSeekHint =>
+      '已配置余额 API；请补充 API Key 凭据。';
+
+  @override
+  String get managedProvidersQuickPresetOpenCode => 'OpenCode';
+
+  @override
+  String get managedProvidersQuickPresetOpenCodeHint =>
+      '不假设通用余额接口；请补充你所用 Provider 的 endpoint。';
+
+  @override
   String get managedProvidersIdentity => '基本信息';
 
   @override
