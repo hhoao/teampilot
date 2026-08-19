@@ -7,6 +7,12 @@ consistent and can carry additional metadata later. The element name is
 `teambus`; the implementation must not introduce a separate `hook_prompt`
 element or a synthetic `hook_run_id` field.
 
+The structure follows the production pattern visible in Anthropic's Claude
+prompts: an XML-like element marks a system-generated control block, while
+ordinary user/tool payloads remain ordinary payloads. See the referenced
+Anthropic prompt collection:
+<https://github.com/asgeirtj/system_prompts_leaks/tree/main/Anthropic>.
+
 ## Format
 
 The common shape is:
@@ -33,9 +39,8 @@ The MCP response envelope remains JSON. When a rendered mailbox entry is
 wrapped, only its `content` string changes. Existing TeamBus message routing,
 message IDs, task IDs, and hook decision JSON remain unchanged.
 
-Ordinary teammate/user message bodies are not assigned new metadata or
-rewritten beyond the common wrapper required by the implemented TeamBus prompt
-surface. Diagnostics such as `[team-bus]` log prefixes are not part of the
+Ordinary teammate/user message bodies are not wrapped or assigned new
+metadata. Diagnostics such as `[team-bus]` log prefixes are not part of the
 prompt format and remain unchanged.
 
 ## Team prompts
