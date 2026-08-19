@@ -4,12 +4,13 @@ import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart' as p;
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../cubits/chat_cubit.dart';
 import '../../services/editor/file_editor_theme.dart';
+import '../io/filesystem.dart';
 import '../storage/app_storage.dart';
 import '../workbench/workbench_editor_opener.dart';
+import '../workbench/workspace_href_handler.dart';
 import '../workspace/workspace_tools_scope.dart';
 import '../workspace/workspace_tools_scope_registry.dart';
 
@@ -47,9 +48,7 @@ List<String> markdownPreviewWorkspaceRoots(
   final registryRoots = peeked == null ? null : _rootsFromScope(peeked.state);
 
   final folderPaths =
-      _maybeChat(context)
-          ?.state
-          .workspaces
+      _maybeChat(context)?.state.workspaces
           .where((w) => w.workspaceId == workspaceId)
           .firstOrNull
           ?.folderPaths ??
@@ -99,51 +98,26 @@ ChatCubit? _maybeChat(BuildContext context) {
 }
 
 /// Resolves markdown preview link taps for the IDE preview surface.
-Future<void> handleMarkdownPreviewLink({
+Future<WorkspaceHrefOpenOutcome> handleMarkdownPreviewLink({
   required String? href,
   required String markdownFilePath,
   required String workspaceId,
   required List<String> workspaceRoots,
   required WorkbenchEditorOpener opener,
-}) async {
-  final raw = href?.trim() ?? '';
-  if (raw.isEmpty) return;
-
-  final uri = Uri.tryParse(raw);
-  if (uri != null &&
-      (uri.scheme == 'http' || uri.scheme == 'https') &&
-      uri.host.isNotEmpty) {
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
-    return;
-  }
-
-  // file:// is always a host-local path. Relative / absolute workspace paths
-  // may be POSIX (SSH, WSL, in-memory tests) even when the host is Windows —
-  // match [AppPaths.pathContextForDataRoot] so joins keep `/` separators.
-  final String candidate;
-  final p.Context ctx;
-  if (uri != null && uri.scheme == 'file') {
-    candidate = uri.toFilePath();
-    ctx = p.context;
-  } else {
-    ctx = AppPaths.pathContextForDataRoot(markdownFilePath);
-    if (ctx.isAbsolute(raw)) {
-      candidate = raw;
-    } else {
-      candidate = ctx.normalize(ctx.join(ctx.dirname(markdownFilePath), raw));
-    }
-  }
-
-  if (!isEditorOpenableFilePath(candidate)) return;
-  final normalized = ctx.normalize(candidate);
-  final underWorkspace = workspaceRoots.any((root) {
-    if (root.isEmpty) return false;
-    final rootCtx = AppPaths.pathContextForDataRoot(root);
-    final nRoot = rootCtx.normalize(root);
-    return normalized == nRoot || rootCtx.isWithin(nRoot, normalized);
-  });
-  if (!underWorkspace) return;
-  await opener.openFile(workspaceId, normalized, preview: true);
+  required Filesystem fs,
+  WorkspaceHrefHandler? handler,
+}) {
+  return (handler ?? WorkspaceHrefHandler(opener: opener)).open(
+    href: href ?? '',
+    workspaceId: workspaceId,
+    workspaceRoots: workspaceRoots,
+    searchBases: [
+      AppPaths.pathContextForDataRoot(
+        markdownFilePath,
+      ).dirname(markdownFilePath),
+    ],
+    fs: fs,
+  );
 }
 
 /// Resolves markdown preview images: http(s) URLs or workspace-relative files.

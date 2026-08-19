@@ -47,6 +47,7 @@ void main() {
       markdownFilePath: '/repo/docs/a.md',
       workspaceId: 'ws',
       workspaceRoots: const ['/repo'],
+      fs: fs,
       opener: _opener(
         editor: editor,
         workbench: workbench,
@@ -57,12 +58,19 @@ void main() {
 
     // Must stay POSIX even on Windows hosts (SSH / in-memory roots).
     expect(
-      workbench.state.bar('ws').floating.order.any(
-        (t) => t.kind == WorkbenchTabKind.file && t.id == '/repo/docs/b.md',
-      ),
+      workbench.state
+          .bar('ws')
+          .floating
+          .order
+          .any(
+            (t) => t.kind == WorkbenchTabKind.file && t.id == '/repo/docs/b.md',
+          ),
       isTrue,
     );
-    expect(editor.state.bucket('ws').openFilePaths, contains('/repo/docs/b.md'));
+    expect(
+      editor.state.bucket('ws').openFilePaths,
+      contains('/repo/docs/b.md'),
+    );
   });
 
   test('relative markdown link with empty workspaceRoots is a no-op', () async {
@@ -82,6 +90,7 @@ void main() {
       markdownFilePath: '/repo/docs/a.md',
       workspaceId: 'ws',
       workspaceRoots: const [],
+      fs: fs,
       opener: _opener(
         editor: editor,
         workbench: workbench,
@@ -94,32 +103,35 @@ void main() {
     expect(editor.state.bucket('ws').openFilePaths, isEmpty);
   });
 
-  test('coalesceMarkdownPreviewWorkspaceRoots prefers scope then fallbacks', () {
-    expect(
-      coalesceMarkdownPreviewWorkspaceRoots(
-        scopeRoots: const ['/scope'],
-        registryRoots: const ['/registry'],
-        folderPaths: const ['/folder'],
-      ),
-      ['/scope'],
-    );
-    expect(
-      coalesceMarkdownPreviewWorkspaceRoots(
-        scopeRoots: const [],
-        registryRoots: const ['/registry'],
-        folderPaths: const ['/folder'],
-      ),
-      ['/registry'],
-    );
-    expect(
-      coalesceMarkdownPreviewWorkspaceRoots(
-        scopeRoots: null,
-        registryRoots: null,
-        folderPaths: const ['/folder', ''],
-      ),
-      ['/folder'],
-    );
-  });
+  test(
+    'coalesceMarkdownPreviewWorkspaceRoots prefers scope then fallbacks',
+    () {
+      expect(
+        coalesceMarkdownPreviewWorkspaceRoots(
+          scopeRoots: const ['/scope'],
+          registryRoots: const ['/registry'],
+          folderPaths: const ['/folder'],
+        ),
+        ['/scope'],
+      );
+      expect(
+        coalesceMarkdownPreviewWorkspaceRoots(
+          scopeRoots: const [],
+          registryRoots: const ['/registry'],
+          folderPaths: const ['/folder'],
+        ),
+        ['/registry'],
+      );
+      expect(
+        coalesceMarkdownPreviewWorkspaceRoots(
+          scopeRoots: null,
+          registryRoots: null,
+          folderPaths: const ['/folder', ''],
+        ),
+        ['/folder'],
+      );
+    },
+  );
 
   test('relative image with empty workspaceRoots returns null', () {
     expect(
@@ -132,25 +144,28 @@ void main() {
     );
   });
 
-  test('relative image under workspaceRoots returns FileImage when present', () {
-    final dir = Directory.systemTemp.createTempSync('md-preview-img');
-    addTearDown(() => dir.deleteSync(recursive: true));
-    final pngPath = [dir.path, 'shot.png'].join(Platform.pathSeparator);
-    final png = File(pngPath)
-      ..writeAsBytesSync(const [
-        0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, // PNG magic
-      ]);
-    final md = [dir.path, 'a.md'].join(Platform.pathSeparator);
+  test(
+    'relative image under workspaceRoots returns FileImage when present',
+    () {
+      final dir = Directory.systemTemp.createTempSync('md-preview-img');
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final pngPath = [dir.path, 'shot.png'].join(Platform.pathSeparator);
+      final png = File(pngPath)
+        ..writeAsBytesSync(const [
+          0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, // PNG magic
+        ]);
+      final md = [dir.path, 'a.md'].join(Platform.pathSeparator);
 
-    final provider = resolveMarkdownPreviewImage(
-      src: './shot.png',
-      markdownFilePath: md,
-      workspaceRoots: [dir.path],
-    );
+      final provider = resolveMarkdownPreviewImage(
+        src: './shot.png',
+        markdownFilePath: md,
+        workspaceRoots: [dir.path],
+      );
 
-    expect(provider, isA<FileImage>());
-    expect((provider! as FileImage).file.path, png.path);
-  });
+      expect(provider, isA<FileImage>());
+      expect((provider! as FileImage).file.path, png.path);
+    },
+  );
 
   test('http links are ignored by path resolution helper path check', () {
     // Smoke: isEditorOpenableFilePath rejects URLs.

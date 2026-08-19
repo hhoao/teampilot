@@ -672,6 +672,10 @@ class _MarkdownPreviewPaneState extends State<_MarkdownPreviewPane> {
             workspaceId: widget.workspaceId,
             workspaceRoots: roots,
             opener: opener,
+            fs: context.read<EditorCubit>().filesystemFor(
+              widget.workspaceId,
+              widget.path,
+            ),
           ),
         );
       },
