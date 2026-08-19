@@ -2,6 +2,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
 
 import '../../models/runtime_target.dart';
+import '../../models/workspace_terminal_session_spec.dart';
 import '../ssh/ssh_member_session.dart';
 import '../termux/termux_connection_gate.dart';
 import 'workspace_shell_connector.dart';
@@ -53,11 +54,16 @@ class WorkspaceTerminalConnectCoordinator {
     required VoidCallback onStateChanged,
     required bool Function() mounted,
   }) async {
-    final cwd = entry.cwd.trim();
-    if (cwd.isEmpty) return;
-    if (entry.connected && entry.session.isRunning) return;
-
     final target = _connector.runtimeTargetFor(entry.spec);
+    final cwd = entry.cwd.trim();
+    if (!workspaceShellCanConnect(
+      spec: entry.spec,
+      cwd: cwd,
+      home: _homeTarget(),
+    )) {
+      return;
+    }
+    if (entry.connected && entry.session.isRunning) return;
     final blockMessage = _termuxWorkOpsBlockedMessage?.call();
     final connected = _termuxConnected?.call();
     if (blockMessage != null && connected != null) {

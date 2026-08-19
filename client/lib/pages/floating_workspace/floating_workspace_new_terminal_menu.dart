@@ -48,6 +48,7 @@ Future<void> showFloatingNewTerminalMenu({
           cwd: cwd,
           spec: spec,
           sshConnectFailedMessage: sshFailed,
+          folders: folders,
           onStateChanged: () {},
           mounted: () => context.mounted,
         ),

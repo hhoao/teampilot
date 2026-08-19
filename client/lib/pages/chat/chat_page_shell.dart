@@ -63,6 +63,7 @@ Future<void> _showStripNewTerminalMenu({
           tabScopeId: tabScopeId,
           cwd: trimmedCwd,
           spec: spec,
+          folders: folders,
           sshConnectFailedMessage: sshFailed,
           onStateChanged: () {},
           mounted: () => context.mounted,

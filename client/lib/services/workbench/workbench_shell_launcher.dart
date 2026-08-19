@@ -115,6 +115,7 @@ class WorkbenchShellLauncher {
     RuntimeTarget Function()? homeTarget,
     Brightness Function()? platformBrightness,
     String Function()? sshConnectFailedMessage,
+    String Function()? sshDefaultWorkingDirectory,
     bool Function()? termuxConnected,
     String Function()? termuxWorkOpsBlockedMessage,
   }) : _floating = floating,
@@ -133,6 +134,7 @@ class WorkbenchShellLauncher {
                SchedulerBinding.instance.platformDispatcher.platformBrightness),
        _sshConnectFailedMessage =
            sshConnectFailedMessage ?? (() => 'SSH connect failed'),
+       _sshDefaultWorkingDirectory = sshDefaultWorkingDirectory ?? (() => ''),
        _termuxConnected = termuxConnected,
        _termuxWorkOpsBlockedMessage = termuxWorkOpsBlockedMessage;
 
@@ -147,6 +149,7 @@ class WorkbenchShellLauncher {
   final RuntimeTarget Function() _homeTarget;
   final Brightness Function() _platformBrightness;
   final String Function() _sshConnectFailedMessage;
+  final String Function() _sshDefaultWorkingDirectory;
   final bool Function()? _termuxConnected;
   final String Function()? _termuxWorkOpsBlockedMessage;
 
@@ -196,6 +199,7 @@ class WorkbenchShellLauncher {
       tabScopeId: plan.workspaceId,
       cwd: cwd,
       spec: spec,
+      folders: folders,
     );
   }
 
@@ -206,6 +210,7 @@ class WorkbenchShellLauncher {
     required String tabScopeId,
     required String cwd,
     required WorkspaceTerminalSessionSpec spec,
+    List<WorkspaceFolder> folders = const [],
     TerminalTheme? theme,
     String? sshConnectFailedMessage,
     bool followWorkspace = true,
@@ -215,21 +220,43 @@ class WorkbenchShellLauncher {
     final trimmedCwd = cwd.trim();
     if (trimmedCwd.isEmpty) return null;
 
+    final resolvedFolders = folders.isNotEmpty
+        ? folders
+        : (_chat.state.workspaces
+                  .where((w) => w.workspaceId == workspaceId)
+                  .firstOrNull
+                  ?.folders ??
+              const []);
+    final home = _homeTarget();
+    final launchCwd = workspaceShellLaunchWorkingDirectory(
+      spec: spec,
+      folders: resolvedFolders,
+      localCwd: trimmedCwd,
+      home: home,
+      sshDefaultWorkingDirectory: _sshDefaultWorkingDirectory(),
+    );
+    final remote = usesSshTransport(
+      runtimeTargetForWorkspaceShellSpec(spec, home: home).kind,
+    );
+
     final group = _registry.groupFor(tabScopeId);
     final entry = await _sessionOps.createEntry(
       group: group,
       connector: _connector,
-      cwd: trimmedCwd,
+      cwd: launchCwd,
       spec: spec,
       select: true,
-      followWorkspace: followWorkspace,
+      followWorkspace: followWorkspace && !remote,
     );
 
     // Empty→first-tab UI is deferred one frame in FloatingWorkspacePanel so
     // connect must wait an extra frame on that path. Check the *target*
     // workspace's floating strip (the current active workspace may differ).
-    final deferFirstTabUi =
-        _workbench.state.bar(workspaceId).floating.order.isEmpty;
+    final deferFirstTabUi = _workbench.state
+        .bar(workspaceId)
+        .floating
+        .order
+        .isEmpty;
     _floating.ensureOpen();
     _floating.setActiveWorkspace(workspaceId);
     _workbench.openShell(workspaceId, entry.id, activate: true);

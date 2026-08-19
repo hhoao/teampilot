@@ -7,6 +7,7 @@ import 'package:teampilot/cubits/floating_workspace/floating_workspace_cubit.dar
 import 'package:teampilot/cubits/layout_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_tab.dart';
+import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/models/workspace_terminal_session_spec.dart';
 import 'package:teampilot/repositories/ssh_credential_store.dart';
 import 'package:teampilot/repositories/ssh_known_host_repository.dart';
@@ -222,6 +223,28 @@ void main() {
         );
       },
     );
+
+    test('SSH spec does not store a local-only workspace cwd', () async {
+      final launcher = _launcher(
+        chat: chat,
+        workbench: workbench,
+        floating: floating,
+        registry: registry,
+      );
+
+      const localCwd = '/home/hhoa/git/quanzhi/audit-apiv2';
+      final entry = await launcher.openAndSelect(
+        workspaceId: 'ws',
+        tabScopeId: 'ws',
+        cwd: localCwd,
+        spec: const WorkspaceTerminalSshProfileSpec('profile-1'),
+        folders: const [WorkspaceFolder(path: localCwd)],
+      );
+
+      expect(entry, isNotNull);
+      expect(entry!.cwd, isEmpty);
+      expect(entry.followWorkspace, isFalse);
+    });
   });
 
   group('WorkbenchShellLauncher.focusOrCreateDefaultShell', () {

@@ -1993,6 +1993,8 @@ Future<AppShell> buildAppShell({
     layout: layoutCubit,
     sessionOps: workspaceTerminalSessionOps,
     homeTarget: defaultTargetResolver,
+    sshDefaultWorkingDirectory: () =>
+        sessionPreferencesCubit.state.preferences.defaultSshWorkingDirectory,
     termuxConnected: () => termuxGateCubit?.state.connected ?? true,
     termuxWorkOpsBlockedMessage: TermuxWorkOpsMessage.disconnectedBlocked,
   );

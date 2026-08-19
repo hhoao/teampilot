@@ -59,7 +59,8 @@ class WorkspaceTerminalHoldHandle {
   void beginPtyHold() => _state?._beginExternalHold();
 
   /// End the hold, flushing the final grid to the PTY when [flush] (drag end).
-  void endPtyHold({bool flush = true}) => _state?._endExternalHold(flush: flush);
+  void endPtyHold({bool flush = true}) =>
+      _state?._endExternalHold(flush: flush);
 
   /// Selects [entryId] as the active terminal tab (no-op if unbound / unknown).
   void selectEntry(String entryId) {
@@ -133,8 +134,8 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
   List<WorkspaceFolder> get _folders =>
       WorkspaceToolsScope.maybeOf(context)?.effectiveFolders ?? const [];
 
-  WorkspaceTerminalConnectCoordinator get _connect => _connectCoordinator ??=
-      WorkspaceTerminalConnectCoordinator.termuxAware(
+  WorkspaceTerminalConnectCoordinator get _connect =>
+      _connectCoordinator ??= WorkspaceTerminalConnectCoordinator.termuxAware(
         connector: _connector,
         termuxConnected: () => context.read<TermuxCubit>().state.connected,
         termuxWorkOpsBlockedMessage: TermuxWorkOpsMessage.disconnectedBlocked,
@@ -235,6 +236,15 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
     WorkspaceTerminalEntry entry,
     String cwd,
   ) async {
+    final home = context.read<HomeTargetController>().current;
+    if (!workspaceShellShouldApplySyncedCwd(
+      spec: entry.spec,
+      syncedCwd: cwd,
+      folders: _folders,
+      home: home,
+    )) {
+      return;
+    }
     if (!entry.followWorkspace) {
       if (entry.cwd == cwd) return;
       entry.cwd = cwd;
@@ -273,16 +283,26 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
     required bool select,
     bool followWorkspace = false,
   }) async {
+    final home = context.read<HomeTargetController>().current;
+    final launchCwd = workspaceShellLaunchWorkingDirectory(
+      spec: spec,
+      folders: _folders,
+      localCwd: cwd,
+      home: home,
+    );
+    final remote = usesSshTransport(
+      runtimeTargetForWorkspaceShellSpec(spec, home: home).kind,
+    );
     await _sessionOps.openEntry(
       group: _group,
       connector: _connector,
       connectCoordinator: _connect,
-      cwd: cwd,
+      cwd: launchCwd,
       spec: spec,
       theme: _terminalTheme(context),
       sshConnectFailedMessage: context.l10n.workspaceTerminalSshConnectFailed,
       select: select,
-      followWorkspace: followWorkspace,
+      followWorkspace: followWorkspace && !remote,
       onStateChanged: () {
         if (mounted) setState(() {});
       },
@@ -325,8 +345,12 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
     final entry = _group.entryById(id);
     if (entry != null &&
         !entry.connected &&
-        entry.cwd.trim().isNotEmpty &&
-        !entry.session.isDisposed) {
+        !entry.session.isDisposed &&
+        workspaceShellCanConnect(
+          spec: entry.spec,
+          cwd: entry.cwd,
+          home: context.read<HomeTargetController>().current,
+        )) {
       unawaited(_runConnect(entry));
     }
     setState(() {});
@@ -551,9 +575,9 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
         terminalBody = Center(
           child: Text(
             l10n.workspaceTerminalNoWorkingDirectory,
-            style: TpTextStyles.of(context).smColored(
-              terminalForeground.withValues(alpha: 0.65),
-            ),
+            style: TpTextStyles.of(
+              context,
+            ).smColored(terminalForeground.withValues(alpha: 0.65)),
           ),
         );
       case WorkspaceTerminalBodyKind.emptyLauncher:
@@ -590,8 +614,7 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
         );
     }
 
-    if (bodyKind == WorkspaceTerminalBodyKind.activeSession &&
-        cwd.isNotEmpty) {
+    if (bodyKind == WorkspaceTerminalBodyKind.activeSession && cwd.isNotEmpty) {
       _scheduleTerminalViewRegistration();
     }
 
