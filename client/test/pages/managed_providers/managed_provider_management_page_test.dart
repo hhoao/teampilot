@@ -16,6 +16,7 @@ import 'package:teampilot/services/provider_usage/managed_provider_usage_adapter
 import 'package:teampilot/services/provider_usage/managed_provider_usage_coordinator.dart'
     hide ManagedProviderUsageState;
 import 'package:teampilot/services/provider_usage/managed_provider_usage_registry.dart';
+import 'package:teampilot/repositories/ssh_credential_store.dart';
 
 import '../../support/in_memory_filesystem.dart';
 
@@ -98,6 +99,40 @@ class _RecordingNavigatorObserver extends NavigatorObserver {
   }
 }
 
+Finder _verticalScrollable() => find.byWidgetPredicate(
+  (widget) =>
+      widget is Scrollable &&
+      widget.axisDirection == AxisDirection.down &&
+      widget.physics is AlwaysScrollableScrollPhysics,
+);
+
+Future<void> _scrollToEditorBottom(WidgetTester tester) async {
+  tester.binding.focusManager.primaryFocus?.unfocus();
+  await tester.pump();
+  await tester.drag(_verticalScrollable(), const Offset(0, -800));
+  await tester.pump();
+}
+
+class _MemorySecureKeyValueStore implements SecureKeyValueStore {
+  final values = <String, String>{};
+  Object? writeError;
+
+  @override
+  Future<void> delete(String key) async {
+    values.remove(key);
+  }
+
+  @override
+  Future<String?> read(String key) async => values[key];
+
+  @override
+  Future<void> write(String key, String value) async {
+    final error = writeError;
+    if (error != null) throw error;
+    values[key] = value;
+  }
+}
+
 void main() {
   late InMemoryFilesystem fs;
   late ManagedProviderRepository providerRepository;
@@ -106,6 +141,7 @@ void main() {
   late ManagedProviderUsageCubit usageCubit;
   late _Adapter adapter;
   late _RecordingNavigatorObserver navigatorObserver;
+  late _MemorySecureKeyValueStore secureStore;
 
   setUp(() async {
     fs = InMemoryFilesystem();
@@ -121,6 +157,7 @@ void main() {
     );
     adapter = _Adapter(Future.value(_snapshot()));
     navigatorObserver = _RecordingNavigatorObserver();
+    secureStore = _MemorySecureKeyValueStore();
     final coordinator = ManagedProviderUsageCoordinator(
       providerRepository: providerRepository,
       usageRepository: usageRepository,
@@ -136,6 +173,16 @@ void main() {
   tearDown(() async {
     await providerCubit.close();
     await usageCubit.close();
+  });
+
+  test('secure store propagates backend write failures', () async {
+    secureStore.writeError = StateError('backend failure');
+    await expectLater(
+      ManagedProviderSecretStore(
+        secureStore,
+      ).write('managed-provider:test', {'apiKey': 'secret'}),
+      throwsA(isA<ManagedProviderCredentialError>()),
+    );
   });
 
   Future<void> pumpPage(WidgetTester tester) async {
@@ -154,6 +201,9 @@ void main() {
               BlocProvider.value(value: providerCubit),
               BlocProvider.value(value: usageCubit),
               BlocProvider(create: (_) => LayoutCubit()),
+              RepositoryProvider.value(
+                value: ManagedProviderSecretStore(secureStore),
+              ),
             ],
             child: const Scaffold(
               body: ManagedProviderManagementPage(embedded: true),
@@ -256,14 +306,132 @@ void main() {
         endpointInput.controller!.text,
         'https://api.deepseek.com/user/balance',
       );
-      await tester.drag(find.byType(ListView).last, const Offset(0, -800));
-      await tester.pump();
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('managed-provider-decimal-places')),
+        500,
+        scrollable: _verticalScrollable(),
+      );
+      final decimalsInput = tester.widget<TpInput>(
+        find.byKey(const Key('managed-provider-decimal-places')),
+      );
+      expect(decimalsInput.controller!.text, '2');
+      final fieldMappings = tester.widget<TpTextarea>(
+        find.byKey(
+          const Key('managed-provider-field-mappings'),
+          skipOffstage: false,
+        ),
+      );
+      expect(
+        fieldMappings.controller!.text,
+        contains(r'"currency": "$.currency"'),
+      );
       final credentialRefInput = tester.widget<TpInput>(
-        find.byKey(const Key('managed-provider-credential-ref')),
+        find.byKey(
+          const Key('managed-provider-credential-ref'),
+          skipOffstage: false,
+        ),
       );
       expect(credentialRefInput.controller!.text, isEmpty);
     },
   );
+
+  testWidgets('new provider stores API key in secure storage only', (
+    tester,
+  ) async {
+    providerCubit.emit(
+      ManagedProviderState(status: ManagedProviderLoadStatus.ready),
+    );
+    usageCubit.emit(
+      ManagedProviderUsageState(status: ManagedProviderUsageLoadStatus.ready),
+    );
+    await pumpPage(tester);
+
+    await tester.tap(find.byKey(const Key('managed-provider-add')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('managed-provider-quick-preset')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('DeepSeek').last);
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('managed-provider-credential-secret')),
+      500,
+      scrollable: _verticalScrollable(),
+    );
+    await tester.enterText(
+      find.byKey(const Key('managed-provider-credential-secret')),
+      'sk-test-secret',
+    );
+    await _scrollToEditorBottom(tester);
+    await tester.runAsync(() async {
+      tester
+          .widget<TpButton>(find.byKey(const Key('managed-provider-save')))
+          .onPressed!
+          .call();
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    });
+    await tester.pumpAndSettle();
+
+    final provider = providerCubit.state.providers.single;
+    expect(provider.credentialRef, 'managed-provider:${provider.id}');
+    expect(provider.toJson().toString(), isNot(contains('sk-test-secret')));
+    final scope = await ManagedProviderSecretStore(
+      secureStore,
+    ).read(provider.credentialRef!);
+    expect(scope.valueFor('apiKey'), 'sk-test-secret');
+  });
+
+  testWidgets('editing with an empty API key preserves the existing secret', (
+    tester,
+  ) async {
+    final existing = _provider().copyWith(
+      credentialRef: 'managed-provider:p1',
+      endpointConfig: ManagedProviderEndpointConfig(
+        url: _provider().endpointConfig.url,
+        credentialField: 'apiKey',
+      ),
+    );
+    await ManagedProviderSecretStore(
+      secureStore,
+    ).write(existing.credentialRef!, {'apiKey': 'sk-existing'});
+    providerCubit.emit(
+      ManagedProviderState(
+        status: ManagedProviderLoadStatus.ready,
+        providers: [existing],
+      ),
+    );
+    usageCubit.emit(
+      ManagedProviderUsageState(status: ManagedProviderUsageLoadStatus.ready),
+    );
+    await pumpPage(tester);
+
+    await tester.tap(find.byIcon(Icons.edit_outlined).first);
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('managed-provider-credential-secret')),
+      500,
+      scrollable: _verticalScrollable(),
+    );
+    expect(
+      find.byKey(const Key('managed-provider-credential-secret')),
+      findsOneWidget,
+    );
+    await _scrollToEditorBottom(tester);
+    await tester.runAsync(() async {
+      tester
+          .widget<TpButton>(find.byKey(const Key('managed-provider-save')))
+          .onPressed!
+          .call();
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    });
+    await tester.pumpAndSettle();
+
+    final saved = providerCubit.state.providers.single;
+    expect(saved.credentialRef, existing.credentialRef);
+    final scope = await ManagedProviderSecretStore(
+      secureStore,
+    ).read(existing.credentialRef!);
+    expect(scope.valueFor('apiKey'), 'sk-existing');
+  });
 
   testWidgets(
     'CRUD actions are dispatched through the managed provider cubit',
@@ -288,8 +456,10 @@ void main() {
       );
       await tester.drag(find.byType(ListView).last, const Offset(0, -800));
       await tester.pump();
-      await tester.ensureVisible(
+      await tester.scrollUntilVisible(
         find.byKey(const Key('managed-provider-save'), skipOffstage: false),
+        500,
+        scrollable: _verticalScrollable(),
       );
       await tester.pump();
       await tester.tap(find.byKey(const Key('managed-provider-save')));

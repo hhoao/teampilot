@@ -7687,6 +7687,17 @@ class AppLocalizationsEn extends AppLocalizations {
       'Credential configured · secret is masked';
 
   @override
+  String get managedProvidersCredentialSecret => 'API key / token';
+
+  @override
+  String get managedProvidersCredentialSecretHint =>
+      'Paste the provider API key or token';
+
+  @override
+  String get managedProvidersCredentialSecretHelper =>
+      'Saved only in secure storage; leave blank to keep the existing secret.';
+
+  @override
   String get managedProvidersCredentialName => 'Credential header/query name';
 
   @override
@@ -7706,6 +7717,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get managedProvidersCredentialPlacementHint => 'header or query';
 
   @override
+  String get managedProvidersCredentialFieldRequired =>
+      'Enter the credential field before saving the API key.';
+
+  @override
+  String get managedProvidersCredentialSaveFailed =>
+      'Unable to save provider credentials securely.';
+
+  @override
   String get managedProvidersDisplay => 'Display configuration';
 
   @override
@@ -7716,6 +7735,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get managedProvidersDecimals => 'Decimals';
+
+  @override
+  String get managedProvidersCurrencyMappingHelper =>
+      'Currency is read from the response mapping when configured; the currency and unit below remain editable fallbacks.';
 
   @override
   String get managedProvidersEnabledTitle => 'Enabled';

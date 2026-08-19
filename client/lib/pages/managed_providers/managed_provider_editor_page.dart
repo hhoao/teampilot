@@ -10,6 +10,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/managed_provider.dart';
 import '../../models/provider_usage_snapshot.dart';
 import '../../services/provider_usage/managed_provider_presets.dart';
+import '../../services/provider_usage/managed_provider_secret_store.dart';
 import '../../widgets/app_toast/app_toast.dart';
 import '../../utils/managed_provider_error_localization.dart';
 
@@ -42,6 +43,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
   late final TextEditingController _unit;
   late final TextEditingController _decimalPlaces;
   late final TextEditingController _credentialRef;
+  late final TextEditingController _credentialSecret;
   late final TextEditingController _credentialName;
   late final TextEditingController _credentialField;
   late final TextEditingController _credentialPlacement;
@@ -79,6 +81,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
       text: display?.decimalPlaces?.toString() ?? '',
     );
     _credentialRef = TextEditingController(text: provider?.credentialRef ?? '');
+    _credentialSecret = TextEditingController();
     _credentialName = TextEditingController(
       text: endpoint?.credentialName ?? '',
     );
@@ -111,6 +114,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
       _unit,
       _decimalPlaces,
       _credentialRef,
+      _credentialSecret,
       _credentialName,
       _credentialField,
       _credentialPlacement,
@@ -127,7 +131,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
     final form = SafeArea(
       child: Form(
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 80),
           children: [
             if (_formError != null) _ErrorBanner(message: _formError!),
             if (provider == null) ...[
@@ -257,8 +261,31 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
               label: l10n.managedProvidersFieldMappings,
               controller: _fieldMappings,
             ),
+            const SizedBox(height: 6),
+            Text(
+              l10n.managedProvidersCurrencyMappingHelper,
+              style: TpTextStyles.of(
+                context,
+              ).smColored(Theme.of(context).colorScheme.onSurfaceVariant),
+            ),
             const SizedBox(height: 20),
             _sectionTitle(context, l10n.managedProvidersCredentials),
+            _field(
+              context,
+              key: const Key('managed-provider-credential-secret'),
+              label: l10n.managedProvidersCredentialSecret,
+              controller: _credentialSecret,
+              hint: l10n.managedProvidersCredentialSecretHint,
+              obscureText: true,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              l10n.managedProvidersCredentialSecretHelper,
+              style: TpTextStyles.of(
+                context,
+              ).smColored(Theme.of(context).colorScheme.onSurfaceVariant),
+            ),
+            const SizedBox(height: 12),
             _field(
               context,
               key: const Key('managed-provider-credential-ref'),
@@ -473,6 +500,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
     String? hint,
     TextInputType? keyboardType,
     bool readOnly = false,
+    bool obscureText = false,
   }) => _labeledControl(
     context,
     label: label,
@@ -482,6 +510,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
       decoration: InputDecoration(hintText: hint),
       keyboardType: keyboardType,
       readOnly: readOnly,
+      obscureText: obscureText,
     ),
   );
 
@@ -573,8 +602,36 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
     });
     final now = DateTime.now().millisecondsSinceEpoch;
     final current = _provider;
+    final providerId = current?.id ?? 'managed-$now';
+    final credentialField = _credentialField.text.trim();
+    var credentialRef = _credentialRef.text.trim();
+    final credentialSecret = _credentialSecret.text.trim();
+    if (credentialSecret.isNotEmpty) {
+      if (credentialField.isEmpty) {
+        setState(() {
+          _saving = false;
+          _formError = context.l10n.managedProvidersCredentialFieldRequired;
+        });
+        return;
+      }
+      credentialRef = credentialRef.isEmpty
+          ? 'managed-provider:$providerId'
+          : credentialRef;
+      try {
+        await context.read<ManagedProviderSecretStore>().write(credentialRef, {
+          credentialField: credentialSecret,
+        });
+      } on Object {
+        if (!mounted) return;
+        setState(() {
+          _saving = false;
+          _formError = context.l10n.managedProvidersCredentialSaveFailed;
+        });
+        return;
+      }
+    }
     final next = ManagedProvider(
-      id: current?.id ?? 'managed-$now',
+      id: providerId,
       name: name,
       kind: _kind,
       adapterId: adapter,
@@ -604,9 +661,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
             : _credentialPlacement.text.trim().toLowerCase(),
         credentialPrefix: _credentialPrefix,
       ),
-      credentialRef: _credentialRef.text.trim().isEmpty
-          ? null
-          : _credentialRef.text.trim(),
+      credentialRef: credentialRef.isEmpty ? null : credentialRef,
       displayConfig: ManagedProviderDisplayConfig(
         currency: _currency.text.trim().isEmpty ? null : _currency.text.trim(),
         unit: _unit.text.trim().isEmpty ? null : _unit.text.trim(),

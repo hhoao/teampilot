@@ -68,6 +68,7 @@ final List<ManagedProviderPreset> builtInManagedProviderPresets =
             credentialPlacement: 'header',
             credentialPrefix: 'Bearer ',
           ),
+          displayConfig: ManagedProviderDisplayConfig(decimalPlaces: 2),
         ),
       ),
       ManagedProviderPreset(

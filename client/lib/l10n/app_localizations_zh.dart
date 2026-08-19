@@ -7386,6 +7386,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String get managedProvidersCredentialConfigured => '已配置凭据 · 密钥已隐藏';
 
   @override
+  String get managedProvidersCredentialSecret => 'API Key / Token';
+
+  @override
+  String get managedProvidersCredentialSecretHint =>
+      '填入 Provider 的 API Key 或 Token';
+
+  @override
+  String get managedProvidersCredentialSecretHelper => '仅保存到安全存储；留空可保留已有密钥。';
+
+  @override
   String get managedProvidersCredentialName => '凭据 Header/Query 名称';
 
   @override
@@ -7404,6 +7414,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get managedProvidersCredentialPlacementHint => 'header 或 query';
 
   @override
+  String get managedProvidersCredentialFieldRequired => '保存 API Key 前请先填写凭据字段。';
+
+  @override
+  String get managedProvidersCredentialSaveFailed => '无法安全保存 Provider 凭据。';
+
+  @override
   String get managedProvidersDisplay => '显示配置';
 
   @override
@@ -7414,6 +7430,10 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get managedProvidersDecimals => '小数位';
+
+  @override
+  String get managedProvidersCurrencyMappingHelper =>
+      '配置响应映射后将动态读取货币；下方货币和单位仍可作为可编辑的 fallback。';
 
   @override
   String get managedProvidersEnabledTitle => '启用';

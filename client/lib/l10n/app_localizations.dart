@@ -13748,6 +13748,24 @@ abstract class AppLocalizations {
   /// **'Credential configured · secret is masked'**
   String get managedProvidersCredentialConfigured;
 
+  /// No description provided for @managedProvidersCredentialSecret.
+  ///
+  /// In en, this message translates to:
+  /// **'API key / token'**
+  String get managedProvidersCredentialSecret;
+
+  /// No description provided for @managedProvidersCredentialSecretHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste the provider API key or token'**
+  String get managedProvidersCredentialSecretHint;
+
+  /// No description provided for @managedProvidersCredentialSecretHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved only in secure storage; leave blank to keep the existing secret.'**
+  String get managedProvidersCredentialSecretHelper;
+
   /// No description provided for @managedProvidersCredentialName.
   ///
   /// In en, this message translates to:
@@ -13784,6 +13802,18 @@ abstract class AppLocalizations {
   /// **'header or query'**
   String get managedProvidersCredentialPlacementHint;
 
+  /// No description provided for @managedProvidersCredentialFieldRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the credential field before saving the API key.'**
+  String get managedProvidersCredentialFieldRequired;
+
+  /// No description provided for @managedProvidersCredentialSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to save provider credentials securely.'**
+  String get managedProvidersCredentialSaveFailed;
+
   /// No description provided for @managedProvidersDisplay.
   ///
   /// In en, this message translates to:
@@ -13807,6 +13837,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Decimals'**
   String get managedProvidersDecimals;
+
+  /// No description provided for @managedProvidersCurrencyMappingHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Currency is read from the response mapping when configured; the currency and unit below remain editable fallbacks.'**
+  String get managedProvidersCurrencyMappingHelper;
 
   /// No description provided for @managedProvidersEnabledTitle.
   ///
