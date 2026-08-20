@@ -84,6 +84,7 @@ void main() {
     expect(response.windows.first.resetsAt, 1_800_000_000_000);
     expect(response.windows.last.label, 'Weekly');
     expect(response.windows.last.used, '34');
+    expect(response.staleAfter, const Duration(minutes: 10));
   });
 
   test('Codex client maps primary and secondary windows', () async {
@@ -121,6 +122,7 @@ void main() {
     expect(response.windows.first.used, '41.5');
     expect(response.windows.last.label, 'Weekly');
     expect(response.windows.last.used, '12');
+    expect(response.staleAfter, const Duration(minutes: 10));
   });
 
   test('Claude 401 is authenticationFailed', () async {

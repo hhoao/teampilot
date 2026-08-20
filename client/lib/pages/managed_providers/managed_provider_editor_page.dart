@@ -158,7 +158,9 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
                 credentialSecretController: _credentialSecret,
                 credentialSecretFocusNode: _credentialSecretFocus,
                 credentialConfigured: _credentialRef.text.trim().isNotEmpty,
+                enabled: _enabled,
                 onPresetChanged: _applyPreset,
+                onEnabledChanged: _setEnabled,
               ),
             ),
             if (_schema.hasSection(ManagedProviderEditorSection.query)) ...[
@@ -235,9 +237,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
                 kind: _kind,
                 adapterController: _adapter,
                 credentialRefController: _credentialRef,
-                enabled: _enabled,
                 onKindChanged: _setKind,
-                onEnabledChanged: _setEnabled,
               ),
             ),
             const SizedBox(height: 16),
@@ -446,7 +446,6 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
     if (provider == null) return false;
     return provider.adapterId != 'http-json' ||
         provider.kind != ManagedProviderKind.customHttp ||
-        !provider.enabled ||
         provider.credentialRef != null && provider.credentialRef!.isNotEmpty;
   }
 

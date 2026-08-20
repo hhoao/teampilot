@@ -52,7 +52,7 @@ class ClaudeOfficialSubscriptionClient implements OfficialSubscriptionClient {
     }
     return OfficialSubscriptionResponse(
       windows: windows,
-      staleAfter: const Duration(minutes: 5),
+      staleAfter: const Duration(minutes: 10),
       adapterVersion: 'claude-oauth-usage-v1',
     );
   }

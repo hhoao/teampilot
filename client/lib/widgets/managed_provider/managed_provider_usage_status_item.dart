@@ -8,6 +8,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/managed_provider.dart';
 import '../../models/provider_usage_snapshot.dart';
 import '../workspace_status_bar/workspace_status_bar.dart';
+import 'managed_provider_brand_icon.dart';
 import 'managed_provider_usage_panel.dart';
 
 /// Lower-left cached usage summary and its refresh/navigation panel.
@@ -124,25 +125,60 @@ class _SummaryContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final styles = TpTextStyles.of(context);
     final cs = Theme.of(context).colorScheme;
+
+    Widget leadingIcon;
+    if (summary.loading) {
+      leadingIcon = const SizedBox.square(
+        dimension: 12,
+        child: CircularProgressIndicator(strokeWidth: 1.5),
+      );
+    } else if (summary.providerList.length > 1) {
+      final brands = [
+        for (final p in summary.providerList)
+          KeyedSubtree(
+            key: Key('managed-provider-brand-${p.id}'),
+            child: ManagedProviderBrandMark(provider: p, size: 15),
+          ),
+      ];
+      leadingIcon = Row(
+        key: const Key('managed-provider-usage-brand-icons'),
+        mainAxisSize: MainAxisSize.min,
+        children: brands,
+      );
+    } else if (summary.providerList.length == 1) {
+      leadingIcon = KeyedSubtree(
+        key: Key('managed-provider-brand-${summary.providerList.single.id}'),
+        child: ManagedProviderBrandMark(
+          provider: summary.providerList.single,
+          size: 15,
+        ),
+      );
+    } else {
+      leadingIcon = Icon(
+        Icons.account_balance_wallet_outlined,
+        size: 13,
+        color: cs.onSurfaceVariant,
+      );
+    }
+
+    final warningIcon = summary.warning && !summary.loading
+        ? Icon(
+            Icons.warning_amber_rounded,
+            key: const Key('managed-provider-usage-warning'),
+            size: 13,
+            color: cs.error,
+          )
+        : null;
+
     return Row(
       mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        if (summary.loading)
-          const SizedBox.square(
-            dimension: 12,
-            child: CircularProgressIndicator(strokeWidth: 1.5),
-          )
-        else
-          Icon(
-            summary.warning
-                ? Icons.warning_amber_rounded
-                : Icons.account_balance_wallet_outlined,
-            key: summary.warning
-                ? const Key('managed-provider-usage-warning')
-                : null,
-            size: 13,
-            color: summary.warning ? cs.error : cs.onSurfaceVariant,
-          ),
+        leadingIcon,
+        if (warningIcon != null) ...[
+          const SizedBox(width: 2),
+          warningIcon,
+        ],
         const SizedBox(width: 4),
         if (!compact || summary.providers == 1)
           Text(
@@ -161,7 +197,7 @@ class _SummaryContent extends StatelessWidget {
 
 class _Summary {
   const _Summary({
-    required this.providers,
+    required this.providerList,
     required this.label,
     required this.tooltip,
     required this.warning,
@@ -169,12 +205,14 @@ class _Summary {
     required this.selected,
   });
 
-  final int providers;
+  final List<ManagedProvider> providerList;
   final String label;
   final String tooltip;
   final bool warning;
   final bool loading;
   final bool selected;
+
+  int get providers => providerList.length;
 
   factory _Summary.from(
     BuildContext context,
@@ -184,7 +222,7 @@ class _Summary {
     final l10n = context.l10n;
     if (providers.isEmpty) {
       return _Summary(
-        providers: 0,
+        providerList: const [],
         label: l10n.managedProvidersAdd,
         tooltip: l10n.managedProvidersEmptyHint,
         warning: false,
@@ -200,12 +238,13 @@ class _Summary {
     });
     final loading =
         usageState.isRefreshing ||
-        usageState.status == ManagedProviderUsageLoadStatus.loading;
+        (usageState.status == ManagedProviderUsageLoadStatus.loading &&
+            usageState.snapshots.isEmpty);
     final label = providers.length == 1
         ? _singleLabel(providers.single, usageState)
         : '${providers.length}';
     return _Summary(
-      providers: providers.length,
+      providerList: providers,
       label: label,
       tooltip: warning
           ? '${l10n.managedProvidersTitle} · ${l10n.managedProvidersCachedUsageStale}'

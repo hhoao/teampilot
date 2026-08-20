@@ -7314,6 +7314,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get managedProvidersEmptyHint => '添加 Provider 以独立跟踪余额和配额。';
 
   @override
+  String get managedProvidersNoneEnabledTitle => '没有已启用的 Provider';
+
+  @override
+  String get managedProvidersNoneEnabledHint => '启用 Provider 后才会显示在状态栏并参与查询。';
+
+  @override
   String get managedProvidersEnabled => '已启用';
 
   @override
@@ -7547,7 +7553,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get managedProvidersEnabledTitle => '启用';
 
   @override
-  String get managedProvidersEnabledSubtitle => '刷新时包含此 Provider。';
+  String get managedProvidersEnabledSubtitle => '关闭后将从状态栏隐藏此 Provider，并停止所有查询。';
 
   @override
   String get managedProvidersShowPercent => '显示百分比';

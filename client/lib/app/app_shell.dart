@@ -178,6 +178,7 @@ import '../services/cli/cursor/provider/cursor_provider_credentials_service.dart
 import '../services/provider/provider_credential_host_runner.dart';
 import '../services/provider_usage/managed_provider_secret_store.dart';
 import '../services/provider_usage/managed_provider_usage_adapter.dart';
+import '../services/provider_usage/managed_provider_usage_auto_refresh.dart';
 import '../services/provider_usage/managed_provider_usage_coordinator.dart';
 import '../services/provider_usage/managed_provider_usage_registry.dart';
 import '../services/provider_usage/adapters/claude_official_subscription_auth.dart';
@@ -2361,6 +2362,7 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap>
   AppShell? _shell;
   Object? _error;
   var _retrying = false;
+  ManagedProviderUsageAutoRefresh? _usageAutoRefresh;
 
   @override
   void initState() {
@@ -2405,6 +2407,11 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap>
         _error = null;
         _retrying = false;
       });
+      _usageAutoRefresh?.dispose();
+      _usageAutoRefresh = ManagedProviderUsageAutoRefresh(
+        usage: shell.managedProviderUsageCubit,
+        providers: shell.managedProviderCubit,
+      )..start();
       await yieldUiFrame();
       await yieldUiFrame();
       await yieldUiFrame();
@@ -2443,11 +2450,7 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap>
 
   Future<void> _refreshExpiredManagedProviders(AppShell? shell) async {
     if (shell == null) return;
-    final usage = shell.managedProviderUsageCubit;
-    await Future.wait([
-      for (final provider in shell.managedProviderCubit.state.enabledProviders)
-        usage.ensureFresh(provider.id),
-    ]);
+    await shell.managedProviderUsageCubit.refreshExpiredEnabled();
   }
 
   Future<void> _chooseWorkEnvironmentAndRetry() async {
@@ -2469,6 +2472,7 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _usageAutoRefresh?.dispose();
     final shell = _shell;
     if (shell != null) {
       unawaited(shell.managedProviderControlPlane.close());

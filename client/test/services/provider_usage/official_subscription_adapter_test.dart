@@ -58,7 +58,7 @@ class _Client implements OfficialSubscriptionClient {
           unit: 'requests',
         ),
       ],
-      staleAfter: const Duration(minutes: 5),
+      staleAfter: const Duration(minutes: 10),
       adapterVersion: 'fixture-v1',
     );
   }
@@ -92,7 +92,7 @@ void main() {
     expect(snapshot.measures, hasLength(2));
     expect(snapshot.measures.first.total, '100.000000000000000005');
     expect(snapshot.measures.first.resetsAt, 1_800_000_000_000);
-    expect(snapshot.staleAt, 1_700_000_300_000);
+    expect(snapshot.staleAt, 1_700_000_600_000);
     expect(snapshot.adapterVersion, 'fixture-v1');
   });
 

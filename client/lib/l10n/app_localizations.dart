@@ -13556,6 +13556,18 @@ abstract class AppLocalizations {
   /// **'Add a provider to track balances and quotas independently from CLI providers.'**
   String get managedProvidersEmptyHint;
 
+  /// No description provided for @managedProvidersNoneEnabledTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No enabled providers'**
+  String get managedProvidersNoneEnabledTitle;
+
+  /// No description provided for @managedProvidersNoneEnabledHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable a provider to show it in the status bar and include it in queries.'**
+  String get managedProvidersNoneEnabledHint;
+
   /// No description provided for @managedProvidersEnabled.
   ///
   /// In en, this message translates to:
@@ -14003,7 +14015,7 @@ abstract class AppLocalizations {
   /// No description provided for @managedProvidersEnabledSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Include this provider in refresh actions.'**
+  /// **'Turning this off hides this provider from the status bar and stops all querying.'**
   String get managedProvidersEnabledSubtitle;
 
   /// No description provided for @managedProvidersShowPercent.

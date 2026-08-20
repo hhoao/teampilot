@@ -7621,6 +7621,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'Add a provider to track balances and quotas independently from CLI providers.';
 
   @override
+  String get managedProvidersNoneEnabledTitle => 'No enabled providers';
+
+  @override
+  String get managedProvidersNoneEnabledHint =>
+      'Enable a provider to show it in the status bar and include it in queries.';
+
+  @override
   String get managedProvidersEnabled => 'Enabled';
 
   @override
@@ -7868,7 +7875,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get managedProvidersEnabledSubtitle =>
-      'Include this provider in refresh actions.';
+      'Turning this off hides this provider from the status bar and stops all querying.';
 
   @override
   String get managedProvidersShowPercent => 'Show percentage';
