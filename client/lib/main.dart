@@ -64,6 +64,7 @@ import 'services/app/desktop_window_actions.dart';
 import 'services/ssh/ssh_client_factory.dart';
 import 'services/ssh/ssh_profile_connection_coordinator.dart';
 import 'services/terminal/terminal_transport_factory.dart';
+import 'services/provider_usage/managed_provider_secret_store.dart';
 import 'services/file_tree/workspace_file_tree_store.dart';
 import 'services/search/workspace_search_indexes.dart';
 import 'services/floating_workspace/floating_maximize_insets.dart';
@@ -613,6 +614,9 @@ void main() async {
                 ),
                 RepositoryProvider<SshKnownHostRepository>.value(
                   value: shell.sshKnownHostRepo,
+                ),
+                RepositoryProvider<ManagedProviderSecretStore>.value(
+                  value: shell.managedProviderSecretStore,
                 ),
                 RepositoryProvider<TerminalTransportFactory>.value(
                   value: shell.transportFactory,

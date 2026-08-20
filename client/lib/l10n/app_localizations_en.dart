@@ -7532,4 +7532,401 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get retry => 'Retry';
+
+  @override
+  String get managedProvidersNav => 'Managed Providers';
+
+  @override
+  String get managedProvidersUsageNav => 'Balances & usage';
+
+  @override
+  String get managedProvidersTitle => 'Managed Providers';
+
+  @override
+  String get managedProvidersSubtitle =>
+      'Balances and quotas independent from CLI provider configuration.';
+
+  @override
+  String get managedProvidersAdd => 'Add provider';
+
+  @override
+  String get managedProvidersEmptyTitle => 'No managed providers';
+
+  @override
+  String get managedProvidersEmptyHint =>
+      'Add a provider to track balances and quotas independently from CLI providers.';
+
+  @override
+  String get managedProvidersEnabled => 'Enabled';
+
+  @override
+  String get managedProvidersDisabled => 'Disabled';
+
+  @override
+  String get managedProvidersEnable => 'Enable';
+
+  @override
+  String get managedProvidersDisable => 'Disable';
+
+  @override
+  String get managedProvidersEdit => 'Edit';
+
+  @override
+  String get managedProvidersDelete => 'Delete';
+
+  @override
+  String get managedProvidersRetry => 'Retry';
+
+  @override
+  String get managedProvidersDeleteTitle => 'Delete managed provider?';
+
+  @override
+  String managedProvidersDeleteContent(Object name) {
+    return 'Delete “$name” and its cached usage?';
+  }
+
+  @override
+  String get managedProvidersCancel => 'Cancel';
+
+  @override
+  String get managedProvidersNewTitle => 'New Managed Provider';
+
+  @override
+  String get managedProvidersEditTitle => 'Edit Managed Provider';
+
+  @override
+  String get managedProvidersQuickPresetTitle => 'Quick preset';
+
+  @override
+  String get managedProvidersQuickPresetHint =>
+      'Starts with safe defaults; add your credential before querying.';
+
+  @override
+  String get managedProvidersQuickPresetCodex => 'Codex';
+
+  @override
+  String get managedProvidersQuickPresetCodexHint =>
+      'Sign in or import credentials below. Usage uses the official ChatGPT Codex quota API.';
+
+  @override
+  String get managedProvidersQuickPresetClaudeCode => 'Claude Code';
+
+  @override
+  String get managedProvidersQuickPresetClaudeCodeHint =>
+      'Sign in or import credentials below. Usage uses the official Claude OAuth quota API.';
+
+  @override
+  String get managedProvidersQuickPresetDeepSeek => 'DeepSeek';
+
+  @override
+  String get managedProvidersQuickPresetDeepSeekHint =>
+      'Preconfigured for the balance API; add an API key credential.';
+
+  @override
+  String get managedProvidersQuickPresetOpenCode => 'OpenCode';
+
+  @override
+  String get managedProvidersQuickPresetOpenCodeHint =>
+      'No universal balance endpoint is assumed; add the endpoint for your provider.';
+
+  @override
+  String get managedProvidersBasicsSectionTitle => 'Basics';
+
+  @override
+  String get managedProvidersBasicsSectionSubtitle =>
+      'Start with identity and any required secret.';
+
+  @override
+  String get managedProvidersBasicsSummary =>
+      'Choose a preset, name the provider, and add the required secret when this provider needs one.';
+
+  @override
+  String get managedProvidersQuerySectionTitle => 'Query';
+
+  @override
+  String get managedProvidersQuerySectionSubtitle =>
+      'Endpoint and JSON mappings used by HTTP-based usage checks.';
+
+  @override
+  String get managedProvidersCredentialsSectionTitle => 'Credential details';
+
+  @override
+  String get managedProvidersCredentialsSectionSubtitle =>
+      'Header or query metadata for sending stored credentials.';
+
+  @override
+  String get managedProvidersDisplaySectionTitle => 'Display';
+
+  @override
+  String get managedProvidersDisplaySectionSubtitle =>
+      'Formatting fallbacks for balances and quotas.';
+
+  @override
+  String get managedProvidersAdvancedSectionTitle => 'Advanced';
+
+  @override
+  String get managedProvidersAdvancedSectionSubtitle =>
+      'Adapter identity, provider kind, and stored reference details.';
+
+  @override
+  String get managedProvidersSectionConfiguredBadge => 'Configured';
+
+  @override
+  String get managedProvidersIdentity => 'Identity';
+
+  @override
+  String get managedProvidersName => 'Name';
+
+  @override
+  String get managedProvidersNameHint => 'Visible name';
+
+  @override
+  String get managedProvidersAdapter => 'Adapter';
+
+  @override
+  String get managedProvidersAdapterHint =>
+      'http-json or a registered adapter id';
+
+  @override
+  String get managedProvidersKind => 'Kind';
+
+  @override
+  String get managedProvidersKindApiBalance => 'API balance';
+
+  @override
+  String get managedProvidersKindSubscriptionQuota => 'Subscription quota';
+
+  @override
+  String get managedProvidersKindCustomHttp => 'Custom HTTP';
+
+  @override
+  String get managedProvidersEndpoint => 'Endpoint URL';
+
+  @override
+  String get managedProvidersEndpointHint => 'https://…';
+
+  @override
+  String get managedProvidersMethod => 'Method';
+
+  @override
+  String get managedProvidersResponsePath => 'Response path';
+
+  @override
+  String get managedProvidersMeasuresPath => 'Measures path';
+
+  @override
+  String get managedProvidersRequestMapping => 'Request body mapping (JSON)';
+
+  @override
+  String get managedProvidersFieldMappings => 'Response field mappings (JSON)';
+
+  @override
+  String get managedProvidersCredentials => 'Credentials';
+
+  @override
+  String get managedProvidersCredentialRef => 'Credential reference';
+
+  @override
+  String get managedProvidersCredentialRefHint =>
+      'Reference only; secret values are never shown';
+
+  @override
+  String get managedProvidersCredentialNone => 'No credential configured';
+
+  @override
+  String get managedProvidersCredentialConfigured =>
+      'Credential configured · secret is masked';
+
+  @override
+  String get managedProvidersCredentialSecret => 'API key / token';
+
+  @override
+  String get managedProvidersCredentialSecretHint =>
+      'Paste the provider API key or token';
+
+  @override
+  String get managedProvidersCredentialSecretExistingHint =>
+      'Leave blank to keep the stored secret';
+
+  @override
+  String get managedProvidersCredentialSecretHelper =>
+      'Saved only in secure storage; leave blank to keep the existing secret.';
+
+  @override
+  String get managedProvidersCredentialName => 'Credential header/query name';
+
+  @override
+  String get managedProvidersCredentialNameHint => 'Authorization or api-key';
+
+  @override
+  String get managedProvidersCredentialField => 'Credential response field';
+
+  @override
+  String get managedProvidersCredentialFieldHint =>
+      'Optional response mapping field';
+
+  @override
+  String get managedProvidersCredentialPlacement => 'Credential placement';
+
+  @override
+  String get managedProvidersCredentialPlacementHint => 'header or query';
+
+  @override
+  String get managedProvidersCredentialFieldRequired =>
+      'Enter the credential field before saving the API key.';
+
+  @override
+  String get managedProvidersCredentialSaveFailed =>
+      'Unable to save provider credentials securely.';
+
+  @override
+  String get managedProvidersDisplay => 'Display configuration';
+
+  @override
+  String get managedProvidersCurrency => 'Currency';
+
+  @override
+  String get managedProvidersUnit => 'Unit';
+
+  @override
+  String get managedProvidersDecimals => 'Decimals';
+
+  @override
+  String get managedProvidersCurrencyMappingHelper =>
+      'Currency is read from the response mapping when configured; the currency and unit below remain editable fallbacks.';
+
+  @override
+  String get managedProvidersDynamicCurrencyHelper =>
+      'Currency will be read dynamically from the configured response mapping.';
+
+  @override
+  String get managedProvidersEnabledTitle => 'Enabled';
+
+  @override
+  String get managedProvidersEnabledSubtitle =>
+      'Include this provider in refresh actions.';
+
+  @override
+  String get managedProvidersShowPercent => 'Show percentage';
+
+  @override
+  String get managedProvidersSave => 'Save';
+
+  @override
+  String get managedProvidersSaveProvider => 'Save provider';
+
+  @override
+  String get managedProvidersSaving => 'Saving…';
+
+  @override
+  String get managedProvidersTestQuery => 'Test query';
+
+  @override
+  String get managedProvidersTestProviderQuery => 'Test provider query';
+
+  @override
+  String get managedProvidersSaved => 'Managed provider saved.';
+
+  @override
+  String get managedProvidersQueryCompleted => 'Provider query completed.';
+
+  @override
+  String get managedProvidersQueryFailed => 'Unable to query provider usage.';
+
+  @override
+  String get managedProvidersMissingCredential =>
+      'Provider credentials are missing.';
+
+  @override
+  String get managedProvidersAuthenticationFailed =>
+      'Provider authentication failed.';
+
+  @override
+  String get managedProvidersNetworkFailed =>
+      'Provider network request failed.';
+
+  @override
+  String get managedProvidersHttpFailed =>
+      'Provider service returned an error.';
+
+  @override
+  String get managedProvidersResponseParseFailed =>
+      'Provider response could not be parsed.';
+
+  @override
+  String get managedProvidersSaveFailed => 'Unable to save managed provider.';
+
+  @override
+  String get managedProvidersDeleteFailed =>
+      'Unable to delete managed provider.';
+
+  @override
+  String get managedProvidersLoadFailed => 'Unable to load managed providers.';
+
+  @override
+  String get managedProvidersUsageLoadFailed =>
+      'Unable to load provider usage.';
+
+  @override
+  String get managedProvidersRefreshFailed =>
+      'Unable to refresh provider usage.';
+
+  @override
+  String get managedProvidersUsagePersistenceFailed =>
+      'Unable to save provider usage.';
+
+  @override
+  String get managedProvidersUsageInvalidated =>
+      'Provider usage was invalidated.';
+
+  @override
+  String get managedProvidersRequestMappingError =>
+      'Request mapping must be a JSON object.';
+
+  @override
+  String get managedProvidersFieldMappingError =>
+      'Field mappings must be a secret-free JSON object.';
+
+  @override
+  String get managedProvidersSecretMappingError =>
+      'Use a credential reference instead of putting secrets in the request mapping.';
+
+  @override
+  String get managedProvidersNameAdapterError =>
+      'Name and adapter are required.';
+
+  @override
+  String get managedProvidersDecimalError =>
+      'Decimal places must be a whole number.';
+
+  @override
+  String get managedProvidersEndpointError =>
+      'Enter an HTTPS or loopback endpoint for this HTTP adapter.';
+
+  @override
+  String get managedProvidersNoUsage => 'No usage queried yet';
+
+  @override
+  String get managedProvidersCachedUsage => 'Cached usage';
+
+  @override
+  String get managedProvidersCachedUsageStale => 'Cached usage · needs refresh';
+
+  @override
+  String get managedProvidersLastQueryFailed => 'Last query failed';
+
+  @override
+  String get managedProvidersLoadingUsage => 'Loading usage';
+
+  @override
+  String get managedProvidersQueryUnsupported => 'Query unsupported';
+
+  @override
+  String get managedProvidersUnknownUsage => 'Unknown usage status';
+
+  @override
+  String get managedProvidersStale => 'Stale';
+
+  @override
+  String get managedProvidersError => 'Error';
 }

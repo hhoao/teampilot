@@ -277,10 +277,10 @@ class ManagedProviderRepository {
       credentialPrefix: next.endpointConfig.credentialPrefix,
       headers: next.endpointConfig.headers,
       body: next.endpointConfig.body,
-      fieldMappings: {
-        ...previous.endpointConfig.fieldMappings,
-        ...next.endpointConfig.fieldMappings,
-      },
+      // Field mappings are an editor-owned document. An empty map is a
+      // meaningful update that clears the previous mapping, so do not merge
+      // this field with the prior value.
+      fieldMappings: next.endpointConfig.fieldMappings,
       hadUnsafeUrl: next.endpointConfig.hadUnsafeUrl,
       unknownFields: {
         ...previous.endpointConfig.unknownFields,

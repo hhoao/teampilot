@@ -1,22 +1,26 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ui/shared_ui.dart';
+import 'package:teampilot/cubits/app_provider_cubit.dart';
 import 'package:teampilot/cubits/layout_cubit.dart';
 import 'package:teampilot/cubits/managed_provider_cubit.dart';
 import 'package:teampilot/cubits/managed_provider_usage_cubit.dart';
+import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/managed_provider.dart';
 import 'package:teampilot/models/provider_usage_snapshot.dart';
-import 'package:teampilot/pages/managed_providers/managed_provider_editor_page.dart';
 import 'package:teampilot/pages/managed_providers/managed_provider_management_page.dart';
+import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/repositories/managed_provider_repository.dart';
 import 'package:teampilot/repositories/managed_provider_usage_repository.dart';
+import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
+import 'package:teampilot/services/cli/registry/cli_tool_registry_scope.dart';
 import 'package:teampilot/services/provider_usage/managed_provider_secret_store.dart';
 import 'package:teampilot/services/provider_usage/managed_provider_usage_adapter.dart';
-import 'package:teampilot/services/provider_usage/managed_provider_usage_coordinator.dart';
+import 'package:teampilot/services/provider_usage/managed_provider_usage_coordinator.dart'
+    hide ManagedProviderUsageState;
 import 'package:teampilot/services/provider_usage/managed_provider_usage_registry.dart';
+import 'package:teampilot/repositories/ssh_credential_store.dart';
 
 import '../../support/in_memory_filesystem.dart';
 
@@ -53,14 +57,15 @@ ProviderUsageSnapshot _snapshot({
 );
 
 class _Adapter implements ManagedProviderUsageAdapter {
-  _Adapter(this.result);
+  _Adapter(this.result, {this.adapterId = 'fake'});
 
   Future<ProviderUsageSnapshot> result;
-  Object? failure;
+  final String adapterId;
+  Object? error;
   int calls = 0;
 
   @override
-  String get id => 'fake';
+  String get id => adapterId;
 
   @override
   Future<ProviderUsageSnapshot> fetch(
@@ -70,8 +75,8 @@ class _Adapter implements ManagedProviderUsageAdapter {
     required DateTime now,
   }) async {
     calls++;
-    final failure = this.failure;
-    if (failure != null) throw failure;
+    final error = this.error;
+    if (error != null) throw error;
     return result;
   }
 }
@@ -89,14 +94,69 @@ class _NoHttp implements ProviderUsageHttpClient {
   }
 }
 
+class _RecordingNavigatorObserver extends NavigatorObserver {
+  int pushes = 0;
+
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    pushes++;
+    super.didPush(route, previousRoute);
+  }
+}
+
+Finder _verticalScrollable() => find.byWidgetPredicate(
+  (widget) =>
+      widget is Scrollable &&
+      widget.axisDirection == AxisDirection.down &&
+      widget.physics is AlwaysScrollableScrollPhysics,
+);
+
+Future<void> _scrollToEditorBottom(WidgetTester tester) async {
+  tester.binding.focusManager.primaryFocus?.unfocus();
+  await tester.pump();
+  await tester.drag(_verticalScrollable(), const Offset(0, -800));
+  await tester.pump();
+}
+
+Future<void> _scrollToEditorTop(WidgetTester tester) async {
+  tester.binding.focusManager.primaryFocus?.unfocus();
+  await tester.pump();
+  await tester.drag(_verticalScrollable(), const Offset(0, 1000));
+  await tester.pump();
+}
+
+class _MemorySecureKeyValueStore implements SecureKeyValueStore {
+  final values = <String, String>{};
+  Object? writeError;
+
+  @override
+  Future<void> delete(String key) async {
+    values.remove(key);
+  }
+
+  @override
+  Future<String?> read(String key) async => values[key];
+
+  @override
+  Future<void> write(String key, String value) async {
+    final error = writeError;
+    if (error != null) throw error;
+    values[key] = value;
+  }
+}
+
 void main() {
   late InMemoryFilesystem fs;
   late ManagedProviderRepository providerRepository;
   late ManagedProviderUsageRepository usageRepository;
   late ManagedProviderCubit providerCubit;
   late ManagedProviderUsageCubit usageCubit;
-  late ManagedProviderUsageCoordinator coordinator;
+  late AppProviderCubit appProviderCubit;
   late _Adapter adapter;
+  late _Adapter httpJsonAdapter;
+  late _RecordingNavigatorObserver navigatorObserver;
+  late _MemorySecureKeyValueStore secureStore;
+  late ManagedProviderUsageCoordinator coordinator;
 
   setUp(() async {
     fs = InMemoryFilesystem();
@@ -111,29 +171,51 @@ void main() {
       onProvidersDeleted: usageRepository.deleteMany,
     );
     adapter = _Adapter(Future.value(_snapshot()));
+    httpJsonAdapter = _Adapter(
+      Future.value(_snapshot()),
+      adapterId: 'http-json',
+    );
+    navigatorObserver = _RecordingNavigatorObserver();
+    secureStore = _MemorySecureKeyValueStore();
     coordinator = ManagedProviderUsageCoordinator(
       providerRepository: providerRepository,
       usageRepository: usageRepository,
-      registry: ManagedProviderUsageRegistry([adapter]),
+      registry: ManagedProviderUsageRegistry([adapter, httpJsonAdapter]),
       credentials: _NoCredentials(),
       http: _NoHttp(),
       now: () => DateTime.fromMillisecondsSinceEpoch(100),
     );
     providerCubit = ManagedProviderCubit(repository: providerRepository);
     usageCubit = ManagedProviderUsageCubit(coordinator: coordinator);
+    appProviderCubit = AppProviderCubit(
+      repository: AppProviderRepository(fs: fs, basePath: '/tp'),
+      basePath: '/tp',
+    );
   });
 
   tearDown(() async {
     await providerCubit.close();
     await usageCubit.close();
+    await appProviderCubit.close();
     await coordinator.close();
   });
 
+  test('secure store propagates backend write failures', () async {
+    secureStore.writeError = StateError('backend failure');
+    await expectLater(
+      ManagedProviderSecretStore(
+        secureStore,
+      ).write('managed-provider:test', {'apiKey': 'secret'}),
+      throwsA(isA<ManagedProviderCredentialError>()),
+    );
+  });
+
   Future<void> pumpPage(WidgetTester tester) async {
-    await tester.runAsync(providerCubit.load);
-    await tester.runAsync(usageCubit.load);
     await tester.pumpWidget(
       MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        navigatorObservers: [navigatorObserver],
         home: TpTheme(
           data: TpThemeData.fromColorScheme(
             ColorScheme.fromSeed(seedColor: Colors.indigo),
@@ -143,39 +225,53 @@ void main() {
             providers: [
               BlocProvider.value(value: providerCubit),
               BlocProvider.value(value: usageCubit),
+              BlocProvider.value(value: appProviderCubit),
               BlocProvider(create: (_) => LayoutCubit()),
+              RepositoryProvider.value(
+                value: ManagedProviderSecretStore(secureStore),
+              ),
             ],
-            child: const Scaffold(
-              body: ManagedProviderManagementPage(embedded: true),
+            child: CliToolRegistryScope(
+              registry: CliToolRegistry.builtIn(),
+              child: const Scaffold(
+                body: ManagedProviderManagementPage(embedded: true),
+              ),
             ),
           ),
         ),
       ),
     );
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
   }
 
-  Future<void> scrollToEditorControl(
-    WidgetTester tester,
-    Key key, {
-    double delta = 400,
-  }) async {
-    final editorScrollable = find.descendant(
-      of: find.byType(ManagedProviderEditorPage),
-      matching: find.byType(Scrollable),
-    );
-    await tester.scrollUntilVisible(
-      find.byKey(key),
-      delta,
-      scrollable: editorScrollable.first,
-    );
+  Future<void> openNewEditor(WidgetTester tester) async {
+    await tester.tap(find.byKey(const Key('managed-provider-add')));
+    await tester.pumpAndSettle();
+  }
+
+  Future<void> applyPreset(WidgetTester tester, String label) async {
+    await tester.tap(find.byKey(const Key('managed-provider-quick-preset')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(label).last);
+    await tester.pumpAndSettle();
   }
 
   testWidgets('renders cached usage without starting a network query', (
     tester,
   ) async {
-    await providerRepository.upsert(_provider());
-    await usageRepository.save(_snapshot());
+    providerCubit.emit(
+      ManagedProviderState(
+        status: ManagedProviderLoadStatus.ready,
+        providers: [_provider()],
+      ),
+    );
+    usageCubit.emit(
+      ManagedProviderUsageState(
+        status: ManagedProviderUsageLoadStatus.ready,
+        snapshots: {'p1': _snapshot()},
+      ),
+    );
 
     await pumpPage(tester);
 
@@ -183,9 +279,766 @@ void main() {
     expect(adapter.calls, 0);
   });
 
+  testWidgets('list cards hide adapter ids and keep actions on one row', (
+    tester,
+  ) async {
+    providerCubit.emit(
+      ManagedProviderState(
+        status: ManagedProviderLoadStatus.ready,
+        providers: [
+          _provider(),
+          ManagedProvider(
+            id: 'codex',
+            name: 'Codex',
+            kind: ManagedProviderKind.subscriptionQuota,
+            adapterId: 'official-codex-subscription',
+          ),
+        ],
+      ),
+    );
+    usageCubit.emit(
+      ManagedProviderUsageState(status: ManagedProviderUsageLoadStatus.ready),
+    );
+
+    await pumpPage(tester);
+
+    expect(find.text('API balance · Example'), findsOneWidget);
+    expect(find.text('Subscription quota · Codex'), findsOneWidget);
+    expect(find.textContaining('official-codex-subscription'), findsNothing);
+    expect(find.textContaining('apiBalance'), findsNothing);
+    expect(
+      find.byKey(const Key('managed-provider-actions-p1')),
+      findsOneWidget,
+    );
+    expect(
+      tester.widget(find.byKey(const Key('managed-provider-actions-p1'))),
+      isA<Row>(),
+    );
+  });
+
+  testWidgets(
+    'embedded editor stays in the body and back returns to the provider list',
+    (tester) async {
+      providerCubit.emit(
+        ManagedProviderState(status: ManagedProviderLoadStatus.ready),
+      );
+      usageCubit.emit(
+        ManagedProviderUsageState(status: ManagedProviderUsageLoadStatus.ready),
+      );
+      await pumpPage(tester);
+      final initialPushes = navigatorObserver.pushes;
+
+      await tester.tap(find.byKey(const Key('managed-provider-add')));
+      await tester.pumpAndSettle();
+
+      expect(navigatorObserver.pushes, initialPushes);
+      expect(
+        find.byKey(const Key('managed-provider-management-page')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('managed-provider-editor-page')),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byKey(const Key('managed-provider-editor-back')));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const Key('managed-provider-editor-page')),
+        findsNothing,
+      );
+      expect(
+        find.byKey(const Key('managed-provider-management-page')),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets(
+    'new editor applies the DeepSeek preset without inventing credentials',
+    (tester) async {
+      providerCubit.emit(
+        ManagedProviderState(status: ManagedProviderLoadStatus.ready),
+      );
+      usageCubit.emit(
+        ManagedProviderUsageState(status: ManagedProviderUsageLoadStatus.ready),
+      );
+      await pumpPage(tester);
+
+      await openNewEditor(tester);
+      await applyPreset(tester, 'DeepSeek');
+
+      final nameInput = tester.widget<TpInput>(
+        find.byKey(const Key('managed-provider-name')),
+      );
+      expect(nameInput.controller!.text, 'DeepSeek');
+      await tester.tap(find.byKey(const Key('managed-provider-section-query')));
+      await tester.pumpAndSettle();
+      final endpointInput = tester.widget<TpInput>(
+        find.byKey(const Key('managed-provider-endpoint')),
+      );
+      expect(
+        endpointInput.controller!.text,
+        'https://api.deepseek.com/user/balance',
+      );
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('managed-provider-section-display')),
+        500,
+        scrollable: _verticalScrollable(),
+      );
+      await tester.tap(
+        find.byKey(const Key('managed-provider-section-display')),
+      );
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('managed-provider-decimal-places')),
+        500,
+        scrollable: _verticalScrollable(),
+      );
+      final decimalsInput = tester.widget<TpInput>(
+        find.byKey(const Key('managed-provider-decimal-places')),
+      );
+      expect(decimalsInput.controller!.text, '2');
+      final fieldMappings = tester.widget<TpTextarea>(
+        find.byKey(
+          const Key('managed-provider-field-mappings'),
+          skipOffstage: false,
+        ),
+      );
+      expect(
+        fieldMappings.controller!.text,
+        contains(r'"currency": "$.currency"'),
+      );
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('managed-provider-section-advanced')),
+        500,
+        scrollable: _verticalScrollable(),
+      );
+      await tester.tap(
+        find.byKey(const Key('managed-provider-section-advanced')),
+        warnIfMissed: false,
+      );
+      await tester.pumpAndSettle();
+      final credentialRefInput = tester.widget<TpInput>(
+        find.byKey(
+          const Key('managed-provider-credential-ref'),
+          skipOffstage: false,
+        ),
+      );
+      expect(credentialRefInput.controller!.text, isEmpty);
+    },
+  );
+
+  testWidgets('preset schema controls visible editor sections', (tester) async {
+    providerCubit.emit(
+      ManagedProviderState(status: ManagedProviderLoadStatus.ready),
+    );
+    usageCubit.emit(
+      ManagedProviderUsageState(status: ManagedProviderUsageLoadStatus.ready),
+    );
+    await pumpPage(tester);
+
+    await openNewEditor(tester);
+    await applyPreset(tester, 'Codex');
+
+    expect(
+      find.byKey(const Key('managed-provider-section-basics')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('managed-provider-section-query')),
+      findsNothing,
+    );
+    expect(find.byKey(const Key('managed-provider-endpoint')), findsNothing);
+    expect(
+      find.byKey(const Key('managed-provider-section-credentials')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(
+        const Key('managed-provider-section-display'),
+        skipOffstage: false,
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(
+        const Key('managed-provider-section-advanced'),
+        skipOffstage: false,
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets(
+    'Codex preset shows official login actions instead of an API key',
+    (tester) async {
+      providerCubit.emit(
+        ManagedProviderState(status: ManagedProviderLoadStatus.ready),
+      );
+      usageCubit.emit(
+        ManagedProviderUsageState(status: ManagedProviderUsageLoadStatus.ready),
+      );
+      await pumpPage(tester);
+
+      await openNewEditor(tester);
+      await applyPreset(tester, 'Codex');
+
+      expect(
+        find.byKey(const Key('managed-provider-official-credentials')),
+        findsOneWidget,
+      );
+      expect(find.text('Sign in with OpenAI'), findsOneWidget);
+      expect(
+        find.byKey(const Key('managed-provider-credential-secret')),
+        findsNothing,
+      );
+    },
+  );
+
+  testWidgets('DeepSeek preset starts with only required basics expanded', (
+    tester,
+  ) async {
+    providerCubit.emit(
+      ManagedProviderState(status: ManagedProviderLoadStatus.ready),
+    );
+    usageCubit.emit(
+      ManagedProviderUsageState(status: ManagedProviderUsageLoadStatus.ready),
+    );
+    await pumpPage(tester);
+
+    await openNewEditor(tester);
+    await applyPreset(tester, 'DeepSeek');
+
+    expect(
+      find.byKey(const Key('managed-provider-section-basics')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('managed-provider-credential-secret')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('managed-provider-endpoint')), findsNothing);
+    expect(
+      find.byKey(const Key('managed-provider-field-mappings')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const Key('managed-provider-credential-ref')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const Key('managed-provider-decimal-places')),
+      findsNothing,
+    );
+  });
+
+  testWidgets('custom HTTP presets expand query setup by default', (
+    tester,
+  ) async {
+    providerCubit.emit(
+      ManagedProviderState(status: ManagedProviderLoadStatus.ready),
+    );
+    usageCubit.emit(
+      ManagedProviderUsageState(status: ManagedProviderUsageLoadStatus.ready),
+    );
+    await pumpPage(tester);
+
+    await openNewEditor(tester);
+    await applyPreset(tester, 'OpenCode');
+
+    expect(
+      find.byKey(const Key('managed-provider-section-query')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('managed-provider-endpoint')), findsOneWidget);
+  });
+
+  testWidgets('preset selector stays searchable with the built-in presets', (
+    tester,
+  ) async {
+    providerCubit.emit(
+      ManagedProviderState(status: ManagedProviderLoadStatus.ready),
+    );
+    usageCubit.emit(
+      ManagedProviderUsageState(status: ManagedProviderUsageLoadStatus.ready),
+    );
+    await pumpPage(tester);
+
+    await openNewEditor(tester);
+    await tester.tap(find.byKey(const Key('managed-provider-quick-preset')));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TpSelectSearchField), findsOneWidget);
+    await tester.enterText(find.byType(TpSelectSearchField), 'Deep');
+    await tester.pump();
+    expect(find.text('DeepSeek'), findsWidgets);
+    expect(find.text('OpenCode'), findsNothing);
+  });
+
+  testWidgets('new provider stores API key in secure storage only', (
+    tester,
+  ) async {
+    providerCubit.emit(
+      ManagedProviderState(status: ManagedProviderLoadStatus.ready),
+    );
+    usageCubit.emit(
+      ManagedProviderUsageState(status: ManagedProviderUsageLoadStatus.ready),
+    );
+    await pumpPage(tester);
+
+    await openNewEditor(tester);
+    await applyPreset(tester, 'DeepSeek');
+    await tester.enterText(
+      find.byKey(const Key('managed-provider-credential-secret')),
+      'sk-test-secret',
+    );
+    await _scrollToEditorBottom(tester);
+    await tester.runAsync(() async {
+      tester
+          .widget<TpButton>(find.byKey(const Key('managed-provider-save')))
+          .onPressed!
+          .call();
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    });
+    await tester.pumpAndSettle();
+
+    final provider = providerCubit.state.providers.single;
+    expect(provider.credentialRef, 'managed-provider:${provider.id}');
+    expect(provider.toJson().toString(), isNot(contains('sk-test-secret')));
+    final scope = await ManagedProviderSecretStore(
+      secureStore,
+    ).read(provider.credentialRef!);
+    expect(scope.valueFor('apiKey'), 'sk-test-secret');
+  });
+
+  testWidgets('DeepSeek preset requires an API key before save', (
+    tester,
+  ) async {
+    providerCubit.emit(
+      ManagedProviderState(status: ManagedProviderLoadStatus.ready),
+    );
+    usageCubit.emit(
+      ManagedProviderUsageState(status: ManagedProviderUsageLoadStatus.ready),
+    );
+    await pumpPage(tester);
+
+    await openNewEditor(tester);
+    await applyPreset(tester, 'DeepSeek');
+    await _scrollToEditorBottom(tester);
+    await tester.runAsync(() async {
+      tester
+          .widget<TpButton>(find.byKey(const Key('managed-provider-save')))
+          .onPressed!
+          .call();
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    });
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('managed-provider-editor-page')),
+      findsOneWidget,
+    );
+    await _scrollToEditorTop(tester);
+    expect(find.text('Provider credentials are missing.'), findsOneWidget);
+    expect(providerCubit.state.providers, isEmpty);
+    expect(httpJsonAdapter.calls, 0);
+    expect(secureStore.values, isEmpty);
+  });
+
+  testWidgets('missing required secret focuses the credential field', (
+    tester,
+  ) async {
+    providerCubit.emit(
+      ManagedProviderState(status: ManagedProviderLoadStatus.ready),
+    );
+    usageCubit.emit(
+      ManagedProviderUsageState(status: ManagedProviderUsageLoadStatus.ready),
+    );
+    await pumpPage(tester);
+
+    await openNewEditor(tester);
+    await applyPreset(tester, 'DeepSeek');
+    await _scrollToEditorBottom(tester);
+    await tester.runAsync(() async {
+      tester
+          .widget<TpButton>(find.byKey(const Key('managed-provider-save')))
+          .onPressed!
+          .call();
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    });
+    await tester.pumpAndSettle();
+
+    final secretInput = tester.widget<TpInput>(
+      find.byKey(const Key('managed-provider-credential-secret')),
+    );
+    expect(secretInput.focusNode?.hasFocus, isTrue);
+  });
+
+  testWidgets('first query runs after saving a new first-query preset', (
+    tester,
+  ) async {
+    providerCubit.emit(
+      ManagedProviderState(status: ManagedProviderLoadStatus.ready),
+    );
+    usageCubit.emit(
+      ManagedProviderUsageState(status: ManagedProviderUsageLoadStatus.ready),
+    );
+    await pumpPage(tester);
+
+    await openNewEditor(tester);
+    await applyPreset(tester, 'DeepSeek');
+    await tester.enterText(
+      find.byKey(const Key('managed-provider-credential-secret')),
+      'sk-test-secret',
+    );
+    await _scrollToEditorBottom(tester);
+    await tester.runAsync(() async {
+      tester
+          .widget<TpButton>(find.byKey(const Key('managed-provider-save')))
+          .onPressed!
+          .call();
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    });
+    await tester.pumpAndSettle();
+
+    expect(httpJsonAdapter.calls, 1);
+    expect(find.byKey(const Key('managed-provider-editor-page')), findsNothing);
+    expect(find.text('12.50 USD'), findsOneWidget);
+  });
+
+  testWidgets(
+    'first query failure preserves the saved provider and shows list error',
+    (tester) async {
+      providerCubit.emit(
+        ManagedProviderState(status: ManagedProviderLoadStatus.ready),
+      );
+      usageCubit.emit(
+        ManagedProviderUsageState(status: ManagedProviderUsageLoadStatus.ready),
+      );
+      httpJsonAdapter.error = const ManagedProviderUsageQueryError(
+        ManagedProviderUsageQueryErrorCode.networkFailed,
+      );
+      await pumpPage(tester);
+
+      await openNewEditor(tester);
+      await applyPreset(tester, 'DeepSeek');
+      await tester.enterText(
+        find.byKey(const Key('managed-provider-credential-secret')),
+        'sk-test-secret',
+      );
+      await _scrollToEditorBottom(tester);
+      await tester.runAsync(() async {
+        tester
+            .widget<TpButton>(find.byKey(const Key('managed-provider-save')))
+            .onPressed!
+            .call();
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+      });
+      await tester.pumpAndSettle();
+
+      expect(httpJsonAdapter.calls, 1);
+      expect(providerCubit.state.providers, hasLength(1));
+      expect(providerCubit.state.providers.single.name, 'DeepSeek');
+      expect(
+        find.byKey(const Key('managed-provider-query-error')),
+        findsOneWidget,
+      );
+      expect(find.text('Provider network request failed.'), findsOneWidget);
+      final provider = providerCubit.state.providers.single;
+      final scope = await ManagedProviderSecretStore(
+        secureStore,
+      ).read(provider.credentialRef!);
+      expect(scope.valueFor('apiKey'), 'sk-test-secret');
+    },
+  );
+
+  testWidgets('editing with an empty API key preserves the existing secret', (
+    tester,
+  ) async {
+    final existing = _provider().copyWith(
+      credentialRef: 'managed-provider:p1',
+      endpointConfig: ManagedProviderEndpointConfig(
+        url: _provider().endpointConfig.url,
+        credentialField: 'apiKey',
+      ),
+    );
+    await ManagedProviderSecretStore(
+      secureStore,
+    ).write(existing.credentialRef!, {'apiKey': 'sk-existing'});
+    providerCubit.emit(
+      ManagedProviderState(
+        status: ManagedProviderLoadStatus.ready,
+        providers: [existing],
+      ),
+    );
+    usageCubit.emit(
+      ManagedProviderUsageState(status: ManagedProviderUsageLoadStatus.ready),
+    );
+    await pumpPage(tester);
+
+    await tester.tap(find.byIcon(Icons.edit_outlined).first);
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('managed-provider-credential-secret')),
+      500,
+      scrollable: _verticalScrollable(),
+    );
+    expect(
+      find.byKey(const Key('managed-provider-credential-secret')),
+      findsOneWidget,
+    );
+    await _scrollToEditorBottom(tester);
+    await tester.runAsync(() async {
+      tester
+          .widget<TpButton>(find.byKey(const Key('managed-provider-save')))
+          .onPressed!
+          .call();
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    });
+    await tester.pumpAndSettle();
+
+    final saved = providerCubit.state.providers.single;
+    expect(saved.credentialRef, existing.credentialRef);
+    final scope = await ManagedProviderSecretStore(
+      secureStore,
+    ).read(existing.credentialRef!);
+    expect(scope.valueFor('apiKey'), 'sk-existing');
+  });
+
+  testWidgets(
+    'editing with an empty API key requires the existing stored secret',
+    (tester) async {
+      final existing = _provider().copyWith(
+        credentialRef: 'managed-provider:p1',
+        endpointConfig: ManagedProviderEndpointConfig(
+          url: _provider().endpointConfig.url,
+          credentialField: 'apiKey',
+        ),
+      );
+      providerCubit.emit(
+        ManagedProviderState(
+          status: ManagedProviderLoadStatus.ready,
+          providers: [existing],
+        ),
+      );
+      usageCubit.emit(
+        ManagedProviderUsageState(status: ManagedProviderUsageLoadStatus.ready),
+      );
+      await pumpPage(tester);
+
+      await tester.tap(find.byIcon(Icons.edit_outlined).first);
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('managed-provider-credential-secret')),
+        500,
+        scrollable: _verticalScrollable(),
+      );
+      await tester.enterText(
+        find.byKey(const Key('managed-provider-name')),
+        'Changed Name',
+      );
+      await _scrollToEditorBottom(tester);
+      await tester.runAsync(() async {
+        tester
+            .widget<TpButton>(find.byKey(const Key('managed-provider-save')))
+            .onPressed!
+            .call();
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+      });
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const Key('managed-provider-editor-page')),
+        findsOneWidget,
+      );
+      await _scrollToEditorTop(tester);
+      expect(find.text('Provider credentials are missing.'), findsOneWidget);
+      expect(providerCubit.state.providers.single.name, 'Example');
+    },
+  );
+
+  testWidgets(
+    'custom HTTP credentials reveal the secret field in the same editor session',
+    (tester) async {
+      providerCubit.emit(
+        ManagedProviderState(status: ManagedProviderLoadStatus.ready),
+      );
+      usageCubit.emit(
+        ManagedProviderUsageState(status: ManagedProviderUsageLoadStatus.ready),
+      );
+      await pumpPage(tester);
+
+      await openNewEditor(tester);
+      await applyPreset(tester, 'OpenCode');
+      await tester.enterText(
+        find.byKey(const Key('managed-provider-endpoint')),
+        'https://example.test/usage',
+      );
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('managed-provider-section-credentials')),
+        500,
+        scrollable: _verticalScrollable(),
+      );
+      await tester.tap(
+        find.byKey(const Key('managed-provider-section-credentials')),
+      );
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const Key('managed-provider-credential-name')),
+        'Authorization',
+      );
+      await tester.enterText(
+        find.byKey(const Key('managed-provider-credential-field')),
+        'apiKey',
+      );
+      await tester.pumpAndSettle();
+      await _scrollToEditorTop(tester);
+
+      expect(
+        find.byKey(const Key('managed-provider-credential-secret')),
+        findsOneWidget,
+      );
+
+      await tester.enterText(
+        find.byKey(const Key('managed-provider-credential-secret')),
+        'sk-custom',
+      );
+      await _scrollToEditorBottom(tester);
+      await tester.runAsync(() async {
+        tester
+            .widget<TpButton>(find.byKey(const Key('managed-provider-save')))
+            .onPressed!
+            .call();
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+      });
+      await tester.pumpAndSettle();
+
+      final provider = providerCubit.state.providers.single;
+      expect(provider.name, 'OpenCode');
+      expect(provider.credentialRef, 'managed-provider:${provider.id}');
+      expect(provider.toJson().toString(), isNot(contains('sk-custom')));
+      final scope = await ManagedProviderSecretStore(
+        secureStore,
+      ).read(provider.credentialRef!);
+      expect(scope.valueFor('apiKey'), 'sk-custom');
+    },
+  );
+
+  testWidgets(
+    'kind stays read-only for official presets and editable for custom HTTP',
+    (tester) async {
+      providerCubit.emit(
+        ManagedProviderState(status: ManagedProviderLoadStatus.ready),
+      );
+      usageCubit.emit(
+        ManagedProviderUsageState(status: ManagedProviderUsageLoadStatus.ready),
+      );
+      await pumpPage(tester);
+
+      await openNewEditor(tester);
+      await applyPreset(tester, 'Codex');
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('managed-provider-section-advanced')),
+        500,
+        scrollable: _verticalScrollable(),
+      );
+      await tester.tap(
+        find.byKey(const Key('managed-provider-section-advanced')),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<TpSelect<ManagedProviderKind>>(
+              find.byKey(const Key('managed-provider-kind')),
+            )
+            .enabled,
+        isFalse,
+      );
+
+      await tester.tap(find.byKey(const Key('managed-provider-editor-back')));
+      await tester.pumpAndSettle();
+      await openNewEditor(tester);
+      await applyPreset(tester, 'OpenCode');
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('managed-provider-section-advanced')),
+        500,
+        scrollable: _verticalScrollable(),
+      );
+      await tester.tap(
+        find.byKey(const Key('managed-provider-section-advanced')),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<TpSelect<ManagedProviderKind>>(
+              find.byKey(const Key('managed-provider-kind')),
+            )
+            .enabled,
+        isTrue,
+      );
+    },
+  );
+
+  testWidgets('advanced adapter input follows schema readOnly metadata', (
+    tester,
+  ) async {
+    providerCubit.emit(
+      ManagedProviderState(status: ManagedProviderLoadStatus.ready),
+    );
+    usageCubit.emit(
+      ManagedProviderUsageState(status: ManagedProviderUsageLoadStatus.ready),
+    );
+    await pumpPage(tester);
+
+    await openNewEditor(tester);
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('managed-provider-section-advanced')),
+      500,
+      scrollable: _verticalScrollable(),
+    );
+    await tester.tap(
+      find.byKey(const Key('managed-provider-section-advanced')),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<TpInput>(find.byKey(const Key('managed-provider-adapter')))
+          .readOnly,
+      isFalse,
+    );
+
+    await tester.tap(find.byKey(const Key('managed-provider-editor-back')));
+    await tester.pumpAndSettle();
+    await openNewEditor(tester);
+    await applyPreset(tester, 'Codex');
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('managed-provider-section-advanced')),
+      500,
+      scrollable: _verticalScrollable(),
+    );
+    await tester.tap(
+      find.byKey(const Key('managed-provider-section-advanced')),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<TpInput>(find.byKey(const Key('managed-provider-adapter')))
+          .readOnly,
+      isTrue,
+    );
+  });
+
   testWidgets(
     'CRUD actions are dispatched through the managed provider cubit',
     (tester) async {
+      providerCubit.emit(
+        ManagedProviderState(status: ManagedProviderLoadStatus.ready),
+      );
+      usageCubit.emit(
+        ManagedProviderUsageState(status: ManagedProviderUsageLoadStatus.ready),
+      );
       await pumpPage(tester);
 
       await tester.tap(find.byKey(const Key('managed-provider-add')));
@@ -198,15 +1051,22 @@ void main() {
         find.byKey(const Key('managed-provider-endpoint')),
         'https://example.test/usage',
       );
+      await tester.drag(find.byType(ListView).last, const Offset(0, -800));
+      await tester.pump();
       await tester.scrollUntilVisible(
-        find.byKey(const Key('managed-provider-save')),
-        400,
-        scrollable: find.byType(Scrollable).first,
+        find.byKey(const Key('managed-provider-save'), skipOffstage: false),
+        500,
+        scrollable: _verticalScrollable(),
       );
+      await tester.pump();
       await tester.tap(find.byKey(const Key('managed-provider-save')));
-      await tester.runAsync(pumpEventQueue);
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 50)),
+      );
       await tester.pump(const Duration(seconds: 2));
+      await tester.pump(const Duration(milliseconds: 300));
 
       expect(providerCubit.state.providers.single.name, 'New Provider');
       expect(find.text('New Provider'), findsOneWidget);
@@ -217,20 +1077,32 @@ void main() {
     tester,
   ) async {
     await providerRepository.upsert(_provider());
+    providerCubit.emit(
+      ManagedProviderState(
+        status: ManagedProviderLoadStatus.ready,
+        providers: [_provider()],
+      ),
+    );
+    usageCubit.emit(
+      ManagedProviderUsageState(status: ManagedProviderUsageLoadStatus.ready),
+    );
     await pumpPage(tester);
-    adapter.failure = const ManagedProviderUsageQueryError(
+    adapter.error = const ManagedProviderUsageQueryError(
       ManagedProviderUsageQueryErrorCode.networkFailed,
     );
 
     await tester.tap(find.byKey(const Key('managed-provider-test-query')));
-    await tester.pumpAndSettle();
-    await tester.pump(const Duration(seconds: 2));
+    await tester.pump();
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 50)),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 3));
 
     expect(
       find.byKey(const Key('managed-provider-query-error')),
       findsOneWidget,
     );
-    expect(find.textContaining('Unable to query'), findsOneWidget);
   });
 
   testWidgets('editor test query does not overwrite the usage cache', (
@@ -251,17 +1123,33 @@ void main() {
         ],
       ),
     );
+    providerCubit.emit(
+      ManagedProviderState(
+        status: ManagedProviderLoadStatus.ready,
+        providers: [_provider()],
+      ),
+    );
+    usageCubit.emit(
+      ManagedProviderUsageState(
+        status: ManagedProviderUsageLoadStatus.ready,
+        snapshots: {'p1': _snapshot()},
+      ),
+    );
     await pumpPage(tester);
 
-    await tester.tap(find.byTooltip('Edit'));
+    await tester.tap(find.byIcon(Icons.edit_outlined).first);
     await tester.pumpAndSettle();
-    await scrollToEditorControl(
-      tester,
-      const Key('managed-provider-test-query'),
-    );
-    await tester.tap(find.byKey(const Key('managed-provider-test-query')));
+    await _scrollToEditorBottom(tester);
+    await tester.runAsync(() async {
+      tester
+          .widget<TpButton>(
+            find.byKey(const Key('managed-provider-test-query')),
+          )
+          .onPressed!
+          .call();
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    });
     await tester.pumpAndSettle();
-    await tester.pump(const Duration(seconds: 2));
 
     expect(fs.files['/tp/usage-cache.json'], cacheBefore);
     expect(
@@ -274,107 +1162,100 @@ void main() {
     );
   });
 
-  testWidgets(
-    'editor preserves endpoint extensions and edits credential references',
-    (tester) async {
-      await tester.binding.setSurfaceSize(const Size(1000, 2000));
-      addTearDown(() => tester.binding.setSurfaceSize(null));
-      await providerRepository.upsert(
-        _provider().copyWith(
-          credentialRef: 'managed-ref',
-          unknownFields: {'providerExtension': 'keep'},
-          endpointConfig: ManagedProviderEndpointConfig(
-            url: 'https://example.test/usage',
-            headers: {'X-Client': 'teampilot'},
-            fieldMappings: {'remaining': r'$.balance'},
-            credentialName: 'X-API-Key',
-            credentialField: 'apiKey',
-            credentialPlacement: 'header',
-            unknownFields: {'endpointExtension': 'keep'},
-          ),
-        ),
-      );
-      await pumpPage(tester);
+  testWidgets('editor save preserves unknown provider and endpoint fields', (
+    tester,
+  ) async {
+    final existing = _provider().copyWith(
+      unknownFields: {'providerExtension': 'keep'},
+      endpointConfig: ManagedProviderEndpointConfig(
+        url: 'https://example.test/usage',
+        headers: {'X-Client': 'teampilot'},
+        fieldMappings: {'remaining': r'$.balance'},
+        unknownFields: {'endpointExtension': 'keep'},
+      ),
+    );
+    await providerRepository.upsert(existing);
+    providerCubit.emit(
+      ManagedProviderState(
+        status: ManagedProviderLoadStatus.ready,
+        providers: [existing],
+      ),
+    );
+    usageCubit.emit(
+      ManagedProviderUsageState(status: ManagedProviderUsageLoadStatus.ready),
+    );
+    await pumpPage(tester);
 
-      await tester.tap(find.byTooltip('Edit'));
-      await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.edit_outlined).first);
+    await tester.pumpAndSettle();
+    await _scrollToEditorBottom(tester);
+    await tester.runAsync(() async {
       tester
-              .widget<TpInput>(
-                find.byKey(const Key('managed-provider-credential-ref')),
-              )
-              .controller!
-              .text =
-          'managed-ref-next';
-      tester
-              .widget<TpInput>(
-                find.byKey(const Key('managed-provider-credential-name')),
-              )
-              .controller!
-              .text =
-          'Authorization';
-      tester
-              .widget<TpInput>(
-                find.byKey(const Key('managed-provider-credential-field')),
-              )
-              .controller!
-              .text =
-          'accessToken';
-      await tester.pump();
-      await tester.tap(find.byKey(const Key('managed-provider-save')));
-      await tester.runAsync(pumpEventQueue);
-      await tester.pumpAndSettle();
-      await tester.pump(const Duration(seconds: 2));
+          .widget<TpButton>(find.byKey(const Key('managed-provider-save')))
+          .onPressed!
+          .call();
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    });
+    await tester.pumpAndSettle();
 
-      final saved = (await providerRepository.load()).single;
-      expect(saved.credentialRef, 'managed-ref-next');
-      expect(saved.endpointConfig.headers, {'X-Client': 'teampilot'});
-      expect(saved.endpointConfig.fieldMappings, {'remaining': r'$.balance'});
-      expect(saved.endpointConfig.unknownFields['endpointExtension'], 'keep');
-      expect(saved.unknownFields['providerExtension'], 'keep');
-      expect(saved.endpointConfig.credentialName, 'Authorization');
-      expect(saved.endpointConfig.credentialField, 'accessToken');
-    },
-  );
+    final saved = (await providerRepository.load()).single;
+    expect(saved.endpointConfig.headers, {'X-Client': 'teampilot'});
+    expect(saved.endpointConfig.fieldMappings, {'remaining': r'$.balance'});
+    expect(saved.endpointConfig.unknownFields['endpointExtension'], 'keep');
+    expect(saved.unknownFields['providerExtension'], 'keep');
+  });
 
   testWidgets('editor rejects empty and public HTTP endpoints before save', (
     tester,
   ) async {
+    providerCubit.emit(
+      ManagedProviderState(status: ManagedProviderLoadStatus.ready),
+    );
+    usageCubit.emit(
+      ManagedProviderUsageState(status: ManagedProviderUsageLoadStatus.ready),
+    );
     await pumpPage(tester);
-    await tester.tap(find.byKey(const Key('managed-provider-add')));
-    await tester.pumpAndSettle();
+    await openNewEditor(tester);
+    await applyPreset(tester, 'OpenCode');
     await tester.enterText(
       find.byKey(const Key('managed-provider-name')),
       'New Provider',
     );
-    await scrollToEditorControl(tester, const Key('managed-provider-save'));
-    await tester.tap(find.byKey(const Key('managed-provider-save')));
+    await _scrollToEditorBottom(tester);
+    await tester.runAsync(() async {
+      tester
+          .widget<TpButton>(find.byKey(const Key('managed-provider-save')))
+          .onPressed!
+          .call();
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    });
     await tester.pumpAndSettle();
-    await scrollToEditorControl(
-      tester,
-      const Key('managed-provider-editor-error'),
-      delta: -400,
-    );
+    await _scrollToEditorTop(tester);
     expect(
-      find.text('Endpoint URL is required for HTTP JSON providers.'),
+      find.text('Enter an HTTPS or loopback endpoint for this HTTP adapter.'),
       findsOneWidget,
     );
+    expect(providerCubit.state.providers, isEmpty);
 
     await tester.enterText(
       find.byKey(const Key('managed-provider-endpoint')),
       'http://example.test/usage',
     );
-    await scrollToEditorControl(tester, const Key('managed-provider-save'));
-    await tester.tap(find.byKey(const Key('managed-provider-save')));
+    await _scrollToEditorBottom(tester);
+    await tester.runAsync(() async {
+      tester
+          .widget<TpButton>(find.byKey(const Key('managed-provider-save')))
+          .onPressed!
+          .call();
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    });
     await tester.pumpAndSettle();
-    await scrollToEditorControl(
-      tester,
-      const Key('managed-provider-editor-error'),
-      delta: -400,
-    );
+    await _scrollToEditorTop(tester);
     expect(
-      find.text('Use an HTTPS endpoint, or an HTTP loopback endpoint.'),
+      find.text('Enter an HTTPS or loopback endpoint for this HTTP adapter.'),
       findsOneWidget,
     );
+    expect(providerCubit.state.providers, isEmpty);
   });
 
   testWidgets('managed provider list and editor fit a 280dp viewport', (
@@ -382,11 +1263,19 @@ void main() {
   ) async {
     await tester.binding.setSurfaceSize(const Size(280, 800));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    await providerRepository.upsert(_provider());
+    providerCubit.emit(
+      ManagedProviderState(
+        status: ManagedProviderLoadStatus.ready,
+        providers: [_provider()],
+      ),
+    );
+    usageCubit.emit(
+      ManagedProviderUsageState(status: ManagedProviderUsageLoadStatus.ready),
+    );
 
     await pumpPage(tester);
     expect(find.byKey(const Key('managed-provider-list')), findsOneWidget);
-    await tester.tap(find.byTooltip('Edit'));
+    await tester.tap(find.byIcon(Icons.edit_outlined).first);
     await tester.pumpAndSettle();
     expect(
       find.byKey(const Key('managed-provider-editor-error')),

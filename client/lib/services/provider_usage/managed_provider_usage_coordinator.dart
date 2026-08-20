@@ -7,9 +7,6 @@ import '../../repositories/managed_provider_usage_repository.dart';
 import 'managed_provider_usage_adapter.dart';
 import 'managed_provider_usage_registry.dart';
 
-export 'managed_provider_usage_adapter.dart'
-    show ManagedProviderUsageQueryErrorCode;
-
 enum ManagedProviderUsageInvalidationCode {
   providerDeleted,
   providerChanged,
@@ -70,6 +67,8 @@ class ManagedProviderUsageState {
 
 /// Coordinates cached usage and network refreshes independently of any UI.
 class ManagedProviderUsageCoordinator {
+  static const queryTimeout = Duration(seconds: 30);
+
   ManagedProviderUsageCoordinator({
     required ManagedProviderRepository providerRepository,
     required ManagedProviderUsageRepository usageRepository,
@@ -94,6 +93,7 @@ class ManagedProviderUsageCoordinator {
   final Map<String, ManagedProvider> _providers = {};
   final Map<String, ProviderUsageSnapshot> _snapshots = {};
   final Map<String, _PendingRefresh> _pending = {};
+  final Map<String, Future<ProviderUsageSnapshot>> _transientQueries = {};
   final Map<String, _ProviderCommitGate> _commitGates = {};
   final Map<String, int> _tokens = {};
   int _generation = 0;
@@ -188,10 +188,10 @@ class ManagedProviderUsageCoordinator {
     );
   }
 
-  /// Queries one provider without changing the usage cache or the
-  /// coordinator's persisted-snapshot view. This is intended for editor
-  /// "Test query" actions; callers that want cache persistence must use
-  /// [refreshOne].
+  /// Queries a provider for an ephemeral validation result. Unlike
+  /// [refreshOne], this method never writes the usage cache or replaces the
+  /// coordinator's persisted snapshot. It is intended for editor "test
+  /// query" actions where a user has not saved the provider yet.
   Future<ProviderUsageSnapshot> queryOne(String providerId) =>
       queryTransient(providerId);
 
@@ -207,11 +207,90 @@ class ManagedProviderUsageCoordinator {
       providerId: providerId.trim(),
     );
     await _synchronizeProviders();
-    _ensureStorageContextCurrent(storageContextGeneration);
+    _ensureStorageContextCurrent(
+      storageContextGeneration,
+      providerId: providerId.trim(),
+    );
     final id = providerId.trim();
     final provider = _providers[id];
-    if (provider == null) return _unsupportedSnapshot(id, _snapshots[id]);
-    return _executeTransientQuery(provider, storageContextGeneration);
+    if (provider == null || !provider.enabled) {
+      return _unsupportedSnapshot(id, _snapshots[id]);
+    }
+    return queryProvider(provider);
+  }
+
+  /// Queries an in-memory Provider draft without reading or writing the
+  /// persisted catalog/cache. Calls for the same Provider are coalesced and
+  /// serialized with ordinary refresh work.
+  Future<ProviderUsageSnapshot> queryProvider(ManagedProvider provider) {
+    final id = provider.id.trim();
+    if (_closed) {
+      return Future<ProviderUsageSnapshot>.value(
+        _errorSnapshot(
+          id,
+          _snapshots[id],
+          ManagedProviderUsageQueryErrorCode.networkFailed,
+        ),
+      );
+    }
+    final existing = _transientQueries[id];
+    if (existing != null) return existing;
+    final pendingRefresh = _pending[id];
+    if (pendingRefresh != null) {
+      return pendingRefresh.future.then(
+        (_) => queryProvider(provider),
+        onError: (Object _, StackTrace __) => queryProvider(provider),
+      );
+    }
+    final contextGeneration = _storageContextGeneration;
+    final future = _queryProviderInternal(provider, contextGeneration);
+    _transientQueries[id] = future;
+    future.then<void>(
+      (_) {
+        if (identical(_transientQueries[id], future)) {
+          _transientQueries.remove(id);
+        }
+      },
+      onError: (Object _, StackTrace __) {
+        if (identical(_transientQueries[id], future)) {
+          _transientQueries.remove(id);
+        }
+      },
+    );
+    return future;
+  }
+
+  Future<ProviderUsageSnapshot> _queryProviderInternal(
+    ManagedProvider provider,
+    int storageContextGeneration,
+  ) async {
+    final id = provider.id.trim();
+    final previous = _snapshots[id];
+    if (!provider.enabled) return _unsupportedSnapshot(id, previous);
+
+    try {
+      final adapter = _registry.adapterFor(provider.adapterId);
+      if (adapter == null) {
+        throw const ManagedProviderUsageQueryError(
+          ManagedProviderUsageQueryErrorCode.unsupported,
+        );
+      }
+      final result = await adapter
+          .fetch(provider, credentials: _credentials, http: _http, now: _now())
+          .timeout(queryTimeout);
+      _ensureStorageContextCurrent(storageContextGeneration, providerId: id);
+      return result.copyWith(providerId: id, status: ProviderUsageStatus.ready);
+    } on ManagedProviderUsageQueryError catch (error) {
+      return _errorSnapshot(id, previous, error.code);
+    } on ManagedProviderUsageInvalidated {
+      rethrow;
+    } on Object {
+      return _errorSnapshot(
+        id,
+        previous,
+        ManagedProviderUsageQueryErrorCode.networkFailed,
+      );
+    }
   }
 
   /// Refreshes all configured providers through the same per-provider single-
@@ -313,6 +392,7 @@ class ManagedProviderUsageCoordinator {
     _generation++;
     _loaded = false;
     _refreshAllFlight = null;
+    _transientQueries.clear();
     for (final entry in _pending.entries) {
       entry.value.cancelled = true;
       _tokens[entry.key] = (_tokens[entry.key] ?? 0) + 1;
@@ -335,6 +415,7 @@ class ManagedProviderUsageCoordinator {
     _generation++;
     _loaded = false;
     _refreshAllFlight = null;
+    _transientQueries.clear();
     _loadFlight = null;
     for (final entry in _pending.entries) {
       entry.value.cancelled = true;
@@ -362,6 +443,21 @@ class ManagedProviderUsageCoordinator {
         generation: generation,
         storageContextGeneration: storageContextGeneration,
         mutationRevision: _providerRepository.mutationRevision,
+      );
+    }
+    final transientQuery = _transientQueries[id];
+    if (transientQuery != null) {
+      return transientQuery.then(
+        (_) => _refreshLoadedProvider(
+          provider,
+          generation,
+          storageContextGeneration: storageContextGeneration,
+        ),
+        onError: (Object _, StackTrace __) => _refreshLoadedProvider(
+          provider,
+          generation,
+          storageContextGeneration: storageContextGeneration,
+        ),
       );
     }
     final previousPending = _pending[id];
@@ -521,52 +617,6 @@ class ManagedProviderUsageCoordinator {
       result: result,
       previous: previous,
     );
-  }
-
-  Future<ProviderUsageSnapshot> _executeTransientQuery(
-    ManagedProvider provider,
-    int storageContextGeneration,
-  ) async {
-    _ensureStorageContextCurrent(
-      storageContextGeneration,
-      providerId: provider.id,
-    );
-    final previous = _snapshots[provider.id];
-    if (!provider.enabled) return _unsupportedSnapshot(provider.id, previous);
-
-    try {
-      final adapter = _registry.adapterFor(provider.adapterId);
-      if (adapter == null) {
-        throw const ManagedProviderUsageQueryError(
-          ManagedProviderUsageQueryErrorCode.unsupported,
-        );
-      }
-      final result = await adapter.fetch(
-        provider,
-        credentials: _credentials,
-        http: _http,
-        now: _now(),
-      );
-      _ensureStorageContextCurrent(
-        storageContextGeneration,
-        providerId: provider.id,
-      );
-      return result.copyWith(
-        providerId: provider.id,
-        status: ProviderUsageStatus.ready,
-      );
-    } on ManagedProviderUsageInvalidated {
-      rethrow;
-    } on ManagedProviderUsageQueryError catch (error) {
-      return _errorSnapshot(provider.id, previous, error.code);
-    } on Object {
-      // Keep transient query errors typed and secret-free just like refresh.
-      return _errorSnapshot(
-        provider.id,
-        previous,
-        ManagedProviderUsageQueryErrorCode.networkFailed,
-      );
-    }
   }
 
   Future<ProviderUsageSnapshot> _commitResult({
@@ -783,7 +833,7 @@ class ManagedProviderUsageCoordinator {
             providerId: providerId,
             status: ProviderUsageStatus.error,
             lastErrorCode: code.name,
-            lastErrorMessage: 'Unable to query provider usage.',
+            lastErrorMessage: ManagedProviderUsageQueryError(code).message,
           );
 }
 

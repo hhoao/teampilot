@@ -6,9 +6,11 @@ import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/managed_provider_cubit.dart';
 import '../../cubits/managed_provider_usage_cubit.dart';
+import '../../l10n/l10n_extensions.dart';
 import '../../models/managed_provider.dart';
 import '../../widgets/app_toast/app_toast.dart';
 import 'managed_provider_editor_page.dart';
+import '../../utils/managed_provider_error_localization.dart';
 import 'managed_provider_list.dart';
 
 class ManagedProviderManagementPage extends StatefulWidget {
@@ -23,13 +25,22 @@ class ManagedProviderManagementPage extends StatefulWidget {
 
 class _ManagedProviderManagementPageState
     extends State<ManagedProviderManagementPage> {
+  ManagedProvider? _editingProvider;
+  bool _isEditing = false;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      unawaited(context.read<ManagedProviderCubit>().load());
-      unawaited(context.read<ManagedProviderUsageCubit>().load());
+      final providers = context.read<ManagedProviderCubit>();
+      if (providers.state.status == ManagedProviderLoadStatus.initial) {
+        unawaited(providers.load());
+      }
+      final usage = context.read<ManagedProviderUsageCubit>();
+      if (usage.state.status == ManagedProviderUsageLoadStatus.initial) {
+        unawaited(usage.load());
+      }
     });
   }
 
@@ -39,70 +50,100 @@ class _ManagedProviderManagementPageState
       listeners: [
         BlocListener<ManagedProviderCubit, ManagedProviderState>(
           listenWhen: (previous, current) =>
-              previous.errorMessage != current.errorMessage &&
-              current.errorMessage != null,
+              previous.errorCode != current.errorCode &&
+              current.errorCode != null,
           listener: (context, state) {
             AppToast.show(
               context,
-              message: state.errorMessage!,
+              message: managedProviderErrorMessage(
+                context.l10n,
+                providerCode: state.errorCode,
+                detail: state.errorMessage,
+              ),
               variant: TpToastVariant.error,
             );
           },
         ),
         BlocListener<ManagedProviderUsageCubit, ManagedProviderUsageState>(
           listenWhen: (previous, current) =>
-              previous.errorMessage != current.errorMessage &&
-              current.errorMessage != null,
+              previous.errorCode != current.errorCode &&
+              current.errorCode != null &&
+              current.errorCode != ManagedProviderUsageErrorCode.queryFailed,
           listener: (context, state) {
             AppToast.show(
               context,
-              message: state.errorMessage!,
+              message: managedProviderErrorMessage(
+                context.l10n,
+                usageCode: state.errorCode,
+                detail: state.errorMessage,
+              ),
               variant: TpToastVariant.error,
             );
           },
         ),
       ],
-      child: Column(
+      child: KeyedSubtree(
         key: const Key('managed-provider-management-page'),
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _PageHeader(onAdd: () => _openEditor(context)),
-          const SizedBox(height: 12),
-          Expanded(
-            child: BlocBuilder<ManagedProviderCubit, ManagedProviderState>(
-              builder: (context, providerState) {
-                if (providerState.status == ManagedProviderLoadStatus.loading &&
-                    providerState.providers.isEmpty) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (providerState.status == ManagedProviderLoadStatus.error &&
-                    providerState.providers.isEmpty) {
-                  return _LoadError(
-                    message:
-                        providerState.errorMessage ??
-                        'Unable to load managed providers.',
-                    onRetry: () => context.read<ManagedProviderCubit>().load(),
-                  );
-                }
-                return BlocBuilder<
-                  ManagedProviderUsageCubit,
-                  ManagedProviderUsageState
-                >(
-                  builder: (context, usageState) => ManagedProviderList(
-                    providers: providerState.providers,
-                    snapshots: usageState.snapshots,
-                    isRefreshing: usageState.isRefreshingProvider,
-                    onEdit: (provider) =>
-                        _openEditor(context, provider: provider),
-                    onToggle: _toggle,
-                    onDelete: _delete,
-                    onRefresh: _refresh,
+        child: _isEditing
+            ? ManagedProviderEditorPage(
+                key: const Key('managed-provider-editor-page'),
+                provider: _editingProvider,
+                embedded: true,
+                onBack: _closeEditor,
+              )
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _PageHeader(onAdd: () => _openEditor(context)),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child:
+                        BlocBuilder<ManagedProviderCubit, ManagedProviderState>(
+                          builder: (context, providerState) {
+                            if (providerState.status ==
+                                    ManagedProviderLoadStatus.loading &&
+                                providerState.providers.isEmpty) {
+                              return const Center(
+                                child: CircularProgressIndicator(),
+                              );
+                            }
+                            if (providerState.status ==
+                                    ManagedProviderLoadStatus.error &&
+                                providerState.providers.isEmpty) {
+                              return _LoadError(
+                                message: managedProviderErrorMessage(
+                                  context.l10n,
+                                  providerCode: providerState.errorCode,
+                                  detail: providerState.errorMessage,
+                                ),
+                                onRetry: () =>
+                                    context.read<ManagedProviderCubit>().load(),
+                              );
+                            }
+                            return BlocBuilder<
+                              ManagedProviderUsageCubit,
+                              ManagedProviderUsageState
+                            >(
+                              builder: (context, usageState) =>
+                                  ManagedProviderList(
+                                    providers: providerState.providers,
+                                    snapshots: usageState.snapshots,
+                                    isRefreshing:
+                                        usageState.isRefreshingProvider,
+                                    onEdit: (provider) => _openEditor(
+                                      context,
+                                      provider: provider,
+                                    ),
+                                    onToggle: _toggle,
+                                    onDelete: _delete,
+                                    onRefresh: _refresh,
+                                  ),
+                            );
+                          },
+                        ),
                   ),
-                );
-              },
-            ),
-          ),
-        ],
+                ],
+              ),
       ),
     );
 
@@ -114,23 +155,35 @@ class _ManagedProviderManagementPageState
     );
   }
 
-  Future<void> _openEditor(
-    BuildContext context, {
-    ManagedProvider? provider,
-  }) async {
-    final providerCubit = context.read<ManagedProviderCubit>();
-    final usageCubit = context.read<ManagedProviderUsageCubit>();
-    await Navigator.of(context).push<void>(
-      MaterialPageRoute(
-        builder: (_) => MultiBlocProvider(
-          providers: [
-            BlocProvider.value(value: providerCubit),
-            BlocProvider.value(value: usageCubit),
-          ],
-          child: ManagedProviderEditorPage(provider: provider),
+  void _openEditor(BuildContext context, {ManagedProvider? provider}) {
+    if (!widget.embedded) {
+      Navigator.of(context).push<void>(
+        MaterialPageRoute(
+          builder: (_) => MultiBlocProvider(
+            providers: [
+              BlocProvider.value(value: context.read<ManagedProviderCubit>()),
+              BlocProvider.value(
+                value: context.read<ManagedProviderUsageCubit>(),
+              ),
+            ],
+            child: ManagedProviderEditorPage(provider: provider),
+          ),
         ),
-      ),
-    );
+      );
+      return;
+    }
+    setState(() {
+      _editingProvider = provider;
+      _isEditing = true;
+    });
+  }
+
+  void _closeEditor() {
+    if (!mounted) return;
+    setState(() {
+      _editingProvider = null;
+      _isEditing = false;
+    });
   }
 
   Future<void> _toggle(ManagedProvider provider) async {
@@ -143,7 +196,38 @@ class _ManagedProviderManagementPageState
   }
 
   Future<void> _delete(ManagedProvider provider) async {
-    await context.read<ManagedProviderCubit>().delete(provider.id);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(context.l10n.managedProvidersDeleteTitle),
+        content: Text(
+          context.l10n.managedProvidersDeleteContent(provider.name),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(context.l10n.managedProvidersCancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(context.l10n.managedProvidersDelete),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    final cubit = context.read<ManagedProviderCubit>();
+    await cubit.delete(provider.id);
+    if (!mounted || cubit.state.errorCode == null) return;
+    AppToast.show(
+      context,
+      message: managedProviderErrorMessage(
+        context.l10n,
+        providerCode: cubit.state.errorCode,
+        detail: cubit.state.errorMessage,
+      ),
+      variant: TpToastVariant.error,
+    );
   }
 
   Future<void> _refresh(ManagedProvider provider) async {
@@ -164,14 +248,14 @@ class _PageHeader extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Managed Providers',
+              context.l10n.managedProvidersTitle,
               style: TpTextStyles.of(
                 context,
               ).xl.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 3),
             Text(
-              'Balances and quotas independent from CLI provider configuration.',
+              context.l10n.managedProvidersSubtitle,
               style: TpTextStyles.of(
                 context,
               ).smColored(Theme.of(context).colorScheme.onSurfaceVariant),
@@ -182,12 +266,12 @@ class _PageHeader extends StatelessWidget {
       TpButton(
         key: const Key('managed-provider-add'),
         onPressed: onAdd,
-        child: const Row(
+        child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.add, size: 18),
             SizedBox(width: 6),
-            Text('Add provider'),
+            Text(context.l10n.managedProvidersAdd),
           ],
         ),
       ),
@@ -213,7 +297,7 @@ class _LoadError extends StatelessWidget {
         TpButton(
           variant: TpButtonVariant.outline,
           onPressed: onRetry,
-          child: const Text('Retry'),
+          child: Text(context.l10n.managedProvidersRetry),
         ),
       ],
     ),

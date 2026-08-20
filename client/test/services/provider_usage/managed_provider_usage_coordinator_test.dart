@@ -129,6 +129,26 @@ void main() {
     expect(coordinator.snapshotFor('p1')!.status, ProviderUsageStatus.ready);
   });
 
+  test('transient query does not write or replace the usage cache', () async {
+    await providers.upsert(_provider());
+    await usage.save(_ready());
+    final adapter = _FakeAdapter(Future.value(_ready(remaining: '3.25')));
+    final coordinator = ManagedProviderUsageCoordinator(
+      providerRepository: providers,
+      usageRepository: usage,
+      registry: ManagedProviderUsageRegistry([adapter]),
+      credentials: _NoCredentials(),
+      http: _UnusedHttpClient(),
+      now: () => DateTime.fromMillisecondsSinceEpoch(1_700_000_000_000),
+    );
+
+    final result = await coordinator.queryOne('p1');
+
+    expect(result.measures.single.remaining, '3.25');
+    expect((await usage.load()).single.measures.single.remaining, '12.50');
+    expect(coordinator.snapshotFor('p1')!.measures.single.remaining, '12.50');
+  });
+
   test(
     'storage context invalidation prevents an old request from writing to the new home',
     () async {

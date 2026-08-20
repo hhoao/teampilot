@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/managed_provider.dart';
 import '../models/provider_usage_snapshot.dart';
+import '../services/provider_usage/managed_provider_usage_adapter.dart';
 import '../services/provider_usage/managed_provider_usage_coordinator.dart'
     as coordinator;
 
@@ -41,7 +42,7 @@ class ManagedProviderUsageState extends Equatable {
   final int generation;
   final ManagedProviderUsageErrorCode? errorCode;
   final String? errorMessage;
-  final coordinator.ManagedProviderUsageQueryErrorCode? queryErrorCode;
+  final ManagedProviderUsageQueryErrorCode? queryErrorCode;
 
   ProviderUsageSnapshot? snapshotFor(String providerId) =>
       snapshots[providerId.trim()];
@@ -64,7 +65,7 @@ class ManagedProviderUsageState extends Equatable {
     int? generation,
     ManagedProviderUsageErrorCode? errorCode,
     String? errorMessage,
-    coordinator.ManagedProviderUsageQueryErrorCode? queryErrorCode,
+    ManagedProviderUsageQueryErrorCode? queryErrorCode,
     bool clearError = false,
   }) => ManagedProviderUsageState(
     status: status ?? this.status,
@@ -147,7 +148,7 @@ class ManagedProviderUsageCubit extends Cubit<ManagedProviderUsageState> {
         state.copyWith(
           status: ManagedProviderUsageLoadStatus.error,
           errorCode: ManagedProviderUsageErrorCode.loadFailed,
-          errorMessage: 'Unable to load managed provider usage.',
+          errorMessage: null,
         ),
       );
     }
@@ -199,25 +200,7 @@ class ManagedProviderUsageCubit extends Cubit<ManagedProviderUsageState> {
     try {
       final result = await _coordinator.queryOne(id);
       if (isClosed) return result;
-      final snapshots = Map<String, ProviderUsageSnapshot>.from(state.snapshots)
-        ..[id] = result;
-      final queryCode = _queryErrorCode(result.lastErrorCode);
-      final failed = result.status == ProviderUsageStatus.error ||
-          result.status == ProviderUsageStatus.unsupported;
-      emit(
-        state.copyWith(
-          status: failed
-              ? ManagedProviderUsageLoadStatus.error
-              : ManagedProviderUsageLoadStatus.ready,
-          snapshots: snapshots,
-          errorCode: failed
-              ? ManagedProviderUsageErrorCode.queryFailed
-              : null,
-          errorMessage: failed ? _queryMessage(queryCode) : null,
-          queryErrorCode: failed ? queryCode : null,
-          clearError: !failed,
-        ),
-      );
+      _emitQueryResult(id, result);
       return result;
     } on coordinator.ManagedProviderUsageInvalidated catch (error) {
       await _handleInvalidation(error);
@@ -225,6 +208,24 @@ class ManagedProviderUsageCubit extends Cubit<ManagedProviderUsageState> {
     } on Object {
       _setQueryError();
       return state.snapshotFor(id);
+    }
+  }
+
+  /// Queries an in-memory Provider draft without persisting the usage cache.
+  Future<ProviderUsageSnapshot?> queryProvider(ManagedProvider provider) async {
+    await load();
+    if (isClosed) return state.snapshotFor(provider.id);
+    try {
+      final result = await _coordinator.queryProvider(provider);
+      if (isClosed) return result;
+      _emitQueryResult(provider.id, result);
+      return result;
+    } on coordinator.ManagedProviderUsageInvalidated catch (error) {
+      await _handleInvalidation(error);
+      return null;
+    } on Object {
+      _setQueryError();
+      return state.snapshotFor(provider.id);
     }
   }
 
@@ -364,7 +365,7 @@ class ManagedProviderUsageCubit extends Cubit<ManagedProviderUsageState> {
           state.copyWith(
             status: ManagedProviderUsageLoadStatus.error,
             errorCode: ManagedProviderUsageErrorCode.loadFailed,
-            errorMessage: 'Unable to reload managed provider usage.',
+            errorMessage: null,
           ),
         );
       }
@@ -476,7 +477,7 @@ class ManagedProviderUsageCubit extends Cubit<ManagedProviderUsageState> {
           state.copyWith(
             status: ManagedProviderUsageLoadStatus.error,
             errorCode: ManagedProviderUsageErrorCode.invalidated,
-            errorMessage: 'Managed provider usage was invalidated.',
+            errorMessage: null,
           ),
         );
       }
@@ -489,24 +490,31 @@ class ManagedProviderUsageCubit extends Cubit<ManagedProviderUsageState> {
       state.copyWith(
         status: ManagedProviderUsageLoadStatus.error,
         errorCode: code,
-        errorMessage: _messageFor(code),
+        errorMessage: null,
       ),
     );
   }
 
-  static String _messageFor(ManagedProviderUsageErrorCode code) =>
-      switch (code) {
-        ManagedProviderUsageErrorCode.loadFailed =>
-          'Unable to load managed provider usage.',
-        ManagedProviderUsageErrorCode.refreshFailed =>
-          'Unable to refresh managed provider usage.',
-        ManagedProviderUsageErrorCode.queryFailed =>
-          'Unable to query provider usage.',
-        ManagedProviderUsageErrorCode.persistenceFailed =>
-          'Unable to save managed provider usage.',
-        ManagedProviderUsageErrorCode.invalidated =>
-          'Managed provider usage was invalidated.',
-      };
+  void _emitQueryResult(String id, ProviderUsageSnapshot result) {
+    final snapshots = Map<String, ProviderUsageSnapshot>.from(state.snapshots)
+      ..[id] = result;
+    final queryCode = _queryErrorCode(result.lastErrorCode);
+    final failed =
+        result.status == ProviderUsageStatus.error ||
+        result.status == ProviderUsageStatus.unsupported;
+    emit(
+      state.copyWith(
+        status: failed
+            ? ManagedProviderUsageLoadStatus.error
+            : ManagedProviderUsageLoadStatus.ready,
+        snapshots: snapshots,
+        errorCode: failed ? ManagedProviderUsageErrorCode.queryFailed : null,
+        errorMessage: failed ? _queryMessage(queryCode) : null,
+        queryErrorCode: failed ? queryCode : null,
+        clearError: !failed,
+      ),
+    );
+  }
 
   void _setQueryError() {
     if (isClosed) return;
@@ -520,32 +528,29 @@ class ManagedProviderUsageCubit extends Cubit<ManagedProviderUsageState> {
     );
   }
 
-  static coordinator.ManagedProviderUsageQueryErrorCode? _queryErrorCode(
-    String? raw,
-  ) {
-    for (final code in coordinator.ManagedProviderUsageQueryErrorCode.values) {
+  static ManagedProviderUsageQueryErrorCode? _queryErrorCode(String? raw) {
+    for (final code in ManagedProviderUsageQueryErrorCode.values) {
       if (code.name == raw) return code;
     }
     return null;
   }
 
-  static String _queryMessage(
-    coordinator.ManagedProviderUsageQueryErrorCode? code,
-  ) => switch (code) {
-    coordinator.ManagedProviderUsageQueryErrorCode.missingCredential =>
-      'Unable to query provider usage: credential is not configured.',
-    coordinator.ManagedProviderUsageQueryErrorCode.authenticationFailed =>
-      'Unable to query provider usage: authentication failed.',
-    coordinator.ManagedProviderUsageQueryErrorCode.networkFailed =>
-      'Unable to query provider usage: network request failed.',
-    coordinator.ManagedProviderUsageQueryErrorCode.httpFailed =>
-      'Unable to query provider usage: provider returned an error.',
-    coordinator.ManagedProviderUsageQueryErrorCode.responseParseFailed =>
-      'Unable to query provider usage: response could not be parsed.',
-    coordinator.ManagedProviderUsageQueryErrorCode.unsupported =>
-      'Unable to query provider usage: this configuration is unsupported.',
-    null => 'Unable to query provider usage.',
-  };
+  static String _queryMessage(ManagedProviderUsageQueryErrorCode? code) =>
+      switch (code) {
+        ManagedProviderUsageQueryErrorCode.missingCredential =>
+          'Unable to query provider usage: credential is not configured.',
+        ManagedProviderUsageQueryErrorCode.authenticationFailed =>
+          'Unable to query provider usage: authentication failed.',
+        ManagedProviderUsageQueryErrorCode.networkFailed =>
+          'Unable to query provider usage: network request failed.',
+        ManagedProviderUsageQueryErrorCode.httpFailed =>
+          'Unable to query provider usage: provider returned an error.',
+        ManagedProviderUsageQueryErrorCode.responseParseFailed =>
+          'Unable to query provider usage: response could not be parsed.',
+        ManagedProviderUsageQueryErrorCode.unsupported =>
+          'Unable to query provider usage: this configuration is unsupported.',
+        null => 'Unable to query provider usage.',
+      };
 
   /// Closing is non-blocking: in-flight coordinator work may finish, but all
   /// completion paths guard [isClosed] and never emit or surface a late error.

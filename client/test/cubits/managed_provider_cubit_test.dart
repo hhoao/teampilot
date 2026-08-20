@@ -111,6 +111,32 @@ void main() {
     },
   );
 
+  test(
+    'credential cleanup receives the deleted provider before state removal',
+    () async {
+      final events = <String>[];
+      final repo = ManagedProviderRepository(
+        fs: fs,
+        configPath: '/tp/providers.json',
+        onProvidersDeleted: (_) async {},
+      );
+      await repo.upsert(_provider().copyWith(credentialRef: 'ref-1'));
+      final cubit = ManagedProviderCubit(
+        repository: repo,
+        onProviderDeletedCredentialCleanup: (provider) async {
+          events.add('${provider.id}:${provider.credentialRef}');
+        },
+      );
+      addTearDown(cubit.close);
+      await cubit.load();
+
+      await cubit.delete('p1');
+
+      expect(events, ['p1:ref-1']);
+      expect(cubit.state.providers, isEmpty);
+    },
+  );
+
   test('a load started before upsert cannot overwrite the mutation', () async {
     final blockingFs = _BlockingConfigReadFilesystem();
     final blockingRepository = ManagedProviderRepository(

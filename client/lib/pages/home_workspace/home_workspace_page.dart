@@ -14,6 +14,7 @@ import '../../widgets/settings/workspace_pane_insets.dart';
 import '../../widgets/split_layout.dart';
 import '../team_config/team_config_section.dart';
 import '../workspace_ide/mobile_slide_panel_host.dart';
+import '../../widgets/managed_provider/managed_provider_usage_panel.dart';
 import 'home_all_workspaces_pane.dart';
 import 'home_route_active_scope.dart';
 import 'home_workspace_content.dart';
@@ -109,6 +110,30 @@ class _HomePageState extends State<HomePage> {
     TpSidebarScope.maybeOf(context)?.setOpenMobile(false);
   }
 
+  void _showManagedProviderUsage() {
+    _closeMobileDrawer(context);
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: ManagedProviderUsagePanel(
+            onManage: () {
+              Navigator.of(sheetContext).pop();
+              if (!mounted) return;
+              setState(() {
+                _allWorkspacesActive = false;
+                _globalView = HomeGlobalView.managedProviders;
+                _libraryView = null;
+              });
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final globalView = _globalView;
@@ -129,6 +154,7 @@ class _HomePageState extends State<HomePage> {
         });
         _closeMobileDrawer(context);
       },
+      onShowManagedProviderUsage: isMobile ? _showManagedProviderUsage : null,
       onSelectGlobalView: (view) {
         setState(() {
           _allWorkspacesActive = false;

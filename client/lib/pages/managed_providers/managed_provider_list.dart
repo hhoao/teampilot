@@ -3,6 +3,7 @@ import 'package:shared_ui/shared_ui.dart';
 
 import '../../models/managed_provider.dart';
 import '../../models/provider_usage_snapshot.dart';
+import '../../l10n/l10n_extensions.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../widgets/managed_provider/managed_provider_measure_view.dart';
 
@@ -28,12 +29,12 @@ class ManagedProviderList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     if (providers.isEmpty) {
-      return const TpEmptyState(
+      return TpEmptyState(
         icon: Icons.account_balance_wallet_outlined,
-        title: 'No managed providers',
-        hint:
-            'Add a provider to track balances and quotas independently from CLI providers.',
+        title: l10n.managedProvidersEmptyTitle,
+        hint: l10n.managedProvidersEmptyHint,
       );
     }
 
@@ -55,7 +56,6 @@ class ManagedProviderList extends StatelessWidget {
             children: [
               _ProviderHeader(
                 provider: provider,
-                colorScheme: cs,
                 onEdit: onEdit,
                 onToggle: onToggle,
                 onDelete: onDelete,
@@ -78,106 +78,119 @@ class ManagedProviderList extends StatelessWidget {
 class _ProviderHeader extends StatelessWidget {
   const _ProviderHeader({
     required this.provider,
-    required this.colorScheme,
     required this.onEdit,
     required this.onToggle,
     required this.onDelete,
   });
 
   final ManagedProvider provider;
-  final ColorScheme colorScheme;
   final ValueChanged<ManagedProvider> onEdit;
   final ValueChanged<ManagedProvider> onToggle;
   final ValueChanged<ManagedProvider> onDelete;
 
-  Widget _identity(BuildContext context) => InkWell(
-    onTap: () => onEdit(provider),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final l10n = context.l10n;
+    final avatar = CircleAvatar(
+      radius: 17,
+      backgroundColor: cs.primary.withValues(alpha: 0.12),
+      child: Icon(
+        Icons.account_balance_wallet_outlined,
+        size: 18,
+        color: cs.primary,
+      ),
+    );
+    final identity = InkWell(
+      onTap: () => onEdit(provider),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  provider.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TpTextStyles.of(context).mdBold,
+                ),
+              ),
+              const SizedBox(width: 8),
+              TpStatusBadge(
+                label: provider.enabled
+                    ? l10n.managedProvidersEnabled
+                    : l10n.managedProvidersDisabled,
+                tone: provider.enabled
+                    ? TpStatusBadgeTone.success
+                    : TpStatusBadgeTone.neutral,
+              ),
+            ],
+          ),
+          const SizedBox(height: 2),
+          Text(
+            '${l10n.managedProviderKindLabel(provider.kind)} · ${provider.name}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TpTextStyles.of(context).smColored(cs.onSurfaceVariant),
+          ),
+        ],
+      ),
+    );
+    final actions = Row(
+      key: Key('managed-provider-actions-${provider.id}'),
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Text(provider.name, style: TpTextStyles.of(context).mdBold),
-        const SizedBox(height: 2),
-        Text(
-          '${provider.kind.value} · ${provider.adapterId}',
-          style: TpTextStyles.of(
-            context,
-          ).smColored(colorScheme.onSurfaceVariant),
+        IconButton(
+          tooltip: provider.enabled
+              ? l10n.managedProvidersDisable
+              : l10n.managedProvidersEnable,
+          onPressed: () => onToggle(provider),
+          icon: Icon(
+            provider.enabled
+                ? Icons.pause_circle_outline
+                : Icons.play_circle_outline,
+          ),
+        ),
+        IconButton(
+          tooltip: l10n.managedProvidersEdit,
+          onPressed: () => onEdit(provider),
+          icon: const Icon(Icons.edit_outlined),
+        ),
+        IconButton(
+          tooltip: l10n.managedProvidersDelete,
+          onPressed: () => onDelete(provider),
+          icon: Icon(Icons.delete_outline, color: cs.error),
         ),
       ],
-    ),
-  );
+    );
 
-  Widget _avatar() => CircleAvatar(
-    radius: 17,
-    backgroundColor: colorScheme.primary.withValues(alpha: 0.12),
-    child: Icon(
-      Icons.account_balance_wallet_outlined,
-      size: 18,
-      color: colorScheme.primary,
-    ),
-  );
-
-  Widget _status() => TpStatusBadge(
-    label: provider.enabled ? 'Enabled' : 'Disabled',
-    tone: provider.enabled
-        ? TpStatusBadgeTone.success
-        : TpStatusBadgeTone.neutral,
-  );
-
-  Widget _actions() => Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      IconButton(
-        tooltip: provider.enabled ? 'Disable' : 'Enable',
-        onPressed: () => onToggle(provider),
-        icon: Icon(
-          provider.enabled
-              ? Icons.pause_circle_outline
-              : Icons.play_circle_outline,
-        ),
-      ),
-      IconButton(
-        tooltip: 'Edit',
-        onPressed: () => onEdit(provider),
-        icon: const Icon(Icons.edit_outlined),
-      ),
-      IconButton(
-        tooltip: 'Delete',
-        onPressed: () => onDelete(provider),
-        icon: Icon(Icons.delete_outline, color: colorScheme.error),
-      ),
-    ],
-  );
-
-  @override
-  Widget build(BuildContext context) => LayoutBuilder(
-    builder: (context, constraints) {
-      final compact = constraints.maxWidth < 520;
-      if (compact) {
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 520) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  avatar,
+                  const SizedBox(width: 10),
+                  Expanded(child: identity),
+                ],
+              ),
+              Align(alignment: Alignment.centerRight, child: actions),
+            ],
+          );
+        }
+        return Row(
           children: [
-            Row(
-              children: [
-                _avatar(),
-                const SizedBox(width: 10),
-                Expanded(child: _identity(context)),
-                _status(),
-              ],
-            ),
-            Align(alignment: Alignment.centerRight, child: _actions()),
+            avatar,
+            const SizedBox(width: 10),
+            Expanded(child: identity),
+            actions,
           ],
         );
-      }
-      return Row(
-        children: [
-          _avatar(),
-          const SizedBox(width: 10),
-          Expanded(child: _identity(context)),
-          _status(),
-          _actions(),
-        ],
-      );
-    },
-  );
+      },
+    );
+  }
 }

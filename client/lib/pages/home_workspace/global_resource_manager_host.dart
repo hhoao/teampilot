@@ -23,11 +23,13 @@ import '../../services/terminal/workspace_terminal_registry.dart';
 import '../../services/terminal/workspace_terminal_run_service.dart';
 
 import '../../widgets/app_toast/app_toast.dart';
+import '../../widgets/managed_provider/managed_provider_usage_status_item.dart';
 import '../../widgets/workspace_status_bar/progress_activities_status_item.dart';
 import '../../widgets/workspace_status_bar/resource_usage_status_item.dart';
 import '../../widgets/workspace_status_bar/ssh_hosts_status_item.dart';
 import '../../widgets/workspace_status_bar/workspace_status_bar.dart';
 import '../config/config_workspace.dart';
+import 'home_workspace_global_section.dart';
 import 'home_workspace_route.dart';
 import 'home_workspace_tab_scope.dart';
 
@@ -168,10 +170,8 @@ class _GlobalResourceManagerHostState extends State<GlobalResourceManagerHost> {
       workspaces: chat.state.workspaces,
       allTabs: chat.tabStore.openTabs,
       terminalRegistry: registry,
-      sessionTitle: (tab) => resourceManagerSessionTitle(
-        tab,
-        emptyFallback: emptyTitle,
-      ),
+      sessionTitle: (tab) =>
+          resourceManagerSessionTitle(tab, emptyFallback: emptyTitle),
       memberName: (tab, memberId) {
         final teamId = tab.persistedSession?.sessionTeam.trim() ?? '';
         TeamProfile? team;
@@ -244,28 +244,26 @@ class _GlobalResourceManagerHostState extends State<GlobalResourceManagerHost> {
         final sessionId = leaf.sessionId?.trim() ?? '';
         final memberId = leaf.memberId?.trim() ?? '';
         if (sessionId.isEmpty) return;
-        workbench.openSession(
-          workspaceId,
-          sessionId,
-          preview: false,
-        );
+        workbench.openSession(workspaceId, sessionId, preview: false);
         workbench.activate(workspaceId, WorkbenchTabId.session(sessionId));
         if (memberId.isNotEmpty) chat.selectMember(memberId);
-        // Keep whatever chat/terminal surface the session already shows
-        // (do not force terminal like a process-manager jump).
+      // Keep whatever chat/terminal surface the session already shows
+      // (do not force terminal like a process-manager jump).
       case ResourceBindingKind.workspaceShell:
         final entryId = leaf.shellEntryId?.trim() ?? '';
         if (entryId.isEmpty) return;
-        final group = context
-            .read<WorkspaceTerminalRegistry>()
-            .groupFor(workspaceId);
+        final group = context.read<WorkspaceTerminalRegistry>().groupFor(
+          workspaceId,
+        );
         group.activeId = entryId;
         final floating = context.read<FloatingWorkspaceCubit>();
         floating.ensureOpen();
         floating.setActiveWorkspace(workspaceId);
-        context
-            .read<WorkbenchCubit>()
-            .openShell(workspaceId, entryId, activate: true);
+        context.read<WorkbenchCubit>().openShell(
+          workspaceId,
+          entryId,
+          activate: true,
+        );
     }
   }
 
@@ -284,7 +282,14 @@ class _GlobalResourceManagerHostState extends State<GlobalResourceManagerHost> {
             Expanded(child: widget.child),
             if (!isMobile)
               WorkspaceStatusBar(
-                items: [
+                leadingItems: [
+                  ManagedProviderUsageStatusItem(
+                    onManage: () => context.go(
+                      HomeGlobalView.managedProviders.homeLocation,
+                    ),
+                  ),
+                ],
+                trailingItems: [
                   ProgressActivitiesStatusItem(workspaceId: workspaceId),
                   ResourceUsageStatusItem(),
                   SshHostsStatusItem(

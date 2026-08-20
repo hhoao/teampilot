@@ -3,6 +3,7 @@
 
 import 'package:flutter/widgets.dart';
 
+import '../models/managed_provider.dart';
 import '../models/team_config.dart';
 import '../services/editor/editor_messages.dart';
 import 'app_localizations.dart';
@@ -50,6 +51,30 @@ extension AppLocalizationsX on AppLocalizations {
       _ => value,
     };
   }
+
+  String managedProviderPresetLabel(String id) => switch (id) {
+    'codex' => managedProvidersQuickPresetCodex,
+    'claude-code' => managedProvidersQuickPresetClaudeCode,
+    'deepseek' => managedProvidersQuickPresetDeepSeek,
+    'opencode' => managedProvidersQuickPresetOpenCode,
+    _ => id,
+  };
+
+  String managedProviderPresetHint(String id) => switch (id) {
+    'codex' => managedProvidersQuickPresetCodexHint,
+    'claude-code' => managedProvidersQuickPresetClaudeCodeHint,
+    'deepseek' => managedProvidersQuickPresetDeepSeekHint,
+    'opencode' => managedProvidersQuickPresetOpenCodeHint,
+    _ => '',
+  };
+
+  String managedProviderKindLabel(ManagedProviderKind kind) => switch (kind) {
+    ManagedProviderKind.apiBalance => managedProvidersKindApiBalance,
+    ManagedProviderKind.subscriptionQuota =>
+      managedProvidersKindSubscriptionQuota,
+    ManagedProviderKind.customHttp => managedProvidersKindCustomHttp,
+    ManagedProviderKind.unknown => kind.value,
+  };
 }
 
 extension BuildContextL10n on BuildContext {
