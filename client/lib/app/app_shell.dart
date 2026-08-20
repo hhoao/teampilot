@@ -23,6 +23,7 @@ import '../services/agent_status/exit_plan_mode_hook_gate.dart';
 import '../services/terminal/ask_user_question_answer_service.dart';
 import '../services/terminal/exit_plan_mode_approval_service.dart';
 import '../services/terminal/prompt_submit_ack_tracker.dart';
+import '../services/catalog/catalog_runtime.dart';
 import '../services/team_bus/mcp/teammate_bus_mcp_gateway.dart';
 import '../services/team_bus/remote/remote_bus_binding_resolver.dart';
 import '../services/remote/local_credential_exporter.dart';
@@ -73,6 +74,7 @@ import '../cubits/extension_cubit.dart';
 import '../cubits/hook_cubit.dart';
 import '../cubits/mcp_cubit.dart';
 import '../cubits/plugin_cubit.dart';
+import '../cubits/workspace_project_config_cubit.dart';
 import '../repositories/launch_profile_repository.dart';
 import '../services/storage/launch_profile_provisioner.dart';
 import '../cubits/cli_presets_cubit.dart';
@@ -751,8 +753,9 @@ Future<AppShell> buildAppShell({
   // registry is used by the picker UI to list selectable targets.
   final targetsRepo = deviceLocalTargetsRepository(nativeAppDataPath);
   final termuxConfigStore = deviceLocalTermuxConfigStore(nativeAppDataPath);
-  final remoteDownloadSettingsStore =
-      deviceLocalRemoteDownloadSettingsStore(nativeAppDataPath);
+  final remoteDownloadSettingsStore = deviceLocalRemoteDownloadSettingsStore(
+    nativeAppDataPath,
+  );
   final remoteDownloadCatalogCubit = RemoteDownloadCatalogCubit(
     store: remoteDownloadSettingsStore,
   );
@@ -781,6 +784,7 @@ Future<AppShell> buildAppShell({
     }
     return null;
   }
+
   final remoteCliReadiness = RemoteCliReadinessService(
     registry: cliToolRegistry,
     sshClientFactory: sshClientFactory,
@@ -822,8 +826,7 @@ Future<AppShell> buildAppShell({
     },
     onEvict: (targetId) async {
       final pid =
-          homeTargetFromId(targetId).sshProfileId ??
-          sshProfileIdOfId(targetId);
+          homeTargetFromId(targetId).sshProfileId ?? sshProfileIdOfId(targetId);
       if (pid != null) {
         sshClientFactory.disconnectProfile(
           pid,
@@ -927,1299 +930,1333 @@ Future<AppShell> buildAppShell({
                   .close()
         : null,
   );
-  final managedProviderControlPlaneLease =
-      ManagedProviderControlPlaneLease(managedProviderControlPlane);
+  final managedProviderControlPlaneLease = ManagedProviderControlPlaneLease(
+    managedProviderControlPlane,
+  );
 
   try {
-
-  Future<void> persistSshHomePathCacheIfLive() async {
-    final home = defaultTargetResolver();
-    if (home.kind != RuntimeKind.ssh) return;
-    final pid = home.sshProfileId;
-    if (pid == null || pid.isEmpty) return;
-    final ctx = runtimeContextRegistry.home();
-    if (ctx.pathsFromCache) return;
-    if (!sshProfileCubit.state.profiles.any((p) => p.id == pid)) {
-      await sshProfileCubit.load();
-    }
-    await sshProfileCubit.updatePathCache(
-      pid,
-      home: ctx.home,
-      appDataRoot: ctx.appDataRoot,
-    );
-  }
-
-  // Persists the chosen home id, rebinds the registry home, and republishes it
-  // on AppStorage.
-  Future<void> setHomeTarget(String id) async {
-    await managedProviderControlPlane.invalidateForStorageContextChange();
-    await homeTargetStore.save(id);
-    homeTarget = homeTargetFromId(id);
-    await runtimeContextRegistry.dispose(id);
-    await runtimeContextRegistry.rebindHome(homeTarget);
-    AppStorage.bindHome(runtimeContextRegistry.home());
-    await persistSshHomePathCacheIfLive();
-  }
-
-  connectionModeService = ConnectionModeService(
-    defaultTargetResolver: defaultTargetResolver,
-    hasSshProfiles: () => sshProfileCubit.state.hasProfiles,
-  );
-
-  // Re-resolve the home context (e.g. after an ssh profile's details change):
-  // drop the cached wrapper and rebuild it, but keep the live SSH storage pool.
-  reinstallStorageContext = () async {
-    await managedProviderControlPlane.invalidateForStorageContextChange();
-    await runtimeContextRegistry.dispose(
-      defaultTargetResolver().id,
-      notifyEvict: false,
-    );
-    await runtimeContextRegistry.rebindHome(defaultTargetResolver());
-    AppStorage.bindHome(runtimeContextRegistry.home());
-    await persistSshHomePathCacheIfLive();
-  };
-
-  Future<void> openCredentialLoginUrl(Uri uri) async {
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
-  }
-
-  void onCredentialLoginHint(CredentialLoginProgress progress) {
-    appProviderCubit.reportCredentialLoginProgress(progress);
-  }
-
-  final credentialHostRunner = ProviderCredentialHostRunner(
-    oneShot: () => hostOneShotRunnerForContext(AppStorage.context),
-    streaming: () => hostProcessStarterForContext(AppStorage.context),
-    openUrl: openCredentialLoginUrl,
-    onLoginHint: onCredentialLoginHint,
-  );
-
-  final claudeCredentialsService = ClaudeProviderCredentialsService(
-    fs: AppStorage.fs,
-    basePath: AppStorage.paths.basePath,
-    resolveClaudeExecutable: () =>
-        sessionPreferencesCubit.resolveExecutable(CliTool.claude),
-    hostRunner: credentialHostRunner,
-  );
-  final cursorCredentialsService = CursorProviderCredentialsService(
-    fs: AppStorage.fs,
-    basePath: AppStorage.paths.basePath,
-    resolveCursorExecutable: () =>
-        sessionPreferencesCubit.resolveExecutable(CliTool.cursor),
-    hostRunner: credentialHostRunner,
-  );
-  final codexCredentialsService = CodexProviderCredentialsService(
-    fs: AppStorage.fs,
-    basePath: AppStorage.paths.basePath,
-    resolveCodexExecutable: () =>
-        sessionPreferencesCubit.resolveExecutable(CliTool.codex),
-    hostRunner: credentialHostRunner,
-  );
-  final opencodeCredentialsService = OpencodeProviderCredentialsService(
-    fs: AppStorage.fs,
-    basePath: AppStorage.paths.basePath,
-    resolveOpencodeExecutable: () =>
-        sessionPreferencesCubit.resolveExecutable(CliTool.opencode),
-    hostRunner: credentialHostRunner,
-  );
-
-  cliToolRegistry.configure(
-    CliBootstrap({
-      CliTool.claude: ClaudeBootstrapEntry(
-        credentialsService: claudeCredentialsService,
-        modelsService: ApiModelCatalogService(
-          protocol: ApiModelCatalogProtocol.anthropic,
-          cacheDirectory: 'claude_models',
-        ),
-      ),
-      CliTool.cursor: CursorBootstrapEntry(
-        credentialsService: cursorCredentialsService,
-        agentModelsService: CursorAgentModelsService(),
-      ),
-      CliTool.codex: CodexBootstrapEntry(
-        credentialsService: codexCredentialsService,
-        modelsService: ApiModelCatalogService(
-          protocol: ApiModelCatalogProtocol.openAi,
-          cacheDirectory: 'codex_models',
-        ),
-      ),
-      CliTool.opencode: OpencodeBootstrapEntry(
-        credentialsService: opencodeCredentialsService,
-        modelsService: OpencodeModelsService(),
-      ),
-    }),
-  );
-
-  final skillManifest = SkillManifestService();
-  final skillGit = SkillRepoGitService();
-  final skillFetch = SkillFetchService(git: skillGit);
-  final skillRepoCache = SkillRepoDiskCacheService(fetch: skillFetch);
-  final skillInstallService = SkillInstallService(
-    manifest: skillManifest,
-    fetch: skillFetch,
-    repoCache: skillRepoCache,
-  );
-  final skillRepo = SkillRepository(
-    manifest: skillManifest,
-    fetch: skillFetch,
-    repoCache: skillRepoCache,
-    install: skillInstallService,
-  );
-  final skillAcquisitionEngine = SkillAcquisitionEngine(
-    installGitDir: (d, {bool overwrite = false, String? idOverride}) =>
-        skillInstallService.installFromDiscovery(
-          d,
-          overwrite: overwrite,
-          idOverride: idOverride,
-        ),
-    registerDirectory: ({required String id, required String directory}) =>
-        skillInstallService.registerInstalledDirectory(
-          id: id,
-          directory: directory,
-        ),
-    isLocalAcquireSupported: () =>
-        AppStorage.context.mode == StorageBackendMode.native,
-    repoCache: skillRepoCache,
-  );
-
-  appProviderCubit = AppProviderCubit(
-    flashskyaiExecutablePath: sessionPreferencesCubit.resolveExecutable,
-    openCredentialLoginUrl: openCredentialLoginUrl,
-  );
-
-  llmConfigCubit = LlmConfigCubit(
-    appSettings: appSettings,
-    executableResolver: () => sessionPreferencesCubit.resolveExecutable(),
-    isSshMode: () => connectionModeService.isSshMode,
-    sshProfileResolver: () => sshProfileCubit.state.selectedProfile,
-    sshClientFactory: sshClientFactory,
-    sshWorkingDirectoryResolver: () =>
-        sessionPreferencesCubit.state.preferences.defaultSshWorkingDirectory,
-  );
-
-  String? llmConfigPathOverrideForLaunch() {
-    final s = llmConfigCubit.state;
-    final path = s.effectiveConfigPath.trim();
-    if (path.isEmpty) return null;
-    if (connectionModeService.isSshMode) return path;
-    return s.isUsingCustomPath ? path : null;
-  }
-
-  final extensionRepository = ExtensionRepository(
-    fs: AppStorage.fs,
-    stateFilePath: AppStorage.paths.extensionsStateJson,
-    manifests: builtInExtensionManifests(),
-  );
-  final workspaceProjectConfigRepository = WorkspaceProjectConfigRepository(
-    fs: AppStorage.fs,
-  );
-
-  identityRepository = LaunchProfileRepository();
-
-  final cliPresetsRepo = CliPresetsRepository(
-    fs: AppStorage.fs,
-    presetsPath: AppStorage.paths.cliPresetsJson,
-  );
-  sessionLifecycleService = SessionLifecycleService(
-    storageRootsResolver: () async => AppStorage.context,
-    catalogContextResolver: () async => runtimeContextRegistry.home(),
-    homeTarget: defaultTargetResolver,
-    // P2: launch resolves the work-plane on the workspace's target machine.
-    workContextResolver: runtimeContextRegistry.forTarget,
-    loadEnabledExtensionIds: ({teamId, workspaceId}) async {
-      final trimmedTeamId = teamId?.trim() ?? '';
-      if (trimmedTeamId.isNotEmpty) {
-        return extensionRepository.effectiveEnabledIds(trimmedTeamId);
+    Future<void> persistSshHomePathCacheIfLive() async {
+      final home = defaultTargetResolver();
+      if (home.kind != RuntimeKind.ssh) return;
+      final pid = home.sshProfileId;
+      if (pid == null || pid.isEmpty) return;
+      final ctx = runtimeContextRegistry.home();
+      if (ctx.pathsFromCache) return;
+      if (!sshProfileCubit.state.profiles.any((p) => p.id == pid)) {
+        await sshProfileCubit.load();
       }
-      final trimmedWorkspaceId = workspaceId?.trim() ?? '';
-      if (trimmedWorkspaceId.isNotEmpty) {
-        final config = await workspaceProjectConfigRepository.load(
-          trimmedWorkspaceId,
-        );
-        final global = (await extensionRepository.load()).globalEnabled;
-        return {
-          for (final manifest in builtInExtensionManifests())
-            if (config.effectiveExtensionEnabled(
-              extensionId: manifest.id,
-              globalEnabled: global,
-            ))
-              manifest.id,
-        };
-      }
-      return (await extensionRepository.load(forceReload: true)).globalEnabled;
-    },
-    cliToolRegistry: cliToolRegistry,
-    cliExecutableResolver: sessionPreferencesCubit.resolveExecutable,
-    identityRepository: identityRepository,
-    loadInstalledSkills: () => skillRepo.loadInstalled(),
-    cliPresetsRepository: cliPresetsRepo,
-    loadPresets: () => cliPresetsCubit.state.presets,
-    projectConfigRepository: workspaceProjectConfigRepository,
-  );
-  sessionRepo = SessionRepository(lifecycleService: sessionLifecycleService);
-  boot('prefetching home index snapshots');
-  bootstrapCubit?.beginHomeIndex();
-  Future<void> prefetchHomeIndex() async {
-    try {
-      await Future.wait([
-        sessionRepo.loadWorkspacesIndex(),
-        identityRepository.loadAll(),
-      ]);
-    } on Object catch (error, stackTrace) {
-      appLogger.w(
-        '[boot] home index prefetch failed',
-        error: error,
-        stackTrace: stackTrace,
+      await sshProfileCubit.updatePathCache(
+        pid,
+        home: ctx.home,
+        appDataRoot: ctx.appDataRoot,
       );
     }
-  }
 
-  final homeIndexPrefetch =
-      homeIndexPrefetchFuture ??
-      (connectionModeService.isRemoteWorkPlane
-          ? prefetchHomeIndex()
-          : Future.wait([
-              sessionRepo.loadWorkspacesIndex(),
-              identityRepository.loadAll(),
-            ]));
-  final pluginRepository = PluginRepository();
-  final mcpRepository = McpRepository();
-  hookRepository = HookRepository(
-    fs: AppStorage.fs,
-    teampilotRoot: AppStorage.paths.basePath,
-  );
-  hookImportParser = HookImportParser(
-    fs: AppStorage.fs,
-    teampilotRoot: AppStorage.paths.basePath,
-    homeDir: Platform.environment['HOME'],
-  );
-  hookImportService = HookImportService(repository: hookRepository);
-  identityProvisioner = LaunchProfileProvisioner(
-    repository: identityRepository,
-  );
-  teamCubit = LaunchProfileCubit(
-    repository: identityRepository,
-    sessionRepository: sessionRepo,
-    identityProvisioner: identityProvisioner,
-    executableResolver: () => sessionPreferencesCubit.resolveExecutable(),
-    cliExecutableResolver: sessionPreferencesCubit.resolveExecutable,
-    llmConfigPathOverride: llmConfigPathOverrideForLaunch,
-    storageRootsResolver: () async => AppStorage.context,
-    lifecycleService: sessionLifecycleService,
-    pluginRepository: pluginRepository,
-    installedPluginsLoader: () => pluginRepository.loadAll(),
-    mcpLinker: ProfileMcpLinkerService(),
-    mcpRepository: mcpRepository,
-    installedMcpLoader: () => mcpRepository.loadAll(),
-    extensionMcpContributor: (teamId) async {
-      final enabled = await extensionRepository.effectiveEnabledIds(teamId);
-      final provisioner = ExtensionProvisioner(
-        manifests: builtInExtensionManifests(),
-        isEnabled: (id) async => enabled.contains(id),
+    // Persists the chosen home id, rebinds the registry home, and republishes it
+    // on AppStorage.
+    Future<void> setHomeTarget(String id) async {
+      await managedProviderControlPlane.invalidateForStorageContextChange();
+      await homeTargetStore.save(id);
+      homeTarget = homeTargetFromId(id);
+      await runtimeContextRegistry.dispose(id);
+      await runtimeContextRegistry.rebindHome(homeTarget);
+      AppStorage.bindHome(runtimeContextRegistry.home());
+      await persistSshHomePathCacheIfLive();
+    }
+
+    connectionModeService = ConnectionModeService(
+      defaultTargetResolver: defaultTargetResolver,
+      hasSshProfiles: () => sshProfileCubit.state.hasProfiles,
+    );
+
+    // Re-resolve the home context (e.g. after an ssh profile's details change):
+    // drop the cached wrapper and rebuild it, but keep the live SSH storage pool.
+    reinstallStorageContext = () async {
+      await managedProviderControlPlane.invalidateForStorageContextChange();
+      await runtimeContextRegistry.dispose(
+        defaultTargetResolver().id,
+        notifyEvict: false,
       );
-      return provisioner.collectMcpContributions();
-    },
-  );
+      await runtimeContextRegistry.rebindHome(defaultTargetResolver());
+      AppStorage.bindHome(runtimeContextRegistry.home());
+      await persistSshHomePathCacheIfLive();
+    };
 
-  final notificationCubit = NotificationCubit();
-  final notificationBootstrap = notificationCubit.load();
-  NotificationRecorder.install(notificationCubit);
-  final progressActivityCubit = ProgressActivityCubit(
-    historyRecorder: notificationCubit,
-  );
-  final hubCloneActivityAdapter = HubCloneActivityAdapter(
-    cubit: progressActivityCubit,
-  );
-  final packAcquireActivityAdapter = PackAcquireActivityAdapter(
-    cubit: progressActivityCubit,
-  );
-  final cliProvisionActivityAdapter = CliProvisionActivityAdapter(
-    cubit: progressActivityCubit,
-  );
+    Future<void> openCredentialLoginUrl(Uri uri) async {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
 
-  final skillRegistryConfigService = SkillRegistryConfigService(
-    legacySkillsMpKeyReader: () => appSettings.loadSkillsMpApiKey(),
-  );
-  final skillRegistryConfig = await skillRegistryConfigService.load();
-  skillCubit = SkillCubit(
-    skillRepo,
-    registryConfigService: skillRegistryConfigService,
-    initialSources: SkillRegistryFactory.build(
-      skillRegistryConfig,
-      repository: skillRepo,
-    ),
-    rebuildSources: (config) =>
-        SkillRegistryFactory.build(config, repository: skillRepo),
-    acquisitionEngine: skillAcquisitionEngine,
-    onSkillUninstalled: teamCubit.removeSkillFromAllTeams,
-    packAcquireActivity: packAcquireActivityAdapter,
-    discoverySettings: discoverySettingsCubit,
-  );
-  pluginCubit = PluginCubit(
-    repository: pluginRepository,
-    installService: pluginRepository.install,
-    repoService: pluginRepository.repos,
-    diskCache: PluginRepoDiskCacheService(),
-    onPluginUninstalled: teamCubit.removePluginFromAllTeams,
-    onPluginUpdated: teamCubit.syncTeamsUsingPlugin,
-    packAcquireActivity: packAcquireActivityAdapter,
-    discoverySettings: discoverySettingsCubit,
-  );
-  extensionCubit = ExtensionCubit(
-    extensionRepository,
-    ExtensionAcquisitionEngine(),
-    packAcquireActivity: packAcquireActivityAdapter,
-  );
-  cliPresetsCubit = CliPresetsCubit(repository: cliPresetsRepo);
-  mcpCubit = McpCubit(
-    mcpRepository,
-    onMcpDeleted: teamCubit.removeMcpFromAllTeams,
-  );
-  hookCubit = HookCubit(repository: hookRepository)..load();
+    void onCredentialLoginHint(CredentialLoginProgress progress) {
+      appProviderCubit.reportCredentialLoginProgress(progress);
+    }
 
-  final teamHubSource = CompositeTeamHubSource.withDefaults(
-    GitRegistryTeamHubSource(),
-  );
-  final teamHubFavorites = TeamHubFavoritesStore();
-  final localExpertStore = LocalExpertStore();
-  await localExpertStore.migrateLegacyLayout();
-  await localExpertStore.ensureIndexLoaded();
-  final compositeExpertHubSource = CompositeExpertHubSource.withDefaults(
-    registry: GitRegistryExpertHubSource(),
-    teamIndex: teamHubSource.fetchTeams,
-    localStore: localExpertStore,
-  );
-  final expertCloneService = ExpertCloneService(
-    source: compositeExpertHubSource,
-    store: localExpertStore,
-  );
-  final teamCloneService = TeamCloneService(
-    installSkill: skillCubit.installTeamDependency,
-    installPlugin: pluginCubit.installTeamDependency,
-    installMcp: mcpCubit.installTeamDependency,
-    expertCloner: expertCloneService.clone,
-    createTeam:
-        ({
-          required name,
-          required cli,
-          required teamMode,
-          required roster,
-          required skillIds,
-          required pluginIds,
-          required mcpServerIds,
-          required description,
-          required extraArgs,
-          hubSourceKey,
-        }) => teamCubit.addClonedTeam(
-          name: name,
-          cli: cli,
-          teamMode: teamMode,
-          roster: roster,
-          skillIds: skillIds,
-          pluginIds: pluginIds,
-          mcpServerIds: mcpServerIds,
-          description: description,
-          extraArgs: extraArgs,
-          hubSourceKey: hubSourceKey,
-        ),
-  );
-  teamHubCubit = TeamHubCubit(
-    source: teamHubSource,
-    loadFavorites: teamHubFavorites.load,
-    saveFavoriteToggle: teamHubFavorites.toggle,
-    cloneTeam: (team, {teamMode, cli}) => hubCloneActivityAdapter.runTracked(
-      title: 'Clone ${team.name}',
-      historyMessageFor: (result) => result.hasFailures
-          ? 'Cloned ${team.name} with ${result.failedDeps.length} dependency failures'
-          : 'Cloned ${team.name}',
-      run: (onProgress) => teamCloneService.clone(
-        team,
-        teamMode: teamMode,
-        cli: cli,
-        onProgress: onProgress,
-      ),
-    ),
-    loadInstalledDepIds: () async {
-      final skills = await skillRepo.loadInstalled();
-      final plugins = await pluginRepository.loadAll();
-      final mcps = await mcpRepository.loadAll();
-      return <String>{
-        ...skills.map((s) => s.id),
-        ...plugins.map((p) => p.id),
-        ...mcps.map((m) => m.id),
-      };
-    },
-  );
+    final credentialHostRunner = ProviderCredentialHostRunner(
+      oneShot: () => hostOneShotRunnerForContext(AppStorage.context),
+      streaming: () => hostProcessStarterForContext(AppStorage.context),
+      openUrl: openCredentialLoginUrl,
+      onLoginHint: onCredentialLoginHint,
+    );
 
-  final expertHubFavorites = ExpertHubFavoritesStore();
-  teamCubit.attachExpertHubSource(compositeExpertHubSource);
-  final expertCapabilityResolver = ExpertCapabilityResolver(
-    installSkill: skillCubit.installTeamDependency,
-    installPlugin: pluginCubit.installTeamDependency,
-    installMcp: mcpCubit.installTeamDependency,
-    source: compositeExpertHubSource,
-  );
-  final memberRosterService = MemberRosterService(
-    resolver: expertCapabilityResolver,
-  );
-  expertHubCubit = ExpertHubCubit(
-    source: compositeExpertHubSource,
-    loadFavorites: expertHubFavorites.load,
-    saveFavoriteToggle: expertHubFavorites.toggle,
-    memberRosterService: memberRosterService,
-    launchProfiles: () => teamCubit,
-    hubCloneActivity: hubCloneActivityAdapter,
-    loadInstalledDepIds: () async {
-      final skills = await skillRepo.loadInstalled();
-      return skills.map((s) => s.id).toSet();
-    },
-  );
-  expertCapabilityResolver.attachHubCubit(expertHubCubit);
-  final sessionRuntimePlanBuilder = SessionRuntimePlanBuilder(
-    expertResolver: expertCapabilityResolver,
-    workspaceProjectConfig: workspaceProjectConfigRepository,
-  );
-  sessionLifecycleService.attachRuntimePlanBuilder(sessionRuntimePlanBuilder);
+    final claudeCredentialsService = ClaudeProviderCredentialsService(
+      fs: AppStorage.fs,
+      basePath: AppStorage.paths.basePath,
+      resolveClaudeExecutable: () =>
+          sessionPreferencesCubit.resolveExecutable(CliTool.claude),
+      hostRunner: credentialHostRunner,
+    );
+    final cursorCredentialsService = CursorProviderCredentialsService(
+      fs: AppStorage.fs,
+      basePath: AppStorage.paths.basePath,
+      resolveCursorExecutable: () =>
+          sessionPreferencesCubit.resolveExecutable(CliTool.cursor),
+      hostRunner: credentialHostRunner,
+    );
+    final codexCredentialsService = CodexProviderCredentialsService(
+      fs: AppStorage.fs,
+      basePath: AppStorage.paths.basePath,
+      resolveCodexExecutable: () =>
+          sessionPreferencesCubit.resolveExecutable(CliTool.codex),
+      hostRunner: credentialHostRunner,
+    );
+    final opencodeCredentialsService = OpencodeProviderCredentialsService(
+      fs: AppStorage.fs,
+      basePath: AppStorage.paths.basePath,
+      resolveOpencodeExecutable: () =>
+          sessionPreferencesCubit.resolveExecutable(CliTool.opencode),
+      hostRunner: credentialHostRunner,
+    );
 
-  final layoutCubit = LayoutCubit(repository: LayoutRepository(preferences));
-  final floatingWorkspaceCubit = FloatingWorkspaceCubit();
-  final floatingWorkspacePersistence = FloatingWorkspacePersistence(
-    layout: layoutCubit,
-    floating: floatingWorkspaceCubit,
-  );
-  final workspaceToolsCubit = WorkspaceToolsCubit();
-  final workspaceTerminalRegistry = WorkspaceTerminalRegistry();
-  final gitRepoStore = GitRepoStore();
-  final workspaceFileTreeStore = WorkspaceFileTreeStore();
-  final workspaceSearchIndexes = WorkspaceSearchIndexes();
-  final workspaceWorktreeRegistry = WorkspaceWorktreeRegistry();
-  final workspaceToolsScopeRegistry = WorkspaceToolsScopeRegistry();
-  final workspaceRunRegistry = WorkspaceRunRegistry(
-    platformFactory: WorkspaceRunPlatformFactory(
-      extensionRepository: extensionRepository,
-      projectConfigRepository: workspaceProjectConfigRepository,
-      resolveWorkContext: sessionLifecycleService.resolveWorkContextForTargetId,
-      sshProfileRepository: sshProfileRepo,
-      sshClientFactory: sshClientFactory,
-      homeTarget: defaultTargetResolver,
-    ),
-  );
-  final configCubit = ConfigCubit();
-  final commandBus = CommandBus();
-  final shortcutCubit = ShortcutCubit();
-  final workspaceChromeCommands = WorkspaceChromeCommands();
-  final runCommandHost = RunCommandHost();
-  final workspaceSearchHost = WorkspaceSearchHost();
-  final workspaceContentSearchHost = WorkspaceContentSearchHost();
-  final uiZoomBaseline = UiZoomBaseline();
-  registerShortcutsUiCommands(commandBus);
-  registerRunCommands(commandBus, runCommandHost);
-  registerWorkspaceSearchCommands(commandBus, workspaceSearchHost);
-  registerWorkspaceContentSearchCommands(
-    commandBus,
-    workspaceContentSearchHost,
-  );
-
-  final transportFactory = TerminalTransportFactory(
-    sshProfileRepository: sshProfileRepo,
-    sshCredentialStore: sshCredentialStore,
-    sshKnownHostRepository: sshKnownHostRepo,
-    sshClientFactory: sshClientFactory,
-  );
-
-  final workspaceShellConnector = WorkspaceShellConnector(
-    transportFactory: transportFactory,
-    sshProfileRepository: sshProfileRepo,
-    sshUseLoginShell: () =>
-        sessionPreferencesCubit.state.preferences.sshUseLoginShell,
-    homeTarget: defaultTargetResolver,
-    profileById: sshProfileById,
-  );
-  // Terminal inject deps after connector: registry was created earlier.
-  final workspaceTerminalSessionOps = WorkspaceTerminalSessionOps();
-  final workspaceTerminalRunService = WorkspaceTerminalRunService();
-  workspaceRunRegistry.setTerminalRunDeps(
-    TerminalRunDeps(
-      registry: workspaceTerminalRegistry,
-      connector: workspaceShellConnector,
-      ops: workspaceTerminalSessionOps,
-      runService: workspaceTerminalRunService,
-      connectCoordinatorFactory: (connector) =>
-          WorkspaceTerminalConnectCoordinator.termuxAware(
-            connector: connector,
-            termuxConnected: () => termuxGateCubit?.state.connected ?? true,
-            termuxWorkOpsBlockedMessage: TermuxWorkOpsMessage.disconnectedBlocked,
+    cliToolRegistry.configure(
+      CliBootstrap({
+        CliTool.claude: ClaudeBootstrapEntry(
+          credentialsService: claudeCredentialsService,
+          modelsService: ApiModelCatalogService(
+            protocol: ApiModelCatalogProtocol.anthropic,
+            cacheDirectory: 'claude_models',
           ),
-    ),
-  );
-
-  final automationRepo = AutomationRepository(
-    fs: AppStorage.fs,
-    layout: WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath),
-  );
-  final teammateBusMcpGateway = TeammateBusMcpGateway();
-  await teammateBusMcpGateway.ensureStarted();
-
-  // Shared AskUserAnswerPendingStore singleton (lives in buildAppShell):
-  // gateway GET /ask-user-answer + ChatCubit answer facade must reuse
-  // this instance — do not construct a second store.
-  final askUserAnswerPendingStore = AskUserAnswerPendingStore();
-  teammateBusMcpGateway.attachAskUserAnswerStore(askUserAnswerPendingStore);
-  final askUserQuestionHookGate = AskUserQuestionHookGate();
-  final askUserQuestionAnswerService = AskUserQuestionAnswerService(
-    store: askUserAnswerPendingStore,
-    hookGate: askUserQuestionHookGate,
-  );
-  final exitPlanModeHookGate = ExitPlanModeHookGate();
-  final exitPlanModeApprovalService = ExitPlanModeApprovalService(
-    hookGate: exitPlanModeHookGate,
-  );
-
-  final agentAttentionCubit = AgentAttentionCubit();
-  final agentStatusSeatLookup = AgentStatusSeatLookup();
-  // Shared prompt-submit ACK registry: AgentStatusHttpHandler completes
-  // pendings, TabMemberPtyDelivery consumes them to cancel crStuck retries.
-  final promptSubmitAckTracker = PromptSubmitAckTracker();
-  teammateBusMcpGateway.attachAgentStatusHandler(
-    AgentStatusHttpHandler(
-      attention: agentAttentionCubit,
-      resolveCli: agentStatusSeatLookup.resolveCli,
-      resolveSkipPermissions: agentStatusSeatLookup.resolveSkipPermissions,
-      askUserHookGate: askUserQuestionHookGate,
-      exitPlanModeHookGate: exitPlanModeHookGate,
-      promptAckTracker: promptSubmitAckTracker,
-    ),
-  );
-
-  chatCubit = ChatCubit(
-    teammateBusMcpGateway: teammateBusMcpGateway,
-    agentStatusSeatLookup: agentStatusSeatLookup,
-    agentAttentionCubit: agentAttentionCubit,
-    askUserAnswerPendingStore: askUserAnswerPendingStore,
-    askUserQuestionAnswerService: askUserQuestionAnswerService,
-    exitPlanApprovalService: exitPlanModeApprovalService,
-    promptAckTracker: promptSubmitAckTracker,
-    sessionRepository: sessionRepo,
-    lifecycleService: sessionLifecycleService,
-    automationRepository: automationRepo,
-    layoutCubit: layoutCubit,
-    autoLaunchAllMembersOnConnect: () =>
-        sessionPreferencesCubit.state.preferences.autoLaunchAllMembersOnConnect,
-    reclaimIdleTerminalsEnabled: () =>
-        sessionPreferencesCubit.state.preferences.reclaimIdleTerminals,
-    reclaimIdleTerminalAfterSeconds: () =>
-        sessionPreferencesCubit.state.preferences.reclaimIdleTerminalAfterSeconds,
-    executableResolver: () => sessionPreferencesCubit.resolveExecutable(),
-    cliExecutableResolver: sessionPreferencesCubit.resolveExecutable,
-    transportFactory: transportFactory,
-    sshProfileResolver: () => sshProfileCubit.state.selectedProfile,
-    sshProfileById: sshProfileById,
-    teamById: (teamId) async {
-      for (final team in await identityRepository.loadTeamProfiles()) {
-        if (team.id == teamId) return team;
-      }
-      return null;
-    },
-    sshDefaultWorkingDirectoryResolver: () =>
-        sessionPreferencesCubit.state.preferences.defaultSshWorkingDirectory,
-    sshUseLoginShellResolver: () =>
-        sessionPreferencesCubit.state.preferences.sshUseLoginShell,
-    defaultTargetResolver: defaultTargetResolver,
-    terminalScrollbackLinesResolver: () =>
-        sessionPreferencesCubit.state.preferences.terminalScrollbackLines,
-    // P3b (#1): connect remote (ssh) mixed-team members back to the in-process
-    // bus over a reverse tunnel. Local members resolve to null (unchanged).
-    remoteBusResolver: RemoteBusBindingResolver(registry: cliToolRegistry),
-    sessionConnect: buildSessionConnectOrchestrator(
-      lifecycle: sessionLifecycleService,
-      registry: cliToolRegistry,
-      sshClientFactory: sshClientFactory,
-      profileById: sshProfileById,
-      contextForTarget: runtimeContextRegistry.forTarget,
-      homeContext: runtimeContextRegistry.home,
-      homeTarget: defaultTargetResolver,
-      isCredentialOptIn: targetsRepo.isCredentialOptIn,
-      cliPathOverride: targetsRepo.cliPathOverride,
-      setCliPathOverride: targetsRepo.setCliPathOverride,
-      loadLocalCredentials: (cli) => LocalCredentialExporter().export(cli),
-      localCliPath: (cli) async =>
-          sessionPreferencesCubit.resolveExecutable(cli),
-      runtimePlanBuilder: sessionRuntimePlanBuilder,
-    ),
-    remoteCliReadiness: remoteCliReadiness,
-    cliProvisionActivity: cliProvisionActivityAdapter,
-    termuxConnectedResolver: () => termuxGateCubit?.state.connected ?? true,
-    termuxDisconnectedWorkOpsMessageResolver:
-        TermuxWorkOpsMessage.disconnectedBlocked,
-    termuxGateHomeResolver: defaultTargetResolver,
-  );
-
-  // Bound after [WorkbenchCubit] exists; togglePanel aliases new-terminal UX
-  // into the floating shell (Task 6 redirects the launcher to floating tabs).
-  WorkbenchShellLauncher? workbenchShellLauncher;
-  WorkbenchEditorOpener? workbenchEditorOpenerRef;
-  Future<void> focusOrCreateDefaultShell() async {
-    await workbenchShellLauncher?.focusOrCreateDefaultShell();
-  }
-
-  Future<void> openFloatingNewTerminal() async {
-    floatingWorkspaceCubit.ensureOpen();
-    await focusOrCreateDefaultShell();
-  }
-
-  Future<void> openFloatingFilePicker() async {
-    final opener = workbenchEditorOpenerRef;
-    if (opener == null) return;
-    await pickAndOpenFloatingWorkspaceFile(
-      floating: floatingWorkspaceCubit,
-      opener: opener,
-      workspaces: chatCubit.state.workspaces,
-    );
-  }
-
-  registerFloatingWorkspaceCommands(
-    commandBus,
-    floatingWorkspaceCubit,
-    onNewTerminal: focusOrCreateDefaultShell,
-    onOpenFile: openFloatingFilePicker,
-  );
-  final workbenchCubit = WorkbenchCubit();
-  registerLayoutCommands(
-    commandBus,
-    layoutCubit,
-    uiZoomBaseline: () => uiZoomBaseline.value,
-    composeLanding: () => workbenchCubit
-        .state
-        .bar(chatCubit.tabStore.activeWorkspaceId)
-        .center
-        .landingActive,
-    onTogglePanel: openFloatingNewTerminal,
-  );
-
-  memberPresenceCubit = MemberPresenceCubit();
-  chatCubit.bindPresenceCubit(memberPresenceCubit);
-
-  final sshProfileConnectionCoordinator = SshProfileConnectionCoordinator(
-    factory: sshClientFactory,
-    events: sshConnectionEvents,
-    profileResolver: sshProfileById,
-    onDisconnect: (profileId, error, stackTrace) {
-      final profile = sshProfileById(profileId);
-      final label = profile == null
-          ? profileId
-          : () {
-              final name = profile.name.trim();
-              return name.isEmpty
-                  ? '${profile.username}@${profile.host}'
-                  : '$name (${profile.username}@${profile.host})';
-            }();
-      if (error is SshTransportClosed) {
-        final cause = error.cause;
-        final message =
-            '[ssh] profile $profileId ($label) transport closed: '
-            'reason=${error.reason.name} plane=${error.plane.name}'
-            '${cause != null ? ' cause=$cause' : ''}';
-        if (isExpectedLocalSshTransportClose(error)) {
-          appLogger.i(message);
-        } else {
-          appLogger.w(
-            message,
-            error: cause,
-            stackTrace: cause != null ? stackTrace : null,
-          );
-        }
-        return;
-      }
-      appLogger.w(
-        '[ssh] profile $profileId ($label) transport closed: $error',
-        error: error,
-        stackTrace: stackTrace,
-      );
-    },
-    onReconnectSessionPlane: chatCubit.reconnectSshProfile,
-  );
-
-  final sshConnectionCubit = SshConnectionCubit(
-    factory: sshClientFactory,
-    coordinator: sshProfileConnectionCoordinator,
-    selectProfileOnConnect: Platform.isAndroid
-        ? (id) => applyAndroidSshConnectHome(
-            profileId: id,
-            selectHome: homeTargetController.select,
-            selectProfile: sshProfileCubit.selectProfile,
-          )
-        : null,
-  );
-
-  final scheduleCalculator = AutomationScheduleCalculator();
-  final automationDispatcher = AutomationDispatcher(
-    repository: automationRepo,
-    scheduleCalculator: scheduleCalculator,
-    sessionRepository: sessionRepo,
-    busGateway: TabTeamBusGateway(
-      memberMaterializer: chatCubit.memberMaterializer,
-      sessionRuntime: chatCubit.sessionRuntime,
-    ),
-    requestOpenSession: chatCubit.requestOpenSession,
-    requestCreateAndOpenSession: chatCubit.requestCreateAndOpenSession,
-    workspaceById: (workspaceId) => chatCubit.state.workspaces
-        .where((w) => w.workspaceId == workspaceId)
-        .firstOrNull,
-    teamById: (teamId) {
-      final profile = teamCubit.state.byId(teamId);
-      return profile is TeamProfile ? profile : null;
-    },
-    resolveCliPreset: (presetId) => cliPresetsCubit.state.presets
-        .where((preset) => preset.id == presetId.trim())
-        .firstOrNull,
-    sessionById: (sessionId, workspaceId) => chatCubit.state.sessions
-        .where((s) => s.sessionId == sessionId && s.workspaceId == workspaceId)
-        .firstOrNull,
-  );
-  automationScheduler = AutomationScheduler(
-    repository: automationRepo,
-    dispatcher: automationDispatcher,
-    scheduleCalculator: scheduleCalculator,
-  );
-  automationCubit = AutomationCubit(
-    repository: automationRepo,
-    scheduler: automationScheduler,
-    scheduleCalculator: scheduleCalculator,
-  );
-  chatCubit.bindAutomationsChangeNotifier(() {
-    if (!automationCubit.isClosed) {
-      unawaited(automationCubit.reloadPreservingScope());
-    }
-  });
-
-  final mailboxCubit = MailboxCubit(
-    busForScope: (scope) => scopedTeamBus(workbenchCubit, chatCubit, scope),
-  );
-
-  final boardCubit = BoardCubit(
-    busForScope: (scope) => scopedTeamBus(workbenchCubit, chatCubit, scope),
-  );
-
-  final aiHistoryLoader = AiHistoryLoader(
-    contextBuilder: const SessionHistoryContextBuilder(),
-    resolveWorkContext: (launchCtx, {String? memberId}) =>
-        sessionLifecycleService.launchWorkContext(
-          launchCtx,
-          memberId: memberId,
         ),
-    registry: cliToolRegistry,
-    globalPresets: () => cliPresetsCubit.state.presets,
-  );
-  aiHistoryLoaderRef = aiHistoryLoader;
-  // Pods own a per-session HistoryStore once the loader exists (ChatCubit is
-  // constructed earlier); SessionChatView binds seats through the pod.
-  chatCubit.historyLoader = aiHistoryLoader;
-  final aiHistoryCubit = AiHistoryCubit(
-    loader: aiHistoryLoader,
-    loadMailboxRecords: (sessionId, memberId) async {
-      final bus = chatCubit.tabStore.openTabBySessionId(sessionId)?.teamBus;
-      if (bus == null) return const [];
-      return bus.memberMailRecords(memberId);
-    },
-  );
-  chatCubit.onSessionHistoryStale = (sessionId) {
-    unawaited(aiHistoryCubit.softReloadIfSession(sessionId));
-  };
-  chatCubit.onHistorySeatsDispose = aiHistoryCubit.disposeSeatsForSession;
-  // Landing seed routing: pods own the store; these sinks are the fallback.
-  chatCubit.onSeedHistoryPending = (sid, mid, text) => aiHistoryCubit
-      .seedPendingUser(sessionId: sid, memberId: mid, text: text);
-  chatCubit.onCancelSeedHistoryPending = (sid, text) =>
-      aiHistoryCubit.cancelSeedPendingUser(sessionId: sid, text: text);
-
-  final appUpdateResolver = RemoteDownloadResolver.withProvider(
-    () => remoteDownloadCatalogCubit.state.catalog,
-  );
-  final appUpdateHttpClient = http.Client();
-  final appUpdateService = AppUpdateService(
-    httpClient: appUpdateHttpClient,
-    resolver: appUpdateResolver,
-    downloadHttp: RemoteDownloadHttp(
-      client: appUpdateHttpClient,
-      resolver: appUpdateResolver,
-    ),
-    downloader: RemoteDownloader(
-      client: appUpdateHttpClient,
-      resolver: appUpdateResolver,
-    ),
-  );
-  final appUpdateCubit = AppUpdateCubit(
-    service: appUpdateService,
-    settings: appSettings,
-    activityAdapter: AppUpdateActivityAdapter(cubit: progressActivityCubit),
-  );
-
-  boot('loading layout');
-  await layoutCubit.load();
-  floatingWorkspacePersistence.hydrateFromLayout();
-  floatingWorkspacePersistence.bind();
-  await shortcutCubit.load();
-  unawaited(notificationBootstrap);
-  boot('layout ready (home index prefetched in background)');
-  applyWorkspaceEntryMode(
-    layoutCubit.state.preferences.workspaceEntryMode,
-    lastOpenedWorkspaceId: layoutCubit.state.preferences.lastOpenedWorkspaceId,
-  );
-  boot('buildAppShell complete');
-  bootstrapCubit?.markShellReady();
-  boot('buildAppShell shell ready');
-
-  Future<void>? managedProviderHydration;
-  Future<void> hydrateManagedProviderData() {
-    final existing = managedProviderHydration;
-    if (existing != null) return existing;
-    final future = managedProviderControlPlane.hydrate(boot: boot);
-    managedProviderHydration = future;
-    return future;
-  }
-
-  reloadAllAppData = ({bool reinstallSshHome = true}) async {
-    await managedProviderControlPlane.invalidateForStorageContextChange();
-    await AppDataBootstrap.reloadAll(
-      boot: boot,
-      sshProfileCubit: sshProfileCubit,
-      llmConfigCubit: llmConfigCubit,
-      appProviderCubit: appProviderCubit,
-      teamCubit: teamCubit,
-      pluginCubit: pluginCubit,
-      skillCubit: skillCubit,
-      mcpCubit: mcpCubit,
-      extensionCubit: extensionCubit,
-      chatCubit: chatCubit,
-      sessionRepo: sessionRepo,
-      layoutCubit: layoutCubit,
-      isSshMode: connectionModeService.isRemoteWorkPlane,
-      homeSshProfileId: defaultTargetResolver().sshProfileId,
-      sshProfileExists: (id) => sshProfileById(id) != null,
-      reinstallStorageContext: reinstallStorageContext,
-      managedProviderCubit: resolvedManagedProviderCubit,
-      managedProviderUsageCubit: resolvedManagedProviderUsageCubit,
-      home: defaultTargetResolver(),
-      reinstallSshHome: reinstallSshHome,
+        CliTool.cursor: CursorBootstrapEntry(
+          credentialsService: cursorCredentialsService,
+          agentModelsService: CursorAgentModelsService(),
+        ),
+        CliTool.codex: CodexBootstrapEntry(
+          credentialsService: codexCredentialsService,
+          modelsService: ApiModelCatalogService(
+            protocol: ApiModelCatalogProtocol.openAi,
+            cacheDirectory: 'codex_models',
+          ),
+        ),
+        CliTool.opencode: OpencodeBootstrapEntry(
+          credentialsService: opencodeCredentialsService,
+          modelsService: OpencodeModelsService(),
+        ),
+      }),
     );
-    await persistSshHomePathCacheIfLive();
-  };
 
-  Future<void> reconnectHomeSshIfNeeded() async {
-    final home = defaultTargetResolver();
-    final pid = home.sshProfileId;
-    if (home.kind != RuntimeKind.ssh || pid == null || pid.isEmpty) return;
-    await sshConnectionCubit.syncProfiles(sshProfileCubit.state.profiles);
-    unawaited(sshConnectionCubit.connect(pid));
-  }
+    final skillManifest = SkillManifestService();
+    final skillGit = SkillRepoGitService();
+    final skillFetch = SkillFetchService(git: skillGit);
+    final skillRepoCache = SkillRepoDiskCacheService(fetch: skillFetch);
+    final skillInstallService = SkillInstallService(
+      manifest: skillManifest,
+      fetch: skillFetch,
+      repoCache: skillRepoCache,
+    );
+    final skillRepo = SkillRepository(
+      manifest: skillManifest,
+      fetch: skillFetch,
+      repoCache: skillRepoCache,
+      install: skillInstallService,
+    );
+    final skillAcquisitionEngine = SkillAcquisitionEngine(
+      installGitDir: (d, {bool overwrite = false, String? idOverride}) =>
+          skillInstallService.installFromDiscovery(
+            d,
+            overwrite: overwrite,
+            idOverride: idOverride,
+          ),
+      registerDirectory: ({required String id, required String directory}) =>
+          skillInstallService.registerInstalledDirectory(
+            id: id,
+            directory: directory,
+          ),
+      isLocalAcquireSupported: () =>
+          AppStorage.context.mode == StorageBackendMode.native,
+      repoCache: skillRepoCache,
+    );
 
-  /// Background one-time migration: replace stale per-session marketplace
-  /// clones with a symlink to the shared flavor dir (see
-  /// [MarketplaceSharedStore]). Skips currently-open sessions; non-fatal.
-  Future<void> _sweepStaleMarketplaceClones() async {
-    try {
-      await MarketplaceSharedStore(
-        fs: AppStorage.fs,
-        teampilotRoot: AppStorage.paths.basePath,
-      ).sweepAll(
-        workspaceIds: [
-          for (final workspace in chatCubit.state.workspaces)
-            workspace.workspaceId,
-        ],
-        activeSessionKeys: {
-          for (final tab in chatCubit.tabStore.openTabs) tab.info.id,
-        },
+    appProviderCubit = AppProviderCubit(
+      flashskyaiExecutablePath: sessionPreferencesCubit.resolveExecutable,
+      openCredentialLoginUrl: openCredentialLoginUrl,
+    );
+
+    llmConfigCubit = LlmConfigCubit(
+      appSettings: appSettings,
+      executableResolver: () => sessionPreferencesCubit.resolveExecutable(),
+      isSshMode: () => connectionModeService.isSshMode,
+      sshProfileResolver: () => sshProfileCubit.state.selectedProfile,
+      sshClientFactory: sshClientFactory,
+      sshWorkingDirectoryResolver: () =>
+          sessionPreferencesCubit.state.preferences.defaultSshWorkingDirectory,
+    );
+
+    String? llmConfigPathOverrideForLaunch() {
+      final s = llmConfigCubit.state;
+      final path = s.effectiveConfigPath.trim();
+      if (path.isEmpty) return null;
+      if (connectionModeService.isSshMode) return path;
+      return s.isUsingCustomPath ? path : null;
+    }
+
+    final extensionRepository = ExtensionRepository(
+      fs: AppStorage.fs,
+      stateFilePath: AppStorage.paths.extensionsStateJson,
+      manifests: builtInExtensionManifests(),
+    );
+    final workspaceProjectConfigRepository = WorkspaceProjectConfigRepository(
+      fs: AppStorage.fs,
+    );
+
+    identityRepository = LaunchProfileRepository();
+
+    final cliPresetsRepo = CliPresetsRepository(
+      fs: AppStorage.fs,
+      presetsPath: AppStorage.paths.cliPresetsJson,
+    );
+    sessionLifecycleService = SessionLifecycleService(
+      storageRootsResolver: () async => AppStorage.context,
+      catalogContextResolver: () async => runtimeContextRegistry.home(),
+      homeTarget: defaultTargetResolver,
+      // P2: launch resolves the work-plane on the workspace's target machine.
+      workContextResolver: runtimeContextRegistry.forTarget,
+      loadEnabledExtensionIds: ({teamId, workspaceId}) async {
+        final trimmedTeamId = teamId?.trim() ?? '';
+        if (trimmedTeamId.isNotEmpty) {
+          return extensionRepository.effectiveEnabledIds(trimmedTeamId);
+        }
+        final trimmedWorkspaceId = workspaceId?.trim() ?? '';
+        if (trimmedWorkspaceId.isNotEmpty) {
+          final config = await workspaceProjectConfigRepository.load(
+            trimmedWorkspaceId,
+          );
+          final global = (await extensionRepository.load()).globalEnabled;
+          return {
+            for (final manifest in builtInExtensionManifests())
+              if (config.effectiveExtensionEnabled(
+                extensionId: manifest.id,
+                globalEnabled: global,
+              ))
+                manifest.id,
+          };
+        }
+        return (await extensionRepository.load(
+          forceReload: true,
+        )).globalEnabled;
+      },
+      cliToolRegistry: cliToolRegistry,
+      cliExecutableResolver: sessionPreferencesCubit.resolveExecutable,
+      identityRepository: identityRepository,
+      loadInstalledSkills: () => skillRepo.loadInstalled(),
+      cliPresetsRepository: cliPresetsRepo,
+      loadPresets: () => cliPresetsCubit.state.presets,
+      projectConfigRepository: workspaceProjectConfigRepository,
+    );
+    sessionRepo = SessionRepository(lifecycleService: sessionLifecycleService);
+    boot('prefetching home index snapshots');
+    bootstrapCubit?.beginHomeIndex();
+    Future<void> prefetchHomeIndex() async {
+      try {
+        await Future.wait([
+          sessionRepo.loadWorkspacesIndex(),
+          identityRepository.loadAll(),
+        ]);
+      } on Object catch (error, stackTrace) {
+        appLogger.w(
+          '[boot] home index prefetch failed',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }
+    }
+
+    final homeIndexPrefetch =
+        homeIndexPrefetchFuture ??
+        (connectionModeService.isRemoteWorkPlane
+            ? prefetchHomeIndex()
+            : Future.wait([
+                sessionRepo.loadWorkspacesIndex(),
+                identityRepository.loadAll(),
+              ]));
+    final pluginRepository = PluginRepository();
+    final mcpRepository = McpRepository();
+    hookRepository = HookRepository(
+      fs: AppStorage.fs,
+      teampilotRoot: AppStorage.paths.basePath,
+    );
+    hookImportParser = HookImportParser(
+      fs: AppStorage.fs,
+      teampilotRoot: AppStorage.paths.basePath,
+      homeDir: Platform.environment['HOME'],
+    );
+    hookImportService = HookImportService(repository: hookRepository);
+    identityProvisioner = LaunchProfileProvisioner(
+      repository: identityRepository,
+    );
+    teamCubit = LaunchProfileCubit(
+      repository: identityRepository,
+      sessionRepository: sessionRepo,
+      identityProvisioner: identityProvisioner,
+      executableResolver: () => sessionPreferencesCubit.resolveExecutable(),
+      cliExecutableResolver: sessionPreferencesCubit.resolveExecutable,
+      llmConfigPathOverride: llmConfigPathOverrideForLaunch,
+      storageRootsResolver: () async => AppStorage.context,
+      lifecycleService: sessionLifecycleService,
+      pluginRepository: pluginRepository,
+      installedPluginsLoader: () => pluginRepository.loadAll(),
+      mcpLinker: ProfileMcpLinkerService(),
+      mcpRepository: mcpRepository,
+      installedMcpLoader: () => mcpRepository.loadAll(),
+      extensionMcpContributor: (teamId) async {
+        final enabled = await extensionRepository.effectiveEnabledIds(teamId);
+        final provisioner = ExtensionProvisioner(
+          manifests: builtInExtensionManifests(),
+          isEnabled: (id) async => enabled.contains(id),
+        );
+        return provisioner.collectMcpContributions();
+      },
+    );
+
+    final notificationCubit = NotificationCubit();
+    final notificationBootstrap = notificationCubit.load();
+    NotificationRecorder.install(notificationCubit);
+    final progressActivityCubit = ProgressActivityCubit(
+      historyRecorder: notificationCubit,
+    );
+    final hubCloneActivityAdapter = HubCloneActivityAdapter(
+      cubit: progressActivityCubit,
+    );
+    final packAcquireActivityAdapter = PackAcquireActivityAdapter(
+      cubit: progressActivityCubit,
+    );
+    final cliProvisionActivityAdapter = CliProvisionActivityAdapter(
+      cubit: progressActivityCubit,
+    );
+
+    final skillRegistryConfigService = SkillRegistryConfigService(
+      legacySkillsMpKeyReader: () => appSettings.loadSkillsMpApiKey(),
+    );
+    final skillRegistryConfig = await skillRegistryConfigService.load();
+    skillCubit = SkillCubit(
+      skillRepo,
+      registryConfigService: skillRegistryConfigService,
+      initialSources: SkillRegistryFactory.build(
+        skillRegistryConfig,
+        repository: skillRepo,
+      ),
+      rebuildSources: (config) =>
+          SkillRegistryFactory.build(config, repository: skillRepo),
+      acquisitionEngine: skillAcquisitionEngine,
+      onSkillUninstalled: teamCubit.removeSkillFromAllTeams,
+      packAcquireActivity: packAcquireActivityAdapter,
+      discoverySettings: discoverySettingsCubit,
+    );
+    pluginCubit = PluginCubit(
+      repository: pluginRepository,
+      installService: pluginRepository.install,
+      repoService: pluginRepository.repos,
+      diskCache: PluginRepoDiskCacheService(),
+      onPluginUninstalled: teamCubit.removePluginFromAllTeams,
+      onPluginUpdated: teamCubit.syncTeamsUsingPlugin,
+      packAcquireActivity: packAcquireActivityAdapter,
+      discoverySettings: discoverySettingsCubit,
+    );
+    extensionCubit = ExtensionCubit(
+      extensionRepository,
+      ExtensionAcquisitionEngine(),
+      packAcquireActivity: packAcquireActivityAdapter,
+    );
+    cliPresetsCubit = CliPresetsCubit(repository: cliPresetsRepo);
+    mcpCubit = McpCubit(
+      mcpRepository,
+      onMcpDeleted: teamCubit.removeMcpFromAllTeams,
+    );
+    hookCubit = HookCubit(repository: hookRepository)..load();
+
+    final teamHubSource = CompositeTeamHubSource.withDefaults(
+      GitRegistryTeamHubSource(),
+    );
+    final teamHubFavorites = TeamHubFavoritesStore();
+    final localExpertStore = LocalExpertStore();
+    await localExpertStore.migrateLegacyLayout();
+    await localExpertStore.ensureIndexLoaded();
+    final compositeExpertHubSource = CompositeExpertHubSource.withDefaults(
+      registry: GitRegistryExpertHubSource(),
+      teamIndex: teamHubSource.fetchTeams,
+      localStore: localExpertStore,
+    );
+    final expertCloneService = ExpertCloneService(
+      source: compositeExpertHubSource,
+      store: localExpertStore,
+    );
+    final teamCloneService = TeamCloneService(
+      installSkill: skillCubit.installTeamDependency,
+      installPlugin: pluginCubit.installTeamDependency,
+      installMcp: mcpCubit.installTeamDependency,
+      expertCloner: expertCloneService.clone,
+      createTeam:
+          ({
+            required name,
+            required cli,
+            required teamMode,
+            required roster,
+            required skillIds,
+            required pluginIds,
+            required mcpServerIds,
+            required description,
+            required extraArgs,
+            hubSourceKey,
+          }) => teamCubit.addClonedTeam(
+            name: name,
+            cli: cli,
+            teamMode: teamMode,
+            roster: roster,
+            skillIds: skillIds,
+            pluginIds: pluginIds,
+            mcpServerIds: mcpServerIds,
+            description: description,
+            extraArgs: extraArgs,
+            hubSourceKey: hubSourceKey,
+          ),
+    );
+    teamHubCubit = TeamHubCubit(
+      source: teamHubSource,
+      loadFavorites: teamHubFavorites.load,
+      saveFavoriteToggle: teamHubFavorites.toggle,
+      cloneTeam: (team, {teamMode, cli}) => hubCloneActivityAdapter.runTracked(
+        title: 'Clone ${team.name}',
+        historyMessageFor: (result) => result.hasFailures
+            ? 'Cloned ${team.name} with ${result.failedDeps.length} dependency failures'
+            : 'Cloned ${team.name}',
+        run: (onProgress) => teamCloneService.clone(
+          team,
+          teamMode: teamMode,
+          cli: cli,
+          onProgress: onProgress,
+        ),
+      ),
+      loadInstalledDepIds: () async {
+        final skills = await skillRepo.loadInstalled();
+        final plugins = await pluginRepository.loadAll();
+        final mcps = await mcpRepository.loadAll();
+        return <String>{
+          ...skills.map((s) => s.id),
+          ...plugins.map((p) => p.id),
+          ...mcps.map((m) => m.id),
+        };
+      },
+    );
+
+    final expertHubFavorites = ExpertHubFavoritesStore();
+    teamCubit.attachExpertHubSource(compositeExpertHubSource);
+    final expertCapabilityResolver = ExpertCapabilityResolver(
+      installSkill: skillCubit.installTeamDependency,
+      installPlugin: pluginCubit.installTeamDependency,
+      installMcp: mcpCubit.installTeamDependency,
+      source: compositeExpertHubSource,
+    );
+    final memberRosterService = MemberRosterService(
+      resolver: expertCapabilityResolver,
+    );
+    expertHubCubit = ExpertHubCubit(
+      source: compositeExpertHubSource,
+      loadFavorites: expertHubFavorites.load,
+      saveFavoriteToggle: expertHubFavorites.toggle,
+      memberRosterService: memberRosterService,
+      launchProfiles: () => teamCubit,
+      hubCloneActivity: hubCloneActivityAdapter,
+      loadInstalledDepIds: () async {
+        final skills = await skillRepo.loadInstalled();
+        return skills.map((s) => s.id).toSet();
+      },
+    );
+    expertCapabilityResolver.attachHubCubit(expertHubCubit);
+    final sessionRuntimePlanBuilder = SessionRuntimePlanBuilder(
+      expertResolver: expertCapabilityResolver,
+      workspaceProjectConfig: workspaceProjectConfigRepository,
+    );
+    sessionLifecycleService.attachRuntimePlanBuilder(sessionRuntimePlanBuilder);
+
+    final layoutCubit = LayoutCubit(repository: LayoutRepository(preferences));
+    final floatingWorkspaceCubit = FloatingWorkspaceCubit();
+    final floatingWorkspacePersistence = FloatingWorkspacePersistence(
+      layout: layoutCubit,
+      floating: floatingWorkspaceCubit,
+    );
+    final workspaceToolsCubit = WorkspaceToolsCubit();
+    final workspaceTerminalRegistry = WorkspaceTerminalRegistry();
+    final gitRepoStore = GitRepoStore();
+    final workspaceFileTreeStore = WorkspaceFileTreeStore();
+    final workspaceSearchIndexes = WorkspaceSearchIndexes();
+    final workspaceWorktreeRegistry = WorkspaceWorktreeRegistry();
+    final workspaceToolsScopeRegistry = WorkspaceToolsScopeRegistry();
+    final workspaceRunRegistry = WorkspaceRunRegistry(
+      platformFactory: WorkspaceRunPlatformFactory(
+        extensionRepository: extensionRepository,
+        projectConfigRepository: workspaceProjectConfigRepository,
+        resolveWorkContext:
+            sessionLifecycleService.resolveWorkContextForTargetId,
+        sshProfileRepository: sshProfileRepo,
+        sshClientFactory: sshClientFactory,
+        homeTarget: defaultTargetResolver,
+      ),
+    );
+    final configCubit = ConfigCubit();
+    final commandBus = CommandBus();
+    final shortcutCubit = ShortcutCubit();
+    final workspaceChromeCommands = WorkspaceChromeCommands();
+    final runCommandHost = RunCommandHost();
+    final workspaceSearchHost = WorkspaceSearchHost();
+    final workspaceContentSearchHost = WorkspaceContentSearchHost();
+    final uiZoomBaseline = UiZoomBaseline();
+    registerShortcutsUiCommands(commandBus);
+    registerRunCommands(commandBus, runCommandHost);
+    registerWorkspaceSearchCommands(commandBus, workspaceSearchHost);
+    registerWorkspaceContentSearchCommands(
+      commandBus,
+      workspaceContentSearchHost,
+    );
+
+    final transportFactory = TerminalTransportFactory(
+      sshProfileRepository: sshProfileRepo,
+      sshCredentialStore: sshCredentialStore,
+      sshKnownHostRepository: sshKnownHostRepo,
+      sshClientFactory: sshClientFactory,
+    );
+
+    final workspaceShellConnector = WorkspaceShellConnector(
+      transportFactory: transportFactory,
+      sshProfileRepository: sshProfileRepo,
+      sshUseLoginShell: () =>
+          sessionPreferencesCubit.state.preferences.sshUseLoginShell,
+      homeTarget: defaultTargetResolver,
+      profileById: sshProfileById,
+    );
+    // Terminal inject deps after connector: registry was created earlier.
+    final workspaceTerminalSessionOps = WorkspaceTerminalSessionOps();
+    final workspaceTerminalRunService = WorkspaceTerminalRunService();
+    workspaceRunRegistry.setTerminalRunDeps(
+      TerminalRunDeps(
+        registry: workspaceTerminalRegistry,
+        connector: workspaceShellConnector,
+        ops: workspaceTerminalSessionOps,
+        runService: workspaceTerminalRunService,
+        connectCoordinatorFactory: (connector) =>
+            WorkspaceTerminalConnectCoordinator.termuxAware(
+              connector: connector,
+              termuxConnected: () => termuxGateCubit?.state.connected ?? true,
+              termuxWorkOpsBlockedMessage:
+                  TermuxWorkOpsMessage.disconnectedBlocked,
+            ),
+      ),
+    );
+
+    final automationRepo = AutomationRepository(
+      fs: AppStorage.fs,
+      layout: WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath),
+    );
+    final teammateBusMcpGateway = TeammateBusMcpGateway();
+    await teammateBusMcpGateway.ensureStarted();
+
+    // Shared AskUserAnswerPendingStore singleton (lives in buildAppShell):
+    // gateway GET /ask-user-answer + ChatCubit answer facade must reuse
+    // this instance — do not construct a second store.
+    final askUserAnswerPendingStore = AskUserAnswerPendingStore();
+    teammateBusMcpGateway.attachAskUserAnswerStore(askUserAnswerPendingStore);
+    final askUserQuestionHookGate = AskUserQuestionHookGate();
+    final askUserQuestionAnswerService = AskUserQuestionAnswerService(
+      store: askUserAnswerPendingStore,
+      hookGate: askUserQuestionHookGate,
+    );
+    final exitPlanModeHookGate = ExitPlanModeHookGate();
+    final exitPlanModeApprovalService = ExitPlanModeApprovalService(
+      hookGate: exitPlanModeHookGate,
+    );
+
+    final agentAttentionCubit = AgentAttentionCubit();
+    final agentStatusSeatLookup = AgentStatusSeatLookup();
+    // Shared prompt-submit ACK registry: AgentStatusHttpHandler completes
+    // pendings, TabMemberPtyDelivery consumes them to cancel crStuck retries.
+    final promptSubmitAckTracker = PromptSubmitAckTracker();
+    teammateBusMcpGateway.attachAgentStatusHandler(
+      AgentStatusHttpHandler(
+        attention: agentAttentionCubit,
+        resolveCli: agentStatusSeatLookup.resolveCli,
+        resolveSkipPermissions: agentStatusSeatLookup.resolveSkipPermissions,
+        askUserHookGate: askUserQuestionHookGate,
+        exitPlanModeHookGate: exitPlanModeHookGate,
+        promptAckTracker: promptSubmitAckTracker,
+      ),
+    );
+
+    final catalogRuntime = CatalogRuntime.assemble(
+      sessions: sessionRepo,
+      runtimeContexts: runtimeContextRegistry,
+      skillRepository: skillRepo,
+      skillInstall: skillInstallService,
+      skillEngine: skillAcquisitionEngine,
+      pluginRepository: pluginRepository,
+      pluginInstall: pluginRepository.install,
+      mcpRepository: mcpRepository,
+      workspaceConfig: workspaceProjectConfigRepository,
+    );
+    teammateBusMcpGateway.attachCatalogHandler(
+      catalogRuntime.handler,
+      resolveSession: catalogRuntime.resolveSession,
+    );
+    catalogRuntime.bus.listen().listen((event) {
+      unawaited(skillCubit.loadAll());
+      unawaited(pluginCubit.load());
+      unawaited(mcpCubit.loadAll());
+      unawaited(WorkspaceProjectConfigCubit.reloadLive(event.workspaceId));
+    });
+
+    chatCubit = ChatCubit(
+      teammateBusMcpGateway: teammateBusMcpGateway,
+      agentStatusSeatLookup: agentStatusSeatLookup,
+      agentAttentionCubit: agentAttentionCubit,
+      askUserAnswerPendingStore: askUserAnswerPendingStore,
+      askUserQuestionAnswerService: askUserQuestionAnswerService,
+      exitPlanApprovalService: exitPlanModeApprovalService,
+      promptAckTracker: promptSubmitAckTracker,
+      sessionRepository: sessionRepo,
+      lifecycleService: sessionLifecycleService,
+      automationRepository: automationRepo,
+      layoutCubit: layoutCubit,
+      autoLaunchAllMembersOnConnect: () => sessionPreferencesCubit
+          .state
+          .preferences
+          .autoLaunchAllMembersOnConnect,
+      reclaimIdleTerminalsEnabled: () =>
+          sessionPreferencesCubit.state.preferences.reclaimIdleTerminals,
+      reclaimIdleTerminalAfterSeconds: () => sessionPreferencesCubit
+          .state
+          .preferences
+          .reclaimIdleTerminalAfterSeconds,
+      executableResolver: () => sessionPreferencesCubit.resolveExecutable(),
+      cliExecutableResolver: sessionPreferencesCubit.resolveExecutable,
+      transportFactory: transportFactory,
+      sshProfileResolver: () => sshProfileCubit.state.selectedProfile,
+      sshProfileById: sshProfileById,
+      teamById: (teamId) async {
+        for (final team in await identityRepository.loadTeamProfiles()) {
+          if (team.id == teamId) return team;
+        }
+        return null;
+      },
+      sshDefaultWorkingDirectoryResolver: () =>
+          sessionPreferencesCubit.state.preferences.defaultSshWorkingDirectory,
+      sshUseLoginShellResolver: () =>
+          sessionPreferencesCubit.state.preferences.sshUseLoginShell,
+      defaultTargetResolver: defaultTargetResolver,
+      terminalScrollbackLinesResolver: () =>
+          sessionPreferencesCubit.state.preferences.terminalScrollbackLines,
+      // P3b (#1): connect remote (ssh) mixed-team members back to the in-process
+      // bus over a reverse tunnel. Local members resolve to null (unchanged).
+      remoteBusResolver: RemoteBusBindingResolver(registry: cliToolRegistry),
+      sessionConnect: buildSessionConnectOrchestrator(
+        lifecycle: sessionLifecycleService,
+        registry: cliToolRegistry,
+        sshClientFactory: sshClientFactory,
+        profileById: sshProfileById,
+        contextForTarget: runtimeContextRegistry.forTarget,
+        homeContext: runtimeContextRegistry.home,
+        homeTarget: defaultTargetResolver,
+        isCredentialOptIn: targetsRepo.isCredentialOptIn,
+        cliPathOverride: targetsRepo.cliPathOverride,
+        setCliPathOverride: targetsRepo.setCliPathOverride,
+        loadLocalCredentials: (cli) => LocalCredentialExporter().export(cli),
+        localCliPath: (cli) async =>
+            sessionPreferencesCubit.resolveExecutable(cli),
+        runtimePlanBuilder: sessionRuntimePlanBuilder,
+      ),
+      remoteCliReadiness: remoteCliReadiness,
+      cliProvisionActivity: cliProvisionActivityAdapter,
+      termuxConnectedResolver: () => termuxGateCubit?.state.connected ?? true,
+      termuxDisconnectedWorkOpsMessageResolver:
+          TermuxWorkOpsMessage.disconnectedBlocked,
+      termuxGateHomeResolver: defaultTargetResolver,
+    );
+
+    // Bound after [WorkbenchCubit] exists; togglePanel aliases new-terminal UX
+    // into the floating shell (Task 6 redirects the launcher to floating tabs).
+    WorkbenchShellLauncher? workbenchShellLauncher;
+    WorkbenchEditorOpener? workbenchEditorOpenerRef;
+    Future<void> focusOrCreateDefaultShell() async {
+      await workbenchShellLauncher?.focusOrCreateDefaultShell();
+    }
+
+    Future<void> openFloatingNewTerminal() async {
+      floatingWorkspaceCubit.ensureOpen();
+      await focusOrCreateDefaultShell();
+    }
+
+    Future<void> openFloatingFilePicker() async {
+      final opener = workbenchEditorOpenerRef;
+      if (opener == null) return;
+      await pickAndOpenFloatingWorkspaceFile(
+        floating: floatingWorkspaceCubit,
+        opener: opener,
+        workspaces: chatCubit.state.workspaces,
       );
-    } on Object catch (e, st) {
-      appLogger.w('[boot] marketplaceCloneSweep failed: $e\n$st');
     }
-  }
 
-  Future<void> bootstrapAppData() async {
-    await notificationBootstrap;
-    final indexReady = bootstrapCubit?.state.homeIndexReady ?? false;
-    if (!indexReady) {
-      bootstrapCubit?.beginHomeIndex();
+    registerFloatingWorkspaceCommands(
+      commandBus,
+      floatingWorkspaceCubit,
+      onNewTerminal: focusOrCreateDefaultShell,
+      onOpenFile: openFloatingFilePicker,
+    );
+    final workbenchCubit = WorkbenchCubit();
+    registerLayoutCommands(
+      commandBus,
+      layoutCubit,
+      uiZoomBaseline: () => uiZoomBaseline.value,
+      composeLanding: () => workbenchCubit.state
+          .bar(chatCubit.tabStore.activeWorkspaceId)
+          .center
+          .landingActive,
+      onTogglePanel: openFloatingNewTerminal,
+    );
+
+    memberPresenceCubit = MemberPresenceCubit();
+    chatCubit.bindPresenceCubit(memberPresenceCubit);
+
+    final sshProfileConnectionCoordinator = SshProfileConnectionCoordinator(
+      factory: sshClientFactory,
+      events: sshConnectionEvents,
+      profileResolver: sshProfileById,
+      onDisconnect: (profileId, error, stackTrace) {
+        final profile = sshProfileById(profileId);
+        final label = profile == null
+            ? profileId
+            : () {
+                final name = profile.name.trim();
+                return name.isEmpty
+                    ? '${profile.username}@${profile.host}'
+                    : '$name (${profile.username}@${profile.host})';
+              }();
+        if (error is SshTransportClosed) {
+          final cause = error.cause;
+          final message =
+              '[ssh] profile $profileId ($label) transport closed: '
+              'reason=${error.reason.name} plane=${error.plane.name}'
+              '${cause != null ? ' cause=$cause' : ''}';
+          if (isExpectedLocalSshTransportClose(error)) {
+            appLogger.i(message);
+          } else {
+            appLogger.w(
+              message,
+              error: cause,
+              stackTrace: cause != null ? stackTrace : null,
+            );
+          }
+          return;
+        }
+        appLogger.w(
+          '[ssh] profile $profileId ($label) transport closed: $error',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      },
+      onReconnectSessionPlane: chatCubit.reconnectSshProfile,
+    );
+
+    final sshConnectionCubit = SshConnectionCubit(
+      factory: sshClientFactory,
+      coordinator: sshProfileConnectionCoordinator,
+      selectProfileOnConnect: Platform.isAndroid
+          ? (id) => applyAndroidSshConnectHome(
+              profileId: id,
+              selectHome: homeTargetController.select,
+              selectProfile: sshProfileCubit.selectProfile,
+            )
+          : null,
+    );
+
+    final scheduleCalculator = AutomationScheduleCalculator();
+    final automationDispatcher = AutomationDispatcher(
+      repository: automationRepo,
+      scheduleCalculator: scheduleCalculator,
+      sessionRepository: sessionRepo,
+      busGateway: TabTeamBusGateway(
+        memberMaterializer: chatCubit.memberMaterializer,
+        sessionRuntime: chatCubit.sessionRuntime,
+      ),
+      requestOpenSession: chatCubit.requestOpenSession,
+      requestCreateAndOpenSession: chatCubit.requestCreateAndOpenSession,
+      workspaceById: (workspaceId) => chatCubit.state.workspaces
+          .where((w) => w.workspaceId == workspaceId)
+          .firstOrNull,
+      teamById: (teamId) {
+        final profile = teamCubit.state.byId(teamId);
+        return profile is TeamProfile ? profile : null;
+      },
+      resolveCliPreset: (presetId) => cliPresetsCubit.state.presets
+          .where((preset) => preset.id == presetId.trim())
+          .firstOrNull,
+      sessionById: (sessionId, workspaceId) => chatCubit.state.sessions
+          .where(
+            (s) => s.sessionId == sessionId && s.workspaceId == workspaceId,
+          )
+          .firstOrNull,
+    );
+    automationScheduler = AutomationScheduler(
+      repository: automationRepo,
+      dispatcher: automationDispatcher,
+      scheduleCalculator: scheduleCalculator,
+    );
+    automationCubit = AutomationCubit(
+      repository: automationRepo,
+      scheduler: automationScheduler,
+      scheduleCalculator: scheduleCalculator,
+    );
+    chatCubit.bindAutomationsChangeNotifier(() {
+      if (!automationCubit.isClosed) {
+        unawaited(automationCubit.reloadPreservingScope());
+      }
+    });
+
+    final mailboxCubit = MailboxCubit(
+      busForScope: (scope) => scopedTeamBus(workbenchCubit, chatCubit, scope),
+    );
+
+    final boardCubit = BoardCubit(
+      busForScope: (scope) => scopedTeamBus(workbenchCubit, chatCubit, scope),
+    );
+
+    final aiHistoryLoader = AiHistoryLoader(
+      contextBuilder: const SessionHistoryContextBuilder(),
+      resolveWorkContext: (launchCtx, {String? memberId}) =>
+          sessionLifecycleService.launchWorkContext(
+            launchCtx,
+            memberId: memberId,
+          ),
+      registry: cliToolRegistry,
+      globalPresets: () => cliPresetsCubit.state.presets,
+    );
+    aiHistoryLoaderRef = aiHistoryLoader;
+    // Pods own a per-session HistoryStore once the loader exists (ChatCubit is
+    // constructed earlier); SessionChatView binds seats through the pod.
+    chatCubit.historyLoader = aiHistoryLoader;
+    final aiHistoryCubit = AiHistoryCubit(
+      loader: aiHistoryLoader,
+      loadMailboxRecords: (sessionId, memberId) async {
+        final bus = chatCubit.tabStore.openTabBySessionId(sessionId)?.teamBus;
+        if (bus == null) return const [];
+        return bus.memberMailRecords(memberId);
+      },
+    );
+    chatCubit.onSessionHistoryStale = (sessionId) {
+      unawaited(aiHistoryCubit.softReloadIfSession(sessionId));
+    };
+    chatCubit.onHistorySeatsDispose = aiHistoryCubit.disposeSeatsForSession;
+    // Landing seed routing: pods own the store; these sinks are the fallback.
+    chatCubit.onSeedHistoryPending = (sid, mid, text) => aiHistoryCubit
+        .seedPendingUser(sessionId: sid, memberId: mid, text: text);
+    chatCubit.onCancelSeedHistoryPending = (sid, text) =>
+        aiHistoryCubit.cancelSeedPendingUser(sessionId: sid, text: text);
+
+    final appUpdateResolver = RemoteDownloadResolver.withProvider(
+      () => remoteDownloadCatalogCubit.state.catalog,
+    );
+    final appUpdateHttpClient = http.Client();
+    final appUpdateService = AppUpdateService(
+      httpClient: appUpdateHttpClient,
+      resolver: appUpdateResolver,
+      downloadHttp: RemoteDownloadHttp(
+        client: appUpdateHttpClient,
+        resolver: appUpdateResolver,
+      ),
+      downloader: RemoteDownloader(
+        client: appUpdateHttpClient,
+        resolver: appUpdateResolver,
+      ),
+    );
+    final appUpdateCubit = AppUpdateCubit(
+      service: appUpdateService,
+      settings: appSettings,
+      activityAdapter: AppUpdateActivityAdapter(cubit: progressActivityCubit),
+    );
+
+    boot('loading layout');
+    await layoutCubit.load();
+    floatingWorkspacePersistence.hydrateFromLayout();
+    floatingWorkspacePersistence.bind();
+    await shortcutCubit.load();
+    unawaited(notificationBootstrap);
+    boot('layout ready (home index prefetched in background)');
+    applyWorkspaceEntryMode(
+      layoutCubit.state.preferences.workspaceEntryMode,
+      lastOpenedWorkspaceId:
+          layoutCubit.state.preferences.lastOpenedWorkspaceId,
+    );
+    boot('buildAppShell complete');
+    bootstrapCubit?.markShellReady();
+    boot('buildAppShell shell ready');
+
+    Future<void>? managedProviderHydration;
+    Future<void> hydrateManagedProviderData() {
+      final existing = managedProviderHydration;
+      if (existing != null) return existing;
+      final future = managedProviderControlPlane.hydrate(boot: boot);
+      managedProviderHydration = future;
+      return future;
     }
-    boot('bootstrapAppData start');
-    if (!indexReady) {
-      if (connectionModeService.isRemoteWorkPlane) {
-        boot('awaiting remote home index snapshots');
-        try {
+
+    reloadAllAppData = ({bool reinstallSshHome = true}) async {
+      await managedProviderControlPlane.invalidateForStorageContextChange();
+      await AppDataBootstrap.reloadAll(
+        boot: boot,
+        sshProfileCubit: sshProfileCubit,
+        llmConfigCubit: llmConfigCubit,
+        appProviderCubit: appProviderCubit,
+        teamCubit: teamCubit,
+        pluginCubit: pluginCubit,
+        skillCubit: skillCubit,
+        mcpCubit: mcpCubit,
+        extensionCubit: extensionCubit,
+        chatCubit: chatCubit,
+        sessionRepo: sessionRepo,
+        layoutCubit: layoutCubit,
+        isSshMode: connectionModeService.isRemoteWorkPlane,
+        homeSshProfileId: defaultTargetResolver().sshProfileId,
+        sshProfileExists: (id) => sshProfileById(id) != null,
+        reinstallStorageContext: reinstallStorageContext,
+        managedProviderCubit: resolvedManagedProviderCubit,
+        managedProviderUsageCubit: resolvedManagedProviderUsageCubit,
+        home: defaultTargetResolver(),
+        reinstallSshHome: reinstallSshHome,
+      );
+      await persistSshHomePathCacheIfLive();
+    };
+
+    Future<void> reconnectHomeSshIfNeeded() async {
+      final home = defaultTargetResolver();
+      final pid = home.sshProfileId;
+      if (home.kind != RuntimeKind.ssh || pid == null || pid.isEmpty) return;
+      await sshConnectionCubit.syncProfiles(sshProfileCubit.state.profiles);
+      unawaited(sshConnectionCubit.connect(pid));
+    }
+
+    /// Background one-time migration: replace stale per-session marketplace
+    /// clones with a symlink to the shared flavor dir (see
+    /// [MarketplaceSharedStore]). Skips currently-open sessions; non-fatal.
+    Future<void> _sweepStaleMarketplaceClones() async {
+      try {
+        await MarketplaceSharedStore(
+          fs: AppStorage.fs,
+          teampilotRoot: AppStorage.paths.basePath,
+        ).sweepAll(
+          workspaceIds: [
+            for (final workspace in chatCubit.state.workspaces)
+              workspace.workspaceId,
+          ],
+          activeSessionKeys: {
+            for (final tab in chatCubit.tabStore.openTabs) tab.info.id,
+          },
+        );
+      } on Object catch (e, st) {
+        appLogger.w('[boot] marketplaceCloneSweep failed: $e\n$st');
+      }
+    }
+
+    Future<void> bootstrapAppData() async {
+      await notificationBootstrap;
+      final indexReady = bootstrapCubit?.state.homeIndexReady ?? false;
+      if (!indexReady) {
+        bootstrapCubit?.beginHomeIndex();
+      }
+      boot('bootstrapAppData start');
+      if (!indexReady) {
+        if (connectionModeService.isRemoteWorkPlane) {
+          boot('awaiting remote home index snapshots');
+          try {
+            await homeIndexPrefetch;
+            await AppDataBootstrap.bootstrapHomeIndex(
+              boot: boot,
+              sshProfileCubit: sshProfileCubit,
+              teamCubit: teamCubit,
+              chatCubit: chatCubit,
+              sessionRepo: sessionRepo,
+              layoutCubit: layoutCubit,
+              isSshMode: connectionModeService.isRemoteWorkPlane,
+              homeSshProfileId: defaultTargetResolver().sshProfileId,
+              sshProfileExists: (id) => sshProfileById(id) != null,
+              reinstallStorageContext: reinstallStorageContext,
+              home: defaultTargetResolver(),
+            );
+          } on Object catch (error, stackTrace) {
+            appLogger.w(
+              '[boot] remote home index bootstrap failed',
+              error: error,
+              stackTrace: stackTrace,
+            );
+          }
+          await persistSshHomePathCacheIfLive();
+        } else {
+          boot('awaiting home index snapshots');
           await homeIndexPrefetch;
-          await AppDataBootstrap.bootstrapHomeIndex(
+          await AppDataBootstrap.hydrateNativeHomeIndex(
             boot: boot,
-            sshProfileCubit: sshProfileCubit,
             teamCubit: teamCubit,
             chatCubit: chatCubit,
             sessionRepo: sessionRepo,
             layoutCubit: layoutCubit,
-            isSshMode: connectionModeService.isRemoteWorkPlane,
-            homeSshProfileId: defaultTargetResolver().sshProfileId,
-            sshProfileExists: (id) => sshProfileById(id) != null,
-            reinstallStorageContext: reinstallStorageContext,
             home: defaultTargetResolver(),
           );
-        } on Object catch (error, stackTrace) {
-          appLogger.w(
-            '[boot] remote home index bootstrap failed',
-            error: error,
-            stackTrace: stackTrace,
-          );
         }
-        await persistSshHomePathCacheIfLive();
-      } else {
-        boot('awaiting home index snapshots');
-        await homeIndexPrefetch;
-        await AppDataBootstrap.hydrateNativeHomeIndex(
-          boot: boot,
-          teamCubit: teamCubit,
-          chatCubit: chatCubit,
-          sessionRepo: sessionRepo,
-          layoutCubit: layoutCubit,
-          home: defaultTargetResolver(),
-        );
+        bootstrapCubit?.markHomeIndexReady();
       }
-      bootstrapCubit?.markHomeIndexReady();
+      await reconnectHomeSshIfNeeded();
+      await yieldUiFrame();
+      // Managed Provider cache hydration is deliberately background work. The
+      // shell can paint while the global Cubits transition from initial to
+      // ready, and the Cubit load methods keep repeated bootstrap calls single-
+      // flight.
+      unawaited(hydrateManagedProviderData());
+      boot(
+        'bootstrapAppData index ready '
+        'workspaces=${chatCubit.state.workspaces.length} '
+        '(sessions load on demand)',
+      );
+      unawaited(_sweepStaleMarketplaceClones());
+      bootstrapCubit?.beginWarmAuxiliary();
+      await AppDataBootstrap.warmAuxiliaryData(
+        boot: boot,
+        llmConfigCubit: llmConfigCubit,
+        appProviderCubit: appProviderCubit,
+        teamCubit: teamCubit,
+        pluginCubit: pluginCubit,
+        skillCubit: skillCubit,
+        mcpCubit: mcpCubit,
+        extensionCubit: extensionCubit,
+        chatCubit: chatCubit,
+        sessionRepo: sessionRepo,
+      );
+      final showOnboarding = await AppDataBootstrap.prepareInteractiveShell(
+        boot: boot,
+        appSettings: appSettings,
+        sshProfileCubit: sshProfileCubit,
+        cliPresetsCubit: cliPresetsCubit,
+        aiFeatureSettingsCubit: aiFeatureSettingsCubit,
+        discoverySettingsCubit: discoverySettingsCubit,
+        homeWorkspaceUiCache: homeWorkspaceUiCache,
+        workspaces: chatCubit.state.workspaces,
+      );
+      bootstrapCubit?.markAppReady(showOnboardingWizard: showOnboarding);
+      LivePerfDriver.instance?.markAppReady();
+      boot('bootstrapAppData complete');
+      automationScheduler.start();
     }
-    await reconnectHomeSshIfNeeded();
-    await yieldUiFrame();
-    // Managed Provider cache hydration is deliberately background work. The
-    // shell can paint while the global Cubits transition from initial to
-    // ready, and the Cubit load methods keep repeated bootstrap calls single-
-    // flight.
-    unawaited(hydrateManagedProviderData());
-    boot(
-      'bootstrapAppData index ready '
-      'workspaces=${chatCubit.state.workspaces.length} '
-      '(sessions load on demand)',
+
+    editorCubit = EditorCubit();
+    // Fire-and-forget: warm the common tree-sitter grammars so the first file
+    // open paints colored instead of cold. Never blocks app start.
+    unawaited(EditorPlatform.bootstrap());
+    // Single domain ↔ bar handshake: new session tabs surface in the bar and
+    // bar removals tear down the domain via the bridge (which implements both
+    // ports) instead of the deleted WorkbenchSessionSync reconcile.
+    final workbenchChatBridge = WorkbenchChatBridge(
+      workbench: workbenchCubit,
+      chat: chatCubit,
+      replacedPreviewTeardown: (workspaceId, replaced) {
+        switch (replaced.kind) {
+          case WorkbenchTabKind.file:
+            editorCubit.closeFile(workspaceId, replaced.id, force: true);
+          case WorkbenchTabKind.diff:
+            editorCubit.closeDiff(workspaceId, replaced.id);
+          case WorkbenchTabKind.shell:
+            workspaceTerminalRunService.handleEntryClosed(replaced.id);
+            workspaceTerminalRegistry
+                .groupFor(workspaceId)
+                .removeEntry(replaced.id);
+          case WorkbenchTabKind.run:
+            final workspace = chatCubit.state.workspaces
+                .where((w) => w.workspaceId == workspaceId)
+                .firstOrNull;
+            if (workspace != null) {
+              unawaited(
+                workspaceRunRegistry
+                    .cubitFor(
+                      tabScopeId: workspaceId,
+                      workspaceId: workspace.workspaceId,
+                      folders: workspace.folders,
+                    )
+                    .dismissSession(replaced.id),
+              );
+            }
+          case WorkbenchTabKind.session:
+            break;
+          case WorkbenchTabKind.htmlPreview:
+            break;
+        }
+      },
     );
-    unawaited(_sweepStaleMarketplaceClones());
-    bootstrapCubit?.beginWarmAuxiliary();
-    await AppDataBootstrap.warmAuxiliaryData(
-      boot: boot,
-      llmConfigCubit: llmConfigCubit,
-      appProviderCubit: appProviderCubit,
+    workbenchCubit.port = workbenchChatBridge;
+    chatCubit.workbenchPort = workbenchChatBridge;
+    chatCubit.onSessionTabOpened = workbenchChatBridge.onSessionTabOpened;
+    final markdownViewModes = MarkdownViewModeStore();
+    final workbenchEditorOpener = WorkbenchEditorOpener(
+      editor: editorCubit,
+      workbench: workbenchCubit,
+      floating: floatingWorkspaceCubit,
+      chat: chatCubit,
+      markdownViewModes: markdownViewModes,
+      readMarkdownOpenMode: () =>
+          layoutCubit.state.preferences.markdownOpenMode,
+      readFilePreviewInFloating: () =>
+          layoutCubit.state.preferences.filePreviewHost ==
+          FilePreviewHost.floating,
+    );
+    workbenchEditorOpenerRef = workbenchEditorOpener;
+    final resolvedShellLauncher = WorkbenchShellLauncher(
+      floating: floatingWorkspaceCubit,
+      workbench: workbenchCubit,
+      chat: chatCubit,
+      registry: workspaceTerminalRegistry,
+      connector: workspaceShellConnector,
+      layout: layoutCubit,
+      sessionOps: workspaceTerminalSessionOps,
+      homeTarget: defaultTargetResolver,
+      sshDefaultWorkingDirectory: () =>
+          sessionPreferencesCubit.state.preferences.defaultSshWorkingDirectory,
+      termuxConnected: () => termuxGateCubit?.state.connected ?? true,
+      termuxWorkOpsBlockedMessage: TermuxWorkOpsMessage.disconnectedBlocked,
+    );
+    workbenchShellLauncher = resolvedShellLauncher;
+    final floatingSurfaceRegistry = FloatingSurfaceRegistry.withDefaults(
+      file: FilePreviewFloatingSurface(
+        editor: editorCubit,
+        floating: floatingWorkspaceCubit,
+      ),
+      terminal: TerminalFloatingSurface(
+        floating: floatingWorkspaceCubit,
+        registry: workspaceTerminalRegistry,
+        runService: workspaceTerminalRunService,
+      ),
+      diff: DiffPreviewFloatingSurface(
+        editor: editorCubit,
+        floating: floatingWorkspaceCubit,
+      ),
+      html: HtmlPreviewFloatingSurface(floating: floatingWorkspaceCubit),
+      run: RunFloatingSurface(
+        floating: floatingWorkspaceCubit,
+        resolveCubit: (tabScopeId) {
+          final workspace = chatCubit.state.workspaces
+              .where((w) => w.workspaceId == tabScopeId)
+              .firstOrNull;
+          if (workspace == null) return null;
+          return workspaceRunRegistry.cubitFor(
+            tabScopeId: tabScopeId,
+            workspaceId: workspace.workspaceId,
+            folders: workspace.folders,
+          );
+        },
+        resolveTitle: (sessionId) {
+          final tabScopeId = floatingWorkspaceCubit.state.activeWorkspaceId;
+          if (tabScopeId.isEmpty) return null;
+          final workspace = chatCubit.state.workspaces
+              .where((w) => w.workspaceId == tabScopeId)
+              .firstOrNull;
+          if (workspace == null) return null;
+          final cubit = workspaceRunRegistry.cubitFor(
+            tabScopeId: tabScopeId,
+            workspaceId: workspace.workspaceId,
+            folders: workspace.folders,
+          );
+          for (final session in cubit.state.sessions) {
+            if (session.id == sessionId) {
+              return session.owned.configuration.name;
+            }
+          }
+          return null;
+        },
+      ),
+    );
+    final floatingMaximizeInsets = FloatingMaximizeInsets();
+    registerSessionCommands(
+      commandBus,
+      chatCubit,
+      workbenchCubit,
+      WorkbenchStripNavigator(workbench: workbenchCubit, chat: chatCubit),
+    );
+
+    // P1: switching the home target persists the id, rebinds the home context,
+    // then reinstalls + reloads all remote-backed app data (same chain the old
+    // backend/profile switches used).
+    Future<void> switchHomeTarget(String id) async {
+      await setHomeTarget(
+        id,
+      ); // persists + rebinds home + republishes AppStorage
+      // Home already rebound — skip a second dispose/rebind that would tear down
+      // the Connect storage pool (runtimeContextEvicted WARN).
+      await reloadAllAppData(reinstallSshHome: false);
+    }
+
+    final homeStorageInvalidator = HomeStorageInvalidator(
+      homeTargetId: () => defaultTargetResolver().id,
+      reinstallAndReload: () async {
+        await reinstallStorageContext();
+        await reloadAllAppData();
+      },
+      switchHome: switchHomeTarget,
+    );
+
+    homeTargetController = HomeTargetController(
+      registry: runtimeTargetRegistry,
+      current: defaultTargetResolver,
+      switchTo: switchHomeTarget,
+    );
+
+    void refreshTermuxConfigCache(TermuxConfig? config) {
+      termuxConfigCache = config;
+    }
+
+    final termuxConnectionTester = SshProfileConnectionTester(
+      clientFactory: sshClientFactory,
+    );
+    final termuxCubit = TermuxCubit(
+      store: termuxConfigStore,
+      credentials: sshCredentialStore,
+      nativeAppDataPath: nativeAppDataPath,
+      selectHome: homeTargetController.select,
+      initialConfig: termuxConfigCache,
+      onConfigChanged: refreshTermuxConfigCache,
+      resolvePathsAfterHomeSelect: () async {
+        final homeCtx = runtimeContextRegistry.home();
+        if (homeCtx.pathsFromCache) {
+          return (home: null, appDataRoot: null);
+        }
+        return (home: homeCtx.home, appDataRoot: homeCtx.appDataRoot);
+      },
+      testConnect: (profile) async {
+        try {
+          await termuxConnectionTester.test(profile);
+          return (ok: true, message: '');
+        } on Object catch (error) {
+          return (ok: false, message: error.toString());
+        }
+      },
+      disconnectTransport: () async {
+        sshClientFactory.disconnectProfile(
+          'termux',
+          reason: SshTransportCloseReason.userDisconnect,
+        );
+      },
+    );
+    if (homeTarget.kind == RuntimeKind.termux) {
+      unawaited(termuxCubit.reconnect());
+    }
+    termuxGateCubit = termuxCubit;
+
+    // Target-aware directory picker for workspace dialogs: resolves the chosen
+    // target's filesystem (real SSH connect for ssh targets) and lists targets.
+    final directoryPicker = WorkspaceDirectoryPicker(
+      resolveContext: runtimeContextRegistry.forTarget,
+      listTargets: () => runtimeTargetRegistry.listTargets(),
+    );
+
+    final shell = AppShell(
+      cliToolRegistry: cliToolRegistry,
+      homeTargetController: homeTargetController,
+      directoryPicker: directoryPicker,
+      chatCubit: chatCubit,
+      memberPresenceCubit: memberPresenceCubit,
+      agentAttentionCubit: agentAttentionCubit,
+      agentStatusSeatLookup: agentStatusSeatLookup,
+      mailboxCubit: mailboxCubit,
+      boardCubit: boardCubit,
+      aiHistoryCubit: aiHistoryCubit,
+      notificationCubit: notificationCubit,
+      progressActivityCubit: progressActivityCubit,
+      editorCubit: editorCubit,
+      workbenchCubit: workbenchCubit,
+      workbenchEditorOpener: workbenchEditorOpener,
+      workbenchShellLauncher: resolvedShellLauncher,
+      floatingWorkspaceCubit: floatingWorkspaceCubit,
+      floatingSurfaceRegistry: floatingSurfaceRegistry,
+      floatingMaximizeInsets: floatingMaximizeInsets,
+      sessionRepo: sessionRepo,
+      workspaceProjectConfigRepository: workspaceProjectConfigRepository,
+      sshProfileRepo: sshProfileRepo,
+      sshCredentialStore: sshCredentialStore,
+      sshKnownHostRepo: sshKnownHostRepo,
+      transportFactory: transportFactory,
+      workspaceTerminalRegistry: workspaceTerminalRegistry,
+      workspaceShellConnector: workspaceShellConnector,
+      workspaceTerminalSessionOps: workspaceTerminalSessionOps,
+      workspaceTerminalRunService: workspaceTerminalRunService,
+      gitRepoStore: gitRepoStore,
+      workspaceFileTreeStore: workspaceFileTreeStore,
+      workspaceSearchIndexes: workspaceSearchIndexes,
+      workspaceWorktreeRegistry: workspaceWorktreeRegistry,
+      workspaceToolsScopeRegistry: workspaceToolsScopeRegistry,
+      workspaceRunRegistry: workspaceRunRegistry,
+      sshClientFactory: sshClientFactory,
+      sshProfileConnectionCoordinator: sshProfileConnectionCoordinator,
+      connectionModeService: connectionModeService,
+      identityRepository: identityRepository,
       teamCubit: teamCubit,
+      configCubit: configCubit,
+      appProviderCubit: appProviderCubit,
+      managedProviderControlPlane: managedProviderControlPlane,
+      managedProviderRepository: resolvedManagedProviderRepository,
+      managedProviderUsageRepository: resolvedManagedProviderUsageRepository,
+      managedProviderSecretStore: resolvedManagedProviderSecretStore,
+      managedProviderUsageRegistry: resolvedManagedProviderUsageRegistry,
+      managedProviderUsageCoordinator: resolvedManagedProviderUsageCoordinator,
+      managedProviderCubit: resolvedManagedProviderCubit,
+      managedProviderUsageCubit: resolvedManagedProviderUsageCubit,
+      llmConfigCubit: llmConfigCubit,
+      layoutCubit: layoutCubit,
+      workspaceToolsCubit: workspaceToolsCubit,
+      sessionPreferencesCubit: sessionPreferencesCubit,
       pluginCubit: pluginCubit,
+      cliPresetsCubit: cliPresetsCubit,
       skillCubit: skillCubit,
       mcpCubit: mcpCubit,
+      hookCubit: hookCubit,
+      hookRepository: hookRepository,
+      hookImportParser: hookImportParser,
+      hookImportService: hookImportService,
+      teamHubCubit: teamHubCubit,
+      expertHubCubit: expertHubCubit,
+      expertCapabilityResolver: expertCapabilityResolver,
       extensionCubit: extensionCubit,
-      chatCubit: chatCubit,
-      sessionRepo: sessionRepo,
-    );
-    final showOnboarding = await AppDataBootstrap.prepareInteractiveShell(
-      boot: boot,
-      appSettings: appSettings,
+      appUpdateCubit: appUpdateCubit,
+      remoteDownloadCatalogCubit: remoteDownloadCatalogCubit,
       sshProfileCubit: sshProfileCubit,
-      cliPresetsCubit: cliPresetsCubit,
+      termuxCubit: termuxCubit,
+      homeStorageInvalidator: homeStorageInvalidator,
+      sshConnectionCubit: sshConnectionCubit,
+      githubCredentialsStore: githubCredentialsStore,
+      githubAccountCubit: githubAccountCubit,
+      appSettings: appSettings,
       aiFeatureSettingsCubit: aiFeatureSettingsCubit,
       discoverySettingsCubit: discoverySettingsCubit,
+      reinstallStorageContext: reinstallStorageContext,
+      bootstrapAppData: bootstrapAppData,
       homeWorkspaceUiCache: homeWorkspaceUiCache,
-      workspaces: chatCubit.state.workspaces,
+      automationCubit: automationCubit,
+      automationScheduler: automationScheduler,
+      commandBus: commandBus,
+      shortcutCubit: shortcutCubit,
+      workspaceChromeCommands: workspaceChromeCommands,
+      runCommandHost: runCommandHost,
+      workspaceSearchHost: workspaceSearchHost,
+      workspaceContentSearchHost: workspaceContentSearchHost,
+      uiZoomBaseline: uiZoomBaseline,
     );
-    bootstrapCubit?.markAppReady(showOnboardingWizard: showOnboarding);
-    LivePerfDriver.instance?.markAppReady();
-    boot('bootstrapAppData complete');
-    automationScheduler.start();
-  }
-
-  editorCubit = EditorCubit();
-  // Fire-and-forget: warm the common tree-sitter grammars so the first file
-  // open paints colored instead of cold. Never blocks app start.
-  unawaited(EditorPlatform.bootstrap());
-  // Single domain ↔ bar handshake: new session tabs surface in the bar and
-  // bar removals tear down the domain via the bridge (which implements both
-  // ports) instead of the deleted WorkbenchSessionSync reconcile.
-  final workbenchChatBridge = WorkbenchChatBridge(
-    workbench: workbenchCubit,
-    chat: chatCubit,
-    replacedPreviewTeardown: (workspaceId, replaced) {
-      switch (replaced.kind) {
-        case WorkbenchTabKind.file:
-          editorCubit.closeFile(workspaceId, replaced.id, force: true);
-        case WorkbenchTabKind.diff:
-          editorCubit.closeDiff(workspaceId, replaced.id);
-        case WorkbenchTabKind.shell:
-          workspaceTerminalRunService.handleEntryClosed(replaced.id);
-          workspaceTerminalRegistry.groupFor(workspaceId).removeEntry(
-            replaced.id,
-          );
-        case WorkbenchTabKind.run:
-          final workspace = chatCubit.state.workspaces
-              .where((w) => w.workspaceId == workspaceId)
-              .firstOrNull;
-          if (workspace != null) {
-            unawaited(
-              workspaceRunRegistry
-                  .cubitFor(
-                    tabScopeId: workspaceId,
-                    workspaceId: workspace.workspaceId,
-                    folders: workspace.folders,
-                  )
-                  .dismissSession(replaced.id),
-            );
-          }
-        case WorkbenchTabKind.session:
-          break;
-        case WorkbenchTabKind.htmlPreview:
-          break;
-      }
-    },
-  );
-  workbenchCubit.port = workbenchChatBridge;
-  chatCubit.workbenchPort = workbenchChatBridge;
-  chatCubit.onSessionTabOpened = workbenchChatBridge.onSessionTabOpened;
-  final markdownViewModes = MarkdownViewModeStore();
-  final workbenchEditorOpener = WorkbenchEditorOpener(
-    editor: editorCubit,
-    workbench: workbenchCubit,
-    floating: floatingWorkspaceCubit,
-    chat: chatCubit,
-    markdownViewModes: markdownViewModes,
-    readMarkdownOpenMode: () =>
-        layoutCubit.state.preferences.markdownOpenMode,
-    readFilePreviewInFloating: () =>
-        layoutCubit.state.preferences.filePreviewHost ==
-        FilePreviewHost.floating,
-  );
-  workbenchEditorOpenerRef = workbenchEditorOpener;
-  final resolvedShellLauncher = WorkbenchShellLauncher(
-    floating: floatingWorkspaceCubit,
-    workbench: workbenchCubit,
-    chat: chatCubit,
-    registry: workspaceTerminalRegistry,
-    connector: workspaceShellConnector,
-    layout: layoutCubit,
-    sessionOps: workspaceTerminalSessionOps,
-    homeTarget: defaultTargetResolver,
-    sshDefaultWorkingDirectory: () =>
-        sessionPreferencesCubit.state.preferences.defaultSshWorkingDirectory,
-    termuxConnected: () => termuxGateCubit?.state.connected ?? true,
-    termuxWorkOpsBlockedMessage: TermuxWorkOpsMessage.disconnectedBlocked,
-  );
-  workbenchShellLauncher = resolvedShellLauncher;
-  final floatingSurfaceRegistry = FloatingSurfaceRegistry.withDefaults(
-    file: FilePreviewFloatingSurface(
-      editor: editorCubit,
-      floating: floatingWorkspaceCubit,
-    ),
-    terminal: TerminalFloatingSurface(
-      floating: floatingWorkspaceCubit,
-      registry: workspaceTerminalRegistry,
-      runService: workspaceTerminalRunService,
-    ),
-    diff: DiffPreviewFloatingSurface(
-      editor: editorCubit,
-      floating: floatingWorkspaceCubit,
-    ),
-    html: HtmlPreviewFloatingSurface(floating: floatingWorkspaceCubit),
-    run: RunFloatingSurface(
-      floating: floatingWorkspaceCubit,
-      resolveCubit: (tabScopeId) {
-        final workspace = chatCubit.state.workspaces
-            .where((w) => w.workspaceId == tabScopeId)
-            .firstOrNull;
-        if (workspace == null) return null;
-        return workspaceRunRegistry.cubitFor(
-          tabScopeId: tabScopeId,
-          workspaceId: workspace.workspaceId,
-          folders: workspace.folders,
-        );
-      },
-      resolveTitle: (sessionId) {
-        final tabScopeId = floatingWorkspaceCubit.state.activeWorkspaceId;
-        if (tabScopeId.isEmpty) return null;
-        final workspace = chatCubit.state.workspaces
-            .where((w) => w.workspaceId == tabScopeId)
-            .firstOrNull;
-        if (workspace == null) return null;
-        final cubit = workspaceRunRegistry.cubitFor(
-          tabScopeId: tabScopeId,
-          workspaceId: workspace.workspaceId,
-          folders: workspace.folders,
-        );
-        for (final session in cubit.state.sessions) {
-          if (session.id == sessionId) {
-            return session.owned.configuration.name;
-          }
-        }
-        return null;
-      },
-    ),
-  );
-  final floatingMaximizeInsets = FloatingMaximizeInsets();
-  registerSessionCommands(
-    commandBus,
-    chatCubit,
-    workbenchCubit,
-    WorkbenchStripNavigator(workbench: workbenchCubit, chat: chatCubit),
-  );
-
-  // P1: switching the home target persists the id, rebinds the home context,
-  // then reinstalls + reloads all remote-backed app data (same chain the old
-  // backend/profile switches used).
-  Future<void> switchHomeTarget(String id) async {
-    await setHomeTarget(id); // persists + rebinds home + republishes AppStorage
-    // Home already rebound — skip a second dispose/rebind that would tear down
-    // the Connect storage pool (runtimeContextEvicted WARN).
-    await reloadAllAppData(reinstallSshHome: false);
-  }
-
-  final homeStorageInvalidator = HomeStorageInvalidator(
-    homeTargetId: () => defaultTargetResolver().id,
-    reinstallAndReload: () async {
-      await reinstallStorageContext();
-      await reloadAllAppData();
-    },
-    switchHome: switchHomeTarget,
-  );
-
-  homeTargetController = HomeTargetController(
-    registry: runtimeTargetRegistry,
-    current: defaultTargetResolver,
-    switchTo: switchHomeTarget,
-  );
-
-  void refreshTermuxConfigCache(TermuxConfig? config) {
-    termuxConfigCache = config;
-  }
-
-  final termuxConnectionTester = SshProfileConnectionTester(
-    clientFactory: sshClientFactory,
-  );
-  final termuxCubit = TermuxCubit(
-    store: termuxConfigStore,
-    credentials: sshCredentialStore,
-    nativeAppDataPath: nativeAppDataPath,
-    selectHome: homeTargetController.select,
-    initialConfig: termuxConfigCache,
-    onConfigChanged: refreshTermuxConfigCache,
-    resolvePathsAfterHomeSelect: () async {
-      final homeCtx = runtimeContextRegistry.home();
-      if (homeCtx.pathsFromCache) {
-        return (home: null, appDataRoot: null);
-      }
-      return (home: homeCtx.home, appDataRoot: homeCtx.appDataRoot);
-    },
-    testConnect: (profile) async {
-      try {
-        await termuxConnectionTester.test(profile);
-        return (ok: true, message: '');
-      } on Object catch (error) {
-        return (ok: false, message: error.toString());
-      }
-    },
-    disconnectTransport: () async {
-      sshClientFactory.disconnectProfile(
-        'termux',
-        reason: SshTransportCloseReason.userDisconnect,
-      );
-    },
-  );
-  if (homeTarget.kind == RuntimeKind.termux) {
-    unawaited(termuxCubit.reconnect());
-  }
-  termuxGateCubit = termuxCubit;
-
-  // Target-aware directory picker for workspace dialogs: resolves the chosen
-  // target's filesystem (real SSH connect for ssh targets) and lists targets.
-  final directoryPicker = WorkspaceDirectoryPicker(
-    resolveContext: runtimeContextRegistry.forTarget,
-    listTargets: () => runtimeTargetRegistry.listTargets(),
-  );
-
-  final shell = AppShell(
-    cliToolRegistry: cliToolRegistry,
-    homeTargetController: homeTargetController,
-    directoryPicker: directoryPicker,
-    chatCubit: chatCubit,
-    memberPresenceCubit: memberPresenceCubit,
-    agentAttentionCubit: agentAttentionCubit,
-    agentStatusSeatLookup: agentStatusSeatLookup,
-    mailboxCubit: mailboxCubit,
-    boardCubit: boardCubit,
-    aiHistoryCubit: aiHistoryCubit,
-    notificationCubit: notificationCubit,
-    progressActivityCubit: progressActivityCubit,
-    editorCubit: editorCubit,
-    workbenchCubit: workbenchCubit,
-    workbenchEditorOpener: workbenchEditorOpener,
-    workbenchShellLauncher: resolvedShellLauncher,
-    floatingWorkspaceCubit: floatingWorkspaceCubit,
-    floatingSurfaceRegistry: floatingSurfaceRegistry,
-    floatingMaximizeInsets: floatingMaximizeInsets,
-    sessionRepo: sessionRepo,
-    workspaceProjectConfigRepository: workspaceProjectConfigRepository,
-    sshProfileRepo: sshProfileRepo,
-    sshCredentialStore: sshCredentialStore,
-    sshKnownHostRepo: sshKnownHostRepo,
-    transportFactory: transportFactory,
-    workspaceTerminalRegistry: workspaceTerminalRegistry,
-    workspaceShellConnector: workspaceShellConnector,
-    workspaceTerminalSessionOps: workspaceTerminalSessionOps,
-    workspaceTerminalRunService: workspaceTerminalRunService,
-    gitRepoStore: gitRepoStore,
-    workspaceFileTreeStore: workspaceFileTreeStore,
-    workspaceSearchIndexes: workspaceSearchIndexes,
-    workspaceWorktreeRegistry: workspaceWorktreeRegistry,
-    workspaceToolsScopeRegistry: workspaceToolsScopeRegistry,
-    workspaceRunRegistry: workspaceRunRegistry,
-    sshClientFactory: sshClientFactory,
-    sshProfileConnectionCoordinator: sshProfileConnectionCoordinator,
-    connectionModeService: connectionModeService,
-    identityRepository: identityRepository,
-    teamCubit: teamCubit,
-    configCubit: configCubit,
-    appProviderCubit: appProviderCubit,
-    managedProviderControlPlane: managedProviderControlPlane,
-    managedProviderRepository: resolvedManagedProviderRepository,
-    managedProviderUsageRepository: resolvedManagedProviderUsageRepository,
-    managedProviderSecretStore: resolvedManagedProviderSecretStore,
-    managedProviderUsageRegistry: resolvedManagedProviderUsageRegistry,
-    managedProviderUsageCoordinator: resolvedManagedProviderUsageCoordinator,
-    managedProviderCubit: resolvedManagedProviderCubit,
-    managedProviderUsageCubit: resolvedManagedProviderUsageCubit,
-    llmConfigCubit: llmConfigCubit,
-    layoutCubit: layoutCubit,
-    workspaceToolsCubit: workspaceToolsCubit,
-    sessionPreferencesCubit: sessionPreferencesCubit,
-    pluginCubit: pluginCubit,
-    cliPresetsCubit: cliPresetsCubit,
-    skillCubit: skillCubit,
-    mcpCubit: mcpCubit,
-    hookCubit: hookCubit,
-    hookRepository: hookRepository,
-    hookImportParser: hookImportParser,
-    hookImportService: hookImportService,
-    teamHubCubit: teamHubCubit,
-    expertHubCubit: expertHubCubit,
-    expertCapabilityResolver: expertCapabilityResolver,
-    extensionCubit: extensionCubit,
-    appUpdateCubit: appUpdateCubit,
-    remoteDownloadCatalogCubit: remoteDownloadCatalogCubit,
-    sshProfileCubit: sshProfileCubit,
-    termuxCubit: termuxCubit,
-    homeStorageInvalidator: homeStorageInvalidator,
-    sshConnectionCubit: sshConnectionCubit,
-    githubCredentialsStore: githubCredentialsStore,
-    githubAccountCubit: githubAccountCubit,
-    appSettings: appSettings,
-    aiFeatureSettingsCubit: aiFeatureSettingsCubit,
-    discoverySettingsCubit: discoverySettingsCubit,
-    reinstallStorageContext: reinstallStorageContext,
-    bootstrapAppData: bootstrapAppData,
-    homeWorkspaceUiCache: homeWorkspaceUiCache,
-    automationCubit: automationCubit,
-    automationScheduler: automationScheduler,
-    commandBus: commandBus,
-    shortcutCubit: shortcutCubit,
-    workspaceChromeCommands: workspaceChromeCommands,
-    runCommandHost: runCommandHost,
-    workspaceSearchHost: workspaceSearchHost,
-    workspaceContentSearchHost: workspaceContentSearchHost,
-    uiZoomBaseline: uiZoomBaseline,
-  );
     managedProviderControlPlaneLease.transferOwnership();
     return shell;
   } on Object {
