@@ -185,4 +185,71 @@ void main() {
       expect(catalogMcpServerName, 'teampilot');
     },
   );
+
+  test(
+    'SSH without remote binding omits teampilot and does not resolve host-local transport',
+    () {
+      final extra = <String, Map<String, Object?>>{
+        teammateBusMcpServerName: teammateBusMcpServerConfig(
+          endpoint: Uri.parse('http://127.0.0.1:4242/mcp'),
+          memberId: 'member-1',
+          sessionId: 'sess-1',
+        ),
+      };
+      var resolved = false;
+
+      final merged = extraMcpServersWithCatalog(
+        extra: extra,
+        isRemoteSeat: true,
+        remoteBinding: null,
+        catalogConfig: () {
+          resolved = true;
+          return resolve(supportsBridge: true, bridgeLocator: () => null);
+        },
+      );
+
+      expect(resolved, isFalse);
+      expect(merged.containsKey(catalogMcpServerName), isFalse);
+      expect(merged, extra);
+    },
+  );
+
+  test('local PTY without remote binding still injects host-local catalog', () {
+    final catalogConfig = resolve(
+      supportsBridge: false,
+      bridgeLocator: () => null,
+    );
+
+    final merged = extraMcpServersWithCatalog(
+      extra: const {},
+      isRemoteSeat: false,
+      remoteBinding: null,
+      catalogConfig: () => catalogConfig,
+    );
+
+    expect(merged[catalogMcpServerName], catalogConfig);
+    expect(catalogConfig['url'], catalogEndpoint);
+  });
+
+  test('SSH with idle tunnel injects catalog via remote binding', () {
+    const remote = RemoteBusBinding(
+      token: 'bus-tok',
+      idleHttpTunnelPort: 18080,
+    );
+    final catalogConfig = resolve(
+      supportsBridge: true,
+      remoteBinding: remote,
+      bridgeLocator: () => '/opt/teampilot/teammate_bus_bridge',
+    );
+
+    final merged = extraMcpServersWithCatalog(
+      extra: const {},
+      isRemoteSeat: true,
+      remoteBinding: remote,
+      catalogConfig: () => catalogConfig,
+    );
+
+    expect(merged[catalogMcpServerName], catalogConfig);
+    expect(catalogConfig['url'], 'http://127.0.0.1:18080/catalog/mcp');
+  });
 }

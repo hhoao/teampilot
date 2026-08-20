@@ -68,3 +68,20 @@ Map<String, Map<String, Object?>> withCatalogMcpServer({
 }) {
   return {...extra, catalogMcpServerName: catalogConfig};
 }
+
+/// Injects `teampilot` into [extra] unless this is a remote seat with no tunnel.
+///
+/// Host-local stdio / `127.0.0.1` catalog URLs are reachable only from native
+/// local PTY. SSH (and Termux) seats without a [RemoteBusBinding] omit the
+/// server so the remote agent is not pointed at unreachable host loopback.
+Map<String, Map<String, Object?>> extraMcpServersWithCatalog({
+  required Map<String, Map<String, Object?>> extra,
+  required bool isRemoteSeat,
+  required RemoteBusBinding? remoteBinding,
+  required Map<String, Object?> Function() catalogConfig,
+}) {
+  if (isRemoteSeat && remoteBinding == null) {
+    return extra;
+  }
+  return withCatalogMcpServer(extra: extra, catalogConfig: catalogConfig());
+}

@@ -282,6 +282,7 @@ class SessionShellConnector {
               sessionId: activeSession.sessionId,
               memberId: activeSession.sessionId,
               cli: launchCli,
+              launchKind: launchTarget.kind,
               mixedRemoteBinding: null,
               agentStatus: agentStatus,
             ),
@@ -362,6 +363,7 @@ class SessionShellConnector {
               sessionId: activeSession.sessionId,
               memberId: launchMember.id,
               cli: launchCli,
+              launchKind: launchTarget.kind,
               mixedRemoteBinding: remoteBinding,
               agentStatus: agentStatus,
             ),
@@ -933,21 +935,25 @@ class SessionShellConnector {
     required String sessionId,
     required String memberId,
     required CliTool cli,
+    required RuntimeKind launchKind,
     required RemoteBusBinding? mixedRemoteBinding,
     required MemberAgentStatusEndpoint? agentStatus,
   }) {
-    return withCatalogMcpServer(
+    final remoteBinding = _catalogRemoteBinding(
+      mixedRemoteBinding: mixedRemoteBinding,
+      agentStatus: agentStatus,
+    );
+    return extraMcpServersWithCatalog(
       extra: extra,
-      catalogConfig: resolveCatalogMcpTransportConfig(
+      isRemoteSeat: usesSshTransport(launchKind),
+      remoteBinding: remoteBinding,
+      catalogConfig: () => resolveCatalogMcpTransportConfig(
         cliRegistry: _host.cliRegistry,
         catalogEndpoint: _host.teammateBusMcpGateway.catalogMcpEndpoint,
         sessionId: sessionId,
         memberId: memberId,
         cli: cli,
-        remoteBinding: _catalogRemoteBinding(
-          mixedRemoteBinding: mixedRemoteBinding,
-          agentStatus: agentStatus,
-        ),
+        remoteBinding: remoteBinding,
       ),
     );
   }
