@@ -14,6 +14,7 @@ import '../../models/team_config.dart';
 import '../../models/workspace.dart';
 import '../../models/workspace_launch_context.dart';
 import '../../repositories/session_repository.dart';
+import '../../services/catalog/catalog_mcp_transport.dart';
 import '../../services/cli/installer_types.dart';
 import '../../services/cli/registry/capabilities/terminal_behavior_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
@@ -276,6 +277,14 @@ class SessionShellConnector {
             session: activeSession,
             workspace: workspace,
             launchTarget: launchTarget,
+            extraMcpServers: _extraMcpServersWithCatalog(
+              extra: const {},
+              sessionId: activeSession.sessionId,
+              memberId: activeSession.sessionId,
+              cli: launchCli,
+              mixedRemoteBinding: null,
+              agentStatus: agentStatus,
+            ),
             agentStatus: agentStatus,
             onProvisionProgress: onProgress,
           ),
@@ -331,24 +340,31 @@ class SessionShellConnector {
             launchTarget: launchTarget,
             workingDirectory: memberWork.workingDirectory,
             additionalDirectories: memberWork.addDirs,
-            extraMcpServers: mixedBus
-                ? {
-                    teammateBusMcpServerName:
-                        resolveMemberBusMcpTransportConfig(
-                          cliRegistry: _host.cliRegistry,
-                          endpoint: _host.teammateBusMcpGateway.mcpEndpoint,
-                          sessionId: activeSession.sessionId,
-                          memberId: launchMember.id,
-                          cli: sessionMemberLaunchCli(
-                            session: activeSession,
-                            team: team,
-                            member: launchMember,
-                            globalPresets: _host.lifecycle.globalPresets,
+            extraMcpServers: _extraMcpServersWithCatalog(
+              extra: mixedBus
+                  ? {
+                      teammateBusMcpServerName:
+                          resolveMemberBusMcpTransportConfig(
+                            cliRegistry: _host.cliRegistry,
+                            endpoint: _host.teammateBusMcpGateway.mcpEndpoint,
+                            sessionId: activeSession.sessionId,
+                            memberId: launchMember.id,
+                            cli: sessionMemberLaunchCli(
+                              session: activeSession,
+                              team: team,
+                              member: launchMember,
+                              globalPresets: _host.lifecycle.globalPresets,
+                            ),
+                            remoteBinding: remoteBinding,
                           ),
-                          remoteBinding: remoteBinding,
-                        ),
-                  }
-                : null,
+                    }
+                  : const {},
+              sessionId: activeSession.sessionId,
+              memberId: launchMember.id,
+              cli: launchCli,
+              mixedRemoteBinding: remoteBinding,
+              agentStatus: agentStatus,
+            ),
             busIdle: mixedBus
                 ? switch (remoteBinding) {
                     final binding? => MemberBusIdleEndpoint.remote(binding),
@@ -910,6 +926,44 @@ class SessionShellConnector {
         timeout,
       );
     }
+  }
+
+  Map<String, Map<String, Object?>> _extraMcpServersWithCatalog({
+    required Map<String, Map<String, Object?>> extra,
+    required String sessionId,
+    required String memberId,
+    required CliTool cli,
+    required RemoteBusBinding? mixedRemoteBinding,
+    required MemberAgentStatusEndpoint? agentStatus,
+  }) {
+    return withCatalogMcpServer(
+      extra: extra,
+      catalogConfig: resolveCatalogMcpTransportConfig(
+        cliRegistry: _host.cliRegistry,
+        catalogEndpoint: _host.teammateBusMcpGateway.catalogMcpEndpoint,
+        sessionId: sessionId,
+        memberId: memberId,
+        cli: cli,
+        remoteBinding: _catalogRemoteBinding(
+          mixedRemoteBinding: mixedRemoteBinding,
+          agentStatus: agentStatus,
+        ),
+      ),
+    );
+  }
+
+  /// Mixed remote bus binding wins; otherwise reuse the agent-status HTTP
+  /// tunnel port (simple / native SSH). Local PTY keeps [remoteBinding] null.
+  RemoteBusBinding? _catalogRemoteBinding({
+    required RemoteBusBinding? mixedRemoteBinding,
+    required MemberAgentStatusEndpoint? agentStatus,
+  }) {
+    if (mixedRemoteBinding != null) return mixedRemoteBinding;
+    if (agentStatus == null || !agentStatus.isRemote) return null;
+    final port = agentStatus.port;
+    final token = agentStatus.token?.trim() ?? '';
+    if (port == null || token.isEmpty) return null;
+    return RemoteBusBinding(token: token, idleHttpTunnelPort: port);
   }
 
   /// Builds [MemberAgentStatusEndpoint] for a seat. Soft-fails status-only SSH
