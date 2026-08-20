@@ -29,7 +29,9 @@ Widget _host(Widget child) {
 }
 
 void main() {
-  testWidgets('TaskCreate bubble shows subject and pending pill', (tester) async {
+  testWidgets('TaskCreate bubble shows subject and pending pill', (
+    tester,
+  ) async {
     final part = AiToolCallPart(
       toolCallId: 'c',
       toolName: 'TaskCreate',
@@ -42,8 +44,14 @@ void main() {
     );
     await tester.pumpWidget(_host(CliTaskCreateBubble(part: part)));
     // Header label + subject render as a rich Text — match with findRichText.
-    expect(find.textContaining('TaskCreate', findRichText: true), findsOneWidget);
-    expect(find.textContaining('T1: do a thing', findRichText: true), findsOneWidget);
+    expect(
+      find.textContaining('TaskCreate', findRichText: true),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('T1: do a thing', findRichText: true),
+      findsOneWidget,
+    );
     // The status pill is a plain Text.
     expect(find.text('Pending'), findsOneWidget);
     // Tapping the pill toggles the expanded detail.
@@ -53,8 +61,9 @@ void main() {
     expect(find.text('Doing it'), findsOneWidget);
   });
 
-  testWidgets('TaskUpdate bubble shows task id and status transition',
-      (tester) async {
+  testWidgets('TaskUpdate bubble shows task id and status transition', (
+    tester,
+  ) async {
     final part = AiToolCallPart(
       toolCallId: 'u',
       toolName: 'TaskUpdate',
@@ -62,12 +71,16 @@ void main() {
       status: AiToolCallStatus.complete,
     );
     await tester.pumpWidget(_host(CliTaskUpdateBubble(part: part)));
-    expect(find.textContaining('TaskUpdate · T9', findRichText: true), findsOneWidget);
+    expect(
+      find.textContaining('TaskUpdate · T9', findRichText: true),
+      findsOneWidget,
+    );
     expect(find.text('In progress'), findsOneWidget);
   });
 
-  testWidgets('TodoWrite bubble shows count pill and expandable todo list',
-      (tester) async {
+  testWidgets('TodoWrite bubble shows count pill and expandable todo list', (
+    tester,
+  ) async {
     final part = AiToolCallPart(
       toolCallId: 't',
       toolName: 'TodoWrite',
@@ -81,7 +94,10 @@ void main() {
       status: AiToolCallStatus.complete,
     );
     await tester.pumpWidget(_host(CliTodoWriteBubble(part: part)));
-    expect(find.textContaining('TodoWrite', findRichText: true), findsOneWidget);
+    expect(
+      find.textContaining('TodoWrite', findRichText: true),
+      findsOneWidget,
+    );
     expect(find.text('0/2'), findsOneWidget);
     await tester.tap(find.text('0/2'));
     await tester.pump();
@@ -89,8 +105,46 @@ void main() {
     expect(find.text('Task B'), findsOneWidget);
   });
 
-  testWidgets('cliTaskBubbleBuilders returns create + update + todowrite',
-      (_) async {
+  testWidgets('TodoWrite merge without content fills text from contentById', (
+    tester,
+  ) async {
+    final part = AiToolCallPart(
+      toolCallId: 't2',
+      toolName: 'TodoWrite',
+      args: const {
+        'merge': true,
+        'todos': [
+          {'id': '12', 'status': 'completed'},
+          {'id': '13', 'status': 'in_progress'},
+          {'id': '14', 'status': 'pending'},
+        ],
+      },
+      status: AiToolCallStatus.complete,
+    );
+    await tester.pumpWidget(
+      _host(
+        CliTodoWriteBubble(
+          part: part,
+          contentById: const {
+            '12': 'Wire builders',
+            '13': 'Verify tests',
+            '14': 'Analyze',
+          },
+        ),
+      ),
+    );
+    expect(find.text('1/3'), findsOneWidget);
+    await tester.tap(find.text('1/3'));
+    await tester.pump();
+    expect(find.text('Wire builders'), findsOneWidget);
+    expect(find.text('Verify tests'), findsOneWidget);
+    expect(find.text('Analyze'), findsOneWidget);
+    expect(find.text('…'), findsNothing);
+  });
+
+  testWidgets('cliTaskBubbleBuilders returns create + update + todowrite', (
+    _,
+  ) async {
     final builders = cliTaskBubbleBuilders();
     expect(
       builders.keys,

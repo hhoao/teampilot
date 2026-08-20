@@ -60,6 +60,10 @@ class AppKeys {
     'agent-permission-open-terminal-button',
   );
   static const askUserQuestionCard = Key('ask-user-question-card');
+  static const askUserQuestionBubble = Key('ask-user-question-bubble');
+  static const askUserQuestionBubbleHeader = Key(
+    'ask-user-question-bubble-header',
+  );
   static const exitPlanModeCard = Key('exit-plan-mode-card');
   static const workflowCard = Key('workflow-card');
   static Key workflowAgentRow(String runId, String agentId) =>

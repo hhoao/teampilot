@@ -45,6 +45,18 @@ class CliTaskBoard {
 
   int get completedCount =>
       tasks.where((t) => t.status == CliTaskStatus.completed).length;
+
+  /// Todo text keyed by task id, for filling merge payloads that omit content.
+  Map<String, String> get contentById {
+    final map = <String, String>{};
+    for (final task in tasks) {
+      final id = task.taskId?.trim() ?? '';
+      final subject = task.subject.trim();
+      if (id.isEmpty || subject.isEmpty) continue;
+      map[id] = subject;
+    }
+    return map;
+  }
 }
 
 const String _kTaskCreate = 'taskcreate';

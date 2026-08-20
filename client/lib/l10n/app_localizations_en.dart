@@ -1533,6 +1533,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String get agentAskUserQuestionTitle => 'Agent is asking you a question';
 
   @override
+  String get askUserQuestionBubbleAsking => 'Asking questions';
+
+  @override
+  String askUserQuestionBubbleAsked(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Asked $count questions',
+      one: 'Asked $count question',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get askUserQuestionBubbleUnanswered => 'Unanswered';
+
+  @override
   String get agentAskAnswerInTerminal => 'Answer in terminal';
 
   @override

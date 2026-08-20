@@ -645,6 +645,14 @@
   "exitPlanModeApproveFailed": "批准计划失败",
   "exitPlanModeRejectFailed": "拒绝计划失败",
   "agentAskUserQuestionTitle": "正在向你提问",
+  "askUserQuestionBubbleAsking": "正在提问",
+  "askUserQuestionBubbleAsked": "已询问 {count} 个问题",
+  "@askUserQuestionBubbleAsked": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "askUserQuestionBubbleUnanswered": "未回答",
   "agentAskAnswerInTerminal": "在终端回答",
   "agentAskCancelQuestion": "取消提问",
   "agentAskAnswerFailed": "无法提交回答。请重试或在终端中回答。",

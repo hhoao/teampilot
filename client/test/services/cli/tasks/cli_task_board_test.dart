@@ -5,10 +5,7 @@ import 'package:teampilot/services/cli/tasks/cli_task_board.dart';
 AiMessage _assistant(AiToolCallPart part) =>
     AiMessage(id: 'm', role: AiRole.assistant, parts: [part]);
 
-AiToolCallPart _create({
-  Map<String, Object?>? args,
-  Object? result,
-}) =>
+AiToolCallPart _create({Map<String, Object?>? args, Object? result}) =>
     AiToolCallPart(
       toolCallId: 'c',
       toolName: 'TaskCreate',
@@ -32,47 +29,62 @@ AiToolCallPart _todoWrite(Map<String, Object?> args) => AiToolCallPart(
 );
 
 void main() {
-  test('TaskCreate appends a pending task with subject/description/activeForm',
-      () {
-    final board = reduceCliTaskBoard([
-      _assistant(_create(args: {
-        'subject': 'T1: do a thing',
-        'description': 'details',
-        'activeForm': 'Doing a thing',
-      })),
-    ]);
-    expect(board.totalCount, 1);
-    final task = board.tasks.single;
-    expect(task.subject, 'T1: do a thing');
-    expect(task.description, 'details');
-    expect(task.activeForm, 'Doing a thing');
-    expect(task.status, CliTaskStatus.pending);
-    expect(board.completedCount, 0);
-  });
+  test(
+    'TaskCreate appends a pending task with subject/description/activeForm',
+    () {
+      final board = reduceCliTaskBoard([
+        _assistant(
+          _create(
+            args: {
+              'subject': 'T1: do a thing',
+              'description': 'details',
+              'activeForm': 'Doing a thing',
+            },
+          ),
+        ),
+      ]);
+      expect(board.totalCount, 1);
+      final task = board.tasks.single;
+      expect(task.subject, 'T1: do a thing');
+      expect(task.description, 'details');
+      expect(task.activeForm, 'Doing a thing');
+      expect(task.status, CliTaskStatus.pending);
+      expect(board.completedCount, 0);
+    },
+  );
 
   test('TaskCreate reads taskId from the correlated result', () {
     final board = reduceCliTaskBoard([
-      _assistant(_create(
-        args: {'subject': 'T1'},
-        result: {'taskId': '9', 'subject': 'T1'},
-      )),
+      _assistant(
+        _create(
+          args: {'subject': 'T1'},
+          result: {'taskId': '9', 'subject': 'T1'},
+        ),
+      ),
     ]);
     expect(board.tasks.single.taskId, '9');
   });
 
   test('TaskCreate reads taskId from a string result', () {
     final board = reduceCliTaskBoard([
-      _assistant(_create(
-        args: {'subject': 'do a thing'},
-        result: 'Task #1 created successfully: do a thing',
-      )),
+      _assistant(
+        _create(
+          args: {'subject': 'do a thing'},
+          result: 'Task #1 created successfully: do a thing',
+        ),
+      ),
     ]);
     expect(board.tasks.single.taskId, '1');
   });
 
   test('TaskUpdate without status is ignored (no placeholder)', () {
     final board = reduceCliTaskBoard([
-      _assistant(_update({'taskId': '2', 'addBlockedBy': ['1']})),
+      _assistant(
+        _update({
+          'taskId': '2',
+          'addBlockedBy': ['1'],
+        }),
+      ),
     ]);
     expect(board.totalCount, 0);
   });
@@ -97,33 +109,37 @@ void main() {
     expect(board.completedCount, 1);
   });
 
-  test('unknown status string maps to unknown; tool name is case-insensitive',
-      () {
-    final board = reduceCliTaskBoard([
-      AiMessage(
-        id: 'm',
-        role: AiRole.assistant,
-        parts: [
-          AiToolCallPart(
-            toolCallId: 'c',
-            toolName: 'taskupdate',
-            args: {'taskId': '1', 'status': 'weird'},
-            status: AiToolCallStatus.complete,
-          ),
-        ],
-      ),
-    ]);
-    expect(board.tasks.single.status, CliTaskStatus.unknown);
-  });
+  test(
+    'unknown status string maps to unknown; tool name is case-insensitive',
+    () {
+      final board = reduceCliTaskBoard([
+        AiMessage(
+          id: 'm',
+          role: AiRole.assistant,
+          parts: [
+            AiToolCallPart(
+              toolCallId: 'c',
+              toolName: 'taskupdate',
+              args: {'taskId': '1', 'status': 'weird'},
+              status: AiToolCallStatus.complete,
+            ),
+          ],
+        ),
+      ]);
+      expect(board.tasks.single.status, CliTaskStatus.unknown);
+    },
+  );
 
   test('non-task tools and user messages are ignored', () {
     final board = reduceCliTaskBoard([
-      _assistant(AiToolCallPart(
-        toolCallId: 'c',
-        toolName: 'Bash',
-        args: const {'command': 'ls'},
-        status: AiToolCallStatus.complete,
-      )),
+      _assistant(
+        AiToolCallPart(
+          toolCallId: 'c',
+          toolName: 'Bash',
+          args: const {'command': 'ls'},
+          status: AiToolCallStatus.complete,
+        ),
+      ),
       const AiMessage(
         id: 'u',
         role: AiRole.user,
@@ -143,13 +159,15 @@ void main() {
 
   test('TodoWrite snapshot (merge:false) replaces the whole board', () {
     final board = reduceCliTaskBoard([
-      _assistant(_todoWrite({
-        'merge': false,
-        'todos': [
-          {'id': 'a', 'content': 'Task A', 'status': 'in_progress'},
-          {'id': 'b', 'content': 'Task B', 'status': 'pending'},
-        ],
-      })),
+      _assistant(
+        _todoWrite({
+          'merge': false,
+          'todos': [
+            {'id': 'a', 'content': 'Task A', 'status': 'in_progress'},
+            {'id': 'b', 'content': 'Task B', 'status': 'pending'},
+          ],
+        }),
+      ),
     ]);
     expect(board.totalCount, 2);
     expect(board.tasks[0].taskId, 'a');
@@ -161,20 +179,24 @@ void main() {
 
   test('TodoWrite merge (merge:true) upserts by id', () {
     final board = reduceCliTaskBoard([
-      _assistant(_todoWrite({
-        'merge': false,
-        'todos': [
-          {'id': 'a', 'content': 'Task A', 'status': 'in_progress'},
-          {'id': 'b', 'content': 'Task B', 'status': 'pending'},
-        ],
-      })),
-      _assistant(_todoWrite({
-        'merge': true,
-        'todos': [
-          {'id': 'a', 'content': 'Task A', 'status': 'completed'},
-          {'id': 'c', 'content': 'Task C', 'status': 'in_progress'},
-        ],
-      })),
+      _assistant(
+        _todoWrite({
+          'merge': false,
+          'todos': [
+            {'id': 'a', 'content': 'Task A', 'status': 'in_progress'},
+            {'id': 'b', 'content': 'Task B', 'status': 'pending'},
+          ],
+        }),
+      ),
+      _assistant(
+        _todoWrite({
+          'merge': true,
+          'todos': [
+            {'id': 'a', 'content': 'Task A', 'status': 'completed'},
+            {'id': 'c', 'content': 'Task C', 'status': 'in_progress'},
+          ],
+        }),
+      ),
     ]);
     expect(board.totalCount, 3);
     expect(board.tasks[0].status, CliTaskStatus.completed);
@@ -183,38 +205,74 @@ void main() {
     expect(board.tasks[2].status, CliTaskStatus.inProgress);
   });
 
+  test('TodoWrite merge without content keeps the prior subject', () {
+    final board = reduceCliTaskBoard([
+      _assistant(
+        _todoWrite({
+          'merge': false,
+          'todos': [
+            {'id': '12', 'content': 'Wire builders', 'status': 'in_progress'},
+            {'id': '13', 'content': 'Verify tests', 'status': 'pending'},
+          ],
+        }),
+      ),
+      _assistant(
+        _todoWrite({
+          'merge': true,
+          'todos': [
+            {'id': '12', 'status': 'completed'},
+            {'id': '13', 'status': 'in_progress'},
+          ],
+        }),
+      ),
+    ]);
+    expect(board.tasks[0].subject, 'Wire builders');
+    expect(board.tasks[0].status, CliTaskStatus.completed);
+    expect(board.tasks[1].subject, 'Verify tests');
+    expect(board.tasks[1].status, CliTaskStatus.inProgress);
+    expect(board.contentById['12'], 'Wire builders');
+  });
+
   test('TodoWrite with no id entries is ignored', () {
     final board = reduceCliTaskBoard([
-      _assistant(_todoWrite({
-        'merge': false,
-        'todos': [
-          {'status': 'pending'},
-        ],
-      })),
+      _assistant(
+        _todoWrite({
+          'merge': false,
+          'todos': [
+            {'status': 'pending'},
+          ],
+        }),
+      ),
     ]);
     expect(board.totalCount, 0);
   });
 
-  test('id-less TodoWrite (OpenAI/codex/opencode style) replaces the board',
-      () {
-    final board = reduceCliTaskBoard([
-      _assistant(_todoWrite({
-        'todos': [
-          {'content': 'Task A', 'status': 'in_progress'},
-          {'content': 'Task B', 'status': 'pending'},
-        ],
-      })),
-      _assistant(_todoWrite({
-        'todos': [
-          {'content': 'Task A', 'status': 'completed'},
-          {'content': 'Task B', 'status': 'completed'},
-        ],
-      })),
-    ]);
-    expect(board.totalCount, 2);
-    expect(board.tasks[0].subject, 'Task A');
-    expect(board.tasks[0].status, CliTaskStatus.completed);
-    expect(board.tasks[1].subject, 'Task B');
-    expect(board.tasks[1].status, CliTaskStatus.completed);
-  });
+  test(
+    'id-less TodoWrite (OpenAI/codex/opencode style) replaces the board',
+    () {
+      final board = reduceCliTaskBoard([
+        _assistant(
+          _todoWrite({
+            'todos': [
+              {'content': 'Task A', 'status': 'in_progress'},
+              {'content': 'Task B', 'status': 'pending'},
+            ],
+          }),
+        ),
+        _assistant(
+          _todoWrite({
+            'todos': [
+              {'content': 'Task A', 'status': 'completed'},
+              {'content': 'Task B', 'status': 'completed'},
+            ],
+          }),
+        ),
+      ]);
+      expect(board.totalCount, 2);
+      expect(board.tasks[0].subject, 'Task A');
+      expect(board.tasks[0].status, CliTaskStatus.completed);
+      expect(board.tasks[1].subject, 'Task B');
+      expect(board.tasks[1].status, CliTaskStatus.completed);
+    },
+  );
 }

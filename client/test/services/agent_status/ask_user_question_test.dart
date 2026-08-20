@@ -46,13 +46,21 @@ void main() {
     test('parses multiSelect and multi_select variants', () {
       final a = parseAskUserQuestions({
         'questions': [
-          {'question': 'q', 'options': ['a'], 'multiSelect': true},
+          {
+            'question': 'q',
+            'options': ['a'],
+            'multiSelect': true,
+          },
         ],
       });
       expect(a!.single.multiSelect, isTrue);
       final b = parseAskUserQuestions({
         'questions': [
-          {'question': 'q', 'options': ['a'], 'multi_select': true},
+          {
+            'question': 'q',
+            'options': ['a'],
+            'multi_select': true,
+          },
         ],
       });
       expect(b!.single.multiSelect, isTrue);
@@ -68,7 +76,9 @@ void main() {
         parseAskUserQuestions({
           'questions': [
             {'question': '   '},
-            {'options': ['a']},
+            {
+              'options': ['a'],
+            },
           ],
         }),
         isNull,
@@ -77,7 +87,10 @@ void main() {
       final q = parseAskUserQuestions({
         'questions': [
           {'question': 'bad'},
-          {'question': 'good', 'options': ['a']},
+          {
+            'question': 'good',
+            'options': ['a'],
+          },
         ],
       });
       expect(q, hasLength(1));
@@ -87,7 +100,13 @@ void main() {
     test('skips empty option labels', () {
       final q = parseAskUserQuestions({
         'questions': [
-          {'question': 'q', 'options': ['', {'label': '  '}]},
+          {
+            'question': 'q',
+            'options': [
+              '',
+              {'label': '  '},
+            ],
+          },
         ],
       });
       // No usable options → entry dropped → null.
@@ -113,12 +132,47 @@ void main() {
       expect(q.single.options[0].description, 'Cross-platform UI');
       expect(q.single.options[1].description, isNull);
     });
+
+    test('parses Cursor prompt / title / allow_multiple aliases', () {
+      final q = parseAskUserQuestions({
+        'questions': [
+          {
+            'id': 'weather',
+            'prompt': 'How is the weather today?',
+            'allow_multiple': false,
+            'options': [
+              {'id': 'sunny', 'label': 'Sunny'},
+              {'id': 'rainy', 'label': 'Rainy'},
+            ],
+          },
+          {
+            'id': 'drinks',
+            'title': 'What drinks do you like?',
+            'allow_multiple': true,
+            'options': [
+              {'id': 'coffee', 'label': 'Coffee'},
+              {'id': 'tea', 'label': 'Tea'},
+            ],
+          },
+        ],
+      });
+      expect(q, hasLength(2));
+      expect(q![0].id, 'weather');
+      expect(q[0].question, 'How is the weather today?');
+      expect(q[0].multiSelect, isFalse);
+      expect(q[0].options[0].id, 'sunny');
+      expect(q[1].question, 'What drinks do you like?');
+      expect(q[1].multiSelect, isTrue);
+    });
   });
 
   group('parseQuestionsList', () {
     test('parses a raw questions array (opencode top-level body)', () {
       final q = parseQuestionsList([
-        {'question': 'OK?', 'options': ['Yes', 'No']},
+        {
+          'question': 'OK?',
+          'options': ['Yes', 'No'],
+        },
       ]);
       expect(q, hasLength(1));
       expect(q!.single.question, 'OK?');
@@ -128,6 +182,88 @@ void main() {
       expect(parseQuestionsList(null), isNull);
       expect(parseQuestionsList('nope'), isNull);
       expect(parseQuestionsList(const []), isNull);
+    });
+  });
+
+  group('parseAskUserAnswers', () {
+    const weather = AgentAskUserQuestion(
+      question: 'How is the weather today?',
+      id: 'weather',
+      options: [
+        AgentAskUserOption(label: 'Sunny', id: 'sunny'),
+        AgentAskUserOption(label: 'Rainy', id: 'rainy'),
+      ],
+    );
+    const drinks = AgentAskUserQuestion(
+      question: 'What drinks do you like?',
+      id: 'drinks',
+      multiSelect: true,
+      options: [
+        AgentAskUserOption(label: 'Coffee', id: 'coffee'),
+        AgentAskUserOption(label: 'Tea', id: 'tea'),
+        AgentAskUserOption(label: 'Water', id: 'water'),
+      ],
+    );
+
+    test('reads Claude answers map keyed by question text', () {
+      final answers = parseAskUserAnswers(
+        questions: const [weather, drinks],
+        result: {
+          'answers': {
+            'How is the weather today?': 'Sunny',
+            'What drinks do you like?': 'Coffee, Tea',
+          },
+        },
+      );
+      expect(answers, ['Sunny', 'Coffee, Tea']);
+    });
+
+    test('reads OpenCode list-of-lists aligned with questions', () {
+      final answers = parseAskUserAnswers(
+        questions: const [weather, drinks],
+        result: {
+          'answers': [
+            ['Sunny'],
+            ['Coffee', 'Tea'],
+          ],
+        },
+      );
+      expect(answers, ['Sunny', 'Coffee, Tea']);
+    });
+
+    test('maps Cursor option ids and question ids to labels', () {
+      final answers = parseAskUserAnswers(
+        questions: const [weather, drinks],
+        result: {
+          'answers': [
+            {
+              'id': 'weather',
+              'selected': ['sunny'],
+            },
+            {
+              'id': 'drinks',
+              'selected': ['coffee', 'tea'],
+            },
+          ],
+        },
+      );
+      expect(answers, ['Sunny', 'Coffee, Tea']);
+    });
+
+    test('decodes JSON string results and leaves missing answers null', () {
+      final answers = parseAskUserAnswers(
+        questions: const [weather, drinks],
+        result: '{"answers":{"How is the weather today?":"Sunny"}}',
+      );
+      expect(answers, ['Sunny', isNull]);
+    });
+
+    test('uses a raw string result as the first question answer', () {
+      final answers = parseAskUserAnswers(
+        questions: const [weather],
+        result: 'Sunny',
+      );
+      expect(answers, ['Sunny']);
     });
   });
 
@@ -141,7 +277,10 @@ void main() {
           'tool_use_id': 'toolu-q1',
           'tool_input': {
             'questions': [
-              {'question': 'OK?', 'options': ['Yes', 'No']},
+              {
+                'question': 'OK?',
+                'options': ['Yes', 'No'],
+              },
             ],
           },
         },

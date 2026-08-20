@@ -23,8 +23,9 @@ void main() {
     );
   }
 
-  testWidgets('matched name renders custom bubble, not generic trigger',
-      (tester) async {
+  testWidgets('matched name renders custom bubble, not generic trigger', (
+    tester,
+  ) async {
     final part = AiToolCallPart(
       toolCallId: 'c',
       toolName: 'TaskCreate',
@@ -34,9 +35,7 @@ void main() {
     await tester.pumpWidget(
       host(
         part: part,
-        builders: {
-          'taskcreate': (context, p) => Text('BUBBLE-${p.toolName}'),
-        },
+        builders: {'taskcreate': (context, p) => Text('BUBBLE-${p.toolName}')},
       ),
     );
     expect(find.text('BUBBLE-TaskCreate'), findsOneWidget);
@@ -51,6 +50,27 @@ void main() {
       status: AiToolCallStatus.complete,
     );
     await tester.pumpWidget(host(part: part, builders: const {}));
-    expect(find.textContaining('Used tool', findRichText: true), findsOneWidget);
+    expect(
+      find.textContaining('Used tool', findRichText: true),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('null builder result falls through to generic trigger', (
+    tester,
+  ) async {
+    final part = AiToolCallPart(
+      toolCallId: 'c',
+      toolName: 'AskUserQuestion',
+      args: const {'foo': 'bar'},
+      status: AiToolCallStatus.complete,
+    );
+    await tester.pumpWidget(
+      host(part: part, builders: {'askuserquestion': (context, p) => null}),
+    );
+    expect(
+      find.textContaining('Used tool', findRichText: true),
+      findsOneWidget,
+    );
   });
 }

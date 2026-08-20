@@ -670,6 +670,14 @@
   "exitPlanModeApproveFailed": "Couldn't approve the plan",
   "exitPlanModeRejectFailed": "Couldn't reject the plan",
   "agentAskUserQuestionTitle": "Agent is asking you a question",
+  "askUserQuestionBubbleAsking": "Asking questions",
+  "askUserQuestionBubbleAsked": "{count, plural, one{Asked {count} question} other{Asked {count} questions}}",
+  "@askUserQuestionBubbleAsked": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "askUserQuestionBubbleUnanswered": "Unanswered",
   "agentAskAnswerInTerminal": "Answer in terminal",
   "agentAskCancelQuestion": "Cancel question",
   "agentAskAnswerFailed": "Couldn't submit your answer. Try again or answer in the Terminal.",

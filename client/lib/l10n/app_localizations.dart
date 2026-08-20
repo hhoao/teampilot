@@ -2846,6 +2846,24 @@ abstract class AppLocalizations {
   /// **'Agent is asking you a question'**
   String get agentAskUserQuestionTitle;
 
+  /// No description provided for @askUserQuestionBubbleAsking.
+  ///
+  /// In en, this message translates to:
+  /// **'Asking questions'**
+  String get askUserQuestionBubbleAsking;
+
+  /// No description provided for @askUserQuestionBubbleAsked.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{Asked {count} question} other{Asked {count} questions}}'**
+  String askUserQuestionBubbleAsked(int count);
+
+  /// No description provided for @askUserQuestionBubbleUnanswered.
+  ///
+  /// In en, this message translates to:
+  /// **'Unanswered'**
+  String get askUserQuestionBubbleUnanswered;
+
   /// No description provided for @agentAskAnswerInTerminal.
   ///
   /// In en, this message translates to:

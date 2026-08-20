@@ -24,6 +24,7 @@ import '../../services/workbench/workbench_editor_opener.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../services/workspace/workspace_tools_scope.dart';
 import '../../widgets/app_toast/app_toast.dart';
+import 'ask_user_question_bubble.dart';
 import 'chat_find_bar.dart';
 import 'chat_reveal_controller.dart';
 import 'cli_task_bubbles.dart';
@@ -278,6 +279,16 @@ class SessionChatMessageArea extends StatelessWidget {
                                 child: AiToolCallBubbleScope(
                                   builders: {
                                     ...cliTaskBubbleBuilders(),
+                                    ...cliAskUserBubbleBuilders(),
+                                    'todowrite': (ctx, part) =>
+                                        CliTodoWriteBubble(
+                                          part: part,
+                                          contentById:
+                                              taskBoardController
+                                                  ?.board
+                                                  .contentById ??
+                                              const {},
+                                        ),
                                     'workflow': (ctx, part) => WorkflowCard(
                                       part: part,
                                       attachment: historySeat

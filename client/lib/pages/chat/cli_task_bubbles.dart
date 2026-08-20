@@ -33,13 +33,14 @@ String _statusLabel(BuildContext context, CliTaskStatus status) =>
       CliTaskStatus.unknown => context.l10n.cliTaskStatusUnknown,
     };
 
-Color _statusColor(ColorScheme scheme, CliTaskStatus status) => switch (status) {
-  CliTaskStatus.pending => scheme.onSurfaceVariant,
-  CliTaskStatus.inProgress => scheme.primary,
-  CliTaskStatus.completed => scheme.tertiary,
-  CliTaskStatus.cancelled => scheme.error,
-  CliTaskStatus.unknown => scheme.onSurfaceVariant,
-};
+Color _statusColor(ColorScheme scheme, CliTaskStatus status) =>
+    switch (status) {
+      CliTaskStatus.pending => scheme.onSurfaceVariant,
+      CliTaskStatus.inProgress => scheme.primary,
+      CliTaskStatus.completed => scheme.tertiary,
+      CliTaskStatus.cancelled => scheme.error,
+      CliTaskStatus.unknown => scheme.onSurfaceVariant,
+    };
 
 /// Dedicated bubble for a TaskCreate tool call.
 class CliTaskCreateBubble extends StatefulWidget {
@@ -155,7 +156,10 @@ class _CliTaskUpdateBubbleState extends State<CliTaskUpdateBubble> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _BubbleField(label: 'args', text: _stringify(widget.part.args)),
+                  _BubbleField(
+                    label: 'args',
+                    text: _stringify(widget.part.args),
+                  ),
                   if (widget.part.result != null) ...[
                     const SizedBox(height: 8),
                     _BubbleField(
@@ -176,9 +180,17 @@ class _CliTaskUpdateBubbleState extends State<CliTaskUpdateBubble> {
 /// carries the whole todo list (snapshot or merge), so the bubble shows the
 /// item count and an expandable per-item list with status icons.
 class CliTodoWriteBubble extends StatefulWidget {
-  const CliTodoWriteBubble({required this.part, super.key});
+  const CliTodoWriteBubble({
+    required this.part,
+    this.contentById = const {},
+    super.key,
+  });
 
   final AiToolCallPart part;
+
+  /// Prior TodoWrite text by id. Cursor merge calls often send only
+  /// `{id, status}` — the bubble fills empty content from this map.
+  final Map<String, String> contentById;
 
   @override
   State<CliTodoWriteBubble> createState() => _CliTodoWriteBubbleState();
@@ -193,9 +205,10 @@ class _CliTodoWriteBubbleState extends State<CliTodoWriteBubble> {
     final aiTheme = AiMessageTheme.of(context);
     final triggerColor = aiTheme.resolveToolTrigger(scheme);
     final args = widget.part.args ?? const <String, Object?>{};
-    final todos = _todoWriteItems(args['todos']);
-    final completed =
-        todos.where((t) => t.status == CliTaskStatus.completed).length;
+    final todos = _todoWriteItems(args['todos'], widget.contentById);
+    final completed = todos
+        .where((t) => t.status == CliTaskStatus.completed)
+        .length;
     final pill = todos.isEmpty ? '0' : '$completed/${todos.length}';
 
     return Padding(
@@ -259,16 +272,27 @@ class _TodoWriteItem {
   final CliTaskStatus status;
 }
 
-List<_TodoWriteItem> _todoWriteItems(Object? raw) {
+List<_TodoWriteItem> _todoWriteItems(
+  Object? raw,
+  Map<String, String> contentById,
+) {
   if (raw is! List) return const [];
   return [
     for (final item in raw)
       if (item is Map)
         _TodoWriteItem(
-          content: _stringify(item['content']).trim(),
+          content: _todoWriteContent(item, contentById),
           status: cliTaskStatusFromString(_stringify(item['status'])),
         ),
   ];
+}
+
+String _todoWriteContent(Map<dynamic, dynamic> item, Map<String, String> byId) {
+  final local = _stringify(item['content']).trim();
+  if (local.isNotEmpty) return local;
+  final id = _stringify(item['id']).trim();
+  if (id.isEmpty) return '';
+  return byId[id] ?? '';
 }
 
 class _TodoStatusIcon extends StatelessWidget {
@@ -300,11 +324,7 @@ class _TodoStatusIcon extends StatelessWidget {
         size: 14,
         color: color,
       ),
-      CliTaskStatus.unknown => Icon(
-        Icons.help_outline,
-        size: 14,
-        color: color,
-      ),
+      CliTaskStatus.unknown => Icon(Icons.help_outline, size: 14, color: color),
     };
   }
 }

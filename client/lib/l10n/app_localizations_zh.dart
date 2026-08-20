@@ -1465,6 +1465,17 @@ class AppLocalizationsZh extends AppLocalizations {
   String get agentAskUserQuestionTitle => '正在向你提问';
 
   @override
+  String get askUserQuestionBubbleAsking => '正在提问';
+
+  @override
+  String askUserQuestionBubbleAsked(int count) {
+    return '已询问 $count 个问题';
+  }
+
+  @override
+  String get askUserQuestionBubbleUnanswered => '未回答';
+
+  @override
   String get agentAskAnswerInTerminal => '在终端回答';
 
   @override

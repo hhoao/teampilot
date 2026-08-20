@@ -46,13 +46,12 @@ class _AiToolCallPartViewState extends State<AiToolCallPartView> {
     final markdown = aiTheme.markdown;
     final triggerColor = aiTheme.resolveToolTrigger(scheme);
     final part = widget.part;
-    final bubble = AiToolCallBubbleScope
-        .maybeOf(context)
-        ?.builders[part.toolName.toLowerCase()];
-    if (bubble != null) {
-      return SelectionContainer.disabled(
-        child: bubble(context, part),
-      );
+    final bubble = AiToolCallBubbleScope.maybeOf(
+      context,
+    )?.builders[part.toolName.toLowerCase()];
+    final custom = bubble?.call(context, part);
+    if (custom != null) {
+      return SelectionContainer.disabled(child: custom);
     }
     final cancelled = part.isCancelled;
     final bottom = widget.dense ? 2.0 : aiTheme.partSpacing;
@@ -63,12 +62,14 @@ class _AiToolCallPartViewState extends State<AiToolCallPartView> {
         (subagentActions.isSubagentTool?.call(part.toolName) ?? false) &&
         onOpenSubagent != null;
     final useSubagentChrome = isSub;
-    final shellTarget =
-        useSubagentChrome ? null : fileActions.shellResolver.resolve(part);
+    final shellTarget = useSubagentChrome
+        ? null
+        : fileActions.shellResolver.resolve(part);
     final editTarget = useSubagentChrome || shellTarget != null
         ? null
         : fileActions.editResolver.resolve(part);
-    final target = useSubagentChrome || shellTarget != null || editTarget != null
+    final target =
+        useSubagentChrome || shellTarget != null || editTarget != null
         ? null
         : fileActions.fileResolver.resolve(part);
 
@@ -246,7 +247,11 @@ class _LegacyToolTrigger extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 4),
-                _ExpandChevron(open: open, color: triggerColor, onTap: onToggle),
+                _ExpandChevron(
+                  open: open,
+                  color: triggerColor,
+                  onTap: onToggle,
+                ),
               ],
             ),
           ),
@@ -423,8 +428,7 @@ class _SummaryToolTrigger extends StatelessWidget {
         text: basename,
         style: onOpenFile != null ? openTargetStyle : triggerStyle,
       ),
-      if (lineLabel != null)
-        TextSpan(text: ' $lineLabel', style: mutedStyle),
+      if (lineLabel != null) TextSpan(text: ' $lineLabel', style: mutedStyle),
     ];
 
     Widget fileLabelWidget = Text.rich(
@@ -523,11 +527,7 @@ class _ExpandChevron extends StatelessWidget {
         padding: const EdgeInsets.only(left: 4),
         child: Transform.rotate(
           angle: open ? 0 : -math.pi / 2,
-          child: Icon(
-            Icons.expand_more,
-            size: 16,
-            color: color,
-          ),
+          child: Icon(Icons.expand_more, size: 16, color: color),
         ),
       ),
     );
@@ -550,10 +550,7 @@ class _StatusIcon extends StatelessWidget {
       AiToolCallStatus.running => SizedBox(
         width: 16,
         height: 16,
-        child: CircularProgressIndicator(
-          strokeWidth: 2,
-          color: color,
-        ),
+        child: CircularProgressIndicator(strokeWidth: 2, color: color),
       ),
       AiToolCallStatus.complete => Icon(
         Icons.check_circle_outline,
@@ -637,9 +634,9 @@ class _MutedPre extends StatelessWidget {
         child: Text(
           text,
           softWrap: true,
-          style: AiMessageTheme.of(context).markdown.codeBlock.copyWith(
-            color: foreground,
-          ),
+          style: AiMessageTheme.of(
+            context,
+          ).markdown.codeBlock.copyWith(color: foreground),
         ),
       ),
     );
