@@ -17,8 +17,8 @@ typedef CursorHomeLocalScriptRunner = Future<void> Function(String script);
 ///
 /// Prefer [buildRemoteMirrorScript] on SSH/Termux work planes (one remote
 /// `find`+`ln` round-trip) instead of [mirror] over SFTP. Local POSIX uses
-/// the same script via `localScriptRunner` (or `/bin/sh` on
-/// [LocalFilesystem]) so a large `$HOME` does not stall the UI isolate.
+/// in-process `dart:io` symlinks (or `localScriptRunner` in tests) so a large
+/// `$HOME` does not fork `ln`/`readlink` per entry on the UI isolate.
 ///
 /// Before linking, member-home passthrough entries are reconciled:
 /// - entity orphans move to the real home path via [Filesystem.rename] when the
@@ -130,29 +130,13 @@ fi
       "'${value.replaceAll("'", "'\"'\"'")}'";
 
   Future<bool> _tryRunMirrorScript(String script) async {
-    final runner = _localScriptRunner ?? _defaultLocalScriptRunner();
+    final runner = _localScriptRunner;
     if (runner == null) return false;
     try {
       await runner(script);
       return true;
     } on Object {
       return false;
-    }
-  }
-
-  CursorHomeLocalScriptRunner? _defaultLocalScriptRunner() {
-    if (Platform.isWindows) return null;
-    if (_fs is! LocalFilesystem) return null;
-    return _runPosixShell;
-  }
-
-  static Future<void> _runPosixShell(String script) async {
-    final result = await Process.run('/bin/sh', ['-c', script]);
-    if (result.exitCode != 0) {
-      throw StateError(
-        'cursor home passthrough failed (${result.exitCode}): '
-        '${result.stderr}',
-      );
     }
   }
 
@@ -167,11 +151,16 @@ fi
       return;
     }
 
-    final script = buildRemoteMirrorScript(
-      realHomeRoot: realHomeRoot,
-      memberHomeRoot: memberHomeRoot,
-    );
-    if (script.isNotEmpty && await _tryRunMirrorScript(script)) {
+    if (_localScriptRunner != null) {
+      final script = buildRemoteMirrorScript(
+        realHomeRoot: realHomeRoot,
+        memberHomeRoot: memberHomeRoot,
+      );
+      if (script.isNotEmpty && await _tryRunMirrorScript(script)) {
+        return;
+      }
+    } else if (!Platform.isWindows && _fs is LocalFilesystem) {
+      _mirrorViaDartIo(realHome: realHome, memberHome: memberHome);
       return;
     }
 
@@ -200,6 +189,176 @@ fi
         source: ctx.join(realHome, name),
         linkPath: ctx.join(memberHome, name),
       );
+    }
+  }
+
+  void _mirrorViaDartIo({
+    required String realHome,
+    required String memberHome,
+  }) {
+    Directory(memberHome).createSync(recursive: true);
+    Directory(_layout.configCursorDir(memberHome)).createSync(recursive: true);
+
+    _reconcileChildrenIo(
+      realDir: realHome,
+      memberDir: memberHome,
+      skip: {CursorHomeLayout.cursorDirName},
+      nestedConfig: true,
+    );
+    _linkChildrenIo(
+      realDir: realHome,
+      memberDir: memberHome,
+      skip: {CursorHomeLayout.cursorDirName},
+      nestedConfig: true,
+    );
+  }
+
+  void _reconcileChildrenIo({
+    required String realDir,
+    required String memberDir,
+    required Set<String> skip,
+    required bool nestedConfig,
+  }) {
+    final member = Directory(memberDir);
+    if (!member.existsSync()) return;
+    final ctx = _fs.pathContext;
+    for (final entity in member.listSync(followLinks: false)) {
+      final name = ctx.basename(entity.path);
+      if (name.isEmpty || skip.contains(name)) continue;
+      if (nestedConfig && name == CursorHomeLayout.configDirName) {
+        _reconcileChildrenIo(
+          realDir: ctx.join(realDir, name),
+          memberDir: ctx.join(memberDir, name),
+          skip: {CursorHomeLayout.configCursorDirName},
+          nestedConfig: false,
+        );
+        continue;
+      }
+      _reconcileEntryIo(
+        realSource: ctx.join(realDir, name),
+        memberLink: ctx.join(memberDir, name),
+      );
+    }
+  }
+
+  void _linkChildrenIo({
+    required String realDir,
+    required String memberDir,
+    required Set<String> skip,
+    required bool nestedConfig,
+  }) {
+    final real = Directory(realDir);
+    if (!real.existsSync()) return;
+    Directory(memberDir).createSync(recursive: true);
+    if (nestedConfig) {
+      Directory(_layout.configCursorDir(memberDir)).createSync(recursive: true);
+    }
+    final ctx = _fs.pathContext;
+    for (final entity in real.listSync(followLinks: false)) {
+      final name = ctx.basename(entity.path);
+      if (name.isEmpty || skip.contains(name)) continue;
+      if (nestedConfig && name == CursorHomeLayout.configDirName) {
+        _linkChildrenIo(
+          realDir: ctx.join(realDir, name),
+          memberDir: ctx.join(memberDir, name),
+          skip: {CursorHomeLayout.configCursorDirName},
+          nestedConfig: false,
+        );
+        continue;
+      }
+      _linkEntryIo(
+        source: ctx.join(realDir, name),
+        linkPath: ctx.join(memberDir, name),
+      );
+    }
+  }
+
+  void _reconcileEntryIo({
+    required String realSource,
+    required String memberLink,
+  }) {
+    final type = FileSystemEntity.typeSync(memberLink, followLinks: false);
+    if (type == FileSystemEntityType.notFound) return;
+
+    if (type == FileSystemEntityType.link) {
+      if (_ioLinkPointsTo(source: realSource, linkPath: memberLink)) return;
+      _deleteIo(memberLink);
+      return;
+    }
+
+    if (_ioExists(realSource)) {
+      _deleteIo(memberLink);
+    } else if (!_tryPromoteIo(
+      memberEntity: memberLink,
+      realDestination: realSource,
+    )) {
+      _deleteIo(memberLink);
+    }
+    _linkEntryIo(source: realSource, linkPath: memberLink);
+  }
+
+  bool _tryPromoteIo({
+    required String memberEntity,
+    required String realDestination,
+  }) {
+    if (_ioExists(realDestination)) return false;
+    try {
+      final parent = _fs.pathContext.dirname(realDestination);
+      if (parent.isNotEmpty) {
+        Directory(parent).createSync(recursive: true);
+      }
+      switch (FileSystemEntity.typeSync(memberEntity, followLinks: false)) {
+        case FileSystemEntityType.directory:
+          Directory(memberEntity).renameSync(realDestination);
+        case FileSystemEntityType.link:
+          Link(memberEntity).renameSync(realDestination);
+        default:
+          File(memberEntity).renameSync(realDestination);
+      }
+    } on Object {
+      return false;
+    }
+    return _ioExists(realDestination);
+  }
+
+  void _linkEntryIo({required String source, required String linkPath}) {
+    if (_ioLinkPointsTo(source: source, linkPath: linkPath)) return;
+    if (FileSystemEntity.typeSync(linkPath, followLinks: false) !=
+        FileSystemEntityType.notFound) {
+      _deleteIo(linkPath);
+    }
+    Directory(_fs.pathContext.dirname(linkPath)).createSync(recursive: true);
+    Link(linkPath).createSync(source);
+  }
+
+  bool _ioExists(String path) =>
+      FileSystemEntity.typeSync(path, followLinks: false) !=
+      FileSystemEntityType.notFound;
+
+  bool _ioLinkPointsTo({required String source, required String linkPath}) {
+    if (FileSystemEntity.typeSync(linkPath, followLinks: false) !=
+        FileSystemEntityType.link) {
+      return false;
+    }
+    final ctx = _fs.pathContext;
+    try {
+      return ctx.normalize(ctx.absolute(Link(linkPath).targetSync())) ==
+          ctx.normalize(ctx.absolute(source));
+    } on FileSystemException {
+      return false;
+    }
+  }
+
+  void _deleteIo(String path) {
+    switch (FileSystemEntity.typeSync(path, followLinks: false)) {
+      case FileSystemEntityType.link:
+        Link(path).deleteSync();
+      case FileSystemEntityType.directory:
+        Directory(path).deleteSync(recursive: true);
+      case FileSystemEntityType.file:
+        File(path).deleteSync();
+      default:
+        break;
     }
   }
 
