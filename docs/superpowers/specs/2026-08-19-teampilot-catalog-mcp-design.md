@@ -2,6 +2,7 @@
 
 - Date: 2026-08-19
 - Status: Approved
+- Implementation: `client/lib/services/catalog/`
 
 ## 背景与目标
 

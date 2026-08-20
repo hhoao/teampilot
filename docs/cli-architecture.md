@@ -221,6 +221,15 @@ unsupported diagnostic；空资源是 no-op。Provider/Assembler 结果和诊断
 `mcpAlreadyMaterialized` 等边界避免重复物化。新增来源必须进入 typed Provider，不应在
 这些 facade 或 CLI ProviderCapability 中恢复 direct source assembly。
 
+### TeamPilot Catalog MCP
+
+每次会话启动（simple 与 mixed）都通过 extra MCP 注入托管的 `teampilot` server
+（`/catalog/mcp`），并始终注入 managed skill `teampilot-catalog`（`ResourceOriginKind.managed`，
+不进用户 `skills/installed`）和一句 prompt。stdio 复用 teammate-bus bridge（`--bus-url` 为
+catalog URL）；SSH 走 idle HTTP 隧道。Kind 模块（skill / plugin / mcp）与 handler、policy、
+transport 都在 `client/lib/services/catalog/`，不按 CLI 分目录，也不进 `teammate-bus` 的
+tool 列表。
+
 ## 必需能力 vs 可选能力
 
 每个 CLI **必须**实现以下能力（在 `built_in_cli_tools.dart` 中有 `_verifyRequired<T>` / assert 全量校验）：

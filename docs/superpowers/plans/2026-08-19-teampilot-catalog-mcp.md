@@ -796,13 +796,13 @@ EOF
 
 **Interfaces:** none
 
-- [ ] **Step 1: Add the AGENTS.md / cli-architecture.md paragraphs** (no TBD)
+- [x] **Step 1: Add the AGENTS.md / cli-architecture.md paragraphs** (no TBD)
 
-- [ ] **Step 2: Run `cd client && flutter test test/services/catalog test/services/team_bus/idle_notification_test.dart test/services/resource/resource_resolver_test.dart --exclude-tags integration`**
+- [x] **Step 2: Run `cd client && flutter test test/services/catalog test/services/team_bus/idle_notification_test.dart test/services/resource/resource_resolver_test.dart --exclude-tags integration`**
 
 Expected: PASS
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add AGENTS.md docs/cli-architecture.md \
