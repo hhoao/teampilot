@@ -379,6 +379,7 @@ final class CursorSessionLifecycleCapability implements CliSessionCapability {
       fs: ctx.paths.fs,
       layout: ctx.paths.layout,
       workspaceId: ctx.workspaceId,
+      sessionId: ctx.sessionId,
       teamId: teamId,
       workingDirectory: ctx.workingDirectory,
     );
@@ -822,6 +823,7 @@ final class CursorSessionLifecycleCapability implements CliSessionCapability {
       fs: ctx.paths.fs,
       layout: ctx.paths.layout,
       workspaceId: ctx.workspaceId,
+      sessionId: ctx.sessionId,
       teamId: _requireTeamId(ctx.team),
       workingDirectory: ctx.workingDirectory,
     );
@@ -832,6 +834,7 @@ final class CursorSessionLifecycleCapability implements CliSessionCapability {
       fs: ctx.paths.fs,
       layout: ctx.paths.layout,
       workspaceId: ctx.workspaceId,
+      sessionId: ctx.sessionId,
       teamId: _requireTeamId(ctx.team),
       workingDirectory: ctx.workingDirectory,
     );

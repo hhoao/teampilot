@@ -70,11 +70,11 @@ void main() {
 
   String memberHome(LaunchProfileScope scope) {
     final memberId = scope.memberId ?? '';
-    final cursorDir = paths.layout.workspaceRuntimeMemberToolDir(
+    final cursorDir = paths.layout.sessionRuntimeToolDir(
       scope.workspaceId,
-      scope.teamId,
-      memberId,
+      scope.sessionId,
       CursorProviderCapability.toolId,
+      memberId: memberId,
     );
     return paths.pathContext.join(cursorDir, 'home');
   }

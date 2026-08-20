@@ -7,10 +7,7 @@ import '../../../registry/capabilities/ai_history_capability.dart';
 import '../../../../session/session_history_context.dart';
 import '../../../registry/capabilities/history/subagent_side_resolver.dart';
 import '../../../registry/capabilities/history/tool_result_enricher.dart';
-import '../../../session_lifecycle/cli_session_manifest_store.dart';
-import '../../../../storage/runtime_layout.dart';
 import '../../provider/cursor_windows_home_junction.dart';
-import '../session_lifecycle_paths.dart';
 import '../tool_call_resolvers.dart';
 import 'ai_transcript.dart';
 import 'side_resolver.dart';
@@ -71,14 +68,11 @@ final class CursorAiHistoryCapability implements AiHistoryCapability {
     return env;
   }
 
-  /// `postCaptured`: cursor stores each chat under the per-session-isolated
-  /// config root's `chats/<workspaceHash>/<chatId>/` (with a `meta.json`), so
-  /// — like codex/opencode — we let cursor mint its own chat on the fresh
-  /// launch and, on reopen, capture the real chat to `--resume`.
-  ///
-  /// Standalone launches set `$CURSOR_CONFIG_DIR` to the isolated `.cursor`
-  /// dir; mixed-mode members only isolate via fake `$HOME`, so chats live
-  /// under `$HOME/.cursor/chats/` instead.
+  /// `postCaptured`: cursor stores each chat under the isolated fake `$HOME`
+  /// (`<toolDir>/home/.cursor/chats/<workspaceHash>/<chatId>/`). Standalone
+  /// and mixed members both isolate HOME per TeamPilot session, so a fresh
+  /// launch finds an empty chats dir (cursor mints a new chat) and reopen
+  /// scans that session's store for `--resume`.
   ///
   /// We do **not** pre-allocate via `cursor-agent create-chat`: that makes an
   /// empty chat (`"hasConversation": false`) which diverges from the chat the
@@ -88,8 +82,8 @@ final class CursorAiHistoryCapability implements AiHistoryCapability {
 
   @override
   Future<String?> detectNativeId(ResumeContext ctx) async {
-    final manifestChatId = await _chatIdFromManifest(ctx);
-    if (manifestChatId != null) return manifestChatId;
+    final persisted = ctx.persistedNativeId?.trim() ?? '';
+    if (persisted.isNotEmpty) return persisted;
 
     final configDir = await CursorWindowsHomeJunction.resolveCursorConfigDir(
       fs: ctx.fs,
@@ -99,7 +93,6 @@ final class CursorAiHistoryCapability implements AiHistoryCapability {
     final path = ctx.fs.pathContext;
     final chatsRoot = path.join(configDir, 'chats');
 
-    // Scan (cheap, per-session isolated) when manifest has no captured chat.
     String? best;
     var bestUpdated = -1;
     try {
@@ -125,30 +118,6 @@ final class CursorAiHistoryCapability implements AiHistoryCapability {
       return null;
     }
     return best;
-  }
-
-  Future<String?> _chatIdFromManifest(ResumeContext ctx) async {
-    final workspaceId = ctx.workspaceId?.trim() ?? '';
-    final teamId = ctx.teamId?.trim() ?? '';
-    final memberId = ctx.memberId?.trim() ?? '';
-    final dataRoot = ctx.manifestDataRoot?.trim() ?? '';
-    if (workspaceId.isEmpty || teamId.isEmpty || memberId.isEmpty) {
-      return null;
-    }
-    if (dataRoot.isEmpty) return null;
-
-    final store = CliSessionManifestStore(
-      fs: ctx.fs,
-      layout: RuntimeLayout(teampilotRoot: dataRoot, fs: ctx.fs),
-    );
-    final manifest = await store.read(
-      workspaceId: workspaceId,
-      teamId: teamId,
-      tool: CursorSessionLifecyclePaths.tool,
-    );
-    final chatId = manifest?.members[memberId]?.chatId?.trim();
-    if (chatId == null || chatId.isEmpty) return null;
-    return chatId;
   }
 
   static Map<String, Object?>? _decode(String raw) {

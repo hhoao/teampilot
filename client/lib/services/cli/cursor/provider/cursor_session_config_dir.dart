@@ -24,35 +24,32 @@ abstract final class CursorSessionConfigDir {
     String? teamId,
   }) {
     final trimmedMemberId = memberId?.trim() ?? '';
-    final trimmedTeamId = teamId?.trim() ?? '';
-    final toolDir = trimmedMemberId.isNotEmpty && trimmedTeamId.isNotEmpty
-        ? layout.workspaceRuntimeMemberToolDir(
-            workspaceId,
-            trimmedTeamId,
-            trimmedMemberId,
-            toolId,
-          )
-        : layout.sessionRuntimeToolDir(
-            workspaceId,
-            sessionId,
-            toolId,
-          );
+    final toolDir = layout.sessionRuntimeToolDir(
+      workspaceId,
+      sessionId,
+      toolId,
+      memberId: trimmedMemberId.isEmpty ? null : trimmedMemberId,
+    );
     return p.join(toolDir, homeSegment, CursorHomeLayout.cursorDirName);
   }
 
   /// Isolated fake `$HOME` for mixed-mode cursor (parent of `.cursor/`).
+  ///
+  /// Scoped to the TeamPilot session so chats do not leak across new sessions
+  /// of the same roster member. Warm-tier plugins/projects stay under
+  /// `runtime/teams/{teamId}/cursor/` and are symlinked into this home.
   static String mixedHomeRoot(
     RuntimeLayout layout, {
     required String workspaceId,
-    required String teamId,
+    required String sessionId,
     required String memberId,
   }) {
     return p.join(
-      layout.workspaceRuntimeMemberToolDir(
+      layout.sessionRuntimeToolDir(
         workspaceId,
-        teamId.trim(),
-        memberId.trim(),
+        sessionId,
         toolId,
+        memberId: memberId.trim(),
       ),
       homeSegment,
     );

@@ -106,6 +106,7 @@ void main() {
       fs: fs,
       layout: layout,
       workspaceId: workspaceId,
+      sessionId: sessionId,
       teamId: 'superpowers',
       workingDirectory: workingDirectory,
       homeLayout: homeLayout,

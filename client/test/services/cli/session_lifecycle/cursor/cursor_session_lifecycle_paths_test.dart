@@ -36,6 +36,7 @@ void main() {
         fs: LocalFilesystem(),
         layout: layout,
         workspaceId: workspaceId,
+        sessionId: 'sess',
         teamId: cursorTestTeamId,
         workingDirectory: workingDirectory,
       );
@@ -60,12 +61,27 @@ void main() {
       );
     });
 
-    test('memberHomeRoot points at team-scoped member cursor home', () {
+    test('memberHomeRoot points at session-scoped member cursor home', () {
       expect(
         paths.memberHomeRoot('team-lead'),
-        pathContext.join(teamRuntimeRoot, 'team-lead', 'cursor', 'home'),
+        pathContext.join(
+          '/tp',
+          'workspace',
+          'workspaces',
+          workspaceId,
+          'sessions',
+          'sess',
+          'runtime',
+          'team-lead',
+          'cursor',
+          'home',
+        ),
       );
-      expect(paths.memberHomeRoot('team-lead'), isNot(contains('/sessions/')));
+      expect(paths.memberHomeRoot('team-lead'), contains('/sessions/sess/'));
+      expect(
+        paths.memberHomeRoot('team-lead'),
+        isNot(contains('/runtime/teams/')),
+      );
     });
   });
 
@@ -83,6 +99,7 @@ void main() {
         fs: fs,
         layout: layout,
         workspaceId: workspaceId,
+        sessionId: 'sess',
         teamId: cursorTestTeamId,
         workingDirectory: workingDirectory,
         homeLayout: homeLayout,

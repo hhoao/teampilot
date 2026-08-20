@@ -29,7 +29,8 @@ import 'app_storage.dart';
 ///   runtime/teams/{teamId}/     # workspace+team CLI warm tier (mixed cursor)
 ///     cursor/init.json
 ///     cursor/projects/{slug}/
-///     {memberId}/cursor/home/
+///     cursor/plugins/...
+///   sessions/{sessionId}/runtime/{memberId}/cursor/home/  # mixed cursor HOME
 /// ```
 class WorkspaceLayout {
   WorkspaceLayout({required this.teampilotRoot, Filesystem? fs})

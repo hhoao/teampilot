@@ -164,11 +164,11 @@ void main() {
         busIdle: MemberBusIdleEndpoint(url: 'http://127.0.0.1:5050/idle'),
       );
 
-      final cursorDir = layout.workspaceRuntimeMemberToolDir(
+      final cursorDir = layout.sessionRuntimeToolDir(
         _workspaceId,
-        'team-a',
-        ClaudeTeamRosterService.safeClaudePathSegment('planner'),
+        'mixed-session',
         'cursor',
+        memberId: ClaudeTeamRosterService.safeClaudePathSegment('planner'),
       );
       final canonicalHome = p.join(cursorDir, 'home');
       final memberHome = await CursorWindowsHomeJunction.ensureAgentHome(
@@ -181,6 +181,56 @@ void main() {
         plan.resolvedRoots.map(_slashPath),
         contains(_slashPath(memberHome)),
       );
+      expect(_slashPath(plan.env['HOME']!), contains('/sessions/mixed-session/'));
+      expect(_slashPath(plan.env['HOME']!), isNot(contains('/runtime/teams/')));
+    },
+  );
+
+  test(
+    'cursor mixed new session does not resume leftover team-home chats',
+    () async {
+      const member = TeamMemberConfig(id: 'team-lead', name: 'team-lead');
+      final leftoverChat = p.join(
+        layout.workspaceRuntimeMemberToolDir(
+          _workspaceId,
+          'team-a',
+          ClaudeTeamRosterService.safeClaudePathSegment('team-lead'),
+          'cursor',
+        ),
+        'home',
+        '.cursor',
+        'chats',
+        'wshash',
+        '6ddecd3d-f83b-4625-83f8-b5f999fee041',
+      );
+      await Directory(leftoverChat).create(recursive: true);
+      await File(p.join(leftoverChat, 'meta.json')).writeAsString(
+        '{"schemaVersion":1,"hasConversation":true,"updatedAtMs":100}',
+      );
+
+      final plan = await service().prepareLaunch(
+        session: _session(id: 'new-mixed-session'),
+        team: const TeamProfile(
+          id: 'team-a',
+          name: 'Team A',
+          cli: CliTool.cursor,
+          teamMode: TeamMode.mixed,
+          members: [member],
+        ),
+        member: member,
+        memberBinding: const SessionMemberBinding(
+          rosterMemberId: 'team-lead',
+          taskId: 'task-new',
+        ),
+        busIdle: MemberBusIdleEndpoint(url: 'http://127.0.0.1:5050/idle'),
+      );
+
+      expect(
+        _slashPath(plan.env['HOME']!),
+        contains('/sessions/new-mixed-session/'),
+      );
+      expect(plan.resume, isFalse);
+      expect(plan.resumeSessionId, isNull);
     },
   );
 

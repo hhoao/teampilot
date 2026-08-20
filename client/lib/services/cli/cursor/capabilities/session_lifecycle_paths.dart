@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import '../../../io/filesystem.dart';
 import '../provider/cursor_home_layout.dart';
 import '../provider/cursor_member_home_passthrough.dart';
+import '../provider/cursor_session_config_dir.dart';
 import '../provider/cursor_windows_home_junction.dart';
 import '../provider/cursor_workspace_trust.dart';
 import '../provider/cursor_workspace_warm_tier.dart';
@@ -17,12 +18,14 @@ final class CursorSessionLifecyclePaths {
     required Filesystem fs,
     required RuntimeLayout layout,
     required String workspaceId,
+    required String sessionId,
     required String teamId,
     required String workingDirectory,
     CursorHomeLayout? homeLayout,
   }) : _fs = fs,
        _layout = layout,
        _workspaceId = workspaceId.trim(),
+       _sessionId = sessionId.trim(),
        _teamId = teamId.trim(),
        _workingDirectory = workingDirectory.trim(),
        _homeLayout =
@@ -33,6 +36,7 @@ final class CursorSessionLifecyclePaths {
   final Filesystem _fs;
   final RuntimeLayout _layout;
   final String _workspaceId;
+  final String _sessionId;
   final String _teamId;
   final String _workingDirectory;
   final CursorHomeLayout _homeLayout;
@@ -76,15 +80,13 @@ final class CursorSessionLifecyclePaths {
   String sharedMcpBaseFile() =>
       CursorWorkspaceWarmTier.mcpBase(_layout, _workspaceId, _teamId);
 
-  String memberHomeRoot(String memberId) => _ctx.join(
-    _layout.workspaceRuntimeMemberToolDir(
-      _workspaceId,
-      _teamId,
-      memberId,
-      tool,
-    ),
-    'home',
-  );
+  String memberHomeRoot(String memberId) =>
+      CursorSessionConfigDir.mixedHomeRoot(
+        _layout,
+        workspaceId: _workspaceId,
+        sessionId: _sessionId,
+        memberId: memberId,
+      );
 
   Future<String> resolvedMemberHomeRoot(String memberId) =>
       CursorWindowsHomeJunction.resolveAgentHome(

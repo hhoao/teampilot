@@ -90,11 +90,11 @@ void main() {
         ),
       );
 
-      final memberHome = layout.workspaceRuntimeMemberToolDir(
+      final memberHome = layout.sessionRuntimeToolDir(
         workspaceId,
-        cursorTestTeamId,
-        TeamMemberNaming.teamLeadName,
+        sessionId,
         'cursor',
+        memberId: TeamMemberNaming.teamLeadName,
       );
       final memberAuthDir = fs.pathContext.join(
         memberHome,

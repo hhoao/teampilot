@@ -18,7 +18,6 @@ import '../../registry/config_profile/config_profile_context.dart';
 import '../../registry/config_profile/hook_seat_context_completer.dart';
 import '../../../resource/providers/endpoint_hook_contribution_provider.dart';
 import '../../../resource/providers/bus_awareness_hook_contribution_provider.dart';
-import '../../session_lifecycle/cli_session_manifest_store.dart';
 import '../provider/cursor_agent_models_service.dart';
 import '../provider/cursor_home_layout.dart';
 import '../provider/cursor_home_provisioner.dart';
@@ -463,11 +462,10 @@ final class CursorProviderCapability extends CatalogModelCapability
 
     if (mixed) {
       final memberId = ctx.scope.memberId?.trim() ?? '';
-      final teamId = team?.id.trim() ?? '';
-      final memberHome = await _resolveMixedMemberHome(
+      final memberHome = _resolveMixedMemberHome(
         paths: paths,
         workspaceId: ctx.scope.workspaceId,
-        teamId: teamId,
+        sessionId: ctx.scope.sessionId,
         memberId: memberId,
       );
       final agentHome = await CursorWindowsHomeJunction.ensureAgentHome(
@@ -585,36 +583,18 @@ final class CursorProviderCapability extends CatalogModelCapability
     );
   }
 
-  Future<String> _resolveMixedMemberHome({
+  String _resolveMixedMemberHome({
     required ConfigProfilePaths paths,
     required String workspaceId,
-    required String teamId,
+    required String sessionId,
     required String memberId,
-  }) async {
-    final trimmedTeamId = teamId.trim();
-    final trimmedMemberId = memberId.trim();
-    if (trimmedTeamId.isNotEmpty) {
-      final manifest = await CliSessionManifestStore(
-        fs: paths.fs,
-        layout: paths.layout,
-      ).read(workspaceId: workspaceId, teamId: trimmedTeamId, tool: toolId);
-      final homeRoot =
-          manifest?.members[trimmedMemberId]?.homeRoot.trim() ?? '';
-      if (homeRoot.isNotEmpty) {
-        final workspaceDir = paths.layout.workspace.workspaceDir(workspaceId);
-        return paths.fs.pathContext.normalize(
-          paths.fs.pathContext.join(workspaceDir, homeRoot),
-        );
-      }
-    }
-
-    final cursorDir = paths.layout.workspaceRuntimeMemberToolDir(
-      workspaceId,
-      trimmedTeamId,
-      trimmedMemberId,
-      toolId,
+  }) {
+    return CursorSessionConfigDir.mixedHomeRoot(
+      paths.layout,
+      workspaceId: workspaceId,
+      sessionId: sessionId,
+      memberId: memberId,
     );
-    return paths.fs.pathContext.join(cursorDir, 'home');
   }
 
   Future<void> _provisionWorkspaceTrust({

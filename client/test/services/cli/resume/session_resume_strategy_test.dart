@@ -194,14 +194,20 @@ CREATE TABLE session (
       },
     );
 
-    test('manifest chatId wins before scanning chats', () async {
-      final home = p.join(base.path, 'member-home');
-      final configDir = p.join(home, '.cursor');
-      final dir = p.join(configDir, 'chats', 'wshash', 'scanned-chat');
-      await Directory(dir).create(recursive: true);
-      await File(p.join(dir, 'meta.json')).writeAsString(
-        '{"schemaVersion":1,"hasConversation":true,"updatedAtMs":300}',
+    test('persistedNativeId wins over scanned chats', () async {
+      await writeChat('scanned-chat', hasConversation: true, updatedAtMs: 300);
+      final got = await const CursorAiHistoryCapability().detectNativeId(
+        ctx(
+          env: {'CURSOR_CONFIG_DIR': base.path},
+          persistedNativeId: 'kept-chat',
+        ),
       );
+      expect(got, 'kept-chat');
+    });
+
+    test('workspace manifest chatId does not resume a different session', () async {
+      final home = p.join(base.path, 'member-home');
+      await Directory(p.join(home, '.cursor')).create(recursive: true);
 
       final layout = RuntimeLayout(teampilotRoot: base.path, fs: fs);
       final manifestPath = layout.workspaceLifecycleManifestPath(
@@ -228,13 +234,13 @@ CREATE TABLE session (
         ctx(
           env: {'HOME': home, 'USERPROFILE': home},
           workspaceId: 'ws',
-          sessionId: 'sess',
+          sessionId: 'new-sess',
           memberId: 'team-lead',
           teamId: cursorTestTeamId,
           manifestDataRoot: base.path,
         ),
       );
-      expect(got, 'manifest-chat');
+      expect(got, isNull);
     });
   });
 

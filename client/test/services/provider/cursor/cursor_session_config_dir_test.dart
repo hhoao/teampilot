@@ -7,14 +7,14 @@ import '../../../support/cursor_warm_tier_manifest_paths.dart';
 import '../../../support/in_memory_filesystem.dart';
 
 void main() {
-  test('mixed cursor member uses workspace team member home/.cursor as config root', () {
+  test('mixed cursor member uses session member home/.cursor as config root', () {
     final fs = InMemoryFilesystem();
     final layout = RuntimeLayout(teampilotRoot: '/tp', fs: fs);
-    final toolDir = layout.workspaceRuntimeMemberToolDir(
+    final toolDir = layout.sessionRuntimeToolDir(
       'ws',
-      cursorTestTeamId,
-      'team-lead',
+      'sess',
       'cursor',
+      memberId: 'team-lead',
     );
 
     expect(
@@ -35,7 +35,16 @@ void main() {
         memberId: 'team-lead',
         teamId: cursorTestTeamId,
       ),
-      contains('/runtime/teams/$cursorTestTeamId/'),
+      contains('/sessions/sess/'),
+    );
+    expect(
+      CursorSessionConfigDir.mixedHomeRoot(
+        layout,
+        workspaceId: 'ws',
+        sessionId: 'sess',
+        memberId: 'team-lead',
+      ),
+      p.join(toolDir, 'home'),
     );
   });
 

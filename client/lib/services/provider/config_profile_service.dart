@@ -278,21 +278,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
         memberToolDir: memberToolDir,
         member: member,
         memberHome: memberCli == CliTool.cursor
-            ? staging.fs.pathContext.join(
-                mixed && memberId != null
-                    ? staging.layout.workspaceRuntimeMemberToolDir(
-                        workspaceId,
-                        teamId,
-                        memberId,
-                        memberCli.value,
-                      )
-                    : staging.sessionToolDir(
-                        workspaceId,
-                        sessionId,
-                        memberCli.value,
-                      ),
-                'home',
-              )
+            ? staging.fs.pathContext.join(memberToolDir, 'home')
             : null,
       );
       final report = await staging._provisionStagedHooks(
@@ -1455,21 +1441,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
       memberToolDir: hookMemberToolDir,
       member: launchMember,
       memberHome: launchCli == CliTool.cursor && launchMember != null
-          ? staging.fs.pathContext.join(
-              team?.teamMode == TeamMode.mixed && memberId != null
-                  ? staging.layout.workspaceRuntimeMemberToolDir(
-                      trimmedWorkspaceId,
-                      trimmedTeamId,
-                      memberId,
-                      launchCli.value,
-                    )
-                  : staging.sessionToolDir(
-                      trimmedWorkspaceId,
-                      trimmedSessionId,
-                      launchCli.value,
-                    ),
-              'home',
-            )
+          ? staging.fs.pathContext.join(hookMemberToolDir, 'home')
           : null,
     );
     final resourceReport = await _provisionStagedResources(
@@ -1497,21 +1469,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
         workingDirectory: workingDirectory,
         additionalDirectories: additionalDirectories,
         memberHome: launchCli == CliTool.cursor && launchMember != null
-            ? staging.fs.pathContext.join(
-                team?.teamMode == TeamMode.mixed && memberId != null
-                    ? staging.layout.workspaceRuntimeMemberToolDir(
-                        trimmedWorkspaceId,
-                        trimmedTeamId,
-                        memberId,
-                        launchCli.value,
-                      )
-                    : staging.sessionToolDir(
-                        trimmedWorkspaceId,
-                        trimmedSessionId,
-                        launchCli.value,
-                      ),
-                'home',
-              )
+            ? staging.fs.pathContext.join(hookMemberToolDir, 'home')
             : null,
         hooksDir: hookPaths.hooksDir,
         hookConfigPath: hookPaths.configPath,

@@ -55,11 +55,11 @@ void main() {
   }
 
   Future<void> seedMemberAuth(String memberId) async {
-    final memberHome = layout.workspaceRuntimeMemberToolDir(
+    final memberHome = layout.sessionRuntimeToolDir(
       workspaceId,
-      'superpowers',
-      memberId,
+      sessionId,
       'cursor',
+      memberId: memberId,
     );
     final authDir = fs.pathContext.join(
       memberHome,
@@ -137,6 +137,7 @@ void main() {
         fs: fs,
         layout: layout,
         workspaceId: workspaceId,
+        sessionId: sessionId,
         teamId: 'superpowers',
         workingDirectory: workingDirectory,
       );
