@@ -256,10 +256,14 @@ void main() {
       prefs.foldToolCallCategories.contains(AiToolCallCategory.read),
       isTrue,
     );
-    expect(
-      prefs.foldToolCallCategories.contains(AiToolCallCategory.subagent),
-      isFalse,
-    );
+    for (final visible in [
+      AiToolCallCategory.subagent,
+      AiToolCallCategory.askUser,
+      AiToolCallCategory.plan,
+      AiToolCallCategory.task,
+    ]) {
+      expect(prefs.foldToolCallCategories.contains(visible), isFalse);
+    }
   });
 
   test('foldToolCallCategories round-trips via JSON names', () {
@@ -286,6 +290,24 @@ void main() {
         'foldToolCallCategories': <String>[],
       }).foldToolCallCategories,
       isEmpty,
+    );
+  });
+
+  test('legacy factory fold set migrates task/todos to visible', () {
+    final names = LayoutPreferences.legacyFactoryFoldToolCallCategories
+        .map((c) => c.name)
+        .toList();
+    expect(
+      LayoutPreferences.fromJson({
+        'foldToolCallCategories': names,
+      }).foldToolCallCategories,
+      LayoutPreferences.defaultFoldToolCallCategories,
+    );
+    expect(
+      LayoutPreferences.fromJson({
+        'foldToolCallCategories': [...names, 'subagent'],
+      }).foldToolCallCategories.contains(AiToolCallCategory.task),
+      isTrue,
     );
   });
 

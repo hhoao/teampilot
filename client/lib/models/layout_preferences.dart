@@ -201,7 +201,23 @@ class LayoutPreferences {
   static const minWorkspaceTerminalHeight = 120.0;
 
   /// Categories folded into the thinking-process chain by default.
+  ///
+  /// Interaction / coordination events stay visible: subagent, askUser, plan,
+  /// and task (todos).
   static const Set<AiToolCallCategory> defaultFoldToolCallCategories = {
+    AiToolCallCategory.read,
+    AiToolCallCategory.write,
+    AiToolCallCategory.edit,
+    AiToolCallCategory.command,
+    AiToolCallCategory.search,
+    AiToolCallCategory.browser,
+    AiToolCallCategory.mcp,
+  };
+
+  /// Factory fold set shipped before task/todos were taken out of the default.
+  /// [fromJson] maps this exact set to [defaultFoldToolCallCategories] so
+  /// installs that never customized fold categories pick up the new default.
+  static const Set<AiToolCallCategory> legacyFactoryFoldToolCallCategories = {
     AiToolCallCategory.read,
     AiToolCallCategory.write,
     AiToolCallCategory.edit,
@@ -566,6 +582,11 @@ Set<AiToolCallCategory> _categorySet(Object? raw) {
         break;
       }
     }
+  }
+  if (out.length ==
+          LayoutPreferences.legacyFactoryFoldToolCallCategories.length &&
+      out.containsAll(LayoutPreferences.legacyFactoryFoldToolCallCategories)) {
+    return LayoutPreferences.defaultFoldToolCallCategories;
   }
   return out;
 }

@@ -77,8 +77,10 @@ void main() {
     // subagent preview switch = 15 Switch widgets.
     expect(find.byType(Switch), findsNWidgets(15));
     final switches = tester.widgetList<Switch>(find.byType(Switch)).toList();
-    // 8 categories default to folded (on); the two cot switches default off.
+    // 7 workhorse categories default to folded (on); interaction categories
+    // (subagent / ask user / plan / tasks & todos) and the two cot switches
+    // plus auto-open subagent preview default off.
     final onCount = switches.where((s) => s.value).length;
-    expect(onCount, 8);
+    expect(onCount, 7);
   });
 }
