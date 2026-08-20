@@ -1,4 +1,5 @@
 import '../../models/team_config.dart';
+import '../catalog/providers/managed_catalog_skill_provider.dart';
 import 'assemblers/skill_assembler.dart';
 import 'providers/catalog_skill_contribution_provider.dart';
 import 'providers/plugin_skill_contribution_provider.dart';
@@ -23,6 +24,7 @@ class ResourceResolver {
     required ResourceCatalog catalog,
   }) {
     final providers = <SkillContributionProvider>[
+      ManagedCatalogSkillProvider(),
       CatalogSkillContributionProvider(catalog: catalog),
       if (scope.pluginIds.any((id) => id.trim().isNotEmpty))
         PluginSkillContributionProvider(catalog: catalog),
