@@ -1,37 +1,37 @@
-import 'dart:async';
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
 import '../../resource/contribution/resource_origin.dart';
 import '../../resource/providers/skill_contribution_provider.dart';
+import '../../storage/app_storage.dart';
+import 'teampilot_catalog_skill_md.dart';
 
 /// Always-on managed skill that teaches agents to use the teampilot catalog MCP.
 ///
-/// Not part of the user `skills/installed` manifest. Tests pass an explicit
-/// [sourceDirectory]; production resolves the shipped SKILL.md parent.
+/// Not part of the user `skills/installed` manifest. Tests may pass an explicit
+/// [sourceDirectory]; production writes `SKILL.md` onto the session filesystem.
 final class ManagedCatalogSkillProvider implements SkillContributionProvider {
-  ManagedCatalogSkillProvider({String? sourceDirectory})
-    : sourceDirectory =
-          sourceDirectory ?? resolveShippedCatalogSkillDirectory();
+  ManagedCatalogSkillProvider({this.sourceDirectory});
 
   static const skillId = 'teampilot-catalog';
 
-  static const shippedRelativePath =
-      'lib/services/catalog/managed_skills/teampilot-catalog';
-
-  final String sourceDirectory;
+  /// When set, [provide] returns this directory without writing.
+  final String? sourceDirectory;
 
   @override
   String get providerId => skillId;
 
   @override
-  FutureOr<Iterable<SkillContribution>> provide(SkillProviderContext context) {
+  Future<Iterable<SkillContribution>> provide(
+    SkillProviderContext context,
+  ) async {
+    final directory = sourceDirectory ?? await _writeManagedSkill(context);
     return [
       SkillContribution(
         id: skillId,
         invocationName: skillId,
-        artifact: SkillDirectoryArtifact(sourceDirectory),
+        artifact: SkillDirectoryArtifact(directory),
         origin: const ContributionOrigin(
           providerId: skillId,
           kind: ResourceOriginKind.managed,
@@ -40,31 +40,26 @@ final class ManagedCatalogSkillProvider implements SkillContributionProvider {
       ),
     ];
   }
-}
 
-/// Parent directory of the shipped `SKILL.md` when it exists on disk.
-String resolveShippedCatalogSkillDirectory() {
-  for (final root in _candidatePackageRoots()) {
-    final dir = p.normalize(
-      p.join(root, ManagedCatalogSkillProvider.shippedRelativePath),
+  Future<String> _writeManagedSkill(SkillProviderContext context) async {
+    final fs = context.filesystem ?? AppStorage.fs;
+    final dest = _managedDirectory(fs.pathContext, context);
+    await fs.ensureDir(dest);
+    await fs.writeString(
+      fs.pathContext.join(dest, 'SKILL.md'),
+      teampilotCatalogSkillMd,
     );
-    if (File(p.join(dir, 'SKILL.md')).existsSync()) return dir;
+    return dest;
   }
-  return p.normalize(
-    p.join(
-      Directory.current.path,
-      ManagedCatalogSkillProvider.shippedRelativePath,
-    ),
-  );
-}
 
-Iterable<String> _candidatePackageRoots() sync* {
-  var dir = Directory.current.path;
-  yield dir;
-  yield p.join(dir, 'client');
-  final parent = p.dirname(dir);
-  if (parent != dir) {
-    yield parent;
-    yield p.join(parent, 'client');
+  String _managedDirectory(p.Context path, SkillProviderContext context) {
+    final target = context.targetConfigDir?.trim();
+    if (target != null && target.isNotEmpty) {
+      return path.join(target, '.teampilot-managed', skillId);
+    }
+    final root = AppStorage.isInstalled
+        ? AppStorage.appDataRoot
+        : Directory.systemTemp.path;
+    return path.join(root, '.teampilot-managed', skillId);
   }
 }

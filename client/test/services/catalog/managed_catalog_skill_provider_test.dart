@@ -6,6 +6,8 @@ import 'package:teampilot/models/config_bundle.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/catalog/providers/catalog_prompt_provider.dart';
 import 'package:teampilot/services/catalog/providers/managed_catalog_skill_provider.dart';
+import 'package:teampilot/services/catalog/providers/teampilot_catalog_skill_md.dart';
+import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/resource/contribution/prompt_document.dart';
 import 'package:teampilot/services/resource/contribution/resource_origin.dart';
 import 'package:teampilot/services/resource/providers/prompt_contribution_provider.dart';
@@ -67,6 +69,44 @@ void main() {
   );
 
   test(
+    'provide without sourceDirectory writes SKILL.md onto the session filesystem',
+    () async {
+      final fs = LocalFilesystem();
+      final root = Directory.systemTemp.createTempSync(
+        'teampilot-catalog-managed_',
+      );
+      addTearDown(() {
+        if (root.existsSync()) root.deleteSync(recursive: true);
+      });
+      final targetConfigDir = p.join(root.path, 'cfg', 'claude');
+      await fs.ensureDir(targetConfigDir);
+
+      final contributions = [
+        ...await ManagedCatalogSkillProvider().provide(
+          SkillProviderContext(
+            cli: CliTool.claude,
+            scope: const SimpleResourceScope(bundle: ConfigBundle()),
+            filesystem: fs,
+            targetConfigDir: targetConfigDir,
+          ),
+        ),
+      ];
+
+      expect(contributions, hasLength(1));
+      final artifact = contributions.single.artifact! as SkillDirectoryArtifact;
+      final expectedDir = p.join(
+        targetConfigDir,
+        '.teampilot-managed',
+        'teampilot-catalog',
+      );
+      expect(artifact.sourceDirectory, expectedDir);
+      final skillMd = p.join(expectedDir, 'SKILL.md');
+      expect((await fs.stat(skillMd)).isFile, isTrue);
+      expect(await fs.readString(skillMd), contains(_skillDescription));
+    },
+  );
+
+  test(
     'provide ignores catalog skillIds and still returns one contribution',
     () async {
       final provider = ManagedCatalogSkillProvider(
@@ -124,5 +164,6 @@ void main() {
     expect(text, contains('install_'));
     expect(text, contains('import_'));
     expect(text, contains('~/.claude'));
+    expect(teampilotCatalogSkillMd, text);
   });
 }
