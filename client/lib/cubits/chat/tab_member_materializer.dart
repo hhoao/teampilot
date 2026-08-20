@@ -8,6 +8,7 @@ import '../../utils/logging/logger.dart';
 import 'model/chat_tab.dart';
 import 'chat_tab_store.dart';
 import 'member_connector.dart';
+import 'member_input_ready_wait.dart';
 import 'tab_session_runtime_coordinator.dart';
 
 /// Bridges TeamBus [MemberMaterializer] to PTY shells.
@@ -62,6 +63,7 @@ class TabMemberMaterializer implements MemberMaterializer {
     String sessionId,
     String memberId, {
     bool directToPty = false,
+    Duration waitCap = defaultMemberInputReadyCap,
   }) async {
     appLogger.d(
       '[member-materializer] input-ready wait start member=$memberId '
@@ -81,6 +83,8 @@ class TabMemberMaterializer implements MemberMaterializer {
       );
       return;
     }
+    final startedAt = DateTime.now();
+    var sawRunning = false;
     var waitTicks = 0;
     while (!_isClosed()) {
       if (_tabStore.openTabBySessionId(sessionId) == null) {
@@ -89,6 +93,27 @@ class TabMemberMaterializer implements MemberMaterializer {
           'member=$memberId session=$sessionId ticks=$waitTicks',
         );
         return;
+      }
+      _throwIfMemberInputWaitAborted(
+        sessionId: sessionId,
+        memberId: memberId,
+        startedAt: startedAt,
+        waitCap: waitCap,
+        sawRunning: sawRunning,
+      );
+      final shell = _tabStore
+          .openTabBySessionId(sessionId)
+          ?.memberShells[memberId];
+      if (shell != null &&
+          memberInputWaitSawRunning(
+            MemberShellReadySnapshot(
+              startFailed: shell.startFailed,
+              isConnecting: shell.isConnecting,
+              isRunning: shell.isRunning,
+              isConnected: shell.isConnected,
+            ),
+          )) {
+        sawRunning = true;
       }
       final shellReady = _runtime.isMemberReadyForAutomationInput(
         sessionId,
@@ -142,6 +167,43 @@ class TabMemberMaterializer implements MemberMaterializer {
         );
       }
       await Future<void>.delayed(const Duration(milliseconds: 100));
+    }
+  }
+
+  void _throwIfMemberInputWaitAborted({
+    required String sessionId,
+    required String memberId,
+    required DateTime startedAt,
+    required Duration waitCap,
+    required bool sawRunning,
+  }) {
+    if (memberInputWaitTimedOut(
+      startedAt: startedAt,
+      cap: waitCap,
+      now: DateTime.now(),
+    )) {
+      appLogger.d(
+        '[member-materializer] input-ready composer wait cap '
+        'member=$memberId session=$sessionId',
+      );
+      throw const MemberInputReadyException(MemberInputReadyFailure.timedOut);
+    }
+    final shell = _tabStore
+        .openTabBySessionId(sessionId)
+        ?.memberShells[memberId];
+    if (shell == null) return;
+    final snap = MemberShellReadySnapshot(
+      startFailed: shell.startFailed,
+      isConnecting: shell.isConnecting,
+      isRunning: shell.isRunning,
+      isConnected: shell.isConnected,
+    );
+    if (memberInputWaitShouldAbortDead(shell: snap, sawRunning: sawRunning)) {
+      appLogger.d(
+        '[member-materializer] input-ready composer wait dead '
+        'member=$memberId session=$sessionId',
+      );
+      throw const MemberInputReadyException(MemberInputReadyFailure.dead);
     }
   }
 

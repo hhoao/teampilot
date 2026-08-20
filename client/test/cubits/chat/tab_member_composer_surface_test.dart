@@ -5,6 +5,7 @@ import 'package:teampilot/cubits/chat/member_connector.dart';
 import 'package:teampilot/cubits/chat/model/chat_tab.dart';
 import 'package:teampilot/cubits/chat/model/chat_tab_info.dart';
 import 'package:teampilot/cubits/chat/tab_member_coordination_factory.dart';
+import 'package:teampilot/cubits/chat/member_input_ready_wait.dart';
 import 'package:teampilot/cubits/chat/tab_member_materializer.dart';
 import 'package:teampilot/cubits/chat/tab_member_pty_delivery.dart';
 import 'package:teampilot/cubits/chat/tab_session_runtime_coordinator.dart';
@@ -56,8 +57,10 @@ void main() {
     addTearDown(harness.dispose);
 
     await harness.paintTrustScreen();
-    expect(harness.delivery.isMemberComposerSurfaceReady(_sessionId, _memberId),
-        isFalse);
+    expect(
+      harness.delivery.isMemberComposerSurfaceReady(_sessionId, _memberId),
+      isFalse,
+    );
   });
 
   test('Codex composer chrome is not ready until dwell elapses', () async {
@@ -81,8 +84,10 @@ void main() {
     addTearDown(harness.dispose);
 
     await harness.paintTrustScreen();
-    expect(harness.delivery.isMemberComposerSurfaceReady(_sessionId, _memberId),
-        isTrue);
+    expect(
+      harness.delivery.isMemberComposerSurfaceReady(_sessionId, _memberId),
+      isTrue,
+    );
   });
 
   test('Codex doorbell defers on splash even after boot frame', () async {
@@ -101,27 +106,88 @@ void main() {
         .timeout(const Duration(seconds: 2));
 
     expect(harness.ptyInject.hasPendingRetry(_sessionId, _memberId), isTrue);
-    expect(harness.shell.ptyInputJoined.contains(TeamBus.doorbellNotice), isFalse);
+    expect(
+      harness.shell.ptyInputJoined.contains(TeamBus.doorbellNotice),
+      isFalse,
+    );
     expect(harness.shell.ptyInputJoined.contains('\r'), isTrue);
   });
 
-  test('ensureMemberInputReady waits for Codex composer then proceeds', () async {
+  test(
+    'ensureMemberInputReady waits for Codex composer then proceeds',
+    () async {
+      final harness = await _ComposerHarness.connect(cli: CliTool.codex);
+      addTearDown(harness.dispose);
+      await harness.paintTrustScreen();
+
+      var completed = false;
+      final pending = harness.materializer
+          .ensureMemberInputReady(_sessionId, _memberId, directToPty: true)
+          .then((_) => completed = true);
+
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+      expect(completed, isFalse);
+      expect(harness.shell.ptyInputJoined.contains('\r'), isTrue);
+
+      await harness.paintComposer();
+      await pending.timeout(const Duration(seconds: 2));
+      expect(completed, isTrue);
+    },
+  );
+
+  test(
+    'ensureMemberInputReady times out on short cap without composer',
+    () async {
+      final harness = await _ComposerHarness.connect(cli: CliTool.codex);
+      addTearDown(harness.dispose);
+
+      final started = DateTime.now();
+      await expectLater(
+        harness.materializer.ensureMemberInputReady(
+          _sessionId,
+          _memberId,
+          directToPty: true,
+          waitCap: const Duration(milliseconds: 250),
+        ),
+        throwsA(
+          isA<MemberInputReadyException>().having(
+            (e) => e.failure,
+            'failure',
+            MemberInputReadyFailure.timedOut,
+          ),
+        ),
+      );
+      expect(
+        DateTime.now().difference(started) < const Duration(seconds: 5),
+        isTrue,
+        reason: 'cap must not fall back to a 120s wall clock',
+      );
+    },
+  );
+
+  test('ensureMemberInputReady aborts when the shell dies', () async {
     final harness = await _ComposerHarness.connect(cli: CliTool.codex);
     addTearDown(harness.dispose);
-    await harness.paintTrustScreen();
 
-    var completed = false;
-    final pending = harness.materializer
-        .ensureMemberInputReady(_sessionId, _memberId, directToPty: true)
-        .then((_) => completed = true);
+    final pending = harness.materializer.ensureMemberInputReady(
+      _sessionId,
+      _memberId,
+      directToPty: true,
+      waitCap: const Duration(seconds: 10),
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    harness.shell.session.failLaunch('test kill');
 
-    await Future<void>.delayed(const Duration(milliseconds: 250));
-    expect(completed, isFalse);
-    expect(harness.shell.ptyInputJoined.contains('\r'), isTrue);
-
-    await harness.paintComposer();
-    await pending.timeout(const Duration(seconds: 2));
-    expect(completed, isTrue);
+    await expectLater(
+      pending,
+      throwsA(
+        isA<MemberInputReadyException>().having(
+          (e) => e.failure,
+          'failure',
+          MemberInputReadyFailure.dead,
+        ),
+      ),
+    );
   });
 }
 
@@ -143,17 +209,19 @@ final class _ComposerHarness {
   static Future<_ComposerHarness> connect({required CliTool cli}) async {
     final store = ChatTabStore();
     store.setActiveWorkspaceId('ws-1');
-    final tab = ChatTab(
-      info: const ChatTabInfo(id: _sessionId, title: 't', subtitle: ''),
-      workspaceId: 'ws-1',
-      cliTeamName: '',
-    )..persistedSession = AppSession(
-        sessionId: _sessionId,
-        workspaceId: 'ws-1',
-        sessionTeam: '',
-        cli: cli,
-        createdAt: 0,
-      );
+    final tab =
+        ChatTab(
+            info: const ChatTabInfo(id: _sessionId, title: 't', subtitle: ''),
+            workspaceId: 'ws-1',
+            cliTeamName: '',
+          )
+          ..persistedSession = AppSession(
+            sessionId: _sessionId,
+            workspaceId: 'ws-1',
+            sessionTeam: '',
+            cli: cli,
+            createdAt: 0,
+          );
     store.registerSession(tab);
 
     final shell = await ConnectedRecordingShell.connect();
@@ -203,7 +271,9 @@ final class _ComposerHarness {
   }
 
   Future<void> paintTrustScreen() async {
-    await shell.emitPtyOutput('Do you trust this directory?\r\nPress enter\r\n');
+    await shell.emitPtyOutput(
+      'Do you trust this directory?\r\nPress enter\r\n',
+    );
     final window = await _waitForWindow(
       shell.session,
       (text) => text.contains('trust') || text.contains('Press enter'),

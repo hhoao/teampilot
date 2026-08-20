@@ -1,6 +1,5 @@
-import 'dart:async';
-
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/cubits/chat/member_input_ready_wait.dart';
 import 'package:teampilot/cubits/chat/model/session_connect_request.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/workspace_folder.dart';
@@ -70,22 +69,19 @@ void main() {
       expect(openSessionCalls, 0);
     });
 
-    test(
-      'pty: connects, waits for member, delivers, and titles — '
-      'without requestOpenSession',
-      () async {
-        final result = await runSubmit('  continue here  ');
+    test('pty: connects, waits for member, delivers, and titles — '
+        'without requestOpenSession', () async {
+      final result = await runSubmit('  continue here  ');
 
-        expect(result.ok, isTrue);
-        expect(result.channel, HistoryContinueChannel.pty);
-        expect(result.mailId, isNull);
-        expect(connectCalls, [connectRequest]);
-        expect(readyCalls, [('sess-1', 'member-1', true)]);
-        expect(deliverCalls, [('sess-1', 'member-1', 'continue here', true)]);
-        expect(titleCalls, [('sess-1', 'continue here')]);
-        expect(openSessionCalls, 0);
-      },
-    );
+      expect(result.ok, isTrue);
+      expect(result.channel, HistoryContinueChannel.pty);
+      expect(result.mailId, isNull);
+      expect(connectCalls, [connectRequest]);
+      expect(readyCalls, [('sess-1', 'member-1', true)]);
+      expect(deliverCalls, [('sess-1', 'member-1', 'continue here', true)]);
+      expect(titleCalls, [('sess-1', 'continue here')]);
+      expect(openSessionCalls, 0);
+    });
 
     test(
       'mailbox: connects and delivers without ready-wait or PTY inject',
@@ -211,7 +207,9 @@ void main() {
         ensureMemberInputReady:
             (sessionId, memberId, {bool directToPty = false}) async {
               readyCalls.add((sessionId, memberId, directToPty));
-              throw TimeoutException('not ready');
+              throw const MemberInputReadyException(
+                MemberInputReadyFailure.timedOut,
+              );
             },
         deliverUserCommandToMember:
             (sessionId, memberId, text, {bool directToPty = false}) async {
@@ -221,7 +219,6 @@ void main() {
         applyFirstPromptTitle: (sessionId, firstPrompt) async {
           titleCalls.add((sessionId, firstPrompt));
         },
-        readyTimeout: const Duration(milliseconds: 1),
       );
 
       expect(result.ok, isFalse);

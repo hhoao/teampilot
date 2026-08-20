@@ -1,13 +1,11 @@
-import 'dart:async';
-
+import '../../cubits/chat/member_input_ready_wait.dart';
 import '../../cubits/chat/model/session_connect_request.dart';
 import '../../utils/logging/logger.dart';
 import 'history_continue_delivery.dart';
 
 /// Preference gate: when false (default), Chat submit stays on Chat.
-bool shouldSwitchToTerminalAfterChatSubmit(
-  bool chatSubmitSwitchesToTerminal,
-) => chatSubmitSwitchesToTerminal;
+bool shouldSwitchToTerminalAfterChatSubmit(bool chatSubmitSwitchesToTerminal) =>
+    chatSubmitSwitchesToTerminal;
 
 /// Re-entrancy lock for History continue while connect/inject is in flight.
 ///
@@ -70,7 +68,6 @@ Future<HistoryContinueSubmitResult> submitSessionHistoryReviewMessage({
 
   /// When set, called after connect so a newly installed TeamBus is visible.
   HistoryContinueChannel Function()? resolveChannel,
-  Duration readyTimeout = const Duration(seconds: 120),
 }) async {
   final trimmed = message.trim();
   if (trimmed.isEmpty) {
@@ -127,14 +124,11 @@ Future<HistoryContinueSubmitResult> submitSessionHistoryReviewMessage({
   }
 
   try {
-    await ensureMemberInputReady(
-      sessionId,
-      memberId,
-      directToPty: true,
-    ).timeout(readyTimeout);
-  } on TimeoutException {
+    await ensureMemberInputReady(sessionId, memberId, directToPty: true);
+  } on MemberInputReadyException catch (error) {
     appLogger.w(
-      'submitSessionHistoryReviewMessage: member not ready '
+      'submitSessionHistoryReviewMessage: '
+      '${error.failure == MemberInputReadyFailure.timedOut ? 'composer wait cap' : 'composer wait dead'} '
       'session=$sessionId member=$memberId',
     );
     return const HistoryContinueSubmitResult.failed();

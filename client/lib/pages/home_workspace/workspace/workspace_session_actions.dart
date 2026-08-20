@@ -8,6 +8,7 @@ import 'package:shared_ui/shared_ui.dart';
 import '../../../widgets/app_toast/app_toast.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../cubits/chat/member_input_ready_wait.dart';
 import '../../../cubits/chat_cubit.dart';
 import '../../../cubits/cli_presets_cubit.dart';
 import '../../../cubits/expert_hub_cubit.dart';
@@ -536,11 +537,18 @@ Future<bool> _ensureLandingSessionConnected({
   // persist+connect. Re-opening here races that path and can connect with the
   // provisional session (empty cliTeamName) before disk persistence finishes.
   try {
-    await chatCubit.memberMaterializer
-        .ensureMemberInputReady(session.sessionId, memberId, directToPty: true)
-        .timeout(const Duration(seconds: 120));
+    await chatCubit.memberMaterializer.ensureMemberInputReady(
+      session.sessionId,
+      memberId,
+      directToPty: true,
+    );
     return true;
-  } on TimeoutException {
+  } on MemberInputReadyException catch (error) {
+    appLogger.w(
+      'submitWorkspaceLandingMessage: '
+      '${error.failure == MemberInputReadyFailure.timedOut ? 'composer wait cap' : 'composer wait dead'} '
+      'session=${session.sessionId} member=$memberId',
+    );
     return false;
   }
 }

@@ -178,7 +178,11 @@ class TerminalSession {
   bool get isRunning => _launch.isRunning;
   bool get isConnecting => _launch.isConnecting;
   bool get isConnected => _launch.isConnected;
+  bool get startFailed => _launch.startFailed;
   bool get transportReadyForIo => _launch.transportReadyForIo;
+
+  /// Marks the launch failed (spawn/start error or test kill).
+  void failLaunch(String message) => _launch.failLaunch(message);
 
   /// Local PTY process id when the session transport exposes one.
   int? get pid => _launch.pid;
