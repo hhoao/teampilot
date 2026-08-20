@@ -129,6 +129,61 @@ void main() {
       expect(allow, contains(CursorCliConfigPolicy.teamBusMcpAllowEntry));
     });
 
+    test('cliConfigJson overlay keeps existing member authInfo', () async {
+      await fs.writeString(
+        layout.cliConfig(memberHome),
+        '{"authInfo":{"userId":"u1","authId":"a1"}}',
+      );
+      const baseJson = '''
+{"serverConfigCache":{"backendUrl":"https://api2.cursor.sh"},"permissions":{"allow":["Mcp(existing:*)"]}}
+''';
+
+      await provisioner.provisionOverlayOnly(
+        memberHome: memberHome,
+        member: member,
+        busIdle: null,
+        forceTeamLeadDelegateMode: false,
+        cliConfigJson: baseJson,
+      );
+
+      final cliConfig =
+          jsonDecode((await fs.readString(layout.cliConfig(memberHome)))!)
+              as Map<String, Object?>;
+      expect(cliConfig['authInfo'], {'userId': 'u1', 'authId': 'a1'});
+      expect(cliConfig['serverConfigCache'], {
+        'backendUrl': 'https://api2.cursor.sh',
+      });
+      final allow = (cliConfig['permissions']! as Map)['allow'] as List;
+      expect(allow, contains('Mcp(existing:*)'));
+      expect(allow, contains(CursorCliConfigPolicy.teamBusMcpAllowEntry));
+    });
+
+    test('seeds authInfo from warm cache when overlay base omits it', () async {
+      const realHome = '/home/user';
+      await fs.writeString(
+        layout.cliConfig(realHome),
+        jsonEncode({
+          'authInfo': {'userId': 'real', 'authId': 'a1'},
+          'serverConfigCache': {'backendUrl': 'https://api2.cursor.sh'},
+        }),
+      );
+
+      await provisioner.provisionOverlayOnly(
+        memberHome: memberHome,
+        member: member,
+        busIdle: null,
+        forceTeamLeadDelegateMode: false,
+        cliConfigJson:
+            '{"serverConfigCache":{"backendUrl":"https://api2.cursor.sh"}}',
+        warmCacheHomeRoot: realHome,
+      );
+
+      final cliConfig =
+          jsonDecode((await fs.readString(layout.cliConfig(memberHome)))!)
+              as Map<String, Object?>;
+      expect(cliConfig['authInfo'], {'userId': 'real', 'authId': 'a1'});
+    });
+
     test(
       'writes role.mdc but skips bus hooks/mcp when busIdle is null',
       () async {
@@ -154,6 +209,36 @@ void main() {
       );
 
       expect((await fs.stat(layout.authJson(memberHome))).isFile, isFalse);
+    });
+
+    test('stamps picker model after merging team-bus permissions', () async {
+      await fs.writeString(
+        layout.cliConfig(memberHome),
+        '{"authInfo":{"userId":"u1"},"serverConfigCache":{"backendUrl":"https://api2.cursor.sh"}}',
+      );
+
+      await provisioner.provisionOverlayOnly(
+        memberHome: memberHome,
+        member: const TeamMemberConfig(
+          id: 'planner',
+          name: 'Planner',
+          model: 'cursor-grok-4.6-high',
+        ),
+        busIdle: localBusIdle,
+        forceTeamLeadDelegateMode: false,
+      );
+
+      final cliConfig =
+          jsonDecode((await fs.readString(layout.cliConfig(memberHome)))!)
+              as Map<String, Object?>;
+      expect(cliConfig['authInfo'], {'userId': 'u1'});
+      expect(cliConfig['serverConfigCache'], {
+        'backendUrl': 'https://api2.cursor.sh',
+      });
+      expect((cliConfig['model'] as Map)['modelId'], 'grok-4.6');
+      expect(cliConfig['hasChangedDefaultModel'], isTrue);
+      final allow = (cliConfig['permissions']! as Map)['allow'] as List;
+      expect(allow, contains(CursorCliConfigPolicy.teamBusMcpAllowEntry));
     });
   });
 

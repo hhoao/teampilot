@@ -634,6 +634,7 @@ final class CursorSessionLifecycleCapability implements CliSessionCapability {
         forceTeamLeadDelegateMode: team.forceTeamLeadDelegateMode,
         cliConfigJson: baseJson,
         sharedMcpBasePath: mcpBasePath,
+        warmCacheHomeRoot: ctx.paths.home,
       );
     }
 

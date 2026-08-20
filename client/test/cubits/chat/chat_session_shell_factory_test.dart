@@ -88,4 +88,16 @@ void main() {
 
     expect(factory.cliForMember(team, 'missing'), team.cli);
   });
+
+  test('newSession uses Cursor 45s startup deadline', () {
+    final factory = ChatSessionShellFactory(
+      executableResolver: () => 'cursor-agent',
+      cliExecutableResolver: (cli) => 'exec-${cli.value}',
+      defaultTargetResolver: RuntimeTarget.local,
+    );
+
+    final session = factory.newSession(CliTool.cursor);
+
+    expect(session.startupDeadline, const Duration(seconds: 45));
+  });
 }

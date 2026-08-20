@@ -369,5 +369,50 @@ void main() {
         expect(result, CredentialLinkResult.missing);
       },
     );
+
+    test(
+      'provision stamps picker model into cli-config and seeds warm caches',
+      () async {
+        const memberHome = '/data/tp/members/planner/cursor/home';
+        const realHome = '/home/user';
+        await fs.writeString(
+          layout.cliConfig(realHome),
+          jsonEncode({
+            'serverConfigCache': {'backendUrl': 'https://api2.cursor.sh'},
+            'authInfo': {'userId': 'real'},
+          }),
+        );
+        await fs.writeString(layout.statsigCache(realHome), '{"statsig":true}');
+
+        await provisioner.provision(
+          memberHome: memberHome,
+          providerId: null,
+          member: const TeamMemberConfig(
+            id: 'planner',
+            name: 'Planner',
+            model: 'cursor-grok-4.6-high',
+          ),
+          busIdle: null,
+          forceTeamLeadDelegateMode: false,
+          mixed: false,
+          promptAlreadyMaterialized: true,
+          warmCacheHomeRoot: realHome,
+        );
+
+        expect(
+          await fs.readString(layout.statsigCache(memberHome)),
+          '{"statsig":true}',
+        );
+        final cliConfig =
+            jsonDecode((await fs.readString(layout.cliConfig(memberHome)))!)
+                as Map<String, Object?>;
+        expect(cliConfig['serverConfigCache'], {
+          'backendUrl': 'https://api2.cursor.sh',
+        });
+        expect(cliConfig['authInfo'], {'userId': 'real'});
+        expect((cliConfig['model'] as Map)['modelId'], 'grok-4.6');
+        expect(cliConfig['hasChangedDefaultModel'], isTrue);
+      },
+    );
   });
 }

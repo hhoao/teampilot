@@ -79,6 +79,12 @@ abstract interface class TerminalBehaviorCapability implements CliCapability {
 
   /// When the TUI is ready for paste+CR. Default is boot-frame-only.
   FullscreenInputReadiness get inputReadiness;
+
+  /// How long [TerminalLaunchController] waits for first PTY paint.
+  ///
+  /// Cursor cold starts often exceed 15s while plugins and the model catalog
+  /// load; other CLIs keep the historical 15s default.
+  Duration get startupDeadline;
 }
 
 final class TurnInterruptPlan {

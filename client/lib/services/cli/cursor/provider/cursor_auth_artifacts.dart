@@ -13,7 +13,10 @@ abstract final class CursorAuthArtifacts {
   static const cursorDirRequired = <String>['cli-config.json'];
 
   /// Relative to `$HOME/.cursor/`.
-  static const cursorDirOptional = <String>['agent-cli-state.json'];
+  static const cursorDirOptional = <String>[
+    'agent-cli-state.json',
+    'statsig-cache.json',
+  ];
 
   /// Written into isolated `$HOME/.cursor/agent-cli-state.json` so
   /// `cursor-agent` does not re-print the "`agent` vs `cursor-agent`" tip on

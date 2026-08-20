@@ -9,16 +9,19 @@ void main() {
   group('CodexTerminalBehavior', () {
     const behavior = CodexTerminalBehavior();
 
-    test('uses Cursor-length paste settle so CR is not swallowed into paste', () {
-      expect(
-        behavior.fullScreenPasteSettleDelay,
-        const Duration(milliseconds: 150),
-      );
-      expect(
-        behavior.fullscreenCrAckStrategy,
-        FullscreenCrAckStrategy.composerMovesDown,
-      );
-    });
+    test(
+      'uses Cursor-length paste settle so CR is not swallowed into paste',
+      () {
+        expect(
+          behavior.fullScreenPasteSettleDelay,
+          const Duration(milliseconds: 150),
+        );
+        expect(
+          behavior.fullscreenCrAckStrategy,
+          FullscreenCrAckStrategy.composerMovesDown,
+        );
+      },
+    );
 
     test('input surface is not ready on splash or trust screens', () {
       expect(
@@ -41,21 +44,19 @@ void main() {
       expect(behavior.inputReadiness.isReady('› '), isTrue);
     });
 
-    test('composer chrome must dwell before submit, matching real PTY boot', () {
-      expect(behavior.inputReadiness.readyDwell, const Duration(seconds: 1));
-    });
+    test(
+      'composer chrome must dwell before submit, matching real PTY boot',
+      () {
+        expect(behavior.inputReadiness.readyDwell, const Duration(seconds: 1));
+      },
+    );
 
     test('boot-gate needles match Codex first-run screens', () {
       expect(
-        behavior.inputReadiness.needsBootGateNudge(
-          'Press enter to continue',
-        ),
+        behavior.inputReadiness.needsBootGateNudge('Press enter to continue'),
         isTrue,
       );
-      expect(
-        behavior.inputReadiness.needsBootGateNudge('› hello'),
-        isFalse,
-      );
+      expect(behavior.inputReadiness.needsBootGateNudge('› hello'), isFalse);
     });
   });
 
@@ -71,6 +72,17 @@ void main() {
     expect(cursor.inputReadiness.waitsForSurface, isTrue);
     expect(cursor.inputReadiness.isReady('thinking'), isFalse);
     expect(cursor.inputReadiness.isReady('→ Plan, search'), isTrue);
+  });
+
+  test('Cursor allows 45s for cold plugin and catalog startup', () {
+    expect(
+      const CursorTerminalBehavior().startupDeadline,
+      const Duration(seconds: 45),
+    );
+    expect(
+      const ClaudeTerminalBehavior().startupDeadline,
+      const Duration(seconds: 15),
+    );
   });
 
   test('isTerminalInputSurfaceReady treats missing readiness as boot-only', () {

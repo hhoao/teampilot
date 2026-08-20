@@ -30,4 +30,6 @@ final class OpencodeTerminalBehavior implements TerminalBehaviorCapability {
   @override
   FullscreenInputReadiness get inputReadiness =>
       FullscreenInputReadiness.bootFrameOnly;
+  @override
+  Duration get startupDeadline => const Duration(seconds: 15);
 }

@@ -54,7 +54,8 @@ final class CursorTerminalBehavior implements TerminalBehaviorCapability {
   @override
   String? get fullscreenComposerPrefix => '→';
   @override
-  FullscreenInputReadiness get inputReadiness => const FullscreenInputReadiness(
-    readyNeedles: ['→'],
-  );
+  FullscreenInputReadiness get inputReadiness =>
+      const FullscreenInputReadiness(readyNeedles: ['→']);
+  @override
+  Duration get startupDeadline => const Duration(seconds: 45);
 }

@@ -1,10 +1,13 @@
 import '../../models/runtime_target.dart' as rt;
-import '../../models/runtime_target.dart' show RuntimeKind, sshProfileIdOfId, usesSshTransport;
+import '../../models/runtime_target.dart'
+    show RuntimeKind, sshProfileIdOfId, usesSshTransport;
 import '../../models/ssh_profile.dart';
 import '../../models/cli_preset.dart';
 import '../../models/team_config.dart';
 import '../../services/cli/preset_resolver.dart';
 import '../../services/cli/flashskyai/remote_flashskyai_command_builder.dart';
+import '../../services/cli/registry/capabilities/terminal_behavior_capability.dart';
+import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/ssh/ssh_client_factory.dart';
 import '../../services/terminal/ssh_pty_transport.dart';
 import '../../services/terminal/terminal_session.dart';
@@ -102,12 +105,14 @@ class ChatSessionShellFactory {
     final executable = _resolveExecutableFor(cli);
     final scrollback = _scrollbackLines;
     final target = _effectiveTarget(workTarget);
+    final startupDeadline = _startupDeadlineFor(cli);
     if (_useSshFor(target)) {
       final profile = _profileFor(target);
       if (profile == null) {
-        return _terminalSessionFactory(
+        return _localSession(
           executable: executable,
-          scrollbackLines: scrollback,
+          scrollback: scrollback,
+          startupDeadline: startupDeadline,
         );
       }
       late final TerminalSession shell;
@@ -117,6 +122,7 @@ class ChatSessionShellFactory {
         validateLaunch: false,
         usesRemoteTransport: true,
         parseExecutable: false,
+        startupDeadline: startupDeadline,
         runtimeTarget: const RuntimeTarget.ssh(),
         transportStarter:
             (
@@ -161,9 +167,37 @@ class ChatSessionShellFactory {
       );
       return shell;
     }
-    return _terminalSessionFactory(
+    return _localSession(
+      executable: executable,
+      scrollback: scrollback,
+      startupDeadline: startupDeadline,
+    );
+  }
+
+  Duration _startupDeadlineFor(CliTool cli) {
+    return CliToolRegistry.builtIn()
+            .capability<TerminalBehaviorCapability>(cli)
+            ?.startupDeadline ??
+        const Duration(seconds: 15);
+  }
+
+  TerminalSession _localSession({
+    required String executable,
+    required int scrollback,
+    required Duration startupDeadline,
+  }) {
+    final session = _terminalSessionFactory(
       executable: executable,
       scrollbackLines: scrollback,
+    );
+    if (session.startupDeadline == startupDeadline) return session;
+    return TerminalSession(
+      executable: executable,
+      scrollbackLines: scrollback,
+      startupDeadline: startupDeadline,
+      validateLaunch: session.validateLaunch,
+      usesRemoteTransport: session.usesRemoteTransport,
+      parseExecutable: session.parseExecutable,
     );
   }
 }

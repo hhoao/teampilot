@@ -36,14 +36,15 @@ void main() {
     expect(cap.extractText(ProcessResult(0, 0, ' out ', '')), 'out');
   });
 
-  test('cursor: -p prompt + model + CURSOR_CONFIG_DIR', () {
+  test('cursor: -p prompt without --model + CURSOR_CONFIG_DIR', () {
     const cap = CursorHeadlessCapability();
     final run = ctx();
     final args = const CliLaunchArgAssembler().assembleHeadless(
       CliToolRegistry.builtIn().tryGet(CliTool.cursor)!,
       run,
     );
-    expect(args, containsAllInOrder(['-p', '--model', 'm', 'P']));
+    expect(args, containsAllInOrder(['-p', 'P']));
+    expect(args, isNot(contains('--model')));
     expect(cap.buildEnvironment(run)['CURSOR_CONFIG_DIR'], '/tmp/c');
   });
 

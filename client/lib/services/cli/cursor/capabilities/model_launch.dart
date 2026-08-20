@@ -6,16 +6,10 @@ final class CursorModelLaunch implements CliLaunchArgProvider {
   const CursorModelLaunch();
 
   @override
-  Iterable<CliLaunchArgContribution> buildLaunchArgs(
-    CliLaunchContext context,
-  ) sync* {
-    final model = context.member.model.trim();
-    if (model.isEmpty) return;
-
-    yield CliLaunchArgContribution(
-      key: 'cursor-model',
-      phase: LaunchArgPhase.model,
-      args: ['--model', model],
-    );
+  Iterable<CliLaunchArgContribution> buildLaunchArgs(CliLaunchContext _) sync* {
+    // Variant slugs like `cursor-grok-4.6-high` are stamped into isolated
+    // `cli-config.json` (see CursorLaunchModel). Passing `--model` skips
+    // cursor-agent's persist-from-config fallback and exits 1 when the live
+    // catalog is still empty.
   }
 }

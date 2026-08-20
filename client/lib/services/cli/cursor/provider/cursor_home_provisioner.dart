@@ -11,12 +11,14 @@ import '../../registry/capabilities/prompt_capability.dart';
 import '../../registry/prompt/prompt_hub_service.dart';
 import '../../registry/config_profile/hook_seat_context_completer.dart';
 import '../../registry/hook/managed_hook_provisioner.dart';
+import '../capabilities/cli_config_merger.dart';
 import '../capabilities/prompt.dart';
 import 'cursor_auth_artifacts.dart';
 import 'cursor_cli_config_policy.dart';
 import 'cursor_home_bus_overlay.dart';
 import 'cursor_home_layout.dart';
 import 'cursor_hook_writer.dart';
+import 'cursor_launch_model.dart';
 import 'cursor_member_home_passthrough.dart';
 import 'cursor_provider_credentials_service.dart';
 
@@ -52,6 +54,7 @@ final class CursorHomeProvisioner {
     required bool mixed,
     bool promptAlreadyMaterialized = false,
     String? realHomeRoot,
+    String? warmCacheHomeRoot,
   }) async {
     await _ensureCursorDirs(memberHome);
     await _mirrorRealHomePassthrough(
@@ -68,6 +71,9 @@ final class CursorHomeProvisioner {
     await _ensureAgentCommandTipSuppressed(memberHome);
 
     if (!member.isValid) return;
+
+    await _seedWarmCaches(memberHome, warmCacheHomeRoot: warmCacheHomeRoot);
+    await _stampLaunchModel(memberHome, member.model);
 
     if (!mixed) {
       if (promptAlreadyMaterialized) return;
@@ -91,6 +97,7 @@ final class CursorHomeProvisioner {
       member: member,
       busIdle: busIdle,
       forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
+      warmCacheHomeRoot: warmCacheHomeRoot,
     );
   }
 
@@ -104,12 +111,15 @@ final class CursorHomeProvisioner {
     required bool forceTeamLeadDelegateMode,
     String? cliConfigJson,
     String? sharedMcpBasePath,
+    String? warmCacheHomeRoot,
   }) async {
     if (!member.isValid) return;
 
     await _ensureOverlayDirs(memberHome);
     await _ensureAgentCommandTipSuppressed(memberHome);
     await _mergeTeamBusPermissions(memberHome, cliConfigJson: cliConfigJson);
+    await _seedWarmCaches(memberHome, warmCacheHomeRoot: warmCacheHomeRoot);
+    await _stampLaunchModel(memberHome, member.model);
     await const PromptHubService().provisionForCli(
       cli: CliTool.cursor,
       capability: _promptProvision,
@@ -200,19 +210,88 @@ final class CursorHomeProvisioner {
     String? cliConfigJson,
   }) async {
     final path = _layout.cliConfig(memberHome);
-    Map<String, Object?>? existing;
-    if (cliConfigJson != null) {
-      existing = CursorCliConfigPolicy.parseConfigJson(cliConfigJson);
+    final onDisk = await _readCliConfig(path) ?? const <String, Object?>{};
+    final baseJson = cliConfigJson;
+    final Map<String, Object?> base;
+    if (baseJson != null) {
+      base = CursorCliConfigPolicy.parseConfigJson(baseJson) ?? const {};
     } else {
-      final raw = await _fs.readString(path);
-      existing = raw != null
-          ? CursorCliConfigPolicy.parseConfigJson(raw)
-          : null;
+      base = onDisk;
     }
-    final merged = CursorCliConfigPolicy.applyMixedTeamSessionPolicy(
-      existing ?? const {},
+    final merged = CursorCliConfigMerger.mergeMemberConfig(
+      base: base,
+      memberOverrides: baseJson != null ? onDisk : const {},
     );
     await _fs.atomicWrite(path, _jsonPretty(merged));
+  }
+
+  Future<void> _seedWarmCaches(
+    String memberHome, {
+    String? warmCacheHomeRoot,
+  }) async {
+    final warm = warmCacheHomeRoot?.trim() ?? '';
+    if (warm.isEmpty) return;
+
+    await _copyFileIfMissing(
+      src: _layout.statsigCache(warm),
+      dest: _layout.statsigCache(memberHome),
+    );
+    await _seedMissingCliConfigFields(
+      memberHome: memberHome,
+      warmHome: warm,
+      keys: const ['serverConfigCache', 'authInfo'],
+    );
+  }
+
+  Future<void> _copyFileIfMissing({
+    required String src,
+    required String dest,
+  }) async {
+    if ((await _fs.stat(dest)).isFile) return;
+    if (!(await _fs.stat(src)).isFile) return;
+    await _fs.ensureDir(_fs.pathContext.dirname(dest));
+    final raw = await _fs.readString(src);
+    if (raw == null) return;
+    await _fs.atomicWrite(dest, raw);
+  }
+
+  Future<void> _seedMissingCliConfigFields({
+    required String memberHome,
+    required String warmHome,
+    required List<String> keys,
+  }) async {
+    final destPath = _layout.cliConfig(memberHome);
+    final dest = await _readCliConfig(destPath) ?? <String, Object?>{};
+    final warm = await _readCliConfig(_layout.cliConfig(warmHome));
+    if (warm == null) return;
+
+    var changed = false;
+    for (final key in keys) {
+      if (dest[key] != null) continue;
+      final value = warm[key];
+      if (value == null) continue;
+      dest[key] = value;
+      changed = true;
+    }
+    if (!changed) return;
+    dest.putIfAbsent('version', () => CursorCliConfigPolicy.defaultVersion);
+    await _fs.ensureDir(_fs.pathContext.dirname(destPath));
+    await _fs.atomicWrite(destPath, _jsonPretty(dest));
+  }
+
+  Future<void> _stampLaunchModel(String memberHome, String pickerId) async {
+    if (pickerId.trim().isEmpty) return;
+    final path = _layout.cliConfig(memberHome);
+    final existing = await _readCliConfig(path) ?? <String, Object?>{};
+    final stamped = CursorLaunchModel.applyToConfig(existing, pickerId);
+    await _fs.ensureDir(_fs.pathContext.dirname(path));
+    await _fs.atomicWrite(path, _jsonPretty(stamped));
+  }
+
+  Future<Map<String, Object?>?> _readCliConfig(String path) async {
+    final raw = await _fs.readString(path);
+    if (raw == null) return null;
+    return CursorCliConfigPolicy.parseConfigJson(raw);
   }
 
   Future<void> _writeBusOverlay({

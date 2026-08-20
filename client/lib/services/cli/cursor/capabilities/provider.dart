@@ -381,6 +381,7 @@ final class CursorProviderCapability extends CatalogModelCapability
       // home (slow on Android SSH). Post-flush uses one remote find+ln script
       // when an SSH profile is available, otherwise the local FS mirror.
       realHomeRoot: null,
+      warmCacheHomeRoot: ctx.paths.home,
     );
 
     if (!ctx.hooksAlreadyMaterialized) {

@@ -48,8 +48,6 @@ void main() {
         '/repo/a',
         '--add-dir',
         '/repo/b',
-        '--model',
-        'gpt-5.2',
         '--approve-mcps',
         '--force',
         '--team-flag',
@@ -80,6 +78,28 @@ void main() {
       ],
     );
   });
+
+  test(
+    'Cursor does not pass --model; picker ids are stamped into cli-config',
+    () {
+      expect(
+        _assemble(
+          team: const TeamProfile(
+            id: 'team',
+            name: 'Team',
+            cli: CliTool.cursor,
+          ),
+          member: const TeamMemberConfig(
+            id: 'member',
+            name: 'Member',
+            model: 'cursor-grok-4.6-high',
+            launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
+          ),
+        ),
+        isNot(contains('--model')),
+      );
+    },
+  );
 
   test('Cursor permission provider emits --force only for full access', () {
     expect(

@@ -38,4 +38,6 @@ final class CodexTerminalBehavior implements TerminalBehaviorCapability {
     ],
     readyDwell: Duration(seconds: 1),
   );
+  @override
+  Duration get startupDeadline => const Duration(seconds: 15);
 }

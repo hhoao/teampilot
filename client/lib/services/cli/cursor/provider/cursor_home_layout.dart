@@ -18,6 +18,7 @@ final class CursorHomeLayout {
   static const mcpFileName = 'mcp.json';
   static const cliConfigFileName = 'cli-config.json';
   static const agentCliStateFileName = 'agent-cli-state.json';
+  static const statsigCacheFileName = 'statsig-cache.json';
   static const configDirName = '.config';
   static const configCursorDirName = 'cursor';
   static const authFileName = 'auth.json';
@@ -93,4 +94,7 @@ final class CursorHomeLayout {
 
   String agentCliState(String homeRoot) =>
       _pathContext.join(cursorDir(homeRoot), agentCliStateFileName);
+
+  String statsigCache(String homeRoot) =>
+      _pathContext.join(cursorDir(homeRoot), statsigCacheFileName);
 }

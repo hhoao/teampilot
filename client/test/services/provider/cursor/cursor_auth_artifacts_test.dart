@@ -6,6 +6,13 @@ void main() {
     expect(CursorAuthArtifacts.requiredForAuth, contains('cli-config.json'));
   });
 
+  test('optional cursor-dir artifacts include statsig-cache.json', () {
+    expect(
+      CursorAuthArtifacts.cursorDirOptional,
+      contains('statsig-cache.json'),
+    );
+  });
+
   test('configCursorRequired includes auth.json', () {
     expect(CursorAuthArtifacts.configCursorRequired, contains('auth.json'));
   });
