@@ -13,6 +13,7 @@ import 'package:teampilot/services/terminal/terminal_transport.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/session/shell_launch_spec.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/utils/logging/logger.dart';
 
 import '../../support/flush_terminal_engine.dart';
 import '../../support/rust_lib_test_init.dart';
@@ -462,6 +463,64 @@ void main() {
     expect(failed, isTrue);
     expect(session.isRunning, isFalse);
   });
+
+  test(
+    'agent tool ENOENT after confirm does not log CLI error or fail session',
+    () async {
+      final handle = _FakeTransport();
+      var failed = false;
+      final session = TerminalSession(
+        executable: _ptyTestExecutable,
+        confirmFallback: const Duration(seconds: 5),
+        transportStarter:
+            (
+              executable, {
+              required arguments,
+              required workingDirectory,
+              required columns,
+              required rows,
+              environment,
+            }) {
+              return Future.value(handle);
+            },
+      );
+      addTearDown(() async {
+        session.dispose();
+        await handle.outputController.close();
+      });
+
+      session.connect(
+        workingDirectory: Directory.current.path,
+        onProcessFailed: (_) => failed = true,
+      );
+      session.onViewportResize(80, 24);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      handle.outputController.add(Uint8List.fromList(utf8.encode('ready\r\n')));
+      await Future<void>.delayed(Duration.zero);
+      expect(session.isRunning, isTrue);
+
+      final before = await AppLogger.instance.getPendingLogLines();
+      handle.outputController.add(
+        Uint8List.fromList(
+          utf8.encode(
+            '/home/hhoa/.pyenv/libexec/pyenv-exec: 行 48: '
+            '/home/hhoa/.pyenv/shims/python3: 没有那个文件或目录\n',
+          ),
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(failed, isFalse);
+      expect(session.isRunning, isTrue);
+      final lines = await AppLogger.instance.getPendingLogLines();
+      expect(
+        lines
+            .skip(before.length)
+            .where((l) => l.contains('[terminal] CLI error')),
+        isEmpty,
+      );
+    },
+  );
 
   test('glibc linker error fails launch instead of marking running', () async {
     final handle = _FakeTransport();

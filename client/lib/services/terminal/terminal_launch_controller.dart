@@ -399,22 +399,18 @@ final class TerminalLaunchController {
         if (data.isEmpty) return;
         feedPtyBytes(data);
         final text = utf8.decode(data, allowMalformed: true);
-        if (_starting && !_startFailed) {
-          _startupOutput.write(text);
-        }
+        if (!_starting || _startFailed) return;
+        _startupOutput.write(text);
         final classified = TerminalStartupFailureDetector.classifyStartupFailure(
-          _starting ? _startupOutput.toString() : text,
+          _startupOutput.toString(),
           executable: executable,
           validateLaunch: validateLaunch,
         );
         if (classified != null) {
           appLogger.e('[terminal] CLI error: ${text.trim()}');
-          if (_starting && !_startFailed) {
-            _handleStartFailure(classified);
-          }
+          _handleStartFailure(classified);
           return;
         }
-        if (!_starting || _startFailed) return;
         _confirmProcessStarted();
       });
 
