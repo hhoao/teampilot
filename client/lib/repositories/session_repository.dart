@@ -890,6 +890,11 @@ class SessionRepository {
     return null;
   }
 
+  Future<AppSession?> findById(String sessionId) async {
+    final fs = await _fs();
+    return _findSession(fs, sessionId);
+  }
+
   Future<AppSession?> _findSession(
     SessionRepositoryFs fs,
     String sessionId,
