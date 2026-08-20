@@ -3,6 +3,7 @@ import 'package:ai_message_core/ai_message_core.dart';
 import '../../cubits/editor_cubit.dart';
 import '../io/filesystem.dart';
 import 'workbench_editor_opener.dart';
+import 'workspace_file_locator.dart';
 
 class AiToolFileOpenResult {
   const AiToolFileOpenResult({this.resolvedPath});
@@ -16,11 +17,14 @@ class AiToolFileOpenCoordinator {
   AiToolFileOpenCoordinator({
     required WorkbenchEditorOpener opener,
     required EditorCubit editor,
+    WorkspaceFileLocator locator = const WorkspaceFileLocator(),
   }) : _opener = opener,
-       _editor = editor;
+       _editor = editor,
+       _locator = locator;
 
   final WorkbenchEditorOpener _opener;
   final EditorCubit _editor;
+  final WorkspaceFileLocator _locator;
 
   Future<AiToolFileOpenResult> openToolFile({
     required String workspaceId,
@@ -29,11 +33,16 @@ class AiToolFileOpenCoordinator {
     required List<String> workspaceFolderPaths,
     required Filesystem fs,
   }) async {
-    final resolved = await _resolvePath(
-      target: target,
-      sessionWorkingDirectory: sessionWorkingDirectory,
-      workspaceFolderPaths: workspaceFolderPaths,
+    final searchBases = <String>[
+      if (sessionWorkingDirectory != null &&
+          sessionWorkingDirectory.trim().isNotEmpty)
+        sessionWorkingDirectory.trim(),
+      ...workspaceFolderPaths,
+    ];
+    final resolved = await _locator.locate(
+      rawPath: target.path,
       fs: fs,
+      searchBases: searchBases,
     );
     if (resolved == null) {
       return const AiToolFileOpenResult();
@@ -49,40 +58,5 @@ class AiToolFileOpenCoordinator {
       );
     }
     return AiToolFileOpenResult(resolvedPath: resolved);
-  }
-
-  Future<String?> _resolvePath({
-    required AiToolFileTarget target,
-    required String? sessionWorkingDirectory,
-    required List<String> workspaceFolderPaths,
-    required Filesystem fs,
-  }) async {
-    final pathContext = fs.pathContext;
-    final rawPath = target.path.trim();
-    if (rawPath.isEmpty) return null;
-
-    if (pathContext.isAbsolute(rawPath)) {
-      final normalized = pathContext.normalize(rawPath);
-      final stat = await fs.stat(normalized);
-      return stat.isFile ? normalized : null;
-    }
-
-    final candidates = <String>[];
-    final cwd = sessionWorkingDirectory?.trim();
-    if (cwd != null && cwd.isNotEmpty) {
-      candidates.add(pathContext.join(cwd, rawPath));
-    }
-    for (final folder in workspaceFolderPaths) {
-      final trimmed = folder.trim();
-      if (trimmed.isEmpty) continue;
-      candidates.add(pathContext.join(trimmed, rawPath));
-    }
-
-    for (final candidate in candidates) {
-      final normalized = pathContext.normalize(candidate);
-      final stat = await fs.stat(normalized);
-      if (stat.isFile) return normalized;
-    }
-    return null;
   }
 }
