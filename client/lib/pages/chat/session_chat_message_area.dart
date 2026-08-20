@@ -21,6 +21,7 @@ import '../../services/session/chat_transcript_find_controller.dart';
 import '../../services/workbench/ai_tool_file_open_coordinator.dart';
 import '../../services/workbench/session_member_filesystem.dart';
 import '../../services/workbench/workbench_editor_opener.dart';
+import '../../services/workbench/workspace_href_handler.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../services/workspace/workspace_tools_scope.dart';
 import '../../widgets/app_toast/app_toast.dart';
@@ -91,13 +92,19 @@ class SessionChatMessageArea extends StatelessWidget {
     final spacing = context.tpSpacing;
     final cs = Theme.of(context).colorScheme;
     final lifecycle = context.read<ChatCubit>().lifecycle;
-    final prefs = context.select<LayoutCubit,
-        ({ContentDisplayMode userMessageMode, ContentDisplayMode chatCodeBlockMode})>(
-      (c) => (
-        userMessageMode: c.state.preferences.chatUserMessageMode,
-        chatCodeBlockMode: c.state.preferences.chatCodeBlockMode,
-      ),
-    );
+    final prefs = context
+        .select<
+          LayoutCubit,
+          ({
+            ContentDisplayMode userMessageMode,
+            ContentDisplayMode chatCodeBlockMode,
+          })
+        >(
+          (c) => (
+            userMessageMode: c.state.preferences.chatUserMessageMode,
+            chatCodeBlockMode: c.state.preferences.chatCodeBlockMode,
+          ),
+        );
     final foldCategories = context.select<LayoutCubit, Set<AiToolCallCategory>>(
       (c) => c.state.preferences.foldToolCallCategories,
     );
@@ -114,21 +121,27 @@ class SessionChatMessageArea extends StatelessWidget {
     final workspaceRoot = work.workingDirectory.isNotEmpty
         ? work.workingDirectory
         : session.firstFolderPath;
-    final sessionWorkingDirectory =
-        workspaceRoot.isEmpty ? null : workspaceRoot;
+    final sessionWorkingDirectory = workspaceRoot.isEmpty
+        ? null
+        : workspaceRoot;
 
     final workspaceFolderPaths = sessionMemberFolderPaths(
       lifecycle: lifecycle,
       launchContext: launchContext,
       memberId: selectedMemberId,
     );
+    final hrefRoots = [
+      if (sessionWorkingDirectory != null) sessionWorkingDirectory,
+      ...workspaceFolderPaths,
+    ];
 
     // Promote to local so the ternary below can promote to non-null.
     final cap = historyCap;
 
     final registry = CliToolRegistryScope.of(context);
-    final toolResolvers =
-        registry.capability<AiHistoryCapability>(session.cli ?? CliTool.claude);
+    final toolResolvers = registry.capability<AiHistoryCapability>(
+      session.cli ?? CliTool.claude,
+    );
 
     return Expanded(
       // Full-bleed scroll surface: margins beside the text
@@ -137,15 +150,9 @@ class SessionChatMessageArea extends StatelessWidget {
       child: Stack(
         children: [
           Positioned.fill(
-            child: AiToolFileActionsScope(
-              actions: AiToolFileActions(
-                fileResolver:
-                    toolResolvers?.fileResolver ?? _noopFileResolver,
-                editResolver:
-                    toolResolvers?.editResolver ?? _noopEditResolver,
-                shellResolver:
-                    toolResolvers?.shellResolver ?? _noopShellResolver,
-                onOpenFile: (target) async {
+            child: AiMarkdownLinkActionsScope(
+              actions: AiMarkdownLinkActions(
+                onLinkTap: (href) async {
                   final fs = await resolveSessionMemberFilesystem(
                     lifecycle: lifecycle,
                     launchContext: launchContext,
@@ -153,179 +160,228 @@ class SessionChatMessageArea extends StatelessWidget {
                     toolsScope: WorkspaceToolsScope.maybeOf(context),
                   );
                   if (!context.mounted) return;
-                  final coordinator = AiToolFileOpenCoordinator(
-                    opener: context.read<WorkbenchEditorOpener>(),
-                    editor: context.read<EditorCubit>(),
-                  );
-                  final result = await coordinator.openToolFile(
-                    workspaceId: session.workspaceId,
-                    target: target,
-                    sessionWorkingDirectory: sessionWorkingDirectory,
-                    workspaceFolderPaths: workspaceFolderPaths,
-                    fs: fs,
-                  );
+                  final outcome =
+                      await WorkspaceHrefHandler(
+                        opener: context.read<WorkbenchEditorOpener>(),
+                      ).open(
+                        href: href,
+                        workspaceId: session.workspaceId,
+                        workspaceRoots: hrefRoots,
+                        searchBases: hrefRoots,
+                        fs: fs,
+                      );
                   if (!context.mounted) return;
-                  if (result.isMissing) {
-                    AppToast.show(
-                      context,
-                      message: l10n.aiToolFileNotFound(target.path),
-                      variant: TpToastVariant.warning,
-                    );
-                  }
-                },
-                lineHighlighter: WorkspaceAiEditLineHighlighter(
-                  brightness: Theme.of(context).brightness,
-                ),
-              ),
-              child: AiToolSubagentActionsScope(
-                actions: AiToolSubagentActions(
-                  isSubagentTool: cap == null
-                      ? null
-                      : (name) => cap.subagentToolNames
-                          .contains(name.trim().toLowerCase()),
-                  onOpenSubagent: (id) async {
-                    final attachments = historySeat.subagentAttachments;
-                    if (!attachments.containsKey(id)) {
-                      if (!context.mounted) return;
+                  switch (outcome) {
+                    case WorkspaceHrefOpenOutcome.missing:
+                    case WorkspaceHrefOpenOutcome.outsideWorkspace:
+                    case WorkspaceHrefOpenOutcome.notOpenable:
                       AppToast.show(
                         context,
-                        message: l10n.subagentPreviewUnavailable,
+                        message: l10n.aiToolFileNotFound(href),
                         variant: TpToastVariant.warning,
                       );
-                      return;
+                      break;
+                    case WorkspaceHrefOpenOutcome.openedExternal:
+                    case WorkspaceHrefOpenOutcome.openedFile:
+                    case WorkspaceHrefOpenOutcome.ignored:
+                      break;
+                  }
+                },
+              ),
+              child: AiToolFileActionsScope(
+                actions: AiToolFileActions(
+                  fileResolver:
+                      toolResolvers?.fileResolver ?? _noopFileResolver,
+                  editResolver:
+                      toolResolvers?.editResolver ?? _noopEditResolver,
+                  shellResolver:
+                      toolResolvers?.shellResolver ?? _noopShellResolver,
+                  onOpenFile: (target) async {
+                    final fs = await resolveSessionMemberFilesystem(
+                      lifecycle: lifecycle,
+                      launchContext: launchContext,
+                      memberId: selectedMemberId,
+                      toolsScope: WorkspaceToolsScope.maybeOf(context),
+                    );
+                    if (!context.mounted) return;
+                    final coordinator = AiToolFileOpenCoordinator(
+                      opener: context.read<WorkbenchEditorOpener>(),
+                      editor: context.read<EditorCubit>(),
+                    );
+                    final result = await coordinator.openToolFile(
+                      workspaceId: session.workspaceId,
+                      target: target,
+                      sessionWorkingDirectory: sessionWorkingDirectory,
+                      workspaceFolderPaths: workspaceFolderPaths,
+                      fs: fs,
+                    );
+                    if (!context.mounted) return;
+                    if (result.isMissing) {
+                      AppToast.show(
+                        context,
+                        message: l10n.aiToolFileNotFound(target.path),
+                        variant: TpToastVariant.warning,
+                      );
                     }
-                    subagentPreview.push(id);
                   },
-                ),
-                child: AiMessageStringsScope(
-                  strings: AiMessageStrings(
-                    usedTool: l10n.aiMessageUsedTool,
-                    cancelledTool: l10n.aiMessageCancelledTool,
-                    formatToolsUsed: l10n.aiMessageToolsUsed,
-                    reasoning: l10n.aiMessageReasoning,
-                    result: l10n.aiMessageToolResult,
-                    copy: l10n.copy,
-                    copied: l10n.aiMessageCopied,
-                    exportMarkdown: l10n.aiMessageExportMarkdown,
-                    messageIncomplete: l10n.aiMessageIncomplete,
-                    messageCancelled: l10n.aiMessageCancelled,
-                    scrollToBottom: l10n.aiMessageScrollToBottom,
-                    showMore: l10n.aiMessageShowMore,
-                    showLess: l10n.aiMessageShowLess,
-                    thinkingProcess: l10n.aiMessageThinkingProcess,
-                    formatThinkingProcessSteps: (count) =>
-                        l10n.aiMessageThinkingProcessSteps(count as int),
+                  lineHighlighter: WorkspaceAiEditLineHighlighter(
+                    brightness: Theme.of(context).brightness,
                   ),
-                  child: AiToolCallFoldScope(
-                    shouldFold: (part) =>
-                        foldCategories.contains(part.category),
-                    child: Stack(
-                    children: [
-                      Builder(
-                        builder: (context) {
-                          // Read ChatCubit imperatively — no
-                          // context.select dependency. Enclosing
-                          // AiHistorySeat BlocBuilder already
-                          // rebuilds when awaitingAssistant
-                          // changes (synced with working state).
-                          final cubit = context.read<ChatCubit>();
-                          final sid = session.sessionId;
-                          final sessionWorking =
-                              cubit.state.workingSessionIds.contains(sid);
-                          final sessionConnecting =
-                              cubit.podFor(sid)?.phase.isLaunching ?? false;
-                          final memberRunning = cubit.isMemberRunning(
-                            sessionId: sid,
-                            memberId: shellMemberId,
-                          );
-                          final liveChrome =
-                              SessionHistoryLiveChromeX.resolve(
-                            turnInFlight: historyTurnInFlight(
-                              isSubmitting: isSubmitting,
-                              awaitingAssistant: state.awaitingAssistant,
-                              sessionWorking: sessionWorking,
-                              userStoppedTurn: false,
-                            ),
-                            memberRunning: memberRunning,
-                            sessionWorking: sessionWorking,
-                            sessionConnecting: sessionConnecting,
-                          );
-                          return MarkdownDisplayModeScope(
-                            userMessageMode: prefs.userMessageMode,
-                            codeBlockMode: prefs.chatCodeBlockMode,
-                            child: AiToolCallBubbleScope(
-                              builders: {
-                                ...cliTaskBubbleBuilders(),
-                                'workflow': (ctx, part) => WorkflowCard(
-                                  part: part,
-                                  attachment: historySeat
-                                      .subagentAttachments[part.toolCallId],
-                                ),
-                              },
-                              child: SessionHistoryReviewMessages(
-                                state: state,
-                                runtime: historySeat.runtime,
-                                onRetry: onRetry,
-                                onLoadOlder: historySeat.loadOlder,
-                                liveChrome: liveChrome,
-                                highlightMessageId: findHighlightId,
-                                revealRequest: revealController,
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                      if (top != null)
-                        Positioned.fill(
-                          child: Material(
-                            color: cs.surface,
-                            child: AiHistoryRenderScope(
-                              // History-review budget also
-                              // guards subagent messages: a
-                              // giant subagent turn collapses
-                              // instead of freezing the
-                              // preview open.
-                              child: SubagentPreviewScaffold(
-                                title: previewTitle,
-                                messages: top!.messages,
-                                emptyLabel: l10n.subagentPreviewEmpty,
-                                backTooltip: l10n.subagentPreviewBack,
-                                onBack: subagentPreview.popAndStopFollow,
-                              ),
-                            ),
+                ),
+                child: AiToolSubagentActionsScope(
+                  actions: AiToolSubagentActions(
+                    isSubagentTool: cap == null
+                        ? null
+                        : (name) => cap.subagentToolNames.contains(
+                            name.trim().toLowerCase(),
                           ),
-                        ),
-                      if (taskBoardController != null)
-                        Positioned(
-                          top: spacing.sm,
-                          right: spacing.sm,
-                          child: ListenableBuilder(
-                            listenable: taskBoardController!,
-                            builder: (context, _) {
-                              final board = taskBoardController!.board;
-                              if (board.totalCount == 0) {
-                                return const SizedBox.shrink();
-                              }
-                              return SessionCliTaskPanel(
-                                board: board,
-                                title: l10n.cliTaskBoardTitle,
-                                countText: l10n.cliTaskBoardCount(
-                                  board.completedCount,
-                                  board.totalCount,
+                    onOpenSubagent: (id) async {
+                      final attachments = historySeat.subagentAttachments;
+                      if (!attachments.containsKey(id)) {
+                        if (!context.mounted) return;
+                        AppToast.show(
+                          context,
+                          message: l10n.subagentPreviewUnavailable,
+                          variant: TpToastVariant.warning,
+                        );
+                        return;
+                      }
+                      subagentPreview.push(id);
+                    },
+                  ),
+                  child: AiMessageStringsScope(
+                    strings: AiMessageStrings(
+                      usedTool: l10n.aiMessageUsedTool,
+                      cancelledTool: l10n.aiMessageCancelledTool,
+                      formatToolsUsed: l10n.aiMessageToolsUsed,
+                      reasoning: l10n.aiMessageReasoning,
+                      result: l10n.aiMessageToolResult,
+                      copy: l10n.copy,
+                      copied: l10n.aiMessageCopied,
+                      exportMarkdown: l10n.aiMessageExportMarkdown,
+                      messageIncomplete: l10n.aiMessageIncomplete,
+                      messageCancelled: l10n.aiMessageCancelled,
+                      scrollToBottom: l10n.aiMessageScrollToBottom,
+                      showMore: l10n.aiMessageShowMore,
+                      showLess: l10n.aiMessageShowLess,
+                      thinkingProcess: l10n.aiMessageThinkingProcess,
+                      formatThinkingProcessSteps: (count) =>
+                          l10n.aiMessageThinkingProcessSteps(count as int),
+                    ),
+                    child: AiToolCallFoldScope(
+                      shouldFold: (part) =>
+                          foldCategories.contains(part.category),
+                      child: Stack(
+                        children: [
+                          Builder(
+                            builder: (context) {
+                              // Read ChatCubit imperatively — no
+                              // context.select dependency. Enclosing
+                              // AiHistorySeat BlocBuilder already
+                              // rebuilds when awaitingAssistant
+                              // changes (synced with working state).
+                              final cubit = context.read<ChatCubit>();
+                              final sid = session.sessionId;
+                              final sessionWorking = cubit
+                                  .state
+                                  .workingSessionIds
+                                  .contains(sid);
+                              final sessionConnecting =
+                                  cubit.podFor(sid)?.phase.isLaunching ?? false;
+                              final memberRunning = cubit.isMemberRunning(
+                                sessionId: sid,
+                                memberId: shellMemberId,
+                              );
+                              final liveChrome =
+                                  SessionHistoryLiveChromeX.resolve(
+                                    turnInFlight: historyTurnInFlight(
+                                      isSubmitting: isSubmitting,
+                                      awaitingAssistant:
+                                          state.awaitingAssistant,
+                                      sessionWorking: sessionWorking,
+                                      userStoppedTurn: false,
+                                    ),
+                                    memberRunning: memberRunning,
+                                    sessionWorking: sessionWorking,
+                                    sessionConnecting: sessionConnecting,
+                                  );
+                              return MarkdownDisplayModeScope(
+                                userMessageMode: prefs.userMessageMode,
+                                codeBlockMode: prefs.chatCodeBlockMode,
+                                child: AiToolCallBubbleScope(
+                                  builders: {
+                                    ...cliTaskBubbleBuilders(),
+                                    'workflow': (ctx, part) => WorkflowCard(
+                                      part: part,
+                                      attachment: historySeat
+                                          .subagentAttachments[part.toolCallId],
+                                    ),
+                                  },
+                                  child: SessionHistoryReviewMessages(
+                                    state: state,
+                                    runtime: historySeat.runtime,
+                                    onRetry: onRetry,
+                                    onLoadOlder: historySeat.loadOlder,
+                                    liveChrome: liveChrome,
+                                    highlightMessageId: findHighlightId,
+                                    revealRequest: revealController,
+                                  ),
                                 ),
-                                moreLabel: (count) =>
-                                    l10n.cliTaskBoardMore(count),
-                                showLessLabel: l10n.cliTaskBoardShowLess,
                               );
                             },
                           ),
-                        ),
-                    ],
+                          if (top != null)
+                            Positioned.fill(
+                              child: Material(
+                                color: cs.surface,
+                                child: AiHistoryRenderScope(
+                                  // History-review budget also
+                                  // guards subagent messages: a
+                                  // giant subagent turn collapses
+                                  // instead of freezing the
+                                  // preview open.
+                                  child: SubagentPreviewScaffold(
+                                    title: previewTitle,
+                                    messages: top!.messages,
+                                    emptyLabel: l10n.subagentPreviewEmpty,
+                                    backTooltip: l10n.subagentPreviewBack,
+                                    onBack: subagentPreview.popAndStopFollow,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          if (taskBoardController != null)
+                            Positioned(
+                              top: spacing.sm,
+                              right: spacing.sm,
+                              child: ListenableBuilder(
+                                listenable: taskBoardController!,
+                                builder: (context, _) {
+                                  final board = taskBoardController!.board;
+                                  if (board.totalCount == 0) {
+                                    return const SizedBox.shrink();
+                                  }
+                                  return SessionCliTaskPanel(
+                                    board: board,
+                                    title: l10n.cliTaskBoardTitle,
+                                    countText: l10n.cliTaskBoardCount(
+                                      board.completedCount,
+                                      board.totalCount,
+                                    ),
+                                    moreLabel: (count) =>
+                                        l10n.cliTaskBoardMore(count),
+                                    showLessLabel: l10n.cliTaskBoardShowLess,
+                                  );
+                                },
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
           ),
           if (findVisible)
             Positioned(
