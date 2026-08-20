@@ -1639,6 +1639,49 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String aiMessageThinkingEditedFiles(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '编辑了 $count 个文件',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String aiMessageThinkingExploredFiles(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '探索了 $count 个文件',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String aiMessageThinkingSearches(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 次搜索',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String aiMessageThinkingCommands(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '运行了 $count 条命令',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get aiMessageThinkingProcessSummarySeparator => '，';
+
+  @override
   String aiToolFileNotFound(String path) {
     return '找不到文件：$path';
   }

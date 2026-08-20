@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'thinking_process_summary.dart';
+
 /// Host-injected copy for ai_message_ui (package stays l10n-free).
 @immutable
 class AiMessageStrings {
@@ -20,6 +22,7 @@ class AiMessageStrings {
     this.showLess = 'Show less',
     this.thinkingProcess = 'Thinking process',
     this.formatThinkingProcessSteps = _defaultThinkingProcessSteps,
+    this.formatThinkingProcessSummary = defaultThinkingProcessSummaryLabel,
   });
 
   final String usedTool;
@@ -27,6 +30,7 @@ class AiMessageStrings {
   final String Function(Object count) formatToolsUsed;
   final String thinkingProcess;
   final String Function(Object count) formatThinkingProcessSteps;
+  final AiThinkingProcessSummaryFormatter formatThinkingProcessSummary;
   final String reasoning;
   final String result;
   final String copy;
@@ -71,10 +75,7 @@ class AiMessageStringsScope extends StatelessWidget {
 }
 
 class _AiMessageStringsScope extends InheritedWidget {
-  const _AiMessageStringsScope({
-    required this.strings,
-    required super.child,
-  });
+  const _AiMessageStringsScope({required this.strings, required super.child});
 
   final AiMessageStrings strings;
 

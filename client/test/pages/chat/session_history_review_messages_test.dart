@@ -137,13 +137,11 @@ void main() {
         runtime: runtime,
       ),
     );
-    await tester.pumpWidget(
-      BlocProvider.value(value: cubit, child: child),
-    );
+    await tester.pumpWidget(BlocProvider.value(value: cubit, child: child));
     await tester.pumpAndSettle();
 
     // Exactly one chain head (reasoning + Read folded in).
-    expect(find.byIcon(Icons.psychology_outlined), findsOneWidget);
+    expect(find.textContaining('Explored 1 file'), findsOneWidget);
     // Task (subagent, not folded) stays standalone and visible.
     expect(find.textContaining('Task'), findsWidgets);
     // Read is hidden inside the folded chain.

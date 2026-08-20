@@ -755,6 +755,39 @@
       }
     }
   },
+  "aiMessageThinkingEditedFiles": "{count, plural, =1{edited 1 file} other{edited {count} files}}",
+  "@aiMessageThinkingEditedFiles": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "aiMessageThinkingExploredFiles": "{count, plural, =1{explored 1 file} other{explored {count} files}}",
+  "@aiMessageThinkingExploredFiles": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "aiMessageThinkingSearches": "{count, plural, =1{1 search} other{{count} searches}}",
+  "@aiMessageThinkingSearches": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "aiMessageThinkingCommands": "{count, plural, =1{ran 1 command} other{ran {count} commands}}",
+  "@aiMessageThinkingCommands": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "aiMessageThinkingProcessSummarySeparator": ", ",
   "aiToolFileNotFound": "Could not find file: {path}",
   "@aiToolFileNotFound": {
     "placeholders": {

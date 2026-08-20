@@ -3170,6 +3170,36 @@ abstract class AppLocalizations {
   /// **'Thinking process · {count} steps'**
   String aiMessageThinkingProcessSteps(int count);
 
+  /// No description provided for @aiMessageThinkingEditedFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{edited 1 file} other{edited {count} files}}'**
+  String aiMessageThinkingEditedFiles(int count);
+
+  /// No description provided for @aiMessageThinkingExploredFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{explored 1 file} other{explored {count} files}}'**
+  String aiMessageThinkingExploredFiles(int count);
+
+  /// No description provided for @aiMessageThinkingSearches.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 search} other{{count} searches}}'**
+  String aiMessageThinkingSearches(int count);
+
+  /// No description provided for @aiMessageThinkingCommands.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{ran 1 command} other{ran {count} commands}}'**
+  String aiMessageThinkingCommands(int count);
+
+  /// No description provided for @aiMessageThinkingProcessSummarySeparator.
+  ///
+  /// In en, this message translates to:
+  /// **', '**
+  String get aiMessageThinkingProcessSummarySeparator;
+
   /// No description provided for @aiToolFileNotFound.
   ///
   /// In en, this message translates to:

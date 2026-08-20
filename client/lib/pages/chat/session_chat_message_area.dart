@@ -235,6 +235,8 @@ class SessionChatMessageArea extends StatelessWidget {
                       thinkingProcess: l10n.aiMessageThinkingProcess,
                       formatThinkingProcessSteps: (count) =>
                           l10n.aiMessageThinkingProcessSteps(count as int),
+                      formatThinkingProcessSummary: (summary) =>
+                          _thinkingProcessSummaryLabel(l10n, summary),
                     ),
                     child: AiToolCallFoldScope(
                       shouldFold: (part) =>
@@ -378,6 +380,23 @@ class SessionChatMessageArea extends StatelessWidget {
       ),
     );
   }
+}
+
+String _thinkingProcessSummaryLabel(
+  AppLocalizations l10n,
+  AiThinkingProcessSummary summary,
+) {
+  final parts = <String>[
+    if (summary.editedFiles > 0)
+      l10n.aiMessageThinkingEditedFiles(summary.editedFiles),
+    if (summary.exploredFiles > 0)
+      l10n.aiMessageThinkingExploredFiles(summary.exploredFiles),
+    if (summary.searches > 0) l10n.aiMessageThinkingSearches(summary.searches),
+    if (summary.commands > 0) l10n.aiMessageThinkingCommands(summary.commands),
+  ];
+  if (parts.isEmpty) return '';
+  final joined = parts.join(l10n.aiMessageThinkingProcessSummarySeparator);
+  return '${joined[0].toUpperCase()}${joined.substring(1)}';
 }
 
 const _noopFileResolver = _NoopFileResolver();

@@ -730,6 +730,11 @@
       }
     }
   },
+  "aiMessageThinkingEditedFiles": "{count, plural, other{编辑了 {count} 个文件}}",
+  "aiMessageThinkingExploredFiles": "{count, plural, other{探索了 {count} 个文件}}",
+  "aiMessageThinkingSearches": "{count, plural, other{{count} 次搜索}}",
+  "aiMessageThinkingCommands": "{count, plural, other{运行了 {count} 条命令}}",
+  "aiMessageThinkingProcessSummarySeparator": "，",
   "aiToolFileNotFound": "找不到文件：{path}",
   "@aiToolFileNotFound": {
     "placeholders": {

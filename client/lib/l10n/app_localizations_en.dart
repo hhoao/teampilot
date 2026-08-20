@@ -1719,6 +1719,53 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String aiMessageThinkingEditedFiles(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'edited $count files',
+      one: 'edited 1 file',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String aiMessageThinkingExploredFiles(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'explored $count files',
+      one: 'explored 1 file',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String aiMessageThinkingSearches(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count searches',
+      one: '1 search',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String aiMessageThinkingCommands(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'ran $count commands',
+      one: 'ran 1 command',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get aiMessageThinkingProcessSummarySeparator => ', ';
+
+  @override
   String aiToolFileNotFound(String path) {
     return 'Could not find file: $path';
   }

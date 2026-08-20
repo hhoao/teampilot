@@ -36,7 +36,7 @@ void main() {
   ) async {
     await tester.pumpWidget(harness(shouldFold: (_) => true));
     await tester.pumpAndSettle();
-    expect(find.byIcon(Icons.psychology_outlined), findsOneWidget);
+    expect(find.textContaining('Thinking process'), findsOneWidget);
     // Bash 在折叠的链内,不单独渲染
     expect(find.textContaining('Bash'), findsNothing);
   });
@@ -47,7 +47,7 @@ void main() {
     await tester.pumpWidget(harness(shouldFold: (_) => false));
     await tester.pumpAndSettle();
     // reasoning 仍折 → 恰一个链头
-    expect(find.byIcon(Icons.psychology_outlined), findsOneWidget);
+    expect(find.textContaining('Thinking process'), findsOneWidget);
     // Bash 独立成行
     expect(find.textContaining('Bash'), findsWidgets);
   });
@@ -55,7 +55,7 @@ void main() {
   testWidgets('no scope defaults to folding', (tester) async {
     await tester.pumpWidget(harness());
     await tester.pumpAndSettle();
-    expect(find.byIcon(Icons.psychology_outlined), findsOneWidget);
+    expect(find.textContaining('Thinking process'), findsOneWidget);
     expect(find.textContaining('Bash'), findsNothing);
   });
 }

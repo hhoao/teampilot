@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import '../markdown/compiled_markdown_chrome.dart';
 import '../strings.dart';
 import '../theme.dart';
+import '../thinking_process_summary.dart';
+import '../tool_file_actions.dart';
 import 'reasoning_part_view.dart';
 import 'tool_call_part_view.dart';
 
@@ -50,7 +52,26 @@ class _AiChainOfThoughtViewState extends State<AiChainOfThoughtView> {
     final strings = AiMessageStrings.of(context);
     final markdown = aiTheme.markdown;
     final triggerColor = aiTheme.resolveToolTrigger(scheme);
-    final label = strings.formatThinkingProcessSteps(widget.parts.length);
+    final actions = AiToolFileActions.of(context);
+    final summary = summarizeThinkingProcess(
+      widget.parts,
+      fileResolver: actions.fileResolver,
+      editResolver: actions.editResolver,
+    );
+    final formatted = summary.hasActivity
+        ? strings.formatThinkingProcessSummary(summary)
+        : '';
+    final phrase = formatted.isNotEmpty
+        ? formatted
+        : strings.formatThinkingProcessSteps(widget.parts.length);
+    final showDiff =
+        formatted.isNotEmpty && (summary.added > 0 || summary.removed > 0);
+    final semanticsLabel = [
+      phrase,
+      if (showDiff && summary.added > 0) '+${summary.added}',
+      if (showDiff && summary.removed > 0) '-${summary.removed}',
+    ].join(' ');
+    final triggerStyle = markdown.toolTrigger(triggerColor);
 
     return Padding(
       padding: EdgeInsets.only(bottom: aiTheme.partSpacing),
@@ -61,7 +82,7 @@ class _AiChainOfThoughtViewState extends State<AiChainOfThoughtView> {
             child: Semantics(
               button: true,
               expanded: _open,
-              label: label,
+              label: semanticsLabel,
               child: MouseRegion(
                 cursor: SystemMouseCursors.click,
                 child: GestureDetector(
@@ -72,18 +93,26 @@ class _AiChainOfThoughtViewState extends State<AiChainOfThoughtView> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
-                          Icons.psychology_outlined,
-                          size: 16,
-                          color: triggerColor,
-                        ),
-                        const SizedBox(width: 8),
                         Flexible(
-                          child: Text(
-                            label,
+                          child: Text.rich(
+                            TextSpan(
+                              style: triggerStyle,
+                              children: [
+                                TextSpan(text: phrase),
+                                if (showDiff && summary.added > 0)
+                                  TextSpan(
+                                    text: ' +${summary.added}',
+                                    style: markdown.toolTrigger(scheme.primary),
+                                  ),
+                                if (showDiff && summary.removed > 0)
+                                  TextSpan(
+                                    text: ' -${summary.removed}',
+                                    style: markdown.toolTrigger(scheme.error),
+                                  ),
+                              ],
+                            ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: markdown.toolTrigger(triggerColor),
                           ),
                         ),
                         const SizedBox(width: 4),

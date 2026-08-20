@@ -29,6 +29,7 @@ export 'src/markdown_link_actions.dart';
 export 'src/tool_file_actions.dart';
 export 'src/tool_subagent_actions.dart';
 export 'src/theme.dart';
+export 'src/thinking_process_summary.dart';
 export 'src/thread_turns.dart';
 export 'src/turn_height_cache.dart';
 export 'src/turn_mount_keep_alive.dart';
