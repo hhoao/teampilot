@@ -69,7 +69,143 @@ class _NoHttp implements ProviderUsageHttpClient {
       Future.error(StateError('HTTP should be owned by the adapter'));
 }
 
+ManagedProvider _codexProvider() => ManagedProvider(
+  id: 'p1',
+  name: 'Codex',
+  kind: ManagedProviderKind.subscriptionQuota,
+  adapterId: 'official-codex-subscription',
+);
+
 void main() {
+  testWidgets('panel row shows brand mark key and no wallet icon', (
+    tester,
+  ) async {
+    final fs = InMemoryFilesystem();
+    final usage = ManagedProviderUsageRepository(
+      fs: fs,
+      cachePath: '/tp/usage-cache.json',
+      now: () => 100,
+    );
+    final providers = ManagedProviderRepository(
+      fs: fs,
+      configPath: '/tp/providers.json',
+      onProvidersDeleted: usage.deleteMany,
+    );
+    final coordinator = ManagedProviderUsageCoordinator(
+      providerRepository: providers,
+      usageRepository: usage,
+      registry: ManagedProviderUsageRegistry([_Adapter()]),
+      credentials: _NoCredentials(),
+      http: _NoHttp(),
+    );
+    final providerCubit = ManagedProviderCubit(repository: providers)
+      ..emit(
+        ManagedProviderState(
+          status: ManagedProviderLoadStatus.ready,
+          providers: [_codexProvider()],
+        ),
+      );
+    final usageCubit = ManagedProviderUsageCubit(coordinator: coordinator)
+      ..emit(
+        ManagedProviderUsageState(
+          status: ManagedProviderUsageLoadStatus.ready,
+          snapshots: {},
+        ),
+      );
+    addTearDown(providerCubit.close);
+    addTearDown(usageCubit.close);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: MultiBlocProvider(
+          providers: [
+            BlocProvider.value(value: providerCubit),
+            BlocProvider.value(value: usageCubit),
+          ],
+          child: const Scaffold(body: ManagedProviderUsagePanel()),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byKey(const Key('managed-provider-brand-p1')), findsOneWidget);
+    expect(find.byIcon(Icons.account_balance_outlined), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('panel omits disabled providers from the list', (
+    tester,
+  ) async {
+    final fs = InMemoryFilesystem();
+    final usage = ManagedProviderUsageRepository(
+      fs: fs,
+      cachePath: '/tp/usage-cache.json',
+      now: () => 100,
+    );
+    final providers = ManagedProviderRepository(
+      fs: fs,
+      configPath: '/tp/providers.json',
+      onProvidersDeleted: usage.deleteMany,
+    );
+    final coordinator = ManagedProviderUsageCoordinator(
+      providerRepository: providers,
+      usageRepository: usage,
+      registry: ManagedProviderUsageRegistry([_Adapter()]),
+      credentials: _NoCredentials(),
+      http: _NoHttp(),
+    );
+    final disabledProvider = ManagedProvider(
+      id: 'p2',
+      name: 'Disabled',
+      kind: ManagedProviderKind.apiBalance,
+      adapterId: 'fake',
+      enabled: false,
+    );
+    final providerCubit = ManagedProviderCubit(repository: providers)
+      ..emit(
+        ManagedProviderState(
+          status: ManagedProviderLoadStatus.ready,
+          providers: [_provider(), disabledProvider],
+        ),
+      );
+    final usageCubit = ManagedProviderUsageCubit(coordinator: coordinator)
+      ..emit(
+        ManagedProviderUsageState(
+          status: ManagedProviderUsageLoadStatus.ready,
+          snapshots: {},
+        ),
+      );
+    addTearDown(providerCubit.close);
+    addTearDown(usageCubit.close);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: MultiBlocProvider(
+          providers: [
+            BlocProvider.value(value: providerCubit),
+            BlocProvider.value(value: usageCubit),
+          ],
+          child: const Scaffold(body: ManagedProviderUsagePanel()),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(
+      find.byKey(const Key('managed-provider-usage-row-p1')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('managed-provider-usage-row-p2')),
+      findsNothing,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('panel shows stale/error states while retaining measure values', (
     tester,
   ) async {

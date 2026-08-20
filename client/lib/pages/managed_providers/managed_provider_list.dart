@@ -5,6 +5,7 @@ import '../../models/managed_provider.dart';
 import '../../models/provider_usage_snapshot.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../theme/workspace_surface_layers.dart';
+import '../../widgets/managed_provider/managed_provider_brand_icon.dart';
 import '../../widgets/managed_provider/managed_provider_measure_view.dart';
 
 class ManagedProviderList extends StatelessWidget {
@@ -92,14 +93,9 @@ class _ProviderHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
-    final avatar = CircleAvatar(
-      radius: 17,
-      backgroundColor: cs.primary.withValues(alpha: 0.12),
-      child: Icon(
-        Icons.account_balance_wallet_outlined,
-        size: 18,
-        color: cs.primary,
-      ),
+    final avatar = KeyedSubtree(
+      key: Key('managed-provider-brand-${provider.id}'),
+      child: ManagedProviderBrandMark(provider: provider, size: 20),
     );
     final identity = InkWell(
       onTap: () => onEdit(provider),
@@ -172,6 +168,7 @@ class _ProviderHeader extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   avatar,
                   const SizedBox(width: 10),
@@ -183,6 +180,7 @@ class _ProviderHeader extends StatelessWidget {
           );
         }
         return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             avatar,
             const SizedBox(width: 10),

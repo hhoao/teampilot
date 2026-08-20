@@ -1258,6 +1258,36 @@ void main() {
     expect(providerCubit.state.providers, isEmpty);
   });
 
+  testWidgets('list card shows brand mark and no wallet icon for Codex official', (
+    tester,
+  ) async {
+    providerCubit.emit(
+      ManagedProviderState(
+        status: ManagedProviderLoadStatus.ready,
+        providers: [
+          ManagedProvider(
+            id: 'p1',
+            name: 'Codex',
+            kind: ManagedProviderKind.subscriptionQuota,
+            adapterId: 'official-codex-subscription',
+          ),
+        ],
+      ),
+    );
+    usageCubit.emit(
+      ManagedProviderUsageState(status: ManagedProviderUsageLoadStatus.ready),
+    );
+
+    await pumpPage(tester);
+
+    expect(find.byKey(const Key('managed-provider-brand-p1')), findsOneWidget);
+    expect(find.byIcon(Icons.account_balance_wallet_outlined), findsNothing);
+
+    final icon = tester.getRect(find.byKey(const Key('managed-provider-brand-p1')));
+    final name = tester.getRect(find.text('Codex').first);
+    expect((icon.top - name.top).abs(), lessThanOrEqualTo(1));
+  });
+
   testWidgets('managed provider list and editor fit a 280dp viewport', (
     tester,
   ) async {

@@ -8,6 +8,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/managed_provider.dart';
 import '../../models/provider_usage_snapshot.dart';
 import '../../utils/managed_provider_error_localization.dart';
+import 'managed_provider_brand_icon.dart';
 
 /// Cached Managed Provider usage popover content.
 ///
@@ -247,10 +248,9 @@ class _ProviderUsageRow extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(
-              Icons.account_balance_outlined,
-              size: 15,
-              color: warning ? cs.error : cs.onSurfaceVariant,
+            KeyedSubtree(
+              key: Key('managed-provider-brand-${provider.id}'),
+              child: ManagedProviderBrandMark(provider: provider, size: 15),
             ),
             const SizedBox(width: 7),
             Expanded(
