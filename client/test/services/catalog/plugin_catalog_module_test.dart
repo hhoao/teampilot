@@ -138,4 +138,38 @@ void main() {
       ),
     );
   });
+
+  test(
+    'install_plugin with a discovery stub actually installs and binds',
+    () async {
+      final src = Directory(p.join(workRoot.path, 'demo'))..createSync();
+      File(
+        p.join(src.path, 'plugin.json'),
+      ).writeAsStringSync('{ "name": "demo" }');
+
+      module = PluginCatalogModule(
+        repository: repository,
+        install: install,
+        binder: binder,
+        bus: bus,
+        workspaceConfig: configRepo,
+        installFromDiscovery: (args) async {
+          expect(args['id'], 'market/demo');
+          return install.installFromDirectory(src);
+        },
+      );
+
+      final result = await module.handle(
+        CatalogOp.install,
+        req(arguments: {'id': 'market/demo'}),
+      );
+
+      expect(result.ok, isTrue);
+      expect(result.ids, ['local/demo']);
+      expect((await repository.loadAll()).single.id, 'local/demo');
+      expect((await configRepo.load(workspaceId)).bundle.pluginIds, [
+        'local/demo',
+      ]);
+    },
+  );
 }

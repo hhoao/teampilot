@@ -12,6 +12,7 @@ import '../../catalog/catalog_mcp_constants.dart';
 import '../../catalog/catalog_mcp_handler.dart';
 import 'jsonrpc.dart';
 import 'mcp_method.dart';
+import 'toolkit/mcp_tool_response.dart';
 import 'teammate_bus_mcp_config.dart';
 import 'teammate_bus_mcp_handler.dart';
 import 'teammate_bus_mcp_http_delegate.dart';
@@ -228,14 +229,12 @@ class TeammateBusMcpGateway {
     final store = _askUserAnswerStore;
     final member = _headerValue(request.headers, teammateBusMcpMemberHeader);
     final requestId = request.uri.queryParameters['request_id']?.trim() ?? '';
-    final allowed = sessionId != null &&
+    final allowed =
+        sessionId != null &&
         sessionId.isNotEmpty &&
         (_agentStatusSessions.contains(sessionId) ||
             _delegates.containsKey(sessionId));
-    if (store == null ||
-        !allowed ||
-        member.isEmpty ||
-        requestId.isEmpty) {
+    if (store == null || !allowed || member.isEmpty || requestId.isEmpty) {
       await _writeNoContent(request);
       return;
     }
@@ -280,7 +279,8 @@ class TeammateBusMcpGateway {
   }) async {
     final handler = _agentStatusHandler;
     final member = _headerValue(request.headers, teammateBusMcpMemberHeader);
-    final allowed = sessionId != null &&
+    final allowed =
+        sessionId != null &&
         sessionId.isNotEmpty &&
         (_agentStatusSessions.contains(sessionId) ||
             _delegates.containsKey(sessionId));
@@ -358,7 +358,12 @@ class TeammateBusMcpGateway {
       return;
     }
 
-    final res = await handler.handle(rpc, session);
+    JsonRpcResponse? res;
+    try {
+      res = await handler.handle(rpc, session);
+    } catch (e) {
+      res = McpToolResponse.toolError(rpc.id, 'code=install_failed $e');
+    }
     if (rpc.isNotification || res == null) {
       request.response.statusCode = HttpStatus.accepted;
       await request.response.close();

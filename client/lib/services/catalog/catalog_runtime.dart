@@ -1,4 +1,6 @@
 import '../../models/app_session.dart';
+import '../../models/mcp_server.dart';
+import '../../models/plugin.dart';
 import '../../models/runtime_target.dart';
 import '../../models/workspace_folder.dart';
 import '../../repositories/mcp_repository.dart';
@@ -51,6 +53,15 @@ class CatalogRuntime {
     McpRepository? mcpRepository,
     WorkspaceProjectConfigRepository? workspaceConfig,
     CatalogMutationBus? bus,
+    Future<List<Map<String, Object?>>> Function(String query)? searchSkills,
+    Future<List<Map<String, Object?>>> Function(String query)? searchPlugins,
+    Future<List<Map<String, Object?>>> Function(String query)? searchMcp,
+    Future<McpServer> Function(String listingId)? draftFromListing,
+    Future<Plugin> Function(Map<String, Object?> arguments)?
+    installPluginFromDiscovery,
+    Future<void> Function(String skillId)? removeSkillFromAllTeams,
+    Future<void> Function(String pluginId)? removePluginFromAllTeams,
+    Future<void> Function(String mcpId)? removeMcpFromAllTeams,
   }) {
     final mutationBus = bus ?? CatalogMutationBus();
     final configRepo = workspaceConfig ?? WorkspaceProjectConfigRepository();
@@ -67,6 +78,8 @@ class CatalogRuntime {
           binder: binder,
           bus: mutationBus,
           engine: skillEngine,
+          search: searchSkills,
+          onDeleted: removeSkillFromAllTeams,
           workspaceConfig: configRepo,
         ),
       )
@@ -76,6 +89,9 @@ class CatalogRuntime {
           install: pluginInstall ?? plugins.install,
           binder: binder,
           bus: mutationBus,
+          search: searchPlugins,
+          installFromDiscovery: installPluginFromDiscovery,
+          onDeleted: removePluginFromAllTeams,
           workspaceConfig: configRepo,
         ),
       )
@@ -84,6 +100,9 @@ class CatalogRuntime {
           repository: mcp,
           binder: binder,
           bus: mutationBus,
+          search: searchMcp,
+          draftFromListing: draftFromListing,
+          onDeleted: removeMcpFromAllTeams,
           workspaceConfig: configRepo,
         ),
       );

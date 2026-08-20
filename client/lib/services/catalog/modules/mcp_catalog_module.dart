@@ -5,6 +5,7 @@ import '../../../repositories/mcp_repository.dart';
 import '../../../repositories/workspace_project_config_repository.dart';
 import '../../mcp/mcp_catalog_mapper.dart';
 import '../catalog_kind.dart';
+import '../catalog_mcp_constants.dart';
 import '../catalog_mutation_bus.dart';
 import '../catalog_path_sandbox.dart';
 import '../catalog_workspace_binder.dart';
@@ -17,6 +18,7 @@ class McpCatalogModule implements CatalogKindModule {
     required this.bus,
     this.draftFromListing,
     this.search,
+    this.onDeleted,
     WorkspaceProjectConfigRepository? workspaceConfig,
   }) : _workspaceConfig = workspaceConfig ?? binder.repo;
 
@@ -25,6 +27,7 @@ class McpCatalogModule implements CatalogKindModule {
   final CatalogMutationBus bus;
   final Future<McpServer> Function(String listingId)? draftFromListing;
   final Future<List<Map<String, Object?>>> Function(String query)? search;
+  final Future<void> Function(String mcpId)? onDeleted;
   final WorkspaceProjectConfigRepository _workspaceConfig;
 
   @override
@@ -220,12 +223,14 @@ class McpCatalogModule implements CatalogKindModule {
       ids: [id],
       workspaceId: req.workspaceId,
       boundTo: req.bindTo,
+      message: catalogWriteSuccessMessage,
     );
   }
 
   Future<CatalogResult> _delete(CatalogRequest req) async {
     final server = await _requireInstalled(_requireId(req));
     await repository.deleteById(server.id);
+    await onDeleted?.call(server.id);
     await _unbindIds(req, [server.id]);
     _emit(CatalogOp.delete, req, [server.id]);
     return CatalogResult.ok(
@@ -233,6 +238,7 @@ class McpCatalogModule implements CatalogKindModule {
       ids: [server.id],
       workspaceId: req.workspaceId,
       boundTo: req.bindTo,
+      message: catalogWriteSuccessMessage,
     );
   }
 
@@ -248,6 +254,7 @@ class McpCatalogModule implements CatalogKindModule {
       ids: ids,
       workspaceId: req.workspaceId,
       boundTo: req.bindTo,
+      message: catalogWriteSuccessMessage,
     );
   }
 
@@ -369,10 +376,7 @@ class McpCatalogModule implements CatalogKindModule {
     for (final key in const ['env', 'headers']) {
       final raw = out[key];
       if (raw is! Map) continue;
-      out[key] = {
-        for (final entry in raw.entries)
-          entry.key.toString(): entry.value is String ? '***' : entry.value,
-      };
+      out[key] = {for (final entry in raw.entries) entry.key.toString(): '***'};
     }
     return out;
   }

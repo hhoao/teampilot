@@ -4,6 +4,8 @@ import '../io/filesystem.dart';
 import '../team_bus/mcp/jsonrpc.dart';
 import '../team_bus/mcp/mcp_method.dart';
 import '../team_bus/mcp/toolkit/mcp_tool_response.dart';
+import '../plugin/plugin_exceptions.dart';
+import '../skill/skill_install_service.dart';
 import 'catalog_kind.dart';
 import 'catalog_kind_registry.dart';
 import 'catalog_mcp_constants.dart';
@@ -99,20 +101,34 @@ class CatalogMcpHandler {
       return McpToolResponse.ok(req.id, jsonEncode(_resultToJson(result)));
     } on CatalogException catch (e) {
       return McpToolResponse.toolError(req.id, 'code=${e.code} ${e.message}');
+    } on SkillInstallException catch (e) {
+      return McpToolResponse.toolError(req.id, _unknownErrorText(e));
+    } on PluginException catch (e) {
+      return McpToolResponse.toolError(req.id, _unknownErrorText(e));
+    } catch (e) {
+      return McpToolResponse.toolError(req.id, _unknownErrorText(e));
     }
   }
 
   static CatalogBindTo _parseBindTo(Object? raw) {
     if (raw == null) return CatalogBindTo.workspace;
-    if (raw is String) {
-      for (final value in CatalogBindTo.values) {
-        if (value.name == raw) return value;
-      }
+    if (raw is String && raw == CatalogBindTo.workspace.name) {
+      return CatalogBindTo.workspace;
     }
     throw CatalogException(
       'bind_scope_unsupported',
-      'bind_to other than workspace, team, or expert is not supported',
+      'bind_to other than workspace is not supported',
     );
+  }
+
+  static String _unknownErrorText(Object e) {
+    final text = e is SkillInstallException
+        ? e.message
+        : e is PluginException
+        ? e.message
+        : '$e';
+    final already = text.toLowerCase().contains('already exists');
+    return 'code=${already ? 'already_exists' : 'install_failed'} $text';
   }
 
   static Map<String, Object?> _resultToJson(CatalogResult result) {

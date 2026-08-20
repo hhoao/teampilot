@@ -51,4 +51,27 @@ void main() {
       throwsUnsafePath(),
     );
   });
+
+  test(
+    'rejects a nested symlink inside an allowed SKILL.md directory',
+    () async {
+      final skillDir = Directory(p.join(tmp.path, 'my-skill'))..createSync();
+      File(
+        p.join(skillDir.path, 'SKILL.md'),
+      ).writeAsStringSync('---\nname: nested\ndescription: d\n---\nbody');
+      await fs.createSymlink(
+        target: '/etc/passwd',
+        linkPath: p.join(skillDir.path, 'secret'),
+      );
+
+      await expectLater(
+        assertSafeImportPath(
+          fs: fs,
+          path: skillDir.path,
+          allowedRoots: [tmp.path],
+        ),
+        throwsUnsafePath(),
+      );
+    },
+  );
 }

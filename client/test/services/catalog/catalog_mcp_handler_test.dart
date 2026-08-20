@@ -125,4 +125,26 @@ void main() {
     final text = (res.result!['content'] as List).first['text'] as String;
     expect(text, contains('code=bind_scope_unsupported'));
   });
+
+  test('bind_to team is rejected before dispatch', () async {
+    final module = FakeCatalogModule(kind: 'skill');
+    final h = CatalogMcpHandler(
+      registry: CatalogKindRegistry()..register(module),
+    );
+    final res = await h.handle(
+      const JsonRpcRequest(
+        id: 6,
+        method: 'tools/call',
+        params: {
+          'name': 'create_skill',
+          'arguments': {'name': 'demo', 'body': 'Do X', 'bind_to': 'team'},
+        },
+      ),
+      session(),
+    );
+    expect(res!.result!['isError'], isTrue);
+    final text = (res.result!['content'] as List).first['text'] as String;
+    expect(text, contains('code=bind_scope_unsupported'));
+    expect(module.lastOp, isNull);
+  });
 }

@@ -131,6 +131,30 @@ void main() {
     },
   );
 
+  test('read_mcp redacts non-string env and header values', () async {
+    await repository.upsert(
+      const McpServer(
+        id: 'mixed-mcp',
+        name: 'mixed-mcp',
+        server: {
+          'type': 'stdio',
+          'command': 'npx',
+          'env': {'API_KEY': 'super-secret', 'COUNT': 1},
+          'headers': {'Authorization': 'Bearer abc', 'retry': false},
+        },
+      ),
+    );
+
+    final result = await module.handle(
+      CatalogOp.read,
+      req(arguments: {'id': 'mixed-mcp'}),
+    );
+
+    final server = result.data?['server'] as Map<Object?, Object?>?;
+    expect(server?['env'], {'API_KEY': '***', 'COUNT': '***'});
+    expect(server?['headers'], {'Authorization': '***', 'retry': '***'});
+  });
+
   test(
     'import_mcp reads a .mcp.json under allowedRoots with mcpServers.docs and upserts',
     () async {

@@ -11,6 +11,7 @@ import '../../skill/skill_fetch_service.dart';
 import '../../skill/skill_install_service.dart';
 import '../../storage/app_storage.dart';
 import '../catalog_kind.dart';
+import '../catalog_mcp_constants.dart';
 import '../catalog_mutation_bus.dart';
 import '../catalog_path_sandbox.dart';
 import '../catalog_workspace_binder.dart';
@@ -24,6 +25,7 @@ class SkillCatalogModule implements CatalogKindModule {
     required this.bus,
     this.engine,
     this.search,
+    this.onDeleted,
     WorkspaceProjectConfigRepository? workspaceConfig,
   }) : _workspaceConfig = workspaceConfig ?? binder.repo;
 
@@ -33,6 +35,7 @@ class SkillCatalogModule implements CatalogKindModule {
   final CatalogMutationBus bus;
   final SkillAcquisitionEngine? engine;
   final Future<List<Map<String, Object?>>> Function(String query)? search;
+  final Future<void> Function(String skillId)? onDeleted;
   final WorkspaceProjectConfigRepository _workspaceConfig;
 
   @override
@@ -312,12 +315,14 @@ class SkillCatalogModule implements CatalogKindModule {
       ids: [id],
       workspaceId: req.workspaceId,
       boundTo: req.bindTo,
+      message: catalogWriteSuccessMessage,
     );
   }
 
   Future<CatalogResult> _delete(CatalogRequest req) async {
     final skill = await _requireInstalled(_requireId(req));
     await repository.uninstall(skill);
+    await onDeleted?.call(skill.id);
     await _unbindIds(req, [skill.id]);
     _emit(CatalogOp.delete, req, [skill.id]);
     return CatalogResult.ok(
@@ -325,6 +330,7 @@ class SkillCatalogModule implements CatalogKindModule {
       ids: [skill.id],
       workspaceId: req.workspaceId,
       boundTo: req.bindTo,
+      message: catalogWriteSuccessMessage,
     );
   }
 
@@ -343,6 +349,7 @@ class SkillCatalogModule implements CatalogKindModule {
         workspaceId: req.workspaceId,
         failed: failed,
         boundTo: req.bindTo,
+        message: catalogWriteSuccessMessage,
       );
     }
     return CatalogResult.ok(
@@ -350,6 +357,7 @@ class SkillCatalogModule implements CatalogKindModule {
       ids: ids,
       workspaceId: req.workspaceId,
       boundTo: req.bindTo,
+      message: catalogWriteSuccessMessage,
     );
   }
 

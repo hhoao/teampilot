@@ -10,6 +10,7 @@ import '../../plugin/plugin_exceptions.dart';
 import '../../plugin/plugin_install_service.dart';
 import '../../storage/app_storage.dart';
 import '../catalog_kind.dart';
+import '../catalog_mcp_constants.dart';
 import '../catalog_mutation_bus.dart';
 import '../catalog_path_sandbox.dart';
 import '../catalog_workspace_binder.dart';
@@ -22,6 +23,8 @@ class PluginCatalogModule implements CatalogKindModule {
     required this.binder,
     required this.bus,
     this.search,
+    this.installFromDiscovery,
+    this.onDeleted,
     WorkspaceProjectConfigRepository? workspaceConfig,
   }) : _workspaceConfig = workspaceConfig ?? binder.repo;
 
@@ -30,6 +33,9 @@ class PluginCatalogModule implements CatalogKindModule {
   final CatalogWorkspaceBinder binder;
   final CatalogMutationBus bus;
   final Future<List<Map<String, Object?>>> Function(String query)? search;
+  final Future<Plugin> Function(Map<String, Object?> arguments)?
+  installFromDiscovery;
+  final Future<void> Function(String pluginId)? onDeleted;
   final WorkspaceProjectConfigRepository _workspaceConfig;
 
   static const _manifestRelPaths = [
@@ -129,10 +135,23 @@ class PluginCatalogModule implements CatalogKindModule {
     if (existing != null) {
       return _finishWrite(CatalogOp.install, req, [existing.id]);
     }
-    throw CatalogException(
-      'not_found',
-      'Plugin is not installed and no install source was provided',
-    );
+    final installFn = installFromDiscovery;
+    if (installFn == null) {
+      throw CatalogException(
+        'not_found',
+        'Plugin is not installed and no install source was provided',
+      );
+    }
+    try {
+      final plugin = await installFn(req.arguments);
+      return await _finishWrite(CatalogOp.install, req, [plugin.id]);
+    } on CatalogException {
+      rethrow;
+    } on PluginException catch (e) {
+      throw CatalogException('install_failed', e.message);
+    } catch (e) {
+      throw CatalogException('install_failed', '$e');
+    }
   }
 
   Future<CatalogResult> _import(CatalogRequest req) async {
@@ -230,12 +249,14 @@ class PluginCatalogModule implements CatalogKindModule {
       ids: [id],
       workspaceId: req.workspaceId,
       boundTo: req.bindTo,
+      message: catalogWriteSuccessMessage,
     );
   }
 
   Future<CatalogResult> _delete(CatalogRequest req) async {
     final plugin = await _requireInstalled(_requireId(req));
     await repository.uninstall(plugin);
+    await onDeleted?.call(plugin.id);
     await _unbindIds(req, [plugin.id]);
     _emit(CatalogOp.delete, req, [plugin.id]);
     return CatalogResult.ok(
@@ -243,6 +264,7 @@ class PluginCatalogModule implements CatalogKindModule {
       ids: [plugin.id],
       workspaceId: req.workspaceId,
       boundTo: req.bindTo,
+      message: catalogWriteSuccessMessage,
     );
   }
 
@@ -261,6 +283,7 @@ class PluginCatalogModule implements CatalogKindModule {
         workspaceId: req.workspaceId,
         failed: failed,
         boundTo: req.bindTo,
+        message: catalogWriteSuccessMessage,
       );
     }
     return CatalogResult.ok(
@@ -268,6 +291,7 @@ class PluginCatalogModule implements CatalogKindModule {
       ids: ids,
       workspaceId: req.workspaceId,
       boundTo: req.bindTo,
+      message: catalogWriteSuccessMessage,
     );
   }
 

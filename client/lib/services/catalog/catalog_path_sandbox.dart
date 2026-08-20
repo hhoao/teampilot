@@ -25,6 +25,31 @@ Future<void> assertSafeImportPath({
     );
   }
 
+  await _assertSymlinkTargetInside(
+    fs: fs,
+    ctx: ctx,
+    path: normalizedPath,
+    normalizedRoots: normalizedRoots,
+  );
+
+  final entries = await fs.listDirRecursive(normalizedPath);
+  for (final entry in entries) {
+    final child = ctx.normalize(ctx.join(normalizedPath, entry.name));
+    await _assertSymlinkTargetInside(
+      fs: fs,
+      ctx: ctx,
+      path: child,
+      normalizedRoots: normalizedRoots,
+    );
+  }
+}
+
+Future<void> _assertSymlinkTargetInside({
+  required Filesystem fs,
+  required p.Context ctx,
+  required String path,
+  required List<String> normalizedRoots,
+}) async {
   final target = await fs.readSymlinkTarget(path);
   if (target == null) return;
 

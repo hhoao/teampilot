@@ -105,6 +105,7 @@ void main() {
       expect(result.kind, 'skill');
       expect(result.ids, ['local:hello-skill']);
       expect(result.restartRequired, isTrue);
+      expect(result.message, contains('Reconnect'));
 
       final skillMd = File(installedSkillMd('hello-skill'));
       expect(skillMd.existsSync(), isTrue);
