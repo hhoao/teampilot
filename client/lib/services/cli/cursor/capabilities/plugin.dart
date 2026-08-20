@@ -115,10 +115,15 @@ final class CursorPluginCapability implements PluginCapability {
         paths: paths,
       );
       final dest = fsCtx.join(localDir, dirName);
-      if ((await ctx.fs.stat(dest)).exists) {
-        await ctx.fs.removeRecursive(dest);
-      }
-      await ctx.fs.copyTree(source: root, destination: dest);
+      // Session `plugins/local` must point at the shared pool/installed
+      // bundle. A per-session copyTree of large plugins (e.g. superpowers)
+      // blocks the UI isolate for seconds, then ManifestFilesystem overlay
+      // replaces the copy with a symlink anyway.
+      await CliPluginLayout.linkOrCopyTree(
+        fs: ctx.fs,
+        source: root,
+        destination: dest,
+      );
       await CliPluginLayout.projectBundleToFlavor(ctx.fs, dest, paths);
     }
   }

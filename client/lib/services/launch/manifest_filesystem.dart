@@ -321,6 +321,16 @@ class ManifestFilesystem implements Filesystem {
     required String source,
     required String destination,
   }) async {
+    source = _normalize(source);
+    destination = _normalize(destination);
+    final sourceStat = await stat(source);
+    if (sourceStat.isSymlink) {
+      final target = await readSymlinkTarget(source);
+      if (target != null) {
+        await createSymlink(target: target, linkPath: destination);
+      }
+      return;
+    }
     manifest.copyTree(source: source, destination: destination);
     await ensureDir(pathContext.dirname(destination));
     // Populate the overlay too, so a later read in the same staging pass sees

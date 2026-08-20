@@ -127,6 +127,39 @@ void main() {
     );
 
     test(
+      'copyTree of a symlink records a symlink instead of duplicating the tree',
+      () async {
+        final disk = InMemoryFilesystem();
+        await disk.writeString('/installed/superpowers/SKILL.md', '# skill');
+        await disk.createSymlink(
+          target: '/installed/superpowers',
+          linkPath: '/pool/superpowers',
+        );
+
+        final manifest = LaunchManifest();
+        final staging = ManifestFilesystem(
+          manifest: manifest,
+          readDelegate: disk,
+        );
+        await staging.copyTree(
+          source: '/pool/superpowers',
+          destination: '/home/.cursor/plugins/local/superpowers',
+        );
+
+        expect(manifest.entries.whereType<ManifestCopyTree>(), isEmpty);
+        expect(
+          manifest.entries.whereType<ManifestSymlink>().map(
+            (e) => (e.linkPath, e.target),
+          ),
+          contains((
+            '/home/.cursor/plugins/local/superpowers',
+            '/installed/superpowers',
+          )),
+        );
+      },
+    );
+
+    test(
       'reads and lists through overlay symlinks via the readDelegate target',
       () async {
         final disk = InMemoryFilesystem();

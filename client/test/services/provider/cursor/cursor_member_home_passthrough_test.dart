@@ -292,6 +292,41 @@ void main() {
 
       expect(fs.symlinks, isEmpty);
     });
+
+    test(
+      'local script runner applies the batch mirror and skips per-entry links',
+      () async {
+        await seedRealHome();
+        await fs.ensureDir(memberHome);
+        await fs.ensureDir(layout.cursorDir(memberHome));
+
+        String? ran;
+        final batched = CursorMemberHomePassthrough(
+          fs: fs,
+          layout: layout,
+          localScriptRunner: (script) async {
+            ran = script;
+          },
+        );
+
+        await batched.mirror(
+          realHomeRoot: realHome,
+          memberHomeRoot: memberHome,
+        );
+
+        expect(
+          ran,
+          CursorMemberHomePassthrough.buildRemoteMirrorScript(
+            realHomeRoot: realHome,
+            memberHomeRoot: memberHome,
+          ),
+        );
+        expect(
+          fs.symlinks.containsKey(fs.pathContext.join(memberHome, '.cargo')),
+          isFalse,
+        );
+      },
+    );
   });
 }
 

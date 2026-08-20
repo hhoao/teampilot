@@ -82,5 +82,45 @@ void main() {
         expect(servers.containsKey('bundled'), isFalse);
       },
     );
+
+    test(
+      'links pool bundles into plugins/local instead of copying the tree',
+      () async {
+        final fs = InMemoryFilesystem();
+        const configDir = '/cfg';
+        const poolDir = '/pool';
+        const teampilotRoot = '/tp';
+        await fs.writeString(
+          '$poolDir/demo/.cursor-plugin/plugin.json',
+          jsonEncode({'name': 'demo', 'version': '1.0.0'}),
+        );
+        await fs.writeString(
+          '$poolDir/demo/skills/heavy/SKILL.md',
+          '# heavy skill body',
+        );
+
+        await const CursorPluginCapability().provision(
+          PluginProvisionContext(
+            fs: fs,
+            teampilotRoot: teampilotRoot,
+            configDir: configDir,
+            bundlePoolDir: poolDir,
+            enabledPluginIds: const [],
+            installedCatalog: const [],
+            layout: RuntimeLayout(teampilotRoot: teampilotRoot, fs: fs),
+            tool: CliTool.cursor,
+          ),
+        );
+
+        const dest = '$configDir/plugins/local/demo';
+        expect((await fs.stat(dest)).isSymlink, isTrue);
+        expect(await fs.readSymlinkTarget(dest), '$poolDir/demo');
+        expect(fs.files.containsKey('$dest/skills/heavy/SKILL.md'), isFalse);
+        expect(
+          await fs.readString('$dest/skills/heavy/SKILL.md'),
+          '# heavy skill body',
+        );
+      },
+    );
   });
 }

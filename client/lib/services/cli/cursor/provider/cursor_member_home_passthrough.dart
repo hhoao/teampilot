@@ -1,5 +1,11 @@
+import 'dart:io';
+
 import '../../../io/filesystem.dart';
+import '../../../io/local_filesystem.dart';
 import 'cursor_home_layout.dart';
+
+/// Runs a POSIX mirror script (local `/bin/sh` or a test double).
+typedef CursorHomeLocalScriptRunner = Future<void> Function(String script);
 
 /// Mirrors the work-plane user's real `$HOME` into a cursor member fake HOME.
 ///
@@ -10,8 +16,9 @@ import 'cursor_home_layout.dart';
 /// env whitelist.
 ///
 /// Prefer [buildRemoteMirrorScript] on SSH/Termux work planes (one remote
-/// `find`+`ln` round-trip) instead of [mirror] over SFTP. Local/WSL keep
-/// [mirror].
+/// `find`+`ln` round-trip) instead of [mirror] over SFTP. Local POSIX uses
+/// the same script via `localScriptRunner` (or `/bin/sh` on
+/// [LocalFilesystem]) so a large `$HOME` does not stall the UI isolate.
 ///
 /// Before linking, member-home passthrough entries are reconciled:
 /// - entity orphans move to the real home path via [Filesystem.rename] when the
@@ -21,11 +28,14 @@ final class CursorMemberHomePassthrough {
   CursorMemberHomePassthrough({
     required Filesystem fs,
     CursorHomeLayout? layout,
+    CursorHomeLocalScriptRunner? localScriptRunner,
   }) : _fs = fs,
-       _layout = layout ?? CursorHomeLayout(pathContext: fs.pathContext);
+       _layout = layout ?? CursorHomeLayout(pathContext: fs.pathContext),
+       _localScriptRunner = localScriptRunner;
 
   final Filesystem _fs;
   final CursorHomeLayout _layout;
+  final CursorHomeLocalScriptRunner? _localScriptRunner;
 
   /// POSIX `sh` script that performs the same mirror as [mirror] in one remote
   /// exec (list + link). Empty when homes are missing or identical.
@@ -119,6 +129,33 @@ fi
   static String _shellQuote(String value) =>
       "'${value.replaceAll("'", "'\"'\"'")}'";
 
+  Future<bool> _tryRunMirrorScript(String script) async {
+    final runner = _localScriptRunner ?? _defaultLocalScriptRunner();
+    if (runner == null) return false;
+    try {
+      await runner(script);
+      return true;
+    } on Object {
+      return false;
+    }
+  }
+
+  CursorHomeLocalScriptRunner? _defaultLocalScriptRunner() {
+    if (Platform.isWindows) return null;
+    if (_fs is! LocalFilesystem) return null;
+    return _runPosixShell;
+  }
+
+  static Future<void> _runPosixShell(String script) async {
+    final result = await Process.run('/bin/sh', ['-c', script]);
+    if (result.exitCode != 0) {
+      throw StateError(
+        'cursor home passthrough failed (${result.exitCode}): '
+        '${result.stderr}',
+      );
+    }
+  }
+
   Future<void> mirror({
     required String realHomeRoot,
     required String memberHomeRoot,
@@ -127,6 +164,14 @@ fi
     final realHome = ctx.normalize(ctx.absolute(realHomeRoot.trim()));
     final memberHome = ctx.normalize(ctx.absolute(memberHomeRoot.trim()));
     if (realHome.isEmpty || memberHome.isEmpty || realHome == memberHome) {
+      return;
+    }
+
+    final script = buildRemoteMirrorScript(
+      realHomeRoot: realHomeRoot,
+      memberHomeRoot: memberHomeRoot,
+    );
+    if (script.isNotEmpty && await _tryRunMirrorScript(script)) {
       return;
     }
 
