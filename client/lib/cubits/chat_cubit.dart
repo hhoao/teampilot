@@ -1226,7 +1226,11 @@ class ChatCubit extends Cubit<ChatState>
     final cubit = _presenceCubit;
     if (cubit == null) return;
     final tab = _activeTab;
-    if (tab == null) {
+    if (tab == null || _isPersonalSessionTab(tab)) {
+      // Simple / unteamed shells are keyed by session id, not roster member
+      // ids. Polling the team roster against them marks every member offline.
+      // Null target keeps last-known presence (hysteresis) until a team tab
+      // is active again.
       cubit.updateTarget(null);
       return;
     }
@@ -1240,8 +1244,16 @@ class ChatCubit extends Cubit<ChatState>
     );
   }
 
+  /// Persisted simple sessions only. Local/test tabs without a session keep
+  /// the previous push behavior (workspace-switch tests have no AppSession).
+  bool _isPersonalSessionTab(ChatTab tab) {
+    final session = tab.persistedSession;
+    if (session == null) return false;
+    return session.sessionTeam.trim().isEmpty;
+  }
+
   PresenceSessionContext? _presenceSessionContext(ChatTab tab) {
-    final team = _activeTeam;
+    final team = _teamForSessionTab(tab);
     if (team == null) return null;
     return PresenceSessionContext(
       team: team,

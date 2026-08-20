@@ -21,6 +21,7 @@ import '../../services/resource_manager/resource_manager_lifecycle.dart';
 import '../../services/resource_manager/resource_tree_merge.dart';
 import '../../services/terminal/workspace_terminal_registry.dart';
 import '../../services/terminal/workspace_terminal_run_service.dart';
+import '../../services/workbench/workbench_shell_actions.dart';
 
 import '../../widgets/app_toast/app_toast.dart';
 import '../../widgets/managed_provider/managed_provider_usage_status_item.dart';
@@ -245,7 +246,13 @@ class _GlobalResourceManagerHostState extends State<GlobalResourceManagerHost> {
         final memberId = leaf.memberId?.trim() ?? '';
         if (sessionId.isEmpty) return;
         workbench.openSession(workspaceId, sessionId, preview: false);
-        workbench.activate(workspaceId, WorkbenchTabId.session(sessionId));
+        WorkbenchShellActions.selectResolved(
+          workbench: workbench,
+          chat: chat,
+          workspaceId: workspaceId,
+          tabScopeId: workspaceId,
+          tab: WorkbenchTabId.session(sessionId),
+        );
         if (memberId.isNotEmpty) chat.selectMember(memberId);
       // Keep whatever chat/terminal surface the session already shows
       // (do not force terminal like a process-manager jump).

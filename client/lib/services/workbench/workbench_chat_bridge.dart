@@ -39,6 +39,9 @@ class WorkbenchChatBridge implements WorkbenchDomainPort, ChatWorkbenchPort {
       preview: preview,
       activate: activate,
     );
+    // Active tab is bar-derived; re-push so presence tracks the session just
+    // surfaced (sidebar / reuse), not the previous simple or team tab.
+    if (activate) _chat.pushPresenceTarget();
     if (replaced == null) return;
     if (replaced.kind == WorkbenchTabKind.session) {
       final replacedTab = _chat.tabStore.openTabBySessionId(replaced.id);

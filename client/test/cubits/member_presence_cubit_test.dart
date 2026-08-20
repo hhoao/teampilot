@@ -9,6 +9,8 @@ import 'package:teampilot/cubits/chat/model/session_connect_request.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/member_presence_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
+import 'package:teampilot/cubits/workbench/workbench_tab.dart';
+import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/member_presence.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace_folder.dart';
@@ -18,6 +20,7 @@ import 'package:teampilot/services/team_bus/bus_user_line_capture.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 import 'package:teampilot/services/workbench/workbench_chat_bridge.dart';
+import 'package:teampilot/services/workbench/workbench_shell_actions.dart';
 
 import '../support/post_frame_test_harness.dart';
 
@@ -418,6 +421,151 @@ void main() {
           pumpFrame();
 
           expect(service.lastShells?.keys, ['m-lead']);
+          expect(
+            presenceCubit.state.presence['m-lead']?.connection,
+            MemberConnection.connected,
+          );
+        });
+      },
+    );
+
+    // Same workspace, two sessions: chatting in simple mode then switching to
+    // the team tab must re-point presence at the team shells. Otherwise ticks
+    // keep the simple session's shells (keyed by session id, not roster ids)
+    // and every team member reads 未连接.
+    test(
+      'switching from a simple session back to a team session re-pushes shells',
+      () {
+        fakeAsync((async) {
+          final service = _ShellAwarePresenceService();
+          final harness = PostFrameTestHarness();
+          final presenceCubit = MemberPresenceCubit(
+            memberPresenceService: service,
+          );
+          final chatCubit = ChatCubit(
+            executableResolver: () => 'true',
+            automationRepository: testAutomationRepository(),
+            postFrameScheduler: harness.scheduler,
+            terminalSessionFactory:
+                ({required String executable, int scrollbackLines = 10000}) =>
+                    _FakeTerminalSession(executable: executable),
+          );
+          addTearDown(() async {
+            await chatCubit.close();
+            await presenceCubit.close();
+          });
+          chatCubit.bindPresenceCubit(presenceCubit);
+
+          final workbench = WorkbenchCubit();
+          addTearDown(workbench.close);
+          final bridge = WorkbenchChatBridge(
+            workbench: workbench,
+            chat: chatCubit,
+          );
+          workbench.port = bridge;
+          chatCubit.workbenchPort = bridge;
+
+          const team = TeamProfile(
+            id: 'team-a',
+            name: 'A',
+            members: [TeamMemberConfig(id: 'm-lead', name: 'team-lead')],
+          );
+          const workspaceId = 'ws';
+
+          void pumpFrame() {
+            SchedulerBinding.instance.handleBeginFrame(Duration.zero);
+            SchedulerBinding.instance.handleDrawFrame();
+          }
+
+          void flushPresence() {
+            pumpFrame();
+            async.elapse(const Duration(milliseconds: 80));
+            async.flushMicrotasks();
+            pumpFrame();
+          }
+
+          chatCubit.setActiveWorkspace(workspaceId);
+          chatCubit.activeTeam = team;
+
+          final teamTab = ChatTab(
+            info: const ChatTabInfo(id: 'team-sess', title: 'team', subtitle: ''),
+            cliTeamName: 'team-1',
+          );
+          teamTab.persistedSession = AppSession(
+            sessionId: 'team-sess',
+            workspaceId: workspaceId,
+            sessionTeam: team.id,
+            createdAt: 0,
+          );
+          teamTab.memberShells['m-lead'] = _FakeTerminalSession(executable: 't');
+          chatCubit.tabStore.registerSession(teamTab);
+          bridge.onSessionTabOpened(workspaceId, 'team-sess');
+
+          final simpleTab = ChatTab(
+            info: const ChatTabInfo(
+              id: 'simple-sess',
+              title: 'simple',
+              subtitle: '',
+            ),
+            cliTeamName: 'simple-1',
+          );
+          simpleTab.persistedSession = AppSession(
+            sessionId: 'simple-sess',
+            workspaceId: workspaceId,
+            createdAt: 0,
+          );
+          simpleTab.memberShells['simple-sess'] = _FakeTerminalSession(
+            executable: 's',
+          );
+          chatCubit.tabStore.registerSession(simpleTab);
+          bridge.onSessionTabOpened(workspaceId, 'simple-sess');
+
+          presenceCubit.attachPresenceUi();
+          presenceCubit.syncPresenceTeam(team);
+
+          WorkbenchShellActions.selectResolved(
+            workbench: workbench,
+            chat: chatCubit,
+            workspaceId: workspaceId,
+            tabScopeId: workspaceId,
+            tab: WorkbenchTabId.session('team-sess'),
+          );
+          flushPresence();
+          expect(service.lastShells?.keys, ['m-lead']);
+          expect(
+            presenceCubit.state.presence['m-lead']?.connection,
+            MemberConnection.connected,
+          );
+
+          // Chat in the simple session: connect/running change pushes the
+          // now-active simple tab (shells keyed by session id, not roster).
+          WorkbenchShellActions.selectResolved(
+            workbench: workbench,
+            chat: chatCubit,
+            workspaceId: workspaceId,
+            tabScopeId: workspaceId,
+            tab: WorkbenchTabId.session('simple-sess'),
+          );
+          chatCubit.onTabRunningChanged();
+          flushPresence();
+
+          // Switch back to the team session via the workbench tab bar.
+          WorkbenchShellActions.selectResolved(
+            workbench: workbench,
+            chat: chatCubit,
+            workspaceId: workspaceId,
+            tabScopeId: workspaceId,
+            tab: WorkbenchTabId.session('team-sess'),
+          );
+          flushPresence();
+
+          expect(
+            service.lastShells?.keys,
+            ['m-lead'],
+            reason:
+                'team tab select must re-point presence at the team session '
+                'shells, not keep the simple session',
+          );
           expect(
             presenceCubit.state.presence['m-lead']?.connection,
             MemberConnection.connected,

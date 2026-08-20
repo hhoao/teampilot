@@ -61,8 +61,9 @@ abstract final class WorkbenchShellActions {
 
   /// Context-free select used by keyboard strip navigation and the tab bar.
   ///
-  /// The bar's active is the single source; the bridge mirrors it into
-  /// [ChatState]. No chat-side tab selection is performed here anymore.
+  /// The bar's active is the single source for [ChatCubit.activeTab]. Re-push
+  /// the presence target after activate so a simple↔team session switch does
+  /// not keep the previous tab's shells (team members would all read offline).
   static void selectResolved({
     required WorkbenchCubit workbench,
     required ChatCubit chat,
@@ -71,6 +72,7 @@ abstract final class WorkbenchShellActions {
     required WorkbenchTabId tab,
   }) {
     workbench.activate(workspaceId, tab);
+    chat.pushPresenceTarget();
   }
 
   static Future<void> closeAt({
