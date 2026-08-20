@@ -2,7 +2,7 @@ import '../workspace_dnd/workspace_drop_target.dart';
 import '../workspace_dnd/workspace_file_ref.dart';
 import 'compose_file_attach.dart';
 
-/// Compose drop target: inserts `@` path references (any file type).
+/// Compose drop target: inserts `@` path references for files and directories.
 class ComposeFileDropIngestor implements WorkspaceDropTarget {
   ComposeFileDropIngestor({
     required this.workspaceRoot,
@@ -22,10 +22,6 @@ class ComposeFileDropIngestor implements WorkspaceDropTarget {
     final references = <String>[];
     var skipped = 0;
     for (final ref in payload.refs) {
-      if (ref.isDirectory) {
-        skipped += 1;
-        continue;
-      }
       final reference = await resolveComposeFileReference(
         absolutePath: ref.nativePath,
         workspaceRoot: workspaceRoot,
@@ -34,7 +30,13 @@ class ComposeFileDropIngestor implements WorkspaceDropTarget {
         skipped += 1;
         continue;
       }
-      references.add(reference);
+      // Match @-mention directory tokens (`@docs/`) so dropped folders
+      // keep the same trailing-slash spelling as autocomplete.
+      references.add(
+        ref.isDirectory && !reference.endsWith('/')
+            ? '$reference/'
+            : reference,
+      );
     }
 
     if (references.isEmpty) {

@@ -64,7 +64,7 @@ void main() {
       expect(sink.references, ['@/tmp/config.json', '@docs/readme.md']);
     });
 
-    test('skips directories', () async {
+    test('inserts @ references for directories', () async {
       final sink = _RecordingSink();
       final ingestor = ComposeFileDropIngestor(
         workspaceRoot: '/repo',
@@ -80,12 +80,22 @@ void main() {
               namespace: const PathNamespace.localPosix(),
               isDirectory: true,
             ),
+            WorkspaceFileRef(
+              nativePath: '/repo/docs',
+              namespace: const PathNamespace.localPosix(),
+              isDirectory: true,
+            ),
+            WorkspaceFileRef(
+              nativePath: '/repo/src/main.dart',
+              namespace: const PathNamespace.localPosix(),
+              isDirectory: false,
+            ),
           ],
         ),
       );
 
-      expect(outcome.delivered, 0);
-      expect(sink.references, isEmpty);
+      expect(outcome.delivered, 3);
+      expect(sink.references, ['@/tmp/folder/', '@docs/', '@src/main.dart']);
     });
   });
 }
