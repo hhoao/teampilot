@@ -131,38 +131,57 @@ class _RemoteBrandIcon extends StatelessWidget {
   final double size;
   final bool showBorder;
 
-  @override
-  Widget build(BuildContext context) {
+  BoxDecoration _tileDecoration(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final backgroundColor = resolveProviderIconTileBackground(cs, isDark);
+    return BoxDecoration(
+      color: resolveProviderIconTileBackground(cs, isDark),
+      borderRadius: BorderRadius.circular(ManagedProviderBrandMark._borderRadius),
+      border: showBorder
+          ? Border.all(color: resolveProviderIconBorderColor(cs, isDark))
+          : null,
+    );
+  }
 
+  Widget _successTile(BuildContext context, Widget image) {
     return Container(
       width: size,
       height: size,
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(ManagedProviderBrandMark._borderRadius),
-        border: showBorder
-            ? Border.all(color: resolveProviderIconBorderColor(cs, isDark))
-            : null,
-      ),
+      decoration: _tileDecoration(context),
       clipBehavior: Clip.antiAlias,
       alignment: Alignment.center,
       child: Padding(
         padding: EdgeInsets.all(size * 0.14),
-        child: Image.network(
-          url,
-          fit: BoxFit.contain,
-          errorBuilder: (context, error, stackTrace) => ProviderBrandIcon(
-            icon: '',
-            name: name,
-            size: size,
-            borderRadius: ManagedProviderBrandMark._borderRadius,
-            showBorder: showBorder,
-          ),
-        ),
+        child: image,
       ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Image.network(
+      url,
+      width: size,
+      height: size,
+      fit: BoxFit.contain,
+      errorBuilder: (context, error, stackTrace) => ProviderBrandIcon(
+        icon: '',
+        name: name,
+        size: size,
+        borderRadius: ManagedProviderBrandMark._borderRadius,
+        showBorder: showBorder,
+      ),
+      frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+        if (frame == null) {
+          return Container(
+            width: size,
+            height: size,
+            decoration: _tileDecoration(context),
+            clipBehavior: Clip.antiAlias,
+          );
+        }
+        return _successTile(context, child);
+      },
     );
   }
 }
