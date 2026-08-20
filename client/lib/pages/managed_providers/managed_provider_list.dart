@@ -72,13 +72,32 @@ class ManagedProviderList extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            provider.name,
-                            style: TpTextStyles.of(context).mdBold,
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  provider.name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TpTextStyles.of(context).mdBold,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              TpStatusBadge(
+                                label: provider.enabled
+                                    ? l10n.managedProvidersEnabled
+                                    : l10n.managedProvidersDisabled,
+                                tone: provider.enabled
+                                    ? TpStatusBadgeTone.success
+                                    : TpStatusBadgeTone.neutral,
+                              ),
+                            ],
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            '${provider.kind.value} · ${provider.adapterId}',
+                            '${l10n.managedProviderKindLabel(provider.kind)} · ${provider.name}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: TpTextStyles.of(
                               context,
                             ).smColored(cs.onSurfaceVariant),
@@ -87,44 +106,32 @@ class ManagedProviderList extends StatelessWidget {
                       ),
                     ),
                   ),
-                  Flexible(
-                    child: Wrap(
-                      alignment: WrapAlignment.end,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      spacing: 2,
-                      runSpacing: 2,
-                      children: [
-                        TpStatusBadge(
-                          label: provider.enabled
-                              ? l10n.managedProvidersEnabled
-                              : l10n.managedProvidersDisabled,
-                          tone: provider.enabled
-                              ? TpStatusBadgeTone.success
-                              : TpStatusBadgeTone.neutral,
+                  Row(
+                    key: Key('managed-provider-actions-${provider.id}'),
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        tooltip: provider.enabled
+                            ? l10n.managedProvidersDisable
+                            : l10n.managedProvidersEnable,
+                        onPressed: () => onToggle(provider),
+                        icon: Icon(
+                          provider.enabled
+                              ? Icons.pause_circle_outline
+                              : Icons.play_circle_outline,
                         ),
-                        IconButton(
-                          tooltip: provider.enabled
-                              ? l10n.managedProvidersDisable
-                              : l10n.managedProvidersEnable,
-                          onPressed: () => onToggle(provider),
-                          icon: Icon(
-                            provider.enabled
-                                ? Icons.pause_circle_outline
-                                : Icons.play_circle_outline,
-                          ),
-                        ),
-                        IconButton(
-                          tooltip: l10n.managedProvidersEdit,
-                          onPressed: () => onEdit(provider),
-                          icon: const Icon(Icons.edit_outlined),
-                        ),
-                        IconButton(
-                          tooltip: l10n.managedProvidersDelete,
-                          onPressed: () => onDelete(provider),
-                          icon: Icon(Icons.delete_outline, color: cs.error),
-                        ),
-                      ],
-                    ),
+                      ),
+                      IconButton(
+                        tooltip: l10n.managedProvidersEdit,
+                        onPressed: () => onEdit(provider),
+                        icon: const Icon(Icons.edit_outlined),
+                      ),
+                      IconButton(
+                        tooltip: l10n.managedProvidersDelete,
+                        onPressed: () => onDelete(provider),
+                        icon: Icon(Icons.delete_outline, color: cs.error),
+                      ),
+                    ],
                   ),
                 ],
               ),

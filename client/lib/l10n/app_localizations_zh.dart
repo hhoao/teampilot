@@ -7308,14 +7308,14 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get managedProvidersQuickPresetCodexHint =>
-      '使用官方 Codex 订阅适配器；请在 Providers 设置中登录。';
+      '在下方登录或导入凭据。用量查询走官方 ChatGPT Codex 配额接口。';
 
   @override
   String get managedProvidersQuickPresetClaudeCode => 'Claude Code';
 
   @override
   String get managedProvidersQuickPresetClaudeCodeHint =>
-      '使用官方 Claude Code 订阅适配器；请在 Providers 设置中登录。';
+      '在下方登录或导入凭据。用量查询走官方 Claude OAuth 配额接口。';
 
   @override
   String get managedProvidersQuickPresetDeepSeek => 'DeepSeek';
@@ -7387,6 +7387,15 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get managedProvidersKind => '类型';
+
+  @override
+  String get managedProvidersKindApiBalance => 'API 余额';
+
+  @override
+  String get managedProvidersKindSubscriptionQuota => '订阅额度';
+
+  @override
+  String get managedProvidersKindCustomHttp => '自定义 HTTP';
 
   @override
   String get managedProvidersEndpoint => 'Endpoint URL';

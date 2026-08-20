@@ -177,7 +177,11 @@ import '../services/provider_usage/managed_provider_secret_store.dart';
 import '../services/provider_usage/managed_provider_usage_adapter.dart';
 import '../services/provider_usage/managed_provider_usage_coordinator.dart';
 import '../services/provider_usage/managed_provider_usage_registry.dart';
+import '../services/provider_usage/adapters/claude_official_subscription_auth.dart';
+import '../services/provider_usage/adapters/claude_official_subscription_client.dart';
 import '../services/provider_usage/adapters/claude_subscription_adapter.dart';
+import '../services/provider_usage/adapters/codex_official_subscription_auth.dart';
+import '../services/provider_usage/adapters/codex_official_subscription_client.dart';
 import '../services/provider_usage/adapters/codex_subscription_adapter.dart';
 import '../services/provider_usage/adapters/http_json_mapping_adapter.dart';
 import '../services/provider_usage/adapters/official_subscription_adapter.dart';
@@ -321,11 +325,9 @@ class ManagedProviderControlPlaneLease {
 /// Builds the CLI-independent adapter catalog used by the AppShell control
 /// plane. Official adapters receive application-owned boundaries only.
 ///
-/// The real Claude/Codex application-auth integrations are intentionally
-/// deferred. Their default boundaries fail closed with a typed `unsupported`
-/// result and never inspect CLI provider files or include credential material
-/// in errors. Production integrations can be supplied through the injectable
-/// readers and clients below.
+/// Callers that omit the Claude/Codex boundaries keep the fail-closed
+/// `unsupported` stubs. Production `buildAppShell` injects file-backed auth
+/// readers and the official usage HTTP clients.
 ManagedProviderUsageRegistry buildDefaultManagedProviderUsageRegistry({
   OfficialSubscriptionAuthReader? claudeAuthReader,
   OfficialSubscriptionClient? claudeClient,
@@ -870,14 +872,6 @@ Future<AppShell> buildAppShell({
       ManagedProviderRepository(
         onProvidersDeleted: resolvedManagedProviderUsageRepository.deleteMany,
       );
-  final resolvedManagedProviderUsageRegistry =
-      managedProviderUsageRegistry ??
-      buildDefaultManagedProviderUsageRegistry(
-        claudeAuthReader: managedProviderClaudeAuthReader,
-        claudeClient: managedProviderClaudeSubscriptionClient,
-        codexAuthReader: managedProviderCodexAuthReader,
-        codexClient: managedProviderCodexSubscriptionClient,
-      );
   final ownsManagedProviderHttpClient =
       managedProviderUsageHttpClient == null &&
       managedProviderUsageCoordinator == null;
@@ -886,6 +880,38 @@ Future<AppShell> buildAppShell({
       (managedProviderUsageCoordinator == null
           ? _DefaultProviderUsageHttpClient()
           : null);
+  final resolvedManagedProviderUsageRegistry =
+      managedProviderUsageRegistry ??
+      buildDefaultManagedProviderUsageRegistry(
+        claudeAuthReader:
+            managedProviderClaudeAuthReader ??
+            ClaudeOfficialSubscriptionAuthReader(
+              fs: AppStorage.fs,
+              basePath: AppStorage.paths.basePath,
+              homeDirectory: () => AppStorage.home,
+            ),
+        claudeClient:
+            managedProviderClaudeSubscriptionClient ??
+            (resolvedManagedProviderHttpClient == null
+                ? null
+                : ClaudeOfficialSubscriptionClient(
+                    resolvedManagedProviderHttpClient,
+                  )),
+        codexAuthReader:
+            managedProviderCodexAuthReader ??
+            CodexOfficialSubscriptionAuthReader(
+              fs: AppStorage.fs,
+              basePath: AppStorage.paths.basePath,
+              homeDirectory: () => AppStorage.home,
+            ),
+        codexClient:
+            managedProviderCodexSubscriptionClient ??
+            (resolvedManagedProviderHttpClient == null
+                ? null
+                : CodexOfficialSubscriptionClient(
+                    resolvedManagedProviderHttpClient,
+                  )),
+      );
   final resolvedManagedProviderUsageCoordinator =
       managedProviderUsageCoordinator ??
       ManagedProviderUsageCoordinator(

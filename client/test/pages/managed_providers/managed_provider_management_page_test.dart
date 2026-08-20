@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ui/shared_ui.dart';
+import 'package:teampilot/cubits/app_provider_cubit.dart';
 import 'package:teampilot/cubits/layout_cubit.dart';
 import 'package:teampilot/cubits/managed_provider_cubit.dart';
 import 'package:teampilot/cubits/managed_provider_usage_cubit.dart';
@@ -9,8 +10,11 @@ import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/managed_provider.dart';
 import 'package:teampilot/models/provider_usage_snapshot.dart';
 import 'package:teampilot/pages/managed_providers/managed_provider_management_page.dart';
+import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/repositories/managed_provider_repository.dart';
 import 'package:teampilot/repositories/managed_provider_usage_repository.dart';
+import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
+import 'package:teampilot/services/cli/registry/cli_tool_registry_scope.dart';
 import 'package:teampilot/services/provider_usage/managed_provider_secret_store.dart';
 import 'package:teampilot/services/provider_usage/managed_provider_usage_adapter.dart';
 import 'package:teampilot/services/provider_usage/managed_provider_usage_coordinator.dart'
@@ -147,6 +151,7 @@ void main() {
   late ManagedProviderUsageRepository usageRepository;
   late ManagedProviderCubit providerCubit;
   late ManagedProviderUsageCubit usageCubit;
+  late AppProviderCubit appProviderCubit;
   late _Adapter adapter;
   late _Adapter httpJsonAdapter;
   late _RecordingNavigatorObserver navigatorObserver;
@@ -181,11 +186,16 @@ void main() {
     );
     providerCubit = ManagedProviderCubit(repository: providerRepository);
     usageCubit = ManagedProviderUsageCubit(coordinator: coordinator);
+    appProviderCubit = AppProviderCubit(
+      repository: AppProviderRepository(fs: fs, basePath: '/tp'),
+      basePath: '/tp',
+    );
   });
 
   tearDown(() async {
     await providerCubit.close();
     await usageCubit.close();
+    await appProviderCubit.close();
   });
 
   test('secure store propagates backend write failures', () async {
@@ -213,13 +223,17 @@ void main() {
             providers: [
               BlocProvider.value(value: providerCubit),
               BlocProvider.value(value: usageCubit),
+              BlocProvider.value(value: appProviderCubit),
               BlocProvider(create: (_) => LayoutCubit()),
               RepositoryProvider.value(
                 value: ManagedProviderSecretStore(secureStore),
               ),
             ],
-            child: const Scaffold(
-              body: ManagedProviderManagementPage(embedded: true),
+            child: CliToolRegistryScope(
+              registry: CliToolRegistry.builtIn(),
+              child: const Scaffold(
+                body: ManagedProviderManagementPage(embedded: true),
+              ),
             ),
           ),
         ),
@@ -261,6 +275,43 @@ void main() {
 
     expect(find.text('12.50 USD'), findsOneWidget);
     expect(adapter.calls, 0);
+  });
+
+  testWidgets('list cards hide adapter ids and keep actions on one row', (
+    tester,
+  ) async {
+    providerCubit.emit(
+      ManagedProviderState(
+        status: ManagedProviderLoadStatus.ready,
+        providers: [
+          _provider(),
+          ManagedProvider(
+            id: 'codex',
+            name: 'Codex',
+            kind: ManagedProviderKind.subscriptionQuota,
+            adapterId: 'official-codex-subscription',
+          ),
+        ],
+      ),
+    );
+    usageCubit.emit(
+      ManagedProviderUsageState(status: ManagedProviderUsageLoadStatus.ready),
+    );
+
+    await pumpPage(tester);
+
+    expect(find.text('API balance · Example'), findsOneWidget);
+    expect(find.text('Subscription quota · Codex'), findsOneWidget);
+    expect(find.textContaining('official-codex-subscription'), findsNothing);
+    expect(find.textContaining('apiBalance'), findsNothing);
+    expect(
+      find.byKey(const Key('managed-provider-actions-p1')),
+      findsOneWidget,
+    );
+    expect(
+      tester.widget(find.byKey(const Key('managed-provider-actions-p1'))),
+      isA<Row>(),
+    );
   });
 
   testWidgets(
@@ -403,14 +454,46 @@ void main() {
       findsOneWidget,
     );
     expect(
-      find.byKey(const Key('managed-provider-section-display')),
+      find.byKey(
+        const Key('managed-provider-section-display'),
+        skipOffstage: false,
+      ),
       findsOneWidget,
     );
     expect(
-      find.byKey(const Key('managed-provider-section-advanced')),
+      find.byKey(
+        const Key('managed-provider-section-advanced'),
+        skipOffstage: false,
+      ),
       findsOneWidget,
     );
   });
+
+  testWidgets(
+    'Codex preset shows official login actions instead of an API key',
+    (tester) async {
+      providerCubit.emit(
+        ManagedProviderState(status: ManagedProviderLoadStatus.ready),
+      );
+      usageCubit.emit(
+        ManagedProviderUsageState(status: ManagedProviderUsageLoadStatus.ready),
+      );
+      await pumpPage(tester);
+
+      await openNewEditor(tester);
+      await applyPreset(tester, 'Codex');
+
+      expect(
+        find.byKey(const Key('managed-provider-official-credentials')),
+        findsOneWidget,
+      );
+      expect(find.text('Sign in with OpenAI'), findsOneWidget);
+      expect(
+        find.byKey(const Key('managed-provider-credential-secret')),
+        findsNothing,
+      );
+    },
+  );
 
   testWidgets('DeepSeek preset starts with only required basics expanded', (
     tester,

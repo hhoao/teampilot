@@ -13601,7 +13601,7 @@ abstract class AppLocalizations {
   /// No description provided for @managedProvidersQuickPresetCodexHint.
   ///
   /// In en, this message translates to:
-  /// **'Uses the official Codex subscription adapter; sign in from Providers settings.'**
+  /// **'Sign in or import credentials below. Usage uses the official ChatGPT Codex quota API.'**
   String get managedProvidersQuickPresetCodexHint;
 
   /// No description provided for @managedProvidersQuickPresetClaudeCode.
@@ -13613,7 +13613,7 @@ abstract class AppLocalizations {
   /// No description provided for @managedProvidersQuickPresetClaudeCodeHint.
   ///
   /// In en, this message translates to:
-  /// **'Uses the official Claude Code subscription adapter; sign in from Providers settings.'**
+  /// **'Sign in or import credentials below. Usage uses the official Claude OAuth quota API.'**
   String get managedProvidersQuickPresetClaudeCodeHint;
 
   /// No description provided for @managedProvidersQuickPresetDeepSeek.
@@ -13747,6 +13747,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Kind'**
   String get managedProvidersKind;
+
+  /// No description provided for @managedProvidersKindApiBalance.
+  ///
+  /// In en, this message translates to:
+  /// **'API balance'**
+  String get managedProvidersKindApiBalance;
+
+  /// No description provided for @managedProvidersKindSubscriptionQuota.
+  ///
+  /// In en, this message translates to:
+  /// **'Subscription quota'**
+  String get managedProvidersKindSubscriptionQuota;
+
+  /// No description provided for @managedProvidersKindCustomHttp.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom HTTP'**
+  String get managedProvidersKindCustomHttp;
 
   /// No description provided for @managedProvidersEndpoint.
   ///

@@ -13,10 +13,12 @@ import '../../models/provider_usage_snapshot.dart';
 import '../../services/provider_usage/managed_provider_credential_transaction.dart';
 import '../../services/provider_usage/managed_provider_presets.dart';
 import '../../services/provider_usage/managed_provider_secret_store.dart';
+import '../../services/provider_usage/official_managed_provider_binding.dart';
 import '../../widgets/app_toast/app_toast.dart';
 import '../../utils/managed_provider_error_localization.dart';
 import 'managed_provider_editor_section_shell.dart';
 import 'managed_provider_editor_sections.dart';
+import 'managed_provider_official_credentials.dart';
 
 class ManagedProviderEditorPage extends StatefulWidget {
   const ManagedProviderEditorPage({
@@ -187,14 +189,18 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
               badge: _credentialsInitiallyExpanded
                   ? l10n.managedProvidersSectionConfiguredBadge
                   : null,
-              child: ManagedProviderCredentialsSection(
-                schema: _schema,
-                credentialNameController: _credentialName,
-                credentialFieldController: _credentialField,
-                credentialPlacementController: _credentialPlacement,
-                credentialConfigured: _credentialRef.text.trim().isNotEmpty,
-                onCredentialFieldChanged: _handleCredentialFieldChanged,
-              ),
+              child: _isOfficialSubscription
+                  ? ManagedProviderOfficialCredentials(adapterId: _adapter.text)
+                  : ManagedProviderCredentialsSection(
+                      schema: _schema,
+                      credentialNameController: _credentialName,
+                      credentialFieldController: _credentialField,
+                      credentialPlacementController: _credentialPlacement,
+                      credentialConfigured: _credentialRef.text
+                          .trim()
+                          .isNotEmpty,
+                      onCredentialFieldChanged: _handleCredentialFieldChanged,
+                    ),
             ),
             const SizedBox(height: 12),
             ManagedProviderEditorSectionShell(
@@ -406,7 +412,11 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
       _kind == ManagedProviderKind.customHttp ||
       _schema.firstQuery && _selectedPreset == null;
 
+  bool get _isOfficialSubscription =>
+      OfficialManagedProviderBinding.forAdapter(_adapter.text) != null;
+
   bool get _credentialsInitiallyExpanded {
+    if (_isOfficialSubscription) return true;
     final provider = _provider;
     if (provider == null) return false;
     final endpoint = provider.endpointConfig;

@@ -6,6 +6,8 @@ import 'package:teampilot/models/managed_provider.dart';
 import 'package:teampilot/models/provider_usage_snapshot.dart';
 import 'package:teampilot/repositories/managed_provider_repository.dart';
 import 'package:teampilot/repositories/managed_provider_usage_repository.dart';
+import 'package:teampilot/services/provider_usage/adapters/claude_official_subscription_auth.dart';
+import 'package:teampilot/services/provider_usage/adapters/claude_official_subscription_client.dart';
 import 'package:teampilot/services/provider_usage/managed_provider_usage_adapter.dart';
 import 'package:teampilot/services/provider_usage/managed_provider_usage_coordinator.dart'
     as coordinator;
@@ -59,6 +61,43 @@ void main() {
           ),
         );
       }
+    },
+  );
+
+  test(
+    'file-backed official auth without credentials is missingCredential',
+    () async {
+      final fs = InMemoryFilesystem();
+      final registry = buildDefaultManagedProviderUsageRegistry(
+        claudeAuthReader: ClaudeOfficialSubscriptionAuthReader(
+          fs: fs,
+          basePath: '/tp',
+          homeDirectory: () => '/home',
+        ),
+        claudeClient: ClaudeOfficialSubscriptionClient(_UnusedHttpClient()),
+      );
+      final adapter = registry.adapterFor('official-claude-subscription')!;
+
+      await expectLater(
+        adapter.fetch(
+          ManagedProvider(
+            id: 'claude',
+            name: 'Claude',
+            kind: ManagedProviderKind.subscriptionQuota,
+            adapterId: 'official-claude-subscription',
+          ),
+          credentials: _EmptyCredentials(),
+          http: _UnusedHttpClient(),
+          now: DateTime.fromMillisecondsSinceEpoch(1_700_000_000_000),
+        ),
+        throwsA(
+          isA<ManagedProviderUsageQueryError>().having(
+            (error) => error.code,
+            'code',
+            ManagedProviderUsageQueryErrorCode.missingCredential,
+          ),
+        ),
+      );
     },
   );
 
@@ -165,62 +204,66 @@ void main() {
     expect(httpCloseCalls, 1);
   });
 
-  test('control-plane lease closes on failure and transfers on success',
-      () async {
-    final repository = _FakeManagedProviderRepository();
-    final usageCoordinator = _FakeManagedProviderUsageCoordinator();
-    final providerCubit = ManagedProviderCubit(repository: repository);
-    final usageCubit = ManagedProviderUsageCubit(coordinator: usageCoordinator);
-    var httpCloseCalls = 0;
-    final controlPlane = ManagedProviderControlPlane(
-      providerRepository: repository,
-      usageRepository: ManagedProviderUsageRepository(),
-      secretStore: ManagedProviderSecretStore(_EmptySecureStore()),
-      usageRegistry: ManagedProviderUsageRegistry(),
-      usageCoordinator: usageCoordinator,
-      providerCubit: providerCubit,
-      usageCubit: usageCubit,
-      ownsProviderCubit: true,
-      ownsUsageCubit: true,
-      ownsUsageCoordinator: true,
-      closeOwnedHttpClient: () async => httpCloseCalls++,
-    );
-    final lease = ManagedProviderControlPlaneLease(controlPlane);
+  test(
+    'control-plane lease closes on failure and transfers on success',
+    () async {
+      final repository = _FakeManagedProviderRepository();
+      final usageCoordinator = _FakeManagedProviderUsageCoordinator();
+      final providerCubit = ManagedProviderCubit(repository: repository);
+      final usageCubit = ManagedProviderUsageCubit(
+        coordinator: usageCoordinator,
+      );
+      var httpCloseCalls = 0;
+      final controlPlane = ManagedProviderControlPlane(
+        providerRepository: repository,
+        usageRepository: ManagedProviderUsageRepository(),
+        secretStore: ManagedProviderSecretStore(_EmptySecureStore()),
+        usageRegistry: ManagedProviderUsageRegistry(),
+        usageCoordinator: usageCoordinator,
+        providerCubit: providerCubit,
+        usageCubit: usageCubit,
+        ownsProviderCubit: true,
+        ownsUsageCubit: true,
+        ownsUsageCoordinator: true,
+        closeOwnedHttpClient: () async => httpCloseCalls++,
+      );
+      final lease = ManagedProviderControlPlaneLease(controlPlane);
 
-    await lease.closeIfOwned();
-    await lease.closeIfOwned();
+      await lease.closeIfOwned();
+      await lease.closeIfOwned();
 
-    expect(usageCoordinator.closeCalls, 1);
-    expect(httpCloseCalls, 1);
+      expect(usageCoordinator.closeCalls, 1);
+      expect(httpCloseCalls, 1);
 
-    final transferredCoordinator = _FakeManagedProviderUsageCoordinator();
-    final transferredProviderCubit = ManagedProviderCubit(
-      repository: repository,
-    );
-    final transferredUsageCubit = ManagedProviderUsageCubit(
-      coordinator: transferredCoordinator,
-    );
-    final transferredControlPlane = ManagedProviderControlPlane(
-      providerRepository: repository,
-      usageRepository: ManagedProviderUsageRepository(),
-      secretStore: ManagedProviderSecretStore(_EmptySecureStore()),
-      usageRegistry: ManagedProviderUsageRegistry(),
-      usageCoordinator: transferredCoordinator,
-      providerCubit: transferredProviderCubit,
-      usageCubit: transferredUsageCubit,
-      ownsProviderCubit: true,
-      ownsUsageCubit: true,
-      ownsUsageCoordinator: true,
-    );
-    final transferredLease = ManagedProviderControlPlaneLease(
-      transferredControlPlane,
-    )..transferOwnership();
+      final transferredCoordinator = _FakeManagedProviderUsageCoordinator();
+      final transferredProviderCubit = ManagedProviderCubit(
+        repository: repository,
+      );
+      final transferredUsageCubit = ManagedProviderUsageCubit(
+        coordinator: transferredCoordinator,
+      );
+      final transferredControlPlane = ManagedProviderControlPlane(
+        providerRepository: repository,
+        usageRepository: ManagedProviderUsageRepository(),
+        secretStore: ManagedProviderSecretStore(_EmptySecureStore()),
+        usageRegistry: ManagedProviderUsageRegistry(),
+        usageCoordinator: transferredCoordinator,
+        providerCubit: transferredProviderCubit,
+        usageCubit: transferredUsageCubit,
+        ownsProviderCubit: true,
+        ownsUsageCubit: true,
+        ownsUsageCoordinator: true,
+      );
+      final transferredLease = ManagedProviderControlPlaneLease(
+        transferredControlPlane,
+      )..transferOwnership();
 
-    await transferredLease.closeIfOwned();
-    expect(transferredCoordinator.closeCalls, 0);
-    await transferredControlPlane.close();
-    expect(transferredCoordinator.closeCalls, 1);
-  });
+      await transferredLease.closeIfOwned();
+      expect(transferredCoordinator.closeCalls, 0);
+      await transferredControlPlane.close();
+      expect(transferredCoordinator.closeCalls, 1);
+    },
+  );
 }
 
 class _FakeManagedProviderRepository extends ManagedProviderRepository {

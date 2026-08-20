@@ -7606,14 +7606,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get managedProvidersQuickPresetCodexHint =>
-      'Uses the official Codex subscription adapter; sign in from Providers settings.';
+      'Sign in or import credentials below. Usage uses the official ChatGPT Codex quota API.';
 
   @override
   String get managedProvidersQuickPresetClaudeCode => 'Claude Code';
 
   @override
   String get managedProvidersQuickPresetClaudeCodeHint =>
-      'Uses the official Claude Code subscription adapter; sign in from Providers settings.';
+      'Sign in or import credentials below. Usage uses the official Claude OAuth quota API.';
 
   @override
   String get managedProvidersQuickPresetDeepSeek => 'DeepSeek';
@@ -7689,6 +7689,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get managedProvidersKind => 'Kind';
+
+  @override
+  String get managedProvidersKindApiBalance => 'API balance';
+
+  @override
+  String get managedProvidersKindSubscriptionQuota => 'Subscription quota';
+
+  @override
+  String get managedProvidersKindCustomHttp => 'Custom HTTP';
 
   @override
   String get managedProvidersEndpoint => 'Endpoint URL';

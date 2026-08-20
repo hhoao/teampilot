@@ -3,6 +3,7 @@
 
 import 'package:flutter/widgets.dart';
 
+import '../models/managed_provider.dart';
 import '../models/team_config.dart';
 import '../services/editor/editor_messages.dart';
 import 'app_localizations.dart';
@@ -65,6 +66,14 @@ extension AppLocalizationsX on AppLocalizations {
     'deepseek' => managedProvidersQuickPresetDeepSeekHint,
     'opencode' => managedProvidersQuickPresetOpenCodeHint,
     _ => '',
+  };
+
+  String managedProviderKindLabel(ManagedProviderKind kind) => switch (kind) {
+    ManagedProviderKind.apiBalance => managedProvidersKindApiBalance,
+    ManagedProviderKind.subscriptionQuota =>
+      managedProvidersKindSubscriptionQuota,
+    ManagedProviderKind.customHttp => managedProvidersKindCustomHttp,
+    ManagedProviderKind.unknown => kind.value,
   };
 }
 
