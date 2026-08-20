@@ -4,52 +4,7 @@ import 'package:teampilot/services/catalog/catalog_kind_registry.dart';
 import 'package:teampilot/services/catalog/catalog_mcp_policy.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 
-class _FakeModule implements CatalogKindModule {
-  _FakeModule({required this.kind, this.supportsCreate = true});
-
-  @override
-  final String kind;
-  @override
-  final bool supportsCreate;
-  @override
-  bool get supportsImport => true;
-  @override
-  bool get supportsInstall => true;
-
-  CatalogOp? lastOp;
-
-  String get _searchName => kind == 'skill' ? 'search_skills' : 'search_$kind';
-
-  @override
-  List<CatalogToolSpec> advertise() => [
-    CatalogToolSpec(
-      name: _searchName,
-      description: 'Search $kind',
-      inputSchema: const {'type': 'object', 'properties': {}},
-      mutating: false,
-    ),
-    if (supportsCreate)
-      CatalogToolSpec(
-        name: 'create_$kind',
-        description: 'Create $kind',
-        inputSchema: const {'type': 'object', 'properties': {}},
-        mutating: true,
-      ),
-  ];
-
-  @override
-  Future<CatalogResult> handle(CatalogOp op, CatalogRequest req) async {
-    lastOp = op;
-    if (op == CatalogOp.create && !supportsCreate) {
-      throw CatalogException('unsupported_op', 'no create');
-    }
-    return CatalogResult.ok(
-      kind: kind,
-      ids: const ['x'],
-      workspaceId: req.workspaceId,
-    );
-  }
-}
+import 'support/fake_catalog_module.dart';
 
 void main() {
   final fs = LocalFilesystem();
@@ -63,8 +18,8 @@ void main() {
 
   test('omits create_plugin when supportsCreate is false', () {
     final registry = CatalogKindRegistry()
-      ..register(_FakeModule(kind: 'skill'))
-      ..register(_FakeModule(kind: 'plugin', supportsCreate: false));
+      ..register(FakeCatalogModule(kind: 'skill'))
+      ..register(FakeCatalogModule(kind: 'plugin', supportsCreate: false));
     final names = registry.allTools().map((t) => t.name).toList();
     expect(names, contains('list_installed'));
     expect(names, contains('search_skills'));
@@ -75,7 +30,7 @@ void main() {
 
   test('policy splits read and mutate tools', () {
     final registry = CatalogKindRegistry()
-      ..register(_FakeModule(kind: 'skill'));
+      ..register(FakeCatalogModule(kind: 'skill'));
     expect(CatalogMcpPolicy.readToolNames(registry), contains('search_skills'));
     expect(
       CatalogMcpPolicy.readToolNames(registry),
@@ -101,14 +56,14 @@ void main() {
 
   test('dispatch routes install_skill to skill module install op', () async {
     final registry = CatalogKindRegistry()
-      ..register(_FakeModule(kind: 'skill'));
+      ..register(FakeCatalogModule(kind: 'skill'));
     final result = await registry.dispatch('create_skill', req());
     expect(result.ids, ['x']);
     expect(result.restartRequired, isTrue);
   });
 
   test('dispatch maps advertised search_skills to skill search', () async {
-    final skill = _FakeModule(kind: 'skill');
+    final skill = FakeCatalogModule(kind: 'skill');
     final registry = CatalogKindRegistry()..register(skill);
     final result = await registry.dispatch('search_skills', req());
     expect(result.ids, ['x']);
