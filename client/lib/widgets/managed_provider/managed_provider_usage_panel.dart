@@ -227,6 +227,7 @@ class _ProviderUsageRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final styles = TpTextStyles.of(context);
+    final l10n = context.l10n;
     final status = snapshot?.status;
     final warning =
         status == ProviderUsageStatus.stale ||
@@ -235,86 +236,134 @@ class _ProviderUsageRow extends StatelessWidget {
     final value = _primaryMeasure(snapshot, provider.displayConfig);
     final statusText = _statusText(context, status);
 
-    return Semantics(
-      button: onTap != null,
-      label: provider.name,
-      child: TpHover(
-        key: Key('managed-provider-usage-row-${provider.id}'),
-        onTap: onTap,
-        enabled: onTap != null,
-        hoverColor: cs.onSurface.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(7),
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 7),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            KeyedSubtree(
-              key: Key('managed-provider-brand-${provider.id}'),
-              child: ManagedProviderBrandMark(provider: provider, size: 15),
-            ),
-            const SizedBox(width: 7),
-            Expanded(
-              child: Column(
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Semantics(
+            button: onTap != null,
+            label: provider.name,
+            child: TpHover(
+              key: Key('managed-provider-usage-row-${provider.id}'),
+              onTap: onTap,
+              enabled: onTap != null,
+              hoverColor: cs.onSurface.withValues(alpha: 0.06),
+              borderRadius: BorderRadius.circular(7),
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 7),
+              child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    provider.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: styles.smSemibold,
+                  KeyedSubtree(
+                    key: Key('managed-provider-brand-${provider.id}'),
+                    child: ManagedProviderBrandMark(
+                      provider: provider,
+                      size: 15,
+                    ),
                   ),
-                  const SizedBox(height: 2),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 2,
-                    children: [
-                      Text(
-                        value ?? statusText,
-                        style: styles.xs.copyWith(
-                          color: warning ? cs.error : cs.onSurfaceVariant,
-                          fontFeatures: const [FontFeature.tabularFigures()],
-                        ),
-                      ),
-                      if (warning)
-                        Icon(
-                          Icons.warning_amber_rounded,
-                          key: const Key('managed-provider-usage-warning'),
-                          size: 13,
-                          color: cs.error,
-                        ),
-                      if (snapshot?.fetchedAt != null)
+                  const SizedBox(width: 7),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                         Text(
-                          _timeLabel(context, snapshot!.fetchedAt!),
-                          style: styles.xs.copyWith(color: cs.onSurfaceVariant),
+                          provider.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: styles.smSemibold,
                         ),
-                    ],
+                        const SizedBox(height: 2),
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 2,
+                          children: [
+                            Text(
+                              value ?? statusText,
+                              style: styles.xs.copyWith(
+                                color: warning
+                                    ? cs.error
+                                    : cs.onSurfaceVariant,
+                                fontFeatures: const [
+                                  FontFeature.tabularFigures(),
+                                ],
+                              ),
+                            ),
+                            if (warning)
+                              Icon(
+                                Icons.warning_amber_rounded,
+                                key: const Key(
+                                  'managed-provider-usage-warning',
+                                ),
+                                size: 13,
+                                color: cs.error,
+                              ),
+                            if (snapshot?.fetchedAt != null)
+                              Text(
+                                _timeLabel(context, snapshot!.fetchedAt!),
+                                style: styles.xs.copyWith(
+                                  color: cs.onSurfaceVariant,
+                                ),
+                              ),
+                          ],
+                        ),
+                        if (snapshot?.measures.isNotEmpty == true &&
+                            snapshot!.measures.first.resetsAt != null)
+                          Text(
+                            _resetLabel(
+                              context,
+                              snapshot!.measures.first.resetsAt!,
+                            ),
+                            style: styles.xs.copyWith(
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                        if (status == ProviderUsageStatus.error &&
+                            snapshot?.lastErrorMessage?.trim().isNotEmpty ==
+                                true)
+                          Text(
+                            managedProviderSnapshotErrorMessage(
+                              context.l10n,
+                              snapshot!,
+                            ),
+                            key: const Key('managed-provider-usage-error'),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: styles.xs.copyWith(color: cs.error),
+                          ),
+                      ],
+                    ),
                   ),
-                  if (snapshot?.measures.isNotEmpty == true &&
-                      snapshot!.measures.first.resetsAt != null)
-                    Text(
-                      _resetLabel(context, snapshot!.measures.first.resetsAt!),
-                      style: styles.xs.copyWith(color: cs.onSurfaceVariant),
-                    ),
-                  if (status == ProviderUsageStatus.error &&
-                      snapshot?.lastErrorMessage?.trim().isNotEmpty == true)
-                    Text(
-                      managedProviderSnapshotErrorMessage(
-                        context.l10n,
-                        snapshot!,
-                      ),
-                      key: const Key('managed-provider-usage-error'),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: styles.xs.copyWith(color: cs.error),
-                    ),
+                  if (snapshot?.measures.isNotEmpty == true)
+                    _ProgressIndicator(measure: snapshot!.measures.first),
                 ],
               ),
             ),
-            if (snapshot?.measures.isNotEmpty == true)
-              _ProgressIndicator(measure: snapshot!.measures.first),
-          ],
+          ),
         ),
-      ),
+        Padding(
+          padding: const EdgeInsets.only(top: 2),
+          child: TpIconButton(
+            key: Key('managed-provider-usage-enabled-${provider.id}'),
+            icon: provider.enabled
+                ? Icons.pause_circle_outline
+                : Icons.play_circle_outline,
+            tooltip: provider.enabled
+                ? l10n.managedProvidersDisable
+                : l10n.managedProvidersEnable,
+            size: 28,
+            iconSize: 15,
+            compact: true,
+            color: cs.onSurfaceVariant,
+            onTap: () {
+              final cubit = context.read<ManagedProviderCubit>();
+              if (provider.enabled) {
+                cubit.disable(provider.id);
+              } else {
+                cubit.enable(provider.id);
+              }
+            },
+          ),
+        ),
+      ],
     );
   }
 

@@ -14,7 +14,9 @@ class ManagedProviderBasicsSection extends StatelessWidget {
     required this.nameController,
     required this.credentialSecretController,
     required this.credentialConfigured,
+    required this.enabled,
     required this.onPresetChanged,
+    required this.onEnabledChanged,
     this.credentialSecretFocusNode,
     super.key,
   });
@@ -26,7 +28,9 @@ class ManagedProviderBasicsSection extends StatelessWidget {
   final TextEditingController credentialSecretController;
   final FocusNode? credentialSecretFocusNode;
   final bool credentialConfigured;
+  final bool enabled;
   final ValueChanged<ManagedProviderPreset> onPresetChanged;
+  final ValueChanged<bool> onEnabledChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -81,6 +85,15 @@ class ManagedProviderBasicsSection extends StatelessWidget {
             label: l10n.managedProvidersName,
             controller: nameController,
             hint: l10n.managedProvidersNameHint,
+          ),
+        if (schema.hasField('enabled'))
+          SwitchListTile.adaptive(
+            key: const Key('managed-provider-enabled'),
+            contentPadding: EdgeInsets.zero,
+            title: Text(l10n.managedProvidersEnabledTitle),
+            subtitle: Text(l10n.managedProvidersEnabledSubtitle),
+            value: enabled,
+            onChanged: onEnabledChanged,
           ),
         if (_hasRequiredSecret(schema)) ...[
           const SizedBox(height: 12),
@@ -357,9 +370,7 @@ class ManagedProviderAdvancedSection extends StatelessWidget {
     required this.kind,
     required this.adapterController,
     required this.credentialRefController,
-    required this.enabled,
     required this.onKindChanged,
-    required this.onEnabledChanged,
     super.key,
   });
 
@@ -367,9 +378,7 @@ class ManagedProviderAdvancedSection extends StatelessWidget {
   final ManagedProviderKind kind;
   final TextEditingController adapterController;
   final TextEditingController credentialRefController;
-  final bool enabled;
   final ValueChanged<ManagedProviderKind> onKindChanged;
-  final ValueChanged<bool> onEnabledChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -418,15 +427,6 @@ class ManagedProviderAdvancedSection extends StatelessWidget {
             readOnly: true,
           ),
         ],
-        if (schema.hasField('enabled'))
-          SwitchListTile.adaptive(
-            key: const Key('managed-provider-enabled'),
-            contentPadding: EdgeInsets.zero,
-            title: Text(l10n.managedProvidersEnabledTitle),
-            subtitle: Text(l10n.managedProvidersEnabledSubtitle),
-            value: enabled,
-            onChanged: onEnabledChanged,
-          ),
       ],
     );
   }

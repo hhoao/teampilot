@@ -270,4 +270,85 @@ void main() {
     );
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'usage row compact switch disables the provider and hides the row',
+    (tester) async {
+      final fs = InMemoryFilesystem();
+      final usage = ManagedProviderUsageRepository(
+        fs: fs,
+        cachePath: '/tp/usage-cache.json',
+        now: () => 100,
+      );
+      final providers = ManagedProviderRepository(
+        fs: fs,
+        configPath: '/tp/providers.json',
+        onProvidersDeleted: usage.deleteMany,
+      );
+      final coordinator = ManagedProviderUsageCoordinator(
+        providerRepository: providers,
+        usageRepository: usage,
+        registry: ManagedProviderUsageRegistry([_Adapter()]),
+        credentials: _NoCredentials(),
+        http: _NoHttp(),
+      );
+      final providerCubit = ManagedProviderCubit(repository: providers)
+        ..emit(
+          ManagedProviderState(
+            status: ManagedProviderLoadStatus.ready,
+            providers: [_provider()],
+          ),
+        );
+      final usageCubit = ManagedProviderUsageCubit(coordinator: coordinator)
+        ..emit(
+          ManagedProviderUsageState(
+            status: ManagedProviderUsageLoadStatus.ready,
+            snapshots: {},
+          ),
+        );
+      addTearDown(providerCubit.close);
+      addTearDown(usageCubit.close);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: MultiBlocProvider(
+            providers: [
+              BlocProvider.value(value: providerCubit),
+              BlocProvider.value(value: usageCubit),
+            ],
+            child: const Scaffold(body: ManagedProviderUsagePanel()),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(
+        find.byKey(const Key('managed-provider-usage-row-p1')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('managed-provider-usage-enabled-p1')),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byKey(const Key('managed-provider-usage-enabled-p1')));
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 50)),
+      );
+      await tester.pumpAndSettle();
+
+      expect(providerCubit.state.providers.single.enabled, isFalse);
+      expect(
+        find.byKey(const Key('managed-provider-usage-row-p1')),
+        findsNothing,
+      );
+      expect(
+        find.byKey(const Key('managed-provider-usage-enabled-p1')),
+        findsNothing,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
 }

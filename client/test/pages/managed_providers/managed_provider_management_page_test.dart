@@ -881,6 +881,10 @@ void main() {
         500,
         scrollable: _verticalScrollable(),
       );
+      await tester.ensureVisible(
+        find.byKey(const Key('managed-provider-section-credentials')),
+      );
+      await tester.pumpAndSettle();
       await tester.tap(
         find.byKey(const Key('managed-provider-section-credentials')),
       );
@@ -1311,5 +1315,88 @@ void main() {
       find.byKey(const Key('managed-provider-editor-error')),
       findsNothing,
     );
+  });
+
+  testWidgets(
+    'enabled master switch is on basics without expanding advanced',
+    (tester) async {
+      providerCubit.emit(
+        ManagedProviderState(status: ManagedProviderLoadStatus.ready),
+      );
+      usageCubit.emit(
+        ManagedProviderUsageState(status: ManagedProviderUsageLoadStatus.ready),
+      );
+      await pumpPage(tester);
+
+      await openNewEditor(tester);
+      await applyPreset(tester, 'Codex');
+
+      expect(
+        find.byKey(const Key('managed-provider-kind')),
+        findsNothing,
+      );
+      expect(
+        find.byKey(const Key('managed-provider-enabled')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(
+          const Key('managed-provider-enabled'),
+          skipOffstage: false,
+        ),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byKey(const Key('managed-provider-enabled')));
+      await tester.pumpAndSettle();
+      await _scrollToEditorBottom(tester);
+      await tester.runAsync(() async {
+        tester
+            .widget<TpButton>(find.byKey(const Key('managed-provider-save')))
+            .onPressed!
+            .call();
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+      });
+      await tester.pumpAndSettle();
+
+      expect(providerCubit.state.providers, hasLength(1));
+      expect(providerCubit.state.providers.single.enabled, isFalse);
+      expect(
+        find.byKey(
+          Key('managed-provider-${providerCubit.state.providers.single.id}'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Disabled'), findsOneWidget);
+    },
+  );
+
+  testWidgets('list pause disables provider without removing the card', (
+    tester,
+  ) async {
+    providerCubit.emit(
+      ManagedProviderState(
+        status: ManagedProviderLoadStatus.ready,
+        providers: [_provider()],
+      ),
+    );
+    usageCubit.emit(
+      ManagedProviderUsageState(status: ManagedProviderUsageLoadStatus.ready),
+    );
+    await pumpPage(tester);
+
+    expect(find.byKey(const Key('managed-provider-p1')), findsOneWidget);
+    expect(find.text('Enabled'), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.pause_circle_outline));
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 50)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(providerCubit.state.providers.single.enabled, isFalse);
+    expect(find.byKey(const Key('managed-provider-p1')), findsOneWidget);
+    expect(find.text('Disabled'), findsOneWidget);
+    expect(find.byIcon(Icons.play_circle_outline), findsOneWidget);
   });
 }
