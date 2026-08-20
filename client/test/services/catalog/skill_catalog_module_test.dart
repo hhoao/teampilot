@@ -53,6 +53,7 @@ void main() {
       install: install,
       binder: binder,
       bus: bus,
+      workspaceConfig: configRepo,
     );
   });
 
@@ -260,4 +261,110 @@ void main() {
     expect(module.kind, 'skill');
     expect(module.supportsCreate, isTrue);
   });
+
+  test('list boundIds includes id after create_skill', () async {
+    await module.handle(CatalogOp.list, req());
+    await module.handle(
+      CatalogOp.create,
+      req(
+        arguments: {
+          'name': 'Hello Skill',
+          'directory': 'hello-skill',
+          'body': 'Do the thing.',
+        },
+      ),
+    );
+
+    final listed = await module.handle(CatalogOp.list, req());
+    final skill = listed.data?['skill'] as Map<Object?, Object?>?;
+    expect(skill?['boundIds'], contains('local:hello-skill'));
+  });
+
+  test(
+    'create_skill rejects directory that escapes skills/installed',
+    () async {
+      await expectLater(
+        module.handle(
+          CatalogOp.create,
+          req(
+            arguments: {
+              'name': 'Escape',
+              'directory': '../escape',
+              'body': 'nope',
+            },
+          ),
+        ),
+        throwsA(
+          isA<CatalogException>().having((e) => e.code, 'code', 'unsafe_path'),
+        ),
+      );
+      expect(
+        File(p.join(tmp.path, 'skills/escape/SKILL.md')).existsSync(),
+        isFalse,
+      );
+      expect(
+        File(
+          p.join(tmp.path, 'skills/installed/../escape/SKILL.md'),
+        ).existsSync(),
+        isFalse,
+      );
+    },
+  );
+
+  test(
+    'create_skill rejects files keys that escape the install directory',
+    () async {
+      await expectLater(
+        module.handle(
+          CatalogOp.create,
+          req(
+            arguments: {
+              'name': 'Bad Files',
+              'directory': 'safe-skill',
+              'body': 'body',
+              'files': {'../x': 'escaped'},
+            },
+          ),
+        ),
+        throwsA(
+          isA<CatalogException>().having((e) => e.code, 'code', 'unsafe_path'),
+        ),
+      );
+      expect(
+        File(p.join(tmp.path, 'skills/installed/x')).existsSync(),
+        isFalse,
+      );
+    },
+  );
+
+  test(
+    'update_skill rejects files keys with parent or separator paths',
+    () async {
+      await install.installLocal(
+        basename: 'foo',
+        files: fooPayload(),
+        repoOwner: null,
+        repoName: null,
+        repoBranch: null,
+        readmeUrl: null,
+        name: 'foo',
+        description: 'd',
+      );
+
+      await expectLater(
+        module.handle(
+          CatalogOp.update,
+          req(
+            arguments: {
+              'id': 'local:foo',
+              'files': {'foo/../x': 'escaped'},
+            },
+          ),
+        ),
+        throwsA(
+          isA<CatalogException>().having((e) => e.code, 'code', 'unsafe_path'),
+        ),
+      );
+    },
+  );
 }

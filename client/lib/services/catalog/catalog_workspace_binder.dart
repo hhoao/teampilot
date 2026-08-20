@@ -9,9 +9,9 @@ import 'catalog_kind.dart';
 /// v1 accepts [CatalogBindTo.workspace] only.
 class CatalogWorkspaceBinder {
   CatalogWorkspaceBinder({WorkspaceProjectConfigRepository? repo})
-    : _repo = repo ?? WorkspaceProjectConfigRepository();
+    : repo = repo ?? WorkspaceProjectConfigRepository();
 
-  final WorkspaceProjectConfigRepository _repo;
+  final WorkspaceProjectConfigRepository repo;
 
   Future<void> bindIds({
     required String workspaceId,
@@ -40,7 +40,7 @@ class CatalogWorkspaceBinder {
         'bind_to other than workspace is not supported',
       );
     }
-    await _repo.updateBundle(workspaceId, (config) {
+    await repo.updateBundle(workspaceId, (config) {
       final draft = ConfigBundle(
         skillIds: List<String>.of(config.bundle.skillIds),
         pluginIds: List<String>.of(config.bundle.pluginIds),

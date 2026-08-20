@@ -25,7 +25,7 @@ class SkillCatalogModule implements CatalogKindModule {
     this.engine,
     this.search,
     WorkspaceProjectConfigRepository? workspaceConfig,
-  }) : _workspaceConfig = workspaceConfig ?? WorkspaceProjectConfigRepository();
+  }) : _workspaceConfig = workspaceConfig ?? binder.repo;
 
   final SkillRepository repository;
   final SkillInstallService install;
@@ -246,6 +246,7 @@ class SkillCatalogModule implements CatalogKindModule {
     final description = _string(req.arguments['description']) ?? '';
     final directoryArg = _string(req.arguments['directory'])?.trim() ?? '';
     final directory = directoryArg.isEmpty ? _slug(name) : directoryArg;
+    assertSafeCatalogEntryName(directory, field: 'directory');
     final files = <String, Uint8List>{};
     _mergeStringFiles(files, req.arguments['files']);
     files['SKILL.md'] = Uint8List.fromList(
@@ -514,7 +515,9 @@ class SkillCatalogModule implements CatalogKindModule {
     for (final entry in raw.entries) {
       final value = entry.value;
       if (value is! String) continue;
-      files[entry.key.toString()] = Uint8List.fromList(utf8.encode(value));
+      final key = entry.key.toString();
+      assertSafeCatalogEntryName(key, field: 'files');
+      files[key] = Uint8List.fromList(utf8.encode(value));
     }
   }
 

@@ -52,3 +52,19 @@ bool _isInsideAllowed(
   }
   return false;
 }
+
+/// Rejects catalog `directory` names and `files` keys that can escape the
+/// install root (`..`, `/`, `\`, or empty).
+void assertSafeCatalogEntryName(String name, {String field = 'path'}) {
+  if (name.isEmpty ||
+      name.contains('/') ||
+      name.contains('\\') ||
+      name == '.' ||
+      name == '..' ||
+      name.contains('..')) {
+    throw CatalogException(
+      'unsafe_path',
+      '$field is not a safe relative name: $name',
+    );
+  }
+}
