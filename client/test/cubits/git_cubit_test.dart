@@ -55,6 +55,7 @@ class _FakeGitService extends GitService {
 
   final List<String> discardAllCalls = [];
   final List<List<String>> discardFolderCalls = [];
+  final List<List<GitFileChange>> discardFolderChanges = [];
 
   @override
   Future<void> discardAll(String dir) async {
@@ -63,8 +64,13 @@ class _FakeGitService extends GitService {
   }
 
   @override
-  Future<void> discardFolder(String dir, String folderPath) async {
+  Future<void> discardFolder(
+    String dir,
+    String folderPath, {
+    List<GitFileChange> changes = const [],
+  }) async {
     discardFolderCalls.add([dir, folderPath]);
+    discardFolderChanges.add(changes);
     await _record('discardFolder');
   }
 }
@@ -207,8 +213,25 @@ void main() {
     await cubit.close();
   });
 
-  test('discardFolder passes folder path to service and refreshes', () async {
-    final service = _FakeGitService(statusToReturn: _repoWith());
+  test('discardFolder passes folder path and changes under it', () async {
+    const tracked = GitFileChange(
+      path: 'src/utils/a.txt',
+      kind: GitChangeKind.modified,
+      staged: false,
+    );
+    const untracked = GitFileChange(
+      path: 'src/utils/b.txt',
+      kind: GitChangeKind.untracked,
+      staged: false,
+    );
+    const other = GitFileChange(
+      path: 'docs/c.txt',
+      kind: GitChangeKind.modified,
+      staged: false,
+    );
+    final service = _FakeGitService(
+      statusToReturn: _repoWith(unstaged: const [tracked, untracked, other]),
+    );
     final cubit = GitCubit(service: service);
     await cubit.setRepoRoot('/repo');
     service.calls.clear();
@@ -218,6 +241,7 @@ void main() {
     expect(service.discardFolderCalls, [
       ['/repo', 'src/utils'],
     ]);
+    expect(service.discardFolderChanges.single, [tracked, untracked]);
     expect(service.calls, ['discardFolder', 'status']);
     await cubit.close();
   });

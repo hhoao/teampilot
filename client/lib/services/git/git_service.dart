@@ -311,9 +311,31 @@ class GitService {
   /// left alone (they would need `git clean`, which is destructive).
   Future<void> discardAll(String dir) => _run(dir, ['restore', '.']);
 
-  /// Discards unstaged changes to tracked files under [folderPath].
-  Future<void> discardFolder(String dir, String folderPath) =>
-      _run(dir, ['restore', '--', folderPath]);
+  /// Discards changes under [folderPath]. Tracked paths use `git restore`;
+  /// untracked paths use `git clean -ffd` (double `-f` so nested git
+  /// directories are removed too). [changes] is the current status snapshot
+  /// for paths in that folder; an empty list is a no-op.
+  Future<void> discardFolder(
+    String dir,
+    String folderPath, {
+    List<GitFileChange> changes = const [],
+  }) async {
+    var restoreTracked = false;
+    var cleanUntracked = false;
+    for (final change in changes) {
+      if (change.kind == GitChangeKind.untracked) {
+        cleanUntracked = true;
+      } else {
+        restoreTracked = true;
+      }
+    }
+    if (restoreTracked) {
+      await _run(dir, ['restore', '--', folderPath]);
+    }
+    if (cleanUntracked) {
+      await _run(dir, ['clean', '-ffd', '--', folderPath]);
+    }
+  }
 
   Future<void> commit(String dir, String message) =>
       _run(dir, ['commit', '-m', message]);

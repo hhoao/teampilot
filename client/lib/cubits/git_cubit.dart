@@ -437,8 +437,19 @@ class GitCubit extends Cubit<GitState> {
 
   Future<void> discardAll() => _mutate(() => _service.discardAll(state.repoRoot));
 
-  Future<void> discardFolder(String folderPath) =>
-      _mutate(() => _service.discardFolder(state.repoRoot, folderPath));
+  Future<void> discardFolder(String folderPath) => _mutate(
+    () => _service.discardFolder(
+      state.repoRoot,
+      folderPath,
+      changes: [
+        for (final c in mergeGitChangesByPath(
+          staged: state.status.staged,
+          unstaged: state.status.unstaged,
+        ))
+          if (c.path == folderPath || c.path.startsWith('$folderPath/')) c,
+      ],
+    ),
+  );
 
   /// Commits the selected paths; in amend mode rewrites HEAD from the message
   /// and selected paths. No-op when the message is blank, or when nothing is

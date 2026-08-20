@@ -355,15 +355,75 @@ void main() {
       expect(runner.calls, [['restore', '.']]);
     });
 
-    test('discardFolder issues `restore -- <folder>`', () async {
+    test('discardFolder issues `restore -- <folder>` for tracked changes', () async {
       final runner = _FakeRunner({});
       final service = GitService(
         runner: LocalGitCommandRunner(runner: runner.call),
       );
 
-      await service.discardFolder('/repo', 'src/utils');
+      await service.discardFolder(
+        '/repo',
+        'src/utils',
+        changes: const [
+          GitFileChange(
+            path: 'src/utils/a.txt',
+            kind: GitChangeKind.modified,
+            staged: false,
+          ),
+        ],
+      );
 
       expect(runner.calls, [['restore', '--', 'src/utils']]);
+    });
+
+    test('discardFolder issues `clean -ffd -- <folder>` for untracked', () async {
+      final runner = _FakeRunner({});
+      final service = GitService(
+        runner: LocalGitCommandRunner(runner: runner.call),
+      );
+
+      await service.discardFolder(
+        '/repo',
+        'docs/new',
+        changes: const [
+          GitFileChange(
+            path: 'docs/new/file.txt',
+            kind: GitChangeKind.untracked,
+            staged: false,
+          ),
+        ],
+      );
+
+      expect(runner.calls, [['clean', '-ffd', '--', 'docs/new']]);
+    });
+
+    test('discardFolder restores then cleans a mixed folder', () async {
+      final runner = _FakeRunner({});
+      final service = GitService(
+        runner: LocalGitCommandRunner(runner: runner.call),
+      );
+
+      await service.discardFolder(
+        '/repo',
+        'src',
+        changes: const [
+          GitFileChange(
+            path: 'src/a.txt',
+            kind: GitChangeKind.modified,
+            staged: false,
+          ),
+          GitFileChange(
+            path: 'src/b.txt',
+            kind: GitChangeKind.untracked,
+            staged: false,
+          ),
+        ],
+      );
+
+      expect(runner.calls, [
+        ['restore', '--', 'src'],
+        ['clean', '-ffd', '--', 'src'],
+      ]);
     });
 
     test('throws GitException with stderr on non-zero exit', () async {
