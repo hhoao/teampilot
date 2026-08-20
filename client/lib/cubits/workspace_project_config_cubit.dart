@@ -34,10 +34,34 @@ class WorkspaceProjectConfigCubit extends Cubit<WorkspaceProjectConfigState> {
     required WorkspaceProjectConfigRepository repository,
     required this.workspaceId,
   }) : _repository = repository,
-       super(const WorkspaceProjectConfigState());
+       super(const WorkspaceProjectConfigState()) {
+    _live.putIfAbsent(workspaceId, () => {}).add(this);
+  }
+
+  static final _live = <String, Set<WorkspaceProjectConfigCubit>>{};
 
   final WorkspaceProjectConfigRepository _repository;
   final String workspaceId;
+
+  /// Reloads every open manage-panel cubit for [workspaceId] (catalog MCP bus).
+  static Future<void> reloadLive(String workspaceId) async {
+    final cubits = List<WorkspaceProjectConfigCubit>.of(
+      _live[workspaceId] ?? const {},
+    );
+    for (final cubit in cubits) {
+      await cubit.load();
+    }
+  }
+
+  @override
+  Future<void> close() {
+    final set = _live[workspaceId];
+    set?.remove(this);
+    if (set != null && set.isEmpty) {
+      _live.remove(workspaceId);
+    }
+    return super.close();
+  }
 
   Future<void> load() async {
     emit(state.copyWith(loading: true, clearError: true));

@@ -1,4 +1,5 @@
 import 'package:mock_model_gateway/core/turns.dart';
+import 'package:mock_model_gateway/scenarios/catalog_mcp_simple_claude.dart';
 import 'package:mock_model_gateway/scenarios/doorbell_dispatch_mixed_claude.dart';
 import 'package:mock_model_gateway/scenarios/mail_priority_mixed_claude.dart';
 import 'package:mock_model_gateway/scenarios/mixed_collab_3plus.dart';
@@ -19,10 +20,11 @@ void main() {
       final turns = scenarios[simpleScriptApiKey]!.turns;
       expect(turns, hasLength(3));
       expect(turns, everyElement(isA<TextTurn>()));
-      expect(
-        turns.map((t) => (t as TextTurn).text),
-        ['MARK_A1', 'MARK_A2', 'MARK_A3'],
-      );
+      expect(turns.map((t) => (t as TextTurn).text), [
+        'MARK_A1',
+        'MARK_A2',
+        'MARK_A3',
+      ]);
     });
   });
 
@@ -107,14 +109,8 @@ void main() {
       );
 
       final workerTools = worker.turns.whereType<ToolUseTurn>().toList();
-      expect(
-        workerTools.map((t) => t.toolRef),
-        contains('native.TaskUpdate'),
-      );
-      expect(
-        workerTools.every((t) => t.toolRef.startsWith('native.')),
-        isTrue,
-      );
+      expect(workerTools.map((t) => t.toolRef), contains('native.TaskUpdate'));
+      expect(workerTools.every((t) => t.toolRef.startsWith('native.')), isTrue);
 
       final workerTexts = worker.turns.whereType<TextTurn>().map((t) => t.text);
       expect(workerTexts, contains('MARK_WORKER_1'));
@@ -139,28 +135,29 @@ void main() {
       }
     }
 
-    test('ping_pong_mixed_claude keeps lead/worker keys and wait/send turns', () {
-      final scenarios = pingPongMixedClaudeScenarios();
-      expect(
-        scenarios.keys,
-        containsAll([leadScriptApiKey, workerScriptApiKey]),
-      );
-      expectTeambusOnly(scenarios);
-      final leadTools = scenarios[leadScriptApiKey]!
-          .turns
-          .whereType<ToolUseTurn>()
-          .map((t) => t.toolRef);
-      expect(
-        leadTools,
-        containsAll(['teambus.list_teammates', 'teambus.send_message']),
-      );
-    });
+    test(
+      'ping_pong_mixed_claude keeps lead/worker keys and wait/send turns',
+      () {
+        final scenarios = pingPongMixedClaudeScenarios();
+        expect(
+          scenarios.keys,
+          containsAll([leadScriptApiKey, workerScriptApiKey]),
+        );
+        expectTeambusOnly(scenarios);
+        final leadTools = scenarios[leadScriptApiKey]!.turns
+            .whereType<ToolUseTurn>()
+            .map((t) => t.toolRef);
+        expect(
+          leadTools,
+          containsAll(['teambus.list_teammates', 'teambus.send_message']),
+        );
+      },
+    );
 
     test('task_dispatch_mixed_claude scripts add_tasks + wait claim', () {
       final scenarios = taskDispatchMixedClaudeScenarios();
       expectTeambusOnly(scenarios);
-      final leadTools = scenarios[leadScriptApiKey]!
-          .turns
+      final leadTools = scenarios[leadScriptApiKey]!.turns
           .whereType<ToolUseTurn>()
           .map((t) => t.toolRef);
       expect(leadTools, contains('teambus.add_tasks'));
@@ -170,8 +167,7 @@ void main() {
     test('task_complete_mixed_claude scripts AssignedTaskUpdateTurn', () {
       final scenarios = taskCompleteMixedClaudeScenarios();
       expectTeambusOnly(scenarios);
-      final updates = scenarios[workerScriptApiKey]!
-          .turns
+      final updates = scenarios[workerScriptApiKey]!.turns
           .whereType<AssignedTaskUpdateTurn>()
           .toList();
       expect(updates, hasLength(1));
@@ -182,8 +178,7 @@ void main() {
     test('mail_priority_mixed_claude sends mail before add_tasks', () {
       final scenarios = mailPriorityMixedClaudeScenarios();
       expectTeambusOnly(scenarios);
-      final leadTools = scenarios[leadScriptApiKey]!
-          .turns
+      final leadTools = scenarios[leadScriptApiKey]!.turns
           .whereType<ToolUseTurn>()
           .map((t) => t.toolRef)
           .toList();
@@ -202,6 +197,34 @@ void main() {
         workerTurns.whereType<ToolUseTurn>().first.toolRef,
         'teambus.wait_for_message',
       );
+    });
+  });
+
+  group('catalog_mcp_simple_claude', () {
+    test('scripts search_skills then create_skill then MARK_CATALOG_OK', () {
+      final scenarios = catalogMcpSimpleClaudeScenarios();
+      expect(scenarios.keys, [simpleScriptApiKey]);
+
+      final turns = scenarios[simpleScriptApiKey]!.turns;
+      expect(turns, hasLength(3));
+
+      final tools = turns.whereType<ToolUseTurn>().toList();
+      expect(tools.map((t) => t.toolRef), [
+        'catalog.search_skills',
+        'catalog.create_skill',
+      ]);
+      expect(
+        tools.every((t) => t.toolRef.startsWith('catalog.')),
+        isTrue,
+        reason: 'catalog recipe must use logical catalog.* toolRefs, not mcp__',
+      );
+      expect(tools.every((t) => !t.toolRef.contains('mcp__')), isTrue);
+      expect(tools[1].input['directory'], catalogL2SkillDirectory);
+      expect(tools[1].input['name'], catalogL2SkillName);
+      expect(tools[1].input['body'], catalogL2SkillBody);
+
+      expect(turns.last, isA<TextTurn>());
+      expect((turns.last as TextTurn).text, markCatalogOk);
     });
   });
 }

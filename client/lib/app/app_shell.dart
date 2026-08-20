@@ -23,6 +23,8 @@ import '../services/agent_status/exit_plan_mode_hook_gate.dart';
 import '../services/terminal/ask_user_question_answer_service.dart';
 import '../services/terminal/exit_plan_mode_approval_service.dart';
 import '../services/terminal/prompt_submit_ack_tracker.dart';
+import '../services/catalog/catalog_runtime.dart';
+import '../services/catalog/catalog_production.dart';
 import '../services/team_bus/mcp/teammate_bus_mcp_gateway.dart';
 import '../services/team_bus/remote/remote_bus_binding_resolver.dart';
 import '../services/remote/local_credential_exporter.dart';
@@ -73,6 +75,7 @@ import '../cubits/extension_cubit.dart';
 import '../cubits/hook_cubit.dart';
 import '../cubits/mcp_cubit.dart';
 import '../cubits/plugin_cubit.dart';
+import '../cubits/workspace_project_config_cubit.dart';
 import '../repositories/launch_profile_repository.dart';
 import '../services/storage/launch_profile_provisioner.dart';
 import '../cubits/cli_presets_cubit.dart';
@@ -1522,6 +1525,48 @@ Future<AppShell> buildAppShell({
       promptAckTracker: promptSubmitAckTracker,
     ),
   );
+
+  final catalogRuntime = CatalogRuntime.assemble(
+    sessions: sessionRepo,
+    runtimeContexts: runtimeContextRegistry,
+    skillRepository: skillRepo,
+    skillInstall: skillInstallService,
+    skillEngine: skillAcquisitionEngine,
+    pluginRepository: pluginRepository,
+    pluginInstall: pluginRepository.install,
+    mcpRepository: mcpRepository,
+    workspaceConfig: workspaceProjectConfigRepository,
+    searchSkills: (query) => CatalogProduction.searchSkills(
+      query,
+      registryConfig: skillRegistryConfigService,
+      repository: skillRepo,
+    ),
+    searchPlugins: (query) => CatalogProduction.searchPlugins(
+      query,
+      repos: pluginRepository.repos,
+      diskCache: PluginRepoDiskCacheService(),
+    ),
+    searchMcp: CatalogProduction.searchMcp,
+    draftFromListing: CatalogProduction.draftFromListing,
+    installPluginFromDiscovery: (args) =>
+        CatalogProduction.installPluginFromDiscovery(
+          args,
+          repository: pluginRepository,
+        ),
+    removeSkillFromAllTeams: teamCubit.removeSkillFromAllTeams,
+    removePluginFromAllTeams: teamCubit.removePluginFromAllTeams,
+    removeMcpFromAllTeams: teamCubit.removeMcpFromAllTeams,
+  );
+  teammateBusMcpGateway.attachCatalogHandler(
+    catalogRuntime.handler,
+    resolveSession: catalogRuntime.resolveSession,
+  );
+  catalogRuntime.bus.listen().listen((event) {
+    unawaited(skillCubit.loadAll());
+    unawaited(pluginCubit.load());
+    unawaited(mcpCubit.loadAll());
+    unawaited(WorkspaceProjectConfigCubit.reloadLive(event.workspaceId));
+  });
 
   chatCubit = ChatCubit(
     teammateBusMcpGateway: teammateBusMcpGateway,

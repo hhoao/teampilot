@@ -8,6 +8,7 @@ import '../../../../services/provider/credential_binding.dart';
 import '../../../../utils/team/team_member_naming.dart';
 import '../../../agent_status/member_agent_status_endpoint.dart';
 import '../../../hook/glue_script_builder.dart';
+import '../../../catalog/catalog_mcp_policy.dart';
 import '../../../io/filesystem.dart';
 import '../../../launch/work_plane_paths.dart';
 import '../../../provider/cross_machine_credential_bridge.dart';
@@ -507,6 +508,12 @@ final class FlashskyaiProviderCapability extends CatalogModelCapability
     settings = MemberRoleProvision.applyTeamSessionPolicy(
       settings,
       mixed: mixed,
+    );
+    settings = MemberRoleProvision.applyCatalogReadAllows(
+      settings,
+      claudeEntries: CatalogMcpPolicy.claudeAllowEntries(
+        CatalogMcpPolicy.advertisedRegistry(),
+      ),
     );
     if (!hooksAlreadyMaterialized) {
       // 收敛：agent-status / team-lead delegate / 扩展 settings-hook / bus idle

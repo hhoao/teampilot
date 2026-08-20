@@ -1,4 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/services/catalog/catalog_kind.dart';
+import 'package:teampilot/services/catalog/catalog_kind_registry.dart';
+import 'package:teampilot/services/catalog/catalog_mcp_policy.dart';
+import 'package:teampilot/services/catalog/modules/skill_catalog_tools.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_cli_config_policy.dart';
 import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_config.dart';
 
@@ -40,4 +44,38 @@ void main() {
       1,
     );
   });
+
+  test('applyCatalogReadPolicy allows catalog reads not installs', () {
+    final entries = CursorCliConfigPolicy.catalogReadAllowEntries(
+      CatalogMcpPolicy.cursorAllowEntries(_skillRegistry()),
+    );
+    final merged = CursorCliConfigPolicy.applyCatalogReadPolicy(
+      const {},
+      cursorEntries: entries,
+    );
+    final allow = (merged['permissions']! as Map)['allow'] as List;
+    expect(allow, contains('Mcp(teampilot:search_skills)'));
+    expect(allow, isNot(contains('Mcp(teampilot:install_skill)')));
+  });
+}
+
+CatalogKindRegistry _skillRegistry() {
+  return CatalogKindRegistry()..register(_SkillAdvertiseModule());
+}
+
+class _SkillAdvertiseModule implements CatalogKindModule {
+  @override
+  String get kind => 'skill';
+  @override
+  bool get supportsCreate => true;
+  @override
+  bool get supportsImport => true;
+  @override
+  bool get supportsInstall => true;
+  @override
+  List<CatalogToolSpec> advertise() => skillCatalogTools;
+  @override
+  Future<CatalogResult> handle(CatalogOp op, CatalogRequest req) {
+    throw UnsupportedError('advertise-only');
+  }
 }

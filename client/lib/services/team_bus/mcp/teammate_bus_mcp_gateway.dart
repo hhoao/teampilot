@@ -8,6 +8,11 @@ import '../../agent_status/agent_attention_state.dart';
 import '../../agent_status/agent_status_event.dart';
 import '../../agent_status/agent_status_http_handler.dart';
 import '../../agent_status/ask_user_answer_pending_store.dart';
+import '../../catalog/catalog_mcp_constants.dart';
+import '../../catalog/catalog_mcp_handler.dart';
+import 'jsonrpc.dart';
+import 'mcp_method.dart';
+import 'toolkit/mcp_tool_response.dart';
 import 'teammate_bus_mcp_config.dart';
 import 'teammate_bus_mcp_handler.dart';
 import 'teammate_bus_mcp_http_delegate.dart';
@@ -27,6 +32,8 @@ class TeammateBusMcpGateway {
   final _agentStatusSessionToToken = <String, String>{};
   AgentStatusHttpHandler? _agentStatusHandler;
   AskUserAnswerPendingStore? _askUserAnswerStore;
+  CatalogMcpHandler? _catalogHandler;
+  Future<CatalogMcpSession?> Function(String sessionId)? _resolveCatalogSession;
   HttpServer? _http;
   BusRawSocketServer? _rawSocket;
 
@@ -59,6 +66,9 @@ class TeammateBusMcpGateway {
 
   Uri get mcpEndpoint => Uri.parse('http://127.0.0.1:${_http!.port}/mcp');
 
+  Uri get catalogMcpEndpoint =>
+      Uri.parse('http://127.0.0.1:${_http!.port}$catalogMcpPath');
+
   Uri get idleEndpoint => Uri.parse('http://127.0.0.1:${_http!.port}/idle');
 
   Uri get agentStatusEndpoint =>
@@ -85,6 +95,15 @@ class TeammateBusMcpGateway {
 
   void attachAskUserAnswerStore(AskUserAnswerPendingStore store) {
     _askUserAnswerStore = store;
+  }
+
+  void attachCatalogHandler(
+    CatalogMcpHandler handler, {
+    required Future<CatalogMcpSession?> Function(String sessionId)
+    resolveSession,
+  }) {
+    _catalogHandler = handler;
+    _resolveCatalogSession = resolveSession;
   }
 
   /// Status-only session auth (no TeamBus MCP `_delegates` entry required).
@@ -156,6 +175,14 @@ class TeammateBusMcpGateway {
         return;
       }
 
+      // Catalog MCP is available for every session, including Simple
+      // (no TeamBus register). Route before the `_delegates` bail-out so
+      // missing X-Session is a JSON-RPC/tool error in HTTP 200, not 400.
+      if (request.method == 'POST' && request.uri.path == catalogMcpPath) {
+        await _handleCatalogMcp(request);
+        return;
+      }
+
       final sessionId = _resolveSessionId(request);
       if (sessionId == null) {
         request.response.statusCode = HttpStatus.badRequest;
@@ -202,14 +229,12 @@ class TeammateBusMcpGateway {
     final store = _askUserAnswerStore;
     final member = _headerValue(request.headers, teammateBusMcpMemberHeader);
     final requestId = request.uri.queryParameters['request_id']?.trim() ?? '';
-    final allowed = sessionId != null &&
+    final allowed =
+        sessionId != null &&
         sessionId.isNotEmpty &&
         (_agentStatusSessions.contains(sessionId) ||
             _delegates.containsKey(sessionId));
-    if (store == null ||
-        !allowed ||
-        member.isEmpty ||
-        requestId.isEmpty) {
+    if (store == null || !allowed || member.isEmpty || requestId.isEmpty) {
       await _writeNoContent(request);
       return;
     }
@@ -254,7 +279,8 @@ class TeammateBusMcpGateway {
   }) async {
     final handler = _agentStatusHandler;
     final member = _headerValue(request.headers, teammateBusMcpMemberHeader);
-    final allowed = sessionId != null &&
+    final allowed =
+        sessionId != null &&
         sessionId.isNotEmpty &&
         (_agentStatusSessions.contains(sessionId) ||
             _delegates.containsKey(sessionId));
@@ -275,6 +301,89 @@ class TeammateBusMcpGateway {
         charset: 'utf-8',
       )
       ..write('{}');
+    await request.response.close();
+  }
+
+  Future<void> _handleCatalogMcp(HttpRequest request) async {
+    final body = await utf8.decoder.bind(request).join();
+    final rpc = JsonRpcRequest.tryParse(body);
+    final handler = _catalogHandler;
+    final resolve = _resolveCatalogSession;
+    if (handler == null || resolve == null) {
+      await _writeJsonRpc(
+        request,
+        JsonRpcResponse.error(
+          rpc?.id,
+          JsonRpcErrorCode.serverError,
+          'Catalog MCP is not attached',
+        ),
+      );
+      return;
+    }
+    if (rpc == null) {
+      await _writeJsonRpc(
+        request,
+        JsonRpcResponse.error(
+          null,
+          JsonRpcErrorCode.invalidParams,
+          'Invalid JSON-RPC request',
+        ),
+      );
+      return;
+    }
+
+    final sessionId = _resolveSessionId(request);
+    if (sessionId == null || sessionId.isEmpty) {
+      await _writeJsonRpc(
+        request,
+        JsonRpcResponse.error(
+          rpc.id,
+          JsonRpcErrorCode.invalidParams,
+          'Missing X-Session',
+        ),
+      );
+      return;
+    }
+
+    final session = await resolve(sessionId);
+    if (session == null) {
+      await _writeJsonRpc(
+        request,
+        JsonRpcResponse.error(
+          rpc.id,
+          JsonRpcErrorCode.invalidParams,
+          'Unknown session',
+        ),
+      );
+      return;
+    }
+
+    JsonRpcResponse? res;
+    try {
+      res = await handler.handle(rpc, session);
+    } catch (e) {
+      res = McpToolResponse.toolError(rpc.id, 'code=install_failed $e');
+    }
+    if (rpc.isNotification || res == null) {
+      request.response.statusCode = HttpStatus.accepted;
+      await request.response.close();
+      return;
+    }
+    await _writeJsonRpc(request, res);
+  }
+
+  Future<void> _writeJsonRpc(
+    HttpRequest request,
+    JsonRpcResponse response,
+  ) async {
+    request.response
+      ..statusCode = HttpStatus.ok
+      ..headers.contentType = ContentType(
+        'application',
+        'json',
+        charset: 'utf-8',
+      )
+      ..write(response.encode());
     await request.response.close();
   }
 

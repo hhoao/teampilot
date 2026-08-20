@@ -4,6 +4,7 @@ import 'package:teampilot/models/config_bundle.dart';
 import 'package:teampilot/models/plugin.dart';
 import 'package:teampilot/models/skill.dart';
 import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/services/resource/contribution/resource_origin.dart';
 import 'package:teampilot/services/resource/resource_kind.dart';
 import 'package:teampilot/services/resource/resource_resolver.dart';
 import 'package:teampilot/services/resource/resource_scope.dart';
@@ -30,9 +31,9 @@ void main() {
     const scope = SimpleResourceScope(bundle: ConfigBundle(skillIds: ['a']));
     final set = await resolver.resolve(scope: scope, catalog: catalog);
     final refs = set.of(ResourceKind.skill);
-    expect(refs.length, 1);
-    expect(refs.single.linkName, 'skill-a');
-    expect(refs.single.sourceDir, '/root/skills/installed/skill-a');
+    expect(refs.map((ref) => ref.id), ['teampilot-catalog', 'a']);
+    expect(refs.map((ref) => ref.linkName), ['teampilot-catalog', 'skill-a']);
+    expect(refs[1].sourceDir, '/root/skills/installed/skill-a');
   });
 
   test(
@@ -42,7 +43,10 @@ void main() {
         team: const TeamProfile(id: 't', name: 'T', skillIds: ['b', 'missing']),
       );
       final set = await resolver.resolve(scope: scope, catalog: catalog);
-      expect(set.of(ResourceKind.skill).map((r) => r.linkName), ['skill-b']);
+      expect(set.of(ResourceKind.skill).map((r) => r.linkName), [
+        'teampilot-catalog',
+        'skill-b',
+      ]);
     },
   );
 
@@ -64,7 +68,10 @@ void main() {
         scope: scope,
         catalog: disabledCatalog,
       );
-      expect(set.of(ResourceKind.skill).map((r) => r.linkName), ['skill-b']);
+      expect(set.of(ResourceKind.skill).map((r) => r.linkName), [
+        'teampilot-catalog',
+        'skill-b',
+      ]);
     },
   );
 
@@ -97,6 +104,7 @@ void main() {
     );
 
     expect(set.of(ResourceKind.skill).map((ref) => ref.linkName), [
+      'teampilot-catalog',
       'skill-a',
       'acme-plugin--plugin-skill',
     ]);
@@ -117,10 +125,27 @@ void main() {
         ),
       );
 
-      expect(result.skills, isEmpty);
+      expect(result.skills.map((skill) => skill.id), ['teampilot-catalog']);
       expect(result.diagnostics, hasLength(1));
       expect(result.diagnostics.single.providerId, 'plugin');
       expect(result.diagnostics.single.sourceId, 'missing/plugin');
+    },
+  );
+
+  test(
+    'assemble includes teampilot-catalog when scope.skillIds is empty',
+    () async {
+      final result = await resolver.assemble(
+        scope: const SimpleResourceScope(bundle: ConfigBundle()),
+        cli: CliTool.claude,
+        catalog: catalog,
+      );
+
+      expect(result.skills, isNotEmpty);
+      expect(result.skills.first.id, 'teampilot-catalog');
+      expect(result.skills.first.invocationName, 'teampilot-catalog');
+      expect(result.skills.first.origin.kind, ResourceOriginKind.managed);
+      expect(result.skills.first.origin.providerId, 'teampilot-catalog');
     },
   );
 }

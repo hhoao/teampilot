@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:mock_model_gateway/scenarios/mixed_collab_3plus.dart';
 import 'package:mock_model_gateway/scenarios/simple_3turn.dart';
 import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/services/catalog/catalog_mcp_constants.dart';
 import 'package:teampilot/services/cli/registry/capabilities/team_behavior_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_config.dart';
@@ -75,7 +76,7 @@ final class CliTestProfile {
   /// Resolves [binaryName] on PATH; `null` when missing (L2 skip reason).
   final String? Function() resolveBinary;
 
-  /// Logical `teambus.*` / `native.*` → CLI on-wire tool name.
+  /// Logical `teambus.*` / `catalog.*` / `native.*` → CLI on-wire tool name.
   final CliTestToolNameMapper toolName;
 
   /// Simple-recipe PTY / bubble markers ([markA1]/[markA2]/[markA3]).
@@ -106,8 +107,9 @@ final class CliTestProfile {
 
   /// Derived from [TeamBehaviorCapability.longBlockingWaitForMessage].
   CliTestBusStyle get busStyle {
-    final bus =
-        CliToolRegistry.builtIn().capability<TeamBehaviorCapability>(tool);
+    final bus = CliToolRegistry.builtIn().capability<TeamBehaviorCapability>(
+      tool,
+    );
     if (bus != null && !bus.longBlockingWaitForMessage) {
       return CliTestBusStyle.doorbell;
     }
@@ -121,8 +123,8 @@ final class CliTestProfile {
     // `/v1` root and append `/chat/completions`. Anthropic uses the host root
     // and appends `/v1/messages` itself.
     final effectiveBase = switch (wire) {
-      CliTestWire.openaiChat || CliTestWire.openaiResponses =>
-        base.endsWith('/v1') ? base : '$base/v1',
+      CliTestWire.openaiChat ||
+      CliTestWire.openaiResponses => base.endsWith('/v1') ? base : '$base/v1',
       CliTestWire.anthropic || CliTestWire.cursor => base,
     };
     final hints = <String, String>{
@@ -313,14 +315,19 @@ const String _cursorGatewayRedirectSpikeNotes =
     'P({}) entry). CURSOR_API_ENDPOINT only retargets ConnectRPC aiserver.v1 '
     'cloud protocol — not OpenAI/Anthropic. Do not fake L2 green.';
 
-
 /// Claude / flashskyai (and best-effort peers): `teambus.X` →
-/// `mcp__teammate-bus__X`; `native.TeamCreate` → `TeamCreate`.
+/// `mcp__teammate-bus__X`; `catalog.X` → `mcp__teampilot__X`;
+/// `native.TeamCreate` → `TeamCreate`.
 String mapMcpPrefixedToolRef(String toolRef) {
   const teambus = 'teambus.';
   if (toolRef.startsWith(teambus)) {
     return 'mcp__${teammateBusMcpServerName}__'
         '${toolRef.substring(teambus.length)}';
+  }
+  const catalog = 'catalog.';
+  if (toolRef.startsWith(catalog)) {
+    return 'mcp__${catalogMcpServerName}__'
+        '${toolRef.substring(catalog.length)}';
   }
   const native = 'native.';
   if (toolRef.startsWith(native)) {
@@ -329,7 +336,8 @@ String mapMcpPrefixedToolRef(String toolRef) {
   return toolRef;
 }
 
-/// Codex Responses namespace tools: `teambus.X` → `mcp__teammate_bus::X`.
+/// Codex Responses namespace tools: `teambus.X` → `mcp__teammate_bus::X`;
+/// `catalog.X` → `mcp__teampilot::X`.
 ///
 /// Codex sanitizes MCP server ids (`teammate-bus` → `teammate_bus`) and exposes
 /// tools under `type: "namespace"`. The Responses encoder splits on `::` into
@@ -340,6 +348,11 @@ String mapCodexNamespacedMcpToolRef(String toolRef) {
     final server = teammateBusMcpServerName.replaceAll('-', '_');
     return 'mcp__$server::${toolRef.substring(teambus.length)}';
   }
+  const catalog = 'catalog.';
+  if (toolRef.startsWith(catalog)) {
+    final server = catalogMcpServerName.replaceAll('-', '_');
+    return 'mcp__$server::${toolRef.substring(catalog.length)}';
+  }
   const native = 'native.';
   if (toolRef.startsWith(native)) {
     return toolRef.substring(native.length);
@@ -347,7 +360,8 @@ String mapCodexNamespacedMcpToolRef(String toolRef) {
   return toolRef;
 }
 
-/// OpenCode Chat Completions tools: `teambus.X` → `teammate-bus_X`.
+/// OpenCode Chat Completions tools: `teambus.X` → `teammate-bus_X`;
+/// `catalog.X` → `teampilot_X`.
 ///
 /// OpenCode keys MCP tools as `<sanitizedServer>_<sanitizedTool>` (keeps
 /// hyphens; replaces other non `[A-Za-z0-9_-]` with `_`).
@@ -355,6 +369,10 @@ String mapOpencodeMcpToolRef(String toolRef) {
   const teambus = 'teambus.';
   if (toolRef.startsWith(teambus)) {
     return '${teammateBusMcpServerName}_${toolRef.substring(teambus.length)}';
+  }
+  const catalog = 'catalog.';
+  if (toolRef.startsWith(catalog)) {
+    return '${catalogMcpServerName}_${toolRef.substring(catalog.length)}';
   }
   const native = 'native.';
   if (toolRef.startsWith(native)) {
@@ -368,6 +386,10 @@ String mapShortMcpToolRef(String toolRef) {
   const teambus = 'teambus.';
   if (toolRef.startsWith(teambus)) {
     return toolRef.substring(teambus.length);
+  }
+  const catalog = 'catalog.';
+  if (toolRef.startsWith(catalog)) {
+    return toolRef.substring(catalog.length);
   }
   const native = 'native.';
   if (toolRef.startsWith(native)) {

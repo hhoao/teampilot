@@ -172,6 +172,7 @@ Session runtime dirs: `workspace/workspaces/{workspaceId}/sessions/{sessionId}/r
 | Hub publish | `client/lib/services/hub_publish/`, `client/lib/pages/hub_publish/` |
 | Member placement | landing Machines UI + workspace member targets; `sessionRosterMembers` in `models/app_session.dart` |
 | Mixed-CLI coordination | `client/lib/services/team_bus/`, `member_presence_cubit.dart`, `mailbox_cubit.dart`, `board_cubit.dart` |
+| Catalog MCP | `client/lib/services/catalog/` |
 | CLI registry & capabilities | `client/lib/services/cli/registry/` — see [docs/cli-architecture.md](docs/cli-architecture.md) |
 | Launch plan | `client/lib/services/session/session_lifecycle_service.dart` |
 | PTY + terminal | `client/lib/services/terminal/terminal_session.dart` |

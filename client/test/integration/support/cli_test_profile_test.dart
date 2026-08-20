@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/services/catalog/catalog_mcp_constants.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_config.dart';
 
@@ -30,18 +31,12 @@ void main() {
   });
 
   test('wires match matrix plan for each CLI', () {
-    expect(
-      CliTestProfiles.forTool(CliTool.claude).wire,
-      CliTestWire.anthropic,
-    );
+    expect(CliTestProfiles.forTool(CliTool.claude).wire, CliTestWire.anthropic);
     expect(
       CliTestProfiles.forTool(CliTool.flashskyai).wire,
       CliTestWire.openaiChat,
     );
-    expect(
-      CliTestProfiles.forTool(CliTool.flashskyai).providerType,
-      'openai',
-    );
+    expect(CliTestProfiles.forTool(CliTool.flashskyai).providerType, 'openai');
     expect(
       CliTestProfiles.forTool(CliTool.codex).wire,
       CliTestWire.openaiResponses,
@@ -72,21 +67,35 @@ void main() {
     }
   });
 
-  test('claude toolName maps teambus and native refs', () {
+  test('claude toolName maps teambus, catalog, and native refs', () {
     final profile = CliTestProfiles.forTool(CliTool.claude);
     expect(
       profile.toolName('teambus.send_message'),
       'mcp__${teammateBusMcpServerName}__send_message',
+    );
+    expect(
+      profile.toolName('catalog.search_skills'),
+      'mcp__${catalogMcpServerName}__search_skills',
+    );
+    expect(
+      profile.toolName('catalog.create_skill'),
+      'mcp__${catalogMcpServerName}__create_skill',
     );
     expect(profile.toolName('native.TeamCreate'), 'TeamCreate');
   });
 
   test('flashskyai toolName uses mcp__ teambus mapping', () {
     expect(
-      CliTestProfiles.forTool(CliTool.flashskyai).toolName(
-        'teambus.wait_for_message',
-      ),
+      CliTestProfiles.forTool(
+        CliTool.flashskyai,
+      ).toolName('teambus.wait_for_message'),
       'mcp__${teammateBusMcpServerName}__wait_for_message',
+    );
+    expect(
+      CliTestProfiles.forTool(
+        CliTool.flashskyai,
+      ).toolName('catalog.search_skills'),
+      'mcp__${catalogMcpServerName}__search_skills',
     );
   });
 
@@ -97,23 +106,35 @@ void main() {
       'mcp__$server::list_teammates',
     );
     expect(
-      CliTestProfiles.forTool(CliTool.codex).toolName(
-        'teambus.wait_for_message',
-      ),
+      CliTestProfiles.forTool(
+        CliTool.codex,
+      ).toolName('teambus.wait_for_message'),
       'mcp__$server::wait_for_message',
+    );
+    expect(
+      CliTestProfiles.forTool(CliTool.codex).toolName('catalog.create_skill'),
+      'mcp__$catalogMcpServerName::create_skill',
     );
   });
 
   test('opencode toolName maps teambus refs to server_tool keys', () {
     expect(
-      CliTestProfiles.forTool(CliTool.opencode).toolName('teambus.send_message'),
+      CliTestProfiles.forTool(
+        CliTool.opencode,
+      ).toolName('teambus.send_message'),
       '${teammateBusMcpServerName}_send_message',
     );
     expect(
-      CliTestProfiles.forTool(CliTool.opencode).toolName(
-        'teambus.wait_for_message',
-      ),
+      CliTestProfiles.forTool(
+        CliTool.opencode,
+      ).toolName('teambus.wait_for_message'),
       '${teammateBusMcpServerName}_wait_for_message',
+    );
+    expect(
+      CliTestProfiles.forTool(
+        CliTool.opencode,
+      ).toolName('catalog.search_skills'),
+      '${catalogMcpServerName}_search_skills',
     );
   });
 
@@ -121,6 +142,10 @@ void main() {
     expect(
       CliTestProfiles.forTool(CliTool.cursor).toolName('teambus.read_messages'),
       'read_messages',
+    );
+    expect(
+      CliTestProfiles.forTool(CliTool.cursor).toolName('catalog.create_skill'),
+      'create_skill',
     );
   });
 
@@ -134,10 +159,11 @@ void main() {
 
   test('assistantVisibleMarkers are simple recipe MARK_A*', () {
     for (final tool in CliTool.values) {
-      expect(
-        CliTestProfiles.forTool(tool).assistantVisibleMarkers,
-        ['MARK_A1', 'MARK_A2', 'MARK_A3'],
-      );
+      expect(CliTestProfiles.forTool(tool).assistantVisibleMarkers, [
+        'MARK_A1',
+        'MARK_A2',
+        'MARK_A3',
+      ]);
     }
   });
 }

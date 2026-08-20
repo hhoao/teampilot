@@ -25,6 +25,7 @@ import 'package:teampilot/pages/chat/session_chat_continue_seat.dart';
 import 'package:teampilot/pages/chat/session_history_review_submit.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/repositories/session_repository.dart';
+import 'package:teampilot/services/catalog/catalog_runtime.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/session/ai_history_loader.dart';
 import 'package:teampilot/services/session/session_history_context_builder.dart';
@@ -76,6 +77,7 @@ enum CliMatrixMode { simple, native, mixed }
 enum CliMatrixRecipe {
   simple3Turn,
   nativeCollab3Plus,
+
   /// Replicated native roster (developer-0/1); scenarios wired in Task 4.
   nativeCollabReplica2Plus,
   mixedCollab3Plus,
@@ -88,10 +90,7 @@ String redactMatrixSecrets(String text) {
     (_) => 'sk-[REDACTED]',
   );
   out = out.replaceAllMapped(
-    RegExp(
-      r'(Bearer\s+)[A-Za-z0-9._\-+=/]{8,}',
-      caseSensitive: false,
-    ),
+    RegExp(r'(Bearer\s+)[A-Za-z0-9._\-+=/]{8,}', caseSensitive: false),
     (m) => '${m[1]}[REDACTED]',
   );
   return out;
@@ -152,16 +151,15 @@ final class CliMessageMatrixHarness {
   static CliMatrixRecipe defaultRecipeFor(
     CliMatrixMode mode, {
     RosterShape shape = RosterShape.singleton,
-  }) =>
-      switch (mode) {
-        CliMatrixMode.simple => CliMatrixRecipe.simple3Turn,
-        CliMatrixMode.native => switch (shape) {
-          RosterShape.replicated => CliMatrixRecipe.nativeCollabReplica2Plus,
-          RosterShape.singleton || RosterShape.placementFiltered =>
-            CliMatrixRecipe.nativeCollab3Plus,
-        },
-        CliMatrixMode.mixed => CliMatrixRecipe.mixedCollab3Plus,
-      };
+  }) => switch (mode) {
+    CliMatrixMode.simple => CliMatrixRecipe.simple3Turn,
+    CliMatrixMode.native => switch (shape) {
+      RosterShape.replicated => CliMatrixRecipe.nativeCollabReplica2Plus,
+      RosterShape.singleton ||
+      RosterShape.placementFiltered => CliMatrixRecipe.nativeCollab3Plus,
+    },
+    CliMatrixMode.mixed => CliMatrixRecipe.mixedCollab3Plus,
+  };
 
   final CliTestProfile profile;
   final CliMatrixMode mode;
@@ -173,6 +171,7 @@ final class CliMessageMatrixHarness {
   ChatCubit? cubit;
   AiHistoryCubit? history;
   SessionLifecycleService? lifecycle;
+  CatalogRuntime? catalogRuntime;
   AppSession? session;
   TeamProfile? team;
   Workspace? workspace;
@@ -244,8 +243,9 @@ final class CliMessageMatrixHarness {
     }
     final port = server.port;
     final localUrl = mockBaseUrl;
-    final leaderUrl =
-        workerBaseUrl != null ? 'http://127.0.0.1:$port' : localUrl;
+    final leaderUrl = workerBaseUrl != null
+        ? 'http://127.0.0.1:$port'
+        : localUrl;
     final remoteWorkerUrl = workerBaseUrl ?? leaderUrl;
     final hints = profile.gatewayCredentialHints(leaderUrl);
     final workerHints = profile.gatewayCredentialHints(remoteWorkerUrl);
@@ -359,11 +359,28 @@ final class CliMessageMatrixHarness {
     return created;
   }
 
+  /// Attaches production [CatalogRuntime] to this cubit's loopback gateway.
+  ///
+  /// App shell does this in `buildAppShell`; matrix cells that need catalog
+  /// MCP (`/catalog/mcp`) must call it after [createCubit] and before
+  /// [openSession]. [resolveSession] uses the cubit's [SessionRepository].
+  void attachCatalogRuntime() {
+    final chat = cubit;
+    if (chat == null) {
+      throw StateError('createCubit before attachCatalogRuntime');
+    }
+    final runtime = CatalogRuntime.assemble(
+      sessions: chat.sessionRepository ?? SessionRepository(),
+    );
+    catalogRuntime = runtime;
+    chat.teammateBusMcpGateway.attachCatalogHandler(
+      runtime.handler,
+      resolveSession: runtime.resolveSession,
+    );
+  }
+
   /// Pod ids to boot — session pods when [session] is set, else expand [team].
-  List<String> bootMemberIdsFor({
-    TeamProfile? team,
-    AppSession? session,
-  }) {
+  List<String> bootMemberIdsFor({TeamProfile? team, AppSession? session}) {
     final t = team ?? this.team;
     if (t == null) {
       throw StateError('bootMemberIdsFor requires team or open session');
@@ -386,13 +403,10 @@ final class CliMessageMatrixHarness {
         '(CliTestProfile.supportsNativeTeam == false)',
       );
     }
-    final teamMode =
-        mode == CliMatrixMode.native ? TeamMode.native : TeamMode.mixed;
-    return buildMatrixTeam(
-      tool: profile.tool,
-      mode: teamMode,
-      shape: shape,
-    );
+    final teamMode = mode == CliMatrixMode.native
+        ? TeamMode.native
+        : TeamMode.mixed;
+    return buildMatrixTeam(tool: profile.tool, mode: teamMode, shape: shape);
   }
 
   /// Creates workspace + session and opens via [ChatCubit.requestOpenSession].
@@ -459,9 +473,7 @@ final class CliMessageMatrixHarness {
         ws.workspaceId,
         sessionTeam: builtTeam.id,
         rosterMembers: builtTeam.members,
-        memberClis: {
-          for (final m in builtTeam.members) m.id: profile.tool,
-        },
+        memberClis: {for (final m in builtTeam.members) m.id: profile.tool},
       )).session;
       session = created;
       await chat.requestOpenSession(
@@ -485,8 +497,7 @@ final class CliMessageMatrixHarness {
   /// Dismisses boot gates then waits until [CliTestProfile.bootToPrompt].
   Future<void> bootComposeSeatToPrompt({
     Duration timeout = const Duration(seconds: 90),
-  }) =>
-      bootMemberToPrompt(composeMemberId, timeout: timeout);
+  }) => bootMemberToPrompt(composeMemberId, timeout: timeout);
 
   /// Boots a specific roster / simple seat to the composer prompt.
   Future<void> bootMemberToPrompt(
@@ -656,7 +667,9 @@ final class CliMessageMatrixHarness {
     final s = session;
     final server = gateway;
     if (chat == null || s == null || server == null) {
-      throw StateError('openSession+startGateway before kickoffWorkerParkAndWait');
+      throw StateError(
+        'openSession+startGateway before kickoffWorkerParkAndWait',
+      );
     }
     if (mode == CliMatrixMode.simple) {
       throw StateError('kickoffWorkerParkAndWait is for mixed/native cells');
@@ -898,10 +911,7 @@ final class CliMessageMatrixHarness {
       if (optimisticPty && hist != null) {
         hist.removePendingMatching(trimmed);
       }
-      final queued = PendingUserMessage(
-        id: result.mailId!,
-        content: trimmed,
-      );
+      final queued = PendingUserMessage(id: result.mailId!, content: trimmed);
       mailboxQueued.add(queued);
       mailboxQueuedSubmitted.add(queued);
       return result;
@@ -1026,7 +1036,9 @@ final class CliMessageMatrixHarness {
   }) async {
     final hist = history;
     if (hist == null) {
-      throw StateError('createCubit(createHistory: true) before waitForBubbles');
+      throw StateError(
+        'createCubit(createHistory: true) before waitForBubbles',
+      );
     }
     final markers = assistantMarkers ?? composeSeatAssistantMarkers;
     final channel = lastSubmitResult?.channel ?? peekContinueChannel();
@@ -1066,8 +1078,7 @@ final class CliMessageMatrixHarness {
             final bus = (chat != null && s != null)
                 ? chat.sessionRuntime.busForSession(s.sessionId)
                 : null;
-            final stillUnread =
-                bus?.isUnread(composeMemberId, mailId) ?? true;
+            final stillUnread = bus?.isUnread(composeMemberId, mailId) ?? true;
             if (!stillUnread && mailboxQueued.any((m) => m.id == mailId)) {
               await promoteMailboxConsumed(mailId);
               continue;
@@ -1083,11 +1094,7 @@ final class CliMessageMatrixHarness {
             mailId: mailId,
           );
         } else {
-          expectUserBubble(
-            hist,
-            userText,
-            matches: profile.matchesUserBubble,
-          );
+          expectUserBubble(hist, userText, matches: profile.matchesUserBubble);
         }
         expectAssistantMarkers(
           hist,
@@ -1125,9 +1132,7 @@ final class CliMessageMatrixHarness {
     );
     buf.writeln('cliPath=$cliPath');
     buf.writeln(
-      redactMatrixSecrets(
-        gateway?.dumpDiagnostics() ?? 'gateway: not started',
-      ),
+      redactMatrixSecrets(gateway?.dumpDiagnostics() ?? 'gateway: not started'),
     );
     final hist = history;
     if (hist != null) {
@@ -1238,8 +1243,7 @@ final class CliMessageMatrixHarness {
     }
     // Pin an unusable bridge so resolve() returns null → HTTP MCP fallback.
     _savedBusBridgeDebugOverride = BusBridgeLocator.debugResolveOverride;
-    BusBridgeLocator.debugResolveOverride =
-        '/dev/null/teampilot-it-no-bridge';
+    BusBridgeLocator.debugResolveOverride = '/dev/null/teampilot-it-no-bridge';
     _busBridgeDebugOverrideApplied = true;
     try {
       _savedBusBridgeEnv = Platform.environment[BusBridgeLocator.envOverride];

@@ -32,6 +32,8 @@ import '../mcp/mcp_registry_service.dart';
 import '../resource/resource_scope.dart';
 import '../resource/cli_resource_provisioner.dart';
 import '../resource/resource_provider_set.dart';
+import '../catalog/providers/catalog_prompt_provider.dart';
+import '../catalog/providers/managed_catalog_skill_provider.dart';
 import '../resource/providers/catalog_skill_contribution_provider.dart';
 import '../resource/providers/plugin_skill_contribution_provider.dart';
 import '../resource/providers/endpoint_hook_contribution_provider.dart';
@@ -321,7 +323,9 @@ class ConfigProfileService implements ConfigProfileDelegate {
 
   ResourceProviderSet _catalogResourceProviders(ResourceCatalog catalog) =>
       ResourceProviderSet(
+        prompts: const [CatalogPromptProvider()],
         skills: [
+          ManagedCatalogSkillProvider(),
           CatalogSkillContributionProvider(catalog: catalog),
           PluginSkillContributionProvider(
             catalog: catalog,
@@ -1043,6 +1047,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
           layout: layout,
           configDir: configDir,
           resourceProviders: ResourceProviderSet(
+            prompts: providers.prompts,
             skills: providers.skills,
             mcp: mcpProviders.providers.mcp,
             hooks: hookProviders.hooks,
@@ -1455,6 +1460,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
         layout: staging.layout,
         configDir: resourceConfigDir,
         resourceProviders: ResourceProviderSet(
+          prompts: providers.prompts,
           skills: providers.skills,
           mcp: mcpProviders.providers.mcp,
           hooks: hookProviders.hooks,
