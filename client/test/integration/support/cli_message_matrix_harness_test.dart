@@ -92,18 +92,26 @@ void main() {
   });
 
   test('nativeCollabReplica2Plus scenarios wire lead and worker scripts', () {
-    final scenarios =
-        scenariosForRecipe(CliMatrixRecipe.nativeCollabReplica2Plus);
+    final scenarios = scenariosForRecipe(
+      CliMatrixRecipe.nativeCollabReplica2Plus,
+    );
     expect(scenarios.keys, containsAll([leadScriptApiKey, workerScriptApiKey]));
 
     final leadTurns = scenarios[leadScriptApiKey]!.turns;
     final sendToDev0 = leadTurns.whereType<ToolUseTurn>().any(
       (t) =>
-          t.toolRef == 'native.SendMessage' &&
-          t.input['to'] == 'developer-0',
+          t.toolRef == 'native.SendMessage' && t.input['to'] == 'developer-0',
     );
     expect(sendToDev0, isTrue, reason: 'lead must dispatch to developer-0 pod');
     expect(leadTurns.whereType<TextTurn>(), hasLength(2));
+  });
+
+  test('attachCatalogRuntime requires createCubit', () {
+    final harness = CliMessageMatrixHarness.forCli(
+      CliTool.claude,
+      mode: CliMatrixMode.simple,
+    );
+    expect(harness.attachCatalogRuntime, throwsStateError);
   });
 
   test('shape defaults to singleton on harness', () {
