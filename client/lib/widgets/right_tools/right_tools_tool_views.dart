@@ -15,7 +15,6 @@ import '../../cubits/file_tree_cubit.dart';
 import '../../cubits/mailbox_cubit.dart';
 import '../../cubits/member_presence_cubit.dart';
 import '../../utils/session/workspace_tab_session_scope.dart';
-import '../../cubits/worktree_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_session.dart';
 import '../../models/app_provider_config.dart';
@@ -36,7 +35,6 @@ import '../../services/storage/runtime_context.dart';
 import '../../services/workspace/workspace_tools_scope.dart';
 import '../../utils/debounce/debounce.dart';
 import '../../utils/team/team_member_naming.dart';
-import '../../utils/workspace/workspace_path_utils.dart';
 import '../git/git_source_control_panel.dart';
 import 'board_panel.dart';
 import 'file_tree_panel.dart';
@@ -444,34 +442,10 @@ class _RightToolsToolViewsState extends State<RightToolsToolViews> {
       );
     }
 
-    final panel = TabbedPanel(
+    return TabbedPanel(
       views: _cachedViews!,
       scopeId: widget.toolsScopeId,
     );
-    final branchLabel = _optionalWorktreeBranch(context);
-    if (branchLabel == null) return panel;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _WorktreeBreadcrumb(branch: branchLabel),
-        Expanded(child: panel),
-      ],
-    );
-  }
-
-  String? _optionalWorktreeBranch(BuildContext context) {
-    try {
-      final state = context.read<WorktreeCubit>().state;
-      if (!state.hasMultipleWorktrees) return null;
-      for (final w in state.worktrees) {
-        if (workspacePathsEqual(w.path, state.currentWorktreePath)) {
-          return w.shortBranch;
-        }
-      }
-    } on Object {
-      // [WorktreeCubit] lives under the split pane, not above the right tools host.
-    }
-    return null;
   }
 
   static MailboxCubit? _maybeMailboxCubit(BuildContext context) {
@@ -814,44 +788,5 @@ class _ScopedMembersPanelState extends State<_ScopedMembersPanel> {
       workContext: workContext,
     );
     widget.maybeDismissDrawer();
-  }
-}
-
-class _WorktreeBreadcrumb extends StatelessWidget {
-  const _WorktreeBreadcrumb({required this.branch});
-
-  final String branch;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5)),
-        ),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            Icons.account_tree_outlined,
-            size: 14,
-            color: cs.onSurfaceVariant,
-          ),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Text(
-              branch,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TpTextStyles.of(
-                context,
-              ).smSemiboldColored(cs.onSurfaceVariant),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }
