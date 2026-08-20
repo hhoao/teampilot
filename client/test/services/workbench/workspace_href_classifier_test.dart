@@ -38,4 +38,21 @@ void main() {
       isA<WorkspaceHrefIgnored>(),
     );
   });
+
+  test('Windows drive path is a local path, not an unknown scheme', () {
+    final backslash = classifier.classify(r'C:\repo\a.md');
+    expect(backslash, isA<WorkspaceHrefLocalPath>());
+    expect((backslash as WorkspaceHrefLocalPath).rawPath, r'C:\repo\a.md');
+
+    final forward = classifier.classify('D:/repo/b.md');
+    expect(forward, isA<WorkspaceHrefLocalPath>());
+    expect((forward as WorkspaceHrefLocalPath).rawPath, 'D:/repo/b.md');
+  });
+
+  test('file URI with network authority is ignored instead of throwing', () {
+    expect(
+      classifier.classify('file://server/share/a.md'),
+      isA<WorkspaceHrefIgnored>(),
+    );
+  });
 }

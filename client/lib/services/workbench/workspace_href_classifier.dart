@@ -32,7 +32,24 @@ class WorkspaceHrefClassifier {
       return WorkspaceHrefExternal(uri);
     }
     if (scheme == 'file') {
-      return WorkspaceHrefLocalPath(uri.toFilePath());
+      if (uri.host.isNotEmpty) return const WorkspaceHrefIgnored();
+      try {
+        return WorkspaceHrefLocalPath(uri.toFilePath());
+      } on UnsupportedError {
+        return const WorkspaceHrefIgnored();
+      }
+    }
+    // Uri treats `C:\repo\a.md` as scheme `c`; keep it as a local path.
+    if (scheme.length == 1) {
+      final afterColon = raw.indexOf(':') + 1;
+      if (afterColon > 0 && afterColon < raw.length) {
+        final next = raw[afterColon];
+        if (next == '/' || next == r'\') {
+          final path = raw.split('#').first.trim();
+          if (path.isEmpty) return const WorkspaceHrefIgnored();
+          return WorkspaceHrefLocalPath(path);
+        }
+      }
     }
     if (scheme.isNotEmpty) return const WorkspaceHrefIgnored();
 

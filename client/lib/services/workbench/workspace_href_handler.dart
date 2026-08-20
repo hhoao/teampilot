@@ -50,6 +50,26 @@ class WorkspaceHrefHandler {
     required List<String> searchBases,
     required Filesystem fs,
   }) async {
+    try {
+      return await _open(
+        href: href,
+        workspaceId: workspaceId,
+        workspaceRoots: workspaceRoots,
+        searchBases: searchBases,
+        fs: fs,
+      );
+    } on Object {
+      return WorkspaceHrefOpenOutcome.ignored;
+    }
+  }
+
+  Future<WorkspaceHrefOpenOutcome> _open({
+    required String href,
+    required String workspaceId,
+    required List<String> workspaceRoots,
+    required List<String> searchBases,
+    required Filesystem fs,
+  }) async {
     final kind = _classifier.classify(href);
     switch (kind) {
       case WorkspaceHrefIgnored():

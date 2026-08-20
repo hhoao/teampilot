@@ -24,10 +24,7 @@ WorkbenchEditorOpener _opener({
   );
 }
 
-({
-  EditorCubit editor,
-  WorkspaceHrefHandler handler,
-}) _harness(
+({EditorCubit editor, WorkspaceHrefHandler handler}) _harness(
   InMemoryFilesystem fs, {
   Future<void> Function(Uri uri)? openExternal,
 }) {
@@ -123,10 +120,7 @@ void main() {
   test('injected http openExternal opens externally', () async {
     final fs = InMemoryFilesystem();
     Uri? opened;
-    final harness = _harness(
-      fs,
-      openExternal: (uri) async => opened = uri,
-    );
+    final harness = _harness(fs, openExternal: (uri) async => opened = uri);
 
     final outcome = await harness.handler.open(
       href: 'https://example.com/docs',
@@ -138,5 +132,23 @@ void main() {
 
     expect(outcome, WorkspaceHrefOpenOutcome.openedExternal);
     expect(opened?.host, 'example.com');
+  });
+
+  test('unexpected errors return ignored instead of throwing', () async {
+    final fs = InMemoryFilesystem();
+    final harness = _harness(
+      fs,
+      openExternal: (_) async => throw StateError('boom'),
+    );
+
+    final outcome = await harness.handler.open(
+      href: 'https://example.com/docs',
+      workspaceId: 'ws',
+      workspaceRoots: const ['/repo'],
+      searchBases: const ['/repo'],
+      fs: fs,
+    );
+
+    expect(outcome, WorkspaceHrefOpenOutcome.ignored);
   });
 }
