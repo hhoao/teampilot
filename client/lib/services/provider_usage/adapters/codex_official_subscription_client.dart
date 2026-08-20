@@ -44,7 +44,7 @@ class CodexOfficialSubscriptionClient implements OfficialSubscriptionClient {
     }
     return OfficialSubscriptionResponse(
       windows: windows,
-      staleAfter: const Duration(minutes: 5),
+      staleAfter: const Duration(minutes: 10),
       adapterVersion: 'codex-wham-usage-v1',
     );
   }
