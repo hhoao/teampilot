@@ -21,14 +21,13 @@ import '../../services/session/chat_transcript_find_controller.dart';
 import '../../services/workbench/ai_tool_file_open_coordinator.dart';
 import '../../services/workbench/session_member_filesystem.dart';
 import '../../services/workbench/workbench_editor_opener.dart';
-import '../../services/workbench/workspace_href_handler.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../services/workspace/workspace_tools_scope.dart';
-import '../../utils/logging/logger.dart';
 import '../../widgets/app_toast/app_toast.dart';
 import 'chat_find_bar.dart';
 import 'chat_reveal_controller.dart';
 import 'cli_task_bubbles.dart';
+import 'session_chat_markdown_link_scope.dart';
 import 'session_cli_task_panel.dart';
 import 'session_history_live_chrome.dart';
 import 'session_history_review_messages.dart';
@@ -151,52 +150,11 @@ class SessionChatMessageArea extends StatelessWidget {
       child: Stack(
         children: [
           Positioned.fill(
-            child: AiMarkdownLinkActionsScope(
-              actions: AiMarkdownLinkActions(
-                onLinkTap: (href) async {
-                  try {
-                    final fs = await resolveSessionMemberFilesystem(
-                      lifecycle: lifecycle,
-                      launchContext: launchContext,
-                      memberId: selectedMemberId,
-                      toolsScope: WorkspaceToolsScope.maybeOf(context),
-                    );
-                    if (!context.mounted) return;
-                    final outcome =
-                        await WorkspaceHrefHandler(
-                          opener: context.read<WorkbenchEditorOpener>(),
-                        ).open(
-                          href: href,
-                          workspaceId: session.workspaceId,
-                          workspaceRoots: hrefRoots,
-                          searchBases: hrefRoots,
-                          fs: fs,
-                        );
-                    if (!context.mounted) return;
-                    switch (outcome) {
-                      case WorkspaceHrefOpenOutcome.missing:
-                      case WorkspaceHrefOpenOutcome.outsideWorkspace:
-                      case WorkspaceHrefOpenOutcome.notOpenable:
-                        AppToast.show(
-                          context,
-                          message: l10n.aiToolFileNotFound(href),
-                          variant: TpToastVariant.warning,
-                        );
-                        break;
-                      case WorkspaceHrefOpenOutcome.openedExternal:
-                      case WorkspaceHrefOpenOutcome.openedFile:
-                      case WorkspaceHrefOpenOutcome.ignored:
-                        break;
-                    }
-                  } on Object catch (error, stackTrace) {
-                    AppLogger.instance.e(
-                      'Session chat markdown link open failed',
-                      error: error,
-                      stackTrace: stackTrace,
-                    );
-                  }
-                },
-              ),
+            child: SessionChatMarkdownLinkScope(
+              session: session,
+              workspace: workspace,
+              selectedMemberId: selectedMemberId,
+              hrefRoots: hrefRoots,
               child: AiToolFileActionsScope(
                 actions: AiToolFileActions(
                   fileResolver:
