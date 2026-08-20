@@ -24,21 +24,24 @@ ManagedProvider _provider({String id = 'p1', bool enabled = true}) =>
       enabled: enabled,
     );
 
-ProviderUsageSnapshot _ready({String id = 'p1', String amount = '12.50'}) =>
-    ProviderUsageSnapshot(
-      providerId: id,
-      status: ProviderUsageStatus.ready,
-      measures: [
-        ProviderUsageMeasure(
-          label: 'Balance',
-          kind: ProviderUsageMeasureKind.balance,
-          remaining: amount,
-          unit: 'USD',
-        ),
-      ],
-      fetchedAt: 100,
-      staleAt: 1_000,
-    );
+ProviderUsageSnapshot _ready({
+  String id = 'p1',
+  String amount = '12.50',
+  int staleAt = 1_000,
+}) => ProviderUsageSnapshot(
+  providerId: id,
+  status: ProviderUsageStatus.ready,
+  measures: [
+    ProviderUsageMeasure(
+      label: 'Balance',
+      kind: ProviderUsageMeasureKind.balance,
+      remaining: amount,
+      unit: 'USD',
+    ),
+  ],
+  fetchedAt: 100,
+  staleAt: staleAt,
+);
 
 class _Adapter implements ManagedProviderUsageAdapter {
   _Adapter(this.result);
@@ -343,6 +346,37 @@ void main() {
       expect(cubit.state.snapshotFor('p1'), isNull);
     },
   );
+
+  test('refreshExpiredEnabled skips disabled and fresh snapshots', () async {
+    await providers.upsert(_provider());
+    await providers.upsert(_provider(id: 'disabled', enabled: false));
+    await usage.save(_ready());
+    final cubit = ManagedProviderUsageCubit(
+      coordinator: coordinator,
+      now: () => DateTime.fromMillisecondsSinceEpoch(100),
+    );
+    addTearDown(cubit.close);
+    await cubit.load();
+
+    await cubit.refreshExpiredEnabled();
+
+    expect(adapter.calls, 0);
+  });
+
+  test('refreshExpiredEnabled queries stale enabled providers', () async {
+    await providers.upsert(_provider());
+    await usage.save(_ready(staleAt: 50));
+    final cubit = ManagedProviderUsageCubit(
+      coordinator: coordinator,
+      now: () => DateTime.fromMillisecondsSinceEpoch(100),
+    );
+    addTearDown(cubit.close);
+    await cubit.load();
+
+    await cubit.refreshExpiredEnabled();
+
+    expect(adapter.calls, 1);
+  });
 
   test('closing during a blocked refresh does not emit or throw', () async {
     await providers.upsert(_provider());
