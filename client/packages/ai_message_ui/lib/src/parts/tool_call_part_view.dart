@@ -6,6 +6,10 @@ import 'package:flutter/material.dart';
 
 import '../edit/edit_tool_card.dart';
 import '../shell/shell_tool_card.dart';
+import '../special_tool_actions.dart';
+import '../tool_chrome/ask_user_question_bubble.dart';
+import '../tool_chrome/task_tool_card.dart';
+import '../tool_chrome/workflow_card.dart';
 import '../tool_call_bubble_scope.dart';
 import '../markdown/compiled_markdown_chrome.dart';
 import 'package:tp_markdown/tp_markdown.dart';
@@ -46,6 +50,23 @@ class _AiToolCallPartViewState extends State<AiToolCallPartView> {
     final markdown = aiTheme.markdown;
     final triggerColor = aiTheme.resolveToolTrigger(scheme);
     final part = widget.part;
+    final special = AiSpecialToolActions.of(context);
+    final task = special.taskResolver.resolve(part);
+    if (task != null) {
+      return SelectionContainer.disabled(child: AiTaskToolCard(target: task));
+    }
+    final askUser = special.askUserResolver.resolve(part);
+    if (askUser != null) {
+      return SelectionContainer.disabled(
+        child: AiAskUserQuestionBubble(target: askUser),
+      );
+    }
+    final workflow = special.workflowResolver.resolve(part);
+    if (workflow != null) {
+      return SelectionContainer.disabled(
+        child: AiWorkflowCard(target: workflow),
+      );
+    }
     final bubble = AiToolCallBubbleScope.maybeOf(
       context,
     )?.builders[part.toolName.toLowerCase()];

@@ -1,58 +1,69 @@
+import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
 
-import '../../cubits/agent_attention_cubit.dart';
-import '../../cubits/chat_cubit.dart';
-import '../../l10n/l10n_extensions.dart';
-import '../../models/app_session.dart';
-import '../../services/agent_status/agent_permission_request.dart';
-import '../../services/terminal/ask_user_question_answer_service.dart';
-import '../../utils/ui/app_keys.dart';
+import '../strings.dart';
 
-/// Interactive OpenCode permission card — shows what the agent wants to run
-/// with Allow once / Always allow / Reject actions answered in chat (delivered
-/// by the agent-status plugin to `POST /permission/{id}/reply`).
-class OpenCodePermissionCard extends StatefulWidget {
-  const OpenCodePermissionCard({
-    required this.session,
-    required this.seatId,
-    required this.request,
-    required this.askRequestId,
+/// Interactive permission card — Allow once / Always allow / Reject, answered
+/// in chat via host [onReply] (`once` / `always` / `reject`).
+class AiPermissionCard extends StatefulWidget {
+  const AiPermissionCard({
+    required this.description,
+    required this.onReply,
     required this.onAnswerInTerminal,
+    this.showAlwaysAllow = false,
+    this.externalError,
     super.key,
   });
 
-  final AppSession session;
+  static const cardKey = Key('opencode-permission-card');
+  static const allowOnceButtonKey = Key(
+    'opencode-permission-allow-once-button',
+  );
+  static const alwaysButtonKey = Key('opencode-permission-always-button');
+  static const rejectButtonKey = Key('opencode-permission-reject-button');
+  static const inlineErrorKey = Key('opencode-permission-inline-error');
 
-  /// Shell / seat key (`sessionId` for simple, member id for team).
-  final String seatId;
-  final AgentPermissionRequest request;
-  final String askRequestId;
+  final String description;
+  final bool showAlwaysAllow;
+  final Future<AiInteractiveResult> Function(String reply) onReply;
   final VoidCallback onAnswerInTerminal;
 
+  /// Host-side error (e.g. attention cubit `askReplyError`), shown when the
+  /// card has no inline submit failure.
+  final String? externalError;
+
   @override
-  State<OpenCodePermissionCard> createState() => _OpenCodePermissionCardState();
+  State<AiPermissionCard> createState() => _AiPermissionCardState();
 }
 
-class _OpenCodePermissionCardState extends State<OpenCodePermissionCard> {
+class _AiPermissionCardState extends State<AiPermissionCard> {
   var _answering = false;
   String? _inlineError;
 
   Future<void> _reply(String reply) async {
     if (_answering) return;
-    setState(() => _answering = true);
-    final result = await context.read<ChatCubit>().answerPermissionRequest(
-      sessionId: widget.session.sessionId,
-      memberId: widget.seatId,
-      permissionRequestId: widget.askRequestId,
-      reply: reply,
-    );
-    if (!mounted) return;
-    if (result is AskUserAnswerFailed) {
+    setState(() {
+      _answering = true;
+      _inlineError = null;
+    });
+    final strings = AiMessageStrings.of(context);
+    final AiInteractiveResult result;
+    try {
+      result = await widget.onReply(reply);
+    } catch (_) {
+      if (!mounted) return;
       setState(() {
         _answering = false;
-        _inlineError = result.reason;
+        _inlineError = strings.permissionAnswerFailed;
+      });
+      return;
+    }
+    if (!mounted) return;
+    if (result is AiInteractiveFailed) {
+      setState(() {
+        _answering = false;
+        _inlineError = strings.permissionAnswerFailed;
       });
     }
   }
@@ -61,26 +72,18 @@ class _OpenCodePermissionCardState extends State<OpenCodePermissionCard> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final spacing = context.tpSpacing;
-    final l10n = context.l10n;
+    final strings = AiMessageStrings.of(context);
     final styles = TpTextStyles.of(context);
     final radius = TpTheme.of(context).control.radius;
 
-    final askReplyError = context.select<AgentAttentionCubit, String?>((c) {
-      final entry = c.state.entryFor(
-        sessionId: widget.session.sessionId,
-        memberId: widget.seatId,
-      );
-      return entry?.askReplyError;
-    });
     final displayError =
-        _inlineError ?? (askReplyError == null ? null : l10n.opencodePermissionAnswerFailed);
-
-    final showAlways = widget.request.always.isNotEmpty;
+        _inlineError ??
+        (widget.externalError == null ? null : strings.permissionAnswerFailed);
 
     return Padding(
       padding: EdgeInsets.only(bottom: spacing.sm),
       child: Material(
-        key: AppKeys.opencodePermissionCard,
+        key: AiPermissionCard.cardKey,
         elevation: 0,
         color: cs.surface,
         shape: RoundedRectangleBorder(
@@ -105,14 +108,14 @@ class _OpenCodePermissionCardState extends State<OpenCodePermissionCard> {
                   SizedBox(width: spacing.sm),
                   Expanded(
                     child: Text(
-                      l10n.opencodePermissionTitle,
+                      strings.permissionTitle,
                       style: styles.smColored(cs.onSurfaceVariant),
                     ),
                   ),
                   SizedBox(width: spacing.md),
                   TpIconButton(
                     icon: Icons.terminal_rounded,
-                    tooltip: l10n.opencodePermissionAnswerInTerminal,
+                    tooltip: strings.permissionAnswerInTerminal,
                     compact: true,
                     size: TpIconButton.kCompactSize,
                     color: cs.onSurfaceVariant.withValues(alpha: 0.75),
@@ -124,14 +127,14 @@ class _OpenCodePermissionCardState extends State<OpenCodePermissionCard> {
               ),
               SizedBox(height: spacing.md),
               SelectableText(
-                widget.request.description,
+                widget.description,
                 style: styles.mdColored(cs.onSurface).copyWith(height: 1.45),
               ),
               if (displayError != null) ...[
                 SizedBox(height: spacing.md),
                 Text(
                   displayError,
-                  key: AppKeys.opencodePermissionInlineError,
+                  key: AiPermissionCard.inlineErrorKey,
                   style: styles.mdColored(cs.error),
                 ),
               ],
@@ -140,29 +143,29 @@ class _OpenCodePermissionCardState extends State<OpenCodePermissionCard> {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   TpButton(
-                    key: AppKeys.opencodePermissionRejectButton,
+                    key: AiPermissionCard.rejectButtonKey,
                     variant: TpButtonVariant.ghost,
                     size: TpControlSize.medium,
                     onPressed: _answering ? null : () => _reply('reject'),
-                    child: Text(l10n.opencodePermissionReject),
+                    child: Text(strings.permissionReject),
                   ),
-                  if (showAlways) ...[
+                  if (widget.showAlwaysAllow) ...[
                     SizedBox(width: spacing.sm),
                     TpButton(
-                      key: AppKeys.opencodePermissionAlwaysButton,
+                      key: AiPermissionCard.alwaysButtonKey,
                       variant: TpButtonVariant.primary,
                       size: TpControlSize.medium,
                       onPressed: _answering ? null : () => _reply('always'),
-                      child: Text(l10n.opencodePermissionAllowAlways),
+                      child: Text(strings.permissionAllowAlways),
                     ),
                   ],
                   SizedBox(width: spacing.sm),
                   TpButton(
-                    key: AppKeys.opencodePermissionAllowOnceButton,
+                    key: AiPermissionCard.allowOnceButtonKey,
                     variant: TpButtonVariant.primary,
                     size: TpControlSize.medium,
                     onPressed: _answering ? null : () => _reply('once'),
-                    child: Text(l10n.opencodePermissionAllowOnce),
+                    child: Text(strings.permissionAllowOnce),
                   ),
                 ],
               ),

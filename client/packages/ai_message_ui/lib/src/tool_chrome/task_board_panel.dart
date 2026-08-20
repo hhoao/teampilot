@@ -1,55 +1,34 @@
+import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 
-import '../../services/cli/tasks/cli_task_board.dart';
+import '../strings.dart';
 
 /// Floating task-board card pinned to the top-right of the chat message area.
 ///
 /// Collapsed to a small pill that shows the task currently in progress (or the
 /// count when nothing is in progress); tapping expands to a 320 px card (title,
 /// completed/total, status-icon + subject rows, "+N more").
-class SessionCliTaskPanel extends StatefulWidget {
-  const SessionCliTaskPanel({
-    required this.board,
-    required this.title,
-    required this.countText,
-    required this.moreLabel,
-    required this.showLessLabel,
-    this.maxVisible = 6,
-    super.key,
-  });
+class AiTaskBoardPanel extends StatefulWidget {
+  const AiTaskBoardPanel({required this.items, this.maxVisible = 6, super.key});
 
-  final CliTaskBoard board;
-  final String title;
-
-  /// Pre-formatted "{completed}/{total}" label.
-  final String countText;
-
-  /// Overflow label builder, e.g. "… +3 more".
-  final String Function(int count) moreLabel;
-
-  /// Label for collapsing the overflow back to [maxVisible] rows.
-  final String showLessLabel;
-
+  final List<AiTaskBoardItem> items;
   final int maxVisible;
 
   @override
-  State<SessionCliTaskPanel> createState() => _SessionCliTaskPanelState();
+  State<AiTaskBoardPanel> createState() => _AiTaskBoardPanelState();
 }
 
-class _SessionCliTaskPanelState extends State<SessionCliTaskPanel> {
+class _AiTaskBoardPanelState extends State<AiTaskBoardPanel> {
   bool _expanded = false;
   bool _showAll = false;
 
   @override
   Widget build(BuildContext context) {
-    final board = widget.board;
-    if (board.totalCount == 0) return const SizedBox.shrink();
+    if (widget.items.isEmpty) return const SizedBox.shrink();
     // SelectionArea makes task content selectable / copyable.
     return SelectionArea(
-      child: _expanded
-          ? _buildExpanded(context, board)
-          : _buildCollapsed(context),
+      child: _expanded ? _buildExpanded(context) : _buildCollapsed(context),
     );
   }
 
@@ -62,14 +41,22 @@ class _SessionCliTaskPanelState extends State<SessionCliTaskPanel> {
 
   Widget _buildCollapsed(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final strings = AiMessageStrings.of(context);
+    final completed = widget.items
+        .where((t) => t.status == AiTaskStatus.completed)
+        .length;
+    final countText = strings.taskBoardCountLabel(
+      completed,
+      widget.items.length,
+    );
     // Surface the task currently in progress; fall back to the count pill
     // when nothing is in progress.
-    final active = widget.board.tasks
-        .where((t) => t.status == CliTaskStatus.inProgress)
+    final active = widget.items
+        .where((t) => t.status == AiTaskStatus.inProgress)
         .firstOrNull;
     final activeSubject = active?.subject.trim();
     final showActive = activeSubject != null && activeSubject.isNotEmpty;
-    final label = showActive ? activeSubject : widget.countText;
+    final label = showActive ? activeSubject : countText;
     return Material(
       color: scheme.surface,
       elevation: 3,
@@ -88,7 +75,7 @@ class _SessionCliTaskPanelState extends State<SessionCliTaskPanel> {
             children: [
               if (showActive)
                 _TaskStatusIcon(
-                  status: CliTaskStatus.inProgress,
+                  status: AiTaskStatus.inProgress,
                   color: scheme.primary,
                 )
               else
@@ -117,11 +104,15 @@ class _SessionCliTaskPanelState extends State<SessionCliTaskPanel> {
     );
   }
 
-  Widget _buildExpanded(BuildContext context, CliTaskBoard board) {
+  Widget _buildExpanded(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final tasks = board.tasks;
+    final strings = AiMessageStrings.of(context);
+    final tasks = widget.items;
     final visible = _showAll ? tasks : tasks.take(widget.maxVisible).toList();
     final hasMore = tasks.length > widget.maxVisible;
+    final completed = tasks
+        .where((t) => t.status == AiTaskStatus.completed)
+        .length;
     return Material(
       color: scheme.surface,
       elevation: 4,
@@ -138,17 +129,17 @@ class _SessionCliTaskPanelState extends State<SessionCliTaskPanel> {
               Row(
                 children: [
                   Text(
-                    widget.title,
-                    style: TpTextStyles.of(context).mdColored(
-                      scheme.onSurfaceVariant,
-                    ),
+                    strings.taskBoardTitle,
+                    style: TpTextStyles.of(
+                      context,
+                    ).mdColored(scheme.onSurfaceVariant),
                   ),
                   const Spacer(),
                   Text(
-                    widget.countText,
-                    style: TpTextStyles.of(context).smColored(
-                      scheme.onSurfaceVariant,
-                    ),
+                    strings.taskBoardCountLabel(completed, tasks.length),
+                    style: TpTextStyles.of(
+                      context,
+                    ).smColored(scheme.onSurfaceVariant),
                   ),
                   const SizedBox(width: 4),
                   TpHover(
@@ -172,9 +163,7 @@ class _SessionCliTaskPanelState extends State<SessionCliTaskPanel> {
               // Cap the list height; overflow scrolls inside the card so a
               // huge task board does not cover the whole chat.
               ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxHeight: _maxListHeight(context),
-                ),
+                constraints: BoxConstraints(maxHeight: _maxListHeight(context)),
                 child: SingleChildScrollView(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -197,11 +186,13 @@ class _SessionCliTaskPanelState extends State<SessionCliTaskPanel> {
                         children: [
                           Text(
                             _showAll
-                                ? widget.showLessLabel
-                                : widget.moreLabel(tasks.length - widget.maxVisible),
-                            style: TpTextStyles.of(context).smColored(
-                              scheme.primary,
-                            ),
+                                ? strings.taskBoardShowLess
+                                : strings.taskBoardMoreLabel(
+                                    tasks.length - widget.maxVisible,
+                                  ),
+                            style: TpTextStyles.of(
+                              context,
+                            ).smColored(scheme.primary),
                           ),
                           const SizedBox(width: 2),
                           Icon(
@@ -225,13 +216,13 @@ class _SessionCliTaskPanelState extends State<SessionCliTaskPanel> {
 class _TaskRow extends StatelessWidget {
   const _TaskRow({required this.task});
 
-  final CliTask task;
+  final AiTaskBoardItem task;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final subject = task.subject.trim().isEmpty ? '…' : task.subject;
-    final done = task.status == CliTaskStatus.completed;
+    final done = task.status == AiTaskStatus.completed;
     final textStyle = TpTextStyles.of(context).smColored(scheme.onSurface);
     // Center the 16px icon on the FIRST text line (not the whole 1–2 line
     // block) by nudging it into the first line box.
@@ -305,37 +296,33 @@ class _OverflowTooltipText extends StatelessWidget {
 class _TaskStatusIcon extends StatelessWidget {
   const _TaskStatusIcon({required this.status, required this.color});
 
-  final CliTaskStatus status;
+  final AiTaskStatus status;
   final Color color;
 
   @override
   Widget build(BuildContext context) {
     return switch (status) {
-      CliTaskStatus.pending => Icon(
+      AiTaskStatus.pending => Icon(
         Icons.radio_button_unchecked,
         size: 16,
         color: color,
       ),
-      CliTaskStatus.inProgress => Icon(
+      AiTaskStatus.inProgress => Icon(
         Icons.arrow_forward,
         size: 16,
         color: color,
       ),
-      CliTaskStatus.completed => Icon(
+      AiTaskStatus.completed => Icon(
         Icons.check_circle_outline,
         size: 16,
         color: color,
       ),
-      CliTaskStatus.cancelled => Icon(
+      AiTaskStatus.cancelled => Icon(
         Icons.cancel_outlined,
         size: 16,
         color: color,
       ),
-      CliTaskStatus.unknown => Icon(
-        Icons.help_outline,
-        size: 16,
-        color: color,
-      ),
+      AiTaskStatus.unknown => Icon(Icons.help_outline, size: 16, color: color),
     };
   }
 }

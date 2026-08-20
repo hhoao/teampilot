@@ -1,7 +1,7 @@
 import 'package:ai_message_core/ai_message_core.dart';
 
 /// Task lifecycle statuses observed in CLI task transcripts.
-enum CliTaskStatus { pending, inProgress, completed, cancelled, unknown }
+typedef CliTaskStatus = AiTaskStatus;
 
 /// One task in a CLI task board, derived from TaskCreate/TaskUpdate calls.
 class CliTask {
@@ -45,6 +45,11 @@ class CliTaskBoard {
 
   int get completedCount =>
       tasks.where((t) => t.status == CliTaskStatus.completed).length;
+
+  List<AiTaskBoardItem> get aiItems => [
+    for (final task in tasks)
+      AiTaskBoardItem(subject: task.subject, status: task.status),
+  ];
 
   /// Todo text keyed by task id, for filling merge payloads that omit content.
   Map<String, String> get contentById {
@@ -220,17 +225,5 @@ String? _taskIdFromCreate(AiToolCallPart part) {
 }
 
 /// Maps a CLI status string to [CliTaskStatus]; anything unrecognized → unknown.
-CliTaskStatus cliTaskStatusFromString(String raw) {
-  switch (raw.toLowerCase()) {
-    case 'pending':
-      return CliTaskStatus.pending;
-    case 'in_progress':
-      return CliTaskStatus.inProgress;
-    case 'completed':
-      return CliTaskStatus.completed;
-    case 'cancelled':
-      return CliTaskStatus.cancelled;
-    default:
-      return CliTaskStatus.unknown;
-  }
-}
+CliTaskStatus cliTaskStatusFromString(String raw) =>
+    aiTaskStatusFromString(raw);

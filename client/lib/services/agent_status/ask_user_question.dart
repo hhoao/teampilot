@@ -1,75 +1,9 @@
 import 'dart:convert';
 
-/// One authored option for an [AgentAskUserQuestion] (from the CLI model).
-class AgentAskUserOption {
-  const AgentAskUserOption({required this.label, this.description, this.id});
+import 'package:ai_message_core/ai_message_core.dart';
 
-  final String label;
-  final String? description;
-
-  /// Cursor `AskQuestion` option id; used to map selected ids back to labels.
-  final String? id;
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is AgentAskUserOption &&
-          label == other.label &&
-          description == other.description &&
-          id == other.id;
-
-  @override
-  int get hashCode => Object.hash(label, description, id);
-}
-
-/// A single AskUserQuestion item from a Claude-family `PreToolUse` hook
-/// payload (`tool_input`), surfaced so the chat can render and answer it.
-class AgentAskUserQuestion {
-  const AgentAskUserQuestion({
-    required this.question,
-    required this.options,
-    this.multiSelect = false,
-    this.header,
-    this.id,
-  });
-
-  final String question;
-  final List<AgentAskUserOption> options;
-
-  /// True for checkbox-style selection; single-select (radio) when false.
-  final bool multiSelect;
-
-  /// Short tab label when multiple questions are shown (Claude `header`).
-  final String? header;
-
-  /// Cursor `AskQuestion` question id; used to map answers keyed by id.
-  final String? id;
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is AgentAskUserQuestion &&
-          question == other.question &&
-          _sameOptions(options, other.options) &&
-          multiSelect == other.multiSelect &&
-          header == other.header &&
-          id == other.id;
-
-  @override
-  int get hashCode =>
-      Object.hash(question, Object.hashAll(options), multiSelect, header, id);
-
-  static bool _sameOptions(
-    List<AgentAskUserOption> a,
-    List<AgentAskUserOption> b,
-  ) {
-    if (a.length != b.length) return false;
-    for (var i = 0; i < a.length; i++) {
-      if (a[i] != b[i]) return false;
-    }
-    return true;
-  }
-}
+typedef AgentAskUserOption = AiAskUserOption;
+typedef AgentAskUserQuestion = AiAskUserQuestion;
 
 /// Parses the `tool_input` of an AskUserQuestion `PreToolUse` hook payload into
 /// structured questions.

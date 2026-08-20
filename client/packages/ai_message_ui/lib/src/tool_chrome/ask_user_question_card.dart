@@ -1,47 +1,49 @@
 import 'dart:async';
 
+import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
 
-import '../../cubits/agent_attention_cubit.dart';
-import '../../cubits/chat_cubit.dart';
-import '../../l10n/l10n_extensions.dart';
-import '../../models/app_session.dart';
-import '../../services/agent_status/ask_user_question.dart';
-import '../../services/terminal/ask_user_question_answer_service.dart';
-import '../../utils/ui/app_keys.dart';
+import '../strings.dart';
 
-/// Interactive AskUserQuestion card — light card with numbered options,
-/// header pill + pagination, and Ignore / Submit footer.
-class AskUserQuestionCard extends StatefulWidget {
-  const AskUserQuestionCard({
-    required this.session,
-    required this.seatId,
+/// Interactive AskUserQuestion card — numbered options, header pill +
+/// pagination, and Ignore / Submit footer. Host delivers answers via callbacks.
+class AiAskUserQuestionCard extends StatefulWidget {
+  const AiAskUserQuestionCard({
     required this.questions,
+    required this.onSubmit,
+    required this.onCancel,
     required this.onAnswerInTerminal,
-    this.askRequestId,
-    this.supportsMultiSelectInChat = false,
+    this.externalError,
     super.key,
   });
 
-  final AppSession session;
+  static const cardKey = Key('ask-user-question-card');
+  static const submitButtonKey = Key('ask-user-question-submit-button');
+  static const continueButtonKey = Key('ask-user-question-continue-button');
+  static const inlineErrorKey = Key('ask-user-question-inline-error');
 
-  /// Shell / seat key (`sessionId` for simple, member id for team).
-  final String seatId;
-  final List<AgentAskUserQuestion> questions;
-  final String? askRequestId;
+  static Key optionKey({
+    required int questionIndex,
+    required int optionIndex,
+  }) => Key('ask-user-question-option-$questionIndex-$optionIndex');
 
-  /// When true, multi-select / multi-question UI is enabled (OpenCode).
-  final bool supportsMultiSelectInChat;
+  final List<AiAskUserQuestion> questions;
+  final Future<AiInteractiveResult> Function(AiAskUserSubmission submission)
+  onSubmit;
+  final Future<AiInteractiveResult> Function() onCancel;
   final VoidCallback onAnswerInTerminal;
 
+  /// Host-side error (e.g. attention cubit `askReplyError`), shown when the
+  /// card has no inline submit failure.
+  final String? externalError;
+
   @override
-  State<AskUserQuestionCard> createState() => _AskUserQuestionCardState();
+  State<AiAskUserQuestionCard> createState() => _AiAskUserQuestionCardState();
 }
 
-class _AskUserQuestionCardState extends State<AskUserQuestionCard> {
+class _AiAskUserQuestionCardState extends State<AiAskUserQuestionCard> {
   var _answering = false;
   String? _inlineError;
   var _activeQuestionIndex = 0;
@@ -75,7 +77,7 @@ class _AskUserQuestionCardState extends State<AskUserQuestionCard> {
   }
 
   @override
-  void didUpdateWidget(covariant AskUserQuestionCard oldWidget) {
+  void didUpdateWidget(covariant AiAskUserQuestionCard oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (!_sameQuestions(oldWidget.questions, widget.questions)) {
       _disposeCustomFields();
@@ -112,8 +114,8 @@ class _AskUserQuestionCardState extends State<AskUserQuestionCard> {
   }
 
   static bool _sameQuestions(
-    List<AgentAskUserQuestion> a,
-    List<AgentAskUserQuestion> b,
+    List<AiAskUserQuestion> a,
+    List<AiAskUserQuestion> b,
   ) {
     if (identical(a, b)) return true;
     if (a.length != b.length) return false;
@@ -204,25 +206,28 @@ class _AskUserQuestionCardState extends State<AskUserQuestionCard> {
     ];
   }
 
-  String _mapFailureReason(String reason, AppLocalizations l10n) {
-    switch (reason) {
-      case 'terminal_disconnected':
-        return l10n.agentAskTerminalDisconnected;
-      default:
-        return l10n.agentAskAnswerFailed;
-    }
-  }
-
-  String _mapAskReplyError(String? askReplyError, AppLocalizations l10n) {
-    final trimmed = askReplyError?.trim() ?? '';
-    if (trimmed.isEmpty) return l10n.agentAskAnswerFailed;
+  String _mapAskReplyError(String? askReplyError, AiMessageStrings strings) {
+    if (askReplyError == null) return strings.askUserAnswerFailed;
+    final trimmed = askReplyError.trim();
+    if (trimmed.isEmpty) return strings.askUserAnswerFailed;
     return trimmed;
   }
 
-  String _headerLabel(int index, AppLocalizations l10n) {
+  String _headerLabel(int index, AiMessageStrings strings) {
     final header = widget.questions[index].header?.trim();
     if (header != null && header.isNotEmpty) return header;
-    return l10n.agentAskQuestionTabFallback(index + 1);
+    return strings.askUserQuestionTabLabel(index + 1);
+  }
+
+  void _applyResult(AiInteractiveResult result, AiMessageStrings strings) {
+    if (result is AiInteractiveFailed) {
+      setState(() {
+        _inlineError = strings.askUserFailureLabel(result.reason);
+        _answering = false;
+      });
+    } else if (mounted) {
+      setState(() => _answering = false);
+    }
   }
 
   Future<void> _submit() async {
@@ -243,29 +248,20 @@ class _AskUserQuestionCardState extends State<AskUserQuestionCard> {
               ? _customControllers[qi].text.trim()
               : null,
       ];
-      final result = await context.read<ChatCubit>().answerAskUserQuestion(
-        sessionId: widget.session.sessionId,
-        memberId: widget.seatId,
-        optionIndex: optionIndices.first,
-        optionIndices: optionIndices,
-        askRequestId: widget.askRequestId,
-        answers: answers,
-        freeText: freeTexts.first,
-        freeTexts: freeTexts,
+      final result = await widget.onSubmit(
+        AiAskUserSubmission(
+          answers: answers,
+          optionIndices: optionIndices,
+          freeText: freeTexts.first,
+          freeTexts: freeTexts,
+        ),
       );
       if (!mounted) return;
-      if (result is AskUserAnswerFailed) {
-        setState(() {
-          _inlineError = _mapFailureReason(result.reason, context.l10n);
-          _answering = false;
-        });
-      } else if (mounted) {
-        setState(() => _answering = false);
-      }
+      _applyResult(result, AiMessageStrings.of(context));
     } catch (_) {
       if (mounted) {
         setState(() {
-          _inlineError = context.l10n.agentAskAnswerFailed;
+          _inlineError = AiMessageStrings.of(context).askUserAnswerFailed;
           _answering = false;
         });
       }
@@ -279,24 +275,13 @@ class _AskUserQuestionCardState extends State<AskUserQuestionCard> {
       _inlineError = null;
     });
     try {
-      final result = await context.read<ChatCubit>().cancelAskUserQuestion(
-        sessionId: widget.session.sessionId,
-        memberId: widget.seatId,
-        askRequestId: widget.askRequestId,
-      );
+      final result = await widget.onCancel();
       if (!mounted) return;
-      if (result is AskUserAnswerFailed) {
-        setState(() {
-          _inlineError = _mapFailureReason(result.reason, context.l10n);
-          _answering = false;
-        });
-      } else if (mounted) {
-        setState(() => _answering = false);
-      }
+      _applyResult(result, AiMessageStrings.of(context));
     } catch (_) {
       if (mounted) {
         setState(() {
-          _inlineError = context.l10n.agentAskAnswerFailed;
+          _inlineError = AiMessageStrings.of(context).askUserAnswerFailed;
           _answering = false;
         });
       }
@@ -500,21 +485,16 @@ class _AskUserQuestionCardState extends State<AskUserQuestionCard> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final spacing = context.tpSpacing;
-    final l10n = context.l10n;
+    final strings = AiMessageStrings.of(context);
     final styles = TpTextStyles.of(context);
     final radius = TpTheme.of(context).control.radius;
     final icons = TpTheme.of(context).iconSizes;
 
-    final askReplyError = context.select<AgentAttentionCubit, String?>((c) {
-      final entry = c.state.entryFor(
-        sessionId: widget.session.sessionId,
-        memberId: widget.seatId,
-      );
-      return entry?.askReplyError;
-    });
     final displayError =
         _inlineError ??
-        (askReplyError == null ? null : _mapAskReplyError(askReplyError, l10n));
+        (widget.externalError == null
+            ? null
+            : _mapAskReplyError(widget.externalError, strings));
 
     final activeIndex = _activeQuestionIndex.clamp(
       0,
@@ -524,7 +504,7 @@ class _AskUserQuestionCardState extends State<AskUserQuestionCard> {
     final customIndex = _customIndexFor(activeIndex);
     final focused = _focusedOptionIndex.clamp(0, customIndex);
     final showPager = widget.questions.length > 1;
-    final headerText = _headerLabel(activeIndex, l10n);
+    final headerText = _headerLabel(activeIndex, strings);
 
     return Padding(
       padding: EdgeInsets.only(bottom: spacing.sm),
@@ -532,7 +512,7 @@ class _AskUserQuestionCardState extends State<AskUserQuestionCard> {
         focusNode: _focusNode,
         onKeyEvent: _onKey,
         child: Material(
-          key: AppKeys.askUserQuestionCard,
+          key: AiAskUserQuestionCard.cardKey,
           elevation: 0,
           color: cs.surface,
           shape: RoundedRectangleBorder(
@@ -582,7 +562,7 @@ class _AskUserQuestionCardState extends State<AskUserQuestionCard> {
                     SizedBox(width: spacing.md),
                     TpIconButton(
                       icon: Icons.terminal_rounded,
-                      tooltip: l10n.agentAskAnswerInTerminal,
+                      tooltip: strings.askUserAnswerInTerminal,
                       compact: true,
                       size: TpIconButton.kCompactSize,
                       color: cs.onSurfaceVariant.withValues(alpha: 0.75),
@@ -602,7 +582,7 @@ class _AskUserQuestionCardState extends State<AskUserQuestionCard> {
                   customIndex: customIndex,
                   customController: _customControllers[activeIndex],
                   customFocusNode: _customFocusNodes[activeIndex],
-                  customHint: l10n.agentAskCustomAnswerHint,
+                  customHint: strings.askUserCustomHint,
                   onOptionTap: (oi) {
                     if (active.multiSelect) {
                       _toggleMulti(activeIndex, oi);
@@ -623,7 +603,7 @@ class _AskUserQuestionCardState extends State<AskUserQuestionCard> {
                   SizedBox(height: spacing.md),
                   Text(
                     displayError,
-                    key: AppKeys.askUserQuestionInlineError,
+                    key: AiAskUserQuestionCard.inlineErrorKey,
                     style: styles.mdColored(cs.error),
                   ),
                 ],
@@ -639,7 +619,7 @@ class _AskUserQuestionCardState extends State<AskUserQuestionCard> {
                     SizedBox(width: spacing.sm),
                     Expanded(
                       child: SelectableText(
-                        l10n.agentAskKeyboardHint,
+                        strings.askUserKeyboardHint,
                         style: styles
                             .mdColored(cs.onSurfaceVariant)
                             .copyWith(height: 1.4),
@@ -650,13 +630,13 @@ class _AskUserQuestionCardState extends State<AskUserQuestionCard> {
                       variant: TpButtonVariant.ghost,
                       size: TpControlSize.medium,
                       onPressed: _answering ? null : _cancel,
-                      child: Text(l10n.agentAskIgnore),
+                      child: Text(strings.askUserIgnore),
                     ),
                     SizedBox(width: spacing.sm),
                     TpButton(
                       key: _canSubmit
-                          ? AppKeys.askUserQuestionSubmitButton
-                          : AppKeys.askUserQuestionContinueButton,
+                          ? AiAskUserQuestionCard.submitButtonKey
+                          : AiAskUserQuestionCard.continueButtonKey,
                       variant: TpButtonVariant.primary,
                       size: TpControlSize.medium,
                       onPressed: (_canSubmit || _canContinue)
@@ -664,8 +644,8 @@ class _AskUserQuestionCardState extends State<AskUserQuestionCard> {
                           : null,
                       child: Text(
                         _canSubmit
-                            ? l10n.agentAskSubmitAnswers
-                            : l10n.agentAskContinue,
+                            ? strings.askUserSubmit
+                            : strings.askUserContinue,
                       ),
                     ),
                   ],
@@ -780,7 +760,7 @@ class _AlignedOptionList extends StatelessWidget {
   });
 
   final int questionIndex;
-  final List<AgentAskUserOption> options;
+  final List<AiAskUserOption> options;
   final Set<int> selected;
   final int focusedIndex;
   final bool enabled;
@@ -838,7 +818,7 @@ class _AlignedOptionList extends StatelessWidget {
         for (var oi = 0; oi < options.length; oi++) ...[
           if (oi > 0) SizedBox(height: spacing.xs),
           _OptionRow(
-            key: AppKeys.askUserQuestionOptionAt(
+            key: AiAskUserQuestionCard.optionKey(
               questionIndex: questionIndex,
               optionIndex: oi,
             ),
@@ -858,7 +838,7 @@ class _AlignedOptionList extends StatelessWidget {
         ],
         SizedBox(height: spacing.xs),
         _CustomAnswerRow(
-          key: AppKeys.askUserQuestionOptionAt(
+          key: AiAskUserQuestionCard.optionKey(
             questionIndex: questionIndex,
             optionIndex: customIndex,
           ),
@@ -900,7 +880,7 @@ class _OptionRow extends StatelessWidget {
   });
 
   final String indexLabel;
-  final AgentAskUserOption option;
+  final AiAskUserOption option;
   final double indexWidth;
   final double labelWidth;
   final bool selected;
@@ -952,11 +932,11 @@ class _OptionRow extends StatelessWidget {
       hoverColor: selected
           ? cs.primary.withValues(alpha: 0.14)
           : focused
-              ? Color.alphaBlend(
-                  cs.primary.withValues(alpha: 0.08),
-                  cs.surfaceContainerHighest.withValues(alpha: 0.28),
-                )
-              : cs.primary.withValues(alpha: 0.08),
+          ? Color.alphaBlend(
+              cs.primary.withValues(alpha: 0.08),
+              cs.surfaceContainerHighest.withValues(alpha: 0.28),
+            )
+          : cs.primary.withValues(alpha: 0.08),
       enabled: enabled,
       onTap: enabled ? onTap : null,
       child: Padding(

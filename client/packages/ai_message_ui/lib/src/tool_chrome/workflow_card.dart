@@ -1,23 +1,21 @@
 import 'package:ai_message_core/ai_message_core.dart';
-import 'package:ai_message_ui/ai_message_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 
-import '../../l10n/l10n_extensions.dart';
-import '../../utils/ui/app_keys.dart';
+import '../strings.dart';
+import '../theme.dart';
+import '../tool_subagent_actions.dart';
 
-/// Chat bubble for a Claude Code `Workflow` tool call: a run metadata header
-/// plus one tappable row per spawned agent. Tapping a row drills into the
-/// existing sub-agent preview via [AiToolSubagentActions.onOpenSubagent].
-class WorkflowCard extends StatelessWidget {
-  const WorkflowCard({
-    required this.part,
-    this.attachment,
-    super.key,
-  });
+/// Chat bubble for a workflow tool call: run metadata plus tappable agents.
+class AiWorkflowCard extends StatelessWidget {
+  const AiWorkflowCard({required this.target, super.key});
 
-  final AiToolCallPart part;
-  final AiSubagentAttachment? attachment;
+  static const cardKey = Key('workflow-card');
+
+  static Key agentRowKey(String runId, String agentId) =>
+      Key('workflow-agent-row-$runId-$agentId');
+
+  final AiWorkflowTarget target;
 
   @override
   Widget build(BuildContext context) {
@@ -27,10 +25,10 @@ class WorkflowCard extends StatelessWidget {
     final spacing = context.tpSpacing;
     final styles = TpTextStyles.of(context);
     final radius = TpTheme.of(context).control.radius;
-    final l10n = context.l10n;
+    final strings = AiMessageStrings.of(context);
     final actions = AiToolSubagentActions.of(context);
 
-    final workflow = attachment?.workflow;
+    final workflow = target.workflow;
     final name = workflow?.workflowName?.trim() ?? '';
     final title = name.isEmpty ? 'Workflow' : name;
     final status = workflow?.status?.trim() ?? '';
@@ -42,7 +40,7 @@ class WorkflowCard extends StatelessWidget {
     return Padding(
       padding: EdgeInsets.only(bottom: aiTheme.partSpacing),
       child: Material(
-        key: AppKeys.workflowCard,
+        key: cardKey,
         color: cs.surfaceContainerHigh,
         borderRadius: BorderRadius.circular(radius),
         child: Padding(
@@ -78,7 +76,7 @@ class WorkflowCard extends StatelessWidget {
                   if (workflow != null) ...[
                     const SizedBox(width: 8),
                     Text(
-                      l10n.workflowCardAgents(workflow.agentCount),
+                      strings.workflowAgentsLabel(workflow.agentCount),
                       style: styles.xsColored(cs.onSurfaceVariant),
                     ),
                     if (duration != null) ...[
@@ -114,7 +112,7 @@ class WorkflowCard extends StatelessWidget {
               SizedBox(height: spacing.xs),
               if (workflow == null || agents.isEmpty)
                 Text(
-                  l10n.workflowCardRunMissing,
+                  strings.workflowRunMissing,
                   style: styles.xsColored(cs.onSurfaceVariant),
                 )
               else
@@ -165,7 +163,7 @@ class _AgentRow extends StatelessWidget {
     final label = role.isEmpty ? agent.agentId : role;
     final status = agent.status?.trim() ?? '';
     return TpHover(
-      key: AppKeys.workflowAgentRow(runId, agent.agentId),
+      key: AiWorkflowCard.agentRowKey(runId, agent.agentId),
       onTap: onTap,
       borderRadius: BorderRadius.circular(6),
       child: Padding(
@@ -175,7 +173,11 @@ class _AgentRow extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Icon(Icons.chevron_right_rounded, size: 16, color: cs.onSurfaceVariant),
+            Icon(
+              Icons.chevron_right_rounded,
+              size: 16,
+              color: cs.onSurfaceVariant,
+            ),
             SizedBox(width: spacing.xs),
             Expanded(
               child: Text(
@@ -220,10 +222,7 @@ class _PhaseChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
         border: Border.all(color: cs.outlineVariant),
       ),
-      child: Text(
-        phase,
-        style: styles.xsColored(cs.onSurfaceVariant),
-      ),
+      child: Text(phase, style: styles.xsColored(cs.onSurfaceVariant)),
     );
   }
 }
@@ -262,15 +261,15 @@ String _formatDuration(Duration d) {
   if (seconds < 60) return '${seconds}s';
   final minutes = d.inMinutes;
   final remaining = seconds - minutes * 60;
-  if (minutes < 60) return remaining == 0 ? '${minutes}m' : '${minutes}m ${remaining}s';
+  if (minutes < 60) {
+    return remaining == 0 ? '${minutes}m' : '${minutes}m ${remaining}s';
+  }
   final hours = d.inHours;
   return '${hours}h ${minutes - hours * 60}m';
 }
 
 Color _statusColor(ColorScheme cs, String status) {
-  final normalized = status
-      .replaceAll(RegExp(r'[^a-zA-Z]'), '')
-      .toLowerCase();
+  final normalized = status.replaceAll(RegExp(r'[^a-zA-Z]'), '').toLowerCase();
   if (normalized == 'done' || normalized == 'approved') return cs.tertiary;
   if (normalized == 'running' ||
       normalized == 'inprogress' ||

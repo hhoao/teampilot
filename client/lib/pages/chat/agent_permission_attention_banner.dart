@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:ai_message_core/ai_message_core.dart';
+import 'package:ai_message_ui/ai_message_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
@@ -14,17 +16,18 @@ import '../../models/cli_preset.dart';
 import '../../models/team_config.dart';
 import '../../services/agent_status/agent_attention_state.dart';
 import '../../services/agent_status/ask_user_question_policy.dart';
-import '../../services/agent_status/exit_plan_mode.dart';import '../../services/cli/preset_resolver.dart';
+import '../../services/agent_status/exit_plan_mode.dart';
+import '../../services/cli/preset_resolver.dart';
 import '../../services/cli/registry/capabilities/chat_interaction_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../services/compose/compose_at_file_refs.dart';
+import '../../services/terminal/ask_user_question_answer_service.dart';
+import '../../services/terminal/exit_plan_mode_approval_service.dart';
 import '../../services/terminal/session_member_cli_resolver.dart';
 import '../../services/workbench/workbench_editor_opener.dart';
 import '../../utils/ui/app_keys.dart';
-import 'ask_user_question_card.dart';
-import 'exit_plan_mode_card.dart';
-import 'opencode_permission_card.dart';
+import 'ai_message_strings_from_l10n.dart';
 
 /// Compact card shown just above Chat compose when the seat needs Terminal
 /// confirmation. Does not auto-switch; CTA jumps to Terminal.
@@ -67,8 +70,8 @@ class AgentPermissionAttentionBanner extends StatelessWidget {
         AgentSeatAttention.waiting;
   }
 
-  /// Whether the interactive [AskUserQuestionCard] / [OpenCodePermissionCard]
-  /// is showing for the seat (compose should be hidden, not merely disabled).
+  /// Whether the interactive ask-user / permission card is showing for the
+  /// seat (compose should be hidden, not merely disabled).
   static bool isSelectedSeatAskCard({
     required AgentAttentionCubit attention,
     required AppSession session,
@@ -141,39 +144,76 @@ class AgentPermissionAttentionBanner extends StatelessWidget {
       askRequestId: askRequestId,
     );
     if (showAskCard && questions != null) {
-      return AskUserQuestionCard(
-        session: session,
-        seatId: seatId,
-        questions: questions,
-        askRequestId: askRequestId,
-        supportsMultiSelectInChat:
-            capability?.supportsMultiSelectInChat ?? false,
-        onAnswerInTerminal: () => _openTerminal(
-          context,
-          sessionId: sessionId,
-          seatId: seatId,
-          selectedMemberId: selectedMemberId,
+      return _withStrings(
+        context,
+        AiAskUserQuestionCard(
+          questions: questions,
+          externalError: entry.askReplyError,
+          onSubmit: (submission) async {
+            final result = await context
+                .read<ChatCubit>()
+                .answerAskUserQuestion(
+                  sessionId: sessionId,
+                  memberId: seatId,
+                  optionIndex: submission.optionIndices.first,
+                  optionIndices: submission.optionIndices,
+                  askRequestId: askRequestId,
+                  answers: submission.answers,
+                  freeText: submission.freeText,
+                  freeTexts: submission.freeTexts,
+                );
+            return _fromAskUser(result);
+          },
+          onCancel: () async {
+            final result = await context
+                .read<ChatCubit>()
+                .cancelAskUserQuestion(
+                  sessionId: sessionId,
+                  memberId: seatId,
+                  askRequestId: askRequestId,
+                );
+            return _fromAskUser(result);
+          },
+          onAnswerInTerminal: () => _openTerminal(
+            context,
+            sessionId: sessionId,
+            seatId: seatId,
+            selectedMemberId: selectedMemberId,
+          ),
         ),
       );
     }
 
     final permissionRequest = entry.lastEvent?.permissionRequest;
     if (shouldShowPermissionCard(
-      capability: capability,
-      permissionRequest: permissionRequest,
-      askRequestId: askRequestId,
-    ) &&
+          capability: capability,
+          permissionRequest: permissionRequest,
+          askRequestId: askRequestId,
+        ) &&
         permissionRequest != null) {
-      return OpenCodePermissionCard(
-        session: session,
-        seatId: seatId,
-        request: permissionRequest,
-        askRequestId: askRequestId!,
-        onAnswerInTerminal: () => _openTerminal(
-          context,
-          sessionId: sessionId,
-          seatId: seatId,
-          selectedMemberId: selectedMemberId,
+      return _withStrings(
+        context,
+        AiPermissionCard(
+          description: permissionRequest.description,
+          showAlwaysAllow: permissionRequest.always.isNotEmpty,
+          externalError: entry.askReplyError,
+          onReply: (reply) async {
+            final result = await context
+                .read<ChatCubit>()
+                .answerPermissionRequest(
+                  sessionId: sessionId,
+                  memberId: seatId,
+                  permissionRequestId: askRequestId!,
+                  reply: reply,
+                );
+            return _fromAskUser(result);
+          },
+          onAnswerInTerminal: () => _openTerminal(
+            context,
+            sessionId: sessionId,
+            seatId: seatId,
+            selectedMemberId: selectedMemberId,
+          ),
         ),
       );
     }
@@ -190,39 +230,52 @@ class AgentPermissionAttentionBanner extends StatelessWidget {
           exitPlanCapability?.supportsInChatApproval ?? false;
       final toolUseId = lastEvent?.toolUseId?.trim() ?? '';
       final inChatApproval = supportsInChatApproval && toolUseId.isNotEmpty;
-      return ExitPlanModeCard(
-        planText: planText,
-        planFilePath: planFilePath.isEmpty ? null : planFilePath,
-        onApprove: inChatApproval
-            ? () => context.read<ChatCubit>().approveExitPlanMode(
-                sessionId: sessionId,
-                memberId: seatId,
-                toolUseId: toolUseId,
-              )
-            : null,
-        onReject: inChatApproval
-            ? () => context.read<ChatCubit>().rejectExitPlanMode(
-                sessionId: sessionId,
-                memberId: seatId,
-                toolUseId: toolUseId,
-              )
-            : null,
-        onOpenTerminal: () => _openTerminal(
-          context,
-          sessionId: sessionId,
-          seatId: seatId,
-          selectedMemberId: selectedMemberId,
+      return _withStrings(
+        context,
+        AiExitPlanModeCard(
+          planText: planText,
+          planFilePath: planFilePath.isEmpty ? null : planFilePath,
+          onApprove: inChatApproval
+              ? () async {
+                  final result = await context
+                      .read<ChatCubit>()
+                      .approveExitPlanMode(
+                        sessionId: sessionId,
+                        memberId: seatId,
+                        toolUseId: toolUseId,
+                      );
+                  return _fromExitPlan(result);
+                }
+              : null,
+          onReject: inChatApproval
+              ? () async {
+                  final result = await context
+                      .read<ChatCubit>()
+                      .rejectExitPlanMode(
+                        sessionId: sessionId,
+                        memberId: seatId,
+                        toolUseId: toolUseId,
+                      );
+                  return _fromExitPlan(result);
+                }
+              : null,
+          onOpenTerminal: () => _openTerminal(
+            context,
+            sessionId: sessionId,
+            seatId: seatId,
+            selectedMemberId: selectedMemberId,
+          ),
+          onOpenPlanFile: (path) {
+            unawaited(
+              context.read<WorkbenchEditorOpener>().openFile(
+                session.workspaceId,
+                path,
+                preview: true,
+                fs: filesystemForComposeAtFileOpen(path),
+              ),
+            );
+          },
         ),
-        onOpenPlanFile: (path) {
-          unawaited(
-            context.read<WorkbenchEditorOpener>().openFile(
-              session.workspaceId,
-              path,
-              preview: true,
-              fs: filesystemForComposeAtFileOpen(path),
-            ),
-          );
-        },
       );
     }
 
@@ -336,4 +389,23 @@ class AgentPermissionAttentionBanner extends StatelessWidget {
     }
     chat.setSessionWorkbenchView(sessionId, SessionWorkbenchView.terminal);
   }
+
+  Widget _withStrings(BuildContext context, Widget child) {
+    return AiMessageStringsScope(
+      strings: aiMessageStringsFromL10n(context.l10n),
+      child: child,
+    );
+  }
 }
+
+AiInteractiveResult _fromAskUser(AskUserAnswerResult result) =>
+    switch (result) {
+      AskUserAnswerFailed(:final reason) => AiInteractiveFailed(reason),
+      AskUserAnswerOk() => const AiInteractiveOk(),
+    };
+
+AiInteractiveResult _fromExitPlan(ExitPlanApprovalResult result) =>
+    switch (result) {
+      ExitPlanApprovalFailed(:final reason) => AiInteractiveFailed(reason),
+      ExitPlanApprovalOk() => const AiInteractiveOk(),
+    };

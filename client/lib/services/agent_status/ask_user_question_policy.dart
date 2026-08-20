@@ -26,7 +26,7 @@ bool shouldShowPermissionCard({
   return true;
 }
 
-/// Whether the chat should render an [AskUserQuestionCard] for the given
+/// Whether the chat should render an interactive ask-user card for the given
 /// capability and parsed questions (vs a generic attention banner).
 bool shouldShowAskUserQuestionCard({
   required ChatInteractionCapability? capability,

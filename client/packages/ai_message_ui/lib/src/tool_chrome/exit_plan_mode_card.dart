@@ -1,18 +1,17 @@
+import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:tp_markdown/tp_markdown.dart';
 
-import '../../l10n/l10n_extensions.dart';
-import '../../services/terminal/exit_plan_mode_approval_service.dart';
-import '../../theme/app_markdown_style_sheet.dart';
-import '../../utils/ui/app_keys.dart';
+import '../strings.dart';
+import '../theme.dart';
 
 /// Chat card for Claude `ExitPlanMode`: Markdown plan, expand/collapse, copy,
 /// clickable plan file, and (when [onApprove]/[onReject] are provided) an
 /// in-chat Approve / Reject footer.
-class ExitPlanModeCard extends StatefulWidget {
-  const ExitPlanModeCard({
+class AiExitPlanModeCard extends StatefulWidget {
+  const AiExitPlanModeCard({
     required this.planText,
     this.planFilePath,
     this.onApprove,
@@ -22,20 +21,33 @@ class ExitPlanModeCard extends StatefulWidget {
     super.key,
   });
 
+  static const cardKey = Key('exit-plan-mode-card');
+  static const approveButtonKey = Key('exit-plan-mode-approve-button');
+  static const rejectButtonKey = Key('exit-plan-mode-reject-button');
+  static const copyPlanButtonKey = Key('exit-plan-mode-copy-plan-button');
+  static const expandButtonKey = Key('exit-plan-mode-expand-button');
+  static const openPlanFileButtonKey = Key(
+    'exit-plan-mode-open-plan-file-button',
+  );
+  static const inlineErrorKey = Key('exit-plan-mode-inline-error');
+  static const openTerminalButtonKey = Key(
+    'agent-permission-open-terminal-button',
+  );
+
   final String planText;
   final String? planFilePath;
 
   /// When both are non-null, the card renders in-chat Approve / Reject.
-  final Future<ExitPlanApprovalResult> Function()? onApprove;
-  final Future<ExitPlanApprovalResult> Function()? onReject;
+  final Future<AiInteractiveResult> Function()? onApprove;
+  final Future<AiInteractiveResult> Function()? onReject;
   final VoidCallback onOpenTerminal;
   final ValueChanged<String> onOpenPlanFile;
 
   @override
-  State<ExitPlanModeCard> createState() => _ExitPlanModeCardState();
+  State<AiExitPlanModeCard> createState() => _AiExitPlanModeCardState();
 }
 
-class _ExitPlanModeCardState extends State<ExitPlanModeCard> {
+class _AiExitPlanModeCardState extends State<AiExitPlanModeCard> {
   var _expanded = false;
   var _approving = false;
   String? _inlineError;
@@ -47,7 +59,7 @@ class _ExitPlanModeCardState extends State<ExitPlanModeCard> {
   Future<void> _reject() => _submit(widget.onReject, approve: false);
 
   Future<void> _submit(
-    Future<ExitPlanApprovalResult> Function()? action, {
+    Future<AiInteractiveResult> Function()? action, {
     required bool approve,
   }) async {
     if (action == null || _approving) return;
@@ -55,7 +67,8 @@ class _ExitPlanModeCardState extends State<ExitPlanModeCard> {
       _approving = true;
       _inlineError = null;
     });
-    final ExitPlanApprovalResult result;
+    final strings = AiMessageStrings.of(context);
+    final AiInteractiveResult result;
     try {
       result = await action();
     } catch (_) {
@@ -63,18 +76,18 @@ class _ExitPlanModeCardState extends State<ExitPlanModeCard> {
       setState(() {
         _approving = false;
         _inlineError = approve
-            ? context.l10n.exitPlanModeApproveFailed
-            : context.l10n.exitPlanModeRejectFailed;
+            ? strings.exitPlanApproveFailed
+            : strings.exitPlanRejectFailed;
       });
       return;
     }
     if (!mounted) return;
-    if (result is ExitPlanApprovalFailed) {
+    if (result is AiInteractiveFailed) {
       setState(() {
         _approving = false;
         _inlineError = approve
-            ? context.l10n.exitPlanModeApproveFailed
-            : context.l10n.exitPlanModeRejectFailed;
+            ? strings.exitPlanApproveFailed
+            : strings.exitPlanRejectFailed;
       });
     } else {
       setState(() => _approving = false);
@@ -89,7 +102,7 @@ class _ExitPlanModeCardState extends State<ExitPlanModeCard> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final spacing = context.tpSpacing;
-    final l10n = context.l10n;
+    final strings = AiMessageStrings.of(context);
     final styles = TpTextStyles.of(context);
     final radius = TpTheme.of(context).control.radius;
     final path = widget.planFilePath?.trim() ?? '';
@@ -97,7 +110,7 @@ class _ExitPlanModeCardState extends State<ExitPlanModeCard> {
     return Padding(
       padding: EdgeInsets.only(bottom: spacing.sm),
       child: Material(
-        key: AppKeys.exitPlanModeCard,
+        key: AiExitPlanModeCard.cardKey,
         elevation: 2,
         shadowColor: cs.shadow.withValues(alpha: 0.28),
         color: cs.surfaceContainerHigh,
@@ -119,14 +132,14 @@ class _ExitPlanModeCardState extends State<ExitPlanModeCard> {
                   SizedBox(width: spacing.sm),
                   Expanded(
                     child: Text(
-                      l10n.exitPlanModeTitle,
+                      strings.exitPlanTitle,
                       style: styles.smColored(cs.onSurface),
                     ),
                   ),
                   TpIconButton(
-                    key: AppKeys.exitPlanModeCopyPlanButton,
+                    key: AiExitPlanModeCard.copyPlanButtonKey,
                     icon: Icons.copy_rounded,
-                    tooltip: l10n.exitPlanModeCopyPlan,
+                    tooltip: strings.exitPlanCopy,
                     compact: true,
                     size: TpIconButton.kCompactSize,
                     color: cs.onSurfaceVariant.withValues(alpha: 0.75),
@@ -152,11 +165,7 @@ class _ExitPlanModeCardState extends State<ExitPlanModeCard> {
                     child: SingleChildScrollView(
                       child: MarkdownView(
                         document: compileMarkdown(widget.planText),
-                        tokens: buildAppMarkdownTokens(
-                          Theme.of(context),
-                          MarkdownProfile.compact,
-                          width: MediaQuery.sizeOf(context).width,
-                        ),
+                        tokens: AiMessageTheme.of(context).markdown,
                       ),
                     ),
                   ),
@@ -164,12 +173,12 @@ class _ExitPlanModeCardState extends State<ExitPlanModeCard> {
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
-                    key: AppKeys.exitPlanModeExpandButton,
+                    key: AiExitPlanModeCard.expandButtonKey,
                     onPressed: () => setState(() => _expanded = !_expanded),
                     child: Text(
                       _expanded
-                          ? l10n.exitPlanModeCollapse
-                          : l10n.exitPlanModeExpand,
+                          ? strings.exitPlanCollapse
+                          : strings.exitPlanExpand,
                     ),
                   ),
                 ),
@@ -177,8 +186,8 @@ class _ExitPlanModeCardState extends State<ExitPlanModeCard> {
               if (path.isNotEmpty) ...[
                 SizedBox(height: spacing.sm),
                 Tooltip(
-                  key: AppKeys.exitPlanModeOpenPlanFileButton,
-                  message: l10n.exitPlanModeOpenPlanFile,
+                  key: AiExitPlanModeCard.openPlanFileButtonKey,
+                  message: strings.exitPlanOpenFile,
                   child: TpHover(
                     borderRadius: BorderRadius.circular(radius),
                     onTap: () => widget.onOpenPlanFile(path),
@@ -213,7 +222,7 @@ class _ExitPlanModeCardState extends State<ExitPlanModeCard> {
                 SizedBox(height: spacing.sm),
                 Text(
                   _inlineError!,
-                  key: AppKeys.exitPlanModeInlineError,
+                  key: AiExitPlanModeCard.inlineErrorKey,
                   style: styles.smColored(cs.error),
                 ),
               ],
@@ -222,9 +231,9 @@ class _ExitPlanModeCardState extends State<ExitPlanModeCard> {
                 Row(
                   children: [
                     TpIconButton(
-                      key: AppKeys.agentPermissionOpenTerminalButton,
+                      key: AiExitPlanModeCard.openTerminalButtonKey,
                       icon: Icons.terminal_rounded,
-                      tooltip: l10n.agentPermissionOpenTerminal,
+                      tooltip: strings.permissionOpenTerminal,
                       compact: true,
                       size: TpIconButton.kCompactSize,
                       color: cs.onSurfaceVariant.withValues(alpha: 0.75),
@@ -233,19 +242,19 @@ class _ExitPlanModeCardState extends State<ExitPlanModeCard> {
                     ),
                     const Spacer(),
                     TpButton(
-                      key: AppKeys.exitPlanModeRejectButton,
+                      key: AiExitPlanModeCard.rejectButtonKey,
                       variant: TpButtonVariant.ghost,
                       size: TpControlSize.small,
                       onPressed: _approving ? null : _reject,
-                      child: Text(l10n.exitPlanModeReject),
+                      child: Text(strings.exitPlanReject),
                     ),
                     SizedBox(width: spacing.sm),
                     TpButton(
-                      key: AppKeys.exitPlanModeApproveButton,
+                      key: AiExitPlanModeCard.approveButtonKey,
                       variant: TpButtonVariant.primary,
                       size: TpControlSize.small,
                       onPressed: _approving ? null : _approve,
-                      child: Text(l10n.exitPlanModeApprove),
+                      child: Text(strings.exitPlanApprove),
                     ),
                   ],
                 ),
@@ -253,11 +262,11 @@ class _ExitPlanModeCardState extends State<ExitPlanModeCard> {
                 Align(
                   alignment: Alignment.centerRight,
                   child: TpButton(
-                    key: AppKeys.agentPermissionOpenTerminalButton,
+                    key: AiExitPlanModeCard.openTerminalButtonKey,
                     variant: TpButtonVariant.primary,
                     size: TpControlSize.small,
                     onPressed: widget.onOpenTerminal,
-                    child: Text(l10n.agentPermissionOpenTerminal),
+                    child: Text(strings.permissionOpenTerminal),
                   ),
                 ),
               ],
