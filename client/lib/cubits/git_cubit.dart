@@ -153,6 +153,12 @@ class GitCubit extends Cubit<GitState> {
   /// to auto-check newly-appeared changes while preserving manual unchecks.
   Set<String> _knownChangedPaths = {};
 
+  /// Draft in the commit box before amend was checked; restored on uncheck.
+  String? _messageBeforeAmend;
+
+  /// Invalidates an in-flight HEAD-message fill when amend is toggled again.
+  int _amendLoadGen = 0;
+
   @visibleForTesting
   void debugSetState(GitState next) => _publish(next, recomputeRows: false);
 
@@ -348,8 +354,40 @@ class GitCubit extends Cubit<GitState> {
     _publish(state.copyWith(commitMessage: message), recomputeRows: false);
   }
 
-  void setAmend(bool value) =>
-      _publish(state.copyWith(amend: value), recomputeRows: false);
+  /// IDEA-style: checking amend fills the box with HEAD's message (saving the
+  /// current draft); unchecking restores that draft.
+  Future<void> setAmend(bool value) async {
+    if (value == state.amend) return;
+    if (!value) {
+      _amendLoadGen++;
+      final restored = _messageBeforeAmend ?? '';
+      _messageBeforeAmend = null;
+      _publish(
+        state.copyWith(amend: false, commitMessage: restored),
+        recomputeRows: false,
+      );
+      return;
+    }
+    if (!state.status.hasCommits) return;
+
+    _messageBeforeAmend = state.commitMessage;
+    _publish(state.copyWith(amend: true), recomputeRows: false);
+    final dir = state.repoRoot;
+    final gen = ++_amendLoadGen;
+    try {
+      final message = await _service.headCommitMessage(dir);
+      if (isClosed ||
+          state.repoRoot != dir ||
+          gen != _amendLoadGen ||
+          !state.amend) {
+        return;
+      }
+      if (state.commitMessage != _messageBeforeAmend) return;
+      _publish(state.copyWith(commitMessage: message), recomputeRows: false);
+    } on GitException {
+      // Keep the draft; amend stays on so the user can still rewrite HEAD.
+    }
+  }
 
   void toggleFolderExpanded(String folderPath) {
     final next = Set<String>.from(state.expandedFolderPaths);

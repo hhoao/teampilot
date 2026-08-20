@@ -368,6 +368,13 @@ class GitService {
     }
   }
 
+  /// Subject + body of the HEAD commit, trailing whitespace stripped.
+  /// Throws [GitException] when HEAD does not exist (unborn branch).
+  Future<String> headCommitMessage(String dir) async {
+    final out = await _run(dir, ['log', '-1', '--pretty=format:%B']);
+    return out.trim();
+  }
+
   Future<void> push(String dir) => _run(dir, ['push']);
 
   Future<void> pull(String dir) => _run(dir, ['pull']);

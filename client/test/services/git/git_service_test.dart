@@ -202,6 +202,22 @@ void main() {
       ]);
     });
 
+    test('headCommitMessage returns the trimmed HEAD body', () async {
+      final runner = _FakeRunner({
+        'log -1 --pretty=format:%B': _ok('feat: last\n\nbody\n'),
+      });
+      final service = GitService(
+        runner: LocalGitCommandRunner(runner: runner.call),
+      );
+
+      final message = await service.headCommitMessage('/repo');
+
+      expect(runner.calls, [
+        ['log', '-1', '--pretty=format:%B'],
+      ]);
+      expect(message, 'feat: last\n\nbody');
+    });
+
     test('diffSelectedPaths diffs each path against HEAD and joins', () async {
       final runner = _FakeRunner({
         'diff HEAD --no-color -- a.txt': _ok('diff a\n'),

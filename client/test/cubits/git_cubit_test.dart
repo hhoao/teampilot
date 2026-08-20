@@ -47,10 +47,23 @@ class _FakeGitService extends GitService {
   }
 
   final List<List<String>> commitAmendCalls = [];
+  String headCommitMessageToReturn = 'feat: last commit';
+  GitException? throwOnHeadCommitMessage;
 
   @override
   Future<void> commitAmend(String dir, String message, List<String> paths) async {
     commitAmendCalls.add([message, ...paths]);
+  }
+
+  @override
+  Future<String> headCommitMessage(String dir) async {
+    calls.add('headCommitMessage');
+    final err = throwOnHeadCommitMessage;
+    if (err != null) {
+      throwOnHeadCommitMessage = null;
+      throw err;
+    }
+    return headCommitMessageToReturn;
   }
 
   final List<String> discardAllCalls = [];
@@ -543,13 +556,68 @@ void main() {
     await cubit.close();
   });
 
+  test('setAmend fills the HEAD commit message and restores the draft', () async {
+    final service = _FakeGitService(statusToReturn: _repoWith());
+    service.headCommitMessageToReturn = 'feat: last\n\nbody';
+    final cubit = GitCubit(service: service);
+    await cubit.setRepoRoot('/repo');
+    cubit.setCommitMessage('wip');
+
+    await cubit.setAmend(true);
+
+    expect(cubit.state.amend, isTrue);
+    expect(cubit.state.commitMessage, 'feat: last\n\nbody');
+    expect(service.calls, contains('headCommitMessage'));
+
+    await cubit.setAmend(false);
+
+    expect(cubit.state.amend, isFalse);
+    expect(cubit.state.commitMessage, 'wip');
+    await cubit.close();
+  });
+
+  test('setAmend keeps the draft when HEAD message cannot be read', () async {
+    final service = _FakeGitService(statusToReturn: _repoWith());
+    service.throwOnHeadCommitMessage = GitException('no HEAD');
+    final cubit = GitCubit(service: service);
+    await cubit.setRepoRoot('/repo');
+    cubit.setCommitMessage('wip');
+
+    await cubit.setAmend(true);
+
+    expect(cubit.state.amend, isTrue);
+    expect(cubit.state.commitMessage, 'wip');
+    await cubit.close();
+  });
+
+  test('setAmend is a no-op on an unborn branch', () async {
+    final service = _FakeGitService(
+      statusToReturn: GitRepoStatus(
+        isRepository: true,
+        branch: 'main',
+        hasCommits: false,
+        unstaged: const [_unstaged],
+      ),
+    );
+    final cubit = GitCubit(service: service);
+    await cubit.setRepoRoot('/repo');
+    cubit.setCommitMessage('wip');
+
+    await cubit.setAmend(true);
+
+    expect(cubit.state.amend, isFalse);
+    expect(cubit.state.commitMessage, 'wip');
+    expect(service.calls, isNot(contains('headCommitMessage')));
+    await cubit.close();
+  });
+
   test('amend with selection stages and amends those paths', () async {
     final service = _FakeGitService(
       statusToReturn: _repoWith(staged: const [_staged]),
     );
     final cubit = GitCubit(service: service);
     await cubit.setRepoRoot('/repo'); // a.txt auto-selected
-    cubit.setAmend(true);
+    await cubit.setAmend(true);
     cubit.setCommitMessage('fix: amend');
     service.statusToReturn = _repoWith(); // clean after amend
     service.calls.clear();
@@ -569,7 +637,7 @@ void main() {
     final service = _FakeGitService(statusToReturn: _repoWith());
     final cubit = GitCubit(service: service);
     await cubit.setRepoRoot('/repo');
-    cubit.setAmend(true);
+    await cubit.setAmend(true);
     cubit.setCommitMessage('fix typo');
     service.calls.clear();
 
@@ -593,7 +661,7 @@ void main() {
     );
     final cubit = GitCubit(service: service);
     await cubit.setRepoRoot('/repo');
-    cubit.setAmend(true);
+    cubit.debugSetState(cubit.state.copyWith(amend: true));
     cubit.setCommitMessage('msg');
     service.calls.clear();
 
@@ -610,7 +678,8 @@ void main() {
     );
     final cubit = GitCubit(service: service);
     await cubit.setRepoRoot('/repo');
-    cubit.setAmend(true);
+    await cubit.setAmend(true);
+    cubit.setCommitMessage('');
     service.calls.clear();
 
     final ok = await cubit.commit();

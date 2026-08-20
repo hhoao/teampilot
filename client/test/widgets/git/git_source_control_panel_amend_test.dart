@@ -45,6 +45,9 @@ class _AmendRepoGitStub extends GitService {
   Future<void> commitAmend(String dir, String message, List<String> paths) async {
     commitAmendCalls.add([message, ...paths]);
   }
+
+  @override
+  Future<String> headCommitMessage(String dir) async => 'feat: last commit';
 }
 
 class _UnbornBranchGitStub extends GitService {
@@ -176,6 +179,9 @@ void main() {
     expect(find.text('Amend Commit'), findsOneWidget);
     expect(find.text('Commit'), findsNothing);
 
+    await tester.pump();
+    expect(find.text('feat: last commit'), findsOneWidget);
+
     await aiSettingsCubit.close();
   });
 
@@ -202,7 +208,7 @@ void main() {
     // Drive state through the cubit (the panel syncs its controller from it).
     // The panel's cubit is the store's cached instance for this root.
     final GitCubit cubit = store.cubitFor('/repo', workContext: workContext);
-    cubit.setAmend(true);
+    await cubit.setAmend(true);
     cubit.setCommitMessage('fix: amend');
     await tester.pump();
 
@@ -240,7 +246,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
 
     final GitCubit cubit = store.cubitFor('/repo', workContext: workContext);
-    cubit.setAmend(true);
+    await cubit.setAmend(true);
     cubit.setCommitMessage('fix: amend');
     await tester.pump();
 
