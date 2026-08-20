@@ -1,5 +1,6 @@
-import '../provider/cursor_cli_config_policy.dart';
+import '../../../catalog/catalog_mcp_policy.dart';
 import '../../../team_bus/mcp/teammate_bus_mcp_config.dart';
+import '../provider/cursor_cli_config_policy.dart';
 
 /// Pure helpers for session warm-tier `cli-config.base.json` and per-member merge.
 abstract final class CursorCliConfigMerger {
@@ -68,7 +69,12 @@ abstract final class CursorCliConfigMerger {
       }
     }
 
-    return CursorCliConfigPolicy.applyMixedTeamSessionPolicy(merged);
+    return CursorCliConfigPolicy.applyCatalogReadPolicy(
+      CursorCliConfigPolicy.applyMixedTeamSessionPolicy(merged),
+      cursorEntries: CatalogMcpPolicy.cursorAllowEntries(
+        CatalogMcpPolicy.advertisedRegistry(),
+      ),
+    );
   }
 
   static Map<String, Object?> _mergePermissions(

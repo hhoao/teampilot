@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import '../../../../models/hook_entry.dart';
 import '../../../../models/team_config.dart';
+import '../../../catalog/catalog_mcp_policy.dart';
 import '../../../host/host_script_runner.dart';
 import '../../../hook/glue_script_builder.dart';
 import '../../../io/filesystem.dart';
@@ -76,6 +77,7 @@ final class CursorHomeProvisioner {
     await _stampLaunchModel(memberHome, member.model);
 
     if (!mixed) {
+      await _mergeCatalogReadPermissions(memberHome);
       if (promptAlreadyMaterialized) return;
       await const PromptHubService().provisionForCli(
         cli: CliTool.cursor,
@@ -222,6 +224,19 @@ final class CursorHomeProvisioner {
       base: base,
       memberOverrides: baseJson != null ? onDisk : const {},
     );
+    await _fs.atomicWrite(path, _jsonPretty(merged));
+  }
+
+  Future<void> _mergeCatalogReadPermissions(String memberHome) async {
+    final path = _layout.cliConfig(memberHome);
+    final onDisk = await _readCliConfig(path) ?? const <String, Object?>{};
+    final merged = CursorCliConfigPolicy.applyCatalogReadPolicy(
+      onDisk,
+      cursorEntries: CatalogMcpPolicy.cursorAllowEntries(
+        CatalogMcpPolicy.advertisedRegistry(),
+      ),
+    );
+    await _fs.ensureDir(_fs.pathContext.dirname(path));
     await _fs.atomicWrite(path, _jsonPretty(merged));
   }
 

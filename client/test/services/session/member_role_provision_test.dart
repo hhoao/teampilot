@@ -3,6 +3,10 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/services/catalog/catalog_kind.dart';
+import 'package:teampilot/services/catalog/catalog_kind_registry.dart';
+import 'package:teampilot/services/catalog/catalog_mcp_policy.dart';
+import 'package:teampilot/services/catalog/modules/skill_catalog_tools.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/session/member_role_provision.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
@@ -149,6 +153,17 @@ void main() {
     expect(permissions['deny'], isNull);
   });
 
+  test('applyCatalogReadAllows pre-allows catalog reads not installs', () {
+    final settings = MemberRoleProvision.applyCatalogReadAllows(
+      const {},
+      claudeEntries: CatalogMcpPolicy.claudeAllowEntries(_skillRegistry()),
+    );
+    final allow = (settings['permissions']! as Map)['allow'] as List;
+    expect(allow, contains('mcp__teampilot__search_skills'));
+    expect(allow, contains('mcp__teampilot__list_installed'));
+    expect(allow, isNot(contains('mcp__teampilot__install_skill')));
+  });
+
   test('disallowedToolsForMixedClaude worker omits Agent', () {
     final tools = MemberRoleProvision.disallowedToolsForMixedClaude(isLead: false);
     expect(tools, containsAll(MemberRoleProvision.mixedClaudeDisallowedTools));
@@ -168,4 +183,25 @@ void main() {
       ]),
     );
   });
+}
+
+CatalogKindRegistry _skillRegistry() {
+  return CatalogKindRegistry()..register(_SkillAdvertiseModule());
+}
+
+class _SkillAdvertiseModule implements CatalogKindModule {
+  @override
+  String get kind => 'skill';
+  @override
+  bool get supportsCreate => true;
+  @override
+  bool get supportsImport => true;
+  @override
+  bool get supportsInstall => true;
+  @override
+  List<CatalogToolSpec> advertise() => skillCatalogTools;
+  @override
+  Future<CatalogResult> handle(CatalogOp op, CatalogRequest req) {
+    throw UnsupportedError('advertise-only');
+  }
 }

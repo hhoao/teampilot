@@ -37,6 +37,33 @@ abstract final class CursorCliConfigPolicy {
     return merged;
   }
 
+  /// Catalog MCP read-tool allow entries (already formatted as `Mcp(server:tool)`).
+  static List<String> catalogReadAllowEntries(List<String> cursorEntries) {
+    return List<String>.from(cursorEntries);
+  }
+
+  /// Merges catalog MCP **read** allows into [config] for mixed **and** simple.
+  static Map<String, Object?> applyCatalogReadPolicy(
+    Map<String, Object?> config, {
+    required List<String> cursorEntries,
+  }) {
+    final merged = Map<String, Object?>.from(config);
+    final permissions = Map<String, Object?>.from(
+      (merged['permissions'] as Map?)?.cast<String, Object?>() ?? const {},
+    );
+    final existingAllow = <String>[
+      for (final entry in (permissions['allow'] as List?) ?? const [])
+        if (entry is String) entry,
+    ];
+    permissions['allow'] = <String>{
+      ...existingAllow,
+      ...catalogReadAllowEntries(cursorEntries),
+    }.toList(growable: false);
+    merged['permissions'] = permissions;
+    merged.putIfAbsent('version', () => defaultVersion);
+    return merged;
+  }
+
   static Map<String, Object?>? parseConfigJson(String raw) {
     try {
       final decoded = jsonDecode(raw);
