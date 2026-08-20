@@ -38,6 +38,7 @@ TeamProfile buildMatrixTeam({
     name: 'IT Matrix ${tool.value} ${mode.value}',
     cli: tool,
     teamMode: mode,
+    forceWaitBeforeStop: mode == TeamMode.mixed,
     members: [
       TeamMemberConfig(
         id: kMatrixLeadMemberId,
@@ -77,8 +78,8 @@ List<String> matrixExpectedPodIds(RosterShape shape) => switch (shape) {
 /// Primary worker pod id for gateway scripts / compose targeting.
 String matrixPrimaryWorkerPodId(RosterShape shape) => switch (shape) {
   RosterShape.singleton => kMatrixWorkerTypeId,
-  RosterShape.replicated || RosterShape.placementFiltered =>
-    '$kMatrixWorkerTypeId-0',
+  RosterShape.replicated ||
+  RosterShape.placementFiltered => '$kMatrixWorkerTypeId-0',
 };
 
 /// Session member bindings for [team] after roster expand (and shape filter).

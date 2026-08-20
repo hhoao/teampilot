@@ -126,7 +126,7 @@ if (cli == CliTool.cursor) return false;
 
 // ✅ 正确
 final cap = registry.capability<TeamBehaviorCapability>(cli);
-return cap?.defaultForceWaitBeforeStop ?? true;
+return cap?.defaultForceWaitBeforeStop ?? false;
 ```
 
 ### 模式定义
@@ -424,7 +424,7 @@ if (cli == CliTool.cursor) return false;
 
 // ✅ 正确 — 通过能力解析
 final cap = registry.capability<TeamBehaviorCapability>(cli);
-return cap?.defaultForceWaitBeforeStop ?? true;
+return cap?.defaultForceWaitBeforeStop ?? false;
 ```
 
 ### 禁止 CLI 特定类出现在非 CLI 目录中

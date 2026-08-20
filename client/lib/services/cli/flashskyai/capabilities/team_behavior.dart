@@ -27,7 +27,7 @@ final class FlashskyaiTeamBehavior
   bool get usesDoorbellPush => false;
 
   @override
-  bool get defaultForceWaitBeforeStop => true;
+  bool get defaultForceWaitBeforeStop => false;
 
   @override
   bool get usesClaudeRoster => false;

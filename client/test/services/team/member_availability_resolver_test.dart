@@ -104,6 +104,7 @@ void main() {
               id: 't',
               name: 'T',
               teamMode: TeamMode.mixed,
+              forceWaitBeforeStop: true,
               members: [TeamMemberConfig(id: 'worker', name: 'worker')],
             ),
             teamMode: TeamMode.mixed,
@@ -133,6 +134,7 @@ void main() {
               id: 't',
               name: 'T',
               teamMode: TeamMode.mixed,
+              forceWaitBeforeStop: true,
               members: [TeamMemberConfig(id: 'worker', name: 'worker')],
             ),
             teamMode: TeamMode.mixed,
@@ -167,51 +169,51 @@ void main() {
       );
     });
 
-    test('mixed shows working after mail doorbell submitted with quiet PTY', () {
-      final shell = _ConnectedShell()
-        ..activityTracker.latchBootFrameReadyForTest(
-          DateTime.now().subtract(const Duration(milliseconds: 3000)),
-        );
-      final bus = TeamBus(launcher: FakeMemberLauncher());
-      final node = AgentNode.test(
-        memberId: 'worker',
-        lifecycle: MemberLifecycle.running,
-        activity: MemberActivity.turnDoneReady,
-      )..doorbelled = true;
-      bus.declareMember(node);
-
-      bus.noteMailDeliverySubmitted('worker');
-
-      expect(
-        _resolve(shell, bus: bus),
-        MemberAvailability.working,
-        reason: 'submitted doorbell starts agent turn even when PTY is quiet',
-      );
-    });
-
     test(
-      'mixed operator turn shows working when PTY quiet after submit',
+      'mixed shows working after mail doorbell submitted with quiet PTY',
       () {
         final shell = _ConnectedShell()
           ..activityTracker.latchBootFrameReadyForTest(
             DateTime.now().subtract(const Duration(milliseconds: 3000)),
           );
         final bus = TeamBus(launcher: FakeMemberLauncher());
-        bus.declareMember(
-          AgentNode.test(
-            memberId: 'worker',
-            lifecycle: MemberLifecycle.running,
-            activity: MemberActivity.active,
-          ),
-        );
+        final node = AgentNode.test(
+          memberId: 'worker',
+          lifecycle: MemberLifecycle.running,
+          activity: MemberActivity.turnDoneReady,
+        )..doorbelled = true;
+        bus.declareMember(node);
+
+        bus.noteMailDeliverySubmitted('worker');
 
         expect(
           _resolve(shell, bus: bus),
           MemberAvailability.working,
-          reason: 'bus in-turn after successful submit — no PTY bytes needed',
+          reason: 'submitted doorbell starts agent turn even when PTY is quiet',
         );
       },
     );
+
+    test('mixed operator turn shows working when PTY quiet after submit', () {
+      final shell = _ConnectedShell()
+        ..activityTracker.latchBootFrameReadyForTest(
+          DateTime.now().subtract(const Duration(milliseconds: 3000)),
+        );
+      final bus = TeamBus(launcher: FakeMemberLauncher());
+      bus.declareMember(
+        AgentNode.test(
+          memberId: 'worker',
+          lifecycle: MemberLifecycle.running,
+          activity: MemberActivity.active,
+        ),
+      );
+
+      expect(
+        _resolve(shell, bus: bus),
+        MemberAvailability.working,
+        reason: 'bus in-turn after successful submit — no PTY bytes needed',
+      );
+    });
 
     test('mixed parked wait_for_message stays idle', () {
       final shell = _ConnectedShell()

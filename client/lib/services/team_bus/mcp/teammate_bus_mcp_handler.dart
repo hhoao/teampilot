@@ -38,9 +38,8 @@ class TeammateBusMcpHandler {
   /// [idleStopDecision])。false 时允许成员正常停止("休息")。
   final bool forceWaitBeforeStop;
 
-  /// 成员级 forceWaitBeforeStop 解析（null=全员用 [forceWaitBeforeStop]）。cursor 等
-  /// push-投递 CLI 解析为 false:正常停到 idle-at-prompt,改由门铃(stdin 注入 +
-  /// read_messages)投递,因其 MCP 工具调用有 ~60s 硬限、无法阻塞在 wait_for_message。
+  /// 成员级 forceWaitBeforeStop 解析（null=全员用 [forceWaitBeforeStop]）。门铃
+  /// CLI（cursor）解析为 false：正常停到 idle-at-prompt，改由门铃投递。
   final bool Function(String memberId)? _forceWaitForMember;
 
   bool _resolveForceWait(String memberId) =>

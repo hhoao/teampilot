@@ -22,7 +22,7 @@ final class OpencodeTeamBehavior implements TeamBehaviorCapability {
   bool get usesDoorbellPush => false;
 
   @override
-  bool get defaultForceWaitBeforeStop => true;
+  bool get defaultForceWaitBeforeStop => false;
 
   @override
   bool get usesClaudeRoster => false;

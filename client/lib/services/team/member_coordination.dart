@@ -52,11 +52,11 @@ sealed class MemberCoordination {
     final personal =
         isPersonalSession ??
         (MemberCoordinationScope.inferPersonalFromLegacyFlags(
-          teamMode: teamMode,
-          bus: bus,
-          usesClaudeRoster: usesClaudeRoster,
-          usesShellActivity: usesShellActivity,
-        ) &&
+              teamMode: teamMode,
+              bus: bus,
+              usesClaudeRoster: usesClaudeRoster,
+              usesShellActivity: usesShellActivity,
+            ) &&
             team.id.trim().isEmpty);
     final coordinationScope = MemberCoordinationScope(
       shell: shell,
@@ -78,9 +78,12 @@ sealed class MemberCoordination {
       usesShellActivity: presenceCap?.usesShellActivity ?? usesShellActivity,
     );
     return switch (kind) {
-      MemberCoordinationKind.personal =>
-        PersonalMemberCoordination(coordinationScope),
-      MemberCoordinationKind.mixed => MixedMemberCoordination(coordinationScope),
+      MemberCoordinationKind.personal => PersonalMemberCoordination(
+        coordinationScope,
+      ),
+      MemberCoordinationKind.mixed => MixedMemberCoordination(
+        coordinationScope,
+      ),
       MemberCoordinationKind.nativeClaudeRoster =>
         NativeClaudeRosterCoordination(coordinationScope),
       MemberCoordinationKind.nativeShellActivity =>
@@ -136,9 +139,7 @@ final class PersonalMemberCoordination extends ShellLatchCoordination {
 
   @override
   MemberAvailability availability() => _bootingOr(
-    shell.userTurnActive
-        ? MemberAvailability.working
-        : MemberAvailability.idle,
+    shell.userTurnActive ? MemberAvailability.working : MemberAvailability.idle,
   );
 
   @override
@@ -233,10 +234,10 @@ final class MixedMemberCoordination extends MemberCoordination {
       member: member,
       globalPresets: scope.globalPresets,
     );
-    final waitCfg = CliToolRegistry.builtIn()
+    final canWait = CliToolRegistry.builtIn()
         .capability<TeamBehaviorCapability>(launchCli)
-        ?.defaultForceWaitBeforeStop;
-    if (member.effectiveForceWaitBeforeStop(scope.team, cliDefault: waitCfg) &&
+        ?.longBlockingWaitForMessage;
+    if (member.effectiveForceWaitBeforeStop(scope.team, cliDefault: canWait) &&
         !b.isWaitingForMessage(member.id)) {
       return false;
     }

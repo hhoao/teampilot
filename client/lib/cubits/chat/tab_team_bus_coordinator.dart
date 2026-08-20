@@ -106,13 +106,10 @@ class TabTeamBusCoordinator {
             member: m,
             globalPresets: presets,
           );
-          final cliDefault = CliToolRegistry.builtIn()
+          final canWait = CliToolRegistry.builtIn()
               .capability<TeamBehaviorCapability>(launchCli)
-              ?.defaultForceWaitBeforeStop;
-          return m.effectiveForceWaitBeforeStop(
-            team,
-            cliDefault: cliDefault,
-          );
+              ?.longBlockingWaitForMessage;
+          return m.effectiveForceWaitBeforeStop(team, cliDefault: canWait);
         })(),
     };
     final bus = TeamBus(
@@ -181,7 +178,7 @@ class TabTeamBusCoordinator {
       bus: bus,
       artifacts: _artifactServiceFactory?.call(session),
       forceWaitBeforeStop: team.forceWaitBeforeStop,
-      // 成员级解析：cursor 等 push-投递 CLI → false（正常停 + 门铃投递）。
+      // 成员级解析：门铃 CLI（cursor）硬关；其余跟随团队开关（默认关）。
       forceWaitForMember: (memberId) =>
           forceWaitByMember[memberId] ?? team.forceWaitBeforeStop,
     );

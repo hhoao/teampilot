@@ -128,17 +128,49 @@ void main() {
     expect(off.toJson().containsKey('forceTeamLeadDelegateMode'), isFalse);
   });
 
-  test('forceWaitBeforeStop defaults true and round-trips when false', () {
+  test('forceWaitBeforeStop defaults false and round-trips when true', () {
     const team = TeamProfile(id: 't', name: 'n');
-    expect(team.forceWaitBeforeStop, isTrue);
-    // Default true is omitted from JSON; only persisted when turned off.
+    expect(team.forceWaitBeforeStop, isFalse);
+    // Default false is omitted from JSON; only persisted when turned on.
     expect(team.toJson().containsKey('forceWaitBeforeStop'), isFalse);
-    expect(TeamProfile.fromJson(team.toJson()).forceWaitBeforeStop, isTrue);
+    expect(TeamProfile.fromJson(team.toJson()).forceWaitBeforeStop, isFalse);
 
-    const off = TeamProfile(id: 't', name: 'n', forceWaitBeforeStop: false);
-    expect(off.toJson()['forceWaitBeforeStop'], isFalse);
-    expect(TeamProfile.fromJson(off.toJson()).forceWaitBeforeStop, isFalse);
+    const on = TeamProfile(id: 't', name: 'n', forceWaitBeforeStop: true);
+    expect(on.toJson()['forceWaitBeforeStop'], isTrue);
+    expect(TeamProfile.fromJson(on.toJson()).forceWaitBeforeStop, isTrue);
   });
+
+  test(
+    'effectiveForceWaitBeforeStop prefers member, then CLI veto, then team',
+    () {
+      const memberOn = TeamMemberConfig(
+        id: 'm',
+        name: 'm',
+        forceWaitBeforeStop: true,
+      );
+      const memberUnset = TeamMemberConfig(id: 'm', name: 'm');
+      const teamOff = TeamProfile(id: 't', name: 'n');
+      const teamOn = TeamProfile(id: 't', name: 'n', forceWaitBeforeStop: true);
+
+      expect(
+        memberOn.effectiveForceWaitBeforeStop(teamOff, cliDefault: false),
+        isTrue,
+      );
+      expect(
+        memberUnset.effectiveForceWaitBeforeStop(teamOn, cliDefault: false),
+        isFalse,
+        reason: 'doorbell CLI cannot park even when the team switch is on',
+      );
+      expect(
+        memberUnset.effectiveForceWaitBeforeStop(teamOff, cliDefault: true),
+        isFalse,
+      );
+      expect(
+        memberUnset.effectiveForceWaitBeforeStop(teamOn, cliDefault: true),
+        isTrue,
+      );
+    },
+  );
 
   test('toJson omits loop when null', () {
     const team = TeamProfile(id: 't', name: 'n');

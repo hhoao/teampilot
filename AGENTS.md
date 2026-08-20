@@ -116,7 +116,7 @@ Provider catalogs: `providers/{tool}/providers.json` per CLI (`AppProviderReposi
 
 **TeamBus** (`client/lib/services/team_bus/`) is an in-process message bus: router + per-member inbox + `PresenceReducer` + `BusEffect` + `CoordinationPolicy` (default leader-star). Each mixed session owns one `TeamBus` + `TeammateBusMcpHandler`; members reach it through the app-wide **`TeammateBusMcpGateway`** — loopback HTTP (`/mcp`, `/idle`) plus a multiplexed raw-socket port for long-blocking remote relays. `TabTeamBusCoordinator.installBusForTab` registers the session; `disposeSessionBus` unregisters. Local MCP configs send `X-Session`; remote tunnels send `X-Bus-Token`. See [docs/superpowers/specs/2026-07-02-teammate-bus-mcp-gateway-design.md](docs/superpowers/specs/2026-07-02-teammate-bus-mcp-gateway-design.md).
 
-- `effectiveForceWaitBeforeStop`: **Cursor defaults to `false`** — doorbell delivery via stdin inject + `read_messages`.
+- `effectiveForceWaitBeforeStop`: mixed teams **default off** for every CLI. Cursor cannot enable wait (doorbell delivery via stdin inject + `read_messages`).
 - `MemberPresenceCubit` / `MailboxCubit` / `BoardCubit` surface bus presence, messages, and task cards in the UI.
 
 ### TeamHub & Expert Hub (discoverable catalogs)

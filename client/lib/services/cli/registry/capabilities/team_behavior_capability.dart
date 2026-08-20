@@ -29,10 +29,11 @@ abstract interface class TeamBehaviorCapability implements CliCapability {
   /// bus turn).
   bool get usesDoorbellPush;
 
-  /// CLI default when [TeamMemberConfig.forceWaitBeforeStop] is null.
+  /// Mixed-mode default for keeping the member in `wait_for_message`.
   ///
-  /// Cursor returns `false` — its MCP tools have an agent hard limit of ~60s
-  /// and cannot block in `wait_for_message`.
+  /// All built-in CLIs return `false` (members rest at the prompt). Cursor
+  /// additionally cannot park — its MCP tools have an agent hard limit of
+  /// ~60s — see [longBlockingWaitForMessage].
   bool get defaultForceWaitBeforeStop;
 
   bool get usesClaudeRoster;

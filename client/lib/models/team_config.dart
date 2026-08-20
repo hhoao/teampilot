@@ -188,21 +188,14 @@ class TeamMemberConfig {
   bool get usesCustomConfig => activePresetId == null;
 
   /// turn 结束时是否强制把该成员推回 `wait_for_message`（mixed 协议）。优先级：
-  /// 成员显式覆盖 [forceWaitBeforeStop] > CLI 默认 > 团队 [TeamProfile.forceWaitBeforeStop]。
+  /// 成员显式覆盖 [forceWaitBeforeStop] > CLI 无法等待时硬关 > 团队开关
+  /// （[TeamProfile.forceWaitBeforeStop]，默认关闭）。
   ///
-  /// [launchCli] must be the resolved launch CLI ([memberLaunchCli]).
-  ///
-  /// CLI 默认：**cursor 为 false** —— cursor 的 MCP 工具调用有 ~60s agent 层硬限
-  /// （不可配、progress 不续），无法阻塞在 `wait_for_message` 里；改为正常停到
-  /// idle-at-prompt，由门铃（stdin 注入 + `read_messages`）push 投递。
-  /// Returns whether this member should block the CLI via `wait_for_message`
-  /// before stopping.
-  ///
-  /// Priority: member override → [cliDefault] (from [TeamBehaviorCapability])
-  /// → team default.
+  /// [cliDefault] false 表示门铃 CLI（cursor）无法阻塞在 `wait_for_message`
+  /// （MCP 工具约 60s 硬限），即使团队开关打开也不等待，改由门铃投递。
   bool effectiveForceWaitBeforeStop(TeamProfile team, {bool? cliDefault}) {
     if (forceWaitBeforeStop != null) return forceWaitBeforeStop!;
-    if (cliDefault != null) return cliDefault;
+    if (cliDefault == false) return false;
     return team.forceWaitBeforeStop;
   }
 
@@ -354,7 +347,7 @@ class TeamProfile implements LaunchProfile {
     this.cliEffortLevels = const {},
     this.autoLaunchMembers,
     this.forceTeamLeadDelegateMode = true,
-    this.forceWaitBeforeStop = true,
+    this.forceWaitBeforeStop = false,
     this.activePresetId,
     this.hubSourceKey,
   });
@@ -362,8 +355,14 @@ class TeamProfile implements LaunchProfile {
   static bool decodeForceTeamLeadDelegateMode(Object? raw) =>
       _decodeDefaultTrueBool(raw);
 
-  static bool decodeForceWaitBeforeStop(Object? raw) =>
-      _decodeDefaultTrueBool(raw);
+  static bool decodeForceWaitBeforeStop(Object? raw) {
+    if (raw == null) return false;
+    if (raw is bool) return raw;
+    if (raw is String) {
+      return raw.trim().toLowerCase() == 'true';
+    }
+    return false;
+  }
 
   static bool _decodeDefaultTrueBool(Object? raw) {
     if (raw == null) return true;
@@ -675,7 +674,7 @@ class TeamProfile implements LaunchProfile {
           ? (forceTeamLeadDelegateMode ?? true)
           : this.forceTeamLeadDelegateMode,
       forceWaitBeforeStop: updateForceWaitBeforeStop
-          ? (forceWaitBeforeStop ?? true)
+          ? (forceWaitBeforeStop ?? false)
           : this.forceWaitBeforeStop,
       activePresetId: updateActivePresetId
           ? activePresetId
@@ -710,7 +709,7 @@ class TeamProfile implements LaunchProfile {
       if (autoLaunchMembers != null) 'autoLaunchMembers': autoLaunchMembers!,
       if (forceTeamLeadDelegateMode)
         'forceTeamLeadDelegateMode': forceTeamLeadDelegateMode,
-      if (!forceWaitBeforeStop) 'forceWaitBeforeStop': forceWaitBeforeStop,
+      if (forceWaitBeforeStop) 'forceWaitBeforeStop': forceWaitBeforeStop,
       if (activePresetId != null) 'activePresetId': activePresetId,
       if (hubSourceKey != null && hubSourceKey!.isNotEmpty)
         'hubSourceKey': hubSourceKey,

@@ -62,6 +62,7 @@ const kItMixedClaudeTeam = TeamProfile(
   name: 'IT Mixed Claude',
   cli: CliTool.claude,
   teamMode: TeamMode.mixed,
+  forceWaitBeforeStop: true,
   members: [kLeadMember, kWorkerMember],
 );
 
