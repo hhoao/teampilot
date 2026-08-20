@@ -71,7 +71,10 @@ class ManagedProviderUsagePanel extends StatelessWidget {
                         ),
                       ),
                     if (providers.isEmpty)
-                      _EmptyState(onManage: onManage)
+                      _EmptyState(
+                        onManage: onManage,
+                        noneEnabled: providerState.providers.isNotEmpty,
+                      )
                     else
                       Padding(
                         padding: const EdgeInsets.only(top: 6),
@@ -171,9 +174,10 @@ class _PanelHeader extends StatelessWidget {
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.onManage});
+  const _EmptyState({required this.onManage, this.noneEnabled = false});
 
   final VoidCallback? onManage;
+  final bool noneEnabled;
 
   @override
   Widget build(BuildContext context) {
@@ -185,10 +189,17 @@ class _EmptyState extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(l10n.managedProvidersEmptyTitle, style: styles.smSemibold),
+          Text(
+            noneEnabled
+                ? l10n.managedProvidersNoneEnabledTitle
+                : l10n.managedProvidersEmptyTitle,
+            style: styles.smSemibold,
+          ),
           const SizedBox(height: 4),
           Text(
-            l10n.managedProvidersEmptyHint,
+            noneEnabled
+                ? l10n.managedProvidersNoneEnabledHint
+                : l10n.managedProvidersEmptyHint,
             style: styles.xs.copyWith(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
@@ -202,7 +213,11 @@ class _EmptyState extends StatelessWidget {
                   key: const Key('managed-provider-usage-empty-manage'),
                   variant: TpButtonVariant.outline,
                   onPressed: onManage,
-                  child: Text(l10n.managedProvidersAdd),
+                  child: Text(
+                    noneEnabled
+                        ? l10n.managedProvidersNav
+                        : l10n.managedProvidersAdd,
+                  ),
                 ),
               ),
             ),
@@ -343,24 +358,14 @@ class _ProviderUsageRow extends StatelessWidget {
           padding: const EdgeInsets.only(top: 2),
           child: TpIconButton(
             key: Key('managed-provider-usage-enabled-${provider.id}'),
-            icon: provider.enabled
-                ? Icons.pause_circle_outline
-                : Icons.play_circle_outline,
-            tooltip: provider.enabled
-                ? l10n.managedProvidersDisable
-                : l10n.managedProvidersEnable,
+            icon: Icons.pause_circle_outline,
+            tooltip: l10n.managedProvidersDisable,
             size: 28,
             iconSize: 15,
             compact: true,
             color: cs.onSurfaceVariant,
-            onTap: () {
-              final cubit = context.read<ManagedProviderCubit>();
-              if (provider.enabled) {
-                cubit.disable(provider.id);
-              } else {
-                cubit.enable(provider.id);
-              }
-            },
+            onTap: () =>
+                context.read<ManagedProviderCubit>().disable(provider.id),
           ),
         ),
       ],

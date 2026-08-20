@@ -332,6 +332,8 @@ void main() {
         find.byKey(const Key('managed-provider-usage-enabled-p1')),
         findsOneWidget,
       );
+      expect(find.byIcon(Icons.pause_circle_outline), findsOneWidget);
+      expect(find.byIcon(Icons.play_circle_outline), findsNothing);
 
       await tester.tap(find.byKey(const Key('managed-provider-usage-enabled-p1')));
       await tester.runAsync(
@@ -348,6 +350,104 @@ void main() {
         find.byKey(const Key('managed-provider-usage-enabled-p1')),
         findsNothing,
       );
+      expect(find.byIcon(Icons.play_circle_outline), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'disabling the last enabled provider shows none-enabled empty state',
+    (tester) async {
+      final fs = InMemoryFilesystem();
+      final usage = ManagedProviderUsageRepository(
+        fs: fs,
+        cachePath: '/tp/usage-cache.json',
+        now: () => 100,
+      );
+      final providers = ManagedProviderRepository(
+        fs: fs,
+        configPath: '/tp/providers.json',
+        onProvidersDeleted: usage.deleteMany,
+      );
+      final coordinator = ManagedProviderUsageCoordinator(
+        providerRepository: providers,
+        usageRepository: usage,
+        registry: ManagedProviderUsageRegistry([_Adapter()]),
+        credentials: _NoCredentials(),
+        http: _NoHttp(),
+      );
+      final providerCubit = ManagedProviderCubit(repository: providers)
+        ..emit(
+          ManagedProviderState(
+            status: ManagedProviderLoadStatus.ready,
+            providers: [_provider()],
+          ),
+        );
+      final usageCubit = ManagedProviderUsageCubit(coordinator: coordinator)
+        ..emit(
+          ManagedProviderUsageState(
+            status: ManagedProviderUsageLoadStatus.ready,
+            snapshots: {},
+          ),
+        );
+      addTearDown(providerCubit.close);
+      addTearDown(usageCubit.close);
+
+      var manageCalls = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: MultiBlocProvider(
+            providers: [
+              BlocProvider.value(value: providerCubit),
+              BlocProvider.value(value: usageCubit),
+            ],
+            child: Scaffold(
+              body: ManagedProviderUsagePanel(onManage: () => manageCalls++),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      await tester.tap(find.byKey(const Key('managed-provider-usage-enabled-p1')));
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 50)),
+      );
+      await tester.pumpAndSettle();
+
+      expect(providerCubit.state.providers, hasLength(1));
+      expect(providerCubit.state.providers.single.enabled, isFalse);
+      expect(
+        find.byKey(const Key('managed-provider-usage-row-p1')),
+        findsNothing,
+      );
+      expect(find.text('No managed providers'), findsNothing);
+      expect(find.text('No enabled providers'), findsOneWidget);
+      expect(
+        find.byKey(const Key('managed-provider-usage-empty-manage')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('managed-provider-usage-empty-manage')),
+          matching: find.text('Add provider'),
+        ),
+        findsNothing,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('managed-provider-usage-empty-manage')),
+          matching: find.text('Managed Providers'),
+        ),
+        findsOneWidget,
+      );
+
+      await tester.tap(
+        find.byKey(const Key('managed-provider-usage-empty-manage')),
+      );
+      expect(manageCalls, 1);
       expect(tester.takeException(), isNull);
     },
   );

@@ -238,7 +238,8 @@ class _Summary {
     });
     final loading =
         usageState.isRefreshing ||
-        usageState.status == ManagedProviderUsageLoadStatus.loading;
+        (usageState.status == ManagedProviderUsageLoadStatus.loading &&
+            usageState.snapshots.isEmpty);
     final label = providers.length == 1
         ? _singleLabel(providers.single, usageState)
         : '${providers.length}';

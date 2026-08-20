@@ -127,6 +127,9 @@ void main() {
     required Iterable<ManagedProvider> providers,
     required Map<String, ProviderUsageSnapshot> snapshots,
     VoidCallback? onManage,
+    ManagedProviderUsageLoadStatus usageStatus =
+        ManagedProviderUsageLoadStatus.ready,
+    bool isRefreshing = false,
   }) async {
     providerCubit.emit(
       ManagedProviderState(
@@ -136,8 +139,9 @@ void main() {
     );
     usageCubit.emit(
       ManagedProviderUsageState(
-        status: ManagedProviderUsageLoadStatus.ready,
+        status: usageStatus,
         snapshots: snapshots,
+        isRefreshing: isRefreshing,
       ),
     );
     await tester.pumpWidget(
@@ -229,6 +233,30 @@ void main() {
       findsNothing,
     );
   });
+
+  testWidgets(
+    'loading with cached snapshots keeps brand marks instead of a spinner',
+    (tester) async {
+      final codex = ManagedProvider(
+        id: 'p1',
+        name: 'Codex',
+        kind: ManagedProviderKind.subscriptionQuota,
+        adapterId: 'official-codex-subscription',
+        endpointConfig: ManagedProviderEndpointConfig(
+          url: 'https://example.test/usage',
+        ),
+      );
+      await pumpItem(
+        tester,
+        providers: [codex],
+        snapshots: {'p1': _snapshot()},
+        usageStatus: ManagedProviderUsageLoadStatus.loading,
+      );
+
+      expect(find.byKey(const Key('managed-provider-brand-p1')), findsOneWidget);
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+    },
+  );
 
   testWidgets('disabled provider is omitted from the status segment', (
     tester,

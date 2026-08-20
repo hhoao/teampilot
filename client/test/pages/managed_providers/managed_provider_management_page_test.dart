@@ -1346,6 +1346,16 @@ void main() {
         ),
         findsOneWidget,
       );
+      expect(
+        find.text(
+          'Turning this off hides this provider from the status bar and stops all querying.',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Include this provider in refresh actions.'),
+        findsNothing,
+      );
 
       await tester.tap(find.byKey(const Key('managed-provider-enabled')));
       await tester.pumpAndSettle();
