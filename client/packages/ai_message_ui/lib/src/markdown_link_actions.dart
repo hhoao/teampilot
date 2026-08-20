@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 class AiMarkdownLinkActions {
   const AiMarkdownLinkActions({this.onLinkTap});
 
-  final void Function(String href)? onLinkTap;
+  final Future<void> Function(String href)? onLinkTap;
 
   static const _fallback = AiMarkdownLinkActions();
 

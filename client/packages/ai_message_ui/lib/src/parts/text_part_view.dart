@@ -13,11 +13,8 @@ import '../theme.dart';
 import 'fade_expand_body.dart';
 
 /// Used by [AiTextPartView.onTapLink].
-typedef MarkdownTapLinkCallback = void Function(
-  String text,
-  String? href,
-  String title,
-);
+typedef MarkdownTapLinkCallback =
+    void Function(String text, String? href, String title);
 
 /// Streaming-safe markdown aligned with assistant-ui MarkdownText / aui-md.
 ///
@@ -31,11 +28,7 @@ typedef MarkdownTapLinkCallback = void Function(
 /// (~80ms) so tip growth does not re-parse GFM every frame; complete messages
 /// always compile immediately.
 class AiTextPartView extends StatefulWidget {
-  const AiTextPartView({
-    required this.text,
-    this.onTapLink,
-    super.key,
-  });
+  const AiTextPartView({required this.text, this.onTapLink, super.key});
 
   final String text;
 
@@ -63,16 +56,20 @@ class _AiTextPartViewState extends State<AiTextPartView> {
   String? _pendingText;
   Timer? _throttle;
   bool? _lastStreaming;
+
   /// Captured in [didChangeDependencies] (inherited lookups are not safe from
   /// the streaming throttle timer). Used by [_previewSource].
   var _inHistoryScope = false;
+
   /// Message role — user messages collapse as whole pastes; assistant prose
   /// renders fully inline (never clipped).
   var _role = AiRole.assistant;
+
   /// User-message display mode — `flatten` needs the full doc immediately (no
   /// mask), so oversized user text is not clip-compiled in that mode.
   var _userMessageMode = ContentDisplayMode.foldFixedHeight;
   var _initialized = false;
+
   /// True when [_document] was compiled from a preview clip (not the full
   /// [widget.text]) — the full doc is compiled lazily on expand.
   var _compiledClip = false;
@@ -178,10 +175,7 @@ class _AiTextPartViewState extends State<AiTextPartView> {
     final onTapLink = widget.onTapLink ?? _scopedTapLink(context);
     final scope = AiHistoryRenderScope.maybeOf(context);
     if (scope == null) {
-      return _ChatMarkdownView(
-        document: _document,
-        onTapLink: onTapLink,
-      );
+      return _ChatMarkdownView(document: _document, onTapLink: onTapLink);
     }
     return _ExpandableHistoryMarkdown(
       document: _document,
@@ -198,15 +192,13 @@ MarkdownTapLinkCallback? _scopedTapLink(BuildContext context) {
   final tap = AiMarkdownLinkActions.of(context).onLinkTap;
   if (tap == null) return null;
   return (_, href, __) {
-    if (href != null && href.isNotEmpty) tap(href);
+    if (href != null && href.isNotEmpty) unawaited(tap(href));
   };
 }
 
 MarkdownResolvers _chatResolvers(MarkdownTapLinkCallback? onTapLink) {
   if (onTapLink == null) return const MarkdownResolvers();
-  return MarkdownResolvers(
-    onLinkTap: (href) => onTapLink('', href, ''),
-  );
+  return MarkdownResolvers(onLinkTap: (href) => onTapLink('', href, ''));
 }
 
 MarkdownStrings _chatMarkdownStrings(BuildContext context) {
@@ -221,10 +213,7 @@ MarkdownStrings _chatMarkdownStrings(BuildContext context) {
 }
 
 class _ChatMarkdownView extends StatelessWidget {
-  const _ChatMarkdownView({
-    required this.document,
-    this.onTapLink,
-  });
+  const _ChatMarkdownView({required this.document, this.onTapLink});
 
   final MarkdownDocument document;
   final MarkdownTapLinkCallback? onTapLink;
@@ -285,7 +274,8 @@ const double kMaskCollapsedMaxHeight = 260;
 /// Finder key for the "collapse back" bar under an expanded user message.
 const Key kMaskCollapseBarKey = ValueKey('ai-mask-collapse-bar');
 
-class _ExpandableHistoryMarkdownState extends State<_ExpandableHistoryMarkdown> {
+class _ExpandableHistoryMarkdownState
+    extends State<_ExpandableHistoryMarkdown> {
   var _expanded = false;
   MarkdownDocument? _fullDocument;
 
@@ -363,9 +353,9 @@ class _ExpandableHistoryMarkdownState extends State<_ExpandableHistoryMarkdown> 
       return AiFadeExpandBody(
         open: false,
         onToggle: _toggle,
-        fadeColor: AiMessageTheme.of(context).resolveUserBubble(
-          Theme.of(context).colorScheme,
-        ),
+        fadeColor: AiMessageTheme.of(
+          context,
+        ).resolveUserBubble(Theme.of(context).colorScheme),
         collapsedMaxHeight: kMaskCollapsedMaxHeight,
         forceChrome: true,
         contentPadding: kUserBubbleContentPadding,
@@ -415,9 +405,9 @@ class _ExpandableHistoryMarkdownState extends State<_ExpandableHistoryMarkdown> 
           body,
           _MaskCollapseBar(
             onTap: _toggle,
-            fadeColor: AiMessageTheme.of(context).resolveUserBubble(
-              Theme.of(context).colorScheme,
-            ),
+            fadeColor: AiMessageTheme.of(
+              context,
+            ).resolveUserBubble(Theme.of(context).colorScheme),
           ),
         ],
       ),

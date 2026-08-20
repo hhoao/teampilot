@@ -13,13 +13,11 @@ void main() {
           home: Scaffold(
             body: AiMarkdownLinkActionsScope(
               actions: AiMarkdownLinkActions(
-                onLinkTap: (href) {
+                onLinkTap: (href) async {
                   tappedHref = href;
                 },
               ),
-              child: const AiTextPartView(
-                text: '[link](https://example.com)',
-              ),
+              child: const AiTextPartView(text: '[link](https://example.com)'),
             ),
           ),
         ),
@@ -31,24 +29,21 @@ void main() {
     },
   );
 
-  testWidgets(
-    'AiTextPartView without scope stays inert on link tap',
-    (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: ThemeData(extensions: [AiMessageTheme.test()]),
-          home: const Scaffold(
-            body: AiTextPartView(
-              text: '[link](https://example.com)',
-            ),
-          ),
+  testWidgets('AiTextPartView without scope stays inert on link tap', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(extensions: [AiMessageTheme.test()]),
+        home: const Scaffold(
+          body: AiTextPartView(text: '[link](https://example.com)'),
         ),
-      );
+      ),
+    );
 
-      expect(find.text('link'), findsOneWidget);
-      await tester.tap(find.text('link'));
-      await tester.pump();
-      expect(find.text('link'), findsOneWidget);
-    },
-  );
+    expect(find.text('link'), findsOneWidget);
+    await tester.tap(find.text('link'));
+    await tester.pump();
+    expect(find.text('link'), findsOneWidget);
+  });
 }
