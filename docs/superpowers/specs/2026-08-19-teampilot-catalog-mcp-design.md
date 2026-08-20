@@ -113,7 +113,7 @@ Agent 没有调用这条链路的入口。它们按 Claude Code 习惯往 `~/.cl
 }
 ```
 
-CLI 若对 teammate-bus 走 stdio bridge，catalog 用同一套 bridge 策略（stdio 无 HTTP 6 分钟超时；install/import 可能超过 HTTP 超时）。具体：与 `resolveMemberBusMcpTransportConfig` 平行增加 `resolveCatalogMcpTransportConfig`，按 CLI 选 http vs stdio，stdio args 多一个 `--path /catalog/mcp`（或独立 `--catalog-url`）。
+CLI 若对 teammate-bus 走 stdio bridge，catalog 用同一套 bridge 策略（stdio 无 HTTP 6 分钟超时；install/import 可能超过 HTTP 超时）。具体：与 `resolveMemberBusMcpTransportConfig` 平行增加 `resolveCatalogMcpTransportConfig`，按 CLI 选 http vs stdio。stdio 复用 `teammate_bus_bridge`，`--bus-url` 设为 catalog URL（完整 catalog URL；无新 bridge flag）。
 
 **不要**把 `mcp__teampilot` 整组加入 `mixedTeamSessionAllowTools`。只预授权只读工具（见权限）。
 
