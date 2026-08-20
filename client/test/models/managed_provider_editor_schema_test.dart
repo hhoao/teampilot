@@ -22,6 +22,7 @@ void main() {
 
     expect(field(schema, 'apiKey').kind, ManagedProviderEditorFieldKind.secret);
     expect(field(schema, 'apiKey').required, isTrue);
+    expect(field(schema, 'kind').readOnly, isTrue);
     expect(
       field(schema, 'endpointConfig.fieldMappings.currency').defaultValue,
       r'$.currency',
@@ -63,6 +64,7 @@ void main() {
       ManagedProviderEditorFieldKind.json,
     );
     expect(field(schema, 'adapterId').readOnly, isFalse);
+    expect(field(schema, 'kind').readOnly, isFalse);
   });
 
   test(
@@ -89,6 +91,7 @@ void main() {
         isTrue,
       );
       expect(official.hasField('endpointConfig.url'), isFalse);
+      expect(field(official, 'kind').readOnly, isTrue);
 
       final legacyHttp = ManagedProviderEditorSchema.fromProvider(
         ManagedProvider(

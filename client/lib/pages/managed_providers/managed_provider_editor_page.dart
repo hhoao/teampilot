@@ -48,6 +48,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
   late final TextEditingController _decimalPlaces;
   late final TextEditingController _credentialRef;
   late final TextEditingController _credentialSecret;
+  late final FocusNode _credentialSecretFocus;
   late final TextEditingController _credentialName;
   late final TextEditingController _credentialField;
   late final TextEditingController _credentialPlacement;
@@ -87,6 +88,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
     );
     _credentialRef = TextEditingController(text: provider?.credentialRef ?? '');
     _credentialSecret = TextEditingController();
+    _credentialSecretFocus = FocusNode();
     _credentialName = TextEditingController(
       text: endpoint?.credentialName ?? '',
     );
@@ -127,6 +129,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
     ]) {
       controller.dispose();
     }
+    _credentialSecretFocus.dispose();
     super.dispose();
   }
 
@@ -151,6 +154,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
                 selectedPreset: _selectedPreset,
                 nameController: _name,
                 credentialSecretController: _credentialSecret,
+                credentialSecretFocusNode: _credentialSecretFocus,
                 credentialConfigured: _credentialRef.text.trim().isNotEmpty,
                 onPresetChanged: _applyPreset,
               ),
@@ -341,7 +345,9 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
   void _setKind(ManagedProviderKind value) {
     setState(() {
       _kind = value;
-      _schema = ManagedProviderEditorSchema.fromProvider(_draftProvider());
+      if (_selectedPreset?.schema == null) {
+        _schema = ManagedProviderEditorSchema.fromProvider(_draftProvider());
+      }
     });
   }
 
@@ -533,6 +539,18 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
         setState(() {
           _saving = false;
           _formError = context.l10n.managedProvidersMissingCredential;
+        });
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          _credentialSecretFocus.requestFocus();
+          final focusContext = _credentialSecretFocus.context;
+          if (focusContext != null && focusContext.mounted) {
+            Scrollable.ensureVisible(
+              focusContext,
+              alignment: 0.1,
+              duration: const Duration(milliseconds: 200),
+            );
+          }
         });
         return;
       }

@@ -15,6 +15,7 @@ class ManagedProviderBasicsSection extends StatelessWidget {
     required this.credentialSecretController,
     required this.credentialConfigured,
     required this.onPresetChanged,
+    this.credentialSecretFocusNode,
     super.key,
   });
 
@@ -23,6 +24,7 @@ class ManagedProviderBasicsSection extends StatelessWidget {
   final ManagedProviderPreset? selectedPreset;
   final TextEditingController nameController;
   final TextEditingController credentialSecretController;
+  final FocusNode? credentialSecretFocusNode;
   final bool credentialConfigured;
   final ValueChanged<ManagedProviderPreset> onPresetChanged;
 
@@ -50,6 +52,7 @@ class ManagedProviderBasicsSection extends StatelessWidget {
                     if (preset != null) onPresetChanged(preset);
                   },
                   decoration: TpSelectDecorations.themed(context),
+                  searchMinItems: 0,
                 ),
                 const SizedBox(height: 6),
                 Text(
@@ -85,6 +88,7 @@ class ManagedProviderBasicsSection extends StatelessWidget {
             fieldKey: const Key('managed-provider-credential-secret'),
             label: l10n.managedProvidersCredentialSecret,
             controller: credentialSecretController,
+            focusNode: credentialSecretFocusNode,
             hint: credentialConfigured
                 ? l10n.managedProvidersCredentialSecretExistingHint
                 : l10n.managedProvidersCredentialSecretHint,
@@ -371,6 +375,7 @@ class ManagedProviderAdvancedSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final adapterField = _fieldFor(schema, 'adapterId');
+    final kindField = _fieldFor(schema, 'kind');
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -386,6 +391,7 @@ class ManagedProviderAdvancedSection extends StatelessWidget {
               ],
               initialItem: kind,
               itemLabel: (kind) => kind.value,
+              enabled: !(kindField?.readOnly ?? false),
               onChanged: (value) {
                 if (value != null) onKindChanged(value);
               },
@@ -436,6 +442,7 @@ class _ManagedProviderTextField extends StatelessWidget {
     this.readOnly = false,
     this.obscureText = false,
     this.onChanged,
+    this.focusNode,
   });
 
   final Key fieldKey;
@@ -446,6 +453,7 @@ class _ManagedProviderTextField extends StatelessWidget {
   final bool readOnly;
   final bool obscureText;
   final ValueChanged<String>? onChanged;
+  final FocusNode? focusNode;
 
   @override
   Widget build(BuildContext context) => _LabeledControl(
@@ -453,6 +461,7 @@ class _ManagedProviderTextField extends StatelessWidget {
     child: TpInput(
       key: fieldKey,
       controller: controller,
+      focusNode: focusNode,
       decoration: InputDecoration(hintText: hint),
       keyboardType: keyboardType,
       readOnly: readOnly,

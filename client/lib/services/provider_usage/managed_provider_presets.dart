@@ -44,6 +44,7 @@ const _deepSeekEditorSchema = ManagedProviderEditorSchema(
       kind: ManagedProviderEditorFieldKind.text,
       required: true,
       defaultValue: 'apiBalance',
+      readOnly: true,
     ),
     ManagedProviderEditorField(
       key: 'adapterId',

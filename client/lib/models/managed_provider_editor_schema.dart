@@ -75,6 +75,7 @@ class ManagedProviderEditorSchema extends Equatable {
         kind: ManagedProviderEditorFieldKind.text,
         required: true,
         defaultValue: provider.kind.value,
+        readOnly: provider.kind != ManagedProviderKind.customHttp,
       ),
       ManagedProviderEditorField(
         key: 'adapterId',

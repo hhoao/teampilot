@@ -470,6 +470,28 @@ void main() {
     expect(find.byKey(const Key('managed-provider-endpoint')), findsOneWidget);
   });
 
+  testWidgets('preset selector stays searchable with the built-in presets', (
+    tester,
+  ) async {
+    providerCubit.emit(
+      ManagedProviderState(status: ManagedProviderLoadStatus.ready),
+    );
+    usageCubit.emit(
+      ManagedProviderUsageState(status: ManagedProviderUsageLoadStatus.ready),
+    );
+    await pumpPage(tester);
+
+    await openNewEditor(tester);
+    await tester.tap(find.byKey(const Key('managed-provider-quick-preset')));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TpSelectSearchField), findsOneWidget);
+    await tester.enterText(find.byType(TpSelectSearchField), 'Deep');
+    await tester.pump();
+    expect(find.text('DeepSeek'), findsWidgets);
+    expect(find.text('OpenCode'), findsNothing);
+  });
+
   testWidgets('new provider stores API key in secure storage only', (
     tester,
   ) async {
@@ -538,6 +560,35 @@ void main() {
     expect(providerCubit.state.providers, isEmpty);
     expect(httpJsonAdapter.calls, 0);
     expect(secureStore.values, isEmpty);
+  });
+
+  testWidgets('missing required secret focuses the credential field', (
+    tester,
+  ) async {
+    providerCubit.emit(
+      ManagedProviderState(status: ManagedProviderLoadStatus.ready),
+    );
+    usageCubit.emit(
+      ManagedProviderUsageState(status: ManagedProviderUsageLoadStatus.ready),
+    );
+    await pumpPage(tester);
+
+    await openNewEditor(tester);
+    await applyPreset(tester, 'DeepSeek');
+    await _scrollToEditorBottom(tester);
+    await tester.runAsync(() async {
+      tester
+          .widget<TpButton>(find.byKey(const Key('managed-provider-save')))
+          .onPressed!
+          .call();
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    });
+    await tester.pumpAndSettle();
+
+    final secretInput = tester.widget<TpInput>(
+      find.byKey(const Key('managed-provider-credential-secret')),
+    );
+    expect(secretInput.focusNode?.hasFocus, isTrue);
   });
 
   testWidgets('first query runs after saving a new first-query preset', (
@@ -787,6 +838,61 @@ void main() {
         secureStore,
       ).read(provider.credentialRef!);
       expect(scope.valueFor('apiKey'), 'sk-custom');
+    },
+  );
+
+  testWidgets(
+    'kind stays read-only for official presets and editable for custom HTTP',
+    (tester) async {
+      providerCubit.emit(
+        ManagedProviderState(status: ManagedProviderLoadStatus.ready),
+      );
+      usageCubit.emit(
+        ManagedProviderUsageState(status: ManagedProviderUsageLoadStatus.ready),
+      );
+      await pumpPage(tester);
+
+      await openNewEditor(tester);
+      await applyPreset(tester, 'Codex');
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('managed-provider-section-advanced')),
+        500,
+        scrollable: _verticalScrollable(),
+      );
+      await tester.tap(
+        find.byKey(const Key('managed-provider-section-advanced')),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<TpSelect<ManagedProviderKind>>(
+              find.byKey(const Key('managed-provider-kind')),
+            )
+            .enabled,
+        isFalse,
+      );
+
+      await tester.tap(find.byKey(const Key('managed-provider-editor-back')));
+      await tester.pumpAndSettle();
+      await openNewEditor(tester);
+      await applyPreset(tester, 'OpenCode');
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('managed-provider-section-advanced')),
+        500,
+        scrollable: _verticalScrollable(),
+      );
+      await tester.tap(
+        find.byKey(const Key('managed-provider-section-advanced')),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<TpSelect<ManagedProviderKind>>(
+              find.byKey(const Key('managed-provider-kind')),
+            )
+            .enabled,
+        isTrue,
+      );
     },
   );
 
