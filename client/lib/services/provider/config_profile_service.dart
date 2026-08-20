@@ -752,24 +752,24 @@ class ConfigProfileService implements ConfigProfileDelegate {
           pluginIds: enabledPlugins,
           installedPluginCatalog: installedCatalog,
         );
+        await pluginProvisioner.provision(
+          PluginProvisionContext(
+            fs: fs,
+            teampilotRoot: basePath,
+            configDir: configDir,
+            bundlePoolDir: pluginPoolDir,
+            enabledPluginIds: enabledPlugins,
+            installedCatalog: installedCatalog,
+            layout: layout,
+            tool: cli,
+            memberProvisionJson: poolResult.memberProvisionStampJson,
+            assembledMcpServers: mcpAssembly?.result.servers ?? const [],
+            mcpConfigFileName: warmTier
+                ? CursorWorkspaceWarmTier.mcpBaseFileName
+                : null,
+          ),
+        );
       }
-      await pluginProvisioner.provision(
-        PluginProvisionContext(
-          fs: fs,
-          teampilotRoot: basePath,
-          configDir: configDir,
-          bundlePoolDir: pluginPoolDir,
-          enabledPluginIds: enabledPlugins,
-          installedCatalog: installedCatalog,
-          layout: layout,
-          tool: cli,
-          memberProvisionJson: poolResult.memberProvisionStampJson,
-          assembledMcpServers: mcpAssembly?.result.servers ?? const [],
-          mcpConfigFileName: warmTier
-              ? CursorWorkspaceWarmTier.mcpBaseFileName
-              : null,
-        ),
-      );
     }
     await _cliRegistry
         .lifecycleFor(cli)
@@ -936,8 +936,10 @@ class ConfigProfileService implements ConfigProfileDelegate {
     final pluginProvisioner = _cliRegistry.capability<PluginCapability>(cli);
     final mcpRegistry = McpRegistryService(fs: fs, layout: layout);
     List<Plugin>? installedCatalog;
+    String? pluginPoolDir;
+    PluginBundlePoolResult? poolResult;
     if (pluginProvisioner != null) {
-      final pluginPoolDir =
+      pluginPoolDir =
           pluginProvisioner.runtimeOwnership == PluginRuntimeOwnership.native
           ? layout.sessionRuntimePluginPoolDir(
               trimmedWorkspaceId,
@@ -949,7 +951,6 @@ class ConfigProfileService implements ConfigProfileDelegate {
               trimmedSessionId,
               cli.value,
             );
-      late final PluginBundlePoolResult poolResult;
       await step('plugin-catalog', () async {
         installedCatalog = await InstalledPluginCatalog.load(fs, basePath);
       });
@@ -960,7 +961,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
               fs: fs,
               teampilotRoot: basePath,
             ).reconcile(
-              poolDir: pluginPoolDir,
+              poolDir: pluginPoolDir!,
               enabledPluginIds: runtimeBundle.pluginIds,
               installedCatalog: pluginCatalog,
               paths:
@@ -968,26 +969,9 @@ class ConfigProfileService implements ConfigProfileDelegate {
             );
       });
       warnings.addAll([
-        for (final id in poolResult.skippedMissingIds) 'plugin_missing_$id',
-        ...poolResult.errors,
+        for (final id in poolResult!.skippedMissingIds) 'plugin_missing_$id',
+        ...poolResult!.errors,
       ]);
-      await step(
-        'plugin-provision',
-        () => pluginProvisioner.provision(
-          PluginProvisionContext(
-            fs: fs,
-            teampilotRoot: basePath,
-            configDir: configDir,
-            bundlePoolDir: pluginPoolDir,
-            enabledPluginIds: runtimeBundle.pluginIds,
-            installedCatalog: pluginCatalog,
-            layout: layout,
-            tool: cli,
-            memberProvisionJson: poolResult.memberProvisionStampJson,
-            assembledMcpServers: const [],
-          ),
-        ),
-      );
     }
 
     final mcpProviders = await mcpRegistry.providersForSimple(
@@ -1071,6 +1055,32 @@ class ConfigProfileService implements ConfigProfileDelegate {
         report.promptMaterialization?.environment ?? const {},
       );
     });
+
+    // Skill reconcile (always-on teampilot-catalog) must run before plugin
+    // decompose. Otherwise reconcile prunes plugin-only skills that are not
+    // listed in plugins.json metadata.
+    if (pluginProvisioner != null &&
+        pluginPoolDir != null &&
+        poolResult != null &&
+        installedCatalog != null) {
+      await step(
+        'plugin-provision',
+        () => pluginProvisioner.provision(
+          PluginProvisionContext(
+            fs: fs,
+            teampilotRoot: basePath,
+            configDir: configDir,
+            bundlePoolDir: pluginPoolDir!,
+            enabledPluginIds: runtimeBundle.pluginIds,
+            installedCatalog: installedCatalog!,
+            layout: layout,
+            tool: cli,
+            memberProvisionJson: poolResult!.memberProvisionStampJson,
+            assembledMcpServers: const [],
+          ),
+        ),
+      );
+    }
 
     appLogger.d(
       '[session-launch] stage-fs done '
@@ -1488,6 +1498,45 @@ class ConfigProfileService implements ConfigProfileDelegate {
       ),
     );
     warnings.addAll(_resourceWarnings(resourceReport));
+    final pluginProvisioner = _cliRegistry.capability<PluginCapability>(
+      launchCli,
+    );
+    if (pluginProvisioner != null) {
+      final pluginCatalog = await InstalledPluginCatalog.load(
+        stagingFs,
+        staging.basePath,
+      );
+      final pluginPoolDir =
+          pluginProvisioner.runtimeOwnership == PluginRuntimeOwnership.native
+          ? staging.layout.sessionRuntimePluginPoolDir(
+              trimmedWorkspaceId,
+              trimmedSessionId,
+              launchCli.value,
+              memberId: memberId,
+            )
+          : staging.layout.sessionRuntimePluginsDir(
+              trimmedWorkspaceId,
+              trimmedSessionId,
+              launchCli.value,
+              memberId: memberId,
+            );
+      await pluginProvisioner.provision(
+        PluginProvisionContext(
+          fs: stagingFs,
+          teampilotRoot: staging.basePath,
+          configDir: resourceConfigDir,
+          bundlePoolDir: pluginPoolDir,
+          enabledPluginIds: runtimeBundle.pluginIds,
+          installedCatalog: pluginCatalog,
+          layout: staging.layout,
+          tool: launchCli,
+          assembledMcpServers: const [],
+          mcpConfigFileName: warmTier
+              ? CursorWorkspaceWarmTier.mcpBaseFileName
+              : null,
+        ),
+      );
+    }
     if (launchMembers.isNotEmpty) {
       await staging._provisionStagedRosterHooks(
         staging: staging,

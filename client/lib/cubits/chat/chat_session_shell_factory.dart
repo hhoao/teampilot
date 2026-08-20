@@ -191,6 +191,10 @@ class ChatSessionShellFactory {
       scrollbackLines: scrollback,
     );
     if (session.startupDeadline == startupDeadline) return session;
+    // Default factory sessions are rebuilt so CLI-specific deadlines apply
+    // (e.g. Cursor 45s). Subclasses from test/custom factories keep identity
+    // — replacing them would drop overrides such as [TerminalSession.isRunning].
+    if (session.runtimeType != TerminalSession) return session;
     return TerminalSession(
       executable: executable,
       scrollbackLines: scrollback,

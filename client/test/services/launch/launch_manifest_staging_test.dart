@@ -6,7 +6,6 @@ import 'package:teampilot/models/cli_preset.dart';
 import 'package:teampilot/models/config_bundle.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
-import 'package:teampilot/services/launch/launch_manifest.dart';
 import 'package:teampilot/services/launch/manifest_executor.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
@@ -101,14 +100,14 @@ void main() {
       runtimeBundle: const ConfigBundle(),
     );
     expect(staged.manifest.entries, isNotEmpty);
-    final settingsWrites = staged.manifest.entries
-        .whereType<ManifestWriteFile>()
-        .where((entry) => entry.path.contains('builder.json'))
-        .toList();
-    expect(settingsWrites, isNotEmpty);
+    // Hooks may write settings/<member>.json before session-home merges env;
+    // [LaunchManifest.files] keeps the last write per path.
+    final settingsPath = staged.manifest.files.keys.singleWhere(
+      (path) => path.endsWith('/settings/builder.json'),
+    );
     final settings =
-        jsonDecode(settingsWrites.first.content) as Map<String, Object?>;
-    final env = settings['env'] as Map<String, Object?>;
+        jsonDecode(staged.manifest.files[settingsPath]!) as Map;
+    final env = (settings['env'] as Map).cast<String, Object?>();
     expect(env['ANTHROPIC_BASE_URL'], 'https://api.deepseek.com/anthropic');
     expect(env['ANTHROPIC_AUTH_TOKEN'], 'sk-test');
 

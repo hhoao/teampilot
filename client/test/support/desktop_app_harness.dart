@@ -18,6 +18,8 @@ import 'package:teampilot/cubits/extension_cubit.dart';
 import 'package:teampilot/cubits/launch_profile_cubit.dart';
 import 'package:teampilot/cubits/layout_cubit.dart';
 import 'package:teampilot/cubits/llm_config_cubit.dart';
+import 'package:teampilot/cubits/managed_provider_cubit.dart';
+import 'package:teampilot/cubits/managed_provider_usage_cubit.dart';
 import 'package:teampilot/cubits/member_presence_cubit.dart';
 import 'package:teampilot/cubits/floating_workspace/floating_workspace_cubit.dart';
 import 'package:teampilot/cubits/notification_cubit.dart';
@@ -31,10 +33,13 @@ import 'package:teampilot/services/workbench/workbench_chat_bridge.dart';
 import 'package:teampilot/cubits/workspace_tools_cubit.dart';
 import 'package:teampilot/main.dart';
 import 'package:teampilot/models/llm_config.dart';
+import 'package:teampilot/models/managed_provider.dart';
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/pages/home_workspace/workspace_chrome_commands.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/repositories/app_settings_repository.dart';
+import 'package:teampilot/repositories/managed_provider_repository.dart';
+import 'package:teampilot/repositories/managed_provider_usage_repository.dart';
 import 'package:teampilot/repositories/cli_presets_repository.dart';
 import 'package:teampilot/repositories/extension_repository.dart';
 import 'package:teampilot/repositories/plugin_repository.dart';
@@ -63,6 +68,10 @@ import 'package:teampilot/services/home_workspace/home_workspace_ui_cache.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/plugin/plugin_repo_service.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
+import 'package:teampilot/services/provider_usage/managed_provider_secret_store.dart';
+import 'package:teampilot/services/provider_usage/managed_provider_usage_adapter.dart';
+import 'package:teampilot/services/provider_usage/managed_provider_usage_coordinator.dart';
+import 'package:teampilot/services/provider_usage/managed_provider_usage_registry.dart';
 import 'package:teampilot/services/run/workspace_run_platform_factory.dart';
 import 'package:teampilot/services/ssh/ssh_client_factory.dart';
 import 'package:teampilot/services/ssh/ssh_connection_events.dart';
@@ -163,6 +172,28 @@ Widget buildTestApp({
   chat.onSessionTabOpened = chatBridge.onSessionTabOpened;
   final presence = memberPresenceCubit ?? MemberPresenceCubit();
   chat.bindPresenceCubit(presence);
+  final managedProviderFs = InMemoryFilesystem();
+  final managedUsageRepository = ManagedProviderUsageRepository(
+    fs: managedProviderFs,
+    cachePath: '/tp/managed-provider-usage.json',
+  );
+  final managedProviderRepository = ManagedProviderRepository(
+    fs: managedProviderFs,
+    configPath: '/tp/managed-providers.json',
+    onProvidersDeleted: managedUsageRepository.deleteMany,
+  );
+  final managedProviderCubit = ManagedProviderCubit(
+    repository: managedProviderRepository,
+  );
+  final managedProviderUsageCubit = ManagedProviderUsageCubit(
+    coordinator: ManagedProviderUsageCoordinator(
+      providerRepository: managedProviderRepository,
+      usageRepository: managedUsageRepository,
+      registry: ManagedProviderUsageRegistry(),
+      credentials: _HarnessProviderCredentials(),
+      http: _HarnessProviderHttp(),
+    ),
+  );
   // SessionChatView binds a History seat through the pod's HistoryStore when
   // pods own one; the pre-pod fallback reads AiHistoryCubit from context. The
   // harness must provide it or chat-workspace smoke tests throw during the
@@ -300,6 +331,8 @@ Widget buildTestApp({
         BlocProvider(create: (_) => ConfigCubit()),
         BlocProvider.value(value: llmConfigCubit ?? testLlmConfigCubit()),
         BlocProvider.value(value: appProviderCubit!),
+        BlocProvider.value(value: managedProviderCubit),
+        BlocProvider.value(value: managedProviderUsageCubit),
         BlocProvider.value(value: layoutCubit ?? LayoutCubit()),
         BlocProvider.value(value: sessionPreferencesCubit),
         BlocProvider.value(value: aiFeatures),
@@ -439,6 +472,19 @@ Future<LaunchProfileCubit> createTeamCubit({TeamLauncher? launcher}) async {
   );
   await cubit.load();
   return cubit;
+}
+
+class _HarnessProviderCredentials implements ProviderCredentialResolver {
+  @override
+  Future<ProviderCredentialScope> resolve(ManagedProvider provider) async =>
+      ManagedProviderCredentialScope(const {});
+}
+
+class _HarnessProviderHttp implements ProviderUsageHttpClient {
+  @override
+  Future<ProviderUsageHttpResponse> send(ProviderUsageHttpRequest request) {
+    return Future.error(StateError('HTTP unused in desktop app harness'));
+  }
 }
 
 /// [testWidgets] uses a fake-async zone; futures from real disk I/O (temp dirs,

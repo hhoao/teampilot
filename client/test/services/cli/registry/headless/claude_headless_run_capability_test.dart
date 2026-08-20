@@ -33,6 +33,7 @@ void main() {
       '-p',
       '--model',
       'sonnet',
+      '--dangerously-skip-permissions',
       'Write a commit message',
       '--output-format',
       'json',

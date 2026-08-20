@@ -100,4 +100,26 @@ void main() {
 
     expect(session.startupDeadline, const Duration(seconds: 45));
   });
+
+  test('newSession keeps custom factory sessions for Cursor', () {
+    final factory = ChatSessionShellFactory(
+      executableResolver: () => 'cursor-agent',
+      cliExecutableResolver: (cli) => 'exec-${cli.value}',
+      terminalSessionFactory: ({required executable, scrollbackLines = 10000}) =>
+          _RunningFakeShell(executable: executable),
+      defaultTargetResolver: RuntimeTarget.local,
+    );
+
+    final session = factory.newSession(CliTool.cursor);
+
+    expect(session, isA<_RunningFakeShell>());
+    expect(session.isRunning, isTrue);
+  });
+}
+
+class _RunningFakeShell extends TerminalSession {
+  _RunningFakeShell({required super.executable});
+
+  @override
+  bool get isRunning => true;
 }
