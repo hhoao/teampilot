@@ -13,6 +13,17 @@ const _listInstalledTool = CatalogToolSpec(
   mutating: false,
 );
 
+const _opPrefixes = <String, CatalogOp>{
+  'search_': CatalogOp.search,
+  'read_': CatalogOp.read,
+  'install_': CatalogOp.install,
+  'import_': CatalogOp.importPath,
+  'create_': CatalogOp.create,
+  'update_': CatalogOp.update,
+  'unbind_': CatalogOp.unbind,
+  'delete_': CatalogOp.delete,
+};
+
 class CatalogKindRegistry {
   final _modules = <String, CatalogKindModule>{};
 
@@ -30,14 +41,29 @@ class CatalogKindRegistry {
     return tools;
   }
 
-  Future<CatalogResult> dispatch(String toolName, CatalogRequest req) async {
-    if (toolName == 'list_installed') {
-      return listInstalled(req);
+  /// Exact advertised tool names plus [list_installed].
+  Map<String, ({String kind, CatalogOp op})> _advertisedRoutes() {
+    final map = <String, ({String kind, CatalogOp op})>{
+      'list_installed': (kind: 'all', op: CatalogOp.list),
+    };
+    for (final module in _modules.values) {
+      for (final tool in module.advertise()) {
+        final op = _opFromAdvertisedName(tool.name);
+        if (op == null) continue;
+        map.putIfAbsent(tool.name, () => (kind: module.kind, op: op));
+      }
     }
+    return map;
+  }
 
-    final parsed = _parseToolName(toolName);
+  Future<CatalogResult> dispatch(String toolName, CatalogRequest req) async {
+    final parsed = _advertisedRoutes()[toolName];
     if (parsed == null) {
       throw CatalogException('unsupported_op', 'Unknown tool: $toolName');
+    }
+
+    if (toolName == 'list_installed') {
+      return listInstalled(req);
     }
 
     final module = _modules[parsed.kind];
@@ -68,23 +94,9 @@ class CatalogKindRegistry {
     );
   }
 
-  ({CatalogOp op, String kind})? _parseToolName(String toolName) {
-    const opNames = {
-      'search': CatalogOp.search,
-      'read': CatalogOp.read,
-      'install': CatalogOp.install,
-      'import': CatalogOp.importPath,
-      'create': CatalogOp.create,
-      'update': CatalogOp.update,
-      'unbind': CatalogOp.unbind,
-      'delete': CatalogOp.delete,
-    };
-
-    for (final entry in opNames.entries) {
-      final prefix = '${entry.key}_';
-      if (toolName.startsWith(prefix)) {
-        return (op: entry.value, kind: toolName.substring(prefix.length));
-      }
+  static CatalogOp? _opFromAdvertisedName(String toolName) {
+    for (final entry in _opPrefixes.entries) {
+      if (toolName.startsWith(entry.key)) return entry.value;
     }
     return null;
   }

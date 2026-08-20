@@ -16,10 +16,14 @@ class _FakeModule implements CatalogKindModule {
   @override
   bool get supportsInstall => true;
 
+  CatalogOp? lastOp;
+
+  String get _searchName => kind == 'skill' ? 'search_skills' : 'search_$kind';
+
   @override
   List<CatalogToolSpec> advertise() => [
     CatalogToolSpec(
-      name: 'search_$kind',
+      name: _searchName,
       description: 'Search $kind',
       inputSchema: const {'type': 'object', 'properties': {}},
       mutating: false,
@@ -35,6 +39,7 @@ class _FakeModule implements CatalogKindModule {
 
   @override
   Future<CatalogResult> handle(CatalogOp op, CatalogRequest req) async {
+    lastOp = op;
     if (op == CatalogOp.create && !supportsCreate) {
       throw CatalogException('unsupported_op', 'no create');
     }
@@ -62,7 +67,7 @@ void main() {
       ..register(_FakeModule(kind: 'plugin', supportsCreate: false));
     final names = registry.allTools().map((t) => t.name).toList();
     expect(names, contains('list_installed'));
-    expect(names, contains('search_skill'));
+    expect(names, contains('search_skills'));
     expect(names, contains('create_skill'));
     expect(names, contains('search_plugin'));
     expect(names, isNot(contains('create_plugin')));
@@ -71,19 +76,22 @@ void main() {
   test('policy splits read and mutate tools', () {
     final registry = CatalogKindRegistry()
       ..register(_FakeModule(kind: 'skill'));
-    expect(CatalogMcpPolicy.readToolNames(registry), contains('search_skill'));
-    expect(CatalogMcpPolicy.readToolNames(registry), contains('list_installed'));
+    expect(CatalogMcpPolicy.readToolNames(registry), contains('search_skills'));
+    expect(
+      CatalogMcpPolicy.readToolNames(registry),
+      contains('list_installed'),
+    );
     expect(
       CatalogMcpPolicy.mutateToolNames(registry),
       contains('create_skill'),
     );
     expect(
       CatalogMcpPolicy.claudeAllowEntries(registry),
-      contains('mcp__teampilot__search_skill'),
+      contains('mcp__teampilot__search_skills'),
     );
     expect(
       CatalogMcpPolicy.cursorAllowEntries(registry),
-      contains('Mcp(teampilot:search_skill)'),
+      contains('Mcp(teampilot:search_skills)'),
     );
     expect(
       CatalogMcpPolicy.claudeAllowEntries(registry),
@@ -92,9 +100,18 @@ void main() {
   });
 
   test('dispatch routes install_skill to skill module install op', () async {
-    final registry = CatalogKindRegistry()..register(_FakeModule(kind: 'skill'));
+    final registry = CatalogKindRegistry()
+      ..register(_FakeModule(kind: 'skill'));
     final result = await registry.dispatch('create_skill', req());
     expect(result.ids, ['x']);
     expect(result.restartRequired, isTrue);
+  });
+
+  test('dispatch maps advertised search_skills to skill search', () async {
+    final skill = _FakeModule(kind: 'skill');
+    final registry = CatalogKindRegistry()..register(skill);
+    final result = await registry.dispatch('search_skills', req());
+    expect(result.ids, ['x']);
+    expect(skill.lastOp, CatalogOp.search);
   });
 }
