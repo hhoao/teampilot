@@ -12,7 +12,7 @@ enum CatalogOp {
   delete,
 }
 
-enum CatalogBindTo { workspace }
+enum CatalogBindTo { workspace, team, expert }
 
 class CatalogException implements Exception {
   CatalogException(this.code, this.message, {this.details});
