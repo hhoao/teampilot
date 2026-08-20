@@ -75,6 +75,17 @@ void main() {
       );
     });
 
+    test('pluginsCache joins plugins/cache under cursor dir', () {
+      expect(
+        layout.pluginsCache(homeRoot),
+        p.join(
+          layout.cursorDir(homeRoot),
+          CursorHomeLayout.pluginsDirName,
+          CursorHomeLayout.pluginsCacheSegment,
+        ),
+      );
+    });
+
     test('agentCliState joins agent-cli-state.json under cursor dir', () {
       expect(
         layout.agentCliState(homeRoot),

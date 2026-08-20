@@ -236,6 +236,10 @@ final class CursorHomeProvisioner {
       src: _layout.statsigCache(warm),
       dest: _layout.statsigCache(memberHome),
     );
+    await _linkDirectoryIfSourceExists(
+      source: _layout.pluginsCache(warm),
+      dest: _layout.pluginsCache(memberHome),
+    );
     await _seedMissingCliConfigFields(
       memberHome: memberHome,
       warmHome: warm,
@@ -253,6 +257,30 @@ final class CursorHomeProvisioner {
     final raw = await _fs.readString(src);
     if (raw == null) return;
     await _fs.atomicWrite(dest, raw);
+  }
+
+  /// Symlinks [source] at [dest] when the source exists. Never copyTree.
+  Future<void> _linkDirectoryIfSourceExists({
+    required String source,
+    required String dest,
+  }) async {
+    if (!(await _fs.stat(source)).exists) return;
+    if (await _linkAlreadyPointsTo(source: source, dest: dest)) return;
+    if ((await _fs.lstat(dest)).exists) {
+      await _fs.removeRecursive(dest);
+    }
+    await _fs.ensureDir(_fs.pathContext.dirname(dest));
+    await _fs.createSymlink(target: source, linkPath: dest);
+  }
+
+  Future<bool> _linkAlreadyPointsTo({
+    required String source,
+    required String dest,
+  }) async {
+    final current = await _fs.readSymlinkTarget(dest);
+    if (current == null) return false;
+    return _fs.pathContext.normalize(current) ==
+        _fs.pathContext.normalize(source);
   }
 
   Future<void> _seedMissingCliConfigFields({

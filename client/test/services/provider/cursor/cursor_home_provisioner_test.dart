@@ -414,5 +414,41 @@ void main() {
         expect(cliConfig['hasChangedDefaultModel'], isTrue);
       },
     );
+
+    test('provision symlinks plugins/cache from the warm home', () async {
+      const memberHome = '/data/tp/members/planner/cursor/home';
+      const realHome = '/home/user';
+      final warmCache = layout.pluginsCache(realHome);
+      await fs.writeString(
+        fs.pathContext.join(
+          warmCache,
+          'cursor-public',
+          'demo',
+          '.cache-complete',
+        ),
+        '',
+      );
+
+      await provisioner.provision(
+        memberHome: memberHome,
+        providerId: null,
+        member: member,
+        busIdle: null,
+        forceTeamLeadDelegateMode: false,
+        mixed: false,
+        promptAlreadyMaterialized: true,
+        warmCacheHomeRoot: realHome,
+      );
+
+      final dest = layout.pluginsCache(memberHome);
+      expect((await fs.stat(dest)).isSymlink, isTrue);
+      expect(await fs.readSymlinkTarget(dest), warmCache);
+      expect(
+        await fs.readString(
+          fs.pathContext.join(dest, 'cursor-public', 'demo', '.cache-complete'),
+        ),
+        '',
+      );
+    });
   });
 }

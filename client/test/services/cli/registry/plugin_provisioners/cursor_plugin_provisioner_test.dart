@@ -84,7 +84,7 @@ void main() {
     );
 
     test(
-      'links pool bundles into plugins/local instead of copying the tree',
+      'projects a contained local tree without linking the pool root',
       () async {
         final fs = InMemoryFilesystem();
         const configDir = '/cfg';
@@ -97,6 +97,11 @@ void main() {
         await fs.writeString(
           '$poolDir/demo/skills/heavy/SKILL.md',
           '# heavy skill body',
+        );
+        await fs.writeString('$poolDir/demo/.git/objects/pack', 'git-pack');
+        await fs.writeString(
+          '$poolDir/demo/node_modules/leftpad/index.js',
+          'module.exports=1',
         );
 
         await const CursorPluginCapability().provision(
@@ -113,13 +118,20 @@ void main() {
         );
 
         const dest = '$configDir/plugins/local/demo';
-        expect((await fs.stat(dest)).isSymlink, isTrue);
-        expect(await fs.readSymlinkTarget(dest), '$poolDir/demo');
+        expect((await fs.stat(dest)).isDirectory, isTrue);
+        expect((await fs.stat(dest)).isSymlink, isFalse);
+        expect(await fs.readSymlinkTarget(dest), isNull);
+        expect(
+          await fs.readSymlinkTarget('$dest/skills'),
+          '$poolDir/demo/skills',
+        );
         expect(fs.files.containsKey('$dest/skills/heavy/SKILL.md'), isFalse);
         expect(
           await fs.readString('$dest/skills/heavy/SKILL.md'),
           '# heavy skill body',
         );
+        expect((await fs.stat('$dest/.git')).exists, isFalse);
+        expect((await fs.stat('$dest/node_modules')).exists, isFalse);
       },
     );
   });

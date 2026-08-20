@@ -184,6 +184,31 @@ void main() {
       expect(cliConfig['authInfo'], {'userId': 'real', 'authId': 'a1'});
     });
 
+    test('seeds plugins/cache from the warm home', () async {
+      const realHome = '/home/user';
+      final warmCache = layout.pluginsCache(realHome);
+      await fs.writeString(
+        fs.pathContext.join(
+          warmCache,
+          'cursor-public',
+          'demo',
+          '.cache-complete',
+        ),
+        '',
+      );
+
+      await provisioner.provisionOverlayOnly(
+        memberHome: memberHome,
+        member: member,
+        busIdle: null,
+        forceTeamLeadDelegateMode: false,
+        warmCacheHomeRoot: realHome,
+      );
+
+      final dest = layout.pluginsCache(memberHome);
+      expect(await fs.readSymlinkTarget(dest), warmCache);
+    });
+
     test(
       'writes role.mdc but skips bus hooks/mcp when busIdle is null',
       () async {

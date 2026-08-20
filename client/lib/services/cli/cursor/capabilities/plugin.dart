@@ -4,6 +4,7 @@ import '../../../plugin/cli_plugin_layout.dart';
 import '../../registry/capabilities/plugin_capability.dart';
 import '../../registry/capabilities/plugin_manifest_paths.dart';
 import '../../registry/capabilities/skill_capability.dart';
+import '../provider/cursor_plugin_runtime_tree.dart';
 import 'mcp.dart';
 
 /// Cursor plugin materialization + Claude-flavor registry registration.
@@ -115,14 +116,14 @@ final class CursorPluginCapability implements PluginCapability {
         paths: paths,
       );
       final dest = fsCtx.join(localDir, dirName);
-      // Session `plugins/local` must point at the shared pool/installed
-      // bundle. A per-session copyTree of large plugins (e.g. superpowers)
-      // blocks the UI isolate for seconds, then ManifestFilesystem overlay
-      // replaces the copy with a symlink anyway.
-      await CliPluginLayout.linkOrCopyTree(
+      // Keep a real directory under `plugins/local` so cursor-agent's
+      // realpath check accepts the bundle, and only symlink component
+      // dirs so a pool `.git` is never listed at the plugin root.
+      await CursorPluginRuntimeTree.materialize(
         fs: ctx.fs,
-        source: root,
-        destination: dest,
+        sourceRoot: root,
+        destRoot: dest,
+        paths: paths,
       );
       await CliPluginLayout.projectBundleToFlavor(ctx.fs, dest, paths);
     }
