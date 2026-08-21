@@ -452,9 +452,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
     if (!available) {
       AppToast.show(
         context,
-        message: _voiceInput.permissionDenied
-            ? context.l10n.workspaceChatLandingVoicePermissionDenied
-            : context.l10n.workspaceChatLandingVoiceUnavailable,
+        message: composeVoiceInitFailureMessage(context.l10n, _voiceInput),
         variant: TpToastVariant.warning,
       );
       return;

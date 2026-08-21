@@ -47,6 +47,7 @@ void main() {
     test('starts unavailable until initialize', () {
       final input = ComposeVoiceInput(onFinalTranscript: (_) {});
       expect(input.isAvailable, isFalse);
+      expect(input.blockedByMacOsIdeLaunch, isFalse);
       input.dispose();
     });
   });

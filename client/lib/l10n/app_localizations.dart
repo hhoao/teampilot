@@ -3446,6 +3446,12 @@ abstract class AppLocalizations {
   /// **'Microphone permission denied'**
   String get workspaceChatLandingVoicePermissionDenied;
 
+  /// No description provided for @workspaceChatLandingVoiceMacOsIdeLaunch.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice input cannot request macOS speech permissions when TeamPilot is launched from the IDE. Run build/macos/Build/Products/Debug/TeamPilot.app directly, or launch from Xcode.'**
+  String get workspaceChatLandingVoiceMacOsIdeLaunch;
+
   /// No description provided for @landingTeamSettingsNavTeam.
   ///
   /// In en, this message translates to:

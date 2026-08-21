@@ -1909,6 +1909,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Microphone permission denied';
 
   @override
+  String get workspaceChatLandingVoiceMacOsIdeLaunch =>
+      'Voice input cannot request macOS speech permissions when TeamPilot is launched from the IDE. Run build/macos/Build/Products/Debug/TeamPilot.app directly, or launch from Xcode.';
+
+  @override
   String get landingTeamSettingsNavTeam => 'Team defaults';
 
   @override
