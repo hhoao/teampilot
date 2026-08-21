@@ -46,6 +46,16 @@ import '../services/remote_download/remote_download_resolver.dart';
 import '../services/remote_download/remote_downloader.dart';
 import '../services/progress_activity/pack_acquire_activity_adapter.dart';
 import '../services/progress_activity/cli_provision_activity_adapter.dart';
+import '../services/cli/cli_installer_service.dart';
+import '../services/file_tree_import/workspace_import_service.dart';
+import '../services/install/install_job_registry.dart';
+import '../services/install/install_job_runner_registry.dart';
+import '../services/install/runners/app_update_install_job_runner.dart';
+import '../services/install/runners/cli_install_job_runner.dart';
+import '../services/install/runners/file_tree_import_install_job_runner.dart';
+import '../services/install/runners/hub_clone_install_job_runner.dart';
+import '../services/install/runners/pack_acquire_install_job_runner.dart';
+import '../services/install/runners/toolchain_install_job_runner.dart';
 import '../cubits/ai_history_cubit.dart';
 import '../cubits/shortcut_cubit.dart';
 import '../cubits/editor_cubit.dart';
@@ -391,6 +401,7 @@ class AppShell {
     required this.aiHistoryCubit,
     required this.notificationCubit,
     required this.progressActivityCubit,
+    required this.installJobRegistry,
     required this.editorCubit,
     required this.workbenchCubit,
     required this.workbenchEditorOpener,
@@ -484,6 +495,7 @@ class AppShell {
   final AiHistoryCubit aiHistoryCubit;
   final NotificationCubit notificationCubit;
   final ProgressActivityCubit progressActivityCubit;
+  final InstallJobRegistry installJobRegistry;
   final EditorCubit editorCubit;
   final WorkbenchCubit workbenchCubit;
   final WorkbenchEditorOpener workbenchEditorOpener;
@@ -1832,6 +1844,31 @@ Future<AppShell> buildAppShell({
     activityAdapter: AppUpdateActivityAdapter(cubit: progressActivityCubit),
   );
 
+  final workspaceImportService = WorkspaceImportService();
+  final installJobRunnerRegistry = InstallJobRunnerRegistry(
+    runners: [
+      CliInstallJobRunner(
+        installerFactory: () => CliInstallerService(
+          sshClientFactory: sshClientFactory,
+          cliToolRegistry: cliToolRegistry,
+          preferredNodePath: () => sessionPreferencesCubit.toolchainPath(
+            SessionPreferences.toolchainNode,
+          ),
+        ),
+        sshProfileById: sshProfileById,
+      ),
+      ToolchainInstallJobRunner(),
+      PackAcquireInstallJobRunner(),
+      HubCloneInstallJobRunner(),
+      FileTreeImportInstallJobRunner(importService: workspaceImportService),
+      AppUpdateInstallJobRunner(service: appUpdateService),
+    ],
+  );
+  final installJobRegistry = InstallJobRegistry(
+    progressCubit: progressActivityCubit,
+    runnerRegistry: installJobRunnerRegistry,
+  );
+
   boot('loading layout');
   await layoutCubit.load();
   floatingWorkspacePersistence.hydrateFromLayout();
@@ -2220,6 +2257,7 @@ Future<AppShell> buildAppShell({
     aiHistoryCubit: aiHistoryCubit,
     notificationCubit: notificationCubit,
     progressActivityCubit: progressActivityCubit,
+    installJobRegistry: installJobRegistry,
     editorCubit: editorCubit,
     workbenchCubit: workbenchCubit,
     workbenchEditorOpener: workbenchEditorOpener,

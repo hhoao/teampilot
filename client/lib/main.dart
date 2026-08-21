@@ -10,6 +10,7 @@ import 'package:shared_ui/shared_ui.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'app/app_shell.dart';
+import 'services/install/install_job_registry.dart';
 import 'app/ui_zoom_baseline.dart';
 import 'app/home_index_prefetch.dart';
 import 'cubits/app_bootstrap_cubit.dart';
@@ -262,6 +263,7 @@ class _AppShutdownScope extends StatefulWidget {
     required this.aiHistoryCubit,
     required this.notificationCubit,
     required this.progressActivityCubit,
+    required this.installJobRegistry,
     required this.sshConnectionCubit,
     required this.termuxCubit,
     required this.workspaceTerminalRegistry,
@@ -281,6 +283,7 @@ class _AppShutdownScope extends StatefulWidget {
   final AiHistoryCubit aiHistoryCubit;
   final NotificationCubit notificationCubit;
   final ProgressActivityCubit progressActivityCubit;
+  final InstallJobRegistry installJobRegistry;
   final SshConnectionCubit sshConnectionCubit;
   final TermuxCubit termuxCubit;
   final WorkspaceTerminalRegistry workspaceTerminalRegistry;
@@ -306,6 +309,7 @@ class _AppShutdownScopeState extends State<_AppShutdownScope> {
     unawaited(widget.aiHistoryCubit.close());
     unawaited(widget.notificationCubit.close());
     unawaited(widget.progressActivityCubit.close());
+    widget.installJobRegistry.dispose();
     unawaited(widget.sshConnectionCubit.close());
     unawaited(widget.termuxCubit.close());
     NotificationRecorder.install(null);
@@ -571,6 +575,7 @@ void main() async {
             aiHistoryCubit: shell.aiHistoryCubit,
             notificationCubit: shell.notificationCubit,
             progressActivityCubit: shell.progressActivityCubit,
+            installJobRegistry: shell.installJobRegistry,
             sshConnectionCubit: shell.sshConnectionCubit,
             termuxCubit: shell.termuxCubit,
             workspaceTerminalRegistry: shell.workspaceTerminalRegistry,
@@ -684,6 +689,9 @@ void main() async {
                 ),
                 RepositoryProvider<UiZoomBaseline>.value(
                   value: shell.uiZoomBaseline,
+                ),
+                RepositoryProvider<InstallJobRegistry>.value(
+                  value: shell.installJobRegistry,
                 ),
                 RepositoryProvider<FloatingSurfaceRegistry>.value(
                   value: shell.floatingSurfaceRegistry,
