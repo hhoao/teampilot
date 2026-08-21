@@ -30,8 +30,17 @@ class DesktopSystemNotifier {
   static final DesktopSystemNotifier instance = DesktopSystemNotifier();
 
   static bool _initialized = false;
+  static bool _permissionsRequested = false;
   static FlutterLocalNotificationsPlugin? _sharedPlugin;
   static NotificationTapHandler? _onNotificationTap;
+
+  /// macOS/iOS: defer permission prompts out of [initialize] so the dialog is
+  /// not shown while the main window is still hidden behind the boot splash.
+  static const _darwinInitSettings = DarwinInitializationSettings(
+    requestAlertPermission: false,
+    requestSoundPermission: false,
+    requestBadgePermission: false,
+  );
 
   static const _androidChannelId = 'session_idle';
   static const _androidChannelName = 'Agent updates';
@@ -71,9 +80,21 @@ class DesktopSystemNotifier {
     _initialized = true;
   }
 
+  /// Requests OS notification permission once the app window is visible.
+  ///
+  /// Safe to call multiple times; no-ops after the first successful request.
+  static Future<void> requestPlatformPermissions() async {
+    if (kIsWeb || _permissionsRequested || !_initialized) return;
+    final plugin = _sharedPlugin;
+    if (plugin == null) return;
+    _permissionsRequested = true;
+    await _requestPlatformPermissions(plugin);
+  }
+
   @visibleForTesting
   static void debugResetForTest() {
     _initialized = false;
+    _permissionsRequested = false;
     _sharedPlugin = null;
     _onNotificationTap = null;
   }
@@ -118,6 +139,7 @@ class DesktopSystemNotifier {
     if (!_initialized) {
       await ensureInitialized();
     }
+    await requestPlatformPermissions();
   }
 
   static Future<bool> _defaultIsAppFocused() async {
@@ -136,7 +158,7 @@ class DesktopSystemNotifier {
         android: Platform.isAndroid
             ? const AndroidInitializationSettings('@mipmap/ic_launcher')
             : null,
-        macOS: Platform.isMacOS ? const DarwinInitializationSettings() : null,
+        macOS: Platform.isMacOS ? _darwinInitSettings : null,
         linux: Platform.isLinux
             ? LinuxInitializationSettings(
                 defaultActionName: 'Open',
@@ -153,10 +175,17 @@ class DesktopSystemNotifier {
       ),
       onDidReceiveNotificationResponse: _onDidReceiveNotificationResponse,
     );
-    if (ok != true) {
-      appLogger.w('[system-notifier] flutter_local_notifications init failed');
-    }
+    // On Darwin, initialize() returns permission grant status when permissions
+    // are requested at init time. We defer prompts to
+    // [requestPlatformPermissions] instead.
+    appLogger.d(
+      '[system-notifier] flutter_local_notifications ready ok=$ok',
+    );
+  }
 
+  static Future<void> _requestPlatformPermissions(
+    FlutterLocalNotificationsPlugin plugin,
+  ) async {
     if (Platform.isAndroid) {
       final granted = await plugin
           .resolvePlatformSpecificImplementation<

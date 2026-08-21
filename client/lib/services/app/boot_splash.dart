@@ -6,6 +6,8 @@ import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:native_splash_screen/native_splash_screen.dart' as nss;
 import 'package:window_manager/window_manager.dart';
 
+import '../notification/desktop_system_notifier.dart';
+
 /// Android: [FlutterNativeSplash.preserve] + [FlutterNativeSplash.remove].
 /// Desktop: native splash dismissed after bootstrap.
 void preserveBootSplash(WidgetsBinding binding) {
@@ -52,6 +54,7 @@ Future<void> dismissBootSplash() async {
 Future<void> completeBootSplashTransition() async {
   if (Platform.isAndroid) {
     await dismissBootSplash();
+    await DesktopSystemNotifier.requestPlatformPermissions();
     return;
   }
   await windowManager.setTitleBarStyle(
@@ -61,4 +64,5 @@ Future<void> completeBootSplashTransition() async {
   await windowManager.setOpacity(1);
   await windowManager.focus();
   await dismissBootSplash();
+  await DesktopSystemNotifier.requestPlatformPermissions();
 }
