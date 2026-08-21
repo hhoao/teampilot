@@ -11,7 +11,10 @@
       "request": "launch",
       "program": "lib/main.dart",
       "type": "dart",
-      "flutterMode": "debug"
+      "flutterMode": "debug",
+      "osx": {
+        "toolArgs": ["--no-enable-impeller"]
+      }
     },
     {
       "name": "client (profile mode)",
@@ -19,7 +22,10 @@
       "request": "launch",
       "program": "lib/main.dart",
       "type": "dart",
-      "flutterMode": "profile"
+      "flutterMode": "profile",
+      "osx": {
+        "toolArgs": ["--no-enable-impeller"]
+      }
     },
     {
       "name": "client (release mode)",
@@ -27,7 +33,10 @@
       "request": "launch",
       "program": "lib/main.dart",
       "type": "dart",
-      "flutterMode": "release"
+      "flutterMode": "release",
+      "osx": {
+        "toolArgs": ["--no-enable-impeller"]
+      }
     },
     {
       "name": "flutter_alacritty (debug mode)",
