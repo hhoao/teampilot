@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
@@ -59,9 +58,8 @@ class McpInstalledServerRow extends StatelessWidget {
                           server.name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TpTextStyles.of(
-                            context,
-                          ).mdSemiboldColored(textBase),
+                          style: TpTextStyles.of(context)
+                              .mdSemiboldColored(textBase),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -70,9 +68,8 @@ class McpInstalledServerRow extends StatelessWidget {
                           typeLabel,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TpTextStyles.of(
-                            context,
-                          ).xsColored(textBase.withValues(alpha: 0.5)),
+                          style: TpTextStyles.of(context)
+                              .xsColored(textBase.withValues(alpha: 0.5)),
                         ),
                       ),
                       if (oauthAuthenticated == false) ...[
@@ -88,9 +85,8 @@ class McpInstalledServerRow extends StatelessWidget {
                           ),
                           child: Text(
                             l10n.mcpOAuthStatusNeedsAuth,
-                            style: TpTextStyles.of(
-                              context,
-                            ).xsBoldColored(const Color(0xFFB45309)),
+                            style: TpTextStyles.of(context)
+                                .xsBoldColored(const Color(0xFFB45309)),
                           ),
                         ),
                       ],
@@ -107,9 +103,8 @@ class McpInstalledServerRow extends StatelessWidget {
                           ),
                           child: Text(
                             l10n.mcpOAuthStatusConnected,
-                            style: TpTextStyles.of(
-                              context,
-                            ).xsBoldColored(cs.primary),
+                            style: TpTextStyles.of(context)
+                                .xsBoldColored(cs.primary),
                           ),
                         ),
                       ],
@@ -121,9 +116,8 @@ class McpInstalledServerRow extends StatelessWidget {
                       description,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: TpTextStyles.of(
-                        context,
-                      ).smColored(textBase.withValues(alpha: 0.6)),
+                      style: TpTextStyles.of(context)
+                          .smColored(textBase.withValues(alpha: 0.6)),
                     ),
                   ],
                 ],
@@ -222,9 +216,8 @@ class McpCatalogListingTile extends StatelessWidget {
             ? null
             : Text(
                 tags.join(' · '),
-                style: TpTextStyles.of(
-                  context,
-                ).xsColored(cs.onSurface.withValues(alpha: 0.5)),
+                style: TpTextStyles.of(context)
+                    .xsColored(cs.onSurface.withValues(alpha: 0.5)),
               ),
         metadata: TpCatalogMetadataRow(
           adoption: TpCatalogMetricView(
@@ -237,18 +230,6 @@ class McpCatalogListingTile extends StatelessWidget {
             icon: Icons.star_outline,
             label: l10n.catalogMetricRating,
             value: metrics.rating?.toStringAsFixed(1),
-            missingValueTooltip: l10n.catalogMetricMissingTooltip,
-          ),
-          updated: TpCatalogMetricView(
-            icon: Icons.update_outlined,
-            label: l10n.catalogMetricUpdated,
-            value: _formatCatalogDate(context, metrics.updatedAtMs),
-            missingValueTooltip: l10n.catalogMetricMissingTooltip,
-          ),
-          published: TpCatalogMetricView(
-            icon: Icons.event_outlined,
-            label: l10n.catalogMetricPublished,
-            value: _formatCatalogDate(context, metrics.publishedAtMs),
             missingValueTooltip: l10n.catalogMetricMissingTooltip,
           ),
         ),
@@ -324,10 +305,3 @@ String _mcpCatalogSourceLabel(McpCatalogSource source) => switch (source) {
   McpCatalogSource.smithery => 'Smithery',
   McpCatalogSource.officialRegistry => 'Official MCP Registry',
 };
-
-String? _formatCatalogDate(BuildContext context, int? milliseconds) {
-  if (milliseconds == null) return null;
-  return DateFormat.yMMMd(
-    context.l10n.localeName,
-  ).format(DateTime.fromMillisecondsSinceEpoch(milliseconds));
-}

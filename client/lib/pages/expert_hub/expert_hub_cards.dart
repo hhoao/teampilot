@@ -119,20 +119,6 @@ class _ExpertHubCardState extends State<ExpertHubCard> {
               value: member.metrics.rating?.toStringAsFixed(1),
               missing: context.l10n.catalogMetricMissingTooltip,
             ),
-            updated: _metric(
-              icon: Icons.update_outlined,
-              label: context.l10n.catalogMetricUpdated,
-              value: _date(
-                member.metrics.updatedAtMs ?? _fallbackUpdatedAt(member),
-              ),
-              missing: context.l10n.catalogMetricMissingTooltip,
-            ),
-            published: _metric(
-              icon: Icons.event_outlined,
-              label: context.l10n.catalogMetricPublished,
-              value: _date(member.metrics.publishedAtMs),
-              missing: context.l10n.catalogMetricMissingTooltip,
-            ),
           ),
           action: TextButton(
             onPressed: widget.busy ? null : widget.onTap,
@@ -200,15 +186,6 @@ TpCatalogMetricView _metric({
   value: value,
   missingValueTooltip: missing,
 );
-
-int? _fallbackUpdatedAt(DiscoverableMember member) =>
-    member.updatedAt == 0 ? null : member.updatedAt;
-
-String? _date(int? milliseconds) {
-  if (milliseconds == null || milliseconds <= 0) return null;
-  final date = DateTime.fromMillisecondsSinceEpoch(milliseconds).toLocal();
-  return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-}
 
 class ExpertSourceBadge extends StatelessWidget {
   const ExpertSourceBadge({super.key, required this.source, this.accent});

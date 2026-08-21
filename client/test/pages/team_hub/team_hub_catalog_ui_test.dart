@@ -8,7 +8,7 @@ import 'package:teampilot/pages/team_hub/team_hub_cards.dart';
 import 'package:teampilot/pages/team_hub/team_hub_body.dart';
 
 void main() {
-  testWidgets('team card uses the shared catalog card shell and four metrics', (
+  testWidgets('team card uses compact catalog metrics without dates', (
     tester,
   ) async {
     final team = DiscoverableTeam(
@@ -48,5 +48,6 @@ void main() {
 
     expect(find.byType(TpCatalogCardShell), findsOneWidget);
     expect(find.byType(TpCatalogMetadataRow), findsOneWidget);
+    expect(find.textContaining('1970'), findsNothing);
   });
 }

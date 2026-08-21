@@ -350,7 +350,6 @@ class PluginDiscoverableCard extends StatelessWidget {
     final l10n = context.l10n;
     final cubit = context.read<PluginCubit>();
     final metrics = plugin.metrics;
-    final localizations = MaterialLocalizations.of(context);
 
     return TpCatalogCardShell(
       title: plugin.name,
@@ -370,26 +369,6 @@ class PluginDiscoverableCard extends StatelessWidget {
           icon: Icons.star_outline,
           label: l10n.catalogMetricRating,
           value: metrics.rating?.toStringAsFixed(1),
-          missingValueTooltip: l10n.catalogMetricMissingTooltip,
-        ),
-        updated: TpCatalogMetricView(
-          icon: Icons.update_outlined,
-          label: l10n.catalogMetricUpdated,
-          value: metrics.updatedAtMs == null
-              ? null
-              : localizations.formatCompactDate(
-                  DateTime.fromMillisecondsSinceEpoch(metrics.updatedAtMs!),
-                ),
-          missingValueTooltip: l10n.catalogMetricMissingTooltip,
-        ),
-        published: TpCatalogMetricView(
-          icon: Icons.event_outlined,
-          label: l10n.catalogMetricPublished,
-          value: metrics.publishedAtMs == null
-              ? null
-              : localizations.formatCompactDate(
-                  DateTime.fromMillisecondsSinceEpoch(metrics.publishedAtMs!),
-                ),
           missingValueTooltip: l10n.catalogMetricMissingTooltip,
         ),
       ),

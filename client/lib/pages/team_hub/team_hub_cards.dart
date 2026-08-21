@@ -132,18 +132,6 @@ class _TeamHubCardState extends State<TeamHubCard> {
               value: metrics.rating?.toStringAsFixed(1),
               missing: context.l10n.catalogMetricMissingTooltip,
             ),
-            updated: _metric(
-              icon: Icons.update_outlined,
-              label: context.l10n.catalogMetricUpdated,
-              value: _date(metrics.updatedAtMs ?? _fallbackUpdatedAt(team)),
-              missing: context.l10n.catalogMetricMissingTooltip,
-            ),
-            published: _metric(
-              icon: Icons.event_outlined,
-              label: context.l10n.catalogMetricPublished,
-              value: _date(metrics.publishedAtMs),
-              missing: context.l10n.catalogMetricMissingTooltip,
-            ),
           ),
           action: TextButton(
             onPressed: widget.busy ? null : widget.onTap,
@@ -196,15 +184,6 @@ TpCatalogMetricView _metric({
   value: value,
   missingValueTooltip: missing,
 );
-
-int? _fallbackUpdatedAt(DiscoverableTeam team) =>
-    team.updatedAt == 0 ? null : team.updatedAt;
-
-String? _date(int? milliseconds) {
-  if (milliseconds == null || milliseconds <= 0) return null;
-  final date = DateTime.fromMillisecondsSinceEpoch(milliseconds).toLocal();
-  return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-}
 
 class _FavoriteButton extends StatelessWidget {
   const _FavoriteButton({

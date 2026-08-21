@@ -54,18 +54,6 @@ class MarketplaceSkillCard extends StatelessWidget {
           value: metrics.rating?.toStringAsFixed(1),
           missingValueTooltip: l10n.catalogMetricMissingTooltip,
         ),
-        updated: TpCatalogMetricView(
-          icon: Icons.update,
-          label: l10n.catalogMetricUpdated,
-          value: _formatDate(metrics.updatedAtMs),
-          missingValueTooltip: l10n.catalogMetricMissingTooltip,
-        ),
-        published: TpCatalogMetricView(
-          icon: Icons.calendar_today_outlined,
-          label: l10n.catalogMetricPublished,
-          value: _formatDate(metrics.publishedAtMs),
-          missingValueTooltip: l10n.catalogMetricMissingTooltip,
-        ),
       ),
       action: Wrap(
         spacing: 8,
@@ -85,9 +73,8 @@ class MarketplaceSkillCard extends StatelessWidget {
               ),
               child: Text(
                 l10n.skillsCardInstalled,
-                style: TpTextStyles.of(
-                  context,
-                ).smBoldColored(const Color(0xFF15803D)),
+                style: TpTextStyles.of(context)
+                    .smBoldColored(const Color(0xFF15803D)),
               ),
             )
           else
@@ -108,15 +95,6 @@ class MarketplaceSkillCard extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  static String? _formatDate(int? millisecondsSinceEpoch) {
-    if (millisecondsSinceEpoch == null) return null;
-    final dt = DateTime.fromMillisecondsSinceEpoch(millisecondsSinceEpoch);
-    final y = dt.year.toString().padLeft(4, '0');
-    final m = dt.month.toString().padLeft(2, '0');
-    final d = dt.day.toString().padLeft(2, '0');
-    return '$y-$m-$d';
   }
 }
 
