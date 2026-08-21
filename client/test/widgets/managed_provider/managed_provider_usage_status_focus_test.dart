@@ -196,4 +196,21 @@ void main() {
       'a',
     );
   });
+
+  test('same snapshot map reference keeps focus', () {
+    final providers = [_p('a'), _p('b')];
+    final snapshots = {
+      'a': _snap('a', remaining: '9', fetchedAt: 150),
+      'b': _snap('b', remaining: '20', fetchedAt: 100),
+    };
+    expect(
+      resolveManagedProviderUsageFocus(
+        enabledProviders: providers,
+        currentSnapshots: snapshots,
+        previousSnapshots: snapshots,
+        currentFocusId: 'a',
+      ),
+      'a',
+    );
+  });
 }
