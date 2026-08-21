@@ -67,6 +67,7 @@ import 'package:teampilot/services/git/git_repo_store.dart';
 import 'package:teampilot/services/home_workspace/home_workspace_ui_cache.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/plugin/plugin_repo_service.dart';
+import 'package:teampilot/services/install/install_job_registry.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/provider_usage/managed_provider_secret_store.dart';
 import 'package:teampilot/services/provider_usage/managed_provider_usage_adapter.dart';
@@ -245,6 +246,13 @@ Widget buildTestApp({
       ),
     ),
   );
+  final notificationCubit = NotificationCubit();
+  final progressActivityCubit = ProgressActivityCubit(
+    historyRecorder: notificationCubit,
+  );
+  final installJobRegistry = InstallJobRegistry(
+    progressCubit: progressActivityCubit,
+  );
 
   return MultiRepositoryProvider(
     providers: [
@@ -312,6 +320,9 @@ Widget buildTestApp({
       RepositoryProvider<WorkspaceContentSearchHost>(
         create: (_) => WorkspaceContentSearchHost(),
       ),
+      RepositoryProvider<InstallJobRegistry>.value(
+        value: installJobRegistry,
+      ),
     ],
     child: MultiBlocProvider(
       providers: [
@@ -374,12 +385,8 @@ Widget buildTestApp({
           },
         ),
         BlocProvider(create: (_) => WorkspaceToolsCubit()),
-        BlocProvider(create: (_) => NotificationCubit()),
-        BlocProvider(
-          create: (context) => ProgressActivityCubit(
-            historyRecorder: context.read<NotificationCubit>(),
-          ),
-        ),
+        BlocProvider.value(value: notificationCubit),
+        BlocProvider.value(value: progressActivityCubit),
         BlocProvider(create: (_) => FloatingWorkspaceCubit()),
         BlocProvider(
           create: (_) => SshConnectionCubit(
