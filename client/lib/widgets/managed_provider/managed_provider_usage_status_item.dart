@@ -45,7 +45,6 @@ class _ManagedProviderUsageStatusSegmentState
   final _popover = TpPopoverController();
   Map<String, ProviderUsageSnapshot> _previousSnapshots = const {};
   String? _focusedProviderId;
-  Map<String, ProviderUsageSnapshot>? _cachedUsageSnapshots;
 
   @override
   void dispose() {
@@ -55,32 +54,30 @@ class _ManagedProviderUsageStatusSegmentState
 
   @override
   Widget build(BuildContext context) {
-    final usageCubit = context.read<ManagedProviderUsageCubit>();
-    return StreamBuilder<ManagedProviderUsageState>(
-      stream: usageCubit.stream,
-      initialData: usageCubit.state,
-      builder: (context, usageSnapshot) {
-        final usageState = usageSnapshot.requireData;
-        return BlocBuilder<ManagedProviderCubit, ManagedProviderState>(
+    return BlocBuilder<ManagedProviderCubit, ManagedProviderState>(
+      buildWhen: (previous, next) =>
+          previous.providers != next.providers ||
+          previous.status != next.status,
+      builder: (context, providerState) {
+        return BlocBuilder<
+          ManagedProviderUsageCubit,
+          ManagedProviderUsageState
+        >(
           buildWhen: (previous, next) =>
-              previous.providers != next.providers ||
-              previous.status != next.status,
-          builder: (context, providerState) {
+              previous.snapshots != next.snapshots ||
+              previous.status != next.status ||
+              previous.isRefreshing != next.isRefreshing,
+          builder: (context, usageState) {
             final providers = providerState.enabledProviders;
             final snapshots = usageState.snapshots;
-            if (!identical(_cachedUsageSnapshots, snapshots)) {
-              _focusedProviderId = resolveManagedProviderUsageFocus(
-                enabledProviders: providers,
-                currentSnapshots: snapshots,
-                previousSnapshots: _previousSnapshots,
-                currentFocusId: _focusedProviderId,
-              );
-              _previousSnapshots =
-                  Map<String, ProviderUsageSnapshot>.unmodifiable(
-                Map<String, ProviderUsageSnapshot>.from(snapshots),
-              );
-              _cachedUsageSnapshots = snapshots;
-            }
+            _focusedProviderId = resolveManagedProviderUsageFocus(
+              enabledProviders: providers,
+              currentSnapshots: snapshots,
+              previousSnapshots: _previousSnapshots,
+              currentFocusId: _focusedProviderId,
+            );
+            _previousSnapshots =
+                Map<String, ProviderUsageSnapshot>.unmodifiable(snapshots);
             final summary = _Summary.from(
               context,
               providers,
@@ -182,10 +179,7 @@ class _SummaryContent extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         leadingIcon,
-        if (warningIcon != null) ...[
-          const SizedBox(width: 2),
-          warningIcon,
-        ],
+        if (warningIcon != null) ...[const SizedBox(width: 2), warningIcon],
         const SizedBox(width: 4),
         if (!compact || summary.providerList.length == 1)
           Text(
@@ -219,8 +213,6 @@ class _Summary {
   final bool warning;
   final bool loading;
   final bool selected;
-
-  int get providers => providerList.length;
 
   factory _Summary.from(
     BuildContext context,
@@ -259,10 +251,10 @@ class _Summary {
       }
     }
     focused ??= providers.isEmpty ? null : providers.first;
-    final displayList =
-        focused == null ? const <ManagedProvider>[] : <ManagedProvider>[focused];
-    final label =
-        focused == null ? '—' : _singleLabel(focused, usageState);
+    final displayList = focused == null
+        ? const <ManagedProvider>[]
+        : <ManagedProvider>[focused];
+    final label = focused == null ? '—' : _singleLabel(focused, usageState);
     return _Summary(
       providerList: displayList,
       label: label,
