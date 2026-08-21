@@ -142,7 +142,9 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
     final form = SafeArea(
       child: Form(
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 80),
+          padding: widget.embedded
+              ? const EdgeInsets.fromLTRB(0, 8, 0, 80)
+              : const EdgeInsets.fromLTRB(20, 8, 20, 80),
           children: [
             if (_formError != null) _ErrorBanner(message: _formError!),
             ManagedProviderEditorSectionShell(
@@ -893,7 +895,7 @@ class _EmbeddedEditorHeader extends StatelessWidget {
           icon: const Icon(Icons.arrow_back),
         ),
         Expanded(
-          child: Text(title, style: TpTextStyles.of(context).lgSemibold),
+          child: Text(title, style: TpTextStyles.of(context).xl),
         ),
         if (showDelete)
           IconButton(
@@ -921,6 +923,11 @@ class _ErrorBanner extends StatelessWidget {
       color: Theme.of(context).colorScheme.errorContainer,
       borderRadius: BorderRadius.circular(8),
     ),
-    child: Text(message),
+    child: Text(
+      message,
+      style: TpTextStyles.of(context).smColored(
+        Theme.of(context).colorScheme.onErrorContainer,
+      ),
+    ),
   );
 }

@@ -39,7 +39,10 @@ class ManagedProviderEditorSectionShell extends StatelessWidget {
         title: Row(
           children: [
             Expanded(
-              child: Text(title, style: TpTextStyles.of(context).mdSemibold),
+              child: Text(
+                title,
+                style: TpTextStyles.of(context).mdSemiboldTightSnug,
+              ),
             ),
             if (badge != null) _SectionBadge(label: badge!),
           ],

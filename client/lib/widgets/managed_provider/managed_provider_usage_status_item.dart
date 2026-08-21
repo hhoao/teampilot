@@ -187,6 +187,7 @@ class _SummaryContent extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: styles.xs.copyWith(
               color: summary.warning ? cs.error : cs.onSurfaceVariant,
+              height: 1,
               fontFeatures: const [FontFeature.tabularFigures()],
             ),
           ),

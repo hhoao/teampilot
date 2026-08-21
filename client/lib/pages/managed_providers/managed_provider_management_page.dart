@@ -9,6 +9,8 @@ import '../../cubits/managed_provider_usage_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/managed_provider.dart';
 import '../../widgets/app_toast/app_toast.dart';
+import '../../widgets/settings/workspace_pane_header.dart';
+import '../../widgets/settings/workspace_pane_insets.dart';
 import 'managed_provider_editor_page.dart';
 import '../../utils/managed_provider_error_localization.dart';
 import 'managed_provider_list.dart';
@@ -94,8 +96,18 @@ class _ManagedProviderManagementPageState
             : Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _PageHeader(onAdd: () => _openEditor(context)),
-                  const SizedBox(height: 12),
+                  WorkspacePaneHeader(
+                    title: context.l10n.managedProvidersTitle,
+                  ),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: FilledButton.icon(
+                      key: const Key('managed-provider-add'),
+                      onPressed: () => _openEditor(context),
+                      icon: const Icon(Icons.add),
+                      label: Text(context.l10n.managedProvidersAdd),
+                    ),
+                  ),
                   Expanded(
                     child:
                         BlocBuilder<ManagedProviderCubit, ManagedProviderState>(
@@ -150,7 +162,7 @@ class _ManagedProviderManagementPageState
     if (widget.embedded) return content;
     return Scaffold(
       body: SafeArea(
-        child: Padding(padding: const EdgeInsets.all(20), child: content),
+        child: Padding(padding: WorkspacePaneInsets.page, child: content),
       ),
     );
   }
@@ -235,50 +247,6 @@ class _ManagedProviderManagementPageState
   }
 }
 
-class _PageHeader extends StatelessWidget {
-  const _PageHeader({required this.onAdd});
-
-  final VoidCallback onAdd;
-
-  @override
-  Widget build(BuildContext context) => Row(
-    children: [
-      Expanded(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              context.l10n.managedProvidersTitle,
-              style: TpTextStyles.of(
-                context,
-              ).xl.copyWith(fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 3),
-            Text(
-              context.l10n.managedProvidersSubtitle,
-              style: TpTextStyles.of(
-                context,
-              ).smColored(Theme.of(context).colorScheme.onSurfaceVariant),
-            ),
-          ],
-        ),
-      ),
-      TpButton(
-        key: const Key('managed-provider-add'),
-        onPressed: onAdd,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.add, size: 18),
-            SizedBox(width: 6),
-            Text(context.l10n.managedProvidersAdd),
-          ],
-        ),
-      ),
-    ],
-  );
-}
-
 class _LoadError extends StatelessWidget {
   const _LoadError({required this.message, required this.onRetry});
 
@@ -292,7 +260,11 @@ class _LoadError extends StatelessWidget {
       children: [
         Icon(Icons.error_outline, color: Theme.of(context).colorScheme.error),
         const SizedBox(height: 8),
-        Text(message, textAlign: TextAlign.center),
+        Text(
+          message,
+          textAlign: TextAlign.center,
+          style: TpTextStyles.of(context).sm,
+        ),
         const SizedBox(height: 12),
         TpButton(
           variant: TpButtonVariant.outline,

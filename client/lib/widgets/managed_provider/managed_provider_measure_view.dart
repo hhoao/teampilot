@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 
+import '../../l10n/l10n_extensions.dart';
 import '../../models/managed_provider.dart';
 import '../../models/provider_usage_snapshot.dart';
-import '../../l10n/l10n_extensions.dart';
 import '../../utils/managed_provider_error_localization.dart';
 
-/// Presents a cached Managed Provider usage result without performing any I/O.
+/// Formats and presents cached Managed Provider usage without performing I/O.
 class ManagedProviderMeasureView extends StatelessWidget {
   const ManagedProviderMeasureView({
     required this.provider,
@@ -21,12 +21,54 @@ class ManagedProviderMeasureView extends StatelessWidget {
   final bool refreshing;
   final VoidCallback? onRefresh;
 
+  static String? primaryMeasureLabel(
+    ProviderUsageSnapshot? snapshot,
+    ManagedProviderDisplayConfig display,
+  ) {
+    final measure = snapshot?.measures.firstOrNull;
+    if (measure == null) return null;
+    return formatMeasure(measure, display);
+  }
+
+  static String formatMeasure(
+    ProviderUsageMeasure measure,
+    ManagedProviderDisplayConfig display,
+  ) {
+    var value = measure.remaining ?? measure.used ?? measure.total ?? '—';
+    final decimalPlaces = display.decimalPlaces;
+    if (decimalPlaces != null && value != '—') {
+      value = _formatDecimal(value, decimalPlaces);
+    }
+    final suffix = [
+      if (measure.currency?.trim().isNotEmpty == true) measure.currency!,
+      if (measure.unit?.trim().isNotEmpty == true) measure.unit!,
+      if (display.showPercent &&
+          measure.currency?.trim().isNotEmpty != true &&
+          measure.unit?.trim().isNotEmpty != true)
+        '%',
+    ].join(' ');
+    return suffix.isEmpty ? value : '$value $suffix';
+  }
+
+  static String statusLabel(AppLocalizations l10n, ProviderUsageStatus? status) {
+    if (status == null) return l10n.managedProvidersNoUsage;
+    return switch (status) {
+      ProviderUsageStatus.ready => l10n.managedProvidersCachedUsage,
+      ProviderUsageStatus.stale => l10n.managedProvidersCachedUsageStale,
+      ProviderUsageStatus.error => l10n.managedProvidersLastQueryFailed,
+      ProviderUsageStatus.loading => l10n.managedProvidersLoadingUsage,
+      ProviderUsageStatus.unsupported => l10n.managedProvidersQueryUnsupported,
+      ProviderUsageStatus.unknown => l10n.managedProvidersUnknownUsage,
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     final current = snapshot;
     final status = current?.status;
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
+    final usage = primaryMeasureLabel(current, provider.displayConfig);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -35,9 +77,7 @@ class ManagedProviderMeasureView extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                current == null
-                    ? l10n.managedProvidersNoUsage
-                    : _statusLabel(l10n, status!),
+                usage ?? statusLabel(l10n, status),
                 style: TpTextStyles.of(context).smColored(
                   status == ProviderUsageStatus.error
                       ? cs.error
@@ -71,83 +111,42 @@ class ManagedProviderMeasureView extends StatelessWidget {
               ),
           ],
         ),
-        if (status == ProviderUsageStatus.error)
-          Container(
+        if (status == ProviderUsageStatus.error &&
+            current?.lastErrorMessage?.trim().isNotEmpty == true)
+          Padding(
             key: const Key('managed-provider-query-error'),
-            margin: const EdgeInsets.only(top: 6),
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: cs.errorContainer.withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(8),
-            ),
+            padding: const EdgeInsets.only(top: 6),
             child: Text(
               managedProviderSnapshotErrorMessage(l10n, current!),
-              style: TpTextStyles.of(context).smColored(cs.onErrorContainer),
+              style: TpTextStyles.of(context).smColored(cs.error),
             ),
           ),
-        if (current != null && current.measures.isNotEmpty)
+        if (current != null && current.measures.length > 1)
           Padding(
             padding: const EdgeInsets.only(top: 8),
             child: Wrap(
               spacing: 8,
               runSpacing: 6,
               children: [
-                for (final measure in current.measures)
-                  _MeasureChip(
-                    measure: measure,
-                    display: provider.displayConfig,
+                for (final measure in current.measures.skip(1))
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: cs.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      formatMeasure(measure, provider.displayConfig),
+                      style: TpTextStyles.of(context).smSemibold,
+                    ),
                   ),
               ],
             ),
           ),
       ],
-    );
-  }
-
-  static String _statusLabel(
-    AppLocalizations l10n,
-    ProviderUsageStatus status,
-  ) => switch (status) {
-    ProviderUsageStatus.ready => l10n.managedProvidersCachedUsage,
-    ProviderUsageStatus.stale => l10n.managedProvidersCachedUsageStale,
-    ProviderUsageStatus.error => l10n.managedProvidersLastQueryFailed,
-    ProviderUsageStatus.loading => l10n.managedProvidersLoadingUsage,
-    ProviderUsageStatus.unsupported => l10n.managedProvidersQueryUnsupported,
-    ProviderUsageStatus.unknown => l10n.managedProvidersUnknownUsage,
-  };
-}
-
-class _MeasureChip extends StatelessWidget {
-  const _MeasureChip({required this.measure, required this.display});
-
-  final ProviderUsageMeasure measure;
-  final ManagedProviderDisplayConfig display;
-
-  @override
-  Widget build(BuildContext context) {
-    var value = measure.remaining ?? measure.used ?? measure.total ?? '—';
-    final decimalPlaces = display.decimalPlaces;
-    if (decimalPlaces != null && value != '—') {
-      value = _formatDecimal(value, decimalPlaces);
-    }
-    final suffix = [
-      if (measure.currency?.trim().isNotEmpty == true) measure.currency!,
-      if (measure.unit?.trim().isNotEmpty == true) measure.unit!,
-      if (display.showPercent &&
-          measure.currency?.trim().isNotEmpty != true &&
-          measure.unit?.trim().isNotEmpty != true)
-        '%',
-    ].join(' ');
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(
-        suffix.isEmpty ? value : '$value $suffix',
-        style: TpTextStyles.of(context).mdSemibold,
-      ),
     );
   }
 

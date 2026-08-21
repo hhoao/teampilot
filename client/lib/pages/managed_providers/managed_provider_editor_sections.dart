@@ -90,8 +90,14 @@ class ManagedProviderBasicsSection extends StatelessWidget {
           SwitchListTile.adaptive(
             key: const Key('managed-provider-enabled'),
             contentPadding: EdgeInsets.zero,
-            title: Text(l10n.managedProvidersEnabledTitle),
-            subtitle: Text(l10n.managedProvidersEnabledSubtitle),
+            title: Text(
+              l10n.managedProvidersEnabledTitle,
+              style: TpTextStyles.of(context).md,
+            ),
+            subtitle: Text(
+              l10n.managedProvidersEnabledSubtitle,
+              style: TpTextStyles.of(context).mutedSm,
+            ),
             value: enabled,
             onChanged: onEnabledChanged,
           ),
@@ -355,7 +361,10 @@ class ManagedProviderDisplaySection extends StatelessWidget {
         if (schema.hasField('displayConfig.showPercent'))
           SwitchListTile.adaptive(
             contentPadding: EdgeInsets.zero,
-            title: Text(l10n.managedProvidersShowPercent),
+            title: Text(
+              l10n.managedProvidersShowPercent,
+              style: TpTextStyles.of(context).md,
+            ),
             value: showPercent,
             onChanged: onShowPercentChanged,
           ),
@@ -507,7 +516,12 @@ class _LabeledControl extends StatelessWidget {
     children: [
       Padding(
         padding: const EdgeInsets.only(bottom: 6),
-        child: Text(label, style: TpTextStyles.of(context).smSemibold),
+        child: Text(
+          label,
+          style: TpTextStyles.of(context).smSemiboldColored(
+            Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+          ),
+        ),
       ),
       child,
     ],

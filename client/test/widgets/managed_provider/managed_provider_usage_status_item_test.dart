@@ -232,6 +232,9 @@ void main() {
       find.byKey(const Key('managed-provider-usage-brand-icons')),
       findsNothing,
     );
+    final icon = tester.getRect(find.byKey(const Key('managed-provider-brand-p1')));
+    final label = tester.getRect(find.byKey(const Key('managed-provider-usage-status-item')));
+    expect((icon.center.dy - label.center.dy).abs(), lessThanOrEqualTo(1));
   });
 
   testWidgets(

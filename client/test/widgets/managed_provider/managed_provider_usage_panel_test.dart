@@ -132,6 +132,9 @@ void main() {
 
     expect(find.byKey(const Key('managed-provider-brand-p1')), findsOneWidget);
     expect(find.byIcon(Icons.account_balance_outlined), findsNothing);
+    final icon = tester.getRect(find.byKey(const Key('managed-provider-brand-p1')));
+    final name = tester.getRect(find.text('Codex').first);
+    expect((icon.center.dy - name.center.dy).abs(), lessThanOrEqualTo(1));
     expect(tester.takeException(), isNull);
   });
 

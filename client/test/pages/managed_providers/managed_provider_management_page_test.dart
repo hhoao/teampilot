@@ -10,6 +10,7 @@ import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/managed_provider.dart';
 import 'package:teampilot/models/provider_usage_snapshot.dart';
 import 'package:teampilot/pages/managed_providers/managed_provider_management_page.dart';
+import 'package:teampilot/widgets/settings/workspace_pane_header.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/repositories/managed_provider_repository.dart';
 import 'package:teampilot/repositories/managed_provider_usage_repository.dart';
@@ -277,6 +278,42 @@ void main() {
 
     expect(find.text('12.50 USD'), findsOneWidget);
     expect(adapter.calls, 0);
+  });
+
+  testWidgets('list chrome matches workspace pane header and body inset', (
+    tester,
+  ) async {
+    providerCubit.emit(
+      ManagedProviderState(
+        status: ManagedProviderLoadStatus.ready,
+        providers: [_provider()],
+      ),
+    );
+    usageCubit.emit(
+      ManagedProviderUsageState(
+        status: ManagedProviderUsageLoadStatus.ready,
+      ),
+    );
+
+    await pumpPage(tester);
+
+    expect(find.byType(WorkspacePaneHeader), findsOneWidget);
+    expect(
+      find.text(
+        'Balances and quotas independent from CLI provider configuration.',
+      ),
+      findsNothing,
+    );
+
+    final headerLeft = tester.getTopLeft(find.byType(WorkspacePaneHeader)).dx;
+    final listLeft = tester
+        .getTopLeft(find.byKey(const Key('managed-provider-list')))
+        .dx;
+    final cardLeft = tester
+        .getTopLeft(find.byKey(const Key('managed-provider-p1')))
+        .dx;
+    expect(listLeft, headerLeft);
+    expect(cardLeft, headerLeft);
   });
 
   testWidgets('list cards hide adapter ids and keep actions on one row', (
@@ -1289,7 +1326,13 @@ void main() {
 
     final icon = tester.getRect(find.byKey(const Key('managed-provider-brand-p1')));
     final name = tester.getRect(find.text('Codex').first);
-    expect((icon.top - name.top).abs(), lessThanOrEqualTo(1));
+    final subtitle = tester.getRect(find.text('Subscription quota · Codex'));
+    final infoMidY = (name.top + subtitle.bottom) / 2;
+    expect((icon.center.dy - infoMidY).abs(), lessThanOrEqualTo(1));
+    final actions = tester.getRect(
+      find.byKey(const Key('managed-provider-actions-p1')),
+    );
+    expect((actions.center.dy - infoMidY).abs(), lessThanOrEqualTo(1));
   });
 
   testWidgets('managed provider list and editor fit a 280dp viewport', (
@@ -1309,7 +1352,8 @@ void main() {
 
     await pumpPage(tester);
     expect(find.byKey(const Key('managed-provider-list')), findsOneWidget);
-    await tester.tap(find.byIcon(Icons.edit_outlined).first);
+    // Narrow cards collapse actions into an overflow menu; open via the brand.
+    await tester.tap(find.byKey(const Key('managed-provider-brand-p1')));
     await tester.pumpAndSettle();
     expect(
       find.byKey(const Key('managed-provider-editor-error')),
