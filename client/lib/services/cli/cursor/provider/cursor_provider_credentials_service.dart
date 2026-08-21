@@ -10,6 +10,7 @@ import '../../../provider/credential_host_request.dart';
 import '../../../provider/credential_process_result.dart';
 import '../../../provider/provider_credential_host_runner.dart';
 import 'cursor_auth_artifacts.dart';
+import 'cursor_cli_config_policy.dart';
 import 'cursor_home_layout.dart';
 import 'cursor_launch_environment.dart';
 
@@ -47,24 +48,25 @@ class CursorProviderCredentialsService {
 
   Future<CredentialProbe> probe(String providerId) async {
     final home = providerHome(providerId);
-    final authPath = _layout.authJson(home);
-    final authStat = await _fs.stat(authPath);
-    if (!authStat.isFile) {
+    for (final authPath in _layout.authJsonCandidates(home)) {
+      final authStat = await _fs.stat(authPath);
+      if (!authStat.isFile) continue;
+      final content = await _readText(authPath);
+      final ready =
+          content != null &&
+          CursorAuthArtifacts.authJsonIndicatesLoggedIn(content);
       return CredentialProbe(
         providerId: providerId,
-        status: CredentialStatus.missing,
+        status: ready ? CredentialStatus.ready : CredentialStatus.missing,
         credentialPath: authPath,
+        updatedAt: authStat.mtime,
       );
     }
-    final content = await _readText(authPath);
-    final ready =
-        content != null &&
-        CursorAuthArtifacts.authJsonIndicatesLoggedIn(content);
+    final missingPath = _layout.authJson(home);
     return CredentialProbe(
       providerId: providerId,
-      status: ready ? CredentialStatus.ready : CredentialStatus.missing,
-      credentialPath: authPath,
-      updatedAt: authStat.mtime,
+      status: CredentialStatus.missing,
+      credentialPath: missingPath,
     );
   }
 
@@ -74,6 +76,19 @@ class CursorProviderCredentialsService {
     Map<String, String> platformEnv = const {},
     bool replace = false,
   }) async {
+    final globalAuth = await _resolveGlobalAuthPath(
+      homeDirectory,
+      platformEnv: platformEnv,
+    );
+    if (!(await _fs.stat(globalAuth)).isFile) {
+      return CredentialActionResult.failure(
+        CredentialActionFailure(
+          code: CredentialActionFailureCode.requiredFileMissing,
+          path: globalAuth,
+        ),
+      );
+    }
+
     final cursorResult = await importFromCursorDirectory(
       providerId,
       _layout.cursorDir(homeDirectory),
@@ -81,10 +96,6 @@ class CursorProviderCredentialsService {
     );
     if (!cursorResult.ok) return cursorResult;
 
-    final globalAuth = await _resolveGlobalAuthPath(
-      homeDirectory,
-      platformEnv: platformEnv,
-    );
     final destAuth = _layout.authJson(providerHome(providerId));
     final authCopied = await _copyFile(
       src: globalAuth,
@@ -115,7 +126,7 @@ class CursorProviderCredentialsService {
         destCursorDir: destCursorDir,
         relativePath: relativePath,
         replace: replace,
-        required: true,
+        required: _requiresSourceCursorDirFile(relativePath),
       );
       if (!result.ok) return result;
     }
@@ -128,6 +139,7 @@ class CursorProviderCredentialsService {
         required: false,
       );
     }
+    await _ensureDefaultCliConfig(destCursorDir);
     return CredentialActionResult.success;
   }
 
@@ -362,7 +374,9 @@ class CursorProviderCredentialsService {
     String providerId, {
     Map<String, String> platformEnv = const {},
   }) async {
-    await _fs.ensureDir(providerHome(providerId));
+    final home = providerHome(providerId);
+    await _fs.ensureDir(home);
+    await _ensureDefaultCliConfig(_layout.cursorDir(home));
     if (!(await probe(providerId)).isReady &&
         await _hasAuthArtifacts(providerId)) {
       await _removeAuthArtifacts(providerId);
@@ -430,6 +444,30 @@ class CursorProviderCredentialsService {
     return (await _fs.stat(_layout.authJson(home))).isFile;
   }
 
+  bool _requiresSourceCursorDirFile(String relativePath) =>
+      relativePath != CursorHomeLayout.cliConfigFileName;
+
+  Future<void> _ensureDefaultCliConfig(String cursorDir) async {
+    final path = _fs.pathContext.join(
+      cursorDir,
+      CursorHomeLayout.cliConfigFileName,
+    );
+    if ((await _fs.stat(path)).isFile) return;
+    await _fs.ensureDir(cursorDir);
+    await _fs.writeString(
+      path,
+      jsonEncode(_defaultCliConfig()),
+    );
+  }
+
+  Map<String, Object?> _defaultCliConfig() => {
+    'version': CursorCliConfigPolicy.defaultVersion,
+    'permissions': <String, Object?>{
+      'allow': <String>[],
+      'deny': <String>[],
+    },
+  };
+
   Future<void> _removeAuthArtifacts(String providerId) async {
     final home = providerHome(providerId);
     final cursorDir = _layout.cursorDir(home);
@@ -445,6 +483,15 @@ class CursorProviderCredentialsService {
     final authPath = _layout.authJson(home);
     if ((await _fs.stat(authPath)).exists) {
       await _fs.removeRecursive(authPath);
+    }
+    if (Platform.isMacOS) {
+      final legacy = _fs.pathContext.join(
+        _layout.configCursorDir(home),
+        CursorHomeLayout.authFileName,
+      );
+      if (legacy != authPath && (await _fs.stat(legacy)).exists) {
+        await _fs.removeRecursive(legacy);
+      }
     }
   }
 }

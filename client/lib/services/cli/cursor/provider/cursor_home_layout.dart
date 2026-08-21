@@ -31,14 +31,30 @@ final class CursorHomeLayout {
   String configCursorDir(String homeRoot) =>
       _pathContext.join(homeRoot, configDirName, configCursorDirName);
 
-  String authJson(String homeRoot) =>
-      _pathContext.join(configCursorDir(homeRoot), authFileName);
+  /// OAuth token file for [homeRoot].
+  ///
+  /// `cursor-agent` with `AGENT_CLI_CREDENTIAL_STORE=file` writes here:
+  /// - macOS: `$HOME/.cursor/auth.json`
+  /// - Linux / Windows: `$HOME/.config/cursor/auth.json`
+  String authJson(String homeRoot) => Platform.isMacOS
+      ? _pathContext.join(cursorDir(homeRoot), authFileName)
+      : _pathContext.join(configCursorDir(homeRoot), authFileName);
+
+  /// Probe/import order for [authJson] plus legacy paths.
+  List<String> authJsonCandidates(String homeRoot) {
+    final primary = authJson(homeRoot);
+    if (!Platform.isMacOS) return [primary];
+    final legacy = _pathContext.join(configCursorDir(homeRoot), authFileName);
+    if (legacy == primary) return [primary];
+    return [primary, legacy];
+  }
 
   /// Live OAuth tokens on the user's machine, in probe order.
   ///
   /// Cursor IDE on Windows stores `auth.json` under `%APPDATA%\Cursor\`.
-  /// `cursor-agent login` writes to `$HOME/.config/cursor/auth.json` on all
-  /// platforms. macOS IDE uses `~/Library/Application Support/Cursor/`.
+  /// `cursor-agent` file store: macOS `$HOME/.cursor/auth.json`; Linux
+  /// `$HOME/.config/cursor/auth.json`. macOS IDE uses
+  /// `~/Library/Application Support/Cursor/`.
   List<String> globalAuthJsonCandidates(
     String homeDirectory, {
     Map<String, String> platformEnv = const {},
@@ -67,7 +83,9 @@ final class CursorHomeLayout {
     }
 
     if (home.isNotEmpty) {
-      candidates.add(authJson(home));
+      for (final candidate in authJsonCandidates(home)) {
+        candidates.add(candidate);
+      }
     }
     return candidates;
   }
