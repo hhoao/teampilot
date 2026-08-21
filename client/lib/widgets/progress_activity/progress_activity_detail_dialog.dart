@@ -7,6 +7,7 @@ import 'package:shared_ui/shared_ui.dart';
 import '../../cubits/progress_activity_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/progress_activity.dart';
+import '../../services/install/install_job_registry.dart';
 import '../../services/progress_activity/progress_fraction.dart';
 import '../notification/progress_activity_tile.dart';
 
@@ -65,8 +66,7 @@ class _ProgressActivityDetailDialog extends StatelessWidget {
           return _ProgressActivityDetailBody(
             activity: activity,
             onClose: () => _close(context),
-            onCancel: () =>
-                context.read<ProgressActivityCubit>().requestCancel(activityId),
+            onCancel: () => _requestCancel(context, activity),
           );
         },
       ),
@@ -79,6 +79,15 @@ class _ProgressActivityDetailDialog extends StatelessWidget {
     }
     return null;
   }
+}
+
+void _requestCancel(BuildContext context, ProgressActivity activity) {
+  final jobKey = activity.jobKey;
+  if (jobKey != null) {
+    context.read<InstallJobRegistry>().requestCancel(jobKey);
+    return;
+  }
+  context.read<ProgressActivityCubit>().requestCancel(activity.id);
 }
 
 class _ProgressActivityDetailBody extends StatelessWidget {

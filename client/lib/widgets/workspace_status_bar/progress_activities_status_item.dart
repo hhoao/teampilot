@@ -7,6 +7,7 @@ import 'package:shared_ui/shared_ui.dart';
 import '../../cubits/progress_activity_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/progress_activity.dart';
+import '../../services/install/install_job_registry.dart';
 import '../../services/progress_activity/progress_fraction.dart';
 import '../notification/progress_activity_tile.dart';
 import '../progress_activity/progress_activity_detail_dialog.dart';
@@ -118,7 +119,7 @@ class _ProgressActivitiesStatusSegmentState
               menu.close();
               _openDetail(context, id);
             },
-            onCancel: cubit.requestCancel,
+            onCancel: (activity) => _requestActivityCancel(context, activity),
           ),
           child: Tooltip(
             message: label,
@@ -138,6 +139,15 @@ class _ProgressActivitiesStatusSegmentState
   }
 }
 
+void _requestActivityCancel(BuildContext context, ProgressActivity activity) {
+  final jobKey = activity.jobKey;
+  if (jobKey != null) {
+    context.read<InstallJobRegistry>().requestCancel(jobKey);
+    return;
+  }
+  context.read<ProgressActivityCubit>().requestCancel(activity.id);
+}
+
 String? _percentLabel(ProgressActivity activity) {
   final fraction = resolveProgressFraction(activity);
   if (fraction == null) return null;
@@ -155,7 +165,7 @@ class _ProgressActivitiesPanel extends StatelessWidget {
 
   final List<ProgressActivity> activities;
   final ValueChanged<String> onActivityTap;
-  final ValueChanged<String> onCancel;
+  final ValueChanged<ProgressActivity> onCancel;
 
   @override
   Widget build(BuildContext context) {
@@ -190,7 +200,7 @@ class _ProgressActivitiesPanel extends StatelessWidget {
             ProgressActivityTile(
               activity: activities[i],
               onTap: () => onActivityTap(activities[i].id),
-              onCancel: () => onCancel(activities[i].id),
+              onCancel: () => onCancel(activities[i]),
             ),
           ],
         ],
