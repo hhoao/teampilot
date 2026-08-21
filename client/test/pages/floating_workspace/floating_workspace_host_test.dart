@@ -176,6 +176,168 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets('opening panel focuses tab content, not outer chrome', (
+    tester,
+  ) async {
+    final cubit = FloatingWorkspaceCubit();
+    final workbench = WorkbenchCubit();
+    addTearDown(cubit.close);
+    addTearDown(workbench.close);
+    final surface = _FocusableFakeSurface();
+    addTearDown(surface.focusNode.dispose);
+    final registry = FloatingSurfaceRegistry([surface]);
+    final insets = FloatingMaximizeInsets();
+    addTearDown(insets.dispose);
+    final outside = FocusNode(debugLabel: 'outside');
+    addTearDown(outside.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        locale: const Locale('en'),
+        home: RepositoryProvider<CommandBus>.value(
+          value: CommandBus(),
+          child: RepositoryProvider<FloatingSurfaceRegistry>.value(
+            value: registry,
+            child: RepositoryProvider<FloatingMaximizeInsets>.value(
+              value: insets,
+              child: RepositoryProvider<WorkspaceTerminalRegistry>.value(
+                value: WorkspaceTerminalRegistry(),
+                child: BlocProvider.value(
+                  value: cubit,
+                  child: BlocProvider<WorkbenchCubit>.value(
+                    value: workbench,
+                    child: Scaffold(
+                      body: Column(
+                        children: [
+                          Focus(
+                            focusNode: outside,
+                            autofocus: true,
+                            child: const SizedBox(width: 8, height: 8),
+                          ),
+                          const Expanded(
+                            child: FloatingWorkspaceHost(
+                              child: SizedBox.expand(child: Text('shell-body')),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(outside.hasFocus, isTrue);
+
+    cubit.setActiveWorkspace('ws-1');
+    cubit.ensureOpen();
+    await tester.pump();
+    workbench.openFloating('ws-1', WorkbenchTabId.shell('a'));
+    await tester.pump();
+    await tester.pump();
+    await tester.pump();
+    await tester.pump();
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('fake-body'), findsOneWidget);
+    expect(surface.focusNode.hasFocus, isTrue);
+    expect(outside.hasFocus, isFalse);
+  });
+
+  testWidgets('reopening minimized panel focuses tab content', (tester) async {
+    final cubit = FloatingWorkspaceCubit();
+    final workbench = WorkbenchCubit();
+    addTearDown(cubit.close);
+    addTearDown(workbench.close);
+    final surface = _FocusableFakeSurface();
+    addTearDown(surface.focusNode.dispose);
+    final registry = FloatingSurfaceRegistry([surface]);
+    final insets = FloatingMaximizeInsets();
+    addTearDown(insets.dispose);
+    final outside = FocusNode(debugLabel: 'outside');
+    addTearDown(outside.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        locale: const Locale('en'),
+        home: RepositoryProvider<CommandBus>.value(
+          value: CommandBus(),
+          child: RepositoryProvider<FloatingSurfaceRegistry>.value(
+            value: registry,
+            child: RepositoryProvider<FloatingMaximizeInsets>.value(
+              value: insets,
+              child: RepositoryProvider<WorkspaceTerminalRegistry>.value(
+                value: WorkspaceTerminalRegistry(),
+                child: BlocProvider.value(
+                  value: cubit,
+                  child: BlocProvider<WorkbenchCubit>.value(
+                    value: workbench,
+                    child: Scaffold(
+                      body: Column(
+                        children: [
+                          Focus(
+                            focusNode: outside,
+                            child: const SizedBox(width: 8, height: 8),
+                          ),
+                          const Expanded(
+                            child: FloatingWorkspaceHost(
+                              child: SizedBox.expand(child: Text('shell-body')),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    cubit.setActiveWorkspace('ws-1');
+    cubit.ensureOpen();
+    await tester.pump();
+    workbench.openFloating('ws-1', WorkbenchTabId.shell('a'));
+    await tester.pump();
+    await tester.pump();
+    await tester.pump();
+    await tester.pump();
+    await tester.pump();
+    await tester.pump();
+    expect(surface.focusNode.hasFocus, isTrue);
+
+    cubit.minimize();
+    await tester.pump();
+    await tester.pump();
+    outside.requestFocus();
+    await tester.pump();
+    expect(outside.hasFocus, isTrue);
+    expect(surface.focusNode.hasFocus, isFalse);
+
+    cubit.ensureOpen();
+    await tester.pump();
+    await tester.pump();
+    await tester.pump();
+    await tester.pump();
+    await tester.pump();
+    await tester.pump();
+
+    expect(surface.focusNode.hasFocus, isTrue);
+    expect(outside.hasFocus, isFalse);
+  });
 }
 
 class _FakeSurface extends FloatingSurface {
@@ -194,6 +356,40 @@ class _FakeSurface extends FloatingSurface {
   @override
   Widget build(BuildContext context, FloatingTab tab) =>
       const Text('fake-body');
+
+  @override
+  FloatingTab createTab({required String workspaceId, Object? payload}) {
+    return FloatingTab(
+      id: 'fake:$workspaceId',
+      surfaceId: id,
+      title: 'fake',
+      payload: payload,
+    );
+  }
+}
+
+class _FocusableFakeSurface extends FloatingSurface {
+  final FocusNode focusNode = FocusNode(debugLabel: 'fake-tab-content');
+
+  @override
+  String get id => 'terminal';
+
+  @override
+  FloatingEmptyAction? get emptyAction => null;
+
+  @override
+  bool get allowMultipleTabs => true;
+
+  @override
+  Future<void> activate(FloatingTab tab) async {}
+
+  @override
+  Widget build(BuildContext context, FloatingTab tab) {
+    return Focus(
+      focusNode: focusNode,
+      child: const Text('fake-body'),
+    );
+  }
 
   @override
   FloatingTab createTab({required String workspaceId, Object? payload}) {

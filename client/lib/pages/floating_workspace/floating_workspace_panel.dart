@@ -118,7 +118,9 @@ class _FloatingWorkspacePanelState extends State<FloatingWorkspacePanel> {
 
     Widget child = FloatingWorkspaceCloseShortcut(
       registry: registry,
-      autofocus: state.visibility == FloatingPanelVisibility.open,
+      // Content FocusScope requests focus on open; chrome Focus only for empty.
+      autofocus:
+          state.visibility == FloatingPanelVisibility.open && tabs.isEmpty,
       child: _FloatingWorkspacePanelBody(
         key: const Key('floating_workspace_panel'),
         state: state,
@@ -187,6 +189,59 @@ class _FloatingWorkspacePanelBodyState
   /// without waiting on Bloc rebuilds / persistence.
   Rect? _gestureBounds;
   final _terminalHold = WorkspaceTerminalHoldHandle();
+  final _contentScope = FocusScopeNode(debugLabel: 'floating_panel_content');
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.state.visibility == FloatingPanelVisibility.open) {
+      _scheduleContentFocus();
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _FloatingWorkspacePanelBody oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final opened =
+        oldWidget.state.visibility != FloatingPanelVisibility.open &&
+        widget.state.visibility == FloatingPanelVisibility.open;
+    final gainedTabs =
+        oldWidget.tabs.isEmpty &&
+        widget.tabs.isNotEmpty &&
+        widget.state.visibility == FloatingPanelVisibility.open;
+    if (opened || gainedTabs) {
+      _scheduleContentFocus();
+    }
+  }
+
+  @override
+  void dispose() {
+    _contentScope.dispose();
+    super.dispose();
+  }
+
+  void _scheduleContentFocus() {
+    var attempts = 0;
+    void attempt() {
+      if (!mounted) return;
+      if (widget.state.visibility != FloatingPanelVisibility.open) return;
+      final target = _contentScope.traversalDescendants
+          .where((node) => node.canRequestFocus && node != _contentScope)
+          .firstOrNull;
+      if (target != null) {
+        target.requestFocus();
+        return;
+      }
+      // Empty panel / deferred tab body may attach a frame or two later.
+      if (attempts++ < 8) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
+      } else {
+        _contentScope.requestFocus();
+      }
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
+  }
 
   void _beginGesture(Rect bounds) {
     _gestureBounds = bounds;
@@ -297,6 +352,7 @@ class _FloatingWorkspacePanelBodyState
                       registry: widget.registry,
                       hostSize: hostSize,
                       panelBounds: positioned,
+                      contentScope: _contentScope,
                       allowTitleDrag:
                           state.visibility == FloatingPanelVisibility.open,
                       allowEdgeResize:
@@ -415,6 +471,7 @@ class _PanelChromeFrame extends StatefulWidget {
     required this.registry,
     required this.hostSize,
     required this.panelBounds,
+    required this.contentScope,
     required this.allowTitleDrag,
     required this.allowEdgeResize,
     required this.onGestureBegin,
@@ -430,6 +487,7 @@ class _PanelChromeFrame extends StatefulWidget {
   final FloatingSurfaceRegistry registry;
   final Size hostSize;
   final Rect panelBounds;
+  final FocusScopeNode contentScope;
   final bool allowTitleDrag;
   final bool allowEdgeResize;
   final ValueChanged<Rect> onGestureBegin;
@@ -601,15 +659,19 @@ class _PanelChromeFrameState extends State<_PanelChromeFrame> {
                         ),
                       ),
                       Expanded(
-                        child: RepaintBoundary(
-                          child: _FloatingPanelBodySlot(
-                            tabs: tabs,
-                            activeTabId: activeId,
-                            registry: widget.registry,
-                            empty: FloatingWorkspaceEmpty(
-                              autofocus: tabs.isEmpty,
-                              rows: _emptyRows(context),
-                              onActivate: (id) => _onEmptyActivate(context, id),
+                        child: FocusScope(
+                          node: widget.contentScope,
+                          child: RepaintBoundary(
+                            child: _FloatingPanelBodySlot(
+                              tabs: tabs,
+                              activeTabId: activeId,
+                              registry: widget.registry,
+                              empty: FloatingWorkspaceEmpty(
+                                autofocus: tabs.isEmpty,
+                                rows: _emptyRows(context),
+                                onActivate: (id) =>
+                                    _onEmptyActivate(context, id),
+                              ),
                             ),
                           ),
                         ),
