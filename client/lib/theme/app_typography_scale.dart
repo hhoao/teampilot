@@ -1,3 +1,6 @@
+import 'dart:io' show Platform;
+
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 
@@ -56,18 +59,26 @@ double clampUiZoomMultiplierForBaseline(
 /// `standard` preset maps to this; compact/comfortable/custom are relative to
 /// it.
 ///
-/// When [compensateDisplayScaling] is true (desktop), undoes OS display
-/// scaling so density stays consistent: Windows @150% (dpr 1.5) → ~0.67,
-/// Linux/macOS @100% (dpr 1.0) → 1.0.
+/// When [compensateDisplayScaling] is true and macOS ([useMacOSBaselines] or
+/// runtime probe), returns `(1 / dpr) ×` [kMacUiZoomBaseline] (126% of the
+/// Linux/Windows auto baseline).
+///
+/// Other desktops undo OS display scaling via `1/dpr`: Windows @150% (dpr 1.5)
+/// → ~0.67, Linux @100% (dpr 1.0) → 1.0.
 ///
 /// When false (Android/iOS), returns [kMobileUiZoomBaseline]: logical pixels
 /// already absorb dpr; mobile `standard` zoom is denser than desktop 1.0.
 double autoUiZoomForDevicePixelRatio(
   double devicePixelRatio, {
   bool compensateDisplayScaling = true,
+  bool? useMacOSBaselines,
 }) {
   if (!compensateDisplayScaling) return kMobileUiZoomBaseline;
-  return devicePixelRatio <= 0 ? 1.0 : 1.0 / devicePixelRatio;
+  final dpr = devicePixelRatio <= 0 ? 1.0 : devicePixelRatio;
+  if (_resolveMacOSBaselines(useMacOSBaselines)) {
+    return kMacUiZoomBaseline / dpr;
+  }
+  return 1.0 / dpr;
 }
 
 String normalizeTypographyScale(String? raw) {
@@ -85,9 +96,23 @@ const double kMobileTextScaleBaseline = 1.3;
 /// Mobile `standard` interface-zoom baseline. `standard` preset × 1.0 maps here.
 const double kMobileUiZoomBaseline = 0.7;
 
+/// macOS `standard` text-size baseline (72% × OS accessibility text scale).
+const double kMacTextScaleBaseline = 0.72;
+
+/// macOS `standard` interface-zoom baseline (126%).
+const double kMacUiZoomBaseline = 1.26;
+
+bool _resolveMacOSBaselines(bool? useMacOSBaselines) =>
+    useMacOSBaselines ?? (!kIsWeb && Platform.isMacOS);
+
 /// `standard` text-size baseline.
 ///
-/// Desktop ([compensateDisplayScaling] true): [osTextScale] (e.g. GNOME
+/// macOS ([useMacOSBaselines] or runtime probe): [osTextScale] × dpr ×
+/// [kMacTextScaleBaseline] (72% of the Linux/Windows auto baseline). Combined
+/// with interface zoom `(1/dpr) ×` [kMacUiZoomBaseline], on-screen text size
+/// is dpr-independent (same cancellation as other desktops).
+///
+/// Other desktops ([compensateDisplayScaling] true): [osTextScale] (e.g. GNOME
 /// text-scaling-factor) × [devicePixelRatio]. Combined with interface zoom
 /// `1/dpr` this renders text at the size the OS would while icons/spacing stay
 /// compact. e.g. Ubuntu GNOME 1.5 @100% → 1.5; Windows @150% → 1.5.
@@ -98,12 +123,16 @@ double autoTextScaleForSystem(
   double osTextScale,
   double devicePixelRatio, {
   bool compensateDisplayScaling = true,
+  bool? useMacOSBaselines,
 }) {
   final os = osTextScale <= 0 ? 1.0 : osTextScale;
   if (!compensateDisplayScaling) {
     return clampTypographyCustomMultiplier(os * kMobileTextScaleBaseline);
   }
   final dpr = devicePixelRatio <= 0 ? 1.0 : devicePixelRatio;
+  if (_resolveMacOSBaselines(useMacOSBaselines)) {
+    return clampTypographyCustomMultiplier(os * dpr * kMacTextScaleBaseline);
+  }
   return clampTypographyCustomMultiplier(os * dpr);
 }
 

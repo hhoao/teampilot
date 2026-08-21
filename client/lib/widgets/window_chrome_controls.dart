@@ -10,6 +10,15 @@ import '../services/app/platform_utils.dart';
 /// [DesktopWindowTitleBar].
 const double kDefaultWindowChromeHeight = 40;
 
+/// macOS traffic-light dot diameter at icon scale 1.0 (~native 12pt).
+///
+/// Uses [TpIconSizes.scale] for in-app text preset deltas only — not toolbar
+/// [TpIconSizes.md], which reads large beside title-bar chrome.
+const double kMacTrafficLightDiameterBase = 12;
+
+/// Gap between traffic-light dots as a fraction of [kMacTrafficLightDiameterBase].
+const double kMacTrafficLightGapFactor = 0.45;
+
 /// Desktop window controls: macOS traffic lights (left) or Windows-style icons.
 class WindowChromeControls extends StatelessWidget {
   const WindowChromeControls({
@@ -107,8 +116,8 @@ class _MacTrafficLightControlsState extends State<MacTrafficLightControls> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final diameter = context.tpIconSizes.md;
-    final gap = context.tpIconSizes.sm * 0.55;
+    final diameter = kMacTrafficLightDiameterBase * context.tpIconSizes.scale;
+    final gap = diameter * kMacTrafficLightGapFactor;
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
