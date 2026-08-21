@@ -40,6 +40,32 @@ Future<void> _flushRealIo(WidgetTester tester, {int rounds = 6}) async {
   }
 }
 
+Future<String?> _readRegistriesJson(WidgetTester tester, String basePath) {
+  return tester.runAsync<String?>(
+    () => AppStorage.fs.readString(
+      AppPaths.skillRegistriesConfigPathForTeampilotRoot(basePath),
+    ),
+  );
+}
+
+Future<String?> _waitForRegistriesJson(
+  WidgetTester tester,
+  String basePath,
+  bool Function(String raw) predicate,
+) async {
+  String? raw;
+  final deadline = DateTime.now().add(const Duration(seconds: 5));
+  while (DateTime.now().isBefore(deadline)) {
+    raw = await _readRegistriesJson(tester, basePath);
+    if (raw != null && predicate(raw)) return raw;
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 50)),
+    );
+    await tester.pump();
+  }
+  return raw;
+}
+
 void main() {
   late Directory tmp;
   late AppPaths paths;
@@ -121,11 +147,10 @@ void main() {
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField).at(0), 'My Skills');
     await tester.tap(find.text('Save'));
-    await _flushRealIo(tester);
-    final raw = await tester.runAsync<Object?>(
-      () => AppStorage.fs.readString(
-        AppPaths.skillRegistriesConfigPathForTeampilotRoot(paths.basePath),
-      ),
+    final raw = await _waitForRegistriesJson(
+      tester,
+      paths.basePath,
+      (value) => value.contains('My Skills'),
     );
     expect(raw, contains('My Skills'));
   });
@@ -194,6 +219,14 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilledButton, 'Remove'));
     await _flushRealIo(tester);
+    final deadline = DateTime.now().add(const Duration(seconds: 5));
+    while (DateTime.now().isBefore(deadline) &&
+        find.text('https://github.com/vercel/ai').evaluate().isNotEmpty) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 50)),
+      );
+      await tester.pump();
+    }
     expect(find.text('https://github.com/vercel/ai'), findsNothing);
   });
 }
