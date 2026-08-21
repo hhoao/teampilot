@@ -89,6 +89,27 @@ void main() {
       },
     );
 
+    test(
+      'awaiting + PTY up but history continue still in flight → defer '
+      '(boot / composer wait often exceeds idle grace)',
+      () {
+        // After onProcessStarted, memberRunning is true and connecting is
+        // false, but ensureMemberInputReady + inject can still take >4s.
+        // Grace-clearing here blanks Starting/Running chrome mid-submit.
+        expect(
+          resolveHistoryAwaitingWorkingAction(
+            awaitingAssistant: true,
+            sessionWorking: false,
+            sawWorkingWhileAwaiting: false,
+            sessionConnecting: false,
+            memberRunning: true,
+            historyContinueInFlight: true,
+          ),
+          HistoryAwaitingWorkingAction.deferWhileStarting,
+        );
+      },
+    );
+
     test('latched idle still clears even if connecting flag stale', () {
       // Falling edge after a real working turn wins over connect noise.
       expect(

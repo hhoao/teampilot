@@ -241,6 +241,35 @@ void main() {
       expect(seat.state.awaitingAssistant, isTrue);
     },
   );
+
+  test(
+    'member up + idle while history continue in flight → defer (no grace)',
+    () async {
+      final session = simpleSession();
+      await cubit.load(
+        session: session,
+        memberId: '',
+        launchContext: launchCtx(session),
+      );
+      final seat = cubit.ensureSeat(
+        sessionId: session.sessionId,
+        selectedMemberId: '',
+      );
+
+      seat.enqueuePendingUser('hi');
+      expect(
+        seat.applyWorkingSessionSync(
+          sessionWorking: false,
+          sessionConnecting: false,
+          memberRunning: true,
+          historyContinueInFlight: true,
+        ),
+        HistoryAwaitingWorkingAction.deferWhileStarting,
+      );
+      expect(seat.state.awaitingAssistant, isTrue);
+      expect(seat.sawWorkingWhileAwaiting, isFalse);
+    },
+  );
 }
 
 class _EmptyAdapter implements AiTranscriptAdapter {

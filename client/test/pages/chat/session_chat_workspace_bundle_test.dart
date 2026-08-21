@@ -130,6 +130,7 @@ void main() {
           sessionWorking: any(named: 'sessionWorking'),
           sessionConnecting: any(named: 'sessionConnecting'),
           memberRunning: any(named: 'memberRunning'),
+          historyContinueInFlight: any(named: 'historyContinueInFlight'),
         )).thenReturn(HistoryAwaitingWorkingAction.none);
     when(() => seat.load(
           session: any(named: 'session'),

@@ -523,6 +523,7 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
     required bool sessionWorking,
     bool sessionConnecting = false,
     bool memberRunning = true,
+    bool historyContinueInFlight = false,
   }) {
     if (isClosed) return HistoryAwaitingWorkingAction.none;
     final action = resolveHistoryAwaitingWorkingAction(
@@ -531,6 +532,7 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
       sawWorkingWhileAwaiting: _sawWorkingWhileAwaiting,
       sessionConnecting: sessionConnecting,
       memberRunning: memberRunning,
+      historyContinueInFlight: historyContinueInFlight,
     );
     switch (action) {
       case HistoryAwaitingWorkingAction.none:

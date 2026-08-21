@@ -145,6 +145,10 @@ class _SessionChatViewState extends State<SessionChatView> {
   final _submitLock = HistoryContinueSubmitLock();
   final _mailboxQueued = StreamController<PendingUserMessage>.broadcast();
 
+  /// True from optimistic enqueue through connect/boot/inject settle so idle
+  /// grace cannot blank tip chrome while History continue is still in flight.
+  var _historyContinueInFlight = false;
+
   /// mailId → seat key at queue time (guards wrong-seat timeline refresh).
   final Map<String, String> _mailboxQueuedSeats = {};
   var _mailboxQueuedClearToken = 0;
@@ -826,53 +830,58 @@ class _SessionChatViewState extends State<SessionChatView> {
     final peek =
         widget.peekContinueChannel?.call() ?? HistoryContinueChannel.pty;
     final optimisticPty = peek == HistoryContinueChannel.pty;
-    if (optimisticPty) {
-      seat.enqueuePendingUser(text);
-      _syncAwaitingFromWorkingSessions(context.read<ChatCubit>().state);
-    }
-    _controller.clear();
-    _clip.clear();
-    if (mounted) setState(() {});
-
-    final result = await _submitLock.run(() async {
-      if (mounted) setState(() {});
-      return widget.onSubmit(text);
-    });
-    if (!mounted) return const HistoryContinueSubmitResult.failed();
-    setState(() {});
-    if (!result.ok) {
-      _cancelAwaitingIdleGrace();
-      if (optimisticPty) seat.removePendingMatching(text);
-      // Clear the stale clip before restoring the composed text. If the
-      // restored text exceeds the paste-collapse threshold, detection in
-      // ComposeTriggerField re-collapses it into the clip — the block /
-      // follow-up split is intentionally lost on a failed submit.
+    _historyContinueInFlight = true;
+    try {
+      if (optimisticPty) {
+        seat.enqueuePendingUser(text);
+        _syncAwaitingFromWorkingSessions(context.read<ChatCubit>().state);
+      }
+      _controller.clear();
       _clip.clear();
-      _controller
-        ..text = text
-        ..selection = TextSelection.collapsed(offset: text.length);
-      setState(() {});
-      return result;
-    }
+      if (mounted) setState(() {});
 
-    if (result.isMailbox) {
-      _cancelAwaitingIdleGrace();
-      if (optimisticPty) seat.removePendingMatching(text);
-      final mailId = result.mailId!;
-      _mailboxQueuedSeats[mailId] = _mailboxSeatKey();
-      _mailboxQueued.add(PendingUserMessage(id: mailId, content: text));
+      final result = await _submitLock.run(() async {
+        if (mounted) setState(() {});
+        return widget.onSubmit(text);
+      });
+      if (!mounted) return const HistoryContinueSubmitResult.failed();
       setState(() {});
-      // Mailbox text is not in the CLI transcript — skip live refresh churn.
-      return result;
-    }
+      if (!result.ok) {
+        _cancelAwaitingIdleGrace();
+        if (optimisticPty) seat.removePendingMatching(text);
+        // Clear the stale clip before restoring the composed text. If the
+        // restored text exceeds the paste-collapse threshold, detection in
+        // ComposeTriggerField re-collapses it into the clip — the block /
+        // follow-up split is intentionally lost on a failed submit.
+        _clip.clear();
+        _controller
+          ..text = text
+          ..selection = TextSelection.collapsed(offset: text.length);
+        setState(() {});
+        return result;
+      }
 
-    if (!optimisticPty) {
-      // Peek said mailbox but post-connect path was PTY — show the bubble now.
-      seat.enqueuePendingUser(text);
-      _syncAwaitingFromWorkingSessions(context.read<ChatCubit>().state);
+      if (result.isMailbox) {
+        _cancelAwaitingIdleGrace();
+        if (optimisticPty) seat.removePendingMatching(text);
+        final mailId = result.mailId!;
+        _mailboxQueuedSeats[mailId] = _mailboxSeatKey();
+        _mailboxQueued.add(PendingUserMessage(id: mailId, content: text));
+        setState(() {});
+        // Mailbox text is not in the CLI transcript — skip live refresh churn.
+        return result;
+      }
+
+      if (!optimisticPty) {
+        // Peek said mailbox but post-connect path was PTY — show the bubble now.
+        seat.enqueuePendingUser(text);
+        _syncAwaitingFromWorkingSessions(context.read<ChatCubit>().state);
+      }
+      unawaited(_startLiveRefresh());
+      return result;
+    } finally {
+      _historyContinueInFlight = false;
     }
-    unawaited(_startLiveRefresh());
-    return result;
   }
 
   void _cancelAwaitingIdleGrace() {
@@ -900,6 +909,7 @@ class _SessionChatViewState extends State<SessionChatView> {
             sessionId: sid,
             memberId: _shellMemberId,
           ),
+          historyContinueInFlight: _historyContinueInFlight,
         );
         return;
       }
@@ -920,6 +930,7 @@ class _SessionChatViewState extends State<SessionChatView> {
         sessionId: sid,
         memberId: _shellMemberId,
       ),
+      historyContinueInFlight: _historyContinueInFlight,
     );
     switch (action) {
       case HistoryAwaitingWorkingAction.none:

@@ -15,8 +15,9 @@ enum HistoryAwaitingWorkingAction {
   /// Seat idle and never latched — schedule grace clear (missed rising edge).
   scheduleGraceClear,
 
-  /// Optimistic turn is up but PTY connect is still in flight — keep Starting;
-  /// do not start the idle grace (connect often exceeds [historyAwaitingIdleGrace]).
+  /// Optimistic turn is up but connect / boot / inject is still in flight —
+  /// keep Starting/Running tip; do not start the idle grace (connect and
+  /// [ensureMemberInputReady] often exceed [historyAwaitingIdleGrace]).
   deferWhileStarting,
 }
 
@@ -26,14 +27,17 @@ enum HistoryAwaitingWorkingAction {
 /// which must clear when the seat goes idle — including when the seat was
 /// already working at submit (no rising edge) or never entered working.
 ///
-/// While [sessionConnecting] or the member PTY is not up, keep awaiting without
-/// scheduling grace so landing/first-continue Starting survives long connects.
+/// While [sessionConnecting], the member PTY is not up, or a History continue
+/// submit is still waiting on boot/composer/inject ([historyContinueInFlight]),
+/// keep awaiting without scheduling grace so tip chrome does not blank between
+/// Starting and Running.
 HistoryAwaitingWorkingAction resolveHistoryAwaitingWorkingAction({
   required bool awaitingAssistant,
   required bool sessionWorking,
   required bool sawWorkingWhileAwaiting,
   bool sessionConnecting = false,
   bool memberRunning = true,
+  bool historyContinueInFlight = false,
 }) {
   if (!awaitingAssistant) {
     return sawWorkingWhileAwaiting
@@ -44,7 +48,7 @@ HistoryAwaitingWorkingAction resolveHistoryAwaitingWorkingAction({
   if (sawWorkingWhileAwaiting) {
     return HistoryAwaitingWorkingAction.clearAwaiting;
   }
-  if (sessionConnecting || !memberRunning) {
+  if (sessionConnecting || !memberRunning || historyContinueInFlight) {
     return HistoryAwaitingWorkingAction.deferWhileStarting;
   }
   return HistoryAwaitingWorkingAction.scheduleGraceClear;
