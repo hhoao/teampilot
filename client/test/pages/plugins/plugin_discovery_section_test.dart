@@ -63,7 +63,7 @@ void main() {
     );
   }
 
-  testWidgets('renders sort control, warning, and four catalog metrics', (
+  testWidgets('renders sort control, warning, and compact catalog metrics', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -83,11 +83,13 @@ void main() {
 
     expect(find.byType(TpCatalogSortControl<CatalogSortKey>), findsOneWidget);
     expect(find.byType(TpCatalogSourceWarning), findsOneWidget);
+    expect(find.byType(TpCatalogDiscoveryHeader), findsOneWidget);
+    expect(find.byType(TpCatalogListCard), findsOneWidget);
     expect(find.text('catalog-plugin'), findsOneWidget);
     expect(find.text('1,234'), findsOneWidget);
     expect(find.text('4.5'), findsOneWidget);
-    expect(find.text('Updated'), findsOneWidget);
-    expect(find.text('Published'), findsOneWidget);
+    expect(find.text('Updated'), findsNothing);
+    expect(find.text('Published'), findsNothing);
   });
 
   testWidgets('shows blocking error only when no discovery result exists', (

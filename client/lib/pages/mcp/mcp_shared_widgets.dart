@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 
@@ -197,77 +198,71 @@ class McpCatalogListingTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
+    final styles = TpTextStyles.of(context);
     final metrics = listing.metrics;
     final adoption = metrics.adoptionCount ?? listing.useCount;
-    final tags = <String>[
+    final tagLabels = <String>[
       if (listing.verified) l10n.mcpCatalogVerified,
       if (listing.remote) 'remote',
       ...listing.tags.take(3),
     ];
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: TpCatalogCardShell(
-        title: listing.title,
-        source: _mcpCatalogSourceLabel(listing.source),
-        description: listing.description,
-        leading: _McpCatalogIcon(listing: listing),
-        body: tags.isEmpty
-            ? null
-            : Text(
-                tags.join(' · '),
-                style: TpTextStyles.of(context)
-                    .xsColored(cs.onSurface.withValues(alpha: 0.5)),
+    return TpCatalogListCard(
+      leading: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: _McpCatalogIcon(listing: listing),
+      ),
+      title: listing.title,
+      source: _mcpCatalogSourceLabel(listing.source),
+      description: listing.description,
+      emptyDescription: l10n.mcpCatalogCardNoDescription,
+      tags: [for (final label in tagLabels) TpCatalogTagChip(label: label)],
+      adoption: TpCatalogMetricView(
+        icon: Icons.trending_up_outlined,
+        label: l10n.mcpCatalogAdoption,
+        value: adoption?.toString(),
+        missingValueTooltip: l10n.catalogMetricMissingTooltip,
+      ),
+      rating: TpCatalogMetricView(
+        icon: Icons.star_outline,
+        label: l10n.catalogMetricRating,
+        value: metrics.rating?.toStringAsFixed(1),
+        missingValueTooltip: l10n.catalogMetricMissingTooltip,
+      ),
+      actions: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (onOpenHomepage != null)
+            IconButton(
+              tooltip: l10n.mcpOpenHomepage,
+              visualDensity: VisualDensity.compact,
+              iconSize: context.tpIconSizes.md,
+              onPressed: onOpenHomepage,
+              icon: const Icon(Icons.open_in_new),
+            ),
+          if (busy)
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 12),
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
               ),
-        metadata: TpCatalogMetadataRow(
-          adoption: TpCatalogMetricView(
-            icon: Icons.trending_up_outlined,
-            label: l10n.mcpCatalogAdoption,
-            value: adoption?.toString(),
-            missingValueTooltip: l10n.catalogMetricMissingTooltip,
-          ),
-          rating: TpCatalogMetricView(
-            icon: Icons.star_outline,
-            label: l10n.catalogMetricRating,
-            value: metrics.rating?.toStringAsFixed(1),
-            missingValueTooltip: l10n.catalogMetricMissingTooltip,
-          ),
-        ),
-        action: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (onOpenHomepage != null)
-              IconButton(
-                tooltip: l10n.mcpOpenHomepage,
-                visualDensity: VisualDensity.compact,
-                iconSize: context.tpIconSizes.md,
-                onPressed: onOpenHomepage,
-                icon: const Icon(Icons.open_in_new),
+            )
+          else if (installed)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Text(
+                l10n.mcpCatalogInstalled,
+                style: styles.smSemiboldColored(cs.primary),
               ),
-            if (busy)
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 12),
-                child: SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-              )
-            else if (installed)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Text(
-                  l10n.mcpCatalogInstalled,
-                  style: TpTextStyles.of(context).smSemiboldColored(cs.primary),
-                ),
-              )
-            else
-              FilledButton.tonal(
-                onPressed: listing.canInstall ? onAdd : null,
-                child: Text(l10n.mcpCatalogAdd),
-              ),
-          ],
-        ),
+            )
+          else
+            FilledButton.tonal(
+              onPressed: listing.canInstall ? onAdd : null,
+              child: Text(l10n.mcpCatalogAdd),
+            ),
+        ],
       ),
     );
   }
@@ -278,24 +273,34 @@ class _McpCatalogIcon extends StatelessWidget {
 
   final McpCatalogListing listing;
 
+  static const double _size = TpCatalogListCard.leadingSize;
+
   @override
   Widget build(BuildContext context) {
-    final fallback = Icon(
-      Icons.hub_outlined,
-      size: context.tpIconSizes.md,
-      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
-    );
-    final url = listing.iconUrl;
-    if (url == null || url.isEmpty) return fallback;
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
-      child: Image.network(
-        url,
-        width: 36,
-        height: 36,
-        fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => fallback,
+    Widget placeholder() => ColoredBox(
+      color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(
+        alpha: 0.45,
       ),
+      child: Center(
+        child: Icon(
+          Icons.hub_outlined,
+          size: 20,
+          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
+        ),
+      ),
+    );
+
+    final url = listing.iconUrl;
+    if (url == null || url.isEmpty) return placeholder();
+    return CachedNetworkImage(
+      imageUrl: url,
+      width: _size,
+      height: _size,
+      fit: BoxFit.cover,
+      fadeInDuration: const Duration(milliseconds: 120),
+      fadeOutDuration: const Duration(milliseconds: 80),
+      placeholder: (_, __) => placeholder(),
+      errorWidget: (_, __, ___) => placeholder(),
     );
   }
 }

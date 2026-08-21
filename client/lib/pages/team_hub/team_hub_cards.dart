@@ -3,8 +3,8 @@ import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../models/discoverable_team.dart';
-import 'team_hub_visuals.dart';
 import '../../theme/workspace_surface_layers.dart';
+import 'team_hub_visuals.dart';
 
 /// Bordered detail shell — matches [WorkspaceLibraryCard] (without the outer
 /// bottom margin, used inside hub lists rather than library pages).
@@ -52,7 +52,12 @@ class TeamHubCardHeader extends StatelessWidget {
   }
 }
 
-/// A discovery/favorites card for one public team.
+/// Fixed four-row discovery card for one public team.
+///
+/// 1. icon + name + favorite
+/// 2. description (2 lines, or localized "无")
+/// 3. tags
+/// 4. metrics + source (source fixed max width, ellipsis)
 class TeamHubCard extends StatefulWidget {
   const TeamHubCard({
     super.key,
@@ -75,95 +80,162 @@ class TeamHubCard extends StatefulWidget {
 
 class _TeamHubCardState extends State<TeamHubCard> {
   static const _touchTarget = 40.0;
+  static const _radius = 14.0;
+  static const _sourceMaxWidth = 120.0;
   bool _hovered = false;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final spacing = context.tpSpacing;
+    final styles = TpTextStyles.of(context);
+    final l10n = context.l10n;
     final team = widget.team;
     final accent = teamAccentColor(team.key, Theme.of(context).brightness);
+    final interactive = !widget.busy;
     final borderColor = _hovered
         ? accent.withValues(alpha: 0.55)
         : cs.outlineVariant;
 
-    final metrics = team.metrics;
-    return TpHover(
-      onTap: widget.busy ? null : widget.onTap,
-      enabled: !widget.busy,
-      cursor: widget.busy ? SystemMouseCursors.basic : null,
-      backgroundColor: Colors.transparent,
-      hoverColor: Colors.transparent,
-      borderRadius: BorderRadius.circular(14),
-      onHoverChanged: (hovered) => setState(() => _hovered = hovered),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 120),
-        decoration: BoxDecoration(
-          color: cs.workspaceCard,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: borderColor),
-          boxShadow: _hovered
-              ? [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.10),
-                    blurRadius: 14,
-                    offset: const Offset(0, 6),
-                  ),
-                ]
-              : null,
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: TpCatalogCardShell(
-          title: team.name,
-          source: team.author?.trim().isNotEmpty == true
-              ? team.author!.trim()
-              : team.key,
-          description: team.description,
-          leading: TeamMonogram(seed: team.key, label: team.name),
-          metadata: TpCatalogMetadataRow(
-            adoption: _metric(
-              icon: Icons.download_outlined,
-              label: context.l10n.teamsCatalogAdoption,
-              value: metrics.adoptionCount?.toString(),
-              missing: context.l10n.catalogMetricMissingTooltip,
-            ),
-            rating: _metric(
-              icon: Icons.star_outline_rounded,
-              label: context.l10n.catalogMetricRating,
-              value: metrics.rating?.toStringAsFixed(1),
-              missing: context.l10n.catalogMetricMissingTooltip,
-            ),
+    final description = team.description.trim();
+    final descriptionText = description.isEmpty
+        ? l10n.teamHubCardNoDescription
+        : description;
+    final author = team.author?.trim();
+    final sourceLabel = (author != null && author.isNotEmpty)
+        ? author
+        : team.key;
+
+    final tags = <Widget>[
+      TeamStatChip(
+        icon: Icons.people_alt_outlined,
+        label: '${team.roster.length}',
+        tooltip: l10n.teamHubMembersLabel,
+      ),
+      TeamStatChip(
+        icon: Icons.auto_awesome_outlined,
+        label: '${team.skillDeps.length}',
+        tooltip: l10n.teamHubSkillsLabel,
+      ),
+      if (team.category.isNotEmpty)
+        TeamStatChip(label: team.category, accent: accent),
+    ];
+
+    return MouseRegion(
+      onEnter: (_) {
+        if (widget.busy) return;
+        setState(() => _hovered = true);
+      },
+      onExit: (_) => setState(() => _hovered = false),
+      cursor: interactive ? SystemMouseCursors.click : SystemMouseCursors.basic,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: interactive ? widget.onTap : null,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          decoration: BoxDecoration(
+            color: cs.surfaceContainer,
+            borderRadius: BorderRadius.circular(_radius),
+            border: Border.all(color: borderColor),
+            boxShadow: _hovered
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.10),
+                      blurRadius: 14,
+                      offset: const Offset(0, 6),
+                    ),
+                  ]
+                : null,
           ),
-          action: TextButton(
-            onPressed: widget.busy ? null : widget.onTap,
-            child: Text(context.l10n.teamHubBrowseAll),
-          ),
-          body: Row(
+          clipBehavior: Clip.antiAlias,
+          padding: EdgeInsets.all(spacing.md),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 6,
-                  children: [
-                    TeamStatChip(
-                      icon: Icons.people_alt_outlined,
-                      label: '${team.roster.length}',
-                      tooltip: context.l10n.teamHubMembersLabel,
+              Row(
+                children: [
+                  TeamMonogram(seed: team.key, label: team.name),
+                  SizedBox(width: spacing.sm),
+                  Expanded(
+                    child: Text(
+                      team.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: styles.mdSemiboldColored(cs.onSurface),
                     ),
-                    TeamStatChip(
-                      icon: Icons.auto_awesome_outlined,
-                      label: '${team.skillDeps.length}',
-                      tooltip: context.l10n.teamHubSkillsLabel,
-                    ),
-                    if (team.category.isNotEmpty)
-                      TeamStatChip(label: team.category, accent: accent),
-                  ],
+                  ),
+                  _FavoriteButton(
+                    favorited: widget.favorited,
+                    touchTarget: _touchTarget,
+                    onPressed: widget.onToggleFavorite,
+                  ),
+                ],
+              ),
+              SizedBox(height: spacing.sm),
+              Text(
+                descriptionText,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: styles.smRelaxedColored(
+                  description.isEmpty
+                      ? cs.onSurface.withValues(alpha: 0.45)
+                      : cs.onSurface.withValues(alpha: 0.78),
                 ),
               ),
-              _FavoriteButton(
-                favorited: widget.favorited,
-                touchTarget: _touchTarget,
-                accent: accent,
-                onPressed: widget.onToggleFavorite,
+              SizedBox(height: spacing.sm),
+              SizedBox(
+                height: 28,
+                child: Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    physics: const NeverScrollableScrollPhysics(),
+                    child: Row(
+                      children: [
+                        for (var i = 0; i < tags.length; i++) ...[
+                          if (i > 0) SizedBox(width: spacing.xs),
+                          tags[i],
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(height: spacing.sm),
+              Row(
+                children: [
+                  Expanded(
+                    child: TpCatalogMetadataRow(
+                      adoption: _metric(
+                        icon: Icons.download_outlined,
+                        label: l10n.teamsCatalogAdoption,
+                        value: team.metrics.adoptionCount?.toString(),
+                        missing: l10n.catalogMetricMissingTooltip,
+                      ),
+                      rating: _metric(
+                        icon: Icons.star_outline_rounded,
+                        label: l10n.catalogMetricRating,
+                        value: team.metrics.rating?.toStringAsFixed(1),
+                        missing: l10n.catalogMetricMissingTooltip,
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: spacing.sm),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      maxWidth: _sourceMaxWidth,
+                    ),
+                    child: Text(
+                      sourceLabel,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.end,
+                      style: styles.xsColored(
+                        cs.onSurface.withValues(alpha: 0.55),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -189,13 +261,11 @@ class _FavoriteButton extends StatelessWidget {
   const _FavoriteButton({
     required this.favorited,
     required this.touchTarget,
-    required this.accent,
     required this.onPressed,
   });
 
   final bool favorited;
   final double touchTarget;
-  final Color accent;
   final VoidCallback onPressed;
 
   @override

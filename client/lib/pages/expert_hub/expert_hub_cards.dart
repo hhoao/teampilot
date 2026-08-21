@@ -3,7 +3,6 @@ import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../models/discoverable_member.dart';
-import '../../theme/workspace_surface_layers.dart';
 import '../team_hub/team_hub_cards.dart';
 import 'expert_hub_visuals.dart';
 
@@ -34,7 +33,12 @@ class ExpertHubCardHeader extends StatelessWidget {
       TeamHubCardHeader(title: title, leading: leading, trailing: trailing);
 }
 
-/// A discovery/favorites card for one public member persona.
+/// Fixed four-row discovery card for one public member persona.
+///
+/// 1. icon + name + favorite
+/// 2. description (2 lines, or localized "无")
+/// 3. tags
+/// 4. metrics + source (source fixed max width, ellipsis)
 class ExpertHubCard extends StatefulWidget {
   const ExpertHubCard({
     super.key,
@@ -59,113 +63,179 @@ class ExpertHubCard extends StatefulWidget {
 
 class _ExpertHubCardState extends State<ExpertHubCard> {
   static const _touchTarget = 40.0;
+  static const _radius = 14.0;
+  static const _sourceMaxWidth = 120.0;
   bool _hovered = false;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final spacing = context.tpSpacing;
+    final styles = TpTextStyles.of(context);
+    final l10n = context.l10n;
     final member = widget.member.forLocale(
       Localizations.localeOf(context).languageCode,
     );
     final accent = teamAccentColor(member.key, Theme.of(context).brightness);
+    final interactive = !widget.busy;
     final borderColor = widget.selected
         ? cs.primary.withValues(alpha: 0.65)
         : _hovered
         ? accent.withValues(alpha: 0.55)
         : cs.outlineVariant;
 
-    return TpHover(
-      onTap: widget.busy ? null : widget.onTap,
-      enabled: !widget.busy,
-      cursor: widget.busy ? SystemMouseCursors.basic : null,
-      backgroundColor: Colors.transparent,
-      hoverColor: Colors.transparent,
-      borderRadius: BorderRadius.circular(14),
-      onHoverChanged: (hovered) => setState(() => _hovered = hovered),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 120),
-        decoration: BoxDecoration(
-          color: cs.workspaceCard,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: borderColor),
-          boxShadow: _hovered
-              ? [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.10),
-                    blurRadius: 14,
-                    offset: const Offset(0, 6),
-                  ),
-                ]
-              : null,
+    final description = member.description.trim();
+    final descriptionText = description.isEmpty
+        ? l10n.expertHubCardNoDescription
+        : description;
+    final sourceLabel = _sourceLabel(member, l10n);
+
+    final tags = <Widget>[
+      if (member.member.capabilities.isNotEmpty)
+        TeamStatChip(
+          icon: Icons.psychology_outlined,
+          label: '${member.member.capabilities.length}',
+          tooltip: l10n.expertHubCapabilities,
         ),
-        clipBehavior: Clip.antiAlias,
-        child: TpCatalogCardShell(
-          title: member.name,
-          source: member.author?.trim().isNotEmpty == true
-              ? member.author!.trim()
-              : member.source.value,
-          description: member.description,
-          leading: TeamMonogram(seed: member.key, label: member.name),
-          metadata: TpCatalogMetadataRow(
-            adoption: _metric(
-              icon: Icons.download_outlined,
-              label: context.l10n.expertsCatalogAdoption,
-              value: member.metrics.adoptionCount?.toString(),
-              missing: context.l10n.catalogMetricMissingTooltip,
-            ),
-            rating: _metric(
-              icon: Icons.star_outline_rounded,
-              label: context.l10n.catalogMetricRating,
-              value: member.metrics.rating?.toStringAsFixed(1),
-              missing: context.l10n.catalogMetricMissingTooltip,
-            ),
+      if (member.skillDeps.isNotEmpty)
+        TeamStatChip(
+          icon: Icons.auto_awesome_outlined,
+          label: '${member.skillDeps.length}',
+          tooltip: l10n.teamHubSkillsLabel,
+        ),
+      if (member.pluginDeps.isNotEmpty)
+        TeamStatChip(
+          icon: Icons.extension_outlined,
+          label: '${member.pluginDeps.length}',
+          tooltip: l10n.teamHubPluginsLabel,
+        ),
+      if (member.mcpDeps.isNotEmpty)
+        TeamStatChip(
+          icon: Icons.cable_outlined,
+          label: '${member.mcpDeps.length}',
+          tooltip: l10n.teamHubMcpLabel,
+        ),
+      if (member.category.isNotEmpty)
+        TeamStatChip(label: member.category, accent: accent),
+    ];
+
+    return MouseRegion(
+      onEnter: (_) {
+        if (widget.busy) return;
+        setState(() => _hovered = true);
+      },
+      onExit: (_) => setState(() => _hovered = false),
+      cursor: interactive ? SystemMouseCursors.click : SystemMouseCursors.basic,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: interactive ? widget.onTap : null,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          decoration: BoxDecoration(
+            color: cs.surfaceContainer,
+            borderRadius: BorderRadius.circular(_radius),
+            border: Border.all(color: borderColor),
+            boxShadow: _hovered
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.10),
+                      blurRadius: 14,
+                      offset: const Offset(0, 6),
+                    ),
+                  ]
+                : null,
           ),
-          action: TextButton(
-            onPressed: widget.busy ? null : widget.onTap,
-            child: Text(context.l10n.expertHubViewInHub),
-          ),
-          body: Row(
+          clipBehavior: Clip.antiAlias,
+          padding: EdgeInsets.all(spacing.md),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 6,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    ExpertSourceBadge(source: member.source, accent: accent),
-                    if (member.member.capabilities.isNotEmpty)
-                      TeamStatChip(
-                        icon: Icons.psychology_outlined,
-                        label: '${member.member.capabilities.length}',
-                        tooltip: context.l10n.expertHubCapabilities,
-                      ),
-                    if (member.skillDeps.isNotEmpty)
-                      TeamStatChip(
-                        icon: Icons.auto_awesome_outlined,
-                        label: '${member.skillDeps.length}',
-                        tooltip: context.l10n.teamHubSkillsLabel,
-                      ),
-                    if (member.pluginDeps.isNotEmpty)
-                      TeamStatChip(
-                        icon: Icons.extension_outlined,
-                        label: '${member.pluginDeps.length}',
-                        tooltip: context.l10n.teamHubPluginsLabel,
-                      ),
-                    if (member.mcpDeps.isNotEmpty)
-                      TeamStatChip(
-                        icon: Icons.cable_outlined,
-                        label: '${member.mcpDeps.length}',
-                        tooltip: context.l10n.teamHubMcpLabel,
-                      ),
-                    if (member.category.isNotEmpty)
-                      TeamStatChip(label: member.category, accent: accent),
-                  ],
+              Row(
+                children: [
+                  TeamMonogram(seed: member.key, label: member.name),
+                  SizedBox(width: spacing.sm),
+                  Expanded(
+                    child: Text(
+                      member.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: styles.mdSemiboldColored(cs.onSurface),
+                    ),
+                  ),
+                  _FavoriteButton(
+                    favorited: widget.favorited,
+                    touchTarget: _touchTarget,
+                    onPressed: widget.onToggleFavorite,
+                  ),
+                ],
+              ),
+              SizedBox(height: spacing.sm),
+              Text(
+                descriptionText,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: styles.smRelaxedColored(
+                  description.isEmpty
+                      ? cs.onSurface.withValues(alpha: 0.45)
+                      : cs.onSurface.withValues(alpha: 0.78),
                 ),
               ),
-              _FavoriteButton(
-                favorited: widget.favorited,
-                touchTarget: _touchTarget,
-                onPressed: widget.onToggleFavorite,
+              SizedBox(height: spacing.sm),
+              SizedBox(
+                height: 28,
+                child: tags.isEmpty
+                    ? const SizedBox.shrink()
+                    : Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          physics: const NeverScrollableScrollPhysics(),
+                          child: Row(
+                            children: [
+                              for (var i = 0; i < tags.length; i++) ...[
+                                if (i > 0) SizedBox(width: spacing.xs),
+                                tags[i],
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+              ),
+              SizedBox(height: spacing.sm),
+              Row(
+                children: [
+                  Expanded(
+                    child: TpCatalogMetadataRow(
+                      adoption: _metric(
+                        icon: Icons.download_outlined,
+                        label: l10n.expertsCatalogAdoption,
+                        value: member.metrics.adoptionCount?.toString(),
+                        missing: l10n.catalogMetricMissingTooltip,
+                      ),
+                      rating: _metric(
+                        icon: Icons.star_outline_rounded,
+                        label: l10n.catalogMetricRating,
+                        value: member.metrics.rating?.toStringAsFixed(1),
+                        missing: l10n.catalogMetricMissingTooltip,
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: spacing.sm),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      maxWidth: _sourceMaxWidth,
+                    ),
+                    child: Text(
+                      sourceLabel,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.end,
+                      style: styles.xsColored(
+                        cs.onSurface.withValues(alpha: 0.55),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -173,6 +243,18 @@ class _ExpertHubCardState extends State<ExpertHubCard> {
       ),
     );
   }
+}
+
+String _sourceLabel(DiscoverableMember member, AppLocalizations l10n) {
+  final author = member.author?.trim();
+  if (author != null && author.isNotEmpty) return author;
+  return switch (member.source) {
+    ExpertMemberSource.builtin => l10n.expertHubSourceBuiltin,
+    ExpertMemberSource.registry => l10n.expertHubSourceRegistry,
+    ExpertMemberSource.local => l10n.expertHubSourceLocal,
+    ExpertMemberSource.teamExtract => l10n.expertHubSourceTeamExtract,
+    ExpertMemberSource.clone => l10n.expertHubSourceClone,
+  };
 }
 
 TpCatalogMetricView _metric({

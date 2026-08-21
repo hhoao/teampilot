@@ -8369,6 +8369,12 @@ abstract class AppLocalizations {
   /// **'Browse all teams'**
   String get teamHubBrowseAll;
 
+  /// No description provided for @teamHubCardNoDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get teamHubCardNoDescription;
+
   /// No description provided for @teamHubConfirmSelection.
   ///
   /// In en, this message translates to:
@@ -8635,6 +8641,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'View in Expert Hub'**
   String get expertHubViewInHub;
+
+  /// No description provided for @expertHubCardNoDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get expertHubCardNoDescription;
 
   /// No description provided for @expertHubViewOriginTeam.
   ///
@@ -9025,6 +9037,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Add'**
   String get mcpCatalogAdd;
+
+  /// No description provided for @mcpCatalogCardNoDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get mcpCatalogCardNoDescription;
+
+  /// No description provided for @skillsCatalogCardNoDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get skillsCatalogCardNoDescription;
+
+  /// No description provided for @pluginsCatalogCardNoDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get pluginsCatalogCardNoDescription;
 
   /// No description provided for @mcpCatalogInstalled.
   ///

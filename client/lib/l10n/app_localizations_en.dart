@@ -4708,6 +4708,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get teamHubBrowseAll => 'Browse all teams';
 
   @override
+  String get teamHubCardNoDescription => 'None';
+
+  @override
   String get teamHubConfirmSelection => 'Confirm';
 
   @override
@@ -4855,6 +4858,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get expertHubViewInHub => 'View in Expert Hub';
+
+  @override
+  String get expertHubCardNoDescription => 'None';
 
   @override
   String get expertHubViewOriginTeam => 'View origin team';
@@ -5074,6 +5080,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get mcpCatalogAdd => 'Add';
+
+  @override
+  String get mcpCatalogCardNoDescription => 'None';
+
+  @override
+  String get skillsCatalogCardNoDescription => 'None';
+
+  @override
+  String get pluginsCatalogCardNoDescription => 'None';
 
   @override
   String get mcpCatalogInstalled => 'Installed';

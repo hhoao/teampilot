@@ -19,66 +19,61 @@ class MarketplaceSkillCard extends StatelessWidget {
   final bool busy;
   final VoidCallback onInstall;
 
-  static String formatUpdatedAt(int unixSeconds) {
-    final dt = DateTime.fromMillisecondsSinceEpoch(unixSeconds * 1000);
-    final y = dt.year.toString().padLeft(4, '0');
-    final m = dt.month.toString().padLeft(2, '0');
-    final d = dt.day.toString().padLeft(2, '0');
-    return '$y-$m-$d';
-  }
-
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final cs = Theme.of(context).colorScheme;
+    final styles = TpTextStyles.of(context);
     final metrics = skill.metrics;
-    return TpCatalogCardShell(
+
+    return TpCatalogListCard(
+      showTags: false,
+      leading: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: ColoredBox(
+          color: cs.surfaceContainerHighest.withValues(alpha: 0.45),
+          child: Center(
+            child: Icon(
+              Icons.auto_awesome_outlined,
+              size: 20,
+              color: cs.onSurface.withValues(alpha: 0.4),
+            ),
+          ),
+        ),
+      ),
       title: skill.name,
       source: '${skill.repoOwner}/${skill.repoName}',
       description: skill.description,
-      body: skill.contentLanguage == null
-          ? null
-          : Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: _LanguageBadge(code: skill.contentLanguage!),
-            ),
-      metadata: TpCatalogMetadataRow(
-        adoption: TpCatalogMetricView(
-          icon: Icons.download_outlined,
-          label: l10n.skillsCatalogAdoption,
-          value: metrics.adoptionCount?.toString(),
-          missingValueTooltip: l10n.catalogMetricMissingTooltip,
-        ),
-        rating: TpCatalogMetricView(
-          icon: Icons.star_border,
-          label: l10n.catalogMetricRating,
-          value: metrics.rating?.toStringAsFixed(1),
-          missingValueTooltip: l10n.catalogMetricMissingTooltip,
-        ),
+      emptyDescription: l10n.skillsCatalogCardNoDescription,
+      adoption: TpCatalogMetricView(
+        icon: Icons.download_outlined,
+        label: l10n.skillsCatalogAdoption,
+        value: metrics.adoptionCount?.toString(),
+        missingValueTooltip: l10n.catalogMetricMissingTooltip,
       ),
-      action: Wrap(
-        spacing: 8,
-        runSpacing: 4,
-        crossAxisAlignment: WrapCrossAlignment.center,
+      rating: TpCatalogMetricView(
+        icon: Icons.star_border,
+        label: l10n.catalogMetricRating,
+        value: metrics.rating?.toStringAsFixed(1),
+        missingValueTooltip: l10n.catalogMetricMissingTooltip,
+      ),
+      actions: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
           GithubDetailsButton(
             url: skill.githubUrl,
             label: l10n.skillsCardDetails,
           ),
           if (installed)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.green.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(6),
-              ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
               child: Text(
                 l10n.skillsCardInstalled,
-                style: TpTextStyles.of(context)
-                    .smBoldColored(const Color(0xFF15803D)),
+                style: styles.smSemiboldColored(const Color(0xFF15803D)),
               ),
             )
           else
-            FilledButton(
+            FilledButton.tonal(
               onPressed: busy ? null : onInstall,
               child: busy
                   ? const SizedBox(
@@ -93,27 +88,6 @@ class MarketplaceSkillCard extends StatelessWidget {
                     ),
             ),
         ],
-      ),
-    );
-  }
-}
-
-class _LanguageBadge extends StatelessWidget {
-  const _LanguageBadge({required this.code});
-  final String code;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: cs.secondaryContainer,
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(
-        code.toUpperCase(),
-        style: TpTextStyles.of(context).xsBoldColored(cs.onSecondaryContainer),
       ),
     );
   }

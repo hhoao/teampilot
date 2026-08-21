@@ -69,10 +69,9 @@ class _McpDiscoverySectionState extends State<McpDiscoverySection> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const _McpDiscoveryHeader(),
-          _McpDiscoverySearchField(
-            controller: _searchCtl,
-            onChanged: _onSearchChanged,
+          _McpDiscoveryHeader(
+            searchController: _searchCtl,
+            onSearchChanged: _onSearchChanged,
           ),
           const SizedBox(height: 14),
           Expanded(
@@ -88,7 +87,13 @@ class _McpDiscoverySectionState extends State<McpDiscoverySection> {
 }
 
 class _McpDiscoveryHeader extends StatelessWidget {
-  const _McpDiscoveryHeader();
+  const _McpDiscoveryHeader({
+    required this.searchController,
+    required this.onSearchChanged,
+  });
+
+  final TextEditingController searchController;
+  final ValueChanged<String> onSearchChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -111,103 +116,50 @@ class _McpDiscoveryHeader extends StatelessWidget {
       ),
       builder: (context, header) {
         final canRefresh = header.source != McpDiscoverySource.builtin;
-        return TpCardHeader(
+        return TpCatalogDiscoveryHeader(
           title: l10n.mcpDiscoverySectionTitle,
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(
-                width: 180,
-                child: TpSelect<McpDiscoverySource>(
-                  key: ValueKey(header.source),
-                  items: mcpDiscoverySourceOrder,
-                  itemLabel: (source) => mcpDiscoverySourceLabel(l10n, source),
-                  initialItem: header.source,
-                  onChanged: (next) {
-                    if (next == null) return;
-                    context.read<McpDiscoveryCubit>().setSource(next);
-                  },
-                ),
+          showSearch: mcpDiscoveryShowsSearch(header.source),
+          searchController: searchController,
+          searchHint: l10n.mcpRegistrySearchHint,
+          onSearchChanged: onSearchChanged,
+          failures: [
+            for (final failure in header.failures)
+              TpCatalogFailureView(
+                sourceLabel: failure.sourceLabel,
+                message: failure.message,
               ),
-              const SizedBox(width: 8),
-              SizedBox(
-                width: 170,
-                child: TpCatalogSortControl<CatalogSortKey>(
-                  key: ValueKey(header.sort),
-                  items: CatalogSortKey.values,
-                  initialItem: header.sort,
-                  itemLabel: (sort) => _mcpSortLabel(context, sort),
-                  onChanged: (sort) {
-                    if (sort != null) {
-                      context.read<McpDiscoveryCubit>().setDiscoverySort(sort);
-                    }
-                  },
-                ),
+          ],
+          onRefresh: !canRefresh
+              ? null
+              : () => context.read<McpDiscoveryCubit>().refreshRemote(),
+          refreshing: header.loading && canRefresh,
+          refreshTooltip: l10n.catalogRefreshAccessibilityLabel,
+          filters: [
+            SizedBox(
+              width: 180,
+              child: TpSelect<McpDiscoverySource>(
+                key: ValueKey(header.source),
+                items: mcpDiscoverySourceOrder,
+                itemLabel: (source) => mcpDiscoverySourceLabel(l10n, source),
+                initialItem: header.source,
+                onChanged: (next) {
+                  if (next == null) return;
+                  context.read<McpDiscoveryCubit>().setSource(next);
+                },
               ),
-              TpCatalogSourceWarning(
-                failures: header.failures
-                    .map(
-                      (failure) => TpCatalogFailureView(
-                        sourceLabel: failure.sourceLabel,
-                        message: failure.message,
-                      ),
-                    )
-                    .toList(growable: false),
-              ),
-              IconButton(
-                tooltip: context.l10n.catalogRefreshAccessibilityLabel,
-                onPressed: !canRefresh || header.loading
-                    ? null
-                    : () => context.read<McpDiscoveryCubit>().refreshRemote(),
-                icon: header.loading && canRefresh
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Icon(Icons.refresh, size: context.tpIconSizes.md),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _McpDiscoverySearchField extends StatelessWidget {
-  const _McpDiscoverySearchField({
-    required this.controller,
-    required this.onChanged,
-  });
-
-  final TextEditingController controller;
-  final ValueChanged<String> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return BlocSelector<
-      McpDiscoveryCubit,
-      McpDiscoveryState,
-      McpDiscoverySource
-    >(
-      selector: (discovery) => discovery.source,
-      builder: (context, source) {
-        if (!mcpDiscoveryShowsSearch(source)) {
-          return const SizedBox.shrink();
-        }
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const SizedBox(height: 12),
-            TextField(
-              controller: controller,
-              onChanged: onChanged,
-              onSubmitted: onChanged,
-              decoration: InputDecoration(
-                hintText: context.l10n.mcpRegistrySearchHint,
-                prefixIcon: Icon(Icons.search, size: context.tpIconSizes.md),
-                isDense: true,
+            ),
+            SizedBox(
+              width: 170,
+              child: TpCatalogSortControl<CatalogSortKey>(
+                key: ValueKey(header.sort),
+                items: CatalogSortKey.values,
+                initialItem: header.sort,
+                itemLabel: (sort) => _mcpSortLabel(context, sort),
+                onChanged: (sort) {
+                  if (sort != null) {
+                    context.read<McpDiscoveryCubit>().setDiscoverySort(sort);
+                  }
+                },
               ),
             ),
           ],
@@ -307,6 +259,10 @@ class _McpDiscoveryCatalogBody extends StatelessWidget {
                       : ListView.builder(
                           padding: EdgeInsets.zero,
                           itemCount: items.length + (catalog.hasMore ? 1 : 0),
+                          itemExtentBuilder: (index, _) {
+                            if (index >= items.length) return 64;
+                            return TpCatalogListCard.listItemExtent(context);
+                          },
                           itemBuilder: (context, index) {
                             if (index >= items.length) {
                               return Padding(

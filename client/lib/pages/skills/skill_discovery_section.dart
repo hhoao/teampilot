@@ -139,7 +139,6 @@ class SkillDiscoverySectionState extends State<SkillDiscoverySection> {
                   occupation: _occupation,
                 ),
               ),
-              const _SyncBanner(),
             ],
           ),
         ),
@@ -188,12 +187,16 @@ class _FilterBar extends StatelessWidget {
         List<SkillRegistrySource> sources,
         CatalogSortKey sort,
         List<CatalogSourceFailure> failures,
+        Set<String> syncing,
+        bool loading,
       })
     >(
       selector: (state) => (
         sources: state.sources,
         sort: state.discoverySort,
         failures: state.discoveryFailures,
+        syncing: state.repoSyncingKeys,
+        loading: state.discoveryLoading,
       ),
       builder: (context, slice) {
         final sources = slice.sources;
@@ -207,24 +210,42 @@ class _FilterBar extends StatelessWidget {
           'uninstalled' => l10n.skillsFilterUninstalled,
           _ => l10n.skillsFilterAll,
         };
-        return Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: [
-            SizedBox(
-              width: 260,
-              child: TextField(
-                controller: searchCtl,
-                decoration: InputDecoration(
-                  hintText: l10n.skillsSearchPlaceholder,
-                  prefixIcon: Icon(Icons.search, size: context.tpIconSizes.md),
-                  floatingLabelBehavior: FloatingLabelBehavior.never,
-                ),
-                onChanged: onSearchChanged,
+        return TpCatalogDiscoveryHeader(
+          title: l10n.skillsNavDiscovery,
+          searchController: searchCtl,
+          searchHint: l10n.skillsSearchPlaceholder,
+          onSearchChanged: onSearchChanged,
+          failures: [
+            for (final failure in slice.failures)
+              TpCatalogFailureView(
+                sourceLabel: failure.sourceLabel,
+                message: failure.message,
               ),
-            ),
+          ],
+          onRefresh: onRefresh,
+          refreshing: slice.loading,
+          refreshTooltip: l10n.catalogRefreshAccessibilityLabel,
+          belowSearch: slice.syncing.isEmpty
+              ? null
+              : Row(
+                  children: [
+                    const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        l10n.skillsDiscoverySyncing,
+                        style: TpTextStyles.of(context).sm,
+                      ),
+                    ),
+                  ],
+                ),
+          filters: [
             SizedBox(
-              width: 220,
+              width: 180,
               child: TpSelect<String>(
                 key: ValueKey(sourceItems.keys.join('|')),
                 items: sourceItems.keys.toList(),
@@ -236,7 +257,7 @@ class _FilterBar extends StatelessWidget {
               ),
             ),
             SizedBox(
-              width: 160,
+              width: 150,
               child: TpSelect<String>(
                 items: const ['all', 'installed', 'uninstalled'],
                 initialItem: statusFilter,
@@ -245,73 +266,18 @@ class _FilterBar extends StatelessWidget {
               ),
             ),
             SizedBox(
-              width: 180,
-              child: Semantics(
-                label: l10n.catalogSortAccessibilityLabel,
-                child: TpCatalogSortControl<CatalogSortKey>(
-                  items: CatalogSortKey.values,
-                  initialItem: slice.sort,
-                  itemLabel: (key) => skillCatalogSortLabel(l10n, key),
-                  onChanged: (key) {
-                    if (key != null) onDiscoverySort(key);
-                  },
-                  hintText: l10n.catalogSortAccessibilityLabel,
-                ),
+              width: 170,
+              child: TpCatalogSortControl<CatalogSortKey>(
+                items: CatalogSortKey.values,
+                initialItem: slice.sort,
+                itemLabel: (key) => skillCatalogSortLabel(l10n, key),
+                onChanged: (key) {
+                  if (key != null) onDiscoverySort(key);
+                },
+                hintText: l10n.catalogSortAccessibilityLabel,
               ),
-            ),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TpCatalogSourceWarning(
-                  failures: [
-                    for (final failure in slice.failures)
-                      TpCatalogFailureView(
-                        sourceLabel: failure.sourceLabel,
-                        message: failure.message,
-                      ),
-                  ],
-                ),
-                IconButton(
-                  tooltip: l10n.catalogRefreshAccessibilityLabel,
-                  onPressed: onRefresh,
-                  icon: Icon(Icons.refresh, size: context.tpIconSizes.md),
-                ),
-              ],
             ),
           ],
-        );
-      },
-    );
-  }
-}
-
-class _SyncBanner extends StatelessWidget {
-  const _SyncBanner();
-
-  @override
-  Widget build(BuildContext context) {
-    return BlocSelector<SkillCubit, SkillState, Set<String>>(
-      selector: (state) => state.repoSyncingKeys,
-      builder: (context, syncing) {
-        if (syncing.isEmpty) return const SizedBox.shrink();
-        return Padding(
-          padding: const EdgeInsets.only(top: 10),
-          child: Row(
-            children: [
-              const SizedBox(
-                width: 14,
-                height: 14,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  context.l10n.skillsDiscoverySyncing,
-                  style: TpTextStyles.of(context).sm,
-                ),
-              ),
-            ],
-          ),
         );
       },
     );
@@ -389,40 +355,27 @@ class _ResultsBody extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Expanded(
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      final cols = constraints.maxWidth >= 1100
-                          ? 3
-                          : (constraints.maxWidth >= 700 ? 2 : 1);
-                      return GridView.builder(
-                        padding: const EdgeInsets.only(top: 2),
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: cols,
-                          crossAxisSpacing: 12,
-                          mainAxisSpacing: 12,
-                          // The unified catalog card includes four metrics,
-                          // optional badges, and an action row. Keep enough
-                          // vertical room for that contract instead of the
-                          // compact height used by the old two-line card.
-                          mainAxisExtent: 300,
+                  child: ListView.builder(
+                    padding: const EdgeInsets.only(top: 2, bottom: 8),
+                    itemCount: filtered.length,
+                    itemExtent: TpCatalogListCard.listItemExtent(
+                      context,
+                      showTags: false,
+                    ),
+                    itemBuilder: (context, i) {
+                      final entry = filtered[i];
+                      return MarketplaceSkillCard(
+                        key: ValueKey(
+                          '${entry.sourceId}:${entry.skill.key}',
                         ),
-                        itemCount: filtered.length,
-                        itemBuilder: (context, i) {
-                          final entry = filtered[i];
-                          return MarketplaceSkillCard(
-                            key: ValueKey(
-                              '${entry.sourceId}:${entry.skill.key}',
-                            ),
-                            skill: entry.skill,
-                            installed: installedKeys.contains(
-                              '${(entry.skill.directory ?? entry.skill.repoName).split('/').last.toLowerCase()}:${entry.skill.repoOwner.toLowerCase()}:${entry.skill.repoName.toLowerCase()}',
-                            ),
-                            busy: grid.busyIds.contains(entry.skill.key),
-                            onInstall: () => context
-                                .read<SkillCubit>()
-                                .installUnifiedEntry(entry),
-                          );
-                        },
+                        skill: entry.skill,
+                        installed: installedKeys.contains(
+                          '${(entry.skill.directory ?? entry.skill.repoName).split('/').last.toLowerCase()}:${entry.skill.repoOwner.toLowerCase()}:${entry.skill.repoName.toLowerCase()}',
+                        ),
+                        busy: grid.busyIds.contains(entry.skill.key),
+                        onInstall: () => context
+                            .read<SkillCubit>()
+                            .installUnifiedEntry(entry),
                       );
                     },
                   ),

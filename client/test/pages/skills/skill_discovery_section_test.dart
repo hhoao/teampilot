@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/cubits/skill_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/catalog/catalog_types.dart';
@@ -155,10 +156,11 @@ void main() {
 
       expect(find.text('healthy-skill-1'), findsOneWidget);
       expect(find.byIcon(Icons.warning_amber_rounded), findsOneWidget);
-      expect(find.text('Installs'), findsOneWidget);
-      expect(find.text('Rating'), findsOneWidget);
-      expect(find.text('Updated'), findsOneWidget);
-      expect(find.text('Published'), findsOneWidget);
+      expect(find.byType(TpCatalogListCard), findsOneWidget);
+      expect(find.text('42'), findsOneWidget);
+      expect(find.text('4.5'), findsOneWidget);
+      expect(find.text('Updated'), findsNothing);
+      expect(find.text('Published'), findsNothing);
       expect(find.text('No skills discovered'), findsNothing);
     },
   );

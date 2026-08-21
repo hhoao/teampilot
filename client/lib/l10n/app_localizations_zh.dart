@@ -4518,6 +4518,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get teamHubBrowseAll => '浏览全部团队';
 
   @override
+  String get teamHubCardNoDescription => '无';
+
+  @override
   String get teamHubConfirmSelection => '确认';
 
   @override
@@ -4662,6 +4665,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get expertHubViewInHub => '在专家中心查看';
+
+  @override
+  String get expertHubCardNoDescription => '无';
 
   @override
   String get expertHubViewOriginTeam => '查看来源团队';
@@ -4871,6 +4877,15 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get mcpCatalogAdd => '添加';
+
+  @override
+  String get mcpCatalogCardNoDescription => '无';
+
+  @override
+  String get skillsCatalogCardNoDescription => '无';
+
+  @override
+  String get pluginsCatalogCardNoDescription => '无';
 
   @override
   String get mcpCatalogInstalled => '已安装';

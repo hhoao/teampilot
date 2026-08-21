@@ -123,101 +123,70 @@ class PluginDiscoveryBodyState extends State<PluginDiscoveryBody> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         PluginManagementCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _searchCtrl,
-                      decoration: InputDecoration(
-                        hintText: l10n.pluginsSearchPlaceholder,
-                        prefixIcon: Icon(
-                          Icons.search,
-                          size: context.tpIconSizes.md,
-                        ),
-                        floatingLabelBehavior: FloatingLabelBehavior.never,
-                      ),
-                      onChanged: (_) => setState(() {}),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  TpCatalogSourceWarning(
-                    failures: widget.state.discoveryFailures
-                        .map(
-                          (failure) => TpCatalogFailureView(
-                            sourceLabel: failure.sourceLabel,
-                            message: failure.message,
-                          ),
-                        )
-                        .toList(growable: false),
-                  ),
-                  IconButton(
-                    tooltip: l10n.pluginsCheckUpdates,
-                    onPressed: widget.state.discoveryLoading
-                        ? null
-                        : () => cubit.ensureDiscoveryLoaded(force: true),
-                    icon:
-                        widget.state.discoveryLoading ||
-                            widget.state.marketplaceSyncingKeys.isNotEmpty
-                        ? const SizedBox(
-                            width: 14,
-                            height: 14,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : Icon(Icons.refresh, size: context.tpIconSizes.md),
-                  ),
-                ],
-              ),
-              if (widget.state.marketplaceSyncingKeys.isNotEmpty) ...[
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    const SizedBox(
-                      width: 14,
-                      height: 14,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        l10n.pluginsDiscoverySyncing,
-                        style: TpTextStyles.of(context).sm,
-                      ),
-                    ),
-                  ],
+          child: TpCatalogDiscoveryHeader(
+            title: l10n.pluginsNavDiscovery,
+            searchController: _searchCtrl,
+            searchHint: l10n.pluginsSearchPlaceholder,
+            onSearchChanged: (_) => setState(() {}),
+            failures: [
+              for (final failure in widget.state.discoveryFailures)
+                TpCatalogFailureView(
+                  sourceLabel: failure.sourceLabel,
+                  message: failure.message,
                 ),
-              ],
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 8,
-                children: [
-                  SizedBox(
-                    width: 180,
-                    child: TpCatalogSortControl<CatalogSortKey>(
-                      items: CatalogSortKey.values,
-                      initialItem: widget.state.discoverySort,
-                      itemLabel: (sort) => _sortLabel(l10n, sort),
-                      onChanged: (sort) {
-                        if (sort != null) cubit.setDiscoverySort(sort);
-                      },
-                      hintText: l10n.catalogSortAccessibilityLabel,
-                    ),
+            ],
+            onRefresh: () => cubit.ensureDiscoveryLoaded(force: true),
+            refreshing:
+                widget.state.discoveryLoading ||
+                widget.state.marketplaceSyncingKeys.isNotEmpty,
+            refreshTooltip: l10n.pluginsCheckUpdates,
+            belowSearch: widget.state.marketplaceSyncingKeys.isEmpty
+                ? null
+                : Row(
+                    children: [
+                      const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          l10n.pluginsDiscoverySyncing,
+                          style: TpTextStyles.of(context).sm,
+                        ),
+                      ),
+                    ],
                   ),
-                  PluginMarketplaceDropdown(
-                    marketplaces: marketplaces,
-                    value: _marketplaceFilter,
-                    l10n: l10n,
-                    onChanged: (v) => setState(() => _marketplaceFilter = v),
-                  ),
-                  PluginStatusDropdown(
-                    value: _statusFilter,
-                    l10n: l10n,
-                    onChanged: (v) =>
-                        setState(() => _statusFilter = v ?? 'all'),
-                  ),
-                ],
+            filters: [
+              SizedBox(
+                width: 170,
+                child: TpCatalogSortControl<CatalogSortKey>(
+                  items: CatalogSortKey.values,
+                  initialItem: widget.state.discoverySort,
+                  itemLabel: (sort) => _sortLabel(l10n, sort),
+                  onChanged: (sort) {
+                    if (sort != null) cubit.setDiscoverySort(sort);
+                  },
+                  hintText: l10n.catalogSortAccessibilityLabel,
+                ),
+              ),
+              SizedBox(
+                width: 180,
+                child: PluginMarketplaceDropdown(
+                  marketplaces: marketplaces,
+                  value: _marketplaceFilter,
+                  l10n: l10n,
+                  onChanged: (v) => setState(() => _marketplaceFilter = v),
+                ),
+              ),
+              SizedBox(
+                width: 150,
+                child: PluginStatusDropdown(
+                  value: _statusFilter,
+                  l10n: l10n,
+                  onChanged: (v) => setState(() => _statusFilter = v ?? 'all'),
+                ),
               ),
             ],
           ),
@@ -260,6 +229,7 @@ class PluginDiscoveryBodyState extends State<PluginDiscoveryBody> {
     return ListView.builder(
       padding: const EdgeInsets.only(bottom: 8),
       itemCount: filtered.length,
+      itemExtent: TpCatalogListCard.listItemExtent(context, showTags: false),
       itemBuilder: (context, index) {
         final d = filtered[index];
         return PluginDiscoverableCard(
@@ -348,58 +318,77 @@ class PluginDiscoverableCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final cs = Theme.of(context).colorScheme;
+    final styles = TpTextStyles.of(context);
     final cubit = context.read<PluginCubit>();
     final metrics = plugin.metrics;
 
-    return TpCatalogCardShell(
+    return TpCatalogListCard(
+      showTags: false,
+      leading: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: ColoredBox(
+          color: cs.surfaceContainerHighest.withValues(alpha: 0.45),
+          child: Center(
+            child: Icon(
+              Icons.extension_outlined,
+              size: 20,
+              color: cs.onSurface.withValues(alpha: 0.4),
+            ),
+          ),
+        ),
+      ),
       title: plugin.name,
       source: plugin.marketplaceFullName,
       description: plugin.description,
-      body: plugin.version.isEmpty ? null : Text('v${plugin.version}'),
-      metadata: TpCatalogMetadataRow(
-        adoption: TpCatalogMetricView(
-          icon: Icons.download_outlined,
-          label: l10n.pluginsCatalogAdoption,
-          value: metrics.adoptionCount == null
-              ? null
-              : _formatCount(metrics.adoptionCount!),
-          missingValueTooltip: l10n.catalogMetricMissingTooltip,
-        ),
-        rating: TpCatalogMetricView(
-          icon: Icons.star_outline,
-          label: l10n.catalogMetricRating,
-          value: metrics.rating?.toStringAsFixed(1),
-          missingValueTooltip: l10n.catalogMetricMissingTooltip,
-        ),
+      emptyDescription: l10n.pluginsCatalogCardNoDescription,
+      adoption: TpCatalogMetricView(
+        icon: Icons.download_outlined,
+        label: l10n.pluginsCatalogAdoption,
+        value: metrics.adoptionCount == null
+            ? null
+            : _formatCount(metrics.adoptionCount!),
+        missingValueTooltip: l10n.catalogMetricMissingTooltip,
       ),
-      action: busy
-          ? const SizedBox(
-              width: 14,
-              height: 14,
-              child: CircularProgressIndicator(strokeWidth: 2),
+      rating: TpCatalogMetricView(
+        icon: Icons.star_outline,
+        label: l10n.catalogMetricRating,
+        value: metrics.rating?.toStringAsFixed(1),
+        missingValueTooltip: l10n.catalogMetricMissingTooltip,
+      ),
+      actions: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          GithubDetailsButton(
+            url: plugin.githubBrowseUrl,
+            label: l10n.pluginsCardDetails,
+          ),
+          if (busy)
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 12),
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
             )
-          : Wrap(
-              spacing: 8,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                GithubDetailsButton(
-                  url: plugin.githubBrowseUrl,
-                  label: l10n.pluginsCardDetails,
-                ),
-                if (installed)
-                  OutlinedButton(
-                    onPressed: null,
-                    child: Text(l10n.pluginsCardInstalled),
-                  )
-                else
-                  FilledButton.tonal(
-                    onPressed: plugin.canInstall
-                        ? () => cubit.installFromDiscovery(plugin)
-                        : null,
-                    child: Text(l10n.pluginsCardInstall),
-                  ),
-              ],
+          else if (installed)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Text(
+                l10n.pluginsCardInstalled,
+                style: styles.smSemiboldColored(cs.primary),
+              ),
+            )
+          else
+            FilledButton.tonal(
+              onPressed: plugin.canInstall
+                  ? () => cubit.installFromDiscovery(plugin)
+                  : null,
+              child: Text(l10n.pluginsCardInstall),
             ),
+        ],
+      ),
     );
   }
 }
