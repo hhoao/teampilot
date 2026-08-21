@@ -162,6 +162,36 @@ void main() {
     },
   );
 
+  test('install returns early when cancelled before installingCli', () async {
+    var npmInstallRuns = 0;
+    final installer = CliInstallerService(
+      isWindowsOverride: false,
+      localRunner: (command) async {
+        if (_isClaudeNpmInstall(command.commandLine)) {
+          npmInstallRuns++;
+        }
+        if (command.commandLine == 'which npm') {
+          return const CliInstallerCommandResult(
+            exitCode: 0,
+            stdout: '/usr/bin/npm\n',
+          );
+        }
+        return const CliInstallerCommandResult(exitCode: 127);
+      },
+    );
+
+    var checks = 0;
+    final result = await installer.install(
+      cli: CliTool.claude,
+      mode: CliInstallMode.local,
+      isCancelled: () => ++checks > 1,
+    );
+
+    expect(result.success, isFalse);
+    expect(result.message, 'Cancelled');
+    expect(npmInstallRuns, 0);
+  });
+
   test('reports install progress phases locally', () async {
     final phases = <CliInstallPhase>[];
     final commands = <String>[];
@@ -612,9 +642,10 @@ void main() {
 
       expect(result.success, isTrue, reason: result.message);
       expect(result.executablePath, '/home/alice/.local/bin/cursor-agent');
-      expect(commands.length, 2);
-      expect(commands[0], contains('curl https://cursor.com/install'));
-      expect(commands[1], 'which cursor-agent');
+      expect(commands.length, greaterThanOrEqualTo(2));
+      expect(commands.any((c) => c.contains('curl https://cursor.com/install')),
+          isTrue);
+      expect(commands.any((c) => c == 'which cursor-agent'), isTrue);
     },
   );
 

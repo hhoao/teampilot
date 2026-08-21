@@ -55,12 +55,16 @@ class CliInstallerService {
   final CliToolRegistry _cliToolRegistry;
   final String? Function()? _preferredNodePath;
   CliInstallProgressCallback? _onProgress;
+  bool Function()? _isCancelled;
+  void Function(Process process)? _onProcessStarted;
 
   Future<CliInstallResult> install({
     required CliTool cli,
     required CliInstallMode mode,
     SshProfile? sshProfile,
     CliInstallProgressCallback? onProgress,
+    bool Function()? isCancelled,
+    void Function(Process process)? onProcessStarted,
   }) async {
     final capability = _cliToolRegistry.capability<CliExecutableCapability>(
       cli,
@@ -73,6 +77,8 @@ class CliInstallerService {
     }
 
     _onProgress = onProgress;
+    _isCancelled = isCancelled;
+    _onProcessStarted = onProcessStarted;
     try {
       return await capability.install(
         CliInstallContext(
@@ -85,6 +91,8 @@ class CliInstallerService {
       );
     } finally {
       _onProgress = null;
+      _isCancelled = null;
+      _onProcessStarted = null;
     }
   }
 
@@ -106,6 +114,7 @@ class CliInstallerService {
       return _runLocalStreaming(
         command,
         onOutput: (line) => _report(phase, detail: line),
+        onProcessStarted: _onProcessStarted,
       );
     }
     return _localRunner(command);
@@ -289,12 +298,14 @@ class CliInstallerService {
   static Future<CliInstallerCommandResult> _runLocalStreaming(
     CliInstallerCommand command, {
     void Function(String line)? onOutput,
+    void Function(Process process)? onProcessStarted,
   }) async {
     try {
       final process = await Process.start(
         command.executable,
         command.arguments,
       );
+      onProcessStarted?.call(process);
       final stdoutBuffer = StringBuffer();
       final stderrBuffer = StringBuffer();
 
@@ -375,6 +386,9 @@ final class _CliInstallerHost implements CliInstallerHost {
   @override
   Future<String?> locateRemoteNpm(SshProfile profile) =>
       _service._locateRemoteNpm(profile);
+
+  @override
+  bool get isCancelled => _service._isCancelled?.call() ?? false;
 }
 
 class _SshCommandRunner {

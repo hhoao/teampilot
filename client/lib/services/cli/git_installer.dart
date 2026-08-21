@@ -150,12 +150,13 @@ final class GitInstaller {
   /// * Linux:   guide URL only — never runs `sudo` or any system command.
   Future<GitInstallResult> install({
     GitInstallProgressCallback? onProgress,
+    bool Function()? isCancelled,
   }) async {
     if (_isWindows) {
-      return _installWindows(onProgress: onProgress);
+      return _installWindows(onProgress: onProgress, isCancelled: isCancelled);
     }
     if (_isMacOS) {
-      return _installMacOS(onProgress: onProgress);
+      return _installMacOS(onProgress: onProgress, isCancelled: isCancelled);
     }
     // Linux or any other platform — guide only, no sudo.
     return GitInstallResult.failed(
@@ -168,6 +169,7 @@ final class GitInstaller {
 
   Future<GitInstallResult> _installWindows({
     GitInstallProgressCallback? onProgress,
+    bool Function()? isCancelled,
   }) async {
     // Prefer winget; it ships on Windows 10 1709+ and Windows 11.
     final hasWinget = await _canRun('winget');
@@ -176,6 +178,10 @@ final class GitInstaller {
         'winget is not available on this system.\n'
         'Please install git manually: $_windowsGuideUrl',
       );
+    }
+
+    if (isCancelled?.call() == true) {
+      return const GitInstallResult.failed('Cancelled');
     }
 
     onProgress?.call(
@@ -210,6 +216,10 @@ final class GitInstaller {
       );
     }
 
+    if (isCancelled?.call() == true) {
+      return const GitInstallResult.failed('Cancelled');
+    }
+
     // After install, locate the new executable.
     onProgress?.call(const GitInstallProgress(phase: GitInstallPhase.locating));
 
@@ -228,6 +238,7 @@ final class GitInstaller {
 
   Future<GitInstallResult> _installMacOS({
     GitInstallProgressCallback? onProgress,
+    bool Function()? isCancelled,
   }) async {
     final hasBrew = await _canRun('brew');
     if (!hasBrew) {
@@ -236,6 +247,10 @@ final class GitInstaller {
         'Please install git manually: $_macOSGuideUrl\n'
         'Or install Homebrew first: https://brew.sh',
       );
+    }
+
+    if (isCancelled?.call() == true) {
+      return const GitInstallResult.failed('Cancelled');
     }
 
     onProgress?.call(
@@ -260,6 +275,10 @@ final class GitInstaller {
         'Failed to run brew: ${e.message}.\n'
         'Please install git manually: $_macOSGuideUrl',
       );
+    }
+
+    if (isCancelled?.call() == true) {
+      return const GitInstallResult.failed('Cancelled');
     }
 
     // After install, locate the new executable.

@@ -317,6 +317,33 @@ void main() {
       expect(result.message, contains('https://brew.sh'));
     });
 
+    test('install returns cancelled when isCancelled before installing', () async {
+      final commands = <String>[];
+      final installer = GitInstaller(
+        isWindowsOverride: true,
+        processRunner: (exe, args) async {
+          commands.add('$exe ${args.join(' ')}');
+          if (exe == 'where' && args.contains('winget')) {
+            return _fakeResult(
+              exitCode: 0,
+              stdout:
+                  r'C:\Users\test\AppData\Local\Microsoft\WindowsApps\winget.exe',
+            );
+          }
+          return _fakeResult(exitCode: 127);
+        },
+      );
+
+      var checks = 0;
+      final result = await installer.install(
+        isCancelled: () => ++checks > 0,
+      );
+
+      expect(result.success, isFalse);
+      expect(result.message, 'Cancelled');
+      expect(commands.any((c) => c.contains('winget install')), isFalse);
+    });
+
     test('reports progress phases during install (Windows)', () async {
       final phases = <GitInstallPhase>[];
       final installer = GitInstaller(

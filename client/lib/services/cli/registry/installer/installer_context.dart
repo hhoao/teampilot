@@ -30,6 +30,8 @@ abstract interface class CliInstallerHost {
   Future<String?> locateLocalNpm();
 
   Future<String?> locateRemoteNpm(SshProfile profile);
+
+  bool get isCancelled;
 }
 
 class CliInstallContext {
