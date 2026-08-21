@@ -148,15 +148,27 @@ Future<void> drainPendingAsyncWork({int rounds = 5}) async {
 }
 
 /// Polls [predicate] until true or [timeout] (for unawaited cubit side effects).
+///
+/// [pump] runs each iteration before the delay (e.g. [PostFrameTestHarness.flush]
+/// plus [drainPendingAsyncWork]) so callbacks queued after the first flush are
+/// still drained on slower hosts.
 Future<void> waitUntil(
   bool Function() predicate, {
   Duration timeout = const Duration(seconds: 5),
   Duration step = const Duration(milliseconds: 10),
+  Future<void> Function()? pump,
 }) async {
   final deadline = DateTime.now().add(timeout);
   while (!predicate() && DateTime.now().isBefore(deadline)) {
-    await pumpEventQueue();
+    if (pump != null) {
+      await pump();
+    } else {
+      await pumpEventQueue();
+    }
     await Future<void>.delayed(step);
+  }
+  if (!predicate()) {
+    throw TimeoutException('waitUntil timed out after $timeout');
   }
 }
 

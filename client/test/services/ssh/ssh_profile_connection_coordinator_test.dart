@@ -13,6 +13,8 @@ import 'package:teampilot/services/ssh/ssh_profile_connection_coordinator.dart';
 import 'package:teampilot/services/ssh/ssh_profile_reconnect_policy.dart';
 import 'package:teampilot/services/ssh/ssh_transport_close.dart';
 
+import '../../support/post_frame_test_harness.dart';
+
 void main() {
   test('transport close coalesces and notifies coordinator once per wave', () async {
     const profile = SshProfile(
@@ -48,7 +50,7 @@ void main() {
     first.close();
     second.close();
 
-    await Future<void>.delayed(const Duration(milliseconds: 80));
+    await waitUntil(() => notifications.isNotEmpty);
     expect(notifications, ['p1']);
     expect(
       coordinator.monitorFor('p1').state.status,

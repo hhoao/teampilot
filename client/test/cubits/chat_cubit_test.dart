@@ -1117,6 +1117,16 @@ void main() {
 
       expect(cubit.tabStore.openTabs.length, 1);
       final tab = cubit.tabStore.openTabs.single;
+      await waitUntil(
+        () => cubit.isMemberRunning(
+          sessionId: tab.info.id,
+          memberId: 'team-lead',
+        ),
+        pump: () async {
+          await drainPendingAsyncWork(rounds: 1);
+          await postFrame.flush();
+        },
+      );
       expect(
         cubit.isMemberRunning(sessionId: tab.info.id, memberId: 'team-lead'),
         isTrue,
@@ -1199,8 +1209,14 @@ void main() {
           TeamSessionConnect(team),
           repo: repo,
         );
-        await postFrame.flush();
-
+        await waitUntil(
+          () =>
+              cubit.isMemberRunning(sessionId: tab.info.id, memberId: 'm-dev'),
+          pump: () async {
+            await drainPendingAsyncWork(rounds: 1);
+            await postFrame.flush();
+          },
+        );
         expect(
           cubit.isMemberRunning(sessionId: tab.info.id, memberId: 'm-dev'),
           isTrue,

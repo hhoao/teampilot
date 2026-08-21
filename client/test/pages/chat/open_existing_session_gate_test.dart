@@ -267,10 +267,24 @@ void main() {
             repo: repo,
           ),
         );
-        await waitUntil(() => postFrame.hasPendingCallbacks);
-        await postFrame.flush();
+        await waitUntil(
+          () =>
+              postFrame.hasPendingCallbacks ||
+              shells.fold<int>(0, (sum, s) => sum + s.connectCalls) > 0,
+          pump: () async {
+            await drainPendingAsyncWork(rounds: 1);
+            await postFrame.flush();
+          },
+        );
+        if (postFrame.hasPendingCallbacks) {
+          await postFrame.flush();
+        }
         await waitUntil(
           () => shells.fold<int>(0, (sum, s) => sum + s.connectCalls) > 0,
+          pump: () async {
+            await drainPendingAsyncWork(rounds: 1);
+            await postFrame.flush();
+          },
         );
         await postFrame.flush();
 

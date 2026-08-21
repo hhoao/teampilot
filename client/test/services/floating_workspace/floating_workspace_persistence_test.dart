@@ -8,6 +8,8 @@ import 'package:teampilot/models/layout_preferences.dart';
 import 'package:teampilot/repositories/layout_repository.dart';
 import 'package:teampilot/services/floating_workspace/floating_workspace_persistence.dart';
 
+import '../../support/post_frame_test_harness.dart';
+
 void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues({});
@@ -112,7 +114,9 @@ void main() {
     );
     floating.setToggleOffset(const Offset(-12, -18));
     floating.setMaximized(true);
-    await Future<void>.delayed(const Duration(milliseconds: 20));
+    await waitUntil(
+      () => layout.state.preferences.floatingPanelWidth != null,
+    );
 
     final p = floating.state.panelPlacement!;
     expect(layout.state.preferences.floatingPanelWidth, p.width);
