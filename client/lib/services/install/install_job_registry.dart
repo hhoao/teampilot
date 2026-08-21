@@ -9,12 +9,19 @@ import '../../models/install_job/install_job_snapshot.dart';
 import '../../models/install_job/install_job_spec.dart';
 import '../../models/progress_activity.dart';
 import 'install_job_activity_kind.dart';
+import 'install_job_runner_registry.dart';
 
 final class InstallJobRegistry {
-  InstallJobRegistry({required ProgressActivityCubit progressCubit})
-    : _progressCubit = progressCubit;
+  InstallJobRegistry({
+    required ProgressActivityCubit progressCubit,
+    InstallJobRunnerRegistry? runnerRegistry,
+  }) : _progressCubit = progressCubit,
+       _runnerRegistry = runnerRegistry;
 
   final ProgressActivityCubit _progressCubit;
+  final InstallJobRunnerRegistry? _runnerRegistry;
+
+  InstallJobRunnerRegistry? get runnerRegistry => _runnerRegistry;
   final Map<InstallJobKey, _ActiveJob> _active = {};
   final Map<InstallJobKey, StreamController<InstallJobSnapshot>> _watchers =
       {};
