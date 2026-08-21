@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -7,22 +5,17 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/cubits/progress_activity_cubit.dart';
 import 'package:teampilot/cubits/session_preferences_cubit.dart';
-import 'package:teampilot/cubits/ssh_profile_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/session_preferences.dart';
-import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/pages/config/toolchain_path_settings_row.dart';
 import 'package:teampilot/repositories/session_preferences_repository.dart';
-import 'package:teampilot/repositories/ssh_credential_store.dart';
-import 'package:teampilot/repositories/ssh_profile_repository.dart';
 import 'package:teampilot/services/app/connection_mode_service.dart';
 import 'package:teampilot/services/install/install_job_registry.dart';
 import 'package:teampilot/services/notification/notification_recorder.dart';
 import 'package:teampilot/utils/ui/app_keys.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
-import '../../support/in_memory_filesystem.dart';
 import '../../support/post_frame_test_harness.dart';
 
 class _FakeNotificationRecorder implements NotificationRecorder {
@@ -51,30 +44,23 @@ Widget _wrapRow(
   SessionPreferencesCubit cubit, {
   Future<String?> Function()? locateOverride,
   ConnectionModeService? connectionMode,
-  SshProfileCubit? sshProfileCubit,
 }) {
   final progressCubit = ProgressActivityCubit(
     historyRecorder: _FakeNotificationRecorder(),
   );
   final installJobRegistry = InstallJobRegistry(progressCubit: progressCubit);
-  final providers = <RepositoryProvider>[
-    RepositoryProvider<ConnectionModeService>(
-      create: (_) =>
-          connectionMode ??
-          ConnectionModeService(
-            defaultTargetResolver: RuntimeTarget.local,
-            hasSshProfiles: () => false,
-          ),
-    ),
-    RepositoryProvider<InstallJobRegistry>.value(value: installJobRegistry),
-  ];
-  if (sshProfileCubit != null) {
-    providers.add(
-      RepositoryProvider<SshProfileCubit>.value(value: sshProfileCubit),
-    );
-  }
   return MultiRepositoryProvider(
-    providers: providers,
+    providers: [
+      RepositoryProvider<ConnectionModeService>(
+        create: (_) =>
+            connectionMode ??
+            ConnectionModeService(
+              defaultTargetResolver: RuntimeTarget.local,
+              hasSshProfiles: () => false,
+            ),
+      ),
+      RepositoryProvider<InstallJobRegistry>.value(value: installJobRegistry),
+    ],
     child: BlocProvider.value(
       value: cubit,
       child: MaterialApp(
@@ -167,32 +153,9 @@ void main() {
   testWidgets('remote Locate uses override and persists path', (tester) async {
     final cubit = await _makeCubit();
     addTearDown(cubit.close);
-    final profileRepository = SshProfileRepository(
-      rootDir: (await Directory.systemTemp.createTemp('toolchain_remote_')).path,
-      fs: InMemoryFilesystem(),
-    );
-    const profile = SshProfile(
-      id: 'p1',
-      name: 'dev',
-      host: 'example.com',
-      username: 'alice',
-    );
-    await profileRepository.save(profile);
-    final profileCubit = SshProfileCubit(
-      profileRepository: profileRepository,
-      credentialStore: InMemorySshCredentialStore(),
-    );
-    addTearDown(profileCubit.close);
-    await profileCubit.load();
-    await profileCubit.selectProfile('p1');
     await tester.pumpWidget(
       _wrapRow(
         cubit,
-        sshProfileCubit: profileCubit,
-        connectionMode: ConnectionModeService(
-          defaultTargetResolver: () => RuntimeTarget.ssh('p1', label: 'box'),
-          hasSshProfiles: () => true,
-        ),
         locateOverride: () async => '/usr/local/bin/git',
       ),
     );
