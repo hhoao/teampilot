@@ -32,5 +32,11 @@
 	<string>TeamPilot uses the microphone for voice input in the compose field.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>TeamPilot uses speech recognition for voice input in the compose field.</string>
+	<!-- Flutter 3.47+ defaults Impeller on macOS. Hovering dense TpHover
+	     controls tears/flickers the window (embedder HostBuffer). Opt out
+	     until that engine path is fixed; flutter run --enable-impeller still
+	     overrides this. -->
+	<key>FLTEnableImpeller</key>
+	<false/>
 </dict>
 </plist>
