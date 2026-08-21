@@ -207,15 +207,13 @@ class SkillCubit extends Cubit<SkillState> {
   final List<SkillRegistrySource> Function(SkillRegistriesConfig)
   _rebuildSources;
   int _discoveryGeneration = 0;
-  Future<void> _inflightRepoSync = Future.value();
 
   bool _autoRefreshEnabled() =>
       _discoverySettings?.state.autoRefreshEnabled ?? false;
 
   @override
-  Future<void> close() async {
+  Future<void> close() {
     _discoveryGeneration++;
-    await _inflightRepoSync;
     return super.close();
   }
 
@@ -310,26 +308,9 @@ class SkillCubit extends Cubit<SkillState> {
     if (reposToSync.isEmpty || isClosed) return;
 
     final generation = ++_discoveryGeneration;
-    final sync = _runReposSyncInBackground(
-      reposToSync,
-      generation: generation,
-      force: force,
-      clearError: clearError,
-      maxStaleness: maxStaleness,
-    );
-    _inflightRepoSync = sync;
-    await sync;
-  }
-
-  Future<void> _runReposSyncInBackground(
-    List<SkillRepo> reposToSync, {
-    required int generation,
-    required bool force,
-    required bool clearError,
-    required Duration? maxStaleness,
-  }) async {
-    if (isClosed) return;
     final enabled = _gitRepos();
+    final initialDiscoverable = await _aggregateDiscoverableFromDisk(enabled);
+    if (isClosed || generation != _discoveryGeneration) return;
     var syncing = {
       ...state.repoSyncingKeys,
       ...reposToSync.map(SkillRepoDiskCacheService.repoKey),
@@ -337,7 +318,7 @@ class SkillCubit extends Cubit<SkillState> {
     emit(
       state.copyWith(
         discoveryLoading: true,
-        discoverable: await _aggregateDiscoverableFromDisk(enabled),
+        discoverable: initialDiscoverable,
         repoSyncingKeys: syncing,
         clearError: clearError,
       ),
@@ -390,11 +371,13 @@ class SkillCubit extends Cubit<SkillState> {
     final repoSyncingKeys = state.repoSyncingKeys
         .where((k) => !batchKeys.contains(k))
         .toSet();
+    final finalDiscoverable = await _aggregateDiscoverableFromDisk(_gitRepos());
+    if (isClosed || generation != _discoveryGeneration) return;
     emit(
       state.copyWith(
         discoveryLoading: false,
         repoSyncingKeys: repoSyncingKeys,
-        discoverable: await _aggregateDiscoverableFromDisk(_gitRepos()),
+        discoverable: finalDiscoverable,
       ),
     );
   }
@@ -404,12 +387,14 @@ class SkillCubit extends Cubit<SkillState> {
     required bool discoveryLoading,
     required Set<String> repoSyncingKeys,
   }) {
+    if (isClosed) return;
     final discoverableChanged = !_sameDiscoverableSkills(
       state.discoverable,
       discoverable,
     );
     final syncingChanged = state.repoSyncingKeys != repoSyncingKeys;
     final loadingChanged = state.discoveryLoading != discoveryLoading;
+    if (!discoverableChanged && !syncingChanged && !loadingChanged) return;
     if (isClosed) return;
     emit(
       state.copyWith(
