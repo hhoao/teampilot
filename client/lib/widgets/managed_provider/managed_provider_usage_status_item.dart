@@ -231,12 +231,6 @@ class _Summary {
         selected: false,
       );
     }
-    final warning = providers.any((provider) {
-      final status = usageState.snapshotFor(provider.id)?.status;
-      return status == ProviderUsageStatus.stale ||
-          status == ProviderUsageStatus.error ||
-          status == ProviderUsageStatus.unsupported;
-    });
     final loading =
         usageState.isRefreshing ||
         (usageState.status == ManagedProviderUsageLoadStatus.loading &&
@@ -255,11 +249,20 @@ class _Summary {
         ? const <ManagedProvider>[]
         : <ManagedProvider>[focused];
     final label = focused == null ? '—' : _singleLabel(focused, usageState);
+    // Warn only for the provider currently shown. TTL `stale` is silent;
+    // off-screen providers (e.g. missing Claude credentials) must not paint
+    // the focused Codex/DeepSeek segment red.
+    final focusedStatus = focused == null
+        ? null
+        : usageState.snapshotFor(focused.id)?.status;
+    final warning =
+        focusedStatus == ProviderUsageStatus.error ||
+        focusedStatus == ProviderUsageStatus.unsupported;
     return _Summary(
       providerList: displayList,
       label: label,
       tooltip: warning
-          ? '${l10n.managedProvidersTitle} · ${l10n.managedProvidersCachedUsageStale}'
+          ? '${l10n.managedProvidersTitle} · ${l10n.managedProvidersQueryFailed}'
           : l10n.managedProvidersTitle,
       warning: warning,
       loading: loading,

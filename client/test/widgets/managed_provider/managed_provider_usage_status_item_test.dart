@@ -437,7 +437,7 @@ void main() {
     );
   });
 
-  testWidgets('one enabled stale provider shows brand mark and warning', (
+  testWidgets('one enabled stale provider shows brand mark without warning', (
     tester,
   ) async {
     await pumpItem(
@@ -449,12 +449,12 @@ void main() {
     expect(find.byKey(const Key('managed-provider-brand-p1')), findsOneWidget);
     expect(
       find.byKey(const Key('managed-provider-usage-warning')),
-      findsOneWidget,
+      findsNothing,
     );
   });
 
   testWidgets(
-    'two enabled providers, focused one healthy, other stale still shows warning',
+    'two enabled providers, focused one healthy, other stale shows no warning',
     (tester) async {
       final a = _provider(id: 'p1', name: 'A');
       final b = _provider(id: 'p2', name: 'B');
@@ -488,12 +488,83 @@ void main() {
       expect(find.byKey(const Key('managed-provider-brand-p2')), findsNothing);
       expect(
         find.byKey(const Key('managed-provider-usage-warning')),
-        findsOneWidget,
+        findsNothing,
       );
     },
   );
 
-  testWidgets('shows a cached stale value and warning without querying', (
+  testWidgets(
+    'focused healthy provider stays calm when another enabled provider errors',
+    (tester) async {
+      final a = _provider(id: 'p1', name: 'A');
+      final b = _provider(id: 'p2', name: 'B');
+      await pumpItem(
+        tester,
+        providers: [a, b],
+        snapshots: {
+          'p1': ProviderUsageSnapshot(
+            providerId: 'p1',
+            status: ProviderUsageStatus.ready,
+            fetchedAt: 200,
+            measures: [
+              ProviderUsageMeasure(
+                label: 'Balance',
+                kind: ProviderUsageMeasureKind.balance,
+                remaining: '12.50',
+                unit: 'USD',
+              ),
+            ],
+          ),
+          'p2': _snapshot(id: 'p2', status: ProviderUsageStatus.error),
+        },
+      );
+
+      expect(
+        find.byKey(const Key('managed-provider-brand-p1')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('managed-provider-usage-warning')),
+        findsNothing,
+      );
+    },
+  );
+
+  testWidgets('focused error provider shows warning', (tester) async {
+    final a = _provider(id: 'p1', name: 'A');
+    final b = _provider(id: 'p2', name: 'B');
+    await pumpItem(
+      tester,
+      providers: [a, b],
+      snapshots: {
+        'p1': _snapshot(id: 'p1', status: ProviderUsageStatus.error),
+        'p2': ProviderUsageSnapshot(
+          providerId: 'p2',
+          status: ProviderUsageStatus.ready,
+          fetchedAt: 50,
+          measures: [
+            ProviderUsageMeasure(
+              label: 'Balance',
+              kind: ProviderUsageMeasureKind.balance,
+              remaining: '1',
+              unit: 'USD',
+            ),
+          ],
+        ),
+      },
+    );
+
+    // Cold start: p1 has later fetchedAt (100 default) than p2 (50) → focus p1
+    // when both "change" from empty previous; equal absent→present uses list
+    // order / fetchedAt. _snapshot uses fetchedAt 100; p2 is 50 → p1 focused.
+    expect(find.byKey(const Key('managed-provider-brand-p1')), findsOneWidget);
+    expect(
+      find.byKey(const Key('managed-provider-usage-warning')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('shows a cached stale value without warning or querying', (
     tester,
   ) async {
     await pumpItem(
@@ -505,7 +576,7 @@ void main() {
     expect(find.text('12.50 USD'), findsWidgets);
     expect(
       find.byKey(const Key('managed-provider-usage-warning')),
-      findsOneWidget,
+      findsNothing,
     );
     expect(adapter.calls, 0);
   });
