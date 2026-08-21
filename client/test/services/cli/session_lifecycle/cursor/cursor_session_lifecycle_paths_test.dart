@@ -15,6 +15,7 @@ void main() {
   const workspaceId = 'ws';
   const workingDirectory = '/home/hhoa/git/hhoa/teampilot';
   const slug = 'home-hhoa-git-hhoa-teampilot';
+  String slash(String path) => path.replaceAll(r'\', '/');
   final pathContext = p.context;
   final teamRuntimeRoot = pathContext.join(
     '/tp',
@@ -77,7 +78,10 @@ void main() {
           'home',
         ),
       );
-      expect(paths.memberHomeRoot('team-lead'), contains('/sessions/sess/'));
+      expect(
+        slash(paths.memberHomeRoot('team-lead')),
+        contains('/sessions/sess/'),
+      );
       expect(
         paths.memberHomeRoot('team-lead'),
         isNot(contains('/runtime/teams/')),

@@ -1,5 +1,3 @@
-import 'package:path/path.dart' as p;
-
 import '../../../storage/runtime_layout.dart';
 import 'cursor_home_layout.dart';
 
@@ -30,7 +28,11 @@ abstract final class CursorSessionConfigDir {
       toolId,
       memberId: trimmedMemberId.isEmpty ? null : trimmedMemberId,
     );
-    return p.join(toolDir, homeSegment, CursorHomeLayout.cursorDirName);
+    return layout.pathContext.join(
+      toolDir,
+      homeSegment,
+      CursorHomeLayout.cursorDirName,
+    );
   }
 
   /// Isolated fake `$HOME` for mixed-mode cursor (parent of `.cursor/`).
@@ -44,7 +46,7 @@ abstract final class CursorSessionConfigDir {
     required String sessionId,
     required String memberId,
   }) {
-    return p.join(
+    return layout.pathContext.join(
       layout.sessionRuntimeToolDir(
         workspaceId,
         sessionId,

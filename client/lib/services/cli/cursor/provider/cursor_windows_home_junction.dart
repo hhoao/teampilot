@@ -1,3 +1,5 @@
+import 'package:path/path.dart' as p;
+
 import '../../../io/filesystem.dart';
 import '../../../storage/windows_cli_runtime_junction.dart';
 import 'cursor_home_layout.dart';
@@ -18,17 +20,21 @@ abstract final class CursorWindowsHomeJunction {
   static String? defaultLocalAppDataRoot() =>
       WindowsCliRuntimeJunction.defaultLocalAppDataRoot();
 
-  static String markerPathForCanonicalHome(String canonicalHome) =>
-      WindowsCliRuntimeJunction.markerPathForCanonicalHome(canonicalHome);
+  static String markerPathForCanonicalHome(
+    String canonicalHome, {
+    p.Context? pathContext,
+  }) => WindowsCliRuntimeJunction.markerPathForCanonicalHome(
+    canonicalHome,
+    pathContext: pathContext,
+  );
 
   static Future<String> resolveAgentHome({
     required Filesystem fs,
     required String canonicalHome,
-  }) =>
-      WindowsCliRuntimeJunction.resolvePhysicalHome(
-        fs: fs,
-        canonicalHome: canonicalHome,
-      );
+  }) => WindowsCliRuntimeJunction.resolvePhysicalHome(
+    fs: fs,
+    canonicalHome: canonicalHome,
+  );
 
   static Future<String?> resolveCursorConfigDir({
     required Filesystem fs,
@@ -55,7 +61,10 @@ abstract final class CursorWindowsHomeJunction {
 
     final stored =
         (await fs.readString(
-          WindowsCliRuntimeJunction.markerPathForCanonicalHome(canonicalHome),
+          WindowsCliRuntimeJunction.markerPathForCanonicalHome(
+            canonicalHome,
+            pathContext: path,
+          ),
         ))?.trim() ??
         '';
     if (stored.isEmpty) return fallbackConfigDir;
@@ -68,42 +77,38 @@ abstract final class CursorWindowsHomeJunction {
     required Filesystem fs,
     required String canonicalHome,
     String? localAppDataRoot,
-  }) =>
-      WindowsCliRuntimeJunction.ensurePhysicalHome(
-        fs: fs,
-        spec: _spec,
-        canonicalHome: canonicalHome,
-        localAppDataRoot: localAppDataRoot,
-      );
+  }) => WindowsCliRuntimeJunction.ensurePhysicalHome(
+    fs: fs,
+    spec: _spec,
+    canonicalHome: canonicalHome,
+    localAppDataRoot: localAppDataRoot,
+  );
 
   static String physicalHomePath({
     required String localAppDataRoot,
     required String canonicalHome,
-  }) =>
-      WindowsCliRuntimeJunction.physicalHomePath(
-        spec: _spec,
-        localAppDataRoot: localAppDataRoot,
-        canonicalHome: canonicalHome,
-      );
+  }) => WindowsCliRuntimeJunction.physicalHomePath(
+    spec: _spec,
+    localAppDataRoot: localAppDataRoot,
+    canonicalHome: canonicalHome,
+  );
 
   static Future<void> removeLinkedPhysicalHome({
     required Filesystem fs,
     required String canonicalHome,
     String? localAppDataRoot,
-  }) =>
-      WindowsCliRuntimeJunction.removeLinkedPhysicalHome(
-        fs: fs,
-        spec: _spec,
-        canonicalHome: canonicalHome,
-        localAppDataRoot: localAppDataRoot,
-      );
+  }) => WindowsCliRuntimeJunction.removeLinkedPhysicalHome(
+    fs: fs,
+    spec: _spec,
+    canonicalHome: canonicalHome,
+    localAppDataRoot: localAppDataRoot,
+  );
 
   static Future<void> removeLinkedPhysicalHomesUnder({
     required Filesystem fs,
     required String scanRoot,
-  }) =>
-      WindowsCliRuntimeJunction.removeLinkedPhysicalHomesUnder(
-        fs: fs,
-        scanRoot: scanRoot,
-      );
+  }) => WindowsCliRuntimeJunction.removeLinkedPhysicalHomesUnder(
+    fs: fs,
+    scanRoot: scanRoot,
+  );
 }

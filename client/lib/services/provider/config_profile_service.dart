@@ -280,7 +280,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
         memberToolDir: memberToolDir,
         member: member,
         memberHome: memberCli == CliTool.cursor
-            ? staging.fs.pathContext.join(memberToolDir, 'home')
+            ? stagingFs.pathContext.join(memberToolDir, 'home')
             : null,
       );
       final report = await staging._provisionStagedHooks(
@@ -1456,7 +1456,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
       memberToolDir: hookMemberToolDir,
       member: launchMember,
       memberHome: launchCli == CliTool.cursor && launchMember != null
-          ? staging.fs.pathContext.join(hookMemberToolDir, 'home')
+          ? stagingFs.pathContext.join(hookMemberToolDir, 'home')
           : null,
     );
     final resourceReport = await _provisionStagedResources(
@@ -1485,7 +1485,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
         workingDirectory: workingDirectory,
         additionalDirectories: additionalDirectories,
         memberHome: launchCli == CliTool.cursor && launchMember != null
-            ? staging.fs.pathContext.join(hookMemberToolDir, 'home')
+            ? stagingFs.pathContext.join(hookMemberToolDir, 'home')
             : null,
         hooksDir: hookPaths.hooksDir,
         hookConfigPath: hookPaths.configPath,

@@ -35,7 +35,9 @@ class RuntimeLayout {
   static final _identityInheritLocks = LockPool();
   static final _workspaceInheritLocks = LockPool();
 
-  p.Context get _pathContext => _fs.pathContext;
+  p.Context get pathContext => _fs.pathContext;
+
+  p.Context get _pathContext => pathContext;
 
   String get cliDefaultsDir => _pathContext.join(teampilotRoot, 'cli-defaults');
 

@@ -16,28 +16,31 @@ void main() {
   setUp(setUpTestAppStorage);
   tearDown(tearDownTestAppStorage);
 
-  test('stageSimpleSessionLaunch records manifest entries on local target', () async {
-    final lifecycle = SessionLifecycleService(
-      appDataBasePath: AppStorage.paths.basePath,
-    );
-    final roots = await lifecycle.resolveWorkContextForTargetId('local');
-    final svc = await lifecycle.configProfileServiceFor(roots);
-    final staged = await svc.stageSimpleSessionLaunch(
-      readDelegate: roots.fs,
-      workTeampilotRoot: roots.appDataRoot,
-      workspaceId: 'ws1',
-      sessionId: 'sess1',
-      runtimeBundle: const ConfigBundle(),
-      member: const TeamMemberConfig(id: 'default', name: 'Default'),
-    );
-    expect(staged.manifest.files, isNotEmpty);
+  test(
+    'stageSimpleSessionLaunch records manifest entries on local target',
+    () async {
+      final lifecycle = SessionLifecycleService(
+        appDataBasePath: AppStorage.paths.basePath,
+      );
+      final roots = await lifecycle.resolveWorkContextForTargetId('local');
+      final svc = await lifecycle.configProfileServiceFor(roots);
+      final staged = await svc.stageSimpleSessionLaunch(
+        readDelegate: roots.fs,
+        workTeampilotRoot: roots.appDataRoot,
+        workspaceId: 'ws1',
+        sessionId: 'sess1',
+        runtimeBundle: const ConfigBundle(),
+        member: const TeamMemberConfig(id: 'default', name: 'Default'),
+      );
+      expect(staged.manifest.files, isNotEmpty);
 
-    await const ManifestExecutor().flush(
-      manifest: staged.manifest,
-      targetFs: roots.fs,
-      sourceFs: roots.fs,
-    );
-  });
+      await const ManifestExecutor().flush(
+        manifest: staged.manifest,
+        targetFs: roots.fs,
+        sourceFs: roots.fs,
+      );
+    },
+  );
 
   test('stageTeamLaunch records manifest entries on local target', () async {
     const presetId = 'preset-deepseek';
@@ -102,11 +105,11 @@ void main() {
     expect(staged.manifest.entries, isNotEmpty);
     // Hooks may write settings/<member>.json before session-home merges env;
     // [LaunchManifest.files] keeps the last write per path.
-    final settingsPath = staged.manifest.files.keys.singleWhere(
-      (path) => path.endsWith('/settings/builder.json'),
-    );
-    final settings =
-        jsonDecode(staged.manifest.files[settingsPath]!) as Map;
+    final settingsPath = staged.manifest.files.keys.singleWhere((path) {
+      final normalized = path.replaceAll(r'\', '/');
+      return normalized.endsWith('/settings/builder.json');
+    });
+    final settings = jsonDecode(staged.manifest.files[settingsPath]!) as Map;
     final env = (settings['env'] as Map).cast<String, Object?>();
     expect(env['ANTHROPIC_BASE_URL'], 'https://api.deepseek.com/anthropic');
     expect(env['ANTHROPIC_AUTH_TOKEN'], 'sk-test');

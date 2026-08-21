@@ -1135,6 +1135,8 @@ void main() {
 
     if (capturedExecutable == 'wsl.exe') {
       expect(capturedArguments, [
+        '--cd',
+        '/mnt/c/Users/haung/git/teampilot/client',
         '/home/hhoa/flashskai-ubuntu-wsl/dist/flashskyai',
         '--dir',
         '/mnt/c/Users/haung/git/teampilot/client',

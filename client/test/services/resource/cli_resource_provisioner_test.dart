@@ -346,10 +346,9 @@ void main() {
     'opencode skips managed HTTP agent-status hooks instead of failing closed',
     () async {
       final fs = InMemoryFilesystem();
-      final registry = _registry(
-        [const OpencodeHookWriter()],
-        id: CliTool.opencode,
-      );
+      final registry = _registry([
+        const OpencodeHookWriter(),
+      ], id: CliTool.opencode);
       final report = await CliResourceProvisioner(fs: fs, registry: registry)
           .provision(
             _context(
@@ -377,10 +376,7 @@ void main() {
     'codex agent-status hooks wrap scripts with bash so they do not need +x',
     () async {
       final fs = InMemoryFilesystem();
-      final registry = _registry(
-        [const CodexHookWriter()],
-        id: CliTool.codex,
-      );
+      final registry = _registry([const CodexHookWriter()], id: CliTool.codex);
       final report = await CliResourceProvisioner(fs: fs, registry: registry)
           .provision(
             _context(
@@ -402,7 +398,10 @@ void main() {
       expect(report.hardDiagnostics, isEmpty);
       final toml = await fs.readString('/config/config.toml');
       expect(toml, isNotNull);
-      expect(toml, contains('bash '));
+      expect(
+        toml,
+        anyOf(contains('bash '), contains('powershell'), contains('.ps1')),
+      );
       expect(
         toml,
         contains('teampilot-http-teampilot-agent-status-preToolUse'),

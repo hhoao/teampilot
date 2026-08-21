@@ -21,30 +21,31 @@ abstract final class CursorWorkspaceWarmTier {
   static bool applies({TeamProfile? team, required CliTool cli}) =>
       cli == CliTool.cursor && team?.teamMode == TeamMode.mixed;
 
-  static String sharedRootRelative(String teamId) => p.join(
-    'runtime',
-    teamsSegment,
-    teamId.trim(),
-    toolId,
-  );
+  static String sharedRootRelative(String teamId) =>
+      p.posix.join('runtime', teamsSegment, teamId.trim(), toolId);
 
   static String sharedRoot(
     RuntimeLayout layout,
     String workspaceId,
     String teamId,
-  ) => layout.workspaceRuntimeToolDir(workspaceId.trim(), teamId.trim(), toolId);
+  ) =>
+      layout.workspaceRuntimeToolDir(workspaceId.trim(), teamId.trim(), toolId);
 
   static String pluginsLocalDir(
     RuntimeLayout layout,
     String workspaceId,
     String teamId,
-  ) => p.join(sharedRoot(layout, workspaceId, teamId), pluginsDirName, localPluginsSegment);
+  ) => layout.pathContext.join(
+    sharedRoot(layout, workspaceId, teamId),
+    pluginsDirName,
+    localPluginsSegment,
+  );
 
   static String pluginsMarketplacesDir(
     RuntimeLayout layout,
     String workspaceId,
     String teamId,
-  ) => p.join(
+  ) => layout.pathContext.join(
     sharedRoot(layout, workspaceId, teamId),
     pluginsDirName,
     marketplacesSegment,
@@ -54,7 +55,7 @@ abstract final class CursorWorkspaceWarmTier {
     RuntimeLayout layout,
     String workspaceId,
     String teamId,
-  ) => p.join(
+  ) => layout.pathContext.join(
     sharedRoot(layout, workspaceId, teamId),
     pluginsDirName,
     installedPluginsFileName,
@@ -64,7 +65,7 @@ abstract final class CursorWorkspaceWarmTier {
     RuntimeLayout layout,
     String workspaceId,
     String teamId,
-  ) => p.join(
+  ) => layout.pathContext.join(
     sharedRoot(layout, workspaceId, teamId),
     pluginsDirName,
     knownMarketplacesFileName,
@@ -74,7 +75,7 @@ abstract final class CursorWorkspaceWarmTier {
     RuntimeLayout layout,
     String workspaceId,
     String teamId,
-  ) => p.join(
+  ) => layout.pathContext.join(
     sharedRoot(layout, workspaceId, teamId),
     CursorSkillCapability.skillsSubdirName,
   );
@@ -83,23 +84,34 @@ abstract final class CursorWorkspaceWarmTier {
     RuntimeLayout layout,
     String workspaceId,
     String teamId,
-  ) => p.join(sharedRoot(layout, workspaceId, teamId), settingsFileName);
+  ) => layout.pathContext.join(
+    sharedRoot(layout, workspaceId, teamId),
+    settingsFileName,
+  );
 
   static String mcpBase(
     RuntimeLayout layout,
     String workspaceId,
     String teamId,
-  ) => p.join(sharedRoot(layout, workspaceId, teamId), mcpBaseFileName);
+  ) => layout.pathContext.join(
+    sharedRoot(layout, workspaceId, teamId),
+    mcpBaseFileName,
+  );
 
   /// Relative paths under the workspace dir for [CliSessionManifestShared].
-  static CliSessionManifestSharedPaths manifestPaths(String sharedRootRelative) {
+  static CliSessionManifestSharedPaths manifestPaths(
+    String sharedRootRelative,
+  ) {
     final root = sharedRootRelative.trim();
     return CliSessionManifestSharedPaths(
       root: root,
-      pluginsLocalDir: p.join(root, pluginsDirName, localPluginsSegment),
-      skillsCursorDir: p.join(root, CursorSkillCapability.skillsSubdirName),
-      mcpBase: p.join(root, mcpBaseFileName),
-      settingsJson: p.join(root, settingsFileName),
+      pluginsLocalDir: p.posix.join(root, pluginsDirName, localPluginsSegment),
+      skillsCursorDir: p.posix.join(
+        root,
+        CursorSkillCapability.skillsSubdirName,
+      ),
+      mcpBase: p.posix.join(root, mcpBaseFileName),
+      settingsJson: p.posix.join(root, settingsFileName),
     );
   }
 

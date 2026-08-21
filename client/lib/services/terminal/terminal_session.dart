@@ -288,10 +288,16 @@ class TerminalSession {
             useWslPaths: invocation.usesWsl,
           )
         : const <String>[];
-    final launchArgs = invocation.withArgs(
-      args,
-      environment: _extraEnvironment,
-    );
+    var launchArgs = invocation.withArgs(args, environment: _extraEnvironment);
+    if (invocation.usesWsl) {
+      final linuxCwd = LaunchCommandBuilder.normalizePathForCli(
+        workingDirectory,
+        useWslPaths: true,
+      ).trim();
+      if (linuxCwd.isNotEmpty && !launchArgs.contains('--cd')) {
+        launchArgs = ['--cd', linuxCwd, ...launchArgs];
+      }
+    }
 
     if (!_validateBeforeSpawn(invocation.executable, ptyWorkingDirectory)) {
       return;

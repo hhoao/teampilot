@@ -14,12 +14,7 @@ import 'package:teampilot/services/skill/skill_repo_disk_cache_service.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 
 class _FakeRegistry implements SkillRegistrySource {
-  _FakeRegistry(
-    this.id,
-    this.total, {
-    this.pageSize = 2,
-    this.quota = false,
-  });
+  _FakeRegistry(this.id, this.total, {this.pageSize = 2, this.quota = false});
 
   @override
   final String id;
@@ -206,73 +201,78 @@ void main() {
     expect(cubit.state.discoveryError, isNull);
   });
 
-  test('unifiedLoadMore error keeps source retryable and surfaces error',
-      () async {
-    final a = _FakeRegistry('a', 5, pageSize: 3);
-    final cubit = _cubit([a], cfg, repo);
-    await cubit.unifiedBrowse(); // page 1 -> hasNext true
+  test(
+    'unifiedLoadMore error keeps source retryable and surfaces error',
+    () async {
+      final a = _FakeRegistry('a', 5, pageSize: 3);
+      final cubit = _cubit([a], cfg, repo);
+      await cubit.unifiedBrowse(); // page 1 -> hasNext true
 
-    a.failNext = true;
-    await cubit.unifiedLoadMore(); // page 2 fails
-    expect(cubit.state.discoveryError, contains('boom'));
-    expect(cubit.state.discoveryPages['a'], 1); // page not advanced
-    expect(cubit.state.discoveryHasNext['a'], isTrue); // preserved
+      a.failNext = true;
+      await cubit.unifiedLoadMore(); // page 2 fails
+      expect(cubit.state.discoveryError, contains('boom'));
+      expect(cubit.state.discoveryPages['a'], 1); // page not advanced
+      expect(cubit.state.discoveryHasNext['a'], isTrue); // preserved
 
-    await cubit.unifiedLoadMore(); // retry same page succeeds
-    expect(cubit.state.discoveryPages['a'], 2);
-    expect(cubit.state.discoveryEntries, hasLength(5));
-    expect(cubit.state.discoveryError, isNull);
-    expect(a.queries, hasLength(3)); // page 1, failed page 2, retried page 2
-  });
+      await cubit.unifiedLoadMore(); // retry same page succeeds
+      expect(cubit.state.discoveryPages['a'], 2);
+      expect(cubit.state.discoveryEntries, hasLength(5));
+      expect(cubit.state.discoveryError, isNull);
+      expect(a.queries, hasLength(3)); // page 1, failed page 2, retried page 2
+    },
+  );
 
-  test('toggleRegistrySource on git triggers the background git sync once',
-      () async {
-    final cache = _CountingRepoCache();
-    final repo = SkillRepository(repoCache: cache);
-    var syncNowCalls = 0;
-    GitRepoRegistrySource buildSource(SkillRegistrySourceConfig c) =>
-        GitRepoRegistrySource(
-          c,
-          discoverableProvider: () async => const [],
-          syncNow: () async => syncNowCalls++,
-        );
-    final cubit = SkillCubit(
-      repo,
-      registryConfigService: cfg,
-      initialSources: const [],
-      rebuildSources: (config) => [
-        for (final c in config.sources)
-          if (c.kind == SkillRegistryKind.gitRepo) buildSource(c),
-      ],
-    );
+  test(
+    'toggleRegistrySource on git triggers the background git sync once',
+    () async {
+      final cache = _CountingRepoCache();
+      final repo = SkillRepository(repoCache: cache);
+      var syncNowCalls = 0;
+      GitRepoRegistrySource buildSource(SkillRegistrySourceConfig c) =>
+          GitRepoRegistrySource(
+            c,
+            discoverableProvider: () async => const [],
+            syncNow: () async => syncNowCalls++,
+          );
+      final cubit = SkillCubit(
+        repo,
+        registryConfigService: cfg,
+        initialSources: const [],
+        rebuildSources: (config) => [
+          for (final c in config.sources)
+            if (c.kind == SkillRegistryKind.gitRepo) buildSource(c),
+        ],
+      );
 
-    await cubit.addRegistrySource(
-      const SkillRegistrySourceConfig(
-        id: 'git-o-r',
-        kind: SkillRegistryKind.gitRepo,
-        label: 'o/r',
-        enabled: false,
-        gitOwner: 'o',
-        gitName: 'r',
-        gitBranch: 'main',
-      ),
-    );
-    expect(cache.syncCalls, 0); // disabled add does not sync
+      await cubit.addRegistrySource(
+        const SkillRegistrySourceConfig(
+          id: 'git-o-r',
+          kind: SkillRegistryKind.gitRepo,
+          label: 'o/r',
+          enabled: false,
+          gitOwner: 'o',
+          gitName: 'r',
+          gitBranch: 'main',
+        ),
+      );
+      expect(cache.syncCalls, 0); // disabled add does not sync
 
-    await cubit.toggleRegistrySource('git-o-r', true);
-    await _waitFor(() => cache.syncCalls == 1);
-    expect(cache.syncCalls, 1);
-    expect(cubit.state.registriesConfig.byId('git-o-r')!.enabled, isTrue);
-    expect(syncNowCalls, 0); // background sync goes through the repo cache
+      await cubit.toggleRegistrySource('git-o-r', true);
+      await _waitFor(() => cache.syncCalls == 1);
+      expect(cache.syncCalls, 1);
+      expect(cubit.state.registriesConfig.byId('git-o-r')!.enabled, isTrue);
+      expect(syncNowCalls, 0); // background sync goes through the repo cache
 
-    // The probe is built from the candidate config: its git syncNow goes
-    // through the repo cache (counted here), not the source closure.
-    final err = await cubit.testRegistryConnection(
-      cubit.state.registriesConfig.byId('git-o-r')!,
-    );
-    expect(err, isNull);
-    expect(cache.syncCalls, 2); // toggle sync (1) + probe sync (2)
-  });
+      // The probe is built from the candidate config: its git syncNow goes
+      // through the repo cache (counted here), not the source closure.
+      final err = await cubit.testRegistryConnection(
+        cubit.state.registriesConfig.byId('git-o-r')!,
+      );
+      expect(err, isNull);
+      expect(cache.syncCalls, 2); // toggle sync (1) + probe sync (2)
+      await cubit.close();
+    },
+  );
 
   test('unifiedSetApiKey persists trimmed key via config service', () async {
     final a = _FakeRegistry('a', 3);
@@ -298,33 +298,36 @@ void main() {
     expect(cubit.state.registriesConfig.byId('missing'), isNull);
   });
 
-  test('testRegistryConnection probes the candidate, not persisted state', () async {
-    final a = _FakeRegistry('a', 3);
-    final cubit = _cubit([a], cfg, repo);
+  test(
+    'testRegistryConnection probes the candidate, not persisted state',
+    () async {
+      final a = _FakeRegistry('a', 3);
+      final cubit = _cubit([a], cfg, repo);
 
-    // Unknown id -> short error string, no errorMessage emitted.
-    final missing = await cubit.testRegistryConnection(
-      const SkillRegistrySourceConfig(
-        id: 'nope',
-        kind: SkillRegistryKind.api,
-        label: 'nope',
-      ),
-    );
-    expect(missing, isNotNull);
-    expect(cubit.state.errorMessage, isNull);
+      // Unknown id -> short error string, no errorMessage emitted.
+      final missing = await cubit.testRegistryConnection(
+        const SkillRegistrySourceConfig(
+          id: 'nope',
+          kind: SkillRegistryKind.api,
+          label: 'nope',
+        ),
+      );
+      expect(missing, isNotNull);
+      expect(cubit.state.errorMessage, isNull);
 
-    // A real API probe against an unreachable base URL surfaces the error
-    // string back to the dialog instead of emitting errorMessage (avoids
-    // double toasts with the management-page listener).
-    final err = await cubit.testRegistryConnection(
-      const SkillRegistrySourceConfig(
-        id: 'a',
-        kind: SkillRegistryKind.api,
-        label: 'a',
-        baseUrl: 'http://127.0.0.1:1',
-      ),
-    );
-    expect(err, isNotNull);
-    expect(cubit.state.errorMessage, isNull);
-  });
+      // A real API probe against an unreachable base URL surfaces the error
+      // string back to the dialog instead of emitting errorMessage (avoids
+      // double toasts with the management-page listener).
+      final err = await cubit.testRegistryConnection(
+        const SkillRegistrySourceConfig(
+          id: 'a',
+          kind: SkillRegistryKind.api,
+          label: 'a',
+          baseUrl: 'http://127.0.0.1:1',
+        ),
+      );
+      expect(err, isNotNull);
+      expect(cubit.state.errorMessage, isNull);
+    },
+  );
 }

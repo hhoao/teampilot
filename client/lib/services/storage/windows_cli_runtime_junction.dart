@@ -53,8 +53,13 @@ abstract final class WindowsCliRuntimeJunction {
     return p.join(local, 'com.hhoa.teampilot');
   }
 
-  static String markerPathForCanonicalHome(String canonicalHome) =>
-      p.join(p.dirname(canonicalHome), junctionMarkerFileName);
+  static String markerPathForCanonicalHome(
+    String canonicalHome, {
+    p.Context? pathContext,
+  }) {
+    final ctx = pathContext ?? p.context;
+    return ctx.join(ctx.dirname(canonicalHome), junctionMarkerFileName);
+  }
 
   static Future<String> resolvePhysicalHome({
     required Filesystem fs,
@@ -64,7 +69,9 @@ abstract final class WindowsCliRuntimeJunction {
       fs.pathContext.absolute(canonicalHome.trim()),
     );
     final stored =
-        (await fs.readString(markerPathForCanonicalHome(canonical)))?.trim() ??
+        (await fs.readString(
+          markerPathForCanonicalHome(canonical, pathContext: fs.pathContext),
+        ))?.trim() ??
         '';
     if (stored.isNotEmpty) {
       return fs.pathContext.normalize(stored);
@@ -108,7 +115,7 @@ abstract final class WindowsCliRuntimeJunction {
     );
     await _ensureJunction(fs: fs, linkPath: canonical, target: physical);
     await fs.atomicWrite(
-      markerPathForCanonicalHome(canonical),
+      markerPathForCanonicalHome(canonical, pathContext: fs.pathContext),
       '$physical\n',
     );
     return physical;
@@ -142,7 +149,10 @@ abstract final class WindowsCliRuntimeJunction {
     final canonical = fs.pathContext.normalize(
       fs.pathContext.absolute(canonicalHome.trim()),
     );
-    final marker = markerPathForCanonicalHome(canonical);
+    final marker = markerPathForCanonicalHome(
+      canonical,
+      pathContext: fs.pathContext,
+    );
     final stored = (await fs.readString(marker))?.trim() ?? '';
     if (stored.isNotEmpty) {
       await _removePhysicalTree(fs, stored);
@@ -286,7 +296,10 @@ abstract final class WindowsCliRuntimeJunction {
     Filesystem fs,
     String canonicalHome,
   ) async {
-    final marker = markerPathForCanonicalHome(canonicalHome);
+    final marker = markerPathForCanonicalHome(
+      canonicalHome,
+      pathContext: fs.pathContext,
+    );
     final stat = await fs.stat(marker);
     if (stat.exists) {
       await fs.removeRecursive(marker);

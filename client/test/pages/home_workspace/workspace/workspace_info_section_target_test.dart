@@ -43,7 +43,10 @@ void main() {
       final l10n = await AppLocalizations.delegate.load(const Locale('en'));
       expect(find.text(l10n.workspaceFoldersSectionTitle), findsOneWidget);
       expect(find.text(l10n.rootSandboxEnvOptInTitle), findsOneWidget);
-      expect(find.text(l10n.workspaceFoldersAddOnAnotherMachine), findsOneWidget);
+      expect(
+        find.text(l10n.workspaceFoldersAddOnAnotherMachine),
+        findsOneWidget,
+      );
     });
   });
 
@@ -166,6 +169,11 @@ Future<void> _pumpWorkspaceInfo(
     ),
   );
   await tester.pump();
-  await Future<void>.delayed(const Duration(milliseconds: 100));
-  await tester.pump();
+  for (var i = 0; i < 40; i++) {
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    await tester.pump();
+    if (find.text('Add other host directories').evaluate().isNotEmpty) {
+      break;
+    }
+  }
 }

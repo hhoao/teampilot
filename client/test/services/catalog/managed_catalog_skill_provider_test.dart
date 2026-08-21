@@ -159,11 +159,17 @@ void main() {
     );
     expect(skillMd.existsSync(), isTrue);
     final text = skillMd.readAsStringSync();
-    expect(text, contains('description: $_skillDescription'));
+    expect(
+      text.replaceAll('\r\n', '\n'),
+      contains('description: $_skillDescription'),
+    );
     expect(text, contains('search_'));
     expect(text, contains('install_'));
     expect(text, contains('import_'));
     expect(text, contains('~/.claude'));
-    expect(teampilotCatalogSkillMd, text);
+    expect(
+      teampilotCatalogSkillMd.replaceAll('\r\n', '\n'),
+      text.replaceAll('\r\n', '\n'),
+    );
   });
 }

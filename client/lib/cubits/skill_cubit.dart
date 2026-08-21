@@ -207,9 +207,17 @@ class SkillCubit extends Cubit<SkillState> {
   final List<SkillRegistrySource> Function(SkillRegistriesConfig)
   _rebuildSources;
   int _discoveryGeneration = 0;
+  Future<void> _inflightRepoSync = Future.value();
 
   bool _autoRefreshEnabled() =>
       _discoverySettings?.state.autoRefreshEnabled ?? false;
+
+  @override
+  Future<void> close() async {
+    _discoveryGeneration++;
+    await _inflightRepoSync;
+    return super.close();
+  }
 
   Future<void> loadAll() async {
     emit(state.copyWith(status: SkillLoadStatus.loading, clearError: true));
@@ -299,9 +307,28 @@ class SkillCubit extends Cubit<SkillState> {
     bool clearError = false,
     Duration? maxStaleness,
   }) async {
-    if (reposToSync.isEmpty) return;
+    if (reposToSync.isEmpty || isClosed) return;
 
     final generation = ++_discoveryGeneration;
+    final sync = _runReposSyncInBackground(
+      reposToSync,
+      generation: generation,
+      force: force,
+      clearError: clearError,
+      maxStaleness: maxStaleness,
+    );
+    _inflightRepoSync = sync;
+    await sync;
+  }
+
+  Future<void> _runReposSyncInBackground(
+    List<SkillRepo> reposToSync, {
+    required int generation,
+    required bool force,
+    required bool clearError,
+    required Duration? maxStaleness,
+  }) async {
+    if (isClosed) return;
     final enabled = _gitRepos();
     var syncing = {
       ...state.repoSyncingKeys,
@@ -322,10 +349,10 @@ class SkillCubit extends Cubit<SkillState> {
     final remaining = Set<String>.from(batchKeys);
 
     Future<void> onRepoSyncFinished(String key) async {
-      if (generation != _discoveryGeneration) return;
+      if (isClosed || generation != _discoveryGeneration) return;
       remaining.remove(key);
       final discoverable = await _aggregateDiscoverableFromDisk(_gitRepos());
-      if (generation != _discoveryGeneration) return;
+      if (isClosed || generation != _discoveryGeneration) return;
       final repoSyncingKeys = {
         ...state.repoSyncingKeys.where((k) => !batchKeys.contains(k)),
         ...remaining,
@@ -341,6 +368,7 @@ class SkillCubit extends Cubit<SkillState> {
       reposToSync.map((repo) async {
         final key = SkillRepoDiskCacheService.repoKey(repo);
         try {
+          if (isClosed) return;
           await _repo.syncRepoCache(
             repo,
             force: force,
@@ -349,12 +377,16 @@ class SkillCubit extends Cubit<SkillState> {
         } catch (e) {
           appLogger.w('[skills] sync ${repo.fullName} failed: $e');
         } finally {
-          await onRepoSyncFinished(key);
+          try {
+            await onRepoSyncFinished(key);
+          } catch (e) {
+            appLogger.w('[skills] sync ${repo.fullName} progress failed: $e');
+          }
         }
       }),
     );
 
-    if (generation != _discoveryGeneration) return;
+    if (isClosed || generation != _discoveryGeneration) return;
     final repoSyncingKeys = state.repoSyncingKeys
         .where((k) => !batchKeys.contains(k))
         .toSet();
@@ -378,7 +410,7 @@ class SkillCubit extends Cubit<SkillState> {
     );
     final syncingChanged = state.repoSyncingKeys != repoSyncingKeys;
     final loadingChanged = state.discoveryLoading != discoveryLoading;
-    if (!discoverableChanged && !syncingChanged && !loadingChanged) return;
+    if (isClosed) return;
     emit(
       state.copyWith(
         discoverable: discoverableChanged ? discoverable : null,
