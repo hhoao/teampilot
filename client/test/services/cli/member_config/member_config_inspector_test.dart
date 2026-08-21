@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:path/path.dart' as p;
 import 'package:teampilot/models/cli_preset.dart';
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/team_config.dart';
@@ -121,7 +120,7 @@ void main() {
         preferExpectedRuntimeDir: true,
       );
 
-      final expected = p.join(
+      final expected = layout.pathContext.join(
         layout.sessionRuntimeToolDir(
           'workspace-1',
           'team-a-1',
