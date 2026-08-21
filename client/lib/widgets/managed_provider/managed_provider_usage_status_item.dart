@@ -10,6 +10,7 @@ import '../../models/provider_usage_snapshot.dart';
 import '../workspace_status_bar/workspace_status_bar.dart';
 import 'managed_provider_brand_icon.dart';
 import 'managed_provider_usage_panel.dart';
+import 'managed_provider_usage_status_focus.dart';
 
 /// Lower-left cached usage summary and its refresh/navigation panel.
 class ManagedProviderUsageStatusItem implements WorkspaceStatusBarItem {
@@ -42,6 +43,8 @@ class _ManagedProviderUsageStatusSegment extends StatefulWidget {
 class _ManagedProviderUsageStatusSegmentState
     extends State<_ManagedProviderUsageStatusSegment> {
   final _popover = TpPopoverController();
+  Map<String, ProviderUsageSnapshot> _previousSnapshots = const {};
+  String? _focusedProviderId;
 
   @override
   void dispose() {
@@ -66,7 +69,21 @@ class _ManagedProviderUsageStatusSegmentState
               previous.isRefreshing != next.isRefreshing,
           builder: (context, usageState) {
             final providers = providerState.enabledProviders;
-            final summary = _Summary.from(context, providers, usageState);
+            final snapshots = usageState.snapshots;
+            _focusedProviderId = resolveManagedProviderUsageFocus(
+              enabledProviders: providers,
+              currentSnapshots: snapshots,
+              previousSnapshots: _previousSnapshots,
+              currentFocusId: _focusedProviderId,
+            );
+            _previousSnapshots =
+                Map<String, ProviderUsageSnapshot>.unmodifiable(snapshots);
+            final summary = _Summary.from(
+              context,
+              providers,
+              usageState,
+              focusedProviderId: _focusedProviderId,
+            );
             final cs = Theme.of(context).colorScheme;
             return TpActionMenuAnchor(
               controller: _popover,
@@ -132,19 +149,6 @@ class _SummaryContent extends StatelessWidget {
         dimension: 12,
         child: CircularProgressIndicator(strokeWidth: 1.5),
       );
-    } else if (summary.providerList.length > 1) {
-      final brands = [
-        for (final p in summary.providerList)
-          KeyedSubtree(
-            key: Key('managed-provider-brand-${p.id}'),
-            child: ManagedProviderBrandMark(provider: p, size: 15),
-          ),
-      ];
-      leadingIcon = Row(
-        key: const Key('managed-provider-usage-brand-icons'),
-        mainAxisSize: MainAxisSize.min,
-        children: brands,
-      );
     } else if (summary.providerList.length == 1) {
       leadingIcon = KeyedSubtree(
         key: Key('managed-provider-brand-${summary.providerList.single.id}'),
@@ -175,12 +179,9 @@ class _SummaryContent extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         leadingIcon,
-        if (warningIcon != null) ...[
-          const SizedBox(width: 2),
-          warningIcon,
-        ],
+        if (warningIcon != null) ...[const SizedBox(width: 2), warningIcon],
         const SizedBox(width: 4),
-        if (!compact || summary.providers == 1)
+        if (!compact || summary.providerList.length == 1)
           Text(
             summary.label,
             maxLines: 1,
@@ -213,13 +214,12 @@ class _Summary {
   final bool loading;
   final bool selected;
 
-  int get providers => providerList.length;
-
   factory _Summary.from(
     BuildContext context,
     List<ManagedProvider> providers,
-    ManagedProviderUsageState usageState,
-  ) {
+    ManagedProviderUsageState usageState, {
+    String? focusedProviderId,
+  }) {
     final l10n = context.l10n;
     if (providers.isEmpty) {
       return _Summary(
@@ -241,11 +241,22 @@ class _Summary {
         usageState.isRefreshing ||
         (usageState.status == ManagedProviderUsageLoadStatus.loading &&
             usageState.snapshots.isEmpty);
-    final label = providers.length == 1
-        ? _singleLabel(providers.single, usageState)
-        : '${providers.length}';
+    ManagedProvider? focused;
+    if (focusedProviderId != null) {
+      for (final p in providers) {
+        if (p.id == focusedProviderId) {
+          focused = p;
+          break;
+        }
+      }
+    }
+    focused ??= providers.isEmpty ? null : providers.first;
+    final displayList = focused == null
+        ? const <ManagedProvider>[]
+        : <ManagedProvider>[focused];
+    final label = focused == null ? '—' : _singleLabel(focused, usageState);
     return _Summary(
-      providerList: providers,
+      providerList: displayList,
       label: label,
       tooltip: warning
           ? '${l10n.managedProvidersTitle} · ${l10n.managedProvidersCachedUsageStale}'

@@ -166,76 +166,225 @@ void main() {
     await tester.pump();
   }
 
-  testWidgets('two enabled providers show brand-icons row and no wallet icon', (
+  testWidgets(
+    'two enabled providers show one focused brand and usage, not icon row',
+    (tester) async {
+      final codex = ManagedProvider(
+        id: 'p1',
+        name: 'Codex',
+        kind: ManagedProviderKind.subscriptionQuota,
+        adapterId: 'official-codex-subscription',
+        endpointConfig: ManagedProviderEndpointConfig(
+          url: 'https://example.test/usage',
+        ),
+      );
+      final claude = ManagedProvider(
+        id: 'p2',
+        name: 'Claude',
+        kind: ManagedProviderKind.subscriptionQuota,
+        adapterId: 'official-claude-subscription',
+        endpointConfig: ManagedProviderEndpointConfig(
+          url: 'https://example.test/usage',
+        ),
+      );
+      await pumpItem(
+        tester,
+        providers: [codex, claude],
+        snapshots: {
+          'p1': ProviderUsageSnapshot(
+            providerId: 'p1',
+            status: ProviderUsageStatus.ready,
+            fetchedAt: 100,
+            measures: [
+              ProviderUsageMeasure(
+                label: 'Balance',
+                kind: ProviderUsageMeasureKind.balance,
+                remaining: '12.50',
+                unit: 'USD',
+              ),
+            ],
+          ),
+          'p2': ProviderUsageSnapshot(
+            providerId: 'p2',
+            status: ProviderUsageStatus.ready,
+            fetchedAt: 200,
+            measures: [
+              ProviderUsageMeasure(
+                label: 'Balance',
+                kind: ProviderUsageMeasureKind.balance,
+                remaining: '99.00',
+                unit: 'USD',
+              ),
+            ],
+          ),
+        },
+      );
+
+      expect(
+        find.byKey(const Key('managed-provider-usage-brand-icons')),
+        findsNothing,
+      );
+      expect(
+        find.byKey(const Key('managed-provider-brand-p2')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('managed-provider-brand-p1')), findsNothing);
+      expect(find.text('99.00 USD'), findsOneWidget);
+      expect(find.text('2'), findsNothing);
+      expect(find.byIcon(Icons.account_balance_wallet_outlined), findsNothing);
+    },
+  );
+
+  testWidgets('focus follows last changed provider across refreshes', (
     tester,
   ) async {
-    final codex = ManagedProvider(
-      id: 'p1',
-      name: 'Codex',
-      kind: ManagedProviderKind.subscriptionQuota,
-      adapterId: 'official-codex-subscription',
-      endpointConfig: ManagedProviderEndpointConfig(
-        url: 'https://example.test/usage',
-      ),
-    );
-    final claude = ManagedProvider(
-      id: 'p2',
-      name: 'Claude',
-      kind: ManagedProviderKind.subscriptionQuota,
-      adapterId: 'official-claude-subscription',
-      endpointConfig: ManagedProviderEndpointConfig(
-        url: 'https://example.test/usage',
-      ),
-    );
+    final a = _provider(id: 'p1', name: 'A');
+    final b = _provider(id: 'p2', name: 'B');
     await pumpItem(
       tester,
-      providers: [codex, claude],
-      snapshots: {},
+      providers: [a, b],
+      snapshots: {
+        'p1': ProviderUsageSnapshot(
+          providerId: 'p1',
+          status: ProviderUsageStatus.ready,
+          fetchedAt: 100,
+          measures: [
+            ProviderUsageMeasure(
+              label: 'Balance',
+              kind: ProviderUsageMeasureKind.balance,
+              remaining: '10',
+              unit: 'USD',
+            ),
+          ],
+        ),
+        'p2': ProviderUsageSnapshot(
+          providerId: 'p2',
+          status: ProviderUsageStatus.ready,
+          fetchedAt: 100,
+          measures: [
+            ProviderUsageMeasure(
+              label: 'Balance',
+              kind: ProviderUsageMeasureKind.balance,
+              remaining: '20',
+              unit: 'USD',
+            ),
+          ],
+        ),
+      },
     );
+    // Cold start: equal fetchedAt → later list order → p2
+    expect(find.byKey(const Key('managed-provider-brand-p2')), findsOneWidget);
+    expect(find.text('20 USD'), findsOneWidget);
 
-    expect(
-      find.byKey(const Key('managed-provider-usage-brand-icons')),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(const Key('managed-provider-brand-p1')),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(const Key('managed-provider-brand-p2')),
-      findsOneWidget,
-    );
-    expect(find.byIcon(Icons.account_balance_wallet_outlined), findsNothing);
-  });
-
-  testWidgets('one enabled provider shows single brand mark and no wallet icon', (
-    tester,
-  ) async {
-    final codex = ManagedProvider(
-      id: 'p1',
-      name: 'Codex',
-      kind: ManagedProviderKind.subscriptionQuota,
-      adapterId: 'official-codex-subscription',
-      endpointConfig: ManagedProviderEndpointConfig(
-        url: 'https://example.test/usage',
+    usageCubit.emit(
+      ManagedProviderUsageState(
+        status: ManagedProviderUsageLoadStatus.ready,
+        snapshots: {
+          'p1': ProviderUsageSnapshot(
+            providerId: 'p1',
+            status: ProviderUsageStatus.ready,
+            fetchedAt: 150,
+            measures: [
+              ProviderUsageMeasure(
+                label: 'Balance',
+                kind: ProviderUsageMeasureKind.balance,
+                remaining: '9',
+                unit: 'USD',
+              ),
+            ],
+          ),
+          'p2': ProviderUsageSnapshot(
+            providerId: 'p2',
+            status: ProviderUsageStatus.ready,
+            fetchedAt: 100,
+            measures: [
+              ProviderUsageMeasure(
+                label: 'Balance',
+                kind: ProviderUsageMeasureKind.balance,
+                remaining: '20',
+                unit: 'USD',
+              ),
+            ],
+          ),
+        },
       ),
     );
-    await pumpItem(
-      tester,
-      providers: [codex],
-      snapshots: {},
-    );
-
+    await tester.pump();
+    await tester.pump();
     expect(find.byKey(const Key('managed-provider-brand-p1')), findsOneWidget);
-    expect(find.byIcon(Icons.account_balance_wallet_outlined), findsNothing);
-    expect(
-      find.byKey(const Key('managed-provider-usage-brand-icons')),
-      findsNothing,
+    expect(find.text('9 USD'), findsOneWidget);
+
+    usageCubit.emit(
+      ManagedProviderUsageState(
+        status: ManagedProviderUsageLoadStatus.ready,
+        snapshots: {
+          'p1': ProviderUsageSnapshot(
+            providerId: 'p1',
+            status: ProviderUsageStatus.ready,
+            fetchedAt: 150,
+            measures: [
+              ProviderUsageMeasure(
+                label: 'Balance',
+                kind: ProviderUsageMeasureKind.balance,
+                remaining: '9',
+                unit: 'USD',
+              ),
+            ],
+          ),
+          'p2': ProviderUsageSnapshot(
+            providerId: 'p2',
+            status: ProviderUsageStatus.ready,
+            fetchedAt: 160,
+            measures: [
+              ProviderUsageMeasure(
+                label: 'Balance',
+                kind: ProviderUsageMeasureKind.balance,
+                remaining: '19',
+                unit: 'USD',
+              ),
+            ],
+          ),
+        },
+      ),
     );
-    final icon = tester.getRect(find.byKey(const Key('managed-provider-brand-p1')));
-    final label = tester.getRect(find.byKey(const Key('managed-provider-usage-status-item')));
-    expect((icon.center.dy - label.center.dy).abs(), lessThanOrEqualTo(1));
+    await tester.pump();
+    await tester.pump();
+    expect(find.byKey(const Key('managed-provider-brand-p2')), findsOneWidget);
+    expect(find.text('19 USD'), findsOneWidget);
   });
+
+  testWidgets(
+    'one enabled provider shows single brand mark and no wallet icon',
+    (tester) async {
+      final codex = ManagedProvider(
+        id: 'p1',
+        name: 'Codex',
+        kind: ManagedProviderKind.subscriptionQuota,
+        adapterId: 'official-codex-subscription',
+        endpointConfig: ManagedProviderEndpointConfig(
+          url: 'https://example.test/usage',
+        ),
+      );
+      await pumpItem(tester, providers: [codex], snapshots: {});
+
+      expect(
+        find.byKey(const Key('managed-provider-brand-p1')),
+        findsOneWidget,
+      );
+      expect(find.byIcon(Icons.account_balance_wallet_outlined), findsNothing);
+      expect(
+        find.byKey(const Key('managed-provider-usage-brand-icons')),
+        findsNothing,
+      );
+      final icon = tester.getRect(
+        find.byKey(const Key('managed-provider-brand-p1')),
+      );
+      final label = tester.getRect(
+        find.byKey(const Key('managed-provider-usage-status-item')),
+      );
+      expect((icon.center.dy - label.center.dy).abs(), lessThanOrEqualTo(1));
+    },
+  );
 
   testWidgets(
     'loading with cached snapshots keeps brand marks instead of a spinner',
@@ -256,7 +405,10 @@ void main() {
         usageStatus: ManagedProviderUsageLoadStatus.loading,
       );
 
-      expect(find.byKey(const Key('managed-provider-brand-p1')), findsOneWidget);
+      expect(
+        find.byKey(const Key('managed-provider-brand-p1')),
+        findsOneWidget,
+      );
       expect(find.byType(CircularProgressIndicator), findsNothing);
     },
   );
@@ -275,11 +427,7 @@ void main() {
         url: 'https://example.test/usage',
       ),
     );
-    await pumpItem(
-      tester,
-      providers: [enabled, disabled],
-      snapshots: {},
-    );
+    await pumpItem(tester, providers: [enabled, disabled], snapshots: {});
 
     expect(find.byKey(const Key('managed-provider-brand-p1')), findsOneWidget);
     expect(find.byKey(const Key('managed-provider-brand-p2')), findsNothing);
@@ -289,19 +437,55 @@ void main() {
     );
   });
 
+  testWidgets('one enabled stale provider shows brand mark and warning', (
+    tester,
+  ) async {
+    await pumpItem(
+      tester,
+      providers: [_provider()],
+      snapshots: {'p1': _snapshot(status: ProviderUsageStatus.stale)},
+    );
+
+    expect(find.byKey(const Key('managed-provider-brand-p1')), findsOneWidget);
+    expect(
+      find.byKey(const Key('managed-provider-usage-warning')),
+      findsOneWidget,
+    );
+  });
+
   testWidgets(
-    'one enabled stale provider shows brand mark and warning',
+    'two enabled providers, focused one healthy, other stale still shows warning',
     (tester) async {
+      final a = _provider(id: 'p1', name: 'A');
+      final b = _provider(id: 'p2', name: 'B');
       await pumpItem(
         tester,
-        providers: [_provider()],
-        snapshots: {'p1': _snapshot(status: ProviderUsageStatus.stale)},
+        providers: [a, b],
+        snapshots: {
+          // p1 has the later fetchedAt, so cold start focuses it even
+          // though it is healthy; p2 (stale) stays off-screen.
+          'p1': ProviderUsageSnapshot(
+            providerId: 'p1',
+            status: ProviderUsageStatus.ready,
+            fetchedAt: 200,
+            measures: [
+              ProviderUsageMeasure(
+                label: 'Balance',
+                kind: ProviderUsageMeasureKind.balance,
+                remaining: '12.50',
+                unit: 'USD',
+              ),
+            ],
+          ),
+          'p2': _snapshot(id: 'p2', status: ProviderUsageStatus.stale),
+        },
       );
 
       expect(
         find.byKey(const Key('managed-provider-brand-p1')),
         findsOneWidget,
       );
+      expect(find.byKey(const Key('managed-provider-brand-p2')), findsNothing);
       expect(
         find.byKey(const Key('managed-provider-usage-warning')),
         findsOneWidget,
