@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shared_ui/shared_ui.dart';
+import 'package:teampilot/cubits/progress_activity_cubit.dart';
 import 'package:teampilot/cubits/session_preferences_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/runtime_target.dart';
@@ -9,10 +11,22 @@ import 'package:teampilot/models/session_preferences.dart';
 import 'package:teampilot/pages/config/toolchain_path_settings_row.dart';
 import 'package:teampilot/repositories/session_preferences_repository.dart';
 import 'package:teampilot/services/app/connection_mode_service.dart';
+import 'package:teampilot/services/install/install_job_registry.dart';
+import 'package:teampilot/services/notification/notification_recorder.dart';
 import 'package:teampilot/utils/ui/app_keys.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../support/post_frame_test_harness.dart';
+
+class _FakeNotificationRecorder implements NotificationRecorder {
+  @override
+  void record({
+    required String message,
+    required TpToastVariant variant,
+    String title = '',
+    String payload = '',
+  }) {}
+}
 
 Future<SessionPreferencesCubit> _makeCubit({
   Map<String, String> locatedToolchains = const {},
@@ -31,6 +45,10 @@ Widget _wrapRow(
   Future<String?> Function()? locateOverride,
   ConnectionModeService? connectionMode,
 }) {
+  final progressCubit = ProgressActivityCubit(
+    historyRecorder: _FakeNotificationRecorder(),
+  );
+  final installJobRegistry = InstallJobRegistry(progressCubit: progressCubit);
   return MultiRepositoryProvider(
     providers: [
       RepositoryProvider<ConnectionModeService>(
@@ -41,6 +59,7 @@ Widget _wrapRow(
               hasSshProfiles: () => false,
             ),
       ),
+      RepositoryProvider<InstallJobRegistry>.value(value: installJobRegistry),
     ],
     child: BlocProvider.value(
       value: cubit,
@@ -137,10 +156,6 @@ void main() {
     await tester.pumpWidget(
       _wrapRow(
         cubit,
-        connectionMode: ConnectionModeService(
-          defaultTargetResolver: () => RuntimeTarget.ssh('p1', label: 'box'),
-          hasSshProfiles: () => true,
-        ),
         locateOverride: () async => '/usr/local/bin/git',
       ),
     );

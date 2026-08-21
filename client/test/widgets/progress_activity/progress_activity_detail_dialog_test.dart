@@ -1,10 +1,16 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/cubits/progress_activity_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
+import 'package:teampilot/models/install_job/install_cancel_policy.dart';
+import 'package:teampilot/models/install_job/install_job_key.dart';
+import 'package:teampilot/models/install_job/install_job_spec.dart';
 import 'package:teampilot/models/progress_activity.dart';
+import 'package:teampilot/services/install/install_job_registry.dart';
 import 'package:teampilot/services/notification/notification_recorder.dart';
 import 'package:teampilot/widgets/progress_activity/progress_activity_detail_dialog.dart';
 
@@ -43,21 +49,28 @@ ProgressActivity _activity({
 
 Widget _host({
   required ProgressActivityCubit cubit,
+  InstallJobRegistry? installJobRegistry,
   required Widget child,
 }) {
   final scheme = ColorScheme.fromSeed(seedColor: Colors.indigo);
-  return BlocProvider.value(
-    value: cubit,
-    child: MaterialApp(
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      theme: ThemeData(colorScheme: scheme),
-      home: TpTheme(
-        data: TpThemeData.fromColorScheme(scheme, scale: 1),
+  final app = MaterialApp(
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    theme: ThemeData(colorScheme: scheme),
+    home: TpTheme(
+      data: TpThemeData.fromColorScheme(scheme, scale: 1),
+      child: BlocProvider.value(
+        value: cubit,
         child: Scaffold(body: child),
       ),
     ),
   );
+  return installJobRegistry == null
+      ? app
+      : RepositoryProvider<InstallJobRegistry>.value(
+          value: installJobRegistry,
+          child: app,
+        );
 }
 
 Future<void> _openDialog(WidgetTester tester, ProgressActivityCubit cubit) async {
@@ -123,6 +136,62 @@ void main() {
       await tester.pump();
 
       expect(cancelHookInvoked, isTrue);
+      expect(
+        cubit.state.activities.single.phase,
+        ProgressActivityPhase.cancelling,
+      );
+    });
+
+    testWidgets('cancel with jobKey routes to InstallJobRegistry', (
+      tester,
+    ) async {
+      final cubit = ProgressActivityCubit(
+        historyRecorder: _FakeNotificationRecorder(),
+      );
+      addTearDown(cubit.close);
+      final registry = InstallJobRegistry(progressCubit: cubit);
+      addTearDown(registry.dispose);
+      const key = InstallJobKey(
+        kind: InstallJobKind.toolchain,
+        target: 'git',
+      );
+      unawaited(
+        registry.enqueue(
+          InstallJobSpec<void>(
+            key: key,
+            title: 'Installing Git',
+            cancelPolicy: InstallCancelPolicy.cooperative,
+            run: (_) => Completer<void>().future,
+          ),
+        ),
+      );
+      await tester.pump();
+
+      cubit.setDetailOpen(key.activityId, true);
+      await tester.pumpWidget(
+        _host(
+          cubit: cubit,
+          installJobRegistry: registry,
+          child: Builder(
+            builder: (context) => TextButton(
+              onPressed: () {
+                showProgressActivityDetailDialog(
+                  context,
+                  activityId: key.activityId,
+                );
+              },
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('open'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      await tester.tap(find.text('Cancel'));
+      await tester.pump();
+
       expect(
         cubit.state.activities.single.phase,
         ProgressActivityPhase.cancelling,

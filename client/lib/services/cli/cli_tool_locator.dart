@@ -49,6 +49,13 @@ class CliToolLocator {
     '/Library/Developer/CommandLineTools/usr/bin/git',
   ];
 
+  static List<String> _macOsCursorAgentCandidates() {
+    if (!Platform.isMacOS) return const [];
+    final home = Platform.environment['HOME']?.trim() ?? '';
+    if (home.isEmpty) return const [];
+    return ['$home/.local/bin/cursor-agent'];
+  }
+
   Future<String?> locate({
     ProcessRunner runner = cliToolDefaultProcessRun,
     bool? isWindowsOverride,
@@ -57,6 +64,12 @@ class CliToolLocator {
     final isWindows = isWindowsOverride ?? Platform.isWindows;
     if (!isWindows && Platform.isMacOS && executableName == 'git') {
       final direct = await _locateMacOsGit(runner);
+      if (direct != null) return direct;
+    }
+    if (!isWindows &&
+        Platform.isMacOS &&
+        executableName == 'cursor-agent') {
+      final direct = await _locateMacOsCursorAgent(runner);
       if (direct != null) return direct;
     }
     final hostLocator = _hostLocator(isWindows);
@@ -90,6 +103,19 @@ class CliToolLocator {
 
   Future<String?> _locateMacOsGit(ProcessRunner runner) async {
     for (final path in _macOsGitCandidates) {
+      if (!File(path).existsSync()) continue;
+      try {
+        final result = await runner(path, ['--version']);
+        if (result.exitCode == 0) return path;
+      } on Object {
+        continue;
+      }
+    }
+    return null;
+  }
+
+  Future<String?> _locateMacOsCursorAgent(ProcessRunner runner) async {
+    for (final path in _macOsCursorAgentCandidates()) {
       if (!File(path).existsSync()) continue;
       try {
         final result = await runner(path, ['--version']);

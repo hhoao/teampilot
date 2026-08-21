@@ -1,0 +1,1 @@
+enum InstallCancelPolicy { cooperative, forceKill }

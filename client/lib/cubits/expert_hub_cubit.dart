@@ -6,7 +6,11 @@ import '../models/discoverable_member.dart';
 import '../services/expert_hub/composite_expert_hub_source.dart';
 import '../services/catalog/catalog_source_aggregation.dart';
 import '../services/expert_hub/member_roster_service.dart';
-import '../services/progress_activity/hub_clone_activity_adapter.dart';
+import '../models/install_job/install_cancel_policy.dart';
+import '../models/install_job/install_job_spec.dart';
+import '../services/install/install_job_keys.dart';
+import '../services/install/install_job_registry.dart';
+import '../services/install/runners/hub_clone_install_job_runner.dart';
 import '../services/team/team_clone_service.dart';
 import 'launch_profile_cubit.dart';
 
@@ -153,14 +157,14 @@ class ExpertHubCubit extends Cubit<ExpertHubState> {
     required MemberRosterService memberRosterService,
     required LaunchProfilesAccessor launchProfiles,
     InstalledDepIdsLoader? loadInstalledDepIds,
-    HubCloneActivityAdapter? hubCloneActivity,
+    InstallJobRegistry? installJobRegistry,
   }) : _source = source,
        _loadFavorites = loadFavorites,
        _saveFavoriteToggle = saveFavoriteToggle,
        _memberRosterService = memberRosterService,
        _launchProfiles = launchProfiles,
        _loadInstalledDepIds = loadInstalledDepIds,
-       _hubCloneActivity = hubCloneActivity,
+       _installJobRegistry = installJobRegistry,
        super(const ExpertHubState());
 
   final CompositeExpertHubSource _source;
@@ -169,7 +173,7 @@ class ExpertHubCubit extends Cubit<ExpertHubState> {
   final MemberRosterService _memberRosterService;
   final LaunchProfilesAccessor _launchProfiles;
   final InstalledDepIdsLoader? _loadInstalledDepIds;
-  final HubCloneActivityAdapter? _hubCloneActivity;
+  final InstallJobRegistry? _installJobRegistry;
 
   Future<void> load({bool forceRefresh = false}) async {
     emit(
@@ -304,8 +308,8 @@ class ExpertHubCubit extends Cubit<ExpertHubState> {
           onProgress: onProgress,
         );
 
-    final adapter = _hubCloneActivity;
-    if (adapter == null) {
+    final registry = _installJobRegistry;
+    if (registry == null) {
       return _memberRosterService.addExpertToTeam(
         teamId: teamId,
         expert: member,
@@ -314,12 +318,18 @@ class ExpertHubCubit extends Cubit<ExpertHubState> {
     }
 
     final title = activityTitle ?? 'Add ${member.name}';
-    return adapter.runTracked(
-      title: title,
-      historyMessageFor: (result) => result.hasFailures
-          ? 'Added ${member.name} with dependency failures'
-          : 'Added ${member.name}',
-      run: run,
+    return registry.enqueue(
+      InstallJobSpec<MemberAddResult>(
+        key: InstallJobKeys.hubExpert(member.key),
+        title: title,
+        cancelPolicy: InstallCancelPolicy.cooperative,
+        historyMessageFor: (result) => result.hasFailures
+            ? 'Added ${member.name} with dependency failures'
+            : 'Added ${member.name}',
+        run: (ctx) => run(
+          (progress) => reportHubCloneProgress(ctx, progress),
+        ),
+      ),
     );
   }
 

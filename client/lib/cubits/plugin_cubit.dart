@@ -10,12 +10,16 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../models/catalog/catalog_types.dart';
 import '../models/discoverable_team.dart';
 import '../models/plugin.dart';
-import '../models/progress_activity.dart';
+import '../models/install_job/install_cancel_policy.dart';
+import '../models/install_job/install_job_key.dart';
+import '../models/install_job/install_job_spec.dart';
+import '../services/install/install_job_keys.dart';
+import '../services/install/install_job_registry.dart';
+import '../services/install/runners/pack_acquire_install_job_runner.dart';
 import '../repositories/plugin_repository.dart';
 import '../services/discovery/discovery_refresh_policy.dart';
 import '../services/catalog/catalog_error_sanitizer.dart';
 import '../services/catalog/catalog_sort_comparator.dart';
-import '../services/progress_activity/pack_acquire_activity_adapter.dart';
 import '../services/plugin/plugin_install_service.dart';
 import '../services/plugin/plugin_external_fetch_service.dart';
 import '../services/plugin/plugin_repo_disk_cache_service.dart';
@@ -169,13 +173,13 @@ class PluginCubit extends Cubit<PluginState> {
     PluginExternalFetchService? externalFetch,
     PluginUninstalledHandler? onPluginUninstalled,
     PluginUpdatedHandler? onPluginUpdated,
-    PackAcquireActivityAdapter? packAcquireActivity,
+    InstallJobRegistry? installJobRegistry,
     DiscoverySettingsCubit? discoverySettings,
   }) : _diskCache = diskCache ?? PluginRepoDiskCacheService(),
        _externalFetch = externalFetch ?? PluginExternalFetchService(),
        _onPluginUninstalled = onPluginUninstalled,
        _onPluginUpdated = onPluginUpdated,
-       _packAcquireActivity = packAcquireActivity,
+       _installJobRegistry = installJobRegistry,
        _discoverySettings = discoverySettings,
        super(const PluginState());
 
@@ -194,7 +198,7 @@ class PluginCubit extends Cubit<PluginState> {
        _externalFetch = PluginExternalFetchService(),
        _onPluginUninstalled = onPluginUninstalled,
        _onPluginUpdated = onPluginUpdated,
-       _packAcquireActivity = null,
+       _installJobRegistry = null,
        _discoverySettings = null,
        super(
          initialState.copyWith(
@@ -215,7 +219,7 @@ class PluginCubit extends Cubit<PluginState> {
   final PluginExternalFetchService _externalFetch;
   final PluginUninstalledHandler? _onPluginUninstalled;
   final PluginUpdatedHandler? _onPluginUpdated;
-  final PackAcquireActivityAdapter? _packAcquireActivity;
+  final InstallJobRegistry? _installJobRegistry;
   final DiscoverySettingsCubit? _discoverySettings;
   int _discoveryGeneration = 0;
 
@@ -517,6 +521,7 @@ class PluginCubit extends Cubit<PluginState> {
     emit(state.copyWith(busyIds: busy, clearError: true));
     try {
       await _runPackAcquireTracked(
+        key: InstallJobKeys.plugin(d.key),
         title: 'Installing plugin: ${d.name}',
         historyMessage: 'Installed ${d.name}',
         run: (_) => _installDiscoverableCore(d),
@@ -555,20 +560,24 @@ class PluginCubit extends Cubit<PluginState> {
   }
 
   Future<void> _runPackAcquireTracked({
+    required InstallJobKey key,
     required String title,
     required String historyMessage,
     required Future<void> Function(PackAcquireStepReporter onStep) run,
   }) async {
-    final adapter = _packAcquireActivity;
-    if (adapter == null) {
+    final registry = _installJobRegistry;
+    if (registry == null) {
       await run(({subtitle, completedSteps, totalSteps}) {});
       return;
     }
-    await adapter.runTracked<void>(
-      kind: ProgressActivityKind.packAcquire,
-      title: title,
-      historyMessageFor: (_) => historyMessage,
-      run: run,
+    await registry.enqueue(
+      InstallJobSpec<void>(
+        key: key,
+        title: title,
+        cancelPolicy: InstallCancelPolicy.cooperative,
+        historyMessageFor: (_) => historyMessage,
+        run: (ctx) => run(packAcquireStepReporter(ctx)),
+      ),
     );
   }
 

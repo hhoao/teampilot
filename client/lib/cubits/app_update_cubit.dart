@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
@@ -9,7 +8,11 @@ import '../models/app_release_info.dart';
 import '../repositories/app_settings_repository.dart';
 import '../services/app/app_update_installer.dart';
 import '../services/app/app_update_service.dart';
-import '../services/progress_activity/app_update_activity_adapter.dart';
+import '../models/install_job/install_cancel_policy.dart';
+import '../models/install_job/install_job_spec.dart';
+import '../services/install/install_job_keys.dart';
+import '../services/install/install_job_registry.dart';
+import '../services/install/runners/app_update_install_job_runner.dart';
 
 enum AppUpdateStatus {
   idle,
@@ -111,18 +114,20 @@ class AppUpdateCubit extends Cubit<AppUpdateState> {
     AppUpdateService? service,
     AppUpdateInstaller? installer,
     AppSettingsRepository? settings,
-    AppUpdateActivityAdapter? activityAdapter,
+    InstallJobRegistry? installJobRegistry,
+    AppUpdateInstallJobRunner? appUpdateRunner,
   }) : _service = service ?? AppUpdateService(),
        _installer = installer ?? AppUpdateInstaller(),
        _settings = settings,
-       _activityAdapter = activityAdapter,
+       _installJobRegistry = installJobRegistry,
+       _appUpdateRunner = appUpdateRunner,
        super(const AppUpdateState());
 
   final AppUpdateService _service;
   final AppUpdateInstaller _installer;
   final AppSettingsRepository? _settings;
-  final AppUpdateActivityAdapter? _activityAdapter;
-  File? _downloadedPackage;
+  final InstallJobRegistry? _installJobRegistry;
+  final AppUpdateInstallJobRunner? _appUpdateRunner;
 
   /// Loads persisted preferences (auto-check toggle, skipped version) and the
   /// current version label. Safe to call before any check.
@@ -300,8 +305,8 @@ class AppUpdateCubit extends Cubit<AppUpdateState> {
           downloadingSubtitle: 'Downloading update…',
           installingSubtitle: 'Installing update…',
         );
-    final adapter = _activityAdapter;
-    String? activityId;
+    final registry = _installJobRegistry;
+    final runner = _appUpdateRunner ?? AppUpdateInstallJobRunner(service: _service);
 
     emit(
       state.copyWith(
@@ -310,52 +315,40 @@ class AppUpdateCubit extends Cubit<AppUpdateState> {
       ),
     );
 
-    if (adapter != null) {
-      activityId = adapter.startDownload(
-        title: activityCopy.title,
-        subtitle: activityCopy.downloadingSubtitle,
-      );
-    }
-
     try {
-      _downloadedPackage = await _service.downloadRelease(
+      if (registry != null) {
+        await registry.enqueue(
+          InstallJobSpec<void>(
+            key: InstallJobKeys.appUpdate(release.version.toString()),
+            title: activityCopy.title,
+            cancelPolicy: InstallCancelPolicy.forceKill,
+            historyTitle: activityCopy.title,
+            historyMessageFor: (_) => activityCopy.successHistoryMessage,
+            run: (ctx) => runner.execute(
+              key: InstallJobKeys.appUpdate(release.version.toString()),
+              release: release,
+              ctx: ctx,
+              downloadingSubtitle: activityCopy.downloadingSubtitle,
+              installingSubtitle: activityCopy.installingSubtitle,
+            ),
+          ),
+        );
+        return;
+      }
+
+      final package = await _service.downloadRelease(
         release,
-        onProgress: (p) {
+        onProgress: (_) {
           if (!isClosed) {
             emit(state.copyWith(status: AppUpdateStatus.downloading));
-            if (activityId != null) {
-              adapter?.updateDownloadProgress(activityId, p);
-            }
           }
         },
       );
 
       emit(state.copyWith(status: AppUpdateStatus.installing));
-      if (activityId != null) {
-        adapter?.beginInstalling(
-          activityId,
-          subtitle: activityCopy.installingSubtitle,
-        );
-      }
-
-      await _installer.install(_downloadedPackage!);
-
-      if (activityId != null) {
-        adapter?.completeSucceeded(
-          activityId,
-          historyTitle: activityCopy.title,
-          historyMessage: activityCopy.successHistoryMessage,
-        );
-      }
+      await _installer.install(package);
     } catch (e) {
       final message = _messageFor(e);
-      if (activityId != null) {
-        adapter?.completeFailed(
-          activityId,
-          historyTitle: activityCopy.title,
-          errorMessage: message,
-        );
-      }
       emit(
         state.copyWith(
           status: AppUpdateStatus.error,

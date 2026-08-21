@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
+import 'dart:io';
+
 import 'package:teampilot/services/cli/cursor/provider/cursor_home_layout.dart';
 
 void main() {
@@ -25,11 +27,14 @@ void main() {
       );
     });
 
-    test('authJson joins .config/cursor/auth.json under homeRoot', () {
-      expect(
-        layout.authJson(homeRoot),
-        p.join(layout.configCursorDir(homeRoot), CursorHomeLayout.authFileName),
-      );
+    test('authJson uses platform-specific auth path', () {
+      final expected = Platform.isMacOS
+          ? p.join(layout.cursorDir(homeRoot), CursorHomeLayout.authFileName)
+          : p.join(
+              layout.configCursorDir(homeRoot),
+              CursorHomeLayout.authFileName,
+            );
+      expect(layout.authJson(homeRoot), expected);
     });
 
     test('roleRule joins rules/role.mdc under cursor dir', () {

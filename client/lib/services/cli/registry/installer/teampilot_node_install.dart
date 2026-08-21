@@ -28,6 +28,11 @@ final class TeampilotNodeInstall {
 
   static const _appDataDirName = AppPaths.teampilotAppDataDirName;
 
+  static const _cancelledResult = CliInstallerCommandResult(
+    exitCode: -1,
+    stderr: 'Cancelled',
+  );
+
   /// `$HOME/.local/share/com.hhoa.teampilot/toolchain/node` for shell scripts.
   static String get unixToolchainNodeBase =>
       r'$HOME/.local/share/' + _appDataDirName + r'/toolchain/node';
@@ -46,6 +51,10 @@ final class TeampilotNodeInstall {
     final existing = await host.locateLocalNpm();
     if (existing != null) {
       return LocalNpmFound(existing);
+    }
+
+    if (host.isCancelled) {
+      return LocalNpmBootstrapFailed(_cancelledResult);
     }
 
     final bootstrap = await host.runLocal(
@@ -75,6 +84,10 @@ final class TeampilotNodeInstall {
       if (check.exitCode == 0) {
         return RemoteNpmFound(existing);
       }
+    }
+
+    if (host.isCancelled) {
+      return RemoteNpmBootstrapFailed(_cancelledResult);
     }
 
     host.report(CliInstallPhase.bootstrappingNode);

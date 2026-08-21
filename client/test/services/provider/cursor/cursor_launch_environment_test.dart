@@ -15,6 +15,10 @@ void main() {
 
         expect(env['HOME'], homeRoot);
         expect(env['USERPROFILE'], homeRoot);
+        expect(
+          env[CursorLaunchEnvironment.credentialStoreEnvKey],
+          CursorLaunchEnvironment.credentialStoreFile,
+        );
       },
     );
 
@@ -32,6 +36,10 @@ void main() {
         expect(env['HOME'], homeRoot);
         expect(env['USERPROFILE'], homeRoot);
         expect(env['CURSOR_CONFIG_DIR'], cursorConfigDir);
+        expect(
+          env[CursorLaunchEnvironment.credentialStoreEnvKey],
+          CursorLaunchEnvironment.credentialStoreFile,
+        );
       },
     );
   });

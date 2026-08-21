@@ -14,9 +14,12 @@ ConnectionMode defaultConnectionMode() {
 /// Linux / Windows / macOS window chrome; false on Android.
 bool get useCustomDesktopWindowTitleBar => !Platform.isAndroid;
 
-/// Desktop undoes OS display scaling via `1/dpr` in [autoUiZoomForDevicePixelRatio]
-/// / [autoTextScaleForSystem]. Android/iOS already use density-independent
-/// logical pixels — leave baseline at 1.0 instead of compensating again.
+/// Desktop display scaling: Linux/Windows undo OS scaling via `1/dpr` in
+/// [autoUiZoomForDevicePixelRatio] / [autoTextScaleForSystem]; macOS applies
+/// the same dpr compensation with tuning factors ([kMacUiZoomBaseline] 126%,
+/// [kMacTextScaleBaseline] 72%).
+/// Android/iOS already use density-independent logical pixels — leave baseline
+/// at 1.0 instead of compensating again.
 bool get usesDesktopDisplayScalingCompensation =>
     !Platform.isAndroid && !Platform.isIOS;
 

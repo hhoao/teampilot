@@ -183,7 +183,6 @@ class _SessionChatViewState extends State<SessionChatView> {
     _voice.onNeedsHostRebuild = () {
       if (mounted) setState(() {});
     };
-    _voice.initialize();
     // Restore the cached session draft before attaching the change listener so
     // the restore does not notify _onComposeChanged (no setState during mount).
     final draft = composeDraftCache.sessionDraft(widget.session.sessionId);

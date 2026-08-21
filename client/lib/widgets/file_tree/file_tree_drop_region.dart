@@ -15,7 +15,12 @@ import '../../services/file_tree_import/file_tree_drop_hit_test.dart';
 import '../../services/file_tree_import/file_tree_drop_ingestor.dart';
 import '../../services/file_tree_import/import_models.dart';
 import '../../services/file_tree_import/workspace_import_service.dart';
-import '../../services/progress_activity/file_tree_import_activity_adapter.dart';
+import '../../models/install_job/install_cancel_policy.dart';
+import '../../models/install_job/install_job_spec.dart';
+import '../../services/file_tree_import/import_plan_hash.dart';
+import '../../services/install/install_job_keys.dart';
+import '../../services/install/install_job_registry.dart';
+import '../../services/install/runners/file_tree_import_install_job_runner.dart';
 import '../../services/io/filesystem.dart';
 import '../../services/io/local_filesystem.dart';
 import '../../services/workspace_dnd/workspace_drop_target.dart';
@@ -485,31 +490,42 @@ class _FileTreeDropRegionState extends State<FileTreeDropRegion> {
 
       final l10n = context.l10n;
       final progressCubit = context.read<ProgressActivityCubit>();
-      final adapter = FileTreeImportActivityAdapter(
-        cubit: progressCubit,
-        importService: _importService,
+      final registry = context.read<InstallJobRegistry>();
+      final key = InstallJobKeys.fileImport(
+        widget.workspaceId,
+        importPlanHash(plan),
       );
-      final summary = await adapter.runTracked(
-        plan: plan,
-        title: l10n.fileTreeImportProgressTitle,
-        workspaceId: widget.workspaceId,
-        historyMessageFor: (result) => l10n.fileTreeImportSummary(
-          result.succeeded,
-          result.skipped,
-          result.failed,
+      final runner = registry.runnerRegistry?.resolve(key);
+      if (runner is! FileTreeImportInstallJobRunner) {
+        throw StateError('File tree import runner is not configured');
+      }
+
+      progressCubit.setDetailOpen(key.activityId, true);
+      unawaited(
+        showProgressActivityDetailDialog(
+          context,
+          activityId: key.activityId,
         ),
-        onActivityStarted: (activityId) {
-          if (!mounted) return;
-          progressCubit.setDetailOpen(activityId, true);
-          unawaited(
-            showProgressActivityDetailDialog(
-              context,
-              activityId: activityId,
-            ),
-          );
-        },
-        runImport: ({required isCancelled}) =>
-            _ingestor.runPrepared(plan, isCancelled: isCancelled),
+      );
+
+      final summary = await registry.enqueue(
+        InstallJobSpec<ImportSummary>(
+          key: key,
+          title: l10n.fileTreeImportProgressTitle,
+          workspaceId: widget.workspaceId,
+          cancelPolicy: InstallCancelPolicy.forceKill,
+          historyMessageFor: (result) => l10n.fileTreeImportSummary(
+            result.succeeded,
+            result.skipped,
+            result.failed,
+          ),
+          run: (ctx) => runner.execute(
+            plan: plan,
+            ctx: ctx,
+            runImport: ({required isCancelled}) =>
+                _ingestor.runPrepared(plan, isCancelled: isCancelled),
+          ),
+        ),
       );
 
       if (mounted) {

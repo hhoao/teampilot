@@ -3,11 +3,15 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/extension_manifest.dart';
 import '../models/extension_state.dart';
-import '../models/progress_activity.dart';
 import '../repositories/extension_repository.dart';
 import '../services/extension/extension_acquisition_engine.dart';
 import '../services/extension/extension_detector.dart';
-import '../services/progress_activity/pack_acquire_activity_adapter.dart';
+import '../models/install_job/install_cancel_policy.dart';
+import '../models/install_job/install_job_key.dart';
+import '../models/install_job/install_job_spec.dart';
+import '../services/install/install_job_keys.dart';
+import '../services/install/install_job_registry.dart';
+import '../services/install/runners/pack_acquire_install_job_runner.dart';
 import '../utils/ui/yield_ui_frame.dart';
 
 enum ExtensionLoadStatus { idle, loading, ready, error }
@@ -94,15 +98,15 @@ class ExtensionCubit extends Cubit<ExtensionUiState> {
     this._repository,
     this._engine, {
     ExtensionDetector? detector,
-    PackAcquireActivityAdapter? packAcquireActivity,
+    InstallJobRegistry? installJobRegistry,
   }) : _detector = detector ?? ExtensionDetector(),
-       _packAcquireActivity = packAcquireActivity,
+       _installJobRegistry = installJobRegistry,
        super(const ExtensionUiState());
 
   final ExtensionRepository _repository;
   final ExtensionAcquisitionEngine _engine;
   final ExtensionDetector _detector;
-  final PackAcquireActivityAdapter? _packAcquireActivity;
+  final InstallJobRegistry? _installJobRegistry;
   Future<void>? _loadFuture;
 
   /// Loads extension rows from the host. Skips work when already [ready] unless
@@ -238,6 +242,7 @@ class ExtensionCubit extends Cubit<ExtensionUiState> {
     await _withBusy(id, () async {
       final manifest = _repository.manifests.firstWhere((m) => m.id == id);
       await _runPackAcquireTracked(
+        key: InstallJobKeys.extension(manifest.id),
         title: 'Installing extension: ${manifest.name}',
         historyMessage: 'Installed ${manifest.name}',
         run: (_) => _installCore(manifest),
@@ -256,20 +261,24 @@ class ExtensionCubit extends Cubit<ExtensionUiState> {
   }
 
   Future<void> _runPackAcquireTracked({
+    required InstallJobKey key,
     required String title,
     required String historyMessage,
     required Future<void> Function(PackAcquireStepReporter onStep) run,
   }) async {
-    final adapter = _packAcquireActivity;
-    if (adapter == null) {
+    final registry = _installJobRegistry;
+    if (registry == null) {
       await run(({subtitle, completedSteps, totalSteps}) {});
       return;
     }
-    await adapter.runTracked<void>(
-      kind: ProgressActivityKind.packAcquire,
-      title: title,
-      historyMessageFor: (_) => historyMessage,
-      run: run,
+    await registry.enqueue(
+      InstallJobSpec<void>(
+        key: key,
+        title: title,
+        cancelPolicy: InstallCancelPolicy.cooperative,
+        historyMessageFor: (_) => historyMessage,
+        run: (ctx) => run(packAcquireStepReporter(ctx)),
+      ),
     );
   }
 

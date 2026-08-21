@@ -6,9 +6,27 @@ import 'package:speech_to_text/speech_recognition_error.dart';
 import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
+import '../../l10n/app_localizations.dart';
+import 'compose_voice_platform.dart';
+
 typedef ComposeVoiceTranscript = void Function(String text);
 typedef ComposeVoiceErrorHandler = void Function(SpeechRecognitionError error);
 typedef ComposeVoiceSoundLevel = void Function(double level);
+
+/// Whether [error] indicates the user denied microphone / speech permission.
+/// User-facing message after a failed [ComposeVoiceInput.initialize].
+String composeVoiceInitFailureMessage(
+  AppLocalizations l10n,
+  ComposeVoiceInput input,
+) {
+  if (input.blockedByMacOsIdeLaunch) {
+    return l10n.workspaceChatLandingVoiceMacOsIdeLaunch;
+  }
+  if (input.permissionDenied) {
+    return l10n.workspaceChatLandingVoicePermissionDenied;
+  }
+  return l10n.workspaceChatLandingVoiceUnavailable;
+}
 
 /// Whether [error] indicates the user denied microphone / speech permission.
 bool speechRecognitionErrorIsPermissionDenied(SpeechRecognitionError error) {
@@ -70,6 +88,7 @@ class ComposeVoiceInput {
   bool _initialized = false;
   bool _available = false;
   var _permissionDenied = false;
+  var _blockedByMacOsIdeLaunch = false;
   var _sessionActive = false;
   final List<String> _finalSegments = [];
   var _latestPartial = '';
@@ -78,10 +97,16 @@ class ComposeVoiceInput {
   bool get isSessionActive => _sessionActive;
   bool get isAvailable => _available;
   bool get permissionDenied => _permissionDenied;
+  bool get blockedByMacOsIdeLaunch => _blockedByMacOsIdeLaunch;
 
   Future<bool> initialize() async {
     if (_initialized) return _available;
     _initialized = true;
+    if (!isComposeVoiceMacOsLaunchUsable) {
+      _blockedByMacOsIdeLaunch = true;
+      _available = false;
+      return false;
+    }
     try {
       _available = await _speech.initialize(
         onStatus: _onStatus,

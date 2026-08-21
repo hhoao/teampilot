@@ -804,6 +804,7 @@
   "workspaceChatLandingEnhanceFailed": "无法优化提示词",
   "workspaceChatLandingVoiceUnavailable": "此设备不支持语音输入",
   "workspaceChatLandingVoicePermissionDenied": "未获得麦克风权限",
+  "workspaceChatLandingVoiceMacOsIdeLaunch": "从 IDE 启动时 macOS 不会把语音识别权限授予 TeamPilot。请直接运行 build/macos/Build/Products/Debug/TeamPilot.app，或在 Xcode 中启动。",
   "landingTeamSettingsNavTeam": "团队默认",
   "landingTeamSettingsNavMachines": "机器分配",
   "landingTeamSettingsGlobalHint": "更改将应用于该团队的全局配置。",

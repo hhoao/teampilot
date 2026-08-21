@@ -5,9 +5,11 @@ import 'package:shared_ui/shared_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../cubits/progress_activity_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/cli_preset.dart';
+import '../../../models/install_job/install_cancel_policy.dart';
+import '../../../models/install_job/install_job_scope.dart';
+import '../../../models/install_job/install_job_spec.dart';
 import '../../../models/runtime_target.dart';
 import '../../../models/team_config.dart';
 import '../../../models/workspace.dart';
@@ -17,10 +19,10 @@ import '../../../services/cli/registry/capabilities/cli_executable_capability.da
 import '../../../services/cli/registry/cli_display_name.dart';
 import '../../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../../services/cli/registry/cli_tool_registry.dart';
-import '../../../services/progress_activity/cli_provision_activity_adapter.dart';
+import '../../../services/install/install_job_keys.dart';
+import '../../../services/install/install_job_registry.dart';
 import '../../../services/remote/remote_cli_readiness.dart';
 import '../../../services/remote/remote_cli_requirements.dart';
-import '../../../widgets/cli_install_progress_panel.dart';
 
 /// Per-SSH-host CLI locate status and user-driven install for Machines placement.
 class RemoteCliMachineReadinessPanel extends StatefulWidget {
@@ -59,7 +61,6 @@ class _RemoteCliMachineReadinessPanelState
   final _readinessByKey = <String, RemoteCliReadiness>{};
   var _probeGeneration = 0;
   String? _installingKey;
-  CliInstallProgress? _installProgress;
 
   @override
   void initState() {
@@ -149,55 +150,68 @@ class _RemoteCliMachineReadinessPanelState
 
   Future<void> _install(RemoteCliRequirement requirement) async {
     if (_installingKey != null) return;
-    setState(() {
-      _installingKey = requirement.cacheKey;
-      _installProgress = null;
-    });
+    setState(() => _installingKey = requirement.cacheKey);
     try {
-      final registry = CliToolRegistryScope.of(context);
+      final registry = context.read<InstallJobRegistry>();
       final l10n = context.l10n;
-      final def = registry.tryGet(requirement.cli);
+      final cliRegistry = CliToolRegistryScope.of(context);
+      final def = cliRegistry.tryGet(requirement.cli);
       final cliLabel = def != null
-          ? cliDisplayName(def, l10n, registry: registry)
+          ? cliDisplayName(def, l10n, registry: cliRegistry)
           : requirement.cli.value;
       final hostLabel = requirement.target.label.trim().isNotEmpty
           ? requirement.target.label
           : requirement.target.id;
-      final progressCubit = context.read<ProgressActivityCubit>();
-      final adapter = CliProvisionActivityAdapter(cubit: progressCubit);
+      final profileId = requirement.target.sshProfileId ?? '';
+      final scope = profileId.isEmpty
+          ? const InstallJobScopeLocal()
+          : InstallJobScopeSsh(profileId);
+      final key = InstallJobKeys.cli(requirement.cli.value, scope: scope);
 
-      final result = await adapter.runTracked<RemoteCliReadiness>(
-        title: 'Install $cliLabel on $hostLabel',
-        workspaceId: widget.workspace?.workspaceId,
-        historyMessageFor: (readiness) => switch (readiness) {
-          RemoteCliReady() => '$cliLabel ready on $hostLabel',
-          _ => null,
-        },
-        run: (onProgress) async {
-          final readiness = await widget.readiness.install(
-            target: requirement.target,
-            cli: requirement.cli,
-            onProgress: (progress) {
-              onProgress(progress);
-              if (!mounted) return;
-              setState(() => _installProgress = progress);
-            },
-          );
-          if (readiness is RemoteCliFailed) {
-            throw StateError(readiness.message);
-          }
-          return readiness;
-        },
+      final result = await registry.enqueue(
+        InstallJobSpec<RemoteCliReadiness>(
+          key: key,
+          title: 'Install $cliLabel on $hostLabel',
+          workspaceId: widget.workspace?.workspaceId,
+          cancelPolicy: InstallCancelPolicy.cooperative,
+          historyMessageFor: (readiness) => switch (readiness) {
+            RemoteCliReady() => '$cliLabel ready on $hostLabel',
+            _ => null,
+          },
+          run: (ctx) async {
+            final readiness = await widget.readiness.install(
+              target: requirement.target,
+              cli: requirement.cli,
+              onProgress: (progress) {
+                final phaseLabel = switch (progress.phase) {
+                  CliInstallPhase.checkingNpm => 'Checking npm',
+                  CliInstallPhase.bootstrappingNode => 'Bootstrapping Node',
+                  CliInstallPhase.installingCli => 'Installing CLI',
+                  CliInstallPhase.locatingExecutable => 'Locating executable',
+                  CliInstallPhase.syncingRemoteWorkspace =>
+                    'Syncing remote workspace',
+                };
+                final detail = progress.detail?.trim();
+                if (detail != null && detail.isNotEmpty) {
+                  ctx.reportPhase(phaseLabel, detail: detail);
+                } else {
+                  ctx.reportPhase(phaseLabel);
+                }
+              },
+            );
+            if (readiness is RemoteCliFailed) {
+              throw StateError(readiness.message);
+            }
+            return readiness;
+          },
+        ),
       );
       if (!mounted) return;
       setState(() => _readinessByKey[requirement.cacheKey] = result);
       widget.onReadinessChanged?.call();
     } finally {
       if (mounted) {
-        setState(() {
-          _installingKey = null;
-          _installProgress = null;
-        });
+        setState(() => _installingKey = null);
       }
     }
   }
@@ -232,16 +246,7 @@ class _RemoteCliMachineReadinessPanelState
                   installing: _installingKey == requirement.cacheKey,
                   onInstall: () => unawaited(_install(requirement)),
                 ),
-              if (_installingKey != null && _installProgress != null) ...[
-                const SizedBox(height: 8),
-                CliInstallProgressPanel(
-                  phase: _installProgress!.phase,
-                  logLines: [
-                    if ((_installProgress!.detail ?? '').trim().isNotEmpty)
-                      _installProgress!.detail!.trim(),
-                  ],
-                ),
-              ] else if (requirements.any((r) {
+              if (requirements.any((r) {
                 final state = _readinessByKey[r.cacheKey];
                 return state is RemoteCliMissing || state is RemoteCliFailed;
               })) ...[

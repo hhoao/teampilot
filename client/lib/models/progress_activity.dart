@@ -1,5 +1,7 @@
 import 'package:equatable/equatable.dart';
 
+import 'install_job/install_job_key.dart';
+
 enum ProgressActivityKind {
   fileTreeImport,
   appUpdate,
@@ -35,6 +37,7 @@ class ProgressActivity extends Equatable {
     this.cancellable = false,
     this.detailOpen = false,
     this.errorMessage,
+    this.jobKey,
   });
 
   final String id;
@@ -53,6 +56,7 @@ class ProgressActivity extends Equatable {
   final bool cancellable;
   final bool detailOpen;
   final String? errorMessage;
+  final InstallJobKey? jobKey;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -71,6 +75,7 @@ class ProgressActivity extends Equatable {
     bool? cancellable,
     bool? detailOpen,
     String? errorMessage,
+    InstallJobKey? jobKey,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -89,6 +94,7 @@ class ProgressActivity extends Equatable {
       cancellable: cancellable ?? this.cancellable,
       detailOpen: detailOpen ?? this.detailOpen,
       errorMessage: errorMessage ?? this.errorMessage,
+      jobKey: jobKey ?? this.jobKey,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -110,6 +116,7 @@ class ProgressActivity extends Equatable {
     cancellable,
     detailOpen,
     errorMessage,
+    jobKey,
     createdAt,
     updatedAt,
   ];

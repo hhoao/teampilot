@@ -520,14 +520,19 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(minHeight: 32),
-                  child: TpTooltip(
-                    message: paintedTitle,
-                    child: Text(
-                      paintedTitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TpTextStyles.of(context).mdColored(cs.onSurface),
+                  constraints: const BoxConstraints(
+                    minHeight: kWorkspaceSidebarRowMinHeight,
+                  ),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: TpTooltip(
+                      message: paintedTitle,
+                      child: Text(
+                        paintedTitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TpTextStyles.of(context).mdColored(cs.onSurface),
+                      ),
                     ),
                   ),
                 ),

@@ -39,13 +39,22 @@ import '../cubits/member_presence_cubit.dart';
 import '../cubits/notification_cubit.dart';
 import '../cubits/progress_activity_cubit.dart';
 import '../services/app/app_update_service.dart';
-import '../services/progress_activity/app_update_activity_adapter.dart';
-import '../services/progress_activity/hub_clone_activity_adapter.dart';
+import '../models/install_job/install_cancel_policy.dart';
+import '../models/install_job/install_job_spec.dart';
+import '../services/install/install_job_keys.dart';
+import '../services/install/runners/hub_clone_install_job_runner.dart';
 import '../services/remote_download/remote_download_http.dart';
 import '../services/remote_download/remote_download_resolver.dart';
 import '../services/remote_download/remote_downloader.dart';
-import '../services/progress_activity/pack_acquire_activity_adapter.dart';
-import '../services/progress_activity/cli_provision_activity_adapter.dart';
+import '../services/cli/cli_installer_service.dart';
+import '../services/file_tree_import/workspace_import_service.dart';
+import '../services/install/install_job_registry.dart';
+import '../services/install/install_job_runner_registry.dart';
+import '../services/install/runners/app_update_install_job_runner.dart';
+import '../services/install/runners/cli_install_job_runner.dart';
+import '../services/install/runners/file_tree_import_install_job_runner.dart';
+import '../services/install/runners/pack_acquire_install_job_runner.dart';
+import '../services/install/runners/toolchain_install_job_runner.dart';
 import '../cubits/ai_history_cubit.dart';
 import '../cubits/shortcut_cubit.dart';
 import '../cubits/editor_cubit.dart';
@@ -391,6 +400,7 @@ class AppShell {
     required this.aiHistoryCubit,
     required this.notificationCubit,
     required this.progressActivityCubit,
+    required this.installJobRegistry,
     required this.editorCubit,
     required this.workbenchCubit,
     required this.workbenchEditorOpener,
@@ -484,6 +494,7 @@ class AppShell {
   final AiHistoryCubit aiHistoryCubit;
   final NotificationCubit notificationCubit;
   final ProgressActivityCubit progressActivityCubit;
+  final InstallJobRegistry installJobRegistry;
   final EditorCubit editorCubit;
   final WorkbenchCubit workbenchCubit;
   final WorkbenchEditorOpener workbenchEditorOpener;
@@ -763,6 +774,23 @@ Future<AppShell> buildAppShell({
     store: remoteDownloadSettingsStore,
   );
   unawaited(remoteDownloadCatalogCubit.load());
+  final appUpdateResolver = RemoteDownloadResolver.withProvider(
+    () => remoteDownloadCatalogCubit.state.catalog,
+  );
+  final appUpdateHttpClient = http.Client();
+  final appUpdateService = AppUpdateService(
+    httpClient: appUpdateHttpClient,
+    resolver: appUpdateResolver,
+    downloadHttp: RemoteDownloadHttp(
+      client: appUpdateHttpClient,
+      resolver: appUpdateResolver,
+    ),
+    downloader: RemoteDownloader(
+      client: appUpdateHttpClient,
+      resolver: appUpdateResolver,
+    ),
+  );
+  final workspaceImportService = WorkspaceImportService();
   var termuxConfigCache = await termuxConfigStore.load();
   TermuxCubit? termuxGateCubit;
   SshProfile? homeSshProfileCache;
@@ -1263,14 +1291,28 @@ Future<AppShell> buildAppShell({
   final progressActivityCubit = ProgressActivityCubit(
     historyRecorder: notificationCubit,
   );
-  final hubCloneActivityAdapter = HubCloneActivityAdapter(
-    cubit: progressActivityCubit,
+  final installJobRunnerRegistry = InstallJobRunnerRegistry(
+    runners: [
+      CliInstallJobRunner(
+        installerFactory: () => CliInstallerService(
+          sshClientFactory: sshClientFactory,
+          cliToolRegistry: cliToolRegistry,
+          preferredNodePath: () => sessionPreferencesCubit.toolchainPath(
+            SessionPreferences.toolchainNode,
+          ),
+        ),
+        sshProfileById: sshProfileById,
+      ),
+      ToolchainInstallJobRunner(),
+      PackAcquireInstallJobRunner(),
+      HubCloneInstallJobRunner(),
+      FileTreeImportInstallJobRunner(importService: workspaceImportService),
+      AppUpdateInstallJobRunner(service: appUpdateService),
+    ],
   );
-  final packAcquireActivityAdapter = PackAcquireActivityAdapter(
-    cubit: progressActivityCubit,
-  );
-  final cliProvisionActivityAdapter = CliProvisionActivityAdapter(
-    cubit: progressActivityCubit,
+  final installJobRegistry = InstallJobRegistry(
+    progressCubit: progressActivityCubit,
+    runnerRegistry: installJobRunnerRegistry,
   );
 
   final skillRegistryConfigService = SkillRegistryConfigService(
@@ -1288,7 +1330,7 @@ Future<AppShell> buildAppShell({
         SkillRegistryFactory.build(config, repository: skillRepo),
     acquisitionEngine: skillAcquisitionEngine,
     onSkillUninstalled: teamCubit.removeSkillFromAllTeams,
-    packAcquireActivity: packAcquireActivityAdapter,
+    installJobRegistry: installJobRegistry,
     discoverySettings: discoverySettingsCubit,
   );
   pluginCubit = PluginCubit(
@@ -1298,13 +1340,13 @@ Future<AppShell> buildAppShell({
     diskCache: PluginRepoDiskCacheService(),
     onPluginUninstalled: teamCubit.removePluginFromAllTeams,
     onPluginUpdated: teamCubit.syncTeamsUsingPlugin,
-    packAcquireActivity: packAcquireActivityAdapter,
+    installJobRegistry: installJobRegistry,
     discoverySettings: discoverySettingsCubit,
   );
   extensionCubit = ExtensionCubit(
     extensionRepository,
     ExtensionAcquisitionEngine(),
-    packAcquireActivity: packAcquireActivityAdapter,
+    installJobRegistry: installJobRegistry,
   );
   cliPresetsCubit = CliPresetsCubit(repository: cliPresetsRepo);
   mcpCubit = McpCubit(
@@ -1363,16 +1405,20 @@ Future<AppShell> buildAppShell({
     source: teamHubSource,
     loadFavorites: teamHubFavorites.load,
     saveFavoriteToggle: teamHubFavorites.toggle,
-    cloneTeam: (team, {teamMode, cli}) => hubCloneActivityAdapter.runTracked(
-      title: 'Clone ${team.name}',
-      historyMessageFor: (result) => result.hasFailures
-          ? 'Cloned ${team.name} with ${result.failedDeps.length} dependency failures'
-          : 'Cloned ${team.name}',
-      run: (onProgress) => teamCloneService.clone(
-        team,
-        teamMode: teamMode,
-        cli: cli,
-        onProgress: onProgress,
+    cloneTeam: (team, {teamMode, cli}) => installJobRegistry.enqueue(
+      InstallJobSpec(
+        key: InstallJobKeys.hubTeam(team.key),
+        title: 'Clone ${team.name}',
+        cancelPolicy: InstallCancelPolicy.cooperative,
+        historyMessageFor: (result) => result.hasFailures
+            ? 'Cloned ${team.name} with ${result.failedDeps.length} dependency failures'
+            : 'Cloned ${team.name}',
+        run: (ctx) => teamCloneService.clone(
+          team,
+          teamMode: teamMode,
+          cli: cli,
+          onProgress: (progress) => reportHubCloneProgress(ctx, progress),
+        ),
       ),
     ),
     loadInstalledDepIds: () async {
@@ -1404,7 +1450,7 @@ Future<AppShell> buildAppShell({
     saveFavoriteToggle: expertHubFavorites.toggle,
     memberRosterService: memberRosterService,
     launchProfiles: () => teamCubit,
-    hubCloneActivity: hubCloneActivityAdapter,
+    installJobRegistry: installJobRegistry,
     loadInstalledDepIds: () async {
       final skills = await skillRepo.loadInstalled();
       return skills.map((s) => s.id).toSet();
@@ -1625,7 +1671,7 @@ Future<AppShell> buildAppShell({
       runtimePlanBuilder: sessionRuntimePlanBuilder,
     ),
     remoteCliReadiness: remoteCliReadiness,
-    cliProvisionActivity: cliProvisionActivityAdapter,
+    installJobRegistry: installJobRegistry,
     termuxConnectedResolver: () => termuxGateCubit?.state.connected ?? true,
     termuxDisconnectedWorkOpsMessageResolver:
         TermuxWorkOpsMessage.disconnectedBlocked,
@@ -1810,26 +1856,11 @@ Future<AppShell> buildAppShell({
   chatCubit.onCancelSeedHistoryPending = (sid, text) =>
       aiHistoryCubit.cancelSeedPendingUser(sessionId: sid, text: text);
 
-  final appUpdateResolver = RemoteDownloadResolver.withProvider(
-    () => remoteDownloadCatalogCubit.state.catalog,
-  );
-  final appUpdateHttpClient = http.Client();
-  final appUpdateService = AppUpdateService(
-    httpClient: appUpdateHttpClient,
-    resolver: appUpdateResolver,
-    downloadHttp: RemoteDownloadHttp(
-      client: appUpdateHttpClient,
-      resolver: appUpdateResolver,
-    ),
-    downloader: RemoteDownloader(
-      client: appUpdateHttpClient,
-      resolver: appUpdateResolver,
-    ),
-  );
   final appUpdateCubit = AppUpdateCubit(
     service: appUpdateService,
     settings: appSettings,
-    activityAdapter: AppUpdateActivityAdapter(cubit: progressActivityCubit),
+    installJobRegistry: installJobRegistry,
+    appUpdateRunner: AppUpdateInstallJobRunner(service: appUpdateService),
   );
 
   boot('loading layout');
@@ -2220,6 +2251,7 @@ Future<AppShell> buildAppShell({
     aiHistoryCubit: aiHistoryCubit,
     notificationCubit: notificationCubit,
     progressActivityCubit: progressActivityCubit,
+    installJobRegistry: installJobRegistry,
     editorCubit: editorCubit,
     workbenchCubit: workbenchCubit,
     workbenchEditorOpener: workbenchEditorOpener,

@@ -1815,6 +1815,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get workspaceChatLandingVoicePermissionDenied => '未获得麦克风权限';
 
   @override
+  String get workspaceChatLandingVoiceMacOsIdeLaunch =>
+      '从 IDE 启动时 macOS 不会把语音识别权限授予 TeamPilot。请直接运行 build/macos/Build/Products/Debug/TeamPilot.app，或在 Xcode 中启动。';
+
+  @override
   String get landingTeamSettingsNavTeam => '团队默认';
 
   @override

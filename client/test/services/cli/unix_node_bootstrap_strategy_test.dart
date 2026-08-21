@@ -271,6 +271,9 @@ final class _FakeHost implements CliInstallerHost {
 
   @override
   Future<String?> locateRemoteNpm(SshProfile profile) async => null;
+
+  @override
+  bool get isCancelled => false;
 }
 
 /// Termux Claude install host: npm already present; no working claude yet.
@@ -347,4 +350,7 @@ final class _ClaudeFakeHost implements CliInstallerHost {
   @override
   Future<String?> locateRemoteNpm(SshProfile profile) async =>
       '/data/data/com.termux/files/usr/bin/npm';
+
+  @override
+  bool get isCancelled => false;
 }

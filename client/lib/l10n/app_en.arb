@@ -857,6 +857,7 @@
   "workspaceChatLandingEnhanceFailed": "Could not enhance prompt",
   "workspaceChatLandingVoiceUnavailable": "Voice input is not available on this device",
   "workspaceChatLandingVoicePermissionDenied": "Microphone permission denied",
+  "workspaceChatLandingVoiceMacOsIdeLaunch": "Voice input cannot request macOS speech permissions when TeamPilot is launched from the IDE. Run build/macos/Build/Products/Debug/TeamPilot.app directly, or launch from Xcode.",
   "landingTeamSettingsNavTeam": "Team defaults",
   "landingTeamSettingsNavMachines": "Machine assignment",
   "landingTeamSettingsGlobalHint": "Changes apply to this team's global configuration.",

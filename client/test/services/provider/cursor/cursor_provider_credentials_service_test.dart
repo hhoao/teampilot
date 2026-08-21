@@ -2,11 +2,13 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
+import 'package:teampilot/models/credential_action_result.dart';
 import 'package:teampilot/models/credential_link_result.dart';
 import 'package:teampilot/services/host/host_one_shot_runner.dart';
 import 'package:teampilot/services/host/host_process_starter.dart';
 import 'package:teampilot/services/host/process_run_handle.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_home_layout.dart';
+import 'package:teampilot/services/cli/cursor/provider/cursor_launch_environment.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_provider_credentials_service.dart';
 import 'package:teampilot/services/provider/provider_credential_host_runner.dart';
 
@@ -114,15 +116,14 @@ void main() {
     expect(probe.isReady, isFalse);
     expect(
       probe.credentialPath,
-      fs.pathContext.join(
-        base,
-        'providers',
-        'cursor',
-        'work',
-        'home',
-        '.config',
-        'cursor',
-        'auth.json',
+      layout.authJson(
+        fs.pathContext.join(
+          base,
+          'providers',
+          'cursor',
+          'work',
+          'home',
+        ),
       ),
     );
   });
@@ -170,6 +171,50 @@ void main() {
     expect(authBytes, isNotNull);
     expect(utf8.decode(authBytes!), contains('at1'));
   });
+
+  test(
+    'importFromGlobal seeds default cli-config when source file is missing',
+    () async {
+      const home = '/home/user';
+      await fs.writeString(layout.authJson(home), loggedInAuthJson);
+      final result = await service.importFromGlobal(
+        'work',
+        homeDirectory: home,
+      );
+      expect(result.ok, isTrue);
+      expect((await service.probe('work')).isReady, isTrue);
+      final providerHome = fs.pathContext.join(
+        base,
+        'providers',
+        'cursor',
+        'work',
+        'home',
+      );
+      final cliBytes = await fs.readBytes(layout.cliConfig(providerHome));
+      expect(cliBytes, isNotNull);
+      expect(utf8.decode(cliBytes!), contains('"version":1'));
+    },
+  );
+
+  test(
+    'importFromGlobal reports missing auth.json before cli-config.json',
+    () async {
+      const home = '/home/user';
+      final result = await service.importFromGlobal(
+        'work',
+        homeDirectory: home,
+      );
+      expect(result.ok, isFalse);
+      expect(result.failure?.code, CredentialActionFailureCode.requiredFileMissing);
+      expect(
+        result.failure?.path,
+        anyOf(
+          layout.authJson(home),
+          layout.globalAuthJsonCandidates(home).first,
+        ),
+      );
+    },
+  );
 
   test('importFromGlobal finds auth.json under Windows APPDATA', () async {
     final winContext = p.Context(style: p.Style.windows);
@@ -233,6 +278,10 @@ void main() {
     expect(
       env['USERPROFILE'],
       fs.pathContext.join(base, 'providers', 'cursor', 'work', 'home'),
+    );
+    expect(
+      env[CursorLaunchEnvironment.credentialStoreEnvKey],
+      CursorLaunchEnvironment.credentialStoreFile,
     );
   });
 

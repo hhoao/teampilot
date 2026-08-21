@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../models/progress_activity.dart';
+import '../models/install_job/install_job_key.dart';
 import '../services/notification/notification_recorder.dart';
 
 class ProgressActivityState extends Equatable {
@@ -61,6 +62,33 @@ class ProgressActivityCubit extends Cubit<ProgressActivityState> {
     emit(ProgressActivityState(activities: activities));
   }
 
+  void startForInstallJob({
+    required InstallJobKey jobKey,
+    required String title,
+    String? subtitle,
+    String? workspaceId,
+    required ProgressActivityKind kind,
+    bool cancellable = true,
+    FutureOr<void> Function()? onCancelRequested,
+  }) {
+    final now = DateTime.now();
+    start(
+      ProgressActivity(
+        id: jobKey.activityId,
+        kind: kind,
+        title: title,
+        subtitle: subtitle,
+        workspaceId: workspaceId,
+        phase: ProgressActivityPhase.running,
+        cancellable: cancellable,
+        jobKey: jobKey,
+        createdAt: now,
+        updatedAt: now,
+      ),
+      onCancelRequested: onCancelRequested,
+    );
+  }
+
   void update(
     String id, {
     String? title,
@@ -104,6 +132,7 @@ class ProgressActivityCubit extends Cubit<ProgressActivityState> {
       errorMessage: clearErrorMessage
           ? null
           : (errorMessage ?? current.errorMessage),
+      jobKey: current.jobKey,
       createdAt: current.createdAt,
       updatedAt: DateTime.now(),
     );

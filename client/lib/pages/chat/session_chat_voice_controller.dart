@@ -15,7 +15,7 @@ class SessionVoiceController extends ChangeNotifier {
   SessionVoiceController({required this.composeController});
 
   final TextEditingController composeController;
-  late final ComposeVoiceInput _voiceInput;
+  ComposeVoiceInput? _voiceInput;
 
   bool _listening = false;
   double _soundLevel = 0.0;
@@ -35,16 +35,70 @@ class SessionVoiceController extends ChangeNotifier {
   bool get isListening => _listening;
   double get soundLevel => _soundLevel;
   Duration get elapsed => _stopwatch?.elapsed ?? Duration.zero;
-  bool get isSessionActive => _voiceInput.isSessionActive;
+  bool get isSessionActive => _voiceInput?.isSessionActive ?? false;
   bool get permissionDenied => _permissionDenied;
 
   /// Exposed so the host can reach the underlying recognizer if needed.
-  ComposeVoiceInput get input => _voiceInput;
+  ComposeVoiceInput? get input => _voiceInput;
 
-  // -- lifecycle -----------------------------------------------------------
+  @override
+  void dispose() {
+    _stopSessionClock();
+    _voiceInput?.dispose();
+    super.dispose();
+  }
 
-  void initialize() {
-    _voiceInput = ComposeVoiceInput(
+  // -- actions -------------------------------------------------------------
+
+  /// Toggles the voice session on or off.
+  ///
+  /// Returns `true` when a listening session was started or is already active,
+  /// so the host can request focus. Returns `false` when recognition is
+  /// unavailable (host should check [permissionDenied] for the reason) or when
+  /// the session was stopped.
+  ///
+  /// [ComposeVoiceInput] and speech platform init are deferred to the first
+  /// mic tap so opening a session never touches speech_to_text / macOS TCC.
+  Future<bool> toggle(Locale preferredLocale) async {
+    final voiceInput = _ensureVoiceInput();
+    final available = await voiceInput.initialize();
+    if (!available) {
+      _permissionDenied = voiceInput.permissionDenied;
+      notifyListeners();
+      return false;
+    }
+
+    final started = await voiceInput.toggleListening(
+      preferredLocale: preferredLocale,
+    );
+    if (!started && !voiceInput.isSessionActive) return false;
+    return true;
+  }
+
+  /// Discards the current voice session without inserting the transcript.
+  Future<void> cancel() async {
+    final voiceInput = _voiceInput;
+    if (voiceInput == null || (!_listening && !voiceInput.isSessionActive)) {
+      return;
+    }
+    _discardTranscript = true;
+    await voiceInput.endSession(discard: true);
+  }
+
+  /// Stops the current voice session and inserts the final transcript.
+  Future<void> stop() async {
+    final voiceInput = _voiceInput;
+    if (voiceInput == null || (!_listening && !voiceInput.isSessionActive)) {
+      return;
+    }
+    _discardTranscript = false;
+    await voiceInput.endSession(discard: false);
+  }
+
+  // -- internals -----------------------------------------------------------
+
+  ComposeVoiceInput _ensureVoiceInput() {
+    return _voiceInput ??= ComposeVoiceInput(
       onFinalTranscript: (text) {
         if (_discardTranscript) return;
         if (_insertBaseline != null) {
@@ -59,9 +113,7 @@ class SessionVoiceController extends ChangeNotifier {
         _insertBaseline = null;
         onNeedsHostRebuild?.call();
       },
-      onListeningChanged: (listening) {
-        _applyListening(listening);
-      },
+      onListeningChanged: _applyListening,
       onSoundLevel: (level) {
         _soundLevel = level;
         notifyListeners();
@@ -72,54 +124,7 @@ class SessionVoiceController extends ChangeNotifier {
         notifyListeners();
       },
     );
-    unawaited(_voiceInput.initialize());
   }
-
-  @override
-  void dispose() {
-    _stopSessionClock();
-    _voiceInput.dispose();
-    super.dispose();
-  }
-
-  // -- actions -------------------------------------------------------------
-
-  /// Toggles the voice session on or off.
-  ///
-  /// Returns `true` when a listening session was started or is already active,
-  /// so the host can request focus. Returns `false` when recognition is
-  /// unavailable (host should check [permissionDenied] for the reason) or when
-  /// the session was stopped.
-  Future<bool> toggle(Locale preferredLocale) async {
-    final available = await _voiceInput.initialize();
-    if (!available) {
-      _permissionDenied = _voiceInput.permissionDenied;
-      notifyListeners();
-      return false;
-    }
-
-    final started = await _voiceInput.toggleListening(
-      preferredLocale: preferredLocale,
-    );
-    if (!started && !_voiceInput.isSessionActive) return false;
-    return true;
-  }
-
-  /// Discards the current voice session without inserting the transcript.
-  Future<void> cancel() async {
-    if (!_listening && !_voiceInput.isSessionActive) return;
-    _discardTranscript = true;
-    await _voiceInput.endSession(discard: true);
-  }
-
-  /// Stops the current voice session and inserts the final transcript.
-  Future<void> stop() async {
-    if (!_listening && !_voiceInput.isSessionActive) return;
-    _discardTranscript = false;
-    await _voiceInput.endSession(discard: false);
-  }
-
-  // -- internals -----------------------------------------------------------
 
   void _applyListening(bool listening) {
     if (listening) {

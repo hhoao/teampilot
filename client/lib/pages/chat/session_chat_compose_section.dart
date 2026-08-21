@@ -35,6 +35,7 @@ import '../../services/compose/compose_clip.dart';
 import '../../services/compose/compose_file_attach.dart';
 import '../../services/compose/compose_file_drop_ingestor.dart';
 import '../../services/compose/compose_landing_bundle.dart';
+import '../../services/compose/compose_voice_input.dart';
 import '../../services/expert_hub/expert_member_resolver.dart';
 import '../../services/follow_up/follow_up_queue.dart';
 import '../../services/session/history_seat_key.dart';
@@ -436,7 +437,21 @@ class SessionChatComposeSection extends StatelessWidget {
                               voiceController
                                   .toggle(Localizations.localeOf(context))
                                   .then((ok) {
-                                    if (ok) composeFocusNode.requestFocus();
+                                    if (!context.mounted) return;
+                                    if (ok) {
+                                      composeFocusNode.requestFocus();
+                                      return;
+                                    }
+                                    final input = voiceController.input;
+                                    if (input == null) return;
+                                    AppToast.show(
+                                      context,
+                                      message: composeVoiceInitFailureMessage(
+                                        context.l10n,
+                                        input,
+                                      ),
+                                      variant: TpToastVariant.warning,
+                                    );
                                   }),
                             );
                           },

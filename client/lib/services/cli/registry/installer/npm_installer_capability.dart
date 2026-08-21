@@ -34,8 +34,14 @@ abstract class NpmInstallerCapability {
     final node = context.node;
 
     host.report(CliInstallPhase.checkingNpm);
+    if (host.isCancelled) {
+      return _cancelledResult();
+    }
     final npmResolution = await node.resolveLocalNpm(host);
     if (npmResolution case LocalNpmBootstrapFailed(:final result)) {
+      if (result.stderr == 'Cancelled') {
+        return _cancelledResult();
+      }
       return CliInstallResult(
         success: false,
         message: installerFailureMessage(
@@ -58,6 +64,10 @@ abstract class NpmInstallerCapability {
       LocalNpmBootstrapFailed() => throw StateError('handled above'),
     };
 
+    if (host.isCancelled) {
+      return _cancelledResult();
+    }
+
     final install = await host.runLocal(
       installCommand,
       phase: CliInstallPhase.installingCli,
@@ -71,6 +81,10 @@ abstract class NpmInstallerCapability {
           install,
         ),
       );
+    }
+
+    if (host.isCancelled) {
+      return _cancelledResult();
     }
 
     host.report(CliInstallPhase.locatingExecutable);
@@ -96,8 +110,14 @@ abstract class NpmInstallerCapability {
     final node = context.node;
 
     host.report(CliInstallPhase.checkingNpm);
+    if (host.isCancelled) {
+      return _cancelledResult();
+    }
     final npmResolution = await node.resolveRemoteNpm(host, profile);
     if (npmResolution case RemoteNpmBootstrapFailed(:final result)) {
+      if (result.stderr == 'Cancelled') {
+        return _cancelledResult();
+      }
       return CliInstallResult(
         success: false,
         message: installerFailureMessage(
@@ -111,6 +131,10 @@ abstract class NpmInstallerCapability {
       RemoteNpmFound(:final npmCommand) => npmCommand,
       RemoteNpmBootstrapFailed() => throw StateError('handled above'),
     };
+
+    if (host.isCancelled) {
+      return _cancelledResult();
+    }
 
     host.report(CliInstallPhase.installingCli, detail: displayName);
     final install = await host.runSsh(
@@ -128,6 +152,10 @@ abstract class NpmInstallerCapability {
           install,
         ),
       );
+    }
+
+    if (host.isCancelled) {
+      return _cancelledResult();
     }
 
     host.report(CliInstallPhase.locatingExecutable);
@@ -180,4 +208,7 @@ if [ -n "\${PREFIX:-}" ] && [ -x "\$PREFIX/bin/$executableName" ]; then
 fi
 exit 1
 ''';
+
+  static CliInstallResult _cancelledResult() =>
+      const CliInstallResult(success: false, message: 'Cancelled');
 }

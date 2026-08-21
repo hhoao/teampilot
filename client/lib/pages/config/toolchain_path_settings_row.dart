@@ -8,24 +8,26 @@ import '../../cubits/session_preferences_cubit.dart';
 import '../../cubits/ssh_profile_cubit.dart';
 import '../../cubits/termux_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../models/install_job/install_job_key.dart';
 import '../../models/session_preferences.dart';
 import '../../models/ssh_profile.dart';
 import '../../services/app/connection_mode_service.dart';
-import '../../services/cli/cli_installer_service.dart';
-import '../../services/cli/git_installer.dart';
 import '../../services/cli/remote_cli_locator.dart';
 import '../../services/cli/toolchain_executable_discovery.dart';
+import '../../services/install/install_job_enqueue.dart';
+import '../../services/install/install_job_keys.dart';
+import '../../services/install/install_job_registry.dart';
+import '../../services/install/install_job_scope_resolver.dart';
 import '../../services/ssh/ssh_client_factory.dart';
 import '../../services/termux/termux_transport_profile.dart';
 import '../../utils/debounce/debounce.dart';
-import '../../widgets/cli_install_progress_panel.dart';
 import 'session_config_constants.dart';
 
 /// A settings row for a toolchain executable path (git, node, etc.).
 ///
-/// Provides a [TextField] with Browse / Reset / Install actions, plus an
-/// inline install-progress panel.  The persisted value is stored via
-/// [SessionPreferencesCubit.toolchainPath] / [SessionPreferencesCubit.setToolchainPath].
+/// Provides a [TextField] with Browse / Reset / Install actions. The persisted
+/// value is stored via [SessionPreferencesCubit.toolchainPath] /
+/// [SessionPreferencesCubit.setToolchainPath].
 class ToolchainPathSettingsRow extends StatefulWidget {
   const ToolchainPathSettingsRow({
     super.key,
@@ -79,10 +81,7 @@ class _ToolchainPathSettingsRowState extends State<ToolchainPathSettingsRow> {
   late final FocusNode _focusNode;
   late final Debouncer _persistDebouncer;
   String _lastSyncedPath = '';
-  bool _isInstalling = false;
   bool _isLocating = false;
-  GitInstallPhase? _installPhase;
-  final List<String> _installLog = [];
 
   @override
   void initState() {
@@ -106,14 +105,17 @@ class _ToolchainPathSettingsRowState extends State<ToolchainPathSettingsRow> {
     super.dispose();
   }
 
-  // ---- data access ----------------------------------------------------------
-
   String _storedPath() => widget.cubit.toolchainPath(widget.toolId);
 
   String _resolved() => widget.cubit.resolveToolchainExecutable(
     widget.toolId,
     widget.fallbackExecutable,
   );
+
+  InstallJobKey _installJobKey(BuildContext context) {
+    final scope = installJobScopeForContext(context);
+    return InstallJobKeys.toolchain(widget.toolId, scope: scope);
+  }
 
   void _syncFromState(String stored) {
     if (stored == _lastSyncedPath) return;
@@ -125,8 +127,6 @@ class _ToolchainPathSettingsRowState extends State<ToolchainPathSettingsRow> {
     );
   }
 
-  // ---- file picker ----------------------------------------------------------
-
   Future<void> _pickFile() async {
     final result = await FilePicker.platform.pickFiles(type: FileType.any);
     final picked = result?.files.single.path;
@@ -136,8 +136,6 @@ class _ToolchainPathSettingsRowState extends State<ToolchainPathSettingsRow> {
     _controller.text = picked;
     await widget.cubit.setToolchainPath(widget.toolId, picked);
   }
-
-  // ---- persistence ----------------------------------------------------------
 
   Future<void> _persistFromField() async {
     if (!mounted) return;
@@ -173,7 +171,8 @@ class _ToolchainPathSettingsRowState extends State<ToolchainPathSettingsRow> {
   }
 
   Future<void> _locate() async {
-    if (_isLocating || _isInstalling) return;
+    final registry = context.read<InstallJobRegistry>();
+    if (_isLocating || registry.isRunning(_installJobKey(context))) return;
     setState(() => _isLocating = true);
     try {
       final path = (await _resolveLocatePath())?.trim() ?? '';
@@ -227,28 +226,8 @@ class _ToolchainPathSettingsRowState extends State<ToolchainPathSettingsRow> {
     return ToolchainExecutableDiscovery().locateLocalTool(widget.toolId);
   }
 
-  // ---- install --------------------------------------------------------------
-
   Future<void> _install() async {
-    if (_isInstalling || _isLocating) return;
-    setState(() {
-      _isInstalling = true;
-      _installPhase = GitInstallPhase.checking;
-      _installLog.clear();
-    });
-
-    Future<GitInstallResult> task;
-    if (widget.toolId == SessionPreferences.toolchainGit) {
-      _addProgressLog('Detecting git...');
-      final gitInstaller = const GitInstaller();
-      task = gitInstaller.install(onProgress: _onInstallProgress);
-    } else if (widget.toolId == SessionPreferences.toolchainNode) {
-      // Node install is handled by TeampilotNodeInstall in the CLI installer
-      // flow. For now, guide the user to the official site.
-      setState(() {
-        _isInstalling = false;
-        _installPhase = null;
-      });
+    if (widget.toolId == SessionPreferences.toolchainNode) {
       if (!mounted) return;
       AppToast.show(
         context,
@@ -257,23 +236,37 @@ class _ToolchainPathSettingsRowState extends State<ToolchainPathSettingsRow> {
         variant: TpToastVariant.info,
       );
       return;
-    } else {
-      setState(() {
-        _isInstalling = false;
-        _installPhase = null;
-      });
+    }
+    if (widget.toolId != SessionPreferences.toolchainGit) return;
+
+    final registry = context.read<InstallJobRegistry>();
+    final scope = installJobScopeForContext(context);
+    final key = InstallJobKeys.toolchain(widget.toolId, scope: scope);
+    if (registry.isRunning(key)) {
+      await registry.installToolchain(
+        toolId: widget.toolId,
+        scope: scope,
+        title: context.l10n.cliInstallInstalling,
+      );
       return;
     }
 
+    setState(() {});
     try {
-      final result = await task;
-      if (!mounted) return;
-      final path = result.executablePath?.trim() ?? '';
-      if (result.success && path.isNotEmpty) {
-        _persistDebouncer.cancel();
-        _controller.text = path;
-        await widget.cubit.setToolchainPath(widget.toolId, path);
-      }
+      final result = await registry.installToolchain(
+        toolId: widget.toolId,
+        scope: scope,
+        title: context.l10n.cliInstallInstalling,
+        onSucceeded: (installResult) async {
+          final path = installResult.executablePath?.trim() ?? '';
+          if (path.isEmpty) return;
+          _persistDebouncer.cancel();
+          await widget.cubit.setToolchainPath(widget.toolId, path);
+          if (mounted) {
+            _controller.text = path;
+          }
+        },
+      );
       if (!mounted) return;
       AppToast.show(
         context,
@@ -282,50 +275,17 @@ class _ToolchainPathSettingsRowState extends State<ToolchainPathSettingsRow> {
             ? TpToastVariant.success
             : TpToastVariant.error,
       );
+    } catch (error) {
+      if (!mounted) return;
+      AppToast.show(
+        context,
+        message: error.toString(),
+        variant: TpToastVariant.error,
+      );
     } finally {
-      if (mounted) {
-        setState(() {
-          _isInstalling = false;
-          _installPhase = null;
-        });
-      }
+      if (mounted) setState(() {});
     }
   }
-
-  void _onInstallProgress(GitInstallProgress progress) {
-    if (!mounted) return;
-    setState(() {
-      _installPhase = progress.phase;
-      final detail = progress.detail?.trim();
-      if (detail != null && detail.isNotEmpty) {
-        _installLog.add(detail);
-        if (_installLog.length > 80) {
-          _installLog.removeRange(0, _installLog.length - 80);
-        }
-      }
-    });
-  }
-
-  void _addProgressLog(String line) {
-    if (!mounted) return;
-    setState(() {
-      _installLog.add(line);
-      if (_installLog.length > 80) {
-        _installLog.removeRange(0, _installLog.length - 80);
-      }
-    });
-  }
-
-  /// Maps [GitInstallPhase] to [CliInstallPhase] for the shared progress panel.
-  static CliInstallPhase _toCliInstallPhase(GitInstallPhase phase) {
-    return switch (phase) {
-      GitInstallPhase.checking => CliInstallPhase.checkingNpm,
-      GitInstallPhase.installing => CliInstallPhase.installingCli,
-      GitInstallPhase.locating => CliInstallPhase.locatingExecutable,
-    };
-  }
-
-  // ---- build ---------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
@@ -346,6 +306,10 @@ class _ToolchainPathSettingsRowState extends State<ToolchainPathSettingsRow> {
     final l10n = context.l10n;
     _syncFromState(stored);
 
+    final registry = context.read<InstallJobRegistry>();
+    final installKey = _installJobKey(context);
+    final isInstalling = registry.isRunning(installKey);
+
     final effective = _resolved();
     final isFallback = stored.trim().isEmpty;
     final fieldEmpty = _controller.text.trim().isEmpty;
@@ -357,91 +321,79 @@ class _ToolchainPathSettingsRowState extends State<ToolchainPathSettingsRow> {
           widget.toolId,
           widget.fallbackExecutable,
         );
-    final locatingOrInstalling = _isLocating || _isInstalling;
+    final locatingOrInstalling = _isLocating || isInstalling;
 
     return TpPreferenceStack(
       title: widget.title,
       subtitle: widget.subtitle,
       titleLeading: Icon(widget.leadingIcon, size: 28),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      body: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(
-                child: TextField(
-                  key: widget.fieldKey,
-                  controller: _controller,
-                  focusNode: _focusNode,
-                  decoration: InputDecoration(
-                    hintText: hint,
-                    hintMaxLines: 1,
-                    floatingLabelBehavior: FloatingLabelBehavior.never,
-                  ),
-                  onChanged: (_) => _scheduleDebouncedPersist(),
-                  onSubmitted: (_) => _flushPersist(),
-                ),
+          Expanded(
+            child: TextField(
+              key: widget.fieldKey,
+              controller: _controller,
+              focusNode: _focusNode,
+              decoration: InputDecoration(
+                hintText: hint,
+                hintMaxLines: 1,
+                floatingLabelBehavior: FloatingLabelBehavior.never,
               ),
-              const SizedBox(width: 6),
-              if (showInstallButton) ...[
-                OutlinedButton.icon(
-                  key: widget.installKey,
-                  onPressed: locatingOrInstalling ? null : _install,
-                  icon: _isInstalling
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Icon(
-                          Icons.download_outlined,
-                          size: context.tpIconSizes.md,
-                        ),
-                  label: Text(
-                    _isInstalling
-                        ? l10n.cliInstallInstalling
-                        : l10n.cliInstallButton,
-                  ),
-                ),
-                const SizedBox(width: 6),
-              ],
-              OutlinedButton.icon(
-                key: widget.browseKey,
-                onPressed: locatingOrInstalling ? null : _pickFile,
-                icon: Icon(
-                  Icons.folder_open_outlined,
-                  size: context.tpIconSizes.md,
-                ),
-                label: Text(l10n.cliExecutablePathBrowse),
-              ),
-              const SizedBox(width: 6),
-              TextButton(
-                key: widget.resetKey,
-                onPressed: locatingOrInstalling
-                    ? null
-                    : (isFallback ? _locate : _reset),
-                child: _isLocating
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Text(
-                        isFallback
-                            ? l10n.cliExecutablePathLocate
-                            : l10n.cliExecutablePathReset,
-                      ),
-              ),
-            ],
-          ),
-          if (_isInstalling && _installPhase != null) ...[
-            const SizedBox(height: 12),
-            CliInstallProgressPanel(
-              phase: _toCliInstallPhase(_installPhase!),
-              logLines: _installLog,
+              onChanged: (_) => _scheduleDebouncedPersist(),
+              onSubmitted: (_) => _flushPersist(),
             ),
+          ),
+          const SizedBox(width: 6),
+          if (showInstallButton) ...[
+            OutlinedButton.icon(
+              key: widget.installKey,
+              onPressed: locatingOrInstalling ? null : _install,
+              icon: isInstalling
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Icon(
+                      Icons.download_outlined,
+                      size: context.tpIconSizes.md,
+                    ),
+              label: Text(
+                isInstalling
+                    ? l10n.cliInstallInstalling
+                    : l10n.cliInstallButton,
+              ),
+            ),
+            const SizedBox(width: 6),
           ],
+          OutlinedButton.icon(
+            key: widget.browseKey,
+            onPressed: locatingOrInstalling ? null : _pickFile,
+            icon: Icon(
+              Icons.folder_open_outlined,
+              size: context.tpIconSizes.md,
+            ),
+            label: Text(l10n.cliExecutablePathBrowse),
+          ),
+          const SizedBox(width: 6),
+          TextButton(
+            key: widget.resetKey,
+            onPressed: locatingOrInstalling
+                ? null
+                : (isFallback ? _locate : _reset),
+            child: _isLocating
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Text(
+                    isFallback
+                        ? l10n.cliExecutablePathLocate
+                        : l10n.cliExecutablePathReset,
+                  ),
+          ),
         ],
       ),
       showDividerBelow: widget.showDividerBelow,

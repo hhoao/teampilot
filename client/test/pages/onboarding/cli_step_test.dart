@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shared_ui/shared_ui.dart';
+import 'package:teampilot/cubits/progress_activity_cubit.dart';
 import 'package:teampilot/cubits/session_preferences_cubit.dart';
 import 'package:teampilot/cubits/ssh_profile_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
@@ -19,11 +20,23 @@ import 'package:teampilot/repositories/ssh_profile_repository.dart';
 import 'package:teampilot/services/app/connection_mode_service.dart';
 import 'package:teampilot/services/cli/registry/capabilities/cli_executable_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
+import 'package:teampilot/services/install/install_job_registry.dart';
+import 'package:teampilot/services/notification/notification_recorder.dart';
 import 'package:teampilot/services/ssh/ssh_client_factory.dart';
 import 'package:teampilot/theme/app_typography_scale.dart';
 
 import '../../support/in_memory_filesystem.dart';
 import '../../support/post_frame_test_harness.dart';
+
+class _FakeNotificationRecorder implements NotificationRecorder {
+  @override
+  void record({
+    required String message,
+    required TpToastVariant variant,
+    String title = '',
+    String payload = '',
+  }) {}
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -128,6 +141,16 @@ void main() {
       });
 
       final theme = ThemeData(useMaterial3: true);
+      final progressCubit = ProgressActivityCubit(
+        historyRecorder: _FakeNotificationRecorder(),
+      );
+      final installJobRegistry = InstallJobRegistry(
+        progressCubit: progressCubit,
+      );
+      addTearDown(() async {
+        installJobRegistry.dispose();
+        await progressCubit.close();
+      });
       await tester.pumpWidget(
         MaterialApp(
           localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -144,6 +167,9 @@ void main() {
               providers: [
                 RepositoryProvider<ConnectionModeService>.value(value: mode),
                 RepositoryProvider<SshClientFactory>.value(value: factory),
+                RepositoryProvider<InstallJobRegistry>.value(
+                  value: installJobRegistry,
+                ),
               ],
               child: MultiBlocProvider(
                 providers: [

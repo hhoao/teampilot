@@ -2,7 +2,8 @@ import 'dart:convert';
 
 /// Catalog of Cursor CLI auth files under an isolated fake `$HOME`.
 ///
-/// Session tokens live in `$HOME/.config/cursor/auth.json` (and on Windows also
+/// Session tokens live in `$HOME/.cursor/auth.json` on macOS (file store) or
+/// `$HOME/.config/cursor/auth.json` on Linux/Windows (and on Windows also
 /// `%APPDATA%\Cursor\auth.json` from Cursor IDE). `cli-config.json`
 /// under `$HOME/.cursor/` carries profile metadata (`authInfo`) but is not
 /// sufficient for `cursor-agent` to authenticate on its own.

@@ -15,6 +15,11 @@ import '../../models/workspace.dart';
 import '../../models/workspace_launch_context.dart';
 import '../../repositories/session_repository.dart';
 import '../../services/catalog/catalog_mcp_transport.dart';
+import '../../models/install_job/install_cancel_policy.dart';
+import '../../models/install_job/install_job_key.dart';
+import '../../models/install_job/install_job_scope.dart';
+import '../../models/install_job/install_job_spec.dart';
+import '../../services/install/install_job_registry.dart';
 import '../../services/cli/installer_types.dart';
 import '../../services/cli/registry/capabilities/terminal_behavior_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
@@ -832,8 +837,8 @@ class SessionShellConnector {
       return runPrepare(null);
     }
 
-    final adapter = _host.cliProvisionActivity;
-    if (adapter == null) {
+    final registry = _host.installJobRegistry;
+    if (registry == null) {
       reportMemberProgress(
         const CliInstallProgress(
           phase: CliInstallPhase.locatingExecutable,
@@ -843,28 +848,55 @@ class SessionShellConnector {
       return runPrepare(reportMemberProgress);
     }
 
-    return adapter.runTracked(
-      title: hostLabel.isEmpty
-          ? 'Provisioning remote environment'
-          : 'Provisioning $hostLabel',
-      workspaceId: tab.workspaceId.trim().isEmpty ? null : tab.workspaceId,
-      historyMessageFor: (_) => hostLabel.isEmpty
-          ? 'Remote environment ready'
-          : 'Remote environment ready on $hostLabel',
-      run: (onActivityProgress) async {
-        void onProgress(CliInstallProgress progress) {
-          onActivityProgress(progress);
-          reportMemberProgress(progress);
-        }
+    final profileId = launchTarget.sshProfileId ?? '';
+    final scope = profileId.isEmpty
+        ? const InstallJobScopeLocal()
+        : InstallJobScopeSsh(profileId);
+    final key = InstallJobKey(
+      kind: InstallJobKind.cliExecutable,
+      target: 'provision:${tab.info.id}:$memberId',
+      scope: scope,
+    );
 
-        onProgress(
-          const CliInstallProgress(
-            phase: CliInstallPhase.locatingExecutable,
-            detail: 'connecting',
-          ),
-        );
-        return runPrepare(onProgress);
-      },
+    return registry.enqueue(
+      InstallJobSpec(
+        key: key,
+        title: hostLabel.isEmpty
+            ? 'Provisioning remote environment'
+            : 'Provisioning $hostLabel',
+        workspaceId: tab.workspaceId.trim().isEmpty ? null : tab.workspaceId,
+        cancelPolicy: InstallCancelPolicy.cooperative,
+        historyMessageFor: (_) => hostLabel.isEmpty
+            ? 'Remote environment ready'
+            : 'Remote environment ready on $hostLabel',
+        run: (ctx) async {
+          void onProgress(CliInstallProgress progress) {
+            final phaseLabel = switch (progress.phase) {
+              CliInstallPhase.checkingNpm => 'Checking npm',
+              CliInstallPhase.bootstrappingNode => 'Bootstrapping Node',
+              CliInstallPhase.installingCli => 'Installing CLI',
+              CliInstallPhase.locatingExecutable => 'Locating executable',
+              CliInstallPhase.syncingRemoteWorkspace =>
+                'Syncing remote workspace',
+            };
+            final detail = progress.detail?.trim();
+            if (detail != null && detail.isNotEmpty) {
+              ctx.reportPhase(phaseLabel, detail: detail);
+            } else {
+              ctx.reportPhase(phaseLabel);
+            }
+            reportMemberProgress(progress);
+          }
+
+          onProgress(
+            const CliInstallProgress(
+              phase: CliInstallPhase.locatingExecutable,
+              detail: 'connecting',
+            ),
+          );
+          return runPrepare(onProgress);
+        },
+      ),
     );
   }
 

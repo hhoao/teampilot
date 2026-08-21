@@ -8,18 +8,21 @@ import '../../cubits/session_preferences_cubit.dart';
 import '../../cubits/ssh_profile_cubit.dart';
 import '../../cubits/termux_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../models/install_job/install_job_key.dart';
 import '../../models/session_preferences.dart';
 import '../../models/ssh_profile.dart';
 import '../../models/team_config.dart';
 import '../../services/app/connection_mode_service.dart';
 import '../../services/cli/cli_executable_discovery.dart';
-import '../../services/cli/cli_installer_service.dart';
 import '../../services/cli/remote_cli_locator.dart';
+import '../../services/install/install_job_enqueue.dart';
+import '../../services/install/install_job_keys.dart';
+import '../../services/install/install_job_registry.dart';
+import '../../services/install/install_job_scope_resolver.dart';
 import '../../services/ssh/ssh_client_factory.dart';
 import '../../services/termux/termux_transport_profile.dart';
 import '../../utils/debounce/debounce.dart';
 import '../../widgets/cli/cli_brand_icon.dart';
-import '../../widgets/cli_install_progress_panel.dart';
 import 'session_config_constants.dart';
 
 class CliExecutablePathSettingsRow extends StatefulWidget {
@@ -63,10 +66,7 @@ class CliExecutablePathSettingsRowState
   late final FocusNode _focusNode;
   late final Debouncer _persistDebouncer;
   String _lastSyncedPath = '';
-  bool _isInstalling = false;
   bool _isLocating = false;
-  CliInstallPhase? _installPhase;
-  final List<String> _installLog = [];
 
   @override
   void initState() {
@@ -92,6 +92,11 @@ class CliExecutablePathSettingsRowState
 
   String _storedPath() =>
       widget.cubit.state.preferences.cliExecutablePathFor(widget.cli.value);
+
+  InstallJobKey _installJobKey(BuildContext context) {
+    final scope = installJobScopeForContext(context);
+    return InstallJobKeys.cli(widget.cli.value, scope: scope);
+  }
 
   void _syncFromState(String stored) {
     if (stored == _lastSyncedPath) return;
@@ -149,7 +154,8 @@ class CliExecutablePathSettingsRowState
   }
 
   Future<void> _locate() async {
-    if (_isLocating || _isInstalling) return;
+    final registry = context.read<InstallJobRegistry>();
+    if (_isLocating || registry.isRunning(_installJobKey(context))) return;
     setState(() => _isLocating = true);
     try {
       final path = (await _resolveLocatePath())?.trim() ?? '';
@@ -205,34 +211,34 @@ class CliExecutablePathSettingsRowState
   }
 
   Future<void> _installCli() async {
-    if (_isInstalling) return;
-    setState(() {
-      _isInstalling = true;
-      _installPhase = CliInstallPhase.checkingNpm;
-      _installLog.clear();
-    });
-    try {
-      final connectionMode = context.read<ConnectionModeService>();
-      final installer = CliInstallerService(
-        sshClientFactory: context.read<SshClientFactory>(),
-        preferredNodePath: () =>
-            widget.cubit.toolchainPath(SessionPreferences.toolchainNode),
-      );
-      final result = await installer.install(
+    final registry = context.read<InstallJobRegistry>();
+    final scope = installJobScopeForContext(context);
+    final key = InstallJobKeys.cli(widget.cli.value, scope: scope);
+    if (registry.isRunning(key)) {
+      await registry.installCli(
         cli: widget.cli,
-        mode: connectionMode.isRemoteWorkPlane
-            ? CliInstallMode.ssh
-            : CliInstallMode.local,
-        sshProfile: _remoteSshProfile(context, connectionMode),
-        onProgress: _onInstallProgress,
+        scope: scope,
+        title: context.l10n.cliInstallInstalling,
       );
-      if (!mounted) return;
-      final path = result.executablePath?.trim() ?? '';
-      if (result.success && path.isNotEmpty) {
-        _persistDebouncer.cancel();
-        _controller.text = path;
-        await widget.cubit.setCliExecutablePathFor(widget.cli, path);
-      }
+      return;
+    }
+
+    setState(() {});
+    try {
+      final result = await registry.installCli(
+        cli: widget.cli,
+        scope: scope,
+        title: context.l10n.cliInstallInstalling,
+        onSucceeded: (installResult) async {
+          final path = installResult.executablePath?.trim() ?? '';
+          if (path.isEmpty) return;
+          _persistDebouncer.cancel();
+          await widget.cubit.setCliExecutablePathFor(widget.cli, path);
+          if (mounted) {
+            _controller.text = path;
+          }
+        },
+      );
       if (!mounted) return;
       AppToast.show(
         context,
@@ -241,28 +247,16 @@ class CliExecutablePathSettingsRowState
             ? TpToastVariant.success
             : TpToastVariant.error,
       );
+    } catch (error) {
+      if (!mounted) return;
+      AppToast.show(
+        context,
+        message: error.toString(),
+        variant: TpToastVariant.error,
+      );
     } finally {
-      if (mounted) {
-        setState(() {
-          _isInstalling = false;
-          _installPhase = null;
-        });
-      }
+      if (mounted) setState(() {});
     }
-  }
-
-  void _onInstallProgress(CliInstallProgress progress) {
-    if (!mounted) return;
-    setState(() {
-      _installPhase = progress.phase;
-      final detail = progress.detail?.trim();
-      if (detail != null && detail.isNotEmpty) {
-        _installLog.add(detail);
-        if (_installLog.length > 80) {
-          _installLog.removeRange(0, _installLog.length - 80);
-        }
-      }
-    });
   }
 
   @override
@@ -284,6 +278,10 @@ class CliExecutablePathSettingsRowState
     final l10n = context.l10n;
     _syncFromState(stored);
 
+    final registry = context.read<InstallJobRegistry>();
+    final installKey = _installJobKey(context);
+    final isInstalling = registry.isRunning(installKey);
+
     final isRemoteWorkPlane = context.select<ConnectionModeService, bool>(
       (service) => service.isRemoteWorkPlane,
     );
@@ -295,7 +293,7 @@ class CliExecutablePathSettingsRowState
         widget.installKey != null &&
         fieldEmpty &&
         !widget.cubit.hasKnownCliExecutable(widget.cli);
-    final locatingOrInstalling = _isLocating || _isInstalling;
+    final locatingOrInstalling = _isLocating || isInstalling;
 
     return TpPreferenceStack(
       title: widget.title,
@@ -306,88 +304,76 @@ class CliExecutablePathSettingsRowState
         size: 28,
         borderRadius: 7,
       ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      body: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            mainAxisAlignment: MainAxisAlignment.start,
-            children: [
-              Expanded(
-                child: TextField(
-                  key: widget.fieldKey,
-                  controller: _controller,
-                  focusNode: _focusNode,
-                  decoration: InputDecoration(
-                    hintText: hint,
-                    hintMaxLines: 1,
-                    floatingLabelBehavior: FloatingLabelBehavior.never,
-                  ),
-                  onChanged: (_) => _scheduleDebouncedPersist(),
-                  onSubmitted: (_) => _flushPersist(),
-                ),
+          Expanded(
+            child: TextField(
+              key: widget.fieldKey,
+              controller: _controller,
+              focusNode: _focusNode,
+              decoration: InputDecoration(
+                hintText: hint,
+                hintMaxLines: 1,
+                floatingLabelBehavior: FloatingLabelBehavior.never,
               ),
-              const SizedBox(width: 6),
-              if (showInstallButton) ...[
-                OutlinedButton.icon(
-                  key: widget.installKey,
-                  onPressed: locatingOrInstalling ? null : _installCli,
-                  icon: _isInstalling
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Icon(
-                          Icons.download_outlined,
-                          size: context.tpIconSizes.md,
-                        ),
-                  label: Text(
-                    _isInstalling
-                        ? l10n.cliInstallInstalling
-                        : l10n.cliInstallButton,
-                  ),
-                ),
-                const SizedBox(width: 6),
-              ],
-              OutlinedButton.icon(
-                key: widget.browseKey,
-                onPressed: (isRemoteWorkPlane || locatingOrInstalling)
-                    ? null
-                    : _pickFile,
-                icon: Icon(
-                  Icons.folder_open_outlined,
-                  size: context.tpIconSizes.md,
-                ),
-                label: Text(l10n.cliExecutablePathBrowse),
-              ),
-              const SizedBox(width: 6),
-              TextButton(
-                key: widget.resetKey,
-                onPressed: locatingOrInstalling
-                    ? null
-                    : (isFallback ? _locate : _reset),
-                child: _isLocating
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Text(
-                        isFallback
-                            ? l10n.cliExecutablePathLocate
-                            : l10n.cliExecutablePathReset,
-                      ),
-              ),
-            ],
-          ),
-          if (_isInstalling && _installPhase != null) ...[
-            const SizedBox(height: 12),
-            CliInstallProgressPanel(
-              phase: _installPhase!,
-              logLines: _installLog,
+              onChanged: (_) => _scheduleDebouncedPersist(),
+              onSubmitted: (_) => _flushPersist(),
             ),
+          ),
+          const SizedBox(width: 6),
+          if (showInstallButton) ...[
+            OutlinedButton.icon(
+              key: widget.installKey,
+              onPressed: locatingOrInstalling ? null : _installCli,
+              icon: isInstalling
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Icon(
+                      Icons.download_outlined,
+                      size: context.tpIconSizes.md,
+                    ),
+              label: Text(
+                isInstalling
+                    ? l10n.cliInstallInstalling
+                    : l10n.cliInstallButton,
+              ),
+            ),
+            const SizedBox(width: 6),
           ],
+          OutlinedButton.icon(
+            key: widget.browseKey,
+            onPressed: (isRemoteWorkPlane || locatingOrInstalling)
+                ? null
+                : _pickFile,
+            icon: Icon(
+              Icons.folder_open_outlined,
+              size: context.tpIconSizes.md,
+            ),
+            label: Text(l10n.cliExecutablePathBrowse),
+          ),
+          const SizedBox(width: 6),
+          TextButton(
+            key: widget.resetKey,
+            onPressed: locatingOrInstalling
+                ? null
+                : (isFallback ? _locate : _reset),
+            child: _isLocating
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Text(
+                    isFallback
+                        ? l10n.cliExecutablePathLocate
+                        : l10n.cliExecutablePathReset,
+                  ),
+          ),
         ],
       ),
       showDividerBelow: widget.showDividerBelow,
